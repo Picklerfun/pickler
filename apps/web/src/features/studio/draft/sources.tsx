@@ -2,10 +2,10 @@
 import { useState } from "react";
 import { Icon, Segmented } from "@pickler/ui";
 import type { WebMode } from "../new-agent/model";
-import { RunNote } from "./build-parts";
-import { addSite, sourcesView, webForm, type WebForm } from "./build-model";
-import { DraftSection, type DraftSectionProps } from "./section";
-import { SaveOutcome, saveLabel, useSavedForm, useSetupSave } from "./setup-save";
+import { addSite, sourcesView, webForm, type WebForm } from "../shell/build-model";
+import { SaveOutcome, saveLabel, useSavedForm, useSetupSave } from "../shell/setup-save";
+import { RunNote } from "./run-note";
+import { DraftSection, type DraftSectionProps } from "./draft-section";
 import styles from "./build.module.css";
 
 const MODES: { value: WebMode; label: string }[] = [

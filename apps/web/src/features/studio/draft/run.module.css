@@ -1,87 +1,50 @@
-/* Console, Trades, Trade and Master wallet (canvas 530–674, 769–833), on the draft studio's dark
- * surface. The colour mapping is `draft.module.css`'s: #0B0D1A wells `--pk-bg`, #15182A cards
- * `--pk-panel`, #9AA0B8 `--pk-ink-muted`, #5A5F78 and #3A3F58 `--pk-ink-faint`, #C7CAD8
- * `--pk-ink-soft`, lime `--pk-lime`, the amber STARTS WITH THE PERPL RUNTIME
- * `--pk-state-caution-*`, the PASSKEY wash `--pk-state-good-*`, 12% and 16% rules
- * `--pk-rule-strong`. The cards, lists and pills are composed from that sheet so the sections stay
- * one drawing.
+/* Console and Trades (canvas 530–674), on the draft studio's dark surface. The cards, lists,
+ * pills and tags are the shell's (`../shell/cards.module.css`), shared with the live studio and
+ * composed here under the names these screens use; Talk to it, Trade and Master wallet are drawn by
+ * the shell itself. The colour mapping is that sheet's; the amber STARTS WITH THE PERPL RUNTIME is
+ * `--pk-state-caution-*`.
+ *
+ * A class here that composes a shell class names every class that one is made of: the bundler
+ * resolves one level of `composes`, so a class composed of one that composes another drops the
+ * inner one (the tags lost their pill, the cards their panel).
  */
 
-/* Two columns that fold to one (the canvas's auto-fit 320px grid). */
 .grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
-  gap: 18px;
-  align-items: start;
+  composes: grid from "../shell/cards.module.css";
 }
 .column {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  min-width: 0;
+  composes: column from "../shell/cards.module.css";
 }
-
 .card {
-  composes: card from "./draft.module.css";
+  composes: card from "../shell/cards.module.css";
 }
 .cardHead {
-  composes: cardHead from "./draft.module.css";
+  composes: cardHead from "../shell/cards.module.css";
 }
 .cardLabel {
-  composes: cardLabel from "./draft.module.css";
+  composes: cardLabel from "../shell/cards.module.css";
 }
 .cardNote {
-  composes: cardNote from "./draft.module.css";
+  composes: cardNote from "../shell/cards.module.css";
 }
 .meta {
-  margin-left: auto;
-  font: 600 9.5px/1 var(--pk-font);
-  letter-spacing: 0.08em;
-  color: var(--pk-ink-faint);
-  text-align: right;
+  composes: meta from "../shell/cards.module.css";
 }
 
-/* The canvas's tags: amber STARTS WITH THE PERPL RUNTIME, quiet SOON, lime PASSKEY. Each names
-   every class it is made of: the bundler resolves one level of `composes`, so a class composed of
-   one that composes another drops the inner one (the tags lost their pill, the cards their panel). */
-.tag {
-  flex: none;
-  padding: 5px 8px;
-  border-radius: var(--pk-radius-pill);
-  font: 600 9.5px/1 var(--pk-font);
-  letter-spacing: 0.1em;
-  white-space: nowrap;
-}
-.headTag {
-  composes: tag;
-  margin-left: auto;
-}
+/* The canvas's tags: amber STARTS WITH THE PERPL RUNTIME, quiet SOON. */
 .caution {
-  composes: tag headTag;
+  composes: tag headTag from "../shell/cards.module.css";
   background: var(--pk-state-caution-bg);
   color: var(--pk-state-caution-ink);
 }
 .soon {
-  composes: tag;
-  background: var(--pk-bg);
-  color: var(--pk-ink-muted);
-}
-.headSoon {
-  composes: tag soon;
-  margin-left: auto;
-}
-.passkey {
-  composes: tag headTag;
-  background: var(--pk-state-good-bg);
-  color: var(--pk-state-good-ink);
+  composes: tag soon from "../shell/cards.module.css";
 }
 
 /* ---------- Console ---------- */
 
 .chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 5px;
+  composes: chips from "../shell/cards.module.css";
 }
 .inputChip {
   display: inline-flex;
@@ -247,59 +210,6 @@
   color: var(--pk-ink);
 }
 
-.talk {
-  composes: card from "./draft.module.css";
-  min-height: 320px;
-}
-.thread {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  gap: 8px;
-}
-.starter {
-  padding: 9px 12px;
-  border: 1px solid var(--pk-rule-strong);
-  border-radius: var(--pk-radius-pill);
-  background: transparent;
-  color: var(--pk-ink-muted);
-  font: 500 12.5px/1 var(--pk-font);
-  cursor: not-allowed;
-}
-.ask {
-  display: flex;
-  gap: 6px;
-  padding: 5px;
-  border-radius: var(--pk-radius-pill);
-  background: var(--pk-bg);
-}
-.askInput {
-  flex: 1;
-  min-width: 0;
-  padding: 10px 12px;
-  border: none;
-  background: transparent;
-  color: var(--pk-ink);
-  font: 500 14px/1.2 var(--pk-font);
-  outline: none;
-  cursor: not-allowed;
-}
-.askInput::placeholder {
-  color: var(--pk-ink-faint);
-}
-.send {
-  flex: none;
-  padding: 10px 16px;
-  border: none;
-  border-radius: var(--pk-radius-pill);
-  background: var(--pk-ink);
-  color: var(--pk-bg);
-  font: 600 12.5px/1 var(--pk-font);
-  cursor: not-allowed;
-  opacity: 0.5;
-}
-
 /* ---------- Trades ---------- */
 
 .trades {
@@ -309,192 +219,24 @@
   gap: 12px;
 }
 .listHead {
-  composes: listHead from "./draft.module.css";
+  composes: listHead from "../shell/cards.module.css";
 }
 .listTitle {
-  composes: listTitle from "./draft.module.css";
+  composes: listTitle from "../shell/cards.module.css";
 }
 .listMeta {
-  margin-left: auto;
-  font: 600 10px/1 var(--pk-font);
-  letter-spacing: 0.08em;
-  color: var(--pk-ink-muted);
+  composes: listMeta from "../shell/cards.module.css";
 }
 .empty {
-  composes: empty from "./draft.module.css";
+  composes: empty from "../shell/cards.module.css";
   gap: 12px;
   padding: 22px 18px;
   font-size: 13.5px;
 }
 .whiteButton {
-  composes: whiteButton from "./draft.module.css";
+  composes: whiteButton from "../shell/cards.module.css";
   align-self: flex-start;
   padding: 11px 16px;
-}
-.darkButton {
-  composes: darkButton from "./draft.module.css";
-}
-
-/* ---------- Trade (you) ---------- */
-
-.tradeSoon {
-  composes: card from "./draft.module.css";
-  max-width: 520px;
-}
-
-/* ---------- Master wallet ---------- */
-
-.master {
-  composes: card from "./draft.module.css";
-  border: 1px solid var(--pk-lime-edge);
-}
-.address {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.addressText {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font: 600 12px/1.3 var(--pk-font);
-  letter-spacing: 0.02em;
-  color: var(--pk-ink-soft);
-}
-.copyChip {
-  composes: copyChip from "./draft.module.css";
-}
-.balances {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 4px;
-}
-.balance {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  padding: 12px;
-  border-radius: var(--pk-radius-md);
-  background: var(--pk-bg);
-}
-.balanceValue {
-  font: 700 24px/1 var(--pk-font);
-  letter-spacing: -0.03em;
-  font-variant-numeric: tabular-nums;
-}
-.balanceLabel {
-  font: 600 9px/1 var(--pk-font);
-  letter-spacing: 0.08em;
-  color: var(--pk-ink-faint);
-}
-.rows {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.allocation {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 9px 12px;
-  border-radius: 10px;
-  background: var(--pk-bg);
-}
-.dot {
-  flex: none;
-  width: 8px;
-  height: 8px;
-  border-radius: 3px;
-  background: var(--pk-lime);
-}
-/* This agent's wallet in its accent; another agent's, whose accent the wallets list does not
-   carry, in the quiet ink. */
-.dot[data-kind="agent"] {
-  background: var(--accent, var(--pk-ink-soft));
-}
-.dot[data-kind="positions"] {
-  background: var(--pk-blue);
-}
-.dot[data-kind="credits"] {
-  background: var(--pk-violet);
-}
-/* The ledger: a transfer either way in the agent's accent, as the canvas draws it (this agent's;
-   another agent's in the quiet ink). */
-.dot[data-kind="transfer"] {
-  background: var(--accent, var(--pk-ink-soft));
-}
-.allocationLabel {
-  flex: 1;
-  min-width: 0;
-  font: 600 12.5px/1.2 var(--pk-font);
-}
-.allocationValue {
-  flex: none;
-  font: 700 12.5px/1 var(--pk-font);
-  font-variant-numeric: tabular-nums;
-  text-align: right;
-}
-.allocationValue[data-soon="true"] {
-  color: var(--pk-ink-muted);
-  font-weight: 600;
-}
-.pair {
-  display: flex;
-  gap: 4px;
-}
-.pair > button {
-  flex: 1;
-  padding: 11px;
-}
-
-.ledgerRow {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 11px 14px;
-  border-radius: 14px;
-  background: var(--pk-panel);
-}
-.ledgerText {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-.ledgerTitle {
-  font: 600 13px/1.2 var(--pk-font);
-  letter-spacing: -0.01em;
-}
-.ledgerSub {
-  font: 600 9.5px/1 var(--pk-font);
-  letter-spacing: 0.06em;
-  color: var(--pk-ink-faint);
-}
-.ledgerAmount {
-  flex: none;
-  font: 700 13.5px/1 var(--pk-font);
-  letter-spacing: -0.02em;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-  color: var(--pk-ink);
-}
-.ledgerAmount[data-in="true"] {
-  color: var(--pk-lime);
-}
-.ledgerAt {
-  flex: none;
-  font: 600 10px/1 var(--pk-font);
-  color: var(--pk-ink-faint);
-  font-variant-numeric: tabular-nums;
-}
-.quiet {
-  composes: empty from "./draft.module.css";
 }
 
 .inputChip:focus-visible,

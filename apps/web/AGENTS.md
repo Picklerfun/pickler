@@ -22,6 +22,7 @@ src/features/studio/       # Studio sections, history, research result and API c
 src/features/studio/new-agent # Creating an agent: one screen, wallet first, then funding, then Create
 src/features/studio/home   # The home: status, wallet and deposit, schedule, picks; the create gate
 src/features/studio/draft  # A private draft's own studio: rail with locks, tiles, Go Public, its sections
+src/features/studio/shell  # The chrome and parts both agent studios share (draft now, live next)
 src/features/markets/      # Surface, trade ticket, ask ticket and the ticket's own arithmetic
 src/server/
   api-client.ts            # API Service Binding; explicit loopback-only next-dev fallback
@@ -327,6 +328,29 @@ delay saves the pending change at once rather than dropping it (`lib/pending-sav
 `setIntervalHours`, so choosing it never turns the schedule off. The mark and the top-bar chip paint
 from the DTO's `accent` through `accentVars`, like every other agent on the site (`cyan` renders
 indigo). A staged or preview studio refuses every write, the shell's included, and says so.
+
+`features/studio/shell/` holds what the draft studio and the live studio of a published Perpl agent
+share (docs/specs/studio-live-v1.md L2); `draft/` keeps only what a private draft draws. The shell
+is one implementation configured by props, never forked: `studio-shell.tsx` (`StudioShell`, the
+frame: top bar, rail, preview note, header, tiles, failed read, section, the Wallets and credits
+modals, with `useShellModals`), `top-bar.tsx`, `rail.tsx` (groups of items with `on`, `locked`, a
+`badge` drawn above zero, and a footer slot), `header.tsx` (`StudioHeader`, `HeaderDot`,
+`StudioTiles`), `status-chip.tsx`, `agent-avatar.tsx`, `banners.tsx`, `section.tsx`
+(`StudioSection`, `#<idPrefix>-section-<key>`), `identity.tsx`, `master.tsx`, `trade-soon.tsx`,
+`talk-soon.tsx`, `x-connect.tsx`, `setup-save.tsx` and `build-parts.tsx` (`CapSteppers`). Every id
+takes an `idPrefix` (`draft`, `live`), so the draft's ids are unchanged. `use-agent-studio.ts` is
+the data core (wallets, X state, lazy ledger, `refresh`, setup, identity and X writes that reload
+the agent, and the PREVIEW contract: a staged or preview studio reads nothing and every write
+throws `PREVIEW`); `draft/use-draft.ts` is built on it through `readMore` and `StudioTools`, adding
+the activity, the interval and Go Public. The pure rules are `model.ts` (rail and tile shapes),
+`x-model.ts`, `identity-model.ts`, `build-model.ts` (brief, sources, a setup save's failure, a
+wallet's read), `wallet-model.ts` (ledger, allocation row) and `clock.ts`; the draft's own are
+`draft/model.ts`, `draft/caps-model.ts` and `draft/run-model.ts`. Shared rules live in
+`shell/shell.module.css` (chrome), `cards.module.css` (cards, pills, tags, Talk, Trade, Master),
+`x-connect.module.css`, `build.module.css` and `identity.module.css`; a draft sheet composes them
+under its own names. The bundler resolves one level of `composes`, so a class composing one that
+itself composes names both, and `design:source` wants every shell class named by a shell component
+or composed inside its own sheet.
 
 `?stage=live|researching|decided` (`home/stage.ts`, outside production only) renders the home from
 `home/fixture.ts`, `?stage=draft*` the draft studio from `draft/fixture.ts`, and `?stage=empty` and

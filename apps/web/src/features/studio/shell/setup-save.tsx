@@ -4,7 +4,7 @@ import type { SetupUpdateDto } from "@pickler/api-schema";
 import { Icon } from "@pickler/ui";
 import { errorCode } from "../api";
 import { CONFLICT_LINE, setupProblem } from "./build-model";
-import { PREVIEW_NOTE, type UseDraft } from "./use-draft";
+import { PREVIEW_NOTE, type UseAgentStudio } from "./use-agent-studio";
 import styles from "./build.module.css";
 
 /** Where a section's one `PUT /setup` stands. */
@@ -38,7 +38,7 @@ export function useSavedForm<T>(version: number, saved: T): [T, (next: T) => voi
  * staged or preview studio it says nothing was saved. `touch` drops the last outcome once the
  * form is edited again.
  */
-export function useSetupSave(draft: UseDraft) {
+export function useSetupSave(studio: Pick<UseAgentStudio, "saveSetup" | "refreshAgent">) {
   const [state, setState] = useState<SaveState>(IDLE);
   const alive = useRef(true);
   useEffect(() => {
@@ -47,7 +47,7 @@ export function useSetupSave(draft: UseDraft) {
       alive.current = false;
     };
   }, []);
-  const { saveSetup, refreshAgent } = draft;
+  const { saveSetup, refreshAgent } = studio;
 
   const save = useCallback(
     async (patch: Omit<SetupUpdateDto, "expectedVersion">) => {

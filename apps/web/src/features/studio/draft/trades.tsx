@@ -1,5 +1,5 @@
 "use client";
-import { DraftSection, type DraftSectionProps } from "./section";
+import { DraftSection, type DraftSectionProps } from "./draft-section";
 import styles from "./run.module.css";
 
 /**

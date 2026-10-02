@@ -1,0 +1,425 @@
+/* The cards both studios of an agent draw (studio-live-v1 L2): the card and its head, the white
+ * and dark pills, the Copy chip, a list's head and its empty state, the tags, and the three cards
+ * that are one implementation with two configurations: Talk to it (drawn shut), Trade and Master
+ * wallet. Drawn from the draft canvas (`Pickler Studio Draft.dc.html` 339–441, 530–674, 769–833),
+ * which the live canvas repeats.
+ *
+ * The colour mapping is `shell.module.css`'s: #0B0D1A wells `--pk-bg`, #15182A cards `--pk-panel`,
+ * #9AA0B8 `--pk-ink-muted`, #5A5F78 and #3A3F58 `--pk-ink-faint`, #C7CAD8 `--pk-ink-soft`, lime
+ * `--pk-lime`, the PASSKEY wash `--pk-state-good-*`, 12% and 16% rules `--pk-rule-strong`.
+ *
+ * A class composed of one that composes another must name both: the bundler resolves one level of
+ * `composes`, so the inner class is dropped otherwise (the tags lost their pill, the cards their
+ * panel). That holds for a sheet composing from this one too.
+ */
+
+/* ---------- The card ---------- */
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  padding: 18px;
+  border-radius: var(--pk-radius-2xl);
+  background: var(--pk-panel);
+}
+/* A card's head, as the canvas draws it: the label, then its tag, centred. */
+.cardHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.cardLabel {
+  margin: 0;
+  font: 600 10px/1 var(--pk-font);
+  letter-spacing: 0.12em;
+  white-space: nowrap;
+  color: var(--pk-ink-muted);
+}
+.cardNote {
+  margin: 0;
+  font: 500 13px/1.45 var(--pk-font);
+  color: var(--pk-ink-muted);
+  text-wrap: pretty;
+}
+.meta {
+  margin-left: auto;
+  font: 600 9.5px/1 var(--pk-font);
+  letter-spacing: 0.08em;
+  color: var(--pk-ink-faint);
+  text-align: right;
+}
+
+/* ---------- Pills and the Copy chip ---------- */
+
+/* The canvas's white pills: solid on the card, dark on a white. */
+.whiteButton,
+.darkButton {
+  flex: none;
+  padding: 10px 14px;
+  border: none;
+  border-radius: var(--pk-radius-pill);
+  font: 600 13px/1 var(--pk-font);
+  letter-spacing: -0.02em;
+  cursor: pointer;
+  transition: background var(--pk-duration);
+}
+.whiteButton {
+  background: var(--pk-ink);
+  color: var(--pk-bg);
+}
+.whiteButton:hover:not(:disabled) {
+  background: var(--pk-ink-soft);
+}
+.whiteButton[data-size="small"] {
+  align-self: flex-start;
+  padding: 9px 13px;
+  font-size: 12px;
+}
+.darkButton {
+  background: var(--pk-bg);
+  color: var(--pk-ink);
+}
+.darkButton:hover:not(:disabled) {
+  background: var(--pk-panel-2);
+}
+.whiteButton:disabled,
+.darkButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+.copyChip {
+  flex: none;
+  padding: 7px 10px;
+  border: none;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-bg);
+  font: 600 10px/1 var(--pk-font);
+  letter-spacing: 0.08em;
+  color: var(--pk-ink-muted);
+  cursor: pointer;
+  transition: color var(--pk-duration);
+}
+.copyChip:hover {
+  color: var(--pk-ink);
+}
+
+/* ---------- A list's head and its empty state ---------- */
+
+.listHead {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--pk-rule-strong);
+}
+.listTitle {
+  margin: 0;
+  font: 700 18px/1 var(--pk-font-display);
+  font-variation-settings: var(--pk-display-wdth);
+  letter-spacing: -0.02em;
+}
+.empty {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 18px 16px;
+  border-radius: var(--pk-radius-xl);
+  border: 1px dashed var(--pk-rule-strong);
+  font: 500 13px/1.5 var(--pk-font);
+  color: var(--pk-ink-muted);
+  text-wrap: pretty;
+}
+.listMeta {
+  margin-left: auto;
+  font: 600 10px/1 var(--pk-font);
+  letter-spacing: 0.08em;
+  color: var(--pk-ink-muted);
+}
+
+/* ---------- Tags ---------- */
+
+/* The canvas's tags: quiet SOON, lime PASSKEY, and the head's place for one. */
+.tag {
+  flex: none;
+  padding: 5px 8px;
+  border-radius: var(--pk-radius-pill);
+  font: 600 9.5px/1 var(--pk-font);
+  letter-spacing: 0.1em;
+  white-space: nowrap;
+}
+.headTag {
+  composes: tag;
+  margin-left: auto;
+}
+.soon {
+  composes: tag;
+  background: var(--pk-bg);
+  color: var(--pk-ink-muted);
+}
+.headSoon {
+  composes: tag soon;
+  margin-left: auto;
+}
+.passkey {
+  composes: tag headTag;
+  background: var(--pk-state-good-bg);
+  color: var(--pk-state-good-ink);
+}
+
+/* ---------- Layout ---------- */
+
+/* Two columns that fold to one (the canvas's auto-fit 320px grid). */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+  gap: 18px;
+  align-items: start;
+}
+.column {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+/* ---------- Talk to it, drawn shut ---------- */
+
+.talk {
+  composes: card;
+  min-height: 320px;
+}
+.thread {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.starter {
+  padding: 9px 12px;
+  border: 1px solid var(--pk-rule-strong);
+  border-radius: var(--pk-radius-pill);
+  background: transparent;
+  color: var(--pk-ink-muted);
+  font: 500 12.5px/1 var(--pk-font);
+  cursor: not-allowed;
+}
+.ask {
+  display: flex;
+  gap: 6px;
+  padding: 5px;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-bg);
+}
+.askInput {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 12px;
+  border: none;
+  background: transparent;
+  color: var(--pk-ink);
+  font: 500 14px/1.2 var(--pk-font);
+  outline: none;
+  cursor: not-allowed;
+}
+.askInput::placeholder {
+  color: var(--pk-ink-faint);
+}
+.send {
+  flex: none;
+  padding: 10px 16px;
+  border: none;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-ink);
+  color: var(--pk-bg);
+  font: 600 12.5px/1 var(--pk-font);
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* ---------- Trade (you) ---------- */
+
+.tradeSoon {
+  composes: card;
+  max-width: 520px;
+}
+
+/* ---------- Master wallet ---------- */
+
+.master {
+  composes: card;
+  border: 1px solid var(--pk-lime-edge);
+}
+.address {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.addressText {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 600 12px/1.3 var(--pk-font);
+  letter-spacing: 0.02em;
+  color: var(--pk-ink-soft);
+}
+.balances {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+}
+.balance {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 12px;
+  border-radius: var(--pk-radius-md);
+  background: var(--pk-bg);
+}
+.balanceValue {
+  font: 700 24px/1 var(--pk-font);
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+.balanceLabel {
+  font: 600 9px/1 var(--pk-font);
+  letter-spacing: 0.08em;
+  color: var(--pk-ink-faint);
+}
+.rows {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.allocation {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  background: var(--pk-bg);
+}
+.dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 3px;
+  background: var(--pk-lime);
+}
+/* This agent's wallet in its accent; another agent's, whose accent the wallets list does not
+   carry, in the quiet ink. */
+.dot[data-kind="agent"] {
+  background: var(--accent, var(--pk-ink-soft));
+}
+.dot[data-kind="positions"] {
+  background: var(--pk-blue);
+}
+.dot[data-kind="credits"] {
+  background: var(--pk-violet);
+}
+/* The ledger: a transfer either way in the agent's accent, as the canvas draws it (this agent's;
+   another agent's in the quiet ink). */
+.dot[data-kind="transfer"] {
+  background: var(--accent, var(--pk-ink-soft));
+}
+.allocationLabel {
+  flex: 1;
+  min-width: 0;
+  font: 600 12.5px/1.2 var(--pk-font);
+}
+.allocationValue {
+  flex: none;
+  font: 700 12.5px/1 var(--pk-font);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.allocationValue[data-soon="true"] {
+  color: var(--pk-ink-muted);
+  font-weight: 600;
+}
+.pair {
+  display: flex;
+  gap: 4px;
+}
+.pair > button {
+  flex: 1;
+  padding: 11px;
+}
+/* The card's first action: the white pill, at the pair's size. */
+.fund {
+  composes: whiteButton;
+  align-self: flex-start;
+  padding: 11px 16px;
+}
+
+.ledgerRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 14px;
+  border-radius: 14px;
+  background: var(--pk-panel);
+}
+.ledgerText {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.ledgerTitle {
+  font: 600 13px/1.2 var(--pk-font);
+  letter-spacing: -0.01em;
+}
+.ledgerSub {
+  font: 600 9.5px/1 var(--pk-font);
+  letter-spacing: 0.06em;
+  color: var(--pk-ink-faint);
+}
+.ledgerAmount {
+  flex: none;
+  font: 700 13.5px/1 var(--pk-font);
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--pk-ink);
+}
+.ledgerAmount[data-in="true"] {
+  color: var(--pk-lime);
+}
+.ledgerAt {
+  flex: none;
+  font: 600 10px/1 var(--pk-font);
+  color: var(--pk-ink-faint);
+  font-variant-numeric: tabular-nums;
+}
+.quiet {
+  composes: empty;
+}
+
+.whiteButton:focus-visible,
+.darkButton:focus-visible,
+.copyChip:focus-visible {
+  outline: 2px solid var(--pk-focus);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .whiteButton,
+  .darkButton,
+  .copyChip {
+    transition: none;
+  }
+}

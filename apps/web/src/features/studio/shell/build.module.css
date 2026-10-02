@@ -1,0 +1,103 @@
+/* What the Build sections of both studios share (studio-live-v1 L2): the column's measure, the
+ * small capitals under a box, a save's outcome and the caps steppers (draft canvas 479–526,
+ * 676–710). The steppers are the create screen's (`new-agent.module.css`), composed so each stays
+ * one drawing; the colour mapping is `shell.module.css`'s, and this sheet holds no literal colour.
+ */
+
+/* Brief, Sources & rules and Identity & voice: one column on the canvas's measure. */
+.column {
+  max-width: 680px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+/* The small capitals under a box: a site's note, a hint, LAST CHECKED, the footnote. */
+.hint {
+  font: 600 9.5px/1.4 var(--pk-font);
+  letter-spacing: 0.08em;
+  color: var(--pk-ink-faint);
+}
+.hint[data-bad="true"] {
+  color: var(--pk-magenta-ink);
+}
+.hint[data-tone="muted"] {
+  color: var(--pk-ink-muted);
+}
+.hint[data-align="center"] {
+  text-align: center;
+}
+p.hint {
+  margin: 0;
+}
+
+/* ---------- A save's outcome ---------- */
+
+.notice {
+  margin: 0;
+  font: 500 12.5px/1.4 var(--pk-font);
+  color: var(--pk-ink-muted);
+}
+.alert {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font: 500 12.5px/1.4 var(--pk-font);
+  color: var(--pk-magenta-ink);
+}
+.alert svg {
+  flex: none;
+}
+
+/* ---------- Caps steppers ---------- */
+
+.caps {
+  composes: caps from "../new-agent/new-agent.module.css";
+}
+/* Limits draws a row per cap: title, −, value, + (canvas 507–514). */
+.caps[data-layout="rows"] {
+  grid-template-columns: 1fr;
+}
+.cap {
+  composes: cap from "../new-agent/new-agent.module.css";
+}
+.caps[data-layout="rows"] .cap {
+  gap: 12px;
+  padding: 10px 10px 10px 16px;
+}
+.capText {
+  composes: capText from "../new-agent/new-agent.module.css";
+}
+.capTitle {
+  composes: capTitle from "../new-agent/new-agent.module.css";
+}
+.caps[data-layout="rows"] .capTitle {
+  font: 600 13px/1.2 var(--pk-font);
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+  color: var(--pk-ink);
+}
+.capValue {
+  composes: capValue from "../new-agent/new-agent.module.css";
+}
+.caps[data-layout="rows"] .capValue {
+  min-width: 64px;
+  text-align: center;
+  font-size: 13px;
+  white-space: nowrap;
+}
+.capButton {
+  composes: capButton from "../new-agent/new-agent.module.css";
+}
+.caps[data-layout="rows"] .capButton {
+  width: 32px;
+  height: 32px;
+  font-size: 16px;
+}
+
+.capButton:focus-visible {
+  outline: 2px solid var(--pk-focus);
+  outline-offset: 2px;
+}

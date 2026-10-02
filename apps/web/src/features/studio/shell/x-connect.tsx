@@ -2,10 +2,11 @@
 import { useEffect, useRef, useState } from "react";
 import { BrandMark } from "@pickler/ui";
 import { errorCode, type XChallenge, type XState, type XVerify } from "../api";
-import { xHandleInput, xProblem, xView, type XCardState } from "./model";
+import { PREVIEW_NOTE } from "./use-agent-studio";
 import { useCopied } from "./use-copied";
-import { PREVIEW_NOTE } from "./use-draft";
-import styles from "./draft.module.css";
+import { xHandleInput, xProblem, xView, type XCardState } from "./x-model";
+import shell from "./shell.module.css";
+import styles from "./x-connect.module.css";
 
 const idle: XCardState = {
   challenge: null,
@@ -23,15 +24,15 @@ const cardFrom = (x: XState | null): XCardState => ({
 });
 
 export interface XConnectProps {
-  /** `useDraft().x`: the live challenge and whether X is open; null while it is read. */
+  /** The studio's `x`: the live challenge and whether X is open; null while it is read. */
   x: XState | null;
   /** The person may change this agent; a view-only member sees the card shut. */
   canManage: boolean;
   /** A `?stage=draft-x-*` card: the typed handle and the card's state, in place of the read. */
   staged?: { handle: string; card: XCardState } | null;
-  /** `useDraft().challengeX`: `POST /x/challenge`, the line to post. */
+  /** The studio's `challengeX`: `POST /x/challenge`, the line to post. */
   onChallenge(handle: string): Promise<XChallenge>;
-  /** `useDraft().verifyX`: `POST /x/verify` ("Check again"); found reloads the agent's `xHandle`. */
+  /** The studio's `verifyX`: `POST /x/verify` ("Check again"); found reloads the agent's `xHandle`. */
   onVerify(): Promise<XVerify>;
   /** Prefix for the ids the card's controls carry, unique per screen. */
   idPrefix: string;
@@ -40,7 +41,8 @@ export interface XConnectProps {
 }
 
 /**
- * Connect X by a post (spec D4, §3.1), shared by Go Public and Identity & voice: the handle with
+ * Connect X by a post (draft spec D4, §3.1), shared by the draft's Go Public and by Identity & voice
+ * in both studios (`useAgentStudio` holds the X state and the two calls): the handle with
  * the X mark and Verify; Verify issues the line to post and the miss block shows it with a Copy
  * chip; "Check again" looks for it, and says so when the post is not there yet. A handle edited
  * since the line was issued reads Verify again, because it gets a new line. The server decides
@@ -165,7 +167,7 @@ export function XConnect({
         }}
       >
         <BrandMark name="x" size={13} />
-        <label htmlFor={inputId} className={styles.srOnly}>
+        <label htmlFor={inputId} className={shell.srOnly}>
           X handle
         </label>
         <input
@@ -204,7 +206,7 @@ export function XConnect({
             <span className={styles.xPostText}>{view.miss.line}</span>
             <button
               type="button"
-              className={styles.copyChip}
+              className={styles.xCopy}
               onClick={() => copy(view.miss?.line ?? "")}
             >
               {copied ? "COPIED" : "COPY"}

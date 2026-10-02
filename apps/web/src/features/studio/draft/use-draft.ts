@@ -1,32 +1,21 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { IdentityUpdateDto, PublishDto, SetupUpdateDto } from "@pickler/api-schema";
+import type { PublishDto } from "@pickler/api-schema";
 import {
-  StudioError,
   agentActivity,
   publishAgent,
-  saveDraftSetup,
-  saveIdentity as putIdentity,
   setIntervalHours,
-  studioWallets,
-  walletLedger,
-  xChallenge,
-  xDisconnect,
-  xState,
-  xVerify,
   type ActivityEvent,
   type Agent,
-  type LedgerEntry,
-  type StudioWallets,
-  type XChallenge,
-  type XState,
-  type XVerify,
 } from "../api";
+import {
+  useAgentStudio,
+  type AgentStudioData,
+  type StudioTools,
+  type UseAgentStudio,
+} from "../shell/use-agent-studio";
 import type { DraftStaged } from "./fixture";
 import type { INTERVAL_OPTIONS } from "./run-model";
-
-/** What a staged or preview studio says when anything on it tries to write. */
-export const PREVIEW_NOTE = "Preview · fixture data, nothing is saved.";
 
 /**
  * How long Go Public's "{NAME} IS LIVE" stays before the studio reloads the agents, which swaps
@@ -37,57 +26,23 @@ const LIVE_HOLD_MS = 1600;
 export type IntervalHours = (typeof INTERVAL_OPTIONS)[number];
 
 /** What the draft studio reads, beyond the agent the shell already holds. */
-export interface DraftData {
-  /** `GET /wallets`: the master wallet and the agent wallets; null until read. */
-  wallets: StudioWallets | null;
+export interface DraftData extends AgentStudioData {
   /** `GET /agents/:id/activity`, newest first; null until read. */
   activity: ActivityEvent[] | null;
   /** The last activity read failed (Overview says so, with Retry). */
   activityFailed: boolean;
-  /** `GET /agents/:id/x`: the verified account, the live challenge, whether X is open; null until read. */
-  x: XState | null;
-  /** `GET /wallets/ledger`, read the first time Master wallet asks (`readLedger`); null until then. */
-  ledger: LedgerEntry[] | null;
-  /** The last failed read, in words, or "". Writes throw to their caller instead. */
-  error: string;
-  /** A fixture drew the studio: nothing is read, and every write throws `PREVIEW_NOTE`. */
-  preview: boolean;
 }
 
-/** The reads again, and the draft's writes (studio-draft-dashboard-v1 §4), each one call. */
-export interface UseDraft extends DraftData {
-  /**
-   * Wallets, activity and X again (after a transfer, or the "Refresh" on Limits), and the ledger
-   * once Master wallet has read it.
-   */
-  refresh(): Promise<void>;
-  /** The wallets alone; answers them, or null when the read failed. */
-  readWallets(): Promise<StudioWallets | null>;
+/**
+ * The reads again, and the draft's writes (studio-draft-dashboard-v1 §4), each one call: the ones
+ * both studios make (`UseAgentStudio`: setup, identity, X), and the draft's own below. `refresh`
+ * reads the activity too.
+ */
+export interface UseDraft extends UseAgentStudio, DraftData {
   /** The activity alone (Overview's Retry). */
   readActivity(): Promise<void>;
-  /** The ledger, for Master wallet. */
-  readLedger(): Promise<void>;
-  /** The agent again in the shell: after a save refused as stale (409 CONFLICT). Rejects. */
-  refreshAgent(): Promise<void>;
-  /**
-   * `PUT /setup` at the agent's current version: brief, sources, caps and/or voice. Answers the
-   * agent and reloads it in the shell. A 409 CONFLICT throws before any reload: the caller
-   * reloads (`refreshAgent`) and says so.
-   *
-   * Every write below resolves once the write itself landed: a reload that fails after it does
-   * not reject the write, it says so in `error` ("Saved. Could not reload the agent.").
-   */
-  saveSetup(patch: Omit<SetupUpdateDto, "expectedVersion">): Promise<Agent>;
-  /** `PUT /identity`: name and/or avatar; reloads the agent. */
-  saveIdentity(body: IdentityUpdateDto): Promise<Agent>;
   /** `PUT /interval`: the schedule's interval (3 / 6 / 12 / 24 h, spec D13); reloads the agent. */
   saveInterval(hours: IntervalHours): Promise<void>;
-  /** `POST /x/challenge`: the line to post; the X state keeps it as the live challenge. */
-  challengeX(handle: string): Promise<XChallenge>;
-  /** `POST /x/verify` ("Check again"); found re-reads X and the agent (its `xHandle`). */
-  verifyX(): Promise<XVerify>;
-  /** `DELETE /x`, while private; re-reads X and the agent. */
-  disconnectX(): Promise<void>;
   /**
    * `POST /publish` (Go Public). Resolves once public; after `LIVE_HOLD_MS` the agent is reloaded,
    * and the studio, seeing it is no longer a draft, opens the live one. A 409 PUBLISH_BLOCKED
@@ -96,14 +51,11 @@ export interface UseDraft extends DraftData {
   publish(): Promise<PublishDto>;
 }
 
-const message = (caught: unknown, fallback: string) =>
-  caught instanceof Error ? caught.message : fallback;
-
 /**
- * The draft studio's data: one read each of the wallets, the activity and the X state when the
- * agent opens, the ledger only when Master wallet asks, and the writes, which reload the agent in
- * the shell (`onRefreshAgent`) when they change it. With `staged` (a `?stage=draft*` fixture) or
- * `preview` nothing touches the API: the reads come from the fixture, and the writes throw.
+ * The draft studio's data: what every agent's studio reads and writes (`../shell/use-agent-studio.ts`:
+ * the wallets, the X state, the ledger, setup, identity), plus the activity, read with them, the
+ * schedule's interval and Go Public. With `staged` (a `?stage=draft*` fixture) or `preview` nothing
+ * touches the API: the reads come from the fixture, and the writes throw.
  */
 export function useDraft({
   agent,
@@ -119,172 +71,54 @@ export function useDraft({
   /** Go Public landed: the shell opens the live studio on its home once the reload swaps it. */
   onPublished?(): void;
 }): UseDraft {
-  const offline = preview || staged !== null;
-  const agentId = agent.productId ?? agent.id;
-  const [wallets, setWallets] = useState<StudioWallets | null>(staged?.wallets ?? null);
   const [activity, setActivity] = useState<ActivityEvent[] | null>(staged?.activity ?? null);
   const [activityFailed, setActivityFailed] = useState(false);
-  const [x, setX] = useState<XState | null>(staged?.x ?? null);
-  const [ledger, setLedger] = useState<LedgerEntry[] | null>(staged?.ledger ?? null);
-  const [error, setError] = useState("");
 
-  /* The latest agent and refresh, so a write started before a reload saves at the version after
-     it, and the callbacks below stay stable across renders. */
-  const version = useRef(agent.version);
-  const refreshAgent = useRef(onRefreshAgent);
-  const published = useRef(onPublished);
-  useEffect(() => {
-    version.current = agent.version;
-    refreshAgent.current = onRefreshAgent;
-    published.current = onPublished;
-  }, [agent.version, onRefreshAgent, onPublished]);
-  /* Answers that land after the studio moved to another agent, or closed, are dropped; Go
-     Public's pending reload is cancelled with them. */
-  const alive = useRef(true);
-  const liveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  /* Whether Master wallet has read the ledger, so `refresh` keeps it current from then on. */
-  const ledgerRead = useRef(false);
-  useEffect(() => {
-    alive.current = true;
-    return () => {
-      alive.current = false;
-      if (liveTimer.current !== null) {
-        clearTimeout(liveTimer.current);
-        liveTimer.current = null;
-      }
-    };
-  }, [agentId]);
-
-  const guard = useCallback(() => {
-    if (offline) {
-      throw new StudioError("PREVIEW", PREVIEW_NOTE);
-    }
-  }, [offline]);
-
-  const readWallets = useCallback(async () => {
-    if (offline) {
-      return staged?.wallets ?? null;
-    }
-    try {
-      const read = await studioWallets();
-      if (alive.current) {
-        setWallets(read);
-      }
-      return read;
-    } catch (caught) {
-      if (alive.current) {
-        setError(message(caught, "Could not read your wallets."));
-      }
-      return null;
-    }
-  }, [offline, staged]);
-
-  const readActivity = useCallback(async () => {
-    if (offline) {
+  const readActivityWith = useCallback(async (tools: StudioTools) => {
+    if (tools.offline) {
       return;
     }
     try {
-      const read = await agentActivity(agentId);
-      if (alive.current) {
+      const read = await agentActivity(tools.agentId);
+      if (tools.alive.current) {
         setActivity(read.events);
         setActivityFailed(false);
       }
     } catch (caught) {
-      if (alive.current) {
+      if (tools.alive.current) {
         setActivityFailed(true);
-        setError(message(caught, "Could not read its activity."));
       }
+      tools.fail(caught, "Could not read its activity.");
     }
-  }, [offline, agentId]);
+  }, []);
 
-  const readX = useCallback(async () => {
-    if (offline) {
-      return;
-    }
-    try {
-      const read = await xState(agentId);
-      if (alive.current) {
-        setX(read);
-      }
-    } catch (caught) {
-      if (alive.current) {
-        setError(message(caught, "Could not read its X account."));
-      }
-    }
-  }, [offline, agentId]);
+  const { studio, tools } = useAgentStudio({
+    agent,
+    staged,
+    preview,
+    onRefreshAgent,
+    readMore: readActivityWith,
+  });
+  const { agentId, alive, guard, fail, reloadAgent, reloadAfterWrite } = tools;
 
-  const readLedger = useCallback(async () => {
-    if (offline) {
-      return;
-    }
-    ledgerRead.current = true;
-    try {
-      const read = await walletLedger();
-      if (alive.current) {
-        setLedger(read.entries);
-      }
-    } catch (caught) {
-      if (alive.current) {
-        setError(message(caught, "Could not read your transfers."));
-      }
-    }
-  }, [offline]);
-
-  /* The bare reload, for a caller that handles its failure (a stale save says "Reloaded."). */
-  const reloadAgent = useCallback(() => refreshAgent.current(), []);
-
-  /* The reload after a write that landed: a failure says so, and does not fail the write. */
-  const reloadAfterWrite = useCallback(
-    () =>
-      refreshAgent.current().catch((caught: unknown) => {
-        if (alive.current) {
-          setError(message(caught, "Saved. Could not reload the agent."));
-        }
-      }),
-    [],
-  );
-
-  const refresh = useCallback(async () => {
-    setError("");
-    await Promise.all([
-      readWallets(),
-      readActivity(),
-      readX(),
-      ledgerRead.current ? readLedger() : undefined,
-    ]);
-  }, [readWallets, readActivity, readX, readLedger]);
-
-  /* Once per agent (the shell keys the studio by agent): the reads run side by side, and each
-     failure only says so. */
+  /* The latest `onPublished`, so `publish` stays stable across renders. */
+  const published = useRef(onPublished);
   useEffect(() => {
-    if (offline) {
-      return;
-    }
-    /* The readers set state only once their answers land; starting them from a callback says so
-       to the effect rule, which cannot see past their `await`. */
-    void Promise.resolve().then(() => Promise.all([readWallets(), readActivity(), readX()]));
-  }, [offline, readWallets, readActivity, readX]);
-
-  const saveSetup = useCallback(
-    async (patch: Omit<SetupUpdateDto, "expectedVersion">) => {
-      guard();
-      const saved = await saveDraftSetup(agentId, { ...patch, expectedVersion: version.current });
-      version.current = saved.version;
-      await reloadAfterWrite();
-      return saved;
+    published.current = onPublished;
+  }, [onPublished]);
+  /* Go Public's pending reload is cancelled when the studio moves to another agent, or closes. */
+  const liveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(
+    () => () => {
+      if (liveTimer.current !== null) {
+        clearTimeout(liveTimer.current);
+        liveTimer.current = null;
+      }
     },
-    [guard, agentId, reloadAfterWrite],
+    [agentId],
   );
 
-  const saveIdentity = useCallback(
-    async (body: IdentityUpdateDto) => {
-      guard();
-      const saved = await putIdentity(agentId, body);
-      await reloadAfterWrite();
-      return saved;
-    },
-    [guard, agentId, reloadAfterWrite],
-  );
+  const readActivity = useCallback(() => readActivityWith(tools), [readActivityWith, tools]);
 
   const saveInterval = useCallback(
     async (hours: IntervalHours) => {
@@ -294,33 +128,6 @@ export function useDraft({
     },
     [guard, agentId, reloadAfterWrite],
   );
-
-  const challengeX = useCallback(
-    async (handle: string) => {
-      guard();
-      const challenge = await xChallenge(agentId, handle);
-      if (alive.current) {
-        setX((current) => ({ account: null, available: true, ...current, challenge }));
-      }
-      return challenge;
-    },
-    [guard, agentId],
-  );
-
-  const verifyX = useCallback(async () => {
-    guard();
-    const result = await xVerify(agentId);
-    if (result.verified) {
-      await Promise.all([readX(), reloadAfterWrite()]);
-    }
-    return result;
-  }, [guard, agentId, readX, reloadAfterWrite]);
-
-  const disconnectX = useCallback(async () => {
-    guard();
-    await xDisconnect(agentId);
-    await Promise.all([readX(), reloadAfterWrite()]);
-  }, [guard, agentId, readX, reloadAfterWrite]);
 
   const publish = useCallback(async () => {
     guard();
@@ -335,35 +142,13 @@ export function useDraft({
     liveTimer.current = setTimeout(() => {
       liveTimer.current = null;
       if (alive.current) {
-        void refreshAgent.current().catch((caught: unknown) => {
-          if (alive.current) {
-            setError(message(caught, "Could not read the agent."));
-          }
+        void reloadAgent().catch((caught: unknown) => {
+          fail(caught, "Could not read the agent.");
         });
       }
     }, LIVE_HOLD_MS);
     return result;
-  }, [guard, agentId]);
+  }, [guard, agentId, alive, reloadAgent, fail]);
 
-  return {
-    wallets,
-    activity,
-    activityFailed,
-    x,
-    ledger,
-    error,
-    preview: offline,
-    refresh,
-    readWallets,
-    readActivity,
-    readLedger,
-    refreshAgent: reloadAgent,
-    saveSetup,
-    saveIdentity,
-    saveInterval,
-    challengeX,
-    verifyX,
-    disconnectX,
-    publish,
-  };
+  return { ...studio, activity, activityFailed, readActivity, saveInterval, publish };
 }

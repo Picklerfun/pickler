@@ -12,7 +12,8 @@
 import type { ActivityEvent, Agent, LedgerEntry, StudioWallets, XState } from "../api";
 import type { DraftStage } from "../home/stage";
 import { previewConfig } from "../preview";
-import type { DraftSectionKey, XCardState } from "./model";
+import type { XCardState } from "../shell/x-model";
+import type { DraftSectionKey } from "./model";
 
 /** Go Public's screen state on a Connect X stage: the X row, the skip, the typed handle, the card. */
 export interface DraftGoPublicStage {

@@ -1,12 +1,12 @@
 "use client";
 import Image from "next/image";
 import { useState } from "react";
-import { capsOf, starterCaps } from "./build-model";
+import { useCopied } from "../shell/use-copied";
+import { capsOf, starterCaps } from "./caps-model";
 import type { DraftGoPublicStage } from "./fixture";
 import { GoPublic } from "./go-public";
 import { activityView, walletCardView } from "./model";
-import { DraftSection, type DraftSectionProps } from "./section";
-import { useCopied } from "./use-copied";
+import { DraftSection, type DraftSectionProps } from "./draft-section";
 import styles from "./draft.module.css";
 
 export interface OverviewProps extends DraftSectionProps {

@@ -1,0 +1,469 @@
+/* The shell both studios of an agent share (studio-live-v1 L2): the top bar, the rail, the header,
+ * the tiles and the section frame, drawn from `Pickler Studio Draft.dc.html` (the "created" phase)
+ * and `Pickler Studio v5 Live.dc.html`, which draw the same chrome.
+ *
+ * Every colour is a `--pk-*` token on the dark surface; this sheet holds no literal. The canvas's
+ * #0B0D1A ground and wells are `--pk-bg`, its #15182A cards and chips `--pk-panel`, the #1C2036
+ * hover `--pk-panel-2`; its #9AA0B8 labels are `--pk-ink-muted`, its #5A5F78 and #3A3F58 the
+ * faint ink (the dark ramp's floor that still reads), its lime `--pk-lime`, its amber status
+ * `--pk-amber-ink`; its 8% hairlines `--pk-rule` and its 16% dashed edges `--pk-rule-strong` (12%, the ramp's
+ * strong rule).
+ * The top bar's brand, chip, pills and account are the home's (`home.module.css`) and the create
+ * screen's (`new-agent.module.css`), composed here so the two bars stay one drawing. The cards the
+ * sections share are `cards.module.css`'s.
+ */
+
+.studio {
+  composes: home from "../home/home.module.css";
+  /* Nothing on this page scrolls sideways; the rail scrolls inside itself on a phone. */
+  overflow-x: clip;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---------- Avatar ---------- */
+
+/* The accent fill and the pattern's sixteen cells (canvas `avatarPixels`), at three sizes: the top
+   bar's chip, the header, and Identity's button. */
+.avatar {
+  position: relative;
+  flex: none;
+  display: block;
+  overflow: hidden;
+  background: var(--accent);
+}
+.avatar[data-size="chip"] {
+  width: 26px;
+  height: 26px;
+  border-radius: var(--pk-radius-mark);
+}
+.avatar[data-size="head"] {
+  width: 64px;
+  height: 64px;
+  border-radius: var(--pk-radius-lg);
+}
+.avatar[data-size="large"] {
+  width: 84px;
+  height: 84px;
+  border-radius: var(--pk-radius-xl);
+}
+.avatarCells {
+  position: absolute;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+}
+.avatar[data-size="chip"] .avatarCells {
+  inset: 4px;
+  gap: 1px;
+}
+.avatar[data-size="head"] .avatarCells {
+  inset: 9px;
+  gap: 3px;
+}
+.avatar[data-size="large"] .avatarCells {
+  inset: 12px;
+  gap: 4px;
+}
+.avatarCell {
+  border-radius: 2px;
+}
+.avatarCell[data-on="true"] {
+  background: var(--pk-bg);
+}
+
+/* ---------- Top bar ---------- */
+
+.chipButton {
+  composes: agentChip from "../home/home.module.css";
+  border: none;
+  color: var(--pk-ink);
+  cursor: pointer;
+  transition: background var(--pk-duration);
+}
+.chipButton:hover,
+.chipButton[aria-expanded="true"] {
+  background: var(--pk-panel-2);
+}
+.chipWrap {
+  composes: menuWrap from "../home/home.module.css";
+  /* A long name ellipsises inside the bar instead of pushing the chip past the viewport. */
+  min-width: 0;
+  max-width: 100%;
+}
+.chipButton {
+  max-width: 100%;
+}
+.chipButton b {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.chipButton svg {
+  flex: none;
+  color: var(--pk-ink-muted);
+}
+.chipMenu {
+  composes: menu from "../home/home.module.css";
+  left: 0;
+  right: auto;
+}
+/* The agent switcher's rows: the current agent is marked, not linked. */
+.menuAgent[aria-current="true"] {
+  background: var(--pk-panel-2);
+}
+
+/* The status chip (`StatusChip`), in the top bar and beside the name. The draft's DRAFT · PRIVATE
+   is the canvas's amber on the panel, not on a wash; the live studio's are on their washes. */
+.status {
+  composes: pill from "../home/home.module.css";
+  background: var(--pk-panel);
+  color: var(--pk-amber-ink);
+}
+.status[data-tone="good"] {
+  background: var(--pk-state-good-bg);
+  color: var(--pk-state-good-ink);
+}
+.status[data-tone="caution"] {
+  background: var(--pk-state-caution-bg);
+  color: var(--pk-state-caution-ink);
+}
+.statusDot {
+  composes: pillDot from "../home/home.module.css";
+}
+.testnet {
+  composes: pill from "../home/home.module.css";
+  background: var(--pk-panel);
+  color: var(--pk-ink-muted);
+  letter-spacing: 0.08em;
+}
+
+/* ---------- Body: rail and main ---------- */
+
+.body {
+  display: flex;
+  align-items: stretch;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.rail {
+  /* Positioned, so the locked rows' visually hidden text is laid out in the rail: unpositioned, it
+     escaped the phone rail's own scroller and widened the page to the rail's full length. */
+  position: relative;
+  flex: 0 0 218px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 14px 12px;
+  border-right: 1px solid var(--pk-rule);
+}
+.railGroup {
+  min-width: 0;
+}
+.railTitle {
+  margin: 0 0 7px;
+  padding: 0 10px;
+  font: 600 10px/1 var(--pk-font);
+  letter-spacing: 0.14em;
+  color: var(--pk-ink-faint);
+}
+.railItems {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.railItem {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  padding: 9px 10px;
+  border: none;
+  border-radius: var(--pk-radius-md);
+  background: transparent;
+  color: var(--pk-ink-muted);
+  text-align: left;
+  font: 600 13.5px/1.2 var(--pk-font);
+  letter-spacing: -0.02em;
+  cursor: pointer;
+  transition:
+    background var(--pk-duration),
+    color var(--pk-duration);
+}
+.railItem svg {
+  flex: none;
+}
+.railItem:hover {
+  color: var(--pk-ink);
+}
+.railItem[aria-current="page"] {
+  background: var(--pk-panel);
+  color: var(--pk-ink);
+}
+/* Locked while private: still a button, which opens the locked panel saying when it opens. The
+   faint ink is too near the open items' muted ink to read as shut (the token file keeps the
+   canvas's #3A3F58 off text), so the icon dims and the row draws a lock. The label keeps the
+   faint ink at full strength: it is a working control, and dimmed it fails AA contrast. */
+.railItem[aria-disabled="true"] {
+  color: var(--pk-ink-faint);
+  cursor: not-allowed;
+}
+.railItem[aria-disabled="true"] > svg {
+  opacity: 0.5;
+}
+.railLock {
+  flex: none;
+  display: inline-flex;
+  color: var(--pk-ink-faint);
+}
+.railItem[aria-disabled="true"][aria-current="page"] {
+  background: var(--pk-panel);
+}
+.railLabel {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* A count beside the label (the live studio's Positions and Decisions), drawn only above zero. */
+.railBadge {
+  flex: none;
+  min-width: 18px;
+  padding: 4px 6px;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-bg);
+  font: 600 9.5px/1 var(--pk-font);
+  color: var(--pk-ink-muted);
+  text-align: center;
+}
+/* What a studio hangs under the groups (the live studio's PUBLIC PAGE link): at the rail's foot. */
+.railFoot {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  margin-top: auto;
+}
+
+.main {
+  flex: 1 1 520px;
+  min-width: 0;
+  display: flex;
+  justify-content: center;
+  padding: 36px 28px 60px;
+}
+.column {
+  flex: 1 1 auto;
+  max-width: 1120px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  animation: pkIn 260ms ease-out;
+}
+
+/* ---------- Header and tiles ---------- */
+
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+}
+.headText {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+.name {
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 700 clamp(34px, 4vw, 48px) / 0.92 var(--pk-font-display);
+  font-variation-settings: var(--pk-display-wdth);
+  letter-spacing: -0.04em;
+}
+.sub {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0 0;
+  font: 600 11px/1 var(--pk-font);
+  letter-spacing: 0.06em;
+  color: var(--pk-ink-muted);
+}
+.subDot {
+  color: var(--pk-ink-faint);
+}
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.tile {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  padding: 12px 14px;
+  border-radius: var(--pk-radius-md);
+  background: var(--pk-panel);
+}
+.tileValue {
+  font: 700 20px/1 var(--pk-font);
+  letter-spacing: -0.03em;
+  color: var(--pk-ink);
+  font-variant-numeric: tabular-nums;
+}
+/* Not built yet: the word, quieter than a number would be. */
+.tile[data-soon="true"] .tileValue {
+  color: var(--pk-ink-muted);
+}
+.tileLabel {
+  font: 600 9px/1.2 var(--pk-font);
+  letter-spacing: 0.08em;
+  color: var(--pk-ink-faint);
+}
+
+/* ---------- Notes ---------- */
+
+.note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: var(--pk-radius-md);
+  background: var(--pk-panel);
+  font: 500 12.5px/1.4 var(--pk-font);
+  color: var(--pk-ink-muted);
+}
+.note svg {
+  flex: none;
+}
+.alert {
+  composes: note;
+  background: var(--pk-state-loss-bg);
+  color: var(--pk-loss);
+}
+
+/* ---------- Sections ---------- */
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-width: 0;
+}
+.sectionTitle {
+  margin: 0;
+  font: 700 22px/1 var(--pk-font-display);
+  font-variation-settings: var(--pk-display-wdth);
+  letter-spacing: -0.03em;
+}
+
+.railItem:focus-visible,
+.chipButton:focus-visible {
+  outline: 2px solid var(--pk-focus);
+  outline-offset: 2px;
+}
+
+/* ---------- Phone ---------- */
+
+/* Below the rail's width the rail becomes a row that scrolls inside itself, as the live studio's
+   does: every section stays one tap away, and the page itself never scrolls sideways. */
+@media (max-width: 860px) {
+  .body {
+    flex-direction: column;
+  }
+  .rail {
+    flex: none;
+    flex-direction: row;
+    gap: 12px;
+    padding: 10px 16px;
+    border-right: none;
+    border-bottom: 1px solid var(--pk-rule);
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .railGroup {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: 6px;
+  }
+  .railTitle {
+    margin: 0;
+    padding: 0 4px 0 0;
+  }
+  .railItems {
+    flex-direction: row;
+  }
+  .railItem {
+    width: auto;
+    gap: 8px;
+  }
+  .railLabel {
+    overflow: visible;
+  }
+  .railFoot {
+    flex: none;
+    flex-direction: row;
+    align-items: center;
+    margin-top: 0;
+  }
+  .main {
+    padding: 24px 16px 48px;
+  }
+}
+
+/* On a phone the switcher hangs from the whole bar (the header is its positioned parent), inside
+   the gutters, wherever the chip wrapped to: anchored to the chip it would run past the edge. */
+@media (max-width: 640px) {
+  .chipWrap {
+    position: static;
+  }
+  .chipMenu {
+    top: calc(100% + 4px);
+    left: 16px;
+    right: 16px;
+    width: auto;
+  }
+}
+
+/* ---------- Motion (restated: keyframes are module-scoped) ---------- */
+
+@keyframes pkIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .column {
+    animation: none;
+  }
+  .railItem,
+  .chipButton {
+    transition: none;
+  }
+}

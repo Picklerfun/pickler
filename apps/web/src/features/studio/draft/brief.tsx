@@ -1,18 +1,11 @@
 "use client";
 import { Icon } from "@pickler/ui";
-import {
-  briefLists,
-  briefText,
-  briefView,
-  capsOf,
-  capsStepper,
-  starterCaps,
-  type BriefKey,
-  type Caps,
-} from "./build-model";
-import { CapSteppers, RunNote } from "./build-parts";
-import { DraftSection, type DraftSectionProps } from "./section";
-import { SaveOutcome, saveLabel, useSavedForm, useSetupSave } from "./setup-save";
+import { briefLists, briefText, briefView, type BriefKey } from "../shell/build-model";
+import { CapSteppers } from "../shell/build-parts";
+import { SaveOutcome, saveLabel, useSavedForm, useSetupSave } from "../shell/setup-save";
+import { capsOf, capsStepper, starterCaps, type Caps } from "./caps-model";
+import { RunNote } from "./run-note";
+import { DraftSection, type DraftSectionProps } from "./draft-section";
 import styles from "./build.module.css";
 
 /* The canvas's `SECTIONS`: each list's line under its label, its height, and its prompt. */

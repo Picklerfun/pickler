@@ -4,9 +4,9 @@ import { Icon } from "@pickler/ui";
 import { StudioError, errorCode } from "../api";
 import type { DraftGoPublicStage } from "./fixture";
 import { goPublicView, publishProblem, type PublishProblem } from "./model";
-import type { DraftSectionProps } from "./section";
-import { PREVIEW_NOTE } from "./use-draft";
-import { XConnect } from "./x-connect";
+import type { DraftSectionProps } from "./draft-section";
+import { PREVIEW_NOTE } from "../shell/use-agent-studio";
+import { XConnect } from "../shell/x-connect";
 import styles from "./draft.module.css";
 
 export interface GoPublicProps extends Pick<

@@ -4,18 +4,12 @@ import { useState } from "react";
 import { Icon } from "@pickler/ui";
 import type { StudioWallets } from "../api";
 import { arrived, formatUnits, shortAddress } from "../new-agent/model";
-import { CapSteppers } from "./build-parts";
-import {
-  agentWalletRead,
-  capsOf,
-  capsStepper,
-  checkedLabel,
-  readClock,
-  starterCaps,
-} from "./build-model";
-import { DraftSection, type DraftSectionProps } from "./section";
-import { SaveOutcome, saveLabel, useSavedForm, useSetupSave } from "./setup-save";
-import { useCopied } from "./use-copied";
+import { agentWalletRead, readClock } from "../shell/build-model";
+import { CapSteppers } from "../shell/build-parts";
+import { SaveOutcome, saveLabel, useSavedForm, useSetupSave } from "../shell/setup-save";
+import { useCopied } from "../shell/use-copied";
+import { capsOf, capsStepper, checkedLabel, starterCaps } from "./caps-model";
+import { DraftSection, type DraftSectionProps } from "./draft-section";
 import styles from "./build.module.css";
 
 /**
