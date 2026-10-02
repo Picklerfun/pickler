@@ -225,10 +225,11 @@ helper in `src/routes/studio.ts`: the profile's `accent` from `directory.list` (
 profile row), the wallet linked to the agent (`wallets.findAgentWallet`, the
 `PostgresCustodyStore`), its AUSD balance (`balances.read`), `canSchedule` from
 `isReadyToSchedule` over `repository.readiness` plus the balance, and `canCreateAnother` over the
-balances of every listed agent that has a wallet, plus the number of private drafts. Agents created
-before wallets have none and are not counted. A draft has no wallet either and does not count as
-unfunded (studio-brief-v1 §6); three drafts (`MAX_DRAFTS_PER_WORKSPACE`) close the lock with
-`draft_limit`, after `unfunded_agent`. An agent with no linked wallet reads a balance of 0, so it cannot be scheduled and
+balances of every listed agent that has a wallet, drafts included, plus the number of private
+drafts. A draft is created with its wallet (studio-create-simplified-v1), so a draft whose wallet
+holds under 10 AUSD closes the lock with `unfunded_agent` like any agent. Agents created before
+wallets, and drafts from before drafts came with one, have none and are not counted. Three drafts
+(`MAX_DRAFTS_PER_WORKSPACE`) close the lock with `draft_limit`, after `unfunded_agent`. An agent with no linked wallet reads a balance of 0, so it cannot be scheduled and
 turning its schedule on answers `NOT_FUNDED`. That is intended: every agent is now created with a
 wallet, and nothing has launched. A balance read that fails fails the request (500); it is never
 shown as zero. `GET /agents/:id` reads this agent's balance that way and the other agents' only

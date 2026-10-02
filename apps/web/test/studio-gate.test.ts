@@ -66,10 +66,11 @@ test("the note names the agent to fund", () => {
   });
 });
 
-/* Drafts (studio-brief-v1 §6): no wallet, never the agent to fund, capped at three. */
+/* Drafts: capped at three. A draft made with its wallet counts toward the funding lock like any
+   agent (the API's fleet() reads its balance); one from before wallets came with drafts has none. */
 
-const draft = (id: string, canCreateAnother: Lock) => ({
-  ...agent(id, null, canCreateAnother),
+const draft = (id: string, canCreateAnother: Lock, balanceAusd: number | null = null) => ({
+  ...agent(id, balanceAusd, canCreateAnother),
   name: `Draft ${id}`,
   draft: true,
 });
@@ -88,7 +89,7 @@ test('three drafts and every wallet funded: "+ New agent" closes on the limit, a
   assert.equal(newAgentLock(agents), "At most 3 drafts at a time.");
 });
 
-test("a draft beside an unfunded agent: the one to fund is the agent with the wallet", () => {
+test("a walletless draft beside an unfunded agent: the one to fund is the agent with the wallet", () => {
   // Input B, with the draft first in the list and selected.
   const unfunded = agent("a", 0, locked);
   const agents = [draft("d1", locked), unfunded];
@@ -97,10 +98,25 @@ test("a draft beside an unfunded agent: the one to fund is the agent with the wa
   assert.equal(newAgentLock(agents), "Fund Agent a first. One unfunded agent at a time.");
 });
 
-test("a closed funding lock with every wallet above the minimum names a wallet agent, never a draft", () => {
+test("a closed funding lock with every wallet above the minimum names a wallet, never a walletless draft", () => {
   const first = agent("a", 50, locked);
 
   assert.deepEqual(createGate([draft("d1", locked), first]), { open: false, agent: first });
+});
+
+test("a lone draft holding 5 AUSD is the one to fund: its wallet counts, as on the server", () => {
+  const underfunded = draft("d1", locked, 5);
+
+  assert.deepEqual(createGate([underfunded]), { open: false, agent: underfunded });
+  assert.equal(newAgentLock([underfunded]), "Fund Draft d1 first. One unfunded agent at a time.");
+});
+
+test("an underfunded draft beside a funded agent is named, not the agent", () => {
+  const underfunded = draft("d1", locked, 5);
+  const agents = [agent("a", 40, locked), underfunded];
+
+  assert.deepEqual(createGate(agents), { open: false, agent: underfunded });
+  assert.equal(newAgentLock(agents), "Fund Draft d1 first. One unfunded agent at a time.");
 });
 
 test("an unfunded agent closes it whatever the number of drafts", () => {

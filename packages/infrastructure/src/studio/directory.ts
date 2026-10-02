@@ -83,6 +83,17 @@ export class PostgresStudioDirectory implements StudioDirectory {
     );
     return result.rows[0] ?? null;
   }
+  /**
+   * The private draft with its wallet (studio-create-simplified-v1 §4.1), the studio's only create.
+   * One transaction: lock the person's workspace, and answer the draft this wallet already became
+   * when this is the same create retried (same wallet, handle, name, config and profile), without
+   * meeting the lock; under any other terms the wallet is WALLET_ASSIGNED. Otherwise check the
+   * handle, lock the wallet and check it (this person's agent wallet, unlinked, with its rules
+   * approved), run the create lock (funding, the draft limit and the wallet's balances), then write
+   * the agent as a draft, its profile and handle, its runtime row, its product row, and the
+   * wallet's link with the policy ids `confirmPolicies` recorded — never ids from the caller. Any
+   * failure rolls all of it back.
+   */
   async createDraft(
     access: StudioAccess,
     userId: string,

@@ -5,10 +5,12 @@
  * the shell's "+ New agent" items ask here first.
  *
  * The API's lock has two reasons and they are not the same lock (docs/specs/studio-brief-v1.md §6).
- * `unfunded_agent` is about agents with a wallet: a private draft has no wallet and is never the
- * agent to fund. `draft_limit` counts the drafts. Every agent is now created as a draft, so both
- * close "+ New agent", before any wallet is made or funded. Pure, and pinned in
- * `studio-gate.test.ts`.
+ * `unfunded_agent` is about agents with a wallet, drafts included: a draft is created with its
+ * wallet (studio-create-simplified-v1), and the API's `fleet()` counts that wallet's balance like
+ * any other. Only an agent without a wallet (one made before wallets, or a draft from before they
+ * came with one) is never the agent to fund. `draft_limit` counts the drafts. Every agent is now
+ * created as a draft, so both close "+ New agent", before any wallet is made or funded. Pure, and
+ * pinned in `studio-gate.test.ts`.
  */
 import type { Agent } from "../api";
 import { DRAFT_LIMIT_NOTE } from "../lib/messages";
@@ -32,16 +34,16 @@ const unfundedLock = (agent: GateAgent): boolean =>
 /**
  * The funding lock, which is the whole gate for the create screen. Open with no agents, when the API
  * says another may be created, and when all it says is that the drafts are full. Closed otherwise,
- * naming the agent to fund among those that have a wallet to fund: the first one below the
- * minimum, or the first of them when none reads as unfunded. Never a draft, and never an agent
- * without a wallet.
+ * naming the agent to fund among those that have a wallet to fund, drafts included: the first one
+ * below the minimum, or the first of them when none reads as unfunded. Never an agent without a
+ * wallet.
  */
 export function createGate<A extends GateAgent>(agents: readonly A[]): CreateGate<A> {
   if (!agents.some(unfundedLock)) {
     return { open: true };
   }
-  // A draft has no wallet yet and an agent made before wallets never will: the API counts neither.
-  const fundable = agents.filter((agent) => !agent.draft && agent.wallet !== null);
+  // The API counts every wallet, a draft's too; an agent without one has nothing to fund.
+  const fundable = agents.filter((agent) => agent.wallet !== null);
   const unfunded = fundable.find((agent) => (agent.wallet?.balanceAusd ?? 0) < MIN_FUNDED_AUSD);
   const named = unfunded ?? fundable[0];
   // No agent with a wallet is a lock the API cannot have meant; it refuses the create itself.
@@ -61,7 +63,7 @@ export function draftLimitLock(agents: readonly GateAgent[]): string {
 
 /**
  * The one line under a shut "+ New agent" in the studio's menus, or "" when it is open: the
- * funding lock first, naming the agent to fund, then the draft limit. Every agent is created as a
+ * funding lock first, naming the agent (or draft) to fund, then the draft limit. Every agent is created as a
  * draft, so at three drafts the create screen would refuse at the end, after the money moved.
  */
 export function newAgentLock(agents: readonly GateAgent[]): string {

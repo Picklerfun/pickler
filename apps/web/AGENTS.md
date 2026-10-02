@@ -250,11 +250,13 @@ on `errorCode` the same way for either family.
 
 `home/gate.ts` is the lock the "+ New agent" entries read before opening the screen (pinned in
 `studio-gate.test.ts`). `newAgentLock` says the funding lock first (one unfunded agent at a time,
-naming a wallet agent, never a draft), then the draft limit: `draftLimitLock` counts the drafts
+naming the agent to fund; a draft's wallet counts like any other, as the API's `fleet()` counts it,
+and only an agent without a wallet is never named), then the draft limit: `draftLimitLock` counts the drafts
 against `MAX_DRAFTS` (core's `MAX_DRAFTS_PER_WORKSPACE`, restated and pinned) and also closes when
 the API's `canCreateAnother` already answers `draft_limit`. Every agent is created as a draft, so
 the limit closes the entries before any wallet is made or funded. The create screen gets the same
-note (`draftLock`): the wallet step's button and "Fund from master wallet" are shut with it, and
+note (`draftLock`): the wallet step's button and "Fund from master wallet" are shut, each saying
+why (`walletLockNote`: "You're at the draft limit; open or delete a draft first."), and
 `createBlock` answers that note before anything else. A 409 `DRAFT_LIMIT` from
 `POST /drafts` still reads "At most 3 drafts at a time." (`DRAFT_LIMIT_NOTE` in `lib/messages.ts`).
 `home/trace.ts` turns a run's events into the lines the home's status reads (`studio-trace.test.ts`).
@@ -280,8 +282,7 @@ same answer. The wallet and profile gates run before `studioLanding`, unchanged.
 
 No link in the studio, account or auth screens names a cross-product path as a literal. On the
 studio host the studio is `/` and `/studio`, `/agents`, `/agents/<handle>` and `/leaderboard` are
-404s, so the studio's home comes from `useStudioHref()` (with `studioAgentHref(home, id)` from
-`lib/select.ts` to open it on an agent) and a marketplace path from `useMarketplaceHref(path)`
+404s, so the studio's home comes from `useStudioHref()` and a marketplace path from `useMarketplaceHref(path)`
 (`features/site/studio-href.tsx`, over `marketplaceUrl` in `server/hosts.ts`): relative on a host
 serving both products, `https://<marketplace host>/path` from the studio host. The middleware's
 rewrite of the studio root keeps the query, so `/?agent=<id>&section=<key>` is
