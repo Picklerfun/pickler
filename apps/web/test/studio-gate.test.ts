@@ -153,7 +153,7 @@ test("the web's draft limit is core's", async () => {
 });
 
 test("the staged draft home models the lock the API gives a lone draft: open", async () => {
-  // One draft, no wallet agents: nothing is unfunded and the drafts are below their limit.
+  // One draft, funded at create: nothing is unfunded and the drafts are below their limit.
   const { draftFixture } = await import("../src/features/studio/home/fixture");
   const staged = draftFixture().agent;
 

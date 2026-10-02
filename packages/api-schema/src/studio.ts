@@ -41,7 +41,10 @@ export const studioAgentSchema = agentResponseSchema.extend({
   handle: z.string().optional(),
   /** The profile's accent; "lime" for an agent without a profile row. */
   accent: z.enum(ACCENTS),
-  /** A private draft from the brief (studio-brief-v1 §6): no wallet until Go Public. */
+  /**
+   * A private draft (studio-brief-v1 §6). The create screen makes every draft with its own wallet
+   * (studio-create-simplified-v1); a draft from before has none.
+   */
   draft: z.boolean(),
   wallet: studioAgentWalletSchema.nullable(),
   /** Schedule: one successful manual run with the current config, then at least 10 AUSD. */

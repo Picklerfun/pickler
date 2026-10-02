@@ -22,8 +22,10 @@ export interface WalletsDraft {
 export interface WalletsModalProps {
   open: boolean;
   wallets: StudioWallets | null;
-  /** Open with this agent wallet's move form showing, toward the agent. */
+  /** Open with this agent wallet's move form showing. */
   openOn: string | null;
+  /** The direction of that form: toward the agent (the default), or back to master. */
+  openToAgent?: boolean | undefined;
   draft: WalletsDraft | null;
   preview: boolean;
   onClose(): void;
@@ -48,6 +50,7 @@ export function WalletsModal({
   open,
   wallets,
   openOn,
+  openToAgent = true,
   draft,
   preview,
   onClose,
@@ -100,14 +103,19 @@ export function WalletsModal({
 
   /* Each opening starts clean, on the wallet it was opened on (set while rendering, not in an
      effect, so the first frame is already the right one). */
-  const [shown, setShown] = useState<{ open: boolean; openOn: string | null }>({
+  const [shown, setShown] = useState<{
+    open: boolean;
+    openOn: string | null;
+    openToAgent: boolean;
+  }>({
     open: false,
     openOn: null,
+    openToAgent: true,
   });
-  if (shown.open !== open || shown.openOn !== openOn) {
-    setShown({ open, openOn });
+  if (shown.open !== open || shown.openOn !== openOn || shown.openToAgent !== openToAgent) {
+    setShown({ open, openOn, openToAgent });
     if (open) {
-      setMoving(openOn ? { walletId: openOn, toAgent: true } : null);
+      setMoving(openOn ? { walletId: openOn, toAgent: openToAgent } : null);
       setToken("AUSD");
       setAmount("");
       transfer.setError("");

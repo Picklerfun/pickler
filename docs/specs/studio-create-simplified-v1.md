@@ -68,6 +68,11 @@ Users: a studio account (Turnkey master wallet), first agent or later ones.
 7. Pressing it opens the sheet "Create {name}? · Sets its caps · 5 / 20 AUSD · 1×". One Touch ID.
    The server re-reads the balances, the policies are created, the draft is created and linked
    to the wallet. The studio home for the new draft opens.
+8. The draft's home shows its wallet (AUSD, address, Copy, "Fund from master", "Pull back to
+   master", both opening the Wallets modal of §3.3 on it), and Go Public counts what create
+   already did: Voice, Its wallet and Fund it are ticked; Connect X stays Soon. A draft from
+   before this flow has no wallet and says so. A live agent's wallet card also offers "Pull back
+   to master".
 
 ### 3.2 Later agents
 

@@ -13,7 +13,10 @@ import styles from "./home.module.css";
  */
 const REREAD_MS = [0, 5_000, 15_000];
 
-/** "Its wallet": the AUSD balance on Monad, the address and Copy, and the deposit sheet. */
+/**
+ * "Its wallet": the AUSD balance on Monad, the address and Copy, the deposit sheet, and "Pull back
+ * to master", which opens "Your wallets" on it.
+ */
 export function WalletCard({
   agent,
   preview,
@@ -21,6 +24,7 @@ export function WalletCard({
   open,
   onOpen,
   onRefresh,
+  onPullBack,
 }: {
   agent: Agent;
   preview: boolean;
@@ -29,6 +33,8 @@ export function WalletCard({
   onOpen(open: boolean): void;
   /** Reads the agent again; the balance and both locks come back with it. */
   onRefresh(): Promise<void>;
+  /** "Pull back to master": open "Your wallets" on this wallet, toward the master (D7). */
+  onPullBack(): void;
 }) {
   const [copied, setCopied] = useState<"idle" | "copied" | "failed">("idle");
   const [sent, setSent] = useState<{ txHash: string | null } | null>(null);
@@ -108,6 +114,9 @@ export function WalletCard({
         </ChipText>
         <Chip onClick={() => void copy(wallet.address)}>
           {copied === "copied" ? "Copied ✓" : copied === "failed" ? "Copy failed" : "Copy"}
+        </Chip>
+        <Chip onClick={onPullBack} disabled={preview}>
+          Pull back to master
         </Chip>
         <span className={styles.secured}>Secured by your passkey</span>
       </div>
