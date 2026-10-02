@@ -52,6 +52,9 @@ function note(
     : { text: WORDS.taken, tone: "bad" };
 }
 
+/** Where the field stands, for a screen that words it in its own voice. */
+export type HandleState = "empty" | HandleProblem | "checking" | "unknown" | "ok";
+
 export function useHandleClaim(onClaimed?: () => void) {
   const wallet = useWallet();
   const [handle, setHandle] = useState("");
@@ -111,9 +114,20 @@ export function useHandleClaim(onClaimed?: () => void) {
     }
   }
 
+  let state: HandleState = "checking";
+  if (!handle.trim()) {
+    state = "empty";
+  } else if (problem) {
+    state = problem;
+  } else if (availability) {
+    state = !availability.known ? "unknown" : availability.available ? "ok" : "taken";
+  }
+
   return {
     handle,
     setHandle,
+    state,
+    minLength: HANDLE_RULES.min,
     problem,
     askable,
     busy,

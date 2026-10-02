@@ -21,9 +21,9 @@ export function joinWords(caught: unknown): string | null {
   if (caught instanceof ConnectError) {
     switch (caught.code) {
       case "no_account":
-        return "That wallet has no Pickler account yet. Pick a username for this one instead.";
+        return "That wallet doesn't have a Pickler account.";
       case "same_account":
-        return "That is the wallet you are connected with. Use the one your account was made with.";
+        return "That's the wallet you're already connected with.";
       case "join_has_profile":
         return "This wallet's account already has a username, so it cannot be moved into another.";
       case "join_not_wallet_account":

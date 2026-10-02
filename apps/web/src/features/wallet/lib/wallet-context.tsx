@@ -121,8 +121,9 @@ const PREVIEW_STEPS: readonly ConnectStep[] = [
   "joined",
 ];
 
-/** The username the `joined` step shows when the design harness opens it without an account. */
+/** The account the `joined` step shows when the design harness opens it without one. */
 const PREVIEW_HANDLE = "nightowl";
+const PREVIEW_VIA = "0x2B9e5f3A8c1D4e7F6a0B9c8D7e6F5a4B3c2D41d7";
 
 /** Whether an account has a username, from what reading its profile answered. */
 const hasUsername = (profile: Awaited<ReturnType<typeof readProfile>>) =>
@@ -208,8 +209,9 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<boolean | null>(null);
   // The same value, for the callbacks that answer with it outside a render.
   const profileRef = useRef<boolean | null>(null);
-  // The username of the account that was just joined, for the step that says so.
-  const [joinedHandle, setJoinedHandle] = useState<string | null>(null);
+  // The account that was just joined, for the step that says so: its username, and the wallet
+  // that signed for it.
+  const [joined, setJoined] = useState<{ handle: string | null; via: string } | null>(null);
   const [signing, setSigning] = useState(false);
   const [sessionError, setSessionError] = useState<string | null>(null);
   // The session is kept with the address it was issued for, never as a bare token: see
@@ -372,7 +374,8 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         return { result, profile: profileRef.current, handle: null };
       }
       hold(session);
-      know(null);
+      // What was known stays on screen until this answers: a panel that asked for a username
+      // would otherwise vanish and come back empty under the person who is claiming one.
       const profile = await readProfile(session.token);
       const known = hasUsername(profile);
       if (heldRef.current === session) {
@@ -569,11 +572,11 @@ export function WalletProvider({ children }: { children: ReactNode }) {
           return;
         }
         meraFlight.current = picked === "mera";
-        const joined = await signer.join(own.result.token);
+        const kept = await signer.join(own.result.token);
         if (!current()) {
           return;
         }
-        if (!joined) {
+        if (!kept) {
           dispatch({ type: "prompt_closed" });
           return;
         }
@@ -592,7 +595,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
               throw new Error("The other wallet already signed");
             },
           },
-          async () => joined.session,
+          async () => kept.session,
         );
         if ("error" in result) {
           dispatch({
@@ -601,7 +604,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
           });
           return;
         }
-        setJoinedHandle(handle);
+        setJoined({ handle, via: kept.address });
         dispatch({ type: "joined", hasProfile: known });
         if (known !== false) {
           setHolding(null);
@@ -706,7 +709,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
           last: false,
           unavailable:
             choice.kind === "injected" && kind === "injected"
-              ? "You are connected with your browser wallet. A second account of the same wallet cannot sign here yet."
+              ? "This is the wallet you are connected with."
               : choice.unavailable,
         })),
     [choices, kind],
@@ -776,7 +779,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         flow={shownFlow}
         choices={choices}
         joinChoices={joinChoices}
-        joinedHandle={joinedHandle ?? (preview ? PREVIEW_HANDLE : null)}
+        joined={joined ?? (preview ? { handle: PREVIEW_HANDLE, via: PREVIEW_VIA } : null)}
         holding={holding}
         address={account?.address ?? (preview ? PREVIEW_ADDRESS : null)}
         kind={kind}

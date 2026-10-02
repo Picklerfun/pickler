@@ -38,8 +38,8 @@ test("a request that ran out of time is said in words, not as the browser words 
 test("each way a join is refused tells the person what to do instead", () => {
   const refused = (code: string) => joinWords(new ConnectError("from the API", code));
 
-  assert.match(refused("no_account")!, /no Pickler account yet.*username/);
-  assert.match(refused("same_account")!, /the wallet you are connected with/);
+  assert.equal(refused("no_account"), "That wallet doesn't have a Pickler account.");
+  assert.equal(refused("same_account"), "That's the wallet you're already connected with.");
   assert.match(refused("join_has_profile")!, /already has a username/);
   assert.match(refused("join_not_wallet_account")!, /cannot be moved/);
 });
