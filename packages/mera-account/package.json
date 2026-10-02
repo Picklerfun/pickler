@@ -1,0 +1,21 @@
+{
+  "name": "@pickler/mera-account",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./vectors.json": "./test/vectors.json"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@scure/bip32": "2.3.0",
+    "@scure/bip39": "2.3.0"
+  },
+  "devDependencies": {
+    "@pickler/typescript-config": "*",
+    "viem": "2.56.8"
+  }
+}

@@ -9,11 +9,11 @@ import {
 } from "@category-labs/mera";
 import { reactNativeWebAuthnClient } from "@category-labs/mera/react-native-webauthn-client";
 import { toViemAccount } from "@category-labs/mera/viem";
+import { deriveEvmPrivateKey, mnemonicToSeed, prfOutputToMnemonic } from "@pickler/mera-account";
 import { Platform } from "react-native";
 import type { PasskeyError } from "react-native-passkey";
 import { BaseError as ViemError, type LocalAccount } from "viem";
 import { RP_ID, RP_NAME } from "../config/rp";
-import { deriveEvmPrivateKey, mnemonicToSeed, prfOutputToMnemonic } from "../hd/hd";
 import {
   readStoredPrfResult,
   saveStoredAccount,
