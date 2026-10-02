@@ -6,15 +6,21 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useReducer,
   useRef,
   useState,
   useSyncExternalStore,
 } from "react";
 import type { ReactNode } from "react";
 import { ConnectModal } from "../components/connect-modal";
+import { CLOSED, connectFlow, type ConnectFlowState, type ConnectStep } from "./connect-flow";
+import { hasProfile as readHasProfile } from "./handles";
 import { injectedSigner } from "./injected-signer";
+import { PrfUnavailableError } from "./mera-ceremony";
+import { meraSigner } from "./mera-signer";
 import { getProvider, TARGET_CHAIN } from "./provider";
-import { signIn } from "./connect";
+import { signIn, type ConnectResult, type Signer } from "./connect";
+import { signInWords } from "./sign-in-words";
 import { fromInjectedProvider } from "./signer-adapters";
 import {
   adoptSession,
@@ -25,21 +31,23 @@ import {
 } from "./wallet-session";
 import { signInAs, type SignInResult } from "./wallet-sign-in";
 import { getSupabase } from "@/features/auth/lib/supabase-browser";
-import type { SignerAccount, SignerAdapter, SignerKind } from "./signer";
+import type { ConnectMode, SignerAccount, SignerAdapter, SignerKind } from "./signer";
 
 /**
  * Who is connected, with what, on which chain, and what they hold. One connection for the whole
  * public site: the nav shows it, the portfolio reads it, and the reads list is only meaningful
  * with it.
  *
- * The connection is a wallet the person brought. Their own Pickler wallet is not connected here at
- * all: it is custodied in Turnkey and reached through the signing API, so nothing on this page ever
- * holds a key. Which address is connected stays visible — the page never shows an empty portfolio
- * without saying whose it is.
+ * The connection is one of the marketplace's two wallets: the Mera passkey wallet, which is the
+ * same account as in the mobile app, or a browser wallet the person brought. The studio's Turnkey
+ * wallet is never connected here: it belongs to another product, on another host, and nothing in
+ * this feature knows it exists. Which address is connected stays visible — the page never shows
+ * an empty portfolio without saying whose it is.
  *
  * Asking to connect opens the chooser rather than prompting a wallet directly. A page that wanted
  * something first says so, and the chooser holds it up while the person picks, the way the app
- * does.
+ * does. The chooser then goes on: connecting signs in, and an account with no username is asked
+ * for one, whichever wallet it came with (docs/specs/mera-web-v1.md §3).
  */
 
 /**
@@ -51,15 +59,16 @@ type WalletStatus = "disconnected" | "connecting" | "connected";
 /**
  * Whether there is an account behind the connection.
  *
- * Connecting and signing in are two things on purpose, and the chooser says so on itself:
- * "Connecting is not signing." Signing in costs a wallet prompt, so it happens when something
- * actually needs an account — claiming a handle, linking a second wallet — and never as a surprise
- * on top of connecting. A signature prompt nobody asked for is how people learn to approve
- * prompts without reading them.
+ * Connecting and signing in are two things, and the chooser does both in order. The passkey
+ * wallet signs in inside the ceremony that connects it, so the person is asked for their passkey
+ * once. A browser wallet signs in as the chooser's next step, behind its own button and with the
+ * reason on it, never as a prompt that appears by itself: a signature nobody asked for is how
+ * people learn to approve prompts without reading them.
  */
 type SessionStatus = "none" | "signing" | "active";
 
-const SIGNERS: SignerAdapter[] = [injectedSigner];
+// The passkey wallet first: it is the marketplace's own. Two signers, and never a third.
+const SIGNERS: SignerAdapter[] = [meraSigner, injectedSigner];
 
 const REMEMBERED = "pk.wallet.kind";
 
@@ -79,7 +88,7 @@ function remember(kind: SignerKind | null) {
 function remembered(): SignerKind | null {
   try {
     const value = window.localStorage.getItem(REMEMBERED);
-    return value === "injected" ? value : null;
+    return value === "injected" || value === "mera" ? value : null;
   } catch {
     return null;
   }
@@ -89,8 +98,30 @@ const subscribeToBrowser = () => () => {};
 const inBrowser = () => true;
 const onServer = () => false;
 
+/** An address for the chooser's steps when the design harness opens them without a wallet. */
+const PREVIEW_ADDRESS = "0x71C7656EC7ab88b098defB751B7401B5f6d8976F";
+
+const PREVIEW_STEPS: readonly ConnectStep[] = ["choose", "signin", "username", "prf"];
+
+/**
+ * `?wallet=<step>` opens the chooser on a step, outside production only. Every step after the
+ * first sits behind a wallet prompt no headless browser can answer, so without this door the
+ * design checks would never see them.
+ */
+function previewStep(): ConnectStep | null {
+  if (process.env.NODE_ENV === "production") {
+    return null;
+  }
+  const asked = new URLSearchParams(window.location.search).get("wallet");
+  return PREVIEW_STEPS.find((step) => step === asked) ?? null;
+}
+
 export interface WalletChoice {
+  /** Unique among the choices: the passkey wallet appears twice, once per way in. */
+  key: string;
   kind: SignerKind;
+  /** How this choice connects, where a wallet has more than one way. */
+  mode: ConnectMode | null;
   /** Why it cannot be picked here, or null when it can. */
   unavailable: string | null;
   /** A caveat worth reading before picking it. Does not stop it being picked. */
@@ -117,6 +148,13 @@ interface WalletState {
   /** What went wrong signing in, in words for a screen, or null when nothing did. */
   sessionError: string | null;
   /**
+   * Whether the signed-in account has a username: yes, no, or null when it is not known. Only a
+   * known "no" asks for one.
+   */
+  hasProfile: boolean | null;
+  /** The account just claimed its username. */
+  profileClaimed: () => void;
+  /**
    * Sign in with the connected wallet: one signature over a string the server built. Answers with
    * the access token, or with the error — null when the person simply closed the prompt, which is
    * an answer rather than a failure. A caller shows the error from this result: `sessionError` is
@@ -140,7 +178,9 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [holding, setHolding] = useState<string | null>(null);
-  const [chooserOpen, setChooserOpen] = useState(false);
+  const [flow, dispatch] = useReducer(connectFlow, CLOSED);
+  const [previewClosed, setPreviewClosed] = useState(false);
+  const [profile, setProfile] = useState<boolean | null>(null);
   const [signing, setSigning] = useState(false);
   const [sessionError, setSessionError] = useState<string | null>(null);
   // The session is kept with the address it was issued for, never as a bare token: see
@@ -165,6 +205,8 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       // otherwise sit in storage for ever, claiming to be the last one used.
       remember(null);
     }
+    // A browser wallet that connected before is picked back up even when nothing was remembered:
+    // `eth_accounts` never prompts. The passkey wallet is only resumed when it was the last used.
     const signer = SIGNERS.find((candidate) => candidate.kind === (wanted ?? "injected"));
     if (!signer) {
       return;
@@ -220,6 +262,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     (next: SignerAccount | null) => {
       const cached = heldRef.current;
       setSessionError(null);
+      setProfile(null);
       const previous = accountRef.current;
       const changed = releases(
         cached,
@@ -250,52 +293,21 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     });
   }, [adapter, release]);
 
-  const connectWith = useCallback(
-    async (picked: SignerKind) => {
-      const signer = SIGNERS.find((candidate) => candidate.kind === picked);
-      if (!signer) {
-        return;
-      }
-      setConnecting(true);
-      setError(null);
-      try {
-        const connected = await signer.connect();
-        if (connected) {
-          release(connected);
-          setKind(picked);
-          setAccount(connected);
-          remember(picked);
-          setChooserOpen(false);
-          setHolding(null);
-        }
-      } catch (caught) {
-        // 4001 is the person closing the prompt, which is an answer rather than a failure.
-        const code = (caught as { code?: number }).code;
-        setError(code === 4001 ? null : "That wallet could not connect. Try again.");
-      } finally {
-        setConnecting(false);
-      }
-    },
-    [release],
-  );
-
-  const signInWithWallet = useCallback(async (): Promise<SignInResult> => {
-    const provider = getProvider();
-    setSigning(true);
-    setSessionError(null);
-    try {
+  /**
+   * Takes the session a sign-in issued: the browser's Supabase client holds it, and the page
+   * holds it with the address it was issued for. Answers with the access token, or null when the
+   * session could not be kept.
+   */
+  const keep = useCallback(
+    async (
+      signer: Signer | null,
+      issue: (signer: Signer) => Promise<ConnectResult>,
+    ): Promise<SignInResult> => {
       const { result, session } = await signInAs({
         cached: heldRef.current,
-        signer:
-          provider && account
-            ? fromInjectedProvider(
-                provider,
-                account.address,
-                account.chainId ?? TARGET_CHAIN.chainId,
-              )
-            : null,
+        signer,
         supabase: getSupabase(),
-        signIn,
+        signIn: issue,
         now: new Date(),
       });
       if (session) {
@@ -303,15 +315,149 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       }
       setSessionError("error" in result ? result.error : null);
       return result;
+    },
+    [hold],
+  );
+
+  const connectWith = useCallback(
+    async (picked: SignerKind, mode?: ConnectMode) => {
+      const signer = SIGNERS.find((candidate) => candidate.kind === picked);
+      if (!signer) {
+        return;
+      }
+      setConnecting(true);
+      setError(null);
+      dispatch({ type: "working" });
+      try {
+        const connected = await signer.connect(mode);
+        if (!connected) {
+          dispatch({ type: "prompt_closed" });
+          return;
+        }
+        const { session: issued, ...shown } = connected;
+        release(shown);
+        setKind(picked);
+        setAccount(shown);
+        remember(picked);
+        if (!issued) {
+          // A browser wallet: signing in is the chooser's next step, behind its own button.
+          dispatch({ type: "connected", signedIn: false, hasProfile: null });
+          return;
+        }
+        // The passkey wallet signed in inside the ceremony that connected it.
+        const result = await keep(
+          {
+            address: shown.address,
+            chainId: TARGET_CHAIN.chainId,
+            signMessage: async () => {
+              throw new Error("The ceremony already signed");
+            },
+          },
+          async () => issued,
+        );
+        if ("error" in result) {
+          dispatch({
+            type: "failed",
+            error: result.error ?? "That sign-in did not go through. Try again.",
+          });
+          return;
+        }
+        const known = await readHasProfile(result.token);
+        setProfile(known);
+        dispatch({ type: "connected", signedIn: true, hasProfile: known });
+        if (known !== false) {
+          setHolding(null);
+        }
+      } catch (caught) {
+        if (caught instanceof PrfUnavailableError) {
+          dispatch({ type: "prf_unavailable" });
+          return;
+        }
+        // 4001 is the person closing the prompt, which is an answer rather than a failure.
+        if ((caught as { code?: number }).code === 4001) {
+          dispatch({ type: "prompt_closed" });
+          return;
+        }
+        const words =
+          picked === "mera"
+            ? (signInWords(caught) ?? "That passkey could not open a wallet. Try again.")
+            : "That wallet could not connect. Try again.";
+        setError(words);
+        dispatch({ type: "failed", error: words });
+      } finally {
+        setConnecting(false);
+      }
+    },
+    [keep, release],
+  );
+
+  const signInWithWallet = useCallback(async (): Promise<SignInResult> => {
+    setSigning(true);
+    setSessionError(null);
+    try {
+      if (!account) {
+        return await keep(null, signIn);
+      }
+      // The passkey wallet signs with its own ceremony: one prompt, restricted to this account.
+      const own = adapter?.signIn;
+      if (own) {
+        return await keep(
+          {
+            address: account.address,
+            chainId: TARGET_CHAIN.chainId,
+            signMessage: async () => {
+              throw new Error("The passkey ceremony signs by itself");
+            },
+          },
+          () => own(account.address),
+        );
+      }
+      const provider = getProvider();
+      if (!provider) {
+        return await keep(null, signIn);
+      }
+      return await keep(
+        fromInjectedProvider(provider, account.address, account.chainId ?? TARGET_CHAIN.chainId),
+        (signer) => signIn(signer, fetch, "eoa"),
+      );
     } finally {
       setSigning(false);
     }
-  }, [account, hold]);
+  }, [account, adapter, keep]);
+
+  /** The chooser's sign-in step: one signature, then on to the username or out. */
+  const signInFromChooser = useCallback(async () => {
+    dispatch({ type: "working" });
+    const result = await signInWithWallet();
+    if ("error" in result) {
+      dispatch(
+        result.error === null ? { type: "prompt_closed" } : { type: "failed", error: result.error },
+      );
+      return;
+    }
+    const known = await readHasProfile(result.token);
+    setProfile(known);
+    dispatch({ type: "signed_in", hasProfile: known });
+    if (known !== false) {
+      setHolding(null);
+    }
+  }, [signInWithWallet]);
+
+  const profileClaimed = useCallback(() => {
+    setProfile(true);
+    setHolding(null);
+    dispatch({ type: "claimed" });
+  }, []);
+
+  const closeChooser = useCallback(() => {
+    setPreviewClosed(true);
+    dispatch({ type: "close" });
+  }, []);
 
   const connect = useCallback((held?: string) => {
     setHolding(held ?? null);
     setError(null);
-    setChooserOpen(true);
+    dispatch({ type: "open" });
   }, []);
 
   const disconnect = useCallback(async () => {
@@ -333,13 +479,27 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 
   const choices = useMemo<WalletChoice[]>(() => {
     const last = mounted ? remembered() : null;
-    return SIGNERS.map((signer) => ({
-      kind: signer.kind,
-      unavailable: mounted ? signer.unavailableReason() : "Checking this browser…",
-      note: mounted ? (signer.note?.() ?? null) : null,
-      last: signer.kind === last,
-    }));
+    return SIGNERS.flatMap((signer): WalletChoice[] => {
+      const shared = {
+        kind: signer.kind,
+        unavailable: mounted ? signer.unavailableReason() : "Checking this browser…",
+        note: mounted ? (signer.note?.() ?? null) : null,
+      };
+      if (signer.kind !== "mera") {
+        return [{ ...shared, key: signer.kind, mode: null, last: signer.kind === last }];
+      }
+      // Creating a passkey and opening one are different ceremonies, so they are two choices.
+      return [
+        { ...shared, key: "mera-create", mode: "create", last: false },
+        // The caveat is about the wallet, not the way in: it is said once.
+        { ...shared, note: null, key: "mera-existing", mode: "existing", last: last === "mera" },
+      ];
+    });
   }, [mounted]);
+
+  // The design harness's door: a step shown without the prompts that lead to it.
+  const preview = mounted && !previewClosed && flow.step === "closed" ? previewStep() : null;
+  const shownFlow: ConnectFlowState = preview ? { step: preview, busy: false, error: null } : flow;
 
   const value = useMemo<WalletState>(() => {
     const status: WalletStatus = account ? "connected" : connecting ? "connecting" : "disconnected";
@@ -363,6 +523,8 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       error,
       session,
       sessionError,
+      hasProfile: profile,
+      profileClaimed,
       signInWithWallet,
       connect,
       disconnect,
@@ -377,6 +539,8 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     error,
     held,
     kind,
+    profile,
+    profileClaimed,
     sessionError,
     signInWithWallet,
     signing,
@@ -387,13 +551,16 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     <WalletContext.Provider value={value}>
       {children}
       <ConnectModal
-        open={chooserOpen}
+        flow={shownFlow}
         choices={choices}
         holding={holding}
-        connecting={connecting}
-        error={error}
-        onPick={(picked) => void connectWith(picked)}
-        onClose={() => setChooserOpen(false)}
+        address={account?.address ?? (preview ? PREVIEW_ADDRESS : null)}
+        kind={kind}
+        onPick={(picked, mode) => void connectWith(picked, mode ?? undefined)}
+        onSignIn={() => void signInFromChooser()}
+        onBack={() => dispatch({ type: "back" })}
+        onClaimed={profileClaimed}
+        onClose={closeChooser}
       />
     </WalletContext.Provider>
   );

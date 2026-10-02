@@ -56,6 +56,13 @@
   color: var(--pk-ink);
 }
 
+/* The dialog focuses its first control as it opens, so this ring is on screen from the start. */
+.close:focus-visible,
+.choice:focus-visible {
+  outline: 2px solid var(--pk-focus);
+  outline-offset: 2px;
+}
+
 /* What the person was about to do, kept in front of them while they pick. */
 .held {
   display: flex;
@@ -120,6 +127,12 @@
 
 .choice:disabled {
   cursor: not-allowed;
+}
+
+/* A choice this browser cannot offer dims its name and keeps its reason at full strength: the
+ * reason is the one line on it the person needs to read. */
+.choice:disabled .choiceIcon,
+.choice:disabled .choiceTitle {
   opacity: 0.55;
 }
 
@@ -169,6 +182,12 @@
   margin-top: 4px;
   font: 500 11.5px/1.4 var(--pk-font);
   color: var(--pk-amber-ink);
+}
+
+/* The one action of a step after the choice. */
+.actions {
+  display: flex;
+  gap: 8px;
 }
 
 .waiting,

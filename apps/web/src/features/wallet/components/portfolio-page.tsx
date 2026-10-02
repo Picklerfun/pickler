@@ -73,10 +73,9 @@ export function PortfolioPage({
    */
   preview?: boolean;
   /**
-   * Whether to ask for a handle: there is a session and no profile on it. Nothing produces this
-   * yet — `signIn` in ../lib/connect returns a session and nothing stores one — so today it rides
-   * on `preview`, which is also the route the design checks reach this screen by. When the session
-   * is persisted, pass the real condition here and the panel needs no other change.
+   * Show the handle panel whatever the wallet says: the design checks reach this screen through
+   * `preview`, with no wallet. Otherwise the panel shows for a signed-in account known to have no
+   * profile — somebody who closed the chooser at its username step.
    */
   needsHandle?: boolean;
 }) {
@@ -109,7 +108,9 @@ export function PortfolioPage({
 
   const body = (
     <>
-      {needsHandle && <ClaimHandle />}
+      {(needsHandle || (wallet.session === "active" && wallet.hasProfile === false)) && (
+        <ClaimHandle />
+      )}
       <div className={styles.top}>
         {/* The dark block in a light page. It is not a dark-coloured panel: it is the studio's own
             surface appearing inline, so every token inside it resolves to the dark ramp.

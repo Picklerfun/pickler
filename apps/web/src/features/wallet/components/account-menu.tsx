@@ -90,9 +90,11 @@ export function AccountMenu() {
               </button>
             )}
 
-            {/* The Pickler wallet is custodied in Turnkey and is not what this menu shows, so
-                the menu names whose money the portfolio below is. */}
-            <p className={styles.kind}>BROWSER WALLET</p>
+            {/* Which of the marketplace's two wallets this is, so the menu names whose money the
+                portfolio below is. */}
+            <p className={styles.kind}>
+              {wallet.kind === "mera" ? "PASSKEY WALLET" : "BROWSER WALLET"}
+            </p>
 
             <button type="button" className={styles.address} onClick={() => void copy()}>
               {copied ? "COPIED" : shortAddress(address)}
