@@ -181,7 +181,7 @@ function app({
         scope: { agentId: string },
         expected: number,
         config: AgentConfig,
-        options: { requireDraft?: boolean } = {},
+        options: { requireDraft?: boolean; writeSpend?: boolean } = {},
       ) => {
         const stored = configs.get(scope.agentId)!;
         if (stored.version !== expected) {
@@ -190,7 +190,13 @@ function app({
         if (options.requireDraft && !find(scope.agentId).draft) {
           throw new PilotError("NOT_A_DRAFT", "Only a draft's setup is edited here");
         }
-        configs.set(scope.agentId, { version: expected + 1, config });
+        // As the real store: the stored spend stays unless `writeSpend` writes the incoming one.
+        const { spend: incoming, ...rest } = config;
+        const spend = (options.writeSpend ? incoming : undefined) ?? stored.config.spend;
+        configs.set(scope.agentId, {
+          version: expected + 1,
+          config: spend ? { ...rest, spend } : rest,
+        });
         return record(scope.agentId);
       },
     } as unknown as ResearchRepository,

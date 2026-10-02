@@ -231,9 +231,11 @@ from `@pickler/chain` and forgets through the studio's AUSD balance reader; the 
 MON and AUSD reader caches nothing, so there is no MON reading to forget.
 `PostgresCustodyStore.saveDeposit` translates the `deposits_tx_key` unique violation into
 `DepositAlreadyRecordedError`. `depositRecorded(txHash)` looks a hash up, in any case.
-`updateConfig` always keeps the stored `config.spend` and ignores any `spend` in its input, so
-`updateSpend` is the only writer. Because saving limits does not bump the version, a config saved
-at that same version would otherwise drop them.
+`updateConfig` keeps the stored `config.spend` and ignores any `spend` in its input, so
+`updateSpend` is its usual writer. Because saving limits does not bump the version, a config saved
+at that same version would otherwise drop them. The one exception is `{ writeSpend: true }`, which
+a draft's setup passes with new caps: the incoming `spend` (checked by `assertSpendLimits`) is
+written in the same transaction as the rest of the config.
 
 ## Wallet sign-in nonces
 

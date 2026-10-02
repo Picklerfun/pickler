@@ -218,10 +218,15 @@ export class PostgresResearchStore implements ResearchRepository {
     scope: Scope,
     expectedVersion: number,
     config: AgentConfig,
-    options: { requireDraft?: boolean } = {},
+    options: { requireDraft?: boolean; writeSpend?: boolean } = {},
   ): Promise<AgentRecord> {
-    // `spend` is not this method's to write: `updateSpend` is its only writer, and it does not
-    // bump the version, so a config saved at that same version must not drop or replace it.
+    // `spend` is not this method's to write by default: `updateSpend` is its usual writer, and it
+    // does not bump the version, so a config saved at that same version must not drop or replace
+    // it. Only `writeSpend` (a draft's setup, whose caps are part of the revision) writes it here.
+    const written = options.writeSpend ? config.spend : undefined;
+    if (written) {
+      assertSpendLimits(written);
+    }
     const rest: AgentConfig = { ...config };
     delete rest.spend;
     assertConfig(rest);
@@ -243,8 +248,8 @@ export class PostgresResearchStore implements ResearchRepository {
           throw new PilotError("NOT_A_DRAFT", "Only a draft's setup is edited here");
         }
       }
-      const stored = agent.config.spend;
-      const next: AgentConfig = stored ? { ...incoming, spend: stored } : incoming;
+      const spend = written ?? agent.config.spend;
+      const next: AgentConfig = spend ? { ...incoming, spend } : incoming;
       // The brief and its max leverage change only with a new brief (checked by `assertConfig`
       // above). A save without one, such as the settings screen's, keeps what the agent has.
       if (next.brief === undefined) {

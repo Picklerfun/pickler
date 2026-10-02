@@ -27,7 +27,11 @@ ALTER TABLE "agents"."agents" ADD COLUMN "published_at" timestamp with time zone
 -- The status is compared as text because 'draft' was added to the enum by 0022, and Postgres
 -- refuses a new enum value inside the transaction that added it: on a fresh database
 -- `migrateDatabase` applies 0022 and this migration in one transaction.
+-- The backfill is not an edit of the agent, so `agents_updated_at` (0006) is off around it and
+-- `updated_at` stays what it was.
+ALTER TABLE "agents"."agents" DISABLE TRIGGER "agents_updated_at";--> statement-breakpoint
 UPDATE "agents"."agents" SET "visibility" = 'public', "published_at" = "created_at" WHERE "status"::text <> 'draft';--> statement-breakpoint
+ALTER TABLE "agents"."agents" ENABLE TRIGGER "agents_updated_at";--> statement-breakpoint
 ALTER TABLE "agents"."x_accounts" ADD CONSTRAINT "x_accounts_agent_id_agents_id_fk" FOREIGN KEY ("agent_id") REFERENCES "agents"."agents"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "agents"."x_challenges" ADD CONSTRAINT "x_challenges_agent_id_agents_id_fk" FOREIGN KEY ("agent_id") REFERENCES "agents"."agents"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 CREATE UNIQUE INDEX "x_accounts_handle_key" ON "agents"."x_accounts" USING btree (lower("handle"));--> statement-breakpoint

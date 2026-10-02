@@ -12,6 +12,7 @@ import {
   STARTER_CAPS,
   XHandleTakenError,
   prepareDraft,
+  reviseDraft,
   type AgentDirectory,
   type PublishCheck,
 } from "@pickler/core";
@@ -222,7 +223,7 @@ test("an X account verifies one agent, and its handle is unique whatever its cas
   );
 });
 
-test("0024 publishes every agent that is not a draft, as of when it was created", async (t) => {
+test("0024 publishes every agent that is not a draft, as of when it was created, and leaves updated_at", async (t) => {
   const url = new URL(
     process.env.TEST_DATABASE_URL ??
       "postgresql://pickler:pickler_local_only@127.0.0.1:55432/pickler",
@@ -257,6 +258,7 @@ test("0024 publishes every agent that is not a draft, as of when it was created"
     [workspaceId, userId],
   );
   const createdAt = new Date("2026-09-01T00:00:00Z");
+  const updatedAt = new Date("2026-09-15T00:00:00Z");
   const ids: Record<string, string> = {};
   for (const [handle, status, killed] of [
     ["live_one", "active", false],
@@ -269,9 +271,10 @@ test("0024 publishes every agent that is not a draft, as of when it was created"
     try {
       await client.query("BEGIN");
       await client.query(
-        `INSERT INTO agents.agents (id, workspace_id, name, handle, status, killed_at, created_at)
-         VALUES ($1, $2, 'Halftime', $3, $4, $5, $6)`,
-        [id, workspaceId, handle, status, killed ? new Date() : null, createdAt],
+        `INSERT INTO agents.agents
+           (id, workspace_id, name, handle, status, killed_at, created_at, updated_at)
+         VALUES ($1, $2, 'Halftime', $3, $4, $5, $6, $7)`,
+        [id, workspaceId, handle, status, killed ? new Date() : null, createdAt, updatedAt],
       );
       await client.query("INSERT INTO identity.handles (handle, agent_id) VALUES ($1, $2)", [
         handle,
@@ -286,13 +289,19 @@ test("0024 publishes every agent that is not a draft, as of when it was created"
   await migrateDatabase(pool);
 
   const { rows } = await pool.query(
-    "SELECT handle, visibility, published_at FROM agents.agents ORDER BY handle",
+    "SELECT handle, visibility, published_at, updated_at FROM agents.agents ORDER BY handle",
   );
+  // The backfill is not an edit: `updated_at` stays as it was.
   assert.deepEqual(rows, [
-    { handle: "draft_one", visibility: "private", published_at: null },
-    { handle: "killed_one", visibility: "public", published_at: createdAt },
-    { handle: "live_one", visibility: "public", published_at: createdAt },
+    { handle: "draft_one", visibility: "private", published_at: null, updated_at: updatedAt },
+    { handle: "killed_one", visibility: "public", published_at: createdAt, updated_at: updatedAt },
+    { handle: "live_one", visibility: "public", published_at: createdAt, updated_at: updatedAt },
   ]);
+  // And the trigger is back on for every later edit.
+  const trigger = await pool.query(
+    "SELECT tgenabled FROM pg_trigger WHERE tgname = 'agents_updated_at'",
+  );
+  assert.deepEqual(trigger.rows, [{ tgenabled: "O" }]);
 });
 
 type Fixture = Awaited<ReturnType<typeof setup>>;
@@ -562,6 +571,35 @@ test("publish checks the agent's state, then makes a draft public and active", a
   assert.deepEqual(again, result);
 });
 
+test("a draft's setup saves new caps with writeSpend, and keeps the stored spend without it", async (t) => {
+  const f = await setup(t);
+  const scope = await f.studio.agentScope(f.access, f.agentId);
+  const first = await f.store.agent(scope);
+  const caps = { perTradeAusd: 7, perDayAusd: 30, maxLeverage: 2 };
+  assert.notDeepEqual(first.config.spend, { perCallAusd: 7, perDayAusd: 30 });
+
+  // As `PUT /agents/:id/setup` writes caps: the revised config, with `writeSpend`.
+  const saved = await f.store.updateConfig(
+    scope,
+    first.version,
+    reviseDraft(first.config, { caps }),
+    { requireDraft: true, writeSpend: true },
+  );
+  assert.equal(saved.version, first.version + 1);
+  const read = await f.store.agent(scope);
+  assert.deepEqual(read.config.spend, { perCallAusd: 7, perDayAusd: 30 });
+  assert.equal(read.config.maxLeverage, 2);
+
+  // Without the option, a config's spend is not this write's: the stored caps stay.
+  await f.store.updateConfig(
+    scope,
+    read.version,
+    reviseDraft(read.config, { caps: { perTradeAusd: 9, perDayAusd: 50, maxLeverage: 3 } }),
+    { requireDraft: true },
+  );
+  assert.deepEqual((await f.store.agent(scope)).config.spend, { perCallAusd: 7, perDayAusd: 30 });
+});
+
 test("a draft-only config write is refused once the agent is published", async (t) => {
   const f = await setup(t);
   const scope = await f.studio.agentScope(f.access, f.agentId);
@@ -811,6 +849,21 @@ test("identity edits the name, avatar and voice, and the database bounds them", 
     isCode("INVALID_INPUT"),
   );
   assert.equal((await f.studio.list(f.access))[0]?.name, "Second Half");
+});
+
+test("identity gives an agent without a profile one, so its avatar and voice are saved", async (t) => {
+  const f = await setup(t);
+  // An older agent, made before profiles were written with it.
+  await f.pool.query("DELETE FROM agents.agent_profiles WHERE agent_id = $1", [f.agentId]);
+
+  await f.studio.updateIdentity(f.access, f.agentId, { accent: "magenta", avatarPattern: 4 });
+  await f.studio.updateIdentity(f.access, f.agentId, { voice: "Deadpan" });
+
+  const { rows } = await f.pool.query(
+    "SELECT accent::text, avatar_pattern, voice FROM agents.agent_profiles WHERE agent_id = $1",
+    [f.agentId],
+  );
+  assert.deepEqual(rows, [{ accent: "magenta", avatar_pattern: 4, voice: "Deadpan" }]);
 });
 
 /** The person's master wallet and a transfer between it and the agent's. */

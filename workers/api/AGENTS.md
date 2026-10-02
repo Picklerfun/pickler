@@ -295,8 +295,9 @@ except the ledger. The studio agent DTO carries `visibility`, `publishedAt` (ISO
 
 - `PUT /agents/:id/setup { expectedVersion, brief?, sources?, caps?, voice? }` (manage rights):
   drafts only (409 `NOT_A_DRAFT`), core's `reviseDraft`, then `repository.updateConfig`, whose
-  stale version is 409 `CONFLICT` (the same code `PUT /config` answers; the spec's
-  `STALE_CONFIG` is that code). A voice also renames the profile's voice through
+  stale version is 409 `CONFLICT` (the same code `PUT /config` answers). With `caps` it passes
+  `writeSpend`, so the new per-trade and per-day caps land in `spend` in the same transaction;
+  another owner's agent is 404 `NOT_FOUND`. A voice also renames the profile's voice through
   `directory.updateIdentity`. Answers the studio agent; 400 `INVALID_BRIEF` / `INVALID_INPUT`.
 - `PUT /agents/:id/identity { name?, avatar?: { accent, pattern 0–5 } }`: the studio agent; 400
   `INVALID_INPUT`. `GET /agents/:id/activity` answers `{ events }` (ISO `at`).

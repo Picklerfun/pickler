@@ -392,7 +392,20 @@ export class PostgresStudioDirectory implements StudioDirectory {
         if (!agent.rows.length) {
           throw notFound();
         }
+        if (
+          identity.accent === undefined &&
+          identity.avatarPattern === undefined &&
+          identity.voice === undefined
+        ) {
+          return;
+        }
+        // Studio drafts are created with a profile; an older agent may have none (readers join
+        // it with LEFT JOIN). Every profile column has a default, so give it one and then edit it.
         await client.query(
+          `INSERT INTO agents.agent_profiles (agent_id) VALUES ($1) ON CONFLICT (agent_id) DO NOTHING`,
+          [agent.rows[0].id],
+        );
+        const profile = await client.query(
           `UPDATE agents.agent_profiles SET accent = coalesce($2::agents.accent, accent),
              avatar_pattern = coalesce($3, avatar_pattern), voice = coalesce($4, voice)
            WHERE agent_id = $1`,
@@ -403,6 +416,9 @@ export class PostgresStudioDirectory implements StudioDirectory {
             identity.voice ?? null,
           ],
         );
+        if (profile.rowCount !== 1) {
+          throw new PilotError("NOT_FOUND", "Agent profile not found");
+        }
       });
     } catch (error) {
       // 23514: a check (name length, avatar pattern, voice length); 22P02: not an accent;

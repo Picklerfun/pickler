@@ -676,9 +676,10 @@ export function studioRoutes(services: StudioServices) {
     };
     const record = await repo.agent(agent.scope);
     // The draft check above answers early; the write checks again under its own lock, as a
-    // publish may land in between.
+    // publish may land in between. New caps write `spend` in that same transaction.
     await repo.updateConfig(agent.scope, body.expectedVersion, reviseDraft(record.config, patch), {
       requireDraft: true,
+      ...(body.caps ? { writeSpend: true } : {}),
     });
     const voice = VOICES.find((candidate) => candidate.key === body.voice);
     if (voice) {
