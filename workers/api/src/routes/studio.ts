@@ -327,9 +327,8 @@ export function studioRoutes(services: StudioServices) {
     const read = await previewRepository().read(principal.id, c.req.param("id"), Date.now());
     return c.json(previewRunResponseSchema.parse(read));
   });
-  /** The linked wallet and its balance. A failed balance read propagates as an error. */
   /**
-   * `creating`: the read is for a create's lock, where a chain that did not answer is never
+   * The linked wallet and its balance. `creating`: the read is for a create's lock, where a chain that did not answer is never
    * reported as anything but unreadable, 503 WALLETS_UNAVAILABLE, as for the wallet's own reading
    * (studio-create-simplified-v1 §4.1). Elsewhere a failed read fails the request as it is.
    */
