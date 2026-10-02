@@ -161,7 +161,7 @@
           <li>apps/mobile/src/screens/username.tsx</li>
           <li>apps/mobile/src/screens/wallet.tsx</li>
           <li>apps/mobile/src/storage/identity.ts</li>
-          <li>apps/mobile/__tests__/identity-*.test.ts (5)</li>
+          <li>apps/mobile/__tests__/identity-*.test.ts (6)</li>
           <li>docs/mobile/superpowers/specs/ 2026-10-02-mobile-account-design.md</li>
           <li>docs/specs/mera-web-v1.md</li>
         </ul>
@@ -171,7 +171,7 @@
     <section>
       <h2>Validación</h2>
       <p>
-        Jest: 49 suites, 336 tests en verde, 5 suites nuevas (<code>identity-*</code>): reglas del handle atadas a <code>@pickler/api-schema</code>, cliente con <code>fetch</code> de mentira, entrada firmando con una llave real, el hook contra API y SecureStore de mentira, y la pantalla montada con <code>react-test-renderer</code> (commit <code>ef9d1909</code>, corrida local del 2026-10-02). Typecheck del monorepo, <code>app:tree</code> (795 paquetes, 1924 dependencias, sin cambio), <code>agents:check</code>, <code>docs:check</code> y <code>expo export</code> pasan.
+        Jest: 50 suites, 348 tests en verde, 6 suites nuevas (<code>identity-*</code>): reglas del handle atadas a <code>@pickler/api-schema</code>, cliente con <code>fetch</code> de mentira, entrada firmando con una llave real, el hook contra API y SecureStore de mentira (incluida la respuesta perdida y el fallo de servidor que suelta la pantalla), el camino apagado sin <code>PICKLER_API_URL</code>, y la pantalla montada con <code>react-test-renderer</code> (corrida local del 2026-10-02). Typecheck del monorepo, <code>app:tree</code> (795 paquetes, 1924 dependencias, sin cambio), <code>agents:check</code>, <code>docs:check</code> y <code>expo export</code> pasan. Revisión independiente del cambio: sin críticos; sus hallazgos están corregidos en la misma rama.
       </p>
       <p>
         <strong>No verificado:</strong> la pantalla en dispositivo o simulador, ni contra la API real. No se hizo build ni subida a TestFlight. En producción la función no puede usarse todavía: <code>POST https://pickler.fun/api/v1/auth/wallet/nonce</code> responde 404 (comprobado el 2026-10-02), porque la API no tiene <code>SIWE_DOMAIN</code> configurado.

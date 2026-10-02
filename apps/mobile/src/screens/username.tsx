@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { KeyboardAvoidingView, Linking, Platform, ScrollView, TextInput, View } from "react-native";
+import { AppState, KeyboardAvoidingView, Linking, Platform, ScrollView, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { shortHash } from "../config/chain";
 import type { IdentityApi } from "../hooks/useIdentity";
@@ -36,6 +36,15 @@ export function UsernameGate({ identity, address, onSignOut }: { identity: Ident
     return () => clearTimeout(timer);
   }, [state, normalized, check]);
 
+  // Al volver del navegador con el panel de vincular abierto, la app comprueba sola: quien ya vinculó entra sin tocar nada.
+  const { recheck } = identity;
+  useEffect(() => {
+    if (!linking) return;
+    const sub = AppState.addEventListener("change", (next) => { if (next === "active") void recheck({ quiet: true }); });
+    return () => sub.remove();
+  }, [linking, recheck]);
+
+  const show = (next: boolean) => { identity.clearError(); setLinking(next); };
   const ok = state === "ok";
   const bad = state === "taken" || state === "invalid_characters" || state === "too_long" || state === "reserved";
   const noteFg = ok ? C.limeInk : bad ? C.down : C.faint;
@@ -64,7 +73,7 @@ export function UsernameGate({ identity, address, onSignOut }: { identity: Ident
             <View style={{ flex: 1 }} />
             <Hair />
             <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-              <Touch onPress={() => setLinking(false)} accessibilityLabel="username-back" hitSlop={10}>
+              <Touch onPress={() => show(false)} accessibilityLabel="username-back" hitSlop={10}>
                 <T w={600} s={12.5} color={C.dim}>← Back</T>
               </Touch>
               <Tag s={10.5}>LINKING {shortHash(address).toUpperCase()}</Tag>
@@ -87,6 +96,7 @@ export function UsernameGate({ identity, address, onSignOut }: { identity: Ident
                   autoComplete="off"
                   autoFocus
                   returnKeyType="done"
+                  onSubmitEditing={() => { if (claimable(state) && !identity.busy) void identity.claim(handle); }}
                   accessibilityLabel="username-input"
                   style={[textStyle(600, 17, { color: C.ink }), { flex: 1, paddingVertical: 16 }]}
                 />
@@ -103,7 +113,7 @@ export function UsernameGate({ identity, address, onSignOut }: { identity: Ident
               accessibilityLabel="username-claim"
             />
             {identity.error ? <T w={600} s={12.5} lh={1.4} color={C.down}>{identity.error}</T> : null}
-            <Touch onPress={() => setLinking(true)} accessibilityLabel="username-link" hitSlop={8} style={{ alignSelf: "center", paddingVertical: 6 }}>
+            <Touch onPress={() => show(true)} accessibilityLabel="username-link" hitSlop={8} style={{ alignSelf: "center", paddingVertical: 6 }}>
               <T w={500} s={12.5} lh={1.4} color={C.dim}>Already have a Pickler account? <T w={600} s={12.5} color={C.ink}>Link this wallet to it</T></T>
             </Touch>
             <View style={{ flex: 1 }} />

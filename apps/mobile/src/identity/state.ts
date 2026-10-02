@@ -14,24 +14,28 @@ export type Identity =
 /** La pantalla de username tapa la app. */
 export const gateOpen = (identity: Identity): boolean => identity.status === "none";
 
-/** Lo guardado en el dispositivo: el username de una dirección. No es secreto. */
-export type StoredIdentity = { address: string; handle: string };
+/**
+ * Lo guardado en el dispositivo: el username de una dirección, en una API. No es secreto. La API va incluida porque una
+ * cuenta de staging no es la de producción: quien cambia de build vuelve a ser preguntado.
+ */
+export type StoredIdentity = { address: string; handle: string; api: string };
 
 export function serializeIdentity(s: StoredIdentity): string {
-  return JSON.stringify({ address: s.address.toLowerCase(), handle: s.handle });
+  return JSON.stringify({ address: s.address.toLowerCase(), handle: s.handle, api: s.api });
 }
 
 export function parseIdentity(raw: string): StoredIdentity | undefined {
   let value: unknown;
   try { value = JSON.parse(raw); } catch { return undefined; }
   if (value === null || typeof value !== "object") return undefined;
-  const { address, handle } = value as Record<string, unknown>;
+  const { address, handle, api } = value as Record<string, unknown>;
   if (typeof address !== "string" || !/^0x[0-9a-f]{40}$/.test(address)) return undefined;
   if (typeof handle !== "string" || handle === "") return undefined;
-  return { address, handle };
+  if (typeof api !== "string" || api === "") return undefined;
+  return { address, handle, api };
 }
 
-/** El username guardado sólo vale para su dirección. */
-export function identityFor(s: StoredIdentity | undefined, address: string | null): StoredIdentity | undefined {
-  return s && address !== null && s.address === address.toLowerCase() ? s : undefined;
+/** El username guardado sólo vale para su dirección y para la API que lo dijo. */
+export function identityFor(s: StoredIdentity | undefined, address: string | null, api: string | null): StoredIdentity | undefined {
+  return s && address !== null && s.address === address.toLowerCase() && s.api === api ? s : undefined;
 }

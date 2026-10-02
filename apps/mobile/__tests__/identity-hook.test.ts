@@ -16,7 +16,7 @@ jest.mock("expo-secure-store", () => ({
 (globalThis as unknown as { __store: Map<string, string> }).__store = store;
 
 jest.mock("../src/config/api", () => ({ API_URL: "https://pickler.test/api/v1" }));
-jest.mock("../src/wallet/wallet", () => ({ unlockStoredWallet: jest.fn() }));
+jest.mock("../src/wallet/wallet", () => ({ unlockStoredWallet: jest.fn(), describeError: (e: unknown) => ((e as { code?: string } | null)?.code === "ERR_AUTHENTICATION" ? "" : e instanceof Error ? e.message : String(e)) }));
 jest.mock("../src/identity/api", () => ({
   ...jest.requireActual("../src/identity/api"),
   fetchChallenge: jest.fn(),
@@ -78,7 +78,7 @@ test("an account with a username is remembered, and the next start asks nobody",
   api.fetchProfile.mockResolvedValue({ handle: "nightowl" });
   await mount(unlocked(A));
   expect(latest.identity).toEqual({ status: "has", handle: "nightowl" });
-  expect(store.get("pickler.identity.v1")).toBe(JSON.stringify({ address: A.toLowerCase(), handle: "nightowl" }));
+  expect(store.get("pickler.identity.v1")).toBe(JSON.stringify({ address: A.toLowerCase(), handle: "nightowl", api: "https://pickler.test/api/v1" }));
 
   jest.clearAllMocks();
   await mount(locked(A)); // arranque en frío: bloqueada, sin Face ID y sin red
@@ -116,14 +116,103 @@ test("claiming a username writes it with the session, remembers it and opens the
   expect(store.get("pickler.identity.v1")).toContain("nightowl");
 });
 
-test("a claim that is refused says why and holds the screen", async () => {
+test("a username the server refuses says why and holds the screen", async () => {
   api.fetchProfile.mockResolvedValue(null);
-  api.createProfile.mockRejectedValue(new IdentityError(409, "409", "That handle is taken"));
+  api.createProfile.mockRejectedValue(new IdentityError(409, "handle_taken", "That handle is taken"));
   await mount(unlocked(A));
   await act(async () => { await latest.claim("nightowl"); });
-  expect(latest.error).toBe("That handle is taken");
+  expect(latest.error).toBe("Someone already has that one.");
   expect(latest.identity).toEqual({ status: "none" });
   expect(latest.busy).toBe(false);
+});
+
+test("a claim whose answer was lost is found done: the account is read again before anything is said", async () => {
+  api.fetchProfile.mockResolvedValueOnce(null); // al entrar: sin username
+  api.createProfile.mockRejectedValue(new IdentityError(0, "timeout")); // el servidor lo creó; el «sí» no llegó
+  api.fetchProfile.mockResolvedValue({ handle: "nightowl" });
+  await mount(unlocked(A));
+  await act(async () => { await latest.claim("nightowl"); });
+  expect(latest.identity).toEqual({ status: "has", handle: "nightowl" });
+  expect(latest.error).toBeNull();
+  // Entra de nuevo antes de leer: la sesión anterior pudo ser de una cuenta que ya no existe.
+  expect(api.presentSignature).toHaveBeenCalledTimes(2);
+});
+
+test("a wallet linked on the web meanwhile: claiming fails, and the account it opens now is what counts", async () => {
+  api.fetchProfile.mockResolvedValueOnce(null);
+  api.createProfile.mockRejectedValue(new IdentityError(500, "500")); // el token era de la cuenta que se borró
+  api.fetchProfile.mockResolvedValue({ handle: "dayowl" });
+  await mount(unlocked(A));
+  await act(async () => { await latest.claim("nightowl"); });
+  expect(latest.identity).toEqual({ status: "has", handle: "dayowl" });
+});
+
+test("a failure that is not about the username lets go of the screen: nobody is kept from their funds", async () => {
+  api.fetchProfile.mockResolvedValue(null);
+  await mount(unlocked(A));
+  expect(latest.identity).toEqual({ status: "none" });
+
+  // El servidor falla al reclamar y la cuenta sigue sin username: no hay nada que la persona pueda escribir distinto.
+  api.createProfile.mockRejectedValue(new IdentityError(503, "503"));
+  await act(async () => { await latest.claim("nightowl"); });
+  expect(latest.identity).toEqual({ status: "unreachable" });
+
+  // Y si ni siquiera se puede volver a preguntar, igual.
+  await mount(unlocked(B));
+  api.createProfile.mockRejectedValue(new IdentityError(0, "network"));
+  api.fetchChallenge.mockRejectedValue(new IdentityError(0, "network"));
+  await act(async () => { await latest.claim("nightowl"); });
+  expect(latest.identity).toEqual({ status: "unreachable" });
+});
+
+test("checking again that cannot reach the server lets go too, and the quiet check says nothing", async () => {
+  api.fetchProfile.mockResolvedValue(null);
+  await mount(unlocked(A));
+  await act(async () => { await latest.recheck({ quiet: true }); });
+  expect(latest.error).toBeNull();
+  expect(latest.identity).toEqual({ status: "none" });
+
+  api.fetchProfile.mockRejectedValue(new IdentityError(0, "network"));
+  await act(async () => { await latest.recheck(); });
+  expect(latest.identity).toEqual({ status: "unreachable" });
+});
+
+test("claiming with the wallet locked unlocks it, and a cancelled Face ID says nothing", async () => {
+  api.fetchProfile.mockResolvedValue(null);
+  api.createProfile.mockImplementation(async (_base: string, _token: string, handle: string) => ({ handle }));
+  const view = await mount(unlocked(A));
+  await view.to(locked(A));
+  expect(latest.identity).toEqual({ status: "none" });
+
+  unlockStoredWallet.mockRejectedValueOnce(Object.assign(new Error("User canceled the authentication"), { code: "ERR_AUTHENTICATION" }));
+  await act(async () => { await latest.claim("nightowl"); });
+  expect(latest.identity).toEqual({ status: "none" });
+  expect(api.createProfile).not.toHaveBeenCalled();
+
+  unlockStoredWallet.mockResolvedValue(wallet(A));
+  await act(async () => { await latest.claim("nightowl"); });
+  expect(latest.identity).toEqual({ status: "has", handle: "nightowl" });
+});
+
+test("a token about to expire is not sent: the wallet signs in again", async () => {
+  const expiring = `${b64({ alg: "HS256" })}.${b64({ sub: "user-1", exp: Math.floor(Date.now() / 1000) + 30 })}.sig`;
+  api.presentSignature.mockImplementation(async () => ({ userId: "user-1", token: expiring }));
+  api.fetchProfile.mockResolvedValue(null);
+  api.createProfile.mockImplementation(async (_base: string, _token: string, handle: string) => ({ handle }));
+  await mount(unlocked(A));
+  await act(async () => { await latest.claim("nightowl"); });
+  expect(api.presentSignature).toHaveBeenCalledTimes(2);
+});
+
+test("an answer that arrives after signing out says nothing about whoever is there now", async () => {
+  let answer!: (profile: null) => void;
+  api.fetchProfile.mockImplementation(() => new Promise((done) => { answer = done; }));
+  const view = await mount(unlocked(A));
+  expect(latest.identity).toEqual({ status: "checking" });
+  await view.to({ status: "none" });
+  await act(async () => { answer(null); });
+  await settle();
+  expect(latest.identity).toEqual({ status: "unknown" });
 });
 
 test("locking with the screen up keeps it up; another wallet starts from nothing", async () => {
@@ -150,6 +239,8 @@ test("checking again signs in afresh: the wallet may open another account since 
   await act(async () => { await latest.recheck(); });
   expect(latest.error).toBe("This wallet's account still has no username.");
   expect(api.presentSignature).toHaveBeenCalledTimes(2);
+  act(() => { latest.clearError(); });
+  expect(latest.error).toBeNull();
 
   api.fetchProfile.mockResolvedValue({ handle: "nightowl" });
   await act(async () => { await latest.recheck(); });

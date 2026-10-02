@@ -15,11 +15,12 @@ const ADDRESS = "0x7E5F4552091A69125d5DfCb7b8C2659029395Bdf";
 const METRICS = { frame: { x: 0, y: 0, width: 390, height: 844 }, insets: { top: 47, left: 0, right: 0, bottom: 34 } };
 
 function mount(over: Partial<IdentityApi> = {}) {
-  const calls = { check: [] as string[], claim: [] as string[], recheck: 0, signOut: 0 };
+  const calls = { check: [] as string[], claim: [] as string[], recheck: 0, signOut: 0, cleared: 0 };
   const identity: IdentityApi = {
     identity: { status: "none" },
     busy: false,
     error: null,
+    clearError: () => { calls.cleared += 1; },
     check: async (handle) => { calls.check.push(handle); return true; },
     claim: async (handle) => { calls.claim.push(handle); },
     recheck: async () => { calls.recheck += 1; },
@@ -72,6 +73,8 @@ test("the other way out says where linking happens, and checks again on request"
   expect(calls.recheck).toBe(1);
   act(() => { labelled("username-back").props.onPress(); });
   expect(text()).toContain("PICK YOUR USERNAME.");
+  // Lo que falló en un panel no se queda bajo el otro.
+  expect(calls.cleared).toBe(2);
 });
 
 test("signing out is always there, and what failed is said", () => {
@@ -79,4 +82,15 @@ test("signing out is always there, and what failed is said", () => {
   expect(text()).toContain("Couldn't reach Pickler");
   act(() => { labelled("username-sign-out").props.onPress(); });
   expect(calls.signOut).toBe(1);
+});
+
+test("Done on the keyboard claims a handle that can be claimed, and nothing else", async () => {
+  const { calls, labelled } = mount();
+  act(() => { labelled("username-input").props.onChangeText("ab"); });
+  act(() => { labelled("username-input").props.onSubmitEditing(); });
+  expect(calls.claim).toEqual([]);
+  act(() => { labelled("username-input").props.onChangeText("nightowl"); });
+  await act(async () => { jest.advanceTimersByTime(400); });
+  act(() => { labelled("username-input").props.onSubmitEditing(); });
+  expect(calls.claim).toEqual(["nightowl"]);
 });

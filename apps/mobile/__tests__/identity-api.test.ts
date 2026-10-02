@@ -1,4 +1,4 @@
-import { createProfile, describeIdentityError, fetchChallenge, fetchProfile, handleAvailable, IdentityError, presentSignature, type DoFetch } from "../src/identity/api";
+import { createProfile, describeIdentityError, fetchChallenge, fetchProfile, handleAvailable, IdentityError, isHandleRefusal, presentSignature, type DoFetch } from "../src/identity/api";
 
 const BASE = "https://pickler.fun/api/v1";
 
@@ -62,4 +62,22 @@ test("errors are said in words", () => {
   expect(describeIdentityError(new IdentityError(0, "network"))).toMatch(/Couldn't reach Pickler/);
   expect(describeIdentityError(new IdentityError(400, "nonce_invalid"))).toMatch(/took too long/);
   expect(describeIdentityError(new IdentityError(409, "409", "That handle is taken"))).toBe("That handle is taken");
+});
+
+test("a route that does not exist is not an account without a username", async () => {
+  // La API mal desplegada responde 404 a todo; eso no puede abrir la pantalla obligatoria.
+  await expect(fetchProfile(BASE, "at", server(404, { success: false, message: "Route not found" }).doFetch)).rejects.toMatchObject({ status: 404 });
+});
+
+test("only a refusal of the username itself is the person's to fix", () => {
+  expect(isHandleRefusal(new IdentityError(409, "handle_taken"))).toBe(true);
+  expect(isHandleRefusal(new IdentityError(400, "invalid_profile"))).toBe(true);
+  for (const other of [new IdentityError(0, "network"), new IdentityError(0, "timeout"), new IdentityError(401, "401"), new IdentityError(500, "500"), new IdentityError(502, "502"), new Error("boom")]) {
+    expect(isHandleRefusal(other)).toBe(false);
+  }
+});
+
+test("an error with no body still reads as a sentence", () => {
+  expect(describeIdentityError(new IdentityError(502, "502"))).toBe("Pickler answered 502.");
+  expect(describeIdentityError(new IdentityError(400, "invalid_profile", "Invalid handle: reserved"))).toBe("That username is not allowed. Try another.");
 });

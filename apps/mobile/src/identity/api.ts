@@ -9,9 +9,17 @@ const TIMEOUT_MS = 15_000;
 /** Error de la API: `status` HTTP (0 si no hubo respuesta) y `code` = `{ error }` del servidor, el status, o `timeout` | `network`. */
 export class IdentityError extends Error {
   constructor(public readonly status: number, public readonly code: string, message?: string) {
-    super(message ?? `account ${status} ${code}`);
+    super(message ?? (status === 0 ? `Pickler did not answer (${code}).` : `Pickler answered ${status}.`));
     this.name = "IdentityError";
   }
+}
+
+/**
+ * El servidor rechazó ESTE username (tomado, reservado, mal formado): la persona elige otro. Cualquier otro fallo —sin
+ * red, 401, 5xx— no dice nada del username y no es algo que la persona pueda arreglar escribiendo.
+ */
+export function isHandleRefusal(e: unknown): boolean {
+  return e instanceof IdentityError && (e.code === "handle_taken" || e.code === "invalid_profile" || e.status === 409 || e.status === 400 || e.status === 422);
 }
 
 const COPY: Record<string, string> = {
@@ -21,6 +29,8 @@ const COPY: Record<string, string> = {
   timeout: "Pickler took too long to answer. Try again.",
   network: "Couldn't reach Pickler. Check your connection and try again.",
   handle_taken: "Someone already has that one.",
+  invalid_profile: "That username is not allowed. Try another.",
+  profile_exists: "This account already has a username.",
 };
 
 export function describeIdentityError(e: unknown): string {
@@ -76,7 +86,8 @@ export async function fetchProfile(base: string, token: string, doFetch: DoFetch
   try {
     data = await call(`${base}/profile`, { method: "GET", headers: bearer(token) }, doFetch);
   } catch (e) {
-    if (e instanceof IdentityError && e.status === 404) return null;
+    // «Sin perfil» lo dice la ruta del perfil. Un 404 de una ruta que no existe (API mal desplegada) no es eso.
+    if (e instanceof IdentityError && e.status === 404 && !/route not found/i.test(e.message)) return null;
     throw e;
   }
   const handle = (data as { handle?: unknown } | undefined)?.handle;

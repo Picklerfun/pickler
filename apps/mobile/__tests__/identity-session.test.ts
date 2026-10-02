@@ -67,14 +67,17 @@ test("only an account known to have no username opens the gate", () => {
   }
 });
 
-test("the stored username belongs to one address, and a malformed entry is nothing", () => {
-  const raw = serializeIdentity({ address: account.address, handle: "nightowl" });
+test("the stored username belongs to one address on one API, and a malformed entry is nothing", () => {
+  const raw = serializeIdentity({ address: account.address, handle: "nightowl", api: BASE });
   const stored = parseIdentity(raw)!;
-  expect(stored).toEqual({ address: account.address.toLowerCase(), handle: "nightowl" });
-  expect(identityFor(stored, account.address)).toEqual(stored);
-  expect(identityFor(stored, "0x2222222222222222222222222222222222222222")).toBeUndefined();
-  expect(identityFor(stored, null)).toBeUndefined();
-  for (const bad of ["", "{", "null", "{}", JSON.stringify({ address: "0xABC", handle: "x" }), JSON.stringify({ address: account.address.toLowerCase(), handle: "" })]) {
+  expect(stored).toEqual({ address: account.address.toLowerCase(), handle: "nightowl", api: BASE });
+  expect(identityFor(stored, account.address, BASE)).toEqual(stored);
+  expect(identityFor(stored, "0x2222222222222222222222222222222222222222", BASE)).toBeUndefined();
+  expect(identityFor(stored, null, BASE)).toBeUndefined();
+  // Una cuenta de staging no es la de producción: otro build vuelve a preguntar.
+  expect(identityFor(stored, account.address, "https://staging.example/api/v1")).toBeUndefined();
+  const lower = account.address.toLowerCase();
+  for (const bad of ["", "{", "null", "{}", JSON.stringify({ address: "0xABC", handle: "x", api: BASE }), JSON.stringify({ address: lower, handle: "", api: BASE }), JSON.stringify({ address: lower, handle: "nightowl" })]) {
     expect(parseIdentity(bad)).toBeUndefined();
   }
 });

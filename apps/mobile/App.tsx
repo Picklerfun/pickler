@@ -97,7 +97,12 @@ export default function App() {
   if (!ready || initial.current === null) return null; // el splash nativo sigue en pantalla (P9)
 
   const ctx: AppCtx = { ...store, account, treasury, perpl, marketData, reads, identity, notifications, onWallet, lock, signOut, seal, setControls };
-  const gateAddress = gateOpen(identity.identity) ? accountAddress(account) : null;
+  // La pantalla del username no cae encima de una operación en curso: quien desbloqueó para retirar o pedir una read ve
+  // primero cómo termina. Una vez abierta se queda, pase lo que pase debajo.
+  const quiet = !treasury.busy && reads.request.step !== "pending";
+  const gateShown = useRef(false);
+  gateShown.current = gateOpen(identity.identity) && (gateShown.current || quiet);
+  const gateAddress = gateShown.current ? accountAddress(account) : null;
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
