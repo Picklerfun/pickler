@@ -154,7 +154,9 @@ Sending a transaction from the web (paying for a read, trading, enabling Perpl);
 content-security policy and the isolated signer (§5); adding a wallet from inside an account that
 already has a username, switching between an account's wallets, unlinking, and merging two accounts
 that both have usernames (`marketplace-wallets-v1.md` D10–D12); joining with a second account of
-the same browser wallet; WalletConnect; a Mera export screen; SIWE from the mobile app.
+the same browser wallet; WalletConnect; a Mera export screen. The mobile app's sign-in to the same
+account, with the same mandatory username, is its own specification:
+`docs/mobile/superpowers/specs/2026-10-02-mobile-account-design.md`.
 
 ## 9. Joining the account you already have
 
