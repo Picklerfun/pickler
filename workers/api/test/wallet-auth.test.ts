@@ -372,3 +372,49 @@ test("mounting the wallet routes under /v1/auth leaves /v1/auth/me reachable", a
   });
   assert.notEqual(response.status, 404, "the wallet mount must not shadow the existing route");
 });
+
+test("the kind of wallet travels to the service on verify and on link, and is optional", async () => {
+  const seen: unknown[] = [];
+  const { app } = harness({
+    verify: async (presented) => {
+      seen.push(presented);
+      return { userId: ANA, session: { accessToken: "at", refreshToken: "rt" } };
+    },
+    link: async (_userId, presented) => {
+      seen.push(presented);
+      return { linked: true as const };
+    },
+  });
+
+  await post(app, "/v1/auth/wallet/verify", { raw: RAW, signature: "0xsig", kind: "mera" });
+  await post(app, "/v1/auth/wallet/verify", { raw: RAW, signature: "0xsig" });
+  await post(
+    app,
+    "/v1/auth/wallet/link",
+    { raw: RAW, signature: "0xsig", kind: "eoa" },
+    { Authorization: `Bearer ${TOKEN}` },
+  );
+
+  assert.deepEqual(seen, [
+    { raw: RAW, signature: "0xsig", kind: "mera" },
+    { raw: RAW, signature: "0xsig" },
+    { raw: RAW, signature: "0xsig", kind: "eoa" },
+  ]);
+});
+
+test("a kind of wallet nobody offers answers 400 invalid_wallet_kind and reaches no service", async () => {
+  const { app, calls } = harness();
+
+  for (const kind of ["turnkey", "smart", 7, null]) {
+    const response = await post(app, "/v1/auth/wallet/verify", {
+      raw: RAW,
+      signature: "0xsig",
+      kind,
+    });
+    const body = (await response.json()) as { error?: string };
+
+    assert.equal(response.status, 400, String(kind));
+    assert.equal(body.error, "invalid_wallet_kind", String(kind));
+  }
+  assert.deepEqual(calls, []);
+});

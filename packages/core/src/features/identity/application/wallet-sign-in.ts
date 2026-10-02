@@ -74,11 +74,26 @@ export interface SignedMessage {
   issuedAt: string;
 }
 
+/**
+ * Which wallet signed, as the client says: the Mera passkey wallet or a browser wallet. It is
+ * outside the signed message and cannot be verified — both are plain accounts, told apart by
+ * nothing a signature shows — so it describes a link and decides nothing.
+ */
+export type PresentedWalletKind = "mera" | "eoa";
+
+export const PRESENTED_WALLET_KINDS: readonly PresentedWalletKind[] = ["mera", "eoa"];
+
 export interface Presented {
   /** The exact string that was signed — the one this service handed out. Nothing else is trusted. */
   raw: string;
   signature: string;
+  /** Recorded on the link when the link is made. Absent means a browser wallet. */
+  kind?: PresentedWalletKind;
 }
+
+/** What `identity.wallet_links.kind` stores for a presented kind. */
+const storedKind = (kind: PresentedWalletKind | undefined): "mera" | "external" =>
+  kind === "mera" ? "mera" : "external";
 
 export interface WalletSignInDependencies {
   clock: Clock;
@@ -223,7 +238,7 @@ export function createWalletSignIn(deps: WalletSignInDependencies) {
         namespace,
         address,
         verifiedChain: caip2(namespace, chainReference),
-        kind: "external",
+        kind: storedKind(presented.kind),
       });
       const userId = created ? made.userId : await holderOfLostLink(made, namespace, address);
       await deps.accounts.markWalletAccount(userId, namespace, address);
@@ -242,7 +257,7 @@ export function createWalletSignIn(deps: WalletSignInDependencies) {
         namespace,
         address,
         verifiedChain: caip2(namespace, chainReference),
-        kind: "external",
+        kind: storedKind(presented.kind),
       });
       if (!created && !existing) {
         throw new AddressTakenError();

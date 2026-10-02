@@ -1,12 +1,13 @@
 import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
-import type { createWalletSignIn } from "@pickler/core";
+import type { createWalletSignIn, Presented, PresentedWalletKind } from "@pickler/core";
 import {
   AddressTakenError,
   BadSignatureError,
   ExpiredNonceError,
   InvalidAddressError,
   InvalidChainError,
+  PRESENTED_WALLET_KINDS,
   UnknownNonceError,
   WalletAccountConflictError,
   WrongDomainError,
@@ -97,15 +98,25 @@ export function walletAuthRoutes(services: WalletAuthServices) {
   });
 
   /** `raw` is the whole request: the signature covers that string and nothing else is trusted. */
-  function presented(body: unknown) {
-    const it = body as { raw?: unknown; signature?: unknown } | null;
+  function presented(body: unknown): Presented {
+    const it = body as { raw?: unknown; signature?: unknown; kind?: unknown } | null;
     if (typeof it?.raw !== "string" || !it.raw) {
       throw badRequest("The exact string signed and its signature are both required");
     }
     if (typeof it.signature !== "string" || !it.signature) {
       throw badRequest("The exact string signed and its signature are both required");
     }
-    return { raw: it.raw, signature: it.signature };
+    // Which wallet signed is the client's word and decides nothing; it only has to be one of the
+    // two the marketplace offers. Absent is fine, and core reads it as a browser wallet.
+    if (it.kind === undefined) {
+      return { raw: it.raw, signature: it.signature };
+    }
+    if (!PRESENTED_WALLET_KINDS.includes(it.kind as PresentedWalletKind)) {
+      throw badRequest("That is not a kind of wallet Pickler offers", {
+        error: "invalid_wallet_kind",
+      });
+    }
+    return { raw: it.raw, signature: it.signature, kind: it.kind as PresentedWalletKind };
   }
 
   api.post("/verify", async (c) => {

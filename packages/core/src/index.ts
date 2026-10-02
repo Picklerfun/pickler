@@ -269,10 +269,12 @@ export {
   createWalletSignIn,
   ExpiredNonceError,
   NONCE_TTL_MS,
+  PRESENTED_WALLET_KINDS,
   UnknownNonceError,
   WalletAccountConflictError,
   WrongDomainError,
   type Presented,
+  type PresentedWalletKind,
   type SignedMessage,
 } from "./features/identity/application/wallet-sign-in.js";
 

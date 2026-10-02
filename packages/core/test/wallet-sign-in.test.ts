@@ -562,3 +562,62 @@ test("a nonce is issued to the address asked for, and spent for the address in t
     ["consume", "nonce-1", holder],
   ]);
 });
+
+/** A nonce store holding the one nonce `signed()` names, still inside its five minutes. */
+const issued = () => nonces(new Map([["nonce-1", new Date("2026-09-23T12:05:00Z")]]));
+
+test("a wallet that says it is a passkey wallet is linked as one, and one that says nothing is not", async () => {
+  const mera = links();
+  await service({ nonces: issued(), links: mera }).verify({
+    raw: signed(),
+    signature: "0xsig",
+    kind: "mera",
+  });
+  assert.equal(mera.rows[0]!.kind, "mera");
+
+  const silent = links();
+  await service({ nonces: issued(), links: silent }).verify({ raw: signed(), signature: "0xsig" });
+  assert.equal(silent.rows[0]!.kind, "external");
+
+  const browser = links();
+  await service({ nonces: issued(), links: browser }).verify({
+    raw: signed(),
+    signature: "0xsig",
+    kind: "eoa",
+  });
+  assert.equal(browser.rows[0]!.kind, "external");
+});
+
+test("the kind a wallet was linked with stands, whatever a later sign-in says", async () => {
+  const held = links([
+    {
+      userId: "user-original",
+      namespace: "eip155",
+      address: ADDRESS,
+      verifiedChain: "eip155:10143",
+      kind: "external",
+      verifiedAt: NOW,
+    },
+  ]);
+
+  await service({ nonces: issued(), links: held }).verify({
+    raw: signed(),
+    signature: "0xsig",
+    kind: "mera",
+  });
+
+  assert.equal(held.rows.length, 1);
+  assert.equal(held.rows[0]!.kind, "external");
+});
+
+test("linking to a signed-in account records the kind as well", async () => {
+  const linked = links();
+
+  await service({ nonces: issued(), links: linked }).link("user-1", {
+    raw: signed(),
+    signature: "0xsig",
+    kind: "mera",
+  });
+
+  assert.equal(linked.rows[0]!.kind, "mera");
+});
