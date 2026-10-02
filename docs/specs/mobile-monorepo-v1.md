@@ -79,18 +79,27 @@ from the repository root, and those are rewritten.
 
 ## 5. Integration
 
-**Workspaces.** `apps/*` already matches `apps/mobile`. Its package is renamed `@pickler/mobile`,
-its own lockfile is deleted, and the root lockfile is regenerated with npm 10.9.3. A root
-`overrides` pins `react` and `react-dom` to the app's version; the web moves down to it and both
-move up together when Expo does. `viem` in the app moves to 2.56.8, the version the rest of the
-repository resolves.
+**Workspaces.** `apps/*` already matches `apps/mobile`. Its package is renamed `@pickler/mobile`
+and its own lockfile is deleted. A root `overrides` pins `react` and `react-dom` to the app's
+version; the web moves down to it and both move up together when Expo does.
 
-**The lockfile must not move the app.** Before and after the merge, the resolved version of every
-package under the app's dependency tree is listed and compared. Any difference other than `react`
-(unchanged for the app), `viem` and its own dependencies is a failure to explain, not to accept.
+**The lockfile does not move the app.** Resolving the app's ranges afresh moved React Navigation,
+Metro and several Expo modules a patch or a minor forward, so that is not what was done. The root
+lockfile was seeded with the app's own locked tree, every entry re-keyed under
+`apps/mobile/node_modules`, and `npm install` (10.9.3) kept it. The set of packages the app can
+reach, walked from the lockfile before and after, is identical; the one addition is `react-dom`,
+an optional peer that the root now provides. The app's dependencies therefore sit under
+`apps/mobile/node_modules` rather than hoisted, which is also what its native build expects.
 
-**Metro.** Expo 57 configures Metro for a monorepo by itself. No `metro.config.js` is added unless
-the simulator run of §7 shows it is needed.
+**`viem` is not aligned.** The app stays on 2.55.13 and the rest of the repository on 2.56.8.
+Aligning them hoists the app's `viem` to the root and changes what signs its transactions twelve
+days before the bounty closes, for no gain yet: `@pickler/mera-account` uses `viem` only in its
+test. It moves when the first shared package needs it at run time.
+
+**Metro and Jest.** Expo 57 configures Metro for a monorepo by itself, and the Release build of
+§8 bundles `@pickler/mera-account` with no `metro.config.js`. Jest has no such fallback, so
+`apps/mobile/jest.config.js` gains `modulePaths: ["<rootDir>/node_modules"]`: a workspace package
+is transformed where it lives, and the helpers Babel adds to it are installed with the app.
 
 **Lint and format.** `apps/mobile`, `services/reads`, `infra`, `docs/mobile`, `scripts/mobile`,
 `.agents` and `.claude` join the ignore lists of ESLint and Prettier. Adopting the repository's
@@ -159,9 +168,11 @@ contradicts.
 1. `git log --follow apps/mobile/src/wallet/wallet.ts` reaches the app's first commits.
 2. From a clean clone: `npm ci`, `npm run typecheck`, `npm run lint`, `npm run format:check` and
    `npm test` pass, with the same results as `main` for everything that existed before.
-3. `npm test --workspace=@pickler/mobile`: 44 suites, and every test that passed in `pickler-expo`.
+3. `npm test --workspace=@pickler/mobile`: 44 suites; the 301 tests of `pickler-expo` become 303,
+   because four tests of `hd.ts` were replaced by six over the vectors.
 4. The vectors pass in `packages/mera-account` and in the app.
-5. `npx expo prebuild --platform ios --clean` and a simulator build succeed and the app reaches its
+5. `npx expo prebuild --platform ios --clean` installs the pods, a Release build for the simulator
+   succeeds — that configuration bundles the JavaScript through Metro — and the app reaches its
    first screen.
 6. The docs tooling: `agents:check`, `agents:test` and `docs:check` pass from `scripts/mobile`.
 7. The guard's tests pass, and the existing custody tests still do.
