@@ -57,7 +57,7 @@ export function reviseDraft(config: AgentConfig, patch: DraftPatch): AgentConfig
     const { tools, plugins } = webDerived(patch.sources.web);
     next.tools = tools;
     next.plugins = plugins;
-    next.sources = { books: next.sources?.books ?? [], web: copyWeb(patch.sources.web) };
+    next.sources = { web: copyWeb(patch.sources.web), books: next.sources?.books ?? [] };
   }
   if (patch.voice !== undefined) {
     if (!(VOICE_KEYS as readonly string[]).includes(patch.voice)) {

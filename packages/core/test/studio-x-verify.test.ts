@@ -17,6 +17,9 @@ test("handles: @ optional, 1-15 of [A-Za-z0-9_]", () => {
 
 test("a challenge code is pk- and 8 base32 characters, from the given random bytes", () => {
   assert.match(challengeCode(new Uint8Array([1, 2, 3, 4, 5])), /^pk-[a-z2-7]{8}$/);
+  // RFC 4648's own example: "fooba" is MZXW6YTB.
+  assert.equal(challengeCode(new TextEncoder().encode("fooba")), "pk-mzxw6ytb");
+  assert.throws(() => challengeCode(new Uint8Array(4)), RangeError);
 });
 
 test("the line to post names the agent and the code", () => {

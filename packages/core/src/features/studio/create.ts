@@ -122,7 +122,9 @@ export function copyWeb(
  * and Exa when the web is a source. `prepareDraft` and `reviseDraft` both derive these here, so a
  * draft edited later holds exactly what one created with the same sources would.
  */
-export function webDerived(web: unknown): Pick<AgentConfig, "tools" | "plugins"> {
+export function webDerived(
+  web: { mode: WebMode; sites: readonly string[] } | null,
+): Pick<AgentConfig, "tools" | "plugins"> {
   return {
     tools: [...PERP_TOOLS, ...(web ? (["searchWeb", "readPage"] as const) : [])],
     plugins: { version: 1, enabled: ["perpl", "perps-paper", ...(web ? (["exa"] as const) : [])] },

@@ -30,6 +30,9 @@ const BASE32 = "abcdefghijklmnopqrstuvwxyz234567";
  * exactly forty bits, so the caller passes `crypto.getRandomValues(new Uint8Array(5))`.
  */
 export function challengeCode(bytes: Uint8Array): string {
+  if (bytes.length !== 5) {
+    throw new RangeError("A challenge code is made from exactly five random bytes");
+  }
   let bits = 0;
   let value = 0;
   let out = "";

@@ -39,6 +39,9 @@ test("turning the web on adds exa and the web tools; off removes them", () => {
   const off = reviseDraft(on, { sources: { web: null } });
   assert.ok(!off.plugins?.enabled.includes("exa"));
   assert.ok(!off.tools.includes("searchWeb"));
+  assert.ok(!off.tools.includes("readPage"));
+  // The config it was given is never changed.
+  assert.ok(on.plugins?.enabled.includes("exa"));
 });
 
 test("caps keep create's bounds", () => {
