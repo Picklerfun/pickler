@@ -184,6 +184,9 @@ export * from "./features/studio/brief-config.js";
 export * from "./features/studio/preview.js";
 export * from "./features/studio/locks.js";
 export * from "./features/studio/create.js";
+export * from "./features/studio/revise.js";
+export * from "./features/studio/x-verify.js";
+export * from "./features/studio/publish.js";
 
 export {
   ADD_PASSKEY_ACTIVITY_TYPE,
