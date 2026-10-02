@@ -172,7 +172,12 @@ test("checking again that cannot reach the server lets go too, and the quiet che
   expect(latest.error).toBeNull();
   expect(latest.identity).toEqual({ status: "none" });
 
+  // La comprobación silenciosa que falla no suelta nada: la red despertando al volver del navegador no es una salida.
   api.fetchProfile.mockRejectedValue(new IdentityError(0, "network"));
+  await act(async () => { await latest.recheck({ quiet: true }); });
+  expect(latest.identity).toEqual({ status: "none" });
+  expect(latest.error).toBeNull();
+
   await act(async () => { await latest.recheck(); });
   expect(latest.identity).toEqual({ status: "unreachable" });
 });

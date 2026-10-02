@@ -72,7 +72,8 @@ test("a route that does not exist is not an account without a username", async (
 test("only a refusal of the username itself is the person's to fix", () => {
   expect(isHandleRefusal(new IdentityError(409, "handle_taken"))).toBe(true);
   expect(isHandleRefusal(new IdentityError(400, "invalid_profile"))).toBe(true);
-  for (const other of [new IdentityError(0, "network"), new IdentityError(0, "timeout"), new IdentityError(401, "401"), new IdentityError(500, "500"), new IdentityError(502, "502"), new Error("boom")]) {
+  // `wallet_required` (una cuenta de estudio sin su wallet) es un 409 que ningún username arregla: suelta la pantalla.
+  for (const other of [new IdentityError(0, "network"), new IdentityError(0, "timeout"), new IdentityError(401, "401"), new IdentityError(409, "wallet_required"), new IdentityError(409, "409"), new IdentityError(500, "500"), new IdentityError(502, "502"), new Error("boom")]) {
     expect(isHandleRefusal(other)).toBe(false);
   }
 });

@@ -63,7 +63,7 @@ versions the app shipped with; adding or bumping one goes through `npm install` 
 
 ```sh
 npm run typecheck --workspace=@pickler/mobile
-npm test --workspace=@pickler/mobile   # Jest, 50 suites
+npm test --workspace=@pickler/mobile   # Jest, 51 suites
 ```
 
 `dependency-tree.txt` records every dependency the app resolves from the shared lockfile, one line per edge (`who@version -> what@version`), and
@@ -75,4 +75,8 @@ failure is fixed by restoring the app's own entries under `apps/mobile/node_modu
 and said in the pull request.
 
 Neither ESLint nor Prettier from the root applies here yet; keep the style the files already have.
+That includes the rules of hooks, and no suite mounts `App` or a screen, so a hook called after an
+early `return` passes the typecheck and Jest and crashes the app on its second render. It happened
+once, in `App.tsx`. `__tests__/app-hooks.test.ts` reads every component and fails on it; keep hooks
+above any early return, and launch the app in a simulator before saying a change to `App.tsx` works.
 `CLAUDE.md` beside this file is the one-line adapter `@AGENTS.md`.

@@ -179,10 +179,11 @@ export function useIdentity(account: AccountState, onUnlock: (w: Wallet) => void
         if (stale()) return;
         if (profile) await has(w, profile.handle, stale);
         else if (!opts.quiet) setError("This wallet's account still has no username.");
-      } catch (e) {
-        // No se pudo preguntar: no es culpa de la persona ni del username. La pantalla se suelta.
-        void e;
-        if (!stale()) setIdentity({ status: "unreachable" });
+      } catch {
+        // No se pudo preguntar: no es culpa de la persona ni del username, y la pantalla se suelta. Salvo en la
+        // comprobación que la app hace sola al volver del navegador: ahí la red suele estar despertando, y soltar el
+        // paso obligatorio sin que la persona haya hecho nada sería soltarlo por un parpadeo.
+        if (!stale() && !opts.quiet) setIdentity({ status: "unreachable" });
       }
     } finally {
       setBusy(false);

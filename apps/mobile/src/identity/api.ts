@@ -19,7 +19,7 @@ export class IdentityError extends Error {
  * red, 401, 5xx— no dice nada del username y no es algo que la persona pueda arreglar escribiendo.
  */
 export function isHandleRefusal(e: unknown): boolean {
-  return e instanceof IdentityError && (e.code === "handle_taken" || e.code === "invalid_profile" || e.status === 409 || e.status === 400 || e.status === 422);
+  return e instanceof IdentityError && (e.code === "handle_taken" || e.code === "invalid_profile");
 }
 
 const COPY: Record<string, string> = {

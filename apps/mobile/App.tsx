@@ -90,6 +90,10 @@ export default function App() {
     errors: { rpcError: treasury.rpcError, movementsError: treasury.movementsError, contextError: perpl.contextError, listError: reads.session === "ready" ? reads.listError : null },
     hasData: (s) => screenHasData(s, { balances: treasury.balances, context: perpl.context }),
   });
+  // La pantalla del username ya se mostró: se queda aunque empiece una operación debajo. Declarado aquí, antes del
+  // `return null` de carga: un hook después de un return temprano cambia la cuenta de hooks entre renders y React
+  // revienta al arrancar (__tests__/app-hooks.test.ts lo vigila).
+  const gateShown = useRef(false);
   // La ruta inicial se decide una sola vez, cuando la cuenta ya se conoce (D5): con cuenta Tabs, sin cuenta signin.
   const initial = useRef<"Tabs" | "signin" | null>(null);
   if (ready && initial.current === null) initial.current = hasAccount ? "Tabs" : "signin";
@@ -100,7 +104,6 @@ export default function App() {
   // La pantalla del username no cae encima de una operación en curso: quien desbloqueó para retirar o pedir una read ve
   // primero cómo termina. Una vez abierta se queda, pase lo que pase debajo.
   const quiet = !treasury.busy && reads.request.step !== "pending";
-  const gateShown = useRef(false);
   gateShown.current = gateOpen(identity.identity) && (gateShown.current || quiet);
   const gateAddress = gateShown.current ? accountAddress(account) : null;
 
