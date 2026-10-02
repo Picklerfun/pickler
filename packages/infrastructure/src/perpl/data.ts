@@ -54,7 +54,7 @@ function parse<T>(response: PerplPublicResponse, schema: z.ZodType<T>): T {
 function invalid(): never {
   throw new PilotError("PERPL_INVALID_RESPONSE", "Inconsistent Perpl market data");
 }
-function stamp(
+export function perplStamp(
   network: PerpNetwork,
   response: PerplPublicResponse,
   at: { t?: number | undefined; b?: number | undefined },
@@ -70,7 +70,10 @@ function stamp(
     block: at.b ?? null,
   };
 }
-function freshness(provenance: PerpProvenance, now: number): "unknown" | "stale" | "fresh" {
+export function perplFreshness(
+  provenance: PerpProvenance,
+  now: number,
+): "unknown" | "stale" | "fresh" {
   if (provenance.providerTimestamp === null) {
     return "unknown";
   }
@@ -169,7 +172,7 @@ export class PerplMarketData implements PerpMarketData {
           maker: perplDecimal(wire.config.maker_fee, 6),
           taker: perplDecimal(wire.config.taker_fee, 6),
         },
-        provenance: stamp(network, context.response, wire.config.at),
+        provenance: perplStamp(network, context.response, wire.config.at),
       },
     };
   }
@@ -208,7 +211,7 @@ export class PerplMarketData implements PerpMarketData {
       if (raw.m !== market.marketId) {
         invalid();
       }
-      pages.push(stamp(network, response, raw.at));
+      pages.push(perplStamp(network, response, raw.at));
       if (raw.d.length === 0) {
         complete = false;
       }
@@ -226,7 +229,7 @@ export class PerplMarketData implements PerpMarketData {
             event.feb > context.data.chain.gas.h ||
             event.at.t === undefined ||
             event.at.t > this.transport.now() - 60000,
-          provenance: stamp(network, response, event.at),
+          provenance: perplStamp(network, response, event.at),
         };
         const previous = events.get(event.feb);
         if (
@@ -272,21 +275,10 @@ export class PerplMarketData implements PerpMarketData {
       invalid();
     }
     const state = parsed.d[String(market.marketId)]!;
-    const provenance = stamp(network, response, state.at);
-    const price = (value: number) => perplDecimal(value, market.priceDecimals);
     const funding = wire.funding;
     return {
       market,
-      ticker: {
-        mark: price(state.mrk),
-        index: price(state.orl),
-        last: price(state.lst),
-        bid: price(state.bid),
-        ask: price(state.ask),
-        openInterestBase: perplDecimal(state.oi, market.sizeDecimals),
-        freshness: freshness(provenance, this.transport.now()),
-        provenance,
-      },
+      ticker: normalizePerplTicker(market, response, state, this.transport.now()),
       funding: funding
         ? {
             rate: perplDecimal(funding.rate, 6),
@@ -297,7 +289,7 @@ export class PerplMarketData implements PerpMarketData {
             applicationTimeEstimated: context.data.chain.gas
               ? funding.feb > context.data.chain.gas.h
               : null,
-            provenance: stamp(network, context.response, funding.at),
+            provenance: perplStamp(network, context.response, funding.at),
           }
         : null,
     };
@@ -321,35 +313,9 @@ export class PerplMarketData implements PerpMarketData {
     if (book.bid.length > levels || book.ask.length > levels) {
       invalid();
     }
-    for (const [side, direction] of [
-      [book.bid, -1],
-      [book.ask, 1],
-    ] as const) {
-      for (let i = 1; i < side.length; i++) {
-        if ((side[i]!.p - side[i - 1]!.p) * direction <= 0) {
-          invalid();
-        }
-      }
-    }
-    if (book.bid[0] && book.ask[0] && book.bid[0].p >= book.ask[0].p) {
-      invalid();
-    }
-    const provenance = stamp(network, response, book.at);
-    const convert = (level: (typeof book.bid)[number]) => ({
-      price: perplDecimal(level.p, market.priceDecimals),
-      size: perplDecimal(level.s, market.sizeDecimals),
-      orders: level.o,
-    });
-    return {
-      market,
-      requestedLevels: levels,
-      depthLimited: true,
-      bids: book.bid.map(convert),
-      asks: book.ask.map(convert),
-      freshness: freshness(provenance, this.transport.now()),
-      provenance,
-    };
+    return normalizePerplBook(market, response, book, levels, this.transport.now());
   }
+
   async candles(
     network: PerpNetwork,
     request: PerpCandleRequest,
@@ -422,7 +388,67 @@ export class PerplMarketData implements PerpMarketData {
       to,
       candles,
       missingOpenTimes,
-      provenance: stamp(network, response, series.at),
+      provenance: perplStamp(network, response, series.at),
     };
   }
+}
+
+export function normalizePerplTicker(
+  market: PerpMarketInfo,
+  response: PerplPublicResponse,
+  state: z.infer<typeof tickerSchema>["d"][string],
+  now: number,
+): PerpSnapshot["ticker"] {
+  const provenance = perplStamp(market.provenance.network, response, state.at);
+  const price = (value: number) => perplDecimal(value, market.priceDecimals);
+  return {
+    mark: price(state.mrk),
+    index: price(state.orl),
+    last: price(state.lst),
+    bid: price(state.bid),
+    ask: price(state.ask),
+    openInterestBase: perplDecimal(state.oi, market.sizeDecimals),
+    freshness: perplFreshness(provenance, now),
+    provenance,
+  };
+}
+export function normalizePerplBook(
+  market: PerpMarketInfo,
+  response: PerplPublicResponse,
+  book: {
+    at: { t?: number | undefined; b?: number | undefined };
+    bid: { p: number; s: number; o: number }[];
+    ask: { p: number; s: number; o: number }[];
+  },
+  levels: number,
+  now: number,
+): PerpOrderBook {
+  for (const [side, direction] of [
+    [book.bid, -1],
+    [book.ask, 1],
+  ] as const) {
+    for (let i = 1; i < side.length; i++) {
+      if ((side[i]!.p - side[i - 1]!.p) * direction <= 0) {
+        invalid();
+      }
+    }
+  }
+  if (book.bid[0] && book.ask[0] && book.bid[0].p >= book.ask[0].p) {
+    invalid();
+  }
+  const provenance = perplStamp(market.provenance.network, response, book.at);
+  const convert = (level: { p: number; s: number; o: number }) => ({
+    price: perplDecimal(level.p, market.priceDecimals),
+    size: perplDecimal(level.s, market.sizeDecimals),
+    orders: level.o,
+  });
+  return {
+    market,
+    requestedLevels: levels,
+    depthLimited: true,
+    bids: book.bid.slice(0, levels).map(convert),
+    asks: book.ask.slice(0, levels).map(convert),
+    freshness: perplFreshness(provenance, now),
+    provenance,
+  };
 }

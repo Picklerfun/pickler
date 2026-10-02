@@ -174,3 +174,16 @@ commands. Never reintroduce old executable aliases or reset a paused session.
 Trading rules and financial ports are owned by `@pickler/trading` public subpaths. Core retains
 identity, configuration and research contracts. Infrastructure implements the trading ports;
 runtime composes adapters and models. Hosts must not duplicate risk, fills or accounting.
+
+Perpl continuation runs retain the same tenant/network/database campaign budget. Read
+[PERPS-STUDY.md](PERPS-STUDY.md) before starting one; never reset scope to obtain a fresh ceiling.
+
+`evaluate stability --config FILE --env-file FILE --output DIRECTORY` runs one fixed thirty-minute Perpl public-data check (30 scheduled cycles). It uses a separate diagnostic PostgreSQL lease and existing agent permissions, never creates accounts or calls models. It parses only DATABASE_URL from the operator environment file. Reports are JSON/CSV/HTML; acceptance requires 29/30 valid joint BTC/ETH cycles and no lease/ownership failure. No automatic repeat or paid restart. The output directory has an exclusive STARTED marker. Paid Perpl run/resume requires a newly initialized record with coherent-20s-v1; historical report/settle remain available. macOS runs use the existing lid/idle-sleep guard, and persist local lease diagnostics.
+
+Stability report v2 adds safe per-request connection observations and a single independent public
+connectivity check after a failed acquisition with transport diagnostics. This check runs outside
+the unchanged twenty-second acquisition deadline, takes at most three seconds of network time,
+and requires current ownership. It never supplies market data or changes a cycle's validity.
+Historical reports remain unchanged; no connection cause is inferred from a generic timeout.
+
+Read [PERPL-STREAM-ACQUISITION.md](PERPL-STREAM-ACQUISITION.md) for evaluate data-diagnostic and stability --acquisition-choice. Ten fixed comparison opportunities freeze transport selection before one thirty-slot acceptance. Parse only loopback DATABASE_URL; no models/accounts/paid calls. Reports include bounded public captures and an offline cadence analyzer. New comparison preparation may explicitly freeze a choice; never upgrade historical sessions or automatically retry acceptance.

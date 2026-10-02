@@ -22,6 +22,21 @@ import {
 } from "@pickler/trading/evaluation";
 import { assertPerpsPaperAgent, paperUnits, type PerpsPaperAccount } from "@pickler/trading/perps";
 import { PostgresPerpsPaperStore } from "./perps-paper-store.js";
+function acquisitionPolicy(metadata: unknown): PerpsStudyRecord["dataPolicy"] {
+  const value =
+    metadata && typeof metadata === "object"
+      ? (metadata as { acquisition?: { policy?: unknown }; acquisitionPolicy?: unknown })
+      : {};
+  const policy = value.acquisition?.policy ?? value.acquisitionPolicy ?? "coherent-20s-v1";
+  if (
+    policy !== "coherent-20s-v1" &&
+    policy !== "rest-paced-20s-v1" &&
+    policy !== "stream-20s-v1"
+  ) {
+    throw new PilotError("INVALID_INPUT", "Unknown frozen acquisition policy");
+  }
+  return policy;
+}
 function canonical(value: unknown): string {
   if (Array.isArray(value)) {
     return `[${value.map(canonical).join(",")}]`;
@@ -42,6 +57,10 @@ interface Locked {
   now: number;
 }
 export class PostgresPerpsStudyStore implements PerpsStudyRepository {
+  private readonly fences = new WeakMap<
+    PoolClient,
+    { id: string; owner: string; assertActive?: () => void }
+  >();
   constructor(
     readonly pool: Pool,
     private readonly clock?: () => number,
@@ -51,12 +70,28 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
     try {
       await c.query("BEGIN");
       const r = await fn(c);
+      const fence = this.fences.get(c);
+      if (fence) {
+        fence.assertActive?.();
+        const current = await c.query(
+          "SELECT owner, expires_at FROM pickler.perps_studies WHERE id=$1",
+          [fence.id],
+        );
+        if (
+          current.rows[0]?.owner !== fence.owner ||
+          Number(current.rows[0]?.expires_at) <= (await this.now(c))
+        ) {
+          throw new PilotError("LEASE_LOST", "Study ownership expired before commit");
+        }
+      }
+      fence?.assertActive?.();
       await c.query("COMMIT");
       return r;
     } catch (e) {
-      await c.query("ROLLBACK");
+      await c.query("ROLLBACK").catch(() => {});
       throw e;
     } finally {
+      this.fences.delete(c);
       c.release();
     }
   }
@@ -86,10 +121,16 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
       now: await this.now(c),
     };
   }
-  private owned(x: Locked, lease: PerpsStudyLease) {
+  private owned(c: PoolClient, x: Locked, lease: PerpsStudyLease) {
+    lease.assertActive?.();
     if (x.owner !== lease.owner || Number(x.expires_at) <= x.now) {
       throw new PilotError("LEASE_LOST", "Study ownership expired");
     }
+    this.fences.set(c, {
+      id: x.id,
+      owner: lease.owner,
+      ...(lease.assertActive ? { assertActive: lease.assertActive } : {}),
+    });
   }
   private async permissions(c: PoolClient, x: Locked) {
     for (const strategy of PERPS_STUDY_STRATEGIES) {
@@ -193,6 +234,8 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
         stopRequested: false,
         lastObservationAt: null,
         lastRoundSlot: -1,
+        lastAttemptedSlot: -1,
+        dataPolicy: acquisitionPolicy(metadata)!,
       };
       await c.query(
         "INSERT INTO pickler.perps_studies(id,tenant_id,session_id,network,document) VALUES($1,$2,$3,$4,$5)",
@@ -216,7 +259,32 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
       return { record: x.record, rounds: await this.rounds(c, x.id), events: events.rows };
     });
   }
-  async claim(scope: PerpsStudyScope) {
+  async initializeDiagnostic(source: PerpsStudyScope, sessionId: string, metadata: unknown) {
+    const { record } = await this.view(source);
+    const config = { ...record.config, sessionId };
+    const document: PerpsStudyRecord = {
+      ...record,
+      config,
+      metadata,
+      createdAt: Date.now(),
+      startedAt: null,
+      endsAt: null,
+      graceUntil: null,
+      status: "initialized",
+      stopRequested: false,
+      decisionStopReason: "DIAGNOSTIC_ONLY",
+      lastRoundSlot: -1,
+      lastAttemptedSlot: -1,
+      lastObservationAt: null,
+      dataPolicy: acquisitionPolicy(metadata)!,
+    };
+    await this.pool.query(
+      "INSERT INTO pickler.perps_studies(id,tenant_id,session_id,network,document) VALUES($1,$2,$3,$4,$5)",
+      [randomUUID(), config.tenantId, sessionId, config.network, document],
+    );
+    return config;
+  }
+  async claim(scope: PerpsStudyScope): Promise<PerpsStudyLease> {
     return this.tx(async (c) => {
       const x = await this.lock(c, scope);
       if (x.owner && Number(x.expires_at) > x.now) {
@@ -267,15 +335,43 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
       return lease;
     });
   }
-  async renew(scope: PerpsStudyScope, lease: PerpsStudyLease) {
-    await this.tx(async (c) => {
+  async claimSlot(scope: PerpsStudyScope, lease: PerpsStudyLease, slot: number) {
+    return this.tx(async (c) => {
       const x = await this.lock(c, scope);
-      this.owned(x, lease);
+      this.owned(c, x, lease);
+      await this.permissions(c, x);
+      if (
+        x.record.decisionStopReason ||
+        x.record.stopRequested ||
+        x.record.startedAt === null ||
+        x.now >= x.record.endsAt! ||
+        !Number.isInteger(slot) ||
+        slot !== Math.floor((x.now - x.record.startedAt) / 900000) ||
+        (x.now - x.record.startedAt) % 900000 >= 60000 ||
+        slot <= Math.max(x.record.lastAttemptedSlot ?? -1, x.record.lastRoundSlot)
+      ) {
+        return false;
+      }
+      x.record.lastAttemptedSlot = slot;
+      await this.save(c, x);
+      await c.query(
+        "INSERT INTO pickler.perps_study_events(study_id,key,at,kind,data) VALUES($1,$2,$3,'slot-attempted',$4)",
+        [x.id, `slot-${slot}`, x.now, { slot }],
+      );
+      return true;
+    });
+  }
+  async renew(scope: PerpsStudyScope, lease: PerpsStudyLease) {
+    const expiresAt = await this.tx(async (c) => {
+      const x = await this.lock(c, scope);
+      this.owned(c, x, lease);
       await c.query("UPDATE pickler.perps_studies SET expires_at=$2 WHERE id=$1", [
         x.id,
         x.now + 90000,
       ]);
+      return x.now + 90000;
     });
+    lease.expiresAt = expiresAt;
   }
   async release(scope: PerpsStudyScope, lease: PerpsStudyLease) {
     await this.tx(async (c) => {
@@ -290,7 +386,7 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
   async guard(scope: PerpsStudyScope, lease: PerpsStudyLease, paid = false) {
     await this.tx(async (c) => {
       const x = await this.lock(c, scope);
-      this.owned(x, lease);
+      this.owned(c, x, lease);
       await this.permissions(c, x);
       if (
         paid &&
@@ -315,7 +411,7 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
   async stopDecisions(scope: PerpsStudyScope, lease: PerpsStudyLease, reason: string) {
     await this.tx(async (c) => {
       const x = await this.lock(c, scope);
-      this.owned(x, lease);
+      this.owned(c, x, lease);
       x.record.decisionStopReason ??= reason;
       x.record.status = "monitoring";
       await this.save(c, x);
@@ -330,7 +426,7 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
   ) {
     await this.tx(async (c) => {
       const x = await this.lock(c, scope);
-      this.owned(x, lease);
+      this.owned(c, x, lease);
       await c.query(
         "INSERT INTO pickler.perps_study_events(study_id,key,at,kind,data) VALUES($1,$2,$3,$4,$5) ON CONFLICT DO NOTHING",
         [x.id, key, x.now, kind, data],
@@ -350,8 +446,13 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
     rules: PerpsProposal[],
   ) {
     return this.tx(async (c) => {
+      // One authorization covers every session in this tenant/network, including history.
+      // Serialize admissions before locking a study so concurrent new sessions cannot reset it.
+      await c.query("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", [
+        JSON.stringify(["perps-study-budget", scope.tenantId, scope.network]),
+      ]);
       const x = await this.lock(c, scope);
-      this.owned(x, lease);
+      this.owned(c, x, lease);
       await this.permissions(c, x);
       if (
         x.record.stopRequested ||
@@ -391,8 +492,27 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
         (sum, call) => sum + paperUnits(call.reservationUsd),
         0n,
       );
+      const campaign = await c.query<{ document: PerpsRound }>(
+        `SELECT r.document FROM pickler.perps_study_rounds r
+         JOIN pickler.perps_studies s ON s.id = r.study_id
+         WHERE s.tenant_id = $1 AND s.network = $2`,
+        [scope.tenantId, scope.network],
+      );
+      const rounds = campaign.rows.map((row) => row.document);
       if (
-        paperUnits(perpsAccountedUsd(await this.rounds(c, x.id))) + reserved >
+        rounds.some((round) =>
+          Object.values(round.calls).some(
+            (call) => call.startedAt !== null && call.costUsd === null,
+          ),
+        )
+      ) {
+        x.record.decisionStopReason = "CAMPAIGN_USAGE_UNVERIFIED";
+        x.record.status = "monitoring";
+        await this.save(c, x);
+        return null;
+      }
+      if (
+        paperUnits(perpsAccountedUsd(rounds)) + reserved >
         paperUnits(x.record.config.budgetUsd)
       ) {
         x.record.decisionStopReason = "BUDGET_EXHAUSTED";
@@ -431,7 +551,7 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
   ) {
     await this.tx(async (c) => {
       const x = await this.lock(c, scope);
-      this.owned(x, lease);
+      this.owned(c, x, lease);
       await this.permissions(c, x);
       if (x.record.stopRequested || x.record.decisionStopReason || x.now >= x.record.endsAt!) {
         throw new PilotError("DECISIONS_STOPPED", "New paid calls stopped");
@@ -460,7 +580,7 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
   ) {
     await this.tx(async (c) => {
       const x = await this.lock(c, scope);
-      this.owned(x, lease);
+      this.owned(c, x, lease);
       const r = await this.round(c, x.id, key);
       const call = r.calls[lane];
       if (call.status !== "started" || call.costUsd !== null) {
@@ -482,7 +602,7 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
   ) {
     await this.tx(async (c) => {
       const x = await this.lock(c, scope);
-      this.owned(x, lease);
+      this.owned(c, x, lease);
       const r = await this.round(c, x.id, key);
       const call = r.calls[lane];
       if (call.status !== "started") {
@@ -511,7 +631,7 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
   ) {
     await this.tx(async (c) => {
       const x = await this.lock(c, scope);
-      this.owned(x, lease);
+      this.owned(c, x, lease);
       const r = await this.round(c, x.id, key);
       if (r.status !== "reserved") {
         throw new PilotError("CONFLICT", "Round already finished");
@@ -546,23 +666,26 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
     scope: PerpsStudyScope,
     lease: PerpsStudyLease,
     key: string,
-    complete: boolean,
+    result: "complete" | "skipped_data_unavailable" | "incomplete",
   ) {
     await this.tx(async (c) => {
       const x = await this.lock(c, scope);
-      this.owned(x, lease);
+      this.owned(c, x, lease);
       const r = await this.round(c, x.id, key);
       if (r.executionStatus !== "pending") {
         throw new PilotError("CONFLICT", "Execution already finalized");
       }
-      r.executionStatus = complete ? "complete" : "incomplete";
+      r.executionStatus = result;
+      if (result === "skipped_data_unavailable") {
+        r.executionReason = "DATA_UNAVAILABLE";
+      }
       await this.saveRound(c, x.id, r);
     });
   }
   async complete(scope: PerpsStudyScope, lease: PerpsStudyLease) {
     await this.tx(async (c) => {
       const x = await this.lock(c, scope);
-      this.owned(x, lease);
+      this.owned(c, x, lease);
       x.record.status = "completed";
       await this.save(c, x);
     });

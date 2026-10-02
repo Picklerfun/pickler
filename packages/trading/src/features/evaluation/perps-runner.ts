@@ -1,3 +1,4 @@
+import { startLeaseHeartbeat, type LeaseDiagnostic } from "./lease-heartbeat.js";
 import {
   PERPS_STUDY_STRATEGIES as strategies,
   type PerpsStudyRepository,
@@ -13,6 +14,8 @@ import { perpsRules } from "../perps-study/policy.js";
 import { PilotError } from "@pickler/core";
 import {
   createPerpsPaperService,
+  validatePaperFrame,
+  transientPerpsData,
   paperRisk,
   type PerpsPaperRepository,
   type PerpsPaperData,
@@ -22,16 +25,37 @@ import {
 } from "../../perps.js";
 import type { PerpsModels, PerpsModelHooks } from "./model.js";
 export interface StudyData {
-  observe(record: PerpsStudyRecord, signal: AbortSignal): Promise<PerpsPaperObservation>;
+  observe(
+    record: PerpsStudyRecord,
+    signal: AbortSignal,
+    guard?: () => Promise<void>,
+  ): Promise<PerpsPaperObservation>;
   evidence(
     record: PerpsStudyRecord,
     observation: PerpsPaperObservation,
     signal: AbortSignal,
+    guard?: () => Promise<void>,
   ): Promise<PerpsEvidence>;
-  execution(record: PerpsStudyRecord, signal: AbortSignal): Promise<PerpsPaperFrame[]>;
+  execution(
+    record: PerpsStudyRecord,
+    signal: AbortSignal,
+    guard?: () => Promise<void>,
+  ): Promise<PerpsPaperFrame[]>;
+}
+function validateCommonFrames(frames: PerpsPaperFrame[], network: string, at: number) {
+  if (
+    frames.length !== 2 ||
+    !frames.some((frame) => frame.snapshot.market.symbol === "BTC") ||
+    !frames.some((frame) => frame.snapshot.market.symbol === "ETH")
+  ) {
+    throw new PilotError("INVALID_MARKET_DATA", "BTC and ETH common frames required");
+  }
+  for (const frame of frames) {
+    validatePaperFrame(frame, network, frame.snapshot.market.symbol, at);
+  }
 }
 const safeCode = (error: unknown) =>
-  error instanceof PilotError && /^[A-Z_]{1,80}$/.test(error.code)
+  error instanceof PilotError && /^[A-Z0-9_]{1,80}$/.test(error.code)
     ? error.code
     : "STUDY_OPERATION_FAILED";
 export function createPerpsStudyRunner(deps: {
@@ -40,8 +64,16 @@ export function createPerpsStudyRunner(deps: {
   data: StudyData;
   models: PerpsModels;
   now?: () => number;
+  paperForLease?: (
+    scope: PerpsStudyScope,
+    lease: PerpsStudyLease,
+    signal: AbortSignal,
+  ) => PerpsPaperRepository;
+  leaseDiagnostic?: (event: LeaseDiagnostic) => void;
 }) {
-  const { study, paper, data, models } = deps;
+  const { study, data, models } = deps;
+  let paper = deps.paper;
+  let assertActive = () => {};
   const now = deps.now ?? Date.now;
   // Every execution receives a common captured frame. No hidden provider fetch is permitted.
   const unavailable: PerpsPaperData = {
@@ -52,7 +84,7 @@ export function createPerpsStudyRunner(deps: {
       throw new PilotError("MISSING_FRAME", "Common observation required");
     },
   };
-  const simulator = createPerpsPaperService(paper, unavailable, now);
+  let simulator = createPerpsPaperService(paper, unavailable, now);
   const accountScope = (record: PerpsStudyRecord, strategy: PerpsStrategy) => ({
     ...record.config,
     agentId: record.agentIds[strategy],
@@ -67,6 +99,8 @@ export function createPerpsStudyRunner(deps: {
     frames: PerpsPaperFrame[],
     signal: AbortSignal,
   ) {
+    assertActive();
+    signal.throwIfAborted();
     if (proposal.action === "hold") {
       return;
     }
@@ -124,7 +158,16 @@ export function createPerpsStudyRunner(deps: {
     lease: PerpsStudyLease,
     signal: AbortSignal,
   ): Promise<boolean> {
-    await study.guard(scope, lease);
+    const ownedGuard = async (paid = false) => {
+      assertActive();
+      signal.throwIfAborted();
+      await study.guard(scope, lease, paid);
+      assertActive();
+      signal.throwIfAborted();
+    };
+    paper = deps.paperForLease?.(scope, lease, signal) ?? deps.paper;
+    simulator = createPerpsPaperService(paper, unavailable, now);
+    await ownedGuard();
     let { record } = await study.view(scope);
     if (now() >= record.endsAt! || record.stopRequested) {
       for (const strategy of strategies) {
@@ -135,18 +178,40 @@ export function createPerpsStudyRunner(deps: {
       await study.complete(scope, lease);
       return false;
     }
+    const slot = Math.floor((now() - record.startedAt!) / 900000);
+    const attempted = !record.decisionStopReason && (await study.claimSlot(scope, lease, slot));
+    const skip = async (phase: "before-model" | "execution-refresh", error: unknown) => {
+      await study.event(scope, lease, `slot-${slot}:data-unavailable`, "data-unavailable", {
+        slot,
+        phase,
+        code: "DATA_UNAVAILABLE",
+        cause: safeCode(error),
+      });
+    };
     const minute = Math.floor((now() - record.startedAt!) / 60000);
     const key = `observe-${minute}`;
     const views = {} as Record<PerpsStrategy, PerpsPaperView>;
     let observation: PerpsPaperObservation;
+    let observationWritesStarted = false;
     try {
-      observation = await data.observe(record, signal);
+      observation = await data.observe(record, signal, () => ownedGuard());
+      validateCommonFrames(observation.frames, record.config.network, now());
+      observationWritesStarted = true;
       for (const strategy of strategies) {
-        await study.guard(scope, lease);
+        await ownedGuard();
         views[strategy] = await paper.observe(accountScope(record, strategy), key, observation);
       }
     } catch (error) {
       signal.throwIfAborted();
+      if (observationWritesStarted) {
+        throw error;
+      }
+      if (attempted && transientPerpsData(error)) {
+        await skip("before-model", error);
+      }
+      if (!transientPerpsData(error)) {
+        throw error;
+      }
       await study.event(scope, lease, `${key}:failed`, "observation-failed", {
         code: safeCode(error),
       });
@@ -206,16 +271,22 @@ export function createPerpsStudyRunner(deps: {
     if (record.decisionStopReason) {
       return true;
     }
-    const slot = Math.floor((now() - record.startedAt!) / 900000);
     // Late or missed rounds are never reconstructed. Allow the first minute of the current slot.
-    if (slot <= record.lastRoundSlot || (now() - record.startedAt!) % 900000 >= 60000) {
+    if (!attempted) {
       return true;
     }
     let evidence: PerpsEvidence;
     try {
-      evidence = await data.evidence(record, observation, signal);
+      evidence = await data.evidence(record, observation, signal, () => ownedGuard());
+      signal.throwIfAborted();
+      validateCommonFrames(evidence.frames, record.config.network, now());
     } catch (error) {
       signal.throwIfAborted();
+      if (transientPerpsData(error)) {
+        await skip("before-model", error);
+      } else {
+        throw error;
+      }
       await study.event(scope, lease, `${key}:candles`, "evidence-failed", {
         code: safeCode(error),
       });
@@ -239,11 +310,13 @@ export function createPerpsStudyRunner(deps: {
       try {
         const result = await fn({
           before: async (request) => {
+            await ownedGuard(true);
             await study.startCall(scope, lease, round!.key, lane, request);
             started = true;
           },
           usage: (input, output) => study.usage(scope, lease, round!.key, lane, input, output),
         });
+        assertActive();
         deadline.throwIfAborted();
         await study.finishCall(scope, lease, round!.key, lane, result, null);
         return result;
@@ -277,14 +350,26 @@ export function createPerpsStudyRunner(deps: {
     ]);
     await study.finishRound(scope, lease, round.key, proposals);
     if (outcomes.some((o) => o.status === "rejected")) {
-      await study.finishExecution(scope, lease, round.key, false);
+      await study.finishExecution(scope, lease, round.key, "incomplete");
       return true;
     }
+    let executionStarted = false;
     try {
-      await study.guard(scope, lease, true);
-      const frames = await data.execution(record, signal);
+      await ownedGuard(true);
+      const frames = await data.execution(record, signal, () => ownedGuard());
+      signal.throwIfAborted();
+      // Persist the common execution input even if validation rejects it before any fill.
+      await study.event(scope, lease, `${round.key}:execution-input`, "execution-input", {
+        observedAt: now(),
+        frames,
+      });
+      validateCommonFrames(frames, record.config.network, now());
+      await ownedGuard(true);
+      executionStarted = true;
       // New marks refresh admission after model latency; the earlier funding reconciliation is retained.
       for (const strategy of strategies) {
+        signal.throwIfAborted();
+        await ownedGuard();
         await paper.observe(accountScope(record, strategy), `${round.key}:execution-marks`, {
           frames,
           funding: [],
@@ -325,13 +410,18 @@ export function createPerpsStudyRunner(deps: {
           );
         }
       }
-      await study.finishExecution(scope, lease, round.key, true);
+      await study.finishExecution(scope, lease, round.key, "complete");
     } catch (error) {
       signal.throwIfAborted();
+      if (!executionStarted && transientPerpsData(error)) {
+        await skip("execution-refresh", error);
+        await study.finishExecution(scope, lease, round.key, "skipped_data_unavailable");
+        return true;
+      }
       await study.event(scope, lease, `${round.key}:execution-failed`, "execution-failed", {
         code: safeCode(error),
       });
-      await study.finishExecution(scope, lease, round.key, false);
+      await study.finishExecution(scope, lease, round.key, "incomplete");
       await study.stopDecisions(scope, lease, "INCOMPLETE_EXECUTION");
     }
     return true;
@@ -340,21 +430,15 @@ export function createPerpsStudyRunner(deps: {
     cycle,
     async run(scope: PerpsStudyScope, signal: AbortSignal) {
       const lease = await study.claim(scope);
-      const lost = new AbortController();
-      let renewing = false;
-      const heartbeat = setInterval(() => {
-        if (renewing) {
-          return;
-        }
-        renewing = true;
-        void study
-          .renew(scope, lease)
-          .catch(() => lost.abort())
-          .finally(() => {
-            renewing = false;
-          });
-      }, 20000);
-      const combined = AbortSignal.any([signal, lost.signal]);
+      const heartbeat = startLeaseHeartbeat({
+        lease,
+        renew: () => study.renew(scope, lease),
+        now,
+        ...(deps.leaseDiagnostic ? { diagnostic: deps.leaseDiagnostic } : {}),
+      });
+      assertActive = heartbeat.assertActive;
+      lease.assertActive = assertActive;
+      const combined = AbortSignal.any([signal, heartbeat.signal]);
       try {
         for (;;) {
           const start = now();
@@ -378,8 +462,18 @@ export function createPerpsStudyRunner(deps: {
           });
         }
       } finally {
-        clearInterval(heartbeat);
-        await study.release(scope, lease);
+        await heartbeat.stop();
+        await study.release(scope, lease).catch(() => {
+          deps.leaseDiagnostic?.({
+            kind: "release-failed",
+            at: now(),
+            durationMs: 0,
+            timerDelayMs: 0,
+            lastSuccessAt: null,
+            expiresAt: lease.expiresAt,
+            code: "LEASE_RELEASE_FAILED",
+          });
+        });
       }
     },
   };

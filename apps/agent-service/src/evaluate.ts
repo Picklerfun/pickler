@@ -8,6 +8,7 @@ const { positionals, values } = parseArgs({
     config: { type: "string" },
     "allow-paid": { type: "boolean" },
     "env-file": { type: "string" },
+    "acquisition-choice": { type: "string" },
     output: { type: "string" },
     help: { type: "boolean" },
     state: { type: "string", multiple: true },
@@ -15,7 +16,7 @@ const { positionals, values } = parseArgs({
 });
 if (values.help) {
   console.log(
-    "evaluate prepare|preflight|validate|run|resume|status|stop|settle|report|compare|history|replay --config FILE [--env-file FILE] [--allow-paid] [--output DIRECTORY]\nSingle evaluation entry point; protocol comes from the frozen config. No automatic paid restart or migration.",
+    "evaluate data-diagnostic|stability|prepare|preflight|validate|run|resume|status|stop|settle|report|compare|history|replay --config FILE [--env-file FILE] [--allow-paid] [--output DIRECTORY]\nSingle evaluation entry point; protocol comes from the frozen config. No automatic paid restart or migration.",
   );
 } else {
   const controller = new AbortController();
@@ -33,6 +34,7 @@ if (values.help) {
       ...(values["env-file"] ? { envFile: values["env-file"] } : {}),
       ...(values.output ? { output: values.output } : {}),
       signal: controller.signal,
+      ...(values["acquisition-choice"] ? { acquisitionChoice: values["acquisition-choice"] } : {}),
       ...(values.state ? { states: values.state } : {}),
     });
   } catch (error) {

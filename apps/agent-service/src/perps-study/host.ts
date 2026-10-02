@@ -1,5 +1,7 @@
+import { readPerplTransportChoice } from "./transport-report.js";
+import { keepAwake } from "../paper-study/comparison-host.js";
 import { parseArgs } from "node:util";
-import { readFile, mkdir, writeFile } from "node:fs/promises";
+import { readFile, mkdir, writeFile, appendFile } from "node:fs/promises";
 import { resolve, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { config as loadEnv } from "dotenv";
@@ -14,7 +16,7 @@ import {
   type PerpsStrategy,
 } from "@pickler/trading/evaluation";
 import { PilotError } from "@pickler/core";
-import { type PerpsPaperView } from "@pickler/trading/perps";
+import { validatePaperFrame, type PerpsPaperView } from "@pickler/trading/perps";
 import { perpsStudyConfigSchema } from "@pickler/api-schema";
 import { createPerpsStudyModels } from "@pickler/agent-runtime/composition/perps-study-model";
 
@@ -29,6 +31,7 @@ export async function runPerpsStudy(args: string[], signal?: AbortSignal) {
     options: {
       config: { type: "string" },
       "env-file": { type: "string" },
+      "acquisition-choice": { type: "string" },
       output: { type: "string" },
       "allow-paid": { type: "boolean" },
       help: { type: "boolean" },
@@ -36,7 +39,7 @@ export async function runPerpsStudy(args: string[], signal?: AbortSignal) {
   });
   if (values.help) {
     console.log(
-      "evaluate prepare|preflight|run|resume|stop|settle|report --config FILE [--env-file FILE] [--output DIRECTORY] [--allow-paid]\nLocal virtual capital only. Run/resume require explicit paid authorization (maximum USD 5 per session). No migrations, wallet, real orders, alpha/beta initialization or automatic retries.",
+      "evaluate prepare|preflight|run|resume|stop|settle|report --config FILE [--env-file FILE] [--output DIRECTORY] [--allow-paid]\nLocal virtual capital only. Run/resume require explicit paid authorization (maximum USD 5 across sessions in the same tenant/network). No migrations, wallet, real orders, alpha/beta initialization or automatic retries.",
     );
     return;
   }
@@ -68,16 +71,23 @@ export async function runPerpsStudy(args: string[], signal?: AbortSignal) {
     deepseek: process.env.MODEL_API_KEY ?? "",
     jev: process.env.TYPESAFE_API_KEY ?? "",
   });
+  const metadata = values["acquisition-choice"]
+    ? {
+        models: models.metadata,
+        acquisition: await readPerplTransportChoice(resolve(values["acquisition-choice"])),
+      }
+    : models.metadata;
   const data = createStudyData(paper, research);
   const controller = new AbortController();
   const interrupt = () => controller.abort(new Error("Operator interrupted"));
   signal?.addEventListener("abort", interrupt, { once: true });
   process.once("SIGINT", interrupt);
   process.once("SIGTERM", interrupt);
+  let primaryFailed = false;
   try {
     signal?.throwIfAborted();
     if (action === "init") {
-      const view = await study.initialize(config, models.metadata);
+      const view = await study.initialize(config, metadata);
       console.log(
         JSON.stringify(
           { status: view.record.status, agents: view.record.agentIds, budgetUsd: config.budgetUsd },
@@ -90,7 +100,7 @@ export async function runPerpsStudy(args: string[], signal?: AbortSignal) {
     let view = await study.view(config);
     // Initialization compares canonical pinned metadata; report/stop remain possible after a code upgrade.
     if (["run", "resume", "preflight"].includes(action!)) {
-      view = await study.initialize(config, models.metadata);
+      view = await study.initialize(config, metadata);
     }
     if (action === "stop") {
       await study.stop(config);
@@ -171,6 +181,9 @@ export async function runPerpsStudy(args: string[], signal?: AbortSignal) {
       const signal = AbortSignal.any([controller.signal, AbortSignal.timeout(60000)]);
       const observation = await data.observe(view.record, signal);
       const evidence = await data.evidence(view.record, observation, signal);
+      for (const frame of evidence.frames) {
+        validatePaperFrame(frame, config.network, frame.snapshot.market.symbol, Date.now());
+      }
       for (const [url, key, id] of [
         [
           `${config.deepseek.baseUrl.replace(/\/$/, "")}/models`,
@@ -244,12 +257,71 @@ export async function runPerpsStudy(args: string[], signal?: AbortSignal) {
         model: config.deepseek.model,
       }),
     );
-    await createPerpsStudyRunner({ study, paper, data, models }).run(config, controller.signal);
+    if (!view.record.dataPolicy) {
+      throw new PilotError(
+        "HISTORICAL_SESSION",
+        "Use a new frozen session for coherent data policy",
+      );
+    }
+    const output = resolve(
+      values.output ??
+        fileURLToPath(new URL(`../../.data/perps-studies/${config.sessionId}`, import.meta.url)),
+    );
+    await mkdir(output, { recursive: true });
+    let diagnostics: Promise<void> = Promise.resolve();
+    const releaseAwake = process.platform === "darwin" ? await keepAwake() : () => {};
+    const diagnostic = (event: unknown) => {
+      diagnostics = diagnostics.then(() =>
+        appendFile(join(output, "diagnostics.jsonl"), JSON.stringify(event) + "\n", {
+          mode: 0o600,
+        }),
+      );
+      void diagnostics.catch((cause) => controller.abort(cause));
+    };
+    const reliableData = createStudyData(paper, research, {
+      onDiagnostic: diagnostic,
+      onAcquisition: diagnostic,
+    });
+    try {
+      await createPerpsStudyRunner({
+        study,
+        paper,
+        data: reliableData,
+        models,
+        paperForLease: (scope, lease, signal) =>
+          new PostgresPerpsPaperStore(research.pool, undefined, {
+            ...scope,
+            owner: lease.owner,
+            ...(lease.assertActive ? { assertActive: lease.assertActive } : {}),
+            signal,
+          }),
+        leaseDiagnostic: diagnostic,
+      }).run(config, controller.signal);
+    } catch (error) {
+      primaryFailed = true;
+      throw error;
+    } finally {
+      await reliableData.close();
+      releaseAwake();
+      await diagnostics.catch((error) => {
+        if (!primaryFailed) {
+          throw error;
+        }
+      });
+    }
     console.log("Study finished; regenerate the report to inspect open positions and limitations.");
+  } catch (error) {
+    primaryFailed = true;
+    throw error;
   } finally {
     signal?.removeEventListener("abort", interrupt);
     process.removeListener("SIGINT", interrupt);
     process.removeListener("SIGTERM", interrupt);
-    await research.close();
+    await data.close();
+    await research.close().catch((error) => {
+      if (!primaryFailed) {
+        throw error;
+      }
+    });
   }
 }

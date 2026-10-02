@@ -368,3 +368,17 @@ SQL or reset a database to resolve branch numbering. The combined latest snapsho
 both launch and current trading tables. Migration tests cover both predecessor histories.
 
 Migration histories are reconciled without changing published SQL or original timestamps. Main retains 0010–0014, launch adds 0015–0016, and custody/profile migrations follow at 0017–0021, and the Studio preview runs at 0022. The Node-only migrator is available through `@pickler/infrastructure/migrations`, never the Worker runtime barrel. Launch reads share the request pool without owning its lifecycle.
+
+Perpetual study admission shares the USD 5 ceiling across every session for the same tenant
+and network in the same database. A transaction-scoped advisory lock serializes reservations;
+historical reservations and unknown started usage cannot be bypassed with a new session ID.
+Do not change tenant/network/database to reset an existing authorization.
+
+Perpl public hosts share `PerplRequestSchedule` across sessions: serialized requests, at least one second between starts, shared Retry-After cooldown, and the existing twelve-request session limit. Transient retry support is opt-in for coherent acquisition; other consumers retain stop-on-error behavior. The perps study repository stores attempted slots and diagnostic-only records in existing JSONB. Diagnostic initialization references existing agents without creating accounts; paid admissions remain closed. Perps paper stores may be bound to a study owner, checked inside their transactions before and after mutation.
+
+Perpl request diagnostics retain only allowlisted nested network codes, observed response phase,
+header latency and total duration. Generic deadlines do not establish a DNS/TLS cause. The fixed
+`checkPublicConnectivity` read is an explicit diagnostic helper, not a provider fallback: one
+three-second public request, no redirects, body storage or retry, guarded before and after.
+
+Perpl public stream reconstruction lives in `src/perpl/stream.ts`. REST and WebSocket share ticker/book normalization. Only public fixed hosts are permitted; snapshots precede deltas, o:0 removes levels, disconnects discard state, and heartbeats never refresh data. Enforce 2 MiB messages, 32 queued messages and 10,000 levels per side. Reconnect at most twice per minute within active guarded acquisition. Public captures are bounded by the local host.

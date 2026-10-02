@@ -10,8 +10,7 @@ import {
   type EvaluationProtocol,
 } from "@pickler/trading/evaluation";
 import { PilotError } from "@pickler/core";
-import { runPerpsStudy } from "../perps-study/host.js";
-import { runBtcBenchmark, benchmarkConfigSchema } from "../paper-study/benchmark-host.js";
+
 const appRoot = fileURLToPath(new URL("../../", import.meta.url));
 export interface EvaluationHostRequest {
   command: EvaluationCommand;
@@ -19,6 +18,7 @@ export interface EvaluationHostRequest {
   allowPaid?: boolean;
   envFile?: string;
   output?: string;
+  acquisitionChoice?: string;
   signal?: AbortSignal;
   states?: string[];
 }
@@ -56,6 +56,14 @@ export async function executeEvaluation(input: EvaluationHostRequest) {
     "btc-policy-comparison-v1": historical,
     "perps-comparison-v1": {
       async execute(request) {
+        if (request.command === "stability" || request.command === "data-diagnostic") {
+          const { runPerpsStability } = await import("../perps-study/stability.js");
+          return runPerpsStability(
+            { ...input, diagnostic: request.command === "data-diagnostic" },
+            signal,
+          );
+        }
+        const { runPerpsStudy } = await import("../perps-study/host.js");
         const command =
           request.command === "prepare"
             ? "init"
@@ -63,6 +71,9 @@ export async function executeEvaluation(input: EvaluationHostRequest) {
               ? "report"
               : request.command;
         const args = [command, "--config", path];
+        if (input.acquisitionChoice) {
+          args.push("--acquisition-choice", resolve(input.acquisitionChoice));
+        }
         if (input.envFile) {
           args.push("--env-file", resolve(input.envFile));
         }
@@ -77,6 +88,8 @@ export async function executeEvaluation(input: EvaluationHostRequest) {
     },
     "btc-decision-benchmark-v1": {
       async execute(request) {
+        const { runBtcBenchmark, benchmarkConfigSchema } =
+          await import("../paper-study/benchmark-host.js");
         const config = benchmarkConfigSchema.parse(raw);
         if (request.command === "compare") {
           if (!input.output || !input.states?.length) {
