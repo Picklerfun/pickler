@@ -13,15 +13,14 @@ Auth values are the exception: authentication uses its publishable key in the br
 src/app/
   api/v1/[...path]/route.ts # Transport-only delegation; no business decisions
   auth/callback/route.ts    # Supabase code exchange, cookies, return to studio
-  studio/page.tsx           # The studio: opens on the home; no agents opens its empty state
-  studio/new/page.tsx       # Creating an agent: `?step=` names the screen
+  studio/page.tsx           # The studio: opens on the home; no agents opens the create screen
   (auth)/                  # Existing signup/signin design
   apply/                   # Creator application using API-backed cookie access
   agents/, tokens/, reads/  # Existing public demonstrations
   markets/                  # The perpetuals board and one market's level × time surface
 src/features/studio/       # Studio sections, history, research result and API client
-src/features/studio/create # Creating an agent: describe, seven steps, review, passkey ceremony, first run
-src/features/studio/home   # The home after the first run: status, wallet and deposit, schedule, picks
+src/features/studio/new-agent # Creating an agent: one screen, wallet first, then funding, then Create
+src/features/studio/home   # The home: status, wallet and deposit, schedule, picks; the create gate
 src/features/markets/      # Surface, trade ticket, ask ticket and the ticket's own arithmetic
 src/server/
   api-client.ts            # API Service Binding; explicit loopback-only next-dev fallback
@@ -189,15 +188,14 @@ The private studio uses the Studio shell and sections under `features/studio/sec
 from the home's Menu.
 `sections/rail.ts` is the one list of sections: `RAIL`, four groups (RUN, BUILD, GROW, PUBLIC) of
 the thirteen keys of `sections/keys.ts`, in their order, each with its icon, label and `soon`. The
-shell's rail, the home's Menu and the empty home's rail all draw it. `sources`, `identity`,
+shell's rail, the home's Menu and the create screen's rail all draw it. `sources`, `identity`,
 `profile`, `audience` and `token` have no screen: `isSoon` marks them SOON in all three, and they
 open on the one Soon panel (`sections/soon.tsx`, copy in `PANELS`), which the board also draws,
 without SOON, for its two links out. `isPanel` decides which sections draw it; both are pinned in
 `studio-rail.test.ts`. `sections/brief.tsx` is the Brief row's editor for an existing agent.
 Keep the existing backend permissions: research enablement is required to create or edit agents,
 not just to run them. Agent creation selects the ID returned by the API, never an array position.
-The create request carries the public profile, built by `toCreate` in `create/draft.ts` (accent from
-the draft, the edge as the blurb, the venue from where it trades).
+The create request (`POST /drafts`) is built by `toDraftRequest` in `new-agent/model.ts`.
 Swatches paint from `accentVars`, never from a hue name typed into a token.
 `features/studio/lib/polling.ts` coordinates cancellable read requests. Refresh active runs and
 the selected trace every three seconds; stop when terminal unless scheduling needs discovery.
@@ -205,137 +203,78 @@ Abort on page hiding, agent changes and unmount. Mutations trigger an immediate 
 Never retry paid mutations automatically. `apps/web/test/*.test.ts` is included in the root suite;
 run its controlled-clock regression tests with `node --import tsx --test apps/web/test/*.test.ts`.
 
-## The new creation flow's pure logic
-
-`features/studio/create/draft.ts` is the "Pickler Create First Agent v2" canvas's rules with no
-React and no transport: the `Draft` the Describe screen and seven manual steps (`name, trades,
-looks, reads, skills, decides, review`, `ORDER`) build up, `ready(step, draft)` for each step's
-gate, `soonRows` for the Soon venue/beat rows that block Review, the six `reviewRows` and their
-text builders (`readsText` is exported; `tradesText`, `callsText`, `skillsText` and `decidesText`
-are private to the module), `fromApiDraft`
-to fill the form from `POST /v1/studio/agents/draft`, `addSite`/`toggleIn` for the reads and looks
-steps, and `toCreate(draft, walletId, defaults)` for the `POST /agents` body, following the same
-`{ ...defaults, ... }` shape core's `draftToConfig` builds (`defaults` is `/options`'s answer).
-The web cannot be turned off in this plan, so there is no `webOn` field, only `webMode`.
-
-`SOON_VENUES`, `SOON_BEATS`, `SPORT_SUB_IDS`, `STYLE_POLICIES` and `SUGGESTED_SKILLS` inside this
-file are literal copies of the same-named exports in `@pickler/api-schema` (`src/studio.ts`), not
-imports of them: `apps/web` is CommonJS to node's module resolver and `@pickler/api-schema`
-publishes only an `"import"` condition, so a module that reads its values at load time cannot be
-required by a `node:test` here — the same constraint `features/wallet/lib/handles.ts` documents.
-Only types cross the boundary (`import type`), which cost nothing because they are erased before
-this ever runs. Core is the one authority for all five; api-schema's copies are pinned against it
-by `workers/api/test/accent-venue-mirror.test.ts`, and this file's five copies are exported and
-pinned against api-schema's own values by a test in `studio-create-draft.test.ts` that reaches
-api-schema with a dynamic `import()` — the one way that test file can still resolve a package
-publishing only an `"import"` condition, since a dynamic import always goes through node's ESM
-loader even from a CommonJS file, unlike this module's own static `import`.
-
-`api.ts` adds thin, untested-beyond-typecheck fetch wrappers for the rest of the creation and
-funding surface: `draftAgent`, `createAgent`, `studioAgent` (`GET /agents/:id`), `agentRuns`,
-`startRun`, `runEvents`, `run`, `paperOrder` and `readPaperOrder` (its `GET`),
-`setIntervalHours` (`PUT /interval`, which keeps the version), `saveLimits`, `setSchedule`,
-`depositPrepare`/`depositConfirm`, and
-the passkey ceremony under `/v1/signing/agents` (`agentState`, `prepareDelegated`/
-`confirmDelegated`, `prepareWallet`/`confirmWallet`, `preparePolicies`/`confirmPolicies`) plus the
-public `handleAvailable`. The signing and handle routes answer Relayer's envelope
-(`{ success, message, data, ... }`); `envelopeApi` unwraps it into the same `StudioError` the
-plain-JSON studio routes throw through `studioApi`, so a caller branches on `errorCode` the same
-way regardless of which family a request belongs to.
-
 ## Creating an agent
 
-`/studio/new` is the only place an agent is created. `/studio` no longer sends a person with no
-agents there: they land on the empty home and choose to go (the old stepped flow and `AgentForm`
-are gone). `create/create.tsx` owns the
-screen: a `useReducer` over `flowReducer` (`create/flow.ts`, pure and tested in
-`studio-create-flow.test.ts`) holding the `Draft`, the screen, `auto`/`manual` mode and the Edit
-snapshot that Cancel restores. `?step=` mirrors the screen through `router.replace`; `describe` is
-the first screen's URL name. Outside production a link past Describe opens on the canvas's example
-draft (`sampleDraft`) so the design harness has every screen to measure — one route per step in
-`scripts/design/routes.mjs`, each proving `#create-<step>`. Without Supabase configured it renders
-from the preview options and says so; nothing can be drafted, checked or created there. Outside
-production, a browser that reached the screen with no Supabase session (the middleware lets a
-request through on the cookie's name alone) renders the same labelled preview on `previewOptions()`
-instead of redirecting to `/signin`; in production it still redirects. That is what the design
-harness sees: `scripts/design/lib/render.mjs` adds a dummy `sb-<project-ref>-auth-token` cookie,
-named from `NEXT_PUBLIC_SUPABASE_URL` (or `DESIGN_SESSION_COOKIE`), to studio routes on a loopback
-base URL only. It passes the middleware's presence check and is not a session: the API still
-refuses every call behind it. The reading screen opened by a deep link on the sample draft is held
-(`FlowState.held`): every row shows at once and it does not run on to the review, so it can be
-measured. Reached from Describe with a real draft, it reveals and advances as before.
+There is one creation flow, the create screen in `features/studio/new-agent/` ("Pickler Studio
+Empty v5", docs/specs/studio-create-simplified-v1.md). `/studio/new`, `features/studio/create`, the
+brief home (`home/empty.tsx`, `brief/*`) and its paper run are gone. The screen renders inside
+`/studio`: a person with no agents lands on it, and with agents "+ New agent" (the home's Menu and
+the shell's switcher) opens it, with "Back to {agent}" in the top bar in place of the chip (shut
+while a passkey is up or once the draft exists). `lib/landing.ts` decides this:
+`studioLanding(loaded, agents, section)` answers `new` with no agents once read (whatever
+`?section=` asked) or for the section `new`, `home` or `section` with an agent, and `loading`
+before the read; pinned in `studio-landing.test.ts`.
 
-One component per screen, each with its own id: `describe.tsx`, `reading.tsx` (reveals
-`reviewRows` one per 620 ms, then review), `name.tsx`, `trades.tsx`, `looks.tsx`, `reads.tsx`,
-`skills.tsx`, `decides.tsx`, `review.tsx`, `first-run.tsx`, and `stack.tsx` for the block stack
-beside them. `map.ts` holds the canvas's copy and lists and may read `@pickler/api-schema` values,
-because only bundled screens import it. Soon venues and beats are drawn and cannot be chosen; a
-model draft that chose one reaches the review with the row flagged and creation off. The handle is
-checked against `/v1/handles/:handle/availability` wherever it changes, debounced, so a model's
-suggestion is checked too. "Set it up from my line" calls `draftAgent`; `DRAFT_UNAVAILABLE` sends the
-person to the manual steps with "The model is busy. Build it step by step instead."
+The order is fixed: the agent's wallet first, then funding, then "Create {name}".
 
-`create/ceremony.ts` is "Create and run it once" as a sequence, pure and pinned in
-`studio-ceremony.test.ts`: `wallet` (add the delegated user if there is none, then the wallet named
-for the handle, or reuse the `existing` one an earlier attempt left), `rules` (policies; skipped
-when that `existing` wallet comes back with `policiesApproved`, so a retry after a reload never
-writes the rules twice), `agent`, `run`. It never creates a sub-organization: without one it throws
-`NoSubOrganization` before any prompt and the screen sends the person to the signup's passkey step. A first agent
-is three passkey prompts (delegated user, wallet, policies), a later one two; any failure
-propagates and stops the sequence. `onFirstAgent` tells the screen which, so the rail's Wallet line
-says it covers two prompts on a first agent. The screen stamps with `WebauthnStamper`, whose `rpId` comes from the passkey challenge's `rp.id`.
-Idempotency keys for the create and the run are kept per draft, and `runCeremony` carries a
-`CeremonyProgress` (wallet, approved policies, agent, run) across retries, so "Try again with your
-passkey" resumes where the attempt stopped: a failed run start retries only the start, a refused
-create retries only the create, and neither asks for the passkey again. Leaving the screen aborts
-the ceremony between prompts. `create/gate.ts` is pure and pinned in `studio-create-gate.test.ts`:
-`createGate(agents)` answers `{ open: true }` or `{ open: false, agent }` (one unfunded agent at a
-time, from each agent's `canCreateAnother`, naming the first below 10 AUSD). The create screen
-reads `GET /agents` (`studioAgents`) on load and, when closed, shows `locked.tsx`
-(`create-locked`: "Fund <name> first.", "One unfunded agent at a time.", a button to the studio
-opened on that agent, `gateHref(agent, useStudioHref())`) instead of the flow; "Create and run it once" goes through
-`startIfOpen`, which reads the agents again and never starts the ceremony through a closed gate.
-That gate is the funding lock only, and a private draft is never the agent it names: a draft has
-no wallet to fund. The API's other reason, `draft_limit` (three drafts), closes only the making of
-drafts, so `/studio/new` stays open at three, and so do the menus' "+ New agent" entries (the
-home's Menu and the shell's), which lead there: they read `newAgentLock(agents)`, the funding lock
-in words ("Fund <wallet agent> first. One unfunded agent at a time."). The draft limit is said
-where a draft is refused: a 409 `DRAFT_LIMIT` on the brief's create reads "At most 3 drafts at a
-time." (`lib/messages.ts`). `menuAccess` orders the reasons research, view-only, funding, draft
-limit; no entry passes a draft limit today.
-An attempt that already created its agent, and a preview, skip the gate. The shell's agent-switcher
-"New agent" item is disabled with the same note. `createAgent` in `api.ts` shows the server's own
-message for `CONFLICT` and `NOT_FOUND` ("Approve the wallet's rules first", "That wallet already
-belongs to an agent", "Wallet not found"), which `StudioError.serverMessage` carries.
-`first-run.tsx` draws the four steps as the rail's first lines, then polls
-the run's events and status every 1.5 s through `startPolling` until terminal, creates the paper
-order once for a completed TRADE (`paperOrder(runId, runId)`), and after 20 s still queued shows
-"Waiting for a runner" with `npm run dev:agent`. `trace.ts` turns events into those lines.
+1. "Create its wallet" (`createWallet` in `ceremony.ts`): the wallet under the person's passkey,
+   then, the first time only, Pickler's delegated user ("Let Pickler trade from it", step 2 of the
+   wallet sheet). A wallet an earlier attempt left unlinked is reused, so a cancelled step 2
+   resumes at step 2.
+2. Funding: the wallet must hold the minimums (`MIN_START`, 10 AUSD and 0.5 MON) before Create
+   opens. "Fund from master wallet" opens "Your wallets" (`wallets-modal.tsx`, rules in
+   `transfer-model.ts`), which moves AUSD or MON between the master wallet and an agent wallet.
+3. "Create {name}" (`createAgent` in `ceremony.ts`): the wallet's policies with one passkey
+   (skipped when already approved, so a retry never writes them twice), then `POST /drafts`
+   (`createDraft`). The API checks the funding again and answers `WALLET_UNDERFUNDED` below the
+   minimums. Once the draft exists the button only opens it, never creates a second one.
+
+The pure modules are required from `node:test` through CommonJS and value-import neither
+`@pickler/api-schema` nor `@pickler/core`: `model.ts` (the form, handle, labels, minimums, voices,
+patterns and the request; literal copies of core's constants, pinned by a dynamic import in
+`studio-new-agent.test.ts`), `ceremony.ts` (`studio-new-agent-ceremony.test.ts`), `wallet-reads.ts`
+(ordered reads; approved policies stay approved; `studio-new-agent-wallet.test.ts`) and
+`transfer-model.ts` (`studio-new-agent-transfer.test.ts`). `new-agent.tsx` holds the screen's state
+and transport; `chrome.tsx` the top bar and the disabled rail; `identity.tsx`, `voice.tsx`,
+`reads.tsx` and `advanced.tsx` the brief column; `wallet-panel.tsx` "Its wallet";
+`passkey-sheet.tsx`, `wallets-modal.tsx`, `credits-modal.tsx` and `avatar-picker.tsx` the native
+dialogs (`use-dialog.ts`). The words on the screen come from `model.ts`, never from the components.
+
+`api.ts` holds thin fetch wrappers for this surface: `createDraft`, `studioWallets` and the
+transfer routes, and the passkey ceremony under `/v1/signing/agents` (`agentState`,
+`prepareDelegated`/`confirmDelegated`, `prepareWallet`/`confirmWallet`,
+`preparePolicies`/`confirmPolicies`) plus the public `handleAvailable`. The signing and handle
+routes answer Relayer's envelope (`{ success, message, data, ... }`); `envelopeApi` unwraps it into
+the same `StudioError` the plain-JSON studio routes throw through `studioApi`, so a caller branches
+on `errorCode` the same way for either family.
+
+`home/gate.ts` is the funding lock the "+ New agent" entries read before opening the screen
+(`newAgentLock` over `createGate`; pinned in `studio-gate.test.ts`): one unfunded agent at a time,
+never naming a draft. `startIfOpen` (read the agents again before a ceremony) and `gateHref` are
+kept and tested, but the create screen does not call them yet. The draft limit (three) is said
+where a draft is refused, a 409 `DRAFT_LIMIT` from `POST /drafts` ("At most 3 drafts at a time.",
+`lib/messages.ts`); the gate does not close for it, so at three drafts the screen opens and Create
+is refused after the wallet was made and funded.
+`home/trace.ts` turns a run's events into the lines the home's status reads (`studio-trace.test.ts`).
+
+`?stage=create-*` (`CREATE_STAGES` in `home/stage.ts`, outside production only) draws the screen
+from `new-agent/fixture.ts` at each moment of spec §7: `create-empty`, `create-wallet`,
+`create-funded`, `create-advanced`, `create-web`, `create-sheet` and its `-busy`, `-ok` and
+`-cancelled` phases, `create-wallet-sheet` and `create-wallet-sheet-step2`, `create-wallets`,
+`create-credits` and `create-avatar`. A staged screen is always a preview: it reads nothing and
+sends nothing. `?stage=empty` is the screen with no fixture. Each stage has exactly one route in
+`scripts/design/routes.mjs`, pinned in `studio-landing.test.ts`; the routes prove what the stage
+draws: `#new-agent-wallet[data-state="none|empty|funded"]`, the sheet's `data-phase` and
+`data-step`, each modal's `[open]`, and `#new-agent[data-staged="false"]` for `?stage=empty`.
 
 ## The studio home
 
-With no agents, `/studio` opens on `home/empty.tsx` (`EmptyHome`, `#home-empty`), drawn from the
-"Pickler Studio Empty v4" canvas: a top bar with the dashed "No agent yet" chip, TESTNET and the
-profile; the studio rail (`RAIL`, the five soon sections tagged SOON) with every section disabled
-("After you create your agent"); and the first
-agent's brief — its five sections (thesis, reads, enters, exits, never) drawn blank as prompts, a
-"Starting point: Blank" card and an idle paper run beside it, the second-passkey suggestion above it.
-The canvas edits the brief and runs it on paper in place; neither has a backend (the brief is not
-the `/studio/new` draft, and a scripted run would be fake), so "Create your first agent" goes to
-`/studio/new` (disabled with the reason when research is not enabled or the person cannot manage)
-and "Start from: a ranked agent" goes to `/agents`. Below 860px the rail is hidden and the Menu
-appears in the top bar instead. `HomeMenu` takes `agent: null` then: "+ New agent" is open
-(`createGate([])`) and every section is listed disabled with "After you create your agent".
-`home/access.ts` holds that decision, pure: `menuAccess` answers whether sections open and whether
-"+ New agent" is a link, with one reason (research access, then view-only, then the unfunded-agent
-lock), and the empty home's button and rail read the same answer.
-Creating the draft and opening it are two steps: once `createDraft` answered, a failed reload reads
-"Created {Name}. Couldn't load it · reload" on the button, and a press only reloads, never creates a
-second draft (`createPress` and `createdLabel` in `brief/model.ts`, pinned in `studio-brief.test.ts`).
-`lib/landing.ts` decides the screen: `studioLanding(loaded, agents, section)` is `home` or `section`
-with an agent, `empty` for none once read — whatever `?section=` asked — and `loading` before the
-read, when the shell says "Reading your agents…". Both are pinned in `studio-landing.test.ts`. The
-wallet and profile gates run before it, unchanged.
+With no agents, `/studio` opens on the create screen above. Below 860px its rail is hidden and the
+Menu appears in the top bar instead. `HomeMenu` takes `agent: null` then: every section is listed
+disabled with "After you create your agent". `home/access.ts` holds that decision, pure:
+`menuAccess` answers whether sections open and whether "+ New agent" is open, with one reason
+(research access, then view-only, then the unfunded-agent lock), and the create screen reads the
+same answer. The wallet and profile gates run before `studioLanding`, unchanged.
 
 No link in the studio, account or auth screens names a cross-product path as a literal. On the
 studio host the studio is `/` and `/studio`, `/agents`, `/agents/<handle>` and `/leaderboard` are
@@ -349,8 +288,7 @@ rewrite of the studio root keeps the query, so `/?agent=<id>&section=<key>` is
 `/studio` opens on `home/home.tsx` once an agent exists: the "Pickler Studio v5" canvas limited to
 docs/specs/studio-create-and-fund-v1.md §5, with its own top bar (agent chip, status pill, Menu)
 instead of the rail. The Menu reaches every section the rail does, built from `RAIL` in its four groups, and
-the rail has a Home item back. `/studio?agent=<id>` opens on that agent (the creation flow's
-"Open the studio" links there); without it, or for an id that is not the person's, the studio opens
+the rail has a Home item back. `/studio?agent=<id>` opens on that agent; without it, or for an id that is not the person's, the studio opens
 on the first agent. `lib/select.ts` decides it, pure and pinned in `studio-select.test.ts`, and it
 is not a preview parameter, so it works in production. `Agent` in `api.ts` is the studio agent DTO (wallet, balance,
 `canSchedule`, `canCreateAnother`, `spend`, `spendEnforced`); the writes answer `AgentRecord`.
@@ -387,9 +325,9 @@ from the DTO's `accent` through `accentVars`, like every other agent on the site
 indigo). A staged or preview studio refuses every write, the shell's included, and says so.
 
 `?stage=live|researching|decided` (`home/stage.ts`, outside production only) renders the home from
-`home/fixture.ts`, and `?stage=empty` renders the empty home with no fixture (`StudioStage`);
-the run stages come from the canvas's run, built from real event types on a fixed clock so the server's
-HTML matches the browser's. It is gated on the build alone, like the creation flow's sample, because
+`home/fixture.ts`, `?stage=draft` the draft's home, and `?stage=empty` and `?stage=create-*` the
+create screen (`StudioStage`); the run stages come from the canvas's run, built from real event types on a fixed clock so the server's
+HTML matches the browser's. It is gated on the build alone, because
 `previewAllowed` also needs Supabase unconfigured. The staged home reads no session, fetches
 nothing, disables every write and says it is a preview. `scripts/design/routes.mjs` proves one id
 per stage.
@@ -447,15 +385,14 @@ an unreadable list marks nothing.
 
 Every signed-in custody screen sends a person without a sub-organization to the signup's passkey
 step, whatever the profile, and one with a wallet and no profile to its handle step: the studio
-shell (`studio.tsx`), the create screen (`create/create.tsx`, also when the agent ceremony throws
-`NoSubOrganization`), `/account` with every section (`features/account/account.tsx`, where the
+shell (`studio.tsx`, which also holds the create screen), `/account` with every section (`features/account/account.tsx`, where the
 master wallet is shown) and `/passkey` read the wallet through `readSubOrganization` (the wallet,
 or null for a 404; any other failure propagates — to the studio's load error, the account's wallet
 card, or /passkey's "could not be read") and the profile (null only for a 404), and ask
 `redirectFor({ wallet, profile })`, which answers `SIGNUP_PASSKEY_STEP` (`/signup?step=passkey`)
 for a null wallet, `SIGNUP_HANDLE_STEP` (`/signup?step=handle`) for a wallet and a null profile,
 and null otherwise, after the session guard; they `router.replace` there before rendering anything
-else. The studio and the create screen read the wallet first and call `ensureProfile` only once it
+else. The studio reads the wallet first and calls `ensureProfile` only once it
 exists, because `ensureProfile` can write a profile from sign-up metadata; nothing sends anyone to
 `?complete=1` any more. `/portfolio` and the marketplace screens are wallet-connection surfaces,
 not custody, and do not redirect. `/signup` and `/signin` resume any session they are opened with, whatever the URL
@@ -499,7 +436,7 @@ and this app on 3001 with authentication switched off, and stops both when it en
 already taken is refused, not reused. `npm run design:source` is the static check alone.
 `npm run design:shots` writes screenshots to the folder `DESIGN_SHOTS_DIR` names, and
 `npm run design:compare -- <before> <after>` says which screens differ. A screen that needs a
-session to render gets a door that is shut in production (`?stage=`, `?step=`, `?section=`,
+session to render gets a door that is shut in production (`?stage=`, `?section=`,
 `/signup?state=passkey`, `/passkey?state=add`, `/portfolio?state=connected`) and a route that
 proves it. A route proves an id the screen itself renders, never a container that is there
 whatever it holds: each studio section's root carries `studio-section-<key>` and the Soon panel

@@ -206,14 +206,9 @@ not yet connected to research tenants; see [integration boundaries](../../docs/f
 
 The request-scoped composition resolves the trusted DATABASE Hyperdrive binding through src/database.ts, using verified origin TLS and two connections per invocation. Direct DATABASE_URL is allowed only for explicit local loopback development. It does not import Mastra or require LLM credentials.
 
-`POST /v1/studio/agents/draft` (JWT, manage rights as for creating an agent; registered before the `/agents/:id` routes)
-turns `{ line }` into `{ draft, unsupported }` with the drafter built in `container.ts` from the
-optional `MODEL_BASE_URL`, `MODEL_ID` and `MODEL_API_KEY` â€” the same model the research worker
-uses. Without all three, with a base URL that does not parse (the drafter is then null and every
-other route is unaffected), or when the model fails or answers outside `agentDraftSchema`, the route
-answers 503 `DRAFT_UNAVAILABLE`; it never substitutes a guess. A model failure is logged with
-the request id and the cause's message, never the key or the request; the body stays the bare code. What cannot run yet (Perpl, beats
-other than Sports) is listed in `unsupported`, not dropped. Studio routes (`/v1/studio`, in `src/routes/studio.ts`) use JWT-only research DTOs, intentionally preserving the research response family rather than product envelopes. Growth routes preserve their existing DTOs and cookies.
+There is no model drafter: `POST /v1/studio/agents/draft` and `POST /v1/studio/agents` (an agent
+created with its wallet, for `/studio/new`) were removed with that screen, together with the
+`MODEL_*` variables this worker read for them. Studio routes (`/v1/studio`, in `src/routes/studio.ts`) use JWT-only research DTOs, intentionally preserving the research response family rather than product envelopes. Growth routes preserve their existing DTOs and cookies.
 
 `POST /v1/studio/preview-runs` (JWT, research rights; 409 `ADMISSIONS_PAUSED` when admissions are
 off) runs `preparePreview` on `previewRunRequestSchema` and queues a paper run of a brief with no
@@ -222,7 +217,8 @@ agent row through `services.previews` (`PostgresPreviewStore`, studio-brief-v1 Â
 reason }`; caps and leverage out of bounds are 400 `INVALID_INPUT`; the sixth run in a rolling hour
 is 429 `{ error: "PREVIEW_RATE_LIMITED", retryAt }`. `GET /v1/studio/preview-runs/:id` answers
 `previewRunResponseSchema` to the owner only (404 for anyone else and after 24 h). Without
-`previews` composed, both answer 503 `PREVIEW_UNAVAILABLE`.
+`previews` composed, both answer 503 `PREVIEW_UNAVAILABLE`. The web no longer calls either (the
+brief home that ran previews is gone); they stay until a separate cleanup removes them.
 
 `GET /v1/studio/agents` and `GET /v1/studio/agents/:id` answer `studioAgentSchema`, composed in one
 helper in `src/routes/studio.ts`: the profile's `accent` from `directory.list` ("lime" without a
@@ -237,15 +233,10 @@ turning its schedule on answers `NOT_FUNDED`. That is intended: every agent is n
 wallet, and nothing has launched. A balance read that fails fails the request (500); it is never
 shown as zero. `GET /agents/:id` reads this agent's balance that way and the other agents' only
 for the lock: another agent's balance that cannot be read is left out of `canCreateAnother` and
-does not fail the page. The list and both creates still require every read.
+does not fail the page. The list and the draft create still require every read.
 `PUT /agents/:id/schedule` with `enabled: true` refuses 409 `NOT_FUNDED` when the lock says
 `unfunded`; `first_run` is still refused 409 `NOT_READY` by the repository inside its transaction.
-Turning the schedule off reads no balance. `POST /agents` refuses 409 `UNFUNDED_AGENT` when
-`canCreateAnother` is closed with `unfunded_agent`. The lock is the `admit` callback
-`directory.createAgent` runs inside its transaction, after it has looked for an earlier create with
-the same idempotency key, so a retry replays the original agent without meeting the lock. The
-directory's `CONFLICT` and `NOT_FOUND` refusals from creation answer `{ error, message }` (409 and
-404), because one code covers several fixes; every other studio error stays `{ error }`. The balance reader is `createAusdBalanceReader` on `CHAIN_ID`
+Turning the schedule off reads no balance. The balance reader is `createAusdBalanceReader` on `CHAIN_ID`
 (default 10143) and `MONAD_RPC_URL` (default that network's first public endpoint), kept per
 isolate in `container.ts` so its 15 s cache outlives one request.
 
@@ -276,7 +267,7 @@ and writes the draft, its profile (accent, avatar pattern,
 voice name, venue `perps`) and the wallet's link with the approved policy ids. Every refusal from
 the directory or the lock answers `{ error, message }`; the fourth draft in a workspace is 409
 `{ error: "DRAFT_LIMIT", message: "At most 3 drafts at a time" }`. Without custody or a chain it is
-503 `WALLETS_UNAVAILABLE`. `POST /agents` meets the funding lock only, never the draft limit.
+503 `WALLETS_UNAVAILABLE`.
 
 The wallet routes live in `src/routes/studio-wallets.ts`, mounted at `/wallets` by
 `studioRoutes`, with their error mapping (`walletFailure`, used by the drafts route too).

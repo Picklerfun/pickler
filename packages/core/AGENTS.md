@@ -68,29 +68,18 @@ appends them to the edge as numbered rules at run time.
 
 `features/studio/access.ts` owns user-session-only research authorization and the studio directory port. Operator enablement is independent from registration. Only workspace owners administer research; permitted members read. New configurations require marketScope.
 
-Creating an agent takes an `AgentProfileInput` (`features/agents/domain/agents.ts`) beside the name,
-handle and configuration: the public profile is authored at birth and the directory adapter writes
-it in the same transaction as the agent, with the beat taken from `marketScope.category`.
-
-Creating an agent also takes a required `wallet: AgentWalletLink` (`{ walletId }` — no policy ids:
-those are read server-side, in the infrastructure adapter, from what `confirmPolicies` in
-`features/wallets` already recorded on the wallet's row, never from the caller). An agent is
-created with its wallet, or not at all.
+There is one way to create an agent: `StudioDirectory.createDraft`, a private draft created with
+the agent wallet its owner already made, funded and approved the policies of (`walletId` only — the
+policy ids are read server-side, in the infrastructure adapter, from what `confirmPolicies` in
+`features/wallets` recorded on the wallet's row, never from the caller). The draft is created with
+its wallet, or not at all. The model drafter, its vocabulary (`features/studio/draft.ts`) and
+`createAgent` were removed with `/studio/new`.
 
 `features/studio/create.ts` owns one-screen creation: `VOICES`, `AVATAR_PATTERNS`, `STARTER_CAPS`,
 `MIN_START_MICRO_AUSD` and `MIN_START_MON_WEI`, `DEFAULT_BRIEF`, `prepareDraft` (the one path from
 the screen's input to the draft's config and profile), `fundingShortfall` and
 `WalletUnderfundedError`. `AgentConfig.voice` is a `VOICE_KEYS` key checked in `assertConfig`; it
 lives beside `brief`, not in it, because `normalizeBrief` rebuilds the brief from its five fields.
-
-`features/studio/draft.ts` owns the vocabulary of drafting an agent from one line: `VENUES_ON_MAP`
-and `BEATS` (each beat's accent and subcategory labels, with the runtime `SportId` a label maps to,
-or `null`), `SOON_VENUES`/`SOON_BEATS` for what is drawn but cannot run yet (Perpl; every beat but
-Sports), `SUGGESTED_SKILLS`, the `AgentDraft` shape and the `AgentDrafter` port. `unsupported`
-lists what a draft names that cannot run (`venue:<x>`, `beat:<x>`) so nothing is silently dropped;
-`draftToConfig` refuses such a draft, refuses an unknown subcategory label, keeps only the beat's
-suggested skills and builds a scoped config that passes `assertConfig` (no legacy `categoryIds`,
-web on, style policy, six-hour interval). api-schema mirrors these lists; a workers/api test pins them.
 
 `features/studio/locks.ts` owns the two funding locks of docs/specs/studio-create-and-fund-v1.md
 §6.3 as pure functions returning a `Lock` (`{ ok: true, reason: null }` or `{ ok: false, reason }`,
@@ -116,9 +105,8 @@ per-call and daily ledger period or a value cap in the wallet's Turnkey policy.
 checked by `assertIntervalHours` (whole hours, 1–168, the bounds `assertConfig` applies): the
 person picks it right before turning the schedule on. With the schedule on, the next run moves to
 `nextOccurrence` of the new interval from `now`, as turning the schedule on computes it.
-A retried create is recognised inside `StudioDirectory.createAgent` (by workspace and
-idempotency key) and `createDraft` (by the wallet it links), before `admit` runs; the port has no
-separate lookup.
+A retried create is recognised inside `StudioDirectory.createDraft` (by the wallet it links),
+before `admit` runs; the port has no separate lookup.
 
 Event persistence failures use `PersistenceFailure` and a sanitized `persistence_failure` event,
 not `provider_failure`. The discovery report callback obeys the same distinction. Preserve lease

@@ -73,27 +73,12 @@ do not substitute the timestamp-only migrator. Unknown histories fail closed. Se
 
 `src/studio` implements workspace/runtime identity links and the PostgreSQL monetary budget ledger. `src/persistence/console-schema.ts` defines private Drizzle tables (the file keeps its old name; the tables it declares are not renamed). Do not initialize lab data from deployed composition. Legacy budget authority requires verified reconciliation, never automatic hydration from a potentially stale projection. The explicit `research-access` command enables or revokes operator access; it does not call providers. See ../../docs/cloudflare-unification.md.
 
-`PostgresStudioDirectory.createAgent` links `wallets.agent_wallets (agent_id, wallet_id, policy_ids)`
-inside the same transaction as the agent and profile inserts, after them and before the handle is
-claimed: an agent is created with its wallet, or not at all. It locks the caller's own
-`wallets.wallets` row (`kind='agent'`) with `FOR UPDATE` before linking it, so a wallet that is not
-the creator's is `PilotError("NOT_FOUND", "Wallet not found")` and no agent row survives. The
-`policy_ids` it writes come from that same locked row's `approved_policy_ids` column, never from
-the request: `wallet` on the create input carries only `walletId`, and a wallet whose
-`approved_policy_ids` is null or has fewer than core's `MIN_AGENT_WALLET_POLICIES` (three: every
-wallet is written with at least its three DENYs) — nobody confirmed its rules yet — is
-`PilotError("CONFLICT", "Approve the wallet's rules first")`, with no agent row surviving either. A
-wallet already linked to another agent hits the `agent_wallets_wallet_key` unique index, translated
-through `CONFLICTS` to `PilotError("CONFLICT", "That wallet already belongs to an agent")`. The
-wallet travels inside the idempotency `request` JSON (its id only), so retrying the same key with a
-different wallet is "different terms", not the same creation.
-
 `wallets.wallets.approved_policy_ids` (migration 0014, nullable `text[]`) is written only by
 `PostgresCustodyStore.saveApprovedPolicies(userId, walletId, policyIds)`, called from core's
 `confirmPolicies` once Turnkey's count matches what was prepared. It `UPDATE`s only the caller's
 own `kind='agent'` row and throws `AgentWalletNotFoundError` when none matched, so the ids one
 confirm produced can never land on someone else's wallet. This is the only path that sets the
-column — the studio's create-agent transaction only ever reads it.
+column — the studio's draft-create transaction only ever reads it.
 
 `PostgresStudioDirectory.createDraft` creates a private draft with its agent wallet in one
 transaction (studio-create-simplified-v1 §4.1). It locks the workspace and first looks for a replay:
@@ -104,7 +89,9 @@ when it does not. Otherwise it refuses `HANDLE_TAKEN`, locks the wallet row and 
 `POLICIES_MISSING` (fewer than `MIN_AGENT_WALLET_POLICIES` approved ids), then runs `admit` (the
 route's funding lock, draft limit and balance check), then writes the agent, its profile (accent,
 avatar pattern, voice, venue `perps`), the wallet's link with its approved policy ids, the handle,
-the runtime row and the product row.
+the runtime row and the product row. It is the only create: `createAgent` (an agent with a wallet,
+for `/studio/new`) was removed with that screen, and so was the model drafter
+(`src/model/openai-compatible-drafter.ts`).
 
 ## Invocation database connections
 
@@ -171,19 +158,6 @@ written `market.candles` and `market.holders`. Nothing in the class catches: a f
 failure, never an empty marketplace. See `docs/specs/marketplace-real-data-v1.md` §3 and §7 before
 filling any of these in.
 
-## Agent drafting model
-
-`src/model/openai-compatible-drafter.ts` exports `createOpenAiCompatibleDrafter`, core's
-`AgentDrafter` over the same OpenAI-compatible endpoint the research runtime uses. It posts one
-JSON-mode chat completion (temperature 0.2, 20-second timeout, `redirect: "manual"`) whose system
-prompt is built from core's `BEATS`, `SUGGESTED_SKILLS`, `STYLES`, `ACCENTS` and `VENUES_ON_MAP`, and
-sends `enable_thinking: false` only to DashScope hosts, as the runtime does. The prompt lists the
-suggested skills per beat. The base URL is parsed inside `draft`, so a malformed one is an
-unavailable draft rather than a construction error. This package cannot
-import api-schema, so the caller injects `validate`. Every failure — network, non-success status,
-empty content, invalid JSON, a refused answer — is `DraftUnavailableError`; nothing falls back to a
-guess.
-
 ## Chain balance reads
 
 `src/chain/balances.ts` exports `createBalanceReader`, the server-side reader behind the sign-in
@@ -209,8 +183,7 @@ from `@pickler/chain`, defaulting to the network's first public endpoint and ref
 chains. `PostgresResearchStore.readiness(scope)` reads the facts `schedule` checks, through the same
 private query `schedule` uses. `PostgresStudioDirectory.list` left-joins `agents.agent_profiles` for each agent's `accent`, reading
 "lime" when there is no profile row or the stored value is outside `ACCENTS`.
-`PostgresStudioDirectory.createAgent` replays an earlier create by workspace and request key inside
-its transaction, before `admit`. `PostgresResearchStore.updateSpend`
+`PostgresResearchStore.updateSpend`
 sets only the `spend` key of the stored config with `jsonb_set`, under the agent row lock. Version,
 schedule and next due stay unchanged, so readiness for the current version survives.
 `PostgresResearchStore.updateInterval(scope, hours, now)` sets only the `intervalHours` key the same
