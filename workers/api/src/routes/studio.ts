@@ -1,3 +1,5 @@
+import * as dto from "@pickler/api-schema";
+import { operation as describeOperation } from "../openapi/operation";
 import type { TradingRepository } from "@pickler/trading/polymarket";
 import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
@@ -265,25 +267,69 @@ export function studioRoutes(services: StudioServices) {
     }
     return c.json({ error: "INTERNAL_OR_PROVIDER_FAILURE" }, 500);
   });
-  api.post("/onboard", async (c) => {
-    await services.directory.onboard(c.get("principal").id);
-    return c.json({ ok: true });
-  });
-  api.get("/me", async (c) => {
-    const principal = c.get("principal");
-    const current = await access.authorize(principal);
-    return c.json({
-      workspaceId: current.workspaceId,
-      enabled: current.enabled,
-      canManage: current.enabled && current.ownerUserId === principal.id,
-    });
-  });
-  api.get("/options", (c) => {
-    const defaults = { ...DEFAULT_CONFIG };
-    delete defaults.categoryIds;
-    return c.json(studioOptionsSchema.parse({ defaults, plugins: PLUGINS }));
-  });
-  api.get("/market-categories", (c) => c.json(MARKET_CATALOG));
+  api.post(
+    "/onboard",
+    describeOperation("studioOnboard", {
+      security: "user",
+      errors: dto.studioErrorSchema,
+      errorStatuses: [400, 401, 403, 404, 409, 429, 500, 502, 503],
+      description:
+        "User JWT required. Workspace-scoped reads and owner-only mutations enforce their existing checks; research and trading admissions and plugin settings remain authoritative.",
+      response: dto.okSchema,
+    }),
+    async (c) => {
+      await services.directory.onboard(c.get("principal").id);
+      return c.json({ ok: true });
+    },
+  );
+  api.get(
+    "/me",
+    describeOperation("studioMe", {
+      security: "user",
+      errors: dto.studioErrorSchema,
+      errorStatuses: [400, 401, 403, 404, 409, 429, 500, 502, 503],
+      description:
+        "User JWT required. Workspace-scoped reads and owner-only mutations enforce their existing checks; research and trading admissions and plugin settings remain authoritative.",
+      response: z.object({ workspaceId: z.string(), enabled: z.boolean(), canManage: z.boolean() }),
+    }),
+    async (c) => {
+      const principal = c.get("principal");
+      const current = await access.authorize(principal);
+      return c.json({
+        workspaceId: current.workspaceId,
+        enabled: current.enabled,
+        canManage: current.enabled && current.ownerUserId === principal.id,
+      });
+    },
+  );
+  api.get(
+    "/options",
+    describeOperation("studioOptions", {
+      security: "user",
+      errors: dto.studioErrorSchema,
+      errorStatuses: [400, 401, 403, 404, 409, 429, 500, 502, 503],
+      description:
+        "User JWT required. Workspace-scoped reads and owner-only mutations enforce their existing checks; research and trading admissions and plugin settings remain authoritative.",
+      response: dto.studioOptionsSchema,
+    }),
+    (c) => {
+      const defaults = { ...DEFAULT_CONFIG };
+      delete defaults.categoryIds;
+      return c.json(studioOptionsSchema.parse({ defaults, plugins: PLUGINS }));
+    },
+  );
+  api.get(
+    "/market-categories",
+    describeOperation("studioCategories", {
+      security: "user",
+      errors: dto.studioErrorSchema,
+      errorStatuses: [400, 401, 403, 404, 409, 429, 500, 502, 503],
+      description:
+        "User JWT required. Workspace-scoped reads and owner-only mutations enforce their existing checks; research and trading admissions and plugin settings remain authoritative.",
+      response: dto.marketCatalogSchema,
+    }),
+    (c) => c.json(MARKET_CATALOG),
+  );
 
   function previewRepository(): PreviewRepository {
     if (!services.previews) {
@@ -294,39 +340,63 @@ export function studioRoutes(services: StudioServices) {
 
   // "Run it on paper" (studio-brief-v1 §4): the real runtime, once, on a config that is not an
   // agent yet. Research rights, like any run; 5 per rolling hour; readable by its owner for 24 h.
-  api.post("/preview-runs", async (c) => {
-    if (services.admissionsEnabled === false) {
-      throw new PilotError("ADMISSIONS_PAUSED", "New research is paused");
-    }
-    const principal = c.get("principal");
-    const current = await access.authorize(principal, true);
-    const previews = previewRepository();
-    const { config, fingerprint } = preparePreview(
-      previewRunRequestSchema.parse(await c.req.json()),
-    );
-    const { id } = await previews.create(
-      {
-        userId: principal.id,
-        workspaceId: current.workspaceId,
-        tenantId: current.tenantId,
-        config,
-        fingerprint,
-      },
-      Date.now(),
-    );
-    try {
-      await services.notifyQueued();
-    } catch {
-      console.error("Durable admission awaits queue reconciliation");
-    }
-    return c.json({ id }, 202);
-  });
-  api.get("/preview-runs/:id", async (c) => {
-    const principal = c.get("principal");
-    await access.authorize(principal);
-    const read = await previewRepository().read(principal.id, c.req.param("id"), Date.now());
-    return c.json(previewRunResponseSchema.parse(read));
-  });
+  api.post(
+    "/preview-runs",
+    describeOperation("studioPreviewCreate", {
+      security: "user",
+      errors: dto.studioErrorSchema,
+      errorStatuses: [400, 401, 403, 404, 409, 429, 500, 502, 503],
+      description:
+        "User JWT required. Workspace-scoped reads and owner-only mutations enforce their existing checks; research and trading admissions and plugin settings remain authoritative.",
+      response: z.object({ id: z.string() }),
+      body: dto.previewRunRequestSchema,
+      status: 202,
+    }),
+    async (c) => {
+      if (services.admissionsEnabled === false) {
+        throw new PilotError("ADMISSIONS_PAUSED", "New research is paused");
+      }
+      const principal = c.get("principal");
+      const current = await access.authorize(principal, true);
+      const previews = previewRepository();
+      const { config, fingerprint } = preparePreview(
+        previewRunRequestSchema.parse(await c.req.json()),
+      );
+      const { id } = await previews.create(
+        {
+          userId: principal.id,
+          workspaceId: current.workspaceId,
+          tenantId: current.tenantId,
+          config,
+          fingerprint,
+        },
+        Date.now(),
+      );
+      try {
+        await services.notifyQueued();
+      } catch {
+        console.error("Durable admission awaits queue reconciliation");
+      }
+      return c.json({ id }, 202);
+    },
+  );
+  api.get(
+    "/preview-runs/:id",
+    describeOperation("studioPreviewGet", {
+      security: "user",
+      errors: dto.studioErrorSchema,
+      errorStatuses: [400, 401, 403, 404, 409, 429, 500, 502, 503],
+      description:
+        "User JWT required. Workspace-scoped reads and owner-only mutations enforce their existing checks; research and trading admissions and plugin settings remain authoritative.",
+      response: dto.previewRunResponseSchema,
+    }),
+    async (c) => {
+      const principal = c.get("principal");
+      await access.authorize(principal);
+      const read = await previewRepository().read(principal.id, c.req.param("id"), Date.now());
+      return c.json(previewRunResponseSchema.parse(read));
+    },
+  );
   /**
    * The linked wallet and its balance. `creating`: the read is for a create's lock, where a chain that did not answer is never
    * reported as anything but unreadable, 503 WALLETS_UNAVAILABLE, as for the wallet's own reading
@@ -432,151 +502,224 @@ export function studioRoutes(services: StudioServices) {
     });
   }
 
-  api.get("/agents", async (c) => {
-    const current = await access.authorize(c.get("principal"));
-    const { listed, wallets, another } = await fleet(current);
-    return c.json({
-      agents: await Promise.all(
-        listed.map((agent, index) =>
-          studioAgent(agent.scope, wallets[index] ?? null, another, {
-            productId: agent.id,
-            name: agent.name,
-            handle: agent.handle,
-            accent: agent.accent,
-            draft: agent.draft,
-          }),
+  api.get(
+    "/agents",
+    describeOperation("studioAgents", {
+      security: "user",
+      errors: dto.studioErrorSchema,
+      errorStatuses: [400, 401, 403, 404, 409, 429, 500, 502, 503],
+      description:
+        "User JWT required. Workspace-scoped reads and owner-only mutations enforce their existing checks; research and trading admissions and plugin settings remain authoritative.",
+      response: z.object({ agents: dto.studioAgentSchema.array() }),
+    }),
+    async (c) => {
+      const current = await access.authorize(c.get("principal"));
+      const { listed, wallets, another } = await fleet(current);
+      return c.json({
+        agents: await Promise.all(
+          listed.map((agent, index) =>
+            studioAgent(agent.scope, wallets[index] ?? null, another, {
+              productId: agent.id,
+              name: agent.name,
+              handle: agent.handle,
+              accent: agent.accent,
+              draft: agent.draft,
+            }),
+          ),
         ),
-      ),
-    });
-  });
+      });
+    },
+  );
   // "Create {name}" (studio-create-simplified-v1 §4.1): the private draft, created with the agent
   // wallet the person already made, funded and signed the policies of. The wallet's balances are
   // read just before the transaction, never inside it: a chain read holds no row lock. The
   // directory then checks the handle and the wallet in its transaction, in that order, and runs
   // the admit callback below, which holds the lock and that reading to the minimums. A replay of
   // a create that committed never reaches it.
-  api.post("/drafts", async (c) => {
-    const principal = c.get("principal");
-    const current = await access.authorize(principal, true);
-    const body = draftCreateSchema.parse(await c.req.json());
-    const { config, profile } = prepareDraft({ ...body, sources: bareSites(body.sources) });
-    const requestId = c.get("requestId");
-    const custody = await walletWork(requestId, async () => deposits(requestId));
-    // A wallet that is not the caller's has no reading: the directory refuses it in its order.
-    const reading = await walletWork(requestId, () =>
-      custody.walletBalance(principal.id, body.walletId).then(
-        (balances) => ({ balances }),
-        (error: unknown) => {
-          if (error instanceof AgentWalletNotFoundError) {
-            return null;
-          }
-          if (error instanceof BalancesUnreadableError) {
-            return { unreadable: error };
-          }
-          throw error;
-        },
-      ),
-    );
-    const lock = fundingLock(current);
-    let created;
-    try {
-      created = await walletWork(requestId, () =>
-        services.directory.createDraft(
-          current,
-          principal.id,
-          { name: body.name, handle: body.handle, config, profile, walletId: body.walletId },
-          async () => {
-            await lock();
-            if (!reading) {
-              throw new AgentWalletNotFoundError();
+  api.post(
+    "/drafts",
+    describeOperation("studioDraftCreate", {
+      security: "user",
+      errors: dto.studioErrorSchema,
+      errorStatuses: [400, 401, 403, 404, 409, 429, 500, 502, 503],
+      description:
+        "User JWT required. Workspace-scoped reads and owner-only mutations enforce their existing checks; research and trading admissions and plugin settings remain authoritative.",
+      response: z.object({ productId: z.string(), agent: dto.studioAgentSchema }),
+      body: dto.draftCreateSchema,
+      status: 201,
+    }),
+    async (c) => {
+      const principal = c.get("principal");
+      const current = await access.authorize(principal, true);
+      const body = draftCreateSchema.parse(await c.req.json());
+      const { config, profile } = prepareDraft({ ...body, sources: bareSites(body.sources) });
+      const requestId = c.get("requestId");
+      const custody = await walletWork(requestId, async () => deposits(requestId));
+      // A wallet that is not the caller's has no reading: the directory refuses it in its order.
+      const reading = await walletWork(requestId, () =>
+        custody.walletBalance(principal.id, body.walletId).then(
+          (balances) => ({ balances }),
+          (error: unknown) => {
+            if (error instanceof AgentWalletNotFoundError) {
+              return null;
             }
-            if ("unreadable" in reading) {
-              throw reading.unreadable;
+            if (error instanceof BalancesUnreadableError) {
+              return { unreadable: error };
             }
-            const shortfall = fundingShortfall(reading.balances);
-            if (shortfall) {
-              throw new WalletUnderfundedError(shortfall);
-            }
+            throw error;
           },
         ),
       );
-    } catch (error) {
-      // Each refusal here has its own fix (a number to read, a handle to change, a wallet to sign
-      // or fund), so the drafts route sends the directory's message along for the studio to show.
-      if (error instanceof PilotError) {
-        return c.json({ error: error.code, message: error.message }, pilotStatus(error.code));
-      }
-      throw error;
-    }
-    return c.json(
-      {
-        productId: created.productId,
-        agent: agentResponseSchema.parse(await repo.agent(created.scope)),
-      },
-      201,
-    );
-  });
-  api.get("/agents/:id", async (c) => {
-    const current = await access.authorize(c.get("principal"));
-    const productId = c.req.param("id");
-    const scope = await services.directory.agentScope(current, productId);
-    const listed = await services.directory.list(current);
-    const listedAgent = listed.find((agent) => agent.id === productId);
-    // This agent's own balance is what the page shows, so its failed read fails the request.
-    const wallet = await fundedWallet(productId);
-    const another = await lockSeenFrom(listed, productId, wallet);
-    const identity = listedAgent
-      ? {
-          productId,
-          name: listedAgent.name,
-          handle: listedAgent.handle,
-          accent: listedAgent.accent,
-          draft: listedAgent.draft,
+      const lock = fundingLock(current);
+      let created;
+      try {
+        created = await walletWork(requestId, () =>
+          services.directory.createDraft(
+            current,
+            principal.id,
+            { name: body.name, handle: body.handle, config, profile, walletId: body.walletId },
+            async () => {
+              await lock();
+              if (!reading) {
+                throw new AgentWalletNotFoundError();
+              }
+              if ("unreadable" in reading) {
+                throw reading.unreadable;
+              }
+              const shortfall = fundingShortfall(reading.balances);
+              if (shortfall) {
+                throw new WalletUnderfundedError(shortfall);
+              }
+            },
+          ),
+        );
+      } catch (error) {
+        // Each refusal here has its own fix (a number to read, a handle to change, a wallet to sign
+        // or fund), so the drafts route sends the directory's message along for the studio to show.
+        if (error instanceof PilotError) {
+          return c.json({ error: error.code, message: error.message }, pilotStatus(error.code));
         }
-      : { accent: "lime" as const, draft: false };
-    return c.json(await studioAgent(scope, wallet, another, identity));
-  });
-  api.put("/agents/:id/config", async (c) => {
-    const current = await access.authorize(c.get("principal"), true);
-    const scope = await services.directory.agentScope(current, c.req.param("id"));
-    const body = configUpdateSchema.parse(await c.req.json());
-    if (
-      body.config.trading?.mode === "automatic" &&
-      (await repo.agent(scope)).config.trading?.mode !== "automatic"
-    ) {
-      if (!services.trading || !(await services.trading.repository.account(scope)).enabled) {
-        throw new PilotError("TRADING_DISABLED", "Trading access required");
+        throw error;
       }
-      const orders = await services.trading.repository.list(scope);
-      if (!orders.some((order) => order.origin === "manual" && order.status === "settled")) {
-        throw new PilotError("TRADING_MANUAL_REQUIRED", "Confirm a manual purchase first");
+      return c.json(
+        {
+          productId: created.productId,
+          agent: agentResponseSchema.parse(await repo.agent(created.scope)),
+        },
+        201,
+      );
+    },
+  );
+  api.get(
+    "/agents/:id",
+    describeOperation("studioAgent", {
+      security: "user",
+      errors: dto.studioErrorSchema,
+      errorStatuses: [400, 401, 403, 404, 409, 429, 500, 502, 503],
+      description:
+        "User JWT required. Workspace-scoped reads and owner-only mutations enforce their existing checks; research and trading admissions and plugin settings remain authoritative.",
+      response: dto.studioAgentSchema,
+    }),
+    async (c) => {
+      const current = await access.authorize(c.get("principal"));
+      const productId = c.req.param("id");
+      const scope = await services.directory.agentScope(current, productId);
+      const listed = await services.directory.list(current);
+      const listedAgent = listed.find((agent) => agent.id === productId);
+      // This agent's own balance is what the page shows, so its failed read fails the request.
+      const wallet = await fundedWallet(productId);
+      const another = await lockSeenFrom(listed, productId, wallet);
+      const identity = listedAgent
+        ? {
+            productId,
+            name: listedAgent.name,
+            handle: listedAgent.handle,
+            accent: listedAgent.accent,
+            draft: listedAgent.draft,
+          }
+        : { accent: "lime" as const, draft: false };
+      return c.json(await studioAgent(scope, wallet, another, identity));
+    },
+  );
+  api.put(
+    "/agents/:id/config",
+    describeOperation("studioConfig", {
+      security: "user",
+      errors: dto.studioErrorSchema,
+      errorStatuses: [400, 401, 403, 404, 409, 429, 500, 502, 503],
+      description:
+        "User JWT required. Workspace-scoped reads and owner-only mutations enforce their existing checks; research and trading admissions and plugin settings remain authoritative.",
+      response: dto.agentResponseSchema,
+      body: dto.configUpdateSchema,
+    }),
+    async (c) => {
+      const current = await access.authorize(c.get("principal"), true);
+      const scope = await services.directory.agentScope(current, c.req.param("id"));
+      const body = configUpdateSchema.parse(await c.req.json());
+      if (
+        body.config.trading?.mode === "automatic" &&
+        (await repo.agent(scope)).config.trading?.mode !== "automatic"
+      ) {
+        if (!services.trading || !(await services.trading.repository.account(scope)).enabled) {
+          throw new PilotError("TRADING_DISABLED", "Trading access required");
+        }
+        const orders = await services.trading.repository.list(scope);
+        if (!orders.some((order) => order.origin === "manual" && order.status === "settled")) {
+          throw new PilotError("TRADING_MANUAL_REQUIRED", "Confirm a manual purchase first");
+        }
       }
-    }
-    if (!body.config.marketScope) {
-      throw new PilotError("INVALID_INPUT", "Category selection required");
-    }
-    return c.json(
-      agentResponseSchema.parse(await repo.updateConfig(scope, body.expectedVersion, body.config)),
-    );
-  });
+      if (!body.config.marketScope) {
+        throw new PilotError("INVALID_INPUT", "Category selection required");
+      }
+      return c.json(
+        agentResponseSchema.parse(
+          await repo.updateConfig(scope, body.expectedVersion, body.config),
+        ),
+      );
+    },
+  );
   // Spend limits write only `config.spend`: the version, the schedule and readiness stay, because
   // the deposit sheet sets them right before the schedule is turned on. Paper orders enforce them.
-  api.put("/agents/:id/limits", async (c) => {
-    const current = await access.authorize(c.get("principal"), true);
-    const scope = await services.directory.agentScope(current, c.req.param("id"));
-    const body = limitsUpdateSchema.parse(await c.req.json());
-    const spend = { perCallAusd: body.perCallAusd, perDayAusd: body.perDayAusd };
-    return c.json(agentResponseSchema.parse(await repo.updateSpend(scope, spend)));
-  });
+  api.put(
+    "/agents/:id/limits",
+    describeOperation("studioLimits", {
+      security: "user",
+      errors: dto.studioErrorSchema,
+      errorStatuses: [400, 401, 403, 404, 409, 429, 500, 502, 503],
+      description:
+        "User JWT required. Workspace-scoped reads and owner-only mutations enforce their existing checks; research and trading admissions and plugin settings remain authoritative.",
+      response: dto.agentResponseSchema,
+      body: dto.limitsUpdateSchema,
+    }),
+    async (c) => {
+      const current = await access.authorize(c.get("principal"), true);
+      const scope = await services.directory.agentScope(current, c.req.param("id"));
+      const body = limitsUpdateSchema.parse(await c.req.json());
+      const spend = { perCallAusd: body.perCallAusd, perDayAusd: body.perDayAusd };
+      return c.json(agentResponseSchema.parse(await repo.updateSpend(scope, spend)));
+    },
+  );
   // The interval writes only `config.intervalHours`, like the limits and for the same reason: the
   // person picks it right before turning the schedule on, and a new version would lock the
   // schedule again until another manual run. `PUT /config` may still change it with a new version.
-  api.put("/agents/:id/interval", async (c) => {
-    const current = await access.authorize(c.get("principal"), true);
-    const scope = await services.directory.agentScope(current, c.req.param("id"));
-    const { hours } = intervalUpdateSchema.parse(await c.req.json());
-    return c.json(agentResponseSchema.parse(await repo.updateInterval(scope, hours, Date.now())));
-  });
+  api.put(
+    "/agents/:id/interval",
+    describeOperation("studioInterval", {
+      security: "user",
+      errors: dto.studioErrorSchema,
+      errorStatuses: [400, 401, 403, 404, 409, 429, 500, 502, 503],
+      description:
+        "User JWT required. Workspace-scoped reads and owner-only mutations enforce their existing checks; research and trading admissions and plugin settings remain authoritative.",
+      response: dto.agentResponseSchema,
+      body: intervalUpdateSchema,
+    }),
+    async (c) => {
+      const current = await access.authorize(c.get("principal"), true);
+      const scope = await services.directory.agentScope(current, c.req.param("id"));
+      const { hours } = intervalUpdateSchema.parse(await c.req.json());
+      return c.json(agentResponseSchema.parse(await repo.updateInterval(scope, hours, Date.now())));
+    },
+  );
   /** The custody service for this request, or 503 where Turnkey is not composed. */
   function deposits(requestId: string) {
     if (!services.custody) {
@@ -589,263 +732,505 @@ export function studioRoutes(services: StudioServices) {
   // the browser → confirm, which forwards, broadcasts and records. The agent must be the caller's
   // (agentScope); core checks again that its wallet is theirs and that the stamped transfer pays
   // exactly this amount to it.
-  api.post("/agents/:id/deposit/prepare", async (c) => {
-    const principal = c.get("principal");
-    const current = await access.authorize(principal, true);
-    const productId = c.req.param("id");
-    await services.directory.agentScope(current, productId);
-    const { amountAusd } = depositPrepareSchema.parse(await c.req.json());
-    const unsigned = await deposits(c.get("requestId")).prepareDeposit(
-      principal.id,
-      productId,
-      amountAusd,
-    );
-    return c.json({
-      url: unsigned.url,
-      body: unsigned.body,
-      timestampMs: unsigned.timestampMs,
-      organizationId: unsigned.organizationId,
-      amountMicroUsd: Number(unsigned.amountMicroUsd),
-    });
-  });
-  api.post("/agents/:id/deposit/confirm", async (c) => {
-    const principal = c.get("principal");
-    const current = await access.authorize(principal, true);
-    const productId = c.req.param("id");
-    await services.directory.agentScope(current, productId);
-    const { amountAusd, signed } = depositConfirmSchema.parse(await c.req.json());
-    const { txHash } = await deposits(c.get("requestId")).confirmDeposit(
-      principal.id,
-      productId,
-      amountAusd,
-      signed,
-    );
-    return c.json({ txHash });
-  });
+  api.post(
+    "/agents/:id/deposit/prepare",
+    describeOperation("studioDepositPrepare", {
+      security: "user",
+      errors: dto.studioErrorSchema,
+      errorStatuses: [400, 401, 403, 404, 409, 429, 500, 502, 503],
+      description:
+        "User JWT required. Workspace-scoped reads and owner-only mutations enforce their existing checks; research and trading admissions and plugin settings remain authoritative.",
+      response: dto.unsignedActivitySchema.extend({ amountMicroUsd: z.number() }),
+      body: depositPrepareSchema,
+    }),
+    async (c) => {
+      const principal = c.get("principal");
+      const current = await access.authorize(principal, true);
+      const productId = c.req.param("id");
+      await services.directory.agentScope(current, productId);
+      const { amountAusd } = depositPrepareSchema.parse(await c.req.json());
+      const unsigned = await deposits(c.get("requestId")).prepareDeposit(
+        principal.id,
+        productId,
+        amountAusd,
+      );
+      return c.json({
+        url: unsigned.url,
+        body: unsigned.body,
+        timestampMs: unsigned.timestampMs,
+        organizationId: unsigned.organizationId,
+        amountMicroUsd: Number(unsigned.amountMicroUsd),
+      });
+    },
+  );
+  api.post(
+    "/agents/:id/deposit/confirm",
+    describeOperation("studioDepositConfirm", {
+      security: "user",
+      errors: dto.studioErrorSchema,
+      errorStatuses: [400, 401, 403, 404, 409, 429, 500, 502, 503],
+      description:
+        "User JWT required. Workspace-scoped reads and owner-only mutations enforce their existing checks; research and trading admissions and plugin settings remain authoritative.",
+      response: dto.txHashSchema,
+      body: depositConfirmSchema,
+    }),
+    async (c) => {
+      const principal = c.get("principal");
+      const current = await access.authorize(principal, true);
+      const productId = c.req.param("id");
+      await services.directory.agentScope(current, productId);
+      const { amountAusd, signed } = depositConfirmSchema.parse(await c.req.json());
+      const { txHash } = await deposits(c.get("requestId")).confirmDeposit(
+        principal.id,
+        productId,
+        amountAusd,
+        signed,
+      );
+      return c.json({ txHash });
+    },
+  );
 
   api.route("/wallets", studioWalletRoutes({ access, custody: deposits }));
-  api.get("/agents/:id/runs", async (c) => {
-    const current = await access.authorize(c.get("principal"));
-    const scope = await services.directory.agentScope(current, c.req.param("id"));
-    const raw = c.req.query("before");
-    const before =
-      raw === undefined ? null : z.coerce.number().int().nonnegative().safe().parse(raw);
-    const ids = await services.directory.runs(scope, before);
-    return c.json({
-      runs: await Promise.all(
-        ids.map(async (id) => runResponseSchema.parse(await repo.run(scope.tenantId, id))),
-      ),
-    });
-  });
-  api.post("/agents/:id/runs", async (c) => {
-    if (services.admissionsEnabled === false) {
-      throw new PilotError("ADMISSIONS_PAUSED", "New research is paused");
-    }
-    const current = await access.authorize(c.get("principal"), true);
-    const scope = await services.directory.agentScope(current, c.req.param("id"));
-    const body = runRequestSchema.parse(await c.req.json());
-    const run = await repo.enqueue(
-      scope,
-      idempotencyKeySchema.parse(c.req.header("Idempotency-Key")),
-      body.marketId ?? null,
-      Date.now(),
-    );
-    if (run.status === "queued") {
-      try {
-        await services.notifyQueued();
-      } catch {
-        console.error("Durable admission awaits queue reconciliation");
+  api.get(
+    "/agents/:id/runs",
+    describeOperation("studioAgentRuns", {
+      security: "user",
+      errors: dto.studioErrorSchema,
+      errorStatuses: [400, 401, 403, 404, 409, 429, 500, 502, 503],
+      description:
+        "User JWT required. Workspace-scoped reads and owner-only mutations enforce their existing checks; research and trading admissions and plugin settings remain authoritative.",
+      response: z.object({ runs: dto.runResponseSchema.array() }),
+      query: { before: { schema: { type: "integer", minimum: 0 } } },
+    }),
+    async (c) => {
+      const current = await access.authorize(c.get("principal"));
+      const scope = await services.directory.agentScope(current, c.req.param("id"));
+      const raw = c.req.query("before");
+      const before =
+        raw === undefined ? null : z.coerce.number().int().nonnegative().safe().parse(raw);
+      const ids = await services.directory.runs(scope, before);
+      return c.json({
+        runs: await Promise.all(
+          ids.map(async (id) => runResponseSchema.parse(await repo.run(scope.tenantId, id))),
+        ),
+      });
+    },
+  );
+  api.post(
+    "/agents/:id/runs",
+    describeOperation("studioRunCreate", {
+      security: "user",
+      errors: dto.studioErrorSchema,
+      errorStatuses: [400, 401, 403, 404, 409, 429, 500, 502, 503],
+      description:
+        "User JWT required. Workspace-scoped reads and owner-only mutations enforce their existing checks; research and trading admissions and plugin settings remain authoritative.",
+      response: z.object({ runId: z.string(), status: z.string() }),
+      body: dto.runRequestSchema,
+      status: 202,
+      idempotent: true,
+    }),
+    async (c) => {
+      if (services.admissionsEnabled === false) {
+        throw new PilotError("ADMISSIONS_PAUSED", "New research is paused");
       }
-    }
-    return c.json({ runId: run.id, status: run.status }, 202);
-  });
-  api.get("/runs/:id", async (c) => {
-    const current = await access.authorize(c.get("principal"));
-    return c.json(runResponseSchema.parse(await repo.run(current.tenantId, c.req.param("id"))));
-  });
-  api.get("/runs/:id/events", async (c) => {
-    const current = await access.authorize(c.get("principal"));
-    return c.json({
-      events: eventResponseSchema
-        .array()
-        .parse(await repo.events(current.tenantId, c.req.param("id"))),
-    });
-  });
-  api.post("/runs/:id/paper-order/settle", async (c) => {
-    const current = await access.authorize(c.get("principal"), true);
-    if (!services.paper?.settle) {
-      throw new PilotError("PLUGIN_NOT_CONFIGURED", "Paper settlement unavailable");
-    }
-    const raw = await c.req.text();
-    if (raw) {
-      z.object({}).strict().parse(JSON.parse(raw));
-    }
-    return c.json(
-      paperOrderSchema.parse(await services.paper.settle(current.tenantId, c.req.param("id"))),
+      const current = await access.authorize(c.get("principal"), true);
+      const scope = await services.directory.agentScope(current, c.req.param("id"));
+      const body = runRequestSchema.parse(await c.req.json());
+      const run = await repo.enqueue(
+        scope,
+        idempotencyKeySchema.parse(c.req.header("Idempotency-Key")),
+        body.marketId ?? null,
+        Date.now(),
+      );
+      if (run.status === "queued") {
+        try {
+          await services.notifyQueued();
+        } catch {
+          console.error("Durable admission awaits queue reconciliation");
+        }
+      }
+      return c.json({ runId: run.id, status: run.status }, 202);
+    },
+  );
+  api.get(
+    "/runs/:id",
+    describeOperation("studioRun", {
+      security: "user",
+      errors: dto.studioErrorSchema,
+      errorStatuses: [400, 401, 403, 404, 409, 429, 500, 502, 503],
+      description:
+        "User JWT required. Workspace-scoped reads and owner-only mutations enforce their existing checks; research and trading admissions and plugin settings remain authoritative.",
+      response: dto.runResponseSchema,
+    }),
+    async (c) => {
+      const current = await access.authorize(c.get("principal"));
+      return c.json(runResponseSchema.parse(await repo.run(current.tenantId, c.req.param("id"))));
+    },
+  );
+  api.get(
+    "/runs/:id/events",
+    describeOperation("studioRunEvents", {
+      security: "user",
+      errors: dto.studioErrorSchema,
+      errorStatuses: [400, 401, 403, 404, 409, 429, 500, 502, 503],
+      description:
+        "User JWT required. Workspace-scoped reads and owner-only mutations enforce their existing checks; research and trading admissions and plugin settings remain authoritative.",
+      response: z.object({ events: dto.eventResponseSchema.array() }),
+    }),
+    async (c) => {
+      const current = await access.authorize(c.get("principal"));
+      return c.json({
+        events: eventResponseSchema
+          .array()
+          .parse(await repo.events(current.tenantId, c.req.param("id"))),
+      });
+    },
+  );
+  api.post(
+    "/runs/:id/paper-order/settle",
+    describeOperation("studioPaperSettle", {
+      security: "user",
+      errors: dto.studioErrorSchema,
+      errorStatuses: [400, 401, 403, 404, 409, 429, 500, 502, 503],
+      description:
+        "User JWT required. Workspace-scoped reads and owner-only mutations enforce their existing checks; research and trading admissions and plugin settings remain authoritative.",
+      response: dto.paperOrderSchema,
+      body: dto.emptyRequestSchema,
+      optionalBody: true,
+    }),
+    async (c) => {
+      const current = await access.authorize(c.get("principal"), true);
+      if (!services.paper?.settle) {
+        throw new PilotError("PLUGIN_NOT_CONFIGURED", "Paper settlement unavailable");
+      }
+      const raw = await c.req.text();
+      if (raw) {
+        z.object({}).strict().parse(JSON.parse(raw));
+      }
+      return c.json(
+        paperOrderSchema.parse(await services.paper.settle(current.tenantId, c.req.param("id"))),
+      );
+    },
+  );
+  api.get(
+    "/agents/:id/paper-summary",
+    describeOperation("studioPaperSummary", {
+      security: "user",
+      errors: dto.studioErrorSchema,
+      errorStatuses: [400, 401, 403, 404, 409, 429, 500, 502, 503],
+      description:
+        "User JWT required. Workspace-scoped reads and owner-only mutations enforce their existing checks; research and trading admissions and plugin settings remain authoritative.",
+      response: dto.paperSummarySchema,
+    }),
+    async (c) => {
+      const current = await access.authorize(c.get("principal"));
+      const scope = await services.directory.agentScope(current, c.req.param("id"));
+      if (!services.paper?.summary) {
+        throw new PilotError("PLUGIN_NOT_CONFIGURED", "Paper summary unavailable");
+      }
+      return c.json(paperSummarySchema.parse(await services.paper.summary(scope)));
+    },
+  );
+  api.post(
+    "/runs/:id/paper-order",
+    describeOperation("studioPaperCreate", {
+      security: "user",
+      errors: dto.studioErrorSchema,
+      errorStatuses: [400, 401, 403, 404, 409, 429, 500, 502, 503],
+      description:
+        "User JWT required. Workspace-scoped reads and owner-only mutations enforce their existing checks; research and trading admissions and plugin settings remain authoritative.",
+      response: dto.paperOrderSchema,
+      body: dto.emptyRequestSchema,
+      optionalBody: true,
+      also: [202],
+      idempotent: true,
+    }),
+    async (c) => {
+      const current = await access.authorize(c.get("principal"), true);
+      if (!services.paper) {
+        throw new PilotError("PLUGIN_NOT_CONFIGURED", "Paper trading unavailable");
+      }
+      const raw = await c.req.text();
+      if (raw) {
+        z.object({}).strict().parse(JSON.parse(raw));
+      }
+      const order = paperOrderSchema.parse(
+        await services.paper.create(
+          current.tenantId,
+          c.req.param("id"),
+          idempotencyKeySchema.parse(c.req.header("Idempotency-Key")),
+        ),
+      );
+      return c.json(order, order.status === "pending" ? 202 : 200);
+    },
+  );
+  api.get(
+    "/runs/:id/paper-order",
+    describeOperation("studioPaperGet", {
+      security: "user",
+      errors: dto.studioErrorSchema,
+      errorStatuses: [400, 401, 403, 404, 409, 429, 500, 502, 503],
+      description:
+        "User JWT required. Workspace-scoped reads and owner-only mutations enforce their existing checks; research and trading admissions and plugin settings remain authoritative.",
+      response: dto.paperOrderSchema,
+    }),
+    async (c) => {
+      const current = await access.authorize(c.get("principal"));
+      if (!services.paper) {
+        throw new PilotError("PLUGIN_NOT_CONFIGURED", "Paper trading unavailable");
+      }
+      return c.json(
+        paperOrderSchema.parse(await services.paper.get(current.tenantId, c.req.param("id"))),
+      );
+    },
+  );
+  api.put(
+    "/agents/:id/pause",
+    describeOperation("studioPause", {
+      security: "user",
+      errors: dto.studioErrorSchema,
+      errorStatuses: [400, 401, 403, 404, 409, 429, 500, 502, 503],
+      description:
+        "User JWT required. Workspace-scoped reads and owner-only mutations enforce their existing checks; research and trading admissions and plugin settings remain authoritative.",
+      response: dto.okSchema,
+      body: dto.pauseSchema,
+    }),
+    async (c) => {
+      const current = await access.authorize(c.get("principal"), true);
+      const scope = await services.directory.agentScope(current, c.req.param("id"));
+      await repo.pause(scope, pauseSchema.parse(await c.req.json()).paused);
+      return c.json({ ok: true });
+    },
+  );
+  api.put(
+    "/agents/:id/schedule",
+    describeOperation("studioSchedule", {
+      security: "user",
+      errors: dto.studioErrorSchema,
+      errorStatuses: [400, 401, 403, 404, 409, 429, 500, 502, 503],
+      description:
+        "User JWT required. Workspace-scoped reads and owner-only mutations enforce their existing checks; research and trading admissions and plugin settings remain authoritative.",
+      response: dto.okSchema,
+      body: dto.scheduleSchema,
+    }),
+    async (c) => {
+      const current = await access.authorize(c.get("principal"), true);
+      const productId = c.req.param("id");
+      const scope = await services.directory.agentScope(current, productId);
+      const { enabled } = scheduleSchema.parse(await c.req.json());
+      if (enabled) {
+        // NOT_READY (first run) stays the repository's refusal, inside its transaction; the
+        // funding lock is checked here because the balance lives on chain, not in the database.
+        const record = await repo.agent(scope);
+        const ready = isReadyToSchedule(record, await repo.readiness(scope));
+        const wallet = await fundedWallet(productId);
+        const lock = canSchedule({ ready, balanceAusd: wallet?.balanceAusd ?? 0 });
+        if (lock.reason === "unfunded") {
+          throw new PilotError("NOT_FUNDED", "Fund its wallet · min. 10 AUSD");
+        }
+      }
+      await repo.schedule(scope, enabled, Date.now());
+      return c.json({ ok: true });
+    },
+  );
+  api.get(
+    "/agents/:id/trading/account",
+    describeOperation("studioTradingAccount", {
+      security: "user",
+      errors: dto.studioErrorSchema,
+      errorStatuses: [400, 401, 403, 404, 409, 429, 500, 502, 503],
+      description:
+        "User JWT required. Workspace-scoped reads and owner-only mutations enforce their existing checks; research and trading admissions and plugin settings remain authoritative.",
+      response: dto.tradingAccountSchema,
+    }),
+    async (c) => {
+      const current = await access.authorize(c.get("principal"));
+      const scope = await services.directory.agentScope(current, c.req.param("id"));
+      if (!services.trading) {
+        throw new PilotError("TRADING_NOT_CONFIGURED", "Trading unavailable");
+      }
+      return c.json(tradingAccountSchema.parse(await services.trading.repository.account(scope)));
+    },
+  );
+  api.get(
+    "/agents/:id/trading/orders",
+    describeOperation("studioTradingOrders", {
+      security: "user",
+      errors: dto.studioErrorSchema,
+      errorStatuses: [400, 401, 403, 404, 409, 429, 500, 502, 503],
+      description:
+        "User JWT required. Workspace-scoped reads and owner-only mutations enforce their existing checks; research and trading admissions and plugin settings remain authoritative.",
+      response: z.object({ orders: dto.liveOrderSchema.array() }),
+    }),
+    async (c) => {
+      const current = await access.authorize(c.get("principal"));
+      const scope = await services.directory.agentScope(current, c.req.param("id"));
+      if (!services.trading) {
+        throw new PilotError("TRADING_NOT_CONFIGURED", "Trading unavailable");
+      }
+      return c.json({
+        orders: liveOrderSchema.array().parse(await services.trading.repository.list(scope)),
+      });
+    },
+  );
+  api.get(
+    "/agents/:id/trading/positions",
+    describeOperation("studioTradingPositions", {
+      security: "user",
+      errors: dto.studioErrorSchema,
+      errorStatuses: [400, 401, 403, 404, 409, 429, 500, 502, 503],
+      description:
+        "User JWT required. Workspace-scoped reads and owner-only mutations enforce their existing checks; research and trading admissions and plugin settings remain authoritative.",
+      response: z.object({ positions: dto.liveOrderSchema.array() }),
+    }),
+    async (c) => {
+      const current = await access.authorize(c.get("principal"));
+      const scope = await services.directory.agentScope(current, c.req.param("id"));
+      if (!services.trading) {
+        throw new PilotError("TRADING_NOT_CONFIGURED", "Trading unavailable");
+      }
+      const orders = await services.trading.repository.list(scope);
+      return c.json({
+        positions: liveOrderSchema
+          .array()
+          .parse(orders.filter((order) => order.status === "settled")),
+      });
+    },
+  );
+  api.get(
+    "/trading/orders/:id",
+    describeOperation("studioTradingOrder", {
+      security: "user",
+      errors: dto.studioErrorSchema,
+      errorStatuses: [400, 401, 403, 404, 409, 429, 500, 502, 503],
+      description:
+        "User JWT required. Workspace-scoped reads and owner-only mutations enforce their existing checks; research and trading admissions and plugin settings remain authoritative.",
+      response: dto.liveOrderSchema,
+    }),
+    async (c) => {
+      const current = await access.authorize(c.get("principal"));
+      if (!services.trading) {
+        throw new PilotError("TRADING_NOT_CONFIGURED", "Trading unavailable");
+      }
+      return c.json(
+        liveOrderSchema.parse(
+          await services.trading.repository.get(current.tenantId, c.req.param("id")),
+        ),
+      );
+    },
+  );
+  for (const operation of ["check", "prepare"] as const) {
+    api.post(
+      `/agents/:id/trading/${operation}`,
+      operation === "check"
+        ? describeOperation("studioTradingCheck", {
+            response: z.object({
+              balance: z.string(),
+              approved: z.boolean(),
+              blocked: z.boolean(),
+            }),
+            body: dto.emptyRequestSchema,
+            security: "user",
+            errors: dto.studioErrorSchema,
+            errorStatuses: [400, 401, 403, 404, 409, 429, 500, 502, 503],
+            idempotent: true,
+          })
+        : describeOperation("studioTradingPrepare", {
+            response: dto.liveOrderSchema,
+            body: dto.liveBuySchema,
+            security: "user",
+            errors: dto.studioErrorSchema,
+            errorStatuses: [400, 401, 403, 404, 409, 429, 500, 502, 503],
+            idempotent: true,
+          }),
+      async (c) => {
+        const current = await access.authorize(c.get("principal"), true);
+        const scope = await services.directory.agentScope(current, c.req.param("id"));
+        if (!services.trading || (!services.trading.admissionsEnabled && operation !== "check")) {
+          throw new PilotError("TRADING_ADMISSIONS_PAUSED", "Trading paused");
+        }
+        const key = idempotencyKeySchema.parse(c.req.header("Idempotency-Key"));
+        const body = await c.req.json();
+        const request =
+          operation === "prepare" ? liveBuySchema.parse(body) : z.object({}).strict().parse(body);
+        const response = await services.trading.invoke(`/${operation}`, {
+          scope,
+          key,
+          ...(operation === "prepare" ? { request } : {}),
+        });
+        return new Response(response.body, {
+          status: response.status,
+          headers: { "Content-Type": "application/json", "Cache-Control": "private, no-store" },
+        });
+      },
     );
-  });
-  api.get("/agents/:id/paper-summary", async (c) => {
-    const current = await access.authorize(c.get("principal"));
-    const scope = await services.directory.agentScope(current, c.req.param("id"));
-    if (!services.paper?.summary) {
-      throw new PilotError("PLUGIN_NOT_CONFIGURED", "Paper summary unavailable");
-    }
-    return c.json(paperSummarySchema.parse(await services.paper.summary(scope)));
-  });
-  api.post("/runs/:id/paper-order", async (c) => {
-    const current = await access.authorize(c.get("principal"), true);
-    if (!services.paper) {
-      throw new PilotError("PLUGIN_NOT_CONFIGURED", "Paper trading unavailable");
-    }
-    const raw = await c.req.text();
-    if (raw) {
-      z.object({}).strict().parse(JSON.parse(raw));
-    }
-    const order = paperOrderSchema.parse(
-      await services.paper.create(
+  }
+  api.post(
+    "/trading/orders/:id/submit",
+    describeOperation("studioTradingSubmit", {
+      security: "user",
+      errors: dto.studioErrorSchema,
+      errorStatuses: [400, 401, 403, 404, 409, 429, 500, 502, 503],
+      description:
+        "User JWT required. Workspace-scoped reads and owner-only mutations enforce their existing checks; research and trading admissions and plugin settings remain authoritative.",
+      response: dto.liveOrderSchema,
+      body: dto.emptyRequestSchema,
+      status: 202,
+      idempotent: true,
+    }),
+    async (c) => {
+      const current = await access.authorize(c.get("principal"), true);
+      z.object({})
+        .strict()
+        .parse(await c.req.json());
+      if (!services.trading?.admissionsEnabled) {
+        throw new PilotError("TRADING_ADMISSIONS_PAUSED", "Trading paused");
+      }
+      const order = await services.trading.repository.enqueue(
         current.tenantId,
         c.req.param("id"),
         idempotencyKeySchema.parse(c.req.header("Idempotency-Key")),
-      ),
-    );
-    return c.json(order, order.status === "pending" ? 202 : 200);
-  });
-  api.get("/runs/:id/paper-order", async (c) => {
-    const current = await access.authorize(c.get("principal"));
-    if (!services.paper) {
-      throw new PilotError("PLUGIN_NOT_CONFIGURED", "Paper trading unavailable");
-    }
-    return c.json(
-      paperOrderSchema.parse(await services.paper.get(current.tenantId, c.req.param("id"))),
-    );
-  });
-  api.put("/agents/:id/pause", async (c) => {
-    const current = await access.authorize(c.get("principal"), true);
-    const scope = await services.directory.agentScope(current, c.req.param("id"));
-    await repo.pause(scope, pauseSchema.parse(await c.req.json()).paused);
-    return c.json({ ok: true });
-  });
-  api.put("/agents/:id/schedule", async (c) => {
-    const current = await access.authorize(c.get("principal"), true);
-    const productId = c.req.param("id");
-    const scope = await services.directory.agentScope(current, productId);
-    const { enabled } = scheduleSchema.parse(await c.req.json());
-    if (enabled) {
-      // NOT_READY (first run) stays the repository's refusal, inside its transaction; the
-      // funding lock is checked here because the balance lives on chain, not in the database.
-      const record = await repo.agent(scope);
-      const ready = isReadyToSchedule(record, await repo.readiness(scope));
-      const wallet = await fundedWallet(productId);
-      const lock = canSchedule({ ready, balanceAusd: wallet?.balanceAusd ?? 0 });
-      if (lock.reason === "unfunded") {
-        throw new PilotError("NOT_FUNDED", "Fund its wallet · min. 10 AUSD");
+      );
+      try {
+        await services.trading.notify();
+      } catch {
+        console.error("Trading notification awaits reconciliation");
       }
-    }
-    await repo.schedule(scope, enabled, Date.now());
-    return c.json({ ok: true });
-  });
-  api.get("/agents/:id/trading/account", async (c) => {
-    const current = await access.authorize(c.get("principal"));
-    const scope = await services.directory.agentScope(current, c.req.param("id"));
-    if (!services.trading) {
-      throw new PilotError("TRADING_NOT_CONFIGURED", "Trading unavailable");
-    }
-    return c.json(tradingAccountSchema.parse(await services.trading.repository.account(scope)));
-  });
-  api.get("/agents/:id/trading/orders", async (c) => {
-    const current = await access.authorize(c.get("principal"));
-    const scope = await services.directory.agentScope(current, c.req.param("id"));
-    if (!services.trading) {
-      throw new PilotError("TRADING_NOT_CONFIGURED", "Trading unavailable");
-    }
-    return c.json({
-      orders: liveOrderSchema.array().parse(await services.trading.repository.list(scope)),
-    });
-  });
-  api.get("/agents/:id/trading/positions", async (c) => {
-    const current = await access.authorize(c.get("principal"));
-    const scope = await services.directory.agentScope(current, c.req.param("id"));
-    if (!services.trading) {
-      throw new PilotError("TRADING_NOT_CONFIGURED", "Trading unavailable");
-    }
-    const orders = await services.trading.repository.list(scope);
-    return c.json({
-      positions: liveOrderSchema
-        .array()
-        .parse(orders.filter((order) => order.status === "settled")),
-    });
-  });
-  api.get("/trading/orders/:id", async (c) => {
-    const current = await access.authorize(c.get("principal"));
-    if (!services.trading) {
-      throw new PilotError("TRADING_NOT_CONFIGURED", "Trading unavailable");
-    }
-    return c.json(
-      liveOrderSchema.parse(
-        await services.trading.repository.get(current.tenantId, c.req.param("id")),
-      ),
-    );
-  });
-  for (const operation of ["check", "prepare"] as const) {
-    api.post(`/agents/:id/trading/${operation}`, async (c) => {
+      return c.json(liveOrderSchema.parse(order), 202);
+    },
+  );
+  api.post(
+    "/runs/:id/live-order",
+    describeOperation("studioLiveOrder", {
+      security: "user",
+      errors: dto.studioErrorSchema,
+      errorStatuses: [400, 401, 403, 404, 409, 429, 500, 502, 503],
+      description:
+        "User JWT required. Workspace-scoped reads and owner-only mutations enforce their existing checks; research and trading admissions and plugin settings remain authoritative.",
+      response: dto.liveOrderSchema,
+      body: dto.emptyRequestSchema,
+      status: 202,
+      idempotent: true,
+    }),
+    async (c) => {
       const current = await access.authorize(c.get("principal"), true);
-      const scope = await services.directory.agentScope(current, c.req.param("id"));
-      if (!services.trading || (!services.trading.admissionsEnabled && operation !== "check")) {
+      z.object({})
+        .strict()
+        .parse(await c.req.json());
+      if (!services.trading?.admissionsEnabled) {
         throw new PilotError("TRADING_ADMISSIONS_PAUSED", "Trading paused");
       }
-      const key = idempotencyKeySchema.parse(c.req.header("Idempotency-Key"));
-      const body = await c.req.json();
-      const request =
-        operation === "prepare" ? liveBuySchema.parse(body) : z.object({}).strict().parse(body);
-      const response = await services.trading.invoke(`/${operation}`, {
-        scope,
-        key,
-        ...(operation === "prepare" ? { request } : {}),
+      const run = await repo.run(current.tenantId, c.req.param("id"));
+      const response = await services.trading.invoke("/from-run", {
+        scope: { tenantId: current.tenantId, agentId: run.agentId },
+        runId: run.id,
+        key: idempotencyKeySchema.parse(c.req.header("Idempotency-Key")),
       });
       return new Response(response.body, {
-        status: response.status,
+        status: response.ok ? 202 : response.status,
         headers: { "Content-Type": "application/json", "Cache-Control": "private, no-store" },
       });
-    });
-  }
-  api.post("/trading/orders/:id/submit", async (c) => {
-    const current = await access.authorize(c.get("principal"), true);
-    z.object({})
-      .strict()
-      .parse(await c.req.json());
-    if (!services.trading?.admissionsEnabled) {
-      throw new PilotError("TRADING_ADMISSIONS_PAUSED", "Trading paused");
-    }
-    const order = await services.trading.repository.enqueue(
-      current.tenantId,
-      c.req.param("id"),
-      idempotencyKeySchema.parse(c.req.header("Idempotency-Key")),
-    );
-    try {
-      await services.trading.notify();
-    } catch {
-      console.error("Trading notification awaits reconciliation");
-    }
-    return c.json(liveOrderSchema.parse(order), 202);
-  });
-  api.post("/runs/:id/live-order", async (c) => {
-    const current = await access.authorize(c.get("principal"), true);
-    z.object({})
-      .strict()
-      .parse(await c.req.json());
-    if (!services.trading?.admissionsEnabled) {
-      throw new PilotError("TRADING_ADMISSIONS_PAUSED", "Trading paused");
-    }
-    const run = await repo.run(current.tenantId, c.req.param("id"));
-    const response = await services.trading.invoke("/from-run", {
-      scope: { tenantId: current.tenantId, agentId: run.agentId },
-      runId: run.id,
-      key: idempotencyKeySchema.parse(c.req.header("Idempotency-Key")),
-    });
-    return new Response(response.body, {
-      status: response.ok ? 202 : response.status,
-      headers: { "Content-Type": "application/json", "Cache-Control": "private, no-store" },
-    });
-  });
+    },
+  );
   return api;
 }

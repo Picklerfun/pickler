@@ -1,3 +1,7 @@
+import { operation } from "./openapi/operation";
+import { apiDocument } from "./openapi/document";
+import { envelopeSchema, jsonObjectSchema } from "@pickler/api-schema";
+import { z } from "zod";
 import { Hono } from "hono";
 import type { AppEnv } from "./env";
 import { successEnvelope } from "./http/envelope";
@@ -42,7 +46,14 @@ export function createApp(services: Services) {
   app.notFound((c) => handleError(new HttpError(404, "Route not found"), c));
 
   // Liveness only; it does not check Supabase or other dependencies.
-  app.get("/health", (c) => c.json(successEnvelope({ status: "ok" }, c.req.path)));
+  app.get(
+    "/health",
+    operation("healthLiveness", {
+      response: envelopeSchema(z.object({ status: z.literal("ok") })),
+      errorStatuses: [],
+    }),
+    (c) => c.json(successEnvelope({ status: "ok" }, c.req.path)),
+  );
   app.route("/v1/auth", authRoutes(services.authenticate));
   app.route("/v1/agents", agentRoutes(services));
   app.route("/v1/handles", handleRoutes(services));
@@ -67,5 +78,23 @@ export function createApp(services: Services) {
     app.route("/v1/marketplace", marketplaceRoutes(services.growth));
     app.route("/v1/demo", marketplaceRoutes(services.growth));
   }
+  app.get(
+    "/v1/openapi.json",
+    operation("openapiDocument", {
+      response: z.object({
+        openapi: z.literal("3.1.0"),
+        info: z.object({
+          title: z.string(),
+          version: z.string(),
+          description: z.string().optional(),
+        }),
+        paths: z.record(z.string(), jsonObjectSchema),
+        components: jsonObjectSchema.optional(),
+        servers: z.array(z.object({ url: z.string(), description: z.string().optional() })),
+      }),
+      errorStatuses: [500],
+    }),
+    async (c) => c.json(await apiDocument(app)),
+  );
   return app;
 }

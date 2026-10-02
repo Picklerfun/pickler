@@ -10,14 +10,16 @@
     "build:worker": "wrangler deploy --config wrangler.staging.jsonc --dry-run --outdir .wrangler/build"
   },
   "dependencies": {
+    "@pickler/api-schema": "*",
     "@pickler/core": "*",
     "@pickler/infrastructure": "*",
+    "@pickler/trading": "*",
     "hono": "^4.13.8",
-    "@pickler/api-schema": "*",
-    "zod": "4.6.5",
-    "@pickler/trading": "*"
+    "hono-openapi": "1.3.3",
+    "zod": "4.6.5"
   },
   "devDependencies": {
+    "@apidevtools/swagger-parser": "13.1.0",
     "@cloudflare/workers-types": "^4.20260702.1",
     "@pickler/typescript-config": "*",
     "wrangler": "^4.133.0"

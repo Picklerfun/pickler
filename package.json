@@ -43,7 +43,8 @@
     "design:source": "node scripts/design/source.mjs --strict",
     "design:check": "node scripts/design/run.mjs --strict",
     "design:shots": "node scripts/design/run.mjs shots",
-    "design:compare": "node scripts/design/compare.mjs"
+    "design:compare": "node scripts/design/compare.mjs",
+    "api:openapi": "npm run build:shared && node --import tsx workers/api/scripts/openapi.ts"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

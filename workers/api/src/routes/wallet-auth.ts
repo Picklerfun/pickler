@@ -1,3 +1,5 @@
+import * as dto from "@pickler/api-schema";
+import { operation } from "../openapi/operation";
 import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import type { createWalletSignIn } from "@pickler/core";
@@ -74,27 +76,37 @@ export function walletAuthRoutes(services: WalletAuthServices) {
   });
 
   // Public: there is no session yet, which is the point. Answers with the string to sign.
-  api.post("/nonce", async (c) => {
-    const body = (await c.req.json().catch(() => null)) as {
-      address?: unknown;
-      chain_id?: unknown;
-    } | null;
-    if (typeof body?.address !== "string" || !body.address || typeof body.chain_id !== "number") {
-      throw badRequest("An address and a chain id are required to build the message");
-    }
-    // `typeof 1.5` is "number". Core refuses it too; refusing it here keeps it from the service.
-    if (!Number.isSafeInteger(body.chain_id) || body.chain_id <= 0) {
-      throw badRequest("The chain id must be a positive whole number", { error: "invalid_chain" });
-    }
-    const issued = await services.signIn
-      .issueNonce({
-        address: body.address,
-        namespace: "eip155",
-        chainReference: body.chain_id,
-      })
-      .catch(asHttp);
-    return c.json(successEnvelope(issued, c.req.path));
-  });
+  api.post(
+    "/nonce",
+    operation("walletNonce", {
+      response: dto.envelopeSchema(dto.nonceResponseSchema),
+      errorStatuses: [400, 413, 500, 503],
+      body: dto.nonceRequestSchema,
+    }),
+    async (c) => {
+      const body = (await c.req.json().catch(() => null)) as {
+        address?: unknown;
+        chain_id?: unknown;
+      } | null;
+      if (typeof body?.address !== "string" || !body.address || typeof body.chain_id !== "number") {
+        throw badRequest("An address and a chain id are required to build the message");
+      }
+      // `typeof 1.5` is "number". Core refuses it too; refusing it here keeps it from the service.
+      if (!Number.isSafeInteger(body.chain_id) || body.chain_id <= 0) {
+        throw badRequest("The chain id must be a positive whole number", {
+          error: "invalid_chain",
+        });
+      }
+      const issued = await services.signIn
+        .issueNonce({
+          address: body.address,
+          namespace: "eip155",
+          chainReference: body.chain_id,
+        })
+        .catch(asHttp);
+      return c.json(successEnvelope(issued, c.req.path));
+    },
+  );
 
   /** `raw` is the whole request: the signature covers that string and nothing else is trusted. */
   function presented(body: unknown) {
@@ -108,22 +120,47 @@ export function walletAuthRoutes(services: WalletAuthServices) {
     return { raw: it.raw, signature: it.signature };
   }
 
-  api.post("/verify", async (c) => {
-    const result = await services.signIn
-      .verify(presented(await c.req.json().catch(() => null)))
-      .catch(asHttp);
-    return c.json(successEnvelope(result, c.req.path, "Signed in"));
-  });
+  api.post(
+    "/verify",
+    operation("walletVerify", {
+      response: dto.envelopeSchema(dto.walletSignInSchema),
+      errorStatuses: [400, 401, 409, 413, 500, 503],
+      body: dto.signatureRequestSchema,
+    }),
+    async (c) => {
+      const result = await services.signIn
+        .verify(presented(await c.req.json().catch(() => null)))
+        .catch(asHttp);
+      return c.json(successEnvelope(result, c.req.path, "Signed in"));
+    },
+  );
 
-  api.post("/link", authenticated(services.authenticate, { userOnly: true }), async (c) => {
-    const result = await services.signIn
-      .link(c.get("principal").id, presented(await c.req.json().catch(() => null)))
-      .catch(asHttp);
-    return c.json(successEnvelope(result, c.req.path, "Wallet linked"));
-  });
+  api.post(
+    "/link",
+    operation("walletLink", {
+      response: dto.envelopeSchema(dto.walletLinkResultSchema),
+      errorStatuses: [400, 401, 403, 409, 413, 500, 503],
+      body: dto.signatureRequestSchema,
+      security: "user",
+    }),
+    authenticated(services.authenticate, { userOnly: true }),
+    async (c) => {
+      const result = await services.signIn
+        .link(c.get("principal").id, presented(await c.req.json().catch(() => null)))
+        .catch(asHttp);
+      return c.json(successEnvelope(result, c.req.path, "Wallet linked"));
+    },
+  );
 
-  api.get("/links", authenticated(services.authenticate, { userOnly: true }), async (c) =>
-    c.json(successEnvelope(await services.signIn.listLinks(c.get("principal").id), c.req.path)),
+  api.get(
+    "/links",
+    operation("walletLinks", {
+      response: dto.envelopeSchema(dto.walletLinkSchema.array()),
+      security: "user",
+    }),
+    authenticated(services.authenticate, { userOnly: true }),
+    async (c) =>
+      c.json(successEnvelope(await services.signIn.listLinks(c.get("principal").id), c.req.path)),
   );
 
   return api;

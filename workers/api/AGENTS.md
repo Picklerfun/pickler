@@ -381,3 +381,14 @@ Studio paper endpoints also expose POST /runs/:id/paper-order/settle (empty body
 Trading rules and financial ports are owned by `@pickler/trading` public subpaths. Core retains identity, configuration and research contracts. Hosts must not duplicate risk, fills or accounting.
 
 The launch catalogue is mounted at `/v1/launches` using the request-scoped PostgreSQL pool. `/v1/console` and `/v1/demo` remain aliases of the authenticated Studio and public marketplace surfaces respectively. The Studio creation contract still requires the approved wallet introduced by this branch; the alias does not bypass that requirement.
+
+## Generated OpenAPI
+
+`GET /v1/openapi.json` publicly describes the mounted routes; the web delegates
+`/api/v1/openapi.json` unchanged through its existing transport. Describe each explicit operation
+beside its handler with `src/openapi/operation.ts`, using portable schemas from api-schema.
+Descriptions must not change validation or authorization. New endpoints without documentation,
+concrete response schemas or unique operation ids fail the coverage check. Optional groups are
+included only when mounted. `npm run api:openapi -- --output /tmp/pickler-openapi.json` exports the
+complete contract using non-executable services; the OpenAPI CI workflow validates and uploads it.
+See [API contract](../../docs/api-contract.md) for extension and consumption instructions.

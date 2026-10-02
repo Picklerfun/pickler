@@ -106,3 +106,13 @@ Perpl DTOs include explicit funding history bounds, event provenance, estimates 
 `perps-study.ts` exports the strict portable local study configuration DTO with explicit identity,
 fixed USD 5 ceiling, model IDs and reviewed pricing sources. It contains no credentials. The paper
 account DTO accepts optional permanent admission closure without rewriting historical accounts.
+
+## HTTP documentation contracts
+
+`http.ts` defines the existing response envelopes and identity, custody and workspace-agent wire
+schemas. `public-schemas.ts` defines schemas for public marketplace, growth and launch DTOs;
+marketplace schemas are checked against their existing TypeScript DTOs. These are documentation
+and consumer contracts, not automatic replacements for producer validation. Hono metadata remains
+in the API Worker. Never add Hono or OpenAPI dependencies here. See
+[API contract](../../docs/api-contract.md); changes to a wire response must update its schema and
+representative contract tests in the same change.
