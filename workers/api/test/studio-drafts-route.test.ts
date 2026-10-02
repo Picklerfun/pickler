@@ -265,6 +265,17 @@ test("a previewRunId is refused as unknown", async () => {
   assert.equal(f.drafts.length, 0);
 });
 
+test("a client-sent policyIds is refused by the strict body: the server reads the approved ones", async () => {
+  const f = app();
+  const response = await f.root.request(
+    "/drafts",
+    post({ ...body, policyIds: ["p1", "p2", "p3"] }),
+  );
+  assert.equal(response.status, 400);
+  assert.equal((await response.json()).error, "INVALID_INPUT");
+  assert.equal(f.drafts.length, 0);
+});
+
 test("a missing voice is 400 INVALID_INPUT", async () => {
   const f = app();
   const response = await f.root.request("/drafts", post({ ...body, voice: undefined }));

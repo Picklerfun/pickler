@@ -96,16 +96,6 @@ export const createDraft = (body: DraftCreateDto) =>
     body: JSON.stringify(body),
   });
 
-/** `GET /agents`: every agent of the person's, each with its wallet, balance and locks. */
-export const studioAgents = () => studioApi<{ agents: Agent[] }>("/agents");
-
-export const startRun = (agentId: string, key: string) =>
-  studioApi<{ runId: string; status: string }>(`/agents/${agentId}/runs`, {
-    method: "POST",
-    headers: { "Idempotency-Key": key },
-    body: JSON.stringify({}),
-  });
-
 /** `GET /agents/:id`: one agent with its wallet, balance and locks, read fresh. */
 export const studioAgent = (agentId: string) => studioApi<Agent>(`/agents/${agentId}`);
 
@@ -121,12 +111,6 @@ export const run = (runId: string) => studioApi<Run>(`/runs/${runId}`);
 /** `GET /runs/:id/paper-order`: the order a TRADE was tracked with, or 404 NOT_FOUND. */
 export const readPaperOrder = (runId: string) =>
   studioApi<PaperOrder>(`/runs/${runId}/paper-order`);
-
-export const paperOrder = (runId: string, key: string) =>
-  studioApi<PaperOrder>(`/runs/${runId}/paper-order`, {
-    method: "POST",
-    headers: { "Idempotency-Key": key },
-  });
 
 /**
  * `PUT /agents/:id/interval { hours: 3 | 6 | 12 | 24 }`: only `config.intervalHours`, keeping the

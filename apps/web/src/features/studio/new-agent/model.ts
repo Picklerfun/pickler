@@ -197,6 +197,13 @@ export const walletSheetStep = (wallet: WalletView | null, delegated: boolean | 
 export type CreateBlock = { ok: true } | { ok: false; label: string };
 
 /**
+ * Why the wallet step is shut at the draft limit, or "" below it. Not Create's words: the step is
+ * shut because a new wallet would end in a draft the API refuses, so it says what lifts it.
+ */
+export const walletLockNote = (draftLock: string): string =>
+  draftLock ? "You're at the draft limit; open or delete a draft first." : "";
+
+/**
  * `draftLock` is the gate's draft-limit note (`home/gate.ts`, the 409 DRAFT_LIMIT's own words), or
  * "". It comes first, as the button's words: nothing on the form can lift it, and the wallet step
  * is shut for the same reason.

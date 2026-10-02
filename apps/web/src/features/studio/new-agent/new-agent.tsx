@@ -37,6 +37,7 @@ import {
   toDraftRequest,
   unitsOf,
   validHandle,
+  walletLockNote,
   walletOutlined,
   walletSheetStep,
   type NewAgentForm,
@@ -333,7 +334,7 @@ export function NewAgent({
   }
 
   function startWallet() {
-    if (preview || busy || running.current || !access.create) {
+    if (preview || busy || running.current || !access.create || draftLock) {
       return;
     }
     /* A wallet step 1 already made opens at step 2: that is all that is left. */
@@ -543,7 +544,7 @@ export function NewAgent({
         arrivals={reads.arrivals}
         busy={busy}
         preview={preview}
-        lockNote={draftLock}
+        lockNote={walletLockNote(draftLock)}
         onCreateWallet={startWallet}
         onRefresh={() => void reads.refresh()}
         onFund={() => {

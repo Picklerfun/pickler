@@ -79,9 +79,9 @@ export interface AgentConfig {
    */
   spend?: SpendLimits | undefined;
   /**
-   * The brief written on `/studio` (docs/specs/studio-brief-v1.md §2). Absent for agents made in
-   * `/studio/new`, which behave exactly as before. Stored normalized; `assertBrief` refuses
-   * anything else.
+   * The brief written on `/studio` (docs/specs/studio-brief-v1.md §2). Absent for legacy agents,
+   * made before the brief existed, which behave exactly as before. Stored normalized;
+   * `assertBrief` refuses anything else.
    */
   brief?: AgentBrief | undefined;
   /** The brief's MAX LEVERAGE. It applies to perps only. */

@@ -33,6 +33,7 @@ import {
   toTransferBody,
   walletOutlined,
   walletTag,
+  walletLockNote,
   type NewAgentForm,
   type WalletView,
 } from "../src/features/studio/new-agent/model";
@@ -109,6 +110,9 @@ test("at the draft limit Create is shut before anything else, with the limit as 
   assert.equal(canCreate(filled(), "free", wallet(), note), false);
   assert.equal(createLabel(emptyForm(), handleState("", null), null, note), note);
   assert.equal(canCreate(filled(), "free", wallet(), ""), true);
+  // The wallet step says why it is shut, not Create's words.
+  assert.equal(walletLockNote(note), "You're at the draft limit; open or delete a draft first.");
+  assert.equal(walletLockNote(""), "");
 });
 
 test("an unread balance is not funded", () => {

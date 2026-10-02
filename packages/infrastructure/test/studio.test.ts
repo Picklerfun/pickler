@@ -187,16 +187,17 @@ test("revoking operator access blocks claims and writes from an active execution
 });
 
 test("global lab connection validation never enables a managed agent's schedule", async (t) => {
-  const { store, userId, draft } = await setup(t);
+  const { store, userId, active } = await setup(t);
   await store.pool.query("UPDATE pickler.research_access SET enabled=true WHERE user_id=$1", [
     userId,
   ]);
-  const scope = await draft();
+  const scope = await active();
+  const { version } = await store.agent(scope);
   await store.setConnectionsChecked(true);
-  await assert.rejects(store.schedule(scope, true, Date.now()));
-  await store.setAgentConnectionsChecked(scope, 1, true);
+  await assert.rejects(store.schedule(scope, true, Date.now()), { code: "NOT_READY" });
+  await store.setAgentConnectionsChecked(scope, version, true);
   // A successful manual research is independently required.
-  await assert.rejects(store.schedule(scope, true, Date.now()));
+  await assert.rejects(store.schedule(scope, true, Date.now()), { code: "NOT_READY" });
 });
 
 test("the agent list carries each agent's accent, and lime for an agent without a profile", async (t) => {

@@ -253,6 +253,11 @@ export function WalletPanel({
                 <span className={styles.fundNote}>
                   ONE PASSKEY PER TOKEN · OR SEND TO THE ADDRESS FROM ANY MONAD WALLET, THEN REFRESH
                 </span>
+                {lockNote && (
+                  <p className={styles.step0Note} role="status">
+                    {lockNote}
+                  </p>
+                )}
               </>
             )}
           </div>

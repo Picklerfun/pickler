@@ -444,9 +444,10 @@ export function studioRoutes(services: StudioServices) {
   });
   // "Create {name}" (studio-create-simplified-v1 §4.1): the private draft, created with the agent
   // wallet the person already made, funded and signed the policies of. The wallet's balances are
-  // read just before the transaction, never inside it: a chain read holds no row lock. The directory then checks the handle and the wallet
-  // in its transaction, in that order, and runs the admit callback below, which holds the lock and
-  // that reading to the minimums. A replay of a create that committed never reaches it.
+  // read just before the transaction, never inside it: a chain read holds no row lock. The
+  // directory then checks the handle and the wallet in its transaction, in that order, and runs
+  // the admit callback below, which holds the lock and that reading to the minimums. A replay of
+  // a create that committed never reaches it.
   api.post("/drafts", async (c) => {
     const principal = c.get("principal");
     const current = await access.authorize(principal, true);
