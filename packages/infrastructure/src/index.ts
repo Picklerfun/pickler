@@ -210,3 +210,4 @@ export {
 export { pause as pausePerplRead } from "./perpl/transport.js";
 
 export { normalizePerplBook, normalizePerplTicker } from "./perpl/data.js";
+export { createXClient, XUnavailableError, type XClient, type XUser } from "./x/x-client.js";
