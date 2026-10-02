@@ -38,6 +38,8 @@ import {
   type WalletView,
 } from "../src/features/studio/new-agent/model";
 import { transferLabel } from "../src/features/studio/new-agent/transfer-model";
+import { VIEW_ONLY } from "../src/features/studio/home/access";
+import { DRAFT_LIMIT_NOTE } from "../src/features/studio/lib/messages";
 
 /* One behaviour per test: these are the rules the create screen is. */
 
@@ -93,7 +95,6 @@ test("create opens only with a free handle, a voice and a funded wallet", () => 
 });
 
 test("at the draft limit Create is shut before anything else, with the limit as its words", async () => {
-  const { DRAFT_LIMIT_NOTE } = await import("../src/features/studio/lib/messages");
   const { draftLimitLock } = await import("../src/features/studio/home/gate");
   const drafts = [1, 2, 3].map((n) => ({
     id: `d${n}`,
@@ -113,6 +114,16 @@ test("at the draft limit Create is shut before anything else, with the limit as 
   // The wallet step says why it is shut, not Create's words.
   assert.equal(walletLockNote(note), "You're at the draft limit; open or delete a draft first.");
   assert.equal(walletLockNote(""), "");
+});
+
+test("the wallet step is shut, saying why, wherever creating is", () => {
+  const research = "Research is not enabled on this workspace yet. Ask us to turn it on.";
+  // Research off for a new account: the API refuses the wallet, so the button must not look open.
+  assert.equal(walletLockNote("", research), research);
+  assert.equal(walletLockNote("", VIEW_ONLY), VIEW_ONLY);
+  // The draft limit keeps its own words: they say what lifts it.
+  assert.equal(walletLockNote(DRAFT_LIMIT_NOTE, research), walletLockNote(DRAFT_LIMIT_NOTE));
+  assert.equal(walletLockNote("", ""), "");
 });
 
 test("an unread balance is not funded", () => {

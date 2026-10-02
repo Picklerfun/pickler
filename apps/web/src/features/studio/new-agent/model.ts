@@ -197,11 +197,14 @@ export const walletSheetStep = (wallet: WalletView | null, delegated: boolean | 
 export type CreateBlock = { ok: true } | { ok: false; label: string };
 
 /**
- * Why the wallet step is shut at the draft limit, or "" below it. Not Create's words: the step is
- * shut because a new wallet would end in a draft the API refuses, so it says what lifts it.
+ * Why the wallet step is shut, or "" when it is open. At the draft limit it is not Create's words:
+ * the step is shut because a new wallet would end in a draft the API refuses, so it says what lifts
+ * it. Otherwise it is why this workspace cannot create agents at all (`menuAccess`'s `createNote`:
+ * research not enabled, or a viewer), so the wallet button never looks open while the API would
+ * refuse the person behind it.
  */
-export const walletLockNote = (draftLock: string): string =>
-  draftLock ? "You're at the draft limit; open or delete a draft first." : "";
+export const walletLockNote = (draftLock: string, createNote = ""): string =>
+  draftLock ? "You're at the draft limit; open or delete a draft first." : createNote;
 
 /**
  * `draftLock` is the gate's draft-limit note (`home/gate.ts`, the 409 DRAFT_LIMIT's own words), or

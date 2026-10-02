@@ -544,11 +544,11 @@ export function NewAgent({
         arrivals={reads.arrivals}
         busy={busy}
         preview={preview}
-        lockNote={walletLockNote(draftLock)}
+        lockNote={walletLockNote(draftLock, access.createNote)}
         onCreateWallet={startWallet}
         onRefresh={() => void reads.refresh()}
         onFund={() => {
-          if (ready && !draftLock) {
+          if (ready && access.create && !draftLock) {
             setFundOn(ready.walletId);
             setModal("wallets");
           }
