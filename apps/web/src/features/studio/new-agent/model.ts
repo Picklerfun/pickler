@@ -6,8 +6,9 @@
  * in `transfer-model.ts`). Pure, no React and no transport, so each rule is pinned in
  * `apps/web/test/studio-new-agent.test.ts`.
  *
- * `VOICES`, `AVATAR_PATTERNS`, `STARTER_CAPS`, `MIN_START` and `DEFAULT_BRIEF` are literal copies
- * of core's (`packages/core/src/features/studio/create.ts`): this module is required by node:test
+ * `VOICES`, `AVATAR_PATTERNS`, `STARTER_CAPS`, `MIN_START`, `DEFAULT_BRIEF`, `SPEND_BOUNDS` and
+ * `LEVERAGE_BOUNDS` are literal copies of core's (`packages/core/src/features/studio/create.ts`,
+ * `research/types.ts`): this module is required by node:test
  * from CommonJS, where an "import"-only package cannot be loaded statically. The test pins each
  * copy through a dynamic import.
  */
@@ -74,6 +75,13 @@ export const AVATAR_PATTERNS = [
 export const STARTER_CAPS = { perTradeAusd: 5, perDayAusd: 20, maxLeverage: 1 } as const;
 export const MIN_START = { ausdMicro: 10_000_000n, monWei: 500_000_000_000_000_000n } as const;
 export const MAX_SITES = 20;
+
+/** Core's bounds on the caps (AUSD), so a stepper never reaches a value the API refuses. */
+export const SPEND_BOUNDS = {
+  perCallAusd: { min: 1, max: 1_000 },
+  perDayAusd: { min: 1, max: 10_000 },
+} as const;
+export const LEVERAGE_BOUNDS = { min: 1, max: 10 } as const;
 
 export const DEFAULT_BRIEF = {
   thesis:
