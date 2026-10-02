@@ -200,6 +200,34 @@ export class PostgresWalletIdentityStore implements NonceStore, WalletLinkReposi
     return { created: rowCount === 1 };
   }
 
+  /**
+   * One statement, holding again what core checked before calling: the account given up has
+   * exactly this one wallet and no profile, and the account kept still has a wallet.
+   *
+   * What that closes: a second join of the same account racing this one. It waits on the row,
+   * finds it moved, and moves nothing. What it only narrows, to the instant of this statement: a
+   * username claimed for the account given up, or the kept account being given up itself, at the
+   * same moment. Under READ COMMITTED the conditions are read once, on the statement's snapshot,
+   * and those are writes to another table and another row, which no lock here waits for. Closing
+   * them takes an advisory lock on both accounts shared with profile creation. Each needs the
+   * same person in two requests at once, and none crosses to another person's account.
+   *
+   * The unique key is (namespace, address) and does not name the account, so moving a row to
+   * another account cannot collide with anything.
+   */
+  async reassignSole(fromUserId: string, toUserId: string): Promise<boolean> {
+    const { rowCount } = await this.pool.query(
+      `UPDATE identity.wallet_links
+          SET user_id = $2
+        WHERE user_id = $1
+          AND (SELECT count(*) FROM identity.wallet_links WHERE user_id = $1) = 1
+          AND NOT EXISTS (SELECT 1 FROM identity.profiles WHERE user_id = $1)
+          AND EXISTS (SELECT 1 FROM identity.wallet_links WHERE user_id = $2)`,
+      [fromUserId, toUserId],
+    );
+    return rowCount === 1;
+  }
+
   /** No catch. A failed read is a failure, never an account with no wallets. */
   async listForUser(userId: string): Promise<WalletLink[]> {
     const { rows } = await this.pool.query<WalletLinkRow>(

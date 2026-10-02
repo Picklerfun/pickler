@@ -277,15 +277,23 @@ export type {
   WalletLinkRepository,
 } from "./features/identity/ports/wallet-identity.js";
 export {
+  AccountNotJoinableError,
   AddressTakenError,
   BadSignatureError,
   createWalletSignIn,
   ExpiredNonceError,
+  joinStatement,
+  NoAccountToJoinError,
   NONCE_TTL_MS,
+  PRESENTED_WALLET_KINDS,
+  SameAccountError,
+  SIGN_IN_STATEMENT,
   UnknownNonceError,
   WalletAccountConflictError,
   WrongDomainError,
+  WrongPurposeError,
   type Presented,
+  type PresentedWalletKind,
   type SignedMessage,
 } from "./features/identity/application/wallet-sign-in.js";
 

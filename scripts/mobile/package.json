@@ -11,7 +11,9 @@
     "agents:test": "bash test-lock.sh node --test --test-concurrency=1 agent-infra/*.test.mjs",
     "agents:inventory": "node agent-infra/branches.mjs",
     "docs:html": "node docs-md-to-html.mjs --all",
-    "docs:check": "node docs-md-to-html.mjs --all --check"
+    "docs:check": "node docs-md-to-html.mjs --all --check",
+    "app:tree": "node app-tree.mjs --check",
+    "app:tree:write": "node app-tree.mjs --write"
   },
   "devDependencies": {
     "puppeteer-core": "^24.24.1",

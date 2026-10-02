@@ -142,6 +142,37 @@ appEnv)`, the pure rule the API asks before composing custody: Turnkey is never 
 Mera's relying party, and never on `localhost` outside `local` and `development`. Tests:
 `test/relying-party.test.ts`. The decision is `docs/specs/mobile-monorepo-v1.md`, W1, W2 and W8.
 
+Wallet sign-in (`features/identity/application/wallet-sign-in.ts`) records which of the
+marketplace's two wallets signed: `Presented.kind` is `PresentedWalletKind` (`"mera" | "eoa"`,
+listed in `PRESENTED_WALLET_KINDS`; absent means `eoa`), and `verify` and `link` store it in the
+link as `mera` or `external`. It describes the link and decides nothing: no rule here may grant or
+refuse anything by it, because the caller states it and nothing proves it. The first writer stands
+— a later sign-in of the same address with another kind leaves the link as it was. The Turnkey
+kinds of `wallets.wallets` are another table and another product. Decision M7 of
+`docs/specs/mera-web-v1.md`; tests in `test/wallet-sign-in.test.ts`.
+
+`join(userId, presented)` in the same service is the only place an address changes account
+(decision M12, spec §9): the caller's account is folded into the account of the wallet that
+signed `presented`. Both sides agree — the kept account by its wallet's signature over a fresh
+nonce in a message whose sentence is `joinStatement(<the wallet let in>)`, the account given up by
+its session — and the account given up must be worth nothing: no
+profile and no custody account (`hasProfile` and `hasCustodyAccount`, dependencies of the
+service), exactly one wallet, and `accounts.isOwnWalletAccount` true for it, so an email or Google
+account that linked a wallet is never given up. It throws `NoAccountToJoinError`,
+`SameAccountError` and `AccountNotJoinableError` (`has_profile`, `has_custody`,
+`not_wallet_account`, `changed`), and moves nothing in any of those cases or on a bad signature.
+`WalletLinkRepository.reassignSole` exists for it and for nothing else, and its adapter holds the
+one-wallet and no-profile conditions in the statement that moves the row: when it answers false,
+`join` throws `changed` and hands out no session. The emptied account is removed only if it still
+has no profile. Any new thing an account can own must be added to these checks before it ships;
+`link` still throws `AddressTakenError` for an address owned elsewhere.
+
+What a signature is for is part of the string it covers. `issueNonce` writes the sentence —
+`SIGN_IN_STATEMENT`, or `joinStatement` when `joining` is given — and hands it to `buildMessage`
+in `MessageFields.statement`; `verify` and `link` accept only the first, `join` only the second
+and only for the caller's own wallet. Anything else is `WrongPurposeError`, after the nonce is
+spent. A new use of a wallet signature gets a sentence of its own, never one of these two.
+
 `createCustodyService` gained `agentWalletState`, `prepare`/`confirm` `DelegatedUser`,
 `AgentWallet` and `Policies`. Each confirm forwards with exactly one allowed type from
 `AGENT_WALLET_ACTIVITY_TYPES` (`domain/passkey.ts`; create_users is `_V4`, the only version

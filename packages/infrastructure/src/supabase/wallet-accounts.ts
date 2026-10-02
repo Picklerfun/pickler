@@ -188,6 +188,15 @@ export function createWalletAccounts(config: WalletAccountsConfig): AccountProvi
       }
     },
 
+    async isOwnWalletAccount(userId, namespace, address) {
+      const user = await config.findAuthUser({ id: userId });
+      return (
+        user !== null &&
+        walletAccountVerdict(user, syntheticEmail(namespace, address, config.emailDomain)) ===
+          "wallet"
+      );
+    },
+
     async markWalletAccount(userId, namespace, address) {
       const user = await config.findAuthUser({ id: userId });
       if (!user) {

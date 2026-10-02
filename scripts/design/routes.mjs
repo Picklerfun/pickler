@@ -293,6 +293,60 @@ const ALL = [
     task: "Gated",
     proves: "[data-connect-gate]",
   },
+  // The wallet chooser's steps. Every step after the first is behind a wallet's prompt or a
+  // session, which no headless browser has, so `?wallet=<step>` opens the chooser on that step
+  // outside production only (apps/web/src/features/wallet/lib/wallet-context.tsx). Each proves the
+  // card of its own step, so a parameter that fell back to the first step is not reported green.
+  {
+    path: "/markets?wallet=choose",
+    name: "wallet-choose",
+    product: "marketplace",
+    surface: "light",
+    task: "Wallet",
+    proves: "dialog[open] #connect-step-choose",
+  },
+  {
+    path: "/markets?wallet=signin",
+    name: "wallet-signin",
+    product: "marketplace",
+    surface: "light",
+    task: "Wallet",
+    proves: "dialog[open] #connect-step-signin",
+  },
+  {
+    path: "/markets?wallet=username",
+    name: "wallet-username",
+    product: "marketplace",
+    surface: "light",
+    task: "Wallet",
+    proves: "dialog[open] #connect-step-username",
+  },
+  {
+    path: "/markets?wallet=prf",
+    name: "wallet-no-prf",
+    product: "marketplace",
+    surface: "light",
+    task: "Wallet",
+    proves: "dialog[open] #connect-step-prf",
+  },
+  // The username step's other way out: "I already have an account", and the step that says the
+  // wallet now opens it. Both sit behind a second wallet's signature.
+  {
+    path: "/markets?wallet=join",
+    name: "wallet-join",
+    product: "marketplace",
+    surface: "light",
+    task: "Wallet",
+    proves: "dialog[open] #connect-step-join",
+  },
+  {
+    path: "/markets?wallet=joined",
+    name: "wallet-joined",
+    product: "marketplace",
+    surface: "light",
+    task: "Wallet",
+    proves: "dialog[open] #connect-step-joined",
+  },
   // /apply has a gate of its own and it is not the wallet's: the six-question form renders only
   // for a request carrying the apply cookie, and without one the route answers with NoSeat — a
   // whole authored screen, so this measures a screen rather than a stub. The form behind it is
@@ -841,6 +895,8 @@ export const HOLDS = {
   Marketplace: ["apps/web/src/features/agents"],
   Markets: ["apps/web/src/features/markets"],
   Gated: ["apps/web/src/features/wallet", "apps/web/src/features/agents"],
+  // The chooser is drawn over the market board, so an edit in flight in either can explain it.
+  Wallet: ["apps/web/src/features/wallet", "apps/web/src/features/markets"],
   Apply: ["apps/web/src/features/apply"],
   // Neither does any task build the auth screens — they predate this design work, which is how
   // they went fifteen routes without being measured. Their own key rather than `Inherited`

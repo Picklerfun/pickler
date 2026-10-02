@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { ConnectError } from "../src/features/wallet/lib/connect";
-import { signInWords } from "../src/features/wallet/lib/sign-in-words";
+import { ConnectError, JoinUnsettledError } from "../src/features/wallet/lib/connect";
+import { joinWords, signInWords } from "../src/features/wallet/lib/sign-in-words";
 
 test("a stale nonce asks for another go, because nothing is actually wrong", () => {
   const words = signInWords(new ConnectError("Ask for a new one", "nonce_invalid"));
@@ -27,4 +27,41 @@ test("an unrecognised failure still says something a person can read", () => {
   const words = signInWords(new Error("socket hang up"));
   assert.ok(words);
   assert.ok(words.length > 0);
+});
+
+test("a request that ran out of time is said in words, not as the browser words it", () => {
+  const timedOut = Object.assign(new Error("signal timed out"), { name: "TimeoutError" });
+
+  assert.equal(signInWords(timedOut), "That sign-in took too long to come back. Try again.");
+});
+
+test("each way a join is refused tells the person what to do instead", () => {
+  const refused = (code: string) => joinWords(new ConnectError("from the API", code));
+
+  assert.equal(refused("no_account"), "That wallet doesn't have a Pickler account.");
+  assert.equal(refused("same_account"), "That's the wallet you're already connected with.");
+  assert.match(refused("join_has_profile")!, /already has a username/);
+  assert.match(refused("join_not_wallet_account")!, /cannot be moved/);
+});
+
+test("anything else that stops a join is said as a sign-in would say it", () => {
+  // The other wallet's prompt closed: an answer, with nothing to show.
+  assert.equal(joinWords({ code: 4001 }), null);
+  assert.equal(
+    joinWords(new ConnectError("Ask for a new one", "nonce_invalid")),
+    "That sign-in took too long to come back. Try again.",
+  );
+  assert.match(joinWords(new ConnectError("x", "401"))!, /did not match the wallet/);
+});
+
+test("a join that was sent and not answered says the wallet may already be linked", () => {
+  assert.match(
+    joinWords(new JoinUnsettledError(new TypeError("Failed to fetch")))!,
+    /may already be linked/,
+  );
+});
+
+test("the two newer refusals of a join have words too", () => {
+  assert.match(joinWords(new ConnectError("x", "join_has_custody"))!, /Pickler wallet of its own/);
+  assert.match(joinWords(new ConnectError("x", "join_changed"))!, /Try again/);
 });

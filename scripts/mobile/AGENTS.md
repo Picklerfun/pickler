@@ -12,6 +12,7 @@ npm run agents:check --prefix scripts/mobile   # instruction files, skills, mani
 npm run agents:test --prefix scripts/mobile
 npm run docs:html --prefix scripts/mobile      # regenerate every view
 npm run docs:check --prefix scripts/mobile     # fail on a stale or missing view
+npm run app:tree --prefix scripts/mobile       # fail when the app resolves another dependency tree
 ```
 
 - `agents:check` audits only `apps/mobile/`, `docs/mobile/`, `services/reads/`, `infra/`,

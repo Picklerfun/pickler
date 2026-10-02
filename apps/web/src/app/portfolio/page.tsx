@@ -37,13 +37,7 @@ export default async function Portfolio({
   const openTab = TABS.find((key) => key === search.tab);
   return (
     <PublicShell>
-      <PortfolioPage
-        agents={agents.data}
-        reads={reads.data}
-        openTab={openTab}
-        preview={preview}
-        needsHandle={preview}
-      />
+      <PortfolioPage agents={agents.data} reads={reads.data} openTab={openTab} preview={preview} />
     </PublicShell>
   );
 }
