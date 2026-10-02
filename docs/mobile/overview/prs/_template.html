@@ -1,0 +1,309 @@
+<!doctype html>
+<!--
+  Plantilla: PR explainer · acompañamiento visual de un pull request.
+
+  Uso: cuando un PR tiene cambios complejos (multi-archivo, schema migration,
+  refactor cross-module) y el reviewer necesita más contexto del que cabe en
+  la descripción del PR. Genera este HTML, súbelo al repo y enlázalo desde
+  el cuerpo del PR.
+
+  Flujo:
+  1. Cópialo a docs/overview/prs/<n>-<slug>.html (ej. 142-feat-billing.html)
+  2. Reemplaza placeholders.
+  3. Pega los diffs en los <pre><code class="language-X">…</code></pre>.
+  4. Agrega entry al manifest con types: ['pr'] + file: 'prs/<n>-<slug>.html'.
+
+  Reglas: cada diff debe tener su pequeña explicación arriba (qué hace + por
+  qué). No copies todo el diff del PR — solo los hunks que requieren contexto.
+-->
+<html lang="es-MX">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PR [[PR_NUMBER]] · [[PR_TITLE]] · Pickler</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../_styles.css">
+<script defer src="../_syntax.js"></script>
+<style>
+  .wrap { max-width: 920px; }
+  header.hero { padding: 24px 0 28px; }
+
+  /* PR-specific status badges */
+  .pr-status-board {
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: var(--radius); padding: 14px 18px;
+    box-shadow: var(--shadow);
+    display: grid; gap: 12px;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    margin-top: 18px;
+  }
+  .pr-state {
+    display: inline-flex; padding: 2px 10px; border-radius: 999px;
+    font-size: 11.5px; font-weight: 700;
+  }
+  .pr-state.open    { background: var(--brand-soft);   color: var(--brand-dark); }
+  .pr-state.merged  { background: var(--info-soft);    color: var(--info); }
+  .pr-state.closed  { background: var(--surface-2);    color: var(--ink-3); }
+  .pr-state.draft   { background: var(--accent-soft);  color: var(--warn); }
+
+  /* Diff blocks */
+  .diff-block {
+    margin: 18px 0;
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: var(--radius); overflow: hidden;
+    box-shadow: var(--shadow);
+  }
+  .diff-header {
+    background: var(--surface-2);
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--line);
+    display: flex; justify-content: space-between; align-items: center;
+    gap: 10px; flex-wrap: wrap;
+  }
+  .diff-header .file {
+    font-family: var(--mono); font-size: 12.5px;
+    color: var(--ink); font-weight: 600;
+  }
+  .diff-header .stats { font-size: 11.5px; color: var(--ink-3); font-family: var(--mono); }
+  .diff-header .stats .add { color: var(--brand); font-weight: 700; }
+  .diff-header .stats .del { color: var(--status-fail); font-weight: 700; }
+  .diff-explanation {
+    padding: 10px 14px;
+    background: var(--brand-soft);
+    border-bottom: 1px solid color-mix(in srgb, var(--brand) 25%, transparent);
+    font-size: 13px; color: var(--brand-dark);
+    line-height: 1.55;
+  }
+  .diff-block pre { margin: 0; border-radius: 0; }
+
+  /* Inline diff markers (visualización de hunk +/-) */
+  .diff-line {
+    display: block; padding: 0 14px; min-height: 1.55em;
+  }
+  .diff-line.add { background: rgba(46, 160, 67, 0.18); border-left: 3px solid var(--brand); }
+  .diff-line.del { background: rgba(248, 81, 73, 0.18); border-left: 3px solid var(--status-fail); }
+  .diff-line.add::before { content: "+ "; color: #7AC195; font-weight: 700; }
+  .diff-line.del::before { content: "- "; color: #E07A6B; font-weight: 700; }
+
+  .checklist {
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: var(--radius-s); padding: 12px 16px;
+  }
+  .checklist ul { list-style: none; padding: 0; margin: 0; }
+  .checklist li { padding: 4px 0; font-size: 13.5px; }
+  .checklist li.done { color: var(--ink-3); text-decoration: line-through; }
+</style>
+</head>
+<body data-slug="[[SLUG]]">
+
+<div class="wrap">
+  <nav class="crumb">
+    <a href="../index.html">← Catálogo</a>
+    <span class="sep">/</span>
+    <span class="mono">prs/[[PR_NUMBER]]-[[SLUG]]</span>
+  </nav>
+</div>
+
+<header class="hero">
+  <div class="wrap">
+    <span class="eyebrow"><span class="dot"></span>PR Explainer</span>
+    <h1>#[[PR_NUMBER]] · <span class="accent">[[PR_TITLE]]</span></h1>
+    <p class="lede">[[PR_LEDE]]</p>
+
+    <div class="pr-status-board">
+      <div>
+        <div class="k" style="font-size:10.5px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.08em;font-weight:600;margin-bottom:3px">Estado</div>
+        <div><span class="pr-state open">open</span></div>
+      </div>
+      <div>
+        <div class="k" style="font-size:10.5px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.08em;font-weight:600;margin-bottom:3px">PR</div>
+        <div><a href="[[PR_URL]]" style="color:var(--brand);font-weight:600">#[[PR_NUMBER]]</a></div>
+      </div>
+      <div>
+        <div class="k" style="font-size:10.5px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.08em;font-weight:600;margin-bottom:3px">Archivos</div>
+        <div style="font-family:var(--mono);font-size:13px">[[FILES_COUNT]]</div>
+      </div>
+      <div>
+        <div class="k" style="font-size:10.5px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.08em;font-weight:600;margin-bottom:3px">+/−</div>
+        <div style="font-family:var(--mono);font-size:13px"><span style="color:var(--brand)">+[[ADDS]]</span> / <span style="color:var(--status-fail)">−[[DELS]]</span></div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<nav class="toc">
+  <div class="wrap">
+    <ul>
+      <li><a href="#tldr">TL;DR</a></li>
+      <li><a href="#flow">Flujo</a></li>
+      <li><a href="#diffs">Diffs anotados</a></li>
+      <li><a href="#checklist">Checklist</a></li>
+      <li><a href="#riesgos">Riesgos</a></li>
+    </ul>
+  </div>
+</nav>
+
+<main>
+  <div class="wrap">
+
+    <section id="tldr">
+      <h2><span class="sec-num">01</span>TL;DR</h2>
+      <div class="tldr">
+        <h3>Qué hace este PR</h3>
+        <p>[[PR_TLDR]]</p>
+      </div>
+    </section>
+
+    <section id="flow">
+      <h2><span class="sec-num">02</span>Flujo del cambio</h2>
+      <p class="sec-sub">SVG inline del flujo antes/después o del data path tocado.</p>
+
+      <div style="background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow)">
+        <svg viewBox="0 0 600 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Flujo del cambio">
+          <defs>
+            <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#8C8C88"/>
+            </marker>
+          </defs>
+
+          <!-- Antes -->
+          <text x="20" y="30" style="font-family:'JetBrains Mono',monospace;font-size:10px;fill:#8C8C88;font-weight:700">ANTES</text>
+          <rect x="20" y="40" width="120" height="40" fill="#17171B" stroke="#3A3A40" stroke-width="1" rx="6"/>
+          <text x="32" y="64" style="font-family:'Manrope',sans-serif;font-size:12px;fill:#F3F1EC;font-weight:600">[[BEFORE_A]]</text>
+
+          <path d="M 140 60 L 200 60" stroke="#8C8C88" stroke-width="1.5" fill="none" marker-end="url(#arrow)"/>
+
+          <rect x="200" y="40" width="120" height="40" fill="#17171B" stroke="#3A3A40" stroke-width="1" rx="6"/>
+          <text x="212" y="64" style="font-family:'Manrope',sans-serif;font-size:12px;fill:#F3F1EC;font-weight:600">[[BEFORE_B]]</text>
+
+          <!-- Después -->
+          <text x="20" y="130" style="font-family:'JetBrains Mono',monospace;font-size:10px;fill:#8C8C88;font-weight:700">DESPUÉS</text>
+          <rect x="20" y="140" width="120" height="40" fill="rgba(200,240,58,0.14)" stroke="#C8F03A" stroke-width="1.5" rx="6"/>
+          <text x="32" y="164" style="font-family:'Manrope',sans-serif;font-size:12px;fill:#F3F1EC;font-weight:600">[[AFTER_A]]</text>
+
+          <path d="M 140 160 L 200 160" stroke="#C8F03A" stroke-width="1.5" fill="none" marker-end="url(#arrow)"/>
+
+          <rect x="200" y="140" width="120" height="40" fill="rgba(200,240,58,0.14)" stroke="#C8F03A" stroke-width="1.5" rx="6"/>
+          <text x="212" y="164" style="font-family:'Manrope',sans-serif;font-size:12px;fill:#F3F1EC;font-weight:600">[[AFTER_B]]</text>
+
+          <path d="M 340 160 L 400 160" stroke="#C8F03A" stroke-width="1.5" fill="none" marker-end="url(#arrow)"/>
+
+          <rect x="400" y="140" width="160" height="40" fill="rgba(122,92,255,0.18)" stroke="#7A5CFF" stroke-width="1.5" rx="6"/>
+          <text x="412" y="164" style="font-family:'Manrope',sans-serif;font-size:12px;fill:#F3F1EC;font-weight:600">[[AFTER_C]]</text>
+        </svg>
+      </div>
+    </section>
+
+    <section id="diffs">
+      <h2><span class="sec-num">03</span>Diffs anotados</h2>
+      <p class="sec-sub">Solo los hunks que requieren contexto. El resto del diff vive en GitHub.</p>
+
+      <!-- Diff bloque 1 ============================================== -->
+      <article class="diff-block">
+        <div class="diff-header">
+          <span class="file">[[FILE_1]]</span>
+          <span class="stats"><span class="add">+[[F1_ADDS]]</span> / <span class="del">−[[F1_DELS]]</span></span>
+        </div>
+        <div class="diff-explanation">
+          <b>Qué cambia</b>: [[F1_WHAT]]<br>
+          <b>Por qué</b>: [[F1_WHY]]
+        </div>
+<pre><code class="language-ts"><span class="diff-line del">  const old = legacyFn(input);</span>
+<span class="diff-line add">  const next = newFn(input, { mode: 'strict' });</span>
+  return next;</code></pre>
+      </article>
+
+      <!-- Diff bloque 2 ============================================== -->
+      <article class="diff-block">
+        <div class="diff-header">
+          <span class="file">[[FILE_2]]</span>
+          <span class="stats"><span class="add">+[[F2_ADDS]]</span> / <span class="del">−[[F2_DELS]]</span></span>
+        </div>
+        <div class="diff-explanation">
+          <b>Qué cambia</b>: [[F2_WHAT]]<br>
+          <b>Por qué</b>: [[F2_WHY]]
+        </div>
+<pre><code class="language-sql">-- Schema patch
+<span class="diff-line add">ALTER TABLE my_table ADD COLUMN new_col text;</span>
+<span class="diff-line add">CREATE INDEX ON my_table (new_col);</span></code></pre>
+      </article>
+
+      <!-- Duplica <article class="diff-block"> para más hunks. -->
+
+    </section>
+
+    <section id="checklist">
+      <h2><span class="sec-num">04</span>Checklist del reviewer</h2>
+      <div class="checklist">
+        <ul>
+          <li><label><input type="checkbox"> Tests pasan localmente (<code>npm test</code> en <code>apps/mobile</code>)</label></li>
+          <li><label><input type="checkbox"> Tipos limpios (<code>npx tsc --noEmit</code> en <code>apps/mobile</code>)</label></li>
+          <li><label><input type="checkbox"> Contrato de agentes limpio (<code>npm run agents:check</code> en la raíz)</label></li>
+          <li><label><input type="checkbox"> Sin <code>console.log</code> ni código comentado</label></li>
+          <li><label><input type="checkbox"> Migración SQL reversible (si aplica)</label></li>
+          <li><label><input type="checkbox"> Docs verificadas (<code>npm run docs:check</code> en la raíz) (si aplica)</label></li>
+          <li><label><input type="checkbox"> Env vars nuevas en <code>turbo.json &gt; tasks.build.env</code> (si aplica)</label></li>
+          <li><label><input type="checkbox"> Sin uso de <code>any</code> sin justificación</label></li>
+          <li><label><input type="checkbox"> Sin XSS / SQL injection (validación en boundaries)</label></li>
+          <li><label><input type="checkbox"> Documentado en <code>CLAUDE.md</code> si introduce una convención</label></li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="riesgos">
+      <h2><span class="sec-num">05</span>Riesgos</h2>
+      <ul>
+        <li>[[RISK_1]]</li>
+        <li>[[RISK_2]]</li>
+        <li>[[RISK_3]]</li>
+      </ul>
+    </section>
+
+  </div>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <p><b>PR:</b> <a href="[[PR_URL]]">#[[PR_NUMBER]]</a> · Branch <code>[[BRANCH]]</code> · Base <code>[[BASE]]</code></p>
+    <p>Reglas en <code>docs/CLAUDE.md</code>.</p>
+  </div>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // Checklist persiste con localStorage key prefix pickler-pr:<n>:checklist
+  const slug = document.body.dataset.slug || 'unknown';
+  const KEY = `pickler-pr:${slug}:checklist`;
+
+  const checks = [...document.querySelectorAll('.checklist input[type=checkbox]')];
+
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(checks.map(c => c.checked))); } catch {}
+  }
+  function load() {
+    try {
+      const persisted = JSON.parse(localStorage.getItem(KEY) || '[]');
+      checks.forEach((c, i) => {
+        if (typeof persisted[i] === 'boolean') {
+          c.checked = persisted[i];
+          c.closest('li').classList.toggle('done', c.checked);
+        }
+      });
+    } catch {}
+  }
+
+  checks.forEach(c => {
+    c.addEventListener('change', () => {
+      c.closest('li').classList.toggle('done', c.checked);
+      save();
+    });
+  });
+
+  load();
+</script>
+
+</body>
+</html>

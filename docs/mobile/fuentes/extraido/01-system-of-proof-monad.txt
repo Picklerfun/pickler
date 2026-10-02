@@ -1,0 +1,258 @@
+
+### [Title] Sistema de pruebas para trabajo autónomo
+Documento fundacional de producto y arquitectura
+Hackathon de Monad | Versión 0.1 | 4 de septiembre de 2026
+La apuesta del proyecto es convertirnos en una plataforma de subcontratación de agentes autónomos: un lugar donde las empresas encarguen trabajo, acuerden cómo se evaluará y paguen por resultados verificados. Empezamos con contenido para YouTube. La capa de confianza interoperable permite que esa experiencia se extienda después a otros agentes, herramientas e industrias.
+
+### [Heading2] La pregunta que guía el producto
+¿Cómo hacemos que el trabajo autónomo sea confiable sin tener que conocer al agente ni al equipo detrás?
+
+### [Heading2] Decisión de enfoque
+La experiencia de producto es subcontratar trabajo a agentes con condiciones claras y pago por cumplimiento. La infraestructura que la sostiene será un System of Proof organizado alrededor de WorkIntent: cada acuerdo conecta un resultado esperado con evidencia, una política de verificación y condiciones de settlement. La identidad atribuye acciones y la reputación se deriva de evidencia verificable.
+Para el hackathon debemos demostrar un ciclo completo con un caso acotado: crear y aceptar el acuerdo, reservar fondos, ejecutar, presentar evidencia, verificar y pagar o resolver el incumplimiento. La generalización se prueba cambiando la política o el verificador sin rediseñar el núcleo.
+
+### [Heading2] Cómo usar este documento
+Esta base alinea producto, protocolo, desarrollo y narrativa comercial. Las secciones de arquitectura y ejecución plantean un diseño inicial propuesto para validación del equipo. Las decisiones abiertas requieren un responsable y evidencia para cerrarse; no deben convertirse en compromisos implícitos.
+
+### [Heading2] Mapa de lectura
+1 Visión y necesidad · 2 Modelo de producto · 3 Políticas · 4 Arquitectura · 5 Confianza y pagos · 6 Verticales e integraciones · 7 Roadmap · 8 Equipo y economía · 9 Decisiones · 10 Plan inmediato
+
+### [Heading1] 1 Visión y necesidad
+
+### [Heading2] Visión
+Convertirnos en la plataforma donde las empresas subcontratan agentes autónomos para resolver trabajo concreto y pagan por resultados verificados. Una empresa debe poder definir lo que necesita, acordar las condiciones, delegar la ejecución y revisar el resultado sin tener que conocer previamente al agente ni al equipo detrás.
+En el primer caso, una marca encarga una pieza de contenido, el agente la produce, la plataforma comprueba los requisitos pactados y libera el pago. El estándar de acuerdos y pruebas es la base técnica que permite ofrecer esa misma experiencia después para prospección, research o categorización.
+
+### [Heading2] Problema
+Delegar una tarea a un agente desconocido obliga a resolver varias preguntas antes de pagar: quién responde por la ejecución, qué significa cumplir, qué evidencia sirve y quién la evalúa. Una URL, un log o una cifra de visitas pueden registrar actividad sin demostrar el resultado contratado. La automatización de la ejecución no elimina este costo de coordinación y revisión.
+La conversación identifica además el riesgo de fraude y señales manipulables. Seguidores, clics y views no deben tomarse como éxito objetivo por defecto. El diseño debe declarar la fuente de cada señal, sus límites y el grado de confianza que las partes aceptan.
+
+[TABLA]
+Actor | Necesidad | Valor que debemos validar
+Empresa o solicitante | Delegar sin evaluar desde cero a cada agente | Reglas previas y pago condicionado a cumplimiento verificable
+Desarrollador u operador del agente | Cobrar y demostrar capacidad fuera de una plataforma | Acuerdos claros e historial portable
+Verificador o integrador | Evaluar con contexto suficiente y una interfaz estable | Políticas versionadas y evidencia auditable
+[/TABLA]
+
+
+### [Heading2] Posicionamiento y límites
+System of Proof significa que el sistema enlaza afirmaciones, evidencia y decisiones evaluables. Incluye registros de estado, pero un simple system of record no basta: registrar que alguien marcó una tarea como completada no demuestra que cumplió. La evidencia tampoco se vuelve verdadera por almacenarse en una blockchain.
+La plataforma puede incorporar descubrimiento y contratación de agentes, pero su propuesta no se limita a un marketplace o directorio. Debe resolver el ciclo desde el encargo hasta la verificación y el pago. Para el MVP, el agente puede estar seleccionado de antemano. Skills, SDKs y adaptadores permiten acceder a esta capacidad desde otras herramientas.
+
+### [Heading2] Tesis de producto
+Si una empresa puede encargar una tarea a un agente, revisar evidencia de cumplimiento y pagar bajo condiciones acordadas, tendrá una forma concreta de subcontratar trabajo autónomo con menos incertidumbre. El primer producto debe demostrar ese recorrido. El estándar de acuerdos y pruebas permite repetirlo entre distintos agentes y dominios; su valor se valida por el trabajo contratado y completado, no por la abstracción técnica.
+
+### [Heading1] 2 El acuerdo como unidad de producto
+
+### [Heading2] WorkIntent
+WorkIntent es el objeto central que contiene el acuerdo entre solicitante y ejecutor. No describe todos los pasos internos del agente: define qué debe entregar, qué reglas acepta y qué consecuencias tiene la evaluación. Sus condiciones quedan fijadas al aceptarse; cualquier cambio requiere una nueva versión o consentimiento explícito.
+
+[TABLA]
+Grupo | Campos mínimos propuestos
+Identificación | intentId, schemaVersion, red o dominio y referencia al acuerdo
+Actores | Solicitante, identidad del agente, firmantes autorizados y destinatario del pago
+Resultado | Objetivo, entregables, parámetros, plazo y límites del alcance
+Política | policyId, versión, hash y parámetros de Verification Policy
+Economía | Activo, monto, fuente de fondos, escrow y reglas de liberación o devolución
+Ejecución | Estado, aceptación firmada, claimId y referencias a evidencias y evaluaciones
+[/TABLA]
+
+
+### [Heading2] Claim → Evidence → Verification → Settlement
+Claim. El agente afirma que cumplió un resultado de un WorkIntent concreto. Debe vincular la afirmación al acuerdo, al entregable y a su identidad firmante.
+Evidence. El agente o una fuente autorizada aporta artefactos, referencias, observaciones y su procedencia. El paquete incluye integridad, momento de captura y contexto suficiente para la evaluación.
+Verification. Un verificador permitido aplica la política fijada y produce una decisión firmada con razones y referencias a evidencia. La evaluación puede aceptar, rechazar o quedar inconclusa; ausencia de evidencia no equivale a éxito.
+Settlement. El sistema aplica las consecuencias acordadas: liberar fondos, devolverlos o mantenerlos retenidos durante una revisión. El recibo de pago se vincula al resultado de evaluación para reconstruir el ciclo.
+
+### [Heading2] Estados e invariantes propuestos
+Flujo principal: creado → financiado → aceptado → evidencia presentada → en verificación → aceptado para pago → liquidado. Las rutas de excepción contemplan rechazo, revisión, vencimiento, cancelación y devolución según las reglas pactadas.
+No hay ejecución comprometida sin condiciones aceptadas ni pago exitoso sin fondos reservados y decisión válida. Una evidencia o firma no puede reutilizarse para cobrar otro acuerdo. La liquidación debe ser idempotente: reintentar una operación no genera un segundo pago. El estado de verificación se distingue del estado de la transacción de pago.
+
+### [Heading1] 3 Verification Policy y estándares reutilizables
+La política es el contrato de evaluación. El protocolo estandariza cómo declarar y aplicar reglas; cada dominio define qué constituye cumplimiento. Una versión publicada no debe cambiar retroactivamente los acuerdos que ya la usan.
+
+[TABLA]
+Campo | Pregunta que resuelve | Mínimo propuesto
+Outcome | Qué debe pasar | Resultado observable, alcance y plazo
+Evidence | Qué demuestra el resultado | Esquema, fuentes admitidas, frescura y artefactos obligatorios
+Verifier | Quién o qué evalúa | Tipo, identidad autorizada, versión y método
+Acceptance Rule | Cuándo se acepta | Condiciones, umbrales y tratamiento de resultados inconclusos
+Settlement | Qué ocurre después | Liberación, devolución, revisión y tiempos límite
+Audit | Cómo se revisa | Trazabilidad, retención, acceso y mecanismo de impugnación
+[/TABLA]
+
+
+### [Heading2] Ejemplo propuesto de youtube.content.v1
+Outcome: entregar y publicar una pieza acordada en el canal autorizado, antes del plazo, con requisitos medibles de formato y una mención o enlace especificados. Las partes fijan por adelantado si se verifica entrega o publicación; son resultados distintos.
+Evidence: identificador y URL de la pieza, referencia al canal, artefacto o transcripción, hash del entregable y observación de una fuente acordada. Verifier: comprobador de requisitos estructurales y revisor humano para una rúbrica editorial explícita. Acceptance Rule: todos los requisitos obligatorios aprobados; cualquier revisión pendiente deja el resultado inconcluso.
+Settlement: pago fijo al cumplirse las condiciones y finalizar la ventana de revisión pactada; si vence sin cumplimiento, devolución según la política. Audit: conservar evidencia, versión de la política, decisión, motivos, firmas y recibo. La posibilidad de obtener datos de YouTube debe comprobarse antes de comprometer esta política.
+
+### [Heading2] Políticas reutilizables
+youtube.content.v1 y leadgen.v1 son nombres propuestos de políticas, no estándares ya establecidos. Un registro debe permitir descubrir su esquema, autor, versión, verificadores compatibles y parámetros. El WorkIntent referencia una versión exacta y su hash; usar el mismo nombre no basta para garantizar comparabilidad.
+Primero se publica una política operativa. Una segunda política comprueba si la abstracción resiste otro dominio. La gobernanza del registro, quién certifica una política y cómo se retiran versiones defectuosas quedan pendientes. Los acuerdos existentes deben conservar la versión aceptada y una ruta de resolución.
+
+### [Heading1] 4 Arquitectura por capas
+El diseño conserva cinco módulos de dominio y separa las interfaces de adopción. La webapp y los adaptadores consumen el mismo contrato de datos. Monad se plantea como capa de anclaje y liquidación del demo; la red, contratos y compatibilidad técnica se validan en la primera fase.
+
+[TABLA]
+Capa | Responsabilidad | Salida principal
+Identidad | Identificar agentes y autorizar firmas y delegaciones | Identidad resoluble y autoría comprobable
+Intención | Crear, financiar y aceptar WorkIntents con políticas fijadas | Acuerdo y máquina de estados
+Prueba | Recibir evidencia, validar esquema y preservar procedencia | Paquete de evidencia con referencias e integridad
+Verificación | Aplicar políticas y orquestar verificadores enchufables | Decisión firmada y razones
+Liquidación | Ejecutar escrow y emitir eventos para historial derivado | Pago o devolución y recibo auditable
+[/TABLA]
+
+
+### [Heading2] Proof Engine
+El Proof Engine coordina el ciclo entre evidencia y decisión. Valida estructura y firmas, resuelve la versión de política, solicita evaluaciones, aplica la regla de aceptación y genera una decisión trazable. No sustituye a la fuente de verdad ni debe incorporar lógica de YouTube en el núcleo.
+Interfaz mínima propuesta del verificador: recibir WorkIntent, política fijada y referencias de evidencia; devolver estado, comprobaciones, razones, referencias utilizadas, identidad y versión del verificador, fecha y firma. Los adaptadores traducen cada dominio a ese contrato común.
+
+### [Heading2] Distribución de datos propuesta
+Fuera de cadena: videos, documentos, datos sensibles, evidencia extensa y ejecución de verificadores. En cadena: referencias o hashes necesarios para integridad, compromisos del acuerdo, fondos, autorizaciones y eventos de liquidación. Un hash demuestra integridad respecto de un contenido, pero no su veracidad ni disponibilidad.
+Un servicio de almacenamiento conserva artefactos con control de acceso y retención. Un indexador reconstruye el historial a partir de acuerdos, evaluaciones y eventos. Debe poder recuperarse de eventos repetidos o interrupciones sin duplicar efectos. La disponibilidad de evidencia forma parte de la política de auditoría.
+
+### [Heading2] Superficie mínima de integración
+Operaciones propuestas: crear y consultar acuerdo, aceptar, adjuntar evidencia, solicitar verificación y consultar decisión y settlement. La separación permite integrar otra interfaz sin alterar las reglas de pago. Las credenciales para ejecutar, evaluar y liquidar deben tener permisos distintos.
+
+### [Heading1] 5 Identidad reputación y seguridad del pago
+
+### [Heading2] Identidad y reputación portable
+Una identidad verificable atribuye acciones a un firmante; por sí sola no demuestra competencia ni honestidad. Hay que distinguir identidad del agente, operador, claves delegadas y beneficiario económico. La rotación de claves y la revocación necesitan reglas que preserven la trazabilidad del historial.
+La reputación se deriva de evidencia verificable, decisiones y resultados asociados a políticas concretas. Debe poder mostrarse el historial que respalda cada indicador: cantidad de trabajos, aprobaciones, rechazos, disputas, recencia y calidad de los verificadores. Evitar un puntaje universal que mezcle tareas y niveles de exigencia incompatibles.
+Portabilidad significa exportar y comprobar referencias, firmas, políticas y evaluaciones fuera de la webapp. No exige que todas las plataformas calculen el mismo score. La referencia al estándar 8004 de la conversación se mantiene como una evaluación de compatibilidad pendiente; no se presupone conformidad ni sustituye el diseño del acuerdo.
+
+### [Heading2] Verificadores enchufables y confianza explícita
+Pueden existir verificadores deterministas, fuentes externas, modelos de IA y revisores humanos. Cada método tiene un alcance: una firma acredita autoría; una fuente externa aporta una observación; una IA evalúa según un método susceptible de error; una persona emite un juicio. La política identifica qué dependencia se acepta y qué puede impugnarse.
+En el MVP se propone un verificador autorizado y visible, con comprobaciones deterministas y revisión humana delimitada. La descentralización de verificadores y los mecanismos económicos contra colusión son fases posteriores. No debe presentarse el demo como libre de confianza en terceros.
+
+### [Heading2] Settlement y escrow
+Los fondos se reservan antes de que el agente asuma el trabajo. El contrato solo acepta una decisión del verificador autorizado para ese acuerdo y esa versión de política, vinculada a evidencia y protegida contra reutilización entre redes o contratos. La política fija beneficiario, monto, vencimientos y quién puede iniciar la devolución.
+Para el demo conviene pago fijo por entregable y una única liquidación final. Los hitos, pagos parciales, tokens propios y arbitraje abierto quedan fuera del alcance inicial. Rechazo de trabajo y fallo técnico del pago son estados separados; un fallo de red debe permitir reintentar sin duplicar la transferencia.
+
+### [Heading2] Pruebas críticas
+Validar éxito, evidencia inválida, firma no autorizada, evidencia reutilizada, doble liquidación, vencimiento y devolución. Probar una fuente indisponible como resultado inconcluso. Los criterios subjetivos deben admitir revisión con un plazo y un resolutor definidos; el escrow no puede quedar bloqueado indefinidamente por falta de una regla.
+
+### [Heading1] 6 Primer vertical y estrategia de integración
+
+### [Heading2] Contenido y YouTube como primer caso
+El antecedente de un agente de contenido desarrollado por Jesús ofrece un punto de partida cercano al equipo. La oportunidad inicial es permitir que un solicitante encargue una pieza o promoción y pague contra condiciones verificadas. El flujo completo valida la infraestructura en un contexto que el equipo entiende.
+La demo propuesta muestra un brief, aceptación del agente, fondos reservados, ejecución, envío de la pieza, revisión de requisitos, decisión y pago. Una segunda ejecución con evidencia insuficiente demuestra que el sistema puede impedir una liberación incorrecta. El historial del agente muestra ambos resultados con su contexto.
+El primer contrato verifica entrega o publicación y requisitos definidos. El alcance comercial, autenticidad de views, conversión y atribución requieren señales adicionales. Si la fuente de publicación no es accesible, el equipo debe cambiar explícitamente el resultado contratado a entrega verificable y explicar ese alcance en el demo.
+
+[TABLA]
+Vertical | Resultado posible | Evidencia y límite
+Contenido | Pieza publicada con requisitos | Artefacto, canal y observación; publicar no demuestra impacto
+Lead gen | Contacto calificado o reunión confirmada | Registro de origen y confirmación autorizada; evitar duplicados y falsa atribución
+Research | Informe que cubra una rúbrica | Documento y fuentes citadas; fuentes presentes no garantizan conclusiones correctas
+Categorización | Etiquetado contra una taxonomía | Dataset versionado y muestra evaluada; umbrales y conjunto de referencia acordados
+[/TABLA]
+
+
+### [Heading2] Skills SDKs y adapters como medios de adopción
+Una skill puede guiar al agente para leer un acuerdo, aceptarlo y entregar evidencia. Un SDK facilita firmas, esquemas y llamadas; un adapter conecta un framework o fuente externa. Ninguno reemplaza el producto: su valor es permitir demostrar trabajo, cobrar y reutilizar un historial verificable.
+Para el solicitante, la primera interfaz será una webapp que publique acuerdos, financie y consulte pruebas. Para el ejecutor, una integración mínima reutilizable con el agente existente. Construir un SDK amplio solo cuando una segunda integración revele operaciones realmente comunes.
+La prueba de interoperabilidad es que un segundo ejecutor o cliente pueda consumir el mismo WorkIntent y que otro verificador pueda evaluarlo sin cambiar escrow ni la semántica del núcleo. El éxito se mide por integración efectiva y reducción del esfuerzo, no por cantidad de paquetes publicados.
+
+### [Heading1] 7 Roadmap orientado a eliminar riesgos
+Las fases avanzan por evidencia, no por cantidad de features. Las fases 0 a 2 definen la prioridad del hackathon; las siguientes requieren que el ciclo mínimo funcione y que exista una razón de adopción demostrable.
+
+### [Heading2] Fase 0 Definir un resultado que se pueda verificar
+Riesgo: construir sobre una señal inaccesible, manipulable o ambigua. Juvenal fija el WorkIntent y la política inicial; Jesús prueba acceso al entregable y fuente de publicación; Gilbert valida firmas, entorno de Monad y flujo de fondos; el cofounder contrasta el brief con un posible comprador.
+Entregables: un ejemplo completo de acuerdo, evidencia válida e inválida, política de seis campos y registro de supuestos. Puerta de salida: el equipo puede explicar por qué se acepta o rechaza cada ejemplo y obtiene la evidencia necesaria en condiciones reales.
+
+### [Heading2] Fase 1 Construir el ciclo mínimo
+Riesgo: que los componentes funcionen aislados sin producir un resultado económico. Gilbert implementa estados, evidencia, comprobador, decisión firmada y escrow; Jesús conecta creación, aceptación, entrega y visualización; Juvenal revisa la coherencia del contrato de datos.
+Entregables: repositorio ejecutable, esquema versionado, integración del agente y un caso que termina en recibo de pago. Puerta de salida: una ejecución completa reproducible con fondos de prueba y trazabilidad desde acuerdo hasta settlement.
+
+### [Heading2] Fase 2 Resolver fallos y preparar la demostración
+Riesgo: pagar sin cumplir o esconder intervención manual. Gilbert implementa idempotencia, autorización, rechazo y devolución; Jesús muestra estados de error y auditoría; Juvenal define la rúbrica del demo; el cofounder prepara narrativa y sesiones con usuarios.
+Entregables: pruebas críticas, demo positiva y negativa, evidencia de ejecución, guion y lista de límites. Puerta de salida: cero pagos en los casos inválidos probados y ninguna intervención manual no declarada para completar el flujo.
+
+### [Heading2] Fase 3 Probar la generalización
+Riesgo: que el núcleo sea una app de YouTube disfrazada de protocolo. Agregar una segunda política acotada, preferentemente categorización o research según evidencia disponible, un segundo verificador y exportación de historial. Documentar la interfaz mínima de integración.
+Puerta de salida: cambiar dominio o ejecutor sin reescribir intención, trazabilidad y escrow. Medir tiempo de integración, campos específicos y excepciones introducidas. Solo entonces consolidar SDKs o adapters.
+
+### [Heading2] Fase 4 Validar una red económica sostenible
+Riesgo: que verificar cueste más que el valor que genera o no exista demanda recurrente. Ejecutar pilotos, medir costo y tiempo de evaluación, disputas, falsos resultados y repetición de uso. Explorar tarifas por verificación o liquidación sin asumir un modelo definitivo.
+Puerta de salida: usuarios que repiten, economía por tarea defendible y evidencia de que el historial influye en nuevas decisiones. Endurecer operación y contratos antes de ampliar exposición económica.
+
+### [Heading1] 8 Equipo dinámica y economía de confianza
+
+[TABLA]
+Responsable | Propiedad principal | Entregable de referencia
+Juvenal | Product y protocolo | Resultado, WorkIntent, política, prioridades y aceptación
+Gilbert | Infraestructura y core protocol | Proof Engine, firmas, contratos, escrow y pruebas críticas
+Jesús | Webapp y demo vertical | Experiencia completa e integración del agente de contenido
+Cofounder | Marketing, negocio y contenido | Brief real, validación de demanda, narrativa y primeros aliados
+[/TABLA]
+
+Gilbert puede aportar criterio de contenido, sujeto a disponibilidad, sin diluir su responsabilidad del núcleo. Juvenal resuelve alcance y semántica con el equipo; Gilbert y Jesús acuerdan interfaces antes de trabajar en paralelo. Cada entrega tiene un dueño y un revisor.
+
+### [Heading2] Dinámica semanal basada en hipótesis
+Lunes: escoger una hipótesis prioritaria, el riesgo que elimina, una métrica y el resultado que la refutaría. Ejemplo: un comprador acepta pagar por publicación verificada bajo una rúbrica explícita. Convertirla en tareas con responsables y una fecha de demostración.
+Cada día: revisión breve de evidencia obtenida, bloqueos e interfaces. Mitad de semana: ejecutar el flujo integrado y revisar ejemplos rechazados. Viernes: demostrar el resultado, decidir continuar, cambiar o descartar y actualizar el registro de decisiones. Una tarea se cierra con evidencia revisable, no con “ya está implementado”.
+
+### [Heading2] Qué puede hacer difícil copiar el producto
+El esquema, una webapp y el código inicial son copiables. La defensa potencial aparece con políticas que las partes aceptan, historial verificable útil, verificadores confiables, integraciones en uso y aprendizaje sobre fraude y disputas. Son activos por construir, no ventajas existentes.
+Una capa interoperable debe permitir portabilidad. La diferenciación debe surgir de la calidad de evaluación, distribución, disponibilidad y costos, no de secuestrar el historial. Un registro de estándares aceptados puede reducir el costo de negociar cada nuevo trabajo, pero solo genera efecto de red si nuevos participantes confían en esos estándares.
+
+### [Heading2] Economía de confianza
+Cada tarea enfrenta valor esperado, costo de ejecución, costo de verificación y pérdida por errores o fraude. Una política más exigente puede reducir riesgo y aumentar costo y demora. El diseño debe ofrecer niveles de confianza adecuados al valor en juego, con los supuestos visibles.
+Las tarifas por evaluación o liquidación son hipótesis comerciales. Evitar incentivos que premien aprobar todo o generar volumen ficticio para fabricar reputación. Medir tareas repetidas entre las mismas partes, concentración de verificadores y disputas; la reputación necesita contexto para resistir colusión y cuentas múltiples.
+
+### [Heading1] 9 Criterios de avance y decisiones pendientes
+
+### [Heading2] Qué hace al producto levantable
+Para hackathon y primeros aliados necesitamos tres demostraciones: un problema real que se entienda en menos de un minuto, un ciclo mínimo que funcione de punta a punta y una explicación convincente de cómo ese ciclo puede generalizarse hacia infraestructura. Esto vuelve la propuesta defendible; no garantiza financiamiento.
+La demo debe responder quién solicita el trabajo, qué se acordó, qué presentó el agente, por qué se aceptó y qué disparó el pago. Debe mostrar también un fallo controlado. La narrativa comercial conecta el mecanismo con menos revisión manual, cobro condicionado al cumplimiento e historial reutilizable.
+
+### [Heading2] Criterios de aceptación propuestos
+Un acuerdo completado y liquidado en el entorno elegido; un caso inválido que no cobra; rechazo o vencimiento con destino de fondos definido; auditoría legible de evidencia y decisión; límites de automatización declarados; un posible aliado que confirme la utilidad del flujo. Los objetivos comerciales son metas de validación, no resultados ya obtenidos.
+
+[TABLA]
+Decisión pendiente | Responsable | Evidencia para cerrarla
+Resultado inicial y señal disponible | Juvenal y Jesús | Brief, muestra real y acceso a la fuente
+Rúbrica editorial y revisión | Juvenal y cofounder | Casos con acuerdo entre evaluadores
+Red, activo y contratos del demo | Gilbert | Prueba de financiación y liquidación
+Compatibilidad con estándar 8004 | Gilbert y Juvenal | Revisión técnica vigente y alcance documentado
+Identidad y delegación de claves | Gilbert | Firma, revocación y atribución probadas
+Disputas, plazos y resolutor | Juvenal y Gilbert | Escenarios de rechazo y vencimiento
+Retención y acceso a evidencia | Gilbert y Jesús | Recuperación y auditoría del caso real
+Primer comprador y precio | Cofounder | Conversaciones y aceptación de un piloto
+Fecha y requisitos del hackathon | Cofounder | Bases confirmadas y checklist de entrega
+[/TABLA]
+
+También quedan abiertos el nombre público, gobernanza de políticas, pluralidad de verificadores y fórmula de reputación. No bloquean el primer flujo si se mantienen los supuestos explícitos. Cada decisión debe registrar fecha, razón, alternativas consideradas y condición que justificaría revisarla.
+
+### [Heading1] 10 Plan inmediato de dos semanas
+Plan propuesto de diez días hábiles a partir del arranque del equipo. Si solo hay una semana, priorizar los días 1 a 5 y reservar una sesión final para probar rechazo y devolución y ensayar la demo. Las fechas del hackathon ajustarán el calendario, sin eliminar las pruebas de pago.
+
+[TABLA]
+Cuándo | Responsable | Trabajo y entregable
+Día 1 | Juvenal con todos | Cerrar alcance, WorkIntent y youtube.content.v1; acuerdo de ejemplo y criterios de aceptación
+Días 1 y 2 | Cofounder | Validar un brief con posible comprador; objeciones y resultado por el que pagaría
+Días 1 y 2 | Jesús | Probar agente y acceso a evidencia; artefacto válido y caso inválido
+Días 1 y 2 | Gilbert | Validar entorno Monad, firmas y transferencia de prueba; decisión técnica registrada
+Días 2 y 3 | Gilbert con Juvenal | Implementar esquema, estados, evidencia y decisión; contrato de datos y comprobador mínimo
+Días 2 a 4 | Jesús | Construir creación, aceptación, envío y vista de decisión; webapp conectada al núcleo
+Días 3 y 4 | Gilbert | Conectar escrow, autorización y recibos; financiación y pago sin duplicación
+Día 5 | Juvenal y equipo | Ejecutar caso completo; demo interna con evidencia y lista de fallos priorizados
+[/TABLA]
+
+
+### [Heading2] Cierre de la primera semana
+La hipótesis es que un acuerdo definido antes de ejecutar puede convertirse en una decisión verificable y un pago trazable. Entregable obligatorio: una ejecución reproducible. Si falla la señal de YouTube, se redefine explícitamente la política antes de seguir; si falla el núcleo, se detiene la expansión de alcance.
+
+### [Heading2] Segunda semana y cierre
+
+[TABLA]
+Cuándo | Responsable | Trabajo y entregable
+Días 6 y 7 | Gilbert con Jesús | Probar fraude básico, rechazo, vencimiento, fuente caída y devolución; resultados y estados visibles
+Días 6 y 7 | Cofounder y Juvenal | Mostrar flujo a posibles aliados; evidencia de utilidad y objeciones priorizadas
+Día 8 | Jesús con Gilbert | Exportar historial y probar otra integración mínima; ejemplo consumible fuera de la webapp
+Día 9 | Juvenal y cofounder | Cerrar narrativa, alcance y límites; guion breve y material del pitch
+Día 10 | Todo el equipo | Ensayo de éxito y fallo; versión de demo, registro de pruebas y siguiente hipótesis
+[/TABLA]
+
+La segunda política solo entra si el flujo principal y sus fallos críticos ya están resueltos. Al terminar las dos semanas, Juvenal presenta una decisión de avanzar, ajustar el vertical o revisar la tesis, respaldada por ejecución técnica y señales de demanda.

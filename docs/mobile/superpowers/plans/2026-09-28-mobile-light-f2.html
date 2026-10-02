@@ -1,0 +1,1145 @@
+<!doctype html>
+<!--
+  AUTOGENERADO desde 2026-09-28-mobile-light-f2.md por scripts/docs-md-to-html.mjs
+
+  ⚠️  NO EDITES ESTE ARCHIVO. Edita el .md y re-genera.
+  El próximo Write al .md (con el hook activo) sobrescribirá este HTML.
+
+  Reglas en docs/CLAUDE.md sección "MD → HTML autogenerado".
+-->
+<html lang="es-MX">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Rediseño light — F2: board, barras fijas, perfil de agente y onboarding — Implementation Plan · Plan · Pickler</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../overview/_styles.css">
+<script defer src="../../overview/_syntax.js"></script>
+<style>
+  /* Overrides locales del MD-view */
+  .wrap { max-width: 820px; }
+  header.hero { padding: 24px 0 28px; }
+  main { padding: 32px 0 64px; overflow-wrap: anywhere; }
+  @media (max-width: 600px) { nav.toc { position: static; } }
+  main h1 { display: none; } /* el h1 ya está en el hero */
+  main h2 {
+    font-size: 22px; font-weight: 800;
+    margin: 36px 0 12px;
+    letter-spacing: -0.015em;
+    padding-bottom: 6px;
+    border-bottom: 2px solid var(--brand-soft);
+    scroll-margin-top: 72px;
+  }
+  main h3 {
+    font-size: 17px; font-weight: 700;
+    margin: 24px 0 8px;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+    scroll-margin-top: 72px;
+  }
+  main h4 {
+    font-size: 13px; font-weight: 700;
+    margin: 20px 0 6px;
+    text-transform: uppercase; letter-spacing: .06em;
+    color: var(--ink-3);
+  }
+  main p { margin: 0 0 12px; font-size: 14.5px; line-height: 1.65; color: var(--ink); }
+  main blockquote {
+    margin: 14px 0;
+    padding: 12px 18px;
+    background: var(--brand-soft);
+    border-left: 4px solid var(--brand);
+    border-radius: var(--radius-s);
+    color: var(--ink);
+    font-size: 14px; line-height: 1.6;
+  }
+  main blockquote p { margin: 0; }
+  main ul, main ol { margin: 8px 0 14px; padding-left: 26px; font-size: 14.5px; }
+  main ul li, main ol li { margin: 4px 0; line-height: 1.55; }
+  main ul.task-list { list-style: none; padding-left: 4px; }
+  main ul.task-list li {
+    display: flex; align-items: flex-start; gap: 8px;
+    padding: 4px 0;
+  }
+  main ul.task-list li input[type="checkbox"] {
+    margin-top: 4px; accent-color: var(--brand); cursor: pointer;
+    flex-shrink: 0;
+  }
+  main ul.task-list li label { flex: 1; cursor: pointer; }
+  main ul.task-list li.done label { color: var(--ink-3); text-decoration: line-through; text-decoration-color: var(--ink-3); }
+
+  main hr {
+    border: none; border-top: 1px solid var(--line);
+    margin: 32px 0;
+  }
+  main table {
+    width: 100%; border-collapse: collapse;
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: var(--radius); overflow: hidden;
+    margin: 14px 0;
+    font-size: 13.5px;
+  }
+  main table th, main table td {
+    text-align: left; padding: 10px 14px;
+    border-bottom: 1px solid var(--line);
+  }
+  main table th {
+    background: var(--surface-2); font-weight: 700;
+    font-size: 11.5px; color: var(--ink-3);
+    text-transform: uppercase; letter-spacing: .06em;
+  }
+  main table tr:last-child td { border-bottom: none; }
+  main img {
+    max-width: 100%; height: auto;
+    border-radius: var(--radius-s);
+    border: 1px solid var(--line);
+    margin: 10px 0;
+  }
+
+  .md-actions {
+    display: flex; gap: 10px; flex-wrap: wrap;
+    margin: 8px 0 28px;
+    position: sticky; top: 60px;
+    background: color-mix(in srgb, var(--bg) 92%, transparent);
+    backdrop-filter: blur(8px);
+    padding: 10px 0; z-index: 25;
+    border-bottom: 1px solid var(--line);
+  }
+  .md-actions .btn { text-decoration: none; }
+</style>
+</head>
+<body data-slug="2026-09-28-mobile-light-f2">
+
+<div class="wrap">
+  <nav class="crumb">
+    <a href="../../overview/index.html">← Catálogo</a>
+    <span class="sep">/</span>
+    <a href="../">superpowers/plans</a>
+    <span class="sep">/</span>
+    <span class="mono">2026-09-28-mobile-light-f2.md</span>
+  </nav>
+</div>
+
+<header class="hero">
+  <div class="wrap">
+    <span class="eyebrow"><span class="dot"></span>Plan · markdown source</span>
+    <h1>Rediseño light — F2: board, barras fijas, perfil de agente y onboarding — Implementation Plan</h1>
+    <p class="lede" style="margin:0;font-size:13.5px;color:var(--ink-3);font-family:var(--mono)">
+      Autogenerado · source: <code>plans/2026-09-28-mobile-light-f2.md</code>
+    </p>
+  </div>
+</header>
+
+<nav class="toc"><div class="wrap">
+       <ul><li><a href="#global-constraints">Global Constraints</a></li><li><a href="#review-focus">Review Focus</a></li><li><a href="#mapa-de-archivos">Mapa de archivos</a></li><li><a href="#task-0-linea-base-sobre-main">Task 0: Línea base sobre main</a></li><li><a href="#task-1-logica-pura-del-board-d10-d11">Task 1: Lógica pura del board (D10, D11)</a></li><li><a href="#task-2-page-con-barra-fija-modo-bare-pagescroll-y-footerbar">Task 2: `Page` con barra fija — modo `bare`, `PageScroll` y `FooterBar`</a></li><li><a href="#task-3-componente-board-y-market-con-el-board-en-los-dos-modos-d10-d11-d12-residual-3-de-f1">Task 3: Componente `Board` y Market con el board en los dos modos (D10, D11, D12; residual 3 de F1)</a></li><li><a href="#task-4-barras-fijas-de-market-y-read-d11-d14-ruling-12-y-residual-2-de-f1">Task 4: Barras fijas de Market y Read (D11, D14; ruling 12 y residual 2 de F1)</a></li><li><a href="#task-5-calibracion-y-record-puros-d16">Task 5: Calibración y récord, puros (D16)</a></li><li><a href="#task-6-perfil-de-agente-d15-d16-d23">Task 6: Perfil de agente (D15, D16, D23)</a></li><li><a href="#task-7-onboarding-de-3-hojas-tras-crear-la-wallet-d21">Task 7: Onboarding de 3 hojas tras crear la wallet (D21)</a></li><li><a href="#task-8-verificacion-en-el-simulador-readme-overview-y-audit">Task 8: Verificación en el simulador, README, overview y audit</a></li><li><a href="#fuera-de-este-plan">Fuera de este plan</a></li></ul>
+     </div></nav>
+
+<main>
+  <div class="wrap">
+
+<div class="md-actions">
+  <button type="button" class="btn primary" id="btn-copy-progress">📋 Copy progress as MD</button>
+  <a href="2026-09-28-mobile-light-f2.md" class="btn">📝 Ver source MD</a>
+</div>
+    <h1 id="rediseno-light-f2-board-barras-fijas-perfil-de-agente-y-onboarding-implementation-plan">Rediseño light — F2: board, barras fijas, perfil de agente y onboarding — Implementation Plan</h1>
+<blockquote>
+<strong>For agentic workers:</strong> REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (<code>- [ ]</code>) syntax for tracking.
+</blockquote>
+<p><strong>Goal:</strong> Market muestra el board nivel × tiempo del Handoff, igual en <em>Trade it</em> y en <em>Ask an agent</em>. Market, Read y el perfil de agente tienen su barra de acción fija abajo. La tarjeta de Agents abre el perfil, que muestra la calibración y el récord calculados en la app. Tras <strong>crear</strong> una wallet salen 3 hojas de onboarding, una sola vez. La lógica de Perpl, wallet, reads y push no cambia.</p>
+<p><strong>Architecture:</strong> Toda la lógica nueva es pura y va con tests: geometría y rótulos del board (<code>reads/board.ts</code>), calibración y récord (<code>reads/calibration.ts</code>) y reglas del onboarding (<code>onboarding.ts</code>). <code>Page</code> gana un modo <code>bare</code>. En ese modo la pantalla pinta su propio scroll (<code>PageScroll</code>, con el mismo pull-to-refresh y el mismo sello) y una <code>FooterBar</code> fuera del scroll. Así el ticket conserva su estado local y la barra fija lo lee sin subirlo al store. El board (<code>screens/board.tsx</code>) reemplaza a <code>MatrixGrid</code> y recibe el modo: en Trade, tocar un cuadro arma <code>tradeLevel</code> (el <code>LevelCard</code> y los recordatorios de hoy); en Ask, arma <code>askCell</code> (el <code>AskSheet</code> de hoy). El onboarding es una ruta del RootStack, entre Sign up y <code>finishSignin</code>.</p>
+<p><strong>Tech Stack:</strong> Expo SDK 57 / React Native 0.86.3 / TypeScript / Jest 29 (<code>jest-expo</code>) / react-navigation 7 / <code>react-native-svg</code> 15.15.4 (ya instalado). <strong>Sin dependencias nuevas y sin prebuild:</strong> F2 no toca nada nativo.</p>
+<p><strong>Spec:</strong> <code>docs/superpowers/specs/2026-09-28-mobile-light-design.md</code>. F2 cubre el resto de D10 (board), D11 y D12 sobre el board, D16 (perfil) y D21 (onboarding). También las barras fijas de D11 y D14, que F1 dejó como botón al final (audit F1, ruling 12 y residual 2), y el residual 3 (la sparkline cruza las celdas y las celdas son blancas). Léelo antes de empezar, junto con el audit <code>docs/superpowers/audits/2026-09-28-mobile-light-f1-rulings.md</code>. Referencia visual: <code>jjesusaf/pickler-mobile@1808d5b</code>, carpeta <code>design/</code>, archivos <code>Market</code>, <code>Agent Profile</code>, <code>Onboarding</code> y <code>Read Mobile Light.dc.html</code>. Para verla: <code>gh repo clone jjesusaf/pickler-mobile &lt;scratch&gt;/pickler-mobile &amp;&amp; git -C &lt;scratch&gt;/pickler-mobile checkout 1808d5b &amp;&amp; python3 -m http.server 8765 --directory &lt;scratch&gt;/pickler-mobile/design</code> (con <code>file://</code> no carga).</p>
+<h2 id="global-constraints">Global Constraints</h2>
+<ul>
+<li>Worktree <code>.claude/worktrees/mobile-light</code>, rama <code>feat/mobile-light</code>. Antes de Task 0, F1 ya está mergeada a <code>main</code> local y la rama se adelanta con <code>git merge --ff-only main</code>. Los comandos de app se corren desde <code>apps/mobile</code> dentro del worktree; los de docs, desde la raíz del worktree. Nunca <code>git add -A</code>: archivos por nombre. Commits locales <code>feat(mobile): …</code> / <code>fix(mobile): …</code> / <code>docs(mobile-light): …</code> con el trailer <code>Co-Authored-By: Claude Opus 5.5 &lt;noreply@anthropic.com&gt;</code>. <strong>Sin push, merge ni TestFlight.</strong></li>
+<li>Niveles y horizontes <strong>no cambian</strong> (D10): <code>LEVELS_BPS = [250, 100, 50, -50, -100]</code> y <code>HORIZONS_MIN = [60, 240, 720, 1440]</code>. El board tiene 5 filas de nivel, la banda MARK entre +0.5 % y −0.5 %, y 4 columnas. El Handoff dibuja 6 × 3; manda el backend.</li>
+<li>La orden sigue siendo <strong>de mercado</strong> y los recordatorios siguen con <code>reminder-set</code> (D11). Sin TP, sin cierre por deadline, sin «three orders» y sin fila <code>IF IT HITS</code> (ruling 7 de F1).</li>
+<li>Paleta (D3) con los nombres de <code>ui/theme.ts</code>: vacío <code>C.empty</code> (<code>#E2E5EE</code>), punto <code>C.agentDot</code> (<code>#9B7BFF</code>), tinte long <code>C.limeBg</code> (<code>#F3F8E0</code>), tinte short <code>C.downBg</code> (<code>#FDF0F5</code>), tinte ask <code>C.vioBg</code> (<code>#EEEAFF</code>), trayectoria <code>C.spark</code> (<code>#B9BED0</code>), punto now <code>C.vio</code>. <strong>La lima nunca es texto sobre blanco</strong>: como texto, <code>C.limeInk</code>.</li>
+<li>Fuera de alcance (spec §5): Back it, tokens, NET AUSD, reglas o chips del agente («NEVER FUTURES»…), «Trade $HALF» en el perfil, «BOOK IS AT» y SOURCES. En el onboarding, nada de deportes ni «Back it» (D21).</li>
+<li>Copy en inglés, como hoy. Reglas de <code>mobile-nav</code>: navegar con <code>ctx.nav</code> / <code>requireAccount</code> / <code>navigateTo</code> (<code>pop: true</code>) y nunca llamar a <code>navigationRef</code> desde una pantalla.</li>
+<li><code>npx tsc --noEmit</code> limpio y <code>npm test</code> en verde <strong>al terminar cada tarea</strong>.</li>
+<li>Metro y el simulador: sólo el simulador <code>pickler-mobile-light</code> (udid <code>700707EF-53E1-42F2-BE6B-893515BDB95C</code>) y sólo tu propio Metro. Nada de <code>pkill</code> amplio: detén por PID o por puerto (nota de proceso del audit F1).</li>
+</ul>
+<h2 id="review-focus">Review Focus</h2>
+<ol>
+<li><strong>Trayectoria con marks fuera de rango</strong>: si un mark del historial queda por encima de +2.5 % o por debajo de −1 % del mark actual, la línea se pega al borde (2 %–98 %) y no sale del board ni da <code>NaN</code>. Lo pinnea el test de <code>trajectory</code> en Task 1.</li>
+<li><strong>Calibración en las fronteras</strong>: una probabilidad de exactamente 0.2 cae en el bucket 20–40 y 1.0 en 80–100. Las reads <code>void</code>, <code>failed</code> o <code>open</code> no cuentan, y con menos de 5 resueltas sale el estado vacío. Lo pinnea el test de <code>calibration</code> en Task 5.</li>
+<li><strong>Onboarding con acción retenida</strong>: si Sign up llegó desde un gate (<code>next = &quot;portfolio&quot;</code>), al cerrar las hojas se aterriza en Portfolio, no en Markets. Sign in (recuperar la cuenta) nunca muestra hojas. Lo pinnean los tests de <code>shouldOnboard</code> y <code>onboardingExit</code> en Task 7 y la verificación de Task 8.</li>
+<li><strong>Barra fija y teclado</strong>: al escribir el margen, el teclado decimal tapa la barra; al cerrarlo, la barra vuelve y muestra el monto nuevo. La barra nunca muestra un «Review» habilitado con un margen inválido, porque usa el mismo <code>ok</code> que el cuerpo. Lo pinnea el test de <code>stickyPhrase</code> en Task 1 y la verificación de Task 8.</li>
+<li><strong>Perfil sin sesión de reads</strong>: sin firma diaria, el récord muestra «Unlock» y no el vacío «No reads with this agent yet»; la calibración sale vacía sin error. Lo pinnea la rama <code>reads.session !== &quot;ready&quot;</code> de Task 6, verificada en Task 8 con la app recién abierta.</li>
+</ol>
+<hr>
+<h2 id="mapa-de-archivos">Mapa de archivos</h2>
+<table>
+<thead>
+<tr><th>Archivo</th><th>Acción</th><th>Responsabilidad</th></tr>
+</thead>
+<tbody>
+<tr><td><code>apps/mobile/src/reads/board.ts</code></td><td>crear</td><td>filas del board, tono de celda, rótulo, trayectoria, frase de la barra</td></tr>
+<tr><td><code>apps/mobile/src/reads/calibration.ts</code></td><td>crear</td><td><code>calibration</code>, <code>recordFor</code></td></tr>
+<tr><td><code>apps/mobile/src/onboarding.ts</code></td><td>crear</td><td>copy de las 3 hojas, <code>shouldOnboard</code>, <code>onboardingExit</code></td></tr>
+<tr><td><code>apps/mobile/src/storage/onboarding.ts</code></td><td>crear</td><td>flag persistido <code>pickler.onboarded.v1</code></td></tr>
+<tr><td><code>apps/mobile/src/ui/Page.tsx</code></td><td>modificar</td><td>modo <code>bare</code>, <code>PageScroll</code>, <code>FooterBar</code>, título del perfil</td></tr>
+<tr><td><code>apps/mobile/src/screens/board.tsx</code></td><td>crear</td><td>componente <code>Board</code> (reemplaza a <code>MatrixGrid</code>)</td></tr>
+<tr><td><code>apps/mobile/src/screens/ask.tsx</code></td><td>modificar</td><td>usa <code>Board</code>; sale <code>MatrixGrid</code></td></tr>
+<tr><td><code>apps/mobile/src/screens/market.tsx</code></td><td>modificar</td><td>board en Trade, <code>PageScroll</code> + barra fija</td></tr>
+<tr><td><code>apps/mobile/src/screens/read.tsx</code></td><td>modificar</td><td>barra fija «Trade this market»</td></tr>
+<tr><td><code>apps/mobile/src/screens/agent.tsx</code></td><td>crear</td><td>perfil (D16)</td></tr>
+<tr><td><code>apps/mobile/src/screens/agents.tsx</code></td><td>modificar</td><td>la tarjeta abre el perfil</td></tr>
+<tr><td><code>apps/mobile/src/screens/onboarding.tsx</code></td><td>crear</td><td>pantalla de 3 hojas</td></tr>
+<tr><td><code>apps/mobile/src/screens/signin.tsx</code></td><td>modificar</td><td>Sign up → onboarding</td></tr>
+<tr><td><code>apps/mobile/src/navigation/screens.ts</code>, <code>routes.ts</code>, <code>ref.ts</code>, <code>Navigator.tsx</code></td><td>modificar</td><td>ruta <code>onboarding</code>, <code>agent</code> real</td></tr>
+<tr><td><code>apps/mobile/src/store.ts</code></td><td>modificar</td><td><code>headerFor</code> del perfil y del onboarding, <code>finishSignin(fallback)</code>, <code>startOnboarding</code></td></tr>
+<tr><td><code>apps/mobile/__tests__/board.test.ts</code>, <code>calibration.test.ts</code>, <code>onboarding.test.ts</code></td><td>crear</td><td>lógica pura</td></tr>
+<tr><td><code>apps/mobile/__tests__/routes.test.ts</code>, <code>store.test.ts</code></td><td>modificar</td><td><code>onboarding</code> y <code>headerFor</code></td></tr>
+<tr><td><code>apps/mobile/README.md</code>, <code>docs/overview/2026-09-28-mobile-light.html</code>, <code>docs/overview/data/manifest.js</code>, <code>docs/superpowers/audits/2026-09-28-mobile-light-f2-rulings.md</code></td><td>modificar/crear</td><td>cierre</td></tr>
+</tbody>
+</table>
+<hr>
+<h3 id="task-0-linea-base-sobre-main">Task 0: Línea base sobre main</h3>
+<p><strong>Files:</strong> ninguno.</p>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Produces: la rama <code>feat/mobile-light</code> igual a <code>main</code> local, con F1 mergeada, y el número N de tests de la línea base.</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Comprobar que F1 está en main y adelantar la rama</strong></label></li>
+</ul>
+<p>Desde la raíz del worktree:</p>
+<pre><code class="language-bash">git log --oneline -1 main
+git merge-base --is-ancestor 3bb93ab main &amp;&amp; echo F1_IN_MAIN
+git status --short
+git merge --ff-only main
+git log --oneline -1</code></pre>
+<p>Expected: <code>F1_IN_MAIN</code>, un árbol limpio (salvo este plan y su HTML, si aún no están commiteados) y HEAD = main. Si <code>F1_IN_MAIN</code> no sale, <strong>para</strong>: el merge de F1 lo corre Jesús.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Medir</strong></label></li>
+</ul>
+<p>Desde <code>apps/mobile</code>:</p>
+<pre><code class="language-bash">npm test 2&gt;&amp;1 | tail -5
+npx tsc --noEmit &amp;&amp; echo TSC_OK</code></pre>
+<p>Expected: <code>Tests: 282 passed, 282 total</code> (lo que dejó F1; anota el número real) y <code>TSC_OK</code>. Si la línea base no está en verde, <strong>para</strong> y repórtalo.</p>
+<hr>
+<h3 id="task-1-logica-pura-del-board-d10-d11">Task 1: Lógica pura del board (D10, D11)</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Create: <code>apps/mobile/src/reads/board.ts</code></li>
+<li>Test: <code>apps/mobile/__tests__/board.test.ts</code></li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Consumes: <code>LEVELS_BPS</code>, <code>horizonLabel</code>, <code>levelLabel</code>, <code>targetFor</code> de <code>src/reads/matrix.ts</code>; <code>formatPrice</code>, <code>type Side</code> de <code>src/perpl/orders.ts</code>.</li>
+<li>Produces:</li>
+<ul>
+<li><code>BOARD_CELL_H = 48</code>, <code>BOARD_MARK_H = 26</code>, <code>BOARD_H = 266</code>.</li>
+<li><code>type BoardMode = &quot;trade&quot; | &quot;ask&quot;</code>.</li>
+<li><code>type BoardRow = { kind: &quot;level&quot;; bps: number; price: number; label: string; side: Side } | { kind: &quot;mark&quot; }</code>.</li>
+<li><code>boardRows(mark: number): BoardRow[]</code>: 5 niveles con la banda después del último positivo (6 filas).</li>
+<li><code>cellTone(mode: BoardMode, bps: number): &quot;long&quot; | &quot;short&quot; | &quot;ask&quot;</code>.</li>
+<li><code>boardCaption(mode, cell: { levelBps: number; horizonMin: number } | undefined, mark: number, pd: number): { text: string; tone: &quot;long&quot; | &quot;short&quot; | &quot;ask&quot; | &quot;none&quot; }</code>.</li>
+<li><code>trajectory(marks: readonly number[], mark: number): [number, number][]</code>: puntos en un viewBox 0..100.</li>
+<li><code>stickyPhrase(side: Side, symbol: string, level: { target: number; horizonMin: number } | undefined, pd: number): string</code>.</li>
+</ul>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Escribir el test que falla</strong></label></li>
+</ul>
+<p>Crea <code>apps/mobile/__tests__/board.test.ts</code>:</p>
+<pre><code class="language-ts">import { BOARD_H, boardCaption, boardRows, cellTone, stickyPhrase, trajectory } from &quot;../src/reads/board&quot;;
+
+// BTC con pd 1: mark 762555 = 76,255.5 (mismos números que reads-matrix.test).
+const MARK = 762555;
+
+test(&quot;rows: 5 levels high to low with the mark band between +0.5% and −0.5% (D10)&quot;, () =&gt; {
+  const rows = boardRows(MARK);
+  expect(rows.map((r) =&gt; (r.kind === &quot;mark&quot; ? &quot;MARK&quot; : r.bps))).toEqual([250, 100, 50, &quot;MARK&quot;, -50, -100]);
+  expect(rows[0]).toEqual({ kind: &quot;level&quot;, bps: 250, price: 781619, label: &quot;+2.5%&quot;, side: &quot;long&quot; });
+  expect(rows[4]).toEqual({ kind: &quot;level&quot;, bps: -50, price: 758742, label: &quot;−0.5%&quot;, side: &quot;short&quot; });
+  expect(BOARD_H).toBe(5 * 48 + 26);
+});
+
+test(&quot;cell tone: above the mark is long, below is short; Ask is always ask&quot;, () =&gt; {
+  expect(cellTone(&quot;trade&quot;, 100)).toBe(&quot;long&quot;);
+  expect(cellTone(&quot;trade&quot;, -50)).toBe(&quot;short&quot;);
+  expect(cellTone(&quot;ask&quot;, -50)).toBe(&quot;ask&quot;);
+});
+
+test(&quot;caption: trade phrase with the absolute level; ask phrase; hint without a cell&quot;, () =&gt; {
+  expect(boardCaption(&quot;trade&quot;, { levelBps: 100, horizonMin: 240 }, MARK, 1)).toEqual({ text: &quot;LONG TO 77018.1 WITHIN 4H&quot;, tone: &quot;long&quot; });
+  expect(boardCaption(&quot;trade&quot;, { levelBps: -100, horizonMin: 1440 }, MARK, 1)).toEqual({ text: &quot;SHORT TO 75492.9 WITHIN 24H&quot;, tone: &quot;short&quot; });
+  expect(boardCaption(&quot;ask&quot;, { levelBps: 50, horizonMin: 60 }, MARK, 1)).toEqual({ text: &quot;ASK ABOUT 76636.8 WITHIN 1H&quot;, tone: &quot;ask&quot; });
+  expect(boardCaption(&quot;trade&quot;, undefined, MARK, 1)).toEqual({ text: &quot;TAP A SQUARE&quot;, tone: &quot;none&quot; });
+});
+
+test(&quot;trajectory: the current mark sits on the band; x spans 0..100&quot;, () =&gt; {
+  const pts = trajectory([MARK, MARK], MARK);
+  expect(pts[0][0]).toBe(0);
+  expect(pts[1][0]).toBe(100);
+  // centro de la banda: (3 × 48 + 13) / 266 = 59.0 %
+  expect(pts[1][1]).toBeCloseTo(59.0, 1);
+});
+
+test(&quot;trajectory: a past mark at +1.0% sits on the +1.0% row centre&quot;, () =&gt; {
+  const up = Math.round((MARK * 10100) / 10000);
+  const [[, y]] = trajectory([up, MARK], MARK);
+  expect(y).toBeCloseTo((72 / 266) * 100, 1);
+});
+
+test(&quot;trajectory: marks outside the board are clamped to 2..98 and never NaN (Review Focus 1)&quot;, () =&gt; {
+  const pts = trajectory([MARK * 2, MARK / 2, MARK], MARK);
+  expect(pts[0][1]).toBe(2);
+  expect(pts[1][1]).toBe(98);
+  expect(pts.every(([x, y]) =&gt; Number.isFinite(x) &amp;&amp; Number.isFinite(y))).toBe(true);
+});
+
+test(&quot;trajectory: fewer than 2 marks draws nothing&quot;, () =&gt; {
+  expect(trajectory([], MARK)).toEqual([]);
+  expect(trajectory([MARK], MARK)).toEqual([]);
+});
+
+test(&quot;sticky phrase: with a level it names target and horizon; without, a market order&quot;, () =&gt; {
+  expect(stickyPhrase(&quot;long&quot;, &quot;BTC&quot;, { target: 770181, horizonMin: 240 }, 1)).toBe(&quot;Long to 77018.1 within 4H&quot;);
+  expect(stickyPhrase(&quot;short&quot;, &quot;ETH&quot;, undefined, 2)).toBe(&quot;Short ETH at market&quot;);
+});</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Correrlo y verlo fallar</strong></label></li>
+</ul>
+<p>Run: <code>npx jest __tests__/board.test.ts</code> Expected: FAIL con <code>Cannot find module &#39;../src/reads/board&#39;</code>.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Implementar</strong></label></li>
+</ul>
+<p>Crea <code>apps/mobile/src/reads/board.ts</code>:</p>
+<pre><code class="language-ts">// Board nivel × tiempo (spec mobile-light D10–D12). Puro: geometría, rótulos y trayectoria.
+// El Handoff dibuja 6 niveles × 3 horizontes; aquí mandan los del backend (5 × 4).
+import { formatPrice, type Side } from &quot;../perpl/orders&quot;;
+import { horizonLabel, LEVELS_BPS, levelLabel, targetFor } from &quot;./matrix&quot;;
+
+export const BOARD_CELL_H = 48;
+export const BOARD_MARK_H = 26;
+const ABOVE = LEVELS_BPS.filter((b) =&gt; b &gt; 0).length; // 3 filas sobre la banda
+export const BOARD_H = LEVELS_BPS.length * BOARD_CELL_H + BOARD_MARK_H;
+
+export type BoardMode = &quot;trade&quot; | &quot;ask&quot;;
+export type BoardRow = { kind: &quot;level&quot;; bps: number; price: number; label: string; side: Side } | { kind: &quot;mark&quot; };
+
+export function boardRows(mark: number): BoardRow[] {
+  const levels: BoardRow[] = LEVELS_BPS.map((bps) =&gt; ({ kind: &quot;level&quot;, bps, price: targetFor(mark, bps), label: levelLabel(bps), side: bps &gt; 0 ? &quot;long&quot; : &quot;short&quot; }));
+  return [...levels.slice(0, ABOVE), { kind: &quot;mark&quot; }, ...levels.slice(ABOVE)];
+}
+
+export const cellTone = (mode: BoardMode, bps: number): &quot;long&quot; | &quot;short&quot; | &quot;ask&quot; =&gt; (mode === &quot;ask&quot; ? &quot;ask&quot; : bps &gt; 0 ? &quot;long&quot; : &quot;short&quot;);
+
+export function boardCaption(mode: BoardMode, cell: { levelBps: number; horizonMin: number } | undefined, mark: number, pd: number): { text: string; tone: &quot;long&quot; | &quot;short&quot; | &quot;ask&quot; | &quot;none&quot; } {
+  if (!cell) return { text: &quot;TAP A SQUARE&quot;, tone: &quot;none&quot; };
+  const price = formatPrice(targetFor(mark, cell.levelBps), pd);
+  const h = horizonLabel(cell.horizonMin);
+  if (mode === &quot;ask&quot;) return { text: `ASK ABOUT ${price} WITHIN ${h}`, tone: &quot;ask&quot; };
+  const tone = cellTone(mode, cell.levelBps) as &quot;long&quot; | &quot;short&quot;;
+  return { text: `${tone.toUpperCase()} TO ${price} WITHIN ${h}`, tone };
+}
+
+// Anclas en bps respecto al mark actual → y en px del board: centro de cada fila y de la banda.
+const ANCHORS: [number, number][] = [
+  ...LEVELS_BPS.slice(0, ABOVE).map((b, i): [number, number] =&gt; [b, i * BOARD_CELL_H + BOARD_CELL_H / 2]),
+  [0, ABOVE * BOARD_CELL_H + BOARD_MARK_H / 2],
+  ...LEVELS_BPS.slice(ABOVE).map((b, i): [number, number] =&gt; [b, (ABOVE + i) * BOARD_CELL_H + BOARD_MARK_H + BOARD_CELL_H / 2]),
+];
+
+function yFor(bps: number): number {
+  // Segmento entre dos anclas; fuera del board se extrapola con el segmento del extremo y el clamp lo pega al borde.
+  const j = ANCHORS.findIndex(([b]) =&gt; b &lt;= bps);
+  const i = j &lt;= 0 ? 1 : j; // j = -1: por debajo de la última ancla; j = 0: por encima de la primera
+  const [b0, y0] = ANCHORS[j === -1 ? ANCHORS.length - 2 : i - 1];
+  const [b1, y1] = ANCHORS[j === -1 ? ANCHORS.length - 1 : i];
+  const px = y0 + ((b0 - bps) / (b0 - b1)) * (y1 - y0);
+  return Math.min(98, Math.max(2, Math.round((px / BOARD_H) * 1000) / 10));
+}
+
+/** Historial de marks en memoria (`perpl/marks.ts`) → polilínea detrás de las celdas. Con &lt; 2 marks, nada. */
+export function trajectory(marks: readonly number[], mark: number): [number, number][] {
+  if (marks.length &lt; 2 || !(mark &gt; 0)) return [];
+  const last = marks.length - 1;
+  return marks.map((m, i) =&gt; [Math.round((i / last) * 1000) / 10, yFor(((m - mark) / mark) * 10000)]);
+}
+
+export function stickyPhrase(side: Side, symbol: string, level: { target: number; horizonMin: number } | undefined, pd: number): string {
+  const s = side === &quot;long&quot; ? &quot;Long&quot; : &quot;Short&quot;;
+  return level ? `${s} to ${formatPrice(level.target, pd)} within ${horizonLabel(level.horizonMin)}` : `${s} ${symbol} at market`;
+}</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 4: Correrlo y verlo pasar</strong></label></li>
+</ul>
+<p>Run: <code>npx jest __tests__/board.test.ts</code> Expected: PASS, 8 tests. Si un precio esperado no coincide, recalcúlalo con <code>targetFor</code> y <code>formatPrice</code> (no ajustes la fórmula al test). Después, <strong>contra el defecto</strong>: quita el <code>Math.min(98, Math.max(2, …))</code> (deja sólo el redondeo), confirma que el test de clamp falla y restaura.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 5: Suite completa, tipos y commit</strong></label></li>
+</ul>
+<pre><code class="language-bash">npm test 2&gt;&amp;1 | tail -3 &amp;&amp; npx tsc --noEmit &amp;&amp; echo TSC_OK
+git add apps/mobile/src/reads/board.ts apps/mobile/__tests__/board.test.ts
+git commit -m &quot;feat(mobile): lógica pura del board nivel × tiempo
+
+Co-Authored-By: Claude Opus 5.5 &lt;noreply@anthropic.com&gt;&quot;</code></pre>
+<hr>
+<h3 id="task-2-page-con-barra-fija-modo-bare-pagescroll-y-footerbar">Task 2: <code>Page</code> con barra fija — modo <code>bare</code>, <code>PageScroll</code> y <code>FooterBar</code></h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Modify: <code>apps/mobile/src/ui/Page.tsx</code></li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Produces:</li>
+<ul>
+<li><code>withPage(screen, Component, opts?: { headerRight?; bare?: boolean })</code>. Con <code>bare</code>, <code>Page</code> pinta la cabecera y deja que el componente llene un <code>View</code> con <code>flex: 1</code>.</li>
+<li><code>PageScroll({ screen, children }: { screen: Screen; children: ReactNode })</code>: el <code>ScrollView</code> de hoy, con pull-to-refresh, sello <code>UPDATED</code>/<code>COULDN&#39;T REFRESH</code>, <code>keyboardShouldPersistTaps=&quot;handled&quot;</code> y el hueco de la tab bar en las raíces.</li>
+<li><code>FooterBar({ children }: { children: ReactNode })</code>: fuera del scroll, fondo <code>C.bg</code>, <code>borderTopWidth: 1</code> en <code>C.hair08</code>, padding <code>12 / 18 / 12</code>. El inset inferior lo pone el <code>SafeAreaView</code>: las pantallas no raíz ya usan <code>edges={[&quot;top&quot;, &quot;bottom&quot;]}</code> y no llevan tab bar.</li>
+</ul>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Extraer <code>PageScroll</code> sin cambiar el comportamiento</strong></label></li>
+</ul>
+<p>En <code>Page.tsx</code>, mueve a un componente exportado <code>PageScroll</code> todo lo que hoy va del <code>useState(refreshing)</code> al cierre del <code>ScrollView</code>: <code>onRefresh</code>, <code>label</code>, <code>failed</code> y el <code>ScrollView</code> con su <code>RefreshControl</code> y el sello. Toma <code>screen</code> por prop y el resto de <code>useAppCtx()</code> y <code>useSafeAreaInsets()</code>. <code>Page</code> queda así:</p>
+<pre><code class="language-tsx">export function Page({ screen, children, headerRight, bare }: { screen: Screen; children: ReactNode; headerRight?: ReactNode; bare?: boolean }) {
+  // … cabecera igual que hoy …
+  return (
+    &lt;View style={{ flex: 1, backgroundColor: C.bg }}&gt;
+      &lt;SafeAreaView style={{ flex: 1 }} edges={showTabs ? [&quot;top&quot;] : [&quot;top&quot;, &quot;bottom&quot;]}&gt;
+        {/* cabecera sin cambios */}
+        {bare ? &lt;View style={{ flex: 1 }}&gt;{children}&lt;/View&gt; : &lt;PageScroll screen={screen}&gt;{children}&lt;/PageScroll&gt;}
+      &lt;/SafeAreaView&gt;
+    &lt;/View&gt;
+  );
+}
+
+/** Barra de acción fija (Handoff: STICKY ACTION de Market, Read y el perfil). Sólo en pantallas no raíz: ahí no hay tab bar. */
+export function FooterBar({ children }: { children: ReactNode }) {
+  return &lt;View style={{ paddingTop: 12, paddingHorizontal: 18, paddingBottom: 12, backgroundColor: C.bg, borderTopWidth: 1, borderTopColor: C.hair08, gap: 10 }}&gt;{children}&lt;/View&gt;;
+}</code></pre>
+<p><code>withPage</code> pasa <code>bare={opts?.bare}</code> a <code>Page</code>.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Tipos y tests</strong></label></li>
+</ul>
+<pre><code class="language-bash">npx tsc --noEmit &amp;&amp; echo TSC_OK
+npm test 2&gt;&amp;1 | tail -3</code></pre>
+<p>Expected: <code>TSC_OK</code> y el mismo número de tests que en Task 0. Todavía ninguna pantalla usa <code>bare</code>: el comportamiento no cambia.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Commit</strong></label></li>
+</ul>
+<pre><code class="language-bash">git add apps/mobile/src/ui/Page.tsx
+git commit -m &quot;feat(mobile): Page con modo bare, PageScroll y FooterBar para las barras fijas
+
+Co-Authored-By: Claude Opus 5.5 &lt;noreply@anthropic.com&gt;&quot;</code></pre>
+<hr>
+<h3 id="task-3-componente-board-y-market-con-el-board-en-los-dos-modos-d10-d11-d12-residual-3-de-f1">Task 3: Componente <code>Board</code> y Market con el board en los dos modos (D10, D11, D12; residual 3 de F1)</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Create: <code>apps/mobile/src/screens/board.tsx</code></li>
+<li>Modify: <code>apps/mobile/src/screens/ask.tsx</code> (sale <code>MatrixGrid</code> y la fila «HISTORY · MARK»), <code>apps/mobile/src/screens/market.tsx</code> (el board entra en Trade)</li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Consumes: <code>boardRows</code>, <code>cellTone</code>, <code>boardCaption</code>, <code>trajectory</code>, <code>BOARD_CELL_H</code>, <code>BOARD_MARK_H</code>, <code>type BoardMode</code> (Task 1); <code>HORIZONS_MIN</code>, <code>horizonLabel</code>, <code>dotKey</code>, <code>readDots</code>, <code>readsForMarket</code>, <code>type Cell</code> (<code>reads/matrix.ts</code>); <code>levelFromCell</code>, <code>levelIsLive</code>, <code>sideFor</code> (<code>reads/level.ts</code>).</li>
+<li>Produces: <code>Board({ mode, market, marks, dots, selected, onSelect }: { mode: BoardMode; market: Market; marks: readonly number[]; dots: Set&lt;string&gt;; selected?: Cell; onSelect: (c: Cell) =&gt; void })</code>.</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Crear <code>Board</code></strong></label></li>
+</ul>
+<p>Valores del Handoff (<code>Market Mobile Light.dc.html</code>), con 5 × 4:</p>
+<ul>
+<li>Tarjeta: <code>Card</code> con radio 20, fondo <code>C.card</code>, <code>pad={0}</code>.</li>
+<li>Cabecera de la tarjeta, con padding <code>14/16</code> y <code>space-between</code>:</li>
+<ul>
+<li>«LEVEL × TIME» con <code>Tag s={10}</code>.</li>
+<li><code>boardCaption(...).text</code> en mono 500 10, ls 0.06. Color según el tono: <code>C.limeInk</code> para long, <code>C.down</code> para short, <code>C.vio</code> para ask y <code>C.faint</code> para none.</li>
+</ul>
+<li>Grid interior: <code>marginHorizontal: 6</code>, <code>marginBottom: 6</code>, radio 14, fondo <code>C.bg</code>, <code>overflow: &quot;hidden&quot;</code>.</li>
+<li>Capa de trayectoria <strong>detrás</strong> de las filas:</li>
+<ul>
+<li><code>View</code> absoluto con <code>left: 84</code>, <code>right: 0</code>, <code>top: 0</code> y <code>height: BOARD_H</code>, con <code>pointerEvents=&quot;none&quot;</code>.</li>
+<li>Dentro, un <code>Svg</code> de <code>react-native-svg</code> con <code>viewBox=&quot;0 0 100 100&quot;</code> y <code>preserveAspectRatio=&quot;none&quot;</code>.</li>
+<li><code>Polygon</code> de área: <code>fill=&quot;rgba(91,60,224,0.07)&quot;</code>, con los puntos de la línea más <code>100,100 0,100</code>.</li>
+<li><code>Polyline</code>: <code>stroke={C.spark}</code>, <code>strokeWidth={2}</code>, <code>strokeLinejoin=&quot;round&quot;</code>, <code>strokeLinecap=&quot;round&quot;</code>, <code>vectorEffect=&quot;non-scaling-stroke&quot;</code> y <code>fill=&quot;none&quot;</code>.</li>
+<li>Punto «now»: un <code>View</code> absoluto de 9 × 9 con <code>right: 2</code>, radio 999, fondo <code>C.vio</code>, borde de 2 en <code>C.bg</code> y <code>top</code> en <code>y% − 4.5</code>. Va en la <code>y</code> del último punto; sin trayectoria no se pinta.</li>
+<li>Sin animación de desplazamiento (el <code>pk-slide</code> del prototipo): el polling ya mueve la línea.</li>
+</ul>
+<li>Filas: <code>boardRows(market.mark)</code>.</li>
+<ul>
+<li>Fila de nivel:</li>
+<ul>
+<li>Borde inferior de 1 en <code>C.hair06</code>.</li>
+<li>Columna de precio de <strong>84</strong> de ancho, con <code>paddingLeft: 12</code> y <code>gap: 3</code>:</li>
+<ul>
+<li><code>formatPrice(row.price, pd)</code> en mono 700 12, ls −0.03; color <code>C.limeInk</code> si es long y <code>C.down</code> si es short.</li>
+<li><code>row.label</code> en mono 500 9, <code>C.faint</code>.</li>
+</ul>
+<li>4 celdas <code>Touch</code>, cada una con <code>flex: 1</code> y alto <code>BOARD_CELL_H</code>, centradas y con <code>accessibilityLabel={</code>cell-${bps}-${h}<code>}</code>.</li>
+</ul>
+<li>Celda sin selección: fondo transparente y un cuadrado de 6 × 6, radio 2, en <code>C.agentDot</code> si <code>dots.has(dotKey(...))</code> y en <code>C.empty</code> si no.</li>
+<li>Celda seleccionada: tinte y pill según <code>cellTone(mode, bps)</code>.</li>
+<ul>
+<li>long: tinte <code>C.limeBg</code> y pill «LONG» con fondo <code>C.lime</code> y texto <code>C.ink</code>.</li>
+<li>short: tinte <code>C.downBg</code> y pill «SHORT» con fondo <code>C.short</code> y texto <code>C.onInk</code>.</li>
+<li>ask: tinte <code>C.vioBg</code> y pill «ASK» con fondo <code>C.vio</code> y texto <code>C.onInk</code>.</li>
+<li>Pill: padding <code>5/9</code>, radio 999, mono 600 9.5, ls 0.06.</li>
+<li>Si la celda seleccionada tiene read, el pill la tapa; el punto reaparece al deseleccionar.</li>
+</ul>
+<li>Banda MARK: alto <code>BOARD_MARK_H</code>, fondo <code>C.ink</code>, <code>paddingHorizontal: 12</code>, <code>gap: 8</code> y a todo el ancho. Lleva <code>formatPrice(market.mark, pd)</code> en mono 700 10.5 <code>C.onInk</code> y «MARK» en mono 500 9, ls 0.12, <code>C.onInkDim</code>. <code>accessibilityLabel=&quot;mark-band&quot;</code>.</li>
+</ul>
+<li>Fila de horizontes bajo el grid:</li>
+<ul>
+<li>«TIME» en la columna de 84, mono 500 9, ls 0.1, <code>C.faint</code>.</li>
+<li><code>horizonLabel(h)</code> centrado, <code>paddingVertical: 10</code>, mono 700 11; <code>C.ink</code> si <code>selected?.horizonMin === h</code> y <code>C.dim</code> si no.</li>
+</ul>
+<li>Leyenda bajo la tarjeta: cuadrado de 7 × 7, radio 2, <code>C.agentDot</code>, y «YOU ASKED AN AGENT HERE» en mono 500 10, ls 0.06, <code>C.dim</code>.</li>
+<ul>
+<li>Ruling: el Handoff dice «AN AGENT HAS A CALL HERE», pero nuestros puntos son <strong>tus</strong> reads (D10).</li>
+</ul>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Ask usa <code>Board</code></strong></label></li>
+</ul>
+<p>En <code>ask.tsx</code>:</p>
+<ol>
+<li>Borra <code>MatrixGrid</code> y la fila «HISTORY · MARK» (el mark ya está en la cabecera y en la banda).</li>
+<li>Cambia los imports:</li>
+<ul>
+<li>Quita <code>sparkPoints</code>, <code>Sparkline</code>, <code>StyleSheet</code>, <code>GRID_ACCENT</code>, <code>GRID_DOT</code>, <code>levelLabel</code> y <code>targetFor</code> si quedan sin uso.</li>
+<li>Agrega <code>import { Board } from &quot;./board&quot;;</code>.</li>
+</ul>
+<li>En <code>newRead()</code>, en su lugar:</li>
+</ol>
+<pre><code class="language-tsx">&lt;Board mode=&quot;ask&quot; market={market} marks={perpl.marks[market.id] ?? []} dots={dots} selected={S.askCell as Cell | undefined} onSelect={(c) =&gt; set({ askCell: c })} /&gt;</code></pre>
+<p>El hint «Tap a cell: a level and a horizon.» / «Use the steppers to move it.» se conserva. Si <code>GRID_ACCENT</code> y <code>GRID_DOT</code> quedan sin consumidores en todo <code>src/</code>, bórralos de <code>theme.ts</code> y de <code>theme.test.ts</code>: <code>grep -rn &quot;GRID_ACCENT\|GRID_DOT&quot; apps/mobile/src apps/mobile/__tests__</code>.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Trade usa <code>Board</code></strong></label></li>
+</ul>
+<p>En <code>TradeTab</code> de <code>market.tsx</code>, <strong>antes</strong> del <code>if (perpl.state.status === &quot;loading&quot;)</code>, calcula:</p>
+<pre><code class="language-tsx">const dots = readDots(readsForMarket(reads.reads, market.id));
+const board = (
+  &lt;Board mode=&quot;trade&quot; market={market} marks={perpl.marks[market.id] ?? []} dots={dots}
+    selected={level ? { levelBps: level.levelBps, horizonMin: level.horizonMin } as Cell : undefined}
+    onSelect={(c) =&gt; set({ tradeLevel: levelFromCell(market, c, new Date()), perpsSide: sideFor(c.levelBps) })} /&gt;
+);</code></pre>
+<p>Píntalo arriba en los tres estados de edición:</p>
+<ul>
+<li>sin key: <code>board</code> y debajo <code>EnableTrading</code>;</li>
+<li>cargando: <code>board</code> y el spinner;</li>
+<li>listo: <code>TradingWarns</code>, luego <code>board</code>, luego <code>LevelCard</code> y el resto del ticket.</li>
+</ul>
+<p>Review y result no llevan board. <code>level</code> ya filtra por mercado y vigencia (<code>levelIsLive</code>). Tocar otra celda <strong>reemplaza</strong> el nivel. Tocar la misma celda no lo quita: para eso está «Remove level» del <code>LevelCard</code>.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 4: Tipos, tests y commit</strong></label></li>
+</ul>
+<pre><code class="language-bash">npx tsc --noEmit &amp;&amp; echo TSC_OK
+npm test 2&gt;&amp;1 | tail -3
+git add apps/mobile/src/screens/board.tsx apps/mobile/src/screens/ask.tsx apps/mobile/src/screens/market.tsx
+# + theme.ts / theme.test.ts sólo si Step 2 los tocó
+git commit -m &quot;feat(mobile): board nivel × tiempo del Handoff en Trade it y Ask an agent
+
+Co-Authored-By: Claude Opus 5.5 &lt;noreply@anthropic.com&gt;&quot;</code></pre>
+<hr>
+<h3 id="task-4-barras-fijas-de-market-y-read-d11-d14-ruling-12-y-residual-2-de-f1">Task 4: Barras fijas de Market y Read (D11, D14; ruling 12 y residual 2 de F1)</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Modify: <code>apps/mobile/src/navigation/Navigator.tsx</code> (Market y Read con <code>bare: true</code>), <code>apps/mobile/src/screens/market.tsx</code>, <code>apps/mobile/src/screens/ask.tsx</code>, <code>apps/mobile/src/screens/read.tsx</code></li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Consumes: <code>PageScroll</code>, <code>FooterBar</code> (Task 2); <code>stickyPhrase</code> (Task 1).</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Market pasa a <code>bare</code></strong></label></li>
+</ul>
+<p>En <code>Navigator.tsx</code>: <code>const Market = withPage(&quot;market&quot;, MarketScreen, { headerRight: MarkBadge, bare: true });</code>.</p>
+<p>En <code>market.tsx</code>:</p>
+<ul>
+<li><code>MarketScreen</code> deja de envolver en un <code>View</code>. El segmentado pasa a una prop <code>head</code>: <code>&lt;TradeTab {...ctx} head={seg} /&gt;</code> / <code>&lt;AskTab {...ctx} head={seg} /&gt;</code>, con <code>seg</code> = el <code>View</code> con el <code>Segmented</code> de hoy. Los estados <code>MarketSkeleton</code> y <code>!market</code> van dentro de <code>&lt;PageScroll screen=&quot;market&quot;&gt;</code>.</li>
+<li><code>TradeTab</code> devuelve siempre <code>&lt;&gt;&lt;PageScroll screen=&quot;market&quot;&gt;{head}{cuerpo}&lt;/PageScroll&gt;{footer}&lt;/&gt;</code>. <code>footer</code> sólo existe en el paso <code>edit</code> con <code>perpl.state.status === &quot;ready&quot;</code>:</li>
+</ul>
+<pre><code class="language-tsx">&lt;FooterBar&gt;
+  &lt;T w={600} s={17} lh={1.25} ls={-0.03} accessibilityLabel=&quot;sticky-phrase&quot;&gt;{stickyPhrase(side, sym, level, market.priceDecimals)}&lt;/T&gt;
+  &lt;Btn label={ok ? `Review · ${formatAusd(units ?? 0n)} AUSD` : &quot;Enter a margin&quot;} onPress={() =&gt; setSt({ step: &quot;review&quot; })} arrow disabled={!ok} py={16} variant=&quot;lime&quot; accessibilityLabel=&quot;review&quot; /&gt;
+&lt;/FooterBar&gt;</code></pre>
+<ul>
+<li>Borra del cuerpo el <code>Btn</code> «Review» de hoy, que duplicaría el <code>accessibilityLabel=&quot;review&quot;</code>. «Nothing sent yet…» se queda en el cuerpo.</li>
+<li>En review, «Confirm» y «Change amount» siguen en el cuerpo. En result, no hay barra.</li>
+<li><code>AskTab</code> devuelve <code>&lt;PageScroll screen=&quot;market&quot;&gt;{head}&lt;View …&gt;{newRead()}&lt;/View&gt;&lt;/PageScroll&gt;</code>, sin barra: Ask pregunta desde su hoja (D12).</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Read pasa a <code>bare</code></strong></label></li>
+</ul>
+<p>En <code>Navigator.tsx</code>: <code>const ReadView = withPage(&quot;read&quot;, ReadScreen, { bare: true });</code>.</p>
+<p>En <code>read.tsx</code>:</p>
+<ul>
+<li>Los estados skeleton y missing van dentro de <code>&lt;PageScroll screen=&quot;read&quot;&gt;</code>.</li>
+<li>La read cargada devuelve <code>&lt;&gt;&lt;PageScroll screen=&quot;read&quot;&gt;&lt;Page gap={14}&gt;…&lt;/Page&gt;&lt;/PageScroll&gt;&lt;FooterBar&gt;…&lt;/FooterBar&gt;&lt;/&gt;</code>.</li>
+<li>«Trade this market» y «A read is not a trading permission.» salen del cuerpo y pasan a la barra, con el <code>trade</code> de hoy:</li>
+</ul>
+<pre><code class="language-tsx">&lt;FooterBar&gt;
+  &lt;Btn label=&quot;Trade this market&quot; arrow onPress={trade} variant=&quot;lime&quot; py={16} accessibilityLabel=&quot;trade-this-market&quot; /&gt;
+  &lt;T w={400} s={13} lh={1.4} color={C.dim} style={{ textAlign: &quot;center&quot; }}&gt;A read is not a trading permission.&lt;/T&gt;
+&lt;/FooterBar&gt;</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Tipos, tests y commit</strong></label></li>
+</ul>
+<pre><code class="language-bash">npx tsc --noEmit &amp;&amp; echo TSC_OK
+npm test 2&gt;&amp;1 | tail -3
+git add apps/mobile/src/navigation/Navigator.tsx apps/mobile/src/screens/market.tsx apps/mobile/src/screens/ask.tsx apps/mobile/src/screens/read.tsx
+git commit -m &quot;feat(mobile): barras fijas en Market (Review) y Read (Trade this market)
+
+Co-Authored-By: Claude Opus 5.5 &lt;noreply@anthropic.com&gt;&quot;</code></pre>
+<hr>
+<h3 id="task-5-calibracion-y-record-puros-d16">Task 5: Calibración y récord, puros (D16)</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Create: <code>apps/mobile/src/reads/calibration.ts</code></li>
+<li>Test: <code>apps/mobile/__tests__/calibration.test.ts</code></li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Consumes: <code>type Read</code> (<code>reads/types.ts</code>).</li>
+<li>Produces:</li>
+<ul>
+<li><code>CALIBRATION_MIN = 5</code>.</li>
+<li><code>type Bucket = { lo: number; hi: number; promised: number; actual: number | null; n: number }</code>.</li>
+<li><code>calibration(reads: readonly Read[]): Bucket[] | null</code>: 5 buckets de 0.2; <code>null</code> con menos de 5 resueltas.</li>
+<li><code>type RecordFilter = &quot;all&quot; | &quot;right&quot; | &quot;wrong&quot; | &quot;open&quot;</code>.</li>
+<li><code>recordFor(reads: readonly Read[] | null, agentId: string, filter: RecordFilter): Read[] | null</code>.</li>
+</ul>
+</ul>
+<p>Definición: una read <strong>resuelta</strong> tiene <code>status</code> <code>right</code> o <code>wrong</code>, <code>probability</code> y <code>outcome</code> no nulos. Cae en el bucket <code>i</code> si <code>lo ≤ p &lt; hi</code>; el último incluye 1.0. <code>actual</code> = fracción con <code>outcome === true</code>, es decir, cuántas veces pasó el evento al que el agente le puso probabilidad <code>p</code>. <code>promised</code> es el centro del bucket y la diagonal lo dibuja.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Escribir el test que falla</strong></label></li>
+</ul>
+<p>Crea <code>apps/mobile/__tests__/calibration.test.ts</code>:</p>
+<pre><code class="language-ts">import { calibration, recordFor } from &quot;../src/reads/calibration&quot;;
+import type { Read } from &quot;../src/reads/types&quot;;
+
+const base: Read = {
+  id: &quot;r&quot;, agentId: &quot;drift&quot;, marketId: 1, symbol: &quot;BTC&quot;, priceDecimals: 1, levelBps: 100, horizonMin: 240, markAtRequest: 762555, target: 770181,
+  question: &quot;q&quot;, status: &quot;open&quot;, probability: 0.5, reasons: null, limits: null, creditsCharged: 1, error: null,
+  createdAt: &quot;2026-09-28T10:00:00Z&quot;, expiresAt: &quot;2026-09-28T14:00:00Z&quot;, resolvedAt: null, markAtResolution: null, outcome: null, brier: null,
+};
+const r = (id: string, p: Partial&lt;Read&gt;): Read =&gt; ({ ...base, id, ...p });
+const resolved = (id: string, probability: number, outcome: boolean): Read =&gt; r(id, { status: outcome === probability &gt;= 0.5 ? &quot;right&quot; : &quot;wrong&quot;, probability, outcome });
+
+test(&quot;fewer than 5 resolved reads → empty state (null)&quot;, () =&gt; {
+  expect(calibration([resolved(&quot;a&quot;, 0.1, false), resolved(&quot;b&quot;, 0.3, false), resolved(&quot;c&quot;, 0.5, true), resolved(&quot;d&quot;, 0.9, true)])).toBeNull();
+});
+
+test(&quot;open, void and failed reads do not count (Review Focus 2)&quot;, () =&gt; {
+  const four = [resolved(&quot;a&quot;, 0.1, false), resolved(&quot;b&quot;, 0.3, false), resolved(&quot;c&quot;, 0.5, true), resolved(&quot;d&quot;, 0.9, true)];
+  expect(calibration([...four, r(&quot;o&quot;, { status: &quot;open&quot; }), r(&quot;v&quot;, { status: &quot;void&quot; }), r(&quot;f&quot;, { status: &quot;failed&quot;, probability: null })])).toBeNull();
+});
+
+test(&quot;5 buckets of 0.2; boundaries go up; 1.0 falls in the last (Review Focus 2)&quot;, () =&gt; {
+  const b = calibration([resolved(&quot;a&quot;, 0.2, false), resolved(&quot;b&quot;, 0.25, true), resolved(&quot;c&quot;, 1, true), resolved(&quot;d&quot;, 0.85, false), resolved(&quot;e&quot;, 0.05, false)])!;
+  expect(b.map((x) =&gt; x.n)).toEqual([1, 2, 0, 0, 2]);
+  expect(b[1]).toEqual({ lo: 0.2, hi: 0.4, promised: 0.3, actual: 0.5, n: 2 });
+  expect(b[2].actual).toBeNull();
+  expect(b[4].actual).toBe(0.5);
+  expect(b[0].promised).toBeCloseTo(0.1);
+});
+
+test(&quot;record: only this agent, newest first as given, filtered&quot;, () =&gt; {
+  const list = [r(&quot;1&quot;, { status: &quot;right&quot; }), r(&quot;2&quot;, { status: &quot;wrong&quot; }), r(&quot;3&quot;, { status: &quot;open&quot; }), r(&quot;4&quot;, { agentId: &quot;anchor&quot; }), r(&quot;5&quot;, { status: &quot;void&quot; })];
+  expect(recordFor(list, &quot;drift&quot;, &quot;all&quot;)!.map((x) =&gt; x.id)).toEqual([&quot;1&quot;, &quot;2&quot;, &quot;3&quot;, &quot;5&quot;]);
+  expect(recordFor(list, &quot;drift&quot;, &quot;right&quot;)!.map((x) =&gt; x.id)).toEqual([&quot;1&quot;]);
+  expect(recordFor(list, &quot;drift&quot;, &quot;wrong&quot;)!.map((x) =&gt; x.id)).toEqual([&quot;2&quot;]);
+  expect(recordFor(list, &quot;drift&quot;, &quot;open&quot;)!.map((x) =&gt; x.id)).toEqual([&quot;3&quot;]);
+  expect(recordFor(null, &quot;drift&quot;, &quot;all&quot;)).toBeNull();
+});</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Correrlo y verlo fallar</strong></label></li>
+</ul>
+<p>Run: <code>npx jest __tests__/calibration.test.ts</code> Expected: FAIL con <code>Cannot find module &#39;../src/reads/calibration&#39;</code>.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Implementar</strong></label></li>
+</ul>
+<p>Crea <code>apps/mobile/src/reads/calibration.ts</code>:</p>
+<pre><code class="language-ts">// Perfil de agente (spec mobile-light D16): calibración y récord con TUS reads de ese agente (máx. 50 de reads-list). Puro.
+import type { Read } from &quot;./types&quot;;
+
+export const CALIBRATION_MIN = 5;
+const N = 5;
+
+export type Bucket = { lo: number; hi: number; promised: number; actual: number | null; n: number };
+
+const isResolved = (r: Read): boolean =&gt; (r.status === &quot;right&quot; || r.status === &quot;wrong&quot;) &amp;&amp; r.probability !== null &amp;&amp; r.outcome !== null;
+
+export function calibration(reads: readonly Read[]): Bucket[] | null {
+  const done = reads.filter(isResolved);
+  if (done.length &lt; CALIBRATION_MIN) return null;
+  return Array.from({ length: N }, (_, i) =&gt; {
+    const lo = i / N, hi = (i + 1) / N;
+    const inB = done.filter((r) =&gt; r.probability! &gt;= lo &amp;&amp; (r.probability! &lt; hi || (i === N - 1 &amp;&amp; r.probability! &lt;= 1)));
+    const yes = inB.filter((r) =&gt; r.outcome === true).length;
+    return { lo, hi, promised: (2 * i + 1) / (2 * N), actual: inB.length === 0 ? null : yes / inB.length, n: inB.length };
+  });
+}
+
+export type RecordFilter = &quot;all&quot; | &quot;right&quot; | &quot;wrong&quot; | &quot;open&quot;;
+
+export function recordFor(reads: readonly Read[] | null, agentId: string, filter: RecordFilter): Read[] | null {
+  if (reads === null) return null;
+  const mine = reads.filter((r) =&gt; r.agentId === agentId);
+  return filter === &quot;all&quot; ? mine : mine.filter((r) =&gt; r.status === filter);
+}</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 4: Correrlo y verlo pasar; contra el defecto</strong></label></li>
+</ul>
+<p>Run: <code>npx jest __tests__/calibration.test.ts</code> Expected: PASS, 4 tests. Contra el defecto: quita <code>|| (i === N - 1 &amp;&amp; …)</code>, confirma que falla el test de fronteras (1.0 se pierde) y restaura.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 5: Commit</strong></label></li>
+</ul>
+<pre><code class="language-bash">npm test 2&gt;&amp;1 | tail -3 &amp;&amp; npx tsc --noEmit &amp;&amp; echo TSC_OK
+git add apps/mobile/src/reads/calibration.ts apps/mobile/__tests__/calibration.test.ts
+git commit -m &quot;feat(mobile): calibración y récord del agente con tus reads (puros)
+
+Co-Authored-By: Claude Opus 5.5 &lt;noreply@anthropic.com&gt;&quot;</code></pre>
+<hr>
+<h3 id="task-6-perfil-de-agente-d15-d16-d23">Task 6: Perfil de agente (D15, D16, D23)</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Create: <code>apps/mobile/src/screens/agent.tsx</code></li>
+<li>Modify: <code>apps/mobile/src/screens/agents.tsx</code>, <code>apps/mobile/src/navigation/Navigator.tsx</code>, <code>apps/mobile/src/store.ts</code> (<code>headerFor</code>), <code>apps/mobile/src/ui/Page.tsx</code> (título del perfil), <code>apps/mobile/__tests__/store.test.ts</code></li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Consumes: <code>calibration</code>, <code>recordFor</code>, <code>type RecordFilter</code>, <code>CALIBRATION_MIN</code> (Task 5); <code>PageScroll</code>, <code>FooterBar</code> (Task 2); <code>agentBlurb</code>, <code>hitRate</code> (<code>reads/agentsCopy.ts</code>); <code>askMarketId</code> (<code>store.ts</code>).</li>
+<li>Produces: <code>AgentScreen(ctx: AppCtx)</code>; <code>headerFor(screen, perpsSymbol?, agent?: { name: string; owner: string })</code>.</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Test de <code>headerFor</code> para el perfil (falla)</strong></label></li>
+</ul>
+<p>En <code>__tests__/store.test.ts</code>, agrega:</p>
+<pre><code class="language-ts">test(&quot;agent header: the agent&#39;s name and owner once agents-list is loaded (D16)&quot;, () =&gt; {
+  expect(headerFor(&quot;agent&quot;, undefined, { name: &quot;Drift&quot;, owner: &quot;pickler&quot; })).toEqual([&quot;Drift&quot;, &quot;By pickler&quot;]);
+  expect(headerFor(&quot;agent&quot;)).toEqual([&quot;Agent&quot;, &quot;&quot;]);
+});</code></pre>
+<p>Run: <code>npx jest __tests__/store.test.ts</code>. Expected: FAIL (hoy devuelve <code>[&quot;Agent&quot;, &quot;&quot;]</code> siempre).</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: <code>headerFor</code> y <code>Page</code></strong></label></li>
+</ul>
+<p>En <code>store.ts</code>: <code>export function headerFor(screen: Screen, perpsSymbol?: string, agent?: { name: string; owner: string }): [string, string]</code> y <code>case &quot;agent&quot;: return agent ? [agent.name, </code>By ${agent.owner}<code>] : [&quot;Agent&quot;, &quot;&quot;];</code>.</p>
+<p>En <code>Page.tsx</code>: <code>const agent = screen === &quot;agent&quot; ? reads.agents?.find((a) =&gt; a.id === S.agentId) : undefined;</code> y <code>headerFor(screen, perpsSymbol, agent)</code>. La cabecera ya pone el subtítulo en mayúsculas («BY PICKLER»).</p>
+<p>Run: <code>npx jest __tests__/store.test.ts</code>. Expected: PASS.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Pantalla <code>agent.tsx</code></strong></label></li>
+</ul>
+<p><code>AgentScreen({ S, reads, perpl, nav, requireAccount }: AppCtx)</code>. Busca el agente con <code>reads.agents?.find((a) =&gt; a.id === S.agentId)</code>.</p>
+<p>Estados sin agente:</p>
+<ul>
+<li><code>reads.agents === null</code> y sin error: <code>Skeleton.Card</code> × 3.</li>
+<li>Con <code>agentsError</code>: <code>Warn</code> con «Retry» (<code>reads.refresh()</code>).</li>
+<li>No está en la lista: <code>Warn title=&quot;This agent isn&#39;t listed anymore&quot;</code>.</li>
+</ul>
+<p>Con agente, <code>&lt;&gt;&lt;PageScroll screen=&quot;agent&quot;&gt;&lt;Page gap={12}&gt;…&lt;/Page&gt;&lt;/PageScroll&gt;&lt;FooterBar&gt;…&lt;/FooterBar&gt;&lt;/&gt;</code>, con este contenido:</p>
+<ol>
+<li><strong>Stats</strong>: 2 baldosas <code>flex: 1</code> con <code>gap: 8</code>, padding 16, radio 18 y fondo <code>C.card</code>. El valor va en mono 700 26, ls −0.05; la etiqueta, en mono 500 9.5 ls 0.06 <code>C.dim</code>, con <code>marginTop: 8</code>.</li>
+<ul>
+<li><code>hitRate(a.record)</code> con «HIT · {resolved} RESOLVED».</li>
+<li><code>brierAvg?.toFixed(2) ?? &quot;—&quot;</code> con «BRIER · {reads} READS».</li>
+<li>Sin NET AUSD (D15).</li>
+</ul>
+<li><strong>ITS BEAT</strong>: <code>Card</code> con padding 18, <code>Tag</code> «ITS BEAT» y <code>agentBlurb(a.id)</code> en 400 16/1.4. Sin chips de reglas.</li>
+<li><strong>CALIBRATION</strong>: <code>InkBlock</code> con <code>Tag color={C.onInkDim}</code> «CALIBRATION» y un texto en 400 14.5/1.4 <code>C.onInkSoft</code>: «Bars are what happened with your reads. The dashed line is what it promised.».</li>
+<ul>
+<li>Con <code>calibration(mine)</code> distinto de <code>null</code>: un área de 150 de alto.</li>
+<ul>
+<li>Diagonal: un <code>Svg</code> absoluto de 118 de alto con <code>viewBox=&quot;0 0 100 100&quot;</code> y <code>preserveAspectRatio=&quot;none&quot;</code>, y un <code>Line</code> de (0,88) a (100,8) con <code>stroke=&quot;#6E7490&quot;</code>, <code>strokeWidth={1.5}</code>, <code>strokeDasharray=&quot;5 5&quot;</code> y <code>vectorEffect=&quot;non-scaling-stroke&quot;</code>.</li>
+<li>Barras: 5 columnas <code>flex: 1</code> con <code>gap: 7</code>, alineadas abajo. Cada barra mide <code>max(2, actual × 108)</code> de alto (0 si <code>actual</code> es <code>null</code>), con radio <code>6/6/0/0</code>. Las dos primeras (0–40) van en <code>C.vio</code> y las demás en <code>C.lime</code>.</li>
+<li>Etiquetas «0–20», «20–40»… en mono 500 9, <code>C.onInkDim</code>, con <code>gap: 9</code>.</li>
+<li><code>accessibilityLabel={</code>calib-${i}<code>}</code> en cada barra.</li>
+</ul>
+<li>Con <code>null</code>: «Not enough resolved reads yet — {CALIBRATION_MIN} needed.» en 400 13 <code>C.onInkDim</code>.</li>
+</ul>
+<li><strong>THE RECORD</strong>:</li>
+<ul>
+<li>Título «THE RECORD» en display 700 22, ls −0.04, y a la derecha un filtro de pills ALL / RIGHT / WRONG / OPEN (estado local <code>RecordFilter</code>).</li>
+<ul>
+<li>Contenedor con fondo <code>C.ctl</code>, padding 4 y <code>gap: 3</code>.</li>
+<li>Pill: padding <code>8/13</code>, radio 999, mono 500 11, ls 0.04. Activa <code>C.ink</code>/<code>C.onInk</code>; inactiva transparente/<code>C.dim</code>.</li>
+<li><code>accessibilityLabel={</code>record-${f}<code>}</code>.</li>
+<li>Ruling: el Handoff dice ALL/WON/LOST; manda la spec D16.</li>
+</ul>
+<li><code>reads.session !== &quot;ready&quot;</code>: <code>Warn</code> «Unlock to see your record» con «Unlock with Face ID» (<code>reads.ensureSession()</code>), igual que Portfolio → Reads (Review Focus 5).</li>
+<li><code>recordFor(...) === null</code>: skeletons.</li>
+<li>Lista vacía: <code>EmptyPanel</code> «No reads with this agent yet.».</li>
+<li>Fila (<code>TouchCard</code> con padding <code>15/16</code>, radio 16, <code>gap: 12</code> y <code>accessibilityLabel={</code>record-row-${r.id}<code>}</code>):</li>
+<ul>
+<li>un cuadrado de 11 × 11, radio 4: <code>C.lime</code> si right, <code>C.short</code> si wrong, <code>C.pending</code> si open y <code>C.empty</code> en los demás estados;</li>
+<li><code>{symbol} {cellLabel(r)}</code> en 600 15.5;</li>
+<li>la meta <code>{formatProbability(p)} · {creditsCharged} CREDIT</code> en mono 500 10.5 <code>C.dim</code>;</li>
+<li>a la derecha, la etiqueta del estado en mono 700 13: RIGHT en <code>C.up</code>, WRONG en <code>C.down</code>, OPEN en <code>C.warn</code> y el resto en <code>C.faint</code>.</li>
+<li>Al tocarla, <code>nav(&quot;read&quot;, { readId: r.id })</code>, que cambia a Portfolio (D14).</li>
+</ul>
+</ul>
+<li><strong>Barra fija</strong>: <code>Btn</code> <code>variant=&quot;ask&quot;</code> <code>icon=&quot;ask&quot;</code> con <code>Ask · {priceCredits} credit{s}</code> y <code>onPress={() =&gt; requireAccount(&quot;market&quot;, { askAgentId: a.id, marketTab: &quot;ask&quot;, perpsMarketId: askMarketId(S.perpsMarketId, perpl.context?.markets ?? []) })}</code> y <code>accessibilityLabel=&quot;profile-ask&quot;</code>.</li>
+</ol>
+<p><code>mine</code> = <code>recordFor(reads.reads, a.id, &quot;all&quot;) ?? []</code> para la calibración.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 4: Cablear</strong></label></li>
+</ul>
+<ul>
+<li><code>Navigator.tsx</code>: <code>const AgentProfile = withPage(&quot;agent&quot;, AgentScreen, { bare: true });</code>. Borra el stub y su comentario.</li>
+<li><code>agents.tsx</code>: la tarjeta abre el perfil. <code>onPress={() =&gt; requireAccount(&quot;agent&quot;, { agentId: a.id })}</code>, con el gate de D23 (Agents es pública; el perfil pide cuenta). El botón «Ask» sigue con <code>ask(a)</code>. Actualiza el JSDoc: «La tarjeta abre el perfil; &quot;Ask&quot; abre Market en Ask con el agente (D13)».</li>
+<li><code>README.md</code> de la app no se toca aquí (Task 8).</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 5: Tipos, tests y commit</strong></label></li>
+</ul>
+<pre><code class="language-bash">npx tsc --noEmit &amp;&amp; echo TSC_OK
+npm test 2&gt;&amp;1 | tail -3
+git add apps/mobile/src/screens/agent.tsx apps/mobile/src/screens/agents.tsx apps/mobile/src/navigation/Navigator.tsx apps/mobile/src/store.ts apps/mobile/src/ui/Page.tsx apps/mobile/__tests__/store.test.ts
+git commit -m &quot;feat(mobile): perfil de agente con calibración y récord de tus reads
+
+Co-Authored-By: Claude Opus 5.5 &lt;noreply@anthropic.com&gt;&quot;</code></pre>
+<hr>
+<h3 id="task-7-onboarding-de-3-hojas-tras-crear-la-wallet-d21">Task 7: Onboarding de 3 hojas tras crear la wallet (D21)</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Create: <code>apps/mobile/src/onboarding.ts</code>, <code>apps/mobile/src/storage/onboarding.ts</code>, <code>apps/mobile/src/screens/onboarding.tsx</code></li>
+<li>Modify: <code>apps/mobile/src/navigation/screens.ts</code>, <code>routes.ts</code>, <code>ref.ts</code>, <code>Navigator.tsx</code>, <code>apps/mobile/src/store.ts</code>, <code>apps/mobile/src/screens/signin.tsx</code>, <code>apps/mobile/__tests__/routes.test.ts</code>, <code>apps/mobile/__tests__/store.test.ts</code></li>
+<li>Test: <code>apps/mobile/__tests__/onboarding.test.ts</code></li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Produces:</li>
+<ul>
+<li><code>ONBOARDING_SHEETS: readonly { eyebrow: string; title: string; body: string; art: &quot;reads&quot; | &quot;board&quot; | &quot;ways&quot; }[]</code> (3).</li>
+<li><code>shouldOnboard(mode: &quot;in&quot; | &quot;up&quot;, seen: boolean): boolean</code>.</li>
+<li><code>onboardingExit(next: Screen | undefined): Screen</code>: <code>next ?? &quot;markets&quot;</code>.</li>
+<li><code>loadOnboarded(): Promise&lt;boolean&gt;</code> y <code>saveOnboarded(): Promise&lt;void&gt;</code> en <code>storage/onboarding.ts</code>.</li>
+<li><code>Screen</code> suma <code>&quot;onboarding&quot;</code>; <code>RootParamList.onboarding: SigninParams</code>.</li>
+<li><code>AppStore.finishSignin(fallback?: Screen)</code> y <code>AppStore.startOnboarding()</code>.</li>
+</ul>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Test que falla</strong></label></li>
+</ul>
+<p>Crea <code>apps/mobile/__tests__/onboarding.test.ts</code>:</p>
+<pre><code class="language-ts">import { ONBOARDING_SHEETS, onboardingExit, shouldOnboard } from &quot;../src/onboarding&quot;;
+
+test(&quot;only after creating a wallet, and only once (D21, Review Focus 3)&quot;, () =&gt; {
+  expect(shouldOnboard(&quot;up&quot;, false)).toBe(true);
+  expect(shouldOnboard(&quot;up&quot;, true)).toBe(false);
+  expect(shouldOnboard(&quot;in&quot;, false)).toBe(false);
+});
+
+test(&quot;closing lands on the held action, else Markets (D21, Review Focus 3)&quot;, () =&gt; {
+  expect(onboardingExit(&quot;portfolio&quot;)).toBe(&quot;portfolio&quot;);
+  expect(onboardingExit(undefined)).toBe(&quot;markets&quot;);
+});
+
+test(&quot;3 sheets, copy for what the app does: no sports, no Back it (D21)&quot;, () =&gt; {
+  expect(ONBOARDING_SHEETS.map((s) =&gt; s.title)).toEqual([&quot;AGENTS READ THE MARKET.&quot;, &quot;PICK A SQUARE.&quot;, &quot;ASK, OR TRADE.&quot;]);
+  const all = ONBOARDING_SHEETS.map((s) =&gt; `${s.title} ${s.body}`).join(&quot; &quot;);
+  expect(all).not.toMatch(/back it|lakers|celtics|chiefs|memecoin|token/i);
+});</code></pre>
+<p>En <code>__tests__/routes.test.ts</code>, el primer test filtra <code>s !== &quot;signin&quot;</code>. Cámbialo a <code>s !== &quot;signin&quot; &amp;&amp; s !== &quot;onboarding&quot;</code>, y el cast a <code>Exclude&lt;Screen, &quot;signin&quot; | &quot;onboarding&quot;&gt;</code>. Agrega:</p>
+<pre><code class="language-ts">test(&quot;onboarding lives in the RootStack, outside the tabs (D21)&quot;, () =&gt; {
+  expect(SCREENS_ALL).toContain(&quot;onboarding&quot;);
+  expect(screenOfRoute(&quot;onboarding&quot;)).toBe(&quot;onboarding&quot;);
+  expect(GATED).not.toContain(&quot;onboarding&quot;);
+});</code></pre>
+<p>Run: <code>npx jest __tests__/onboarding.test.ts __tests__/routes.test.ts</code>. Expected: FAIL (módulo inexistente y <code>onboarding</code> fuera de <code>SCREENS_ALL</code>).</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Lógica y copy</strong></label></li>
+</ul>
+<p>Crea <code>apps/mobile/src/onboarding.ts</code>:</p>
+<pre><code class="language-ts">// Onboarding (spec mobile-light D21): 3 hojas sólo tras crear la wallet, una vez por dispositivo. Puro.
+import type { Screen } from &quot;./navigation/screens&quot;;
+
+export type OnboardingSheet = { eyebrow: string; title: string; body: string; art: &quot;reads&quot; | &quot;board&quot; | &quot;ways&quot; };
+
+export const ONBOARDING_SHEETS: readonly OnboardingSheet[] = [
+  { eyebrow: &quot;01 · WHAT THIS IS&quot;, title: &quot;AGENTS READ THE MARKET.&quot;, body: &quot;Ask an agent about a price and a time. It answers with a probability, and every read resolves on Perpl&#39;s mark.&quot;, art: &quot;reads&quot; },
+  { eyebrow: &quot;02 · THE BOARD&quot;, title: &quot;PICK A SQUARE.&quot;, body: &quot;Row is the level, column is the time. Above the mark is a long, below is a short.&quot;, art: &quot;board&quot; },
+  { eyebrow: &quot;03 · TWO WAYS IN&quot;, title: &quot;ASK, OR TRADE.&quot;, body: &quot;Violet asks an agent for a read, for one simulated credit. Lime opens a trade on Perpl with your own margin.&quot;, art: &quot;ways&quot; },
+];
+
+export const shouldOnboard = (mode: &quot;in&quot; | &quot;up&quot;, seen: boolean): boolean =&gt; mode === &quot;up&quot; &amp;&amp; !seen;
+
+export const onboardingExit = (next: Screen | undefined): Screen =&gt; next ?? &quot;markets&quot;;</code></pre>
+<p>Crea <code>apps/mobile/src/storage/onboarding.ts</code>:</p>
+<pre><code class="language-ts">import { getItemAsync, type SecureStoreOptions, setItemAsync, WHEN_UNLOCKED_THIS_DEVICE_ONLY } from &quot;expo-secure-store&quot;;
+
+const KEY = &quot;pickler.onboarded.v1&quot;;
+// No es secreto: sin gate biométrico, igual que la dirección de la cuenta.
+const OPTIONS = { keychainAccessible: WHEN_UNLOCKED_THIS_DEVICE_ONLY } satisfies SecureStoreOptions;
+
+/** Un fallo de lectura cuenta como «ya visto»: mejor no mostrar hojas que bloquear el alta. */
+export async function loadOnboarded(): Promise&lt;boolean&gt; {
+  try { return (await getItemAsync(KEY, OPTIONS)) === &quot;1&quot;; } catch { return true; }
+}
+
+export async function saveOnboarded(): Promise&lt;void&gt; {
+  try { await setItemAsync(KEY, &quot;1&quot;, OPTIONS); } catch { /* sin flag, a lo sumo se repiten las hojas en el próximo alta */ }
+}</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Rutas</strong></label></li>
+</ul>
+<ul>
+<li><code>screens.ts</code>: <code>Screen</code> suma <code>| &quot;onboarding&quot;</code>. <code>ROOT_OF</code> suma <code>onboarding: &quot;wallet&quot;</code>, como <code>signin</code>. No entra en <code>GATED</code>, <code>CAN_BACK</code> ni <code>SHOW_TABS</code>.</li>
+<li><code>routes.ts</code>:</li>
+<ul>
+<li><code>RootParamList</code> = <code>{ Tabs: …; signin: SigninParams; onboarding: SigninParams }</code>.</li>
+<li><code>TAB_OF: Record&lt;Exclude&lt;Screen, &quot;signin&quot; | &quot;onboarding&quot;&gt;, TabName&gt;</code>.</li>
+<li><code>SCREENS_ALL</code> suma <code>&quot;onboarding&quot;</code>.</li>
+</ul>
+<li><code>ref.ts</code>, en <code>navigateTo</code>: <code>if (screen === &quot;signin&quot; || screen === &quot;onboarding&quot;) { navigationRef.navigate(screen, signinParams); return; }</code>.</li>
+<li><code>store.ts</code>:</li>
+<ul>
+<li><code>headerFor</code> suma <code>case &quot;onboarding&quot;: return [&quot;Pickler&quot;, &quot;&quot;];</code>.</li>
+<li><code>finishSignin</code> pasa a <code>(fallback?: Screen) =&gt; { const p = currentParams(); if (signinIsRoot()) resetRootTo(&quot;Tabs&quot;); nav(p?.next ?? fallback ?? &quot;wallet&quot;, p?.patch); }</code>.</li>
+<li>Nuevo <code>startOnboarding: () =&gt; navigateTo(&quot;onboarding&quot;, currentParams())</code>, en <code>AppStore</code> y en el <code>return</code>.</li>
+<li><code>currentParams()</code> lee la ruta enfocada. Desde <code>signin</code> son sus params; desde <code>onboarding</code>, los mismos, porque se copian.</li>
+</ul>
+<li><code>Navigator.tsx</code>: <code>&lt;Root.Screen name=&quot;onboarding&quot; component={OnboardingScreen} options={{ gestureEnabled: false, animation: &quot;fade&quot; }} /&gt;</code>. No usa <code>withPage</code>: es a pantalla completa.</li>
+</ul>
+<p>Run: <code>npx jest __tests__/onboarding.test.ts __tests__/routes.test.ts __tests__/store.test.ts</code>. Expected: PASS.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 4: Pantalla <code>onboarding.tsx</code></strong></label></li>
+</ul>
+<p><code>OnboardingScreen()</code> usa <code>useAppCtx()</code> para <code>finishSignin</code>, <code>useRoute().params as SigninParams</code> para <code>next</code> y <code>useSafeAreaInsets()</code>. Tiene un estado <code>step</code> de 0 a 2.</p>
+<ul>
+<li><strong>Fondo</strong>: réplica estática de Markets, sin datos, con <code>opacity: 0.55</code> y <code>padding</code> <code>insets.top + 8 / 18</code>. Lleva:</li>
+<ul>
+<li>el logo <code>pickler-mark.png</code> de 24 junto a «MARKETS» en display 700 30;</li>
+<li>un pill de 46 de alto en <code>C.ctl</code>;</li>
+<li>3 bloques de 150 de alto, radio 20, en <code>C.card</code>.</li>
+</ul>
+</ul>
+<p>Encima va un overlay absoluto <code>rgba(11,13,26,0.32)</code>. Ruling: el Handoff aplica <code>blur(2px)</code>; RN no difumina un <code>View</code> sin <code>expo-blur</code>, y D2 lo descarta.</p>
+<ul>
+<li><strong>SKIP</strong>: absoluto con <code>right: 18</code> y <code>top: insets.top + 8</code>, padding <code>9/14</code>, radio 999, fondo <code>rgba(255,255,255,0.92)</code>, mono 500 11.5, ls 0.06, <code>C.dim</code>. Hace <code>setStep(2)</code> y lleva <code>accessibilityLabel=&quot;onboarding-skip&quot;</code>. En la última hoja no se muestra.</li>
+<li><strong>Hoja</strong>: absoluta abajo, con padding <code>22 / 20 / insets.bottom + 18</code>, radios superiores de 28, fondo <code>C.bg</code> y <code>gap: 18</code>.</li>
+<ul>
+<li>Grabber de 38 × 4 en <code>C.empty</code>, centrado.</li>
+<li>Arte de 150 de alto con radio 20; el fondo es <code>C.card</code> para <code>reads</code>, <code>C.limeBg</code> para <code>board</code> y <code>C.vioBg</code> para <code>ways</code>.</li>
+<li>Eyebrow en mono 500 10, ls 0.12, <code>C.vio</code>.</li>
+<li>Título en display 700 30/1, ls −0.045.</li>
+<li>Cuerpo en 400 16/1.45, <code>C.dim</code>.</li>
+</ul>
+<li><strong>Artes</strong>, construidos con <code>View</code> y datos de ejemplo marcados como tales, sin deportes:</li>
+<ul>
+<li><code>reads</code>: 3 filas blancas al 78 % de ancho, con radio 12 y padding <code>10/12</code>. Cada fila lleva un cuadrado de 10 × 10 y radio 3, el mercado en 600 12.5 y un valor en mono 700 11:</li>
+<ul>
+<li>«BTC +1.0% · 4H»: cuadrado <code>C.lime</code>, valor «62%» en <code>C.up</code>.</li>
+<li>«ETH −0.5% · 1H»: cuadrado <code>C.short</code>, valor «34%» en <code>C.down</code>.</li>
+<li>«MON +2.5% · 24H»: cuadrado <code>C.pending</code>, valor «OPEN» en <code>C.warn</code>.</li>
+</ul>
+<li><code>board</code>: 3 columnas de 44 con <code>gap: 4</code>.</li>
+<ul>
+<li>Fila de arriba: celdas blancas de 30 con radio 8; la del medio va en <code>C.lime</code> con «LONG» en mono 700 8.</li>
+<li>Una banda de 12 en <code>C.ink</code>.</li>
+<li>Fila de abajo: celdas blancas; la del medio con un punto de 7 × 7 en <code>C.agentDot</code>.</li>
+</ul>
+<li><code>ways</code>: 2 pills al 80 % de ancho con padding 14 y 600 14:</li>
+<ul>
+<li>«Ask», en <code>C.vio</code> / <code>C.onInk</code>, con el icono <code>ask</code>.</li>
+<li>«Trade», en <code>C.lime</code> / <code>C.ink</code>, con el icono <code>arrow</code>.</li>
+</ul>
+</ul>
+<li><strong>Pie</strong>: puntos tocables de 5 de alto y radio 999, con <code>gap: 5</code>. El activo mide 22 de ancho y va en <code>C.ink</code>; el inactivo, 7 en <code>C.dotOff</code>. Llevan <code>accessibilityLabel={</code>onboarding-dot-${i}<code>}</code>. El CTA va con <code>marginLeft: &quot;auto&quot;</code>:</li>
+<ul>
+<li>«Next» (<code>variant</code> oscuro de <code>Btn</code>) avanza.</li>
+<li>En la última hoja, «Go to markets» (<code>variant=&quot;lime&quot;</code>) cierra.</li>
+</ul>
+</ul>
+<p>Si hay <code>next</code>, la etiqueta es «Continue»: no se aterriza en Markets.</p>
+<ul>
+<li><strong>Cerrar</strong>: <code>void saveOnboarded(); finishSignin(onboardingExit(next));</code>. <code>onboardingExit</code> ya resuelve el fallback; <code>finishSignin</code> usa <code>p?.next</code> si existe.</li>
+<li>Sin transición entre hojas (el Handoff tampoco la tiene), salvo el ancho de los puntos. Si se anima, que sea con <code>LayoutAnimation</code>: nada nuevo.</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 5: Sign up → onboarding</strong></label></li>
+</ul>
+<p>En <code>signin.tsx</code>, dentro de <code>run()</code>, tras <code>setPhase({ step: &quot;done&quot;, … })</code>:</p>
+<pre><code class="language-ts">const onboard = shouldOnboard(mode, await loadOnboarded());
+doneTimer.current = setTimeout(onboard ? startOnboarding : () =&gt; finishSignin(), DONE_MS);</code></pre>
+<p><code>startOnboarding</code> sale del ctx. El <code>finishSignin</code> sin argumento conserva el <code>wallet</code> por defecto de hoy para Sign in.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 6: Tipos, tests y commit</strong></label></li>
+</ul>
+<pre><code class="language-bash">npx tsc --noEmit &amp;&amp; echo TSC_OK
+npm test 2&gt;&amp;1 | tail -3
+git add apps/mobile/src/onboarding.ts apps/mobile/src/storage/onboarding.ts apps/mobile/src/screens/onboarding.tsx apps/mobile/src/screens/signin.tsx apps/mobile/src/navigation/screens.ts apps/mobile/src/navigation/routes.ts apps/mobile/src/navigation/ref.ts apps/mobile/src/navigation/Navigator.tsx apps/mobile/src/store.ts apps/mobile/__tests__/onboarding.test.ts apps/mobile/__tests__/routes.test.ts apps/mobile/__tests__/store.test.ts
+git commit -m &quot;feat(mobile): onboarding de 3 hojas tras crear la wallet
+
+Co-Authored-By: Claude Opus 5.5 &lt;noreply@anthropic.com&gt;&quot;</code></pre>
+<hr>
+<h3 id="task-8-verificacion-en-el-simulador-readme-overview-y-audit">Task 8: Verificación en el simulador, README, overview y audit</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Modify: <code>apps/mobile/README.md</code>, <code>docs/overview/2026-09-28-mobile-light.html</code>, <code>docs/overview/data/manifest.js</code></li>
+<li>Create: <code>docs/superpowers/audits/2026-09-28-mobile-light-f2-rulings.md</code></li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Arrancar</strong></label></li>
+</ul>
+<p>Desde <code>apps/mobile</code>, con un puerto propio y sin prebuild (F2 no toca nada nativo):</p>
+<pre><code class="language-bash">npx expo start --dev-client --port 8082</code></pre>
+<p>Abre la app ya instalada en <code>pickler-mobile-light</code> (<code>xcrun simctl launch 700707EF-53E1-42F2-BE6B-893515BDB95C &lt;bundle id&gt;</code>) apuntando a ese Metro. Anota el PID de Metro para detenerlo al final.</p>
+<p>Expected: Metro sin <code>ERROR</code>.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Recorrido con capturas (scratchpad, <code>f2-*.png</code>)</strong></label></li>
+</ul>
+<p>Compara cada captura contra el Handoff en <code>http://localhost:8765/</code>:</p>
+<ol>
+<li>Market en <strong>Ask</strong>:</li>
+<ul>
+<li>board 5 × 4 con la banda MARK, los precios en verde arriba y en rojo abajo, y la trayectoria <strong>detrás</strong> de las celdas, que crece con el polling (captura a los 0 y a los ~60 s);</li>
+<li>el punto «now»;</li>
+<li>los puntos violeta en las celdas con read (ETH +1.0 % · 4H de F1, si sigue en la ventana);</li>
+<li>tocar una celda: tinte y pill ASK, rótulo «ASK ABOUT … WITHIN …» y el <code>AskSheet</code>.</li>
+</ul>
+<li>Market en <strong>Trade</strong>: tocar +1.0 % · 4H.</li>
+<ul>
+<li>Con key: el pill LONG, «LONG TO … WITHIN 4H», el <code>LevelCard</code> y la barra fija «Long to … within 4H» + «Review · X AUSD».</li>
+<li>Sin key: el board y «Enable trading» debajo, sin barra.</li>
+<li>Escribir el margen con el teclado abierto y cerrarlo: la barra refleja el monto (Review Focus 4).</li>
+</ul>
+<li>Read: la barra fija «Trade this market» sobre el home indicator; el cuerpo hace scroll por debajo.</li>
+<li>Agents → tarjeta → perfil:</li>
+<ul>
+<li>cabecera con nombre y «BY …», stats, ITS BEAT, CALIBRATION (vacía con &lt; 5 resueltas) y THE RECORD con el filtro;</li>
+<li>una fila abre Read en Portfolio;</li>
+<li>la barra «Ask · 1 credit» abre Market en Ask con ese agente.</li>
+<li>Con la app recién abierta, sin sesión de reads: «Unlock to see your record» (Review Focus 5).</li>
+</ul>
+<li>Onboarding: DevControls no lo cubre, así que hay dos caminos.</li>
+<ul>
+<li>(a) Sign out → Sign up → Face ID → las 3 hojas, SKIP, los puntos y «Go to markets» → Markets. Esto <strong>crea otra wallet</strong> en el simulador. Anota su dirección en el audit; la wallet con fondos sigue recuperable con Sign in, porque su passkey vive en Apple Passwords del simulador.</li>
+<li>(b) Si Jesús no quiere otra wallet: borra el flag con DevControls o con un <code>saveOnboarded</code> invertido temporal, <strong>sin commitear</strong>, y navega a <code>onboarding</code> a mano. Anota el camino usado.</li>
+<li>Después, Sign out → Sign in con la wallet con fondos: <strong>no</strong> salen hojas.</li>
+</ul>
+<li>Con la wallet con fondos (si el recorrido de dinero previo a F2 ya la dejó con key): un long de 2 AUSD a 1× desde el board → «See it in Portfolio» → Close. Registra los saldos antes y después por RPC. Si la wallet no tiene key, queda como residual y <strong>no</strong> se intenta ningún atajo que mueva fondos.</li>
+<li>Dynamic Type XXXL en Market, el perfil y el onboarding, relanzando la app antes de juzgar (audit F1).</li>
+</ol>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Tests y tipos finales</strong></label></li>
+</ul>
+<pre><code class="language-bash">npm test 2&gt;&amp;1 | tail -5
+npx tsc --noEmit &amp;&amp; echo TSC_OK</code></pre>
+<p>Expected: N (Task 0) + los nuevos: 8 de board, 4 de calibración, 3 de onboarding, 1 de routes y 1 de store (<strong>+17</strong>), todos en verde, y <code>TSC_OK</code>.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 4: README, overview, manifest y audit</strong></label></li>
+</ul>
+<ul>
+<li>README de la app: el número de tests y de suites; «Market: board nivel × tiempo»; el perfil y el onboarding.</li>
+<li>Overview:</li>
+<ul>
+<li>phase-card F2 → <code>completed</code> (select y <code>data-status</code>), con las tasks marcadas con su commit y <code>&lt;details class=&quot;followups&quot;&gt;</code> con los residuales;</li>
+<li>status board y progressbar al día;</li>
+<li>en el manifest, <code>{ num: 2, status: &#39;completed&#39; }</code> y el <code>status</code> global <code>completed</code> <strong>sólo</strong> si no queda ninguna fase abierta. El spike de velas va aparte y no es fase.</li>
+</ul>
+<li>Audit <code>2026-09-28-mobile-light-f2-rulings.md</code>, con el formato del de F1: qué quedó hecho y la evidencia, las capturas miradas contra el Handoff, los rulings (los de este plan más los de la ejecución), las correcciones, la evidencia cara y los residuales ordenados por peso.</li>
+</ul>
+<p>Rulings que este plan ya tomó y que el audit debe repetir:</p>
+<ul>
+<li>5 × 4 en lugar de 6 × 3;</li>
+<li>la leyenda «YOU ASKED AN AGENT HERE»;</li>
+<li>el pill ASK en modo Ask (el Handoff no diseña Ask sobre el board);</li>
+<li>sin <code>pk-slide</code>;</li>
+<li>el filtro ALL/RIGHT/WRONG/OPEN en lugar de ALL/WON/LOST;</li>
+<li>sin NET, reglas ni «Trade $HALF» en el perfil;</li>
+<li>el onboarding sin blur;</li>
+<li>«Continue» en lugar de «Go to markets» cuando hay acción retenida;</li>
+<li>la barra de Market sólo en edición y con key.</li>
+</ul>
+<p>Desde la raíz del worktree:</p>
+<pre><code class="language-bash">npm run docs:check &amp;&amp; npm run agents:check</code></pre>
+<p>Mira el overview renderizado a 390 px antes de afirmar nada.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 5: Commit</strong></label></li>
+</ul>
+<pre><code class="language-bash">git add apps/mobile/README.md docs/overview/2026-09-28-mobile-light.html docs/overview/data/manifest.js docs/superpowers/audits/2026-09-28-mobile-light-f2-rulings.md
+git commit -m &quot;docs(mobile-light): cierre de F2 con audit, overview y README
+
+Co-Authored-By: Claude Opus 5.5 &lt;noreply@anthropic.com&gt;&quot;</code></pre>
+<p>Detén tu Metro por PID. <strong>Para</strong>: el merge, el push y el TestFlight los decide Jesús.</p>
+<hr>
+<h2 id="fuera-de-este-plan">Fuera de este plan</h2>
+<ul>
+<li>El <strong>recorrido con dinero de F1</strong> (residual 1): va <strong>antes</strong> de ejecutar F2, con MON de faucet para la wallet <code>0xd6da…Ed23</code> del simulador (decisión del 2026-09-28).</li>
+<li><strong>Spike de velas de Perpl</strong>: aparte (spec §4). Si Perpl expone historial, la trayectoria del board y la sparkline de Markets se conectan después; <code>trajectory</code> ya recibe un arreglo de marks.</li>
+<li>Residuales de F1 que no entran: 4 (estilo del bloque THE QUESTION de Read), 5 (separador de miles), 6 y 9 (Dynamic Type), 7 (accesibilidad de los botones anidados), 8, 10–14.</li>
+</ul>
+  </div>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <p>HTML autogenerado · NO edites este archivo. Modifica el <code>.md</code> y re-genera con:</p>
+    <pre><code class="language-sql">node scripts/docs-md-to-html.mjs docs/superpowers/plans/2026-09-28-mobile-light-f2.md</code></pre>
+    <p>Reglas en <code>docs/CLAUDE.md</code> sección "MD → HTML autogenerado".</p>
+  </div>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // Persistencia de los checkboxes de task lists (pickler-md:<slug>:tasks)
+  const SLUG = '2026-09-28-mobile-light-f2';
+  const KEY = `pickler-md:${SLUG}:tasks`;
+  const checks = [...document.querySelectorAll('ul.task-list input[type=checkbox]')];
+  function load() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(KEY) || '[]');
+      checks.forEach((c, i) => {
+        if (typeof saved[i] === 'boolean') {
+          c.checked = saved[i];
+          c.closest('li').classList.toggle('done', c.checked);
+        }
+      });
+    } catch {}
+  }
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(checks.map(c => c.checked))); } catch {}
+  }
+  checks.forEach(c => {
+    c.closest('li').classList.toggle('done', c.checked);
+    c.addEventListener('change', () => {
+      c.closest('li').classList.toggle('done', c.checked);
+      save();
+    });
+  });
+  load();
+
+  // Botón "Copy progress as MD"
+  const $copy = document.getElementById('btn-copy-progress');
+  const $toast = document.getElementById('toast');
+  function showToast(msg) {
+    $toast.textContent = msg;
+    $toast.dataset.show = 'true';
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(() => { $toast.dataset.show = 'false'; }, 2200);
+  }
+  if ($copy) {
+    $copy.addEventListener('click', async (e) => {
+      const lines = ['# ' + document.title.split(' · ')[0] + ' — task progress', ''];
+      lines.push('_Capturado en ' + new Date().toISOString() + '_', '');
+      checks.forEach(c => {
+        const text = c.closest('label').textContent.trim();
+        lines.push('- [' + (c.checked ? 'x' : ' ') + '] ' + text);
+      });
+      try {
+        await navigator.clipboard.writeText(lines.join('\n'));
+        e.currentTarget.dataset.copied = 'true';
+        const prev = e.currentTarget.textContent;
+        e.currentTarget.textContent = '✓ Copiado';
+        showToast('Progress copiado — pégalo en el plan MD');
+        setTimeout(() => {
+          e.currentTarget.dataset.copied = 'false';
+          e.currentTarget.textContent = prev;
+        }, 1800);
+      } catch {
+        showToast('Clipboard no disponible');
+      }
+    });
+  }
+</script>
+</body>
+</html>

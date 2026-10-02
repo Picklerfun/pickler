@@ -1,0 +1,18 @@
+{
+  "name": "predict",
+  "private": true,
+  "description": "Monorepo de Pickler. Este package.json sólo trae el tooling de documentación y agentes; apps/mobile es independiente.",
+  "type": "module",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "agents:check": "node scripts/agent-infra/check.mjs",
+    "agents:test": "bash scripts/test-lock.sh node --test --test-concurrency=1 scripts/agent-infra/*.test.mjs",
+    "agents:inventory": "node scripts/agent-infra/branches.mjs",
+    "docs:html": "node scripts/docs-md-to-html.mjs --all",
+    "docs:check": "node scripts/docs-md-to-html.mjs --all --check"
+  },
+  "devDependencies": {
+    "puppeteer-core": "^24.24.1",
+    "yaml": "2.9.0"
+  }
+}

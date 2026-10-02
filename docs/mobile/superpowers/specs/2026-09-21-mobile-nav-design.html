@@ -1,0 +1,303 @@
+<!doctype html>
+<!--
+  AUTOGENERADO desde 2026-09-21-mobile-nav-design.md por scripts/docs-md-to-html.mjs
+
+  ⚠️  NO EDITES ESTE ARCHIVO. Edita el .md y re-genera.
+  El próximo Write al .md (con el hook activo) sobrescribirá este HTML.
+
+  Reglas en docs/CLAUDE.md sección "MD → HTML autogenerado".
+-->
+<html lang="es-MX">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>App móvil Pickler — Navegación nativa: gesto atrás interactivo, pilas por pestaña y tab bar con pastilla arrastrable · Spec · Pickler</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../overview/_styles.css">
+<script defer src="../../overview/_syntax.js"></script>
+<style>
+  /* Overrides locales del MD-view */
+  .wrap { max-width: 820px; }
+  header.hero { padding: 24px 0 28px; }
+  main { padding: 32px 0 64px; overflow-wrap: anywhere; }
+  @media (max-width: 600px) { nav.toc { position: static; } }
+  main h1 { display: none; } /* el h1 ya está en el hero */
+  main h2 {
+    font-size: 22px; font-weight: 800;
+    margin: 36px 0 12px;
+    letter-spacing: -0.015em;
+    padding-bottom: 6px;
+    border-bottom: 2px solid var(--brand-soft);
+    scroll-margin-top: 72px;
+  }
+  main h3 {
+    font-size: 17px; font-weight: 700;
+    margin: 24px 0 8px;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+    scroll-margin-top: 72px;
+  }
+  main h4 {
+    font-size: 13px; font-weight: 700;
+    margin: 20px 0 6px;
+    text-transform: uppercase; letter-spacing: .06em;
+    color: var(--ink-3);
+  }
+  main p { margin: 0 0 12px; font-size: 14.5px; line-height: 1.65; color: var(--ink); }
+  main blockquote {
+    margin: 14px 0;
+    padding: 12px 18px;
+    background: var(--brand-soft);
+    border-left: 4px solid var(--brand);
+    border-radius: var(--radius-s);
+    color: var(--ink);
+    font-size: 14px; line-height: 1.6;
+  }
+  main blockquote p { margin: 0; }
+  main ul, main ol { margin: 8px 0 14px; padding-left: 26px; font-size: 14.5px; }
+  main ul li, main ol li { margin: 4px 0; line-height: 1.55; }
+  main ul.task-list { list-style: none; padding-left: 4px; }
+  main ul.task-list li {
+    display: flex; align-items: flex-start; gap: 8px;
+    padding: 4px 0;
+  }
+  main ul.task-list li input[type="checkbox"] {
+    margin-top: 4px; accent-color: var(--brand); cursor: pointer;
+    flex-shrink: 0;
+  }
+  main ul.task-list li label { flex: 1; cursor: pointer; }
+  main ul.task-list li.done label { color: var(--ink-3); text-decoration: line-through; text-decoration-color: var(--ink-3); }
+
+  main hr {
+    border: none; border-top: 1px solid var(--line);
+    margin: 32px 0;
+  }
+  main table {
+    width: 100%; border-collapse: collapse;
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: var(--radius); overflow: hidden;
+    margin: 14px 0;
+    font-size: 13.5px;
+  }
+  main table th, main table td {
+    text-align: left; padding: 10px 14px;
+    border-bottom: 1px solid var(--line);
+  }
+  main table th {
+    background: var(--surface-2); font-weight: 700;
+    font-size: 11.5px; color: var(--ink-3);
+    text-transform: uppercase; letter-spacing: .06em;
+  }
+  main table tr:last-child td { border-bottom: none; }
+  main img {
+    max-width: 100%; height: auto;
+    border-radius: var(--radius-s);
+    border: 1px solid var(--line);
+    margin: 10px 0;
+  }
+
+  .md-actions {
+    display: flex; gap: 10px; flex-wrap: wrap;
+    margin: 8px 0 28px;
+    position: sticky; top: 60px;
+    background: color-mix(in srgb, var(--bg) 92%, transparent);
+    backdrop-filter: blur(8px);
+    padding: 10px 0; z-index: 25;
+    border-bottom: 1px solid var(--line);
+  }
+  .md-actions .btn { text-decoration: none; }
+</style>
+</head>
+<body data-slug="2026-09-21-mobile-nav-design">
+
+<div class="wrap">
+  <nav class="crumb">
+    <a href="../../overview/index.html">← Catálogo</a>
+    <span class="sep">/</span>
+    <a href="../">superpowers/specs</a>
+    <span class="sep">/</span>
+    <span class="mono">2026-09-21-mobile-nav-design.md</span>
+  </nav>
+</div>
+
+<header class="hero">
+  <div class="wrap">
+    <span class="eyebrow"><span class="dot"></span>Spec · markdown source</span>
+    <h1>App móvil Pickler — Navegación nativa: gesto atrás interactivo, pilas por pestaña y tab bar con pastilla arrastrable</h1>
+    <p class="lede" style="margin:0;font-size:13.5px;color:var(--ink-3);font-family:var(--mono)">
+      Autogenerado · source: <code>specs/2026-09-21-mobile-nav-design.md</code>
+    </p>
+  </div>
+</header>
+
+<nav class="toc"><div class="wrap">
+       <ul><li><a href="#tldr">TL;DR</a></li><li><a href="#1-alcance">1. Alcance</a></li><li><a href="#2-decisiones">2. Decisiones</a></li><li><a href="#3-flujos-de-referencia">3. Flujos de referencia</a></li><li><a href="#4-riesgos">4. Riesgos</a></li><li><a href="#5-fases">5. Fases</a></li></ul>
+     </div></nav>
+
+<main>
+  <div class="wrap">
+
+<div class="md-actions">
+  <button type="button" class="btn primary" id="btn-copy-progress">📋 Copy progress as MD</button>
+  <a href="2026-09-21-mobile-nav-design.md" class="btn">📝 Ver source MD</a>
+</div>
+    <h1 id="app-movil-pickler-navegacion-nativa-gesto-atras-interactivo-pilas-por-pestana-y-tab-bar-con-pastilla-arrastrable">App móvil Pickler — Navegación nativa: gesto atrás interactivo, pilas por pestaña y tab bar con pastilla arrastrable</h1>
+<p><strong>Fecha</strong>: 2026-09-21 <strong>Estado</strong>: F1 y F2 ejecutadas (audits <code>2026-09-21-mobile-nav-f1-rulings.md</code> y <code>2026-09-21-mobile-nav-f2-rulings.md</code>); rama <code>feat/mobile-nav-f2</code> lista para merge local. <strong>Slug</strong>: <code>mobile-nav</code> <strong>Rama</strong>: <code>feat/mobile-nav</code> (F1, mergeada en <code>165accf</code>) y <code>feat/mobile-nav-f2</code> (F2), base <code>main</code>; worktree <code>.claude/worktrees/mobile-nav</code> <strong>Contexto</strong>: tras probar el build 7 en su iPhone, Jesús pidió dos cosas mirando dos capturas de la app nativa de Proflores: (1) que el gesto de «atrás» sea el de iOS — la pantalla actual se desliza a la derecha siguiendo el dedo y debajo se va descubriendo la anterior, un poco desplazada y con un velo que se aclara —, y (2) que la tab bar tenga una pastilla que se pueda arrastrar con el dedo sin despegarlo y suelte sobre la pestaña elegida. Hoy la app navega con un store propio (<code>screen</code> + <code>stack</code>), el <code>Shell</code> pinta <strong>una sola</strong> pantalla, el swipe desde el borde (<code>PanResponder</code>) cambia de pantalla <strong>de golpe</strong> al soltar y la tab bar son cinco <code>Touch</code>. Faltan 22 días para el bounty (13 oct 2026, 21:59 CST).</p>
+<hr>
+<h2 id="tldr">TL;DR</h2>
+<ol>
+<li><strong>La navegación pasa a react-navigation nativa</strong>: <code>native-stack</code> (sobre <code>react-native-screens</code>, o sea</li>
+<p><code>UINavigationController</code>) dentro de <code>bottom-tabs</code>, con <strong>una pila por pestaña</strong>. El gesto atrás, el «adelante» animado y el botón <code>←</code> son los de iOS, sin código de animación nuestro.</p>
+<li><strong>Las pantallas no cambian de API</strong>: siguen usando <code>ctx.nav / back / requireAccount</code>; un adaptador traduce</li>
+<p><code>Screen</code> → ruta. El store deja de guardar <code>screen/stack/next</code> y conserva sólo datos.</p>
+<li><strong>La cabecera es nuestra y viaja con la página</strong> (<code>headerShown: false</code>); pull-to-refresh y sello</li>
+<p><code>UPDATED</code> viven en un <code>Page</code> por ruta.</p>
+<li><strong>Tab bar custom con pastilla lima</strong> que sigue el dedo (<code>gesture-handler</code> + <code>reanimated</code>) y selecciona **al</li>
+<p>soltar**; el tap sigue siendo tap. Cambiar de pestaña no anima (como iOS).</p>
+</ol>
+<h2 id="1-alcance">1. Alcance</h2>
+<table>
+<thead>
+<tr><th>Dentro</th><th>Fuera</th></tr>
+</thead>
+<tbody>
+<tr><td><code>@react-navigation/native</code> + <code>native-stack</code> + <code>bottom-tabs</code>, <code>react-native-screens</code>, <code>react-native-gesture-handler</code>, <code>react-native-reanimated</code>, <code>expo-haptics</code></td><td>Android (sin build)</td></tr>
+<tr><td><code>RootStack</code> (Tabs, Signin) y cinco pilas de pestaña</td><td>Cabecera nativa de iOS (large title)</td></tr>
+<tr><td>Adaptador <code>navigate(screen, patch)</code> / <code>back()</code> / <code>requireAccount</code> sobre <code>navigationRef</code></td><td>Transiciones distintas de la nativa; deep links por URL</td></tr>
+<tr><td><code>Page</code> (cabecera + <code>ScrollView</code> + refresh + sello) por ruta</td><td>Rediseño visual de cabecera, pantallas o iconos</td></tr>
+<tr><td>Socket de Perpl, push y DevControls sobre la ruta activa</td><td>Pilas persistidas entre arranques</td></tr>
+<tr><td><code>TabBar</code> con pastilla arrastrable (F2) — hecho</td><td>Blur / «liquid glass» real (no hay <code>expo-blur</code>)</td></tr>
+</tbody>
+</table>
+<h2 id="2-decisiones">2. Decisiones</h2>
+<table>
+<thead>
+<tr><th>#</th><th>Decisión</th><th>Detalle</th></tr>
+</thead>
+<tbody>
+<tr><td>D1</td><td><strong>Árbol de navegación</strong></td><td><code>NavigationContainer</code> (con <code>navigationRef</code> global) → <code>RootStack</code> (native-stack): <code>Tabs</code> y <code>signin</code>. <code>Tabs</code> (bottom-tabs, <code>tabBar</code> custom, <code>animation: &quot;none&quot;</code>): <code>MarketsTab</code> = pila <code>markets → market → perpsFunds</code>; <code>WalletTab</code> = pila <code>wallet → deposit → withdraw</code>; <code>LaunchpadTab</code>, <code>ActivityTab</code>, <code>PortfolioTab</code> = una pantalla coming soon cada una. Ruta inicial: <code>Tabs/WalletTab</code> con cuenta; <code>signin</code> sin cuenta.</td></tr>
+<tr><td>D2</td><td><strong>Las pantallas no cambian de API</strong></td><td><code>ctx.nav(screen, patch)</code>, <code>ctx.back()</code>, <code>ctx.requireAccount(screen, patch)</code> se mantienen. Implementación en <code>src/navigation/adapter.ts</code>: tabla pura <code>ROUTE_OF: Record&lt;Screen, { tab: TabName; route: string }&gt;</code> y <code>navigate(screen, patch)</code> = aplicar <code>patch</code> al store y <code>navigationRef.navigate(tab, { screen: route })</code>; <code>back()</code> = <code>navigationRef.goBack()</code> si <code>canGoBack()</code>. <code>DevControls</code> usa el mismo adaptador. <strong>(F1)</strong> La premisa v6 de que <code>navigate</code> a una ruta ya presente en la pila «vuelve» a ella no aplica a react-navigation 7 (<code>@react-navigation/routers</code> 7.6.4: sin <code>pop: true</code>, <code>StackRouter</code> apila). El adaptador real (<code>ref.ts</code>) usa <code>navigationRef.navigate(&quot;Tabs&quot;, { screen: tab, params: { screen, pop: true, initial?: false } }, { pop: true })</code> para las pantallas de pestaña, y un <code>switchTab(tab)</code> separado (<code>navigate(&quot;Tabs&quot;, { screen: tab }, { pop: true })</code>, sin params anidados) para la tab bar — ruling R5 del audit F1.</td></tr>
+<tr><td>D3</td><td><strong>Store sólo con datos</strong></td><td><code>StoreState</code> pierde <code>screen</code>, <code>stack</code>, <code>next</code>, <code>nextPatch</code>; conserva <code>perpsMarketId</code>, <code>perpsSide</code>, <code>marketTab</code>, <code>fundsMode</code>, <code>askView</code>, <code>askCell</code>, <code>askAgentId</code>, <code>askFocusReadId</code>, <code>tradeLevel</code>. <code>navState</code>/<code>backState</code>/<code>afterSigninState</code>/<code>bootState</code>/<code>resetState</code>/<code>canBackFor</code> desaparecen con sus tests; <code>signedOutState</code> queda como «limpiar Ask». <code>ROOT_OF</code>, <code>SHOW_TABS</code>, <code>GATED</code>, <code>CAN_BACK</code>, <code>headerFor</code>, <code>heldActionFor</code>, <code>marketEntryTab</code> siguen (puros, con tests). <strong>(F1)</strong> <code>Screen</code>, <code>GATED</code>, <code>CAN_BACK</code>, <code>SHOW_TABS</code> y <code>ROOT_OF</code> terminaron en <code>src/navigation/screens.ts</code> (nuevo), re-exportados desde <code>store.ts</code>: el ciclo de imports <code>store.ts ↔ navigation/routes.ts</code> producía un <code>Require cycle</code> de Metro que tapaba la tab bar con un LogBox amarillo en el simulador.</td></tr>
+<tr><td>D4</td><td><strong>Pantalla activa por ruta</strong></td><td><code>ctx.scr</code> sale de un listener <code>state</code> del container (<code>navigationRef.getCurrentRoute()?.name</code> → <code>Screen</code>), no del store. De ahí cuelgan <code>PERPL_SCREENS</code> (socket), <code>headerFor</code>, <code>comingSoon</code> y el sello. Antes de <code>isReady()</code> vale <code>&quot;wallet&quot;</code>.</td></tr>
+<tr><td>D5</td><td><strong>Gate de cuenta</strong></td><td><code>requireAccount(target, patch)</code> con cuenta → <code>navigate(target, patch)</code>; sin cuenta → <code>navigate(&quot;signin&quot;, { next: target, patch })</code> (<code>signin</code> encima de <code>Tabs</code>, con <code>←</code>). Al terminar sign-in con <code>next</code>: <code>popTo(&quot;Tabs&quot;)</code> + <code>navigate(next, patch)</code> — <code>signin</code> no queda en la pila. Sin <code>next</code>: <code>popTo(&quot;Tabs&quot;)</code>. La tarjeta «We kept what you were about to do» lee <code>route.params.next</code> con <code>heldActionFor</code>. Arranque sin cuenta: <code>signin</code> como ruta inicial (sin <code>←</code>); al firmar, <code>reset</code> a <code>Tabs/WalletTab</code>. Sign out: limpiar Ask en el store + <code>reset</code> a <code>signin</code>. <strong>(F1)</strong> El código no usa <code>popTo</code>: <code>finishSignin</code> hace <code>resetRoot(&quot;Tabs&quot;)</code> sólo cuando <code>signin</code> es la raíz (arranque sin cuenta) y en todos los casos <code>nav(next ?? &quot;wallet&quot;, patch)</code> → <code>navigate(&quot;Tabs&quot;, …, { pop: true })</code>, que saca <code>signin</code> si <code>Tabs</code> está debajo (R5). Sin <code>next</code> aterriza en <code>WalletTab/wallet</code>.</td></tr>
+<tr><td>D6</td><td><strong>Cabecera y página</strong></td><td><code>headerShown: false</code> en ambos stacks; la cabecera actual (marca en raíz, <code>←</code> si <code>canGoBack</code>, título/subtítulo de <code>headerFor</code>, <code>⚙</code> en dev) se pinta dentro de <code>Page</code>, así <strong>viaja con la página</strong> en el gesto. <code>Page</code> = <code>SafeAreaView</code> (<code>edges: [&quot;top&quot;]</code>), cabecera, <code>ScrollView</code> propio con <code>RefreshControl</code> lima, sello <code>UPDATED</code>/<code>COULDN&#39;T REFRESH</code>, contenido; <strong>fondo opaco</strong> (el gradiente actual) para tapar la página de abajo durante el gesto. Cada ruta es <code>withPage(Screen)</code>; cada página conserva su scroll (se elimina el <code>scrollTo(0)</code> del <code>Shell</code>).</td></tr>
+<tr><td>D7</td><td><strong>Sello por pantalla</strong></td><td><code>updatedAt</code>/<code>refreshFailed</code> salen del <code>Shell</code> a <code>useRefreshSeal()</code> a nivel de App (mismo contrato: <code>refreshOk</code>, <code>screenHasData</code>, reset al cambiar <code>accountAddress</code>); <code>Page</code> lo consume por <code>screen</code>. Helpers puros y tests de <code>mobile-loading</code> no cambian. <strong>(F1)</strong> Implementado como contador + efecto: <code>onRefreshDone</code> sólo incrementa un contador con la pantalla; un efecto sobre ese contador evalúa <code>refreshOk</code> con los errores de ESE render y sella o marca <code>failed</code>. El sello inicial también sale del propio hook (efecto sobre <code>REFRESHABLE.map(hasData)</code>), declarado después del efecto de reset por cuenta y con <code>address</code> en sus deps para que se re-evalúe al cambiar de cuenta con saldo ya cargado — rulings R1–R3 del audit F1.</td></tr>
+<tr><td>D8</td><td><strong>Gesto y transición</strong></td><td>Los nativos de <code>native-stack</code>: <code>gestureEnabled: true</code>, <code>fullScreenGestureEnabled: false</code> (sólo desde el borde, estándar iOS), <code>animation: &quot;default&quot;</code> (slide desde la derecha con parallax y velo del sistema). Se <strong>elimina</strong> <code>PanResponder</code> + <code>ui/gestures.ts</code> y sus tests. Cambiar de pestaña: sin animación. Tocar la pestaña activa: <code>popToTop</code> de esa pila. <strong>(F1)</strong> «Tocar la pestaña activa → popToTop» queda inalcanzable en la práctica bajo D9: la tab bar se oculta fuera de la raíz de cada pestaña, así que nunca hay un momento en que la pestaña activa esté visible y tocable estando en una pantalla no-raíz de esa misma pestaña. Comportamiento latente (el <code>navigation.emit(&quot;tabPress&quot;)</code> estándar de bottom-tabs sigue ahí, sin código muerto que quitar); anotado como residual, no como bug.</td></tr>
+<tr><td>D9</td><td><strong>Tab bar oculta en no-raíz</strong></td><td>Como <code>SHOW_TABS</code> hoy: en <code>market</code>, <code>perpsFunds</code>, <code>deposit</code>, <code>withdraw</code> la tab bar no se muestra (<code>tabBarStyle: { display: &quot;none&quot; }</code> por ruta enfocada, calculado con <code>getFocusedRouteNameFromRoute</code>). La <code>SafeAreaView</code> inferior vive en la tab bar (o en <code>Page</code> cuando la tab bar está oculta), nunca dentro de la página que se desliza.</td></tr>
+<tr><td>D10</td><td><strong>Cross-tab y push</strong></td><td>«Market desde Wallet» y el tap en un push de read hacen <code>navigate(&quot;MarketsTab&quot;, { screen: &quot;market&quot; })</code> + patch: la app salta a la pestaña Markets y apila Market <strong>sobre Markets</strong> (atrás → Markets), no sobre Wallet como dejó el fix gate. En frío, el push espera <code>navigationRef.isReady()</code> (se conserva la cola de <code>App.tsx</code>).</td></tr>
+<tr><td>D11</td><td><strong>Tab bar con pastilla (F2)</strong></td><td><code>src/ui/TabBar.tsx</code> (prop <code>tabBar</code> de bottom-tabs). Fila de 5 ítems como hoy sobre <code>C.deep50</code>; detrás del activo, una pastilla <code>borderRadius</code> 999, alto ≈ 44, ancho = ítem − 8, lima translúcido (<code>C.lime</code> con alpha ≈ 0.16), sin blur. <code>translateX</code> en un <code>sharedValue</code> de reanimated con <code>withSpring</code> (rigidez media, sin rebote exagerado) al cambiar el índice activo, que <strong>viene de <code>state.index</code></strong> de bottom-tabs (no de estado propio). <code>Pan</code> de gesture-handler sobre la fila (<code>minDistance</code> ≈ 6 px para no robar el tap): mientras se arrastra, <code>index = tabIndexAt(x, rowWidth, 5)</code> mueve la pastilla al ítem bajo el dedo y dispara <code>Haptics.selectionAsync()</code> al cruzar; <strong>al soltar</strong> <code>requireAccount(TABS[index])</code> (o <code>popToTop</code> si es la activa). El tap simple sigue siendo tap. Puros con test en <code>src/ui/tabbar.ts</code>: <code>tabIndexAt(x, rowWidth, count)</code>, <code>pillX(index, rowWidth, count)</code>. <strong>(F2)</strong> La geometría pura vive en <code>src/ui/tabBarLayout.ts</code> (no <code>tabbar.ts</code>: colisión de casing con <code>TabBar.tsx</code> en macOS — ruling F2-R1 del audit F2), con <code>&quot;worklet&quot;</code> en <code>itemWidth</code>/<code>tabIndexAt</code>/<code>pillX</code> porque el <code>Pan</code> corre en el hilo UI de reanimated. Pastilla: <code>backgroundColor: C.limeBg14</code>, resorte final <code>SPRING = { damping: 18, stiffness: 220, mass: 0.6 }</code>. Gesto: <code>activeOffsetX([-6, 6])</code> (no roba el tap) y <code>failOffsetY([-12, 12])</code>; <code>onStart</code>/<code>onUpdate</code> mueven la pastilla y disparan el haptic (<code>scheduleOnRN(tick)</code> — no <code>runOnJS</code>, deprecado en reanimated 4, ruling F2-R2); <strong>al soltar</strong> (<code>onEnd</code> con guard <code>success</code>, para no reaccionar a una cancelación) <code>select(index)</code> emite <code>tabPress</code> siempre (para que el listener de native-stack resuelva <code>popToTop</code> en la pestaña ya activa) y sólo si el índice es otra pestaña y nadie previno el evento llama <code>switchTab(route.name)</code> (no <code>requireAccount</code>: la tab bar nunca gatea, D5 sigue viviendo en <code>requireAccount</code> para el resto de la app); cancelado (<code>onFinalize</code> con <code>success=false</code>, y sólo si el <code>Pan</code> llegó a activarse) devuelve la pastilla al índice activo vigente.</td></tr>
+<tr><td>D13</td><td><strong>Tab bar animada al entrar/salir de no-raíz (F2)</strong></td><td>La barra queda <strong>siempre montada y absoluta</strong> (ya no <code>return null</code> fuera de raíz como en F1/D9): un <code>sharedValue</code> <code>ty</code> anima <code>translateY</code> con <code>withTiming</code> (<code>HIDE_MS = 220</code> ms) entre <code>0</code> (visible) y <code>tabBarHeight(insets.bottom)</code> (oculta bajo el borde inferior) según si la ruta enfocada está en <code>SHOW_TABS</code>. Oculta: <code>pointerEvents=&quot;none&quot;</code> y <code>Pan.enabled(false)</code> — no intercepta toques ni arrastres de la pantalla que queda debajo. Las páginas raíz reservan el hueco fijo con <code>paddingBottom: tabBarHeight(insets.bottom)</code> en su <code>ScrollView</code> (<code>Page.tsx</code>, D6); las no-raíz no lo necesitan porque la barra está fuera de vista. Fondo <strong>opaco</strong> <code>C.bgBottom</code> (mismo color del final del gradiente, unión invisible) con la hairline superior — no translúcido: sin <code>expo-blur</code> un fondo con alpha dejaba leer el contenido de la pantalla entre los iconos (ruling F2-R2 del audit F2).</td></tr>
+<tr><td>D12</td><td><strong>Verificación</strong></td><td>Tests puros: <code>ROUTE_OF</code> cubre las 10 pantallas; gate (<code>gateTarget(hasAccount, target)</code> → ruta o <code>signin</code>+<code>next</code>); <code>heldActionFor</code>; sello; <code>tabIndexAt</code>/<code>pillX</code>. Simulador (cuenta #620, sin mover fondos): capturas de <strong>gesto atrás a medio camino</strong> (Market sobre Markets, como la captura de Proflores), adelante animado (frames del push a Market), botón <code>←</code>, push en frío → Market en la pestaña Markets, sign-in con <code>next</code>, sign out, tab bar oculta en Market/Deposit, scroll conservado al volver, y en F2 la pastilla a medio arrastre y tras soltar. Sin build de TestFlight salvo petición (sería el build 8). <strong>(F1)</strong> Capturado 5/5: <code>market-no-tabs</code>, <code>signin-next</code> y <code>scroll-kept</code> directas en el simulador; <code>gesture-mid</code> y <code>push-forward</code> vía <code>xcrun simctl io recordVideo</code> + extracción de frames con <code>ffmpeg</code> (los screenshots cronometrados nunca atraparon un frame intermedio: el jitter de arranque de Maestro/idb es mayor que la animación de ~300 ms), con un cambio temporal <code>fullScreenGestureEnabled: true</code> (revertido antes del commit de Task 8) porque el swipe sintético desde el borde no dispara <code>UIScreenEdgePanGestureRecognizer</code> en este entorno de pruebas. El gesto real desde el borde queda pendiente de verificar en el iPhone de Jesús.</td></tr>
+</tbody>
+</table>
+<h2 id="3-flujos-de-referencia">3. Flujos de referencia</h2>
+<pre><code>arranque con cuenta   → Tabs/WalletTab (wallet)
+arranque sin cuenta   → Signin (sin ←) → firma → reset Tabs/WalletTab
+tab Markets sin cuenta→ Signin { next: markets } → firma → popTo Tabs + navigate markets
+Markets → BTC         → MarketsTab: markets → market (slide nativo) ; ← o gesto → markets (interactivo)
+Wallet → Deposit      → WalletTab: wallet → deposit ; tab bar oculta
+push read resuelta    → MarketsTab: markets → market (askView mine, askFocusReadId) ; atrás → markets
+Market desde Wallet   → salta a MarketsTab y apila market sobre markets
+sign out              → limpiar Ask + reset Signin
+tab activa tocada     → popToTop de su pila
+arrastre en tab bar   → pastilla sigue el dedo (haptic al cruzar) → al soltar requireAccount(tab)</code></pre>
+<h2 id="4-riesgos">4. Riesgos</h2>
+<table>
+<thead>
+<tr><th>Riesgo</th><th>Mitigación</th></tr>
+</thead>
+<tbody>
+<tr><td>Versiones: <code>react-native-screens</code>, <code>gesture-handler</code>, <code>reanimated</code> deben ser las del SDK 57</td><td><code>npx expo install</code> para todas; leer <code>https://docs.expo.dev/versions/v57.0.0/</code> y <code>https://reactnavigation.org/docs/</code> (v7: <code>popTo</code>, <code>getFocusedRouteNameFromRoute</code>, <code>animation: &quot;none&quot;</code> en bottom-tabs) antes del plan; el plan cita versiones instaladas.</td></tr>
+<tr><td>Reanimated exige el plugin de Babel al final de <code>babel.config.js</code> y <code>GestureHandlerRootView</code> en la raíz</td><td>Task explícita del plan con <code>tsc</code> + arranque en simulador antes de seguir.</td></tr>
+<tr><td><code>ctx.scr</code> por ruta llega un frame después que el store</td><td>Antes de <code>isReady()</code> vale <code>&quot;wallet&quot;</code>; el socket de Perpl tolera un frame (ya reconecta por <code>active</code>).</td></tr>
+<tr><td>Pantallas que dependían de <code>S.stack</code> (<code>canBack</code>)</td><td>Sólo <code>Shell</code> lo usaba; <code>Page</code> usa <code>navigation.canGoBack()</code>.</td></tr>
+<tr><td>El fix gate (Market sobre Wallet desde un push) cambia a Market sobre Markets</td><td>Aprobado en el brainstorm (sección 1); anotar en el tracker <code>markets-ask-gate</code> como comportamiento sustituido.</td></tr>
+<tr><td>Maestro por <code>accessibilityLabel</code></td><td>Se conservan <code>tab-*</code>, <code>market-*</code>, <code>back</code>, <code>dev-controls</code>, <code>pill-*</code>.</td></tr>
+<tr><td>Dos <code>ScrollView</code> vivos (página de abajo y de arriba) con <code>RefreshControl</code></td><td>El de abajo no recibe toques durante la transición (lo gestiona <code>react-native-screens</code>).</td></tr>
+<tr><td><strong>(F1)</strong> <code>navigate</code> a una ruta ya presente en la pila no «vuelve» a ella en react-navigation 7 — la semántica v6 asumida por el plan (P3) es incorrecta</td><td>Verificado en el fuente (<code>@react-navigation/core</code>/<code>routers</code> 7.6.4, <code>StackRouter.tsx:385-395</code>): usar <code>{ pop: true }</code> explícito en las opciones y en los params anidados (con <code>initial: false</code> para no-raíces); <code>switchTab(tab)</code> separado (sin params anidados) para la tab bar. Ruling R5, Task 6 fix round 1 (<code>824a2f2</code>).</td></tr>
+</tbody>
+</table>
+<h2 id="5-fases">5. Fases</h2>
+<ul>
+<li><strong>F1 — Migración a react-navigation</strong> (D1–D10, D12 sin F2): dependencias + <code>prebuild --clean</code> + rebuild, árbol de navegación, adaptador, <code>Page</code> con cabecera/refresh/sello, store sólo datos, ruta activa, gate/sign-in/sign-out, push, tab bar con el aspecto de hoy (cinco <code>Touch</code>) montada por <code>tabBar</code>. Audit al cierre.</li>
+<li><strong>F2 — Tab bar con pastilla arrastrable y barra animada</strong> (D11, D13): <code>TabBar.tsx</code>, <code>tabBarLayout.ts</code> con tests, haptics; barra siempre montada que se esconde/aparece con <code>translateY</code>; <code>Page</code> reserva el hueco en las raíces. Capturas del arrastre y de la barra al ocultarse/reaparecer. Audit al cierre.</li>
+</ul>
+<p><code>ios/</code> no está versionado: los cambios nativos entran por <code>app.config.ts</code>/<code>package.json</code> y <code>prebuild</code>.</p>
+  </div>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <p>HTML autogenerado · NO edites este archivo. Modifica el <code>.md</code> y re-genera con:</p>
+    <pre><code class="language-sql">node scripts/docs-md-to-html.mjs docs/superpowers/specs/2026-09-21-mobile-nav-design.md</code></pre>
+    <p>Reglas en <code>docs/CLAUDE.md</code> sección "MD → HTML autogenerado".</p>
+  </div>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // Persistencia de los checkboxes de task lists (pickler-md:<slug>:tasks)
+  const SLUG = '2026-09-21-mobile-nav-design';
+  const KEY = `pickler-md:${SLUG}:tasks`;
+  const checks = [...document.querySelectorAll('ul.task-list input[type=checkbox]')];
+  function load() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(KEY) || '[]');
+      checks.forEach((c, i) => {
+        if (typeof saved[i] === 'boolean') {
+          c.checked = saved[i];
+          c.closest('li').classList.toggle('done', c.checked);
+        }
+      });
+    } catch {}
+  }
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(checks.map(c => c.checked))); } catch {}
+  }
+  checks.forEach(c => {
+    c.closest('li').classList.toggle('done', c.checked);
+    c.addEventListener('change', () => {
+      c.closest('li').classList.toggle('done', c.checked);
+      save();
+    });
+  });
+  load();
+
+  // Botón "Copy progress as MD"
+  const $copy = document.getElementById('btn-copy-progress');
+  const $toast = document.getElementById('toast');
+  function showToast(msg) {
+    $toast.textContent = msg;
+    $toast.dataset.show = 'true';
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(() => { $toast.dataset.show = 'false'; }, 2200);
+  }
+  if ($copy) {
+    $copy.addEventListener('click', async (e) => {
+      const lines = ['# ' + document.title.split(' · ')[0] + ' — task progress', ''];
+      lines.push('_Capturado en ' + new Date().toISOString() + '_', '');
+      checks.forEach(c => {
+        const text = c.closest('label').textContent.trim();
+        lines.push('- [' + (c.checked ? 'x' : ' ') + '] ' + text);
+      });
+      try {
+        await navigator.clipboard.writeText(lines.join('\n'));
+        e.currentTarget.dataset.copied = 'true';
+        const prev = e.currentTarget.textContent;
+        e.currentTarget.textContent = '✓ Copiado';
+        showToast('Progress copiado — pégalo en el plan MD');
+        setTimeout(() => {
+          e.currentTarget.dataset.copied = 'false';
+          e.currentTarget.textContent = prev;
+        }, 1800);
+      } catch {
+        showToast('Clipboard no disponible');
+      }
+    });
+  }
+</script>
+</body>
+</html>

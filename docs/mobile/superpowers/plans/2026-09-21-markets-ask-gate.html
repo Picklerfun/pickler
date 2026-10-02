@@ -1,0 +1,486 @@
+<!doctype html>
+<!--
+  AUTOGENERADO desde 2026-09-21-markets-ask-gate.md por scripts/docs-md-to-html.mjs
+
+  ⚠️  NO EDITES ESTE ARCHIVO. Edita el .md y re-genera.
+  El próximo Write al .md (con el hook activo) sobrescribirá este HTML.
+
+  Reglas en docs/CLAUDE.md sección "MD → HTML autogenerado".
+-->
+<html lang="es-MX">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Markets sin gate para Ask y trading key que sobrevive al sign out — Implementation Plan · Plan · Pickler</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../overview/_styles.css">
+<script defer src="../../overview/_syntax.js"></script>
+<style>
+  /* Overrides locales del MD-view */
+  .wrap { max-width: 820px; }
+  header.hero { padding: 24px 0 28px; }
+  main { padding: 32px 0 64px; overflow-wrap: anywhere; }
+  @media (max-width: 600px) { nav.toc { position: static; } }
+  main h1 { display: none; } /* el h1 ya está en el hero */
+  main h2 {
+    font-size: 22px; font-weight: 800;
+    margin: 36px 0 12px;
+    letter-spacing: -0.015em;
+    padding-bottom: 6px;
+    border-bottom: 2px solid var(--brand-soft);
+    scroll-margin-top: 72px;
+  }
+  main h3 {
+    font-size: 17px; font-weight: 700;
+    margin: 24px 0 8px;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+    scroll-margin-top: 72px;
+  }
+  main h4 {
+    font-size: 13px; font-weight: 700;
+    margin: 20px 0 6px;
+    text-transform: uppercase; letter-spacing: .06em;
+    color: var(--ink-3);
+  }
+  main p { margin: 0 0 12px; font-size: 14.5px; line-height: 1.65; color: var(--ink); }
+  main blockquote {
+    margin: 14px 0;
+    padding: 12px 18px;
+    background: var(--brand-soft);
+    border-left: 4px solid var(--brand);
+    border-radius: var(--radius-s);
+    color: var(--ink);
+    font-size: 14px; line-height: 1.6;
+  }
+  main blockquote p { margin: 0; }
+  main ul, main ol { margin: 8px 0 14px; padding-left: 26px; font-size: 14.5px; }
+  main ul li, main ol li { margin: 4px 0; line-height: 1.55; }
+  main ul.task-list { list-style: none; padding-left: 4px; }
+  main ul.task-list li {
+    display: flex; align-items: flex-start; gap: 8px;
+    padding: 4px 0;
+  }
+  main ul.task-list li input[type="checkbox"] {
+    margin-top: 4px; accent-color: var(--brand); cursor: pointer;
+    flex-shrink: 0;
+  }
+  main ul.task-list li label { flex: 1; cursor: pointer; }
+  main ul.task-list li.done label { color: var(--ink-3); text-decoration: line-through; text-decoration-color: var(--ink-3); }
+
+  main hr {
+    border: none; border-top: 1px solid var(--line);
+    margin: 32px 0;
+  }
+  main table {
+    width: 100%; border-collapse: collapse;
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: var(--radius); overflow: hidden;
+    margin: 14px 0;
+    font-size: 13.5px;
+  }
+  main table th, main table td {
+    text-align: left; padding: 10px 14px;
+    border-bottom: 1px solid var(--line);
+  }
+  main table th {
+    background: var(--surface-2); font-weight: 700;
+    font-size: 11.5px; color: var(--ink-3);
+    text-transform: uppercase; letter-spacing: .06em;
+  }
+  main table tr:last-child td { border-bottom: none; }
+  main img {
+    max-width: 100%; height: auto;
+    border-radius: var(--radius-s);
+    border: 1px solid var(--line);
+    margin: 10px 0;
+  }
+
+  .md-actions {
+    display: flex; gap: 10px; flex-wrap: wrap;
+    margin: 8px 0 28px;
+    position: sticky; top: 60px;
+    background: color-mix(in srgb, var(--bg) 92%, transparent);
+    backdrop-filter: blur(8px);
+    padding: 10px 0; z-index: 25;
+    border-bottom: 1px solid var(--line);
+  }
+  .md-actions .btn { text-decoration: none; }
+</style>
+</head>
+<body data-slug="2026-09-21-markets-ask-gate">
+
+<div class="wrap">
+  <nav class="crumb">
+    <a href="../../overview/index.html">← Catálogo</a>
+    <span class="sep">/</span>
+    <a href="../">superpowers/plans</a>
+    <span class="sep">/</span>
+    <span class="mono">2026-09-21-markets-ask-gate.md</span>
+  </nav>
+</div>
+
+<header class="hero">
+  <div class="wrap">
+    <span class="eyebrow"><span class="dot"></span>Plan · markdown source</span>
+    <h1>Markets sin gate para Ask y trading key que sobrevive al sign out — Implementation Plan</h1>
+    <p class="lede" style="margin:0;font-size:13.5px;color:var(--ink-3);font-family:var(--mono)">
+      Autogenerado · source: <code>plans/2026-09-21-markets-ask-gate.md</code>
+    </p>
+  </div>
+</header>
+
+<nav class="toc"><div class="wrap">
+       <ul><li><a href="#global-constraints">Global Constraints</a></li><li><a href="#decisiones-del-plan-no-estan-en-el-spec">Decisiones del plan (no están en el spec)</a></li><li><a href="#mapa-de-archivos">Mapa de archivos</a></li><li><a href="#task-1-signout-conserva-la-trading-key-marketentrytab-en-el-store">Task 1: `signOut` conserva la trading key; `marketEntryTab` en el store</a></li><li><a href="#task-2-markets-siempre-abre-el-mercado-tradegate-en-la-pestana-trade">Task 2: Markets siempre abre el mercado; `TradeGate` en la pestaña Trade</a></li><li><a href="#task-3-recorrido-en-el-simulador-capturas">Task 3: Recorrido en el simulador (capturas)</a></li><li><a href="#task-4-docs-correcciones-gate-dev-tracker-f1-completed-addendum-apns-followups-f2-revision-independiente-checks">Task 4: Docs — correcciones (gate), dev tracker, F1 `completed` + addendum APNs, followups F2, revisión independiente, checks</a></li><li><a href="#self-review-del-plan-hecho-al-escribirlo">Self-review del plan (hecho al escribirlo)</a></li></ul>
+     </div></nav>
+
+<main>
+  <div class="wrap">
+
+<div class="md-actions">
+  <button type="button" class="btn primary" id="btn-copy-progress">📋 Copy progress as MD</button>
+  <a href="2026-09-21-markets-ask-gate.md" class="btn">📝 Ver source MD</a>
+</div>
+    <h1 id="markets-sin-gate-para-ask-y-trading-key-que-sobrevive-al-sign-out-implementation-plan">Markets sin gate para Ask y trading key que sobrevive al sign out — Implementation Plan</h1>
+<blockquote>
+<strong>For agentic workers:</strong> REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (<code>- [ ]</code>) syntax for tracking.
+</blockquote>
+<p><strong>Goal:</strong> Que un usuario sin trading key de Perpl (wallet nueva, reinstalación, o —hasta hoy— cualquiera que cerró sesión) pueda abrir cualquier mercado desde <strong>Markets</strong> y usar <strong>Ask</strong> y <strong>Agents</strong>; que el gate de Perpl («Enable / Reconnect trading») viva sólo en la pestaña <strong>Trade</strong>; y que <strong>cerrar sesión ya no borre la trading key</strong>, para que sign out + sign in con la misma wallet no cueste una tx de gas ni registre otra key en Perpl (Perpl limita las keys por cuenta: <code>423 Too many trading keys</code>). Además, cerrar F1 de Ask con la evidencia del push real de APNs que llegó hoy.</p>
+<p><strong>Architecture:</strong> Tres cambios mínimos sobre lo que ya existe: (1) <code>useAccount.signOut</code> deja de llamar <code>clearTradingKey()</code> (la key sigue atada a su <code>address</code>; <code>usePerpl</code> ya la ignora si la wallet activa es otra; «Reset trading key» sigue siendo la forma explícita de tirarla); (2) <code>MarketsList</code> siempre navega: con key a <code>marketTab: &quot;trade&quot;</code>, sin key a <code>&quot;ask&quot;</code> (<code>marketEntryTab(hasKey)</code> puro en <code>store.ts</code>); (3) <code>TradeTab</code> muestra <code>TradeGate</code> (una <code>StatusCard</code> con «Reconnect trading» / «Enable trading» que vuelve a Markets) cuando <code>perpl.state.status !== &quot;ready&quot;</code>. Ask, Agents, <code>useReads</code>, <code>usePerpl</code>, el flujo de Enable/Reconnect y el servidor no cambian.</p>
+<p><strong>Tech Stack:</strong> Expo SDK 57 / RN 0.86, jest-expo (<code>__tests__/*.test.ts</code>), TypeScript (<code>npx tsc --noEmit</code>). Simulador iPhone 17 Pro <code>2B2A0BAD-7B14-4DAE-8652-C7E9472505E0</code>, Maestro (<code>taplabel.sh</code>).</p>
+<p><strong>Spec:</strong> No hay spec nuevo: es una corrección de tres decisiones existentes, que Task 4 marca <strong>(gate)</strong> en su sitio: <code>docs/superpowers/specs/2026-09-16-mobile-perpl-design.md</code> («Sign out: <code>clearTradingKey()</code>…», l. ~241, y «<code>clearTradingKey</code> (se llama desde <code>signOut</code>…)», l. ~140), <code>docs/superpowers/specs/2026-09-18-mobile-hifi-design.md</code> D13 («Lista de mercados en gate <code>readOnly</code> (opacidad .7)») y <code>docs/superpowers/specs/2026-09-19-mobile-ask-design.md</code> D13 (<code>marketTab</code> por default). Contexto: audit F2 <code>docs/superpowers/audits/2026-09-19-mobile-ask-f2-rulings.md</code> §5 pendiente 3 y §7; diseño aprobado por Jesús el 2026-09-20 (opción <strong>B</strong>: conservar la key; A = key derivada de una firma de la wallet, patrón dYdX v4, queda como follow-up post-bounty).</p>
+<h2 id="global-constraints">Global Constraints</h2>
+<ul>
+<li>Worktree <code>.claude/worktrees/markets-ask-gate</code>, rama <code>fix/markets-ask-gate</code> desde <code>main</code> = <code>3a0c490</code>. Primer comando en el worktree: <code>cd apps/mobile &amp;&amp; npm ci</code> (npm, no pnpm; el <code>package-lock</code> ya trae <code>expo-notifications</code>). Nunca <code>cd</code> al checkout principal para editar. Nunca <code>git add -A</code>; archivos por nombre. <strong>Commits autorizados</strong> en la sesión de ejecución (Jesús aprobó el diseño y pidió el plan; confirmar la autorización de commits al arrancar si el mensaje de arranque no la trae): <code>fix(mobile): …</code> / <code>docs(mobile-ask): …</code> con trailer <code>Co-Authored-By: &lt;modelo que escribe&gt; &lt;noreply@anthropic.com&gt;</code> y <code>Claude-Session: &lt;URL de la sesión que ejecuta&gt;</code>. <strong>Sin push, sin merge, sin TestFlight.</strong></li>
+<li>Sin dependencias nuevas ni cambios nativos: no hace falta <code>prebuild</code> ni <code>run:ios</code> si el dev build sigue instalado en el simulador (hoy lo está: <code>xcrun simctl listapps &lt;UDID&gt; | grep fun.pickler.app</code>). Metro <strong>no está corriendo</strong> (se detuvo al borrar el worktree anterior): arrancarlo con <code>nohup npx expo start --port 8081 &gt; &quot;$SC/metro.log&quot; 2&gt;&amp;1 &amp;</code> desde <code>apps/mobile</code> del worktree y esperar <code>Waiting on http://localhost:8081</code>; luego <code>xcrun simctl launch &lt;UDID&gt; fun.pickler.app</code>.</li>
+<li>Simulador <strong>siempre por UDID <code>2B2A0BAD-7B14-4DAE-8652-C7E9472505E0</code></strong>, nunca <code>booted</code>. Capturas con <code>xcrun simctl io &lt;UDID&gt; screenshot …</code> y <strong>mirar cada una</strong> antes de afirmar nada. Cuenta #620 del simulador: <strong>no mover AUSD ni MON, ninguna orden, y —en esta verificación— ningún «Reconnect»/«Enable» real</strong> (Task 3 comprueba que la card aparece, no ejecuta el flujo). Face ID: <code>xcrun simctl spawn &lt;UDID&gt; notifyutil -p com.apple.BiometricKit_Sim.fingerTouch.match</code>. <strong>Otra sesión (Proflores iOS) usa el mismo simulador</strong>: si aparece un sign out inesperado o el simulador apagado, anotarlo y recuperar (passkey «pickler» de Apple Passwords).</li>
+<li>Backend sin cambios; consultas sólo <code>--read-only</code> con <code>node scripts/query.mjs</code> desde <code>services/reads</code>; nunca <code>db push/reset</code>, nunca el MCP de Supabase de la sesión. <strong>No imprimir secretos ni tokens</strong> (<code>.env.pickler</code>, <code>mobile.devices.token</code>).</li>
+<li><code>npm test</code> (hoy 31 suites / 236 tests) y <code>npx tsc --noEmit</code> en verde al cierre de cada task que toca código. Ninguna prueba de UI (P12 del plan F2): pantallas por <code>tsc</code> + simulador. Copy en inglés; código y comentarios en español donde el archivo vecino los tenga; tests en inglés.</li>
+<li>Docs: contrato de <code>docs/CLAUDE.md</code>; <code>npm run docs:html</code>; dev tracker con la skill <code>.claude/skills/pickler-dev-new/SKILL.md</code> (types <code>fix</code>); <code>docs:check</code> <code>errors=0</code>, <code>agents:check</code> <code>&quot;errors&quot;: []</code>.</li>
+</ul>
+<h2 id="decisiones-del-plan-no-estan-en-el-spec">Decisiones del plan (no están en el spec)</h2>
+<table>
+<thead>
+<tr><th>#</th><th>Decisión</th><th>Por qué</th></tr>
+</thead>
+<tbody>
+<tr><td>P1</td><td><code>signOut</code> conserva la trading key; <strong>sólo</strong> borra <code>pickler.account.v1</code> (cuenta local) y <code>pickler.reads.v1</code> (sesión de reads). El comentario del código cita esta corrección <strong>(gate)</strong>. Sin test unitario nuevo: <code>useAccount</code> es un hook sin tests (P12) y la garantía «la key de otra wallet se ignora» ya la da <code>usePerpl</code> (<code>same(key.address, address)</code>, línea del efecto de arranque); se verifica en el simulador (Task 3).</td><td>Opción B aprobada. Un test de <code>signOut</code> exigiría mockear SecureStore por una línea.</td></tr>
+<tr><td>P2</td><td><code>marketEntryTab(hasKey: boolean): MarketTab</code> = <code>hasKey ? &quot;trade&quot; : &quot;ask&quot;</code>, puro en <code>store.ts</code>, con test en <code>store.test.ts</code>. <code>MarketsList</code> recibe <code>hasKey</code> (antes <code>readOnly</code>) y <strong>siempre</strong> es tocable; se quita la opacidad .7.</td><td>Un solo sitio decide a qué pill entra un mercado; el test fija el contrato.</td></tr>
+<tr><td>P3</td><td><code>TradeGate</code> vive en <code>market.tsx</code> (junto a <code>TradeTab</code>), no en <code>markets.tsx</code>: <code>StatusCard</code> tono lima (<code>TRADE_GATE = { bd: C.limeBd, bg: C.limeBg06, fg: C.lime }</code>), tag <code>TRADE</code>, título «Trading isn&#39;t set up on this phone», cuerpo según <code>perpl.existingAccountId</code> (&gt; 0 → «This wallet already has Perpl account #N. Reconnect registers a trading key on this phone; no AUSD moves.», si no → «Enable trading moves AUSD from your wallet into a Perpl trading account. One Face ID, four steps.»), <code>Btn lime</code> «Reconnect trading» / «Enable trading» que hace <strong><code>back()</code></strong> (Market siempre se abre desde Markets, donde vive el flujo real de Enable/Reconnect; no se duplica), y una línea <code>faint</code> «Ask and Agents work without a trading key.». Con <code>status === &quot;loading&quot;</code>, spinner.</td><td>Reusar el Gate de Markets tal cual: cero lógica nueva de onboarding. <code>back()</code> en vez de <code>nav(&quot;markets&quot;)</code> para no apilar pantallas.</td></tr>
+<tr><td>P4</td><td>El <code>return</code> temprano de <code>TradeGate</code> va <strong>después de los tres <code>useState</code></strong> de <code>TradeTab</code> (<code>amount</code>, <code>lv</code>, <code>st</code>) y antes de <code>leverages</code>: no hay hooks condicionales.</td><td>Regla de hooks.</td></tr>
+<tr><td>P5</td><td>El Gate de Markets gana una línea <code>faint</code> encima de la lista: «Ask an agent on any market below — no trading key needed.». La card Enable/Reconnect no cambia.</td><td>Que el jurado sepa que puede tocar la lista aunque el gate esté arriba.</td></tr>
+<tr><td>P6</td><td><strong>Reconnect real sigue reenviando <code>enableForwarding</code></strong> (no hay lectura on-chain del flag y el socket que lo reporta necesita la key). Con P1 eso ocurre una vez por dispositivo, no por sign out; queda como residual documentado, no se toca.</td><td>Corrección a lo dicho en la sesión de diseño («lo arreglo leyendo el estado»): no es barato ni necesario ya.</td></tr>
+<tr><td>P7</td><td>Verificación del «sin Reconnect» en Task 3: sign out → sign in con la misma wallet → pill Trade en <code>ready</code> (ticket visible, sin card) y <strong><code>mobile.devices</code>/<code>agent_records</code> intactos</strong>; <code>select count(*)</code> de keys no existe en nuestro lado, así que la evidencia de «cero keys nuevas» es que <strong>no se ejecutó ningún Enable/Reconnect</strong> (capturas + ausencia de tx: MON igual antes/después).</td><td>Es lo que se puede medir sin la API de keys de Perpl.</td></tr>
+<tr><td>P8</td><td><strong>F1 de Ask pasa a <code>completed</code></strong> en overview y manifest, con addendum §8 al audit F1: el 2026-09-20 (23:1x CST) se cargaron <code>APNS_KEY_ID</code>/<code>APNS_TEAM_ID</code>/<code>APNS_KEY_P8_B64</code> (key <strong><code>N585YVNSFA</code></strong> del team <code>2PBQJ37Q8W</code>, la misma de Proflores: las keys APNs son del team), el smoke <code>apnsSmoke</code> con token falso devolvió <code>{&quot;apns&quot;:{&quot;status&quot;:400,&quot;reason&quot;:&quot;BadDeviceToken&quot;}}</code> y el push al token real del simulador devolvió <code>status 200</code> y <strong>se vio el banner «Pickler · APNs smoke»</strong> (captura <code>apns-real-push2.png</code>). <code>PUSH_MODE</code> se queda en <code>&quot;apns&quot;</code>. La capability Push Notifications en el App ID sigue siendo insumo de Jesús para F4.</td><td>Es lo que cierra el pendiente 1 de F1 y F2; se documenta en este plan porque es la misma sesión de docs.</td></tr>
+<tr><td>P9</td><td>Los PNG de evidencia versionados: <code>docs/superpowers/audits/img/2026-09-20-apns-real-push.png</code> (banner) y <code>2026-09-21-markets-ask-gate-{gate,trade-gate}.png</code> (Task 3).</td><td>Precedente F2-matrix (P12 de ese plan).</td></tr>
+</tbody>
+</table>
+<h2 id="mapa-de-archivos">Mapa de archivos</h2>
+<table>
+<thead>
+<tr><th>Archivo</th><th>Task</th><th>Responsabilidad</th></tr>
+</thead>
+<tbody>
+<tr><td><code>apps/mobile/src/hooks/useAccount.ts</code></td><td>1</td><td><code>signOut</code> sin <code>clearTradingKey</code> (P1)</td></tr>
+<tr><td><code>apps/mobile/src/store.ts</code>, <code>__tests__/store.test.ts</code></td><td>1</td><td><code>marketEntryTab</code> (P2)</td></tr>
+<tr><td><code>apps/mobile/src/screens/markets.tsx</code></td><td>2</td><td><code>MarketsList</code> siempre tocable con <code>hasKey</code>; línea del Gate (P2, P5)</td></tr>
+<tr><td><code>apps/mobile/src/screens/market.tsx</code></td><td>2</td><td><code>TradeGate</code> + retorno temprano en <code>TradeTab</code> (P3, P4)</td></tr>
+<tr><td>Simulador</td><td>3</td><td>Recorrido con capturas (P7)</td></tr>
+<tr><td><code>docs/superpowers/specs/{2026-09-16-mobile-perpl,2026-09-18-mobile-hifi,2026-09-19-mobile-ask}-design.md</code>, <code>docs/overview/2026-09-19-mobile-ask.html</code>, <code>docs/overview/data/manifest.js</code>, <code>docs/overview/dev/2026-09-21-markets-ask-gate.html</code>, <code>docs/superpowers/audits/2026-09-19-mobile-ask-f1-rulings.md</code>, <code>docs/superpowers/audits/2026-09-19-mobile-ask-f2-rulings.md</code>, <code>docs/superpowers/audits/img/*.png</code>, <code>apps/mobile/README.md</code></td><td>4</td><td>Correcciones <strong>(gate)</strong>, dev tracker, F1 <code>completed</code> + addendum APNs (P8), F2 followups, revisión independiente, checks</td></tr>
+</tbody>
+</table>
+<hr>
+<h3 id="task-1-signout-conserva-la-trading-key-marketentrytab-en-el-store">Task 1: <code>signOut</code> conserva la trading key; <code>marketEntryTab</code> en el store</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Modify: <code>apps/mobile/src/hooks/useAccount.ts</code> (import y <code>signOut</code>)</li>
+<li>Modify: <code>apps/mobile/src/store.ts</code> (junto a <code>MARKET_SUBTITLES</code>)</li>
+<li>Test: <code>apps/mobile/__tests__/store.test.ts</code></li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Produces: <code>marketEntryTab(hasKey: boolean): MarketTab</code> (export de <code>src/store.ts</code>). Lo usa Task 2.</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Línea base</strong></label></li>
+</ul>
+<pre><code class="language-bash">cd /Users/josedejesusacevedoflores/Documents/predict/.claude/worktrees/markets-ask-gate/apps/mobile
+git status --short &amp;&amp; git log --oneline -1
+npm test 2&gt;&amp;1 | tail -4
+npx tsc --noEmit &amp;&amp; echo TSC-OK</code></pre>
+<p>Expected: árbol limpio salvo el plan (<code>docs/superpowers/plans/2026-09-21-markets-ask-gate.{md,html}</code> sin commit), HEAD <code>3a0c490</code>; <code>Tests: 236 passed</code> / <code>31 passed</code>; <code>TSC-OK</code>. Si falta <code>node_modules</code>, <code>npm ci</code> primero.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Test de <code>marketEntryTab</code> (RED)</strong> — añadir <code>marketEntryTab</code> al import de <code>../src/store</code> en <code>__tests__/store.test.ts</code> y al final del archivo:</label></li>
+</ul>
+<pre><code class="language-ts">test(&quot;a market opens on Trade with a trading key and on Ask without one (gate)&quot;, () =&gt; {
+  expect(marketEntryTab(true)).toBe(&quot;trade&quot;);
+  expect(marketEntryTab(false)).toBe(&quot;ask&quot;);
+});</code></pre>
+<pre><code class="language-bash">npx jest __tests__/store.test.ts 2&gt;&amp;1 | tail -8</code></pre>
+<p>Expected: FAIL — <code>marketEntryTab is not a function</code>.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Implementar <code>marketEntryTab</code></strong> — en <code>src/store.ts</code>, justo antes de <code>const MARKET_SUBTITLES</code>:</label></li>
+</ul>
+<pre><code class="language-ts">/** Pill con el que se abre un mercado desde Markets: Trade con trading key, Ask sin ella (Ask y Agents no la necesitan; fix gate). */
+export const marketEntryTab = (hasKey: boolean): MarketTab =&gt; (hasKey ? &quot;trade&quot; : &quot;ask&quot;);</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 4: <code>signOut</code> conserva la key</strong> — en <code>src/hooks/useAccount.ts</code>:</label></li>
+</ul>
+<p>Quitar la línea <code>import { clearTradingKey } from &quot;../storage/perpl&quot;;</code> y sustituir el cuerpo de <code>signOut</code> por:</p>
+<pre><code class="language-ts">  const signOut = useCallback(async () =&gt; {
+    // D6: la sesión de reads muere con la cuenta. La trading key de Perpl se conserva (fix gate, opción B): está atada a su
+    // address y usePerpl la ignora si la wallet activa es otra; borrarla obligaba a un Reconnect (tx + key nueva) en cada sign in.
+    // «Reset trading key» sigue siendo la forma explícita de tirarla.
+    await Promise.all([clearStoredAccount(), clearReadsSession()]);
+    replace({ status: &quot;none&quot; });
+  }, [replace]);</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 5: Verde y commit</strong></label></li>
+</ul>
+<pre><code class="language-bash">npx jest __tests__/store.test.ts 2&gt;&amp;1 | tail -6
+npm test 2&gt;&amp;1 | tail -4 &amp;&amp; npx tsc --noEmit &amp;&amp; echo TSC-OK
+grep -n &#39;clearTradingKey&#39; src/hooks/useAccount.ts || echo &quot;sin clearTradingKey en useAccount&quot;
+git add src/hooks/useAccount.ts src/store.ts __tests__/store.test.ts
+git commit -m &quot;fix(mobile): sign out conserva la trading key de Perpl y marketEntryTab decide el pill de entrada&quot; -m &quot;Co-Authored-By: &lt;modelo&gt; &lt;noreply@anthropic.com&gt;&quot; -m &quot;Claude-Session: &lt;url&gt;&quot;</code></pre>
+<p>Expected: 31 suites / 237 tests; <code>TSC-OK</code>; <code>sin clearTradingKey en useAccount</code> (<code>clearTradingKey</code> sigue exportado en <code>storage/perpl.ts</code> para <code>resetKey</code>).</p>
+<hr>
+<h3 id="task-2-markets-siempre-abre-el-mercado-tradegate-en-la-pestana-trade">Task 2: Markets siempre abre el mercado; <code>TradeGate</code> en la pestaña Trade</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Modify: <code>apps/mobile/src/screens/markets.tsx</code> (<code>MarketsList</code>, <code>Gate</code>, <code>MarketsScreen</code>)</li>
+<li>Modify: <code>apps/mobile/src/screens/market.tsx</code> (<code>TradeGate</code>, <code>TradeTab</code>)</li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Consumes: <code>marketEntryTab</code> (Task 1); <code>perpl.state.status</code>, <code>perpl.existingAccountId</code> (ya en <code>Perpl</code>); <code>back</code> de <code>AppCtx</code>.</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: <code>markets.tsx</code> — <code>MarketsList</code> con <code>hasKey</code></strong></label></li>
+</ul>
+<p>Import: añadir <code>marketEntryTab</code> → <code>import { marketEntryTab } from &quot;../store&quot;;</code> (junto a los demás imports de <code>../</code>).</p>
+<p>Sustituir la firma y las dos líneas de <code>onPress</code>/<code>style</code> de <code>MarketsList</code>:</p>
+<pre><code class="language-tsx">/** Lista de mercados: siempre tocable. Con trading key entra a Trade; sin ella a Ask (fix gate, P2). */
+function MarketsList({ perpl, nav, hasKey }: Pick&lt;AppCtx, &quot;perpl&quot; | &quot;nav&quot;&gt; &amp; { hasKey: boolean }) {</code></pre>
+<p>y en la <code>TouchCard</code>:</p>
+<pre><code class="language-tsx">            onPress={() =&gt; nav(&quot;market&quot;, { perpsMarketId: m.id, perpsSide: &quot;long&quot;, marketTab: marketEntryTab(hasKey) })}
+            style={{ flexDirection: &quot;row&quot;, alignItems: &quot;center&quot;, gap: 11 }}</code></pre>
+<p>En <code>Gate</code> (final del <code>return</code>), sustituir <code>&lt;MarketsList perpl={perpl} nav={nav} readOnly /&gt;</code> por:</p>
+<pre><code class="language-tsx">      &lt;T w={400} s={11.5} lh={1.4} color={C.faint}&gt;Ask an agent on any market below — no trading key needed.&lt;/T&gt;
+      &lt;MarketsList perpl={perpl} nav={nav} hasKey={false} /&gt;</code></pre>
+<p>En <code>MarketsScreen</code> (estado <code>ready</code>), sustituir <code>&lt;MarketsList perpl={perpl} nav={nav} readOnly={false} /&gt;</code> por <code>&lt;MarketsList perpl={perpl} nav={nav} hasKey /&gt;</code>.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: <code>market.tsx</code> — <code>TradeGate</code></strong></label></li>
+</ul>
+<p>Import: <code>Btn, Card, Chip, KVList, type KVRow, Page, PillTabs, Segmented, StatusCard, T, Tag, type Tone</code> ya están; no cambia.</p>
+<p>Añadir antes de <code>function TradeTab</code>:</p>
+<pre><code class="language-tsx">const TRADE_GATE: Tone = { bd: C.limeBd, bg: C.limeBg06, fg: C.lime };
+
+/** Sin trading key en este teléfono: el gate de Perpl vive aquí, no en Markets (fix gate, P3). El flujo real de Enable/Reconnect sigue en Markets. */
+function TradeGate({ perpl, back }: Pick&lt;AppCtx, &quot;perpl&quot; | &quot;back&quot;&gt;) {
+  if (perpl.state.status === &quot;loading&quot;) return &lt;Page top={13}&gt;&lt;ActivityIndicator color={C.lime} /&gt;&lt;/Page&gt;;
+  const existing = perpl.existingAccountId;
+  const reconnect = existing !== null &amp;&amp; existing &gt; 0n;
+  return (
+    &lt;Page top={13} gap={11}&gt;
+      &lt;StatusCard tag=&quot;TRADE&quot; title=&quot;Trading isn&#39;t set up on this phone&quot; tone={TRADE_GATE}
+        body={reconnect
+          ? `This wallet already has Perpl account #${String(existing)}. Reconnect registers a trading key on this phone; no AUSD moves.`
+          : &quot;Enable trading moves AUSD from your wallet into a Perpl trading account. One Face ID, four steps.&quot;}&gt;
+        &lt;Btn label={reconnect ? &quot;Reconnect trading&quot; : &quot;Enable trading&quot;} onPress={back} variant=&quot;lime&quot; py={14} accessibilityLabel=&quot;trade-gate&quot; /&gt;
+      &lt;/StatusCard&gt;
+      &lt;T w={400} s={11} lh={1.45} color={C.faint}&gt;Ask and Agents work without a trading key.&lt;/T&gt;
+    &lt;/Page&gt;
+  );
+}</code></pre>
+<p>En <code>TradeTab</code>: cambiar la firma a <code>function TradeTab({ S, set, perpl, nav, back }: AppCtx)</code> y, <strong>inmediatamente después</strong> de <code>const [st, setSt] = useState&lt;Step&gt;({ step: &quot;edit&quot; });</code> (P4):</p>
+<pre><code class="language-tsx">  if (perpl.state.status !== &quot;ready&quot;) return &lt;TradeGate perpl={perpl} back={back} /&gt;;</code></pre>
+<p>(Si <code>nav</code> queda sin usar en <code>TradeTab</code> tras el cambio, <code>tsc</code> no protesta —no hay <code>noUnusedParameters</code>—; dejarlo si lo usa el ticket, quitarlo si no.)</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Verificar y commit</strong></label></li>
+</ul>
+<pre><code class="language-bash">npx tsc --noEmit &amp;&amp; echo TSC-OK &amp;&amp; npm test 2&gt;&amp;1 | tail -4
+grep -n &#39;readOnly&#39; src/screens/markets.tsx || echo &quot;sin readOnly&quot;
+git add src/screens/markets.tsx src/screens/market.tsx
+git commit -m &quot;fix(mobile): Markets abre cualquier mercado (Ask sin trading key) y el gate de Perpl vive en la pestaña Trade&quot; -m &quot;Co-Authored-By: &lt;modelo&gt; &lt;noreply@anthropic.com&gt;&quot; -m &quot;Claude-Session: &lt;url&gt;&quot;</code></pre>
+<p>Expected: <code>TSC-OK</code>, 31 / 237, <code>sin readOnly</code>.</p>
+<hr>
+<h3 id="task-3-recorrido-en-el-simulador-capturas">Task 3: Recorrido en el simulador (capturas)</h3>
+<p><strong>Files:</strong> ninguno del repo. Workspace: <code>SC=&lt;repo&gt;/.claude/worktrees/markets-ask-gate/.superpowers/sdd/2026-09-21-markets-ask-gate</code> (lo crea <code>scripts/sdd-workspace</code>); copiar ahí <code>taplabel.sh</code>, <code>tap-point.yaml</code> y <code>flows/</code> desde <code>&lt;repo&gt;/.superpowers/sdd/2026-09-20-mobile-ask-matrix/</code> del checkout principal y ajustar la variable <code>SC</code> de <code>taplabel.sh</code> a este workspace. Capturas en <code>$SC/shots/</code>.</p>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Labels: <code>market-BTC</code>, <code>pill-ask</code>, <code>pill-trade</code>, <code>pill-agents</code>, <code>trade-gate</code>, <code>reset-trading-key</code>, <code>ask-unlock</code>, <code>cell-100-240</code>, <code>segment-mine</code>; Dev controls (⚙ arriba a la derecha) → «Sign out», «Lock», «Market · ticket».</li>
+<li>Produces: <code>$SC/task-3-report.md</code> con la tabla de capturas y los saldos antes/después; dos PNG copiados a <code>docs/superpowers/audits/img/2026-09-21-markets-ask-gate-{gate,trade-gate}.png</code> (P9).</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 0: Metro, simulador, saldos</strong></label></li>
+</ul>
+<pre><code class="language-bash">U=2B2A0BAD-7B14-4DAE-8652-C7E9472505E0
+cd /Users/josedejesusacevedoflores/Documents/predict/.claude/worktrees/markets-ask-gate/apps/mobile
+xcrun simctl list devices | grep &quot;$U&quot;; xcrun simctl boot &quot;$U&quot; 2&gt;/dev/null; sleep 8
+xcrun simctl listapps &quot;$U&quot; | grep -c fun.pickler.app          # ≥ 1 = instalada; si 0 → nohup npx expo run:ios --device &quot;$U&quot; &gt; &quot;$SC/run.log&quot; 2&gt;&amp;1 &amp; y esperar «Installing on» (borra la cuenta local)
+lsof -tiTCP:8081 -sTCP:LISTEN || (nohup npx expo start --port 8081 &gt; &quot;$SC/metro.log&quot; 2&gt;&amp;1 &amp; sleep 15; grep -c &#39;Waiting on&#39; &quot;$SC/metro.log&quot;)
+xcrun simctl terminate &quot;$U&quot; fun.pickler.app; xcrun simctl launch &quot;$U&quot; fun.pickler.app; sleep 6
+xcrun simctl io &quot;$U&quot; screenshot &quot;$SC/shots/00-boot.png&quot;</code></pre>
+<p>Mirar <code>00-boot.png</code>: la app carga por Metro (sin pantalla de «dev server»). Si pide sign in (sesión ajena la cerró): passkey «pickler» + Face ID. Ir a <strong>Wallet</strong> y anotar <strong>AUSD y MON</strong> (captura <code>01-wallet-before.png</code>).</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Estado con key — Trade listo, Ask accesible</strong> — Markets: si muestra la card <code>TRADING · AUSD</code> (estado <code>ready</code>) → <code>taplabel.sh market-BTC</code> → abre en <strong>Trade</strong> (ticket); captura <code>02-market-trade.png</code>. <code>pill-ask</code> → matriz; <code>pill-agents</code> → lista. Captura <code>03-ask-with-key.png</code>. Si Markets muestra el Gate («Reconnect trading»: la key ya se perdió por un sign out anterior a este fix), <strong>no</strong> tocar Reconnect: anotarlo y saltar a Step 3 (el Step 2 no aplica hasta tener key; explicar en el reporte).</label></li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Sign out → sign in NO pide Reconnect (P1, P7)</strong> — ⚙ → «Sign out» → captura <code>04-signed-out.png</code> → Sign in con el passkey (<code>flows/usar-llave.yaml</code> + Face ID) → Markets debe mostrar <strong><code>TRADING · AUSD</code></strong> (estado <code>ready</code>), <strong>no</strong> el Gate; captura <code>05-after-signin-ready.png</code>. <code>market-BTC</code> → <code>pill-trade</code> → ticket (sin <code>TradeGate</code>); captura <code>06-trade-ready.png</code>. Wallet → AUSD/MON <strong>iguales</strong> que en Step 0 (ninguna tx); captura <code>07-wallet-after.png</code>.</label></li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Sin key — Markets abre en Ask, Trade muestra el gate</strong> — Markets → «Reset trading key» (<code>taplabel.sh reset-trading-key</code>; puede pedir Face ID → <code>notifyutil … match</code>) → Markets muestra el <strong>Gate</strong> («Reconnect trading», porque la wallet tiene la cuenta #620) <strong>con la línea «Ask an agent on any market below…»</strong> y la lista <strong>sin opacidad</strong>; captura <code>08-gate-list.png</code> → copiar a <code>docs/superpowers/audits/img/2026-09-21-markets-ask-gate-gate.png</code>. <code>taplabel.sh market-BTC</code> → abre en <strong>Ask</strong> (matriz, créditos 18, hoja al tocar <code>cell-100-240</code>); captura <code>09-ask-without-key.png</code>. <code>pill-agents</code> → lista con récords; captura <code>10-agents-without-key.png</code>. <code>pill-trade</code> → <strong><code>TradeGate</code></strong>: «Trading isn&#39;t set up on this phone», cuerpo «…account #620. Reconnect registers a trading key…», botón «Reconnect trading», línea «Ask and Agents work without a trading key.»; captura <code>11-trade-gate.png</code> → copiar a <code>…-trade-gate.png</code>. <code>taplabel.sh trade-gate</code> → vuelve a <strong>Markets</strong> (Gate). <strong>No tocar «Reconnect»</strong>. Captura <code>12-back-to-markets.png</code>.</label></li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 4: Sesión de reads sí muere con el sign out (D6 intacto)</strong> — desde el estado de Step 3: ⚙ → «Sign out» → sign in → Markets (Gate) → <code>market-BTC</code> → Ask: si la wallet quedó <code>unlocked</code>, la firma es silenciosa (P3 del plan F2) y se ve la matriz; si está <code>locked</code>, <code>SessionGate</code> «Unlock to ask». Cualquiera de las dos es correcta; captura <code>13-ask-after-signout.png</code> y anotar cuál se vio. <code>segment-mine</code> → las dos reads (<code>9f386c32…</code> right, <code>17eb2ef8…</code> open o ya resuelta); captura <code>14-my-reads.png</code>.</label></li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 5: Dejar el simulador con key</strong> — para no dejar a Jesús con el Gate: <strong>no</strong> ejecutar Reconnect (tx). Anotar en el reporte que el simulador queda <strong>sin trading key</strong> hasta que Jesús decida hacer Reconnect (una tx de MON + una key en Perpl) — o, si prefiere, que el iPhone será el dispositivo de F4. Saldos por SQL/RPC no cambian: comprobar con la captura de Wallet (<code>15-wallet-final.png</code>) que AUSD/MON son los de Step 0.</label></li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 6: Reporte</strong> — <code>$SC/task-3-report.md</code>: tabla captura → qué muestra (mirada ✓), saldos antes/después, qué rama tomó Step 1 y Step 4, incidentes (simulador apagado/sign out ajeno), defectos (si hay, <strong>parar</strong> antes de Task 4).</label></li>
+</ul>
+<hr>
+<h3 id="task-4-docs-correcciones-gate-dev-tracker-f1-completed-addendum-apns-followups-f2-revision-independiente-checks">Task 4: Docs — correcciones (gate), dev tracker, F1 <code>completed</code> + addendum APNs, followups F2, revisión independiente, checks</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Modify: <code>docs/superpowers/specs/2026-09-16-mobile-perpl-design.md</code>, <code>docs/superpowers/specs/2026-09-18-mobile-hifi-design.md</code>, <code>docs/superpowers/specs/2026-09-19-mobile-ask-design.md</code>, <code>docs/overview/2026-09-19-mobile-ask.html</code>, <code>docs/overview/data/manifest.js</code>, <code>docs/superpowers/audits/2026-09-19-mobile-ask-f1-rulings.md</code>, <code>docs/superpowers/audits/2026-09-19-mobile-ask-f2-rulings.md</code>, <code>apps/mobile/README.md</code></li>
+<li>Create: <code>docs/overview/dev/2026-09-21-markets-ask-gate.html</code>, <code>docs/superpowers/audits/img/2026-09-20-apns-real-push.png</code> (copia de <code>&lt;repo&gt;/.superpowers/sdd/2026-09-20-mobile-ask-matrix/matrix-shots/apns-real-push2.png</code> del checkout principal), <code>docs/superpowers/audits/img/2026-09-21-markets-ask-gate-{gate,trade-gate}.png</code> (Task 3)</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Specs (marcar, no reescribir)</strong></label></li>
+</ul>
+<ul>
+<li>Perpl (<code>2026-09-16-mobile-perpl-design.md</code>): en la línea «<code>saveTradingKey</code>, <code>clearTradingKey</code> (se llama desde <code>signOut</code> junto a <code>clearStoredAccount</code>).» añadir «<strong>(gate, 2026-09-21)</strong> <code>signOut</code> ya <strong>no</strong> la llama: la key sobrevive al sign out (opción B; <code>usePerpl</code> la ignora si la <code>address</code> no coincide); sólo «Reset trading key» la borra. Motivo: cada Reconnect cuesta una tx de gas y registra otra key en Perpl (límite <code>423</code>); follow-up post-bounty: key derivada de una firma determinista de la wallet (patrón dYdX v4), sin nada en disco.» Y en el bullet «Sign out: <code>clearTradingKey()</code>, socket cerrado, <code>state = none</code>.» añadir «<strong>(gate)</strong> sin <code>clearTradingKey()</code>: socket cerrado por el cambio de <code>address</code>; con la misma wallet el estado vuelve a <code>ready</code> sin Reconnect. Residual: un Reconnect real (reinstalación) sigue reenviando <code>enableForwarding</code> porque no hay getter on-chain.»</li>
+<li>Hifi (<code>2026-09-18-mobile-hifi-design.md</code>) D13: tras «Lista de mercados en gate <code>readOnly</code> (opacidad .7).» añadir «<strong>(gate, 2026-09-21)</strong> La lista es <strong>siempre tocable</strong>: con key abre el mercado en Trade, sin key en Ask (<code>marketEntryTab</code>); el Gate gana la línea «Ask an agent on any market below — no trading key needed.»; el gate de Perpl vive en la pestaña Trade (<code>TradeGate</code>), cuyo botón vuelve a Markets. Plan <code>2026-09-21-markets-ask-gate.md</code>.»</li>
+<li>Ask (<code>2026-09-19-mobile-ask-design.md</code>) D13: tras «<code>marketTab</code> conserva default <code>trade</code>.» añadir «<strong>(gate)</strong> Desde Markets, sin trading key el mercado se abre con <code>marketTab: &quot;ask&quot;</code> (<code>marketEntryTab(hasKey)</code>); Ask y Agents no dependen de Perpl.» Y en la cabecera <strong>Estado</strong>: «F1 <code>completed</code> (push real de APNs visto el 2026-09-20, addendum §8 del audit F1); fix gate ejecutado (plan <code>2026-09-21-markets-ask-gate.md</code>).»</li>
+</ul>
+<pre><code class="language-bash">cd /Users/josedejesusacevedoflores/Documents/predict/.claude/worktrees/markets-ask-gate &amp;&amp; npm run docs:html 2&gt;&amp;1 | grep -c &#39;\[ok\]&#39;</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Audit F1 — addendum §8 (P8)</strong> — añadir al final de <code>docs/superpowers/audits/2026-09-19-mobile-ask-f1-rulings.md</code>:</label></li>
+</ul>
+<pre><code class="language-markdown">## 8. Addendum APNs (2026-09-20, 23:1x CST): el push real llegó
+
+- **Key**: `N585YVNSFA` del team `2PBQJ37Q8W` (la key APNs de Proflores; las keys APNs de tipo token son del team, no de la app). El `.p8` se
+  recuperó de `/opt/proflores/.env` de la VPS de Proflores a `~/.private_keys/AuthKey_N585YVNSFA.p8` (600) por Jesús con un comando `!`
+  (el clasificador de auto mode bloquea mover credenciales); `openssl pkey` lo validó. `.env.pickler` ganó `APNS_KEY_ID`, `APNS_TEAM_ID`,
+  `APNS_KEY_P8_B64` (respaldo `.env.pickler.bak-2026-09-20`); `npx supabase secrets set` → `{&quot;count&quot;:3}`; `secrets list` muestra los tres nombres.
+- **Smoke** (`resolve-reads` con `{ apnsSmoke: { token: &quot;0&quot;×64, env: &quot;sandbox&quot; } }`, header `x-cron-secret`): `http 200 {&quot;apns&quot;:{&quot;status&quot;:400,&quot;reason&quot;:&quot;BadDeviceToken&quot;}}` — APNs aceptó TLS, HTTP/2 y el JWT (P6 del plan F1).
+- **Push real** al token del simulador (`mobile.devices`, `env sandbox`, 160 hex; leído dentro del script, no impreso): `{&quot;apns&quot;:{&quot;status&quot;:200,&quot;reason&quot;:null}}`
+  y banner «Pickler · APNs smoke» en el simulador `2B2A…` (arrancado desde apagado; el primer envío no se vio porque el banner caducó antes de la captura; el segundo sí):
+
+![Banner del push real de APNs en el simulador](img/2026-09-20-apns-real-push.png)
+
+- **Decisión**: `PUSH_MODE = &quot;apns&quot;` se queda (el fallback local de D10 sigue implementado y probado por test). **F1 → `completed`**.
+- **Sigue pendiente (F4)**: capability Push Notifications en el App ID `fun.pickler.app` (developer.apple.com → Identifiers), insumo de Jesús;
+  el simulador no la necesita, el iPhone/TestFlight sí. Rotación de `SUPABASE_ACCESS_TOKEN`/`CRON_SECRET` (incidente 1) sigue abierta.</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Audit F2 — nota en §5/§7</strong> — en <code>2026-09-19-mobile-ask-f2-rulings.md</code>, al final de §7 «Pendientes / residuales» añadir: «- <strong>(2026-09-21)</strong> Pendiente 3 de §5 (Markets <code>readOnly</code> bloquea Ask) <strong>resuelto</strong> por el plan <code>2026-09-21-markets-ask-gate.md</code> (tracker <code>dev/2026-09-21-markets-ask-gate.html</code>): la lista siempre abre el mercado, el gate vive en Trade y el sign out conserva la trading key. Pendiente 1 de §5 (push real) <strong>resuelto</strong> el 2026-09-20 (audit F1 §8).»</label></li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 4: Overview y manifest</strong> — <code>docs/overview/2026-09-19-mobile-ask.html</code>: phase-card <code>data-phase=&quot;1&quot;</code> → <code>data-status=&quot;completed&quot;</code> y <code>&lt;option value=&quot;completed&quot; selected&gt;</code>; en el <code>&lt;details class=&quot;followups&quot;&gt;</code> de F2, marcar los ítems 1 (push real), 3 (<code>PUSH_MODE</code>) y 4 (Markets <code>readOnly</code>) como resueltos (prefijo <code>&lt;b&gt;Resuelto (2026-09-2x):&lt;/b&gt;</code> y una frase con dónde), dejar el 2 (capability) abierto. <code>docs/overview/data/manifest.js</code>: <code>phases[0].status</code> de mobile-ask → <code>&#39;completed&#39;</code>. Mirar el overview renderizado (abrir el HTML) antes de afirmar.</label></li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 5: Dev tracker</strong> — seguir <code>.claude/skills/pickler-dev-new/SKILL.md</code>: <code>types: [&#39;fix&#39;]</code>, slug <code>markets-ask-gate</code>, fecha <code>date +%F</code>, título «Markets abre Ask sin trading key; sign out conserva la key», lede «El gate de Perpl vive en Trade; Ask y Agents funcionan sin key; cerrar sesión ya no obliga a Reconnect (tx + key nueva).», <code>status: &#39;in_progress&#39;</code> (rama sin merge), tags <code>[&#39;mobile&#39;, &#39;perpl&#39;, &#39;ask&#39;, &#39;fix&#39;]</code>; «Qué cambió» de <code>git log --oneline 3a0c490..HEAD</code>; «Archivos tocados» de <code>git diff --stat 3a0c490..HEAD</code>; «Validación» con las capturas de Task 3 (<code>&lt;img&gt;</code> a <code>../../superpowers/audits/img/2026-09-21-markets-ask-gate-{gate,trade-gate}.png</code>), saldos iguales antes/después, tests/tsc; render-check y <strong>mirar la captura de 390 px</strong>.</label></li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 6: README</strong> — <code>apps/mobile/README.md</code>: en la sección de Perpl, una línea: «Sign out conserva la trading key (atada a la wallet; «Reset trading key» la borra); sin key, Markets abre el mercado en Ask y la pestaña Trade muestra el gate.» Conteo de tests real.</label></li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 7: Revisión independiente</strong> — subagente revisor con: este plan, las tres correcciones de spec, <code>git diff 3a0c490..HEAD -- apps/mobile docs</code>, el reporte de Task 3 y las capturas. Verificar: (a) <code>signOut</code> sigue borrando cuenta local y sesión de reads, y sólo eso; <code>usePerpl</code> ignora una key de otra <code>address</code> (cita de línea); (b) <code>MarketsList</code> navega siempre y el pill de entrada sale de <code>marketEntryTab</code>; ningún <code>readOnly</code> residual; (c) <code>TradeGate</code> sólo cuando <code>status !== &quot;ready&quot;</code>, sin hooks condicionales, botón = <code>back</code>; el ticket no cambia en <code>ready</code>; (d) Ask/Agents/<code>useReads</code>/<code>usePerpl</code>/servidor sin cambios (stat); (e) sin dependencias nuevas; (f) el test de <code>marketEntryTab</code> falla si se invierte; (g) docs: F1 <code>completed</code> con evidencia citada, followups F2 actualizados, correcciones <strong>(gate)</strong> en los tres specs. Aplicar lo que proceda y anotar la revisión en el tracker («Validación») y en el audit F2 §7.</label></li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 8: Checks finales y commit</strong></label></li>
+</ul>
+<pre><code class="language-bash">cd /Users/josedejesusacevedoflores/Documents/predict/.claude/worktrees/markets-ask-gate
+npm run docs:html &amp;&amp; npm run docs:check &amp;&amp; npm run agents:check
+cd apps/mobile &amp;&amp; npm test 2&gt;&amp;1 | tail -4 &amp;&amp; npx tsc --noEmit &amp;&amp; echo TSC-OK &amp;&amp; cd ../..
+git status --short
+git add docs/superpowers/specs/2026-09-16-mobile-perpl-design.md docs/superpowers/specs/2026-09-16-mobile-perpl-design.html docs/superpowers/specs/2026-09-18-mobile-hifi-design.md docs/superpowers/specs/2026-09-18-mobile-hifi-design.html docs/superpowers/specs/2026-09-19-mobile-ask-design.md docs/superpowers/specs/2026-09-19-mobile-ask-design.html docs/superpowers/plans/2026-09-21-markets-ask-gate.md docs/superpowers/plans/2026-09-21-markets-ask-gate.html docs/overview/2026-09-19-mobile-ask.html docs/overview/data/manifest.js docs/overview/dev/2026-09-21-markets-ask-gate.html docs/superpowers/audits/2026-09-19-mobile-ask-f1-rulings.md docs/superpowers/audits/2026-09-19-mobile-ask-f2-rulings.md docs/superpowers/audits/img/2026-09-20-apns-real-push.png docs/superpowers/audits/img/2026-09-21-markets-ask-gate-gate.png docs/superpowers/audits/img/2026-09-21-markets-ask-gate-trade-gate.png apps/mobile/README.md
+git commit -m &quot;docs(mobile-ask): fix gate — specs corregidos (gate), tracker, F1 completed con el push real de APNs, followups F2&quot; -m &quot;Co-Authored-By: &lt;modelo&gt; &lt;noreply@anthropic.com&gt;&quot; -m &quot;Claude-Session: &lt;url&gt;&quot;</code></pre>
+<p>Expected: <code>docs:check</code> <code>errors=0</code>; <code>agents:check</code> <code>&quot;errors&quot;: []</code>; 31 / 237; <code>TSC-OK</code>; árbol limpio tras el commit. Handoff: la rama queda lista para merge local (decisión de Jesús), el simulador queda <strong>sin trading key</strong> (Step 5 de Task 3), y el siguiente punto es el <strong>plan F3</strong>; siguen abiertos: push de <code>main</code> a <code>origin</code>, capability Push en el App ID, revocar keys huérfanas en <code>testnet.perpl.xyz/apikeys</code>, rotación de secretos.</p>
+<hr>
+<h2 id="self-review-del-plan-hecho-al-escribirlo">Self-review del plan (hecho al escribirlo)</h2>
+<ul>
+<li><strong>Cobertura del diseño aprobado (1–5)</strong>: (1) key sobrevive al sign out → Task 1 Step 4 (P1); (2) Markets siempre abre, Ask sin key → Task 1 Steps 2–3 + Task 2 Step 1 (P2, P5); (3) gate en Trade → Task 2 Step 2 (P3, P4); (4) docs: specs <strong>(gate)</strong>, tracker <code>fix</code>, F1 <code>completed</code> + addendum APNs, followups F2 → Task 4 (P8, P9); (5) verificación: sign out → sign in sin Reconnect, Reset key → Ask/Agents sin key, TradeGate, saldos iguales → Task 3 (P7). Corrección explícita sobre <code>enableForwarding</code> → P6 y spec Perpl.</li>
+<li><strong>Placeholders</strong>: <code>&lt;modelo&gt;</code>, <code>&lt;url&gt;</code>, <code>&lt;repo&gt;</code> y <code>23:1x</code> son huecos que el ejecutor rellena con datos reales (hora exacta en el ledger de esta sesión: secrets set 2026-09-21 05:22 UTC = 23:22 CST del 20). No hay «TBD».</li>
+<li><strong>Consistencia</strong>: <code>marketEntryTab</code> (Task 1) ↔ <code>MarketsList.hasKey</code> (Task 2); <code>TradeGate</code> usa <code>perpl.existingAccountId: bigint | null</code> y <code>back: () =&gt; void</code> de <code>AppCtx</code> (<code>store.ts:147</code>); <code>StatusCard</code> acepta <code>children</code> y <code>tone: Tone</code> (primitives); <code>Page</code> acepta <code>top</code>/<code>gap</code>; labels de Task 3 existen (<code>market-BTC</code>, <code>pill-*</code>, <code>reset-trading-key</code>, <code>trade-gate</code> nuevo, <code>cell-100-240</code>, <code>segment-mine</code>).</li>
+</ul>
+  </div>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <p>HTML autogenerado · NO edites este archivo. Modifica el <code>.md</code> y re-genera con:</p>
+    <pre><code class="language-sql">node scripts/docs-md-to-html.mjs docs/superpowers/plans/2026-09-21-markets-ask-gate.md</code></pre>
+    <p>Reglas en <code>docs/CLAUDE.md</code> sección "MD → HTML autogenerado".</p>
+  </div>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // Persistencia de los checkboxes de task lists (pickler-md:<slug>:tasks)
+  const SLUG = '2026-09-21-markets-ask-gate';
+  const KEY = `pickler-md:${SLUG}:tasks`;
+  const checks = [...document.querySelectorAll('ul.task-list input[type=checkbox]')];
+  function load() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(KEY) || '[]');
+      checks.forEach((c, i) => {
+        if (typeof saved[i] === 'boolean') {
+          c.checked = saved[i];
+          c.closest('li').classList.toggle('done', c.checked);
+        }
+      });
+    } catch {}
+  }
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(checks.map(c => c.checked))); } catch {}
+  }
+  checks.forEach(c => {
+    c.closest('li').classList.toggle('done', c.checked);
+    c.addEventListener('change', () => {
+      c.closest('li').classList.toggle('done', c.checked);
+      save();
+    });
+  });
+  load();
+
+  // Botón "Copy progress as MD"
+  const $copy = document.getElementById('btn-copy-progress');
+  const $toast = document.getElementById('toast');
+  function showToast(msg) {
+    $toast.textContent = msg;
+    $toast.dataset.show = 'true';
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(() => { $toast.dataset.show = 'false'; }, 2200);
+  }
+  if ($copy) {
+    $copy.addEventListener('click', async (e) => {
+      const lines = ['# ' + document.title.split(' · ')[0] + ' — task progress', ''];
+      lines.push('_Capturado en ' + new Date().toISOString() + '_', '');
+      checks.forEach(c => {
+        const text = c.closest('label').textContent.trim();
+        lines.push('- [' + (c.checked ? 'x' : ' ') + '] ' + text);
+      });
+      try {
+        await navigator.clipboard.writeText(lines.join('\n'));
+        e.currentTarget.dataset.copied = 'true';
+        const prev = e.currentTarget.textContent;
+        e.currentTarget.textContent = '✓ Copiado';
+        showToast('Progress copiado — pégalo en el plan MD');
+        setTimeout(() => {
+          e.currentTarget.dataset.copied = 'false';
+          e.currentTarget.textContent = prev;
+        }, 1800);
+      } catch {
+        showToast('Clipboard no disponible');
+      }
+    });
+  }
+</script>
+</body>
+</html>

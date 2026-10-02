@@ -1,0 +1,28 @@
+{
+  "id": "1fde46c6-97da-4435-8184-59b5218a771d",
+  "agentId": "jesus",
+  "marketId": 16,
+  "symbol": "BTC",
+  "priceDecimals": 1,
+  "levelBps": 100,
+  "horizonMin": 60,
+  "markAtRequest": 804425,
+  "target": 812469,
+  "question": "Will the BTC mark be at or above 81246.9 at 2026-09-20 07:35 UTC?",
+  "status": "open",
+  "probability": 0.07,
+  "reasons": [
+    "A 1% move in one hour is rare for BTC outside of news.",
+    "The 24h trend is mildly positive but not accelerating.",
+    "Sports betting adds uncertainty in short windows."
+  ],
+  "limits": "A macro headline or a liquidation cascade in the next hour would invalidate this read.",
+  "creditsCharged": 1,
+  "error": null,
+  "createdAt": "2026-09-20T06:35:06.712Z",
+  "expiresAt": "2026-09-20T07:35:06.712Z",
+  "resolvedAt": null,
+  "markAtResolution": null,
+  "outcome": null,
+  "brier": null
+}
