@@ -185,16 +185,9 @@ export function ConnectModal(props: ConnectModalProps) {
         <header className={styles.head}>
           <p className={styles.label}>{flow.step === "closed" ? "" : EYEBROW[flow.step]}</p>
           {held ? (
-            <button
-              type="button"
-              className={styles.leave}
-              aria-disabled={flow.busy || undefined}
-              onClick={() => {
-                if (!flow.busy) {
-                  onLeave();
-                }
-              }}
-            >
+            // Never disabled, not even while a wallet is being asked to sign: one that does not
+            // answer would otherwise leave every control in a modal dead.
+            <button type="button" className={styles.leave} onClick={onLeave}>
               Disconnect
               <Icon name="x" size={12} />
             </button>

@@ -247,23 +247,35 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let live = true;
     const wanted = remembered();
-    if (wanted === null) {
-      // Anything this build no longer knows how to connect — the retired passkey account — would
-      // otherwise sit in storage for ever, claiming to be the last one used.
-      remember(null);
-    }
-    // A browser wallet that connected before is picked back up even when nothing was remembered:
-    // `eth_accounts` never prompts. The passkey wallet is only resumed when it was the last used.
-    const signer = SIGNERS.find((candidate) => candidate.kind === (wanted ?? "injected"));
+    const signer = SIGNERS.find((candidate) => candidate.kind === wanted);
     if (!signer) {
+      // Nothing remembered — or something this build no longer knows how to connect, which would
+      // otherwise sit in storage for ever claiming to be the last one used. Either way nothing is
+      // picked up: a browser wallet goes on listing its accounts to a site it could not be made to
+      // forget, and resuming from that alone would undo a disconnect.
+      remember(null);
       return;
     }
-    void signer.resume().then((resumed) => {
+    void (async () => {
+      const supabase = getSupabase();
+      if (supabase) {
+        // A connected wallet has an account (M6). If this browser holds no session at all, the
+        // wallet is not picked up either: the person connects again, and connecting signs in. A
+        // session that could not be read is not "none".
+        const session = await supabase.auth.getSession().then(
+          ({ data }) => data.session,
+          () => undefined,
+        );
+        if (session === null) {
+          return;
+        }
+      }
+      const resumed = await signer.resume();
       if (live && resumed) {
         setKind(signer.kind);
         setAccount(resumed);
       }
-    });
+    })();
     return () => {
       live = false;
     };
@@ -303,7 +315,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         if (!adopted || !data.session) {
           return;
         }
-        // Whether that account has a username yet, so the portfolio can still ask after a reload.
+        // Whether that account has a username yet: one that has none is asked at once.
         void readProfile(data.session.access_token).then((profile) => {
           if (live && heldRef.current === adopted) {
             know(hasUsername(profile));
@@ -434,8 +446,14 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         setAccount(shown);
         remember(picked);
         if (!issued) {
-          // A browser wallet: signing in is the chooser's next step, behind its own button.
-          dispatch({ type: "connected", signedIn: false, hasProfile: null });
+          // A browser wallet: signing in is the chooser's next step, behind its own button. A
+          // build with nowhere to keep a session has no accounts to sign in to, so there the
+          // wallet is connected and that is all.
+          dispatch(
+            getSupabase()
+              ? { type: "connected", signedIn: false, hasProfile: null }
+              : { type: "close" },
+          );
           return;
         }
         // The passkey wallet signed in inside the ceremony that connected it. The last session is
@@ -536,8 +554,18 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 
   /** The chooser's sign-in step: one signature, then on to the username or out. */
   const signInFromChooser = useCallback(async () => {
+    const mine = ++generation.current;
     dispatch({ type: "working" });
     const { result, profile: known } = await signInKeeping();
+    if (mine !== generation.current) {
+      // The person disconnected while the wallet was still being asked. Whatever it answered is
+      // for a wallet that is no longer here: the session it made is let go of.
+      const late = heldRef.current;
+      hold(null);
+      know(null);
+      void dropWalletSession(getSupabase(), late).catch(() => {});
+      return;
+    }
     if ("error" in result) {
       dispatch(
         result.error === null ? { type: "prompt_closed" } : { type: "failed", error: result.error },
@@ -548,7 +576,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     if (known !== false) {
       setHolding(null);
     }
-  }, [signInKeeping]);
+  }, [hold, know, signInKeeping]);
 
   /**
    * The join step: the person already has an account under another wallet. That wallet signs, the
@@ -732,19 +760,22 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 
   const disconnect = useCallback(async () => {
     // First, and whatever the wallet then answers: a disconnect that failed half-way must not
-    // leave the last address's session behind.
+    // leave the last address's session behind, nor the page still showing the wallet.
     void release(null);
-    await adapter?.disconnect();
     setAccount(null);
     setKind(null);
     remember(null);
+    await adapter?.disconnect().catch(() => {});
   }, [adapter, release]);
 
   /**
-   * The way out of a step that has to be finished: the wallet is disconnected. There is no
-   * connected wallet without an account, and no account without a username.
+   * The way out of a step that has to be finished: the wallet is disconnected. It works while a
+   * wallet is still being asked for a signature — one that never answers must not hold the page —
+   * so whatever is in flight is superseded, and its answer is dropped when it comes.
    */
   const leave = useCallback(async () => {
+    generation.current += 1;
+    setConnecting(false);
     dispatch({ type: "close" });
     await disconnect();
   }, [disconnect]);

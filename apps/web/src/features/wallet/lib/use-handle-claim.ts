@@ -14,8 +14,7 @@ import {
 
 /**
  * Everything about claiming a username except how it is drawn: the field's value, what is wrong
- * with it, whether it is free, and the claim itself. The portfolio's panel and the chooser's last
- * step both ask for a username, in different places and shapes, and this is what they share.
+ * with it, whether it is free, and the claim itself. The chooser's username step draws it.
  *
  * The rules come in from `@pickler/api-schema`, which mirrors core and is held to it by
  * workers/api/test/handle-rules.test.ts. They are handed to `localProblem` rather than read inside
@@ -88,10 +87,10 @@ export function useHandleClaim(onClaimed?: () => void) {
   }, [trimmed, askable]);
 
   /**
-   * A username needs an account, so this signs in when nobody has yet. In the chooser the session
-   * is already there and nothing is asked again; from the portfolio's panel it may cost one
-   * signature. If the person closes that prompt, `signInWithWallet` answers with no error to show
-   * and the form simply stays as it was.
+   * A username needs an account, so this signs in when nobody has yet. Straight after connecting
+   * the session is already there and nothing is asked again; after a reload the page no longer
+   * holds its token, and the claim costs one signature. If the person closes that prompt,
+   * `signInWithWallet` answers with no error to show and the form simply stays as it was.
    */
   async function claim() {
     setBusy(true);
