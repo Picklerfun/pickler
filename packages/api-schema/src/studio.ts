@@ -59,6 +59,11 @@ export const studioAgentSchema = agentResponseSchema.extend({
   spend: spendLimitsSchema.nullable(),
   /** Whether `spend` is enforced: true, on paper orders. */
   spendEnforced: z.boolean(),
+  /** Go Public (studio-draft-dashboard-v1 D7): private until published; there is no unpublish. */
+  visibility: z.enum(["private", "public"]),
+  publishedAt: z.string().datetime().nullable(),
+  /** The verified X handle (without "@"), or null. */
+  xHandle: z.string().nullable(),
 });
 export type StudioAgentDto = z.infer<typeof studioAgentSchema>;
 export const studioOptionsSchema = z.object({
@@ -237,3 +242,100 @@ export const walletsResponseSchema = z.object({
   readAt: z.number(),
 });
 export type WalletsDto = z.infer<typeof walletsResponseSchema>;
+
+/**
+ * `PUT /v1/studio/agents/:id/setup` (studio-draft-dashboard-v1 D10): a draft's brief, sources,
+ * caps and voice, each optional. Shapes only; core's `reviseDraft` judges them, as at creation.
+ */
+export const setupUpdateSchema = z
+  .object({
+    expectedVersion: z.number().int().positive(),
+    brief: draftCreateSchema.shape.brief.optional(),
+    sources: draftCreateSchema.shape.sources.optional(),
+    caps: draftCreateSchema.shape.caps.optional(),
+    voice: z.enum(VOICE_KEYS).optional(),
+  })
+  .strict();
+export type SetupUpdateDto = z.infer<typeof setupUpdateSchema>;
+
+/** `PUT /v1/studio/agents/:id/identity` (D14): name and avatar; the handle is fixed. */
+export const identityUpdateSchema = z
+  .object({
+    name: z.string().trim().min(1).max(40).optional(),
+    avatar: z
+      .object({
+        accent: draftCreateSchema.shape.avatar.shape.accent,
+        /** One of the canvas's six avatar patterns; the database checks the same bound. */
+        pattern: z.number().int().min(0).max(5),
+      })
+      .strict()
+      .optional(),
+  })
+  .strict();
+export type IdentityUpdateDto = z.infer<typeof identityUpdateSchema>;
+
+/** `GET /v1/studio/agents/:id/activity` (D18): newest first, at most 50. */
+export const activityResponseSchema = z.object({
+  events: z.array(
+    z.object({
+      kind: z.enum(["created", "wallet", "transfer"]),
+      text: z.string(),
+      at: z.string().datetime(),
+    }),
+  ),
+});
+export type ActivityDto = z.infer<typeof activityResponseSchema>;
+
+/** `POST /v1/studio/agents/:id/x/challenge`'s body: the handle, "@" optional. */
+export const xChallengeRequestSchema = z.object({ handle: z.string().max(64) }).strict();
+export type XChallengeRequestDto = z.infer<typeof xChallengeRequestSchema>;
+
+/** The live challenge: the handle it is for, the line to post, and when it lapses. */
+export const xChallengeSchema = z.object({
+  handle: z.string(),
+  text: z.string(),
+  expiresAt: z.string().datetime(),
+});
+export type XChallengeDto = z.infer<typeof xChallengeSchema>;
+
+/** `GET /v1/studio/agents/:id/x`: `available` is false until Pickler's X app is configured (D5). */
+export const xStateResponseSchema = z.object({
+  account: z.object({ handle: z.string(), verifiedAt: z.string().datetime() }).nullable(),
+  challenge: xChallengeSchema.nullable(),
+  available: z.boolean(),
+});
+export type XStateDto = z.infer<typeof xStateResponseSchema>;
+
+/** `POST /v1/studio/agents/:id/x/verify`. */
+export const xVerifyResponseSchema = z.union([
+  z.object({ verified: z.literal(true), handle: z.string() }),
+  z.object({ verified: z.literal(false), reason: z.literal("NOT_FOUND") }),
+]);
+export type XVerifyDto = z.infer<typeof xVerifyResponseSchema>;
+
+/** `POST /v1/studio/agents/:id/publish` (D8); idempotent on a public agent. */
+export const publishResponseSchema = z.object({
+  visibility: z.literal("public"),
+  publishedAt: z.string().datetime(),
+});
+export type PublishDto = z.infer<typeof publishResponseSchema>;
+
+/** Mirrors core's `PublishBlocker`: what a 409 PUBLISH_BLOCKED lists in `detail.blockers`. */
+export const PUBLISH_BLOCKERS = ["KILLED", "WALLET", "FUNDS"] as const;
+export type PublishBlockerDto = (typeof PUBLISH_BLOCKERS)[number];
+
+/** `GET /v1/studio/wallets/ledger` (D17): the person's transfers, newest first, at most 100. */
+export const ledgerResponseSchema = z.object({
+  entries: z.array(
+    z.object({
+      direction: z.enum(["to_agent", "to_master"]),
+      token: z.enum(["AUSD", "MON"]),
+      /** Token units as a decimal string: "10", "0.5". */
+      amount: z.string(),
+      agentName: z.string().nullable(),
+      txHash: z.string(),
+      at: z.string().datetime(),
+    }),
+  ),
+});
+export type LedgerDto = z.infer<typeof ledgerResponseSchema>;

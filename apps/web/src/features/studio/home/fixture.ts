@@ -151,6 +151,9 @@ export function homeFixture(stage: HomeStage): HomeFixture {
     canCreateAnother: { ok: false, reason: "unfunded_agent" },
     spend: null,
     spendEnforced: true,
+    visibility: "public",
+    publishedAt: new Date(START).toISOString(),
+    xHandle: null,
   };
   const order = decided
     ? ({
@@ -187,6 +190,8 @@ export function draftFixture(): HomeFixture {
     agent: {
       ...decided.agent,
       draft: true,
+      visibility: "private",
+      publishedAt: null,
       config: { ...decided.agent.config, voice: "analyst" },
       wallet: { ...decided.agent.wallet!, balanceAusd: 10 },
       canSchedule: { ok: false, reason: "first_run" },

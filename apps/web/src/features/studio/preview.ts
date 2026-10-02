@@ -253,6 +253,9 @@ export function studioPreview(now: number, search = ""): PreviewState | null {
       canCreateAnother: { ok: true, reason: null },
       spend: { perCallAusd: 5, perDayAusd: 20 },
       spendEnforced: true,
+      visibility: "public",
+      publishedAt: new Date(now - 30 * 24 * 60 * MINUTE).toISOString(),
+      xHandle: "HalftimeBot",
     },
   ];
   const runs: Run[] = [

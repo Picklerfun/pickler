@@ -1,4 +1,5 @@
 import type { TradingRepository } from "@pickler/trading/polymarket";
+import { XUnavailableError, type XClient } from "@pickler/infrastructure";
 import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { z } from "zod";
@@ -35,6 +36,17 @@ import {
   SignedActivityRejectedError,
   SigningServiceUnavailableError,
   SignedTransactionMismatchError,
+  PublishBlockedError,
+  XHandleTakenError,
+  VOICES,
+  X_CHALLENGE_TTL_MS,
+  X_CHECK_INTERVAL_MS,
+  challengeCode,
+  findVerificationPost,
+  parseXHandle,
+  publishBlockers,
+  reviseDraft,
+  verificationText,
   type createCustodyService,
   type Accent,
   type AgentWallet,
@@ -44,6 +56,9 @@ import {
   type StudioDirectory,
   type PreviewRepository,
   type ResearchRepository,
+  type DraftPatch,
+  type TransferLedgerEntry,
+  type XStore,
 } from "@pickler/core";
 import {
   studioOptionsSchema,
@@ -66,6 +81,14 @@ import {
   previewRunResponseSchema,
   draftCreateSchema,
   signedActivitySchema,
+  setupUpdateSchema,
+  identityUpdateSchema,
+  activityResponseSchema,
+  xChallengeRequestSchema,
+  xChallengeSchema,
+  xStateResponseSchema,
+  xVerifyResponseSchema,
+  publishResponseSchema,
   type DraftCreateDto,
   type StudioAgentDto,
 } from "@pickler/api-schema";
@@ -119,6 +142,14 @@ export interface StudioServices {
     | "confirmTransfer"
     | "walletBalance"
   >;
+  /**
+   * Connect X (studio-draft-dashboard-v1 D4–D6): the challenges and verified accounts, and X's API.
+   * The store takes the product agent id and checks no ownership; every X route proves the agent
+   * is the caller's (`agentScope`) first. Absent, every X route answers 503 X_UNAVAILABLE.
+   */
+  x?: { store: XStore; client: XClient };
+  /** The Master wallet's ledger (D17). Absent, `GET /wallets/ledger` answers 503. */
+  transfers?: { list(userId: string): Promise<TransferLedgerEntry[]> };
 }
 
 /** Whole AUSD; core decides which amounts are offered. */
@@ -136,14 +167,17 @@ const intervalUpdateSchema = z
 type FundedWallet = AgentWallet & { balanceAusd: number };
 
 function pilotStatus(code: string): 400 | 404 | 409 | 429 | 503 {
-  if (code === "NOT_FOUND" || code === "WALLET_NOT_FOUND") {
+  if (code === "NOT_FOUND" || code === "WALLET_NOT_FOUND" || code === "CHALLENGE_NOT_FOUND") {
     return 404;
   }
-  if (code === "QUOTA") {
+  if (code === "QUOTA" || code === "TOO_MANY_CHECKS") {
     return 429;
   }
-  if (code === "INVALID_INPUT") {
+  if (code === "INVALID_INPUT" || code === "INVALID_X_HANDLE") {
     return 400;
+  }
+  if (code === "X_UNAVAILABLE") {
+    return 503;
   }
   if (code === "PREVIEW_UNAVAILABLE") {
     return 503;
@@ -210,6 +244,13 @@ function bareSites(sources: DraftCreateDto["sources"]): DraftCreateDto["sources"
   return { web: { mode: sources.web.mode, sites: [...new Set(sites)] } };
 }
 
+/** A body that is empty or `{}`; anything else is 400 INVALID_INPUT. */
+function emptyBody(raw: string): void {
+  if (raw) {
+    z.object({}).strict().parse(JSON.parse(raw));
+  }
+}
+
 /** JWT-only private transport. Tenant identifiers always come from persisted membership. */
 export function studioRoutes(services: StudioServices) {
   const api = new Hono<AppEnv>();
@@ -243,6 +284,23 @@ export function studioRoutes(services: StudioServices) {
     }
     if (error instanceof BriefError) {
       return c.json({ error: error.code, field: error.field, reason: error.reason }, 400);
+    }
+    if (error instanceof PublishBlockedError) {
+      return c.json(
+        {
+          error: "PUBLISH_BLOCKED",
+          message: error.message,
+          detail: { blockers: error.blockers },
+        },
+        409,
+      );
+    }
+    if (error instanceof XHandleTakenError) {
+      return c.json({ error: "X_HANDLE_TAKEN", message: error.message }, 409);
+    }
+    if (error instanceof XUnavailableError) {
+      // Never X's words: its body can echo the request, and the owner can do nothing with it.
+      return c.json({ error: "X_UNAVAILABLE" }, 503);
     }
     if (error instanceof PreviewRateLimited) {
       return c.json({ error: error.code, retryAt: error.retryAt }, 429);
@@ -413,6 +471,9 @@ export function studioRoutes(services: StudioServices) {
       handle?: string;
       accent: Accent;
       draft: boolean;
+      visibility: "private" | "public";
+      publishedAt: Date | null;
+      xHandle: string | null;
     },
   ): Promise<StudioAgentDto> {
     const record = await repo.agent(scope);
@@ -420,6 +481,7 @@ export function studioRoutes(services: StudioServices) {
     return studioAgentSchema.parse({
       ...agentResponseSchema.parse(record),
       ...identity,
+      publishedAt: identity.publishedAt?.toISOString() ?? null,
       wallet: wallet && {
         walletId: wallet.walletId,
         address: wallet.address,
@@ -444,6 +506,9 @@ export function studioRoutes(services: StudioServices) {
             handle: agent.handle,
             accent: agent.accent,
             draft: agent.draft,
+            visibility: agent.visibility,
+            publishedAt: agent.publishedAt,
+            xHandle: agent.xHandle,
           }),
         ),
       ),
@@ -516,13 +581,14 @@ export function studioRoutes(services: StudioServices) {
       201,
     );
   });
-  api.get("/agents/:id", async (c) => {
-    const current = await access.authorize(c.get("principal"));
-    const productId = c.req.param("id");
+  /**
+   * One agent's DTO, as its page reads it. This agent's own balance is what the page shows, so its
+   * failed read fails the request.
+   */
+  async function oneAgent(current: StudioAccess, productId: string): Promise<StudioAgentDto> {
     const scope = await services.directory.agentScope(current, productId);
     const listed = await services.directory.list(current);
     const listedAgent = listed.find((agent) => agent.id === productId);
-    // This agent's own balance is what the page shows, so its failed read fails the request.
     const wallet = await fundedWallet(productId);
     const another = await lockSeenFrom(listed, productId, wallet);
     const identity = listedAgent
@@ -532,9 +598,237 @@ export function studioRoutes(services: StudioServices) {
           handle: listedAgent.handle,
           accent: listedAgent.accent,
           draft: listedAgent.draft,
+          visibility: listedAgent.visibility,
+          publishedAt: listedAgent.publishedAt,
+          xHandle: listedAgent.xHandle,
         }
-      : { accent: "lime" as const, draft: false };
-    return c.json(await studioAgent(scope, wallet, another, identity));
+      : {
+          accent: "lime" as const,
+          draft: false,
+          visibility: "private" as const,
+          publishedAt: null,
+          xHandle: null,
+        };
+    return studioAgent(scope, wallet, another, identity);
+  }
+
+  /** The caller's agent as `directory.list` has it; NOT_FOUND for anyone else's. */
+  async function ownAgent(current: StudioAccess, productId: string) {
+    const scope = await services.directory.agentScope(current, productId);
+    const listed = await services.directory.list(current);
+    const agent = listed.find((candidate) => candidate.id === productId);
+    if (!agent) {
+      throw new PilotError("NOT_FOUND", "Agent not found");
+    }
+    return { ...agent, scope };
+  }
+
+  api.get("/agents/:id", async (c) => {
+    const current = await access.authorize(c.get("principal"));
+    return c.json(await oneAgent(current, c.req.param("id")));
+  });
+  // A draft's brief, sources, caps and voice (studio-draft-dashboard-v1 D10), versioned like
+  // `PUT /config`, whose stale-version refusal (409 CONFLICT) it shares. Core's `reviseDraft`
+  // applies create's rules and never touches `marketScope`. A voice also renames the profile's
+  // voice: a second write after the config's, as the two live in different stores; a failure
+  // between them leaves the config saved and the old voice name, which the next save repairs.
+  api.put("/agents/:id/setup", async (c) => {
+    const current = await access.authorize(c.get("principal"), true);
+    const productId = c.req.param("id");
+    const agent = await ownAgent(current, productId);
+    const body = setupUpdateSchema.parse(await c.req.json());
+    if (!agent.draft) {
+      throw new PilotError("NOT_A_DRAFT", "Only a draft's setup is edited here");
+    }
+    const patch: DraftPatch = {
+      ...(body.brief ? { brief: body.brief } : {}),
+      ...(body.sources ? { sources: bareSites(body.sources) } : {}),
+      ...(body.caps ? { caps: body.caps } : {}),
+      ...(body.voice ? { voice: body.voice } : {}),
+    };
+    const record = await repo.agent(agent.scope);
+    await repo.updateConfig(agent.scope, body.expectedVersion, reviseDraft(record.config, patch));
+    const voice = VOICES.find((candidate) => candidate.key === body.voice);
+    if (voice) {
+      await services.directory.updateIdentity(current, productId, { voice: voice.name });
+    }
+    return c.json(await oneAgent(current, productId));
+  });
+  // Name and avatar (D14); the handle is fixed. The database bounds them too.
+  api.put("/agents/:id/identity", async (c) => {
+    const current = await access.authorize(c.get("principal"), true);
+    const productId = c.req.param("id");
+    const body = identityUpdateSchema.parse(await c.req.json());
+    await services.directory.updateIdentity(current, productId, {
+      ...(body.name === undefined ? {} : { name: body.name }),
+      ...(body.avatar ? { accent: body.avatar.accent, avatarPattern: body.avatar.pattern } : {}),
+    });
+    return c.json(await oneAgent(current, productId));
+  });
+  // The Overview's activity (D18): only what the database recorded.
+  api.get("/agents/:id/activity", async (c) => {
+    const current = await access.authorize(c.get("principal"));
+    const events = await services.directory.activity(current, c.req.param("id"));
+    return c.json(
+      activityResponseSchema.parse({
+        events: events.map((event) => ({ ...event, at: event.at.toISOString() })),
+      }),
+    );
+  });
+
+  /** Connect X's store and client, or 503 X_UNAVAILABLE where they are not composed. */
+  function connectX() {
+    if (!services.x) {
+      throw new PilotError("X_UNAVAILABLE", "X verification is not composed here");
+    }
+    return services.x;
+  }
+
+  function challengeDto(
+    name: string,
+    challenge: { handle: string; code: string; expiresAt: Date },
+  ) {
+    return xChallengeSchema.parse({
+      handle: challenge.handle,
+      text: verificationText(name, challenge.code),
+      expiresAt: challenge.expiresAt.toISOString(),
+    });
+  }
+
+  // Connect X by verification post (D4). `available` is false until Pickler's X app has a token
+  // (D5); a lapsed challenge is not shown, so the card starts over.
+  api.get("/agents/:id/x", async (c) => {
+    const current = await access.authorize(c.get("principal"));
+    const productId = c.req.param("id");
+    const agent = await ownAgent(current, productId);
+    const { store, client } = connectX();
+    const [account, challenge] = await Promise.all([
+      store.account(productId),
+      store.challenge(productId),
+    ]);
+    const live = challenge && challenge.expiresAt.getTime() > Date.now() ? challenge : null;
+    return c.json(
+      xStateResponseSchema.parse({
+        account: account && {
+          handle: account.handle,
+          verifiedAt: account.verifiedAt.toISOString(),
+        },
+        challenge: live && challengeDto(agent.name, live),
+        available: client.available,
+      }),
+    );
+  });
+  // A new challenge replaces the old. X's availability is checked before anything is saved, so
+  // no challenge is issued that could never be checked.
+  api.post("/agents/:id/x/challenge", async (c) => {
+    const current = await access.authorize(c.get("principal"), true);
+    const productId = c.req.param("id");
+    const agent = await ownAgent(current, productId);
+    const { store, client } = connectX();
+    const body = xChallengeRequestSchema.parse(await c.req.json());
+    const handle = parseXHandle(body.handle);
+    if (!handle) {
+      throw new PilotError("INVALID_X_HANDLE", "1 to 15 letters, digits or _");
+    }
+    if (await store.account(productId)) {
+      throw new PilotError("X_ALREADY_CONNECTED", "This agent already has an X account");
+    }
+    if (await store.handleTaken(handle, productId)) {
+      throw new XHandleTakenError();
+    }
+    if (!client.available) {
+      throw new PilotError("X_UNAVAILABLE", "X verification is not open yet");
+    }
+    const saved = await store.saveChallenge(productId, {
+      handle,
+      code: challengeCode(crypto.getRandomValues(new Uint8Array(5))),
+      expiresAt: new Date(Date.now() + X_CHALLENGE_TTL_MS),
+    });
+    return c.json(challengeDto(agent.name, saved));
+  });
+  // "Check again": one read of X per challenge per 10 s, claimed atomically before X is called,
+  // so concurrent checks cannot spend the app's X quota twice. Only a post by the looked-up user,
+  // made at or after the challenge, carrying the code, verifies (spec §8).
+  api.post("/agents/:id/x/verify", async (c) => {
+    const current = await access.authorize(c.get("principal"), true);
+    const productId = c.req.param("id");
+    await ownAgent(current, productId);
+    const { store, client } = connectX();
+    emptyBody(await c.req.text());
+    const challenge = await store.challenge(productId);
+    if (!challenge) {
+      throw new PilotError("CHALLENGE_NOT_FOUND", "Start with your handle");
+    }
+    const now = new Date();
+    if (challenge.expiresAt.getTime() <= now.getTime()) {
+      throw new PilotError("CHALLENGE_EXPIRED", "This line has lapsed; start again");
+    }
+    if (!client.available) {
+      throw new PilotError("X_UNAVAILABLE", "X verification is not open yet");
+    }
+    if (!(await store.claimCheck(productId, now, X_CHECK_INTERVAL_MS))) {
+      throw new PilotError("TOO_MANY_CHECKS", "Wait a few seconds before checking again");
+    }
+
+    const notFound = xVerifyResponseSchema.parse({ verified: false, reason: "NOT_FOUND" });
+    const user = await client.userByHandle(challenge.handle);
+    if (!user) {
+      return c.json(notFound);
+    }
+    const posts = await client.recentPosts(user.id, challenge.createdAt);
+    const post = findVerificationPost(posts, {
+      userId: user.id,
+      code: challenge.code,
+      since: challenge.createdAt,
+    });
+    if (!post) {
+      return c.json(notFound);
+    }
+
+    await store.connect(productId, {
+      xUserId: user.id,
+      handle: user.handle,
+      postId: post.id,
+      at: new Date(),
+    });
+    return c.json(xVerifyResponseSchema.parse({ verified: true, handle: user.handle }));
+  });
+  // Allowed while private; a public agent keeps its handle (D6), refused by the store under the
+  // agent row's lock.
+  api.delete("/agents/:id/x", async (c) => {
+    const current = await access.authorize(c.get("principal"), true);
+    const productId = c.req.param("id");
+    await ownAgent(current, productId);
+    await connectX().store.disconnect(productId);
+    return c.json({ disconnected: true });
+  });
+  // Go Public (D8): the server re-checks. The directory reads killed and the linked wallet, runs
+  // this check with no transaction open (it reads the chain), then publishes under the agent row's
+  // lock only if neither changed. A balance the chain did not answer is 503, never FUNDS.
+  api.post("/agents/:id/publish", async (c) => {
+    const current = await access.authorize(c.get("principal"), true);
+    emptyBody(await c.req.text());
+    const published = await services.directory.publish(
+      current,
+      c.req.param("id"),
+      async ({ killed, walletAddress }) => {
+        let ausdMicro: bigint | null = null;
+        if (walletAddress) {
+          const balance = await services.balances.read(walletAddress).catch(() => {
+            throw new PilotError("BALANCES_UNAVAILABLE", "Balances are not available");
+          });
+          // The reader answers display AUSD, floored to the micro; back to micro-AUSD.
+          ausdMicro = BigInt(Math.round(balance * 1_000_000));
+        }
+        return publishBlockers({ killed, walletLinked: walletAddress !== null, ausdMicro });
+      },
+    );
+    return c.json(
+      publishResponseSchema.parse({
+        visibility: published.visibility,
+        publishedAt: published.publishedAt.toISOString(),
+      }),
+    );
   });
   api.put("/agents/:id/config", async (c) => {
     const current = await access.authorize(c.get("principal"), true);
@@ -623,7 +917,14 @@ export function studioRoutes(services: StudioServices) {
     return c.json({ txHash });
   });
 
-  api.route("/wallets", studioWalletRoutes({ access, custody: deposits }));
+  api.route(
+    "/wallets",
+    studioWalletRoutes({
+      access,
+      custody: deposits,
+      ...(services.transfers ? { transfers: services.transfers } : {}),
+    }),
+  );
   api.get("/agents/:id/runs", async (c) => {
     const current = await access.authorize(c.get("principal"));
     const scope = await services.directory.agentScope(current, c.req.param("id"));
