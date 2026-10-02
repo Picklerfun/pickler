@@ -192,3 +192,7 @@ Read [PERPL-MODEL-DIAGNOSTIC.md](PERPL-MODEL-DIAGNOSTIC.md) for the explicit rou
 replay and its limits. It did not restart the comparison or resolve original unknown consumption.
 JSONB context replay does not establish byte-identical request replay. Perpl deadlines now persist
 MODEL_TIMEOUT; diagnostics are separate from executable decisions and preserve historical errors.
+
+## Local four-way perpetual comparison
+
+The explicit local `perps-four-way-v2` workflow and its three paid synthetic contract gates are documented in [PERPS-FOUR-WAY.md](PERPS-FOUR-WAY.md). Version 2 has four independent accounts and cannot resume a started comparison. Preserve the original USD 5 campaign and acknowledged unknown reservations; new unknown usage stops admission. Report commands do not call providers.
