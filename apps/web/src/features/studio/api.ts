@@ -8,36 +8,28 @@ import type {
   eventResponseSchema,
   marketCatalogSchema,
   paperOrderSchema,
-  createAgentSchema,
   studioAgentSchema,
-  AgentDraftDto,
   DraftCreateDto,
   SignedActivityDto,
   TransferRequestDto,
   WalletsDto,
-  PreviewRunDto,
-  PreviewRunRequestDto,
 } from "@pickler/api-schema";
 import { knownMessage, messageFor } from "./lib/messages";
 export type Config = ReturnType<typeof agentConfigSchema.parse>;
-export { DEFAULT_PROFILE, type Profile } from "./profile";
 /**
  * The studio agent DTO: the runtime record plus its product identity, its wallet and balance, both
  * locks and its spend limits. `GET /agents` and `GET /agents/:id` answer it.
  */
 export type Agent = ReturnType<typeof studioAgentSchema.parse>;
-/** The bare runtime record the writes answer (`POST /agents`, `PUT /config|limits|interval`). */
+/** The bare runtime record the writes answer (`PUT /config|limits|interval`). */
 type AgentRecord = ReturnType<typeof agentResponseSchema.parse>;
 export type Run = ReturnType<typeof runResponseSchema.parse>;
 export type RunEvent = ReturnType<typeof eventResponseSchema.parse>;
 export type Catalog = ReturnType<typeof marketCatalogSchema.parse>;
 export type Options = ReturnType<typeof studioOptionsSchema.parse>;
 export type PaperOrder = ReturnType<typeof paperOrderSchema.parse>;
-type CreateAgentInput = ReturnType<typeof createAgentSchema.parse>;
-export type { AgentDraftDto, SignedActivityDto };
+export type { SignedActivityDto };
 export type StudioWallets = WalletsDto;
-/** A paper run of a brief, as its owner reads it. */
-export type PreviewRun = PreviewRunDto["run"];
 
 /**
  * The studio transport answers a failure with `{ error: CODE }`. The code is what the Studio
@@ -92,22 +84,7 @@ export async function studioApi<T>(path: string, init: RequestInit = {}): Promis
   return body as T;
 }
 
-// ─── Drafting, creating, running ────────────────────────────────────────────────────────────
-
-/** `POST /v1/studio/agents/draft`: one line becomes a proposed draft, or the model is unavailable. */
-export const draftAgent = (line: string) =>
-  studioApi<{ draft: AgentDraftDto; unsupported: string[] }>("/agents/draft", {
-    method: "POST",
-    body: JSON.stringify({ line }),
-  });
-
-/** `POST /preview-runs`: "Run it on paper". 400 INVALID_BRIEF names the section; 429 has `retryAt`. */
-export const startPreviewRun = (body: PreviewRunRequestDto) =>
-  studioApi<{ id: string }>("/preview-runs", { method: "POST", body: JSON.stringify(body) });
-
-/** `GET /preview-runs/:id`: the run and its trace, in a run's event shape. */
-export const readPreviewRun = (id: string, signal?: AbortSignal) =>
-  studioApi<PreviewRunDto>(`/preview-runs/${encodeURIComponent(id)}`, signal ? { signal } : {});
+// ─── Creating, running ─────────────────────────────────────────────────────────────────────────
 
 /**
  * `POST /drafts`: "Create {Name}" on a funded, policy-signed wallet. 409 WALLET_UNDERFUNDED,
@@ -117,27 +94,6 @@ export const createDraft = (body: DraftCreateDto) =>
   studioApi<{ productId: string; agent: AgentRecord }>("/drafts", {
     method: "POST",
     body: JSON.stringify(body),
-  });
-
-/**
- * `POST /agents`. Its CONFLICT and NOT_FOUND each cover several fixes — approve the wallet's rules,
- * a wallet that already belongs to an agent, a wallet that is not found, a taken handle — so the
- * server's message is shown for them instead of the studio's generic one.
- */
-export const createAgent = (body: CreateAgentInput, key: string) =>
-  studioApi<AgentRecord>("/agents", {
-    method: "POST",
-    headers: { "Idempotency-Key": key },
-    body: JSON.stringify(body),
-  }).catch((caught: unknown) => {
-    if (
-      caught instanceof StudioError &&
-      (caught.code === "CONFLICT" || caught.code === "NOT_FOUND") &&
-      caught.serverMessage
-    ) {
-      throw new StudioError(caught.code, caught.serverMessage, caught.serverMessage);
-    }
-    throw caught;
   });
 
 /** `GET /agents`: every agent of the person's, each with its wallet, balance and locks. */

@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { Icon } from "@pickler/ui";
 import type { Agent } from "../api";
-import { newAgentLock } from "../create/gate";
+import { newAgentLock } from "./gate";
 import { menuAccess } from "./access";
 import type { SectionKey } from "../sections/keys";
 import { RAIL } from "../sections/rail";

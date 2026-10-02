@@ -1,6 +1,6 @@
 /**
- * The first run's trace, one line per event the runtime wrote, in words a person reads while it
- * thinks. Pure, so each event kind's line is pinned in `studio-create-flow.test.ts`.
+ * A run's trace, one line per event the runtime wrote, in words a person reads while it thinks.
+ * Pure, so each event kind's line is pinned in `studio-trace.test.ts`.
  *
  * Only events that say something about the call become lines. Token counts and model diagnostics
  * are for the Activity section, which shows every event as it was written.

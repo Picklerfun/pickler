@@ -6,7 +6,7 @@ import {
   gateNote,
   newAgentLock,
   startIfOpen,
-} from "../src/features/studio/create/gate";
+} from "../src/features/studio/home/gate";
 
 /* "+ New agent" is locked before any passkey prompt while an agent is unfunded. */
 
@@ -114,8 +114,8 @@ const draft = (id: string, canCreateAnother: Lock) => ({
 });
 
 test('three drafts and every wallet funded: "+ New agent" is open, and nobody is asked to fund a draft', () => {
-  // Input A. The entries lead to /studio/new, which makes an agent with a wallet; the draft limit
-  // stops only the making of drafts, and is said where a draft is refused (409 DRAFT_LIMIT).
+  // Input A. The entries read the funding lock only; the draft limit is said where a draft is
+  // refused (409 DRAFT_LIMIT).
   const agents = [
     draft("d1", draftLimit),
     draft("d2", draftLimit),
@@ -154,7 +154,7 @@ test("an open lock has no note", () => {
   assert.equal(newAgentLock([draft("d1", open), agent("a", 10, open)]), "");
 });
 
-test("three drafts do not close /studio/new: the limit is on drafts, and it creates none", async () => {
+test("three drafts do not close the create screen: the gate reads the funding lock only", async () => {
   const agents = [draft("d1", draftLimit), draft("d2", draftLimit), draft("d3", draftLimit)];
   let started = 0;
 

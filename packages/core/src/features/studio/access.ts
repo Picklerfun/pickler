@@ -1,9 +1,8 @@
 import { AccessDeniedError } from "../access/domain/errors.js";
 import type { Principal } from "../access/domain/principal.js";
-import type { AgentProfileInput } from "../agents/domain/agents.js";
 import type { Accent } from "../landing/domain/landing.js";
 import type { DraftProfile } from "./create.js";
-import { assertConfig, type AgentConfig, type Scope } from "../research/types.js";
+import type { AgentConfig, Scope } from "../research/types.js";
 
 export interface StudioAccess {
   workspaceId: string;
@@ -12,15 +11,6 @@ export interface StudioAccess {
   role: string;
   enabled: boolean;
 }
-/**
- * The wallet an agent is created with, named by id only. The policy ids it links are read
- * server-side from what the wallet's owner already had `confirmPolicies` record — never from the
- * caller — so a request can only ever link the rules that were actually approved.
- */
-export interface AgentWalletLink {
-  walletId: string;
-}
-
 /**
  * The "+ New agent" lock (funding, and the draft limit for a draft), run by a create inside its transaction after the workspace row
  * is locked, so two creates in one workspace serialize and the second sees the first. It throws to
@@ -31,19 +21,6 @@ export type CreateAdmission = () => Promise<void>;
 export interface StudioDirectory {
   onboard(userId: string): Promise<void>;
   access(userId: string, workspaceId: string | null): Promise<StudioAccess | null>;
-  createAgent(
-    access: StudioAccess,
-    userId: string,
-    input: {
-      name: string;
-      handle: string;
-      config: AgentConfig;
-      key: string;
-      profile: AgentProfileInput;
-      wallet: AgentWalletLink;
-    },
-    admit?: CreateAdmission,
-  ): Promise<Scope>;
   /**
    * Creates the private draft with its wallet (studio-create-simplified-v1 §4.1), in one
    * transaction: locks the workspace; answers the same draft again, without `admit`, when this is
@@ -92,25 +69,6 @@ export function createStudioAccess(directory: StudioDirectory) {
         throw new AccessDeniedError("Research requires an enabled workspace owner");
       }
       return access;
-    },
-    async create(
-      principal: Principal,
-      input: {
-        name: string;
-        handle: string;
-        config: AgentConfig;
-        key: string;
-        profile: AgentProfileInput;
-        wallet: AgentWalletLink;
-      },
-      admit?: CreateAdmission,
-    ) {
-      const access = await this.authorize(principal, true);
-      assertConfig(input.config);
-      if (!input.config.marketScope) {
-        throw new AccessDeniedError("A category and subcategory selection is required");
-      }
-      return directory.createAgent(access, principal.id, input, admit);
     },
   };
 }

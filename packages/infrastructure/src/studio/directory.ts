@@ -9,8 +9,6 @@ import {
   type StudioAccess,
   type StudioDirectory,
   type AgentConfig,
-  type AgentProfileInput,
-  type AgentWalletLink,
   type CreateAdmission,
   type DraftProfile,
   type Scope,
@@ -85,137 +83,6 @@ export class PostgresStudioDirectory implements StudioDirectory {
     );
     return result.rows[0] ?? null;
   }
-  async createAgent(
-    access: StudioAccess,
-    userId: string,
-    input: {
-      name: string;
-      handle: string;
-      config: AgentConfig;
-      key: string;
-      profile: AgentProfileInput;
-      wallet: AgentWalletLink;
-    },
-    admit?: CreateAdmission,
-  ) {
-    // The beat the profile shows is the category the runtime is scoped to. Core has already
-    // required it; narrowing here keeps the profile from ever being written without one.
-    const scope = input.config.marketScope;
-    if (!scope) {
-      throw new PilotError("INVALID_INPUT", "A category selection is required");
-    }
-    return this.transaction(async (client) => {
-      // NO KEY UPDATE, not UPDATE: it still serializes two creates in this workspace and conflicts
-      // with revoking research access or deactivating the workspace (both non-key updates), but not
-      // with the KEY SHARE locks foreign-key inserts take, so paper runs and other rows for this
-      // workspace are not held up while the funding lock reads balances over the network.
-      const allowed = await client.query(
-        `SELECT w.id FROM identity.workspaces w
-        JOIN pickler.research_access a ON a.user_id=w.owner_user_id
-        WHERE w.id=$1 AND w.owner_user_id=$2 AND w.is_active AND a.enabled FOR NO KEY UPDATE OF w,a`,
-        [access.workspaceId, userId],
-      );
-      if (!allowed.rows.length) {
-        throw new AccessDeniedError("Research access revoked");
-      }
-      const request = JSON.stringify({
-        name: input.name,
-        handle: input.handle,
-        config: input.config,
-        profile: input.profile,
-        wallet: input.wallet,
-      });
-      const existing = await client.query(
-        `SELECT runtime_agent_id, request=$3::jsonb AS matches FROM pickler.product_agents
-        WHERE workspace_id=$1 AND request_key=$2`,
-        [access.workspaceId, input.key, request],
-      );
-      if (existing.rows[0]) {
-        if (!existing.rows[0].matches) {
-          throw new PilotError("CONFLICT", "Idempotency key has different terms");
-        }
-        return { tenantId: access.tenantId, agentId: existing.rows[0].runtime_agent_id as string };
-      }
-      // Only a genuinely new agent meets the funding lock; a replay above does not.
-      await admit?.();
-      const available = await client.query("SELECT identity.handle_available($1) AS available", [
-        input.handle,
-      ]);
-      if (!available.rows[0].available) {
-        throw new PilotError("CONFLICT", "Handle unavailable");
-      }
-      const id = randomUUID();
-      await client.query(
-        "INSERT INTO agents.agents (id, workspace_id, name, handle, status, created_by) VALUES ($1,$2,$3,$4,'active',$5)",
-        [id, access.workspaceId, input.name, input.handle, userId],
-      );
-      await client.query(
-        `INSERT INTO agents.agent_profiles
-           (agent_id, beat, accent, blurb, venue, vibe, voice, decides, wrong, x_handle)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
-        [
-          id,
-          scope.category,
-          input.profile.accent,
-          input.profile.blurb,
-          input.profile.venue,
-          input.profile.vibe,
-          input.profile.voice,
-          input.profile.decides,
-          input.profile.wrong,
-          input.profile.xHandle,
-        ],
-      );
-      // The wallet must be this person's own agent wallet, locked so a concurrent creation
-      // cannot race the check. Its policy ids come from this row, never from the caller: the
-      // server is the only source of which rules a wallet carries, because `confirmPolicies` is
-      // the only writer of `approved_policy_ids`. An agent is created with its wallet, or not at
-      // all: this rejects (rolling the agent and its profile back) before anything else is
-      // written.
-      const owned = await client.query<{ approvedPolicyIds: string[] | null }>(
-        `SELECT approved_policy_ids AS "approvedPolicyIds"
-        FROM wallets.wallets WHERE wallet_id=$1 AND user_id=$2 AND kind='agent' FOR UPDATE`,
-        [input.wallet.walletId, userId],
-      );
-      if (!owned.rows.length) {
-        throw new PilotError("NOT_FOUND", "Wallet not found");
-      }
-      const approvedPolicyIds = owned.rows[0]!.approvedPolicyIds;
-      // Every wallet is written with at least the three DENYs, and `confirmPolicies` records
-      // exactly what was prepared, so fewer ids than that means the rules were never approved.
-      if (!approvedPolicyIds || approvedPolicyIds.length < MIN_AGENT_WALLET_POLICIES) {
-        throw new PilotError("CONFLICT", "Approve the wallet's rules first");
-      }
-      await client.query(
-        "INSERT INTO wallets.agent_wallets (agent_id, wallet_id, policy_ids) VALUES ($1,$2,$3)",
-        [id, input.wallet.walletId, approvedPolicyIds],
-      );
-      await client.query("INSERT INTO identity.handles (handle,agent_id) VALUES ($1,$2)", [
-        input.handle,
-        id,
-      ]);
-      await client.query(
-        "INSERT INTO pickler.agents (tenant_id,id,config) VALUES ($1,$2,$3::jsonb)",
-        [access.tenantId, id, JSON.stringify(input.config)],
-      );
-      await client.query(
-        `INSERT INTO pickler.product_agents (product_agent_id,workspace_id,tenant_id,runtime_agent_id,request_key,request)
-        VALUES ($1::uuid,$2,$3,$1::text,$4,$5::jsonb)`,
-        [id, access.workspaceId, access.tenantId, input.key, request],
-      );
-      return { tenantId: access.tenantId, agentId: id };
-    });
-  }
-  /**
-   * The private draft with its wallet (studio-create-simplified-v1 §4.1). One transaction: lock
-   * the person's workspace, and answer the draft this wallet already became when this is the same
-   * create retried (same wallet, handle, name, config and profile), without meeting the lock; under
-   * any other terms the wallet is WALLET_ASSIGNED. Otherwise check the handle, lock the wallet and
-   * check it (this person's agent wallet, unlinked, with its rules approved), run the create lock,
-   * then write the agent as a draft, its profile and handle, its runtime row, its product row, and
-   * the wallet's link with the policy ids `confirmPolicies` recorded — never ids from the caller.
-   * Any failure rolls all of it back.
-   */
   async createDraft(
     access: StudioAccess,
     userId: string,
@@ -230,7 +97,10 @@ export class PostgresStudioDirectory implements StudioDirectory {
   ): Promise<{ productId: string; scope: Scope }> {
     try {
       return await this.transaction(async (client) => {
-        // NO KEY UPDATE, as in `createAgent`: creates serialize, foreign-key inserts do not wait.
+        // NO KEY UPDATE, not UPDATE: it still serializes two creates in this workspace and conflicts
+        // with revoking research access or deactivating the workspace (both non-key updates), but
+        // not with the KEY SHARE locks foreign-key inserts take, so other rows for this workspace
+        // are not held up while the funding lock reads balances over the network.
         const allowed = await client.query(
           `SELECT w.id FROM identity.workspaces w
           JOIN pickler.research_access a ON a.user_id=w.owner_user_id

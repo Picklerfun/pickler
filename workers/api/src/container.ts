@@ -43,10 +43,8 @@ import {
   buildSiweMessage,
   parseSiweMessage,
   PostgresWalletIdentityStore,
-  createOpenAiCompatibleDrafter,
   PostgresTradingStore,
 } from "@pickler/infrastructure";
-import { agentDraftSchema } from "@pickler/api-schema";
 import type { Services } from "./app";
 import type { Env } from "./env";
 import { HttpError } from "./http/http-error";
@@ -336,25 +334,6 @@ function walletAuthServices(
   };
 }
 
-/**
- * The research worker's model, used to draft an agent from one line. Null unless all three are set
- * and the base URL parses, so a bad value turns drafting off (503) and leaves every other route alone.
- */
-function drafter(env: Env) {
-  if (!env.MODEL_BASE_URL || !env.MODEL_ID || !env.MODEL_API_KEY) {
-    return null;
-  }
-  if (!URL.canParse(env.MODEL_BASE_URL)) {
-    return null;
-  }
-  return createOpenAiCompatibleDrafter({
-    baseUrl: env.MODEL_BASE_URL,
-    apiKey: env.MODEL_API_KEY,
-    modelId: env.MODEL_ID,
-    validate: (raw) => agentDraftSchema.parse(raw),
-  });
-}
-
 const ausdReaders = new Map<string, ReturnType<typeof createAusdBalanceReader>>();
 
 /**
@@ -450,7 +429,6 @@ export function createServices(env: Env): Services & { close(): Promise<void> } 
         },
       },
       authenticate,
-      drafter: drafter(env),
       directory,
       repository,
       previews: new PostgresPreviewStore(repository.pool),

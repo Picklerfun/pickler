@@ -122,18 +122,18 @@ No component may infer this binding from ticker, display name or unsigned metada
 
 ### Agent lifecycle
 
-Main contains two creation journeys, both persisted:
+Main contains one creation journey, persisted:
 
-| UI entry               | Current behavior                                                                                          | Wallet/token outcome                                                |
-| ---------------------- | --------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
-| `/studio` empty home   | Edit a brief, run a preview, then adopt it as a private draft                                             | No agent wallet or token                                            |
-| `/studio/new`          | Describe or configure step by step, approve Turnkey wallet/policies, create agent and start its first run | Linked agent wallet; no token or completed public-launch transition |
-| Draft home “Go public” | Visual panel whose steps are marked SOON and whose button is disabled                                     | No publication operation                                            |
+| UI entry                | Current behavior                                                                             | Wallet/token outcome                                                        |
+| ----------------------- | -------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| `/studio` create screen | Create and fund the agent wallet, then "Create" signs its policies and saves a private draft | Linked, funded agent wallet; no token or completed public-launch transition |
+| Draft home “Go public”  | Visual panel whose steps are marked SOON and whose button is disabled                        | No publication operation                                                    |
 
-The first flow tests before saving the draft; the second provisions before its first run.
-Creating a wallet-backed agent does not prove public deployment, token creation or Perpl
-execution. Evidence: [brief creation](../apps/web/src/features/studio/home/empty.tsx),
-[wallet-backed ceremony](../apps/web/src/features/studio/create/ceremony.ts) and
+There is one creation flow (`/studio/new` and the brief's paper run are gone): the wallet is
+made and funded first, then the draft is created with it. Creating a wallet-backed draft does not
+prove public deployment, token creation or Perpl execution. Evidence:
+[create screen](../apps/web/src/features/studio/new-agent/new-agent.tsx),
+[wallet-first ceremony](../apps/web/src/features/studio/new-agent/ceremony.ts) and
 [disabled publication panel](../apps/web/src/features/studio/home/go-public.tsx).
 
 Proposed unification: use one persisted agent identity from draft through publication. Keep

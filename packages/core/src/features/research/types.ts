@@ -84,7 +84,7 @@ export interface AgentConfig {
    * anything else.
    */
   brief?: AgentBrief | undefined;
-  /** The brief's MAX LEVERAGE. Stored only: it applies to perps, which are `SOON_VENUES`. */
+  /** The brief's MAX LEVERAGE. It applies to perps only. */
   maxLeverage?: number | undefined;
   /** The voice its posts are written in (docs/specs/studio-create-simplified-v1.md D8). */
   voice?: (typeof VOICE_KEYS)[number] | undefined;

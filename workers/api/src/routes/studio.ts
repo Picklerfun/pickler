@@ -18,7 +18,6 @@ import {
   BalancesUnreadableError,
   AccessDeniedError,
   AuthenticationRequiredError,
-  unsupported,
   canCreateAnother,
   MAX_DRAFTS_PER_WORKSPACE,
   canSchedule,
@@ -37,7 +36,6 @@ import {
   SigningServiceUnavailableError,
   SignedTransactionMismatchError,
   type createCustodyService,
-  type AgentDrafter,
   type Accent,
   type AgentWallet,
   type Lock,
@@ -48,7 +46,6 @@ import {
   type ResearchRepository,
 } from "@pickler/core";
 import {
-  createAgentSchema,
   studioOptionsSchema,
   idempotencyKeySchema,
   agentResponseSchema,
@@ -63,8 +60,6 @@ import {
   liveBuySchema,
   liveOrderSchema,
   tradingAccountSchema,
-  draftRequestSchema,
-  draftResponseSchema,
   studioAgentSchema,
   limitsUpdateSchema,
   previewRunRequestSchema,
@@ -74,7 +69,6 @@ import {
   type DraftCreateDto,
   type StudioAgentDto,
 } from "@pickler/api-schema";
-import { DraftUnavailableError } from "@pickler/infrastructure";
 import type { AppEnv } from "../env";
 import { authenticated, type Authenticate } from "../middleware/auth";
 import { studioWalletRoutes, WalletRefusal, walletWork } from "./studio-wallets";
@@ -96,8 +90,6 @@ export interface StudioServices {
    * composed; the preview routes then answer 503 PREVIEW_UNAVAILABLE and nothing else changes.
    */
   previews?: PreviewRepository;
-  /** Null when no model is configured; drafting then answers 503 rather than guessing. */
-  drafter?: AgentDrafter | null;
   paper?: {
     create(tenantId: string, runId: string, key: string): Promise<unknown>;
     get(tenantId: string, runId: string): Promise<unknown>;
@@ -152,9 +144,6 @@ function pilotStatus(code: string): 400 | 404 | 409 | 429 | 503 {
   }
   if (code === "INVALID_INPUT") {
     return 400;
-  }
-  if (code === "DRAFT_UNAVAILABLE") {
-    return 503;
   }
   if (code === "PREVIEW_UNAVAILABLE") {
     return 503;
@@ -365,16 +354,16 @@ export function studioRoutes(services: StudioServices) {
 
   /**
    * "+ New agent"'s lock as the create runs it: inside its transaction, after the workspace row is
-   * locked, so two concurrent creates serialize and the second counts the first. Creating an agent
-   * with its wallet meets the funding lock alone; a draft also meets the draft limit.
+   * locked, so two concurrent creates serialize and the second counts the first. A draft meets the
+   * funding lock and the draft limit.
    */
-  function fundingLock(current: StudioAccess, creating: "agent" | "draft") {
+  function fundingLock(current: StudioAccess) {
     return async () => {
       const { another } = await fleet(current);
       if (another.reason === "unfunded_agent") {
         throw new PilotError("UNFUNDED_AGENT", "Fund your other agent first");
       }
-      if (another.reason === "draft_limit" && creating === "draft") {
+      if (another.reason === "draft_limit") {
         throw new PilotError("DRAFT_LIMIT", `At most ${MAX_DRAFTS_PER_WORKSPACE} drafts at a time`);
       }
     };
@@ -453,62 +442,9 @@ export function studioRoutes(services: StudioServices) {
       ),
     });
   });
-  api.post("/agents", async (c) => {
-    const input = createAgentSchema.parse(await c.req.json());
-    const key = idempotencyKeySchema.parse(c.req.header("Idempotency-Key"));
-    const current = await access.authorize(c.get("principal"), true);
-    let scope;
-    try {
-      // A retry of a create that already happened replays inside `create` (which still refuses
-      // different terms under the key) before the funding lock; only a genuinely new agent meets it.
-      scope = await access.create(
-        c.get("principal"),
-        { ...input, key },
-        fundingLock(current, "agent"),
-      );
-    } catch (error) {
-      // Creation's refusals share one code for different fixes ("Approve the wallet's rules
-      // first", "That wallet already belongs to an agent", "Wallet not found", a taken handle), so
-      // this route alone sends the directory's message along for the studio to show.
-      if (
-        error instanceof PilotError &&
-        (error.code === "CONFLICT" || error.code === "NOT_FOUND")
-      ) {
-        return c.json({ error: error.code, message: error.message }, pilotStatus(error.code));
-      }
-      throw error;
-    }
-    return c.json(agentResponseSchema.parse(await repo.agent(scope)), 201);
-  });
-  // Before the /agents/:id routes, so "draft" is never read as an agent id.
-  // Drafting spends a model call and exists only to create, so it needs the same rights as creating.
-  api.post("/agents/draft", async (c) => {
-    await access.authorize(c.get("principal"), true);
-    if (!services.drafter) {
-      throw new PilotError("DRAFT_UNAVAILABLE", "No model is configured for drafting");
-    }
-    const { line } = draftRequestSchema.parse(await c.req.json());
-    try {
-      const draft = await services.drafter.draft(line);
-      return c.json(draftResponseSchema.parse({ draft, unsupported: unsupported(draft) }));
-    } catch (caught) {
-      if (caught instanceof DraftUnavailableError) {
-        // The cause stays server-side; it never carries the key or the request.
-        const cause = caught.cause instanceof Error ? caught.cause.message : String(caught.cause);
-        console.error("Draft unavailable", {
-          requestId: c.get("requestId"),
-          message: caught.message,
-          cause,
-        });
-        throw new PilotError("DRAFT_UNAVAILABLE", caught.message);
-      }
-      throw caught;
-    }
-  });
   // "Create {name}" (studio-create-simplified-v1 §4.1): the private draft, created with the agent
-  // wallet the person already made, funded and signed the policies of. Not /agents/draft, which is
-  // the model drafter above. The wallet's balances are read just before the transaction, never
-  // inside it: a chain read holds no row lock. The directory then checks the handle and the wallet
+  // wallet the person already made, funded and signed the policies of. The wallet's balances are
+  // read just before the transaction, never inside it: a chain read holds no row lock. The directory then checks the handle and the wallet
   // in its transaction, in that order, and runs the admit callback below, which holds the lock and
   // that reading to the minimums. A replay of a create that committed never reaches it.
   api.post("/drafts", async (c) => {
@@ -533,7 +469,7 @@ export function studioRoutes(services: StudioServices) {
         },
       ),
     );
-    const lock = fundingLock(current, "draft");
+    const lock = fundingLock(current);
     let created;
     try {
       created = await walletWork(requestId, () =>

@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Button, Chip, ChipText, Icon } from "@pickler/ui";
 import type { Agent } from "../api";
-import { shortAddress } from "../create/trace";
+import { shortAddress } from "./trace";
 import { DepositSheet } from "./deposit-sheet";
 import { MIN_FUNDED_AUSD } from "./status";
 import styles from "./home.module.css";

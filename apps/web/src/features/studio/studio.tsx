@@ -25,7 +25,7 @@ import { useNow } from "@/lib/now";
 import { agentInitials } from "./lib/initials";
 import { startPolling } from "./lib/polling";
 import { selectAgent } from "./lib/select";
-import { newAgentLock as lockFor } from "./create/gate";
+import { newAgentLock as lockFor } from "./home/gate";
 import { studioPreview } from "./preview";
 import { railOnServer, railSnapshot, setRail, subscribeRail } from "./lib/rail";
 import { Overview } from "./sections/overview";

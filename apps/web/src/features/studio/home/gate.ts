@@ -1,17 +1,16 @@
 /**
  * Whether a new agent may be created, decided before the first passkey prompt: one unfunded agent
- * at a time (docs/specs/studio-create-and-fund-v1.md). `POST /v1/studio/agents` enforces the same
- * lock (409 `UNFUNDED_AGENT`), but only after the wallet and its rules were approved, so the create
- * screen and the shell's "New agent" item ask here first.
+ * at a time (docs/specs/studio-create-and-fund-v1.md). `POST /v1/studio/drafts` enforces the same
+ * lock (409 `UNFUNDED_AGENT`), but only after the wallet was made, funded and its rules approved, so
+ * the shell's "+ New agent" items ask here first.
  *
  * The API's lock has two reasons and they are not the same lock (docs/specs/studio-brief-v1.md §6).
  * `unfunded_agent` is about agents with a wallet and closes every way of making an agent. A private
  * draft has no wallet, is never the agent to fund, and counts only toward `draft_limit`, which
- * closes the making of drafts and nothing else: `/studio/new` creates an agent with a wallet and
- * stays open at three drafts. Pure, and pinned in `studio-create-gate.test.ts`.
+ * closes the making of drafts and nothing else. Pure, and pinned in `studio-gate.test.ts`.
  */
 import type { Agent } from "../api";
-import { MIN_FUNDED_AUSD } from "../home/status";
+import { MIN_FUNDED_AUSD } from "./status";
 import { studioAgentHref } from "../lib/select";
 
 type GateAgent = Pick<Agent, "id" | "productId" | "name" | "wallet" | "canCreateAnother" | "draft">;
@@ -24,7 +23,7 @@ const unfundedLock = (agent: GateAgent): boolean =>
   !agent.canCreateAnother.ok && agent.canCreateAnother.reason !== "draft_limit";
 
 /**
- * The funding lock, which is the whole gate for `/studio/new`. Open with no agents, when the API
+ * The funding lock, which is the whole gate for the create screen. Open with no agents, when the API
  * says another may be created, and when all it says is that the drafts are full. Closed otherwise,
  * naming the agent to fund among those that have a wallet to fund: the first one below the
  * minimum, or the first of them when none reads as unfunded. Never a draft, and never an agent
@@ -44,7 +43,7 @@ export function createGate<A extends GateAgent>(agents: readonly A[]): CreateGat
 
 /**
  * The one line under a shut "+ New agent" in the studio's menus, or "" when it is open. Both
- * entries lead to `/studio/new`, so they read the funding lock and nothing else: at three drafts
+ * entries open the create screen, so they read the funding lock and nothing else: at three drafts
  * they stay open. The draft limit is said where a draft is refused (409 `DRAFT_LIMIT`).
  */
 export function newAgentLock(agents: readonly GateAgent[]): string {

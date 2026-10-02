@@ -119,11 +119,8 @@ test("the signup draws the passkey step; /passkey only adds a device", () => {
   assert.ok(page.includes('mode="add"'), "/passkey must open PasskeyAddFlow");
 });
 
-test("the studio and the create screen gate on the wallet before the profile, and never on ?complete=1", () => {
-  for (const file of [
-    "../src/features/studio/studio.tsx",
-    "../src/features/studio/create/create.tsx",
-  ]) {
+test("the studio gates on the wallet before the profile, and never on ?complete=1", () => {
+  for (const file of ["../src/features/studio/studio.tsx"]) {
     const source = read(file);
     assert.ok(
       !source.includes("complete=1"),
