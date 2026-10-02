@@ -281,7 +281,10 @@ test("a deposit whose nonce is above the master's pending nonce is 400 and nothi
   );
 
   assert.equal(response.status, 400);
-  assert.deepEqual(await response.json(), { error: "DEPOSIT_NONCE_MISMATCH" });
+  assert.deepEqual(await response.json(), {
+    error: "DEPOSIT_NONCE_MISMATCH",
+    message: "This deposit is out of date. Prepare it again.",
+  });
   assert.deepEqual(forwards, []);
   assert.deepEqual(sent, []);
 });
@@ -299,7 +302,10 @@ test("a signed transaction that is not the approved one is 500, logged, and neve
   );
 
   assert.equal(response.status, 500);
-  assert.deepEqual(await response.json(), { error: "INTERNAL_OR_PROVIDER_FAILURE" });
+  assert.deepEqual(await response.json(), {
+    error: "INTERNAL_OR_PROVIDER_FAILURE",
+    message: "Something went wrong; try again",
+  });
   assert.deepEqual(sent, []);
   assert.deepEqual(deposits, []);
   assert.equal(logged.length, 1);
@@ -328,7 +334,10 @@ test("a stamped transfer to another recipient is refused with 400 and nothing is
   );
 
   assert.equal(response.status, 400);
-  assert.deepEqual(await response.json(), { error: "INVALID_SIGNED_ACTIVITY" });
+  assert.deepEqual(await response.json(), {
+    error: "INVALID_SIGNED_ACTIVITY",
+    message: "The passkey approval is not valid",
+  });
   assert.deepEqual(forwards, []);
   assert.deepEqual(sent, []);
   assert.deepEqual(deposits, []);
@@ -347,7 +356,10 @@ test("confirming the same transaction twice is 409, recorded and broadcast once"
   const again = await confirm();
 
   assert.equal(again.status, 409);
-  assert.deepEqual(await again.json(), { error: "DEPOSIT_ALREADY_RECORDED" });
+  assert.deepEqual(await again.json(), {
+    error: "DEPOSIT_ALREADY_RECORDED",
+    message: "This deposit is already recorded",
+  });
   assert.equal(deposits.length, 1);
   assert.equal(sent.length, 1);
 });
@@ -377,7 +389,10 @@ test("a stamped fee over twice the current quote is 400 and nothing is forwarded
   );
 
   assert.equal(response.status, 400);
-  assert.deepEqual(await response.json(), { error: "DEPOSIT_FEE_TOO_HIGH" });
+  assert.deepEqual(await response.json(), {
+    error: "DEPOSIT_FEE_TOO_HIGH",
+    message: "The stamped transaction pays more than twice the current fee",
+  });
   assert.deepEqual(forwards, []);
   assert.deepEqual(sent, []);
 });
@@ -428,7 +443,9 @@ test("an amount outside the offered set, or a body that is not the contract, is 
   for (const body of [{ amountAusd: 11 }, { amountAusd: "25" }, { amountAusd: 25, extra: 1 }, {}]) {
     const response = await app.request(`/agents/${AGENT}/deposit/prepare`, post(body));
     assert.equal(response.status, 400, JSON.stringify(body));
-    assert.deepEqual(await response.json(), { error: "INVALID_INPUT" });
+    const refused = await response.json();
+    assert.equal(refused.error, "INVALID_INPUT");
+    assert.equal(typeof refused.message, "string");
   }
 });
 
@@ -457,5 +474,8 @@ test("unauthenticated is 401; without Turnkey composed deposits are 503", async 
     post({ amountAusd: 25 }),
   );
   assert.equal(unavailable.status, 503);
-  assert.deepEqual(await unavailable.json(), { error: "DEPOSITS_UNAVAILABLE" });
+  assert.deepEqual(await unavailable.json(), {
+    error: "DEPOSITS_UNAVAILABLE",
+    message: "Deposits are not available on this deployment",
+  });
 });

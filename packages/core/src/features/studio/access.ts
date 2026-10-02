@@ -1,8 +1,9 @@
 import { AccessDeniedError } from "../access/domain/errors.js";
 import type { Principal } from "../access/domain/principal.js";
-import type { AgentProfileInput } from "../agents/domain/agents.js";
 import type { Accent } from "../landing/domain/landing.js";
-import { assertConfig, type AgentConfig, type Scope } from "../research/types.js";
+import type { DraftProfile } from "./create.js";
+import type { PublishBlocker } from "./publish.js";
+import type { AgentConfig, Scope } from "../research/types.js";
 
 export interface StudioAccess {
   workspaceId: string;
@@ -12,63 +13,109 @@ export interface StudioAccess {
   enabled: boolean;
 }
 /**
- * The wallet an agent is created with, named by id only. The policy ids it links are read
- * server-side from what the wallet's owner already had `confirmPolicies` record — never from the
- * caller — so a request can only ever link the rules that were actually approved.
- */
-export interface AgentWalletLink {
-  walletId: string;
-}
-
-/**
  * The "+ New agent" lock (funding, and the draft limit for a draft), run by a create inside its transaction after the workspace row
  * is locked, so two creates in one workspace serialize and the second sees the first. It throws to
  * refuse; the create then writes nothing.
  */
 export type CreateAdmission = () => Promise<void>;
 
+/**
+ * Go Public's check (D8), run by `publish` with the agent's state as it stood just before: whether
+ * it is killed and its linked agent wallet's address (null when none). It may read the chain, so it
+ * runs outside any transaction. It answers the blockers, empty to publish, or throws to refuse.
+ */
+export type PublishCheck = (state: {
+  killed: boolean;
+  walletAddress: string | null;
+}) => Promise<PublishBlocker[]>;
+
+/** One line of an agent's Overview activity (D18). */
+export interface AgentActivityEvent {
+  kind: "created" | "wallet" | "transfer";
+  text: string;
+  at: Date;
+}
+
+/** One master ↔ agent move in the person's ledger (D17). `amount` is in token units, e.g. "10.5". */
+export interface TransferLedgerEntry {
+  direction: "to_agent" | "to_master";
+  token: "AUSD" | "MON";
+  amount: string;
+  agentName: string | null;
+  txHash: string;
+  at: Date;
+}
+
 export interface StudioDirectory {
   onboard(userId: string): Promise<void>;
   access(userId: string, workspaceId: string | null): Promise<StudioAccess | null>;
-  createAgent(
+  /**
+   * Creates the private draft with its wallet (studio-create-simplified-v1 §4.1), in one
+   * transaction: locks the workspace; answers the same draft again, without `admit`, when this is
+   * the same create retried (same wallet, handle, name, config and profile; WALLET_ASSIGNED under
+   * other terms); refuses HANDLE_TAKEN; locks the wallet (WALLET_NOT_FOUND unless it is the
+   * caller's agent wallet, WALLET_ASSIGNED when linked, POLICIES_MISSING without approved
+   * policies); runs `admit`; then writes the agent (`draft`), its profile, handle, runtime row and
+   * product row, and links the wallet with its approved policy ids. A refusal writes nothing.
+   */
+  createDraft(
     access: StudioAccess,
     userId: string,
     input: {
       name: string;
       handle: string;
       config: AgentConfig;
-      key: string;
-      profile: AgentProfileInput;
-      wallet: AgentWalletLink;
+      profile: DraftProfile;
+      walletId: string;
     },
-    admit?: CreateAdmission,
-  ): Promise<Scope>;
-  /**
-   * Creates the private draft from an adopted preview run (studio-brief-v1 §6), in one transaction:
-   * the agent with `status = 'draft'` and no wallet, its runtime row with the run's config snapshot,
-   * the preview copied in as its first run, and the preview marked adopted. Refuses with
-   * PREVIEW_UNUSABLE, RUN_STALE or HANDLE_TAKEN, in that order, then runs `admit`; a refusal writes
-   * nothing. A retry of a create that committed (same caller, brief and handle) answers the same
-   * draft again and never reaches `admit`; under a different name it is CONFLICT.
-   */
-  createDraft(
-    access: StudioAccess,
-    userId: string,
-    input: { name: string; handle: string; previewRunId: string; fingerprint: string },
-    now: number,
     admit?: CreateAdmission,
   ): Promise<{ productId: string; scope: Scope }>;
   agentScope(access: StudioAccess, productAgentId: string): Promise<Scope>;
   runs(scope: Scope, before: number | null): Promise<string[]>;
   /**
-   * The person's agents, oldest first, with the accent their profile was created with ("lime"
-   * without one), and whether each is a private draft (no wallet yet, so the funding lock skips it).
+   * The person's agents, oldest first, with the accent and avatar pattern (0–5) their profile
+   * holds ("lime" and 0 without one), whether each is a private draft, whether the marketplace shows it and since
+   * when (studio-draft-dashboard-v1 D7), and its verified X handle (D6), null until verified.
    */
-  list(
-    access: StudioAccess,
-  ): Promise<
-    { id: string; name: string; handle: string; accent: Accent; draft: boolean; scope: Scope }[]
+  list(access: StudioAccess): Promise<
+    {
+      id: string;
+      name: string;
+      handle: string;
+      accent: Accent;
+      avatarPattern: number;
+      draft: boolean;
+      visibility: "private" | "public";
+      publishedAt: Date | null;
+      xHandle: string | null;
+      scope: Scope;
+    }[]
   >;
+  /**
+   * Makes the agent public (D8). Already public: answers its state without calling `check`.
+   * Otherwise reads killed and the linked wallet with no lock held, awaits `check` (which may read
+   * the chain), then in a short transaction locks the agent row, re-reads both and publishes only
+   * when they are unchanged: `visibility` public, `published_at` now, a draft's status active. If
+   * they changed in between, the whole check runs once more; a second change is PilotError
+   * PUBLISH_CONFLICT. Blockers from `check` throw `PublishBlockedError`. NOT_FOUND for an agent
+   * outside this workspace.
+   */
+  publish(
+    access: StudioAccess,
+    productAgentId: string,
+    check: PublishCheck,
+  ): Promise<{ visibility: "public"; publishedAt: Date }>;
+  /**
+   * Name, avatar and the profile's voice name (D14); omitted fields stay. The database bounds them
+   * (name 1–40, pattern 0–5, a palette accent); a violation is PilotError INVALID_INPUT.
+   */
+  updateIdentity(
+    access: StudioAccess,
+    productAgentId: string,
+    identity: { name?: string; accent?: Accent; avatarPattern?: number; voice?: string },
+  ): Promise<void>;
+  /** The agent's Overview activity (D18): created, its wallet, each transfer; newest first, ≤ 50. */
+  activity(access: StudioAccess, productAgentId: string): Promise<AgentActivityEvent[]>;
 }
 
 export function createStudioAccess(directory: StudioDirectory) {
@@ -85,25 +132,6 @@ export function createStudioAccess(directory: StudioDirectory) {
         throw new AccessDeniedError("Research requires an enabled workspace owner");
       }
       return access;
-    },
-    async create(
-      principal: Principal,
-      input: {
-        name: string;
-        handle: string;
-        config: AgentConfig;
-        key: string;
-        profile: AgentProfileInput;
-        wallet: AgentWalletLink;
-      },
-      admit?: CreateAdmission,
-    ) {
-      const access = await this.authorize(principal, true);
-      assertConfig(input.config);
-      if (!input.config.marketScope) {
-        throw new AccessDeniedError("A category and subcategory selection is required");
-      }
-      return directory.createAgent(access, principal.id, input, admit);
     },
   };
 }

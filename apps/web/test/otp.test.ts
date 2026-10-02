@@ -18,50 +18,42 @@ const cell = (char: string, at: "caret" | "wrong" | "plain"): CodeCell => ({
   wrong: at === "wrong",
 });
 
-test("a code is digits only, six at most, whatever arrives", () => {
-  assert.equal(normalizeCode("482913"), "482913");
-  assert.equal(normalizeCode("482 913"), "482913");
-  assert.equal(normalizeCode("Your code is 482913"), "482913");
-  assert.equal(normalizeCode("48-29-13"), "482913");
-  assert.equal(normalizeCode("4829137"), "482913", "a seventh digit has no cell to sit in");
+test("a code is digits only, eight at most, whatever arrives", () => {
+  assert.equal(CODE_LENGTH, 8);
+  assert.equal(normalizeCode("48291375"), "48291375");
+  assert.equal(normalizeCode("4829 1375"), "48291375");
+  assert.equal(normalizeCode("Your code is 48291375"), "48291375");
+  assert.equal(normalizeCode("48-29-13-75"), "48291375");
+  assert.equal(normalizeCode("482913750"), "48291375", "a ninth digit has no cell to sit in");
   assert.equal(normalizeCode("abc"), "");
   assert.equal(normalizeCode(""), "");
   // Digits that are not ASCII would reach the server as something it cannot parse.
   assert.equal(normalizeCode("٤٨٢٩١٣"), "");
 });
 
-test("there are always six cells, however much has been typed", () => {
-  for (const code of ["", "4", "482913"]) {
+test("there are always eight cells, however much has been typed", () => {
+  for (const code of ["", "4", "48291375"]) {
     assert.equal(codeCells(code, false).length, CODE_LENGTH, code);
   }
 });
 
+/** Empty cells: the first marked `first`, the rest `rest`. */
+const blanks = (count: number, first: "caret" | "wrong" | "plain", rest = first) =>
+  Array.from({ length: count }, (_, index) => cell("", index === 0 ? first : rest));
+
 test("the cells show what was typed and mark the one being typed into", () => {
-  assert.deepEqual(codeCells("", false), [
-    cell("", "caret"),
-    cell("", "plain"),
-    cell("", "plain"),
-    cell("", "plain"),
-    cell("", "plain"),
-    cell("", "plain"),
-  ]);
+  assert.deepEqual(codeCells("", false), blanks(8, "caret", "plain"));
   assert.deepEqual(codeCells("482", false), [
     cell("4", "plain"),
     cell("8", "plain"),
     cell("2", "plain"),
-    cell("", "caret"),
-    cell("", "plain"),
-    cell("", "plain"),
+    ...blanks(5, "caret", "plain"),
   ]);
-  // Full: there is no seventh cell for the caret to move to, so nothing is lit.
-  assert.deepEqual(codeCells("482913", false), [
-    cell("4", "plain"),
-    cell("8", "plain"),
-    cell("2", "plain"),
-    cell("9", "plain"),
-    cell("1", "plain"),
-    cell("3", "plain"),
-  ]);
+  // Full: there is no ninth cell for the caret to move to, so nothing is lit.
+  assert.deepEqual(
+    codeCells("48291375", false),
+    [..."48291375"].map((char) => cell(char, "plain")),
+  );
 });
 
 test("a rejected code marks every cell and drops the caret", () => {
@@ -69,15 +61,14 @@ test("a rejected code marks every cell and drops the caret", () => {
     cell("4", "wrong"),
     cell("8", "wrong"),
     cell("2", "wrong"),
-    cell("", "wrong"),
-    cell("", "wrong"),
-    cell("", "wrong"),
+    ...blanks(5, "wrong"),
   ]);
 });
 
-test("a code is complete at six and not before", () => {
-  assert.equal(isComplete("48291"), false);
-  assert.equal(isComplete("482913"), true);
+test("a code is complete at eight and not before", () => {
+  assert.equal(isComplete("482913"), false, "six digits is the old length, not a whole code");
+  assert.equal(isComplete("4829137"), false);
+  assert.equal(isComplete("48291375"), true);
 });
 
 test("tries run down to zero and stop there", () => {

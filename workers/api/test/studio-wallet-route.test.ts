@@ -48,8 +48,6 @@ interface Options {
   /** What the balance reader throws where the chain is not composed. */
   readError?: Error;
   signedIn?: boolean;
-  /** What the directory refuses a new creation with. */
-  createError?: Error;
   /** Which of `agents` are private drafts. */
   drafts?: string[];
 }
@@ -62,14 +60,11 @@ function fixture({
   failReadFor = [],
   readError,
   signedIn = true,
-  createError,
   drafts = [],
 }: Options = {}) {
-  let agents = initial;
+  const agents = initial;
   const scheduled: boolean[] = [];
-  const created: string[] = [];
   const reads: string[] = [];
-  const keys = new Map<string, string>();
   const updates: { expectedVersion: number; spend: unknown }[] = [];
   const spends: SpendLimits[] = [];
   const intervals: { hours: number; now: number }[] = [];
@@ -84,21 +79,6 @@ function fixture({
       role: "admin",
       enabled: true,
     }),
-    createAgent: async (_access, _user, input, admit) => {
-      const earlier = keys.get(input.key);
-      if (earlier) {
-        return scope(earlier);
-      }
-      // The directory runs the funding lock inside its transaction, after a replay.
-      await admit?.();
-      if (createError) {
-        throw createError;
-      }
-      created.push(input.handle);
-      keys.set(input.key, SECOND);
-      agents = [...agents, SECOND];
-      return scope(SECOND);
-    },
     agentScope: async (_access, id) => {
       if (!agents.includes(id)) {
         throw new PilotError("NOT_FOUND", "Missing");
@@ -111,7 +91,11 @@ function fixture({
         name: `Agent ${id.slice(0, 1)}`,
         handle: `h${id.slice(0, 4)}`,
         accent: id === FIRST ? ("magenta" as const) : ("lime" as const),
+        avatarPattern: id === FIRST ? 3 : 0,
         draft: drafts.includes(id),
+        visibility: drafts.includes(id) ? ("private" as const) : ("public" as const),
+        publishedAt: drafts.includes(id) ? null : new Date("2026-09-01T00:00:00Z"),
+        xHandle: null,
         scope: scope(id),
       })),
     runs: async () => [],
@@ -212,7 +196,7 @@ function fixture({
       };
     },
   });
-  return { app, scheduled, created, reads, updates, spends, intervals };
+  return { app, scheduled, reads, updates, spends, intervals };
 }
 
 const put = (body: unknown) => ({
@@ -220,23 +204,6 @@ const put = (body: unknown) => ({
   headers: { "Content-Type": "application/json" },
   body: JSON.stringify(body),
 });
-
-const createBody = {
-  name: "Second",
-  handle: "second",
-  config: scopedConfig,
-  profile: {
-    accent: "lime",
-    blurb: "",
-    venue: "predictions",
-    vibe: "",
-    voice: "",
-    decides: "",
-    wrong: "",
-    xHandle: null,
-  },
-  wallet: { walletId: "wallet-2" },
-};
 
 test("the API's lock reasons are core's", () => {
   assert.deepEqual([...LOCK_REASONS], [...CORE_LOCK_REASONS]);
@@ -261,7 +228,10 @@ test("an agent holding 3 AUSD cannot run alone, and the schedule is refused as N
   const refused = await app.request(`/agents/${FIRST}/schedule`, put({ enabled: true }));
 
   assert.equal(refused.status, 409);
-  assert.deepEqual(await refused.json(), { error: "NOT_FUNDED" });
+  assert.deepEqual(await refused.json(), {
+    error: "NOT_FUNDED",
+    message: "Fund its wallet · min. 10 AUSD",
+  });
   assert.deepEqual(scheduled, []);
 });
 
@@ -289,7 +259,7 @@ test("the first run comes before funding; the schedule keeps answering NOT_READY
   const refused = await app.request(`/agents/${FIRST}/schedule`, put({ enabled: true }));
 
   assert.equal(refused.status, 409);
-  assert.deepEqual(await refused.json(), { error: "NOT_READY" });
+  assert.deepEqual(await refused.json(), { error: "NOT_READY", message: "Run once by hand" });
   assert.deepEqual(scheduled, []);
 });
 
@@ -317,20 +287,6 @@ test("the list carries each agent's wallet and the same create lock", async () =
     assert.deepEqual(agent.canCreateAnother, { ok: true, reason: null });
     assert.deepEqual(agent.canSchedule, { ok: true, reason: null });
   }
-});
-
-test("a second agent is refused while the first holds 3 AUSD", async () => {
-  const { app, created } = fixture({ balances: { [FIRST]: 3 } });
-
-  const response = await app.request("/agents", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "Idempotency-Key": "k" },
-    body: JSON.stringify(createBody),
-  });
-
-  assert.equal(response.status, 409);
-  assert.deepEqual(await response.json(), { error: "UNFUNDED_AGENT" });
-  assert.deepEqual(created, []);
 });
 
 test("one agent's page reads its own balance; another agent's failed read does not fail it", async () => {
@@ -369,19 +325,12 @@ test("an agent's own failed balance read fails its page", async () => {
   assert.equal(response.status, 500);
 });
 
-test("the list and a create still fail on any failed balance read", async () => {
-  const { app, created } = fixture({ agents: [FIRST, SECOND], failReadFor: [SECOND] });
+test("the list still fails on any failed balance read", async () => {
+  const { app } = fixture({ agents: [FIRST, SECOND], failReadFor: [SECOND] });
 
   const list = await app.request("/agents");
-  const create = await app.request("/agents", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "Idempotency-Key": "k" },
-    body: JSON.stringify(createBody),
-  });
 
   assert.equal(list.status, 500);
-  assert.equal(create.status, 500);
-  assert.deepEqual(created, []);
 });
 
 test("balances that are not composed answer 503 BALANCES_UNAVAILABLE", async () => {
@@ -392,56 +341,10 @@ test("balances that are not composed answer 503 BALANCES_UNAVAILABLE", async () 
   const response = await app.request(`/agents/${FIRST}`);
 
   assert.equal(response.status, 503);
-  assert.deepEqual(await response.json(), { error: "BALANCES_UNAVAILABLE" });
-});
-
-test("an agent with its wallet is created even at the draft limit", async () => {
-  const drafts = ["d1", "d2", "d3"];
-  const { app, created } = fixture({ agents: drafts, drafts });
-
-  const response = await app.request("/agents", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "Idempotency-Key": "k" },
-    body: JSON.stringify(createBody),
+  assert.deepEqual(await response.json(), {
+    error: "BALANCES_UNAVAILABLE",
+    message: "Balances are not available",
   });
-
-  assert.equal(response.status, 201);
-  assert.deepEqual(created, ["second"]);
-});
-
-test("the first agent, and a next one once every agent is funded, are created", async () => {
-  for (const options of [{ agents: [] }, { balances: { [FIRST]: 10 } }]) {
-    const { app, created } = fixture(options);
-
-    const response = await app.request("/agents", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "Idempotency-Key": "k" },
-      body: JSON.stringify(createBody),
-    });
-
-    assert.equal(response.status, 201);
-    assert.deepEqual(created, ["second"]);
-  }
-});
-
-test("the directory's wallet refusals reach the studio coded, with their message", async () => {
-  for (const [error, status] of [
-    [new PilotError("CONFLICT", "That wallet already belongs to an agent"), 409],
-    [new PilotError("CONFLICT", "Approve the wallet's rules first"), 409],
-    [new PilotError("NOT_FOUND", "Wallet not found"), 404],
-  ] as const) {
-    const { app, created } = fixture({ agents: [], createError: error });
-
-    const response = await app.request("/agents", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "Idempotency-Key": "k" },
-      body: JSON.stringify(createBody),
-    });
-
-    assert.equal(response.status, status);
-    assert.deepEqual(await response.json(), { error: error.code, message: error.message });
-    assert.deepEqual(created, []);
-  }
 });
 
 test("a balance that cannot be read fails the request instead of reading as zero", async () => {
@@ -452,7 +355,10 @@ test("a balance that cannot be read fails the request instead of reading as zero
 
   assert.equal(one.status, 500);
   assert.equal(all.status, 500);
-  assert.deepEqual(await one.json(), { error: "INTERNAL_OR_PROVIDER_FAILURE" });
+  assert.deepEqual(await one.json(), {
+    error: "INTERNAL_OR_PROVIDER_FAILURE",
+    message: "Something went wrong; try again",
+  });
 });
 
 test("an agent without a wallet reads as unfunded and does not block creation", async () => {
@@ -464,27 +370,6 @@ test("an agent without a wallet reads as unfunded and does not block creation", 
   assert.equal(body.wallet, null);
   assert.deepEqual(body.canSchedule, { ok: false, reason: "unfunded" });
   assert.deepEqual(body.canCreateAnother, { ok: true, reason: null });
-});
-
-const create = (key: string) => ({
-  method: "POST",
-  headers: { "Content-Type": "application/json", "Idempotency-Key": key },
-  body: JSON.stringify(createBody),
-});
-
-test("a retried create replays the original agent even though it is still unfunded", async () => {
-  const { app, created } = fixture({ agents: [] });
-
-  const first = await app.request("/agents", create("same"));
-  const retry = await app.request("/agents", create("same"));
-  const another = await app.request("/agents", create("new"));
-
-  assert.equal(first.status, 201);
-  assert.equal(retry.status, 201);
-  assert.deepEqual(await retry.json(), await first.json());
-  assert.deepEqual(created, ["second"]);
-  assert.equal(another.status, 409);
-  assert.deepEqual(await another.json(), { error: "UNFUNDED_AGENT" });
 });
 
 test("saving limits keeps the version, the schedule lock open and readiness", async () => {
@@ -631,7 +516,7 @@ test("the interval of someone else's agent, or without a session, is refused", a
   assert.deepEqual(intervals, []);
 });
 
-test("the agent DTO carries its profile's accent, in the list and on its own", async () => {
+test("the agent DTO carries its profile's accent and avatar pattern, in the list and on its own", async () => {
   const { app } = fixture({ agents: [FIRST, SECOND], balances: { [FIRST]: 10, [SECOND]: 10 } });
 
   const list = await (await app.request("/agents")).json();
@@ -641,5 +526,10 @@ test("the agent DTO carries its profile's accent, in the list and on its own", a
     list.agents.map((agent: { accent: string }) => agent.accent),
     ["magenta", "lime"],
   );
+  assert.deepEqual(
+    list.agents.map((agent: { avatarPattern: number }) => agent.avatarPattern),
+    [3, 0],
+  );
   assert.equal(one.accent, "magenta");
+  assert.equal(one.avatarPattern, 3);
 });

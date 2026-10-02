@@ -11,6 +11,7 @@ import {
   bigint,
   check,
   index,
+  numeric,
   pgSchema,
   text,
   timestamp,
@@ -124,6 +125,31 @@ export const deposits = wallets
       index("deposits_agent_idx").on(t.agentId),
       check("deposits_tx_format", sql`${t.txHash} ~ '^0x[0-9a-f]{64}$'`),
       check("deposits_amount_positive", sql`${t.amountMicroUsd} > 0`),
+    ],
+  )
+  .enableRLS();
+
+/** Master ↔ agent moves of AUSD or MON, signed by the person's passkey. The chain is the truth; this is the receipt. */
+export const transfers = wallets
+  .table(
+    "transfers",
+    {
+      id: uuid("id").primaryKey().defaultRandom(),
+      userId: uuid("user_id").notNull(),
+      fromWalletId: text("from_wallet_id").notNull(),
+      toWalletId: text("to_wallet_id").notNull(),
+      token: text("token").notNull(),
+      /** Micro-AUSD or wei, by `token`. */
+      amount: numeric("amount", { precision: 78, scale: 0 }).notNull(),
+      txHash: text("tx_hash").notNull(),
+      createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    },
+    (t) => [
+      uniqueIndex("transfers_tx_key").on(t.txHash),
+      index("transfers_user_idx").on(t.userId),
+      check("transfers_token", sql`${t.token} in ('ausd', 'mon')`),
+      check("transfers_amount_positive", sql`${t.amount} > 0`),
+      check("transfers_tx_format", sql`${t.txHash} ~ '^0x[0-9a-f]{64}$'`),
     ],
   )
   .enableRLS();

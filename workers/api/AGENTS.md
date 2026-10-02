@@ -131,17 +131,22 @@ for the cleanup that has not been written.
 
 Under the same mount, `/v1/signing/agents` runs docs/specs/studio-create-and-fund-v1.md §4.1 as
 prepare → passkey stamp in the browser → confirm, three times: Pickler's delegated user (first
-agent only), the agent's wallet (`{ handle }`, profile handle rules), and that wallet's policies
-(no body; core adds the delegated user's self-delete policy when none of the person's wallets
-is linked to an agent yet, and a `first_agent` field is refused). Each confirm is refused with 400
+agent only), the agent's wallet (no body, `{}` at most: a `handle` is refused; the wallet is named
+"Agent wallet N", N the person's agent wallets plus one; confirm takes `{ signed }`), and that
+wallet's policies (no body; core adds the delegated user's self-delete policy when none of the
+person's wallets is linked to an agent yet, and a `first_agent` field is refused). The policies
+prepare reads the wallet's balances first and answers 409 `wallet_underfunded` below either
+minimum to start (10 AUSD, 0.5 MON), with `detail: { ausdMicro, monWei, minAusdMicro, minMonWei }`
+as base-unit strings (a balance the chain did not answer is null). A read that fails, or answers
+neither balance, is 503 `balances_unavailable`: an outage is never reported as underfunded. Each confirm is refused with 400
 `invalid_signed_activity` before anything reaches Turnkey unless the stamped request is exactly
 what its prepare built, apart from the timestamp. Prepares answer the
-unsigned activity in add/prepare's shape; a wallet prepare for a handle with an unlinked wallet
+unsigned activity in add/prepare's shape; a wallet prepare while the person has an unlinked wallet
 answers `{ existing: { wallet_id, address, policies_approved } }` instead, and the browser skips
 that stamp, and the policies' too when `policies_approved` is true.
 Confirms answer `delegated_user_id`, `{ wallet_id, address }` and `policy_ids`.
 `GET /agents/state` answers `has_sub_organization` and `has_delegated_user`. The link to an agent
-is written by the create-agent transaction, not here.
+is written by the drafts route's transaction, not here.
 
 `TURNKEY_DELEGATED_API_PUBLIC_KEY` is the public half of Pickler's delegated key; without it the
 ceremony answers 503 `agent_wallets_unavailable` and nothing else changes. `delegatedPublicKeyFrom`
@@ -210,14 +215,9 @@ not yet connected to research tenants; see [integration boundaries](../../docs/f
 
 The request-scoped composition resolves the trusted DATABASE Hyperdrive binding through src/database.ts, using verified origin TLS and two connections per invocation. Direct DATABASE_URL is allowed only for explicit local loopback development. It does not import Mastra or require LLM credentials.
 
-`POST /v1/studio/agents/draft` (JWT, manage rights as for creating an agent; registered before the `/agents/:id` routes)
-turns `{ line }` into `{ draft, unsupported }` with the drafter built in `container.ts` from the
-optional `MODEL_BASE_URL`, `MODEL_ID` and `MODEL_API_KEY` — the same model the research worker
-uses. Without all three, with a base URL that does not parse (the drafter is then null and every
-other route is unaffected), or when the model fails or answers outside `agentDraftSchema`, the route
-answers 503 `DRAFT_UNAVAILABLE`; it never substitutes a guess. A model failure is logged with
-the request id and the cause's message, never the key or the request; the body stays the bare code. What cannot run yet (Perpl, beats
-other than Sports) is listed in `unsupported`, not dropped. Studio routes (`/v1/studio`, in `src/routes/studio.ts`) use JWT-only research DTOs, intentionally preserving the research response family rather than product envelopes. Growth routes preserve their existing DTOs and cookies.
+There is no model drafter: `POST /v1/studio/agents/draft` and `POST /v1/studio/agents` (an agent
+created with its wallet, for `/studio/new`) were removed with that screen, together with the
+`MODEL_*` variables this worker read for them. Studio routes (`/v1/studio`, in `src/routes/studio.ts`) use JWT-only research DTOs, intentionally preserving the research response family rather than product envelopes. Growth routes preserve their existing DTOs and cookies.
 
 `POST /v1/studio/preview-runs` (JWT, research rights; 409 `ADMISSIONS_PAUSED` when admissions are
 off) runs `preparePreview` on `previewRunRequestSchema` and queues a paper run of a brief with no
@@ -226,30 +226,27 @@ agent row through `services.previews` (`PostgresPreviewStore`, studio-brief-v1 �
 reason }`; caps and leverage out of bounds are 400 `INVALID_INPUT`; the sixth run in a rolling hour
 is 429 `{ error: "PREVIEW_RATE_LIMITED", retryAt }`. `GET /v1/studio/preview-runs/:id` answers
 `previewRunResponseSchema` to the owner only (404 for anyone else and after 24 h). Without
-`previews` composed, both answer 503 `PREVIEW_UNAVAILABLE`.
+`previews` composed, both answer 503 `PREVIEW_UNAVAILABLE`. The web no longer calls either (the
+brief home that ran previews is gone); they stay until a separate cleanup removes them.
 
 `GET /v1/studio/agents` and `GET /v1/studio/agents/:id` answer `studioAgentSchema`, composed in one
 helper in `src/routes/studio.ts`: the profile's `accent` from `directory.list` ("lime" without a
 profile row), the wallet linked to the agent (`wallets.findAgentWallet`, the
 `PostgresCustodyStore`), its AUSD balance (`balances.read`), `canSchedule` from
 `isReadyToSchedule` over `repository.readiness` plus the balance, and `canCreateAnother` over the
-balances of every listed agent that has a wallet, plus the number of private drafts. Agents created
-before wallets have none and are not counted. A draft has no wallet either and does not count as
-unfunded (studio-brief-v1 §6); three drafts (`MAX_DRAFTS_PER_WORKSPACE`) close the lock with
-`draft_limit`, after `unfunded_agent`. An agent with no linked wallet reads a balance of 0, so it cannot be scheduled and
+balances of every listed agent that has a wallet, drafts included, plus the number of private
+drafts. A draft is created with its wallet (studio-create-simplified-v1), so a draft whose wallet
+holds under 10 AUSD closes the lock with `unfunded_agent` like any agent. Agents created before
+wallets, and drafts from before drafts came with one, have none and are not counted. Three drafts
+(`MAX_DRAFTS_PER_WORKSPACE`) close the lock with `draft_limit`, after `unfunded_agent`. An agent with no linked wallet reads a balance of 0, so it cannot be scheduled and
 turning its schedule on answers `NOT_FUNDED`. That is intended: every agent is now created with a
 wallet, and nothing has launched. A balance read that fails fails the request (500); it is never
 shown as zero. `GET /agents/:id` reads this agent's balance that way and the other agents' only
 for the lock: another agent's balance that cannot be read is left out of `canCreateAnother` and
-does not fail the page. The list and both creates still require every read.
+does not fail the page. The list and the draft create still require every read.
 `PUT /agents/:id/schedule` with `enabled: true` refuses 409 `NOT_FUNDED` when the lock says
 `unfunded`; `first_run` is still refused 409 `NOT_READY` by the repository inside its transaction.
-Turning the schedule off reads no balance. `POST /agents` refuses 409 `UNFUNDED_AGENT` when
-`canCreateAnother` is closed with `unfunded_agent`. The lock is the `admit` callback
-`directory.createAgent` runs inside its transaction, after it has looked for an earlier create with
-the same idempotency key, so a retry replays the original agent without meeting the lock. The
-directory's `CONFLICT` and `NOT_FOUND` refusals from creation answer `{ error, message }` (409 and
-404), because one code covers several fixes; every other studio error stays `{ error }`. The balance reader is `createAusdBalanceReader` on `CHAIN_ID`
+Turning the schedule off reads no balance. The balance reader is `createAusdBalanceReader` on `CHAIN_ID`
 (default 10143) and `MONAD_RPC_URL` (default that network's first public endpoint), kept per
 isolate in `container.ts` so its 15 s cache outlives one request.
 
@@ -262,15 +259,73 @@ deposit chain, so the deposit routes answer 503 `DEPOSITS_UNAVAILABLE`. `GET
 /v1/signing/wallets/me` answers 503 with `error: "balances_unavailable"` in its envelope. The
 passkey ceremonies read no chain and stay on.
 
-`POST /v1/studio/drafts { name, handle, previewRunId, brief, spend, maxLeverage }` (JWT, manage
-rights) adopts a completed paper run as a private draft through `directory.createDraft`
-(studio-brief-v1 §6) and answers 201 `{ productId, agent }`. Its refusals are 409 bare codes:
-`PREVIEW_UNUSABLE`, `RUN_STALE`, `HANDLE_TAKEN`, `CONFLICT` (a retry under a different name) and `UNFUNDED_AGENT` (an agent with a wallet below
-the minimum). The fourth draft in a workspace is 409
-`{ error: "DRAFT_LIMIT", message: "At most 3 drafts at a time" }`, the one studio refusal besides
-creation's `CONFLICT`/`NOT_FOUND` that carries a message. Both locks run in the admit callback,
-inside the create transaction, after the workspace row is locked. `POST /agents` meets the funding
-lock only, never the draft limit.
+`POST /v1/studio/drafts { name, handle, voice, avatar, sources, brief, caps, walletId }` (JWT,
+manage rights; studio-create-simplified-v1 §4.1) creates a private draft with the agent wallet the
+person made, funded and signed the policies of, and answers 201 `{ productId, agent }`. Sites in
+`sources.web` are reduced to bare hosts by core's `classifyRead` ("https://www.CoinDesk.com/x" is
+`coindesk.com`) before `prepareDraft` checks the request and builds the Perpl-shaped config and the
+profile. The wallet's balances are then read on chain (`custody.walletBalance`), just before the
+transaction and never inside it: a chain read must not hold row locks. A wallet that is not the
+caller's has no reading and is left for the directory to refuse. `directory.createDraft` then, in
+one transaction: replays the same create (same wallet, handle, name, config and profile) without
+the lock; refuses `HANDLE_TAKEN`, then `WALLET_NOT_FOUND` (404: absent, another person's, or not
+`kind='agent'`), `WALLET_ASSIGNED` (already linked, or the same wallet under other terms) and
+`POLICIES_MISSING`; runs the admit callback, which holds the funding lock, the draft limit and that
+reading to the minimums (409 `WALLET_UNDERFUNDED` with the same `detail` as the signing family's;
+a read that failed or answered neither balance is 503 `WALLETS_UNAVAILABLE`, never underfunded);
+and writes the draft, its profile (accent, avatar pattern,
+voice name, venue `perps`) and the wallet's link with the approved policy ids. Every refusal from
+the directory or the lock answers `{ error, message }`; the fourth draft in a workspace is 409
+`{ error: "DRAFT_LIMIT", message: "At most 3 drafts at a time" }`. Without custody or a chain it is
+503 `WALLETS_UNAVAILABLE`.
+
+The wallet routes live in `src/routes/studio-wallets.ts`, mounted at `/wallets` by
+`studioRoutes`, with their error mapping (`walletFailure`, used by the drafts route too).
+`GET /v1/studio/wallets` answers the master wallet and every agent wallet of the person's, balances
+as base-unit strings read on chain (null where a read failed), with each wallet's agent, caps and
+whether its policies were approved. `POST /v1/studio/wallets/transfers/prepare|confirm { from, to,
+token, amount }` moves AUSD or MON between the master (`"master"`) and one of the person's agent
+wallets, either way; `amount` is a decimal string, checked and converted exactly to micro-AUSD or
+wei by the route, so every malformed amount ("0", "0x10", "+1", too many decimals) is 400
+`INVALID_TRANSFER`. Prepare answers the unsigned activity plus
+`baseUnits`; confirm takes `signed` too and answers `{ txHash }`. These routes answer
+`{ error, message }` in their own words: `INVALID_TRANSFER` (400), `WALLET_NOT_FOUND` (404),
+`INSUFFICIENT_FUNDS`, `INSUFFICIENT_GAS`, `TRANSFER_ALREADY_RECORDED`, `NOT_SENDABLE`,
+`NO_CUSTODY_ACCOUNT` (409), `FEE_TOO_HIGH`, `NONCE_GAP`, `INVALID_SIGNED_ACTIVITY`,
+`SIGNED_ACTIVITY_REJECTED` (400), `SIGNING_UNAVAILABLE` (502) and `WALLETS_UNAVAILABLE` (503),
+never the deposit's codes. A signed transaction that does not match is logged as "Signed
+transaction mismatch" and answers 500 `SIGNED_TX_MISMATCH`, its own code because nothing was
+broadcast. The
+deposit routes keep theirs.
+
+The draft's studio (docs/specs/studio-draft-dashboard-v1.md §4), all in `src/routes/studio.ts`
+except the ledger. The studio agent DTO carries `visibility`, `publishedAt` (ISO or null) and
+`xHandle` (the verified handle without "@", or null), from `directory.list`.
+
+- `PUT /agents/:id/setup { expectedVersion, brief?, sources?, caps?, voice? }` (manage rights):
+  drafts only (409 `NOT_A_DRAFT`), core's `reviseDraft`, then `repository.updateConfig`, whose
+  stale version is 409 `CONFLICT` (the same code `PUT /config` answers). With `caps` it passes
+  `writeSpend`, so the new per-trade and per-day caps land in `spend` in the same transaction;
+  another owner's agent is 404 `NOT_FOUND`. A voice also renames the profile's voice through
+  `directory.updateIdentity`. Answers the studio agent; 400 `INVALID_BRIEF` / `INVALID_INPUT`.
+- `PUT /agents/:id/identity { name?, avatar?: { accent, pattern 0–5 } }`: the studio agent; 400
+  `INVALID_INPUT`. `GET /agents/:id/activity` answers `{ events }` (ISO `at`).
+- Connect X, composed as `services.studio.x` (`PostgresXStore`, `createXClient` on
+  `X_BEARER_TOKEN`). The store checks no ownership, so every X route calls `agentScope` first.
+  `GET /agents/:id/x` answers `{ account, challenge, available }` (a lapsed challenge is null).
+  `POST /x/challenge { handle }`: 400 `INVALID_X_HANDLE`, 409 `X_ALREADY_CONNECTED`,
+  `X_HANDLE_TAKEN`, 503 `X_UNAVAILABLE` (no token; checked before anything is saved).
+  `POST /x/verify`: 404 `CHALLENGE_NOT_FOUND`, 409 `CHALLENGE_EXPIRED`, 503 `X_UNAVAILABLE`, then
+  `XStore.claimCheck` (one atomic UPDATE; 429 `TOO_MANY_CHECKS` within 10 s) before X is read; a
+  match connects (409 `X_HANDLE_TAKEN` if another agent won it). `DELETE /x`: 409
+  `X_ON_PUBLIC_AGENT`. X's failures are 503 `X_UNAVAILABLE` without X's body.
+- `POST /agents/:id/publish {}`: `directory.publish` with a check that reads the linked wallet's
+  AUSD through `balances.read` outside any transaction; 409 `PUBLISH_BLOCKED` with
+  `detail.blockers` (`KILLED`, `WALLET`, `FUNDS`), 409 `PUBLISH_CONFLICT` (the agent changed twice
+  during the check), 503 `BALANCES_UNAVAILABLE`. Idempotent on a public agent.
+- `GET /wallets/ledger` (`studio-wallets.ts`, `services.studio.transfers` over `listTransfers`):
+  the caller's own transfers, newest first, at most 100; 503 `WALLETS_UNAVAILABLE` where not
+  composed.
 
 `PUT /agents/:id/limits { perCallAusd, perDayAusd }` writes only `config.spend` through
 `repository.updateSpend`. It takes no version and keeps the version, the schedule and readiness,

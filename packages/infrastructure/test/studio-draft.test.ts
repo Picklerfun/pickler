@@ -1,29 +1,33 @@
 import { test, type TestContext } from "node:test";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
-import { MAX_DRAFTS_PER_WORKSPACE, PilotError, preparePreview, type Decision } from "@pickler/core";
-import { PostgresPreviewStore } from "../src/persistence/preview-store.js";
+import {
+  DEFAULT_BRIEF,
+  MAX_DRAFTS_PER_WORKSPACE,
+  PilotError,
+  STARTER_CAPS,
+  prepareDraft,
+} from "@pickler/core";
 import { PostgresStudioDirectory } from "../src/studio/directory.js";
 import { createTestStore } from "./database.js";
 
-const input = {
-  brief: {
-    thesis: "Injury news moves the books first.",
-    reads: ["espn.com"],
-    entersWhen: ["A starter is ruled out"],
-    exitsWhen: [],
-    never: [],
-  },
-  spend: { perCallAusd: 5, perDayAusd: 20 },
-  maxLeverage: 2,
-};
-const decision = { action: "ABSTAIN", marketId: "1" } as unknown as Decision;
+const { config, profile } = prepareDraft({
+  name: "Halftime",
+  handle: "halftime",
+  voice: "analyst",
+  avatar: { accent: "cyan", pattern: 3 },
+  sources: { web: null },
+  brief: DEFAULT_BRIEF,
+  caps: STARTER_CAPS,
+  walletId: "unused",
+});
+
+const hex = (length: number) =>
+  `${randomUUID()}${randomUUID()}`.replaceAll("-", "").slice(0, length);
 
 async function setup(t: TestContext) {
-  const clock = 1_000_000;
-  const store = await createTestStore(t, () => clock);
+  const store = await createTestStore(t);
   const directory = new PostgresStudioDirectory(store.pool);
-  const previews = new PostgresPreviewStore(store.pool, () => clock);
   const person = async (handle: string) => {
     const userId = randomUUID();
     if ((await store.pool.query("SELECT to_regclass('auth.users') AS name")).rows[0].name) {
@@ -36,187 +40,248 @@ async function setup(t: TestContext) {
     ]);
     return { userId, access: (await directory.access(userId, null))! };
   };
-  const { config, fingerprint } = preparePreview(input);
-  /** A preview that ran to completion, with two trace events. */
-  const completed = async (owner: Awaited<ReturnType<typeof person>>, status = "completed") => {
-    const { id } = await previews.create(
-      {
-        userId: owner.userId,
-        workspaceId: owner.access.workspaceId,
-        tenantId: owner.access.tenantId,
-        config,
-        fingerprint,
-      },
-      clock,
+  /**
+   * An unlinked agent wallet of this person's, with its account. Approved with three policy ids
+   * (the fewest any wallet is written with) unless `approvedPolicyIds` says otherwise.
+   */
+  const wallet = async (
+    userId: string,
+    approvedPolicyIds: string[] | null = ["p1", "p2", "p3"],
+    kind: "agent" | "master" = "agent",
+  ) => {
+    const walletId = `wallet-${hex(12)}`;
+    await store.pool.query(
+      `INSERT INTO wallets.wallets (user_id, wallet_id, sub_organization_id, kind, name, approved_policy_ids)
+       VALUES ($1, $2, $3, $5, 'Agent wallet 1', $4)`,
+      [userId, walletId, `sub-${hex(12)}`, approvedPolicyIds, kind],
     );
     await store.pool.query(
-      `UPDATE pickler.preview_runs SET status=$2, started_at=$3, finished_at=$4, decision=$5::jsonb
-      WHERE id=$1`,
-      [id, status, clock + 1, clock + 2, JSON.stringify(decision)],
+      `INSERT INTO wallets.wallet_accounts (wallet_id, chain, address, address_format, path)
+       VALUES ($1, 'monad', $2, 'ADDRESS_FORMAT_ETHEREUM', 'm/44')`,
+      [walletId, `0x${hex(40)}`],
     );
-    await store.pool.query(
-      `INSERT INTO pickler.preview_events (preview_run_id, type, data, created_at)
-      VALUES ($1,'runtime','{}'::jsonb,$2), ($1,'policy_evaluation','{"finalAction":"ABSTAIN"}'::jsonb,$3)`,
-      [id, clock + 1, clock + 2],
-    );
-    return id;
+    return walletId;
   };
-  return { store, directory, previews, person, completed, fingerprint, config, clock };
+  const terms = (walletId: string, handle = "halftime", name = "Halftime") => ({
+    name,
+    handle,
+    config,
+    profile,
+    walletId,
+  });
+  return { store, directory, person, wallet, terms };
 }
 
 const agentCount = async (f: Awaited<ReturnType<typeof setup>>, handle: string) =>
   (await f.store.pool.query("SELECT 1 FROM agents.agents WHERE handle=$1", [handle])).rows.length;
 
-test("create adopts the run: a private draft with no wallet, the run as its first run", async (t) => {
+test("a draft links the wallet, with its approved policy ids, its profile and its config", async (t) => {
   const f = await setup(t);
   const owner = await f.person("owner_one");
-  const id = await f.completed(owner);
-  const created = await f.directory.createDraft(
-    owner.access,
-    owner.userId,
-    { name: "Halftime", handle: "halftime", previewRunId: id, fingerprint: f.fingerprint },
-    f.clock,
-  );
+  const walletId = await f.wallet(owner.userId);
+
+  const created = await f.directory.createDraft(owner.access, owner.userId, f.terms(walletId));
 
   const agent = await f.store.pool.query("SELECT status, name FROM agents.agents WHERE id=$1", [
     created.productId,
   ]);
   assert.deepEqual(agent.rows[0], { status: "draft", name: "Halftime" });
-  const wallets = await f.store.pool.query(
-    "SELECT 1 FROM wallets.agent_wallets WHERE agent_id=$1",
+  const link = await f.store.pool.query(
+    "SELECT wallet_id, policy_ids FROM wallets.agent_wallets WHERE agent_id=$1",
     [created.productId],
   );
-  assert.equal(wallets.rows.length, 0);
-  const runtime = await f.store.agent(created.scope);
-  assert.deepEqual(runtime.config, f.config);
-  const run = await f.store.run(created.scope.tenantId, id);
-  assert.equal(run.status, "completed");
-  assert.equal(run.trigger, "manual");
-  assert.equal(run.configVersion, 1);
-  assert.deepEqual(run.decision, decision);
-  const events = await f.store.events(created.scope.tenantId, id);
-  assert.deepEqual(
-    events.map((event) => event.type),
-    ["runtime", "policy_evaluation"],
+  assert.deepEqual(link.rows[0], { wallet_id: walletId, policy_ids: ["p1", "p2", "p3"] });
+  const face = await f.store.pool.query(
+    "SELECT accent, avatar_pattern, voice, venue FROM agents.agent_profiles WHERE agent_id=$1",
+    [created.productId],
   );
-  assert.equal((await f.store.readiness(created.scope)).manualSucceeded, true);
-  const preview = await f.store.pool.query(
-    "SELECT adopted_at::double precision AS at, adopted_agent_id AS agent FROM pickler.preview_runs WHERE id=$1",
-    [id],
-  );
-  assert.deepEqual(preview.rows[0], { at: f.clock, agent: created.scope.agentId });
-  // The trace now lives with the run; the preview keeps its row for a retried create.
-  const trace = await f.store.pool.query(
-    "SELECT 1 FROM pickler.preview_events WHERE preview_run_id=$1",
-    [id],
-  );
-  assert.equal(trace.rows.length, 0);
+  assert.deepEqual(face.rows[0], {
+    accent: "cyan",
+    avatar_pattern: 3,
+    voice: "Analyst",
+    venue: "perps",
+  });
+  assert.deepEqual((await f.store.agent(created.scope)).config, config);
   const listed = await f.directory.list(owner.access);
   assert.deepEqual(
-    listed.map((item) => [item.handle, item.draft]),
-    [["halftime", true]],
+    listed.map((item) => [item.handle, item.draft, item.accent, item.avatarPattern]),
+    [["halftime", true, "cyan", 3]],
   );
 });
 
-test("a different brief is RUN_STALE and writes nothing", async (t) => {
+test("a wallet already linked to an agent is WALLET_ASSIGNED", async (t) => {
   const f = await setup(t);
   const owner = await f.person("owner_one");
-  const id = await f.completed(owner);
+  const walletId = await f.wallet(owner.userId);
+  await f.directory.createDraft(owner.access, owner.userId, f.terms(walletId));
+
   await assert.rejects(
-    f.directory.createDraft(
-      owner.access,
-      owner.userId,
-      { name: "Halftime", handle: "halftime", previewRunId: id, fingerprint: "other" },
-      f.clock,
-    ),
-    { code: "RUN_STALE" },
+    f.directory.createDraft(owner.access, owner.userId, f.terms(walletId, "fulltime", "Fulltime")),
+    { code: "WALLET_ASSIGNED" },
   );
+  assert.equal(await agentCount(f, "fulltime"), 0);
+});
+
+test("a wallet without approved policies is POLICIES_MISSING and writes nothing", async (t) => {
+  const f = await setup(t);
+  const owner = await f.person("owner_one");
+  const unapproved = await f.wallet(owner.userId, null);
+  const partial = await f.wallet(owner.userId, ["p1", "p2"]);
+
+  for (const walletId of [unapproved, partial]) {
+    await assert.rejects(f.directory.createDraft(owner.access, owner.userId, f.terms(walletId)), {
+      code: "POLICIES_MISSING",
+    });
+  }
   assert.equal(await agentCount(f, "halftime"), 0);
 });
 
-test("a taken handle is HANDLE_TAKEN and writes nothing", async (t) => {
+test("another person's wallet, or none, is WALLET_NOT_FOUND", async (t) => {
+  const f = await setup(t);
+  const owner = await f.person("owner_one");
+  const other = await f.person("owner_two");
+  const theirs = await f.wallet(other.userId);
+
+  for (const walletId of [theirs, "wallet-missing"]) {
+    await assert.rejects(f.directory.createDraft(owner.access, owner.userId, f.terms(walletId)), {
+      code: "WALLET_NOT_FOUND",
+    });
+  }
+  assert.equal(await agentCount(f, "halftime"), 0);
+});
+
+test("the person's master wallet is WALLET_NOT_FOUND: only kind='agent' wallets", async (t) => {
+  const f = await setup(t);
+  const owner = await f.person("owner_one");
+  const master = await f.wallet(owner.userId, ["p1", "p2", "p3"], "master");
+
+  await assert.rejects(f.directory.createDraft(owner.access, owner.userId, f.terms(master)), {
+    code: "WALLET_NOT_FOUND",
+  });
+  assert.equal(await agentCount(f, "halftime"), 0);
+});
+
+test("a taken handle is HANDLE_TAKEN and leaves the wallet unlinked", async (t) => {
   const f = await setup(t);
   const owner = await f.person("owner_one");
   await f.person("halftime");
-  const id = await f.completed(owner);
-  await assert.rejects(
-    f.directory.createDraft(
-      owner.access,
-      owner.userId,
-      { name: "Halftime", handle: "halftime", previewRunId: id, fingerprint: f.fingerprint },
-      f.clock,
-    ),
-    { code: "HANDLE_TAKEN" },
-  );
-  const preview = await f.store.pool.query(
-    "SELECT adopted_at FROM pickler.preview_runs WHERE id=$1",
-    [id],
-  );
-  assert.equal(preview.rows[0].adopted_at, null);
+  const walletId = await f.wallet(owner.userId);
+
+  await assert.rejects(f.directory.createDraft(owner.access, owner.userId, f.terms(walletId)), {
+    code: "HANDLE_TAKEN",
+  });
+  const link = await f.store.pool.query("SELECT 1 FROM wallets.agent_wallets WHERE wallet_id=$1", [
+    walletId,
+  ]);
+  assert.equal(link.rows.length, 0);
 });
 
-test("expired, adopted, unfinished or someone else's is PREVIEW_UNUSABLE", async (t) => {
+test("the wallet is checked before admit: a refused wallet never reaches the lock", async (t) => {
   const f = await setup(t);
   const owner = await f.person("owner_one");
-  const other = await f.person("other_one");
-  const draft = (id: string, handle: string, now = f.clock, who = owner) =>
-    f.directory.createDraft(
-      who.access,
-      who.userId,
-      { name: "Agent", handle, previewRunId: id, fingerprint: f.fingerprint },
-      now,
+  const walletId = await f.wallet(owner.userId, null);
+  let admitted = false;
+
+  await assert.rejects(
+    f.directory.createDraft(owner.access, owner.userId, f.terms(walletId), async () => {
+      admitted = true;
+    }),
+    { code: "POLICIES_MISSING" },
+  );
+  assert.equal(admitted, false);
+});
+
+test("a retry returns the same productId without calling admit", async (t) => {
+  const f = await setup(t);
+  const owner = await f.person("owner_one");
+  const walletId = await f.wallet(owner.userId);
+  const created = await f.directory.createDraft(owner.access, owner.userId, f.terms(walletId));
+  let admitted = false;
+
+  const replayed = await f.directory.createDraft(
+    owner.access,
+    owner.userId,
+    f.terms(walletId),
+    async () => {
+      admitted = true;
+    },
+  );
+
+  assert.deepEqual(replayed, created);
+  assert.equal(admitted, false);
+  assert.equal(await agentCount(f, "halftime"), 1);
+});
+
+test("a retry under another name is WALLET_ASSIGNED, and the draft keeps its name", async (t) => {
+  const f = await setup(t);
+  const owner = await f.person("owner_one");
+  const walletId = await f.wallet(owner.userId);
+  const created = await f.directory.createDraft(owner.access, owner.userId, f.terms(walletId));
+
+  await assert.rejects(
+    f.directory.createDraft(owner.access, owner.userId, f.terms(walletId, "halftime", "Fulltime")),
+    { code: "WALLET_ASSIGNED" },
+  );
+  const agent = await f.store.pool.query("SELECT name FROM agents.agents WHERE id=$1", [
+    created.productId,
+  ]);
+  assert.equal(agent.rows[0].name, "Halftime");
+});
+
+test("a retry with another voice, brief, caps or sites is WALLET_ASSIGNED, not the old draft", async (t) => {
+  const f = await setup(t);
+  const owner = await f.person("owner_one");
+  const walletId = await f.wallet(owner.userId);
+  await f.directory.createDraft(owner.access, owner.userId, f.terms(walletId));
+  const changed = (edit: Partial<Parameters<typeof prepareDraft>[0]>) =>
+    prepareDraft({
+      name: "Halftime",
+      handle: "halftime",
+      voice: "analyst",
+      avatar: { accent: "cyan", pattern: 3 },
+      sources: { web: null },
+      brief: DEFAULT_BRIEF,
+      caps: STARTER_CAPS,
+      walletId,
+      ...edit,
+    });
+
+  for (const edit of [
+    { voice: "hype" as const },
+    { brief: { ...DEFAULT_BRIEF, thesis: "Another thesis." } },
+    { caps: { ...STARTER_CAPS, perTradeAusd: 6 } },
+    { sources: { web: { mode: "prefer" as const, sites: ["coindesk.com"] } } },
+  ]) {
+    const draft = changed(edit);
+    await assert.rejects(
+      f.directory.createDraft(owner.access, owner.userId, {
+        ...f.terms(walletId),
+        config: draft.config,
+        profile: draft.profile,
+      }),
+      { code: "WALLET_ASSIGNED" },
+      JSON.stringify(edit),
     );
-
-  const expired = await f.completed(owner);
-  await assert.rejects(draft(expired, "agent_one", f.clock + 86_400_000), {
-    code: "PREVIEW_UNUSABLE",
-  });
-
-  const adopted = await f.completed(owner);
-  await draft(adopted, "agent_two");
-  await assert.rejects(draft(adopted, "agent_three"), { code: "PREVIEW_UNUSABLE" });
-
-  const failed = await f.completed(owner, "failed");
-  await assert.rejects(draft(failed, "agent_four"), { code: "PREVIEW_UNUSABLE" });
-
-  const theirs = await f.completed(owner);
-  await assert.rejects(draft(theirs, "agent_five", f.clock, other), {
-    code: "PREVIEW_UNUSABLE",
-  });
-
-  await assert.rejects(draft(randomUUID(), "agent_six"), { code: "PREVIEW_UNUSABLE" });
+  }
+  assert.equal(await agentCount(f, "halftime"), 1);
 });
 
-test("a failure mid-way leaves no agent, and the run is not adopted", async (t) => {
+test("an admit that refuses writes nothing and leaves the wallet unlinked", async (t) => {
   const f = await setup(t);
   const owner = await f.person("owner_one");
-  const id = await f.completed(owner);
-  // Copying the trace is the last write before adoption; make it fail.
-  await f.store.pool.query(`CREATE FUNCTION pickler.refuse_events() RETURNS trigger
-    LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'refused for the test'; END $$`);
-  await f.store.pool.query(`CREATE TRIGGER refuse_events BEFORE INSERT ON pickler.events
-    FOR EACH ROW EXECUTE FUNCTION pickler.refuse_events()`);
+  const walletId = await f.wallet(owner.userId);
 
   await assert.rejects(
-    f.directory.createDraft(
-      owner.access,
-      owner.userId,
-      { name: "Halftime", handle: "halftime", previewRunId: id, fingerprint: f.fingerprint },
-      f.clock,
-    ),
+    f.directory.createDraft(owner.access, owner.userId, f.terms(walletId), async () => {
+      throw new PilotError("WALLET_UNDERFUNDED", "Fund its wallet first");
+    }),
+    { code: "WALLET_UNDERFUNDED" },
   );
   assert.equal(await agentCount(f, "halftime"), 0);
-  const runtime = await f.store.pool.query("SELECT 1 FROM pickler.runs WHERE id=$1", [id]);
-  assert.equal(runtime.rows.length, 0);
-  const handles = await f.store.pool.query(
-    "SELECT 1 FROM identity.handles WHERE handle='halftime'",
-  );
-  assert.equal(handles.rows.length, 0);
-  const preview = await f.store.pool.query(
-    "SELECT adopted_at FROM pickler.preview_runs WHERE id=$1",
-    [id],
-  );
-  assert.equal(preview.rows[0].adopted_at, null);
+  const link = await f.store.pool.query("SELECT 1 FROM wallets.agent_wallets WHERE wallet_id=$1", [
+    walletId,
+  ]);
+  assert.equal(link.rows.length, 0);
 });
 
 test("two concurrent drafts serialize on the create lock: the draft limit admits only one", async (t) => {
@@ -233,13 +298,7 @@ test("two concurrent drafts serialize on the create lock: the draft limit admits
     f.directory.createDraft(
       owner.access,
       owner.userId,
-      {
-        name: "Agent",
-        handle,
-        previewRunId: await f.completed(owner),
-        fingerprint: f.fingerprint,
-      },
-      f.clock,
+      f.terms(await f.wallet(owner.userId), handle, "Agent"),
       admit,
     );
   await draft("agent_one");
@@ -251,186 +310,4 @@ test("two concurrent drafts serialize on the create lock: the draft limit admits
   const refused = results.find((result) => result.status === "rejected");
   assert.equal((refused as PromiseRejectedResult).reason.code, "DRAFT_LIMIT");
   assert.equal((await f.directory.list(owner.access)).length, MAX_DRAFTS_PER_WORKSPACE);
-});
-
-test("while a create holds the workspace lock, a paper run for that workspace still starts", async (t) => {
-  const f = await setup(t);
-  const owner = await f.person("owner_one");
-  const id = await f.completed(owner);
-  let entered!: () => void;
-  const inside = new Promise<void>((resolve) => (entered = resolve));
-  let release!: () => void;
-  const held = new Promise<void>((resolve) => (release = resolve));
-  // The route's lock reads balances over the network; this one waits until the test lets it go.
-  const creating = f.directory.createDraft(
-    owner.access,
-    owner.userId,
-    { name: "Halftime", handle: "halftime", previewRunId: id, fingerprint: f.fingerprint },
-    f.clock,
-    async () => {
-      entered();
-      await held;
-    },
-  );
-  await inside;
-
-  const insert = f.previews.create(
-    {
-      userId: owner.userId,
-      workspaceId: owner.access.workspaceId,
-      tenantId: owner.access.tenantId,
-      config: f.config,
-      fingerprint: f.fingerprint,
-    },
-    f.clock,
-  );
-  const outcome = await Promise.race([
-    insert.then(() => "inserted"),
-    new Promise((resolve) => setTimeout(() => resolve("blocked"), 2_000)),
-  ]);
-  release();
-  await creating;
-  await insert;
-
-  assert.equal(outcome, "inserted");
-});
-
-test("a retried create whose first attempt committed answers the same draft, past the lock", async (t) => {
-  const f = await setup(t);
-  const owner = await f.person("owner_one");
-  const id = await f.completed(owner);
-  const terms = {
-    name: "Halftime",
-    handle: "halftime",
-    previewRunId: id,
-    fingerprint: f.fingerprint,
-  };
-  const created = await f.directory.createDraft(owner.access, owner.userId, terms, f.clock);
-  // The draft now exists, so the route's lock could refuse a new one; a replay never meets it.
-  const admit = async () => {
-    throw new PilotError("DRAFT_LIMIT", "At most 3 drafts at a time");
-  };
-
-  // Past the preview's 24 hours: a replay reads what was created, not whether it could be again.
-  const replayed = await f.directory.createDraft(
-    owner.access,
-    owner.userId,
-    terms,
-    f.clock + 86_400_000,
-    admit,
-  );
-
-  assert.deepEqual(replayed, created);
-  assert.equal(await agentCount(f, "halftime"), 1);
-});
-
-test("a retry with a different handle or brief is not a replay and is refused", async (t) => {
-  const f = await setup(t);
-  const owner = await f.person("owner_one");
-  const id = await f.completed(owner);
-  const terms = {
-    name: "Halftime",
-    handle: "halftime",
-    previewRunId: id,
-    fingerprint: f.fingerprint,
-  };
-  await f.directory.createDraft(owner.access, owner.userId, terms, f.clock);
-
-  await assert.rejects(
-    f.directory.createDraft(owner.access, owner.userId, { ...terms, handle: "fulltime" }, f.clock),
-    { code: "PREVIEW_UNUSABLE" },
-  );
-  await assert.rejects(
-    f.directory.createDraft(
-      owner.access,
-      owner.userId,
-      { ...terms, fingerprint: "other" },
-      f.clock,
-    ),
-    { code: "PREVIEW_UNUSABLE" },
-  );
-  assert.equal(await agentCount(f, "fulltime"), 0);
-  assert.equal((await f.directory.list(owner.access)).length, 1);
-});
-
-test("someone else's adopted preview is PREVIEW_UNUSABLE, even with the same terms", async (t) => {
-  const f = await setup(t);
-  const owner = await f.person("owner_one");
-  const other = await f.person("other_one");
-  const id = await f.completed(owner);
-  const terms = {
-    name: "Halftime",
-    handle: "halftime",
-    previewRunId: id,
-    fingerprint: f.fingerprint,
-  };
-  await f.directory.createDraft(owner.access, owner.userId, terms, f.clock);
-
-  await assert.rejects(f.directory.createDraft(other.access, other.userId, terms, f.clock), {
-    code: "PREVIEW_UNUSABLE",
-  });
-  assert.equal((await f.directory.list(other.access)).length, 0);
-});
-
-test("the run is checked before the lock: a stale brief is RUN_STALE even when the lock is closed", async (t) => {
-  const f = await setup(t);
-  const owner = await f.person("owner_one");
-  const id = await f.completed(owner);
-  const admit = async () => {
-    throw new PilotError("UNFUNDED_AGENT", "Fund your other agent first");
-  };
-
-  await assert.rejects(
-    f.directory.createDraft(
-      owner.access,
-      owner.userId,
-      { name: "Halftime", handle: "halftime", previewRunId: id, fingerprint: "other" },
-      f.clock,
-      admit,
-    ),
-    { code: "RUN_STALE" },
-  );
-});
-
-test("a retry under a different name is different terms: CONFLICT, and the draft keeps its name", async (t) => {
-  const f = await setup(t);
-  const owner = await f.person("owner_one");
-  const id = await f.completed(owner);
-  const terms = {
-    name: "Halftime",
-    handle: "halftime",
-    previewRunId: id,
-    fingerprint: f.fingerprint,
-  };
-  const created = await f.directory.createDraft(owner.access, owner.userId, terms, f.clock);
-
-  await assert.rejects(
-    f.directory.createDraft(owner.access, owner.userId, { ...terms, name: "Fulltime" }, f.clock),
-    { code: "CONFLICT" },
-  );
-
-  const agent = await f.store.pool.query("SELECT name FROM agents.agents WHERE id=$1", [
-    created.productId,
-  ]);
-  assert.equal(agent.rows[0].name, "Halftime");
-});
-
-test("a retry after recovery deleted the adopted preview is PREVIEW_UNUSABLE", async (t) => {
-  const f = await setup(t);
-  const owner = await f.person("owner_one");
-  const id = await f.completed(owner);
-  const terms = {
-    name: "Halftime",
-    handle: "halftime",
-    previewRunId: id,
-    fingerprint: f.fingerprint,
-  };
-  await f.directory.createDraft(owner.access, owner.userId, terms, f.clock);
-  const later = f.clock + 30 * 24 * 3_600_000;
-  await new PostgresPreviewStore(f.store.pool, () => later).recover(later);
-
-  await assert.rejects(f.directory.createDraft(owner.access, owner.userId, terms, later), {
-    code: "PREVIEW_UNUSABLE",
-  });
-  assert.equal(await agentCount(f, "halftime"), 1);
 });

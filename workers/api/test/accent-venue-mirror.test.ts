@@ -3,33 +3,22 @@ import assert from "node:assert/strict";
 import {
   ACCENTS as CORE_ACCENTS,
   VENUES as CORE_VENUES,
-  STYLES as CORE_STYLES,
-  BEATS as CORE_BEATS,
-  SOON_BEATS as CORE_SOON_BEATS,
-  SOON_VENUES as CORE_SOON_VENUES,
-  VENUES_ON_MAP as CORE_VENUES_ON_MAP,
   SPORTSBOOKS as CORE_SPORTSBOOKS,
-  SUGGESTED_SKILLS as CORE_SUGGESTED_SKILLS,
-  policyForStyle,
   BRIEF_LIMITS as CORE_BRIEF_LIMITS,
   LEVERAGE_BOUNDS as CORE_LEVERAGE_BOUNDS,
   normalizeBrief,
   briefToConfig,
+  VOICES as CORE_VOICES,
+  DEFAULT_BRIEF as CORE_DEFAULT_BRIEF,
+  STARTER_CAPS as CORE_STARTER_CAPS,
+  VOICE_KEYS as CORE_VOICE_KEYS,
+  prepareDraft,
 } from "@pickler/core";
 import { PAPER_BUDGET_AUSD as TRADING_PAPER_BUDGET_AUSD } from "@pickler/trading/polymarket";
 import {
   ACCENTS,
   VENUES,
-  STYLES,
-  BEAT_NAMES,
-  BEAT_SUBS,
-  SOON_BEATS,
-  SOON_VENUES,
-  VENUES_ON_MAP,
   SPORTSBOOKS,
-  SPORT_SUB_IDS,
-  SUGGESTED_SKILLS,
-  STYLE_POLICIES,
   sourcesSchema,
   BRIEF_LIMITS,
   LEVERAGE_BOUNDS,
@@ -38,6 +27,7 @@ import {
   previewRunRequestSchema,
   draftCreateSchema,
   PAPER_BUDGET_AUSD,
+  VOICE_KEYS,
 } from "@pickler/api-schema";
 
 /* api-schema may not import core, so it carries its own copy of each list. This is the one place
@@ -45,23 +35,6 @@ import {
 test("the accent and venue lists in api-schema are core's lists", () => {
   assert.deepEqual(ACCENTS, CORE_ACCENTS);
   assert.deepEqual(VENUES, CORE_VENUES);
-});
-test("the decision style list in api-schema is core's list", () => {
-  assert.deepEqual(STYLES, CORE_STYLES);
-});
-test("the draft's beats, subcategory labels and soon lists in api-schema are core's", () => {
-  const coreSubs = Object.fromEntries(
-    CORE_BEATS.map((beat) => [beat.name, beat.subs.map((sub) => sub.label)]),
-  );
-
-  assert.deepEqual(
-    BEAT_NAMES,
-    CORE_BEATS.map((beat) => beat.name),
-  );
-  assert.deepEqual(BEAT_SUBS, coreSubs);
-  assert.deepEqual(SOON_BEATS, CORE_SOON_BEATS);
-  assert.deepEqual(SOON_VENUES, CORE_SOON_VENUES);
-  assert.deepEqual(VENUES_ON_MAP, CORE_VENUES_ON_MAP);
 });
 test("the sportsbooks in api-schema are core's, and the schema accepts exactly their keys", () => {
   const anywhere = { mode: "anywhere", sites: [] };
@@ -72,23 +45,6 @@ test("the sportsbooks in api-schema are core's, and the schema accepts exactly t
   }
   assert.throws(() => sourcesSchema.parse({ web: anywhere, books: ["DraftKings"] }));
   assert.throws(() => sourcesSchema.parse({ web: anywhere, books: ["bovada"] }));
-});
-test("the sport subcategory ids in api-schema are core's Sports beat's ids", () => {
-  const sports = CORE_BEATS.find((beat) => beat.name === "Sports");
-  assert.ok(sports);
-  const coreIds = Object.fromEntries(
-    sports.subs.filter((sub) => sub.id !== null).map((sub) => [sub.label, sub.id]),
-  );
-
-  assert.deepEqual(SPORT_SUB_IDS, coreIds);
-});
-test("the suggested skills in api-schema are core's", () => {
-  assert.deepEqual(SUGGESTED_SKILLS, CORE_SUGGESTED_SKILLS);
-});
-test("the style policies in api-schema match core's policyForStyle", () => {
-  for (const style of CORE_STYLES) {
-    assert.deepEqual(STYLE_POLICIES[style], policyForStyle(style));
-  }
 });
 test("the brief's limits and the leverage bounds in api-schema are core's", () => {
   assert.deepEqual(BRIEF_LIMITS, CORE_BRIEF_LIMITS);
@@ -113,24 +69,60 @@ test("a brief's config is a valid wire config", () => {
   });
   assert.doesNotThrow(() => agentConfigSchema.parse(config));
 });
-test("the preview request leaves lengths to core, and the draft request adds the name", () => {
+test("the preview request leaves lengths to core", () => {
   const request = {
     brief: { thesis: "x".repeat(700), reads: [], entersWhen: [], exitsWhen: [], never: [] },
     spend: { perCallAusd: 5, perDayAusd: 20 },
     maxLeverage: 2,
   };
   assert.doesNotThrow(() => previewRunRequestSchema.parse(request));
-  assert.doesNotThrow(() =>
-    draftCreateSchema.parse({
-      ...request,
+});
+test("the draft request's voices are core's, and core's starting draft is a valid request", () => {
+  assert.deepEqual(
+    draftCreateSchema.shape.voice.options,
+    CORE_VOICES.map((voice) => voice.key),
+  );
+  assert.deepEqual(draftCreateSchema.shape.avatar.shape.accent.options, CORE_ACCENTS);
+  const request = {
+    name: "Halftime",
+    handle: "halftime",
+    voice: "analyst",
+    avatar: { accent: "lime", pattern: 0 },
+    sources: { web: null },
+    brief: CORE_DEFAULT_BRIEF,
+    caps: CORE_STARTER_CAPS,
+    walletId: "wal-agent",
+  };
+  assert.doesNotThrow(() => draftCreateSchema.parse(request));
+  assert.throws(() => draftCreateSchema.parse({ ...request, handle: "Half Time" }));
+  assert.throws(() =>
+    draftCreateSchema.parse({ ...request, previewRunId: "0000000a-0000-4000-8000-000000000000" }),
+  );
+});
+
+test("api-schema's voice keys are core's", () => {
+  assert.deepEqual([...VOICE_KEYS], [...CORE_VOICE_KEYS]);
+});
+
+/* A created draft is read back through agentConfigSchema on every GET /agents and in the create
+   answer itself. A config field core writes that the strict schema does not know (voice, once)
+   breaks the whole studio after the first create, so the real prepareDraft output is parsed here,
+   web on and off. */
+test("every config prepareDraft writes is a config the agent responses accept", () => {
+  for (const web of [null, { mode: "prefer" as const, sites: ["coindesk.com"] }]) {
+    const { config } = prepareDraft({
       name: "Halftime",
       handle: "halftime",
-      previewRunId: "0000000a-0000-4000-8000-000000000000",
-    }),
-  );
-  assert.throws(() =>
-    draftCreateSchema.parse({ ...request, name: "H", handle: "Half Time", previewRunId: "x" }),
-  );
+      voice: "analyst",
+      avatar: { accent: "lime", pattern: 0 },
+      sources: { web },
+      brief: CORE_DEFAULT_BRIEF,
+      caps: CORE_STARTER_CAPS,
+      walletId: "wal-agent",
+    });
+    const parsed = agentConfigSchema.safeParse(config);
+    assert.equal(parsed.success, true, JSON.stringify(parsed.error?.issues));
+  }
 });
 
 test("the paper budget in api-schema is trading's", () => {

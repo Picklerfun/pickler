@@ -155,10 +155,8 @@ export interface AgentWalletActivityBuilders {
   createDelegatedUser(
     input: { subOrganizationId: string; publicKey: string } & Rebuild,
   ): UnsignedActivity;
-  /** One wallet named after the agent's handle, with the single Monad account. */
-  createAgentWallet(
-    input: { subOrganizationId: string; handle: string } & Rebuild,
-  ): UnsignedActivity;
+  /** One wallet named `name` ("Agent wallet N"), with the single Monad account. */
+  createAgentWallet(input: { subOrganizationId: string; name: string } & Rebuild): UnsignedActivity;
   createPolicies(
     input: { subOrganizationId: string; policies: readonly TurnkeyPolicy[] } & Rebuild,
   ): UnsignedActivity;
@@ -174,7 +172,7 @@ export interface AgentWallet {
 }
 
 /** An unlinked agent wallet as the store finds it, with the policy ids its owner approved. */
-export interface OrphanAgentWallet extends AgentWallet {
+export interface UnlinkedAgentWallet extends AgentWallet {
   /** `wallets.wallets.approved_policy_ids`: null until `confirmPolicies` records them. */
   approvedPolicyIds: string[] | null;
 }
@@ -185,6 +183,17 @@ export interface OrphanAgentWallet extends AgentWallet {
  */
 export interface ExistingAgentWallet extends AgentWallet {
   policiesApproved: boolean;
+}
+
+/** One of a person's agent wallets, with the agent it is linked to and that agent's caps. */
+export interface AgentWalletSummary {
+  walletId: string;
+  address: string;
+  agentId: string | null;
+  agentName: string | null;
+  policiesApproved: boolean;
+  /** Null when the wallet is unlinked or its agent's config sets no spend limits. */
+  caps: { perTradeAusd: number; perDayAusd: number; maxLeverage: number } | null;
 }
 
 export interface AgentWalletRepository {
@@ -210,13 +219,33 @@ export interface AgentWalletRepository {
     path: string;
   }): Promise<void>;
   /**
-   * An agent wallet of this person's with this name that no agent is linked to: a creation that
-   * failed between the wallet and the link. Retrying finds it instead of minting a second one,
-   * and reads whether its rules were approved before the attempt stopped.
+   * This person's newest agent wallet that no agent is linked to, whatever its name: a creation
+   * that stopped between the wallet and the link. Retrying finds it instead of minting a second
+   * one, and reads whether its rules were approved before the attempt stopped.
    */
-  findOrphanWallet(userId: string, name: string): Promise<OrphanAgentWallet | null>;
-  /** This person's agent wallet with this id, linked or not; null for anyone else's. */
-  findOwnedAgentWallet(userId: string, walletId: string): Promise<AgentWallet | null>;
+  findUnlinkedWallet(userId: string): Promise<UnlinkedAgentWallet | null>;
+  /** How many agent wallets this person has, linked or not: the next one is "Agent wallet N+1". */
+  countAgentWallets(userId: string): Promise<number>;
+  /** Every agent wallet of this person's, oldest first, with the agent it is linked to. */
+  listAgentWallets(userId: string): Promise<AgentWalletSummary[]>;
+  saveTransfer(input: {
+    userId: string;
+    fromWalletId: string;
+    toWalletId: string;
+    token: "ausd" | "mon";
+    amount: bigint;
+    txHash: string;
+  }): Promise<void>;
+  /** Whether a transfer with this transaction hash (any case) is recorded. */
+  transferRecorded(txHash: string): Promise<boolean>;
+  /**
+   * This person's agent wallet with this id, linked or not (`linked` says which), at its first
+   * account's address; null for anyone else's.
+   */
+  findOwnedAgentWallet(
+    userId: string,
+    walletId: string,
+  ): Promise<(AgentWallet & { linked: boolean }) | null>;
   /**
    * Whether any wallet of this person's is linked to an agent. False means the ceremony in
    * progress is their first agent's, which is when the delegated user's self-delete policy is
@@ -253,6 +282,18 @@ export interface TransferInspection {
   amount: bigint;
 }
 
+/** What an unsigned plain MON transfer does: no calldata, `value` wei to `to`. */
+export interface NativeTransferInspection {
+  chainId: number;
+  nonce: number;
+  /** The recipient: a plain transfer calls nothing. */
+  to: string;
+  value: bigint;
+  gas: bigint;
+  maxFeePerGas: bigint;
+  maxPriorityFeePerGas: bigint;
+}
+
 /**
  * The chain side of a deposit: AUSD on the configured network. Core decides what may be sent and
  * to whom; this port builds, reads back and broadcasts the transaction and knows nothing of the
@@ -268,6 +309,11 @@ export interface DepositChain {
    * failed gas estimate is `DepositNotSendableError`, never a guessed limit.
    */
   prepareTransfer(input: { from: string; to: string; amount: bigint }): Promise<string>;
+  /**
+   * The unsigned EIP-1559 plain transfer of `amount` wei from `from` to `to`, built with the same
+   * nonce, fee and estimate rules as `prepareTransfer`.
+   */
+  prepareNativeTransfer(input: { from: string; to: string; amount: bigint }): Promise<string>;
   /** The address's pending nonce, read exactly as `prepareTransfer` reads it. */
   pendingNonce(address: string): Promise<number>;
   /** The chain's fees now, quoted exactly as `prepareTransfer` quotes them. */
@@ -277,6 +323,11 @@ export interface DepositChain {
    * `transfer`, and nothing more.
    */
   inspectTransfer(unsignedTransaction: string): TransferInspection | null;
+  /**
+   * Null unless the transaction is a canonically encoded, unsigned EIP-1559 transfer with empty
+   * calldata and no access list.
+   */
+  inspectNativeTransfer(unsignedTransaction: string): NativeTransferInspection | null;
   /**
    * Refuses (`SignedTransactionMismatchError`) unless the signed transaction carries exactly the
    * unsigned one's fields and its recovered signer is `signer`.
@@ -295,4 +346,9 @@ export interface DepositChain {
   broadcast(signedTransaction: string): Promise<string>;
   /** Drops a cached balance, so the next read sees the deposit. */
   forgetBalance(address: string): void;
+}
+
+/** Native and AUSD balances in base units; null where the chain could not be read. */
+export interface WalletBalanceReader {
+  read(address: string): Promise<{ monWei: bigint | null; ausdMicro: bigint | null }>;
 }

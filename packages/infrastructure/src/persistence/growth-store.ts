@@ -97,6 +97,17 @@ export class PostgresWaitlist implements WaitlistRepository {
       applyToken: row.apply_token,
     };
   }
+
+  /** How many people are in line: the landing's "N CREATORS IN LINE". */
+  async count(): Promise<number> {
+    const rows = await readRows<{ count: unknown }>(
+      this.pool,
+      "growth.waitlist.count",
+      "SELECT count(*) AS count FROM growth.waitlist",
+      [],
+    );
+    return parse(z.coerce.number().int().nonnegative(), rows[0]?.count, "waitlist_count");
+  }
 }
 
 export class PostgresApplicants implements ApplicantRepository {

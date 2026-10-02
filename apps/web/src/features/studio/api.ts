@@ -8,32 +8,42 @@ import type {
   eventResponseSchema,
   marketCatalogSchema,
   paperOrderSchema,
-  createAgentSchema,
   studioAgentSchema,
-  AgentDraftDto,
+  ActivityDto,
   DraftCreateDto,
-  PreviewRunDto,
-  PreviewRunRequestDto,
+  IdentityUpdateDto,
+  LedgerDto,
+  PublishDto,
+  SetupUpdateDto,
+  SignedActivityDto,
+  TransferRequestDto,
+  WalletsDto,
+  XChallengeDto,
+  XChallengeRequestDto,
+  XStateDto,
+  XVerifyDto,
 } from "@pickler/api-schema";
 import { knownMessage, messageFor } from "./lib/messages";
 export type Config = ReturnType<typeof agentConfigSchema.parse>;
-export { DEFAULT_PROFILE, type Profile } from "./profile";
 /**
  * The studio agent DTO: the runtime record plus its product identity, its wallet and balance, both
  * locks and its spend limits. `GET /agents` and `GET /agents/:id` answer it.
  */
 export type Agent = ReturnType<typeof studioAgentSchema.parse>;
-/** The bare runtime record the writes answer (`POST /agents`, `PUT /config|limits|interval`). */
+/** The bare runtime record the writes answer (`PUT /config|limits|interval`). */
 type AgentRecord = ReturnType<typeof agentResponseSchema.parse>;
 export type Run = ReturnType<typeof runResponseSchema.parse>;
 export type RunEvent = ReturnType<typeof eventResponseSchema.parse>;
 export type Catalog = ReturnType<typeof marketCatalogSchema.parse>;
 export type Options = ReturnType<typeof studioOptionsSchema.parse>;
 export type PaperOrder = ReturnType<typeof paperOrderSchema.parse>;
-type CreateAgentInput = ReturnType<typeof createAgentSchema.parse>;
-export type { AgentDraftDto };
-/** A paper run of a brief, as its owner reads it. */
-export type PreviewRun = PreviewRunDto["run"];
+export type { SignedActivityDto };
+export type StudioWallets = WalletsDto;
+export type ActivityEvent = ActivityDto["events"][number];
+export type LedgerEntry = LedgerDto["entries"][number];
+export type XState = XStateDto;
+export type XChallenge = XChallengeDto;
+export type XVerify = XVerifyDto;
 
 /**
  * The studio transport answers a failure with `{ error: CODE }`. The code is what the Studio
@@ -88,59 +98,16 @@ export async function studioApi<T>(path: string, init: RequestInit = {}): Promis
   return body as T;
 }
 
-// ─── Drafting, creating, running ────────────────────────────────────────────────────────────
+// ─── Creating, running ─────────────────────────────────────────────────────────────────────────
 
-/** `POST /v1/studio/agents/draft`: one line becomes a proposed draft, or the model is unavailable. */
-export const draftAgent = (line: string) =>
-  studioApi<{ draft: AgentDraftDto; unsupported: string[] }>("/agents/draft", {
-    method: "POST",
-    body: JSON.stringify({ line }),
-  });
-
-/** `POST /preview-runs`: "Run it on paper". 400 INVALID_BRIEF names the section; 429 has `retryAt`. */
-export const startPreviewRun = (body: PreviewRunRequestDto) =>
-  studioApi<{ id: string }>("/preview-runs", { method: "POST", body: JSON.stringify(body) });
-
-/** `GET /preview-runs/:id`: the run and its trace, in a run's event shape. */
-export const readPreviewRun = (id: string, signal?: AbortSignal) =>
-  studioApi<PreviewRunDto>(`/preview-runs/${encodeURIComponent(id)}`, signal ? { signal } : {});
-
-/** `POST /drafts`: "Create {Name}", adopting the run. 409 RUN_STALE, HANDLE_TAKEN, PREVIEW_UNUSABLE. */
+/**
+ * `POST /drafts`: "Create {Name}" on a funded, policy-signed wallet. 409 WALLET_UNDERFUNDED,
+ * WALLET_ASSIGNED, POLICIES_MISSING, HANDLE_TAKEN; 404 WALLET_NOT_FOUND; 503 WALLETS_UNAVAILABLE.
+ */
 export const createDraft = (body: DraftCreateDto) =>
   studioApi<{ productId: string; agent: AgentRecord }>("/drafts", {
     method: "POST",
     body: JSON.stringify(body),
-  });
-
-/**
- * `POST /agents`. Its CONFLICT and NOT_FOUND each cover several fixes — approve the wallet's rules,
- * a wallet that already belongs to an agent, a wallet that is not found, a taken handle — so the
- * server's message is shown for them instead of the studio's generic one.
- */
-export const createAgent = (body: CreateAgentInput, key: string) =>
-  studioApi<AgentRecord>("/agents", {
-    method: "POST",
-    headers: { "Idempotency-Key": key },
-    body: JSON.stringify(body),
-  }).catch((caught: unknown) => {
-    if (
-      caught instanceof StudioError &&
-      (caught.code === "CONFLICT" || caught.code === "NOT_FOUND") &&
-      caught.serverMessage
-    ) {
-      throw new StudioError(caught.code, caught.serverMessage, caught.serverMessage);
-    }
-    throw caught;
-  });
-
-/** `GET /agents`: every agent of the person's, each with its wallet, balance and locks. */
-export const studioAgents = () => studioApi<{ agents: Agent[] }>("/agents");
-
-export const startRun = (agentId: string, key: string) =>
-  studioApi<{ runId: string; status: string }>(`/agents/${agentId}/runs`, {
-    method: "POST",
-    headers: { "Idempotency-Key": key },
-    body: JSON.stringify({}),
   });
 
 /** `GET /agents/:id`: one agent with its wallet, balance and locks, read fresh. */
@@ -158,12 +125,6 @@ export const run = (runId: string) => studioApi<Run>(`/runs/${runId}`);
 /** `GET /runs/:id/paper-order`: the order a TRADE was tracked with, or 404 NOT_FOUND. */
 export const readPaperOrder = (runId: string) =>
   studioApi<PaperOrder>(`/runs/${runId}/paper-order`);
-
-export const paperOrder = (runId: string, key: string) =>
-  studioApi<PaperOrder>(`/runs/${runId}/paper-order`, {
-    method: "POST",
-    headers: { "Idempotency-Key": key },
-  });
 
 /**
  * `PUT /agents/:id/interval { hours: 3 | 6 | 12 | 24 }`: only `config.intervalHours`, keeping the
@@ -186,6 +147,61 @@ export const setSchedule = (agentId: string, enabled: boolean) =>
     method: "PUT",
     body: JSON.stringify({ enabled }),
   });
+
+// ─── The draft's studio (studio-draft-dashboard-v1 §4) ──────────────────────────────────────────
+
+/**
+ * `PUT /agents/:id/setup`: a draft's brief, sources, caps and voice, at `expectedVersion`. Answers
+ * the studio agent. 400 INVALID_BRIEF (with `field`, `reason`) / INVALID_INPUT; 409 CONFLICT (the
+ * config moved on: reload), NOT_A_DRAFT.
+ */
+export const saveDraftSetup = (agentId: string, body: SetupUpdateDto) =>
+  studioApi<Agent>(`/agents/${agentId}/setup`, { method: "PUT", body: JSON.stringify(body) });
+
+/** `PUT /agents/:id/identity`: name and avatar; the handle is fixed. 400 INVALID_INPUT. */
+export const saveIdentity = (agentId: string, body: IdentityUpdateDto) =>
+  studioApi<Agent>(`/agents/${agentId}/identity`, { method: "PUT", body: JSON.stringify(body) });
+
+/** `GET /agents/:id/activity`: created, its wallet, each transfer; newest first, at most 50. */
+export const agentActivity = (agentId: string, signal?: AbortSignal) =>
+  studioApi<ActivityDto>(`/agents/${agentId}/activity`, signal ? { signal } : {});
+
+/** `GET /agents/:id/x`: the verified account, the live challenge, and whether X is open yet. */
+export const xState = (agentId: string, signal?: AbortSignal) =>
+  studioApi<XState>(`/agents/${agentId}/x`, signal ? { signal } : {});
+
+/**
+ * `POST /agents/:id/x/challenge`: the line to post from `handle` ("@" optional). 400
+ * INVALID_X_HANDLE; 409 X_HANDLE_TAKEN, X_ALREADY_CONNECTED; 503 X_UNAVAILABLE.
+ */
+export const xChallenge = (agentId: string, handle: string) =>
+  studioApi<XChallenge>(`/agents/${agentId}/x/challenge`, {
+    method: "POST",
+    body: JSON.stringify({ handle } satisfies XChallengeRequestDto),
+  });
+
+/**
+ * `POST /agents/:id/x/verify` ("Check again"). 404 CHALLENGE_NOT_FOUND; 409 CHALLENGE_EXPIRED,
+ * X_HANDLE_TAKEN; 429 TOO_MANY_CHECKS (one per 10 s); 503 X_UNAVAILABLE.
+ */
+export const xVerify = (agentId: string) =>
+  studioApi<XVerify>(`/agents/${agentId}/x/verify`, { method: "POST", body: "{}" });
+
+/** `DELETE /agents/:id/x`: while private only; 409 X_ON_PUBLIC_AGENT. */
+export const xDisconnect = (agentId: string) =>
+  studioApi<{ disconnected: true }>(`/agents/${agentId}/x`, { method: "DELETE" });
+
+/**
+ * `POST /agents/:id/publish`: Go Public; idempotent. 409 PUBLISH_BLOCKED with
+ * `details.detail.blockers` (WALLET, FUNDS, KILLED), PUBLISH_CONFLICT (try again); 503
+ * BALANCES_UNAVAILABLE.
+ */
+export const publishAgent = (agentId: string) =>
+  studioApi<PublishDto>(`/agents/${agentId}/publish`, { method: "POST", body: "{}" });
+
+/** `GET /wallets/ledger`: the person's transfers, newest first, at most 100. */
+export const walletLedger = (signal?: AbortSignal) =>
+  studioApi<LedgerDto>("/wallets/ledger", signal ? { signal } : {});
 
 interface DepositPrepared {
   url: string;
@@ -235,7 +251,13 @@ async function envelopeApi<T>(path: string, init: RequestInit = {}): Promise<T> 
   const body = (await response.json().catch(() => null)) as Envelope<T> | null;
   if (!response.ok || !body?.success) {
     const code = body?.error ?? String(response.status);
-    throw new StudioError(code, knownMessage(code) ?? body?.message ?? "Request failed");
+    const serverMessage = typeof body?.message === "string" ? body.message : undefined;
+    throw new StudioError(
+      code,
+      knownMessage(code) ?? serverMessage ?? "Request failed",
+      serverMessage,
+      body ? (body as unknown as Record<string, unknown>) : undefined,
+    );
   }
   return body.data as T;
 }
@@ -245,12 +267,6 @@ interface UnsignedActivityDto {
   body: string;
   timestampMs: string;
   organizationId: string;
-}
-
-export interface SignedActivityDto {
-  url: string;
-  body: string;
-  stamp: { stampHeaderName: string; stampHeaderValue: string };
 }
 
 export const agentState = () =>
@@ -275,13 +291,13 @@ type PrepareWalletResult =
   | UnsignedActivityDto;
 
 /** An unlinked wallet an earlier attempt left comes back as `existing`, with its rules' state. */
-export const prepareWallet = (handle: string) =>
+export const prepareWallet = () =>
   envelopeApi<
     | { existing: { wallet_id: string; address: string; policies_approved: boolean } }
     | UnsignedActivityDto
   >("/v1/signing/agents/wallet/prepare", {
     method: "POST",
-    body: JSON.stringify({ handle }),
+    body: "{}",
   }).then((data): PrepareWalletResult =>
     "existing" in data
       ? {
@@ -294,10 +310,10 @@ export const prepareWallet = (handle: string) =>
       : data,
   );
 
-export const confirmWallet = (handle: string, signed: SignedActivityDto) =>
+export const confirmWallet = (signed: SignedActivityDto) =>
   envelopeApi<{ wallet_id: string; address: string }>("/v1/signing/agents/wallet/confirm", {
     method: "POST",
-    body: JSON.stringify({ handle, signed }),
+    body: JSON.stringify({ signed }),
   }).then((data) => ({ walletId: data.wallet_id, address: data.address }));
 
 export const preparePolicies = (walletId: string) =>
@@ -321,3 +337,31 @@ interface HandleAvailability {
 /** `GET /v1/handles/:handle/availability`: public, and shared with the account handle check. */
 export const handleAvailable = (handle: string) =>
   envelopeApi<HandleAvailability>(`/v1/handles/${encodeURIComponent(handle)}/availability`);
+
+// ─── Wallets and transfers (`/v1/studio/wallets`) ──────────────────────────────────────────
+
+/** `GET /wallets`: the master wallet and the person's agent wallets with their balances. */
+export const studioWallets = () => studioApi<StudioWallets>("/wallets");
+
+/** What a transfer prepare answers: the unsigned activity and the amount in base units. */
+export type TransferPlan = UnsignedActivityDto & { baseUnits: string };
+
+/**
+ * `POST /wallets/transfers/prepare`. 400 INVALID_TRANSFER; 404 WALLET_NOT_FOUND; 409
+ * INSUFFICIENT_FUNDS, INSUFFICIENT_GAS, NOT_SENDABLE; 503 WALLETS_UNAVAILABLE.
+ */
+export const transferPrepare = (body: TransferRequestDto) =>
+  studioApi<TransferPlan>("/wallets/transfers/prepare", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+
+/**
+ * `POST /wallets/transfers/confirm`: the same body and the passkey's stamp. 400 FEE_TOO_HIGH,
+ * NONCE_GAP (prepare again); 409 TRANSFER_ALREADY_RECORDED; 500 SIGNED_TX_MISMATCH (not sent).
+ */
+export const transferConfirm = (body: TransferRequestDto, signed: SignedActivityDto) =>
+  studioApi<{ txHash: string }>("/wallets/transfers/confirm", {
+    method: "POST",
+    body: JSON.stringify({ ...body, signed }),
+  });

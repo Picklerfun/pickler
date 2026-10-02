@@ -672,6 +672,14 @@ test("a draft refused at the limit is told so, not shown a raw request failure",
   assert.equal(messageFor("500", undefined), "Request failed: 500");
 });
 
+test("a field the API refuses is said without naming a screen's own fields", async () => {
+  const { messageFor } = await import("../src/features/studio/lib/messages");
+  assert.equal(
+    messageFor("INVALID_INPUT", "Invalid input"),
+    "Check the fields: a value is missing or out of range.",
+  );
+});
+
 test("balances switched off are said in words", async () => {
   const { messageFor } = await import("../src/features/studio/lib/messages");
   assert.equal(

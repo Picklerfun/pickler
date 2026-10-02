@@ -61,12 +61,11 @@ export interface Env {
   /** Non-deliverable domain for synthetic wallet addresses, e.g. "wallet.pickler.fun". */
   WALLET_EMAIL_DOMAIN?: string;
   /**
-   * The OpenAI-compatible model the research worker uses. The studio drafts an agent from one
-   * line with it; without all three, drafting answers 503 and nothing else changes.
+   * Pickler's X app bearer token (app-only, read access), for Connect X's verification reads. A
+   * secret: it never leaves the API. Absent or empty, Connect X says it is not open yet and its
+   * challenge and verify routes answer 503 X_UNAVAILABLE.
    */
-  MODEL_BASE_URL?: string;
-  MODEL_ID?: string;
-  MODEL_API_KEY?: string;
+  X_BEARER_TOKEN?: string;
 }
 
 export interface Variables {

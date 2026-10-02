@@ -9,6 +9,7 @@ import {
   parseEmailAllowlist,
   PilotError,
   turnkeyRelyingPartyProblem,
+  type WalletBalanceReader,
 } from "@pickler/core";
 import { createPaperPlugin } from "@pickler/agent-runtime/plugins/paper-trading";
 import {
@@ -43,10 +44,11 @@ import {
   buildSiweMessage,
   parseSiweMessage,
   PostgresWalletIdentityStore,
-  createOpenAiCompatibleDrafter,
   PostgresTradingStore,
+  PostgresXStore,
+  createXClient,
+  listTransfers,
 } from "@pickler/infrastructure";
-import { agentDraftSchema } from "@pickler/api-schema";
 import type { Services } from "./app";
 import type { Env } from "./env";
 import { HttpError } from "./http/http-error";
@@ -150,9 +152,51 @@ export function reportUnrecordedDeposit(
 }
 
 /**
+ * The same line for a transfer between the master and an agent wallet: the funds moved and no row
+ * says so. Ids, hash, token and amount (micro-AUSD or wei) only.
+ */
+export function reportUnrecordedTransfer(
+  requestId: string,
+  log: (message: string) => void = console.error,
+) {
+  return (transfer: {
+    userId: string;
+    fromWalletId: string;
+    toWalletId: string;
+    token: "ausd" | "mon";
+    amount: bigint;
+    txHash: string;
+  }) =>
+    log(
+      `[${requestId}] unrecorded transfer ${transfer.txHash} of ${transfer.amount} ${transfer.token} base units from wallet ${transfer.fromWalletId} to wallet ${transfer.toWalletId} for user ${transfer.userId}; it was broadcast, record it out of band`,
+    );
+}
+
+/**
+ * The custody service's balances, from the chain reader: base units, null where a read failed,
+ * nothing cached. AUSD's base units are taken as micro-AUSD, so a token of other precision is
+ * refused rather than misread.
+ */
+export function walletBalances(reader: SigningRouteServices["balances"]): WalletBalanceReader {
+  return {
+    async read(address) {
+      const read = await reader.read(address);
+      if (read.token.decimals !== 6) {
+        throw new Error("AUSD base units are assumed to be micro-AUSD");
+      }
+      return {
+        monWei: read.native.raw === null ? null : BigInt(read.native.raw),
+        ausdMicro: read.token.raw === null ? null : BigInt(read.token.raw),
+      };
+    },
+  };
+}
+
+/**
  * Composed only when every Turnkey binding is present and `TURNKEY_RPID` is one custody may use
  * (never Mera's relying party, never `localhost` on a deployed environment), so a deployment
- * without them serves the rest of the API rather than failing to start. The parent API key lives here and nowhere near a
+ * without them serves the rest of the API rather than failing to start. The parent API key lives
+ * here and nowhere near a
  * sub-organization: it creates them and reads activities back, and cannot sign inside one.
  */
 function custodyServices(
@@ -195,21 +239,21 @@ function custodyServices(
     chainId === null
       ? undefined
       : createAusdDepositChain({ chainId, ...endpoint, balances: ausdBalances(env, chainId) });
+  // MON and AUSD read fresh for the wallets list, transfers and the minimums to start. Without a
+  // chain those answer `DepositsUnavailableError` (503) as deposits do.
+  const chainBalances = chainId === null ? null : createBalanceReader({ chainId, ...endpoint });
 
   return {
     authenticate,
     profiles,
     walletEmailDomain: env.WALLET_EMAIL_DOMAIN,
-    balances:
-      chainId === null
-        ? {
-            read: async () => {
-              throw new HttpError(503, "Balances are not available", {
-                error: "balances_unavailable",
-              });
-            },
-          }
-        : createBalanceReader({ chainId, ...endpoint }),
+    balances: chainBalances ?? {
+      read: async () => {
+        throw new HttpError(503, "Balances are not available", {
+          error: "balances_unavailable",
+        });
+      },
+    },
     // Only the service itself is per-request: it is a closure over the adapters above, and this
     // is what lets the orphan report name the request that produced it.
     custody: (requestId: string) =>
@@ -222,6 +266,7 @@ function custodyServices(
         agentActivities,
         agentWallets: store,
         ...(deposits ? { deposits } : {}),
+        ...(chainBalances ? { balances: walletBalances(chainBalances) } : {}),
         delegatedPublicKey,
         venueContracts: VENUE_CONTRACTS,
         rpId,
@@ -241,6 +286,7 @@ function custodyServices(
             `[${requestId}] unrecorded delegated user ${delegatedUserId} in Turnkey sub-organization ${subOrganizationId} for user ${userId}; delete it out of band`,
           ),
         reportUnrecordedDeposit: reportUnrecordedDeposit(requestId),
+        reportUnrecordedTransfer: reportUnrecordedTransfer(requestId),
       }),
   };
 }
@@ -302,25 +348,6 @@ function walletAuthServices(
   };
 }
 
-/**
- * The research worker's model, used to draft an agent from one line. Null unless all three are set
- * and the base URL parses, so a bad value turns drafting off (503) and leaves every other route alone.
- */
-function drafter(env: Env) {
-  if (!env.MODEL_BASE_URL || !env.MODEL_ID || !env.MODEL_API_KEY) {
-    return null;
-  }
-  if (!URL.canParse(env.MODEL_BASE_URL)) {
-    return null;
-  }
-  return createOpenAiCompatibleDrafter({
-    baseUrl: env.MODEL_BASE_URL,
-    apiKey: env.MODEL_API_KEY,
-    modelId: env.MODEL_ID,
-    validate: (raw) => agentDraftSchema.parse(raw),
-  });
-}
-
 const ausdReaders = new Map<string, ReturnType<typeof createAusdBalanceReader>>();
 
 /**
@@ -346,6 +373,7 @@ const noBalances = {
   read: async (): Promise<number> => {
     throw new PilotError("BALANCES_UNAVAILABLE", "Balances are not available");
   },
+  forget: (): void => {},
 };
 
 /** Request-scoped composition; no research model, provider credentials or lab initialization. */
@@ -418,13 +446,19 @@ export function createServices(env: Env): Services & { close(): Promise<void> } 
         },
       },
       authenticate,
-      drafter: drafter(env),
       directory,
       repository,
       previews: new PostgresPreviewStore(repository.pool),
       wallets: new PostgresCustodyStore(repository.pool),
       balances: chainId === null ? noBalances : ausdBalances(env, chainId),
       ...(custody ? { custody: custody.custody } : {}),
+      // Without X_BEARER_TOKEN the client is unavailable: Connect X says it is not open yet and
+      // its challenge and verify answer 503 X_UNAVAILABLE (studio-draft-dashboard-v1 D5).
+      x: {
+        store: new PostgresXStore(repository.pool),
+        client: createXClient({ bearerToken: env.X_BEARER_TOKEN || undefined }),
+      },
+      transfers: { list: (userId) => listTransfers(repository.pool, userId) },
       paper: createPaperPlugin(
         new PostgresPaperStore(repository.pool),
         new PolymarketData(),
