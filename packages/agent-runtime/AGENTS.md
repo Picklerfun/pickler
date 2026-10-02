@@ -149,3 +149,7 @@ Perpl model POST requests keep their twenty-second deadline. Deadline cancellati
 business code. Non-HTTP transport errors return `MODEL_TRANSPORT_FAILURE`. Errors never include
 provider bodies or credentials. `createPerpsStudyModels` accepts an optional timeout-signal factory
 for controlled tests; hosts use the production default and never widen deadlines implicitly.
+
+## Local four-way perpetual comparison
+
+The local perpetual model adapter exposes separate `decide` and `review` Jev contracts for `perps-four-way-v2`. Jev-only context has its own account and no SMA/DeepSeek proposals; review context contains that combined account’s original proposal. Prompt snapshots include the atomic question text and criteria. Preserve strict Choice validation and safe diagnostics; no automatic retry or fallback.
