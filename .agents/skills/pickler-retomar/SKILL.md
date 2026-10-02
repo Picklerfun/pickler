@@ -1,6 +1,6 @@
 ---
 name: pickler-retomar
-description: "Use when the user resumes work on Pickler after clearing context or starting a fresh session and needs to know where things stand. Triggers on \"retomar\", \"/retomar\", \"¿en qué íbamos?\", \"dónde quedamos\", \"qué tengo pendiente\", \"sigamos con X\", \"continuamos\", \"¿cómo va el build de TestFlight?\". Reads the manifest, every git branch (not just worktrees), the audits, the bounty deadline, the latest TestFlight tracker and the testnet accounts, and reports the COMPLETE inventory of unfinished work plus each project's next step."
+description: "Use when the user resumes work on the Pickler mobile app (apps/mobile, services/reads, docs/mobile) after clearing context or starting a fresh session and needs to know where things stand. Triggers on \"retomar\", \"/retomar\", \"¿en qué íbamos?\", \"dónde quedamos\", \"qué tengo pendiente\", \"sigamos con X\", \"continuamos\", \"¿cómo va el build de TestFlight?\". Reads the manifest, every git branch (not just worktrees), the audits, the bounty deadline, the latest TestFlight tracker and the testnet accounts, and reports the COMPLETE inventory of unfinished work plus each project's next step."
 ---
 
 # Retomar · Pickler
@@ -36,7 +36,7 @@ La fuente de verdad son las **fases**.
 cd "$CLAUDE_PROJECT_DIR" 2>/dev/null || cd .
 node -e "
 global.window={};
-require('./docs/overview/data/manifest.js');
+require('./docs/mobile/overview/data/manifest.js');
 const abiertaF = p => p.status !== 'completed' && p.status !== 'cancelled';
 const cerradoS = s => s === 'completed' || s === 'shipped';
 const descartado = d => d.status === 'cancelled';   // no se va a hacer: fases pendientes son consistentes
@@ -73,7 +73,7 @@ Los **en vuelo** van completos al reporte. Las entradas **sin `phases` son dev t
 **incluidos los `shipped`**: el último build distribuido es parte del estado.
 
 ```bash
-node -e "global.window={};require('./docs/overview/data/manifest.js');for(const d of window.DOCS.filter(d=>!d.phases))console.log(d.date,d.status.padEnd(9),d.title,' · docs/mobile/overview/'+d.file)"
+node -e "global.window={};require('./docs/mobile/overview/data/manifest.js');for(const d of window.DOCS.filter(d=>!d.phases))console.log(d.date,d.status.padEnd(9),d.title,' · docs/mobile/overview/'+d.file)"
 ```
 
 Los *terminados sin cerrar* van en una línea al final: son limpieza de manifest, no trabajo.
@@ -186,7 +186,7 @@ cómo quedaron las cuentas.
 # Deadline del bounty (docs/mobile/04-roadmap-bounty.md §1): 13 oct 2026 21:59 CST
 node -e "const d=(new Date('2026-10-13T21:59:00-06:00')-Date.now())/864e5;console.log('Bounty: faltan '+Math.floor(d)+' días')"
 # Build de TestFlight: el tracker testflight-* más reciente del manifest (no el contador del index, que cuenta pending)
-node -e "global.window={};require('./docs/overview/data/manifest.js');const t=window.DOCS.filter(d=>/testflight/.test(d.file)).sort((a,b)=>b.date.localeCompare(a.date));for(const d of t)console.log(d.date,d.status.padEnd(9),d.title)"
+node -e "global.window={};require('./docs/mobile/overview/data/manifest.js');const t=window.DOCS.filter(d=>/testflight/.test(d.file)).sort((a,b)=>b.date.localeCompare(a.date));for(const d of t)console.log(d.date,d.status.padEnd(9),d.title)"
 # Cuentas de testnet: el audit más reciente con esa sección (sólo la sección)
 node -e "const fs=require('fs');const d='docs/mobile/superpowers/audits/';const f=fs.readdirSync(d).filter(n=>n.endsWith('.md')&&fs.readFileSync(d+n,'utf8').includes('## Estado de las cuentas')).sort().pop();if(!f){console.log('(ningún audit con sección de cuentas)');process.exit()}const s=fs.readFileSync(d+f,'utf8');const m=s.match(/## Estado de las cuentas[^\n]*\n[\s\S]*?(?=\n## |$)/);console.log(f);console.log(m?m[0]:'(sección no encontrada)')"
 ```

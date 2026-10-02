@@ -17,6 +17,8 @@ code. Do not rely on what earlier SDKs did.
 
 - **No TestFlight archive or upload, and no change to `ios.buildNumber`, without explicit
   authorisation.** An authorisation already given stays in force; do not ask again.
+- One worktree per task, and commit by path (`git commit -- <paths>`), never `git add -A`: other
+  agents work in this repository at the same time.
 - **The bounty deadline is 2026-10-13, 21:59 CST.** Every decision of scope for the app is measured
   against it. Until then `Picklerfun/pickler-expo` stays as the frozen reference the submission
   names; new work lands here.

@@ -101,10 +101,11 @@ export function check(root) {
       fail(p, 'AGENTS.md must be the real file; CLAUDE.md is its adapter');
     let dir = dirname(p),
       bytes = 0;
-    while (dir.startsWith(root)) {
+    // The repository root's AGENTS.md belongs to the whole monorepo and grows with it: it is not
+    // counted, so an unrelated change there cannot fail this audit.
+    while (dir.startsWith(root) && dir !== root) {
       const q = join(dir, 'AGENTS.md');
       if (existsSync(q)) bytes += Buffer.byteLength(readFileSync(q));
-      if (dir === root) break;
       dir = dirname(dir);
     }
     if (bytes > maxChain.bytes) maxChain = { bytes, path: f };

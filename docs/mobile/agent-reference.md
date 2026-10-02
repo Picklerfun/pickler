@@ -4,7 +4,7 @@
 
 # docs/mobile/ — Convenciones para specs, plans y dashboards de proyecto
 
-Este archivo manda en todo lo que vive bajo `docs/mobile/`. Si choca con el root `CLAUDE.md`, este gana para temas de documentación; el root manda para todo lo demás (app, tooling, bounty).
+Este archivo manda en todo lo que vive bajo `docs/mobile/`. Si choca con el `AGENTS.md` de la raíz del repositorio o con `apps/mobile/AGENTS.md`, este gana para temas de documentación de la app; aquéllos mandan para todo lo demás (app, tooling, bounty).
 
 El sistema está inspirado en ["The Unreasonable Effectiveness of HTML"](https://x.com/trq212/status/2052809885763747935) (Thariq Shihipar, Anthropic, 2026-05-17). El CSS compartido, el conversor MD→HTML y los sub-catálogos se adoptaron completos de Proflores el 2026-09-18 (spec `docs/mobile/superpowers/specs/2026-09-18-docs-manifest-design.md`).
 
@@ -314,4 +314,4 @@ Aprendidos al construir el sistema. Consolidados aquí — si reconoces que est�
 
 ## AGENTS.md
 
-`docs/mobile/AGENTS.md` es un **symlink** a `docs/mobile/AGENTS.md` (para herramientas que leen ese nombre en vez de `CLAUDE.md`). Edita solo `docs/mobile/AGENTS.md`; `npm run agents:check --prefix scripts/mobile` valida el symlink y mide la cadena de instrucciones (≤ 24 KiB).
+`docs/mobile/AGENTS.md` es el archivo real y `docs/mobile/CLAUDE.md` es su adaptador de una línea (`@AGENTS.md`), la convención de este repositorio desde el 2026-10-01. Edita solo `AGENTS.md`; `npm run agents:check --prefix scripts/mobile` valida el par y mide la cadena de instrucciones del árbol móvil (24 KiB, sin contar el `AGENTS.md` de la raíz).

@@ -34,6 +34,7 @@ scripts/design/.shots/
 
 # The mobile app (apps/mobile has its own .gitignore for native folders)
 apps/mobile/build/
+apps/mobile/coverage/
 docs/mobile/fuentes/*.mp4
 .claude/worktrees/
 .claude/settings.local.json

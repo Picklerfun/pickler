@@ -105,5 +105,6 @@ test('repository audit detects broken links, oversize chains and missing generat
   );
   unlinkSync(join(root, 'apps/mobile/AGENTS.md'));
   put('apps/web/CLAUDE.md', '# Outside the audited tree: not this check\'s business');
+  put('AGENTS.md', 'x'.repeat(30000));
   assert.deepEqual(check(root).errors, []);
 });

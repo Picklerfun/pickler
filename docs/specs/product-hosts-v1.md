@@ -219,7 +219,7 @@ already picks a base URL by product and is a no-op in development.
 **The marketplace account sheet.** A wallets section, per §5.
 
 **Configuration.** `SIWE_DOMAIN=app.pickler.fun`. `ALLOWED_ORIGINS` lists three origins.
-`TURNKEY_RPID=studio.pickler.fun`. Supabase's allowed redirect URL is
+`TURNKEY_RPID=studio.pickler.fun` _(superseded: `app.pickler.fun`, per `mobile-monorepo-v1.md` W2)_. Supabase's allowed redirect URL is
 `https://studio.pickler.fun/auth/callback` alone — the marketplace has no email sign-in and
 the landing has no sign-in. All three hostnames point at the web worker.
 
@@ -264,8 +264,11 @@ marketplace from the web. Neither is needed for the split and each is a day's wo
 ## 8. One-way doors, listed
 
 - `TURNKEY_RPID=studio.pickler.fun` — before the first enrolment on any deployed environment.
+  _(Superseded: the value is `app.pickler.fun`, per `mobile-monorepo-v1.md` W2. Still a one-way door.)_
 - `wallet.pickler.fun` never accepts mail.
-- The AASA `webcredentials` association points the app at `app.pickler.fun`; once people have
+- _(Superseded: the association points the app at `pickler.fun`, Mera's relying party, per
+  `mobile-monorepo-v1.md` W1, and it is the app's testers who are already enrolled there.)_
+  The AASA `webcredentials` association points the app at `app.pickler.fun`; once people have
   enrolled Mera passkeys against it, moving the marketplace host orphans them the same way.
 
 ---

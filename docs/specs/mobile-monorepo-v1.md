@@ -86,7 +86,8 @@ version; the web moves down to it and both move up together when Expo does.
 **The lockfile does not move the app.** Resolving the app's ranges afresh moved React Navigation,
 Metro and several Expo modules a patch or a minor forward, so that is not what was done. The root
 lockfile was seeded with the app's own locked tree, every entry re-keyed under
-`apps/mobile/node_modules`, and `npm install` (10.9.3) kept it. The set of packages the app can
+`apps/mobile/node_modules`, and `npm install` (10.9.3) kept it, lifting to the root only the few
+packages whose version there is the same (`react` among them). The set of packages the app can
 reach, walked from the lockfile before and after, is identical; the one addition is `react-dom`,
 an optional peer that the root now provides. The app's dependencies therefore sit under
 `apps/mobile/node_modules` rather than hoisted, which is also what its native build expects.
@@ -122,8 +123,8 @@ are; the root `AGENTS.md` names the exception. New instruction files are in Engl
 
 **The docs tooling.** `scripts/mobile/` keeps `agents:check`, `agents:test`, `agents:inventory`,
 `docs:html` and `docs:check`, repointed at `docs/mobile/`. `agents:check` validates only the
-imported tree's instruction files; it does not impose the 24 KiB chain limit on the rest of the
-repository. The generated HTML beside each spec and plan embeds the generator's path, so all of it
+imported tree's instruction files, and its 24 KiB chain limit counts only files inside that tree,
+not the repository root's `AGENTS.md`. The generated HTML beside each spec and plan embeds the generator's path, so all of it
 is regenerated once.
 
 ## 6. `@pickler/mera-account`

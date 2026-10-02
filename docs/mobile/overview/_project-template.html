@@ -3,7 +3,7 @@
   Plantilla canónica para project overviews de Pickler (F2 — CSS externo).
 
   Uso:
-  1. Copia este archivo a docs/overview/YYYY-MM-DD-<topic>.html
+  1. Copia este archivo a docs/mobile/overview/YYYY-MM-DD-<topic>.html
   2. Cambia el valor de <body data-slug="..."> al slug del proyecto (sin .html).
      Es la key de localStorage para persistir cambios de tasks/status.
   3. Reemplaza placeholders [[…]] con contenido real.
@@ -28,7 +28,7 @@
 
   <title> = texto completo del h1 (principal + acento) + ' · Pickler'.
 
-  Reglas completas en docs/CLAUDE.md.
+  Reglas completas en docs/mobile/AGENTS.md.
 -->
 <html lang="es-MX">
 <head>
@@ -370,7 +370,7 @@ export interface [[ENTITY]]Response {
 
       <!--
         ASSETS
-        Screenshots y mockups van en docs/overview/assets/<slug>/ (ver README
+        Screenshots y mockups van en docs/mobile/overview/assets/<slug>/ (ver README
         de esa carpeta). Reference desde aquí con path relativo.
       -->
       <h3 style="font-size:14px;font-weight:700;margin:24px 0 8px;color:var(--ink)">Screenshots</h3>
@@ -380,7 +380,7 @@ export interface [[ENTITY]]Response {
              onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
         <p style="display:none;font-size:12.5px;color:var(--ink-3);font-style:italic;padding:14px 18px;border:1px dashed var(--line);border-radius:var(--radius-s)">
           📷 Coloca un screenshot real en
-          <code>docs/overview/assets/[[SLUG]]/01-screenshot.png</code> y reaparecerá aquí.
+          <code>docs/mobile/overview/assets/[[SLUG]]/01-screenshot.png</code> y reaparecerá aquí.
         </p>
         <figcaption style="font-size:12px;color:var(--ink-3);margin-top:8px;font-style:italic">
           [[SCREENSHOT_CAPTION]]
@@ -402,10 +402,10 @@ export interface [[ENTITY]]Response {
 
 <footer class="foot">
   <div class="wrap">
-    <p><b>Fuentes:</b> spec en <code>docs/superpowers/specs/[[SLUG]]-design.md</code> ·
-       planes en <code>docs/superpowers/plans/[[SLUG]]-f*.md</code></p>
+    <p><b>Fuentes:</b> spec en <code>docs/mobile/superpowers/specs/[[SLUG]]-design.md</code> ·
+       planes en <code>docs/mobile/superpowers/plans/[[SLUG]]-f*.md</code></p>
     <p>Dashboard vivo · sincronizar al avanzar una fase o cerrar un plan. Reglas en
-       <code>docs/CLAUDE.md</code>.</p>
+       <code>docs/mobile/AGENTS.md</code>.</p>
   </div>
 </footer>
 

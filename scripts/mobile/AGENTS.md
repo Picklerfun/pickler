@@ -17,7 +17,8 @@ npm run docs:check --prefix scripts/mobile     # fail on a stale or missing view
 - `agents:check` audits only `apps/mobile/`, `docs/mobile/`, `services/reads/`, `infra/`,
   `scripts/mobile/` and `packages/mera-account/`, plus the skills in `.agents/skills/`. There,
   `AGENTS.md` is the real file, a `CLAUDE.md` is the one-line adapter `@AGENTS.md`, and the
-  instruction chain up to the repository root stays under 24 KiB. It does not judge the rest of
+  instruction chain inside that tree stays under 24 KiB (the repository root's own `AGENTS.md` is
+  not counted). It does not judge the rest of
   the repository.
 - The generated HTML embeds the generator's own path, so moving or renaming
   `docs-md-to-html.mjs` means regenerating every view in the same change.
