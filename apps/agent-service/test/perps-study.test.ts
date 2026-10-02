@@ -216,6 +216,108 @@ test("blind direct proposals persist usage before validation and never retry mal
   assert.equal(requests, 3);
   assert.equal(usage, 3);
 });
+test("model deadlines produce MODEL_TIMEOUT for headers and body without retries", async () => {
+  for (const phase of ["headers", "body"] as const) {
+    const deadline = new AbortController();
+    let calls = 0;
+    let usage = 0;
+    let cancelled = false;
+    const model = createPerpsStudyModels(
+      studyConfig,
+      { deepseek: "PRIVATE_KEY", jev: "PRIVATE_KEY" },
+      async () => {
+        calls++;
+        if (phase === "headers") {
+          return new Promise(() => {});
+        }
+        return new Response(
+          new ReadableStream({
+            cancel() {
+              cancelled = true;
+            },
+          }),
+        );
+      },
+      (milliseconds) => {
+        assert.equal(milliseconds, 20000);
+        return deadline.signal;
+      },
+    );
+    const timer = setTimeout(() => deadline.abort(new DOMException("private", "TimeoutError")), 10);
+    try {
+      await assert.rejects(
+        model.direct(studyContext(), new AbortController().signal, {
+          before: async () => {},
+          usage: async () => {
+            usage++;
+          },
+        }),
+        (error: unknown) =>
+          error instanceof PilotError &&
+          error.code === "MODEL_TIMEOUT" &&
+          !error.message.includes("private"),
+      );
+    } finally {
+      clearTimeout(timer);
+    }
+    assert.equal(calls, 1);
+    assert.equal(usage, 0);
+    assert.equal(cancelled, phase === "body");
+  }
+});
+
+test("parent timeout, operator cancellation and lease loss retain distinct model errors", async () => {
+  for (const [reason, code] of [
+    [new DOMException("deadline", "TimeoutError"), "MODEL_TIMEOUT"],
+    [new Error("operator"), "MODEL_CANCELLED"],
+    [new PilotError("LEASE_LOST", "owner expired"), "LEASE_LOST"],
+  ] as const) {
+    const parent = new AbortController();
+    let calls = 0;
+    const model = createPerpsStudyModels(studyConfig, { deepseek: "key", jev: "key" }, async () => {
+      calls++;
+      return new Promise(() => {});
+    });
+    const timer = setTimeout(() => parent.abort(reason), 10);
+    try {
+      await assert.rejects(
+        model.direct(studyContext(), parent.signal, {
+          before: async () => {},
+          usage: async () => {},
+        }),
+        (error: unknown) => error instanceof PilotError && error.code === code,
+      );
+    } finally {
+      clearTimeout(timer);
+    }
+    assert.equal(calls, 1);
+  }
+});
+
+test("model transport and HTTP failures remain explicit and sanitized", async () => {
+  for (const [transport, code] of [
+    [
+      async () => {
+        throw new TypeError("PRIVATE_SECRET network failure");
+      },
+      "MODEL_TRANSPORT_FAILURE",
+    ],
+    [async () => new Response("PRIVATE_SECRET", { status: 503 }), "MODEL_HTTP_FAILURE"],
+  ] as const) {
+    const model = createPerpsStudyModels(studyConfig, { deepseek: "key", jev: "key" }, transport);
+    await assert.rejects(
+      model.direct(studyContext(), new AbortController().signal, {
+        before: async () => {},
+        usage: async () => {},
+      }),
+      (error: unknown) =>
+        error instanceof PilotError &&
+        error.code === code &&
+        !error.message.includes("PRIVATE_SECRET"),
+    );
+  }
+});
+
 test("only coherent high-confidence Jev insufficiency skips; abort has no repair call", async () => {
   const answer = (choice: string, labels: string[]) => ({
     type: "choice",
@@ -271,7 +373,7 @@ test("deterministic replay shares evidence, executes baseline, and supervises ri
       paid++;
       await hooks.usage(100, 10);
       if (fail) {
-        throw new Error("controlled");
+        throw new PilotError("MODEL_TIMEOUT", "controlled timeout");
       }
       assert.equal(context.evidence.sourceIds.length, 6);
       return holds;
@@ -329,6 +431,7 @@ test("deterministic replay shares evidence, executes baseline, and supervises ri
   await runner.cycle(x.scope, next, new AbortController().signal);
   view = await x.study.view(x.scope);
   assert.equal(view.record.decisionStopReason, "MODEL_FAILURE");
+  assert.equal(view.rounds[1]!.calls.direct.error, "MODEL_TIMEOUT");
   const calls = paid;
   x.advance(4 * 3600000);
   await x.study.release(x.scope, next);
