@@ -3,6 +3,8 @@ import type { AgentLedger } from "./budget/agent-ledger";
 
 /** Worker bindings. Secrets come from `wrangler secret put` / `.dev.vars`. */
 export interface Env {
+  ADVICE_ENABLED?: string;
+  ADVICE_POLICY_JSON?: string;
   APP_ENV: string;
   TRADING_EXECUTOR?: Fetcher;
   TRADING_QUEUE?: Queue<{ kind: "trading-wakeup" }>;
@@ -11,7 +13,7 @@ export interface Env {
   DATABASE?: Hyperdrive;
   /** Loopback development only; hosted requests require DATABASE. */
   DATABASE_URL?: string;
-  RESEARCH_QUEUE?: Queue<{ kind: "research-wakeup" }>;
+  RESEARCH_QUEUE?: Queue<{ kind: "research-wakeup" | "advice-wakeup" }>;
   SUPABASE_URL: string;
   SUPABASE_SECRET_KEY: string;
   /** Supabase Auth issuer, e.g. https://<ref>.supabase.co/auth/v1 (no trailing slash). */

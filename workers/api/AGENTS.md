@@ -455,3 +455,11 @@ concrete response schemas or unique operation ids fail the coverage check. Optio
 included only when mounted. `npm run api:openapi -- --output /tmp/pickler-openapi.json` exports the
 complete contract using non-executable services; the OpenAPI CI workflow validates and uploads it.
 See [API contract](../../docs/api-contract.md) for extension and consumption instructions.
+
+## Agent advice
+
+`src/routes/advice.ts` mounts independent `/v1/agent-advice` routes with user-only authentication,
+no-store responses, strict requests and OpenAPI metadata. Container admission requires explicit
+ADVICE_ENABLED, valid reviewed USD policy and research Queue; reads remain mounted when disabled.
+Never accept internal tenant/runtime IDs or models from consumers. Completed history is shared;
+other statuses are requester-only. See [Agent advice](../../docs/agent-advice.md).

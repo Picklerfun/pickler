@@ -121,3 +121,10 @@ and consumer contracts, not automatic replacements for producer validation. Hono
 in the API Worker. Never add Hono or OpenAPI dependencies here. See
 [API contract](../../docs/api-contract.md); changes to a wire response must update its schema and
 representative contract tests in the same change.
+
+## Consumer advice DTOs
+
+`src/advice.ts` exports strict portable BTC/ETH requests, capabilities, asynchronous job states,
+24-hour directional results and cursor history. No requester identity, internal scope, private
+configuration, prices/rates, prompts or provider traces may cross these DTOs. Wallet sign-in
+`kind` is `eoa | mera`. See [Agent advice](../../docs/agent-advice.md).

@@ -24,8 +24,11 @@ import { studioRoutes, type StudioServices } from "./routes/studio";
 import { signingRoutes, type SigningRouteServices } from "./routes/signing";
 import { walletAuthRoutes, type WalletAuthServices } from "./routes/wallet-auth";
 
+import { adviceRoutes, type AdviceRouteServices } from "./routes/advice";
+
 export interface Services extends AgentRouteServices, ProfileRouteServices {
   authenticate: Authenticate;
+  advice?: AdviceRouteServices;
   studio?: StudioServices;
   growth?: ReturnType<typeof createGrowthServices>;
   /** Absent when the deployment has no Turnkey bindings; the rest of the API still serves. */
@@ -59,6 +62,9 @@ export function createApp(services: Services) {
   app.route("/v1/handles", handleRoutes(services));
   app.route("/v1/profile", profileRoutes(services));
 
+  if (services.advice) {
+    app.route("/v1/agent-advice", adviceRoutes(services.advice));
+  }
   if (services.studio) {
     app.route("/v1/studio", studioRoutes(services.studio));
     app.route("/v1/console", studioRoutes(services.studio));

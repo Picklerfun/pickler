@@ -339,3 +339,10 @@ bootstrap and overlapping ranges. Gaps refuse the entire batch. Duplicate height
 ancestry fail as invalid input without requesting a rollback of persisted history; a coherent
 range contradicting the persisted cursor remains a reorg. These checks do not establish RPC
 finality, cursor concurrency safety or projection rollback.
+
+## Consumer advice
+
+`features/advice` owns public-agent resolution, JWT-user authorization, completed-history
+visibility and job/policy/repository ports. Pending/failed jobs are requester-only; completed
+results are authenticated shared history while the agent is public. Keep financial analysis and
+provider calculations out of core. See [Agent advice](../../docs/agent-advice.md).
