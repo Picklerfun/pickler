@@ -51,6 +51,7 @@ function app({
   custody = true,
   read = "ok",
   replay = false,
+  fleetRead = "ok",
 }: {
   listed?: { id: string; draft: boolean; wallet: boolean }[];
   refuse?: string;
@@ -62,6 +63,8 @@ function app({
   read?: "ok" | "timeout" | "not_mine" | "no_chain";
   /** The directory answers a create that already committed, without running admit. */
   replay?: boolean;
+  /** How the lock's reads of the other agents' wallets go: as given, or the RPC failing. */
+  fleetRead?: "ok" | "rpc_error";
 } = {}) {
   const drafts: Created[] = [];
   const balanceReads: { userId: string; walletId: string }[] = [];
@@ -121,7 +124,14 @@ function app({
           ? { walletId: `w-${id}`, address: "0x1111111111111111111111111111111111111111" }
           : null,
     },
-    balances: { read: async () => balance },
+    balances: {
+      read: async () => {
+        if (fleetRead === "rpc_error") {
+          throw new Error("JSON-RPC eth_call failed: 502");
+        }
+        return balance;
+      },
+    },
     ...(custody
       ? {
           custody: () =>
@@ -252,6 +262,14 @@ test("without custody the drafts route is 503 and creates nothing", async () => 
   const f = app({ custody: false });
   const response = await f.root.request("/drafts", post(body));
   assert.equal(response.status, 503);
+  assert.equal(f.drafts.length, 0);
+});
+
+test("another agent's wallet the chain cannot read is 503 WALLETS_UNAVAILABLE, never a 500", async () => {
+  const f = app({ listed: [{ id: "a", draft: false, wallet: true }], fleetRead: "rpc_error" });
+  const response = await f.root.request("/drafts", post(body));
+  assert.equal(response.status, 503);
+  assert.equal((await response.json()).error, "WALLETS_UNAVAILABLE");
   assert.equal(f.drafts.length, 0);
 });
 

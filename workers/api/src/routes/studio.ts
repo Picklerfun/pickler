@@ -328,12 +328,20 @@ export function studioRoutes(services: StudioServices) {
     return c.json(previewRunResponseSchema.parse(read));
   });
   /** The linked wallet and its balance. A failed balance read propagates as an error. */
-  async function fundedWallet(productId: string): Promise<FundedWallet | null> {
+  /**
+   * `creating`: the read is for a create's lock, where a chain that did not answer is never
+   * reported as anything but unreadable, 503 WALLETS_UNAVAILABLE, as for the wallet's own reading
+   * (studio-create-simplified-v1 §4.1). Elsewhere a failed read fails the request as it is.
+   */
+  async function fundedWallet(productId: string, creating = false): Promise<FundedWallet | null> {
     const wallet = await services.wallets.findAgentWallet(productId);
     if (!wallet) {
       return null;
     }
-    return { ...wallet, balanceAusd: await services.balances.read(wallet.address) };
+    const balanceAusd = await services.balances.read(wallet.address).catch((error: unknown) => {
+      throw creating ? new BalancesUnreadableError({ cause: error }) : error;
+    });
+    return { ...wallet, balanceAusd };
   }
 
   /**
@@ -344,9 +352,9 @@ export function studioRoutes(services: StudioServices) {
    * a wallet that is not a draft (created before wallets existed) cannot be funded and is not
    * counted either.
    */
-  async function fleet(current: StudioAccess) {
+  async function fleet(current: StudioAccess, creating = false) {
     const listed = await services.directory.list(current);
-    const wallets = await Promise.all(listed.map((agent) => fundedWallet(agent.id)));
+    const wallets = await Promise.all(listed.map((agent) => fundedWallet(agent.id, creating)));
     const balances = wallets.flatMap((wallet) => (wallet ? [wallet.balanceAusd] : []));
     const drafts = listed.filter((agent) => agent.draft).length;
     return { listed, wallets, another: canCreateAnother(balances, drafts) };
@@ -359,7 +367,7 @@ export function studioRoutes(services: StudioServices) {
    */
   function fundingLock(current: StudioAccess) {
     return async () => {
-      const { another } = await fleet(current);
+      const { another } = await fleet(current, true);
       if (another.reason === "unfunded_agent") {
         throw new PilotError("UNFUNDED_AGENT", "Fund your other agent first");
       }
