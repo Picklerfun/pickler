@@ -1,0 +1,51 @@
+name: Mobile
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  app:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.22.0
+          cache: npm
+      - run: npm install --global npm@10.9.3
+      - run: npm ci
+      - run: npm run typecheck --workspace=@pickler/mobile
+      - run: npm test --workspace=@pickler/mobile
+      - run: node --import tsx --test packages/mera-account/test/*.test.ts
+
+  tooling:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.22.0
+      - run: npm install --global npm@10.9.3
+      - run: npm ci --prefix scripts/mobile
+      - run: npm run agents:check --prefix scripts/mobile
+      - run: npm run agents:test --prefix scripts/mobile
+      - run: npm run docs:check --prefix scripts/mobile
+
+  reads:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.22.0
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - run: npm install --global npm@10.9.3
+      - run: npm ci --prefix services/reads
+      - run: npm test --prefix services/reads

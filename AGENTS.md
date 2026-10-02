@@ -6,7 +6,7 @@ Before inspecting, reviewing, planning changes to, or editing any app or package
 
 Root instructions apply throughout the repository. Local instructions supplement them within their directory; more specific instructions take precedence within their scope unless they conflict with an explicit user instruction. If an app or package has no local `AGENTS.md`, create one as part of work that establishes or changes that project.
 
-Keep each project's `AGENTS.md` updated in the same change whenever its structure, public exports, responsibilities, commands, or architectural constraints change. Describe the actual implementation and label proposed examples clearly. All repository documentation and agent instructions must be written in English.
+Keep each project's `AGENTS.md` updated in the same change whenever its structure, public exports, responsibilities, commands, or architectural constraints change. Describe the actual implementation and label proposed examples clearly. All repository documentation and agent instructions must be written in English. The one exception is the record imported with the mobile app on 2026-10-01 — `docs/mobile/`, the three `pickler-*` skills in `.agents/skills/`, and the READMEs of `apps/mobile`, `services/reads` and `infra` — which is in Spanish and stays so; new instruction files there are in English.
 
 ## Project map
 
@@ -14,6 +14,7 @@ Keep each project's `AGENTS.md` updated in the same change whenever its structur
 | ---------------------------- | ----------------------------------------------------- | ------------------------------------------------- |
 | `apps/agent-service`         | Local Mastra Studio, API and research worker          | [AGENTS.md](apps/agent-service/AGENTS.md)         |
 | `apps/web`                   | Next.js presentation and HTTP entry points            | [AGENTS.md](apps/web/AGENTS.md)                   |
+| `apps/mobile`                | Expo iOS app: the marketplace on the phone            | [AGENTS.md](apps/mobile/AGENTS.md)                |
 | `workers/api`                | Public API on Cloudflare Workers, ported from Relayer | [AGENTS.md](workers/api/AGENTS.md)                |
 | `workers/research`           | Queue/Cron research execution                         | [AGENTS.md](workers/research/AGENTS.md)           |
 | `packages/agent-runtime`     | Shared Mastra library and host lifecycle              | [AGENTS.md](packages/agent-runtime/AGENTS.md)     |
@@ -23,9 +24,14 @@ Keep each project's `AGENTS.md` updated in the same change whenever its structur
 | `packages/api-schema`        | Public HTTP DTOs                                      | [AGENTS.md](packages/api-schema/AGENTS.md)        |
 | `packages/ui`                | Reusable React components and styles                  | [AGENTS.md](packages/ui/AGENTS.md)                |
 | `packages/chain`             | Public blockchain metadata and future generated ABIs  | [AGENTS.md](packages/chain/AGENTS.md)             |
+| `packages/mera-account`      | The one rule from a Mera passkey to the account       | [AGENTS.md](packages/mera-account/AGENTS.md)      |
 | `packages/typescript-config` | Shared compiler configuration                         | [AGENTS.md](packages/typescript-config/AGENTS.md) |
 | `contracts`                  | Foundry/Solidity project                              | [AGENTS.md](contracts/AGENTS.md)                  |
 | `supabase`                   | Local Supabase stack configuration                    | [AGENTS.md](supabase/AGENTS.md)                   |
+| `services/reads`             | Supabase Edge Functions behind Ask in the mobile app  | [AGENTS.md](services/reads/AGENTS.md)             |
+| `infra`                      | Cloudflare projects serving the passkey association   | [AGENTS.md](infra/AGENTS.md)                      |
+| `scripts/mobile`             | Docs and agent tooling of `docs/mobile`               | [AGENTS.md](scripts/mobile/AGENTS.md)             |
+| `docs/mobile`                | The mobile app's specs, plans, audits and catalogue   | [AGENTS.md](docs/mobile/AGENTS.md)                |
 
 See [README.md](README.md) for setup, [docs/architecture.md](docs/architecture.md) for architectural decisions, and [the agent runtime V1 specification](docs/specs/agent-runtime-v1.md) for the planned Mastra service, capability interfaces, tenant isolation, scheduling, and implementation phases. The research-only subset is implemented; read [the pilot guide](apps/agent-service/README.md) for actual commands, limits and exclusions.
 
@@ -59,6 +65,8 @@ npm run build
 npm run contracts:build
 npm run contracts:test
 ```
+
+The mobile app is a workspace but sits outside Turborepo's build and outside the root ESLint and Prettier: `npm run typecheck` covers it, and its Jest suite is `npm test --workspace=@pickler/mobile`. `services/reads` and `scripts/mobile` are not workspaces; each installs with `npm ci --prefix <path>` and has its own checks (`npm test --prefix services/reads`, `npm run agents:check --prefix scripts/mobile`). [The specification of the move](docs/specs/mobile-monorepo-v1.md) says why.
 
 Run checks relevant to the change. Documentation-only changes require checking links, paths, examples, and command accuracy; they do not require a full application build. `npm test` builds shared packages and discovers the core, infrastructure, chain, `workers/api`, `workers/research`, web and agent-service package-root test files; extend discovery when adding other suites. Core, infrastructure and API schemas export compiled ESM from `dist`; run `npm run build:shared` before direct consumers. `npm run dev:agent` does this automatically. The normal `npm run dev` starts only the web app. Foundry commands are separate from the web build and currently have no contracts to compile or test.
 

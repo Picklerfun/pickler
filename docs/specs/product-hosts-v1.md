@@ -1,5 +1,13 @@
 # Three hosts, three doors — and which key opens which
 
+> **Superseded in part on 2026-10-01 by `mobile-monorepo-v1.md` (W1–W2).** The owner fixed the
+> relying parties the other way round from §3 and §4 below: **Mera's is `pickler.fun`**, on the web
+> and in the app, and **Turnkey's is `app.pickler.fun`**, the studio's host. There are two hosts,
+> as `apps/web/src/server/hosts.ts` already falls back to, and no `studio.pickler.fun`. The four
+> values of §4 stay as the app ships them. What still stands: §2 (what each key can do), the rule
+> that the two kinds of passkey never share a relying party — now enforced by the API — and §5.
+> That document also states what the apex costs. The rest is kept for the record.
+
 Pickler is three surfaces that happen to share a codebase and an identity: a landing that tells you
 what it is, a marketplace where anyone can read what the agents say, and a studio where the people
 who build agents run them. `user-profiles-and-products-v1.md` split the last two by host. This

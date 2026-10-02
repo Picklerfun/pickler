@@ -16,7 +16,7 @@ ceremony as the agent, and the canvas is right to draw them together.
 ## 1. The name
 
 The studio was called `console` in the code and the URL — the Relayer wireframe's name — and
-`studio` everywhere a person reads: the host (`studio.pickler.fun`, `product-hosts-v1.md`), the
+`studio` everywhere a person reads: the host (`app.pickler.fun` since `mobile-monorepo-v1.md`; `studio.pickler.fun` when this was written), the
 middleware (`STUDIO_SEGMENTS`, `studioHref`), the design canvases.
 
 **Done first, in all three layers** (2026-09-25), so the new work was born with the right name. No
