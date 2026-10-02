@@ -1,0 +1,645 @@
+<!doctype html>
+<html lang="es-MX">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pickler · Design Docs Overview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="_styles.css">
+<style>
+  /* Overrides locales del index: hero más alto + lede más grande que el default */
+  header.hero {
+    padding: 72px 0 56px;
+    background:
+      linear-gradient(160deg, var(--brand-soft) 0%, transparent 60%),
+      radial-gradient(1200px 400px at 85% -10%, color-mix(in srgb, var(--accent) 22%, transparent), transparent);
+  }
+  h1 { font-size: clamp(32px, 5vw, 52px); }
+  .lede { font-size: clamp(17px, 2vw, 20px); max-width: 720px; margin-bottom: 28px; }
+  main { padding: 32px 0 40px; }
+
+  /* Templates section */
+  .templates-section {
+    padding: 32px 0 56px;
+    border-top: 1px solid var(--line);
+    background: linear-gradient(180deg, transparent 0%, var(--surface-2) 100%);
+  }
+  .templates-section h2 {
+    font-size: 13px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .12em;
+    color: var(--ink-3); margin: 0 0 6px;
+  }
+  .templates-section .sub {
+    font-size: 13.5px; color: var(--ink-2);
+    margin: 0 0 18px; max-width: 680px; line-height: 1.55;
+  }
+  .templates-grid {
+    display: grid; gap: 12px;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  }
+  .template-card {
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: var(--radius-s);
+    padding: 14px 16px;
+    box-shadow: var(--shadow);
+    text-decoration: none; color: inherit;
+    transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .template-card:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-lg);
+    border-color: var(--brand);
+  }
+  .template-card .t-icon {
+    width: 32px; height: 32px;
+    background: var(--brand-soft);
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; color: var(--brand-dark);
+    margin-bottom: 4px;
+  }
+  .template-card .t-name {
+    font-size: 14px; font-weight: 700; color: var(--ink);
+    letter-spacing: -0.01em;
+  }
+  .template-card .t-path {
+    font-family: var(--mono); font-size: 11px; color: var(--ink-3);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .template-card .t-desc {
+    font-size: 12.5px; color: var(--ink-2); line-height: 1.5;
+    margin-top: 2px;
+  }
+  .template-card .t-trigger {
+    font-size: 11px; color: var(--brand);
+    margin-top: 6px; font-family: var(--mono);
+    border-top: 1px dashed var(--line); padding-top: 6px;
+  }
+  .template-card .t-trigger::before { content: "skill: "; opacity: .6; }
+  .template-card.no-skill .t-trigger { display: none; }
+</style>
+</head>
+<body class="is-index">
+
+<header class="hero">
+  <div class="wrap wide">
+    <span class="eyebrow"><span class="dot"></span>Pickler · Design Docs</span>
+    <h1>Catálogo de <span class="accent">specs y planes</span></h1>
+    <p class="lede">
+      Vista visual de los diseños técnicos, planes de implementación y fixes del monorepo.
+      Cada tarjeta abre un HTML navegable con status board, roadmap y decisiones.
+    </p>
+
+    <div class="stats">
+      <div class="stat-card">
+        <div class="n" id="stat-total">—</div>
+        <div class="l">Trabajos totales</div>
+      </div>
+      <div class="stat-card">
+        <div class="n" id="stat-latest">—</div>
+        <div class="l">Último trabajo</div>
+      </div>
+      <div class="stat-card">
+        <div class="n" id="stat-active">—</div>
+        <div class="l">En implementación</div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="controls">
+  <div class="wrap wide controls-inner">
+    <input id="search" class="search" placeholder="Buscar por título, tag o descripción…" />
+    <div class="filter-chips" id="filters">
+      <button class="chip active" data-filter="all" type="button">Todos</button>
+      <button class="chip" data-filter="spec" type="button">Spec</button>
+      <button class="chip" data-filter="plan" type="button">Plan</button>
+      <button class="chip" data-filter="feature" type="button">Features</button>
+      <button class="chip" data-filter="fix" type="button">Fixes</button>
+      <button class="chip" data-filter="refactor" type="button">Refactors</button>
+      <button class="chip" data-filter="exploration" type="button">Explorations</button>
+      <button class="chip" data-filter="pr" type="button">PRs</button>
+      <button class="chip" data-filter="playground" type="button">Playgrounds</button>
+      <button class="chip" data-filter="report" type="button">Reports</button>
+      <button class="chip" data-filter="active" type="button">En implementación</button>
+    </div>
+    <button class="btn-new" id="btn-new" type="button" title="Atajo: n">
+      + Nueva entrada <span class="kbd">n</span>
+    </button>
+  </div>
+</div>
+
+<main>
+  <div class="wrap wide">
+    <div class="cards" id="cards"></div>
+    <div class="empty" id="empty" hidden>
+      <div class="ico">∅</div>
+      <p>Aún no hay trabajos que coincidan con el filtro.</p>
+      <p class="hint">
+        Usa <b>+ Nueva entrada</b> (o tecla <code>n</code>) para generar el bloque JS
+        y pegarlo a <code>docs/mobile/overview/data/manifest.js</code>. Reglas en
+        <code>docs/mobile/AGENTS.md</code>.
+      </p>
+    </div>
+  </div>
+</main>
+
+<section class="templates-section">
+  <div class="wrap wide">
+    <h2>📁 Templates</h2>
+    <p class="sub">
+      Clona el template que matchee tu caso de uso. Las skills <code>pickler-overview-new</code>
+      y <code>pickler-dev-new</code> automatizan los dos flows más comunes — pídele a Claude
+      "crea overview para X" o "registra este fix" y hace todo. Para el resto, clonado manual.
+    </p>
+    <div class="templates-grid">
+      <a class="template-card" href="_project-template.html" target="_blank">
+        <div class="t-icon">📊</div>
+        <div class="t-name">Project overview</div>
+        <div class="t-path">_project-template.html</div>
+        <div class="t-desc">Multi-fase, schema changes, decisiones que sobreviven más allá del PR.</div>
+        <div class="t-trigger">"crea overview para X"</div>
+      </a>
+
+      <a class="template-card" href="dev/_template.html" target="_blank">
+        <div class="t-icon">🔧</div>
+        <div class="t-name">Dev one-pager</div>
+        <div class="t-path">dev/_template.html</div>
+        <div class="t-desc">Fix / Feature / Refactor de un solo PR. Editable con <code>contenteditable</code>.</div>
+        <div class="t-trigger">"registra este fix"</div>
+      </a>
+
+      <a class="template-card no-skill" href="explorations/_template.html" target="_blank">
+        <div class="t-icon">🔬</div>
+        <div class="t-name">Exploration</div>
+        <div class="t-path">explorations/_template.html</div>
+        <div class="t-desc">4 enfoques side-by-side con pros/contras. Click un radio → "Copy decision as MD".</div>
+        <div class="t-trigger"></div>
+      </a>
+
+      <a class="template-card no-skill" href="prs/_template.html" target="_blank">
+        <div class="t-icon">🔀</div>
+        <div class="t-name">PR explainer</div>
+        <div class="t-path">prs/_template.html</div>
+        <div class="t-desc">Diff annotated + flowchart inline + checklist persistente. Linkear desde el cuerpo del PR.</div>
+        <div class="t-trigger"></div>
+      </a>
+
+      <a class="template-card no-skill" href="playgrounds/_template.html" target="_blank">
+        <div class="t-icon">🎛️</div>
+        <div class="t-name">Playground</div>
+        <div class="t-path">playgrounds/_template.html</div>
+        <div class="t-desc">Sliders / knobs / toggles → JSON live → "Copy as JSON" para Claude.</div>
+        <div class="t-trigger"></div>
+      </a>
+
+      <a class="template-card no-skill" href="reports/_template.html" target="_blank">
+        <div class="t-icon">📄</div>
+        <div class="t-name">Report</div>
+        <div class="t-path">reports/_template.html</div>
+        <div class="t-desc">Snapshot fechado (weekly activity, deploy summary, postmortem). No se actualiza.</div>
+        <div class="t-trigger"></div>
+      </a>
+    </div>
+  </div>
+</section>
+
+<footer class="foot">
+  <div class="wrap wide">
+    <p>
+      <b>Cómo agregar un nuevo trabajo:</b> los <i>proyectos</i> (multi-fase, schema changes) usan
+      <code>spec + plan</code> en <code>docs/mobile/superpowers/</code> + HTML overview en
+      <code>docs/mobile/overview/YYYY-MM-DD-&lt;topic&gt;.html</code>. Los <i>fixes</i> y
+      <i>features de un solo PR</i> usan un one-pager en
+      <code>docs/mobile/overview/dev/YYYY-MM-DD-&lt;slug&gt;.html</code> (clona
+      <code>dev/_template.html</code>). Ambos casos agregan entry al array
+      <code>window.DOCS</code> de <code>data/manifest.js</code>. Reglas en
+      <code>docs/mobile/AGENTS.md</code>.
+    </p>
+  </div>
+</footer>
+
+<!-- Modal: nueva entrada =================================================== -->
+<div class="modal-backdrop" id="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+  <div class="modal">
+    <header>
+      <h3 id="modal-title">Nueva entrada al catálogo</h3>
+      <button class="x" id="modal-close" type="button" aria-label="Cerrar">×</button>
+    </header>
+    <form id="entry-form" class="modal-body" autocomplete="off">
+      <fieldset class="row-2">
+        <div>
+          <label for="f-date">Fecha</label>
+          <input id="f-date" name="date" type="date" required>
+          <div class="hint">YYYY-MM-DD</div>
+        </div>
+        <div>
+          <label for="f-file">Archivo HTML</label>
+          <input id="f-file" name="file" type="text" required
+                 placeholder="2026-05-17-mi-proyecto.html">
+          <div class="hint">relativo a docs/mobile/overview/</div>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <label for="f-title">Título</label>
+        <input id="f-title" name="title" type="text" required
+               placeholder="Nombre corto del proyecto o fix">
+      </fieldset>
+
+      <fieldset>
+        <label for="f-summary">Resumen (2–3 líneas)</label>
+        <textarea id="f-summary" name="summary" required
+                  placeholder="Qué resuelve, para quién, qué se nota."></textarea>
+      </fieldset>
+
+      <fieldset class="row-2">
+        <div>
+          <label>Tipos</label>
+          <div class="checkbox-grid" id="f-types">
+            <label><input type="checkbox" value="spec">Spec</label>
+            <label><input type="checkbox" value="plan">Plan</label>
+            <label><input type="checkbox" value="feature">Feature</label>
+            <label><input type="checkbox" value="fix">Fix</label>
+            <label><input type="checkbox" value="refactor">Refactor</label>
+            <label><input type="checkbox" value="exploration">Exploration</label>
+            <label><input type="checkbox" value="pr">PR</label>
+            <label><input type="checkbox" value="playground">Playground</label>
+            <label><input type="checkbox" value="report">Report</label>
+          </div>
+        </div>
+        <div>
+          <label for="f-status">Estado</label>
+          <select id="f-status" name="status">
+            <option value="active">active</option>
+            <option value="in_progress">in_progress</option>
+            <option value="pending">pending</option>
+            <option value="completed">completed</option>
+            <option value="shipped">shipped</option>
+            <option value="paused">paused</option>
+            <option value="cancelled">cancelled</option>
+          </select>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <label for="f-tags">Tags</label>
+        <input id="f-tags" name="tags" type="text"
+               placeholder="back-office, supabase, daisyUI">
+        <div class="hint">separados por coma</div>
+      </fieldset>
+
+      <fieldset>
+        <label>Fases <span style="font-weight:400;color:var(--ink-3);text-transform:none;letter-spacing:0;font-size:11px">(opcional, omite para devs)</span></label>
+        <div class="phases-builder" id="f-phases">
+          <button type="button" class="btn-phase-add" id="btn-add-phase">+ Fase</button>
+        </div>
+      </fieldset>
+    </form>
+    <pre class="preview-block" id="preview"></pre>
+    <div class="modal-footer">
+      <button type="button" class="preview-toggle" id="btn-preview-toggle">Ver / ocultar preview</button>
+      <div class="actions">
+        <button type="button" class="btn-cancel" id="btn-cancel">Cancelar</button>
+        <button type="button" class="btn-copy" id="btn-copy">📋 Copy as JS</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- Data manifest: separado para que cada cambio de status toque un solo archivo. -->
+<script src="data/manifest.js"></script>
+<script>
+  // ===== Render del catálogo =================================================
+  const $cards = document.getElementById('cards');
+  const $empty = document.getElementById('empty');
+  const $search = document.getElementById('search');
+  const $filters = document.getElementById('filters');
+
+  const $statTotal = document.getElementById('stat-total');
+  const $statLatest = document.getElementById('stat-latest');
+  const $statActive = document.getElementById('stat-active');
+
+  let currentFilter = 'all';
+
+  function el(tag, props = {}, ...children) {
+    const node = document.createElement(tag);
+    for (const [key, val] of Object.entries(props)) {
+      if (key === 'className') node.className = val;
+      else if (key === 'dataset') Object.assign(node.dataset, val);
+      else if (key.startsWith('on') && typeof val === 'function') {
+        node.addEventListener(key.slice(2).toLowerCase(), val);
+      } else if (key in node) {
+        node[key] = val;
+      } else {
+        node.setAttribute(key, val);
+      }
+    }
+    for (const child of children.flat()) {
+      if (child == null) continue;
+      node.append(typeof child === 'string' ? document.createTextNode(child) : child);
+    }
+    return node;
+  }
+
+  function statsUpdate() {
+    const docs = window.DOCS || [];
+    $statTotal.textContent = String(docs.length);
+    const latest = docs.map(d => d.date).sort().at(-1);
+    $statLatest.textContent = latest ?? '—';
+    const activeStatuses = new Set(['active', 'in_progress', 'pending']);
+    $statActive.textContent = String(docs.filter(d => activeStatuses.has(d.status)).length);
+  }
+
+  function buildProgressBlock(doc) {
+    if (!doc.phases || doc.phases.length === 0) return null;
+
+    const total = doc.phases.length;
+    const completed = doc.phases.filter(p => p.status === 'completed').length;
+    const inProgress = doc.phases.filter(p => p.status === 'in_progress').length;
+    const planReady = doc.phases.filter(p => p.status === 'plan_ready').length;
+
+    let label;
+    if (completed === total) {
+      label = `${total}/${total} fases completas`;
+    } else if (inProgress > 0) {
+      label = `F${doc.phases.find(p => p.status === 'in_progress').num} en progreso · ${completed}/${total} completas`;
+    } else if (planReady > 0) {
+      label = `${completed}/${total} completas · ${planReady} con plan listo`;
+    } else if (completed > 0) {
+      label = `${completed}/${total} completas`;
+    } else {
+      label = `Plan pendiente · 0/${total} fases`;
+    }
+
+    const segs = doc.phases.map(p =>
+      el('div', {
+        className: 'seg',
+        dataset: { status: p.status },
+        style: `width:${100 / total}%`,
+        title: `F${p.num}: ${p.status.replace('_', ' ')}`,
+      }),
+    );
+
+    return el(
+      'div',
+      { className: 'progress-block' },
+      el(
+        'div',
+        { className: 'progress-row' },
+        el('span', {}, 'Roadmap'),
+        el('b', {}, label),
+      ),
+      el('div', { className: 'progress-bar' }, ...segs),
+    );
+  }
+
+  function buildCard(doc) {
+    const badges = doc.types.map(t =>
+      el('span', { className: `badge ${t}` }, t.toUpperCase()),
+    );
+    const tagNodes = doc.tags.slice(0, 6).map(t =>
+      el('span', { className: 'tag' }, t),
+    );
+    const progressBlock = buildProgressBlock(doc);
+
+    const children = [
+      el(
+        'div',
+        { className: 'meta-top' },
+        el('span', { className: 'date' }, doc.date),
+        el('span', { className: 'badges' }, ...badges),
+      ),
+      el('h2', {}, doc.title),
+      el('p', { className: 'summary' }, doc.summary),
+      el('div', { className: 'tags' }, ...tagNodes),
+    ];
+    if (progressBlock) children.push(progressBlock);
+    children.push(el('div', { className: 'arrow' }, 'Abrir overview'));
+
+    return el(
+      'a',
+      {
+        className: 'doc-card',
+        href: doc.file,
+        dataset: {
+          types: doc.types.join(','),
+          status: doc.status,
+        },
+      },
+      ...children,
+    );
+  }
+
+  function render() {
+    const docs = window.DOCS || [];
+    const q = $search.value.trim().toLowerCase();
+
+    const filtered = docs
+      .slice()
+      .sort((a, b) => b.date.localeCompare(a.date))
+      .filter(doc => {
+        if (currentFilter === 'spec' && !doc.types.includes('spec')) return false;
+        if (currentFilter === 'plan' && !doc.types.includes('plan')) return false;
+        if (currentFilter === 'feature' && !doc.types.includes('feature')) return false;
+        if (currentFilter === 'fix' && !doc.types.includes('fix')) return false;
+        if (currentFilter === 'refactor' && !doc.types.includes('refactor')) return false;
+        if (currentFilter === 'exploration' && !doc.types.includes('exploration')) return false;
+        if (currentFilter === 'pr' && !doc.types.includes('pr')) return false;
+        if (currentFilter === 'playground' && !doc.types.includes('playground')) return false;
+        if (currentFilter === 'report' && !doc.types.includes('report')) return false;
+        if (currentFilter === 'active') {
+          const activeStatuses = new Set(['active', 'in_progress', 'pending']);
+          if (!activeStatuses.has(doc.status)) return false;
+        }
+        if (q) {
+          const hay = (
+            doc.title + ' ' +
+            doc.summary + ' ' +
+            doc.tags.join(' ') + ' ' +
+            doc.date
+          ).toLowerCase();
+          if (!hay.includes(q)) return false;
+        }
+        return true;
+      });
+
+    while ($cards.firstChild) $cards.removeChild($cards.firstChild);
+    for (const doc of filtered) $cards.append(buildCard(doc));
+
+    $empty.hidden = filtered.length !== 0;
+  }
+
+  $search.addEventListener('input', render);
+  $filters.addEventListener('click', (e) => {
+    const btn = e.target.closest('.chip');
+    if (!btn) return;
+    for (const c of $filters.querySelectorAll('.chip')) c.classList.remove('active');
+    btn.classList.add('active');
+    currentFilter = btn.dataset.filter;
+    render();
+  });
+
+  statsUpdate();
+  render();
+
+  // ===== Modal: nueva entrada ===============================================
+  const $modal = document.getElementById('modal');
+  const $btnNew = document.getElementById('btn-new');
+  const $btnClose = document.getElementById('modal-close');
+  const $btnCancel = document.getElementById('btn-cancel');
+  const $btnCopy = document.getElementById('btn-copy');
+  const $btnAddPhase = document.getElementById('btn-add-phase');
+  const $phases = document.getElementById('f-phases');
+  const $preview = document.getElementById('preview');
+  const $btnPreviewToggle = document.getElementById('btn-preview-toggle');
+  const $toast = document.getElementById('toast');
+  const $form = document.getElementById('entry-form');
+  const $fDate = document.getElementById('f-date');
+
+  function openModal() {
+    $modal.dataset.open = 'true';
+    if (!$fDate.value) $fDate.value = new Date().toISOString().slice(0, 10);
+    setTimeout(() => document.getElementById('f-title').focus(), 50);
+  }
+  function closeModal() {
+    $modal.dataset.open = 'false';
+  }
+
+  $btnNew.addEventListener('click', openModal);
+  $btnClose.addEventListener('click', closeModal);
+  $btnCancel.addEventListener('click', closeModal);
+  $modal.addEventListener('click', (e) => { if (e.target === $modal) closeModal(); });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeModal();
+    if (e.key === 'n' && !['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)) {
+      e.preventDefault();
+      openModal();
+    }
+  });
+
+  function addPhaseRow(num = null, status = 'pending') {
+    const phaseNum = num ?? $phases.querySelectorAll('.phase-pill').length;
+    const pill = el('span', { className: 'phase-pill', dataset: { num: String(phaseNum) } },
+      el('strong', { style: 'font-weight:700;color:var(--ink)' }, `F${phaseNum}`),
+      (() => {
+        const sel = el('select', {});
+        ['pending', 'plan_ready', 'in_progress', 'completed'].forEach(s => {
+          const opt = el('option', { value: s }, s);
+          if (s === status) opt.selected = true;
+          sel.append(opt);
+        });
+        return sel;
+      })(),
+      el('button', { type: 'button', className: 'rm', title: 'Quitar', onclick: (e) => {
+        e.target.closest('.phase-pill').remove();
+        renumberPhases();
+        updatePreview();
+      } }, '×'),
+    );
+    $btnAddPhase.before(pill);
+    pill.querySelector('select').addEventListener('change', updatePreview);
+  }
+  function renumberPhases() {
+    [...$phases.querySelectorAll('.phase-pill')].forEach((pill, i) => {
+      pill.dataset.num = String(i);
+      pill.querySelector('strong').textContent = `F${i}`;
+    });
+  }
+  $btnAddPhase.addEventListener('click', () => { addPhaseRow(); updatePreview(); });
+
+  function readForm() {
+    const types = [...$form.querySelectorAll('#f-types input:checked')].map(i => i.value);
+    const phases = [...$phases.querySelectorAll('.phase-pill')].map(pill => ({
+      num: Number(pill.dataset.num),
+      status: pill.querySelector('select').value,
+    }));
+    const tags = $form.elements.tags.value
+      .split(',').map(s => s.trim()).filter(Boolean);
+
+    const entry = {
+      date: $form.elements.date.value,
+      title: $form.elements.title.value.trim(),
+      summary: $form.elements.summary.value.trim(),
+      file: $form.elements.file.value.trim(),
+      types,
+      status: $form.elements.status.value,
+      tags,
+    };
+    if (phases.length) entry.phases = phases;
+    return entry;
+  }
+
+  function entryToJS(e) {
+    const ind = '  ';
+    const lines = [`${ind}{`];
+    lines.push(`${ind}${ind}date: ${JSON.stringify(e.date)},`);
+    lines.push(`${ind}${ind}title: ${JSON.stringify(e.title)},`);
+    lines.push(`${ind}${ind}summary: ${JSON.stringify(e.summary)},`);
+    lines.push(`${ind}${ind}file: ${JSON.stringify(e.file)},`);
+    lines.push(`${ind}${ind}types: [${e.types.map(t => JSON.stringify(t)).join(', ')}],`);
+    lines.push(`${ind}${ind}status: ${JSON.stringify(e.status)},`);
+    lines.push(`${ind}${ind}tags: [${e.tags.map(t => JSON.stringify(t)).join(', ')}],`);
+    if (e.phases) {
+      lines.push(`${ind}${ind}phases: [`);
+      for (const p of e.phases) {
+        lines.push(`${ind}${ind}${ind}{ num: ${p.num}, status: ${JSON.stringify(p.status)} },`);
+      }
+      lines.push(`${ind}${ind}],`);
+    }
+    lines.push(`${ind}},`);
+    return lines.join('\n');
+  }
+
+  function updatePreview() {
+    if ($preview.dataset.show !== 'true') return;
+    $preview.textContent = entryToJS(readForm());
+  }
+
+  $btnPreviewToggle.addEventListener('click', () => {
+    const showing = $preview.dataset.show === 'true';
+    $preview.dataset.show = showing ? 'false' : 'true';
+    if (!showing) updatePreview();
+  });
+
+  $form.addEventListener('input', updatePreview);
+
+  function showToast(msg) {
+    $toast.textContent = msg;
+    $toast.dataset.show = 'true';
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(() => { $toast.dataset.show = 'false'; }, 2200);
+  }
+
+  $btnCopy.addEventListener('click', async () => {
+    const entry = readForm();
+    if (!entry.date || !entry.title || !entry.summary || !entry.file || entry.types.length === 0) {
+      showToast('Faltan campos requeridos');
+      return;
+    }
+    const js = entryToJS(entry);
+    try {
+      await navigator.clipboard.writeText(js);
+      $btnCopy.dataset.copied = 'true';
+      $btnCopy.textContent = '✓ Copiado';
+      showToast('Pega antes de // ← Las entradas… en data/manifest.js');
+      setTimeout(() => {
+        $btnCopy.dataset.copied = 'false';
+        $btnCopy.textContent = '📋 Copy as JS';
+      }, 2000);
+    } catch (err) {
+      $preview.dataset.show = 'true';
+      $preview.textContent = js;
+      showToast('Clipboard no disponible — copia desde el preview ↓');
+    }
+  });
+</script>
+
+</body>
+</html>

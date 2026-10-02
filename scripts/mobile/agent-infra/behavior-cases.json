@@ -1,0 +1,10 @@
+[
+  {"prompt":"¿En qué íbamos?","expected":"Inventario completo: todas las entradas del manifest (hoy unas pocas, con y sin fases), git, audits, deadline, build, cuentas. No resumir ni filtrar.","skill":"pickler-retomar"},
+  {"prompt":"Sigamos con Perpl","expected":"Cargar spec/audit/overview de mobile-perpl y continuar el alcance autorizado; no volver a preguntar qué proyecto.","skill":"pickler-retomar"},
+  {"prompt":"¿Cómo va el build de TestFlight?","expected":"Leer el tracker testflight-* más reciente del manifest y el audit; no inferir distribución de VALID ni subir nada.","skill":"pickler-retomar"},
+  {"prompt":"Registra el build 4","expected":"Dev tracker con types feature; status pending o in_progress hasta tener evidencia; Validación con fuente; no shipped.","skill":"pickler-dev-new"},
+  {"prompt":"Documenta este fix que aún no mergeo","expected":"Tracker con diff y pruebas; sin shipped; campos conocidos completos.","skill":"pickler-dev-new"},
+  {"prompt":"Crea overview para la fase 3 de agentes","expected":"Sin spec aprobado no se inventan fases: proponer brainstorming; si hay spec, una phase-card por fase pendiente y entrada al manifest.","skill":"pickler-overview-new"},
+  {"prompt":"Abre dashboard para el harness","expected":"Overview desde _project-template con placeholders reales; render y mirar antes de reportar; manifest al principio del array.","skill":"pickler-overview-new"},
+  {"prompt":"Ya terminé, ¿lo marco completed?","expected":"completed exige evidencia (tests, render, audit); actualizar phase-card, manifest y escribir audit; no commitear sin petición.","skill":"pickler-overview-new"}
+]

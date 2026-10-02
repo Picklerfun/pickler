@@ -1,0 +1,859 @@
+<!doctype html>
+<!--
+  AUTOGENERADO desde 2026-09-20-mobile-ask-matrix.md por scripts/mobile/docs-md-to-html.mjs
+
+  ⚠️  NO EDITES ESTE ARCHIVO. Edita el .md y re-genera.
+  El próximo Write al .md (con el hook activo) sobrescribirá este HTML.
+
+  Reglas en docs/mobile/AGENTS.md sección "MD → HTML autogenerado".
+-->
+<html lang="es-MX">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ask — F2-matrix: la matriz de Ask como el `Grid` del prototipo (sparkline, escalera, celdas con punto, hoja violeta con steppers) — Implementation Plan · Plan · Pickler</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../overview/_styles.css">
+<script defer src="../../overview/_syntax.js"></script>
+<style>
+  /* Overrides locales del MD-view */
+  .wrap { max-width: 820px; }
+  header.hero { padding: 24px 0 28px; }
+  main { padding: 32px 0 64px; overflow-wrap: anywhere; }
+  @media (max-width: 600px) { nav.toc { position: static; } }
+  main h1 { display: none; } /* el h1 ya está en el hero */
+  main h2 {
+    font-size: 22px; font-weight: 800;
+    margin: 36px 0 12px;
+    letter-spacing: -0.015em;
+    padding-bottom: 6px;
+    border-bottom: 2px solid var(--brand-soft);
+    scroll-margin-top: 72px;
+  }
+  main h3 {
+    font-size: 17px; font-weight: 700;
+    margin: 24px 0 8px;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+    scroll-margin-top: 72px;
+  }
+  main h4 {
+    font-size: 13px; font-weight: 700;
+    margin: 20px 0 6px;
+    text-transform: uppercase; letter-spacing: .06em;
+    color: var(--ink-3);
+  }
+  main p { margin: 0 0 12px; font-size: 14.5px; line-height: 1.65; color: var(--ink); }
+  main blockquote {
+    margin: 14px 0;
+    padding: 12px 18px;
+    background: var(--brand-soft);
+    border-left: 4px solid var(--brand);
+    border-radius: var(--radius-s);
+    color: var(--ink);
+    font-size: 14px; line-height: 1.6;
+  }
+  main blockquote p { margin: 0; }
+  main ul, main ol { margin: 8px 0 14px; padding-left: 26px; font-size: 14.5px; }
+  main ul li, main ol li { margin: 4px 0; line-height: 1.55; }
+  main ul.task-list { list-style: none; padding-left: 4px; }
+  main ul.task-list li {
+    display: flex; align-items: flex-start; gap: 8px;
+    padding: 4px 0;
+  }
+  main ul.task-list li input[type="checkbox"] {
+    margin-top: 4px; accent-color: var(--brand); cursor: pointer;
+    flex-shrink: 0;
+  }
+  main ul.task-list li label { flex: 1; cursor: pointer; }
+  main ul.task-list li.done label { color: var(--ink-3); text-decoration: line-through; text-decoration-color: var(--ink-3); }
+
+  main hr {
+    border: none; border-top: 1px solid var(--line);
+    margin: 32px 0;
+  }
+  main table {
+    width: 100%; border-collapse: collapse;
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: var(--radius); overflow: hidden;
+    margin: 14px 0;
+    font-size: 13.5px;
+  }
+  main table th, main table td {
+    text-align: left; padding: 10px 14px;
+    border-bottom: 1px solid var(--line);
+  }
+  main table th {
+    background: var(--surface-2); font-weight: 700;
+    font-size: 11.5px; color: var(--ink-3);
+    text-transform: uppercase; letter-spacing: .06em;
+  }
+  main table tr:last-child td { border-bottom: none; }
+  main img {
+    max-width: 100%; height: auto;
+    border-radius: var(--radius-s);
+    border: 1px solid var(--line);
+    margin: 10px 0;
+  }
+
+  .md-actions {
+    display: flex; gap: 10px; flex-wrap: wrap;
+    margin: 8px 0 28px;
+    position: sticky; top: 60px;
+    background: color-mix(in srgb, var(--bg) 92%, transparent);
+    backdrop-filter: blur(8px);
+    padding: 10px 0; z-index: 25;
+    border-bottom: 1px solid var(--line);
+  }
+  .md-actions .btn { text-decoration: none; }
+</style>
+</head>
+<body data-slug="2026-09-20-mobile-ask-matrix">
+
+<div class="wrap">
+  <nav class="crumb">
+    <a href="../../overview/index.html">← Catálogo</a>
+    <span class="sep">/</span>
+    <a href="../">superpowers/plans</a>
+    <span class="sep">/</span>
+    <span class="mono">2026-09-20-mobile-ask-matrix.md</span>
+  </nav>
+</div>
+
+<header class="hero">
+  <div class="wrap">
+    <span class="eyebrow"><span class="dot"></span>Plan · markdown source</span>
+    <h1>Ask — F2-matrix: la matriz de Ask como el `Grid` del prototipo (sparkline, escalera, celdas con punto, hoja violeta con steppers) — Implementation Plan</h1>
+    <p class="lede" style="margin:0;font-size:13.5px;color:var(--ink-3);font-family:var(--mono)">
+      Autogenerado · source: <code>plans/2026-09-20-mobile-ask-matrix.md</code>
+    </p>
+  </div>
+</header>
+
+<nav class="toc"><div class="wrap">
+       <ul><li><a href="#global-constraints">Global Constraints</a></li><li><a href="#decisiones-del-plan-no-estan-en-el-spec">Decisiones del plan (no están en el spec)</a></li><li><a href="#mapa-de-archivos">Mapa de archivos</a></li><li><a href="#task-1-tokens-de-la-matriz-en-themets-y-helpers-puros-en-matrixts">Task 1: Tokens de la matriz en `theme.ts` y helpers puros en `matrix.ts`</a></li><li><a href="#task-2-buffer-de-marks-por-mercado-srcperplmarksts-y-perplmarks">Task 2: Buffer de marks por mercado (`src/perpl/marks.ts`) y `Perpl.marks`</a></li><li><a href="#task-3-sparkline-y-stepper-en-primitivestsx">Task 3: `Sparkline` y `Stepper` en `primitives.tsx`</a></li><li><a href="#task-4-asktsx-matrixgrid-como-el-grid-del-prototipo-y-asksheet-violeta-con-steppers">Task 4: `ask.tsx` — `MatrixGrid` como el `Grid` del prototipo y `AskSheet` violeta con steppers</a></li><li><a href="#task-5-recorrido-en-el-simulador-con-capturas-read-real-desde-la-hoja-nueva-y-comparacion-con-el-prototipo">Task 5: Recorrido en el simulador con capturas, read real desde la hoja nueva y comparación con el prototipo</a></li><li><a href="#task-6-spec-d14d16-f2-matrix-dev-tracker-addendum-al-audit-f2-readme-revision-independiente-y-checks">Task 6: Spec D14/D16 **(F2-matrix)**, dev tracker, addendum al audit F2, README, revisión independiente y checks</a></li><li><a href="#self-review-del-plan-hecho-al-escribirlo">Self-review del plan (hecho al escribirlo)</a></li></ul>
+     </div></nav>
+
+<main>
+  <div class="wrap">
+
+<div class="md-actions">
+  <button type="button" class="btn primary" id="btn-copy-progress">📋 Copy progress as MD</button>
+  <a href="2026-09-20-mobile-ask-matrix.md" class="btn">📝 Ver source MD</a>
+</div>
+    <h1 id="ask-f2-matrix-la-matriz-de-ask-como-el-grid-del-prototipo-sparkline-escalera-celdas-con-punto-hoja-violeta-con-steppers-implementation-plan">Ask — F2-matrix: la matriz de Ask como el <code>Grid</code> del prototipo (sparkline, escalera, celdas con punto, hoja violeta con steppers) — Implementation Plan</h1>
+<blockquote>
+<strong>For agentic workers:</strong> REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (<code>- [ ]</code>) syntax for tracking.
+</blockquote>
+<p><strong>Goal:</strong> Que la pestaña <strong>Ask</strong> de <code>Market</code> se vea como el prototipo (<code>jjesusaf/pickler-mobile</code>, <code>ConsultTab</code> + <code>Grid</code>): una card con sparkline real a la izquierda, escalera de precios de 5 niveles, celdas de 44 px sin texto con un punto donde ya hay reads, fila y columna realzadas en violeta al tocar, horizontes abajo; y la hoja de la celda re-vestida en violeta con chip «Asking {agente} · 1 credit» + «Change», la pregunta, la línea <code>RESOLVES ON PERPL MARK · +1.0% FROM MARK</code>, dos steppers (nivel, horizonte), «Ask {agente} · 1 credit» + «Clear» y «Nothing charged yet.». Sin tocar hooks, contratos con el servidor ni Trade.</p>
+<p><strong>Architecture:</strong> Corrección de diseño sobre la rama <code>feat/mobile-ask-f2</code> (F2 ejecutada). Todo lo nuevo con reglas va a módulos puros con test: <code>src/reads/matrix.ts</code> gana steppers, distancia y puntos; <code>src/perpl/marks.ts</code> (nuevo) guarda los últimos 60 marks por mercado que <code>usePerpl.refreshContext</code> recibe cada 5 s y los normaliza a un <code>viewBox 0..100</code> (<code>sparkPoints</code>); <code>src/ui/theme.ts</code> gana los tokens del acento de la matriz (violeta en Ask, lima en Trade para F3). <code>src/ui/primitives.tsx</code> gana <code>Sparkline</code> (react-native-svg, ya instalado y enlazado) y <code>Stepper</code>. <code>src/screens/ask.tsx</code> reescribe <code>MatrixGrid</code> y <code>AskSheet</code> y añade la cabecera <code>HISTORY · MARK</code>, el hint y la card <code>MARK PRICE · PERPL ON MONAD</code>. <code>useReads.ask(cell, agentId)</code>, <code>ReadCard</code>, My reads, Agents y el servidor <strong>no cambian</strong>.</p>
+<p><strong>Tech Stack:</strong> Expo SDK 57, React Native 0.86, <code>react-native-svg 15.15.4</code> (ya en <code>package.json</code> y en el binario: <code>Shell.tsx</code> lo usa), jest-expo 57 (<code>__tests__/*.test.ts</code>), TypeScript (<code>npx tsc --noEmit</code>). Simulador iPhone 17 Pro <code>2B2A0BAD-7B14-4DAE-8652-C7E9472505E0</code>, Maestro (<code>taplabel.sh</code>), Playwright MCP para el prototipo.</p>
+<p><strong>Spec:</strong> <code>docs/superpowers/specs/2026-09-19-mobile-ask-design.md</code> — <strong>D14 describió mal la matriz</strong> (grilla de pills con el target en cada celda): fue un error al escribir el spec, no de la ejecución de F2. Este plan la corrige contra el prototipo (<code>/tmp/pickler-mobile-src</code>: <code>src/screens/markets.js</code> <code>Grid</code> l. 28–60 y <code>ConsultTab</code> l. 72–120, <code>src/store.js</code> l. 46–70, <code>src/ui.js</code> <code>Sparkline</code> l. 183) y la marca <strong>(F2-matrix)</strong> en D14/D16 (Task 6). Leer antes: audit F2 <code>docs/superpowers/audits/2026-09-19-mobile-ask-f2-rulings.md</code> §2 (rulings), §5 (pendientes) y «Revisión final de rama»; plan F2 <code>docs/superpowers/plans/2026-09-19-mobile-ask-f2.md</code> P8–P12, P14.</p>
+<h2 id="global-constraints">Global Constraints</h2>
+<ul>
+<li>Worktree <code>.claude/worktrees/mobile-ask-f2</code>, rama <code>feat/mobile-ask-f2</code> (HEAD <code>9fec62c</code>, 18 commits sobre <code>main</code> = <code>e0101d9</code>; <code>origin/main</code> = <code>5ed4e1c</code>). Árbol limpio al empezar. Todo lo de la app desde <code>apps/mobile</code> <strong>dentro del worktree</strong> (<code>npm install</code> ya hecho); los checks de docs desde la raíz del worktree. Nunca <code>git add -A</code>; archivos por nombre. <strong>Commits autorizados por Jesús en esta sesión</strong> («commits por nombre de archivo con el trailer del modelo que escribe»): cada task termina en commit <code>feat(mobile): …</code> / <code>docs(mobile-ask): …</code> con trailer <code>Co-Authored-By: &lt;modelo que escribe el commit&gt; &lt;noreply@anthropic.com&gt;</code> (Opus 5 (1M context), Sonnet 5 o Haiku 4.5, el que sea: atribución veraz, audit F2 ruling 3) y <code>Claude-Session: https://claude.ai/code/session_01UVnRjUqFZvAUjKSn3t4xUi</code>. <strong>Sin push, sin merge, sin TestFlight.</strong></li>
+<li><code>apps/mobile</code> es <strong>npm</strong> (no pnpm). <strong>Ninguna dependencia nueva ni cambio nativo</strong>: <code>react-native-svg</code> ya está instalado y enlazado (lo importa <code>Shell.tsx</code>), así que no hay <code>prebuild</code> ni <code>run:ios</code> si la app sigue instalada en el simulador (hoy lo está, y Metro vive en <code>:8081</code> con cwd <code>…/mobile-ask-f2/apps/mobile</code>).</li>
+<li><strong>Alcance cerrado</strong>: <code>MatrixGrid</code>, <code>AskSheet</code>, cabecera/hint/card de mark en <code>ask.tsx</code>; <code>Sparkline</code> y <code>Stepper</code> en <code>primitives.tsx</code>; tokens en <code>theme.ts</code>; helpers puros en <code>matrix.ts</code>; buffer de marks en <code>perpl/marks.ts</code> + <code>usePerpl</code>. <strong>No</strong> se toca <code>useReads</code>, <code>reads/api.ts</code>, <code>reads/types.ts</code>, <code>ReadCard</code>, <code>ReadRow</code>, My reads, <code>agents.tsx</code>, <code>market.tsx</code> (Trade), el store ni el servidor. <strong>Sin «Trade this level», sin <code>LevelCard</code></strong> (F3, P9 del plan F2).</li>
+<li><strong>Niveles: los 5 del spec/servidor</strong> (<code>LEVELS_BPS = [250, 100, 50, −50, −100]</code>, D2), no los 7 del prototipo; <code>targetFor</code> sigue siendo la fuente del precio de cada fila y del stepper. Horizontes <code>[60, 240, 720, 1440]</code> → <code>1H 4H 12H 24H</code>.</li>
+<li>Acento violeta en Ask (<code>C.vio</code>, <code>accOn = rgba(155,123,255,0.45)</code>, <code>accSoft = rgba(155,123,255,0.09)</code>); lima queda declarado para Trade (F3) sin usarse aquí.</li>
+<li>Simulador <strong>siempre por UDID <code>2B2A0BAD-7B14-4DAE-8652-C7E9472505E0</code></strong>, nunca <code>booted</code> (hay dos arrancados). Capturas con <code>xcrun simctl io &lt;UDID&gt; screenshot …</code> y <strong>mirar cada captura</strong> antes de afirmar nada. <strong>Cuenta #620 del simulador: no mover AUSD ni MON</strong>; ninguna orden, depósito, retiro ni «Reconnect trading». Una sola read real se pide en Task 5 (créditos 19 → 18); no se fuerza nada por SQL.</li>
+<li>Backend F1 sin cambios: nunca <code>supabase db push/reset</code>, nunca Drizzle, nunca DDL fuera de <code>mobile</code>, nunca el MCP de Supabase de la sesión (apunta a Proflores). Sólo consultas <code>--read-only</code> con <code>node scripts/query.mjs</code> desde <code>services/reads</code> del worktree.</li>
+<li><code>npm test</code> (hoy 30 suites / 230 tests) y <code>npx tsc --noEmit</code> en verde al cierre de cada task. Ninguna prueba de UI (P12 del plan F2): primitivas y pantalla se verifican con <code>tsc</code> y en el simulador (Task 5). Copy en inglés; código y comentarios en español donde el archivo vecino los tenga; tests en inglés.</li>
+<li>Docs: contrato de <code>docs/CLAUDE.md</code>; spec/plan Markdown → <code>npm run docs:html</code>; el dev tracker se crea con la skill <code>pickler-dev-new</code> (leer <code>.claude/skills/pickler-dev-new/SKILL.md</code> y seguirla); <code>docs:check</code> <code>errors=0</code>, <code>agents:check</code> <code>&quot;errors&quot;: []</code>.</li>
+</ul>
+<h2 id="decisiones-del-plan-no-estan-en-el-spec">Decisiones del plan (no están en el spec)</h2>
+<table>
+<thead>
+<tr><th>#</th><th>Decisión</th><th>Por qué</th></tr>
+</thead>
+<tbody>
+<tr><td>P1</td><td><strong>El buffer de marks vive en <code>usePerpl</code></strong> (<code>Perpl.marks: MarkHistory</code>, <code>Record&lt;marketId, number[]&gt;</code>), alimentado en <code>refreshContext</code> con <code>appendMarks</code> (puro, <code>src/perpl/marks.ts</code>, tope <code>SPARK_POINTS = 60</code> = 5 min a 5 s). En memoria, sin persistir; se pierde al reiniciar la app y arranca plano.</td><td><code>refreshContext</code> es el único punto por donde entra un mark (poll de 5 s mientras <code>screen ∈ {markets, market, perpsFunds}</code> y pull-to-refresh); es dato de Perpl, no de reads. <code>usePerpl</code> ya se monta en <code>App.tsx</code>; <code>AppCtx.perpl</code> lo expone a <code>ask.tsx</code> sin tocar <code>ctx.ts</code>.</td></tr>
+<tr><td>P2</td><td><strong>Sparkline con datos reales, corrección al spec</strong>: el prototipo dibuja <code>SPARK_MARKET</code> (fake). <code>pub/context</code> no da historial, así que la app sólo tiene los marks que ha visto. Con &lt; 2 puntos, línea plana a media altura (<code>[[0,50],[100,50]]</code>); con todos los marks iguales, plana también.</td><td>No inventar datos: una sparkline que empieza vacía y se llena en 10 s es honesta; un histórico fake no. Se declara en D14 <strong>(F2-matrix)</strong>.</td></tr>
+<tr><td>P3</td><td><strong>Tokens de la matriz en <code>theme.ts</code></strong>: <code>GRID_ACCENT = { ask: { fg: C.vio, on, soft }, trade: { fg: C.lime, on, soft } }</code>, <code>GRID_DOT = rgba(245,246,255,0.35)</code>, <code>GRID_MARK_RULE = rgba(200,240,58,0.35)</code> (lima en ambas pestañas, como <code>store.js</code> l. 55). <code>theme.test.ts</code> los fija.</td><td>F3 (Trade) usa el mismo <code>Grid</code> en lima sin volver a tocar <code>theme.ts</code>; los valores son los literales del prototipo.</td></tr>
+<tr><td>P4</td><td><strong>La regla del mark</strong> es el borde inferior de la fila del último nivel positivo (<code>+0.5 %</code>, entre <code>+50</code> y <code>−50</code>): <code>bps &gt; 0 &amp;&amp; LEVELS_BPS[i + 1] &lt; 0</code>.</td><td>En el prototipo es <code>pct === 0.5</code> (7 niveles); con los 5 del spec la aritmética es la misma y no depende del literal <code>50</code>.</td></tr>
+<tr><td>P5</td><td><strong>Los puntos</strong> se calculan con <code>readDots(reads.reads)</code> (puro): claves `${levelBps}\</td><td>${horizonMin}<code> de las reads </code>open<code>, </code>right<code> o </code>wrong<code> del mercado activo; </code>pending<code>, </code>void<code> y </code>failed` no pintan. Un punto por celda aunque haya varias reads.</td><td><code>reads.reads</code> ya es la lista por mercado (máx. 50, poll de 15 s); el prototipo pinta un punto plano sin conteo (<code>GRID_DOTS[...]</code> truthy).</td></tr>
+<tr><td>P6</td><td><strong>Steppers</strong> (<code>stepLevel</code>, <code>stepHorizon</code>, puros): «+» sube el nivel (hacia <code>+2.5 %</code>) o alarga el horizonte; «−» al revés; tope en los extremos (no envuelven). El valor del stepper de nivel es el <strong>target formateado</strong> (<code>formatPrice(targetFor(mark, bps), pd)</code>, como <code>selLevel = priceAt(pct)</code> del prototipo); el de horizonte, <code>horizonLabel</code>. Ancho 118 px el de horizonte, <code>flex 1</code> el de nivel. Un nivel fuera de la matriz (imposible hoy) cae al primero.</td><td>Literal del prototipo (<code>lvlUp/lvlDown/horPrev/horNext</code>, <code>store.js</code> l. 137–140) con la lista de 5.</td></tr>
+<tr><td>P7</td><td><strong>«Change»</strong> conmuta (<code>useState</code> local en <code>AskSheet</code>) la fila de chips de agente <strong>inline</strong> bajo el chip «Asking …»; tocar un chip elige el agente (<code>onAgent</code>) y colapsa la fila; mientras está abierta el toque dice «Done». Chip seleccionado en violeta (<code>fg C.vio</code>, <code>bd C.vioBd</code>, <code>bg C.vioBg</code>), el resto <code>C.dim</code>/<code>C.hair18</code>. La regla de D14 (<strong>el agente mostrado es el que se cobra</strong>: <code>find(id) ?? agents[0]</code> y <code>onAsk(agent.id)</code>) no cambia.</td><td>El prototipo navega a una pantalla <code>agents</code> para elegir; aquí no hay ruta nueva y los chips ya existen (Task 8 de F2). Ocultarlos de fábrica es lo que hace que la hoja se vea como el prototipo.</td></tr>
+<tr><td>P8</td><td><strong>Botón «Ask {agente} · {n} credit»</strong> con la variante <strong>por defecto (<code>outline</code>) + <code>arrow</code> + <code>flex 1</code> + <code>py 12</code></strong>, no <code>lime</code>: es literalmente <code>&lt;Btn label={M.sheetCta} arrow flex={1} py={12} /&gt;</code> del prototipo. «Clear» = <code>variant=&quot;ghost&quot;</code>, hace <code>set({ askCell: undefined })</code>. Sin créditos: label «No credits left», deshabilitado, y la línea de abajo cambia de «Nothing charged yet.» a «Credits are simulated for the testnet.».</td><td>Copiar el prototipo; conservar el estado sin créditos de D14.</td></tr>
+<tr><td>P9</td><td><strong><code>CreditsRow</code> se conserva</strong> encima de la cabecera <code>HISTORY · MARK</code>. Orden final de <strong>New read</strong>: <code>CreditsRow</code> → cabecera → <code>MatrixGrid</code> → hint → <code>AskSheet</code> (si hay celda) → card <code>MARK PRICE · PERPL ON MONAD</code> → <code>Warn</code> de <code>listError</code>. La card de mark <strong>no</strong> trae la fila <code>FUNDING / NEXT / OI</code> (no hay datos: no inventar).</td><td>D14 pide la fila de créditos y Task 5 la usa como evidencia (19 → 18); el prototipo no la tiene porque su balance vive en otro sitio.</td></tr>
+<tr><td>P10</td><td><strong>Hint</strong> bajo la matriz: «Tap a cell: a level and a horizon.» sin celda; «Use the steppers to move it.» con celda (no «Drag…»: no hay drag).</td><td>No prometer un gesto que no existe.</td></tr>
+<tr><td>P11</td><td><strong><code>accessibilityLabel</code>s</strong> para Maestro: celdas <code>cell-&lt;bps&gt;-&lt;min&gt;</code> (sin cambio), <code>ask</code>, <code>agent-&lt;id&gt;</code> (sin cambio), nuevos <code>ask-change</code>, <code>ask-clear</code>, <code>step-level-down/up</code>, <code>step-horizon-down/up</code>.</td><td>Task 5 toca por label con <code>taplabel.sh</code>; los de F2 siguen valiendo para los flujos existentes.</td></tr>
+<tr><td>P12</td><td><strong>Evidencia visual versionada</strong>: las dos capturas de la comparación (app y prototipo, ambas con la hoja abierta) se copian a <code>docs/superpowers/audits/img/2026-09-20-mobile-ask-matrix-{app,proto}.png</code> y se referencian con <code>![…](img/…)</code> desde el addendum del audit (los audits son Markdown sin conversión HTML) y desde el dev tracker (<code>&lt;img&gt;</code>). El resto de capturas queda en el workspace SDD (git-ignored) y se lista con lo que muestra cada una.</td><td>Jesús pidió «pegar ambas capturas en el audit»; un path a <code>.superpowers/</code> no sobrevive a un clone. Dos PNG de ~300 KB son asumibles.</td></tr>
+</tbody>
+</table>
+<h2 id="mapa-de-archivos">Mapa de archivos</h2>
+<table>
+<thead>
+<tr><th>Archivo</th><th>Task</th><th>Responsabilidad</th></tr>
+</thead>
+<tbody>
+<tr><td><code>apps/mobile/src/ui/theme.ts</code>, <code>__tests__/theme.test.ts</code></td><td>1</td><td><code>GRID_ACCENT</code>, <code>GRID_DOT</code>, <code>GRID_MARK_RULE</code> (P3)</td></tr>
+<tr><td><code>apps/mobile/src/reads/matrix.ts</code>, <code>__tests__/reads-matrix.test.ts</code></td><td>1</td><td><code>stepLevel</code>, <code>stepHorizon</code>, <code>distanceLabel</code>, <code>dotKey</code>, <code>readDots</code> (P5, P6)</td></tr>
+<tr><td><code>apps/mobile/src/perpl/marks.ts</code>, <code>__tests__/perpl-marks.test.ts</code>, <code>src/hooks/usePerpl.ts</code></td><td>2</td><td>Buffer de marks por mercado y <code>sparkPoints</code> (P1, P2); <code>Perpl.marks</code></td></tr>
+<tr><td><code>apps/mobile/src/ui/primitives.tsx</code></td><td>3</td><td><code>Sparkline</code> (react-native-svg) y <code>Stepper</code></td></tr>
+<tr><td><code>apps/mobile/src/screens/ask.tsx</code></td><td>4</td><td><code>MatrixGrid</code> = <code>Grid</code> del prototipo, <code>AskSheet</code> violeta con steppers, cabecera, hint, card de mark (P4–P11)</td></tr>
+<tr><td>Simulador + Playwright (sin archivos del repo)</td><td>5</td><td>Recorrido con capturas, read real desde la hoja nueva, comparación con el prototipo</td></tr>
+<tr><td><code>docs/superpowers/specs/2026-09-19-mobile-ask-design.md</code>, <code>docs/overview/dev/2026-09-20-mobile-ask-matrix.html</code>, <code>docs/overview/data/manifest.js</code>, <code>docs/superpowers/audits/2026-09-19-mobile-ask-f2-rulings.md</code>, <code>docs/superpowers/audits/img/…</code>, <code>apps/mobile/README.md</code></td><td>6</td><td>Corrección D14/D16 <strong>(F2-matrix)</strong>, dev tracker, addendum al audit, revisión independiente, checks</td></tr>
+</tbody>
+</table>
+<hr>
+<h3 id="task-1-tokens-de-la-matriz-en-themets-y-helpers-puros-en-matrixts">Task 1: Tokens de la matriz en <code>theme.ts</code> y helpers puros en <code>matrix.ts</code></h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Modify: <code>apps/mobile/src/ui/theme.ts</code> (al final, tras <code>pill</code>)</li>
+<li>Modify: <code>apps/mobile/src/reads/matrix.ts</code> (al final)</li>
+<li>Test: <code>apps/mobile/__tests__/theme.test.ts</code>, <code>apps/mobile/__tests__/reads-matrix.test.ts</code></li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Produces (theme): <code>GridAccent = { fg: string; on: string; soft: string }</code>, <code>GRID_ACCENT: Record&lt;&quot;ask&quot; | &quot;trade&quot;, GridAccent&gt;</code>, <code>GRID_DOT: string</code>, <code>GRID_MARK_RULE: string</code>.</li>
+<li>Produces (matrix): <code>stepLevel(levelBps: number, dir: 1 | -1): LevelBps</code>, <code>stepHorizon(horizonMin: number, dir: 1 | -1): HorizonMin</code>, <code>distanceLabel(levelBps: number): string</code>, <code>dotKey(c: { levelBps: number; horizonMin: number }): string</code>, <code>readDots(reads: readonly { levelBps: number; horizonMin: number; status: string }[]): Set&lt;string&gt;</code>. Los usa Task 4.</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Línea base</strong></label></li>
+</ul>
+<pre><code class="language-bash">cd /Users/josedejesusacevedoflores/Documents/predict/.claude/worktrees/mobile-ask-f2/apps/mobile
+git status --short &amp;&amp; git log --oneline -1
+npm test 2&gt;&amp;1 | tail -4
+npx tsc --noEmit &amp;&amp; echo TSC-OK</code></pre>
+<p>Expected: árbol limpio, HEAD <code>9fec62c</code>; <code>Tests: 230 passed, 230 total</code> / <code>Test Suites: 30 passed</code>; <code>TSC-OK</code>. Si el conteo difiere, anotarlo en el reporte (no parar).</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Tests de tokens (RED)</strong> — añadir al final de <code>__tests__/theme.test.ts</code>:</label></li>
+</ul>
+<pre><code class="language-ts">import { GRID_ACCENT, GRID_DOT, GRID_MARK_RULE } from &quot;../src/ui/theme&quot;;
+
+test(&quot;the matrix accent is the prototype&#39;s accFg/accOn/accSoft: violet in Ask, lime in Trade&quot;, () =&gt; {
+  expect(GRID_ACCENT.ask).toEqual({ fg: C.vio, on: &quot;rgba(155,123,255,0.45)&quot;, soft: &quot;rgba(155,123,255,0.09)&quot; });
+  expect(GRID_ACCENT.trade).toEqual({ fg: C.lime, on: &quot;rgba(200,240,58,0.45)&quot;, soft: &quot;rgba(200,240,58,0.09)&quot; });
+  expect(GRID_DOT).toBe(&quot;rgba(245,246,255,0.35)&quot;);
+  expect(GRID_MARK_RULE).toBe(&quot;rgba(200,240,58,0.35)&quot;);
+});</code></pre>
+<p>(Fusionar el <code>import</code> con el existente <code>import { C, fam, pill, textStyle } from &quot;../src/ui/theme&quot;;</code> — un solo import.)</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Tests de helpers (RED)</strong> — añadir al final de <code>__tests__/reads-matrix.test.ts</code> (y añadir <code>distanceLabel, dotKey, readDots, stepHorizon, stepLevel</code> al import existente):</label></li>
+</ul>
+<pre><code class="language-ts">test(&quot;steppers walk the matrix in spec order and stop at the edges (P6)&quot;, () =&gt; {
+  expect(stepLevel(50, 1)).toBe(100);
+  expect(stepLevel(50, -1)).toBe(-50);
+  expect(stepLevel(250, 1)).toBe(250);
+  expect(stepLevel(-100, -1)).toBe(-100);
+  expect(stepLevel(75, 1)).toBe(250); // fuera de la matriz: cae al primero
+  expect(stepHorizon(240, 1)).toBe(720);
+  expect(stepHorizon(240, -1)).toBe(60);
+  expect(stepHorizon(60, -1)).toBe(60);
+  expect(stepHorizon(1440, 1)).toBe(1440);
+  expect(stepHorizon(30, 1)).toBe(60);
+});
+
+test(&quot;distanceLabel is the sheet&#39;s mono line&quot;, () =&gt; {
+  expect(distanceLabel(100)).toBe(&quot;+1.0% FROM MARK&quot;);
+  expect(distanceLabel(-50)).toBe(&quot;−0.5% FROM MARK&quot;);
+});
+
+test(&quot;readDots marks only cells with open/right/wrong reads, once per cell (P5)&quot;, () =&gt; {
+  const dots = readDots([
+    { levelBps: 100, horizonMin: 240, status: &quot;right&quot; },
+    { levelBps: 100, horizonMin: 240, status: &quot;open&quot; },
+    { levelBps: -50, horizonMin: 60, status: &quot;failed&quot; },
+    { levelBps: 250, horizonMin: 1440, status: &quot;void&quot; },
+    { levelBps: 50, horizonMin: 720, status: &quot;pending&quot; },
+  ]);
+  expect([...dots]).toEqual([&quot;100|240&quot;]);
+  expect(dots.has(dotKey({ levelBps: 100, horizonMin: 240 }))).toBe(true);
+  expect(readDots([]).size).toBe(0);
+});</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 4: Correr en rojo</strong></label></li>
+</ul>
+<pre><code class="language-bash">npx jest __tests__/theme.test.ts __tests__/reads-matrix.test.ts 2&gt;&amp;1 | tail -15</code></pre>
+<p>Expected: FAIL — <code>GRID_ACCENT</code>/<code>stepLevel</code>… <code>is not a function</code> / <code>undefined</code>.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 5: Implementar</strong> — al final de <code>src/ui/theme.ts</code>:</label></li>
+</ul>
+<pre><code class="language-ts">/** Acento de la matriz nivel × horizonte (el `Grid` del prototipo, store.js): violeta en Ask, lima en Trade (F3). */
+export type GridAccent = { fg: string; on: string; soft: string };
+export const GRID_ACCENT: Record&lt;&quot;ask&quot; | &quot;trade&quot;, GridAccent&gt; = {
+  ask: { fg: C.vio, on: &quot;rgba(155,123,255,0.45)&quot;, soft: &quot;rgba(155,123,255,0.09)&quot; },
+  trade: { fg: C.lime, on: &quot;rgba(200,240,58,0.45)&quot;, soft: &quot;rgba(200,240,58,0.09)&quot; },
+};
+/** Punto de una celda con reads previas y regla de la fila del mark (lima en ambas pestañas, como el prototipo). */
+export const GRID_DOT = &quot;rgba(245,246,255,0.35)&quot;;
+export const GRID_MARK_RULE = &quot;rgba(200,240,58,0.35)&quot;;</code></pre>
+<p>Al final de <code>src/reads/matrix.ts</code>:</p>
+<pre><code class="language-ts">// Hoja de la matriz (F2-matrix): steppers, distancia y puntos de reads previas. Puro.
+
+/** «+» sube un nivel (hacia +2.5 %), «−» baja; tope en los extremos. La lista va de +2.5 % a −1.0 %, por eso i − dir. */
+export function stepLevel(levelBps: number, dir: 1 | -1): LevelBps {
+  const i = (LEVELS_BPS as readonly number[]).indexOf(levelBps);
+  if (i &lt; 0) return LEVELS_BPS[0];
+  return LEVELS_BPS[Math.min(LEVELS_BPS.length - 1, Math.max(0, i - dir))];
+}
+
+/** «+» alarga el horizonte, «−» lo acorta; tope en los extremos. */
+export function stepHorizon(horizonMin: number, dir: 1 | -1): HorizonMin {
+  const i = (HORIZONS_MIN as readonly number[]).indexOf(horizonMin);
+  if (i &lt; 0) return HORIZONS_MIN[0];
+  return HORIZONS_MIN[Math.min(HORIZONS_MIN.length - 1, Math.max(0, i + dir))];
+}
+
+/** «+1.0% FROM MARK»: la línea mono de la hoja (selDistance del prototipo). */
+export const distanceLabel = (levelBps: number): string =&gt; `${levelLabel(levelBps)} FROM MARK`;
+
+export const dotKey = (c: { levelBps: number; horizonMin: number }): string =&gt; `${c.levelBps}|${c.horizonMin}`;
+
+/** Celdas con reads que cuentan (open/right/wrong) para el punto de la matriz. */
+export function readDots(reads: readonly { levelBps: number; horizonMin: number; status: string }[]): Set&lt;string&gt; {
+  const out = new Set&lt;string&gt;();
+  for (const r of reads) if (r.status === &quot;open&quot; || r.status === &quot;right&quot; || r.status === &quot;wrong&quot;) out.add(dotKey(r));
+  return out;
+}</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 6: Verde y commit</strong></label></li>
+</ul>
+<pre><code class="language-bash">npx jest __tests__/theme.test.ts __tests__/reads-matrix.test.ts 2&gt;&amp;1 | tail -6
+npm test 2&gt;&amp;1 | tail -4 &amp;&amp; npx tsc --noEmit &amp;&amp; echo TSC-OK
+git add src/ui/theme.ts src/reads/matrix.ts __tests__/theme.test.ts __tests__/reads-matrix.test.ts
+git commit -m &quot;feat(mobile): tokens del Grid (acento, punto, regla del mark) y steppers/puntos de la matriz de Ask&quot; -m &quot;Co-Authored-By: &lt;modelo&gt; &lt;noreply@anthropic.com&gt;&quot; -m &quot;Claude-Session: https://claude.ai/code/session_01UVnRjUqFZvAUjKSn3t4xUi&quot;</code></pre>
+<p>Expected: 30 suites / 234 tests (4 nuevos), <code>TSC-OK</code>.</p>
+<hr>
+<h3 id="task-2-buffer-de-marks-por-mercado-srcperplmarksts-y-perplmarks">Task 2: Buffer de marks por mercado (<code>src/perpl/marks.ts</code>) y <code>Perpl.marks</code></h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Create: <code>apps/mobile/src/perpl/marks.ts</code>, <code>apps/mobile/__tests__/perpl-marks.test.ts</code></li>
+<li>Modify: <code>apps/mobile/src/hooks/usePerpl.ts</code> (tipo <code>Perpl</code>, estado, <code>refreshContext</code>, <code>return</code>)</li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Produces: <code>SPARK_POINTS = 60</code>, <code>MarkHistory = Readonly&lt;Record&lt;number, readonly number[]&gt;&gt;</code>, <code>appendMarks(history: MarkHistory, markets: readonly { id: number; mark: number }[], max = SPARK_POINTS): MarkHistory</code>, <code>sparkPoints(marks: readonly number[]): [number, number][]</code>; <code>Perpl.marks: MarkHistory</code> (más antiguo → más reciente). Los usa Task 4 (<code>perpl.marks[market.id] ?? []</code>).</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Test (RED)</strong> — <code>__tests__/perpl-marks.test.ts</code>:</label></li>
+</ul>
+<pre><code class="language-ts">import { appendMarks, type MarkHistory, SPARK_POINTS, sparkPoints } from &quot;../src/perpl/marks&quot;;
+
+test(&quot;appendMarks keeps the last SPARK_POINTS marks per market without mutating the input (P1)&quot;, () =&gt; {
+  const h0: MarkHistory = {};
+  const h1 = appendMarks(h0, [{ id: 16, mark: 100 }, { id: 3, mark: 5 }]);
+  expect(h1).toEqual({ 16: [100], 3: [5] });
+  expect(h0).toEqual({});
+  const h2 = appendMarks(h1, [{ id: 16, mark: 101 }]);
+  expect(h2).toEqual({ 16: [100, 101], 3: [5] });
+  expect(h1[16]).toEqual([100]);
+  let h: MarkHistory = {};
+  for (let i = 0; i &lt; SPARK_POINTS + 5; i++) h = appendMarks(h, [{ id: 1, mark: i }]);
+  expect(h[1]).toHaveLength(SPARK_POINTS);
+  expect(h[1][0]).toBe(5);
+  expect(h[1][SPARK_POINTS - 1]).toBe(SPARK_POINTS + 4);
+  expect(appendMarks({ 7: [1, 2] }, [{ id: 7, mark: 3 }], 2)[7]).toEqual([2, 3]);
+});
+
+test(&quot;sparkPoints normalizes to a 0..100 viewBox with y inverted; flat with &lt; 2 or equal marks (P2)&quot;, () =&gt; {
+  expect(sparkPoints([10, 20, 15, 30])).toEqual([[0, 100], [33.3, 50], [66.7, 75], [100, 0]]);
+  expect(sparkPoints([7, 7, 7])).toEqual([[0, 50], [50, 50], [100, 50]]);
+  expect(sparkPoints([])).toEqual([[0, 50], [100, 50]]);
+  expect(sparkPoints([812345])).toEqual([[0, 50], [100, 50]]);
+});</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Rojo</strong></label></li>
+</ul>
+<pre><code class="language-bash">npx jest __tests__/perpl-marks.test.ts 2&gt;&amp;1 | tail -8</code></pre>
+<p>Expected: FAIL — <code>Cannot find module &#39;../src/perpl/marks&#39;</code>.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Implementar</strong> — <code>src/perpl/marks.ts</code>:</label></li>
+</ul>
+<pre><code class="language-ts">// Historial de marks por mercado para la sparkline de la matriz (F2-matrix). Puro.
+// Perpl pub/context no da historial: la app guarda los últimos SPARK_POINTS marks que recibe
+// (uno por refreshContext, cada CONTEXT_POLL_MS mientras la pestaña está activa). En memoria, sin persistir.
+
+export const SPARK_POINTS = 60;
+export type MarkHistory = Readonly&lt;Record&lt;number, readonly number[]&gt;&gt;;
+
+/** Añade el mark actual de cada mercado y recorta al máximo. No muta la entrada. */
+export function appendMarks(history: MarkHistory, markets: readonly { id: number; mark: number }[], max = SPARK_POINTS): MarkHistory {
+  const next: Record&lt;number, readonly number[]&gt; = { ...history };
+  for (const m of markets) {
+    const prev = next[m.id] ?? [];
+    next[m.id] = prev.length &gt;= max ? [...prev.slice(prev.length - max + 1), m.mark] : [...prev, m.mark];
+  }
+  return next;
+}
+
+const round1 = (n: number): number =&gt; Math.round(n * 10) / 10;
+
+/** Puntos de la polilínea en un viewBox 0..100: x por índice, y invertida (0 = máximo, 100 = mínimo). Con &lt; 2 puntos o todos iguales, línea plana a media altura. */
+export function sparkPoints(marks: readonly number[]): [number, number][] {
+  if (marks.length &lt; 2) return [[0, 50], [100, 50]];
+  const min = Math.min(...marks);
+  const max = Math.max(...marks);
+  const span = max - min;
+  const last = marks.length - 1;
+  return marks.map((v, i) =&gt; [round1((i / last) * 100), span === 0 ? 50 : round1(100 - ((v - min) / span) * 100)]);
+}</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 4: <code>usePerpl.ts</code></strong> — cuatro ediciones:</label></li>
+</ul>
+<ol>
+<li>Import: <code>import { appendMarks, type MarkHistory } from &quot;../perpl/marks&quot;;</code></li>
+<li>En el tipo <code>Perpl</code>, después de <code>contextError: string;</code>:</li>
+</ol>
+<pre><code class="language-ts">  /** Últimos SPARK_POINTS marks por mercado que llegaron por pub/context (más antiguo → más reciente), para la sparkline (F2-matrix). */
+  marks: MarkHistory;</code></pre>
+<ol>
+<li>Estado, junto a <code>const [contextError, setContextError] = useState(&quot;&quot;);</code>:</li>
+</ol>
+<pre><code class="language-ts">  const [marks, setMarks] = useState&lt;MarkHistory&gt;({});</code></pre>
+<ol>
+<li>En <code>refreshContext</code>, después de <code>setContext(ctx);</code>:</li>
+</ol>
+<pre><code class="language-ts">      setMarks((m) =&gt; appendMarks(m, ctx.markets));</code></pre>
+<ol>
+<li>En el <code>return</code> final, añadir <code>marks</code> después de <code>contextError</code>.</li>
+</ol>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 5: Verde y commit</strong></label></li>
+</ul>
+<pre><code class="language-bash">npx jest __tests__/perpl-marks.test.ts 2&gt;&amp;1 | tail -6
+npm test 2&gt;&amp;1 | tail -4 &amp;&amp; npx tsc --noEmit &amp;&amp; echo TSC-OK
+git add src/perpl/marks.ts __tests__/perpl-marks.test.ts src/hooks/usePerpl.ts
+git commit -m &quot;feat(mobile): buffer de marks por mercado en usePerpl y sparkPoints para la sparkline de Ask&quot; -m &quot;Co-Authored-By: &lt;modelo&gt; &lt;noreply@anthropic.com&gt;&quot; -m &quot;Claude-Session: https://claude.ai/code/session_01UVnRjUqFZvAUjKSn3t4xUi&quot;</code></pre>
+<p>Expected: 31 suites / 236 tests, <code>TSC-OK</code>. Si <code>tsc</code> se queja de que algo construye un <code>Perpl</code> sin <code>marks</code> (hoy nada lo hace: sólo <code>usePerpl</code> lo devuelve), añadir <code>marks: {}</code> ahí y anotarlo.</p>
+<hr>
+<h3 id="task-3-sparkline-y-stepper-en-primitivestsx">Task 3: <code>Sparkline</code> y <code>Stepper</code> en <code>primitives.tsx</code></h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Modify: <code>apps/mobile/src/ui/primitives.tsx</code> (imports y dos componentes nuevos en la sección «Selectores», tras <code>PillTabs</code>)</li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Produces: <code>Sparkline({ points, stroke?, style? })</code> con <code>points: readonly (readonly [number, number])[]</code>; <code>Stepper({ value, onDown, onUp, width?, accessibilityLabel })</code> con labels <code>${accessibilityLabel}-down</code> / <code>-up</code>. Los usa Task 4.</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Import</strong> — junto a los imports de RN al principio del archivo:</label></li>
+</ul>
+<pre><code class="language-ts">import Svg, { Polyline } from &quot;react-native-svg&quot;;</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Componentes</strong> — después de <code>PillTabs</code> (antes de <code>Bar</code>):</label></li>
+</ul>
+<pre><code class="language-tsx">/** Polilínea sobre un viewBox 0..100 con trazo que no escala (Sparkline del prototipo). `points` viene de `sparkPoints`. */
+export function Sparkline({ points, stroke = C.spark, style }: { points: readonly (readonly [number, number])[]; stroke?: string; style?: StyleProp&lt;ViewStyle&gt; }) {
+  const pts = points.map(([x, y]) =&gt; `${x},${y}`).join(&quot; &quot;);
+  return (
+    &lt;Svg viewBox=&quot;0 0 100 100&quot; preserveAspectRatio=&quot;none&quot; style={[{ width: &quot;100%&quot;, height: &quot;100%&quot; }, style]}&gt;
+      &lt;Polyline points={pts} fill=&quot;none&quot; stroke={stroke} strokeWidth={1.5} vectorEffect=&quot;non-scaling-stroke&quot; /&gt;
+    &lt;/Svg&gt;
+  );
+}
+
+/** Par «−»/«+» con el valor mono en medio (hoja de la matriz). `width` fija el ancho; sin él, flex 1. */
+export function Stepper({ value, onDown, onUp, width, accessibilityLabel }: { value: string; onDown: () =&gt; void; onUp: () =&gt; void; width?: number; accessibilityLabel: string }) {
+  const btn: ViewStyle = { width: 26, height: 26, borderRadius: 8, borderWidth: 1, borderColor: &quot;rgba(245,246,255,0.2)&quot;, alignItems: &quot;center&quot;, justifyContent: &quot;center&quot; };
+  return (
+    &lt;View style={{ flex: width ? 0 : 1, width, flexDirection: &quot;row&quot;, alignItems: &quot;center&quot;, justifyContent: &quot;space-between&quot;, paddingVertical: 7, paddingHorizontal: 9, borderRadius: 10, borderWidth: 1, borderColor: C.hair }}&gt;
+      &lt;Touch onPress={onDown} style={btn} accessibilityLabel={`${accessibilityLabel}-down`}&gt;&lt;T w={700} s={13} lh={1}&gt;−&lt;/T&gt;&lt;/Touch&gt;
+      &lt;T w={500} s={10} lh={1} mono color={C.dim}&gt;{value}&lt;/T&gt;
+      &lt;Touch onPress={onUp} style={btn} accessibilityLabel={`${accessibilityLabel}-up`}&gt;&lt;T w={700} s={13} lh={1}&gt;+&lt;/T&gt;&lt;/Touch&gt;
+    &lt;/View&gt;
+  );
+}</code></pre>
+<p>(El «−» es U+2212, igual que en <code>levelLabel</code>.)</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Verificar y commit</strong> (sin test de UI, P12 del plan F2)</label></li>
+</ul>
+<pre><code class="language-bash">npx tsc --noEmit &amp;&amp; echo TSC-OK &amp;&amp; npm test 2&gt;&amp;1 | tail -4
+git add src/ui/primitives.tsx
+git commit -m &quot;feat(mobile): primitivas Sparkline (react-native-svg) y Stepper del prototipo&quot; -m &quot;Co-Authored-By: &lt;modelo&gt; &lt;noreply@anthropic.com&gt;&quot; -m &quot;Claude-Session: https://claude.ai/code/session_01UVnRjUqFZvAUjKSn3t4xUi&quot;</code></pre>
+<p>Expected: <code>TSC-OK</code>; tests sin cambio (31 / 236). Si <code>tsc</code> rechaza <code>vectorEffect</code> en <code>Polyline</code>, comprobar en <code>node_modules/react-native-svg/src/elements/Polyline.tsx</code>/<code>Shape</code> que el prop existe (en 15.x sí: <code>vectorEffect?: VectorEffect</code>) y anotar la firma real; no quitarlo sin mirar.</p>
+<hr>
+<h3 id="task-4-asktsx-matrixgrid-como-el-grid-del-prototipo-y-asksheet-violeta-con-steppers">Task 4: <code>ask.tsx</code> — <code>MatrixGrid</code> como el <code>Grid</code> del prototipo y <code>AskSheet</code> violeta con steppers</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Modify: <code>apps/mobile/src/screens/ask.tsx</code> (imports, <code>MatrixGrid</code>, <code>AskSheet</code>, rama <code>idle</code> de <code>newRead</code>)</li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Consumes: Task 1 (<code>GRID_ACCENT</code>, <code>GRID_DOT</code>, <code>GRID_MARK_RULE</code>, <code>stepLevel</code>, <code>stepHorizon</code>, <code>distanceLabel</code>, <code>dotKey</code>, <code>readDots</code>), Task 2 (<code>sparkPoints</code>, <code>perpl.marks</code>), Task 3 (<code>Sparkline</code>, <code>Stepper</code>). Sin cambios en <code>Reads</code>, <code>useReads.ask(cell, agentId)</code>, <code>ReadCard</code>, <code>ReadRow</code>, <code>SessionGate</code>, <code>CreditsRow</code>, <code>myReads</code>.</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Imports</strong> — dejar el bloque de imports así (cambian las líneas de <code>matrix</code>, <code>primitives</code>, <code>theme</code> y se añade <code>marks</code>):</label></li>
+</ul>
+<pre><code class="language-ts">import { type ReactNode, useEffect, useMemo, useState } from &quot;react&quot;;
+import { ActivityIndicator, View } from &quot;react-native&quot;;
+import type { AppCtx } from &quot;../ctx&quot;;
+import type { Reads } from &quot;../hooks/useReads&quot;;
+import type { Market } from &quot;../perpl/context&quot;;
+import { sparkPoints } from &quot;../perpl/marks&quot;;
+import { formatPrice } from &quot;../perpl/orders&quot;;
+import {
+  callOf, type Cell, cellLabel, distanceLabel, dotKey, expiresAtFor, formatProbability, formatRemaining, HORIZONS_MIN, horizonLabel, LEVELS_BPS,
+  questionFor, readDots, stepHorizon, stepLevel, targetFor,
+} from &quot;../reads/matrix&quot;;
+import type { Agent, Read, ReadStatus } from &quot;../reads/types&quot;;
+import type { AskCell } from &quot;../store&quot;;
+import { Btn, Card, Chip, Segmented, Sparkline, StatusCard, Stepper, T, Tag, type Tone, Touch, TouchCard, Warn } from &quot;../ui/primitives&quot;;
+import { C, GRID_ACCENT, GRID_DOT, GRID_MARK_RULE } from &quot;../ui/theme&quot;;</code></pre>
+<p>(<code>levelLabel</code> y <code>pill</code> dejan de usarse en este archivo: quitarlos del import.)</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: <code>MatrixGrid</code></strong> — sustituir la función completa por:</label></li>
+</ul>
+<pre><code class="language-tsx">/** El `Grid` del prototipo: sparkline a la izquierda, escalera de precios, celdas de 44 px con un punto donde ya hay reads, horizontes abajo. */
+function MatrixGrid({ market, marks, dots, selected, onSelect }: { market: Market; marks: readonly number[]; dots: Set&lt;string&gt;; selected?: AskCell; onSelect: (c: Cell) =&gt; void }) {
+  const acc = GRID_ACCENT.ask;
+  const pd = market.priceDecimals;
+  return (
+    &lt;View style={{ borderWidth: 1, borderColor: C.hair, borderRadius: 14, backgroundColor: C.card, overflow: &quot;hidden&quot; }}&gt;
+      &lt;View style={{ flexDirection: &quot;row&quot; }}&gt;
+        &lt;View style={{ width: 74, borderRightWidth: 1, borderRightColor: C.hair10 }}&gt;
+          &lt;Sparkline points={sparkPoints(marks)} /&gt;
+        &lt;/View&gt;
+        &lt;View style={{ flex: 1, minWidth: 0 }}&gt;
+          {LEVELS_BPS.map((bps, i) =&gt; {
+            const rowOn = selected?.levelBps === bps;
+            const markRule = bps &gt; 0 &amp;&amp; LEVELS_BPS[i + 1] &lt; 0; // la regla bajo el último nivel positivo es el mark (P4)
+            return (
+              &lt;View key={bps} style={{ flexDirection: &quot;row&quot;, borderBottomWidth: 1, borderBottomColor: markRule ? GRID_MARK_RULE : C.hair08 }}&gt;
+                &lt;View style={{ width: 58, justifyContent: &quot;center&quot;, paddingLeft: 7, borderRightWidth: 1, borderRightColor: C.hair08 }}&gt;
+                  &lt;T w={500} s={9.5} lh={1} mono color={rowOn ? acc.fg : C.faint}&gt;{formatPrice(targetFor(market.mark, bps), pd)}&lt;/T&gt;
+                &lt;/View&gt;
+                {HORIZONS_MIN.map((h) =&gt; {
+                  const colOn = selected?.horizonMin === h;
+                  const on = rowOn &amp;&amp; colOn;
+                  return (
+                    &lt;Touch key={h} onPress={() =&gt; onSelect({ levelBps: bps, horizonMin: h })} accessibilityLabel={`cell-${bps}-${h}`}
+                      style={{ flex: 1, minWidth: 0, height: 44, borderLeftWidth: 1, borderLeftColor: C.hair08, backgroundColor: on ? acc.on : rowOn || colOn ? acc.soft : &quot;transparent&quot;, alignItems: &quot;center&quot;, justifyContent: &quot;center&quot; }}&gt;
+                      &lt;View style={{ width: 5, height: 5, borderRadius: 999, backgroundColor: dots.has(dotKey({ levelBps: bps, horizonMin: h })) ? GRID_DOT : &quot;transparent&quot; }} /&gt;
+                    &lt;/Touch&gt;
+                  );
+                })}
+              &lt;/View&gt;
+            );
+          })}
+          &lt;View style={{ flexDirection: &quot;row&quot; }}&gt;
+            &lt;View style={{ width: 58 }} /&gt;
+            {HORIZONS_MIN.map((h) =&gt; (
+              &lt;View key={h} style={{ flex: 1, alignItems: &quot;center&quot;, paddingVertical: 6 }}&gt;
+                &lt;T w={500} s={9.5} lh={1} mono color={selected?.horizonMin === h ? acc.fg : C.faint}&gt;{horizonLabel(h)}&lt;/T&gt;
+              &lt;/View&gt;
+            ))}
+          &lt;/View&gt;
+        &lt;/View&gt;
+      &lt;/View&gt;
+    &lt;/View&gt;
+  );
+}</code></pre>
+<p>Nota: <code>LEVELS_BPS[i + 1]</code> en la última fila es <code>undefined</code> en runtime (<code>undefined &lt; 0</code> → <code>false</code>); <code>tsconfig</code> es <code>strict</code> sin <code>noUncheckedIndexedAccess</code>, así que compila. Si <code>tsc</code> protestara, usar <code>(LEVELS_BPS[i + 1] ?? 0) &lt; 0</code>.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: <code>AskSheet</code></strong> — sustituir la función completa por:</label></li>
+</ul>
+<pre><code class="language-tsx">/** La hoja de la celda del prototipo (ConsultTab): chip del agente + Change, pregunta, distancia, steppers, Ask/Clear. */
+function AskSheet({ market, cell, reads, agentId, onAgent, onCell, onClear, onAsk }: {
+  market: Market; cell: AskCell; reads: Reads; agentId: string | undefined;
+  onAgent: (id: string) =&gt; void; onCell: (c: AskCell) =&gt; void; onClear: () =&gt; void; onAsk: (agentId: string) =&gt; void;
+}) {
+  const [picking, setPicking] = useState(false);
+  const pd = market.priceDecimals;
+  const target = targetFor(market.mark, cell.levelBps);
+  const question = questionFor(market.symbol, cell.levelBps, target, pd, expiresAtFor(new Date(), cell.horizonMin));
+  const agent = reads.agents?.find((a) =&gt; a.id === agentId) ?? reads.agents?.[0]; // el agente mostrado es el que se cobra (D14)
+  const noCredits = reads.credits !== null &amp;&amp; reads.credits &lt;= 0;
+  const price = `${agent?.priceCredits ?? 1} credit`;
+  return (
+    &lt;Card bd={C.vioBd45} bg={C.vioBg07} gap={9}&gt;
+      &lt;View style={{ flexDirection: &quot;row&quot;, alignItems: &quot;center&quot;, gap: 6 }}&gt;
+        &lt;Chip label={`Asking ${agent?.name ?? &quot;…&quot;} · ${price}`} fg={C.vio} bd={C.vioBd} bg={C.vioBg} s={10.5} py={5} px={9} /&gt;
+        &lt;Touch onPress={() =&gt; setPicking((p) =&gt; !p)} style={{ paddingVertical: 5, paddingHorizontal: 8 }} accessibilityLabel=&quot;ask-change&quot;&gt;
+          &lt;T w={600} s={10.5} lh={1} color={C.faint}&gt;{picking ? &quot;Done&quot; : &quot;Change&quot;}&lt;/T&gt;
+        &lt;/Touch&gt;
+      &lt;/View&gt;
+      {picking ? (reads.agents === null ? &lt;T w={400} s={11.5} color={C.faint}&gt;{reads.agentsError || &quot;Loading agents…&quot;}&lt;/T&gt; : (
+        &lt;View style={{ flexDirection: &quot;row&quot;, flexWrap: &quot;wrap&quot;, gap: 6 }}&gt;
+          {reads.agents.map((a) =&gt; {
+            const on = a.id === agent?.id;
+            return (
+              &lt;Chip key={a.id} label={`${a.name} · by ${a.owner} · ${a.priceCredits} credit`} onPress={() =&gt; { onAgent(a.id); setPicking(false); }}
+                fg={on ? C.vio : C.dim} bd={on ? C.vioBd : C.hair18} bg={on ? C.vioBg : &quot;transparent&quot;} s={10.5} accessibilityLabel={`agent-${a.id}`} /&gt;
+            );
+          })}
+        &lt;/View&gt;
+      )) : null}
+      &lt;Tag color={C.vio}&gt;YOUR QUESTION · NOTHING SENT&lt;/Tag&gt;
+      &lt;T w={700} s={14} lh={1.3} ls={-0.01}&gt;{question}&lt;/T&gt;
+      &lt;T w={500} s={10} lh={1.4} mono color={C.faint}&gt;RESOLVES ON PERPL MARK · {distanceLabel(cell.levelBps)}&lt;/T&gt;
+      &lt;View style={{ flexDirection: &quot;row&quot;, gap: 6 }}&gt;
+        &lt;Stepper value={formatPrice(target, pd)} accessibilityLabel=&quot;step-level&quot;
+          onDown={() =&gt; onCell({ levelBps: stepLevel(cell.levelBps, -1), horizonMin: cell.horizonMin })}
+          onUp={() =&gt; onCell({ levelBps: stepLevel(cell.levelBps, 1), horizonMin: cell.horizonMin })} /&gt;
+        &lt;Stepper value={horizonLabel(cell.horizonMin)} width={118} accessibilityLabel=&quot;step-horizon&quot;
+          onDown={() =&gt; onCell({ levelBps: cell.levelBps, horizonMin: stepHorizon(cell.horizonMin, -1) })}
+          onUp={() =&gt; onCell({ levelBps: cell.levelBps, horizonMin: stepHorizon(cell.horizonMin, 1) })} /&gt;
+      &lt;/View&gt;
+      &lt;View style={{ flexDirection: &quot;row&quot;, gap: 7 }}&gt;
+        &lt;Btn label={noCredits ? &quot;No credits left&quot; : `Ask ${agent?.name ?? &quot;agent&quot;} · ${price}`} onPress={() =&gt; { if (agent) onAsk(agent.id); }}
+          arrow flex={1} py={12} disabled={noCredits || !agent} accessibilityLabel=&quot;ask&quot; /&gt;
+        &lt;Btn label=&quot;Clear&quot; onPress={onClear} variant=&quot;ghost&quot; py={12} accessibilityLabel=&quot;ask-clear&quot; /&gt;
+      &lt;/View&gt;
+      &lt;T w={400} s={10.5} lh={1.4} color={C.faint}&gt;{noCredits ? &quot;Credits are simulated for the testnet.&quot; : &quot;Nothing charged yet.&quot;}&lt;/T&gt;
+    &lt;/Card&gt;
+  );
+}</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 4: Rama <code>idle</code> de <code>newRead</code></strong> — sustituir el <code>return (…)</code> final de <code>newRead</code> (el que hoy pinta <code>CreditsRow</code> + <code>MatrixGrid</code> + <code>AskSheet</code>/hint + <code>Warn</code>) por:</label></li>
+</ul>
+<pre><code class="language-tsx">    const dots = readDots(reads.reads);
+    return (
+      &lt;View style={{ gap: 11 }}&gt;
+        &lt;CreditsRow credits={reads.credits} /&gt;
+        &lt;View style={{ flexDirection: &quot;row&quot;, justifyContent: &quot;space-between&quot;, alignItems: &quot;baseline&quot; }}&gt;
+          &lt;Tag s={10}&gt;HISTORY · MARK&lt;/Tag&gt;
+          &lt;T w={700} s={15} lh={1} mono&gt;{formatPrice(market.mark, market.priceDecimals)}&lt;/T&gt;
+        &lt;/View&gt;
+        &lt;MatrixGrid market={market} marks={perpl.marks[market.id] ?? []} dots={dots} selected={S.askCell} onSelect={(c) =&gt; set({ askCell: c })} /&gt;
+        &lt;T w={400} s={11.5} lh={1.45} color={C.faint}&gt;{S.askCell ? &quot;Use the steppers to move it.&quot; : &quot;Tap a cell: a level and a horizon.&quot;}&lt;/T&gt;
+        {S.askCell ? (
+          &lt;AskSheet market={market} cell={S.askCell} reads={reads} agentId={S.askAgentId}
+            onAgent={(id) =&gt; set({ askAgentId: id })} onCell={(c) =&gt; set({ askCell: c })} onClear={() =&gt; set({ askCell: undefined })}
+            onAsk={(id) =&gt; { void reads.ask(S.askCell!, id); }} /&gt;
+        ) : null}
+        &lt;Card gap={7}&gt;
+          &lt;Tag&gt;MARK PRICE · PERPL ON MONAD&lt;/Tag&gt;
+          &lt;T w={400} s={11.5} lh={1.45} color={C.dim}&gt;Reads resolve on mark, not on your fill.&lt;/T&gt;
+        &lt;/Card&gt;
+        {reads.listError ? &lt;Warn title=&quot;Couldn&#39;t load your reads&quot; body={reads.listError} /&gt; : null}
+      &lt;/View&gt;
+    );</code></pre>
+<p><code>perpl</code> ya sale del destructuring <code>const { S, set, perpl, reads, notifications } = ctx;</code> de <code>AskTab</code>. No se toca <code>pending</code>/<code>failed</code>/<code>done</code> ni <code>myReads</code>.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 5: Verificar y commit</strong></label></li>
+</ul>
+<pre><code class="language-bash">npx tsc --noEmit &amp;&amp; echo TSC-OK &amp;&amp; npm test 2&gt;&amp;1 | tail -4
+git diff --stat
+git add src/screens/ask.tsx
+git commit -m &quot;feat(mobile): matriz de Ask como el Grid del prototipo — sparkline, escalera, puntos de reads y hoja violeta con steppers&quot; -m &quot;Co-Authored-By: &lt;modelo&gt; &lt;noreply@anthropic.com&gt;&quot; -m &quot;Claude-Session: https://claude.ai/code/session_01UVnRjUqFZvAUjKSn3t4xUi&quot;</code></pre>
+<p>Expected: <code>TSC-OK</code>, 31 / 236; <code>git diff --stat</code> sólo <code>ask.tsx</code> antes del add. Metro recarga solo (fast refresh): si el simulador está en Ask, ya se ve la matriz nueva (la captura formal es Task 5).</p>
+<hr>
+<h3 id="task-5-recorrido-en-el-simulador-con-capturas-read-real-desde-la-hoja-nueva-y-comparacion-con-el-prototipo">Task 5: Recorrido en el simulador con capturas, read real desde la hoja nueva y comparación con el prototipo</h3>
+<p><strong>Files:</strong> ninguno del repo. Workspace: <code>SC=/Users/josedejesusacevedoflores/Documents/predict/.claude/worktrees/mobile-ask-f2/.superpowers/sdd/2026-09-19-mobile-ask-f2</code> (git-ignored; ahí viven <code>taplabel.sh</code>, <code>tap-point.yaml</code> y <code>flows/</code> de F2). Capturas en <code>$SC/matrix-shots/</code>.</p>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Consumes: la app de Task 4 por Metro. Labels de P11. <code>taplabel.sh &lt;label&gt;</code> (toca por bounds reales; falla con <code>NOT_FOUND_OR_OFFSCREEN</code> si el elemento no está en pantalla: hacer scroll con <code>flows/scroll.yaml</code> / <code>scroll-up.yaml</code> y repetir).</li>
+<li>Produces: <code>$SC/matrix-shots/*.png</code> mirados uno a uno; <code>$SC/task-5-report.md</code> con la lista de capturas y qué muestra cada una; dos PNG copiados a <code>docs/superpowers/audits/img/</code> (P12); el <code>id</code> de la read pedida y los créditos antes/después.</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 0: Estado del simulador y de Metro</strong></label></li>
+</ul>
+<pre><code class="language-bash">U=2B2A0BAD-7B14-4DAE-8652-C7E9472505E0
+SC=/Users/josedejesusacevedoflores/Documents/predict/.claude/worktrees/mobile-ask-f2/.superpowers/sdd/2026-09-19-mobile-ask-f2
+mkdir -p &quot;$SC/matrix-shots&quot;
+xcrun simctl list devices | grep &quot;$U&quot;                       # (Booted)
+xcrun simctl listapps &quot;$U&quot; | grep -c fun.pickler.app         # ≥ 1 = instalada
+PID=$(lsof -tiTCP:8081 -sTCP:LISTEN); echo &quot;metro pid=$PID&quot;; lsof -p &quot;$PID&quot; 2&gt;/dev/null | grep cwd | awk &#39;{print $NF}&#39;</code></pre>
+<p>Expected: <code>Booted</code>, app instalada, Metro con cwd <code>…/.claude/worktrees/mobile-ask-f2/apps/mobile</code>. Tres casos:</p>
+<ul>
+<li><strong>Todo vivo</strong> (caso esperado hoy): <code>xcrun simctl terminate &quot;$U&quot; fun.pickler.app; xcrun simctl launch &quot;$U&quot; fun.pickler.app</code> y seguir.</li>
+<li><strong>Metro muerto, app instalada</strong>: <code>cd …/mobile-ask-f2/apps/mobile &amp;&amp; nohup npx expo start --port 8081 &gt; &quot;$SC/metro.log&quot; 2&gt;&amp;1 &amp;</code>, esperar <code>Waiting on http://localhost:8081</code>, luego <code>simctl launch</code>. No hay cambio nativo: no hace falta <code>run:ios</code>.</li>
+<li><strong>App no instalada</strong> (simulador borrado): <code>nohup npx expo run:ios --device &quot;$U&quot; &gt; &quot;$SC/run.log&quot; 2&gt;&amp;1 &amp;</code> y esperar <code>Installing on</code> / <code>Build Succeeded</code> en el log. <code>run:ios</code> borra la cuenta local: Sign in con el passkey «pickler» de Apple Passwords (<code>flows/usar-llave.yaml</code>; presentar cara con <code>xcrun simctl spawn &quot;$U&quot; notifyutil -p com.apple.BiometricKit_Sim.fingerTouch.match</code>), y antes re-inscribir Face ID (<code>notifyutil -s com.apple.BiometricKit.enrollmentChanged 1</code> + <code>notifyutil -p com.apple.BiometricKit.enrollmentChanged</code>).</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Llegar a Ask (BTC)</strong> — Markets → fila BTC (<code>taplabel.sh market-BTC</code>; si la lista está <code>readOnly</code> sin key de Perpl, entrar por Dev controls como en 9b de F2, audit ruling 9) → pill <code>pill-ask</code>. Si aparece <code>SessionGate</code> (sesión de F2 caducada: se firmó a las 15:22 UTC del 2026-09-20 y dura 24 h), <code>taplabel.sh ask-unlock</code> + presentar cara. Captura <code>00-ask-first.png</code> y mirarla: <code>CreditsRow</code> (19), cabecera <code>HISTORY · MARK</code> con el mark, matriz con sparkline (plana si acaba de arrancar), escalera de 5 precios, <strong>un punto en <code>+1.0% · 4H</code></strong> (la read <code>right</code> de F2 del simulador, <code>9f386c32…</code>), horizontes <code>1H 4H 12H 24H</code>, hint «Tap a cell: a level and a horizon.», card <code>MARK PRICE · PERPL ON MONAD</code>. <strong>Verificar a mano</strong> dos precios de la escalera: <code>+1.0 %</code> = <code>round(mark × 1.01)</code> y <code>−0.5 %</code> = <code>round(mark × 0.995)</code> con <code>priceDecimals</code> de BTC (1). Esperar ≥ 15 s (≥ 3 polls) y capturar <code>01-btc-spark.png</code>: la sparkline ya no es plana (si el mark no se movió en 15 s, esperar hasta 60 s y decirlo).</label></li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Matriz sin puntos</strong> — volver a Markets y abrir otro mercado sin reads del simulador (MON o ETH, el que tenga <code>readOnly</code> abierto; si sólo BTC es alcanzable por Dev controls, anotarlo y saltar): pill Ask → captura <code>02-other-empty.png</code>: ninguna celda con punto. Volver a BTC.</label></li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Celda seleccionada</strong> — <code>taplabel.sh cell-100-240</code> → captura <code>03-cell-selected.png</code> y mirar: fila <code>+1.0 %</code> y columna <code>4H</code> en <code>accSoft</code>, la celda en <code>accOn</code>, precio de la fila y <code>4H</code> en violeta, el punto sigue visible sobre el fondo violeta, hint «Use the steppers to move it.», hoja violeta debajo (<code>vioBd45</code>/<code>vioBg07</code>) con chip «Asking Jesús&#39;s agent · 1 credit» + «Change», <code>YOUR QUESTION · NOTHING SENT</code>, la pregunta, <code>RESOLVES ON PERPL MARK · +1.0% FROM MARK</code>, dos steppers (target formateado | <code>4H</code>), «Ask Jesús&#39;s agent · 1 credit →» y «Clear», «Nothing charged yet.». Si la hoja queda fuera de pantalla, <code>flows/scroll.yaml</code> y captura <code>03b-sheet.png</code>.</label></li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 4: Steppers y Change</strong> — <code>taplabel.sh step-level-up</code> → la fila realzada pasa a <code>+2.5 %</code>, el stepper muestra el target de <code>+2.5 %</code>, la línea dice <code>+2.5% FROM MARK</code>; captura <code>04-step-level.png</code>. <code>taplabel.sh step-horizon-up</code> → columna <code>12H</code>, stepper <code>12H</code>; captura <code>05-step-horizon.png</code>. <code>taplabel.sh step-level-up</code> otra vez → sigue en <code>+2.5 %</code> (tope). Volver: <code>step-level-down</code> ×1 (<code>+1.0 %</code>), <code>step-horizon-down</code> ×1 (<code>4H</code>). <code>taplabel.sh ask-change</code> → chips de los tres agentes (el actual en violeta); captura <code>06-change.png</code>. <code>taplabel.sh agent-drift</code> → chips colapsan, chip «Asking Drift · 1 credit», botón «Ask Drift · 1 credit»; captura <code>07-drift.png</code>.</label></li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 5: Read real desde la hoja nueva</strong> — antes, créditos por SQL:</label></li>
+</ul>
+<pre><code class="language-bash">cd /Users/josedejesusacevedoflores/Documents/predict/.claude/worktrees/mobile-ask-f2/services/reads
+SIM_ADDR=0xe3719a93b75cee42c5a8f3dce45e5b4b327851c1
+node scripts/query.mjs --read-only &quot;select credits from mobile.wallets where address = &#39;$SIM_ADDR&#39;&quot;</code></pre>
+<p>Expected: <code>19</code>. Luego <code>taplabel.sh ask</code> → <code>READING</code> con spinner (captura <code>08-reading.png</code> si da tiempo) → <code>ReadCard</code> de Drift en <code>+1.0% · 4H</code> (captura <code>09-readcard.png</code>). <code>taplabel.sh ask-another</code> → <code>CreditsRow</code> <strong>18</strong>, y ahora la celda <code>+1.0% · 4H</code> sigue con su punto (ya lo tenía; la read nueva es <code>open</code> en la misma celda); captura <code>10-credits-18.png</code>. Confirmar por SQL:</p>
+<pre><code class="language-bash">node scripts/query.mjs --read-only &quot;select id, agent_id, status, level_bps, horizon_min, probability, expires_at from mobile.reads where address = &#39;$SIM_ADDR&#39; order by created_at desc limit 2&quot;
+node scripts/query.mjs --read-only &quot;select credits from mobile.wallets where address = &#39;$SIM_ADDR&#39;&quot;</code></pre>
+<p>Expected: la read nueva <code>open</code>, <code>agent_id drift</code>, <code>100 · 240</code>; créditos <code>18</code>. <strong>No forzar su resolución</strong>: vence sola en 4 h y el cron la resuelve. Anotar <code>id</code> y <code>expires_at</code>.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 6: Clear</strong> — <code>taplabel.sh cell-250-60</code> → hoja abierta; <code>taplabel.sh ask-clear</code> → hoja cerrada, hint vuelve a «Tap a cell…», ninguna fila realzada; captura <code>11-clear.png</code>.</label></li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 7: Prototipo con Playwright</strong> — cargar las herramientas (<code>ToolSearch &quot;select:mcp__plugin_playwright_playwright__browser_navigate,mcp__plugin_playwright_playwright__browser_resize,mcp__plugin_playwright_playwright__browser_snapshot,mcp__plugin_playwright_playwright__browser_click,mcp__plugin_playwright_playwright__browser_take_screenshot&quot;</code>), <code>browser_resize</code> 390×844, <code>browser_navigate</code> a <code>https://claude.ai/artifact/KRjappPSPi48KJC3Z4G4ig</code>, <code>browser_snapshot</code>, clic en <strong>Markets</strong> → <strong>BTC-PERP</strong> → pill <strong>Ask</strong>; screenshot <code>proto-ask-empty.png</code>; clic en una celda (la de <code>+1.0 %</code> × <code>4H</code>) → screenshot <code>proto-ask-sheet.png</code>. Si el artifact pide login o no renderiza, <strong>parar ese paso, decirlo en el reporte y pedirle a Jesús las dos capturas</strong> (no inventar la comparación). Guardar ambas en <code>$SC/matrix-shots/</code>.</label></li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 8: Comparación y evidencia versionada</strong> — mirar lado a lado <code>03-cell-selected.png</code>/<code>03b-sheet.png</code> contra <code>proto-ask-sheet.png</code> y <code>00-ask-first.png</code> contra <code>proto-ask-empty.png</code>; listar en el reporte <strong>cada diferencia</strong> con su causa: 5 filas vs 7 (spec D2), <code>CreditsRow</code> (P9), sin fila FUNDING/NEXT/OI (P9), chips inline en vez de pantalla de agentes (P7), sparkline real (P2), hint sin «Drag» (P10), «Done» mientras se elige agente (P7), y cualquier otra que se vea (tamaños, espaciados, colores). Lo que sea una desviación no decidida en este plan se anota como <strong>defecto</strong> con captura, no se corrige en silencio. Copiar las dos parejas al repo:</label></li>
+</ul>
+<pre><code class="language-bash">mkdir -p /Users/josedejesusacevedoflores/Documents/predict/.claude/worktrees/mobile-ask-f2/docs/superpowers/audits/img
+cp &quot;$SC/matrix-shots/03-cell-selected.png&quot; …/docs/superpowers/audits/img/2026-09-20-mobile-ask-matrix-app.png
+cp &quot;$SC/matrix-shots/proto-ask-sheet.png&quot;  …/docs/superpowers/audits/img/2026-09-20-mobile-ask-matrix-proto.png
+ls -la …/docs/superpowers/audits/img/</code></pre>
+<p>(Si la captura buena de la hoja es <code>03b-sheet.png</code>, usar esa.) Nada más se commitea en esta task; Task 6 añade los PNG con el audit.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 9: Reporte</strong> — <code>$SC/task-5-report.md</code>: tabla de capturas (archivo → qué muestra, mirada ✓), los dos precios de escalera verificados a mano con la fórmula, créditos 19 → 18 con la salida SQL, el <code>id</code> de la read, la lista de diferencias con el prototipo y los defectos encontrados (si hay, <strong>parar aquí</strong>: se deciden con Jesús antes de Task 6).</label></li>
+</ul>
+<hr>
+<h3 id="task-6-spec-d14d16-f2-matrix-dev-tracker-addendum-al-audit-f2-readme-revision-independiente-y-checks">Task 6: Spec D14/D16 <strong>(F2-matrix)</strong>, dev tracker, addendum al audit F2, README, revisión independiente y checks</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Modify: <code>docs/superpowers/specs/2026-09-19-mobile-ask-design.md</code> (D14, D16, §2.3, cabecera Estado), <code>docs/superpowers/audits/2026-09-19-mobile-ask-f2-rulings.md</code> (nueva §7), <code>docs/overview/data/manifest.js</code> (entrada del dev tracker, al principio de <code>window.DOCS</code>), <code>apps/mobile/README.md</code> (sección Ask y conteo de tests)</li>
+<li>Create: <code>docs/overview/dev/2026-09-20-mobile-ask-matrix.html</code> (vía skill <code>pickler-dev-new</code>), <code>docs/superpowers/audits/img/2026-09-20-mobile-ask-matrix-{app,proto}.png</code> (copiados en Task 5)</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Spec</strong> — sin reescribir secciones, marcando <strong>(F2-matrix)</strong>:</label></li>
+</ul>
+<ul>
+<li><strong>D14</strong>, al final de la celda «Decisión»: «<strong>(F2-matrix)</strong> La descripción de la matriz de arriba (celda = <code>pill(on)</code> con <code>+2.5%</code> y el target) fue un error al escribir el spec, no de la ejecución: la matriz es el <code>Grid</code> del prototipo (<code>pickler-mobile</code> <code>src/screens/markets.js</code>): card <code>C.card</code> con borde <code>C.hair</code> radio 14; columna de 74 px con <code>Sparkline</code>; escalera de precios de 58 px (mono 9.5, <code>C.faint</code>, acento en la fila seleccionada; el precio es <code>targetFor(mark, bps)</code>); celdas de 44 px <strong>sin texto</strong> con un punto de 5 px donde el usuario ya tiene reads <code>open/right/wrong</code> en esa celda; al tocar, fila y columna en <code>accSoft</code> y la celda en <code>accOn</code> (violeta en Ask; lima en Trade, F3); regla lima bajo la fila <code>+0.5 %</code> (el mark); horizontes <code>1H 4H 12H 24H</code> abajo. Encima de la card, <code>Tag HISTORY · MARK</code> + mark mono 700/15. <strong>Los niveles son los 5 del spec (D2), no los 7 del prototipo.</strong> La hoja de la celda es la del prototipo (<code>ConsultTab</code>): <code>Card vioBd45/vioBg07</code>, chip «Asking {agente} · 1 credit» + «Change» (despliega los chips de agente inline), <code>Tag vio YOUR QUESTION · NOTHING SENT</code>, pregunta 700/14, línea mono <code>RESOLVES ON PERPL MARK · {±x.x% FROM MARK}</code>, dos <code>Stepper</code> (nivel: target formateado; horizonte), «Ask {agente} · 1 credit» (outline, arrow, flex) + «Clear» (ghost), «Nothing charged yet.». Debajo de la matriz, hint «Tap a cell: a level and a horizon.» / «Use the steppers to move it.»; después de la hoja, card <code>MARK PRICE · PERPL ON MONAD</code> + «Reads resolve on mark, not on your fill.» <strong>sin</strong> la fila FUNDING/NEXT/OI (no hay datos). La fila de créditos se conserva encima de la cabecera. <strong>La sparkline usa datos reales</strong>: el prototipo dibuja una serie fake; <code>pub/context</code> no da historial, así que la app guarda los últimos 60 marks recibidos por mercado (<code>usePerpl.marks</code>, en memoria) y con &lt; 2 puntos dibuja una línea plana. Plan <code>2026-09-20-mobile-ask-matrix.md</code>.»</li>
+<li><strong>D16</strong>, al final: «<strong>(F2-matrix)</strong> <code>src/perpl/marks.ts</code> (puro: <code>SPARK_POINTS = 60</code>, <code>appendMarks</code>, <code>sparkPoints</code>) y <code>Perpl.marks</code>; <code>matrix.ts</code> gana <code>stepLevel</code>, <code>stepHorizon</code>, <code>distanceLabel</code>, <code>dotKey</code>, <code>readDots</code>; <code>theme.ts</code> gana <code>GRID_ACCENT</code>, <code>GRID_DOT</code>, <code>GRID_MARK_RULE</code>; <code>primitives.tsx</code> gana <code>Sparkline</code> (react-native-svg) y <code>Stepper</code>. Test nuevo <code>perpl-marks</code>.»</li>
+<li><strong>§2.3</strong>, línea de <code>ask.tsx</code>: añadir «(<strong>F2-matrix</strong>: <code>MatrixGrid</code> = <code>Grid</code> del prototipo, <code>AskSheet</code> con <code>Stepper</code>)» y una línea nueva «- <code>src/perpl/marks.ts</code>, <code>Sparkline</code>/<code>Stepper</code> en <code>src/ui/primitives.tsx</code> (F2-matrix).»</li>
+<li>Cabecera <strong>Estado</strong>: «F2 ejecutada (…); <strong>F2-matrix</strong> (corrección de diseño de la matriz, plan <code>2026-09-20-mobile-ask-matrix.md</code>, addendum §7 del audit F2).»</li>
+</ul>
+<pre><code class="language-bash">cd /Users/josedejesusacevedoflores/Documents/predict/.claude/worktrees/mobile-ask-f2
+npm run docs:html 2&gt;&amp;1 | grep -i &#39;mobile-ask&#39;</code></pre>
+<p>Expected: <code>[ok]</code> para el spec y para <code>plans/2026-09-20-mobile-ask-matrix.md</code> (genera su <code>.html</code> vecino).</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Dev tracker</strong> — leer <code>.claude/skills/pickler-dev-new/SKILL.md</code> y seguirlo: <code>types: [&#39;feature&#39;]</code>, slug <code>mobile-ask-matrix</code>, fecha <code>2026-09-20</code>, título «Matriz de Ask como el Grid del prototipo», lede «Sparkline real, escalera de precios, celdas con punto y hoja violeta con steppers; corrige D14 del spec de Ask.», <code>status: &#39;in_progress&#39;</code> (rama sin merge: no es <code>shipped</code>), tags <code>[&#39;mobile&#39;, &#39;ask&#39;, &#39;ui&#39;]</code>. «Qué cambió»: los bullets de las Tasks 1–4 (de <code>git log --oneline 9fec62c..HEAD</code>). «Archivos tocados»: <code>git diff --stat 9fec62c..HEAD</code>. «Validación»: capturas de Task 5 (nombres y qué muestra cada una), créditos 19 → 18 con el <code>id</code> de la read, tests y <code>tsc</code>, comparación con el prototipo con <code>&lt;img src=&quot;../../superpowers/audits/img/2026-09-20-mobile-ask-matrix-app.png&quot;&gt;</code> y <code>…-proto.png</code> (ancho 100 %, dentro de una fila de dos columnas si el template lo permite; si no, una debajo de otra), fuente «audit F2 §7». Render: <code>node scripts/agent-infra/render-check.mjs &lt;scratch&gt; dev/2026-09-20-mobile-ask-matrix</code> y <strong>mirar la captura de 390 px</strong>.</label></li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Addendum al audit F2</strong> — añadir al final de <code>docs/superpowers/audits/2026-09-19-mobile-ask-f2-rulings.md</code>:</label></li>
+</ul>
+<pre><code class="language-markdown">## 7. Addendum F2-matrix (2026-09-20): la matriz como el Grid del prototipo
+
+Corrección de diseño sobre la misma rama (`feat/mobile-ask-f2`, commits `&lt;sha1&gt;`…`&lt;shaN&gt;` sobre `9fec62c`), plan
+`docs/superpowers/plans/2026-09-20-mobile-ask-matrix.md`. D14 describió la matriz como pills con el target; fue un
+error al escribir el spec, no de la ejecución de F2 (corregido en el spec con la marca **(F2-matrix)**).
+
+### Qué quedó hecho y verificado
+&lt;por task: comandos y salidas — conteos de `npm test` por task, `tsc`, `git log --oneline 9fec62c..HEAD`&gt;
+
+### Recorrido en el simulador (Task 5, &lt;hora&gt; CST)
+&lt;tabla de capturas de `$SC/matrix-shots/`: archivo → qué muestra; precios de escalera verificados con la fórmula;
+créditos 19 → 18 con la salida SQL; `id` y `expires_at` de la read de Drift, dejada vencer sola&gt;
+
+### Comparación con el prototipo
+![App — celda +1.0% · 4H con la hoja](img/2026-09-20-mobile-ask-matrix-app.png)
+![Prototipo — Markets → BTC-PERP → Ask](img/2026-09-20-mobile-ask-matrix-proto.png)
+&lt;lista de diferencias con su causa (P2, P7, P9, P10; 5 vs 7 niveles) y defectos encontrados&gt;
+
+### Rulings
+&lt;P1–P12 del plan que se ejecutaron tal cual, y cualquier desviación con *qué cuesta si está mal*&gt;
+
+### Correcciones a afirmaciones previas
+- D14 (spec) — descripción de la matriz y de la hoja: ver **(F2-matrix)** en el spec.
+- &lt;otras&gt;
+
+### Estado de las cuentas al cierre
+Wallet del simulador `$SIM_ADDR`: créditos 18 (ledger: +20, −1 F2, −1 F2-matrix); reads: 2 (`9f386c32…` right, `&lt;id&gt;` open
+hasta `&lt;expires_at&gt;`); AUSD/MON sin cambio (&lt;valores de la captura de Wallet si se abrió; si no, «no se abrió Wallet:
+ninguna acción on-chain en la sesión»&gt;); cuenta Perpl #620 sin tocar.
+
+### Pendientes / residuales
+&lt;defectos visuales no decididos; el resto de §5 sigue igual; F3 usa `GRID_ACCENT.trade` con el mismo `MatrixGrid`&gt;
+
+### Revisión independiente
+&lt;veredicto, hallazgos y qué se hizo&gt;</code></pre>
+<p>(Rellenar cada <code>&lt;…&gt;</code> con lo real; ninguno puede quedar.)</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 4: README</strong> — <code>apps/mobile/README.md</code>: en la sección «Ask y Agentes (pills de Market)» añadir una línea: «La matriz es el <code>Grid</code> del prototipo (sparkline con los últimos 60 marks que la app vio, escalera de 5 niveles, celdas con punto donde ya hay reads, hoja con steppers); <code>src/perpl/marks.ts</code> y <code>src/reads/matrix.ts</code> son puros y tienen test.» Sección Tests → el conteo real (<code>npm test 2&gt;&amp;1 | tail -4</code>).</label></li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 5: Revisión independiente</strong> — dispatch de un subagente revisor (regla global) con: este plan, el spec (D14/D16 corregidos), <code>git diff 9fec62c..HEAD -- apps/mobile docs</code>, el reporte de Task 5 y las capturas. Pedirle que verifique: (a) <code>MatrixGrid</code> y <code>AskSheet</code> contra <code>Grid</code>/<code>ConsultTab</code> del prototipo (<code>/tmp/pickler-mobile-src/src/screens/markets.js</code>; si no existe, <code>git clone --depth 1 https://github.com/jjesusaf/pickler-mobile /tmp/pickler-mobile-src</code>) — medidas, colores, orden de elementos, y que las diferencias sean sólo las decididas (P2, P7–P10, 5 niveles); (b) <code>useReads.ask</code>, <code>ReadCard</code>, <code>ReadRow</code>, My reads, Agents, store, hooks de reads y servidor <strong>sin cambios</strong> (<code>git diff 9fec62c..HEAD --stat</code> no los lista); (c) el agente mostrado es el que se cobra (D14) también con los chips ocultos; (d) <code>appendMarks</code> no muta, recorta a 60 y <code>sparkPoints</code> invierte Y; el buffer sólo crece en <code>refreshContext</code>; (e) sin dependencias nuevas ni cambios nativos (<code>package.json</code>, <code>package-lock.json</code>, <code>ios/</code> intactos); (f) los tests nuevos fallan si se rompe lo que prueban (correrlos contra un <code>stepLevel</code> que envuelva o un <code>readDots</code> que cuente <code>failed</code>: deben ponerse en rojo). Aplicar lo que proceda (con test si es lógica) y anotar la revisión en §7 del audit.</label></li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 6: Checks finales</strong></label></li>
+</ul>
+<pre><code class="language-bash">cd /Users/josedejesusacevedoflores/Documents/predict/.claude/worktrees/mobile-ask-f2
+npm run docs:html &amp;&amp; npm run docs:check &amp;&amp; npm run agents:check
+cd apps/mobile &amp;&amp; npm test 2&gt;&amp;1 | tail -4 &amp;&amp; npx tsc --noEmit &amp;&amp; echo TSC-OK
+cd .. &amp;&amp; git status --short</code></pre>
+<p>Expected: <code>docs:check</code> <code>errors=0</code>; <code>agents:check</code> <code>&quot;errors&quot;: []</code>; 31 suites / 236 tests (más los que añada la revisión); <code>TSC-OK</code>; el árbol muestra sólo los archivos de esta task.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 7: Commit y handoff</strong></label></li>
+</ul>
+<pre><code class="language-bash">git add docs/superpowers/specs/2026-09-19-mobile-ask-design.md docs/superpowers/specs/2026-09-19-mobile-ask-design.html docs/superpowers/plans/2026-09-20-mobile-ask-matrix.md docs/superpowers/plans/2026-09-20-mobile-ask-matrix.html docs/overview/dev/2026-09-20-mobile-ask-matrix.html docs/overview/data/manifest.js docs/superpowers/audits/2026-09-19-mobile-ask-f2-rulings.md docs/superpowers/audits/img/2026-09-20-mobile-ask-matrix-app.png docs/superpowers/audits/img/2026-09-20-mobile-ask-matrix-proto.png apps/mobile/README.md
+git commit -m &quot;docs(mobile-ask): F2-matrix — D14/D16 corregidos, dev tracker, addendum §7 al audit F2 con capturas app/prototipo&quot; -m &quot;Co-Authored-By: &lt;modelo&gt; &lt;noreply@anthropic.com&gt;&quot; -m &quot;Claude-Session: https://claude.ai/code/session_01UVnRjUqFZvAUjKSn3t4xUi&quot;</code></pre>
+<p>Handoff: qué quedó en la app (matriz y hoja nuevas; read de Drift abierta hasta <code>&lt;expires_at&gt;</code>), créditos 18, defectos visuales pendientes (si hay), y que el siguiente punto de decisión sigue siendo el del audit F2 §6: <strong>F3</strong> (Trade con <code>GRID_ACCENT.trade</code> sobre el mismo <code>MatrixGrid</code>, <code>LevelCard</code>, <code>reminder-set</code>, book), merge/push de F1+F2, key APNs, Markets <code>readOnly</code>. <strong>Sin push, sin merge, sin TestFlight.</strong></p>
+<hr>
+<h2 id="self-review-del-plan-hecho-al-escribirlo">Self-review del plan (hecho al escribirlo)</h2>
+<ul>
+<li><strong>Cobertura del brief</strong>: (1) <code>MatrixGrid</code> = <code>Grid</code> → Task 4 Step 2 con Task 1 (tokens, puntos) y Task 2 (marks): card <code>C.card</code>/<code>C.hair</code>/14, columna 74 con <code>Sparkline</code>, escalera 58/mono 9.5/<code>C.faint</code>/acento, celdas 44 sin texto con punto de 5 px por <code>reads.reads</code> (<code>open/right/wrong</code>), fila+columna <code>accSoft</code> y celda <code>accOn</code>, regla del mark, horizontes abajo, cabecera <code>HISTORY · MARK</code> + mark 700/15, violeta, 5 niveles con <code>targetFor</code>. (2) <code>Sparkline</code> en <code>primitives.tsx</code> con <code>Svg viewBox 0 0 100 100</code>, <code>Polyline</code>, <code>preserveAspectRatio=&quot;none&quot;</code>, <code>vectorEffect=&quot;non-scaling-stroke&quot;</code>, <code>C.spark</code> → Task 3; datos reales con buffer de 60 por mercado en <code>usePerpl.refreshContext</code> → Task 2; <code>sparkPoints</code> puro con test, plano con &lt; 2 → Task 2; declarado como corrección al spec → Task 6 Step 1. (3) <code>AskSheet</code> → Task 4 Step 3 (chip + Change, Tag vio, pregunta 700/14, línea mono con distancia, dos <code>Stepper</code> 26 px / mono 10, Ask flex+arrow, Clear ghost, «Nothing charged yet.»); hint <code>T faint 11.5</code> con los dos textos y card <code>MARK PRICE · PERPL ON MONAD</code> sin FUNDING → Task 4 Step 4. (4) Sin «Trade this level», sin <code>LevelCard</code>, sin tocar Trade, <code>ReadCard</code>, My reads, Agents, hooks de reads ni servidor: ninguna task los lista; <code>useReads.ask(cell, agentId)</code> igual (Task 4 lo llama sin cambios); la revisión (Task 6 Step 5 b) lo comprueba con <code>--stat</code>. Verificación en el simulador con las cinco capturas pedidas (vacía = Step 2, seleccionada = Step 3, puntos = Step 1, hoja con steppers = Steps 3–4, read desde la hoja con créditos −1 = Step 5), comparación con el prototipo y capturas en el audit (Steps 7–8, Task 6 Step 3), <code>npm test</code> + <code>tsc</code> por task; docs: spec D14 <strong>(F2-matrix)</strong>, dev tracker <code>pickler-dev-new</code> (feature, validación con capturas), addendum al audit, <code>docs:html</code>/<code>docs:check</code>/<code>agents:check</code> → Task 6.</li>
+<li><strong>Placeholders</strong>: los <code>&lt;…&gt;</code> del addendum (Task 6 Step 3) y <code>&lt;modelo&gt;</code> en los commits son huecos que el ejecutor rellena con datos reales y el plan lo dice; no hay «TBD» ni «similar a».</li>
+<li><strong>Consistencia de tipos</strong>: <code>stepLevel/stepHorizon</code> reciben <code>number</code> (el <code>AskCell</code> del store es numérico) y devuelven literales asignables a <code>AskCell</code>; <code>MatrixGrid.onSelect</code> produce <code>Cell</code> (literal) que <code>set({ askCell })</code> acepta; <code>AskSheet.onCell: (c: AskCell) =&gt; void</code>; <code>readDots</code> acepta <code>Read[]</code> (tiene <code>levelBps</code>, <code>horizonMin</code>, <code>status</code>) porque su parámetro es estructural; <code>Sparkline.points</code> acepta el <code>[number, number][]</code> de <code>sparkPoints</code>; <code>perpl.marks[market.id]</code> es <code>readonly number[] | undefined</code> → <code>?? []</code> cumple <code>marks: readonly number[]</code>; <code>GRID_ACCENT.ask</code> tiene <code>fg/on/soft</code>, los tres usados en <code>MatrixGrid</code>; <code>Stepper.accessibilityLabel</code> genera <code>step-level-down/up</code> y <code>step-horizon-down/up</code>, los que usa Task 5.</li>
+</ul>
+  </div>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <p>HTML autogenerado · NO edites este archivo. Modifica el <code>.md</code> y re-genera con:</p>
+    <pre><code class="language-sql">node scripts/mobile/docs-md-to-html.mjs docs/mobile/superpowers/plans/2026-09-20-mobile-ask-matrix.md</code></pre>
+    <p>Reglas en <code>docs/mobile/AGENTS.md</code> sección "MD → HTML autogenerado".</p>
+  </div>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // Persistencia de los checkboxes de task lists (pickler-md:<slug>:tasks)
+  const SLUG = '2026-09-20-mobile-ask-matrix';
+  const KEY = `pickler-md:${SLUG}:tasks`;
+  const checks = [...document.querySelectorAll('ul.task-list input[type=checkbox]')];
+  function load() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(KEY) || '[]');
+      checks.forEach((c, i) => {
+        if (typeof saved[i] === 'boolean') {
+          c.checked = saved[i];
+          c.closest('li').classList.toggle('done', c.checked);
+        }
+      });
+    } catch {}
+  }
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(checks.map(c => c.checked))); } catch {}
+  }
+  checks.forEach(c => {
+    c.closest('li').classList.toggle('done', c.checked);
+    c.addEventListener('change', () => {
+      c.closest('li').classList.toggle('done', c.checked);
+      save();
+    });
+  });
+  load();
+
+  // Botón "Copy progress as MD"
+  const $copy = document.getElementById('btn-copy-progress');
+  const $toast = document.getElementById('toast');
+  function showToast(msg) {
+    $toast.textContent = msg;
+    $toast.dataset.show = 'true';
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(() => { $toast.dataset.show = 'false'; }, 2200);
+  }
+  if ($copy) {
+    $copy.addEventListener('click', async (e) => {
+      const lines = ['# ' + document.title.split(' · ')[0] + ' — task progress', ''];
+      lines.push('_Capturado en ' + new Date().toISOString() + '_', '');
+      checks.forEach(c => {
+        const text = c.closest('label').textContent.trim();
+        lines.push('- [' + (c.checked ? 'x' : ' ') + '] ' + text);
+      });
+      try {
+        await navigator.clipboard.writeText(lines.join('\n'));
+        e.currentTarget.dataset.copied = 'true';
+        const prev = e.currentTarget.textContent;
+        e.currentTarget.textContent = '✓ Copiado';
+        showToast('Progress copiado — pégalo en el plan MD');
+        setTimeout(() => {
+          e.currentTarget.dataset.copied = 'false';
+          e.currentTarget.textContent = prev;
+        }, 1800);
+      } catch {
+        showToast('Clipboard no disponible');
+      }
+    });
+  }
+</script>
+</body>
+</html>

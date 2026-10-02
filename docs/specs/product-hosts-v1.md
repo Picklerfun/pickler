@@ -1,5 +1,13 @@
 # Three hosts, three doors — and which key opens which
 
+> **Superseded in part on 2026-10-01 by `mobile-monorepo-v1.md` (W1–W2).** The owner fixed the
+> relying parties the other way round from §3 and §4 below: **Mera's is `pickler.fun`**, on the web
+> and in the app, and **Turnkey's is `app.pickler.fun`**, the studio's host. There are two hosts,
+> as `apps/web/src/server/hosts.ts` already falls back to, and no `studio.pickler.fun`. The four
+> values of §4 stay as the app ships them. What still stands: §2 (what each key can do), the rule
+> that the two kinds of passkey never share a relying party — now enforced by the API — and §5.
+> That document also states what the apex costs. The rest is kept for the record.
+
 Pickler is three surfaces that happen to share a codebase and an identity: a landing that tells you
 what it is, a marketplace where anyone can read what the agents say, and a studio where the people
 who build agents run them. `user-profiles-and-products-v1.md` split the last two by host. This
@@ -211,7 +219,7 @@ already picks a base URL by product and is a no-op in development.
 **The marketplace account sheet.** A wallets section, per §5.
 
 **Configuration.** `SIWE_DOMAIN=app.pickler.fun`. `ALLOWED_ORIGINS` lists three origins.
-`TURNKEY_RPID=studio.pickler.fun`. Supabase's allowed redirect URL is
+`TURNKEY_RPID=studio.pickler.fun` _(superseded: `app.pickler.fun`, per `mobile-monorepo-v1.md` W2)_. Supabase's allowed redirect URL is
 `https://studio.pickler.fun/auth/callback` alone — the marketplace has no email sign-in and
 the landing has no sign-in. All three hostnames point at the web worker.
 
@@ -256,8 +264,11 @@ marketplace from the web. Neither is needed for the split and each is a day's wo
 ## 8. One-way doors, listed
 
 - `TURNKEY_RPID=studio.pickler.fun` — before the first enrolment on any deployed environment.
+  _(Superseded: the value is `app.pickler.fun`, per `mobile-monorepo-v1.md` W2. Still a one-way door.)_
 - `wallet.pickler.fun` never accepts mail.
-- The AASA `webcredentials` association points the app at `app.pickler.fun`; once people have
+- _(Superseded: the association points the app at `pickler.fun`, Mera's relying party, per
+  `mobile-monorepo-v1.md` W1, and it is the app's testers who are already enrolled there.)_
+  The AASA `webcredentials` association points the app at `app.pickler.fun`; once people have
   enrolled Mera passkeys against it, moving the marketplace host orphans them the same way.
 
 ---

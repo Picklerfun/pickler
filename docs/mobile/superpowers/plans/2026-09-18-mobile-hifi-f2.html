@@ -1,0 +1,1426 @@
+<!doctype html>
+<!--
+  AUTOGENERADO desde 2026-09-18-mobile-hifi-f2.md por scripts/mobile/docs-md-to-html.mjs
+
+  ⚠️  NO EDITES ESTE ARCHIVO. Edita el .md y re-genera.
+  El próximo Write al .md (con el hook activo) sobrescribirá este HTML.
+
+  Reglas en docs/mobile/AGENTS.md sección "MD → HTML autogenerado".
+-->
+<html lang="es-MX">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Rediseño hi-fi — F2: Markets, Market y Funds re-maquetados + fixes del build 5 — Implementation Plan · Plan · Pickler</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../overview/_styles.css">
+<script defer src="../../overview/_syntax.js"></script>
+<style>
+  /* Overrides locales del MD-view */
+  .wrap { max-width: 820px; }
+  header.hero { padding: 24px 0 28px; }
+  main { padding: 32px 0 64px; overflow-wrap: anywhere; }
+  @media (max-width: 600px) { nav.toc { position: static; } }
+  main h1 { display: none; } /* el h1 ya está en el hero */
+  main h2 {
+    font-size: 22px; font-weight: 800;
+    margin: 36px 0 12px;
+    letter-spacing: -0.015em;
+    padding-bottom: 6px;
+    border-bottom: 2px solid var(--brand-soft);
+    scroll-margin-top: 72px;
+  }
+  main h3 {
+    font-size: 17px; font-weight: 700;
+    margin: 24px 0 8px;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+    scroll-margin-top: 72px;
+  }
+  main h4 {
+    font-size: 13px; font-weight: 700;
+    margin: 20px 0 6px;
+    text-transform: uppercase; letter-spacing: .06em;
+    color: var(--ink-3);
+  }
+  main p { margin: 0 0 12px; font-size: 14.5px; line-height: 1.65; color: var(--ink); }
+  main blockquote {
+    margin: 14px 0;
+    padding: 12px 18px;
+    background: var(--brand-soft);
+    border-left: 4px solid var(--brand);
+    border-radius: var(--radius-s);
+    color: var(--ink);
+    font-size: 14px; line-height: 1.6;
+  }
+  main blockquote p { margin: 0; }
+  main ul, main ol { margin: 8px 0 14px; padding-left: 26px; font-size: 14.5px; }
+  main ul li, main ol li { margin: 4px 0; line-height: 1.55; }
+  main ul.task-list { list-style: none; padding-left: 4px; }
+  main ul.task-list li {
+    display: flex; align-items: flex-start; gap: 8px;
+    padding: 4px 0;
+  }
+  main ul.task-list li input[type="checkbox"] {
+    margin-top: 4px; accent-color: var(--brand); cursor: pointer;
+    flex-shrink: 0;
+  }
+  main ul.task-list li label { flex: 1; cursor: pointer; }
+  main ul.task-list li.done label { color: var(--ink-3); text-decoration: line-through; text-decoration-color: var(--ink-3); }
+
+  main hr {
+    border: none; border-top: 1px solid var(--line);
+    margin: 32px 0;
+  }
+  main table {
+    width: 100%; border-collapse: collapse;
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: var(--radius); overflow: hidden;
+    margin: 14px 0;
+    font-size: 13.5px;
+  }
+  main table th, main table td {
+    text-align: left; padding: 10px 14px;
+    border-bottom: 1px solid var(--line);
+  }
+  main table th {
+    background: var(--surface-2); font-weight: 700;
+    font-size: 11.5px; color: var(--ink-3);
+    text-transform: uppercase; letter-spacing: .06em;
+  }
+  main table tr:last-child td { border-bottom: none; }
+  main img {
+    max-width: 100%; height: auto;
+    border-radius: var(--radius-s);
+    border: 1px solid var(--line);
+    margin: 10px 0;
+  }
+
+  .md-actions {
+    display: flex; gap: 10px; flex-wrap: wrap;
+    margin: 8px 0 28px;
+    position: sticky; top: 60px;
+    background: color-mix(in srgb, var(--bg) 92%, transparent);
+    backdrop-filter: blur(8px);
+    padding: 10px 0; z-index: 25;
+    border-bottom: 1px solid var(--line);
+  }
+  .md-actions .btn { text-decoration: none; }
+</style>
+</head>
+<body data-slug="2026-09-18-mobile-hifi-f2">
+
+<div class="wrap">
+  <nav class="crumb">
+    <a href="../../overview/index.html">← Catálogo</a>
+    <span class="sep">/</span>
+    <a href="../">superpowers/plans</a>
+    <span class="sep">/</span>
+    <span class="mono">2026-09-18-mobile-hifi-f2.md</span>
+  </nav>
+</div>
+
+<header class="hero">
+  <div class="wrap">
+    <span class="eyebrow"><span class="dot"></span>Plan · markdown source</span>
+    <h1>Rediseño hi-fi — F2: Markets, Market y Funds re-maquetados + fixes del build 5 — Implementation Plan</h1>
+    <p class="lede" style="margin:0;font-size:13.5px;color:var(--ink-3);font-family:var(--mono)">
+      Autogenerado · source: <code>plans/2026-09-18-mobile-hifi-f2.md</code>
+    </p>
+  </div>
+</header>
+
+<nav class="toc"><div class="wrap">
+       <ul><li><a href="#global-constraints">Global Constraints</a></li><li><a href="#decisiones-del-plan-no-estan-en-el-spec">Decisiones del plan (no están en el spec)</a></li><li><a href="#mapa-de-archivos">Mapa de archivos</a></li><li><a href="#task-0-expo-system-ui-y-rebuild-nativo">Task 0: `expo-system-ui` y rebuild nativo</a></li><li><a href="#task-1-formatausdraw-decimals-y-formatpnl-d20-d22">Task 1: `formatAusd(raw, decimals)` y `formatPnl` (D20, D22)</a></li><li><a href="#task-2-servertime-en-fetchcontext-y-modulo-perplclockts-d19">Task 2: `serverTime` en `fetchContext` y módulo `perpl/clock.ts` (D19)</a></li><li><a href="#task-3-runenable-con-cuenta-existente-y-useperpl-expone-clockskewms-existingaccountid-d19-d21">Task 3: `runEnable` con cuenta existente y `usePerpl` expone `clockSkewMs`, `existingAccountId` (D19, D21)</a></li><li><a href="#task-4-iscomingsoontab-screen-page-pilltabs-con-pill-p1-p2-p3">Task 4: `isComingSoonTab`, `Screen` → `Page`, `PillTabs` con `pill-*` (P1, P2, P3)</a></li><li><a href="#task-5-screensmarkettsx-pills-ask-trade-agents-y-el-ticket-del-hi-fi-d14-d20-p7-p8">Task 5: `screens/market.tsx` — pills Ask · Trade · Agents y el ticket del hi-fi (D14, D20, P7, P8)</a></li><li><a href="#task-6-screensmarketstsx-raiz-de-perpl-re-maquetada-gate-reconnect-y-aviso-de-reloj-d13-d19-d21-d22">Task 6: `screens/markets.tsx` — raíz de Perpl re-maquetada, gate Reconnect y aviso de reloj (D13, D19, D21, D22)</a></li><li><a href="#task-7-screensperpsfundstsx-re-vestido-y-chip-de-reloj-en-devcontrols-d15-p4">Task 7: `screens/perpsFunds.tsx` re-vestido y chip de reloj en DevControls (D15, P4)</a></li><li><a href="#task-8-rebuild-nativo-y-recorrido-completo-en-el-simulador-con-la-cuenta-620">Task 8: Rebuild nativo y recorrido completo en el simulador con la cuenta #620</a></li><li><a href="#task-9-readme-spec-overview-manifest-y-audit-de-f2">Task 9: README, spec, overview, manifest y audit de F2</a></li><li><a href="#task-10-build-010-5-de-testflight-y-su-tracker-pickler-dev-new-solo-con-autorizacion-explicita-de-jesus">Task 10: Build 0.1.0 (5) de TestFlight y su tracker (`pickler-dev-new`) — **sólo con autorización explícita de Jesús**</a></li></ul>
+     </div></nav>
+
+<main>
+  <div class="wrap">
+
+<div class="md-actions">
+  <button type="button" class="btn primary" id="btn-copy-progress">📋 Copy progress as MD</button>
+  <a href="2026-09-18-mobile-hifi-f2.md" class="btn">📝 Ver source MD</a>
+</div>
+    <h1 id="rediseno-hi-fi-f2-markets-market-y-funds-re-maquetados-fixes-del-build-5-implementation-plan">Rediseño hi-fi — F2: Markets, Market y Funds re-maquetados + fixes del build 5 — Implementation Plan</h1>
+<blockquote>
+<strong>For agentic workers:</strong> REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (<code>- [ ]</code>) syntax for tracking.
+</blockquote>
+<p><strong>Goal:</strong> Las tres pantallas de Perpl (Markets, Market con pills Ask · Trade · Agents, Trading funds) quedan con el look del hi-fi sobre la lógica real; entran los tres fixes del build 5 (desfase de reloj vía header <code>Date</code>, fees a 4 decimales, <em>Reconnect trading</em> con <code>existingAccountId</code>) y los minors del audit del pulido; se cierran los pendientes de la revisión final de F1; todo se verifica en el simulador con la cuenta #620 y termina en el build 0.1.0 (5) de TestFlight registrado con <code>pickler-dev-new</code>.</p>
+<p><strong>Architecture:</strong> Primero se amplía la capa pura (<code>config/chain.ts</code>, <code>perpl/context.ts</code>, <code>perpl/clock.ts</code>, <code>perpl/enable.ts</code>, <code>perpl/orders.ts</code>, <code>store.ts</code>) con tests, después el hook <code>usePerpl</code> expone <code>clockSkewMs</code> y <code>existingAccountId</code>, y al final las tres pantallas se re-escriben con las primitivas de F1 (<code>Card</code>, <code>Tag</code>, <code>Chip</code>, <code>Btn</code>, <code>Segmented</code>, <code>PillTabs</code>, <code>KV</code>, <code>StatusCard</code>, <code>Warn</code>) consumiendo esos campos. La lógica de cuenta, tesorería, socket y órdenes (<code>hooks/useTreasury</code>, <code>wallet/</code>, <code>perpl/ws.ts</code>, <code>perpl/onboarding.ts</code>) no cambia.</p>
+<p><strong>Tech Stack:</strong> Expo SDK 57 / React Native 0.86 / TypeScript 6 / Jest 29 (<code>jest-expo</code>). Nueva dependencia: <code>expo-system-ui</code> (módulo nativo: exige <code>prebuild --clean</code>). Maestro para los flujos del simulador.</p>
+<p><strong>Spec:</strong> <code>docs/superpowers/specs/2026-09-18-mobile-hifi-design.md</code> (decisiones D13–D15, D19–D22; D2, D5, D12 y D17 como contexto). Requisitos adicionales: sección &quot;Pendientes&quot; y &quot;Correcciones tras la revisión final&quot; de <code>docs/superpowers/audits/2026-09-18-mobile-hifi-f1-rulings.md</code>, y &quot;Pendientes&quot; de <code>docs/superpowers/audits/2026-09-18-mobile-polish-f1-rulings.md</code>. El plan argumenta desde ahí; léelos antes de empezar.</p>
+<h2 id="global-constraints">Global Constraints</h2>
+<ul>
+<li>Worktree <code>.claude/worktrees/mobile-hifi-f2</code>, rama <code>feat/mobile-hifi-f2</code> (base <code>main</code> = <code>5289aa8</code>, merge de F1). Todo se corre desde <code>apps/mobile</code> dentro del worktree; <code>npm install</code> y <code>npx expo prebuild --platform ios --clean</code> ya se corrieron ahí (exit 0). Nunca <code>git add -A</code>; archivos por nombre. Commits <code>feat(mobile): …</code> / <code>fix(mobile): …</code> / <code>chore(mobile): …</code> / <code>docs(mobile-hifi): …</code> con trailer <code>Co-Authored-By: Claude Fable 5.1 &lt;noreply@anthropic.com&gt;</code>.</li>
+<li><strong>Sin push, sin merge a <code>main</code>, sin subida a TestFlight y sin tocar <code>buildNumber</code></strong> hasta que Jesús lo autorice en esa sesión (Task 10 tiene el checkpoint). Delegar no autoriza nada de eso.</li>
+<li><code>npx tsc --noEmit</code> y <code>npm test</code> deben quedar en verde <strong>al cierre de cada task</strong> (a diferencia de F1, aquí no hay reescritura de cimientos que lo justifique). Base al arrancar: 23 suites, 169/169.</li>
+<li>Simulador <strong>siempre por UDID</strong> <code>2B2A0BAD-7B14-4DAE-8652-C7E9472505E0</code> (<code>expo run:ios --device</code>, <code>simctl io … screenshot</code>, <code>maestro --udid</code>); nunca <code>booted</code> (hay dos simuladores arrancados). Maestro: envolver cada flujo en <code>timeout 180</code>, <code>pkill -f maestro</code> si se cuelga; <code>hideKeyboard</code> no funciona (tocar fuera); tras <code>launchApp</code> esperar antes del primer <code>tapOn</code> (carrera del boot, ruling 6 de F1).</li>
+<li>Cuentas: la wallet del simulador <code>0xe3719a93b75Cee42C5a8f3dCe45e5b4B327851C1</code> (29.00 AUSD · 0.0718 MON al cierre de F1) <strong>no tiene key de Perpl</strong> y es dueña de la cuenta Perpl <strong>#620</strong> (~104.87 AUSD, último valor conocido). <em>Reconnect trading</em> se prueba ahí. <strong>Re-medir saldos por RPC antes de afirmar cualquier número</strong> (receta en Task 9). No pedir faucet, no retirar a direcciones externas; la única posición que se abre es pequeña (≤ 5 AUSD de margen, 1x) y se cierra en la misma sesión.</li>
+<li>Copy en inglés, tal cual el spec (D13, D14, D19, D21). Nombres de primitivas y tokens como <code>ui/primitives.tsx</code> y <code>ui/theme.ts</code> de F1 (<code>Tag</code> = línea mono; <code>Chip</code> = píldora; <code>pill(on)</code> = lima al activo).</li>
+<li>Cifra <code>display</code> dentro de un <code>TextInput</code>: <strong>siempre</strong> <code>lh: 1.3</code> y <code>paddingVertical: 4</code> (lección 2 del audit de F1: con <code>lh: 1</code> / <code>paddingVertical: 0</code> Chakra Petch se recorta por arriba).</li>
+<li><code>accessibilityLabel</code> en todo lo que Maestro tenga que tocar: tabs (<code>tab-*</code>, ya existe), pills de Market (<code>pill-*</code>), filas de mercado (<code>market-&lt;SYMBOL&gt;</code>), chips de apalancamiento (<code>lv-&lt;n&gt;</code>), botones primarios (nombres fijados en cada task). Maestro no ve el texto dentro de <code>Touch</code>/<code>TouchCard</code>.</li>
+</ul>
+<h2 id="decisiones-del-plan-no-estan-en-el-spec">Decisiones del plan (no están en el spec)</h2>
+<table>
+<thead>
+<tr><th>#</th><th>Decisión</th><th>Por qué</th></tr>
+</thead>
+<tbody>
+<tr><td>P1</td><td>La primitiva <code>Screen</code> de <code>ui/primitives.tsx</code> pasa a llamarse <strong><code>Page</code></strong> (misma firma). El tipo <code>Screen</code> de <code>store.ts</code> (D5) no cambia.</td><td>Pendiente de la revisión final de F1: dos exports llamados <code>Screen</code> (tipo del store y primitiva) se sombreaban en cualquier pantalla que importara ambos. El tipo aparece en el spec y en ocho archivos; la primitiva sólo en <code>wallet.tsx</code> y <code>signin.tsx</code>. D12 pedía nombres del diseño para un diff legible contra <code>ui.js</code>; se acepta esta única divergencia y se anota en el spec (Task 9).</td></tr>
+<tr><td>P2</td><td><code>isComingSoonTab(screen): screen is ComingSoonTab</code> vive en <code>store.ts</code> y reemplaza tanto la aserción <code>(COMING_SOON as readonly Screen[]).includes(…)</code> de <code>useAppStore</code> como el <code>isTab</code> local de <code>comingSoon.tsx</code>.</td><td>Pendiente de la revisión final: una aserción de tipo esconde el chequeo; un type guard exportado lo hace explícito y reutilizable.</td></tr>
+<tr><td>P3</td><td><code>PillTabs</code> etiqueta cada pill como <code>pill-&lt;key&gt;</code> (hoy <code>tab-&lt;key&gt;</code>).</td><td>Pendiente de la revisión final: <code>tab-markets</code> ya es la tab bar; el pill Trade de Market colisionaría con un futuro <code>tab-trade</code>.</td></tr>
+<tr><td>P4</td><td><code>Perpl.clockSkewMs</code> se mide en <code>refreshContext</code> con el <code>Date.now()</code> inmediatamente posterior al <code>await fetchContext</code>, y un override de desarrollo `setClockSkewOverride(ms \</td><td>null)<code> (sólo lo usa </code>DevControls<code> bajo </code><strong>DEV</strong><code>) permite forzar el </code>Warn` en el simulador.</td><td>El simulador comparte el reloj del Mac; no hay forma de desfasarlo sin tocar el reloj del host. El spec §3 pide &quot;skew forzado (reloj del simulador ±2 min)&quot;; el override cumple esa verificación sin cambiar el reloj de nadie.</td></tr>
+<tr><td>P5</td><td><code>runEnable</code> con <code>amount === 0n</code> y <code>readAccountId() === 0n</code> falla en el paso 1 con <code>&quot;Enter an amount.&quot;</code> sin llamar <code>createAccount</code>.</td><td>Riesgo del spec §4 (&quot;<code>enable(0n)</code> con <code>existingAccountId</code> desfasado&quot;): sin este guard <code>createAccount(0n)</code> mandaría una tx inútil.</td></tr>
+<tr><td>P6</td><td><code>formatPnl(raw)</code> (nueva, en <code>perpl/orders.ts</code>) devuelve <code>&quot;+0.00&quot;</code> cuando `\</td><td>raw\</td><td>&lt; 10_000n<code> (un centavo mostrado: </code>formatAusd<code> trunca, así que todo lo menor a 0.01 imprime &quot;0.00&quot;) y </code>±X.XX` en el resto; la usan la fila de posición, la línea de PnL no realizado y la confirmación de cierre.</td><td>D22: cierra el &quot;−0.00 unrealised PnL&quot; del audit del pulido con una sola función testeada.</td></tr>
+<tr><td>P7</td><td>Al tocar una fila de Markets se navega con <code>{ perpsMarketId, perpsSide: &quot;long&quot;, marketTab: &quot;trade&quot; }</code>.</td><td>D14 fija <code>trade</code> como pill por defecto; sin el patch, volver a un mercado tras haber mirado Ask lo abriría en Ask.</td></tr>
+<tr><td>P8</td><td>El botón &quot;Review …&quot; del ticket es <code>Btn</code> <code>outline</code> con <code>arrow</code> (como <code>Btn label={M.perpCta} arrow</code> del diseño) y el de confirmación es <code>lime</code>.</td><td>D14 lo describe así; el énfasis lima queda para la acción que mueve dinero.</td></tr>
+</tbody>
+</table>
+<h2 id="mapa-de-archivos">Mapa de archivos</h2>
+<table>
+<thead>
+<tr><th>Archivo</th><th>Task</th><th>Cambio</th></tr>
+</thead>
+<tbody>
+<tr><td><code>apps/mobile/package.json</code>, <code>ios/</code> (regenerado)</td><td>0</td><td><code>expo-system-ui</code></td></tr>
+<tr><td><code>apps/mobile/src/config/chain.ts</code> + <code>__tests__/chain.test.ts</code></td><td>1</td><td><code>formatAusd(raw, decimals = 2)</code></td></tr>
+<tr><td><code>apps/mobile/src/perpl/orders.ts</code> + <code>__tests__/perpl-orders.test.ts</code></td><td>1</td><td><code>formatPnl</code>; <code>any</code> → <code>matched</code></td></tr>
+<tr><td><code>apps/mobile/src/perpl/context.ts</code> + <code>__tests__/perpl-context.test.ts</code></td><td>2</td><td><code>Context.serverTime</code>, <code>parseServerTime</code></td></tr>
+<tr><td><code>apps/mobile/src/perpl/clock.ts</code> (nuevo) + <code>__tests__/perpl-clock.test.ts</code> (nuevo)</td><td>2</td><td><code>CLOCK_SKEW_MAX_MS</code>, <code>clockSkewMs</code>, <code>describeClockSkew</code>, <code>KEY_REJECTED_COPY</code></td></tr>
+<tr><td><code>apps/mobile/src/perpl/enable.ts</code> + <code>__tests__/perpl-enable.test.ts</code></td><td>3</td><td>guard <code>amount 0n</code> sin cuenta</td></tr>
+<tr><td><code>apps/mobile/src/hooks/usePerpl.ts</code></td><td>3</td><td><code>clockSkewMs</code>, <code>existingAccountId</code>, <code>setClockSkewOverride</code></td></tr>
+<tr><td><code>apps/mobile/src/store.ts</code> + <code>__tests__/store.test.ts</code></td><td>4</td><td><code>isComingSoonTab</code></td></tr>
+<tr><td><code>apps/mobile/src/ui/primitives.tsx</code></td><td>4</td><td><code>Screen</code> → <code>Page</code>; <code>PillTabs</code> <code>pill-*</code></td></tr>
+<tr><td><code>apps/mobile/src/screens/comingSoon.tsx</code>, <code>wallet.tsx</code>, <code>signin.tsx</code></td><td>4</td><td>consumen P1/P2</td></tr>
+<tr><td><code>apps/mobile/src/screens/market.tsx</code></td><td>5</td><td>ticket re-maquetado (D14, D20)</td></tr>
+<tr><td><code>apps/mobile/src/screens/markets.tsx</code></td><td>6</td><td>raíz re-maquetada (D13, D19, D21, D22)</td></tr>
+<tr><td><code>apps/mobile/src/screens/perpsFunds.tsx</code></td><td>7</td><td>Funds re-vestido (D15)</td></tr>
+<tr><td><code>apps/mobile/src/DevControls.tsx</code></td><td>7</td><td>chip &quot;Clock +2 min&quot;</td></tr>
+<tr><td><code>apps/mobile/README.md</code>, <code>docs/overview/2026-09-18-mobile-hifi.html</code>, <code>docs/overview/data/manifest.js</code>, spec, audit F2</td><td>9</td><td>docs de cierre</td></tr>
+<tr><td><code>apps/mobile/app.config.ts</code> (<code>buildNumber</code> &quot;5&quot;), <code>docs/overview/dev/&lt;fecha&gt;-testflight-build5.html</code>, manifest</td><td>10</td><td>build 5 (con autorización)</td></tr>
+</tbody>
+</table>
+<hr>
+<h3 id="task-0-expo-system-ui-y-rebuild-nativo">Task 0: <code>expo-system-ui</code> y rebuild nativo</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Modify: <code>apps/mobile/package.json</code></li>
+<li>Regenerate: <code>apps/mobile/ios/</code> (gitignored)</li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Consumes: <code>app.config.ts</code> ya declara <code>backgroundColor: &quot;#05061A&quot;</code> y <code>ios.backgroundColor: &quot;#05061A&quot;</code> (D10, F1).</li>
+<li>Produces: el aviso <code>» ios: ios.backgroundColor: Install expo-system-ui to enable this feature</code> desaparece del prebuild; nada más cambia de API.</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Confirmar el estado de partida</strong></label></li>
+</ul>
+<p>Run (desde <code>apps/mobile</code> del worktree):</p>
+<pre><code class="language-bash">git status --short &amp;&amp; git log --oneline -1 &amp;&amp; npx tsc --noEmit &amp;&amp; npm test 2&gt;&amp;1 | tail -4</code></pre>
+<p>Expected: árbol limpio, HEAD <code>5289aa8</code>, <code>tsc</code> sin salida (exit 0), <code>Tests: 169 passed, 169 total</code>, <code>Test Suites: 23 passed</code>.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Instalar <code>expo-system-ui</code> con pin exacto</strong></label></li>
+</ul>
+<p>Run:</p>
+<pre><code class="language-bash">npx expo install expo-system-ui
+node -e &quot;const p=require(&#39;./package.json&#39;);console.log(p.dependencies[&#39;expo-system-ui&#39;])&quot;</code></pre>
+<p>Expected: imprime una versión <code>57.x.y</code> posiblemente con prefijo <code>~</code>. Si trae <code>~</code> o <code>^</code>, quítalo para dejar el pin exacto como el resto del <code>package.json</code>:</p>
+<pre><code class="language-bash">node -e &quot;const fs=require(&#39;fs&#39;);const p=JSON.parse(fs.readFileSync(&#39;package.json&#39;,&#39;utf8&#39;));p.dependencies[&#39;expo-system-ui&#39;]=p.dependencies[&#39;expo-system-ui&#39;].replace(/^[~^]/,&#39;&#39;);fs.writeFileSync(&#39;package.json&#39;,JSON.stringify(p,null,2)+&#39;\n&#39;)&quot;
+npm install</code></pre>
+<p>Expected: <code>package.json</code> con <code>&quot;expo-system-ui&quot;: &quot;57.x.y&quot;</code> (sin prefijo) y <code>package-lock.json</code> actualizado.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Prebuild limpio y comprobar que el aviso desapareció</strong></label></li>
+</ul>
+<p>Run:</p>
+<pre><code class="language-bash">npx expo prebuild --platform ios --clean 2&gt;&amp;1 | tee /tmp/prebuild-f2.log | tail -6
+grep -c &#39;expo-system-ui&#39; /tmp/prebuild-f2.log || echo NO_WARNING</code></pre>
+<p>Expected: <code>✔ Finished prebuild</code>, <code>✔ Installed CocoaPods</code>, y <code>NO_WARNING</code> (o <code>0</code>).</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 4: Tests y tipos siguen en verde; commit</strong></label></li>
+</ul>
+<p>Run: <code>npx tsc --noEmit &amp;&amp; npm test 2&gt;&amp;1 | tail -4</code> Expected: exit 0 y 169/169.</p>
+<pre><code class="language-bash">git add package.json package-lock.json
+git commit -m &quot;chore(mobile): expo-system-ui para que ios.backgroundColor llegue al nativo (D10)
+
+Co-Authored-By: Claude Fable 5.1 &lt;noreply@anthropic.com&gt;&quot;</code></pre>
+<hr>
+<h3 id="task-1-formatausdraw-decimals-y-formatpnl-d20-d22">Task 1: <code>formatAusd(raw, decimals)</code> y <code>formatPnl</code> (D20, D22)</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Modify: <code>apps/mobile/src/config/chain.ts:36-38</code></li>
+<li>Modify: <code>apps/mobile/src/perpl/orders.ts:44-60</code></li>
+<li>Test: <code>apps/mobile/__tests__/chain.test.ts</code>, <code>apps/mobile/__tests__/perpl-orders.test.ts</code></li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Consumes: <code>truncate(value, places)</code> y <code>AUSD_DECIMALS</code> de <code>config/chain.ts</code>; <code>formatAusd</code> de <code>config/chain.ts</code> desde <code>orders.ts</code>.</li>
+<li>Produces: <code>formatAusd(raw: bigint, decimals = 2): string</code>; <code>formatPnl(raw: bigint): string</code> (<code>&quot;+0.00&quot;</code> si <code>|raw| &lt; 10_000n</code>, si no <code>&quot;+1.23&quot;</code> / <code>&quot;−1.23&quot;</code> con el signo menos tipográfico <code>−</code> U+2212, como ya usan las pantallas). Las Tasks 5 y 6 dependen de los dos.</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Tests que fallan</strong></label></li>
+</ul>
+<p>Añade al final de <code>__tests__/chain.test.ts</code>:</p>
+<pre><code class="language-ts">test(&quot;formatAusd takes an optional number of decimals for fees&quot;, () =&gt; {
+  expect(formatAusd(500n, 4)).toBe(&quot;0.0005&quot;);
+  expect(formatAusd(500n)).toBe(&quot;0.00&quot;);
+  expect(formatAusd(1_234_567n, 4)).toBe(&quot;1.2345&quot;);
+  expect(formatAusd(1_234_567n, 6)).toBe(&quot;1.234567&quot;);
+});</code></pre>
+<p>Añade <code>formatPnl</code> al import de <code>__tests__/perpl-orders.test.ts</code> y al final del archivo:</p>
+<pre><code class="language-ts">test(&quot;formatPnl rounds anything under half a cent to +0.00 and keeps the sign otherwise&quot;, () =&gt; {
+  expect(formatPnl(0n)).toBe(&quot;+0.00&quot;);
+  expect(formatPnl(-9_999n)).toBe(&quot;+0.00&quot;);
+  expect(formatPnl(9_999n)).toBe(&quot;+0.00&quot;);
+  expect(formatPnl(10_000n)).toBe(&quot;+0.01&quot;);
+  expect(formatPnl(-10_000n)).toBe(&quot;−0.01&quot;);
+  expect(formatPnl(-1_500_000n)).toBe(&quot;−1.50&quot;);
+  expect(formatPnl(123_456_789n)).toBe(&quot;+123.45&quot;);
+});</code></pre>
+<p>(El umbral es un centavo mostrado, no medio: <code>formatAusd</code> trunca, y un umbral de 0.005 dejaría «−0.00» entre −0.005 y −0.0099. Ruling de ejecución.)</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Verificar que fallan</strong></label></li>
+</ul>
+<p>Run: <code>npx jest __tests__/chain.test.ts __tests__/perpl-orders.test.ts 2&gt;&amp;1 | tail -15</code> Expected: FAIL — <code>formatAusd(500n, 4)</code> devuelve <code>&quot;0.00&quot;</code>; <code>formatPnl is not a function</code>.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Implementar</strong></label></li>
+</ul>
+<p>En <code>src/config/chain.ts</code> reemplaza <code>formatAusd</code>:</p>
+<pre><code class="language-ts">/** AUSD con `decimals` decimales truncados (2 para saldos y montos; 4 para fees, D20). */
+export function formatAusd(raw: bigint, decimals = 2): string {
+  return truncate(formatUnits(raw, AUSD_DECIMALS), decimals);
+}</code></pre>
+<p>En <code>src/perpl/orders.ts</code>, cambia el import de la cabecera a <code>import { AUSD_DECIMALS, formatAusd } from &quot;../config/chain&quot;;</code>, renombra en <code>unrealisedPnl</code> la variable <code>any</code> → <code>matched</code> (las tres apariciones) y añade después de <code>unrealisedPnl</code>:</p>
+<pre><code class="language-ts">const ONE_CENT = 10_000n; // 0.01 AUSD en unidades de 6 decimales: lo mínimo que formatAusd (truncado) muestra distinto de 0.00
+
+/** PnL con signo para la UI: por debajo de un centavo es &quot;+0.00&quot; (D22), nunca &quot;−0.00&quot;. */
+export function formatPnl(raw: bigint): string {
+  const abs = raw &lt; 0n ? -raw : raw;
+  if (abs &lt; ONE_CENT) return &quot;+0.00&quot;;
+  return `${raw &lt; 0n ? &quot;−&quot; : &quot;+&quot;}${formatAusd(abs)}`;
+}</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 4: Verificar que pasan, <code>tsc</code>, commit</strong></label></li>
+</ul>
+<p>Run: <code>npx jest __tests__/chain.test.ts __tests__/perpl-orders.test.ts 2&gt;&amp;1 | tail -6 &amp;&amp; npx tsc --noEmit</code> Expected: ambas suites PASS; <code>tsc</code> exit 0.</p>
+<pre><code class="language-bash">git add src/config/chain.ts src/perpl/orders.ts __tests__/chain.test.ts __tests__/perpl-orders.test.ts
+git commit -m &quot;feat(mobile): formatAusd con decimales y formatPnl sin −0.00 (D20, D22)
+
+Co-Authored-By: Claude Fable 5.1 &lt;noreply@anthropic.com&gt;&quot;</code></pre>
+<hr>
+<h3 id="task-2-servertime-en-fetchcontext-y-modulo-perplclockts-d19">Task 2: <code>serverTime</code> en <code>fetchContext</code> y módulo <code>perpl/clock.ts</code> (D19)</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Modify: <code>apps/mobile/src/perpl/context.ts:15,55-79</code></li>
+<li>Create: <code>apps/mobile/src/perpl/clock.ts</code></li>
+<li>Test: <code>apps/mobile/__tests__/perpl-context.test.ts</code>, <code>apps/mobile/__tests__/perpl-clock.test.ts</code> (nuevo)</li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Consumes: <code>parseContext</code>, <code>fetchContext</code>, <code>CONTEXT_TIMEOUT_MS</code> (sin cambios de firma).</li>
+<li>Produces:</li>
+<ul>
+<li><code>Context.serverTime: number | null</code> (ms desde epoch). <code>parseContext</code> lo deja en <code>null</code>; <code>fetchContext</code> lo completa con <code>parseServerTime(res.headers.get(&quot;date&quot;))</code>.</li>
+<li><code>parseServerTime(header: string | null): number | null</code> (exportada de <code>context.ts</code>).</li>
+<li>En <code>clock.ts</code>: <code>CLOCK_SKEW_MAX_MS = 20_000</code>; <code>clockSkewMs(serverTime: number | null, now: number): number | null</code>; <code>describeClockSkew(skewMs: number | null): { title: string; body: string } | null</code>; <code>KEY_REJECTED_COPY: string</code>. La Task 3 (hook) y la Task 6 (Markets) las consumen.</li>
+</ul>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Tests que fallan</strong></label></li>
+</ul>
+<p>En <code>__tests__/perpl-context.test.ts</code> cambia el import a <code>import { fetchContext, parseContext, parseServerTime } from &quot;../src/perpl/context&quot;;</code> y añade al final:</p>
+<pre><code class="language-ts">test(&quot;parseContext leaves serverTime null; parseServerTime reads an RFC 1123 Date header&quot;, () =&gt; {
+  expect(parseContext(contextJson).serverTime).toBeNull();
+  expect(parseServerTime(&quot;Thu, 18 Sep 2026 22:35:00 GMT&quot;)).toBe(Date.UTC(2026, 8, 18, 22, 35, 0));
+  expect(parseServerTime(null)).toBeNull();
+  expect(parseServerTime(&quot;not a date&quot;)).toBeNull();
+});
+
+// Sin `new Response`: el entorno de jest-expo no garantiza los globals de fetch de Node.
+function fakeFetch(headers: Record&lt;string, string&gt;) {
+  const res = { ok: true, status: 200, headers: { get: (k: string) =&gt; headers[k.toLowerCase()] ?? null }, json: async () =&gt; contextJson };
+  return jest.fn(async () =&gt; res) as unknown as typeof fetch;
+}
+
+test(&quot;fetchContext fills serverTime from the Date header, and null without it&quot;, async () =&gt; {
+  (globalThis as { fetch: typeof fetch }).fetch = fakeFetch({ date: &quot;Thu, 18 Sep 2026 22:35:00 GMT&quot; });
+  const withHeader = await fetchContext(&quot;https://x.test/api&quot;);
+  expect(withHeader.serverTime).toBe(Date.UTC(2026, 8, 18, 22, 35, 0));
+  expect(withHeader.markets.map((m) =&gt; m.id)).toEqual([16, 32, 48, 64, 256, 272, 320]);
+  (globalThis as { fetch: typeof fetch }).fetch = fakeFetch({});
+  expect((await fetchContext(&quot;https://x.test/api&quot;)).serverTime).toBeNull();
+});</code></pre>
+<p>Crea <code>__tests__/perpl-clock.test.ts</code>:</p>
+<pre><code class="language-ts">import { CLOCK_SKEW_MAX_MS, clockSkewMs, describeClockSkew, KEY_REJECTED_COPY } from &quot;../src/perpl/clock&quot;;
+
+test(&quot;clockSkewMs is server minus phone, or null without a server time&quot;, () =&gt; {
+  expect(clockSkewMs(1_000_000, 1_000_000)).toBe(0);
+  expect(clockSkewMs(1_030_000, 1_000_000)).toBe(30_000);
+  expect(clockSkewMs(1_000_000, 1_030_000)).toBe(-30_000);
+  expect(clockSkewMs(null, 1_000_000)).toBeNull();
+});
+
+test(&quot;describeClockSkew warns beyond 20 s in either direction, with whole seconds in the copy&quot;, () =&gt; {
+  expect(CLOCK_SKEW_MAX_MS).toBe(20_000);
+  expect(describeClockSkew(null)).toBeNull();
+  expect(describeClockSkew(20_000)).toBeNull();
+  expect(describeClockSkew(-20_000)).toBeNull();
+  expect(describeClockSkew(20_001)).toEqual({
+    title: &quot;Your phone&#39;s clock is off by 20 s.&quot;,
+    body: &quot;Perpl rejects signatures more than 30 s off — turn on Set automatically in Settings › General › Date &amp; Time.&quot;,
+  });
+  expect(describeClockSkew(-125_400)?.title).toBe(&quot;Your phone&#39;s clock is off by 125 s.&quot;);
+});
+
+test(&quot;the key-rejected copy points at the clock first&quot;, () =&gt; {
+  expect(KEY_REJECTED_COPY).toBe(&quot;Trading key rejected. Check the phone clock first; if it is right, Perpl may not be available in your region.&quot;);
+});</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Verificar que fallan</strong></label></li>
+</ul>
+<p>Run: <code>npx jest __tests__/perpl-context.test.ts __tests__/perpl-clock.test.ts 2&gt;&amp;1 | tail -15</code> Expected: FAIL — <code>parseServerTime</code> no existe; <code>Cannot find module &#39;../src/perpl/clock&#39;</code>.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Implementar</strong></label></li>
+</ul>
+<p>En <code>src/perpl/context.ts</code>:</p>
+<pre><code class="language-ts">export type Context = { markets: Market[]; instance: Instance; geoBlock: string[]; serverTime: number | null };</code></pre>
+<p>En <code>parseContext</code>, el <code>return</code> pasa a <code>return { markets, instance, geoBlock, serverTime: null };</code>. Añade antes de <code>fetchContext</code>:</p>
+<pre><code class="language-ts">/** Header `Date` (RFC 1123) → ms desde epoch; null si falta o no parsea (un CDN puede quitarlo). */
+export function parseServerTime(header: string | null): number | null {
+  if (!header) return null;
+  const ms = Date.parse(header);
+  return Number.isNaN(ms) ? null : ms;
+}</code></pre>
+<p>y en <code>fetchContext</code> sustituye <code>return parseContext(await res.json());</code> por:</p>
+<pre><code class="language-ts">    const serverTime = parseServerTime(res.headers.get(&quot;date&quot;));
+    return { ...parseContext(await res.json()), serverTime };</code></pre>
+<p>Crea <code>src/perpl/clock.ts</code>:</p>
+<pre><code class="language-ts">/**
+ * Desfase entre el reloj del teléfono y el de Perpl (D19). Perpl rechaza firmas fuera de ±30 s;
+ * los dos `3401` del iPhone de Jesús (audit mobile-polish) eran esto, no geobloqueo.
+ */
+export const CLOCK_SKEW_MAX_MS = 20_000; // margen bajo los ±30 s del servidor
+
+/** serverTime − now; null si el servidor no mandó `Date`. */
+export function clockSkewMs(serverTime: number | null, now: number): number | null {
+  return serverTime === null ? null : serverTime - now;
+}
+
+export function describeClockSkew(skewMs: number | null): { title: string; body: string } | null {
+  if (skewMs === null || Math.abs(skewMs) &lt;= CLOCK_SKEW_MAX_MS) return null;
+  return {
+    title: `Your phone&#39;s clock is off by ${Math.floor(Math.abs(skewMs) / 1000)} s.`,
+    body: &quot;Perpl rejects signatures more than 30 s off — turn on Set automatically in Settings › General › Date &amp; Time.&quot;,
+  };
+}
+
+export const KEY_REJECTED_COPY = &quot;Trading key rejected. Check the phone clock first; if it is right, Perpl may not be available in your region.&quot;;</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 4: Verificar que pasan, <code>tsc</code>, suite completa, commit</strong></label></li>
+</ul>
+<p>Run: <code>npx jest __tests__/perpl-context.test.ts __tests__/perpl-clock.test.ts 2&gt;&amp;1 | tail -6 &amp;&amp; npx tsc --noEmit &amp;&amp; npm test 2&gt;&amp;1 | tail -4</code> Expected: PASS; <code>tsc</code> exit 0 (si algún test o fixture construye un <code>Context</code> literal sin <code>serverTime</code>, añádele <code>serverTime: null</code>); <code>Tests: 178 passed</code> aprox. (169 + 2 + 3 + 2 + 2) en 24 suites.</p>
+<pre><code class="language-bash">git add src/perpl/context.ts src/perpl/clock.ts __tests__/perpl-context.test.ts __tests__/perpl-clock.test.ts
+git commit -m &quot;feat(mobile): serverTime del header Date y aviso de reloj desfasado (D19)
+
+Co-Authored-By: Claude Fable 5.1 &lt;noreply@anthropic.com&gt;&quot;</code></pre>
+<hr>
+<h3 id="task-3-runenable-con-cuenta-existente-y-useperpl-expone-clockskewms-existingaccountid-d19-d21">Task 3: <code>runEnable</code> con cuenta existente y <code>usePerpl</code> expone <code>clockSkewMs</code>, <code>existingAccountId</code> (D19, D21)</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Modify: <code>apps/mobile/src/perpl/enable.ts:40-48</code></li>
+<li>Modify: <code>apps/mobile/src/hooks/usePerpl.ts</code></li>
+<li>Test: <code>apps/mobile/__tests__/perpl-enable.test.ts</code></li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Consumes: <code>readAccountId(address)</code> de <code>perpl/onboarding.ts</code>; <code>clockSkewMs</code> de <code>perpl/clock.ts</code> (Task 2); <code>Context.serverTime</code> (Task 2).</li>
+<li>Produces en <code>Perpl</code> (tipo exportado de <code>usePerpl.ts</code>, consumido por Tasks 6 y 7):</li>
+<ul>
+<li><code>clockSkewMs: number | null</code> — medido en cada <code>refreshContext</code>; si hay override, el override.</li>
+<li><code>existingAccountId: bigint | null</code> — <code>readAccountId(address)</code> sondeado cuando <code>state.status === &quot;none&quot;</code>; <code>null</code> mientras no se sabe, <code>0n</code> si la wallet no tiene cuenta, <code>&gt; 0n</code> si la tiene. Se vuelve a sondear con cada <code>context</code> nuevo (cada <code>refreshContext</code>).</li>
+<li><code>setClockSkewOverride: (ms: number | null) =&gt; void</code> — sólo para DevControls (P4).</li>
+<li><code>enable(0n)</code> reconecta: <code>runEnable</code> con id existente salta approve/create (ya lo hacía) y con id <code>0n</code> + <code>amount 0n</code> falla en el paso 1 con <code>&quot;Enter an amount.&quot;</code> (P5).</li>
+</ul>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Tests que fallan (<code>runEnable</code>)</strong></label></li>
+</ul>
+<p>Añade al final de <code>__tests__/perpl-enable.test.ts</code>:</p>
+<pre><code class="language-ts">test(&quot;reconnect: amount 0 with an existing account only re-checks forwarding and the key (D21)&quot;, async () =&gt; {
+  const d = deps({ readAccountId: jest.fn(async () =&gt; 620n) });
+  const steps: number[] = [];
+  await expect(runEnable(d, 0n, (s) =&gt; steps.push(s))).resolves.toEqual(KEY);
+  expect(steps).toEqual([1, 3, 4]);
+  expect(d.walletAusd).not.toHaveBeenCalled();
+  expect(d.approve).not.toHaveBeenCalled();
+  expect(d.createAccount).not.toHaveBeenCalled();
+  expect(d.isForwarding).toHaveBeenCalledTimes(1);
+  expect(d.loadKey).toHaveBeenCalledWith(620n);
+});
+
+test(&quot;reconnect with amount 0 but no account on-chain fails at step 1 and never creates an account&quot;, async () =&gt; {
+  const d = deps({ readAccountId: jest.fn(async () =&gt; 0n) });
+  const err = await runEnable(d, 0n, () =&gt; {}).catch((e: unknown) =&gt; e);
+  expect(err).toBeInstanceOf(EnableError);
+  expect((err as EnableError).step).toBe(1);
+  expect((err as EnableError).message).toBe(&quot;Enter an amount.&quot;);
+  expect(d.walletAusd).not.toHaveBeenCalled();
+  expect(d.createAccount).not.toHaveBeenCalled();
+});</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Verificar que falla el segundo</strong></label></li>
+</ul>
+<p>Run: <code>npx jest __tests__/perpl-enable.test.ts 2&gt;&amp;1 | tail -12</code> Expected: el primero ya pasa (el guard <code>if (id === 0n)</code> existía); el segundo FAIL con <code>step</code> 2 (hoy llama <code>createAccount(0n)</code>).</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Guard en <code>runEnable</code></strong></label></li>
+</ul>
+<p>En <code>src/perpl/enable.ts</code>, dentro del paso 1, justo después de <code>const id = await deps.readAccountId();</code>:</p>
+<pre><code class="language-ts">    if (id === 0n &amp;&amp; amount === 0n) throw new Error(&quot;Enter an amount.&quot;); // reconnect sin cuenta: el gate vuelve a Enable (spec §4)</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 4: Verificar que pasan</strong></label></li>
+</ul>
+<p>Run: <code>npx jest __tests__/perpl-enable.test.ts 2&gt;&amp;1 | tail -6</code> Expected: PASS (10 tests).</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 5: <code>usePerpl</code> — estado nuevo</strong></label></li>
+</ul>
+<p>En <code>src/hooks/usePerpl.ts</code>:</p>
+<ol>
+<li>Imports: añade <code>import { clockSkewMs as measureSkew } from &quot;../perpl/clock&quot;;</code>.</li>
+<li>Tipo <code>Perpl</code>: añade después de <code>lastBalance: bigint | null;</code></li>
+</ol>
+<pre><code class="language-ts">  /** serverTime − Date.now() del último pub/context; null sin header `Date` (D19). Con override de dev, el override. */
+  clockSkewMs: number | null;
+  /** Cuenta de Perpl de esta wallet mientras no hay key (D21): null = sin sondear, 0n = no existe, &gt;0n = existe. */
+  existingAccountId: bigint | null;
+  /** Sólo DevControls (__DEV__): fuerza un desfase para ver el aviso en el simulador. */
+  setClockSkewOverride: (ms: number | null) =&gt; void;</code></pre>
+<ol>
+<li>Estado, después de <code>const [lastBalance, …]</code>:</li>
+</ol>
+<pre><code class="language-ts">  const [measuredSkew, setMeasuredSkew] = useState&lt;number | null&gt;(null);
+  const [skewOverride, setSkewOverride] = useState&lt;number | null&gt;(null);
+  const [existingAccountId, setExistingAccountId] = useState&lt;bigint | null&gt;(null);</code></pre>
+<ol>
+<li><code>refreshContext</code> pasa a medir el skew con el <code>Date.now()</code> inmediatamente posterior al fetch:</li>
+</ol>
+<pre><code class="language-ts">  const refreshContext = useCallback(async () =&gt; {
+    try {
+      const ctx = await fetchContext(PERPL_URLS.rest);
+      setMeasuredSkew(measureSkew(ctx.serverTime, Date.now()));
+      setContext(ctx);
+      setContextError(&quot;&quot;);
+    } catch (e) {
+      setContextError(describeError(e) || &quot;Couldn&#39;t load markets.&quot;);
+    }
+  }, []);</code></pre>
+<ol>
+<li>Sondeo de la cuenta existente, después del efecto de polling de precios. <code>context</code> está en las deps a propósito: cada <code>refreshContext</code> produce un objeto nuevo y re-sondea (D21 pide &quot;una vez y en cada refreshContext&quot;); fuera del estado <code>none</code> el valor vuelve a <code>null</code> sin llamar al RPC.</li>
+</ol>
+<pre><code class="language-ts">  // Reconnect trading (D21): sin key, ¿esta wallet ya tiene cuenta en el exchange?
+  useEffect(() =&gt; {
+    if (state.status !== &quot;none&quot; || !address) { setExistingAccountId(null); return; }
+    let stale = false;
+    readAccountId(address)
+      .then((id) =&gt; { if (!stale) setExistingAccountId(id); })
+      .catch(() =&gt; { if (!stale) setExistingAccountId(null); });
+    return () =&gt; { stale = true; };
+  }, [state.status, address, context]);</code></pre>
+<ol>
+<li><code>setClockSkewOverride</code>: <code>const setClockSkewOverride = useCallback((ms: number | null) =&gt; setSkewOverride(ms), []);</code></li>
+<li>El <code>return</code> añade <code>clockSkewMs: skewOverride ?? measuredSkew, existingAccountId, setClockSkewOverride</code>.</li>
+</ol>
+<p><code>enable</code> no cambia: <code>enable(0n)</code> ya llega a <code>runEnable</code> con <code>amount = 0n</code>; el chequeo de MON (<code>fresh.mon === 0n</code>) sigue aplicando porque el paso 3 puede mandar <code>allowOrderForwarding</code>.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 6: <code>tsc</code>, suite completa, commit</strong></label></li>
+</ul>
+<p>Run: <code>npx tsc --noEmit &amp;&amp; npm test 2&gt;&amp;1 | tail -4</code> Expected: exit 0; 24 suites, +2 tests respecto a la Task 2.</p>
+<pre><code class="language-bash">git add src/perpl/enable.ts src/hooks/usePerpl.ts __tests__/perpl-enable.test.ts
+git commit -m &quot;feat(mobile): usePerpl expone clockSkewMs y existingAccountId; enable(0n) reconecta (D19, D21)
+
+Co-Authored-By: Claude Fable 5.1 &lt;noreply@anthropic.com&gt;&quot;</code></pre>
+<hr>
+<h3 id="task-4-iscomingsoontab-screen-page-pilltabs-con-pill-p1-p2-p3">Task 4: <code>isComingSoonTab</code>, <code>Screen</code> → <code>Page</code>, <code>PillTabs</code> con <code>pill-*</code> (P1, P2, P3)</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Modify: <code>apps/mobile/src/store.ts:40,151-158</code></li>
+<li>Modify: <code>apps/mobile/src/ui/primitives.tsx:203-219,246-248</code></li>
+<li>Modify: <code>apps/mobile/src/screens/comingSoon.tsx:1-16</code>, <code>apps/mobile/src/screens/wallet.tsx:8</code>, <code>apps/mobile/src/screens/signin.tsx:4</code></li>
+<li>Test: <code>apps/mobile/__tests__/store.test.ts</code></li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Consumes: <code>COMING_SOON</code>, <code>ComingSoonTab</code> (store / comingSoonCopy).</li>
+<li>Produces: <code>isComingSoonTab(screen: Screen): screen is ComingSoonTab</code> (export de <code>store.ts</code>); primitiva <code>Page</code> (misma firma que la <code>Screen</code> actual: <code>{ children, style, gap = 11, top = 14 }</code>); <code>PillTabs</code> etiqueta <code>pill-&lt;key&gt;</code>. Tasks 5–7 usan <code>Page</code> y <code>PillTabs</code>.</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Test que falla</strong></label></li>
+</ul>
+<p>Añade <code>isComingSoonTab</code> al import de <code>__tests__/store.test.ts</code> y al final:</p>
+<pre><code class="language-ts">test(&quot;isComingSoonTab is the type guard behind comingSoon, exactly the COMING_SOON set&quot;, () =&gt; {
+  for (const s of COMING_SOON) expect(isComingSoonTab(s)).toBe(true);
+  for (const s of [&quot;markets&quot;, &quot;market&quot;, &quot;perpsFunds&quot;, &quot;wallet&quot;, &quot;deposit&quot;, &quot;withdraw&quot;, &quot;signin&quot;] as const) expect(isComingSoonTab(s)).toBe(false);
+});</code></pre>
+<p>Run: <code>npx jest __tests__/store.test.ts 2&gt;&amp;1 | tail -8</code> → Expected: FAIL, <code>isComingSoonTab is not a function</code>.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Implementar</strong></label></li>
+</ul>
+<p><code>src/store.ts</code>, debajo de <code>COMING_SOON</code>:</p>
+<pre><code class="language-ts">export function isComingSoonTab(screen: Screen): screen is ComingSoonTab {
+  return (COMING_SOON as readonly Screen[]).includes(screen);
+}</code></pre>
+<p>y en <code>useAppStore</code>: <code>comingSoon: isComingSoonTab(S.screen),</code>.</p>
+<p><code>src/screens/comingSoon.tsx</code>: borra la función local <code>isTab</code>, importa <code>import { isComingSoonTab, type Screen } from &quot;../store&quot;;</code> y usa <code>if (!isComingSoonTab(screen)) throw new Error(…)</code>.</p>
+<p><code>src/ui/primitives.tsx</code>: renombra <code>export function Screen(</code> → <code>export function Page(</code> (mismo cuerpo). En <code>PillTabs</code>, <code>accessibilityLabel={</code>pill-${k}<code>}</code>.</p>
+<p><code>src/screens/wallet.tsx</code> y <code>src/screens/signin.tsx</code>: <code>Screen</code> → <code>Page</code> en el import y en el JSX (<code>&lt;Page gap={11}&gt;</code>, <code>&lt;/Page&gt;</code>, <code>&lt;Page top={18} gap={12}&gt;</code>).</p>
+<p>Run: <code>grep -rn &#39;Screen&#39; src/ui/primitives.tsx; grep -rn &#39;&lt;Screen\|&lt;/Screen&#39; src/screens || echo NO_SCREEN_PRIMITIVE_LEFT</code> Expected: ninguna línea de <code>primitives.tsx</code>; <code>NO_SCREEN_PRIMITIVE_LEFT</code>.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Verificar, commit</strong></label></li>
+</ul>
+<p>Run: <code>npx jest __tests__/store.test.ts 2&gt;&amp;1 | tail -6 &amp;&amp; npx tsc --noEmit &amp;&amp; npm test 2&gt;&amp;1 | tail -4</code> Expected: PASS; exit 0; +1 test.</p>
+<pre><code class="language-bash">git add src/store.ts src/ui/primitives.tsx src/screens/comingSoon.tsx src/screens/wallet.tsx src/screens/signin.tsx __tests__/store.test.ts
+git commit -m &quot;refactor(mobile): isComingSoonTab, primitiva Page y pills pill-* (diferidos de la revisión de F1)
+
+Co-Authored-By: Claude Fable 5.1 &lt;noreply@anthropic.com&gt;&quot;</code></pre>
+<hr>
+<h3 id="task-5-screensmarkettsx-pills-ask-trade-agents-y-el-ticket-del-hi-fi-d14-d20-p7-p8">Task 5: <code>screens/market.tsx</code> — pills Ask · Trade · Agents y el ticket del hi-fi (D14, D20, P7, P8)</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Modify: <code>apps/mobile/src/screens/market.tsx</code> (reescritura completa)</li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Consumes: <code>Page</code>, <code>PillTabs</code>, <code>Segmented</code>, <code>Card</code>, <code>Tag</code>, <code>Chip</code>, <code>Btn</code>, <code>KV</code>, <code>KVList</code>, <code>StatusCard</code>, <code>T</code>, <code>Touch</code>, <code>type Tone</code> (primitivas F1/Task 4); <code>ComingSoonCard</code> (<code>screens/comingSoon.tsx</code>); <code>formatAusd(raw, decimals)</code> (Task 1); <code>S.marketTab</code>, <code>set({ marketTab })</code> (store); <code>perpl.open</code>, <code>perpl.live</code>, <code>leveragesFor</code>, <code>sizeFromAusd</code>, <code>notionalAusd</code>, <code>takerFee</code>, <code>liquidationPrice</code>, <code>formatPrice</code>, <code>formatSize</code> (sin cambios); <code>pill(on)</code> y <code>textStyle</code> (<code>ui/theme.ts</code>).</li>
+<li>Produces: <code>MarketScreen(ctx: AppCtx)</code>; <code>OrderResultCard({ result, onBack, onEdit? })</code> y <code>type OrderResult</code> con <strong>la misma firma que hoy</strong> (la Task 6 los importa desde aquí). Etiquetas de accesibilidad: <code>pill-ask</code> / <code>pill-trade</code> / <code>pill-agents</code> (PillTabs), <code>segment-long</code> / <code>segment-short</code> (Segmented), <code>margin-input</code>, <code>max</code>, <code>lv-1</code> … <code>lv-5</code>, <code>review</code>, <code>confirm</code>, <code>change-amount</code>, <code>back-to-markets</code>, <code>edit-order</code>.</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Reescribir <code>market.tsx</code></strong></label></li>
+</ul>
+<pre><code class="language-tsx">import { useState } from &quot;react&quot;;
+import { ActivityIndicator, TextInput, View } from &quot;react-native&quot;;
+import { formatUnits } from &quot;viem&quot;;
+import { AUSD_DECIMALS, formatAusd, parseAusd } from &quot;../config/chain&quot;;
+import type { AppCtx } from &quot;../ctx&quot;;
+import { formatPrice, formatSize, leveragesFor, liquidationPrice, notionalAusd, type Side, sizeFromAusd, takerFee } from &quot;../perpl/orders&quot;;
+import { Btn, Card, Chip, KVList, type KVRow, Page, PillTabs, Segmented, StatusCard, T, Tag, type Tone } from &quot;../ui/primitives&quot;;
+import { C, pill, textStyle } from &quot;../ui/theme&quot;;
+import { ComingSoonCard } from &quot;./comingSoon&quot;;
+
+export type OrderResult =
+  | { step: &quot;sent&quot; }
+  | { step: &quot;filled&quot;; title: string; detail: string }
+  | { step: &quot;failed&quot;; text: string }
+  | { step: &quot;unknown&quot; };
+
+/** Tonos de D14: sent = hair2/slab, filled = lima, failed = down, unknown = warn. */
+const TONES = {
+  sent: { tag: &quot;SENT&quot;, title: &quot;Order accepted — waiting for the fill&quot;, tone: { bd: C.hair2, bg: C.slab, fg: C.dim } },
+  filled: { tag: &quot;FILLED&quot;, title: &quot;Filled&quot;, tone: { bd: C.limeBd, bg: C.limeBg06, fg: C.lime } },
+  failed: { tag: &quot;FAILED&quot;, title: &quot;Order failed&quot;, tone: { bd: C.downBd, bg: C.downBg, fg: C.down } },
+  unknown: { tag: &quot;NO CONFIRMATION&quot;, title: &quot;No confirmation yet&quot;, tone: { bd: C.warnBd, bg: C.warnBg, fg: C.warn } },
+} as const satisfies Record&lt;OrderResult[&quot;step&quot;], { tag: string; title: string; tone: Tone }&gt;;
+
+/** Estados Sent / Filled / Failed / Unknown, compartidos por apertura (aquí) y cierre (markets.tsx). */
+export function OrderResultCard({ result, onBack, onEdit }: { result: OrderResult; onBack: () =&gt; void; onEdit?: () =&gt; void }) {
+  const t = TONES[result.step];
+  const body = result.step === &quot;filled&quot; ? result.detail
+    : result.step === &quot;failed&quot; ? result.text
+    : result.step === &quot;unknown&quot; ? &quot;Check your positions — the order may still have gone through.&quot;
+    : undefined;
+  return (
+    &lt;View style={{ gap: 11 }}&gt;
+      &lt;StatusCard tag={t.tag} title={result.step === &quot;filled&quot; ? result.title : t.title} body={body} tone={t.tone}&gt;
+        {result.step === &quot;sent&quot; ? &lt;ActivityIndicator color={C.dim} style={{ alignSelf: &quot;flex-start&quot; }} /&gt; : null}
+      &lt;/StatusCard&gt;
+      {result.step !== &quot;sent&quot; ? (
+        &lt;View style={{ flexDirection: &quot;row&quot;, gap: 8 }}&gt;
+          {result.step === &quot;failed&quot; &amp;&amp; onEdit ? &lt;Btn label=&quot;Edit&quot; onPress={onEdit} variant=&quot;outline&quot; flex={1} accessibilityLabel=&quot;edit-order&quot; /&gt; : null}
+          &lt;Btn label=&quot;Back to Markets&quot; onPress={onBack} variant=&quot;lime&quot; flex={1} accessibilityLabel=&quot;back-to-markets&quot; /&gt;
+        &lt;/View&gt;
+      ) : null}
+    &lt;/View&gt;
+  );
+}
+
+type Step = { step: &quot;edit&quot; } | { step: &quot;review&quot; } | { step: &quot;result&quot;; result: OrderResult };
+
+function TradeTab({ S, set, perpl, nav }: AppCtx) {
+  const market = perpl.context?.markets.find((m) =&gt; m.id === S.perpsMarketId)!; // MarketScreen ya comprobó que existe
+  const side: Side = S.perpsSide ?? &quot;long&quot;;
+  const free = perpl.live?.account ? perpl.live.account.b - perpl.live.account.lb : 0n;
+  const [amount, setAmount] = useState(&quot;&quot;);
+  const [lv, setLv] = useState(1);
+  const [st, setSt] = useState&lt;Step&gt;({ step: &quot;edit&quot; });
+
+  const leverages = leveragesFor(market);
+  const lvUsed = leverages.includes(lv) ? lv : 1;
+  const units = parseAusd(amount);
+  const size = units === undefined ? 0 : sizeFromAusd(units, lvUsed, market.mark, market.priceDecimals, market.sizeDecimals);
+  const notional = notionalAusd(size, market.mark, market.priceDecimals, market.sizeDecimals);
+  const fee = takerFee(notional, market.takerFeeMicros);
+  const liq = liquidationPrice(market.mark, lvUsed, side, market.maintenanceBps, market.maxLeverage);
+  // El exchange cobra la fee además del margen: units + fee debe caber en el saldo libre.
+  const error = amount === &quot;&quot; ? &quot;&quot; : units === undefined || units === 0n ? &quot;Enter an amount above zero.&quot; : units &gt; free ? `That is more than the ${formatAusd(free)} AUSD free.` : size &lt;= 0 ? &quot;That amount is below one unit of this market.&quot; : units + fee &gt; free ? `That leaves no room for the ${formatAusd(fee, 4)} AUSD fee.` : &quot;&quot;;
+  const ok = units !== undefined &amp;&amp; units &gt; 0n &amp;&amp; units + fee &lt;= free &amp;&amp; size &gt; 0;
+  // Max deja sitio a la fee: fee(free × lv) acota la fee real (nominal ≤ Max × lv &lt; free × lv), así que Max pasa la validación.
+  const maxFee = takerFee(free * BigInt(lvUsed), market.takerFeeMicros);
+  const max = free &gt; maxFee ? free - maxFee : 0n;
+  const live = perpl.live?.status === &quot;live&quot;;
+  const sym = market.symbol;
+
+  const confirm = async () =&gt; {
+    setSt({ step: &quot;result&quot;, result: { step: &quot;sent&quot; } });
+    const outcome = await perpl.open(market, side, units ?? 0n, lvUsed);
+    setSt({ step: &quot;result&quot;, result:
+      outcome.kind === &quot;filled&quot; ? { step: &quot;filled&quot;, title: `Filled ${formatSize(outcome.order.fs, market.sizeDecimals)} ${sym} at ${formatPrice(outcome.order.fp, market.priceDecimals)}`, detail: `Fee ${formatAusd(outcome.order.f, 4)} AUSD · ${side.toUpperCase()} ${lvUsed}x` }
+      : outcome.kind === &quot;open&quot; ? { step: &quot;filled&quot;, title: &quot;Placed — waiting in the book&quot;, detail: `${formatSize(outcome.order.os, market.sizeDecimals)} ${sym}` }
+      : outcome.kind === &quot;failed&quot; ? { step: &quot;failed&quot;, text: outcome.text }
+      : { step: &quot;unknown&quot; } });
+  };
+
+  const rows: KVRow[] = [
+    { label: &quot;NOTIONAL&quot;, value: `≈ ${formatAusd(notional)} AUSD · ${formatSize(size, market.sizeDecimals)} ${sym}` },
+    { label: &quot;EST. PRICE&quot;, value: formatPrice(market.mark, market.priceDecimals) },
+    { label: &quot;FEE · TAKER&quot;, value: `≈ ${formatAusd(fee, 4)} AUSD`, fg: C.dim },
+    { label: &quot;LIQUIDATION ≈&quot;, value: formatPrice(liq, market.priceDecimals), fg: lvUsed &gt; 1 ? C.down : C.dim },
+  ];
+
+  if (st.step === &quot;result&quot;) {
+    return &lt;Page top={13}&gt;&lt;OrderResultCard result={st.result} onBack={() =&gt; nav(&quot;markets&quot;)} onEdit={() =&gt; setSt({ step: &quot;edit&quot; })} /&gt;&lt;/Page&gt;;
+  }
+
+  if (st.step === &quot;review&quot;) {
+    return (
+      &lt;Page top={13} gap={11}&gt;
+        &lt;Card bd={side === &quot;long&quot; ? C.limeBd : C.downBd} bg={side === &quot;long&quot; ? C.limeBg06 : C.downBg} gap={8}&gt;
+          &lt;Tag color={side === &quot;long&quot; ? C.lime : C.down}&gt;YOU OPEN · {side.toUpperCase()} {sym} · {lvUsed}X · MARKET&lt;/Tag&gt;
+          &lt;T w={700} s={22} lh={1.1} ls={-0.02} display&gt;{formatAusd(units ?? 0n)} AUSD&lt;/T&gt;
+          &lt;KVList rows={rows} top /&gt;
+        &lt;/Card&gt;
+        {lvUsed &gt; 1 ? &lt;T w={400} s={11.5} lh={1.4} color={C.warn}&gt;Higher leverage means a closer liquidation price.&lt;/T&gt; : null}
+        &lt;Btn label={live ? `Confirm ${side}` : &quot;Connecting…&quot;} onPress={() =&gt; { void confirm(); }} variant=&quot;lime&quot; py={14} disabled={!live} accessibilityLabel=&quot;confirm&quot; /&gt;
+        &lt;Btn label=&quot;Change amount&quot; onPress={() =&gt; setSt({ step: &quot;edit&quot; })} variant=&quot;ghost&quot; accessibilityLabel=&quot;change-amount&quot; /&gt;
+        &lt;T w={400} s={11} lh={1.45} color={C.faint}&gt;Market order with up to {market.maxSlippageBps / 100}% slippage. Forwarded orders pay no gas.&lt;/T&gt;
+      &lt;/Page&gt;
+    );
+  }
+
+  return (
+    &lt;Page top={13} gap={11}&gt;
+      &lt;Segmented
+        options={[[&quot;long&quot;, &quot;Long&quot;], [&quot;short&quot;, &quot;Short&quot;]] as const}
+        value={side}
+        onChange={(k) =&gt; set({ perpsSide: k })}
+        tone={(k) =&gt; ({ bg: k === &quot;long&quot; ? C.lime : C.down, fg: C.onLime })}
+      /&gt;
+      &lt;Card bd={C.hair2} bg={C.deep} gap={6}&gt;
+        &lt;Tag&gt;MARGIN · AUSD&lt;/Tag&gt;
+        &lt;View style={{ flexDirection: &quot;row&quot;, alignItems: &quot;center&quot;, gap: 8 }}&gt;
+          &lt;TextInput
+            value={amount} onChangeText={setAmount} placeholder=&quot;0.00&quot; placeholderTextColor={C.faint} keyboardType=&quot;decimal-pad&quot; accessibilityLabel=&quot;margin-input&quot;
+            style={[textStyle(700, 32, { lh: 1.3, ls: -0.02, display: true, color: C.ink }), { flex: 1, minWidth: 0, paddingVertical: 4 }]}
+          /&gt;
+          &lt;Chip label=&quot;Max&quot; onPress={() =&gt; setAmount(formatUnits(max, AUSD_DECIMALS))} bd={C.hair22} fg={C.ink} accessibilityLabel=&quot;max&quot; /&gt;
+        &lt;/View&gt;
+        &lt;T w={400} s={11.5} lh={1.4} color={C.dim}&gt;{formatAusd(free)} AUSD free in trading&lt;/T&gt;
+      &lt;/Card&gt;
+      &lt;View style={{ flexDirection: &quot;row&quot;, gap: 5 }}&gt;
+        {leverages.map((l) =&gt; {
+          const p = pill(l === lvUsed);
+          return &lt;Chip key={l} label={`${l}x`} mono s={10} py={8} px={0} style={{ flex: 1 }} fg={p.fg} bd={p.bd} bg={p.bg} onPress={() =&gt; setLv(l)} accessibilityLabel={`lv-${l}`} /&gt;;
+        })}
+      &lt;/View&gt;
+      {leverages.length &lt; 4 ? &lt;T w={400} s={11} lh={1.4} color={C.faint}&gt;{sym} allows up to {market.maxLeverage}x.&lt;/T&gt; : null}
+      &lt;Card&gt;&lt;KVList rows={rows} /&gt;&lt;/Card&gt;
+      {lvUsed &gt; 1 ? &lt;T w={400} s={11.5} lh={1.4} color={C.warn}&gt;Higher leverage means a closer liquidation price.&lt;/T&gt; : null}
+      {error ? &lt;T w={400} s={11.5} lh={1.4} color={C.warn}&gt;{error}&lt;/T&gt; : null}
+      &lt;Btn label={ok ? `Review ${side} · ${formatAusd(units ?? 0n)} AUSD` : &quot;Enter a margin&quot;} onPress={() =&gt; setSt({ step: &quot;review&quot; })} arrow disabled={!ok} py={14} accessibilityLabel=&quot;review&quot; /&gt;
+      &lt;T w={400} s={10.5} lh={1.4} color={C.faint}&gt;Nothing sent yet. Fills from the book; PnL and liquidation on mark.&lt;/T&gt;
+    &lt;/Page&gt;
+  );
+}
+
+export function MarketScreen(ctx: AppCtx) {
+  const { S, set, perpl, nav } = ctx;
+  const market = perpl.context?.markets.find((m) =&gt; m.id === S.perpsMarketId);
+
+  if (!market) {
+    return (
+      &lt;Page gap={11}&gt;
+        &lt;T w={400} s={13} color={C.faint}&gt;{perpl.contextError ? `Couldn&#39;t load markets. ${perpl.contextError}` : &quot;Loading market…&quot;}&lt;/T&gt;
+        &lt;Btn label=&quot;Back to Markets&quot; onPress={() =&gt; nav(&quot;markets&quot;)} variant=&quot;lime&quot; accessibilityLabel=&quot;back-to-markets&quot; /&gt;
+      &lt;/Page&gt;
+    );
+  }
+
+  return (
+    &lt;View&gt;
+      &lt;View style={{ paddingTop: 11, paddingHorizontal: 15, paddingBottom: 11, borderBottomWidth: 1, borderBottomColor: C.hair12 }}&gt;
+        &lt;PillTabs options={[[&quot;ask&quot;, &quot;Ask&quot;], [&quot;trade&quot;, &quot;Trade&quot;], [&quot;agents&quot;, &quot;Agents&quot;]] as const} value={S.marketTab} onChange={(k) =&gt; set({ marketTab: k })} /&gt;
+      &lt;/View&gt;
+      {S.marketTab === &quot;trade&quot; ? &lt;TradeTab {...ctx} /&gt; : &lt;Page top={13}&gt;&lt;ComingSoonCard which={S.marketTab} /&gt;&lt;/Page&gt;}
+    &lt;/View&gt;
+  );
+}</code></pre>
+<p>Nota para el implementador: el <code>!</code> de <code>TradeTab</code> es deliberado: sólo se monta cuando <code>MarketScreen</code> ya encontró el mercado; si prefieres, pasa <code>market</code> como prop (<code>TradeTab({ market, ...ctx })</code>) — cualquiera de las dos vale, pero no dupliques el <code>return</code> de &quot;Loading market…&quot;.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: <code>tsc</code>, tests, residuos</strong></label></li>
+</ul>
+<p>Run: <code>npx tsc --noEmit &amp;&amp; npm test 2&gt;&amp;1 | tail -4 &amp;&amp; grep -n &#39;primaryBtn\|secondaryBtn\|chipBtn\|w={800}&#39; src/screens/market.tsx || echo NO_LEGACY_STYLES</code> Expected: exit 0; tests igual que la Task 4; <code>NO_LEGACY_STYLES</code>.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Commit</strong></label></li>
+</ul>
+<pre><code class="language-bash">git add src/screens/market.tsx
+git commit -m &quot;feat(mobile): Market con pills Ask · Trade · Agents y el ticket del hi-fi; fees a 4 decimales (D14, D20)
+
+Co-Authored-By: Claude Fable 5.1 &lt;noreply@anthropic.com&gt;&quot;</code></pre>
+<hr>
+<h3 id="task-6-screensmarketstsx-raiz-de-perpl-re-maquetada-gate-reconnect-y-aviso-de-reloj-d13-d19-d21-d22">Task 6: <code>screens/markets.tsx</code> — raíz de Perpl re-maquetada, gate Reconnect y aviso de reloj (D13, D19, D21, D22)</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Modify: <code>apps/mobile/src/screens/markets.tsx</code> (reescritura completa)</li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Consumes: <code>Page</code>, <code>Card</code>, <code>TouchCard</code>, <code>Tag</code>, <code>Chip</code>, <code>Btn</code>, <code>KV</code>, <code>Warn</code>, <code>EmptyPanel</code>, <code>StatusCard</code>, <code>T</code>, <code>Touch</code> (primitivas); <code>OrderResultCard</code>, <code>type OrderResult</code> (Task 5); <code>formatAusd(raw, decimals)</code>, <code>formatPnl</code> (Task 1); <code>describeClockSkew</code>, <code>KEY_REJECTED_COPY</code> (Task 2); <code>perpl.clockSkewMs</code>, <code>perpl.existingAccountId</code>, <code>perpl.enable(0n)</code> (Task 3); <code>ENABLE_STEPS</code>, <code>change24h</code>, <code>formatPrice</code>, <code>formatSize</code>, <code>liquidationPrice</code>, <code>lockedCollateral</code>, <code>positionPnl</code>, <code>unrealisedPnl</code> (sin cambios).</li>
+<li>Produces: <code>MarketsScreen(ctx: AppCtx)</code>. Etiquetas: <code>market-&lt;SYMBOL&gt;</code> (fila), <code>add-funds</code>, <code>withdraw-to-wallet</code>, <code>enable-input</code>, <code>enable-trading</code>, <code>reconnect</code>, <code>retry-enable</code>, <code>reset-trading-key</code>, <code>open-perpl</code>, <code>enable-forwarding</code>, <code>retry-markets</code>, <code>close-&lt;pid&gt;</code>, <code>keep-position</code>, <code>close-position</code>.</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Reescribir <code>markets.tsx</code></strong></label></li>
+</ul>
+<pre><code class="language-tsx">import { useState } from &quot;react&quot;;
+import { ActivityIndicator, Linking, TextInput, View } from &quot;react-native&quot;;
+import { formatUnits } from &quot;viem&quot;;
+import { AUSD_DECIMALS, formatAusd, MON_FAUCET_URL, parseAusd } from &quot;../config/chain&quot;;
+import type { AppCtx } from &quot;../ctx&quot;;
+import { describeClockSkew, KEY_REJECTED_COPY } from &quot;../perpl/clock&quot;;
+import { PERPL_WEB } from &quot;../perpl/config&quot;;
+import type { Market } from &quot;../perpl/context&quot;;
+import { ENABLE_STEPS } from &quot;../perpl/enable&quot;;
+import { change24h, formatPnl, formatPrice, formatSize, liquidationPrice, lockedCollateral, positionPnl, unrealisedPnl } from &quot;../perpl/orders&quot;;
+import type { Position } from &quot;../perpl/ws&quot;;
+import { Btn, Card, Chip, EmptyPanel, KV, Page, T, Tag, Touch, TouchCard, Warn } from &quot;../ui/primitives&quot;;
+import { C, textStyle } from &quot;../ui/theme&quot;;
+import { describeError } from &quot;../wallet/wallet&quot;;
+import { OrderResultCard, type OrderResult } from &quot;./market&quot;;
+
+const CONNECTION = {
+  live: { label: &quot;LIVE&quot;, fg: C.lime, bd: C.limeBd },
+  connecting: { label: &quot;CONNECTING&quot;, fg: C.warn, bd: C.warnBd },
+  reconnecting: { label: &quot;RECONNECTING&quot;, fg: C.warn, bd: C.warnBd },
+  closed: { label: &quot;OFFLINE&quot;, fg: C.faint, bd: C.hair18 },
+} as const;
+
+function MarketsList({ perpl, nav, readOnly }: Pick&lt;AppCtx, &quot;perpl&quot; | &quot;nav&quot;&gt; &amp; { readOnly: boolean }) {
+  return (
+    &lt;View style={{ gap: 7 }}&gt;
+      &lt;Tag s={10}&gt;MARKETS&lt;/Tag&gt;
+      {perpl.contextError ? (
+        &lt;Warn title=&quot;Couldn&#39;t load markets&quot; body={perpl.contextError}&gt;
+          &lt;Chip label=&quot;Retry&quot; onPress={() =&gt; { void perpl.refreshContext(); }} bd={C.hair22} fg={C.ink} style={{ alignSelf: &quot;flex-start&quot; }} accessibilityLabel=&quot;retry-markets&quot; /&gt;
+        &lt;/Warn&gt;
+      ) : null}
+      {perpl.context === null &amp;&amp; !perpl.contextError ? &lt;T w={400} s={12} lh={1.4} color={C.faint}&gt;Loading markets…&lt;/T&gt; : null}
+      {(perpl.context?.markets ?? []).map((m) =&gt; {
+        const chg = change24h(m.mark, m.prev);
+        return (
+          &lt;TouchCard
+            key={m.id} pad={13} accessibilityLabel={`market-${m.symbol}`}
+            onPress={readOnly ? undefined : () =&gt; nav(&quot;market&quot;, { perpsMarketId: m.id, perpsSide: &quot;long&quot;, marketTab: &quot;trade&quot; })}
+            style={{ flexDirection: &quot;row&quot;, alignItems: &quot;center&quot;, gap: 11, opacity: readOnly ? 0.7 : 1 }}
+          &gt;
+            &lt;View style={{ flex: 1, minWidth: 0 }}&gt;
+              &lt;T w={700} s={14} lh={1.2}&gt;{m.symbol}&lt;/T&gt;
+              &lt;T w={400} s={11} lh={1.2} color={C.faint} style={{ marginTop: 3 }}&gt;{m.name} · up to {m.maxLeverage}x&lt;/T&gt;
+            &lt;/View&gt;
+            &lt;View style={{ alignItems: &quot;flex-end&quot; }}&gt;
+              &lt;T w={700} s={13} lh={1} mono&gt;{formatPrice(m.mark, m.priceDecimals)}&lt;/T&gt;
+              &lt;T w={500} s={10.5} lh={1} mono color={chg &gt;= 0 ? C.up : C.down} style={{ marginTop: 4 }}&gt;{chg &gt;= 0 ? &quot;+&quot; : &quot;&quot;}{(chg * 100).toFixed(2)}%&lt;/T&gt;
+            &lt;/View&gt;
+          &lt;/TouchCard&gt;
+        );
+      })}
+    &lt;/View&gt;
+  );
+}
+
+function PositionRow({ p, market, onClose }: { p: Position; market: Market; onClose: () =&gt; void }) {
+  const pnl = positionPnl(p, market.mark, market.priceDecimals, market.sizeDecimals);
+  const lv = p.lv / 100;
+  const long = p.sd === 1;
+  const liq = liquidationPrice(p.ep, lv, long ? &quot;long&quot; : &quot;short&quot;, market.maintenanceBps, market.maxLeverage);
+  return (
+    &lt;Card gap={8}&gt;
+      &lt;View style={{ flexDirection: &quot;row&quot;, alignItems: &quot;center&quot;, gap: 8 }}&gt;
+        &lt;Chip label={long ? &quot;LONG&quot; : &quot;SHORT&quot;} mono s={9.5} py={4} px={8} fg={long ? C.lime : C.down} bd={long ? C.limeBd : C.downBd} /&gt;
+        &lt;T w={600} s={13} style={{ flex: 1 }}&gt;{formatSize(p.s, market.sizeDecimals)} {market.symbol} · {lv}x&lt;/T&gt;
+        &lt;T w={700} s={13} mono color={pnl &lt;= -10_000n ? C.down : C.up}&gt;{formatPnl(pnl)} AUSD&lt;/T&gt;
+      &lt;/View&gt;
+      &lt;T w={500} s={10} lh={1.4} mono color={C.faint}&gt;{formatPrice(p.ep, market.priceDecimals)} → {formatPrice(market.mark, market.priceDecimals)} · LIQ. EST. {formatPrice(liq, market.priceDecimals)}&lt;/T&gt;
+      &lt;Btn label=&quot;Close&quot; onPress={onClose} variant=&quot;outline&quot; py={10} accessibilityLabel={`close-${p.pid}`} /&gt;
+    &lt;/Card&gt;
+  );
+}
+
+type Closing = { p: Position; market: Market; result: OrderResult | null };
+
+function Gate({ perpl, treasury, nav }: AppCtx) {
+  const minOpen = perpl.context?.instance.minAccountOpen ?? 100_000_000n;
+  const walletAusd = treasury.balances?.ausd ?? 0n;
+  const noMon = treasury.balances?.mon === 0n;
+  const [amount, setAmount] = useState&lt;string | null&gt;(null);
+  const text = amount ?? formatUnits(minOpen, AUSD_DECIMALS);
+  const units = parseAusd(text);
+  const enableError = units === undefined || units === 0n ? &quot;Enter an amount.&quot; : units &lt; minOpen ? `Minimum is ${formatAusd(minOpen)} AUSD.` : units &gt; walletAusd ? `That is more than the ${formatAusd(walletAusd)} AUSD in your wallet.` : &quot;&quot;;
+  const ob = perpl.state.status === &quot;onboarding&quot; ? perpl.state : null;
+  const existing = perpl.existingAccountId;
+  const reconnect = existing !== null &amp;&amp; existing &gt; 0n;
+  // Retry tras un error: reconectar vuelve a pedir 0n; enable normal repite el monto escrito.
+  const retryAmount = reconnect ? 0n : units;
+
+  return (
+    &lt;Page gap={11}&gt;
+      &lt;Card pad={15} gap={8}&gt;
+        &lt;T w={700} s={17} lh={1.15} ls={-0.02} display&gt;{reconnect ? &quot;Reconnect trading&quot; : &quot;Enable trading&quot;}&lt;/T&gt;
+        {ob === null ? (
+          reconnect ? (
+            &lt;&gt;
+              &lt;T w={400} s={12.5} lh={1.45} color={C.dim}&gt;This wallet already has Perpl account #{String(existing)}. Reconnect registers a trading key on this phone; no AUSD moves.&lt;/T&gt;
+              {noMon ? &lt;Touch onPress={() =&gt; { void Linking.openURL(MON_FAUCET_URL); }}&gt;&lt;T w={400} s={12} lh={1.4} color={C.warn}&gt;You need test MON for gas. Get some at the Monad faucet.&lt;/T&gt;&lt;/Touch&gt; : null}
+              &lt;Btn label=&quot;Reconnect&quot; onPress={() =&gt; { void perpl.enable(0n); }} variant=&quot;lime&quot; py={14} disabled={noMon} accessibilityLabel=&quot;reconnect&quot; /&gt;
+            &lt;/&gt;
+          ) : (
+            &lt;&gt;
+              &lt;T w={400} s={12.5} lh={1.45} color={C.dim}&gt;Moves AUSD from your wallet into a Perpl trading account. One Face ID, four steps.&lt;/T&gt;
+              &lt;View style={{ flexDirection: &quot;row&quot;, alignItems: &quot;center&quot;, gap: 8, paddingTop: 2 }}&gt;
+                &lt;TextInput value={text} onChangeText={setAmount} keyboardType=&quot;decimal-pad&quot; accessibilityLabel=&quot;enable-input&quot; style={[textStyle(700, 26, { lh: 1.3, ls: -0.02, display: true, color: C.ink }), { flex: 1, minWidth: 0, paddingVertical: 4 }]} /&gt;
+                &lt;T w={500} s={12} mono color={C.faint}&gt;AUSD&lt;/T&gt;
+              &lt;/View&gt;
+              &lt;T w={400} s={11.5} lh={1.4} color={C.dim}&gt;{formatAusd(walletAusd)} AUSD in wallet · minimum {formatAusd(minOpen)}&lt;/T&gt;
+              {enableError ? &lt;T w={400} s={11.5} lh={1.4} color={C.warn}&gt;{enableError}&lt;/T&gt; : null}
+              {noMon ? &lt;Touch onPress={() =&gt; { void Linking.openURL(MON_FAUCET_URL); }}&gt;&lt;T w={400} s={12} lh={1.4} color={C.warn}&gt;You need test MON for gas. Get some at the Monad faucet.&lt;/T&gt;&lt;/Touch&gt; : null}
+              &lt;Btn label=&quot;Enable trading&quot; onPress={() =&gt; { if (units !== undefined &amp;&amp; !enableError) void perpl.enable(units); }} variant=&quot;lime&quot; py={14} disabled={!!enableError || noMon} accessibilityLabel=&quot;enable-trading&quot; /&gt;
+            &lt;/&gt;
+          )
+        ) : (
+          &lt;View style={{ gap: 8, paddingTop: 2 }}&gt;
+            {ENABLE_STEPS.map((label, i) =&gt; {
+              const n = i + 1;
+              const state = n &lt; ob.step ? &quot;done&quot; : n === ob.step ? (ob.error ? &quot;error&quot; : &quot;busy&quot;) : &quot;todo&quot;;
+              return (
+                &lt;View key={label} style={{ flexDirection: &quot;row&quot;, alignItems: &quot;center&quot;, gap: 10 }}&gt;
+                  {state === &quot;busy&quot; ? &lt;ActivityIndicator size=&quot;small&quot; color={C.lime} /&gt; : &lt;T w={700} s={13} mono color={state === &quot;done&quot; ? C.up : state === &quot;error&quot; ? C.down : C.faint}&gt;{state === &quot;done&quot; ? &quot;✓&quot; : state === &quot;error&quot; ? &quot;×&quot; : &quot;·&quot;}&lt;/T&gt;}
+                  &lt;T w={state === &quot;todo&quot; ? 400 : 600} s={13} color={state === &quot;todo&quot; ? C.faint : C.ink}&gt;{label}&lt;/T&gt;
+                &lt;/View&gt;
+              );
+            })}
+            {ob.error ? &lt;T w={400} s={12} lh={1.4} color={C.down}&gt;{ob.error}&lt;/T&gt; : null}
+            {ob.error ? &lt;Btn label=&quot;Retry&quot; onPress={() =&gt; { if (retryAmount !== undefined) void perpl.enable(retryAmount); }} variant=&quot;outline&quot; style={{ marginTop: 4 }} accessibilityLabel=&quot;retry-enable&quot; /&gt; : null}
+          &lt;/View&gt;
+        )}
+      &lt;/Card&gt;
+      &lt;MarketsList perpl={perpl} nav={nav} readOnly /&gt;
+    &lt;/Page&gt;
+  );
+}
+
+export function MarketsScreen(ctx: AppCtx) {
+  const { perpl, nav } = ctx;
+  const [closing, setClosing] = useState&lt;Closing | null&gt;(null);
+  const [actionError, setActionError] = useState(&quot;&quot;);
+  // Reset key / Enable forwarding: sin catch la promesa rechazada se perdía. &quot;&quot; = Face ID cancelado (sin aviso).
+  const runAction = async (action: () =&gt; Promise&lt;void&gt;) =&gt; {
+    setActionError(&quot;&quot;);
+    try { await action(); } catch (e) { setActionError(describeError(e)); }
+  };
+
+  if (perpl.state.status === &quot;loading&quot;) return &lt;Page&gt;&lt;ActivityIndicator color={C.lime} /&gt;&lt;/Page&gt;;
+  if (perpl.state.status === &quot;none&quot; || perpl.state.status === &quot;onboarding&quot;) return &lt;Gate {...ctx} /&gt;;
+
+  const live = perpl.live;
+  const acc = live?.account ?? null;
+  const b = acc?.b ?? perpl.lastBalance ?? 0n;
+  const positions = live?.positions ?? [];
+  const markets = perpl.context?.markets ?? [];
+  const locked = lockedCollateral(positions);
+  const upnl = unrealisedPnl(positions, markets);
+  const conn = CONNECTION[live?.status ?? &quot;closed&quot;];
+  const skew = describeClockSkew(perpl.clockSkewMs);
+
+  const doClose = async (c: Closing) =&gt; {
+    setClosing({ ...c, result: { step: &quot;sent&quot; } });
+    const outcome = await perpl.close(c.market, c.p);
+    const pd = c.market.priceDecimals, sd = c.market.sizeDecimals;
+    setClosing({ ...c, result:
+      outcome.kind === &quot;filled&quot; ? { step: &quot;filled&quot;, title: `Closed ${formatSize(outcome.order.fs, sd)} ${c.market.symbol} at ${formatPrice(outcome.order.fp, pd)}`, detail: `Fee ${formatAusd(outcome.order.f, 4)} AUSD · realised PnL shows in the trading balance` }
+      : outcome.kind === &quot;open&quot; ? { step: &quot;filled&quot;, title: &quot;Close order placed&quot;, detail: &quot;Waiting in the book&quot; }
+      : outcome.kind === &quot;failed&quot; ? { step: &quot;failed&quot;, text: outcome.text }
+      : { step: &quot;unknown&quot; } });
+  };
+
+  if (closing) {
+    const pnl = positionPnl(closing.p, closing.market.mark, closing.market.priceDecimals, closing.market.sizeDecimals);
+    const isLive = live?.status === &quot;live&quot;;
+    return (
+      &lt;Page gap={11}&gt;
+        {closing.result ? (
+          &lt;OrderResultCard result={closing.result} onBack={() =&gt; setClosing(null)} /&gt;
+        ) : (
+          &lt;Card bd={C.hair2} bg={C.deep} gap={9}&gt;
+            &lt;Tag&gt;YOU CLOSE · AT MARKET&lt;/Tag&gt;
+            &lt;T w={700} s={14} lh={1.3}&gt;{formatSize(closing.p.s, closing.market.sizeDecimals)} {closing.market.symbol} {closing.p.sd === 1 ? &quot;LONG&quot; : &quot;SHORT&quot;}&lt;/T&gt;
+            &lt;KV k=&quot;EST. PNL&quot; v={`${formatPnl(pnl)} AUSD`} vFg={pnl &lt;= -10_000n ? C.down : C.up} /&gt;
+            &lt;View style={{ flexDirection: &quot;row&quot;, gap: 8 }}&gt;
+              &lt;Btn label=&quot;Keep it&quot; onPress={() =&gt; setClosing(null)} variant=&quot;outline&quot; flex={1} accessibilityLabel=&quot;keep-position&quot; /&gt;
+              &lt;Btn label={isLive ? &quot;Close position&quot; : &quot;Connecting…&quot;} onPress={() =&gt; { void doClose(closing); }} variant=&quot;lime&quot; flex={1} disabled={!isLive} accessibilityLabel=&quot;close-position&quot; /&gt;
+            &lt;/View&gt;
+          &lt;/Card&gt;
+        )}
+      &lt;/Page&gt;
+    );
+  }
+
+  return (
+    &lt;Page gap={11}&gt;
+      &lt;Card pad={15}&gt;
+        &lt;View style={{ flexDirection: &quot;row&quot;, alignItems: &quot;center&quot;, justifyContent: &quot;space-between&quot; }}&gt;
+          &lt;Tag&gt;TRADING · AUSD&lt;/Tag&gt;
+          &lt;Chip label={conn.label} mono s={9.5} py={4} px={8} fg={conn.fg} bd={conn.bd} /&gt;
+        &lt;/View&gt;
+        &lt;T w={700} s={30} lh={1} ls={-0.02} display style={{ marginTop: 6 }}&gt;{formatAusd(b)}&lt;/T&gt;
+        &lt;T w={400} s={11} lh={1.4} color={C.faint} style={{ marginTop: 8 }}&gt;{formatAusd(locked)} in positions · {formatAusd(b)} free{acc ? &quot;&quot; : &quot; · last seen&quot;}&lt;/T&gt;
+        {upnl !== null ? &lt;T w={500} s={10.5} lh={1.4} mono color={upnl &lt;= -10_000n ? C.down : C.up} style={{ marginTop: 3 }}&gt;{formatPnl(upnl)} unrealised PnL&lt;/T&gt; : null}
+      &lt;/Card&gt;
+
+      {skew ? &lt;Warn title={skew.title} body={skew.body} /&gt; : null}
+      {live?.keyRejected ? (
+        &lt;Warn title=&quot;Trading key rejected&quot; body={KEY_REJECTED_COPY}&gt;
+          &lt;View style={{ flexDirection: &quot;row&quot;, gap: 8 }}&gt;
+            &lt;Chip label=&quot;Reset trading key&quot; onPress={() =&gt; { void runAction(perpl.resetKey); }} bd={C.hair22} fg={C.ink} accessibilityLabel=&quot;reset-trading-key&quot; /&gt;
+            &lt;Chip label=&quot;Open Perpl&quot; onPress={() =&gt; { void Linking.openURL(PERPL_WEB); }} bd={C.hair22} fg={C.ink} accessibilityLabel=&quot;open-perpl&quot; /&gt;
+          &lt;/View&gt;
+          {actionError ? &lt;T w={400} s={12} lh={1.4} color={C.down}&gt;{actionError}&lt;/T&gt; : null}
+        &lt;/Warn&gt;
+      ) : null}
+      {acc &amp;&amp; !acc.fw ? (
+        &lt;Warn title=&quot;One-click trading is off&quot; body=&quot;Orders will be rejected until it&#39;s enabled.&quot;&gt;
+          &lt;Chip label=&quot;Enable&quot; onPress={() =&gt; { void runAction(perpl.enableForwardingOnly); }} bd={C.hair22} fg={C.ink} style={{ alignSelf: &quot;flex-start&quot; }} accessibilityLabel=&quot;enable-forwarding&quot; /&gt;
+          {actionError ? &lt;T w={400} s={12} lh={1.4} color={C.down}&gt;{actionError}&lt;/T&gt; : null}
+        &lt;/Warn&gt;
+      ) : null}
+
+      &lt;View style={{ flexDirection: &quot;row&quot;, gap: 8 }}&gt;
+        &lt;Btn label=&quot;Add funds&quot; onPress={() =&gt; nav(&quot;perpsFunds&quot;, { fundsMode: &quot;add&quot; })} variant=&quot;lime&quot; flex={1} accessibilityLabel=&quot;add-funds&quot; /&gt;
+        &lt;Btn label=&quot;Withdraw to wallet&quot; onPress={() =&gt; nav(&quot;perpsFunds&quot;, { fundsMode: &quot;withdraw&quot; })} variant=&quot;outline2&quot; flex={1} accessibilityLabel=&quot;withdraw-to-wallet&quot; /&gt;
+      &lt;/View&gt;
+
+      &lt;MarketsList perpl={perpl} nav={nav} readOnly={false} /&gt;
+
+      &lt;View style={{ gap: 7 }}&gt;
+        &lt;Tag s={10}&gt;POSITIONS&lt;/Tag&gt;
+        {positions.length === 0 ? (
+          &lt;EmptyPanel&gt;&lt;T w={400} s={12.5} lh={1.45} color={C.dim} style={{ textAlign: &quot;center&quot; }}&gt;No open positions. Pick a market above.&lt;/T&gt;&lt;/EmptyPanel&gt;
+        ) : positions.map((p) =&gt; {
+          const market = markets.find((m) =&gt; m.id === p.mkt);
+          return market ? &lt;PositionRow key={p.pid} p={p} market={market} onClose={() =&gt; setClosing({ p, market, result: null })} /&gt; : null;
+        })}
+      &lt;/View&gt;
+    &lt;/Page&gt;
+  );
+}</code></pre>
+<p>Nota: el umbral <code>-10_000n</code> en los colores es el mismo centavo de <code>formatPnl</code> (P6): un PnL de −0.009 se pinta en lima junto a su &quot;+0.00&quot;.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: <code>tsc</code>, tests, residuos</strong></label></li>
+</ul>
+<p>Run: <code>npx tsc --noEmit &amp;&amp; npm test 2&gt;&amp;1 | tail -4 &amp;&amp; grep -n &#39;primaryBtn\|secondaryBtn\|chipBtn\|warnBox\|w={800}\|isn.t available in some regions&#39; src/screens/markets.tsx || echo NO_LEGACY</code> Expected: exit 0; tests sin cambio; <code>NO_LEGACY</code>.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Commit</strong></label></li>
+</ul>
+<pre><code class="language-bash">git add src/screens/markets.tsx
+git commit -m &quot;feat(mobile): Markets re-maquetado con Reconnect trading, aviso de reloj y PnL sin −0.00 (D13, D19, D21, D22)
+
+Co-Authored-By: Claude Fable 5.1 &lt;noreply@anthropic.com&gt;&quot;</code></pre>
+<hr>
+<h3 id="task-7-screensperpsfundstsx-re-vestido-y-chip-de-reloj-en-devcontrols-d15-p4">Task 7: <code>screens/perpsFunds.tsx</code> re-vestido y chip de reloj en DevControls (D15, P4)</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Modify: <code>apps/mobile/src/screens/perpsFunds.tsx</code> (reescritura completa)</li>
+<li>Modify: <code>apps/mobile/src/DevControls.tsx:39-60</code></li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Consumes: <code>Page</code>, <code>StatGrid</code>, <code>Segmented</code>, <code>Card</code>, <code>Tag</code>, <code>Chip</code>, <code>Btn</code>, <code>KVList</code>, <code>StatusCard</code>, <code>T</code>, <code>Touch</code>, <code>type Tone</code>; <code>validateFunds</code> (<code>perpl/funds.ts</code>, sin cambios); <code>perpl.addFunds</code> / <code>perpl.withdraw</code>; <code>perpl.setClockSkewOverride</code>, <code>perpl.clockSkewMs</code> (Task 3).</li>
+<li>Produces: <code>PerpsFundsScreen(ctx: AppCtx)</code>. Etiquetas: <code>segment-add</code> / <code>segment-withdraw</code> (Segmented), <code>funds-input</code>, <code>max</code>, <code>review</code>, <code>edit-funds</code>, <code>confirm</code>, <code>back-to-markets</code>, <code>tx-hash</code>. DevControls: chip <code>dev-clock-2-min</code> que alterna <code>setClockSkewOverride(120_000)</code> / <code>null</code>.</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Reescribir <code>perpsFunds.tsx</code></strong></label></li>
+</ul>
+<pre><code class="language-tsx">import { useState } from &quot;react&quot;;
+import { ActivityIndicator, Linking, TextInput, View } from &quot;react-native&quot;;
+import { formatUnits, type Hex } from &quot;viem&quot;;
+import { AUSD_DECIMALS, EXPLORER_TX_URL, formatAusd } from &quot;../config/chain&quot;;
+import type { AppCtx } from &quot;../ctx&quot;;
+import { type FundsMode, validateFunds } from &quot;../perpl/funds&quot;;
+import { Btn, Card, Chip, KVList, Page, Segmented, StatGrid, StatusCard, T, Tag, Touch, type Tone } from &quot;../ui/primitives&quot;;
+import { C, textStyle } from &quot;../ui/theme&quot;;
+import { describeError } from &quot;../wallet/wallet&quot;;
+
+type Step = { step: &quot;edit&quot; } | { step: &quot;review&quot;; amount: bigint } | { step: &quot;sent&quot;; hash: Hex } | { step: &quot;done&quot;; hash: Hex } | { step: &quot;failed&quot;; hash: Hex } | { step: &quot;unknown&quot;; hash: Hex };
+
+const TONES = {
+  sent: { bd: C.warnBd, bg: C.warnBg, fg: C.warn },
+  done: { bd: C.limeBd, bg: C.limeBg06, fg: C.lime },
+  failed: { bd: C.downBd, bg: C.downBg, fg: C.down },
+  unknown: { bd: C.warnBd, bg: C.warnBg, fg: C.warn },
+} as const satisfies Record&lt;string, Tone&gt;;
+
+export function PerpsFundsScreen({ S, set, perpl, treasury, nav }: AppCtx) {
+  const mode: FundsMode = S.fundsMode ?? &quot;add&quot;;
+  const wallet = treasury.balances?.ausd ?? 0n;
+  const acc = perpl.live?.account;
+  const free = acc ? acc.b - acc.lb : 0n;
+  const minDeposit = perpl.context?.instance.minDeposit ?? 10_000_000n;
+  const minWithdraw = perpl.context?.instance.minWithdraw ?? 10_000n;
+  const [amount, setAmount] = useState(&quot;&quot;);
+  const [st, setSt] = useState&lt;Step&gt;({ step: &quot;edit&quot; });
+  const [error, setError] = useState(&quot;&quot;);
+  const [busy, setBusy] = useState(false);
+  const check = validateFunds(mode, amount, wallet, free, minDeposit, minWithdraw);
+  const max = mode === &quot;add&quot; ? wallet : free;
+
+  const confirm = async () =&gt; {
+    if (st.step !== &quot;review&quot;) return;
+    setBusy(true);
+    setError(&quot;&quot;);
+    try {
+      const run = mode === &quot;add&quot; ? perpl.addFunds : perpl.withdraw;
+      const status = await run(st.amount, (hash) =&gt; setSt({ step: &quot;sent&quot;, hash }));
+      setSt((s) =&gt; s.step === &quot;sent&quot; ? { step: status === &quot;success&quot; ? &quot;done&quot; : &quot;failed&quot;, hash: s.hash } : s);
+    } catch (e) {
+      const msg = describeError(e);
+      if (msg) setError(msg);
+      setSt((s) =&gt; s.step === &quot;sent&quot; ? { step: &quot;unknown&quot;, hash: s.hash } : s);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const header = (
+    &lt;StatGrid items={[
+      { label: &quot;Wallet&quot;, value: `${formatAusd(wallet)} AUSD` },
+      { label: &quot;Trading · free&quot;, value: acc ? `${formatAusd(free)} AUSD` : perpl.lastBalance !== null ? `${formatAusd(perpl.lastBalance)} · last seen` : &quot;—&quot; },
+    ]} /&gt;
+  );
+
+  if (st.step === &quot;sent&quot; || st.step === &quot;done&quot; || st.step === &quot;failed&quot; || st.step === &quot;unknown&quot;) {
+    const title = st.step === &quot;done&quot; ? (mode === &quot;add&quot; ? &quot;Funds added&quot; : &quot;Withdrawn to wallet&quot;)
+      : st.step === &quot;failed&quot; ? &quot;Transaction reverted&quot;
+      : st.step === &quot;unknown&quot; ? &quot;Sent · confirmation not received&quot;
+      : &quot;Sent · waiting for confirmation&quot;;
+    return (
+      &lt;Page gap={11}&gt;
+        {header}
+        &lt;StatusCard tag={st.step.toUpperCase()} title={title} body={st.step === &quot;unknown&quot; &amp;&amp; error ? error : undefined} tone={TONES[st.step]}&gt;
+          &lt;Touch onPress={() =&gt; { void Linking.openURL(EXPLORER_TX_URL(st.hash)); }} accessibilityLabel=&quot;tx-hash&quot;&gt;
+            &lt;T w={400} s={10.5} lh={1.4} mono color={C.dim}&gt;{st.hash}&lt;/T&gt;
+          &lt;/Touch&gt;
+          {st.step === &quot;sent&quot; ? &lt;ActivityIndicator color={C.warn} style={{ alignSelf: &quot;flex-start&quot; }} /&gt; : null}
+        &lt;/StatusCard&gt;
+        {st.step !== &quot;sent&quot; ? &lt;Btn label=&quot;Back to Markets&quot; onPress={() =&gt; nav(&quot;markets&quot;)} variant=&quot;lime&quot; py={14} accessibilityLabel=&quot;back-to-markets&quot; /&gt; : null}
+      &lt;/Page&gt;
+    );
+  }
+
+  if (st.step === &quot;review&quot;) {
+    return (
+      &lt;Page gap={11}&gt;
+        {header}
+        &lt;Card bd={C.hair2} bg={C.deep} gap={8}&gt;
+          &lt;Tag&gt;{mode === &quot;add&quot; ? &quot;YOU ADD TO TRADING · AUSD&quot; : &quot;YOU WITHDRAW TO WALLET · AUSD&quot;}&lt;/Tag&gt;
+          &lt;T w={700} s={30} lh={1} ls={-0.02} display&gt;{formatAusd(st.amount)}&lt;/T&gt;
+          &lt;KVList top rows={[
+            { label: &quot;FROM&quot;, value: mode === &quot;add&quot; ? &quot;Wallet&quot; : &quot;Trading account&quot; },
+            { label: &quot;TO&quot;, value: mode === &quot;add&quot; ? &quot;Trading account&quot; : &quot;Wallet&quot; },
+            { label: &quot;NETWORK&quot;, value: &quot;Monad · gas in MON&quot;, fg: C.dim },
+          ]} /&gt;
+        &lt;/Card&gt;
+        {error ? &lt;T w={400} s={12} lh={1.4} color={C.down}&gt;{error}&lt;/T&gt; : null}
+        &lt;View style={{ flexDirection: &quot;row&quot;, gap: 8 }}&gt;
+          &lt;Btn label=&quot;Edit&quot; onPress={() =&gt; { setError(&quot;&quot;); setSt({ step: &quot;edit&quot; }); }} variant=&quot;outline&quot; flex={1} disabled={busy} accessibilityLabel=&quot;edit-funds&quot; /&gt;
+          &lt;Btn label={busy ? &quot;Sending…&quot; : mode === &quot;add&quot; ? &quot;Confirm deposit&quot; : &quot;Confirm withdrawal&quot;} onPress={() =&gt; { void confirm(); }} variant=&quot;lime&quot; flex={1} busy={busy} accessibilityLabel=&quot;confirm&quot; /&gt;
+        &lt;/View&gt;
+        {mode === &quot;add&quot; ? &lt;T w={400} s={11} lh={1.45} color={C.faint}&gt;If the exchange allowance is too low, Pickler approves it first (one extra transaction).&lt;/T&gt; : null}
+      &lt;/Page&gt;
+    );
+  }
+
+  return (
+    &lt;Page gap={11}&gt;
+      {header}
+      &lt;Segmented options={[[&quot;add&quot;, &quot;Add funds&quot;], [&quot;withdraw&quot;, &quot;Withdraw&quot;]] as const} value={mode} onChange={(k) =&gt; { set({ fundsMode: k }); setAmount(&quot;&quot;); }} /&gt;
+      &lt;Card bd={C.hair2} bg={C.deep} gap={6}&gt;
+        &lt;Tag&gt;{mode === &quot;add&quot; ? &quot;AMOUNT TO ADD · AUSD&quot; : &quot;AMOUNT TO WITHDRAW · AUSD&quot;}&lt;/Tag&gt;
+        &lt;View style={{ flexDirection: &quot;row&quot;, alignItems: &quot;center&quot;, gap: 8 }}&gt;
+          &lt;TextInput
+            value={amount} onChangeText={setAmount} placeholder=&quot;0.00&quot; placeholderTextColor={C.faint} keyboardType=&quot;decimal-pad&quot; accessibilityLabel=&quot;funds-input&quot;
+            style={[textStyle(700, 30, { lh: 1.3, ls: -0.02, display: true, color: C.ink }), { flex: 1, minWidth: 0, paddingVertical: 4 }]}
+          /&gt;
+          &lt;Chip label=&quot;Max&quot; onPress={() =&gt; setAmount(formatUnits(max, AUSD_DECIMALS))} bd={C.hair22} fg={C.ink} accessibilityLabel=&quot;max&quot; /&gt;
+        &lt;/View&gt;
+        &lt;T w={400} s={11.5} lh={1.4} color={C.dim}&gt;{mode === &quot;add&quot; ? `Minimum ${formatAusd(minDeposit)} AUSD` : `Minimum ${formatAusd(minWithdraw)} AUSD · only free balance`}&lt;/T&gt;
+      &lt;/Card&gt;
+      {!check.ok &amp;&amp; amount !== &quot;&quot; ? &lt;T w={400} s={11.5} lh={1.4} color={C.warn}&gt;{check.error}&lt;/T&gt; : null}
+      &lt;Btn label=&quot;Review&quot; onPress={() =&gt; { if (check.ok) setSt({ step: &quot;review&quot;, amount: check.amount }); }} arrow py={14} disabled={!check.ok} accessibilityLabel=&quot;review&quot; /&gt;
+      &lt;T w={400} s={11} lh={1.45} color={C.faint}&gt;Gas is paid in MON from this wallet. Locked collateral can&#39;t be withdrawn until the position closes.&lt;/T&gt;
+    &lt;/Page&gt;
+  );
+}</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: DevControls — chip &quot;Clock +2 min&quot;</strong></label></li>
+</ul>
+<p>En <code>src/DevControls.tsx</code>, en la fila de SESSION (junto a Lock / Sign out) añade:</p>
+<pre><code class="language-tsx">              &lt;PChip label=&quot;Clock +2 min&quot; on={perpl.clockSkewMs !== null &amp;&amp; perpl.clockSkewMs &gt;= 120_000} onPress={() =&gt; perpl.setClockSkewOverride(perpl.clockSkewMs !== null &amp;&amp; perpl.clockSkewMs &gt;= 120_000 ? null : 120_000)} /&gt;</code></pre>
+<p>y en la línea de estado mono (<code>screen: … · perpl: …</code>) añade <code> · skew: {perpl.clockSkewMs === null ? &quot;—&quot; : </code>${Math.round(perpl.clockSkewMs / 1000)}s<code>}</code> (así la captura del audit muestra el desfase medido de verdad cuando el override está apagado). <code>PChip</code> ya genera <code>accessibilityLabel=&quot;dev-clock-2-min&quot;</code>.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: <code>tsc</code>, tests, residuos, commit</strong></label></li>
+</ul>
+<p>Run: <code>npx tsc --noEmit &amp;&amp; npm test 2&gt;&amp;1 | tail -4 &amp;&amp; grep -rn &#39;primaryBtn\|secondaryBtn\|chipBtn\|w={800}&#39; src/screens || echo NO_LEGACY_IN_SCREENS</code> Expected: exit 0; tests sin cambio; <code>NO_LEGACY_IN_SCREENS</code>.</p>
+<pre><code class="language-bash">git add src/screens/perpsFunds.tsx src/DevControls.tsx
+git commit -m &quot;feat(mobile): Trading funds re-vestido; chip de reloj forzado en DevControls (D15)
+
+Co-Authored-By: Claude Fable 5.1 &lt;noreply@anthropic.com&gt;&quot;</code></pre>
+<hr>
+<h3 id="task-8-rebuild-nativo-y-recorrido-completo-en-el-simulador-con-la-cuenta-620">Task 8: Rebuild nativo y recorrido completo en el simulador con la cuenta #620</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Verify: <code>apps/mobile/</code> completo en el simulador <code>2B2A0BAD-7B14-4DAE-8652-C7E9472505E0</code>.</li>
+<li>Scratchpad de la sesión: <code>f2-shots/</code> (capturas), <code>f2-flows/</code> (YAML de Maestro), <code>rpc-before.txt</code> / <code>rpc-after.txt</code>. <strong>No se versionan.</strong></li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Consumes: todo lo anterior. La app se instala con <code>npx expo run:ios --device &lt;UDID&gt;</code>.</li>
+<li>Produces: la evidencia que la Task 9 pega en el audit: capturas numeradas, saldos por RPC antes/después, y la lista de defectos encontrados (cada uno se corrige con su commit <code>fix(mobile): …</code> antes de seguir).</li>
+</ul>
+<p>Orden obligatorio: RPC → build → gate/Reconnect → ticket → cerrar posición → Funds (sólo pantallas, sin mover) → reloj forzado → held card → RPC de cierre. <strong>Sin faucet, sin retiros externos, sin <code>enable</code> con monto.</strong></p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Saldos por RPC antes de tocar nada</strong></label></li>
+</ul>
+<p>Script temporal <code>rpc.mjs</code> en el scratchpad con el código del proyecto (receta de la lección 7 del audit de F1: <code>node --experimental-strip-types</code> + hook de <code>resolve</code> que prueba <code>.ts</code> / <code>.tsx</code> / <code>/index.ts</code>):</p>
+<pre><code class="language-js">// rpc.mjs — corre desde apps/mobile del worktree: node --experimental-strip-types --import ./hook.mjs rpc.mjs
+import { readBalances } from &quot;./src/wallet/chain&quot;;
+import { readAccountId } from &quot;./src/perpl/onboarding&quot;;
+import { formatAusd, formatMon } from &quot;./src/config/chain&quot;;
+const addr = &quot;0xe3719a93b75Cee42C5a8f3dCe45e5b4B327851C1&quot;;
+const b = await readBalances(addr);
+console.log(&quot;RPC&quot;, new Date().toISOString());
+console.log(&quot;addr      &quot;, addr);
+console.log(&quot;AUSD raw  &quot;, b.ausd, &quot;=&gt; formatAusd&quot;, formatAusd(b.ausd));
+console.log(&quot;MON  raw  &quot;, b.mon, &quot;=&gt; formatMon &quot;, formatMon(b.mon));
+console.log(&quot;perpl id  &quot;, await readAccountId(addr));</code></pre>
+<pre><code class="language-js">// hook.mjs
+import { existsSync } from &quot;node:fs&quot;;
+import { fileURLToPath, pathToFileURL } from &quot;node:url&quot;;
+export async function resolve(spec, ctx, next) {
+  try { return await next(spec, ctx); } catch (e) {
+    if (!spec.startsWith(&quot;.&quot;) || !ctx.parentURL) throw e;
+    const base = fileURLToPath(new URL(spec, ctx.parentURL));
+    for (const s of [&quot;.ts&quot;, &quot;.tsx&quot;, &quot;/index.ts&quot;]) if (existsSync(base + s)) return next(pathToFileURL(base + s).href, ctx);
+    throw e;
+  }
+}</code></pre>
+<p>Run: <code>node --experimental-strip-types --import &lt;scratch&gt;/hook.mjs &lt;scratch&gt;/rpc.mjs | tee &lt;scratch&gt;/rpc-before.txt</code> Expected: <code>perpl id 620</code>; AUSD y MON impresos. <strong>Anota los tres valores</strong>; si difieren de 29.00 / 0.0718 dilo en el audit. El saldo de trading de #620 no sale por RPC (vive en la API de Perpl): se lee en pantalla tras Reconnect.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Build e instalación en el simulador</strong></label></li>
+</ul>
+<p>Run: <code>npx expo run:ios --device 2B2A0BAD-7B14-4DAE-8652-C7E9472505E0 2&gt;&amp;1 | tail -8</code> Expected: <code>› Build Succeeded</code>, <code>› Installing on iPhone 17 Pro</code>, <code>iOS Bundled …</code>. Deja Metro corriendo. Si Face ID no está inscrito (se pierde al reiniciar el simulador):</p>
+<pre><code class="language-bash">xcrun simctl spawn 2B2A0BAD-7B14-4DAE-8652-C7E9472505E0 notifyutil -s com.apple.BiometricKit.enrollmentChanged 1
+xcrun simctl spawn 2B2A0BAD-7B14-4DAE-8652-C7E9472505E0 notifyutil -p com.apple.BiometricKit.enrollmentChanged</code></pre>
+<p>Presentar la cara cuando la app la pida: <code>xcrun simctl spawn 2B2A0BAD-7B14-4DAE-8652-C7E9472505E0 notifyutil -p com.apple.BiometricKit_Sim.fingerTouch.match</code>.</p>
+<p>Captura siempre con <code>xcrun simctl io 2B2A0BAD-7B14-4DAE-8652-C7E9472505E0 screenshot &lt;scratch&gt;/f2-shots/NN-nombre.png</code> y <strong>mira cada captura</strong> antes de pasar a la siguiente.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Gate Reconnect trading (D21)</strong></label></li>
+</ul>
+<p>Tab MARKETS (<code>tapOn: id &quot;tab-markets&quot;</code> o punto 11 %,93 %). Expected: card <strong>Reconnect trading</strong> con &quot;This wallet already has Perpl account #620. Reconnect registers a trading key on this phone; no AUSD moves.&quot;, botón lima <strong>Reconnect</strong> y la lista de mercados al 70 %. → <code>01-reconnect-gate.png</code>. Toca <code>reconnect</code> → Face ID (<code>fingerTouch.match</code>) → pasos: &quot;Allow one-click trading&quot; puede mandar una tx (gas en MON) y &quot;Register trading key&quot; pide la firma. → <code>02-reconnect-steps.png</code> durante los pasos. Expected final: Markets real con <code>TRADING · AUSD</code>, chip <code>LIVE</code>, saldo ≈ 104.87 (anota el valor exacto), &quot;0.00 in positions · X free&quot;, fila Add funds / Withdraw to wallet, MARKETS, POSITIONS vacío. → <code>03-markets-live.png</code>. Si <code>Reconnect</code> falla en el paso 1 con &quot;Enter an amount.&quot;, la cuenta no existe on-chain: <strong>para</strong> y repórtalo (P5) — no habilites con monto.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 4: Market — pills y ticket (D14, D20)</strong></label></li>
+</ul>
+<p>Toca <code>market-MON</code> (el mercado más barato: 3x máximo, unidad entera). Expected: header &quot;MON Perp / Perpl · isolated margin · market order&quot;, pills Ask · <strong>Trade</strong> · Agents con Trade en lima, Long/Short, card <code>MARGIN · AUSD</code>, chips <code>1x 2x 3x</code> con <strong>1x en lima</strong> (<code>pill(on)</code>; cierra el pendiente &quot;pill blanco&quot; de F1), KV NOTIONAL / EST. PRICE / FEE · TAKER / LIQUIDATION ≈, botón &quot;Enter a margin&quot; deshabilitado. → <code>04-market-trade-empty.png</code>. Toca <code>pill-ask</code> → <code>ComingSoonCard</code> &quot;Ask an agent for a read on this market&quot; → <code>05-market-ask.png</code>. <code>pill-agents</code> → <code>06-market-agents.png</code>. Vuelve a <code>pill-trade</code>. Escribe <code>2</code> en <code>margin-input</code> (toca fuera para cerrar el teclado; <code>hideKeyboard</code> no sirve). Expected: KV con <code>FEE · TAKER ≈ 0.00XX AUSD</code> <strong>a 4 decimales</strong> y ≠ &quot;0.0000&quot;, botón &quot;Review long · 2.00 AUSD&quot; con flecha. → <code>07-ticket-filled.png</code>. Toca <code>lv-3</code> → 3x en lima, LIQUIDATION ≈ en <code>down</code>, aviso de apalancamiento → <code>08-ticket-3x.png</code>; vuelve a <code>lv-1</code>. Toca <code>review</code> → card <code>YOU OPEN · LONG MON · 1X · MARKET</code>, cifra display &quot;2.00 AUSD&quot;, KV, botón lima &quot;Confirm long&quot; (o &quot;Connecting…&quot; deshabilitado si el socket no está live: espera). → <code>09-review.png</code>. Toca <code>confirm</code> → <code>StatusCard</code> SENT con spinner → <code>10-sent.png</code> (si alcanzas); después FILLED con &quot;Filled N MON at P&quot; y detalle &quot;Fee 0.00XX AUSD · LONG 1x&quot; → <code>11-filled.png</code>. Anota la fee exacta. Toca <code>back-to-markets</code>. Expected: POSITIONS con la fila LONG, &quot;N MON · 1x&quot;, PnL <code>±0.0X AUSD</code> (o <code>+0.00</code> si es menor que medio centavo), línea <code>ep → mark · LIQ. EST.</code>, &quot;X in positions · Y free&quot;. → <code>12-position.png</code>.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 5: Cerrar la posición (D13, P6)</strong></label></li>
+</ul>
+<p>Toca <code>close-&lt;pid&gt;</code> → card <code>YOU CLOSE · AT MARKET</code> con <code>EST. PNL</code> → <code>13-close-confirm.png</code>. Toca <code>close-position</code> → FILLED &quot;Closed N MON at P&quot; con &quot;Fee 0.00XX AUSD · realised PnL shows in the trading balance&quot; → <code>14-closed.png</code>. <code>back-to-markets</code> → POSITIONS vacío y saldo nuevo (anótalo: debe ser el de <code>03</code> menos las dos fees ± PnL). → <code>15-markets-flat.png</code>.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 6: Trading funds (D15) — sólo pantallas</strong></label></li>
+</ul>
+<p>Toca <code>add-funds</code> → StatGrid Wallet / Trading · free, Segmented Add funds | Withdraw, card <code>AMOUNT TO ADD · AUSD</code>, Review deshabilitado → <code>16-funds-add.png</code>. Escribe <code>5</code>, toca fuera, <code>review</code> → card <code>YOU ADD TO TRADING · AUSD</code> con &quot;5.00&quot;, KV FROM/TO/NETWORK, Edit / Confirm deposit → <code>17-funds-review.png</code>. <strong>Toca <code>edit-funds</code>, no Confirm.</strong> <code>segment-withdraw</code> → <code>18-funds-withdraw.png</code>. <code>←</code> a Markets.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 7: Reloj forzado (D19, P4) y copy de key rechazada</strong></label></li>
+</ul>
+<p>Abre ⚙ (<code>dev-controls</code>) → toca <code>dev-clock-2-min</code> → cierra. Expected en Markets: <code>Warn</code> &quot;Your phone&#39;s clock is off by 120 s.&quot; con el body de Settings. → <code>19-clock-warn.png</code>. Abre ⚙ y mira la línea <code>skew: 120s</code>; captura <code>20-devcontrols-skew.png</code>; toca el chip otra vez → aviso desaparece y la línea muestra el skew medido real (normalmente entre −2s y 2s). Anota ese valor en el audit: es la primera medición real del desfase del simulador contra Perpl. El copy nuevo de <code>keyRejected</code> no se puede provocar sin una key inválida; queda cubierto por <code>perpl-clock.test.ts</code> (<code>KEY_REJECTED_COPY</code>) y por lectura del JSX. Dilo así en el audit.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 8: Tarjeta &quot;We kept what you were about to do&quot; (pendiente de F1, D18)</strong></label></li>
+</ul>
+<p>⚙ → <code>dev-sign-out</code> (borra cuenta local <strong>y la key de Perpl recién enrolada</strong>; la cuenta #620 y su saldo no se tocan). La app aterriza en Wallet access sin tarjeta. Abre ⚙ → <code>dev-markets</code> (requireAccount sin cuenta → signin con <code>next: markets</code>). Expected: tarjeta violeta &quot;We kept what you were about to do&quot; + &quot;Trading on Perpl. You come straight back after this step.&quot; → <code>21-signin-held.png</code>. Toca <code>sign-in</code> (&quot;I already have one&quot;) → passkey: elige la <strong>primera</strong> &quot;pickler&quot; de la lista (es <code>0xe371…51C1</code>; hay dos) → <code>fingerTouch.match</code>. Expected: aterriza en <strong>Markets</strong> (el <code>next</code> retenido) con el gate <strong>Reconnect trading</strong> otra vez (la key se borró con el Sign out; #620 sigue existiendo) → <code>22-after-signin-markets.png</code>. Vuelve a tocar <code>reconnect</code> + Face ID para dejar el simulador con key (así el build 5 se prueba desde un estado útil) → <code>23-reconnected-again.png</code>. Si el passkey no aparece o devuelve otra dirección, <strong>para</strong>: no crees una cuenta nueva. Reporta la lista de passkeys que mostró el sheet.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 9: Saldos de cierre y defectos</strong></label></li>
+</ul>
+<p>Run: el <code>rpc.mjs</code> de nuevo → <code>rpc-after.txt</code>. Expected: <code>perpl id 620</code>; AUSD igual que antes (no se movió AUSD de la wallet); MON menor si <code>allowOrderForwarding</code> mandó tx (dos veces si reconectaste dos veces). Compara con <code>rpc-before.txt</code> y anota la diferencia. Lista los defectos vistos en las 23 capturas (textos cortados, colores fuera de spec, botones sin <code>accessibilityLabel</code> que tuviste que tocar por punto). Cada uno se corrige ahora con <code>fix(mobile): …</code> y su captura de reemplazo; <code>tsc</code> + <code>npm test</code> en verde antes de la Task 9.</p>
+<hr>
+<h3 id="task-9-readme-spec-overview-manifest-y-audit-de-f2">Task 9: README, spec, overview, manifest y audit de F2</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Modify: <code>apps/mobile/README.md</code> (párrafo Tests y sección Perpl)</li>
+<li>Modify: <code>docs/superpowers/specs/2026-09-18-mobile-hifi-design.md</code> (línea <strong>Estado</strong> y nota P1 en D12)</li>
+<li>Modify: <code>docs/overview/2026-09-18-mobile-hifi.html</code> (phase-card F2 → <code>completed</code>, tasks marcadas, followups)</li>
+<li>Modify: <code>docs/overview/data/manifest.js</code> (fase 2 → <code>completed</code>; <code>status</code> global sigue <code>active</code> hasta el build 5)</li>
+<li>Create: <code>docs/superpowers/audits/2026-09-18-mobile-hifi-f2-rulings.md</code></li>
+<li>Generate: <code>docs/superpowers/plans/2026-09-18-mobile-hifi-f2.html</code>, <code>docs/superpowers/specs/2026-09-18-mobile-hifi-design.html</code> (<code>npm run docs:html</code>)</li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Consumes: evidencia de la Task 8 (capturas, <code>rpc-before/after.txt</code>, fee exacta, saldo de #620), salida de <code>npm test</code> / <code>tsc</code>.</li>
+<li>Produces: audit con el formato de <code>2026-09-18-mobile-hifi-f1-rulings.md</code> (Qué quedó hecho y verificado · Saldos re-medidos por RPC · Rulings · Correcciones tras la revisión · Lo aprendido · Estado de las cuentas de testnet al cierre · Pendientes · Siguiente punto de decisión).</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: README</strong></label></li>
+</ul>
+<p>En <code>apps/mobile/README.md</code>: sección Tests → el número real (<code>npm test 2&gt;&amp;1 | tail -4</code>: suites y tests). Sección &quot;Perpl (pestaña Trade)&quot; → renómbrala &quot;Perpl (tab MARKETS)&quot; y añade tres viñetas: &quot;<em>Reconnect trading</em>: sin key pero con cuenta on-chain (<code>readAccountId &gt; 0</code>), el gate reconecta con <code>enable(0n)</code> — sólo forwarding + key, sin mover AUSD.&quot;; &quot;Desfase de reloj: <code>pub/context</code> trae el header <code>Date</code>; con más de 20 s de diferencia Markets avisa (Perpl rechaza firmas a ±30 s; fue la causa real de los <code>3401</code> del iPhone).&quot;; &quot;Fees se muestran con 4 decimales; saldos y montos con 2.&quot;. Añade a &quot;Correr en simulador&quot;: &quot;Face ID del simulador se pierde al reiniciarlo: <code>notifyutil -s com.apple.BiometricKit.enrollmentChanged 1 &amp;&amp; notifyutil -p com.apple.BiometricKit.enrollmentChanged</code>; presentar cara con <code>notifyutil -p com.apple.BiometricKit_Sim.fingerTouch.match</code>.&quot;</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Spec</strong></label></li>
+</ul>
+<p>Línea <strong>Estado</strong> → &quot;F1 y F2 ejecutadas (planes <code>…-f1.md</code>, <code>…-f2.md</code>; audits <code>…-f1-rulings.md</code>, <code>…-f2-rulings.md</code>); pendiente el build 5 de TestFlight (Task 10 del plan de F2)&quot;. En D12, tras &quot;<code>StatusCard</code>, <code>Screen</code>,&quot; añade &quot;(<code>Screen</code> se llama <strong><code>Page</code></strong> en el código desde F2, para no sombrear el tipo <code>Screen</code> de D5)&quot;. No toques nada más del spec: las decisiones no cambiaron.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Overview y manifest</strong></label></li>
+</ul>
+<p>En <code>docs/overview/2026-09-18-mobile-hifi.html</code>, phase-card <code>data-phase=&quot;2&quot;</code>: <code>data-status=&quot;completed&quot;</code>, <code>&lt;option value=&quot;completed&quot; selected&gt;</code>, los 10 <code>&lt;input type=&quot;checkbox&quot; checked&gt;</code> de las Tasks 0–9 (la Task 10 <strong>no</strong> se marca hasta que el build esté subido), y un <code>&lt;details class=&quot;followups&quot;&gt;</code> con los pendientes reales de la Task 8. En <code>manifest.js</code>: <code>{ num: 2, status: &#39;completed&#39; }</code>; <code>status: &#39;active&#39;</code> se queda hasta que el build 5 esté <code>shipped</code>. Run: <code>npm run docs:html &amp;&amp; npm run docs:check &amp;&amp; npm run agents:check &amp;&amp; node scripts/agent-infra/render-check.mjs &lt;scratch&gt;/render 2026-09-18-mobile-hifi</code> Expected: <code>processed=N skipped=0 errors=0</code>; <code>&quot;errors&quot;: []</code>; mira la captura de 390 px (<code>&lt;scratch&gt;/render/2026-09-18-mobile-hifi-390.png</code>): status board con F2 en <code>completed</code>, sin desbordes.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 4: Audit</strong></label></li>
+</ul>
+<p>Escribe <code>docs/superpowers/audits/2026-09-18-mobile-hifi-f2-rulings.md</code> con las secciones del audit de F1. Rulings mínimos a documentar: P1–P8 tal como se aplicaron, cualquier desviación, la lista de passkeys del sheet, si <code>allowOrderForwarding</code> mandó tx (MON antes/después). &quot;Estado de las cuentas&quot;: simulador con AUSD/MON de <code>rpc-after.txt</code>, #620 con el saldo leído en <code>23-reconnected-again.png</code>, key de Perpl <strong>presente</strong> (reconectada), KAT e iPhone sin tocar. Pendientes: lo que la Task 8 dejó abierto + &quot;iPhone de Jesús: mismo recorrido con su cuenta real vía TestFlight build 5 (lo hace Jesús)&quot;.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 5: Revisión independiente y commit</strong></label></li>
+</ul>
+<p>Pide a un subagente revisor la revisión de la rama completa (<code>git diff main...HEAD</code>, el spec, este plan y el audit) antes de commitear las docs; corrige lo que salga (cada fix con su commit). Después:</p>
+<pre><code class="language-bash">git add apps/mobile/README.md docs/superpowers/specs/2026-09-18-mobile-hifi-design.md docs/superpowers/specs/2026-09-18-mobile-hifi-design.html docs/superpowers/plans/2026-09-18-mobile-hifi-f2.md docs/superpowers/plans/2026-09-18-mobile-hifi-f2.html docs/overview/2026-09-18-mobile-hifi.html docs/overview/data/manifest.js docs/superpowers/audits/2026-09-18-mobile-hifi-f2-rulings.md
+git commit -m &quot;docs(mobile-hifi): F2 completada — README, spec, overview y audit
+
+Co-Authored-By: Claude Fable 5.1 &lt;noreply@anthropic.com&gt;&quot;</code></pre>
+<p><strong>Checkpoint.</strong> Aquí termina el trabajo de código de F2: sin merge, sin push, sin TestFlight. Jesús decide (1) merge a <code>main</code> local, (2) push, (3) autorizar el build 5. La Task 10 no empieza sin esa autorización explícita en la sesión.</p>
+<hr>
+<h3 id="task-10-build-010-5-de-testflight-y-su-tracker-pickler-dev-new-solo-con-autorizacion-explicita-de-jesus">Task 10: Build 0.1.0 (5) de TestFlight y su tracker (<code>pickler-dev-new</code>) — <strong>sólo con autorización explícita de Jesús</strong></h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Modify: <code>apps/mobile/app.config.ts:26</code> (<code>buildNumber: &quot;5&quot;</code>)</li>
+<li>Create: <code>docs/overview/dev/&lt;YYYY-MM-DD&gt;-testflight-build5.html</code> (vía la skill <code>pickler-dev-new</code>)</li>
+<li>Modify: <code>docs/overview/data/manifest.js</code> (entrada nueva al principio; <code>status</code> según evidencia), <code>docs/overview/2026-09-18-mobile-hifi.html</code> (marca la Task 10; si Jesús cierra el proyecto, <code>status</code> global <code>completed</code>)</li>
+<li>Requiere: <code>apps/mobile/.env.asc</code> (gitignored) con <code>ASC_KEY_ID</code> / <code>ASC_ISSUER_ID</code>, <code>.p8</code> en <code>~/.appstoreconnect/private_keys/</code>, identidad Apple Distribution en el llavero (los tres existen desde el build 4).</li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Consumes: rama en el estado que Jesús autorizó (mergeada o no; el archive se hace desde el checkout que él indique). Scripts <code>npm run ios:archive</code> y <code>npm run ios:upload</code> (sin cambios).</li>
+<li>Produces: <code>.ipa</code> 0.1.0 (5), <code>UPLOAD SUCCEEDED</code> con Delivery UUID, estado en App Store Connect, tracker <code>testflight-build5</code> en el catálogo.</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Autorización</strong></label></li>
+</ul>
+<p>Pregunta a Jesús, con la evidencia de la Task 9 a la vista, si autoriza <strong>archive + upload del build 5</strong> y desde qué checkout. Sin un &quot;sí&quot; en esta sesión, la task termina aquí.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: <code>buildNumber</code> y archive</strong></label></li>
+</ul>
+<p><code>app.config.ts</code>: <code>buildNumber: &quot;5&quot;</code>. Run (desde <code>apps/mobile</code>): <code>npm run ios:archive 2&gt;&amp;1 | tail -5</code> Expected: <code>✓ …/build/export/Pickler.ipa</code>. Comprueba la versión: <code>unzip -p build/export/Pickler.ipa &#39;Payload/Pickler.app/Info.plist&#39; | plutil -p - | grep -E &#39;CFBundleVersion|CFBundleShortVersionString|MinimumOSVersion&#39;</code> → <code>&quot;5&quot;</code>, <code>&quot;0.1.0&quot;</code>, <code>&quot;18.0&quot;</code>.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Upload</strong></label></li>
+</ul>
+<p>Run: <code>npm run ios:upload 2&gt;&amp;1 | tail -8</code> Expected: <code>UPLOAD SUCCEEDED</code> con <code>Delivery UUID</code>, y <code>✓ subida aceptada</code>. Guarda la salida completa en el scratchpad.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 4: Estado en App Store Connect</strong></label></li>
+</ul>
+<p>Con el helper JWT ES256 de sesiones anteriores (<code>asc.sh</code> en el scratchpad; si no existe, recréalo con <code>openssl</code> a partir del <code>.p8</code>), consulta el id de la app con <code>GET /v1/apps?filter[bundleId]=fun.pickler.app</code> y después <code>GET /v1/builds?filter[app]=&lt;id&gt;&amp;filter[version]=5</code> y <code>betaBuildLocalizations</code>/grupos. Expected: <code>processingState: VALID</code> y el grupo interno &quot;Equipo&quot; (<code>hasAccessToAllBuilds</code>). Si sigue <code>PROCESSING</code>, espera y reintenta; no lo declares <code>VALID</code> sin la respuesta.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 5: Tracker con <code>pickler-dev-new</code></strong></label></li>
+</ul>
+<p>Invoca la skill <code>pickler-dev-new</code> con: &quot;registra el build 5 de TestFlight&quot; — slug <code>testflight-build5</code>, <code>types: [&#39;feature&#39;]</code>, tags <code>[&#39;mobile&#39;,&#39;testflight&#39;,&#39;ios&#39;,&#39;perpl&#39;]</code>, lede con lo que trae el build (Markets/Market/Funds re-maquetados, Reconnect trading, aviso de reloj, fees a 4 decimales), &quot;Qué cambió&quot; desde el audit de F2, &quot;Archivos tocados&quot; con <code>git diff --stat main...HEAD</code>, &quot;Validación&quot; con tests reales, Delivery UUID, estado ASC y grupo. <code>status</code>: <code>shipped</code> sólo con <code>VALID</code> + grupo asignado; si no, <code>in_progress</code>. Renderiza y mira la captura de 390 px.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 6: Commit y cierre</strong></label></li>
+</ul>
+<pre><code class="language-bash">git add apps/mobile/app.config.ts docs/overview/dev/&lt;YYYY-MM-DD&gt;-testflight-build5.html docs/overview/data/manifest.js docs/overview/2026-09-18-mobile-hifi.html
+git commit -m &quot;chore(mobile): TestFlight build 0.1.0 (5); tracker testflight-build5
+
+Co-Authored-By: Claude Fable 5.1 &lt;noreply@anthropic.com&gt;&quot;</code></pre>
+<p>Añade al audit de F2 una sección &quot;Build 5&quot; con la evidencia (ipa, UUID, estado ASC) y commítala aparte (<code>docs(mobile-hifi): evidencia del build 5</code>). Handoff a Jesús: probar en su iPhone el recorrido Reconnect → ticket → cerrar, y mirar si aparece el aviso de reloj.</p>
+  </div>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <p>HTML autogenerado · NO edites este archivo. Modifica el <code>.md</code> y re-genera con:</p>
+    <pre><code class="language-sql">node scripts/mobile/docs-md-to-html.mjs docs/mobile/superpowers/plans/2026-09-18-mobile-hifi-f2.md</code></pre>
+    <p>Reglas en <code>docs/mobile/AGENTS.md</code> sección "MD → HTML autogenerado".</p>
+  </div>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // Persistencia de los checkboxes de task lists (pickler-md:<slug>:tasks)
+  const SLUG = '2026-09-18-mobile-hifi-f2';
+  const KEY = `pickler-md:${SLUG}:tasks`;
+  const checks = [...document.querySelectorAll('ul.task-list input[type=checkbox]')];
+  function load() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(KEY) || '[]');
+      checks.forEach((c, i) => {
+        if (typeof saved[i] === 'boolean') {
+          c.checked = saved[i];
+          c.closest('li').classList.toggle('done', c.checked);
+        }
+      });
+    } catch {}
+  }
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(checks.map(c => c.checked))); } catch {}
+  }
+  checks.forEach(c => {
+    c.closest('li').classList.toggle('done', c.checked);
+    c.addEventListener('change', () => {
+      c.closest('li').classList.toggle('done', c.checked);
+      save();
+    });
+  });
+  load();
+
+  // Botón "Copy progress as MD"
+  const $copy = document.getElementById('btn-copy-progress');
+  const $toast = document.getElementById('toast');
+  function showToast(msg) {
+    $toast.textContent = msg;
+    $toast.dataset.show = 'true';
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(() => { $toast.dataset.show = 'false'; }, 2200);
+  }
+  if ($copy) {
+    $copy.addEventListener('click', async (e) => {
+      const lines = ['# ' + document.title.split(' · ')[0] + ' — task progress', ''];
+      lines.push('_Capturado en ' + new Date().toISOString() + '_', '');
+      checks.forEach(c => {
+        const text = c.closest('label').textContent.trim();
+        lines.push('- [' + (c.checked ? 'x' : ' ') + '] ' + text);
+      });
+      try {
+        await navigator.clipboard.writeText(lines.join('\n'));
+        e.currentTarget.dataset.copied = 'true';
+        const prev = e.currentTarget.textContent;
+        e.currentTarget.textContent = '✓ Copiado';
+        showToast('Progress copiado — pégalo en el plan MD');
+        setTimeout(() => {
+          e.currentTarget.dataset.copied = 'false';
+          e.currentTarget.textContent = prev;
+        }, 1800);
+      } catch {
+        showToast('Clipboard no disponible');
+      }
+    });
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,664 @@
+<!doctype html>
+<!--
+  Plantilla canónica para project overviews de Pickler (F2 — CSS externo).
+
+  Uso:
+  1. Copia este archivo a docs/mobile/overview/YYYY-MM-DD-<topic>.html
+  2. Cambia el valor de <body data-slug="..."> al slug del proyecto (sin .html).
+     Es la key de localStorage para persistir cambios de tasks/status.
+  3. Reemplaza placeholders [[…]] con contenido real.
+  4. Ajusta el número de phase-cards según las fases del proyecto.
+  5. Agrega entry al manifest con el botón "+ Nueva entrada" del index.
+
+  Estilos:
+  - Paleta + componentes universales cargados desde _styles.css (verde brand).
+  - Estilos locales solo si el overview tiene SVG inline custom o diagrams.
+
+  Interactividad (Tier 1 del HTML Maximalism roadmap):
+  - Cada .phase-card tiene un <select> de status que muta data-status y actualiza
+    el status board en vivo.
+  - Cada task dentro de <details class="tasks"> es un <input type="checkbox">
+    persistido en localStorage con prefix `pickler-docs:<slug>:`.
+  - Botones "Copy progress as MD" / "Copy HTML diff" / "Reset local changes"
+    exportan o limpian el delta vs el snapshot inicial.
+
+  Tabs opcionales (F2): si el overview crece, agrupar secciones largas en
+  <div class="tabs"> + <button class="tab" aria-controls="..."> y .tab-panel.
+  Ejemplo abajo (comentado).
+
+  <title> = texto completo del h1 (principal + acento) + ' · Pickler'.
+
+  Reglas completas en docs/mobile/AGENTS.md.
+-->
+<html lang="es-MX">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>[[PROJECT_TITLE]] · Pickler</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="_styles.css">
+<script defer src="_syntax.js"></script>
+</head>
+<body data-slug="[[SLUG]]">
+
+<div class="wrap">
+  <nav class="crumb">
+    <a href="index.html">← Catálogo</a>
+    <span class="sep">/</span>
+    <span class="mono">[[SLUG]]</span>
+  </nav>
+</div>
+
+<header class="hero">
+  <div class="wrap">
+    <span class="eyebrow"><span class="dot"></span>Project Overview</span>
+    <h1>[[PROJECT_TITLE]] <span class="accent">[[ACCENT_TITLE]]</span></h1>
+    <p class="lede">[[LEDE]]</p>
+
+    <div class="status-board" id="status-board">
+      <div class="sb-grid">
+        <div class="sb-cell">
+          <div class="k">Estado</div>
+          <div class="v"><span class="sb-pill active" data-sb="status">Active</span></div>
+        </div>
+        <div class="sb-cell">
+          <div class="k">Spec</div>
+          <div class="v" data-sb="spec">✅</div>
+        </div>
+        <div class="sb-cell">
+          <div class="k">Planes escritos</div>
+          <div class="v" data-sb="plans">0/0</div>
+        </div>
+        <div class="sb-cell">
+          <div class="k">Implementación</div>
+          <div class="v" data-sb="impl">0/0</div>
+        </div>
+        <div class="sb-cell">
+          <div class="k">Próximo paso</div>
+          <!-- data-done: texto cuando todas las fases están completed; el script lo usa en vez de "— todo completo" -->
+          <div class="v" data-sb="next" data-done="[[DONE_TEXT]]">—</div>
+        </div>
+      </div>
+
+      <div class="sb-progress">
+        <div class="sb-progress-bar" id="sb-progress-bar"></div>
+        <div class="sb-legend">
+          <span><span class="swatch completed"></span>Completada</span>
+          <span><span class="swatch in_progress"></span>En progreso</span>
+          <span><span class="swatch plan_ready"></span>Plan listo</span>
+          <span><span class="swatch pending"></span>Pendiente</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<nav class="toc">
+  <div class="wrap">
+    <ul>
+      <li><a href="#tldr">1. TL;DR</a></li>
+      <li><a href="#roadmap">2. Roadmap</a></li>
+      <li><a href="#decisions">3. Decisiones</a></li>
+      <li><a href="#model">4. Modelo</a></li>
+      <li><a href="#glossary">5. Glosario</a></li>
+    </ul>
+  </div>
+</nav>
+
+<main>
+  <div class="wrap">
+
+    <!-- ============================= 1. TL;DR ============================== -->
+    <section id="tldr">
+      <h2><span class="sec-num">01</span>TL;DR</h2>
+      <div class="tldr">
+        <h3>Resumen ejecutivo</h3>
+        <p>[[TLDR_BODY]]</p>
+      </div>
+    </section>
+
+    <!-- ========================== 2. Roadmap =============================== -->
+    <section id="roadmap">
+      <h2><span class="sec-num">02</span>Roadmap</h2>
+      <p class="sec-sub">
+        Cada fase tiene un dropdown de status (cambia color en vivo) y un &lt;details&gt; con
+        las tasks del plan. Los checkboxes persisten en localStorage; usa los botones de
+        abajo para exportar el estado y pegarlo en Claude cuando vayas a avanzar.
+      </p>
+
+      <div class="roadmap-actions">
+        <button type="button" class="btn" id="btn-copy-md">📋 Copy progress as MD</button>
+        <button type="button" class="btn" id="btn-copy-diff">📋 Copy HTML diff for Claude</button>
+        <button type="button" class="btn" id="btn-reset-local">↺ Reset local changes</button>
+      </div>
+
+      <!-- Phase 0 ====================================================== -->
+      <article class="phase-card" data-phase="0" data-status="pending">
+        <div class="phase-head">
+          <div class="phase-title-wrap">
+            <span class="phase-num">F0</span>
+            <h3 class="phase-title">[[F0_NAME]]</h3>
+          </div>
+          <div class="phase-status-control">
+            <select aria-label="Phase 0 status">
+              <option value="pending">pending</option>
+              <option value="plan_ready">plan_ready</option>
+              <option value="in_progress">in_progress</option>
+              <option value="completed">completed</option>
+            </select>
+          </div>
+        </div>
+        <div class="phase-body">
+          <p>[[F0_DESC]]</p>
+          <div class="phase-meta">
+            <div><div class="k">Entregable</div><div class="v">[[F0_DELIVERABLE]]</div></div>
+            <div><div class="k">Prerequisitos</div><div class="v">[[F0_PREREQS]]</div></div>
+          </div>
+          <details class="tasks">
+            <summary>
+              <span>Tasks del plan</span>
+              <span class="progress-pill" data-tasks-counter>0/0</span>
+            </summary>
+            <ol>
+              <li><label><input type="checkbox"> [[F0_TASK_1]]</label></li>
+              <li><label><input type="checkbox"> [[F0_TASK_2]]</label></li>
+              <li><label><input type="checkbox"> [[F0_TASK_3]]</label></li>
+            </ol>
+          </details>
+        </div>
+      </article>
+
+      <!-- Phase 1 ====================================================== -->
+      <article class="phase-card" data-phase="1" data-status="pending">
+        <div class="phase-head">
+          <div class="phase-title-wrap">
+            <span class="phase-num">F1</span>
+            <h3 class="phase-title">[[F1_NAME]]</h3>
+          </div>
+          <div class="phase-status-control">
+            <select aria-label="Phase 1 status">
+              <option value="pending">pending</option>
+              <option value="plan_ready">plan_ready</option>
+              <option value="in_progress">in_progress</option>
+              <option value="completed">completed</option>
+            </select>
+          </div>
+        </div>
+        <div class="phase-body">
+          <p>[[F1_DESC]]</p>
+          <div class="phase-meta">
+            <div><div class="k">Entregable</div><div class="v">[[F1_DELIVERABLE]]</div></div>
+            <div><div class="k">Prerequisitos</div><div class="v">F0</div></div>
+          </div>
+          <details class="tasks">
+            <summary>
+              <span>Tasks del plan</span>
+              <span class="progress-pill" data-tasks-counter>0/0</span>
+            </summary>
+            <ol>
+              <li><label><input type="checkbox"> [[F1_TASK_1]]</label></li>
+              <li><label><input type="checkbox"> [[F1_TASK_2]]</label></li>
+            </ol>
+          </details>
+        </div>
+      </article>
+
+      <!-- Duplica el bloque <article class="phase-card"> para más fases. -->
+
+    </section>
+
+    <!--
+      ============================================================================
+      OPCIONAL · TABS para overviews largos (F2)
+      ============================================================================
+      Cuando un overview crece mucho (decisiones + modelo + ingesta + endpoints
+      + frontend + ...) en lugar de scroll infinito, agrupar bajo tabs:
+
+      <div class="tabs" role="tablist">
+        <button class="tab" role="tab" aria-selected="true" aria-controls="tab-decisions">Decisiones</button>
+        <button class="tab" role="tab" aria-selected="false" aria-controls="tab-model">Modelo</button>
+        <button class="tab" role="tab" aria-selected="false" aria-controls="tab-api">API</button>
+      </div>
+      <section class="tab-panel" id="tab-decisions" role="tabpanel">…</section>
+      <section class="tab-panel" id="tab-model" role="tabpanel" hidden>…</section>
+      <section class="tab-panel" id="tab-api" role="tabpanel" hidden>…</section>
+
+      El init() del script de abajo activa los tabs automáticamente si encuentra
+      .tabs en el DOM.
+      ============================================================================
+    -->
+
+    <!-- ========================= 3. Decisiones ============================ -->
+    <section id="decisions">
+      <h2><span class="sec-num">03</span>Decisiones clave</h2>
+      <table class="decisions">
+        <thead>
+          <tr>
+            <th>Decisión</th>
+            <th>Por qué</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>[[DEC_1_TITLE]]</td>
+            <td>[[DEC_1_REASON]]</td>
+          </tr>
+          <tr>
+            <td>[[DEC_2_TITLE]]</td>
+            <td>[[DEC_2_REASON]]</td>
+          </tr>
+        </tbody>
+      </table>
+      <h3 class="section-sub">Rulings en ejecución</h3>
+      <ol>
+        <li>[[RULING_1]]</li>
+        <li>[[RULING_2]]</li>
+      </ol>
+    </section>
+
+    <!-- ========================== 4. Modelo ================================ -->
+    <section id="model">
+      <h2><span class="sec-num">04</span>Modelo / arquitectura</h2>
+      <p class="sec-sub">
+        Patrón F3: SVG inline para diagramas de flujo o arquitectura (editable
+        en el HTML, sin assets externos), code snippets con
+        <code>class="language-X"</code> highlighteados por <code>_syntax.js</code>,
+        y screenshots/mockups en <code>assets/&lt;slug&gt;/</code>.
+      </p>
+
+      <!--
+        SVG INLINE
+        Editable directamente en el HTML. Usa los colores del theme (CSS vars
+        no funcionan dentro de <svg> en file://, así que se hardcodean los
+        valores hex del scheme dark, que es el default: #08080A canvas,
+        #17171B boxes, #F3F1EC ink). Si necesitas un diagrama complejo o
+        figma-style, invoca el agente `frontend-design` con el system prompt
+        "diagrama de arquitectura tipo flowchart, paleta Pickler
+        #C8F03A brand, #7A5CFF accent" — devuelve SVG listo para pegar.
+      -->
+      <div style="background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow);margin-bottom:18px;">
+        <svg viewBox="0 0 600 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Diagrama de arquitectura [[PROJECT_TITLE]]" style="width:100%;height:auto;display:block;">
+          <defs>
+            <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#8C8C88"/>
+            </marker>
+            <style>
+              .box   { fill:#17171B; stroke:rgba(243,241,236,0.22); stroke-width:1.5; rx:8; }
+              .box-g { fill:rgba(200,240,58,0.14); stroke:#C8F03A; stroke-width:1.5; rx:8; }
+              .box-a { fill:rgba(122,92,255,0.18); stroke:#7A5CFF; stroke-width:1.5; rx:8; }
+              .lbl   { font-family: "Manrope", sans-serif; font-size: 12px; fill:#F3F1EC; font-weight:600; }
+              .sub   { font-family: "JetBrains Mono", monospace; font-size: 10px; fill:#8C8C88; }
+              .arrow { stroke:#8C8C88; stroke-width:1.5; fill:none; }
+            </style>
+          </defs>
+          <!-- Placeholder de ejemplo: ajustar al modelo real del proyecto -->
+          <rect class="box" x="20" y="40" width="140" height="60"/>
+          <text class="lbl" x="32" y="65">[[NODE_A_LABEL]]</text>
+          <text class="sub" x="32" y="82">[[NODE_A_SUB]]</text>
+
+          <rect class="box-g" x="230" y="40" width="140" height="60"/>
+          <text class="lbl" x="242" y="65">[[NODE_B_LABEL]]</text>
+          <text class="sub" x="242" y="82">[[NODE_B_SUB]]</text>
+
+          <rect class="box-a" x="440" y="40" width="140" height="60"/>
+          <text class="lbl" x="452" y="65">[[NODE_C_LABEL]]</text>
+          <text class="sub" x="452" y="82">[[NODE_C_SUB]]</text>
+
+          <path d="M 160 70 L 230 70" class="arrow" marker-end="url(#arrow)"/>
+          <path d="M 370 70 L 440 70" class="arrow" marker-end="url(#arrow)"/>
+
+          <text x="300" y="170" class="sub" style="text-anchor:middle;font-style:italic">
+            Placeholder. Reemplazar con el modelo real del proyecto.
+          </text>
+        </svg>
+        <p style="font-size:12px;color:var(--ink-3);text-align:center;margin:10px 0 0;font-style:italic">
+          Diagrama del flujo de [[PROJECT_TITLE]]
+        </p>
+      </div>
+
+      <!--
+        CODE SNIPPETS con highlight
+        Soportados por _syntax.js: language-ts, language-sql, language-json.
+        Indentación normal — no se escapan los caracteres especiales del lenguaje.
+      -->
+      <h3 style="font-size:14px;font-weight:700;margin:20px 0 8px;color:var(--ink)">Schema (SQL)</h3>
+<pre><code class="language-sql">-- [[PROJECT_TITLE]] · tabla principal
+CREATE TABLE [[TABLE_NAME]] (
+  id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  created_at  timestamptz NOT NULL DEFAULT now(),
+  status      text CHECK (status IN ('pending', 'active', 'done')),
+  payload     jsonb NOT NULL
+);
+
+CREATE INDEX ON [[TABLE_NAME]] (status) WHERE status &lt;&gt; 'done';
+CREATE INDEX ON [[TABLE_NAME]] USING gin (payload);
+</code></pre>
+
+      <h3 style="font-size:14px;font-weight:700;margin:20px 0 8px;color:var(--ink)">DTO (TypeScript)</h3>
+<pre><code class="language-ts">// apps/api/src/modules/[[MODULE]]/dto.ts
+import { IsString, IsUUID, IsOptional } from 'class-validator';
+
+export class Create[[ENTITY]]Dto {
+  @IsString()
+  title!: string;
+
+  @IsOptional()
+  @IsUUID()
+  parentId?: string;
+}
+
+export interface [[ENTITY]]Response {
+  id: string;
+  title: string;
+  createdAt: string;
+}
+</code></pre>
+
+      <h3 style="font-size:14px;font-weight:700;margin:20px 0 8px;color:var(--ink)">Payload de ejemplo (JSON)</h3>
+<pre><code class="language-json">{
+  "id": "01234567-89ab-cdef-0123-456789abcdef",
+  "status": "active",
+  "createdAt": "2026-05-17T12:00:00Z",
+  "payload": {
+    "kind": "example",
+    "nested": { "value": 42, "flag": true }
+  }
+}
+</code></pre>
+
+      <!--
+        ASSETS
+        Screenshots y mockups van en docs/mobile/overview/assets/<slug>/ (ver README
+        de esa carpeta). Reference desde aquí con path relativo.
+      -->
+      <h3 style="font-size:14px;font-weight:700;margin:24px 0 8px;color:var(--ink)">Screenshots</h3>
+      <figure style="margin:0;padding:0">
+        <img src="assets/[[SLUG]]/01-screenshot.png" alt="[[SCREENSHOT_ALT]]"
+             style="max-width:100%;border:1px solid var(--line);border-radius:var(--radius-s);display:block;"
+             onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
+        <p style="display:none;font-size:12.5px;color:var(--ink-3);font-style:italic;padding:14px 18px;border:1px dashed var(--line);border-radius:var(--radius-s)">
+          📷 Coloca un screenshot real en
+          <code>docs/mobile/overview/assets/[[SLUG]]/01-screenshot.png</code> y reaparecerá aquí.
+        </p>
+        <figcaption style="font-size:12px;color:var(--ink-3);margin-top:8px;font-style:italic">
+          [[SCREENSHOT_CAPTION]]
+        </figcaption>
+      </figure>
+    </section>
+
+    <!-- ========================= 5. Glosario =============================== -->
+    <section id="glossary">
+      <h2><span class="sec-num">05</span>Glosario</h2>
+      <dl class="glossary">
+        <dt>[[TERM_1]]</dt><dd>[[DEF_1]]</dd>
+        <dt>[[TERM_2]]</dt><dd>[[DEF_2]]</dd>
+      </dl>
+    </section>
+
+  </div>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <p><b>Fuentes:</b> spec en <code>docs/mobile/superpowers/specs/[[SLUG]]-design.md</code> ·
+       planes en <code>docs/mobile/superpowers/plans/[[SLUG]]-f*.md</code></p>
+    <p>Dashboard vivo · sincronizar al avanzar una fase o cerrar un plan. Reglas en
+       <code>docs/mobile/AGENTS.md</code>.</p>
+  </div>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // ===========================================================================
+  // Project overview interactivity (Tier 1 del HTML Maximalism roadmap)
+  // F2 update: tabs opcionales (.tabs button.tab + .tab-panel) activados auto.
+  //
+  // Persiste cambios en localStorage con key `pickler-docs:<slug>:state`.
+  // Botones "Copy progress as MD" y "Copy HTML diff" exportan el delta contra
+  // el snapshot inicial — pegar al chat para que Claude aplique al HTML.
+  // ===========================================================================
+
+  const SLUG = document.body.dataset.slug || 'unknown';
+  const LS_KEY = `pickler-docs:${SLUG}:state`;
+  const $toast = document.getElementById('toast');
+
+  const original = { phases: {}, tasks: {} };
+  document.querySelectorAll('.phase-card').forEach(card => {
+    const num = Number(card.dataset.phase);
+    original.phases[num] = card.dataset.status;
+    const checks = [...card.querySelectorAll('details.tasks input[type=checkbox]')];
+    original.tasks[num] = checks.map(c => c.checked);
+  });
+
+  function loadState() {
+    try { return JSON.parse(localStorage.getItem(LS_KEY)) ?? {}; } catch { return {}; }
+  }
+  function saveState(state) {
+    try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch {}
+  }
+  function captureState() {
+    const state = { phases: {}, tasks: {} };
+    document.querySelectorAll('.phase-card').forEach(card => {
+      const num = Number(card.dataset.phase);
+      state.phases[num] = card.dataset.status;
+      const checks = [...card.querySelectorAll('details.tasks input[type=checkbox]')];
+      state.tasks[num] = checks.map(c => c.checked);
+    });
+    return state;
+  }
+  function applyState() {
+    const state = loadState();
+    document.querySelectorAll('.phase-card').forEach(card => {
+      const num = Number(card.dataset.phase);
+      const ph = state.phases?.[num];
+      if (ph) {
+        card.dataset.status = ph;
+        card.querySelector('.phase-status-control select').value = ph;
+      }
+      const checks = [...card.querySelectorAll('details.tasks input[type=checkbox]')];
+      const persisted = state.tasks?.[num];
+      if (Array.isArray(persisted)) {
+        checks.forEach((c, i) => {
+          if (typeof persisted[i] === 'boolean') {
+            c.checked = persisted[i];
+            c.closest('li').classList.toggle('done', c.checked);
+          }
+        });
+      }
+      updateTaskCounter(card);
+    });
+    updateStatusBoard();
+  }
+
+  document.querySelectorAll('.phase-card').forEach(card => {
+    const sel = card.querySelector('.phase-status-control select');
+    sel.addEventListener('change', () => {
+      card.dataset.status = sel.value;
+      saveState(captureState());
+      updateStatusBoard();
+    });
+    card.querySelectorAll('details.tasks li input[type=checkbox]:checked').forEach(c => {
+      c.closest('li').classList.add('done');
+    });
+  });
+
+  function updateTaskCounter(card) {
+    const counter = card.querySelector('[data-tasks-counter]');
+    if (!counter) return;
+    const checks = [...card.querySelectorAll('details.tasks input[type=checkbox]')];
+    const done = checks.filter(c => c.checked).length;
+    counter.textContent = `${done}/${checks.length}`;
+  }
+  document.querySelectorAll('.phase-card details.tasks input[type=checkbox]').forEach(c => {
+    c.addEventListener('change', () => {
+      c.closest('li').classList.toggle('done', c.checked);
+      const card = c.closest('.phase-card');
+      updateTaskCounter(card);
+      saveState(captureState());
+    });
+  });
+
+  function updateStatusBoard() {
+    const phases = [...document.querySelectorAll('.phase-card')].map(card => ({
+      num: Number(card.dataset.phase),
+      status: card.dataset.status,
+      title: card.querySelector('.phase-title').textContent.trim(),
+    }));
+    const total = phases.length;
+    const completed = phases.filter(p => p.status === 'completed').length;
+    const planWritten = phases.filter(p => p.status !== 'pending').length;
+
+    const $plans = document.querySelector('[data-sb="plans"]');
+    const $impl = document.querySelector('[data-sb="impl"]');
+    const $next = document.querySelector('[data-sb="next"]');
+    if ($plans) $plans.textContent = `${planWritten}/${total}`;
+    if ($impl) $impl.textContent = `${completed}/${total}`;
+    if ($next) {
+      const nextPhase = phases.find(p => p.status === 'in_progress')
+        || phases.find(p => p.status === 'plan_ready')
+        || phases.find(p => p.status === 'pending');
+      $next.textContent = nextPhase ? `F${nextPhase.num}: ${nextPhase.title}` : ($next.dataset.done || '— todo completo');
+    }
+
+    const $bar = document.getElementById('sb-progress-bar');
+    if ($bar) {
+      $bar.replaceChildren(...phases.map(p => {
+        const seg = document.createElement('div');
+        seg.className = 'seg';
+        seg.dataset.status = p.status;
+        seg.style.width = `${100 / total}%`;
+        seg.title = `F${p.num}: ${p.title} (${p.status.replace('_', ' ')})`;
+        return seg;
+      }));
+    }
+
+    const $globalPill = document.querySelector('[data-sb="status"]');
+    if ($globalPill) {
+      if (completed === total) {
+        $globalPill.textContent = 'Completed';
+        $globalPill.className = 'sb-pill completed';
+      } else {
+        $globalPill.textContent = 'Active';
+        $globalPill.className = 'sb-pill active';
+      }
+    }
+  }
+
+  function buildProgressMd() {
+    const lines = [`# ${document.title} — progress snapshot`, ''];
+    lines.push(`_Capturado desde ${SLUG}.html en ${new Date().toISOString()}_`, '');
+    document.querySelectorAll('.phase-card').forEach(card => {
+      const num = card.dataset.phase;
+      const status = card.dataset.status;
+      const title = card.querySelector('.phase-title').textContent.trim();
+      lines.push(`## F${num}: ${title}`);
+      lines.push(`Status: \`${status}\``, '');
+      const tasks = [...card.querySelectorAll('details.tasks li')];
+      if (tasks.length) {
+        lines.push('Tasks:');
+        tasks.forEach(li => {
+          const cb = li.querySelector('input[type=checkbox]');
+          const text = li.textContent.trim();
+          lines.push(`- [${cb.checked ? 'x' : ' '}] ${text}`);
+        });
+        lines.push('');
+      }
+    });
+    return lines.join('\n');
+  }
+
+  function buildHtmlDiff() {
+    const current = captureState();
+    const changes = [];
+    document.querySelectorAll('.phase-card').forEach(card => {
+      const num = Number(card.dataset.phase);
+      if (current.phases[num] !== original.phases[num]) {
+        changes.push(
+          `// Cambiar status de F${num} en el HTML:\n` +
+          `<article class="phase-card" data-phase="${num}" data-status="${original.phases[num]}">\n` +
+          `// → \n` +
+          `<article class="phase-card" data-phase="${num}" data-status="${current.phases[num]}">`
+        );
+      }
+      const taskNodes = [...card.querySelectorAll('details.tasks li')];
+      const curTasks = current.tasks[num] || [];
+      const origTasks = original.tasks[num] || [];
+      taskNodes.forEach((li, i) => {
+        if (curTasks[i] !== origTasks[i]) {
+          const text = li.textContent.trim();
+          changes.push(
+            `// F${num} task #${i}: ${text}\n` +
+            `// ${origTasks[i] ? 'desmarcar' : 'marcar'} checkbox → ` +
+            `<input type="checkbox"${curTasks[i] ? ' checked' : ''}>`
+          );
+        }
+      });
+    });
+    if (changes.length === 0) return '// Sin cambios pendientes vs el HTML actual.';
+    return [
+      `// Cambios pendientes en ${SLUG}.html (aplicar y commitear):`,
+      '',
+      ...changes,
+    ].join('\n\n');
+  }
+
+  function showToast(msg) {
+    $toast.textContent = msg;
+    $toast.dataset.show = 'true';
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(() => { $toast.dataset.show = 'false'; }, 2400);
+  }
+  async function copy(text, btn, successMsg, originalLabel) {
+    try {
+      await navigator.clipboard.writeText(text);
+      btn.dataset.copied = 'true';
+      btn.textContent = '✓ Copiado';
+      showToast(successMsg);
+      setTimeout(() => { btn.dataset.copied = 'false'; btn.textContent = originalLabel; }, 1800);
+    } catch {
+      showToast('Clipboard no disponible — abre la consola y copia desde el log');
+      console.log(text);
+    }
+  }
+
+  document.getElementById('btn-copy-md').addEventListener('click', (e) => {
+    copy(buildProgressMd(), e.currentTarget,
+      'MD copiado — pégalo al chat de Claude', '📋 Copy progress as MD');
+  });
+  document.getElementById('btn-copy-diff').addEventListener('click', (e) => {
+    copy(buildHtmlDiff(), e.currentTarget,
+      'HTML diff copiado — pídele a Claude que lo aplique', '📋 Copy HTML diff for Claude');
+  });
+  document.getElementById('btn-reset-local').addEventListener('click', () => {
+    if (!confirm('¿Borrar los cambios locales y volver al estado del HTML?')) return;
+    localStorage.removeItem(LS_KEY);
+    location.reload();
+  });
+
+  // -------- F2: Tabs opcionales (auto-wire si hay .tabs en el DOM) -----------
+  function initTabs() {
+    document.querySelectorAll('.tabs').forEach(tablist => {
+      const tabs = [...tablist.querySelectorAll('button.tab[aria-controls]')];
+      const panels = tabs
+        .map(tab => document.getElementById(tab.getAttribute('aria-controls')))
+        .filter(Boolean);
+      tabs.forEach((tab, i) => {
+        tab.addEventListener('click', () => {
+          tabs.forEach(t => t.setAttribute('aria-selected', 'false'));
+          panels.forEach(p => { p.hidden = true; });
+          tab.setAttribute('aria-selected', 'true');
+          if (panels[i]) panels[i].hidden = false;
+        });
+      });
+    });
+  }
+
+  applyState();
+  initTabs();
+</script>
+
+</body>
+</html>

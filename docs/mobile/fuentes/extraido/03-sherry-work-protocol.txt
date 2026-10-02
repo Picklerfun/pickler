@@ -1,0 +1,294 @@
+
+### [Title] Sherry Work Protocol -
+
+### [Title] Technical Architecture
+
+[TABLA]
+STATUS Propuesta v0.1 |  | OWNER Producto e ingeniería |  | LAST UPDATED 7 septiembre 2026
+[/TABLA]
+
+
+[TABLA]
+Versión | 0.1 · Arquitectura propuesta
+Audiencia | Desarrolladores de Sherry
+Referencia | Explicar trabajo verificable
+Alcance | Protocolo universal y primera policy de publishing
+[/TABLA]
+
+
+### [Heading1] 1  Definición y alcance del protocolo
+Sherry es un work protocol para agentes autónomos. Convierte una necesidad empresarial en trabajo ejecutable, demostrable mediante evidencia, verificable bajo reglas acordadas y liquidable económicamente. La unidad central es el Work Intent: el contrato de trabajo que conecta a la empresa, al agente, al verificador y al escrow.
+LinkedIn publishing es únicamente la primera policy e implementación concreta del protocolo. El núcleo debe poder describir otras verticales sin cambiar su máquina de estados ni sus contratos de evidencia y settlement. Descubrimiento y matching son capacidades de soporte; un marketplace de perfiles no define el producto.
+Esta especificación propone una arquitectura implementable. Los estados, contratos, límites y decisiones del MVP que se detallan a continuación son recomendaciones de diseño; su adopción establece el comportamiento esperado del sistema. “Debe” expresa un requisito de esta propuesta.
+
+### [Heading3] Objetivos de diseño
+
+[TABLA]
+Objetivo | Criterio verificable
+Trabajo reproducible | Cada ejecución referencia el mismo intent, paquete y conjunto de policies versionados.
+Preparación explícita | Ningún trabajo se financia con bloqueadores de readiness abiertos.
+Pago trazable | Todo payout se vincula a evidencia, decisión y escrow del trabajo.
+Extensibilidad | La cantidad de posts y las reglas de LinkedIn viven en la extensión, no en el núcleo.
+[/TABLA]
+
+
+### [Heading3] Separación entre outcome y deliverables
+Outcome describe el propósito: ayudar a que desarrolladores de agentes entiendan la propuesta de Sherry ante un lanzamiento. Deliverables describe artefactos: cinco textos de LinkedIn, una secuencia narrativa y una recomendación de publicación. Producir cinco textos no demuestra por sí solo que cambió la percepción de la audiencia.
+En el MVP, el pago depende de entregables y criterios de aceptación observables. Alcance, engagement o conversión son métricas informativas, salvo que otra policy defina atribución, ventana de medición y fuentes verificables. El outcome orienta la ejecución sin prometer resultados comerciales no controlables.
+
+### [Heading1] 2  Arquitectura en tres capas
+IDENTITY LAYER · ERC-8004
+[Identidad]  [Reputación]  [Validación independiente]
+       | señales de identidad y confianza
+       v
+WORK PROTOCOL · SHERRY
+[Empresa / App] ---> [Intent Compiler]
+                           ^
+ [Workspace Context] + [Research] + [Policy Registry/Engine]
+                           |
+                           v
+ [Execution Package Builder] ---> [Readiness Engine]
+                           |          | faltantes
+                           |<---------+
+                           v aprobación y versión congelada
+ [Work Intent Service] ---> [Matching] <--- [Agent Indexer]
+                           |
+                           v
+ [Execution Service] ---> [Agente] ---> [Evidence Store]
+                                              |
+                                     [Verification Engine]
+                                              | decisión
+                                              v
+SETTLEMENT LAYER
+ [Escrow financiado] ---> [Settlement Contract]
+                            | payout / refund
+                            v
+ [Event Indexer] ---> estado confirmado en Work Intent
+                            |
+                            +---> feedback ---> ERC-8004
+Figura 1. Dependencias y flujo principal. Identity aporta señales laterales al Work Protocol; Settlement aplica consecuencias económicas. Las flechas describen intercambios lógicos, no requieren desplegar un microservicio por caja.
+Identity identifica quién ejecuta. Work Protocol determina qué debe hacerse, con qué contexto, permisos y evidencia. Settlement mantiene fondos y aplica payout o refund según decisiones autorizadas. La verificación del trabajo ocurre en Sherry; el contrato comprueba autorizaciones y condiciones económicas, no interpreta un brief.
+Para el MVP se propone un backend modular, una base relacional, almacenamiento privado de objetos y una cola de trabajos. Compiler, policies y verificación mantienen interfaces separadas aunque compartan despliegue. El contrato de escrow es el límite independiente para los fondos.
+
+### [Heading1] 3  Work Intent como interfaz universal
+El Work Intent combina términos inmutables por versión con un estado operativo mutable. Su esquema base no contiene campos de LinkedIn. Las extensiones se validan mediante la policy seleccionada. El Execution Package se referencia desde el intent; no sustituye sus términos.
+
+[TABLA]
+Grupo de campos | Contrato propuesto
+Identidad y versión | id, workspaceId, creator, schemaVersion, termsVersion, state, stateRevision.
+Propósito y resultado | outcome y deliverables[] con tipo, cantidad, formato y criterio de aceptación.
+Ejecución | executionRequirements, resources[], constraints[], permissions, deadline y límites de intentos.
+Policy | policyRef, policyVersion, resolvedPolicyHash y extension con datos específicos.
+Paquete | executionPackageRef, packageHash, contextSnapshotId y readinessReportRef.
+Verificación | evidenceSchemaRef, criterios, verifier, reviewWindow, disputeWindow y resolver.
+Compensación | chainId, asset, amount en unidades mínimas, escrowRef y reglas de release/refund.
+Asignación | agentRegistry, agentId, executorKey, payoutRecipient y assignmentId; nulos antes de asignar.
+[/TABLA]
+
+
+### [Heading3] Reglas de identidad y compromiso
+Antes de READY pueden existir campos incompletos. READY exige términos completos y aprobación explícita del creador. Cualquier edición antes del funding incrementa termsVersion, invalida el readiness previo y regresa a PREPARING. El funding debe referenciar exactamente la versión aprobada.
+Al financiar, se congela un manifiesto canónico de términos, policy resuelta y hash del paquete. state y stateRevision quedan fuera del hash de términos para permitir transiciones. Después de FUNDED, una corrección del brief requiere cerrar o resolver el trabajo existente y crear otro intent; no se sobrescribe el contrato en curso.
+El agente acepta el manifiesto congelado en la asignación. Evidence y VerificationResult deben incluir intentId, termsVersion, packageHash, assignmentId y attemptId. Las fechas se serializan en UTC; las cantidades monetarias se expresan como enteros, nunca como coma flotante.
+
+### [Heading1] 4  Policies y jerarquía de contexto
+Protocol                     work.v1
+   | extends
+   v
+Publishing                   publishing.v1
+   | extends
+   v
+LinkedIn Publishing          linkedin.publishing.v1
+   | instancia con parámetros
+   v
+Specific job                 campaña de 5 posts
+La herencia tiene cuatro posiciones, pero el contexto se organiza en tres niveles. LinkedIn aporta reglas de canal al tercer nivel; el specific job aporta valores de campaña. Una instancia no necesita crear una nueva policy. El número cinco es un parámetro del job, no una constante de linkedin.publishing.v1.
+
+[TABLA]
+Nivel de contexto | Información que agrega
+1 · Protocol universal | Outcome, entregables, fechas, compensación, recursos, restricciones, permisos, evidencia y verificación.
+2 · Publishing domain | Marca, audiencia, tono, principios editoriales, pilares de mensaje, claims permitidos, CTA, terminología e historial.
+3 · Job específico | LinkedIn y campaña de cinco posts: evento que la motiva, objetivo, narrativa, capacidades anunciables, fuentes, temas, orden, CTA, cuenta y responsable de publicar.
+[/TABLA]
+
+
+### [Heading3] Policy Engine e inheritance
+Policy Registry conserva definiciones inmutables con id, versión, parentRefs, inputSchema, evidenceSchema, reglas de ejecución, verificaciones, permisos y parámetros. Policy Engine resuelve la cadena, valida sus esquemas y produce una policy efectiva con hash y procedencia de cada regla.
+Las restricciones obligatorias se acumulan; los permisos efectivos son la intersección de los permitidos por los ancestros y el job. Una policy hija puede restringir, pero no eliminar un requisito obligatorio del padre. Solo los parámetros declarados configurables aceptan overrides. Ciclos, versiones ausentes o reglas contradictorias bloquean READY.
+Ejemplo: work.v1 exige evidencia; publishing.v1 añade respaldo de claims; linkedin.publishing.v1 exige texto y orden por post; el job fija count=5 y executionMode=draft_only. Un prompt puede orientar la generación, pero no sustituye estas reglas estructuradas ni decide unilateralmente el pago.
+
+### [Heading1] 5  Preparación del trabajo y Execution Package
+El Execution Package es un artefacto generado por Sherry. Integra la solicitud, contexto persistente, investigación y requisitos de policy en instrucciones ejecutables. El usuario describe la necesidad; Sherry prepara una propuesta; el usuario corrige; el sistema valida y congela el resultado aprobado.
+
+### [Heading3] Intent Compiler
+Recibe humanRequest, workspaceId y referencias autorizadas. Detecta el tipo de trabajo, separa outcome de deliverables, propone la policy y normaliza el Work Intent. Solicita contexto al store y al Research Layer, registra supuestos y genera preguntas únicamente para faltantes críticos. Su salida es un intent candidato, un mapa de contexto y una lista de ambigüedades; no una autorización para ejecutar.
+El Compiler puede usar un modelo generativo. Las salidas deben pasar validación de esquema y reglas deterministas. Los hechos recuperados conservan fuente, fecha y estado de aprobación. Una inferencia sobre un lanzamiento o un cliente nunca se convierte automáticamente en un hecho aprobado.
+
+### [Heading3] Execution Package Builder
+Construye un manifiesto con brief normalizado, snapshot de contexto, entregables, narrativa propuesta, activos versionados, mapa de fuentes, instrucciones, acciones permitidas, criterios de aceptación y formato de evidence. Cada activo tiene referencia, hash y clasificación de acceso. Las credenciales quedan fuera del paquete; se entregan mediante permisos temporales cuando corresponda.
+
+### [Heading3] Execution Readiness y Readiness Engine
+Readiness responde si un agente competente puede ejecutar sin inventar contexto crítico. Evalúa claridad del objetivo, completitud de inputs, acceso a recursos, coherencia de restricciones, viabilidad temporal, verificabilidad y configuración de settlement. No predice calidad, éxito comercial ni honestidad del agente.
+ReadinessReport
+  ready: false
+  blockers: [campaign_objective, approved_sources]
+  warnings: [few_reference_examples]
+  checks: [{ruleId, status, reason, sourceRef}]
+  intentVersion: 3
+  resolvedPolicyHash: <hash>
+  evaluatedAt: <UTC>
+En el MVP, ready=true exige todos los checks obligatorios en PASS, cero contradicciones y aprobación del usuario sobre esa versión. Un score porcentual es opcional e informativo; nunca compensa un bloqueador. El informe se invalida al editar términos o perder acceso a un recurso obligatorio antes del funding.
+
+### [Heading1] 6  Lifecycle y máquina de estados
+DRAFT --> PREPARING --> READY --> FUNDED --> OPEN
+             ^           |                    |
+             +-- edición-+                    v
+                                          ASSIGNED
+                                              |
+                                              v
+                                          EXECUTING <--------+
+                                              |              |
+                                              v              |
+                                      EVIDENCE_SUBMITTED     |
+                                              |              |
+                                              v              |
+                                          VERIFYING          |
+                                         /    |    \         |
+                                    PASS    FAIL  conflicto   |
+                                      |       |      |       |
+                                      v       v      v       |
+                                  VERIFIED  REVISION --------+
+                                      |           DISPUTED
+                          ventana cerrada             |
+                                      |       decisión del resolver
+                                      v          /          \
+                                   SETTLED <---+            REFUNDED
+
+DRAFT / PREPARING / READY -- cancelar --> CANCELLED
+FUNDED / OPEN -- cancelar o expirar sin asignación --> REFUNDED
+ASSIGNED / EXECUTING / REVISION -- abandono o plazo --> DISPUTED
+VERIFIED -- impugnación dentro de ventana --> DISPUTED
+Figura 2. Camino principal y salidas del MVP. SETTLED, REFUNDED y CANCELLED son terminales. FAIL es un resultado de evaluación, no un estado persistente adicional. No se paga durante una revisión o disputa.
+
+### [Heading3] Guardas y autoridad
+El creador solicita preparar, aprobar y financiar. Work Intent Service verifica readiness y versión; Event Indexer confirma el funding antes de OPEN. Matching propone un agente y el servicio asigna atómicamente solo cuando este acepta términos y permisos. Execution Service inicia una ejecución únicamente desde ASSIGNED o REVISION.
+Evidence Store confirma persistencia antes de EVIDENCE_SUBMITTED. Verification Engine emite PASS, FAIL o INCONCLUSIVE sobre el attempt exacto. PASS habilita VERIFIED; FAIL permite REVISION solo si quedan intentos y plazo, en otro caso pasa a DISPUTED. INCONCLUSIVE requiere resolución humana.
+El contrato aplica SETTLED o REFUNDED tras una operación confirmada. VERIFIED espera el cierre de la ventana de impugnación; una disputa la bloquea. Resolver autorizado decide pago completo o reembolso completo en el MVP. Los límites y ventanas deben estar definidos antes de READY; un timeout nunca autoriza un payout implícito.
+
+### [Heading1] 7  Flujo end to end y verificación
+1. La empresa solicita cinco posts. Work Intent Service crea DRAFT con identidad y workspace. Compiler reconoce los entregables y detecta si falta el propósito de la campaña.
+2. Sherry recupera marca y producto, consulta fuentes autorizadas y resuelve las policies. Propone narrativa, fuentes y CTA. El usuario confirma o corrige los hechos y los parámetros específicos.
+3. Builder genera el paquete; Readiness Engine valida su versión. El usuario aprueba los términos y financia el escrow contra el hash del manifiesto. Tras confirmación, el intent se abre a agentes elegibles.
+4. Agent Indexer aporta identidad y señales de capacidad. Matching filtra compatibilidad de policy, permisos, disponibilidad y presupuesto, y usa reputación como señal de ranking. El agente acepta la asignación y el hash congelado.
+5. Execution Service entrega el paquete y registra intentos. El agente produce los artefactos; Evidence Store persiste contenido y hashes. Se registra un receipt antes de iniciar la evaluación.
+6. Verification Engine combina checks deterministas con revisión editorial. Cada decisión conserva criterios, resultado, razones y referencias de evidencia. Las revisiones producen un attempt nuevo, sin cambiar el brief.
+7. Al pasar la verificación y cerrar la ventana de disputa, Settlement Contract libera el importe. Event Indexer reconcilia la transacción; el sistema actualiza el estado y prepara feedback vinculado al trabajo para el loop de reputación.
+
+### [Heading3] Contrato de evidencia y decisión
+
+[TABLA]
+Artefacto | Contenido mínimo
+EvidencePackage | intentId, termsVersion, assignmentId, attemptId, packageHash, artifacts[] con hash y tipo, fuentes, timestamps y firma del ejecutor.
+VerificationResult | evidenceHash, resolvedPolicyHash, criterios evaluados, PASS/FAIL/INCONCLUSIVE, razones, verifierId, timestamp y firma.
+Settlement authorization | escrowId, intentId, hashes de términos y decisión, importe, destinatario, nonce, expiración, chainId y contrato destino.
+[/TABLA]
+
+Para draft_only, se comprueban cinco textos distintos, secuencia, CTA y referencias para claims verificables; el revisor autorizado evalúa alineación editorial con una rúbrica congelada. No se exige una URL publicada. Una futura modalidad publish requerirá permisos de cuenta y recibos o identificadores de plataforma; una captura por sí sola no prueba publicación.
+
+### [Heading1] 8  Componentes técnicos de preparación
+Estos son módulos lógicos sugeridos. El MVP puede agruparlos en un backend y workers, manteniendo sus contratos y responsabilidades separados.
+
+[TABLA]
+Componente | Entrada y salida | Persistencia y fallo
+Workspace Context Store | Contexto aprobado de empresa, producto y marca → snapshots por workspace. | Base relacional y objetos privados. Sin acceso a un recurso requerido, readiness bloqueado.
+Intent Compiler | Solicitud y contexto → Work Intent candidato, supuestos y preguntas. | Versiones de compilación. Salida inválida no avanza el estado.
+Research Layer | Consultas autorizadas → hechos con fuente y fecha. | Fuentes y snapshots. Falla explícita; no inventa datos ni permisos.
+Policy Registry / Engine | Policy y ancestros → reglas efectivas, schemas y hash. | Versiones inmutables. Conflictos o versiones faltantes bloquean preparación.
+Execution Package Builder | Intent, contexto y policy → manifiesto y activos. | Objetos versionados. No publica paquete parcial como aprobado.
+Readiness Engine | Versión candidata → checks, blockers y ready. | Informe ligado a hashes. Invalida evaluación al cambiar inputs.
+Work Intent Service | Comandos autorizados → versiones, estados y eventos. | Base relacional y outbox. Transacción atómica con control de revisión.
+[/TABLA]
+
+Workspace Context Store guarda el contexto reusable; el paquete incorpora únicamente el subconjunto necesario para ese trabajo. Esta separación permite que la empresa actualice su posicionamiento sin cambiar retrospectivamente lo que recibió un agente.
+La preparación es iterativa: Compiler pide datos, Builder recompone y Readiness explica los faltantes. Solo Work Intent Service puede materializar la transición a READY y aceptar el compromiso de funding sobre la versión aprobada.
+
+### [Heading1] 9  Componentes de ejecución y liquidación
+
+[TABLA]
+Componente | Entrada y salida | Persistencia y fallo
+Agent Indexer | Registros ERC-8004 → agentes, endpoints y señales. | Índice con bloque de origen. Marca datos obsoletos y vuelve a sincronizar.
+Matching Engine | Intent abierto y agentes → candidatos compatibles. | Ranking y motivos. Si no hay candidatos, conserva OPEN hasta expiración.
+Execution Service | Assignment aceptado → intento y solicitud de ejecución. | Cola y registro de intentos. Reintentos acotados; nunca duplica asignaciones activas.
+Evidence Store | Artefactos del agente → receipt, referencias y hashes. | Objetos privados inmutables. Escritura incompleta impide verificar.
+Verification Engine | Evidence y policy congelada → decisión auditable. | Resultados por intento. Dependencia fallida produce pendiente o INCONCLUSIVE.
+Settlement Contract | Funding y decisión autorizada → payout o refund. | Estado onchain. Rechaza firmas, destinatarios o condiciones inválidas.
+Event Indexer | Logs onchain → proyección y reconciliación. | Cursor, blockHash y eventos únicos. Reprocesa reorganizaciones sin duplicar efectos.
+[/TABLA]
+
+
+### [Heading3] Límites de confianza
+El agente no puede verificar su propio trabajo ni autorizar el pago. En el MVP se propone un verificador operado por Sherry y un resolver humano autorizado, ambos definidos en términos. Esto implica confianza en esos actores para la calidad editorial y las disputas; el escrow aporta ejecución de reglas económicas, no veracidad automática del contenido.
+El pagador, el ejecutor, el verificador y el resolver se autentican y autorizan por rol. PayoutRecipient queda fijado en la asignación mediante aceptación verificable y se vincula al escrow; una actualización posterior de metadatos del agente no redirige fondos de un trabajo existente.
+
+### [Heading1] 10  Onchain offchain y ERC 8004
+
+[TABLA]
+Onchain propuesto | Offchain propuesto
+EscrowId, compromiso de términos y versión, importe, activo y pagador. | Work Intent completo, contexto de empresa, conversaciones, fuentes y archivos.
+Identidad del agente asignado y destinatario aceptado al liquidar. | Discovery, ranking, aceptación firmada y registros operativos de ejecución.
+Hashes de evidencia y decisión aceptados por el contrato. | Contenido de evidence, rúbricas, evaluación editorial y trazas.
+Funding, payout, refund y estado económico del escrow. | Lifecycle detallado, proyección de eventos y reportes de readiness.
+[/TABLA]
+
+El compromiso usa serialización canónica y algoritmo de hash versionados. El manifiesto enlaza términos, policy efectiva y paquete; la decisión enlaza evidence. Un hash prueba integridad respecto de bytes conocidos, no calidad, disponibilidad ni confidencialidad. El almacenamiento debe conservar los bytes necesarios para auditoría y resolución durante el plazo acordado.
+La cadena es autoridad para fondos y liquidación; Work Intent Service lo es para el workflow operativo. La UI distingue transacciones pendientes de confirmadas. El contrato verifica firmas, versión, nonce, identidad del escrow y resultado autorizado antes de transferir; no descarga archivos ni ejecuta modelos.
+
+### [Heading3] Integración con ERC 8004
+ERC-8004 define registros de identidad, reputación y validación; los pagos quedan fuera de su alcance. La identidad global combina agentRegistry y agentId. Su especificación consultada está en estado Draft, por lo que la integración debe fijar red, direcciones y versión del adaptador. Fuente oficial: https://eips.ethereum.org/EIPS/eip-8004
+Sherry debe reutilizar el indexador existente indicado por el equipo y comprobar su cobertura. La reputación y las capacidades declaradas ayudan a seleccionar; no sustituyen la aceptación ni la verificación del trabajo actual. La integración de validaciones independientes queda como extensión posterior del MVP.
+Reputación --> selección --> ejecución --> evidencia
+     ^                                      |
+     |                                      v
+ feedback autorizado <-- settlement <-- verificación
+Propuesta Sherry: después del cierre, generar feedback trazable por intentId, agente, policy y decisión. El emisor elegible lo publica según las reglas del registro; el indexador confirma y evita duplicados propios. Conservar revocaciones y procedencia, y separar métricas por tipo de trabajo. Publicar solo referencias sin contenido empresarial privado.
+
+### [Heading1] 11  API consistencia y operación
+
+### [Heading3] Superficie mínima propuesta
+POST /work-intents crea el borrador; PATCH /work-intents/{id} edita términos antes del compromiso; POST /{id}/prepare compila; POST /{id}/approve aprueba versión y hashes; POST /{id}/funding prepara la operación de escrow. La confirmación de funding proviene del indexador, no de una afirmación del cliente.
+POST /{id}/assignments acepta una asignación; POST /{id}/attempts registra inicio; POST /{id}/evidence entrega evidencia; POST /{id}/verification registra decisión del verificador; POST /{id}/disputes abre disputa. GET /{id} devuelve estado y revisión; GET /{id}/events expone historial autorizado. Son contratos sugeridos, no endpoints ya implementados.
+Toda mutación exige identidad, rol, Idempotency-Key y expectedStateRevision. Una repetición idéntica devuelve el mismo resultado; reutilizar clave con otro payload devuelve conflicto. El servidor rechaza transiciones no permitidas y referencias a otra versión o workspace.
+
+[TABLA]
+Escenario | Comportamiento esperado | Mecanismo
+Asignaciones simultáneas | Solo una aceptación gana. | Compare-and-swap y unicidad por intent activo.
+Evento repetido | No repite payout ni feedback. | Clave chainId, txHash, logIndex; nonce económico único.
+Fallo tras guardar estado | Entrega eventual del evento. | Outbox en la misma transacción y consumers idempotentes.
+Reorganización de cadena | Reconstruye proyección; no muestra cierre prematuro. | Confirmaciones configuradas y registro de blockHash.
+Cambio de policy | Trabajo vigente conserva reglas. | Versiones y hashes congelados.
+[/TABLA]
+
+
+### [Heading3] Seguridad y operación
+Aislar workspace y job en cada acceso; cifrar objetos privados y usar enlaces temporales. Credenciales en un almacén de secretos, nunca en prompts, evidence o logs. Fuentes y archivos son datos no confiables: no pueden ampliar permisos. El agente recibe acceso mínimo y revocable, y la revocación se registra como incidencia si bloquea la ejecución.
+Medir tiempo de preparación, bloqueadores frecuentes, intentos por job, tiempo de verificación, disputas, retraso del indexador y discrepancias de escrow. Alertar ante cualquier desbalance de fondos o transición imposible. Retención y ventanas deben fijarse antes del piloto; conservar evidencia al menos hasta el cierre de disputa y su auditoría acordada.
+
+### [Heading1] 12  Alcance concreto del MVP
+
+### [Heading3] Primera implementación
+Implementar work.v1 → publishing.v1 → linkedin.publishing.v1 con una campaña de cinco posts en modo draft_only. Entregar cinco textos editables, estructura narrativa, CTA y recomendación de orden. La publicación la realiza la empresa fuera del flujo de liquidación. Esta elección reduce dependencias de plataforma sin convertir el núcleo en un modelo de campañas de LinkedIn.
+Incluir un workspace con contexto aprobado; Compiler con propuesta y corrección; Builder con snapshots; readiness binario; policies estructuradas; un agente por intent; hasta una revisión; evidencia versionada; checks automáticos y revisión humana; escrow en una sola red y activo; payout o refund completos; y feedback trazable al cerrar el trabajo.
+Quedan fuera del MVP: publicación automática, acceso a cuentas sociales, múltiples agentes coordinados, subcontratación, pagos parciales por hitos, garantías de engagement, arbitraje descentralizado y otras verticales. Sus extensiones deben reutilizar los objetos WorkIntent, Policy, ExecutionPackage, Evidence y VerificationResult.
+
+[TABLA]
+Hito | Entrega | Criterio de salida
+1 · Preparación | Schemas, policies y paquete. | Un input ambiguo bloquea READY; un paquete aprobado se puede reconstruir por versión.
+2 · Ejecución | Asignación, intentos y verificación. | Caso PASS y caso de revisión completos; intento de usar otra versión rechazado.
+3 · Escrow en testnet | Funding, release, refund y disputa. | Sin doble pago ante reintentos; no hay payout con disputa ni evidencia incorrecta.
+4 · Piloto controlado | Índice reconciliado y loop de feedback. | Historial reconstruible; privacidad por workspace y recuperación de fallos verificadas.
+[/TABLA]
+
+
+### [Heading3] Decisiones pendientes antes del piloto
+Seleccionar red, activo, contrato o estándar concreto de escrow y direcciones de registros ERC-8004; designar verificador y resolver; fijar deadlines, ventanas de revisión y disputa, retención y confirmaciones de cadena. La mención previa de otro estándar de escrow no identifica uno con precisión y no se convierte en una dependencia de esta arquitectura.
+Criterio de extensibilidad: agregar una policy de prueba para otra clase de trabajo sin añadir campos de LinkedIn al esquema universal ni modificar el lifecycle. El producto inicial demuestra el loop completo Need → Intent → Context → Readiness → Commitment → Execution → Evidence → Verification → Settlement → Reputation.

@@ -1,0 +1,1586 @@
+<!doctype html>
+<!--
+  AUTOGENERADO desde 2026-09-15-mobile-fase1.md por scripts/mobile/docs-md-to-html.mjs
+
+  ⚠️  NO EDITES ESTE ARCHIVO. Edita el .md y re-genera.
+  El próximo Write al .md (con el hook activo) sobrescribirá este HTML.
+
+  Reglas en docs/mobile/AGENTS.md sección "MD → HTML autogenerado".
+-->
+<html lang="es-MX">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>App móvil Pickler — Fase 1: plan de implementación · Plan · Pickler</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../overview/_styles.css">
+<script defer src="../../overview/_syntax.js"></script>
+<style>
+  /* Overrides locales del MD-view */
+  .wrap { max-width: 820px; }
+  header.hero { padding: 24px 0 28px; }
+  main { padding: 32px 0 64px; overflow-wrap: anywhere; }
+  @media (max-width: 600px) { nav.toc { position: static; } }
+  main h1 { display: none; } /* el h1 ya está en el hero */
+  main h2 {
+    font-size: 22px; font-weight: 800;
+    margin: 36px 0 12px;
+    letter-spacing: -0.015em;
+    padding-bottom: 6px;
+    border-bottom: 2px solid var(--brand-soft);
+    scroll-margin-top: 72px;
+  }
+  main h3 {
+    font-size: 17px; font-weight: 700;
+    margin: 24px 0 8px;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+    scroll-margin-top: 72px;
+  }
+  main h4 {
+    font-size: 13px; font-weight: 700;
+    margin: 20px 0 6px;
+    text-transform: uppercase; letter-spacing: .06em;
+    color: var(--ink-3);
+  }
+  main p { margin: 0 0 12px; font-size: 14.5px; line-height: 1.65; color: var(--ink); }
+  main blockquote {
+    margin: 14px 0;
+    padding: 12px 18px;
+    background: var(--brand-soft);
+    border-left: 4px solid var(--brand);
+    border-radius: var(--radius-s);
+    color: var(--ink);
+    font-size: 14px; line-height: 1.6;
+  }
+  main blockquote p { margin: 0; }
+  main ul, main ol { margin: 8px 0 14px; padding-left: 26px; font-size: 14.5px; }
+  main ul li, main ol li { margin: 4px 0; line-height: 1.55; }
+  main ul.task-list { list-style: none; padding-left: 4px; }
+  main ul.task-list li {
+    display: flex; align-items: flex-start; gap: 8px;
+    padding: 4px 0;
+  }
+  main ul.task-list li input[type="checkbox"] {
+    margin-top: 4px; accent-color: var(--brand); cursor: pointer;
+    flex-shrink: 0;
+  }
+  main ul.task-list li label { flex: 1; cursor: pointer; }
+  main ul.task-list li.done label { color: var(--ink-3); text-decoration: line-through; text-decoration-color: var(--ink-3); }
+
+  main hr {
+    border: none; border-top: 1px solid var(--line);
+    margin: 32px 0;
+  }
+  main table {
+    width: 100%; border-collapse: collapse;
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: var(--radius); overflow: hidden;
+    margin: 14px 0;
+    font-size: 13.5px;
+  }
+  main table th, main table td {
+    text-align: left; padding: 10px 14px;
+    border-bottom: 1px solid var(--line);
+  }
+  main table th {
+    background: var(--surface-2); font-weight: 700;
+    font-size: 11.5px; color: var(--ink-3);
+    text-transform: uppercase; letter-spacing: .06em;
+  }
+  main table tr:last-child td { border-bottom: none; }
+  main img {
+    max-width: 100%; height: auto;
+    border-radius: var(--radius-s);
+    border: 1px solid var(--line);
+    margin: 10px 0;
+  }
+
+  .md-actions {
+    display: flex; gap: 10px; flex-wrap: wrap;
+    margin: 8px 0 28px;
+    position: sticky; top: 60px;
+    background: color-mix(in srgb, var(--bg) 92%, transparent);
+    backdrop-filter: blur(8px);
+    padding: 10px 0; z-index: 25;
+    border-bottom: 1px solid var(--line);
+  }
+  .md-actions .btn { text-decoration: none; }
+</style>
+</head>
+<body data-slug="2026-09-15-mobile-fase1">
+
+<div class="wrap">
+  <nav class="crumb">
+    <a href="../../overview/index.html">← Catálogo</a>
+    <span class="sep">/</span>
+    <a href="../">superpowers/plans</a>
+    <span class="sep">/</span>
+    <span class="mono">2026-09-15-mobile-fase1.md</span>
+  </nav>
+</div>
+
+<header class="hero">
+  <div class="wrap">
+    <span class="eyebrow"><span class="dot"></span>Plan · markdown source</span>
+    <h1>App móvil Pickler — Fase 1: plan de implementación</h1>
+    <p class="lede" style="margin:0;font-size:13.5px;color:var(--ink-3);font-family:var(--mono)">
+      Autogenerado · source: <code>plans/2026-09-15-mobile-fase1.md</code>
+    </p>
+  </div>
+</header>
+
+<nav class="toc"><div class="wrap">
+       <ul><li><a href="#global-constraints">Global Constraints</a></li><li><a href="#precondicion">Precondición</a></li><li><a href="#mapa-de-archivos">Mapa de archivos</a></li><li><a href="#task-1-scaffold-expo-verificacion-de-toolchain">Task 1: Scaffold Expo + verificación de toolchain</a></li><li><a href="#task-2-config-de-cadena-y-formateo">Task 2: Config de cadena y formateo</a></li><li><a href="#task-3-dominio-de-passkeys-en-cloudflare-pages">Task 3: Dominio de passkeys en Cloudflare Pages</a></li><li><a href="#task-4-derivacion-hd-prf-cuenta-evm">Task 4: Derivación HD (PRF → cuenta EVM)</a></li><li><a href="#task-5-storage-securestore-y-estado-de-cuenta">Task 5: Storage (SecureStore) y estado de cuenta</a></li><li><a href="#task-6-wallet-con-mera-crear-entrar-desbloquear-errores">Task 6: Wallet con Mera (crear, entrar, desbloquear, errores)</a></li><li><a href="#task-7-balances-y-tx-al-faucet-viem">Task 7: Balances y tx al faucet (viem)</a></li><li><a href="#task-8-ui-welcome-home-y-app">Task 8: UI — Welcome, Home y App</a></li><li><a href="#task-9-device-faucet-real-y-testflight">Task 9: Device, faucet real y TestFlight</a></li><li><a href="#task-10-documentacion-del-roadmap-del-bounty">Task 10: Documentación del roadmap del bounty</a></li><li><a href="#handoff-al-cerrar-la-fase">Handoff al cerrar la fase</a></li></ul>
+     </div></nav>
+
+<main>
+  <div class="wrap">
+
+<div class="md-actions">
+  <button type="button" class="btn primary" id="btn-copy-progress">📋 Copy progress as MD</button>
+  <a href="2026-09-15-mobile-fase1.md" class="btn">📝 Ver source MD</a>
+</div>
+    <h1 id="app-movil-pickler-fase-1-plan-de-implementacion">App móvil Pickler — Fase 1: plan de implementación</h1>
+<blockquote>
+<strong>For agentic workers:</strong> REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (<code>- [ ]</code>) syntax for tracking.
+</blockquote>
+<p><strong>Goal:</strong> App Expo/iOS que crea o abre una cuenta EVM en Monad Testnet con passkey (Mera), muestra balance de AUSD y MON, pide AUSD al faucet de Agora, y sube a TestFlight.</p>
+<p><strong>Architecture:</strong> Sin backend. El passkey vive en el iPhone; Mera deriva 32 bytes (PRF) → BIP-39/BIP-32 → llave secp256k1 → cuenta viem. El secreto se guarda en SecureStore con gate biométrico; la dirección sin gate. Un sitio estático en <code>pickler.fun</code> sirve el <code>apple-app-site-association</code> que iOS exige para los passkeys.</p>
+<p><strong>Tech Stack:</strong> Expo SDK 57 (bare vía <code>expo prebuild</code>), React Native 0.86, TypeScript, <code>@category-labs/mera</code> 0.2.0, <code>react-native-passkey</code> 3.6.1, <code>viem</code> 2.55.13, <code>expo-secure-store</code>, <code>expo-crypto</code>, <code>@scure/bip32</code> + <code>@scure/bip39</code>, Jest (<code>jest-expo</code>). Cloudflare Pages para el dominio. Xcode 26.2 + App Store Connect API key para TestFlight.</p>
+<p><strong>Spec:</strong> <code>docs/superpowers/specs/2026-09-15-mobile-fase1-design.md</code></p>
+<h2 id="global-constraints">Global Constraints</h2>
+<ul>
+<li>Red: <strong>Monad Testnet, chain id 10143</strong>, RPC <code>https://testnet-rpc.monad.xyz</code>, explorer <code>https://testnet.monadexplorer.com</code>.</li>
+<li>AUSD testnet: <code>0xa9012a055bd4e0eDfF8Ce09f960291C09D5322dC</code>, <strong>6 decimales</strong> (verificado por RPC 2026-09-15).</li>
+<li>Faucet AUSD: <code>0xd236c18D274E54FAccC3dd9DDA4b27965a73ee6C</code>, <code>requestFunds(address)</code>.</li>
+<li>rpId: <strong><code>pickler.fun</code></strong>. Bundle ID: <strong><code>fun.pickler.app</code></strong>. Team Apple: <strong><code>2PBQJ37Q8W</code></strong>.</li>
+<li>Idioma de la app: inglés. Solo iPhone, portrait.</li>
+<li>Versiones <strong>exactas</strong> en <code>package.json</code> (sin <code>^</code>), como en Proflores.</li>
+<li><code>apps/mobile/ios/</code> y <code>apps/mobile/android/</code> se generan; <strong>no se versionan</strong>.</li>
+<li>Módulos <code>config/</code>, <code>wallet/</code>, <code>storage/</code>, <code>hd/</code> no importan React. <code>ui/</code> no importa viem ni mera.</li>
+<li>Nada se commitea sin autorización de Jesús (<code>global.md</code>). Los pasos &quot;Commit&quot; de este plan asumen que esa autorización se dio al arrancar la ejecución; si no, se dejan pendientes y se listan en el handoff. <strong>Nunca <code>git add -A</code>.</strong></li>
+<li>Toolchain medido: Node 22.22, npm 10.9, Xcode 26.2, simulador iOS 18.6, ASC key <code>MQMB7256MK</code> en <code>~/.appstoreconnect/private_keys/</code>.</li>
+</ul>
+<h2 id="precondicion">Precondición</h2>
+<p>El repo <code>predict</code> no tiene commits. Antes de la Task 1, Jesús autoriza el commit inicial de <code>README.md</code>, <code>.gitignore</code>, <code>docs/</code> en <code>main</code> (<code>git add README.md .gitignore docs &amp;&amp; git commit -m &quot;docs: diseño y spec de fase 1 móvil&quot;</code>). Sin ese commit no se puede crear un worktree; si no se autoriza, el trabajo se hace en el checkout principal y se declara en el handoff.</p>
+<h2 id="mapa-de-archivos">Mapa de archivos</h2>
+<pre><code>apps/mobile/
+  package.json, tsconfig.json, app.config.ts, index.ts, App.tsx
+  babel.config.js, jest.config.js
+  src/polyfills.ts            crypto.getRandomValues para Hermes
+  src/config/chain.ts         chain, direcciones, ABI mínimo, formateo    [puro]
+  src/hd/hd.ts                PRF → mnemonic → seed → llave EVM             [puro]
+  src/storage/storage.ts      SecureStore: address (sin gate), PRF (gate)  [puro salvo SecureStore]
+  src/wallet/wallet.ts        mera: create / signIn / unlock / describeError
+  src/wallet/chain.ts         viem: balances y tx al faucet                 [puro, recibe cliente]
+  src/account.ts              AccountState + helpers                        [puro]
+  src/ui/theme.ts, src/ui/Button.tsx, src/ui/Field.tsx
+  src/screens/Welcome.tsx, src/screens/Home.tsx
+  __tests__/chain.test.ts, hd.test.ts, storage.test.ts, account.test.ts, faucet.test.ts
+  scripts/ios-archive.sh, scripts/ios-upload.sh, ExportOptions.plist, .env.asc (gitignored)
+  README.md
+infra/passkey-domain/
+  public/.well-known/apple-app-site-association
+  wrangler.jsonc, README.md
+docs/04-roadmap-bounty.md
+.gitignore (raíz: + .wrangler/, apps/mobile/ios, apps/mobile/android, .env.asc)</code></pre>
+<hr>
+<h3 id="task-1-scaffold-expo-verificacion-de-toolchain">Task 1: Scaffold Expo + verificación de toolchain</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Create: <code>apps/mobile/</code> (create-expo-app), <code>apps/mobile/app.config.ts</code>, <code>apps/mobile/src/polyfills.ts</code>, <code>apps/mobile/index.ts</code>, <code>apps/mobile/jest.config.js</code></li>
+<li>Modify: <code>.gitignore</code> (raíz)</li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Produces: <code>Constants.expoConfig.extra.rpId: string</code> leído por Task 5; app compilando en simulador.</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Crear la app</strong></label></li>
+</ul>
+<pre><code class="language-bash">cd /Users/josedejesusacevedoflores/Documents/predict
+npx create-expo-app@latest apps/mobile --template blank-typescript --no-install
+cd apps/mobile
+npm install</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Instalar dependencias con versiones compatibles con el SDK y luego fijarlas</strong></label></li>
+</ul>
+<pre><code class="language-bash">npx expo install expo-secure-store expo-crypto expo-constants expo-clipboard react-native-safe-area-context
+npm install @category-labs/mera@0.2.0 react-native-passkey@3.6.1 viem@2.55.13 @scure/base@2.3.0 @scure/bip32@2.3.0 @scure/bip39@2.3.0
+npm install -D jest@~29.7.0 jest-expo @types/jest
+# Quitar todos los ^ y ~ de package.json (dependencies y devDependencies):
+node -e &#39;
+const fs=require(&quot;fs&quot;);const p=JSON.parse(fs.readFileSync(&quot;package.json&quot;));
+for (const k of [&quot;dependencies&quot;,&quot;devDependencies&quot;]) for (const d in p[k]) p[k][d]=p[k][d].replace(/^[\^~]/,&quot;&quot;);
+fs.writeFileSync(&quot;package.json&quot;,JSON.stringify(p,null,2)+&quot;\n&quot;);&#39;
+npm install</code></pre>
+<p>Anotar en el commit las versiones exactas que quedaron (<code>expo</code>, <code>react-native</code>, <code>react</code>).</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Config de la app</strong></label></li>
+</ul>
+<p><code>apps/mobile/app.config.ts</code>:</p>
+<pre><code class="language-ts">import type { ExpoConfig } from &quot;expo/config&quot;;
+
+const rpId = process.env.PICKLER_RP_ID ?? &quot;pickler.fun&quot;;
+const bundleIdentifier = &quot;fun.pickler.app&quot;;
+
+const config: ExpoConfig = {
+  name: &quot;Pickler&quot;,
+  slug: &quot;pickler-mobile&quot;,
+  version: &quot;0.1.0&quot;,
+  orientation: &quot;portrait&quot;,
+  ios: {
+    bundleIdentifier,
+    buildNumber: &quot;1&quot;,
+    supportsTablet: false,
+    associatedDomains: [`webcredentials:${rpId}`],
+    infoPlist: {
+      ITSAppUsesNonExemptEncryption: false,
+    },
+  },
+  plugins: [
+    [
+      &quot;expo-secure-store&quot;,
+      {
+        faceIDPermission:
+          &quot;Pickler uses Face ID to unlock the account stored on this device.&quot;,
+      },
+    ],
+  ],
+  extra: { rpId },
+};
+
+export default config;</code></pre>
+<p>Borrar <code>app.json</code> (el <code>app.config.ts</code> lo reemplaza).</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 4: Polyfill y entrada</strong></label></li>
+</ul>
+<p><code>apps/mobile/src/polyfills.ts</code>:</p>
+<pre><code class="language-ts">import { getRandomValues } from &quot;expo-crypto&quot;;
+
+// Hermes no trae CSPRNG; mera exige crypto.getRandomValues. Importar antes que
+// cualquier otro módulo de la app.
+if (typeof globalThis.crypto?.getRandomValues !== &quot;function&quot;) {
+  Object.defineProperty(globalThis, &quot;crypto&quot;, {
+    configurable: true,
+    value: { ...globalThis.crypto, getRandomValues },
+  });
+}</code></pre>
+<p><code>apps/mobile/index.ts</code>:</p>
+<pre><code class="language-ts">import &quot;./src/polyfills&quot;;
+import { registerRootComponent } from &quot;expo&quot;;
+import App from &quot;./App&quot;;
+
+registerRootComponent(App);</code></pre>
+<p>En <code>package.json</code> poner <code>&quot;main&quot;: &quot;index.ts&quot;</code>.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 5: Jest</strong></label></li>
+</ul>
+<p><code>apps/mobile/jest.config.js</code>:</p>
+<pre><code class="language-js">module.exports = {
+  preset: &quot;jest-expo&quot;,
+  testMatch: [&quot;**/__tests__/**/*.test.ts&quot;],
+  transformIgnorePatterns: [
+    &quot;node_modules/(?!((jest-)?react-native|@react-native(-community)?)|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@sentry/react-native|native-base|react-native-svg|@category-labs/.*|viem|@scure/.*|@noble/.*)&quot;,
+  ],
+};</code></pre>
+<p>Agregar script <code>&quot;test&quot;: &quot;jest&quot;</code> en <code>package.json</code>. Crear <code>__tests__/smoke.test.ts</code>:</p>
+<pre><code class="language-ts">test(&quot;jest runs&quot;, () =&gt; {
+  expect(1 + 1).toBe(2);
+});</code></pre>
+<p>Run: <code>npm test</code> → Expected: 1 passed.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 6: gitignore</strong></label></li>
+</ul>
+<p>Agregar al <code>.gitignore</code> de la raíz:</p>
+<pre><code>.wrangler/
+apps/mobile/ios/
+apps/mobile/android/
+apps/mobile/.expo/
+apps/mobile/build/
+apps/mobile/.env.asc</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 7: Prebuild y build en simulador (verifica Expo 57 + Xcode 26.2)</strong></label></li>
+</ul>
+<pre><code class="language-bash">cd apps/mobile
+npx expo prebuild --platform ios --clean
+npx expo run:ios --device &quot;iPhone 16&quot;   # o el nombre que liste `xcrun simctl list devices available`</code></pre>
+<p>Expected: la app abre en el simulador con la pantalla &quot;Open up App.tsx&quot;. Si <code>run:ios</code> falla por CocoaPods o por versión de Xcode, <strong>parar y reportar</strong> — es el riesgo declarado en el spec §10.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 8: Commit</strong></label></li>
+</ul>
+<pre><code class="language-bash">cd /Users/josedejesusacevedoflores/Documents/predict
+git add .gitignore apps/mobile/package.json apps/mobile/package-lock.json apps/mobile/tsconfig.json apps/mobile/app.config.ts apps/mobile/index.ts apps/mobile/App.tsx apps/mobile/babel.config.js apps/mobile/jest.config.js apps/mobile/src/polyfills.ts apps/mobile/__tests__/smoke.test.ts apps/mobile/assets
+git commit -m &quot;feat(mobile): scaffold Expo con mera, viem y jest&quot;</code></pre>
+<hr>
+<h3 id="task-2-config-de-cadena-y-formateo">Task 2: Config de cadena y formateo</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Create: <code>apps/mobile/src/config/chain.ts</code></li>
+<li>Test: <code>apps/mobile/__tests__/chain.test.ts</code></li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Produces: <code>CHAIN</code> (viem <code>Chain</code>), <code>AUSD_ADDRESS</code>, <code>AUSD_DECIMALS = 6</code>, <code>AUSD_FAUCET_ADDRESS</code>, <code>ERC20_ABI</code>, <code>FAUCET_ABI</code>, <code>EXPLORER_TX_URL(hash: string): string</code>, <code>formatAusd(raw: bigint): string</code>, <code>formatMon(raw: bigint): string</code>.</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Test que falla</strong></label></li>
+</ul>
+<p><code>apps/mobile/__tests__/chain.test.ts</code>:</p>
+<pre><code class="language-ts">import {
+  AUSD_ADDRESS,
+  AUSD_DECIMALS,
+  AUSD_FAUCET_ADDRESS,
+  CHAIN,
+  EXPLORER_TX_URL,
+  formatAusd,
+  formatMon,
+} from &quot;../src/config/chain&quot;;
+
+test(&quot;chain is Monad Testnet&quot;, () =&gt; {
+  expect(CHAIN.id).toBe(10143);
+  expect(CHAIN.rpcUrls.default.http[0]).toBe(&quot;https://testnet-rpc.monad.xyz&quot;);
+});
+
+test(&quot;AUSD testnet address and decimals match Agora docs&quot;, () =&gt; {
+  expect(AUSD_ADDRESS).toBe(&quot;0xa9012a055bd4e0eDfF8Ce09f960291C09D5322dC&quot;);
+  expect(AUSD_DECIMALS).toBe(6);
+  expect(AUSD_FAUCET_ADDRESS).toBe(&quot;0xd236c18D274E54FAccC3dd9DDA4b27965a73ee6C&quot;);
+});
+
+test(&quot;formatAusd shows two decimals&quot;, () =&gt; {
+  expect(formatAusd(0n)).toBe(&quot;0.00&quot;);
+  expect(formatAusd(1_500_000n)).toBe(&quot;1.50&quot;);
+  expect(formatAusd(123_456_789n)).toBe(&quot;123.45&quot;);
+});
+
+test(&quot;formatMon shows four decimals&quot;, () =&gt; {
+  expect(formatMon(0n)).toBe(&quot;0.0000&quot;);
+  expect(formatMon(1_234_500_000_000_000_000n)).toBe(&quot;1.2345&quot;);
+});
+
+test(&quot;explorer url points to a tx&quot;, () =&gt; {
+  expect(EXPLORER_TX_URL(&quot;0xabc&quot;)).toBe(&quot;https://testnet.monadexplorer.com/tx/0xabc&quot;);
+});</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Correr y ver que falla</strong></label></li>
+</ul>
+<p>Run: <code>cd apps/mobile &amp;&amp; npm test -- chain</code> → Expected: FAIL, &quot;Cannot find module &#39;../src/config/chain&#39;&quot;.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Implementar</strong></label></li>
+</ul>
+<p><code>apps/mobile/src/config/chain.ts</code>:</p>
+<pre><code class="language-ts">import { formatUnits, parseAbi, type Address } from &quot;viem&quot;;
+import { monadTestnet } from &quot;viem/chains&quot;;
+
+export const CHAIN = monadTestnet;
+
+// docs.agora.finance/developer/contract-deployments — verificado por RPC 2026-09-15.
+export const AUSD_ADDRESS: Address = &quot;0xa9012a055bd4e0eDfF8Ce09f960291C09D5322dC&quot;;
+export const AUSD_DECIMALS = 6;
+export const AUSD_FAUCET_ADDRESS: Address = &quot;0xd236c18D274E54FAccC3dd9DDA4b27965a73ee6C&quot;;
+
+export const ERC20_ABI = parseAbi([
+  &quot;function balanceOf(address owner) view returns (uint256)&quot;,
+]);
+
+export const FAUCET_ABI = parseAbi([
+  &quot;function requestFunds(address recipient)&quot;,
+]);
+
+export const MON_FAUCET_URL = &quot;https://faucet.monad.xyz&quot;;
+
+export function EXPLORER_TX_URL(hash: string): string {
+  return `${CHAIN.blockExplorers.default.url}/tx/${hash}`;
+}
+
+function truncate(value: string, places: number): string {
+  const [whole, frac = &quot;&quot;] = value.split(&quot;.&quot;);
+  return `${whole}.${(frac + &quot;0&quot;.repeat(places)).slice(0, places)}`;
+}
+
+export function formatAusd(raw: bigint): string {
+  return truncate(formatUnits(raw, AUSD_DECIMALS), 2);
+}
+
+export function formatMon(raw: bigint): string {
+  return truncate(formatUnits(raw, CHAIN.nativeCurrency.decimals), 4);
+}</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 4: Correr y ver que pasa</strong></label></li>
+</ul>
+<p>Run: <code>npm test -- chain</code> → Expected: 5 passed.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 5: Probar contra el defecto</strong></label></li>
+</ul>
+<p>Cambiar temporalmente <code>AUSD_DECIMALS = 18</code> y correr: Expected: fallan &quot;decimals&quot; y &quot;formatAusd&quot;. Revertir.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 6: Borrar el smoke test de Task 1 (ya hay tests reales) y commit</strong></label></li>
+</ul>
+<pre><code class="language-bash">git rm apps/mobile/__tests__/smoke.test.ts
+git add apps/mobile/src/config/chain.ts apps/mobile/__tests__/chain.test.ts
+git commit -m &quot;feat(mobile): config de Monad testnet, AUSD y faucet&quot;</code></pre>
+<hr>
+<h3 id="task-3-dominio-de-passkeys-en-cloudflare-pages">Task 3: Dominio de passkeys en Cloudflare Pages</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Create: <code>infra/passkey-domain/public/.well-known/apple-app-site-association</code>, <code>infra/passkey-domain/public/index.html</code>, <code>infra/passkey-domain/wrangler.jsonc</code>, <code>infra/passkey-domain/README.md</code></li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Produces: <code>https://pickler.fun/.well-known/apple-app-site-association</code> → 200 JSON sin redirect, con <code>2PBQJ37Q8W.fun.pickler.app</code>.</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Archivos</strong></label></li>
+</ul>
+<p><code>infra/passkey-domain/public/.well-known/apple-app-site-association</code> (sin extensión, JSON):</p>
+<pre><code class="language-json">{
+  &quot;webcredentials&quot;: {
+    &quot;apps&quot;: [&quot;2PBQJ37Q8W.fun.pickler.app&quot;]
+  }
+}</code></pre>
+<p><code>infra/passkey-domain/public/index.html</code>:</p>
+<pre><code class="language-html">&lt;!doctype html&gt;&lt;meta charset=&quot;utf-8&quot;&gt;&lt;title&gt;Pickler&lt;/title&gt;&lt;p&gt;Pickler — coming soon.&lt;/p&gt;</code></pre>
+<p><code>infra/passkey-domain/public/_headers</code> (Pages lo lee; fuerza el content-type que Apple exige):</p>
+<pre><code>/.well-known/apple-app-site-association
+  Content-Type: application/json</code></pre>
+<p><code>infra/passkey-domain/wrangler.jsonc</code>:</p>
+<pre><code class="language-jsonc">{
+  &quot;name&quot;: &quot;pickler-passkeys&quot;,
+  &quot;account_id&quot;: &quot;1e08efc05d1cf361b372ba3009ed4985&quot;,
+  &quot;pages_build_output_dir&quot;: &quot;public&quot;
+}</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Deploy (cuenta Pickler, login OAuth de wrangler)</strong></label></li>
+</ul>
+<pre><code class="language-bash">cd infra/passkey-domain
+CLOUDFLARE_ACCOUNT_ID=1e08efc05d1cf361b372ba3009ed4985 npx wrangler pages project create pickler-passkeys --production-branch main
+CLOUDFLARE_ACCOUNT_ID=1e08efc05d1cf361b372ba3009ed4985 npx wrangler pages deploy public --project-name pickler-passkeys --branch main</code></pre>
+<p>Expected: URL <code>https://pickler-passkeys.pages.dev</code>. Verificar: <code>curl -sI https://pickler-passkeys.pages.dev/.well-known/apple-app-site-association | head -5</code> → <code>200</code>, <code>content-type: application/json</code>.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Custom domain <code>pickler.fun</code></strong></label></li>
+</ul>
+<p>Wrangler no expone custom domains de Pages; se hace por API con el token OAuth <strong>o</strong> en el dashboard: cuenta Pickler → Workers &amp; Pages → <code>pickler-passkeys</code> → Custom domains → Set up → <code>pickler.fun</code>. Cloudflare crea el CNAME y el certificado (la zona está vacía; no hay conflicto). Si el dashboard lo hace Jesús, anotar la hora.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 4: Verificar en el dominio final</strong></label></li>
+</ul>
+<pre><code class="language-bash">curl -sI https://pickler.fun/.well-known/apple-app-site-association
+curl -s  https://pickler.fun/.well-known/apple-app-site-association</code></pre>
+<p>Expected: <code>HTTP/2 200</code>, <code>content-type: application/json</code>, <strong>sin</strong> <code>location:</code>, cuerpo con <code>2PBQJ37Q8W.fun.pickler.app</code>. El certificado puede tardar unos minutos.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 5: README + commit</strong></label></li>
+</ul>
+<p><code>infra/passkey-domain/README.md</code>: qué es, cómo se despliega (los dos comandos), cómo se verifica (el curl), y la advertencia: <em>cambiar el rpId invalida los passkeys existentes</em>.</p>
+<pre><code class="language-bash">git add infra/passkey-domain
+git commit -m &quot;feat(infra): dominio de passkeys pickler.fun en Cloudflare Pages&quot;</code></pre>
+<hr>
+<h3 id="task-4-derivacion-hd-prf-cuenta-evm">Task 4: Derivación HD (PRF → cuenta EVM)</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Create: <code>apps/mobile/src/hd/hd.ts</code></li>
+<li>Test: <code>apps/mobile/__tests__/hd.test.ts</code></li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Produces: <code>prfOutputToMnemonic(prf: Uint8Array): string</code>, <code>mnemonicToSeed(m: string): Uint8Array</code>, <code>deriveEvmPrivateKey(seed: Uint8Array, index: number): Uint8Array</code>.</li>
+<li>Es la misma derivación del demo oficial de Mera (<code>demos/shared/src/hd.ts</code>): así el mismo passkey da la <strong>misma dirección</strong> en el demo web de mera y en Pickler.</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Test que falla</strong></label></li>
+</ul>
+<p><code>apps/mobile/__tests__/hd.test.ts</code>:</p>
+<pre><code class="language-ts">import { privateKeyToAccount } from &quot;viem/accounts&quot;;
+import { toHex } from &quot;viem&quot;;
+import { deriveEvmPrivateKey, mnemonicToSeed, prfOutputToMnemonic } from &quot;../src/hd/hd&quot;;
+
+const prf = new Uint8Array(32).fill(7);
+
+test(&quot;32 bytes of PRF become a 24-word mnemonic&quot;, () =&gt; {
+  const words = prfOutputToMnemonic(prf).split(&quot; &quot;);
+  expect(words).toHaveLength(24);
+});
+
+test(&quot;rejects PRF output that is not 32 bytes&quot;, () =&gt; {
+  expect(() =&gt; prfOutputToMnemonic(new Uint8Array(31))).toThrow(&quot;32 bytes&quot;);
+});
+
+test(&quot;derivation is deterministic and yields a valid EVM account&quot;, () =&gt; {
+  const seed = mnemonicToSeed(prfOutputToMnemonic(prf));
+  const k1 = deriveEvmPrivateKey(seed, 0);
+  const k2 = deriveEvmPrivateKey(mnemonicToSeed(prfOutputToMnemonic(prf)), 0);
+  expect(toHex(k1)).toBe(toHex(k2));
+  expect(k1).toHaveLength(32);
+  const account = privateKeyToAccount(toHex(k1));
+  expect(account.address).toMatch(/^0x[0-9a-fA-F]{40}$/);
+});
+
+test(&quot;index 1 differs from index 0&quot;, () =&gt; {
+  const seed = mnemonicToSeed(prfOutputToMnemonic(prf));
+  expect(toHex(deriveEvmPrivateKey(seed, 1))).not.toBe(toHex(deriveEvmPrivateKey(seed, 0)));
+});</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Correr y ver que falla</strong></label></li>
+</ul>
+<p>Run: <code>npm test -- hd</code> → Expected: FAIL, módulo no encontrado.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Implementar</strong></label></li>
+</ul>
+<p><code>apps/mobile/src/hd/hd.ts</code>:</p>
+<pre><code class="language-ts">import { HDKey } from &quot;@scure/bip32&quot;;
+import { entropyToMnemonic, mnemonicToSeedSync } from &quot;@scure/bip39&quot;;
+import { wordlist } from &quot;@scure/bip39/wordlists/english.js&quot;;
+
+const PRF_OUTPUT_LENGTH = 32;
+
+// BIP-44, coin type 60 (Ethereum), convención MetaMask. Cambiar esto cambia
+// todas las direcciones derivadas.
+const evmPath = (index: number): string =&gt; `m/44&#39;/60&#39;/0&#39;/0/${index}`;
+
+/** 32 bytes de PRF como 256 bits de entropía BIP-39 (misma regla que el demo de mera). */
+export function prfOutputToMnemonic(prfOutput: Uint8Array): string {
+  if (prfOutput.length !== PRF_OUTPUT_LENGTH) {
+    throw new Error(&quot;PRF output must be 32 bytes&quot;);
+  }
+  return entropyToMnemonic(prfOutput, wordlist);
+}
+
+/** Seed BIP-39 de 64 bytes (PBKDF2, passphrase vacía). */
+export function mnemonicToSeed(mnemonic: string): Uint8Array {
+  return mnemonicToSeedSync(mnemonic);
+}
+
+/** Llave privada secp256k1 de la cuenta EVM `index`. */
+export function deriveEvmPrivateKey(seed: Uint8Array, index: number): Uint8Array {
+  const node = HDKey.fromMasterSeed(seed).derive(evmPath(index));
+  if (!node.privateKey) {
+    throw new Error(&quot;BIP-32 derivation produced no private key&quot;);
+  }
+  return node.privateKey;
+}</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 4: Correr y ver que pasa</strong></label></li>
+</ul>
+<p>Run: <code>npm test -- hd</code> → Expected: 4 passed.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 5: Commit</strong></label></li>
+</ul>
+<pre><code class="language-bash">git add apps/mobile/src/hd/hd.ts apps/mobile/__tests__/hd.test.ts
+git commit -m &quot;feat(mobile): derivación HD compatible con el demo de mera&quot;</code></pre>
+<hr>
+<h3 id="task-5-storage-securestore-y-estado-de-cuenta">Task 5: Storage (SecureStore) y estado de cuenta</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Create: <code>apps/mobile/src/storage/storage.ts</code>, <code>apps/mobile/src/account.ts</code></li>
+<li>Test: <code>apps/mobile/__tests__/storage.test.ts</code>, <code>apps/mobile/__tests__/account.test.ts</code></li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Produces (storage): <code>parseStoredAccount(raw: string): StoredAccount | undefined</code>, <code>loadStoredAccount(): Promise&lt;StoredAccount | undefined&gt;</code>, <code>saveStoredAccount(a: StoredAccount): Promise&lt;void&gt;</code>, <code>storePrfResult(r: { credentialId: string; prfOutput: Uint8Array }): Promise&lt;void&gt;</code>, <code>readStoredPrfResult(): Promise&lt;{ credentialId: string; prfOutput: Uint8Array } | undefined&gt;</code>, <code>clearStoredAccount(): Promise&lt;void&gt;</code>. <code>type StoredAccount = { address: \</code>0x${string}\<code>; credentialId: string }</code>.</li>
+<li>Produces (account): <code>type AccountState = { status: &quot;none&quot; } | { status: &quot;locked&quot;; address; credentialId } | { status: &quot;unlocked&quot;; wallet: Wallet }</code>, <code>accountAddress(state): Address | null</code>. <code>Wallet</code> viene de Task 6 — aquí se declara como <code>import type { Wallet } from &quot;./wallet/wallet&quot;</code>; el archivo de Task 6 aún no existe, así que <strong>en esta task</strong> se crea un stub <code>src/wallet/wallet.ts</code> con solo <code>export type Wallet = { address: \</code>0x${string}\<code>; credentialId: string; session: { end(): void } };</code> que Task 6 reemplaza.</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Tests que fallan</strong></label></li>
+</ul>
+<p><code>apps/mobile/__tests__/storage.test.ts</code>:</p>
+<pre><code class="language-ts">import { parseStoredAccount } from &quot;../src/storage/storage&quot;;
+
+test(&quot;parses a valid stored account&quot;, () =&gt; {
+  const raw = JSON.stringify({
+    address: &quot;0x1111111111111111111111111111111111111111&quot;,
+    credentialId: &quot;abc-DEF_123&quot;,
+  });
+  expect(parseStoredAccount(raw)).toEqual({
+    address: &quot;0x1111111111111111111111111111111111111111&quot;,
+    credentialId: &quot;abc-DEF_123&quot;,
+  });
+});
+
+test.each([
+  [&quot;not json&quot;, &quot;{&quot;],
+  [&quot;bad address&quot;, JSON.stringify({ address: &quot;0x12&quot;, credentialId: &quot;a&quot; })],
+  [&quot;bad credential chars&quot;, JSON.stringify({ address: &quot;0x1111111111111111111111111111111111111111&quot;, credentialId: &quot;a b&quot; })],
+  [&quot;missing fields&quot;, JSON.stringify({})],
+])(&quot;rejects %s&quot;, (_, raw) =&gt; {
+  expect(parseStoredAccount(raw)).toBeUndefined();
+});</code></pre>
+<p><code>apps/mobile/__tests__/account.test.ts</code>:</p>
+<pre><code class="language-ts">import { accountAddress, type AccountState } from &quot;../src/account&quot;;
+
+const address = &quot;0x2222222222222222222222222222222222222222&quot; as const;
+
+test(&quot;none has no address&quot;, () =&gt; {
+  expect(accountAddress({ status: &quot;none&quot; })).toBeNull();
+});
+
+test(&quot;locked exposes stored address&quot;, () =&gt; {
+  const s: AccountState = { status: &quot;locked&quot;, address, credentialId: &quot;c&quot; };
+  expect(accountAddress(s)).toBe(address);
+});
+
+test(&quot;unlocked exposes wallet address&quot;, () =&gt; {
+  const s: AccountState = {
+    status: &quot;unlocked&quot;,
+    wallet: { address, credentialId: &quot;c&quot;, session: { end() {} } } as never,
+  };
+  expect(accountAddress(s)).toBe(address);
+});</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Correr y ver que fallan</strong></label></li>
+</ul>
+<p>Run: <code>npm test -- storage account</code> → Expected: FAIL, módulos no encontrados.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Implementar storage</strong></label></li>
+</ul>
+<p><code>apps/mobile/src/storage/storage.ts</code>:</p>
+<pre><code class="language-ts">import type { EvmAddress } from &quot;@category-labs/mera&quot;;
+import { base64urlnopad } from &quot;@scure/base&quot;;
+import {
+  deleteItemAsync,
+  getItemAsync,
+  type SecureStoreOptions,
+  setItemAsync,
+  WHEN_UNLOCKED_THIS_DEVICE_ONLY,
+} from &quot;expo-secure-store&quot;;
+
+const PRF_KEY = &quot;pickler.prf.v1&quot;;
+const ACCOUNT_KEY = &quot;pickler.account.v1&quot;;
+const PRF_OUTPUT_LENGTH = 32;
+
+// Leer el PRF pide Face ID / passcode: es el secreto del que sale la llave.
+const PRF_ITEM_OPTIONS = {
+  requireAuthentication: true,
+  keychainAccessible: WHEN_UNLOCKED_THIS_DEVICE_ONLY,
+  authenticationPrompt: &quot;Unlock your Pickler account&quot;,
+} satisfies SecureStoreOptions;
+
+// La dirección no es secreta: se lee sin prompt para pintar Home al arrancar.
+const UNGATED_ITEM_OPTIONS = {
+  keychainAccessible: WHEN_UNLOCKED_THIS_DEVICE_ONLY,
+} satisfies SecureStoreOptions;
+
+export type StoredAccount = { address: EvmAddress; credentialId: string };
+export type StoredPrf = { credentialId: string; prfOutput: Uint8Array };
+
+export function parseStoredAccount(raw: string): StoredAccount | undefined {
+  let value: unknown;
+  try {
+    value = JSON.parse(raw);
+  } catch {
+    return undefined;
+  }
+  if (value === null || typeof value !== &quot;object&quot;) return undefined;
+  const { address, credentialId } = value as Record&lt;string, unknown&gt;;
+  if (
+    typeof address !== &quot;string&quot; ||
+    !/^0x[0-9a-fA-F]{40}$/.test(address) ||
+    typeof credentialId !== &quot;string&quot; ||
+    credentialId.length &gt; 2_048 ||
+    !/^[A-Za-z0-9_-]+$/.test(credentialId)
+  ) {
+    return undefined;
+  }
+  return { address: address as EvmAddress, credentialId };
+}
+
+/** Una entrada malformada se borra y se lee como ausente. */
+export async function loadStoredAccount(): Promise&lt;StoredAccount | undefined&gt; {
+  const raw = await getItemAsync(ACCOUNT_KEY);
+  if (raw === null) return undefined;
+  const account = parseStoredAccount(raw);
+  if (account === undefined) await deleteItemAsync(ACCOUNT_KEY);
+  return account;
+}
+
+export async function saveStoredAccount(account: StoredAccount): Promise&lt;void&gt; {
+  await setItemAsync(ACCOUNT_KEY, JSON.stringify(account), UNGATED_ITEM_OPTIONS);
+}
+
+export async function storePrfResult(result: StoredPrf): Promise&lt;void&gt; {
+  const stored = {
+    credentialId: result.credentialId,
+    prfOutput: base64urlnopad.encode(result.prfOutput),
+  };
+  await setItemAsync(PRF_KEY, JSON.stringify(stored), PRF_ITEM_OPTIONS);
+}
+
+/** Lanza si el usuario cancela la autenticación o el dato está corrupto. */
+export async function readStoredPrfResult(): Promise&lt;StoredPrf | undefined&gt; {
+  const stored = await getItemAsync(PRF_KEY, PRF_ITEM_OPTIONS);
+  if (stored === null) return undefined;
+  const { credentialId, prfOutput } = JSON.parse(stored) as Partial&lt;{
+    credentialId: string;
+    prfOutput: string;
+  }&gt;;
+  if (typeof credentialId !== &quot;string&quot; || typeof prfOutput !== &quot;string&quot;) {
+    throw new Error(&quot;Stored PRF result is malformed&quot;);
+  }
+  const bytes = new Uint8Array(base64urlnopad.decode(prfOutput));
+  if (bytes.length !== PRF_OUTPUT_LENGTH) {
+    throw new Error(&quot;Stored PRF output must be 32 bytes&quot;);
+  }
+  return { credentialId, prfOutput: bytes };
+}
+
+export async function clearStoredAccount(): Promise&lt;void&gt; {
+  await deleteItemAsync(PRF_KEY);
+  await deleteItemAsync(ACCOUNT_KEY);
+}</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 4: Implementar account + stub de wallet</strong></label></li>
+</ul>
+<p><code>apps/mobile/src/wallet/wallet.ts</code> (stub; Task 6 lo reemplaza):</p>
+<pre><code class="language-ts">import type { EvmAddress } from &quot;@category-labs/mera&quot;;
+
+export type Wallet = {
+  address: EvmAddress;
+  credentialId: string;
+  session: { end(): void };
+};</code></pre>
+<p><code>apps/mobile/src/account.ts</code>:</p>
+<pre><code class="language-ts">import type { EvmAddress } from &quot;@category-labs/mera&quot;;
+import type { Wallet } from &quot;./wallet/wallet&quot;;
+
+export type AccountState =
+  | { status: &quot;none&quot; }
+  | { status: &quot;locked&quot;; address: EvmAddress; credentialId: string }
+  | { status: &quot;unlocked&quot;; wallet: Wallet };
+
+export function accountAddress(account: AccountState): EvmAddress | null {
+  switch (account.status) {
+    case &quot;none&quot;:
+      return null;
+    case &quot;locked&quot;:
+      return account.address;
+    case &quot;unlocked&quot;:
+      return account.wallet.address;
+  }
+}</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 5: Correr y ver que pasan</strong></label></li>
+</ul>
+<p>Run: <code>npm test -- storage account</code> → Expected: 8 passed. Si jest falla al importar <code>expo-secure-store</code> en el test de storage, agregar en <code>jest.config.js</code>: <code>moduleNameMapper: { &quot;^expo-secure-store$&quot;: &quot;&lt;rootDir&gt;/__tests__/__mocks__/expo-secure-store.ts&quot; }</code> con un mock que exporte <code>getItemAsync</code>, <code>setItemAsync</code>, <code>deleteItemAsync</code> como <code>jest.fn()</code> y <code>WHEN_UNLOCKED_THIS_DEVICE_ONLY = 1</code>.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 6: Commit</strong></label></li>
+</ul>
+<pre><code class="language-bash">git add apps/mobile/src/storage/storage.ts apps/mobile/src/account.ts apps/mobile/src/wallet/wallet.ts apps/mobile/__tests__/storage.test.ts apps/mobile/__tests__/account.test.ts
+git commit -m &quot;feat(mobile): storage con gate biométrico y estado de cuenta&quot;</code></pre>
+<hr>
+<h3 id="task-6-wallet-con-mera-crear-entrar-desbloquear-errores">Task 6: Wallet con Mera (crear, entrar, desbloquear, errores)</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Modify: <code>apps/mobile/src/wallet/wallet.ts</code> (reemplaza el stub)</li>
+<li>Create: <code>apps/mobile/src/config/rp.ts</code></li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Consumes: <code>hd.ts</code> (Task 4), <code>storage.ts</code> (Task 5), <code>Constants.expoConfig.extra.rpId</code> (Task 1).</li>
+<li>Produces: <code>type Wallet = { address: EvmAddress; credentialId: string; session: Secp256k1SigningSession; account: LocalAccount }</code>, <code>createAccount(): Promise&lt;Wallet&gt;</code>, <code>signIn(): Promise&lt;Wallet&gt;</code>, <code>unlockStoredWallet(): Promise&lt;Wallet | undefined&gt;</code>, <code>describeError(e: unknown): string</code>.</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: rpId</strong></label></li>
+</ul>
+<p><code>apps/mobile/src/config/rp.ts</code>:</p>
+<pre><code class="language-ts">import Constants from &quot;expo-constants&quot;;
+
+const rpId = Constants.expoConfig?.extra?.rpId;
+if (typeof rpId !== &quot;string&quot;) {
+  throw new Error(&quot;app.config.ts supplied no rpId&quot;);
+}
+
+export const RP_ID = rpId;
+export const RP_NAME = &quot;Pickler&quot;;</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Implementar wallet</strong></label></li>
+</ul>
+<p><code>apps/mobile/src/wallet/wallet.ts</code>:</p>
+<pre><code class="language-ts">import {
+  createPasskeyWithPrfOutput,
+  createSecp256k1SigningSession,
+  type EvmAddress,
+  getEvmAddress,
+  getPasskeyPrfOutput,
+  isMeraError,
+  type Secp256k1SigningSession,
+} from &quot;@category-labs/mera&quot;;
+import { reactNativeWebAuthnClient } from &quot;@category-labs/mera/react-native-webauthn-client&quot;;
+import { toViemAccount } from &quot;@category-labs/mera/viem&quot;;
+import type { PasskeyError } from &quot;react-native-passkey&quot;;
+import { BaseError as ViemError, type LocalAccount } from &quot;viem&quot;;
+import { RP_ID, RP_NAME } from &quot;../config/rp&quot;;
+import { deriveEvmPrivateKey, mnemonicToSeed, prfOutputToMnemonic } from &quot;../hd/hd&quot;;
+import {
+  readStoredPrfResult,
+  saveStoredAccount,
+  type StoredPrf,
+  storePrfResult,
+} from &quot;../storage/storage&quot;;
+
+export type Wallet = {
+  address: EvmAddress;
+  credentialId: string;
+  session: Secp256k1SigningSession;
+  account: LocalAccount;
+};
+
+const USER_NAME = &quot;pickler&quot;;
+const displayName = (): string =&gt; `Pickler ${new Date().toLocaleDateString()}`;
+
+export async function createAccount(): Promise&lt;Wallet&gt; {
+  const created = await createPasskeyWithPrfOutput({
+    rp: { id: RP_ID, name: RP_NAME },
+    user: { name: USER_NAME, displayName: displayName() },
+    webAuthnClient: reactNativeWebAuthnClient,
+  });
+  return storeAndOpen(created);
+}
+
+/** Sin credential fijada: iOS ofrece todos los passkeys de pickler.fun. */
+export async function signIn(): Promise&lt;Wallet&gt; {
+  const asserted = await getPasskeyPrfOutput({
+    rpId: RP_ID,
+    webAuthnClient: reactNativeWebAuthnClient,
+  });
+  return storeAndOpen(asserted);
+}
+
+/** Lee el PRF guardado (pide Face ID) y re-deriva; sin prompt de passkey. */
+export async function unlockStoredWallet(): Promise&lt;Wallet | undefined&gt; {
+  const stored = await readStoredPrfResult();
+  return stored === undefined ? undefined : toWallet(stored);
+}
+
+async function storeAndOpen(result: StoredPrf): Promise&lt;Wallet&gt; {
+  await storePrfResult(result);
+  const wallet = toWallet(result);
+  try {
+    await saveStoredAccount({ address: wallet.address, credentialId: wallet.credentialId });
+  } catch (error) {
+    wallet.session.end();
+    throw error;
+  }
+  return wallet;
+}
+
+/** Limpia los buffers de llave tras derivar. */
+function toWallet({ credentialId, prfOutput }: StoredPrf): Wallet {
+  const seed = mnemonicToSeed(prfOutputToMnemonic(prfOutput));
+  prfOutput.fill(0);
+  let privateKey: Uint8Array | undefined;
+  try {
+    privateKey = deriveEvmPrivateKey(seed, 0);
+    const session = createSecp256k1SigningSession({ privateKey });
+    return {
+      address: getEvmAddress(session.publicKey),
+      credentialId,
+      session,
+      account: toViemAccount(session),
+    };
+  } finally {
+    seed.fill(0);
+    privateKey?.fill(0);
+  }
+}
+
+export function describeError(error: unknown): string {
+  if (isMeraError(error)) {
+    switch (error.code) {
+      case &quot;PRF_UNAVAILABLE&quot;:
+        return &quot;This device can&#39;t create a passkey with PRF. Use an iPhone with iOS 18 or newer.&quot;;
+      case &quot;PASSKEY_OPERATION_FAILED&quot;:
+        return describePasskeyFailure(error.cause);
+      case &quot;SESSION_ENDED&quot;:
+        return &quot;The session has ended. Unlock again.&quot;;
+      case &quot;CRYPTO_UNAVAILABLE&quot;:
+        return &quot;The runtime provides no secure random source.&quot;;
+      default:
+        return error.message;
+    }
+  }
+  if (error instanceof ViemError) return error.shortMessage;
+  return error instanceof Error ? error.message : String(error);
+}
+
+function describePasskeyFailure(cause: unknown): string {
+  const { error, message } = (cause ?? {}) as Partial&lt;PasskeyError&gt;;
+  switch (error) {
+    case &quot;RequestFailed&quot;:
+      return `iOS refused a passkey for ${RP_ID}. Check that https://${RP_ID}/.well-known/apple-app-site-association names this app.`;
+    case &quot;NoCredentials&quot;:
+      return &quot;No passkey for Pickler on this device. Create an account first.&quot;;
+    case &quot;UserCancelled&quot;:
+      return &quot;&quot;;
+    default:
+      return typeof message === &quot;string&quot; ? message : &quot;The passkey request failed.&quot;;
+  }
+}</code></pre>
+<p>Nota: <code>describeError</code> devuelve <code>&quot;&quot;</code> cuando el usuario canceló; la UI (Task 8) trata <code>&quot;&quot;</code> como &quot;sin error&quot;.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Typecheck y tests existentes</strong></label></li>
+</ul>
+<p>Run: <code>npx tsc --noEmit &amp;&amp; npm test</code> → Expected: sin errores de tipo; los 17 tests anteriores siguen en verde.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 4: Commit</strong></label></li>
+</ul>
+<pre><code class="language-bash">git add apps/mobile/src/wallet/wallet.ts apps/mobile/src/config/rp.ts
+git commit -m &quot;feat(mobile): cuenta EVM desde passkey con mera&quot;</code></pre>
+<hr>
+<h3 id="task-7-balances-y-tx-al-faucet-viem">Task 7: Balances y tx al faucet (viem)</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Create: <code>apps/mobile/src/wallet/chain.ts</code></li>
+<li>Test: <code>apps/mobile/__tests__/faucet.test.ts</code></li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Consumes: <code>chain.ts</code> (Task 2), <code>Wallet.account</code> (Task 6).</li>
+<li>Produces: <code>publicClient</code> (viem <code>PublicClient</code>), <code>readBalances(address): Promise&lt;{ ausd: bigint; mon: bigint }&gt;</code>, <code>requestAusdFromFaucet(wallet: Wallet): Promise&lt;\</code>0x${string}\<code>&gt;</code> (hash), <code>faucetCalldata(recipient): Hex</code>.</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Test que falla</strong></label></li>
+</ul>
+<p><code>apps/mobile/__tests__/faucet.test.ts</code>:</p>
+<pre><code class="language-ts">import { encodeFunctionData } from &quot;viem&quot;;
+import { AUSD_FAUCET_ADDRESS, FAUCET_ABI } from &quot;../src/config/chain&quot;;
+import { faucetCalldata, faucetTxRequest } from &quot;../src/wallet/chain&quot;;
+
+const recipient = &quot;0x3333333333333333333333333333333333333333&quot; as const;
+
+test(&quot;faucet calldata is requestFunds(recipient)&quot;, () =&gt; {
+  expect(faucetCalldata(recipient)).toBe(
+    encodeFunctionData({ abi: FAUCET_ABI, functionName: &quot;requestFunds&quot;, args: [recipient] }),
+  );
+  // selector de requestFunds(address), calculado con viem y verificado por
+  // eth_call contra el faucet en testnet el 2026-09-15 (no revierte).
+  expect(faucetCalldata(recipient).slice(0, 10)).toBe(&quot;0x544c7cf9&quot;);
+});
+
+test(&quot;faucet tx targets the faucet with zero value&quot;, () =&gt; {
+  const tx = faucetTxRequest(recipient);
+  expect(tx.to).toBe(AUSD_FAUCET_ADDRESS);
+  expect(tx.value).toBe(0n);
+  expect(tx.data).toBe(faucetCalldata(recipient));
+});</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Correr y ver que falla</strong></label></li>
+</ul>
+<p>Run: <code>npm test -- faucet</code> → Expected: FAIL, módulo no encontrado.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Implementar</strong></label></li>
+</ul>
+<p><code>apps/mobile/src/wallet/chain.ts</code>:</p>
+<pre><code class="language-ts">import {
+  type Address,
+  createPublicClient,
+  createWalletClient,
+  encodeFunctionData,
+  type Hex,
+  http,
+} from &quot;viem&quot;;
+import { AUSD_ADDRESS, AUSD_FAUCET_ADDRESS, CHAIN, ERC20_ABI, FAUCET_ABI } from &quot;../config/chain&quot;;
+import type { Wallet } from &quot;./wallet&quot;;
+
+export const publicClient = createPublicClient({ chain: CHAIN, transport: http() });
+
+export async function readBalances(address: Address): Promise&lt;{ ausd: bigint; mon: bigint }&gt; {
+  const [ausd, mon] = await Promise.all([
+    publicClient.readContract({
+      address: AUSD_ADDRESS,
+      abi: ERC20_ABI,
+      functionName: &quot;balanceOf&quot;,
+      args: [address],
+    }),
+    publicClient.getBalance({ address }),
+  ]);
+  return { ausd, mon };
+}
+
+export function faucetCalldata(recipient: Address): Hex {
+  return encodeFunctionData({ abi: FAUCET_ABI, functionName: &quot;requestFunds&quot;, args: [recipient] });
+}
+
+export function faucetTxRequest(recipient: Address): { to: Address; data: Hex; value: bigint } {
+  return { to: AUSD_FAUCET_ADDRESS, data: faucetCalldata(recipient), value: 0n };
+}
+
+/** Firma con la sesión de mera (sin prompt de passkey) y envía. Devuelve el hash. */
+export async function requestAusdFromFaucet(wallet: Wallet): Promise&lt;Hex&gt; {
+  const walletClient = createWalletClient({ account: wallet.account, chain: CHAIN, transport: http() });
+  const tx = faucetTxRequest(wallet.address);
+  return walletClient.sendTransaction({ ...tx, account: wallet.account, chain: CHAIN });
+}
+
+export async function waitForReceipt(hash: Hex): Promise&lt;&quot;success&quot; | &quot;reverted&quot;&gt; {
+  const receipt = await publicClient.waitForTransactionReceipt({ hash });
+  return receipt.status;
+}</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 4: Correr y ver que pasa</strong></label></li>
+</ul>
+<p>Run: <code>npm test -- faucet</code> → Expected: 2 passed.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 5: Commit</strong></label></li>
+</ul>
+<pre><code class="language-bash">git add apps/mobile/src/wallet/chain.ts apps/mobile/__tests__/faucet.test.ts
+git commit -m &quot;feat(mobile): balances de AUSD/MON y tx al faucet de Agora&quot;</code></pre>
+<hr>
+<h3 id="task-8-ui-welcome-home-y-app">Task 8: UI — Welcome, Home y App</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Create: <code>apps/mobile/src/ui/theme.ts</code>, <code>apps/mobile/src/ui/Button.tsx</code>, <code>apps/mobile/src/ui/Field.tsx</code>, <code>apps/mobile/src/screens/Welcome.tsx</code>, <code>apps/mobile/src/screens/Home.tsx</code></li>
+<li>Modify: <code>apps/mobile/App.tsx</code> (reemplazar el generado)</li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Consumes: todo lo anterior.</li>
+<li>Produces: la app completa de fase 1.</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Tema y componentes</strong></label></li>
+</ul>
+<p><code>apps/mobile/src/ui/theme.ts</code>:</p>
+<pre><code class="language-ts">export const palette = {
+  bg: &quot;#0B0B0F&quot;,
+  card: &quot;#16161D&quot;,
+  text: &quot;#F4F4F5&quot;,
+  muted: &quot;#9A9AA6&quot;,
+  accent: &quot;#8B5CF6&quot;,
+  danger: &quot;#F87171&quot;,
+  success: &quot;#4ADE80&quot;,
+};
+
+export const spacing = { xs: 4, sm: 8, md: 16, lg: 24, xl: 32 };</code></pre>
+<p><code>apps/mobile/src/ui/Button.tsx</code>:</p>
+<pre><code class="language-tsx">import { ActivityIndicator, Pressable, StyleSheet, Text } from &quot;react-native&quot;;
+import { palette, spacing } from &quot;./theme&quot;;
+
+type Props = {
+  title: string;
+  onPress: () =&gt; void;
+  busy?: boolean;
+  disabled?: boolean;
+  variant?: &quot;primary&quot; | &quot;secondary&quot;;
+};
+
+export function Button({ title, onPress, busy, disabled, variant = &quot;primary&quot; }: Props) {
+  const off = disabled || busy;
+  return (
+    &lt;Pressable
+      accessibilityRole=&quot;button&quot;
+      onPress={onPress}
+      disabled={off}
+      style={[styles.base, variant === &quot;secondary&quot; &amp;&amp; styles.secondary, off &amp;&amp; styles.off]}
+    &gt;
+      {busy ? &lt;ActivityIndicator color={palette.text} /&gt; : &lt;Text style={styles.label}&gt;{title}&lt;/Text&gt;}
+    &lt;/Pressable&gt;
+  );
+}
+
+const styles = StyleSheet.create({
+  base: {
+    backgroundColor: palette.accent,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    borderRadius: 12,
+    alignItems: &quot;center&quot;,
+  },
+  secondary: { backgroundColor: palette.card },
+  off: { opacity: 0.5 },
+  label: { color: palette.text, fontSize: 16, fontWeight: &quot;600&quot; },
+});</code></pre>
+<p><code>apps/mobile/src/ui/Field.tsx</code>:</p>
+<pre><code class="language-tsx">import { StyleSheet, Text, View } from &quot;react-native&quot;;
+import { palette, spacing } from &quot;./theme&quot;;
+
+export function Field({ label, value }: { label: string; value: string }) {
+  return (
+    &lt;View style={styles.wrap}&gt;
+      &lt;Text style={styles.label}&gt;{label}&lt;/Text&gt;
+      &lt;Text style={styles.value} selectable&gt;{value}&lt;/Text&gt;
+    &lt;/View&gt;
+  );
+}
+
+const styles = StyleSheet.create({
+  wrap: { backgroundColor: palette.card, padding: spacing.md, borderRadius: 12, gap: spacing.xs },
+  label: { color: palette.muted, fontSize: 13 },
+  value: { color: palette.text, fontSize: 22, fontVariant: [&quot;tabular-nums&quot;] },
+});</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Welcome</strong></label></li>
+</ul>
+<p><code>apps/mobile/src/screens/Welcome.tsx</code>:</p>
+<pre><code class="language-tsx">import { useState } from &quot;react&quot;;
+import { StyleSheet, Text, View } from &quot;react-native&quot;;
+import { Button } from &quot;../ui/Button&quot;;
+import { palette, spacing } from &quot;../ui/theme&quot;;
+import { createAccount, describeError, signIn, type Wallet } from &quot;../wallet/wallet&quot;;
+
+export function Welcome({ onWallet }: { onWallet: (w: Wallet) =&gt; void }) {
+  const [busy, setBusy] = useState&lt;&quot;create&quot; | &quot;signin&quot; | null&gt;(null);
+  const [error, setError] = useState(&quot;&quot;);
+
+  async function run(kind: &quot;create&quot; | &quot;signin&quot;) {
+    setBusy(kind);
+    setError(&quot;&quot;);
+    try {
+      onWallet(kind === &quot;create&quot; ? await createAccount() : await signIn());
+    } catch (e) {
+      setError(describeError(e));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  return (
+    &lt;View style={styles.wrap}&gt;
+      &lt;Text style={styles.title}&gt;Pickler&lt;/Text&gt;
+      &lt;Text style={styles.sub}&gt;Agents that trade in public. Sign in with Face ID — no seed phrase.&lt;/Text&gt;
+      &lt;Button title=&quot;Create account&quot; onPress={() =&gt; run(&quot;create&quot;)} busy={busy === &quot;create&quot;} disabled={busy !== null} /&gt;
+      &lt;Button title=&quot;Sign in with passkey&quot; variant=&quot;secondary&quot; onPress={() =&gt; run(&quot;signin&quot;)} busy={busy === &quot;signin&quot;} disabled={busy !== null} /&gt;
+      {error ? &lt;Text style={styles.error}&gt;{error}&lt;/Text&gt; : null}
+    &lt;/View&gt;
+  );
+}
+
+const styles = StyleSheet.create({
+  wrap: { flex: 1, justifyContent: &quot;center&quot;, gap: spacing.md, padding: spacing.lg },
+  title: { color: palette.text, fontSize: 40, fontWeight: &quot;700&quot; },
+  sub: { color: palette.muted, fontSize: 16, marginBottom: spacing.lg },
+  error: { color: palette.danger },
+});</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Home</strong></label></li>
+</ul>
+<p><code>apps/mobile/src/screens/Home.tsx</code>:</p>
+<pre><code class="language-tsx">import * as Clipboard from &quot;expo-clipboard&quot;;
+import { useCallback, useEffect, useState } from &quot;react&quot;;
+import { Linking, StyleSheet, Text, View } from &quot;react-native&quot;;
+import { accountAddress, type AccountState } from &quot;../account&quot;;
+import { EXPLORER_TX_URL, formatAusd, formatMon, MON_FAUCET_URL } from &quot;../config/chain&quot;;
+import { Button } from &quot;../ui/Button&quot;;
+import { Field } from &quot;../ui/Field&quot;;
+import { palette, spacing } from &quot;../ui/theme&quot;;
+import { readBalances, requestAusdFromFaucet, waitForReceipt } from &quot;../wallet/chain&quot;;
+import { describeError, unlockStoredWallet, type Wallet } from &quot;../wallet/wallet&quot;;
+
+type Props = {
+  account: Exclude&lt;AccountState, { status: &quot;none&quot; }&gt;;
+  onUnlock: (w: Wallet) =&gt; void;
+  onLock: () =&gt; void;
+  onSignOut: () =&gt; void;
+};
+
+export function Home({ account, onUnlock, onLock, onSignOut }: Props) {
+  const address = accountAddress(account)!;
+  const [balances, setBalances] = useState&lt;{ ausd: bigint; mon: bigint } | null&gt;(null);
+  const [rpcError, setRpcError] = useState(&quot;&quot;);
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState(&quot;&quot;);
+  const [error, setError] = useState(&quot;&quot;);
+
+  const refresh = useCallback(async () =&gt; {
+    setRpcError(&quot;&quot;);
+    try {
+      setBalances(await readBalances(address));
+    } catch (e) {
+      setBalances(null);
+      setRpcError(describeError(e));
+    }
+  }, [address]);
+
+  useEffect(() =&gt; {
+    refresh();
+  }, [refresh]);
+
+  async function getTestAusd() {
+    setBusy(true);
+    setError(&quot;&quot;);
+    setNotice(&quot;&quot;);
+    try {
+      let wallet: Wallet;
+      if (account.status === &quot;unlocked&quot;) {
+        wallet = account.wallet;
+      } else {
+        const unlocked = await unlockStoredWallet();
+        if (!unlocked) throw new Error(&quot;No stored account. Sign out and sign in again.&quot;);
+        wallet = unlocked;
+        onUnlock(wallet);
+      }
+      if (balances &amp;&amp; balances.mon === 0n) {
+        throw new Error(&quot;You need test MON for gas. Get some at the Monad faucet and try again.&quot;);
+      }
+      const hash = await requestAusdFromFaucet(wallet);
+      setNotice(`Sent: ${hash}`);
+      const status = await waitForReceipt(hash);
+      setNotice(status === &quot;success&quot; ? `Confirmed: ${hash}` : `Reverted: ${hash}`);
+      await refresh();
+    } catch (e) {
+      const msg = describeError(e);
+      if (msg) setError(msg);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const txHash = notice.split(&quot;: &quot;)[1];
+
+  return (
+    &lt;View style={styles.wrap}&gt;
+      &lt;Text style={styles.title}&gt;Treasury&lt;/Text&gt;
+      &lt;Field label=&quot;Address (Monad Testnet)&quot; value={address} /&gt;
+      &lt;Button title=&quot;Copy address&quot; variant=&quot;secondary&quot; onPress={() =&gt; Clipboard.setStringAsync(address)} /&gt;
+      &lt;Field label=&quot;AUSD&quot; value={balances ? formatAusd(balances.ausd) : &quot;—&quot;} /&gt;
+      &lt;Field label=&quot;MON (gas)&quot; value={balances ? formatMon(balances.mon) : &quot;—&quot;} /&gt;
+      {rpcError ? (
+        &lt;&gt;
+          &lt;Text style={styles.error}&gt;{rpcError}&lt;/Text&gt;
+          &lt;Button title=&quot;Retry&quot; variant=&quot;secondary&quot; onPress={refresh} /&gt;
+        &lt;/&gt;
+      ) : null}
+      &lt;Button title=&quot;Get test AUSD&quot; onPress={getTestAusd} busy={busy} /&gt;
+      &lt;Button title=&quot;Get test MON (opens faucet)&quot; variant=&quot;secondary&quot; onPress={() =&gt; Linking.openURL(MON_FAUCET_URL)} /&gt;
+      {notice ? (
+        &lt;Text style={styles.notice} onPress={() =&gt; txHash &amp;&amp; Linking.openURL(EXPLORER_TX_URL(txHash))}&gt;
+          {notice}
+        &lt;/Text&gt;
+      ) : null}
+      {error ? &lt;Text style={styles.error}&gt;{error}&lt;/Text&gt; : null}
+      &lt;View style={styles.row}&gt;
+        &lt;Text style={styles.status}&gt;{account.status === &quot;unlocked&quot; ? &quot;Unlocked&quot; : &quot;Locked&quot;}&lt;/Text&gt;
+        {account.status === &quot;unlocked&quot; ? &lt;Button title=&quot;Lock&quot; variant=&quot;secondary&quot; onPress={onLock} /&gt; : null}
+        &lt;Button title=&quot;Sign out&quot; variant=&quot;secondary&quot; onPress={onSignOut} /&gt;
+      &lt;/View&gt;
+    &lt;/View&gt;
+  );
+}
+
+const styles = StyleSheet.create({
+  wrap: { flex: 1, gap: spacing.sm, padding: spacing.lg },
+  title: { color: palette.text, fontSize: 28, fontWeight: &quot;700&quot;, marginBottom: spacing.sm },
+  row: { flexDirection: &quot;row&quot;, alignItems: &quot;center&quot;, gap: spacing.sm, marginTop: &quot;auto&quot; },
+  status: { color: palette.muted, flex: 1 },
+  notice: { color: palette.success, fontSize: 12 },
+  error: { color: palette.danger },
+});</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 4: App (máquina de estados)</strong></label></li>
+</ul>
+<p><code>apps/mobile/App.tsx</code>:</p>
+<pre><code class="language-tsx">import { useCallback, useEffect, useRef, useState } from &quot;react&quot;;
+import { ActivityIndicator, StatusBar, StyleSheet, View } from &quot;react-native&quot;;
+import { SafeAreaProvider, SafeAreaView } from &quot;react-native-safe-area-context&quot;;
+import type { AccountState } from &quot;./src/account&quot;;
+import { Home } from &quot;./src/screens/Home&quot;;
+import { Welcome } from &quot;./src/screens/Welcome&quot;;
+import { clearStoredAccount, loadStoredAccount } from &quot;./src/storage/storage&quot;;
+import { palette } from &quot;./src/ui/theme&quot;;
+import type { Wallet } from &quot;./src/wallet/wallet&quot;;
+
+export default function App() {
+  const [account, setAccount] = useState&lt;AccountState | null&gt;(null);
+  const ref = useRef(account);
+  ref.current = account;
+
+  // Termina la sesión de firma saliente cuando la wallet deja el estado.
+  const replace = useCallback((next: AccountState) =&gt; {
+    const cur = ref.current;
+    if (cur?.status === &quot;unlocked&quot; &amp;&amp; (next.status !== &quot;unlocked&quot; || next.wallet !== cur.wallet)) {
+      cur.wallet.session.end();
+    }
+    ref.current = next;
+    setAccount(next);
+  }, []);
+
+  // Arranque: solo la dirección (sin gate). Nada de Face ID aquí.
+  useEffect(() =&gt; {
+    let stale = false;
+    loadStoredAccount()
+      .then((s) =&gt; !stale &amp;&amp; setAccount(s ? { status: &quot;locked&quot;, ...s } : { status: &quot;none&quot; }))
+      .catch(() =&gt; !stale &amp;&amp; setAccount({ status: &quot;none&quot; }));
+    return () =&gt; {
+      stale = true;
+    };
+  }, []);
+
+  const onWallet = (wallet: Wallet) =&gt; replace({ status: &quot;unlocked&quot;, wallet });
+  const onLock = () =&gt; {
+    const cur = ref.current;
+    if (cur?.status === &quot;unlocked&quot;) {
+      replace({ status: &quot;locked&quot;, address: cur.wallet.address, credentialId: cur.wallet.credentialId });
+    }
+  };
+  const onSignOut = async () =&gt; {
+    await clearStoredAccount();
+    replace({ status: &quot;none&quot; });
+  };
+
+  return (
+    &lt;SafeAreaProvider&gt;
+      &lt;StatusBar barStyle=&quot;light-content&quot; /&gt;
+      &lt;SafeAreaView style={styles.root}&gt;
+        {account === null ? (
+          &lt;View style={styles.center}&gt;&lt;ActivityIndicator color={palette.text} /&gt;&lt;/View&gt;
+        ) : account.status === &quot;none&quot; ? (
+          &lt;Welcome onWallet={onWallet} /&gt;
+        ) : (
+          &lt;Home account={account} onUnlock={onWallet} onLock={onLock} onSignOut={onSignOut} /&gt;
+        )}
+      &lt;/SafeAreaView&gt;
+    &lt;/SafeAreaProvider&gt;
+  );
+}
+
+const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: palette.bg },
+  center: { flex: 1, justifyContent: &quot;center&quot; },
+});</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 5: Typecheck + tests + simulador</strong></label></li>
+</ul>
+<pre><code class="language-bash">cd apps/mobile &amp;&amp; npx tsc --noEmit &amp;&amp; npm test
+npx expo prebuild --platform ios --clean &amp;&amp; npx expo run:ios --device &quot;iPhone 16&quot;</code></pre>
+<p>Expected: tipos limpios, 19 tests en verde, app abre en Welcome. En el simulador iOS 18.6: <em>Create account</em> → hoja de passkey de iOS → Home con dirección y balances <code>0.00</code> / <code>0.0000</code>. Tomar captura (<code>xcrun simctl io booted screenshot /tmp/claude-501/.../welcome.png</code> y <code>home.png</code>). Cerrar y reabrir la app: debe abrir en Home <strong>sin</strong> pedir Face ID (estado Locked).</p>
+<p>Si el simulador no ofrece PRF (error <code>PRF_UNAVAILABLE</code> o <code>RequestFailed</code>), anotar el mensaje exacto y pasar a device en Task 9 — no &quot;arreglar&quot; a ciegas.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 6: Commit</strong></label></li>
+</ul>
+<pre><code class="language-bash">git add apps/mobile/App.tsx apps/mobile/src/ui apps/mobile/src/screens
+git commit -m &quot;feat(mobile): pantallas Welcome y Home con tesorería AUSD&quot;</code></pre>
+<hr>
+<h3 id="task-9-device-faucet-real-y-testflight">Task 9: Device, faucet real y TestFlight</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Create: <code>apps/mobile/scripts/ios-archive.sh</code>, <code>apps/mobile/scripts/ios-upload.sh</code>, <code>apps/mobile/ExportOptions.plist</code>, <code>apps/mobile/.env.asc</code> (gitignored), <code>apps/mobile/README.md</code></li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Consumes: la app de Task 8, el dominio de Task 3, la ASC key de Proflores.</li>
+<li>Produces: build en TestFlight; tx del faucet confirmada.</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Pasos manuales de Jesús (una sola vez)</strong></label></li>
+</ul>
+<ol>
+<li>App Store Connect → <em>Apps</em> → <strong>+</strong> → New App: plataforma iOS, nombre <code>Pickler</code>, idioma primario English (U.S.), Bundle ID <code>fun.pickler.app</code> (si no aparece en la lista, primero correr el Step 2, que lo registra), SKU <code>pickler-ios</code>.</li>
+<li>Confirmar en developer.apple.com → <em>Identificadores</em> que <code>fun.pickler.app</code> tiene <strong>Associated Domains</strong> habilitado (el Step 2 lo hace; verificar).</li>
+<li>Conectar el iPhone y confiar en la Mac.</li>
+</ol>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Build de device (registra el App ID con la capability)</strong></label></li>
+</ul>
+<pre><code class="language-bash">cd apps/mobile
+cp ../../../Proflores/proflores-monorepo/apps/ios/.env.asc .env.asc   # misma key, mismo team
+npx expo prebuild --platform ios --clean
+set -a; . ./.env.asc; set +a
+xcodebuild -workspace ios/Pickler.xcworkspace -scheme Pickler \
+  -destination &#39;generic/platform=iOS&#39; -allowProvisioningUpdates \
+  -authenticationKeyPath &quot;$HOME/.appstoreconnect/private_keys/AuthKey_$ASC_KEY_ID.p8&quot; \
+  -authenticationKeyID &quot;$ASC_KEY_ID&quot; -authenticationKeyIssuerID &quot;$ASC_ISSUER_ID&quot; \
+  DEVELOPMENT_TEAM=2PBQJ37Q8W build</code></pre>
+<p>Expected: BUILD SUCCEEDED; en developer.apple.com aparece <code>fun.pickler.app</code> con Associated Domains. Luego <code>npx expo run:ios --device</code> y elegir el iPhone físico.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Flujo completo en device</strong></label></li>
+</ul>
+<ol>
+<li><em>Create account</em> con Face ID → Home con dirección.</li>
+<li>Copiar dirección; en <code>https://faucet.monad.xyz</code> pedir MON de testnet para esa dirección (o Jesús manda ~0.1 MON desde su wallet). Refrescar: MON &gt; 0.</li>
+<li><em>Get test AUSD</em> → Face ID (lee el PRF) → &quot;Sent: 0x…&quot; → &quot;Confirmed: 0x…&quot; → AUSD &gt; 0.</li>
+<li>Abrir el hash en el explorer y capturar.</li>
+<li><em>Lock</em> → <em>Get test AUSD</em> de nuevo → debe pedir Face ID otra vez.</li>
+<li><em>Sign out</em> → Welcome → <em>Sign in with passkey</em> → misma dirección.</li>
+</ol>
+<p>Registrar: dirección, hash de la tx, capturas. Si el faucet revierte, leer la razón en el explorer y anotarla (rate-limit por dirección es lo esperable).</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 4: Scripts de archive/upload (adaptados de Proflores)</strong></label></li>
+</ul>
+<p><code>apps/mobile/ExportOptions.plist</code>:</p>
+<pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;!DOCTYPE plist PUBLIC &quot;-//Apple//DTD PLIST 1.0//EN&quot; &quot;http://www.apple.com/DTDs/PropertyList-1.0.dtd&quot;&gt;
+&lt;plist version=&quot;1.0&quot;&gt;
+&lt;dict&gt;
+  &lt;key&gt;method&lt;/key&gt;&lt;string&gt;app-store-connect&lt;/string&gt;
+  &lt;key&gt;teamID&lt;/key&gt;&lt;string&gt;2PBQJ37Q8W&lt;/string&gt;
+  &lt;key&gt;signingStyle&lt;/key&gt;&lt;string&gt;automatic&lt;/string&gt;
+  &lt;key&gt;uploadSymbols&lt;/key&gt;&lt;true/&gt;
+  &lt;key&gt;destination&lt;/key&gt;&lt;string&gt;export&lt;/string&gt;
+&lt;/dict&gt;
+&lt;/plist&gt;</code></pre>
+<p><code>apps/mobile/scripts/ios-archive.sh</code>:</p>
+<pre><code class="language-bash">#!/usr/bin/env bash
+# Archive + export del .ipa. Lecciones heredadas de Proflores (2026-08-18):
+# clean archive siempre; verificar identidad Apple Distribution ANTES de archivar.
+set -euo pipefail
+DIR=&quot;$(cd &quot;$(dirname &quot;${BASH_SOURCE[0]}&quot;)/..&quot; &amp;&amp; pwd)&quot;
+cd &quot;$DIR&quot;
+
+_k=&quot;${ASC_KEY_ID-}&quot;; _i=&quot;${ASC_ISSUER_ID-}&quot;
+if [ -f .env.asc ]; then set -a; . ./.env.asc; set +a; fi
+[ -n &quot;$_k&quot; ] &amp;&amp; ASC_KEY_ID=&quot;$_k&quot;; [ -n &quot;$_i&quot; ] &amp;&amp; ASC_ISSUER_ID=&quot;$_i&quot;
+: &quot;${ASC_KEY_ID:?falta ASC_KEY_ID — ver .env.asc}&quot;
+: &quot;${ASC_ISSUER_ID:?falta ASC_ISSUER_ID — ver .env.asc}&quot;
+KEY_PATH=&quot;${ASC_KEY_PATH:-$HOME/.appstoreconnect/private_keys/AuthKey_$ASC_KEY_ID.p8}&quot;
+[ -f &quot;$KEY_PATH&quot; ] || { echo &quot;❌ no existe $KEY_PATH&quot;; exit 1; }
+
+if ! security find-identity -v -p codesigning | grep -q &quot;Apple Distribution&quot;; then
+  echo &quot;❌ no hay identidad &#39;Apple Distribution&#39; en el llavero; App Store Connect rechazará el .ipa.&quot;
+  echo &quot;   Xcode → Settings → Accounts → Manage Certificates → + → Apple Distribution.&quot;
+  exit 1
+fi
+
+rm -rf build
+npx expo prebuild --platform ios --clean
+
+xcodebuild -workspace ios/Pickler.xcworkspace -scheme Pickler \
+  -destination &#39;generic/platform=iOS&#39; \
+  -archivePath build/Pickler.xcarchive \
+  -allowProvisioningUpdates \
+  -authenticationKeyPath &quot;$KEY_PATH&quot; \
+  -authenticationKeyID &quot;$ASC_KEY_ID&quot; \
+  -authenticationKeyIssuerID &quot;$ASC_ISSUER_ID&quot; \
+  DEVELOPMENT_TEAM=2PBQJ37Q8W \
+  clean archive
+
+xcodebuild -exportArchive \
+  -archivePath build/Pickler.xcarchive \
+  -exportOptionsPlist ExportOptions.plist \
+  -exportPath build/export \
+  -allowProvisioningUpdates \
+  -authenticationKeyPath &quot;$KEY_PATH&quot; \
+  -authenticationKeyID &quot;$ASC_KEY_ID&quot; \
+  -authenticationKeyIssuerID &quot;$ASC_ISSUER_ID&quot;
+
+echo &quot;✓ $DIR/build/export/Pickler.ipa&quot;</code></pre>
+<p><code>apps/mobile/scripts/ios-upload.sh</code>:</p>
+<pre><code class="language-bash">#!/usr/bin/env bash
+# altool SALE CON 0 aunque la subida falle (medido en Proflores 2026-08-18): se grep-ea la salida.
+set -euo pipefail
+DIR=&quot;$(cd &quot;$(dirname &quot;${BASH_SOURCE[0]}&quot;)/..&quot; &amp;&amp; pwd)&quot;
+IPA=&quot;$DIR/build/export/Pickler.ipa&quot;
+_k=&quot;${ASC_KEY_ID-}&quot;; _i=&quot;${ASC_ISSUER_ID-}&quot;
+if [ -f &quot;$DIR/.env.asc&quot; ]; then set -a; . &quot;$DIR/.env.asc&quot;; set +a; fi
+[ -n &quot;$_k&quot; ] &amp;&amp; ASC_KEY_ID=&quot;$_k&quot;; [ -n &quot;$_i&quot; ] &amp;&amp; ASC_ISSUER_ID=&quot;$_i&quot;
+: &quot;${ASC_KEY_ID:?}&quot;; : &quot;${ASC_ISSUER_ID:?}&quot;
+[ -f &quot;$IPA&quot; ] || { echo &quot;❌ no existe $IPA — corre scripts/ios-archive.sh&quot;; exit 1; }
+
+OUT=&quot;$(mktemp)&quot;; trap &#39;rm -f &quot;$OUT&quot;&#39; EXIT
+set +e
+xcrun altool --upload-app -f &quot;$IPA&quot; -t ios --apiKey &quot;$ASC_KEY_ID&quot; --apiIssuer &quot;$ASC_ISSUER_ID&quot; 2&gt;&amp;1 | tee &quot;$OUT&quot;
+set -e
+if grep -qiE &quot;UPLOAD FAILED|ERROR ITMS|Validation failed&quot; &quot;$OUT&quot;; then
+  echo &quot;❌ la subida FALLÓ (altool salió con 0 de todos modos).&quot;; exit 1
+fi
+echo &quot;✓ subida aceptada&quot;</code></pre>
+<p><code>chmod +x scripts/*.sh</code>. Agregar a <code>package.json</code>: <code>&quot;ios:archive&quot;: &quot;scripts/ios-archive.sh&quot;</code>, <code>&quot;ios:upload&quot;: &quot;scripts/ios-upload.sh&quot;</code>.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 5: Archive + upload</strong></label></li>
+</ul>
+<pre><code class="language-bash">npm run ios:archive &amp;&amp; npm run ios:upload</code></pre>
+<p>Expected: &quot;✓ subida aceptada&quot;. En App Store Connect → TestFlight aparece el build <code>0.1.0 (1)</code> en &quot;Processing&quot; y luego listo. Agregar a Jesús al grupo interno de testers. <strong>Cada subida siguiente necesita subir <code>ios.buildNumber</code> en <code>app.config.ts</code>.</strong></p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 6: README de la app + commit</strong></label></li>
+</ul>
+<p><code>apps/mobile/README.md</code> con: qué es (fase 1), cómo correr en simulador (los 3 comandos), cómo correr tests, el dominio de passkeys y cómo verificarlo, cómo subir a TestFlight (los dos scripts + regla del buildNumber), y dónde conseguir MON de testnet.</p>
+<pre><code class="language-bash">git add apps/mobile/scripts apps/mobile/ExportOptions.plist apps/mobile/README.md apps/mobile/package.json
+git commit -m &quot;chore(mobile): scripts de archive/upload a TestFlight&quot;</code></pre>
+<hr>
+<h3 id="task-10-documentacion-del-roadmap-del-bounty">Task 10: Documentación del roadmap del bounty</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Create: <code>docs/04-roadmap-bounty.md</code></li>
+<li>Modify: <code>README.md</code> (raíz): quitar &quot;No hay código todavía&quot;, enlazar <code>apps/mobile</code> y el roadmap.</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Escribir el roadmap</strong></label></li>
+</ul>
+<p><code>docs/04-roadmap-bounty.md</code> con exactamente estas secciones: (1) el bounty en 5 líneas (premio, deadline 13 oct 2026 21:59 CST, las tres integraciones, criterios de jueces, deliverable); (2) tabla de fases — Fase 1 hecha (passkey + AUSD), Fase 2 Perpl testnet (<code>createAccount</code>, <code>allowOrderForwarding(true)</code>, WS <code>/ws/v1/trading</code>, una orden desde la app — <strong>obligatoria para elegibilidad</strong>), Fase 3 agentes + launchpad, Fase 4 harness con orden rechazada y comprobante; (3) decisiones que la fase 2 abre en <code>02-decisiones-abiertas.md</code> (venue Perpl vs Polymarket, D-01/D-02/D-12); (4) enlaces: bounty, docs de Perpl, Agora, Mera.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: README raíz</strong></label></li>
+</ul>
+<p>Reemplazar la sección &quot;Estado: diseño. No hay código todavía.&quot; por &quot;Estado: fase 1 móvil en construcción&quot; con enlace a <code>apps/mobile/README.md</code>, al spec y al roadmap.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Commit</strong></label></li>
+</ul>
+<pre><code class="language-bash">git add docs/04-roadmap-bounty.md README.md
+git commit -m &quot;docs: roadmap del bounty y estado del repo&quot;</code></pre>
+<hr>
+<h2 id="handoff-al-cerrar-la-fase">Handoff al cerrar la fase</h2>
+<p>Evidencia que debe existir antes de decir &quot;fase 1 lista&quot;: salida de <code>npm test</code> (19 tests), <code>curl -sI https://pickler.fun/.well-known/apple-app-site-association</code>, capturas de simulador y device, hash de la tx del faucet en el explorer, build visible en TestFlight. Pendientes conocidos: fase 2 (Perpl) es obligatoria para el bounty; decisión de venue en el equipo.</p>
+  </div>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <p>HTML autogenerado · NO edites este archivo. Modifica el <code>.md</code> y re-genera con:</p>
+    <pre><code class="language-sql">node scripts/mobile/docs-md-to-html.mjs docs/mobile/superpowers/plans/2026-09-15-mobile-fase1.md</code></pre>
+    <p>Reglas en <code>docs/mobile/AGENTS.md</code> sección "MD → HTML autogenerado".</p>
+  </div>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // Persistencia de los checkboxes de task lists (pickler-md:<slug>:tasks)
+  const SLUG = '2026-09-15-mobile-fase1';
+  const KEY = `pickler-md:${SLUG}:tasks`;
+  const checks = [...document.querySelectorAll('ul.task-list input[type=checkbox]')];
+  function load() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(KEY) || '[]');
+      checks.forEach((c, i) => {
+        if (typeof saved[i] === 'boolean') {
+          c.checked = saved[i];
+          c.closest('li').classList.toggle('done', c.checked);
+        }
+      });
+    } catch {}
+  }
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(checks.map(c => c.checked))); } catch {}
+  }
+  checks.forEach(c => {
+    c.closest('li').classList.toggle('done', c.checked);
+    c.addEventListener('change', () => {
+      c.closest('li').classList.toggle('done', c.checked);
+      save();
+    });
+  });
+  load();
+
+  // Botón "Copy progress as MD"
+  const $copy = document.getElementById('btn-copy-progress');
+  const $toast = document.getElementById('toast');
+  function showToast(msg) {
+    $toast.textContent = msg;
+    $toast.dataset.show = 'true';
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(() => { $toast.dataset.show = 'false'; }, 2200);
+  }
+  if ($copy) {
+    $copy.addEventListener('click', async (e) => {
+      const lines = ['# ' + document.title.split(' · ')[0] + ' — task progress', ''];
+      lines.push('_Capturado en ' + new Date().toISOString() + '_', '');
+      checks.forEach(c => {
+        const text = c.closest('label').textContent.trim();
+        lines.push('- [' + (c.checked ? 'x' : ' ') + '] ' + text);
+      });
+      try {
+        await navigator.clipboard.writeText(lines.join('\n'));
+        e.currentTarget.dataset.copied = 'true';
+        const prev = e.currentTarget.textContent;
+        e.currentTarget.textContent = '✓ Copiado';
+        showToast('Progress copiado — pégalo en el plan MD');
+        setTimeout(() => {
+          e.currentTarget.dataset.copied = 'false';
+          e.currentTarget.textContent = prev;
+        }, 1800);
+      } catch {
+        showToast('Clipboard no disponible');
+      }
+    });
+  }
+</script>
+</body>
+</html>

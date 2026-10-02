@@ -1,0 +1,505 @@
+<!doctype html>
+<html lang="es-MX">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>App móvil Pickler — Fase 1: passkey + tesorería AUSD · Pickler</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="_styles.css">
+<script defer src="_syntax.js"></script>
+</head>
+<body data-slug="mobile-fase1">
+
+<div class="wrap">
+  <nav class="crumb">
+    <a href="index.html">← Catálogo</a>
+    <span class="sep">/</span>
+    <span class="mono">mobile-fase1</span>
+  </nav>
+</div>
+
+<header class="hero">
+  <div class="wrap">
+    <span class="eyebrow"><span class="dot"></span>Project Overview</span>
+    <h1>App móvil Pickler — Fase 1: passkey <span class="accent">+ tesorería AUSD</span></h1>
+    <p class="lede">Se construye la app móvil de Pickler en React Native / Expo (no Swift: ver §1).</p>
+
+    <div class="status-board" id="status-board">
+      <div class="sb-grid">
+        <div class="sb-cell">
+          <div class="k">Estado</div>
+          <div class="v"><span class="sb-pill active" data-sb="status">Completado</span></div>
+        </div>
+        <div class="sb-cell">
+          <div class="k">Spec</div>
+          <div class="v" data-sb="spec">✅</div>
+        </div>
+        <div class="sb-cell">
+          <div class="k">Planes escritos</div>
+          <div class="v" data-sb="plans">1/1</div>
+        </div>
+        <div class="sb-cell">
+          <div class="k">Implementación</div>
+          <div class="v" data-sb="impl">1/1</div>
+        </div>
+        <div class="sb-cell">
+          <div class="k">Próximo paso</div>
+          <div class="v" data-sb="next" data-done="Cerrado el 2026-09-16 — siguiente en docs/04-roadmap-bounty.md">Cerrado el 2026-09-16 — siguiente en docs/04-roadmap-bounty.md</div>
+        </div>
+      </div>
+
+      <div class="sb-progress">
+        <div class="sb-progress-bar" id="sb-progress-bar"></div>
+        <div class="sb-legend">
+          <span><span class="swatch completed"></span>Completada</span>
+          <span><span class="swatch in_progress"></span>En progreso</span>
+          <span><span class="swatch plan_ready"></span>Plan listo</span>
+          <span><span class="swatch pending"></span>Pendiente</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<nav class="toc">
+  <div class="wrap">
+    <ul>
+      <li><a href="#tldr">1. TL;DR</a></li>
+      <li><a href="#roadmap">2. Roadmap</a></li>
+      <li><a href="#decisions">3. Decisiones</a></li>
+      <li><a href="#model">4. Modelo</a></li>
+    </ul>
+  </div>
+</nav>
+
+<main>
+  <div class="wrap">
+
+    <!-- ============================= 1. TL;DR ============================== -->
+    <section id="tldr">
+      <h2><span class="sec-num">01</span>TL;DR</h2>
+      <div class="tldr">
+        <h3>Resumen ejecutivo</h3>
+        <p>Se construye la app móvil de Pickler en <strong>React Native / Expo</strong> (no Swift: ver §1). La fase 1 entrega <strong>login con passkey vía Mera → cuenta EVM en Monad Testnet → pantalla con balance de AUSD y MON → botón de faucet de AUSD</strong>, con build firmado listo para <strong>TestFlight</strong>. Sin backend, sin VPS.</p>
+      </div>
+    </section>
+
+    <!-- ========================== 2. Roadmap =============================== -->
+    <section id="roadmap">
+      <h2><span class="sec-num">02</span>Roadmap</h2>
+      <p class="sec-sub">
+        Cada fase tiene un dropdown de status (cambia color en vivo) y un &lt;details&gt; con
+        las tasks del plan. Los checkboxes persisten en localStorage; usa los botones de
+        abajo para exportar el estado y pegarlo en Claude cuando vayas a avanzar.
+      </p>
+
+      <div class="roadmap-actions">
+        <button type="button" class="btn" id="btn-copy-md">📋 Copy progress as MD</button>
+        <button type="button" class="btn" id="btn-copy-diff">📋 Copy HTML diff for Claude</button>
+        <button type="button" class="btn" id="btn-reset-local">↺ Reset local changes</button>
+      </div>
+
+      <!-- Phase 1 ====================================================== -->
+      <article class="phase-card" data-phase="1" data-status="completed">
+        <div class="phase-head">
+          <div class="phase-title-wrap">
+            <span class="phase-num">F1</span>
+            <h3 class="phase-title">Passkey + tesorería AUSD</h3>
+          </div>
+          <div class="phase-status-control">
+            <select aria-label="Phase 1 status">
+              <option value="pending">pending</option>
+              <option value="plan_ready">plan_ready</option>
+              <option value="in_progress">in_progress</option>
+              <option value="completed" selected>completed</option>
+            </select>
+          </div>
+        </div>
+        <div class="phase-body">
+          <p>App Expo/iOS que crea o abre una cuenta EVM en Monad Testnet con passkey (Mera), muestra balance de AUSD y MON, pide AUSD al faucet de Agora, y sube a TestFlight.</p>
+          <div class="phase-meta">
+            <div><div class="k">Entregable</div><div class="v">App Expo/iOS con passkey (Mera), balances AUSD/MON, faucet real (10,000 AUSD) y build 0.1.0 (1) en TestFlight</div></div>
+            <div><div class="k">Prerequisitos</div><div class="v">Ninguno</div></div>
+          </div>
+          <details class="tasks">
+            <summary>
+              <span>Tasks del plan</span>
+              <span class="progress-pill" data-tasks-counter>0/0</span>
+            </summary>
+            <ol>
+              <li><label><input type="checkbox" checked> Task 1: Scaffold Expo + verificación de toolchain</label></li>
+              <li><label><input type="checkbox" checked> Task 2: Config de cadena y formateo</label></li>
+              <li><label><input type="checkbox" checked> Task 3: Dominio de passkeys en Cloudflare Pages</label></li>
+              <li><label><input type="checkbox" checked> Task 4: Derivación HD (PRF → cuenta EVM)</label></li>
+              <li><label><input type="checkbox" checked> Task 5: Storage (SecureStore) y estado de cuenta</label></li>
+              <li><label><input type="checkbox" checked> Task 6: Wallet con Mera (crear, entrar, desbloquear, errores)</label></li>
+              <li><label><input type="checkbox" checked> Task 7: Balances y tx al faucet (viem)</label></li>
+              <li><label><input type="checkbox" checked> Task 8: UI — Welcome, Home y App</label></li>
+              <li><label><input type="checkbox" checked> Task 9: Device, faucet real y TestFlight</label></li>
+              <li><label><input type="checkbox" checked> Task 10: Documentación del roadmap del bounty</label></li>
+            </ol>
+          </details>
+          <details class="followups">
+            <summary>Pendientes</summary>
+            <ul>
+              <li>Build 2 a TestFlight (fix de Home: refresca balances antes del faucet + botón Refresh balances)</li>
+              <li>Regex /cancel/i sin anclar en describeError</li>
+              <li>Sin tests unitarios de wallet.ts (zeroing, describeError)</li>
+              <li>KAT de derivación sugerido</li>
+              <li>PRF huérfano si falla saveStoredAccount</li>
+              <li>"Copy address" sin confirmación</li>
+              <li>Sin auto-lock en background</li>
+              <li>@category-labs/mera declara engines.node >= 24; la máquina usa Node 22 (solo warning)</li>
+            </ul>
+          </details>
+        </div>
+      </article>
+
+    </section>
+
+    <!-- ========================= 3. Decisiones ============================ -->
+    <section id="decisions">
+      <h2><span class="sec-num">03</span>Decisiones clave</h2>
+      <table class="decisions">
+        <thead>
+          <tr>
+            <th>Decisión</th>
+            <th>Por qué</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Stack móvil: Expo SDK 57 / RN 0.86, TypeScript</td>
+            <td>Mera solo tiene SDK TS (web, extensión, React Native); en Swift habría que reimplementar a mano la derivación PRF→EVM y el cliente de Perpl en 4 semanas. Jesús aceptó RN el 2026-09-15.</td>
+          </tr>
+          <tr>
+            <td>Auth: @category-labs/mera + react-native-passkey</td>
+            <td>Es lo que pide el bounty; el passkey deriva la llave en el dispositivo, sin servidor de auth. Privy/Turnkey/Clerk descartados.</td>
+          </tr>
+          <tr>
+            <td>Red: Monad Testnet (chain 10143)</td>
+            <td>AUSD existe en testnet con faucet; mainnet queda para después del demo.</td>
+          </tr>
+          <tr>
+            <td>Relying party (rpId): pickler.fun</td>
+            <td>Zona en la cuenta Cloudflare "Pickler", Jesús es Super Admin. Cambiar el rpId después obliga a todos a registrar passkey de nuevo.</td>
+          </tr>
+          <tr>
+            <td>Bundle ID: fun.pickler.app</td>
+            <td>Team Apple 2PBQJ37Q8W (el de Proflores).</td>
+          </tr>
+          <tr>
+            <td>Idioma de la app: Inglés</td>
+            <td>Hackathon internacional.</td>
+          </tr>
+          <tr>
+            <td>Dispositivo: Solo iPhone, portrait</td>
+            <td>Como Proflores v1.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3 class="section-sub">Lo aprendido (audit)</h3>
+      <ul>
+        <li>Expo SDK 57 exige Xcode ≥ 26.4; se instaló Xcode 26.6 junto al 26.2, más el runtime de simulador iOS 26.5.</li>
+        <li>Mera no tiene SDK Swift (solo web/extensión/React Native); por eso la app es RN, con la misma derivación PRF→BIP-39→BIP-32 que el demo oficial.</li>
+        <li>Passkeys en simulador funcionan inscribiendo Face ID vía <code>simctl spawn ... notifyutil</code>.</li>
+        <li><code>expo run:ios --device</code> pide el udid de hardware, no el de devicectl.</li>
+        <li>Cloudflare Pages no crea el CNAME del custom domain automáticamente; hay que crearlo a mano, y el <code>wrangler.jsonc</code> de Pages usa <code>CLOUDFLARE_ACCOUNT_ID</code>, no <code>account_id</code>.</li>
+        <li>La ASC API key de Proflores sirve para cualquier app del team; registrar el App ID y crear la app en App Store Connect se hizo a mano.</li>
+        <li>AUSD testnet tiene 6 decimales; el faucet <code>requestFunds(address)</code> da 10,000 AUSD y necesita MON para gas.</li>
+        <li>"Pickler" ya estaba tomado en App Store Connect; el registro se llama "Pickler Agents" con <code>CFBundleDisplayName</code> "Pickler".</li>
+      </ul>
+    </section>
+
+    <!-- ========================== 4. Modelo ================================ -->
+    <section id="model">
+      <h2><span class="sec-num">04</span>Modelo / arquitectura</h2>
+      <p class="sec-sub">Estructura del repo (spec §4).</p>
+
+      <ul>
+        <li><code>apps/mobile/</code></li>
+        <li><code>apps/mobile/app.config.ts</code></li>
+        <li><code>apps/mobile/src/config/chain.ts</code></li>
+        <li><code>apps/mobile/src/auth/</code></li>
+        <li><code>apps/mobile/src/storage/</code></li>
+        <li><code>apps/mobile/src/wallet/</code></li>
+        <li><code>apps/mobile/src/screens/Welcome.tsx</code></li>
+        <li><code>apps/mobile/src/screens/Home.tsx</code></li>
+        <li><code>apps/mobile/src/ui/</code></li>
+        <li><code>apps/mobile/__tests__/</code></li>
+        <li><code>infra/passkey-domain/public/.well-known/apple-app-site-association</code></li>
+        <li><code>infra/passkey-domain/wrangler.jsonc</code></li>
+        <li><code>docs/superpowers/specs/2026-09-15-mobile-fase1-design.md</code></li>
+        <li><code>docs/04-roadmap-bounty.md</code></li>
+      </ul>
+    </section>
+
+  </div>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <p><b>Fuentes:</b> spec en <code>docs/superpowers/specs/2026-09-15-mobile-fase1-design.md</code> ·
+       plan en <code>docs/superpowers/plans/2026-09-15-mobile-fase1.md</code> ·
+       audit en <code>docs/superpowers/audits/2026-09-16-mobile-fase1-f1-rulings.md</code></p>
+    <p>Dashboard vivo · sincronizar al avanzar una fase o cerrar un plan. Reglas en
+       <code>docs/CLAUDE.md</code>.</p>
+  </div>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // ===========================================================================
+  // Project overview interactivity (Tier 1 del HTML Maximalism roadmap)
+  // F2 update: tabs opcionales (.tabs button.tab + .tab-panel) activados auto.
+  //
+  // Persiste cambios en localStorage con key `pickler-docs:<slug>:state`.
+  // Botones "Copy progress as MD" y "Copy HTML diff" exportan el delta contra
+  // el snapshot inicial — pegar al chat para que Claude aplique al HTML.
+  // ===========================================================================
+
+  const SLUG = document.body.dataset.slug || 'unknown';
+  const LS_KEY = `pickler-docs:${SLUG}:state`;
+  const $toast = document.getElementById('toast');
+
+  const original = { phases: {}, tasks: {} };
+  document.querySelectorAll('.phase-card').forEach(card => {
+    const num = Number(card.dataset.phase);
+    original.phases[num] = card.dataset.status;
+    const checks = [...card.querySelectorAll('details.tasks input[type=checkbox]')];
+    original.tasks[num] = checks.map(c => c.checked);
+  });
+
+  function loadState() {
+    try { return JSON.parse(localStorage.getItem(LS_KEY)) ?? {}; } catch { return {}; }
+  }
+  function saveState(state) {
+    try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch {}
+  }
+  function captureState() {
+    const state = { phases: {}, tasks: {} };
+    document.querySelectorAll('.phase-card').forEach(card => {
+      const num = Number(card.dataset.phase);
+      state.phases[num] = card.dataset.status;
+      const checks = [...card.querySelectorAll('details.tasks input[type=checkbox]')];
+      state.tasks[num] = checks.map(c => c.checked);
+    });
+    return state;
+  }
+  function applyState() {
+    const state = loadState();
+    document.querySelectorAll('.phase-card').forEach(card => {
+      const num = Number(card.dataset.phase);
+      const ph = state.phases?.[num];
+      if (ph) {
+        card.dataset.status = ph;
+        card.querySelector('.phase-status-control select').value = ph;
+      }
+      const checks = [...card.querySelectorAll('details.tasks input[type=checkbox]')];
+      const persisted = state.tasks?.[num];
+      if (Array.isArray(persisted)) {
+        checks.forEach((c, i) => {
+          if (typeof persisted[i] === 'boolean') {
+            c.checked = persisted[i];
+            c.closest('li').classList.toggle('done', c.checked);
+          }
+        });
+      }
+      updateTaskCounter(card);
+    });
+    updateStatusBoard();
+  }
+
+  document.querySelectorAll('.phase-card').forEach(card => {
+    const sel = card.querySelector('.phase-status-control select');
+    sel.addEventListener('change', () => {
+      card.dataset.status = sel.value;
+      saveState(captureState());
+      updateStatusBoard();
+    });
+    card.querySelectorAll('details.tasks li input[type=checkbox]:checked').forEach(c => {
+      c.closest('li').classList.add('done');
+    });
+  });
+
+  function updateTaskCounter(card) {
+    const counter = card.querySelector('[data-tasks-counter]');
+    if (!counter) return;
+    const checks = [...card.querySelectorAll('details.tasks input[type=checkbox]')];
+    const done = checks.filter(c => c.checked).length;
+    counter.textContent = `${done}/${checks.length}`;
+  }
+  document.querySelectorAll('.phase-card details.tasks input[type=checkbox]').forEach(c => {
+    c.addEventListener('change', () => {
+      c.closest('li').classList.toggle('done', c.checked);
+      const card = c.closest('.phase-card');
+      updateTaskCounter(card);
+      saveState(captureState());
+    });
+  });
+
+  function updateStatusBoard() {
+    const phases = [...document.querySelectorAll('.phase-card')].map(card => ({
+      num: Number(card.dataset.phase),
+      status: card.dataset.status,
+      title: card.querySelector('.phase-title').textContent.trim(),
+    }));
+    const total = phases.length;
+    const completed = phases.filter(p => p.status === 'completed').length;
+    const planWritten = phases.filter(p => p.status !== 'pending').length;
+
+    const $plans = document.querySelector('[data-sb="plans"]');
+    const $impl = document.querySelector('[data-sb="impl"]');
+    const $next = document.querySelector('[data-sb="next"]');
+    if ($plans) $plans.textContent = `${planWritten}/${total}`;
+    if ($impl) $impl.textContent = `${completed}/${total}`;
+    if ($next) {
+      const nextPhase = phases.find(p => p.status === 'in_progress')
+        || phases.find(p => p.status === 'plan_ready')
+        || phases.find(p => p.status === 'pending');
+      $next.textContent = nextPhase ? `F${nextPhase.num}: ${nextPhase.title}` : ($next.dataset.done || '— todo completo');
+    }
+
+    const $bar = document.getElementById('sb-progress-bar');
+    if ($bar) {
+      $bar.replaceChildren(...phases.map(p => {
+        const seg = document.createElement('div');
+        seg.className = 'seg';
+        seg.dataset.status = p.status;
+        seg.style.width = `${100 / total}%`;
+        seg.title = `F${p.num}: ${p.title} (${p.status.replace('_', ' ')})`;
+        return seg;
+      }));
+    }
+
+    const $globalPill = document.querySelector('[data-sb="status"]');
+    if ($globalPill) {
+      if (completed === total) {
+        $globalPill.textContent = 'Completed';
+        $globalPill.className = 'sb-pill completed';
+      } else {
+        $globalPill.textContent = 'Active';
+        $globalPill.className = 'sb-pill active';
+      }
+    }
+  }
+
+  function buildProgressMd() {
+    const lines = [`# ${document.title} — progress snapshot`, ''];
+    lines.push(`_Capturado desde ${SLUG}.html en ${new Date().toISOString()}_`, '');
+    document.querySelectorAll('.phase-card').forEach(card => {
+      const num = card.dataset.phase;
+      const status = card.dataset.status;
+      const title = card.querySelector('.phase-title').textContent.trim();
+      lines.push(`## F${num}: ${title}`);
+      lines.push(`Status: \`${status}\``, '');
+      const tasks = [...card.querySelectorAll('details.tasks li')];
+      if (tasks.length) {
+        lines.push('Tasks:');
+        tasks.forEach(li => {
+          const cb = li.querySelector('input[type=checkbox]');
+          const text = li.textContent.trim();
+          lines.push(`- [${cb.checked ? 'x' : ' '}] ${text}`);
+        });
+        lines.push('');
+      }
+    });
+    return lines.join('\n');
+  }
+
+  function buildHtmlDiff() {
+    const current = captureState();
+    const changes = [];
+    document.querySelectorAll('.phase-card').forEach(card => {
+      const num = Number(card.dataset.phase);
+      if (current.phases[num] !== original.phases[num]) {
+        changes.push(
+          `// Cambiar status de F${num} en el HTML:\n` +
+          `<article class="phase-card" data-phase="${num}" data-status="${original.phases[num]}">\n` +
+          `// → \n` +
+          `<article class="phase-card" data-phase="${num}" data-status="${current.phases[num]}">`
+        );
+      }
+      const taskNodes = [...card.querySelectorAll('details.tasks li')];
+      const curTasks = current.tasks[num] || [];
+      const origTasks = original.tasks[num] || [];
+      taskNodes.forEach((li, i) => {
+        if (curTasks[i] !== origTasks[i]) {
+          const text = li.textContent.trim();
+          changes.push(
+            `// F${num} task #${i}: ${text}\n` +
+            `// ${origTasks[i] ? 'desmarcar' : 'marcar'} checkbox → ` +
+            `<input type="checkbox"${curTasks[i] ? ' checked' : ''}>`
+          );
+        }
+      });
+    });
+    if (changes.length === 0) return '// Sin cambios pendientes vs el HTML actual.';
+    return [
+      `// Cambios pendientes en ${SLUG}.html (aplicar y commitear):`,
+      '',
+      ...changes,
+    ].join('\n\n');
+  }
+
+  function showToast(msg) {
+    $toast.textContent = msg;
+    $toast.dataset.show = 'true';
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(() => { $toast.dataset.show = 'false'; }, 2400);
+  }
+  async function copy(text, btn, successMsg, originalLabel) {
+    try {
+      await navigator.clipboard.writeText(text);
+      btn.dataset.copied = 'true';
+      btn.textContent = '✓ Copiado';
+      showToast(successMsg);
+      setTimeout(() => { btn.dataset.copied = 'false'; btn.textContent = originalLabel; }, 1800);
+    } catch {
+      showToast('Clipboard no disponible — abre la consola y copia desde el log');
+      console.log(text);
+    }
+  }
+
+  document.getElementById('btn-copy-md').addEventListener('click', (e) => {
+    copy(buildProgressMd(), e.currentTarget,
+      'MD copiado — pégalo al chat de Claude', '📋 Copy progress as MD');
+  });
+  document.getElementById('btn-copy-diff').addEventListener('click', (e) => {
+    copy(buildHtmlDiff(), e.currentTarget,
+      'HTML diff copiado — pídele a Claude que lo aplique', '📋 Copy HTML diff for Claude');
+  });
+  document.getElementById('btn-reset-local').addEventListener('click', () => {
+    if (!confirm('¿Borrar los cambios locales y volver al estado del HTML?')) return;
+    localStorage.removeItem(LS_KEY);
+    location.reload();
+  });
+
+  // -------- F2: Tabs opcionales (auto-wire si hay .tabs en el DOM) -----------
+  function initTabs() {
+    document.querySelectorAll('.tabs').forEach(tablist => {
+      const tabs = [...tablist.querySelectorAll('button.tab[aria-controls]')];
+      const panels = tabs
+        .map(tab => document.getElementById(tab.getAttribute('aria-controls')))
+        .filter(Boolean);
+      tabs.forEach((tab, i) => {
+        tab.addEventListener('click', () => {
+          tabs.forEach(t => t.setAttribute('aria-selected', 'false'));
+          panels.forEach(p => { p.hidden = true; });
+          tab.setAttribute('aria-selected', 'true');
+          if (panels[i]) panels[i].hidden = false;
+        });
+      });
+    });
+  }
+
+  applyState();
+  initTabs();
+</script>
+
+</body>
+</html>

@@ -205,6 +205,11 @@ export {
   MONAD_ACCOUNT_PATH,
 } from "./features/wallets/domain/passkey.js";
 export {
+  MERA_RELYING_PARTY,
+  turnkeyRelyingPartyProblem,
+  type RelyingPartyProblem,
+} from "./features/wallets/domain/relying-party.js";
+export {
   DEPOSIT_AMOUNTS_AUSD,
   DepositAlreadyRecordedError,
   DepositFeeTooHighError,

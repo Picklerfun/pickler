@@ -1,0 +1,569 @@
+<!doctype html>
+<!--
+  AUTOGENERADO desde 2026-09-21-mobile-nav-f2.md por scripts/mobile/docs-md-to-html.mjs
+
+  ⚠️  NO EDITES ESTE ARCHIVO. Edita el .md y re-genera.
+  El próximo Write al .md (con el hook activo) sobrescribirá este HTML.
+
+  Reglas en docs/mobile/AGENTS.md sección "MD → HTML autogenerado".
+-->
+<html lang="es-MX">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Navegación nativa (mobile-nav) — F2 Implementation Plan: tab bar con pastilla arrastrable · Plan · Pickler</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../overview/_styles.css">
+<script defer src="../../overview/_syntax.js"></script>
+<style>
+  /* Overrides locales del MD-view */
+  .wrap { max-width: 820px; }
+  header.hero { padding: 24px 0 28px; }
+  main { padding: 32px 0 64px; overflow-wrap: anywhere; }
+  @media (max-width: 600px) { nav.toc { position: static; } }
+  main h1 { display: none; } /* el h1 ya está en el hero */
+  main h2 {
+    font-size: 22px; font-weight: 800;
+    margin: 36px 0 12px;
+    letter-spacing: -0.015em;
+    padding-bottom: 6px;
+    border-bottom: 2px solid var(--brand-soft);
+    scroll-margin-top: 72px;
+  }
+  main h3 {
+    font-size: 17px; font-weight: 700;
+    margin: 24px 0 8px;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+    scroll-margin-top: 72px;
+  }
+  main h4 {
+    font-size: 13px; font-weight: 700;
+    margin: 20px 0 6px;
+    text-transform: uppercase; letter-spacing: .06em;
+    color: var(--ink-3);
+  }
+  main p { margin: 0 0 12px; font-size: 14.5px; line-height: 1.65; color: var(--ink); }
+  main blockquote {
+    margin: 14px 0;
+    padding: 12px 18px;
+    background: var(--brand-soft);
+    border-left: 4px solid var(--brand);
+    border-radius: var(--radius-s);
+    color: var(--ink);
+    font-size: 14px; line-height: 1.6;
+  }
+  main blockquote p { margin: 0; }
+  main ul, main ol { margin: 8px 0 14px; padding-left: 26px; font-size: 14.5px; }
+  main ul li, main ol li { margin: 4px 0; line-height: 1.55; }
+  main ul.task-list { list-style: none; padding-left: 4px; }
+  main ul.task-list li {
+    display: flex; align-items: flex-start; gap: 8px;
+    padding: 4px 0;
+  }
+  main ul.task-list li input[type="checkbox"] {
+    margin-top: 4px; accent-color: var(--brand); cursor: pointer;
+    flex-shrink: 0;
+  }
+  main ul.task-list li label { flex: 1; cursor: pointer; }
+  main ul.task-list li.done label { color: var(--ink-3); text-decoration: line-through; text-decoration-color: var(--ink-3); }
+
+  main hr {
+    border: none; border-top: 1px solid var(--line);
+    margin: 32px 0;
+  }
+  main table {
+    width: 100%; border-collapse: collapse;
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: var(--radius); overflow: hidden;
+    margin: 14px 0;
+    font-size: 13.5px;
+  }
+  main table th, main table td {
+    text-align: left; padding: 10px 14px;
+    border-bottom: 1px solid var(--line);
+  }
+  main table th {
+    background: var(--surface-2); font-weight: 700;
+    font-size: 11.5px; color: var(--ink-3);
+    text-transform: uppercase; letter-spacing: .06em;
+  }
+  main table tr:last-child td { border-bottom: none; }
+  main img {
+    max-width: 100%; height: auto;
+    border-radius: var(--radius-s);
+    border: 1px solid var(--line);
+    margin: 10px 0;
+  }
+
+  .md-actions {
+    display: flex; gap: 10px; flex-wrap: wrap;
+    margin: 8px 0 28px;
+    position: sticky; top: 60px;
+    background: color-mix(in srgb, var(--bg) 92%, transparent);
+    backdrop-filter: blur(8px);
+    padding: 10px 0; z-index: 25;
+    border-bottom: 1px solid var(--line);
+  }
+  .md-actions .btn { text-decoration: none; }
+</style>
+</head>
+<body data-slug="2026-09-21-mobile-nav-f2">
+
+<div class="wrap">
+  <nav class="crumb">
+    <a href="../../overview/index.html">← Catálogo</a>
+    <span class="sep">/</span>
+    <a href="../">superpowers/plans</a>
+    <span class="sep">/</span>
+    <span class="mono">2026-09-21-mobile-nav-f2.md</span>
+  </nav>
+</div>
+
+<header class="hero">
+  <div class="wrap">
+    <span class="eyebrow"><span class="dot"></span>Plan · markdown source</span>
+    <h1>Navegación nativa (mobile-nav) — F2 Implementation Plan: tab bar con pastilla arrastrable</h1>
+    <p class="lede" style="margin:0;font-size:13.5px;color:var(--ink-3);font-family:var(--mono)">
+      Autogenerado · source: <code>plans/2026-09-21-mobile-nav-f2.md</code>
+    </p>
+  </div>
+</header>
+
+<nav class="toc"><div class="wrap">
+       <ul><li><a href="#global-constraints">Global Constraints</a></li><li><a href="#decisiones-del-plan-no-estan-en-el-spec">Decisiones del plan (no están en el spec)</a></li><li><a href="#mapa-de-archivos">Mapa de archivos</a></li><li><a href="#task-1-geometria-pura-de-la-tab-bar-uitabbarts">Task 1: Geometría pura de la tab bar (`ui/tabbar.ts`)</a></li><li><a href="#task-2-tabbar-con-pastilla-arrastrable-y-barra-que-se-esconde-deslizando-page-reserva-el-hueco">Task 2: `TabBar` con pastilla arrastrable y barra que se esconde deslizando; `Page` reserva el hueco</a></li><li><a href="#task-3-recorrido-en-el-simulador-capturas">Task 3: Recorrido en el simulador (capturas)</a></li><li><a href="#task-4-docs-d11-f2-d13-f2-completed-audit-readme-checks">Task 4: Docs — D11 (F2), D13, F2 `completed`, audit, README, checks</a></li><li><a href="#self-review-del-plan-hecho-al-escribirlo">Self-review del plan (hecho al escribirlo)</a></li></ul>
+     </div></nav>
+
+<main>
+  <div class="wrap">
+
+<div class="md-actions">
+  <button type="button" class="btn primary" id="btn-copy-progress">📋 Copy progress as MD</button>
+  <a href="2026-09-21-mobile-nav-f2.md" class="btn">📝 Ver source MD</a>
+</div>
+    <h1 id="navegacion-nativa-mobile-nav-f2-implementation-plan-tab-bar-con-pastilla-arrastrable">Navegación nativa (mobile-nav) — F2 Implementation Plan: tab bar con pastilla arrastrable</h1>
+<blockquote>
+<strong>For agentic workers:</strong> REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (<code>- [ ]</code>) syntax for tracking.
+</blockquote>
+<p><strong>Goal:</strong> Que la tab bar de Pickler se comporte como la de iOS 26 / Proflores: una pastilla lima detrás del ítem activo que se desliza con resorte al cambiar de pestaña, que se puede <strong>arrastrar con el dedo sin despegarlo</strong> (tic háptico al cruzar de ítem) y que selecciona <strong>al soltar</strong>; y que la tab bar se <strong>esconda y aparezca deslizando</strong> al entrar y salir de una pantalla no raíz (hoy corta de golpe — residual P4 de F1).</p>
+<p><strong>Architecture:</strong> Un módulo puro <code>src/ui/tabbar.ts</code> (geometría: índice bajo el dedo, x de la pastilla, alto de la barra) con tests, y una reescritura de <code>src/ui/TabBar.tsx</code> sobre <code>react-native-reanimated</code> (<code>useSharedValue</code>, <code>useAnimatedStyle</code>, <code>withSpring</code>, <code>withTiming</code>, <code>runOnJS</code>) y <code>react-native-gesture-handler</code> (<code>Gesture.Pan</code> + <code>GestureDetector</code>), ya instalados y linkeados en el build 8. La barra pasa a estar <strong>absolutamente posicionada</strong> dentro del navegador de pestañas y se traslada en Y para esconderse (D13, nueva); <code>Page</code> reserva su alto con <code>paddingBottom</code> en las pantallas raíz. El índice activo sigue viniendo de <code>state.index</code> (D11); el arrastre sólo mueve la pastilla y, al soltar, llama <code>switchTab</code>.</p>
+<p><strong>Tech Stack:</strong> Expo SDK 57 / RN 0.86; <code>react-native-reanimated 4.5.1</code> + <code>react-native-worklets 0.10.1</code> (plugin de Babel automático), <code>react-native-gesture-handler ~2.32.0</code>, <code>expo-haptics ~57.0.3</code>; jest-expo (<code>__tests__/*.test.ts</code>), <code>npx tsc --noEmit</code>. Simulador iPhone 17 Pro <code>2B2A0BAD-7B14-4DAE-8652-C7E9472505E0</code>; capturas de transiciones con <code>xcrun simctl io &lt;UDID&gt; recordVideo</code> + ffmpeg (lección de F1: los taps sintéticos tienen jitter &gt; 300 ms).</p>
+<p><strong>Spec:</strong> <code>docs/superpowers/specs/2026-09-21-mobile-nav-design.md</code> — D11 (pastilla) y la nueva <strong>D13</strong> (tab bar animada al entrar/salir de no-raíz), que Task 4 añade al spec con marca (F2). Overview <code>docs/overview/2026-09-21-mobile-nav.html</code> (F2 <code>pending</code> → <code>plan_ready</code> al guardar este plan → <code>completed</code> con el audit).</p>
+<h2 id="global-constraints">Global Constraints</h2>
+<ul>
+<li>Rama <strong><code>feat/mobile-nav-f2</code></strong> desde <code>main</code> local (<code>3ae5945</code>, build 8 en TestFlight), en el worktree existente <code>.claude/worktrees/mobile-nav</code> (<code>git -C &lt;worktree&gt; checkout -b feat/mobile-nav-f2 main</code>; <code>feat/mobile-nav</code> ya está mergeada). Primer comando: <code>cd apps/mobile &amp;&amp; npm ci</code>. Nunca <code>cd</code> al checkout principal para editar. Nunca <code>git add -A</code>; archivos por nombre. Commits <code>feat(mobile): …</code> / <code>fix(mobile): …</code> / <code>docs(mobile-nav): …</code> con trailers <code>Co-Authored-By: &lt;modelo que escribe&gt; &lt;noreply@anthropic.com&gt;</code> y <code>Claude-Session: &lt;URL de la sesión&gt;</code>. <strong>Sin push, sin merge, sin TestFlight</strong> salvo autorización explícita de Jesús.</li>
+<li><strong>Metro</strong>: hoy corre en :8081 desde <code>.claude/worktrees/mobile-nav/apps/mobile</code> (mismo worktree; tras el <code>checkout -b</code> sigue sirviendo el árbol nuevo). El dev build instalado en el simulador ya linkea reanimated/gesture-handler/haptics: <strong>no hace falta rebuild nativo</strong> en F2. Simulador <strong>siempre por UDID</strong>; <code>xcrun simctl ui &lt;UDID&gt; content_size medium</code> antes de capturar; mirar cada captura. Cuenta #620: <strong>no mover AUSD ni MON, ninguna orden, ningún Enable/Reconnect/Reset</strong>.</li>
+<li>D11 (vinculante): pastilla <code>borderRadius</code> 999, alto = alto de la fila de ítems, ancho = ítem − 2·inset, lima translúcido (<code>C.limeBg14</code>, sin blur); <code>translateX</code> en un <code>sharedValue</code> con <code>withSpring</code> (rigidez media, sin rebote exagerado); <code>Pan</code> sobre la fila con <code>activeOffsetX</code> ±6 px para no robar el tap; mientras se arrastra, <code>tabIndexAt(x, rowWidth, 5)</code> mueve la pastilla al ítem bajo el dedo y dispara <code>Haptics.selectionAsync()</code> al cruzar; <strong>al soltar</strong>, <code>switchTab(TAB_ORDER[i])</code> (nada si es la activa); el tap simple sigue siendo tap; el índice activo viene de <code>state.index</code>. Puros con test: <code>tabIndexAt</code>, <code>pillX</code>.</li>
+<li>D13 (nueva, aprobada en el checkpoint del build 8): la tab bar queda <strong>montada siempre</strong> y se esconde deslizando hacia abajo (<code>translateY</code> = su alto, <code>withTiming</code> 220 ms) cuando la pantalla enfocada no está en <code>SHOW_TABS</code>; reaparece igual. Mientras está oculta no recibe toques (<code>pointerEvents=&quot;none&quot;</code>, <code>Pan.enabled(false)</code>). Las pantallas raíz reservan su alto con <code>paddingBottom</code> (<code>tabBarHeight(insets.bottom)</code>); las no raíz siguen con <code>edges</code> inferior de <code>SafeAreaView</code>.</li>
+<li>Sin dependencias nuevas. Copy en inglés; comentarios en español; tests en inglés. <code>npm test</code> (hoy 32 suites / 239 tests) y <code>npx tsc --noEmit</code> en verde al cierre de cada task que toca código. Sin tests de UI (P12): <code>TabBar</code>/<code>Page</code> por <code>tsc</code> + simulador.</li>
+<li>Docs: contrato <code>docs/CLAUDE.md</code>; <code>npm run docs:html</code>; <code>docs:check</code> errors=0; <code>agents:check</code> <code>&quot;errors&quot;: []</code>.</li>
+<li>API verificada en <code>node_modules</code> el 2026-09-21: reanimated exporta <code>useSharedValue</code>, <code>useAnimatedStyle</code>, <code>withSpring</code>, <code>withTiming</code>, <code>runOnJS</code> (<code>react-native-reanimated/lib/typescript/index.d.ts</code>); gesture-handler <code>Gesture.Pan()</code> con <code>.enabled()</code>, <code>.activeOffsetX([a, b])</code>, <code>.failOffsetY([a, b])</code>, <code>.onStart/.onUpdate/.onEnd/.onFinalize</code> y <code>GestureDetector</code>; <code>expo-haptics</code> <code>selectionAsync(): Promise&lt;void&gt;</code>. <code>GestureHandlerRootView</code> ya envuelve la app (F1 Task 1). <code>newArchEnabled</code> no está fijado en <code>app.config.ts</code> → default del SDK 57 (nueva arquitectura activa; reanimated 4 la exige y el build 8 ya corre con ella).</li>
+</ul>
+<h2 id="decisiones-del-plan-no-estan-en-el-spec">Decisiones del plan (no están en el spec)</h2>
+<table>
+<thead>
+<tr><th>#</th><th>Decisión</th><th>Por qué</th></tr>
+</thead>
+<tbody>
+<tr><td>P1</td><td><strong>Geometría en un módulo puro</strong> <code>src/ui/tabbar.ts</code> con constantes (<code>ROW_PAD_X</code> 6, <code>PILL_INSET</code> 2, <code>ROW_TOP</code> 8, <code>ROW_H</code> 45, <code>ROW_BOTTOM</code> 12) y funciones <code>itemWidth</code>, <code>tabIndexAt</code>, <code>pillX</code>, <code>pillWidth</code>, <code>tabBarHeight</code>. <code>TabBar</code> y <code>Page</code> importan de ahí.</td><td>Un solo sitio para el layout; testeable sin RN; el alto de la barra es determinista (sin <code>onLayout</code> para el alto).</td></tr>
+<tr><td>P2</td><td><strong>El ancho de la fila sí se mide</strong> (<code>onLayout</code> → <code>useState</code> + <code>sharedValue</code>), porque depende del dispositivo; hasta medir, la pastilla no se pinta (<code>width === 0</code>).</td><td>El iPhone 17 Pro mide 402 pt pero otros no.</td></tr>
+<tr><td>P3</td><td><strong>Tab bar absoluta dentro del navegador de pestañas</strong> (<code>position: &quot;absolute&quot;, left/right/bottom: 0</code>) con <code>translateY</code> animado. bottom-tabs sigue montándola como <code>tabBar</code>; su contenedor mide 0 de alto, así que las escenas ocupan toda la altura y <code>Page</code> reserva el hueco en las raíces.</td><td>Es lo que hace iOS (<code>hidesBottomBarWhenPushed</code>): la barra se va deslizando mientras la página entra. Sin esto (P4 de F1) corta de golpe.</td></tr>
+<tr><td>P4</td><td><strong>Selección sólo al soltar</strong> y sólo si el índice final ≠ <code>state.index</code>; se emite <code>tabPress</code> como en el tap (paridad con F1). Si el gesto se cancela (<code>onFinalize</code> sin éxito), la pastilla vuelve al activo.</td><td>D11 A del brainstorm.</td></tr>
+<tr><td>P5</td><td><strong>Resorte</strong>: <code>{ damping: 18, stiffness: 220, mass: 0.6 }</code> para la pastilla; <code>withTiming</code> 220 ms para esconder/mostrar.</td><td>«Rigidez media, sin rebote exagerado». Se ajusta en Task 3 si en el simulador se ve lento o rebota; anotar el valor final.</td></tr>
+<tr><td>P6</td><td><strong>Haptic por <code>runOnJS</code></strong> desde el worklet de <code>onUpdate</code> sólo cuando cambia el índice (no por frame). En simulador no hay háptica: se verifica que no lance error (log de Metro limpio).</td><td><code>selectionAsync</code> es JS.</td></tr>
+<tr><td>P7</td><td><strong>Capturas por video</strong> (<code>recordVideo</code> + ffmpeg) para la pastilla a medio arrastre y para la barra deslizando en push/pop; el arrastre se genera con Maestro <code>swipe</code> lento sobre la fila (y = centro de la tab bar) — a diferencia del borde, aquí no hay <code>UIScreenEdgePanGestureRecognizer</code>, así que el swipe sintético sí debe activar el <code>Pan</code>. Si no activa (RNGH ignora eventos sintéticos), anotarlo y probar con <code>idb ui swipe</code>.</td><td>Lección de F1 Task 7.</td></tr>
+</tbody>
+</table>
+<h2 id="mapa-de-archivos">Mapa de archivos</h2>
+<table>
+<thead>
+<tr><th>Archivo</th><th>Task</th><th>Responsabilidad</th></tr>
+</thead>
+<tbody>
+<tr><td><code>apps/mobile/src/ui/tabbar.ts</code>, <code>__tests__/tabbar.test.ts</code></td><td>1</td><td>geometría pura + tests</td></tr>
+<tr><td><code>apps/mobile/src/ui/TabBar.tsx</code>, <code>apps/mobile/src/ui/Page.tsx</code></td><td>2</td><td>pastilla, arrastre, háptica, barra absoluta animada; hueco inferior en raíces</td></tr>
+<tr><td>Simulador</td><td>3</td><td>capturas (pastilla a medio arrastre, tras soltar, barra deslizando)</td></tr>
+<tr><td><code>docs/superpowers/specs/2026-09-21-mobile-nav-design.md</code> (D11 (F2), D13), <code>docs/overview/2026-09-21-mobile-nav.html</code>, <code>docs/overview/data/manifest.js</code>, <code>docs/superpowers/audits/2026-09-21-mobile-nav-f2-rulings.md</code>, <code>docs/superpowers/audits/img/*.png</code>, <code>apps/mobile/README.md</code></td><td>4</td><td>docs</td></tr>
+</tbody>
+</table>
+<hr>
+<h3 id="task-1-geometria-pura-de-la-tab-bar-uitabbarts">Task 1: Geometría pura de la tab bar (<code>ui/tabbar.ts</code>)</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Create: <code>apps/mobile/src/ui/tabbar.ts</code></li>
+<li>Test: <code>apps/mobile/__tests__/tabbar.test.ts</code></li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Produces (los usa Task 2): <code>TAB_COUNT = 5</code>, <code>ROW_PAD_X = 6</code>, <code>PILL_INSET = 2</code>, <code>ROW_TOP = 8</code>, <code>ROW_H = 45</code>, <code>ROW_BOTTOM = 12</code>; <code>itemWidth(rowWidth, count?)</code>, <code>tabIndexAt(x, rowWidth, count?)</code>, <code>pillX(index, rowWidth, count?)</code>, <code>pillWidth(rowWidth, count?)</code>, <code>tabBarHeight(insetBottom)</code>.</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 0: Rama y línea base</strong></label></li>
+</ul>
+<pre><code class="language-bash">cd /Users/josedejesusacevedoflores/Documents/predict/.claude/worktrees/mobile-nav
+git status --short &amp;&amp; git checkout -b feat/mobile-nav-f2 main &amp;&amp; git log --oneline -1
+cd apps/mobile &amp;&amp; npm ci 2&gt;&amp;1 | tail -1 &amp;&amp; npm test 2&gt;&amp;1 | tail -4 &amp;&amp; npx tsc --noEmit &amp;&amp; echo TSC-OK</code></pre>
+<p>Expected: árbol limpio; HEAD <code>3ae5945</code> (o el commit de este plan si ya está en <code>main</code>); <code>Tests: 239 passed</code> / <code>32 passed</code>; <code>TSC-OK</code>.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Tests (RED)</strong> — crear <code>__tests__/tabbar.test.ts</code>:</label></li>
+</ul>
+<pre><code class="language-ts">import { itemWidth, pillWidth, pillX, ROW_BOTTOM, ROW_H, ROW_TOP, tabBarHeight, tabIndexAt } from &quot;../src/ui/tabbar&quot;;
+
+// iPhone 17 Pro: 402 pt de ancho; fila con 6 pt de padding a cada lado → 5 ítems de 78 pt.
+const W = 402;
+
+test(&quot;itemWidth splits the row minus its horizontal padding&quot;, () =&gt; {
+  expect(itemWidth(W)).toBe(78);
+  expect(itemWidth(W, 4)).toBe(97.5);
+});
+
+test(&quot;tabIndexAt maps a finger x to the item under it and clamps at both ends&quot;, () =&gt; {
+  expect(tabIndexAt(0, W)).toBe(0);
+  expect(tabIndexAt(-20, W)).toBe(0);
+  expect(tabIndexAt(6 + 77.9, W)).toBe(0);
+  expect(tabIndexAt(6 + 78, W)).toBe(1);
+  expect(tabIndexAt(200, W)).toBe(2);
+  expect(tabIndexAt(401, W)).toBe(4);
+  expect(tabIndexAt(900, W)).toBe(4);
+});
+
+test(&quot;pillX and pillWidth sit the pill inside its item with a 2 pt inset&quot;, () =&gt; {
+  expect(pillX(0, W)).toBe(8);
+  expect(pillX(2, W)).toBe(6 + 2 * 78 + 2);
+  expect(pillX(4, W)).toBe(6 + 4 * 78 + 2);
+  expect(pillWidth(W)).toBe(74);
+});
+
+test(&quot;tabBarHeight is the row plus the bottom inset (deterministic, no measuring)&quot;, () =&gt; {
+  expect(tabBarHeight(0)).toBe(ROW_TOP + ROW_H + ROW_BOTTOM);
+  expect(tabBarHeight(34)).toBe(8 + 45 + 34 + 12);
+});</code></pre>
+<pre><code class="language-bash">npx jest __tests__/tabbar.test.ts 2&gt;&amp;1 | tail -6</code></pre>
+<p>Expected: FAIL — <code>Cannot find module &#39;../src/ui/tabbar&#39;</code>.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Implementar</strong> — crear <code>src/ui/tabbar.ts</code>:</label></li>
+</ul>
+<pre><code class="language-ts">// Geometría de la tab bar (spec mobile-nav D11/D13). Puro: sin react-native, para poder testearlo.
+// La fila mide `ROW_TOP + ROW_H` y se apoya sobre `insetBottom + ROW_BOTTOM`; los ítems reparten el ancho menos
+// `ROW_PAD_X` a cada lado; la pastilla vive dentro de su ítem con `PILL_INSET` a cada lado.
+
+export const TAB_COUNT = 5;
+export const ROW_PAD_X = 6;
+export const PILL_INSET = 2;
+export const ROW_TOP = 8;
+/** Alto de la fila de ítems: 6 + icono 19 + gap 5 + etiqueta 9 + 6 (los mismos valores que pinta TabBar). */
+export const ROW_H = 45;
+export const ROW_BOTTOM = 12;
+
+export function itemWidth(rowWidth: number, count = TAB_COUNT): number {
+  return (rowWidth - 2 * ROW_PAD_X) / count;
+}
+
+/** Índice del ítem bajo la x del dedo, acotado a [0, count). */
+export function tabIndexAt(x: number, rowWidth: number, count = TAB_COUNT): number {
+  const i = Math.floor((x - ROW_PAD_X) / itemWidth(rowWidth, count));
+  return Math.min(count - 1, Math.max(0, i));
+}
+
+export function pillX(index: number, rowWidth: number, count = TAB_COUNT): number {
+  return ROW_PAD_X + index * itemWidth(rowWidth, count) + PILL_INSET;
+}
+
+export function pillWidth(rowWidth: number, count = TAB_COUNT): number {
+  return itemWidth(rowWidth, count) - 2 * PILL_INSET;
+}
+
+/** Alto total de la barra (para el `paddingBottom` de las páginas raíz y para esconderla con translateY). */
+export function tabBarHeight(insetBottom: number): number {
+  return ROW_TOP + ROW_H + insetBottom + ROW_BOTTOM;
+}</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Verde y commit</strong></label></li>
+</ul>
+<pre><code class="language-bash">npx jest __tests__/tabbar.test.ts 2&gt;&amp;1 | tail -6
+npm test 2&gt;&amp;1 | tail -4 &amp;&amp; npx tsc --noEmit &amp;&amp; echo TSC-OK
+git add src/ui/tabbar.ts __tests__/tabbar.test.ts
+git commit -m &quot;feat(mobile): geometría pura de la tab bar (tabIndexAt, pillX, tabBarHeight) con tests&quot; -m &quot;Co-Authored-By: &lt;modelo&gt; &lt;noreply@anthropic.com&gt;&quot; -m &quot;Claude-Session: &lt;url&gt;&quot;</code></pre>
+<p>Expected: 4 tests nuevos; 33 suites / 243 tests; <code>TSC-OK</code>.</p>
+<hr>
+<h3 id="task-2-tabbar-con-pastilla-arrastrable-y-barra-que-se-esconde-deslizando-page-reserva-el-hueco">Task 2: <code>TabBar</code> con pastilla arrastrable y barra que se esconde deslizando; <code>Page</code> reserva el hueco</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Modify: <code>apps/mobile/src/ui/TabBar.tsx</code> (reescritura completa)</li>
+<li>Modify: <code>apps/mobile/src/ui/Page.tsx</code> (<code>paddingBottom</code> en raíces)</li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Consumes: Task 1; <code>switchTab</code> de <code>useAppCtx()</code> (F1); <code>TAB_ORDER</code>, <code>TAB_ROOT</code>, <code>TabName</code> de <code>../navigation/routes</code>; <code>ROOT_OF</code>, <code>SHOW_TABS</code>, <code>Screen</code> de <code>../store</code>; <code>Icon</code>, <code>T</code>, <code>Touch</code> de <code>./primitives</code>; <code>C</code> de <code>./theme</code>.</li>
+<li>Produces: <code>TabBar(props: BottomTabBarProps)</code> (misma firma; <code>TABS</code> sigue exportado para <code>comingSoonCopy.ts</code>).</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: <code>src/ui/TabBar.tsx</code></strong> — sustituir el archivo por:</label></li>
+</ul>
+<pre><code class="language-tsx">import type { BottomTabBarProps } from &quot;@react-navigation/bottom-tabs&quot;;
+import { getFocusedRouteNameFromRoute } from &quot;@react-navigation/native&quot;;
+import * as Haptics from &quot;expo-haptics&quot;;
+import { useCallback, useEffect, useState } from &quot;react&quot;;
+import { type LayoutChangeEvent, View } from &quot;react-native&quot;;
+import { Gesture, GestureDetector } from &quot;react-native-gesture-handler&quot;;
+import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withSpring, withTiming } from &quot;react-native-reanimated&quot;;
+import { useAppCtx } from &quot;../navigation/context&quot;;
+import { TAB_ORDER, type TabName, TAB_ROOT } from &quot;../navigation/routes&quot;;
+import { ROOT_OF, type Screen, SHOW_TABS } from &quot;../store&quot;;
+import { Icon, type IconName, T, Touch } from &quot;./primitives&quot;;
+import { pillWidth, pillX, ROW_BOTTOM, ROW_H, ROW_PAD_X, ROW_TOP, TAB_COUNT, tabBarHeight, tabIndexAt } from &quot;./tabbar&quot;;
+import { C } from &quot;./theme&quot;;
+
+/** Tab bar del hi-fi (D4): clave de pantalla, etiqueta mono, icono lucide. */
+export const TABS: readonly [Screen, string, IconName][] = [
+  [&quot;markets&quot;, &quot;MARKETS&quot;, &quot;chart&quot;],
+  [&quot;launchpad&quot;, &quot;LAUNCHPAD&quot;, &quot;rocket&quot;],
+  [&quot;activity&quot;, &quot;ACTIVITY&quot;, &quot;activity&quot;],
+  [&quot;portfolio&quot;, &quot;PORTFOLIO&quot;, &quot;layers&quot;],
+  [&quot;wallet&quot;, &quot;WALLET&quot;, &quot;wallet&quot;],
+];
+
+/** Resorte de la pastilla: rigidez media, sin rebote exagerado (P5 del plan F2). */
+const SPRING = { damping: 18, stiffness: 220, mass: 0.6 };
+const HIDE_MS = 220;
+
+/**
+ * Tab bar custom de bottom-tabs (spec mobile-nav D11/D13). Siempre montada y absoluta: se esconde deslizando
+ * hacia abajo cuando la pantalla enfocada no es raíz (D13). La pastilla lima sigue a `state.index` con resorte y
+ * se puede arrastrar sin despegar el dedo; la pestaña cambia sólo al soltar (D11). El tap sigue siendo tap.
+ */
+export function TabBar({ state, navigation, insets }: BottomTabBarProps) {
+  const { switchTab } = useAppCtx();
+  const focusedTab = state.routes[state.index];
+  const focusedScreen = (getFocusedRouteNameFromRoute(focusedTab) ?? TAB_ROOT[focusedTab.name as TabName]) as Screen;
+  const visible = SHOW_TABS.includes(focusedScreen);
+  const height = tabBarHeight(insets.bottom);
+
+  // Ancho real de la fila (depende del dispositivo, P2): estado para React y sharedValue para los worklets.
+  const [width, setWidth] = useState(0);
+  const rowW = useSharedValue(0);
+  const onLayout = useCallback((e: LayoutChangeEvent) =&gt; { const w = e.nativeEvent.layout.width; setWidth(w); rowW.value = w; }, [rowW]);
+
+  // Pastilla: x animada; `drag` = índice bajo el dedo durante el arrastre (−1 = sin arrastre).
+  const pill = useSharedValue(0);
+  const drag = useSharedValue(-1);
+  useEffect(() =&gt; { if (width &gt; 0) pill.value = withSpring(pillX(state.index, width), SPRING); }, [state.index, width, pill]);
+
+  // Esconder/mostrar (D13): translateY = alto de la barra.
+  const ty = useSharedValue(visible ? 0 : height);
+  useEffect(() =&gt; { ty.value = withTiming(visible ? 0 : height, { duration: HIDE_MS }); }, [visible, height, ty]);
+
+  const select = useCallback((i: number) =&gt; {
+    if (i === state.index) return;
+    const route = state.routes[i];
+    // El listener `tabPress` de native-stack es quien hace popToTop en la pila anidada al tocar la pestaña ya
+    // enfocada; aquí sólo se emite y, si nadie lo previene, se cambia de pestaña (paridad con el tap, P4).
+    const e = navigation.emit({ type: &quot;tabPress&quot;, target: route.key, canPreventDefault: true });
+    if (!e.defaultPrevented) switchTab(route.name as TabName);
+  }, [state.index, state.routes, navigation, switchTab]);
+  const tick = useCallback(() =&gt; { void Haptics.selectionAsync(); }, []);
+
+  const pan = Gesture.Pan()
+    .enabled(visible &amp;&amp; width &gt; 0)
+    .activeOffsetX([-6, 6]) // el tap no se roba: el Pan sólo activa con 6 pt horizontales
+    .failOffsetY([-12, 12])
+    .onStart((e) =&gt; {
+      const i = tabIndexAt(e.x, rowW.value, TAB_COUNT);
+      drag.value = i;
+      pill.value = withSpring(pillX(i, rowW.value, TAB_COUNT), SPRING);
+    })
+    .onUpdate((e) =&gt; {
+      const i = tabIndexAt(e.x, rowW.value, TAB_COUNT);
+      if (i !== drag.value) {
+        drag.value = i;
+        pill.value = withSpring(pillX(i, rowW.value, TAB_COUNT), SPRING);
+        runOnJS(tick)();
+      }
+    })
+    .onEnd(() =&gt; { runOnJS(select)(drag.value); })
+    .onFinalize((_e, success) =&gt; {
+      if (!success) pill.value = withSpring(pillX(state.index, rowW.value, TAB_COUNT), SPRING); // cancelado: vuelve al activo
+      drag.value = -1;
+    });
+
+  const barStyle = useAnimatedStyle(() =&gt; ({ transform: [{ translateY: ty.value }] }));
+  const pillStyle = useAnimatedStyle(() =&gt; ({ transform: [{ translateX: pill.value }] }));
+
+  return (
+    &lt;Animated.View
+      pointerEvents={visible ? &quot;auto&quot; : &quot;none&quot;}
+      style={[{ position: &quot;absolute&quot;, left: 0, right: 0, bottom: 0, height, paddingTop: ROW_TOP, paddingBottom: insets.bottom + ROW_BOTTOM, borderTopWidth: 1, borderTopColor: C.hair, backgroundColor: C.deep50 }, barStyle]}
+    &gt;
+      &lt;GestureDetector gesture={pan}&gt;
+        &lt;View onLayout={onLayout} style={{ flexDirection: &quot;row&quot;, height: ROW_H, paddingHorizontal: ROW_PAD_X }}&gt;
+          {width &gt; 0 ? (
+            &lt;Animated.View pointerEvents=&quot;none&quot; style={[{ position: &quot;absolute&quot;, top: 0, left: 0, width: pillWidth(width), height: ROW_H, borderRadius: 999, backgroundColor: C.limeBg14 }, pillStyle]} /&gt;
+          ) : null}
+          {state.routes.map((route, i) =&gt; {
+            const root = TAB_ROOT[route.name as TabName];
+            const [, label, icon] = TABS.find(([k]) =&gt; k === root)!;
+            const fg = ROOT_OF[focusedScreen] === root ? C.lime : C.faint;
+            return (
+              &lt;Touch key={route.key} onPress={() =&gt; select(i)} accessibilityLabel={`tab-${root}`} style={{ flex: 1, alignItems: &quot;center&quot;, gap: 5, paddingVertical: 6, paddingHorizontal: 2 }}&gt;
+                &lt;Icon name={icon} size={19} color={fg} /&gt;
+                &lt;T w={500} s={9} lh={1} ls={0.04} mono color={fg}&gt;{label}&lt;/T&gt;
+              &lt;/Touch&gt;
+            );
+          })}
+        &lt;/View&gt;
+      &lt;/GestureDetector&gt;
+    &lt;/Animated.View&gt;
+  );
+}</code></pre>
+<p>Notas: <code>TAB_ORDER</code> sólo se importa si se usa (aquí el índice va por <code>state.routes[i]</code>, que es el mismo orden — si <code>tsc</code> marca <code>TAB_ORDER</code> sin uso, quitarlo del import). Si <code>tsc</code> exige tipar <code>e</code> en los callbacks del gesto o se queja de <code>runOnJS(select)</code> con argumento, ajustar tipos sin cambiar la semántica y anotarlo.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: <code>src/ui/Page.tsx</code></strong> — reservar el hueco de la barra en las raíces (D13): import <code>useSafeAreaInsets</code> de <code>react-native-safe-area-context</code> y <code>tabBarHeight</code> de <code>./tabbar</code>; dentro de <code>Page</code>, <code>const insets = useSafeAreaInsets();</code> y en el <code>ScrollView</code>:</label></li>
+</ul>
+<pre><code class="language-tsx">          contentContainerStyle={{ flexGrow: 1, paddingBottom: showTabs ? tabBarHeight(insets.bottom) : 0 }}</code></pre>
+<p>El <code>SafeAreaView edges={showTabs ? [&quot;top&quot;] : [&quot;top&quot;, &quot;bottom&quot;]}</code> se queda igual.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: <code>tsc</code>, tests y humo</strong></label></li>
+</ul>
+<pre><code class="language-bash">npx tsc --noEmit &amp;&amp; echo TSC-OK &amp;&amp; npm test 2&gt;&amp;1 | tail -4
+U=2B2A0BAD-7B14-4DAE-8652-C7E9472505E0
+SC=/Users/josedejesusacevedoflores/Documents/predict/.claude/worktrees/mobile-nav/.superpowers/sdd/2026-09-21-mobile-nav-f2
+mkdir -p &quot;$SC/shots&quot;; lsof -tiTCP:8081 -sTCP:LISTEN &gt;/dev/null || (nohup npx expo start --port 8081 &gt; &quot;$SC/metro.log&quot; 2&gt;&amp;1 &amp;)
+xcrun simctl ui $U content_size medium; xcrun simctl terminate $U fun.pickler.app; xcrun simctl launch $U fun.pickler.app; sleep 4
+xcrun simctl io $U screenshot &quot;$SC/shots/t2-wallet.png&quot;</code></pre>
+<p><strong>Mirar</strong> <code>t2-wallet.png</code>: Wallet con la pastilla lima detrás de WALLET, la lista de movimientos no queda tapada por la barra (hay hueco abajo); Metro sin rojo ni <code>[Reanimated]</code>/<code>[GestureHandler]</code> warnings. Tocar <code>tab-markets</code> (<code>taplabel.sh</code>): la pastilla se desliza a MARKETS (captura <code>t2-markets.png</code>). <code>market-BTC</code>: la barra se desliza hacia abajo mientras entra Market (video en Task 3); Market sin barra y sin hueco extra abajo (<code>t2-market.png</code>). <code>back</code>: la barra vuelve deslizando.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 4: Commit</strong></label></li>
+</ul>
+<pre><code class="language-bash">git add src/ui/TabBar.tsx src/ui/Page.tsx
+git commit -m &quot;feat(mobile): tab bar con pastilla lima arrastrable (reanimated + gesture-handler, haptics) y barra que se esconde deslizando en no-raíz; Page reserva el hueco&quot; -m &quot;Co-Authored-By: &lt;modelo&gt; &lt;noreply@anthropic.com&gt;&quot; -m &quot;Claude-Session: &lt;url&gt;&quot;</code></pre>
+<p>Expected: <code>TSC-OK</code>; 33 / 243.</p>
+<hr>
+<h3 id="task-3-recorrido-en-el-simulador-capturas">Task 3: Recorrido en el simulador (capturas)</h3>
+<p><strong>Files:</strong> ninguno del repo. Workspace <code>SC=&lt;worktree&gt;/.superpowers/sdd/2026-09-21-mobile-nav-f2</code> (lo crea <code>scripts/sdd-workspace</code>); copiar <code>taplabel.sh</code>, <code>tap-point.yaml</code>, <code>gear.sh</code> y <code>flows/</code> desde <code>&lt;worktree&gt;/.superpowers/sdd/2026-09-21-mobile-nav-f1/</code> y ajustar <code>SC</code> en <code>taplabel.sh</code>/<code>gear.sh</code>.</p>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Produces: <code>$SC/task-3-report.md</code>; PNG a <code>docs/superpowers/audits/img/2026-09-21-mobile-nav-f2-{pill-drag,pill-landed,bar-hiding,bar-shown}.png</code> (reducidos con <code>sips -Z 1300</code>).</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 0: Estado</strong> — Metro desde el worktree, <code>content_size medium</code>, app en Wallet con sesión; anotar saldos (<code>00-wallet-before.png</code>).</label></li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Arrastre de la pastilla</strong> — grabar <code>xcrun simctl io $U recordVideo --codec h264 --force $SC/shots/vid-drag.mp4 &amp;</code>; Maestro <code>swipe</code> <strong>lento</strong> sobre la fila de la tab bar: <code>start &quot;88%, Y%&quot; end &quot;12%, Y%&quot; duration 1800</code> con <code>Y</code> = centro de la fila (≈ 100 − (ROW<em>TOP + ROW</em>H/2 + insets.bottom + ROW_BOTTOM) / altoPantalla·100; en el iPhone 17 Pro ≈ 93 %); parar la grabación (<code>kill -INT</code>), extraer frames (<code>ffmpeg -i vid-drag.mp4 -vf fps=30 $SC/shots/drag-%03d.png</code>) y contact sheet; elegir un frame con la pastilla <strong>entre</strong> dos ítems o sobre uno intermedio (<code>01-pill-drag.png</code>) y el final tras soltar con la pantalla ya cambiada (<code>02-pill-landed.png</code>: Markets con la pastilla en MARKETS). Si el swipe sintético no activa el <code>Pan</code> (la pastilla no se mueve), probar <code>idb ui swipe</code> si está instalado; si tampoco, anotarlo como no capturado y verificar al menos que el tap sigue funcionando.</label></li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Barra deslizando</strong> — grabar <code>vid-push.mp4</code> mientras <code>taplabel.sh market-BTC</code>; frames: uno con la barra <strong>a medio camino</strong> hacia abajo y Market entrando (<code>03-bar-hiding.png</code>); luego <code>back</code> grabando <code>vid-pop.mp4</code>: barra subiendo (<code>04-bar-shown.png</code>). Confirmar en el frame final de Market que no hay hueco vacío abajo, y en Markets que la lista no queda bajo la barra.</label></li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Tap y resorte</strong> — <code>tab-wallet</code> → captura a ~120 ms por video (<code>05-pill-spring.png</code>, pastilla en tránsito) y final (<code>06-wallet.png</code>). Comprobar que un tap en la pestaña activa no hace nada raro.</label></li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 4: Sin regresiones</strong> — jalar en Wallet → sello; <code>deposit</code> → Deposit sin barra y con el inset inferior correcto (botones no tapados); <code>back</code> → barra vuelve; gate (Dev controls → «Markets» sin cuenta) <strong>no</strong> aplica si hay cuenta: no cerrar sesión. Saldos al final (<code>99-wallet-after.png</code>) iguales.</label></li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 5: Reporte</strong> — <code>$SC/task-3-report.md</code>: tabla captura → qué se ve (✓ mirada), valores finales de <code>SPRING</code>/<code>HIDE_MS</code> si se ajustaron, no capturado y por qué, defectos (pastilla desalineada, barra que no vuelve, hueco/solape, tap robado por el Pan, warnings de Reanimated). Copiar los 4 PNG de evidencia con <code>sips -Z 1300</code>.</label></li>
+</ul>
+<hr>
+<h3 id="task-4-docs-d11-f2-d13-f2-completed-audit-readme-checks">Task 4: Docs — D11 (F2), D13, F2 <code>completed</code>, audit, README, checks</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Modify: <code>docs/superpowers/specs/2026-09-21-mobile-nav-design.md</code> (D11 marca (F2) con <code>SPRING</code>/<code>HIDE_MS</code> finales; <strong>D13</strong> nueva fila: «Tab bar animada al entrar/salir de no-raíz» con el texto de la Global Constraint D13 y marca (F2); Estado: «F1 y F2 ejecutadas; rama <code>feat/mobile-nav-f2</code> lista para merge local»; §5 Fases: F2 con D13), <code>docs/overview/2026-09-21-mobile-nav.html</code> (phase-card F2 → <code>completed</code>, tasks 1–4 <code>checked</code>, D13 en la tabla de decisiones, rulings de F2 en «Rulings en ejecución»), <code>docs/overview/data/manifest.js</code> (<code>phases[1].status = &#39;completed&#39;</code>; <code>status: &#39;active&#39;</code> se queda hasta el merge), <code>apps/mobile/README.md</code> (en «Navegación»: párrafo «Tab bar»: geometría en <code>ui/tabbar.ts</code>, pastilla/arrastre/<code>switchTab</code>, barra absoluta + <code>paddingBottom</code> en raíces; conteo de tests 33 / 243)</li>
+<li>Create: <code>docs/superpowers/audits/2026-09-21-mobile-nav-f2-rulings.md</code>, <code>docs/superpowers/audits/img/2026-09-21-mobile-nav-f2-*.png</code> (Task 3)</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Spec, overview, manifest, README</strong> como arriba. <code>npm run docs:html</code>; render-check del overview a 390 px y <strong>mirar</strong> (F2 completed, 4/4, D13 en decisiones).</label></li>
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Audit</strong> — §1 por task con evidencia real (RED/GREEN de Task 1, <code>tsc</code>/tests, humo de Task 2, tabla de capturas de Task 3 con <code>![…](img/…)</code>), §2 tests/tsc/diffstat (<code>git log --oneline main..HEAD</code>), §3 rulings (P1–P7 + ledger), §4 correcciones (D13 nace en F2; lo que cambió del spec D11), §5 cuentas al cierre, §6 residuales (háptica no verificable en simulador; arrastre sintético si no activó; Android).</label></li>
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Checks y commit</strong></label></li>
+</ul>
+<pre><code class="language-bash">cd /Users/josedejesusacevedoflores/Documents/predict/.claude/worktrees/mobile-nav
+npm run docs:html &amp;&amp; npm run docs:check &amp;&amp; npm run agents:check
+cd apps/mobile &amp;&amp; npm test 2&gt;&amp;1 | tail -4 &amp;&amp; npx tsc --noEmit &amp;&amp; echo TSC-OK &amp;&amp; cd ../..
+git status --short
+git add docs/superpowers/specs/2026-09-21-mobile-nav-design.md docs/superpowers/specs/2026-09-21-mobile-nav-design.html docs/superpowers/plans/2026-09-21-mobile-nav-f2.md docs/superpowers/plans/2026-09-21-mobile-nav-f2.html docs/overview/2026-09-21-mobile-nav.html docs/overview/data/manifest.js docs/superpowers/audits/2026-09-21-mobile-nav-f2-rulings.md docs/superpowers/audits/img/2026-09-21-mobile-nav-f2-pill-drag.png docs/superpowers/audits/img/2026-09-21-mobile-nav-f2-pill-landed.png docs/superpowers/audits/img/2026-09-21-mobile-nav-f2-bar-hiding.png docs/superpowers/audits/img/2026-09-21-mobile-nav-f2-bar-shown.png apps/mobile/README.md
+git commit -m &quot;docs(mobile-nav): F2 completed — spec D11 (F2) y D13, overview, audit con capturas, README&quot; -m &quot;Co-Authored-By: &lt;modelo&gt; &lt;noreply@anthropic.com&gt;&quot; -m &quot;Claude-Session: &lt;url&gt;&quot;</code></pre>
+<p>Expected: <code>docs:check</code> errors=0; <code>agents:check</code> <code>&quot;errors&quot;: []</code>; 33 / 243; <code>TSC-OK</code>; árbol limpio. (Si alguna captura no existió, quitarla del <code>git add</code> y del audit.) Handoff: rama lista para merge local (decisión de Jesús) y build 9 cuando lo pida; el proyecto <code>mobile-nav</code> pasa a <code>completed</code> en el manifest con el merge.</p>
+<hr>
+<h2 id="self-review-del-plan-hecho-al-escribirlo">Self-review del plan (hecho al escribirlo)</h2>
+<ul>
+<li><strong>Cobertura</strong>: D11 → Task 1 (geometría + tests) + Task 2 (<code>TabBar</code>); D13 (nueva) → Task 2 (<code>translateY</code>, <code>pointerEvents</code>, <code>Pan.enabled</code>) + <code>Page</code> (<code>paddingBottom</code>) + Task 4 (spec); verificación → Task 3 (capturas por video) + Task 4 (docs). Sin gaps.</li>
+<li><strong>Placeholders</strong>: <code>&lt;modelo&gt;</code>, <code>&lt;url&gt;</code>, el <code>Y%</code> del swipe (se calcula en Task 3 con la geometría de <code>tabbar.ts</code> y el alto de pantalla) y los valores finales de <code>SPRING</code>/<code>HIDE_MS</code> si se ajustan. Ningún «TBD».</li>
+<li><strong>Consistencia de tipos</strong>: <code>tabIndexAt(x, rowWidth, count)</code>, <code>pillX(index, rowWidth, count)</code>, <code>pillWidth(rowWidth, count)</code>, <code>tabBarHeight(insetBottom)</code> iguales en Tasks 1 y 2; <code>TabBar(props: BottomTabBarProps)</code> conserva la firma de F1; <code>switchTab(tab: TabName)</code> existe desde F1 (<code>store.ts</code>); <code>C.limeBg14</code>, <code>C.deep50</code>, <code>C.hair</code> existen en <code>theme.ts</code>.</li>
+<li><strong>Trampas conocidas</strong>: (1) <code>useAnimatedStyle</code> con <code>transform</code> y <code>position: &quot;absolute&quot;</code> en el mismo <code>style</code> array — OK en reanimated 4; (2) <code>runOnJS(select)(drag.value)</code> requiere que <code>select</code> sea estable entre renders (está en <code>useCallback</code>); (3) si el <code>Pan</code> roba el tap, subir <code>activeOffsetX</code> a ±10; (4) la barra absoluta se pinta encima de la escena: el <code>paddingBottom</code> de <code>Page</code> evita que el último ítem de una lista quede tapado.</li>
+</ul>
+  </div>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <p>HTML autogenerado · NO edites este archivo. Modifica el <code>.md</code> y re-genera con:</p>
+    <pre><code class="language-sql">node scripts/mobile/docs-md-to-html.mjs docs/mobile/superpowers/plans/2026-09-21-mobile-nav-f2.md</code></pre>
+    <p>Reglas en <code>docs/mobile/AGENTS.md</code> sección "MD → HTML autogenerado".</p>
+  </div>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // Persistencia de los checkboxes de task lists (pickler-md:<slug>:tasks)
+  const SLUG = '2026-09-21-mobile-nav-f2';
+  const KEY = `pickler-md:${SLUG}:tasks`;
+  const checks = [...document.querySelectorAll('ul.task-list input[type=checkbox]')];
+  function load() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(KEY) || '[]');
+      checks.forEach((c, i) => {
+        if (typeof saved[i] === 'boolean') {
+          c.checked = saved[i];
+          c.closest('li').classList.toggle('done', c.checked);
+        }
+      });
+    } catch {}
+  }
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(checks.map(c => c.checked))); } catch {}
+  }
+  checks.forEach(c => {
+    c.closest('li').classList.toggle('done', c.checked);
+    c.addEventListener('change', () => {
+      c.closest('li').classList.toggle('done', c.checked);
+      save();
+    });
+  });
+  load();
+
+  // Botón "Copy progress as MD"
+  const $copy = document.getElementById('btn-copy-progress');
+  const $toast = document.getElementById('toast');
+  function showToast(msg) {
+    $toast.textContent = msg;
+    $toast.dataset.show = 'true';
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(() => { $toast.dataset.show = 'false'; }, 2200);
+  }
+  if ($copy) {
+    $copy.addEventListener('click', async (e) => {
+      const lines = ['# ' + document.title.split(' · ')[0] + ' — task progress', ''];
+      lines.push('_Capturado en ' + new Date().toISOString() + '_', '');
+      checks.forEach(c => {
+        const text = c.closest('label').textContent.trim();
+        lines.push('- [' + (c.checked ? 'x' : ' ') + '] ' + text);
+      });
+      try {
+        await navigator.clipboard.writeText(lines.join('\n'));
+        e.currentTarget.dataset.copied = 'true';
+        const prev = e.currentTarget.textContent;
+        e.currentTarget.textContent = '✓ Copiado';
+        showToast('Progress copiado — pégalo en el plan MD');
+        setTimeout(() => {
+          e.currentTarget.dataset.copied = 'false';
+          e.currentTarget.textContent = prev;
+        }, 1800);
+      } catch {
+        showToast('Clipboard no disponible');
+      }
+    });
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,14 @@
+{
+  // Worker que sirve el AASA de passkeys en pickler.fun aunque el dominio apunte a otro sitio
+  // (desde 2026-09-20 el DNS es un CNAME al worker de la web). Sólo intercepta esta ruta.
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "pickler-aasa",
+  "main": "src/index.ts",
+  "account_id": "1e08efc05d1cf361b372ba3009ed4985",
+  "compatibility_date": "2026-09-21",
+  "workers_dev": false,
+  "routes": [
+    { "pattern": "pickler.fun/.well-known/apple-app-site-association", "zone_name": "pickler.fun" }
+  ],
+  "observability": { "enabled": true, "head_sampling_rate": 1 }
+}

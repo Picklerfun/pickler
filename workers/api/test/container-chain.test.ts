@@ -79,3 +79,26 @@ test("a supported CHAIN_ID composes the balance reader and deposits", async (t) 
     await services.close();
   }
 });
+
+test("TURNKEY_RPID on Mera's relying party turns custody off and leaves the rest serving", async (t) => {
+  const store = await createTestStore(t);
+  const logged: unknown[] = [];
+  t.mock.method(console, "error", (...line: unknown[]) => logged.push(line));
+  const env = {
+    ...base,
+    TURNKEY_RPID: "pickler.fun",
+    DATABASE_URL: store.pool.options.connectionString,
+  } as Env;
+
+  const services = createServices(env);
+  const app = createApp(services);
+
+  try {
+    assert.equal(services.custody, undefined);
+    assert.equal((await app.request("/v1/health", {}, env)).status, 200);
+    assert.equal((await app.request("/v1/signing/wallets", {}, env)).status, 404);
+    assert.match(JSON.stringify(logged), /TURNKEY_RPID is refused \(shared_with_mera\)/);
+  } finally {
+    await services.close();
+  }
+});

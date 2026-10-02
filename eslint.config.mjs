@@ -24,6 +24,12 @@ export default defineConfig([
     "contracts/cache/**",
     // Vendored Solidity dependencies; they carry their own JavaScript tooling.
     "contracts/lib/**",
+    // Imported with the mobile app; linted by its own tooling, not this configuration.
+    "apps/mobile/**",
+    "services/reads/**",
+    "infra/**",
+    "docs/mobile/**",
+    "scripts/mobile/**",
   ]),
   {
     files: [

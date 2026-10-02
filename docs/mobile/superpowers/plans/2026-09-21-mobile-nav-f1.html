@@ -1,0 +1,1197 @@
+<!doctype html>
+<!--
+  AUTOGENERADO desde 2026-09-21-mobile-nav-f1.md por scripts/mobile/docs-md-to-html.mjs
+
+  ⚠️  NO EDITES ESTE ARCHIVO. Edita el .md y re-genera.
+  El próximo Write al .md (con el hook activo) sobrescribirá este HTML.
+
+  Reglas en docs/mobile/AGENTS.md sección "MD → HTML autogenerado".
+-->
+<html lang="es-MX">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Navegación nativa (mobile-nav) — F1 Implementation Plan · Plan · Pickler</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../overview/_styles.css">
+<script defer src="../../overview/_syntax.js"></script>
+<style>
+  /* Overrides locales del MD-view */
+  .wrap { max-width: 820px; }
+  header.hero { padding: 24px 0 28px; }
+  main { padding: 32px 0 64px; overflow-wrap: anywhere; }
+  @media (max-width: 600px) { nav.toc { position: static; } }
+  main h1 { display: none; } /* el h1 ya está en el hero */
+  main h2 {
+    font-size: 22px; font-weight: 800;
+    margin: 36px 0 12px;
+    letter-spacing: -0.015em;
+    padding-bottom: 6px;
+    border-bottom: 2px solid var(--brand-soft);
+    scroll-margin-top: 72px;
+  }
+  main h3 {
+    font-size: 17px; font-weight: 700;
+    margin: 24px 0 8px;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+    scroll-margin-top: 72px;
+  }
+  main h4 {
+    font-size: 13px; font-weight: 700;
+    margin: 20px 0 6px;
+    text-transform: uppercase; letter-spacing: .06em;
+    color: var(--ink-3);
+  }
+  main p { margin: 0 0 12px; font-size: 14.5px; line-height: 1.65; color: var(--ink); }
+  main blockquote {
+    margin: 14px 0;
+    padding: 12px 18px;
+    background: var(--brand-soft);
+    border-left: 4px solid var(--brand);
+    border-radius: var(--radius-s);
+    color: var(--ink);
+    font-size: 14px; line-height: 1.6;
+  }
+  main blockquote p { margin: 0; }
+  main ul, main ol { margin: 8px 0 14px; padding-left: 26px; font-size: 14.5px; }
+  main ul li, main ol li { margin: 4px 0; line-height: 1.55; }
+  main ul.task-list { list-style: none; padding-left: 4px; }
+  main ul.task-list li {
+    display: flex; align-items: flex-start; gap: 8px;
+    padding: 4px 0;
+  }
+  main ul.task-list li input[type="checkbox"] {
+    margin-top: 4px; accent-color: var(--brand); cursor: pointer;
+    flex-shrink: 0;
+  }
+  main ul.task-list li label { flex: 1; cursor: pointer; }
+  main ul.task-list li.done label { color: var(--ink-3); text-decoration: line-through; text-decoration-color: var(--ink-3); }
+
+  main hr {
+    border: none; border-top: 1px solid var(--line);
+    margin: 32px 0;
+  }
+  main table {
+    width: 100%; border-collapse: collapse;
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: var(--radius); overflow: hidden;
+    margin: 14px 0;
+    font-size: 13.5px;
+  }
+  main table th, main table td {
+    text-align: left; padding: 10px 14px;
+    border-bottom: 1px solid var(--line);
+  }
+  main table th {
+    background: var(--surface-2); font-weight: 700;
+    font-size: 11.5px; color: var(--ink-3);
+    text-transform: uppercase; letter-spacing: .06em;
+  }
+  main table tr:last-child td { border-bottom: none; }
+  main img {
+    max-width: 100%; height: auto;
+    border-radius: var(--radius-s);
+    border: 1px solid var(--line);
+    margin: 10px 0;
+  }
+
+  .md-actions {
+    display: flex; gap: 10px; flex-wrap: wrap;
+    margin: 8px 0 28px;
+    position: sticky; top: 60px;
+    background: color-mix(in srgb, var(--bg) 92%, transparent);
+    backdrop-filter: blur(8px);
+    padding: 10px 0; z-index: 25;
+    border-bottom: 1px solid var(--line);
+  }
+  .md-actions .btn { text-decoration: none; }
+</style>
+</head>
+<body data-slug="2026-09-21-mobile-nav-f1">
+
+<div class="wrap">
+  <nav class="crumb">
+    <a href="../../overview/index.html">← Catálogo</a>
+    <span class="sep">/</span>
+    <a href="../">superpowers/plans</a>
+    <span class="sep">/</span>
+    <span class="mono">2026-09-21-mobile-nav-f1.md</span>
+  </nav>
+</div>
+
+<header class="hero">
+  <div class="wrap">
+    <span class="eyebrow"><span class="dot"></span>Plan · markdown source</span>
+    <h1>Navegación nativa (mobile-nav) — F1 Implementation Plan</h1>
+    <p class="lede" style="margin:0;font-size:13.5px;color:var(--ink-3);font-family:var(--mono)">
+      Autogenerado · source: <code>plans/2026-09-21-mobile-nav-f1.md</code>
+    </p>
+  </div>
+</header>
+
+<nav class="toc"><div class="wrap">
+       <ul><li><a href="#global-constraints">Global Constraints</a></li><li><a href="#decisiones-del-plan-no-estan-en-el-spec">Decisiones del plan (no están en el spec)</a></li><li><a href="#mapa-de-archivos">Mapa de archivos</a></li><li><a href="#task-1-dependencias-nativas-gesturehandlerrootview-y-rebuild-con-la-app-actual">Task 1: Dependencias nativas, `GestureHandlerRootView` y rebuild con la app actual</a></li><li><a href="#task-2-tabla-de-rutas-y-gate-puros-navigationroutests">Task 2: Tabla de rutas y gate puros (`navigation/routes.ts`)</a></li><li><a href="#task-3-adaptador-sobre-navigationref-navigationrefts">Task 3: Adaptador sobre `navigationRef` (`navigation/ref.ts`)</a></li><li><a href="#task-4-userefreshseal-y-usecurrentscreen">Task 4: `useRefreshSeal` y `useCurrentScreen`</a></li><li><a href="#task-5-page-tabbar-y-navigator-compilan-sin-usarse">Task 5: `Page`, `TabBar` y `Navigator` (compilan sin usarse)</a></li><li><a href="#task-6-conmutacion-store-solo-con-datos-apptsx-con-navigator-adios-shell">Task 6: Conmutación — store sólo con datos, `App.tsx` con `Navigator`, adiós `Shell`</a></li><li><a href="#task-7-recorrido-en-el-simulador-capturas-d12">Task 7: Recorrido en el simulador (capturas D12)</a></li><li><a href="#task-8-docs-marcas-f1-f1-completed-audit-readme-nota-en-el-tracker-del-fix-gate">Task 8: Docs — marcas (F1), F1 `completed`, audit, README, nota en el tracker del fix gate</a></li><li><a href="#self-review-del-plan-hecho-al-escribirlo">Self-review del plan (hecho al escribirlo)</a></li></ul>
+     </div></nav>
+
+<main>
+  <div class="wrap">
+
+<div class="md-actions">
+  <button type="button" class="btn primary" id="btn-copy-progress">📋 Copy progress as MD</button>
+  <a href="2026-09-21-mobile-nav-f1.md" class="btn">📝 Ver source MD</a>
+</div>
+    <h1 id="navegacion-nativa-mobile-nav-f1-implementation-plan">Navegación nativa (mobile-nav) — F1 Implementation Plan</h1>
+<blockquote>
+<strong>For agentic workers:</strong> REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (<code>- [ ]</code>) syntax for tracking.
+</blockquote>
+<p><strong>Goal:</strong> Migrar la navegación de la app a react-navigation nativa (<code>native-stack</code> dentro de <code>bottom-tabs</code>, una pila por pestaña) sin cambiar la API que usan las pantallas, de modo que el gesto atrás sea el interactivo de iOS, el «adelante» anime, la cabecera viaje con la página y cada pestaña conserve su pila.</p>
+<p><strong>Architecture:</strong> Se construye <strong>al lado</strong> de lo que existe y se conmuta en una sola task. Piezas nuevas: <code>src/navigation/routes.ts</code> (tabla pura <code>Screen → {tab, ruta}</code> y tipos de params), <code>src/navigation/ref.ts</code> (adaptador sobre <code>navigationRef</code>: <code>navigateTo</code>, <code>goBackIfCan</code>, <code>resetTo</code>, cola hasta <code>isReady</code>), <code>src/hooks/useRefreshSeal.ts</code> (el sello sale del <code>Shell</code>), <code>src/hooks/useCurrentScreen.ts</code> (pantalla activa por ruta), <code>src/ui/Page.tsx</code> (cabecera + <code>ScrollView</code> + refresh + sello + fondo opaco, por ruta), <code>src/ui/TabBar.tsx</code> (aspecto de hoy sobre la prop <code>tabBar</code>), <code>src/navigation/Navigator.tsx</code> (RootStack → Tabs → pila por pestaña, <code>withPage</code>, <code>AppCtx</code> por contexto). La conmutación (Task 6) deja el store sólo con datos, monta <code>NavigationContainer</code> en <code>App.tsx</code>, elimina <code>Shell.tsx</code> y <code>ui/gestures.ts</code>, y pasa Sign in a leer <code>next</code> de <code>route.params</code>.</p>
+<p><strong>Tech Stack:</strong> Expo SDK 57 / RN 0.86 / React 19.2; <code>@react-navigation/native</code> 7.4.x, <code>@react-navigation/native-stack</code> 7.19.x, <code>@react-navigation/bottom-tabs</code> 7.19.x; <code>react-native-screens ~4.26.0</code>, <code>react-native-gesture-handler ~2.32.0</code>, <code>react-native-reanimated 4.5.1</code> + <code>react-native-worklets 0.10.1</code> (plugin de Babel automático en <code>babel-preset-expo</code>), <code>expo-haptics ~57.0.3</code> (F2, se instala aquí para no repetir el rebuild); jest-expo, <code>npx tsc --noEmit</code>. Simulador iPhone 17 Pro <code>2B2A0BAD-7B14-4DAE-8652-C7E9472505E0</code>, Maestro (<code>taplabel.sh</code>).</p>
+<p><strong>Spec:</strong> <code>docs/superpowers/specs/2026-09-21-mobile-nav-design.md</code> (D1–D10, D12; D11 es F2). Overview <code>docs/overview/2026-09-21-mobile-nav.html</code> (F1 <code>pending</code> → <code>plan_ready</code> al guardar este plan → <code>completed</code> con el audit).</p>
+<h2 id="global-constraints">Global Constraints</h2>
+<ul>
+<li>Worktree <code>.claude/worktrees/mobile-nav</code>, rama <code>feat/mobile-nav</code> desde <code>main</code> = <code>6e9326c</code>. Primer comando en el worktree: <code>cd apps/mobile &amp;&amp; npm ci</code>. Nunca <code>cd</code> al checkout principal para editar. Nunca <code>git add -A</code>; archivos por nombre. Commits <code>feat(mobile): …</code> / <code>fix(mobile): …</code> / <code>docs(mobile-nav): …</code> con trailers <code>Co-Authored-By: &lt;modelo que escribe&gt; &lt;noreply@anthropic.com&gt;</code> y <code>Claude-Session: &lt;URL de la sesión que ejecuta&gt;</code>. <strong>Sin push, sin merge, sin TestFlight</strong> salvo autorización explícita de Jesús en la sesión.</li>
+<li><strong>Metro</strong>: hoy corre en :8081 desde <code>.claude/worktrees/mobile-loading/apps/mobile</code> (ya mergeado). Para las tasks con simulador hay que <strong>matarlo</strong> (<code>lsof -tiTCP:8081 -sTCP:LISTEN | xargs kill</code>) y arrancarlo desde <strong>este</strong> worktree. Task 1 cambia nativo → <code>npx expo prebuild --platform ios --clean</code> + <code>npx expo run:ios --device 2B2A0BAD-7B14-4DAE-8652-C7E9472505E0</code> (reinstala el dev build; puede borrar la cuenta local: sign in con el passkey «pickler» de Apple Passwords + Face ID <code>xcrun simctl spawn &lt;UDID&gt; notifyutil -p com.apple.BiometricKit_Sim.fingerTouch.match</code>). Simulador <strong>siempre por UDID</strong>, nunca <code>booted</code>; <code>xcrun simctl ui &lt;UDID&gt; content_size medium</code> antes de capturar (otra sesión lo deja en XXXL). Capturas con <code>xcrun simctl io &lt;UDID&gt; screenshot …</code> y <strong>mirar cada una</strong>. Cuenta #620: <strong>no mover AUSD ni MON, ninguna orden, ningún Enable/Reconnect/Reset</strong>.</li>
+<li><strong>Las pantallas no cambian de API</strong> (D2): <code>ctx.nav(screen, patch)</code>, <code>ctx.back()</code>, <code>ctx.requireAccount(screen, patch)</code>, <code>ctx.finishSignin()</code>, <code>ctx.signedOut()</code> conservan nombre y semántica. Los <code>accessibilityLabel</code> existentes (<code>tab-*</code>, <code>market-*</code>, <code>back</code>, <code>dev-controls</code>, <code>pill-*</code>, <code>sign-out</code>, <code>deposit</code>, <code>withdraw</code>…) se conservan.</li>
+<li><strong>Store sólo con datos</strong> (D3): <code>StoreState</code> pierde <code>screen</code>, <code>stack</code>, <code>next</code>, <code>nextPatch</code>. react-navigation es la única dueña de la pila; nada en la app guarda una pila propia.</li>
+<li><strong>Cabecera propia</strong> (D6): <code>headerShown: false</code> en todos los stacks; la cabecera vive en <code>Page</code> y cada <code>Page</code> lleva fondo opaco (gradiente + puntos). Gesto y transición nativos (D8): <code>gestureEnabled: true</code>, <code>fullScreenGestureEnabled: false</code>, <code>animation: &quot;default&quot;</code>; tabs con <code>animation: &quot;none&quot;</code>.</li>
+<li>Copy en inglés; comentarios en español donde el archivo vecino los tenga; tests en inglés. <code>npm test</code> (hoy 31 suites / 242 tests) y <code>npx tsc --noEmit</code> en verde al cierre de cada task que toca código. Sin tests de UI (P12 de Ask F2): pantallas por <code>tsc</code> + simulador.</li>
+<li>Docs: contrato <code>docs/CLAUDE.md</code>; <code>npm run docs:html</code>; <code>docs:check</code> errors=0; <code>agents:check</code> <code>&quot;errors&quot;: []</code>.</li>
+<li>Doc verificada el 2026-09-21: Expo v57 reanimated (<code>npx expo install react-native-reanimated react-native-worklets</code>, «No additional configuration is required» para Babel), gesture-handler (<code>npx expo install react-native-gesture-handler</code>); react-navigation v7: <code>navigate(&quot;Tabs&quot;, { screen, params })</code> para rutas anidadas, <code>navigate</code> a una ruta ya presente en la pila <strong>vuelve</strong> a ella, <code>popTo</code>, <code>navigationRef.isReady()/getCurrentRoute()/addListener(&quot;state&quot;)/resetRoot</code>, <code>tabBar</code> custom recibe <code>{ state, descriptors, navigation, insets }</code> y <strong>debe emitir <code>tabPress</code></strong> (con la pestaña ya enfocada, la pila anidada hace <code>popToTop</code> sola), <code>animation</code> de bottom-tabs por defecto <code>none</code>, <code>getFocusedRouteNameFromRoute</code>.</li>
+</ul>
+<h2 id="decisiones-del-plan-no-estan-en-el-spec">Decisiones del plan (no están en el spec)</h2>
+<table>
+<thead>
+<tr><th>#</th><th>Decisión</th><th>Por qué</th></tr>
+</thead>
+<tbody>
+<tr><td>P1</td><td><strong>Construir al lado y conmutar en Task 6.</strong> Tasks 2–5 crean módulos nuevos que compilan sin usarse; Task 6 cambia store/App, borra <code>Shell.tsx</code> y <code>ui/gestures.ts</code>.</td><td><code>tsc</code> verde en cada task; el store no puede perder <code>screen/stack</code> mientras <code>Shell</code> lo lea.</td></tr>
+<tr><td>P2</td><td><strong><code>AppCtx</code> por React context</strong> (<code>AppCtxProvider</code>/<code>useAppCtx</code> en <code>Navigator.tsx</code>); <code>withPage(screen, Component)</code> lee el contexto y renderiza <code>&lt;Page screen&gt;&lt;Component {...ctx} /&gt;&lt;/Page&gt;</code>.</td><td>react-navigation monta las pantallas con <code>route</code>/<code>navigation</code>, no con nuestro <code>ctx</code>; el contexto evita cambiar las firmas de las 10 pantallas.</td></tr>
+<tr><td>P3</td><td><strong><code>navigate</code> a rutas anidadas hace el trabajo del gate de vuelta</strong>: <code>navigateTo(&quot;markets&quot;)</code> desde <code>Signin</code> = <code>navigationRef.navigate(&quot;Tabs&quot;, { screen: &quot;MarketsTab&quot;, params: { screen: &quot;markets&quot; } })</code>; como <code>Tabs</code> ya está en el RootStack, react-navigation vuelve a ella (saca <code>Signin</code>) y aplica lo anidado. <code>finishSignin</code> sólo hace <code>resetRoot</code> cuando <code>Signin</code> fue la ruta inicial (sin <code>Tabs</code> debajo).</td><td>Un solo camino para «volver a Tabs + ir a next»; sin <code>popTo</code> manual.</td></tr>
+<tr><td>P4</td><td><strong>Pestaña con ruta no raíz → la tab bar custom devuelve <code>null</code></strong> (<code>SHOW_TABS</code> sobre <code>getFocusedRouteNameFromRoute</code>), no <code>tabBarStyle: display none</code>. La <code>SafeAreaView</code> inferior la pone <code>Page</code> cuando la tab bar no está (<code>edges</code> incluye <code>&quot;bottom&quot;</code> si <code>!SHOW_TABS.includes(screen)</code>).</td><td>Menos opciones por ruta; el mismo array <code>SHOW_TABS</code> que hoy. Limitación conocida: en el gesto de vuelta a una raíz la tab bar aparece al terminar la transición (no se anima) — residual anotado.</td></tr>
+<tr><td>P5</td><td><strong>Pantalla activa</strong>: <code>useCurrentScreen()</code> escucha <code>navigationRef.addListener(&quot;state&quot;)</code> y lee <code>getCurrentRoute()?.name</code>; vale <code>&quot;wallet&quot;</code> hasta que haya estado. <code>useAppStore</code> recibe <code>scr</code> como input.</td><td>D4; el socket de Perpl y <code>readsActive</code> cuelgan de <code>scr</code> como hoy de <code>S.screen</code>.</td></tr>
+<tr><td>P6</td><td><strong><code>held</code> de Sign in</strong> = <code>heldActionFor(route.params?.next)</code>; <code>finishSignin</code> lee <code>next</code>/<code>patch</code> de los params del <code>Signin</code> enfocado (<code>navigationRef.getCurrentRoute()?.params</code>).</td><td>El store ya no tiene <code>next</code>; los params son la memoria del gate.</td></tr>
+<tr><td>P7</td><td><strong>Cola de navegación hasta <code>isReady</code></strong> en <code>ref.ts</code> (<code>pending</code>), vaciada en <code>onReady</code> del container. La cola de push por <code>account === null</code> de <code>App.tsx</code> se conserva tal cual.</td><td>El push en frío llega antes de que el container exista.</td></tr>
+<tr><td>P8</td><td><strong><code>CAN_BACK</code> se mantiene</strong> como filtro del botón <code>←</code>: se pinta si <code>CAN_BACK.includes(screen) &amp;&amp; navigation.canGoBack()</code>.</td><td>Sign in como ruta inicial no tiene <code>←</code>; <code>deposit</code> sí.</td></tr>
+<tr><td>P9</td><td><strong>Tests</strong>: <code>routes.test.ts</code> (cobertura de las 10 pantallas, <code>screenOfRoute</code>, <code>gateTarget</code>), <code>store.test.ts</code> recortado (fuera <code>nav/back/afterSignin/boot/canBack/reset</code>; dentro gate como <code>gateTarget</code>, <code>heldActionFor</code>, sets D5, <code>ROOT_OF</code>, headers, Ask, sello, <code>tradingLineState</code>, <code>screenHasData</code>), <code>gestures.test.ts</code> borrado.</td><td>Lo puro sigue testeado; la pila la prueba el simulador.</td></tr>
+<tr><td>P10</td><td><strong>Rebuild en Task 1, no al final</strong>: instalar deps + <code>GestureHandlerRootView</code> + prebuild + run:ios con la app <strong>vieja</strong> y comprobar que arranca.</td><td>Si reanimated/worklets/screens rompen el build, se sabe antes de escribir la migración.</td></tr>
+</tbody>
+</table>
+<h2 id="mapa-de-archivos">Mapa de archivos</h2>
+<table>
+<thead>
+<tr><th>Archivo</th><th>Task</th><th>Responsabilidad</th></tr>
+</thead>
+<tbody>
+<tr><td><code>apps/mobile/package.json</code>, <code>package-lock.json</code>, <code>App.tsx</code> (root view)</td><td>1</td><td>dependencias + <code>GestureHandlerRootView</code> + rebuild</td></tr>
+<tr><td><code>apps/mobile/src/navigation/routes.ts</code>, <code>__tests__/routes.test.ts</code></td><td>2</td><td>tipos de params, <code>TAB_OF</code>, <code>TAB_ROOT</code>, <code>TAB_ORDER</code>, <code>SCREENS_ALL</code>, <code>screenOfRoute</code>, <code>gateTarget</code></td></tr>
+<tr><td><code>apps/mobile/src/navigation/ref.ts</code></td><td>3</td><td><code>navigationRef</code>, <code>navigateTo</code>, <code>goBackIfCan</code>, <code>resetRootTo</code>, <code>flushPending</code>, <code>currentParams</code></td></tr>
+<tr><td><code>apps/mobile/src/hooks/useRefreshSeal.ts</code>, <code>src/hooks/useCurrentScreen.ts</code></td><td>4</td><td>sello por pantalla (fuera de Shell); pantalla activa por ruta</td></tr>
+<tr><td><code>apps/mobile/src/ui/Page.tsx</code>, <code>src/ui/TabBar.tsx</code>, <code>src/navigation/Navigator.tsx</code></td><td>5</td><td>página (cabecera/refresh/sello/fondo), tab bar (aspecto de hoy), árbol de navegación + <code>AppCtx</code> por contexto</td></tr>
+<tr><td><code>apps/mobile/src/store.ts</code>, <code>App.tsx</code>, <code>src/ctx.ts</code>, <code>src/screens/signin.tsx</code>, <code>src/DevControls.tsx</code>, <code>__tests__/store.test.ts</code>; <strong>borrar</strong> <code>src/Shell.tsx</code>, <code>src/ui/gestures.ts</code>, <code>__tests__/gestures.test.ts</code></td><td>6</td><td>conmutación</td></tr>
+<tr><td>Simulador</td><td>7</td><td>capturas (D12)</td></tr>
+<tr><td><code>docs/superpowers/specs/2026-09-21-mobile-nav-design.md</code>, <code>docs/overview/2026-09-21-mobile-nav.html</code>, <code>docs/overview/data/manifest.js</code>, <code>docs/superpowers/audits/2026-09-21-mobile-nav-f1-rulings.md</code>, <code>docs/superpowers/audits/img/*.png</code>, <code>apps/mobile/README.md</code>, <code>docs/overview/dev/2026-09-21-markets-ask-gate.html</code> (nota D10)</td><td>8</td><td>docs</td></tr>
+</tbody>
+</table>
+<hr>
+<h3 id="task-1-dependencias-nativas-gesturehandlerrootview-y-rebuild-con-la-app-actual">Task 1: Dependencias nativas, <code>GestureHandlerRootView</code> y rebuild con la app actual</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Modify: <code>apps/mobile/package.json</code>, <code>apps/mobile/package-lock.json</code> (vía <code>npx expo install</code> / <code>npm install</code>)</li>
+<li>Modify: <code>apps/mobile/App.tsx</code> (envolver el árbol en <code>GestureHandlerRootView</code>)</li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Produces: las siete dependencias instaladas con las versiones del SDK 57; el dev build reinstalado con <code>react-native-screens</code>, <code>gesture-handler</code>, <code>reanimated</code> y <code>worklets</code> linkeados. Tasks 2–6 importan de ellas.</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Línea base</strong></label></li>
+</ul>
+<pre><code class="language-bash">cd /Users/josedejesusacevedoflores/Documents/predict/.claude/worktrees/mobile-nav/apps/mobile
+git status --short &amp;&amp; git log --oneline -1
+npm ci 2&gt;&amp;1 | tail -1 &amp;&amp; npm test 2&gt;&amp;1 | tail -4 &amp;&amp; npx tsc --noEmit &amp;&amp; echo TSC-OK</code></pre>
+<p>Expected: árbol limpio, HEAD <code>6fa0499</code> (o el commit de este plan); <code>Tests: 242 passed</code> / <code>31 passed</code>; <code>TSC-OK</code>.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Instalar</strong></label></li>
+</ul>
+<pre><code class="language-bash">npx expo install react-native-screens react-native-gesture-handler react-native-reanimated react-native-worklets expo-haptics 2&gt;&amp;1 | tail -3
+npm install @react-navigation/native @react-navigation/native-stack @react-navigation/bottom-tabs 2&gt;&amp;1 | tail -2
+grep -n &#39;&quot;react-native-screens&quot;\|&quot;react-native-gesture-handler&quot;\|&quot;react-native-reanimated&quot;\|&quot;react-native-worklets&quot;\|&quot;expo-haptics&quot;\|&quot;@react-navigation/&#39; package.json</code></pre>
+<p>Expected: <code>react-native-screens ~4.26.x</code>, <code>react-native-gesture-handler ~2.32.x</code>, <code>react-native-reanimated 4.5.x</code>, <code>react-native-worklets 0.10.x</code>, <code>expo-haptics ~57.0.x</code>, <code>@react-navigation/native ^7.4.x</code>, <code>native-stack ^7.19.x</code>, <code>bottom-tabs ^7.19.x</code>. Anotar las versiones exactas en el reporte. <code>npx expo-doctor 2&gt;&amp;1 | tail -3</code> sin quejas de versiones.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: <code>GestureHandlerRootView</code></strong> — en <code>App.tsx</code>, añadir <code>import { GestureHandlerRootView } from &quot;react-native-gesture-handler&quot;;</code> y envolver el <code>return</code> final:</label></li>
+</ul>
+<pre><code class="language-tsx">  return (
+    &lt;GestureHandlerRootView style={{ flex: 1 }}&gt;
+      &lt;SafeAreaProvider&gt;
+        &lt;StatusBar barStyle=&quot;light-content&quot; /&gt;
+        &lt;View style={{ flex: 1, backgroundColor: C.bgBottom }}&gt;
+          &lt;Shell ctx={ctx} /&gt;
+        &lt;/View&gt;
+      &lt;/SafeAreaProvider&gt;
+    &lt;/GestureHandlerRootView&gt;
+  );</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 4: <code>tsc</code> antes del build nativo</strong></label></li>
+</ul>
+<pre><code class="language-bash">npx tsc --noEmit &amp;&amp; echo TSC-OK &amp;&amp; npm test 2&gt;&amp;1 | tail -4</code></pre>
+<p>Expected: <code>TSC-OK</code>, 31 / 242.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 5: Prebuild + run:ios</strong></label></li>
+</ul>
+<pre><code class="language-bash">U=2B2A0BAD-7B14-4DAE-8652-C7E9472505E0
+SC=/Users/josedejesusacevedoflores/Documents/predict/.claude/worktrees/mobile-nav/.superpowers/sdd/2026-09-21-mobile-nav-f1
+mkdir -p &quot;$SC/shots&quot;
+lsof -tiTCP:8081 -sTCP:LISTEN | xargs kill 2&gt;/dev/null; sleep 1
+npx expo prebuild --platform ios --clean 2&gt;&amp;1 | tail -3
+grep -c &quot;RNScreens\|RNGestureHandler\|RNReanimated\|RNWorklets&quot; ios/Podfile.lock
+nohup npx expo run:ios --device &quot;$U&quot; &gt; &quot;$SC/run.log&quot; 2&gt;&amp;1 &amp;</code></pre>
+<p>Esperar <code>Build Succeeded</code> / <code>Installing on</code> / <code>Opening</code> en <code>run.log</code> (3–8 min; sondear con <code>sleep 60</code>). Expected: <code>Podfile.lock</code> menciona los cuatro pods; la app abre en Wallet (o en Sign in si la reinstalación borró la cuenta: firmar con el passkey). Captura <code>$SC/shots/t1-boot.png</code> y <strong>mirarla</strong>: la app se ve igual que el build 7 (skeletons, sello). Si Metro muestra un error rojo de reanimated/worklets («Mismatch between JavaScript part and native part» o similar), parar y reportar BLOCKED con el texto exacto.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 6: Commit</strong></label></li>
+</ul>
+<pre><code class="language-bash">git add package.json package-lock.json App.tsx
+git commit -m &quot;feat(mobile): react-navigation, screens, gesture-handler, reanimated/worklets y haptics (SDK 57) + GestureHandlerRootView&quot; -m &quot;Co-Authored-By: &lt;modelo&gt; &lt;noreply@anthropic.com&gt;&quot; -m &quot;Claude-Session: &lt;url&gt;&quot;</code></pre>
+<p>Expected: <code>git status</code> sin <code>ios/</code> (ignorado).</p>
+<hr>
+<h3 id="task-2-tabla-de-rutas-y-gate-puros-navigationroutests">Task 2: Tabla de rutas y gate puros (<code>navigation/routes.ts</code>)</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Create: <code>apps/mobile/src/navigation/routes.ts</code></li>
+<li>Test: <code>apps/mobile/__tests__/routes.test.ts</code></li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Consumes: <code>Screen</code>, <code>Patch</code>, <code>GATED</code> de <code>../store</code> (existen hoy).</li>
+<li>Produces (los usan Tasks 3, 5, 6):</li>
+<ul>
+<li><code>type TabName = &quot;MarketsTab&quot; | &quot;LaunchpadTab&quot; | &quot;ActivityTab&quot; | &quot;PortfolioTab&quot; | &quot;WalletTab&quot;</code></li>
+<li><code>type SigninParams = { next?: Screen; patch?: Patch } | undefined</code></li>
+<li><code>type MarketsStackParamList</code>, <code>WalletStackParamList</code>, <code>SoloStackParamList&lt;K&gt;</code>, <code>TabParamList</code>, <code>RootParamList</code></li>
+<li><code>const TAB_OF: Record&lt;Exclude&lt;Screen, &quot;signin&quot;&gt;, TabName&gt;</code>, <code>TAB_ROOT: Record&lt;TabName, Screen&gt;</code>, <code>TAB_ORDER: readonly TabName[]</code>, <code>SCREENS_ALL: readonly Screen[]</code></li>
+<li><code>screenOfRoute(name: string | undefined): Screen | null</code></li>
+<li><code>gateTarget(hasAccount: boolean, target: Screen): { screen: Screen; next?: Screen }</code></li>
+</ul>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Tests (RED)</strong> — crear <code>__tests__/routes.test.ts</code>:</label></li>
+</ul>
+<pre><code class="language-ts">import { GATED, ROOT_OF, SHOW_TABS, type Screen } from &quot;../src/store&quot;;
+import { gateTarget, SCREENS_ALL, screenOfRoute, TAB_OF, TAB_ORDER, TAB_ROOT } from &quot;../src/navigation/routes&quot;;
+
+test(&quot;every screen except signin belongs to exactly one tab, and each tab has a root that lights it up (D1)&quot;, () =&gt; {
+  const screens = SCREENS_ALL.filter((s) =&gt; s !== &quot;signin&quot;);
+  expect(screens).toHaveLength(9);
+  for (const s of screens) {
+    const tab = TAB_OF[s as Exclude&lt;Screen, &quot;signin&quot;&gt;];
+    expect(TAB_ORDER).toContain(tab);
+    expect(ROOT_OF[s]).toBe(TAB_ROOT[tab]); // el tab que se ilumina es la raíz de la pila
+  }
+  expect(TAB_ORDER).toEqual([&quot;MarketsTab&quot;, &quot;LaunchpadTab&quot;, &quot;ActivityTab&quot;, &quot;PortfolioTab&quot;, &quot;WalletTab&quot;]);
+  expect(TAB_ORDER.map((t) =&gt; TAB_ROOT[t])).toEqual(SHOW_TABS);
+});
+
+test(&quot;screenOfRoute maps route names back to screens and ignores navigator names&quot;, () =&gt; {
+  expect(screenOfRoute(&quot;market&quot;)).toBe(&quot;market&quot;);
+  expect(screenOfRoute(&quot;signin&quot;)).toBe(&quot;signin&quot;);
+  expect(screenOfRoute(&quot;Tabs&quot;)).toBeNull();
+  expect(screenOfRoute(&quot;MarketsTab&quot;)).toBeNull();
+  expect(screenOfRoute(undefined)).toBeNull();
+});
+
+test(&quot;gateTarget sends gated screens to signin without an account and remembers where to go (D5)&quot;, () =&gt; {
+  expect(gateTarget(false, &quot;markets&quot;)).toEqual({ screen: &quot;signin&quot;, next: &quot;markets&quot; });
+  expect(gateTarget(true, &quot;markets&quot;)).toEqual({ screen: &quot;markets&quot; });
+  expect(gateTarget(false, &quot;launchpad&quot;)).toEqual({ screen: &quot;launchpad&quot; }); // coming soon never asks
+  for (const s of GATED) expect(gateTarget(false, s).screen).toBe(&quot;signin&quot;);
+});</code></pre>
+<pre><code class="language-bash">npx jest __tests__/routes.test.ts 2&gt;&amp;1 | tail -6</code></pre>
+<p>Expected: FAIL — <code>Cannot find module &#39;../src/navigation/routes&#39;</code>.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Implementar</strong> — crear <code>src/navigation/routes.ts</code>:</label></li>
+</ul>
+<pre><code class="language-ts">import type { NavigatorScreenParams } from &quot;@react-navigation/native&quot;;
+import { GATED, type Patch, type Screen } from &quot;../store&quot;;
+
+// Tabla de rutas de react-navigation (spec mobile-nav D1/D2). Puro: sin react-native.
+
+export type TabName = &quot;MarketsTab&quot; | &quot;LaunchpadTab&quot; | &quot;ActivityTab&quot; | &quot;PortfolioTab&quot; | &quot;WalletTab&quot;;
+
+/** Params de Sign in: a dónde volver al terminar y con qué patch (D5). */
+export type SigninParams = { next?: Screen; patch?: Patch } | undefined;
+
+export type MarketsStackParamList = { markets: undefined; market: undefined; perpsFunds: undefined };
+export type WalletStackParamList = { wallet: undefined; deposit: undefined; withdraw: undefined };
+export type SoloStackParamList&lt;K extends string&gt; = Record&lt;K, undefined&gt;;
+export type TabParamList = {
+  MarketsTab: NavigatorScreenParams&lt;MarketsStackParamList&gt; | undefined;
+  LaunchpadTab: NavigatorScreenParams&lt;SoloStackParamList&lt;&quot;launchpad&quot;&gt;&gt; | undefined;
+  ActivityTab: NavigatorScreenParams&lt;SoloStackParamList&lt;&quot;activity&quot;&gt;&gt; | undefined;
+  PortfolioTab: NavigatorScreenParams&lt;SoloStackParamList&lt;&quot;portfolio&quot;&gt;&gt; | undefined;
+  WalletTab: NavigatorScreenParams&lt;WalletStackParamList&gt; | undefined;
+};
+export type RootParamList = { Tabs: NavigatorScreenParams&lt;TabParamList&gt; | undefined; signin: SigninParams };
+
+export const TAB_ORDER: readonly TabName[] = [&quot;MarketsTab&quot;, &quot;LaunchpadTab&quot;, &quot;ActivityTab&quot;, &quot;PortfolioTab&quot;, &quot;WalletTab&quot;];
+
+/** Pestaña dueña de cada pantalla (signin vive en el RootStack). */
+export const TAB_OF: Record&lt;Exclude&lt;Screen, &quot;signin&quot;&gt;, TabName&gt; = {
+  markets: &quot;MarketsTab&quot;, market: &quot;MarketsTab&quot;, perpsFunds: &quot;MarketsTab&quot;,
+  launchpad: &quot;LaunchpadTab&quot;, activity: &quot;ActivityTab&quot;, portfolio: &quot;PortfolioTab&quot;,
+  wallet: &quot;WalletTab&quot;, deposit: &quot;WalletTab&quot;, withdraw: &quot;WalletTab&quot;,
+};
+
+export const TAB_ROOT: Record&lt;TabName, Screen&gt; = {
+  MarketsTab: &quot;markets&quot;, LaunchpadTab: &quot;launchpad&quot;, ActivityTab: &quot;activity&quot;, PortfolioTab: &quot;portfolio&quot;, WalletTab: &quot;wallet&quot;,
+};
+
+export const SCREENS_ALL: readonly Screen[] = [
+  &quot;markets&quot;, &quot;market&quot;, &quot;perpsFunds&quot;, &quot;launchpad&quot;, &quot;activity&quot;, &quot;portfolio&quot;, &quot;wallet&quot;, &quot;deposit&quot;, &quot;withdraw&quot;, &quot;signin&quot;,
+];
+
+/** Nombre de ruta enfocada → pantalla; null para navegadores (`Tabs`, `*Tab`) o sin estado. */
+export function screenOfRoute(name: string | undefined): Screen | null {
+  return name !== undefined &amp;&amp; (SCREENS_ALL as readonly string[]).includes(name) ? (name as Screen) : null;
+}
+
+/** Gate de cuenta (D5): sin cuenta, las pantallas de GATED pasan por signin recordando el destino. */
+export function gateTarget(hasAccount: boolean, target: Screen): { screen: Screen; next?: Screen } {
+  if (hasAccount || !GATED.includes(target)) return { screen: target };
+  return { screen: &quot;signin&quot;, next: target };
+}</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Verde y commit</strong></label></li>
+</ul>
+<pre><code class="language-bash">npx jest __tests__/routes.test.ts 2&gt;&amp;1 | tail -6
+npm test 2&gt;&amp;1 | tail -4 &amp;&amp; npx tsc --noEmit &amp;&amp; echo TSC-OK
+git add src/navigation/routes.ts __tests__/routes.test.ts
+git commit -m &quot;feat(mobile): tabla de rutas y gate puros para react-navigation (routes.ts)&quot; -m &quot;Co-Authored-By: &lt;modelo&gt; &lt;noreply@anthropic.com&gt;&quot; -m &quot;Claude-Session: &lt;url&gt;&quot;</code></pre>
+<p>Expected: 3 tests nuevos; 32 suites / 245 tests; <code>TSC-OK</code>.</p>
+<hr>
+<h3 id="task-3-adaptador-sobre-navigationref-navigationrefts">Task 3: Adaptador sobre <code>navigationRef</code> (<code>navigation/ref.ts</code>)</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Create: <code>apps/mobile/src/navigation/ref.ts</code></li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Consumes: <code>RootParamList</code>, <code>SigninParams</code>, <code>TAB_OF</code>, <code>screenOfRoute</code> (Task 2); <code>Screen</code> de <code>../store</code>.</li>
+<li>Produces (los usan Tasks 4, 5, 6):</li>
+<ul>
+<li><code>navigationRef</code> (para <code>NavigationContainer ref={navigationRef}</code> y <code>onReady={flushPending}</code>)</li>
+<li><code>navigateTo(screen: Screen, signinParams?: SigninParams): void</code> — anidado por pestaña; encola si el container no está listo</li>
+<li><code>goBackIfCan(): void</code></li>
+<li><code>resetRootTo(route: &quot;Tabs&quot; | &quot;signin&quot;): void</code></li>
+<li><code>flushPending(): void</code></li>
+<li><code>currentScreen(): Screen | null</code>, <code>currentParams(): SigninParams</code></li>
+<li><code>signinIsRoot(): boolean</code> — la primera ruta del RootStack es <code>signin</code></li>
+</ul>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Implementar</strong> — crear <code>src/navigation/ref.ts</code>:</label></li>
+</ul>
+<pre><code class="language-ts">import { createNavigationContainerRef } from &quot;@react-navigation/native&quot;;
+import type { Screen } from &quot;../store&quot;;
+import { type RootParamList, screenOfRoute, type SigninParams, TAB_OF } from &quot;./routes&quot;;
+
+// Adaptador de navegación (spec mobile-nav D2): las pantallas siguen hablando en `Screen`; aquí se traduce a rutas
+// anidadas de react-navigation. Antes de `isReady()` las órdenes se encolan y `flushPending` las aplica en `onReady`.
+export const navigationRef = createNavigationContainerRef&lt;RootParamList&gt;();
+
+let pending: (() =&gt; void)[] = [];
+
+function run(fn: () =&gt; void): void {
+  if (navigationRef.isReady()) fn();
+  else pending.push(fn);
+}
+
+export function flushPending(): void {
+  const q = pending;
+  pending = [];
+  for (const fn of q) fn();
+}
+
+/** Ir a una pantalla por su pestaña. `navigate` vuelve a `Tabs` si está debajo (saca `signin`) y aplica lo anidado (P3). */
+export function navigateTo(screen: Screen, signinParams?: SigninParams): void {
+  run(() =&gt; {
+    if (screen === &quot;signin&quot;) { navigationRef.navigate(&quot;signin&quot;, signinParams); return; }
+    const tab = TAB_OF[screen];
+    // `params: { screen }` anida un nivel más: Tabs → pestaña → pantalla de su pila.
+    navigationRef.navigate(&quot;Tabs&quot;, { screen: tab, params: { screen } } as never);
+  });
+}
+
+export function goBackIfCan(): void {
+  run(() =&gt; { if (navigationRef.canGoBack()) navigationRef.goBack(); });
+}
+
+/** Deja el RootStack con una sola ruta (sign out → signin; primer sign-in → Tabs). */
+export function resetRootTo(route: &quot;Tabs&quot; | &quot;signin&quot;): void {
+  run(() =&gt; navigationRef.resetRoot({ index: 0, routes: [{ name: route }] }));
+}
+
+export function currentScreen(): Screen | null {
+  return navigationRef.isReady() ? screenOfRoute(navigationRef.getCurrentRoute()?.name) : null;
+}
+
+export function currentParams(): SigninParams {
+  return navigationRef.isReady() ? (navigationRef.getCurrentRoute()?.params as SigninParams) : undefined;
+}
+
+export function signinIsRoot(): boolean {
+  return navigationRef.isReady() &amp;&amp; navigationRef.getRootState()?.routes[0]?.name === &quot;signin&quot;;
+}</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Verificar y commit</strong> (sin test propio: todo depende del container; lo cubre el simulador en Task 7)</label></li>
+</ul>
+<pre><code class="language-bash">npx tsc --noEmit &amp;&amp; echo TSC-OK &amp;&amp; npm test 2&gt;&amp;1 | tail -4
+git add src/navigation/ref.ts
+git commit -m &quot;feat(mobile): adaptador de navegación sobre navigationRef (navigateTo, goBackIfCan, resetRootTo, cola hasta isReady)&quot; -m &quot;Co-Authored-By: &lt;modelo&gt; &lt;noreply@anthropic.com&gt;&quot; -m &quot;Claude-Session: &lt;url&gt;&quot;</code></pre>
+<p>Expected: <code>TSC-OK</code> (si <code>navigate(&quot;Tabs&quot;, …)</code> exige un cast distinto de <code>as never</code> en la versión instalada, usar el que <code>tsc</code> acepte y anotarlo), 32 / 245.</p>
+<hr>
+<h3 id="task-4-userefreshseal-y-usecurrentscreen">Task 4: <code>useRefreshSeal</code> y <code>useCurrentScreen</code></h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Create: <code>apps/mobile/src/hooks/useRefreshSeal.ts</code> (lógica extraída de <code>src/Shell.tsx:57-95</code>, que sigue intacto hasta Task 6)</li>
+<li>Create: <code>apps/mobile/src/hooks/useCurrentScreen.ts</code></li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Consumes: <code>refreshOk</code>, <code>screenHasData</code>, <code>updatedLabel</code>, <code>type RefreshErrors</code>, <code>type Screen</code> de <code>../store</code>; <code>accountAddress</code> de <code>../account</code>; <code>navigationRef</code>, <code>currentScreen</code> (Task 3); <code>screenOfRoute</code> (Task 2).</li>
+<li>Produces:</li>
+<ul>
+<li><code>type RefreshSeal = { updatedAt: Partial&lt;Record&lt;Screen, number&gt;&gt;; failed: Screen | null; onRefreshDone: (screen: Screen) =&gt; void; labelFor: (screen: Screen) =&gt; string | null; failedOn: (screen: Screen) =&gt; boolean }</code></li>
+<li><code>useRefreshSeal(input: { account: AccountState; errors: RefreshErrors; hasData: (screen: Screen) =&gt; boolean }): RefreshSeal</code> (Task 6 lo mete en <code>ctx.seal</code>)</li>
+<li><code>useCurrentScreen(): Screen</code> (Task 6 lo pasa a <code>useAppStore</code> y a los <code>setActive</code>)</li>
+</ul>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: <code>useRefreshSeal.ts</code></strong></label></li>
+</ul>
+<pre><code class="language-ts">import { useCallback, useEffect, useRef, useState } from &quot;react&quot;;
+import { type AccountState, accountAddress } from &quot;../account&quot;;
+import { type RefreshErrors, refreshOk, type Screen, updatedLabel } from &quot;../store&quot;;
+
+export type RefreshSeal = {
+  updatedAt: Partial&lt;Record&lt;Screen, number&gt;&gt;;
+  failed: Screen | null;
+  /** Lo llama Page al terminar un jalón: sella o marca COULDN&#39;T REFRESH con los errores de ese momento (P4 de mobile-loading). */
+  onRefreshDone: (screen: Screen) =&gt; void;
+  labelFor: (screen: Screen) =&gt; string | null;
+  failedOn: (screen: Screen) =&gt; boolean;
+};
+
+/** Sello UPDATED / COULDN&#39;T REFRESH por pantalla (spec mobile-loading D5), fuera del Shell: lo consume cada Page. */
+export function useRefreshSeal({ account, errors, hasData }: { account: AccountState; errors: RefreshErrors; hasData: (screen: Screen) =&gt; boolean }): RefreshSeal {
+  const [updatedAt, setUpdatedAt] = useState&lt;Partial&lt;Record&lt;Screen, number&gt;&gt;&gt;({});
+  const [failed, setFailed] = useState&lt;Screen | null&gt;(null);
+  // Los errores del render actual, leídos al terminar el jalón sin depender de closures viejas.
+  const errorsRef = useRef(errors);
+  errorsRef.current = errors;
+  const hasDataRef = useRef(hasData);
+  hasDataRef.current = hasData;
+
+  const onRefreshDone = useCallback((screen: Screen) =&gt; {
+    if (refreshOk(screen, errorsRef.current)) { setUpdatedAt((u) =&gt; ({ ...u, [screen]: Date.now() })); setFailed(null); return; }
+    setFailed(screen);
+  }, []);
+  useEffect(() =&gt; {
+    if (failed === null) return;
+    const t = setTimeout(() =&gt; setFailed(null), 3000);
+    return () =&gt; clearTimeout(t);
+  }, [failed]);
+
+  // Sello inicial: la primera vez que una pantalla tiene su dato principal (P5 de mobile-loading). Page lo pide por pantalla.
+  const seen = useRef(new Set&lt;Screen&gt;());
+  const markInitial = useCallback((screen: Screen) =&gt; {
+    if (seen.current.has(screen) || !hasDataRef.current(screen)) return;
+    seen.current.add(screen);
+    setUpdatedAt((u) =&gt; (u[screen] === undefined ? { ...u, [screen]: Date.now() } : u));
+  }, []);
+
+  // Otra cuenta = otro sello (I1 de la revisión final de mobile-loading).
+  const address = accountAddress(account);
+  useEffect(() =&gt; { setUpdatedAt({}); setFailed(null); seen.current.clear(); }, [address]);
+
+  const labelFor = useCallback((screen: Screen) =&gt; {
+    markInitial(screen);
+    const ts = updatedAt[screen];
+    return ts === undefined ? null : updatedLabel(ts);
+  }, [updatedAt, markInitial]);
+  const failedOn = useCallback((screen: Screen) =&gt; failed === screen, [failed]);
+
+  return { updatedAt, failed, onRefreshDone, labelFor, failedOn };
+}</code></pre>
+<p>Nota: <code>markInitial</code> se dispara desde <code>labelFor</code> (que <code>Page</code> llama en cada render); el <code>setUpdatedAt</code> con guard <code>u[screen] === undefined</code> evita renders extra. Si <code>accountAddress</code> no acepta <code>AccountState</code> con <code>status: &quot;none&quot;</code>, comprobar su firma en <code>src/account.ts</code> y adaptar el import/tipo (no la semántica).</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: <code>useCurrentScreen.ts</code></strong></label></li>
+</ul>
+<pre><code class="language-ts">import { useEffect, useState } from &quot;react&quot;;
+import { currentScreen, navigationRef } from &quot;../navigation/ref&quot;;
+import type { Screen } from &quot;../store&quot;;
+
+/** Pantalla enfocada según react-navigation (spec mobile-nav D4). Vale &quot;wallet&quot; hasta que el container tiene estado. */
+export function useCurrentScreen(): Screen {
+  const [scr, setScr] = useState&lt;Screen&gt;(() =&gt; currentScreen() ?? &quot;wallet&quot;);
+  useEffect(() =&gt; {
+    const read = () =&gt; { const s = currentScreen(); if (s !== null) setScr(s); };
+    read();
+    return navigationRef.addListener(&quot;state&quot;, read);
+  }, []);
+  return scr;
+}</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Verificar y commit</strong></label></li>
+</ul>
+<pre><code class="language-bash">npx tsc --noEmit &amp;&amp; echo TSC-OK &amp;&amp; npm test 2&gt;&amp;1 | tail -4
+git add src/hooks/useRefreshSeal.ts src/hooks/useCurrentScreen.ts
+git commit -m &quot;feat(mobile): useRefreshSeal (sello fuera del Shell) y useCurrentScreen (pantalla activa por ruta)&quot; -m &quot;Co-Authored-By: &lt;modelo&gt; &lt;noreply@anthropic.com&gt;&quot; -m &quot;Claude-Session: &lt;url&gt;&quot;</code></pre>
+<p>Expected: <code>TSC-OK</code>, 32 / 245.</p>
+<hr>
+<h3 id="task-5-page-tabbar-y-navigator-compilan-sin-usarse">Task 5: <code>Page</code>, <code>TabBar</code> y <code>Navigator</code> (compilan sin usarse)</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Create: <code>apps/mobile/src/ui/Page.tsx</code></li>
+<li>Create: <code>apps/mobile/src/ui/TabBar.tsx</code></li>
+<li>Create: <code>apps/mobile/src/navigation/Navigator.tsx</code></li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Consumes: <code>AppCtx</code> (<code>../ctx</code>) — <strong>en esta task todavía sin <code>seal</code></strong>: <code>Page</code> importa <code>RefreshSeal</code> de Task 4 y lo toma de <code>ctx.seal</code>, así que Task 5 añade el campo a <code>AppCtx</code> en <code>src/ctx.ts</code> (<code>seal: RefreshSeal</code>) y <code>App.tsx</code> lo rellena en Task 6 → para que <code>tsc</code> pase en Task 5, <code>App.tsx</code> debe construir <code>seal</code> ya en esta task (ver Step 4). <code>headerFor</code>, <code>CAN_BACK</code>, <code>SHOW_TABS</code>, <code>ROOT_OF</code>, <code>Screen</code> de <code>../store</code>; <code>TABS</code>/<code>Backdrop</code> de <code>../Shell</code> (se copian aquí; <code>Shell</code> se borra en Task 6); <code>TAB_OF</code>, <code>TAB_ORDER</code>, <code>TAB_ROOT</code>, tipos de params (Task 2); <code>navigationRef</code>, <code>flushPending</code> (Task 3).</li>
+<li>Produces:</li>
+<ul>
+<li><code>Page({ screen, children })</code>, <code>withPage(screen, Component)</code></li>
+<li><code>TabBar(props: BottomTabBarProps)</code></li>
+<li><code>AppCtxProvider</code>, <code>useAppCtx()</code>, <code>Navigator({ initial }: { initial: &quot;Tabs&quot; | &quot;signin&quot; })</code>, <code>TABS</code>, <code>Backdrop</code></li>
+</ul>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: <code>src/ctx.ts</code></strong> — añadir el sello al contexto:</label></li>
+</ul>
+<pre><code class="language-ts">import type { RefreshSeal } from &quot;./hooks/useRefreshSeal&quot;;
+// …
+export type AppCtx = AppStore &amp; AccountActions &amp; { account: AccountState; treasury: Treasury; perpl: Perpl; reads: Reads; notifications: Notifications; seal: RefreshSeal };</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: <code>src/ui/Page.tsx</code></strong> (cabecera, cuerpo y sello que hoy están en <code>Shell.tsx:108-149</code>, por ruta):</label></li>
+</ul>
+<pre><code class="language-tsx">import { useNavigation } from &quot;@react-navigation/native&quot;;
+import { type ReactElement, type ReactNode, useCallback, useState } from &quot;react&quot;;
+import { Image, RefreshControl, ScrollView, StyleSheet, View } from &quot;react-native&quot;;
+import { LinearGradient } from &quot;expo-linear-gradient&quot;;
+import Svg, { Circle, Defs, Pattern, Rect } from &quot;react-native-svg&quot;;
+import { SafeAreaView } from &quot;react-native-safe-area-context&quot;;
+import { useAppCtx } from &quot;../navigation/Navigator&quot;;
+import { CAN_BACK, headerFor, ROOT_OF, type Screen, SHOW_TABS } from &quot;../store&quot;;
+import { Icon, T, Tag, Touch } from &quot;./primitives&quot;;
+import { C } from &quot;./theme&quot;;
+
+/** Fondo del teléfono: gradiente + campo de puntos (D10 del hi-fi). Va dentro de cada Page: opaco, tapa la página de abajo durante el gesto (spec mobile-nav D6). */
+export function Backdrop() {
+  return (
+    &lt;View style={StyleSheet.absoluteFill} pointerEvents=&quot;none&quot;&gt;
+      &lt;LinearGradient colors={[C.bgTop, C.bgMid, C.bgBottom]} locations={[0, 0.48, 1]} style={StyleSheet.absoluteFill} /&gt;
+      &lt;Svg width=&quot;100%&quot; height=&quot;100%&quot; style={[StyleSheet.absoluteFill, { opacity: 0.4 }]}&gt;
+        &lt;Defs&gt;
+          &lt;Pattern id=&quot;dots&quot; patternUnits=&quot;userSpaceOnUse&quot; width=&quot;130&quot; height=&quot;130&quot;&gt;
+            &lt;Circle cx=&quot;1&quot; cy=&quot;1&quot; r=&quot;1&quot; fill=&quot;rgba(255,255,255,0.7)&quot; /&gt;
+          &lt;/Pattern&gt;
+        &lt;/Defs&gt;
+        &lt;Rect width=&quot;100%&quot; height=&quot;100%&quot; fill=&quot;url(#dots)&quot; /&gt;
+      &lt;/Svg&gt;
+    &lt;/View&gt;
+  );
+}
+
+const REFRESHABLE: readonly Screen[] = [&quot;wallet&quot;, &quot;markets&quot;, &quot;market&quot;];
+
+/** Una página de react-navigation: cabecera propia (viaja con el gesto), ScrollView con pull-to-refresh y sello, fondo opaco. */
+export function Page({ screen, children }: { screen: Screen; children: ReactNode }) {
+  const ctx = useAppCtx();
+  const navigation = useNavigation();
+  const { S, perpl, treasury, reads, seal, back, setControls } = ctx;
+  const perpsSymbol = (perpl.context?.markets ?? []).find((m) =&gt; m.id === S.perpsMarketId)?.symbol;
+  const [title, sub] = headerFor(screen, perpsSymbol, S.marketTab);
+  const isRoot = ROOT_OF[screen] === screen;
+  const canBack = CAN_BACK.includes(screen) &amp;&amp; navigation.canGoBack();
+  const showTabs = SHOW_TABS.includes(screen);
+  const refreshable = REFRESHABLE.includes(screen);
+
+  const [refreshing, setRefreshing] = useState(false);
+  // Wallet = saldos + movimientos; Markets/Market = contexto de Perpl (+ reads en Market). allSettled: un fallo no deja el spinner colgado.
+  const onRefresh = useCallback(async () =&gt; {
+    setRefreshing(true);
+    try {
+      await Promise.allSettled(
+        screen === &quot;wallet&quot; ? [treasury.refresh(), treasury.refreshMovements()]
+        : screen === &quot;market&quot; ? [perpl.refreshContext(), reads.refresh()]
+        : [perpl.refreshContext()],
+      );
+    } finally {
+      setRefreshing(false);
+      seal.onRefreshDone(screen);
+    }
+  }, [screen, treasury, perpl, reads, seal]);
+
+  const label = refreshable ? seal.labelFor(screen) : null;
+  const failed = refreshable &amp;&amp; seal.failedOn(screen);
+
+  return (
+    &lt;View style={{ flex: 1, backgroundColor: C.bgBottom }}&gt;
+      &lt;Backdrop /&gt;
+      &lt;SafeAreaView style={{ flex: 1 }} edges={showTabs ? [&quot;top&quot;] : [&quot;top&quot;, &quot;bottom&quot;]}&gt;
+        &lt;View style={{ flexDirection: &quot;row&quot;, alignItems: &quot;center&quot;, gap: 10, paddingTop: 9, paddingHorizontal: 15, paddingBottom: 11, borderBottomWidth: 1, borderBottomColor: C.hair, backgroundColor: C.deep50 }}&gt;
+          {canBack ? (
+            &lt;Touch onPress={back} accessibilityLabel=&quot;back&quot; style={{ width: 31, height: 31, borderRadius: 999, borderWidth: 1, borderColor: C.hair22, alignItems: &quot;center&quot;, justifyContent: &quot;center&quot; }}&gt;
+              &lt;Icon name=&quot;back&quot; size={16} color={C.ink} /&gt;
+            &lt;/Touch&gt;
+          ) : null}
+          {isRoot ? &lt;Image source={require(&quot;../../assets/pickler-mark.png&quot;)} style={{ width: 24, height: 24 }} resizeMode=&quot;contain&quot; /&gt; : null}
+          &lt;View style={{ flex: 1, minWidth: 0 }}&gt;
+            &lt;T w={700} s={16.5} lh={1.15} ls={-0.01} display numberOfLines={1}&gt;{title}&lt;/T&gt;
+            &lt;T w={400} s={11} lh={1.2} color={C.faint} numberOfLines={1} style={{ marginTop: 2 }}&gt;{sub}&lt;/T&gt;
+          &lt;/View&gt;
+          {__DEV__ ? (
+            &lt;Touch onPress={() =&gt; setControls(true)} hitSlop={12} accessibilityLabel=&quot;dev-controls&quot;&gt;
+              &lt;T w={500} s={13} lh={1} mono color={C.faint}&gt;⚙&lt;/T&gt;
+            &lt;/Touch&gt;
+          ) : null}
+        &lt;/View&gt;
+        &lt;ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={{ flexGrow: 1 }}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps=&quot;handled&quot;
+          refreshControl={refreshable ? &lt;RefreshControl refreshing={refreshing} onRefresh={() =&gt; { void onRefresh(); }} tintColor={C.lime} /&gt; : undefined}
+        &gt;
+          {failed || label !== null ? (
+            &lt;View style={{ paddingHorizontal: 15, paddingTop: 10 }}&gt;
+              &lt;Tag color={failed ? C.down : C.faint}&gt;{failed ? &quot;COULDN&#39;T REFRESH&quot; : label}&lt;/Tag&gt;
+            &lt;/View&gt;
+          ) : null}
+          {children}
+        &lt;/ScrollView&gt;
+      &lt;/SafeAreaView&gt;
+    &lt;/View&gt;
+  );
+}
+
+/** Registra una pantalla existente como ruta: recibe el ctx por contexto y lo pasa como props (P2). */
+export function withPage(screen: Screen, Component: (ctx: ReturnType&lt;typeof useAppCtx&gt;) =&gt; ReactElement): () =&gt; ReactElement {
+  const Wrapped = () =&gt; {
+    const ctx = useAppCtx();
+    return &lt;Page screen={screen}&gt;&lt;Component {...ctx} /&gt;&lt;/Page&gt;;
+  };
+  Wrapped.displayName = `Page(${screen})`;
+  return Wrapped;
+}</code></pre>
+<p><code>setControls</code> no existe en <code>AppCtx</code> hoy: Task 5 lo añade a <code>AppCtx</code> en <code>src/ctx.ts</code> como <code>setControls: (v: boolean) =&gt; void</code> y Task 6 lo implementa en <code>App.tsx</code> (estado de <code>DevControls</code>, que sale del <code>Shell</code>). Para que Task 5 compile, <code>App.tsx</code> ya debe pasar <code>seal</code> y <code>setControls</code> en el <code>ctx</code> (Step 4).</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: <code>src/ui/TabBar.tsx</code></strong> (aspecto de hoy, <code>Shell.tsx:152-166</code>; la pastilla arrastrable es F2):</label></li>
+</ul>
+<pre><code class="language-tsx">import type { BottomTabBarProps } from &quot;@react-navigation/bottom-tabs&quot;;
+import { getFocusedRouteNameFromRoute } from &quot;@react-navigation/native&quot;;
+import { View } from &quot;react-native&quot;;
+import { useAppCtx } from &quot;../navigation/Navigator&quot;;
+import { type TabName, TAB_ROOT } from &quot;../navigation/routes&quot;;
+import { ROOT_OF, type Screen, SHOW_TABS } from &quot;../store&quot;;
+import { Icon, type IconName, T, Touch } from &quot;./primitives&quot;;
+import { C } from &quot;./theme&quot;;
+
+/** Tab bar del hi-fi (D4): clave de pantalla, etiqueta mono, icono lucide. */
+export const TABS: readonly [Screen, string, IconName][] = [
+  [&quot;markets&quot;, &quot;MARKETS&quot;, &quot;chart&quot;],
+  [&quot;launchpad&quot;, &quot;LAUNCHPAD&quot;, &quot;rocket&quot;],
+  [&quot;activity&quot;, &quot;ACTIVITY&quot;, &quot;activity&quot;],
+  [&quot;portfolio&quot;, &quot;PORTFOLIO&quot;, &quot;layers&quot;],
+  [&quot;wallet&quot;, &quot;WALLET&quot;, &quot;wallet&quot;],
+];
+
+/** Tab bar custom de bottom-tabs. Oculta en pantallas no raíz (SHOW_TABS, P4); el ítem activo sale de `state.index`. */
+export function TabBar({ state, navigation, insets }: BottomTabBarProps) {
+  const { requireAccount } = useAppCtx();
+  const focusedTab = state.routes[state.index];
+  const focusedScreen = (getFocusedRouteNameFromRoute(focusedTab) ?? TAB_ROOT[focusedTab.name as TabName]) as Screen;
+  if (!SHOW_TABS.includes(focusedScreen)) return null;
+  return (
+    &lt;View style={{ flexDirection: &quot;row&quot;, paddingTop: 8, paddingHorizontal: 6, paddingBottom: insets.bottom + 12, borderTopWidth: 1, borderTopColor: C.hair, backgroundColor: C.deep50 }}&gt;
+      {state.routes.map((route, i) =&gt; {
+        const root = TAB_ROOT[route.name as TabName];
+        const [, label, icon] = TABS.find(([k]) =&gt; k === root)!;
+        const focused = state.index === i;
+        const fg = ROOT_OF[focusedScreen] === root ? C.lime : C.faint;
+        const onPress = () =&gt; {
+          // tabPress es lo que hace popToTop en la pila anidada cuando la pestaña ya está enfocada (doc bottom-tabs).
+          const e = navigation.emit({ type: &quot;tabPress&quot;, target: route.key, canPreventDefault: true });
+          if (!focused &amp;&amp; !e.defaultPrevented) requireAccount(root);
+        };
+        return (
+          &lt;Touch key={route.key} onPress={onPress} accessibilityLabel={`tab-${root}`} style={{ flex: 1, alignItems: &quot;center&quot;, gap: 5, paddingVertical: 6, paddingHorizontal: 2 }}&gt;
+            &lt;Icon name={icon} size={19} color={fg} /&gt;
+            &lt;T w={500} s={9} lh={1} ls={0.04} mono color={fg}&gt;{label}&lt;/T&gt;
+          &lt;/Touch&gt;
+        );
+      })}
+    &lt;/View&gt;
+  );
+}</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 4: <code>src/navigation/Navigator.tsx</code></strong> (árbol D1; <code>AppCtx</code> por contexto P2):</label></li>
+</ul>
+<pre><code class="language-tsx">import { createBottomTabNavigator } from &quot;@react-navigation/bottom-tabs&quot;;
+import { NavigationContainer } from &quot;@react-navigation/native&quot;;
+import { createNativeStackNavigator, type NativeStackNavigationOptions } from &quot;@react-navigation/native-stack&quot;;
+import { createContext, type ReactNode, useContext } from &quot;react&quot;;
+import type { AppCtx } from &quot;../ctx&quot;;
+import { ComingSoonScreen } from &quot;../screens/comingSoon&quot;;
+import { MarketScreen } from &quot;../screens/market&quot;;
+import { MarketsScreen } from &quot;../screens/markets&quot;;
+import { PerpsFundsScreen } from &quot;../screens/perpsFunds&quot;;
+import { SigninScreen } from &quot;../screens/signin&quot;;
+import { DepositScreen, WalletScreen, WithdrawScreen } from &quot;../screens/wallet&quot;;
+import { TabBar } from &quot;../ui/TabBar&quot;;
+import { withPage } from &quot;../ui/Page&quot;;
+import { C } from &quot;../ui/theme&quot;;
+import { flushPending, navigationRef } from &quot;./ref&quot;;
+import type { MarketsStackParamList, RootParamList, SoloStackParamList, TabParamList, WalletStackParamList } from &quot;./routes&quot;;
+
+const Ctx = createContext&lt;AppCtx | null&gt;(null);
+export function AppCtxProvider({ value, children }: { value: AppCtx; children: ReactNode }) {
+  return &lt;Ctx.Provider value={value}&gt;{children}&lt;/Ctx.Provider&gt;;
+}
+export function useAppCtx(): AppCtx {
+  const v = useContext(Ctx);
+  if (v === null) throw new Error(&quot;useAppCtx fuera de AppCtxProvider&quot;);
+  return v;
+}
+
+// Cabecera propia y gesto estándar de iOS (spec D6/D8).
+const STACK: NativeStackNavigationOptions = { headerShown: false, gestureEnabled: true, fullScreenGestureEnabled: false, animation: &quot;default&quot;, contentStyle: { backgroundColor: C.bgBottom } };
+
+const Root = createNativeStackNavigator&lt;RootParamList&gt;();
+const Tabs = createBottomTabNavigator&lt;TabParamList&gt;();
+const MarketsStack = createNativeStackNavigator&lt;MarketsStackParamList&gt;();
+const WalletStack = createNativeStackNavigator&lt;WalletStackParamList&gt;();
+const LaunchpadStack = createNativeStackNavigator&lt;SoloStackParamList&lt;&quot;launchpad&quot;&gt;&gt;();
+const ActivityStack = createNativeStackNavigator&lt;SoloStackParamList&lt;&quot;activity&quot;&gt;&gt;();
+const PortfolioStack = createNativeStackNavigator&lt;SoloStackParamList&lt;&quot;portfolio&quot;&gt;&gt;();
+
+const Markets = withPage(&quot;markets&quot;, MarketsScreen);
+const Market = withPage(&quot;market&quot;, MarketScreen);
+const PerpsFunds = withPage(&quot;perpsFunds&quot;, PerpsFundsScreen);
+const Wallet = withPage(&quot;wallet&quot;, WalletScreen);
+const Deposit = withPage(&quot;deposit&quot;, DepositScreen);
+const Withdraw = withPage(&quot;withdraw&quot;, WithdrawScreen);
+const Launchpad = withPage(&quot;launchpad&quot;, (ctx) =&gt; &lt;ComingSoonScreen screen=&quot;launchpad&quot; requireAccount={ctx.requireAccount} /&gt;);
+const Activity = withPage(&quot;activity&quot;, (ctx) =&gt; &lt;ComingSoonScreen screen=&quot;activity&quot; requireAccount={ctx.requireAccount} /&gt;);
+const Portfolio = withPage(&quot;portfolio&quot;, (ctx) =&gt; &lt;ComingSoonScreen screen=&quot;portfolio&quot; requireAccount={ctx.requireAccount} /&gt;);
+const Signin = withPage(&quot;signin&quot;, SigninScreen);
+
+function MarketsTab() {
+  return (
+    &lt;MarketsStack.Navigator screenOptions={STACK}&gt;
+      &lt;MarketsStack.Screen name=&quot;markets&quot; component={Markets} /&gt;
+      &lt;MarketsStack.Screen name=&quot;market&quot; component={Market} /&gt;
+      &lt;MarketsStack.Screen name=&quot;perpsFunds&quot; component={PerpsFunds} /&gt;
+    &lt;/MarketsStack.Navigator&gt;
+  );
+}
+function WalletTab() {
+  return (
+    &lt;WalletStack.Navigator screenOptions={STACK}&gt;
+      &lt;WalletStack.Screen name=&quot;wallet&quot; component={Wallet} /&gt;
+      &lt;WalletStack.Screen name=&quot;deposit&quot; component={Deposit} /&gt;
+      &lt;WalletStack.Screen name=&quot;withdraw&quot; component={Withdraw} /&gt;
+    &lt;/WalletStack.Navigator&gt;
+  );
+}
+function LaunchpadTab() { return &lt;LaunchpadStack.Navigator screenOptions={STACK}&gt;&lt;LaunchpadStack.Screen name=&quot;launchpad&quot; component={Launchpad} /&gt;&lt;/LaunchpadStack.Navigator&gt;; }
+function ActivityTab() { return &lt;ActivityStack.Navigator screenOptions={STACK}&gt;&lt;ActivityStack.Screen name=&quot;activity&quot; component={Activity} /&gt;&lt;/ActivityStack.Navigator&gt;; }
+function PortfolioTab() { return &lt;PortfolioStack.Navigator screenOptions={STACK}&gt;&lt;PortfolioStack.Screen name=&quot;portfolio&quot; component={Portfolio} /&gt;&lt;/PortfolioStack.Navigator&gt;; }
+
+function TabsNav() {
+  return (
+    &lt;Tabs.Navigator initialRouteName=&quot;WalletTab&quot; tabBar={(p) =&gt; &lt;TabBar {...p} /&gt;} screenOptions={{ headerShown: false, animation: &quot;none&quot;, sceneStyle: { backgroundColor: C.bgBottom } }}&gt;
+      &lt;Tabs.Screen name=&quot;MarketsTab&quot; component={MarketsTab} /&gt;
+      &lt;Tabs.Screen name=&quot;LaunchpadTab&quot; component={LaunchpadTab} /&gt;
+      &lt;Tabs.Screen name=&quot;ActivityTab&quot; component={ActivityTab} /&gt;
+      &lt;Tabs.Screen name=&quot;PortfolioTab&quot; component={PortfolioTab} /&gt;
+      &lt;Tabs.Screen name=&quot;WalletTab&quot; component={WalletTab} /&gt;
+    &lt;/Tabs.Navigator&gt;
+  );
+}
+
+/** Árbol de navegación (spec D1). `initial`: Tabs con cuenta, signin sin ella (D5). */
+export function Navigator({ initial }: { initial: &quot;Tabs&quot; | &quot;signin&quot; }) {
+  return (
+    &lt;NavigationContainer ref={navigationRef} onReady={flushPending}&gt;
+      &lt;Root.Navigator initialRouteName={initial} screenOptions={STACK}&gt;
+        &lt;Root.Screen name=&quot;Tabs&quot; component={TabsNav} /&gt;
+        &lt;Root.Screen name=&quot;signin&quot; component={Signin} /&gt;
+      &lt;/Root.Navigator&gt;
+    &lt;/NavigationContainer&gt;
+  );
+}</code></pre>
+<p>Orden de las pestañas: <code>TAB_ORDER</code> de Task 2 (Markets, Launchpad, Activity, Portfolio, Wallet); <code>initialRouteName=&quot;WalletTab&quot;</code> porque la app arranca en Wallet (<code>INITIAL.screen</code>).</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 5: Hacer compilar <code>App.tsx</code> sin conmutar todavía</strong> — en <code>App.tsx</code>, construir <code>seal</code> y <code>setControls</code> y pasarlos al <code>ctx</code> (el <code>Shell</code> sigue pintando; ignora los campos nuevos):</label></li>
+</ul>
+<pre><code class="language-tsx">import { useRefreshSeal } from &quot;./src/hooks/useRefreshSeal&quot;;
+// … dentro de App(), después de `const reads = …`:
+  const [controls, setControls] = useState(false); // Task 6 monta DevControls aquí; hasta entonces el Shell tiene el suyo
+  const seal = useRefreshSeal({
+    account: account ?? NONE,
+    errors: { rpcError: treasury.rpcError, movementsError: treasury.movementsError, contextError: perpl.contextError, listError: reads.session === &quot;ready&quot; ? reads.listError : null },
+    hasData: (s) =&gt; screenHasData(s, { balances: treasury.balances, context: perpl.context }),
+  });
+  // … en el ctx:
+  const ctx: AppCtx = { ...store, account, treasury, perpl, reads, notifications, onWallet, lock, signOut, seal, setControls };</code></pre>
+<p>(<code>useState</code> al import de react; <code>screenHasData</code> al import de <code>./src/store</code>; <code>controls</code> queda sin usar hasta Task 6 — si <code>tsc</code>/lint lo marca, <code>void controls;</code>.)</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 6: Verificar y commit</strong></label></li>
+</ul>
+<pre><code class="language-bash">npx tsc --noEmit &amp;&amp; echo TSC-OK &amp;&amp; npm test 2&gt;&amp;1 | tail -4
+git add src/ctx.ts src/ui/Page.tsx src/ui/TabBar.tsx src/navigation/Navigator.tsx App.tsx
+git commit -m &quot;feat(mobile): Page (cabecera + refresh + sello por ruta), TabBar y Navigator (RootStack → Tabs → pila por pestaña), sin conmutar&quot; -m &quot;Co-Authored-By: &lt;modelo&gt; &lt;noreply@anthropic.com&gt;&quot; -m &quot;Claude-Session: &lt;url&gt;&quot;</code></pre>
+<p>Expected: <code>TSC-OK</code>, 32 / 245. Si <code>tsc</code> señala que <code>withPage</code> no acepta <code>SigninScreen</code>/<code>WalletScreen</code> por su tipo de props (<code>AppCtx</code> exacto vs. <code>ReturnType&lt;typeof useAppCtx&gt;</code>), tipar el parámetro como <code>(ctx: AppCtx) =&gt; ReactElement</code> importando <code>AppCtx</code> de <code>../ctx</code>.</p>
+<hr>
+<h3 id="task-6-conmutacion-store-solo-con-datos-apptsx-con-navigator-adios-shell">Task 6: Conmutación — store sólo con datos, <code>App.tsx</code> con <code>Navigator</code>, adiós <code>Shell</code></h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Modify: <code>apps/mobile/src/store.ts</code> (tipos, <code>useAppStore</code>, borrar <code>navState/backState/afterSigninState/bootState/resetState/canBackFor/requireAccountState</code>, <code>STACK_MAX</code>)</li>
+<li>Modify: <code>apps/mobile/App.tsx</code> (montar <code>Navigator</code>, <code>AppCtxProvider</code>, <code>DevControls</code>, pantalla activa, push por adaptador)</li>
+<li>Modify: <code>apps/mobile/src/screens/signin.tsx</code> (<code>held</code> de <code>route.params</code>)</li>
+<li>Modify: <code>apps/mobile/src/DevControls.tsx</code> (usar <code>ctx.scr</code> en vez de <code>S.screen</code> si lo lee)</li>
+<li>Modify: <code>apps/mobile/__tests__/store.test.ts</code></li>
+<li>Delete: <code>apps/mobile/src/Shell.tsx</code>, <code>apps/mobile/src/ui/gestures.ts</code>, <code>apps/mobile/__tests__/gestures.test.ts</code></li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Consumes: todo lo de Tasks 2–5.</li>
+<li>Produces: <code>useAppStore({ hasAccount, perpsMarkets, scr })</code> → <code>AppStore</code> con <code>S</code> (sólo datos), <code>set</code>, <code>nav</code>, <code>back</code>, <code>requireAccount</code>, <code>finishSignin</code>, <code>signedOut</code>, <code>scr</code>, <code>hasAccount</code>, <code>comingSoon</code>; <strong>sin</strong> <code>boot</code>, <code>headerTitle</code>, <code>headerSub</code>, <code>canBack</code>, <code>showTabs</code>, <code>held</code> (los calcula <code>Page</code>/<code>Signin</code>).</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Tests del store (RED)</strong> — en <code>__tests__/store.test.ts</code>: <strong>borrar</strong> los tests «nav pushes…», «the back-stack keeps…», «back pops…», «without an account, gated screens…», «with an account the gate…», «coming-soon tabs never ask…», «after sign-in the app lands…», «the app starts on Wallet; boot…», «canBackFor requires…», «reset clears…», «sign out lands on Sign in and comes back…» (líneas 6–53, 93–122 aprox.) y quitar del import lo que ya no exista (<code>navState</code>, <code>backState</code>, <code>requireAccountState</code>, <code>afterSigninState</code>, <code>bootState</code>, <code>resetState</code>, <code>canBackFor</code>, <code>INITIAL</code> si sólo lo usaban esos). Sustituir el test «sign out lands on Sign in and clears the Ask state» por:</label></li>
+</ul>
+<pre><code class="language-ts">test(&quot;signedOutState clears the Ask state (the stack is react-navigation&#39;s now)&quot;, () =&gt; {
+  const s = { ...INITIAL, askView: &quot;mine&quot; as const, askCell: { levelBps: 100, horizonMin: 240 }, askAgentId: &quot;a&quot;, askFocusReadId: &quot;r&quot;, tradeLevel: { marketId: 1, levelBps: 100, horizonMin: 240, target: 1, expiresAt: &quot;x&quot; } };
+  expect(signedOutState(s)).toEqual({ ...INITIAL });
+});</code></pre>
+<p>Ajustar el test «Ask state: New read by default, a cell, an agent and a focused read travel in the patch» para que use <code>{ ...INITIAL, ...patch }</code> en vez de <code>navState(...)</code>. Los tests de <code>heldActionFor</code>, sets D5, <code>ROOT_OF</code>, headers, <code>marketEntryTab</code>, sello, <code>tradingLineState</code> y <code>screenHasData</code> se quedan.</p>
+<pre><code class="language-bash">npx jest __tests__/store.test.ts 2&gt;&amp;1 | tail -6</code></pre>
+<p>Expected: FAIL por tipos/exports (<code>INITIAL</code> aún tiene <code>screen</code>/<code>stack</code>, <code>signedOutState</code> aún devuelve <code>screen: &quot;signin&quot;</code>).</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: <code>src/store.ts</code></strong> —</label></li>
+<ul>
+<li><code>StoreState</code>: quitar <code>screen</code>, <code>stack</code>, <code>next</code>, <code>nextPatch</code>. <code>Patch = Partial&lt;StoreState&gt;</code>. <code>INITIAL = { marketTab: &quot;trade&quot;, askView: &quot;new&quot; }</code>.</li>
+<li>Borrar <code>STACK_MAX</code>, <code>navState</code>, <code>backState</code>, <code>requireAccountState</code>, <code>afterSigninState</code>, <code>bootState</code>, <code>resetState</code>, <code>canBackFor</code>. Conservar <code>Screen</code>, <code>MarketTab</code>, <code>AskView</code>, <code>AskCell</code>, <code>TradeLevel</code>, <code>isComingSoonTab</code>, <code>GATED</code>, <code>CAN_BACK</code>, <code>SHOW_TABS</code>, <code>ROOT_OF</code>, <code>heldActionFor</code>, <code>marketEntryTab</code>, <code>headerFor</code>, sello, <code>tradingLineState</code>, <code>screenHasData</code>.</li>
+<li><code>signedOutState(s)</code>: <code>return { ...s, askView: &quot;new&quot;, askCell: undefined, askAgentId: undefined, askFocusReadId: undefined, tradeLevel: undefined };</code> (comentario: la pila la resetea el adaptador).</li>
+<li><code>AppStore</code>:</li>
+</ul>
+</ul>
+<pre><code class="language-ts">export type AppStore = {
+  S: StoreState;
+  set: (patch: Patch) =&gt; void;
+  nav: (screen: Screen, patch?: Patch) =&gt; void;
+  back: () =&gt; void;
+  requireAccount: (target: Screen, patch?: Patch) =&gt; void;
+  /** Sign in terminado: vuelve a Tabs y aterriza en el `next` del gate (D5). */
+  finishSignin: () =&gt; void;
+  signedOut: () =&gt; void;
+  hasAccount: boolean;
+  /** Pantalla enfocada según react-navigation (D4). */
+  scr: Screen;
+  comingSoon: boolean;
+};
+
+export function useAppStore({ hasAccount, scr }: { hasAccount: boolean; scr: Screen }): AppStore {
+  const [S, setS] = useState&lt;StoreState&gt;(INITIAL);
+  const set = useCallback((patch: Patch) =&gt; setS((s) =&gt; ({ ...s, ...patch })), []);
+  const nav = useCallback((screen: Screen, patch?: Patch) =&gt; { if (patch) set(patch); navigateTo(screen); }, [set]);
+  const back = useCallback(() =&gt; goBackIfCan(), []);
+  const requireAccount = useCallback((target: Screen, patch?: Patch) =&gt; {
+    const g = gateTarget(hasAccount, target);
+    if (g.screen === &quot;signin&quot;) { navigateTo(&quot;signin&quot;, { next: g.next, patch }); return; }
+    nav(target, patch);
+  }, [hasAccount, nav]);
+  const finishSignin = useCallback(() =&gt; {
+    const p = currentParams();
+    if (signinIsRoot()) resetRootTo(&quot;Tabs&quot;); // arranque sin cuenta: no hay Tabs debajo (P3)
+    nav(p?.next ?? &quot;wallet&quot;, p?.patch); // con Tabs debajo, navigate vuelve a Tabs y saca signin
+  }, [nav]);
+  const signedOut = useCallback(() =&gt; { setS(signedOutState); resetRootTo(&quot;signin&quot;); }, []);
+  return { S, set, nav, back, requireAccount, finishSignin, signedOut, hasAccount, scr, comingSoon: isComingSoonTab(scr) };
+}</code></pre>
+<p>Imports: <code>import { gateTarget } from &quot;./navigation/routes&quot;; import { currentParams, goBackIfCan, navigateTo, resetRootTo, signinIsRoot } from &quot;./navigation/ref&quot;;</code> — <strong>ojo al ciclo</strong>: <code>routes.ts</code> importa <code>GATED</code>/tipos de <code>./store</code> y <code>store.ts</code> importa <code>gateTarget</code> de <code>./navigation/routes</code>. Es un ciclo de módulos ES con sólo funciones y constantes usadas en tiempo de llamada (no al evaluar el módulo), así que funciona; si <code>tsc</code> o jest se quejan, mover <code>GATED</code>, <code>CAN_BACK</code>, <code>SHOW_TABS</code>, <code>ROOT_OF</code> y los tipos <code>Screen</code>/<code>Patch</code> a <code>src/navigation/screens.ts</code> y re-exportarlos desde <code>store.ts</code> (anotarlo en el reporte).</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: <code>App.tsx</code></strong> — sustituir el cuerpo por:</label></li>
+</ul>
+<pre><code class="language-tsx">import { GestureHandlerRootView } from &quot;react-native-gesture-handler&quot;;
+import { useCallback, useEffect, useRef, useState } from &quot;react&quot;;
+import { StatusBar } from &quot;react-native&quot;;
+import { SafeAreaProvider } from &quot;react-native-safe-area-context&quot;;
+import { DevControls } from &quot;./src/DevControls&quot;;
+import type { AppCtx } from &quot;./src/ctx&quot;;
+import { useAccount } from &quot;./src/hooks/useAccount&quot;;
+import { useCurrentScreen } from &quot;./src/hooks/useCurrentScreen&quot;;
+import { useNotifications } from &quot;./src/hooks/useNotifications&quot;;
+import { usePerpl } from &quot;./src/hooks/usePerpl&quot;;
+import { useReads } from &quot;./src/hooks/useReads&quot;;
+import { useRefreshSeal } from &quot;./src/hooks/useRefreshSeal&quot;;
+import { useTreasury } from &quot;./src/hooks/useTreasury&quot;;
+import { AppCtxProvider, Navigator } from &quot;./src/navigation/Navigator&quot;;
+import type { PushTarget } from &quot;./src/reads/push&quot;;
+import { patchForPush } from &quot;./src/reads/push&quot;;
+import { type Screen, screenHasData, useAppStore } from &quot;./src/store&quot;;
+// (los imports de fuentes y SplashScreen se quedan como están)
+
+const NONE = { status: &quot;none&quot; } as const;
+const PERPL_SCREENS: readonly Screen[] = [&quot;markets&quot;, &quot;market&quot;, &quot;perpsFunds&quot;];
+
+export default function App() {
+  const [fontsLoaded] = useFonts({ /* igual */ });
+  const { account, onWallet, lock, signOut } = useAccount();
+  const treasury = useTreasury(account ?? NONE, onWallet);
+  const perpl = usePerpl(account ?? NONE, onWallet, treasury);
+  const hasAccount = account !== null &amp;&amp; account.status !== &quot;none&quot;;
+  const scr = useCurrentScreen();
+  const store = useAppStore({ hasAccount, scr });
+  const { requireAccount } = store;
+  // Tap en un push (P7 de Ask): igual que antes; la cola por cuenta se conserva y el adaptador encola hasta isReady.
+  const pendingPush = useRef&lt;PushTarget | null&gt;(null);
+  const accountLoaded = account !== null;
+  const accountLoadedRef = useRef(accountLoaded);
+  accountLoadedRef.current = accountLoaded;
+  const onPushTarget = useCallback((t: PushTarget) =&gt; {
+    if (!accountLoadedRef.current) { pendingPush.current = t; return; }
+    requireAccount(&quot;market&quot;, patchForPush(t));
+  }, [requireAccount]);
+  useEffect(() =&gt; {
+    if (!accountLoaded || pendingPush.current === null) return;
+    const t = pendingPush.current;
+    pendingPush.current = null;
+    requireAccount(&quot;market&quot;, patchForPush(t));
+  }, [accountLoaded, requireAccount]);
+  const notifications = useNotifications(onPushTarget);
+  const reads = useReads(account ?? NONE, onWallet, notifications, store.S.perpsMarketId);
+  const ready = fontsLoaded &amp;&amp; account !== null;
+  useEffect(() =&gt; {
+    if (ready) { void SplashScreen.hideAsync(); return; }
+    const t = setTimeout(() =&gt; { void SplashScreen.hideAsync(); }, 2000);
+    return () =&gt; clearTimeout(t);
+  }, [ready]);
+  const perpsActive = PERPL_SCREENS.includes(scr);
+  const readsActive = scr === &quot;market&quot; &amp;&amp; store.S.marketTab !== &quot;trade&quot;;
+  const { setActive } = perpl;
+  const { setActive: setReadsActive } = reads;
+  useEffect(() =&gt; { setActive(perpsActive); }, [perpsActive, setActive]);
+  useEffect(() =&gt; { setReadsActive(readsActive); }, [readsActive, setReadsActive]);
+  const [controls, setControls] = useState(false);
+  const seal = useRefreshSeal({
+    account: account ?? NONE,
+    errors: { rpcError: treasury.rpcError, movementsError: treasury.movementsError, contextError: perpl.contextError, listError: reads.session === &quot;ready&quot; ? reads.listError : null },
+    hasData: (s) =&gt; screenHasData(s, { balances: treasury.balances, context: perpl.context }),
+  });
+  // La ruta inicial se decide una sola vez, cuando la cuenta ya se conoce (D5): con cuenta Tabs, sin cuenta signin.
+  const initial = useRef&lt;&quot;Tabs&quot; | &quot;signin&quot; | null&gt;(null);
+  if (ready &amp;&amp; initial.current === null) initial.current = hasAccount ? &quot;Tabs&quot; : &quot;signin&quot;;
+
+  if (!ready || initial.current === null) return null; // el splash nativo sigue en pantalla
+
+  const ctx: AppCtx = { ...store, account, treasury, perpl, reads, notifications, onWallet, lock, signOut, seal, setControls };
+
+  return (
+    &lt;GestureHandlerRootView style={{ flex: 1 }}&gt;
+      &lt;SafeAreaProvider&gt;
+        &lt;StatusBar barStyle=&quot;light-content&quot; /&gt;
+        &lt;AppCtxProvider value={ctx}&gt;
+          &lt;Navigator initial={initial.current} /&gt;
+          {__DEV__ ? &lt;DevControls visible={controls} onClose={() =&gt; setControls(false)} ctx={ctx} /&gt; : null}
+        &lt;/AppCtxProvider&gt;
+      &lt;/SafeAreaProvider&gt;
+    &lt;/GestureHandlerRootView&gt;
+  );
+}</code></pre>
+<p>Se eliminan <code>useLayoutEffect</code>, <code>booted</code>, <code>boot</code>, el <code>View</code> con fondo (cada <code>Page</code> lleva el suyo) y el import de <code>Shell</code>/<code>C</code> si quedan sin uso. <code>perpsMarkets</code> deja de ser input del store (lo lee <code>Page</code> de <code>perpl.context</code>).</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 4: <code>src/screens/signin.tsx</code></strong> — <code>held</code> sale de los params:</label></li>
+</ul>
+<pre><code class="language-tsx">import { useRoute } from &quot;@react-navigation/native&quot;;
+import { heldActionFor } from &quot;../store&quot;;
+import type { SigninParams } from &quot;../navigation/routes&quot;;
+// firma: export function SigninScreen({ onWallet, finishSignin }: AppCtx) {
+//   const held = heldActionFor((useRoute().params as SigninParams)?.next);</code></pre>
+<p>El resto igual (<code>held</code> se usa donde ya se usaba).</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 5: <code>src/DevControls.tsx</code></strong> — si lee <code>S.screen</code> (para mostrar la pantalla actual o similar), usar <code>ctx.scr</code>; <code>signedOut()</code> y <code>requireAccount(...)</code> siguen iguales. Comprobar con <code>grep -n &quot;S\.screen\|S\.stack\|S\.next&quot; src/DevControls.tsx</code>.</label></li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 6: Borrar el Shell y los gestos</strong></label></li>
+</ul>
+<pre><code class="language-bash">git rm -q src/Shell.tsx src/ui/gestures.ts __tests__/gestures.test.ts
+grep -rn &quot;from \&quot;./Shell\&quot;\|from \&quot;../Shell\&quot;\|ui/gestures\|S\.screen\|S\.stack\|S\.next\b\|nextPatch\|headerTitle\|headerSub\|showTabs\|canBack\b&quot; src App.tsx | grep -v &quot;canBack = CAN_BACK&quot; || echo &quot;sin referencias&quot;</code></pre>
+<p>Expected: <code>sin referencias</code> (si algo queda, es un consumidor que hay que pasar a <code>ctx.scr</code>/<code>Page</code>; citarlo en el reporte).</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 7: Verde</strong></label></li>
+</ul>
+<pre><code class="language-bash">npx tsc --noEmit &amp;&amp; echo TSC-OK &amp;&amp; npm test 2&gt;&amp;1 | tail -4</code></pre>
+<p>Expected: <code>TSC-OK</code>; 31 suites (32 − gestures) / ≈ 236 tests (245 − 11 borrados + 1 nuevo; anotar el número real).</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 8: Humo en el simulador</strong> — Metro desde este worktree (<code>nohup npx expo start --port 8081 &gt; &quot;$SC/metro.log&quot; 2&gt;&amp;1 &amp;</code>), relaunch por UDID, mirar <code>$SC/shots/t6-wallet.png</code>: Wallet con cabecera, sello y tab bar como antes. <code>tab-markets</code> → Markets; <code>market-BTC</code> → Market entra deslizando desde la derecha y <strong>sin tab bar</strong>; swipe desde el borde → vuelve a Markets. Si la app muestra pantalla roja, adjuntar el texto al reporte y corregir antes de commitear.</label></li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 9: Commit</strong></label></li>
+</ul>
+<pre><code class="language-bash">git add src/store.ts App.tsx src/screens/signin.tsx src/DevControls.tsx __tests__/store.test.ts
+git commit -m &quot;feat(mobile): navegación nativa con react-navigation — store sólo con datos, Navigator en App, Sign in con next por params; fuera Shell y gestos propios&quot; -m &quot;Co-Authored-By: &lt;modelo&gt; &lt;noreply@anthropic.com&gt;&quot; -m &quot;Claude-Session: &lt;url&gt;&quot;</code></pre>
+<p>(<code>git rm</code> ya dejó los borrados en el índice.)</p>
+<hr>
+<h3 id="task-7-recorrido-en-el-simulador-capturas-d12">Task 7: Recorrido en el simulador (capturas D12)</h3>
+<p><strong>Files:</strong> ninguno del repo. Workspace <code>SC=&lt;worktree&gt;/.superpowers/sdd/2026-09-21-mobile-nav-f1</code> (lo crea <code>scripts/sdd-workspace</code>); copiar <code>taplabel.sh</code>, <code>tap-point.yaml</code> y <code>flows/</code> desde <code>&lt;repo&gt;/.claude/worktrees/mobile-loading/.superpowers/sdd/2026-09-21-mobile-loading-f1/</code> y ajustar <code>SC</code> en <code>taplabel.sh</code>. Capturas en <code>$SC/shots/</code>.</p>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Labels: <code>tab-wallet</code>, <code>tab-markets</code>, <code>market-BTC</code>, <code>back</code>, <code>deposit</code>, <code>withdraw</code>, <code>add-funds</code>, <code>back-to-markets</code>, <code>pill-ask</code>, <code>segment-mine</code>, <code>sign-out</code>, <code>dev-controls</code>.</li>
+<li>Produces: <code>$SC/task-7-report.md</code>; PNG a <code>docs/superpowers/audits/img/2026-09-21-mobile-nav-{gesture-mid,push-forward,market-no-tabs,signin-next,scroll-kept}.png</code> (reducidos con <code>sips -Z 1300</code>).</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 0: Estado</strong> — dev build de Task 1 + Metro de Task 6 desde este worktree; <code>content_size medium</code>; sign in si hace falta. Wallet → anotar AUSD/MON (<code>00-wallet-before.png</code>).</label></li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Gesto atrás a medio camino</strong> — <code>tab-markets</code> → <code>market-BTC</code> → con Maestro un swipe <strong>lento</strong> desde el borde que no termine: <code>flows/edge-drag.yaml</code> = <code>swipe: start &quot;1%, 50%&quot;, end &quot;45%, 50%&quot;, duration 2500</code> y <code>takeScreenshot</code> a mitad no es posible en un solo comando; hacerlo con dos procesos: lanzar el flow en background y <code>xcrun simctl io $U screenshot $SC/shots/01-gesture-mid.png</code> a los ~1.2 s. <strong>Mirar</strong>: Market desplazada a la derecha con su cabecera, Markets asomando a la izquierda con velo (como la captura de Proflores). Repetir hasta 5 veces si el instante no cae; anotar intentos. Luego completar el gesto (<code>ptr</code>-style swipe hasta 90 %) → Markets, <code>02-after-back.png</code>.</label></li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Adelante animado</strong> — desde Markets, <code>market-BTC</code> y captura a los 120 ms (<code>03-push-mid.png</code>: Market entrando desde la derecha) y a 600 ms (<code>04-market.png</code>). Sin tab bar en Market. Botón <code>back</code> (<code>taplabel.sh back</code>) → Markets animado.</label></li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Pila por pestaña</strong> — Markets → BTC (queda en Market) → <code>tab-wallet</code> (instantáneo; sin animación) → <code>tab-markets</code> → <strong>debe seguir en Market BTC</strong> (<code>05-tab-stack-kept.png</code>). Tocar <code>tab-markets</code> de nuevo → <code>popToTop</code> → Markets (<code>06-poptotop.png</code>).</label></li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 4: Wallet → Deposit → «I&#39;ve sent it»</strong> — <code>deposit</code> → Deposit sin tab bar y con <code>←</code> (<code>07-deposit.png</code>); botón «I&#39;ve sent it» (<code>nav(&quot;wallet&quot;)</code>) → vuelve a Wallet animado (pop). Scroll: en Wallet bajar hasta TESTNET, <code>deposit</code>, <code>back</code> → Wallet <strong>conserva</strong> el scroll (<code>08-scroll-kept.png</code>; hoy volvía arriba).</label></li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 5: Push en frío</strong> — <code>xcrun simctl terminate $U fun.pickler.app</code>; <code>xcrun simctl push $U fun.pickler.app $SC/push.apns</code> con el payload del audit de Ask F2 (<code>{&quot;aps&quot;:{&quot;alert&quot;:{&quot;title&quot;:&quot;…&quot;}},&quot;pickler&quot;:{&quot;kind&quot;:&quot;read&quot;,&quot;readId&quot;:&quot;&lt;id real de My reads&gt;&quot;,&quot;marketId&quot;:&lt;id BTC&gt;}}</code>, ver <code>docs/superpowers/audits/2026-09-19-mobile-ask-f2-rulings.md</code> para el formato exacto) y tocar el banner (<code>flows/tap-banner.yaml</code>) → la app abre en <strong>MarketsTab / Market · Ask · My reads</strong> (<code>09-push-cold.png</code>); <code>back</code> → Markets (no Wallet; D10).</label></li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 6: Gate y sign-in con <code>next</code></strong> — Dev controls → Sign out → Sign in (sin <code>←</code>, <code>10-signin-root.png</code>); en Sign in <strong>no</strong> firmar aún: relanzar la app → sigue en Sign in; firmar (passkey + Face ID) → Wallet. Luego Sign out otra vez → Sign in → <code>tab-markets</code> no existe (sin tab bar en Sign in) → usar Dev controls → «Markets» → Sign in con tarjeta «We kept what you were about to do · Trading on Perpl» (<code>11-signin-next.png</code>) → firmar → aterriza en <strong>Markets</strong> y <code>←</code> no aparece (<code>12-after-signin-next.png</code>).</label></li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 7: Sello y skeleton siguen</strong> — Wallet: jalar → <code>UPDATED HH:MM:SS</code> (<code>13-updated.png</code>); relaunch → skeleton de Wallet en el primer segundo (<code>14-skeleton.png</code>).</label></li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 8: Reporte</strong> — <code>$SC/task-7-report.md</code>: tabla captura → qué se ve (✓ mirada), saldos antes/después (iguales), no capturado y por qué, <strong>defectos</strong> (tab bar que no aparece al volver, cabecera que no viaja, doble cabecera, pantalla en blanco bajo el gesto, push que abre en la pestaña equivocada…). Copiar los 5 PNG de evidencia a <code>docs/superpowers/audits/img/</code> con <code>sips -Z 1300</code>.</label></li>
+</ul>
+<hr>
+<h3 id="task-8-docs-marcas-f1-f1-completed-audit-readme-nota-en-el-tracker-del-fix-gate">Task 8: Docs — marcas (F1), F1 <code>completed</code>, audit, README, nota en el tracker del fix gate</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Modify: <code>docs/superpowers/specs/2026-09-21-mobile-nav-design.md</code> (Estado, D-marks (F1) si hubo desviaciones), <code>docs/overview/2026-09-21-mobile-nav.html</code> (F1 <code>completed</code>, tasks, «Rulings en ejecución»), <code>docs/overview/data/manifest.js</code> (<code>phases[0].status = &#39;completed&#39;</code>, <code>types: [&#39;spec&#39;, &#39;plan&#39;]</code>), <code>apps/mobile/README.md</code> (sección «Navegación»: árbol, adaptador, <code>Page</code>, cómo añadir una pantalla; conteo de tests real), <code>docs/overview/dev/2026-09-21-markets-ask-gate.html</code> (nota: «Market sobre Wallet» sustituido por D10 de mobile-nav)</li>
+<li>Create: <code>docs/superpowers/audits/2026-09-21-mobile-nav-f1-rulings.md</code>, <code>docs/superpowers/audits/img/2026-09-21-mobile-nav-*.png</code> (Task 7)</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Spec</strong> — Estado: «F1 ejecutada (plan <code>2026-09-21-mobile-nav-f1.md</code>, audit <code>2026-09-21-mobile-nav-f1-rulings.md</code>); rama <code>feat/mobile-nav</code> lista para merge local; F2 pendiente.» Marcar <strong>(F1)</strong> en las decisiones donde la ejecución se apartó (p. ej. ciclo <code>store ↔ routes</code> movido a <code>screens.ts</code>, cast de <code>navigate</code>, tab bar que aparece al terminar el gesto).</label></li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Overview y manifest</strong> — phase-card F1 → <code>completed</code>, tasks 1–8 (las de este plan) <code>checked</code> según evidencia, <code>&lt;h3 class=&quot;section-sub&quot;&gt;Rulings en ejecución&lt;/h3&gt;&lt;ol&gt;…</code> con los rulings del ledger; F2 sigue <code>pending</code>. Manifest: <code>types: [&#39;spec&#39;, &#39;plan&#39;]</code>, <code>phases: [{ num: 1, status: &#39;completed&#39; }, { num: 2, status: &#39;pending&#39; }]</code>, <code>status: &#39;active&#39;</code>. <code>npm run docs:html</code>; render-check a 390 px y <strong>mirar</strong>.</label></li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Audit</strong> — <code>docs/superpowers/audits/2026-09-21-mobile-nav-f1-rulings.md</code>: §1 por task con evidencia real (versiones instaladas, <code>git log --oneline 6fa0499..HEAD</code>, <code>git diff --stat</code>), §2 tests/tsc + tabla de capturas con <code>![…](img/…)</code>, §3 rulings (P1–P10 + ledger), §4 correcciones, §5 cuentas al cierre, §6 residuales (tab bar sin animación al volver a raíz; Sign in por gesto; lo no capturado; Android).</label></li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 4: README y tracker del fix gate</strong> — README: sección «Navegación» (árbol D1, <code>ROUTE_OF</code>/<code>TAB_OF</code>, <code>withPage</code>, «para añadir una pantalla: tipo <code>Screen</code>, <code>TAB_OF</code>, <code>Screen</code> en la pila de su pestaña, <code>withPage</code>»), conteo de tests. Tracker <code>dev/2026-09-21-markets-ask-gate.html</code>: una línea en Validación: «Desde mobile-nav F1 (D10) un push abre Market en la pestaña Markets, no sobre Wallet.»</label></li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 5: Checks y commit</strong></label></li>
+</ul>
+<pre><code class="language-bash">cd /Users/josedejesusacevedoflores/Documents/predict/.claude/worktrees/mobile-nav
+npm run docs:html &amp;&amp; npm run docs:check &amp;&amp; npm run agents:check
+cd apps/mobile &amp;&amp; npm test 2&gt;&amp;1 | tail -4 &amp;&amp; npx tsc --noEmit &amp;&amp; echo TSC-OK &amp;&amp; cd ../..
+git status --short
+git add docs/superpowers/specs/2026-09-21-mobile-nav-design.md docs/superpowers/specs/2026-09-21-mobile-nav-design.html docs/superpowers/plans/2026-09-21-mobile-nav-f1.md docs/superpowers/plans/2026-09-21-mobile-nav-f1.html docs/overview/2026-09-21-mobile-nav.html docs/overview/data/manifest.js docs/overview/dev/2026-09-21-markets-ask-gate.html docs/superpowers/audits/2026-09-21-mobile-nav-f1-rulings.md docs/superpowers/audits/img/2026-09-21-mobile-nav-gesture-mid.png docs/superpowers/audits/img/2026-09-21-mobile-nav-push-forward.png docs/superpowers/audits/img/2026-09-21-mobile-nav-market-no-tabs.png docs/superpowers/audits/img/2026-09-21-mobile-nav-signin-next.png docs/superpowers/audits/img/2026-09-21-mobile-nav-scroll-kept.png apps/mobile/README.md
+git commit -m &quot;docs(mobile-nav): F1 completed — spec (F1), overview, audit con capturas, README, nota en el tracker del fix gate&quot; -m &quot;Co-Authored-By: &lt;modelo&gt; &lt;noreply@anthropic.com&gt;&quot; -m &quot;Claude-Session: &lt;url&gt;&quot;</code></pre>
+<p>Expected: <code>docs:check</code> errors=0; <code>agents:check</code> <code>&quot;errors&quot;: []</code>; tests y <code>TSC-OK</code>; árbol limpio. (Si alguna captura no existió, quitarla del <code>git add</code> y del audit.) Handoff: rama lista para merge local (decisión de Jesús); siguiente: plan F2 (tab bar con pastilla) y, si lo pide, build 8.</p>
+<hr>
+<h2 id="self-review-del-plan-hecho-al-escribirlo">Self-review del plan (hecho al escribirlo)</h2>
+<ul>
+<li><strong>Cobertura del spec</strong>: D1 → Task 5 (<code>Navigator</code>); D2 → Tasks 2–3 (<code>routes</code>, <code>ref</code>) + Task 6 (<code>useAppStore</code> conserva <code>nav/back/requireAccount</code>); D3 → Task 6 (store); D4 → Task 4 (<code>useCurrentScreen</code>) + Task 6 (<code>scr</code>); D5 → Task 2 (<code>gateTarget</code>) + Task 6 (<code>requireAccount</code>, <code>finishSignin</code>, <code>signedOut</code>, <code>initial</code>) + Task 5 (<code>SigninParams</code>); D6 → Task 5 (<code>Page</code>, <code>headerShown: false</code>, <code>Backdrop</code> por página); D7 → Task 4 (<code>useRefreshSeal</code>) + Task 5 (<code>Page</code>); D8 → Task 5 (<code>STACK</code> options, tabs <code>animation: &quot;none&quot;</code>) + Task 6 (borrar <code>PanResponder</code>/<code>gestures</code>); D9 → Task 5 (<code>TabBar</code> devuelve <code>null</code>, <code>Page</code> edges); D10 → Task 6 (<code>navigateTo(&quot;market&quot;)</code> desde Wallet/push) + Task 7 Step 5 + Task 8 (nota tracker); D12 → Tasks 2, 6 (tests), 7 (capturas), 8 (docs). D11 es F2. Sin gaps.</li>
+<li><strong>Placeholders</strong>: <code>&lt;modelo&gt;</code>, <code>&lt;url&gt;</code>, <code>&lt;worktree&gt;</code>, <code>&lt;repo&gt;</code>, el id real de una read y el número real de tests tras Task 6 los rellena el ejecutor con datos medidos. Ningún «TBD».</li>
+<li><strong>Consistencia de tipos</strong>: <code>navigateTo(screen, signinParams?)</code> (Task 3) usado en Task 6; <code>gateTarget(hasAccount, target) → { screen, next? }</code> (Task 2) usado en Task 6; <code>useRefreshSeal({ account, errors, hasData }) → RefreshSeal { onRefreshDone, labelFor, failedOn }</code> (Task 4) usado en <code>Page</code> (Task 5) y <code>App.tsx</code> (Tasks 5–6); <code>useAppStore({ hasAccount, scr })</code> (Task 6) coincide con <code>App.tsx</code> (Task 6); <code>AppCtx</code> gana <code>seal</code> y <code>setControls</code> (Task 5) y los usan <code>Page</code> y <code>App.tsx</code>; <code>withPage(screen, Component)</code> (Task 5) usado en <code>Navigator</code> (Task 5); <code>TAB_OF</code>/<code>TAB_ROOT</code>/<code>TAB_ORDER</code> (Task 2) usados en <code>ref.ts</code>, <code>TabBar</code>, <code>routes.test.ts</code>.</li>
+<li><strong>Trampa conocida</strong>: ciclo de imports <code>store.ts ↔ navigation/routes.ts</code> (Task 6 Step 2 trae la salida: <code>navigation/screens.ts</code>).</li>
+</ul>
+  </div>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <p>HTML autogenerado · NO edites este archivo. Modifica el <code>.md</code> y re-genera con:</p>
+    <pre><code class="language-sql">node scripts/mobile/docs-md-to-html.mjs docs/mobile/superpowers/plans/2026-09-21-mobile-nav-f1.md</code></pre>
+    <p>Reglas en <code>docs/mobile/AGENTS.md</code> sección "MD → HTML autogenerado".</p>
+  </div>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // Persistencia de los checkboxes de task lists (pickler-md:<slug>:tasks)
+  const SLUG = '2026-09-21-mobile-nav-f1';
+  const KEY = `pickler-md:${SLUG}:tasks`;
+  const checks = [...document.querySelectorAll('ul.task-list input[type=checkbox]')];
+  function load() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(KEY) || '[]');
+      checks.forEach((c, i) => {
+        if (typeof saved[i] === 'boolean') {
+          c.checked = saved[i];
+          c.closest('li').classList.toggle('done', c.checked);
+        }
+      });
+    } catch {}
+  }
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(checks.map(c => c.checked))); } catch {}
+  }
+  checks.forEach(c => {
+    c.closest('li').classList.toggle('done', c.checked);
+    c.addEventListener('change', () => {
+      c.closest('li').classList.toggle('done', c.checked);
+      save();
+    });
+  });
+  load();
+
+  // Botón "Copy progress as MD"
+  const $copy = document.getElementById('btn-copy-progress');
+  const $toast = document.getElementById('toast');
+  function showToast(msg) {
+    $toast.textContent = msg;
+    $toast.dataset.show = 'true';
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(() => { $toast.dataset.show = 'false'; }, 2200);
+  }
+  if ($copy) {
+    $copy.addEventListener('click', async (e) => {
+      const lines = ['# ' + document.title.split(' · ')[0] + ' — task progress', ''];
+      lines.push('_Capturado en ' + new Date().toISOString() + '_', '');
+      checks.forEach(c => {
+        const text = c.closest('label').textContent.trim();
+        lines.push('- [' + (c.checked ? 'x' : ' ') + '] ' + text);
+      });
+      try {
+        await navigator.clipboard.writeText(lines.join('\n'));
+        e.currentTarget.dataset.copied = 'true';
+        const prev = e.currentTarget.textContent;
+        e.currentTarget.textContent = '✓ Copiado';
+        showToast('Progress copiado — pégalo en el plan MD');
+        setTimeout(() => {
+          e.currentTarget.dataset.copied = 'false';
+          e.currentTarget.textContent = prev;
+        }, 1800);
+      } catch {
+        showToast('Clipboard no disponible');
+      }
+    });
+  }
+</script>
+</body>
+</html>

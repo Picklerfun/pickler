@@ -1,0 +1,579 @@
+<!doctype html>
+<!--
+  Project overview de Pickler — Sistema de documentación con manifest (modelo Proflores).
+  Generado desde docs/overview/_project-template.html. Reglas completas en docs/CLAUDE.md.
+-->
+<html lang="es-MX">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sistema de documentación con manifest (modelo Proflores) · Pickler</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="_styles.css">
+<script defer src="_syntax.js"></script>
+</head>
+<body data-slug="docs-manifest">
+
+<div class="wrap">
+  <nav class="crumb">
+    <a href="index.html">← Catálogo</a>
+    <span class="sep">/</span>
+    <span class="mono">docs-manifest</span>
+  </nav>
+</div>
+
+<header class="hero">
+  <div class="wrap">
+    <span class="eyebrow"><span class="dot"></span>Project Overview</span>
+    <h1>Sistema de documentación con manifest <span class="accent">(modelo Proflores)</span></h1>
+    <p class="lede">Manifest, overviews, dev trackers, specs/planes con HTML autogenerado y un audit por fase — el modelo completo de documentación de Proflores, adoptado para que el estado de Pickler viva en un solo lugar máquina-legible.</p>
+
+    <div class="status-board" id="status-board">
+      <div class="sb-grid">
+        <div class="sb-cell">
+          <div class="k">Estado</div>
+          <div class="v"><span class="sb-pill active" data-sb="status">Active</span></div>
+        </div>
+        <div class="sb-cell">
+          <div class="k">Spec</div>
+          <div class="v" data-sb="spec">✅</div>
+        </div>
+        <div class="sb-cell">
+          <div class="k">Planes escritos</div>
+          <div class="v" data-sb="plans">3/3</div>
+        </div>
+        <div class="sb-cell">
+          <div class="k">Implementación</div>
+          <div class="v" data-sb="impl">2/3</div>
+        </div>
+        <div class="sb-cell">
+          <div class="k">Próximo paso</div>
+          <!-- data-done: texto cuando todas las fases están completed; el script lo usa en vez de "— todo completo" -->
+          <div class="v" data-sb="next" data-done="Cerrado el 2026-09-18 — las tres fases del spec están hechas; siguiente decisión: merge de chore/docs-manifest (Jesús)">F3: Skills</div>
+        </div>
+      </div>
+
+      <div class="sb-progress">
+        <div class="sb-progress-bar" id="sb-progress-bar"></div>
+        <div class="sb-legend">
+          <span><span class="swatch completed"></span>Completada</span>
+          <span><span class="swatch in_progress"></span>En progreso</span>
+          <span><span class="swatch plan_ready"></span>Plan listo</span>
+          <span><span class="swatch pending"></span>Pendiente</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<nav class="toc">
+  <div class="wrap">
+    <ul>
+      <li><a href="#tldr">1. TL;DR</a></li>
+      <li><a href="#roadmap">2. Roadmap</a></li>
+      <li><a href="#decisions">3. Decisiones</a></li>
+      <li><a href="#model">4. Modelo</a></li>
+    </ul>
+  </div>
+</nav>
+
+<main>
+  <div class="wrap">
+
+    <!-- ============================= 1. TL;DR ============================== -->
+    <section id="tldr">
+      <h2><span class="sec-num">01</span>TL;DR</h2>
+      <div class="tldr">
+        <h3>Resumen ejecutivo</h3>
+        <p>Hasta el 2026-09-18 el estado de Pickler vivía repartido en cinco sitios que no se leían entre sí: la tabla del roadmap (<code>docs/04-roadmap-bounty.md</code>), el "Estado" del README (desactualizado), cuatro handoffs sueltos, la memoria de Claude y git. Se adopta <strong>completo</strong> el modelo de Proflores: un manifest (<code>docs/overview/data/manifest.js</code>) como registro de proyectos con fases, un dashboard (<code>index.html</code>) que lo consume, un overview HTML por sub-proyecto, dev trackers para cambios de un PR, spec + plan en Markdown con HTML vecino autogenerado, un audit por fase ejecutada, tooling que valida que todo coincida (<code>npm run agents:check</code>), y tres skills (<code>pickler-retomar</code>, <code>pickler-overview-new</code>, <code>pickler-dev-new</code>) que lo operan. Marca Pickler (lima <code>#C8F03A</code> + violeta <code>#7A5CFF</code>, dark por defecto) en vez de la paleta verde de Proflores.</p>
+      </div>
+    </section>
+
+    <!-- ========================== 2. Roadmap =============================== -->
+    <section id="roadmap">
+      <h2><span class="sec-num">02</span>Roadmap</h2>
+      <p class="sec-sub">
+        Cada fase tiene un dropdown de status (cambia color en vivo) y un &lt;details&gt; con
+        las tasks del plan. Los checkboxes persisten en localStorage; usa los botones de
+        abajo para exportar el estado y pegarlo en Claude cuando vayas a avanzar.
+      </p>
+
+      <div class="roadmap-actions">
+        <button type="button" class="btn" id="btn-copy-md">📋 Copy progress as MD</button>
+        <button type="button" class="btn" id="btn-copy-diff">📋 Copy HTML diff for Claude</button>
+        <button type="button" class="btn" id="btn-reset-local">↺ Reset local changes</button>
+      </div>
+
+      <!-- Phase 1 ====================================================== -->
+      <article class="phase-card" data-phase="1" data-status="completed">
+        <div class="phase-head">
+          <div class="phase-title-wrap">
+            <span class="phase-num">F1</span>
+            <h3 class="phase-title">Infraestructura</h3>
+          </div>
+          <div class="phase-status-control">
+            <select aria-label="Phase 1 status">
+              <option value="pending">pending</option>
+              <option value="plan_ready">plan_ready</option>
+              <option value="in_progress">in_progress</option>
+              <option value="completed" selected>completed</option>
+            </select>
+          </div>
+        </div>
+        <div class="phase-body">
+          <p>Deja en <code>predict</code> la infraestructura del modelo Proflores (rutas, tooling, templates con marca Pickler, contratos, manifest vacío) con <code>agents:check</code>, <code>agents:test</code> y <code>docs-md-to-html --all --check</code> en verde.</p>
+          <div class="phase-meta">
+            <div><div class="k">Entregable</div><div class="v"><code>git mv</code> de specs/plans a <code>docs/superpowers/</code>, tooling copiado (<code>package.json</code>, <code>scripts/agent-infra</code>, conversor MD→HTML), catálogo <code>docs/overview</code> con marca Pickler, HTML autogenerado de 10 Markdown, contratos <code>CLAUDE.md</code>/<code>AGENTS.md</code>; <code>agents:check</code> exit 0 (<code>mdCount:10</code>), <code>agents:test</code> 11/11.</div></div>
+            <div><div class="k">Prerequisitos</div><div class="v">Ninguno</div></div>
+          </div>
+          <details class="tasks">
+            <summary>
+              <span>Tasks del plan</span>
+              <span class="progress-pill" data-tasks-counter>0/0</span>
+            </summary>
+            <ol>
+              <li><label><input type="checkbox" checked> Task 1: Mover specs y plans a <code>docs/superpowers/</code></label></li>
+              <li><label><input type="checkbox" checked> Task 2: Tooling — <code>package.json</code> de raíz, <code>scripts/agent-infra</code>, conversor MD→HTML</label></li>
+              <li><label><input type="checkbox" checked> Task 3: <code>docs/overview</code> — templates, estilos, index y manifest vacío con marca Pickler</label></li>
+              <li><label><input type="checkbox" checked> Task 4: HTML vecino de los 10 Markdown</label></li>
+              <li><label><input type="checkbox" checked> Task 5: Contratos <code>CLAUDE.md</code>/<code>AGENTS.md</code> y cierre de F1</label></li>
+              <li><label><input type="checkbox" checked> Task 6: Revisión independiente y audit de F1</label></li>
+            </ol>
+          </details>
+        </div>
+      </article>
+
+      <!-- Phase 2 ====================================================== -->
+      <article class="phase-card" data-phase="2" data-status="completed">
+        <div class="phase-head">
+          <div class="phase-title-wrap">
+            <span class="phase-num">F2</span>
+            <h3 class="phase-title">Retro-relleno</h3>
+          </div>
+          <div class="phase-status-control">
+            <select aria-label="Phase 2 status">
+              <option value="pending">pending</option>
+              <option value="plan_ready">plan_ready</option>
+              <option value="in_progress">in_progress</option>
+              <option value="completed" selected>completed</option>
+            </select>
+          </div>
+        </div>
+        <div class="phase-body">
+          <p>Poblar el catálogo con el trabajo ya hecho de Pickler — 4 overviews, 2 dev trackers, 6 entradas del manifest y los 4 handoffs como audits — sin inventar nada que spec, plan o handoff no digan, con <code>agents:check</code> en verde y el render mirado.</p>
+          <div class="phase-meta">
+            <div><div class="k">Entregable</div><div class="v">4 overviews (fase1, ui-port, wallet, perpl) + 2 dev trackers (build 3/4) + 6 entradas de manifest + 4 handoffs movidos a <code>docs/superpowers/audits/</code>; <code>agents:check</code> exit 0 (<code>manifest:6, comparable:4, mdCount:11</code>); fidelidad muestreada 100% contra spec/plan/audit por el revisor final.</div></div>
+            <div><div class="k">Prerequisitos</div><div class="v">F1</div></div>
+          </div>
+          <details class="tasks">
+            <summary>
+              <span>Tasks del plan</span>
+              <span class="progress-pill" data-tasks-counter>0/0</span>
+            </summary>
+            <ol>
+              <li><label><input type="checkbox" checked> Task 1: Handoffs → audits, referencias y README</label></li>
+              <li><label><input type="checkbox" checked> Task 2–5: Un overview por sub-proyecto (cuatro tasks con la misma forma)</label></li>
+              <li><label><input type="checkbox" checked> Task 6: Dos dev trackers de TestFlight</label></li>
+              <li><label><input type="checkbox" checked> Task 7: Manifest, verificación de cierre y commit</label></li>
+              <li><label><input type="checkbox" checked> Task 8: Revisión final de rama (F2) y audit</label></li>
+            </ol>
+          </details>
+        </div>
+      </article>
+
+      <!-- Phase 3 ====================================================== -->
+      <article class="phase-card" data-phase="3" data-status="completed">
+        <div class="phase-head">
+          <div class="phase-title-wrap">
+            <span class="phase-num">F3</span>
+            <h3 class="phase-title">Skills</h3>
+          </div>
+          <div class="phase-status-control">
+            <select aria-label="Phase 3 status">
+              <option value="pending">pending</option>
+              <option value="plan_ready">plan_ready</option>
+              <option value="in_progress">in_progress</option>
+              <option value="completed" selected>completed</option>
+            </select>
+          </div>
+        </div>
+        <div class="phase-body">
+          <p>Dejar operables las tres skills del modelo (<code>pickler-retomar</code>, <code>pickler-overview-new</code>, <code>pickler-dev-new</code>) con symlinks, casos de routing y los residuales de template/referencia que F2 dejó, y probar <code>pickler-retomar</code> en una sesión limpia.</p>
+          <div class="phase-meta">
+            <div><div class="k">Entregable</div><div class="v">Reglas compartidas en template/CSS (<code>section-sub</code>, <code>data-done</code>, bloque "Rulings en ejecución", sección "Validación" en dev); tres skills escritas y con symlink en <code>.claude/skills/</code>; <code>behavior-cases.json</code> con casos de routing; dos pruebas end-to-end de <code>pickler-retomar</code> en sesión limpia; revisión final de rama; audit en <code>docs/superpowers/audits/2026-09-18-docs-manifest-f3-rulings.md</code>.</div></div>
+            <div><div class="k">Prerequisitos</div><div class="v">F1, F2</div></div>
+          </div>
+          <details class="tasks">
+            <summary>
+              <span>Tasks del plan</span>
+              <span class="progress-pill" data-tasks-counter>0/0</span>
+            </summary>
+            <ol>
+              <li><label><input type="checkbox" checked> Task 1: Residuales de template, CSS, referencia y overviews</label></li>
+              <li><label><input type="checkbox" checked> Task 2: <code>pickler-overview-new</code></label></li>
+              <li><label><input type="checkbox" checked> Task 3: <code>pickler-dev-new</code></label></li>
+              <li><label><input type="checkbox" checked> Task 4: <code>pickler-retomar</code></label></li>
+              <li><label><input type="checkbox" checked> Task 5: Symlinks, <code>behavior-cases.json</code>, README y check</label></li>
+              <li><label><input type="checkbox" checked> Task 6: Prueba de <code>pickler-retomar</code> en sesión limpia, revisión final y audit de F3</label></li>
+            </ol>
+          </details>
+        </div>
+      </article>
+
+    </section>
+
+    <!-- ========================= 3. Decisiones ============================ -->
+    <section id="decisions">
+      <h2><span class="sec-num">03</span>Decisiones clave</h2>
+      <table class="decisions">
+        <thead>
+          <tr>
+            <th>Decisión</th>
+            <th>Por qué</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><b>D1 · Copia completa</b> del sistema, incluidos sub-catálogos (<code>dev/</code>, <code>explorations/</code>, <code>prs/</code>, <code>playgrounds/</code>, <code>reports/</code>), conversor MD→HTML y <code>render-check</code></td>
+            <td>Decisión de Jesús: más control del desarrollo y de la documentación desde el inicio, aunque hoy sean 6 entradas.</td>
+          </tr>
+          <tr>
+            <td><b>D2 · Mover a la estructura de Proflores</b> con <code>git mv</code>: <code>docs/specs</code> → <code>docs/superpowers/specs</code>, <code>docs/plans</code> → <code>docs/superpowers/plans</code>; nuevo <code>docs/superpowers/audits</code></td>
+            <td>El tooling se copia literal y las mejoras futuras de Proflores se traen sin adaptar. Git conserva el historial por rename.</td>
+          </tr>
+          <tr>
+            <td><b>D3 · Una entrada por spec.</b> Fase 3 (agentes) y fase 4 (harness) no entran hasta tener brainstorm</td>
+            <td>Regla de Proflores: <code>types</code>, fases y estados describen artefactos realmente escritos; no se inventan fases.</td>
+          </tr>
+          <tr>
+            <td><b>D4 · Los 4 handoffs se mueven tal cual</b> a <code>docs/superpowers/audits/&lt;fecha&gt;-&lt;topic&gt;-f1-rulings.md</code>, sin reescribirlos</td>
+            <td>Ya contienen rulings, aprendido y residuales; reescribir historia sin evidencia nueva es riesgo sin beneficio.</td>
+          </tr>
+          <tr>
+            <td><b>D5 · npm</b> en la raíz (<code>agents:check</code>, <code>agents:test</code>, <code>agents:inventory</code>); <code>render-check</code> usa el <b>Chrome ya instalado</b> vía <code>executablePath</code> (override <code>PICKLER_CHROME</code>), no descarga Chromium</td>
+            <td><code>apps/mobile</code> ya usa npm; sin workspaces sigue independiente. Decisión de Jesús: usar el Chrome local.</td>
+          </tr>
+          <tr>
+            <td><b>D6 · Marca Pickler, dark por defecto.</b> Tokens desde <code>apps/mobile/src/ui/theme.ts</code> (lima <code>#C8F03A</code>, violeta <code>#7A5CFF</code>); esquema claro como <code>prefers-color-scheme: light</code></td>
+            <td>Pickler es dark-first en la app y la landing. Se cambian tokens y strings; la estructura de <code>_styles.css</code> no se toca.</td>
+          </tr>
+          <tr>
+            <td><b>D7 · Se excluye</b> de la copia: <code>scripts/agent-infra/personal/</code>, <code>codex-kit/</code>, <code>install-personal.mjs</code>, <code>docs/superpowers/deployment/</code>, <code>apps/render-service</code></td>
+            <td>Son el paquete de skills personales de home (ya instalado) o contenido de Proflores, no parte del modelo.</td>
+          </tr>
+          <tr>
+            <td><b>D8 · Contratos:</b> nuevos <code>CLAUDE.md</code> + <code>AGENTS.md</code> en raíz, y <code>docs/CLAUDE.md</code> + <code>docs/AGENTS.md</code> + <code>docs/agent-reference.md</code> adaptados</td>
+            <td><code>check.mjs</code> exige el gemelo <code>AGENTS.md</code> por cada <code>CLAUDE.md</code> y una cadena de instrucciones ≤ 24 KiB; la raíz no tenía ninguno.</td>
+          </tr>
+          <tr>
+            <td><b>D9 · Skills</b> en <code>.agents/skills/pickler-{retomar,overview-new,dev-new}/SKILL.md</code> con symlinks en <code>.claude/skills/</code></td>
+            <td>Mismo patrón que Proflores y que el home de Jesús; <code>check.mjs</code> valida los symlinks.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3 class="section-sub">Rulings en ejecución</h3>
+      <p class="sec-sub">Decisiones tomadas durante la implementación de F1 y F2 (fuente: sus audits), no previstas en el spec.</p>
+      <ol>
+        <li>Tokens del esquema claro re-elegidos (<code>--brand #5C7600</code>, <code>--brand-dark #3F5200</code>, <code>--status-pass #247A3A</code>, <code>--info #0B6F99</code>): el revisor midió <code>#7FA300</code> (valor del plan) a 2.9:1 sobre blanco; los nuevos dan ≥4.8:1.</li>
+        <li>Token <code>--on-brand</code> agregado tras encontrar <code>color:white</code> sobre lima en 9 reglas (1.31:1, visible en el propio index); ahora 15.2:1.</li>
+        <li>SVG de ejemplo de los templates con rellenos claros bajo texto claro (1.0–1.1:1) corregido a cajas oscuras (<code>#17171B</code>) con grises <code>#8C8C88</code>.</li>
+        <li><code>scripts/test-lock.sh</code> conserva el lock <code>/tmp/proflores-test.lock</code> compartido con Proflores a propósito: el límite es la máquina (RAM), no el repo.</li>
+        <li><code>behavior-cases.json</code> diferido a F3: sus casos son de routing de skills de Proflores; los de Pickler se escriben con las skills <code>pickler-*</code>.</li>
+        <li>Un solo <code>phase-card</code> F1 <code>completed</code> por overview de F2, con las tasks del plan marcadas: cada sub-proyecto tuvo un único plan; inventar fases habría violado la regla de fidelidad.</li>
+        <li>Overflow de <code>table.decisions</code> a 390 px (wallet, perpl) arreglado con <code>style</code> inline como parche temporal, no en <code>_styles.css</code>: F1 prohibía tocar el tooling copiado. Movido a la hoja compartida en F3 (Task 1).</li>
+        <li><code>&lt;title&gt;</code> = h1 completo + " · Pickler": los de ui-port y fase1 quedaron truncados al partir el h1 en el em dash; corregidos en la ola de fixes de F2.</li>
+        <li><code>grep -c 'class="phase-card"'</code> da 3 por overview porque el script del template repite la cadena en <code>buildHtmlDiff</code>; hay que contar la etiqueta del DOM, no la cadena.</li>
+        <li>Sección "Validación" agregada a los dev trackers de TestFlight aunque no estaba prevista en <code>docs/agent-reference.md</code>: tiene fuente (audit) y es lo que un build necesita; documentada en F3 (Task 1, Step 5).</li>
+      </ol>
+    </section>
+
+    <!-- ========================== 4. Modelo ================================ -->
+    <section id="model">
+      <h2><span class="sec-num">04</span>Modelo / arquitectura</h2>
+      <p class="sec-sub">
+        Estructura resultante del sistema (spec §3): tres artefactos por proyecto
+        (spec, plan, overview) más un audit por fase ejecutada, un manifest que el
+        índice consume, y las tres skills que lo operan.
+      </p>
+      <ul style="font-size:13.5px;color:var(--ink-2);line-height:1.8;padding-left:20px;margin:0">
+        <li><code>docs/overview/</code> — <code>index.html</code>, <code>_project-template.html</code>, <code>_styles.css</code>, <code>_syntax.js</code>, <code>data/manifest.js</code>, <code>dev/</code>, <code>explorations/</code>, <code>prs/</code>, <code>playgrounds/</code>, <code>reports/</code>, <code>assets/&lt;slug&gt;/</code></li>
+        <li><code>docs/superpowers/specs/</code> — <code>YYYY-MM-DD-&lt;topic&gt;-design.md</code> + HTML autogenerado</li>
+        <li><code>docs/superpowers/plans/</code> — <code>YYYY-MM-DD-&lt;topic&gt;-f&lt;N&gt;.md</code> + HTML autogenerado</li>
+        <li><code>docs/superpowers/audits/</code> — un <code>...-f&lt;N&gt;-rulings.md</code> por fase ejecutada</li>
+        <li><code>scripts/agent-infra/</code> — <code>check.mjs</code>, <code>branches.mjs</code>, <code>build-state.mjs</code>, <code>render-check.mjs</code>, <code>behavior-cases.json</code>, <code>README.md</code></li>
+        <li><code>scripts/docs-md-to-html.mjs</code>, <code>scripts/lib/md-parser.mjs</code>, <code>scripts/test-lock.sh</code></li>
+        <li><code>.agents/skills/pickler-{retomar,overview-new,dev-new}/SKILL.md</code> con symlinks en <code>.claude/skills/</code></li>
+        <li><code>CLAUDE.md</code> · <code>AGENTS.md</code> · <code>package.json</code> (raíz)</li>
+        <li><code>docs/CLAUDE.md</code> · <code>docs/AGENTS.md</code> · <code>docs/agent-reference.md</code></li>
+      </ul>
+    </section>
+
+  </div>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <p><b>Fuentes:</b> spec en <code>docs/superpowers/specs/2026-09-18-docs-manifest-design.md</code> ·
+       planes en <code>docs/superpowers/plans/2026-09-18-docs-manifest-f1.md</code>, <code>-f2.md</code>, <code>-f3.md</code> ·
+       audits en <code>docs/superpowers/audits/2026-09-18-docs-manifest-f1-rulings.md</code>, <code>-f2-rulings.md</code> y <code>-f3-rulings.md</code></p>
+    <p>Dashboard vivo · sincronizar al avanzar una fase o cerrar un plan. Reglas en
+       <code>docs/CLAUDE.md</code>.</p>
+  </div>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // ===========================================================================
+  // Project overview interactivity (Tier 1 del HTML Maximalism roadmap)
+  // F2 update: tabs opcionales (.tabs button.tab + .tab-panel) activados auto.
+  //
+  // Persiste cambios en localStorage con key `pickler-docs:<slug>:state`.
+  // Botones "Copy progress as MD" y "Copy HTML diff" exportan el delta contra
+  // el snapshot inicial — pegar al chat para que Claude aplique al HTML.
+  // ===========================================================================
+
+  const SLUG = document.body.dataset.slug || 'unknown';
+  const LS_KEY = `pickler-docs:${SLUG}:state`;
+  const $toast = document.getElementById('toast');
+
+  const original = { phases: {}, tasks: {} };
+  document.querySelectorAll('.phase-card').forEach(card => {
+    const num = Number(card.dataset.phase);
+    original.phases[num] = card.dataset.status;
+    const checks = [...card.querySelectorAll('details.tasks input[type=checkbox]')];
+    original.tasks[num] = checks.map(c => c.checked);
+  });
+
+  function loadState() {
+    try { return JSON.parse(localStorage.getItem(LS_KEY)) ?? {}; } catch { return {}; }
+  }
+  function saveState(state) {
+    try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch {}
+  }
+  function captureState() {
+    const state = { phases: {}, tasks: {} };
+    document.querySelectorAll('.phase-card').forEach(card => {
+      const num = Number(card.dataset.phase);
+      state.phases[num] = card.dataset.status;
+      const checks = [...card.querySelectorAll('details.tasks input[type=checkbox]')];
+      state.tasks[num] = checks.map(c => c.checked);
+    });
+    return state;
+  }
+  function applyState() {
+    const state = loadState();
+    document.querySelectorAll('.phase-card').forEach(card => {
+      const num = Number(card.dataset.phase);
+      const ph = state.phases?.[num];
+      if (ph) {
+        card.dataset.status = ph;
+        card.querySelector('.phase-status-control select').value = ph;
+      }
+      const checks = [...card.querySelectorAll('details.tasks input[type=checkbox]')];
+      const persisted = state.tasks?.[num];
+      if (Array.isArray(persisted)) {
+        checks.forEach((c, i) => {
+          if (typeof persisted[i] === 'boolean') {
+            c.checked = persisted[i];
+            c.closest('li').classList.toggle('done', c.checked);
+          }
+        });
+      }
+      updateTaskCounter(card);
+    });
+    updateStatusBoard();
+  }
+
+  document.querySelectorAll('.phase-card').forEach(card => {
+    const sel = card.querySelector('.phase-status-control select');
+    sel.addEventListener('change', () => {
+      card.dataset.status = sel.value;
+      saveState(captureState());
+      updateStatusBoard();
+    });
+    card.querySelectorAll('details.tasks li input[type=checkbox]:checked').forEach(c => {
+      c.closest('li').classList.add('done');
+    });
+  });
+
+  function updateTaskCounter(card) {
+    const counter = card.querySelector('[data-tasks-counter]');
+    if (!counter) return;
+    const checks = [...card.querySelectorAll('details.tasks input[type=checkbox]')];
+    const done = checks.filter(c => c.checked).length;
+    counter.textContent = `${done}/${checks.length}`;
+  }
+  document.querySelectorAll('.phase-card details.tasks input[type=checkbox]').forEach(c => {
+    c.addEventListener('change', () => {
+      c.closest('li').classList.toggle('done', c.checked);
+      const card = c.closest('.phase-card');
+      updateTaskCounter(card);
+      saveState(captureState());
+    });
+  });
+
+  function updateStatusBoard() {
+    const phases = [...document.querySelectorAll('.phase-card')].map(card => ({
+      num: Number(card.dataset.phase),
+      status: card.dataset.status,
+      title: card.querySelector('.phase-title').textContent.trim(),
+    }));
+    const total = phases.length;
+    const completed = phases.filter(p => p.status === 'completed').length;
+    const planWritten = phases.filter(p => p.status !== 'pending').length;
+
+    const $plans = document.querySelector('[data-sb="plans"]');
+    const $impl = document.querySelector('[data-sb="impl"]');
+    const $next = document.querySelector('[data-sb="next"]');
+    if ($plans) $plans.textContent = `${planWritten}/${total}`;
+    if ($impl) $impl.textContent = `${completed}/${total}`;
+    if ($next) {
+      const nextPhase = phases.find(p => p.status === 'in_progress')
+        || phases.find(p => p.status === 'plan_ready')
+        || phases.find(p => p.status === 'pending');
+      $next.textContent = nextPhase ? `F${nextPhase.num}: ${nextPhase.title}` : ($next.dataset.done || '— todo completo');
+    }
+
+    const $bar = document.getElementById('sb-progress-bar');
+    if ($bar) {
+      $bar.replaceChildren(...phases.map(p => {
+        const seg = document.createElement('div');
+        seg.className = 'seg';
+        seg.dataset.status = p.status;
+        seg.style.width = `${100 / total}%`;
+        seg.title = `F${p.num}: ${p.title} (${p.status.replace('_', ' ')})`;
+        return seg;
+      }));
+    }
+
+    const $globalPill = document.querySelector('[data-sb="status"]');
+    if ($globalPill) {
+      if (completed === total) {
+        $globalPill.textContent = 'Completed';
+        $globalPill.className = 'sb-pill completed';
+      } else {
+        $globalPill.textContent = 'Active';
+        $globalPill.className = 'sb-pill active';
+      }
+    }
+  }
+
+  function buildProgressMd() {
+    const lines = [`# ${document.title} — progress snapshot`, ''];
+    lines.push(`_Capturado desde ${SLUG}.html en ${new Date().toISOString()}_`, '');
+    document.querySelectorAll('.phase-card').forEach(card => {
+      const num = card.dataset.phase;
+      const status = card.dataset.status;
+      const title = card.querySelector('.phase-title').textContent.trim();
+      lines.push(`## F${num}: ${title}`);
+      lines.push(`Status: \`${status}\``, '');
+      const tasks = [...card.querySelectorAll('details.tasks li')];
+      if (tasks.length) {
+        lines.push('Tasks:');
+        tasks.forEach(li => {
+          const cb = li.querySelector('input[type=checkbox]');
+          const text = li.textContent.trim();
+          lines.push(`- [${cb.checked ? 'x' : ' '}] ${text}`);
+        });
+        lines.push('');
+      }
+    });
+    return lines.join('\n');
+  }
+
+  function buildHtmlDiff() {
+    const current = captureState();
+    const changes = [];
+    document.querySelectorAll('.phase-card').forEach(card => {
+      const num = Number(card.dataset.phase);
+      if (current.phases[num] !== original.phases[num]) {
+        changes.push(
+          `// Cambiar status de F${num} en el HTML:\n` +
+          `<article class="phase-card" data-phase="${num}" data-status="${original.phases[num]}">\n` +
+          `// → \n` +
+          `<article class="phase-card" data-phase="${num}" data-status="${current.phases[num]}">`
+        );
+      }
+      const taskNodes = [...card.querySelectorAll('details.tasks li')];
+      const curTasks = current.tasks[num] || [];
+      const origTasks = original.tasks[num] || [];
+      taskNodes.forEach((li, i) => {
+        if (curTasks[i] !== origTasks[i]) {
+          const text = li.textContent.trim();
+          changes.push(
+            `// F${num} task #${i}: ${text}\n` +
+            `// ${origTasks[i] ? 'desmarcar' : 'marcar'} checkbox → ` +
+            `<input type="checkbox"${curTasks[i] ? ' checked' : ''}>`
+          );
+        }
+      });
+    });
+    if (changes.length === 0) return '// Sin cambios pendientes vs el HTML actual.';
+    return [
+      `// Cambios pendientes en ${SLUG}.html (aplicar y commitear):`,
+      '',
+      ...changes,
+    ].join('\n\n');
+  }
+
+  function showToast(msg) {
+    $toast.textContent = msg;
+    $toast.dataset.show = 'true';
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(() => { $toast.dataset.show = 'false'; }, 2400);
+  }
+  async function copy(text, btn, successMsg, originalLabel) {
+    try {
+      await navigator.clipboard.writeText(text);
+      btn.dataset.copied = 'true';
+      btn.textContent = '✓ Copiado';
+      showToast(successMsg);
+      setTimeout(() => { btn.dataset.copied = 'false'; btn.textContent = originalLabel; }, 1800);
+    } catch {
+      showToast('Clipboard no disponible — abre la consola y copia desde el log');
+      console.log(text);
+    }
+  }
+
+  document.getElementById('btn-copy-md').addEventListener('click', (e) => {
+    copy(buildProgressMd(), e.currentTarget,
+      'MD copiado — pégalo al chat de Claude', '📋 Copy progress as MD');
+  });
+  document.getElementById('btn-copy-diff').addEventListener('click', (e) => {
+    copy(buildHtmlDiff(), e.currentTarget,
+      'HTML diff copiado — pídele a Claude que lo aplique', '📋 Copy HTML diff for Claude');
+  });
+  document.getElementById('btn-reset-local').addEventListener('click', () => {
+    if (!confirm('¿Borrar los cambios locales y volver al estado del HTML?')) return;
+    localStorage.removeItem(LS_KEY);
+    location.reload();
+  });
+
+  // -------- F2: Tabs opcionales (auto-wire si hay .tabs en el DOM) -----------
+  function initTabs() {
+    document.querySelectorAll('.tabs').forEach(tablist => {
+      const tabs = [...tablist.querySelectorAll('button.tab[aria-controls]')];
+      const panels = tabs
+        .map(tab => document.getElementById(tab.getAttribute('aria-controls')))
+        .filter(Boolean);
+      tabs.forEach((tab, i) => {
+        tab.addEventListener('click', () => {
+          tabs.forEach(t => t.setAttribute('aria-selected', 'false'));
+          panels.forEach(p => { p.hidden = true; });
+          tab.setAttribute('aria-selected', 'true');
+          if (panels[i]) panels[i].hidden = false;
+        });
+      });
+    });
+  }
+
+  applyState();
+  initTabs();
+</script>
+
+</body>
+</html>

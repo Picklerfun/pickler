@@ -8,6 +8,7 @@ import {
   createWalletSignIn,
   parseEmailAllowlist,
   PilotError,
+  turnkeyRelyingPartyProblem,
   type WalletBalanceReader,
 } from "@pickler/core";
 import { createPaperPlugin } from "@pickler/agent-runtime/plugins/paper-trading";
@@ -189,8 +190,10 @@ export function walletBalances(reader: SigningRouteServices["balances"]): Wallet
 }
 
 /**
- * Composed only when every Turnkey binding is present, so a deployment without them serves the
- * rest of the API rather than failing to start. The parent API key lives here and nowhere near a
+ * Composed only when every Turnkey binding is present and `TURNKEY_RPID` is one custody may use
+ * (never Mera's relying party, never `localhost` on a deployed environment), so a deployment
+ * without them serves the rest of the API rather than failing to start. The parent API key lives
+ * here and nowhere near a
  * sub-organization: it creates them and reads activities back, and cannot sign inside one.
  */
 function custodyServices(
@@ -199,6 +202,7 @@ function custodyServices(
   authenticate: Services["authenticate"],
   profiles: SigningRouteServices["profiles"],
   chainId: number | null,
+  log: (message: string) => void = console.error,
 ): SigningRouteServices | undefined {
   const apiPublicKey = env.TURNKEY_API_PUBLIC_KEY;
   const apiPrivateKey = env.TURNKEY_API_PRIVATE_KEY;
@@ -206,6 +210,13 @@ function custodyServices(
   const rpId = env.TURNKEY_RPID;
   const appName = env.TURNKEY_APP_NAME;
   if (!apiPublicKey || !apiPrivateKey || !parentOrganizationId || !rpId || !appName) {
+    return undefined;
+  }
+  // A passkey enrolled against the wrong relying party cannot be moved afterwards, so a refused
+  // value turns custody off here rather than letting the first registration decide it.
+  const problem = turnkeyRelyingPartyProblem(rpId, env.APP_ENV);
+  if (problem) {
+    log(`TURNKEY_RPID is refused (${problem}); custody is off and /v1/signing is not mounted`);
     return undefined;
   }
 

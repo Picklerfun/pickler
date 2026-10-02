@@ -1,0 +1,85 @@
+{
+  "rule": "prf -> bip39(24, english) -> seed('') -> m/44'/60'/0'/0/index",
+  "vectors": [
+    {
+      "prfOutput": "0x0000000000000000000000000000000000000000000000000000000000000000",
+      "mnemonic": "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon art",
+      "accounts": [
+        {
+          "index": 0,
+          "privateKey": "0x1053fae1b3ac64f178bcc21026fd06a3f4544ec2f35338b001f02d1d8efa3d5f",
+          "address": "0xF278cF59F82eDcf871d630F28EcC8056f25C1cdb"
+        },
+        {
+          "index": 1,
+          "privateKey": "0x0855b75d03a8830e390b5483d81694c9c7121d971e092145cf8b9c6fa3a5b373",
+          "address": "0xf785bD075874b8423D3583728a981399f31e95aA"
+        }
+      ]
+    },
+    {
+      "prfOutput": "0x0707070707070707070707070707070707070707070707070707070707070707",
+      "mnemonic": "alpha deal scrub asthma idea logic bright thought alpha deal scrub asthma idea logic bright thought alpha deal scrub asthma idea logic bright truly",
+      "accounts": [
+        {
+          "index": 0,
+          "privateKey": "0x0d943387d3a6266cb3c28401415291b05c16e594f01a441fe2f8626413c330c0",
+          "address": "0x29458C602E3DB4fC3b54EC2bbEE26Dbe64C7779f"
+        },
+        {
+          "index": 1,
+          "privateKey": "0x1a9384c07fa4714285709897a0c4e65a8bd7e29cb542ef55723f4954ab96a698",
+          "address": "0xa639149dF423F9a4A549E9B9929Ee22727128990"
+        }
+      ]
+    },
+    {
+      "prfOutput": "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "mnemonic": "zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo vote",
+      "accounts": [
+        {
+          "index": 0,
+          "privateKey": "0x105434ca932be16664cb5e44e5b006728577dd757440d068e6d15ef52c15a82f",
+          "address": "0x1959f5f4979c5Cd87D5CB75c678c770515cb5E0E"
+        },
+        {
+          "index": 1,
+          "privateKey": "0xa9fe0d531d6059f699426fb4476352843549b59849d85354b0e00a61de8285fc",
+          "address": "0xEFC840572B9889de6bF172Da76b7fA59B53a0Ea0"
+        }
+      ]
+    },
+    {
+      "prfOutput": "0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+      "mnemonic": "abandon amount liar amount expire adjust cage candy arch gather drum bullet absurd math era live bid rhythm alien crouch range attend journey unaware",
+      "accounts": [
+        {
+          "index": 0,
+          "privateKey": "0xe3b99b954c842dbd1e61148af4c295e15fda6d41d1633fd10fab2c6090f42669",
+          "address": "0xF9297b542BDb5DA50C364f9AE4Cbe1F3933bA40F"
+        },
+        {
+          "index": 1,
+          "privateKey": "0x60e765e80880434018cecda00fbe7efb53e89af2496bc554a979a039fe3d80cb",
+          "address": "0xA586108FeA48130F1e9FAa634Dace29867629A39"
+        }
+      ]
+    },
+    {
+      "prfOutput": "0x0b30557a9fc4e90e33587da2c7ec11365b80a5caef14395e83a8cdf2173c6186",
+      "mnemonic": "arctic live gadget display excess mandate sniff autumn people disorder affair hole retreat fancy close tip deer village tuition orbit cannon owner maid spare",
+      "accounts": [
+        {
+          "index": 0,
+          "privateKey": "0x429d70ca064539d34068334f316e1c0accf1ca2988357ed2a13f83e860fbb7af",
+          "address": "0x3CCb5261ceFE9067b691b0C232360fDeBf0B1045"
+        },
+        {
+          "index": 1,
+          "privateKey": "0xef6bb2e79bf2dae1d18f5c983026730ef8412b9d19f0ae350983c175477334c1",
+          "address": "0xc65beeDBca93a97B29C8EbFAc816b1bcd210c8cC"
+        }
+      ]
+    }
+  ]
+}

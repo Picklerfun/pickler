@@ -1,0 +1,815 @@
+<!doctype html>
+<!--
+  AUTOGENERADO desde 2026-09-21-mobile-loading-f1.md por scripts/mobile/docs-md-to-html.mjs
+
+  ⚠️  NO EDITES ESTE ARCHIVO. Edita el .md y re-genera.
+  El próximo Write al .md (con el hook activo) sobrescribirá este HTML.
+
+  Reglas en docs/mobile/AGENTS.md sección "MD → HTML autogenerado".
+-->
+<html lang="es-MX">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Carga visible (mobile-loading) — F1 Implementation Plan · Plan · Pickler</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../overview/_styles.css">
+<script defer src="../../overview/_syntax.js"></script>
+<style>
+  /* Overrides locales del MD-view */
+  .wrap { max-width: 820px; }
+  header.hero { padding: 24px 0 28px; }
+  main { padding: 32px 0 64px; overflow-wrap: anywhere; }
+  @media (max-width: 600px) { nav.toc { position: static; } }
+  main h1 { display: none; } /* el h1 ya está en el hero */
+  main h2 {
+    font-size: 22px; font-weight: 800;
+    margin: 36px 0 12px;
+    letter-spacing: -0.015em;
+    padding-bottom: 6px;
+    border-bottom: 2px solid var(--brand-soft);
+    scroll-margin-top: 72px;
+  }
+  main h3 {
+    font-size: 17px; font-weight: 700;
+    margin: 24px 0 8px;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+    scroll-margin-top: 72px;
+  }
+  main h4 {
+    font-size: 13px; font-weight: 700;
+    margin: 20px 0 6px;
+    text-transform: uppercase; letter-spacing: .06em;
+    color: var(--ink-3);
+  }
+  main p { margin: 0 0 12px; font-size: 14.5px; line-height: 1.65; color: var(--ink); }
+  main blockquote {
+    margin: 14px 0;
+    padding: 12px 18px;
+    background: var(--brand-soft);
+    border-left: 4px solid var(--brand);
+    border-radius: var(--radius-s);
+    color: var(--ink);
+    font-size: 14px; line-height: 1.6;
+  }
+  main blockquote p { margin: 0; }
+  main ul, main ol { margin: 8px 0 14px; padding-left: 26px; font-size: 14.5px; }
+  main ul li, main ol li { margin: 4px 0; line-height: 1.55; }
+  main ul.task-list { list-style: none; padding-left: 4px; }
+  main ul.task-list li {
+    display: flex; align-items: flex-start; gap: 8px;
+    padding: 4px 0;
+  }
+  main ul.task-list li input[type="checkbox"] {
+    margin-top: 4px; accent-color: var(--brand); cursor: pointer;
+    flex-shrink: 0;
+  }
+  main ul.task-list li label { flex: 1; cursor: pointer; }
+  main ul.task-list li.done label { color: var(--ink-3); text-decoration: line-through; text-decoration-color: var(--ink-3); }
+
+  main hr {
+    border: none; border-top: 1px solid var(--line);
+    margin: 32px 0;
+  }
+  main table {
+    width: 100%; border-collapse: collapse;
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: var(--radius); overflow: hidden;
+    margin: 14px 0;
+    font-size: 13.5px;
+  }
+  main table th, main table td {
+    text-align: left; padding: 10px 14px;
+    border-bottom: 1px solid var(--line);
+  }
+  main table th {
+    background: var(--surface-2); font-weight: 700;
+    font-size: 11.5px; color: var(--ink-3);
+    text-transform: uppercase; letter-spacing: .06em;
+  }
+  main table tr:last-child td { border-bottom: none; }
+  main img {
+    max-width: 100%; height: auto;
+    border-radius: var(--radius-s);
+    border: 1px solid var(--line);
+    margin: 10px 0;
+  }
+
+  .md-actions {
+    display: flex; gap: 10px; flex-wrap: wrap;
+    margin: 8px 0 28px;
+    position: sticky; top: 60px;
+    background: color-mix(in srgb, var(--bg) 92%, transparent);
+    backdrop-filter: blur(8px);
+    padding: 10px 0; z-index: 25;
+    border-bottom: 1px solid var(--line);
+  }
+  .md-actions .btn { text-decoration: none; }
+</style>
+</head>
+<body data-slug="2026-09-21-mobile-loading-f1">
+
+<div class="wrap">
+  <nav class="crumb">
+    <a href="../../overview/index.html">← Catálogo</a>
+    <span class="sep">/</span>
+    <a href="../">superpowers/plans</a>
+    <span class="sep">/</span>
+    <span class="mono">2026-09-21-mobile-loading-f1.md</span>
+  </nav>
+</div>
+
+<header class="hero">
+  <div class="wrap">
+    <span class="eyebrow"><span class="dot"></span>Plan · markdown source</span>
+    <h1>Carga visible (mobile-loading) — F1 Implementation Plan</h1>
+    <p class="lede" style="margin:0;font-size:13.5px;color:var(--ink-3);font-family:var(--mono)">
+      Autogenerado · source: <code>plans/2026-09-21-mobile-loading-f1.md</code>
+    </p>
+  </div>
+</header>
+
+<nav class="toc"><div class="wrap">
+       <ul><li><a href="#global-constraints">Global Constraints</a></li><li><a href="#decisiones-del-plan-no-estan-en-el-spec">Decisiones del plan (no están en el spec)</a></li><li><a href="#mapa-de-archivos">Mapa de archivos</a></li><li><a href="#task-1-helpers-puros-del-sello-en-storets">Task 1: Helpers puros del sello en `store.ts`</a></li><li><a href="#task-2-primitivas-skeleton-y-reveal">Task 2: Primitivas `Skeleton` y `Reveal`</a></li><li><a href="#task-3-readsreads-nullable-y-skeletons-de-ask-agents">Task 3: `reads.reads` nullable y skeletons de Ask / Agents</a></li><li><a href="#task-4-skeletons-de-wallet-markets-y-market">Task 4: Skeletons de Wallet, Markets y Market</a></li><li><a href="#task-5-sello-updated-couldnt-refresh-en-shell">Task 5: Sello `UPDATED` / `COULDN&#39;T REFRESH` en `Shell`</a></li><li><a href="#task-6-splash-nativo-con-la-marca">Task 6: Splash nativo con la marca</a></li><li><a href="#task-7-recorrido-en-el-simulador-capturas">Task 7: Recorrido en el simulador (capturas)</a></li><li><a href="#task-8-docs-marcas-f1-f1-completed-audit-readme-checks">Task 8: Docs — marcas (F1), F1 `completed`, audit, README, checks</a></li><li><a href="#self-review-del-plan-hecho-al-escribirlo">Self-review del plan (hecho al escribirlo)</a></li></ul>
+     </div></nav>
+
+<main>
+  <div class="wrap">
+
+<div class="md-actions">
+  <button type="button" class="btn primary" id="btn-copy-progress">📋 Copy progress as MD</button>
+  <a href="2026-09-21-mobile-loading-f1.md" class="btn">📝 Ver source MD</a>
+</div>
+    <h1 id="carga-visible-mobile-loading-f1-implementation-plan">Carga visible (mobile-loading) — F1 Implementation Plan</h1>
+<blockquote>
+<strong>For agentic workers:</strong> REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (<code>- [ ]</code>) syntax for tracking.
+</blockquote>
+<p><strong>Goal:</strong> Que cada sección con datos remotos de la app muestre su propio skeleton hasta que llegue su dato, que el pull-to-refresh deje un sello <code>UPDATED HH:MM:SS</code> (o <code>COULDN&#39;T REFRESH</code> 3 s), y que la app abra con la P lima sobre <code>#05061A</code> en vez de un splash en blanco.</p>
+<p><strong>Architecture:</strong> Tres piezas independientes sobre lo que ya existe. (1) Primitivas <code>Skeleton</code> (<code>Line</code>/<code>Card</code>/<code>Row</code>, un solo pulso compartido) y <code>Reveal</code> (fade 150 ms) en <code>ui/primitives.tsx</code>; cada pantalla sustituye sus textos «Loading…» por skeletons con la regla <code>dato === null &amp;&amp; !error</code>, y <code>reads.reads</code> pasa a <code>Read[] | null</code>. (2) <code>Shell.tsx</code> guarda <code>updatedAt</code> por pantalla y decide éxito/fallo del jalón con helpers puros de <code>store.ts</code> (<code>refreshOk</code>, <code>screenHasData</code>, <code>updatedLabel</code>) evaluados en un efecto tras terminar el jalón. (3) <code>expo-splash-screen</code> (plugin + <code>assets/splash-mark.png</code> recortado de <code>icon.png</code>) y <code>hideAsync</code> cuando <code>account !== null</code>, con timeout de 2 s.</p>
+<p><strong>Tech Stack:</strong> Expo SDK 57 / RN 0.86 (<code>Animated</code> nativo), jest-expo (<code>__tests__/*.test.ts</code>), TypeScript (<code>npx tsc --noEmit</code>), <code>expo-splash-screen</code> (SDK 57), PIL (python3 del sistema, 12.3) para el asset. Simulador iPhone 17 Pro <code>2B2A0BAD-7B14-4DAE-8652-C7E9472505E0</code>, Maestro (<code>taplabel.sh</code>).</p>
+<p><strong>Spec:</strong> <code>docs/superpowers/specs/2026-09-21-mobile-loading-design.md</code> (D1–D8). Overview <code>docs/overview/2026-09-21-mobile-loading.html</code> (F1 <code>pending</code> → <code>plan_ready</code> al guardar este plan → <code>completed</code> con el audit).</p>
+<h2 id="global-constraints">Global Constraints</h2>
+<ul>
+<li>Worktree <code>.claude/worktrees/mobile-loading</code>, rama <code>feat/mobile-loading</code> desde <code>main</code> local = <code>4be010c</code>. Primer comando en el worktree: <code>cd apps/mobile &amp;&amp; npm ci</code>. Nunca <code>cd</code> al checkout principal para editar. Nunca <code>git add -A</code>; archivos por nombre. Commits <code>feat(mobile): …</code> / <code>fix(mobile): …</code> / <code>docs(mobile-loading): …</code> con trailers <code>Co-Authored-By: &lt;modelo que escribe&gt; &lt;noreply@anthropic.com&gt;</code> y <code>Claude-Session: &lt;URL de la sesión que ejecuta&gt;</code>. <strong>Sin push, sin merge, sin TestFlight</strong> salvo autorización explícita de Jesús en la sesión.</li>
+<li><strong>Metro</strong>: hoy corre en :8081 desde <code>.claude/worktrees/markets-ask-gate/apps/mobile</code> (otro worktree, ya mergeado). Para las tasks con simulador hay que <strong>matarlo</strong> (<code>lsof -tiTCP:8081 -sTCP:LISTEN | xargs kill</code>) y arrancarlo desde <strong>este</strong> worktree: <code>nohup npx expo start --port 8081 &gt; &quot;$SC/metro.log&quot; 2&gt;&amp;1 &amp;</code> y esperar <code>Waiting on http://localhost:8081</code>. Task 6 (splash) cambia nativo → <code>npx expo prebuild --platform ios --clean</code> + <code>npx expo run:ios --device 2B2A0BAD-7B14-4DAE-8652-C7E9472505E0</code> (reinstala el dev build; <strong>borra la cuenta local del simulador</strong>: sign in con el passkey «pickler» de Apple Passwords + Face ID <code>xcrun simctl spawn &lt;UDID&gt; notifyutil -p com.apple.BiometricKit_Sim.fingerTouch.match</code>; si el simulador no tiene Face ID enrolado, antes <code>notifyutil -s com.apple.BiometricKit.enrollmentChanged 1</code>).</li>
+<li>Simulador <strong>siempre por UDID</strong>, nunca <code>booted</code>. Capturas con <code>xcrun simctl io &lt;UDID&gt; screenshot …</code> y <strong>mirar cada una</strong>. Cuenta #620: <strong>no mover AUSD ni MON, ninguna orden, ningún Enable/Reconnect/Reset</strong>. Otra sesión (Proflores iOS) usa el mismo simulador: anotar y recuperar si algo cambia solo.</li>
+<li>Regla D2 (única, sin excepciones): una sección pinta skeleton <strong>si y sólo si</strong> su dato es <code>null</code> y no hay error; con error, la <code>Warn</code>/card de error existente; con dato, el contenido. Una sección con dato nunca vuelve a skeleton. <strong>Nada de <code>loading</code> booleanos nuevos en hooks.</strong></li>
+<li>Sin dependencias nuevas salvo <code>expo-splash-screen</code> (Task 6, <code>npx expo install</code>). Copy en inglés; comentarios en español donde el archivo vecino los tenga; tests en inglés. <code>npm test</code> (hoy 31 suites / 237 tests) y <code>npx tsc --noEmit</code> en verde al cierre de cada task que toca código. Sin tests de UI (P12 del plan F2 de Ask): pantallas por <code>tsc</code> + simulador.</li>
+<li>Splash (D6/D7, verificado en <code>https://docs.expo.dev/versions/v57.0.0/sdk/splash-screen/</code> el 2026-09-21): plugin <code>[&quot;expo-splash-screen&quot;, { image, imageWidth, resizeMode, backgroundColor }]</code>; API <code>import * as SplashScreen from &quot;expo-splash-screen&quot;</code>; <code>preventAutoHideAsync()</code> <strong>en ámbito de módulo</strong>; <code>hideAsync()</code>; <code>setOptions({ fade, duration })</code>. <code>ios/</code> no está versionado (<code>.gitignore</code>): el storyboard lo regenera <code>prebuild</code>.</li>
+<li>Docs: contrato <code>docs/CLAUDE.md</code>; <code>npm run docs:html</code>; <code>docs:check</code> errors=0; <code>agents:check</code> <code>&quot;errors&quot;: []</code>.</li>
+</ul>
+<h2 id="decisiones-del-plan-no-estan-en-el-spec">Decisiones del plan (no están en el spec)</h2>
+<table>
+<thead>
+<tr><th>#</th><th>Decisión</th><th>Por qué</th></tr>
+</thead>
+<tbody>
+<tr><td>P1</td><td><strong><code>Skeleton</code> = <code>Object.assign(SkeletonBlock, { Line, Card, Row })</code></strong> exportado desde primitives; el pulso es un <code>Animated.Value</code> de módulo con <code>Animated.loop</code> arrancado por refcount (<code>usePulse</code>). <code>Reveal</code> es un <code>Animated.View</code> que va de 0 a 1 en 150 ms al montarse.</td><td>D1/D4 sin dependencias; un solo loop aunque haya 20 bloques.</td></tr>
+<tr><td>P2</td><td><strong>Sección Market con <code>context === null</code></strong>: <code>AskTab</code>/<code>TradeTab</code>/<code>AgentsTab</code> no pueden renderizar sin <code>market</code> (viene de <code>perpl.context</code>), así que el skeleton de «matriz» del spec (D3) es un <strong><code>MarketSkeleton</code></strong> en <code>market.tsx</code> que sustituye «Loading market…»: pills en skeleton + <code>Skeleton.Card</code> (créditos) + 5 <code>Skeleton.Row</code> (la escalera) — <code>MatrixGrid</code> <strong>no</strong> gana prop <code>loading</code>. Se marca <strong>(F1)</strong> en D3 del spec (Task 8).</td><td>Desde Markets el contexto siempre existe; el caso real es el arranque en frío por push.</td></tr>
+<tr><td>P3</td><td><strong>Card <code>TRADING · AUSD</code> (Markets) y línea «in trading» (Wallet)</strong> pintan skeleton sólo si <code>perpl.live === null &amp;&amp; perpl.lastBalance === null</code>: <code>lastBalance</code> («last seen») es dato válido por diseño de hifi F2.</td><td>No borrar un dato que la app ya enseña a propósito.</td></tr>
+<tr><td>P4</td><td><strong>Éxito del jalón</strong> (D5): <code>treasury.refresh()</code> y <code>perpl.refreshContext()</code> tragan errores (los guardan en <code>rpcError</code>/<code>movementsError</code>/<code>contextError</code>), así que «fulfilled» en <code>allSettled</code> no es éxito. <code>Shell</code> incrementa <code>refreshDone</code> al terminar el jalón y un efecto evalúa <code>refreshOk(screen, errors)</code> con los errores <strong>de ese render</strong> (evita leer estado viejo tras el <code>await</code>).</td><td>Estado de React tras un <code>await</code> no está garantizado en la misma tarea.</td></tr>
+<tr><td>P5</td><td><strong>Sello inicial</strong> (D5): efecto en <code>Shell</code> que fija <code>updatedAt[screen] = Date.now()</code> la primera vez que <code>screenHasData(screen, …)</code> es true.</td><td>La carga inicial la disparan los hooks al montar, no el Shell.</td></tr>
+<tr><td>P6</td><td><strong><code>COULDN&#39;T REFRESH</code></strong> se pinta en el mismo <code>Tag</code> del sello, en <code>C.down</code>, 3 s (<code>setTimeout</code> limpiado al desmontar), y luego vuelve el sello anterior (o nada si no había).</td><td>Un solo sitio, sin card nueva.</td></tr>
+<tr><td>P7</td><td><strong>Asset del splash</strong>: <code>scripts/splash-mark.py</code> (PIL, flood fill desde los bordes con <code>thresh=140</code>, recorte + margen 40 px, 720×720) versionado en <code>apps/mobile/scripts/</code>; el PNG generado también se versiona (<code>assets/splash-mark.png</code>). Probado el 2026-09-21: recorte limpio (queda una sombra mínima entre los dos bloques del pie, invisible a 140 pt).</td><td>Reproducible; <code>icon.png</code> es la única fuente a 1024 px.</td></tr>
+<tr><td>P8</td><td><strong><code>SplashScreen.setOptions({ fade: true, duration: 200 })</code></strong> justo después de <code>preventAutoHideAsync()</code>; si <code>tsc</code> dice que la firma difiere en la versión instalada, quitar <code>setOptions</code> y anotarlo.</td><td>La doc del SDK 57 lo lista; se comprueba contra la versión real.</td></tr>
+<tr><td>P9</td><td>El estado `!fontsLoaded</td><td></td><td>account === null<code> de </code>App.tsx<code> deja de pintar el </code>ActivityIndicator<code> lima: devuelve </code>null<code> (la vista nativa del splash sigue visible porque </code>hideAsync` aún no corrió).</td><td>Evitar el spinner entre splash y primera pantalla.</td></tr>
+<tr><td>P10</td><td><strong>Capturas de skeleton</strong> (D8): el skeleton de Ask/Agents se fuerza arrancando Metro con <code>PICKLER_READS_URL=http://127.0.0.1:9/</code> (puerto cerrado → la petición falla rápido: eso da la <strong>card de error</strong>, no skeleton) — para ver el skeleton se usa <code>PICKLER_READS_URL=http://10.255.255.1/</code> (IP no enrutable: la petición cuelga hasta el timeout de 12 s de <code>useReads</code>) y se captura en los primeros 5 s. Wallet/Markets: capturar en el primer segundo tras <code>launch</code> (RPC y Perpl tardan 1–3 s).</td><td>Reproducible sin tocar cuentas.</td></tr>
+</tbody>
+</table>
+<h2 id="mapa-de-archivos">Mapa de archivos</h2>
+<table>
+<thead>
+<tr><th>Archivo</th><th>Task</th><th>Responsabilidad</th></tr>
+</thead>
+<tbody>
+<tr><td><code>apps/mobile/src/store.ts</code>, <code>__tests__/store.test.ts</code></td><td>1</td><td><code>updatedLabel</code>, <code>refreshOk</code>, <code>screenHasData</code> (puros, con test)</td></tr>
+<tr><td><code>apps/mobile/src/ui/primitives.tsx</code></td><td>2</td><td><code>Skeleton</code> (+ <code>Line</code>/<code>Card</code>/<code>Row</code>), <code>Reveal</code>, <code>usePulse</code></td></tr>
+<tr><td><code>apps/mobile/src/hooks/useReads.ts</code>, <code>src/screens/ask.tsx</code>, <code>src/screens/agents.tsx</code></td><td>3</td><td>`reads: Read[] \</td><td>null`; skeletons de créditos, chips de agentes, My reads, Agents</td></tr>
+<tr><td><code>apps/mobile/src/screens/wallet.tsx</code>, <code>src/screens/markets.tsx</code>, <code>src/screens/market.tsx</code></td><td>4</td><td>skeletons de saldos, trading, movimientos, lista de mercados, posiciones, <code>MarketSkeleton</code></td></tr>
+<tr><td><code>apps/mobile/src/Shell.tsx</code></td><td>5</td><td>sello <code>UPDATED</code> / <code>COULDN&#39;T REFRESH</code></td></tr>
+<tr><td><code>apps/mobile/package.json</code>, <code>package-lock.json</code>, <code>app.config.ts</code>, <code>App.tsx</code>, <code>assets/splash-mark.png</code>, <code>scripts/splash-mark.py</code></td><td>6</td><td>splash</td></tr>
+<tr><td>Simulador</td><td>7</td><td>capturas (D8)</td></tr>
+<tr><td><code>docs/superpowers/specs/2026-09-21-mobile-loading-design.md</code>, <code>docs/overview/2026-09-21-mobile-loading.html</code>, <code>docs/overview/data/manifest.js</code>, <code>docs/superpowers/audits/2026-09-21-mobile-loading-f1-rulings.md</code>, <code>docs/superpowers/audits/img/*.png</code>, <code>apps/mobile/README.md</code></td><td>8</td><td>marcas (F1), F1 <code>completed</code>, audit, README</td></tr>
+</tbody>
+</table>
+<hr>
+<h3 id="task-1-helpers-puros-del-sello-en-storets">Task 1: Helpers puros del sello en <code>store.ts</code></h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Modify: <code>apps/mobile/src/store.ts</code> (después de <code>marketEntryTab</code>, línea ~118)</li>
+<li>Test: <code>apps/mobile/__tests__/store.test.ts</code></li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Produces: <code>updatedLabel(ts: number): string</code>; <code>type RefreshErrors = { rpcError: string; movementsError: string; contextError: string; listError: string }</code>; <code>refreshOk(screen: Screen, e: RefreshErrors): boolean</code>; <code>screenHasData(screen: Screen, d: { balances: unknown; context: unknown }): boolean</code>. Los usa Task 5.</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Línea base</strong></label></li>
+</ul>
+<pre><code class="language-bash">cd /Users/josedejesusacevedoflores/Documents/predict/.claude/worktrees/mobile-loading/apps/mobile
+git status --short &amp;&amp; git log --oneline -1
+npm test 2&gt;&amp;1 | tail -4 &amp;&amp; npx tsc --noEmit &amp;&amp; echo TSC-OK</code></pre>
+<p>Expected: árbol limpio, HEAD <code>4be010c</code>; <code>Tests: 237 passed</code> / <code>31 passed</code>; <code>TSC-OK</code>. Si falta <code>node_modules</code>, <code>npm ci</code> primero.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Tests (RED)</strong> — añadir <code>updatedLabel, refreshOk, screenHasData</code> al import de <code>../src/store</code> en <code>__tests__/store.test.ts</code> y al final del archivo:</label></li>
+</ul>
+<pre><code class="language-ts">test(&quot;updatedLabel formats a local 24h timestamp&quot;, () =&gt; {
+  const ts = new Date(2026, 8, 21, 8, 5, 9).getTime(); // local time on purpose: the label is what the user sees
+  expect(updatedLabel(ts)).toBe(&quot;UPDATED 08:05:09&quot;);
+  expect(updatedLabel(new Date(2026, 8, 21, 23, 59, 0).getTime())).toBe(&quot;UPDATED 23:59:00&quot;);
+});
+
+test(&quot;refreshOk needs at least one source of the screen to succeed&quot;, () =&gt; {
+  const ok = { rpcError: &quot;&quot;, movementsError: &quot;&quot;, contextError: &quot;&quot;, listError: &quot;&quot; };
+  expect(refreshOk(&quot;wallet&quot;, ok)).toBe(true);
+  expect(refreshOk(&quot;wallet&quot;, { ...ok, rpcError: &quot;x&quot; })).toBe(true); // movements still refreshed
+  expect(refreshOk(&quot;wallet&quot;, { ...ok, rpcError: &quot;x&quot;, movementsError: &quot;y&quot; })).toBe(false);
+  expect(refreshOk(&quot;markets&quot;, ok)).toBe(true);
+  expect(refreshOk(&quot;markets&quot;, { ...ok, contextError: &quot;x&quot; })).toBe(false);
+  expect(refreshOk(&quot;market&quot;, { ...ok, contextError: &quot;x&quot; })).toBe(true); // reads still refreshed
+  expect(refreshOk(&quot;market&quot;, { ...ok, contextError: &quot;x&quot;, listError: &quot;y&quot; })).toBe(false);
+  expect(refreshOk(&quot;signin&quot;, ok)).toBe(false); // not refreshable
+});
+
+test(&quot;screenHasData follows the null contract of the hooks&quot;, () =&gt; {
+  expect(screenHasData(&quot;wallet&quot;, { balances: null, context: null })).toBe(false);
+  expect(screenHasData(&quot;wallet&quot;, { balances: {}, context: null })).toBe(true);
+  expect(screenHasData(&quot;markets&quot;, { balances: {}, context: null })).toBe(false);
+  expect(screenHasData(&quot;market&quot;, { balances: null, context: {} })).toBe(true);
+  expect(screenHasData(&quot;signin&quot;, { balances: {}, context: {} })).toBe(false);
+});</code></pre>
+<pre><code class="language-bash">npx jest __tests__/store.test.ts 2&gt;&amp;1 | tail -8</code></pre>
+<p>Expected: FAIL — <code>updatedLabel is not a function</code> (y los otros dos).</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Implementar</strong> — en <code>src/store.ts</code>, justo después de <code>export const marketEntryTab = …;</code>:</label></li>
+</ul>
+<pre><code class="language-ts">// ---------------------------------------------------------------------------
+// Sello del pull-to-refresh (spec mobile-loading D5). Puros: el Shell los evalúa en un efecto.
+
+/** `UPDATED HH:MM:SS` en hora local, 24 h. */
+export function updatedLabel(ts: number): string {
+  const d = new Date(ts);
+  const p = (n: number) =&gt; String(n).padStart(2, &quot;0&quot;);
+  return `UPDATED ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+}
+
+export type RefreshErrors = { rpcError: string; movementsError: string; contextError: string; listError: string };
+
+/** Un jalón «hizo algo» si al menos una de las fuentes de la pantalla quedó sin error (los hooks tragan errores: `allSettled` no basta). */
+export function refreshOk(screen: Screen, e: RefreshErrors): boolean {
+  switch (screen) {
+    case &quot;wallet&quot;: return !e.rpcError || !e.movementsError;
+    case &quot;markets&quot;: return !e.contextError;
+    case &quot;market&quot;: return !e.contextError || !e.listError;
+    default: return false;
+  }
+}
+
+/** La pantalla ya tiene su dato principal (contrato `null` = sin dato de los hooks): fija el sello inicial. */
+export function screenHasData(screen: Screen, d: { balances: unknown; context: unknown }): boolean {
+  switch (screen) {
+    case &quot;wallet&quot;: return d.balances !== null;
+    case &quot;markets&quot;:
+    case &quot;market&quot;: return d.context !== null;
+    default: return false;
+  }
+}</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 4: Verde y commit</strong></label></li>
+</ul>
+<pre><code class="language-bash">npx jest __tests__/store.test.ts 2&gt;&amp;1 | tail -6
+npm test 2&gt;&amp;1 | tail -4 &amp;&amp; npx tsc --noEmit &amp;&amp; echo TSC-OK
+git add src/store.ts __tests__/store.test.ts
+git commit -m &quot;feat(mobile): helpers puros del sello de pull-to-refresh (updatedLabel, refreshOk, screenHasData)&quot; -m &quot;Co-Authored-By: &lt;modelo&gt; &lt;noreply@anthropic.com&gt;&quot; -m &quot;Claude-Session: &lt;url&gt;&quot;</code></pre>
+<p>Expected: 31 suites / 240 tests; <code>TSC-OK</code>.</p>
+<hr>
+<h3 id="task-2-primitivas-skeleton-y-reveal">Task 2: Primitivas <code>Skeleton</code> y <code>Reveal</code></h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Modify: <code>apps/mobile/src/ui/primitives.tsx</code> (imports y final del archivo)</li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Produces: <code>Skeleton({ w?, h?, r?, style? })</code>, <code>Skeleton.Line({ s?, w? })</code>, <code>Skeleton.Card({ lines?, big? })</code>, <code>Skeleton.Row()</code>, <code>Reveal({ children, style? })</code>. Las usan Tasks 3–5.</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Imports</strong> — en <code>src/ui/primitives.tsx</code> cambiar la primera línea y la segunda por:</label></li>
+</ul>
+<pre><code class="language-tsx">import { type ReactNode, useEffect, useRef } from &quot;react&quot;;
+import { Animated, Easing, Pressable, type StyleProp, Text, type TextStyle, View, type ViewStyle } from &quot;react-native&quot;;</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Implementar</strong> — al final de <code>src/ui/primitives.tsx</code>:</label></li>
+</ul>
+<pre><code class="language-tsx">// ---------------------------------------------------------------------------
+// Skeletons (spec mobile-loading D1/D4). Un solo pulso compartido: `PULSE` vive en el módulo y el loop
+// arranca con el primer skeleton montado y se detiene con el último (refcount), aunque haya 20 bloques.
+const PULSE = new Animated.Value(1);
+let pulseLoop: Animated.CompositeAnimation | null = null;
+let pulseMounted = 0;
+
+function usePulse(): Animated.Value {
+  useEffect(() =&gt; {
+    if (pulseMounted++ === 0) {
+      pulseLoop = Animated.loop(Animated.sequence([
+        Animated.timing(PULSE, { toValue: 0.45, duration: 900, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.timing(PULSE, { toValue: 1, duration: 900, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+      ]));
+      pulseLoop.start();
+    }
+    return () =&gt; {
+      if (--pulseMounted === 0) { pulseLoop?.stop(); pulseLoop = null; PULSE.setValue(1); }
+    };
+  }, []);
+  return PULSE;
+}
+
+type SkeletonProps = { w?: number | `${number}%`; h?: number; r?: number; style?: StyleProp&lt;ViewStyle&gt; };
+
+function SkeletonBlock({ w = &quot;100%&quot;, h = 12, r = 8, style }: SkeletonProps) {
+  const opacity = usePulse();
+  return &lt;Animated.View style={[{ width: w, height: h, borderRadius: r, backgroundColor: C.hair, opacity }, style]} /&gt;;
+}
+
+/** Una línea de texto de tamaño `s` (alto ≈ 1.1·s). */
+function SkeletonLine({ s = 13, w = &quot;60%&quot; }: { s?: number; w?: number | `${number}%` }) {
+  return &lt;SkeletonBlock h={Math.round(s * 1.1)} w={w} r={6} /&gt;;
+}
+
+/** Card con `lines` líneas; `big` pone la primera a 30 px (una cifra grande, como los saldos). */
+function SkeletonCard({ lines = 2, big }: { lines?: number; big?: boolean }) {
+  const widths: (number | `${number}%`)[] = [&quot;45%&quot;, &quot;70%&quot;, &quot;55%&quot;, &quot;62%&quot;];
+  return (
+    &lt;Card pad={big ? 15 : 13} gap={9}&gt;
+      {Array.from({ length: lines }, (_, i) =&gt; &lt;SkeletonBlock key={i} h={i === 0 &amp;&amp; big ? 30 : 12} w={widths[i % widths.length]} /&gt;)}
+    &lt;/Card&gt;
+  );
+}
+
+/** Fila de lista: título + subtítulo a la izquierda, valor + variación a la derecha (como `MarketsList`). */
+function SkeletonRow() {
+  return (
+    &lt;Card pad={13} style={{ flexDirection: &quot;row&quot;, alignItems: &quot;center&quot;, gap: 11 }}&gt;
+      &lt;View style={{ flex: 1, gap: 6 }}&gt;
+        &lt;SkeletonBlock h={14} w=&quot;30%&quot; /&gt;
+        &lt;SkeletonBlock h={11} w=&quot;55%&quot; /&gt;
+      &lt;/View&gt;
+      &lt;View style={{ alignItems: &quot;flex-end&quot;, gap: 6 }}&gt;
+        &lt;SkeletonBlock h={13} w={72} /&gt;
+        &lt;SkeletonBlock h={10} w={44} /&gt;
+      &lt;/View&gt;
+    &lt;/Card&gt;
+  );
+}
+
+export const Skeleton = Object.assign(SkeletonBlock, { Line: SkeletonLine, Card: SkeletonCard, Row: SkeletonRow });
+
+/** El contenido entra con un fade de 150 ms al montarse (skeleton → dato). Nada más (D4). */
+export function Reveal({ children, style }: { children: ReactNode; style?: StyleProp&lt;ViewStyle&gt; }) {
+  const opacity = useRef(new Animated.Value(0)).current;
+  useEffect(() =&gt; { Animated.timing(opacity, { toValue: 1, duration: 150, useNativeDriver: true }).start(); }, [opacity]);
+  return &lt;Animated.View style={[{ opacity }, style]}&gt;{children}&lt;/Animated.View&gt;;
+}</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Verificar y commit</strong></label></li>
+</ul>
+<pre><code class="language-bash">npx tsc --noEmit &amp;&amp; echo TSC-OK &amp;&amp; npm test 2&gt;&amp;1 | tail -4
+git add src/ui/primitives.tsx
+git commit -m &quot;feat(mobile): primitivas Skeleton (Line/Card/Row, pulso compartido) y Reveal&quot; -m &quot;Co-Authored-By: &lt;modelo&gt; &lt;noreply@anthropic.com&gt;&quot; -m &quot;Claude-Session: &lt;url&gt;&quot;</code></pre>
+<p>Expected: <code>TSC-OK</code>, 31 / 240.</p>
+<hr>
+<h3 id="task-3-readsreads-nullable-y-skeletons-de-ask-agents">Task 3: <code>reads.reads</code> nullable y skeletons de Ask / Agents</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Modify: <code>apps/mobile/src/hooks/useReads.ts</code> (líneas 27, 49, 74, 85)</li>
+<li>Modify: <code>apps/mobile/src/screens/ask.tsx</code> (<code>CreditsRow</code>, <code>AskSheet</code>, <code>AskTab</code>)</li>
+<li>Modify: <code>apps/mobile/src/screens/agents.tsx</code> (línea 16)</li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Consumes: <code>Skeleton</code>, <code>Reveal</code> (Task 2).</li>
+<li>Produces: <code>Reads.reads: Read[] | null</code> (<code>null</code> = aún no se ha pedido / sin sesión).</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Sin test nuevo</strong> — <code>useReads</code> es un hook sin tests (P12 del plan F2 de Ask) y <code>readDots</code> ya tiene el caso vacío cubierto en <code>reads-matrix.test.ts</code>; la garantía de esta task la da <code>tsc</code> sobre los consumidores de <code>reads.reads</code> (Step 5).</label></li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: <code>useReads.ts</code></strong> —</label></li>
+<ul>
+<li>línea 27: <code>reads: Read[];</code> → <code>/** </code>null<code> = todavía no se pidió (sin sesión o en vuelo); </code>[]<code> = pedido y vacío. */\n  reads: Read[] | null;</code></li>
+<li>línea 49: <code>useState&lt;Read[]&gt;([])</code> → <code>useState&lt;Read[] | null&gt;(null)</code></li>
+<li>líneas 74 y 85: <code>setReads([]);</code> → <code>setReads(null);</code></li>
+<li>línea 192 (<code>setReads((list) =&gt; upsert(list, read))</code>) → <code>setReads((list) =&gt; upsert(list ?? [], read))</code></li>
+</ul>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: <code>ask.tsx</code></strong> — imports: añadir <code>Reveal, Skeleton</code> al import de <code>../ui/primitives</code>.</label></li>
+</ul>
+<p><code>CreditsRow</code>: sustituir la función por</p>
+<pre><code class="language-tsx">function CreditsRow({ credits }: { credits: number | null }) {
+  return (
+    &lt;Card bd={C.hair14} bg={C.card} pad={11} style={{ flexDirection: &quot;row&quot;, alignItems: &quot;center&quot;, gap: 10 }}&gt;
+      &lt;Tag&gt;CREDITS&lt;/Tag&gt;
+      {credits === null ? &lt;Skeleton h={16} w={28} r={4} /&gt; : &lt;T w={700} s={16} lh={1} mono&gt;{String(credits)}&lt;/T&gt;}
+      &lt;T w={400} s={11} lh={1.3} color={C.faint} style={{ flex: 1 }}&gt;1 credit per read · simulated for the testnet&lt;/T&gt;
+    &lt;/Card&gt;
+  );
+}</code></pre>
+<p><code>AskSheet</code> (línea ~172): sustituir <code>{reads.agents === null ? &lt;T w={400} s={11.5} color={C.faint}&gt;{reads.agentsError || &quot;Loading agents…&quot;}&lt;/T&gt; : picking ? (</code> por</p>
+<pre><code class="language-tsx">      {reads.agents === null ? (
+        reads.agentsError
+          ? &lt;T w={400} s={11.5} color={C.faint}&gt;{reads.agentsError}&lt;/T&gt;
+          : &lt;View style={{ flexDirection: &quot;row&quot;, gap: 6 }}&gt;&lt;Skeleton h={28} w={118} r={999} /&gt;&lt;Skeleton h={28} w={96} r={999} /&gt;&lt;Skeleton h={28} w={104} r={999} /&gt;&lt;/View&gt;
+      ) : picking ? (</code></pre>
+<p><code>AskTab</code>: línea 224 <code>reads.reads.find</code> → <code>(reads.reads ?? []).find</code>, dependencias iguales. Línea 246 <code>readDots(reads.reads)</code> → <code>readDots(reads.reads ?? [])</code>. En <code>myReads()</code>, sustituir las dos líneas de lista por:</p>
+<pre><code class="language-tsx">        {reads.reads === null &amp;&amp; !reads.listError ? &lt;&gt;&lt;Skeleton.Card lines={3} /&gt;&lt;Skeleton.Card lines={3} /&gt;&lt;/&gt; : null}
+        {reads.reads !== null &amp;&amp; reads.reads.length === 0 ? &lt;T w={400} s={12} lh={1.4} color={C.faint}&gt;No reads on {market.symbol} yet.&lt;/T&gt; : null}
+        {reads.reads !== null &amp;&amp; reads.reads.length &gt; 0 ? &lt;Reveal style={{ gap: 7 }}&gt;{reads.reads.map((r) =&gt; &lt;ReadRow key={r.id} read={r} name={agentName(reads.agents, r.agentId)} now={now} onPress={() =&gt; set({ askFocusReadId: r.id })} /&gt;)}&lt;/Reveal&gt; : null}</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 4: <code>agents.tsx</code></strong> — import <code>Reveal, Skeleton</code> de <code>../ui/primitives</code>; sustituir la línea 16 por</label></li>
+</ul>
+<pre><code class="language-tsx">      {reads.agents === null &amp;&amp; !reads.agentsError ? &lt;&gt;&lt;Skeleton.Card lines={3} /&gt;&lt;Skeleton.Card lines={3} /&gt;&lt;Skeleton.Card lines={3} /&gt;&lt;/&gt; : null}</code></pre>
+<p>y envolver el <code>.map</code> de agentes (línea 17 en adelante) en <code>&lt;Reveal style={{ gap: 7 }}&gt;…&lt;/Reveal&gt;</code> sólo cuando <code>reads.agents !== null</code> (mantener el <code>gap</code> que tenga hoy el contenedor: si el <code>View</code> padre ya tiene <code>gap</code>, el <code>Reveal</code> lleva el mismo valor).</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 5: Verificar y commit</strong></label></li>
+</ul>
+<pre><code class="language-bash">npx tsc --noEmit &amp;&amp; echo TSC-OK &amp;&amp; npm test 2&gt;&amp;1 | tail -4
+grep -n &quot;Loading agents\|Loading reads&quot; src/screens/ask.tsx src/screens/agents.tsx || echo &quot;sin Loading… en Ask/Agents&quot;
+git add src/hooks/useReads.ts src/screens/ask.tsx src/screens/agents.tsx
+git commit -m &quot;feat(mobile): reads nullable y skeletons de créditos, agentes y My reads&quot; -m &quot;Co-Authored-By: &lt;modelo&gt; &lt;noreply@anthropic.com&gt;&quot; -m &quot;Claude-Session: &lt;url&gt;&quot;</code></pre>
+<p>Expected: <code>TSC-OK</code> (si <code>tsc</code> señala otro consumidor de <code>reads.reads</code>, aplicar <code>?? []</code> ahí y citarlo en el reporte), 31 / 240, <code>sin Loading… en Ask/Agents</code>.</p>
+<hr>
+<h3 id="task-4-skeletons-de-wallet-markets-y-market">Task 4: Skeletons de Wallet, Markets y Market</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Modify: <code>apps/mobile/src/screens/wallet.tsx</code> (card de saldos, movimientos, TESTNET)</li>
+<li>Modify: <code>apps/mobile/src/screens/markets.tsx</code> (<code>MarketsList</code>, card <code>TRADING · AUSD</code>, posiciones)</li>
+<li>Modify: <code>apps/mobile/src/screens/market.tsx</code> (<code>MarketScreen</code> sin <code>market</code>)</li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Consumes: <code>Skeleton</code>, <code>Reveal</code> (Task 2); <code>perpl.live</code>, <code>perpl.lastBalance</code>, <code>perpl.context</code>, <code>treasury.balances</code>, <code>treasury.movements</code> (ya existen).</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: <code>wallet.tsx</code></strong> — import <code>Reveal, Skeleton</code> de <code>../ui/primitives</code>. En la card de saldos, sustituir la línea del importe</label></li>
+</ul>
+<pre><code class="language-tsx">        &lt;T w={700} s={30} lh={1} ls={-0.02} display style={{ marginTop: 6 }}&gt;{available}&lt;/T&gt;</code></pre>
+<p>por</p>
+<pre><code class="language-tsx">        {treasury.balances === null &amp;&amp; !treasury.rpcError
+          ? &lt;Skeleton h={30} w=&quot;45%&quot; style={{ marginTop: 6 }} /&gt;
+          : &lt;T w={700} s={30} lh={1} ls={-0.02} display style={{ marginTop: 6 }}&gt;{available}&lt;/T&gt;}</code></pre>
+<p>La línea «AUSD in trading» (dentro de <code>perpl.state.status === &quot;ready&quot;</code>): sustituir el <code>&lt;Touch …&gt;…&lt;/Touch&gt;</code> por</p>
+<pre><code class="language-tsx">          perpl.live === null &amp;&amp; perpl.lastBalance === null
+            ? &lt;Skeleton h={12} w=&quot;62%&quot; style={{ marginTop: 4 }} /&gt;
+            : (
+              &lt;Touch onPress={() =&gt; nav(&quot;markets&quot;)} accessibilityLabel=&quot;in-trading&quot;&gt;
+                &lt;T w={400} s={11} lh={1.4} color={C.faint} style={{ marginTop: 2 }}&gt;
+                  {formatAusd(perpl.live?.account?.b ?? perpl.lastBalance ?? 0n)} AUSD in trading{perpl.live?.account ? &quot;&quot; : perpl.lastBalance !== null ? &quot; · last seen&quot; : &quot;&quot;} · Markets
+                &lt;/T&gt;
+              &lt;/Touch&gt;
+            )</code></pre>
+<p>Movimientos: sustituir <code>{treasury.movements === null &amp;&amp; !treasury.movementsError ? &lt;T …&gt;Loading movements…&lt;/T&gt; : null}</code> por</p>
+<pre><code class="language-tsx">      {treasury.movements === null &amp;&amp; !treasury.movementsError ? &lt;&gt;&lt;Skeleton.Row /&gt;&lt;Skeleton.Row /&gt;&lt;Skeleton.Row /&gt;&lt;/&gt; : null}</code></pre>
+<p>y <code>{rows.map((m) =&gt; &lt;MovementRow key={m.hash} m={m} /&gt;)}</code> por</p>
+<pre><code class="language-tsx">      {treasury.movements !== null &amp;&amp; rows.length &gt; 0 ? &lt;Reveal style={{ gap: 11 }}&gt;{rows.map((m) =&gt; &lt;MovementRow key={m.hash} m={m} /&gt;)}&lt;/Reveal&gt; : null}</code></pre>
+<p>(<code>gap: 11</code> = el <code>gap</code> del <code>Page</code>; si <code>MovementRow</code> ya lleva margen propio, usar <code>gap: 0</code>.) Si <code>treasury.pending</code> tiene filas mientras <code>movements === null</code>, siguen pintándose: dejar <code>{treasury.movements === null ? treasury.pending.map((m) =&gt; &lt;MovementRow key={m.hash} m={m} /&gt;) : null}</code> justo antes de los skeletons.</p>
+<p>TESTNET: <code>&lt;KV k=&quot;MON (GAS)&quot; v={treasury.balances ? formatMon(treasury.balances.mon) : &quot;—&quot;} /&gt;</code> se queda (es <code>KV</code> con <code>—</code>; una segunda skeleton en la misma pantalla para el mismo dato no aporta).</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: <code>markets.tsx</code></strong> — import <code>Reveal, Skeleton</code>. En <code>MarketsList</code>, sustituir <code>{perpl.context === null &amp;&amp; !perpl.contextError ? &lt;T …&gt;Loading markets…&lt;/T&gt; : null}</code> por</label></li>
+</ul>
+<pre><code class="language-tsx">      {perpl.context === null &amp;&amp; !perpl.contextError ? &lt;&gt;{Array.from({ length: 6 }, (_, i) =&gt; &lt;Skeleton.Row key={i} /&gt;)}&lt;/&gt; : null}</code></pre>
+<p>y envolver el <code>.map</code> de mercados: <code>{perpl.context !== null ? &lt;Reveal style={{ gap: 7 }}&gt;{(perpl.context.markets).map((m) =&gt; { … })}&lt;/Reveal&gt; : null}</code> (el <code>gap: 7</code> es el del <code>View</code> contenedor; el <code>View</code> exterior conserva su <code>gap</code>).</p>
+<p>Card <code>TRADING · AUSD</code> (estado <code>ready</code>, línea ~200): sustituir la cifra</p>
+<pre><code class="language-tsx">        &lt;T w={700} s={30} lh={1} ls={-0.02} display style={{ marginTop: 6 }}&gt;{formatAusd(b)}&lt;/T&gt;</code></pre>
+<p>por</p>
+<pre><code class="language-tsx">        {live === null &amp;&amp; perpl.lastBalance === null
+          ? &lt;Skeleton h={30} w=&quot;45%&quot; style={{ marginTop: 6 }} /&gt;
+          : &lt;T w={700} s={30} lh={1} ls={-0.02} display style={{ marginTop: 6 }}&gt;{formatAusd(b)}&lt;/T&gt;}</code></pre>
+<p>Posiciones: donde hoy <code>positions.length === 0 ? &lt;EmptyPanel&gt;…&lt;/EmptyPanel&gt; : positions.map(…)</code>, anteponer la rama <code>live === null ? &lt;Skeleton.Card lines={3} /&gt; :</code> (una card; con <code>live</code> presente y sin posiciones sigue el <code>EmptyPanel</code>).</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: <code>market.tsx</code> — <code>MarketSkeleton</code> (P2)</strong> — import <code>Skeleton</code> de <code>../ui/primitives</code>. Añadir antes de <code>export function MarketScreen</code>:</label></li>
+</ul>
+<pre><code class="language-tsx">/** Market sin contexto de Perpl todavía (arranque en frío por push): pills + créditos + escalera en skeleton (spec D3, P2 del plan F1). */
+function MarketSkeleton() {
+  return (
+    &lt;View&gt;
+      &lt;View style={{ flexDirection: &quot;row&quot;, gap: 8, paddingTop: 11, paddingHorizontal: 15, paddingBottom: 11, borderBottomWidth: 1, borderBottomColor: C.hair12 }}&gt;
+        &lt;Skeleton h={36} w=&quot;30%&quot; r={999} style={{ flex: 1 }} /&gt;&lt;Skeleton h={36} w=&quot;30%&quot; r={999} style={{ flex: 1 }} /&gt;&lt;Skeleton h={36} w=&quot;30%&quot; r={999} style={{ flex: 1 }} /&gt;
+      &lt;/View&gt;
+      &lt;Page top={13} gap={11}&gt;
+        &lt;Skeleton.Card lines={1} /&gt;
+        {Array.from({ length: 5 }, (_, i) =&gt; &lt;Skeleton.Row key={i} /&gt;)}
+      &lt;/Page&gt;
+    &lt;/View&gt;
+  );
+}</code></pre>
+<p>y en <code>MarketScreen</code>, sustituir el bloque <code>if (!market) { return ( &lt;Page gap={11}&gt; … ) }</code> por</p>
+<pre><code class="language-tsx">  if (!market) {
+    if (perpl.context === null &amp;&amp; !perpl.contextError) return &lt;MarketSkeleton /&gt;;
+    return (
+      &lt;Page gap={11}&gt;
+        &lt;T w={400} s={13} color={C.faint}&gt;{perpl.contextError ? `Couldn&#39;t load markets. ${perpl.contextError}` : &quot;This market isn&#39;t listed on Perpl anymore.&quot;}&lt;/T&gt;
+        &lt;Btn label=&quot;Back to Markets&quot; onPress={() =&gt; nav(&quot;markets&quot;)} variant=&quot;lime&quot; accessibilityLabel=&quot;back-to-markets&quot; /&gt;
+      &lt;/Page&gt;
+    );
+  }</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 4: Verificar y commit</strong></label></li>
+</ul>
+<pre><code class="language-bash">npx tsc --noEmit &amp;&amp; echo TSC-OK &amp;&amp; npm test 2&gt;&amp;1 | tail -4
+grep -n &quot;Loading movements\|Loading markets\|Loading market&quot; src/screens/wallet.tsx src/screens/markets.tsx src/screens/market.tsx || echo &quot;sin Loading… en Wallet/Markets/Market&quot;
+git add src/screens/wallet.tsx src/screens/markets.tsx src/screens/market.tsx
+git commit -m &quot;feat(mobile): skeletons por sección en Wallet, Markets y Market&quot; -m &quot;Co-Authored-By: &lt;modelo&gt; &lt;noreply@anthropic.com&gt;&quot; -m &quot;Claude-Session: &lt;url&gt;&quot;</code></pre>
+<p>Expected: <code>TSC-OK</code>, 31 / 240, <code>sin Loading…</code>.</p>
+<hr>
+<h3 id="task-5-sello-updated-couldnt-refresh-en-shell">Task 5: Sello <code>UPDATED</code> / <code>COULDN&#39;T REFRESH</code> en <code>Shell</code></h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Modify: <code>apps/mobile/src/Shell.tsx</code> (imports, estado, <code>onRefresh</code>, efectos, render bajo la cabecera)</li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Consumes: <code>updatedLabel</code>, <code>refreshOk</code>, <code>screenHasData</code>, <code>RefreshErrors</code> (Task 1) de <code>./store</code>; <code>Tag</code> de <code>./ui/primitives</code>.</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Imports y estado</strong> — en <code>Shell.tsx</code>: añadir <code>refreshOk, screenHasData, updatedLabel, type Screen</code> al import de <code>./store</code> (comprobar cómo importa hoy <code>./store</code>; si no importa nada, crear la línea <code>import { refreshOk, screenHasData, updatedLabel, type Screen } from &quot;./store&quot;;</code>). Añadir <code>Tag</code> al import de <code>./ui/primitives</code>. Justo después de <code>const [refreshing, setRefreshing] = useState(false);</code>:</label></li>
+</ul>
+<pre><code class="language-tsx">  // Sello del pull-to-refresh (spec mobile-loading D5): por pantalla; la carga inicial también lo fija (P5 del plan F1).
+  const [updatedAt, setUpdatedAt] = useState&lt;Partial&lt;Record&lt;Screen, number&gt;&gt;&gt;({});
+  const [refreshDone, setRefreshDone] = useState(0); // se incrementa al terminar cada jalón; el efecto de abajo lo evalúa con el estado ya actualizado (P4)
+  const [refreshFailed, setRefreshFailed] = useState(false);</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: <code>onRefresh</code></strong> — sustituir el <code>finally</code> por</label></li>
+</ul>
+<pre><code class="language-tsx">    } finally {
+      setRefreshing(false);
+      setRefreshDone((n) =&gt; n + 1);
+    }</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Efectos</strong> — después de <code>onRefresh</code>:</label></li>
+</ul>
+<pre><code class="language-tsx">  const errors = { rpcError: treasury.rpcError, movementsError: treasury.movementsError, contextError: perpl.contextError, listError: reads.listError };
+  // Evalúa el jalón que acaba de terminar con los errores de ESTE render (tras el await el estado puede no estar aplicado).
+  useEffect(() =&gt; {
+    if (refreshDone === 0) return;
+    if (refreshOk(S.screen, errors)) { setUpdatedAt((u) =&gt; ({ ...u, [S.screen]: Date.now() })); setRefreshFailed(false); return; }
+    setRefreshFailed(true);
+    const t = setTimeout(() =&gt; setRefreshFailed(false), 3000);
+    return () =&gt; clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- sólo al terminar un jalón
+  }, [refreshDone]);
+  // Sello inicial: la primera vez que la pantalla tiene su dato principal.
+  const hasData = screenHasData(S.screen, { balances: treasury.balances, context: perpl.context });
+  useEffect(() =&gt; {
+    if (!refreshable || !hasData || updatedAt[S.screen] !== undefined) return;
+    setUpdatedAt((u) =&gt; ({ ...u, [S.screen]: Date.now() }));
+  }, [refreshable, hasData, S.screen, updatedAt]);</code></pre>
+<p>(Si el proyecto no tiene eslint con <code>react-hooks</code>, quitar el comentario <code>eslint-disable</code>.)</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 4: Render</strong> — dentro del <code>ScrollView</code>, justo antes de <code>&lt;Current {...ctx} /&gt;</code>:</label></li>
+</ul>
+<pre><code class="language-tsx">            {refreshable &amp;&amp; (refreshFailed || updatedAt[S.screen] !== undefined) ? (
+              &lt;View style={{ paddingHorizontal: 15, paddingTop: 10 }}&gt;
+                &lt;Tag color={refreshFailed ? C.down : C.faint}&gt;{refreshFailed ? &quot;COULDN&#39;T REFRESH&quot; : updatedLabel(updatedAt[S.screen]!)}&lt;/Tag&gt;
+              &lt;/View&gt;
+            ) : null}</code></pre>
+<p>(<code>Page</code> ya pone <code>paddingTop: 14</code>; el sello suma 10 + su alto ≈ 20 pt. Si en el simulador queda demasiado aire, bajar <code>top</code> del <code>Page</code> de esas tres pantallas <strong>no</strong> es de esta task: anotarlo.)</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 5: Verificar y commit</strong></label></li>
+</ul>
+<pre><code class="language-bash">npx tsc --noEmit &amp;&amp; echo TSC-OK &amp;&amp; npm test 2&gt;&amp;1 | tail -4
+git add src/Shell.tsx
+git commit -m &quot;feat(mobile): sello UPDATED / COULDN&#39;T REFRESH por pantalla en el pull-to-refresh&quot; -m &quot;Co-Authored-By: &lt;modelo&gt; &lt;noreply@anthropic.com&gt;&quot; -m &quot;Claude-Session: &lt;url&gt;&quot;</code></pre>
+<p>Expected: <code>TSC-OK</code>, 31 / 240.</p>
+<hr>
+<h3 id="task-6-splash-nativo-con-la-marca">Task 6: Splash nativo con la marca</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Create: <code>apps/mobile/scripts/splash-mark.py</code>, <code>apps/mobile/assets/splash-mark.png</code></li>
+<li>Modify: <code>apps/mobile/package.json</code>, <code>apps/mobile/package-lock.json</code> (<code>npx expo install</code>), <code>apps/mobile/app.config.ts</code> (plugins), <code>apps/mobile/App.tsx</code></li>
+</ul>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Consumes: <code>account</code> (<code>useAccount</code>, <code>null</code> mientras carga).</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Dependencia</strong></label></li>
+</ul>
+<pre><code class="language-bash">cd /Users/josedejesusacevedoflores/Documents/predict/.claude/worktrees/mobile-loading/apps/mobile
+npx expo install expo-splash-screen 2&gt;&amp;1 | tail -3
+grep -n &#39;&quot;expo-splash-screen&quot;&#39; package.json</code></pre>
+<p>Expected: una línea <code>&quot;expo-splash-screen&quot;: &quot;~57.0.x&quot;</code> (la versión que fije <code>expo install</code>; anotarla en el reporte).</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Asset</strong> — crear <code>scripts/splash-mark.py</code>:</label></li>
+</ul>
+<pre><code class="language-python"># Recorta la P lima de assets/icon.png a fondo transparente para el splash (spec mobile-loading D6, P7 del plan F1).
+# Flood fill desde los bordes: el fondo violeta es conexo y rodea la P; la cara oscura interior queda protegida por
+# el contorno lima. Salida 720×720 con margen. Uso: python3 scripts/splash-mark.py assets/icon.png assets/splash-mark.png
+import sys
+from PIL import Image, ImageDraw
+
+src, dst = sys.argv[1], sys.argv[2]
+im = Image.open(src).convert(&quot;RGBA&quot;)
+w, h = im.size
+KEY = (0, 255, 0, 255)  # color temporal que no existe en el icono
+for x, y in ((0, 0), (w - 1, 0), (0, h - 1), (w - 1, h - 1), (w // 2, 0), (w // 2, h - 1), (0, h // 2), (w - 1, h // 2)):
+    ImageDraw.floodfill(im, (x, y), KEY, thresh=140)
+px = im.load()
+for y in range(h):
+    for x in range(w):
+        if px[x, y] == KEY:
+            px[x, y] = (0, 0, 0, 0)
+bbox = im.getbbox()
+crop = im.crop(bbox)
+side = max(crop.size) + 40
+out = Image.new(&quot;RGBA&quot;, (side, side), (0, 0, 0, 0))
+out.paste(crop, ((side - crop.size[0]) // 2, (side - crop.size[1]) // 2))
+out = out.resize((720, 720), Image.LANCZOS)
+out.save(dst)
+print(&quot;bbox&quot;, bbox, &quot;-&gt;&quot;, out.size)</code></pre>
+<pre><code class="language-bash">python3 scripts/splash-mark.py assets/icon.png assets/splash-mark.png
+python3 -c &quot;from PIL import Image; im=Image.open(&#39;assets/splash-mark.png&#39;); bg=Image.new(&#39;RGBA&#39;, im.size, (5,6,26,255)); bg.alpha_composite(im); bg.save(&#39;/tmp/splash-preview.png&#39;); print(im.size, im.mode)&quot;</code></pre>
+<p>Expected: <code>bbox (278, 246, 757, 759) -&gt; (720, 720)</code> (medido el 2026-09-21 sobre el <code>icon.png</code> actual), <code>(720, 720) RGBA</code>. <strong>Mirar <code>/tmp/splash-preview.png</code></strong>: P lima sobre navy, sin halo violeta visible, cara oscura intacta.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: <code>app.config.ts</code></strong> — en <code>plugins</code>, después de la entrada de <code>expo-notifications</code>:</label></li>
+</ul>
+<pre><code class="language-ts">    [&quot;expo-splash-screen&quot;, { image: &quot;./assets/splash-mark.png&quot;, imageWidth: 140, resizeMode: &quot;contain&quot;, backgroundColor: &quot;#05061A&quot; }],</code></pre>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 4: <code>App.tsx</code></strong> — imports: añadir <code>import * as SplashScreen from &quot;expo-splash-screen&quot;;</code> (junto a los de expo) y quitar <code>ActivityIndicator</code> del import de <code>react-native</code> si queda sin uso. A nivel de módulo, después de <code>const PERPL_SCREENS = …;</code>:</label></li>
+</ul>
+<pre><code class="language-ts">// Splash nativo (spec mobile-loading D7): se queda hasta que la cuenta local se resolvió; 2 s de tope por si el almacenamiento no responde.
+void SplashScreen.preventAutoHideAsync();
+SplashScreen.setOptions({ fade: true, duration: 200 });</code></pre>
+<p>Dentro de <code>App()</code>, después del <code>useLayoutEffect</code> del <code>boot</code>:</p>
+<pre><code class="language-tsx">  const ready = fontsLoaded &amp;&amp; account !== null;
+  useEffect(() =&gt; {
+    if (ready) { void SplashScreen.hideAsync(); return; }
+    const t = setTimeout(() =&gt; { void SplashScreen.hideAsync(); }, 2000);
+    return () =&gt; clearTimeout(t);
+  }, [ready]);</code></pre>
+<p>Y sustituir el bloque <code>if (!fontsLoaded || account === null) { return ( &lt;View …&gt;&lt;ActivityIndicator …/&gt;&lt;/View&gt; ); }</code> por</p>
+<pre><code class="language-tsx">  if (!ready) return null; // el splash nativo sigue en pantalla (P9)</code></pre>
+<p>Si <code>tsc</code> marca <code>setOptions</code> como inexistente en la versión instalada, quitar esa línea y anotarlo (P8).</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 5: Prebuild + run en el simulador</strong> (cambio nativo; reinstala el dev build y borra la cuenta local)</label></li>
+</ul>
+<pre><code class="language-bash">U=2B2A0BAD-7B14-4DAE-8652-C7E9472505E0
+SC=/Users/josedejesusacevedoflores/Documents/predict/.claude/worktrees/mobile-loading/.superpowers/sdd/2026-09-21-mobile-loading-f1
+lsof -tiTCP:8081 -sTCP:LISTEN | xargs kill 2&gt;/dev/null; sleep 1
+npx expo prebuild --platform ios --clean 2&gt;&amp;1 | tail -3
+grep -c &quot;splash-mark\|SplashScreenLogo&quot; ios/Pickler/SplashScreen.storyboard; ls ios/Pickler/Images.xcassets/ | grep -i splash
+nohup npx expo run:ios --device &quot;$U&quot; &gt; &quot;$SC/run.log&quot; 2&gt;&amp;1 &amp;</code></pre>
+<p>Esperar a «Installing on» / «Opening» en <code>run.log</code> (3–6 min). Expected: el storyboard referencia la imagen del splash y existe <code>SplashScreenLogo.imageset</code> (o el nombre que genere el plugin) con <code>splash-mark.png</code> dentro; el <code>run:ios</code> deja Metro en :8081 desde este worktree.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 6: Ver el splash</strong></label></li>
+</ul>
+<pre><code class="language-bash">xcrun simctl terminate &quot;$U&quot; fun.pickler.app; xcrun simctl launch &quot;$U&quot; fun.pickler.app &amp; sleep 0.4; xcrun simctl io &quot;$U&quot; screenshot &quot;$SC/shots/splash-00.png&quot;; sleep 2.5; xcrun simctl io &quot;$U&quot; screenshot &quot;$SC/shots/splash-01-after.png&quot;</code></pre>
+<p><strong>Mirar</strong> <code>splash-00.png</code> (P lima centrada sobre navy, sin blanco) y <code>splash-01-after.png</code> (Sign in o Wallet con el mismo fondo, sin spinner lima intermedio). Si el primer frame sale ya en la app (el splash dura &lt; 0.4 s con la cuenta en caché), repetir con <code>sleep 0.15</code>; si sigue sin verse, anotarlo: el splash existe (storyboard) pero es demasiado rápido para la captura — y capturar tras <code>xcrun simctl shutdown</code>/<code>boot</code> (arranque en frío).</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 7: Verificar y commit</strong></label></li>
+</ul>
+<pre><code class="language-bash">npx tsc --noEmit &amp;&amp; echo TSC-OK &amp;&amp; npm test 2&gt;&amp;1 | tail -4
+git add package.json package-lock.json app.config.ts App.tsx assets/splash-mark.png scripts/splash-mark.py
+git commit -m &quot;feat(mobile): splash nativo con la P lima (expo-splash-screen) y hide al resolver la cuenta&quot; -m &quot;Co-Authored-By: &lt;modelo&gt; &lt;noreply@anthropic.com&gt;&quot; -m &quot;Claude-Session: &lt;url&gt;&quot;</code></pre>
+<p>Expected: <code>TSC-OK</code>, 31 / 240; <code>git status</code> sin <code>ios/</code> (ignorado).</p>
+<hr>
+<h3 id="task-7-recorrido-en-el-simulador-capturas">Task 7: Recorrido en el simulador (capturas)</h3>
+<p><strong>Files:</strong> ninguno del repo. Workspace <code>SC=&lt;worktree&gt;/.superpowers/sdd/2026-09-21-mobile-loading-f1</code> (lo crea <code>scripts/sdd-workspace</code>); copiar ahí <code>taplabel.sh</code>, <code>tap-point.yaml</code> y <code>flows/</code> desde <code>&lt;repo&gt;/.claude/worktrees/markets-ask-gate/.superpowers/sdd/2026-09-21-markets-ask-gate/</code> (o desde <code>&lt;repo&gt;/.superpowers/sdd/2026-09-20-mobile-ask-matrix/</code>) y ajustar <code>SC</code> en <code>taplabel.sh</code>. Capturas en <code>$SC/shots/</code>.</p>
+<p><strong>Interfaces:</strong></p>
+<ul>
+<li>Labels: <code>tab-wallet</code>, <code>tab-markets</code>, <code>market-BTC</code>, <code>pill-ask</code>, <code>pill-agents</code>, <code>pill-trade</code>, <code>segment-mine</code>; Dev controls (⚙) → «Sign out».</li>
+<li>Produces: <code>$SC/task-7-report.md</code>; PNG a <code>docs/superpowers/audits/img/2026-09-21-mobile-loading-{skeleton-wallet,skeleton-markets,skeleton-ask,updated,splash}.png</code> (reducidos con <code>sips -Z 1300</code>).</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 0: Estado</strong> — el dev build de Task 6 está instalado y Metro corre desde este worktree (comprobar <code>lsof -tiTCP:8081 -sTCP:LISTEN</code> y <code>grep -c &quot;Waiting on&quot; $SC/metro.log</code> o <code>run.log</code>). Sign in si hace falta (passkey «pickler» + Face ID). Wallet → anotar AUSD/MON (<code>00-wallet-before.png</code>).</label></li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Skeletons de Wallet y Markets (carga inicial)</strong> — <code>xcrun simctl terminate … ; launch …</code> y captura a los <strong>0.8 s</strong> (<code>01-wallet-skeleton.png</code>): card de saldos con el bloque de 30 px pulsando y 3 <code>Skeleton.Row</code> bajo MOVEMENTS; a los 4 s (<code>02-wallet-loaded.png</code>) los datos reales. <code>tab-markets</code> inmediatamente tras un relaunch (<code>03-markets-skeleton.png</code>): 6 filas de skeleton bajo MARKETS (y la cifra de la card si no hay <code>lastBalance</code>); a los 4 s (<code>04-markets-loaded.png</code>). Si el simulador está sin trading key (Gate), la card de trading no aplica: anotarlo.</label></li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Skeletons de Ask/Agents</strong> — con Metro arrancado con <code>PICKLER_READS_URL=http://10.255.255.1/</code> (P10): matar Metro, <code>PICKLER_READS_URL=http://10.255.255.1/ nohup npx expo start --port 8081 &gt; &quot;$SC/metro-slow.log&quot; 2&gt;&amp;1 &amp;</code>, relaunch, <code>market-BTC</code> → <code>pill-ask</code> → (si aparece <code>SessionGate</code>, <code>ask-unlock</code> + Face ID) → captura en los primeros 5 s (<code>05-ask-skeleton.png</code>: CREDITS con bloque, matriz real, chips de agentes en skeleton al tocar <code>cell-100-240</code>), <code>segment-mine</code> (<code>06-myreads-skeleton.png</code>: 2 cards), <code>pill-agents</code> (<code>07-agents-skeleton.png</code>: 3 cards). Tras el timeout (~12 s) deben verse las <code>Warn</code> de error (<code>08-ask-error.png</code>), <strong>no</strong> skeleton. Volver a arrancar Metro <strong>sin</strong> la variable y relaunch: Ask con datos (<code>09-ask-loaded.png</code>).</label></li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: <code>MarketSkeleton</code></strong> — desde Markets, Dev controls → «Sign out» → sign in → <strong>sin</strong> entrar a Markets, abrir Market por Dev controls → «Market · ticket» en los primeros 500 ms tras el sign in (o, más fiable: relaunch estando en Market; el contexto tarda 1–3 s) → captura <code>10-market-skeleton.png</code> (3 pills + card + 5 filas). Si no se consigue a tiempo, anotarlo (el estado es de ventanas de &lt; 1 s).</label></li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 4: Sello</strong> — Wallet: jalar (<code>flows/ptr.yaml</code>) → tras el spinner, <code>UPDATED HH:MM:SS</code> bajo la cabecera (<code>11-updated.png</code>); jalar de nuevo y comprobar que la hora cambia (<code>12-updated-2.png</code>). <code>COULDN&#39;T REFRESH</code> exige que fallen <strong>todas</strong> las fuentes de la pantalla: en Market · Ask con Metro en <code>PICKLER_READS_URL=http://10.255.255.1/</code> falla reads pero no Perpl, así que sólo se ve cortando la red del Mac (desactivar el WiFi 15 s, jalar, captura <code>13-couldnt-refresh.png</code>, reactivar). Si no se puede cortar la red en esta sesión, anotarlo como <strong>no capturado</strong> y dejarlo cubierto por el test de <code>refreshOk</code>.</label></li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 5: Reporte</strong> — <code>$SC/task-7-report.md</code>: tabla captura → qué se ve (mirada ✓), saldos antes/después (iguales), qué no se pudo capturar y por qué, defectos (parar antes de Task 8 si los hay). Copiar los 5 PNG de evidencia a <code>docs/superpowers/audits/img/</code> con <code>sips -Z 1300</code>.</label></li>
+</ul>
+<hr>
+<h3 id="task-8-docs-marcas-f1-f1-completed-audit-readme-checks">Task 8: Docs — marcas (F1), F1 <code>completed</code>, audit, README, checks</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Modify: <code>docs/superpowers/specs/2026-09-21-mobile-loading-design.md</code> (D3, D7, Estado), <code>docs/overview/2026-09-21-mobile-loading.html</code> (phase-card F1 → <code>completed</code>, tasks checked, «Rulings en ejecución»), <code>docs/overview/data/manifest.js</code> (<code>phases[0].status = &#39;completed&#39;</code>, <code>status: &#39;active&#39;</code> se queda hasta el merge), <code>apps/mobile/README.md</code></li>
+<li>Create: <code>docs/superpowers/audits/2026-09-21-mobile-loading-f1-rulings.md</code>, <code>docs/superpowers/audits/img/2026-09-21-mobile-loading-*.png</code> (Task 7)</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Spec</strong> — D3: tras «matriz completa (<code>MatrixGrid</code> recibe <code>loading</code> …)» añadir «<strong>(F1)</strong> <code>MatrixGrid</code> no cambia: sin <code>context</code> no hay <code>market</code>, así que Market entero pinta <code>MarketSkeleton</code> (pills + card + 5 filas) — P2 del plan F1.». D7: si <code>setOptions</code> no existió en la versión instalada, marcarlo <strong>(F1)</strong>. Cabecera <strong>Estado</strong>: «F1 ejecutada (plan <code>2026-09-21-mobile-loading-f1.md</code>, audit <code>2026-09-21-mobile-loading-f1-rulings.md</code>); rama <code>feat/mobile-loading</code> lista para merge local.»</label></li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Overview</strong> — phase-card <code>data-phase=&quot;1&quot;</code> → <code>data-status=&quot;completed&quot;</code> + <code>&lt;option value=&quot;completed&quot; selected&gt;</code>; <code>&lt;details class=&quot;tasks&quot;&gt;</code> con las 8 tasks de este plan (<code>checked</code> las ejecutadas; Task 7 y las capturas no conseguidas se anotan sin marcar si faltaron); sección Decisiones: añadir <code>&lt;h3 class=&quot;section-sub&quot;&gt;Rulings en ejecución&lt;/h3&gt;&lt;ol&gt;…&lt;/ol&gt;</code> con los rulings del ledger SDD (uno por <code>&lt;li&gt;</code>, con «coste si está mal»). Manifest: <code>phases: [{ num: 1, status: &#39;completed&#39; }]</code>. <code>npm run docs:html</code>; render-check y <strong>mirar</strong> la captura de 390 px.</label></li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Audit</strong> — <code>docs/superpowers/audits/2026-09-21-mobile-loading-f1-rulings.md</code> con: §1 qué quedó hecho (commits <code>git log --oneline 4be010c..HEAD</code>, <code>git diff --stat</code>), §2 evidencia (tests 31/240, tsc, tabla de capturas de Task 7 con <code>![…](img/2026-09-21-mobile-loading-….png)</code> de las cinco), §3 rulings (P1–P10 de este plan + los del ledger), §4 correcciones a afirmaciones previas (spec D3/D7; lo que no se capturó), §5 estado de las cuentas al cierre (AUSD/MON iguales; cuenta #620 sin tocar), §6 pendientes/residuales (p. ej. <code>COULDN&#39;T REFRESH</code> sin captura; aire bajo el sello; Android sin verificar).</label></li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 4: README</strong> — en <code>apps/mobile/README.md</code>: sección nueva «Carga y splash» de 4 líneas: regla <code>null</code> = skeleton (D2), sello <code>UPDATED</code> por pantalla, <code>expo-splash-screen</code> con <code>assets/splash-mark.png</code> regenerable con <code>python3 scripts/splash-mark.py assets/icon.png assets/splash-mark.png</code> (requiere PIL), y que <code>prebuild --clean</code> regenera el storyboard. Conteo de tests real (31 suites / 240).</label></li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 5: Checks y commit</strong></label></li>
+</ul>
+<pre><code class="language-bash">cd /Users/josedejesusacevedoflores/Documents/predict/.claude/worktrees/mobile-loading
+npm run docs:html &amp;&amp; npm run docs:check &amp;&amp; npm run agents:check
+cd apps/mobile &amp;&amp; npm test 2&gt;&amp;1 | tail -4 &amp;&amp; npx tsc --noEmit &amp;&amp; echo TSC-OK &amp;&amp; cd ../..
+git status --short
+git add docs/superpowers/specs/2026-09-21-mobile-loading-design.md docs/superpowers/specs/2026-09-21-mobile-loading-design.html docs/superpowers/plans/2026-09-21-mobile-loading-f1.md docs/superpowers/plans/2026-09-21-mobile-loading-f1.html docs/overview/2026-09-21-mobile-loading.html docs/overview/data/manifest.js docs/superpowers/audits/2026-09-21-mobile-loading-f1-rulings.md docs/superpowers/audits/img/2026-09-21-mobile-loading-skeleton-wallet.png docs/superpowers/audits/img/2026-09-21-mobile-loading-skeleton-markets.png docs/superpowers/audits/img/2026-09-21-mobile-loading-skeleton-ask.png docs/superpowers/audits/img/2026-09-21-mobile-loading-updated.png docs/superpowers/audits/img/2026-09-21-mobile-loading-splash.png apps/mobile/README.md
+git commit -m &quot;docs(mobile-loading): F1 completed — spec (F1), overview, audit con capturas, README&quot; -m &quot;Co-Authored-By: &lt;modelo&gt; &lt;noreply@anthropic.com&gt;&quot; -m &quot;Claude-Session: &lt;url&gt;&quot;</code></pre>
+<p>Expected: <code>docs:check</code> errors=0; <code>agents:check</code> <code>&quot;errors&quot;: []</code>; 31 / 240; <code>TSC-OK</code>; árbol limpio. (Si alguna captura de Task 7 no existió, quitarla del <code>git add</code> y del audit.) Handoff: rama lista para merge local (decisión de Jesús); siguiente: build 7 de TestFlight cuando Jesús lo pida, y el plan F3 de Ask.</p>
+<hr>
+<h2 id="self-review-del-plan-hecho-al-escribirlo">Self-review del plan (hecho al escribirlo)</h2>
+<ul>
+<li><strong>Cobertura del spec</strong>: D1 → Task 2; D2 → Task 3 (<code>reads</code> nullable) + regla en Tasks 3–4; D3 → Tasks 3–4 (con P2 para la matriz); D4 → Task 2 (<code>Reveal</code>) usado en 3–4; D5 → Tasks 1 + 5; D6 → Task 6 (plugin + asset); D7 → Task 6 (<code>App.tsx</code>); D8 → Task 1 (tests), 7 (capturas), 8 (docs). Sin gaps.</li>
+<li><strong>Placeholders</strong>: <code>&lt;modelo&gt;</code>, <code>&lt;url&gt;</code>, <code>&lt;worktree&gt;</code>, <code>&lt;repo&gt;</code> los rellena el ejecutor; la versión de <code>expo-splash-screen</code> la fija <code>expo install</code> (Step 1 de Task 6). Ningún «TBD».</li>
+<li><strong>Consistencia de tipos</strong>: <code>Skeleton</code> acepta <code>w: number | \</code>${number}%\`<code>, </code>h<code>, </code>r<code>, </code>style<code>; </code>Skeleton.Card({ lines, big })<code>, </code>Skeleton.Row()<code>, </code>Skeleton.Line({ s, w })<code> iguales en Tasks 2–4; </code>refreshOk(screen, RefreshErrors)<code> y </code>screenHasData(screen, { balances, context })<code> iguales en Tasks 1 y 5; </code>reads.reads: Read[] | null<code> en Task 3 con </code>?? []<code> en los tres usos de </code>ask.tsx`.</li>
+<li><strong>Trampa conocida</strong>: en la fila de pills de <code>MarketSkeleton</code> cada <code>Skeleton</code> lleva <code>w=&quot;30%&quot;</code> además de <code>flex: 1</code>, para que el ancho no lo dispute el <code>100%</code> por defecto.</li>
+</ul>
+  </div>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <p>HTML autogenerado · NO edites este archivo. Modifica el <code>.md</code> y re-genera con:</p>
+    <pre><code class="language-sql">node scripts/mobile/docs-md-to-html.mjs docs/mobile/superpowers/plans/2026-09-21-mobile-loading-f1.md</code></pre>
+    <p>Reglas en <code>docs/mobile/AGENTS.md</code> sección "MD → HTML autogenerado".</p>
+  </div>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // Persistencia de los checkboxes de task lists (pickler-md:<slug>:tasks)
+  const SLUG = '2026-09-21-mobile-loading-f1';
+  const KEY = `pickler-md:${SLUG}:tasks`;
+  const checks = [...document.querySelectorAll('ul.task-list input[type=checkbox]')];
+  function load() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(KEY) || '[]');
+      checks.forEach((c, i) => {
+        if (typeof saved[i] === 'boolean') {
+          c.checked = saved[i];
+          c.closest('li').classList.toggle('done', c.checked);
+        }
+      });
+    } catch {}
+  }
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(checks.map(c => c.checked))); } catch {}
+  }
+  checks.forEach(c => {
+    c.closest('li').classList.toggle('done', c.checked);
+    c.addEventListener('change', () => {
+      c.closest('li').classList.toggle('done', c.checked);
+      save();
+    });
+  });
+  load();
+
+  // Botón "Copy progress as MD"
+  const $copy = document.getElementById('btn-copy-progress');
+  const $toast = document.getElementById('toast');
+  function showToast(msg) {
+    $toast.textContent = msg;
+    $toast.dataset.show = 'true';
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(() => { $toast.dataset.show = 'false'; }, 2200);
+  }
+  if ($copy) {
+    $copy.addEventListener('click', async (e) => {
+      const lines = ['# ' + document.title.split(' · ')[0] + ' — task progress', ''];
+      lines.push('_Capturado en ' + new Date().toISOString() + '_', '');
+      checks.forEach(c => {
+        const text = c.closest('label').textContent.trim();
+        lines.push('- [' + (c.checked ? 'x' : ' ') + '] ' + text);
+      });
+      try {
+        await navigator.clipboard.writeText(lines.join('\n'));
+        e.currentTarget.dataset.copied = 'true';
+        const prev = e.currentTarget.textContent;
+        e.currentTarget.textContent = '✓ Copiado';
+        showToast('Progress copiado — pégalo en el plan MD');
+        setTimeout(() => {
+          e.currentTarget.dataset.copied = 'false';
+          e.currentTarget.textContent = prev;
+        }, 1800);
+      } catch {
+        showToast('Clipboard no disponible');
+      }
+    });
+  }
+</script>
+</body>
+</html>

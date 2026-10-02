@@ -13,9 +13,10 @@ ADMISSIONS_ENABLED=true
 TURNKEY_API_PUBLIC_KEY=
 TURNKEY_API_PRIVATE_KEY=
 TURNKEY_PARENT_ORG_ID=
-# The WebAuthn relying party. `localhost` here; `studio.pickler.fun` in every deployed
+# The WebAuthn relying party. `localhost` here; `app.pickler.fun` in every deployed
 # environment, and it is a one-way door: changing it orphans every passkey already enrolled.
-# See docs/specs/product-hosts-v1.md §3.
+# Never `pickler.fun`: that is Mera's relying party, and the API turns custody off on it, as it
+# does on `localhost` outside local development. See docs/specs/mobile-monorepo-v1.md W1-W2, W8.
 TURNKEY_RPID=localhost
 TURNKEY_APP_NAME=Pickler
 # Pickler's delegated API key pair: the only credential of the non-root user a person creates in
