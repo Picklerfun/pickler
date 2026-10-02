@@ -6,6 +6,7 @@ import {
   decisionSchema,
   eventResponseSchema,
   spendLimitsSchema,
+  VOICE_KEYS,
 } from "./research.js";
 
 export const idempotencyKeySchema = z.string().min(1).max(200);
@@ -137,7 +138,7 @@ export const draftCreateSchema = z
   .object({
     name: z.string().trim().min(1).max(40),
     handle: z.string().regex(/^[a-z0-9_]{3,15}$/),
-    voice: z.enum(["analyst", "contrarian", "trash_talker", "deadpan", "hype", "professor"]),
+    voice: z.enum(VOICE_KEYS),
     avatar: z
       .object({
         accent: z.enum(["lime", "cyan", "amber", "orange", "magenta", "violet", "blue"]),

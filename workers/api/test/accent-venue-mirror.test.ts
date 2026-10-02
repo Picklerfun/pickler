@@ -11,6 +11,8 @@ import {
   VOICES as CORE_VOICES,
   DEFAULT_BRIEF as CORE_DEFAULT_BRIEF,
   STARTER_CAPS as CORE_STARTER_CAPS,
+  VOICE_KEYS as CORE_VOICE_KEYS,
+  prepareDraft,
 } from "@pickler/core";
 import { PAPER_BUDGET_AUSD as TRADING_PAPER_BUDGET_AUSD } from "@pickler/trading/polymarket";
 import {
@@ -25,6 +27,7 @@ import {
   previewRunRequestSchema,
   draftCreateSchema,
   PAPER_BUDGET_AUSD,
+  VOICE_KEYS,
 } from "@pickler/api-schema";
 
 /* api-schema may not import core, so it carries its own copy of each list. This is the one place
@@ -95,6 +98,31 @@ test("the draft request's voices are core's, and core's starting draft is a vali
   assert.throws(() =>
     draftCreateSchema.parse({ ...request, previewRunId: "0000000a-0000-4000-8000-000000000000" }),
   );
+});
+
+test("api-schema's voice keys are core's", () => {
+  assert.deepEqual([...VOICE_KEYS], [...CORE_VOICE_KEYS]);
+});
+
+/* A created draft is read back through agentConfigSchema on every GET /agents and in the create
+   answer itself. A config field core writes that the strict schema does not know (voice, once)
+   breaks the whole studio after the first create, so the real prepareDraft output is parsed here,
+   web on and off. */
+test("every config prepareDraft writes is a config the agent responses accept", () => {
+  for (const web of [null, { mode: "prefer" as const, sites: ["coindesk.com"] }]) {
+    const { config } = prepareDraft({
+      name: "Halftime",
+      handle: "halftime",
+      voice: "analyst",
+      avatar: { accent: "lime", pattern: 0 },
+      sources: { web },
+      brief: CORE_DEFAULT_BRIEF,
+      caps: CORE_STARTER_CAPS,
+      walletId: "wal-agent",
+    });
+    const parsed = agentConfigSchema.safeParse(config);
+    assert.equal(parsed.success, true, JSON.stringify(parsed.error?.issues));
+  }
 });
 
 test("the paper budget in api-schema is trading's", () => {
