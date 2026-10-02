@@ -454,8 +454,9 @@ export function formatUnits(units: bigint | null, token: Token): string {
   return fraction ? `${whole}.${fraction}` : whole.toString();
 }
 
+/** "0x7a3f…91c2": enough of an address or hash to recognise, not to copy. Short input stays whole. */
 export const shortAddress = (address: string): string =>
-  `${address.slice(0, 6)}…${address.slice(-4)}`;
+  address.length > 12 ? `${address.slice(0, 6)}…${address.slice(-4)}` : address;
 
 export const patternCells = (index: number): boolean[] =>
   (AVATAR_PATTERNS[index] ?? AVATAR_PATTERNS[0]).split("").map((cell) => cell === "1");

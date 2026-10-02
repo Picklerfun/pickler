@@ -101,7 +101,3 @@ export function traceLines(events: readonly RunEvent[], base: number): TraceLine
       return { id: event.id, text, meta: `${seconds.toFixed(1)}s`, tint };
     });
 }
-
-/** "0x7a3f…91c2": enough of an address to recognise, not to copy. */
-export const shortAddress = (address: string): string =>
-  address.length > 12 ? `${address.slice(0, 6)}…${address.slice(-4)}` : address;

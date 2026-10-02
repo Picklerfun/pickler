@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { RunEvent } from "../src/features/studio/api";
-import { shortAddress, traceLines } from "../src/features/studio/home/trace";
+import { traceLines } from "../src/features/studio/home/trace";
 
 /* A run's trace in words, as the studio home's status line and Activity read it. */
 
@@ -45,8 +45,4 @@ test("the brief line says which entries fired and how many held", () => {
       ["Entry 1 fired", "blue"],
     ],
   );
-});
-
-test("an address is shortened to its ends", () => {
-  assert.equal(shortAddress("0x7a3f00000000000000000000000000000091c2"), "0x7a3f…91c2");
 });

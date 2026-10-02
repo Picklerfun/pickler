@@ -155,6 +155,7 @@ test("the transfer sheet names the amount, the agent and both sides", () => {
 
 test("an address is shortened to its first six and last four", () => {
   assert.equal(shortAddress("0x91be00000000000000000000000000000000a07"), "0x91be…0a07");
+  assert.equal(shortAddress("0x1234"), "0x1234");
 });
 
 test("an agent wallet is CREATING until an agent has it, then DRAFT", () => {
