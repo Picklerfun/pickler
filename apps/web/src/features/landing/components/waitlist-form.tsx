@@ -17,7 +17,8 @@ type Status =
 /**
  * The page's one ask.
  *
- * The count under it is the snapshot's `waitlistCount` before joining and the API's own `position`
+ * The count under it is the snapshot's `waitlistCount` (the waitlist's real count, or null and
+ * nothing shown when the API could not read it) before joining and the API's own `position`
  * after — not the count plus one. The canvas shows 1,204 becoming 1,205, which assumes nobody else
  * joined in between and that a placement can be worked out on the client; the endpoint answers with
  * the real one, including when the address was already in line.
@@ -117,7 +118,9 @@ export function WaitlistForm() {
           ? status.continuing
             ? `YOU ARE ${formatInteger(status.position)} IN LINE · OPENING YOUR APPLICATION…`
             : `ALREADY IN LINE AT ${formatInteger(status.position)} · FINISH FROM THE BROWSER YOU SIGNED UP WITH`
-          : `${formatInteger(waitlistCount)} CREATORS IN LINE`}
+          : waitlistCount === null
+            ? ""
+            : `${formatInteger(waitlistCount)} ${waitlistCount === 1 ? "CREATOR" : "CREATORS"} IN LINE`}
       </p>
     </section>
   );
