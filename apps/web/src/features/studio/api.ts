@@ -9,10 +9,19 @@ import type {
   marketCatalogSchema,
   paperOrderSchema,
   studioAgentSchema,
+  ActivityDto,
   DraftCreateDto,
+  IdentityUpdateDto,
+  LedgerDto,
+  PublishDto,
+  SetupUpdateDto,
   SignedActivityDto,
   TransferRequestDto,
   WalletsDto,
+  XChallengeDto,
+  XChallengeRequestDto,
+  XStateDto,
+  XVerifyDto,
 } from "@pickler/api-schema";
 import { knownMessage, messageFor } from "./lib/messages";
 export type Config = ReturnType<typeof agentConfigSchema.parse>;
@@ -30,6 +39,11 @@ export type Options = ReturnType<typeof studioOptionsSchema.parse>;
 export type PaperOrder = ReturnType<typeof paperOrderSchema.parse>;
 export type { SignedActivityDto };
 export type StudioWallets = WalletsDto;
+export type ActivityEvent = ActivityDto["events"][number];
+export type LedgerEntry = LedgerDto["entries"][number];
+export type XState = XStateDto;
+export type XChallenge = XChallengeDto;
+export type XVerify = XVerifyDto;
 
 /**
  * The studio transport answers a failure with `{ error: CODE }`. The code is what the Studio
@@ -133,6 +147,61 @@ export const setSchedule = (agentId: string, enabled: boolean) =>
     method: "PUT",
     body: JSON.stringify({ enabled }),
   });
+
+// ─── The draft's studio (studio-draft-dashboard-v1 §4) ──────────────────────────────────────────
+
+/**
+ * `PUT /agents/:id/setup`: a draft's brief, sources, caps and voice, at `expectedVersion`. Answers
+ * the studio agent. 400 INVALID_BRIEF (with `field`, `reason`) / INVALID_INPUT; 409 CONFLICT (the
+ * config moved on: reload), NOT_A_DRAFT.
+ */
+export const saveDraftSetup = (agentId: string, body: SetupUpdateDto) =>
+  studioApi<Agent>(`/agents/${agentId}/setup`, { method: "PUT", body: JSON.stringify(body) });
+
+/** `PUT /agents/:id/identity`: name and avatar; the handle is fixed. 400 INVALID_INPUT. */
+export const saveIdentity = (agentId: string, body: IdentityUpdateDto) =>
+  studioApi<Agent>(`/agents/${agentId}/identity`, { method: "PUT", body: JSON.stringify(body) });
+
+/** `GET /agents/:id/activity`: created, its wallet, each transfer; newest first, at most 50. */
+export const agentActivity = (agentId: string, signal?: AbortSignal) =>
+  studioApi<ActivityDto>(`/agents/${agentId}/activity`, signal ? { signal } : {});
+
+/** `GET /agents/:id/x`: the verified account, the live challenge, and whether X is open yet. */
+export const xState = (agentId: string, signal?: AbortSignal) =>
+  studioApi<XState>(`/agents/${agentId}/x`, signal ? { signal } : {});
+
+/**
+ * `POST /agents/:id/x/challenge`: the line to post from `handle` ("@" optional). 400
+ * INVALID_X_HANDLE; 409 X_HANDLE_TAKEN, X_ALREADY_CONNECTED; 503 X_UNAVAILABLE.
+ */
+export const xChallenge = (agentId: string, handle: string) =>
+  studioApi<XChallenge>(`/agents/${agentId}/x/challenge`, {
+    method: "POST",
+    body: JSON.stringify({ handle } satisfies XChallengeRequestDto),
+  });
+
+/**
+ * `POST /agents/:id/x/verify` ("Check again"). 404 CHALLENGE_NOT_FOUND; 409 CHALLENGE_EXPIRED,
+ * X_HANDLE_TAKEN; 429 TOO_MANY_CHECKS (one per 10 s); 503 X_UNAVAILABLE.
+ */
+export const xVerify = (agentId: string) =>
+  studioApi<XVerify>(`/agents/${agentId}/x/verify`, { method: "POST", body: "{}" });
+
+/** `DELETE /agents/:id/x`: while private only; 409 X_ON_PUBLIC_AGENT. */
+export const xDisconnect = (agentId: string) =>
+  studioApi<{ disconnected: true }>(`/agents/${agentId}/x`, { method: "DELETE" });
+
+/**
+ * `POST /agents/:id/publish`: Go Public; idempotent. 409 PUBLISH_BLOCKED with
+ * `details.detail.blockers` (WALLET, FUNDS, KILLED), PUBLISH_CONFLICT (try again); 503
+ * BALANCES_UNAVAILABLE.
+ */
+export const publishAgent = (agentId: string) =>
+  studioApi<PublishDto>(`/agents/${agentId}/publish`, { method: "POST", body: "{}" });
+
+/** `GET /wallets/ledger`: the person's transfers, newest first, at most 100. */
+export const walletLedger = (signal?: AbortSignal) =>
+  studioApi<LedgerDto>("/wallets/ledger", signal ? { signal } : {});
 
 interface DepositPrepared {
   url: string;

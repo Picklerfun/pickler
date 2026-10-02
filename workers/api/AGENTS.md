@@ -292,6 +292,35 @@ transaction mismatch" and answers 500 `SIGNED_TX_MISMATCH`, its own code because
 broadcast. The
 deposit routes keep theirs.
 
+The draft's studio (docs/specs/studio-draft-dashboard-v1.md §4), all in `src/routes/studio.ts`
+except the ledger. The studio agent DTO carries `visibility`, `publishedAt` (ISO or null) and
+`xHandle` (the verified handle without "@", or null), from `directory.list`.
+
+- `PUT /agents/:id/setup { expectedVersion, brief?, sources?, caps?, voice? }` (manage rights):
+  drafts only (409 `NOT_A_DRAFT`), core's `reviseDraft`, then `repository.updateConfig`, whose
+  stale version is 409 `CONFLICT` (the same code `PUT /config` answers). With `caps` it passes
+  `writeSpend`, so the new per-trade and per-day caps land in `spend` in the same transaction;
+  another owner's agent is 404 `NOT_FOUND`. A voice also renames the profile's voice through
+  `directory.updateIdentity`. Answers the studio agent; 400 `INVALID_BRIEF` / `INVALID_INPUT`.
+- `PUT /agents/:id/identity { name?, avatar?: { accent, pattern 0–5 } }`: the studio agent; 400
+  `INVALID_INPUT`. `GET /agents/:id/activity` answers `{ events }` (ISO `at`).
+- Connect X, composed as `services.studio.x` (`PostgresXStore`, `createXClient` on
+  `X_BEARER_TOKEN`). The store checks no ownership, so every X route calls `agentScope` first.
+  `GET /agents/:id/x` answers `{ account, challenge, available }` (a lapsed challenge is null).
+  `POST /x/challenge { handle }`: 400 `INVALID_X_HANDLE`, 409 `X_ALREADY_CONNECTED`,
+  `X_HANDLE_TAKEN`, 503 `X_UNAVAILABLE` (no token; checked before anything is saved).
+  `POST /x/verify`: 404 `CHALLENGE_NOT_FOUND`, 409 `CHALLENGE_EXPIRED`, 503 `X_UNAVAILABLE`, then
+  `XStore.claimCheck` (one atomic UPDATE; 429 `TOO_MANY_CHECKS` within 10 s) before X is read; a
+  match connects (409 `X_HANDLE_TAKEN` if another agent won it). `DELETE /x`: 409
+  `X_ON_PUBLIC_AGENT`. X's failures are 503 `X_UNAVAILABLE` without X's body.
+- `POST /agents/:id/publish {}`: `directory.publish` with a check that reads the linked wallet's
+  AUSD through `balances.read` outside any transaction; 409 `PUBLISH_BLOCKED` with
+  `detail.blockers` (`KILLED`, `WALLET`, `FUNDS`), 409 `PUBLISH_CONFLICT` (the agent changed twice
+  during the check), 503 `BALANCES_UNAVAILABLE`. Idempotent on a public agent.
+- `GET /wallets/ledger` (`studio-wallets.ts`, `services.studio.transfers` over `listTransfers`):
+  the caller's own transfers, newest first, at most 100; 503 `WALLETS_UNAVAILABLE` where not
+  composed.
+
 `PUT /agents/:id/limits { perCallAusd, perDayAusd }` writes only `config.spend` through
 `repository.updateSpend`. It takes no version and keeps the version, the schedule and readiness,
 because the deposit sheet sets limits right before the schedule is turned on and limits do not

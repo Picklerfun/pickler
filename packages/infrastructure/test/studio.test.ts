@@ -200,7 +200,7 @@ test("global lab connection validation never enables a managed agent's schedule"
   await assert.rejects(store.schedule(scope, true, Date.now()), { code: "NOT_READY" });
 });
 
-test("the agent list carries each agent's accent, and lime for an agent without a profile", async (t) => {
+test("the agent list carries each agent's accent and pattern, lime and 0 without a profile", async (t) => {
   const { store, directory, userId, access, draft } = await setup(t);
   await store.pool.query("UPDATE pickler.research_access SET enabled=true WHERE user_id=$1", [
     userId,
@@ -214,5 +214,7 @@ test("the agent list carries each agent's accent, and lime for an agent without 
 
   await store.pool.query("DELETE FROM agents.agent_profiles WHERE agent_id = $1", [agentId]);
 
-  assert.equal((await directory.list(access))[0]!.accent, "lime");
+  const bare = (await directory.list(access))[0]!;
+  assert.equal(bare.accent, "lime");
+  assert.equal(bare.avatarPattern, 0);
 });

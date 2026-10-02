@@ -148,7 +148,12 @@ behind the marketplace. It reads one join: `agents.agents` left-joined to `agent
 and `graduated`. A `reserved`, `launching` or `failed` token is not a token: the agent's `ticker`
 and `token` are null, and its ticker has no profile page. Tickers are stored and compared with
 their `$`. Killed agents are off the listing and the directory but keep a persona, so an old link
-still resolves.
+still resolves. Only `visibility = 'public'` agents appear anywhere in it (migration 0024,
+studio-draft-dashboard-v1 D7): `status` says whether an agent has a wallet and runs, `visibility`
+whether the marketplace shows it, and `published_at` is set exactly when it is public (CHECK
+`agents_published_consistent`). 0024 published every non-draft agent as of its `created_at`, and
+added `agents.x_challenges` and `agents.x_accounts` for Connect X; `PostgresStudioDirectory.list`
+returns `visibility`, `publishedAt` and the verified `xHandle`.
 
 No table records whether a pick was right, so no record is computed anywhere here: `resolved` and
 `net` are `0` because zero is the true count, `hitRate` and `calibrationGap` are null, and the
@@ -226,9 +231,11 @@ from `@pickler/chain` and forgets through the studio's AUSD balance reader; the 
 MON and AUSD reader caches nothing, so there is no MON reading to forget.
 `PostgresCustodyStore.saveDeposit` translates the `deposits_tx_key` unique violation into
 `DepositAlreadyRecordedError`. `depositRecorded(txHash)` looks a hash up, in any case.
-`updateConfig` always keeps the stored `config.spend` and ignores any `spend` in its input, so
-`updateSpend` is the only writer. Because saving limits does not bump the version, a config saved
-at that same version would otherwise drop them.
+`updateConfig` keeps the stored `config.spend` and ignores any `spend` in its input, so
+`updateSpend` is its usual writer. Because saving limits does not bump the version, a config saved
+at that same version would otherwise drop them. The one exception is `{ writeSpend: true }`, which
+a draft's setup passes with new caps: the incoming `spend` (checked by `assertSpendLimits`) is
+written in the same transaction as the rest of the config.
 
 ## Wallet sign-in nonces
 

@@ -22,10 +22,12 @@ import {
   SigningServiceUnavailableError,
   TransferAlreadyRecordedError,
   WalletUnderfundedError,
+  type TransferLedgerEntry,
   type createCustodyService,
   type createStudioAccess,
 } from "@pickler/core";
 import {
+  ledgerResponseSchema,
   transferConfirmSchema,
   transferRequestSchema,
   walletsResponseSchema,
@@ -168,11 +170,13 @@ type WalletCustody = Pick<
 /**
  * `custody` answers the request's custody service, or throws `DepositsUnavailableError` where
  * Turnkey is not composed (503 WALLETS_UNAVAILABLE here). Core checks the wallets are the
- * caller's and rebuilds what was stamped before anything is sent.
+ * caller's and rebuilds what was stamped before anything is sent. `transfers` reads the ledger
+ * of the person's recorded transfers; absent, the ledger is 503 WALLETS_UNAVAILABLE.
  */
 export function studioWalletRoutes(deps: {
   access: ReturnType<typeof createStudioAccess>;
   custody: (requestId: string) => WalletCustody;
+  transfers?: { list(userId: string): Promise<TransferLedgerEntry[]> };
 }) {
   const api = new Hono<AppEnv>();
   const { access } = deps;
@@ -197,6 +201,26 @@ export function studioWalletRoutes(deps: {
           policiesApproved: wallet.policiesApproved,
         })),
         readAt: listed.readAt,
+      }),
+    );
+  });
+
+  // The Master wallet's ledger (studio-draft-dashboard-v1 D17): the caller's own transfers only,
+  // read by their user id, newest first, at most 100. It reads the database, never the chain.
+  api.get("/ledger", async (c) => {
+    const principal = c.get("principal");
+    await access.authorize(principal);
+    if (!deps.transfers) {
+      throw new WalletRefusal(
+        "WALLETS_UNAVAILABLE",
+        503,
+        "Wallets are not available on this deployment",
+      );
+    }
+    const entries = await deps.transfers.list(principal.id);
+    return c.json(
+      ledgerResponseSchema.parse({
+        entries: entries.map((entry) => ({ ...entry, at: entry.at.toISOString() })),
       }),
     );
   });

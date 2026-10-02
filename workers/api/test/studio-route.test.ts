@@ -137,7 +137,10 @@ test("invalid shared-schema input returns 400 and cannot set tenant authority", 
   const { app, calls } = fixture();
   const invalid = await app.request("/agents/agent/runs", request({ tenantId: "victim" }));
   assert.equal(invalid.status, 400);
-  assert.deepEqual(await invalid.json(), { error: "INVALID_INPUT" });
+  assert.deepEqual(await invalid.json(), {
+    error: "INVALID_INPUT",
+    message: "The request is not valid",
+  });
   assert.equal(calls(), 0);
   const valid = await app.request("/agents/agent/runs", request({}));
   assert.equal(valid.status, 202);

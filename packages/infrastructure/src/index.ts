@@ -62,6 +62,8 @@ export {
   type PreviewExecutionRepository,
 } from "./persistence/preview-store.js";
 export { PostgresStudioDirectory } from "./studio/directory.js";
+export { PostgresXStore } from "./studio/x-store.js";
+export { listTransfers, tokenAmount } from "./studio/ledger.js";
 export { PostgresProfileRepository } from "./persistence/profile-repository.js";
 export {
   PostgresApiKeyDirectory,
@@ -210,3 +212,4 @@ export {
 export { pause as pausePerplRead } from "./perpl/transport.js";
 
 export { normalizePerplBook, normalizePerplTicker } from "./perpl/data.js";
+export { createXClient, XUnavailableError, type XClient, type XUser } from "./x/x-client.js";

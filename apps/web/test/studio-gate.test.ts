@@ -152,10 +152,10 @@ test("the web's draft limit is core's", async () => {
   assert.equal(MAX_DRAFTS, core.MAX_DRAFTS_PER_WORKSPACE);
 });
 
-test("the staged draft home models the lock the API gives a lone draft: open", async () => {
+test("the staged draft studio models the lock the API gives a lone draft: open", async () => {
   // One draft, funded at create: nothing is unfunded and the drafts are below their limit.
-  const { draftFixture } = await import("../src/features/studio/home/fixture");
-  const staged = draftFixture().agent;
+  const { draftStudioFixture } = await import("../src/features/studio/draft/fixture");
+  const staged = draftStudioFixture("draft").agent;
 
   assert.equal(staged.draft, true);
   assert.deepEqual(staged.canCreateAnother, { ok: true, reason: null });

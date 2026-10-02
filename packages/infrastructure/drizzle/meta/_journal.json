@@ -169,6 +169,13 @@
       "when": 1790889942282,
       "tag": "0023_agent_wallet_transfers_and_avatar",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1790944573701,
+      "tag": "0024_go_public",
+      "breakpoints": true
     }
   ]
 }

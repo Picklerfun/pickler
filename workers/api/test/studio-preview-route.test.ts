@@ -135,6 +135,7 @@ test("a brief without an entry rule is 400 INVALID_BRIEF naming the section", as
   assert.equal(response.status, 400);
   assert.deepEqual(await response.json(), {
     error: "INVALID_BRIEF",
+    message: "Brief entersWhen: required",
     field: "entersWhen",
     reason: "required",
   });
@@ -150,6 +151,7 @@ test("a line too long is 400 INVALID_BRIEF too_long", async () => {
   assert.equal(response.status, 400);
   assert.deepEqual(await response.json(), {
     error: "INVALID_BRIEF",
+    message: "Brief never: too_long",
     field: "never",
     reason: "too_long",
   });
@@ -162,14 +164,20 @@ test("a day's cap below one trade's is 400 INVALID_INPUT", async () => {
     post({ ...body, spend: { perCallAusd: 25, perDayAusd: 20 } }),
   );
   assert.equal(response.status, 400);
-  assert.deepEqual(await response.json(), { error: "INVALID_INPUT" });
+  assert.deepEqual(await response.json(), {
+    error: "INVALID_INPUT",
+    message: "A day's spend cannot be below one call's",
+  });
 });
 
 test("without research access it is 403 RESEARCH_ACCESS_DENIED", async () => {
   const f = app({ enabled: false });
   const response = await f.root.request("/preview-runs", post(body));
   assert.equal(response.status, 403);
-  assert.deepEqual(await response.json(), { error: "RESEARCH_ACCESS_DENIED" });
+  assert.deepEqual(await response.json(), {
+    error: "RESEARCH_ACCESS_DENIED",
+    message: "Research requires an enabled workspace owner",
+  });
 });
 
 test("past the hourly limit it is 429 with the time the next one is allowed", async () => {
@@ -184,6 +192,7 @@ test("past the hourly limit it is 429 with the time the next one is allowed", as
   assert.equal(response.status, 429);
   assert.deepEqual(await response.json(), {
     error: "PREVIEW_RATE_LIMITED",
+    message: "Five paper runs an hour; the next one opens later",
     retryAt: 1_790_000_000_000,
   });
 });
@@ -192,7 +201,10 @@ test("paused admissions refuse new paper runs like new research", async () => {
   const f = app({ admissions: false });
   const response = await f.root.request("/preview-runs", post(body));
   assert.equal(response.status, 409);
-  assert.deepEqual(await response.json(), { error: "ADMISSIONS_PAUSED" });
+  assert.deepEqual(await response.json(), {
+    error: "ADMISSIONS_PAUSED",
+    message: "New research is paused",
+  });
 });
 
 test("the owner reads the run and its trace in a run's event shape", async () => {

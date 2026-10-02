@@ -408,7 +408,18 @@ export interface ResearchObserver {
 export interface ResearchRepository {
   agents(tenantId: string): Promise<AgentRecord[]>;
   agent(scope: Scope): Promise<AgentRecord>;
-  updateConfig(scope: Scope, expectedVersion: number, config: AgentConfig): Promise<AgentRecord>;
+  /**
+   * A new configuration version (stale `expectedVersion`: CONFLICT). With `requireDraft`, refused
+   * with NOT_A_DRAFT unless the agent is still a studio draft, checked in the same transaction as
+   * the write, so a concurrent publish cannot slip between them. `config.spend` is ignored (the
+   * stored one is kept) unless `writeSpend` is set, which writes it in the same transaction.
+   */
+  updateConfig(
+    scope: Scope,
+    expectedVersion: number,
+    config: AgentConfig,
+    options?: { requireDraft?: boolean; writeSpend?: boolean },
+  ): Promise<AgentRecord>;
   /**
    * Writes only `config.spend`. Unlike `updateConfig` it keeps the version, the schedule and so
    * readiness: spend limits do not change how the agent researches.

@@ -25,9 +25,6 @@ import type { SectionKey } from "../sections/keys";
 import { CreditsModal } from "../new-agent/credits-modal";
 import { WalletsModal } from "../new-agent/wallets-modal";
 import { AgentCard } from "./agent-card";
-import { DraftWallet } from "./draft-wallet";
-import { GoPublic } from "./go-public";
-import { goPublicSteps } from "./go-public-model";
 import { HomeMenu } from "./menu";
 import { NextUp } from "./next-up";
 import { Picks } from "./picks";
@@ -268,11 +265,6 @@ export function Home({
           <span className={styles.pillDot} data-live={status.working} />
           {status.pill}
         </span>
-        {agent.draft && (
-          <span className={styles.pill} data-tint="amber" id="home-draft-chip">
-            DRAFT · PRIVATE
-          </span>
-        )}
         <span className={styles.spacer} />
         <HomeMenu
           agent={agent}
@@ -316,28 +308,22 @@ export function Home({
       <div className={styles.board}>
         <div className={styles.column}>
           <AgentCard name={name} accent={agent.accent} status={status} />
-          {agent.draft ? (
-            <DraftWallet agent={agent} preview={preview !== null} onWallets={openWallets} />
-          ) : (
-            <>
-              <WalletCard
-                agent={agent}
-                preview={preview !== null}
-                canManage={canManage}
-                open={depositOpen}
-                onOpen={setDepositOpen}
-                onRefresh={refresh}
-                onPullBack={() => openWallets(false)}
-              />
-              <Schedule
-                agent={agent}
-                now={now}
-                preview={preview !== null}
-                canManage={canManage}
-                onRefresh={refresh}
-              />
-            </>
-          )}
+          <WalletCard
+            agent={agent}
+            preview={preview !== null}
+            canManage={canManage}
+            open={depositOpen}
+            onOpen={setDepositOpen}
+            onRefresh={refresh}
+            onPullBack={() => openWallets(false)}
+          />
+          <Schedule
+            agent={agent}
+            now={now}
+            preview={preview !== null}
+            canManage={canManage}
+            onRefresh={refresh}
+          />
         </div>
         {loaded ? (
           <Picks
@@ -356,18 +342,14 @@ export function Home({
             <p className={styles.empty}>Reading its runs…</p>
           </section>
         )}
-        {agent.draft ? (
-          <GoPublic steps={goPublicSteps(agent)} onFund={() => openWallets(true)} />
-        ) : (
-          <NextUp
-            items={next.items}
-            count={next.count}
-            onDeposit={() => {
-              setDepositOpen(true);
-              document.getElementById("home-wallet")?.scrollIntoView({ block: "center" });
-            }}
-          />
-        )}
+        <NextUp
+          items={next.items}
+          count={next.count}
+          onDeposit={() => {
+            setDepositOpen(true);
+            document.getElementById("home-wallet")?.scrollIntoView({ block: "center" });
+          }}
+        />
       </div>
       <WalletsModal
         open={modal?.kind === "wallets"}

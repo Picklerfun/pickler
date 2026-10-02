@@ -45,6 +45,9 @@ import {
   parseSiweMessage,
   PostgresWalletIdentityStore,
   PostgresTradingStore,
+  PostgresXStore,
+  createXClient,
+  listTransfers,
 } from "@pickler/infrastructure";
 import type { Services } from "./app";
 import type { Env } from "./env";
@@ -370,6 +373,7 @@ const noBalances = {
   read: async (): Promise<number> => {
     throw new PilotError("BALANCES_UNAVAILABLE", "Balances are not available");
   },
+  forget: (): void => {},
 };
 
 /** Request-scoped composition; no research model, provider credentials or lab initialization. */
@@ -446,6 +450,13 @@ export function createServices(env: Env): Services & { close(): Promise<void> } 
       wallets: new PostgresCustodyStore(repository.pool),
       balances: chainId === null ? noBalances : ausdBalances(env, chainId),
       ...(custody ? { custody: custody.custody } : {}),
+      // Without X_BEARER_TOKEN the client is unavailable: Connect X says it is not open yet and
+      // its challenge and verify answer 503 X_UNAVAILABLE (studio-draft-dashboard-v1 D5).
+      x: {
+        store: new PostgresXStore(repository.pool),
+        client: createXClient({ bearerToken: env.X_BEARER_TOKEN || undefined }),
+      },
+      transfers: { list: (userId) => listTransfers(repository.pool, userId) },
       paper: createPaperPlugin(
         new PostgresPaperStore(repository.pool),
         new PolymarketData(),

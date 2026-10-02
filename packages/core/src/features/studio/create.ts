@@ -110,6 +110,27 @@ export interface DraftProfile {
   voice: string;
 }
 
+/** A web source as the config stores it: its own copy, so a caller's arrays are never shared. */
+export function copyWeb(
+  web: { mode: WebMode; sites: readonly string[] } | null,
+): { mode: WebMode; sites: string[] } | null {
+  return web ? { mode: web.mode, sites: [...web.sites] } : null;
+}
+
+/**
+ * What the web source switches on: the perps tools and plugins every draft has, plus the web tools
+ * and Exa when the web is a source. `prepareDraft` and `reviseDraft` both derive these here, so a
+ * draft edited later holds exactly what one created with the same sources would.
+ */
+export function webDerived(
+  web: { mode: WebMode; sites: readonly string[] } | null,
+): Pick<AgentConfig, "tools" | "plugins"> {
+  return {
+    tools: [...PERP_TOOLS, ...(web ? (["searchWeb", "readPage"] as const) : [])],
+    plugins: { version: 1, enabled: ["perpl", "perps-paper", ...(web ? (["exa"] as const) : [])] },
+  };
+}
+
 /**
  * Normalize, check, and build. Brief problems are `BriefError` (400 naming the section); caps,
  * voice, avatar and sources are `PilotError("INVALID_INPUT")`.
@@ -143,15 +164,13 @@ export function prepareDraft(input: CreateDraftInput): {
   const spend = { perCallAusd: input.caps.perTradeAusd, perDayAusd: input.caps.perDayAusd };
   assertSpendLimits(spend);
   assertMaxLeverage(input.caps.maxLeverage);
-  const web = input.sources.web;
   const config: AgentConfig = {
     ...structuredClone(DEFAULT_CONFIG),
     profile: DRAFT_PROFILE,
-    tools: [...PERP_TOOLS, ...(web ? (["searchWeb", "readPage"] as const) : [])],
     perpl: { version: 1, network: "testnet", markets: ["BTC", "ETH"] },
     perpsPaper: { version: 1, policy: "conservative-1x-v1" },
-    plugins: { version: 1, enabled: ["perpl", "perps-paper", ...(web ? (["exa"] as const) : [])] },
-    sources: { web: web ? { mode: web.mode, sites: [...web.sites] } : null, books: [] },
+    ...webDerived(input.sources.web),
+    sources: { web: copyWeb(input.sources.web), books: [] },
     skills: [],
     brief,
     spend,

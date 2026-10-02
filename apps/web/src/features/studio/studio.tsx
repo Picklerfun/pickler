@@ -40,8 +40,11 @@ import type { SectionKey } from "./sections/keys";
 import { RAIL, isPanel, isSoon } from "./sections/rail";
 import { Soon } from "./sections/soon";
 import { Home } from "./home/home";
-import { draftFixture, homeFixture } from "./home/fixture";
-import { isCreateStage, isHomeStage, type StudioStage } from "./home/stage";
+import { homeFixture } from "./home/fixture";
+import { isCreateStage, isDraftStage, isHomeStage, type StudioStage } from "./home/stage";
+import { DraftStudio } from "./draft/draft-studio";
+import { draftStudioFixture } from "./draft/fixture";
+import { DRAFT_SECTIONS, type DraftSectionKey } from "./draft/model";
 import { newAgentFixture } from "./new-agent/fixture";
 import { NewAgent } from "./new-agent/new-agent";
 import { studioLanding } from "./lib/landing";
@@ -119,20 +122,21 @@ export function Studio({
   /** `?agent=<id>`: the agent to open on; the first one when absent or not the person's. */
   openAgent?: string | undefined;
   /** `?stage=`, outside production only: the home at one moment of the canvas's first run, the
-      create screen at one moment (`create-*`), or `empty`, the create screen with nothing staged. */
+      create screen at one moment (`create-*`), the draft studio (`draft*`), or `empty`, the
+      create screen with nothing staged. */
   stage?: StudioStage | undefined;
 }) {
   const router = useRouter();
   const directory = useMarketplaceHref("/agents");
   const leaderboard = useMarketplaceHref("/leaderboard");
   /* Built once, during the first render, so the server's HTML already carries the staged home. */
-  const [staged] = useState(() =>
-    isHomeStage(stage) ? homeFixture(stage) : stage === "draft" ? draftFixture() : null,
-  );
+  const [staged] = useState(() => (isHomeStage(stage) ? homeFixture(stage) : null));
+  const [stagedDraft] = useState(() => (isDraftStage(stage) ? draftStudioFixture(stage) : null));
   const [stagedCreate] = useState(() => (isCreateStage(stage) ? newAgentFixture(stage) : null));
   const [stagedEmpty] = useState(stage === "empty" || isCreateStage(stage));
-  /* Either staged home stands alone: no session is read and nothing is fetched. */
-  const staging = staged !== null || stagedEmpty;
+  /* Every staged screen stands alone: no session is read and nothing is fetched. */
+  const staging = staged !== null || stagedDraft !== null || stagedEmpty;
+  const stagedAgent = staged?.agent ?? stagedDraft?.agent ?? null;
   const [section, setSection] = useState<View>(openSection ?? "home");
   const wide = useSyncExternalStore(subscribeRail, railSnapshot, railOnServer);
   const [access, setAccess] = useState<Access | null>(
@@ -140,8 +144,8 @@ export function Studio({
   );
   /* Whether the agents have been read, so an empty list means "none yet" rather than "not read". */
   const [loaded, setLoaded] = useState(staging);
-  const [agents, setAgents] = useState<Agent[]>(staged ? [staged.agent] : []);
-  const [agentId, setAgentId] = useState<string | null>(staged ? staged.agent.id : null);
+  const [agents, setAgents] = useState<Agent[]>(stagedAgent ? [stagedAgent] : []);
+  const [agentId, setAgentId] = useState<string | null>(stagedAgent?.id ?? null);
   const [catalog, setCatalog] = useState<Catalog | null>(null);
   const [options, setOptions] = useState<Options | null>(null);
   const [runs, setRuns] = useState<Run[]>(staged?.runs ?? []);
@@ -154,6 +158,8 @@ export function Studio({
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [menu, setMenu] = useState<"agent" | "account" | null>(null);
+  /* The signed-in account's handle, for the draft studio's YOU sections. */
+  const [accountHandle, setAccountHandle] = useState<string | null>(null);
   const [preview, setPreview] = useState(staging);
   /* The account's passkeys, read once per visit for the home's second-passkey suggestion. A failed
      read is `failed`, which suggests nothing and never fails the studio. */
@@ -235,6 +241,9 @@ export function Studio({
         const token = data.session.access_token;
         const wallet = await readSubOrganization(() => readWallet(token));
         const account = wallet === null ? null : await ensureProfile(supabase);
+        if (active && account?.kind === "ready") {
+          setAccountHandle(account.profile.handle);
+        }
         const away = redirectFor({
           wallet,
           profile: account?.kind === "ready" ? account.profile : null,
@@ -278,8 +287,10 @@ export function Studio({
 
   /* One cancellable read loop owns both the run list and the selected trace. The home reads its
      own latest run, so the loop only runs while a section is showing. */
+  const isDraft = agent?.draft ?? false;
   useEffect(() => {
-    if (!agentId || preview || section === "home" || section === "new") {
+    /* A draft's studio reads its own data (`draft/use-draft.ts`) and has no runs to follow. */
+    if (!agentId || preview || isDraft || section === "home" || section === "new") {
       return;
     }
     return startPolling(
@@ -307,7 +318,7 @@ export function Studio({
         setError(caught instanceof Error ? caught.message : "Could not refresh research.");
       },
     );
-  }, [agentId, runId, agent?.scheduleEnabled, refresh, preview, section]);
+  }, [agentId, runId, agent?.scheduleEnabled, refresh, preview, section, isDraft]);
 
   /* The home's reads of one agent: its wallet balance and both locks, fresh from the API. */
   const refreshAgent = useCallback(async () => {
@@ -444,6 +455,38 @@ export function Studio({
           setRuns([]);
           setTrace(null);
           setSection("home");
+        }}
+      />
+    );
+  }
+
+  /* A private draft has its own studio (studio-draft-dashboard-v1 D1), whichever section was
+     asked for; publishing reloads the agent, which then opens below as a live one. */
+  if (landing !== "loading" && agent?.draft) {
+    return (
+      <DraftStudio
+        key={agentId}
+        agent={agent}
+        agents={agents}
+        canManage={canManage}
+        newAgentLock={newAgentLock}
+        staged={stagedDraft}
+        preview={preview}
+        initialSection={draftSection(openSection)}
+        accountHandle={stagedDraft?.accountHandle ?? accountHandle}
+        onRefreshAgent={refreshAgent}
+        onPublished={() => setSection("home")}
+        onSwitch={(id) => {
+          setAgentId(id);
+          setRunId(null);
+          setRuns([]);
+          setTrace(null);
+          setError("");
+          setSection("home");
+        }}
+        onNew={() => {
+          setError("");
+          setSection("new");
         }}
       />
     );
@@ -844,4 +887,9 @@ export function Studio({
       </div>
     </main>
   );
+}
+
+/** A `?section=` deep link the draft studio also has (`brief`, `limits`, `skills` …), or none. */
+function draftSection(section: SectionKey | undefined): DraftSectionKey | undefined {
+  return DRAFT_SECTIONS.flatMap((group) => group.items).find((item) => item.key === section)?.key;
 }

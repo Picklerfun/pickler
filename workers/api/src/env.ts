@@ -55,6 +55,12 @@ export interface Env {
   SIWE_DOMAIN?: string;
   /** Non-deliverable domain for synthetic wallet addresses, e.g. "wallet.pickler.fun". */
   WALLET_EMAIL_DOMAIN?: string;
+  /**
+   * Pickler's X app bearer token (app-only, read access), for Connect X's verification reads. A
+   * secret: it never leaves the API. Absent or empty, Connect X says it is not open yet and its
+   * challenge and verify routes answer 503 X_UNAVAILABLE.
+   */
+  X_BEARER_TOKEN?: string;
 }
 
 export interface Variables {
