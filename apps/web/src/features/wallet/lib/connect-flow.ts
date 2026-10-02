@@ -28,6 +28,8 @@ export interface ConnectFlowState {
 
 export type ConnectFlowEvent =
   | { type: "open" }
+  /** Open on the join step: the portfolio's panel offers it to somebody who closed the chooser. */
+  | { type: "open_join" }
   | { type: "working" }
   /** The wallet connected. `hasProfile` is null when nobody could tell, or nobody asked yet. */
   | { type: "connected"; signedIn: boolean; hasProfile: boolean | null }
@@ -69,12 +71,14 @@ const afterSignIn = (hasProfile: boolean | null) =>
 export function connectFlow(state: ConnectFlowState, event: ConnectFlowEvent): ConnectFlowState {
   // A closed chooser only opens. A prompt that was still up when the person closed it answers
   // into nothing: the wallet may well be connected by then, but the dialog does not come back.
-  if (state.step === "closed" && event.type !== "open") {
+  if (state.step === "closed" && event.type !== "open" && event.type !== "open_join") {
     return state;
   }
   switch (event.type) {
     case "open":
       return at("choose");
+    case "open_join":
+      return at("join", true);
     case "back":
       if (state.step === "join") {
         return at("username");
@@ -90,10 +94,9 @@ export function connectFlow(state: ConnectFlowState, event: ConnectFlowEvent): C
       // Only where the question is asked: an account with a username has nothing to join from.
       return state.step === "username" ? at("join", true) : state;
     case "joined":
-      if (!state.joining) {
-        return state;
-      }
-      // The account that was joined may itself have no username yet: then it is asked for now.
+      // Wherever the chooser stands: somebody who pressed Back while the other wallet's prompt
+      // was still up, and then approved it, has joined all the same. The account that was joined
+      // may itself have no username yet, and then it is asked for now.
       return event.hasProfile === false ? at("username") : at("joined");
     case "prompt_closed":
       return at(state.step, state.joining);

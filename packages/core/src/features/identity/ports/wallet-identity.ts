@@ -49,10 +49,14 @@ export interface WalletLinkRepository {
   /** Errors propagate: "no wallets" and "could not read" are different facts. */
   listForUser(userId: string): Promise<WalletLink[]>;
   /**
-   * Every wallet of `fromUserId` becomes a wallet of `toUserId`; answers how many moved. The only
-   * way an address changes account, and core calls it only from `join`.
+   * The one wallet of `fromUserId` becomes a wallet of `toUserId`; answers whether it moved. The
+   * only way an address changes account, and core calls it only from `join`.
+   *
+   * The adapter checks again, in the statement that moves it, what `join` checked a moment
+   * before: `fromUserId` holds exactly one wallet and has no profile, and `toUserId` still holds
+   * a wallet. If any of that stopped being true in between, nothing moves and the answer is false.
    */
-  reassign(fromUserId: string, toUserId: string): Promise<number>;
+  reassignSole(fromUserId: string, toUserId: string): Promise<boolean>;
 }
 
 export interface SignatureVerifier {

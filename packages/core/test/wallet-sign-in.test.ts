@@ -55,12 +55,15 @@ function links(rows: WalletLink[] = []): WalletLinkRepository & { rows: WalletLi
       return { created: true };
     },
     listForUser: async (userId) => rows.filter((r) => r.userId === userId),
-    reassign: async (from, to) => {
-      const moved = rows.filter((r) => r.userId === from);
-      for (const row of moved) {
-        row.userId = to;
+    // What the store's one statement holds: the account given up has exactly one wallet, and
+    // the account kept still has one.
+    reassignSole: async (from, to) => {
+      const moving = rows.filter((r) => r.userId === from);
+      if (moving.length !== 1 || !rows.some((r) => r.userId === to)) {
+        return false;
       }
-      return moved.length;
+      moving[0]!.userId = to;
+      return true;
     },
   };
 }
@@ -101,6 +104,7 @@ function service(over: Partial<Parameters<typeof createWalletSignIn>[0]> = {}) {
       isOwnWalletAccount: async () => true,
     },
     hasProfile: async () => false,
+    hasCustodyAccount: async () => false,
     randomNonce: () => "nonce-1",
     buildMessage: build,
     parseMessage: parse,
@@ -805,4 +809,46 @@ test("adding a wallet to an account still never takes it from another", async ()
   await assert.rejects(signIn.link("kept", proof(NEW_WALLET)), AddressTakenError);
 
   assert.equal(repo.rows.find((row) => row.address === NEW_WALLET)!.userId, "fresh");
+});
+
+test("an account with a custody wallet is never given up", async () => {
+  // A Turnkey sub-organization and its master wallet hang off the user id with nothing to remove
+  // them: deleting the account would strand whatever that wallet holds.
+  const { signIn, repo, calls } = joining({ hasCustodyAccount: async () => true });
+
+  await assert.rejects(
+    signIn.join("fresh", proof()),
+    (caught: unknown) =>
+      caught instanceof AccountNotJoinableError && caught.reason === "has_custody",
+  );
+
+  assert.equal(repo.rows.find((row) => row.address === NEW_WALLET)!.userId, "fresh");
+  assert.deepEqual(calls, []);
+});
+
+test("a join the store refuses at the last moment hands out no session and removes nothing", async () => {
+  // Another request changed the account between the checks and the move.
+  const { signIn, repo, calls } = joining();
+  repo.reassignSole = async () => false;
+
+  await assert.rejects(
+    signIn.join("fresh", proof()),
+    (caught: unknown) => caught instanceof AccountNotJoinableError && caught.reason === "changed",
+  );
+
+  assert.equal(repo.rows.find((row) => row.address === NEW_WALLET)!.userId, "fresh");
+  assert.deepEqual(calls, ["mark kept"]);
+});
+
+test("an account that claimed a username while its wallet moved is not removed", async () => {
+  let asked = 0;
+  const { signIn, calls } = joining({
+    // No profile when the join checks; one by the time the account would be removed.
+    hasProfile: async (userId) => userId === "fresh" && ++asked > 1,
+  });
+
+  const result = await signIn.join("fresh", proof());
+
+  assert.equal(result.userId, "kept");
+  assert.deepEqual(calls, ["mark kept"]);
 });

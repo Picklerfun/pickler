@@ -19,8 +19,8 @@ import { injectedSigner } from "./injected-signer";
 import { PrfUnavailableError } from "./mera-ceremony";
 import { meraSigner } from "./mera-signer";
 import { getProvider, TARGET_CHAIN } from "./provider";
-import { signIn, type ConnectResult, type Signer } from "./connect";
-import { joinWords, signInWords } from "./sign-in-words";
+import { ConnectError, signIn, type ConnectResult, type Signer } from "./connect";
+import { joinUncertain, joinWords, signInWords } from "./sign-in-words";
 import { fromInjectedProvider } from "./signer-adapters";
 import {
   adoptSession,
@@ -181,6 +181,11 @@ interface WalletState {
   /** The account just claimed its username. */
   profileClaimed: () => void;
   /**
+   * Opens the chooser where somebody whose account is under their other wallet links this one to
+   * it, instead of picking a username. Only means something while `hasProfile` is false.
+   */
+  joinAccount: () => void;
+  /**
    * Sign in with the connected wallet: one signature over a string the server built. Answers with
    * the access token, or with the error — null when the person simply closed the prompt, which is
    * an answer rather than a failure. A caller shows the error from this result: `sessionError` is
@@ -211,7 +216,9 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const profileRef = useRef<boolean | null>(null);
   // The account that was just joined, for the step that says so: its username, and the wallet
   // that signed for it.
-  const [joined, setJoined] = useState<{ handle: string | null; via: string } | null>(null);
+  const [joined, setJoined] = useState<{ handle: string | null; via: string | null } | null>(null);
+  // A join failed in a way that may have happened all the same: its answer never arrived.
+  const unsettled = useRef(false);
   const [signing, setSigning] = useState(false);
   const [sessionError, setSessionError] = useState<string | null>(null);
   // The session is kept with the address it was issued for, never as a bare token: see
@@ -554,8 +561,30 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       }
       const mine = ++generation.current;
       const current = () => mine === generation.current;
+      // Either wallet may be the passkey wallet: the connected one, if it has to sign in again
+      // first, or the one that was picked. The flag is this call's from here to the end.
+      const passkey = picked === "mera" || adapter?.kind === "mera";
+      meraFlight.current = passkey;
       setPicking(picked);
       dispatch({ type: "working" });
+
+      /** The session of the account the connected wallet opens now, whichever that is. */
+      const take = (issued: ConnectResult) => {
+        // What is held is the account that no longer exists. Let go of it without signing the
+        // browser out, and keep the one the API answered with, for this same address.
+        hold(null);
+        return keep(
+          {
+            address: connected.address,
+            chainId: TARGET_CHAIN.chainId,
+            signMessage: async () => {
+              throw new Error("The other wallet already signed");
+            },
+          },
+          async () => issued,
+        );
+      };
+
       try {
         // The session of the account being given up. The chooser signed in a moment ago, so this
         // hands back the token it holds and asks nobody for anything.
@@ -571,36 +600,51 @@ export function WalletProvider({ children }: { children: ReactNode }) {
           );
           return;
         }
-        meraFlight.current = picked === "mera";
-        const kept = await signer.join(own.result.token);
+
+        let kept: Awaited<ReturnType<typeof signer.join>>;
+        try {
+          kept = await signer.join(own.result.token);
+        } catch (caught) {
+          // An earlier attempt whose answer was lost did join: the wallet that just signed and
+          // the connected one already open the same account, which is what was asked for.
+          const already =
+            unsettled.current && caught instanceof ConnectError && caught.code === "same_account";
+          if (already) {
+            unsettled.current = false;
+            setJoined({ handle: own.handle, via: null });
+            if (current()) {
+              dispatch({ type: "joined", hasProfile: own.profile });
+            }
+            return;
+          }
+          if (joinUncertain(caught)) {
+            // The wallet may have moved and the answer been lost. What the page holds may be an
+            // account that no longer exists, so it is let go of: the next thing that needs a
+            // session signs in as the connected wallet and learns which account it opens now.
+            unsettled.current = true;
+            hold(null);
+            know(null);
+          }
+          throw caught;
+        }
+        if (!kept) {
+          if (current()) {
+            dispatch({ type: "prompt_closed" });
+          }
+          return;
+        }
+
+        // It happened, whether or not this is still the pick the chooser is waiting on: the
+        // session is taken either way, and only what the chooser shows depends on that.
+        unsettled.current = false;
+        const { result, profile: known, handle } = await take(kept.session);
         if (!current()) {
           return;
         }
-        if (!kept) {
-          dispatch({ type: "prompt_closed" });
-          return;
-        }
-        // The session held is the account that no longer exists. Let go of it without signing
-        // the browser out, and keep the one the API answered with, for this same address.
-        hold(null);
-        const {
-          result,
-          profile: known,
-          handle,
-        } = await keep(
-          {
-            address: connected.address,
-            chainId: TARGET_CHAIN.chainId,
-            signMessage: async () => {
-              throw new Error("The other wallet already signed");
-            },
-          },
-          async () => kept.session,
-        );
         if ("error" in result) {
           dispatch({
             type: "failed",
-            error: result.error ?? "The account was joined. Connect again to open it.",
+            error: result.error ?? "The account was linked. Connect again to open it.",
           });
           return;
         }
@@ -617,16 +661,27 @@ export function WalletProvider({ children }: { children: ReactNode }) {
           dispatch({ type: "prf_unavailable" });
           return;
         }
-        const words = joinWords(caught);
+        const words = joinUncertain(caught)
+          ? "That did not finish, and the wallet may already be linked. Try again to find out."
+          : joinWords(caught);
         dispatch(words === null ? { type: "prompt_closed" } : { type: "failed", error: words });
       } finally {
-        if (picked === "mera") {
+        if (passkey) {
           meraFlight.current = false;
         }
       }
     },
-    [hold, keep, signInKeeping],
+    [adapter, hold, keep, know, signInKeeping],
   );
+
+  /** Opens the chooser on the join step, for somebody who closed it at the username. */
+  const joinAccount = useCallback(() => {
+    setError(null);
+    dispatch({ type: "open_join" });
+    for (const signer of SIGNERS) {
+      signer.prepare?.();
+    }
+  }, []);
 
   const profileClaimed = useCallback(() => {
     know(true);
@@ -750,6 +805,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       sessionError,
       hasProfile: profile,
       profileClaimed,
+      joinAccount,
       signInWithWallet,
       connect,
       disconnect,
@@ -763,6 +819,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     disconnect,
     error,
     held,
+    joinAccount,
     kind,
     profile,
     profileClaimed,

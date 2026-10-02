@@ -201,17 +201,25 @@ export class PostgresWalletIdentityStore implements NonceStore, WalletLinkReposi
   }
 
   /**
-   * One statement. The unique key is (namespace, address) and does not name the account, so
-   * moving a row to another account cannot collide with anything.
+   * One statement, so what core checked before calling is held at the moment the row moves: the
+   * account given up holds exactly this one wallet and has no profile, and the account kept
+   * still holds a wallet. A second join racing this one, a username claimed in between, or the
+   * kept account being given up itself, each leave the row where it is.
+   *
+   * The unique key is (namespace, address) and does not name the account, so moving a row to
+   * another account cannot collide with anything.
    */
-  async reassign(fromUserId: string, toUserId: string): Promise<number> {
+  async reassignSole(fromUserId: string, toUserId: string): Promise<boolean> {
     const { rowCount } = await this.pool.query(
       `UPDATE identity.wallet_links
           SET user_id = $2
-        WHERE user_id = $1`,
+        WHERE user_id = $1
+          AND (SELECT count(*) FROM identity.wallet_links WHERE user_id = $1) = 1
+          AND NOT EXISTS (SELECT 1 FROM identity.profiles WHERE user_id = $1)
+          AND EXISTS (SELECT 1 FROM identity.wallet_links WHERE user_id = $2)`,
       [fromUserId, toUserId],
     );
-    return rowCount ?? 0;
+    return rowCount === 1;
   }
 
   /** No catch. A failed read is a failure, never an account with no wallets. */

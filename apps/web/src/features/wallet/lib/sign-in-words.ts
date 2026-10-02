@@ -26,11 +26,27 @@ export function joinWords(caught: unknown): string | null {
         return "That's the wallet you're already connected with.";
       case "join_has_profile":
         return "This wallet's account already has a username, so it cannot be moved into another.";
+      case "join_has_custody":
+        return "This wallet's account already has a Pickler wallet of its own, so it cannot be moved into another.";
       case "join_not_wallet_account":
         return "This account cannot be moved into another. Pick a username for it instead.";
+      case "join_changed":
+        return "That account changed while it was being linked. Try again.";
     }
   }
   return signInWords(caught);
+}
+
+/**
+ * Whether a join that failed may have happened all the same. A refusal with a 4xx code moved
+ * nothing. Anything else — the answer never arrived, the server failed after it moved the wallet
+ * — leaves the page not knowing which account the connected wallet opens.
+ */
+export function joinUncertain(caught: unknown): boolean {
+  if ((caught as { code?: unknown } | null)?.code === 4001) {
+    return false;
+  }
+  return !(caught instanceof ConnectError) || /^5\d\d$/.test(caught.code);
 }
 
 export function signInWords(caught: unknown): string | null {

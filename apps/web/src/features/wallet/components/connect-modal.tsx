@@ -98,7 +98,7 @@ interface ConnectModalProps {
   /** The wallets an existing account can be signed with, on the link step. */
   joinChoices: WalletChoice[];
   /** The account that was just joined: its username when known, and the wallet that signed. */
-  joined: { handle: string | null; via: string } | null;
+  joined: { handle: string | null; via: string | null } | null;
   /** What the person was about to do when the wallet got in the way. */
   holding: string | null;
   /** The connected address, once there is one. */
@@ -117,12 +117,17 @@ interface ConnectModalProps {
 }
 
 export function ConnectModal(props: ConnectModalProps) {
-  const { flow, holding, onClose } = props;
+  const { flow, holding, picking, kind, onClose } = props;
   const dialog = useRef<HTMLDialogElement>(null);
   const open = flow.step !== "closed";
 
   // `showModal` is what makes it a modal: the page behind goes inert, focus is trapped, and
   // Escape closes it without a keydown listener of our own.
+  //
+  // A step replaces the one before it, and with it whatever had focus. So focus then goes to the
+  // new step's title: a keyboard is not left on a control that is gone, and a screen reader says
+  // where it is now. In the same effect and after `showModal`, whose own first focus is the
+  // close button.
   useEffect(() => {
     const element = dialog.current;
     if (!element) {
@@ -134,7 +139,10 @@ export function ConnectModal(props: ConnectModalProps) {
     if (!open && element.open) {
       element.close();
     }
-  }, [open]);
+    if (open) {
+      element.querySelector<HTMLElement>("#connect-title")?.focus();
+    }
+  }, [open, flow.step]);
 
   return (
     <dialog
@@ -157,6 +165,11 @@ export function ConnectModal(props: ConnectModalProps) {
       }}
     >
       <div className={styles.card} id={open ? `connect-step-${flow.step}` : undefined}>
+        {/* One region that is always here and whose words change: a status that arrives together
+            with its element is not reliably announced. */}
+        <p className={styles.spoken} role="status">
+          {flow.busy ? WAITING[picking ?? kind ?? "injected"] : ""}
+        </p>
         <header className={styles.head}>
           <p className={styles.label}>{flow.step === "closed" ? "" : EYEBROW[flow.step]}</p>
           <button type="button" className={styles.close} onClick={onClose} aria-label="Close">
@@ -190,7 +203,7 @@ export function ConnectModal(props: ConnectModalProps) {
 /** A step's title, with the full stop that carries its colour. */
 function Title({ children, tone = "good" }: { children: ReactNode; tone?: "good" | "bad" }) {
   return (
-    <h2 id="connect-title" className={styles.title}>
+    <h2 id="connect-title" className={styles.title} tabIndex={-1}>
       {children}
       <span className={styles.stop} data-tone={tone}>
         .
@@ -241,8 +254,14 @@ function Options({
               data-off={off || undefined}
               data-waiting={waiting || undefined}
               data-aside={(busy && !waiting) || undefined}
-              disabled={off || busy}
-              onClick={() => onPick(choice)}
+              // Not `disabled`: a row that cannot be picked still has to be reached by keyboard,
+              // because the reason is written on it, and the row just picked must keep its focus.
+              aria-disabled={off || busy || undefined}
+              onClick={() => {
+                if (!off && !busy) {
+                  onPick(choice);
+                }
+              }}
             >
               <span className={styles.optionIcon} aria-hidden="true">
                 {waiting && <span className={styles.spinner} />}
@@ -260,7 +279,7 @@ function Options({
                   </span>
                 )}
                 {!off && waiting && (
-                  <span className={styles.optionMeta} data-tone="wait" role="status">
+                  <span className={styles.optionMeta} data-tone="wait">
                     {WAITING[choice.kind]}
                   </span>
                 )}
@@ -410,6 +429,9 @@ function Username({ flow, address, kind, onJoin }: ConnectModalProps) {
         <p
           id="connect-username-note"
           className={styles.handleNote}
+          // Said as it changes: "checking", "available" and "taken" arrive while the field has
+          // focus, and a description is only read on the way in.
+          aria-live="polite"
           data-tone={NOTE_TONE[form.state]}
         >
           {handleNote(form.state, form.handle, form.minLength, form.maxLength)}
@@ -508,7 +530,7 @@ function Joined({ address, kind, joined, onClose }: ConnectModalProps) {
           <dt>ACCOUNT</dt>
           <dd>
             {account}
-            {joined && ` · VIA ${shortAddress(joined.via)}`}
+            {joined?.via && ` · VIA ${shortAddress(joined.via)}`}
           </dd>
         </div>
       </dl>

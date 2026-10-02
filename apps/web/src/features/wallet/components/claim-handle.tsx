@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Button, Field, Input } from "@pickler/ui";
 import styles from "./claim-handle.module.css";
 import { useHandleClaim } from "../lib/use-handle-claim";
+import { useWallet } from "../lib/wallet-context";
 
 /**
  * Asks for a handle once there is an account to hang it on.
@@ -18,6 +19,7 @@ import { useHandleClaim } from "../lib/use-handle-claim";
  */
 export function ClaimHandle({ onClaimed }: { onClaimed?: () => void }) {
   const form = useHandleClaim(onClaimed);
+  const wallet = useWallet();
   const [dismissed, setDismissed] = useState(false);
 
   if (dismissed) {
@@ -72,6 +74,15 @@ export function ClaimHandle({ onClaimed }: { onClaimed?: () => void }) {
       <p className={styles.foot}>
         If your wallet asks you to sign one line of text, that is the board checking the name is
         yours. It costs nothing and moves nothing.
+      </p>
+      {/* The chooser's other way out, kept here too: once a name is claimed this wallet's account
+          can no longer be linked to another, so somebody who closed the chooser must still be able
+          to say "I already have one". */}
+      <p className={styles.foot}>
+        Already have a Pickler account under another wallet?{" "}
+        <button type="button" className={styles.join} onClick={() => wallet.joinAccount()}>
+          Link this wallet to it
+        </button>
       </p>
       {form.failed && (
         <p className={styles.failed} role="alert">

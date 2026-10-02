@@ -182,8 +182,18 @@ test("an account that was joined and has no username yet is asked for one", () =
   assert.deepEqual(next, USERNAME);
 });
 
-test("a join nobody asked for changes nothing", () => {
-  assert.deepEqual(connectFlow(USERNAME, { type: "joined", hasProfile: true }), USERNAME);
+test("a join approved after going back still says the account was joined", () => {
+  // Back was pressed while the other wallet's prompt was up, and then the prompt was approved.
+  assert.equal(connectFlow(USERNAME, { type: "joined", hasProfile: true }).step, "joined");
+  // A closed chooser stays closed: the account is joined and nothing is said.
+  assert.deepEqual(connectFlow(CLOSED, { type: "joined", hasProfile: true }), CLOSED);
+});
+
+test("the join step can be opened directly, and Back from it asks for the username", () => {
+  const join = connectFlow(CLOSED, { type: "open_join" });
+
+  assert.deepEqual(join, JOIN);
+  assert.deepEqual(connectFlow(join, { type: "back" }), USERNAME);
 });
 
 test("a closed prompt or a refusal keeps the join step, with its words", () => {

@@ -258,6 +258,7 @@ function walletAuthServices(
 
   const store = new PostgresWalletIdentityStore(pool);
   const profiles = new PostgresProfileRepository(pool);
+  const custodyAccounts = new PostgresCustodyStore(pool);
   const supabase = {
     url: required(env, "SUPABASE_URL"),
     secretKey: required(env, "SUPABASE_SECRET_KEY"),
@@ -284,6 +285,9 @@ function walletAuthServices(
       }),
       // A username is what makes an account worth keeping: `join` gives up only one without.
       hasProfile: async (userId) => (await profiles.findByUserId(userId)) !== null,
+      // A sub-organization and its master wallet have no row tied to the auth user, so an account
+      // that has them is never removed: read from the table `register` writes.
+      hasCustodyAccount: async (userId) => (await custodyAccounts.findByUserId(userId)) !== null,
       // The hyphens must go. viem's builder enforces /^[a-zA-Z0-9]{8,}$/ on the nonce, but its
       // parser reads `Nonce: (?<nonce>[a-zA-Z0-9]+)` — so a hyphenated nonce does not fail on the
       // way back, it silently truncates at the first hyphen and stops matching what was issued.

@@ -145,7 +145,8 @@ export function walletAuthRoutes(services: WalletAuthServices) {
     return c.json(successEnvelope(result, c.req.path, "Wallet linked"));
   });
 
-  // The caller's bare account, made a moment ago by connecting a wallet with no account, is folded
+  // 409 `join_has_profile`, `join_has_custody`, `join_not_wallet_account` and `join_changed` say
+  // why an account is not given up. The caller's bare account, made a moment ago by connecting a wallet with no account, is folded
   // into the account of the wallet that signed this body. Answers with that account's session,
   // because the caller's own stops existing.
   api.post("/join", authenticated(services.authenticate, { userOnly: true }), async (c) => {

@@ -470,6 +470,8 @@ test("each way a join is refused has a status and a code the browser can branch 
     [new SameAccountError(), 409, "same_account"],
     [new AccountNotJoinableError("has_profile"), 409, "join_has_profile"],
     [new AccountNotJoinableError("not_wallet_account"), 409, "join_not_wallet_account"],
+    [new AccountNotJoinableError("has_custody"), 409, "join_has_custody"],
+    [new AccountNotJoinableError("changed"), 409, "join_changed"],
     [new BadSignatureError(), 401, undefined],
     [new UnknownNonceError(), 400, "nonce_invalid"],
   ];

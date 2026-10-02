@@ -118,13 +118,17 @@ column `identity.siwe_nonces` does not have.
 (`docs/specs/mera-web-v1.md` §9). It is for a person who connected a wallet with no account — which
 made it one — and already has an account under another wallet. The caller's session is the account
 given up; the body is the other wallet's signed sign-in message, the account kept. Core's `join`
-moves the caller's wallet with `links.reassign`, removes the emptied account through
-`discardAccount` (a failure is tolerated, as after a lost link), and the route answers with a
-session for the kept account. It refuses with 404 `no_account` (the wallet that signed opens no
-account), 409 `same_account`, 409 `join_has_profile` and 409 `join_not_wallet_account`: only the
-bare account wallet sign-in made for its one wallet, with no username, is ever given up — never an
-email or Google account that linked a wallet. `hasProfile` in `walletAuthServices` is that username
-check. Do not widen these conditions without the owner: a join cannot be undone, and `/link` still
+moves the caller's wallet with `links.reassignSole` — one statement that holds again that the
+caller has exactly one wallet and no profile and that the kept account still has a wallet — and
+then removes the emptied account through `discardAccount`, unless it gained a profile in that
+instant. A failed removal is tolerated, but unlike after a lost link this account has a live
+session: it stays without a wallet until that session ends. The route answers with a session for
+the kept account. It refuses with 404 `no_account` (the wallet that signed opens no account), 409
+`same_account`, and 409 `join_has_profile`, `join_has_custody`, `join_not_wallet_account` and
+`join_changed`: only the bare account wallet sign-in made for its one wallet, with no username and
+no custody account, is ever given up — never an email or Google account that linked a wallet, and
+never one with a Turnkey sub-organization, whose rows nothing ties to the auth user. `hasProfile`
+and `hasCustodyAccount` in `walletAuthServices` are those two checks. Do not widen these conditions without the owner: a join cannot be undone, and `/link` still
 answers 409 for an address owned elsewhere.
 
 A first wallet sign-in can lose its link: the address was linked to nobody when `verify` looked,

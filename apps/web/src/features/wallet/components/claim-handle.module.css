@@ -82,6 +82,24 @@
   outline-offset: 2px;
 }
 
+/* A sentence's own link out, to the chooser's link step. */
+.join {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-weight: 600;
+  color: var(--pk-ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.join:focus-visible {
+  outline: 2px solid var(--pk-focus);
+  outline-offset: 2px;
+}
+
 .failed {
   margin: 12px 0 0;
   font: 500 13px/1.45 var(--pk-font);

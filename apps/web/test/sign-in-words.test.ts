@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { ConnectError } from "../src/features/wallet/lib/connect";
-import { joinWords, signInWords } from "../src/features/wallet/lib/sign-in-words";
+import { joinUncertain, joinWords, signInWords } from "../src/features/wallet/lib/sign-in-words";
 
 test("a stale nonce asks for another go, because nothing is actually wrong", () => {
   const words = signInWords(new ConnectError("Ask for a new one", "nonce_invalid"));
@@ -52,4 +52,24 @@ test("anything else that stops a join is said as a sign-in would say it", () => 
     "That sign-in took too long to come back. Try again.",
   );
   assert.match(joinWords(new ConnectError("x", "401"))!, /did not match the wallet/);
+});
+
+test("a join that failed is uncertain unless the API refused it outright", () => {
+  // Refused: nothing moved.
+  assert.equal(joinUncertain(new ConnectError("x", "no_account")), false);
+  assert.equal(joinUncertain(new ConnectError("x", "join_changed")), false);
+  assert.equal(joinUncertain(new ConnectError("x", "401")), false);
+  assert.equal(joinUncertain({ code: 4001 }), false);
+  // The wallet may have moved: the server failed after, or the answer never came.
+  assert.equal(joinUncertain(new ConnectError("x", "500")), true);
+  assert.equal(
+    joinUncertain(Object.assign(new Error("signal timed out"), { name: "TimeoutError" })),
+    true,
+  );
+  assert.equal(joinUncertain(new TypeError("Failed to fetch")), true);
+});
+
+test("the two newer refusals of a join have words too", () => {
+  assert.match(joinWords(new ConnectError("x", "join_has_custody"))!, /Pickler wallet of its own/);
+  assert.match(joinWords(new ConnectError("x", "join_changed"))!, /Try again/);
 });

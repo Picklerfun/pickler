@@ -61,17 +61,21 @@ export class SameAccountError extends Error {
   }
 }
 
+const NOT_JOINABLE = {
+  has_profile: "This account already has a username, so it cannot be folded into another",
+  has_custody: "This account already has a Pickler wallet, so it cannot be folded into another",
+  not_wallet_account: "Only an account made by connecting a wallet can be folded into another",
+  changed: "That account changed while it was being joined. Try again.",
+} as const;
+
 /**
- * The account that asked to join another cannot be given up: it has a username, or it is not the
- * bare account a wallet's first sign-in makes.
+ * The account that asked to join another cannot be given up: it has a username or a custody
+ * wallet, it is not the bare account a wallet's first sign-in makes, or it stopped being one
+ * while the join was under way.
  */
 export class AccountNotJoinableError extends Error {
-  constructor(readonly reason: "has_profile" | "not_wallet_account") {
-    super(
-      reason === "has_profile"
-        ? "This account already has a username, so it cannot be folded into another"
-        : "Only an account made by connecting a wallet can be folded into another",
-    );
+  constructor(readonly reason: keyof typeof NOT_JOINABLE) {
+    super(NOT_JOINABLE[reason]);
     this.name = "AccountNotJoinableError";
   }
 }
@@ -135,6 +139,11 @@ export interface WalletSignInDependencies {
   accounts: AccountProvisioner;
   /** Whether the account has a profile, and so a username. `join` gives up only one without. */
   hasProfile: (userId: string) => Promise<boolean>;
+  /**
+   * Whether the account has a custody account: a Turnkey sub-organization and its master wallet.
+   * Nothing ties those rows to the auth user, so removing the account would strand the wallet.
+   */
+  hasCustodyAccount: (userId: string) => Promise<boolean>;
   randomNonce: () => string;
   /** Builds the string to sign. Lives in infrastructure because it is viem's format. */
   buildMessage: (fields: MessageFields) => string;
@@ -312,9 +321,12 @@ export function createWalletSignIn(deps: WalletSignInDependencies) {
      * - the account that is kept agrees with a signature of its wallet over a fresh nonce, the
      *   same proof a sign-in takes;
      * - the account given up agrees with its session, which is the caller's;
-     * - it has no username, and it is the bare account wallet sign-in made for its one wallet —
-     *   never an email or Google account that linked a wallet, never one with more than the
-     *   wallet it was made for.
+     * - it has no username and no custody wallet, and it is the bare account wallet sign-in made
+     *   for its one wallet — never an email or Google account that linked a wallet, never one
+     *   with more than the wallet it was made for.
+     *
+     * Those are read here, to say why a join is refused, and held again by the statement that
+     * moves the wallet (`reassignSole`), so that nothing moves if they stopped being true.
      *
      * `link` still refuses an address owned elsewhere: adding a wallet to an account never takes
      * it from another.
@@ -340,12 +352,25 @@ export function createWalletSignIn(deps: WalletSignInDependencies) {
       if (await deps.hasProfile(userId)) {
         throw new AccountNotJoinableError("has_profile");
       }
+      if (await deps.hasCustodyAccount(userId)) {
+        throw new AccountNotJoinableError("has_custody");
+      }
 
       // The check every sign-in into the kept account gets, before anything moves.
       await deps.accounts.markWalletAccount(kept.userId, namespace, address);
-      await deps.links.reassign(userId, kept.userId);
-      // Tidying, as after a lost link: a leftover holds no wallet and nobody can open it.
-      await deps.accounts.discardAccount(userId, own.namespace, own.address).catch(() => {});
+      if (!(await deps.links.reassignSole(userId, kept.userId))) {
+        // Another request got there first: a second join, a username claimed, the kept account
+        // itself given up. Nothing moved, and no session is handed out for a join that did not
+        // happen.
+        throw new AccountNotJoinableError("changed");
+      }
+      // The account holds no wallet now. Removing it is tidying and its failure does not undo the
+      // join — but unlike an account lost to a race at sign-in, this one has a live session, and
+      // a username claimed with it in this instant would be deleted with it. So it is removed
+      // only while it still has none; a leftover can do nothing a wallet opens.
+      if (!(await deps.hasProfile(userId))) {
+        await deps.accounts.discardAccount(userId, own.namespace, own.address).catch(() => {});
+      }
       return { userId: kept.userId, session: await deps.accounts.session(kept.userId) };
     },
 
