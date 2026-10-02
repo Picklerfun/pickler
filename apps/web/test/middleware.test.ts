@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { decide, type AuthState, type Decision } from "../src/middleware";
+import { AUTH_CALLBACK, decide, type AuthState, type Decision } from "../src/middleware";
+import { AUTH_CALLBACK_PATH } from "../src/features/auth/lib/account";
 import { authConfigured, hasSessionCookie, returnTo } from "../src/server/guard";
 
 const HOSTS = { marketplace: "pickler.fun", studio: "app.pickler.fun" };
@@ -328,4 +329,35 @@ test("no `next` at all is no destination, not a broken one", () => {
   assert.equal(returnTo(null), null);
   assert.equal(returnTo(undefined), null);
   assert.equal(returnTo(""), null);
+});
+
+test("the auth callback on the marketplace is sent, as it is, to the studio", () => {
+  assert.deepEqual(decide("pickler.fun", "/auth/callback", HOSTS, OUT), {
+    kind: "toStudio",
+    to: "https://app.pickler.fun/auth/callback",
+  });
+});
+
+test("the auth callback on the studio is served there, where its cookie belongs", () => {
+  assert.deepEqual(decide("app.pickler.fun", "/auth/callback", HOSTS, OUT), { kind: "serve" });
+});
+
+test("the auth callback on a shared host is served where it is", () => {
+  assert.deepEqual(decide("localhost:3001", "/auth/callback", HOSTS, OUT), { kind: "serve" });
+});
+
+test("only the callback crosses: another studio path on the marketplace is still refused", () => {
+  assert.deepEqual(decide("pickler.fun", "/auth/other", HOSTS, OUT), { kind: "notFound" });
+});
+
+test("the middleware's callback path is the one sign-in asks Supabase to return to", () => {
+  assert.equal(AUTH_CALLBACK, AUTH_CALLBACK_PATH);
+});
+
+test("a local marketplace sends its callback to the local studio, over http", () => {
+  const local = { marketplace: "pickler.localhost:3001", studio: "app.pickler.localhost:3001" };
+  assert.deepEqual(decide("pickler.localhost:3001", "/auth/callback", local, OUT), {
+    kind: "toStudio",
+    to: "http://app.pickler.localhost:3001/auth/callback",
+  });
 });
