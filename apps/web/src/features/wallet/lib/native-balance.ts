@@ -3,6 +3,9 @@
  * provider of its own to ask. Null whenever it was not read — a refused request, a body that is
  * not a quantity, no network — because an unread balance is not a zero.
  */
+/** A balance is decoration beside the address: it never holds anything up for longer than this. */
+const TIMEOUT_MS = 5_000;
+
 export async function readNativeBalance(
   address: string,
   rpcUrl: string,
@@ -18,6 +21,7 @@ export async function readNativeBalance(
         method: "eth_getBalance",
         params: [address, "latest"],
       }),
+      signal: AbortSignal.timeout(TIMEOUT_MS),
     });
     if (!response.ok) {
       return null;

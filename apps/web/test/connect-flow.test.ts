@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   CLOSED,
   connectFlow,
+  type ConnectFlowEvent,
   type ConnectFlowState,
 } from "../src/features/wallet/lib/connect-flow";
 import { hasProfile } from "../src/features/wallet/lib/handles";
@@ -103,4 +104,24 @@ test("an account has a profile, has none, or nobody could tell", async () => {
     }) as typeof fetch),
     null,
   );
+});
+
+test("a closed chooser only opens: a prompt answered after closing does not bring it back", () => {
+  const late: ConnectFlowEvent[] = [
+    { type: "working" },
+    { type: "connected", signedIn: false, hasProfile: null },
+    { type: "connected", signedIn: true, hasProfile: false },
+    { type: "signed_in", hasProfile: false },
+    { type: "prompt_closed" },
+    { type: "failed", error: "The network dropped." },
+    { type: "prf_unavailable" },
+    { type: "back" },
+    { type: "claimed" },
+    { type: "close" },
+  ];
+  for (const event of late) {
+    assert.deepEqual(connectFlow(CLOSED, event), CLOSED, event.type);
+  }
+
+  assert.equal(connectFlow(CLOSED, { type: "open" }).step, "choose");
 });

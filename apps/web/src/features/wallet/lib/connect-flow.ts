@@ -44,6 +44,11 @@ const afterSignIn = (hasProfile: boolean | null) =>
   at(hasProfile === false ? "username" : "closed");
 
 export function connectFlow(state: ConnectFlowState, event: ConnectFlowEvent): ConnectFlowState {
+  // A closed chooser only opens. A prompt that was still up when the person closed it answers
+  // into nothing: the wallet may well be connected by then, but the dialog does not come back.
+  if (state.step === "closed" && event.type !== "open") {
+    return state;
+  }
   switch (event.type) {
     case "open":
     case "back":

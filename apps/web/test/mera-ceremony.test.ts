@@ -2,11 +2,14 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import frozen from "@pickler/mera-account/vectors.json";
 import { hexToBytes, recoverMessageAddress, type Hex } from "viem";
-import { signIn } from "../src/features/wallet/lib/connect";
+import { challenge, present } from "../src/features/wallet/lib/connect";
+import { isMeraError, MeraError } from "@category-labs/mera";
 import {
   PrfUnavailableError,
+  promptFailure,
   runMeraCeremony,
   WrongPasskeyError,
+  type MeraKit,
   type PrfSource,
 } from "../src/features/wallet/lib/mera-ceremony";
 import { loadMeraKit } from "../src/features/wallet/lib/mera-kit";
@@ -25,11 +28,14 @@ function passkey(prfOutputHex: string) {
 }
 
 /** The two routes sign-in talks to, recording what reached them. */
-function api(over: { verifyStatus?: number; throwOn?: string } = {}) {
+function api(
+  over: { verifyStatus?: number; throwOn?: string; onCall?: (url: string) => void } = {},
+) {
   const calls: { url: string; body: Record<string, unknown> }[] = [];
   const fetchImpl = (async (url: string | URL | Request, init?: RequestInit) => {
     const body = JSON.parse(String(init?.body ?? "{}")) as Record<string, unknown>;
     calls.push({ url: String(url), body });
+    over.onCall?.(String(url));
     if (over.throwOn && String(url).endsWith(over.throwOn)) {
       throw new TypeError("network down");
     }
@@ -50,15 +56,42 @@ async function ceremony(
   prf: PrfSource,
   fetchImpl: typeof fetch,
   expectedAddress?: string,
+  over: { kit?: MeraKit; onPasskey?: (credentialId: string) => void } = {},
 ): ReturnType<typeof runMeraCeremony> {
-  const kit = await loadMeraKit();
   return runMeraCeremony({
     prf,
-    kit,
-    chainId: 10143,
-    signIn: (signer) => signIn(signer, fetchImpl, "mera"),
+    kit: over.kit ?? (await loadMeraKit()),
+    challenge: (address) => challenge(address, 10143, fetchImpl),
+    present: (message, signature) => present(message, signature, "mera", fetchImpl),
+    ...(over.onPasskey ? { onPasskey: over.onPasskey } : {}),
     ...(expectedAddress ? { expectedAddress } : {}),
   });
+}
+
+/** The real kit, watched: the key bytes it handed out and whether the signing session was ended. */
+async function watchedKit() {
+  const real = await loadMeraKit();
+  const seen = { key: null as Uint8Array | null, ended: false, signAfterEnd: null as unknown };
+  let sign: ((message: string) => Promise<string>) | null = null;
+  const kit: MeraKit = {
+    privateKeyFromPrf(prfOutput) {
+      seen.key = real.privateKeyFromPrf(prfOutput);
+      return seen.key;
+    },
+    openKey(privateKey) {
+      const opened = real.openKey(privateKey);
+      sign = opened.signMessage;
+      return {
+        ...opened,
+        end() {
+          opened.end();
+          seen.ended = true;
+        },
+      };
+    },
+  };
+  const signAgain = () => sign!("anything");
+  return { kit, seen, signAgain };
 }
 
 test("the passkey opens the account the app derives from it", async () => {
@@ -98,6 +131,69 @@ test("the PRF output is zeroed once the ceremony is over", async () => {
   await ceremony(prf, api().fetchImpl);
 
   assert.ok(prfOutput.every((byte) => byte === 0));
+});
+
+test("the PRF output is already zero when the first request leaves", async () => {
+  const { prf, prfOutput } = passkey(first!.prfOutput);
+  const atRequest: Record<string, boolean> = {};
+  const { fetchImpl } = api({
+    onCall: (url) => {
+      atRequest[url] = prfOutput.every((byte) => byte === 0);
+    },
+  });
+
+  await ceremony(prf, fetchImpl);
+
+  assert.deepEqual(atRequest, {
+    "/api/v1/auth/wallet/nonce": true,
+    "/api/v1/auth/wallet/verify": true,
+  });
+});
+
+test("the key is wiped before the signature is presented, and cannot sign again", async () => {
+  const { prf } = passkey(first!.prfOutput);
+  const { kit, seen, signAgain } = await watchedKit();
+  const atVerify = { ended: false, zero: false };
+  const { fetchImpl } = api({
+    onCall: (url) => {
+      if (url.endsWith("/verify")) {
+        atVerify.ended = seen.ended;
+        atVerify.zero = seen.key!.every((byte) => byte === 0);
+      }
+    },
+  });
+
+  await ceremony(prf, fetchImpl, undefined, { kit });
+
+  assert.deepEqual(atVerify, { ended: true, zero: true });
+  await assert.rejects(signAgain());
+});
+
+test("the key is wiped when the challenge never arrives", async () => {
+  const { prf } = passkey(second!.prfOutput);
+  const { kit, seen, signAgain } = await watchedKit();
+
+  await assert.rejects(
+    ceremony(prf, api({ throwOn: "/nonce" }).fetchImpl, undefined, { kit }),
+    /network down/,
+  );
+
+  assert.equal(seen.ended, true);
+  assert.ok(seen.key!.every((byte) => byte === 0));
+  await assert.rejects(signAgain());
+});
+
+test("the passkey that was just made is named even when the sign-in then fails", async () => {
+  const { prf } = passkey(second!.prfOutput);
+  const made: string[] = [];
+
+  await assert.rejects(
+    ceremony(prf, api({ verifyStatus: 500 }).fetchImpl, undefined, {
+      onPasskey: (credentialId) => made.push(credentialId),
+    }),
+  );
+
+  assert.deepEqual(made, ["cred-1"]);
 });
 
 test("it is zeroed when the server refuses the sign-in", async () => {
@@ -147,4 +243,30 @@ test("a passkey that gives no PRF output is its own error, so the screen can say
   };
 
   await assert.rejects(ceremony(noPrf, api().fetchImpl), PrfUnavailableError);
+});
+
+test("a prompt that threw is named: closed, no PRF output, or a real failure", () => {
+  // The SDK's own errors, as the browser path gets them.
+  const sdk = (code: ConstructorParameters<typeof MeraError>[0], cause?: unknown) =>
+    new MeraError(code, "from the SDK", cause === undefined ? undefined : { cause });
+  const dom = (name: string) => Object.assign(new Error(name), { name });
+
+  assert.equal(promptFailure(sdk("PRF_UNAVAILABLE"), isMeraError), "no_prf");
+  assert.equal(
+    promptFailure(sdk("PASSKEY_OPERATION_FAILED", dom("NotAllowedError")), isMeraError),
+    "closed",
+  );
+  assert.equal(
+    promptFailure(sdk("PASSKEY_OPERATION_FAILED", dom("AbortError")), isMeraError),
+    "closed",
+  );
+  // A passkey operation that failed for another reason is not the person closing the prompt.
+  assert.equal(
+    promptFailure(sdk("PASSKEY_OPERATION_FAILED", dom("SecurityError")), isMeraError),
+    "failed",
+  );
+  assert.equal(promptFailure(sdk("PASSKEY_OPERATION_FAILED"), isMeraError), "failed");
+  // Not the SDK's error at all: a bare NotAllowedError is not taken for a closed prompt.
+  assert.equal(promptFailure(dom("NotAllowedError"), isMeraError), "failed");
+  assert.equal(promptFailure(null, isMeraError), "failed");
 });

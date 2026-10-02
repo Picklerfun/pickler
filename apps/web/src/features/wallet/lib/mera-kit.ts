@@ -1,9 +1,10 @@
 import type { MeraKit } from "./mera-ceremony";
 
 /**
- * The libraries a Mera ceremony needs, loaded when a ceremony starts rather than with the page:
- * Mera's signing session, its viem adapter, and the derivation rule the mobile app uses. A page
- * that never opens the passkey wallet never downloads them, and never has them in memory.
+ * The libraries a Mera ceremony needs, loaded on demand rather than with the page: Mera's signing
+ * session, its viem adapter, and the derivation rule the mobile app uses. The chooser asks for
+ * them as it opens, so they are there when a passkey is picked; a page whose chooser never opens
+ * never downloads them.
  */
 export async function loadMeraKit(): Promise<MeraKit> {
   const [mera, meraViem, account] = await Promise.all([
@@ -17,8 +18,9 @@ export async function loadMeraKit(): Promise<MeraKit> {
       let seed: Uint8Array | undefined;
       try {
         seed = account.mnemonicToSeed(account.prfOutputToMnemonic(prfOutput));
-        // A copy: the node that derived it keeps its own, and this one is the caller's to zero.
-        return Uint8Array.from(account.deriveEvmPrivateKey(seed, 0));
+        // The caller's to zero. The derivation wipes every node it went through, the master
+        // included; the mnemonic is a string and cannot be wiped.
+        return account.deriveEvmPrivateKey(seed, 0);
       } finally {
         seed?.fill(0);
       }

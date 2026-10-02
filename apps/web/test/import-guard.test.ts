@@ -1,5 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { ESLint } from "eslint";
 
@@ -161,4 +162,98 @@ test("narrowing the rule for the wallet did not drop the layer rule there", asyn
       file,
     );
   }
+});
+
+test("a path spelled another way, or a file of another kind, does not get round it", async () => {
+  // The studio's side by its folder, however the path reaches it.
+  const spelled = [
+    `import { landing } from "./../../auth/lib/custody";`,
+    `import { landing } from "../../../features/auth/lib/custody";`,
+    `import { landing } from "@/features/../features/auth/lib/custody";`,
+    `import { landing } from "@/features/auth/lib/supabase-browser/../custody";`,
+    // The exemption is the auth feature's client, not a file of that name anywhere.
+    `import { getSupabase } from "@/features/studio/lib/supabase-browser";`,
+    `import { config } from "@/features/account/lib/config";`,
+  ];
+  for (const code of spelled) {
+    const messages = await refused(WALLET, code);
+    assert.equal(messages.length, 1, code);
+    assert.match(messages[0]!, /nothing else from the studio's side/);
+  }
+
+  // A package reached through node_modules is still the package.
+  const studio = "apps/web/src/features/studio/lib/passkey.ts";
+  assert.equal(
+    (
+      await refused(
+        studio,
+        `import x from "../../../../node_modules/@category-labs/mera/dist/index.js";`,
+      )
+    ).length,
+    1,
+  );
+  assert.equal(
+    (await refused(WALLET, `import x from "../../../../node_modules/@turnkey/http/dist/index.js";`))
+      .length,
+    1,
+  );
+
+  // A computed import() cannot be read, so none is allowed, whatever it would load.
+  for (const code of [
+    "void import(`@turnkey/sdk-browser`);",
+    "const name = '@category-labs/mera'; void import(name);",
+  ]) {
+    for (const file of [WALLET, MERA_MODULE, studio, "apps/web/src/app/layout.tsx"]) {
+      const messages = await refused(file, code);
+      assert.equal(messages.length, 1, `${file}: ${code}`);
+      assert.match(messages[0]!, /string literal/);
+    }
+  }
+
+  // JavaScript files are files too.
+  assert.equal(
+    (await refused("apps/web/src/features/studio/lib/late.js", `import "@category-labs/mera";`))
+      .length,
+    1,
+  );
+  assert.equal(
+    (await refused("apps/web/src/features/wallet/lib/late.mjs", `import "@turnkey/http";`)).length,
+    1,
+  );
+
+  // The shared components run in the same page.
+  const component = "packages/ui/src/button.tsx";
+  assert.equal((await refused(component, `import "@category-labs/mera";`)).length, 1);
+  assert.equal((await refused(component, `void import("@pickler/mera-account");`)).length, 1);
+  assert.equal((await refused(component, `import { x } from "@pickler/core";`)).length, 1);
+});
+
+test("no file in the page switches the guard off in a comment", () => {
+  const sources = (directory: string): string[] =>
+    readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+      const full = path.join(directory, entry.name);
+      if (entry.isDirectory()) {
+        return sources(full);
+      }
+      return /\.(ts|tsx|js|jsx|mjs|cjs)$/.test(entry.name) ? [full] : [];
+    });
+
+  const offenders = [path.join(ROOT, "apps/web/src"), path.join(ROOT, "packages/ui/src")]
+    .flatMap(sources)
+    .filter((file) =>
+      readFileSync(file, "utf8")
+        .split("\n")
+        .some((line) => {
+          const directive = /eslint-(disable|enable)(-next-line|-line)?\b(.*)/.exec(line);
+          if (!directive) {
+            return false;
+          }
+          // No rule named switches every rule off; otherwise only these two matter here.
+          const named = directive[3]!.replace(/\*\/|--.*$/g, "").trim();
+          return named === "" || GUARDS.some((rule) => named.includes(rule));
+        }),
+    )
+    .map((file) => path.relative(ROOT, file));
+
+  assert.deepEqual(offenders, []);
 });

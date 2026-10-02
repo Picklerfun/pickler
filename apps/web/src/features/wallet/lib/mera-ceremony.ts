@@ -1,13 +1,24 @@
-import type { ConnectResult, Signer } from "./connect";
+import type { ConnectResult } from "./connect";
 
 /**
  * One Mera ceremony: a passkey prompt, the account derived from it, one signature over the
- * server's sign-in message, and nothing left behind.
+ * server's sign-in message, and no key kept (docs/specs/mera-web-v1.md, M4).
  *
- * The key exists for the length of this function. The PRF output the passkey gave, the seed and
- * the private key are zeroed in a `finally`, so they are gone whether the ceremony finished, was
- * refused by the server or threw half-way (docs/specs/mera-web-v1.md, M4). Its parts are handed in
- * — the prompt, the key libraries, the sign-in — so all of that is tested without a browser.
+ * What is held, and for how long:
+ *
+ * - The PRF output is zeroed as soon as the key is derived from it, before any request.
+ * - The key is needed to sign the server's message, and the server's message needs the address,
+ *   so the key lives across one request (the challenge, which has a timeout) and no other. It is
+ *   wiped — the signing session ended, the bytes zeroed — before the signature is presented, and
+ *   in a `finally`, so also when the ceremony is refused or throws half-way.
+ *
+ * What this cannot wipe, because JavaScript gives no way to: the mnemonic, which is a string, the
+ * big integers the curve library computes with, and the browser's own copy of the PRF output
+ * inside the credential it returned. They are unreachable once this returns and are left to the
+ * garbage collector. "No key kept" means nothing reachable holds one, not that memory was scrubbed.
+ *
+ * Its parts are handed in — the prompt, the key libraries, the two requests — so all of that is
+ * tested without a browser.
  */
 
 /** The passkey gave no PRF output: it exists and cannot open a wallet. The screen says why. */
@@ -24,6 +35,32 @@ export class WrongPasskeyError extends Error {
     super("That passkey opens a different wallet from the one connected here");
     this.name = "WrongPasskeyError";
   }
+}
+
+/** As much of a Mera SDK error as this reads, so a test can make one without a browser. */
+interface SdkError {
+  code: string;
+  cause?: unknown;
+}
+
+/**
+ * What a passkey prompt that threw was: the person closing it (or letting it time out), a passkey
+ * that exists and gives no PRF output, or a real failure. The first two are answers the screen
+ * has words for; only the third is an error.
+ */
+export function promptFailure(
+  caught: unknown,
+  isSdkError: (value: unknown) => value is SdkError,
+): "closed" | "no_prf" | "failed" {
+  if (!isSdkError(caught)) {
+    return "failed";
+  }
+  if (caught.code === "PRF_UNAVAILABLE") {
+    return "no_prf";
+  }
+  const name = (caught.cause as { name?: unknown } | null | undefined)?.name;
+  const closed = name === "NotAllowedError" || name === "AbortError";
+  return caught.code === "PASSKEY_OPERATION_FAILED" && closed ? "closed" : "failed";
 }
 
 export interface PrfResult {
@@ -53,9 +90,12 @@ export interface MeraKit {
 export interface MeraCeremony {
   prf: PrfSource;
   kit: MeraKit;
-  chainId: number;
-  /** Signs in as the opened account: asks the API for its message, signs it, presents it. */
-  signIn: (signer: Signer) => Promise<ConnectResult>;
+  /** The server's sign-in message for this address. The one request the key waits for. */
+  challenge: (address: string) => Promise<string>;
+  /** Presents the signed message. Called only after the key is wiped. */
+  present: (message: string, signature: string) => Promise<ConnectResult>;
+  /** The passkey prompt returned a credential, before anything else can fail. */
+  onPasskey?: (credentialId: string) => void;
   /** The account already connected. A passkey that opens any other is refused. */
   expectedAddress?: string;
 }
@@ -72,28 +112,44 @@ export async function runMeraCeremony(ceremony: MeraCeremony): Promise<MeraOpene
   if (!passkey) {
     return null;
   }
+  ceremony.onPasskey?.(passkey.credentialId);
 
   let privateKey: Uint8Array | undefined;
   let opened: OpenedKey | undefined;
+  const wipe = () => {
+    try {
+      opened?.end();
+    } finally {
+      privateKey?.fill(0);
+      passkey.prfOutput.fill(0);
+      opened = undefined;
+    }
+  };
+
+  let address: string;
+  let message: string;
+  let signature: string;
   try {
-    privateKey = ceremony.kit.privateKeyFromPrf(passkey.prfOutput);
+    try {
+      privateKey = ceremony.kit.privateKeyFromPrf(passkey.prfOutput);
+    } finally {
+      passkey.prfOutput.fill(0);
+    }
     opened = ceremony.kit.openKey(privateKey);
+    address = opened.address;
 
     const expected = ceremony.expectedAddress;
-    if (expected && expected.toLowerCase() !== opened.address.toLowerCase()) {
+    if (expected && expected.toLowerCase() !== address.toLowerCase()) {
       throw new WrongPasskeyError();
     }
 
-    const key = opened;
-    const session = await ceremony.signIn({
-      address: key.address,
-      chainId: ceremony.chainId,
-      signMessage: (message) => key.signMessage(message),
-    });
-    return { address: key.address, credentialId: passkey.credentialId, session };
+    message = await ceremony.challenge(address);
+    signature = await opened.signMessage(message);
   } finally {
-    opened?.end();
-    privateKey?.fill(0);
-    passkey.prfOutput.fill(0);
+    wipe();
   }
+
+  // The key is gone. What is left to send is a string and its signature.
+  const session = await ceremony.present(message, signature);
+  return { address, credentialId: passkey.credentialId, session };
 }

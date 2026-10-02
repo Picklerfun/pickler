@@ -27,7 +27,7 @@ Three things are also missing whichever wallet is used:
 | M1  | **The chooser offers two wallets, and only two:** the passkey wallet (Mera), first, with "Create one" and "I already have one"; and the browser wallet, as today. Turnkey is never offered here.                                                                                                   | yes                         |
 | M2  | **Mera's relying party on the web is `pickler.fun`**, the same as the app's (`mobile-monorepo-v1.md` W1). The same passkey, synced by its keychain, is the same account on both.                                                                                                                   | no, once anyone holds funds |
 | M3  | **The account is derived by `@pickler/mera-account`** and by nothing else: PRF output → BIP-39 → `m/44'/60'/0'/0/0`. The retired signer's rule (the PRF output as the key) is not brought back.                                                                                                    | no, same reason             |
-| M4  | **The key exists for one ceremony.** A passkey prompt yields the PRF output; the key is derived, used, and its bytes zeroed before the ceremony returns. Nothing derived from it is stored. Every later signature is another prompt.                                                               | yes                         |
+| M4  | **No key is kept.** A passkey prompt yields the PRF output; the key is derived, used to sign once, and its bytes zeroed before the signature is presented. Nothing derived from it is stored. Every later signature is another prompt.                                                             | yes                         |
 | M5  | **Connecting signs in, for both wallets.** After the wallet connects, the chooser goes on to one signature over the server's sign-in message. For Mera that is the same ceremony as connecting: one prompt. For a browser wallet it is its own step with its own button, then the wallet's prompt. | yes                         |
 | M6  | **Then a username, if the account has none.** Whatever wallet signed in, an account with no profile is asked for its username in the chooser's last step. Closing the chooser is always possible; the portfolio then asks again.                                                                   | yes                         |
 | M7  | **The server records the kind.** `POST /v1/auth/wallet/verify` and `/link` accept `kind: "mera" \| "eoa"` (default `eoa`), stored in `identity.wallet_links.kind` as `mera` or `external`. It describes; it grants nothing. The first writer stands. No migration: the column already allows both. | yes                         |
@@ -66,21 +66,28 @@ address.
 
 ## 4. Mera and Turnkey never meet
 
-| Guard         | What it is                                                                                                                                                                                                                                                                                                              |
-| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Relying party | Mera asks WebAuthn for `pickler.fun`; Turnkey's passkeys are enrolled against `app.pickler.fun`. A browser never offers a credential for a relying party that was not asked for, so the passkey wallet cannot be opened with a studio passkey. The API already refuses to compose custody on Mera's relying party.      |
-| Host          | The passkey wallet is offered only where the page is the marketplace: its hostname is the relying party, and the product for that host is not the studio. On the studio host it is unavailable, with the reason, even though WebAuthn would allow the parent domain there.                                              |
-| Code          | ESLint: nothing under `features/wallet` may import `@turnkey/*` or the custody and passkey modules of `features/auth` and `features/studio`; nothing outside `features/wallet/lib/mera-*.ts` may import `@category-labs/mera` or `@pickler/mera-account`. CI fails on either.                                           |
-| Account       | A wallet sign-in account is marked `pickler_account = "wallet"` and claims its username without a custody account, as the API already allows. A studio account's Turnkey wallet is never listed, linked or signed with here. `kind` describes a link and decides nothing.                                               |
-| Development   | On `localhost` both relying parties are necessarily `localhost`, so a studio passkey made there can be picked in the passkey wallet's prompt and would derive an account. That cannot happen on a deployed host. Locally the chooser says so on the choice, and the account derived there is not the app's in any case. |
+| Guard         | What it is                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Relying party | Mera asks WebAuthn for `pickler.fun`, a constant in the code and not configuration; Turnkey's passkeys are enrolled against `app.pickler.fun`. A browser never offers a credential for a relying party that was not asked for, so the passkey wallet cannot be opened with a studio passkey. The API already refuses to compose custody on Mera's relying party.                                                                                                          |
+| Host          | The passkey wallet is offered only where the page's hostname is the relying party and is the host configured as the marketplace. On the studio host it is unavailable, with the reason, even though WebAuthn would allow the parent domain there. A host that is neither — a preview, a staging host, where both products answer — has no passkey wallet until a specification gives it one.                                                                              |
+| Code          | ESLint: nothing under `features/wallet` may import `@turnkey/*` or anything of `features/auth`, `features/studio` or `features/account` but the Supabase client; nothing outside `features/wallet/lib/mera-*.ts` may import `@category-labs/mera` or `@pickler/mera-account`; nothing outside `features/wallet` may import those modules. Static imports and `import()`. CI fails on any. A re-export through another wallet module is not something a lint rule can see. |
+| Account       | A wallet sign-in account is marked `pickler_account = "wallet"` and claims its username without a custody account, as the API already allows. A studio account's Turnkey wallet is never listed, linked or signed with here. `kind` describes a link and decides nothing.                                                                                                                                                                                                 |
+| Development   | On `localhost` both relying parties are necessarily `localhost`, so a studio passkey made there can be picked in the passkey wallet's prompt and would derive an account. On a deployed host the two rows above prevent it. Locally the chooser says so on the choice, and the account derived there is not the app's in any case.                                                                                                                                        |
 
 ## 5. A key in the page
 
 In the app the derived key lives in the app's process. On the web it lives in the page, beside
 every script the page runs and every extension allowed on the host, for as long as it exists. M4 is
-the mitigation in this version: the key exists for the seconds of one ceremony, in local variables,
-and is zeroed in a `finally`. The Mera SDK and the derivation are loaded when a ceremony starts,
-not with the page.
+the mitigation in this version: the PRF output is zeroed as soon as the key is derived, the key
+lives in local variables across one request (the sign-in message, which needs the address) and is
+zeroed before the signature is presented, in a `finally`. The derivation wipes every HD node it
+went through. The Mera SDK and the derivation are fetched when the chooser opens, not with the
+page, so that the passkey prompt follows the click without a download in between.
+
+What zeroing cannot reach: the mnemonic is a string, the curve library computes with big integers,
+and the browser keeps its own copy of the PRF output in the credential it returned. They are
+unreachable after the ceremony and are the garbage collector's. "No key is kept" means nothing
+reachable holds one.
 
 What this does not cover: a malicious script already in the page during a ceremony can use the key
 or copy the PRF output, and a PRF output is the wallet for good, on the phone too. A strict
@@ -117,10 +124,12 @@ funds**; today the venue is a testnet. M11 is the switch if the owner decides ot
 1. The ceremony derives the addresses of `@pickler/mera-account`'s vectors from their PRF outputs,
    and the signature it presents recovers to that address over the server's exact message.
 2. After a ceremony — finished, refused by the server, or thrown — the PRF output and the key it
-   was given are zero-filled, and nothing was written to storage but the kind, the address and the
-   credential id.
-3. `meraAvailability`: offered on `pickler.fun`; refused on the studio host, on any other host and
-   with the switch off; on loopback outside production, offered with the development note.
+   was given are zero-filled; the PRF output already when the first request leaves, the key before
+   the signature is presented. Nothing is written to storage but the kind, the address and the
+   credential id (seen in a browser, not pinned by a unit test).
+3. `meraAvailability`: offered on `pickler.fun` when it is the configured marketplace host;
+   refused on the studio host, on any other host — one that serves both products included — and
+   with the switch off; on `localhost` outside production, offered with the development note.
 4. The API stores `mera` for a Mera sign-in and `external` otherwise, keeps the first kind on a
    second sign-in, and refuses an unknown kind.
 5. The flow: Mera reaches "signed in" in one step; a browser wallet passes through "sign in"; an

@@ -190,6 +190,8 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   // The account as of the last render, for telling a change of chain from a change of
   // address when the held session has no address of its own.
   const accountRef = useRef<SignerAccount | null>(null);
+  // A connect is waiting on a wallet's or a passkey's prompt.
+  const flight = useRef(false);
   // Which signers exist is a question only the browser can answer. Read through an external store
   // rather than an effect: the server renders "not yet" and the browser answers on the first paint.
   const mounted = useSyncExternalStore(subscribeToBrowser, inBrowser, onServer);
@@ -242,9 +244,20 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     void supabase.auth.getSession().then(
       ({ data }) => {
         // A sign-in that finished first is the better answer: it knows its address.
-        if (live && !heldRef.current) {
-          hold(adoptSession(data.session));
+        if (!live || heldRef.current) {
+          return;
         }
+        const adopted = adoptSession(data.session);
+        hold(adopted);
+        if (!adopted || !data.session) {
+          return;
+        }
+        // Whether that account has a username yet, so the portfolio can still ask after a reload.
+        void readHasProfile(data.session.access_token).then((known) => {
+          if (live && heldRef.current === adopted) {
+            setProfile(known);
+          }
+        });
       },
       () => {},
     );
@@ -259,10 +272,9 @@ export function WalletProvider({ children }: { children: ReactNode }) {
    * A change of chain keeps the address, and so keeps the session.
    */
   const release = useCallback(
-    (next: SignerAccount | null) => {
+    (next: SignerAccount | null): Promise<void> => {
       const cached = heldRef.current;
       setSessionError(null);
-      setProfile(null);
       const previous = accountRef.current;
       const changed = releases(
         cached,
@@ -270,11 +282,15 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         next && { address: next.address, namespace: "eip155" },
       );
       if (!cached || !changed) {
-        return;
+        return Promise.resolve();
       }
       hold(null);
+      // What is known about a username is known about that session's account.
+      setProfile(null);
       // Best effort: the token is already forgotten here, which is what keeps it from being sent.
-      void dropWalletSession(getSupabase(), cached).catch(() => {});
+      // The promise is for a caller about to put another session in the same client: the sign-out
+      // reads which session is there before it ends it, so it has to finish first.
+      return dropWalletSession(getSupabase(), cached).catch(() => {});
     },
     [hold],
   );
@@ -285,7 +301,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       return;
     }
     return adapter.subscribe((next) => {
-      release(next);
+      void release(next);
       setAccount(next);
       if (!next) {
         setKind(null);
@@ -322,9 +338,17 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const connectWith = useCallback(
     async (picked: SignerKind, mode?: ConnectMode) => {
       const signer = SIGNERS.find((candidate) => candidate.kind === picked);
-      if (!signer) {
+      // One prompt at a time: a second pick while a wallet is still answering the first is dropped.
+      if (!signer || flight.current) {
         return;
       }
+      if (picked === "mera" && !getSupabase()) {
+        // The passkey wallet signs in while it connects. With nowhere to keep a session, the
+        // prompt would make a passkey and an account for nothing.
+        dispatch({ type: "failed", error: "Signing in is not configured in this build." });
+        return;
+      }
+      flight.current = true;
       setConnecting(true);
       setError(null);
       dispatch({ type: "working" });
@@ -335,7 +359,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
           return;
         }
         const { session: issued, ...shown } = connected;
-        release(shown);
+        const released = release(shown);
         setKind(picked);
         setAccount(shown);
         remember(picked);
@@ -344,7 +368,9 @@ export function WalletProvider({ children }: { children: ReactNode }) {
           dispatch({ type: "connected", signedIn: false, hasProfile: null });
           return;
         }
-        // The passkey wallet signed in inside the ceremony that connected it.
+        // The passkey wallet signed in inside the ceremony that connected it. The last session is
+        // signed out of first, or its sign-out would end this one.
+        await released;
         const result = await keep(
           {
             address: shown.address,
@@ -385,6 +411,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         setError(words);
         dispatch({ type: "failed", error: words });
       } finally {
+        flight.current = false;
         setConnecting(false);
       }
     },
@@ -458,12 +485,19 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     setHolding(held ?? null);
     setError(null);
     dispatch({ type: "open" });
+    if (flight.current) {
+      // Closed and opened again while a prompt is still up: the chooser is still waiting on it.
+      dispatch({ type: "working" });
+    }
+    for (const signer of SIGNERS) {
+      signer.prepare?.();
+    }
   }, []);
 
   const disconnect = useCallback(async () => {
     // First, and whatever the wallet then answers: a disconnect that failed half-way must not
     // leave the last address's session behind.
-    release(null);
+    void release(null);
     await adapter?.disconnect();
     setAccount(null);
     setKind(null);
@@ -559,7 +593,6 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         onPick={(picked, mode) => void connectWith(picked, mode ?? undefined)}
         onSignIn={() => void signInFromChooser()}
         onBack={() => dispatch({ type: "back" })}
-        onClaimed={profileClaimed}
         onClose={closeChooser}
       />
     </WalletContext.Provider>

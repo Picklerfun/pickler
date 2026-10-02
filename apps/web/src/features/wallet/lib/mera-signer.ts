@@ -1,10 +1,11 @@
 "use client";
 
 import { PRODUCT_HOSTS } from "@/server/hosts";
-import { signIn, type ConnectResult } from "./connect";
-import { meraAvailability, type MeraAvailability } from "./mera-availability";
+import { challenge, present, type ConnectResult } from "./connect";
+import { MERA_RELYING_PARTY, meraAvailability, type MeraAvailability } from "./mera-availability";
 import {
   PrfUnavailableError,
+  promptFailure,
   runMeraCeremony,
   type PrfResult,
   type PrfSource,
@@ -64,17 +65,12 @@ function availability(): MeraAvailability {
   return meraAvailability({
     hostname: window.location.hostname,
     studioHost: PRODUCT_HOSTS.studio,
-    relyingParty: process.env.NEXT_PUBLIC_MERA_RP_ID ?? "pickler.fun",
+    marketplaceHost: PRODUCT_HOSTS.marketplace,
+    relyingParty: MERA_RELYING_PARTY,
     production: process.env.NODE_ENV === "production",
     enabled: process.env.NEXT_PUBLIC_MERA_WEB !== "off",
   });
 }
-
-/** What a browser throws when the person closes a passkey prompt, or lets it time out. */
-const closedPrompt = (cause: unknown) => {
-  const name = (cause as { name?: unknown } | null)?.name;
-  return name === "NotAllowedError" || name === "AbortError";
-};
 
 /** The closed-prompt shape a browser wallet throws, so one branch handles both wallets. */
 const promptClosed = () =>
@@ -86,14 +82,11 @@ async function prompt(run: () => Promise<PrfResult>): Promise<PrfResult | null> 
     return await run();
   } catch (caught) {
     const { isMeraError } = await import("@category-labs/mera");
-    if (isMeraError(caught) && caught.code === "PRF_UNAVAILABLE") {
+    const outcome = promptFailure(caught, isMeraError);
+    if (outcome === "no_prf") {
       throw new PrfUnavailableError();
     }
-    if (
-      isMeraError(caught) &&
-      caught.code === "PASSKEY_OPERATION_FAILED" &&
-      closedPrompt(caught.cause)
-    ) {
+    if (outcome === "closed") {
       return null;
     }
     throw caught;
@@ -117,28 +110,52 @@ function source(rpId: string, mode: ConnectMode, credentialId?: string): PrfSour
     return prompt(() =>
       mera.getPasskeyPrfOutput({
         rpId,
-        // Restricted to the connected passkey when there is one; otherwise the platform offers
-        // every Pickler passkey the person has, the app's included.
+        // Restricted to one passkey when it is known; otherwise the platform offers every Pickler
+        // passkey the person has, the app's included.
         ...(credentialId ? { credential: { credentialId } } : {}),
       }),
     );
   };
 }
 
-const balanceOf = (address: string) =>
-  readNativeBalance(address, TARGET_CHAIN.publicRpcUrls[0] ?? "");
+async function balanceOf(address: string): Promise<bigint | null> {
+  const rpcUrl = TARGET_CHAIN.publicRpcUrls[0];
+  return rpcUrl ? readNativeBalance(address, rpcUrl) : null;
+}
 
-async function ceremony(mode: ConnectMode, connected?: Remembered) {
+/**
+ * A passkey that "Create one" made and whose sign-in then failed: the network dropped, the server
+ * refused. It exists in the person's keychain, so pressing "Create one" again must open it rather
+ * than make a second passkey with the same name and another address. A credential id is not a
+ * secret. Kept for the page's life only, and for one retry: see `connect`.
+ */
+let unfinished: string | null = null;
+
+interface Restriction {
+  /** The only passkey the prompt may offer. */
+  credentialId?: string;
+  /** The account the passkey must open. */
+  expectedAddress?: string;
+}
+
+async function ceremony(mode: ConnectMode, only: Restriction = {}) {
   const place = availability();
   if (!place.offered) {
     return null;
   }
   return runMeraCeremony({
-    prf: source(place.rpId, mode, connected?.credentialId),
+    prf: source(place.rpId, mode, only.credentialId),
     kit: await loadMeraKit(),
-    chainId: TARGET_CHAIN.chainId,
-    signIn: (signer) => signIn(signer, fetch, "mera"),
-    ...(connected ? { expectedAddress: connected.address } : {}),
+    challenge: (address) => challenge(address, TARGET_CHAIN.chainId),
+    present: (message, signature) => present(message, signature, "mera"),
+    ...(mode === "create"
+      ? {
+          onPasskey: (credentialId: string) => {
+            unfinished = credentialId;
+          },
+        }
+      : {}),
+    ...(only.expectedAddress ? { expectedAddress: only.expectedAddress } : {}),
   });
 }
 
@@ -155,6 +172,15 @@ export const meraSigner: SignerAdapter = {
     return place.offered ? place.note : null;
   },
 
+  // A passkey prompt has to follow the click that asked for it: a browser that sees a download in
+  // between may refuse the prompt. So the libraries are fetched when the chooser opens, and the
+  // ceremony finds them already there.
+  prepare: () => {
+    if (availability().offered) {
+      void loadMeraKit().catch(() => {});
+    }
+  },
+
   // The address is not a secret: a reload shows whose wallet this is without a prompt. Signing
   // anything still needs the passkey, because nothing else was kept.
   resume: async (): Promise<SignerAccount | null> => {
@@ -166,10 +192,29 @@ export const meraSigner: SignerAdapter = {
 
   // One prompt: the passkey opens the account and signs in with it, in the same ceremony.
   connect: async (mode: ConnectMode = "existing"): Promise<SignerAccount | null> => {
-    const opened = await ceremony(mode);
+    // "Create one" after a create whose sign-in failed opens the passkey that create made. One
+    // retry: if that prompt is closed too, the next press makes a new passkey, so a passkey the
+    // person has since deleted cannot leave the button doing nothing.
+    const retried = mode === "create" ? unfinished : null;
+    if (retried) {
+      unfinished = null;
+    }
+    let opened: Awaited<ReturnType<typeof ceremony>>;
+    try {
+      opened = retried
+        ? await ceremony("existing", { credentialId: retried })
+        : await ceremony(mode);
+    } catch (caught) {
+      // Still there and still not signed in: the next press opens it again.
+      if (retried && !(caught instanceof PrfUnavailableError)) {
+        unfinished = retried;
+      }
+      throw caught;
+    }
     if (!opened) {
       return null;
     }
+    unfinished = null;
     remember({ address: opened.address, credentialId: opened.credentialId });
     return {
       address: opened.address,
@@ -181,12 +226,11 @@ export const meraSigner: SignerAdapter = {
 
   signIn: async (expectedAddress: string): Promise<ConnectResult> => {
     const known = recall();
-    const connected =
-      known && known.address.toLowerCase() === expectedAddress.toLowerCase() ? known : undefined;
-    const opened = await ceremony(
-      "existing",
-      connected ?? { address: expectedAddress, credentialId: "" },
-    );
+    const same = known && known.address.toLowerCase() === expectedAddress.toLowerCase();
+    const opened = await ceremony("existing", {
+      expectedAddress,
+      ...(same ? { credentialId: known.credentialId } : {}),
+    });
     if (!opened) {
       throw promptClosed();
     }

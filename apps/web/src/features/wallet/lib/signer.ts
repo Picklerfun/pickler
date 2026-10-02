@@ -46,6 +46,11 @@ export interface SignerAdapter {
    */
   note?: () => string | null;
   /**
+   * The chooser just opened: fetch whatever a later `connect` would otherwise have to wait for.
+   * Never prompts.
+   */
+  prepare?: () => void;
+  /**
    * Pick up a connection that already exists, without prompting. Null when there is nothing to
    * pick up, which includes a signer that cannot resume silently at all.
    */

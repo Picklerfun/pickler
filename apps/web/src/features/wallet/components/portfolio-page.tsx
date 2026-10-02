@@ -108,9 +108,9 @@ export function PortfolioPage({
 
   const body = (
     <>
-      {(needsHandle || (wallet.session === "active" && wallet.hasProfile === false)) && (
-        <ClaimHandle />
-      )}
+      {/* Known to have no username: the chooser asked and was closed, or a reload found the
+          account's session and read it. Not known is not asked. */}
+      {(needsHandle || wallet.hasProfile === false) && <ClaimHandle />}
       <div className={styles.top}>
         {/* The dark block in a light page. It is not a dark-coloured panel: it is the studio's own
             surface appearing inline, so every token inside it resolves to the dark ramp.

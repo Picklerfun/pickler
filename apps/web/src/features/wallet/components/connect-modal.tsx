@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button, Field, Icon, Input } from "@pickler/ui";
 import type { IconName } from "@pickler/ui";
 import type { ConnectFlowState } from "../lib/connect-flow";
@@ -55,7 +55,6 @@ interface ConnectModalProps {
   onPick: (kind: SignerKind, mode: ConnectMode | null) => void;
   onSignIn: () => void;
   onBack: () => void;
-  onClaimed: () => void;
   onClose: () => void;
 }
 
@@ -124,6 +123,8 @@ export function ConnectModal(props: ConnectModalProps) {
 }
 
 function Choose({ flow, choices, kind, onPick }: ConnectModalProps) {
+  // Which wallet the person is waiting on is the one they just picked, not the one connected.
+  const [picked, setPicked] = useState<SignerKind | null>(null);
   return (
     <>
       <h2 id="connect-title" className={styles.title}>
@@ -143,7 +144,10 @@ function Choose({ flow, choices, kind, onPick }: ConnectModalProps) {
                 type="button"
                 className={styles.choice}
                 disabled={choice.unavailable !== null || flow.busy}
-                onClick={() => onPick(choice.kind, choice.mode)}
+                onClick={() => {
+                  setPicked(choice.kind);
+                  onPick(choice.kind, choice.mode);
+                }}
               >
                 <span className={styles.choiceIcon} aria-hidden="true">
                   <Icon name={copy.icon} size={18} />
@@ -165,7 +169,7 @@ function Choose({ flow, choices, kind, onPick }: ConnectModalProps) {
         })}
       </ul>
 
-      {flow.busy && <p className={styles.waiting}>{WAITING[kind ?? "injected"]}</p>}
+      {flow.busy && <p className={styles.waiting}>{WAITING[picked ?? kind ?? "injected"]}</p>}
       <Failure flow={flow} />
 
       <p className={styles.foot}>
@@ -204,8 +208,9 @@ function SignIn({ flow, address, onSignIn }: ConnectModalProps) {
 }
 
 /** The last step, for an account with no username yet, whichever wallet it came with. */
-function Username({ flow, onClaimed }: ConnectModalProps) {
-  const form = useHandleClaim(onClaimed);
+function Username({ flow }: ConnectModalProps) {
+  // The claim tells the wallet context, which closes the chooser: nothing to do here afterwards.
+  const form = useHandleClaim();
   return (
     <>
       <h2 id="connect-title" className={styles.title}>
@@ -267,9 +272,9 @@ function NoPrf({ onBack }: ConnectModalProps) {
         THAT PASSKEY CANNOT OPEN A WALLET.
       </h2>
       <p className={styles.lead}>
-        The password manager that saved it does not hand over the secret a wallet is made from.
-        Apple Passwords (iCloud Keychain), Google Password Manager and Windows Hello do. Bitwarden,
-        Dashlane and a passkey kept in the Chrome profile do not.
+        The password manager that saved it did not hand over the secret a wallet is made from. An
+        up-to-date Apple Passwords (iCloud Keychain), Google Password Manager or Windows Hello does;
+        some other managers, and older systems, do not.
       </p>
       <p className={styles.lead}>
         If a passkey named Pickler was just saved there, it is no use and can be deleted.

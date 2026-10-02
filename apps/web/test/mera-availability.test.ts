@@ -1,11 +1,16 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { meraAvailability, type MeraPlace } from "../src/features/wallet/lib/mera-availability";
+import {
+  MERA_RELYING_PARTY,
+  meraAvailability,
+  type MeraPlace,
+} from "../src/features/wallet/lib/mera-availability";
 import { readNativeBalance } from "../src/features/wallet/lib/native-balance";
 
 const at = (over: Partial<MeraPlace>): MeraPlace => ({
   hostname: "pickler.fun",
   studioHost: "app.pickler.fun",
+  marketplaceHost: "pickler.fun",
   relyingParty: "pickler.fun",
   production: true,
   enabled: true,
@@ -88,4 +93,31 @@ test("a balance is read over the public endpoint, and one that was not read is n
     }) as typeof fetch),
     null,
   );
+});
+
+test("a host that serves both products never offers it, whatever it names as the relying party", () => {
+  // A staging host is neither configured product host, so the studio answers there too, and a
+  // Turnkey passkey for that host would sit in the same prompt.
+  const staging = meraAvailability(
+    at({ hostname: "staging.pickler.fun", relyingParty: "staging.pickler.fun" }),
+  );
+  const both = meraAvailability(
+    at({ hostname: "pickler.fun", marketplaceHost: "market.pickler.fun" }),
+  );
+
+  assert.equal(staging.offered, false);
+  assert.equal(both.offered, false);
+});
+
+test("a relying party that is empty offers nothing in production", () => {
+  assert.equal(meraAvailability(at({ relyingParty: "" })).offered, false);
+  assert.equal(meraAvailability(at({ hostname: "", relyingParty: "" })).offered, false);
+});
+
+test("the relying party is the one core names, the app's", async () => {
+  // A dynamic import: core publishes only an "import" condition and this file is CommonJS to node.
+  const core = await import("@pickler/core");
+
+  assert.equal(MERA_RELYING_PARTY, core.MERA_RELYING_PARTY);
+  assert.equal(MERA_RELYING_PARTY, "pickler.fun");
 });
