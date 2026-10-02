@@ -145,6 +145,9 @@
   min-width: 0;
 }
 .rail {
+  /* Positioned, so the locked rows' visually hidden text is laid out in the rail: unpositioned, it
+     escaped the phone rail's own scroller and widened the page to the rail's full length. */
+  position: relative;
   flex: 0 0 218px;
   min-width: 0;
   display: flex;
@@ -198,13 +201,13 @@
 }
 /* Locked while private: still a button, which opens the locked panel saying when it opens. The
    faint ink is too near the open items' muted ink to read as shut (the token file keeps the
-   canvas's #3A3F58 off text), so the row also dims as a disabled control and draws a lock. */
+   canvas's #3A3F58 off text), so the icon dims and the row draws a lock. The label keeps the
+   faint ink at full strength: it is a working control, and dimmed it fails AA contrast. */
 .railItem[aria-disabled="true"] {
   color: var(--pk-ink-faint);
   cursor: not-allowed;
 }
-.railItem[aria-disabled="true"] > svg,
-.railItem[aria-disabled="true"] > .railLabel {
+.railItem[aria-disabled="true"] > svg {
   opacity: 0.5;
 }
 .railLock {

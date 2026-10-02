@@ -198,7 +198,7 @@ export function XConnect({
         </button>
       </form>
       {view.miss && (
-        <div className={styles.xMiss} role="status">
+        <div className={styles.xMiss} id={`${idPrefix}-x-miss`} role="status">
           <span className={styles.xMissTitle}>{view.miss.title}</span>
           <span className={styles.xPost}>
             <span className={styles.xPostText}>{view.miss.line}</span>
