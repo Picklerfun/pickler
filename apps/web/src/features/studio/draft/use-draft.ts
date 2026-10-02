@@ -60,6 +60,8 @@ export interface UseDraft extends DraftData {
   readWallets(): Promise<StudioWallets | null>;
   /** The ledger, for Master wallet. */
   readLedger(): Promise<void>;
+  /** The agent again in the shell: after a save refused as stale (409 CONFLICT). */
+  refreshAgent(): Promise<void>;
   /**
    * `PUT /setup` at the agent's current version: brief, sources, caps and/or voice. Answers the
    * agent and reloads it in the shell. A 409 CONFLICT throws: the caller reloads and says so.
@@ -200,6 +202,8 @@ export function useDraft({
     }
   }, [offline]);
 
+  const reloadAgent = useCallback(() => refreshAgent.current(), []);
+
   const refresh = useCallback(async () => {
     setError("");
     await Promise.all([readWallets(), readActivity(), readX()]);
@@ -318,6 +322,7 @@ export function useDraft({
     refresh,
     readWallets,
     readLedger,
+    refreshAgent: reloadAgent,
     saveSetup,
     saveIdentity,
     saveInterval,
