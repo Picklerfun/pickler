@@ -1,13 +1,12 @@
 "use client";
 
 import type { PerpMarketDto } from "@pickler/api-schema";
-import { PERP_LIMITS_DTO } from "@pickler/api-schema";
 import Link from "next/link";
 import { Button, ButtonLink, Chip, Icon, Segmented } from "@pickler/ui";
 import { useWallet } from "@/features/wallet/lib/wallet-context";
 import { TARGET_CHAIN } from "@/features/wallet/lib/provider";
 import styles from "../markets.module.css";
-import { formatAmount, formatAusd, formatClose, formatPrice } from "../lib/format";
+import { formatAmount, formatAusd, formatClose, formatPrice, formatShare } from "../lib/format";
 import { closesAt, leverageChoices, positionPhrase, quoteTicket, triggerRule } from "../lib/ticket";
 import type { Square } from "./pick-surface";
 import type { TicketActions, TicketState } from "./ticket-state";
@@ -25,8 +24,9 @@ interface TradeTicketProps {
 
 /**
  * The position side of a market: what the square would cost, what it would return, and what would
- * end it. It is built in full and then stops, because Perpl's contracts are not deployed and this
- * site's wallet never signs — so the last button carries the reason instead of a transaction.
+ * end it. It is built in full and then stops, because this site's wallet connection never signs —
+ * so the last button carries the reason instead of a transaction. The fee, the margins and the
+ * smallest account are the venue's, read from the market.
  */
 export function TradeTicket({ market, square, now, state, actions }: TradeTicketProps) {
   if (state.preview) {
@@ -62,9 +62,8 @@ export function TradeTicket({ market, square, now, state, actions }: TradeTicket
                 Open {quote.side} · {quote.size.toFixed(4)} {market.base}
               </strong>
               <span className={styles.orderRule}>
-                MARKET · IMMEDIATE-OR-CANCEL · SLIPPAGE CAP{" "}
-                {(PERP_LIMITS_DTO.slippageCap * 100).toFixed(1)} % · {formatAmount(quote.notional)}{" "}
-                AUSD AT {state.leverage}×
+                MARKET · IMMEDIATE-OR-CANCEL · SLIPPAGE CAP {formatShare(market.limits.slippageCap)}{" "}
+                % · {formatAmount(quote.notional)} AUSD AT {state.leverage}×
               </span>
             </span>
           </li>
@@ -268,13 +267,13 @@ function Figures({
         <dd className={styles.toneWin}>+{formatAusd(quote.winIfHit)}</dd>
       </div>
       <div>
-        <dt>LIQUIDATION ≈ · MAINT. {(PERP_LIMITS_DTO.maintenanceMargin * 100).toFixed(0)} %</dt>
+        <dt>LIQUIDATION ≈ · MAINT. {formatShare(market.limits.maintenanceMargin)} %</dt>
         <dd className={styles.toneLoss}>{formatPrice(quote.liquidation)}</dd>
       </div>
       <div>
         <dt>FEE · TAKER, OPEN ONLY</dt>
         <dd>
-          {formatAusd(quote.fee)} · {(PERP_LIMITS_DTO.takerFee * 100).toFixed(2)} %
+          {formatAusd(quote.fee)} · {formatShare(market.limits.takerFee)} %
         </dd>
       </div>
       <div>
@@ -407,8 +406,8 @@ function SendAction({ label, onEdit }: { label: string; onEdit: () => void }) {
         </Button>
       </div>
       <p id="send-status" className={styles.ticketFoot}>
-        Sending opens with the Perpl contracts on {TARGET_CHAIN.name}. Nothing is charged today, and
-        this site&rsquo;s wallet connection reads your account — it never signs.
+        Nothing is sent from this page yet: this site&rsquo;s wallet connection reads your account
+        on {TARGET_CHAIN.name} and never signs. Nothing is charged.
       </p>
     </>
   );
@@ -486,7 +485,7 @@ function PreviewTicket({
           </div>
           <div>
             <dt>MINIMUM TO OPEN</dt>
-            <dd>{formatAusd(PERP_LIMITS_DTO.minimumDeposit)}</dd>
+            <dd>{formatAusd(market.limits.minimumAccountOpen)}</dd>
           </div>
           <div>
             <dt>THIS TICKET NEEDS</dt>
@@ -599,7 +598,7 @@ function PreviewTicket({
         NOTHING OPENED.
       </h2>
       <p className={styles.ticketBody}>
-        No size inside the {(PERP_LIMITS_DTO.slippageCap * 100).toFixed(1)} % slippage cap, so the
+        No size inside the {formatShare(market.limits.slippageCap)} % slippage cap, so the
         immediate-or-cancel would expire. The margin returns and nothing is charged.
       </p>
       <dl className={styles.figures}>

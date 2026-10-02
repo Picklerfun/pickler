@@ -1,9 +1,9 @@
 // Perpetual markets on Perpl. Prices are in the market's quote currency, amounts are AUSD, and
 // `change24h` and `funding1h` are signed fractions, not percentages already multiplied out.
 //
-// The options and limits below mirror the business rules in core so the client can draw the
-// surface and quote a ticket without a round trip per keystroke. Core stays authoritative for
-// anything that is sent.
+// The options below mirror the business rules in core so the client can draw the surface without a
+// round trip per keystroke. What the venue charges and demands is not an option of ours: it travels
+// with each market, in `limits`.
 
 import type { AccentDto } from "./landing.js";
 
@@ -21,17 +21,25 @@ export const LEVEL_OPTIONS = [2.5, 2, 1.5, 1, 0.5, -0.5, -1, -1.5, -2] as const;
 /** The leverages a ticket offers, before the market's own ceiling cuts the list. */
 export const LEVERAGE_OPTIONS = [2, 3, 5, 10] as const;
 
-/** What the venue charges and demands. Fractions, except the deposit, which is AUSD. */
-export const PERP_LIMITS_DTO = {
+/** What the venue charges and demands on one market. Fractions, except the account, in AUSD. */
+export interface MarketLimitsDto {
+  /** Taker fee on the notional, charged on open. */
+  takerFee: number;
   /** Below this share of the notional the position is liquidated. */
-  maintenanceMargin: 0.05,
-  /** Taker fee, charged on open only; closing is free. */
-  takerFee: 0.0005,
-  /** How far the open may slip before the immediate-or-cancel order expires unfilled. */
-  slippageCap: 0.005,
-  /** Smallest deposit that opens a Perpl account. */
-  minimumDeposit: 10,
-} as const;
+  maintenanceMargin: number;
+  /** How far a market order may slip before it expires unfilled. */
+  slippageCap: number;
+  /** The smallest deposit that opens an account on the venue. */
+  minimumAccountOpen: number;
+}
+
+/**
+ * Where a market's figures came from. `observedAt` is when the venue's answer was received, as an
+ * ISO timestamp; `stale` says the venue could not be reached since and this is the last answer.
+ */
+export type MarketSourceDto =
+  | { venue: "sample" }
+  | { venue: "perpl"; network: "mainnet" | "testnet"; observedAt: string; stale: boolean };
 
 export interface MarketCallDto {
   agent: string;
@@ -47,12 +55,15 @@ export interface PerpMarketDto {
   funding1h: number;
   openInterest: number;
   maxLeverage: number;
-  agentsReading: number;
-  openCalls: number;
+  /** Null when nobody has counted: unknown, not zero. */
+  agentsReading: number | null;
+  openCalls: number | null;
   lastCall: MarketCallDto | null;
   note: string;
-  /** Largest hourly move this month, in per cent — the scale a square's level is on. */
-  hourlyReach: number;
+  /** Largest hourly move this month, in per cent — the scale a square's level is on. Null when unmeasured. */
+  hourlyReach: number | null;
+  limits: MarketLimitsDto;
+  source: MarketSourceDto;
 }
 
 /** A square an agent holds a public call on. */

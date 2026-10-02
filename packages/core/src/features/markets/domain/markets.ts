@@ -37,6 +37,37 @@ export interface MarketCall {
   when: string;
 }
 
+/** What the venue charges and demands on one market. Fractions, except the account, in AUSD. */
+export interface MarketLimits {
+  /** Taker fee on the notional, charged on open. */
+  takerFee: number;
+  /** Below this share of the notional the position is liquidated. */
+  maintenanceMargin: number;
+  /** How far a market order may slip before it expires unfilled. */
+  slippageCap: number;
+  /** The smallest deposit that opens an account on the venue. */
+  minimumAccountOpen: number;
+}
+
+/**
+ * Where a market's figures came from. A sample says so and nothing else; a venue names its network,
+ * when the venue's answer was received, and whether that answer is older than the board would like
+ * because the venue could not be reached since.
+ */
+export type MarketSource =
+  | { venue: "sample" }
+  | { venue: "perpl"; network: "mainnet" | "testnet"; observedAt: string; stale: boolean };
+
+/** The venue could not be read and nothing recent enough is held. Never answered with an empty board. */
+export class MarketDataUnavailableError extends Error {
+  readonly code = "MARKET_DATA_UNAVAILABLE";
+
+  constructor(source: string, options?: { cause?: unknown }) {
+    super(`Market data unavailable: ${source}`, options);
+    this.name = "MarketDataUnavailableError";
+  }
+}
+
 export interface PerpMarket {
   /** "BTC-PERP", normalized. */
   symbol: string;
@@ -52,19 +83,21 @@ export interface PerpMarket {
   /** Open interest in AUSD. */
   openInterest: number;
   maxLeverage: number;
-  /** Agents that read this market at all. */
-  agentsReading: number;
-  /** Public calls of theirs still open on it. */
-  openCalls: number;
+  /** Agents that read this market at all. Null when nobody has counted: unknown is not zero. */
+  agentsReading: number | null;
+  /** Public calls of theirs still open on it. Null when nobody has counted. */
+  openCalls: number | null;
   lastCall: MarketCall | null;
   /** One line on what is worth knowing about the market right now. */
   note: string;
   /**
    * The largest hourly move the market has made this month, in per cent — the same scale a square's
    * level is on. A square further than this inside an hour is refused rather than sold as a
-   * plausible position.
+   * plausible position. Null when it has not been measured, which refuses nothing.
    */
-  hourlyReach: number;
+  hourlyReach: number | null;
+  limits: MarketLimits;
+  source: MarketSource;
 }
 
 /** A square an agent has a public call on. The surface marks it with a dot. */
@@ -101,7 +134,7 @@ export function squareProblem(
   level: number,
   horizon: Horizon,
 ): "out-of-reach" | null {
-  if (horizon === "1H" && Math.abs(level) > market.hourlyReach) {
+  if (horizon === "1H" && market.hourlyReach !== null && Math.abs(level) > market.hourlyReach) {
     return "out-of-reach";
   }
   return null;

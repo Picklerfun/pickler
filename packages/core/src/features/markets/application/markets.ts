@@ -17,11 +17,12 @@ export function normalizeSymbol(raw: string): string | null {
 
 /**
  * The list leads with the markets agents actually read, then with the ones they have a call open
- * on. Size only breaks a tie: a deep market nobody covers has nothing to ask about.
+ * on. Size only breaks a tie: a deep market nobody covers has nothing to ask about. A count nobody
+ * has measured ranks as none, so on a venue with no counts at all the order is simply by size.
  */
 export const byCoverage = (a: PerpMarket, b: PerpMarket) =>
-  b.agentsReading - a.agentsReading ||
-  b.openCalls - a.openCalls ||
+  (b.agentsReading ?? 0) - (a.agentsReading ?? 0) ||
+  (b.openCalls ?? 0) - (a.openCalls ?? 0) ||
   b.openInterest - a.openInterest ||
   a.symbol.localeCompare(b.symbol);
 

@@ -8,7 +8,14 @@ import { Icon, Segmented } from "@pickler/ui";
 import { accentVars } from "@/lib/accent";
 import { useServerNow } from "@/lib/now";
 import styles from "../markets.module.css";
-import { formatChange, formatCompactAusd, formatFunding, formatPrice, plural } from "../lib/format";
+import {
+  formatChange,
+  formatCompactAusd,
+  formatFunding,
+  formatPrice,
+  plural,
+  sourceEyebrow,
+} from "../lib/format";
 import { levelPrice, levelSide, outOfReach, type Side } from "../lib/ticket";
 import { AskTicket } from "./ask-ticket";
 import { PickSurface, squareBlock, type Square, type SquareBlock } from "./pick-surface";
@@ -16,6 +23,17 @@ import type { Preview, TicketActions, TicketState } from "./ticket-state";
 import { TradeTicket } from "./trade-ticket";
 
 type Mode = "trade" | "ask";
+
+/** Who covers the market, in the words the link carries. Unknown is said as unknown. */
+function coverageLine(agentsReading: number | null): string {
+  if (agentsReading === null) {
+    return "SEE WHICH AGENTS COVER THIS MARKET";
+  }
+  if (agentsReading === 0) {
+    return "NO AGENT COVERS THIS MARKET YET";
+  }
+  return `${plural(agentsReading, "AGENT")} ${agentsReading === 1 ? "COVERS" : "COVER"} THIS MARKET`;
+}
 
 /**
  * One market, and the two things you can do with it. The surface is shared: the same square is a
@@ -141,7 +159,9 @@ export function MarketView({
 
       <header className={styles.marketHeader}>
         <div>
-          <p className={styles.eyebrow}>MARKET · PERPL ON MONAD</p>
+          <p className={styles.eyebrow} data-source={market.source.venue}>
+            {sourceEyebrow("MARKET", market.source)}
+          </p>
           <h1 className={styles.title}>{market.symbol}.</h1>
           <p className={styles.lead}>
             Up is long, down is short, right is more time. Pick a square.
@@ -187,10 +207,7 @@ export function MarketView({
           ]}
         />
         <Link href="/agents" className={styles.coverage}>
-          {market.agentsReading === 0
-            ? "NO AGENT COVERS THIS MARKET YET"
-            : `${plural(market.agentsReading, "AGENT")} ${market.agentsReading === 1 ? "COVERS" : "COVER"} THIS MARKET`}{" "}
-          <Icon name="arrow" size={13} />
+          {coverageLine(market.agentsReading)} <Icon name="arrow" size={13} />
         </Link>
       </div>
 

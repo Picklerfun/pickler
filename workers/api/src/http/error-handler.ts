@@ -18,6 +18,7 @@ import {
   DataSourceUnavailableError,
   InactiveWorkspaceError,
   InvalidSignedActivityError,
+  MarketDataUnavailableError,
   NoCustodyAccountError,
   SignedActivityRejectedError,
   SigningServiceUnavailableError,
@@ -121,6 +122,13 @@ function classify(
       status: 502,
       message: "Signing service unavailable",
       extras: { error: "signing_unavailable" },
+    };
+  }
+  if (error instanceof MarketDataUnavailableError) {
+    return {
+      status: 503,
+      message: "Market data is temporarily unavailable",
+      extras: { error: error.code },
     };
   }
   if (error instanceof DataSourceUnavailableError) {
