@@ -2,6 +2,7 @@ import { AccessDeniedError } from "../access/domain/errors.js";
 import type { Principal } from "../access/domain/principal.js";
 import type { Accent } from "../landing/domain/landing.js";
 import type { DraftProfile } from "./create.js";
+import type { PublishBlocker } from "./publish.js";
 import type { AgentConfig, Scope } from "../research/types.js";
 
 export interface StudioAccess {
@@ -17,6 +18,33 @@ export interface StudioAccess {
  * refuse; the create then writes nothing.
  */
 export type CreateAdmission = () => Promise<void>;
+
+/**
+ * Go Public's check (D8), run by `publish` with the agent's state as it stood just before: whether
+ * it is killed and its linked agent wallet's address (null when none). It may read the chain, so it
+ * runs outside any transaction. It answers the blockers, empty to publish, or throws to refuse.
+ */
+export type PublishCheck = (state: {
+  killed: boolean;
+  walletAddress: string | null;
+}) => Promise<PublishBlocker[]>;
+
+/** One line of an agent's Overview activity (D18). */
+export interface AgentActivityEvent {
+  kind: "created" | "wallet" | "transfer";
+  text: string;
+  at: Date;
+}
+
+/** One master ↔ agent move in the person's ledger (D17). `amount` is in token units, e.g. "10.5". */
+export interface TransferLedgerEntry {
+  direction: "to_agent" | "to_master";
+  token: "AUSD" | "MON";
+  amount: string;
+  agentName: string | null;
+  txHash: string;
+  at: Date;
+}
 
 export interface StudioDirectory {
   onboard(userId: string): Promise<void>;
@@ -62,6 +90,31 @@ export interface StudioDirectory {
       scope: Scope;
     }[]
   >;
+  /**
+   * Makes the agent public (D8). Already public: answers its state without calling `check`.
+   * Otherwise reads killed and the linked wallet with no lock held, awaits `check` (which may read
+   * the chain), then in a short transaction locks the agent row, re-reads both and publishes only
+   * when they are unchanged: `visibility` public, `published_at` now, a draft's status active. If
+   * they changed in between, the whole check runs once more; a second change is PilotError
+   * PUBLISH_CONFLICT. Blockers from `check` throw `PublishBlockedError`. NOT_FOUND for an agent
+   * outside this workspace.
+   */
+  publish(
+    access: StudioAccess,
+    productAgentId: string,
+    check: PublishCheck,
+  ): Promise<{ visibility: "public"; publishedAt: Date }>;
+  /**
+   * Name, avatar and the profile's voice name (D14); omitted fields stay. The database bounds them
+   * (name 1–40, pattern 0–5, a palette accent); a violation is PilotError INVALID_INPUT.
+   */
+  updateIdentity(
+    access: StudioAccess,
+    productAgentId: string,
+    identity: { name?: string; accent?: Accent; avatarPattern?: number; voice?: string },
+  ): Promise<void>;
+  /** The agent's Overview activity (D18): created, its wallet, each transfer; newest first, ≤ 50. */
+  activity(access: StudioAccess, productAgentId: string): Promise<AgentActivityEvent[]>;
 }
 
 export function createStudioAccess(directory: StudioDirectory) {

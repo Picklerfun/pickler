@@ -72,3 +72,62 @@ export function findVerificationPost(
     ) ?? null
   );
 }
+
+/** The live challenge of an agent: the handle it is for, its code, and when it was last checked. */
+export interface XChallenge {
+  handle: string;
+  code: string;
+  createdAt: Date;
+  expiresAt: Date;
+  lastCheckedAt: Date | null;
+}
+
+/** The X account verified for an agent (D6: one account per agent, one agent per account). */
+export interface XAccount {
+  xUserId: string;
+  handle: string;
+  verifiedAt: Date;
+  postId: string;
+}
+
+/** 409: another agent already holds this X account or handle (D6). */
+export class XHandleTakenError extends Error {
+  constructor() {
+    super("That X account is already connected to another agent");
+    this.name = "XHandleTakenError";
+  }
+}
+
+/**
+ * Where Connect X keeps its state. `agentId` is the product agent's id (`agents.agents.id`); the
+ * caller has already proved the agent is the person's. Uniqueness is the database's: `connect`
+ * throws `XHandleTakenError` when another agent holds the X user id or the handle in any case.
+ */
+export interface XStore {
+  /** Replaces any previous challenge: one live challenge per agent. */
+  saveChallenge(
+    agentId: string,
+    challenge: { handle: string; code: string; expiresAt: Date },
+  ): Promise<XChallenge>;
+  challenge(agentId: string): Promise<XChallenge | null>;
+  /** Records a "Check again" read, for the one-per-10-s limit. */
+  markChecked(agentId: string, at: Date): Promise<void>;
+  lastChecked(agentId: string): Promise<Date | null>;
+  /**
+   * In one transaction: writes the verified account, sets the profile's X handle ("@handle") and
+   * deletes the challenge. `XHandleTakenError` when the account or handle is another agent's.
+   */
+  connect(
+    agentId: string,
+    account: { xUserId: string; handle: string; postId: string; at: Date },
+  ): Promise<void>;
+  account(agentId: string): Promise<XAccount | null>;
+  /**
+   * Clears the verified account and the profile's X handle, and any challenge. A public agent keeps
+   * its handle (D6): checked under the agent row's lock, so it cannot race a publish, and refused
+   * with `PilotError` X_ON_PUBLIC_AGENT.
+   */
+  disconnect(agentId: string): Promise<void>;
+  /** Whether an agent other than `exceptAgentId` has this handle, verified or on its profile. */
+  handleTaken(handle: string, exceptAgentId: string): Promise<boolean>;
+}
