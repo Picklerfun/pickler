@@ -97,8 +97,7 @@ export function sourceFootnote(source: MarketSourceDto | undefined): string {
   if (source.venue === "sample") {
     return "Sample data: these markets are not read from a venue.";
   }
-  const base =
-    "Marks, funding, leverage and fees are Perpl's. Fees are charged on open only; closing is free.";
+  const base = "Marks, funding, leverage and fees are Perpl's.";
   return source.stale
     ? `${base} Perpl has not answered since the time above, so these are its last figures.`
     : base;

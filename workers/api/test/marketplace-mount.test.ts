@@ -158,3 +158,25 @@ test("without a network the board is the sample, and every market says so", asyn
   assert.ok(sample.every((market) => market.source.venue === "sample"));
   assert.ok(unknown.every((market) => market.source.venue === "sample"));
 });
+
+test("with a network the board is Perpl's, and what it remembers outlives the request that read it", async (t) => {
+  const { default: capture } = await import("@pickler/perpl-context/fixtures/context.json", {
+    with: { type: "json" },
+  });
+  // Perpl mainnet answers for chain 143; the capture is testnet's, relabelled for this network so
+  // the memory of the other tests in this process is not what is being read.
+  const answer = JSON.stringify({ ...capture, chain: { ...capture.chain, chain_id: 143 } });
+  const asked: string[] = [];
+  t.mock.method(globalThis, "fetch", async (url: string | URL | Request) => {
+    asked.push(String(url));
+    return new Response(answer, { status: 200 });
+  });
+
+  const first = await marketBoardFor("mainnet").listMarkets();
+  const second = await marketBoardFor("mainnet").listMarkets();
+
+  assert.deepEqual(asked, ["https://app.perpl.xyz/api/v1/pub/context"]);
+  assert.equal(first.length, 7);
+  assert.deepEqual(first[0]!.source.venue, "perpl");
+  assert.deepEqual(second[0]!.source, first[0]!.source);
+});

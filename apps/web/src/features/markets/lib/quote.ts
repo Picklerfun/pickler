@@ -47,7 +47,7 @@ interface Quote {
   /** Position size in the base asset. */
   size: number;
   liquidation: number;
-  /** Taker fee in AUSD, paid on open only. */
+  /** The taker fee of the open, in AUSD. The venue charges the close as well; that is not in here. */
   fee: number;
   /** What the position returns in AUSD if the mark reaches the level. */
   winIfHit: number;
@@ -63,7 +63,8 @@ export function quoteTicket(input: {
   leverage: number;
 }): Quote {
   const side = levelSide(input.level);
-  const leverage = Math.min(Math.max(input.leverage, 1), input.market.maxLeverage);
+  // Never below one: a market whose ceiling is under 1× would divide the margin by zero.
+  const leverage = Math.max(1, Math.min(input.leverage, input.market.maxLeverage));
   const margin = Math.max(input.margin, 0);
   const notional = margin * leverage;
   const fee = notional * input.market.limits.takerFee;

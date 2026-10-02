@@ -271,7 +271,7 @@ function Figures({
         <dd className={styles.toneLoss}>{formatPrice(quote.liquidation)}</dd>
       </div>
       <div>
-        <dt>FEE · TAKER, OPEN ONLY</dt>
+        <dt>FEE · TAKER, ON OPEN</dt>
         <dd>
           {formatAusd(quote.fee)} · {formatShare(market.limits.takerFee)} %
         </dd>

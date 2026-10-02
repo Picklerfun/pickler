@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { cache } from "react";
 import { MarketView } from "@/features/markets/components/market-view";
 import { PublicShell } from "@/features/agents/components/public-shell";
 import { services } from "@/server/container";
@@ -11,8 +12,11 @@ type Params = {
   searchParams: Promise<{ side?: string }>;
 };
 
+// The title and the page ask for the same market; one request to the API answers both.
+const readMarket = cache((symbol: string) => services.getMarket(symbol));
+
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
-  const detail = await services.getMarket((await params).symbol);
+  const detail = await readMarket((await params).symbol);
   return detail
     ? {
         title: `${detail.market.symbol} — Pickler`,
@@ -22,7 +26,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
 }
 
 export default async function Market({ params, searchParams }: Params) {
-  const detail = await services.getMarket((await params).symbol);
+  const detail = await readMarket((await params).symbol);
   if (!detail) {
     notFound();
   }

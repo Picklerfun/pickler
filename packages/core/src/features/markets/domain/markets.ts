@@ -9,8 +9,8 @@
 // answers on the same market stay comparable — see `readQuestionAtLevel` in the agents feature.
 //
 // The arithmetic a ticket shows while it is being filled in lives in the web feature that draws it,
-// against the mirrored limits in `@pickler/api-schema`. It belongs here the day an order is
-// actually sent, because then it decides money rather than describing it.
+// against the venue's own limits carried by each market (`limits`). It belongs here the day an
+// order is actually sent, because then it decides money rather than describing it.
 
 import type { Accent } from "../../landing/domain/landing.js";
 
@@ -39,7 +39,7 @@ export interface MarketCall {
 
 /** What the venue charges and demands on one market. Fractions, except the account, in AUSD. */
 export interface MarketLimits {
-  /** Taker fee on the notional, charged on open. */
+  /** Taker fee on an order's notional. */
   takerFee: number;
   /** Below this share of the notional the position is liquidated. */
   maintenanceMargin: number;

@@ -390,12 +390,20 @@ Perpl public stream reconstruction lives in `src/perpl/stream.ts`. REST and WebS
 open market from one request to `/v1/pub/context`, parsed by `@pickler/perpl-context` — the parser
 the mobile app trades on, so the two surfaces cannot list different markets or limits — and sent
 through `PerplTransport` (no redirects, a ten-second timeout, one request a second per schedule).
-`PerplBoardMemory` holds the venue's last answer, each market's hourly history and that schedule;
-the caller owns it, because the API composes services per request. A board younger than ten seconds
-is served from memory; while the venue fails, the last answer is served as `stale` for five
-minutes and the venue is asked again at most every ten seconds; past that the board throws
-`MarketDataUnavailableError`. The detail adds one request for thirty days of hourly candles, cached
-five minutes, for the trail and `hourlyReach`; without it the market is still served. An answer for
+`PerplBoardMemory` holds the venue's last answer, each market's hourly history, the reads in
+flight and two schedules (the board and the histories are paced apart, so market pages never delay
+the list); the caller owns it, because the API composes services per request. A board younger than
+ten seconds is served from memory. A read is shared by everyone who asks while it is in flight.
+While the venue fails, the last answer is served as `stale` for five minutes, and the venue is
+asked again at most every ten seconds (a 429 counts as a failure for as long as the venue said to
+wait; nothing sleeps through it); past five minutes the board throws
+`MarketDataUnavailableError`. Nobody waits long: a caller the board can already answer waits two
+seconds for a newer answer, and a market page two and a half for its history, then is served what
+is held. The detail's history is one request for thirty days of hourly candles, cached five
+minutes, not retried for thirty seconds after a failure; without it the market is still served,
+with no trail and a `null` reach. A read nobody has heard from in fifteen seconds is given up on
+and its schedule replaced, so a request that died with its Worker invocation cannot hold the rest.
+An answer for
 another chain is refused. `src/markets/sample-market-board.ts` remains for the design harness and
 for an API with no network configured, and labels itself `source: sample`.
 

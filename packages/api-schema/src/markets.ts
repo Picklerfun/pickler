@@ -23,7 +23,7 @@ export const LEVERAGE_OPTIONS = [2, 3, 5, 10] as const;
 
 /** What the venue charges and demands on one market. Fractions, except the account, in AUSD. */
 export interface MarketLimitsDto {
-  /** Taker fee on the notional, charged on open. */
+  /** Taker fee on an order's notional. */
   takerFee: number;
   /** Below this share of the notional the position is liquidated. */
   maintenanceMargin: number;

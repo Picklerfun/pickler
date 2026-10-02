@@ -105,7 +105,10 @@ API reads them from the venue through the parser the mobile app trades on
 title names the venue, the network and the time of the read, adds `STALE` when the venue has not
 answered since, and says `SAMPLE DATA` for the sample board (`sourceEyebrow` and `sourceFootnote`
 in `lib/format.ts`). A count nobody has measured — agents reading, open calls — is `null` on the
-wire and a dash on the page, never a zero; a `null` reach refuses no square. Each market is a grid of
+wire and a dash on the page, never a zero; a `null` reach refuses no square. When the venue cannot be
+read the API answers 503: the list shows its empty state with the catching-up line, and a market
+page shows the error screen (`apiReadVenueItem`), because "market not found" would be untrue of a
+market that exists. The market page reads its market once (`cache`) for the title and the body. Each market is a grid of
 price levels crossed with how long you give a position. One square, two meanings. Under **Trade**
 it is a position of your own money — above the mark a long, below a short — and under **Ask** the
 same square is a paid read. The tab is the only thing that changes; the surface is shared, which is

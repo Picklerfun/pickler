@@ -108,10 +108,26 @@ Each field, and where it comes from:
 | `source`                                 | `{ venue: "perpl", network, observedAt: the time the response was received, stale }`                                           |
 
 A context whose `chain_id` is not the configured network's is refused like a failed fetch. Closed
-markets are not listed, as in the app.
+markets are not listed, as in the app; nor is a market whose name is not two to ten letters or
+digits, which `BASE-PERP` could not carry.
 
-After a failed read the venue is not asked again for ten seconds, whoever is asking, so a venue
-that is down costs one slow request and not every one.
+**Nobody waits on the venue for long.** This is a public page.
+
+- A read is shared: everyone who asks while it is in flight waits on the same request, for the
+  board and for each market's history.
+- After a failed read the venue is not asked again for ten seconds (thirty for a market's
+  history), whoever is asking. A 429 counts as a failed read for as long as the venue said to
+  wait; nothing sleeps through it.
+- Someone the board can already answer waits at most two seconds for a newer answer and is then
+  served what is held. A market page waits at most two and a half seconds for its history and is
+  then served without the trail; the history is there the next time.
+- The board and the histories are paced separately (one request a second each, the transport's
+  rule), so a burst of market pages does not delay `/markets`.
+- A read nobody has heard from in fifteen seconds is given up on and its schedule replaced. In a
+  Worker, a request can die with the invocation that started it; this is what keeps one dead read
+  from holding every later one. It has not been exercised in a deployed Worker.
+
+These limits are per isolate: two isolates each keep their own memory and pace.
 
 `squareProblem` and the page's `outOfReach` treat a `null` reach as "no known limit": a square is
 refused only on evidence.
@@ -121,8 +137,10 @@ refused only on evidence.
 `GET /v1/marketplace/markets` and `/markets/:symbol` keep their paths and their bare JSON.
 `PerpMarketDto` changes: `agentsReading`, `openCalls` and `hourlyReach` become `number | null`;
 `limits` and `source` are added. `PERP_LIMITS_DTO` is removed from `@pickler/api-schema`.
-`MarketDataUnavailableError` (core) maps to 503 with `error: "MARKET_DATA_UNAVAILABLE"`; the web's
-server client already turns a failed read into its empty state.
+`MarketDataUnavailableError` (core) maps to 503 with `error: "MARKET_DATA_UNAVAILABLE"`. On the
+web, the list turns that into its empty state with the line that says the board is catching up;
+a market page shows the error screen, because "market not found" would be untrue of a market that
+exists.
 
 `PERPL_BOARD_NETWORK` joins `workers/api/src/env.ts`. It is `testnet` in `wrangler.jsonc` and
 `wrangler.staging.jsonc`; any other value, or none, serves the sample board. The design harness's
@@ -145,10 +163,10 @@ markets at fractions of a cent, which three fixed decimals printed as the same n
 
 ## 7. Acceptance
 
-1. The package's parser reproduces the frozen expectation, and the app's 303 tests still pass with
-   no file of the app changed except `src/perpl/context.ts`, its test's fixture import and
-   `package.json`.
-2. Against the recorded capture, the board maps every field of §4 for all seven markets, with
+1. The package's parser reproduces the frozen expectation, and the app's 303 tests still pass. In
+   the app, only `src/perpl/context.ts`, the fixture import of three tests, `package.json` and
+   `AGENTS.md` change; the capture moves to the package.
+2. Against the recorded capture, the board maps every field of §4 for the seven markets of the capture, with
    values asserted for BTC.
 3. Freshness: a second read inside 10 s makes no request; a failed fetch inside 5 minutes serves
    the cached board with `stale: true`; after 5 minutes the board throws and the route answers 503
@@ -161,7 +179,20 @@ markets at fractions of a cent, which three fixed decimals printed as the same n
 7. One live read of Perpl testnet through the adapter returns the markets the app lists. Recorded
    in the pull request, not asserted in CI.
 
-## 8. Out of scope
+## 8. What deploying this changes
+
+- The API calls a third party, Perpl's public REST API, from a public, unauthenticated route. The
+  volume is bounded per isolate: one context read in ten seconds and one history read per market in
+  five minutes.
+- `wrangler.staging.jsonc` carries `PERPL_BOARD_NETWORK=testnet`, so staging, and the local
+  three-Worker run that uses that file, read live testnet. Plain `wrangler dev` does too.
+- Nothing ties `PERPL_BOARD_NETWORK` to `CHAIN_ID` or to the web's target chain. They agree today
+  (testnet, 10143); whoever moves one to mainnet moves the others.
+- Known and left: open interest and funding the venue does not publish read as 0, not as unknown;
+  `observedAt` is when the answer was received, not the venue's own timestamp; one malformed market
+  in the context fails the whole read, as it does in the app.
+
+## 9. Out of scope
 
 Sending an order from the web (it needs a Mera signer there); one table of levels and leverage
 options for both surfaces (B11); agent counts and calls on perps (they need perps decisions);

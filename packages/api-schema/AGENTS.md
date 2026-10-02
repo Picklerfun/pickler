@@ -99,8 +99,13 @@ The opt-in Polymarket pilot remains disabled by default. Read `../../apps/agent-
 
 `src/markets.ts` carries `PerpMarketDto`, `AgentSquareDto` and `MarketDetailDto`, plus the options a
 client needs to draw the surface before it can ask anyone: `HORIZON_OPTIONS`, `LEVEL_OPTIONS`,
-`READ_HORIZON_DTO`, `LEVERAGE_OPTIONS` and `PERP_LIMITS_DTO`. These mirror the business rules in
+`READ_HORIZON_DTO` and `LEVERAGE_OPTIONS`. These mirror the business rules in
 core the way `CATEGORY_OPTIONS` mirrors `CATEGORIES`; core stays authoritative for anything sent.
+What the venue charges and demands is not an option of ours: each `PerpMarketDto` carries it in
+`limits` (`MarketLimitsDto`), beside `source` (`MarketSourceDto`: `sample`, or `perpl` with its
+network, the time it was read and `stale`). `agentsReading`, `openCalls` and `hourlyReach` are
+`number | null`: null is "nobody has measured", never zero. `PERP_LIMITS_DTO` was removed on
+2026-10-01 (`docs/specs/perps-board-live-v1.md`).
 
 Wire units: prices in the market's quote currency, amounts in AUSD, `change24h` and `funding1h` as
 signed fractions, and `hourlyReach` in per cent because a square's level is. `readQuestion` carries

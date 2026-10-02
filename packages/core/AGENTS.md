@@ -248,8 +248,8 @@ read, and a read always resolves a day after delivery whatever column drew it, s
 market stay comparable. `readQuestionAtLevel` in `features/agents` writes that sentence.
 
 The arithmetic a ticket previews — size, liquidation, fee, the phrase — is not here. Nothing is sent
-today, so it lives in the web feature that draws it against the mirrored limits in
-`@pickler/api-schema`. It belongs in trading the day an order is placed, because then it decides money.
+today, so it lives in the web feature that draws it, against the venue's own limits carried by each
+market. It belongs in trading the day an order is placed, because then it decides money.
 
 ## Cloudflare trading pilot
 
