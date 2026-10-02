@@ -67,7 +67,7 @@ test("an unparseable response is unavailable", async () => {
 });
 
 test("recentPosts reads the timeline since the challenge and maps to XPost", async () => {
-  const since = new Date("2026-10-02T10:00:00.000Z");
+  const since = new Date("2026-10-02T10:00:00.250Z");
   const { calls, fetcher } = fake(() =>
     json({
       data: [
@@ -83,7 +83,8 @@ test("recentPosts reads the timeline since the challenge and maps to XPost", asy
   const url = new URL(calls[0]?.url ?? "");
   assert.equal(url.origin + url.pathname, "https://api.x.com/2/users/42/tweets");
   assert.equal(url.searchParams.get("max_results"), "20");
-  assert.equal(url.searchParams.get("start_time"), since.toISOString());
+  // To the second, as X requires: no milliseconds.
+  assert.equal(url.searchParams.get("start_time"), "2026-10-02T10:00:00Z");
   assert.equal(url.searchParams.get("tweet.fields"), "created_at,author_id");
 });
 

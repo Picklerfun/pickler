@@ -85,7 +85,8 @@ export function createXClient(options: {
     async recentPosts(userId, since) {
       const query = new URLSearchParams({
         max_results: "20",
-        start_time: since.toISOString(),
+        // X takes RFC 3339 to the second (YYYY-MM-DDTHH:mm:ssZ); toISOString adds milliseconds.
+        start_time: since.toISOString().replace(/\.\d{3}Z$/, "Z"),
         "tweet.fields": "created_at,author_id",
       });
       const reply = await get(`/users/${encodeURIComponent(userId)}/tweets?${query}`, postsReply);
