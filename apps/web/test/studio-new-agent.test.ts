@@ -223,6 +223,15 @@ test("every code creation and transfers can return has a message", async () => {
     "FEE_TOO_HIGH",
     "NONCE_GAP",
     "NOT_SENDABLE",
+    "SIGNED_TX_MISMATCH",
+    // Either family's passkey and backend failures
+    "INVALID_SIGNED_ACTIVITY",
+    "SIGNED_ACTIVITY_REJECTED",
+    "SIGNING_UNAVAILABLE",
+    "NO_CUSTODY_ACCOUNT",
+    "INTERNAL_OR_PROVIDER_FAILURE",
+    "INVALID_INPUT",
+    "UNFUNDED_AGENT",
   ];
   for (const code of codes) {
     assert.ok(knownMessage(code), `${code} has no message`);

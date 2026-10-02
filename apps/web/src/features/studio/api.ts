@@ -278,8 +278,8 @@ export const studioWallets = () => studioApi<StudioWallets>("/wallets");
 export type TransferPlan = UnsignedActivityDto & { baseUnits: string };
 
 /**
- * `POST /wallets/transfers/prepare`. 400 INVALID_TRANSFER; 409 INSUFFICIENT_FUNDS, INSUFFICIENT_GAS;
- * 404 WALLET_NOT_FOUND; 503 FEE_TOO_HIGH, NONCE_GAP, NOT_SENDABLE, WALLETS_UNAVAILABLE.
+ * `POST /wallets/transfers/prepare`. 400 INVALID_TRANSFER; 404 WALLET_NOT_FOUND; 409
+ * INSUFFICIENT_FUNDS, INSUFFICIENT_GAS, NOT_SENDABLE; 503 WALLETS_UNAVAILABLE.
  */
 export const transferPrepare = (body: TransferRequestDto) =>
   studioApi<TransferPlan>("/wallets/transfers/prepare", {
@@ -287,7 +287,10 @@ export const transferPrepare = (body: TransferRequestDto) =>
     body: JSON.stringify(body),
   });
 
-/** `POST /wallets/transfers/confirm`: the same body and the passkey's stamp. 409 TRANSFER_ALREADY_RECORDED. */
+/**
+ * `POST /wallets/transfers/confirm`: the same body and the passkey's stamp. 400 FEE_TOO_HIGH,
+ * NONCE_GAP (prepare again); 409 TRANSFER_ALREADY_RECORDED; 500 SIGNED_TX_MISMATCH (not sent).
+ */
 export const transferConfirm = (body: TransferRequestDto, signed: SignedActivityDto) =>
   studioApi<{ txHash: string }>("/wallets/transfers/confirm", {
     method: "POST",

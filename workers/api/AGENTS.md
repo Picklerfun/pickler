@@ -285,7 +285,8 @@ wei by the route, so every malformed amount ("0", "0x10", "+1", too many decimal
 `NO_CUSTODY_ACCOUNT` (409), `FEE_TOO_HIGH`, `NONCE_GAP`, `INVALID_SIGNED_ACTIVITY`,
 `SIGNED_ACTIVITY_REJECTED` (400), `SIGNING_UNAVAILABLE` (502) and `WALLETS_UNAVAILABLE` (503),
 never the deposit's codes. A signed transaction that does not match is logged as "Signed
-transaction mismatch" and answers 500. The
+transaction mismatch" and answers 500 `SIGNED_TX_MISMATCH`, its own code because nothing was
+broadcast. The
 deposit routes keep theirs.
 
 `PUT /agents/:id/limits { perCallAusd, perDayAusd }` writes only `config.spend` through

@@ -285,6 +285,7 @@ test("after the stamp, each code that guarantees no broadcast speaks for itself"
     "WALLET_NOT_FOUND",
     "INVALID_SIGNED_ACTIVITY",
     "SIGNED_ACTIVITY_REJECTED",
+    "SIGNED_TX_MISMATCH",
   ];
   assert.deepEqual([...POST_STAMP_SAFE].sort(), [...safe].sort());
   for (const code of safe) {

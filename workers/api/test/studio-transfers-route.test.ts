@@ -281,7 +281,7 @@ for (const [name, error, status, code] of neutral) {
   });
 }
 
-test("a signed transaction mismatch is 500, logged without deposit wording", async (t) => {
+test("a signed transaction mismatch is 500 SIGNED_TX_MISMATCH, logged without deposit wording", async (t) => {
   const logged: unknown[][] = [];
   t.mock.method(console, "error", (...args: unknown[]) => logged.push(args));
   const f = app({ fail: new SignedTransactionMismatchError("signer") });
@@ -290,8 +290,10 @@ test("a signed transaction mismatch is 500, logged without deposit wording", asy
     post({ ...transfer, signed: SIGNED }),
   );
   assert.equal(response.status, 500);
+  const answer = await response.json();
+  assert.equal(answer.error, "SIGNED_TX_MISMATCH");
   assert.equal(logged[0]![0], "Signed transaction mismatch");
-  assert.doesNotMatch(JSON.stringify([logged, await response.json()]), /deposit/i);
+  assert.doesNotMatch(JSON.stringify([logged, answer]), /deposit/i);
 });
 
 test("without custody the wallet routes are 503 WALLETS_UNAVAILABLE", async () => {

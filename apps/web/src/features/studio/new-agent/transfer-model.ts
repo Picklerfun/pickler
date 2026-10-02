@@ -198,6 +198,7 @@ export function failedTransfer(input: {
  */
 export const POST_STAMP_SAFE: ReadonlySet<string> = new Set([
   "INVALID_TRANSFER",
+  // Prepare-only: confirm never reads the balances again. Kept, as harmless, should that change.
   "INSUFFICIENT_FUNDS",
   "INSUFFICIENT_GAS",
   "FEE_TOO_HIGH",
@@ -205,6 +206,8 @@ export const POST_STAMP_SAFE: ReadonlySet<string> = new Set([
   "WALLET_NOT_FOUND",
   "INVALID_SIGNED_ACTIVITY",
   "SIGNED_ACTIVITY_REJECTED",
+  // Turnkey signed a transaction other than the approved one; it is refused before the broadcast.
+  "SIGNED_TX_MISMATCH",
 ]);
 
 /**

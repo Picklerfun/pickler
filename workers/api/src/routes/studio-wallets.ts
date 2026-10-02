@@ -86,7 +86,8 @@ function walletFailure(error: unknown): WalletRefusal | null {
     return new WalletRefusal("SIGNING_UNAVAILABLE", 502, "Signing service unavailable");
   }
   if (error instanceof SignedTransactionMismatchError) {
-    return new WalletRefusal("INTERNAL_OR_PROVIDER_FAILURE", 500, "The transfer was not sent");
+    // Its own code: nothing was broadcast, which the studio may say after the stamp.
+    return new WalletRefusal("SIGNED_TX_MISMATCH", 500, "The transfer was not sent");
   }
   if (error instanceof DepositFeeTooHighError) {
     return new WalletRefusal(
