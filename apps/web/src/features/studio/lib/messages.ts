@@ -27,6 +27,7 @@ const messages: Record<string, string> = {
   BALANCES_UNAVAILABLE: "Balances and deposits are not available here yet.",
   INVALID_INPUT: "Check the fields: a value is missing or out of range.",
   INVALID_BRIEF: "Check the brief: a section is empty, too long or has too many lines.",
+  NOT_A_PERPL_AGENT: "This agent's setup can't be edited here.",
   HANDLE_TAKEN: "That handle is taken. Change the name or the handle.",
   // The studio routes send WALLET_UNDERFUNDED; the signing routes (policies prepare) send the
   // lowercase wallet_underfunded and balances_unavailable in their envelope.
