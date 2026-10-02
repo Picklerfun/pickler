@@ -14,11 +14,24 @@ export const LANDING_LIMITS = {
 const byStageThenRaised = (a: TokenLaunch, b: TokenLaunch) =>
   Number(b.stage === "graduated") - Number(a.stage === "graduated") || b.raised - a.raised;
 
-export function createGetLanding(readModel: LandingReadModel) {
+/**
+ * The landing snapshot, capped and ordered. The rest of the snapshot is the sample read model's
+ * marketing copy, but the line under "Join waitlist" is a promise about real people: with
+ * `countWaitlist` it is the waitlist's own count, and null (shown as nothing) when that read fails,
+ * so the page never fails over it and never falls back to an invented number.
+ */
+export function createGetLanding(
+  readModel: LandingReadModel,
+  countWaitlist?: () => Promise<number>,
+) {
   return async (): Promise<LandingSnapshot> => {
-    const snapshot = await readModel.getSnapshot();
+    const [snapshot, waitlistCount] = await Promise.all([
+      readModel.getSnapshot(),
+      countWaitlist ? countWaitlist().catch(() => null) : null,
+    ]);
     return {
       ...snapshot,
+      stats: countWaitlist ? { ...snapshot.stats, waitlistCount } : snapshot.stats,
       tape: snapshot.tape.slice(0, LANDING_LIMITS.tape),
       spawns: snapshot.spawns.slice(0, LANDING_LIMITS.spawns),
       backing: {

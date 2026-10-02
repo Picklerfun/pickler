@@ -108,3 +108,28 @@ test("landing shows the most recently updated picks first", async () => {
     ["New", "Mid", "Old"],
   );
 });
+
+test("the line under the waitlist form is the waitlist's real count, not the sample's", async () => {
+  const sample = snapshot({
+    stats: { ...snapshot().stats, waitlistCount: 1204 },
+  });
+  const getLanding = createGetLanding({ getSnapshot: async () => sample }, async () => 37);
+
+  const result = await getLanding();
+
+  assert.equal(result.stats.waitlistCount, 37);
+  assert.equal(result.stats.totalVolume, sample.stats.totalVolume);
+});
+
+test("a waitlist count that cannot be read is no count, and the landing still answers", async () => {
+  const sample = snapshot({
+    stats: { ...snapshot().stats, waitlistCount: 1204 },
+  });
+  const getLanding = createGetLanding({ getSnapshot: async () => sample }, async () => {
+    throw new Error("database down");
+  });
+
+  const result = await getLanding();
+
+  assert.equal(result.stats.waitlistCount, null);
+});
