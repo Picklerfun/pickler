@@ -2,8 +2,8 @@
 /**
  * The draft studio's rules (docs/specs/studio-draft-dashboard-v1.md, the "Pickler Studio Draft"
  * canvas): the rail and its locks, the header tiles, Go Public's state, Connect X's card, the
- * publish blockers' words, the caps steppers, the brief's tags, the sources list and the schedule's
- * next runs. Pure, no React and no transport, so each rule is pinned in
+ * publish blockers' words, the caps steppers, the brief's tags, the sources list, the schedule's
+ * next runs and Identity & voice's name, voice and X account. Pure, no React and no transport, so each rule is pinned in
  * `apps/web/test/studio-draft-model.test.ts`.
  *
  * Section keys are the canvas's (`picks` is Trades, `skills` is Sources & rules).
@@ -19,6 +19,8 @@ import {
   shortAddress,
   siteHost,
   unitsOf,
+  VOICES,
+  type VoiceKey,
 } from "../new-agent/model";
 
 export type DraftSectionKey =
@@ -733,3 +735,41 @@ export function ledgerRows(
     };
   });
 }
+
+/* ---------- Identity & voice (spec D14, §3.2) ---------- */
+
+/** The name's bounds, as `PUT /identity` holds them: 1–40 once trimmed. */
+export const NAME_MAX = 40;
+
+/**
+ * What leaving the NAME box does: nothing when the trimmed name is the saved one (no request),
+ * the reason when it is out of bounds, else the trimmed name to save.
+ */
+export function nameChange(
+  saved: string | undefined,
+  typed: string,
+): { kind: "same" } | { kind: "bad"; text: string } | { kind: "save"; name: string } {
+  const name = typed.trim();
+  if (name === (saved ?? "").trim()) {
+    return { kind: "same" };
+  }
+  if (!name) {
+    return { kind: "bad", text: "IT NEEDS A NAME" };
+  }
+  if (name.length > NAME_MAX) {
+    return { kind: "bad", text: `${NAME_MAX} CHARACTERS AT MOST` };
+  }
+  return { kind: "save", name };
+}
+
+/** The voice the config holds, or the first (Analyst) for a config without one. */
+export const voiceOf = (voice: string | undefined): VoiceKey =>
+  VOICES.find((option) => option.key === voice)?.key ?? "analyst";
+
+/** The X ACCOUNT card's tag. */
+export const xAccountTag = (handle: string | null): "CONNECTED" | "NOT CONNECTED" =>
+  handle ? "CONNECTED" : "NOT CONNECTED";
+
+/** DISCONNECT refused, in words: a public agent keeps its account (D6); anything else as said. */
+export const disconnectProblem = (code: string, fallback: string): string =>
+  code === "X_ON_PUBLIC_AGENT" ? "A public agent keeps its X account." : fallback;

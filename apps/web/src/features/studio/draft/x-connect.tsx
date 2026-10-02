@@ -30,6 +30,8 @@ export interface XConnectProps {
   onVerify(): Promise<XVerify>;
   /** Prefix for the ids the card's controls carry, unique per screen. */
   idPrefix: string;
+  /** Drawn on a card (Identity & voice): the row is a well, not a card of its own. */
+  well?: boolean;
 }
 
 /**
@@ -39,7 +41,15 @@ export interface XConnectProps {
  * only so a typo is said before anything is sent. A found post reloads the agent, whose `xHandle`
  * then closes this card in the parent.
  */
-export function XConnect({ x, canManage, staged, onChallenge, onVerify, idPrefix }: XConnectProps) {
+export function XConnect({
+  x,
+  canManage,
+  staged,
+  onChallenge,
+  onVerify,
+  idPrefix,
+  well = false,
+}: XConnectProps) {
   const [handle, setHandle] = useState(staged?.handle ?? x?.challenge?.handle ?? "");
   const [card, setCard] = useState<XCardState>(staged?.card ?? cardFrom(x));
   const [error, setError] = useState("");
@@ -159,7 +169,7 @@ export function XConnect({ x, canManage, staged, onChallenge, onVerify, idPrefix
 
   const inputId = `${idPrefix}-x-handle`;
   return (
-    <div className={styles.xConnect} id={`${idPrefix}-x`}>
+    <div className={styles.xConnect} id={`${idPrefix}-x`} data-well={well || undefined}>
       <form
         className={styles.xRow}
         onSubmit={(event) => {

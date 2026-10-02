@@ -10,17 +10,21 @@ import {
   addSite,
   briefTags,
   capsStepper,
+  disconnectProblem,
   draftRail,
   goPublicView,
   headerTiles,
   isLockedSection,
   lockedCopy,
+  nameChange,
   nextRuns,
   publishBlockedCopy,
   publishProblem,
   runsPerDay,
   sectionLabel,
+  voiceOf,
   walletCardView,
+  xAccountTag,
   xHandleInput,
   xProblem,
   xView,
@@ -681,4 +685,33 @@ test("ledgerRows: from master's side, lime back in, local hh:mm today", async ()
     ],
   );
   assert.equal(ledgerRows([], now).length, 0);
+});
+
+test("NAME saves a trimmed 1–40 name, and sends nothing when it is unchanged", () => {
+  assert.deepEqual(nameChange("Halftime", "Halftime"), { kind: "same" });
+  assert.deepEqual(nameChange("Halftime", "  Halftime "), { kind: "same" });
+  assert.deepEqual(nameChange("Halftime", " Second Half "), { kind: "save", name: "Second Half" });
+  assert.deepEqual(nameChange(undefined, "Halftime"), { kind: "save", name: "Halftime" });
+  assert.deepEqual(nameChange("Halftime", "   "), { kind: "bad", text: "IT NEEDS A NAME" });
+  assert.deepEqual(nameChange("Halftime", "x".repeat(40)), { kind: "save", name: "x".repeat(40) });
+  assert.deepEqual(nameChange("Halftime", "x".repeat(41)), {
+    kind: "bad",
+    text: "40 CHARACTERS AT MOST",
+  });
+});
+
+test("the voice is the config's, or Analyst without one", () => {
+  assert.equal(voiceOf("deadpan"), "deadpan");
+  assert.equal(voiceOf(undefined), "analyst");
+  assert.equal(voiceOf("shouty"), "analyst");
+});
+
+test("X ACCOUNT's tag, and a public agent's refused disconnect in words", () => {
+  assert.equal(xAccountTag("HalftimeBot"), "CONNECTED");
+  assert.equal(xAccountTag(null), "NOT CONNECTED");
+  assert.equal(
+    disconnectProblem("X_ON_PUBLIC_AGENT", "Conflict"),
+    "A public agent keeps its X account.",
+  );
+  assert.equal(disconnectProblem("NOT_FOUND", "Agent not found"), "Agent not found");
 });

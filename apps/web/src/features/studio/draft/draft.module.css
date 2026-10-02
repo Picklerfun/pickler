@@ -627,6 +627,10 @@
 .xRow svg {
   flex: none;
 }
+/* On a card (Identity & voice's X ACCOUNT) the row is the canvas's #0B0D1A well. */
+.xConnect[data-well="true"] .xRow {
+  background: var(--pk-bg);
+}
 .xInput {
   flex: 1;
   min-width: 0;
