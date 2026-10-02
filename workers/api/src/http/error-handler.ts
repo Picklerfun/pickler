@@ -22,6 +22,7 @@ import {
   SignedActivityRejectedError,
   SigningServiceUnavailableError,
   WalletUnderfundedError,
+  AgentWalletLinkedError,
   BalancesUnreadableError,
 } from "@pickler/core";
 import type { Context } from "hono";
@@ -99,8 +100,12 @@ function classify(
   if (error instanceof AgentWalletNotFoundError) {
     return { status: 404, message: error.message, extras: { error: "agent_wallet_not_found" } };
   }
+  if (error instanceof AgentWalletLinkedError) {
+    return { status: 409, message: error.message, extras: { error: "wallet_assigned" } };
+  }
   if (error instanceof WalletUnderfundedError) {
-    // Base units as strings: the balances read on chain (null where a read failed) and the minimums.
+    // Base units as strings: the balances read on chain and the minimums. A balance that could not
+    // be read is BalancesUnreadableError (503), never underfunded.
     return {
       status: 409,
       message: error.message,

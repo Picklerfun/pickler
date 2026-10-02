@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { createCustodyService } from "../src/features/wallets/application/custody.js";
 import {
   AgentWalletNotFoundError,
+  AgentWalletLinkedError,
   DelegatedKeyNotConfiguredError,
   DelegatedUserExistsError,
   DelegatedUserMissingError,
@@ -144,7 +145,13 @@ function fakes(
     },
     async findOwnedAgentWallet(userId, walletId) {
       const found = state.wallets.find((w) => w.userId === userId && w.walletId === walletId);
-      return found ? { walletId: found.walletId, address: found.address } : null;
+      return found
+        ? {
+            walletId: found.walletId,
+            address: found.address,
+            linked: state.linked.has(found.walletId),
+          }
+        : null;
     },
     async hasLinkedAgentWallet() {
       return state.hasLinked;
@@ -587,6 +594,20 @@ test("policies need the delegated user and a wallet of the caller's", async () =
     service(f).confirmPolicies(USER, "someone-elses", stamped(unsigned)),
     AgentWalletNotFoundError,
   );
+});
+
+test("a linked wallet gets no second policy set: prepare and confirm refuse it", async () => {
+  const f = withWallet();
+  f.state.balances[ADDRESS] = { monWei: MIN_START_MON_WEI, ausdMicro: MIN_START_MICRO_AUSD };
+  const unsigned = await service(f).preparePolicies(USER, "w-1");
+  f.state.linked.add("w-1");
+
+  await assert.rejects(service(f).preparePolicies(USER, "w-1"), AgentWalletLinkedError);
+  await assert.rejects(
+    service(f).confirmPolicies(USER, "w-1", stamped(unsigned)),
+    AgentWalletLinkedError,
+  );
+  assert.equal(f.builds.length, 1);
 });
 
 test("policies are not prepared for a wallet below the minimums", async () => {

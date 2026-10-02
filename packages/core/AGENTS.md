@@ -160,7 +160,9 @@ moves N and the stale stamp is refused before forwarding, which is wanted (a fre
 the unlinked wallet instead of minting another); two confirms racing together may share a label.
 `preparePolicies` refuses with studio's `WalletUnderfundedError` until the wallet's balances (the
 optional `balances: WalletBalanceReader` dep; absent is `DepositsUnavailableError`) meet
-`fundingShortfall`'s minimums; `confirmPolicies` does not check them again. `prepareAgentWallet`
+`fundingShortfall`'s minimums; `confirmPolicies` does not check them again. Both refuse a wallet
+already linked to an agent (`AgentWalletLinkedError`, the signing family's 409 `wallet_assigned`):
+its rules were approved and linked at create, and a second set would leave them apart. `prepareAgentWallet`
 answers `{ existing }` (`ExistingAgentWallet`) for the person's newest unlinked agent wallet
 (`findUnlinkedWallet`), whatever its name, so a retry never mints a second one; its
 `policiesApproved` is true when the store's `approvedPolicyIds` (`UnlinkedAgentWallet`) hold at least

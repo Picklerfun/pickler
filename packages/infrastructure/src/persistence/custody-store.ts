@@ -323,15 +323,23 @@ export class PostgresCustodyStore
     return rows.length > 0;
   }
 
-  async findOwnedAgentWallet(userId: string, walletId: string): Promise<AgentWallet | null> {
-    const { rows } = await this.pool.query<AgentWallet>(
-      `SELECT w.wallet_id AS "walletId", a.address
+  async findOwnedAgentWallet(
+    userId: string,
+    walletId: string,
+  ): Promise<(AgentWallet & { linked: boolean }) | null> {
+    // The first account's address, as `listAgentWallets` and `findUnlinkedWallet` read it, so a
+    // transfer or a balance read never uses an address other than the one the studio shows.
+    const { rows } = await this.pool.query<AgentWallet & { linked: boolean }>(
+      `SELECT w.wallet_id AS "walletId", a.address,
+              EXISTS (SELECT 1 FROM wallets.agent_wallets l WHERE l.wallet_id = w.wallet_id) AS linked
          FROM wallets.wallets w
-         JOIN wallets.wallet_accounts a ON a.wallet_id = w.wallet_id
+         JOIN LATERAL (
+           SELECT address FROM wallets.wallet_accounts
+            WHERE wallet_id = w.wallet_id ORDER BY created_at LIMIT 1
+         ) a ON true
         WHERE w.user_id = $1
           AND w.wallet_id = $2
-          AND w.kind = 'agent'
-        LIMIT 1`,
+          AND w.kind = 'agent'`,
       [userId, walletId],
     );
     return rows[0] ?? null;

@@ -6,6 +6,7 @@ import {
   ADD_PASSKEY_ACTIVITY_TYPE,
   AGENT_WALLET_ACTIVITY_TYPES,
   AgentWalletNotFoundError,
+  AgentWalletLinkedError,
   ChallengeNotUsableError,
   DelegatedKeyNotConfiguredError,
   DelegatedUserExistsError,
@@ -269,9 +270,10 @@ export function createCustodyService(deps: CustodyServiceDeps) {
   }
 
   /**
-   * The policies a wallet gets, decided the same way for prepare and for confirm. For the
-   * person's first agent — no wallet of theirs linked to any agent yet, decided here and never by
-   * the caller — the delegated user's self-delete policy rides along.
+   * The policies a wallet gets, decided the same way for prepare and for confirm, and only for an
+   * unlinked wallet (`AgentWalletLinkedError` otherwise). For the person's first agent — no wallet
+   * of theirs linked to any agent yet, decided here and never by the caller — the delegated user's
+   * self-delete policy rides along.
    */
   async function policiesFor(userId: string, walletId: string) {
     const delegatedUserId = await deps.agentWallets.delegatedUserId(userId);
@@ -281,6 +283,10 @@ export function createCustodyService(deps: CustodyServiceDeps) {
     const wallet = await deps.agentWallets.findOwnedAgentWallet(userId, walletId);
     if (!wallet) {
       throw new AgentWalletNotFoundError();
+    }
+    // A linked wallet's rules were approved and linked at create; never a second set.
+    if (wallet.linked) {
+      throw new AgentWalletLinkedError();
     }
     const policies = agentWalletPolicies({
       delegatedUserId,
@@ -1047,6 +1053,11 @@ export function createCustodyService(deps: CustodyServiceDeps) {
      * balances forgotten, and the receipt in `wallets.transfers`. A broadcast that fails records
      * nothing; a record that fails after a broadcast is reported, as a deposit's is, and a retry
      * of the same stamp records it (the node already holds the transaction).
+     *
+     * The recorded-hash check runs after the stamp is forwarded, because the hash exists only once
+     * Turnkey has signed. So a repeated confirm creates another SIGN_TRANSACTION activity in
+     * Turnkey before it is refused (TRANSFER_ALREADY_RECORDED). Harmless: it signs the same
+     * transaction, with the same nonce, and nothing is broadcast twice.
      */
     async confirmTransfer(
       userId: string,

@@ -198,6 +198,7 @@ export {
   type PasskeyAttestation,
   AGENT_WALLET_ACTIVITY_TYPES,
   AgentWalletNotFoundError,
+  AgentWalletLinkedError,
   DelegatedKeyNotConfiguredError,
   DelegatedUserExistsError,
   DelegatedUserMissingError,

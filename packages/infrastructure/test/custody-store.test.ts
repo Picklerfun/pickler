@@ -496,6 +496,7 @@ test("an agent wallet lands with its account; the master lookup is unaffected", 
   assert.deepEqual(await custody.findOwnedAgentWallet(person.userId, wallet.walletId), {
     walletId: wallet.walletId,
     address: wallet.address,
+    linked: false,
   });
   assert.equal(await custody.findOwnedAgentWallet(randomUUID(), wallet.walletId), null);
   assert.equal(await custody.findOwnedAgentWallet(person.userId, person.walletId), null);
@@ -570,6 +571,7 @@ test("an unlinked wallet is found before its link and not after; the link decide
   );
 
   assert.equal(await custody.findUnlinkedWallet(person.userId), null);
+  assert.equal((await custody.findOwnedAgentWallet(person.userId, wallet.walletId))?.linked, true);
   assert.equal(await custody.hasLinkedAgentWallet(person.userId), true);
   assert.equal(await custody.hasLinkedAgentWallet(stranger.userId), false);
   assert.deepEqual(await custody.findAgentWallet(agentId), {

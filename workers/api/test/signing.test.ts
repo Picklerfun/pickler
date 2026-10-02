@@ -173,6 +173,8 @@ function harness(
     wallets: [] as Parameters<AgentWalletRepository["saveWallet"]>[0][],
     builds: [] as { kind: string; input: unknown }[],
     hasLinked: false,
+    /** Wallet ids already an agent's. */
+    linked: new Set<string>(),
     approved: [] as { userId: string; walletId: string; policyIds: string[] }[],
   };
   const agentWallets: AgentWalletRepository = {
@@ -209,7 +211,13 @@ function harness(
     },
     async findOwnedAgentWallet(userId, walletId) {
       const found = ceremony.wallets.find((w) => w.userId === userId && w.walletId === walletId);
-      return found ? { walletId: found.walletId, address: found.address } : null;
+      return found
+        ? {
+            walletId: found.walletId,
+            address: found.address,
+            linked: ceremony.linked.has(found.walletId),
+          }
+        : null;
     },
     async hasLinkedAgentWallet() {
       return ceremony.hasLinked;
@@ -1307,6 +1315,19 @@ test("WalletUnderfundedError on policies prepare is 409 wallet_underfunded with 
     minAusdMicro: "10000000",
     minMonWei: "500000000000000000",
   });
+  assert.deepEqual(h.ceremony.builds, []);
+});
+
+test("policies for a wallet already linked to an agent are 409 wallet_assigned", async () => {
+  const h = harness();
+  await registered(h);
+  withAgentWallet(h);
+  h.ceremony.linked.add("w-1");
+
+  const res = await post(h, "/v1/signing/agents/wallet/w-1/policies/prepare");
+
+  assert.equal(res.status, 409);
+  assert.equal((await json(res))["error"], "wallet_assigned");
   assert.deepEqual(h.ceremony.builds, []);
 });
 

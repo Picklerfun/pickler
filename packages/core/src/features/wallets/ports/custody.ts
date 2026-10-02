@@ -238,8 +238,14 @@ export interface AgentWalletRepository {
   }): Promise<void>;
   /** Whether a transfer with this transaction hash (any case) is recorded. */
   transferRecorded(txHash: string): Promise<boolean>;
-  /** This person's agent wallet with this id, linked or not; null for anyone else's. */
-  findOwnedAgentWallet(userId: string, walletId: string): Promise<AgentWallet | null>;
+  /**
+   * This person's agent wallet with this id, linked or not (`linked` says which), at its first
+   * account's address; null for anyone else's.
+   */
+  findOwnedAgentWallet(
+    userId: string,
+    walletId: string,
+  ): Promise<(AgentWallet & { linked: boolean }) | null>;
   /**
    * Whether any wallet of this person's is linked to an agent. False means the ceremony in
    * progress is their first agent's, which is when the delegated user's self-delete policy is
