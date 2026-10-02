@@ -1,10 +1,9 @@
 import type { StudioWallets } from "../api";
-import type { NewAgentForm, WalletView } from "./model";
+import type { CreateStage } from "../home/stage";
+import { emptyForm, type NewAgentForm, type WalletView } from "./model";
+import type { SheetPhase } from "./passkey-sheet";
 
-/**
- * The create screen filled in for the design harness, at one moment. Nothing is sent. Task 11 adds
- * `newAgentFixture(stage)`, which builds one per create stage.
- */
+/** The create screen filled in for the design harness, at one moment. Nothing is sent. */
 export interface NewAgentStaged {
   form: NewAgentForm;
   available: boolean;
@@ -13,5 +12,84 @@ export interface NewAgentStaged {
   wallets: StudioWallets;
   advancedOpen: boolean;
   modal: null | "wallets" | "credits" | "avatar";
-  sheet: null | "create";
+  /** The Wallets modal opens with this agent wallet's transfer showing. */
+  fundOn: string | null;
+  sheet: null | { kind: "create"; phase: SheetPhase };
+}
+
+const ADDRESS = "0x91bE6f20A3c7D45e81B0F9a2C6d13E7b58Fd4a07";
+const MASTER = "0x7f3a9C41e02bB7d5F8a16E3c90D4b27A51f0c21e";
+const WALLET_ID = "wal-preview";
+
+/** The create sheet's phase on each sheet stage: Continue, the Touch ID wait, done, cancelled. */
+const SHEET_PHASES: Partial<Record<CreateStage, SheetPhase>> = {
+  "create-sheet": "idle",
+  "create-sheet-busy": "busy",
+  "create-sheet-ok": "ok",
+  "create-sheet-cancelled": "err",
+};
+
+const MODALS: Partial<Record<CreateStage, NonNullable<NewAgentStaged["modal"]>>> = {
+  "create-wallets": "wallets",
+  "create-credits": "credits",
+  "create-avatar": "avatar",
+};
+
+/**
+ * The create screen at one `?stage=create-*` (`home/stage.ts`), as the "Pickler Studio Empty v5"
+ * canvas draws it: Halftime, an analyst, with its wallet empty on `create-wallet` and holding
+ * 25 AUSD and 0.5 MON from `create-funded` on. `create-empty` is a first visit with nothing typed.
+ */
+export function newAgentFixture(stage: CreateStage): NewAgentStaged {
+  const blank = stage === "create-empty";
+  const funded = !blank && stage !== "create-wallet";
+  const form: NewAgentForm = blank
+    ? emptyForm()
+    : {
+        ...emptyForm(),
+        name: "Halftime",
+        voice: "analyst",
+        ...(stage === "create-web"
+          ? { webOn: true, webMode: "prefer", sites: ["coindesk.com", "theblock.co", "x.com"] }
+          : {}),
+      };
+  const wallet: WalletView | null = blank
+    ? null
+    : {
+        walletId: WALLET_ID,
+        address: ADDRESS,
+        ausdMicro: funded ? 25_000_000n : 0n,
+        monWei: funded ? 500_000_000_000_000_000n : 0n,
+      };
+  const phase = SHEET_PHASES[stage];
+  const modal = MODALS[stage] ?? null;
+
+  return {
+    form,
+    available: true,
+    wallet,
+    firstTime: blank,
+    advancedOpen: stage === "create-advanced",
+    modal,
+    fundOn: modal === "wallets" ? WALLET_ID : null,
+    sheet: phase ? { kind: "create", phase } : null,
+    wallets: {
+      master: { address: MASTER, ausdMicro: "187600000", monWei: "4200000000000000000" },
+      agents: wallet
+        ? [
+            {
+              walletId: wallet.walletId,
+              address: ADDRESS,
+              agentId: null,
+              agentName: null,
+              caps: null,
+              policiesApproved: false,
+              ausdMicro: String(wallet.ausdMicro),
+              monWei: String(wallet.monWei),
+            },
+          ]
+        : [],
+      readAt: 0,
+    },
+  };
 }

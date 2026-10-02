@@ -37,7 +37,7 @@ export function menuAccess({
   fundLock: string;
   /**
    * The draft limit's note where the entry would create a draft, or "". Last: funding closes more
-   * than drafts do. The menus' "+ New agent" leads to /studio/new and passes "".
+   * than drafts do. The menus' "+ New agent" opens the create screen and passes "".
    */
   draftLock: string;
 }): MenuAccess {

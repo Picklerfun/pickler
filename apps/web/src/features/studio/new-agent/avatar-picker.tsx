@@ -46,6 +46,7 @@ export function AvatarPicker({
   return (
     <dialog
       ref={ref}
+      id="new-agent-avatar"
       className={styles.modal}
       // A dialog sits under the body, outside the screen's surface; it names the dark one.
       data-surface="dark"

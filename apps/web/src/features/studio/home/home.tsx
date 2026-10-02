@@ -73,6 +73,7 @@ export function Home({
   onSection,
   onPick,
   onSwitch,
+  onNew,
 }: {
   agent: Agent;
   /** The shell's one read of the account's passkeys, for the second-passkey suggestion. */
@@ -85,6 +86,8 @@ export function Home({
   onSection(key: SectionKey): void;
   onPick(runId: string): void;
   onSwitch(agentId: string): void;
+  /** "+ New agent": open the create screen. */
+  onNew(): void;
 }) {
   const agentId = agent.productId ?? agent.id;
   const wallClock = useNow();
@@ -252,6 +255,7 @@ export function Home({
           canManage={canManage}
           onSection={onSection}
           onSwitch={onSwitch}
+          onNew={onNew}
         />
         <Link href="/account" className={styles.account} aria-label="Account">
           <span className={shell.swatch} aria-hidden="true">

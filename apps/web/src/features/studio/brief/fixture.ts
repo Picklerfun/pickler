@@ -6,8 +6,10 @@
  */
 import type { PreviewRun, RunEvent } from "../api";
 import type { BriefStaged } from "../home/empty";
-import type { BriefStage } from "../home/stage";
 import { emptyForm, fingerprint, type BriefForm } from "./model";
+
+/* No longer a `?stage=`: the create stages replaced these, and Task 12 deletes this file. */
+type BriefStage = "brief-running" | "brief-done" | "brief-stale";
 
 const START = Date.UTC(2026, 8, 28, 18, 0, 0);
 const PREVIEW_ID = "0000000b-0000-4000-8000-000000000000";

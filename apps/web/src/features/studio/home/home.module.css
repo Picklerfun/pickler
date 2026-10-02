@@ -180,12 +180,15 @@
 .newAgent {
   display: flex;
   align-items: center;
+  width: 100%;
   padding: 11px 12px;
+  border: none;
   border-radius: var(--pk-radius-sm);
   background: var(--pk-panel-2);
   color: var(--pk-ink);
-  text-decoration: none;
+  text-align: left;
   font: 700 13.5px/1.2 var(--pk-font);
+  cursor: pointer;
 }
 .newAgent:hover {
   background: var(--pk-panel-3);

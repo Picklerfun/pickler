@@ -99,7 +99,12 @@ export function WalletPanel({
   return (
     <aside className={styles.side} aria-label="Its wallet">
       <Image className={styles.mascot} src="/brand/mascot.webp" alt="" width={96} height={80} />
-      <div className={styles.walletCard} id="new-agent-wallet" data-outline={outlined}>
+      <div
+        className={styles.walletCard}
+        id="new-agent-wallet"
+        data-outline={outlined}
+        data-ready={isFunded}
+      >
         <div className={styles.walletHead}>
           <span className={styles.walletTitle}>ITS WALLET</span>
           <span className={styles.walletTag} data-tone={isFunded ? "good" : "caution"}>

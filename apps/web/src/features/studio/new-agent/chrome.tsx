@@ -115,6 +115,7 @@ export function Chrome({
             researchLock={researchLock}
             onSection={noSection}
             onSwitch={noSection}
+            onNew={noSection}
           />
         </span>
         <Link href="/account" className={home.account} aria-label="Account">
@@ -157,5 +158,6 @@ export function Chrome({
   );
 }
 
-/* Every section and every switch needs an agent; the Menu disables them, so nothing calls these. */
+/* Every section and every switch needs an agent; the Menu disables them, so nothing calls these.
+   "+ New agent" is this screen already. */
 function noSection(): void {}

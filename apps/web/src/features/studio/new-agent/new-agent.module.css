@@ -175,6 +175,8 @@
 }
 .input {
   composes: briefInput from "../home/home.module.css";
+  /* Grows with its lines, so a phone's narrower column wraps the defaults without hiding the last. */
+  field-sizing: content;
 }
 
 /* ---------- Voice ---------- */
@@ -887,6 +889,9 @@
 }
 .modal[open] {
   display: grid;
+  /* One column no wider than the screen: an auto column grew to the card's widest line (a full
+     address, the move form) and pushed the Wallets modal past a phone's edge. */
+  grid-template-columns: minmax(0, 1fr);
   place-items: center;
 }
 .modal::backdrop {
@@ -1023,6 +1028,8 @@
   background: var(--pk-panel);
 }
 .walletMark {
+  /* Holds the agent's avatar grid, which is absolutely placed: without this it covered the modal. */
+  position: relative;
   display: grid;
   flex: none;
   place-items: center;
@@ -1074,6 +1081,10 @@
 .direction:disabled {
   color: var(--pk-ink-faint);
   cursor: default;
+}
+/* The open direction stays legible on its light fill while a preview disables it. */
+.direction[aria-expanded="true"]:disabled {
+  color: var(--pk-bg);
 }
 .move {
   display: flex;
@@ -1275,7 +1286,12 @@
 }
 
 .accentOption:focus-visible,
-.patternOption:focus-visible {
+.patternOption:focus-visible,
+.tab:focus-visible,
+.modalClose:focus-visible,
+.iconButton:focus-visible,
+.chipButton:focus-visible,
+.direction:focus-visible {
   outline: 2px solid var(--pk-focus);
   outline-offset: 2px;
 }

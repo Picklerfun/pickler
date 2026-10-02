@@ -166,6 +166,7 @@ export function WalletsModal({
     <>
       <dialog
         ref={dialog}
+        id="new-agent-wallets"
         className={styles.modal}
         // A dialog sits under the body, outside the screen's surface; it names the dark one.
         data-surface="dark"

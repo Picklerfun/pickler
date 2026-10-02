@@ -2,7 +2,9 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { studioLanding } from "../src/features/studio/lib/landing";
 import { menuAccess, NEEDS_AGENT, VIEW_ONLY } from "../src/features/studio/home/access";
-import { stageFromSearch } from "../src/features/studio/home/stage";
+import { CREATE_STAGES, isCreateStage, stageFromSearch } from "../src/features/studio/home/stage";
+import { newAgentFixture } from "../src/features/studio/new-agent/fixture";
+import { emptyForm, funded } from "../src/features/studio/new-agent/model";
 
 /* What `/studio` shows: the home, a section, the empty home, or nothing yet while agents are read. */
 
@@ -102,26 +104,91 @@ test("the draft limit is the last reason: research, view-only and funding come f
   assert.equal(menuAccess({ ...open, researchLock: "locked", draftLock }).createNote, "locked");
 });
 
-test("?stage= stages the brief's run states and the draft home, outside production only", () => {
-  for (const stage of ["brief-running", "brief-done", "brief-stale", "draft"]) {
+test("?stage= stages each moment of the create screen and the draft home, outside production only", () => {
+  for (const stage of [...CREATE_STAGES, "draft"]) {
     assert.equal(stageFromSearch("development", stage), stage);
     assert.equal(stageFromSearch("production", stage), undefined);
   }
-  assert.equal(stageFromSearch("development", "brief-nope"), undefined);
+  assert.equal(stageFromSearch("development", "create-nope"), undefined);
 });
 
-test("each staged brief draws the state it is named for", async () => {
-  const { briefFixture } = await import("../src/features/studio/brief/fixture");
-  const { fingerprint, runState, isTerminal } = await import("../src/features/studio/brief/model");
-  const stateOf = (stage: "brief-running" | "brief-done" | "brief-stale") => {
-    const staged = briefFixture(stage);
-    const run = staged.paper.view!.run!;
-    return runState(
-      { started: true, terminal: isTerminal(run.status), ranFor: staged.paper.ranFor },
-      fingerprint(staged.form),
-    );
-  };
-  assert.equal(stateOf("brief-running"), "LIVE");
-  assert.equal(stateOf("brief-done"), "DONE");
-  assert.equal(stateOf("brief-stale"), "STALE");
+test("the old brief stages are gone", () => {
+  for (const stage of ["brief-running", "brief-done", "brief-stale"]) {
+    assert.equal(stageFromSearch("development", stage), undefined);
+  }
+});
+
+test("every create stage is a create stage, and the other stages are not", () => {
+  for (const stage of CREATE_STAGES) {
+    assert.equal(isCreateStage(stage), true);
+  }
+  for (const stage of ["empty", "draft", "live", undefined] as const) {
+    assert.equal(isCreateStage(stage), false);
+  }
+});
+
+/* Each staged create screen draws the moment it is named for (studio-create-simplified-v1 §7). */
+
+test("no wallet: a blank form, no wallet, and a first visit", () => {
+  const staged = newAgentFixture("create-empty");
+
+  assert.deepEqual(staged.form, emptyForm());
+  assert.equal(staged.wallet, null);
+  assert.equal(staged.firstTime, true);
+  assert.deepEqual(staged.wallets.agents, []);
+});
+
+test("wallet, not funded: a named form and an empty wallet", () => {
+  const staged = newAgentFixture("create-wallet");
+
+  assert.equal(staged.form.name, "Halftime");
+  assert.notEqual(staged.wallet, null);
+  assert.equal(funded(staged.wallet), false);
+  assert.equal(staged.firstTime, false);
+});
+
+test("every later stage has a funded wallet, listed among the agent wallets", () => {
+  for (const stage of CREATE_STAGES.filter((s) => s !== "create-empty" && s !== "create-wallet")) {
+    const staged = newAgentFixture(stage);
+
+    assert.equal(funded(staged.wallet), true, stage);
+    assert.equal(staged.wallets.agents[0]?.walletId, staged.wallet?.walletId, stage);
+  }
+});
+
+test("advanced open, web with sites, and each modal open only on its own stage", () => {
+  assert.equal(newAgentFixture("create-advanced").advancedOpen, true);
+  assert.equal(newAgentFixture("create-funded").advancedOpen, false);
+
+  const web = newAgentFixture("create-web").form;
+  assert.equal(web.webOn, true);
+  assert.ok(web.sites.length > 0);
+  assert.equal(newAgentFixture("create-funded").form.webOn, false);
+
+  assert.equal(newAgentFixture("create-wallets").modal, "wallets");
+  assert.equal(newAgentFixture("create-credits").modal, "credits");
+  assert.equal(newAgentFixture("create-avatar").modal, "avatar");
+  assert.equal(newAgentFixture("create-funded").modal, null);
+});
+
+test("the Wallets stage opens with a transfer to the agent's wallet showing", () => {
+  const staged = newAgentFixture("create-wallets");
+
+  assert.equal(staged.fundOn, staged.wallet?.walletId);
+  assert.equal(newAgentFixture("create-credits").fundOn, null);
+});
+
+test("each sheet stage opens the create sheet in its phase", () => {
+  const phases = {
+    "create-sheet": "idle",
+    "create-sheet-busy": "busy",
+    "create-sheet-ok": "ok",
+    "create-sheet-cancelled": "err",
+  } as const;
+  for (const [stage, phase] of Object.entries(phases)) {
+    const staged = newAgentFixture(stage as keyof typeof phases);
+
+    assert.deepEqual(staged.sheet, { kind: "create", phase }, stage);
+  }
+  assert.equal(newAgentFixture("create-funded").sheet, null);
 });

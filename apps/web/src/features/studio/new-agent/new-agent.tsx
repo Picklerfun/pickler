@@ -132,10 +132,10 @@ export function NewAgent({
   const [advancedOpen, setAdvancedOpen] = useState(staged?.advancedOpen ?? false);
   const reads = useAgentWallet(preview, staged);
   const [sheet, setSheet] = useState<Sheet | null>(
-    staged?.sheet ? { kind: staged.sheet, phase: "idle", step: 1 } : null,
+    staged?.sheet ? { kind: staged.sheet.kind, phase: staged.sheet.phase, step: 1 } : null,
   );
   const [modal, setModal] = useState<Modal>(staged?.modal ?? null);
-  const [fundOn, setFundOn] = useState<string | null>(null);
+  const [fundOn, setFundOn] = useState<string | null>(staged?.fundOn ?? null);
   const [actionError, setActionError] = useState("");
   /* The draft the API answered for. From here on the button opens it and never creates again. */
   const [created, setCreated] = useState<string | null>(null);
@@ -187,8 +187,10 @@ export function NewAgent({
   /* Step 2 was cancelled: the wallet exists, its delegated user does not. */
   const resumeStep = walletSheetStep(reads.wallet, reads.delegated);
   const busy = sheet?.phase === "busy";
-  const creatable =
-    !preview && access.create && created === null && canCreate(form, nameState, ready);
+  /* Whether the button reads as open. A preview draws it as the person would see it, and
+     `creatable` still refuses the press there. */
+  const drawnOpen = access.create && created === null && canCreate(form, nameState, ready);
+  const creatable = !preview && drawnOpen;
   const disabled = busy || created !== null;
 
   function edit(next: NewAgentForm) {
@@ -399,6 +401,7 @@ export function NewAgent({
       overlays={
         <>
           <PasskeySheet
+            id="new-agent-sheet"
             open={sheet !== null}
             title={copy.title}
             body={copy.body}
@@ -493,7 +496,7 @@ export function NewAgent({
             variant="primary"
             size="lg"
             block
-            aria-disabled={created ? busy : !creatable}
+            aria-disabled={created ? busy : !drawnOpen}
             onClick={press}
           >
             {created ? `Open ${name}` : createLabel(form, nameState, ready)}

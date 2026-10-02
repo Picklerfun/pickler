@@ -347,43 +347,116 @@ const ALL = [
     task: "Task 12",
     proves: "#home-schedule",
   },
-  // The home before the first agent (`?stage=empty`), the "Pickler Studio Empty v4" canvas: the top
-  // bar, the disabled rail and the blank brief instead of a redirect to /studio/new. It proves the
-  // brief, which no staged run has.
+  // The create screen before the first agent (`?stage=empty`), the "Pickler Studio Empty v5"
+  // canvas with nothing staged: the top bar, the disabled rail, the brief and the wallet panel.
   {
     path: "/studio?stage=empty",
     name: "studio-home-empty",
     product: "studio",
     surface: "dark",
-    task: "Task 12",
+    task: "Create v5",
     proves: "#home-empty",
   },
-  // The brief home with its paper run live, done and stale (`?stage=brief-*`), and the draft home
-  // after create (`?stage=draft`). Each proves the state it stages, so a stage that fell back to
-  // another is not reported green.
+  // The create screen at each moment studio-create-simplified-v1 §7 lists (`?stage=create-*`): no
+  // wallet, a wallet not funded, funded, advanced open, the web on with sites, the create sheet in
+  // each phase, the Wallets modal with a transfer open, AI credits and the avatar picker. Each
+  // proves the state it stages, so a stage that fell back to another is not reported green. The
+  // draft home after create is `?stage=draft`.
   {
-    path: "/studio?stage=brief-running",
-    name: "studio-brief-running",
+    path: "/studio?stage=create-empty",
+    name: "studio-create-empty",
     product: "studio",
     surface: "dark",
-    task: "Brief",
-    proves: '#brief-run[data-state="LIVE"]',
+    task: "Create v5",
+    proves: "#new-agent-wallet-step0",
   },
   {
-    path: "/studio?stage=brief-done",
-    name: "studio-brief-done",
+    path: "/studio?stage=create-wallet",
+    name: "studio-create-wallet",
     product: "studio",
     surface: "dark",
-    task: "Brief",
-    proves: '#brief-run[data-state="DONE"]',
+    task: "Create v5",
+    proves: '#new-agent-wallet[data-ready="false"]',
   },
   {
-    path: "/studio?stage=brief-stale",
-    name: "studio-brief-stale",
+    path: "/studio?stage=create-funded",
+    name: "studio-create-funded",
     product: "studio",
     surface: "dark",
-    task: "Brief",
-    proves: '#brief-run[data-state="STALE"]',
+    task: "Create v5",
+    proves: '#new-agent-wallet[data-ready="true"]',
+  },
+  {
+    path: "/studio?stage=create-advanced",
+    name: "studio-create-advanced",
+    product: "studio",
+    surface: "dark",
+    task: "Create v5",
+    proves: "#new-agent-risk",
+  },
+  {
+    path: "/studio?stage=create-web",
+    name: "studio-create-web",
+    product: "studio",
+    surface: "dark",
+    task: "Create v5",
+    proves: "#new-agent-web",
+  },
+  {
+    path: "/studio?stage=create-sheet",
+    name: "studio-create-sheet",
+    product: "studio",
+    surface: "dark",
+    task: "Create v5",
+    proves: '#new-agent-sheet[open][data-phase="idle"]',
+  },
+  {
+    path: "/studio?stage=create-sheet-busy",
+    name: "studio-create-sheet-busy",
+    product: "studio",
+    surface: "dark",
+    task: "Create v5",
+    proves: '#new-agent-sheet[open][data-phase="busy"]',
+  },
+  {
+    path: "/studio?stage=create-sheet-ok",
+    name: "studio-create-sheet-ok",
+    product: "studio",
+    surface: "dark",
+    task: "Create v5",
+    proves: '#new-agent-sheet[open][data-phase="ok"]',
+  },
+  {
+    path: "/studio?stage=create-sheet-cancelled",
+    name: "studio-create-sheet-cancelled",
+    product: "studio",
+    surface: "dark",
+    task: "Create v5",
+    proves: '#new-agent-sheet[open][data-phase="err"]',
+  },
+  {
+    path: "/studio?stage=create-wallets",
+    name: "studio-create-wallets",
+    product: "studio",
+    surface: "dark",
+    task: "Create v5",
+    proves: "#new-agent-wallets[open] input[data-amount]",
+  },
+  {
+    path: "/studio?stage=create-credits",
+    name: "studio-create-credits",
+    product: "studio",
+    surface: "dark",
+    task: "Create v5",
+    proves: "#new-agent-credits[open]",
+  },
+  {
+    path: "/studio?stage=create-avatar",
+    name: "studio-create-avatar",
+    product: "studio",
+    surface: "dark",
+    task: "Create v5",
+    proves: "#new-agent-avatar[open]",
   },
   {
     path: "/studio?stage=draft",

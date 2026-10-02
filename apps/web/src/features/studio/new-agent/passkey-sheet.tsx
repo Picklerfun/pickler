@@ -7,6 +7,8 @@ import styles from "./new-agent.module.css";
 export type SheetPhase = "idle" | "busy" | "ok" | "err";
 
 export interface PasskeySheetProps {
+  /** The design harness's handle on this sheet; the Wallets modal's own sheet has none. */
+  id?: string;
   open: boolean;
   title: string;
   body: string;
@@ -27,6 +29,7 @@ export interface PasskeySheetProps {
  * it.
  */
 export function PasskeySheet({
+  id,
   open,
   title,
   body,
@@ -55,7 +58,9 @@ export function PasskeySheet({
   return (
     <dialog
       ref={sheet}
+      id={id}
       className={styles.sheet}
+      data-phase={phase}
       // A dialog sits under the body, outside the screen's surface; it names the dark one.
       data-surface="dark"
       aria-labelledby={titleId}

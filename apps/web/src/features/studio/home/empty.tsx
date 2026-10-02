@@ -307,6 +307,7 @@ export function EmptyHome({
             researchLock={researchLock}
             onSection={noSection}
             onSwitch={noSection}
+            onNew={noSection}
           />
         </span>
         <Link href="/account" className={styles.account} aria-label="Account">
