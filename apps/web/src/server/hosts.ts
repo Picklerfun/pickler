@@ -7,9 +7,10 @@ export interface ProductHosts {
 }
 
 /** The two configured hostnames, read once. `decide` and every link across products uses these. */
+// `||`, not `??`: a copied .env.example leaves these set to "", which means "not configured".
 export const PRODUCT_HOSTS: ProductHosts = {
-  marketplace: process.env.NEXT_PUBLIC_MARKETPLACE_HOST ?? "pickler.fun",
-  studio: process.env.NEXT_PUBLIC_STUDIO_HOST ?? "app.pickler.fun",
+  marketplace: process.env.NEXT_PUBLIC_MARKETPLACE_HOST || "pickler.fun",
+  studio: process.env.NEXT_PUBLIC_STUDIO_HOST || "app.pickler.fun",
 };
 
 /**
@@ -24,14 +25,41 @@ export function productFor(host: string | null | undefined, hosts: ProductHosts)
   if (!host) {
     return "either";
   }
-  const hostname = host.split(":")[0]!.toLowerCase();
-  if (hostname === hosts.marketplace.toLowerCase()) {
+  const hostname = hostnameOf(host);
+  if (hostname === hostnameOf(hosts.marketplace)) {
     return "marketplace";
   }
-  if (hostname === hosts.studio.toLowerCase()) {
+  if (hostname === hostnameOf(hosts.studio)) {
     return "studio";
   }
   return "either";
+}
+
+/** A host without its port, lower-cased. A configured host may carry one: `app.pickler.localhost:3001`. */
+function hostnameOf(host: string): string {
+  return host.split(":")[0]!.toLowerCase();
+}
+
+/**
+ * The origin a configured host is reached at. `*.localhost` is this machine in every browser and
+ * has no certificate, so it is plain http, port and all — which is what lets the two products be
+ * rehearsed on two local hosts before production. Everything else is https.
+ */
+export function originFor(host: string): string {
+  const hostname = hostnameOf(host);
+  const local = hostname === "localhost" || hostname.endsWith(".localhost");
+  return `${local ? "http" : "https"}://${host}`;
+}
+
+/**
+ * The studio's origin, for a server answer that must land there (the auth callback, which sets the
+ * session cookie). On a configured host it is the studio's configured origin, never `request.url`'s,
+ * which names whatever the server was started on: `next start` answers `localhost` for every host,
+ * and a proxy may answer its own. On a shared host (localhost, a preview) both products live there,
+ * so it is the host the request came in on.
+ */
+export function studioOrigin(product: Product, requestHost: string, hosts: ProductHosts): string {
+  return product === "either" ? originFor(requestHost) : originFor(hosts.studio);
 }
 
 /**
@@ -107,7 +135,7 @@ export function studioHref(product: Product, hosts: ProductHosts): string {
   if (product === "studio") {
     return "/";
   }
-  return product === "marketplace" ? `https://${hosts.studio}/` : "/studio";
+  return product === "marketplace" ? `${originFor(hosts.studio)}/` : "/studio";
 }
 
 /**
@@ -122,7 +150,7 @@ export function studioHref(product: Product, hosts: ProductHosts): string {
  * another; `studioHref` above is the function for it.
  */
 export function studioUrl(product: Product, hosts: ProductHosts, path: string): string {
-  return product === "marketplace" ? `https://${hosts.studio}${path}` : path;
+  return product === "marketplace" ? `${originFor(hosts.studio)}${path}` : path;
 }
 
 /**
@@ -133,5 +161,5 @@ export function studioUrl(product: Product, hosts: ProductHosts, path: string): 
  * the other origin. From the marketplace and from a shared host the path is where it says it is.
  */
 export function marketplaceUrl(product: Product, hosts: ProductHosts, path: string): string {
-  return product === "studio" ? `https://${hosts.marketplace}${path}` : path;
+  return product === "studio" ? `${originFor(hosts.marketplace)}${path}` : path;
 }
