@@ -3,7 +3,7 @@
  * run, so the design harness can put each one on the home without a runner or a database, and
  * `?stage=empty`: the home of a person with no agents yet, drawn with no fixture at all.
  * `?stage=create-*`: the create screen at each moment studio-create-simplified-v1 §7 lists, and
- * `?stage=draft`: the draft's home right after create.
+ * `?stage=draft*`: the draft studio at each state studio-draft-dashboard-v1 §7 lists.
  *
  * Outside production only, and pure, like `sectionFromSearch`: `nodeEnv` is an argument so the
  * guard can be pinned in both positions. It is gated on the build alone, the way the creation
@@ -43,14 +43,41 @@ export const CREATE_STAGES = [
 
 export type CreateStage = (typeof CREATE_STAGES)[number];
 
-/** A run stage, a create stage, the draft home after create, or the empty home. */
-export type StudioStage = HomeStage | CreateStage | "draft" | "empty";
+/**
+ * The draft studio (studio-draft-dashboard-v1 §7): the Overview right after create, Connect X at
+ * each moment (the row open, the post not found yet, verified, skipped), then each section, and a
+ * locked one. `draft/fixture.ts` draws each.
+ */
+export const DRAFT_STAGES = [
+  "draft",
+  "draft-x-open",
+  "draft-x-miss",
+  "draft-x-ok",
+  "draft-x-skipped",
+  "draft-console",
+  "draft-trades",
+  "draft-brief",
+  "draft-sources",
+  "draft-limits",
+  "draft-identity",
+  "draft-trade",
+  "draft-master",
+  "draft-locked",
+] as const;
+
+export type DraftStage = (typeof DRAFT_STAGES)[number];
+
+/** A run stage, a create stage, a draft studio stage, or the empty home. */
+export type StudioStage = HomeStage | CreateStage | DraftStage | "empty";
 
 export const isHomeStage = (stage: StudioStage | undefined): stage is HomeStage =>
   (STAGES as readonly string[]).includes(stage ?? "");
 
 export const isCreateStage = (stage: StudioStage | undefined): stage is CreateStage =>
   (CREATE_STAGES as readonly string[]).includes(stage ?? "");
+
+export const isDraftStage = (stage: StudioStage | undefined): stage is DraftStage =>
+  (DRAFT_STAGES as readonly string[]).includes(stage ?? "");
 
 export function stageFromSearch(
   nodeEnv: string | undefined,
@@ -60,8 +87,12 @@ export function stageFromSearch(
     return undefined;
   }
   const value = Array.isArray(asked) ? asked[0] : asked;
-  if (value === "empty" || value === "draft") {
+  if (value === "empty") {
     return value;
+  }
+  const draft = DRAFT_STAGES.find((stage) => stage === value);
+  if (draft) {
+    return draft;
   }
   const create = CREATE_STAGES.find((stage) => stage === value);
   if (create) {

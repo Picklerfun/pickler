@@ -1,0 +1,438 @@
+/* The draft studio, drawn from `Pickler Studio Draft.dc.html` (the "created" phase).
+ *
+ * Every colour is a `--pk-*` token on the dark surface; this sheet holds no literal. The canvas's
+ * #0B0D1A ground and wells are `--pk-bg`, its #15182A cards and chips `--pk-panel`, the #1C2036
+ * hover `--pk-panel-2`; its #9AA0B8 labels are `--pk-ink-muted`, its #5A5F78 and #3A3F58 the
+ * faint ink (the dark ramp's floor that still reads), its lime `--pk-lime`, its amber status
+ * `--pk-amber-ink`; its 8% hairlines `--pk-rule` and its 16% dashed edges `--pk-rule-strong`.
+ * The top bar's brand, chip, pills and account are the home's (`home.module.css`) and the create
+ * screen's (`new-agent.module.css`), composed here so the two bars stay one drawing.
+ */
+
+.studio {
+  composes: home from "../home/home.module.css";
+  /* Nothing on this page scrolls sideways; the rail scrolls inside itself on a phone. */
+  overflow-x: clip;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---------- Avatar ---------- */
+
+/* The accent fill and the pattern's sixteen cells (canvas `avatarPixels`), at three sizes: the top
+   bar's chip, the header, and Identity's button. */
+.avatar {
+  position: relative;
+  flex: none;
+  display: block;
+  overflow: hidden;
+  background: var(--accent);
+}
+.avatar[data-size="chip"] {
+  width: 26px;
+  height: 26px;
+  border-radius: var(--pk-radius-mark);
+}
+.avatar[data-size="head"] {
+  width: 64px;
+  height: 64px;
+  border-radius: var(--pk-radius-lg);
+}
+.avatar[data-size="large"] {
+  width: 84px;
+  height: 84px;
+  border-radius: var(--pk-radius-xl);
+}
+.avatarCells {
+  position: absolute;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+}
+.avatar[data-size="chip"] .avatarCells {
+  inset: 4px;
+  gap: 1px;
+}
+.avatar[data-size="head"] .avatarCells {
+  inset: 9px;
+  gap: 3px;
+}
+.avatar[data-size="large"] .avatarCells {
+  inset: 12px;
+  gap: 4px;
+}
+.avatarCell {
+  border-radius: 2px;
+}
+.avatarCell[data-on="true"] {
+  background: var(--pk-bg);
+}
+
+/* ---------- Top bar ---------- */
+
+.chipButton {
+  composes: agentChip from "../home/home.module.css";
+  border: none;
+  color: var(--pk-ink);
+  cursor: pointer;
+  transition: background var(--pk-duration);
+}
+.chipButton:hover,
+.chipButton[aria-expanded="true"] {
+  background: var(--pk-panel-2);
+}
+.chipButton b {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.chipButton svg {
+  flex: none;
+  color: var(--pk-ink-muted);
+}
+.chipMenu {
+  composes: menu from "../home/home.module.css";
+  left: 0;
+  right: auto;
+}
+/* The agent switcher's rows: the current agent is marked, not linked. */
+.menuAgent[aria-current="true"] {
+  background: var(--pk-panel-2);
+}
+
+/* DRAFT · PRIVATE: the canvas draws it amber on the panel, not on a wash. */
+.status {
+  composes: pill from "../home/home.module.css";
+  background: var(--pk-panel);
+  color: var(--pk-amber-ink);
+}
+.statusDot {
+  composes: pillDot from "../home/home.module.css";
+}
+.testnet {
+  composes: pill from "../home/home.module.css";
+  background: var(--pk-panel);
+  color: var(--pk-ink-muted);
+  letter-spacing: 0.08em;
+}
+
+/* ---------- Body: rail and main ---------- */
+
+.body {
+  display: flex;
+  align-items: stretch;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.rail {
+  flex: 0 0 218px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 14px 12px;
+  border-right: 1px solid var(--pk-rule);
+}
+.railGroup {
+  min-width: 0;
+}
+.railTitle {
+  margin: 0 0 7px;
+  padding: 0 10px;
+  font: 600 10px/1 var(--pk-font);
+  letter-spacing: 0.14em;
+  color: var(--pk-ink-faint);
+}
+.railItems {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.railItem {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  padding: 9px 10px;
+  border: none;
+  border-radius: var(--pk-radius-md);
+  background: transparent;
+  color: var(--pk-ink-muted);
+  text-align: left;
+  font: 600 13.5px/1.2 var(--pk-font);
+  letter-spacing: -0.02em;
+  cursor: pointer;
+  transition:
+    background var(--pk-duration),
+    color var(--pk-duration);
+}
+.railItem svg {
+  flex: none;
+}
+.railItem:hover {
+  color: var(--pk-ink);
+}
+.railItem[aria-current="page"] {
+  background: var(--pk-panel);
+  color: var(--pk-ink);
+}
+/* Locked while private: still a button, which opens the locked panel saying when it opens. */
+.railItem[aria-disabled="true"] {
+  color: var(--pk-ink-faint);
+  cursor: not-allowed;
+}
+.railItem[aria-disabled="true"][aria-current="page"] {
+  background: var(--pk-panel);
+}
+.railLabel {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.main {
+  flex: 1 1 520px;
+  min-width: 0;
+  display: flex;
+  justify-content: center;
+  padding: 36px 28px 60px;
+}
+.column {
+  flex: 1 1 auto;
+  max-width: 1120px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  animation: pkIn 260ms ease-out;
+}
+
+/* ---------- Header and tiles ---------- */
+
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+}
+.headText {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+.name {
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 700 clamp(34px, 4vw, 48px) / 0.92 var(--pk-font-display);
+  font-variation-settings: var(--pk-display-wdth);
+  letter-spacing: -0.04em;
+}
+.sub {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0 0;
+  font: 600 11px/1 var(--pk-font);
+  letter-spacing: 0.06em;
+  color: var(--pk-ink-muted);
+}
+.subDot {
+  color: var(--pk-ink-faint);
+}
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.tile {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  padding: 12px 14px;
+  border-radius: var(--pk-radius-md);
+  background: var(--pk-panel);
+}
+.tileValue {
+  font: 700 20px/1 var(--pk-font);
+  letter-spacing: -0.03em;
+  color: var(--pk-ink);
+  font-variant-numeric: tabular-nums;
+}
+/* Not built yet: the word, quieter than a number would be. */
+.tile[data-soon="true"] .tileValue {
+  color: var(--pk-ink-muted);
+}
+.tileLabel {
+  font: 600 9px/1.2 var(--pk-font);
+  letter-spacing: 0.08em;
+  color: var(--pk-ink-faint);
+}
+
+/* ---------- Notes ---------- */
+
+.note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: var(--pk-radius-md);
+  background: var(--pk-panel);
+  font: 500 12.5px/1.4 var(--pk-font);
+  color: var(--pk-ink-muted);
+}
+.note svg {
+  flex: none;
+}
+.alert {
+  composes: note;
+  background: var(--pk-state-loss-bg);
+  color: var(--pk-loss);
+}
+
+/* ---------- Sections ---------- */
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-width: 0;
+}
+.sectionTitle {
+  margin: 0;
+  font: 700 22px/1 var(--pk-font-display);
+  font-variation-settings: var(--pk-display-wdth);
+  letter-spacing: -0.03em;
+}
+
+/* The canvas's white pill: the one quiet-but-solid action on a card. */
+.lightButton {
+  align-self: flex-start;
+  padding: 11px 16px;
+  border: none;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-ink);
+  color: var(--pk-bg);
+  font: 600 13px/1 var(--pk-font);
+  cursor: pointer;
+  transition: background var(--pk-duration);
+}
+.lightButton:hover:not(:disabled) {
+  background: var(--pk-ink-soft);
+}
+.lightButton:focus-visible,
+.railItem:focus-visible,
+.chipButton:focus-visible {
+  outline: 2px solid var(--pk-focus);
+  outline-offset: 2px;
+}
+
+/* ---------- Locked ---------- */
+
+.locked {
+  max-width: 520px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 22px;
+  border-radius: var(--pk-radius-2xl);
+  border: 1px dashed var(--pk-rule-strong);
+}
+.lockedTitle {
+  margin: 0;
+  font: 700 22px/1.1 var(--pk-font-display);
+  font-variation-settings: var(--pk-display-wdth);
+  letter-spacing: -0.03em;
+}
+.lockedDot {
+  color: var(--pk-lime);
+}
+.lockedNote {
+  margin: 0;
+  font: 500 13px/1.45 var(--pk-font);
+  color: var(--pk-ink-muted);
+  text-wrap: pretty;
+}
+
+/* ---------- Phone ---------- */
+
+/* Below the rail's width the rail becomes a row that scrolls inside itself, as the live studio's
+   does: every section stays one tap away, and the page itself never scrolls sideways. */
+@media (max-width: 860px) {
+  .body {
+    flex-direction: column;
+  }
+  .rail {
+    flex: none;
+    flex-direction: row;
+    gap: 12px;
+    padding: 10px 16px;
+    border-right: none;
+    border-bottom: 1px solid var(--pk-rule);
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .railGroup {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: 6px;
+  }
+  .railTitle {
+    margin: 0;
+    padding: 0 4px 0 0;
+  }
+  .railItems {
+    flex-direction: row;
+  }
+  .railItem {
+    width: auto;
+    gap: 8px;
+  }
+  .railLabel {
+    overflow: visible;
+  }
+  .main {
+    padding: 24px 16px 48px;
+  }
+}
+
+/* ---------- Motion (restated: keyframes are module-scoped) ---------- */
+
+@keyframes pkIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .column {
+    animation: none;
+  }
+  .railItem,
+  .chipButton,
+  .lightButton {
+    transition: none;
+  }
+}

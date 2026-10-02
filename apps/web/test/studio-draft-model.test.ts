@@ -12,6 +12,7 @@ import {
   draftRail,
   goPublicView,
   headerTiles,
+  isLockedSection,
   lockedCopy,
   nextRuns,
   publishBlockedCopy,
@@ -19,7 +20,14 @@ import {
   sectionLabel,
   xView,
 } from "../src/features/studio/draft/model";
-import { LEVERAGE_BOUNDS, MAX_SITES, SPEND_BOUNDS } from "../src/features/studio/new-agent/model";
+import { draftStudioFixture } from "../src/features/studio/draft/fixture";
+import { DRAFT_STAGES, isDraftStage, stageFromSearch } from "../src/features/studio/home/stage";
+import {
+  LEVERAGE_BOUNDS,
+  MAX_SITES,
+  SPEND_BOUNDS,
+  formatUnits,
+} from "../src/features/studio/new-agent/model";
 
 /* One behaviour per test: these are the rules the draft studio's screens are. */
 
@@ -374,5 +382,96 @@ test("a run days out says how many days, not tomorrow", () => {
   assert.deepEqual(
     runs.map((run) => run.at),
     ["09:05 · TMRW", "09:05 · +2D", "09:05 · +3D"],
+  );
+});
+
+/* The staged studio (`?stage=draft*`, spec §7): every stage parses outside production only, and
+   each fixture is the state its name says. */
+
+test("each draft stage is staged outside production only", () => {
+  assert.equal(DRAFT_STAGES.length, 14);
+  for (const stage of DRAFT_STAGES) {
+    assert.equal(stageFromSearch("development", stage), stage);
+    assert.equal(stageFromSearch("production", stage), undefined);
+    assert.equal(isDraftStage(stage), true);
+  }
+  assert.equal(stageFromSearch("development", "draft-nope"), undefined);
+  assert.equal(isDraftStage("create-empty"), false);
+});
+
+test("every staged draft is private, unpublished, and opens its own section", () => {
+  const sections = Object.fromEntries(
+    DRAFT_STAGES.map((stage) => [stage, draftStudioFixture(stage).section]),
+  );
+  for (const stage of DRAFT_STAGES) {
+    const { agent } = draftStudioFixture(stage);
+    assert.equal(agent.draft, true);
+    assert.equal(agent.visibility, "private");
+    assert.equal(agent.publishedAt, null);
+  }
+  assert.equal(sections["draft-x-miss"], "overview");
+  assert.equal(sections["draft-trades"], "picks");
+  assert.equal(sections["draft-sources"], "skills");
+  assert.equal(isLockedSection(sections["draft-locked"]!), true);
+  assert.equal(
+    DRAFT_STAGES.filter((stage) => stage !== "draft-locked").some((stage) =>
+      isLockedSection(sections[stage]!),
+    ),
+    false,
+  );
+});
+
+/* Moved from the old home's Go Public test: a draft made with its voice, a capped wallet and 10
+   AUSD has nothing left but Connect X. */
+test("a draft made by the create screen has only Connect X left", () => {
+  const { agent, x } = draftStudioFixture("draft");
+  const view = goPublicView({
+    xHandle: agent.xHandle,
+    skipped: false,
+    publishing: false,
+    error: null,
+  });
+
+  assert.equal(agent.config.voice, "analyst");
+  assert.ok((agent.wallet?.balanceAusd ?? 0) >= 10);
+  assert.equal(x.account, null);
+  assert.equal(view.done, 0);
+  assert.deepEqual(view.task, { title: "Connect X", meta: "WHERE IT POSTS", done: false });
+  assert.equal(view.label, "Connect X to go public");
+});
+
+test("the X stages are the row open, the post not found, verified, and skipped", () => {
+  const open = draftStudioFixture("draft-x-open").goPublic;
+  assert.equal(open.xOpen, true);
+  assert.equal(xView(open.card).button, "Verify");
+
+  const miss = draftStudioFixture("draft-x-miss");
+  const missView = xView(miss.goPublic.card);
+  assert.equal(missView.button, "Check again");
+  assert.match(missView.miss?.line ?? "", /^Verifying Halftime on @pickler · pk-[a-z2-7]{8}$/);
+  assert.equal(miss.x.challenge?.text, missView.miss?.line);
+
+  const ok = draftStudioFixture("draft-x-ok");
+  assert.equal(ok.agent.xHandle, "HalftimeBot");
+  assert.equal(ok.x.account?.handle, "HalftimeBot");
+  assert.equal(
+    goPublicView({ xHandle: ok.agent.xHandle, skipped: false, publishing: false, error: null })
+      .label,
+    "Go public",
+  );
+
+  const skipped = draftStudioFixture("draft-x-skipped").goPublic;
+  assert.equal(
+    goPublicView({ xHandle: null, skipped: skipped.skipped, publishing: false, error: null })
+      .canPublish,
+    true,
+  );
+});
+
+test("the staged wallets fill the header's two real tiles", () => {
+  const tiles = headerTiles(draftStudioFixture("draft").wallets);
+  assert.deepEqual(
+    tiles.slice(0, 2).map((tile) => tile.value),
+    [formatUnits(177_600_000n, "AUSD"), formatUnits(10_000_000n, "AUSD")],
   );
 });

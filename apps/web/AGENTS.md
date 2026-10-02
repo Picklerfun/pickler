@@ -21,6 +21,7 @@ src/app/
 src/features/studio/       # Studio sections, history, research result and API client
 src/features/studio/new-agent # Creating an agent: one screen, wallet first, then funding, then Create
 src/features/studio/home   # The home: status, wallet and deposit, schedule, picks; the create gate
+src/features/studio/draft  # A private draft's own studio: rail with locks, tiles, Go Public, its sections
 src/features/markets/      # Surface, trade ticket, ask ticket and the ticket's own arithmetic
 src/server/
   api-client.ts            # API Service Binding; explicit loopback-only next-dev fallback
@@ -328,8 +329,8 @@ from the DTO's `accent` through `accentVars`, like every other agent on the site
 indigo). A staged or preview studio refuses every write, the shell's included, and says so.
 
 `?stage=live|researching|decided` (`home/stage.ts`, outside production only) renders the home from
-`home/fixture.ts`, `?stage=draft` the draft's home, and `?stage=empty` and `?stage=create-*` the
-create screen (`StudioStage`); the run stages come from the canvas's run, built from real event types on a fixed clock so the server's
+`home/fixture.ts`, `?stage=draft*` the draft studio from `draft/fixture.ts`, and `?stage=empty` and
+`?stage=create-*` the create screen (`StudioStage`); the run stages come from the canvas's run, built from real event types on a fixed clock so the server's
 HTML matches the browser's. It is gated on the build alone, because
 `previewAllowed` also needs Supabase unconfigured. The staged home reads no session, fetches
 nothing, disables every write and says it is a preview. `scripts/design/routes.mjs` proves one id
