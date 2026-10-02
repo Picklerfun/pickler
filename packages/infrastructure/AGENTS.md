@@ -400,3 +400,7 @@ This adapter and the agents' client in `src/perpl/` both read the venue's contex
 contracts: the agents' client is two symbols with provenance on every value and raw provider
 fractions. Do not route one through the other. Tests: `test/perpl-market-board.test.ts`, over the
 capture in `@pickler/perpl-context` and recorded candles in `test/fixtures/`.
+
+## Local four-way perpetual comparison
+
+Perpetual configuration v2 persists four agents and four reserved lanes in the existing study JSONB. Historical unknown usage may be acknowledged only by exact failed call identity/hash/reservation with no active owner; full reserved cost remains accounted. Any new unknown blocks admissions. The four-way paid ceiling is 35 calls and all sessions still share the original tenant/network/database USD 5 campaign.
