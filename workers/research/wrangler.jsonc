@@ -28,6 +28,7 @@
   "limits": { "cpu_ms": 300000 },
   "observability": { "enabled": true },
   "vars": {
+    "ADVICE_ENABLED": "false",
     "APP_ENV": "staging",
     "ADMISSIONS_ENABLED": "true",
   },

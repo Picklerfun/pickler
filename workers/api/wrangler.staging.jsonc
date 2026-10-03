@@ -17,6 +17,7 @@
   "hyperdrive": [{ "binding": "DATABASE", "id": "05150d06f7164d26a991288a88044710" }],
   "observability": { "enabled": true },
   "vars": {
+    "ADVICE_ENABLED": "false",
     "APP_ENV": "staging",
     "TRADING_ADMISSIONS_ENABLED": "false",
     "ADMISSIONS_ENABLED": "true",

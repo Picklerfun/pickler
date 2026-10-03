@@ -57,11 +57,11 @@ execute business operations. API generation never executes endpoint handlers.
 
 ## Delivery boundary
 
-This change documents existing routes. It implements no fresh recommendation endpoint, x402
-payment flow or agent tool execution. The engineer implementing recommendations must add their
-schemas, metadata and authorization alongside the new handlers so the generated contract follows
-them. The mobile Ask backend imported in PR #71 remains separate; importing the app does not
-connect it to the agent harness automatically.
+The generated contract includes the JWT-only agent-advice group for asynchronous fresh
+recommendations and shared completed history. See [Agent advice](agent-advice.md) for its
+privacy, routing, disabled-by-default admissions and internal USD cost controls. It implements
+no x402 payment flow or agent order execution. The mobile Ask backend imported in PR #71
+remains separate; importing the app does not connect its screens to this harness automatically.
 
 Merge does not establish remote availability. Deploy the API Worker through the existing release
 process, then check the JSON through the web proxy and an authenticated read. This implementation

@@ -4,11 +4,12 @@ import type { Services } from "../app";
 export function documentationServices(
   features: {
     studio?: boolean;
+    advice?: boolean;
     growth?: boolean;
     custody?: boolean;
     walletAuth?: boolean;
     launches?: boolean;
-  } = { studio: true, growth: true, custody: true, walletAuth: true, launches: true },
+  } = { advice: true, studio: true, growth: true, custody: true, walletAuth: true, launches: true },
 ): Services {
   const blocked = new Proxy(
     () => {
@@ -28,6 +29,7 @@ export function documentationServices(
     agentQueries: blocked,
     budgets: blocked,
     profiles: blocked,
+    ...(features.advice ? { advice: blocked } : {}),
     ...(features.studio ? { studio: blocked } : {}),
     ...(features.growth ? { growth: blocked } : {}),
     ...(features.custody ? { custody: blocked } : {}),

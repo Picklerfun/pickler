@@ -80,7 +80,7 @@ export const nonceResponseSchema = z.object({ message: z.string(), nonce: z.stri
 export const signatureRequestSchema = z.object({
   raw: z.string(),
   signature: z.string(),
-  kind: z.enum(["external", "mera"]).optional(),
+  kind: z.enum(["eoa", "mera"]).optional(),
 });
 export const sessionSchema = z.object({ accessToken: z.string(), refreshToken: z.string() });
 export const walletSignInSchema = z.object({ userId: z.string(), session: sessionSchema });

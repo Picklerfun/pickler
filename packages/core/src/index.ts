@@ -301,3 +301,5 @@ export * from "./features/perps/types.js";
 export * from "./features/perps/service.js";
 
 export * from "./features/research/trading-config.js";
+
+export * from "./features/advice/index.js";

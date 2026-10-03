@@ -400,3 +400,12 @@ This adapter and the agents' client in `src/perpl/` both read the venue's contex
 contracts: the agents' client is two symbols with provenance on every value and raw provider
 fractions. Do not route one through the other. Tests: `test/perpl-market-board.test.ts`, over the
 capture in `@pickler/perpl-context` and recorded candles in `test/fixtures/`.
+
+## Advice persistence
+
+`PostgresAdviceStore` implements core advice ports with private jobs/events/calls in migration
+0025, serialized admission, idempotency, shared execution limits and renewable fenced leases.
+Started unknown charges remain reserved and block the agent; never restart their calls. The
+trusted `reconcileCall` method requires terminal failure and verified evidence, uses frozen rates
+and records an audit event; it has no consumer HTTP route. Apply migration before updated
+research/preview admission queries. See [Agent advice](../../docs/agent-advice.md).
