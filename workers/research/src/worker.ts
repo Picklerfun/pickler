@@ -123,19 +123,27 @@ export function createResearchWorker(deps: {
       }
     },
     async scheduled(_event, env) {
-      // Always: recovery, exits, expiry and owner actions never wait for the runtime; only the
-      // hourly dispatch is gated on PERPL_RUNTIME_ENABLED (inside superviseChecks).
-      const admission = perpsAdmission(env);
-      if (deps.perpsRuntime) {
+      // The three supervisions run side by side, each on its own pool, so a slow Perpl venue
+      // (exit frames) never delays advice or research reconciliation. Perpl and advice failures
+      // are logged and never stop the others; research's failure still fails the invocation.
+      const perps = async () => {
+        if (!deps.perpsRuntime) {
+          return;
+        }
+        // Always: recovery, exits, expiry and owner actions never wait for the runtime; only the
+        // hourly dispatch is gated on PERPL_RUNTIME_ENABLED (inside superviseChecks).
         try {
-          await superviseChecks(deps.perpsRuntime(env), admission, async (body) => {
+          await superviseChecks(deps.perpsRuntime(env), perpsAdmission(env), async (body) => {
             await env.RESEARCH_QUEUE.send(body);
           });
         } catch {
           console.error("Perpl runtime supervision failed; research supervision continues");
         }
-      }
-      if (deps.adviceRuntime) {
+      };
+      const advice = async () => {
+        if (!deps.adviceRuntime) {
+          return;
+        }
         try {
           await reconcileAdvice(
             deps.adviceRuntime(env),
@@ -147,21 +155,28 @@ export function createResearchWorker(deps: {
         } catch {
           console.error("Advice reconciliation failed; research supervision continues");
         }
-      }
-      const repository = deps.repository(env);
-      if (env.ADMISSIONS_ENABLED !== "true") {
-        try {
-          await repository.recover(Date.now());
-        } finally {
-          await repository.close();
+      };
+      const research = async () => {
+        const repository = deps.repository(env);
+        if (env.ADMISSIONS_ENABLED !== "true") {
+          try {
+            await repository.recover(Date.now());
+          } finally {
+            await repository.close();
+          }
+          return;
         }
-        return;
+        await reconcile(repository, {
+          send: async (body) => {
+            await env.RESEARCH_QUEUE.send(body);
+          },
+        });
+      };
+
+      const [, , researched] = await Promise.allSettled([perps(), advice(), research()]);
+      if (researched.status === "rejected") {
+        throw researched.reason;
       }
-      await reconcile(repository, {
-        send: async (body) => {
-          await env.RESEARCH_QUEUE.send(body);
-        },
-      });
     },
   };
 }

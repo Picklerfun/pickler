@@ -93,8 +93,9 @@ See [Agent advice](../../docs/agent-advice.md).
 The Queue also carries `{ kind: "perps-check", checkId }` (the API's manual checks and the hourly
 dispatcher). Each delivery calls the runtime's `consumePerpsCheck` with `perpsAdmission(env)`:
 off, the check is claimed and refused `RUNTIME_DISABLED` without reading Perpl or asking the
-model. The minute Cron always runs `superviseChecks` (before advice and research supervision; a
-failure there never stops them): the stuck-check sweep, the exits job, proposal expiry and the
+model. The minute Cron always runs `superviseChecks` beside advice and research supervision
+(`Promise.allSettled`, each on its own pool, so a slow venue never delays them; a Perpl or advice
+failure is logged and never stops the others, and only research's failure fails the invocation): the stuck-check sweep, the exits job, proposal expiry and the
 re-drive of pending owner actions run whether or not the runtime is on, and only the hourly
 dispatcher waits for `PERPL_RUNTIME_ENABLED` "true". Off: no model calls and nothing opens; exits,
 closes and recovery still run. Vars in `wrangler.jsonc`: `PERPL_RUNTIME_ENABLED` "false" (the API's
