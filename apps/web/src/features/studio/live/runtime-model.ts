@@ -6,8 +6,10 @@
  * the runtime's refusals.
  *
  * Every line here describes what really runs (draft spec D19): the runtime checks every hour on
- * paper, and nothing here is drawn unless `GET /perps/record` answered `runtimeEnabled: true`.
- * With it off, the studio keeps `./model.ts`'s and `./run-model.ts`'s honest "runs soon" copy.
+ * paper once `GET /perps/record` answered `runtimeEnabled: true` (`runtimeOn`). With it off, the
+ * paper an agent already holds is still drawn (`paperShown`: it has a paper account), because
+ * exits, Close now and Stop · close all still run (R3); the lines say checks are paused by the
+ * operator. With neither, the studio keeps `./model.ts`'s and `./run-model.ts`'s "runs soon" copy.
  *
  * Pure, no React and no transport, and it value-imports neither `@pickler/api-schema` nor
  * `@pickler/core`, so `apps/web/test/studio-live-runtime.test.ts` can load it.
@@ -54,6 +56,18 @@ const HOUR = 60 * MINUTE;
  */
 export const runtimeOn = (record: PerpsRecordDto | null | "failed"): record is PerpsRecordDto =>
   record !== null && record !== "failed" && record.runtimeEnabled;
+
+/**
+ * The paper is drawn (positions, proposals, the record, the feed, Close now and Stop · close all)
+ * once the runtime is on or the agent has a paper account: an operator who turns the runtime off
+ * leaves the owner's positions open, still exited at stop, target and time, and still closable.
+ */
+export const paperShown = (record: PerpsRecordDto | null | "failed"): record is PerpsRecordDto =>
+  record !== null && record !== "failed" && (record.runtimeEnabled || record.account);
+
+/** What still runs with the runtime off, said wherever its paper is drawn. */
+export const RUNTIME_OFF_NOTE =
+  "Checks are paused by the operator; exits and your closes still run.";
 
 // ─── Numbers ───────────────────────────────────────────────────────────────────────────────────
 
@@ -122,10 +136,21 @@ export function durationLabel(ms: number): string {
 
 // ─── Status, tiles, meters, health ─────────────────────────────────────────────────────────────
 
-/** The chip once it runs: it checks on paper; paused is the same "PAUSED · EXITS ONLY". */
-export function runtimeStatus(paused: boolean): LiveStatus {
+/**
+ * The chip once it runs: it checks on paper; paused is the same "PAUSED · EXITS ONLY". With the
+ * runtime off and paper held (`running` false), "PAPER · CHECKS PAUSED".
+ */
+export function runtimeStatus(paused: boolean, running = true): LiveStatus {
   if (paused) {
     return { state: "paused", label: "PAUSED · EXITS ONLY", tone: "caution", action: "Resume" };
+  }
+  if (!running) {
+    return {
+      state: "public",
+      label: "PAPER · CHECKS PAUSED",
+      tone: "caution",
+      action: "Pause entries",
+    };
   }
   return { state: "public", label: "LIVE · ON PAPER", tone: "good", action: "Pause entries" };
 }
@@ -202,12 +227,14 @@ export function runtimeHealthRows(
   if (record === null || record === "failed") {
     return [...rows];
   }
-  if (!record.runtimeEnabled) {
+  if (!record.runtimeEnabled && !record.account) {
     return [...rows, { key: "runtime", label: "Runtime", value: "NOT OPEN YET", tone: "quiet" }];
   }
   return [
     ...rows,
-    { key: "runtime", label: "Runtime", value: "ON · PAPER · HOURLY", tone: "good" },
+    record.runtimeEnabled
+      ? { key: "runtime", label: "Runtime", value: "ON · PAPER · HOURLY", tone: "good" }
+      : { key: "runtime", label: "Runtime", value: "CHECKS PAUSED · EXITS RUN", tone: "quiet" },
     {
       key: "cost",
       label: "Model cost today",
@@ -219,11 +246,18 @@ export function runtimeHealthRows(
 
 // ─── Words for what runs ───────────────────────────────────────────────────────────────────────
 
-/** Overview's and Positions' line with nothing open, once it runs (the canvas's). */
-export const flatLine = (paused: boolean): string =>
-  paused
+/**
+ * Overview's and Positions' line with nothing open, once it runs (the canvas's); with the runtime
+ * off (`running` false), that it opens nothing while checks are paused.
+ */
+export function flatLine(paused: boolean, running = true): string {
+  if (!running) {
+    return "Flat. Checks are paused by the operator, so it opens nothing.";
+  }
+  return paused
     ? "Flat. Entries are paused; it opens nothing until you resume."
     : "Flat right now. It enters when every line of the brief is true; the last checks are in Decisions.";
+}
 
 /** Decisions with no check yet, once it runs. */
 export const RUNTIME_DECISIONS_EMPTY =
@@ -245,9 +279,11 @@ export function runtimeEntryView(view: EntryView): EntryView {
 /**
  * STOPS once it runs: "Stop · close all" is real on paper (one inline confirm, no passkey), and
  * Auto-pause is on for the one thing the runtime pauses itself for, the day-loss stop (R11); the
- * other triggers the canvas lists (gas, credits, losing Perpl) are not built, and it says so.
+ * other triggers the canvas lists (gas, credits, losing Perpl) are not built, and it says so. With
+ * the runtime off and paper held (`running` false) the stops are the same, and Auto-pause says
+ * checks are paused while a close that crosses the day-loss stop still pauses it.
  */
-export function runtimeStopRows(paused: boolean): StopRow[] {
+export function runtimeStopRows(paused: boolean, running = true): StopRow[] {
   return [
     {
       key: "pause",
@@ -264,7 +300,9 @@ export function runtimeStopRows(paused: boolean): StopRow[] {
     {
       key: "auto",
       name: "Auto-pause",
-      note: "It pauses itself when today's realized loss (UTC) reaches the day-loss stop; open positions keep their exits. Pausing for gas, credits or losing Perpl comes with live trading.",
+      note: running
+        ? "It pauses itself when today's realized loss (UTC) reaches the day-loss stop; open positions keep their exits. Pausing for gas, credits or losing Perpl comes with live trading."
+        : `${RUNTIME_OFF_NOTE} A close that takes today's realized loss (UTC) to the day-loss stop still pauses it.`,
       action: { kind: "tag", label: "ON · DAY-LOSS" },
     },
   ];
@@ -627,19 +665,21 @@ export function runtimeStrip(input: {
   total: number;
   paused: boolean;
   now: number;
+  /** The runtime is on; off (paper held), the line says checks are paused by the operator. */
+  running?: boolean;
 }): StripView {
   const { newest, total } = input;
+  const running = input.running ?? true;
   const count = `${total} ${total === 1 ? "CHECK" : "CHECKS"}`;
   const more = "EVERY DECISION →";
   if (!newest) {
-    return {
-      line: input.paused
-        ? "No checks yet · entries are paused, so no hourly check runs"
-        : "No checks yet · it checks Perpl every hour, on paper",
-      count,
-      log: [],
-      more,
-    };
+    let line = "No checks yet · it checks Perpl every hour, on paper";
+    if (!running) {
+      line = "No checks · checks are paused by the operator";
+    } else if (input.paused) {
+      line = "No checks yet · entries are paused, so no hourly check runs";
+    }
+    return { line, count, log: [], more };
   }
 
   const detail = input.detail?.id === newest.id ? input.detail : null;
@@ -658,6 +698,9 @@ export function runtimeStrip(input: {
   }
   if (detail) {
     parts.push(`${detail.steps.length} ${detail.steps.length === 1 ? "step" : "steps"}`);
+  }
+  if (!running) {
+    parts.push("checks paused by the operator");
   }
   return { line: parts.join(" · "), count, log, more };
 }
@@ -1011,6 +1054,10 @@ export function recordView(record: PerpsRecordDto): RecordView {
 }
 
 // ─── The rail ──────────────────────────────────────────────────────────────────────────────────
+
+/** Why Enter is shut with the runtime off: approvals open a position, so they wait for it. */
+export const ENTER_OFF_REASON =
+  "Checks are paused by the operator, so it enters nothing. Skip still works.";
 
 /** Positions' badge is the open positions, Decisions' the proposals waiting on the owner. */
 export const runtimeCounts = (

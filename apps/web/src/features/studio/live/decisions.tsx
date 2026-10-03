@@ -8,22 +8,23 @@ import {
   RUNTIME_DECISIONS_EMPTY,
   decisionRow,
   filterChecks,
+  paperShown,
   runtimeFilters,
-  runtimeOn,
   stepRows,
 } from "./runtime-model";
 import styles from "./run.module.css";
 import runtime from "./runtime.module.css";
 
 /**
- * Decisions (canvas 285–324, spec L7). With the Perpl runtime off: the canvas's six filters, each
- * at zero, and the empty line. With it on: "Run a check now", the filters with their real counts,
+ * Decisions (canvas 285–324, spec L7). With the Perpl runtime off and no paper account: the
+ * canvas's six filters, each at zero, and the empty line. Off with a paper account, the feed as
+ * below with the line that checks are paused in place of "Run a check now". With it on: "Run a check now", the filters with their real counts,
  * and every check as a row (time, outcome, what it called, what it read) that opens on its lines,
  * its rationale and its timed steps. "Why this trade" opens it on one check (`focusCheck`). There is
  * no per-decision chat: Console stays Soon.
  */
 export const Decisions: (props: LiveSectionProps) => ReactElement = (props) =>
-  runtimeOn(props.live.record) ? <RuntimeDecisions {...props} /> : <EmptyDecisions />;
+  paperShown(props.live.record) ? <RuntimeDecisions {...props} /> : <EmptyDecisions />;
 
 function Filters({
   filters,

@@ -417,7 +417,10 @@ The draft Console runs on the Perpl paper runtime (docs/specs/perpl-paper-runtim
 of `GET /perps/checks`, then `GET /perps/checks/:id`) with its other reads; their failures stay in
 their own fields and never reach the shell's error, so a draft the runtime does not know still
 opens. Only a record whose `runtimeEnabled` is true opens the Console; unread or false, the
-Console, Trades and Overview's Trades keep the Soon state of D12 exactly. Open, "Run it on paper"
+Console, Trades and Overview's Trades keep the Soon state of D12, except that Trades' line
+(`tradesNote`) says checks are paused by the operator while exits still run once the draft has a
+paper account (R3). While it holds an open paper position, the header's IN YOUR POSITIONS and OPEN
+P&L read its margin and P&L, labelled PAPER (`headerTiles(wallets, positions)` in `draft/model.ts`). Open, "Run it on paper"
 (`runCheck`) posts a manual check with a fresh Idempotency-Key per press, and the check is polled
 through `startPolling` every 1.5 s (`CHECK_POLL_MS`) until `finished`, then the positions and the
 record are read again; a check found running on load is polled the same way, and a 409
@@ -517,9 +520,17 @@ preview studio with no stage has no passkeys to show, so the list reads as unrea
 `tabAfter`, `passkeyTag`; `studio-live-market.test.ts`).
 
 The live studio shows the Perpl paper runtime (docs/specs/perpl-paper-runtime-v1.md §2, §3, §7)
-only once `GET /perps/record` answers `runtimeEnabled: true` (`runtimeOn` in `live/runtime-model.ts`);
-unread, failed or off, every screen keeps the "runs soon" copy above (draft spec D19). `use-live.ts`
-reads the record with the other reads (`readMore`), then, with the runtime on, the checks, positions
+once `GET /perps/record` answers `runtimeEnabled: true` (`runtimeOn` in `live/runtime-model.ts`), and
+its paper also once the record answers `account: true` with the runtime off (`paperShown`): an
+operator who turns the runtime off leaves the owner's positions open, still exited and closable
+(R3), so positions with P&L, proposals (Enter shut with `ENTER_OFF_REASON`, Skip open), Record,
+Decisions' feed, Close now, Stop · close all, the tiles, meters and rail counts stay, and the lines
+say checks are paused (`RUNTIME_OFF_NOTE` "Checks are paused by the operator; exits and your closes
+still run." under the positions' head and in place of "Run a check now", the chip "PAPER · CHECKS
+PAUSED", the strip, the flat line, Auto-pause and HEALTH's "CHECKS PAUSED · EXITS RUN"); Limits'
+wallet note (`pullNote`) stops saying it is flat. Unread, failed, or off with no paper account,
+every screen keeps the "runs soon" copy above (draft spec D19). `use-live.ts` reads the record with
+the other reads (`readMore`), then, with the runtime on or a paper account, the checks, positions
 and proposals side by side (each failing alone into `"failed"`), the newest check's steps for the
 strip (`lastCheck`) and the steps of any row opened (`checkDetails`, `readCheckDetail`), and older
 pages of the feed (`readOlderChecks`). It polls through `lib/polling.ts`'s `startPolling`: every
@@ -569,8 +580,9 @@ stages the runtime off on every `perpl-*` stage (a record with `runtimeEnabled: 
 checks, a BTC long, an ETH proposal, closes and a record, on `perpl-live-active` (Overview),
 `perpl-decisions-active`, `perpl-record-active` and `perpl-positions-active` (Positions, with an
 hourly check running and the owner's close of the BTC long waiting for it, staged in
-`LiveRuntimeStaged.actions`); `scripts/design/routes.mjs` proves `#live-overview-proposals`,
-`#live-decisions-feed`, `#live-record-equity` and `#live-action-close-pos-preview-btc` for them.
+`LiveRuntimeStaged.actions`), and off with the BTC long still open on `perpl-positions-paused`;
+`scripts/design/routes.mjs` proves `#live-overview-proposals`, `#live-decisions-feed`,
+`#live-record-equity`, `#live-action-close-pos-preview-btc` and `#live-positions-open-off` for them.
 
 `?stage=live|researching|decided` (`home/stage.ts`, outside production only) renders the home from
 `home/fixture.ts`, `?stage=draft*` the draft studio from `draft/fixture.ts`, `?stage=perpl-*`

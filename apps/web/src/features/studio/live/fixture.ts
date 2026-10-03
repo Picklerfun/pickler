@@ -116,6 +116,7 @@ const SECTIONS: Record<LiveStage, LiveSectionKey> = {
   "perpl-decisions-active": "decisions",
   "perpl-record-active": "record",
   "perpl-positions-active": "positions",
+  "perpl-positions-paused": "positions",
 };
 
 const brief = {
@@ -888,10 +889,25 @@ const closingRuntime: LiveRuntimeStaged = {
   ],
 };
 
-/** The runtime each stage reads: off, on, or on with a close waiting for the running check. */
+/* `perpl-positions-paused`: the operator turned the runtime off with the BTC long still open. Its
+   paper stays drawn with Close now and Stop · close all, which still run (R3); nothing waits on
+   the owner, because an approval cannot open anything while it is off. */
+const pausedRuntime: LiveRuntimeStaged = {
+  ...activeRuntime,
+  record: { ...activeRecord, runtimeEnabled: false },
+  proposals: [],
+};
+
+/**
+ * The runtime each stage reads: off, on, on with a close waiting for the running check, or off with
+ * a paper position still open.
+ */
 function stagedRuntime(stage: LiveStage): LiveRuntimeStaged {
   if (stage === "perpl-positions-active") {
     return closingRuntime;
+  }
+  if (stage === "perpl-positions-paused") {
+    return pausedRuntime;
   }
   return ACTIVE_STAGES.includes(stage) ? activeRuntime : offRuntime;
 }

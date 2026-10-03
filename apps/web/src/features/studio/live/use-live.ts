@@ -47,7 +47,12 @@ import {
 } from "../shell/use-agent-studio";
 import type { LiveStaged } from "./fixture";
 import { watchedSymbols, type LiveSectionKey, type MarketsRead } from "./model";
-import { ownerActionView, runtimeErrorText, type OwnerActionKind } from "./runtime-model";
+import {
+  ownerActionView,
+  paperShown,
+  runtimeErrorText,
+  type OwnerActionKind,
+} from "./runtime-model";
 
 /** A read the live studio makes on its own: null until read, `failed` when it did not answer. */
 export type LiveRead<T> = T | null | "failed";
@@ -65,7 +70,8 @@ export interface LiveData extends AgentStudioData {
   /** `GET /marketplace/leaderboard`, read the first time Leaderboard opens. */
   leaderboard: LiveRead<LeaderboardDto>;
   /**
-   * `GET /agents/:id/perps/record`, read first: `runtimeEnabled` decides whether the rest is read
+   * `GET /agents/:id/perps/record`, read first: `runtimeEnabled` and `account` decide whether the
+   * rest is read (either one: an agent's paper stays drawn and closable with the runtime off, R3)
    * and whether the studio says what runs (draft spec D19).
    */
   record: LiveRead<PerpsRecordDto>;
@@ -179,7 +185,10 @@ export interface UseLive extends UseAgentStudio, LiveData {
    * caller, which says so inline and changes nothing.
    */
   pause(paused: boolean): Promise<void>;
-  /** The record, then (when the runtime is on) the checks, positions and proposals, again. */
+  /**
+   * The record, then (when the runtime is on or it has a paper account) the checks, positions and
+   * proposals, again.
+   */
   readRuntime(): Promise<void>;
   /** The next older page of checks. */
   readOlderChecks(): Promise<void>;
@@ -206,7 +215,8 @@ export interface UseLive extends UseAgentStudio, LiveData {
  * The live studio's data: what every agent's studio reads and writes (`../shell/use-agent-studio.ts`),
  * plus its versions and the markets it watches, read with them, the directory and the leaderboard,
  * read the first time their section opens, and pause. The Perpl paper runtime's record is read with
- * them (it says whether the runtime is on); with it on, the checks, positions and proposals too,
+ * them (it says whether the runtime is on and whether a paper account exists); with either, the
+ * checks, positions and proposals too,
  * every 30 s on Overview, Positions and Decisions while the page shows, and every 2 s while a
  * manual check runs or an owner action is not settled. With `staged` (a `?stage=perpl-*` fixture) or
  * `preview` nothing touches the API: the reads come from the fixture, and the writes throw.
@@ -326,9 +336,10 @@ export function useLive({
 
   /*
    * The owner actions first, so what they did is in the reads that follow. Then the record: with
-   * the runtime off nothing else is read (and the studio keeps its "runs soon" copy). With it on,
-   * the checks, positions and proposals side by side, each failing on its own; then the newest
-   * check's steps for the strip, and the manual check's while it runs.
+   * the runtime off and no paper account nothing else is read (and the studio keeps its "runs
+   * soon" copy). With it on, or a paper account (its positions still exit and close with the
+   * runtime off), the checks, positions and proposals side by side, each failing on its own; then
+   * the newest check's steps for the strip, and the manual check's while it runs.
    */
   const readRuntimeWith = useCallback(
     async (tools: StudioTools, signal?: AbortSignal) => {
@@ -353,7 +364,7 @@ export function useLive({
         return;
       }
       setRecord(read);
-      if (!read.runtimeEnabled) {
+      if (!paperShown(read)) {
         return;
       }
 
@@ -556,9 +567,11 @@ export function useLive({
   const polled = POLLED.includes(section);
   const busy = () => checkingRef.current !== null || actionsRef.current.some(unsettled);
   const fast = checking !== null || actions.some(unsettled);
-  const runtimeOnNow = record !== null && record !== "failed" && record.runtimeEnabled;
+  /* With the runtime off its paper is still polled: exits close positions, and the owner's closes
+     and stops run (R3). */
+  const paperNow = paperShown(record);
   useEffect(() => {
-    if (offline || !runtimeOnNow || !(polled || fast)) {
+    if (offline || !paperNow || !(polled || fast)) {
       return;
     }
     return startPolling(
@@ -573,7 +586,7 @@ export function useLive({
       },
       () => undefined,
     );
-  }, [offline, runtimeOnNow, polled, fast, readRuntimeWith, tools]);
+  }, [offline, paperNow, polled, fast, readRuntimeWith, tools]);
 
   /* The manual check started is polled; the 2 s poll (restarted by it) reads at once. */
   const watchCheck = useCallback((checkId: string) => {

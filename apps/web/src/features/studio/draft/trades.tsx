@@ -1,18 +1,18 @@
 "use client";
 import { DraftSection, type DraftSectionProps } from "./draft-section";
-import { runtimeOpen, tradeCount, tradeRows } from "./runtime-model";
+import { tradeCount, tradeRows, tradesNote } from "./runtime-model";
 import styles from "./run.module.css";
 
 /**
  * Trades (canvas 639–674, spec §3.4): the paper positions its runs opened
  * (`GET /perps/positions`, perpl-paper-runtime-v1 R17), open first, then closed, each with its
  * P&L. None yet is the empty state and the way to the Console; while the Perpl runtime is off it
- * says paper runs are still to open (D12). Reviewing its calls is not built, so nothing says it
+ * says paper runs are still to open (D12), or, once it has a paper account, that checks are paused
+ * while exits still run (`tradesNote`). Reviewing its calls is not built, so nothing says it
  * learns from you (D19).
  */
 export function Trades({ draft, onSection }: DraftSectionProps) {
   const rows = tradeRows(draft.positions);
-  const open = runtimeOpen(draft.record);
   return (
     <DraftSection section="picks">
       <div className={styles.trades}>
@@ -20,11 +20,7 @@ export function Trades({ draft, onSection }: DraftSectionProps) {
           <h3 className={styles.listTitle}>Paper trades</h3>
           <span className={styles.listMeta}>{tradeCount(draft.positions)}</span>
         </div>
-        <p className={styles.cardNote}>
-          {open
-            ? "Every paper position its runs opened, with what it made or lost."
-            : "Every call it would have made, once paper runs open."}
-        </p>
+        <p className={styles.cardNote}>{tradesNote(draft.record)}</p>
         {rows.length === 0 ? (
           <div className={styles.empty}>
             <span>

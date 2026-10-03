@@ -104,6 +104,7 @@ export const LIVE_STAGES = [
   "perpl-decisions-active",
   "perpl-record-active",
   "perpl-positions-active",
+  "perpl-positions-paused",
 ] as const;
 
 export type LiveStage = (typeof LIVE_STAGES)[number];

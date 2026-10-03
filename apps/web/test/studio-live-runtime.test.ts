@@ -17,6 +17,7 @@ import {
   liveCaps,
   liveCapsStepper,
   liveTiles,
+  pullNote,
 } from "../src/features/studio/live/model";
 import {
   actionErrorText,
@@ -30,10 +31,12 @@ import {
   manualCheckView,
   openPnlLabel,
   ownerActionView,
+  paperShown,
   positionMeter,
   positionTime,
   positionView,
   proposalView,
+  RUNTIME_OFF_NOTE,
   recordView,
   runtimeCapsView,
   runtimeCounts,
@@ -221,7 +224,7 @@ test("HEALTH adds the runtime and the model's cost today once on; off, only the 
   assert.deepEqual(runtimeHealthRows(base, null), base);
   assert.deepEqual(runtimeHealthRows(base, "failed"), base);
   assert.deepEqual(
-    runtimeHealthRows(base, record({ runtimeEnabled: false }))
+    runtimeHealthRows(base, record({ runtimeEnabled: false, account: false }))
       .slice(base.length)
       .map((row) => [row.label, row.value]),
     [["Runtime", "NOT OPEN YET"]],
@@ -289,6 +292,87 @@ test("Stop · close all asks once, saying what closes", () => {
 test("the flat line once on says when it enters, and paused says entries are paused", () => {
   assert.match(flatLine(false), /every line of the brief is true/);
   assert.match(flatLine(true), /Entries are paused/);
+});
+
+// ─── Off with paper held (R3) ─────────────────────────────────────────────────────────────────
+
+test("its paper is drawn once on or once it has a paper account, whether or not the runtime is on", () => {
+  assert.equal(paperShown(null), false);
+  assert.equal(paperShown("failed"), false);
+  assert.equal(paperShown(record({ runtimeEnabled: false, account: false })), false);
+  assert.equal(paperShown(record({ runtimeEnabled: false })), true);
+  assert.equal(paperShown(record({ runtimeEnabled: true, account: false })), true);
+  // Drawn is not running: the manual check, HOW IT RUNS and the "runs" copy stay on runtimeOn.
+  assert.equal(runtimeOn(record({ runtimeEnabled: false })), false);
+});
+
+test("runtime off with a position open: positions, Stop and Close stay, no 'runs soon' line", () => {
+  const off = record({ runtimeEnabled: false, today: today({ openCount: 1 }) });
+  const staged = liveStudioFixture("perpl-positions-paused");
+
+  // Positions and Stop · close all are drawn on paperShown, and say what still runs.
+  assert.equal(paperShown(off), true);
+  assert.equal(
+    RUNTIME_OFF_NOTE,
+    "Checks are paused by the operator; exits and your closes still run.",
+  );
+  assert.deepEqual(
+    runtimeStopRows(false, false).map((row) => [row.key, row.action.label]),
+    [
+      ["pause", "Pause"],
+      ["stop", "PAPER"],
+      ["auto", "ON · DAY-LOSS"],
+    ],
+  );
+  assert.match(runtimeStopRows(false, false)[2]!.note, /^Checks are paused by the operator/);
+  // The chip, the strip, the flat line, HEALTH and Limits' wallet note say checks are paused.
+  assert.equal(runtimeStatus(false, false).label, "PAPER · CHECKS PAUSED");
+  assert.equal(runtimeStatus(true, false).label, "PAUSED · EXITS ONLY");
+  assert.equal(
+    runtimeStrip({ newest: null, detail: null, total: 0, paused: false, now: NOW, running: false })
+      .line,
+    "No checks · checks are paused by the operator",
+  );
+  assert.match(
+    runtimeStrip({
+      newest: check(),
+      detail: null,
+      total: 4,
+      paused: false,
+      now: NOW,
+      running: false,
+    }).line,
+    / · checks paused by the operator$/,
+  );
+  assert.equal(
+    flatLine(false, false),
+    "Flat. Checks are paused by the operator, so it opens nothing.",
+  );
+  for (const line of [
+    flatLine(false, false),
+    RUNTIME_OFF_NOTE,
+    runtimeStatus(false, false).label,
+  ]) {
+    assert.doesNotMatch(line, /runs? soon|once it runs|every hour/i);
+  }
+  assert.deepEqual(
+    runtimeHealthRows([], off).map((row) => [row.label, row.value]),
+    [
+      ["Runtime", "CHECKS PAUSED · EXITS RUN"],
+      ["Model cost today", "≈ $0.06"],
+    ],
+  );
+  assert.equal(
+    pullNote(true),
+    "ONLY YOU MOVE FUNDS · PASSKEY · ITS POSITIONS ARE PAPER, EVERY AUSD IS FREE",
+  );
+  assert.match(pullNote(false), /IT IS FLAT/);
+  // The stage: off, a paper account, the BTC long still open, nothing waiting on the owner.
+  assert.equal(staged.section, "positions");
+  assert.equal(runtimeOn(staged.runtime.record), false);
+  assert.equal(paperShown(staged.runtime.record), true);
+  assert.equal(staged.runtime.positions.open.length, 1);
+  assert.deepEqual(staged.runtime.proposals, []);
 });
 
 test("the runtime's refusals are said in the owner's words, others keep theirs", () => {

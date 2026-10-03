@@ -876,6 +876,14 @@ const ALL = [
     task: "Live studio",
     proves: "#live-action-close-pos-preview-btc",
   },
+  {
+    path: "/studio?stage=perpl-positions-paused",
+    name: "studio-live-positions-paused",
+    product: "studio",
+    surface: "dark",
+    task: "Live studio",
+    proves: "#live-positions-open-off",
+  },
   // The second-passkey suggestion on the home. The staged home carries the canvas's account, one
   // passkey, so the suggestion is drawn there with nothing read; this proves it rendered.
   {

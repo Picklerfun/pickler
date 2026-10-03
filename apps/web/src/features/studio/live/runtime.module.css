@@ -36,6 +36,13 @@
   composes: listMeta from "../shell/cards.module.css";
   color: var(--pk-violet-ink);
 }
+/* The runtime is off with paper held: what still runs, under the list's head. */
+.offNote {
+  margin: 0;
+  font: 500 12.5px/1.45 var(--pk-font);
+  color: var(--pk-state-caution-ink);
+  text-wrap: pretty;
+}
 
 /* ---------- Buttons ---------- */
 

@@ -22,6 +22,20 @@ export const CHECK_POLL_MS = 1500;
 export const runtimeOpen = (record: PerpsRecordDto | null): boolean =>
   record?.runtimeEnabled === true;
 
+/**
+ * Trades' line: what its runs opened once the runtime is open; with it off and a paper account
+ * (its positions still exit, R3), the same and that checks are paused; with neither, still to open.
+ */
+export function tradesNote(record: PerpsRecordDto | null): string {
+  if (runtimeOpen(record)) {
+    return "Every paper position its runs opened, with what it made or lost.";
+  }
+  if (record?.account) {
+    return "Every paper position its runs opened, with what it made or lost. Checks are paused by the operator; exits still run.";
+  }
+  return "Every call it would have made, once paper runs open.";
+}
+
 /** What the draft's schedule says: the Perpl runtime off, or on (R2: drafts run only manually). */
 export interface ScheduleCopy {
   /** Console's ON ITS OWN tag. */

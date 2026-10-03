@@ -17,6 +17,7 @@ import {
   stepLines,
   tradeCount,
   tradeRows,
+  tradesNote,
 } from "../src/features/studio/draft/runtime-model";
 import { draftStudioFixture } from "../src/features/studio/draft/fixture";
 import { clock } from "../src/features/studio/shell/clock";
@@ -48,6 +49,22 @@ test("only a record that says so opens the Console; every other stage keeps the 
   }
   assert.equal(draftStudioFixture("draft-trades-active").section, "picks");
   assert.equal(ran.section, "console");
+});
+
+test("Trades says checks are paused while a paper account exists with the runtime off", () => {
+  assert.equal(
+    tradesNote(record),
+    "Every paper position its runs opened, with what it made or lost.",
+  );
+  assert.equal(
+    tradesNote({ ...record, runtimeEnabled: false }),
+    "Every paper position its runs opened, with what it made or lost. Checks are paused by the operator; exits still run.",
+  );
+  assert.equal(
+    tradesNote({ ...record, runtimeEnabled: false, account: false }),
+    "Every call it would have made, once paper runs open.",
+  );
+  assert.equal(tradesNote(null), "Every call it would have made, once paper runs open.");
 });
 
 test("a check is polled every 1.5 s until it has finished", () => {

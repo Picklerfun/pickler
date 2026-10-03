@@ -11,7 +11,7 @@ import {
   watchLoading,
 } from "./run-model";
 import { PositionCards } from "./runtime-parts";
-import { runtimeOn } from "./runtime-model";
+import { paperShown } from "./runtime-model";
 import { Sparkline } from "./sparkline";
 import styles from "./run.module.css";
 
@@ -136,8 +136,9 @@ function WhatItWatches({ agent, live }: Pick<LiveSectionProps, "agent" | "live">
 }
 
 /**
- * Positions (canvas 225–262, spec L7, L8). With the Perpl runtime off: flat, and under the line
- * WHAT IT WATCHES. With it on: the open paper positions as the canvas's full cards (what it put
+ * Positions (canvas 225–262, spec L7, L8). With the Perpl runtime off and no paper account: flat,
+ * and under the line WHAT IT WATCHES. With it on, or off with a paper account (its positions still
+ * exit and close; a line says checks are paused): the open paper positions as the canvas's full cards (what it put
  * in, the notional, what it is worth, the stop–target meter, the time stop, entry, mark and
  * liquidation, Close now and "Why this trade", which opens Decisions on the check that opened it),
  * then WHAT IT WATCHES.
@@ -151,7 +152,7 @@ export const Positions: (props: LiveSectionProps) => ReactElement = ({
 }) => (
   <LiveSection section="positions">
     <div className={styles.run}>
-      {runtimeOn(live.record) ? (
+      {paperShown(live.record) ? (
         <>
           <PositionCards
             id="live-positions-open"
@@ -161,6 +162,7 @@ export const Positions: (props: LiveSectionProps) => ReactElement = ({
             canManage={canManage}
             full
             paused={agent.paused}
+            running={live.record.runtimeEnabled}
             onWhy={onWhy}
           />
           <WhatItWatches agent={agent} live={live} />

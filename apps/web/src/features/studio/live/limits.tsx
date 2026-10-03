@@ -14,9 +14,9 @@ import {
   pullReason,
 } from "./build-model";
 import { LiveSection, type LiveSectionProps } from "./live-section";
-import { PULL_NOTE, liveCaps, liveCapsStepper, liveWalletRead, type LiveCaps } from "./model";
+import { liveCaps, liveCapsStepper, liveWalletRead, pullNote, type LiveCaps } from "./model";
 import { Reason } from "./reason";
-import { runtimeCapsView, runtimeOn } from "./runtime-model";
+import { paperShown, runtimeCapsView, runtimeOn } from "./runtime-model";
 import styles from "./build.module.css";
 
 /**
@@ -198,7 +198,7 @@ function WalletCard({
         <Reason id="live-pull-reason" text={pullShut} />
       </div>
       <span className={styles.hint} data-align="center">
-        {PULL_NOTE}
+        {pullNote(paperShown(live.record))}
       </span>
     </div>
   );

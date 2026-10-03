@@ -2,18 +2,18 @@
 import type { ReactElement } from "react";
 import { LiveSection, type LiveSectionProps } from "./live-section";
 import { RECORD_EMPTY, RECORD_META } from "./run-model";
-import { closedRow, recordView, runtimeOn } from "./runtime-model";
+import { closedRow, paperShown, recordView } from "./runtime-model";
 import { Sparkline } from "./sparkline";
 import styles from "./run.module.css";
 import runtime from "./runtime.module.css";
 
 /**
- * Record (canvas 264–283, spec L7). With the Perpl runtime off: the head with nothing closed and
- * the empty line. With it on (R13): the paper equity line, the five figures from the record, and
+ * Record (canvas 264–283, spec L7). With the Perpl runtime off and no paper account: the head
+ * with nothing closed and the empty line. With it on, or a paper account (R13): the paper equity line, the five figures from the record, and
  * the closed positions, newest first; the empty line stays until the first close.
  */
 export const RecordSection: (props: LiveSectionProps) => ReactElement = ({ live, now }) => {
-  const record = runtimeOn(live.record) ? live.record : null;
+  const record = paperShown(live.record) ? live.record : null;
   const positions = live.positions && live.positions !== "failed" ? live.positions : null;
   const closed = positions?.closed ?? [];
   const view = record ? recordView(record) : null;

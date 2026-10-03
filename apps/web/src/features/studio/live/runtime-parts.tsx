@@ -6,6 +6,8 @@ import { VIEW_ONLY_REASON } from "./build-model";
 import type { LiveSectionProps } from "./live-section";
 import { Reason } from "./reason";
 import {
+  ENTER_OFF_REASON,
+  RUNTIME_OFF_NOTE,
   flatLine,
   manualCheckView,
   openPnlLabel,
@@ -181,6 +183,8 @@ function CloseNow({
 /**
  * The open positions as cards: Overview's compact one (canvas 209–217) or Positions' full one
  * (243–258) with the figures, the time stop, entry, mark and liquidation, and "Why this trade".
+ * With the runtime off (`running` false) they are still drawn, with Close now, under a line that
+ * says checks are paused while exits and the owner's closes still run.
  */
 export function PositionCards({
   live,
@@ -188,6 +192,7 @@ export function PositionCards({
   canManage,
   full,
   paused,
+  running,
   title,
   id,
   onWhy,
@@ -198,6 +203,8 @@ export function PositionCards({
   full: boolean;
   /** Entries are paused: the flat line says so. */
   paused: boolean;
+  /** The runtime is on; off, its paper is drawn with the off line. */
+  running: boolean;
   title: string;
   id: string;
   onWhy(checkId: string | null): void;
@@ -210,6 +217,11 @@ export function PositionCards({
         <h3 className={styles.listTitle}>{title}</h3>
         <span className={styles.listMeta}>{read === "failed" ? "—" : openPnlLabel(open)}</span>
       </div>
+      {!running && (
+        <p className={styles.offNote} id={`${id}-off`}>
+          {RUNTIME_OFF_NOTE}
+        </p>
+      )}
       {read === "failed" && (
         <div className={styles.empty} role="alert">
           Couldn&apos;t read its positions.
@@ -224,7 +236,7 @@ export function PositionCards({
       )}
       <GoneActions live={live} kind="close" present={open.map((position) => position.id)} />
       {read !== "failed" && open.length === 0 && (
-        <div className={styles.empty}>{flatLine(paused)}</div>
+        <div className={styles.empty}>{flatLine(paused, running)}</div>
       )}
       {open.map((position) => {
         const view = positionView(position, now);
@@ -325,6 +337,7 @@ function ProposalActions({
   skip,
   expired,
   canManage,
+  running,
 }: {
   live: Live;
   id: string;
@@ -332,12 +345,15 @@ function ProposalActions({
   skip: string;
   expired: boolean;
   canManage: boolean;
+  /** The runtime is on; off, an approval cannot open anything, so Enter is shut (Skip is not). */
+  running: boolean;
 }) {
   const { error, run } = useActionError();
   const [skipping, setSkipping] = useState(false);
   const item = ownerActionFor(live.actions, "approve", id);
   const approving = inFlight(item);
   const shut = !canManage || approving || skipping || expired;
+  const enterShut = shut || !running;
   const reasonId = `live-proposal-reason-${id}`;
   let reason: string | null = null;
   if (!canManage) {
@@ -345,18 +361,20 @@ function ProposalActions({
   } else if (expired) {
     reason = "It expired after 15 minutes.";
   }
+  const enterReason = reason ?? (running ? null : ENTER_OFF_REASON);
+  const enterReasonId = `live-proposal-enter-reason-${id}`;
   return (
     <>
       <div className={styles.proposalActions}>
         <button
           type="button"
           className={styles.limeButton}
-          aria-disabled={shut || undefined}
+          aria-disabled={enterShut || undefined}
           aria-busy={approving || undefined}
-          aria-describedby={reason ? reasonId : undefined}
-          title={reason ?? undefined}
+          aria-describedby={enterReason ? enterReasonId : undefined}
+          title={enterReason ?? undefined}
           onClick={() => {
-            if (!shut) {
+            if (!enterShut) {
               void run(() => live.approve(id));
             }
           }}
@@ -381,6 +399,7 @@ function ProposalActions({
         </button>
       </div>
       <Reason id={reasonId} text={reason} />
+      <Reason id={enterReasonId} text={enterReason} />
       <ActionError text={error} />
       <ActionLine live={live} item={item} />
     </>
@@ -390,16 +409,19 @@ function ProposalActions({
 /**
  * "Waiting on you" (canvas 178–203, R8): each pending proposal with what it puts in, the notional,
  * the check's entry lines, Enter / Skip (one tap, no passkey: paper) and a live countdown to its
- * expiry. Hidden with none, as before the runtime.
+ * expiry. Hidden with none, as before the runtime. With the runtime off (`running` false) a pending
+ * one is still drawn until it expires, Enter shut with the reason and Skip open.
  */
 export function ProposalCards({
   live,
   now,
   canManage,
+  running,
 }: {
   live: Live;
   now: number;
   canManage: boolean;
+  running: boolean;
 }) {
   /* The countdown ticks every second; a staged studio keeps its fixed clock. */
   const tick = useNow(1000);
@@ -461,6 +483,7 @@ export function ProposalCards({
               skip={view.skip}
               expired={view.expired}
               canManage={canManage}
+              running={running}
             />
           </article>
         );
@@ -549,14 +572,22 @@ export function StopAll({
 
 /**
  * "Run a check now" (R2: at most 6 manual checks a UTC day): pending while the check runs, shut
- * with the reason at the limit, MANUAL_LIMIT and the other refusals said inline.
+ * with the reason at the limit, MANUAL_LIMIT and the other refusals said inline. With the runtime
+ * off and paper held, in its place the line that checks are paused and what still runs.
  */
 export function RunCheck({ live, canManage }: { live: Live; canManage: boolean }) {
   const { error, run } = useActionError();
   const [sending, setSending] = useState(false);
   const record = live.record;
-  if (!record || record === "failed" || !record.runtimeEnabled) {
+  if (!record || record === "failed" || (!record.runtimeEnabled && !record.account)) {
     return null;
+  }
+  if (!record.runtimeEnabled) {
+    return (
+      <p className={styles.offNote} id="live-run-check-off">
+        {RUNTIME_OFF_NOTE}
+      </p>
+    );
   }
   const checking = sending || live.checking !== null;
   const view = manualCheckView(record.today, checking);

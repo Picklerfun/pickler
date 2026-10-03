@@ -44,8 +44,8 @@ import { Reason } from "./reason";
 import { RecordSection } from "./record";
 import { StopAll } from "./runtime-parts";
 import {
+  paperShown,
   runtimeCounts,
-  runtimeOn,
   runtimeStatus,
   runtimeStrip,
   runtimeTiles,
@@ -136,9 +136,11 @@ export function LiveStudio({
   };
 
   /* With the Perpl runtime on, the chip, the tiles, the strip and the rail's counts say what runs;
-     off (or the record unread), they keep the honest "runs soon" copy (draft spec D19). */
-  const record = runtimeOn(live.record) ? live.record : null;
-  const status = record ? runtimeStatus(agent.paused) : liveStatus(agent);
+     off with a paper account, they still show its paper and say checks are paused (R3: exits,
+     Close now and Stop · close all still run); otherwise (or the record unread) they keep the
+     honest "runs soon" copy (draft spec D19). */
+  const record = paperShown(live.record) ? live.record : null;
+  const status = record ? runtimeStatus(agent.paused, record.runtimeEnabled) : liveStatus(agent);
   const { caps } = liveCaps(agent);
   const read = liveWalletRead(agent.wallet, live.wallets);
   const warnings = liveWarnings(read, caps.perTradeAusd);
@@ -219,7 +221,7 @@ export function LiveStudio({
         </StatusChip>
       }
       /* Positions counts the open paper positions, Decisions the proposals waiting on the owner;
-         both are 0 with the runtime off. */
+         both are 0 with the runtime off and no paper account. */
       rail={liveRail(
         section,
         record ? runtimeCounts(live.positions, live.proposals) : { positions: 0, decisions: 0 },
@@ -318,6 +320,7 @@ export function LiveStudio({
                   total: record.checks,
                   paused: agent.paused,
                   now,
+                  running: record.runtimeEnabled,
                 })
               : stripView()
           }
@@ -343,8 +346,8 @@ function HeaderPart({ first, children }: { first: boolean; children: string }) {
 /**
  * The header's controls (spec L4): "Pause entries" / "Resume", real, with its pending state (shared
  * with Controls' STOPS) and an inline failure that changes nothing; "Stop · close all" drawn shut
- * with Soon while the Perpl runtime is off, and real on paper once it is on (`stop`, with its
- * inline confirm). A view-only member's controls stay reachable, with the reason.
+ * with Soon while the Perpl runtime is off and no paper account exists, and real on paper once it
+ * is on or a paper account exists (`stop`, with its inline confirm). A view-only member's controls stay reachable, with the reason.
  */
 function HeaderControls({
   paused,
