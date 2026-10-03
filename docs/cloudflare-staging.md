@@ -251,6 +251,10 @@ so an ordinary deployment does not accidentally reopen admissions. No migration 
 
 ## Web Worker Builds configuration
 
+For the complete dashboard settings, build variables, commands and watch paths for all four
+existing staging Workers, use the [Worker Builds guide](../scripts/cloudflare/README.md).
+Runtime secrets remain separate from build variables and GitHub Actions credentials.
+
 The `pickler-web-staging` Git integration has separate production and preview build settings.
 Both should build only the API schema and OpenNext web bundle from the repository root:
 
