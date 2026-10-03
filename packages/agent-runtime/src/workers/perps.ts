@@ -8,6 +8,7 @@ import {
 } from "@pickler/core";
 import {
   dayLossReached,
+  hourlyRequestKey,
   realizedSince,
   utcDayStart,
   type PerpsCheck,
@@ -123,8 +124,9 @@ export async function consumePerpsCheck(
 /**
  * The hourly dispatcher (R2): while the runtime is on and under the ceiling, queues one `hourly`
  * check for each due agent (`dueAgents`: published, Perpl, unpaused, slot open, no live check) and
- * sends its Queue message. An agent that cannot start (e.g. `CHECK_RUNNING`) is skipped. Answers
- * the ids queued.
+ * sends its Queue message. Each check is keyed `hourly:<slot>`, so overlapping Cron runs start
+ * exactly one check per agent and slot (a replay that already ran is not sent again). An agent
+ * that cannot start (e.g. `CHECK_RUNNING`) is skipped. Answers the ids queued.
  */
 export async function dispatchDueChecks(
   runtime: Pick<PerpsBackground, "store">,
@@ -146,11 +148,15 @@ export async function dispatchDueChecks(
       check = await runtime.store.startCheck({
         productAgentId: agent.productAgentId,
         trigger: "hourly",
+        requestKey: hourlyRequestKey(agent.slot),
       });
     } catch (error) {
       if (!(error instanceof PilotError)) {
         throw error;
       }
+      continue;
+    }
+    if (check.status !== "queued") {
       continue;
     }
     try {
@@ -267,7 +273,10 @@ export async function expirePerpsProposals(runtime: Pick<PerpsBackground, "store
   return expired.length;
 }
 
-/** The research Cron's runtime work while it is on: dispatch, exits, then expiry. */
+/**
+ * The research Cron's runtime work while it is on: the stuck-check sweep (`recoverChecks`), then
+ * dispatch, exits and expiry.
+ */
 export async function superviseChecks(
   runtime: PerpsBackground,
   admission: PerpsAdmission,
@@ -279,6 +288,7 @@ export async function superviseChecks(
     }
     const signal = AbortSignal.timeout(50_000);
     for (const job of [
+      () => runtime.store.recoverChecks(),
       () => dispatchDueChecks(runtime, admission, send),
       () => runExits(runtime, signal),
       () => expirePerpsProposals(runtime),

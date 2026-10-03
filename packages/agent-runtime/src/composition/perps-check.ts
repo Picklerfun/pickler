@@ -21,6 +21,7 @@ import {
   decideOutcome,
   entryTrace,
   exitLevels,
+  exitsMet,
   parseCheckDecision,
   productFreeEquity,
   realizedSince,
@@ -42,8 +43,6 @@ import {
 } from "@pickler/trading/perps";
 import type { PerpsCheckModel } from "./perps-check-model.js";
 
-/** What every paper open keeps back for its fee (the paper service's reserve). */
-export const PERPS_FEE_RESERVE_AUSD = 1;
 /** The least a wallet must hold for the first check to open its paper account (R9). */
 export const PERPS_WALLET_MINIMUM_AUSD = 10;
 /** Closed hourly candles the model sees per instrument (R5). */
@@ -222,7 +221,9 @@ export function perpsCheckState(input: {
  * `exited` row, then the figures are read again and `decideOutcome` runs with no position), and
  * every paper action renews the check's lease right before it (`CHECK_INTERRUPTED` otherwise), so
  * a stalled check can never act after its lease was recovered. Free equity counts open P&L at the
- * board's marks and this check's own; without a mark it does not open.
+ * board's marks and this check's own; without a mark it does not open, and an open needs its margin
+ * plus its fee reserve (notional × taker fee × 1.5) free. Brief exit lines close every held position
+ * the model reported a met line for; an instrument outside its markets holds.
  */
 export async function runPerpsCheck(
   deps: PerpsCheckDependencies,
@@ -369,8 +370,9 @@ export async function runPerpsCheck(
   addCost(answer.costMicros);
   await step(`Asked the model · ${seconds(modelMs)}`, modelMs);
 
+  // An instrument outside its markets is a valid answer: `decideOutcome` holds ("NOT ITS MARKET").
   const parsed = parseCheckDecision(answer.content ?? undefined);
-  if (!parsed.ok || !instruments.includes(parsed.decision.instrument)) {
+  if (!parsed.ok) {
     await step("Its answer was not a valid perps-check-v1 decision");
     return finish("failed", "MODEL INVALID", "MODEL_INVALID");
   }
@@ -391,17 +393,22 @@ export async function runPerpsCheck(
     return {
       view,
       open: view.account.positions.filter((p) => p.closedAt === null),
-      freeEquity: free === null ? null : Number(free) - PERPS_FEE_RESERVE_AUSD,
+      freeEquity: free === null ? null : Number(free),
       newMarginToday: Number(await paper.newMarginSince(scope, dayStart)),
       realizedToday: realizedSince(view.movements, dayStart),
     };
   };
   type Figures = Awaited<ReturnType<typeof figures>>;
+  // The fee reserve scales with the open's notional at the venue's taker fee (the service's too).
+  const read = reads.find((r) => r.frame.snapshot.market.symbol === called.instrument);
+  const takerFee = Number(read?.frame.book.market.fees.taker ?? 0);
   const decide = (figs: Figures, position: PerpsPaperPosition | null): PerpsCheckResult => {
     const result = decideOutcome({
       decision: called,
       brief: counts,
       paused: agent.paused,
+      markets: instruments,
+      takerFee: Number.isFinite(takerFee) ? takerFee : 0,
       position: position
         ? { id: position.id, side: position.side, margin: Number(position.margin ?? 0) }
         : null,
@@ -433,8 +440,36 @@ export async function runPerpsCheck(
   };
 
   let figs = await figures();
-  let result = decide(figs, held(figs));
   let closed = false;
+
+  // Brief exit lines are hard lines for every position the model reported on, not only the
+  // decision's instrument: each other held position with a met line closes as its own row.
+  for (const position of figs.open) {
+    const met =
+      position.symbol === called.instrument ? [] : exitsMet(called, counts.exits, position.symbol);
+    if (!met.length) {
+      continue;
+    }
+    const text = await close(position);
+    closed = true;
+    await step(text);
+    await store.recordCheck({
+      productAgentId: check.productAgentId,
+      trigger: "system",
+      outcome: "exited",
+      outcomeText: line(
+        `EXIT ${met.join(", ")} MET · ${position.side.toUpperCase()} ${position.symbol}`,
+      ),
+      decision: called,
+      inputs,
+      configVersion: agent.version,
+      steps: [{ text: line(text) }],
+    });
+  }
+  if (closed) {
+    figs = await figures();
+  }
+  let result = decide(figs, held(figs));
 
   // An opposite call (R7) in two phases: the close is its own `exited` row, then decide again.
   if (result.close && result.outcome !== "exited") {
@@ -498,6 +533,8 @@ export async function runPerpsCheck(
             takeProfitBps: called.takeProfitBps,
             horizonHours: called.horizonHours,
             openedAt: now(),
+            // The stop's loss stays within 90% of margin at this leverage (inside liquidation).
+            leverage: result.leverage,
           }),
       },
     );

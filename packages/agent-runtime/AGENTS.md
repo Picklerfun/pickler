@@ -182,11 +182,16 @@ contracts hold: an opposite call is two phases (the close is its own `exited` ro
 `system`, then the figures are read again and `decideOutcome` runs with no position), and every
 paper action (open, close) renews the check lease right before it, so a check whose lease lapsed
 fails `CHECK_INTERRUPTED` instead of acting. Free equity is trading's `productFreeEquity` at the
-market board's marks overlaid with the check's own Perpl marks, minus the 1 AUSD fee reserve;
-with no mark it does not open ("NO MARK"). A close that crosses the day-loss stop pauses the
-agent (`pauseAgent`).
+market board's marks overlaid with the check's own Perpl marks; an open needs its margin plus its
+fee reserve (notional × the read's taker fee × 1.5, the paper service's `productFeeReserve`), and
+with no mark it does not open ("NO MARK"). An instrument outside `config.perpl.markets` holds
+("NOT ITS MARKET"). Brief exit lines are judged per held instrument (`exitsMet`): before deciding,
+every other held position with a met line closes as its own `exited` row (trigger `system`,
+"EXIT n MET · LONG BTC"). Exits pass the open's leverage to `exitLevels`, so the stop's loss stays
+within 90% of margin. A close that crosses the day-loss stop pauses the agent (`pauseAgent`).
 
-`composition/perps-check-model.ts` holds the `perps-check` prompt (1.0.0) beside advice's and
+`composition/perps-check-model.ts` holds the `perps-check` prompt (1.1.0: exit lines per held
+instrument, no repeated indexes, probability as a fraction) beside advice's and
 `createPerpsCheckModel`, one JSON-mode call to `MODEL_BASE_URL`/`MODEL_ID`/`MODEL_API_KEY` (20 s,
 no retries, 120 kB request, 2,000 output tokens). The provider's `usage.cost` (USD) becomes the
 check's micro-USD cost; without it the cost stays null. `composition/chat-completion.ts`
@@ -200,10 +205,11 @@ per isolate; stale boards give no marks) and a 24-request `PerplMarketData` for 
 the check (a duplicate delivery claims nothing), refuses it `RUNTIME_DISABLED` while off and
 `RUNTIME_CEILING` above `PERPL_RUNTIME_DAILY_CHECKS`, and otherwise runs it with a 15 s heartbeat
 on the 60 s lease and a three-minute deadline, ending failures `failed` with their code;
-`dispatchDueChecks` queues one `hourly` check per due agent and sends `{ kind: "perps-check",
-checkId }`; `runExits` closes due positions (stop, target, time) at fresh frames, logs an
+`dispatchDueChecks` queues one `hourly` check per due agent, keyed `hourly:<slot>` (one check per
+slot under overlapping Cron runs; a replay that is no longer queued is not sent again), and sends
+`{ kind: "perps-check", checkId }`; `runExits` closes due positions (stop, target, time) at fresh frames, logs an
 `exited` row (trigger `exits`) and applies the day-loss stop; `expirePerpsProposals` writes a
-`skipped` row per expired proposal; `superviseChecks` runs the three for the Cron while on;
+`skipped` row per expired proposal; `superviseChecks` runs the stuck-check sweep (`recoverChecks`) and the three for the Cron while on;
 `perpsAdmission(env)` reads the flags. Manual checks: the API starts the check
 (`PerpsRuntimeRepository.startCheck`, trigger `manual`) and sends the same Queue message.
 Tests: `test/perps-check-model.test.ts`; the end-to-end runs are in `workers/research/test`.

@@ -618,3 +618,110 @@ test("the dispatcher queues hourly checks for due agents only", async (t) => {
   assert.equal(check.productAgentId, due.id);
   assert.equal(check.trigger, "hourly");
 });
+
+test("an instrument outside its markets holds, it does not fail", async (t) => {
+  const f = await setup(t);
+  const { id, scope } = await f.agent({
+    config: { perpl: { version: 1, network: "testnet", markets: ["BTC"] } },
+  });
+  f.answer(answer({ instrument: "ETH" }));
+
+  const done = await f.check(id);
+
+  assert.equal(done.outcome, "held");
+  assert.equal(done.outcomeText, "NOT ITS MARKET");
+  assert.equal(done.error, null);
+  assert.deepEqual(open(await f.paper.view(scope)), []);
+});
+
+test("brief exit lines close every held position the model reported a met line for", async (t) => {
+  const f = await setup(t);
+  const { id, scope } = await f.agent();
+  await f.check(id);
+  f.answer(answer({ instrument: "ETH" }));
+  await f.check(id);
+  assert.equal(open(await f.paper.view(scope)).length, 2);
+  f.answer(
+    JSON.stringify({
+      instrument: "ETH",
+      action: "hold",
+      entries: [{ index: 1, met: false, why: "No" }],
+      exits: [
+        { instrument: "BTC", index: 1, met: true, why: "BTC trend broke" },
+        { instrument: "ETH", index: 1, met: false, why: "ETH trend holds" },
+      ],
+      never: [{ index: 1, broken: false }],
+      rationale: "BTC broke its trend",
+      sources: [],
+    }),
+  );
+
+  const done = await f.check(id);
+
+  assert.equal(done.outcome, "held");
+  assert.equal(done.outcomeText, "HOLD");
+  const exited = await f.store.listChecks(id, { outcomes: ["exited"] });
+  assert.deepEqual(
+    exited.items.map((c) => [c.outcomeText, c.trigger]),
+    [["EXIT 1 MET · LONG BTC", "system"]],
+  );
+  const view = await f.paper.view(scope);
+  assert.deepEqual(
+    open(view).map((p) => p.symbol),
+    ["ETH"],
+  );
+  assert.equal(view.account.positions.find((p) => p.symbol === "BTC")!.closeReason, "brief");
+});
+
+test("at 10x a wide stop is pulled inside the liquidation estimate (90% of margin)", async (t) => {
+  const f = await setup(t);
+  const { id, scope } = await f.agent({ config: { maxLeverage: 10 } });
+  f.answer(JSON.stringify({ ...JSON.parse(answer()), stopLossBps: 1500, takeProfitBps: null }));
+
+  const done = await f.check(id);
+
+  assert.equal(done.outcome, "entered");
+  const [position] = open(await f.paper.view(scope));
+  assert.equal(position!.leverage, 10);
+  const entry = Number(position!.entryPrice);
+  assert.ok(Math.abs(Number(position!.stopPrice) - entry * 0.91) < 0.01);
+  assert.ok(Number(position!.takeProfitPrice) > entry);
+});
+
+test("the dispatcher keys each hourly check by its slot", async (t) => {
+  const f = await setup(t);
+  const hour = Math.floor(Date.now() / HOUR) * HOUR;
+  f.set(hour + 7 * 60_000 + 30_000);
+  const due = await f.agent({ id: idAt(7) });
+
+  const [checkId] = await dispatchDueChecks(f.runtime(), ON, async () => {});
+  const row = await f.db.pool.query("SELECT request_key FROM pickler.perps_checks WHERE id = $1", [
+    checkId,
+  ]);
+
+  assert.equal(row.rows[0].request_key, `hourly:${hour + 7 * 60_000}`);
+  const replay = await f.store.startCheck({
+    productAgentId: due.id,
+    trigger: "hourly",
+    requestKey: `hourly:${hour + 7 * 60_000}`,
+  });
+  assert.equal(replay.id, checkId);
+});
+
+test("the minute Cron sweeps a paused agent's stuck check to interrupted", async (t) => {
+  const f = await setup(t);
+  const { id, scope } = await f.agent();
+  f.onModel(async () => {
+    f.advance(61_000);
+  });
+  const stalled = await f.check(id);
+  f.onModel(async () => {});
+  assert.equal(stalled.status, "running");
+  await f.db.pool.query("UPDATE pickler.agents SET paused = true WHERE id = $1", [scope.agentId]);
+
+  await superviseChecks(f.runtime(), ON, async () => {});
+
+  const swept = (await f.store.getCheck(stalled.id))!;
+  assert.equal(swept.status, "finished");
+  assert.equal(swept.error, "CHECK_INTERRUPTED");
+});
