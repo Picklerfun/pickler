@@ -96,3 +96,11 @@ Perpl acquisition also supports explicitly frozen `rest-paced-20s-v1` and `strea
 ## Perpl decision audit
 
 The evaluation export includes auditPerpsDecisions and canonicalAudit. features/perps-study/audit.ts is a pure offline replay of existing policies and fill simulation, with an injected digest. Missing inputs remain NOT_VERIFIABLE; no provider, filesystem, database or model clients belong here. Keep hourly candle repetition distinct from stale data, omission slots distinct from holds, and observed decisions distinct from controlled fixtures.
+
+## Perpetual advice
+
+The `perps` export includes `features/advice`: provider-neutral evidence validation, routing
+coordination and exact USD model reservation arithmetic. Require 60 closed hourly candles and
+existing snapshot/book coherence. Only coherent insufficiency becomes wait; data/provider failures
+fail. Models and data ports are injected; no positions, wallets or trading executors are reachable.
+See [Agent advice](../../docs/agent-advice.md) and deterministic advice tests.

@@ -154,3 +154,11 @@ The API Worker owns generated OpenAPI at `/v1/openapi.json`, served through the 
 JSON file. `npm run api:openapi -- --output /tmp/pickler-openapi.json` validates and exports all
 route groups without executing services. Read [API contract](docs/api-contract.md) before adding
 or changing endpoints; CI rejects undocumented operations.
+
+## Consumer recommendations
+
+The separate JWT-only `/v1/agent-advice` API returns asynchronous BTC/ETH 24-hour analysis, not
+orders. Read [Agent advice](docs/agent-advice.md) before changes. Core owns authorization/admission
+ports; trading owns analysis policy; runtime owns providers/prompts; infrastructure owns private
+jobs/events/call reserves and migration 0025. Research Queue advice wakeups never notify trading.
+Keep admissions disabled by default; no payments, paid retries or implicit AUSD-to-USD conversion.

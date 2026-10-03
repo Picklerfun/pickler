@@ -76,3 +76,12 @@ After a completed consumer invocation, the optional TRADING_QUEUE producer emits
 Trading rules and financial ports are owned by `@pickler/trading` public subpaths. Core retains
 identity, configuration and research contracts. Infrastructure implements the trading ports;
 runtime composes adapters and models. Hosts must not duplicate risk, fills or accounting.
+
+## Advice jobs
+
+The existing Queue distinguishes `advice-wakeup` from research. Advice uses its own runtime,
+private cost reserves and three-minute/60-second execution leases; it never sends TRADING_QUEUE
+notifications. Default ADVICE_ENABLED=false. Cron recovers/expires jobs even while off and retains
+unknown costs; failed advice reconciliation does not stop ordinary research supervision. Keep
+ADVICE_JEV_API_KEY and ADVICE_DEEPSEEK_API_KEY exclusively here, with a reviewed matching policy.
+See [Agent advice](../../docs/agent-advice.md).

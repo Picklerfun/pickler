@@ -254,7 +254,8 @@ export class PostgresPreviewStore implements PreviewRepository, PreviewExecution
       const active = await client.query<{ tenantId: string }>(
         `SELECT tenant_id AS "tenantId" FROM pickler.runs WHERE status = 'running'
         UNION ALL
-        SELECT tenant_id FROM pickler.preview_runs WHERE status = 'running'`,
+        SELECT tenant_id FROM pickler.preview_runs WHERE status = 'running'
+        UNION ALL SELECT tenant_id FROM pickler.advice_jobs WHERE status = 'running'`,
       );
       if (active.rows.length >= limits.globalLimit) {
         return null;

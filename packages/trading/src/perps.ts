@@ -6,3 +6,6 @@ export * from "./features/perps-paper/types.js";
 export * from "./features/perps-paper/acquisition.js";
 
 export * from "./features/perps-paper/transport-choice.js";
+
+export * from "./features/advice/budget.js";
+export * from "./features/advice/runner.js";

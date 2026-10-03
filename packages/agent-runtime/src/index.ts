@@ -8,3 +8,7 @@ export {
   type ClaimedJob,
   type PreviewExecution,
 } from "./workers/background.js";
+
+export * from "./composition/advice.js";
+
+export * from "./workers/advice.js";

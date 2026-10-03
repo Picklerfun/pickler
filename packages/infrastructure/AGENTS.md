@@ -408,3 +408,12 @@ Perpetual configuration v2 persists four agents and four reserved lanes in the e
 ## Read-only Perpl audit export
 
 exportPerpsAudit uses a scoped repeatable-read READ ONLY transaction for study, rounds, events, paper accounts, attempts and movements. Never replace it with paper.view(), which can recover attempts and write history. It exports document data, not lease owners, credentials or database connection values. It releases the client on success and failure, and never initializes missing records.
+
+## Advice persistence
+
+`PostgresAdviceStore` implements core advice ports with private jobs/events/calls in migration
+0025, serialized admission, idempotency, shared execution limits and renewable fenced leases.
+Started unknown charges remain reserved and block the agent; never restart their calls. The
+trusted `reconcileCall` method requires terminal failure and verified evidence, uses frozen rates
+and records an audit event; it has no consumer HTTP route. Apply migration before updated
+research/preview admission queries. See [Agent advice](../../docs/agent-advice.md).

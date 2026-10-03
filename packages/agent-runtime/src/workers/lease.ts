@@ -1,10 +1,10 @@
-import type { ResearchRepository, RunRecord } from "@pickler/core";
+import type { RunRecord } from "@pickler/core";
 
 /** Await both execution and heartbeat cleanup inside the host invocation. */
-export async function executeWithLease(
-  repository: Pick<ResearchRepository, "renew">,
-  run: RunRecord,
-  execute: (run: RunRecord, signal: AbortSignal) => Promise<void>,
+export async function executeWithLease<T = RunRecord>(
+  repository: { renew(run: T): Promise<void> },
+  run: T,
+  execute: (run: T, signal: AbortSignal) => Promise<void>,
   parentSignal?: AbortSignal,
   heartbeatMs = 15_000,
 ) {

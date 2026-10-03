@@ -1,17 +1,25 @@
-import { createRuntime, type Environment } from "@pickler/agent-runtime";
+import { createAdviceRuntime, createRuntime, type Environment } from "@pickler/agent-runtime";
 import { researchDatabase } from "./database.js";
 import { createResearchWorker } from "./worker.js";
 import { PostgresResearchStore } from "@pickler/infrastructure";
 
 export interface Env extends Environment {
   APP_ENV: string;
+  ADVICE_ENABLED?: string;
+  ADVICE_POLICY_JSON?: string;
+  ADVICE_JEV_API_KEY?: string;
+  ADVICE_DEEPSEEK_API_KEY?: string;
   TRADING_QUEUE?: Queue<{ kind: "trading-wakeup" }>;
   DATABASE?: Hyperdrive;
-  RESEARCH_QUEUE: Queue<{ kind: "research-wakeup" }>;
+  RESEARCH_QUEUE: Queue<{ kind: "research-wakeup" | "advice-wakeup" }>;
   ADMISSIONS_ENABLED: string;
 }
 
 export default createResearchWorker({
+  adviceRuntime: (env) => {
+    const database = researchDatabase(env);
+    return createAdviceRuntime({ ...env, DATABASE_URL: database.url }, database.options);
+  },
   runtime: (env) => {
     if (!env.MODEL_BASE_URL || !env.MODEL_ID || !env.MODEL_API_KEY) {
       throw new Error("Model bindings unavailable");

@@ -157,3 +157,11 @@ The local perpetual model adapter exposes separate `decide` and `review` Jev con
 ## Offline Perpl model-state transformation
 
 The public composition/perps-model-state subpath contains only the unchanged pure perpsModelState transformation and type imports. The live model adapter re-exports it for compatibility. Offline audit imports this subpath, never the provider-bearing model adapter. A transformed saved context is not the exact original request; preserve this distinction and all existing prompt hashes.
+
+## Consumer advice runtime
+
+`composition/advice.ts` composes Perpl, permitted site-scoped web evidence and distinct versioned
+Jev/DeepSeek advice prompts. `workers/advice.ts` consumes generic advice wakeups and reconciles
+leases, closing its invocation pool on every outcome. Started calls are persisted before
+transport; no paid retries. Forecasts exclude Jev answers and portfolio state. Advice is not a
+new plugin or a trading executor. See [Agent advice](../../docs/agent-advice.md).

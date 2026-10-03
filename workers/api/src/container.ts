@@ -1,3 +1,6 @@
+import { createAdviceService } from "@pickler/core";
+import { PostgresAdviceStore } from "@pickler/infrastructure";
+import { parseAdvicePolicy } from "@pickler/trading/perps";
 import {
   VENUE_CONTRACTS,
   createAgentQueries,
@@ -424,6 +427,19 @@ export function createServices(env: Env): Services & { close(): Promise<void> } 
   const walletAuth = walletAuthServices(env, repository.pool, authenticate);
   return {
     authenticate,
+    advice: {
+      authenticate,
+      service: createAdviceService(new PostgresAdviceStore(repository.pool), {
+        enabled: env.ADVICE_ENABLED === "true" && Boolean(env.RESEARCH_QUEUE),
+        policy: parseAdvicePolicy(env.ADVICE_POLICY_JSON),
+      }),
+      notify: async () => {
+        if (!env.RESEARCH_QUEUE) {
+          throw new Error("Missing research queue");
+        }
+        await env.RESEARCH_QUEUE.send({ kind: "advice-wakeup" });
+      },
+    },
     ...(custody ? { custody } : {}),
     ...(walletAuth ? { walletAuth } : {}),
     growth: createGrowthServices(repository.pool, {
