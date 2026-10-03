@@ -24,6 +24,16 @@ export interface EvaluationHostRequest {
 }
 /** Public application service: no process.argv, chdir, or alternate provider/strategy implementation. */
 export async function executeEvaluation(input: EvaluationHostRequest) {
+  if (input.command === "audit-export") {
+    const { runPerpsAudit } = await import("../perps-study/audit.js");
+    return runPerpsAudit({
+      command: "audit-export",
+      configPath: input.configPath,
+      envFile: input.envFile,
+      output: input.output,
+      allowPaid: input.allowPaid,
+    });
+  }
   const path = resolve(input.configPath);
   const raw = JSON.parse(await readFile(path, "utf8")) as {
     protocol: EvaluationProtocol;
@@ -55,6 +65,38 @@ export async function executeEvaluation(input: EvaluationHostRequest) {
     "btc-quant-jev-v1": historical,
     "btc-policy-comparison-v1": historical,
     "perps-comparison-v1": {
+      async execute(request) {
+        if (request.command === "stability" || request.command === "data-diagnostic") {
+          const { runPerpsStability } = await import("../perps-study/stability.js");
+          return runPerpsStability(
+            { ...input, diagnostic: request.command === "data-diagnostic" },
+            signal,
+          );
+        }
+        const { runPerpsStudy } = await import("../perps-study/host.js");
+        const command =
+          request.command === "prepare"
+            ? "init"
+            : request.command === "status"
+              ? "report"
+              : request.command;
+        const args = [command, "--config", path];
+        if (input.acquisitionChoice) {
+          args.push("--acquisition-choice", resolve(input.acquisitionChoice));
+        }
+        if (input.envFile) {
+          args.push("--env-file", resolve(input.envFile));
+        }
+        if (input.output) {
+          args.push("--output", resolve(input.output));
+        }
+        if (request.allowPaid) {
+          args.push("--allow-paid");
+        }
+        return runPerpsStudy(args, signal);
+      },
+    },
+    "perps-four-way-v2": {
       async execute(request) {
         if (request.command === "stability" || request.command === "data-diagnostic") {
           const { runPerpsStability } = await import("../perps-study/stability.js");
@@ -149,7 +191,7 @@ export async function executeEvaluation(input: EvaluationHostRequest) {
       },
     },
   });
-  if (input.output && raw.protocol !== "perps-comparison-v1" && input.command !== "compare") {
+  if (input.output && !raw.protocol.startsWith("perps-") && input.command !== "compare") {
     throw new PilotError(
       "INVALID_INPUT",
       "BTC reports remain in their immutable session directory",

@@ -168,3 +168,7 @@ frame is not enough to establish its root cause. No timestamp is rewritten and n
 Paper acquisition reads the book before the ticker to reduce added delay when ticker state lags.
 This does not guarantee synchronized exchange data. Both provider timestamps must still satisfy
 the unchanged bounds; failed public captures and interrupted studies remain evidence, not passes.
+
+## Four-way successor
+
+The separate two-hour version 2 protocol is documented in [PERPS-FOUR-WAY.md](PERPS-FOUR-WAY.md). Legacy records retain their original three-arm interpretation and budget reservations.

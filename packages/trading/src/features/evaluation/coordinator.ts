@@ -1,13 +1,34 @@
 import { BENCHMARK_VARIANTS } from "../paper-study/benchmark.js";
-import { PERPS_STUDY_STRATEGIES } from "../perps-study/types.js";
+import { PERPS_FOUR_WAY_STRATEGIES, PERPS_STUDY_STRATEGIES } from "../perps-study/types.js";
 import { PilotError } from "@pickler/core";
 export const EVALUATION_PROTOCOLS = {
+  "perps-four-way-v2": {
+    version: 2,
+    instrument: "perpetual",
+    strategySetVersion: 2,
+    strategies: PERPS_FOUR_WAY_STRATEGIES,
+    commands: [
+      "prepare",
+      "preflight",
+      "validate",
+      "run",
+      "status",
+      "stop",
+      "settle",
+      "report",
+      "audit-export",
+    ],
+    paidCommands: ["validate", "run"],
+    riskPolicy: "conservative-1x-v1",
+    accounting: "acknowledged-historical-reservations-v2",
+  },
   "perps-comparison-v1": {
     version: 1,
     instrument: "perpetual",
     strategySetVersion: 1,
     strategies: PERPS_STUDY_STRATEGIES,
     commands: [
+      "audit-export",
       "stability",
       "data-diagnostic",
       "prepare",
@@ -76,6 +97,8 @@ export const EVALUATION_PROTOCOLS = {
 } as const;
 export type EvaluationProtocol = keyof typeof EVALUATION_PROTOCOLS;
 export type EvaluationCommand =
+  | "audit"
+  | "audit-export"
   | "stability"
   | "data-diagnostic"
   | "prepare"

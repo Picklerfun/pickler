@@ -1,11 +1,12 @@
 import { startLeaseHeartbeat, type LeaseDiagnostic } from "./lease-heartbeat.js";
 import {
-  PERPS_STUDY_STRATEGIES as strategies,
+  perpsStrategies,
+  type PerpsStudyStrategy,
+  type PerpsStudyMap,
   type PerpsStudyRepository,
   type PerpsStudyScope,
   type PerpsStudyLease,
   type PerpsEvidence,
-  type PerpsStrategy,
   type PerpsProposal,
   type PerpsCallLane,
   type PerpsStudyRecord,
@@ -85,15 +86,15 @@ export function createPerpsStudyRunner(deps: {
     },
   };
   let simulator = createPerpsPaperService(paper, unavailable, now);
-  const accountScope = (record: PerpsStudyRecord, strategy: PerpsStrategy) => ({
+  const accountScope = (record: PerpsStudyRecord, strategy: PerpsStudyStrategy) => ({
     ...record.config,
-    agentId: record.agentIds[strategy],
+    agentId: record.agentIds[strategy]!,
   });
   async function execute(
     scope: PerpsStudyScope,
     lease: PerpsStudyLease,
     record: PerpsStudyRecord,
-    strategy: PerpsStrategy,
+    strategy: PerpsStudyStrategy,
     key: string,
     proposal: PerpsProposal,
     frames: PerpsPaperFrame[],
@@ -169,7 +170,9 @@ export function createPerpsStudyRunner(deps: {
     simulator = createPerpsPaperService(paper, unavailable, now);
     await ownedGuard();
     let { record } = await study.view(scope);
-    if (now() >= record.endsAt! || record.stopRequested) {
+    const strategies = perpsStrategies(record.config);
+    const stopped = record.config.version === 2 && !!record.decisionStopReason;
+    if (now() >= record.endsAt! || record.stopRequested || stopped) {
       for (const strategy of strategies) {
         await paper.closeAdmissions(accountScope(record, strategy));
       }
@@ -190,7 +193,7 @@ export function createPerpsStudyRunner(deps: {
     };
     const minute = Math.floor((now() - record.startedAt!) / 60000);
     const key = `observe-${minute}`;
-    const views = {} as Record<PerpsStrategy, PerpsPaperView>;
+    const views = {} as PerpsStudyMap<PerpsPaperView>;
     let observation: PerpsPaperObservation;
     let observationWritesStarted = false;
     try {
@@ -217,11 +220,13 @@ export function createPerpsStudyRunner(deps: {
       });
       return true;
     }
-    const closing = now() >= record.endsAt! || record.stopRequested;
+    const closing = now() >= record.endsAt! || record.stopRequested || stopped;
     const closedThisRound = new Set<string>();
     for (const strategy of strategies) {
-      const risk = paperRisk(views[strategy].account, views[strategy].attempts, now());
-      for (const position of views[strategy].account.positions.filter((p) => p.closedAt === null)) {
+      const risk = paperRisk(views[strategy]!.account, views[strategy]!.attempts, now());
+      for (const position of views[strategy]!.account.positions.filter(
+        (p) => p.closedAt === null,
+      )) {
         if (closing || risk.closeSymbols.includes(position.symbol)) {
           closedThisRound.add(`${strategy}:${position.symbol}`);
           await execute(
@@ -252,16 +257,23 @@ export function createPerpsStudyRunner(deps: {
         strategies.map((s) => [
           s,
           {
-            risk: paperRisk(views[s].account, views[s].attempts, now()),
-            positions: views[s].account.positions.filter((p) => p.closedAt === null).length,
-            fundingPending: views[s].account.fundingPending,
+            risk: paperRisk(views[s]!.account, views[s]!.attempts, now()),
+            positions: views[s]!.account.positions.filter((p) => p.closedAt === null).length,
+            fundingPending: views[s]!.account.fundingPending,
           },
         ]),
       ),
     );
     if (closing) {
       await study.stopDecisions(scope, lease, "SESSION_END");
-      if (strategies.every((s) => views[s].account.positions.every((p) => p.closedAt !== null))) {
+      if (
+        strategies.every(
+          (s) =>
+            views[s]!.account.positions.every((p) => p.closedAt !== null) &&
+            !views[s]!.account.fundingPending &&
+            !views[s]!.account.fundingDisputed,
+        )
+      ) {
         await study.complete(scope, lease);
         return false;
       }
@@ -292,16 +304,16 @@ export function createPerpsStudyRunner(deps: {
       });
       return true;
     }
-    const accounts = Object.fromEntries(strategies.map((s) => [s, views[s].account])) as Parameters<
-      PerpsStudyRepository["reserve"]
-    >[4];
+    const accounts = Object.fromEntries(
+      strategies.map((s) => [s, views[s]!.account]),
+    ) as Parameters<PerpsStudyRepository["reserve"]>[4];
     const rules = perpsRules({ evidence, account: accounts.rules });
     const round = await study.reserve(scope, lease, slot, evidence, accounts, rules);
     if (!round) {
       return true;
     }
     const deadline = AbortSignal.any([signal, AbortSignal.timeout(45000)]);
-    const proposals: Partial<Record<PerpsStrategy, PerpsProposal[]>> = { rules };
+    const proposals: Partial<Record<PerpsStudyStrategy, PerpsProposal[]>> = { rules };
     async function call<T>(
       lane: PerpsCallLane,
       fn: (hooks: PerpsModelHooks) => Promise<T>,
@@ -314,6 +326,14 @@ export function createPerpsStudyRunner(deps: {
             await study.startCall(scope, lease, round!.key, lane, request);
             started = true;
           },
+          diagnostic: (value) =>
+            study.event(
+              scope,
+              lease,
+              `${round!.key}:${lane}:diagnostic`,
+              "model-diagnostic",
+              value,
+            ),
           usage: (input, output) => study.usage(scope, lease, round!.key, lane, input, output),
         });
         assertActive();
@@ -329,25 +349,59 @@ export function createPerpsStudyRunner(deps: {
         throw error;
       }
     }
-    const outcomes = await Promise.allSettled([
-      (async () => {
-        proposals.deepseek = await call("direct", (hooks) =>
-          models.direct({ evidence, account: accounts.deepseek }, deadline, hooks),
-        );
-      })(),
-      (async () => {
-        const context = { evidence, account: accounts.jev };
-        const result = await call("jev", (hooks) => models.readiness(context, deadline, hooks));
-        proposals.jev = result.skip
-          ? (["BTC", "ETH"] as const).map((symbol) => ({
-              symbol,
-              action: "hold",
-              reason: "JEV_MATERIAL_INSUFFICIENCY",
-              sourceIds: [],
-            }))
-          : await call("fallback", (hooks) => models.direct(context, deadline, hooks));
-      })(),
-    ]);
+    const outcomes = await Promise.allSettled(
+      record.config.version === 2
+        ? [
+            (async () => {
+              proposals.deepseek = await call("direct", (hooks) =>
+                models.direct({ evidence, account: accounts.deepseek }, deadline, hooks),
+              );
+            })(),
+            (async () => {
+              if (!models.decide) {
+                throw new PilotError("MODEL_CONFIG_MISMATCH", "Jev decision adapter unavailable");
+              }
+              const result = await call("jev", (hooks) =>
+                models.decide!({ evidence, account: accounts.jev }, deadline, hooks),
+              );
+              proposals.jev = result.proposals;
+            })(),
+            (async () => {
+              if (!models.review || !accounts.combined) {
+                throw new PilotError("MODEL_CONFIG_MISMATCH", "Combination adapter unavailable");
+              }
+              const context = { evidence, account: accounts.combined };
+              const proposed = await call("fallback", (hooks) =>
+                models.direct(context, deadline, hooks),
+              );
+              const reviewed = await call("review", (hooks) =>
+                models.review!(context, proposed, deadline, hooks),
+              );
+              proposals.combined = reviewed.proposals;
+            })(),
+          ]
+        : [
+            (async () => {
+              proposals.deepseek = await call("direct", (hooks) =>
+                models.direct({ evidence, account: accounts.deepseek }, deadline, hooks),
+              );
+            })(),
+            (async () => {
+              const context = { evidence, account: accounts.jev };
+              const result = await call("jev", (hooks) =>
+                models.readiness(context, deadline, hooks),
+              );
+              proposals.jev = result.skip
+                ? (["BTC", "ETH"] as const).map((symbol) => ({
+                    symbol,
+                    action: "hold",
+                    reason: "JEV_MATERIAL_INSUFFICIENCY",
+                    sourceIds: [],
+                  }))
+                : await call("fallback", (hooks) => models.direct(context, deadline, hooks));
+            })(),
+          ],
+    );
     await study.finishRound(scope, lease, round.key, proposals);
     if (outcomes.some((o) => o.status === "rejected")) {
       await study.finishExecution(scope, lease, round.key, "incomplete");
