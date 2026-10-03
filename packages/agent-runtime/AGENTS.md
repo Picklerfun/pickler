@@ -167,3 +167,43 @@ transport; no paid retries. Forecasts exclude Jev answers and portfolio state. A
 new plugin or a trading executor. See [Agent advice](../../docs/agent-advice.md).
 
 Advice reuses MODEL_BASE_URL, MODEL_ID and MODEL_API_KEY from the configured research provider. It never reads ADVICE_DEEPSEEK_API_KEY. Reject mismatched frozen provider/model policies before Jev or forecast transport; retain no retries and bounded accounting. Jev keeps its separate ADVICE_JEV_API_KEY.
+
+## Perpl paper runtime
+
+`composition/perps-check.ts` runs one studio Perpl check (`docs/specs/perpl-paper-runtime-v1.md`):
+`runPerpsCheck(deps, check, holder, signal)` reads the brief, opens the product paper account at
+the first check from the agent wallet's AUSD (under 10 → `blocked` "FUND ITS WALLET"), reads Perpl
+per instrument through advice's `readPerplInstrument` (48 closed hourly candles, a 20-level book,
+the snapshot; one session capped at 24 requests), the web through site-scoped Exa when
+`sources.web` is on (3 results), asks the configured model once, validates with trading's
+`parseCheckDecision`, decides with `decideOutcome` and acts on paper, appending a timed step per
+phase and finishing with the decision, inputs, config version and known cost. Two review
+contracts hold: an opposite call is two phases (the close is its own `exited` row with trigger
+`system`, then the figures are read again and `decideOutcome` runs with no position), and every
+paper action (open, close) renews the check lease right before it, so a check whose lease lapsed
+fails `CHECK_INTERRUPTED` instead of acting. Free equity is trading's `productFreeEquity` at the
+market board's marks overlaid with the check's own Perpl marks, minus the 1 AUSD fee reserve;
+with no mark it does not open ("NO MARK"). A close that crosses the day-loss stop pauses the
+agent (`pauseAgent`).
+
+`composition/perps-check-model.ts` holds the `perps-check` prompt (1.0.0) beside advice's and
+`createPerpsCheckModel`, one JSON-mode call to `MODEL_BASE_URL`/`MODEL_ID`/`MODEL_API_KEY` (20 s,
+no retries, 120 kB request, 2,000 output tokens). The provider's `usage.cost` (USD) becomes the
+check's micro-USD cost; without it the cost stays null. `composition/chat-completion.ts`
+(`postChatCompletion`) is the bounded transport advice's forecast and the check share.
+`composition/perps-runtime.ts` (`createPerpsRuntime(env, options)`) composes the real adapters
+for one invocation: Postgres runtime, paper and custody stores on one pool, the AUSD reader
+(`CHAIN_ID`, default 10143, and `MONAD_RPC_URL`), the market board's marks (`boardMarks`, memory
+per isolate; stale boards give no marks) and a 24-request `PerplMarketData` for exit frames.
+
+`workers/perps.ts` is what hosts call: `consumePerpsCheck(runtime, checkId, admission)` claims
+the check (a duplicate delivery claims nothing), refuses it `RUNTIME_DISABLED` while off and
+`RUNTIME_CEILING` above `PERPL_RUNTIME_DAILY_CHECKS`, and otherwise runs it with a 15 s heartbeat
+on the 60 s lease and a three-minute deadline, ending failures `failed` with their code;
+`dispatchDueChecks` queues one `hourly` check per due agent and sends `{ kind: "perps-check",
+checkId }`; `runExits` closes due positions (stop, target, time) at fresh frames, logs an
+`exited` row (trigger `exits`) and applies the day-loss stop; `expirePerpsProposals` writes a
+`skipped` row per expired proposal; `superviseChecks` runs the three for the Cron while on;
+`perpsAdmission(env)` reads the flags. Manual checks: the API starts the check
+(`PerpsRuntimeRepository.startCheck`, trigger `manual`) and sends the same Queue message.
+Tests: `test/perps-check-model.test.ts`; the end-to-end runs are in `workers/research/test`.

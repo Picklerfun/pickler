@@ -87,3 +87,16 @@ ADVICE_JEV_API_KEY exclusively here; forecasts reuse the existing MODEL_BASE_URL
 MODEL_API_KEY. A reviewed matching v2 policy pins the provider base URL and model. Changing either
 refuses execution before model transport; no separate DeepSeek key is accepted.
 See [Agent advice](../../docs/agent-advice.md).
+
+## Perpl paper runtime
+
+The Queue also carries `{ kind: "perps-check", checkId }` (the API's manual checks and the hourly
+dispatcher). Each delivery calls the runtime's `consumePerpsCheck` with `perpsAdmission(env)`:
+off, the check is claimed and refused `RUNTIME_DISABLED` without reading Perpl or asking the
+model. While `PERPL_RUNTIME_ENABLED` is "true", the minute Cron runs `superviseChecks` (the hourly
+dispatcher, the exits job, proposal expiry) before advice and research supervision; a failure
+there never stops them. Vars in `wrangler.jsonc`: `PERPL_RUNTIME_ENABLED` "false" and
+`PERPL_RUNTIME_DAILY_CHECKS` "500"; optional `CHAIN_ID` and `MONAD_RPC_URL` choose where agent
+wallets' AUSD is read (default Monad testnet, as the API). The model reuses `MODEL_*`, the web
+`EXA_API_KEY`. Apply migration 0027 before enabling. `test/perps-runtime.test.ts` runs checks end
+to end over real PostgreSQL with fake Perpl, board, wallet and model.

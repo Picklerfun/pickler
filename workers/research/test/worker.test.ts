@@ -114,3 +114,62 @@ test("closed admissions recover expired leases without scheduling and always clo
   assert.equal(recovered, true);
   assert.equal(closed, true);
 });
+
+test("perps-check messages reach the Perpl runtime with its admission; Cron runs it only when on", async () => {
+  const consumed: string[] = [];
+  let supervised = 0;
+  let acknowledged = 0;
+  const perps = {
+    store: {
+      claimAgent: async (id: string) => {
+        consumed.push(id);
+        return null;
+      },
+      globalChecksToday: async () => {
+        supervised++;
+        return 0;
+      },
+      dueAgents: async () => [],
+      expireProposals: async () => [],
+    },
+    paper: { openNetworks: async () => [] },
+    close: async () => {},
+  };
+  const repository = {
+    recover: async () => {},
+    close: async () => {},
+  } as unknown as PostgresResearchStore;
+  const worker = createResearchWorker({
+    repository: () => repository,
+    runtime: () => assert.fail("No research runtime"),
+    perpsRuntime: () => perps as never,
+  });
+
+  await worker.queue!(
+    {
+      messages: [
+        {
+          body: { kind: "perps-check", checkId: "check-1" },
+          ack: () => {
+            acknowledged++;
+          },
+          retry: () => assert.fail("Unexpected retry"),
+        },
+      ],
+    } as never,
+    { ADMISSIONS_ENABLED: "false" } as Env,
+    {} as never,
+  );
+  await worker.scheduled!({} as never, { ADMISSIONS_ENABLED: "false" } as Env, {} as never);
+  const off = supervised;
+  await worker.scheduled!(
+    {} as never,
+    { ADMISSIONS_ENABLED: "false", PERPL_RUNTIME_ENABLED: "true" } as Env,
+    {} as never,
+  );
+
+  assert.deepEqual(consumed, ["check-1"]);
+  assert.equal(acknowledged, 1);
+  assert.equal(off, 0);
+  assert.equal(supervised, 1);
+});

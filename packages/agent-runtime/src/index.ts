@@ -12,3 +12,8 @@ export {
 export * from "./composition/advice.js";
 
 export * from "./workers/advice.js";
+
+export * from "./composition/perps-check.js";
+export * from "./composition/perps-check-model.js";
+export * from "./composition/perps-runtime.js";
+export * from "./workers/perps.js";

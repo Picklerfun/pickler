@@ -31,5 +31,8 @@
     "ADVICE_ENABLED": "false",
     "APP_ENV": "staging",
     "ADMISSIONS_ENABLED": "true",
+    // The Perpl paper runtime (docs/specs/perpl-paper-runtime-v1.md R3): off until an operator opens it.
+    "PERPL_RUNTIME_ENABLED": "false",
+    "PERPL_RUNTIME_DAILY_CHECKS": "500",
   },
 }
