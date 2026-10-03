@@ -42,8 +42,37 @@ export const perpsCheckOutcomeSchema = z.enum(PERPS_CHECK_OUTCOMES);
 /** `POST /agents/:id/perps/checks` answers 202 with the queued check. */
 export const perpsCheckStartedSchema = z.object({ checkId: z.string().uuid() }).strict();
 
-/** An approve, a close or a stop the research worker carries out; the web polls. */
-export const perpsQueuedSchema = z.object({ queued: z.literal(true) }).strict();
+/** Mirrors trading's `PERPS_OWNER_ACTION_KINDS`. */
+export const PERPS_OWNER_ACTION_KINDS = ["close", "stop_all", "approve"] as const;
+/** Mirrors trading's `PERPS_OWNER_ACTION_STATUSES`. */
+export const PERPS_OWNER_ACTION_STATUSES = ["pending", "running", "done", "failed"] as const;
+
+/**
+ * An approve, a close or a stop answers 202 with the durable action the research worker carries
+ * out; poll `GET /perps/actions/{actionId}`.
+ */
+export const perpsActionStartedSchema = z.object({ actionId: z.string().uuid() }).strict();
+
+/**
+ * `GET /perps/actions/:id`. `pending` waits for the worker (or for a running check to free the
+ * agent), `running` is being carried out, `done` was carried out (its `owner` check, `checkId`,
+ * says what happened: entered, blocked with a cap, closed…), `failed` could not be carried out
+ * (`lastError`). `checkId` is the latest attempt's check, null before one held the agent.
+ */
+export const perpsActionSchema = z
+  .object({
+    id: z.string().uuid(),
+    kind: z.enum(PERPS_OWNER_ACTION_KINDS),
+    status: z.enum(PERPS_OWNER_ACTION_STATUSES),
+    positionId: z.string().nullable(),
+    proposalId: z.string().uuid().nullable(),
+    attempts: z.number().int().nonnegative(),
+    lastError: z.string().nullable(),
+    checkId: z.string().uuid().nullable(),
+    createdAt: iso,
+    updatedAt: iso,
+  })
+  .strict();
 
 const lineSchema = z
   .object({
@@ -222,3 +251,5 @@ export type PerpsCheckDetailDto = z.infer<typeof perpsCheckDetailSchema>;
 export type PerpsPositionsResponseDto = z.infer<typeof perpsPositionsResponseSchema>;
 export type PerpsProposalDto = z.infer<typeof perpsProposalSchema>;
 export type PerpsRecordDto = z.infer<typeof perpsRecordSchema>;
+export type PerpsActionStartedDto = z.infer<typeof perpsActionStartedSchema>;
+export type PerpsActionDto = z.infer<typeof perpsActionSchema>;

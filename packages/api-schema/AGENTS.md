@@ -141,12 +141,15 @@ configuration, prices/rates, prompts or provider traces may cross these DTOs. Wa
 ## Perpl paper runtime
 
 `src/perps-runtime.ts` holds the studio runtime's DTOs (docs/specs/perpl-paper-runtime-v1.md §4):
-`perpsCheckStartedSchema` (`{ checkId }`), `perpsQueuedSchema` (`{ queued: true }` for actions the
-research worker carries out), `perpsCheckSummarySchema` / `perpsCheckDetailSchema` (the detail adds
+`perpsCheckStartedSchema` (`{ checkId }`), `perpsActionStartedSchema` (`{ actionId }`, the 202 of
+an approve, close or stop: a durable owner action the research worker carries out) and
+`perpsActionSchema` (`GET /perps/actions/:id`: kind, status `pending` | `running` | `done` |
+`failed`, attempts, last error, the latest `owner` check), `perpsCheckSummarySchema` / `perpsCheckDetailSchema` (the detail adds
 timed steps) and `perpsChecksResponseSchema`, `perpsPositionsResponseSchema` (open with mark,
 unrealized P&L, exits and `liquidationEstimate`; closed with `realizedPnl`),
 `perpsProposalSchema` / `perpsProposalsResponseSchema`, `perpsProposalDecidedSchema` and
 `perpsRecordSchema` (R13 stats, equity series, `today`, `runtimeEnabled`). Prices and stored paper
 amounts are decimal strings; the record's computed figures are AUSD numbers; times are ISO.
-`PERPS_CHECK_OUTCOMES`, `PERPS_CHECK_TRIGGERS` and `PERPS_CLOSE_REASONS` mirror trading's lists
+`PERPS_CHECK_OUTCOMES`, `PERPS_CHECK_TRIGGERS`, `PERPS_CLOSE_REASONS`, `PERPS_OWNER_ACTION_KINDS`
+and `PERPS_OWNER_ACTION_STATUSES` mirror trading's lists
 (pinned by `workers/api/test/studio-perps-route.test.ts`); `PERPS_MANUAL_CHECKS_PER_DAY` is 6.

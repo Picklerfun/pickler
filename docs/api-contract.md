@@ -32,8 +32,9 @@ compatibility aliases with distinct operation ids, pointing to Studio and market
 The contract includes the current account join, Studio draft setup and identity editing, activity,
 X verification and publication routes, wallet transfer ledger, Perpl market provenance and
 limits, and the Perpl paper runtime's studio routes (manual checks, the decisions feed, paper
-positions, owner close and stop, proposals and the record; approvals, closes and stops answer 202
-and run in the research worker). Nullable venue counts and hourly reach remain unknown rather than becoming zero. When
+positions, owner close and stop, proposals and the record; approvals, closes and stops write a
+durable owner action, answer 202 `{ actionId }` and run in the research worker, and
+`GET /perps/actions/{id}` answers the action's status). Nullable venue counts and hourly reach remain unknown rather than becoming zero. When
 these routes change, update their wire schemas and descriptions together.
 
 ## Add an endpoint

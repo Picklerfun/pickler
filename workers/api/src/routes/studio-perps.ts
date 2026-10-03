@@ -1,6 +1,8 @@
 import * as dto from "@pickler/api-schema";
 import {
   PERPS_MANUAL_CHECKS_PER_DAY,
+  perpsActionSchema,
+  perpsActionStartedSchema,
   perpsCheckDetailSchema,
   perpsChecksResponseSchema,
   perpsPositionsResponseSchema,
@@ -23,6 +25,7 @@ import {
   CHECK_OUTCOMES,
   PRODUCT_PAPER_SESSION,
   liquidationPrice,
+  marginOpenedSince,
   notionalFor,
   paperDecimal,
   paperUnits,
@@ -38,6 +41,8 @@ import {
   type PerpsPaperPosition,
   type PerpsPaperScope,
   type PerpsPaperView,
+  type PerpsOwnerAction,
+  type PerpsOwnerActionRepository,
   type PerpsProductPaperRepository,
   type PerpsProposal,
   type PerpsRuntimeRepository,
@@ -47,21 +52,18 @@ import { z } from "zod";
 import type { AppEnv } from "../env";
 import { operation as describeOperation } from "../openapi/operation";
 
-/** The Queue messages the API sends the research worker (perpl-paper-runtime-v1 §4, R8, R12). */
+/**
+ * The Queue messages the API sends the research worker (perpl-paper-runtime-v1 §4, R8, R12): a
+ * queued check, or a wakeup for an owner action the route already wrote.
+ */
 export type PerpsQueueMessage =
-  | { kind: "perps-check"; checkId: string }
-  | { kind: "perps-proposal"; proposalId: string; decision: "approve" }
-  | {
-      kind: "perps-close";
-      positionId: string | null;
-      productAgentId: string;
-      reason: "owner" | "stop_all";
-    };
+  { kind: "perps-check"; checkId: string } | { kind: "perps-action"; actionId: string };
 
 /**
  * The Perpl paper runtime as the studio reads and drives it. Actions that need a Perpl frame or
  * touch paper positions (approve, close, stop) run in the research worker; these routes check
- * ownership and state, then queue them.
+ * ownership and state, write the action durably and wake the worker. Reads use the paper
+ * account's read-only `snapshot` (no row locks, no writes).
  */
 export interface StudioPerpsServices {
   /** `PERPL_RUNTIME_ENABLED` on the API is "true". */
@@ -79,13 +81,13 @@ export interface StudioPerpsServices {
     | "manualChecksToday"
     | "costToday"
   >;
-  owner: {
+  owner: Pick<PerpsOwnerActionRepository, "createAction" | "getAction"> & {
     findPosition(
       positionId: string,
     ): Promise<{ productAgentId: string; scope: PerpsPaperScope } | null>;
     counts(productAgentId: string): Promise<{ checks: number; entries: number }>;
   };
-  paper: Pick<PerpsProductPaperRepository, "view" | "newMarginSince">;
+  paper: Pick<PerpsProductPaperRepository, "snapshot">;
   /** Fresh BTC/ETH marks from the market board; empty when it cannot answer freshly. */
   marks(network: PerpNetwork): Promise<PerpsPaperMark[]>;
   send(message: PerpsQueueMessage): Promise<void>;
@@ -103,6 +105,8 @@ const iso = (at: number) => new Date(at).toISOString();
 const isoOrNull = (at: number | null | undefined) =>
   at === null || at === undefined ? null : iso(at);
 
+const actionDescription =
+  "Optional Idempotency-Key (the same key answers the same action). Writes the action durably and answers 202 { actionId }; the research worker carries it out (after a running check, if one holds the agent), and GET /perps/actions/{actionId} says when it is done.";
 const routeDescription =
   "User JWT required. Reads are open to the workspace's members; writes are the owner's. Another workspace's agent, check, position or proposal is 404 NOT_FOUND.";
 const errors = {
@@ -214,10 +218,10 @@ export function studioPerpsRoutes(context: Context) {
     network,
   });
 
-  /** The agent's paper account, or null before its first check opened one. */
+  /** The agent's paper account (read-only), or null before its first check opened one. */
   async function paperView(services: StudioPerpsServices, scope: PerpsPaperScope) {
     try {
-      return await services.paper.view(scope);
+      return await services.paper.snapshot(scope);
     } catch (error) {
       if (error instanceof PilotError && error.code === "NOT_FOUND") {
         return null;
@@ -226,12 +230,39 @@ export function studioPerpsRoutes(context: Context) {
     }
   }
 
+  /** The request's `Idempotency-Key`; without one, each request is its own action. */
+  function requestKey(c: { req: { header(name: string): string | undefined } }) {
+    const header = c.req.header("Idempotency-Key");
+    return header === undefined
+      ? `auto:${crypto.randomUUID()}`
+      : dto.idempotencyKeySchema.parse(header);
+  }
+
+  /**
+   * 202 `{ actionId }` for a durable action, waking the worker. A wakeup that fails loses nothing:
+   * the minute Cron re-drives pending actions.
+   */
+  async function started(
+    c: { json(body: unknown, status: 202): Response },
+    services: StudioPerpsServices,
+    action: PerpsOwnerAction,
+  ) {
+    if (action.status === "pending") {
+      try {
+        await services.send({ kind: "perps-action", actionId: action.id });
+      } catch {
+        console.error("Perpl action wakeup failed; the minute Cron re-drives it");
+      }
+    }
+    return c.json(perpsActionStartedSchema.parse({ actionId: action.id }), 202);
+  }
+
   // "Run it on paper": a manual check, queued for the research worker (R2, at most 6 a day).
   api.post(
     "/agents/:id/perps/checks",
     describeOperation("studioPerpsCheckCreate", {
       ...errors,
-      description: `${routeDescription} Queues a manual check (202 { checkId }); poll GET /perps/checks/{id}. 409 NOT_A_PERPL_AGENT, RUNTIME_DISABLED (PERPL_RUNTIME_ENABLED is off), CHECK_RUNNING; 429 MANUAL_LIMIT after ${PERPS_MANUAL_CHECKS_PER_DAY} manual checks a UTC day.`,
+      description: `${routeDescription} Queues a manual check (202 { checkId }); poll GET /perps/checks/{id}. 409 NOT_A_PERPL_AGENT, RUNTIME_DISABLED (PERPL_RUNTIME_ENABLED is off), CHECK_RUNNING, AGENT_KILLED; 429 MANUAL_LIMIT after ${PERPS_MANUAL_CHECKS_PER_DAY} manual checks a UTC day.`,
       response: dto.perpsCheckStartedSchema,
       status: 202,
       idempotent: true,
@@ -398,9 +429,10 @@ export function studioPerpsRoutes(context: Context) {
     "/perps/positions/:id/close",
     describeOperation("studioPerpsPositionClose", {
       ...errors,
-      description: `${routeDescription} Queues the close of one open paper position (202 { queued: true }); the Decisions feed and positions show it. 409 POSITION_CLOSED.`,
-      response: dto.perpsQueuedSchema,
+      description: `${routeDescription} ${actionDescription} Closes one open paper position. 409 POSITION_CLOSED.`,
+      response: perpsActionStartedSchema,
       status: 202,
+      idempotent: "optional",
     }),
     async (c) => {
       const services = context.perps();
@@ -414,18 +446,18 @@ export function studioPerpsRoutes(context: Context) {
       if (scope.tenantId !== found.scope.tenantId || scope.agentId !== found.scope.agentId) {
         throw new PilotError("NOT_FOUND", "Position not found");
       }
-      const view = await services.paper.view(found.scope);
+      const view = await services.paper.snapshot(found.scope);
       const position = view.account.positions.find((p) => p.id === positionId);
       if (!position || position.closedAt !== null) {
         throw new PilotError("POSITION_CLOSED", "The position is already closed");
       }
-      await services.send({
-        kind: "perps-close",
-        positionId,
+      const action = await services.owner.createAction({
         productAgentId: found.productAgentId,
-        reason: "owner",
+        kind: "close",
+        positionId,
+        requestKey: requestKey(c),
       });
-      return c.json({ queued: true as const }, 202);
+      return started(c, services, action);
     },
   );
 
@@ -434,9 +466,10 @@ export function studioPerpsRoutes(context: Context) {
     "/agents/:id/perps/stop",
     describeOperation("studioPerpsStop", {
       ...errors,
-      description: `${routeDescription} Pauses the agent at once and queues the close of every open paper position (202 { queued: true }).`,
-      response: dto.perpsQueuedSchema,
+      description: `${routeDescription} ${actionDescription} Pauses the agent at once, then closes every open paper position.`,
+      response: perpsActionStartedSchema,
       status: 202,
+      idempotent: "optional",
     }),
     async (c) => {
       const services = context.perps();
@@ -445,13 +478,12 @@ export function studioPerpsRoutes(context: Context) {
       const scope = await directory.agentScope(current, productId);
       await perplAgent(scope);
       await repository.pause(scope, true);
-      await services.send({
-        kind: "perps-close",
-        positionId: null,
+      const action = await services.owner.createAction({
         productAgentId: productId,
-        reason: "stop_all",
+        kind: "stop_all",
+        requestKey: requestKey(c),
       });
-      return c.json({ queued: true as const }, 202);
+      return started(c, services, action);
     },
   );
 
@@ -493,9 +525,10 @@ export function studioPerpsRoutes(context: Context) {
     "/perps/proposals/:id/approve",
     describeOperation("studioPerpsProposalApprove", {
       ...errors,
-      description: `${routeDescription} Queues the approval (202 { queued: true }); the research worker opens or sizes up at a fresh frame re-checked against the caps, and the feed says entered or blocked with the cap. 409 PROPOSAL_DECIDED, PROPOSAL_EXPIRED, RUNTIME_DISABLED.`,
-      response: dto.perpsQueuedSchema,
+      description: `${routeDescription} ${actionDescription} The research worker opens or sizes up at a fresh frame re-checked against the caps; the action's check says entered or blocked with the cap. 409 PROPOSAL_DECIDED, PROPOSAL_EXPIRED, RUNTIME_DISABLED, AGENT_KILLED.`,
+      response: perpsActionStartedSchema,
       status: 202,
+      idempotent: "optional",
     }),
     async (c) => {
       const services = context.perps();
@@ -504,8 +537,13 @@ export function studioPerpsRoutes(context: Context) {
       if (!services.enabled) {
         throw new PilotError("RUNTIME_DISABLED", "The Perpl runtime is not open yet");
       }
-      await services.send({ kind: "perps-proposal", proposalId: proposal.id, decision: "approve" });
-      return c.json({ queued: true as const }, 202);
+      const action = await services.owner.createAction({
+        productAgentId: proposal.productAgentId,
+        kind: "approve",
+        proposalId: proposal.id,
+        requestKey: requestKey(c),
+      });
+      return started(c, services, action);
     },
   );
 
@@ -550,8 +588,7 @@ export function studioPerpsRoutes(context: Context) {
       const agent = await perplAgent(scope);
       const now = (services.clock ?? Date.now)();
       const dayStart = utcDayStart(now);
-      const pScope = paperScope(scope, agent.network);
-      const view = await paperView(services, pScope);
+      const view = await paperView(services, paperScope(scope, agent.network));
       const positions = view?.account.positions ?? [];
       const open = positions.filter((p) => p.closedAt === null);
       const marks = open.length
@@ -563,13 +600,13 @@ export function studioPerpsRoutes(context: Context) {
         openPnl =
           mark === undefined || openPnl === null ? null : openPnl + unrealizedUnits(p, mark);
       }
-      const [counts, checksToday, manualToday, costToday, newMargin] = await Promise.all([
+      const [counts, checksToday, manualToday, costToday] = await Promise.all([
         services.owner.counts(productId),
         services.store.checksToday(productId),
         services.store.manualChecksToday(productId),
         services.store.costToday(productId),
-        view ? services.paper.newMarginSince(pScope, dayStart) : Promise.resolve("0"),
       ]);
+      const newMargin = marginOpenedSince(positions, dayStart);
       const stats = recordStats({
         movements: view?.movements ?? [],
         closed: view
@@ -613,6 +650,39 @@ export function studioPerpsRoutes(context: Context) {
             manualLimit: PERPS_MANUAL_CHECKS_PER_DAY,
             costMicros: costToday,
           },
+        }),
+      );
+    },
+  );
+
+  // The web polls an approve, close or stop until it is done.
+  api.get(
+    "/perps/actions/:id",
+    describeOperation("studioPerpsAction", {
+      ...errors,
+      description: `${routeDescription} One owner action (approve, close or stop): pending, running, done or failed, with the latest attempt's check (its outcome says what happened) and the last error (CHECK_RUNNING while a check held the agent).`,
+      response: perpsActionSchema,
+    }),
+    async (c) => {
+      const services = context.perps();
+      const current = await authorize(c);
+      const action = await services.owner.getAction(c.req.param("id"));
+      if (!action) {
+        throw new PilotError("NOT_FOUND", "Action not found");
+      }
+      await directory.agentScope(current, action.productAgentId);
+      return c.json(
+        perpsActionSchema.parse({
+          id: action.id,
+          kind: action.kind,
+          status: action.status,
+          positionId: action.positionId,
+          proposalId: action.proposalId,
+          attempts: action.attempts,
+          lastError: action.lastError,
+          checkId: action.checkId,
+          createdAt: iso(action.createdAt),
+          updatedAt: iso(action.updatedAt),
         }),
       );
     },

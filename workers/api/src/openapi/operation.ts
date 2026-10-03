@@ -16,7 +16,8 @@ export interface OperationOptions {
     string,
     { required?: boolean; description?: string; schema?: Record<string, unknown> }
   >;
-  idempotent?: boolean;
+  /** Adds the Idempotency-Key header: required, or `"optional"`. */
+  idempotent?: boolean | "optional";
   errors?: z.ZodType;
   errorStatuses?: number[];
 }
@@ -75,7 +76,7 @@ export function operation(id: string, options: OperationOptions) {
     parameters.push({
       name: "Idempotency-Key",
       in: "header",
-      required: true,
+      required: options.idempotent !== "optional",
       schema: { type: "string", minLength: 1, maxLength: 200 },
     });
   }

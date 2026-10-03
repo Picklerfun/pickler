@@ -486,11 +486,18 @@ membership, writes `authorize(principal, true)` (403 otherwise); another workspa
 position or proposal is 404 `NOT_FOUND`. DTOs are `src/perps-runtime.ts` in api-schema.
 
 Actions that need a Perpl frame or touch paper positions run in the research worker, not here: the
-API checks ownership and state, then sends a Queue message and answers 202 `{ queued: true }`; the
-web polls the feed, positions and proposals.
+API checks ownership and state, writes a durable owner action in the request
+(`PostgresPerpsOwnerStore.createAction`, `pickler.perps_owner_actions`; an optional
+`Idempotency-Key` answers the same action, a key used for another action is 409 `CONFLICT`, and
+without one each request is its own action, keyed `auto:<uuid>`), sends the wakeup
+`{ kind: "perps-action", actionId }` (a failed send is logged; the research Cron re-drives pending
+actions) and answers 202 `{ actionId }`. The web polls `GET /perps/actions/:id`. Reads go through
+the paper store's read-only `snapshot` (no row locks, no writes); the record's new margin today is
+trading's `marginOpenedSince` over that same snapshot.
 
 - `POST /agents/:id/perps/checks` (`Idempotency-Key` required): 409 `NOT_A_PERPL_AGENT`,
-  `RUNTIME_DISABLED` (`PERPL_RUNTIME_ENABLED` is not "true"), `CHECK_RUNNING`; 429 `MANUAL_LIMIT`
+  `RUNTIME_DISABLED` (`PERPL_RUNTIME_ENABLED` is not "true"), `CHECK_RUNNING`, `AGENT_KILLED`
+  (refused by `startCheck`); 429 `MANUAL_LIMIT`
   at 6 manual checks a UTC day (a replay after the sixth is also 429); else `startCheck` (trigger
   `manual`) and `{ kind: "perps-check", checkId }`, 202 `{ checkId }`.
 - `GET /agents/:id/perps/checks?before=&kind=` (`kind`: comma-separated outcomes, 400 otherwise):
@@ -499,18 +506,26 @@ web polls the feed, positions and proposals.
   board's mark and unrealized P&L (null without a fresh mark), stop, target, time stop and
   trading's `liquidationPrice`; closed are newest 50 with `realizedPnl` (net of fees).
 - `POST /perps/positions/:id/close`: the position's owner from `PostgresPerpsOwnerStore.findPosition`;
-  409 `POSITION_CLOSED`; sends `{ kind: "perps-close", positionId, productAgentId, reason: "owner" }`.
+  409 `POSITION_CLOSED`; writes a `close` action; 202 `{ actionId }`.
 - `POST /agents/:id/perps/stop`: pauses the agent at once (`repository.pause`, the existing pause
-  path), then sends `{ kind: "perps-close", positionId: null, productAgentId, reason: "stop_all" }`.
+  path), then writes a `stop_all` action; 202 `{ actionId }`.
 - `GET /agents/:id/perps/proposals`: pending ones. `POST /perps/proposals/:id/approve`: 409
-  `PROPOSAL_DECIDED` (not pending), `PROPOSAL_EXPIRED` (past 15 minutes), `RUNTIME_DISABLED`;
-  sends `{ kind: "perps-proposal", proposalId, decision: "approve" }` and decides nothing itself.
+  `PROPOSAL_DECIDED` (not pending), `PROPOSAL_EXPIRED` (past 15 minutes), `RUNTIME_DISABLED`,
+  `AGENT_KILLED` (refused by `createAction`); writes an `approve` action, decides nothing itself;
+  202 `{ actionId }`.
+- `GET /perps/actions/:id` (members): `{ id, kind, status, positionId, proposalId, attempts,
+lastError, checkId, createdAt, updatedAt }`; `checkId` is the latest attempt's `owner` check
+  (its outcome says what happened); another workspace's action is 404.
   `POST /perps/proposals/:id/skip` is synchronous: `decideProposal(id, "skipped")` and an `owner`
   row "SKIPPED · ENTRY SHORT ETH"; answers `{ id, status }`.
 - `GET /agents/:id/perps/record`: trading's `recordStats` (all-time checks and entries from
   `PostgresPerpsOwnerStore.counts`) plus `today` (new margin, realized, open count, leverage in use
   = highest open leverage, checks, manual checks and limit, cost in micro-USD) and `runtimeEnabled`.
 
-`PERPL_RUNTIME_ENABLED` ("false" in `wrangler.jsonc` and `.dev.vars.example`) gates manual checks
-and approvals only; reads, closes and stops stay on. Keep it equal to the research worker's.
-`workers/api/test/studio-perps-route.test.ts` covers every code and each Queue payload.
+`PERPL_RUNTIME_ENABLED` ("false" in `wrangler.staging.jsonc`, the deployed config, and in
+`wrangler.jsonc` and `.dev.vars.example`) gates manual checks and approvals only; reads, closes and
+stops stay on. Keep it equal to the research worker's: `npm run check:staging` asserts that
+`wrangler.staging.jsonc` and `workers/research/wrangler.jsonc` set the same "true" or "false".
+`workers/api/test/studio-perps-route.test.ts` covers every code, each action written and each
+Queue payload. The OpenAPI description marks the actions' `Idempotency-Key` optional
+(`idempotent: "optional"` in `src/openapi/operation.ts`).

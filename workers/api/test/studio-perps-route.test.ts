@@ -17,6 +17,9 @@ import {
   PERPS_CHECK_OUTCOMES,
   PERPS_CHECK_TRIGGERS,
   PERPS_CLOSE_REASONS,
+  PERPS_OWNER_ACTION_KINDS,
+  PERPS_OWNER_ACTION_STATUSES,
+  perpsActionSchema,
   perpsCheckDetailSchema,
   perpsChecksResponseSchema,
   perpsPositionsResponseSchema,
@@ -27,10 +30,13 @@ import {
   CHECK_OUTCOMES,
   CLOSE_REASONS,
   PERPS_CHECK_TRIGGERS as TRADING_TRIGGERS,
+  PERPS_OWNER_ACTION_KINDS as TRADING_ACTION_KINDS,
+  PERPS_OWNER_ACTION_STATUSES as TRADING_ACTION_STATUSES,
 } from "@pickler/trading/perps";
 import type {
   PerpsCheck,
   PerpsCheckRecord,
+  PerpsOwnerAction,
   PerpsPaperPosition,
   PerpsPaperView,
   PerpsProposal,
@@ -46,6 +52,8 @@ const FOREIGN = "66666666-6666-4666-8666-666666666666";
 const CHECK = "77777777-7777-4777-8777-777777777777";
 const FOREIGN_CHECK = "88888888-8888-4888-8888-888888888888";
 const PROPOSAL = "99999999-9999-4999-8999-999999999999";
+const ACTION = "aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa";
+const FOREIGN_ACTION = "bbbbbbbb-1111-4111-8111-bbbbbbbbbbbb";
 const NOW = Date.UTC(2026, 9, 3, 12, 30);
 const HOUR = 3_600_000;
 
@@ -188,6 +196,7 @@ function app({
   startError = null as PilotError | null,
   account = true,
   proposals = [proposal()],
+  actionError = null as PilotError | null,
 }: {
   enabled?: boolean;
   readOnly?: boolean;
@@ -196,8 +205,25 @@ function app({
   startError?: PilotError | null;
   account?: boolean;
   proposals?: PerpsProposal[];
+  actionError?: PilotError | null;
 } = {}) {
   const sent: PerpsQueueMessage[] = [];
+  const actions: (Omit<PerpsOwnerAction, "id" | "createdAt" | "updatedAt"> & {
+    requestKey: string;
+  })[] = [];
+  const stored = (id: string, productAgentId: string): PerpsOwnerAction => ({
+    id,
+    productAgentId,
+    kind: "approve",
+    positionId: null,
+    proposalId: PROPOSAL,
+    status: "done",
+    attempts: 1,
+    lastError: null,
+    checkId: CHECK,
+    createdAt: NOW - 5_000,
+    updatedAt: NOW - 1_000,
+  });
   const paused: { agentId: string; paused: boolean }[] = [];
   const started: unknown[] = [];
   const decided: { id: string; decision: string }[] = [];
@@ -306,15 +332,37 @@ function app({
               }
             : null,
       counts: async () => ({ checks: 9, entries: 2 }),
+      createAction: async (input) => {
+        if (actionError) {
+          throw actionError;
+        }
+        actions.push({
+          productAgentId: input.productAgentId,
+          kind: input.kind,
+          positionId: input.positionId ?? null,
+          proposalId: input.proposalId ?? null,
+          requestKey: input.requestKey,
+          status: "pending",
+          attempts: 0,
+          lastError: null,
+          checkId: null,
+        });
+        return { ...stored(ACTION, input.productAgentId), status: "pending", checkId: null };
+      },
+      getAction: async (id) =>
+        id === ACTION
+          ? stored(ACTION, PERPL)
+          : id === FOREIGN_ACTION
+            ? stored(FOREIGN_ACTION, FOREIGN)
+            : null,
     },
     paper: {
-      view: async () => {
+      snapshot: async () => {
         if (!account) {
           throw new PilotError("NOT_FOUND", "Paper account not found");
         }
         return view(positions);
       },
-      newMarginSince: async () => "20",
     },
     marks: async () => [{ network: "testnet", symbol: "BTC", mark: "61000" }],
     send: async (message) => {
@@ -348,7 +396,7 @@ function app({
     await next();
   });
   root.route("/", studio);
-  return { root, sent, paused, started, decided, recorded };
+  return { root, sent, paused, started, decided, recorded, actions };
 }
 
 const post = (headers: Record<string, string> = {}) => ({
@@ -522,42 +570,45 @@ test("positions before the first check say there is no account yet", async () =>
   assert.deepEqual(body, { network: "testnet", account: false, open: [], closed: [] });
 });
 
-test("close now queues the owner close; a closed or unknown position is refused", async () => {
+test("close now writes the owner close and wakes the worker; a closed or unknown position is refused", async () => {
   const f = app();
 
-  const queued = await f.root.request(`/perps/positions/check:${CHECK}:open/close`, post());
+  const queued = await f.root.request(
+    `/perps/positions/check:${CHECK}:open/close`,
+    post({ "Idempotency-Key": "close-1" }),
+  );
   const closed = await f.root.request("/perps/positions/eth-1/close", post());
   const unknown = await f.root.request("/perps/positions/nope/close", post());
   const foreign = await f.root.request("/perps/positions/foreign-position/close", post());
 
   assert.equal(queued.status, 202);
-  assert.deepEqual(await queued.json(), { queued: true });
+  assert.deepEqual(await queued.json(), { actionId: ACTION });
   assert.equal(closed.status, 409);
   assert.equal(await error(closed), "POSITION_CLOSED");
   assert.equal(unknown.status, 404);
   assert.equal(foreign.status, 404);
-  assert.deepEqual(f.sent, [
-    {
-      kind: "perps-close",
-      positionId: `check:${CHECK}:open`,
-      productAgentId: PERPL,
-      reason: "owner",
-    },
-  ]);
+  assert.deepEqual(
+    f.actions.map((a) => [a.kind, a.positionId, a.productAgentId, a.requestKey]),
+    [["close", `check:${CHECK}:open`, PERPL, "close-1"]],
+  );
+  assert.deepEqual(f.sent, [{ kind: "perps-action", actionId: ACTION }]);
 });
 
-test("stop · close all pauses the agent at once and queues the close of everything", async () => {
+test("stop · close all pauses the agent at once and writes the close of everything", async () => {
   const f = app({ enabled: false });
 
   const response = await f.root.request(`/agents/${PERPL}/perps/stop`, post());
   const legacy = await f.root.request(`/agents/${LEGACY}/perps/stop`, post());
 
   assert.equal(response.status, 202);
+  assert.deepEqual(await response.json(), { actionId: ACTION });
   assert.deepEqual(f.paused, [{ agentId: "runtime-perpl", paused: true }]);
   assert.equal(legacy.status, 409);
-  assert.deepEqual(f.sent, [
-    { kind: "perps-close", positionId: null, productAgentId: PERPL, reason: "stop_all" },
-  ]);
+  assert.equal(f.actions.length, 1);
+  assert.equal(f.actions[0]!.kind, "stop_all");
+  // Without an Idempotency-Key, each request is its own action.
+  assert.match(f.actions[0]!.requestKey, /^auto:[0-9a-f-]{36}$/);
+  assert.deepEqual(f.sent, [{ kind: "perps-action", actionId: ACTION }]);
 });
 
 test("proposals list the pending ones with notional and ISO times", async () => {
@@ -582,15 +633,56 @@ test("proposals list the pending ones with notional and ISO times", async () => 
   });
 });
 
-test("approve queues the approval for the worker and decides nothing itself", async () => {
+test("approve writes the approval for the worker and decides nothing itself", async () => {
   const f = app();
 
   const response = await f.root.request(`/perps/proposals/${PROPOSAL}/approve`, post());
 
   assert.equal(response.status, 202);
-  assert.deepEqual(await response.json(), { queued: true });
-  assert.deepEqual(f.sent, [{ kind: "perps-proposal", proposalId: PROPOSAL, decision: "approve" }]);
+  assert.deepEqual(await response.json(), { actionId: ACTION });
+  assert.deepEqual(
+    f.actions.map((a) => [a.kind, a.proposalId]),
+    [["approve", PROPOSAL]],
+  );
+  assert.deepEqual(f.sent, [{ kind: "perps-action", actionId: ACTION }]);
   assert.deepEqual(f.decided, []);
+});
+
+test("approve refuses a killed agent (409 AGENT_KILLED) and wakes nothing", async () => {
+  const f = app({ actionError: new PilotError("AGENT_KILLED", "This agent was killed") });
+
+  const response = await f.root.request(`/perps/proposals/${PROPOSAL}/approve`, post());
+
+  assert.equal(response.status, 409);
+  assert.equal(await error(response), "AGENT_KILLED");
+  assert.deepEqual(f.sent, []);
+});
+
+test("an action's status is read by members; another workspace's is 404", async () => {
+  const f = app({ readOnly: true });
+
+  const mine = await f.root.request(`/perps/actions/${ACTION}`, get());
+  const foreign = await f.root.request(`/perps/actions/${FOREIGN_ACTION}`, get());
+  const missing = await f.root.request(
+    "/perps/actions/00000000-0000-4000-8000-000000000000",
+    get(),
+  );
+
+  assert.equal(mine.status, 200);
+  assert.deepEqual(perpsActionSchema.parse(await mine.json()), {
+    id: ACTION,
+    kind: "approve",
+    status: "done",
+    positionId: null,
+    proposalId: PROPOSAL,
+    attempts: 1,
+    lastError: null,
+    checkId: CHECK,
+    createdAt: new Date(NOW - 5_000).toISOString(),
+    updatedAt: new Date(NOW - 1_000).toISOString(),
+  });
+  assert.equal(foreign.status, 404);
+  assert.equal(missing.status, 404);
 });
 
 test("approve and skip refuse expired, decided, foreign and (approve) disabled proposals", async () => {
@@ -650,8 +742,9 @@ test("the record carries the ledger's stats, today's figures and whether the run
   assert.equal(body.checks, 9);
   assert.equal(body.entries, 2);
   assert.ok(body.series.length > 0);
+  // From the same read-only snapshot: both positions opened today (20 + 10 margin).
   assert.deepEqual(body.today, {
-    newMarginAusd: 20,
+    newMarginAusd: 30,
     realizedAusd: -2,
     openCount: 1,
     leverageInUse: 3,
@@ -666,4 +759,6 @@ test("the DTO vocabularies mirror trading's", () => {
   assert.deepEqual([...PERPS_CHECK_OUTCOMES], [...CHECK_OUTCOMES]);
   assert.deepEqual([...PERPS_CHECK_TRIGGERS], [...TRADING_TRIGGERS]);
   assert.deepEqual([...PERPS_CLOSE_REASONS], [...CLOSE_REASONS]);
+  assert.deepEqual([...PERPS_OWNER_ACTION_KINDS], [...TRADING_ACTION_KINDS]);
+  assert.deepEqual([...PERPS_OWNER_ACTION_STATUSES], [...TRADING_ACTION_STATUSES]);
 });
