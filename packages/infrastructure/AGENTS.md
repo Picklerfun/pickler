@@ -422,6 +422,45 @@ Perpetual configuration v2 persists four agents and four reserved lanes in the e
 
 exportPerpsAudit uses a scoped repeatable-read READ ONLY transaction for study, rounds, events, paper accounts, attempts and movements. Never replace it with paper.view(), which can recover attempts and write history. It exports document data, not lease owners, credentials or database connection values. It releases the client on success and failure, and never initializes missing records.
 
+## Perpl paper runtime persistence
+
+Migration 0027 (`docs/specs/perpl-paper-runtime-v1.md` R9, R10, R14, R15) adds
+`pickler.perps_checks` and `pickler.perps_proposals` (declared in
+`src/persistence/product/perps-checks.ts`, RLS on, the service role may select, insert and update)
+and eight nullable columns on `pickler.perps_paper_positions` (`check_id`, `config_version`,
+`leverage`, `margin`, `stop_price`, `take_profit_price`, `exit_due_at`, `close_reason`, with an
+index on `exit_due_at` where open). The position document stays authoritative; the columns serve
+queries. drizzle-kit loads schema files through CommonJS and cannot import trading's ESM exports,
+so the enum lists (`PERPS_CLOSE_REASON_VALUES`, `PERPS_CHECK_TRIGGER_VALUES`,
+`PERPS_CHECK_OUTCOME_VALUES`) are spelled out and pinned to trading's lists by a test. **Apply 0027
+before deploying the API or the research worker**: the product paper store writes the new columns
+on every position change, and the runtime store reads the new tables.
+
+`PostgresPerpsRuntimeStore` implements trading's `PerpsRuntimeRepository`. A check is `queued`
+(`startCheck`: `NOT_A_PERPL_AGENT`, `CHECK_RUNNING`, replay by request key), `running` with a 60 s
+lease (`claimAgent` → `{ check, lease }`, `renewAgent`, `appendStep`, `createProposal`), then
+`finished` (`finishCheck`, `releaseAgent`). A partial unique index keeps one queued or running
+check per agent; starting and claiming lock the runtime agent row first, then the check. Expired
+leases end as `CHECK_INTERRUPTED` and checks queued over ten minutes as `CHECK_EXPIRED`, recovered
+whenever the agent is started or claimed. `recordCheck` writes finished rows at once (exits, owner
+actions, system notes); `pauseAgent` sets `paused` and writes a `system` row in one transaction.
+`listChecks` pages 50 newest first with an outcome filter. `dueAgents` answers public, unkilled,
+unpaused agents with a Perpl config whose hourly slot (`perpsCheckMinute` of the product id)
+opened under ten minutes ago with no hourly check since and no live check. Proposals expire after
+trading's `PROPOSAL_TTL_MS`; `decideProposal` commits an expiry before raising `PROPOSAL_EXPIRED`,
+and `expireProposals` expires each pending row once. Counts and cost are per UTC day and use the
+store clock (the database's `clock_timestamp()` outside tests).
+
+`PostgresPerpsPaperStore` also serves product sessions (`sessionId = "product"`, trading's
+`PRODUCT_PAPER_SESSION`): `initialize(scope, version, startingCash)` takes the wallet's AUSD
+(`WALLET_UNFUNDED` under `PRODUCT_PAPER_MINIMUM`, 10) and keeps the first stake on later calls;
+product accounts are not version-pinned and each position records the version it opened on.
+`complete(scope, lease, fill, exits?)` stores a product position's exits with its fill.
+`closePosition(scope, id, reason, frame)` closes from `open` exactly once (a closed position
+answers `closed: false`), `openDuePositions(marks)` reads due exits across product accounts (stop,
+then target, then time), and `newMarginSince(scope, since)` sums margin opened since (positions
+and their `sizeUps`). Operator sessions keep the version pin, the 1x policy and the 100 cap.
+
 ## Advice persistence
 
 `PostgresAdviceStore` implements core advice ports with private jobs/events/calls in migration

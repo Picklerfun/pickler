@@ -7,6 +7,7 @@ import {
   paperProduct,
   paperCash,
 } from "./decimal.js";
+import { isProductPaperSession } from "./types.js";
 import type {
   PerpsPaperAccount,
   PerpsPaperAttempt,
@@ -20,7 +21,8 @@ export function assertPerpsPaperAgent(agent: AgentRecord, scope: PerpsPaperScope
   if (agent.id !== scope.agentId || agent.tenantId !== scope.tenantId) {
     throw new PilotError("FORBIDDEN", "Agent scope does not match");
   }
-  if (agent.version !== version) {
+  // Product sessions follow the agent across edits; each position records its own version.
+  if (!isProductPaperSession(scope) && agent.version !== version) {
     throw new PilotError("CONFIG_CHANGED", "Agent configuration changed");
   }
   if (!pluginEnabled(agent.config, "perps-paper") || !pluginEnabled(agent.config, "perpl")) {
@@ -41,11 +43,20 @@ export function assertPaperIntent(intent: PerpsPaperIntent) {
     !["long", "short"].includes(intent.side) ||
     u(intent.notional) < 0n ||
     u(intent.feeReserve) < 0n ||
-    u(intent.feeReserve) > u("10")
+    u(intent.feeReserve) > u("10") ||
+    (intent.leverage !== undefined &&
+      (!Number.isInteger(intent.leverage) || intent.leverage < 1 || intent.leverage > 100)) ||
+    (intent.checkId !== undefined && !/^[a-zA-Z0-9-]{1,80}$/.test(intent.checkId))
   ) {
     throw new PilotError("INVALID_INPUT", "Invalid paper intent");
   }
 }
+/** What an open reserves: its margin (notional / leverage) plus the fee reserve. */
+export function paperOpenReserve(intent: PerpsPaperIntent) {
+  return d(u(intent.notional) / BigInt(intent.leverage ?? 1) + u(intent.feeReserve));
+}
+const positionMargin = (p: { margin?: string; entryNotional: string }) =>
+  u(p.margin ?? p.entryNotional);
 export function paperRisk(
   account: PerpsPaperAccount,
   attempts: PerpsPaperAttempt[],
@@ -55,6 +66,9 @@ export function paperRisk(
   if (intent) {
     assertPaperIntent(intent);
   }
+  // Product accounts take their caps, stops and day-loss from the runtime (R6, R10, R11): the
+  // store only keeps the ledger whole (margin, reservations, one position per market).
+  const product = isProductPaperSession(account.scope);
   const open = account.positions.filter((p) => p.closedAt === null);
   const unknown = open.some(
     (p) => p.mark === null || p.markAt === null || now - p.markAt > 30_000 || p.markAt > now + 5000,
@@ -72,17 +86,19 @@ export function paperRisk(
   const exposure = unknown
     ? null
     : open.reduce((sum, p) => sum + u(paperProduct(p.quantity, p.mark!)), 0n);
-  const margin = open.reduce((sum, p) => sum + u(p.entryNotional), 0n);
+  const margin = open.reduce((sum, p) => sum + positionMargin(p), 0n);
   const reserved = attempts
     .filter((a) => a.status === "pending")
     .reduce((sum, a) => sum + u(a.reserved), 0n);
-  const available =
-    equity === null
-      ? null
-      : (equity < u(account.cash) ? equity : u(account.cash)) - margin - reserved;
+  let available: bigint | null = null;
+  if (equity !== null) {
+    available = (equity < u(account.cash) ? equity : u(account.cash)) - margin - reserved;
+  } else if (product) {
+    available = u(account.cash) - margin - reserved;
+  }
   const reasons: string[] = [];
   const closeSymbols = new Set<"BTC" | "ETH">();
-  if (equity === null) {
+  if (equity === null && !product) {
     reasons.push("UNKNOWN_MARKS");
   }
   if (account.admissionsClosed) {
@@ -91,26 +107,35 @@ export function paperRisk(
   if (account.fundingPending) {
     reasons.push("FUNDING_PENDING");
   }
-  if (account.day !== new Date(now).toISOString().slice(0, 10) || account.dayEquity === null) {
+  if (
+    !product &&
+    (account.day !== new Date(now).toISOString().slice(0, 10) || account.dayEquity === null)
+  ) {
     reasons.push("DAY_BASELINE_PENDING");
   }
   const daily =
-    account.dailyBlocked ||
-    (equity !== null && account.dayEquity !== null && equity * 100n <= u(account.dayEquity) * 97n);
-  const drawdown = equity !== null && equity * 100n <= u(account.peakEquity) * 95n;
+    !product &&
+    (account.dailyBlocked ||
+      (equity !== null &&
+        account.dayEquity !== null &&
+        equity * 100n <= u(account.dayEquity) * 97n));
+  const drawdown = !product && equity !== null && equity * 100n <= u(account.peakEquity) * 95n;
   if (daily) {
     reasons.push("DAILY_LOSS");
   }
-  if (drawdown || account.blocked) {
+  if (!product && (drawdown || account.blocked)) {
     reasons.push("SESSION_DRAWDOWN");
   }
-  if (equity !== null && equity <= 0n) {
+  if (
+    (equity !== null && equity <= 0n) ||
+    (product && (account.blocked || u(account.cash) <= 0n))
+  ) {
     reasons.push("INSOLVENT");
   }
-  if (exposure !== null && equity !== null && exposure * 2n > equity) {
+  if (!product && exposure !== null && equity !== null && exposure * 2n > equity) {
     reasons.push("EXPOSURE_LIMIT");
   }
-  for (const p of open) {
+  for (const p of product ? [] : open) {
     const stop =
       p.mark !== null &&
       p.markAt !== null &&
@@ -150,8 +175,11 @@ export function paperRisk(
     };
   }
   if (intent) {
-    if (u(intent.notional) <= 0n || u(intent.notional) > u("100")) {
+    if (u(intent.notional) <= 0n || (!product && u(intent.notional) > u("100"))) {
       reasons.push("OPEN_NOTIONAL_LIMIT");
+    }
+    if (!product && (intent.leverage ?? 1) !== 1) {
+      reasons.push("LEVERAGE_NOT_ALLOWED");
     }
     if (open.some((p) => p.symbol === intent.symbol)) {
       reasons.push("POSITION_EXISTS");
@@ -159,10 +187,15 @@ export function paperRisk(
     if (attempts.some((a) => a.status === "pending")) {
       reasons.push("ATTEMPT_PENDING");
     }
-    if (available !== null && u(intent.notional) + u(intent.feeReserve) > available) {
+    if (available !== null && u(paperOpenReserve(intent)) > available) {
       reasons.push("INSUFFICIENT_AVAILABLE");
     }
-    if (exposure !== null && equity !== null && (exposure + u(intent.notional)) * 2n > equity) {
+    if (
+      !product &&
+      exposure !== null &&
+      equity !== null &&
+      (exposure + u(intent.notional)) * 2n > equity
+    ) {
       reasons.push("EXPOSURE_LIMIT");
     }
   }
@@ -183,16 +216,20 @@ export function initialPaperAccount(
   scope: PerpsPaperScope,
   agentVersion: number,
   now: number,
+  cash = "1000",
 ): PerpsPaperAccount {
+  if (u(cash) <= 0n) {
+    throw new PilotError("INVALID_INPUT", "Paper capital must be positive");
+  }
   return {
     scope,
     agentVersion,
     policy: "conservative-1x-v1",
     createdAt: now,
-    cash: "1000",
-    peakEquity: "1000",
+    cash: d(u(cash)),
+    peakEquity: d(u(cash)),
     day: new Date(now).toISOString().slice(0, 10),
-    dayEquity: "1000",
+    dayEquity: d(u(cash)),
     dailyBlocked: false,
     blocked: false,
     fundingPending: false,
@@ -246,7 +283,7 @@ export function applyPaperFill(
     ) {
       throw new PilotError("INVALID_FILL", "Opening exceeds intent");
     }
-    a.positions.push({
+    const position: PerpsPaperAccount["positions"][number] = {
       id: attempt.key,
       symbol: attempt.intent.symbol,
       side: attempt.intent.side,
@@ -260,7 +297,14 @@ export function applyPaperFill(
       closedAt: null,
       exitPrice: null,
       exitBlock: null,
-    });
+    };
+    if (isProductPaperSession(a.scope)) {
+      const leverage = attempt.intent.leverage ?? 1;
+      position.leverage = leverage;
+      position.margin = d(u(fill.notional) / BigInt(leverage));
+      position.checkId = attempt.intent.checkId ?? null;
+    }
+    a.positions.push(position);
   } else {
     const p = a.positions.find(
       (p) =>

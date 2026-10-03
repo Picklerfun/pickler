@@ -44,7 +44,9 @@ for (const history of [
         history === "main-before-custody"
           ? entry.idx <= 16
           : history === "custody-branch"
-            ? entry.idx <= 11 || entry.idx >= 17
+            ? // The custody branch published 0017–0021 on top of 0011; later migrations (0027
+              // alters a 0012 table) were never part of it.
+              entry.idx <= 11 || (entry.idx >= 17 && entry.idx <= 21)
             : history === "main-before-launch"
               ? entry.idx <= 14
               : history === "launch-branch"

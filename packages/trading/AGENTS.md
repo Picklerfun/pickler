@@ -49,6 +49,19 @@ Core retains `features/perps`, which exports perpetual-data contracts and `creat
 
 Perpetual simulation adds `simulatePerpsFill`, `applyPaperObservation` and `createPerpsPaperService`: full-depth 50-bps virtual execution, sampled mark risk, versioned estimated funding and sticky discrepancies. No inferred zero funding or liquidation. Trusted marks-only refreshes preserve funding status; model proposals cannot call the store.
 
+Product paper sessions (`PRODUCT_PAPER_SESSION = "product"`, perpl-paper-runtime-v1 R9) are not
+pinned to a config version in `assertPerpsPaperAgent`; operator sessions still are. In a product
+account `paperRisk` keeps only the ledger rules (margin = notional / leverage via
+`paperOpenReserve`, reservations, one position per market, insolvency): caps, stops and day-loss
+belong to the runtime, so the 100 cap, exposure, day baseline, drawdown and the conservative
+close requests do not apply, and unknown marks do not block. Product positions record `leverage`,
+`margin`, `checkId`, `configVersion`, exits and `closeReason`; operator documents keep their shape
+and refuse leverage (`LEVERAGE_NOT_ALLOWED`). `createPerpsPaperService().trade` takes
+`{ notional, leverage, checkId, exits }` (default 100 at 1x). `features/perps-paper/checks.ts`
+owns the runtime's storage port `PerpsRuntimeRepository` (checks, steps, leases, proposals, daily
+counts) and `perpsCheckMinute`; `PerpsProductPaperRepository` adds `closePosition`,
+`openDuePositions` and `newMarginSince` to the paper port.
+
 `features/perps-study` exports the independent comparison contracts, exact model reservation math
 and deterministic SMA20/50 policy. Unknown/missing candles imply hold, not a fabricated neutral
 signal. Paper accounts may permanently close admissions while permitting reducing exits. Study

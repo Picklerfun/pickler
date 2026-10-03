@@ -4,7 +4,22 @@ export interface PerpsPaperScope extends Scope {
   sessionId: string;
   network: PerpNetwork;
 }
+/**
+ * The session of a studio agent's paper account (perpl-paper-runtime-v1 R9): one per agent and
+ * network, not pinned to a config version, sized by the runtime's caps instead of the 1x policy.
+ */
+export const PRODUCT_PAPER_SESSION = "product";
+export const isProductPaperSession = (scope: Pick<PerpsPaperScope, "sessionId">) =>
+  scope.sessionId === PRODUCT_PAPER_SESSION;
 export type PerpsPaperSide = "long" | "short";
+/** Why a product position closed: the runtime's `CLOSE_REASONS` (R10). */
+export type PerpsPaperCloseReason = import("../perps-runtime/exits.js").PerpsCloseReason;
+/** A product position's exits (R10), stored on the position when it opens. */
+export interface PerpsPaperExits {
+  stopPrice: string | null;
+  takeProfitPrice: string | null;
+  exitDueAt: number | null;
+}
 export interface PerpsPaperPosition {
   id: string;
   symbol: PerpSymbol;
@@ -19,6 +34,17 @@ export interface PerpsPaperPosition {
   closedAt: number | null;
   exitPrice: string | null;
   exitBlock: number | null;
+  /** Product positions only: absent on operator documents, which keep their historical shape. */
+  leverage?: number;
+  margin?: string;
+  checkId?: string | null;
+  configVersion?: number;
+  stopPrice?: string | null;
+  takeProfitPrice?: string | null;
+  exitDueAt?: number | null;
+  closeReason?: PerpsPaperCloseReason | null;
+  /** Margin added to the position after it opened (size-ups, R8), each with its time. */
+  sizeUps?: { at: number; margin: string }[];
 }
 export interface PerpsPaperAccount {
   scope: PerpsPaperScope;
@@ -43,6 +69,9 @@ export interface PerpsPaperIntent {
   side: PerpsPaperSide;
   notional: string;
   feeReserve: string;
+  /** Product opens only; operator sessions refuse anything but 1x. */
+  leverage?: number;
+  checkId?: string;
 }
 export interface PerpsPaperAttempt {
   key: string;
@@ -101,7 +130,12 @@ export interface PerpsPaperRepository {
     key: string,
     observation: import("./simulation.js").PerpsPaperObservation,
   ): Promise<PerpsPaperView>;
-  initialize(scope: PerpsPaperScope, expectedVersion: number): Promise<PerpsPaperView>;
+  /** `startingCash` is required for a product session and refused for an operator session. */
+  initialize(
+    scope: PerpsPaperScope,
+    expectedVersion: number,
+    startingCash?: string,
+  ): Promise<PerpsPaperView>;
   view(scope: PerpsPaperScope): Promise<PerpsPaperView>;
   begin(
     scope: PerpsPaperScope,
@@ -114,6 +148,7 @@ export interface PerpsPaperRepository {
     scope: PerpsPaperScope,
     lease: PerpsPaperLease,
     fill: PerpsPaperFill,
+    exits?: PerpsPaperExits,
   ): Promise<PerpsPaperView>;
   fail(
     scope: PerpsPaperScope,
@@ -121,4 +156,31 @@ export interface PerpsPaperRepository {
     code: string,
     evidence?: unknown,
   ): Promise<void>;
+}
+/** An open product position whose exit is due, as the exits job reads it (R10). */
+export interface PerpsDuePosition {
+  scope: PerpsPaperScope;
+  productAgentId: string;
+  position: PerpsPaperPosition;
+  reason: "stop" | "take_profit" | "time";
+}
+/** A mark the exits job read from the market board. */
+export interface PerpsPaperMark {
+  network: PerpNetwork;
+  symbol: PerpSymbol;
+  mark: string;
+}
+/** Product paper accounts: closes outside an attempt lease, and the exits job's read. */
+export interface PerpsProductPaperRepository extends PerpsPaperRepository {
+  /** Closes one position at `frame`; a position already closed answers `closed: false`. */
+  closePosition(
+    scope: PerpsPaperScope,
+    positionId: string,
+    reason: PerpsPaperCloseReason,
+    frame: import("./simulation.js").PerpsPaperFrame,
+  ): Promise<{ closed: boolean; position: PerpsPaperPosition; view: PerpsPaperView }>;
+  /** Open product positions past their time stop, or whose mark crossed stop or target. */
+  openDuePositions(marks: readonly PerpsPaperMark[]): Promise<PerpsDuePosition[]>;
+  /** Margin opened since `since` (positions opened then, plus size-ups then), in AUSD. */
+  newMarginSince(scope: PerpsPaperScope, since: number): Promise<string>;
 }

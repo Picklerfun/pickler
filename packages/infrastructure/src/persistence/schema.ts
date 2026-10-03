@@ -8,15 +8,30 @@ import {
   index,
   integer,
   jsonb,
+  numeric,
   pgSchema,
   primaryKey,
   text,
   uniqueIndex,
+  uuid,
 } from "drizzle-orm/pg-core";
 import type { AgentConfig, Decision, RunRecord } from "@pickler/core";
 
 export const pickler = pgSchema("pickler");
 const milliseconds = (name: string) => bigint(name, { mode: "number" });
+/**
+ * Trading's `CLOSE_REASONS`, spelled out: drizzle-kit loads this file through CommonJS and cannot
+ * import trading's ESM-only exports. A test pins the two lists together.
+ */
+export const PERPS_CLOSE_REASON_VALUES = [
+  "stop",
+  "take_profit",
+  "time",
+  "brief",
+  "owner",
+  "stop_all",
+  "day_loss",
+] as const satisfies readonly import("@pickler/trading/perps").PerpsCloseReason[];
 
 export const agents = pickler
   .table(
@@ -339,12 +354,31 @@ export const perpsPaperPositions = pickler
       document: jsonb("document")
         .$type<import("@pickler/trading/perps").PerpsPaperPosition>()
         .notNull(),
+      // Product positions (migration 0027, perpl-paper-runtime-v1 R10/R14); null on operator rows.
+      // The document stays authoritative; these columns serve the exits and margin queries.
+      checkId: uuid("check_id"),
+      configVersion: integer("config_version"),
+      leverage: integer("leverage"),
+      margin: numeric("margin", { precision: 38, scale: 18 }),
+      stopPrice: numeric("stop_price", { precision: 38, scale: 18 }),
+      takeProfitPrice: numeric("take_profit_price", { precision: 38, scale: 18 }),
+      exitDueAt: milliseconds("exit_due_at"),
+      closeReason: text("close_reason"),
     },
     (t) => [
       primaryKey({ columns: [t.accountId, t.id] }),
       uniqueIndex("perps_paper_open_symbol")
         .on(t.accountId, t.symbol)
         .where(sql`${t.closedAt} is null`),
+      index("perps_paper_exit_due")
+        .on(t.exitDueAt)
+        .where(sql`${t.closedAt} is null`),
+      check(
+        "perps_paper_close_reason",
+        sql`${t.closeReason} is null OR ${t.closeReason} in (${sql.raw(
+          PERPS_CLOSE_REASON_VALUES.map((reason) => `'${reason}'`).join(","),
+        )})`,
+      ),
     ],
   )
   .enableRLS();

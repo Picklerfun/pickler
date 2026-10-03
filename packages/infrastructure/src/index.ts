@@ -155,7 +155,8 @@ export {
   type SiweFields,
 } from "./chain/siwe.js";
 
-export { PostgresPerpsPaperStore } from "./persistence/perps-paper-store.js";
+export { PostgresPerpsPaperStore, PRODUCT_PAPER_MINIMUM } from "./persistence/perps-paper-store.js";
+export { PostgresPerpsRuntimeStore } from "./persistence/perps-runtime-store.js";
 export { PostgresPerpsStudyStore } from "./persistence/perps-study-store.js";
 
 export { QuantData } from "./polymarket/quant-data.js";

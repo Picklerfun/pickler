@@ -9,8 +9,19 @@ import {
   paperRisk,
   applyPaperFill,
   assertPaperIntent,
+  isProductPaperSession,
+  PRODUCT_PAPER_SESSION,
   paperDecimal,
+  paperOpenReserve,
   paperUnits,
+  simulatePerpsFill,
+  type PerpsDuePosition,
+  type PerpsPaperCloseReason,
+  type PerpsPaperExits,
+  type PerpsPaperFrame,
+  type PerpsPaperMark,
+  type PerpsPaperPosition,
+  type PerpsProductPaperRepository,
   type PerpsPaperScope,
   type PerpsPaperView,
   type PerpsPaperAccount,
@@ -19,16 +30,21 @@ import {
   type PerpsPaperFill,
   type PerpsPaperLease,
   type PerpsPaperMovement,
-  type PerpsPaperRepository,
 } from "@pickler/trading/perps";
+/** The least a product account starts with (perpl-paper-runtime-v1 R9). */
+export const PRODUCT_PAPER_MINIMUM = "10";
+const DECIMAL = /^\d{1,20}(\.\d{1,18})?$/;
 interface Locked {
   id: string;
   view: PerpsPaperView;
   agent: AgentRecord;
   now: number;
 }
-/** Scoped operator repository. All mutations serialize on the agent and account rows. */
-export class PostgresPerpsPaperStore implements PerpsPaperRepository {
+/**
+ * Scoped paper repository for operator sessions and the product session of studio agents. All
+ * mutations serialize on the agent and account rows.
+ */
+export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
   constructor(
     readonly pool: Pool,
     private readonly clock?: () => number,
@@ -93,7 +109,7 @@ export class PostgresPerpsPaperStore implements PerpsPaperRepository {
     }
     return result.rows[0];
   }
-  private async now(client: PoolClient): Promise<number> {
+  private async now(client: Pool | PoolClient): Promise<number> {
     if (this.clock) {
       return this.clock();
     }
@@ -192,12 +208,24 @@ export class PostgresPerpsPaperStore implements PerpsPaperRepository {
       return view;
     });
   }
-  async initialize(scope: PerpsPaperScope, expectedVersion: number) {
+  async initialize(scope: PerpsPaperScope, expectedVersion: number, startingCash?: string) {
+    const product = isProductPaperSession(scope);
+    if (product !== (startingCash !== undefined)) {
+      throw new PilotError("INVALID_INPUT", "Only a product session takes a starting stake");
+    }
+    if (startingCash !== undefined) {
+      if (!DECIMAL.test(startingCash)) {
+        throw new PilotError("INVALID_INPUT", "Invalid starting stake");
+      }
+      if (paperUnits(startingCash) < paperUnits(PRODUCT_PAPER_MINIMUM)) {
+        throw new PilotError("WALLET_UNFUNDED", "The agent wallet holds under 10 AUSD");
+      }
+    }
     return this.transaction(async (client) => {
       const agent = await this.agent(client, scope);
       assertPerpsPaperAgent(agent, scope, expectedVersion);
       const now = await this.now(client);
-      const account = initialPaperAccount(scope, expectedVersion, now);
+      const account = initialPaperAccount(scope, expectedVersion, now, startingCash);
       const id = randomUUID();
       const inserted = await client.query(
         "INSERT INTO pickler.perps_paper_accounts(id,tenant_id,agent_id,session_id,network,document) VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT(tenant_id,agent_id,session_id,network) DO NOTHING RETURNING id",
@@ -211,7 +239,7 @@ export class PostgresPerpsPaperStore implements PerpsPaperRepository {
             {
               key: "initial",
               kind: "initial",
-              delta: "1000",
+              delta: account.cash,
               at: now,
               evidence: { policy: account.policy },
             },
@@ -219,7 +247,7 @@ export class PostgresPerpsPaperStore implements PerpsPaperRepository {
         );
       }
       const locked = await this.lock(client, scope);
-      if (locked.view.account.agentVersion !== expectedVersion) {
+      if (!product && locked.view.account.agentVersion !== expectedVersion) {
         throw new PilotError("CONFIG_CHANGED", "Existing paper session has another config version");
       }
       return locked.view;
@@ -256,13 +284,15 @@ export class PostgresPerpsPaperStore implements PerpsPaperRepository {
           previous.intent.symbol !== intent.symbol ||
           previous.intent.side !== intent.side ||
           paperUnits(previous.intent.notional) !== paperUnits(intent.notional) ||
-          paperUnits(previous.intent.feeReserve) !== paperUnits(intent.feeReserve)
+          paperUnits(previous.intent.feeReserve) !== paperUnits(intent.feeReserve) ||
+          previous.intent.leverage !== intent.leverage ||
+          previous.intent.checkId !== intent.checkId
         ) {
           throw new PilotError("CONFLICT", "Request key was used with another intent");
         }
         return { attempt: previous, lease: null };
       }
-      if (locked.view.account.agentVersion !== expectedVersion) {
+      if (!isProductPaperSession(scope) && locked.view.account.agentVersion !== expectedVersion) {
         throw new PilotError("CONFIG_CHANGED", "Paper session version differs");
       }
       this.allowed(locked, scope, intent);
@@ -273,10 +303,7 @@ export class PostgresPerpsPaperStore implements PerpsPaperRepository {
         key,
         intent,
         status: risk.allowed ? "pending" : "rejected",
-        reserved:
-          risk.allowed && intent.kind === "open"
-            ? paperDecimal(paperUnits(intent.notional) + paperUnits(intent.feeReserve))
-            : "0",
+        reserved: risk.allowed && intent.kind === "open" ? paperOpenReserve(intent) : "0",
         createdAt: locked.now,
         finishedAt: risk.allowed ? null : locked.now,
         reason: risk.allowed ? null : risk.reasons.join(","),
@@ -325,8 +352,26 @@ export class PostgresPerpsPaperStore implements PerpsPaperRepository {
     ]);
     for (const p of account.positions) {
       await client.query(
-        "INSERT INTO pickler.perps_paper_positions(account_id,id,symbol,closed_at,document) VALUES($1,$2,$3,$4,$5) ON CONFLICT(account_id,id) DO UPDATE SET closed_at=excluded.closed_at,document=excluded.document",
-        [id, p.id, p.symbol, p.closedAt, p],
+        `INSERT INTO pickler.perps_paper_positions(account_id,id,symbol,closed_at,document,check_id,config_version,leverage,margin,stop_price,take_profit_price,exit_due_at,close_reason)
+      VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+      ON CONFLICT(account_id,id) DO UPDATE SET closed_at=excluded.closed_at,document=excluded.document,
+        check_id=excluded.check_id,config_version=excluded.config_version,leverage=excluded.leverage,margin=excluded.margin,
+        stop_price=excluded.stop_price,take_profit_price=excluded.take_profit_price,exit_due_at=excluded.exit_due_at,close_reason=excluded.close_reason`,
+        [
+          id,
+          p.id,
+          p.symbol,
+          p.closedAt,
+          p,
+          p.checkId ?? null,
+          p.configVersion ?? null,
+          p.leverage ?? null,
+          p.margin ?? null,
+          p.stopPrice ?? null,
+          p.takeProfitPrice ?? null,
+          p.exitDueAt ?? null,
+          p.closeReason ?? null,
+        ],
       );
     }
     for (const m of movements) {
@@ -336,7 +381,15 @@ export class PostgresPerpsPaperStore implements PerpsPaperRepository {
       );
     }
   }
-  async complete(scope: PerpsPaperScope, lease: PerpsPaperLease, fill: PerpsPaperFill) {
+  async complete(
+    scope: PerpsPaperScope,
+    lease: PerpsPaperLease,
+    fill: PerpsPaperFill,
+    exits?: PerpsPaperExits,
+  ) {
+    if (exits !== undefined) {
+      assertExits(exits, isProductPaperSession(scope));
+    }
     return this.transaction(async (client) => {
       const locked = await this.owned(client, scope, lease);
       this.allowed(locked, scope, locked.attempt.intent);
@@ -350,6 +403,14 @@ export class PostgresPerpsPaperStore implements PerpsPaperRepository {
         throw new PilotError("RISK_REJECTED", risk.reasons.join(","));
       }
       const result = applyPaperFill(locked.view.account, locked.attempt, fill, locked.now);
+      const opened = result.account.positions.find((p) => p.id === lease.key);
+      if (isProductPaperSession(scope) && locked.attempt.intent.kind === "open" && opened) {
+        // The version it opened on (R9) and its exits (R10), in the same transaction as the fill.
+        opened.configVersion = locked.agent.version;
+        opened.stopPrice = exits?.stopPrice ?? null;
+        opened.takeProfitPrice = exits?.takeProfitPrice ?? null;
+        opened.exitDueAt = exits?.exitDueAt ?? null;
+      }
       await this.persist(client, locked.id, result.account, result.movements);
       const attempt = {
         ...locked.attempt,
@@ -392,5 +453,159 @@ export class PostgresPerpsPaperStore implements PerpsPaperRepository {
         ],
       );
     });
+  }
+  /**
+   * Closes one position at `frame` outside an attempt lease (exits job, owner, stop-all). A
+   * position already closed answers `closed: false` and changes nothing, so a repeated close (or
+   * two racing closers) settles exactly once.
+   */
+  async closePosition(
+    scope: PerpsPaperScope,
+    positionId: string,
+    reason: PerpsPaperCloseReason,
+    frame: PerpsPaperFrame,
+  ) {
+    const key = `close:${positionId}`;
+    if (!/^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,127}$/.test(key)) {
+      throw new PilotError("INVALID_INPUT", "Invalid position id");
+    }
+    return this.transaction(async (client) => {
+      const locked = await this.lock(client, scope);
+      const position = locked.view.account.positions.find((p) => p.id === positionId);
+      if (!position) {
+        throw new PilotError("NOT_FOUND", "Paper position not found");
+      }
+      if (position.closedAt !== null) {
+        return { closed: false, position, view: locked.view };
+      }
+      assertPerpsPaperAgent(locked.agent, scope, locked.view.account.agentVersion);
+      const intent: PerpsPaperIntent = {
+        kind: "close",
+        symbol: position.symbol,
+        side: position.side,
+        notional: "0",
+        feeReserve: "1",
+      };
+      const fill = simulatePerpsFill(locked.view.account, intent, frame, locked.now);
+      const attempt: PerpsPaperAttempt = {
+        key,
+        intent,
+        status: "pending",
+        reserved: "0",
+        createdAt: locked.now,
+        finishedAt: null,
+        reason: null,
+        evidence: null,
+      };
+      const result = applyPaperFill(locked.view.account, attempt, fill, locked.now);
+      const closed = result.account.positions.find((p) => p.id === positionId)!;
+      closed.closeReason = reason;
+      await this.persist(client, locked.id, result.account, result.movements);
+      await client.query(
+        "INSERT INTO pickler.perps_paper_attempts(account_id,key,document,owner,expires_at) VALUES($1,$2,$3,null,null)",
+        [
+          locked.id,
+          key,
+          {
+            ...attempt,
+            status: "filled",
+            finishedAt: locked.now,
+            reason,
+            evidence: fill.evidence,
+          },
+        ],
+      );
+      const view = (await this.lock(client, scope)).view;
+      return {
+        closed: true,
+        position: view.account.positions.find((p) => p.id === positionId)!,
+        view,
+      };
+    });
+  }
+  /** Open product positions whose exit is due: the stop first, then the target, then time. */
+  async openDuePositions(marks: readonly PerpsPaperMark[]): Promise<PerpsDuePosition[]> {
+    for (const mark of marks) {
+      if (
+        !["mainnet", "testnet"].includes(mark.network) ||
+        !["BTC", "ETH"].includes(mark.symbol) ||
+        !DECIMAL.test(mark.mark)
+      ) {
+        throw new PilotError("INVALID_INPUT", "Invalid mark");
+      }
+    }
+    const now = await this.now(this.pool);
+    const result = await this.pool.query<{
+      tenantId: string;
+      agentId: string;
+      network: PerpsPaperScope["network"];
+      productAgentId: string;
+      position: PerpsPaperPosition;
+      reason: PerpsDuePosition["reason"];
+    }>(
+      `SELECT * FROM (
+        SELECT a.tenant_id AS "tenantId", a.agent_id AS "agentId", a.network,
+          pa.product_agent_id::text AS "productAgentId", p.document AS position,
+          CASE
+            WHEN m.mark IS NOT NULL AND p.stop_price IS NOT NULL AND (
+              (p.document->>'side' = 'long' AND m.mark <= p.stop_price) OR
+              (p.document->>'side' = 'short' AND m.mark >= p.stop_price)) THEN 'stop'
+            WHEN m.mark IS NOT NULL AND p.take_profit_price IS NOT NULL AND (
+              (p.document->>'side' = 'long' AND m.mark >= p.take_profit_price) OR
+              (p.document->>'side' = 'short' AND m.mark <= p.take_profit_price)) THEN 'take_profit'
+            WHEN p.exit_due_at IS NOT NULL AND p.exit_due_at <= $2 THEN 'time'
+          END AS reason
+        FROM pickler.perps_paper_positions p
+        JOIN pickler.perps_paper_accounts a ON a.id = p.account_id
+        JOIN pickler.product_agents pa ON pa.tenant_id = a.tenant_id AND pa.runtime_agent_id = a.agent_id
+        LEFT JOIN jsonb_to_recordset($1::jsonb) AS m(network text, symbol text, mark numeric)
+          ON m.network = a.network AND m.symbol = p.symbol
+        WHERE p.closed_at IS NULL AND a.session_id = $3
+      ) due
+      WHERE reason IS NOT NULL
+      ORDER BY (position->>'openedAt')::bigint, position->>'id'`,
+      [JSON.stringify(marks), now, PRODUCT_PAPER_SESSION],
+    );
+    return result.rows.map((row) => ({
+      scope: {
+        tenantId: row.tenantId,
+        agentId: row.agentId,
+        sessionId: PRODUCT_PAPER_SESSION,
+        network: row.network,
+      },
+      productAgentId: row.productAgentId,
+      position: row.position,
+      reason: row.reason,
+    }));
+  }
+  /** Margin opened since `since`: positions opened then, plus the size-ups added then. */
+  async newMarginSince(scope: PerpsPaperScope, since: number) {
+    if (!Number.isSafeInteger(since)) {
+      throw new PilotError("INVALID_INPUT", "Invalid time");
+    }
+    const view = await this.view(scope);
+    let total = 0n;
+    for (const p of view.account.positions) {
+      if (p.openedAt >= since) {
+        total += paperUnits(p.margin ?? p.entryNotional);
+      }
+      for (const added of p.sizeUps ?? []) {
+        if (added.at >= since) {
+          total += paperUnits(added.margin);
+        }
+      }
+    }
+    return paperDecimal(total);
+  }
+}
+function assertExits(exits: PerpsPaperExits, product: boolean) {
+  if (
+    !product ||
+    [exits.stopPrice, exits.takeProfitPrice].some(
+      (price) => price !== null && (!DECIMAL.test(price) || paperUnits(price) <= 0n),
+    ) ||
+    (exits.exitDueAt !== null && !Number.isSafeInteger(exits.exitDueAt))
+  ) {
+    throw new PilotError("INVALID_INPUT", "Exits are product-only positive prices and a time");
   }
 }
