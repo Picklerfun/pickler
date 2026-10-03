@@ -8,14 +8,12 @@ import {
   briefLists,
   briefText,
   briefView,
-  capsOf,
-  checkedLabel,
   readClock,
   setupProblem,
   sourcesView,
-  starterCaps,
   webForm,
-} from "../src/features/studio/draft/build-model";
+} from "../src/features/studio/shell/build-model";
+import { capsOf, checkedLabel, starterCaps } from "../src/features/studio/draft/caps-model";
 import { arrived } from "../src/features/studio/new-agent/model";
 
 /* The Build sections' rules: Brief, Sources & rules, Limits & funding (spec §3.3, §3.5). */

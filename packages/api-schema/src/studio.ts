@@ -246,16 +246,32 @@ export const walletsResponseSchema = z.object({
 export type WalletsDto = z.infer<typeof walletsResponseSchema>;
 
 /**
- * `PUT /v1/studio/agents/:id/setup` (studio-draft-dashboard-v1 D10): a draft's brief, sources,
- * caps and voice, each optional. Shapes only; core's `reviseDraft` judges them, as at creation.
+ * `PUT /v1/studio/agents/:id/setup` (studio-draft-dashboard-v1 D10, studio-live-v1 §4): the
+ * brief, sources, caps, voice and how it enters, each optional. The two risk caps are optional
+ * inside `caps`, as the draft studio sends three. Shapes only; core's `reviseSetup` judges them,
+ * as at creation.
  */
 export const setupUpdateSchema = z
   .object({
     expectedVersion: z.number().int().positive(),
     brief: draftCreateSchema.shape.brief.optional(),
     sources: draftCreateSchema.shape.sources.optional(),
-    caps: draftCreateSchema.shape.caps.optional(),
+    caps: draftCreateSchema.shape.caps
+      .extend({
+        maxOpenPositions: z.number().optional(),
+        dayLossStopAusd: z.number().optional(),
+      })
+      .strict()
+      .optional(),
     voice: z.enum(VOICE_KEYS).optional(),
+    entry: z
+      .object({
+        mode: z.enum(["approve", "auto"]),
+        meanwhile: z.enum(["wait", "small"]),
+        smallAusd: z.number(),
+      })
+      .strict()
+      .optional(),
   })
   .strict();
 export type SetupUpdateDto = z.infer<typeof setupUpdateSchema>;
@@ -287,6 +303,21 @@ export const activityResponseSchema = z.object({
   ),
 });
 export type ActivityDto = z.infer<typeof activityResponseSchema>;
+
+/**
+ * `GET /v1/studio/agents/:id/versions` (studio-live-v1 L10): the agent's recorded setup versions,
+ * newest first, at most 20. `summary` is the server's line for what that save changed.
+ */
+export const versionsResponseSchema = z.object({
+  versions: z.array(
+    z.object({
+      version: z.number().int().positive(),
+      summary: z.string().min(1).max(200),
+      at: z.string().datetime(),
+    }),
+  ),
+});
+export type VersionsDto = z.infer<typeof versionsResponseSchema>;
 
 /** `POST /v1/studio/agents/:id/x/challenge`'s body: the handle, "@" optional. */
 export const xChallengeRequestSchema = z.object({ handle: z.string().max(64) }).strict();

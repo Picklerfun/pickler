@@ -3,7 +3,8 @@
  * run, so the design harness can put each one on the home without a runner or a database, and
  * `?stage=empty`: the home of a person with no agents yet, drawn with no fixture at all.
  * `?stage=create-*`: the create screen at each moment studio-create-simplified-v1 §7 lists, and
- * `?stage=draft*`: the draft studio at each state studio-draft-dashboard-v1 §7 lists.
+ * `?stage=draft*`: the draft studio at each state studio-draft-dashboard-v1 §7 lists, and
+ * `?stage=perpl-*`: the live studio of a published Perpl agent at each state studio-live-v1 §7 lists.
  *
  * Outside production only, and pure, like `sectionFromSearch`: `nodeEnv` is an argument so the
  * guard can be pinned in both positions. It is gated on the build alone, the way the creation
@@ -67,8 +68,39 @@ export const DRAFT_STAGES = [
 
 export type DraftStage = (typeof DRAFT_STAGES)[number];
 
-/** A run stage, a create stage, a draft studio stage, or the empty home. */
-export type StudioStage = HomeStage | CreateStage | DraftStage | "empty";
+/**
+ * The live studio of a published Perpl agent (studio-live-v1 §7): the Overview, paused, with the
+ * degraded banner, then each section, the brief with edits not applied, and the account's three
+ * tabs. `live/fixture.ts` draws each.
+ */
+export const LIVE_STAGES = [
+  "perpl-live",
+  "perpl-paused",
+  "perpl-warnings",
+  "perpl-positions",
+  "perpl-record",
+  "perpl-decisions",
+  "perpl-console",
+  "perpl-posts",
+  "perpl-brief",
+  "perpl-brief-dirty",
+  "perpl-sources",
+  "perpl-limits",
+  "perpl-controls",
+  "perpl-identity",
+  "perpl-agents",
+  "perpl-markets",
+  "perpl-leaders",
+  "perpl-wallets",
+  "perpl-account",
+  "perpl-account-profile",
+  "perpl-account-notify",
+] as const;
+
+export type LiveStage = (typeof LIVE_STAGES)[number];
+
+/** A run stage, a create stage, a draft or live studio stage, or the empty home. */
+export type StudioStage = HomeStage | CreateStage | DraftStage | LiveStage | "empty";
 
 export const isHomeStage = (stage: StudioStage | undefined): stage is HomeStage =>
   (STAGES as readonly string[]).includes(stage ?? "");
@@ -78,6 +110,9 @@ export const isCreateStage = (stage: StudioStage | undefined): stage is CreateSt
 
 export const isDraftStage = (stage: StudioStage | undefined): stage is DraftStage =>
   (DRAFT_STAGES as readonly string[]).includes(stage ?? "");
+
+export const isLiveStage = (stage: StudioStage | undefined): stage is LiveStage =>
+  (LIVE_STAGES as readonly string[]).includes(stage ?? "");
 
 export function stageFromSearch(
   nodeEnv: string | undefined,
@@ -89,6 +124,10 @@ export function stageFromSearch(
   const value = Array.isArray(asked) ? asked[0] : asked;
   if (value === "empty") {
     return value;
+  }
+  const live = LIVE_STAGES.find((stage) => stage === value);
+  if (live) {
+    return live;
   }
   const draft = DRAFT_STAGES.find((stage) => stage === value);
   if (draft) {

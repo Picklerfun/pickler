@@ -10,13 +10,18 @@ import type {
   paperOrderSchema,
   studioAgentSchema,
   ActivityDto,
+  DirectoryAgentDto,
   DraftCreateDto,
   IdentityUpdateDto,
   LedgerDto,
+  LeaderboardDto,
+  MarketDetailDto,
+  PerpMarketDto,
   PublishDto,
   SetupUpdateDto,
   SignedActivityDto,
   TransferRequestDto,
+  VersionsDto,
   WalletsDto,
   XChallengeDto,
   XChallengeRequestDto,
@@ -40,6 +45,8 @@ export type PaperOrder = ReturnType<typeof paperOrderSchema.parse>;
 export type { SignedActivityDto };
 export type StudioWallets = WalletsDto;
 export type ActivityEvent = ActivityDto["events"][number];
+/** One saved setup: its config version, the server's line for what changed, and when. */
+export type SetupVersion = VersionsDto["versions"][number];
 export type LedgerEntry = LedgerDto["entries"][number];
 export type XState = XStateDto;
 export type XChallenge = XChallengeDto;
@@ -151,9 +158,9 @@ export const setSchedule = (agentId: string, enabled: boolean) =>
 // ─── The draft's studio (studio-draft-dashboard-v1 §4) ──────────────────────────────────────────
 
 /**
- * `PUT /agents/:id/setup`: a draft's brief, sources, caps and voice, at `expectedVersion`. Answers
- * the studio agent. 400 INVALID_BRIEF (with `field`, `reason`) / INVALID_INPUT; 409 CONFLICT (the
- * config moved on: reload), NOT_A_DRAFT.
+ * `PUT /agents/:id/setup`: a Perpl agent's brief, sources, caps, voice and entry, draft or public,
+ * at `expectedVersion`. Answers the studio agent. 400 INVALID_BRIEF (with `field`, `reason`) /
+ * INVALID_INPUT; 409 CONFLICT (the config moved on: reload), NOT_A_PERPL_AGENT.
  */
 export const saveDraftSetup = (agentId: string, body: SetupUpdateDto) =>
   studioApi<Agent>(`/agents/${agentId}/setup`, { method: "PUT", body: JSON.stringify(body) });
@@ -165,6 +172,23 @@ export const saveIdentity = (agentId: string, body: IdentityUpdateDto) =>
 /** `GET /agents/:id/activity`: created, its wallet, each transfer; newest first, at most 50. */
 export const agentActivity = (agentId: string, signal?: AbortSignal) =>
   studioApi<ActivityDto>(`/agents/${agentId}/activity`, signal ? { signal } : {});
+
+/**
+ * `GET /agents/:id/versions`: the saved setups the server recorded, newest first, at most 20. The
+ * owner's alone (403 for a member); 404 NOT_FOUND for an agent that is not the caller's.
+ */
+export const agentVersions = (agentId: string, signal?: AbortSignal) =>
+  studioApi<VersionsDto>(`/agents/${agentId}/versions`, signal ? { signal } : {});
+
+/**
+ * `PUT /agents/:id/pause { paused }`: "Pause entries" / "Resume" (studio-live-v1 L4). Pausing
+ * refuses new paper opens; exits are untouched.
+ */
+export const setPaused = (agentId: string, paused: boolean) =>
+  studioApi<{ ok: true }>(`/agents/${agentId}/pause`, {
+    method: "PUT",
+    body: JSON.stringify({ paused }),
+  });
 
 /** `GET /agents/:id/x`: the verified account, the live challenge, and whether X is open yet. */
 export const xState = (agentId: string, signal?: AbortSignal) =>
@@ -365,3 +389,37 @@ export const transferConfirm = (body: TransferRequestDto, signed: SignedActivity
     method: "POST",
     body: JSON.stringify({ ...body, signed }),
   });
+
+// ─── The marketplace's public reads (`/v1/marketplace`), for the live studio ───────────────────────
+//
+// Public and unauthenticated, plain JSON like the studio routes. The server-side facade
+// (`server/container.ts`) is server-only, so the browser reads them here, through the same-origin
+// transport. A failure throws `StudioError` with the status as its code.
+
+async function marketplaceApi<T>(path: string, signal?: AbortSignal): Promise<T> {
+  const response = await fetch(`/api/v1/marketplace${path}`, {
+    cache: "no-store",
+    ...(signal ? { signal } : {}),
+  });
+  if (!response.ok) {
+    const code = String(response.status);
+    throw new StudioError(code, messageFor(code, undefined));
+  }
+  return (await response.json()) as T;
+}
+
+/** `GET /marketplace/markets`: Perpl's board (or the labelled sample board); 503 when unread. */
+export const marketplaceMarkets = (signal?: AbortSignal) =>
+  marketplaceApi<PerpMarketDto[]>("/markets", signal);
+
+/** `GET /marketplace/markets/:symbol` ("BTC-PERP"): the market with its 24 h trail, or null. */
+export const marketplaceMarket = (symbol: string, signal?: AbortSignal) =>
+  marketplaceApi<MarketDetailDto | null>(`/markets/${encodeURIComponent(symbol)}`, signal);
+
+/** `GET /marketplace/directory`: every public agent, in the directory's order. */
+export const marketplaceDirectory = (signal?: AbortSignal) =>
+  marketplaceApi<DirectoryAgentDto[]>("/directory", signal);
+
+/** `GET /marketplace/leaderboard`: ranked by score, with the weights that make it. */
+export const marketplaceLeaderboard = (signal?: AbortSignal) =>
+  marketplaceApi<LeaderboardDto>("/leaderboard", signal);

@@ -1,9 +1,9 @@
 "use client";
 import type { ReactNode } from "react";
 import type { Agent } from "../api";
+import { StudioSection } from "../shell/section";
 import { sectionLabel, type DraftSectionKey } from "./model";
 import type { UseDraft } from "./use-draft";
-import styles from "./draft.module.css";
 
 /**
  * What every draft section is handed by the shell (`draft-studio.tsx`): the agent, its data and
@@ -27,11 +27,7 @@ export interface DraftSectionProps {
   onCredits(): void;
 }
 
-/**
- * A section's frame: `#draft-section-<key>`, the landmark the design harness proves, labelled by
- * its name. The header above already says which section this is in its line under the name, so
- * the heading is for assistive technology; a section that draws its own title can pass `title`.
- */
+/** A draft section's frame (`../shell/section.tsx`): `#draft-section-<key>`, named as the rail names it. */
 export function DraftSection({
   section,
   title,
@@ -42,13 +38,9 @@ export function DraftSection({
   title?: ReactNode;
   children?: ReactNode;
 }) {
-  const titleId = `draft-section-${section}-title`;
   return (
-    <section className={styles.section} id={`draft-section-${section}`} aria-labelledby={titleId}>
-      <h2 id={titleId} className={title ? styles.sectionTitle : styles.srOnly}>
-        {title ?? sectionLabel(section)}
-      </h2>
+    <StudioSection idPrefix="draft" section={section} label={sectionLabel(section)} title={title}>
       {children}
-    </section>
+    </StudioSection>
   );
 }

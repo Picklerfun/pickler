@@ -108,6 +108,25 @@ person picks it right before turning the schedule on. With the schedule on, the 
 A retried create is recognised inside `StudioDirectory.createDraft` (by the wallet it links),
 before `admit` runs; the port has no separate lookup.
 
+Setup of a Perpl agent, draft or public (docs/specs/studio-live-v1.md L10–L13):
+`features/studio/revise.ts` owns `reviseSetup(config, patch)` and `SetupPatch` (renamed from
+`reviseDraft` / `DraftPatch`): brief, sources, caps (the three spend caps plus the optional
+`maxOpenPositions` and `dayLossStopAusd`), voice and `entry`, each optional, normalized and checked
+like create's. It must only be called for a config with `perpl`; the caller refuses the rest with
+`NOT_A_PERPL_AGENT`. `features/studio/setup-summary.ts` owns `setupChangeSummary(prev, next)`, the
+version line built from what changed, at most `SETUP_SUMMARY_MAX` (200) characters, cut with a BMP
+ellipsis to fit the database's check. `AgentConfig` gained `risk` (`RiskLimits`, bounded by
+`RISK_BOUNDS`: 1–6 open positions, a 5–200 AUSD day-loss stop in steps of 5; absent means
+`RISK_DEFAULTS`, read with `effectiveRisk`; checked by `assertRiskLimits`) and `entry`
+(`EntrySetting`: `ENTRY_MODES`, `ENTRY_MEANWHILE`, `smallAusd`; absent means `ENTRY_DEFAULTS`, read
+with `effectiveEntry`, which clamps the amount to the per-trade cap; checked by
+`assertEntrySetting`), both in `features/research/types.ts`. They are stored and shown; nothing
+enforces them until the Perpl runtime does. `ResearchRepository.updateConfig` takes
+`UpdateConfigOptions { perplOnly?, writeSpend?, versionSummary? }`: `perplOnly` refuses a config
+without `perpl` in the write's transaction, `writeSpend` writes the incoming `spend`, and
+`versionSummary` records the new version in the same transaction. `StudioDirectory.versions(access,
+productAgentId)` lists the recorded `SetupVersion`s, newest first, at most 20.
+
 Event persistence failures use `PersistenceFailure` and a sanitized `persistence_failure` event,
 not `provider_failure`. The discovery report callback obeys the same distinction. Preserve lease
 and configuration errors unchanged. If diagnostics cannot be persisted, do not fabricate a

@@ -66,6 +66,15 @@ that a day's limit is not below one call's. `limitsUpdateSchema` is the strict b
 `PUT /v1/studio/agents/:id/limits`: `perCallAusd` and `perDayAusd`, with no version, because saving
 limits keeps the configuration version.
 
+Setup and versions (docs/specs/studio-live-v1.md L10–L13): `src/research.ts` has `RISK_BOUNDS`, a
+mirror of core's pinned by `workers/api/test/accent-venue-mirror.test.ts`, and `riskLimitsSchema`
+and `entrySettingSchema`, which are `agentConfigSchema.risk` and `.entry` (both optional in the
+strict config). `setupUpdateSchema` is the strict body of `PUT /v1/studio/agents/:id/setup`:
+`expectedVersion` plus optional brief, sources, caps (with optional `maxOpenPositions` and
+`dayLossStopAusd`), voice and `entry`; it checks shapes only and core's `reviseSetup` judges the
+values. `versionsResponseSchema` answers `GET /v1/studio/agents/:id/versions`:
+`{ versions: [{ version, summary (1–200 characters), at (ISO) }] }`.
+
 ## Local trading integration
 
 The opt-in Polymarket pilot remains disabled by default. Read `../../apps/agent-service/LIVE-TRADING.md` for limits and acceptance gaps. No model tool or deployed signer is enabled by this change.

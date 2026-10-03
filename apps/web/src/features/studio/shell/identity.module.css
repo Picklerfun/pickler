@@ -1,15 +1,11 @@
 /* Identity & voice (canvas 443–477): the avatar and NAME card, VOICE, and X ACCOUNT.
  *
- * The same token mapping as `draft.module.css`: the canvas's #15182A cards are `--pk-panel`, its
+ * The same token mapping as `shell.module.css`: the canvas's #15182A cards are `--pk-panel`, its
  * #0B0D1A wells `--pk-bg`, its #9AA0B8 labels `--pk-ink-muted`, its #5A5F78 the faint ink, its lime
  * `--pk-lime-ink`, its pink hover `--pk-magenta-ink`. The cards, labels, voice chips, sample and
  * avatar button are the create screen's (`new-agent.module.css`), composed so the two screens stay
  * one drawing; this sheet holds no literal colour.
  */
-
-.column {
-  composes: column from "./build.module.css";
-}
 
 /* ---------- Avatar and name ---------- */
 
@@ -80,10 +76,7 @@
   letter-spacing: 0.08em;
   color: var(--pk-ink-faint);
 }
-/* SAVING… / SAVED / the reason, under the handle. */
-.nameState {
-  composes: hint from "./build.module.css";
-}
+/* SAVING… / SAVED / the reason, under the handle: a hint (`build.module.css`), lime once saved. */
 .nameState[data-tone="good"] {
   color: var(--pk-lime-ink);
 }

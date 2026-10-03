@@ -234,8 +234,21 @@ MON and AUSD reader caches nothing, so there is no MON reading to forget.
 `updateConfig` keeps the stored `config.spend` and ignores any `spend` in its input, so
 `updateSpend` is its usual writer. Because saving limits does not bump the version, a config saved
 at that same version would otherwise drop them. The one exception is `{ writeSpend: true }`, which
-a draft's setup passes with new caps: the incoming `spend` (checked by `assertSpendLimits`) is
+a setup passes with new caps: the incoming `spend` (checked by `assertSpendLimits`) is
 written in the same transaction as the rest of the config.
+
+Setup versions (docs/specs/studio-live-v1.md L10, migration 0026): `agents.setup_versions` holds
+one row per saved setup, `(agent_id, version)` with a summary of 1–200 characters; RLS is on and
+the service role may only select and insert. `updateConfig` takes `{ perplOnly?, writeSpend?,
+versionSummary? }`. `perplOnly` refuses with `NOT_A_PERPL_AGENT` when the stored config, read under
+the row lock, has no `perpl`. `versionSummary(prev, next)` is called with the stored config before
+and after the write, and its line is inserted with the new version number in the same transaction,
+under the product agent id `pickler.product_agents` maps the scope to; a failed write records
+nothing and a failed record rolls the write back. A runtime agent with no product row records
+none. `PostgresStudioDirectory.versions(access, productAgentId)` lists the newest 20, and is
+`NOT_FOUND` outside the workspace. Apply 0026 before deploying the API: every `PUT /setup` inserts
+a version row in its transaction, so an API without the table fails every setup save, the draft
+studio's included.
 
 ## Wallet sign-in nonces
 

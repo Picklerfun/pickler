@@ -3,7 +3,13 @@ import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { studioLanding } from "../src/features/studio/lib/landing";
 import { menuAccess, NEEDS_AGENT, VIEW_ONLY } from "../src/features/studio/home/access";
-import { CREATE_STAGES, isCreateStage, stageFromSearch } from "../src/features/studio/home/stage";
+import {
+  CREATE_STAGES,
+  DRAFT_STAGES,
+  LIVE_STAGES,
+  isCreateStage,
+  stageFromSearch,
+} from "../src/features/studio/home/stage";
 import { newAgentFixture } from "../src/features/studio/new-agent/fixture";
 import { emptyForm, funded } from "../src/features/studio/new-agent/model";
 
@@ -223,8 +229,8 @@ test("the wallet sheet stages are a first wallet's two steps: none made yet, the
 
 const routes = readFileSync(new URL("../../../scripts/design/routes.mjs", import.meta.url), "utf8");
 
-test("every create stage has exactly one /studio?stage=<stage> route in the design harness", () => {
-  for (const stage of CREATE_STAGES) {
+test("every create, draft and live stage has exactly one /studio?stage=<stage> route in the design harness", () => {
+  for (const stage of [...CREATE_STAGES, ...DRAFT_STAGES, ...LIVE_STAGES]) {
     const paths = routes.split(`path: "/studio?stage=${stage}"`).length - 1;
 
     assert.equal(paths, 1, stage);

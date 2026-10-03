@@ -4,28 +4,33 @@ import { test } from "node:test";
 import type { WalletsDto } from "@pickler/api-schema";
 import {
   DRAFT_SECTIONS,
-  X_NOT_FOUND_LINE,
-  X_UNAVAILABLE_LINE,
   activityView,
-  disconnectProblem,
   draftRail,
   goPublicView,
   headerTiles,
   isLockedSection,
   lockedCopy,
-  nameChange,
   publishBlockedCopy,
   publishProblem,
   sectionLabel,
-  voiceOf,
   walletCardView,
+} from "../src/features/studio/draft/model";
+import {
+  disconnectProblem,
+  nameChange,
+  voiceOf,
   xAccountTag,
+} from "../src/features/studio/shell/identity-model";
+import {
+  X_NOT_FOUND_LINE,
+  X_UNAVAILABLE_LINE,
   xHandleInput,
   xProblem,
   xView,
-} from "../src/features/studio/draft/model";
-import { addSite, briefTags, capsStepper } from "../src/features/studio/draft/build-model";
-import { clock, dayLabel, stamp } from "../src/features/studio/draft/clock";
+} from "../src/features/studio/shell/x-model";
+import { addSite, briefTags } from "../src/features/studio/shell/build-model";
+import { capsStepper } from "../src/features/studio/draft/caps-model";
+import { clock, dayLabel, stamp } from "../src/features/studio/shell/clock";
 import { INTERVAL_OPTIONS, nextRuns, runsPerDay } from "../src/features/studio/draft/run-model";
 import { draftStudioFixture } from "../src/features/studio/draft/fixture";
 import { DRAFT_STAGES, isDraftStage, stageFromSearch } from "../src/features/studio/home/stage";
@@ -685,7 +690,7 @@ test("allocationRows: master and each agent wallet read, positions and credits S
 });
 
 test("ledgerRows: from master's side, lime back in, local hh:mm today", async () => {
-  const { ledgerRows } = await import("../src/features/studio/draft/run-model");
+  const { ledgerRows } = await import("../src/features/studio/shell/wallet-model");
   const now = new Date(2026, 9, 2, 14, 30);
   const rows = ledgerRows(
     [

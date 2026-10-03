@@ -330,12 +330,21 @@ The draft's studio (docs/specs/studio-draft-dashboard-v1.md §4), all in `src/ro
 except the ledger. The studio agent DTO carries `visibility`, `publishedAt` (ISO or null) and
 `xHandle` (the verified handle without "@", or null), from `directory.list`.
 
-- `PUT /agents/:id/setup { expectedVersion, brief?, sources?, caps?, voice? }` (manage rights):
-  drafts only (409 `NOT_A_DRAFT`), core's `reviseDraft`, then `repository.updateConfig`, whose
-  stale version is 409 `CONFLICT` (the same code `PUT /config` answers). With `caps` it passes
-  `writeSpend`, so the new per-trade and per-day caps land in `spend` in the same transaction;
-  another owner's agent is 404 `NOT_FOUND`. A voice also renames the profile's voice through
-  `directory.updateIdentity`. Answers the studio agent; 400 `INVALID_BRIEF` / `INVALID_INPUT`.
+- `PUT /agents/:id/setup { expectedVersion, brief?, sources?, caps?, voice?, entry? }` (manage
+  rights; `caps` may carry `maxOpenPositions` and `dayLossStopAusd`, stored as `config.risk`):
+  any agent whose config has `perpl`, draft or public (409 `NOT_A_PERPL_AGENT` otherwise,
+  docs/specs/studio-live-v1.md L11; the route refuses before core's `reviseSetup`, which must
+  never see a config without `perpl`, and the store checks again with `perplOnly`), then
+  `repository.updateConfig`, whose stale version is 409 `CONFLICT` (the same code `PUT /config`
+  answers). With `caps` it passes `writeSpend`, so the new per-trade and per-day caps land in
+  `spend` in the same transaction. It always passes `versionSummary: setupChangeSummary`, so the
+  store records the new version in `agents.setup_versions` in that transaction, summarized by
+  core from the two stored configs. Another owner's agent is 404 `NOT_FOUND`. A voice also
+  renames the profile's voice through `directory.updateIdentity`. Answers the studio agent; 400
+  `INVALID_BRIEF` / `INVALID_INPUT`.
+- `GET /agents/:id/versions` (L10; manage rights, so a read-only member is 403): `{ versions:
+[{ version, summary, at }] }` from `directory.versions`, newest first, at most 20, ISO `at`;
+  another owner's agent is 404 `NOT_FOUND`. A version saved before migration 0026 has no row.
 - `PUT /agents/:id/identity { name?, avatar?: { accent, pattern 0–5 } }`: the studio agent; 400
   `INVALID_INPUT`. `GET /agents/:id/activity` answers `{ events }` (ISO `at`).
 - Connect X, composed as `services.studio.x` (`PostgresXStore`, `createXClient` on

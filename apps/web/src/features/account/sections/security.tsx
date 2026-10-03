@@ -1,17 +1,13 @@
 "use client";
 
 import { Button, Icon } from "@pickler/ui";
-import type { PasskeyDto } from "../../auth/lib/custody-api";
 import { coverage, coverageCopy, EMAIL_RECOVERY_ON } from "../lib/coverage";
-import { passkeyMeta, removalBlocked } from "../lib/passkeys";
-import { SecondPasskey } from "../../auth/components/second-passkey";
 import { NotYet } from "../components/not-yet";
+import { PasskeyList, type PasskeyState } from "../components/passkey-list";
 import { Toggle } from "../components/toggle";
 import styles from "../account.module.css";
 
-/** What the screen knows about this account's passkeys. `failed` is not an empty list. */
-export type PasskeyState =
-  { kind: "loading" } | { kind: "ready"; passkeys: PasskeyDto[] } | { kind: "failed" };
+export type { PasskeyState };
 
 export function SecuritySection({
   state: read,
@@ -45,35 +41,7 @@ export function SecuritySection({
       </div>
 
       <h3 className={styles.heading}>PASSKEYS · CAN MOVE FUNDS</h3>
-      <SecondPasskey passkeys={read} id="account-second-passkey" />
-      {read.kind === "loading" && <p className={styles.rowMeta}>READING YOUR PASSKEYS…</p>}
-      {read.kind === "failed" && (
-        <p className={styles.rowMeta}>
-          THIS LIST COULD NOT BE READ · YOUR PASSKEYS HAVE NOT CHANGED
-        </p>
-      )}
-      {listed?.map((passkey) => (
-        <div key={passkey.id} className={styles.row}>
-          <span className={styles.passkeyMark} aria-hidden="true" />
-          <div className={styles.rowText}>
-            <p className={styles.rowTitle}>{passkey.label}</p>
-            <p className={styles.rowMeta}>{passkeyMeta(passkey)}</p>
-          </div>
-          {/* Always disabled, with the title saying which of the two reasons applies. No route
-              deletes a passkey, so nothing here could run — and the one-key rule is already in
-              `removalBlocked` so that it is in place the day the route lands. */}
-          <Button
-            variant="ghost"
-            size="sm"
-            disabled
-            title={removalBlocked(listed.length)}
-            className={styles.remove}
-          >
-            Remove
-          </Button>
-        </div>
-      ))}
-      {listed?.length === 0 && <p className={styles.rowMeta}>NO PASSKEYS ON THIS ACCOUNT YET</p>}
+      <PasskeyList state={read} secondPasskeyId="account-second-passkey" />
       <NotYet title="A passkey cannot be removed yet">
         The signing API reads them and adds them; nothing deletes one. Until it does, the Remove on
         each row stays disabled — and it would stay disabled on the last passkey whatever happens,

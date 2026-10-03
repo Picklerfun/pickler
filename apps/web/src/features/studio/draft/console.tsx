@@ -1,9 +1,11 @@
 "use client";
 import { useState } from "react";
 import { StudioError } from "../api";
+import { TalkSoon } from "../shell/talk-soon";
+import { PREVIEW_NOTE } from "../shell/use-agent-studio";
+import { DraftSection, type DraftSectionProps } from "./draft-section";
 import { INTERVAL_OPTIONS, nextRuns, runInputs, runsPerDay } from "./run-model";
-import { DraftSection, type DraftSectionProps } from "./section";
-import { PREVIEW_NOTE, type IntervalHours } from "./use-draft";
+import type { IntervalHours } from "./use-draft";
 import styles from "./run.module.css";
 
 /** The canvas's starters for Talk to it, drawn shut until it opens (spec D12). */
@@ -18,8 +20,8 @@ const STARTERS = [
 /**
  * Console (canvas 530–636, spec §3.4, D12, D13, D19): the inputs a paper run would read, the run
  * button shut until the Perpl runtime, the schedule's interval (it saves) and its next runs, which
- * start with the runtime, What it did idle, and Talk to it drawn shut with a Soon tag. Nothing here
- * pretends a run happened or promises when one will.
+ * start with the runtime, What it did idle, and Talk to it drawn shut with a Soon tag
+ * (`../shell/talk-soon.tsx`). Nothing here pretends a run happened or promises when one will.
  */
 export function Console({ agent, draft, canManage, now, onSection }: DraftSectionProps) {
   /* The interval being saved: drawn chosen while the call is out, so the click shows at once. */
@@ -152,38 +154,13 @@ export function Console({ agent, draft, canManage, now, onSection }: DraftSectio
           </div>
         </div>
 
-        <div className={styles.talk} id="draft-console-talk">
-          <div className={styles.cardHead}>
-            <h3 className={styles.cardLabel}>TALK TO IT</h3>
-            <span className={styles.meta}>ASK WHY · OR TELL IT WHAT TO CHANGE</span>
-            <span className={styles.soon}>SOON</span>
-          </div>
-          <p className={styles.cardNote}>
-            It explains its calls, and it changes its own setup when you ask: sources, sites, caps,
-            schedule.
-          </p>
-          <div className={styles.thread}>
-            <div className={styles.chips}>
-              {STARTERS.map((starter) => (
-                <button key={starter} type="button" className={styles.starter} disabled>
-                  {starter}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div className={styles.ask}>
-            <input
-              type="text"
-              className={styles.askInput}
-              placeholder="Read coindesk.com too · run every 12h · why not ETH?"
-              aria-label="Talk to it, soon"
-              disabled
-            />
-            <button type="button" className={styles.send} disabled>
-              Send
-            </button>
-          </div>
-        </div>
+        <TalkSoon
+          idPrefix="draft"
+          section="console"
+          note="It explains its calls, and it changes its own setup when you ask: sources, sites, caps, schedule."
+          starters={STARTERS}
+          placeholder="Read coindesk.com too · run every 12h · why not ETH?"
+        />
       </div>
     </DraftSection>
   );

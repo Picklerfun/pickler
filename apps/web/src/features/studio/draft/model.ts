@@ -1,18 +1,21 @@
 // apps/web/src/features/studio/draft/model.ts
 /**
  * The draft studio's shell and Overview rules (docs/specs/studio-draft-dashboard-v1.md, the
- * "Pickler Studio Draft" canvas): the rail and its locks, the header tiles, Go Public's state,
- * Connect X's card, the publish blockers' words, Overview's wallet card and activity, and Identity
- * & voice's name, voice and X account. The Build sections' rules are `build-model.ts`'s, the Run
- * and YOU sections' `run-model.ts`'s, and every clock is `clock.ts`'s. Pure, no React and no
- * transport, so each rule is pinned in `apps/web/test/studio-draft-model.test.ts`.
+ * "Pickler Studio Draft" canvas): the rail and its locks, the header tiles, Go Public's state, the
+ * publish blockers' words, and Overview's wallet card and activity. The caps are `caps-model.ts`'s,
+ * the Run and YOU sections' rules `run-model.ts`'s. What the live studio shares is in `../shell/`:
+ * Connect X's card (`x-model.ts`), Identity & voice (`identity-model.ts`), the brief and sources
+ * (`build-model.ts`), the ledger (`wallet-model.ts`) and every clock (`clock.ts`). Pure, no React
+ * and no transport, so each rule is pinned in `apps/web/test/studio-draft-model.test.ts`.
  *
  * Section keys are the canvas's (`picks` is Trades, `skills` is Sources & rules).
  */
 import type { PublishBlockerDto, WalletsDto } from "@pickler/api-schema";
-import { formatUnits, shortAddress, unitsOf, VOICES, type VoiceKey } from "../new-agent/model";
-import { agentWalletRead, type Caps } from "./build-model";
-import { dayLabel, dayNumber, stamp } from "./clock";
+import { formatUnits, shortAddress, unitsOf } from "../new-agent/model";
+import { agentWalletRead } from "../shell/build-model";
+import { dayLabel, dayNumber, stamp } from "../shell/clock";
+import type { HeaderTile, RailGroup, RailItem } from "../shell/model";
+import type { Caps } from "./caps-model";
 
 export type DraftSectionKey =
   | "overview"
@@ -88,19 +91,18 @@ export const DRAFT_SECTIONS = [
   { title: "YOU", items: [item("trade", "coin"), item("master", "wallet")] },
 ] as const;
 
-export interface RailItem {
-  key: DraftSectionKey;
+/** A draft rail item: the shell's, with its icon, its lock and its hover title always set. */
+export interface DraftRailItem extends RailItem<DraftSectionKey> {
   icon: DraftIcon;
-  label: string;
   locked: boolean;
-  /** The current section. */
-  on: boolean;
   /** The hover title: a locked item says when it opens. */
   title: string;
 }
 
 /** The rail with the current section on and its locked items marked. */
-export const draftRail = (current: DraftSectionKey): { title: string; items: RailItem[] }[] =>
+export const draftRail = (
+  current: DraftSectionKey,
+): (RailGroup<DraftSectionKey> & { items: DraftRailItem[] })[] =>
   DRAFT_SECTIONS.map((group) => ({
     title: group.title,
     items: group.items.map((entry) => ({
@@ -115,13 +117,6 @@ export const isLockedSection = (key: DraftSectionKey): boolean => LOCKED.include
 /** The locked panel's line. */
 export const lockedCopy = (key: DraftSectionKey): string =>
   `${SECTION_LABELS[key]} opens when it's public.`;
-
-export interface HeaderTile {
-  label: string;
-  value: string;
-  /** Not built yet: drawn as "Soon", never as a number (spec D15). */
-  soon: boolean;
-}
 
 /**
  * The header's five tiles: master and the agents' wallets are read from `GET /wallets`, the other
@@ -202,68 +197,6 @@ export function goPublicView(input: {
   };
 }
 
-/** Spec D5: nothing pretends to verify without Pickler's X app. */
-export const X_UNAVAILABLE_LINE =
-  "X verification isn't open yet. Skip it for now; you can connect X later in Identity & voice.";
-
-export interface XCardState {
-  /** The issued challenge: the handle it was issued for and the line to post. */
-  challenge: { handle: string; text: string } | null;
-  checking: boolean;
-  /** The API answered 503 `X_UNAVAILABLE`. */
-  unavailable: boolean;
-  /** The handle the API said is another agent's (409 `X_HANDLE_TAKEN`). */
-  taken: string | null;
-  /** The last "Check again" did not find the post. */
-  missed: boolean;
-}
-
-export interface XView {
-  button: "Verify" | "Checking…" | "Check again";
-  disabled: boolean;
-  /** `missed` is the last check's answer, said inside the block so it is announced. */
-  miss: { title: string; line: string; hint: string; missed: string | null } | null;
-  unavailable: string | null;
-  taken: string | null;
-}
-
-/** The last check's answer when the post was not there. */
-export const X_NOT_FOUND_LINE = "Not found yet. Post the line, then check again.";
-
-/**
- * Connect X's card: "Verify" asks for a challenge and shows the line to post (spec §3.1); with one
- * issued the button reads "Check again" and the miss block stays until the post is found. A handle
- * typed since (`typed`, as `xHandleInput` reads it) that is not the challenge's gets a new line, so
- * the button says Verify again.
- */
-export function xView(state: XCardState, typed: string | null = null): XView {
-  const { challenge } = state;
-  const sameHandle =
-    challenge !== null &&
-    (typed === null || typed.toLowerCase() === challenge.handle.toLowerCase());
-  let button: XView["button"] = "Verify";
-  if (state.checking) {
-    button = "Checking…";
-  } else if (challenge && sameHandle) {
-    button = "Check again";
-  }
-  return {
-    button,
-    disabled: state.checking,
-    miss:
-      challenge && !state.unavailable
-        ? {
-            title: "We couldn't find the post yet.",
-            line: challenge.text,
-            hint: `POST THIS FROM @${challenge.handle.toUpperCase()} · THEN CHECK AGAIN`,
-            missed: state.missed && sameHandle ? X_NOT_FOUND_LINE : null,
-          }
-        : null,
-    unavailable: state.unavailable ? X_UNAVAILABLE_LINE : null,
-    taken: state.taken ? `@${state.taken} is already another agent's.` : null,
-  };
-}
-
 /** api-schema's `PUBLISH_BLOCKERS`, as a type: the web keeps no list of its own. */
 export type PublishBlocker = PublishBlockerDto;
 
@@ -286,50 +219,6 @@ export function publishBlockedCopy(
     text: PUBLISH_BLOCKER_TEXT[blocker],
     fund: blocker === "FUNDS",
   }));
-}
-
-/**
- * The handle as typed, without its "@", or null when X would not take it: core's `parseXHandle`
- * rule (1 to 15 letters, digits or _), mirrored so Verify can say so before anything is sent. The
- * server parses it again and decides.
- */
-export function xHandleInput(raw: string): string | null {
-  const handle = raw.trim().replace(/^@/, "");
-  return /^[A-Za-z0-9_]{1,15}$/.test(handle) ? handle : null;
-}
-
-/** What Connect X shows for a failed challenge or check, by the API's error code. */
-export type XProblem =
-  /** 503 X_UNAVAILABLE: spec D5's line, in the card's own place for it. */
-  | { kind: "unavailable" }
-  /** 409 X_HANDLE_TAKEN: the card's taken line for this handle. */
-  | { kind: "taken"; handle: string }
-  /** The challenge lapsed or is gone: drop it, so the button reads Verify again, and say why. */
-  | { kind: "expired"; text: string }
-  /** A staged or preview studio: nothing is sent, the caller shows the preview note. */
-  | { kind: "preview" }
-  | { kind: "error"; text: string };
-
-export function xProblem(code: string, handle: string, fallback: string): XProblem {
-  switch (code) {
-    case "X_UNAVAILABLE":
-      return { kind: "unavailable" };
-    case "X_HANDLE_TAKEN":
-      return { kind: "taken", handle };
-    case "TOO_MANY_CHECKS":
-      return { kind: "error", text: "Wait a few seconds, then check again." };
-    case "INVALID_X_HANDLE":
-      return { kind: "error", text: "That isn't an X handle." };
-    case "CHALLENGE_EXPIRED":
-    case "CHALLENGE_NOT_FOUND":
-      return { kind: "expired", text: "That line has lapsed. Press Verify for a new one." };
-    case "X_ALREADY_CONNECTED":
-      return { kind: "error", text: "It already has an X account." };
-    case "PREVIEW":
-      return { kind: "preview" };
-    default:
-      return { kind: "error", text: fallback };
-  }
 }
 
 /** What Go Public shows when `POST /publish` fails. */
@@ -445,41 +334,3 @@ export function activityView(
     rows,
   };
 }
-
-/* ---------- Identity & voice (spec D14, §3.2) ---------- */
-
-/** The name's bounds, as `PUT /identity` holds them: 1–40 once trimmed. */
-export const NAME_MAX = 40;
-
-/**
- * What leaving the NAME box does: nothing when the trimmed name is the saved one (no request),
- * the reason when it is out of bounds, else the trimmed name to save.
- */
-export function nameChange(
-  saved: string | undefined,
-  typed: string,
-): { kind: "same" } | { kind: "bad"; text: string } | { kind: "save"; name: string } {
-  const name = typed.trim();
-  if (name === (saved ?? "").trim()) {
-    return { kind: "same" };
-  }
-  if (!name) {
-    return { kind: "bad", text: "IT NEEDS A NAME" };
-  }
-  if (name.length > NAME_MAX) {
-    return { kind: "bad", text: `${NAME_MAX} CHARACTERS AT MOST` };
-  }
-  return { kind: "save", name };
-}
-
-/** The voice the config holds, or the first (Analyst) for a config without one. */
-export const voiceOf = (voice: string | undefined): VoiceKey =>
-  VOICES.find((option) => option.key === voice)?.key ?? "analyst";
-
-/** The X ACCOUNT card's tag. */
-export const xAccountTag = (handle: string | null): "CONNECTED" | "NOT CONNECTED" =>
-  handle ? "CONNECTED" : "NOT CONNECTED";
-
-/** DISCONNECT refused, in words: a public agent keeps its account (D6); anything else as said. */
-export const disconnectProblem = (code: string, fallback: string): string =>
-  code === "X_ON_PUBLIC_AGENT" ? "A public agent keeps its X account." : fallback;

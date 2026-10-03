@@ -1,7 +1,8 @@
 /**
- * The draft studio's one clock: "hh:mm", a calendar day's number and "OCT 1", all in local time.
- * The server renders in its own zone (UTC), so every view that prints one of these marks it
- * `suppressHydrationWarning`. Pure, pinned in `apps/web/test/studio-draft-model.test.ts`.
+ * The one clock of an agent's studio, draft or live: "hh:mm", a calendar day's number and "OCT 1",
+ * all in local time. The server renders in its own zone (UTC), so every view that prints one of
+ * these marks it `suppressHydrationWarning`. Pure, pinned in
+ * `apps/web/test/studio-draft-model.test.ts`.
  */
 
 const MONTHS = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];

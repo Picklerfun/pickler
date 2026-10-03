@@ -2,15 +2,17 @@
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 import { Icon } from "@pickler/ui";
 import { accentVars } from "@/lib/accent";
-import { errorCode } from "../api";
+import { errorCode, type Agent } from "../api";
 import { AvatarPicker, type AvatarChoice } from "../new-agent/avatar-picker";
 import { AvatarGrid } from "../new-agent/identity";
 import { VOICES, radioStep, type VoiceKey } from "../new-agent/model";
-import { disconnectProblem, nameChange, voiceOf, xAccountTag, NAME_MAX } from "./model";
-import { DraftSection, type DraftSectionProps } from "./section";
+import { AgentAvatar } from "./agent-avatar";
+import { disconnectProblem, nameChange, voiceOf, xAccountTag, NAME_MAX } from "./identity-model";
 import { SaveOutcome, useSetupSave } from "./setup-save";
-import { PREVIEW_NOTE } from "./use-draft";
+import { PREVIEW_NOTE, type UseAgentStudio } from "./use-agent-studio";
 import { XConnect } from "./x-connect";
+import type { StudioIdPrefix } from "./model";
+import build from "./build.module.css";
 import styles from "./identity.module.css";
 
 /** Where a name, avatar or disconnect write stands, in words under its control. */
@@ -28,15 +30,53 @@ const failed = (caught: unknown, fallback: string): WriteState =>
     ? { kind: "preview" }
     : { kind: "error", text: caught instanceof Error ? caught.message : fallback };
 
+export interface IdentityProps {
+  /** `draft` or `live`: the cards are `#<idPrefix>-identity-card`, `-voice` and `-x`. */
+  idPrefix: StudioIdPrefix;
+  agent: Agent;
+  /** The studio's data and writes: identity, setup (the voice) and X. */
+  studio: Pick<
+    UseAgentStudio,
+    "x" | "saveIdentity" | "saveSetup" | "refreshAgent" | "challengeX" | "verifyX" | "disconnectX"
+  >;
+  /** The person may change this workspace; a view-only member sees every control shut. */
+  canManage: boolean;
+  /** The avatar opens the picker (a draft); a public agent's is only drawn (studio-live-v1 L17). */
+  avatarEditable: boolean;
+  /** Beside the handle: "HANDLE IS FIXED", or "HANDLE IS FIXED · PUBLIC". */
+  handleNote: string;
+  /** VOICE's line: "how every post reads", and from when for a public agent. */
+  voiceSub: string;
+  /** X ACCOUNT's line: what the agent does with the account. */
+  xSub: string;
+  /** A connected account shows DISCONNECT (a draft); a public agent keeps its account. */
+  canDisconnectX: boolean;
+  /** Said under a connected account that cannot be disconnected. */
+  xKeptNote?: string;
+}
+
 /**
- * Identity & voice (spec D14, §3.2; canvas 443–477). The avatar opens the create screen's picker
- * and saves accent and pattern once it closes; NAME saves on blur or Enter (1–40 once trimmed, an
- * unchanged name sends nothing); the handle is fixed. VOICE is a radio group that saves the pick
- * at once through `PUT /setup`, with its sample under it. X ACCOUNT connects by a post
- * (`x-connect.tsx`) or shows the verified handle with DISCONNECT, which a public agent is refused.
- * A view-only member sees every control shut; a staged or preview studio says nothing is saved.
+ * Identity & voice (draft spec D14, §3.2; canvas 443–477), one implementation for the draft and
+ * the published agent, whose differences are props (studio-live-v1 L17). The avatar opens the
+ * create screen's picker and saves accent and pattern once it closes; NAME saves on blur or Enter
+ * (1–40 once trimmed, an unchanged name sends nothing); the handle is fixed. VOICE is a radio group
+ * that saves the pick at once through `PUT /setup`, with its sample under it. X ACCOUNT connects by
+ * a post (`x-connect.tsx`) or shows the verified handle, with DISCONNECT while the agent is
+ * private. A view-only member sees every control shut; a staged or preview studio says nothing is
+ * saved. The section's frame is the studio's own.
  */
-export function Identity({ agent, draft, canManage }: DraftSectionProps) {
+export function Identity({
+  idPrefix,
+  agent,
+  studio,
+  canManage,
+  avatarEditable,
+  handleNote,
+  voiceSub,
+  xSub,
+  canDisconnectX,
+  xKeptNote,
+}: IdentityProps) {
   const nameId = useId();
   const voiceLabel = useId();
   const alive = useRef(true);
@@ -69,7 +109,7 @@ export function Identity({ agent, draft, canManage }: DraftSectionProps) {
     }
     setNameState({ kind: "saving" });
     try {
-      await draft.saveIdentity({ name: change.name });
+      await studio.saveIdentity({ name: change.name });
       if (alive.current) {
         setNameState({ kind: "saved" });
       }
@@ -99,7 +139,7 @@ export function Identity({ agent, draft, canManage }: DraftSectionProps) {
     setSavingAvatar(choice);
     setAvatarState({ kind: "saving" });
     try {
-      await draft.saveIdentity({ avatar: { accent: choice.accent, pattern: choice.pattern } });
+      await studio.saveIdentity({ avatar: { accent: choice.accent, pattern: choice.pattern } });
       if (alive.current) {
         setAvatarState({ kind: "saved" });
       }
@@ -115,7 +155,7 @@ export function Identity({ agent, draft, canManage }: DraftSectionProps) {
   }
 
   /* VOICE: the pick is drawn at once and saved; a stale save reloads and says so. */
-  const voiceSave = useSetupSave(draft);
+  const voiceSave = useSetupSave(studio);
   const [pendingVoice, setPendingVoice] = useState<VoiceKey | null>(null);
   const savedVoice = voiceOf(agent.config.voice);
   const voice = voiceSave.saving && pendingVoice ? pendingVoice : savedVoice;
@@ -149,7 +189,7 @@ export function Identity({ agent, draft, canManage }: DraftSectionProps) {
   }
 
   /* X ACCOUNT: the verified handle as the X read has it, else as the agent carries it. */
-  const xHandle = draft.x ? (draft.x.account?.handle ?? null) : (agent.xHandle ?? null);
+  const xHandle = studio.x ? (studio.x.account?.handle ?? null) : (agent.xHandle ?? null);
   const [xState, setXState] = useState<WriteState>(IDLE);
 
   /* A verified post unmounts Connect X and its Verify button, which held the focus: the
@@ -172,7 +212,7 @@ export function Identity({ agent, draft, canManage }: DraftSectionProps) {
     }
     setXState({ kind: "saving" });
     try {
-      await draft.disconnectX();
+      await studio.disconnectX();
       if (alive.current) {
         setXState(IDLE);
       }
@@ -195,24 +235,28 @@ export function Identity({ agent, draft, canManage }: DraftSectionProps) {
   }
 
   return (
-    <DraftSection section="identity">
-      <div className={styles.column}>
-        <div className={styles.identity} id="draft-identity-card">
-          <button
-            type="button"
-            className={styles.avatarButton}
-            style={accentVars(avatar.accent)}
-            aria-label="Pick its avatar"
-            title="Pick its avatar"
-            aria-haspopup="dialog"
-            disabled={!canManage || avatarState.kind === "saving"}
-            onClick={() => {
-              setAvatarState(IDLE);
-              setPicking(avatar);
-            }}
-          >
-            <AvatarGrid pattern={avatar.pattern} />
-          </button>
+    <>
+      <div className={build.column}>
+        <div className={styles.identity} id={`${idPrefix}-identity-card`}>
+          {avatarEditable ? (
+            <button
+              type="button"
+              className={styles.avatarButton}
+              style={accentVars(avatar.accent)}
+              aria-label="Pick its avatar"
+              title="Pick its avatar"
+              aria-haspopup="dialog"
+              disabled={!canManage || avatarState.kind === "saving"}
+              onClick={() => {
+                setAvatarState(IDLE);
+                setPicking(avatar);
+              }}
+            >
+              <AvatarGrid pattern={avatar.pattern} />
+            </button>
+          ) : (
+            <AgentAvatar accent={avatar.accent} pattern={avatar.pattern} size="large" />
+          )}
           <div className={styles.identityText}>
             <label className={styles.nameLabel} htmlFor={nameId}>
               NAME
@@ -244,7 +288,7 @@ export function Identity({ agent, draft, canManage }: DraftSectionProps) {
             />
             <span className={styles.handleRow}>
               {agent.handle ? `@${agent.handle}` : "NO HANDLE"}
-              <span className={styles.fixed}>HANDLE IS FIXED</span>
+              <span className={styles.fixed}>{handleNote}</span>
             </span>
             <span id={`${nameId}-state`}>
               <WriteLine state={nameState} />
@@ -253,12 +297,12 @@ export function Identity({ agent, draft, canManage }: DraftSectionProps) {
           </div>
         </div>
 
-        <div className={styles.card} id="draft-identity-voice">
+        <div className={styles.card} id={`${idPrefix}-identity-voice`}>
           <div className={styles.cardHead}>
             <span className={styles.label} id={voiceLabel}>
               VOICE
             </span>
-            <span className={styles.sub}>how every post reads</span>
+            <span className={styles.sub}>{voiceSub}</span>
           </div>
           <div
             className={styles.voices}
@@ -291,10 +335,10 @@ export function Identity({ agent, draft, canManage }: DraftSectionProps) {
           <SaveOutcome state={voiceSave.state} />
         </div>
 
-        <div className={styles.card} id="draft-identity-x">
+        <div className={styles.card} id={`${idPrefix}-identity-x`}>
           <div className={styles.cardHead}>
             <span className={styles.label}>X ACCOUNT</span>
-            <span className={styles.sub}>where it posts · optional</span>
+            <span className={styles.sub}>{xSub}</span>
             <span className={styles.xTag} data-on={xHandle !== null}>
               {xAccountTag(xHandle)}
             </span>
@@ -305,39 +349,44 @@ export function Identity({ agent, draft, canManage }: DraftSectionProps) {
               <span className={styles.xHandle} ref={xHandleRef} tabIndex={-1}>
                 @{xHandle}
               </span>
-              <button
-                type="button"
-                className={styles.disconnect}
-                disabled={!canManage || xState.kind === "saving"}
-                aria-label={`Disconnect @${xHandle}`}
-                onClick={() => void disconnect()}
-              >
-                {xState.kind === "saving" ? "DISCONNECTING…" : "DISCONNECT"}
-              </button>
+              {canDisconnectX && (
+                <button
+                  type="button"
+                  className={styles.disconnect}
+                  disabled={!canManage || xState.kind === "saving"}
+                  aria-label={`Disconnect @${xHandle}`}
+                  onClick={() => void disconnect()}
+                >
+                  {xState.kind === "saving" ? "DISCONNECTING…" : "DISCONNECT"}
+                </button>
+              )}
             </div>
           ) : (
             <XConnect
-              x={draft.x}
+              x={studio.x}
               canManage={canManage}
-              onChallenge={draft.challengeX}
-              onVerify={draft.verifyX}
-              idPrefix="draft-identity"
+              onChallenge={studio.challengeX}
+              onVerify={studio.verifyX}
+              idPrefix={`${idPrefix}-identity`}
               well
             />
           )}
+          {xHandle && !canDisconnectX && xKeptNote && <p className={styles.notice}>{xKeptNote}</p>}
           {/* The button says DISCONNECTING… while it is out. */}
           <WriteLine state={xState.kind === "saving" ? IDLE : xState} />
         </div>
       </div>
 
       {/* Always mounted, so closing hands the focus back to the avatar button. */}
-      <AvatarPicker
-        open={picking !== null}
-        form={picking ?? avatar}
-        onChange={setPicking}
-        onClose={() => void closeAvatar()}
-      />
-    </DraftSection>
+      {avatarEditable && (
+        <AvatarPicker
+          open={picking !== null}
+          form={picking ?? avatar}
+          onChange={setPicking}
+          onClose={() => void closeAvatar()}
+        />
+      )}
+    </>
   );
 }
 
@@ -345,10 +394,10 @@ export function Identity({ agent, draft, canManage }: DraftSectionProps) {
 function WriteLine({ state }: { state: WriteState }) {
   switch (state.kind) {
     case "saving":
-      return <span className={styles.nameState}>SAVING…</span>;
+      return <span className={`${build.hint} ${styles.nameState}`}>SAVING…</span>;
     case "saved":
       return (
-        <span className={styles.nameState} data-tone="good" role="status">
+        <span className={`${build.hint} ${styles.nameState}`} data-tone="good" role="status">
           SAVED
         </span>
       );

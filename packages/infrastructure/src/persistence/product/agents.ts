@@ -241,3 +241,27 @@ export const xAccounts = agentsSchema
     (t) => [uniqueIndex("x_accounts_handle_key").on(sql`lower(${t.handle})`)],
   )
   .enableRLS();
+
+/**
+ * One row per saved setup (studio-live-v1 L10): the config version it produced and the one line
+ * core built from what changed. Written by `updateConfig` in the transaction that bumps the
+ * version, never from client text. A version from before this table has no row.
+ */
+export const setupVersions = agentsSchema
+  .table(
+    "setup_versions",
+    {
+      agentId: uuid("agent_id")
+        .notNull()
+        .references(() => agents.id, { onDelete: "cascade" }),
+      version: integer("version").notNull(),
+      summary: text("summary").notNull(),
+      createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    },
+    (t) => [
+      primaryKey({ columns: [t.agentId, t.version] }),
+      check("setup_versions_version_positive", sql`${t.version} > 0`),
+      check("setup_versions_summary_length", sql`char_length(${t.summary}) BETWEEN 1 AND 200`),
+    ],
+  )
+  .enableRLS();

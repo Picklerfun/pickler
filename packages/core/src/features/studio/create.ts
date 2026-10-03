@@ -119,7 +119,7 @@ export function copyWeb(
 
 /**
  * What the web source switches on: the perps tools and plugins every draft has, plus the web tools
- * and Exa when the web is a source. `prepareDraft` and `reviseDraft` both derive these here, so a
+ * and Exa when the web is a source. `prepareDraft` and `reviseSetup` both derive these here, so a
  * draft edited later holds exactly what one created with the same sources would.
  */
 export function webDerived(

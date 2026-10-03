@@ -5,28 +5,13 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useStudioHref } from "@/features/site/studio-href";
 import { useEffect, useState, useSyncExternalStore } from "react";
-import { WebauthnStamper } from "@turnkey/webauthn-stamper";
 import { MONAD_TESTNET } from "@pickler/chain";
-import { PasskeySheet } from "../auth/components/passkey-sheet";
-import {
-  CUSTODY_API,
-  SessionExpired,
-  addPasskey,
-  describeCustodyFailure,
-  readSubOrganization,
-  redirectFor,
-  openChallenge,
-  type CustodyDeps,
-} from "../auth/lib/custody";
-import {
-  passkeys as readPasskeys,
-  wallet as readWallet,
-  type ChallengeOptionsDto,
-} from "../auth/lib/custody-api";
+import { readSubOrganization, redirectFor } from "../auth/lib/custody";
+import { passkeys as readPasskeys, wallet as readWallet } from "../auth/lib/custody-api";
 import { describeDevice } from "../auth/lib/device";
 import { ApiError, getProfile, type ProfileDto } from "../auth/lib/pickler-api";
-import type { SheetPhase } from "../auth/lib/sheet";
 import { getSupabase } from "../auth/lib/supabase-browser";
+import { useAddPasskey } from "./components/add-passkey";
 import { coverage } from "./lib/coverage";
 import { accountPreview } from "./lib/preview";
 import { SECTIONS, type SectionKey } from "./lib/sections";
@@ -34,17 +19,6 @@ import { ProfileSection } from "./sections/profile";
 import { SecuritySection, type PasskeyState } from "./sections/security";
 import { WalletSection, type WalletState } from "./sections/wallet";
 import styles from "./account.module.css";
-
-/** What a passkey added from this screen is called in the account's list. */
-const BACKUP_LABEL = "Backup passkey";
-
-/** Everything the reused auth sheet needs to draw itself, and the challenge behind it. */
-interface SheetState {
-  phase: SheetPhase;
-  error: string | null;
-  options: ChallengeOptionsDto | null;
-  step?: 1 | 2;
-}
 
 const userAgent = () => (typeof navigator === "undefined" ? null : navigator.userAgent);
 
@@ -94,7 +68,7 @@ export function Account({ opening }: { opening: SectionKey }) {
     preview ? { kind: "ready", passkeys: preview.passkeys } : { kind: "loading" },
   );
   const [signedIn, setSignedIn] = useState<boolean | null>(preview ? false : null);
-  const [sheet, setSheet] = useState<SheetState | null>(null);
+  const addDevice = useAddPasskey();
   const origin = useSyncExternalStore(subscribeOrigin, readOrigin, originOnServer);
 
   useEffect(() => {
@@ -162,67 +136,6 @@ export function Account({ opening }: { opening: SectionKey }) {
       live = false;
     };
   }, [preview, router]);
-
-  function custody(): CustodyDeps {
-    return {
-      // Read again on every call rather than carried across the prompt: supabase-js refreshes an
-      // expired session as it hands the token over, and a prompt can sit on screen for minutes.
-      token: async () => {
-        const supabase = getSupabase();
-        const { data } = (await supabase?.auth.getSession()) ?? { data: { session: null } };
-        if (!data.session) {
-          throw new SessionExpired();
-        }
-        return data.session.access_token;
-      },
-      credentials: navigator.credentials,
-      api: CUSTODY_API,
-      stamp: (rpId, body) => new WebauthnStamper({ rpId }).stamp(body),
-    };
-  }
-
-  /**
-   * Opens the sheet and fetches the challenge behind it, so confirming reaches the operating system
-   * without a network round trip in between — an awaited fetch there can spend the user activation
-   * Safari requires for `credentials.create()`. Same ordering as features/auth and for the same
-   * reason; lib/custody.ts is where both screens' ceremony actually lives.
-   */
-  function openSheet() {
-    const opening: SheetState = { phase: "busy", error: null, options: null };
-    setSheet(opening);
-    void (async () => {
-      try {
-        setSheet({ ...opening, phase: "idle", options: await openChallenge(custody()) });
-      } catch (caught) {
-        setSheet({ ...opening, phase: "error", error: describeCustodyFailure(caught) });
-      }
-    })();
-  }
-
-  function confirm() {
-    const current = sheet;
-    const options = current?.options;
-    if (!current || !options) {
-      return;
-    }
-    const running: SheetState = { ...current, phase: "busy", error: null };
-    setSheet(running);
-    void (async () => {
-      try {
-        await addPasskey(custody(), {
-          options,
-          // A second key belongs on something other than the device in your hand, which is what
-          // "cross-platform" asks the operating system for.
-          attachment: "cross-platform",
-          label: BACKUP_LABEL,
-          onStep: (step) => setSheet((now) => (now ? { ...now, step } : now)),
-        });
-        setSheet({ ...running, phase: "ok" });
-      } catch (caught) {
-        setSheet({ ...running, phase: "error", error: describeCustodyFailure(caught) });
-      }
-    })();
-  }
 
   const handle = profile?.handle ?? null;
   const covered = coverage(passkeys.kind === "ready" ? passkeys.passkeys.length : null);
@@ -296,7 +209,7 @@ export function Account({ opening }: { opening: SectionKey }) {
               {section === "security" && (
                 <SecuritySection
                   state={passkeys}
-                  onAddPasskey={openSheet}
+                  onAddPasskey={addDevice.open}
                   canAdd={signedIn === true}
                   session={session}
                 />
@@ -307,23 +220,7 @@ export function Account({ opening }: { opening: SectionKey }) {
         </div>
       </div>
 
-      {/* The sheet from features/auth rather than a second one built here. It runs the ceremony this
-          screen needs — `backup`, the one that puts a key on a phone or a security key — its copy is
-          covered phase by phase in apps/web/test/sheet.test.ts, and it already carries the
-          `data-surface="dark"` a body-level dialog needs, because a dialog is a child of the body,
-          inherits no surface, and would otherwise fall through to the light default. A second
-          dialog would be a third chance to forget that; the repository has forgotten it twice. */}
-      <PasskeySheet
-        open={sheet !== null}
-        ceremony="backup"
-        phase={sheet?.phase ?? "idle"}
-        error={sheet?.error ?? null}
-        rpId={sheet?.options?.rp.id ?? null}
-        userAgent={userAgent()}
-        onConfirm={confirm}
-        onCancel={() => setSheet(null)}
-        onRetry={openSheet}
-      />
+      {addDevice.sheet}
     </main>
   );
 }

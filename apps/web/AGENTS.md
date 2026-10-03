@@ -22,6 +22,8 @@ src/features/studio/       # Studio sections, history, research result and API c
 src/features/studio/new-agent # Creating an agent: one screen, wallet first, then funding, then Create
 src/features/studio/home   # The home: status, wallet and deposit, schedule, picks; the create gate
 src/features/studio/draft  # A private draft's own studio: rail with locks, tiles, Go Public, its sections
+src/features/studio/live   # A published Perpl agent's studio: strip, rail, Pause entries, its sections
+src/features/studio/shell  # The chrome and parts both agent studios share (draft and live)
 src/features/markets/      # Surface, trade ticket, ask ticket and the ticket's own arithmetic
 src/server/
   api-client.ts            # API Service Binding; explicit loopback-only next-dev fallback
@@ -376,8 +378,122 @@ delay saves the pending change at once rather than dropping it (`lib/pending-sav
 from the DTO's `accent` through `accentVars`, like every other agent on the site (`cyan` renders
 indigo). A staged or preview studio refuses every write, the shell's included, and says so.
 
+`features/studio/shell/` holds what the draft studio and the live studio of a published Perpl agent
+share (docs/specs/studio-live-v1.md L2); `draft/` keeps only what a private draft draws. The shell
+is one implementation configured by props, never forked: `studio-shell.tsx` (`StudioShell`, the
+frame: top bar, rail, preview note, header, tiles, failed read, section, the Wallets and credits
+modals, with `useShellModals`), `top-bar.tsx`, `rail.tsx` (groups of items with `on`, `locked`, a
+`badge` drawn above zero, and a footer slot), `header.tsx` (`StudioHeader`, `HeaderDot`,
+`StudioTiles`), `status-chip.tsx`, `agent-avatar.tsx`, `banners.tsx`, `section.tsx`
+(`StudioSection`, `#<idPrefix>-section-<key>`), `identity.tsx`, `master.tsx` (`Master`, which the
+draft draws whole, and its two pieces `MasterCard` and `Ledger`, which the live Wallets draws with
+its agent's wallet between them; `MasterCard`'s `copyChip={false}` drops the address's COPY chip, and
+a view-only member's Fund is `aria-disabled` with `VIEW_ONLY_FUNDS` from `wallet-model.ts`),
+`trade-soon.tsx`, `talk-soon.tsx`, `x-connect.tsx`, `setup-save.tsx`, `build-parts.tsx`
+(`CapSteppers`, with an optional `sub` line under each row's title), `arrivals.tsx` (`useArrivals`
+and `ArrivalList`: what arrived in an agent's wallet between two reads, both Limits) and
+`web-sites.tsx` (`useSiteBox` and `WebSites`: WEB · WHERE EXA MAY LOOK with its site box, both
+Sources & rules, `#<idPrefix>-sources-web`). The top bar's new-agent item reads `newAgentLabel`
+("+ New agent" by default; the live studio passes "Create another agent"). Every id
+takes an `idPrefix` typed `StudioIdPrefix` (`"draft" | "live"`, `shell/model.ts`), so the draft's ids
+are unchanged and a typo cannot move one; a rail item's id is `railItemId(idPrefix, key)`
+(`rail.tsx`). `readMore` is held in a ref, so a reader that changes identity never reads again. `use-agent-studio.ts` is
+the data core (wallets, X state, lazy ledger, `refresh`, setup, identity and X writes that reload
+the agent, and the PREVIEW contract: a staged or preview studio reads nothing and every write
+throws `PREVIEW`); `draft/use-draft.ts` is built on it through `readMore` and `StudioTools`, adding
+the activity, the interval and Go Public. The pure rules are `model.ts` (rail and tile shapes),
+`x-model.ts`, `identity-model.ts`, `build-model.ts` (brief, sources, a setup save's failure, a
+wallet's read), `wallet-model.ts` (ledger, allocation row) and `clock.ts`; the draft's own are
+`draft/model.ts`, `draft/caps-model.ts` and `draft/run-model.ts`. Shared rules live in
+`shell/shell.module.css` (chrome, `srOnly`), `cards.module.css` (cards, pills, tags, Talk, Trade,
+Master; its white and dark pills dim on `aria-disabled` as on `:disabled`), `x-connect.module.css`,
+`build.module.css` (also the web's sites and the arrivals) and `identity.module.css`; a draft sheet composes them
+under its own names. The bundler resolves one level of `composes`, so a class composing one that
+itself composes names both, and `design:source` wants every shell class named by a shell component
+or composed inside its own sheet.
+
+`features/studio/live/` is the studio of a published Perpl agent (docs/specs/studio-live-v1.md):
+`studio.tsx` asks `studioKind(agent)` (`live/model.ts`: `draft`, `live` for a non-draft with
+`config.perpl`, `legacy` otherwise, which keeps the old home and rail) and renders `LiveStudio`
+whichever section was asked for; Go Public lands on its Overview, and a `?section=` key the live
+rail also has carries over. `live-studio.tsx` configures the shell: the live strip under the top
+bar (`live-strip.tsx`, the shell's `strip` slot), the rail of RUN / BUILD / MARKETPLACE / YOU with
+Docs, Community, Support and "ITS PUBLIC PROFILE" (each http link in a new tab, `noopener
+noreferrer`) in its footer, the account button opening Account
+(the top bar's `onAccount`), the PUBLIC · RUNS SOON / PAUSED · EXITS ONLY chip, "Pause entries" /
+"Resume" (real, `PUT /pause`, pending and inline failure) and "Stop · close all" shut with Soon,
+the four tiles, and the degraded banner whose "Fix it" opens Limits. Section keys are the canvas's
+(`skills` is Sources & rules, `master` Wallets, `leaders` Leaderboard). "Pause entries" / "Resume"
+is one state for its two buttons, the header's and Controls' STOPS: `use-pause.ts`
+(`usePauseToggle`, called once by `LiveStudio` and handed to sections as `LiveSectionProps.pause`)
+marks both pending and says a failure under the one pressed. A section's own link to another
+section ("Connect X", "Caps & limits") goes through `onSection`, which focuses the new section's rail
+item, because the control pressed unmounts. A view-only member's writes stay focusable
+(`aria-disabled`) and say why through `reason.tsx` (`Reason`, an `srOnly` line their
+`aria-describedby` names, the same words in their title: `VIEW_ONLY_REASON`, `VIEW_ONLY_FUNDS`,
+`pullReason` in `build-model.ts`). `live/model.ts` is pure and pinned in `studio-live-model.test.ts`:
+rail, status, header line, tiles, strip, warnings, health (`healthIssues` counts the warnings and
+every bad row; the brief row is always "v{n} · APPLIED", a noted L13 deviation, because Brief's
+edits are dropped when Brief closes), meters, the five caps (`liveCaps`, `liveCapsStepper`;
+`RISK_BOUNDS`, `RISK_DEFAULTS` and
+`ENTRY_DEFAULTS` are literal copies of core's, pinned by a dynamic import, as is `liveEntry` against
+`effectiveEntry`), how it enters (the small amount steps 1, 5, 10… to the per-trade cap), the
+markets it watches and their SAMPLE DATA / STALE tag (a market the board does not list is drawn
+neutral, `up: null`), the
+brief's bar and versions, IT MAY, Posts' header, the directory, board and leaderboard, the wallet
+cards and the account's rows; a field the DTO lacks reads "—". Every line that describes what the
+runtime will do is worded there, at the source, as a description of the setting (draft spec D19):
+the day-loss cap's "LOST IN A DAY · ONCE IT RUNS, IT PAUSES ITSELF THERE" and the three mode notes,
+each "ONCE IT RUNS · …" with no timing, and the Limits line and the agent wallet card in the future
+tense ("Pickler will hold every trade to these once it runs.", "Only {name} will trade from here");
+the tests pin those strings.
+`use-live.ts` is built on
+`useAgentStudio` through `readMore` (versions, the board and one detail per watched market) and
+reads the directory and leaderboard the first time their section opens; a failed live read sits in
+its own field (`"failed"`), never in the shell's error; its `saveSetup` reads VERSIONS again after
+every save, a refused one included (after a 409 CONFLICT the other writer's save is a version), so
+the BUILD sections hand `live` straight to `useSetupSave`; `pause` is its one write of its own. The
+marketplace reads are `marketplaceMarkets`, `marketplaceMarket`, `marketplaceDirectory` and
+`marketplaceLeaderboard` in `api.ts` (browser, `/api/v1/marketplace/*`; `server/container.ts` is
+server-only). Each section is its own file taking `LiveSectionProps` (`live-section.tsx`, whose
+`LiveSection` is `#live-section-<key>`); Brief adds `stagedDraft` and Account `initialTab` and
+`stagedPasskeys`.
+
+The sections by file: RUN is `overview.tsx`, `positions.tsx` (also `FlatPositions`, which Overview
+draws), `record.tsx`, `decisions.tsx`, `console.tsx` (the shell's `TalkSoon`) and `posts.tsx`, with
+`sparkline.tsx` (WHAT IT WATCHES' trail, `aria-hidden` beside its words) and `run.module.css`; their
+own rules are `run-model.ts` (empty lines, Decisions' filters, Console's words, the sparkline's
+points; `studio-live-run.test.ts`). Posts' X glyph is `BrandMark` from `@pickler/ui`. BUILD is
+`brief.tsx`, `sources.tsx`, `limits.tsx`, `controls.tsx` and `identity.tsx` with `build.module.css`,
+on the shell's `setup-save.tsx`, `build-parts.tsx`, `arrivals.tsx` and `web-sites.tsx`; their rules
+are `build-model.ts` (brief tags, plugins, stops, the entry form, the wallet card, the shut
+reasons; `studio-live-build.test.ts`). Brief's and Sources' Apply stays drawn while a save has an
+outcome ("Saved", the reload), so focus stays on it; Discard shows only with edits. MARKETPLACE is
+`agents.tsx` (the directory), `markets.tsx` (the board) and `leaders.tsx` (the leaderboard): each
+draws its read's loading, failed-with-Retry, empty and preview (`PREVIEW_NOTE`, a preview studio
+that read nothing) states through `ReadNote`, and its Ask, Back and Trade buttons through `Shut`
+(`market-parts.tsx`: `aria-disabled`, reachable, named "{label}, soon" with the reason in its
+title, SOON); the owner's "Launch its token" gives `SHUT.launch` (`backReason`). YOU is
+`wallets.tsx` (the shell's `MasterCard` worded for the live canvas, without its COPY chip since
+Deposit copies the address, the agent's wallet card, the shell's `Ledger`) and `account.tsx` (a
+tablist moved by arrow keys; only the selected tab names its panel, which is focusable;
+Security with the account page's `PasskeyList` (`compact`: rows flush with the card, a wrapped
+Remove kept right) and `useAddPasskey`, the list read again once a
+passkey is added, the delegation rows and Sessions shut; Public profile with a PUBLIC PROFILE card
+holding the account page's `ProfileSection` with `embedded` (only the link, the bio and its note;
+`/account` draws the whole section), the WHAT SHOWS switches shut and the records line;
+Notifications shut). Account reads the passkeys and the profile with the Supabase session when it
+opens, and until the session is known "Add a device" is shut with no reason; a session that cannot
+be read is an unread list. A staged studio reads neither (the stage's passkeys, `stagedProfile`); a
+preview studio with no stage has no passkeys to show, so the list reads as unread. These five share
+`market.module.css`, and their rules beyond `model.ts` are `market-model.ts` (`readState`, `SHUT`,
+`READ_WORDS`, `backLabel`, `backReason`, `LEADER_ASK`, `liveAllocation`, `PASSKEY_NOTE`, `stagedProfile`,
+`tabAfter`, `passkeyTag`; `studio-live-market.test.ts`).
+
 `?stage=live|researching|decided` (`home/stage.ts`, outside production only) renders the home from
-`home/fixture.ts`, `?stage=draft*` the draft studio from `draft/fixture.ts`, and `?stage=empty` and
+`home/fixture.ts`, `?stage=draft*` the draft studio from `draft/fixture.ts`, `?stage=perpl-*`
+(`LIVE_STAGES`, spec §7) the live studio from `live/fixture.ts` (Perpl's board, but the labelled
+sample board on `perpl-markets`), and `?stage=empty` and
 `?stage=create-*` the create screen (`StudioStage`); the run stages come from the canvas's run, built from real event types on a fixed clock so the server's
 HTML matches the browser's. It is gated on the build alone, because
 `previewAllowed` also needs Supabase unconfigured. The staged home reads no session, fetches

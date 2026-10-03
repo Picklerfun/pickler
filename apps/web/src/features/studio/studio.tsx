@@ -41,10 +41,19 @@ import { RAIL, isPanel, isSoon } from "./sections/rail";
 import { Soon } from "./sections/soon";
 import { Home } from "./home/home";
 import { homeFixture } from "./home/fixture";
-import { isCreateStage, isDraftStage, isHomeStage, type StudioStage } from "./home/stage";
+import {
+  isCreateStage,
+  isDraftStage,
+  isHomeStage,
+  isLiveStage,
+  type StudioStage,
+} from "./home/stage";
 import { DraftStudio } from "./draft/draft-studio";
 import { draftStudioFixture } from "./draft/fixture";
 import { DRAFT_SECTIONS, type DraftSectionKey } from "./draft/model";
+import { LiveStudio } from "./live/live-studio";
+import { liveStudioFixture } from "./live/fixture";
+import { isLiveSection, studioKind, type LiveSectionKey } from "./live/model";
 import { newAgentFixture } from "./new-agent/fixture";
 import { NewAgent } from "./new-agent/new-agent";
 import { studioLanding } from "./lib/landing";
@@ -132,11 +141,12 @@ export function Studio({
   /* Built once, during the first render, so the server's HTML already carries the staged home. */
   const [staged] = useState(() => (isHomeStage(stage) ? homeFixture(stage) : null));
   const [stagedDraft] = useState(() => (isDraftStage(stage) ? draftStudioFixture(stage) : null));
+  const [stagedLive] = useState(() => (isLiveStage(stage) ? liveStudioFixture(stage) : null));
   const [stagedCreate] = useState(() => (isCreateStage(stage) ? newAgentFixture(stage) : null));
   const [stagedEmpty] = useState(stage === "empty" || isCreateStage(stage));
   /* Every staged screen stands alone: no session is read and nothing is fetched. */
-  const staging = staged !== null || stagedDraft !== null || stagedEmpty;
-  const stagedAgent = staged?.agent ?? stagedDraft?.agent ?? null;
+  const staging = staged !== null || stagedDraft !== null || stagedLive !== null || stagedEmpty;
+  const stagedAgent = staged?.agent ?? stagedDraft?.agent ?? stagedLive?.agent ?? null;
   const [section, setSection] = useState<View>(openSection ?? "home");
   const wide = useSyncExternalStore(subscribeRail, railSnapshot, railOnServer);
   const [access, setAccess] = useState<Access | null>(
@@ -160,6 +170,8 @@ export function Studio({
   const [menu, setMenu] = useState<"agent" | "account" | null>(null);
   /* The signed-in account's handle, for the draft studio's YOU sections. */
   const [accountHandle, setAccountHandle] = useState<string | null>(null);
+  /* Go Public landed: the live studio that replaces the draft opens on its Overview (live L1). */
+  const [published, setPublished] = useState(false);
   const [preview, setPreview] = useState(staging);
   /* The account's passkeys, read once per visit for the home's second-passkey suggestion. A failed
      read is `failed`, which suggests nothing and never fails the studio. */
@@ -287,10 +299,12 @@ export function Studio({
 
   /* One cancellable read loop owns both the run list and the selected trace. The home reads its
      own latest run, so the loop only runs while a section is showing. */
-  const isDraft = agent?.draft ?? false;
+  /* Which studio the agent opens (live L1): a draft's and a published Perpl agent's each read
+     their own data (`draft/use-draft.ts`, `live/use-live.ts`) and have no runs to follow. */
+  const kind = agent ? studioKind(agent) : null;
+  const ownStudio = kind === "draft" || kind === "live";
   useEffect(() => {
-    /* A draft's studio reads its own data (`draft/use-draft.ts`) and has no runs to follow. */
-    if (!agentId || preview || isDraft || section === "home" || section === "new") {
+    if (!agentId || preview || ownStudio || section === "home" || section === "new") {
       return;
     }
     return startPolling(
@@ -318,7 +332,7 @@ export function Studio({
         setError(caught instanceof Error ? caught.message : "Could not refresh research.");
       },
     );
-  }, [agentId, runId, agent?.scheduleEnabled, refresh, preview, section, isDraft]);
+  }, [agentId, runId, agent?.scheduleEnabled, refresh, preview, section, ownStudio]);
 
   /* The home's reads of one agent: its wallet balance and both locks, fresh from the API. */
   const refreshAgent = useCallback(async () => {
@@ -462,7 +476,7 @@ export function Studio({
 
   /* A private draft has its own studio (studio-draft-dashboard-v1 D1), whichever section was
      asked for; publishing reloads the agent, which then opens below as a live one. */
-  if (landing !== "loading" && agent?.draft) {
+  if (landing !== "loading" && agent && kind === "draft") {
     return (
       <DraftStudio
         key={agentId}
@@ -475,13 +489,48 @@ export function Studio({
         initialSection={draftSection(openSection)}
         accountHandle={stagedDraft?.accountHandle ?? accountHandle}
         onRefreshAgent={refreshAgent}
-        onPublished={() => setSection("home")}
+        onPublished={() => {
+          setPublished(true);
+          setSection("home");
+        }}
         onSwitch={(id) => {
           setAgentId(id);
           setRunId(null);
           setRuns([]);
           setTrace(null);
           setError("");
+          setSection("home");
+        }}
+        onNew={() => {
+          setError("");
+          setSection("new");
+        }}
+      />
+    );
+  }
+
+  /* A published Perpl agent has its own studio too (live L1), whichever section was asked for; a
+     `?section=` it also has carries over, and Go Public lands on its Overview. */
+  if (landing !== "loading" && agent && kind === "live") {
+    return (
+      <LiveStudio
+        key={agentId}
+        agent={agent}
+        agents={agents}
+        canManage={canManage}
+        newAgentLock={newAgentLock}
+        staged={stagedLive}
+        preview={preview}
+        initialSection={published ? "overview" : liveSection(openSection)}
+        accountHandle={stagedLive?.accountHandle ?? accountHandle}
+        onRefreshAgent={refreshAgent}
+        onSwitch={(id) => {
+          setAgentId(id);
+          setRunId(null);
+          setRuns([]);
+          setTrace(null);
+          setError("");
+          setPublished(false);
           setSection("home");
         }}
         onNew={() => {
@@ -892,4 +941,9 @@ export function Studio({
 /** A `?section=` deep link the draft studio also has (`brief`, `limits`, `skills` …), or none. */
 function draftSection(section: SectionKey | undefined): DraftSectionKey | undefined {
   return DRAFT_SECTIONS.flatMap((group) => group.items).find((item) => item.key === section)?.key;
+}
+
+/** A `?section=` deep link the live studio also has (`overview`, `brief`, `skills` …), or none. */
+function liveSection(section: SectionKey | undefined): LiveSectionKey | undefined {
+  return isLiveSection(section) ? section : undefined;
 }

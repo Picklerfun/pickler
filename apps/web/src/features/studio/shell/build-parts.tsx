@@ -1,40 +1,31 @@
 "use client";
-import type { Caps, CapsView } from "./build-model";
+import type { CapRow } from "./build-model";
 import styles from "./build.module.css";
 
 /**
- * The note bar over Brief and Sources & rules (canvas 679, 715). Nothing has run yet on a draft,
- * so it is the canvas's first state; "Run it" opens the Console.
+ * Caps with − and +, whatever their keys (the draft's three from `capsStepper`, the live studio's
+ * five, each with its line under the title): a row each on Limits (canvas 507–514), tiles in a
+ * grid on Brief's RISK (canvas 694–704).
+ * A step past a bound is shut, never clamped silently. `onChange` gets every cap, with the stepped
+ * one moved.
  */
-export function RunNote({ onRun }: { onRun(): void }) {
-  return (
-    <div className={styles.runNote}>
-      <span className={styles.runDot} aria-hidden="true" />
-      <span className={styles.runText}>EDIT FREELY · THEN RUN IT ON PAPER</span>
-      <button type="button" className={styles.runButton} onClick={onRun}>
-        Run it
-      </button>
-    </div>
-  );
-}
-
-/**
- * The three caps with − and + (`capsStepper`): a row each on Limits (canvas 507–514), tiles in a
- * grid on Brief's RISK (canvas 694–704). A step past a bound is shut, never clamped silently.
- */
-export function CapSteppers({
+export function CapSteppers<K extends string>({
   view,
   layout,
   disabled,
   onChange,
 }: {
-  view: CapsView;
+  /**
+   * The rows, each with its value and the values one step down and up (null at a bound), and an
+   * optional line under the title (the live studio's five caps, canvas 486).
+   */
+  view: { rows: readonly (CapRow<K> & { sub?: string })[] };
   layout: "rows" | "grid";
   disabled: boolean;
-  onChange(next: Caps): void;
+  onChange(next: Record<K, number>): void;
 }) {
   const current = Object.fromEntries(view.rows.map((row) => [row.key, row.value])) as Record<
-    keyof Caps,
+    K,
     number
   >;
   return (
@@ -50,6 +41,7 @@ export function CapSteppers({
           <div key={row.key} className={styles.cap}>
             <span className={styles.capText}>
               <span className={styles.capTitle}>{row.title}</span>
+              {row.sub && <span className={styles.capSub}>{row.sub}</span>}
               {layout === "grid" && (
                 <span className={styles.capValue} aria-live="polite">
                   {row.display}

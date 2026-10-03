@@ -10,40 +10,41 @@ import styles from "../account.module.css";
 /** The four squares of the identity mark, in the order the canvas sets them. */
 const MARK = ["lime", "violet", "amber", "blue"] as const;
 
+/**
+ * The public profile: the identity mark, handle and JOINED, the link it cannot open yet, the bio it
+ * cannot store, VISIBILITY and ON THE BOARD. `embedded` draws only the link, the bio and its note,
+ * for a host that already shows the handle and its own visibility rows (the live studio's Account,
+ * canvas 725–737); `/account` draws the whole section.
+ */
 export function ProfileSection({
   profile,
   origin,
+  embedded = false,
 }: {
   profile: ProfileDto | null;
   origin: string;
+  embedded?: boolean;
 }) {
   const joined = joinedLabel(profile?.created_at);
   const link = profile ? profileLink(origin, profile.handle) : null;
 
-  return (
-    <section id="account-panel-profile" className={styles.section} aria-label="Public profile">
-      <div className={styles.identity}>
-        <div className={styles.mark} aria-hidden="true">
-          {MARK.map((tint) => (
-            <span key={tint} className={styles.square} data-tint={tint} />
-          ))}
-        </div>
-        <h2 className={styles.handle}>{profile ? `@${profile.handle.toUpperCase()}` : "@—"}</h2>
-        {joined && <p className={styles.joined}>{joined}</p>}
-        {/* Disabled, and still showing the address it would copy, because that address does not
-            resolve: apps/web/src/app has no /@handle route and nothing serves a person's public
-            page. A button that copied it would hand somebody a link to a 404 with their name on. */}
-        <Button
-          variant="secondary"
-          className={styles.link}
-          disabled
-          title="There is no public profile page yet, so this link would not open."
-        >
-          <Icon name="link" size={14} />
-          {link ?? "—"}
-        </Button>
-      </div>
+  /* Disabled, and still showing the address it would copy, because that address does not
+     resolve: apps/web/src/app has no /@handle route and nothing serves a person's public page. A
+     button that copied it would hand somebody a link to a 404 with their name on. */
+  const linkButton = (
+    <Button
+      variant="secondary"
+      className={styles.link}
+      disabled
+      title="There is no public profile page yet, so this link would not open."
+    >
+      <Icon name="link" size={14} />
+      {link ?? "—"}
+    </Button>
+  );
 
+  const bio = (
+    <>
       <h3 className={styles.heading}>BIO</h3>
       <input
         className={styles.bio}
@@ -58,6 +59,32 @@ export function ProfileSection({
         or writes a bio, so this field is drawn and left inert rather than taking eighty characters
         and dropping them.
       </NotYet>
+    </>
+  );
+
+  if (embedded) {
+    return (
+      <div className={`${styles.section} ${styles.embedded}`}>
+        {linkButton}
+        {bio}
+      </div>
+    );
+  }
+
+  return (
+    <section id="account-panel-profile" className={styles.section} aria-label="Public profile">
+      <div className={styles.identity}>
+        <div className={styles.mark} aria-hidden="true">
+          {MARK.map((tint) => (
+            <span key={tint} className={styles.square} data-tint={tint} />
+          ))}
+        </div>
+        <h2 className={styles.handle}>{profile ? `@${profile.handle.toUpperCase()}` : "@—"}</h2>
+        {joined && <p className={styles.joined}>{joined}</p>}
+        {linkButton}
+      </div>
+
+      {bio}
 
       <h3 className={styles.heading}>VISIBILITY</h3>
       <div className={styles.row}>
