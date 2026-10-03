@@ -567,9 +567,10 @@ Soon); Limits' day-loss line and its note say what runs now (`runtimeCapsView`).
 and type-importing only, pinned in `apps/web/test/studio-live-runtime.test.ts`. `live/fixture.ts`
 stages the runtime off on every `perpl-*` stage (a record with `runtimeEnabled: false`) and on, with
 checks, a BTC long, an ETH proposal, closes and a record, on `perpl-live-active` (Overview),
-`perpl-decisions-active` and `perpl-record-active` (`LiveRuntimeStaged.actions` stages owner
-actions already sent; none of these has one); `scripts/design/routes.mjs` proves
-`#live-overview-proposals`, `#live-decisions-feed` and `#live-record-equity` for them.
+`perpl-decisions-active`, `perpl-record-active` and `perpl-positions-active` (Positions, with an
+hourly check running and the owner's close of the BTC long waiting for it, staged in
+`LiveRuntimeStaged.actions`); `scripts/design/routes.mjs` proves `#live-overview-proposals`,
+`#live-decisions-feed`, `#live-record-equity` and `#live-action-close-pos-preview-btc` for them.
 
 `?stage=live|researching|decided` (`home/stage.ts`, outside production only) renders the home from
 `home/fixture.ts`, `?stage=draft*` the draft studio from `draft/fixture.ts`, `?stage=perpl-*`

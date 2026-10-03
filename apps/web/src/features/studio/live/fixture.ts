@@ -61,7 +61,7 @@ export interface LiveStaged {
   accountTab: AccountTab;
   /** The brief's textareas with edits not applied (`perpl-brief-dirty`), or null. */
   briefDraft: BriefText | null;
-  /** The Perpl paper runtime's reads: off on every stage but the three `-active` ones. */
+  /** The Perpl paper runtime's reads: off on every stage but the four `-active` ones. */
   runtime: LiveRuntimeStaged;
 }
 
@@ -115,6 +115,7 @@ const SECTIONS: Record<LiveStage, LiveSectionKey> = {
   "perpl-live-active": "overview",
   "perpl-decisions-active": "decisions",
   "perpl-record-active": "record",
+  "perpl-positions-active": "positions",
 };
 
 const brief = {
@@ -519,6 +520,7 @@ const ACTIVE_STAGES: readonly LiveStage[] = [
   "perpl-live-active",
   "perpl-decisions-active",
   "perpl-record-active",
+  "perpl-positions-active",
 ];
 
 const iso = (minutesFromNow: number) => new Date(NOW + minutesFromNow * MINUTE).toISOString();
@@ -852,6 +854,48 @@ const activeRuntime: LiveRuntimeStaged = {
   actions: [],
 };
 
+/* `perpl-positions-active`: the hourly check started a minute ago is still running, so the owner's
+   "Close now" on the BTC long waits for it (`lastError` CHECK_RUNNING). */
+const runningCheck = summary(9, 1, {
+  status: "running",
+  outcome: null,
+  outcomeText: null,
+  costMicros: null,
+});
+const closeActionId = "ac710000-0000-4000-8000-000000000001";
+const closingRuntime: LiveRuntimeStaged = {
+  ...activeRuntime,
+  checks: [runningCheck, ...activeChecks],
+  actions: [
+    {
+      kind: "close",
+      target: "pos-preview-btc",
+      actionId: closeActionId,
+      action: {
+        id: closeActionId,
+        kind: "close",
+        status: "pending",
+        positionId: "pos-preview-btc",
+        proposalId: null,
+        attempts: 1,
+        lastError: "CHECK_RUNNING",
+        checkId: null,
+        createdAt: at(0.5),
+        updatedAt: at(0.2),
+      },
+      outcome: null,
+    },
+  ],
+};
+
+/** The runtime each stage reads: off, on, or on with a close waiting for the running check. */
+function stagedRuntime(stage: LiveStage): LiveRuntimeStaged {
+  if (stage === "perpl-positions-active") {
+    return closingRuntime;
+  }
+  return ACTIVE_STAGES.includes(stage) ? activeRuntime : offRuntime;
+}
+
 const ACCOUNT_TABS: Partial<Record<LiveStage, AccountTab>> = {
   "perpl-account-profile": "profile",
   "perpl-account-notify": "notify",
@@ -862,8 +906,9 @@ const ACCOUNT_TABS: Partial<Record<LiveStage, AccountTab>> = {
  * `perpl-paused` has entries paused; `perpl-warnings` has its gas and free AUSD low, so the banner
  * shows; the rest open their section, `perpl-brief-dirty` with an edit not applied and the account
  * stages on their tab. Those keep the Perpl runtime off; `perpl-live-active` (a position and a
- * proposal on Overview), `perpl-decisions-active` and `perpl-record-active` have it on, with
- * checks, a paper position, a proposal and a record.
+ * proposal on Overview), `perpl-decisions-active`, `perpl-record-active` and
+ * `perpl-positions-active` (Positions, its "Close now" waiting for the running check) have it on,
+ * with checks, a paper position, a proposal and a record.
  */
 export function liveStudioFixture(stage: LiveStage): LiveStaged {
   const warned = stage === "perpl-warnings";
@@ -890,6 +935,6 @@ export function liveStudioFixture(stage: LiveStage): LiveStaged {
     accountHandle: "nightowl",
     accountTab: ACCOUNT_TABS[stage] ?? "security",
     briefDraft: stage === "perpl-brief-dirty" ? dirtyBrief : null,
-    runtime: ACTIVE_STAGES.includes(stage) ? activeRuntime : offRuntime,
+    runtime: stagedRuntime(stage),
   };
 }

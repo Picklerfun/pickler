@@ -75,7 +75,8 @@ export type DraftStage = (typeof DRAFT_STAGES)[number];
  * The live studio of a published Perpl agent (studio-live-v1 §7): the Overview, paused, with the
  * degraded banner, then each section, the brief with edits not applied, and the account's three
  * tabs, all with the Perpl runtime off; then the runtime on (perpl-paper-runtime-v1 §7): Overview
- * with a position and a proposal, Decisions and Record populated. `live/fixture.ts` draws each.
+ * with a position and a proposal, Decisions and Record populated, and Positions with a close
+ * waiting for the running check. `live/fixture.ts` draws each.
  */
 export const LIVE_STAGES = [
   "perpl-live",
@@ -102,6 +103,7 @@ export const LIVE_STAGES = [
   "perpl-live-active",
   "perpl-decisions-active",
   "perpl-record-active",
+  "perpl-positions-active",
 ] as const;
 
 export type LiveStage = (typeof LIVE_STAGES)[number];

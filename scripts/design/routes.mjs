@@ -842,7 +842,8 @@ const ALL = [
     proves: "#live-account-panel-notify",
   },
   /* The Perpl paper runtime on (perpl-paper-runtime-v1 §7): Overview with a proposal waiting and a
-   * paper position, Decisions' feed and Record's figures, each proving what only the runtime draws. */
+   * paper position, Decisions' feed, Record's figures and Positions with an owner's close waiting
+   * for the running check, each proving what only the runtime draws. */
   {
     path: "/studio?stage=perpl-live-active",
     name: "studio-live-active",
@@ -866,6 +867,14 @@ const ALL = [
     surface: "dark",
     task: "Live studio",
     proves: "#live-record-equity",
+  },
+  {
+    path: "/studio?stage=perpl-positions-active",
+    name: "studio-live-positions-active",
+    product: "studio",
+    surface: "dark",
+    task: "Live studio",
+    proves: "#live-action-close-pos-preview-btc",
   },
   // The second-passkey suggestion on the home. The staged home carries the canvas's account, one
   // passkey, so the suggestion is drawn there with nothing read; this proves it rendered.

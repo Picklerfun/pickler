@@ -134,8 +134,8 @@ function Meter({ view }: { view: PositionView }) {
 }
 
 /**
- * "Close now": one click, no passkey (paper, R12); a durable action, said under it until it is
- * carried out, and then what happened.
+ * "Close now": one click, no passkey (paper, R12); a durable action, said under the card's actions
+ * until it is carried out, and then what happened.
  */
 function CloseNow({
   live,
@@ -172,11 +172,6 @@ function CloseNow({
       {error && (
         <span className={styles.rowBreak}>
           <ActionError text={error} />
-        </span>
-      )}
-      {item && (
-        <span className={styles.rowBreak}>
-          <ActionLine live={live} item={item} />
         </span>
       )}
     </>
@@ -314,6 +309,7 @@ export function PositionCards({
                 {full && view.decision ? ` · DECISION ${view.decision}` : ""}
               </span>
             </div>
+            <ActionLine live={live} item={ownerActionFor(live.actions, "close", view.id)} />
           </article>
         );
       })}

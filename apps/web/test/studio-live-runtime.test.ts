@@ -824,6 +824,20 @@ test("the existing stages keep the runtime off; the -active stages have it on, p
   assert.deepEqual(liveStudioFixture("perpl-live").runtime.actions, []);
 });
 
+test("perpl-positions-active: Positions, its close waiting for the hourly check still running", () => {
+  const staged = liveStudioFixture("perpl-positions-active");
+  const [close] = staged.runtime.actions;
+
+  assert.equal(staged.section, "positions");
+  assert.equal(runtimeOn(staged.runtime.record), true);
+  assert.equal(staged.runtime.checks[0]!.status, "running");
+  assert.equal(staged.runtime.actions.length, 1);
+  assert.equal(close!.kind, "close");
+  assert.equal(close!.target, staged.runtime.positions.open[0]!.id);
+  assert.equal(close!.action?.positionId, close!.target);
+  assert.equal(ownerActionView(close!).text, "Waiting for the current check…");
+});
+
 test("the staged proposal is still valid on the fixture's clock", () => {
   const staged = liveStudioFixture("perpl-live-active");
 
