@@ -8,6 +8,7 @@ import { gateOpen } from "../src/identity/state";
 // variable —el del bounty— se comporta como antes.
 
 jest.mock("../src/config/api", () => ({ API_URL: null }));
+jest.mock("../src/config/rp", () => ({ RP_ID: "pickler.fun", RP_NAME: "Pickler" }));
 jest.mock("../src/wallet/wallet", () => ({ unlockStoredWallet: jest.fn(), describeError: () => "" }));
 jest.mock("expo-secure-store", () => ({
   WHEN_UNLOCKED_THIS_DEVICE_ONLY: 1,

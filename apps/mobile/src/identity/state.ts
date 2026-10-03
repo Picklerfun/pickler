@@ -14,6 +14,24 @@ export type Identity =
 /** La pantalla de username tapa la app. */
 export const gateOpen = (identity: Identity): boolean => identity.status === "none";
 
+/** Lo que puede estar pasando debajo cuando la cuenta resulta no tener username. */
+export type Foreground = {
+  treasuryBusy: boolean;
+  readPending: boolean;
+  /** Habilitar trading en Perpl: approve, cuenta con depósito y key, varios pasos con dinero. */
+  perplOnboarding: boolean;
+};
+
+/**
+ * La pantalla no cae encima de una operación en curso: quien desbloqueó para retirar, pedir una read o habilitar
+ * trading ve primero cómo termina. Todas desbloquean la wallet, y desbloquear es lo que dispara la consulta.
+ */
+export const appQuiet = (f: Foreground): boolean => !f.treasuryBusy && !f.readPending && !f.perplOnboarding;
+
+/** Se muestra si la cuenta no tiene username y (ya se mostraba, o no hay nada en curso). Una vez abierta se queda. */
+export const gateShows = (identity: Identity, shownBefore: boolean, quiet: boolean): boolean =>
+  gateOpen(identity) && (shownBefore || quiet);
+
 /**
  * Lo guardado en el dispositivo: el username de una dirección, en una API. No es secreto. La API va incluida porque una
  * cuenta de staging no es la de producción: quien cambia de build vuelve a ser preguntado.
