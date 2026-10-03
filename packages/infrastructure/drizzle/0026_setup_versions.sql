@@ -9,7 +9,8 @@ CREATE TABLE "agents"."setup_versions" (
 );
 --> statement-breakpoint
 ALTER TABLE "agents"."setup_versions" ENABLE ROW LEVEL SECURITY;--> statement-breakpoint
-ALTER TABLE "agents"."setup_versions" ADD CONSTRAINT "setup_versions_agent_id_agents_id_fk" FOREIGN KEY ("agent_id") REFERENCES "agents"."agents"("id") ON DELETE cascade ON UPDATE no action;-- Drizzle emits no privileges (see 0006, 0016 and 0024). The API writes a version with the config
+ALTER TABLE "agents"."setup_versions" ADD CONSTRAINT "setup_versions_agent_id_agents_id_fk" FOREIGN KEY ("agent_id") REFERENCES "agents"."agents"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+-- Drizzle emits no privileges (see 0006, 0016 and 0024). The API writes a version with the config
 -- it saves and lists them, through the service role. A version is never edited, and goes only with
 -- its agent (the cascade above), so there is no update or delete.
 DO $$

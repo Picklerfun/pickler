@@ -139,7 +139,7 @@ export const RISK_BOUNDS = {
   dayLossStopAusd: { min: 5, max: 200, step: 5 },
 } as const;
 
-/** A stored `config.risk` (studio-live-v1 L11): open at once, and the day-loss stop in AUSD. */
+/** A stored `config.risk` (studio-live-v1 L12): open at once, and the day-loss stop in AUSD. */
 export const riskLimitsSchema = z
   .object({
     maxOpenPositions: z
@@ -158,7 +158,7 @@ export const riskLimitsSchema = z
 export type RiskLimitsDto = z.infer<typeof riskLimitsSchema>;
 
 /**
- * A stored `config.entry` (L12). `smallAusd` is held to one call's bounds only: the per-trade cap
+ * A stored `config.entry` (L13). `smallAusd` is held to one call's bounds only: the per-trade cap
  * can drop under it later (`PUT /limits`), and a stored config must still parse; core's
  * `effectiveEntry` clamps it for whoever reads it.
  */

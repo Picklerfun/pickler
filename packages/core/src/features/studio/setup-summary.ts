@@ -1,5 +1,5 @@
 /**
- * The one line a saved setup is recorded under (docs/specs/studio-live-v1.md L9): what changed
+ * The one line a saved setup is recorded under (docs/specs/studio-live-v1.md L10): what changed
  * between two configs, built here from the stored configs so a version never carries client text.
  */
 import { effectiveEntry, type AgentConfig } from "../research/types.js";

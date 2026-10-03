@@ -1,6 +1,6 @@
 /**
  * Editing a Perpl agent's config from its studio, draft or public
- * (docs/specs/studio-draft-dashboard-v1.md D10, docs/specs/studio-live-v1.md L10–L12): the same
+ * (docs/specs/studio-draft-dashboard-v1.md D10, docs/specs/studio-live-v1.md L11–L13): the same
  * rules `prepareDraft` applies at creation, applied to a config that already exists.
  */
 import {
@@ -30,7 +30,7 @@ export interface SetupPatch {
   };
   sources?: { web: { mode: WebMode; sites: readonly string[] } | null };
   /**
-   * The three caps every save states, and the two risk limits (L11). A risk limit left out stays
+   * The three caps every save states, and the two risk limits (L12). A risk limit left out stays
    * as it is, so the draft studio, which draws three caps, never writes `risk`.
    */
   caps?: {
@@ -41,7 +41,7 @@ export interface SetupPatch {
     dayLossStopAusd?: number | undefined;
   };
   voice?: VoiceKey;
-  /** How it enters (L12), stored as sent: `auto` keeps its `meanwhile` and `smallAusd`. */
+  /** How it enters (L13), stored as sent: `auto` keeps its `meanwhile` and `smallAusd`. */
   entry?: EntrySetting;
 }
 

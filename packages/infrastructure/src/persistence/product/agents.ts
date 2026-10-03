@@ -243,7 +243,7 @@ export const xAccounts = agentsSchema
   .enableRLS();
 
 /**
- * One row per saved setup (studio-live-v1 L9): the config version it produced and the one line
+ * One row per saved setup (studio-live-v1 L10): the config version it produced and the one line
  * core built from what changed. Written by `updateConfig` in the transaction that bumps the
  * version, never from client text. A version from before this table has no row.
  */

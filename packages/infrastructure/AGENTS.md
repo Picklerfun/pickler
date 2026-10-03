@@ -237,7 +237,7 @@ at that same version would otherwise drop them. The one exception is `{ writeSpe
 a setup passes with new caps: the incoming `spend` (checked by `assertSpendLimits`) is
 written in the same transaction as the rest of the config.
 
-Setup versions (docs/specs/studio-live-v1.md L9, migration 0026): `agents.setup_versions` holds
+Setup versions (docs/specs/studio-live-v1.md L10, migration 0026): `agents.setup_versions` holds
 one row per saved setup, `(agent_id, version)` with a summary of 1–200 characters; RLS is on and
 the service role may only select and insert. `updateConfig` takes `{ perplOnly?, writeSpend?,
 versionSummary? }`. `perplOnly` refuses with `NOT_A_PERPL_AGENT` when the stored config, read under

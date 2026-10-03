@@ -305,7 +305,7 @@ export const activityResponseSchema = z.object({
 export type ActivityDto = z.infer<typeof activityResponseSchema>;
 
 /**
- * `GET /v1/studio/agents/:id/versions` (studio-live-v1 L9): the agent's recorded setup versions,
+ * `GET /v1/studio/agents/:id/versions` (studio-live-v1 L10): the agent's recorded setup versions,
  * newest first, at most 20. `summary` is the server's line for what that save changed.
  */
 export const versionsResponseSchema = z.object({

@@ -763,7 +763,7 @@ export function studioRoutes(services: StudioServices) {
     },
   );
   // A Perpl agent's brief, sources, caps, voice and entry, draft or public
-  // (studio-draft-dashboard-v1 D10, studio-live-v1 L10), versioned like `PUT /config`, whose
+  // (studio-draft-dashboard-v1 D10, studio-live-v1 L11), versioned like `PUT /config`, whose
   // stale-version refusal (409 CONFLICT) it shares. Core's `reviseSetup` applies create's rules
   // and never touches `marketScope`. A voice also renames the profile's voice: a second write
   // after the config's, as the two live in different stores; a failure between them leaves the
@@ -795,7 +795,7 @@ export function studioRoutes(services: StudioServices) {
       if (!record.config.perpl) {
         throw new PilotError("NOT_A_PERPL_AGENT", "Only a Perpl agent's setup is edited here");
       }
-      // New caps write `spend` in the write's transaction, and so is the version recorded (L9):
+      // New caps write `spend` in the write's transaction, and so is the version recorded (L10):
       // its summary is core's, from the two stored configs, never the client's words.
       await repo.updateConfig(scope, body.expectedVersion, reviseSetup(record.config, patch), {
         perplOnly: true,
@@ -849,7 +849,7 @@ export function studioRoutes(services: StudioServices) {
       );
     },
   );
-  // The saved setups (studio-live-v1 L9), the owner's alone: a member who cannot save a setup
+  // The saved setups (studio-live-v1 L10), the owner's alone: a member who cannot save a setup
   // does not read its history. The directory refuses another workspace's agent (404 NOT_FOUND).
   api.get(
     "/agents/:id/versions",

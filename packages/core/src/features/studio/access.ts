@@ -46,7 +46,7 @@ export interface TransferLedgerEntry {
   at: Date;
 }
 
-/** One saved setup of an agent (studio-live-v1 L9): its config version and what the save changed. */
+/** One saved setup of an agent (studio-live-v1 L10): its config version and what the save changed. */
 export interface SetupVersion {
   version: number;
   summary: string;
@@ -124,7 +124,7 @@ export interface StudioDirectory {
   /** The agent's Overview activity (D18): created, its wallet, each transfer; newest first, ≤ 50. */
   activity(access: StudioAccess, productAgentId: string): Promise<AgentActivityEvent[]>;
   /**
-   * The agent's recorded setup versions (L9), newest first, at most 20. Only what was recorded: a
+   * The agent's recorded setup versions (L10), newest first, at most 20. Only what was recorded: a
    * version saved before the record existed has no row. NOT_FOUND for an agent outside this
    * workspace.
    */

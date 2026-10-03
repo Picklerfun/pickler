@@ -89,11 +89,11 @@ export interface AgentConfig {
   /** The voice its posts are written in (docs/specs/studio-create-simplified-v1.md D8). */
   voice?: (typeof VOICE_KEYS)[number] | undefined;
   /**
-   * OPEN AT ONCE and DAY-LOSS STOP (docs/specs/studio-live-v1.md L11). Saved for the Perpl runtime
+   * OPEN AT ONCE and DAY-LOSS STOP (docs/specs/studio-live-v1.md L12). Saved for the Perpl runtime
    * to read; nothing enforces them yet. Absent means `RISK_DEFAULTS`: read it with `effectiveRisk`.
    */
   risk?: RiskLimits | undefined;
-  /** How it enters (L12). Absent means `ENTRY_DEFAULTS`: read it with `effectiveEntry`. */
+  /** How it enters (L13). Absent means `ENTRY_DEFAULTS`: read it with `effectiveEntry`. */
   entry?: EntrySetting | undefined;
 }
 
@@ -523,7 +523,7 @@ export interface ResearchRepository {
    * NOT_A_PERPL_AGENT unless the stored config has `perpl`, checked in the same transaction as the
    * write. `config.spend` is ignored (the stored one is kept) unless `writeSpend` is set, which
    * writes it in the same transaction. With `versionSummary`, the new version is recorded in that
-   * transaction too (studio-live-v1 L9), under the line it answers for the stored config before
+   * transaction too (studio-live-v1 L10), under the line it answers for the stored config before
    * and after; a write that fails records nothing, and a record that fails writes nothing.
    */
   updateConfig(

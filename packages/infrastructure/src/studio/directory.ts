@@ -503,14 +503,14 @@ export class PostgresStudioDirectory implements StudioDirectory {
       .slice(0, 50)
       .map(({ kind, text, at }) => ({ kind, text, at }));
   }
-  /** The agent's recorded setup versions (studio-live-v1 L9), newest first, at most 20. */
+  /** The agent's recorded setup versions (studio-live-v1 L10), newest first, at most 20. */
   async versions(access: StudioAccess, productAgentId: string): Promise<SetupVersion[]> {
     // An agent with no version yet answers an empty list, so its ownership is its own read.
     await this.agentScope(access, productAgentId);
     const { rows } = await this.pool.query<SetupVersion>(
       `SELECT version, summary, created_at AS at
        FROM agents.setup_versions
-       WHERE agent_id::text = $1
+       WHERE agent_id = $1::uuid
        ORDER BY version DESC LIMIT 20`,
       [productAgentId],
     );
