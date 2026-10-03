@@ -129,7 +129,7 @@ export const perpsProposals = pickler
       check("perps_proposals_kind", sql`${t.kind} in ('enter','size_up')`),
       check(
         "perps_proposals_status",
-        sql`${t.status} in ('pending','approved','skipped','expired')`,
+        sql`${t.status} in ('pending','approving','approved','skipped','expired')`,
       ),
       check("perps_proposals_amounts", sql`${t.margin} > 0 AND ${t.leverage} >= 1`),
     ],

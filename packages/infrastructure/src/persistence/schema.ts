@@ -356,6 +356,9 @@ export const perpsPaperPositions = pickler
         .notNull(),
       // Product positions (migration 0027, perpl-paper-runtime-v1 R10/R14); null on operator rows.
       // The document stays authoritative; these columns serve the exits and margin queries.
+      // `check_id` has no FK to `perps_checks`: that table lives in product/perps-checks.ts, which
+      // imports this file, and drizzle-kit's CommonJS load cannot resolve the cycle. Trading
+      // requires a UUID, the check row always exists before its open, and checks are never deleted.
       checkId: uuid("check_id"),
       configVersion: integer("config_version"),
       leverage: integer("leverage"),

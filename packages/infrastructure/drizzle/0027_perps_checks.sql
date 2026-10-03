@@ -47,7 +47,7 @@ CREATE TABLE "pickler"."perps_proposals" (
 	CONSTRAINT "perps_proposals_instrument" CHECK ("pickler"."perps_proposals"."instrument" in ('BTC','ETH')),
 	CONSTRAINT "perps_proposals_side" CHECK ("pickler"."perps_proposals"."side" in ('long','short')),
 	CONSTRAINT "perps_proposals_kind" CHECK ("pickler"."perps_proposals"."kind" in ('enter','size_up')),
-	CONSTRAINT "perps_proposals_status" CHECK ("pickler"."perps_proposals"."status" in ('pending','approved','skipped','expired')),
+	CONSTRAINT "perps_proposals_status" CHECK ("pickler"."perps_proposals"."status" in ('pending','approving','approved','skipped','expired')),
 	CONSTRAINT "perps_proposals_amounts" CHECK ("pickler"."perps_proposals"."margin" > 0 AND "pickler"."perps_proposals"."leverage" >= 1)
 );
 --> statement-breakpoint
@@ -73,9 +73,10 @@ CREATE INDEX "perps_proposals_expiry" ON "pickler"."perps_proposals" USING btree
 CREATE INDEX "perps_proposals_agent" ON "pickler"."perps_proposals" USING btree ("product_agent_id","created_at" DESC NULLS LAST);--> statement-breakpoint
 CREATE INDEX "perps_paper_exit_due" ON "pickler"."perps_paper_positions" USING btree ("exit_due_at") WHERE "pickler"."perps_paper_positions"."closed_at" is null;--> statement-breakpoint
 ALTER TABLE "pickler"."perps_paper_positions" ADD CONSTRAINT "perps_paper_close_reason" CHECK ("pickler"."perps_paper_positions"."close_reason" is null OR "pickler"."perps_paper_positions"."close_reason" in ('stop','take_profit','time','brief','owner','stop_all','day_loss'));--> statement-breakpoint
--- Drizzle emits no privileges. Like the other private runtime tables (0012/0013 perps paper, 0025
--- advice), RLS is on with no Data API policy; only the backend reaches them. Checks and proposals
--- change state (queued → running → finished, pending → decided), so the service role may update.
+-- Drizzle emits no privileges. RLS is on with no Data API policy; only the backend reaches these
+-- tables. The grants follow 0025 (advice: service_role SELECT, INSERT, UPDATE), not 0012/0013,
+-- which grant nothing. Checks and proposals change state (queued → running → finished,
+-- pending → approving → approved), so the service role may update.
 DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN

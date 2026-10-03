@@ -748,3 +748,253 @@ test("a size-up adds margin at the position's leverage once, and counts as new m
   );
   assert.deepEqual(await f.paper.openNetworks(), []);
 });
+
+test("closes ignore the agent's current plugins, policy, network and markets", async (t) => {
+  const f = await setup(t);
+  const { scope } = await f.agent();
+  await f.paper.initialize(scope, 1, "1000");
+  await open(f, scope, "open-btc", "BTC");
+  await open(f, scope, "open-eth", "ETH", {
+    price: "3000",
+    notional: "300",
+    stop: "2900",
+    target: "3200",
+  });
+  // The owner moves it to mainnet, drops both markets and turns the plugins off.
+  const edited = {
+    ...f.config,
+    perpl: { ...f.config.perpl!, network: "mainnet", markets: [] },
+    plugins: { version: 1, enabled: [] },
+  };
+  await f.db.pool.query(
+    "UPDATE pickler.agents SET version=2, config=$3 WHERE tenant_id=$1 AND id=$2",
+    [scope.tenantId, scope.agentId, JSON.stringify(edited)],
+  );
+
+  const closed = await f.paper.closePosition(
+    scope,
+    "open-btc",
+    "owner",
+    frame("BTC", f.now(), "60000"),
+  );
+  assert.equal(closed.closed, true);
+
+  // The service's leased close path admits it too; opens are still refused.
+  const service = createPerpsPaperService(
+    f.paper,
+    {
+      observation: async () => ({ frames: [], funding: [] }),
+      frame: async () => frame("ETH", f.now(), "3000"),
+    },
+    f.now,
+  );
+  const view = await service.trade(
+    scope,
+    "close-eth",
+    "close",
+    "ETH",
+    "long",
+    AbortSignal.timeout(5000),
+    frame("ETH", f.now(), "3000"),
+  );
+  assert.ok(view.account.positions.every((p) => p.closedAt !== null));
+  await assert.rejects(open(f, scope, "reopen", "BTC"), { code: "PLUGIN_DISABLED" });
+
+  await assert.rejects(
+    f.paper.closePosition({ ...scope, sessionId: "operator" }, "x", "owner", frame("BTC", 1, "1")),
+    { code: "INVALID_INPUT" },
+  );
+});
+
+test("a mark beyond the liquidation estimate is a stop, even without a stop price", async (t) => {
+  const f = await setup(t);
+  const { scope } = await f.agent();
+  await f.paper.initialize(scope, 1, "1000");
+  const service = createPerpsPaperService(
+    f.paper,
+    {
+      observation: async () => ({ frames: [], funding: [] }),
+      frame: async () => frame("BTC", f.now(), "60000"),
+    },
+    f.now,
+  );
+  const view = await service.trade(
+    scope,
+    "open-btc",
+    "open",
+    "BTC",
+    "long",
+    AbortSignal.timeout(5000),
+    frame("BTC", f.now(), "60000"),
+    {
+      notional: "1000",
+      leverage: 10,
+      exits: () => ({ stopPrice: null, takeProfitPrice: null, exitDueAt: null }),
+    },
+  );
+  const entry = Number(view.account.positions[0]!.entryPrice);
+  const liquidation = entry - entry / 10;
+
+  assert.deepEqual(
+    await f.paper.openDuePositions([
+      { network: "testnet", symbol: "BTC", mark: (liquidation + 1).toFixed(2) },
+    ]),
+    [],
+  );
+  const due = await f.paper.openDuePositions([
+    { network: "testnet", symbol: "BTC", mark: (liquidation - 1).toFixed(2) },
+  ]);
+  assert.deepEqual(
+    due.map((d) => d.reason),
+    ["stop"],
+  );
+});
+
+test("a large product open reserves a fee that scales with its notional", async (t) => {
+  const f = await setup(t);
+  const { scope } = await f.agent();
+  await f.paper.initialize(scope, 1, "5000");
+
+  const view = await open(f, scope, "big", "BTC", { notional: "40000", leverage: 10 });
+  const attempt = view.attempts.find((a) => a.key === "big")!;
+
+  assert.equal(attempt.status, "filled");
+  assert.equal(attempt.intent.feeReserve, "12");
+  assert.ok(view.account.positions.some((p) => p.id === "big" && p.closedAt === null));
+
+  const sized = await f.paper.sizeUp(
+    scope,
+    "big",
+    { key: "sizeup:big", margin: "500" },
+    frame("BTC", f.now(), "60000"),
+  );
+  assert.equal(sized.added, true);
+  const record = sized.view.attempts.find((a) => a.key === "sizeup:big")!;
+  assert.equal(record.intent.feeReserve, "1.5");
+});
+
+test("intents above 10x or with a non-UUID check id are refused", async (t) => {
+  const f = await setup(t);
+  const { id, scope } = await f.agent();
+  await f.paper.initialize(scope, 1, "1000");
+
+  await assert.rejects(open(f, scope, "lev", "BTC", { leverage: 11 }), { code: "INVALID_INPUT" });
+  await assert.rejects(open(f, scope, "chk", "BTC", { checkId: "check-1" }), {
+    code: "INVALID_INPUT",
+  });
+  const check = await f.store.startCheck({ productAgentId: id, trigger: "manual" });
+  const { lease } = (await f.store.claimAgent(check.id))!;
+  await assert.rejects(
+    async () =>
+      f.store.createProposal(lease, {
+        instrument: "BTC",
+        side: "long",
+        margin: "10",
+        leverage: 11,
+        kind: "enter",
+      }),
+    { code: "INVALID_INPUT" },
+  );
+});
+
+test("recoverChecks ends stuck checks across agents, including paused ones", async (t) => {
+  const f = await setup(t);
+  const one = await f.agent();
+  const two = await f.agent();
+  const running = await f.store.startCheck({ productAgentId: one.id, trigger: "manual" });
+  await f.store.claimAgent(running.id);
+  const queued = await f.store.startCheck({ productAgentId: two.id, trigger: "manual" });
+  await f.db.pool.query("UPDATE pickler.agents SET paused = true WHERE id = $1", [
+    one.scope.agentId,
+  ]);
+
+  assert.equal(await f.store.recoverChecks(), 0);
+  f.advance(61_000);
+  assert.equal(await f.store.recoverChecks(), 1);
+  assert.equal((await f.store.getCheck(running.id))!.error, "CHECK_INTERRUPTED");
+  assert.equal((await f.store.getCheck(queued.id))!.status, "queued");
+  f.advance(600_000);
+  assert.equal(await f.peer.recoverChecks(), 1);
+  assert.equal((await f.store.getCheck(queued.id))!.error, "CHECK_EXPIRED");
+  assert.equal(await f.store.recoverChecks(), 0);
+});
+
+test("the due list carries the slot, skips killed agents, and one key makes one check per slot", async (t) => {
+  const f = await setup(t);
+  const at5 = await f.agent({ id: idAt(5) });
+  const killed = await f.agent({ id: idAt(6) });
+  await f.db.pool.query(
+    "UPDATE agents.agents SET status = 'killed', killed_at = now() WHERE id = $1",
+    [killed.id],
+  );
+
+  f.set(NOON + 7 * 60_000);
+  const due = await f.store.dueAgents();
+  assert.deepEqual(
+    due.map((d) => [d.productAgentId, d.slot]),
+    [[at5.id, NOON + 5 * 60_000]],
+  );
+
+  const key = `hourly:${due[0]!.slot}`;
+  const [a, b] = await Promise.all([
+    f.store.startCheck({ productAgentId: at5.id, trigger: "hourly", requestKey: key }),
+    f.peer.startCheck({ productAgentId: at5.id, trigger: "hourly", requestKey: key }),
+  ]);
+  assert.equal(a.id, b.id);
+  const { lease } = (await f.store.claimAgent(a.id))!;
+  await f.store.finishCheck(lease, { outcome: "held", outcomeText: "HOLD" });
+  const replay = await f.store.startCheck({
+    productAgentId: at5.id,
+    trigger: "hourly",
+    requestKey: key,
+  });
+  assert.equal(replay.id, a.id);
+  assert.equal(replay.status, "finished");
+  const hourly = await f.db.pool.query(
+    "SELECT count(*)::int AS n FROM pickler.perps_checks WHERE product_agent_id = $1",
+    [at5.id],
+  );
+  assert.equal(hourly.rows[0].n, 1);
+});
+
+test("an approval is approving until settled: approved only once the open succeeded", async (t) => {
+  const f = await setup(t);
+  const { id } = await f.agent();
+  const check = await f.store.startCheck({ productAgentId: id, trigger: "manual" });
+  const { lease } = (await f.store.claimAgent(check.id))!;
+  const input = {
+    instrument: "BTC" as const,
+    side: "long" as const,
+    margin: "10",
+    leverage: 10,
+    kind: "enter" as const,
+  };
+  const a = await f.store.createProposal(lease, input);
+  const b = await f.store.createProposal(lease, input);
+  const c = await f.store.createProposal(lease, input);
+
+  const approving = await f.store.decideProposal(a.id, "approved");
+  assert.equal(approving.status, "approving");
+  await assert.rejects(f.store.decideProposal(a.id, "approved"), { code: "PROPOSAL_DECIDED" });
+  assert.equal((await f.store.settleProposal(a.id, true)).status, "approved");
+  await assert.rejects(f.store.settleProposal(a.id, true), { code: "PROPOSAL_DECIDED" });
+
+  await f.store.decideProposal(b.id, "approved");
+  const back = await f.store.settleProposal(b.id, false);
+  assert.equal(back.status, "pending");
+  assert.equal(back.decidedAt, null);
+  await assert.rejects(f.store.settleProposal(c.id, true), { code: "PROPOSAL_DECIDED" });
+
+  // An approval abandoned mid-flight expires five minutes after the proposal would have.
+  await f.store.decideProposal(c.id, "approved");
+  f.set(NOON + PROPOSAL_TTL_MS);
+  assert.deepEqual(
+    (await f.store.expireProposals()).map((p) => p.id),
+    [b.id],
+  );
+  f.advance(300_000);
+  assert.deepEqual(
+    (await f.store.expireProposals()).map((p) => p.id),
+    [c.id],
+  );
+});

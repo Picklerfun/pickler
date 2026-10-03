@@ -5,6 +5,7 @@ import {
   applyPaperObservation,
   type PerpsPaperObservation,
   assertPerpsPaperAgent,
+  assertPerpsPaperScope,
   initialPaperAccount,
   paperRisk,
   applyPaperFill,
@@ -15,6 +16,7 @@ import {
   paperDecimal,
   paperOpenReserve,
   paperUnits,
+  productFeeReserve,
   simulatePerpsFill,
   type PerpsDuePosition,
   type PerpsPaperCloseReason,
@@ -257,7 +259,16 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
   async view(scope: PerpsPaperScope) {
     return this.transaction(async (client) => (await this.lock(client, scope)).view);
   }
+  /**
+   * Admission against the agent's current config. A close checks only the scope (R10, "exits
+   * never wait"): an owner's edit to plugins, policy, network or markets can never strand an open
+   * position. Operator sessions keep their version pin in `begin`.
+   */
   private allowed(locked: Locked, scope: PerpsPaperScope, intent: PerpsPaperIntent) {
+    if (intent.kind === "close") {
+      assertPerpsPaperScope(locked.agent, scope);
+      return;
+    }
     assertPerpsPaperAgent(locked.agent, scope, locked.view.account.agentVersion);
     if (!locked.agent.config.perpl!.markets.includes(intent.symbol)) {
       throw new PilotError("MARKET_NOT_ALLOWED", "Paper market is not permitted");
@@ -456,9 +467,11 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
     });
   }
   /**
-   * Closes one position at `frame` outside an attempt lease (exits job, owner, stop-all). A
-   * position already closed answers `closed: false` and changes nothing, so a repeated close (or
-   * two racing closers) settles exactly once.
+   * Closes one product position at `frame` outside an attempt lease (exits job, owner, stop-all,
+   * day-loss, brief exits). A position already closed answers `closed: false` and changes nothing,
+   * so a repeated close (or two racing closers) settles exactly once. Only the scope is checked,
+   * never the agent's current plugins, policy, network or markets. Operator sessions are refused
+   * (`INVALID_INPUT`): they close through the service's leased attempts.
    */
   async closePosition(
     scope: PerpsPaperScope,
@@ -470,6 +483,9 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
     if (!/^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,127}$/.test(key)) {
       throw new PilotError("INVALID_INPUT", "Invalid position id");
     }
+    if (!isProductPaperSession(scope)) {
+      throw new PilotError("INVALID_INPUT", "Only product positions close outside an attempt");
+    }
     return this.transaction(async (client) => {
       const locked = await this.lock(client, scope);
       const position = locked.view.account.positions.find((p) => p.id === positionId);
@@ -479,7 +495,7 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
       if (position.closedAt !== null) {
         return { closed: false, position, view: locked.view };
       }
-      assertPerpsPaperAgent(locked.agent, scope, locked.view.account.agentVersion);
+      assertPerpsPaperScope(locked.agent, scope);
       const intent: PerpsPaperIntent = {
         kind: "close",
         symbol: position.symbol,
@@ -524,7 +540,11 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
       };
     });
   }
-  /** Open product positions whose exit is due: the stop first, then the target, then time. */
+  /**
+   * Open product positions whose exit is due, as trading's `exitDue`: a mark at or beyond the
+   * liquidation estimate (entry × (1 ∓ 1 / leverage)) or the stop is `stop`, then the target, then
+   * time.
+   */
   async openDuePositions(marks: readonly PerpsPaperMark[]): Promise<PerpsDuePosition[]> {
     for (const mark of marks) {
       if (
@@ -548,6 +568,11 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
         SELECT a.tenant_id AS "tenantId", a.agent_id AS "agentId", a.network,
           pa.product_agent_id::text AS "productAgentId", p.document AS position,
           CASE
+            WHEN m.mark IS NOT NULL AND p.leverage IS NOT NULL AND p.leverage >= 1 AND (
+              (p.document->>'side' = 'long' AND m.mark <= (p.document->>'entryPrice')::numeric -
+                (p.document->>'entryPrice')::numeric / p.leverage) OR
+              (p.document->>'side' = 'short' AND m.mark >= (p.document->>'entryPrice')::numeric +
+                (p.document->>'entryPrice')::numeric / p.leverage)) THEN 'stop'
             WHEN m.mark IS NOT NULL AND p.stop_price IS NOT NULL AND (
               (p.document->>'side' = 'long' AND m.mark <= p.stop_price) OR
               (p.document->>'side' = 'short' AND m.mark >= p.stop_price)) THEN 'stop'
@@ -611,12 +636,13 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
         throw new PilotError("POSITION_CLOSED", "The position is closed");
       }
       const leverage = position.leverage ?? 1;
+      const notional = paperDecimal(paperUnits(input.margin) * BigInt(leverage));
       const intent: PerpsPaperIntent = {
         kind: "open",
         symbol: position.symbol,
         side: position.side,
-        notional: paperDecimal(paperUnits(input.margin) * BigInt(leverage)),
-        feeReserve: "1",
+        notional,
+        feeReserve: productFeeReserve(notional, frame.book.market.fees.taker),
         leverage,
       };
       assertPaperIntent(intent);

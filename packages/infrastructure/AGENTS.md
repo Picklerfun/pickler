@@ -426,11 +426,15 @@ exportPerpsAudit uses a scoped repeatable-read READ ONLY transaction for study, 
 
 Migration 0027 (`docs/specs/perpl-paper-runtime-v1.md` R9, R10, R14, R15) adds
 `pickler.perps_checks` and `pickler.perps_proposals` (declared in
-`src/persistence/product/perps-checks.ts`, RLS on, the service role may select, insert and update)
+`src/persistence/product/perps-checks.ts`, RLS on, the service role may select, insert and update;
+the grants follow 0025, not 0012/0013 as spec §5 said, because those grant nothing)
 and eight nullable columns on `pickler.perps_paper_positions` (`check_id`, `config_version`,
 `leverage`, `margin`, `stop_price`, `take_profit_price`, `exit_due_at`, `close_reason`, with an
 index on `exit_due_at` where open). The position document stays authoritative; the columns serve
-queries. drizzle-kit loads schema files through CommonJS and cannot import trading's ESM exports,
+queries. `check_id` has no FK to `perps_checks`: `schema.ts` would have to import
+`product/perps-checks.ts`, which imports it, and drizzle-kit's CommonJS load cannot resolve that
+cycle; trading requires a UUID and the check row always exists first. Proposal statuses include
+`approving`. drizzle-kit loads schema files through CommonJS and cannot import trading's ESM exports,
 so the enum lists (`PERPS_CLOSE_REASON_VALUES`, `PERPS_CHECK_TRIGGER_VALUES`,
 `PERPS_CHECK_OUTCOME_VALUES`) are spelled out and pinned to trading's lists by a test. **Apply 0027
 before deploying the API or the research worker**: the product paper store writes the new columns
@@ -442,13 +446,18 @@ lease (`claimAgent` → `{ check, lease }`, `renewAgent`, `appendStep`, `createP
 `finished` (`finishCheck`, `releaseAgent`). A partial unique index keeps one queued or running
 check per agent; starting and claiming lock the runtime agent row first, then the check. Expired
 leases end as `CHECK_INTERRUPTED` and checks queued over ten minutes as `CHECK_EXPIRED`, recovered
-whenever the agent is started or claimed. `recordCheck` writes finished rows at once (exits, owner
+whenever the agent is started or claimed, and across agents by `recoverChecks()` (the minute Cron's
+sweep, so a paused or draft agent's crashed check never stays `running`). `recordCheck` writes finished rows at once (exits, owner
 actions, system notes); `pauseAgent` sets `paused` and writes a `system` row in one transaction.
 `listChecks` pages 50 newest first with an outcome filter. `dueAgents` answers public, unkilled,
 unpaused agents with a Perpl config whose hourly slot (`perpsCheckMinute` of the product id)
-opened under ten minutes ago with no hourly check since and no live check. Proposals expire after
-trading's `PROPOSAL_TTL_MS`; `decideProposal` commits an expiry before raising `PROPOSAL_EXPIRED`,
-and `expireProposals` expires each pending row once. Counts and cost are per UTC day and use the
+opened under ten minutes ago with no hourly check since (read through `perps_checks_feed`) and no
+live check, each with its `slot`; the dispatcher's `hourly:<slot>` request key and the request index
+make one check per agent and slot. Proposals expire after trading's `PROPOSAL_TTL_MS`;
+`decideProposal` commits an expiry before raising `PROPOSAL_EXPIRED`, a skip is final and an
+approval becomes `approving`; `settleProposal(id, opened)` makes it `approved` or back to `pending`.
+`expireProposals` expires each pending row once, and approvals stuck five minutes past expiry.
+Proposal leverage is within core's `LEVERAGE_BOUNDS` (1–10). Counts and cost are per UTC day and use the
 store clock (the database's `clock_timestamp()` outside tests).
 
 `PostgresPerpsPaperStore` also serves product sessions (`sessionId = "product"`, trading's
@@ -456,11 +465,15 @@ store clock (the database's `clock_timestamp()` outside tests).
 (`WALLET_UNFUNDED` under `PRODUCT_PAPER_MINIMUM`, 10) and keeps the first stake on later calls;
 product accounts are not version-pinned and each position records the version it opened on.
 `complete(scope, lease, fill, exits?)` stores a product position's exits with its fill.
-`closePosition(scope, id, reason, frame)` closes from `open` exactly once (a closed position
-answers `closed: false`), `openDuePositions(marks)` reads due exits across product accounts (stop,
-then target, then time), and `newMarginSince(scope, since)` sums margin opened since (positions
+`closePosition(scope, id, reason, frame)` closes a product position from `open` exactly once (a
+closed position answers `closed: false`; operator sessions are refused). Closes, here and through
+the service's leased attempts, check only the scope (tenant and agent), never the agent's current
+plugins, policy, network or markets: an owner's edit never strands an open position.
+`openDuePositions(marks)` reads due exits across product accounts (a mark at or beyond the
+liquidation estimate or the stop, then target, then time, as trading's `exitDue`), and `newMarginSince(scope, since)` sums margin opened since (positions
 and their `sizeUps`, each on the day it was added). `sizeUp(scope, id, { key, margin }, frame)`
 adds margin to an open product position at its leverage through trading's `applyPaperSizeUp`
+(its fee reserve is `productFeeReserve` at the frame's taker fee)
 (idempotent by key, recorded as a filled attempt; `POSITION_CLOSED`, `PAUSED`,
 `INSUFFICIENT_AVAILABLE`), and `openNetworks()` lists networks with open product positions for
 the exits job's marks. Operator sessions keep the version pin, the 1x policy and the 100 cap.

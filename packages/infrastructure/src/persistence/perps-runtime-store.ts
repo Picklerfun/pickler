@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { Pool, PoolClient } from "pg";
-import { PilotError } from "@pickler/core";
+import { LEVERAGE_BOUNDS, PilotError } from "@pickler/core";
 import {
   CHECK_OUTCOMES,
   PERPS_CHECK_LEASE_MS,
@@ -31,6 +31,16 @@ const DECIMAL = /^\d{1,20}(\.\d{1,18})?$/;
 const HOUR = 3_600_000;
 /** An hourly check missed by more than this waits for the agent's next slot (keeps the stagger). */
 const HOURLY_WINDOW_MS = 600_000;
+/** An approval still `approving` this long past the proposal's expiry was abandoned. */
+const APPROVAL_GRACE_MS = 300_000;
+/** Ends queued checks nobody claimed in time and running checks whose lease lapsed. */
+const RECOVER = `UPDATE pickler.perps_checks
+  SET status = 'finished', outcome = 'failed', finished_at = $1, lease_owner = NULL, lease_expires_at = NULL,
+    error = CASE WHEN status = 'queued' THEN 'CHECK_EXPIRED' ELSE 'CHECK_INTERRUPTED' END,
+    outcome_text = CASE WHEN status = 'queued' THEN 'Expired' ELSE 'Interrupted' END
+  WHERE status IN ('queued', 'running') AND (
+    (status = 'queued' AND created_at + $2 <= $1) OR
+    (status = 'running' AND lease_expires_at <= $1))`;
 
 const CHECK = `id::text, product_agent_id::text AS "productAgentId", tenant_id AS "tenantId", agent_id AS "agentId",
  trigger, status, created_at::double precision AS "createdAt", started_at::double precision AS "startedAt",
@@ -157,16 +167,23 @@ export class PostgresPerpsRuntimeStore implements PerpsRuntimeRepository {
 
   /** Ends the agent's queued checks nobody claimed in time and running checks whose lease lapsed. */
   private async recover(db: PoolClient, tenantId: string, agentId: string, at: number) {
-    await db.query(
-      `UPDATE pickler.perps_checks
-      SET status = 'finished', outcome = 'failed', finished_at = $3, lease_owner = NULL, lease_expires_at = NULL,
-        error = CASE WHEN status = 'queued' THEN 'CHECK_EXPIRED' ELSE 'CHECK_INTERRUPTED' END,
-        outcome_text = CASE WHEN status = 'queued' THEN 'Expired' ELSE 'Interrupted' END
-      WHERE tenant_id = $1 AND agent_id = $2 AND (
-        (status = 'queued' AND created_at + $4 <= $3) OR
-        (status = 'running' AND lease_expires_at <= $3))`,
-      [tenantId, agentId, at, PERPS_CHECK_QUEUE_MS],
-    );
+    await db.query(`${RECOVER} AND tenant_id = $3 AND agent_id = $4`, [
+      at,
+      PERPS_CHECK_QUEUE_MS,
+      tenantId,
+      agentId,
+    ]);
+  }
+
+  /**
+   * The minute Cron's sweep across agents (a paused or draft agent's crashed check is never
+   * started or claimed again, so per-agent recovery alone would leave it `running`). Uses the
+   * partial index on queued/running rows.
+   */
+  async recoverChecks() {
+    const at = await this.now(this.pool);
+    const result = await this.pool.query(RECOVER, [at, PERPS_CHECK_QUEUE_MS]);
+    return result.rowCount ?? 0;
   }
 
   private async read(db: Pool | PoolClient, id: string): Promise<PerpsCheck | null> {
@@ -468,7 +485,9 @@ export class PostgresPerpsRuntimeStore implements PerpsRuntimeRepository {
   /**
    * Published (public, not killed), unpaused agents with a Perpl config whose hourly slot opened
    * under ten minutes ago with no hourly check since, and no live check. An agent's slot is the
-   * minute of the hour `perpsCheckMinute` gives its product id.
+   * minute of the hour `perpsCheckMinute` gives its product id; each answer carries its slot so
+   * the dispatcher can key the check `hourly:<slot>` (exactly one per slot, by the request index).
+   * The "since" test reads `perps_checks_feed` (product agent, created at).
    */
   async dueAgents(limit = 50): Promise<PerpsDueAgent[]> {
     if (!Number.isSafeInteger(limit) || limit < 1 || limit > 500) {
@@ -476,7 +495,8 @@ export class PostgresPerpsRuntimeStore implements PerpsRuntimeRepository {
     }
     const at = await this.now(this.pool);
     const result = await this.pool.query<PerpsDueAgent>(
-      `SELECT p.product_agent_id::text AS "productAgentId", p.tenant_id AS "tenantId", p.runtime_agent_id AS "agentId"
+      `SELECT p.product_agent_id::text AS "productAgentId", p.tenant_id AS "tenantId", p.runtime_agent_id AS "agentId",
+        s.slot::double precision AS slot
       FROM pickler.product_agents p
       JOIN agents.agents a ON a.id = p.product_agent_id
       JOIN pickler.agents r ON r.tenant_id = p.tenant_id AND r.id = p.runtime_agent_id
@@ -491,8 +511,8 @@ export class PostgresPerpsRuntimeStore implements PerpsRuntimeRepository {
         AND $1::bigint - s.slot < $4
         AND NOT EXISTS (
           SELECT 1 FROM pickler.perps_checks c
-          WHERE c.tenant_id = p.tenant_id AND c.agent_id = p.runtime_agent_id
-            AND c.trigger = 'hourly' AND c.created_at >= s.slot)
+          WHERE c.product_agent_id = p.product_agent_id AND c.created_at >= s.slot
+            AND c.trigger = 'hourly')
         AND NOT EXISTS (
           SELECT 1 FROM pickler.perps_checks c
           WHERE c.tenant_id = p.tenant_id AND c.agent_id = p.runtime_agent_id AND (
@@ -514,8 +534,8 @@ export class PostgresPerpsRuntimeStore implements PerpsRuntimeRepository {
       !DECIMAL.test(input.margin) ||
       paperUnits(input.margin) <= 0n ||
       !Number.isInteger(input.leverage) ||
-      input.leverage < 1 ||
-      input.leverage > 100 ||
+      input.leverage < LEVERAGE_BOUNDS.min ||
+      input.leverage > LEVERAGE_BOUNDS.max ||
       (positionId !== null && !KEY.test(positionId))
     ) {
       throw new PilotError("INVALID_INPUT", "Invalid proposal");
@@ -589,7 +609,9 @@ export class PostgresPerpsRuntimeStore implements PerpsRuntimeRepository {
         throw new PilotError("PROPOSAL_DECIDED", "This proposal was already decided");
       }
       const at = await this.now(db);
-      const status = proposal.expiresAt <= at ? "expired" : decision;
+      // An approval is `approving` until the host settles it with the paper action's result.
+      const status =
+        proposal.expiresAt <= at ? "expired" : decision === "approved" ? "approving" : "skipped";
       const updated = await db.query<PerpsProposal>(
         `UPDATE pickler.perps_proposals SET status = $2, decided_at = $3 WHERE id = $1 RETURNING ${PROPOSAL}`,
         [id, status, at],
@@ -603,13 +625,40 @@ export class PostgresPerpsRuntimeStore implements PerpsRuntimeRepository {
     return outcome;
   }
 
+  async settleProposal(id: string, opened: boolean) {
+    if (!UUID.test(id) || typeof opened !== "boolean") {
+      throw new PilotError("INVALID_INPUT", "Invalid settlement");
+    }
+    return this.transaction(async (db) => {
+      const current = await db.query<{ status: string }>(
+        "SELECT status FROM pickler.perps_proposals WHERE id = $1 FOR UPDATE",
+        [id],
+      );
+      if (!current.rows[0]) {
+        throw new PilotError("NOT_FOUND", "Proposal not found");
+      }
+      if (current.rows[0].status !== "approving") {
+        throw new PilotError("PROPOSAL_DECIDED", "This proposal is not being approved");
+      }
+      const at = await this.now(db);
+      const updated = await db.query<PerpsProposal>(
+        `UPDATE pickler.perps_proposals
+        SET status = $2, decided_at = $3
+        WHERE id = $1 RETURNING ${PROPOSAL}`,
+        [id, opened ? "approved" : "pending", opened ? at : null],
+      );
+      return proposalRow(updated.rows[0]!);
+    });
+  }
+
   async expireProposals() {
     const at = await this.now(this.pool);
     const result = await this.pool.query<PerpsProposal>(
       `UPDATE pickler.perps_proposals SET status = 'expired', decided_at = $1
-      WHERE status = 'pending' AND expires_at <= $1
+      WHERE (status = 'pending' AND expires_at <= $1)
+        OR (status = 'approving' AND expires_at + $2 <= $1)
       RETURNING ${PROPOSAL}`,
-      [at],
+      [at, APPROVAL_GRACE_MS],
     );
     return result.rows
       .map(proposalRow)

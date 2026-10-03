@@ -7991,7 +7991,7 @@
         },
         "perps_proposals_status": {
           "name": "perps_proposals_status",
-          "value": "\"pickler\".\"perps_proposals\".\"status\" in ('pending','approved','skipped','expired')"
+          "value": "\"pickler\".\"perps_proposals\".\"status\" in ('pending','approving','approved','skipped','expired')"
         },
         "perps_proposals_amounts": {
           "name": "perps_proposals_amounts",
