@@ -106,3 +106,16 @@ fail. Models and data ports are injected; no positions, wallets or trading execu
 See [Agent advice](../../docs/agent-advice.md) and deterministic advice tests.
 
 Advice policy v2 validates and freezes the HTTPS forecast base URL alongside its reviewed model/rates. Version 1 remains bound to direct DeepSeek. Reject credential-bearing/query/fragment URLs; reserve using the job’s frozen rates.
+
+## Perpl paper runtime rules
+
+The `perps` export includes `features/perps-runtime`: the pure rules of studio Perpl checks
+([spec](../../docs/specs/perpl-paper-runtime-v1.md)). `decision.ts` validates the model's
+`perps-check-v1` answer by hand (no zod): clamps probability, stop/target bps and horizon, cuts long
+text, and refuses anything malformed as `MODEL_INVALID`. `outcome.ts` (`decideOutcome`) applies R6
+in order: exit lines met or a `close` call exit; for an open call paused, never, entries,
+conviction, one position per instrument, caps (open count, per-day margin, day-loss), free equity,
+then the entry mode. An opposite call that passes the brief closes the held position first.
+`sizing.ts` owns R7 margin/leverage, `exits.ts` R10 levels and due exits, R11 day-loss and the
+15-minute proposal expiry, `record.ts` R13 stats, drawdown and the equity series. Models never size,
+price or reach an account; hosts inject state and act on the result.
