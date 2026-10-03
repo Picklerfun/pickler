@@ -35,6 +35,10 @@ export default createResearchWorker({
     const database = researchDatabase(env);
     return createPerpsRuntime({ ...env, DATABASE_URL: database.url }, database.options);
   },
+  perpsActions: (env) => {
+    const database = researchDatabase(env);
+    return createPerpsRuntime({ ...env, DATABASE_URL: database.url }, database.options);
+  },
   runtime: (env) => {
     if (!env.MODEL_BASE_URL || !env.MODEL_ID || !env.MODEL_API_KEY) {
       throw new Error("Model bindings unavailable");

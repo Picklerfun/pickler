@@ -460,6 +460,14 @@ approval becomes `approving`; `settleProposal(id, opened)` makes it `approved` o
 Proposal leverage is within core's `LEVERAGE_BOUNDS` (1–10). Counts and cost are per UTC day and use the
 store clock (the database's `clock_timestamp()` outside tests).
 
+`PostgresPerpsOwnerStore` (`perps-owner-store.ts`) serves the owner's actions and the studio's
+reads: `startOwnerCheck({ productAgentId, requestKey? })` queues an `owner` check under
+`startCheck`'s rules (agent row locked, lapsed checks recovered, `CHECK_RUNNING`, replay by key),
+so the research worker's approvals and closes hold the agent's lease like a check;
+`findPosition(id)` answers the product agent and paper scope holding a position; `counts(id)`
+answers all-time hourly/manual checks and `entered` checks for the record. It is a separate class
+so the runtime store's file stays the runtime's.
+
 `PostgresPerpsPaperStore` also serves product sessions (`sessionId = "product"`, trading's
 `PRODUCT_PAPER_SESSION`): `initialize(scope, version, startingCash)` takes the wallet's AUSD
 (`WALLET_UNFUNDED` under `PRODUCT_PAPER_MINIMUM`, 10) and keeps the first stake on later calls;

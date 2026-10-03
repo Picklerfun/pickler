@@ -28,6 +28,26 @@ test("full document validates, covers mounted routes and retains unique alias op
   assert.ok(document.paths["/v1/studio/agents/{id}/setup"]?.put);
   assert.ok(document.paths["/v1/studio/agents/{id}/publish"]?.post);
   assert.ok(document.paths["/v1/studio/agents/{id}/x/verify"]?.post);
+  for (const [path, method] of [
+    ["/v1/studio/agents/{id}/perps/checks", "post"],
+    ["/v1/studio/agents/{id}/perps/checks", "get"],
+    ["/v1/studio/perps/checks/{id}", "get"],
+    ["/v1/studio/agents/{id}/perps/positions", "get"],
+    ["/v1/studio/perps/positions/{id}/close", "post"],
+    ["/v1/studio/agents/{id}/perps/stop", "post"],
+    ["/v1/studio/agents/{id}/perps/proposals", "get"],
+    ["/v1/studio/perps/proposals/{id}/approve", "post"],
+    ["/v1/studio/perps/proposals/{id}/skip", "post"],
+    ["/v1/studio/agents/{id}/perps/record", "get"],
+  ] as const) {
+    const described = document.paths[path]?.[method];
+    assert.ok(described, `${method} ${path}`);
+    assert.deepEqual(described.security, [{ bearerAuth: [] }]);
+  }
+  assert.ok(
+    document.paths["/v1/studio/agents/{id}/perps/checks"]?.post?.responses?.["202"] &&
+      document.paths["/v1/studio/agents/{id}/perps/checks"]?.post?.responses?.["429"],
+  );
   assert.match(
     document.paths["/v1/console/agents/{id}"]?.get?.description ?? "",
     /alias of \/v1\/studio\/agents/,

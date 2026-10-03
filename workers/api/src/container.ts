@@ -49,9 +49,14 @@ import {
   PostgresWalletIdentityStore,
   PostgresTradingStore,
   PostgresXStore,
+  PostgresPerpsOwnerStore,
+  PostgresPerpsPaperStore,
+  PostgresPerpsRuntimeStore,
   createXClient,
   listTransfers,
 } from "@pickler/infrastructure";
+import type { PerpNetwork } from "@pickler/core";
+import type { PerpsPaperMark } from "@pickler/trading/perps";
 import type { Services } from "./app";
 import type { Env } from "./env";
 import { HttpError } from "./http/http-error";
@@ -59,7 +64,28 @@ import type { SigningRouteServices } from "./routes/signing";
 import type { WalletAuthServices } from "./routes/wallet-auth";
 import { apiDatabase } from "./database";
 
-import { createGrowthServices } from "./growth/services";
+import { createGrowthServices, marketBoardFor } from "./growth/services";
+
+/**
+ * Fresh BTC/ETH marks for the studio's paper positions, from the same per-isolate market board as
+ * /v1/marketplace/markets. A stale board, a sample or a bad number gives no mark (P&L unknown).
+ */
+export async function perpsBoardMarks(network: PerpNetwork): Promise<PerpsPaperMark[]> {
+  const markets = await marketBoardFor(network).listMarkets();
+  const marks: PerpsPaperMark[] = [];
+  for (const market of markets) {
+    const fresh = market.source.venue === "perpl" && !market.source.stale;
+    if (
+      fresh &&
+      (market.base === "BTC" || market.base === "ETH") &&
+      Number.isFinite(market.mark) &&
+      market.mark > 0
+    ) {
+      marks.push({ network, symbol: market.base, mark: market.mark.toFixed(8) });
+    }
+  }
+  return marks;
+}
 
 const encoder = new TextEncoder();
 const hex = (buffer: ArrayBuffer) =>
@@ -493,6 +519,21 @@ export function createServices(env: Env): Services & { close(): Promise<void> } 
           throw new Error("Missing research queue");
         }
         await env.RESEARCH_QUEUE.send({ kind: "research-wakeup" });
+      },
+      // The Perpl paper runtime (perpl-paper-runtime-v1 §4): reads here; checks, approvals and
+      // closes run in the research worker through RESEARCH_QUEUE.
+      perps: {
+        enabled: env.PERPL_RUNTIME_ENABLED === "true",
+        store: new PostgresPerpsRuntimeStore(repository.pool),
+        owner: new PostgresPerpsOwnerStore(repository.pool),
+        paper: new PostgresPerpsPaperStore(repository.pool),
+        marks: perpsBoardMarks,
+        send: async (message) => {
+          if (!env.RESEARCH_QUEUE) {
+            throw new Error("Missing research queue");
+          }
+          await env.RESEARCH_QUEUE.send(message);
+        },
       },
     },
     authenticateAgent: createAuthenticateAgent({

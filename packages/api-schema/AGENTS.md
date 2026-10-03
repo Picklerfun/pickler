@@ -137,3 +137,16 @@ representative contract tests in the same change.
 24-hour directional results and cursor history. No requester identity, internal scope, private
 configuration, prices/rates, prompts or provider traces may cross these DTOs. Wallet sign-in
 `kind` is `eoa | mera`. See [Agent advice](../../docs/agent-advice.md).
+
+## Perpl paper runtime
+
+`src/perps-runtime.ts` holds the studio runtime's DTOs (docs/specs/perpl-paper-runtime-v1.md §4):
+`perpsCheckStartedSchema` (`{ checkId }`), `perpsQueuedSchema` (`{ queued: true }` for actions the
+research worker carries out), `perpsCheckSummarySchema` / `perpsCheckDetailSchema` (the detail adds
+timed steps) and `perpsChecksResponseSchema`, `perpsPositionsResponseSchema` (open with mark,
+unrealized P&L, exits and `liquidationEstimate`; closed with `realizedPnl`),
+`perpsProposalSchema` / `perpsProposalsResponseSchema`, `perpsProposalDecidedSchema` and
+`perpsRecordSchema` (R13 stats, equity series, `today`, `runtimeEnabled`). Prices and stored paper
+amounts are decimal strings; the record's computed figures are AUSD numbers; times are ISO.
+`PERPS_CHECK_OUTCOMES`, `PERPS_CHECK_TRIGGERS` and `PERPS_CLOSE_REASONS` mirror trading's lists
+(pinned by `workers/api/test/studio-perps-route.test.ts`); `PERPS_MANUAL_CHECKS_PER_DAY` is 6.

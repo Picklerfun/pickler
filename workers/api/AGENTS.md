@@ -474,3 +474,43 @@ Never accept internal tenant/runtime IDs or models from consumers. Completed his
 other statuses are requester-only. See [Agent advice](../../docs/agent-advice.md).
 
 Advice admissions consume the same reviewed ADVICE_POLICY_JSON as Research. Policy v2 pins its forecast provider URL/model and limits; forecast credentials remain exclusively in Research. No new public DTO or database schema is introduced by the provider correction.
+
+## Perpl paper runtime
+
+`src/routes/studio-perps.ts` (mounted by `studioRoutes` at `/v1/studio` and its `/v1/console`
+alias) serves docs/specs/perpl-paper-runtime-v1.md §4 over `services.studio.perps`
+(`StudioPerpsServices`: `PostgresPerpsRuntimeStore`, `PostgresPerpsOwnerStore`,
+`PostgresPerpsPaperStore`, the market board's marks via `perpsBoardMarks` in `container.ts`, and
+`RESEARCH_QUEUE`); absent, every route is 503 `RUNTIME_UNAVAILABLE`. Reads need workspace
+membership, writes `authorize(principal, true)` (403 otherwise); another workspace's agent, check,
+position or proposal is 404 `NOT_FOUND`. DTOs are `src/perps-runtime.ts` in api-schema.
+
+Actions that need a Perpl frame or touch paper positions run in the research worker, not here: the
+API checks ownership and state, then sends a Queue message and answers 202 `{ queued: true }`; the
+web polls the feed, positions and proposals.
+
+- `POST /agents/:id/perps/checks` (`Idempotency-Key` required): 409 `NOT_A_PERPL_AGENT`,
+  `RUNTIME_DISABLED` (`PERPL_RUNTIME_ENABLED` is not "true"), `CHECK_RUNNING`; 429 `MANUAL_LIMIT`
+  at 6 manual checks a UTC day (a replay after the sixth is also 429); else `startCheck` (trigger
+  `manual`) and `{ kind: "perps-check", checkId }`, 202 `{ checkId }`.
+- `GET /agents/:id/perps/checks?before=&kind=` (`kind`: comma-separated outcomes, 400 otherwise):
+  `{ checks, nextCursor }`, 50 a page; `GET /perps/checks/:id` adds steps, `startedAt`, `finishedAt`.
+- `GET /agents/:id/perps/positions`: `{ network, account, open, closed }`; open positions carry the
+  board's mark and unrealized P&L (null without a fresh mark), stop, target, time stop and
+  trading's `liquidationPrice`; closed are newest 50 with `realizedPnl` (net of fees).
+- `POST /perps/positions/:id/close`: the position's owner from `PostgresPerpsOwnerStore.findPosition`;
+  409 `POSITION_CLOSED`; sends `{ kind: "perps-close", positionId, productAgentId, reason: "owner" }`.
+- `POST /agents/:id/perps/stop`: pauses the agent at once (`repository.pause`, the existing pause
+  path), then sends `{ kind: "perps-close", positionId: null, productAgentId, reason: "stop_all" }`.
+- `GET /agents/:id/perps/proposals`: pending ones. `POST /perps/proposals/:id/approve`: 409
+  `PROPOSAL_DECIDED` (not pending), `PROPOSAL_EXPIRED` (past 15 minutes), `RUNTIME_DISABLED`;
+  sends `{ kind: "perps-proposal", proposalId, decision: "approve" }` and decides nothing itself.
+  `POST /perps/proposals/:id/skip` is synchronous: `decideProposal(id, "skipped")` and an `owner`
+  row "SKIPPED · ENTRY SHORT ETH"; answers `{ id, status }`.
+- `GET /agents/:id/perps/record`: trading's `recordStats` (all-time checks and entries from
+  `PostgresPerpsOwnerStore.counts`) plus `today` (new margin, realized, open count, leverage in use
+  = highest open leverage, checks, manual checks and limit, cost in micro-USD) and `runtimeEnabled`.
+
+`PERPL_RUNTIME_ENABLED` ("false" in `wrangler.jsonc` and `.dev.vars.example`) gates manual checks
+and approvals only; reads, closes and stops stay on. Keep it equal to the research worker's.
+`workers/api/test/studio-perps-route.test.ts` covers every code and each Queue payload.

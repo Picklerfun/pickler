@@ -1,5 +1,6 @@
 import {
   consumeAdvice,
+  consumePerpsAction,
   consumePerpsCheck,
   perpsAdmission,
   reconcileAdvice,
@@ -7,14 +8,18 @@ import {
   reconcile,
   superviseChecks,
   type AdviceBackground,
+  type PerpsActionMessage,
+  type PerpsActionsBackground,
   type PerpsBackground,
   type PerpsCheckMessage,
 } from "@pickler/agent-runtime";
+import { PilotError } from "@pickler/core";
 import type { PostgresResearchStore } from "@pickler/infrastructure";
 import type { createRuntime } from "@pickler/agent-runtime";
 import type { Env } from "./index.js";
 
-export type ResearchMessage = { kind: "research-wakeup" | "advice-wakeup" } | PerpsCheckMessage;
+export type ResearchMessage =
+  { kind: "research-wakeup" | "advice-wakeup" } | PerpsCheckMessage | PerpsActionMessage;
 
 type Runtime = Pick<ReturnType<typeof createRuntime>, "repository" | "execute"> &
   Partial<Pick<ReturnType<typeof createRuntime>, "previews">>;
@@ -24,6 +29,8 @@ export function createResearchWorker(deps: {
   runtime(env: Env): Runtime;
   adviceRuntime?(env: Env): AdviceBackground;
   perpsRuntime?(env: Env): PerpsBackground;
+  /** The owner's approvals and closes (perpl-paper-runtime-v1 R8, R12). */
+  perpsActions?(env: Env): PerpsActionsBackground;
   repository(env: Env): PostgresResearchStore;
 }): ExportedHandler<Env, ResearchMessage> {
   return {
@@ -44,6 +51,24 @@ export function createResearchWorker(deps: {
           } catch {
             console.error("Perpl check delivery failed; it is retried or expires");
             message.retry({ delaySeconds: 30 });
+          }
+          continue;
+        }
+        if (message.body?.kind === "perps-proposal" || message.body?.kind === "perps-close") {
+          // Runs whether or not the runtime is on: closing is always allowed; an approve while off
+          // ends blocked (RUNTIME_DISABLED). A running check holds the agent: retry shortly.
+          try {
+            if (!deps.perpsActions) {
+              throw new Error("Perpl actions unavailable");
+            }
+            await consumePerpsAction(deps.perpsActions(env), message.body, perpsAdmission(env));
+            message.ack();
+          } catch (error) {
+            const busy = error instanceof PilotError && error.code === "CHECK_RUNNING";
+            if (!busy) {
+              console.error("Perpl owner action failed; it is retried");
+            }
+            message.retry({ delaySeconds: busy ? 10 : 30 });
           }
           continue;
         }

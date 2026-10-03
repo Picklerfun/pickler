@@ -6,6 +6,7 @@ import {
   PerplMarketData,
   PerplRequestSchedule,
   PostgresCustodyStore,
+  PostgresPerpsOwnerStore,
   PostgresPerpsPaperStore,
   PostgresPerpsRuntimeStore,
   PostgresResearchStore,
@@ -17,6 +18,7 @@ import type { PerpsPaperMark } from "@pickler/trading/perps";
 import { createPerplSession } from "../plugins/perpl/index.js";
 import { siteScopedWeb } from "../plugins/exa.js";
 import type { PerpsBackground } from "../workers/perps.js";
+import type { PerpsActionsBackground } from "../workers/perps-actions.js";
 import { readPerplInstrument } from "./advice.js";
 import { createPerpsCheckModel, type PerpsCheckModel } from "./perps-check-model.js";
 import {
@@ -107,13 +109,14 @@ function exaWeb(exa: ExaResearch): PerpsCheckWeb {
 /**
  * The deployed composition of the Perpl paper runtime for one research-worker invocation: one
  * pool (closed by `close`), the runtime and paper stores, the agent wallets' AUSD reader, bounded
- * Perpl sessions of 24 requests, the board's marks, site-scoped Exa and the configured model.
+ * Perpl sessions of 24 requests, the board's marks, site-scoped Exa and the configured model, plus
+ * the owner store the owner's approvals and closes (`workers/perps-actions.ts`) run under.
  */
 export function createPerpsRuntime(
   env: PerpsRuntimeEnvironment,
   options: DatabaseConnectionOptions,
   overrides: { model?: PerpsCheckModel } = {},
-): PerpsBackground {
+): PerpsBackground & PerpsActionsBackground {
   const research = new PostgresResearchStore(env.DATABASE_URL, undefined, options);
   const store = new PostgresPerpsRuntimeStore(research.pool);
   const paper = new PostgresPerpsPaperStore(research.pool);
@@ -190,6 +193,8 @@ export function createPerpsRuntime(
       }
       return runPerpsCheck(deps, check, holder, signal);
     },
+    // The owner's approvals and closes (workers/perps-actions.ts) share this pool.
+    owner: new PostgresPerpsOwnerStore(research.pool),
     close: () => research.close(),
   };
 }

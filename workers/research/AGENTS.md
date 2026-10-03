@@ -100,3 +100,9 @@ there never stops them. Vars in `wrangler.jsonc`: `PERPL_RUNTIME_ENABLED` "false
 wallets' AUSD is read (default Monad testnet, as the API). The model reuses `MODEL_*`, the web
 `EXA_API_KEY`. Apply migration 0027 before enabling. `test/perps-runtime.test.ts` runs checks end
 to end over real PostgreSQL with fake Perpl, board, wallet and model.
+
+The Queue also carries the owner's actions from the API: `{ kind: "perps-proposal", proposalId,
+decision: "approve" }` and `{ kind: "perps-close", positionId | null, productAgentId, reason }`,
+routed to `consumePerpsAction` over `perpsActions(env)` (the same `createPerpsRuntime`). They run
+whether or not the runtime is on (closing is always allowed; an approve while off ends blocked).
+`CHECK_RUNNING` — a check holds the agent — retries after 10 s, other failures after 30 s.

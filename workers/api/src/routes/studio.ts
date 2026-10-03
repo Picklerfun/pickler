@@ -99,6 +99,7 @@ import {
 import type { AppEnv } from "../env";
 import { authenticated, type Authenticate } from "../middleware/auth";
 import { studioWalletRoutes, WalletRefusal, walletWork } from "./studio-wallets";
+import { studioPerpsRoutes, type StudioPerpsServices } from "./studio-perps";
 
 export interface StudioServices {
   trading?: {
@@ -159,6 +160,11 @@ export interface StudioServices {
   x?: { store: XStore; client: XClient };
   /** The Master wallet's ledger (D17). Absent, `GET /wallets/ledger` answers 503. */
   transfers?: { list(userId: string): Promise<TransferLedgerEntry[]> };
+  /**
+   * The Perpl paper runtime's checks, positions, proposals and record (perpl-paper-runtime-v1 §4,
+   * `src/routes/studio-perps.ts`). Absent, those routes answer 503 RUNTIME_UNAVAILABLE.
+   */
+  perps?: StudioPerpsServices;
 }
 
 /** Whole AUSD; core decides which amounts are offered. */
@@ -179,7 +185,7 @@ function pilotStatus(code: string): 400 | 404 | 409 | 429 | 503 {
   if (code === "NOT_FOUND" || code === "WALLET_NOT_FOUND" || code === "CHALLENGE_NOT_FOUND") {
     return 404;
   }
-  if (code === "QUOTA" || code === "TOO_MANY_CHECKS") {
+  if (code === "QUOTA" || code === "TOO_MANY_CHECKS" || code === "MANUAL_LIMIT") {
     return 429;
   }
   if (code === "INVALID_INPUT" || code === "INVALID_X_HANDLE") {
@@ -191,7 +197,7 @@ function pilotStatus(code: string): 400 | 404 | 409 | 429 | 503 {
   if (code === "PREVIEW_UNAVAILABLE") {
     return 503;
   }
-  if (code === "BALANCES_UNAVAILABLE") {
+  if (code === "BALANCES_UNAVAILABLE" || code === "RUNTIME_UNAVAILABLE") {
     return 503;
   }
   return 409;
@@ -1236,6 +1242,20 @@ export function studioRoutes(services: StudioServices) {
     },
   );
 
+  api.route(
+    "/",
+    studioPerpsRoutes({
+      access,
+      directory: services.directory,
+      repository: repo,
+      perps: () => {
+        if (!services.perps) {
+          throw new PilotError("RUNTIME_UNAVAILABLE", "The Perpl runtime is not composed here");
+        }
+        return services.perps;
+      },
+    }),
+  );
   api.route(
     "/wallets",
     studioWalletRoutes({

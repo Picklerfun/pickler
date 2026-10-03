@@ -40,5 +40,7 @@
     "CHAIN_ID": "10143",
     // The Perpl network /v1/marketplace/markets reads. Remove it to serve the sample board.
     "PERPL_BOARD_NETWORK": "testnet",
+    // The Perpl paper runtime's manual checks and approvals; keep it equal to the research worker's.
+    "PERPL_RUNTIME_ENABLED": "false",
   },
 }

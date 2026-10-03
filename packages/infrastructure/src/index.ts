@@ -157,6 +157,7 @@ export {
 
 export { PostgresPerpsPaperStore, PRODUCT_PAPER_MINIMUM } from "./persistence/perps-paper-store.js";
 export { PostgresPerpsRuntimeStore } from "./persistence/perps-runtime-store.js";
+export { PostgresPerpsOwnerStore } from "./persistence/perps-owner-store.js";
 export { PostgresPerpsStudyStore } from "./persistence/perps-study-store.js";
 
 export { QuantData } from "./polymarket/quant-data.js";

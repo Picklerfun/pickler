@@ -213,3 +213,21 @@ slot under overlapping Cron runs; a replay that is no longer queued is not sent 
 `perpsAdmission(env)` reads the flags. Manual checks: the API starts the check
 (`PerpsRuntimeRepository.startCheck`, trigger `manual`) and sends the same Queue message.
 Tests: `test/perps-check-model.test.ts`; the end-to-end runs are in `workers/research/test`.
+
+`workers/perps-actions.ts` carries out the owner's actions the API queues (R8, R12):
+`consumePerpsAction(runtime, message, admission)` for `{ kind: "perps-proposal", proposalId,
+decision: "approve" }` and `{ kind: "perps-close", positionId | null, productAgentId, reason:
+"owner" | "stop_all" }`. Each runs as an `owner` check row (`PerpsActionsBackground.owner`, the
+infrastructure's `PostgresPerpsOwnerStore.startOwnerCheck`) that holds the agent's lease with a
+heartbeat, so an action never runs beside a check: `CHECK_RUNNING` is thrown for the host to retry.
+Every paper action renews the lease first. Approve: a proposal no longer pending does nothing;
+off, it ends `blocked` `RUNTIME_DISABLED`; `decideProposal(id, "approved")` (→ `approving`;
+`PROPOSAL_EXPIRED` ends `skipped`), then a fresh frame (`exitFrame`), `proposalRefusal` (paused,
+already open, leverage, per-trade, open-positions and per-day caps, day-loss stop, no mark, free
+AUSD below margin plus fee reserve — R6's order with trading's helpers), the open through the paper
+service with the proposing check's exits (or `sizeUp` for a size-up), and `settleProposal(id,
+opened)`: `approved`, or back to `pending` when refused (the row is `blocked` with the cap's code).
+Close: one position or all at fresh frames with reason `owner`/`stop_all`, one step per close with
+its P&L; an owner close crossing the day-loss stop pauses the agent. `createPerpsRuntime` also
+answers `owner`, so the same composition serves checks and actions. Tests:
+`workers/research/test/perps-actions.test.ts` (real PostgreSQL, fake Perpl).
