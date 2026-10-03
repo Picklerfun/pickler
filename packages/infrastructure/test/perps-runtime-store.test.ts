@@ -16,6 +16,8 @@ import {
   PRODUCT_PAPER_SESSION,
   PROPOSAL_TTL_MS,
   createPerpsPaperService,
+  paperDecimal,
+  paperUnits,
   perpsCheckMinute,
   type PerpsPaperFrame,
   type PerpsPaperScope,
@@ -511,13 +513,21 @@ test("pauseAgent pauses and writes a system row together", async (t) => {
   const { id, scope } = await f.agent();
 
   const row = await f.store.pauseAgent(id, "Paused itself · day-loss stop");
+  // Racing closers (two exits runs, an exit and a check) pause it once, with one row.
+  const again = await Promise.all([
+    f.store.pauseAgent(id, "Paused itself · day-loss stop"),
+    f.store.pauseAgent(id, "Paused itself · day-loss stop"),
+  ]);
 
-  assert.equal(row.outcome, "system");
-  assert.equal(row.trigger, "system");
+  assert.equal(row!.outcome, "system");
+  assert.equal(row!.trigger, "system");
+  assert.deepEqual(again, [null, null]);
   const paused = await f.db.pool.query("SELECT paused FROM pickler.agents WHERE id=$1", [
     scope.agentId,
   ]);
   assert.equal(paused.rows[0].paused, true);
+  const rows = (await f.store.listChecks(id)).items.filter((c) => c.trigger === "system");
+  assert.equal(rows.length, 1);
 });
 
 test("a product account follows the agent across config versions; each position keeps its own", async (t) => {
@@ -997,4 +1007,107 @@ test("an approval is approving until settled: approved only once the open succee
     (await f.store.expireProposals()).map((p) => p.id),
     [c.id],
   );
+});
+
+test("a close past the liquidation estimate loses the margin, never more: cash stays positive", async (t) => {
+  const f = await setup(t);
+  const { scope } = await f.agent();
+  await f.paper.initialize(scope, 1, "100");
+  const service = createPerpsPaperService(
+    f.paper,
+    {
+      observation: async () => ({ frames: [], funding: [] }),
+      frame: async () => frame("BTC", f.now(), "60000"),
+    },
+    f.now,
+  );
+  const opened = await service.trade(
+    scope,
+    "open-btc",
+    "open",
+    "BTC",
+    "long",
+    AbortSignal.timeout(5000),
+    frame("BTC", f.now(), "60000"),
+    {
+      notional: "900",
+      leverage: 10,
+      exits: () => ({ stopPrice: null, takeProfitPrice: null, exitDueAt: null }),
+    },
+  );
+  const position = opened.account.positions[0]!;
+  const openFee = -Number(opened.movements.find((m) => m.key === "open-btc:fee")!.delta);
+
+  // A gap: the board was stale and the next frame is 30% below entry (liquidation is 10%).
+  const closed = await f.paper.closePosition(
+    scope,
+    position.id,
+    "stop",
+    frame("BTC", f.now(), "42000"),
+  );
+
+  const pnl = closed.view.movements.find((m) => m.key === `close:${position.id}:pnl`)!;
+  const fee = closed.view.movements.find((m) => m.key === `close:${position.id}:fee`)!;
+  assert.equal(
+    paperDecimal(paperUnits(pnl.delta) + paperUnits(fee.delta)),
+    paperDecimal(-paperUnits(position.margin!)),
+  );
+  assert.ok(Number(closed.view.account.cash) > 0);
+  assert.equal(
+    Number(closed.view.account.cash),
+    Number((100 - openFee - Number(position.margin)).toFixed(6)),
+  );
+});
+
+test("snapshot reads without locks or writes, projecting lapsed attempts", async (t) => {
+  const f = await setup(t);
+  const { scope } = await f.agent();
+  await f.paper.initialize(scope, 1, "100");
+  const account = await f.db.pool.query(
+    "SELECT id FROM pickler.perps_paper_accounts WHERE agent_id = $1",
+    [scope.agentId],
+  );
+  await f.db.pool.query(
+    `INSERT INTO pickler.perps_paper_attempts(account_id,key,document,owner,expires_at)
+     VALUES($1,'stale',$2,$3,$4)`,
+    [
+      account.rows[0].id,
+      {
+        key: "stale",
+        intent: { kind: "open", symbol: "BTC", side: "long", notional: "50", feeReserve: "1" },
+        status: "pending",
+        reserved: "51",
+        createdAt: f.now() - 120_000,
+        finishedAt: null,
+        reason: null,
+        evidence: null,
+      },
+      randomUUID(),
+      f.now() - 60_000,
+    ],
+  );
+
+  // A writer holds the agent row: a read through view would wait, the snapshot does not.
+  const writer = await f.db.pool.connect();
+  await writer.query("BEGIN");
+  await writer.query("SELECT 1 FROM pickler.agents WHERE tenant_id=$1 AND id=$2 FOR UPDATE", [
+    scope.tenantId,
+    scope.agentId,
+  ]);
+  try {
+    const snapshot = await f.paper.snapshot(scope);
+    const stale = snapshot.attempts.find((a) => a.key === "stale")!;
+    assert.equal(stale.status, "interrupted");
+    assert.equal(stale.reason, "LEASE_EXPIRED");
+    assert.equal(await f.paper.newMarginSince(scope, 0), "0");
+  } finally {
+    await writer.query("ROLLBACK");
+    writer.release();
+  }
+  const stored = await f.db.pool.query(
+    "SELECT document->>'status' AS status, owner FROM pickler.perps_paper_attempts WHERE key = 'stale'",
+  );
+  assert.equal(stored.rows[0].status, "pending");
+  assert.ok(stored.rows[0].owner);
+  await assert.rejects(f.paper.snapshot({ ...scope, agentId: "nobody" }), { code: "NOT_FOUND" });
 });

@@ -51,11 +51,12 @@ const PROPOSAL = `id::text, check_id::text AS "checkId", product_agent_id::text 
  created_at::double precision AS "createdAt", expires_at::double precision AS "expiresAt",
  decided_at::double precision AS "decidedAt", position_id AS "positionId"`;
 
-interface Mapping {
+export interface PerpsAgentMapping {
   productAgentId: string;
   tenantId: string;
   agentId: string;
   perpl: boolean;
+  killed: boolean;
 }
 
 const proposalRow = (row: PerpsProposal): PerpsProposal => ({
@@ -109,10 +110,10 @@ const json = (value: unknown) =>
 export class PostgresPerpsRuntimeStore implements PerpsRuntimeRepository {
   constructor(
     readonly pool: Pool,
-    private readonly testClock?: () => number,
+    protected readonly testClock?: () => number,
   ) {}
 
-  private async now(db: Pool | PoolClient) {
+  protected async now(db: Pool | PoolClient) {
     if (this.testClock) {
       return this.testClock();
     }
@@ -122,7 +123,7 @@ export class PostgresPerpsRuntimeStore implements PerpsRuntimeRepository {
     return result.rows[0]!.at;
   }
 
-  private async transaction<T>(action: (db: PoolClient) => Promise<T>): Promise<T> {
+  protected async transaction<T>(action: (db: PoolClient) => Promise<T>): Promise<T> {
     const db = await this.pool.connect();
     try {
       await db.query("BEGIN");
@@ -138,15 +139,21 @@ export class PostgresPerpsRuntimeStore implements PerpsRuntimeRepository {
   }
 
   /** The product agent's runtime mapping, locking the runtime agent row when `lock`. */
-  private async mapping(db: PoolClient, productAgentId: string, lock: boolean): Promise<Mapping> {
+  protected async mapping(
+    db: PoolClient,
+    productAgentId: string,
+    lock: boolean,
+  ): Promise<PerpsAgentMapping> {
     if (!UUID.test(productAgentId)) {
       throw new PilotError("NOT_FOUND", "Agent not found");
     }
-    const result = await db.query<Mapping>(
+    const result = await db.query<PerpsAgentMapping>(
       `SELECT p.product_agent_id::text AS "productAgentId", p.tenant_id AS "tenantId",
-        p.runtime_agent_id AS "agentId", jsonb_typeof(r.config->'perpl') = 'object' AS perpl
+        p.runtime_agent_id AS "agentId", jsonb_typeof(r.config->'perpl') = 'object' AS perpl,
+        coalesce(a.killed_at IS NOT NULL, false) AS killed
       FROM pickler.product_agents p
       JOIN pickler.agents r ON r.tenant_id = p.tenant_id AND r.id = p.runtime_agent_id
+      LEFT JOIN agents.agents a ON a.id = p.product_agent_id
       WHERE p.product_agent_id = $1
       ${lock ? "FOR UPDATE OF r" : ""}`,
       [productAgentId],
@@ -158,7 +165,7 @@ export class PostgresPerpsRuntimeStore implements PerpsRuntimeRepository {
     return row;
   }
 
-  private async lockAgent(db: PoolClient, tenantId: string, agentId: string) {
+  protected async lockAgent(db: PoolClient, tenantId: string, agentId: string) {
     await db.query("SELECT 1 FROM pickler.agents WHERE tenant_id = $1 AND id = $2 FOR UPDATE", [
       tenantId,
       agentId,
@@ -166,7 +173,7 @@ export class PostgresPerpsRuntimeStore implements PerpsRuntimeRepository {
   }
 
   /** Ends the agent's queued checks nobody claimed in time and running checks whose lease lapsed. */
-  private async recover(db: PoolClient, tenantId: string, agentId: string, at: number) {
+  protected async recover(db: PoolClient, tenantId: string, agentId: string, at: number) {
     await db.query(`${RECOVER} AND tenant_id = $3 AND agent_id = $4`, [
       at,
       PERPS_CHECK_QUEUE_MS,
@@ -186,7 +193,7 @@ export class PostgresPerpsRuntimeStore implements PerpsRuntimeRepository {
     return result.rowCount ?? 0;
   }
 
-  private async read(db: Pool | PoolClient, id: string): Promise<PerpsCheck | null> {
+  protected async read(db: Pool | PoolClient, id: string): Promise<PerpsCheck | null> {
     if (!UUID.test(id)) {
       return null;
     }
@@ -198,7 +205,7 @@ export class PostgresPerpsRuntimeStore implements PerpsRuntimeRepository {
   }
 
   /** Locks the leased check row; `LEASE_LOST` unless this lease still holds it. */
-  private async owned(db: PoolClient, lease: PerpsCheckLease) {
+  protected async owned(db: PoolClient, lease: PerpsCheckLease) {
     const at = await this.now(db);
     const valid = UUID.test(lease.checkId) && UUID.test(lease.owner);
     const result = valid
@@ -244,24 +251,64 @@ export class PostgresPerpsRuntimeStore implements PerpsRuntimeRepository {
       if (!agent.perpl) {
         throw new PilotError("NOT_A_PERPL_AGENT", "This agent does not trade on Perpl");
       }
-      const at = await this.now(db);
-      await this.recover(db, agent.tenantId, agent.agentId, at);
-      const active = await db.query(
-        `SELECT 1 FROM pickler.perps_checks
-        WHERE tenant_id = $1 AND agent_id = $2 AND status IN ('queued', 'running')`,
-        [agent.tenantId, agent.agentId],
-      );
-      if (active.rowCount) {
-        throw new PilotError("CHECK_RUNNING", "A check is already queued or running");
+      if (agent.killed) {
+        throw new PilotError("AGENT_KILLED", "This agent was killed");
       }
-      const id = randomUUID();
-      await db.query(
-        `INSERT INTO pickler.perps_checks(id, product_agent_id, tenant_id, agent_id, trigger, request_key, status, created_at)
-        VALUES ($1, $2, $3, $4, $5, $6, 'queued', $7)`,
-        [id, agent.productAgentId, agent.tenantId, agent.agentId, input.trigger, requestKey, at],
-      );
+      const id = await this.insertCheck(db, agent, {
+        trigger: input.trigger,
+        requestKey,
+        at: await this.now(db),
+        lease: null,
+      });
       return (await this.read(db, id))!;
     });
+  }
+
+  /**
+   * The one place a check row is started, for every trigger that holds the agent (hourly, manual,
+   * owner): with the runtime agent row already locked, recovers the agent's lapsed checks, refuses
+   * `CHECK_RUNNING` while another is queued or running, and inserts it `queued`, or `running` with
+   * `lease` (an owner action starts and claims in one transaction). Answers its id.
+   */
+  protected async insertCheck(
+    db: PoolClient,
+    agent: PerpsAgentMapping,
+    input: {
+      trigger: "hourly" | "manual" | "owner";
+      requestKey: string | null;
+      at: number;
+      lease: { owner: string; expiresAt: number } | null;
+    },
+  ) {
+    await this.recover(db, agent.tenantId, agent.agentId, input.at);
+    const active = await db.query(
+      `SELECT 1 FROM pickler.perps_checks
+      WHERE tenant_id = $1 AND agent_id = $2 AND status IN ('queued', 'running')`,
+      [agent.tenantId, agent.agentId],
+    );
+    if (active.rowCount) {
+      throw new PilotError("CHECK_RUNNING", "A check is already queued or running");
+    }
+    const id = randomUUID();
+    await db.query(
+      `INSERT INTO pickler.perps_checks(id, product_agent_id, tenant_id, agent_id, trigger, request_key, status,
+        created_at, started_at, lease_owner, lease_expires_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+      [
+        id,
+        agent.productAgentId,
+        agent.tenantId,
+        agent.agentId,
+        input.trigger,
+        input.requestKey,
+        input.lease ? "running" : "queued",
+        input.at,
+        input.lease ? input.at : null,
+        input.lease?.owner ?? null,
+        input.lease?.expiresAt ?? null,
+      ],
+    );
+    return id;
   }
 
   async claimAgent(checkId: string) {
@@ -332,7 +379,7 @@ export class PostgresPerpsRuntimeStore implements PerpsRuntimeRepository {
     });
   }
 
-  private async finish(db: PoolClient, id: string, at: number, result: PerpsCheckFinish) {
+  protected async finish(db: PoolClient, id: string, at: number, result: PerpsCheckFinish) {
     await db.query(
       `UPDATE pickler.perps_checks
       SET status = 'finished', finished_at = $2, outcome = $3, outcome_text = $4, decision = $5,
@@ -376,7 +423,11 @@ export class PostgresPerpsRuntimeStore implements PerpsRuntimeRepository {
     });
   }
 
-  private async insertFinished(db: PoolClient, agent: Mapping, record: PerpsCheckRecord) {
+  protected async insertFinished(
+    db: PoolClient,
+    agent: PerpsAgentMapping,
+    record: PerpsCheckRecord,
+  ) {
     const at = await this.now(db);
     const steps = (record.steps ?? []).map((step) => ({
       at,
@@ -432,10 +483,14 @@ export class PostgresPerpsRuntimeStore implements PerpsRuntimeRepository {
     assertFinish(record);
     return this.transaction(async (db) => {
       const agent = await this.mapping(db, productAgentId, true);
-      await db.query("UPDATE pickler.agents SET paused = true WHERE tenant_id = $1 AND id = $2", [
-        agent.tenantId,
-        agent.agentId,
-      ]);
+      const paused = await db.query(
+        "UPDATE pickler.agents SET paused = true WHERE tenant_id = $1 AND id = $2 AND NOT paused",
+        [agent.tenantId, agent.agentId],
+      );
+      // Already paused (another closer won the race): one pause, one row.
+      if (!paused.rowCount) {
+        return null;
+      }
       return this.insertFinished(db, agent, record);
     });
   }

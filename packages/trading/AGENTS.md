@@ -66,7 +66,15 @@ agent), never the agent's current plugins, policy, network or markets, so an own
 strands a position; opens keep the full `assertPerpsPaperAgent`. `features/perps-paper/checks.ts`
 owns the runtime's storage port `PerpsRuntimeRepository` (checks, steps, leases, proposals, daily
 counts) and `perpsCheckMinute`; `PerpsProductPaperRepository` adds `closePosition`,
-`openDuePositions` and `newMarginSince` to the paper port. Due agents carry their `slot` and the
+`openDuePositions`, `newMarginSince` and the read-only `snapshot` to the paper port;
+`marginOpenedSince(positions, since)` is the pure new-margin sum hosts compute from a snapshot.
+`PerpsOwnerActionRepository` is the port of the owner's durable actions (`PERPS_OWNER_ACTION_KINDS`
+`close` | `stop_all` | `approve`, statuses `pending` → `running` → `done` | `failed`, a 180 s claim
+`PERPS_ACTION_LEASE_MS`, re-drive after `PERPS_ACTION_REDRIVE_MS` 30 s, at most
+`PERPS_ACTION_MAX_ATTEMPTS` 30). `pauseAgent` is idempotent (null when already paused). In a product
+account `applyPaperFill` caps a close's loss (realized P&L plus its fee) at the position's margin:
+isolated margin, so a fill past the liquidation estimate is a liquidation and cash never goes
+negative. Due agents carry their `slot` and the
 dispatcher keys hourly checks `hourlyRequestKey(slot)` (one check per slot); `recoverChecks` is
 the Cron's sweep of stuck checks. An approval goes `pending → approving` (`decideProposal`) and
 only `settleProposal(id, opened)` makes it `approved` (or puts it back to `pending` when the open

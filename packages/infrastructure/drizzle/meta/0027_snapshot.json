@@ -7802,6 +7802,200 @@
       },
       "isRLSEnabled": true
     },
+    "pickler.perps_owner_actions": {
+      "name": "perps_owner_actions",
+      "schema": "pickler",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "product_agent_id": {
+          "name": "product_agent_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "kind": {
+          "name": "kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "position_id": {
+          "name": "position_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "proposal_id": {
+          "name": "proposal_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "request_key": {
+          "name": "request_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "attempts": {
+          "name": "attempts",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "last_error": {
+          "name": "last_error",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "check_id": {
+          "name": "check_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "lease_owner": {
+          "name": "lease_owner",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "lease_expires_at": {
+          "name": "lease_expires_at",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "perps_owner_actions_request": {
+          "name": "perps_owner_actions_request",
+          "columns": [
+            {
+              "expression": "product_agent_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "request_key",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "perps_owner_actions_open": {
+          "name": "perps_owner_actions_open",
+          "columns": [
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "updated_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "where": "\"pickler\".\"perps_owner_actions\".\"status\" in ('pending','running')",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "perps_owner_actions_product_agent_id_product_agents_product_agent_id_fk": {
+          "name": "perps_owner_actions_product_agent_id_product_agents_product_agent_id_fk",
+          "tableFrom": "perps_owner_actions",
+          "tableTo": "product_agents",
+          "schemaTo": "pickler",
+          "columnsFrom": ["product_agent_id"],
+          "columnsTo": ["product_agent_id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "perps_owner_actions_proposal_id_perps_proposals_id_fk": {
+          "name": "perps_owner_actions_proposal_id_perps_proposals_id_fk",
+          "tableFrom": "perps_owner_actions",
+          "tableTo": "perps_proposals",
+          "schemaTo": "pickler",
+          "columnsFrom": ["proposal_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "perps_owner_actions_check_id_perps_checks_id_fk": {
+          "name": "perps_owner_actions_check_id_perps_checks_id_fk",
+          "tableFrom": "perps_owner_actions",
+          "tableTo": "perps_checks",
+          "schemaTo": "pickler",
+          "columnsFrom": ["check_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "perps_owner_actions_kind": {
+          "name": "perps_owner_actions_kind",
+          "value": "\"pickler\".\"perps_owner_actions\".\"kind\" in ('close','stop_all','approve')"
+        },
+        "perps_owner_actions_status": {
+          "name": "perps_owner_actions_status",
+          "value": "\"pickler\".\"perps_owner_actions\".\"status\" in ('pending','running','done','failed')"
+        },
+        "perps_owner_actions_target": {
+          "name": "perps_owner_actions_target",
+          "value": "(\"pickler\".\"perps_owner_actions\".\"kind\" = 'close') = (\"pickler\".\"perps_owner_actions\".\"position_id\" is not null) AND (\"pickler\".\"perps_owner_actions\".\"kind\" = 'approve') = (\"pickler\".\"perps_owner_actions\".\"proposal_id\" is not null)"
+        },
+        "perps_owner_actions_lease": {
+          "name": "perps_owner_actions_lease",
+          "value": "\"pickler\".\"perps_owner_actions\".\"status\" <> 'running' OR (\"pickler\".\"perps_owner_actions\".\"lease_owner\" is not null AND \"pickler\".\"perps_owner_actions\".\"lease_expires_at\" is not null)"
+        },
+        "perps_owner_actions_attempts": {
+          "name": "perps_owner_actions_attempts",
+          "value": "\"pickler\".\"perps_owner_actions\".\"attempts\" >= 0"
+        }
+      },
+      "isRLSEnabled": true
+    },
     "pickler.perps_proposals": {
       "name": "perps_proposals",
       "schema": "pickler",

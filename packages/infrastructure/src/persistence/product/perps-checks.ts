@@ -135,3 +135,51 @@ export const perpsProposals = pickler
     ],
   )
   .enableRLS();
+
+/**
+ * The owner's paper actions (R8, R12): written by the API in the request, carried out by the
+ * research worker under the agent's lease, re-driven by the minute Cron while pending.
+ */
+export const perpsOwnerActions = pickler
+  .table(
+    "perps_owner_actions",
+    {
+      id: uuid("id").primaryKey(),
+      productAgentId: uuid("product_agent_id")
+        .notNull()
+        .references(() => productAgents.productAgentId),
+      kind: text("kind").notNull(),
+      positionId: text("position_id"),
+      proposalId: uuid("proposal_id").references(() => perpsProposals.id),
+      requestKey: text("request_key").notNull(),
+      status: text("status").notNull(),
+      attempts: integer("attempts").notNull().default(0),
+      lastError: text("last_error"),
+      checkId: uuid("check_id").references(() => perpsChecks.id),
+      leaseOwner: uuid("lease_owner"),
+      leaseExpiresAt: bigint("lease_expires_at", { mode: "number" }),
+      createdAt: bigint("created_at", { mode: "number" }).notNull(),
+      updatedAt: bigint("updated_at", { mode: "number" }).notNull(),
+    },
+    (t) => [
+      uniqueIndex("perps_owner_actions_request").on(t.productAgentId, t.requestKey),
+      index("perps_owner_actions_open")
+        .on(t.status, t.updatedAt)
+        .where(sql`${t.status} in ('pending','running')`),
+      check("perps_owner_actions_kind", sql`${t.kind} in ('close','stop_all','approve')`),
+      check(
+        "perps_owner_actions_status",
+        sql`${t.status} in ('pending','running','done','failed')`,
+      ),
+      check(
+        "perps_owner_actions_target",
+        sql`(${t.kind} = 'close') = (${t.positionId} is not null) AND (${t.kind} = 'approve') = (${t.proposalId} is not null)`,
+      ),
+      check(
+        "perps_owner_actions_lease",
+        sql`${t.status} <> 'running' OR (${t.leaseOwner} is not null AND ${t.leaseExpiresAt} is not null)`,
+      ),
+      check("perps_owner_actions_attempts", sql`${t.attempts} >= 0`),
+    ],
+  )
+  .enableRLS();

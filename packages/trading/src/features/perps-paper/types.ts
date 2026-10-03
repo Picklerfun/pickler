@@ -184,6 +184,12 @@ export interface PerpsProductPaperRepository extends PerpsPaperRepository {
   /** Margin opened since `since` (positions opened then, plus size-ups then), in AUSD. */
   newMarginSince(scope: PerpsPaperScope, since: number): Promise<string>;
   /**
+   * The account as `view` answers it, read without locks or writes: attempts whose lease lapsed
+   * are shown `interrupted` but not rewritten. For reads (the studio's routes), never before an
+   * action. `NOT_FOUND` without an account.
+   */
+  snapshot(scope: PerpsPaperScope): Promise<PerpsPaperView>;
+  /**
    * R8's size-up: adds `margin` (AUSD) to an open position at its leverage, filled at `frame`.
    * `key` makes it idempotent (a repeat answers `added: false`); `POSITION_CLOSED` once closed,
    * `PAUSED` while paused, `INSUFFICIENT_AVAILABLE` without the margin plus the fee reserve free.

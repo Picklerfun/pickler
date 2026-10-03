@@ -346,9 +346,18 @@ export function applyPaperFill(
     if (!p || u(p.quantity) !== u(fill.quantity) || fill.block < p.entryBlock) {
       throw new PilotError("INVALID_FILL", "Close must match the full position");
     }
-    const pnl = paperCash(
-      d((u(fill.notional) - u(p.entryNotional)) * (p.side === "long" ? 1n : -1n)),
-    );
+    let realized = (u(fill.notional) - u(p.entryNotional)) * (p.side === "long" ? 1n : -1n);
+    if (isProductPaperSession(a.scope)) {
+      // Isolated margin: a product close loses at most the position's margin, its fee included.
+      // A fill past the liquidation estimate (a gap, a stale board) is a liquidation, so cash
+      // never goes below what the other positions hold.
+      const floor = u(fill.fee) - positionMargin(p);
+      if (realized < floor) {
+        // Truncated to micro-AUSD toward zero, so rounding never takes more than the margin.
+        realized = floor < 0n ? (floor / 10n ** 12n) * 10n ** 12n : 0n;
+      }
+    }
+    const pnl = paperCash(d(realized));
     movements.push({
       key: `${attempt.key}:pnl`,
       kind: "realized-pnl",
@@ -449,4 +458,24 @@ export function productFreeEquity(
     .filter((a) => a.status === "pending")
     .reduce((sum, a) => sum + u(a.reserved), 0n);
   return d((equity < cash ? equity : cash) - margin - reserved);
+}
+/**
+ * Margin opened since `since`, in AUSD: positions opened then, plus the size-ups added then. A
+ * position's margin includes its size-ups, and each counts on the day it was added.
+ */
+export function marginOpenedSince(positions: PerpsPaperAccount["positions"], since: number) {
+  let total = 0n;
+  for (const p of positions) {
+    let opening = u(p.margin ?? p.entryNotional);
+    for (const added of p.sizeUps ?? []) {
+      opening -= u(added.margin);
+      if (added.at >= since) {
+        total += u(added.margin);
+      }
+    }
+    if (p.openedAt >= since) {
+      total += opening;
+    }
+  }
+  return d(total);
 }

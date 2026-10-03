@@ -424,8 +424,8 @@ exportPerpsAudit uses a scoped repeatable-read READ ONLY transaction for study, 
 
 ## Perpl paper runtime persistence
 
-Migration 0027 (`docs/specs/perpl-paper-runtime-v1.md` R9, R10, R14, R15) adds
-`pickler.perps_checks` and `pickler.perps_proposals` (declared in
+Migration 0027 (`docs/specs/perpl-paper-runtime-v1.md` R9, R10, R12, R14, R15) adds
+`pickler.perps_checks`, `pickler.perps_proposals` and `pickler.perps_owner_actions` (declared in
 `src/persistence/product/perps-checks.ts`, RLS on, the service role may select, insert and update;
 the grants follow 0025, not 0012/0013 as spec §5 said, because those grant nothing)
 and eight nullable columns on `pickler.perps_paper_positions` (`check_id`, `config_version`,
@@ -441,14 +441,17 @@ before deploying the API or the research worker**: the product paper store write
 on every position change, and the runtime store reads the new tables.
 
 `PostgresPerpsRuntimeStore` implements trading's `PerpsRuntimeRepository`. A check is `queued`
-(`startCheck`: `NOT_A_PERPL_AGENT`, `CHECK_RUNNING`, replay by request key), `running` with a 60 s
+(`startCheck`: `NOT_A_PERPL_AGENT`, `AGENT_KILLED`, `CHECK_RUNNING`, replay by request key; every
+check row is inserted by the one protected `insertCheck`, which recovers the agent's lapsed checks
+and refuses `CHECK_RUNNING` under the agent row lock), `running` with a 60 s
 lease (`claimAgent` → `{ check, lease }`, `renewAgent`, `appendStep`, `createProposal`), then
 `finished` (`finishCheck`, `releaseAgent`). A partial unique index keeps one queued or running
 check per agent; starting and claiming lock the runtime agent row first, then the check. Expired
 leases end as `CHECK_INTERRUPTED` and checks queued over ten minutes as `CHECK_EXPIRED`, recovered
 whenever the agent is started or claimed, and across agents by `recoverChecks()` (the minute Cron's
 sweep, so a paused or draft agent's crashed check never stays `running`). `recordCheck` writes finished rows at once (exits, owner
-actions, system notes); `pauseAgent` sets `paused` and writes a `system` row in one transaction.
+actions, system notes); `pauseAgent` sets `paused` and writes a `system` row in one transaction,
+and only when the agent was not paused yet (null otherwise), so racing closers pause it once.
 `listChecks` pages 50 newest first with an outcome filter. `dueAgents` answers public, unkilled,
 unpaused agents with a Perpl config whose hourly slot (`perpsCheckMinute` of the product id)
 opened under ten minutes ago with no hourly check since (read through `perps_checks_feed`) and no
@@ -460,13 +463,22 @@ approval becomes `approving`; `settleProposal(id, opened)` makes it `approved` o
 Proposal leverage is within core's `LEVERAGE_BOUNDS` (1–10). Counts and cost are per UTC day and use the
 store clock (the database's `clock_timestamp()` outside tests).
 
-`PostgresPerpsOwnerStore` (`perps-owner-store.ts`) serves the owner's actions and the studio's
-reads: `startOwnerCheck({ productAgentId, requestKey? })` queues an `owner` check under
-`startCheck`'s rules (agent row locked, lapsed checks recovered, `CHECK_RUNNING`, replay by key),
-so the research worker's approvals and closes hold the agent's lease like a check;
+`PostgresPerpsOwnerStore` (`perps-owner-store.ts`) extends the runtime store (one check-insertion
+path, `insertCheck`) and implements trading's `PerpsOwnerActionRepository` over
+`pickler.perps_owner_actions`: `createAction` (the API, in the request; replay by
+`(product agent, request key)`, `CONFLICT` for a key used for another action, `AGENT_KILLED` for an
+approval of a killed agent; a `close` names its position and an `approve` its proposal, a CHECK
+holds that), `getAction`, `claimAction` (a pending row, or a running one whose 180 s claim lapsed,
+becomes `running` with a fresh claim owner and `attempts + 1`; past 30 attempts it ends `failed`
+`TOO_MANY_ATTEMPTS`), `startActionCheck` (one transaction: the agent row locked, the claim
+re-checked, lapsed checks recovered, and an `owner` check inserted already `running` with its 60 s
+lease, keyed `action:<id>:<attempt>`; `CHECK_RUNNING` while another check is live; null when the
+claim no longer holds the action), `releaseAction` (back to `pending` with the attempt's code, only
+for the claim that holds it), `finishAction` (the check's lease fences one transaction that
+finishes the check and sets the action `done`, `failed` or `pending`) and `pendingActions` (pending
+rows untouched for 30 s and running rows whose claim lapsed, for the Cron's re-drive). Beside them:
 `findPosition(id)` answers the product agent and paper scope holding a position; `counts(id)`
-answers all-time hourly/manual checks and `entered` checks for the record. It is a separate class
-so the runtime store's file stays the runtime's.
+answers all-time hourly/manual checks and `entered` checks for the record.
 
 `PostgresPerpsPaperStore` also serves product sessions (`sessionId = "product"`, trading's
 `PRODUCT_PAPER_SESSION`): `initialize(scope, version, startingCash)` takes the wallet's AUSD
@@ -484,7 +496,12 @@ adds margin to an open product position at its leverage through trading's `apply
 (its fee reserve is `productFeeReserve` at the frame's taker fee)
 (idempotent by key, recorded as a filled attempt; `POSITION_CLOSED`, `PAUSED`,
 `INSUFFICIENT_AVAILABLE`), and `openNetworks()` lists networks with open product positions for
-the exits job's marks. Operator sessions keep the version pin, the 1x policy and the 100 cap.
+the exits job's marks. `snapshot(scope)` is the read the studio's routes use: one repeatable-read
+read-only transaction with no row locks and no writes, attempts whose lease lapsed projected
+`interrupted` as `view` would rewrite them; `newMarginSince` reads through it (trading's
+`marginOpenedSince`). A product close loses at most the position's margin, fees included (trading's
+`applyPaperFill`), so a fill past the liquidation estimate never takes cash below zero. Operator
+sessions keep the version pin, the 1x policy and the 100 cap.
 `PerplTransport` takes a trusted `sessionLimit` (1–24, default 12; `PERPL_CHECK_SESSION_LIMIT` is
 24 for the runtime's checks and exit frames).
 

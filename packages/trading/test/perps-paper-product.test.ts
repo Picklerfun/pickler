@@ -9,6 +9,7 @@ import {
   assertPerpsPaperScope,
   createPerpsPaperService,
   initialPaperAccount,
+  marginOpenedSince,
   paperOpenReserve,
   paperRisk,
   productFeeReserve,
@@ -274,4 +275,43 @@ test("a large product open fills when its fee fits the scaled reserve", () => {
   assert.throws(() => applyPaperFill(account, pending({ ...big, feeReserve: "1" }), bigFill, now), {
     code: "INVALID_FILL",
   });
+});
+
+test("marginOpenedSince counts positions opened since, and each size-up on its own day", () => {
+  const day = Date.UTC(2026, 9, 3);
+  const base = {
+    symbol: "BTC" as const,
+    side: "long" as const,
+    quantity: "0.001",
+    entryPrice: "60000",
+    entryBlock: 1,
+    mark: null,
+    markAt: null,
+    closedAt: null,
+    exitPrice: null,
+    exitBlock: null,
+  };
+  const positions = [
+    // Opened yesterday with 10 AUSD, sized up by 4 today: only the 4 is today's.
+    {
+      ...base,
+      id: "old",
+      entryNotional: "28",
+      margin: "14",
+      openedAt: day - 3_600_000,
+      sizeUps: [{ at: day + 60_000, margin: "4" }],
+    },
+    {
+      ...base,
+      id: "new",
+      symbol: "ETH" as const,
+      entryNotional: "20",
+      margin: "10",
+      openedAt: day + 1,
+    },
+  ];
+
+  assert.equal(marginOpenedSince(positions, day), "14");
+  assert.equal(marginOpenedSince(positions, day - 86_400_000), "24");
+  assert.equal(marginOpenedSince(positions, day + 120_000), "0");
 });

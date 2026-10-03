@@ -123,8 +123,9 @@ export interface PerpsCheckPage {
 
 export interface PerpsRuntimeRepository {
   /**
-   * Queues a check; `CHECK_RUNNING` while another is queued or running for the agent. A repeated
-   * `requestKey` answers the check it already started (the dispatcher uses `hourlyRequestKey`).
+   * Queues a check; `CHECK_RUNNING` while another is queued or running for the agent,
+   * `AGENT_KILLED` for a killed agent. A repeated `requestKey` answers the check it already
+   * started (the dispatcher uses `hourlyRequestKey`).
    */
   startCheck(input: {
     productAgentId: string;
@@ -144,8 +145,11 @@ export interface PerpsRuntimeRepository {
   appendStep(lease: PerpsCheckLease, step: { text: string; ms?: number | null }): Promise<void>;
   finishCheck(lease: PerpsCheckLease, result: PerpsCheckFinish): Promise<PerpsCheck>;
   recordCheck(record: PerpsCheckRecord): Promise<PerpsCheck>;
-  /** Pauses the agent and writes a `system` row in the same transaction (R11, R12). */
-  pauseAgent(productAgentId: string, outcomeText: string): Promise<PerpsCheck>;
+  /**
+   * Pauses the agent and writes a `system` row in the same transaction (R11, R12). Idempotent: an
+   * agent already paused writes nothing and answers null, so racing closers pause it once.
+   */
+  pauseAgent(productAgentId: string, outcomeText: string): Promise<PerpsCheck | null>;
   getCheck(id: string): Promise<PerpsCheck | null>;
   listChecks(
     productAgentId: string,
@@ -186,4 +190,93 @@ export function perpsCheckMinute(productAgentId: string) {
     throw new PilotError("INVALID_INPUT", "A product agent id is a UUID");
   }
   return Number.parseInt(hex, 16) % 60;
+}
+
+/**
+ * The owner's paper actions (perpl-paper-runtime-v1 R8, R12): "Close now", "Stop · close all" and
+ * an approval. The API writes one durable row per request (idempotent by its request key); the
+ * research worker claims it, waits for the agent's lease and carries it out as an `owner` check.
+ * A Queue message only wakes the worker with the row's id, and the minute Cron re-drives rows left
+ * pending, so no action depends on a delivery.
+ */
+export const PERPS_OWNER_ACTION_KINDS = ["close", "stop_all", "approve"] as const;
+export type PerpsOwnerActionKind = (typeof PERPS_OWNER_ACTION_KINDS)[number];
+/** `pending` → `running` (claimed) → `done` | `failed`; a busy agent puts it back to `pending`. */
+export const PERPS_OWNER_ACTION_STATUSES = ["pending", "running", "done", "failed"] as const;
+export type PerpsOwnerActionStatus = (typeof PERPS_OWNER_ACTION_STATUSES)[number];
+/** A claim lasts this long: the wait for the agent plus the action's own minute, with room. */
+export const PERPS_ACTION_LEASE_MS = 180_000;
+/** The minute Cron re-drives pending actions untouched for this long. */
+export const PERPS_ACTION_REDRIVE_MS = 30_000;
+/** Claims an action may take before it ends `failed` (`TOO_MANY_ATTEMPTS`). */
+export const PERPS_ACTION_MAX_ATTEMPTS = 30;
+
+export interface PerpsOwnerAction {
+  id: string;
+  productAgentId: string;
+  kind: PerpsOwnerActionKind;
+  /** The position a `close` closes. */
+  positionId: string | null;
+  /** The proposal an `approve` approves. */
+  proposalId: string | null;
+  status: PerpsOwnerActionStatus;
+  attempts: number;
+  /** The last attempt's code (`CHECK_RUNNING` while a check held the agent). */
+  lastError: string | null;
+  /** The `owner` check of the latest attempt that held the agent. */
+  checkId: string | null;
+  createdAt: number;
+  updatedAt: number;
+}
+export interface PerpsOwnerActionClaim {
+  actionId: string;
+  owner: string;
+  attempt: number;
+  expiresAt: number;
+}
+
+export interface PerpsOwnerActionRepository {
+  /**
+   * Writes the owner's action; the same `requestKey` for the same agent answers the row it wrote
+   * (`CONFLICT` when the key was used for another action). `AGENT_KILLED` for an approval of a
+   * killed agent.
+   */
+  createAction(input: {
+    productAgentId: string;
+    kind: PerpsOwnerActionKind;
+    positionId?: string | null;
+    proposalId?: string | null;
+    requestKey: string;
+  }): Promise<PerpsOwnerAction>;
+  getAction(id: string): Promise<PerpsOwnerAction | null>;
+  /**
+   * Claims a pending action (or a running one whose claim lapsed); null when another claim holds
+   * it, or it ended. Past `PERPS_ACTION_MAX_ATTEMPTS` it ends `failed` instead.
+   */
+  claimAction(
+    id: string,
+  ): Promise<{ action: PerpsOwnerAction; claim: PerpsOwnerActionClaim } | null>;
+  /**
+   * In one transaction: re-checks the claim, recovers the agent's lapsed checks, and starts an
+   * `owner` check already holding the agent's lease. `CHECK_RUNNING` while another check is queued
+   * or running; null when the claim no longer holds the action. `killed` says whether the agent
+   * was killed.
+   */
+  startActionCheck(
+    claim: PerpsOwnerActionClaim,
+  ): Promise<{ check: PerpsCheck; lease: PerpsCheckLease; killed: boolean } | null>;
+  /** Puts a claimed action back to `pending` with the attempt's code (it is re-driven later). */
+  releaseAction(claim: PerpsOwnerActionClaim, code: string): Promise<void>;
+  /**
+   * Finishes the action's check and sets the action's status in one transaction: `done`, `failed`,
+   * or `pending` again to retry (a close that could not reach Perpl).
+   */
+  finishAction(
+    lease: PerpsCheckLease,
+    actionId: string,
+    result: PerpsCheckFinish,
+    status: "done" | "failed" | "pending",
+  ): Promise<PerpsCheck>;
+  /** Pending actions untouched for `PERPS_ACTION_REDRIVE_MS`, and running ones whose claim lapsed. */
+  pendingActions(limit?: number): Promise<string[]>;
 }

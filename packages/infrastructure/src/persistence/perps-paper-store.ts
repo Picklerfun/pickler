@@ -12,6 +12,7 @@ import {
   applyPaperSizeUp,
   assertPaperIntent,
   isProductPaperSession,
+  marginOpenedSince,
   PRODUCT_PAPER_SESSION,
   paperDecimal,
   paperOpenReserve,
@@ -699,22 +700,65 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
     if (!Number.isSafeInteger(since)) {
       throw new PilotError("INVALID_INPUT", "Invalid time");
     }
-    const view = await this.view(scope);
-    let total = 0n;
-    for (const p of view.account.positions) {
-      // A position's margin includes its size-ups; each counts on the day it was added.
-      let opening = paperUnits(p.margin ?? p.entryNotional);
-      for (const added of p.sizeUps ?? []) {
-        opening -= paperUnits(added.margin);
-        if (added.at >= since) {
-          total += paperUnits(added.margin);
-        }
-      }
-      if (p.openedAt >= since) {
-        total += opening;
-      }
+    return marginOpenedSince((await this.snapshot(scope)).account.positions, since);
+  }
+  /**
+   * The account as `view` answers it, in one read-only repeatable-read transaction with no row
+   * locks and no writes: attempts whose lease lapsed are projected `interrupted` (as `lock` would
+   * rewrite them) but stay as stored. For reads; every action goes through `view`'s locks.
+   */
+  async snapshot(scope: PerpsPaperScope): Promise<PerpsPaperView> {
+    if (
+      !/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,79}$/.test(scope.sessionId) ||
+      !["mainnet", "testnet"].includes(scope.network)
+    ) {
+      throw new PilotError("INVALID_INPUT", "Invalid paper scope");
     }
-    return paperDecimal(total);
+    const client = await this.pool.connect();
+    try {
+      await client.query("BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY");
+      const result = await client.query<{ id: string; document: PerpsPaperAccount }>(
+        "SELECT id,document FROM pickler.perps_paper_accounts WHERE tenant_id=$1 AND agent_id=$2 AND session_id=$3 AND network=$4",
+        [scope.tenantId, scope.agentId, scope.sessionId, scope.network],
+      );
+      const row = result.rows[0];
+      if (!row) {
+        throw new PilotError("NOT_FOUND", "Paper account not found");
+      }
+      const now = await this.now(client);
+      const attempts = await client.query<{
+        document: PerpsPaperAttempt;
+        lapsed: boolean;
+      }>(
+        "SELECT document, (owner IS NOT NULL AND expires_at <= $2) AS lapsed FROM pickler.perps_paper_attempts WHERE account_id=$1 ORDER BY key",
+        [row.id, now],
+      );
+      const movements = await client.query<{ document: PerpsPaperMovement }>(
+        "SELECT document FROM pickler.perps_paper_movements WHERE account_id=$1 ORDER BY key",
+        [row.id],
+      );
+      await client.query("COMMIT");
+      return {
+        account: row.document,
+        attempts: attempts.rows.map((r) =>
+          r.lapsed
+            ? {
+                ...r.document,
+                status: "interrupted",
+                reserved: "0",
+                reason: "LEASE_EXPIRED",
+                finishedAt: now,
+              }
+            : r.document,
+        ),
+        movements: movements.rows.map((r) => r.document),
+      };
+    } catch (error) {
+      await client.query("ROLLBACK").catch(() => {});
+      throw error;
+    } finally {
+      client.release();
+    }
   }
 }
 function assertExits(exits: PerpsPaperExits, product: boolean) {

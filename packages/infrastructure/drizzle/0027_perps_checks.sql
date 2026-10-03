@@ -73,14 +73,43 @@ CREATE INDEX "perps_proposals_expiry" ON "pickler"."perps_proposals" USING btree
 CREATE INDEX "perps_proposals_agent" ON "pickler"."perps_proposals" USING btree ("product_agent_id","created_at" DESC NULLS LAST);--> statement-breakpoint
 CREATE INDEX "perps_paper_exit_due" ON "pickler"."perps_paper_positions" USING btree ("exit_due_at") WHERE "pickler"."perps_paper_positions"."closed_at" is null;--> statement-breakpoint
 ALTER TABLE "pickler"."perps_paper_positions" ADD CONSTRAINT "perps_paper_close_reason" CHECK ("pickler"."perps_paper_positions"."close_reason" is null OR "pickler"."perps_paper_positions"."close_reason" in ('stop','take_profit','time','brief','owner','stop_all','day_loss'));--> statement-breakpoint
+CREATE TABLE "pickler"."perps_owner_actions" (
+	"id" uuid PRIMARY KEY NOT NULL,
+	"product_agent_id" uuid NOT NULL,
+	"kind" text NOT NULL,
+	"position_id" text,
+	"proposal_id" uuid,
+	"request_key" text NOT NULL,
+	"status" text NOT NULL,
+	"attempts" integer DEFAULT 0 NOT NULL,
+	"last_error" text,
+	"check_id" uuid,
+	"lease_owner" uuid,
+	"lease_expires_at" bigint,
+	"created_at" bigint NOT NULL,
+	"updated_at" bigint NOT NULL,
+	CONSTRAINT "perps_owner_actions_kind" CHECK ("pickler"."perps_owner_actions"."kind" in ('close','stop_all','approve')),
+	CONSTRAINT "perps_owner_actions_status" CHECK ("pickler"."perps_owner_actions"."status" in ('pending','running','done','failed')),
+	CONSTRAINT "perps_owner_actions_target" CHECK (("pickler"."perps_owner_actions"."kind" = 'close') = ("pickler"."perps_owner_actions"."position_id" is not null) AND ("pickler"."perps_owner_actions"."kind" = 'approve') = ("pickler"."perps_owner_actions"."proposal_id" is not null)),
+	CONSTRAINT "perps_owner_actions_lease" CHECK ("pickler"."perps_owner_actions"."status" <> 'running' OR ("pickler"."perps_owner_actions"."lease_owner" is not null AND "pickler"."perps_owner_actions"."lease_expires_at" is not null)),
+	CONSTRAINT "perps_owner_actions_attempts" CHECK ("pickler"."perps_owner_actions"."attempts" >= 0)
+);
+--> statement-breakpoint
+ALTER TABLE "pickler"."perps_owner_actions" ENABLE ROW LEVEL SECURITY;--> statement-breakpoint
+ALTER TABLE "pickler"."perps_owner_actions" ADD CONSTRAINT "perps_owner_actions_product_agent_id_product_agents_product_agent_id_fk" FOREIGN KEY ("product_agent_id") REFERENCES "pickler"."product_agents"("product_agent_id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "pickler"."perps_owner_actions" ADD CONSTRAINT "perps_owner_actions_proposal_id_perps_proposals_id_fk" FOREIGN KEY ("proposal_id") REFERENCES "pickler"."perps_proposals"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "pickler"."perps_owner_actions" ADD CONSTRAINT "perps_owner_actions_check_id_perps_checks_id_fk" FOREIGN KEY ("check_id") REFERENCES "pickler"."perps_checks"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+CREATE UNIQUE INDEX "perps_owner_actions_request" ON "pickler"."perps_owner_actions" USING btree ("product_agent_id","request_key");--> statement-breakpoint
+CREATE INDEX "perps_owner_actions_open" ON "pickler"."perps_owner_actions" USING btree ("status","updated_at") WHERE "pickler"."perps_owner_actions"."status" in ('pending','running');--> statement-breakpoint
 -- Drizzle emits no privileges. RLS is on with no Data API policy; only the backend reaches these
 -- tables. The grants follow 0025 (advice: service_role SELECT, INSERT, UPDATE), not 0012/0013,
--- which grant nothing. Checks and proposals change state (queued → running → finished,
--- pending → approving → approved), so the service role may update.
+-- which grant nothing. Checks, proposals and owner actions change state (queued → running →
+-- finished, pending → approving → approved, pending → running → done), so the service role may
+-- update.
 DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN
-    GRANT SELECT, INSERT, UPDATE ON pickler.perps_checks, pickler.perps_proposals TO service_role;
+    GRANT SELECT, INSERT, UPDATE ON pickler.perps_checks, pickler.perps_proposals, pickler.perps_owner_actions TO service_role;
   END IF;
 END
 $$;

@@ -2,124 +2,249 @@ import { randomUUID } from "node:crypto";
 import type { Pool, PoolClient } from "pg";
 import { PilotError } from "@pickler/core";
 import {
-  PERPS_CHECK_QUEUE_MS,
+  PERPS_ACTION_LEASE_MS,
+  PERPS_ACTION_MAX_ATTEMPTS,
+  PERPS_ACTION_REDRIVE_MS,
+  PERPS_CHECK_LEASE_MS,
+  PERPS_OWNER_ACTION_KINDS,
   PRODUCT_PAPER_SESSION,
-  type PerpsCheck,
+  type PerpsCheckFinish,
+  type PerpsCheckLease,
+  type PerpsOwnerAction,
+  type PerpsOwnerActionClaim,
+  type PerpsOwnerActionKind,
+  type PerpsOwnerActionRepository,
   type PerpsPaperScope,
 } from "@pickler/trading/perps";
 import { PostgresPerpsRuntimeStore } from "./perps-runtime-store.js";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const KEY = /^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,127}$/;
+const CODE = /^[A-Z_]{1,80}$/;
+
+const ACTION = `id::text, product_agent_id::text AS "productAgentId", kind, position_id AS "positionId",
+ proposal_id::text AS "proposalId", status, attempts, last_error AS "lastError", check_id::text AS "checkId",
+ created_at::double precision AS "createdAt", updated_at::double precision AS "updatedAt"`;
 
 /**
- * What the owner's paper actions need beside `PostgresPerpsRuntimeStore` (perpl-paper-runtime-v1
- * R8, R12): an `owner` check row that holds the agent's lease while the research worker approves a
- * proposal or closes positions, the owner of a paper position, and the record's all-time counts.
+ * The owner's side of the Perpl paper runtime (perpl-paper-runtime-v1 R8, R12, R13), on top of the
+ * runtime store so a check row is started in one place (`insertCheck`: lapsed checks recovered,
+ * one queued or running check per agent, `CHECK_RUNNING`).
  *
- * `startOwnerCheck` follows `startCheck`'s rules (agent row locked first, lapsed checks recovered,
- * one queued or running check per agent: `CHECK_RUNNING`), so an owner action never runs beside a
- * check; it is a separate class only so the runtime store's file stays as it is.
+ * Owner actions (`pickler.perps_owner_actions`, migration 0027) are durable: the API writes the row
+ * in the request (`createAction`, idempotent by request key), and the research worker claims it
+ * (`claimAction`, one claim at a time, `PERPS_ACTION_LEASE_MS`), starts its `owner` check already
+ * holding the agent's lease after re-checking the claim in the same transaction
+ * (`startActionCheck`), and ends check and action together (`finishAction`). A busy agent puts the
+ * action back to `pending` (`releaseAction`); the minute Cron re-drives what `pendingActions`
+ * answers. Beside them: the owner of a paper position and the record's all-time counts.
  */
-export class PostgresPerpsOwnerStore {
-  private readonly checks: PostgresPerpsRuntimeStore;
-
-  constructor(
-    readonly pool: Pool,
-    private readonly testClock?: () => number,
-  ) {
-    this.checks = new PostgresPerpsRuntimeStore(pool, testClock);
-  }
-
-  private async now(db: Pool | PoolClient) {
-    if (this.testClock) {
-      return this.testClock();
+export class PostgresPerpsOwnerStore
+  extends PostgresPerpsRuntimeStore
+  implements PerpsOwnerActionRepository
+{
+  private async readAction(db: Pool | PoolClient, id: string) {
+    if (!UUID.test(id)) {
+      return null;
     }
-    const result = await db.query<{ at: number }>(
-      "SELECT floor(extract(epoch FROM clock_timestamp()) * 1000)::double precision AS at",
+    const result = await db.query<PerpsOwnerAction>(
+      `SELECT ${ACTION} FROM pickler.perps_owner_actions WHERE id = $1`,
+      [id],
     );
-    return result.rows[0]!.at;
+    return result.rows[0] ?? null;
   }
 
-  /**
-   * Queues an `owner` check for the agent; `requestKey` replays the same row. `CHECK_RUNNING`
-   * while another check is queued or running; `NOT_FOUND` for an unknown agent.
-   */
-  async startOwnerCheck(input: {
+  async createAction(input: {
     productAgentId: string;
-    requestKey?: string | null;
-  }): Promise<PerpsCheck> {
-    const requestKey = input.requestKey ?? null;
-    if (!UUID.test(input.productAgentId)) {
-      throw new PilotError("NOT_FOUND", "Agent not found");
+    kind: PerpsOwnerActionKind;
+    positionId?: string | null;
+    proposalId?: string | null;
+    requestKey: string;
+  }): Promise<PerpsOwnerAction> {
+    const positionId = input.positionId ?? null;
+    const proposalId = input.proposalId ?? null;
+    if (
+      !(PERPS_OWNER_ACTION_KINDS as readonly string[]).includes(input.kind) ||
+      !KEY.test(input.requestKey) ||
+      (input.kind === "close") !== (positionId !== null) ||
+      (input.kind === "approve") !== (proposalId !== null) ||
+      (positionId !== null && !KEY.test(positionId)) ||
+      (proposalId !== null && !UUID.test(proposalId))
+    ) {
+      throw new PilotError("INVALID_INPUT", "Invalid owner action");
     }
-    if (requestKey !== null && !KEY.test(requestKey)) {
-      throw new PilotError("INVALID_INPUT", "Invalid request key");
-    }
-    const db = await this.pool.connect();
-    let id: string;
-    try {
-      await db.query("BEGIN");
-      const mapped = await db.query<{ tenantId: string; agentId: string }>(
-        `SELECT p.tenant_id AS "tenantId", p.runtime_agent_id AS "agentId"
-        FROM pickler.product_agents p
-        JOIN pickler.agents r ON r.tenant_id = p.tenant_id AND r.id = p.runtime_agent_id
-        WHERE p.product_agent_id = $1
-        FOR UPDATE OF r`,
-        [input.productAgentId],
+    return this.transaction(async (db) => {
+      const agent = await this.mapping(db, input.productAgentId, true);
+      const replay = await db.query<PerpsOwnerAction>(
+        `SELECT ${ACTION} FROM pickler.perps_owner_actions
+        WHERE product_agent_id = $1 AND request_key = $2`,
+        [agent.productAgentId, input.requestKey],
       );
-      const agent = mapped.rows[0];
-      if (!agent) {
-        throw new PilotError("NOT_FOUND", "Agent not found");
-      }
-      const replay =
-        requestKey === null
-          ? null
-          : await db.query<{ id: string; trigger: string }>(
-              `SELECT id::text, trigger FROM pickler.perps_checks
-              WHERE product_agent_id = $1 AND request_key = $2`,
-              [input.productAgentId, requestKey],
-            );
-      if (replay?.rows[0]) {
-        if (replay.rows[0].trigger !== "owner") {
+      const found = replay.rows[0];
+      if (found) {
+        if (
+          found.kind !== input.kind ||
+          found.positionId !== positionId ||
+          found.proposalId !== proposalId
+        ) {
           throw new PilotError("CONFLICT", "Idempotency key belongs to another request");
         }
-        id = replay.rows[0].id;
-      } else {
-        const at = await this.now(db);
-        await db.query(
-          `UPDATE pickler.perps_checks
-          SET status = 'finished', outcome = 'failed', finished_at = $3, lease_owner = NULL, lease_expires_at = NULL,
-            error = CASE WHEN status = 'queued' THEN 'CHECK_EXPIRED' ELSE 'CHECK_INTERRUPTED' END,
-            outcome_text = CASE WHEN status = 'queued' THEN 'Expired' ELSE 'Interrupted' END
-          WHERE tenant_id = $1 AND agent_id = $2 AND (
-            (status = 'queued' AND created_at + $4 <= $3) OR
-            (status = 'running' AND lease_expires_at <= $3))`,
-          [agent.tenantId, agent.agentId, at, PERPS_CHECK_QUEUE_MS],
-        );
-        const active = await db.query(
-          `SELECT 1 FROM pickler.perps_checks
-          WHERE tenant_id = $1 AND agent_id = $2 AND status IN ('queued', 'running')`,
-          [agent.tenantId, agent.agentId],
-        );
-        if (active.rowCount) {
-          throw new PilotError("CHECK_RUNNING", "A check is already queued or running");
-        }
-        id = randomUUID();
-        await db.query(
-          `INSERT INTO pickler.perps_checks(id, product_agent_id, tenant_id, agent_id, trigger, request_key, status, created_at)
-          VALUES ($1, $2, $3, $4, 'owner', $5, 'queued', $6)`,
-          [id, input.productAgentId, agent.tenantId, agent.agentId, requestKey, at],
-        );
+        return found;
       }
-      await db.query("COMMIT");
-    } catch (error) {
-      await db.query("ROLLBACK").catch(() => {});
-      throw error;
-    } finally {
-      db.release();
+      if (input.kind === "approve" && agent.killed) {
+        throw new PilotError("AGENT_KILLED", "This agent was killed");
+      }
+      const at = await this.now(db);
+      const id = randomUUID();
+      await db.query(
+        `INSERT INTO pickler.perps_owner_actions(id, product_agent_id, kind, position_id, proposal_id, request_key,
+          status, attempts, created_at, updated_at)
+        VALUES ($1, $2, $3, $4, $5, $6, 'pending', 0, $7, $7)`,
+        [id, agent.productAgentId, input.kind, positionId, proposalId, input.requestKey, at],
+      );
+      return (await this.readAction(db, id))!;
+    });
+  }
+
+  getAction(id: string) {
+    return this.readAction(this.pool, id);
+  }
+
+  async claimAction(id: string) {
+    if (!UUID.test(id)) {
+      return null;
     }
-    return (await this.checks.getCheck(id))!;
+    return this.transaction(async (db) => {
+      const at = await this.now(db);
+      const current = await db.query<{ status: string; attempts: number; expired: boolean }>(
+        `SELECT status, attempts, coalesce(lease_expires_at <= $2, false) AS expired
+        FROM pickler.perps_owner_actions WHERE id = $1 FOR UPDATE`,
+        [id, at],
+      );
+      const row = current.rows[0];
+      const claimable =
+        row && (row.status === "pending" || (row.status === "running" && row.expired));
+      if (!claimable) {
+        return null;
+      }
+      if (row.attempts >= PERPS_ACTION_MAX_ATTEMPTS) {
+        await db.query(
+          `UPDATE pickler.perps_owner_actions
+          SET status = 'failed', last_error = 'TOO_MANY_ATTEMPTS', lease_owner = NULL, lease_expires_at = NULL,
+            updated_at = $2
+          WHERE id = $1`,
+          [id, at],
+        );
+        return null;
+      }
+      const claim: PerpsOwnerActionClaim = {
+        actionId: id,
+        owner: randomUUID(),
+        attempt: row.attempts + 1,
+        expiresAt: at + PERPS_ACTION_LEASE_MS,
+      };
+      await db.query(
+        `UPDATE pickler.perps_owner_actions
+        SET status = 'running', attempts = $2, lease_owner = $3, lease_expires_at = $4, updated_at = $5
+        WHERE id = $1`,
+        [id, claim.attempt, claim.owner, claim.expiresAt, at],
+      );
+      return { action: (await this.readAction(db, id))!, claim };
+    });
+  }
+
+  async startActionCheck(claim: PerpsOwnerActionClaim) {
+    if (!UUID.test(claim.actionId) || !UUID.test(claim.owner)) {
+      return null;
+    }
+    const action = await this.readAction(this.pool, claim.actionId);
+    if (!action) {
+      return null;
+    }
+    return this.transaction(async (db) => {
+      // The agent row first, then the action and the checks, as every start and claim locks.
+      const agent = await this.mapping(db, action.productAgentId, true);
+      const at = await this.now(db);
+      const held = await db.query(
+        `SELECT 1 FROM pickler.perps_owner_actions
+        WHERE id = $1 AND status = 'running' AND lease_owner = $2 AND lease_expires_at > $3
+        FOR UPDATE`,
+        [claim.actionId, claim.owner, at],
+      );
+      if (!held.rowCount) {
+        return null;
+      }
+      const lease: PerpsCheckLease = {
+        checkId: "",
+        owner: randomUUID(),
+        expiresAt: at + PERPS_CHECK_LEASE_MS,
+      };
+      lease.checkId = await this.insertCheck(db, agent, {
+        trigger: "owner",
+        requestKey: `action:${claim.actionId}:${claim.attempt}`,
+        at,
+        lease,
+      });
+      await db.query(
+        "UPDATE pickler.perps_owner_actions SET check_id = $2, updated_at = $3 WHERE id = $1",
+        [claim.actionId, lease.checkId, at],
+      );
+      return { check: (await this.read(db, lease.checkId))!, lease, killed: agent.killed };
+    });
+  }
+
+  async releaseAction(claim: PerpsOwnerActionClaim, code: string) {
+    if (!CODE.test(code)) {
+      throw new PilotError("INVALID_INPUT", "Use a safe failure code");
+    }
+    if (!UUID.test(claim.actionId) || !UUID.test(claim.owner)) {
+      return;
+    }
+    const at = await this.now(this.pool);
+    await this.pool.query(
+      `UPDATE pickler.perps_owner_actions
+      SET status = 'pending', last_error = $3, lease_owner = NULL, lease_expires_at = NULL, updated_at = $4
+      WHERE id = $1 AND status = 'running' AND lease_owner = $2`,
+      [claim.actionId, claim.owner, code, at],
+    );
+  }
+
+  finishAction(
+    lease: PerpsCheckLease,
+    actionId: string,
+    result: PerpsCheckFinish,
+    status: "done" | "failed" | "pending",
+  ) {
+    if (!["done", "failed", "pending"].includes(status) || !UUID.test(actionId)) {
+      throw new PilotError("INVALID_INPUT", "Invalid action result");
+    }
+    return this.transaction(async (db) => {
+      const at = await this.owned(db, lease);
+      const check = await this.finish(db, lease.checkId, at, result);
+      // Whichever claim holds it now: the check that held the agent is the one that acted.
+      await db.query(
+        `UPDATE pickler.perps_owner_actions
+        SET status = $2, last_error = $3, lease_owner = NULL, lease_expires_at = NULL, updated_at = $4
+        WHERE id = $1 AND status IN ('pending', 'running')`,
+        [actionId, status, result.error ?? null, at],
+      );
+      return check;
+    });
+  }
+
+  async pendingActions(limit = 50) {
+    if (!Number.isSafeInteger(limit) || limit < 1 || limit > 500) {
+      throw new PilotError("INVALID_INPUT", "Invalid limit");
+    }
+    const at = await this.now(this.pool);
+    const result = await this.pool.query<{ id: string }>(
+      `SELECT id::text FROM pickler.perps_owner_actions
+      WHERE (status = 'pending' AND updated_at <= $1) OR (status = 'running' AND lease_expires_at <= $2)
+      ORDER BY created_at, id
+      LIMIT $3`,
+      [at - PERPS_ACTION_REDRIVE_MS, at, limit],
+    );
+    return result.rows.map((row) => row.id);
   }
 
   /** The product agent and paper account holding a position; null when no product account does. */
