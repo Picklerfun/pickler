@@ -95,6 +95,10 @@
     "./plugins/polymarket-trading": {
       "types": "./src/plugins/polymarket-trading/index.ts",
       "import": "./dist/plugins/polymarket-trading/index.js"
+    },
+    "./composition/perps-model-state": {
+      "types": "./src/composition/perps-model-state.ts",
+      "import": "./dist/composition/perps-model-state.js"
     }
   },
   "scripts": {
