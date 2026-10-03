@@ -638,7 +638,7 @@ export function liveCapsStepper(
     tag,
     inverted,
     canSave: (dirty || defaults) && !inverted,
-    note: "Pickler holds every trade to these. On-chain caps come with live trading.",
+    note: "Pickler will hold every trade to these once it runs. On-chain caps come with live trading.",
   };
 }
 
@@ -706,13 +706,13 @@ export function entryView(entry: LiveEntry, perTradeAusd: number): EntryView {
   const small = asks && entry.meanwhile === "small";
   const value = Math.max(1, Math.min(entry.smallAusd, perTradeAusd));
   let then = "enters on its own inside the caps";
-  let modeNote = `${ONCE_IT_RUNS} · EVERY ENTRY INSIDE THE CAPS GOES ON ITS OWN · YOU CAN STILL CLOSE ANY POSITION, ANY TIME · EXITS NEVER WAIT`;
+  let modeNote = `${ONCE_IT_RUNS} · EVERY ENTRY INSIDE THE CAPS GOES ON ITS OWN · YOU CAN STILL CLOSE ANY POSITION · EXITS NEVER WAIT`;
   if (small) {
     then = `goes in at ${value} AUSD and asks you to size up`;
-    modeNote = `${ONCE_IT_RUNS} · EVERY ENTRY GOES IN AT ${value} AUSD RIGHT AWAY · THE REST UP TO ${perTradeAusd} WAITS FOR YOU, 4 MIN · EXITS NEVER WAIT`;
+    modeNote = `${ONCE_IT_RUNS} · EVERY ENTRY GOES IN AT ${value} AUSD RIGHT AWAY · THE REST UP TO ${perTradeAusd} WAITS FOR YOU · EXITS NEVER WAIT`;
   } else if (asks) {
     then = "asks you before entering";
-    modeNote = `${ONCE_IT_RUNS} · EVERY ENTRY WAITS FOR YOUR TAP, 4 MIN, THEN IT IS SKIPPED · EXITS NEVER WAIT`;
+    modeNote = `${ONCE_IT_RUNS} · EVERY ENTRY WAITS FOR YOUR TAP · EXITS NEVER WAIT`;
   }
   let chip = "ENTERS ON ITS OWN";
   if (asks) {
@@ -1268,7 +1268,7 @@ export function walletCards(
             ausdFree: formatUnits(read.ausdMicro, "AUSD"),
             inPositions: "0",
             mon: formatUnits(read.monWei, "MON"),
-            note: `Only ${name} trades from here, inside the caps you set. Only you move money in or out.`,
+            note: `Only ${name} will trade from here, inside the caps you set. Only you move money in or out.`,
             pull: "Pull free AUSD back",
             limits: "Caps & limits",
           }

@@ -395,7 +395,7 @@ test("the caps' tag: SAVED with the five, UNSAVED CHANGES once edited, DEFAULTS 
   assert.equal(defaults.canSave, true);
   assert.equal(
     saved.note,
-    "Pickler holds every trade to these. On-chain caps come with live trading.",
+    "Pickler will hold every trade to these once it runs. On-chain caps come with live trading.",
   );
 });
 
@@ -417,7 +417,7 @@ test("How it runs: asking first, the status note and the mode note", () => {
   );
   assert.equal(
     view.modeNote,
-    "ONCE IT RUNS · EVERY ENTRY WAITS FOR YOUR TAP, 4 MIN, THEN IT IS SKIPPED · EXITS NEVER WAIT",
+    "ONCE IT RUNS · EVERY ENTRY WAITS FOR YOUR TAP · EXITS NEVER WAIT",
   );
   assert.equal(view.chip, "ASKS YOU FIRST");
 });
@@ -425,11 +425,11 @@ test("How it runs: asking first, the status note and the mode note", () => {
 test("every mode note is said of the setting, not of today (D19)", () => {
   assert.equal(
     entryView({ mode: "auto", meanwhile: "wait", smallAusd: 5 }, 25).modeNote,
-    "ONCE IT RUNS · EVERY ENTRY INSIDE THE CAPS GOES ON ITS OWN · YOU CAN STILL CLOSE ANY POSITION, ANY TIME · EXITS NEVER WAIT",
+    "ONCE IT RUNS · EVERY ENTRY INSIDE THE CAPS GOES ON ITS OWN · YOU CAN STILL CLOSE ANY POSITION · EXITS NEVER WAIT",
   );
   assert.equal(
     entryView({ mode: "approve", meanwhile: "small", smallAusd: 5 }, 25).modeNote,
-    "ONCE IT RUNS · EVERY ENTRY GOES IN AT 5 AUSD RIGHT AWAY · THE REST UP TO 25 WAITS FOR YOU, 4 MIN · EXITS NEVER WAIT",
+    "ONCE IT RUNS · EVERY ENTRY GOES IN AT 5 AUSD RIGHT AWAY · THE REST UP TO 25 WAITS FOR YOU · EXITS NEVER WAIT",
   );
 });
 
@@ -794,7 +794,7 @@ test("the wallet cards: master named for the account, the agent's with no withdr
   assert.equal(cards.agent?.mon, "0.9");
   assert.equal(
     cards.agent?.note,
-    "Only Halftime trades from here, inside the caps you set. Only you move money in or out.",
+    "Only Halftime will trade from here, inside the caps you set. Only you move money in or out.",
   );
 });
 

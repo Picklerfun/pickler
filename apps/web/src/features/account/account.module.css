@@ -219,6 +219,12 @@
   animation: rise 260ms ease-out;
 }
 
+/* The section drawn inside another card (the live studio's Account): flush with the card's label. */
+.embedded {
+  max-width: none;
+  margin: 0;
+}
+
 @keyframes rise {
   from {
     opacity: 0;
@@ -556,6 +562,16 @@
 
 .remove {
   flex: 0 0 auto;
+}
+
+/* Rows drawn inside a card of the same colour (the live studio's Account): flush with the card's
+   label, and a Remove that wraps on a phone stays at the right. */
+.rowCompact {
+  padding-inline: 0;
+}
+
+.rowCompact > .remove {
+  margin-left: auto;
 }
 
 .current {

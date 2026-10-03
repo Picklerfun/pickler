@@ -19,10 +19,13 @@ export type PasskeyState =
 export function PasskeyList({
   state: read,
   secondPasskeyId,
+  compact = false,
 }: {
   state: PasskeyState;
   /** The suggestion's id: `account-second-passkey` on /account, the studio's own inside it. */
   secondPasskeyId: string;
+  /** Rows without side padding, for a card of the rows' own colour (the live studio). */
+  compact?: boolean;
 }) {
   const listed = read.kind === "ready" ? read.passkeys : null;
 
@@ -36,7 +39,10 @@ export function PasskeyList({
         </p>
       )}
       {listed?.map((passkey) => (
-        <div key={passkey.id} className={styles.row}>
+        <div
+          key={passkey.id}
+          className={compact ? `${styles.row} ${styles.rowCompact}` : styles.row}
+        >
           <span className={styles.passkeyMark} aria-hidden="true" />
           <div className={styles.rowText}>
             <p className={styles.rowTitle}>{passkey.label}</p>

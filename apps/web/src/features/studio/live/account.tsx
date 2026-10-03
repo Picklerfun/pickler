@@ -234,7 +234,11 @@ export const Account: (props: AccountProps) => ReactElement = ({
                   <span className={styles.passkeyTag}>{passkeyTag(passkeys)}</span>
                 </div>
                 <p className={styles.cardNote}>{PASSKEY_NOTE}</p>
-                <PasskeyList state={passkeys} secondPasskeyId="live-account-second-passkey" />
+                <PasskeyList
+                  state={passkeys}
+                  secondPasskeyId="live-account-second-passkey"
+                  compact
+                />
                 <button
                   type="button"
                   className={styles.addDevice}

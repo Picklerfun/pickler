@@ -64,7 +64,7 @@ export function ProfileSection({
 
   if (embedded) {
     return (
-      <div className={styles.section}>
+      <div className={`${styles.section} ${styles.embedded}`}>
         {linkButton}
         {bio}
       </div>

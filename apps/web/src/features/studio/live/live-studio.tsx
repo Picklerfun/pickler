@@ -211,7 +211,13 @@ export function LiveStudio({
             ))}
           </div>
           {agent.handle && (
-            <a href={profile} className={styles.profileLink} id="live-public-profile">
+            <a
+              href={profile}
+              className={styles.profileLink}
+              id="live-public-profile"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
               ITS PUBLIC PROFILE
               <Icon name="external" size={13} />
             </a>

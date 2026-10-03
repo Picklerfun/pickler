@@ -192,6 +192,7 @@ function HowItRuns({
           label="Before it enters"
           options={MODES}
           className={styles.segments}
+          optionClassName={styles.webMode}
           value={form.mode}
           disabled={shut}
           onChange={(mode) => edit({ mode })}

@@ -418,7 +418,8 @@ or composed inside its own sheet.
 whichever section was asked for; Go Public lands on its Overview, and a `?section=` key the live
 rail also has carries over. `live-studio.tsx` configures the shell: the live strip under the top
 bar (`live-strip.tsx`, the shell's `strip` slot), the rail of RUN / BUILD / MARKETPLACE / YOU with
-Docs, Community, Support and "ITS PUBLIC PROFILE" in its footer, the account button opening Account
+Docs, Community, Support and "ITS PUBLIC PROFILE" (each http link in a new tab, `noopener
+noreferrer`) in its footer, the account button opening Account
 (the top bar's `onAccount`), the PUBLIC · RUNS SOON / PAUSED · EXITS ONLY chip, "Pause entries" /
 "Resume" (real, `PUT /pause`, pending and inline failure) and "Stop · close all" shut with Soon,
 the four tiles, and the degraded banner whose "Fix it" opens Limits. Section keys are the canvas's
@@ -443,7 +444,9 @@ brief's bar and versions, IT MAY, Posts' header, the directory, board and leader
 cards and the account's rows; a field the DTO lacks reads "—". Every line that describes what the
 runtime will do is worded there, at the source, as a description of the setting (draft spec D19):
 the day-loss cap's "LOST IN A DAY · ONCE IT RUNS, IT PAUSES ITSELF THERE" and the three mode notes,
-each "ONCE IT RUNS · …" (their "4 MIN" appears only in that form); the tests pin those strings.
+each "ONCE IT RUNS · …" with no timing, and the Limits line and the agent wallet card in the future
+tense ("Pickler will hold every trade to these once it runs.", "Only {name} will trade from here");
+the tests pin those strings.
 `use-live.ts` is built on
 `useAgentStudio` through `readMore` (versions, the board and one detail per watched market) and
 reads the directory and leaderboard the first time their section opens; a failed live read sits in
@@ -474,7 +477,8 @@ title, SOON); the owner's "Launch its token" gives `SHUT.launch` (`backReason`).
 `wallets.tsx` (the shell's `MasterCard` worded for the live canvas, without its COPY chip since
 Deposit copies the address, the agent's wallet card, the shell's `Ledger`) and `account.tsx` (a
 tablist moved by arrow keys; only the selected tab names its panel, which is focusable;
-Security with the account page's `PasskeyList` and `useAddPasskey`, the list read again once a
+Security with the account page's `PasskeyList` (`compact`: rows flush with the card, a wrapped
+Remove kept right) and `useAddPasskey`, the list read again once a
 passkey is added, the delegation rows and Sessions shut; Public profile with a PUBLIC PROFILE card
 holding the account page's `ProfileSection` with `embedded` (only the link, the bio and its note;
 `/account` draws the whole section), the WHAT SHOWS switches shut and the records line;
