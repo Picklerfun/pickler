@@ -684,3 +684,67 @@ test("newMarginSince sums margin of positions opened since, and their size-ups",
   assert.equal(await f.paper.newMarginSince(scope, NOON - 12 * HOUR), today.margin);
   assert.equal(await f.paper.newMarginSince(scope, NOON + 1), "0");
 });
+
+test("a size-up adds margin at the position's leverage once, and counts as new margin", async (t) => {
+  const f = await setup(t);
+  const { scope } = await f.agent();
+  await f.paper.initialize(scope, 1, "200");
+  const opened = await open(f, scope, "small", "BTC", { notional: "50", leverage: 5 });
+  const before = opened.account.positions.find((p) => p.id === "small")!;
+  f.advance(60_000);
+
+  const added = await f.paper.sizeUp(
+    scope,
+    "small",
+    { key: "sizeup:one", margin: "40" },
+    frame("BTC", f.now(), "61000"),
+  );
+  const repeat = await f.paper.sizeUp(
+    scope,
+    "small",
+    { key: "sizeup:one", margin: "40" },
+    frame("BTC", f.now(), "61000"),
+  );
+
+  assert.equal(added.added, true);
+  assert.equal(repeat.added, false);
+  const after = added.position;
+  assert.equal(after.leverage, 5);
+  assert.ok(Number(after.quantity) > Number(before.quantity));
+  assert.equal(
+    Number(after.entryNotional),
+    Number(before.entryNotional) + 5 * Number(after.sizeUps![0]!.margin),
+  );
+  assert.ok(Number(after.entryPrice) > 60000 && Number(after.entryPrice) < 61000);
+  assert.equal(Number(after.margin), Number(before.margin) + Number(after.sizeUps![0]!.margin));
+  assert.equal(after.sizeUps!.length, 1);
+  assert.equal(after.stopPrice, before.stopPrice);
+  assert.equal(
+    await f.paper.newMarginSince(scope, NOON),
+    String(Number(before.margin) + Number(after.sizeUps![0]!.margin)),
+  );
+  const view = await f.paper.view(scope);
+  assert.equal(view.movements.filter((m) => m.kind === "fee").length, 2);
+  assert.deepEqual(await f.paper.openNetworks(), ["testnet"]);
+
+  await assert.rejects(
+    f.paper.sizeUp(
+      scope,
+      "small",
+      { key: "sizeup:big", margin: "500" },
+      frame("BTC", f.now(), "61000"),
+    ),
+    { code: "INSUFFICIENT_AVAILABLE" },
+  );
+  await f.paper.closePosition(scope, "small", "owner", frame("BTC", f.now(), "61000"));
+  await assert.rejects(
+    f.paper.sizeUp(
+      scope,
+      "small",
+      { key: "sizeup:two", margin: "10" },
+      frame("BTC", f.now(), "61000"),
+    ),
+    { code: "POSITION_CLOSED" },
+  );
+  assert.deepEqual(await f.paper.openNetworks(), []);
+});

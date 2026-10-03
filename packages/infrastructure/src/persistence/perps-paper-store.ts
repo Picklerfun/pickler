@@ -8,6 +8,7 @@ import {
   initialPaperAccount,
   paperRisk,
   applyPaperFill,
+  applyPaperSizeUp,
   assertPaperIntent,
   isProductPaperSession,
   PRODUCT_PAPER_SESSION,
@@ -578,6 +579,95 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
       reason: row.reason,
     }));
   }
+  /**
+   * Adds margin to an open product position (R8's size-up), filled at `frame` like an open at the
+   * position's leverage. The request key is recorded as a filled attempt, so a repeat changes
+   * nothing; free paper cash must cover the margin plus the fee reserve.
+   */
+  async sizeUp(
+    scope: PerpsPaperScope,
+    positionId: string,
+    input: { key: string; margin: string },
+    frame: PerpsPaperFrame,
+  ) {
+    if (
+      !isProductPaperSession(scope) ||
+      !/^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,127}$/.test(input.key) ||
+      !DECIMAL.test(input.margin) ||
+      paperUnits(input.margin) <= 0n
+    ) {
+      throw new PilotError("INVALID_INPUT", "Invalid size-up");
+    }
+    return this.transaction(async (client) => {
+      const locked = await this.lock(client, scope);
+      const position = locked.view.account.positions.find((p) => p.id === positionId);
+      if (!position) {
+        throw new PilotError("NOT_FOUND", "Paper position not found");
+      }
+      if (locked.view.attempts.some((a) => a.key === input.key)) {
+        return { added: false, position, view: locked.view };
+      }
+      if (position.closedAt !== null) {
+        throw new PilotError("POSITION_CLOSED", "The position is closed");
+      }
+      const leverage = position.leverage ?? 1;
+      const intent: PerpsPaperIntent = {
+        kind: "open",
+        symbol: position.symbol,
+        side: position.side,
+        notional: paperDecimal(paperUnits(input.margin) * BigInt(leverage)),
+        feeReserve: "1",
+        leverage,
+      };
+      assertPaperIntent(intent);
+      this.allowed(locked, scope, intent);
+      const risk = paperRisk(locked.view.account, locked.view.attempts, locked.now);
+      if (
+        risk.available === null ||
+        paperUnits(paperOpenReserve(intent)) > paperUnits(risk.available)
+      ) {
+        throw new PilotError("INSUFFICIENT_AVAILABLE", "Not enough free paper AUSD");
+      }
+      const fill = simulatePerpsFill(locked.view.account, intent, frame, locked.now);
+      const result = applyPaperSizeUp(locked.view.account, positionId, input.key, fill, locked.now);
+      await this.persist(client, locked.id, result.account, result.movements);
+      await client.query(
+        "INSERT INTO pickler.perps_paper_attempts(account_id,key,document,owner,expires_at) VALUES($1,$2,$3,null,null)",
+        [
+          locked.id,
+          input.key,
+          {
+            key: input.key,
+            intent,
+            status: "filled",
+            reserved: "0",
+            createdAt: locked.now,
+            finishedAt: locked.now,
+            reason: "size_up",
+            evidence: fill.evidence,
+          },
+        ],
+      );
+      const view = (await this.lock(client, scope)).view;
+      return {
+        added: true,
+        position: view.account.positions.find((p) => p.id === positionId)!,
+        view,
+      };
+    });
+  }
+  /** Networks with an open product position. */
+  async openNetworks() {
+    const result = await this.pool.query<{ network: PerpsPaperScope["network"] }>(
+      `SELECT DISTINCT a.network
+      FROM pickler.perps_paper_positions p
+      JOIN pickler.perps_paper_accounts a ON a.id = p.account_id
+      WHERE p.closed_at IS NULL AND a.session_id = $1
+      ORDER BY a.network`,
+      [PRODUCT_PAPER_SESSION],
+    );
+    return result.rows.map((row) => row.network);
+  }
   /** Margin opened since `since`: positions opened then, plus the size-ups added then. */
   async newMarginSince(scope: PerpsPaperScope, since: number) {
     if (!Number.isSafeInteger(since)) {
@@ -586,13 +676,16 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
     const view = await this.view(scope);
     let total = 0n;
     for (const p of view.account.positions) {
-      if (p.openedAt >= since) {
-        total += paperUnits(p.margin ?? p.entryNotional);
-      }
+      // A position's margin includes its size-ups; each counts on the day it was added.
+      let opening = paperUnits(p.margin ?? p.entryNotional);
       for (const added of p.sizeUps ?? []) {
+        opening -= paperUnits(added.margin);
         if (added.at >= since) {
           total += paperUnits(added.margin);
         }
+      }
+      if (p.openedAt >= since) {
+        total += opening;
       }
     }
     return paperDecimal(total);

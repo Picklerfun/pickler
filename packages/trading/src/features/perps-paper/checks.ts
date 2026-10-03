@@ -116,6 +116,11 @@ export interface PerpsRuntimeRepository {
   }): Promise<PerpsCheck>;
   /** Takes the agent's lease for a queued check; null when it is not claimable. */
   claimAgent(checkId: string): Promise<{ check: PerpsCheck; lease: PerpsCheckLease } | null>;
+  /**
+   * Extends the lease. The runtime renews it right before every paper action (open, close,
+   * size-up) and abandons the check (`CHECK_INTERRUPTED`) when it fails, so a check whose lease was
+   * recovered can never act; the paper store does not see the check lease itself.
+   */
   renewAgent(lease: PerpsCheckLease): Promise<PerpsCheckLease>;
   /** Ends a claimed check as `failed` with `code` and frees the agent. */
   releaseAgent(lease: PerpsCheckLease, code?: string): Promise<PerpsCheck>;

@@ -183,4 +183,17 @@ export interface PerpsProductPaperRepository extends PerpsPaperRepository {
   openDuePositions(marks: readonly PerpsPaperMark[]): Promise<PerpsDuePosition[]>;
   /** Margin opened since `since` (positions opened then, plus size-ups then), in AUSD. */
   newMarginSince(scope: PerpsPaperScope, since: number): Promise<string>;
+  /**
+   * R8's size-up: adds `margin` (AUSD) to an open position at its leverage, filled at `frame`.
+   * `key` makes it idempotent (a repeat answers `added: false`); `POSITION_CLOSED` once closed,
+   * `PAUSED` while paused, `INSUFFICIENT_AVAILABLE` without the margin plus the fee reserve free.
+   */
+  sizeUp(
+    scope: PerpsPaperScope,
+    positionId: string,
+    input: { key: string; margin: string },
+    frame: import("./simulation.js").PerpsPaperFrame,
+  ): Promise<{ added: boolean; position: PerpsPaperPosition; view: PerpsPaperView }>;
+  /** Networks with an open product position, for the exits job's marks. */
+  openNetworks(): Promise<PerpNetwork[]>;
 }

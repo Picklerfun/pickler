@@ -24,8 +24,14 @@ export class PerplRequestSchedule {
   lastStart = -Infinity;
   blockedUntil = 0;
 }
+/** Requests one read session may make unless the host asks for more (up to the check cap). */
+export const PERPL_SESSION_LIMIT = 12;
+/** A studio Perpl check reads two instruments, refreshes a frame before acting, and the web. */
+export const PERPL_CHECK_SESSION_LIMIT = 24;
 export interface PerplDataOptions {
   schedule?: PerplRequestSchedule;
+  /** Requests this session may make: 1–24, default 12. Trusted host configuration only. */
+  sessionLimit?: number;
   retryTransient?: boolean;
   guard?: () => Promise<void>;
   onDiagnostic?: (event: PerplRequestDiagnostic) => void;
@@ -66,8 +72,14 @@ export class PerplTransport {
   private readonly schedule: PerplRequestSchedule;
   private requests = 0;
   private stopped = false;
+  private readonly limit: number;
   readonly now: () => number;
   constructor(private readonly options: PerplDataOptions = {}) {
+    const limit = options.sessionLimit ?? PERPL_SESSION_LIMIT;
+    if (!Number.isInteger(limit) || limit < 1 || limit > PERPL_CHECK_SESSION_LIMIT) {
+      throw new PilotError("INVALID_INPUT", "A Perpl read session makes 1–24 requests");
+    }
+    this.limit = limit;
     this.now = options.now ?? Date.now;
     this.schedule = options.schedule ?? new PerplRequestSchedule();
   }
@@ -84,7 +96,7 @@ export class PerplTransport {
     await ctx.guard();
     await this.options.guard?.();
     ctx.signal.throwIfAborted();
-    if (this.stopped || this.requests >= 12) {
+    if (this.stopped || this.requests >= this.limit) {
       throw new PilotError(
         "PERPL_SESSION_LIMIT",
         "Perpl read session has stopped or reached its limit",

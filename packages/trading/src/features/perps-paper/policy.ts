@@ -333,3 +333,87 @@ export function applyPaperFill(
   }
   return { account: a, movements };
 }
+/**
+ * R8's size-up: adds a fill to an open product position at its own leverage. Quantity and entry
+ * notional add up, the entry price becomes their average, the margin grows by the fill's notional
+ * over the leverage and the addition is kept in `sizeUps`. The stop, target and time stop stay as
+ * the position opened with them. Trusted finalization only; the store admits it under its locks.
+ */
+export function applyPaperSizeUp(
+  account: PerpsPaperAccount,
+  positionId: string,
+  key: string,
+  fill: PerpsPaperFill,
+  now: number,
+): { account: PerpsPaperAccount; movements: PerpsPaperMovement[] } {
+  const a = structuredClone(account);
+  const p = a.positions.find((position) => position.id === positionId);
+  if (!isProductPaperSession(a.scope) || !p || p.closedAt !== null) {
+    throw new PilotError("POSITION_CLOSED", "Only an open product position can be sized up");
+  }
+  if (
+    u(fill.quantity) <= 0n ||
+    u(fill.price) <= 0n ||
+    u(fill.fee) < 0n ||
+    u(fill.notional) - u(paperProduct(fill.quantity, fill.price)) < 0n ||
+    u(fill.notional) - u(paperProduct(fill.quantity, fill.price)) > 1000000n ||
+    !Number.isSafeInteger(fill.timestamp) ||
+    now - fill.timestamp > 30000 ||
+    fill.timestamp > now + 5000
+  ) {
+    throw new PilotError("INVALID_FILL", "Invalid or stale paper fill");
+  }
+  const leverage = BigInt(p.leverage ?? 1);
+  const added = d(u(fill.notional) / leverage);
+  const quantity = u(p.quantity) + u(fill.quantity);
+  const notional = u(p.entryNotional) + u(fill.notional);
+
+  p.quantity = d(quantity);
+  p.entryNotional = d(notional);
+  p.entryPrice = d((notional * PAPER_SCALE) / quantity);
+  p.margin = d(u(p.margin ?? p.entryNotional) + u(added));
+  p.sizeUps = [...(p.sizeUps ?? []), { at: now, margin: added }];
+  if (fill.mark) {
+    p.mark = fill.mark.price;
+    p.markAt = fill.mark.timestamp;
+  }
+
+  const fee = paperCash(d(-u(fill.fee)));
+  const movements: PerpsPaperMovement[] = [
+    { key: `${key}:fee`, kind: "fee", delta: fee, at: now, evidence: fill.evidence },
+  ];
+  a.cash = d(u(a.cash) + u(fee));
+  if (u(a.cash) <= 0n) {
+    a.blocked = true;
+  }
+  return { account: a, movements };
+}
+/**
+ * A product account's free paper AUSD at trusted marks (the runtime reads them from the market
+ * board and its own Perpl reads): `min(cash, cash + unrealized) − margin − reserved`. Null when any
+ * open position has no mark, so the runtime refuses to open rather than ignore an open loss.
+ */
+export function productFreeEquity(
+  account: PerpsPaperAccount,
+  attempts: PerpsPaperAttempt[],
+  marks: Partial<Record<PerpsPaperAccount["positions"][number]["symbol"], string>>,
+): string | null {
+  const open = account.positions.filter((p) => p.closedAt === null);
+  let unrealized = 0n;
+  for (const p of open) {
+    const mark = marks[p.symbol];
+    if (mark === undefined) {
+      return null;
+    }
+    unrealized +=
+      (((u(mark) - u(p.entryPrice)) * u(p.quantity)) / PAPER_SCALE) *
+      (p.side === "long" ? 1n : -1n);
+  }
+  const cash = u(account.cash);
+  const equity = cash + unrealized;
+  const margin = open.reduce((sum, p) => sum + positionMargin(p), 0n);
+  const reserved = attempts
+    .filter((a) => a.status === "pending")
+    .reduce((sum, a) => sum + u(a.reserved), 0n);
+  return d((equity < cash ? equity : cash) - margin - reserved);
+}

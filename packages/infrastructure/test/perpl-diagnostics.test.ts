@@ -144,3 +144,25 @@ test("unresponsive control is bounded at three seconds without retries", async (
     clearInterval(keepAlive);
   }
 });
+
+test("a session stops at its request cap; a host may raise it to the check cap of 24", async () => {
+  let calls = 0;
+  const client = new PerplTransport({
+    sessionLimit: 2,
+    transport: async () => {
+      calls++;
+      return new Response("{}", { status: 200 });
+    },
+  });
+
+  await client.get("testnet", "/v1/pub/context", context());
+  await client.get("testnet", "/v1/pub/context", context());
+  await assert.rejects(client.get("testnet", "/v1/pub/context", context()), {
+    code: "PERPL_SESSION_LIMIT",
+  });
+
+  assert.equal(calls, 2);
+  assert.doesNotThrow(() => new PerplTransport({ sessionLimit: 24 }));
+  assert.throws(() => new PerplTransport({ sessionLimit: 25 }), { code: "INVALID_INPUT" });
+  assert.throws(() => new PerplTransport({ sessionLimit: 0 }), { code: "INVALID_INPUT" });
+});

@@ -131,4 +131,8 @@ conviction, one position per instrument, caps (open count, per-day margin, day-l
 then the entry mode. An opposite call that passes the brief closes the held position first.
 `sizing.ts` owns R7 margin/leverage, `exits.ts` R10 levels and due exits, R11 day-loss and the
 15-minute proposal expiry, `record.ts` R13 stats, drawdown and the equity series. Models never size,
-price or reach an account; hosts inject state and act on the result.
+price or reach an account; hosts inject state and act on the result. In `perps-paper/policy.ts`,
+`applyPaperSizeUp` is R8's size-up accounting (average entry, margin at the position's leverage,
+`sizeUps`, the fee; exits unchanged) behind `PerpsProductPaperRepository.sizeUp`, and
+`productFreeEquity(account, attempts, marks)` is a product account's free AUSD at trusted marks
+(`min(cash, cash + unrealized) − margin − reserved`; null when an open position has no mark).

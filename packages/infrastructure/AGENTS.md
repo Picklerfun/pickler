@@ -459,7 +459,13 @@ product accounts are not version-pinned and each position records the version it
 `closePosition(scope, id, reason, frame)` closes from `open` exactly once (a closed position
 answers `closed: false`), `openDuePositions(marks)` reads due exits across product accounts (stop,
 then target, then time), and `newMarginSince(scope, since)` sums margin opened since (positions
-and their `sizeUps`). Operator sessions keep the version pin, the 1x policy and the 100 cap.
+and their `sizeUps`, each on the day it was added). `sizeUp(scope, id, { key, margin }, frame)`
+adds margin to an open product position at its leverage through trading's `applyPaperSizeUp`
+(idempotent by key, recorded as a filled attempt; `POSITION_CLOSED`, `PAUSED`,
+`INSUFFICIENT_AVAILABLE`), and `openNetworks()` lists networks with open product positions for
+the exits job's marks. Operator sessions keep the version pin, the 1x policy and the 100 cap.
+`PerplTransport` takes a trusted `sessionLimit` (1–24, default 12; `PERPL_CHECK_SESSION_LIMIT` is
+24 for the runtime's checks and exit frames).
 
 ## Advice persistence
 
