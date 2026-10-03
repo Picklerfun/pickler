@@ -157,3 +157,5 @@ Jev/DeepSeek advice prompts. `workers/advice.ts` consumes generic advice wakeups
 leases, closing its invocation pool on every outcome. Started calls are persisted before
 transport; no paid retries. Forecasts exclude Jev answers and portfolio state. Advice is not a
 new plugin or a trading executor. See [Agent advice](../../docs/agent-advice.md).
+
+Advice reuses MODEL_BASE_URL, MODEL_ID and MODEL_API_KEY from the configured research provider. It never reads ADVICE_DEEPSEEK_API_KEY. Reject mismatched frozen provider/model policies before Jev or forecast transport; retain no retries and bounded accounting. Jev keeps its separate ADVICE_JEV_API_KEY.

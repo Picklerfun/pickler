@@ -96,3 +96,5 @@ coordination and exact USD model reservation arithmetic. Require 60 closed hourl
 existing snapshot/book coherence. Only coherent insufficiency becomes wait; data/provider failures
 fail. Models and data ports are injected; no positions, wallets or trading executors are reachable.
 See [Agent advice](../../docs/agent-advice.md) and deterministic advice tests.
+
+Advice policy v2 validates and freezes the HTTPS forecast base URL alongside its reviewed model/rates. Version 1 remains bound to direct DeepSeek. Reject credential-bearing/query/fragment URLs; reserve using the job’s frozen rates.

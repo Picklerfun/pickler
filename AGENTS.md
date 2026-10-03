@@ -162,3 +162,5 @@ orders. Read [Agent advice](docs/agent-advice.md) before changes. Core owns auth
 ports; trading owns analysis policy; runtime owns providers/prompts; infrastructure owns private
 jobs/events/call reserves and migration 0025. Research Queue advice wakeups never notify trading.
 Keep admissions disabled by default; no payments, paid retries or implicit AUSD-to-USD conversion.
+
+Advice forecast configuration reuses the Research Worker’s MODEL_BASE_URL, MODEL_ID and MODEL_API_KEY. New advice policy v2 freezes the reviewed provider URL/model; v1 retains its historical direct-DeepSeek meaning. Never copy a provider key to a different endpoint or enable advice with unreviewed tariffs.

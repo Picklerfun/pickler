@@ -83,5 +83,7 @@ The existing Queue distinguishes `advice-wakeup` from research. Advice uses its 
 private cost reserves and three-minute/60-second execution leases; it never sends TRADING_QUEUE
 notifications. Default ADVICE_ENABLED=false. Cron recovers/expires jobs even while off and retains
 unknown costs; failed advice reconciliation does not stop ordinary research supervision. Keep
-ADVICE_JEV_API_KEY and ADVICE_DEEPSEEK_API_KEY exclusively here, with a reviewed matching policy.
+ADVICE_JEV_API_KEY exclusively here; forecasts reuse the existing MODEL_BASE_URL, MODEL_ID and
+MODEL_API_KEY. A reviewed matching v2 policy pins the provider base URL and model. Changing either
+refuses execution before model transport; no separate DeepSeek key is accepted.
 See [Agent advice](../../docs/agent-advice.md).

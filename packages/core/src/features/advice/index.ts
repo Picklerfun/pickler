@@ -5,8 +5,7 @@ import type { Principal } from "../access/domain/principal.js";
 export type AdviceSymbol = "BTC" | "ETH";
 export type AdviceLane = "jev" | "deepseek" | "web" | "web-fallback";
 export type AdviceStatus = "queued" | "running" | "completed" | "failed";
-export interface AdvicePolicy {
-  version: 1;
+interface AdvicePricing {
   jevModel: "jev-1.13.0";
   deepseekModel: string;
   inputRates: Record<"jev" | "deepseek", string>;
@@ -17,6 +16,8 @@ export interface AdvicePolicy {
   pricingVerifiedAt: string;
   pricingSources: string[];
 }
+export type AdvicePolicy = AdvicePricing &
+  ({ version: 1 } | { version: 2; deepseekBaseUrl: string });
 export interface AdviceAgent extends Scope {
   publicId: string;
   version: number;

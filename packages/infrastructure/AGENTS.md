@@ -409,3 +409,5 @@ Started unknown charges remain reserved and block the agent; never restart their
 trusted `reconcileCall` method requires terminal failure and verified evidence, uses frozen rates
 and records an audit event; it has no consumer HTTP route. Apply migration before updated
 research/preview admission queries. See [Agent advice](../../docs/agent-advice.md).
+
+Advice v2 call rows record the frozen forecast provider origin, not a misleading direct-DeepSeek label. Historical v1 rows retain their original meaning. This is a JSON policy extension and requires no schema migration.

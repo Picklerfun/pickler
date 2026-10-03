@@ -148,3 +148,25 @@ test("USD reserves use exact upward rounding and invalid or absent pricing canno
     null,
   );
 });
+
+test("provider pricing v2 requires an HTTPS base URL; historical v1 remains readable", () => {
+  const { job } = adviceFixture();
+  const policy = {
+    ...job.policy,
+    version: 2,
+    deepseekBaseUrl: "https://dashscope.example/compatible-mode/v1",
+  };
+  assert.deepEqual(parseAdvicePolicy(JSON.stringify(policy)), policy);
+  assert.deepEqual(parseAdvicePolicy(JSON.stringify(job.policy)), job.policy);
+  for (const deepseekBaseUrl of [
+    undefined,
+    "http://example.com",
+    "not-a-url",
+    "https://user:key@example.com/v1",
+    "https://example.com/v1?token=key",
+    "https://example.com/v1#secret",
+  ]) {
+    assert.equal(parseAdvicePolicy(JSON.stringify({ ...policy, deepseekBaseUrl })), null);
+  }
+  assert.equal(parseAdvicePolicy(JSON.stringify({ ...policy, version: 3 })), null);
+});
