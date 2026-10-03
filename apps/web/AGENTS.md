@@ -386,7 +386,9 @@ modals, with `useShellModals`), `top-bar.tsx`, `rail.tsx` (groups of items with 
 `StudioTiles`), `status-chip.tsx`, `agent-avatar.tsx`, `banners.tsx`, `section.tsx`
 (`StudioSection`, `#<idPrefix>-section-<key>`), `identity.tsx`, `master.tsx`, `trade-soon.tsx`,
 `talk-soon.tsx`, `x-connect.tsx`, `setup-save.tsx` and `build-parts.tsx` (`CapSteppers`). Every id
-takes an `idPrefix` (`draft`, `live`), so the draft's ids are unchanged. `use-agent-studio.ts` is
+takes an `idPrefix` typed `StudioIdPrefix` (`"draft" | "live"`, `shell/model.ts`), so the draft's ids
+are unchanged and a typo cannot move one; a rail item's id is `railItemId(idPrefix, key)`
+(`rail.tsx`). `readMore` is held in a ref, so a reader that changes identity never reads again. `use-agent-studio.ts` is
 the data core (wallets, X state, lazy ledger, `refresh`, setup, identity and X writes that reload
 the agent, and the PREVIEW contract: a staged or preview studio reads nothing and every write
 throws `PREVIEW`); `draft/use-draft.ts` is built on it through `readMore` and `StudioTools`, adding

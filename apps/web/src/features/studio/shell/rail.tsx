@@ -1,12 +1,16 @@
 "use client";
 import { useEffect, type ReactNode } from "react";
 import { Icon } from "@pickler/ui";
-import type { RailGroup } from "./model";
+import type { RailGroup, StudioIdPrefix } from "./model";
 import styles from "./shell.module.css";
+
+/** A rail item's id, `#<idPrefix>-rail-<key>`: what a studio focuses when it moves the section. */
+export const railItemId = (idPrefix: StudioIdPrefix, key: string): string =>
+  `${idPrefix}-rail-${key}`;
 
 export interface StudioRailProps<K extends string> {
   /** `draft` or `live`: each item is `#<idPrefix>-rail-<key>`. */
-  idPrefix: string;
+  idPrefix: StudioIdPrefix;
   /** The groups as the studio's model builds them (`draftRail`, `liveRail`). */
   groups: RailGroup<K>[];
   onSection(key: K): void;
@@ -31,7 +35,7 @@ export function StudioRail<K extends string>({
      starts past the edge). */
   useEffect(() => {
     if (current !== undefined) {
-      const item = document.getElementById(`${idPrefix}-rail-${current}`);
+      const item = document.getElementById(railItemId(idPrefix, current));
       item?.scrollIntoView?.({ inline: "nearest", block: "nearest" });
     }
   }, [idPrefix, current]);
@@ -47,7 +51,7 @@ export function StudioRail<K extends string>({
                 key={item.key}
                 type="button"
                 className={styles.railItem}
-                id={`${idPrefix}-rail-${item.key}`}
+                id={railItemId(idPrefix, item.key)}
                 aria-current={item.on ? "page" : undefined}
                 aria-disabled={item.locked || undefined}
                 title={item.locked ? undefined : (item.title ?? item.label)}

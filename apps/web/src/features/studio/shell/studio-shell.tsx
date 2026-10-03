@@ -5,7 +5,7 @@ import { CreditsModal } from "../new-agent/credits-modal";
 import { WalletsModal } from "../new-agent/wallets-modal";
 import { ErrorBanner, PreviewBanner } from "./banners";
 import { StudioHeader, StudioTiles } from "./header";
-import type { HeaderTile, RailGroup } from "./model";
+import type { HeaderTile, RailGroup, StudioIdPrefix } from "./model";
 import { StudioRail } from "./rail";
 import { StudioTopBar } from "./top-bar";
 import type { UseAgentStudio } from "./use-agent-studio";
@@ -49,7 +49,7 @@ export interface StudioShellProps<K extends string> {
    * `draft` or `live`: the root is `#<idPrefix>-studio`, and the chip, its menu and the rail's
    * items carry the prefix too (`top-bar.tsx`, `rail.tsx`).
    */
-  idPrefix: string;
+  idPrefix: StudioIdPrefix;
   agent: Agent;
   agents: Agent[];
   canManage: boolean;

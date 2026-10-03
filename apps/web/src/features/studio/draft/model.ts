@@ -14,7 +14,7 @@ import type { PublishBlockerDto, WalletsDto } from "@pickler/api-schema";
 import { formatUnits, shortAddress, unitsOf } from "../new-agent/model";
 import { agentWalletRead } from "../shell/build-model";
 import { dayLabel, dayNumber, stamp } from "../shell/clock";
-import type { HeaderTile } from "../shell/model";
+import type { HeaderTile, RailGroup, RailItem } from "../shell/model";
 import type { Caps } from "./caps-model";
 
 export type DraftSectionKey =
@@ -91,19 +91,18 @@ export const DRAFT_SECTIONS = [
   { title: "YOU", items: [item("trade", "coin"), item("master", "wallet")] },
 ] as const;
 
-export interface RailItem {
-  key: DraftSectionKey;
+/** A draft rail item: the shell's, with its icon, its lock and its hover title always set. */
+export interface DraftRailItem extends RailItem<DraftSectionKey> {
   icon: DraftIcon;
-  label: string;
   locked: boolean;
-  /** The current section. */
-  on: boolean;
   /** The hover title: a locked item says when it opens. */
   title: string;
 }
 
 /** The rail with the current section on and its locked items marked. */
-export const draftRail = (current: DraftSectionKey): { title: string; items: RailItem[] }[] =>
+export const draftRail = (
+  current: DraftSectionKey,
+): (RailGroup<DraftSectionKey> & { items: DraftRailItem[] })[] =>
   DRAFT_SECTIONS.map((group) => ({
     title: group.title,
     items: group.items.map((entry) => ({

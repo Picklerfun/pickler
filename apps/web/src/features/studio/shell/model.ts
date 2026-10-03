@@ -6,6 +6,12 @@
  */
 import type { IconName } from "@pickler/ui";
 
+/**
+ * Which studio a shell part is drawn in: every id it renders starts with it (`#draft-studio`,
+ * `#live-section-brief`), so a typo cannot silently move what the design harness proves.
+ */
+export type StudioIdPrefix = "draft" | "live";
+
 export interface RailItem<K extends string = string> {
   key: K;
   icon: IconName;

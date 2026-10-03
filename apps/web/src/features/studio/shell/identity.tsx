@@ -11,6 +11,7 @@ import { disconnectProblem, nameChange, voiceOf, xAccountTag, NAME_MAX } from ".
 import { SaveOutcome, useSetupSave } from "./setup-save";
 import { PREVIEW_NOTE, type UseAgentStudio } from "./use-agent-studio";
 import { XConnect } from "./x-connect";
+import type { StudioIdPrefix } from "./model";
 import build from "./build.module.css";
 import styles from "./identity.module.css";
 
@@ -31,7 +32,7 @@ const failed = (caught: unknown, fallback: string): WriteState =>
 
 export interface IdentityProps {
   /** `draft` or `live`: the cards are `#<idPrefix>-identity-card`, `-voice` and `-x`. */
-  idPrefix: string;
+  idPrefix: StudioIdPrefix;
   agent: Agent;
   /** The studio's data and writes: identity, setup (the voice) and X. */
   studio: Pick<

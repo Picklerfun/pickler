@@ -1,4 +1,5 @@
 "use client";
+import type { StudioIdPrefix } from "./model";
 import styles from "./cards.module.css";
 
 /**
@@ -12,7 +13,7 @@ export function TradeSoon({
   note,
 }: {
   /** `draft` or `live`: the card is `#<idPrefix>-trade-soon`. */
-  idPrefix: string;
+  idPrefix: StudioIdPrefix;
   /** The card's one line. It may not promise what the Perpl runtime will do (draft spec D19). */
   note: string;
 }) {

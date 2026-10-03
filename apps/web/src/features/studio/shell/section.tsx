@@ -1,5 +1,6 @@
 "use client";
 import type { ReactNode } from "react";
+import type { StudioIdPrefix } from "./model";
 import styles from "./shell.module.css";
 
 /**
@@ -16,7 +17,7 @@ export function StudioSection({
   children,
 }: {
   /** `draft` or `live`. */
-  idPrefix: string;
+  idPrefix: StudioIdPrefix;
   /** The section's key in its studio's rail. */
   section: string;
   /** The section's name, as the rail says it: the hidden heading. */

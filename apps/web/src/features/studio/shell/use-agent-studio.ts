@@ -117,7 +117,10 @@ export function useAgentStudio({
   staged: StagedStudio | null;
   preview: boolean;
   onRefreshAgent(): Promise<void>;
-  /** The studio's own reads; it must keep its identity across renders (`useCallback`). */
+  /**
+   * The studio's own reads. Held in a ref, so a reader that changes identity between renders does
+   * not read again: the latest one runs with the first read and with every `refresh`.
+   */
   readMore?(tools: StudioTools): Promise<unknown>;
 }): { studio: UseAgentStudio; tools: StudioTools } {
   const offline = preview || staged !== null;
@@ -131,10 +134,12 @@ export function useAgentStudio({
      it, and the callbacks below stay stable across renders. */
   const version = useRef(agent.version);
   const refreshAgent = useRef(onRefreshAgent);
+  const readMoreRef = useRef(readMore);
   useEffect(() => {
     version.current = agent.version;
     refreshAgent.current = onRefreshAgent;
-  }, [agent.version, onRefreshAgent]);
+    readMoreRef.current = readMore;
+  }, [agent.version, onRefreshAgent, readMore]);
   /* Answers that land after the studio moved to another agent, or closed, are dropped. */
   const alive = useRef(true);
   /* Whether Master wallet has read the ledger, so `refresh` keeps it current from then on. */
@@ -220,9 +225,9 @@ export function useAgentStudio({
 
   const more = useCallback(async () => {
     if (!offline) {
-      await readMore?.(tools);
+      await readMoreRef.current?.(tools);
     }
-  }, [offline, readMore, tools]);
+  }, [offline, tools]);
 
   const refresh = useCallback(async () => {
     setError("");

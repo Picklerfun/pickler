@@ -7,6 +7,7 @@ import type { Agent, StudioWallets } from "../api";
 import { menuAccess } from "../home/access";
 import { formatUnits, unitsOf } from "../new-agent/model";
 import { AgentAvatar } from "./agent-avatar";
+import type { StudioIdPrefix } from "./model";
 import studio from "../studio.module.css";
 import home from "../home/home.module.css";
 import topBar from "../new-agent/new-agent.module.css";
@@ -14,7 +15,7 @@ import styles from "./shell.module.css";
 
 export interface StudioTopBarProps {
   /** `draft` or `live`: the chip is `#<idPrefix>-agent-chip`, its menu `#<idPrefix>-agent-menu`. */
-  idPrefix: string;
+  idPrefix: StudioIdPrefix;
   agent: Agent;
   /** Every agent of the person, for the switcher. */
   agents: Agent[];

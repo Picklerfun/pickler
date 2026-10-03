@@ -6,11 +6,12 @@ import { formatUnits, unitsOf } from "../new-agent/model";
 import type { UseAgentStudio } from "./use-agent-studio";
 import { useCopied } from "./use-copied";
 import { ledgerRows, type AllocationRow } from "./wallet-model";
+import type { StudioIdPrefix } from "./model";
 import styles from "./cards.module.css";
 
 export interface MasterProps {
   /** `draft` or `live`: the card is `#<idPrefix>-master-wallet`, the ledger `#<idPrefix>-master-ledger`. */
-  idPrefix: string;
+  idPrefix: StudioIdPrefix;
   agent: Agent;
   /** The studio's data: the wallets, and the ledger with its lazy read. */
   studio: Pick<UseAgentStudio, "wallets" | "ledger" | "preview" | "readLedger">;

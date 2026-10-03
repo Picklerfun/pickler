@@ -21,8 +21,7 @@ const STARTERS = [
  * Console (canvas 530–636, spec §3.4, D12, D13, D19): the inputs a paper run would read, the run
  * button shut until the Perpl runtime, the schedule's interval (it saves) and its next runs, which
  * start with the runtime, What it did idle, and Talk to it drawn shut with a Soon tag
- * (`../shell/talk-soon.tsx`). Nothing here
- * pretends a run happened or promises when one will.
+ * (`../shell/talk-soon.tsx`). Nothing here pretends a run happened or promises when one will.
  */
 export function Console({ agent, draft, canManage, now, onSection }: DraftSectionProps) {
   /* The interval being saved: drawn chosen while the call is out, so the click shows at once. */
@@ -156,7 +155,8 @@ export function Console({ agent, draft, canManage, now, onSection }: DraftSectio
         </div>
 
         <TalkSoon
-          id="draft-console-talk"
+          idPrefix="draft"
+          section="console"
           note="It explains its calls, and it changes its own setup when you ask: sources, sites, caps, schedule."
           starters={STARTERS}
           placeholder="Read coindesk.com too · run every 12h · why not ETH?"

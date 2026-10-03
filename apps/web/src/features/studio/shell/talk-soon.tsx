@@ -1,4 +1,5 @@
 "use client";
+import type { StudioIdPrefix } from "./model";
 import styles from "./cards.module.css";
 
 /**
@@ -7,13 +8,16 @@ import styles from "./cards.module.css";
  * Console and the live Overview each hand it their own canvas's words.
  */
 export function TalkSoon({
-  id,
+  idPrefix,
+  section,
   note,
   starters,
   placeholder,
 }: {
-  /** The card's id (`draft-console-talk`), which the design harness may prove. */
-  id: string;
+  /** `draft` or `live`: the card is `#<idPrefix>-<section>-talk` (`draft-console-talk`). */
+  idPrefix: StudioIdPrefix;
+  /** The section the card is drawn in (`console`, `overview`). */
+  section: string;
   /** What talking to it will do. It may not promise what the Perpl runtime will do (D19). */
   note: string;
   /** The canvas's starters for this screen, drawn as shut chips. */
@@ -22,7 +26,7 @@ export function TalkSoon({
   placeholder: string;
 }) {
   return (
-    <div className={styles.talk} id={id}>
+    <div className={styles.talk} id={`${idPrefix}-${section}-talk`}>
       <div className={styles.cardHead}>
         <h3 className={styles.cardLabel}>TALK TO IT</h3>
         <span className={styles.meta}>ASK WHY · OR TELL IT WHAT TO CHANGE</span>

@@ -5,6 +5,7 @@ import type { Agent } from "../api";
 import { HeaderDot } from "../shell/header";
 import { Identity } from "../shell/identity";
 import { Master } from "../shell/master";
+import { railItemId } from "../shell/rail";
 import { StatusChip } from "../shell/status-chip";
 import { StudioShell, useShellModals } from "../shell/studio-shell";
 import { TradeSoon } from "../shell/trade-soon";
@@ -101,7 +102,7 @@ export function DraftStudio({
   useEffect(() => {
     if (focusRail.current) {
       focusRail.current = false;
-      document.getElementById(`draft-rail-${section}`)?.focus();
+      document.getElementById(railItemId("draft", section))?.focus();
     }
   }, [section]);
 
