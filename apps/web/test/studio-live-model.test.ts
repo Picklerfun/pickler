@@ -415,10 +415,7 @@ test("How it runs: asking first, the status note and the mode note", () => {
     view.statusNote,
     "It is public on Pickler. It starts watching Perpl and its sources when the Perpl runtime opens; then it asks you before entering.",
   );
-  assert.equal(
-    view.modeNote,
-    "ONCE IT RUNS · EVERY ENTRY WAITS FOR YOUR TAP · EXITS NEVER WAIT",
-  );
+  assert.equal(view.modeNote, "ONCE IT RUNS · EVERY ENTRY WAITS FOR YOUR TAP · EXITS NEVER WAIT");
   assert.equal(view.chip, "ASKS YOU FIRST");
 });
 
