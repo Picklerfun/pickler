@@ -1,0 +1,742 @@
+/* The live studio's BUILD sections: Brief (canvas 368–391), Sources & rules (393–454), Limits
+ * (456–498), Controls (500–571); Identity & voice is the shell's own sheet.
+ *
+ * The shell's token mapping: the canvas's #0B0D1A wells are `--pk-bg`, its #15182A cards
+ * `--pk-panel`, #25293D `--pk-panel-3`, #9AA0B8 `--pk-ink-muted`, #5A5F78 `--pk-ink-faint`,
+ * #C7CAD8 `--pk-ink-soft`, its lime `--pk-lime`/`--pk-lime-ink`, its pink `--pk-magenta-ink`, its
+ * amber wash (#2A2410) `--pk-state-caution-*`, the lime wash (#2A3A0F) `--pk-state-good-*`. The
+ * brief's fields, the plugins and the web box are the create screen's (`new-agent.module.css`),
+ * the cards the shell's (`../shell/cards.module.css`), the column, hints and alert the shell's
+ * (`../shell/build.module.css`), composed so each stays one drawing; this sheet holds no literal
+ * colour. A class composed of one that composes another names both (one level resolves).
+ */
+
+/* ---------- Layout ---------- */
+
+.column {
+  composes: column from "../shell/build.module.css";
+}
+/* Limits and Controls: cards side by side, folding to one column. */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+  gap: 18px;
+  align-items: start;
+}
+
+/* ---------- The note bar (Brief, Sources & rules) ---------- */
+
+.bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-radius: var(--pk-radius-lg);
+  background: var(--pk-panel);
+}
+.bar[data-dirty="true"] {
+  background: var(--pk-state-caution-bg);
+}
+.barDot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 3px;
+  background: var(--pk-lime);
+}
+.bar[data-dirty="true"] .barDot {
+  background: var(--pk-amber);
+}
+.barText {
+  flex: 1;
+  min-width: 200px;
+  font: 600 11px/1.4 var(--pk-font);
+  letter-spacing: 0.06em;
+  color: var(--pk-lime-ink);
+}
+.bar[data-dirty="true"] .barText {
+  color: var(--pk-state-caution-ink);
+}
+.barDiscard,
+.barApply {
+  flex: none;
+  padding: 8px 12px;
+  border: none;
+  border-radius: var(--pk-radius-pill);
+  font: 600 11px/1 var(--pk-font);
+  cursor: pointer;
+  transition:
+    color var(--pk-duration),
+    background var(--pk-duration);
+}
+.barDiscard {
+  background: transparent;
+  color: var(--pk-ink-muted);
+}
+.barDiscard:hover:not(:disabled) {
+  color: var(--pk-ink);
+}
+.barApply {
+  background: var(--pk-lime);
+  color: var(--pk-on-lime);
+}
+.barApply:hover:not(:disabled, [aria-disabled="true"]) {
+  background: var(--pk-lime-hover);
+}
+.barApply:disabled,
+.barApply[aria-disabled="true"],
+.barDiscard:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+/* ---------- Fields (Brief, IT READS, IT MAY) ---------- */
+
+.field {
+  composes: card from "../new-agent/new-agent.module.css";
+  border: 1px solid transparent;
+}
+.field[data-roomy="true"] {
+  gap: 10px;
+  padding-bottom: 14px;
+}
+.field[data-edited="true"] {
+  border-color: var(--pk-amber-edge);
+}
+.field[data-needed="true"] {
+  box-shadow: inset 0 0 0 1px var(--pk-amber-edge);
+}
+.fieldHead {
+  composes: cardHead from "../new-agent/new-agent.module.css";
+}
+.fieldLabel {
+  composes: label from "../new-agent/new-agent.module.css";
+}
+.fieldSub {
+  composes: sub from "../new-agent/new-agent.module.css";
+}
+.tag {
+  composes: tag from "../new-agent/new-agent.module.css";
+  color: var(--pk-ink-muted);
+}
+.tag[data-lit="true"] {
+  background: var(--pk-state-caution-bg);
+  color: var(--pk-state-caution-ink);
+}
+.input {
+  composes: input from "../new-agent/new-agent.module.css";
+}
+.input:disabled {
+  color: var(--pk-ink-muted);
+  cursor: not-allowed;
+}
+.hint {
+  composes: hint from "../shell/build.module.css";
+}
+.alert {
+  composes: alert from "../shell/build.module.css";
+}
+
+/* ---------- VERSIONS ---------- */
+
+.versions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 16px;
+  border-radius: var(--pk-radius-xl);
+  border: 1px dashed var(--pk-rule-strong);
+}
+.versionsTitle {
+  font: 600 10px/1 var(--pk-font);
+  letter-spacing: 0.12em;
+  color: var(--pk-ink-muted);
+}
+.versionList {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.version {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--pk-rule);
+}
+.versionLabel {
+  flex: none;
+  font: 700 12px/1 var(--pk-font);
+  color: var(--pk-ink-muted);
+}
+.versionLabel[data-current="true"] {
+  color: var(--pk-lime-ink);
+}
+.versionText {
+  flex: 1;
+  min-width: 0;
+  font: 500 12.5px/1.3 var(--pk-font);
+  color: var(--pk-ink-soft);
+}
+.versionAt {
+  flex: none;
+  font: 600 10px/1 var(--pk-font);
+  color: var(--pk-ink-faint);
+  font-variant-numeric: tabular-nums;
+}
+.versionsFailed {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.retry {
+  composes: copyChip from "../shell/cards.module.css";
+}
+
+/* ---------- Sources & rules ---------- */
+
+.plugins {
+  composes: plugins from "../new-agent/new-agent.module.css";
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.plugin {
+  composes: plugin from "../new-agent/new-agent.module.css";
+}
+.plugin:disabled {
+  cursor: not-allowed;
+}
+/* Perpl, fixed: lit, never a control. */
+.plugin[data-kind="fixed"] {
+  border-color: var(--pk-lime-edge);
+  background: var(--pk-state-good-bg);
+  cursor: default;
+}
+/* X feeds and Open interest: drawn shut. */
+.plugin[data-kind="soon"] {
+  cursor: default;
+}
+.plugin[data-kind="soon"] .pluginName,
+.plugin[data-kind="soon"] .pluginNote {
+  color: var(--pk-ink-faint);
+}
+li.plugin {
+  cursor: default;
+}
+.pluginText {
+  composes: pluginText from "../new-agent/new-agent.module.css";
+}
+.pluginName {
+  composes: pluginName from "../new-agent/new-agent.module.css";
+}
+.pluginNote {
+  composes: pluginNote from "../new-agent/new-agent.module.css";
+}
+.pluginLine {
+  font: 600 9px/1.3 var(--pk-font);
+  letter-spacing: 0.06em;
+  color: var(--pk-ink-faint);
+}
+.fixed {
+  composes: fixed from "../new-agent/new-agent.module.css";
+}
+.toggle {
+  composes: toggle from "../new-agent/new-agent.module.css";
+}
+.soonTag,
+.abilityTag,
+.stopTag,
+.headTag {
+  flex: none;
+  padding: 5px 8px;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-bg);
+  font: 600 9.5px/1 var(--pk-font);
+  letter-spacing: 0.1em;
+  white-space: nowrap;
+  color: var(--pk-ink-muted);
+}
+.abilityTag[data-tag="ON"],
+.abilityTag[data-tag="ALWAYS"] {
+  background: var(--pk-state-good-bg);
+  color: var(--pk-state-good-ink);
+}
+.abilityTag[data-tag="PAUSED"] {
+  background: var(--pk-state-caution-bg);
+  color: var(--pk-state-caution-ink);
+}
+.abilityTag[data-tag="NEVER"] {
+  background: var(--pk-state-loss-bg);
+  color: var(--pk-magenta-ink);
+}
+.web {
+  composes: web from "../new-agent/new-agent.module.css";
+}
+.webHead {
+  composes: webHead from "../new-agent/new-agent.module.css";
+}
+.webTitle {
+  composes: webTitle from "../new-agent/new-agent.module.css";
+}
+.webMode {
+  composes: webMode from "../new-agent/new-agent.module.css";
+}
+.sites {
+  composes: sites from "../new-agent/new-agent.module.css";
+}
+.site {
+  composes: site from "../new-agent/new-agent.module.css";
+}
+.siteRemove {
+  composes: siteRemove from "../new-agent/new-agent.module.css";
+}
+.siteInput {
+  composes: siteInput from "../new-agent/new-agent.module.css";
+}
+
+/* ---------- Cards (Limits, Controls) ---------- */
+
+.card {
+  composes: card from "../shell/cards.module.css";
+  border: 1px solid transparent;
+}
+.card[data-dirty="true"] {
+  border-color: var(--pk-amber-edge);
+}
+.card[data-tone="stops"] {
+  border-color: var(--pk-magenta-edge);
+}
+.cardHead {
+  composes: cardHead from "../shell/cards.module.css";
+}
+.cardLabel {
+  composes: cardLabel from "../shell/cards.module.css";
+}
+.cardNote {
+  margin: 0;
+  font: 500 12.5px/1.45 var(--pk-font);
+  color: var(--pk-ink-muted);
+  text-wrap: pretty;
+}
+.headTag {
+  margin-left: auto;
+}
+.headTag[data-tone="good"] {
+  background: var(--pk-state-good-bg);
+  color: var(--pk-state-good-ink);
+}
+.headTag[data-tone="caution"] {
+  background: var(--pk-state-caution-bg);
+  color: var(--pk-state-caution-ink);
+}
+
+/* ---------- Limits: its wallet ---------- */
+
+.walletRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.walletMark {
+  flex: none;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--pk-radius-sm);
+}
+.walletAddress {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 600 14.5px/1 var(--pk-font);
+  letter-spacing: -0.01em;
+}
+.copyChip {
+  composes: copyChip from "../shell/cards.module.css";
+}
+.balances {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+}
+.balance {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+  padding: 10px;
+  border-radius: var(--pk-radius-md);
+  background: var(--pk-bg);
+}
+.balanceValue {
+  font: 700 16px/1 var(--pk-font);
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.balanceValue[data-low="true"] {
+  color: var(--pk-amber-ink);
+}
+.balanceLabel {
+  font: 600 9px/1.2 var(--pk-font);
+  letter-spacing: 0.08em;
+  color: var(--pk-ink-faint);
+}
+.arrivals {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.arrival {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--pk-radius-md);
+  background: var(--pk-bg);
+}
+.arrivalDot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 3px;
+  background: var(--pk-blue);
+}
+.arrivalText {
+  flex: 1;
+  min-width: 0;
+  font: 500 12.5px/1.3 var(--pk-font);
+}
+.arrivalAt {
+  font: 600 10px/1 var(--pk-font);
+  color: var(--pk-ink-faint);
+  font-variant-numeric: tabular-nums;
+}
+.pair {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.fundButton,
+.pullButton {
+  flex: 1 1 140px;
+  padding: 12px;
+  border: none;
+  border-radius: var(--pk-radius-pill);
+  font: 600 13px/1 var(--pk-font);
+  letter-spacing: -0.02em;
+  cursor: pointer;
+  transition: background var(--pk-duration);
+}
+.fundButton {
+  background: var(--pk-ink);
+  color: var(--pk-bg);
+}
+.fundButton:hover:not(:disabled) {
+  background: var(--pk-ink-soft);
+}
+.pullButton {
+  background: var(--pk-bg);
+  color: var(--pk-ink);
+}
+.pullButton:hover:not(:disabled) {
+  background: var(--pk-panel-2);
+}
+.fundButton:disabled,
+.pullButton:disabled {
+  cursor: not-allowed;
+  color: var(--pk-ink-faint);
+}
+.fundButton:disabled {
+  background: var(--pk-panel-3);
+}
+
+/* ---------- Saving (caps, how it runs) ---------- */
+
+.saveRow {
+  display: flex;
+  gap: 4px;
+}
+.saveButton {
+  flex: 1;
+  padding: 12px;
+  border: none;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-lime);
+  color: var(--pk-on-lime);
+  font: 600 13.5px/1 var(--pk-font);
+  letter-spacing: -0.02em;
+  cursor: pointer;
+  transition: background var(--pk-duration);
+}
+.saveButton:hover:not(:disabled, [aria-disabled="true"]) {
+  background: var(--pk-lime-hover);
+}
+/* Shut while saving or with nothing to save, but focusable (aria-disabled); only a view-only
+   member gets a real disabled button. */
+.saveButton:disabled,
+.saveButton[aria-disabled="true"] {
+  background: var(--pk-panel-3);
+  color: var(--pk-ink-faint);
+  cursor: not-allowed;
+}
+.discardButton {
+  flex: none;
+  padding: 12px 14px;
+  border: none;
+  border-radius: var(--pk-radius-pill);
+  background: transparent;
+  color: var(--pk-ink-muted);
+  font: 600 13px/1 var(--pk-font);
+  cursor: pointer;
+  transition: color var(--pk-duration);
+}
+.discardButton:hover:not(:disabled) {
+  color: var(--pk-ink);
+}
+.discardButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+/* ---------- Controls: stops ---------- */
+
+.stops {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.stop {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: var(--pk-radius-lg);
+  background: var(--pk-bg);
+}
+.stopText {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.stopName {
+  font: 600 14px/1.2 var(--pk-font);
+  letter-spacing: -0.02em;
+}
+.stopName[data-danger="true"] {
+  color: var(--pk-magenta-ink);
+}
+.stopNote {
+  font: 500 11.5px/1.35 var(--pk-font);
+  color: var(--pk-ink-muted);
+  text-wrap: pretty;
+}
+.stopButton {
+  flex: none;
+  padding: 10px 14px;
+  border: none;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-ink);
+  color: var(--pk-bg);
+  font: 600 12.5px/1 var(--pk-font);
+  cursor: pointer;
+  transition: background var(--pk-duration);
+}
+.stopButton[data-paused="true"] {
+  background: var(--pk-lime);
+  color: var(--pk-on-lime);
+}
+.stopButton:disabled,
+.stopButton[aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+/* ---------- Controls: how it runs ---------- */
+
+.well {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+  border-radius: var(--pk-radius-lg);
+  background: var(--pk-bg);
+}
+.wellLabel {
+  font: 600 9.5px/1 var(--pk-font);
+  letter-spacing: 0.1em;
+  color: var(--pk-ink-faint);
+}
+.wellLabel[data-tone="muted"] {
+  letter-spacing: 0.08em;
+  color: var(--pk-ink-muted);
+}
+.segments {
+  align-self: flex-start;
+}
+.meanwhile {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding-top: 4px;
+}
+.small {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 4px 4px 12px;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-panel);
+}
+.smallButton {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: none;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-bg);
+  color: var(--pk-ink);
+  font: 600 14px/1 var(--pk-font);
+  cursor: pointer;
+  transition: background var(--pk-duration);
+}
+.smallButton:hover:not(:disabled) {
+  background: var(--pk-panel-3);
+}
+.smallButton:disabled {
+  cursor: not-allowed;
+  color: var(--pk-ink-faint);
+}
+.smallValue {
+  min-width: 58px;
+  text-align: center;
+  font: 700 12.5px/1 var(--pk-font);
+  white-space: nowrap;
+}
+
+/* ---------- Controls: meters ---------- */
+
+.meters {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.meter {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 10px 12px;
+  border-radius: var(--pk-radius-md);
+  background: var(--pk-bg);
+}
+.meterHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.meterTitle {
+  font: 600 9.5px/1 var(--pk-font);
+  letter-spacing: 0.08em;
+  color: var(--pk-ink-muted);
+}
+.meterValue {
+  margin-left: auto;
+  font: 700 12px/1 var(--pk-font);
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+}
+.meterTrack {
+  height: 4px;
+  border: none;
+}
+
+/* ---------- Controls: health ---------- */
+
+.healthTag {
+  margin-left: auto;
+  font: 600 9.5px/1 var(--pk-font);
+  letter-spacing: 0.08em;
+  color: var(--pk-lime-ink);
+}
+.healthTag[data-bad="true"] {
+  color: var(--pk-amber-ink);
+}
+.healthList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.healthRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: var(--pk-radius-sm);
+  background: var(--pk-bg);
+}
+.healthDot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 3px;
+  background: var(--pk-ink-faint);
+}
+.healthDot[data-tone="good"] {
+  background: var(--pk-lime);
+}
+.healthDot[data-tone="caution"] {
+  background: var(--pk-amber);
+}
+.healthDot[data-tone="bad"] {
+  background: var(--pk-magenta);
+}
+.healthLabel {
+  flex: 1;
+  min-width: 0;
+  font: 600 12.5px/1.2 var(--pk-font);
+  letter-spacing: -0.01em;
+}
+.healthValue {
+  font: 600 10px/1.2 var(--pk-font);
+  letter-spacing: 0.06em;
+  text-align: right;
+  color: var(--pk-ink-muted);
+}
+.healthValue[data-tone="caution"] {
+  color: var(--pk-amber-ink);
+}
+.healthValue[data-tone="bad"] {
+  color: var(--pk-magenta-ink);
+}
+
+/* ---------- Focus ---------- */
+
+.barDiscard:focus-visible,
+.barApply:focus-visible,
+.plugin:focus-visible,
+.siteRemove:focus-visible,
+.fundButton:focus-visible,
+.pullButton:focus-visible,
+.saveButton:focus-visible,
+.discardButton:focus-visible,
+.stopButton:focus-visible,
+.smallButton:focus-visible {
+  outline: 2px solid var(--pk-focus);
+  outline-offset: 2px;
+}

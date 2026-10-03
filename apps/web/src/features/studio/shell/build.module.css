@@ -79,6 +79,11 @@ p.hint {
   white-space: nowrap;
   color: var(--pk-ink);
 }
+.capSub {
+  font: 600 9px/1.3 var(--pk-font);
+  letter-spacing: 0.06em;
+  color: var(--pk-ink-faint);
+}
 .capValue {
   composes: capValue from "../new-agent/new-agent.module.css";
 }
