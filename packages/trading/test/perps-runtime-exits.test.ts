@@ -5,6 +5,8 @@ import {
   dayLossReached,
   exitDue,
   exitLevels,
+  liquidationPrice,
+  maxStopLossBps,
   proposalExpired,
   proposalExpiresAt,
   utcDayStart,
@@ -65,6 +67,28 @@ const levels: Array<[string, Parameters<typeof exitLevels>[0], ReturnType<typeof
     { side: "short", entryPrice: "100", stopLossBps: 4000, horizonHours: 4, openedAt },
     { stopPrice: "115", takeProfitPrice: "94", exitDueAt: openedAt + 4 * hour },
   ],
+  [
+    "at 10x the stop is clamped to 900 bps (90% of margin)",
+    {
+      side: "long",
+      entryPrice: "100",
+      stopLossBps: 1500,
+      horizonHours: 4,
+      openedAt,
+      leverage: 10,
+    },
+    { stopPrice: "91", takeProfitPrice: "106", exitDueAt: openedAt + 4 * hour },
+  ],
+  [
+    "at 7x a short's stop is clamped to 1285 bps",
+    { side: "short", entryPrice: "100", stopLossBps: 1500, horizonHours: 4, openedAt, leverage: 7 },
+    { stopPrice: "112.85", takeProfitPrice: "94", exitDueAt: openedAt + 4 * hour },
+  ],
+  [
+    "a stop inside the leverage clamp is kept",
+    { side: "long", entryPrice: "100", stopLossBps: 300, horizonHours: 4, openedAt, leverage: 10 },
+    { stopPrice: "97", takeProfitPrice: "106", exitDueAt: openedAt + 4 * hour },
+  ],
 ];
 for (const [name, args, expected] of levels) {
   test(`exitLevels: ${name}`, () => {
@@ -119,6 +143,38 @@ test("exitDue with missing levels only uses what is there", () => {
 
   assert.equal(exitDue(bare, "1", late), null);
   assert.equal(exitDue({ ...bare, stopPrice: "2" }, "1", early), "stop");
+});
+
+test("maxStopLossBps keeps a stop's loss within 90% of margin", () => {
+  assert.equal(maxStopLossBps(1), 9000);
+  assert.equal(maxStopLossBps(3), 3000);
+  assert.equal(maxStopLossBps(10), 900);
+  assert.equal(maxStopLossBps(undefined), 9000);
+});
+
+test("liquidationPrice is where the loss equals the margin", () => {
+  assert.equal(liquidationPrice("long", "100000", 10), "90000");
+  assert.equal(liquidationPrice("short", "100000", 10), "110000");
+  assert.equal(liquidationPrice("long", "100", 1), "0");
+  assert.throws(() => liquidationPrice("long", "100", 0));
+});
+
+test("exitDue: a mark beyond the liquidation estimate is an immediate stop", () => {
+  const wide = {
+    side: "long" as const,
+    stopPrice: "80000",
+    takeProfitPrice: null,
+    exitDueAt: null,
+    entryPrice: "100000",
+    leverage: 10,
+  };
+
+  assert.equal(exitDue(wide, "90001", early), null);
+  assert.equal(exitDue(wide, "90000", early), "stop");
+  assert.equal(exitDue({ ...wide, stopPrice: null }, "85000", early), "stop");
+  assert.equal(exitDue({ ...wide, side: "short", stopPrice: null }, "110000", early), "stop");
+  assert.equal(exitDue({ ...wide, side: "short", stopPrice: null }, "109999", early), null);
+  assert.equal(exitDue({ ...wide, leverage: null }, "85000", early), null);
 });
 
 const dayLoss: Array<[number, number, boolean]> = [

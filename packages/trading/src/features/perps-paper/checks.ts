@@ -69,7 +69,12 @@ export interface PerpsCheckRecord extends PerpsCheckFinish {
   steps?: { text: string; ms?: number | null }[];
 }
 export type PerpsProposalKind = "enter" | "size_up";
-export type PerpsProposalStatus = "pending" | "approved" | "skipped" | "expired";
+/**
+ * `approving` while the owner's approval is being carried out: `decideProposal(id, "approved")`
+ * moves a pending proposal there, and `settleProposal` makes it `approved` only once the open (or
+ * size-up) succeeded, or puts it back to `pending` when the open was refused.
+ */
+export type PerpsProposalStatus = "pending" | "approving" | "approved" | "skipped" | "expired";
 export interface PerpsProposal {
   id: string;
   checkId: string;
@@ -101,6 +106,15 @@ export interface PerpsDueAgent {
   productAgentId: string;
   tenantId: string;
   agentId: string;
+  /** When its current hourly slot opened (ms); the dispatcher keys the check `hourly:<slot>`. */
+  slot: number;
+}
+/** The request key of an agent's hourly check for one slot: exactly one check per slot. */
+export function hourlyRequestKey(slot: number) {
+  if (!Number.isSafeInteger(slot) || slot < 0) {
+    throw new PilotError("INVALID_INPUT", "Invalid hourly slot");
+  }
+  return `hourly:${slot}`;
 }
 export interface PerpsCheckPage {
   items: PerpsCheck[];
@@ -108,7 +122,10 @@ export interface PerpsCheckPage {
 }
 
 export interface PerpsRuntimeRepository {
-  /** Queues a check; `CHECK_RUNNING` while another is queued or running for the agent. */
+  /**
+   * Queues a check; `CHECK_RUNNING` while another is queued or running for the agent. A repeated
+   * `requestKey` answers the check it already started (the dispatcher uses `hourlyRequestKey`).
+   */
   startCheck(input: {
     productAgentId: string;
     trigger: "hourly" | "manual";
@@ -138,9 +155,24 @@ export interface PerpsRuntimeRepository {
   createProposal(lease: PerpsCheckLease, input: PerpsProposalInput): Promise<PerpsProposal>;
   getProposal(id: string): Promise<PerpsProposal | null>;
   listProposals(productAgentId: string): Promise<PerpsProposal[]>;
-  /** `PROPOSAL_DECIDED` unless pending; `PROPOSAL_EXPIRED` (and expires it) past its time. */
+  /**
+   * `PROPOSAL_DECIDED` unless pending; `PROPOSAL_EXPIRED` (and expires it) past its time. A skip is
+   * final; an approval answers the proposal `approving`, and the host then acts and settles it.
+   */
   decideProposal(id: string, decision: "approved" | "skipped"): Promise<PerpsProposal>;
+  /**
+   * Ends an approval: `approved` when the paper action succeeded, back to `pending` (until it
+   * expires) when it was refused. `PROPOSAL_DECIDED` unless `approving`.
+   */
+  settleProposal(id: string, opened: boolean): Promise<PerpsProposal>;
+  /** Expires pending proposals past their time, and approvals stuck five minutes past it. */
   expireProposals(): Promise<PerpsProposal[]>;
+  /**
+   * The Cron's sweep across agents: running checks whose lease lapsed end `CHECK_INTERRUPTED`,
+   * queued checks nobody claimed end `CHECK_EXPIRED` (as `startCheck`/`claimAgent` do for one
+   * agent). Answers how many ended.
+   */
+  recoverChecks(): Promise<number>;
   checksToday(productAgentId: string): Promise<number>;
   manualChecksToday(productAgentId: string): Promise<number>;
   globalChecksToday(): Promise<number>;

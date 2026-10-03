@@ -8,7 +8,8 @@ import type {
   PerpsPaperSide,
   PerpsPaperIntent,
 } from "./types.js";
-import { paperRisk } from "./policy.js";
+import { paperRisk, productFeeReserve } from "./policy.js";
+import { isProductPaperSession } from "./types.js";
 import {
   simulatePerpsFill,
   type PerpsPaperFrame,
@@ -22,6 +23,11 @@ export interface PerpsPaperData {
   ): Promise<PerpsPaperObservation>;
   frame(scope: PerpsPaperScope, symbol: PerpSymbol, signal: AbortSignal): Promise<PerpsPaperFrame>;
 }
+/**
+ * The taker fee a product open reserves for when no frame is given up front: 10 bps, above any
+ * Perpl taker fee seen so far.
+ */
+export const PRODUCT_FALLBACK_TAKER_FEE = "0.001";
 /** How an open is sized and what it records; the operator default is 100 at 1x, no exits. */
 export interface PerpsPaperTradeOptions {
   notional?: string | undefined;
@@ -47,13 +53,13 @@ export function createPerpsPaperService(
   ) {
     signal.throwIfAborted();
     let view = await repository.view(scope);
-    const intent: PerpsPaperIntent = {
-      kind,
-      symbol,
-      side,
-      notional: kind === "open" ? (options.notional ?? "100") : "0",
-      feeReserve: "1",
-    };
+    const notional = kind === "open" ? (options.notional ?? "100") : "0";
+    // Operator opens keep the fixed 1 AUSD; a product open reserves notional × taker fee × 1.5.
+    const feeReserve =
+      kind === "open" && isProductPaperSession(scope)
+        ? productFeeReserve(notional, frame?.book.market.fees.taker ?? PRODUCT_FALLBACK_TAKER_FEE)
+        : "1";
+    const intent: PerpsPaperIntent = { kind, symbol, side, notional, feeReserve };
     if (kind === "open" && options.leverage !== undefined) {
       intent.leverage = options.leverage;
     }

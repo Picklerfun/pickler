@@ -4,11 +4,14 @@ import { DEFAULT_CONFIG, PilotError, type AgentRecord } from "@pickler/core";
 import {
   PRODUCT_PAPER_SESSION,
   applyPaperFill,
+  assertPaperIntent,
   assertPerpsPaperAgent,
+  assertPerpsPaperScope,
   createPerpsPaperService,
   initialPaperAccount,
   paperOpenReserve,
   paperRisk,
+  productFeeReserve,
   type PerpsPaperAttempt,
   type PerpsPaperExits,
   type PerpsPaperFill,
@@ -210,7 +213,65 @@ test("the service opens at the notional it is given and hands the exits to compl
   assert.equal(begun[0]!.checkId, open.checkId);
   assert.equal(completed[0]!.exitDueAt, now + 3600000);
   assert.ok(completed[0]!.stopPrice);
+  assert.equal(begun[0]!.feeReserve, "0.15");
+  assert.equal(begun[1]!.feeReserve, "0.15");
   assert.equal(begun[1]!.notional, "100");
   assert.equal("leverage" in begun[1]!, false);
   assert.equal(completed[1], undefined);
+});
+
+test("closes check only the scope: the agent's plugins, policy and network do not matter", () => {
+  const edited = agent(9);
+  edited.config = { ...edited.config, perpl: { version: 1, network: "mainnet", markets: [] } };
+  edited.config.plugins = { version: 1, enabled: [] };
+
+  assert.doesNotThrow(() => assertPerpsPaperScope(edited, product));
+  assert.throws(() => assertPerpsPaperAgent(edited, product, 9), { code: "PLUGIN_DISABLED" });
+  assert.throws(() => assertPerpsPaperScope(edited, { ...product, agentId: "b" }), {
+    code: "FORBIDDEN",
+  });
+});
+
+test("intents take leverage up to core's 10 and a UUID check id", () => {
+  assert.doesNotThrow(() => assertPaperIntent({ ...open, leverage: 10 }));
+  assert.throws(() => assertPaperIntent({ ...open, leverage: 11 }), { code: "INVALID_INPUT" });
+  assert.throws(() => assertPaperIntent({ ...open, leverage: 100 }), { code: "INVALID_INPUT" });
+  assert.throws(() => assertPaperIntent({ ...open, checkId: "check-1" }), {
+    code: "INVALID_INPUT",
+  });
+  assert.throws(() => assertPaperIntent({ ...open, checkId: open.checkId!.toUpperCase() }), {
+    code: "INVALID_INPUT",
+  });
+});
+
+test("a product fee reserve scales with notional × taker fee × 1.5, past the old 10 AUSD", () => {
+  assert.equal(productFeeReserve("500", "0.0002"), "0.15");
+  assert.equal(productFeeReserve("10000", "0.0002"), "3");
+  assert.equal(productFeeReserve("100000", "0.001"), "150");
+  assert.equal(productFeeReserve("0.000001", "0.0002"), "0.000001");
+  assert.equal(productFeeReserve("100", "0"), "0");
+
+  // Up to 10 AUSD or 1% of the notional, whichever is larger.
+  assert.doesNotThrow(() => assertPaperIntent({ ...open, notional: "100000", feeReserve: "150" }));
+  assert.doesNotThrow(() => assertPaperIntent({ ...open, notional: "100", feeReserve: "10" }));
+  assert.throws(() => assertPaperIntent({ ...open, notional: "1000", feeReserve: "10.5" }), {
+    code: "INVALID_INPUT",
+  });
+});
+
+test("a large product open fills when its fee fits the scaled reserve", () => {
+  const account = initialPaperAccount(product, 1, now, "5000");
+  const big = {
+    ...open,
+    notional: "20000",
+    leverage: 10,
+    feeReserve: productFeeReserve("20000", "0.0002"),
+  };
+  const bigFill = { ...fill, quantity: "0.33", notional: "19800", fee: "3.96" };
+
+  assert.equal(big.feeReserve, "6");
+  assert.equal(applyPaperFill(account, pending(big), bigFill, now).account.positions.length, 1);
+  assert.throws(() => applyPaperFill(account, pending({ ...big, feeReserve: "1" }), bigFill, now), {
+    code: "INVALID_FILL",
+  });
 });

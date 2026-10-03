@@ -10,6 +10,8 @@ export const CHECK_ACTIONS = ["open-long", "open-short", "close", "hold"] as con
 export type PerpsCheckAction = (typeof CHECK_ACTIONS)[number];
 export const CHECK_HORIZONS = [4, 24, 72] as const;
 export type PerpsCheckHorizon = (typeof CHECK_HORIZONS)[number];
+/** The horizon a `hold` gets when the model leaves it out. */
+export const HOLD_HORIZON: PerpsCheckHorizon = 24;
 export const STOP_LOSS_BPS = { min: 100, max: 1500, default: 300 } as const;
 export const TAKE_PROFIT_BPS = { min: 100, max: 5000, default: 600 } as const;
 export const CHECK_PROBABILITY = { min: 0.5, max: 1 } as const;
@@ -22,6 +24,11 @@ export interface PerpsCheckLine {
   index: number;
   met: boolean;
   why: string;
+  /**
+   * Exit lines only: the held instrument the line was judged for. Absent means the decision's
+   * instrument, so a check can report exit lines for every position it holds.
+   */
+  instrument?: PerpSymbol;
 }
 
 export interface PerpsCheckNeverLine {
@@ -32,14 +39,17 @@ export interface PerpsCheckNeverLine {
 export interface PerpsCheckDecision {
   instrument: PerpSymbol;
   action: PerpsCheckAction;
-  /** For the called direction, 0.5..1. Required to open, optional to close, absent on hold. */
+  /**
+   * For the called direction, 0..1 (outside it the answer is `MODEL_INVALID`). Required to open
+   * (below 0.55 holds as LOW_CONVICTION), optional to close, absent on hold.
+   */
   probability?: number;
   horizonHours: PerpsCheckHorizon;
   stopLossBps?: number;
   takeProfitBps?: number;
   /** One per brief "enters when" line. */
   entries: PerpsCheckLine[];
-  /** One per brief "exits when" line; only meaningful with an open position. */
+  /** One per brief "exits when" line and held instrument; only meaningful with a position. */
   exits: PerpsCheckLine[];
   never: PerpsCheckNeverLine[];
   rationale: string;
@@ -69,8 +79,13 @@ function clamp(value: number, bounds: { min: number; max: number }): number {
   return Math.min(bounds.max, Math.max(bounds.min, value));
 }
 
+/** Models often write `null` for a field they leave out; it means absent. */
+function absent(value: unknown): value is null | undefined {
+  return value === undefined || value === null;
+}
+
 function optionalBps(value: unknown, bounds: { min: number; max: number }): number | undefined {
-  if (value === undefined) {
+  if (absent(value)) {
     return undefined;
   }
   return Math.round(clamp(finite(value), bounds));
@@ -116,25 +131,63 @@ function list(value: unknown, limit: number): unknown[] {
   return value;
 }
 
+/** Each key at most once: a repeated or contradictory line makes the answer malformed. */
+function unique<T>(items: T[], key: (item: T) => string): T[] {
+  if (new Set(items.map(key)).size !== items.length) {
+    throw new Malformed();
+  }
+  return items;
+}
+
 function lines(value: unknown, limit: number): PerpsCheckLine[] {
-  return list(value, limit).map((item) => {
-    const line = record(item);
-    return {
-      index: index(line.index),
-      met: boolean(line.met),
-      why: text(line.why, CHECK_WHY_LIMIT),
-    };
-  });
+  return unique(
+    list(value, limit).map((item) => {
+      const line = record(item);
+      return {
+        index: index(line.index),
+        met: boolean(line.met),
+        why: text(line.why, CHECK_WHY_LIMIT),
+      };
+    }),
+    (line) => String(line.index),
+  );
+}
+
+/** Exit lines, optionally per held instrument; at most one per (instrument, index). */
+function exitLines(value: unknown, instrument: PerpSymbol): PerpsCheckLine[] {
+  const items = absent(value) ? [] : list(value, BRIEF_LIMITS.exitsWhen * CHECK_INSTRUMENTS.length);
+  return unique(
+    items.map((item) => {
+      const line = record(item);
+      const parsed: PerpsCheckLine = {
+        index: index(line.index),
+        met: boolean(line.met),
+        why: text(line.why, CHECK_WHY_LIMIT),
+      };
+      if (!absent(line.instrument)) {
+        const held = oneOf(line.instrument, CHECK_INSTRUMENTS);
+        if (held !== instrument) {
+          parsed.instrument = held;
+        }
+      }
+      return parsed;
+    }),
+    (line) => `${line.instrument ?? instrument}:${line.index}`,
+  );
 }
 
 function neverLines(value: unknown): PerpsCheckNeverLine[] {
-  return list(value, BRIEF_LIMITS.never).map((item) => {
-    const line = record(item);
-    return {
-      index: index(line.index),
-      broken: boolean(line.broken),
-    };
-  });
+  const items = absent(value) ? [] : list(value, BRIEF_LIMITS.never);
+  return unique(
+    items.map((item) => {
+      const line = record(item);
+      return {
+        index: index(line.index),
+        broken: boolean(line.broken),
+      };
+    }),
+    (line) => String(line.index),
+  );
 }
 
 function oneOf<T extends string>(value: unknown, allowed: readonly T[]): T {
@@ -144,25 +197,35 @@ function oneOf<T extends string>(value: unknown, allowed: readonly T[]): T {
   return value as T;
 }
 
+/**
+ * A probability is a fraction: outside [0, 1] (e.g. `70` meaning 70%) is malformed, never clamped
+ * into full size. Inside it the value is kept, so under 0.55 an open holds as LOW_CONVICTION.
+ */
 function probability(value: unknown, action: PerpsCheckAction): number | undefined {
   if (action === "hold") {
     return undefined;
   }
-  if (value === undefined && action === "close") {
+  if (absent(value) && action === "close") {
     return undefined;
   }
-  return clamp(finite(value), CHECK_PROBABILITY);
+  const p = finite(value);
+  if (p < 0 || p > CHECK_PROBABILITY.max) {
+    throw new Malformed();
+  }
+  return p;
 }
 
 function decide(raw: unknown): PerpsCheckDecision {
   const input = record(typeof raw === "string" ? JSON.parse(raw) : raw);
   const action = oneOf(input.action, CHECK_ACTIONS);
+  const instrument = oneOf(input.instrument, CHECK_INSTRUMENTS);
   const decision: PerpsCheckDecision = {
-    instrument: oneOf(input.instrument, CHECK_INSTRUMENTS),
+    instrument,
     action,
-    horizonHours: horizon(input.horizonHours),
+    horizonHours:
+      action === "hold" && absent(input.horizonHours) ? HOLD_HORIZON : horizon(input.horizonHours),
     entries: lines(input.entries, BRIEF_LIMITS.entersWhen),
-    exits: lines(input.exits, BRIEF_LIMITS.exitsWhen),
+    exits: exitLines(input.exits, instrument),
     never: neverLines(input.never),
     rationale: text(input.rationale, CHECK_RATIONALE_LIMIT),
     sources: list(input.sources, CHECK_SOURCES_LIMIT).map((source) => text(source, 200)),
@@ -184,8 +247,10 @@ function decide(raw: unknown): PerpsCheckDecision {
 }
 
 /**
- * Validates the model's answer. Out-of-range numbers are clamped (horizons snap to the nearest
- * allowed one, long text is cut); a malformed answer is `MODEL_INVALID`, never a trade.
+ * Validates the model's answer. Out-of-range bps are clamped (horizons snap to the nearest allowed
+ * one, long text is cut); `null` means absent, missing `exits`/`never` mean none and a `hold` may
+ * omit its horizon (24). A probability outside [0, 1] or a repeated line index (per section, and
+ * per instrument for exits) is malformed. A malformed answer is `MODEL_INVALID`, never a trade.
  */
 export function parseCheckDecision(raw: unknown): ParsedCheckDecision {
   try {

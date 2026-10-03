@@ -57,10 +57,20 @@ belong to the runtime, so the 100 cap, exposure, day baseline, drawdown and the 
 close requests do not apply, and unknown marks do not block. Product positions record `leverage`,
 `margin`, `checkId`, `configVersion`, exits and `closeReason`; operator documents keep their shape
 and refuse leverage (`LEVERAGE_NOT_ALLOWED`). `createPerpsPaperService().trade` takes
-`{ notional, leverage, checkId, exits }` (default 100 at 1x). `features/perps-paper/checks.ts`
+`{ notional, leverage, checkId, exits }` (default 100 at 1x). Intents take leverage within core's
+`LEVERAGE_BOUNDS` (1–10) and a lowercase-UUID `checkId`. A product open's fee reserve is
+`productFeeReserve(notional, takerFee)` = notional × the frame's taker fee × 1.5, rounded up to
+micro-AUSD (10 bps without a frame); operator opens keep 1 AUSD, and a reserve may exceed 10 AUSD
+only up to 1% of the notional. Closes check only the scope (`assertPerpsPaperScope`: tenant and
+agent), never the agent's current plugins, policy, network or markets, so an owner's edit never
+strands a position; opens keep the full `assertPerpsPaperAgent`. `features/perps-paper/checks.ts`
 owns the runtime's storage port `PerpsRuntimeRepository` (checks, steps, leases, proposals, daily
 counts) and `perpsCheckMinute`; `PerpsProductPaperRepository` adds `closePosition`,
-`openDuePositions` and `newMarginSince` to the paper port.
+`openDuePositions` and `newMarginSince` to the paper port. Due agents carry their `slot` and the
+dispatcher keys hourly checks `hourlyRequestKey(slot)` (one check per slot); `recoverChecks` is
+the Cron's sweep of stuck checks. An approval goes `pending → approving` (`decideProposal`) and
+only `settleProposal(id, opened)` makes it `approved` (or puts it back to `pending` when the open
+was refused); expiry also ends approvals stuck five minutes past their time.
 
 `features/perps-study` exports the independent comparison contracts, exact model reservation math
 and deterministic SMA20/50 policy. Unknown/missing candles imply hold, not a fabricated neutral
@@ -124,12 +134,24 @@ Advice policy v2 validates and freezes the HTTPS forecast base URL alongside its
 
 The `perps` export includes `features/perps-runtime`: the pure rules of studio Perpl checks
 ([spec](../../docs/specs/perpl-paper-runtime-v1.md)). `decision.ts` validates the model's
-`perps-check-v1` answer by hand (no zod): clamps probability, stop/target bps and horizon, cuts long
-text, and refuses anything malformed as `MODEL_INVALID`. `outcome.ts` (`decideOutcome`) applies R6
-in order: exit lines met or a `close` call exit; for an open call paused, never, entries,
-conviction, one position per instrument, caps (open count, per-day margin, day-loss), free equity,
-then the entry mode. An opposite call that passes the brief closes the held position first.
-`sizing.ts` owns R7 margin/leverage, `exits.ts` R10 levels and due exits, R11 day-loss and the
+`perps-check-v1` answer by hand (no zod): clamps stop/target bps and horizon, cuts long text, and
+refuses anything malformed as `MODEL_INVALID`. A probability outside [0, 1] (a percent such as 70)
+is malformed, never clamped into full size; inside it the value is kept, so under 0.55 an open holds
+LOW_CONVICTION. A repeated line index (per section; per instrument for exits) is malformed. `null`
+means absent, missing `exits`/`never` mean none, and a `hold` may omit its horizon (24). Exit lines
+may carry the held `instrument` they were judged for (absent: the decision's). `outcome.ts` (`decideOutcome`) applies R6
+in order: exit lines met or a `close` call exit; for an open call paused, its `markets` ("NOT ITS
+MARKET"), never, entries, conviction, one position per instrument, caps (open count, per-day margin,
+day-loss), free equity (margin plus `feeReserveFor(notional, takerFee)`), then the entry mode.
+Indexes past the brief's counts are ignored and an entry line with no answer is not met. `exitsMet`
+reads exit lines per held instrument, so hosts close every position with a met line. An opposite
+call that passes the brief closes the held position first (the runtime does it in two phases).
+`sizing.ts` owns R7 margin/leverage and the fee reserve, `exits.ts` R10 levels and due exits:
+`exitLevels({ leverage })` clamps the stop so its loss stays within 90% of margin
+(`maxStopLossBps` = 9000 / leverage, 900 bps at 10×); `liquidationPrice` is the spec's liquidation
+estimate (entry × (1 ∓ 1 / leverage), no maintenance margin, fees or funding), and `exitDue` treats a
+mark at or beyond it as an immediate `stop` even without a stop price (paper has no venue
+liquidation; the store's `openDuePositions` mirrors it). Also there: R11 day-loss and the
 15-minute proposal expiry, `record.ts` R13 stats, drawdown and the equity series. Models never size,
 price or reach an account; hosts inject state and act on the result. In `perps-paper/policy.ts`,
 `applyPaperSizeUp` is R8's size-up accounting (average entry, margin at the position's leverage,

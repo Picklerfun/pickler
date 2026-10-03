@@ -1,4 +1,4 @@
-import { PilotError, type AgentRecord } from "@pickler/core";
+import { LEVERAGE_BOUNDS, PilotError, type AgentRecord } from "@pickler/core";
 import { pluginEnabled } from "@pickler/core";
 import {
   PAPER_SCALE,
@@ -17,10 +17,18 @@ import type {
   PerpsPaperFill,
   PerpsPaperMovement,
 } from "./types.js";
-export function assertPerpsPaperAgent(agent: AgentRecord, scope: PerpsPaperScope, version: number) {
+/**
+ * The only check a close needs (perpl-paper-runtime-v1 R10, "exits never wait"): the agent is the
+ * account's. Closes never depend on the agent's current plugins, policy, network or markets, so an
+ * owner's edit can never strand an open position.
+ */
+export function assertPerpsPaperScope(agent: AgentRecord, scope: PerpsPaperScope) {
   if (agent.id !== scope.agentId || agent.tenantId !== scope.tenantId) {
     throw new PilotError("FORBIDDEN", "Agent scope does not match");
   }
+}
+export function assertPerpsPaperAgent(agent: AgentRecord, scope: PerpsPaperScope, version: number) {
+  assertPerpsPaperScope(agent, scope);
   // Product sessions follow the agent across edits; each position records its own version.
   if (!isProductPaperSession(scope) && agent.version !== version) {
     throw new PilotError("CONFIG_CHANGED", "Agent configuration changed");
@@ -36,6 +44,12 @@ export function assertPerpsPaperAgent(agent: AgentRecord, scope: PerpsPaperScope
     throw new PilotError("PLUGIN_NOT_CONFIGURED", "Configure paper policy and Perpl network");
   }
 }
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+/**
+ * A valid intent: leverage within core's `LEVERAGE_BOUNDS` (1–10), a `checkId` that is a lowercase
+ * UUID (the `perps_paper_positions.check_id` column's type) and a fee reserve of at most 10 AUSD
+ * or 1% of the notional, whichever is larger (product opens scale it, `productFeeReserve`).
+ */
 export function assertPaperIntent(intent: PerpsPaperIntent) {
   if (
     !["open", "close"].includes(intent.kind) ||
@@ -43,13 +57,32 @@ export function assertPaperIntent(intent: PerpsPaperIntent) {
     !["long", "short"].includes(intent.side) ||
     u(intent.notional) < 0n ||
     u(intent.feeReserve) < 0n ||
-    u(intent.feeReserve) > u("10") ||
+    (u(intent.feeReserve) > u("10") && u(intent.feeReserve) * 100n > u(intent.notional)) ||
     (intent.leverage !== undefined &&
-      (!Number.isInteger(intent.leverage) || intent.leverage < 1 || intent.leverage > 100)) ||
-    (intent.checkId !== undefined && !/^[a-zA-Z0-9-]{1,80}$/.test(intent.checkId))
+      (!Number.isInteger(intent.leverage) ||
+        intent.leverage < LEVERAGE_BOUNDS.min ||
+        intent.leverage > LEVERAGE_BOUNDS.max)) ||
+    (intent.checkId !== undefined && !UUID.test(intent.checkId))
   ) {
     throw new PilotError("INVALID_INPUT", "Invalid paper intent");
   }
+}
+/** The fee reserve's buffer over the taker fee, as a fraction: 3/2 (trading's `FEE_RESERVE_BUFFER`). */
+const RESERVE_BUFFER = { numerator: 3n, denominator: 2n } as const;
+/**
+ * A product open's fee reserve: `notional × takerFee × 1.5`, rounded up to the micro-AUSD, so a
+ * larger open reserves a larger fee instead of failing "Fee exceeds reservation". `takerFee` is
+ * the venue's fraction (the frame's `book.market.fees.taker`).
+ */
+export function productFeeReserve(notional: string, takerFee: string) {
+  const rate = u(takerFee);
+  if (u(notional) < 0n || rate < 0n) {
+    throw new PilotError("INVALID_INPUT", "Invalid fee reserve inputs");
+  }
+  const exact =
+    (u(notional) * rate * RESERVE_BUFFER.numerator) / (PAPER_SCALE * RESERVE_BUFFER.denominator);
+  const micro = PAPER_SCALE / 1_000_000n;
+  return d(((exact + micro - 1n) / micro) * micro);
 }
 /** What an open reserves: its margin (notional / leverage) plus the fee reserve. */
 export function paperOpenReserve(intent: PerpsPaperIntent) {

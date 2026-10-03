@@ -30,3 +30,17 @@ export function leverageFor(maxLeverage: number | undefined): number {
 export function notionalFor(margin: number, leverage: number): number {
   return microAusd(margin * leverage);
 }
+
+/** The fee reserve's buffer over the taker fee (R7): a fill's fee may round or the rate may move. */
+export const FEE_RESERVE_BUFFER = 1.5;
+
+/**
+ * What an open of `notional` keeps back for its fee: notional × taker fee × 1.5, rounded up to
+ * micro-AUSD. The paper service reserves the same (`productFeeReserve`, exact decimals).
+ */
+export function feeReserveFor(notional: number, takerFee: number): number {
+  if (!Number.isFinite(takerFee) || takerFee <= 0 || !(notional > 0)) {
+    return 0;
+  }
+  return Math.ceil(notional * takerFee * FEE_RESERVE_BUFFER * 1e6 - 1e-6) / 1e6;
+}

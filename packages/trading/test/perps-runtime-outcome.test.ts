@@ -2,6 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   decideOutcome,
+  exitsMet,
+  feeReserveFor,
   type DecideOutcomeInput,
   type PerpsCheckDecision,
   type PerpsCheckResult,
@@ -33,6 +35,8 @@ function input(overrides: Partial<DecideOutcomeInput> = {}): DecideOutcomeInput 
     decision: decision(),
     brief: { entries: 2, exits: 1, never: 2 },
     paused: false,
+    markets: ["BTC", "ETH"],
+    takerFee: 0.0002,
     position: null,
     openCount: 0,
     risk: { maxOpenPositions: 3, dayLossStopAusd: 20 },
@@ -151,6 +155,68 @@ const cases: Array<[string, Partial<DecideOutcomeInput>, Partial<PerpsCheckResul
     "too little free equity blocks",
     { freeEquity: 9.99 },
     { outcome: "blocked", code: "NO_FREE_AUSD", text: "NO FREE AUSD" },
+  ],
+  [
+    "free equity must cover the margin plus the fee reserve",
+    { freeEquity: 10 },
+    { outcome: "blocked", code: "NO_FREE_AUSD" },
+  ],
+  ["margin plus the fee reserve free enters", { freeEquity: 10.009 }, { outcome: "entered" }],
+  [
+    "with no taker fee the margin alone is enough",
+    { freeEquity: 10, takerFee: 0 },
+    { outcome: "entered" },
+  ],
+  // Its markets
+  [
+    "an open outside the agent's markets holds",
+    { markets: ["ETH"] },
+    { outcome: "held", code: "NOT_ITS_MARKET", text: "NOT ITS MARKET" },
+  ],
+  [
+    "a close outside the agent's markets still closes the held position",
+    { markets: ["ETH"], position: long, decision: decision({ action: "close" }) },
+    { outcome: "exited", code: "CLOSE_CALLED", close: { positionId: "pos-1", reason: "brief" } },
+  ],
+  // Lines past the brief's counts
+  [
+    "a never index past the brief is ignored",
+    { decision: decision({ never: [{ index: 3, broken: true }] }) },
+    { outcome: "entered" },
+  ],
+  [
+    "an entry line with no answer is not met",
+    { decision: decision({ entries: [{ index: 1, met: true, why: "" }] }) },
+    { outcome: "held", code: "ENTRY_HELD", text: "ENTRY 2 HELD" },
+  ],
+  [
+    "entry indexes past the brief do not stand in for missing ones",
+    {
+      decision: decision({
+        entries: [
+          { index: 1, met: true, why: "" },
+          { index: 3, met: true, why: "" },
+        ],
+      }),
+    },
+    { outcome: "held", code: "ENTRY_HELD", text: "ENTRY 2 HELD" },
+  ],
+  [
+    "a probability under 0.5 holds as low conviction",
+    { decision: decision({ probability: 0.3 }) },
+    { outcome: "held", code: "LOW_CONVICTION" },
+  ],
+  [
+    "an exit line for another instrument does not close this one",
+    {
+      position: long,
+      openCount: 1,
+      decision: decision({
+        action: "hold",
+        exits: [{ index: 1, met: true, why: "", instrument: "ETH" }],
+      }),
+    },
+    { outcome: "held", code: "HOLD" },
   ],
   // R6 (6): entry modes
   [
@@ -301,4 +367,28 @@ for (const [name, overrides, expected] of cases) {
 test("decideOutcome: leverage falls back to 1 and is clamped to the core bounds", () => {
   assert.equal(decideOutcome(input({ maxLeverage: 0 })).leverage, 1);
   assert.equal(decideOutcome(input({ maxLeverage: 40 })).leverage, 10);
+});
+
+test("exitsMet reads exit lines per held instrument and ignores indexes past the brief", () => {
+  const d = decision({
+    exits: [
+      { index: 2, met: true, why: "" },
+      { index: 1, met: true, why: "" },
+      { index: 1, met: true, why: "", instrument: "ETH" },
+      { index: 2, met: false, why: "", instrument: "ETH" },
+      { index: 4, met: true, why: "", instrument: "ETH" },
+    ],
+  });
+
+  assert.deepEqual(exitsMet(d, 2, "BTC"), [1, 2]);
+  assert.deepEqual(exitsMet(d, 2, "ETH"), [1]);
+  assert.deepEqual(exitsMet(d, 1, "BTC"), [1]);
+});
+
+test("feeReserveFor is notional × taker fee × 1.5, rounded up to micro-AUSD", () => {
+  assert.equal(feeReserveFor(1000, 0.0002), 0.3);
+  assert.equal(feeReserveFor(10_000, 0.0002), 3);
+  assert.equal(feeReserveFor(33.333333, 0.0002), 0.01);
+  assert.equal(feeReserveFor(3.333331, 0.0002), 0.001);
+  assert.equal(feeReserveFor(100, 0), 0);
 });

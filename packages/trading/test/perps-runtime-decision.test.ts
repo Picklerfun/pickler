@@ -81,8 +81,6 @@ test("unknown keys are dropped, optional bps may be absent", () => {
 });
 
 const clamps: Array<[string, Record<string, unknown>, Partial<PerpsCheckDecision>]> = [
-  ["probability below 0.5", { probability: 0.2 }, { probability: 0.5 }],
-  ["probability above 1", { probability: 1.4 }, { probability: 1 }],
   ["stop below 100", { stopLossBps: 10 }, { stopLossBps: 100 }],
   ["stop above 1500", { stopLossBps: 9000 }, { stopLossBps: 1500 }],
   ["target below 100", { takeProfitBps: 0 }, { takeProfitBps: 100 }],
@@ -122,6 +120,50 @@ test("hold drops the probability; close may omit it", () => {
   assert.equal(ok(raw({ action: "close", probability: 0.8 })).probability, 0.8);
 });
 
+test("a probability inside [0, 1] is kept as given, not clamped up to 0.5", () => {
+  assert.equal(ok(raw({ probability: 0.2 })).probability, 0.2);
+  assert.equal(ok(raw({ probability: 0 })).probability, 0);
+  assert.equal(ok(raw({ probability: 1 })).probability, 1);
+});
+
+test("null optional fields mean absent; missing exits and never mean none", () => {
+  const decision = ok(
+    raw({ stopLossBps: null, takeProfitBps: null, exits: undefined, never: undefined }),
+  );
+
+  assert.equal(decision.stopLossBps, undefined);
+  assert.equal(decision.takeProfitBps, undefined);
+  assert.deepEqual(decision.exits, []);
+  assert.deepEqual(decision.never, []);
+  assert.deepEqual(ok(raw({ exits: null, never: null })).exits, []);
+  assert.equal(ok(raw({ action: "close", probability: null })).probability, undefined);
+  assert.equal(ok(raw({ action: "hold", probability: null })).probability, undefined);
+});
+
+test("a hold may omit its horizon (24); an open may not", () => {
+  assert.equal(ok(raw({ action: "hold", horizonHours: undefined })).horizonHours, 24);
+  assert.equal(ok(raw({ action: "hold", horizonHours: null })).horizonHours, 24);
+  invalid(raw({ horizonHours: null }));
+});
+
+test("exit lines may name the held instrument they were judged for", () => {
+  const decision = ok(
+    raw({
+      exits: [
+        { index: 1, met: true, why: "", instrument: "ETH" },
+        { index: 1, met: false, why: "", instrument: "BTC" },
+        { index: 2, met: false, why: "", instrument: null },
+      ],
+    }),
+  );
+
+  assert.deepEqual(decision.exits, [
+    { index: 1, met: true, why: "", instrument: "ETH" },
+    { index: 1, met: false, why: "" },
+    { index: 2, met: false, why: "" },
+  ]);
+});
+
 test("exits are kept with their reasons", () => {
   const decision = ok(raw({ exits: [{ index: 2, met: true, why: "Funding flipped" }] }));
 
@@ -138,6 +180,42 @@ const malformed: Array<[string, unknown]> = [
   ["open without probability", raw({ probability: undefined })],
   ["probability not a number", raw({ probability: "0.7" })],
   ["probability NaN", raw({ probability: Number.NaN })],
+  ["probability in percent", raw({ probability: 70 })],
+  ["probability 55 (percent)", raw({ probability: 55 })],
+  ["probability above 1", raw({ probability: 1.4 })],
+  ["probability below 0", raw({ probability: -0.1 })],
+  ["open with null probability", raw({ probability: null })],
+  [
+    "a repeated entry index",
+    raw({
+      entries: [
+        { index: 1, met: false, why: "" },
+        { index: 1, met: true, why: "" },
+      ],
+    }),
+  ],
+  [
+    "a repeated never index",
+    raw({
+      never: [
+        { index: 1, broken: true },
+        { index: 1, broken: false },
+      ],
+    }),
+  ],
+  [
+    "a repeated exit index for one instrument",
+    raw({
+      exits: [
+        { index: 1, met: false, why: "" },
+        { index: 1, met: true, why: "", instrument: "BTC" },
+      ],
+    }),
+  ],
+  [
+    "an exit line for an unknown instrument",
+    raw({ exits: [{ index: 1, met: true, why: "", instrument: "SOL" }] }),
+  ],
   ["stop infinite", raw({ stopLossBps: Number.POSITIVE_INFINITY })],
   ["horizon missing", raw({ horizonHours: undefined })],
   ["horizon a string", raw({ horizonHours: "24" })],
@@ -151,7 +229,7 @@ const malformed: Array<[string, unknown]> = [
     "too many entries",
     raw({ entries: Array.from({ length: 9 }, (_, i) => ({ index: i + 1, met: true, why: "" })) }),
   ],
-  ["exits not an array", raw({ exits: null })],
+  ["exits not an array", raw({ exits: {} })],
   ["never broken missing", raw({ never: [{ index: 1 }] })],
   ["rationale missing", raw({ rationale: undefined })],
   ["sources not strings", raw({ sources: [1] })],

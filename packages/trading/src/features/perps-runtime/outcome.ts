@@ -2,7 +2,14 @@ import type { EntrySetting, PerpSymbol, RiskLimits, SpendLimits } from "@pickler
 import type { PerpsPaperSide } from "../perps-paper/types.js";
 import type { PerpsCheckDecision } from "./decision.js";
 import { dayLossReached } from "./exits.js";
-import { CONVICTION, leverageFor, marginFor, microAusd, notionalFor } from "./sizing.js";
+import {
+  CONVICTION,
+  feeReserveFor,
+  leverageFor,
+  marginFor,
+  microAusd,
+  notionalFor,
+} from "./sizing.js";
 
 export const CHECK_OUTCOMES = [
   "entered",
@@ -23,6 +30,7 @@ export type PerpsCheckCode =
   | "HOLD"
   | "PAUSED"
   | "NEVER_BROKEN"
+  | "NOT_ITS_MARKET"
   | "ENTRY_HELD"
   | "LOW_CONVICTION"
   | "ALREADY_OPEN"
@@ -48,6 +56,10 @@ export interface DecideOutcomeInput {
   /** How many lines each brief section has. */
   brief: { entries: number; exits: number; never: number };
   paused: boolean;
+  /** The agent's Perpl markets (`config.perpl.markets`): it opens only on these. */
+  markets: readonly PerpSymbol[];
+  /** The venue's taker fee as a fraction (e.g. 0.0002); the open's fee reserve scales with it. */
+  takerFee: number;
   /** The open paper position on the decision's instrument, if any. */
   position: { id: string; side: PerpsPaperSide; margin: number } | null;
   /** Open paper positions across instruments. */
@@ -61,7 +73,10 @@ export interface DecideOutcomeInput {
   newMarginToday: number;
   /** Realized P&L today (UTC), in AUSD. */
   realizedToday: number;
-  /** Paper equity not reserved as margin, in AUSD. */
+  /**
+   * Free paper AUSD (trading's `productFreeEquity`: open P&L at marks, minus margin and pending
+   * reservations). An open needs its margin plus its fee reserve (`feeReserveFor`) free.
+   */
   freeEquity: number;
 }
 
@@ -102,18 +117,39 @@ function held(code: PerpsCheckCode, text: string): PerpsCheckResult {
 }
 
 /**
+ * The brief exit lines (1..`exitCount`) the decision reports met for the position on `instrument`
+ * (lines without an instrument are the decision's own), ascending. Indexes past the brief are
+ * ignored.
+ */
+export function exitsMet(
+  decision: PerpsCheckDecision,
+  exitCount: number,
+  instrument: PerpSymbol,
+): number[] {
+  return decision.exits
+    .filter(
+      (line) =>
+        line.met &&
+        line.index <= exitCount &&
+        (line.instrument ?? decision.instrument) === instrument,
+    )
+    .map((line) => line.index)
+    .sort((a, b) => a - b);
+}
+
+/**
  * R6: what the check does with a valid decision, in order. Exits first (an exit line met on the
- * open position, or a `close` call), then for an open call: paused, never, entries, conviction,
- * one position per instrument, caps, free equity, and the entry mode.
+ * open position, or a `close` call), then for an open call: paused, its markets, never, entries,
+ * conviction, one position per instrument, caps, free equity (margin plus fee reserve), and the
+ * entry mode. Each brief line counts once (the parser refuses repeats); an entry line with no
+ * answer is not met, and indexes past the brief's counts are ignored. Positions on other
+ * instruments are the host's (`exitsMet` per held instrument).
  */
 export function decideOutcome(input: DecideOutcomeInput): PerpsCheckResult {
   const { decision, position } = input;
 
   if (position) {
-    const met = decision.exits
-      .filter((line) => line.met && line.index <= input.brief.exits)
-      .map((line) => line.index)
-      .sort((a, b) => a - b);
+    const met = exitsMet(decision, input.brief.exits, decision.instrument);
     if (met.length) {
       return {
         outcome: "exited",
@@ -144,9 +180,12 @@ export function decideOutcome(input: DecideOutcomeInput): PerpsCheckResult {
   if (input.paused) {
     return held("PAUSED", "PAUSED");
   }
+  if (!input.markets.includes(decision.instrument)) {
+    return held("NOT_ITS_MARKET", "NOT ITS MARKET");
+  }
 
   const broken = decision.never
-    .filter((line) => line.broken)
+    .filter((line) => line.broken && line.index <= input.brief.never)
     .map((line) => line.index)
     .sort((a, b) => a - b);
   if (broken.length) {
@@ -180,6 +219,7 @@ export function decideOutcome(input: DecideOutcomeInput): PerpsCheckResult {
 
   const margin = marginFor(probability, input.spend.perCallAusd);
   const leverage = leverageFor(input.maxLeverage);
+  const reserve = feeReserveFor(notionalFor(margin, leverage), input.takerFee);
 
   if (openCount >= input.risk.maxOpenPositions) {
     return withClose({
@@ -195,7 +235,7 @@ export function decideOutcome(input: DecideOutcomeInput): PerpsCheckResult {
     return withClose({ outcome: "blocked", code: "DAY_LOSS", text: "DAY-LOSS STOP" });
   }
 
-  if (freeEquity < margin) {
+  if (freeEquity < microAusd(margin + reserve)) {
     return withClose({ outcome: "blocked", code: "NO_FREE_AUSD", text: "NO FREE AUSD" });
   }
 
