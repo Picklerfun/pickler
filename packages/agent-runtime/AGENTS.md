@@ -172,7 +172,10 @@ Advice reuses MODEL_BASE_URL, MODEL_ID and MODEL_API_KEY from the configured res
 
 `composition/perps-check.ts` runs one studio Perpl check (`docs/specs/perpl-paper-runtime-v1.md`):
 `runPerpsCheck(deps, check, holder, signal)` reads the brief, opens the product paper account at
-the first check from the agent wallet's AUSD (under 10 → `blocked` "FUND ITS WALLET"), reads Perpl
+the first check from the agent wallet's AUSD (under 10 → `blocked` "FUND ITS WALLET"); with
+nothing open and free paper AUSD below half the per-call amount (trading's `cannotFundAnyOpen`) it
+ends `blocked` "NO FREE AUSD" (`NO_FREE_AUSD`) before reading Perpl, the web or the model, at no
+cost; otherwise it reads Perpl
 per instrument through advice's `readPerplInstrument` (48 closed hourly candles, a 20-level book,
 the snapshot; one session capped at 24 requests), the web through site-scoped Exa when
 `sources.web` is on (3 results), asks the configured model once, validates with trading's

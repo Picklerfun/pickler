@@ -1,6 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { CONVICTION, marginFor, notionalFor, leverageFor } from "@pickler/trading/perps";
+import {
+  CONVICTION,
+  cannotFundAnyOpen,
+  marginFor,
+  notionalFor,
+  leverageFor,
+} from "@pickler/trading/perps";
 
 test("conviction thresholds follow R6/R7", () => {
   assert.deepEqual(CONVICTION, { min: 0.55, full: 0.65 });
@@ -24,6 +30,13 @@ for (const [probability, perCall, expected] of margins) {
     assert.equal(marginFor(probability, perCall), expected);
   });
 }
+
+test("free AUSD below half the per-call amount cannot fund any open", () => {
+  assert.equal(cannotFundAnyOpen(4.999999, 10), true);
+  assert.equal(cannotFundAnyOpen(5, 10), false);
+  assert.equal(cannotFundAnyOpen(0, 10), true);
+  assert.equal(cannotFundAnyOpen(12, 30), true);
+});
 
 test("notional is margin times leverage, rounded to micro-AUSD", () => {
   assert.equal(notionalFor(10, 3), 30);

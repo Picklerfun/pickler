@@ -154,7 +154,8 @@ day-loss), free equity (margin plus `feeReserveFor(notional, takerFee)`), then t
 Indexes past the brief's counts are ignored and an entry line with no answer is not met. `exitsMet`
 reads exit lines per held instrument, so hosts close every position with a met line. An opposite
 call that passes the brief closes the held position first (the runtime does it in two phases).
-`sizing.ts` owns R7 margin/leverage and the fee reserve, `exits.ts` R10 levels and due exits:
+`sizing.ts` owns R7 margin/leverage and the fee reserve (and `cannotFundAnyOpen`: free AUSD
+below the smallest open, half the per-call amount, which hosts check before a model call), `exits.ts` R10 levels and due exits:
 `exitLevels({ leverage })` clamps the stop so its loss stays within 90% of margin
 (`maxStopLossBps` = 9000 / leverage, 900 bps at 10×); `liquidationPrice` is the spec's liquidation
 estimate (entry × (1 ∓ 1 / leverage), no maintenance margin, fees or funding), and `exitDue` treats a

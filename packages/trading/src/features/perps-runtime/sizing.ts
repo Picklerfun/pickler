@@ -19,6 +19,15 @@ export function marginFor(probability: number, perCallAusd: number): number {
   return 0;
 }
 
+/**
+ * Whether free paper AUSD cannot fund even the smallest open R7 sizes (half the per-call amount at
+ * 0.55; its fee reserve only adds to that). R6 would end any open `blocked` "NO FREE AUSD", so a
+ * check with nothing open can say so before it pays for a model call.
+ */
+export function cannotFundAnyOpen(freeEquity: number, perCallAusd: number): boolean {
+  return freeEquity < marginFor(CONVICTION.min, perCallAusd);
+}
+
 /** The brief's MAX LEVERAGE as a whole number inside the core bounds; absent means 1×. */
 export function leverageFor(maxLeverage: number | undefined): number {
   if (maxLeverage === undefined || !Number.isFinite(maxLeverage)) {

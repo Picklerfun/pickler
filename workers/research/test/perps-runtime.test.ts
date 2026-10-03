@@ -415,6 +415,39 @@ test("blocked: an unfunded wallet, and the open-positions cap", async (t) => {
   assert.equal(open(await f.paper.view(capped.scope)).length, 1);
 });
 
+test("blocked before the model: free paper AUSD below half a trade reads nothing and costs nothing", async (t) => {
+  const f = await setup(t);
+  // 12 AUSD opens the account, but half of a 30 AUSD trade is 15.
+  const { id, scope } = await f.agent({ config: { spend: { perCallAusd: 30, perDayAusd: 100 } } });
+  f.balance(12);
+
+  const done = await f.check(id);
+
+  assert.equal(done.outcome, "blocked");
+  assert.equal(done.outcomeText, "NO FREE AUSD");
+  assert.equal(done.error, "NO_FREE_AUSD");
+  assert.equal(done.costMicros, null);
+  assert.deepEqual(f.calls, { model: 0, perpl: 0 });
+  assert.deepEqual(
+    done.steps.map((s) => s.text),
+    [
+      "Read the brief · 1 entry, 1 exit, 1 never",
+      "Opened its paper account · 12.00 AUSD",
+      "It has 12.00 AUSD free on paper · not enough for half a trade",
+    ],
+  );
+  assert.deepEqual(open(await f.paper.view(scope)), []);
+
+  // With enough free for half a trade (a 20 AUSD per call), the check reads Perpl and asks again.
+  await f.db.pool.query(
+    "UPDATE pickler.agents SET config = jsonb_set(config, '{spend}', $2) WHERE id = $1",
+    [scope.agentId, JSON.stringify({ perCallAusd: 20, perDayAusd: 100 })],
+  );
+  await f.check(id);
+  assert.equal(f.calls.model, 1);
+  assert.ok(f.calls.perpl > 0);
+});
+
 test("proposed: approve and wait leaves a 15-minute proposal and opens nothing", async (t) => {
   const f = await setup(t);
   const { id, scope } = await f.agent({

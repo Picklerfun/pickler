@@ -16,6 +16,7 @@ import {
   CHECK_INSTRUMENTS,
   PERPS_CHECK_DECISION_VERSION,
   PRODUCT_PAPER_SESSION,
+  cannotFundAnyOpen,
   createPerpsPaperService,
   dayLossReached,
   decideOutcome,
@@ -299,8 +300,9 @@ export async function runPerpsCheck(
     sessionId: PRODUCT_PAPER_SESSION,
     network: perpl.network,
   };
+  let opened: PerpsPaperView;
   try {
-    await paper.view(scope);
+    opened = await paper.view(scope);
   } catch (error) {
     if (!(error instanceof PilotError) || error.code !== "NOT_FOUND") {
       throw error;
@@ -313,6 +315,17 @@ export async function runPerpsCheck(
     }
     await paper.initialize(scope, agent.version, decimal(balance));
     await step(`Opened its paper account · ${ausd(balance)}`);
+    opened = await paper.view(scope);
+  }
+
+  // With nothing open, free paper AUSD that cannot fund even a half-size open would end any open
+  // "NO FREE AUSD" (R6): it says so before reading anything or paying for a model call.
+  if (!opened.account.positions.some((p) => p.closedAt === null)) {
+    const free = Number(productFreeEquity(opened.account, opened.attempts, {}) ?? 0);
+    if (cannotFundAnyOpen(free, spend.perCallAusd)) {
+      await step(`It has ${ausd(free)} free on paper · not enough for half a trade`);
+      return finish("blocked", "NO FREE AUSD", "NO_FREE_AUSD");
+    }
   }
 
   // R5: Perpl for each instrument, then the web when its source is on.
