@@ -92,3 +92,7 @@ Perpl acquisition also supports explicitly frozen `rest-paced-20s-v1` and `strea
 ## Local four-way perpetual comparison
 
 `perps-four-way-v2` owns the frozen Jev-only support/invalidation policy and DeepSeek-to-Jev material veto policy in `features/perps-study`. Keep the legacy three-arm protocol readable. The shared runner refreshes BTC/ETH once for all four accounts, bounds models to 45 seconds and enters closing-only state on technical failure. Jev selected probabilities are answer measures, never financial win probabilities.
+
+## Perpl decision audit
+
+The evaluation export includes auditPerpsDecisions and canonicalAudit. features/perps-study/audit.ts is a pure offline replay of existing policies and fill simulation, with an injected digest. Missing inputs remain NOT_VERIFIABLE; no provider, filesystem, database or model clients belong here. Keep hourly candle repetition distinct from stale data, omission slots distinct from holds, and observed decisions distinct from controlled fixtures.
