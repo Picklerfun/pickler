@@ -328,23 +328,33 @@ export async function runPerpsCheck(
 
   let web: Source[] = [];
   const sites = config.sources?.web ?? null;
+  let webUsed = false;
   if (sites) {
     requireTool(config, "searchWeb");
-    const [found, webMs] = await timed(() =>
-      deps.web.search(
-        sites,
-        `${instruments.join(" ")} perpetual market news and risks in the last 24 hours`,
-        signal,
-      ),
-    );
-    addCost(found.costMicros);
-    web = found.sources.slice(0, PERPS_CHECK_WEB_RESULTS);
-    await step(
-      `Read the web · ${plural(web.length, "source", "sources")} · ${seconds(webMs)}`,
-      webMs,
-    );
+    try {
+      const [found, webMs] = await timed(() =>
+        deps.web.search(
+          sites,
+          `${instruments.join(" ")} perpetual market news and risks in the last 24 hours`,
+          signal,
+        ),
+      );
+      addCost(found.costMicros);
+      web = found.sources.slice(0, PERPS_CHECK_WEB_RESULTS);
+      webUsed = true;
+      await step(
+        `Read the web · ${plural(web.length, "source", "sources")} · ${seconds(webMs)}`,
+        webMs,
+      );
+    } catch (error) {
+      // No search key on this host: the check goes on with Perpl alone and says so.
+      if (!(error instanceof PilotError) || error.code !== "WEB_UNAVAILABLE") {
+        throw error;
+      }
+      await step("Skipped the web · search is not set up here");
+    }
   }
-  inputs = { instruments, web: Boolean(sites) };
+  inputs = { instruments, web: webUsed };
 
   // One model call (R4, R5).
   const before = await paper.view(scope);
@@ -376,7 +386,12 @@ export async function runPerpsCheck(
     await step("Its answer was not a valid perps-check-v1 decision");
     return finish("failed", "MODEL INVALID", "MODEL_INVALID");
   }
-  decision = parsed.decision;
+  // Only ids of sources it was given are kept: the feed never shows an invented citation.
+  const given = new Set(state.sources.map((source) => source.id));
+  decision = {
+    ...parsed.decision,
+    sources: parsed.decision.sources.filter((id) => given.has(id)),
+  };
   const called = decision;
   await step(entryTrace(called, counts.entries));
 
@@ -428,15 +443,23 @@ export async function runPerpsCheck(
   };
   const held = (figs: Figures) => figs.open.find((p) => p.symbol === called.instrument) ?? null;
 
+  /** Closes one position; `closed: false` when its exit (or the owner) closed it first. */
   const close = async (position: PerpsPaperPosition) => {
     await fence();
     const frame = await session.frame(position.symbol);
     await fence();
     const result = await paper.closePosition(scope, position.id, "brief", frame);
+    const label = `${position.side.toUpperCase()} ${position.symbol}`;
+    if (!result.closed) {
+      return { closed: false, text: `${label} was already closed (by its exit)` };
+    }
     const pnl = result.view.movements
       .filter((m) => m.key.startsWith(`close:${position.id}:`))
       .reduce((sum, m) => sum + Number(m.delta), 0);
-    return `Closed ${position.side.toUpperCase()} ${position.symbol} at ${result.position.exitPrice} · ${signedAusd(pnl)}`;
+    return {
+      closed: true,
+      text: `Closed ${label} at ${result.position.exitPrice} · ${signedAusd(pnl)}`,
+    };
   };
 
   let figs = await figures();
@@ -450,9 +473,12 @@ export async function runPerpsCheck(
     if (!met.length) {
       continue;
     }
-    const text = await close(position);
-    closed = true;
+    const { closed: done, text } = await close(position);
     await step(text);
+    if (!done) {
+      continue;
+    }
+    closed = true;
     await store.recordCheck({
       productAgentId: check.productAgentId,
       trigger: "system",
@@ -474,26 +500,33 @@ export async function runPerpsCheck(
   // An opposite call (R7) in two phases: the close is its own `exited` row, then decide again.
   if (result.close && result.outcome !== "exited") {
     const position = held(figs)!;
-    const text = await close(position);
-    closed = true;
+    const { closed: done, text } = await close(position);
     await step(text);
-    await store.recordCheck({
-      productAgentId: check.productAgentId,
-      trigger: "system",
-      outcome: "exited",
-      outcomeText: line(`CLOSED ${position.side.toUpperCase()} ${position.symbol} · REVERSING`),
-      decision: called,
-      inputs,
-      configVersion: agent.version,
-      steps: [{ text: line(text) }],
-    });
+    if (done) {
+      closed = true;
+      await store.recordCheck({
+        productAgentId: check.productAgentId,
+        trigger: "system",
+        outcome: "exited",
+        outcomeText: line(`CLOSED ${position.side.toUpperCase()} ${position.symbol} · REVERSING`),
+        decision: called,
+        inputs,
+        configVersion: agent.version,
+        steps: [{ text: line(text) }],
+      });
+    }
     figs = await figures();
     result = decide(figs, null);
   }
 
   if (result.outcome === "exited" && result.close) {
-    const position = held(figs)!;
-    await step(await close(position));
+    const { closed: done, text } = await close(held(figs)!);
+    await step(text);
+    if (!done) {
+      // Its exit closed it first: this check made no close of its own.
+      await step("Nothing left to close");
+      return finish("held", `ALREADY CLOSED · ${called.instrument}`);
+    }
     closed = true;
   }
 
@@ -579,8 +612,10 @@ export async function runPerpsCheck(
   if (closed && !agent.paused) {
     const after = await figures();
     if (dayLossReached(after.realizedToday, effectiveRisk(config))) {
-      await store.pauseAgent(check.productAgentId, DAY_LOSS_TEXT);
-      await step(DAY_LOSS_TEXT);
+      // Idempotent: an exit that paused it first leaves one pause and one row.
+      if (await store.pauseAgent(check.productAgentId, DAY_LOSS_TEXT)) {
+        await step(DAY_LOSS_TEXT);
+      }
     }
   }
 

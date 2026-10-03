@@ -2,6 +2,7 @@ import { test, type TestContext } from "node:test";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import {
+  PilotError,
   DEFAULT_BRIEF,
   STARTER_CAPS,
   prepareDraft,
@@ -30,8 +31,11 @@ import {
   superviseChecks,
   type PerpsBackground,
   type PerpsCheckMessage,
+  type PerpsCheckDependencies,
   type PerpsCheckModelAnswer,
 } from "@pickler/agent-runtime";
+
+type PerpsBackgroundWeb = PerpsCheckDependencies["web"];
 
 const HOUR = 3_600_000;
 const ON = { enabled: true, dailyChecks: 500 };
@@ -150,6 +154,20 @@ async function setup(t: TestContext) {
   let count = 0;
   const calls = { model: 0, perpl: 0 };
   let onModel: () => Promise<void> = async () => {};
+  let onMarks: () => Promise<void> = async () => {};
+  let webSearch: PerpsBackgroundWeb["search"] = async () => {
+    throw new Error("No web in these agents");
+  };
+  const webConfig = prepareDraft({
+    name: "Trader",
+    handle: "trader",
+    voice: "analyst",
+    avatar: { accent: "lime", pattern: 0 },
+    sources: { web: { mode: "anywhere", sites: [] } },
+    brief: DEFAULT_BRIEF,
+    caps: STARTER_CAPS,
+    walletId: "unused",
+  }).config;
 
   async function agent(
     options: {
@@ -251,12 +269,13 @@ async function setup(t: TestContext) {
           };
         },
       },
-      marks: async () => board,
-      web: {
-        search: async () => {
-          throw new Error("No web in these agents");
-        },
+      marks: async () => {
+        const hook = onMarks;
+        onMarks = async () => {};
+        await hook();
+        return board;
       },
+      web: { search: (...args: Parameters<PerpsBackgroundWeb["search"]>) => webSearch(...args) },
       model: {
         async decide(): Promise<PerpsCheckModelAnswer> {
           calls.model++;
@@ -319,6 +338,15 @@ async function setup(t: TestContext) {
     onModel: (hook: () => Promise<void>) => {
       onModel = hook;
     },
+    /** Runs once, the next time the check reads the board (after it read the account). */
+    onMarks: (hook: () => Promise<void>) => {
+      onMarks = hook;
+    },
+    web: (search: PerpsBackgroundWeb["search"]) => {
+      webSearch = search;
+    },
+    /** Config keys that turn the web source on. */
+    webOn: { tools: webConfig.tools, sources: webConfig.sources, plugins: webConfig.plugins },
   };
 }
 
@@ -724,4 +752,98 @@ test("the minute Cron sweeps a paused agent's stuck check to interrupted", async
   const swept = (await f.store.getCheck(stalled.id))!;
   assert.equal(swept.status, "finished");
   assert.equal(swept.error, "CHECK_INTERRUPTED");
+});
+
+test("off: the minute Cron still closes due exits and sweeps stuck checks, and dispatches nothing", async (t) => {
+  const f = await setup(t);
+  const { id, scope } = await f.agent();
+  await f.check(id);
+  const stuck = await f.store.startCheck({ productAgentId: id, trigger: "manual" });
+  await f.store.claimAgent(stuck.id);
+  f.advance(61_000);
+  f.prices.BTC = "57000";
+  f.board([{ network: "testnet", symbol: "BTC", mark: "57000" }]);
+  const sent: unknown[] = [];
+
+  await superviseChecks(f.runtime(), { enabled: false, dailyChecks: 500 }, async (m) => {
+    sent.push(m);
+  });
+
+  assert.deepEqual(open(await f.paper.view(scope)), []);
+  assert.equal((await f.store.getCheck(stuck.id))!.error, "CHECK_INTERRUPTED");
+  assert.deepEqual(sent, []);
+  assert.equal(f.calls.model, 1);
+});
+
+test("an empty search key degrades to Perpl only, with a step, not a failure", async (t) => {
+  const f = await setup(t);
+  const { id } = await f.agent({ config: f.webOn });
+  f.web(async () => {
+    throw new PilotError("WEB_UNAVAILABLE", "Web search is not configured");
+  });
+
+  const done = await f.check(id);
+
+  assert.equal(done.outcome, "entered");
+  assert.deepEqual(done.inputs, { instruments: ["BTC", "ETH"], web: false });
+  assert.ok(done.steps.some((s) => s.text === "Skipped the web · search is not set up here"));
+});
+
+test("a model timeout ends the check with a step and keeps the web's cost", async (t) => {
+  const f = await setup(t);
+  const { id, scope } = await f.agent({ config: f.webOn });
+  f.web(async () => ({ sources: [], costMicros: "700" }));
+  f.onModel(async () => {
+    throw new PilotError("MODEL_TIMEOUT", "The model did not answer in time");
+  });
+
+  const done = await f.check(id);
+
+  assert.equal(done.outcome, "failed");
+  assert.equal(done.error, "MODEL_TIMEOUT");
+  assert.equal(done.costMicros, "700");
+  assert.equal(done.steps.at(-1)!.text, "Asked the model · it did not answer");
+  assert.deepEqual(open(await f.paper.view(scope)), []);
+});
+
+test("cited sources are kept only when the check gave them", async (t) => {
+  const f = await setup(t);
+  const { id } = await f.agent();
+  f.answer(
+    JSON.stringify({
+      ...JSON.parse(answer()),
+      sources: ["perpl-btc-ticker", "https://invented.example/story", "perpl-eth-ticker"],
+    }),
+  );
+
+  const done = await f.check(id);
+
+  assert.deepEqual((done.decision as { sources: string[] }).sources, [
+    "perpl-btc-ticker",
+    "perpl-eth-ticker",
+  ]);
+});
+
+test("a close the exits job made first is reported as such, not as this check's", async (t) => {
+  const f = await setup(t);
+  const { id, scope } = await f.agent();
+  await f.check(id);
+  const [position] = open(await f.paper.view(scope));
+  f.advance(60_000);
+  f.answer(answer({ action: "close" }));
+  // The exits job closes it after the check read the account, before its own close.
+  f.onMarks(async () => {
+    await f.paper.closePosition(scope, position!.id, "stop", {
+      ...(await f.runtime().exitFrame("testnet", "BTC", AbortSignal.timeout(1000))),
+    });
+  });
+
+  const done = await f.check(id);
+
+  assert.equal(done.outcomeText, "ALREADY CLOSED · BTC");
+  assert.ok(done.steps.some((s) => s.text === "LONG BTC was already closed (by its exit)"));
+  const closed = (await f.paper.view(scope)).account.positions[0]!;
+  assert.equal(closed.closeReason, "stop");
+  const exited = await f.store.listChecks(id, { outcomes: ["exited"] });
+  assert.equal(exited.items.length, 0);
 });

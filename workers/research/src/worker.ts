@@ -13,7 +13,6 @@ import {
   type PerpsBackground,
   type PerpsCheckMessage,
 } from "@pickler/agent-runtime";
-import { PilotError } from "@pickler/core";
 import type { PostgresResearchStore } from "@pickler/infrastructure";
 import type { createRuntime } from "@pickler/agent-runtime";
 import type { Env } from "./index.js";
@@ -28,8 +27,9 @@ type Runtime = Pick<ReturnType<typeof createRuntime>, "repository" | "execute"> 
 export function createResearchWorker(deps: {
   runtime(env: Env): Runtime;
   adviceRuntime?(env: Env): AdviceBackground;
-  perpsRuntime?(env: Env): PerpsBackground;
-  /** The owner's approvals and closes (perpl-paper-runtime-v1 R8, R12). */
+  /** Checks and the minute Cron's jobs; with `owner`, the Cron re-drives pending owner actions. */
+  perpsRuntime?(env: Env): PerpsBackground & Partial<Pick<PerpsActionsBackground, "owner">>;
+  /** The owner's durable actions (perpl-paper-runtime-v1 R8, R12). */
   perpsActions?(env: Env): PerpsActionsBackground;
   repository(env: Env): PostgresResearchStore;
 }): ExportedHandler<Env, ResearchMessage> {
@@ -54,21 +54,23 @@ export function createResearchWorker(deps: {
           }
           continue;
         }
-        if (message.body?.kind === "perps-proposal" || message.body?.kind === "perps-close") {
-          // Runs whether or not the runtime is on: closing is always allowed; an approve while off
-          // ends blocked (RUNTIME_DISABLED). A running check holds the agent: retry shortly.
+        if (message.body?.kind === "perps-action") {
+          // A wakeup for the owner's durable action, whether or not the runtime is on: closing is
+          // always allowed; an approve while off ends blocked (RUNTIME_DISABLED). A check holding
+          // the agent leaves it pending for the minute Cron; only a host failure is retried here.
           try {
             if (!deps.perpsActions) {
               throw new Error("Perpl actions unavailable");
             }
-            await consumePerpsAction(deps.perpsActions(env), message.body, perpsAdmission(env));
+            await consumePerpsAction(
+              deps.perpsActions(env),
+              message.body.actionId,
+              perpsAdmission(env),
+            );
             message.ack();
-          } catch (error) {
-            const busy = error instanceof PilotError && error.code === "CHECK_RUNNING";
-            if (!busy) {
-              console.error("Perpl owner action failed; it is retried");
-            }
-            message.retry({ delaySeconds: busy ? 10 : 30 });
+          } catch {
+            console.error("Perpl owner action wakeup failed; it is retried or re-driven");
+            message.retry({ delaySeconds: 30 });
           }
           continue;
         }
@@ -121,8 +123,10 @@ export function createResearchWorker(deps: {
       }
     },
     async scheduled(_event, env) {
+      // Always: recovery, exits, expiry and owner actions never wait for the runtime; only the
+      // hourly dispatch is gated on PERPL_RUNTIME_ENABLED (inside superviseChecks).
       const admission = perpsAdmission(env);
-      if (admission.enabled && deps.perpsRuntime) {
+      if (deps.perpsRuntime) {
         try {
           await superviseChecks(deps.perpsRuntime(env), admission, async (body) => {
             await env.RESEARCH_QUEUE.send(body);

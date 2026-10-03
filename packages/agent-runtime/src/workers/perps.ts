@@ -13,12 +13,14 @@ import {
   utcDayStart,
   type PerpsCheck,
   type PerpsDuePosition,
+  type PerpsOwnerActionRepository,
   type PerpsPaperFrame,
   type PerpsProductPaperRepository,
   type PerpsRuntimeRepository,
 } from "@pickler/trading/perps";
 import type { PerpsLeaseHolder, PerpsMarks } from "../composition/perps-check.js";
 import { executeWithLease } from "./lease.js";
+import type { PerpsActionMessage } from "./perps-actions.js";
 
 /** The Queue message a manual or hourly check sends (perpl-paper-runtime-v1 §4). */
 export interface PerpsCheckMessage {
@@ -189,8 +191,8 @@ async function dayLossPause(
   if (!dayLossReached(realized, effectiveRisk(agent.config))) {
     return false;
   }
-  await runtime.store.pauseAgent(productAgentId, "Paused itself · day-loss stop");
-  return true;
+  // Idempotent: two overlapping exits runs closing two positions pause it once.
+  return (await runtime.store.pauseAgent(productAgentId, "Paused itself · day-loss stop")) !== null;
 }
 
 /**
@@ -274,24 +276,31 @@ export async function expirePerpsProposals(runtime: Pick<PerpsBackground, "store
 }
 
 /**
- * The research Cron's runtime work while it is on: the stuck-check sweep (`recoverChecks`), then
- * dispatch, exits and expiry.
+ * The research Cron's runtime work, every minute (R3, R10): the stuck-check sweep
+ * (`recoverChecks`), the hourly dispatcher (only while `PERPL_RUNTIME_ENABLED` is on: off, no
+ * model is asked and nothing opens), the exits job, proposal expiry, and the re-drive of owner
+ * actions left pending (`owner.pendingActions`, one wakeup each). Everything but dispatch runs
+ * whether or not the runtime is on: exits, closes and recovery never wait for it. None of them
+ * calls the model.
  */
 export async function superviseChecks(
-  runtime: PerpsBackground,
+  runtime: PerpsBackground & { owner?: Pick<PerpsOwnerActionRepository, "pendingActions"> },
   admission: PerpsAdmission,
-  send: (message: PerpsCheckMessage) => Promise<void>,
+  send: (message: PerpsCheckMessage | PerpsActionMessage) => Promise<void>,
 ) {
   try {
-    if (!admission.enabled) {
-      return;
-    }
     const signal = AbortSignal.timeout(50_000);
+    const owner = runtime.owner;
     for (const job of [
       () => runtime.store.recoverChecks(),
       () => dispatchDueChecks(runtime, admission, send),
       () => runExits(runtime, signal),
       () => expirePerpsProposals(runtime),
+      async () => {
+        for (const actionId of owner ? await owner.pendingActions() : []) {
+          await send({ kind: "perps-action", actionId });
+        }
+      },
     ]) {
       try {
         await job();

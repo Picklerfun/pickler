@@ -81,10 +81,20 @@ export function perpsCheckAnswer(raw: unknown, requestSha256: string): PerpsChec
   };
 }
 
-/** One bounded call: 20 seconds, no retries, no tools, JSON mode. */
+/** The model call's own deadline. */
+export const PERPS_CHECK_MODEL_TIMEOUT_MS = 20_000;
+
+/**
+ * One bounded call: 20 seconds, no retries, no tools, JSON mode. Failures are `PilotError`s, so the
+ * check ends with a step and keeps its known cost: the 20 s deadline is `MODEL_TIMEOUT`, the
+ * check's own cancellation `MODEL_CANCELLED` (the runner still rethrows when its deadline passed),
+ * a network failure `MODEL_TRANSPORT_FAILURE`; HTTP and body failures keep the transport's codes.
+ * `timeoutSignal` is for controlled tests; hosts use the default.
+ */
 export function createPerpsCheckModel(
   configuration: PerpsCheckModelConfiguration,
   transport: typeof fetch = fetch,
+  timeoutSignal: (ms: number) => AbortSignal = (ms) => AbortSignal.timeout(ms),
 ): PerpsCheckModel {
   return {
     async decide(state, parent) {
@@ -105,14 +115,29 @@ export function createPerpsCheckModel(
         throw new PilotError("MODEL_INPUT_TOO_LARGE", "The check's input is too large");
       }
       const requestSha256 = createHash("sha256").update(body).digest("hex");
-      const signal = AbortSignal.any([parent, AbortSignal.timeout(20_000)]);
-      const raw = await postChatCompletion({
-        transport,
-        baseUrl: configuration.baseUrl.replace(/\/+$/, ""),
-        apiKey: configuration.apiKey,
-        body,
-        signal,
-      });
+      const deadline = timeoutSignal(PERPS_CHECK_MODEL_TIMEOUT_MS);
+      const signal = AbortSignal.any([parent, deadline]);
+      let raw: unknown;
+      try {
+        raw = await postChatCompletion({
+          transport,
+          baseUrl: configuration.baseUrl.replace(/\/+$/, ""),
+          apiKey: configuration.apiKey,
+          body,
+          signal,
+        });
+      } catch (error) {
+        if (error instanceof PilotError) {
+          throw error;
+        }
+        if (parent.aborted) {
+          throw new PilotError("MODEL_CANCELLED", "The check was cancelled");
+        }
+        if (deadline.aborted) {
+          throw new PilotError("MODEL_TIMEOUT", "The model did not answer in time");
+        }
+        throw new PilotError("MODEL_TRANSPORT_FAILURE", "The model could not be reached");
+      }
       return perpsCheckAnswer(raw, requestSha256);
     },
   };

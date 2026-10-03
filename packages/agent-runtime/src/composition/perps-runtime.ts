@@ -73,10 +73,18 @@ export function boardMarks(): PerpsMarks {
   };
 }
 
-/** Exa under the agent's site rules; the cost is Exa's reported total, when it reports one. */
-function exaWeb(exa: ExaResearch): PerpsCheckWeb {
+/**
+ * Exa under the agent's site rules; the cost is Exa's reported total, when it reports one. Without
+ * an `EXA_API_KEY` it answers `WEB_UNAVAILABLE` before any request, and the check goes on with
+ * Perpl alone (a step says so).
+ */
+function exaWeb(apiKey: string): PerpsCheckWeb {
+  const exa = new ExaResearch(apiKey);
   return {
     async search(web, query, signal) {
+      if (!apiKey) {
+        throw new PilotError("WEB_UNAVAILABLE", "Web search is not configured");
+      }
       let micros: bigint | null = 0n;
       const search = siteScopedWeb(
         {
@@ -141,8 +149,11 @@ export function createPerpsRuntime(
     balances,
     marks,
     market: {
+      // No session-wide timer: each Perpl request has the transport's own 10 s timeout, and the
+      // session lives within the check's three-minute deadline (`signal`), so a slow read or the
+      // model's 20 s never leaves the open's or the close's frame without time.
       async open(scope, signal) {
-        const perplSignal = AbortSignal.any([signal, AbortSignal.timeout(60_000)]);
+        const perplSignal = signal;
         const { service } = await createPerplSession(research, scope, perplSignal, {
           schedule,
           sessionLimit: PERPL_CHECK_SESSION_LIMIT,
@@ -163,7 +174,7 @@ export function createPerpsRuntime(
         };
       },
     },
-    web: exaWeb(new ExaResearch(env.EXA_API_KEY ?? "")),
+    web: exaWeb(env.EXA_API_KEY ?? ""),
     model:
       overrides.model ??
       createPerpsCheckModel({
@@ -193,7 +204,7 @@ export function createPerpsRuntime(
       }
       return runPerpsCheck(deps, check, holder, signal);
     },
-    // The owner's approvals and closes (workers/perps-actions.ts) share this pool.
+    // The owner's actions (workers/perps-actions.ts) and the Cron's re-drive share this pool.
     owner: new PostgresPerpsOwnerStore(research.pool),
     close: () => research.close(),
   };

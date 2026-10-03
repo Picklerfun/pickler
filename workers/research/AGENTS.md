@@ -93,16 +93,24 @@ See [Agent advice](../../docs/agent-advice.md).
 The Queue also carries `{ kind: "perps-check", checkId }` (the API's manual checks and the hourly
 dispatcher). Each delivery calls the runtime's `consumePerpsCheck` with `perpsAdmission(env)`:
 off, the check is claimed and refused `RUNTIME_DISABLED` without reading Perpl or asking the
-model. While `PERPL_RUNTIME_ENABLED` is "true", the minute Cron runs `superviseChecks` (the hourly
-dispatcher, the exits job, proposal expiry) before advice and research supervision; a failure
-there never stops them. Vars in `wrangler.jsonc`: `PERPL_RUNTIME_ENABLED` "false" and
+model. The minute Cron always runs `superviseChecks` (before advice and research supervision; a
+failure there never stops them): the stuck-check sweep, the exits job, proposal expiry and the
+re-drive of pending owner actions run whether or not the runtime is on, and only the hourly
+dispatcher waits for `PERPL_RUNTIME_ENABLED` "true". Off: no model calls and nothing opens; exits,
+closes and recovery still run. Vars in `wrangler.jsonc`: `PERPL_RUNTIME_ENABLED` "false" (the API's
+`wrangler.staging.jsonc` carries the same value; `npm run check:staging` asserts they match) and
 `PERPL_RUNTIME_DAILY_CHECKS` "500"; optional `CHAIN_ID` and `MONAD_RPC_URL` choose where agent
 wallets' AUSD is read (default Monad testnet, as the API). The model reuses `MODEL_*`, the web
-`EXA_API_KEY`. Apply migration 0027 before enabling. `test/perps-runtime.test.ts` runs checks end
-to end over real PostgreSQL with fake Perpl, board, wallet and model.
+`EXA_API_KEY` (without it a check with the web on goes on with Perpl alone and a step says so).
+Apply migration 0027 before enabling. `test/perps-runtime.test.ts` runs checks end to end over
+real PostgreSQL with fake Perpl, board, wallet and model.
 
-The Queue also carries the owner's actions from the API: `{ kind: "perps-proposal", proposalId,
-decision: "approve" }` and `{ kind: "perps-close", positionId | null, productAgentId, reason }`,
-routed to `consumePerpsAction` over `perpsActions(env)` (the same `createPerpsRuntime`). They run
-whether or not the runtime is on (closing is always allowed; an approve while off ends blocked).
-`CHECK_RUNNING` — a check holds the agent — retries after 10 s, other failures after 30 s.
+The Queue also carries `{ kind: "perps-action", actionId }`: a wakeup for an owner action (approve,
+close, stop) the API wrote durably in `pickler.perps_owner_actions`. It is routed to
+`consumePerpsAction` over `perpsActions(env)` (the same `createPerpsRuntime`), whether or not the
+runtime is on (closing is always allowed; an approve while off ends blocked). The delivery claims
+the row, waits up to 45 s for a running check to free the agent and carries it out; still busy, it
+leaves the action `pending` and acknowledges the message, and the Cron re-drives pending actions
+older than 30 s (`perpsRuntime(env).owner.pendingActions`). Only a host failure retries the
+message (30 s). `test/perps-actions.test.ts` covers the actions, the wait, the re-drive and two
+concurrent deliveries of one approve.

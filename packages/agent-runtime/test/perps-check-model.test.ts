@@ -96,3 +96,28 @@ test("admission reads the host flags: off unless exactly true, ceiling 500 by de
     },
   );
 });
+
+test("a timeout, a cancellation and a network failure are codes, never raw errors", async () => {
+  const configuration = { baseUrl: "https://model.example/v1", model: "m", apiKey: "key" };
+  const hang: typeof fetch = (_url, init) =>
+    new Promise((_, reject) => {
+      init?.signal?.addEventListener("abort", () => reject(init.signal!.reason), { once: true });
+    });
+  const deadline = new AbortController();
+  const timed = createPerpsCheckModel(configuration, hang, () => deadline.signal);
+  const pending = timed.decide({}, new AbortController().signal);
+  deadline.abort(new DOMException("The operation timed out", "TimeoutError"));
+  await assert.rejects(pending, { code: "MODEL_TIMEOUT" });
+
+  const parent = new AbortController();
+  const cancelled = createPerpsCheckModel(configuration, hang).decide({}, parent.signal);
+  parent.abort(new Error("The check's deadline passed"));
+  await assert.rejects(cancelled, { code: "MODEL_CANCELLED" });
+
+  const offline = createPerpsCheckModel(configuration, async () => {
+    throw new TypeError("fetch failed");
+  });
+  await assert.rejects(offline.decide({}, new AbortController().signal), {
+    code: "MODEL_TRANSPORT_FAILURE",
+  });
+});

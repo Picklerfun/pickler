@@ -188,18 +188,29 @@ with no mark it does not open ("NO MARK"). An instrument outside `config.perpl.m
 ("NOT ITS MARKET"). Brief exit lines are judged per held instrument (`exitsMet`): before deciding,
 every other held position with a met line closes as its own `exited` row (trigger `system`,
 "EXIT n MET · LONG BTC"). Exits pass the open's leverage to `exitLevels`, so the stop's loss stays
-within 90% of margin. A close that crosses the day-loss stop pauses the agent (`pauseAgent`).
+within 90% of margin. A close that crosses the day-loss stop pauses the agent (`pauseAgent`,
+idempotent: a step only when this check paused it). A close the exits job (or the owner) made first
+is reported as "LONG BTC was already closed (by its exit)" with no `exited` row of its own, and a
+`close` call whose position was already closed ends `held` "ALREADY CLOSED · BTC". Cited source ids
+are kept only when they are among the check's inputs. A web search that answers `WEB_UNAVAILABLE`
+(no `EXA_API_KEY`) is skipped with a step and `inputs.web` false; the check goes on with Perpl.
 
 `composition/perps-check-model.ts` holds the `perps-check` prompt (1.1.0: exit lines per held
 instrument, no repeated indexes, probability as a fraction) beside advice's and
 `createPerpsCheckModel`, one JSON-mode call to `MODEL_BASE_URL`/`MODEL_ID`/`MODEL_API_KEY` (20 s,
 no retries, 120 kB request, 2,000 output tokens). The provider's `usage.cost` (USD) becomes the
-check's micro-USD cost; without it the cost stays null. `composition/chat-completion.ts`
+check's micro-USD cost; without it the cost stays null. Failures are `PilotError`s, so the check
+ends with "Asked the model · it did not answer" and keeps the web's cost: the 20 s deadline is
+`MODEL_TIMEOUT`, the check's own cancellation `MODEL_CANCELLED` (the runner still rethrows once its
+deadline passed), a network failure `MODEL_TRANSPORT_FAILURE`; its third argument is a
+timeout-signal factory for controlled tests. `composition/chat-completion.ts`
 (`postChatCompletion`) is the bounded transport advice's forecast and the check share.
 `composition/perps-runtime.ts` (`createPerpsRuntime(env, options)`) composes the real adapters
 for one invocation: Postgres runtime, paper and custody stores on one pool, the AUSD reader
 (`CHAIN_ID`, default 10143, and `MONAD_RPC_URL`), the market board's marks (`boardMarks`, memory
-per isolate; stale boards give no marks) and a 24-request `PerplMarketData` for exit frames.
+per isolate; stale boards give no marks) and a 24-request `PerplMarketData` for exit frames. A
+check's Perpl session has no session-wide timer: each request has the transport's own 10 s
+timeout and the session lives within the check's three-minute deadline.
 
 `workers/perps.ts` is what hosts call: `consumePerpsCheck(runtime, checkId, admission)` claims
 the check (a duplicate delivery claims nothing), refuses it `RUNTIME_DISABLED` while off and
@@ -209,25 +220,36 @@ on the 60 s lease and a three-minute deadline, ending failures `failed` with the
 slot under overlapping Cron runs; a replay that is no longer queued is not sent again), and sends
 `{ kind: "perps-check", checkId }`; `runExits` closes due positions (stop, target, time) at fresh frames, logs an
 `exited` row (trigger `exits`) and applies the day-loss stop; `expirePerpsProposals` writes a
-`skipped` row per expired proposal; `superviseChecks` runs the stuck-check sweep (`recoverChecks`) and the three for the Cron while on;
-`perpsAdmission(env)` reads the flags. Manual checks: the API starts the check
+`skipped` row per expired proposal; `superviseChecks` is the minute Cron's work: the stuck-check
+sweep (`recoverChecks`), dispatch (only while on), exits, expiry and the re-drive of pending owner
+actions (`owner.pendingActions`, one `{ kind: "perps-action", actionId }` each). Off: no model
+calls and nothing opens; exits, closes and recovery still run. `perpsAdmission(env)` reads the
+flags. Manual checks: the API starts the check
 (`PerpsRuntimeRepository.startCheck`, trigger `manual`) and sends the same Queue message.
 Tests: `test/perps-check-model.test.ts`; the end-to-end runs are in `workers/research/test`.
 
-`workers/perps-actions.ts` carries out the owner's actions the API queues (R8, R12):
-`consumePerpsAction(runtime, message, admission)` for `{ kind: "perps-proposal", proposalId,
-decision: "approve" }` and `{ kind: "perps-close", positionId | null, productAgentId, reason:
-"owner" | "stop_all" }`. Each runs as an `owner` check row (`PerpsActionsBackground.owner`, the
-infrastructure's `PostgresPerpsOwnerStore.startOwnerCheck`) that holds the agent's lease with a
-heartbeat, so an action never runs beside a check: `CHECK_RUNNING` is thrown for the host to retry.
-Every paper action renews the lease first. Approve: a proposal no longer pending does nothing;
-off, it ends `blocked` `RUNTIME_DISABLED`; `decideProposal(id, "approved")` (→ `approving`;
-`PROPOSAL_EXPIRED` ends `skipped`), then a fresh frame (`exitFrame`), `proposalRefusal` (paused,
-already open, leverage, per-trade, open-positions and per-day caps, day-loss stop, no mark, free
-AUSD below margin plus fee reserve — R6's order with trading's helpers), the open through the paper
-service with the proposing check's exits (or `sizeUp` for a size-up), and `settleProposal(id,
-opened)`: `approved`, or back to `pending` when refused (the row is `blocked` with the cap's code).
-Close: one position or all at fresh frames with reason `owner`/`stop_all`, one step per close with
-its P&L; an owner close crossing the day-loss stop pauses the agent. `createPerpsRuntime` also
-answers `owner`, so the same composition serves checks and actions. Tests:
+`workers/perps-actions.ts` carries out the owner's durable actions (R8, R12):
+`consumePerpsAction(runtime, actionId, admission, options?)` for one `{ kind: "perps-action",
+actionId }` wakeup. The API wrote the action (`pickler.perps_owner_actions`: `approve`, `close`,
+`stop_all`); the message carries only its id. The delivery claims the row
+(`PerpsActionsBackground.owner`, trading's `PerpsOwnerActionRepository`, implemented by
+`PostgresPerpsOwnerStore`; a duplicate delivery claims nothing), then starts its `owner` check
+already holding the agent's lease in one transaction (`startActionCheck`). While a check holds the
+agent it polls every 5 s for up to 45 s (`waitMs`, `pollMs`, `sleep` are injectable), then leaves
+the action `pending` with `CHECK_RUNNING` for the minute Cron's re-drive; nothing is thrown for a
+busy agent. Holding the agent it keeps the lease with a heartbeat, and `finishAction` ends check and
+action together (`done`; `failed` on a thrown failure; `pending` again for a close that could not
+reach Perpl). Every paper action renews the lease first. Approve: a killed agent ends `blocked`
+`AGENT_KILLED`; off, `blocked` `RUNTIME_DISABLED`; `decideProposal(id, "approved")` (→
+`approving`; `PROPOSAL_EXPIRED` and `PROPOSAL_DECIDED` end `skipped`), then a fresh frame
+(`exitFrame`), `proposalRefusal` (paused, already open, leverage, per-trade, open-positions and
+per-day caps, day-loss stop, no mark, free AUSD below margin plus fee reserve — R6's order with
+trading's helpers), the open through the paper service with the proposing check's exits (or
+`sizeUp` for a size-up), and `settleProposal(id, opened)`: `approved`, or back to `pending` when
+refused (the row is `blocked` with the cap's code). The action, not a message, is the approval, so
+a redelivery after a refusal never approves again. Close: one position or all at fresh frames with
+reason `owner`/`stop_all`, one step per close with its P&L ("was already closed" when an exit got
+there first); a stop-all pauses the agent if the API's pause has not landed; an owner close
+crossing the day-loss stop pauses the agent. `createPerpsRuntime` also answers `owner`, so the same
+composition serves checks, actions and the Cron's re-drive. Tests:
 `workers/research/test/perps-actions.test.ts` (real PostgreSQL, fake Perpl).
