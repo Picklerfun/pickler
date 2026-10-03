@@ -153,3 +153,7 @@ for controlled tests; hosts use the production default and never widen deadlines
 ## Local four-way perpetual comparison
 
 The local perpetual model adapter exposes separate `decide` and `review` Jev contracts for `perps-four-way-v2`. Jev-only context has its own account and no SMA/DeepSeek proposals; review context contains that combined account’s original proposal. Prompt snapshots include the atomic question text and criteria. Preserve strict Choice validation and safe diagnostics; no automatic retry or fallback.
+
+## Offline Perpl model-state transformation
+
+The public composition/perps-model-state subpath contains only the unchanged pure perpsModelState transformation and type imports. The live model adapter re-exports it for compatibility. Offline audit imports this subpath, never the provider-bearing model adapter. A transformed saved context is not the exact original request; preserve this distinction and all existing prompt hashes.
