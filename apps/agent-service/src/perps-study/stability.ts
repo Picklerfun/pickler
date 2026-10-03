@@ -123,7 +123,7 @@ export async function runPerpsStability(
   let writes: Promise<void> = Promise.resolve();
   let heartbeat: ReturnType<typeof startLeaseHeartbeat> | undefined;
   let lease: Awaited<ReturnType<typeof study.claim>> | undefined;
-  let scope: typeof config | undefined;
+  let scope: Awaited<ReturnType<PostgresPerpsStudyStore["initializeDiagnostic"]>> | undefined;
   let startedAt = Date.now();
   let error: string | null = null;
   let completed = false;

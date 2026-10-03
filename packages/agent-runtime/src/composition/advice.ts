@@ -20,7 +20,7 @@ import {
 } from "@pickler/trading/perps";
 import { createPerplSession } from "../plugins/perpl/index.js";
 import { siteScopedWeb } from "../plugins/exa.js";
-import { createAdviceModels } from "./advice-model.js";
+import { adviceProviderMatches, createAdviceModels } from "./advice-model.js";
 export function createAdviceData(
   repository: AdviceExecutionRepository,
   research: Pick<PostgresResearchStore, "agent">,
@@ -133,16 +133,21 @@ export interface AdviceEnvironment {
   ADVICE_ENABLED?: string;
   ADVICE_POLICY_JSON?: string;
   ADVICE_JEV_API_KEY?: string;
-  ADVICE_DEEPSEEK_API_KEY?: string;
+  MODEL_BASE_URL: string;
+  MODEL_ID: string;
+  MODEL_API_KEY: string;
   EXA_API_KEY?: string;
 }
 export function createAdviceRuntime(env: AdviceEnvironment, options: DatabaseConnectionOptions) {
   const research = new PostgresResearchStore(env.DATABASE_URL, undefined, options);
   const repository = new PostgresAdviceStore(research.pool);
-  const models = createAdviceModels(repository, {
+  const modelConfiguration = {
     jev: env.ADVICE_JEV_API_KEY ?? "",
-    deepseek: env.ADVICE_DEEPSEEK_API_KEY ?? "",
-  });
+    baseUrl: env.MODEL_BASE_URL,
+    model: env.MODEL_ID,
+    apiKey: env.MODEL_API_KEY,
+  };
+  const models = createAdviceModels(repository, modelConfiguration);
   const runner = createAdviceRunner({
     repository,
     models,
@@ -154,8 +159,7 @@ export function createAdviceRuntime(env: AdviceEnvironment, options: DatabaseCon
     close: () => research.close(),
     async execute(job: AdviceJob, parent: AbortSignal) {
       if (
-        !env.ADVICE_JEV_API_KEY ||
-        !env.ADVICE_DEEPSEEK_API_KEY ||
+        !adviceProviderMatches(job.policy, modelConfiguration) ||
         (Boolean(job.config.sources?.web) && !env.EXA_API_KEY) ||
         advicePolicyKey(parseAdvicePolicy(env.ADVICE_POLICY_JSON)) !== advicePolicyKey(job.policy)
       ) {

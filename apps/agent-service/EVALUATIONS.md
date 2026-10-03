@@ -89,3 +89,9 @@ unchanged. Report v2 preserves the original acquisition duration separately from
 Read [the transport diagnostic guide](PERPL-STREAM-ACQUISITION.md) before new public acceptance. The explicit data-diagnostic command freezes transport selection; stability requires that choice file. Historical reports remain readable and are not rerun.
 
 See [the 2026-10-01 public results](PERPL-STREAM-VALIDATION.md): both transports reached 10/10; the selected paced REST reader passed 30/30. This does not authorize a paid continuation.
+
+## Offline Perpl decision audit
+
+The perpetual protocols support audit-export. The separate audit command reads a versioned export
+without a study config, environment file, database or provider clients. See
+[the audit guide](PERPS-DECISION-AUDIT.md) for exact commands, provenance and acceptance boundaries.

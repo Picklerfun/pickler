@@ -3,16 +3,31 @@ import type { PerpsPaperFrame } from "../perps-paper/simulation.js";
 import type { PerpsPaperAccount } from "../perps-paper/types.js";
 export const PERPS_STUDY_STRATEGIES = ["rules", "deepseek", "jev"] as const;
 export type PerpsStrategy = (typeof PERPS_STUDY_STRATEGIES)[number];
-export type PerpsCallLane = "direct" | "jev" | "fallback";
+export type PerpsStudyStrategy = PerpsStrategy | "combined";
+export type PerpsStudyMap<T> = Record<PerpsStrategy, T> & Partial<Record<"combined", T>>;
+export const PERPS_FOUR_WAY_STRATEGIES = ["rules", "jev", "deepseek", "combined"] as const;
+export function perpsStrategies(
+  config: Pick<PerpsStudyConfig, "version">,
+): readonly PerpsStudyStrategy[] {
+  return config.version === 2 ? PERPS_FOUR_WAY_STRATEGIES : PERPS_STUDY_STRATEGIES;
+}
+export type PerpsCallLane = "direct" | "jev" | "fallback" | "review";
 export interface PerpsStudyScope {
   tenantId: string;
   sessionId: string;
   network: PerpNetwork;
 }
 export interface PerpsStudyConfig extends PerpsStudyScope {
-  version: 1;
-  protocol: "perps-comparison-v1";
-  hours: 24;
+  version: 1 | 2;
+  protocol: "perps-comparison-v1" | "perps-four-way-v2";
+  hours: 24 | 2;
+  acknowledgedUnknownCalls?: {
+    sessionId: string;
+    roundKey: string;
+    lane: PerpsCallLane;
+    requestHash: string;
+    reservationUsd: string;
+  }[];
   budgetUsd: "5";
   deepseek: { model: string; baseUrl: string; inputPerMillion: string; outputPerMillion: string };
   jev: { model: "jev-1.13.0"; inputPerMillion: string; outputPerMillion: "0" };
@@ -59,20 +74,20 @@ export interface PerpsRound {
   createdAt: number;
   finishedAt: number | null;
   evidence: PerpsEvidence;
-  accounts: Record<PerpsStrategy, PerpsPaperAccount>;
-  proposals: Partial<Record<PerpsStrategy, PerpsProposal[]>>;
-  calls: Record<PerpsCallLane, PerpsCall>;
+  accounts: PerpsStudyMap<PerpsPaperAccount>;
+  proposals: Partial<Record<PerpsStudyStrategy, PerpsProposal[]>>;
+  calls: Record<"direct" | "jev" | "fallback", PerpsCall> & Partial<Record<"review", PerpsCall>>;
 }
 export interface PerpsStudyRecord {
   config: PerpsStudyConfig;
   metadata: unknown;
-  agentIds: Record<PerpsStrategy, string>;
-  agentVersions: Record<PerpsStrategy, number>;
+  agentIds: PerpsStudyMap<string>;
+  agentVersions: PerpsStudyMap<number>;
   createdAt: number;
   startedAt: number | null;
   endsAt: number | null;
   graceUntil: number | null;
-  status: "initialized" | "running" | "monitoring" | "completed";
+  status: "initialized" | "running" | "monitoring" | "closing" | "completed" | "interrupted";
   decisionStopReason: string | null;
   stopRequested: boolean;
   lastObservationAt: number | null;
@@ -112,7 +127,7 @@ export interface PerpsStudyRepository {
     lease: PerpsStudyLease,
     slot: number,
     evidence: PerpsEvidence,
-    accounts: Record<PerpsStrategy, PerpsPaperAccount>,
+    accounts: PerpsStudyMap<PerpsPaperAccount>,
     rules: PerpsProposal[],
   ): Promise<PerpsRound | null>;
   startCall(
@@ -142,7 +157,7 @@ export interface PerpsStudyRepository {
     scope: PerpsStudyScope,
     lease: PerpsStudyLease,
     key: string,
-    proposals: Partial<Record<PerpsStrategy, PerpsProposal[]>>,
+    proposals: Partial<Record<PerpsStudyStrategy, PerpsProposal[]>>,
   ): Promise<void>;
   stopDecisions(scope: PerpsStudyScope, lease: PerpsStudyLease, reason: string): Promise<void>;
   finishExecution(

@@ -1,8 +1,8 @@
 import {
-  PERPS_STUDY_STRATEGIES,
+  perpsStrategies,
+  type PerpsStudyMap,
   perpsAccountedUsd,
   type PerpsStudyView,
-  type PerpsStrategy,
 } from "@pickler/trading/evaluation";
 import {
   paperRisk,
@@ -12,7 +12,7 @@ import {
 } from "@pickler/trading/perps";
 export function perpsStudyReport(
   study: PerpsStudyView,
-  accounts: Record<PerpsStrategy, PerpsPaperView>,
+  accounts: PerpsStudyMap<PerpsPaperView>,
   now = Date.now(),
 ) {
   const { record, rounds, events } = study;
@@ -34,8 +34,8 @@ export function perpsStudyReport(
       (r.status !== "completed" || r.executionStatus !== "complete"),
   ).length;
   const omitted = events.filter((e) => e.kind === "data-unavailable");
-  const rows = PERPS_STUDY_STRATEGIES.map((strategy) => {
-    const view = accounts[strategy];
+  const rows = perpsStrategies(record.config).map((strategy) => {
+    const view = accounts[strategy]!;
     const risk = paperRisk(view.account, view.attempts, now);
     const calls = rounds
       .flatMap((r) => Object.values(r.calls))
@@ -43,8 +43,12 @@ export function perpsStudyReport(
         strategy === "deepseek"
           ? c.lane === "direct"
           : strategy === "jev"
-            ? c.lane !== "direct"
-            : false,
+            ? record.config.version === 2
+              ? c.lane === "jev"
+              : c.lane !== "direct"
+            : strategy === "combined"
+              ? c.lane === "fallback" || c.lane === "review"
+              : false,
       );
     const sum = (kind: string) =>
       d(view.movements.filter((m) => m.kind === kind).reduce((v, m) => v + u(m.delta), 0n));
@@ -98,7 +102,15 @@ export function perpsStudyReport(
       .filter((c) => c.startedAt !== null && c.finishedAt !== null)
       .map((c) => c.finishedAt! - c.startedAt!);
     return {
-      strategy,
+      strategy:
+        record.config.version === 2
+          ? {
+              rules: "rules",
+              jev: "jev-only",
+              deepseek: "deepseek-only",
+              combined: "deepseek-jev",
+            }[strategy]
+          : strategy,
       initialVirtualAUSD: "1000",
       cashVirtualAUSD: risk.cash,
       equityVirtualAUSD: risk.equity,
@@ -110,6 +122,7 @@ export function perpsStudyReport(
       reservedVirtualAUSD: risk.reserved,
       availableVirtualAUSD: risk.available,
       realizedPnlVirtualAUSD: sum("realized-pnl"),
+      netRealizedPnlVirtualAUSD: d(u(sum("realized-pnl")) + u(sum("fee")) + u(sum("funding"))),
       unrealizedPnlVirtualAUSD: risk.unrealized,
       feesVirtualAUSD: sum("fee"),
       fundingVirtualAUSD: sum("funding"),
@@ -141,7 +154,7 @@ export function perpsStudyReport(
     omitted.length === 0 &&
     unknownCalls.length === 0 &&
     unobservedMs === 0 &&
-    rounds.length === 96 &&
+    rounds.length === record.config.hours * 4 &&
     rows.every((r) => !r.fundingPending && !r.fundingDisputed && !r.openPositions);
   return {
     protocol: record.config.protocol,
@@ -153,6 +166,14 @@ export function perpsStudyReport(
     endsAt: record.endsAt,
     stopReason: record.decisionStopReason,
     rounds: rounds.length,
+    roundDetails: rounds.map((r) => ({
+      slot: r.slot,
+      executionStatus: r.executionStatus,
+      proposals: r.proposals,
+      calls: r.calls,
+    })),
+    modelDiagnostics: events.filter((e) => e.kind === "model-diagnostic"),
+    executionDetails: events.filter((e) => e.kind === "execution" || e.kind === "execution-input"),
     incompleteRounds,
     omittedRounds: omitted.length,
     omittedSlots: omitted.map((e) => e.data),
@@ -160,7 +181,9 @@ export function perpsStudyReport(
     unobservedMs,
     accountedOrReservedUSD: perpsAccountedUsd(rounds),
     observedModelSavingPct:
-      unknownCalls.length || direct === 0n ? null : d(((direct - routed) * 100n * u("1")) / direct),
+      record.config.version === 2 || unknownCalls.length || direct === 0n
+        ? null
+        : d(((direct - routed) * 100n * u("1")) / direct),
     comparable,
     profitabilityRanking: null,
     limitations: [
@@ -168,7 +191,7 @@ export function perpsStudyReport(
       "Model cost is an estimate using pinned public upper tariffs, not an invoice.",
       "Funding uses the laboratory formula; liquidity is independent for each agent.",
       "No liquidation, signing, real orders, or on-chain activity.",
-      "Twenty-four hours cannot establish profitability.",
+      "This short experimental sample cannot establish profitability.",
       ...(!comparable ? ["Incomplete comparison: no profitability ranking."] : []),
     ],
     rows,
@@ -193,6 +216,15 @@ export function renderPerpsReport(report: ReturnType<typeof perpsStudyReport>) {
       fields.map(csvCell).join(","),
       ...report.rows.map((row) => fields.map((f) => csvCell(row[f as keyof typeof row])).join(",")),
     ].join("\n") + "\n";
-  const html = `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Perpetual virtual comparison</title><style>body{font:16px system-ui;margin:32px;color:#142332;background:#f5f7fa}table{border-collapse:collapse;background:white}td,th{border:1px solid #ccc;padding:8px;text-align:left}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><h1>Perpetual virtual comparison</h1><p>Status: ${escape(report.status)}. Comparable: ${report.comparable}. Rounds: ${report.rounds}. Incomplete: ${report.incompleteRounds}. Data-unavailable: ${report.omittedRounds}. Unobserved milliseconds: ${report.unobservedMs}.</p><table><tr><th>Metric</th>${report.rows.map((r) => `<th>${escape(r.strategy)}</th>`).join("")}</tr>${fields.map((f) => `<tr><th>${escape(f)}</th>${report.rows.map((r) => `<td>${escape(r[f as keyof typeof r])}</td>`).join("")}</tr>`).join("")}</table><ul>${report.limitations.map((l) => `<li>${escape(l)}</li>`).join("")}</ul><details><summary>Configuration and protocol</summary><pre>${escape(JSON.stringify({ config: report.config, metadata: report.metadata }, null, 2))}</pre></details></html>`;
-  return { html, csv };
+  const html = `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Perpetual virtual comparison</title><style>body{font:16px system-ui;margin:32px;color:#142332;background:#f5f7fa}table{border-collapse:collapse;background:white}td,th{border:1px solid #ccc;padding:8px;text-align:left}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><h1>Perpetual virtual comparison</h1><p>Status: ${escape(report.status)}. Comparable: ${report.comparable}. Rounds: ${report.rounds}. Incomplete: ${report.incompleteRounds}. Data-unavailable: ${report.omittedRounds}. Unobserved milliseconds: ${report.unobservedMs}.</p><table><tr><th>Metric</th>${report.rows.map((r) => `<th>${escape(r.strategy)}</th>`).join("")}</tr>${fields.map((f) => `<tr><th>${escape(f)}</th>${report.rows.map((r) => `<td>${escape(r[f as keyof typeof r])}</td>`).join("")}</tr>`).join("")}</table><ul>${report.limitations.map((l) => `<li>${escape(l)}</li>`).join("")}</ul><details><summary>Configuration and protocol</summary><pre>${escape(JSON.stringify({ config: report.config, metadata: report.metadata }, null, 2))}</pre></details><details><summary>Round decisions and reviews</summary><pre>${escape(JSON.stringify(report.roundDetails, null, 2))}</pre></details></html>`;
+  const roundsCsv =
+    [
+      ["slot", "executionStatus", "proposals", "calls"].map(csvCell).join(","),
+      ...report.roundDetails.map((r) =>
+        [r.slot, r.executionStatus, JSON.stringify(r.proposals), JSON.stringify(r.calls)]
+          .map(csvCell)
+          .join(","),
+      ),
+    ].join("\n") + "\n";
+  return { html, csv, roundsCsv };
 }

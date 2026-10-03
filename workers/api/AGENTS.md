@@ -472,3 +472,5 @@ no-store responses, strict requests and OpenAPI metadata. Container admission re
 ADVICE_ENABLED, valid reviewed USD policy and research Queue; reads remain mounted when disabled.
 Never accept internal tenant/runtime IDs or models from consumers. Completed history is shared;
 other statuses are requester-only. See [Agent advice](../../docs/agent-advice.md).
+
+Advice admissions consume the same reviewed ADVICE_POLICY_JSON as Research. Policy v2 pins its forecast provider URL/model and limits; forecast credentials remain exclusively in Research. No new public DTO or database schema is introduced by the provider correction.

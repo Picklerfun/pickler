@@ -8,7 +8,6 @@ export interface Env extends Environment {
   ADVICE_ENABLED?: string;
   ADVICE_POLICY_JSON?: string;
   ADVICE_JEV_API_KEY?: string;
-  ADVICE_DEEPSEEK_API_KEY?: string;
   TRADING_QUEUE?: Queue<{ kind: "trading-wakeup" }>;
   DATABASE?: Hyperdrive;
   RESEARCH_QUEUE: Queue<{ kind: "research-wakeup" | "advice-wakeup" }>;

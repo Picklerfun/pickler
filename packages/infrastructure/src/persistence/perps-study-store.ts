@@ -2,7 +2,9 @@ import { randomUUID } from "node:crypto";
 import type { Pool, PoolClient } from "pg";
 import { DEFAULT_CONFIG, PERP_TOOLS, PilotError, type AgentRecord } from "@pickler/core";
 import {
-  PERPS_STUDY_STRATEGIES,
+  perpsStrategies,
+  type PerpsStudyMap,
+  type PerpsStudyStrategy,
   PERPS_INPUT_LIMIT,
   PERPS_OUTPUT_LIMIT,
   assertPerpsStudyConfig,
@@ -17,7 +19,6 @@ import {
   type PerpsRound,
   type PerpsCallLane,
   type PerpsEvidence,
-  type PerpsStrategy,
   type PerpsProposal,
 } from "@pickler/trading/evaluation";
 import { assertPerpsPaperAgent, paperUnits, type PerpsPaperAccount } from "@pickler/trading/perps";
@@ -133,7 +134,7 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
     });
   }
   private async permissions(c: PoolClient, x: Locked) {
-    for (const strategy of PERPS_STUDY_STRATEGIES) {
+    for (const strategy of perpsStrategies(x.record.config)) {
       const agentId = x.record.agentIds[strategy];
       const result = await c.query<AgentRecord>(
         'SELECT id,tenant_id AS "tenantId",version,config,paused FROM pickler.agents WHERE tenant_id=$1 AND id=$2',
@@ -145,8 +146,8 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
       }
       assertPerpsPaperAgent(
         agent,
-        { ...x.record.config, agentId },
-        x.record.agentVersions[strategy],
+        { ...x.record.config, agentId: agentId! },
+        x.record.agentVersions[strategy]!,
       );
       if (agent.paused) {
         throw new PilotError("PAUSED", "Study agent paused");
@@ -201,9 +202,9 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
       }
       const now = await this.now(c);
       const agentIds = Object.fromEntries(
-        PERPS_STUDY_STRATEGIES.map((s) => [s, `perps-${config.network}-${config.sessionId}-${s}`]),
-      ) as Record<PerpsStrategy, string>;
-      for (const strategy of PERPS_STUDY_STRATEGIES) {
+        perpsStrategies(config).map((s) => [s, `perps-${config.network}-${config.sessionId}-${s}`]),
+      ) as PerpsStudyMap<string>;
+      for (const strategy of perpsStrategies(config)) {
         await c.query(
           "INSERT INTO pickler.agents(tenant_id,id,version,config,paused,schedule_enabled) VALUES($1,$2,1,$3,false,false)",
           [
@@ -224,7 +225,9 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
         config,
         metadata,
         agentIds,
-        agentVersions: { rules: 1, deepseek: 1, jev: 1 },
+        agentVersions: Object.fromEntries(
+          perpsStrategies(config).map((s) => [s, 1]),
+        ) as PerpsStudyMap<number>,
         createdAt: now,
         startedAt: null,
         endsAt: null,
@@ -244,8 +247,8 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
     });
     const view = await this.view(config);
     const paper = new PostgresPerpsPaperStore(this.pool, this.clock);
-    for (const strategy of PERPS_STUDY_STRATEGIES) {
-      await paper.initialize({ ...config, agentId: view.record.agentIds[strategy] }, 1);
+    for (const strategy of perpsStrategies(config)) {
+      await paper.initialize({ ...config, agentId: view.record.agentIds[strategy]! }, 1);
     }
     return view;
   }
@@ -291,7 +294,7 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
         throw new PilotError("CONFLICT", "Study already has a live writer");
       }
       if (
-        x.record.status === "completed" ||
+        ["completed", "interrupted"].includes(x.record.status) ||
         (x.record.startedAt === null && x.record.stopRequested)
       ) {
         throw new PilotError("STUDY_COMPLETE", "Study is complete");
@@ -321,7 +324,7 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
       }
       if (x.record.startedAt === null) {
         x.record.startedAt = x.now;
-        x.record.endsAt = x.now + 86400000;
+        x.record.endsAt = x.now + x.record.config.hours * 3600000;
         x.record.graceUntil = x.record.endsAt + 900000;
       }
       x.record.status = x.record.decisionStopReason ? "monitoring" : "running";
@@ -413,7 +416,10 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
       const x = await this.lock(c, scope);
       this.owned(c, x, lease);
       x.record.decisionStopReason ??= reason;
-      x.record.status = "monitoring";
+      x.record.status = x.record.config.version === 2 ? "closing" : "monitoring";
+      if (x.record.config.version === 2) {
+        x.record.graceUntil = Math.min(x.record.graceUntil!, x.now + 900000);
+      }
       await this.save(c, x);
     });
   }
@@ -442,7 +448,7 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
     lease: PerpsStudyLease,
     slot: number,
     evidence: PerpsEvidence,
-    accounts: Record<PerpsStrategy, PerpsPaperAccount>,
+    accounts: PerpsStudyMap<PerpsPaperAccount>,
     rules: PerpsProposal[],
   ) {
     return this.tx(async (c) => {
@@ -460,23 +466,29 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
         x.now >= x.record.endsAt! ||
         !Number.isInteger(slot) ||
         slot < 0 ||
-        slot >= 96 ||
+        slot >= x.record.config.hours * 4 ||
         slot <= x.record.lastRoundSlot
       ) {
         return null;
       }
       const calls = Object.fromEntries(
-        (["direct", "jev", "fallback"] as const).map((lane) => [
+        (x.record.config.version === 2
+          ? (["direct", "jev", "fallback", "review"] as const)
+          : (["direct", "jev", "fallback"] as const)
+        ).map((lane) => [
           lane,
           {
             lane,
-            model: lane === "jev" ? x.record.config.jev.model : x.record.config.deepseek.model,
+            model:
+              lane === "jev" || lane === "review"
+                ? x.record.config.jev.model
+                : x.record.config.deepseek.model,
             status: "reserved",
             reservationUsd: perpsCallCost(
               x.record.config,
               lane,
               PERPS_INPUT_LIMIT,
-              lane === "jev" ? 0 : PERPS_OUTPUT_LIMIT,
+              lane === "jev" || lane === "review" ? 0 : PERPS_OUTPUT_LIMIT,
             ),
             costUsd: null,
             inputTokens: null,
@@ -488,35 +500,81 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
           },
         ]),
       ) as PerpsRound["calls"];
+      if (
+        x.record.config.version === 2 &&
+        (x.record.metadata as { purpose?: string })?.purpose === "contracts-v2"
+      ) {
+        calls.fallback.status = "skipped";
+        calls.fallback.finishedAt = x.now;
+        calls.fallback.reservationUsd = "0";
+      }
       const reserved = Object.values(calls).reduce(
         (sum, call) => sum + paperUnits(call.reservationUsd),
         0n,
       );
-      const campaign = await c.query<{ document: PerpsRound }>(
-        `SELECT r.document FROM pickler.perps_study_rounds r
+      const campaign = await c.query<{
+        document: PerpsRound;
+        session_id: string;
+        owner: string | null;
+        expires_at: string | null;
+      }>(
+        `SELECT r.document, s.session_id, s.owner, s.expires_at FROM pickler.perps_study_rounds r
          JOIN pickler.perps_studies s ON s.id = r.study_id
          WHERE s.tenant_id = $1 AND s.network = $2`,
         [scope.tenantId, scope.network],
       );
       const rounds = campaign.rows.map((row) => row.document);
-      if (
-        rounds.some((round) =>
-          Object.values(round.calls).some(
-            (call) => call.startedAt !== null && call.costUsd === null,
-          ),
-        )
-      ) {
+      const acknowledgments =
+        x.record.config.version === 2 ? (x.record.config.acknowledgedUnknownCalls ?? []) : [];
+      const unknown = campaign.rows.flatMap((row) =>
+        Object.values(row.document.calls)
+          .filter((call) => call.startedAt !== null && call.costUsd === null)
+          .map((call) => ({ row, call })),
+      );
+      const recognized = (item: (typeof unknown)[number]) =>
+        acknowledgments.some(
+          (a) =>
+            a.sessionId !== scope.sessionId &&
+            a.sessionId === item.row.session_id &&
+            a.roundKey === item.row.document.key &&
+            a.lane === item.call.lane &&
+            a.requestHash === item.call.requestHash &&
+            a.reservationUsd === item.call.reservationUsd &&
+            item.call.status === "failed" &&
+            !(item.row.owner && Number(item.row.expires_at) > x.now),
+        );
+      if (unknown.some((item) => !recognized(item))) {
         x.record.decisionStopReason = "CAMPAIGN_USAGE_UNVERIFIED";
-        x.record.status = "monitoring";
+        x.record.status = x.record.config.version === 2 ? "closing" : "monitoring";
+        if (x.record.config.version === 2) {
+          x.record.graceUntil = Math.min(x.record.graceUntil!, x.now + 900000);
+        }
         await this.save(c, x);
         return null;
+      }
+      if (x.record.config.version === 2) {
+        const v2Calls = await c.query<{ document: PerpsRound }>(
+          `SELECT r.document FROM pickler.perps_study_rounds r JOIN pickler.perps_studies s ON s.id=r.study_id WHERE s.tenant_id=$1 AND s.network=$2 AND s.document->'config'->>'protocol'='perps-four-way-v2'`,
+          [scope.tenantId, scope.network],
+        );
+        const admitted = v2Calls.rows
+          .flatMap((r) => Object.values(r.document.calls))
+          .filter((c) => c.status !== "skipped").length;
+        const required =
+          (x.record.metadata as { purpose?: string })?.purpose === "contracts-v2" ? 3 : 4;
+        if (admitted + required > 35) {
+          throw new PilotError("CALL_LIMIT_EXCEEDED", "Frozen four-way call ceiling reached");
+        }
       }
       if (
         paperUnits(perpsAccountedUsd(rounds)) + reserved >
         paperUnits(x.record.config.budgetUsd)
       ) {
         x.record.decisionStopReason = "BUDGET_EXHAUSTED";
-        x.record.status = "monitoring";
+        x.record.status = x.record.config.version === 2 ? "closing" : "monitoring";
+        if (x.record.config.version === 2) {
+          x.record.graceUntil = Math.min(x.record.graceUntil!, x.now + 900000);
+        }
         await this.save(c, x);
         return null;
       }
@@ -558,6 +616,9 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
       }
       const r = await this.round(c, x.id, key);
       const call = r.calls[lane];
+      if (!call) {
+        throw new PilotError("INVALID_INPUT", "Lane unavailable in this protocol");
+      }
       if (r.status !== "reserved" || call.status !== "reserved") {
         throw new PilotError("CONFLICT", "Call already started");
       }
@@ -583,6 +644,9 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
       this.owned(c, x, lease);
       const r = await this.round(c, x.id, key);
       const call = r.calls[lane];
+      if (!call) {
+        throw new PilotError("INVALID_INPUT", "Lane unavailable in this protocol");
+      }
       if (call.status !== "started" || call.costUsd !== null) {
         throw new PilotError("CONFLICT", "Usage cannot be replaced");
       }
@@ -605,6 +669,9 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
       this.owned(c, x, lease);
       const r = await this.round(c, x.id, key);
       const call = r.calls[lane];
+      if (!call) {
+        throw new PilotError("INVALID_INPUT", "Lane unavailable in this protocol");
+      }
       if (call.status !== "started") {
         throw new PilotError("CONFLICT", "Only started calls finish");
       }
@@ -616,8 +683,11 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
       call.result = result;
       call.finishedAt = x.now;
       if (error) {
-        x.record.decisionStopReason ??= "MODEL_FAILURE";
-        x.record.status = "monitoring";
+        x.record.decisionStopReason ??= x.record.config.version === 2 ? error : "MODEL_FAILURE";
+        x.record.status = x.record.config.version === 2 ? "closing" : "monitoring";
+        if (x.record.config.version === 2) {
+          x.record.graceUntil = Math.min(x.record.graceUntil!, x.now + 900000);
+        }
         await this.save(c, x);
       }
       await this.saveRound(c, x.id, r);
@@ -627,7 +697,7 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
     scope: PerpsStudyScope,
     lease: PerpsStudyLease,
     key: string,
-    proposals: Partial<Record<PerpsStrategy, PerpsProposal[]>>,
+    proposals: Partial<Record<PerpsStudyStrategy, PerpsProposal[]>>,
   ) {
     await this.tx(async (c) => {
       const x = await this.lock(c, scope);
@@ -643,11 +713,15 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
         }
       }
       const routed = r.calls.jev.result as { skip?: boolean } | null;
+      const contractProbe = (x.record.metadata as { purpose?: string })?.purpose === "contracts-v2";
       const valid =
         r.calls.direct.status === "completed" &&
         r.calls.jev.status === "completed" &&
-        (routed?.skip === true || r.calls.fallback.status === "completed") &&
-        PERPS_STUDY_STRATEGIES.every((s) => !!proposals[s]) &&
+        (x.record.config.version === 2
+          ? r.calls.review?.status === "completed" &&
+            (contractProbe || r.calls.fallback.status === "completed")
+          : routed?.skip === true || r.calls.fallback.status === "completed") &&
+        perpsStrategies(x.record.config).every((s) => !!proposals[s]) &&
         !Object.values(r.calls).some(
           (call) => call.status === "failed" || call.status === "started",
         );
@@ -656,7 +730,10 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
       r.finishedAt = x.now;
       if (!valid) {
         x.record.decisionStopReason ??= "INCOMPLETE_ROUND";
-        x.record.status = "monitoring";
+        x.record.status = x.record.config.version === 2 ? "closing" : "monitoring";
+        if (x.record.config.version === 2) {
+          x.record.graceUntil = Math.min(x.record.graceUntil!, x.now + 900000);
+        }
         await this.save(c, x);
       }
       await this.saveRound(c, x.id, r);
@@ -686,7 +763,12 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
     await this.tx(async (c) => {
       const x = await this.lock(c, scope);
       this.owned(c, x, lease);
-      x.record.status = "completed";
+      x.record.status =
+        x.record.config.version === 2 &&
+        x.record.decisionStopReason &&
+        x.record.decisionStopReason !== "SESSION_END"
+          ? "interrupted"
+          : "completed";
       await this.save(c, x);
     });
   }

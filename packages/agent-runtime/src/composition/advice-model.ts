@@ -5,11 +5,13 @@ import {
   composeBrief,
   type AdviceExecutionRepository,
   type AdviceJob,
+  type AdvicePolicy,
 } from "@pickler/core";
 import {
   ADVICE_INPUT_TOKENS,
   ADVICE_OUTPUT_TOKENS,
   adviceTokenCost,
+  adviceForecastBaseUrl,
   type AdviceAnswer,
   type AdviceEvidence,
   type AdviceModels,
@@ -113,11 +115,45 @@ async function bounded<T>(work: Promise<T>, signal: AbortSignal): Promise<T> {
     signal.removeEventListener("abort", abort);
   }
 }
+export interface AdviceModelConfiguration {
+  jev: string;
+  baseUrl: string;
+  model: string;
+  apiKey: string;
+}
+export function adviceProviderMatches(
+  policy: AdvicePolicy,
+  config: AdviceModelConfiguration,
+): boolean {
+  try {
+    const url = new URL(config.baseUrl);
+    return (
+      Boolean(config.jev.trim() && config.apiKey.trim()) &&
+      config.model === policy.deepseekModel &&
+      url.protocol === "https:" &&
+      !url.username &&
+      !url.password &&
+      !url.search &&
+      !url.hash &&
+      url.toString().replace(/\/+$/, "") === adviceForecastBaseUrl(policy)
+    );
+  } catch {
+    return false;
+  }
+}
 export function createAdviceModels(
   repository: AdviceExecutionRepository,
-  credentials: { jev: string; deepseek: string },
+  credentials: AdviceModelConfiguration,
   transport: typeof fetch = fetch,
 ): AdviceModels {
+  const assertProvider = (job: AdviceJob) => {
+    if (!adviceProviderMatches(job.policy, credentials)) {
+      throw new PilotError(
+        "ADVICE_CONFIGURATION_UNAVAILABLE",
+        "Configured model does not match the reserved provider",
+      );
+    }
+  };
   const started = async (job: AdviceJob, lane: "jev" | "deepseek", body: string) => {
     if (new TextEncoder().encode(body).length > ADVICE_INPUT_TOKENS) {
       throw new PilotError("MODEL_INPUT_TOO_LARGE", "Analysis input exceeds its reservation");
@@ -143,6 +179,8 @@ export function createAdviceModels(
       forecast: adviceForecastPrompt,
     }),
     async sufficient(job, evidence, signal) {
+      signal.throwIfAborted();
+      assertProvider(job);
       const questions = Object.fromEntries(
         Object.entries(labels).map(([field, choices]) => [
           field,
@@ -190,6 +228,8 @@ export function createAdviceModels(
       };
     },
     async forecast(job, evidence, parent): Promise<AdviceAnswer> {
+      parent.throwIfAborted();
+      assertProvider(job);
       const signal = AbortSignal.any([parent, AbortSignal.timeout(20000)]);
       const body = JSON.stringify({
         model: job.policy.deepseekModel,
@@ -204,10 +244,10 @@ export function createAdviceModels(
       await started(job, "deepseek", body);
       signal.throwIfAborted();
       const response = await bounded(
-        transport("https://api.deepseek.com/chat/completions", {
+        transport(`${adviceForecastBaseUrl(job.policy)}/chat/completions`, {
           method: "POST",
           headers: {
-            authorization: `Bearer ${credentials.deepseek}`,
+            authorization: `Bearer ${credentials.apiKey}`,
             "content-type": "application/json",
           },
           body,

@@ -89,6 +89,14 @@ The evaluation heartbeat exposes a synchronous liveness check. Hosts and runner 
 
 Perpl acquisition also supports explicitly frozen `rest-paced-20s-v1` and `stream-20s-v1`. `transport-choice.ts` owns the predeclared 9/10-and-strict-superiority rule. Preserve 30-second age, five-second future/skew, twenty-second joint deadline, twelve REST requests and original historical policy. REST repeated timestamps consume a two-second wait; no model retry or automatic transport fallback.
 
+## Local four-way perpetual comparison
+
+`perps-four-way-v2` owns the frozen Jev-only support/invalidation policy and DeepSeek-to-Jev material veto policy in `features/perps-study`. Keep the legacy three-arm protocol readable. The shared runner refreshes BTC/ETH once for all four accounts, bounds models to 45 seconds and enters closing-only state on technical failure. Jev selected probabilities are answer measures, never financial win probabilities.
+
+## Perpl decision audit
+
+The evaluation export includes auditPerpsDecisions and canonicalAudit. features/perps-study/audit.ts is a pure offline replay of existing policies and fill simulation, with an injected digest. Missing inputs remain NOT_VERIFIABLE; no provider, filesystem, database or model clients belong here. Keep hourly candle repetition distinct from stale data, omission slots distinct from holds, and observed decisions distinct from controlled fixtures.
+
 ## Perpetual advice
 
 The `perps` export includes `features/advice`: provider-neutral evidence validation, routing
@@ -96,3 +104,5 @@ coordination and exact USD model reservation arithmetic. Require 60 closed hourl
 existing snapshot/book coherence. Only coherent insufficiency becomes wait; data/provider failures
 fail. Models and data ports are injected; no positions, wallets or trading executors are reachable.
 See [Agent advice](../../docs/agent-advice.md) and deterministic advice tests.
+
+Advice policy v2 validates and freezes the HTTPS forecast base URL alongside its reviewed model/rates. Version 1 remains bound to direct DeepSeek. Reject credential-bearing/query/fragment URLs; reserve using the job’s frozen rates.

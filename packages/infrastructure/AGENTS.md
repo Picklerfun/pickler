@@ -414,6 +414,14 @@ contracts: the agents' client is two symbols with provenance on every value and 
 fractions. Do not route one through the other. Tests: `test/perpl-market-board.test.ts`, over the
 capture in `@pickler/perpl-context` and recorded candles in `test/fixtures/`.
 
+## Local four-way perpetual comparison
+
+Perpetual configuration v2 persists four agents and four reserved lanes in the existing study JSONB. Historical unknown usage may be acknowledged only by exact failed call identity/hash/reservation with no active owner; full reserved cost remains accounted. Any new unknown blocks admissions. The four-way paid ceiling is 35 calls and all sessions still share the original tenant/network/database USD 5 campaign.
+
+## Read-only Perpl audit export
+
+exportPerpsAudit uses a scoped repeatable-read READ ONLY transaction for study, rounds, events, paper accounts, attempts and movements. Never replace it with paper.view(), which can recover attempts and write history. It exports document data, not lease owners, credentials or database connection values. It releases the client on success and failure, and never initializes missing records.
+
 ## Advice persistence
 
 `PostgresAdviceStore` implements core advice ports with private jobs/events/calls in migration
@@ -422,3 +430,5 @@ Started unknown charges remain reserved and block the agent; never restart their
 trusted `reconcileCall` method requires terminal failure and verified evidence, uses frozen rates
 and records an audit event; it has no consumer HTTP route. Apply migration before updated
 research/preview admission queries. See [Agent advice](../../docs/agent-advice.md).
+
+Advice v2 call rows record the frozen forecast provider origin, not a misleading direct-DeepSeek label. Historical v1 rows retain their original meaning. This is a JSON policy extension and requires no schema migration.
