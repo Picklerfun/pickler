@@ -385,7 +385,9 @@ frame: top bar, rail, preview note, header, tiles, failed read, section, the Wal
 modals, with `useShellModals`), `top-bar.tsx`, `rail.tsx` (groups of items with `on`, `locked`, a
 `badge` drawn above zero, and a footer slot), `header.tsx` (`StudioHeader`, `HeaderDot`,
 `StudioTiles`), `status-chip.tsx`, `agent-avatar.tsx`, `banners.tsx`, `section.tsx`
-(`StudioSection`, `#<idPrefix>-section-<key>`), `identity.tsx`, `master.tsx`, `trade-soon.tsx`,
+(`StudioSection`, `#<idPrefix>-section-<key>`), `identity.tsx`, `master.tsx` (`Master`, which the
+draft draws whole, and its two pieces `MasterCard` and `Ledger`, which the live Wallets draws with
+its agent's wallet between them), `trade-soon.tsx`,
 `talk-soon.tsx`, `x-connect.tsx`, `setup-save.tsx` and `build-parts.tsx` (`CapSteppers`). Every id
 takes an `idPrefix` typed `StudioIdPrefix` (`"draft" | "live"`, `shell/model.ts`), so the draft's ids
 are unchanged and a typo cannot move one; a rail item's id is `railItemId(idPrefix, key)`
@@ -428,6 +430,27 @@ marketplace reads are `marketplaceMarkets`, `marketplaceMarket`, `marketplaceDir
 server-only). Each section is its own file taking `LiveSectionProps` (`live-section.tsx`, whose
 `LiveSection` is `#live-section-<key>`); Brief adds `stagedDraft` and Account `initialTab` and
 `stagedPasskeys`.
+
+The sections by file: RUN is `overview.tsx`, `positions.tsx` (also `FlatPositions`, which Overview
+draws), `record.tsx`, `decisions.tsx`, `console.tsx` (the shell's `TalkSoon`) and `posts.tsx`, with
+`sparkline.tsx` (WHAT IT WATCHES' trail, `aria-hidden` beside its words) and `run.module.css`; their
+own rules are `run-model.ts` (empty lines, Decisions' filters, Console's words, the sparkline's
+points; `studio-live-run.test.ts`). BUILD is `brief.tsx`, `sources.tsx`, `limits.tsx`,
+`controls.tsx` and `identity.tsx` with `build.module.css`, on the shell's `setup-save.tsx` and
+`build-parts.tsx`; their rules are `build-model.ts` (`studio-live-build.test.ts`). MARKETPLACE is
+`agents.tsx` (the directory), `markets.tsx` (the board) and `leaders.tsx` (the leaderboard): each
+draws its read's loading, failed-with-Retry and empty states through `ReadNote`, and its Ask, Back
+and Trade buttons through `Shut` (`market-parts.tsx`: `aria-disabled`, reachable, the reason in its
+title and name, SOON). YOU is `wallets.tsx` (the shell's `MasterCard` worded for the live canvas,
+the agent's wallet card, the shell's `Ledger`) and `account.tsx` (a tablist moved by arrow keys;
+Security with the account page's `PasskeyList` and `useAddPasskey`, the list read again once a
+passkey is added, the delegation rows and Sessions shut; Public profile with the account page's
+`ProfileSection` as it is, the WHAT SHOWS switches shut and the records line; Notifications shut).
+Account reads the passkeys and the profile with the Supabase session when it opens; a staged or
+preview studio reads neither (the stage's passkeys, `stagedProfile`). These five share
+`market.module.css`, and their rules beyond `model.ts` are `market-model.ts` (`readState`, `SHUT`,
+`READ_WORDS`, `backLabel`, `LEADER_ASK`, `liveAllocation`, `PASSKEY_NOTE`, `stagedProfile`,
+`tabAfter`, `passkeyTag`; `studio-live-market.test.ts`).
 
 `?stage=live|researching|decided` (`home/stage.ts`, outside production only) renders the home from
 `home/fixture.ts`, `?stage=draft*` the draft studio from `draft/fixture.ts`, `?stage=perpl-*`

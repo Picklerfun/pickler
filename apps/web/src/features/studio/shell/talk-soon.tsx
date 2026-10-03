@@ -5,7 +5,7 @@ import styles from "./cards.module.css";
 /**
  * Talk to it, drawn shut with a Soon tag until it opens (draft spec D12): the card, what it will
  * do in a line, the canvas's starters and the box, none of which does anything yet. The draft's
- * Console and the live Overview each hand it their own canvas's words.
+ * Console and the live Console each hand it their own canvas's words.
  */
 export function TalkSoon({
   idPrefix,
@@ -16,7 +16,7 @@ export function TalkSoon({
 }: {
   /** `draft` or `live`: the card is `#<idPrefix>-<section>-talk` (`draft-console-talk`). */
   idPrefix: StudioIdPrefix;
-  /** The section the card is drawn in (`console`, `overview`). */
+  /** The section the card is drawn in (`console` in both studios). */
   section: string;
   /** What talking to it will do. It may not promise what the Perpl runtime will do (D19). */
   note: string;
