@@ -95,3 +95,21 @@ isolation and repeated read-only export are tested against isolated PostgreSQL. 
 tests cover exact thresholds, conflicting support, uncertainty, material veto and strict runtime
 responses. These tests are controlled circuit validation, not decisions made by real models or
 evidence of profitability.
+
+## Delivery validation
+
+Code tested: 3869205eaf92cc1ed69b42a9470b6335cc5656da, stacked on the open PR #80.
+Main was verified at fed9524418c4257a175983c08c0dc3f6360ae64f. Its unrelated advice integration
+is excluded from the audit diff. Documentation-only commits follow the tested code commit.
+
+- Full root PostgreSQL/controlled suite: 2,340 passed, zero failures, three optional skips.
+- Root format, lint and types: passed.
+- Shared packages and Node agent-service build: passed.
+- API, research, trading and indexer Worker dry-run builds: passed; nothing deployed.
+- Final read-only export payload SHA-256: f1948e48a0e64cb67757ca25876acba2b2eedd8ef776e96b0ccc333bda2310c6.
+
+The final payload hash equals the preliminary export before the tests, confirming the exported
+historical study, accounts and diagnostics remained unchanged. Private artifacts are deliberately
+untracked. The final analyzer report contains 64 rows, 56 matching conversions, zero divergences,
+42 model holds, six complete slots and two documented omissions. Historical missing request bytes
+and execution-time risk state remain unverifiable rather than reconstructed.
