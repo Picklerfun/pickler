@@ -342,7 +342,7 @@ except the ledger. The studio agent DTO carries `visibility`, `publishedAt` (ISO
   core from the two stored configs. Another owner's agent is 404 `NOT_FOUND`. A voice also
   renames the profile's voice through `directory.updateIdentity`. Answers the studio agent; 400
   `INVALID_BRIEF` / `INVALID_INPUT`.
-- `GET /agents/:id/versions` (L9; manage rights, so a read-only member is 403): `{ versions:
+- `GET /agents/:id/versions` (L10; manage rights, so a read-only member is 403): `{ versions:
 [{ version, summary, at }] }` from `directory.versions`, newest first, at most 20, ISO `at`;
   another owner's agent is 404 `NOT_FOUND`. A version saved before migration 0026 has no row.
 - `PUT /agents/:id/identity { name?, avatar?: { accent, pattern 0–5 } }`: the studio agent; 400

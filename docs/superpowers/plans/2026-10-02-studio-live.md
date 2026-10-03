@@ -25,28 +25,28 @@
 - `fixture.ts`: `liveStudioFixture(stage)` for every stage in spec §7 (realistic DTO-shaped data, including a sample-board and a perpl-board variant).
 - `live-studio.tsx`: `StudioShell<LiveSectionKey>` configured per L3–L6 and L14; header controls (Pause entries / Resume with pending and error states; "Stop · close all" `aria-disabled` + Soon); the strip.
 - `studio.tsx`: `studioKind` chooses; Go Public lands on the live Overview; `?section=` carries over where keys match; stages `perpl-*` in `home/stage.ts`.
-- [ ] Commit "Web: the live studio's shell, model and fixture".
+- [x] Commit "Web: the live studio's shell, model and fixture".
 
 ### Task 4: RUN sections — Overview, Positions, Record, Decisions, Console, Posts
 
 **Files:** the six section files, `live/sparkline.tsx` (SVG polyline, tokens, `aria-hidden` with a text alternative), `live/run.module.css`. Canvas ranges in the header; spec L6–L8. Console uses the shell's `TalkSoon`.
 
-- [ ] Commit "Web: the live RUN sections".
+- [x] Commit "Web: the live RUN sections".
 
 ### Task 5: BUILD sections — Brief, Sources & rules, Limits, Controls, Identity
 
 **Files:** the five section files, `live/build.module.css`; reuse `shell/setup-save.tsx`, `shell/build-parts.tsx` (extend `CapSteppers` with a per-row `sub` line), `shell/build-model.ts`, shell `Identity`. Spec L9–L16. Move into `shell/` any draft rule both need (brief fields, web box, wallet card) rather than copying.
 
-- [ ] Commit "Web: the live BUILD sections".
+- [x] Commit "Web: the live BUILD sections".
 
 ### Task 6: MARKETPLACE and YOU — Agents, Markets, Leaderboard, Wallets, Account
 
 **Files:** the five section files, `live/market.module.css`; Wallets reuses the shell's wallet pieces and `ledgerRows`; Account reuses `features/account/sections/security.tsx` and `profile.tsx` (add props if they need to render inside the studio; keep `/account` unchanged and its tests green) and the account's add-passkey ceremony. Spec L17–L21.
 
-- [ ] Commit "Web: the live MARKETPLACE and YOU sections".
+- [x] Commit "Web: the live MARKETPLACE and YOU sections".
 
 ### Task 7: Design harness and full verification
 
 **Files:** `scripts/design/routes.mjs` (one route per `perpl-*` stage, `product: "studio"`, `surface: "dark"`, `task: "Live studio"`, proves per spec §7; add the task to `HOLDS`).
 
-- [ ] Run in order, fixing failures at the root: `npm run build:shared`, `npm test`, `npm run typecheck`, `npm run lint`, `npm run format:check`, `npm run check:architecture`, `npm run design:source`, `npm run api:openapi -- --output /tmp/oa.json && node --import tsx --test workers/api/test/openapi.test.ts`, `npm run design:check` (ports 3001 and 8799 free first; ~10 min; no self-matching waiters). Look at desktop and phone screenshots of the live AND draft routes against their canvases; fix glaring breakage. Commit "Design harness: the live studio's staged states".
+- [x] Run in order, fixing failures at the root: `npm run build:shared`, `npm test`, `npm run typecheck`, `npm run lint`, `npm run format:check`, `npm run check:architecture`, `npm run design:source`, `npm run api:openapi -- --output /tmp/oa.json && node --import tsx --test workers/api/test/openapi.test.ts`, `npm run design:check` (ports 3001 and 8799 free first; ~10 min; no self-matching waiters). Look at desktop and phone screenshots of the live AND draft routes against their canvases; fix glaring breakage. Commit "Design harness: the live studio's staged states".

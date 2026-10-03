@@ -246,7 +246,9 @@ and after the write, and its line is inserted with the new version number in the
 under the product agent id `pickler.product_agents` maps the scope to; a failed write records
 nothing and a failed record rolls the write back. A runtime agent with no product row records
 none. `PostgresStudioDirectory.versions(access, productAgentId)` lists the newest 20, and is
-`NOT_FOUND` outside the workspace.
+`NOT_FOUND` outside the workspace. Apply 0026 before deploying the API: every `PUT /setup` inserts
+a version row in its transaction, so an API without the table fails every setup save, the draft
+studio's included.
 
 ## Wallet sign-in nonces
 
