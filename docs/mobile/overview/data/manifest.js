@@ -32,7 +32,7 @@ window.DOCS = [
     summary: 'Con la wallet desbloqueada la app entra sola a la API del producto y, si la cuenta no tiene username, lo pide sin dejar saltarlo. Apagado mientras no se configure PICKLER_API_URL.',
     file: 'dev/2026-10-02-mobile-account.html',
     types: ['feature'],
-    status: 'in_progress',
+    status: 'shipped',
     tags: ['mobile', 'account', 'username', 'siwe'],
   },
   {
