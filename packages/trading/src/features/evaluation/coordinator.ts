@@ -7,7 +7,17 @@ export const EVALUATION_PROTOCOLS = {
     instrument: "perpetual",
     strategySetVersion: 2,
     strategies: PERPS_FOUR_WAY_STRATEGIES,
-    commands: ["prepare", "preflight", "validate", "run", "status", "stop", "settle", "report"],
+    commands: [
+      "prepare",
+      "preflight",
+      "validate",
+      "run",
+      "status",
+      "stop",
+      "settle",
+      "report",
+      "audit-export",
+    ],
     paidCommands: ["validate", "run"],
     riskPolicy: "conservative-1x-v1",
     accounting: "acknowledged-historical-reservations-v2",
@@ -18,6 +28,7 @@ export const EVALUATION_PROTOCOLS = {
     strategySetVersion: 1,
     strategies: PERPS_STUDY_STRATEGIES,
     commands: [
+      "audit-export",
       "stability",
       "data-diagnostic",
       "prepare",
@@ -86,6 +97,8 @@ export const EVALUATION_PROTOCOLS = {
 } as const;
 export type EvaluationProtocol = keyof typeof EVALUATION_PROTOCOLS;
 export type EvaluationCommand =
+  | "audit"
+  | "audit-export"
   | "stability"
   | "data-diagnostic"
   | "prepare"
