@@ -31,6 +31,11 @@ test("controlled API → Queue → actual model adapters → PostgreSQL → shar
   const access = (await studio.access(owner, null))!;
   await db.pool.query("UPDATE pickler.research_access SET enabled=true WHERE user_id=$1", [owner]);
   const fixture = adviceFixture(Date.now());
+  fixture.job.policy = {
+    ...fixture.job.policy,
+    version: 2,
+    deepseekBaseUrl: "https://dashscope.example/compatible-mode/v1",
+  };
   const client = await db.pool.connect();
   try {
     await client.query("BEGIN");
@@ -61,7 +66,12 @@ test("controlled API → Queue → actual model adapters → PostgreSQL → shar
   const notifications: unknown[] = [];
   const models = createAdviceModels(
     repository,
-    { jev: "controlled", deepseek: "controlled" },
+    {
+      jev: "controlled",
+      baseUrl: "https://dashscope.example/compatible-mode/v1",
+      model: "deepseek-chat",
+      apiKey: "controlled",
+    },
     async (url, init) => {
       calls++;
       const body = JSON.parse(init!.body as string);
@@ -83,6 +93,8 @@ test("controlled API → Queue → actual model adapters → PostgreSQL → shar
           },
         });
       }
+      assert.equal(String(url), "https://dashscope.example/compatible-mode/v1/chat/completions");
+      assert.equal(init?.redirect, "manual");
       assert.doesNotMatch(
         body.messages[1].content,
         /readiness|probabilities|positions|capital|wallet/,
@@ -209,6 +221,15 @@ test("controlled API → Queue → actual model adapters → PostgreSQL → shar
       )
     ).rows[0].n,
     2,
+  );
+  assert.equal(
+    (
+      await db.pool.query(
+        "SELECT provider FROM pickler.advice_calls WHERE job_id=$1 AND lane='deepseek'",
+        [id],
+      )
+    ).rows[0].provider,
+    "https://dashscope.example",
   );
   assert.equal(
     (await db.pool.query("SELECT count(*)::int AS n FROM pickler.perps_paper_accounts")).rows[0].n,

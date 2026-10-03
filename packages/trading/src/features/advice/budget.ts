@@ -40,9 +40,22 @@ export function adviceReservations(policy: AdvicePolicy, web: boolean): Record<A
     "web-fallback": (web ? usdMicros(policy.webSearchUsd) : 0n).toString(),
   };
 }
+export function adviceForecastBaseUrl(policy: AdvicePolicy): string {
+  const raw = policy.version === 1 ? "https://api.deepseek.com" : policy.deepseekBaseUrl;
+  try {
+    const url = new URL(raw);
+    if (url.protocol !== "https:" || url.username || url.password || url.search || url.hash) {
+      throw new Error("Invalid provider URL");
+    }
+    return url.toString().replace(/\/+$/, "");
+  } catch {
+    throw new PilotError("ADVICE_POLICY_INVALID", "A trusted HTTPS provider base URL is required");
+  }
+}
 export function assertAdvicePolicy(policy: AdvicePolicy) {
+  adviceForecastBaseUrl(policy);
   if (
-    policy.version !== 1 ||
+    ![1, 2].includes(policy.version) ||
     policy.jevModel !== "jev-1.13.0" ||
     !/^[a-zA-Z0-9._-]{1,100}$/.test(policy.deepseekModel) ||
     usdMicros(policy.outputRates.jev) !== 0n ||

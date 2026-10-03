@@ -13,6 +13,7 @@ import {
 } from "@pickler/core";
 import {
   assertAdvicePolicy,
+  adviceForecastBaseUrl,
   adviceReservations,
   adviceTokenCost,
   usdMicros,
@@ -199,7 +200,13 @@ export class PostgresAdviceStore implements AdviceExecutionRepository {
                 ? policy.deepseekModel
                 : "exa-search",
             amount,
-            lane === "jev" ? "typesafe" : lane === "deepseek" ? "deepseek" : "exa",
+            lane === "jev"
+              ? "typesafe"
+              : lane === "deepseek"
+                ? policy.version === 1
+                  ? "deepseek"
+                  : new URL(adviceForecastBaseUrl(policy)).origin
+                : "exa",
           ],
         );
       }
