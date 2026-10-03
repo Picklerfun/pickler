@@ -2,7 +2,7 @@ import { createSiweMessage } from "viem/siwe";
 import { privateKeyToAccount } from "viem/accounts";
 import { call, describeIdentityError, type DoFetch, IdentityError } from "../src/identity/api";
 import { checkSignInMessage, SIGN_IN_STATEMENT, signInWithWallet } from "../src/identity/session";
-import { appQuiet, gateShows } from "../src/identity/state";
+import { appQuiet, gateShows, perplOnboardingActive } from "../src/identity/state";
 
 // Tres cosas que la revisión de #78 dejó pendientes: el deadline del cliente cubre también el body; la pantalla
 // obligatoria no cae encima del onboarding de Perpl; y la app no firma nada que no sea el mensaje de entrada de SU
@@ -67,6 +67,15 @@ describe("the username screen waits for the foreground to be quiet", () => {
     expect(appQuiet({ treasuryBusy: true, readPending: false, perplOnboarding: false })).toBe(false);
     expect(appQuiet({ treasuryBusy: false, readPending: true, perplOnboarding: false })).toBe(false);
     expect(appQuiet({ treasuryBusy: false, readPending: false, perplOnboarding: true })).toBe(false);
+  });
+
+  test("Perpl's onboarding counts while it runs, not once it stopped on an error", () => {
+    expect(perplOnboardingActive({ status: "onboarding" })).toBe(true);
+    // Sin MON o con la tx rechazada, Perpl se queda en `onboarding` con `error` y nada corre: la pantalla sí puede salir.
+    expect(perplOnboardingActive({ status: "onboarding", error: "You need test MON for gas." })).toBe(false);
+    expect(perplOnboardingActive({ status: "ready" })).toBe(false);
+    expect(perplOnboardingActive({ status: "none" })).toBe(false);
+    expect(perplOnboardingActive({ status: "loading" })).toBe(false);
   });
 
   test("once shown it stays, whatever starts underneath; and it never shows for an account that is not known to lack a username", () => {

@@ -52,9 +52,10 @@ code. Do not rely on what earlier SDKs did.
   reason that is not the username itself the gate lets go for the session. The app moves funds; do
   not add a path where the account keeps somebody out of them. Before saying a claim failed the
   hook signs in again and reads the account, because the answer may only have been lost. The gate
-  does not open over a treasury operation, a read in flight or Perpl's onboarding (`appQuiet` in
-  `src/identity/state.ts`, read by `App.tsx`): each of those unlocks the wallet, and unlocking is
-  what triggers the check. The identity client's deadline (`src/identity/api.ts`) covers the body
+  does not open over a treasury operation, a read in flight or Perpl's onboarding while it runs
+  (`appQuiet` and `perplOnboardingActive` in `src/identity/state.ts`, read by `App.tsx`): each of
+  those unlocks the wallet, and unlocking is what triggers the check. An onboarding stopped on an
+  error runs nothing and does not count. The identity client's deadline (`src/identity/api.ts`) covers the body
   as well as the headers. The access token stays in
   memory and is never stored; what is stored is `{ address, handle, api }` (`pickler.identity.v1`). Linking to an account under a browser wallet happens
   on the web, where that wallet can sign; the gate says so and checks again. The feature is **off

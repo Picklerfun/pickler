@@ -28,6 +28,13 @@ export type Foreground = {
  */
 export const appQuiet = (f: Foreground): boolean => !f.treasuryBusy && !f.readPending && !f.perplOnboarding;
 
+/**
+ * Perpl está habilitando trading: `onboarding` sin error. Detenido en un error (sin MON, tx rechazada) ya no corre
+ * nada —la persona ve la pantalla de reintento— y la cuenta sí puede pedir su username.
+ */
+export const perplOnboardingActive = (state: { status: string; error?: string }): boolean =>
+  state.status === "onboarding" && !state.error;
+
 /** Se muestra si la cuenta no tiene username y (ya se mostraba, o no hay nada en curso). Una vez abierta se queda. */
 export const gateShows = (identity: Identity, shownBefore: boolean, quiet: boolean): boolean =>
   gateOpen(identity) && (shownBefore || quiet);

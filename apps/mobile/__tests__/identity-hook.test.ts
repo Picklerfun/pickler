@@ -100,6 +100,18 @@ test("a locked wallet with nothing stored is not asked: that would be a Face ID 
   expect(unlockStoredWallet).not.toHaveBeenCalled();
 });
 
+test("a message that is not this wallet's sign-in is never signed, and holds nobody", async () => {
+  // La misma ruta de /nonce puede emitir el mensaje que deja entrar a otra wallet a la cuenta. Si llega, no se firma y
+  // la cuenta queda como no alcanzable: nadie se queda fuera de sus fondos por ello.
+  api.fetchChallenge.mockResolvedValue(createSiweMessage({ version: "1", domain: "pickler.fun", uri: "https://pickler.fun", address: A, chainId: 10143, nonce: "a1b2c3d4e5f6a1b2c3d4e5f6", issuedAt: new Date(1_790_000_000_000), statement: `Link wallet ${B} to this wallet's Pickler account` }));
+  api.fetchProfile.mockResolvedValue(null);
+  const opened = wallet(A);
+  await mount({ status: "unlocked", wallet: opened as never });
+  expect(opened.account.signMessage).not.toHaveBeenCalled();
+  expect(api.presentSignature).not.toHaveBeenCalled();
+  expect(latest.identity).toEqual({ status: "unreachable" });
+});
+
 test("an API that cannot be reached holds nobody", async () => {
   api.fetchChallenge.mockRejectedValue(new IdentityError(0, "network"));
   await mount(unlocked(A));

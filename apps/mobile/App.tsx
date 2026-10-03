@@ -23,7 +23,7 @@ import type { PushTarget } from "./src/reads/push";
 import { pushTarget } from "./src/reads/push";
 import { UsernameGate } from "./src/screens/username";
 import { accountAddress } from "./src/account";
-import { appQuiet, gateShows } from "./src/identity/state";
+import { appQuiet, gateShows, perplOnboardingActive } from "./src/identity/state";
 import { perplActiveFor, readsActiveFor, screenHasData, useAppStore } from "./src/store";
 
 const NONE = { status: "none" } as const;
@@ -103,7 +103,7 @@ export default function App() {
   const ctx: AppCtx = { ...store, account, treasury, perpl, marketData, reads, identity, notifications, onWallet, lock, signOut, seal, setControls };
   // La pantalla del username no cae encima de una operación en curso: quien desbloqueó para retirar, pedir una read o
   // habilitar trading en Perpl ve primero cómo termina (src/identity/state.ts). Una vez abierta se queda.
-  const quiet = appQuiet({ treasuryBusy: treasury.busy, readPending: reads.request.step === "pending", perplOnboarding: perpl.state.status === "onboarding" });
+  const quiet = appQuiet({ treasuryBusy: treasury.busy, readPending: reads.request.step === "pending", perplOnboarding: perplOnboardingActive(perpl.state) });
   gateShown.current = gateShows(identity.identity, gateShown.current, quiet);
   const gateAddress = gateShown.current ? accountAddress(account) : null;
 
