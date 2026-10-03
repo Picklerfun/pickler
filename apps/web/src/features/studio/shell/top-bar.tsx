@@ -33,6 +33,11 @@ export interface StudioTopBarProps {
   onSwitch(agentId: string): void;
   /** "+ New agent": open the create screen. */
   onNew(): void;
+  /**
+   * The account button: the live studio opens its Account section (studio-live-v1 L3). Without it
+   * the button links to `/account`, as the draft's does.
+   */
+  onAccount?: (() => void) | undefined;
 }
 
 /**
@@ -52,6 +57,7 @@ export function StudioTopBar({
   onCredits,
   onSwitch,
   onNew,
+  onAccount,
 }: StudioTopBarProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const name = agent.name ?? "Your agent";
@@ -83,6 +89,15 @@ export function StudioTopBar({
       window.removeEventListener("click", away);
     };
   }, [menuOpen]);
+
+  const swatch = (
+    <span className={studio.swatch} aria-hidden="true">
+      <i data-swatch="lime" />
+      <i data-swatch="violet" />
+      <i data-swatch="amber" />
+      <i data-swatch="blue" />
+    </span>
+  );
 
   return (
     <header className={home.top}>
@@ -185,14 +200,20 @@ export function StudioTopBar({
         <small className={topBar.creditsLabel}>AI CREDITS</small>
         <span>Soon</span>
       </button>
-      <Link href="/account" className={home.account} aria-label="Account">
-        <span className={studio.swatch} aria-hidden="true">
-          <i data-swatch="lime" />
-          <i data-swatch="violet" />
-          <i data-swatch="amber" />
-          <i data-swatch="blue" />
-        </span>
-      </Link>
+      {onAccount ? (
+        <button
+          type="button"
+          className={styles.accountButton}
+          aria-label="Account"
+          onClick={onAccount}
+        >
+          {swatch}
+        </button>
+      ) : (
+        <Link href="/account" className={home.account} aria-label="Account">
+          {swatch}
+        </Link>
+      )}
     </header>
   );
 }

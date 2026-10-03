@@ -79,6 +79,10 @@ export interface StudioShellProps<K extends string> {
   onSwitch(agentId: string): void;
   /** "+ New agent": open the create screen. */
   onNew(): void;
+  /** The top bar's account button opens this (the live studio's Account); a link to `/account` without. */
+  onAccount?: (() => void) | undefined;
+  /** Between the top bar and the body, full width: the live studio's strip. */
+  strip?: ReactNode;
   /** The section. */
   children: ReactNode;
 }
@@ -109,6 +113,8 @@ export function StudioShell<K extends string>({
   onRefreshAgent,
   onSwitch,
   onNew,
+  onAccount,
+  strip,
   children,
 }: StudioShellProps<K>) {
   const { modal } = modals;
@@ -126,7 +132,9 @@ export function StudioShell<K extends string>({
         onCredits={modals.openCredits}
         onSwitch={onSwitch}
         onNew={onNew}
+        onAccount={onAccount}
       />
+      {strip}
 
       <div className={styles.body}>
         <StudioRail idPrefix={idPrefix} groups={rail} onSection={onSection} footer={railFooter} />

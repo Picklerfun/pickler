@@ -22,7 +22,8 @@ src/features/studio/       # Studio sections, history, research result and API c
 src/features/studio/new-agent # Creating an agent: one screen, wallet first, then funding, then Create
 src/features/studio/home   # The home: status, wallet and deposit, schedule, picks; the create gate
 src/features/studio/draft  # A private draft's own studio: rail with locks, tiles, Go Public, its sections
-src/features/studio/shell  # The chrome and parts both agent studios share (draft now, live next)
+src/features/studio/live   # A published Perpl agent's studio: strip, rail, Pause entries, its sections
+src/features/studio/shell  # The chrome and parts both agent studios share (draft and live)
 src/features/markets/      # Surface, trade ticket, ask ticket and the ticket's own arithmetic
 src/server/
   api-client.ts            # API Service Binding; explicit loopback-only next-dev fallback
@@ -402,8 +403,36 @@ under its own names. The bundler resolves one level of `composes`, so a class co
 itself composes names both, and `design:source` wants every shell class named by a shell component
 or composed inside its own sheet.
 
+`features/studio/live/` is the studio of a published Perpl agent (docs/specs/studio-live-v1.md):
+`studio.tsx` asks `studioKind(agent)` (`live/model.ts`: `draft`, `live` for a non-draft with
+`config.perpl`, `legacy` otherwise, which keeps the old home and rail) and renders `LiveStudio`
+whichever section was asked for; Go Public lands on its Overview, and a `?section=` key the live
+rail also has carries over. `live-studio.tsx` configures the shell: the live strip under the top
+bar (`live-strip.tsx`, the shell's `strip` slot), the rail of RUN / BUILD / MARKETPLACE / YOU with
+Docs, Community, Support and "ITS PUBLIC PROFILE" in its footer, the account button opening Account
+(the top bar's `onAccount`), the PUBLIC · RUNS SOON / PAUSED · EXITS ONLY chip, "Pause entries" /
+"Resume" (real, `PUT /pause`, pending and inline failure) and "Stop · close all" shut with Soon,
+the four tiles, and the degraded banner whose "Fix it" opens Limits. Section keys are the canvas's
+(`skills` is Sources & rules, `master` Wallets, `leaders` Leaderboard). `live/model.ts` is pure and
+pinned in `studio-live-model.test.ts`: rail, status, header line, tiles, strip, warnings, health,
+meters, the five caps (`liveCaps`, `liveCapsStepper`; `RISK_BOUNDS`, `RISK_DEFAULTS` and
+`ENTRY_DEFAULTS` are literal copies of core's, pinned by a dynamic import, as is `liveEntry` against
+`effectiveEntry`), how it enters, the markets it watches and their SAMPLE DATA / STALE tag, the
+brief's bar and versions, IT MAY, Posts' header, the directory, board and leaderboard, the wallet
+cards and the account's rows; a field the DTO lacks reads "—". `use-live.ts` is built on
+`useAgentStudio` through `readMore` (versions, the board and one detail per watched market) and
+reads the directory and leaderboard the first time their section opens; a failed live read sits in
+its own field (`"failed"`), never in the shell's error; `pause` is its one write of its own. The
+marketplace reads are `marketplaceMarkets`, `marketplaceMarket`, `marketplaceDirectory` and
+`marketplaceLeaderboard` in `api.ts` (browser, `/api/v1/marketplace/*`; `server/container.ts` is
+server-only). Each section is its own file taking `LiveSectionProps` (`live-section.tsx`, whose
+`LiveSection` is `#live-section-<key>`); Brief adds `stagedDraft` and Account `initialTab` and
+`stagedPasskeys`.
+
 `?stage=live|researching|decided` (`home/stage.ts`, outside production only) renders the home from
-`home/fixture.ts`, `?stage=draft*` the draft studio from `draft/fixture.ts`, and `?stage=empty` and
+`home/fixture.ts`, `?stage=draft*` the draft studio from `draft/fixture.ts`, `?stage=perpl-*`
+(`LIVE_STAGES`, spec §7) the live studio from `live/fixture.ts` (Perpl's board, but the labelled
+sample board on `perpl-markets`), and `?stage=empty` and
 `?stage=create-*` the create screen (`StudioStage`); the run stages come from the canvas's run, built from real event types on a fixed clock so the server's
 HTML matches the browser's. It is gated on the build alone, because
 `previewAllowed` also needs Supabase unconfigured. The staged home reads no session, fetches

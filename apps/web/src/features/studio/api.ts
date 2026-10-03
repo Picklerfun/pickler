@@ -10,9 +10,13 @@ import type {
   paperOrderSchema,
   studioAgentSchema,
   ActivityDto,
+  DirectoryAgentDto,
   DraftCreateDto,
   IdentityUpdateDto,
   LedgerDto,
+  LeaderboardDto,
+  MarketDetailDto,
+  PerpMarketDto,
   PublishDto,
   SetupUpdateDto,
   SignedActivityDto,
@@ -175,6 +179,16 @@ export const agentActivity = (agentId: string, signal?: AbortSignal) =>
  */
 export const agentVersions = (agentId: string, signal?: AbortSignal) =>
   studioApi<VersionsDto>(`/agents/${agentId}/versions`, signal ? { signal } : {});
+
+/**
+ * `PUT /agents/:id/pause { paused }`: "Pause entries" / "Resume" (studio-live-v1 L4). Pausing
+ * refuses new paper opens; exits are untouched.
+ */
+export const setPaused = (agentId: string, paused: boolean) =>
+  studioApi<{ ok: true }>(`/agents/${agentId}/pause`, {
+    method: "PUT",
+    body: JSON.stringify({ paused }),
+  });
 
 /** `GET /agents/:id/x`: the verified account, the live challenge, and whether X is open yet. */
 export const xState = (agentId: string, signal?: AbortSignal) =>
@@ -375,3 +389,37 @@ export const transferConfirm = (body: TransferRequestDto, signed: SignedActivity
     method: "POST",
     body: JSON.stringify({ ...body, signed }),
   });
+
+// ─── The marketplace's public reads (`/v1/marketplace`), for the live studio ───────────────────────
+//
+// Public and unauthenticated, plain JSON like the studio routes. The server-side facade
+// (`server/container.ts`) is server-only, so the browser reads them here, through the same-origin
+// transport. A failure throws `StudioError` with the status as its code.
+
+async function marketplaceApi<T>(path: string, signal?: AbortSignal): Promise<T> {
+  const response = await fetch(`/api/v1/marketplace${path}`, {
+    cache: "no-store",
+    ...(signal ? { signal } : {}),
+  });
+  if (!response.ok) {
+    const code = String(response.status);
+    throw new StudioError(code, messageFor(code, undefined));
+  }
+  return (await response.json()) as T;
+}
+
+/** `GET /marketplace/markets`: Perpl's board (or the labelled sample board); 503 when unread. */
+export const marketplaceMarkets = (signal?: AbortSignal) =>
+  marketplaceApi<PerpMarketDto[]>("/markets", signal);
+
+/** `GET /marketplace/markets/:symbol` ("BTC-PERP"): the market with its 24 h trail, or null. */
+export const marketplaceMarket = (symbol: string, signal?: AbortSignal) =>
+  marketplaceApi<MarketDetailDto | null>(`/markets/${encodeURIComponent(symbol)}`, signal);
+
+/** `GET /marketplace/directory`: every public agent, in the directory's order. */
+export const marketplaceDirectory = (signal?: AbortSignal) =>
+  marketplaceApi<DirectoryAgentDto[]>("/directory", signal);
+
+/** `GET /marketplace/leaderboard`: ranked by score, with the weights that make it. */
+export const marketplaceLeaderboard = (signal?: AbortSignal) =>
+  marketplaceApi<LeaderboardDto>("/leaderboard", signal);

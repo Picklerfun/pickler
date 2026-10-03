@@ -1,0 +1,256 @@
+/* The live studio's own chrome (studio-live-v1 L3–L6, L14), from `Pickler Studio v5 Live.dc.html`:
+ * the strip under the top bar (canvas 88–109), the rail's foot (126–133), the header's controls
+ * (147–152) and the degraded banner (163–170). The rest of the chrome is the shell's
+ * (`../shell/shell.module.css`).
+ *
+ * Every colour is a `--pk-*` token on the dark surface: the canvas's #15182A strip and buttons are
+ * `--pk-panel`, its #0B0D1A wells `--pk-bg`, its #9AA0B8 and #5A5F78 labels `--pk-ink-muted` and
+ * `--pk-ink-faint`, its amber banner the caution state's wash and ink.
+ */
+
+/* ---------- The live strip ---------- */
+
+.strip {
+  border-bottom: 1px solid var(--pk-rule);
+  background: var(--pk-panel);
+}
+.stripButton {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+  padding: 9px 20px;
+  border: none;
+  background: transparent;
+  color: var(--pk-ink-muted);
+  text-align: left;
+  font: 600 11px/1.3 var(--pk-font);
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+.stripButton:hover {
+  color: var(--pk-ink);
+}
+.stripDot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-ink-faint);
+}
+.stripLine {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.stripCount,
+.stripToggle {
+  flex: none;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+}
+.stripToggle {
+  color: var(--pk-ink-faint);
+}
+.stripLog {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 4px 20px 12px 37px;
+}
+.stripStep {
+  display: flex;
+  gap: 12px;
+  margin: 0;
+  font: 500 12px/1.4 var(--pk-font);
+  color: var(--pk-ink-muted);
+}
+.stripAt {
+  flex: none;
+  color: var(--pk-ink-faint);
+  font-variant-numeric: tabular-nums;
+}
+.stripMore {
+  align-self: flex-start;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--pk-ink);
+  font: 600 10px/1 var(--pk-font);
+  letter-spacing: 0.1em;
+  cursor: pointer;
+}
+.stripMore:hover {
+  color: var(--pk-lime);
+}
+
+/* ---------- The rail's foot ---------- */
+
+.help {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-top: 12px;
+  border-top: 1px solid var(--pk-rule);
+}
+.helpLink,
+.profileLink {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  border-radius: var(--pk-radius-md);
+  color: var(--pk-ink-muted);
+  text-decoration: none;
+  font: 600 12.5px/1.2 var(--pk-font);
+  transition: color var(--pk-duration);
+}
+.helpLink:hover,
+.profileLink:hover {
+  color: var(--pk-ink);
+}
+.profileLink {
+  margin-top: 8px;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+}
+
+/* ---------- The header's controls ---------- */
+
+.controls {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+.controlRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.pauseButton,
+.stopButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 10px 14px;
+  border: none;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-panel);
+  color: var(--pk-ink);
+  font: 600 13px/1 var(--pk-font);
+  letter-spacing: -0.02em;
+  cursor: pointer;
+  transition: background var(--pk-duration);
+}
+.pauseButton:hover:not(:disabled) {
+  background: var(--pk-panel-2);
+}
+.pauseButton[data-paused="true"] {
+  background: var(--pk-state-caution-bg);
+  color: var(--pk-state-caution-ink);
+}
+.pauseButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+/* Shut until live trading: still focusable, so its title and Soon are read out. */
+.stopButton[aria-disabled="true"] {
+  color: var(--pk-ink-muted);
+  cursor: not-allowed;
+}
+.soon {
+  padding: 4px 7px;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-bg);
+  font: 600 9px/1 var(--pk-font);
+  letter-spacing: 0.1em;
+  color: var(--pk-ink-muted);
+}
+.controlError {
+  margin: 0;
+  font: 500 12px/1.4 var(--pk-font);
+  color: var(--pk-loss);
+}
+
+/* ---------- The degraded banner ---------- */
+
+.banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: var(--pk-radius-md);
+  background: var(--pk-state-caution-bg);
+  color: var(--pk-state-caution-ink);
+}
+.banner svg {
+  flex: none;
+}
+.bannerText {
+  flex: 1 1 auto;
+  min-width: 0;
+  font: 600 11px/1.4 var(--pk-font);
+  letter-spacing: 0.06em;
+}
+.bannerFix {
+  flex: none;
+  padding: 8px 12px;
+  border: none;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-state-caution-ink);
+  color: var(--pk-bg);
+  font: 600 12px/1 var(--pk-font);
+  cursor: pointer;
+}
+
+.stripButton:focus-visible,
+.stripMore:focus-visible,
+.helpLink:focus-visible,
+.profileLink:focus-visible,
+.pauseButton:focus-visible,
+.stopButton:focus-visible,
+.bannerFix:focus-visible {
+  outline: 2px solid var(--pk-focus);
+  outline-offset: 2px;
+}
+
+/* ---------- Phone ---------- */
+
+@media (max-width: 860px) {
+  .stripButton {
+    padding: 9px 16px;
+  }
+  .stripLog {
+    padding: 4px 16px 12px 33px;
+  }
+  .help {
+    flex-direction: row;
+    padding-top: 0;
+    padding-left: 12px;
+    border-top: none;
+    border-left: 1px solid var(--pk-rule);
+  }
+  .helpLink,
+  .profileLink {
+    white-space: nowrap;
+  }
+  .profileLink {
+    margin-top: 0;
+  }
+  .controls {
+    align-items: flex-start;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .helpLink,
+  .profileLink,
+  .pauseButton,
+  .stopButton {
+    transition: none;
+  }
+}
