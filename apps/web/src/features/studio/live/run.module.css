@@ -220,6 +220,10 @@
 .filterCount {
   color: var(--pk-ink-faint);
 }
+/* On the pressed filter's inverted pill the faint ink is 3.1:1; the label's own ink carries it. */
+.filter[aria-pressed="true"] .filterCount {
+  color: inherit;
+}
 
 /* ---------- Console ---------- */
 

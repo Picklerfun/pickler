@@ -241,6 +241,10 @@ li.plugin {
   letter-spacing: 0.06em;
   color: var(--pk-ink-faint);
 }
+/* On the fixed plugin's lime wash the faint ink is 3.9:1; the muted ink clears it. */
+.plugin[data-kind="fixed"] .pluginLine {
+  color: var(--pk-ink-muted);
+}
 .fixed {
   composes: fixed from "../new-agent/new-agent.module.css";
 }
