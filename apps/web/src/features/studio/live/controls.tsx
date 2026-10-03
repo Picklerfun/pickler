@@ -19,6 +19,15 @@ import {
   type LiveEntry,
 } from "./model";
 import { Reason } from "./reason";
+import { StopAll } from "./runtime-parts";
+import {
+  runtimeEntryView,
+  runtimeHealthRows,
+  runtimeMeters,
+  runtimeOn,
+  runtimeStatus,
+  runtimeStopRows,
+} from "./runtime-model";
 import styles from "./build.module.css";
 
 const MODES: { value: LiveEntry["mode"]; label: string }[] = [
@@ -37,20 +46,29 @@ const MEANWHILE: { value: LiveEntry["meanwhile"]; label: string }[] = [
  * RUNS: `config.entry` with the canvas's control and its notes, said of the setting, saved with
  * "Save" (one `PUT /setup` with `entry`). The meters are real zeros against the caps, and HEALTH
  * reads the markets, its sources, gas, credits and the brief's version.
+ *
+ * With the Perpl runtime on (perpl-paper-runtime-v1 R11, R12, R16): "Stop · close all" is real on
+ * paper with an inline confirm, Auto-pause is ON for the day-loss stop, HOW IT RUNS says it checks
+ * hourly on paper, the meters are today's figures, and HEALTH adds the runtime and the model's cost
+ * today.
  */
 export function Controls({ agent, live, canManage, pause }: LiveSectionProps) {
+  const record = runtimeOn(live.record) ? live.record : null;
   const { caps } = liveCaps(agent);
   const read = liveWalletRead(agent.wallet, live.wallets);
   const warnings = liveWarnings(read, caps.perTradeAusd);
   const market = marketHealth(
     marketsView(live.markets, live.details, agent.config.perpl?.markets ?? []),
   );
-  const health = healthRows({
-    market,
-    sourcesOn: agent.config.sources?.web ? 2 : 1,
-    monWei: read?.monWei ?? null,
-    version: agent.version,
-  });
+  const health = runtimeHealthRows(
+    healthRows({
+      market,
+      sourcesOn: agent.config.sources?.web ? 2 : 1,
+      monWei: read?.monWei ?? null,
+      version: agent.version,
+    }),
+    live.record,
+  );
   /* HEALTH's brief row is always APPLIED: Brief's edits are dropped when Brief closes, so none can
      be unapplied while Controls shows (`healthRows`). */
   const issues = healthIssues(warnings.length, health);
@@ -58,11 +76,11 @@ export function Controls({ agent, live, canManage, pause }: LiveSectionProps) {
   return (
     <LiveSection section="controls">
       <div className={styles.grid}>
-        <Stops agent={agent} canManage={canManage} pause={pause} />
+        <Stops agent={agent} live={live} canManage={canManage} pause={pause} runtime={!!record} />
         <div className={styles.card} id="live-controls-runs">
-          <HowItRuns agent={agent} live={live} canManage={canManage} />
+          <HowItRuns agent={agent} live={live} canManage={canManage} runtime={!!record} />
           <div className={styles.meters}>
-            {meters(caps).map((meter) => (
+            {(record ? runtimeMeters(caps, record.today) : meters(caps)).map((meter) => (
               <div key={meter.key} className={styles.meter}>
                 <div className={styles.meterHead}>
                   <span className={styles.meterTitle}>{meter.title}</span>
@@ -99,13 +117,16 @@ export function Controls({ agent, live, canManage, pause }: LiveSectionProps) {
 
 /**
  * STOPS · YOURS IN EVERY MODE: Pause entries is the header's own control here a second time, with
- * the same pending state (`usePauseToggle`); a failure pressed here is said here.
+ * the same pending state (`usePauseToggle`); a failure pressed here is said here. With the runtime
+ * on, "Stop · close all" is the header's too, asked here inline.
  */
 function Stops({
   agent,
+  live,
   canManage,
   pause,
-}: Pick<LiveSectionProps, "agent" | "canManage" | "pause">) {
+  runtime,
+}: Pick<LiveSectionProps, "agent" | "live" | "canManage" | "pause"> & { runtime: boolean }) {
   const shut = !canManage || pause.pending;
 
   return (
@@ -114,7 +135,7 @@ function Stops({
         <h3 className={styles.cardLabel}>STOPS · YOURS IN EVERY MODE</h3>
       </div>
       <ul className={styles.stops}>
-        {stopRows(agent.paused).map((row) => (
+        {(runtime ? runtimeStopRows(agent.paused) : stopRows(agent.paused)).map((row) => (
           <li key={row.key} className={styles.stop}>
             <span className={styles.stopText}>
               <span className={styles.stopName} data-danger={row.key === "stop"}>
@@ -122,7 +143,14 @@ function Stops({
               </span>
               <span className={styles.stopNote}>{row.note}</span>
             </span>
-            {row.action.kind === "button" ? (
+            {runtime && row.key === "stop" ? (
+              <StopAll
+                live={live}
+                canManage={canManage}
+                id="live-stops-stop"
+                className={styles.stopButton}
+              />
+            ) : row.action.kind === "button" ? (
               <button
                 type="button"
                 className={styles.stopButton}
@@ -161,13 +189,15 @@ function HowItRuns({
   agent,
   live,
   canManage,
-}: Pick<LiveSectionProps, "agent" | "live" | "canManage">) {
+  runtime,
+}: Pick<LiveSectionProps, "agent" | "live" | "canManage"> & { runtime: boolean }) {
   const { caps } = liveCaps(agent);
   const saved = liveEntry({ entry: agent.config.entry, spend: { perCallAusd: caps.perTradeAusd } });
   const [form, setForm] = useSavedForm<LiveEntry>(agent.version, saved);
   const { state, save, touch, saving } = useSetupSave(live);
-  const status = liveStatus(agent);
-  const view = entryView(form, caps.perTradeAusd);
+  const status = runtime ? runtimeStatus(agent.paused) : liveStatus(agent);
+  const plain = entryView(form, caps.perTradeAusd);
+  const view = runtime ? runtimeEntryView(plain) : plain;
   const dirty = entryDirty(form, saved, caps.perTradeAusd);
   const canSave = canManage && dirty && !saving;
   const shut = !canManage || saving;

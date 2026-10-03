@@ -465,3 +465,52 @@ export const perpsPositions = (agentId: string, signal?: AbortSignal) =>
 /** `GET /agents/:id/perps/record`: the record, `runtimeEnabled` and today's figures. */
 export const perpsRecord = (agentId: string, signal?: AbortSignal) =>
   studioApi<PerpsRecordDto>(`/agents/${agentId}/perps/record`, signal ? { signal } : {});
+
+// ─── The Perpl paper runtime: the live studio's own calls (perpl-paper-runtime-v1 §4) ───────────
+// The live studio reads the record, the checks, the positions and the proposals above, and adds an
+// older page of the feed, the proposals and the owner's paper actions here. Each action is carried
+// out by the research worker (202 `{ queued: true }`), so the studio polls until it shows.
+
+export type PerpsProposalDto = import("@pickler/api-schema").PerpsProposalDto;
+
+/** `GET /agents/:id/perps/checks?before=`: the feed's next page, older than `before`. */
+export const perpsChecksBefore = (agentId: string, before: string, signal?: AbortSignal) =>
+  studioApi<PerpsChecksDto>(
+    `/agents/${agentId}/perps/checks?before=${encodeURIComponent(before)}`,
+    signal ? { signal } : {},
+  );
+
+/** `GET /agents/:id/perps/proposals`: the pending approve-mode proposals ("Waiting on you"). */
+export const perpsProposals = (agentId: string, signal?: AbortSignal) =>
+  studioApi<{ proposals: PerpsProposalDto[] }>(
+    `/agents/${agentId}/perps/proposals`,
+    signal ? { signal } : {},
+  );
+
+/**
+ * `POST /perps/proposals/:id/approve` ("Enter" / "Size up"): queued, 202. 409 PROPOSAL_DECIDED,
+ * PROPOSAL_EXPIRED, RUNTIME_DISABLED.
+ */
+export const approvePerpsProposal = (proposalId: string) =>
+  studioApi<{ queued: true }>(`/perps/proposals/${proposalId}/approve`, {
+    method: "POST",
+    body: "{}",
+  });
+
+/** `POST /perps/proposals/:id/skip` ("Skip" / "Keep it small"): decided at once. 409 as approve. */
+export const skipPerpsProposal = (proposalId: string) =>
+  studioApi<{ id: string; status: "approved" | "skipped" | "expired" }>(
+    `/perps/proposals/${proposalId}/skip`,
+    { method: "POST", body: "{}" },
+  );
+
+/** `POST /perps/positions/:id/close` ("Close now", paper): queued, 202. 409 POSITION_CLOSED. */
+export const closePerpsPosition = (positionId: string) =>
+  studioApi<{ queued: true }>(`/perps/positions/${encodeURIComponent(positionId)}/close`, {
+    method: "POST",
+    body: "{}",
+  });
+
+/** `POST /agents/:id/perps/stop` ("Stop · close all", paper): pauses at once, closes queued. */
+export const stopPerps = (agentId: string) =>
+  studioApi<{ queued: true }>(`/agents/${agentId}/perps/stop`, { method: "POST", body: "{}" });

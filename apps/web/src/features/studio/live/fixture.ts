@@ -19,7 +19,18 @@ import type {
   PerpMarketDto,
 } from "@pickler/api-schema";
 import type { PasskeyDto } from "../../auth/lib/custody-api";
-import type { Agent, LedgerEntry, SetupVersion, StudioWallets, XState } from "../api";
+import type {
+  Agent,
+  LedgerEntry,
+  PerpsCheckDetailDto,
+  PerpsCheckSummaryDto,
+  PerpsPositionsResponseDto,
+  PerpsProposalDto,
+  PerpsRecordDto,
+  SetupVersion,
+  StudioWallets,
+  XState,
+} from "../api";
 import type { LiveStage } from "../home/stage";
 import { previewConfig } from "../preview";
 import type { BriefText } from "../shell/build-model";
@@ -49,6 +60,18 @@ export interface LiveStaged {
   accountTab: AccountTab;
   /** The brief's textareas with edits not applied (`perpl-brief-dirty`), or null. */
   briefDraft: BriefText | null;
+  /** The Perpl paper runtime's reads: off on every stage but the three `-active` ones. */
+  runtime: LiveRuntimeStaged;
+}
+
+/** What the paper runtime's routes answer, staged (perpl-paper-runtime-v1 §4). */
+export interface LiveRuntimeStaged {
+  record: PerpsRecordDto;
+  checks: PerpsCheckSummaryDto[];
+  positions: PerpsPositionsResponseDto;
+  proposals: PerpsProposalDto[];
+  /** `GET /perps/checks/:id` for the checks the screen opens, by id. */
+  details: Record<string, PerpsCheckDetailDto>;
 }
 
 const NOW = Date.UTC(2026, 9, 2, 14, 30, 0);
@@ -86,6 +109,9 @@ const SECTIONS: Record<LiveStage, LiveSectionKey> = {
   "perpl-account": "account",
   "perpl-account-profile": "account",
   "perpl-account-notify": "account",
+  "perpl-live-active": "overview",
+  "perpl-decisions-active": "decisions",
+  "perpl-record-active": "record",
 };
 
 const brief = {
@@ -484,6 +510,343 @@ const dirtyBrief: BriefText = {
   never: brief.never.join("\n"),
 };
 
+// ─── The Perpl paper runtime, staged ───────────────────────────────────────────────────────────
+
+const ACTIVE_STAGES: readonly LiveStage[] = [
+  "perpl-live-active",
+  "perpl-decisions-active",
+  "perpl-record-active",
+];
+
+const iso = (minutesFromNow: number) => new Date(NOW + minutesFromNow * MINUTE).toISOString();
+const checkId = (n: number) => `c0ffee00-0000-4000-8000-${String(n).padStart(12, "0")}`;
+
+/* The brief's three entries, as the model judged them on a check that proposed or entered. */
+const entriesMet = [
+  { index: 1, met: true, why: "CoinDesk and @WatcherGuru carried the same headline 38s apart" },
+  { index: 2, met: true, why: "Price moved 0.2% since the headline" },
+  { index: 3, met: true, why: "Funding +0.02%, not leaning its way" },
+];
+const neverKept = [
+  { index: 1, broken: false },
+  { index: 2, broken: false },
+  { index: 3, broken: false },
+];
+
+const summary = (
+  n: number,
+  minutesAgo: number,
+  fields: Partial<PerpsCheckSummaryDto>,
+): PerpsCheckSummaryDto => ({
+  id: checkId(n),
+  at: at(minutesAgo),
+  trigger: "hourly",
+  status: "finished",
+  outcome: "held",
+  outcomeText: "HOLD",
+  instrument: null,
+  action: null,
+  probability: null,
+  horizonHours: null,
+  entries: [],
+  exits: [],
+  never: [],
+  rationale: null,
+  inputs: { instruments: ["BTC", "ETH"], web: true },
+  configVersion: 4,
+  costMicros: "3900",
+  error: null,
+  ...fields,
+});
+
+/* `GET /agents/:id/perps/checks`, newest first: a proposal two minutes ago, holds, a blocked
+   second long, the BTC long it holds, an exit at the stop and the brief applied. */
+const activeChecks: PerpsCheckSummaryDto[] = [
+  summary(8, 2, {
+    outcome: "proposed",
+    outcomeText: "PROPOSED SHORT ETH",
+    instrument: "ETH",
+    action: "open-short",
+    probability: 0.68,
+    horizonHours: 4,
+    entries: entriesMet,
+    never: neverKept,
+    rationale:
+      "Two sources carried the ETF outflow headline within a minute and ETH has barely moved. Funding is flat, so the crowd is not short yet.",
+    costMicros: "4200",
+  }),
+  summary(7, 62, {
+    outcomeText: "ENTRY 2 HELD",
+    instrument: "ETH",
+    action: "hold",
+    entries: [
+      entriesMet[0]!,
+      { index: 2, met: false, why: "Price already +0.6% since the headline" },
+      entriesMet[2]!,
+    ],
+    never: neverKept,
+    rationale: "The headline was real but the move already happened.",
+  }),
+  summary(6, 73, {
+    outcome: "blocked",
+    outcomeText: "BLOCKED BY CAP · PER DAY",
+    instrument: "BTC",
+    action: "open-long",
+    probability: 0.61,
+    horizonHours: 4,
+    entries: entriesMet,
+    never: neverKept,
+    trigger: "manual",
+  }),
+  summary(5, 94, {
+    outcome: "entered",
+    outcomeText: "ENTERED LONG BTC",
+    instrument: "BTC",
+    action: "open-long",
+    probability: 0.71,
+    horizonHours: 4,
+    entries: entriesMet,
+    never: neverKept,
+    rationale:
+      "A credible headline on two sources, BTC flat since, funding neutral: the 30 to 90 seconds the brief is about.",
+    costMicros: "4600",
+  }),
+  summary(4, 122, {
+    outcomeText: "LOW CONVICTION",
+    instrument: "BTC",
+    action: "open-long",
+    probability: 0.52,
+    horizonHours: 24,
+    entries: entriesMet,
+    never: neverKept,
+  }),
+  summary(3, 171, {
+    outcome: "exited",
+    outcomeText: "STOP · LONG ETH",
+    trigger: "exits",
+    instrument: "ETH",
+    inputs: null,
+    costMicros: null,
+  }),
+  summary(2, 190, { outcomeText: "NEVER 1", never: [{ index: 1, broken: true }] }),
+  summary(1, 236, {
+    outcome: "system",
+    outcomeText: "OPENED ITS PAPER ACCOUNT · 75.80 AUSD",
+    trigger: "system",
+    inputs: null,
+    costMicros: null,
+  }),
+];
+
+/* The steps of the newest check (the strip's log) and of the entry (Decisions opens it). */
+const steps = (startMinutesAgo: number, lines: readonly [number, string][]) =>
+  lines.map(([seconds, text]) => ({
+    at: new Date(NOW - startMinutesAgo * MINUTE + seconds * 1000).toISOString(),
+    text,
+    ms: null,
+  }));
+
+const detail = (
+  check: PerpsCheckSummaryDto,
+  minutesAgo: number,
+  lines: readonly [number, string][],
+): PerpsCheckDetailDto => ({
+  ...check,
+  startedAt: at(minutesAgo),
+  finishedAt: new Date(
+    NOW - minutesAgo * MINUTE + lines[lines.length - 1]![0] * 1000,
+  ).toISOString(),
+  steps: steps(minutesAgo, lines),
+});
+
+const activeDetails: Record<string, PerpsCheckDetailDto> = {
+  [checkId(8)]: detail(activeChecks[0]!, 2, [
+    [0.3, "Woke up · hourly check"],
+    [1.6, "Read Perpl BTC, ETH · 1.3s"],
+    [3.0, "Read the web · coindesk.com, theblock.co · 2 results"],
+    [6.1, "Asked the model · 3.1s"],
+    [7.1, "Checking the brief · entries 1, 2, 3 met · never kept"],
+    [8.6, "PROPOSED SHORT ETH · waits 15 min for you"],
+  ]),
+  [checkId(5)]: detail(activeChecks[3]!, 94, [
+    [0.3, "Woke up · hourly check"],
+    [1.2, "Read Perpl BTC, ETH · 0.9s"],
+    [2.9, "Read the web · 2 results"],
+    [6.4, "Asked the model · 3.5s"],
+    [8.0, "Checking the brief · entries 1, 2, 3 met"],
+    [9.2, "ENTERED LONG BTC · 25 AUSD at 3× · exits armed"],
+  ]),
+};
+
+/* `GET /agents/:id/perps/positions`: the BTC long it entered 94 minutes ago, and three closes. */
+const activePositions: PerpsPositionsResponseDto = {
+  network: "testnet",
+  account: true,
+  open: [
+    {
+      id: "pos-preview-btc",
+      instrument: "BTC",
+      side: "long",
+      quantity: "0.000774",
+      entryPrice: "96900",
+      notional: "75",
+      margin: "25",
+      leverage: 3,
+      openedAt: at(94),
+      mark: "97420",
+      unrealizedPnl: "0.402",
+      stopPrice: "95931",
+      takeProfitPrice: "98838",
+      exitDueAt: iso(146),
+      liquidationEstimate: "64600",
+      checkId: checkId(5),
+      configVersion: 4,
+    },
+  ],
+  closed: [
+    {
+      id: "pos-preview-eth",
+      instrument: "ETH",
+      side: "long",
+      entryPrice: "3650",
+      exitPrice: "3613.5",
+      margin: "25",
+      leverage: 3,
+      openedAt: at(223),
+      closedAt: at(171),
+      closeReason: "stop",
+      realizedPnl: "-3.2",
+    },
+    {
+      id: "pos-preview-btc-1",
+      instrument: "BTC",
+      side: "long",
+      entryPrice: "95120",
+      exitPrice: "97022",
+      margin: "25",
+      leverage: 3,
+      openedAt: at(1236),
+      closedAt: at(1046),
+      closeReason: "take_profit",
+      realizedPnl: "3.9",
+    },
+    {
+      id: "pos-preview-btc-0",
+      instrument: "BTC",
+      side: "short",
+      entryPrice: "95800",
+      exitPrice: "95510",
+      margin: "20",
+      leverage: 2,
+      openedAt: at(1620),
+      closedAt: at(1380),
+      closeReason: "time",
+      realizedPnl: "0.7",
+    },
+  ],
+};
+
+/* `GET /agents/:id/perps/proposals`: the short it proposed two minutes ago, 13 minutes left. */
+const activeProposals: PerpsProposalDto[] = [
+  {
+    id: "9b0b0000-0000-4000-8000-000000000001",
+    checkId: checkId(8),
+    kind: "enter",
+    instrument: "ETH",
+    side: "short",
+    margin: "25",
+    leverage: 3,
+    notional: "75",
+    createdAt: at(2),
+    expiresAt: iso(13),
+    positionId: null,
+  },
+];
+
+const today = (fields: Partial<PerpsRecordDto["today"]>): PerpsRecordDto["today"] => ({
+  newMarginAusd: 0,
+  realizedAusd: 0,
+  openCount: 0,
+  leverageInUse: 0,
+  checks: 0,
+  manualChecks: 0,
+  manualLimit: 6,
+  costMicros: "0",
+  ...fields,
+});
+
+/* An equity point per hour over the last day, ending at the open BTC long's mark. */
+const series = Array.from({ length: 25 }, (_, index) => ({
+  at: at((24 - index) * 60),
+  equity: Number(
+    (75.8 + Math.sin(index * 0.9) * 0.8 + (index > 20 ? -3.2 : 0) + index * 0.05).toFixed(2),
+  ),
+}));
+
+/* `GET /agents/:id/perps/record`, the runtime on. */
+const activeRecord: PerpsRecordDto = {
+  runtimeEnabled: true,
+  network: "testnet",
+  account: true,
+  realizedAusd: 1.4,
+  openPnlAusd: 0.4,
+  feesAndFundingAusd: -0.9,
+  cashAusd: 77.2,
+  equityAusd: 77.6,
+  closedCount: 3,
+  wins: 2,
+  hitRate: 2 / 3,
+  maxDrawdownAusd: 3.2,
+  maxDrawdownPct: 0.041,
+  checks: 31,
+  entries: 4,
+  series: [...series.slice(0, -1), { at: at(0), equity: 77.6 }],
+  today: today({
+    newMarginAusd: 50,
+    realizedAusd: -3.2,
+    openCount: 1,
+    leverageInUse: 3,
+    checks: 14,
+    manualChecks: 2,
+    costMicros: "58300",
+  }),
+};
+
+/* The runtime off, as the API answers while `PERPL_RUNTIME_ENABLED` is false. */
+const offRuntime: LiveRuntimeStaged = {
+  record: {
+    ...activeRecord,
+    runtimeEnabled: false,
+    account: false,
+    realizedAusd: 0,
+    openPnlAusd: null,
+    feesAndFundingAusd: 0,
+    cashAusd: 0,
+    equityAusd: null,
+    closedCount: 0,
+    wins: 0,
+    hitRate: null,
+    maxDrawdownAusd: 0,
+    maxDrawdownPct: null,
+    checks: 0,
+    entries: 0,
+    series: [],
+    today: today({}),
+  },
+  checks: [],
+  positions: { network: "testnet", account: false, open: [], closed: [] },
+  proposals: [],
+  details: {},
+};
+
+const activeRuntime: LiveRuntimeStaged = {
+  record: activeRecord,
+  checks: activeChecks,
+  positions: activePositions,
+  proposals: activeProposals,
+  details: activeDetails,
+};
+
 const ACCOUNT_TABS: Partial<Record<LiveStage, AccountTab>> = {
   "perpl-account-profile": "profile",
   "perpl-account-notify": "notify",
@@ -493,7 +856,9 @@ const ACCOUNT_TABS: Partial<Record<LiveStage, AccountTab>> = {
  * The live studio at one `?stage=perpl-*`. `perpl-live` is the Overview the day after Go Public;
  * `perpl-paused` has entries paused; `perpl-warnings` has its gas and free AUSD low, so the banner
  * shows; the rest open their section, `perpl-brief-dirty` with an edit not applied and the account
- * stages on their tab.
+ * stages on their tab. Those keep the Perpl runtime off; `perpl-live-active` (a position and a
+ * proposal on Overview), `perpl-decisions-active` and `perpl-record-active` have it on, with
+ * checks, a paper position, a proposal and a record.
  */
 export function liveStudioFixture(stage: LiveStage): LiveStaged {
   const warned = stage === "perpl-warnings";
@@ -520,5 +885,6 @@ export function liveStudioFixture(stage: LiveStage): LiveStaged {
     accountHandle: "nightowl",
     accountTab: ACCOUNT_TABS[stage] ?? "security",
     briefDraft: stage === "perpl-brief-dirty" ? dirtyBrief : null,
+    runtime: ACTIVE_STAGES.includes(stage) ? activeRuntime : offRuntime,
   };
 }

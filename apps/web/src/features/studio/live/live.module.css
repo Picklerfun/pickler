@@ -163,6 +163,13 @@
   color: var(--pk-ink-muted);
   cursor: not-allowed;
 }
+/* Real on paper once the Perpl runtime runs: the canvas's pink. */
+.stopButton:not([aria-disabled="true"]) {
+  color: var(--pk-loss);
+}
+.stopButton:hover:not([aria-disabled="true"]) {
+  background: var(--pk-state-loss-bg);
+}
 .soon {
   padding: 4px 7px;
   border-radius: var(--pk-radius-pill);
