@@ -9,12 +9,15 @@ import {
   flatLine,
   manualCheckView,
   openPnlLabel,
+  ownerActionView,
   positionView,
   proposalView,
   proposalsSub,
   stopConfirm,
+  type OwnerActionKind,
   type PositionView,
 } from "./runtime-model";
+import { ownerActionFor, type OwnerAction } from "./use-live";
 import styles from "./runtime.module.css";
 
 type Live = LiveSectionProps["live"];
@@ -45,6 +48,69 @@ function ActionError({ text }: { text: string }) {
   );
 }
 
+/** Whether an action pressed is still being carried out (or its outcome read). */
+const inFlight = (item: OwnerAction | null): boolean =>
+  item !== null && !ownerActionView(item).settled;
+
+/**
+ * An owner action's line under the control pressed: sending, waiting for the worker or the running
+ * check, being carried out, then what its check did (entered, blocked with the cap, closed, already
+ * closed) or why it failed, with Dismiss once settled.
+ */
+function ActionLine({ live, item }: { live: Live; item: OwnerAction | null }) {
+  if (!item) {
+    return null;
+  }
+  const view = ownerActionView(item);
+  return (
+    <p
+      className={styles.actionLine}
+      data-tone={view.tone}
+      data-state={view.state}
+      role="status"
+      id={`live-action-${item.kind}-${item.target}`}
+    >
+      {!view.settled && <span className={styles.actionDot} aria-hidden="true" />}
+      <span className={styles.actionText}>{view.text}</span>
+      {view.settled && (
+        <button
+          type="button"
+          className={styles.actionDismiss}
+          onClick={() => live.dismissAction(item.kind, item.target)}
+        >
+          Dismiss
+        </button>
+      )}
+    </p>
+  );
+}
+
+/**
+ * The actions of one kind whose card is gone (the position closed, the proposal approved): their
+ * lines at the head of the list, so what happened is still said.
+ */
+function GoneActions({
+  live,
+  kind,
+  present,
+}: {
+  live: Live;
+  kind: OwnerActionKind;
+  present: readonly string[];
+}) {
+  const gone = live.actions.filter((item) => item.kind === kind && !present.includes(item.target));
+  if (gone.length === 0) {
+    return null;
+  }
+  return (
+    <div className={styles.goneActions}>
+      {gone.map((item) => (
+        <ActionLine key={`${item.kind}-${item.target}`} live={live} item={item} />
+      ))}
+    </div>
+  );
+}
+
 /** The stop–target meter and its three labels (canvas 212–215, 251–254). */
 function Meter({ view }: { view: PositionView }) {
   if (!view.meter) {
@@ -67,7 +133,10 @@ function Meter({ view }: { view: PositionView }) {
   );
 }
 
-/** "Close now": one click, no passkey (paper, R12); pending until the position is gone. */
+/**
+ * "Close now": one click, no passkey (paper, R12); a durable action, said under it until it is
+ * carried out, and then what happened.
+ */
 function CloseNow({
   live,
   view,
@@ -78,9 +147,8 @@ function CloseNow({
   canManage: boolean;
 }) {
   const { error, run } = useActionError();
-  const closing = live.pending.some(
-    (action) => action.kind === "close" && action.positionId === view.id,
-  );
+  const item = ownerActionFor(live.actions, "close", view.id);
+  const closing = inFlight(item);
   const shut = !canManage || closing;
   const reasonId = `live-close-reason-${view.id}`;
   return (
@@ -104,6 +172,11 @@ function CloseNow({
       {error && (
         <span className={styles.rowBreak}>
           <ActionError text={error} />
+        </span>
+      )}
+      {item && (
+        <span className={styles.rowBreak}>
+          <ActionLine live={live} item={item} />
         </span>
       )}
     </>
@@ -154,6 +227,7 @@ export function PositionCards({
           </button>
         </div>
       )}
+      <GoneActions live={live} kind="close" present={open.map((position) => position.id)} />
       {read !== "failed" && open.length === 0 && (
         <div className={styles.empty}>{flatLine(paused)}</div>
       )}
@@ -265,9 +339,8 @@ function ProposalActions({
 }) {
   const { error, run } = useActionError();
   const [skipping, setSkipping] = useState(false);
-  const approving = live.pending.some(
-    (action) => action.kind === "approve" && action.proposalId === id,
-  );
+  const item = ownerActionFor(live.actions, "approve", id);
+  const approving = inFlight(item);
   const shut = !canManage || approving || skipping || expired;
   const reasonId = `live-proposal-reason-${id}`;
   let reason: string | null = null;
@@ -313,6 +386,7 @@ function ProposalActions({
       </div>
       <Reason id={reasonId} text={reason} />
       <ActionError text={error} />
+      <ActionLine live={live} item={item} />
     </>
   );
 }
@@ -335,7 +409,10 @@ export function ProposalCards({
   const tick = useNow(1000);
   const clockNow = live.preview ? now : tick;
   const proposals = Array.isArray(live.proposals) ? live.proposals : [];
-  if (proposals.length === 0) {
+  const approved = live.actions.some(
+    (item) => item.kind === "approve" && !proposals.some((p) => p.id === item.target),
+  );
+  if (proposals.length === 0 && !approved) {
     return null;
   }
   const checks = Array.isArray(live.checks) ? live.checks : [];
@@ -345,6 +422,7 @@ export function ProposalCards({
         <h3 className={styles.listTitle}>Waiting on you</h3>
         <span className={styles.proposalSub}>{proposalsSub(proposals.length)}</span>
       </div>
+      <GoneActions live={live} kind="approve" present={proposals.map((p) => p.id)} />
       {proposals.map((proposal) => {
         const check = checks.find((candidate) => candidate.id === proposal.checkId) ?? null;
         const view = proposalView(proposal, clockNow, check);
@@ -413,7 +491,8 @@ export function StopAll({
 }) {
   const [asking, setAsking] = useState(false);
   const { error, run } = useActionError();
-  const stopping = live.pending.some((action) => action.kind === "stop");
+  const item = ownerActionFor(live.actions, "stop", "all");
+  const stopping = inFlight(item);
   const shut = !canManage || stopping;
   const open = live.positions && live.positions !== "failed" ? live.positions.open.length : 0;
   const confirm = stopConfirm(open);
@@ -467,6 +546,7 @@ export function StopAll({
         </div>
       )}
       <ActionError text={error} />
+      <ActionLine live={live} item={item} />
     </div>
   );
 }
@@ -482,7 +562,7 @@ export function RunCheck({ live, canManage }: { live: Live; canManage: boolean }
   if (!record || record === "failed" || !record.runtimeEnabled) {
     return null;
   }
-  const checking = sending || live.pending.some((action) => action.kind === "check");
+  const checking = sending || live.checking !== null;
   const view = manualCheckView(record.today, checking);
   const reason = canManage ? view.shut : VIEW_ONLY_REASON;
   const shut = reason !== null;

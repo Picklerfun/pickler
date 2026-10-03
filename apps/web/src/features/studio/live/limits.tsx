@@ -16,6 +16,7 @@ import {
 import { LiveSection, type LiveSectionProps } from "./live-section";
 import { PULL_NOTE, liveCaps, liveCapsStepper, liveWalletRead, type LiveCaps } from "./model";
 import { Reason } from "./reason";
+import { runtimeCapsView, runtimeOn } from "./runtime-model";
 import styles from "./build.module.css";
 
 /**
@@ -23,13 +24,15 @@ import styles from "./build.module.css";
  * AUSD · IN POSITIONS (0), MON · GAS, what arrived between two reads, "Fund from master" and
  * "Pull free AUSD back" (the Wallets modal on this wallet). Right, the five caps, saved, not
  * signed: "Save caps" and "Discard", one `PUT /setup` with `caps`, and the line that says who
- * holds them.
+ * holds them. With the Perpl runtime on, the day-loss line and that note say what runs now
+ * (`runtimeCapsView`, perpl-paper-runtime-v1 R11).
  */
 export function Limits({ agent, live, canManage, onWallets }: LiveSectionProps) {
   const { caps: savedCaps, defaults } = liveCaps(agent);
   const [caps, setCaps] = useSavedForm<LiveCaps>(agent.version, savedCaps);
   const { state, save, touch, saving } = useSetupSave(live);
-  const view = liveCapsStepper(caps, savedCaps, defaults);
+  const stepper = liveCapsStepper(caps, savedCaps, defaults);
+  const view = runtimeOn(live.record) ? runtimeCapsView(stepper) : stepper;
   const canSave = canManage && view.canSave && !saving;
 
   return (

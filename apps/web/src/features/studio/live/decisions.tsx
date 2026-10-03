@@ -124,12 +124,6 @@ function RuntimeDecisions({ live, now, canManage, focusCheck, onWhy }: LiveSecti
           </div>
         )}
 
-        {live.queuedNote && (
-          <p className={runtime.error} role="status">
-            {live.queuedNote}
-          </p>
-        )}
-
         {live.checks === "failed" && (
           <div className={styles.empty} role="alert">
             Couldn&apos;t read its decisions.

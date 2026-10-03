@@ -13,6 +13,7 @@
  * `@pickler/core`, so `apps/web/test/studio-live-runtime.test.ts` can load it.
  */
 import type {
+  PerpsActionDto,
   PerpsCheckDetailDto,
   PerpsCheckSummaryDto,
   PerpsPositionsResponseDto,
@@ -30,6 +31,7 @@ import {
   type EntryView,
   type HealthRow,
   type LiveCaps,
+  type LiveCapsView,
   type LiveStatus,
   type LiveWalletRead,
   type MeterRow,
@@ -242,7 +244,8 @@ export function runtimeEntryView(view: EntryView): EntryView {
 
 /**
  * STOPS once it runs: "Stop · close all" is real on paper (one inline confirm, no passkey), and
- * Auto-pause is on for the one thing the runtime pauses itself for, the day-loss stop (R11).
+ * Auto-pause is on for the one thing the runtime pauses itself for, the day-loss stop (R11); the
+ * other triggers the canvas lists (gas, credits, losing Perpl) are not built, and it says so.
  */
 export function runtimeStopRows(paused: boolean): StopRow[] {
   return [
@@ -261,10 +264,26 @@ export function runtimeStopRows(paused: boolean): StopRow[] {
     {
       key: "auto",
       name: "Auto-pause",
-      note: "It pauses itself when today's realized loss reaches the day-loss stop. Open positions keep their exits.",
-      action: { kind: "tag", label: "ON" },
+      note: "It pauses itself when today's realized loss (UTC) reaches the day-loss stop; open positions keep their exits. Pausing for gas, credits or losing Perpl comes with live trading.",
+      action: { kind: "tag", label: "ON · DAY-LOSS" },
     },
   ];
+}
+
+/**
+ * Limits' caps once it runs: the day-loss line says what the runtime does now (R11), and the note
+ * says Pickler holds every paper trade to them, not that it will once it runs.
+ */
+export function runtimeCapsView(view: LiveCapsView): LiveCapsView {
+  return {
+    ...view,
+    rows: view.rows.map((row) =>
+      row.key === "dayLossStopAusd"
+        ? { ...row, sub: "LOST IN A DAY (UTC) · IT PAUSES ITSELF THERE, EXITS KEEP RUNNING" }
+        : row,
+    ),
+    note: "Pickler holds every paper trade to these. On-chain caps come with live trading.",
+  };
 }
 
 /** "Stop · close all"'s inline confirm. */
@@ -291,10 +310,124 @@ const RUNTIME_ERRORS: Record<string, string> = {
   RUNTIME_UNAVAILABLE: "The Perpl runtime isn't answering. Try again in a moment.",
   RUNTIME_CEILING: "Pickler's checks for today are used up. Try again tomorrow.",
   NOT_A_PERPL_AGENT: "This agent doesn't trade on Perpl.",
+  AGENT_KILLED: "Pickler has stopped this agent, so it enters nothing. Closing stays allowed.",
 };
 
 export const runtimeErrorText = (code: string, fallback: string): string =>
   RUNTIME_ERRORS[code] ?? fallback;
+
+// ─── The owner's actions ───────────────────────────────────────────────────────────────────────
+
+/** What the owner asked for: an approval, one close, or "Stop · close all". */
+export type OwnerActionKind = "approve" | "close" | "stop";
+
+export interface OwnerActionView {
+  /** `sending` until the POST answers; then the action's status; `done` once its outcome is read. */
+  state: "sending" | "pending" | "running" | "done" | "failed";
+  text: string;
+  tone: "quiet" | "good" | "caution" | "bad";
+  /** Nothing more to read: done with its outcome read (or none to read), or failed. */
+  settled: boolean;
+}
+
+const RUNNING_TEXT: Record<OwnerActionKind, string> = {
+  approve: "Entering on paper…",
+  close: "Closing on paper…",
+  stop: "Closing everything on paper…",
+};
+
+const FAILED_VERB: Record<OwnerActionKind, string> = {
+  approve: "Couldn't enter",
+  close: "Couldn't close it",
+  stop: "Couldn't close everything",
+};
+
+/** An action's `lastError` in words: the runtime's refusals, then the worker's own codes. */
+const ACTION_ERRORS: Record<string, string> = {
+  CHECK_INTERRUPTED: "It lost its turn before acting, so nothing changed. Try again.",
+  ACTION_FAILED: "The research worker hit an error, so nothing changed. Try again.",
+  CLOSE_FAILED: "A paper close didn't go through.",
+  PLUGIN_NOT_CONFIGURED: "It has no Perpl settings.",
+  NOT_FOUND: "Pickler no longer has this request.",
+};
+
+/** A failed action's code in words: the worker's own codes, then the runtime's refusals. */
+export function actionErrorText(code: string | null): string {
+  if (code === null) {
+    return "It could not be carried out.";
+  }
+  return ACTION_ERRORS[code] ?? RUNTIME_ERRORS[code] ?? `It could not be carried out (${code}).`;
+}
+
+/** What the action's check did, from its outcome: entered, blocked by a cap, closed, already closed. */
+function outcomeView(kind: OwnerActionKind, check: PerpsCheckDetailDto): OwnerActionView {
+  const text = check.outcomeText ?? OUTCOME_TAGS[check.outcome ?? "system"];
+  const done = (line: string, tone: OwnerActionView["tone"]): OwnerActionView => ({
+    state: "done",
+    text: line,
+    tone,
+    settled: true,
+  });
+  switch (check.outcome) {
+    case "entered":
+      return done(`Entered on paper · ${text}`, "good");
+    case "blocked":
+      return done(`Not entered · ${text}`, "caution");
+    case "exited":
+      return done(`Done · ${text}`, "good");
+    case "skipped":
+      return done(`Nothing changed · ${text}`, "quiet");
+    case "failed":
+      return done(`${FAILED_VERB[kind]}. ${actionErrorText(check.error)}`, "bad");
+    default:
+      return done(`Done · ${text}`, "quiet");
+  }
+}
+
+/**
+ * One owner action as the line under the control pressed: sending, waiting for the worker (or for
+ * the check holding the agent: `lastError` CHECK_RUNNING), being carried out, what its check did
+ * once done, or why it failed. `outcome` is `GET /perps/checks/:checkId` once done (null until
+ * read, `failed` when it could not be).
+ */
+export function ownerActionView(input: {
+  kind: OwnerActionKind;
+  action: PerpsActionDto | null;
+  outcome: PerpsCheckDetailDto | null | "failed";
+}): OwnerActionView {
+  const { kind, action, outcome } = input;
+  if (action === null) {
+    return { state: "sending", text: "Sending…", tone: "quiet", settled: false };
+  }
+  switch (action.status) {
+    case "pending": {
+      let text = "Sent · the research worker picks it up within a minute.";
+      if (action.lastError === "CHECK_RUNNING") {
+        text = "Waiting for the current check…";
+      } else if (action.lastError) {
+        text = `Trying again. ${actionErrorText(action.lastError)}`;
+      }
+      return { state: "pending", text, tone: "quiet", settled: false };
+    }
+    case "running":
+      return { state: "running", text: RUNNING_TEXT[kind], tone: "quiet", settled: false };
+    case "failed":
+      return {
+        state: "failed",
+        text: `${FAILED_VERB[kind]}. ${actionErrorText(action.lastError)}`,
+        tone: "bad",
+        settled: true,
+      };
+    case "done":
+      if (action.checkId === null || outcome === "failed") {
+        return { state: "done", text: "Done.", tone: "quiet", settled: true };
+      }
+      if (outcome === null || outcome.id !== action.checkId) {
+        return { state: "running", text: RUNNING_TEXT[kind], tone: "quiet", settled: false };
+      }
+      return outcomeView(kind, outcome);
+  }
+}
 
 // ─── The manual check ──────────────────────────────────────────────────────────────────────────
 

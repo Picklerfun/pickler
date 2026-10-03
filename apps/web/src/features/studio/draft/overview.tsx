@@ -6,7 +6,7 @@ import { capsOf, starterCaps } from "./caps-model";
 import type { DraftGoPublicStage } from "./fixture";
 import { GoPublic } from "./go-public";
 import { activityView, walletCardView } from "./model";
-import { tradeCount, tradeRows } from "./runtime-model";
+import { runtimeOpen, scheduleCopy, tradeCount, tradeRows } from "./runtime-model";
 import { DraftSection, type DraftSectionProps } from "./draft-section";
 import styles from "./draft.module.css";
 
@@ -18,7 +18,7 @@ export interface OverviewProps extends DraftSectionProps {
 /**
  * Overview (canvas 339–441, spec §3.1): Go Public with Connect X (`go-public.tsx`,
  * `x-connect.tsx`); its wallet, read as Limits reads it, and the schedule, which unlocks with the
- * Perpl runtime (D19); its trades, the newest three paper positions as Trades lists them
+ * Perpl runtime (D19) and, once it is open, says a draft runs only when you run it (R2); its trades, the newest three paper positions as Trades lists them
  * (`runtime-model.ts`, perpl-paper-runtime-v1 R17), and its activity (D18), read from the API,
  * never made up, with Retry when the read failed.
  */
@@ -39,6 +39,7 @@ export function Overview({ goPublic, ...props }: OverviewProps) {
   );
   const activity = draft.activity ? activityView(draft.activity, new Date(now)) : null;
   const trades = tradeRows(draft.positions).slice(0, 3);
+  const schedule = scheduleCopy(runtimeOpen(draft.record), agent.config.intervalHours);
 
   async function retryActivity() {
     if (retrying) {
@@ -136,17 +137,15 @@ export function Overview({ goPublic, ...props }: OverviewProps) {
 
           <div className={styles.schedule}>
             <span className={styles.scheduleText}>
-              <span className={styles.scheduleTitle}>
-                Run on its own · every {agent.config.intervalHours}h
-              </span>
-              <span className={styles.scheduleNote}>Unlocks with the Perpl runtime.</span>
+              <span className={styles.scheduleTitle}>{schedule.title}</span>
+              <span className={styles.scheduleNote}>{schedule.rowNote}</span>
             </span>
             <span
               className={styles.switchOff}
               role="switch"
               aria-checked="false"
               aria-disabled="true"
-              aria-label="Run on its own, unlocks with the Perpl runtime"
+              aria-label={schedule.switchLabel}
             >
               <span className={styles.switchKnob} />
             </span>

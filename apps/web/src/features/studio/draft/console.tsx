@@ -12,6 +12,7 @@ import {
   runButtonView,
   runState,
   runtimeOpen,
+  scheduleCopy,
   stepLines,
 } from "./runtime-model";
 import type { IntervalHours } from "./use-draft";
@@ -28,7 +29,8 @@ const STARTERS = [
 
 /**
  * Console (canvas 530–636, spec §3.4, D12, D13, D19): the inputs a paper run reads, the run button,
- * the schedule's interval (it saves) and its next runs, What it did, and Talk to it drawn shut with
+ * the schedule's interval (it saves) and its next runs (with the runtime on, ON ITS OWN says a
+ * draft runs only when you run it and hourly once public, and the interval is not drawn: R2), What it did, and Talk to it drawn shut with
  * a Soon tag (`../shell/talk-soon.tsx`).
  *
  * With the Perpl runtime off (`draft.record` unread or `runtimeEnabled` false) the run button is
@@ -46,6 +48,7 @@ export function Console({ agent, draft, canManage, now, onSection }: DraftSectio
   const current = saving ?? agent.config.intervalHours;
   const inputs = runInputs(agent.config.sources?.web);
   const runs = nextRuns(current, new Date(now));
+  const schedule = scheduleCopy(open, current);
 
   async function choose(hours: IntervalHours) {
     if (!canManage || saving !== null || hours === agent.config.intervalHours) {
@@ -162,53 +165,59 @@ export function Console({ agent, draft, canManage, now, onSection }: DraftSectio
           <div className={styles.card} id="draft-console-schedule">
             <div className={styles.cardHead}>
               <h3 className={styles.cardLabel}>ON ITS OWN</h3>
-              <span className={styles.caution}>STARTS WITH THE PERPL RUNTIME</span>
+              <span className={styles.caution}>{schedule.tag}</span>
             </div>
-            <p className={styles.cardNote}>
-              It runs on this schedule once the Perpl runtime opens.
-            </p>
-            <div className={styles.every}>
-              <span className={styles.everyLabel} id="draft-console-every">
-                Every
-              </span>
-              <span className={styles.intervals} role="group" aria-labelledby="draft-console-every">
-                {INTERVAL_OPTIONS.map((hours) => (
-                  <button
-                    key={hours}
-                    type="button"
-                    className={styles.interval}
-                    aria-pressed={current === hours}
-                    disabled={!canManage}
-                    aria-disabled={saving !== null || undefined}
-                    onClick={() => void choose(hours)}
+            <p className={styles.cardNote}>{schedule.note}</p>
+            {schedule.intervals && (
+              <>
+                <div className={styles.every}>
+                  <span className={styles.everyLabel} id="draft-console-every">
+                    Every
+                  </span>
+                  <span
+                    className={styles.intervals}
+                    role="group"
+                    aria-labelledby="draft-console-every"
                   >
-                    {hours}h
-                  </button>
-                ))}
-              </span>
-              <span className={styles.perDay} role="status">
-                {saving !== null ? "SAVING…" : `${runsPerDay(current)} RUNS / DAY`}
-              </span>
-            </div>
-            {error && (
-              <p className={styles.error} role="alert">
-                {error}
-              </p>
+                    {INTERVAL_OPTIONS.map((hours) => (
+                      <button
+                        key={hours}
+                        type="button"
+                        className={styles.interval}
+                        aria-pressed={current === hours}
+                        disabled={!canManage}
+                        aria-disabled={saving !== null || undefined}
+                        onClick={() => void choose(hours)}
+                      >
+                        {hours}h
+                      </button>
+                    ))}
+                  </span>
+                  <span className={styles.perDay} role="status">
+                    {saving !== null ? "SAVING…" : `${runsPerDay(current)} RUNS / DAY`}
+                  </span>
+                </div>
+                {error && (
+                  <p className={styles.error} role="alert">
+                    {error}
+                  </p>
+                )}
+                <ol className={styles.runs}>
+                  {runs.map((run, index) => (
+                    <li key={index} className={styles.run}>
+                      <span className={styles.runDot} aria-hidden="true" />
+                      {/* Local time: the server renders in its own zone, so the day may differ too. */}
+                      <span className={styles.runLabel} suppressHydrationWarning>
+                        {run.label}
+                      </span>
+                      <span className={styles.runAt} suppressHydrationWarning>
+                        {run.at}
+                      </span>
+                    </li>
+                  ))}
+                </ol>
+              </>
             )}
-            <ol className={styles.runs}>
-              {runs.map((run, index) => (
-                <li key={index} className={styles.run}>
-                  <span className={styles.runDot} aria-hidden="true" />
-                  {/* Local time: the server renders in its own zone, so the day may differ too. */}
-                  <span className={styles.runLabel} suppressHydrationWarning>
-                    {run.label}
-                  </span>
-                  <span className={styles.runAt} suppressHydrationWarning>
-                    {run.at}
-                  </span>
-                </li>
-              ))}
-            </ol>
           </div>
 
           <div className={styles.card} id="draft-console-did">

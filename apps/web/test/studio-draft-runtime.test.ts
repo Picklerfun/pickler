@@ -13,6 +13,7 @@ import {
   runButtonView,
   runState,
   runtimeOpen,
+  scheduleCopy,
   stepLines,
   tradeCount,
   tradeRows,
@@ -304,4 +305,32 @@ test("an open position not yet marked, and a closed one with no reason or exit p
   assert.deepEqual(rows[0]!.pnl, { text: "—", tone: "flat" });
   assert.equal(rows[2]!.meta, "CLOSED · 2,412.8 → —");
   assert.deepEqual(rows[2]!.pnl, { text: "−1.50 AUSD", tone: "down" });
+});
+
+test("the schedule says it unlocks with the runtime; once open, a draft runs only when you run it", () => {
+  const off = scheduleCopy(false, 4);
+
+  assert.equal(off.tag, "STARTS WITH THE PERPL RUNTIME");
+  assert.equal(off.title, "Run on its own · every 4h");
+  assert.equal(off.rowNote, "Unlocks with the Perpl runtime.");
+  assert.equal(off.intervals, true);
+
+  const on = scheduleCopy(true, 4);
+
+  assert.equal(on.tag, "HOURLY ONCE PUBLIC");
+  assert.match(
+    on.note,
+    /^A draft runs only when you run it on paper\. Once it is public it checks Perpl every hour/,
+  );
+  assert.equal(on.title, "Run on its own · hourly once public");
+  assert.equal(on.rowNote, "A draft runs only when you run it on paper.");
+  assert.doesNotMatch(
+    `${on.tag} ${on.note} ${on.title} ${on.rowNote}`,
+    /STARTS WITH|Unlocks|every 4h/,
+  );
+  assert.equal(on.intervals, false);
+});
+
+test("a killed agent's refused run says so", () => {
+  assert.match(checkRefusal("AGENT_KILLED", 6, "x"), /stopped this agent/);
 });

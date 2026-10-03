@@ -2,6 +2,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type {
+  PerpsActionDto,
   PerpsCheckDetailDto,
   PerpsCheckSummaryDto,
   PerpsPositionsResponseDto,
@@ -10,8 +11,15 @@ import type {
 } from "@pickler/api-schema";
 import { clock } from "../src/features/studio/shell/clock";
 import { liveStudioFixture } from "../src/features/studio/live/fixture";
-import { entryView, healthRows, liveCaps, liveTiles } from "../src/features/studio/live/model";
 import {
+  entryView,
+  healthRows,
+  liveCaps,
+  liveCapsStepper,
+  liveTiles,
+} from "../src/features/studio/live/model";
+import {
+  actionErrorText,
   closedRow,
   costLine,
   countdown,
@@ -21,11 +29,13 @@ import {
   flatLine,
   manualCheckView,
   openPnlLabel,
+  ownerActionView,
   positionMeter,
   positionTime,
   positionView,
   proposalView,
   recordView,
+  runtimeCapsView,
   runtimeCounts,
   runtimeEntryView,
   runtimeErrorText,
@@ -257,12 +267,13 @@ test("STOPS once on: Stop · close all is paper, Auto-pause is on for the day-lo
     [
       ["pause", "Pause"],
       ["stop", "PAPER"],
-      ["auto", "ON"],
+      ["auto", "ON · DAY-LOSS"],
     ],
   );
   assert.match(rows[1]!.note, /No passkey: it is paper/);
-  assert.match(rows[2]!.note, /day-loss stop/);
-  assert.doesNotMatch(rows[2]!.note, /gas|credits/);
+  assert.match(rows[2]!.note, /^It pauses itself when today's realized loss \(UTC\) reaches/);
+  assert.match(rows[2]!.note, /gas, credits or losing Perpl comes with live trading/);
+  assert.doesNotMatch(rows[2]!.note, /WITH THE RUNTIME|will pause/i);
   assert.equal(runtimeStopRows(true)[0]!.action.label, "Resume");
 });
 
@@ -284,7 +295,164 @@ test("the runtime's refusals are said in the owner's words, others keep theirs",
   assert.match(runtimeErrorText("MANUAL_LIMIT", "x"), /6 manual checks/);
   assert.match(runtimeErrorText("PROPOSAL_EXPIRED", "x"), /15 minutes/);
   assert.match(runtimeErrorText("POSITION_CLOSED", "x"), /already closed/);
+  assert.match(runtimeErrorText("AGENT_KILLED", "x"), /stopped this agent/);
   assert.equal(runtimeErrorText("SOMETHING_ELSE", "Their words."), "Their words.");
+});
+
+test("once on, Limits' day-loss line and note say what runs now, the other caps unchanged", () => {
+  const { caps } = liveCaps(liveStudioFixture("perpl-live-active").agent);
+  const off = liveCapsStepper(caps, caps);
+  const on = runtimeCapsView(off);
+
+  assert.match(off.rows.find((row) => row.key === "dayLossStopAusd")!.sub, /ONCE IT RUNS/);
+  assert.equal(
+    on.rows.find((row) => row.key === "dayLossStopAusd")!.sub,
+    "LOST IN A DAY (UTC) · IT PAUSES ITSELF THERE, EXITS KEEP RUNNING",
+  );
+  assert.equal(
+    on.note,
+    "Pickler holds every paper trade to these. On-chain caps come with live trading.",
+  );
+  assert.deepEqual(
+    on.rows.filter((row) => row.key !== "dayLossStopAusd"),
+    off.rows.filter((row) => row.key !== "dayLossStopAusd"),
+  );
+  assert.equal(on.tag, off.tag);
+});
+
+// ─── The owner's actions ───────────────────────────────────────────────────────────────────────
+
+const actionDto = (fields: Partial<PerpsActionDto>): PerpsActionDto => ({
+  id: "ac710000-0000-4000-8000-000000000009",
+  kind: "close",
+  status: "pending",
+  positionId: "pos-1",
+  proposalId: null,
+  attempts: 0,
+  lastError: null,
+  checkId: null,
+  createdAt: "2026-10-02T14:29:00.000Z",
+  updatedAt: "2026-10-02T14:29:00.000Z",
+  ...fields,
+});
+
+const ownerCheck = (fields: Partial<PerpsCheckDetailDto>): PerpsCheckDetailDto => ({
+  ...liveStudioFixture("perpl-live-active").runtime.details[
+    liveStudioFixture("perpl-live-active").runtime.checks[0]!.id
+  ]!,
+  id: "c0ffee00-0000-4000-8000-0000000000aa",
+  trigger: "owner",
+  ...fields,
+});
+
+test("an owner action reads sending, then waiting, then being carried out", () => {
+  assert.deepEqual(ownerActionView({ kind: "close", action: null, outcome: null }), {
+    state: "sending",
+    text: "Sending…",
+    tone: "quiet",
+    settled: false,
+  });
+
+  const queued = ownerActionView({ kind: "close", action: actionDto({}), outcome: null });
+  assert.equal(queued.state, "pending");
+  assert.match(queued.text, /research worker picks it up/);
+  assert.equal(queued.settled, false);
+
+  const held = ownerActionView({
+    kind: "approve",
+    action: actionDto({ kind: "approve", lastError: "CHECK_RUNNING", attempts: 1 }),
+    outcome: null,
+  });
+  assert.equal(held.text, "Waiting for the current check…");
+  assert.equal(held.settled, false);
+
+  const retrying = ownerActionView({
+    kind: "close",
+    action: actionDto({ lastError: "CLOSE_FAILED", attempts: 2 }),
+    outcome: null,
+  });
+  assert.equal(retrying.text, "Trying again. A paper close didn't go through.");
+
+  assert.equal(
+    ownerActionView({ kind: "stop", action: actionDto({ status: "running" }), outcome: null }).text,
+    "Closing everything on paper…",
+  );
+});
+
+test("a done action waits for its check, then says what really happened", () => {
+  const checkId = "c0ffee00-0000-4000-8000-0000000000aa";
+  const done = actionDto({ kind: "approve", status: "done", checkId });
+
+  const unread = ownerActionView({ kind: "approve", action: done, outcome: null });
+  assert.equal(unread.settled, false);
+  assert.equal(unread.text, "Entering on paper…");
+
+  const cases: [Partial<PerpsCheckDetailDto>, string, string][] = [
+    [
+      { outcome: "entered", outcomeText: "ENTERED SHORT ETH" },
+      "Entered on paper · ENTERED SHORT ETH",
+      "good",
+    ],
+    [
+      { outcome: "blocked", outcomeText: "BLOCKED BY CAP · PER DAY" },
+      "Not entered · BLOCKED BY CAP · PER DAY",
+      "caution",
+    ],
+    [
+      { outcome: "exited", outcomeText: "CLOSED BY YOU · LONG BTC" },
+      "Done · CLOSED BY YOU · LONG BTC",
+      "good",
+    ],
+    [
+      { outcome: "skipped", outcomeText: "ALREADY CLOSED" },
+      "Nothing changed · ALREADY CLOSED",
+      "quiet",
+    ],
+    [
+      { outcome: "failed", outcomeText: "Failed", error: "CHECK_INTERRUPTED" },
+      "Couldn't enter. It lost its turn before acting, so nothing changed. Try again.",
+      "bad",
+    ],
+  ];
+  for (const [fields, text, tone] of cases) {
+    const view = ownerActionView({ kind: "approve", action: done, outcome: ownerCheck(fields) });
+
+    assert.equal(view.text, text);
+    assert.equal(view.tone, tone);
+    assert.equal(view.settled, true);
+    assert.equal(view.state, "done");
+  }
+
+  /* Another check's detail is not this action's outcome. */
+  assert.equal(
+    ownerActionView({
+      kind: "approve",
+      action: done,
+      outcome: ownerCheck({ id: "c0ffee00-0000-4000-8000-0000000000bb" }),
+    }).settled,
+    false,
+  );
+  /* No check, or one that could not be read: done, and said plainly. */
+  assert.equal(
+    ownerActionView({ kind: "stop", action: actionDto({ status: "done" }), outcome: null }).text,
+    "Done.",
+  );
+  assert.equal(ownerActionView({ kind: "approve", action: done, outcome: "failed" }).text, "Done.");
+});
+
+test("a failed action says why in words", () => {
+  const view = ownerActionView({
+    kind: "close",
+    action: actionDto({ status: "failed", lastError: "POSITION_CLOSED" }),
+    outcome: null,
+  });
+  assert.equal(view.text, "Couldn't close it. That position is already closed.");
+  assert.equal(view.tone, "bad");
+  assert.equal(view.settled, true);
+
+  assert.equal(actionErrorText(null), "It could not be carried out.");
+  assert.equal(actionErrorText("AGENT_KILLED"), runtimeErrorText("AGENT_KILLED", ""));
+  assert.equal(actionErrorText("WEIRD_CODE"), "It could not be carried out (WEIRD_CODE).");
 });
 
 // ─── The manual check ──────────────────────────────────────────────────────────────────────────
@@ -632,7 +800,7 @@ test("the rail counts open positions and proposals waiting; unread is zero", () 
   assert.deepEqual(runtimeCounts(null, "failed"), { positions: 0, decisions: 0 });
 });
 
-test("the existing stages keep the runtime off; the three -active stages have it on, populated", () => {
+test("the existing stages keep the runtime off; the -active stages have it on, populated", () => {
   assert.equal(runtimeOn(liveStudioFixture("perpl-live").runtime.record), false);
   assert.equal(runtimeOn(liveStudioFixture("perpl-decisions").runtime.record), false);
 
@@ -648,10 +816,12 @@ test("the existing stages keep the runtime off; the three -active stages have it
     assert.ok(staged.runtime.positions.open.length > 0, stage);
     assert.ok(staged.runtime.proposals.length > 0, stage);
     assert.ok(staged.runtime.details[staged.runtime.checks[0]!.id], stage);
+    assert.deepEqual(staged.runtime.actions, [], stage);
   }
   assert.equal(liveStudioFixture("perpl-live-active").section, "overview");
   assert.equal(liveStudioFixture("perpl-decisions-active").section, "decisions");
   assert.equal(liveStudioFixture("perpl-record-active").section, "record");
+  assert.deepEqual(liveStudioFixture("perpl-live").runtime.actions, []);
 });
 
 test("the staged proposal is still valid on the fixture's clock", () => {

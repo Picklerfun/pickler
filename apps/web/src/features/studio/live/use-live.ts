@@ -17,6 +17,7 @@ import {
   marketplaceLeaderboard,
   marketplaceMarket,
   marketplaceMarkets,
+  perpsAction,
   perpsCheck,
   perpsChecks,
   perpsChecksBefore,
@@ -28,6 +29,8 @@ import {
   startPerpsCheck,
   stopPerps,
   type Agent,
+  type PerpsActionDto,
+  type PerpsActionStartedDto,
   type PerpsCheckDetailDto,
   type PerpsCheckSummaryDto,
   type PerpsPositionsResponseDto,
@@ -44,7 +47,7 @@ import {
 } from "../shell/use-agent-studio";
 import type { LiveStaged } from "./fixture";
 import { watchedSymbols, type LiveSectionKey, type MarketsRead } from "./model";
-import { runtimeErrorText } from "./runtime-model";
+import { ownerActionView, runtimeErrorText, type OwnerActionKind } from "./runtime-model";
 
 /** A read the live studio makes on its own: null until read, `failed` when it did not answer. */
 export type LiveRead<T> = T | null | "failed";
@@ -78,26 +81,77 @@ export interface LiveData extends AgentStudioData {
   lastCheck: PerpsCheckDetailDto | null;
   /** Checks read with their steps, by id (a Decisions row opened, or "Why this trade"). */
   checkDetails: Record<string, PerpsCheckDetailDto | "failed">;
-  /** The paper actions sent and not yet shown, polled every 2 s until they resolve. */
-  pending: PendingAction[];
-  /** Said when a queued action has not shown after two minutes, or "". */
-  queuedNote: string;
+  /** The manual check "Run a check now" started, polled every 2 s until it has finished, or null. */
+  checking: string | null;
+  /**
+   * The owner's approvals, closes and stops this session, one per thing pressed: each polled every
+   * 2 s (`GET /perps/actions/:id`) until done or failed, then its check read for what happened.
+   * A settled one stays, so its outcome is said, until the same thing is pressed again.
+   */
+  actions: OwnerAction[];
 }
 
-/** A write the research worker carries out, polled until it shows (or two minutes pass). */
-export type PendingAction =
-  | { kind: "check"; checkId: string; since: number }
-  | { kind: "approve"; proposalId: string; since: number }
-  | { kind: "close"; positionId: string; since: number }
-  | { kind: "stop"; since: number };
+/**
+ * An approve, a close or a stop: a durable action the research worker carries out. `actionId` is
+ * null while the POST is out; `action` is its last read; `outcome` is its check once done (null
+ * until read, `failed` when it could not be read).
+ */
+export interface OwnerAction {
+  kind: OwnerActionKind;
+  /** The proposal, the position, or `all` for a stop. */
+  target: string;
+  actionId: string | null;
+  action: PerpsActionDto | null;
+  outcome: PerpsCheckDetailDto | null | "failed";
+}
+
+/** The action pressed on `target`, if any. */
+export const ownerActionFor = (
+  actions: readonly OwnerAction[],
+  kind: OwnerActionKind,
+  target: string,
+): OwnerAction | null =>
+  actions.find((action) => action.kind === kind && action.target === target) ?? null;
+
+/** Whether an action still has something to read: its status, or its outcome once done. */
+const unsettled = (action: OwnerAction): boolean =>
+  action.actionId !== null && !ownerActionView(action).settled;
+
+/** The wire's kind for each thing pressed. */
+const WIRE_KINDS: Record<OwnerActionKind, PerpsActionDto["kind"]> = {
+  approve: "approve",
+  close: "close",
+  stop: "stop_all",
+};
+
+/** An action Pickler answers 404 for: failed with NOT_FOUND, so the poll stops and says so. */
+function lostAction(item: OwnerAction): PerpsActionDto {
+  const now = new Date().toISOString();
+  return {
+    id: item.actionId!,
+    kind: WIRE_KINDS[item.kind],
+    positionId: item.kind === "close" ? item.target : null,
+    proposalId: item.kind === "approve" ? item.target : null,
+    attempts: 0,
+    checkId: null,
+    createdAt: now,
+    updatedAt: now,
+    ...item.action,
+    status: "failed",
+    lastError: "NOT_FOUND",
+  };
+}
+
+/** An answer that may never have reached the API (none, or a 5xx): the press's key is kept. */
+const uncertain = (caught: unknown): boolean => {
+  const code = errorCode(caught);
+  return !code || /^5\d\d$/.test(code);
+};
 
 /** The sections that poll every 30 s while the page is visible. */
 const POLLED: readonly LiveSectionKey[] = ["overview", "positions", "decisions"];
 const SLOW_MS = 30_000;
 const FAST_MS = 2_000;
-/** A queued action that has not shown by then stops the fast poll and says so. */
-const PENDING_MS = 120_000;
-const QUEUED_NOTE = "Still queued. It shows here once the research worker runs it.";
 
 /** A runtime write's refusal in the owner's words, keeping its code. */
 function runtimeError(caught: unknown): Error {
@@ -105,29 +159,6 @@ function runtimeError(caught: unknown): Error {
     return new StudioError(caught.code, runtimeErrorText(caught.code, caught.message));
   }
   return caught instanceof Error ? caught : new Error("Something went wrong. Try again.");
-}
-
-/** Whether a pending action has shown in what was just read. */
-function resolved(
-  action: PendingAction,
-  read: {
-    positions: PerpsPositionsResponseDto | null;
-    proposals: PerpsProposalDto[] | null;
-    check: PerpsCheckDetailDto | null;
-  },
-): boolean {
-  switch (action.kind) {
-    case "check":
-      return read.check?.id === action.checkId && read.check.status === "finished";
-    case "approve":
-      return read.proposals !== null && !read.proposals.some((p) => p.id === action.proposalId);
-    case "close":
-      return (
-        read.positions !== null && !read.positions.open.some((p) => p.id === action.positionId)
-      );
-    case "stop":
-      return read.positions !== null && read.positions.open.length === 0;
-  }
 }
 
 /**
@@ -156,9 +187,10 @@ export interface UseLive extends UseAgentStudio, LiveData {
   readCheckDetail(checkId: string): Promise<void>;
   /**
    * The paper runtime's writes. Each throws a `StudioError` in the owner's words (MANUAL_LIMIT,
-   * PROPOSAL_EXPIRED, POSITION_CLOSED, ...) and changes nothing; a queued one is polled every 2 s
-   * until it shows. `runCheck` keeps its Idempotency-Key until an answer is certain, so a retry
-   * after a dropped answer is the same check.
+   * PROPOSAL_EXPIRED, POSITION_CLOSED, AGENT_KILLED, ...) and changes nothing. A manual check is
+   * polled every 2 s until it has finished; an approve, a close or a stop joins `actions` and is
+   * polled until done or failed. Each press has one Idempotency-Key, kept until an answer is
+   * certain, so a retry after a dropped answer is the same check or the same action.
    */
   runCheck(): Promise<void>;
   approve(proposalId: string): Promise<void>;
@@ -166,6 +198,8 @@ export interface UseLive extends UseAgentStudio, LiveData {
   closePosition(positionId: string): Promise<void>;
   /** "Stop · close all": pauses at once and closes every paper position; reloads the agent. */
   stopAll(): Promise<void>;
+  /** Forgets a settled action's outcome line. */
+  dismissAction(kind: OwnerActionKind, target: string): void;
 }
 
 /**
@@ -174,7 +208,7 @@ export interface UseLive extends UseAgentStudio, LiveData {
  * read the first time their section opens, and pause. The Perpl paper runtime's record is read with
  * them (it says whether the runtime is on); with it on, the checks, positions and proposals too,
  * every 30 s on Overview, Positions and Decisions while the page shows, and every 2 s while a
- * manual check or a queued action is pending. With `staged` (a `?stage=perpl-*` fixture) or
+ * manual check runs or an owner action is not settled. With `staged` (a `?stage=perpl-*` fixture) or
  * `preview` nothing touches the API: the reads come from the fixture, and the writes throw.
  */
 export function useLive({
@@ -223,106 +257,160 @@ export function useLive({
     const newest = stagedRuntime?.checks[0];
     return newest ? (stagedRuntime?.details[newest.id] ?? null) : null;
   });
-  const [pending, setPending] = useState<PendingAction[]>([]);
-  const [queuedNote, setQueuedNote] = useState("");
-  /* The latest of what the poll compares against, so its reader stays one function. */
-  const pendingRef = useRef<PendingAction[]>([]);
+  const [checking, setChecking] = useState<string | null>(null);
+  const [actions, setActions] = useState<OwnerAction[]>(stagedRuntime?.actions ?? []);
+  /* The latest of what the poll reads, so its reader stays one function. */
+  const checkingRef = useRef<string | null>(null);
+  const actionsRef = useRef<OwnerAction[]>(stagedRuntime?.actions ?? []);
   const lastCheckRef = useRef<PerpsCheckDetailDto | null>(null);
   const lastReadAt = useRef(0);
-  useEffect(() => {
-    pendingRef.current = pending;
-  }, [pending]);
+
+  /* Every change to the actions goes through here, so the poll's ref and the state agree. */
+  const updateActions = useCallback((change: (current: OwnerAction[]) => OwnerAction[]) => {
+    const next = change(actionsRef.current);
+    actionsRef.current = next;
+    setActions(next);
+  }, []);
 
   /*
-   * The record first: with the runtime off nothing else is read (and the studio keeps its "runs
-   * soon" copy). With it on, the checks, positions and proposals side by side, each failing on its
-   * own; then the newest check's steps for the strip, and the pending manual check's, and the
-   * pending actions that have shown are dropped.
+   * Each owner action not settled, read again: its status, and once done its check (what really
+   * happened). A request Pickler no longer has (404) fails with NOT_FOUND; any other failed read
+   * is tried on the next poll.
    */
-  const readRuntimeWith = useCallback(async (tools: StudioTools, signal?: AbortSignal) => {
-    if (tools.offline) {
-      return;
-    }
-    lastReadAt.current = Date.now();
-    let read: PerpsRecordDto;
-    try {
-      read = await perpsRecord(tools.agentId, signal);
-    } catch {
-      if (tools.alive.current && !signal?.aborted) {
-        setRecord("failed");
+  const readActionsWith = useCallback(
+    async (tools: StudioTools, signal?: AbortSignal) => {
+      const open = actionsRef.current.filter(unsettled);
+      if (open.length === 0) {
+        return;
       }
-      return;
-    }
-    if (!tools.alive.current || signal?.aborted) {
-      return;
-    }
-    setRecord(read);
-    if (!read.runtimeEnabled) {
-      return;
-    }
+      const read = await Promise.all(
+        open.map(async (item): Promise<OwnerAction> => {
+          let action: PerpsActionDto;
+          try {
+            action = await perpsAction(item.actionId!, signal);
+          } catch (caught) {
+            const code = errorCode(caught);
+            if (code === "NOT_FOUND" || code === "404") {
+              return { ...item, action: lostAction(item) };
+            }
+            return item;
+          }
+          let outcome = item.outcome;
+          if (action.status === "done" && action.checkId) {
+            try {
+              outcome = await perpsCheck(action.checkId, signal);
+            } catch {
+              outcome = "failed";
+            }
+          }
+          return { ...item, action, outcome };
+        }),
+      );
+      if (!tools.alive.current || signal?.aborted) {
+        return;
+      }
+      updateActions((current) =>
+        current.map(
+          (item) =>
+            read.find(
+              (fresh) =>
+                fresh.actionId === item.actionId &&
+                fresh.kind === item.kind &&
+                fresh.target === item.target,
+            ) ?? item,
+        ),
+      );
+    },
+    [updateActions],
+  );
 
-    const quietly = async <T>(call: () => Promise<T>): Promise<T | "failed"> => {
+  /*
+   * The owner actions first, so what they did is in the reads that follow. Then the record: with
+   * the runtime off nothing else is read (and the studio keeps its "runs soon" copy). With it on,
+   * the checks, positions and proposals side by side, each failing on its own; then the newest
+   * check's steps for the strip, and the manual check's while it runs.
+   */
+  const readRuntimeWith = useCallback(
+    async (tools: StudioTools, signal?: AbortSignal) => {
+      if (tools.offline) {
+        return;
+      }
+      lastReadAt.current = Date.now();
+      await readActionsWith(tools, signal);
+      if (!tools.alive.current || signal?.aborted) {
+        return;
+      }
+      let read: PerpsRecordDto;
       try {
-        return await call();
+        read = await perpsRecord(tools.agentId, signal);
       } catch {
-        return "failed";
+        if (tools.alive.current && !signal?.aborted) {
+          setRecord("failed");
+        }
+        return;
       }
-    };
-    const [page, open, waiting] = await Promise.all([
-      quietly(() => perpsChecks(tools.agentId, signal)),
-      quietly(() => perpsPositions(tools.agentId, signal)),
-      quietly(() => perpsProposals(tools.agentId, signal)),
-    ]);
-    if (!tools.alive.current || signal?.aborted) {
-      return;
-    }
-    setFirstPage(page === "failed" ? "failed" : page.checks);
-    if (page !== "failed") {
-      setCursor((current) => current ?? page.nextCursor);
-    }
-    setPositions(open);
-    setProposals(waiting === "failed" ? "failed" : waiting.proposals);
-
-    /* The newest check's steps, read again while it runs or once a newer one lands. */
-    const newest = page === "failed" ? null : (page.checks[0] ?? null);
-    let detail = lastCheckRef.current;
-    if (newest && (detail?.id !== newest.id || detail.status !== "finished")) {
-      const fresh = await quietly(() => perpsCheck(newest.id, signal));
-      if (fresh !== "failed") {
-        detail = fresh;
+      if (!tools.alive.current || signal?.aborted) {
+        return;
       }
-    }
-    /* A manual check that is not the newest any more is read on its own. */
-    const manual = pendingRef.current.find((action) => action.kind === "check");
-    let manualDetail = detail;
-    if (manual?.kind === "check" && detail?.id !== manual.checkId) {
-      const fresh = await quietly(() => perpsCheck(manual.checkId, signal));
-      manualDetail = fresh === "failed" ? null : fresh;
-    }
-    if (!tools.alive.current || signal?.aborted) {
-      return;
-    }
-    if (detail) {
-      lastCheckRef.current = detail;
-      setLastCheck(detail);
-      setCheckDetails((current) => ({ ...current, [detail.id]: detail }));
-    }
+      setRecord(read);
+      if (!read.runtimeEnabled) {
+        return;
+      }
 
-    const now = Date.now();
-    const shown = {
-      positions: open === "failed" ? null : open,
-      proposals: waiting === "failed" ? null : waiting.proposals,
-      check: manualDetail,
-    };
-    const still = pendingRef.current.filter((action) => !resolved(action, shown));
-    const late = still.filter((action) => now - action.since > PENDING_MS);
-    if (still.length !== pendingRef.current.length || late.length > 0) {
-      const next = still.filter((action) => now - action.since <= PENDING_MS);
-      pendingRef.current = next;
-      setPending(next);
-      setQueuedNote(late.length > 0 ? QUEUED_NOTE : "");
-    }
-  }, []);
+      const quietly = async <T>(call: () => Promise<T>): Promise<T | "failed"> => {
+        try {
+          return await call();
+        } catch {
+          return "failed";
+        }
+      };
+      const [page, open, waiting] = await Promise.all([
+        quietly(() => perpsChecks(tools.agentId, signal)),
+        quietly(() => perpsPositions(tools.agentId, signal)),
+        quietly(() => perpsProposals(tools.agentId, signal)),
+      ]);
+      if (!tools.alive.current || signal?.aborted) {
+        return;
+      }
+      setFirstPage(page === "failed" ? "failed" : page.checks);
+      if (page !== "failed") {
+        setCursor((current) => current ?? page.nextCursor);
+      }
+      setPositions(open);
+      setProposals(waiting === "failed" ? "failed" : waiting.proposals);
+
+      /* The newest check's steps, read again while it runs or once a newer one lands. */
+      const newest = page === "failed" ? null : (page.checks[0] ?? null);
+      let detail = lastCheckRef.current;
+      if (newest && (detail?.id !== newest.id || detail.status !== "finished")) {
+        const fresh = await quietly(() => perpsCheck(newest.id, signal));
+        if (fresh !== "failed") {
+          detail = fresh;
+        }
+      }
+      /* A manual check that is not the newest any more is read on its own. */
+      const manual = checkingRef.current;
+      let manualDetail = detail;
+      if (manual && detail?.id !== manual) {
+        const fresh = await quietly(() => perpsCheck(manual, signal));
+        manualDetail = fresh === "failed" ? null : fresh;
+      }
+      if (!tools.alive.current || signal?.aborted) {
+        return;
+      }
+      if (detail) {
+        lastCheckRef.current = detail;
+        setLastCheck(detail);
+        setCheckDetails((current) => ({ ...current, [detail.id]: detail }));
+      }
+
+      if (manual && manualDetail?.id === manual && manualDetail.status === "finished") {
+        checkingRef.current = null;
+        setChecking(null);
+      }
+    },
+    [readActionsWith],
+  );
 
   const readVersionsWith = useCallback(async (tools: StudioTools) => {
     if (tools.offline) {
@@ -462,11 +550,12 @@ export function useLive({
 
   /*
    * Overview, Positions and Decisions read the runtime again every 30 s while the page shows; any
-   * section, every 2 s while a manual check or a queued action is pending, until it resolves. The
-   * first poll is skipped when the mount's read just ran.
+   * section, every 2 s while a manual check runs or an owner action is not settled. The first poll
+   * is skipped when the mount's read just ran.
    */
   const polled = POLLED.includes(section);
-  const fast = pending.length > 0;
+  const busy = () => checkingRef.current !== null || actionsRef.current.some(unsettled);
+  const fast = checking !== null || actions.some(unsettled);
   const runtimeOnNow = record !== null && record !== "failed" && record.runtimeEnabled;
   useEffect(() => {
     if (offline || !runtimeOnNow || !(polled || fast)) {
@@ -477,7 +566,7 @@ export function useLive({
         if (fast || Date.now() - lastReadAt.current > FAST_MS) {
           await readRuntimeWith(tools, signal);
         }
-        if (pendingRef.current.length > 0) {
+        if (busy()) {
           return FAST_MS;
         }
         return polled ? SLOW_MS : null;
@@ -486,13 +575,62 @@ export function useLive({
     );
   }, [offline, runtimeOnNow, polled, fast, readRuntimeWith, tools]);
 
-  /* A queued write joins the pending list; the 2 s poll (restarted by it) reads at once. */
-  const queue = useCallback((action: PendingAction) => {
-    const next = [...pendingRef.current, action];
-    pendingRef.current = next;
-    setPending(next);
-    setQueuedNote("");
+  /* The manual check started is polled; the 2 s poll (restarted by it) reads at once. */
+  const watchCheck = useCallback((checkId: string) => {
+    checkingRef.current = checkId;
+    setChecking(checkId);
   }, []);
+
+  /*
+   * One owner action: drawn as sending at once, then posted with the press's Idempotency-Key. The
+   * key is kept while the answer is uncertain, so pressing again is the same action; a refusal
+   * drops the line and throws in the owner's words.
+   */
+  const actionKeys = useRef(new Map<string, string>());
+  const sendAction = useCallback(
+    async (
+      kind: OwnerActionKind,
+      target: string,
+      post: (key: string) => Promise<PerpsActionStartedDto>,
+    ): Promise<void> => {
+      const slot = `${kind}:${target}`;
+      const key = actionKeys.current.get(slot) ?? crypto.randomUUID();
+      actionKeys.current.set(slot, key);
+      const others = (current: OwnerAction[]) =>
+        current.filter((item) => item.kind !== kind || item.target !== target);
+      updateActions((current) => [
+        ...others(current),
+        { kind, target, actionId: null, action: null, outcome: null },
+      ]);
+      let started: PerpsActionStartedDto;
+      try {
+        started = await post(key);
+      } catch (caught) {
+        if (!uncertain(caught)) {
+          actionKeys.current.delete(slot);
+        }
+        updateActions(others);
+        throw runtimeError(caught);
+      }
+      actionKeys.current.delete(slot);
+      updateActions((current) =>
+        current.map((item) =>
+          item.kind === kind && item.target === target && item.actionId === null
+            ? { ...item, actionId: started.actionId }
+            : item,
+        ),
+      );
+    },
+    [updateActions],
+  );
+
+  const dismissAction = useCallback(
+    (kind: OwnerActionKind, target: string) =>
+      updateActions((current) =>
+        current.filter((item) => item.kind !== kind || item.target !== target),
+      ),
+    [updateActions],
+  );
 
   const readOlderChecks = useCallback(async () => {
     if (offline || !cursor) {
@@ -537,27 +675,26 @@ export function useLive({
     try {
       started = await startPerpsCheck(agentId, checkKey.current);
     } catch (caught) {
-      if (errorCode(caught) && !/^5\d\d$/.test(errorCode(caught))) {
+      if (!uncertain(caught)) {
         checkKey.current = null;
       }
       throw runtimeError(caught);
     }
     checkKey.current = null;
-    queue({ kind: "check", checkId: started.checkId, since: Date.now() });
-  }, [guard, agentId, queue]);
+    watchCheck(started.checkId);
+  }, [guard, agentId, watchCheck]);
 
   const approve = useCallback(
     async (proposalId: string) => {
       guard();
       try {
-        await approvePerpsProposal(proposalId);
+        await sendAction("approve", proposalId, (key) => approvePerpsProposal(proposalId, key));
       } catch (caught) {
         void readRuntime();
-        throw runtimeError(caught);
+        throw caught;
       }
-      queue({ kind: "approve", proposalId, since: Date.now() });
     },
-    [guard, queue, readRuntime],
+    [guard, sendAction, readRuntime],
   );
 
   const skip = useCallback(
@@ -578,26 +715,20 @@ export function useLive({
     async (positionId: string) => {
       guard();
       try {
-        await closePerpsPosition(positionId);
+        await sendAction("close", positionId, (key) => closePerpsPosition(positionId, key));
       } catch (caught) {
         void readRuntime();
-        throw runtimeError(caught);
+        throw caught;
       }
-      queue({ kind: "close", positionId, since: Date.now() });
     },
-    [guard, queue, readRuntime],
+    [guard, sendAction, readRuntime],
   );
 
   const stopAll = useCallback(async () => {
     guard();
-    try {
-      await stopPerps(agentId);
-    } catch (caught) {
-      throw runtimeError(caught);
-    }
-    queue({ kind: "stop", since: Date.now() });
+    await sendAction("stop", "all", (key) => stopPerps(agentId, key));
     await reloadAfterWrite();
-  }, [guard, agentId, queue, reloadAfterWrite]);
+  }, [guard, agentId, sendAction, reloadAfterWrite]);
 
   /* The feed: the newest page as polled, then the older pages read since, each check once. */
   const checks = useMemo<LiveRead<PerpsCheckSummaryDto[]>>(() => {
@@ -628,8 +759,8 @@ export function useLive({
     proposals,
     lastCheck,
     checkDetails,
-    pending,
-    queuedNote,
+    checking,
+    actions,
     readRuntime,
     readOlderChecks,
     readCheckDetail,
@@ -638,5 +769,6 @@ export function useLive({
     skip,
     closePosition,
     stopAll,
+    dismissAction,
   };
 }

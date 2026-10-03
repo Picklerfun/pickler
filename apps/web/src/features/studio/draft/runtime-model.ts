@@ -22,6 +22,42 @@ export const CHECK_POLL_MS = 1500;
 export const runtimeOpen = (record: PerpsRecordDto | null): boolean =>
   record?.runtimeEnabled === true;
 
+/** What the draft's schedule says: the Perpl runtime off, or on (R2: drafts run only manually). */
+export interface ScheduleCopy {
+  /** Console's ON ITS OWN tag. */
+  tag: string;
+  /** Console's ON ITS OWN note. */
+  note: string;
+  /** Overview's switch row: its title, its note and the switch's name. */
+  title: string;
+  rowNote: string;
+  switchLabel: string;
+  /** Whether the interval and its next runs are drawn: only while they could still apply. */
+  intervals: boolean;
+}
+
+export function scheduleCopy(open: boolean, intervalHours: number): ScheduleCopy {
+  if (!open) {
+    return {
+      tag: "STARTS WITH THE PERPL RUNTIME",
+      note: "It runs on this schedule once the Perpl runtime opens.",
+      title: `Run on its own · every ${intervalHours}h`,
+      rowNote: "Unlocks with the Perpl runtime.",
+      switchLabel: "Run on its own, unlocks with the Perpl runtime",
+      intervals: true,
+    };
+  }
+  return {
+    tag: "HOURLY ONCE PUBLIC",
+    note: "A draft runs only when you run it on paper. Once it is public it checks Perpl every hour on its own; there is no schedule to set.",
+    title: "Run on its own · hourly once public",
+    rowNote: "A draft runs only when you run it on paper.",
+    switchLabel:
+      "Run on its own: a draft runs only when you run it on paper, and hourly once public",
+    intervals: false,
+  };
+}
+
 /** A check still to finish: polled until it is. */
 export const checkRunning = (check: Pick<PerpsCheckDetailDto, "status"> | null): boolean =>
   check !== null && check.status !== "finished";
@@ -95,6 +131,8 @@ export function checkRefusal(code: string, limit: number, fallback: string): str
       return "Paper runs are closed right now.";
     case "NOT_A_PERPL_AGENT":
       return "This draft does not trade on Perpl, so there is nothing to run on paper.";
+    case "AGENT_KILLED":
+      return "Pickler has stopped this agent, so it runs no checks. Its exits still run.";
     default:
       return fallback;
   }

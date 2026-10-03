@@ -430,7 +430,9 @@ from the check's start, its dot from the runner's words, the last in the outcome
 `outcomeCard` (the outcome tag, the call's instrument, action, probability and horizon, the paper
 size of the position it opened, the entries met and held, exits met, never lines broken, the
 rationale), `tradeRows` and `tradeCount` (Trades and Overview's newest three: open positions, then
-closed, with P&L). Accept / Reject / Ask are decision review and stay out. The client calls are
+closed, with P&L), `scheduleCopy` (Console's ON ITS OWN and Overview's switch row: "Unlocks with
+the Perpl runtime" while it is off; once open, a draft runs only when you run it on paper and
+checks hourly once public, and the interval picker is not drawn, R2). Accept / Reject / Ask are decision review and stay out. The client calls are
 the runtime block at the end of `api.ts` (`startPerpsCheck`, `perpsChecks`, `perpsCheck`,
 `perpsPositions`, `perpsRecord`), which the live studio shares. `?stage=draft-console-ran` and
 `?stage=draft-trades-active` stage one finished run (`DraftStaged.perps`); every other draft stage
@@ -521,18 +523,25 @@ reads the record with the other reads (`readMore`), then, with the runtime on, t
 and proposals side by side (each failing alone into `"failed"`), the newest check's steps for the
 strip (`lastCheck`) and the steps of any row opened (`checkDetails`, `readCheckDetail`), and older
 pages of the feed (`readOlderChecks`). It polls through `lib/polling.ts`'s `startPolling`: every
-30 s on Overview, Positions and Decisions while the page shows, and every 2 s while anything in
-`pending` waits (a manual check until it is `finished`, an approve until its proposal leaves the
-list, a close until its position leaves `open`, a stop until nothing is open); a pending action
-that has not shown after two minutes is dropped and `queuedNote` says it is still queued. Its
-writes (`runCheck` with one Idempotency-Key per press, kept until the answer is certain;
-`approve`, `skip`, `closePosition`, `stopAll`, which also reloads the agent because it pauses)
-throw a `StudioError` worded by `runtimeErrorText` (MANUAL_LIMIT, RUNTIME_DISABLED, CHECK_RUNNING,
-POSITION_CLOSED, PROPOSAL_DECIDED, PROPOSAL_EXPIRED, RUNTIME_UNAVAILABLE, RUNTIME_CEILING), said
-inline under the control pressed. The client calls are `api.ts`'s runtime blocks: the reads and
-`startPerpsCheck` shared with the draft Console, and the live studio's own `perpsChecksBefore`,
-`perpsProposals`, `approvePerpsProposal`, `skipPerpsProposal`, `closePerpsPosition` and
-`stopPerps`. With it on: the chip reads LIVE · ON PAPER (`runtimeStatus`); TODAY, OPEN and PUT IN
+30 s on Overview, Positions and Decisions while the page shows, and every 2 s while the manual
+check (`checking`) has not finished or an owner action in `actions` is not settled. An approve, a
+close and a stop are durable owner actions: the POST answers 202 `{ actionId }` and carries the
+press's Idempotency-Key (one per press, kept while the answer is uncertain — none, or a 5xx — so
+pressing again is the same action, as `runCheck`'s key is); each poll reads the unsettled actions
+first (`GET /perps/actions/:id`), and once one is `done` its check (`GET /perps/checks/:checkId`)
+for what really happened. `ownerActionView` in `runtime-model.ts` words it under the control
+pressed (`ActionLine` in `runtime-parts.tsx`): "Sending…", queued for the worker, "Waiting for the
+current check…" while a check holds the agent (`pending` with `lastError` CHECK_RUNNING), being
+carried out, then the outcome (entered, not entered with the cap, closed, already closed) or
+`lastError` in words (`actionErrorText`), with Dismiss. A card that went away with its action (the
+position closed, the proposal approved) leaves the line at the head of its list (`GoneActions`).
+The writes (`runCheck`, `approve`, `skip`, `closePosition`, `stopAll`, which also reloads the agent
+because it pauses) throw a `StudioError` worded by `runtimeErrorText` (MANUAL_LIMIT,
+RUNTIME_DISABLED, CHECK_RUNNING, POSITION_CLOSED, PROPOSAL_DECIDED, PROPOSAL_EXPIRED,
+RUNTIME_UNAVAILABLE, RUNTIME_CEILING, AGENT_KILLED), said inline under the control pressed. The
+client calls are `api.ts`'s runtime blocks: the reads and `startPerpsCheck` shared with the draft
+Console, and the live studio's own `perpsChecksBefore`, `perpsProposals`, `approvePerpsProposal`,
+`skipPerpsProposal`, `closePerpsPosition`, `stopPerps` and `perpsAction`. With it on: the chip reads LIVE · ON PAPER (`runtimeStatus`); TODAY, OPEN and PUT IN
 TODAY are today's realized P&L, the open P&L and today's new margin (`runtimeTiles`; EQUITY stays
 the wallet's AUSD); the strip is the newest check (`runtimeStrip`: time, outcome, duration, steps,
 the all-time count, its steps as the log); the rail badges are the open positions and the
@@ -549,15 +558,17 @@ per-decision chat (Console stays Soon). "Why this trade" goes through `LiveSecti
 which opens Decisions on that one check (`focusCheck`, read with its steps if the feed lacks it)
 until "Every decision" or any other way into the section. Controls' STOPS (`runtimeStopRows`) make
 "Stop · close all" real on paper, the header's and Controls' each a `StopAll` with an inline confirm
-(`stopConfirm`) and no passkey; Auto-pause reads ON for the day-loss stop only; HOW IT RUNS says it
+(`stopConfirm`) and no passkey; Auto-pause reads ON · DAY-LOSS (R11 runs; gas, credits and losing
+Perpl are said to come with live trading); HOW IT RUNS says it
 checks hourly on paper (`runtimeEntryView`); the meters are today's (`runtimeMeters`); HEALTH adds
 the runtime's state and "Model cost today ≈ $x" (`runtimeHealthRows`, `costLine`; AI credits stay
-Soon). Limits' day-loss line keeps "ONCE IT RUNS" (not reworded yet). The parts are
+Soon); Limits' day-loss line and its note say what runs now (`runtimeCapsView`). The parts are
 `live/runtime-parts.tsx` with `live/runtime.module.css`; the rules are `live/runtime-model.ts`, pure
 and type-importing only, pinned in `apps/web/test/studio-live-runtime.test.ts`. `live/fixture.ts`
 stages the runtime off on every `perpl-*` stage (a record with `runtimeEnabled: false`) and on, with
 checks, a BTC long, an ETH proposal, closes and a record, on `perpl-live-active` (Overview),
-`perpl-decisions-active` and `perpl-record-active`; `scripts/design/routes.mjs` proves
+`perpl-decisions-active` and `perpl-record-active` (`LiveRuntimeStaged.actions` stages owner
+actions already sent; none of these has one); `scripts/design/routes.mjs` proves
 `#live-overview-proposals`, `#live-decisions-feed` and `#live-record-equity` for them.
 
 `?stage=live|researching|decided` (`home/stage.ts`, outside production only) renders the home from

@@ -35,6 +35,7 @@ import type { LiveStage } from "../home/stage";
 import { previewConfig } from "../preview";
 import type { BriefText } from "../shell/build-model";
 import type { AccountTab, LiveSectionKey } from "./model";
+import type { OwnerAction } from "./use-live";
 
 /** The live studio filled in for the design harness, at one moment. */
 export interface LiveStaged {
@@ -72,6 +73,8 @@ export interface LiveRuntimeStaged {
   proposals: PerpsProposalDto[];
   /** `GET /perps/checks/:id` for the checks the screen opens, by id. */
   details: Record<string, PerpsCheckDetailDto>;
+  /** The owner's actions already sent, as `GET /perps/actions/:id` last answered them. */
+  actions: OwnerAction[];
 }
 
 const NOW = Date.UTC(2026, 9, 2, 14, 30, 0);
@@ -837,6 +840,7 @@ const offRuntime: LiveRuntimeStaged = {
   positions: { network: "testnet", account: false, open: [], closed: [] },
   proposals: [],
   details: {},
+  actions: [],
 };
 
 const activeRuntime: LiveRuntimeStaged = {
@@ -845,6 +849,7 @@ const activeRuntime: LiveRuntimeStaged = {
   positions: activePositions,
   proposals: activeProposals,
   details: activeDetails,
+  actions: [],
 };
 
 const ACCOUNT_TABS: Partial<Record<LiveStage, AccountTab>> = {

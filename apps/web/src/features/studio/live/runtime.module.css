@@ -119,6 +119,61 @@
   flex-basis: 100%;
 }
 
+/* An owner action's line: sending, waiting, carried out, then what happened or why it failed. */
+.actionLine {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font: 500 12px/1.4 var(--pk-font);
+  color: var(--pk-ink-muted);
+}
+.actionLine[data-tone="good"] {
+  color: var(--pk-state-good-ink);
+}
+.actionLine[data-tone="caution"] {
+  color: var(--pk-state-caution-ink);
+}
+.actionLine[data-tone="bad"] {
+  color: var(--pk-state-loss-ink);
+}
+.actionDot {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-violet-ink);
+  animation: actionPulse 1.4s ease-in-out infinite;
+}
+.actionText {
+  min-width: 0;
+}
+.actionDismiss {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: 600 11px/1.4 var(--pk-font);
+  color: var(--pk-ink-soft);
+  text-decoration: underline;
+  cursor: pointer;
+}
+.goneActions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+@keyframes actionPulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .actionDot {
+    animation: none;
+  }
+}
+
 /* ---------- Waiting on you ---------- */
 
 .proposal {
@@ -762,6 +817,7 @@
 .darkButton:focus-visible,
 .quietButton:focus-visible,
 .inlineButton:focus-visible,
+.actionDismiss:focus-visible,
 .limeButton:focus-visible,
 .skipButton:focus-visible,
 .dangerButton:focus-visible,
