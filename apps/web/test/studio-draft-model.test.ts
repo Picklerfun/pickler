@@ -426,7 +426,7 @@ test("a run days out says how many days, not tomorrow", () => {
    each fixture is the state its name says. */
 
 test("each draft stage is staged outside production only", () => {
-  assert.equal(DRAFT_STAGES.length, 14);
+  assert.equal(DRAFT_STAGES.length, 16);
   for (const stage of DRAFT_STAGES) {
     assert.equal(stageFromSearch("development", stage), stage);
     assert.equal(stageFromSearch("production", stage), undefined);

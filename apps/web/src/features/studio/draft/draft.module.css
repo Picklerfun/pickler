@@ -407,6 +407,40 @@
 .eventDot[data-kind="wallet"] {
   background: var(--pk-violet);
 }
+/* Overview's paper trades (perpl-paper-runtime-v1 R17): open lime, closed quiet, then the P&L. */
+.tradeDot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  margin-top: 3px;
+  border-radius: 3px;
+  background: var(--pk-lime);
+}
+.tradeDot[data-state="CLOSED"] {
+  background: var(--pk-ink-faint);
+}
+.tradeTitle {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font: 600 13px/1.3 var(--pk-font);
+  letter-spacing: -0.01em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tradePnl {
+  flex: none;
+  font: 600 9.5px/1.4 var(--pk-font);
+  letter-spacing: 0.08em;
+  color: var(--pk-ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+.tradePnl[data-tone="up"] {
+  color: var(--pk-win);
+}
+.tradePnl[data-tone="down"] {
+  color: var(--pk-loss);
+}
 .eventText {
   flex: 1;
   min-width: 0;

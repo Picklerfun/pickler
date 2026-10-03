@@ -46,8 +46,9 @@ export type CreateStage = (typeof CREATE_STAGES)[number];
 
 /**
  * The draft studio (studio-draft-dashboard-v1 §7): the Overview right after create, Connect X at
- * each moment (the row open, the post not found yet, verified, skipped), then each section, and a
- * locked one. `draft/fixture.ts` draws each.
+ * each moment (the row open, the post not found yet, verified, skipped), then each section (the
+ * Console and Trades also after a paper run, perpl-paper-runtime-v1 R17), and a locked one.
+ * `draft/fixture.ts` draws each.
  */
 export const DRAFT_STAGES = [
   "draft",
@@ -56,7 +57,9 @@ export const DRAFT_STAGES = [
   "draft-x-ok",
   "draft-x-skipped",
   "draft-console",
+  "draft-console-ran",
   "draft-trades",
+  "draft-trades-active",
   "draft-brief",
   "draft-sources",
   "draft-limits",

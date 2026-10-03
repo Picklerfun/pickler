@@ -2,12 +2,22 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { PublishDto } from "@pickler/api-schema";
 import {
+  StudioError,
   agentActivity,
+  perpsCheck,
+  perpsChecks,
+  perpsPositions,
+  perpsRecord,
   publishAgent,
   setIntervalHours,
+  startPerpsCheck,
   type ActivityEvent,
   type Agent,
+  type PerpsCheckDetailDto,
+  type PerpsPositionsResponseDto,
+  type PerpsRecordDto,
 } from "../api";
+import { startPolling } from "../lib/polling";
 import {
   useAgentStudio,
   type AgentStudioData,
@@ -16,6 +26,7 @@ import {
 } from "../shell/use-agent-studio";
 import type { DraftStaged } from "./fixture";
 import type { INTERVAL_OPTIONS } from "./run-model";
+import { CHECK_POLL_MS, checkRunning } from "./runtime-model";
 
 /**
  * How long Go Public's "{NAME} IS LIVE" stays before the studio reloads the agents, which swaps
@@ -31,6 +42,17 @@ export interface DraftData extends AgentStudioData {
   activity: ActivityEvent[] | null;
   /** The last activity read failed (Overview says so, with Retry). */
   activityFailed: boolean;
+  /**
+   * `GET /perps/record`: `runtimeEnabled` and today's manual checks; null until read, or when the
+   * read failed (the Console keeps its Soon state). Its failures never reach the shell's error.
+   */
+  record: PerpsRecordDto | null;
+  /** `GET /perps/positions`: the paper positions Trades and Overview list; null until read. */
+  positions: PerpsPositionsResponseDto | null;
+  /** The newest check, polled every 1.5 s while it runs; null before the first. */
+  check: PerpsCheckDetailDto | null;
+  /** A check is being started or is still running. */
+  checking: boolean;
 }
 
 /**
@@ -49,6 +71,13 @@ export interface UseDraft extends UseAgentStudio, DraftData {
    * throws with its blockers in `details.detail.blockers`.
    */
   publish(): Promise<PublishDto>;
+  /**
+   * `POST /perps/checks` ("Run it on paper", R2): starts a manual check and polls it until it
+   * finishes, then reads the positions and the record again. Throws the refusal (`StudioError`:
+   * MANUAL_LIMIT, CHECK_RUNNING, RUNTIME_DISABLED, PREVIEW); after CHECK_RUNNING the running
+   * check is read and polled instead.
+   */
+  runCheck(): Promise<void>;
 }
 
 /**
@@ -73,6 +102,50 @@ export function useDraft({
 }): UseDraft {
   const [activity, setActivity] = useState<ActivityEvent[] | null>(staged?.activity ?? null);
   const [activityFailed, setActivityFailed] = useState(false);
+  const [record, setRecord] = useState<PerpsRecordDto | null>(staged?.perps.record ?? null);
+  const [positions, setPositions] = useState<PerpsPositionsResponseDto | null>(
+    staged?.perps.positions ?? null,
+  );
+  const [check, setCheck] = useState<PerpsCheckDetailDto | null>(staged?.perps.check ?? null);
+  /* The check being polled: set by a press or by a running check found on the first read. */
+  const [pollId, setPollId] = useState<string | null>(null);
+  const [starting, setStarting] = useState(false);
+
+  /* The runtime's reads keep their failures to themselves: an agent the runtime does not know
+     (an older draft, 409 NOT_A_PERPL_AGENT) still opens, with the Console in its Soon state. */
+  const readRuntimeWith = useCallback(async (tools: StudioTools, latest: boolean) => {
+    if (tools.offline) {
+      return;
+    }
+    const id = tools.agentId;
+    await Promise.all([
+      perpsRecord(id).then(
+        (read) => tools.alive.current && setRecord(read),
+        () => undefined,
+      ),
+      perpsPositions(id).then(
+        (read) => tools.alive.current && setPositions(read),
+        () => undefined,
+      ),
+      latest
+        ? perpsChecks(id)
+            .then(async (page) => {
+              const newest = page.checks[0];
+              if (!newest) {
+                return;
+              }
+              const detail = await perpsCheck(newest.id);
+              if (tools.alive.current) {
+                setCheck(detail);
+                if (checkRunning(detail)) {
+                  setPollId(detail.id);
+                }
+              }
+            })
+            .catch(() => undefined)
+        : undefined,
+    ]);
+  }, []);
 
   const readActivityWith = useCallback(async (tools: StudioTools) => {
     if (tools.offline) {
@@ -97,7 +170,7 @@ export function useDraft({
     staged,
     preview,
     onRefreshAgent,
-    readMore: readActivityWith,
+    readMore: (tools) => Promise.all([readActivityWith(tools), readRuntimeWith(tools, true)]),
   });
   const { agentId, alive, guard, fail, reloadAgent, reloadAfterWrite } = tools;
 
@@ -150,5 +223,69 @@ export function useDraft({
     return result;
   }, [guard, agentId, alive, reloadAgent, fail]);
 
-  return { ...studio, activity, activityFailed, readActivity, saveInterval, publish };
+  /* Poll the check until it finishes, then read the positions and the record again. A new press or
+     another agent stops the old poll. */
+  useEffect(() => {
+    if (pollId === null || tools.offline) {
+      return;
+    }
+    return startPolling(
+      async (signal) => {
+        const detail = await perpsCheck(pollId, signal);
+        if (!alive.current) {
+          return null;
+        }
+        setCheck(detail);
+        if (checkRunning(detail)) {
+          return CHECK_POLL_MS;
+        }
+        setPollId(null);
+        void readRuntimeWith(tools, false);
+        return null;
+      },
+      () => undefined,
+    );
+  }, [pollId, tools, alive, readRuntimeWith]);
+
+  const runCheck = useCallback(async () => {
+    guard();
+    setStarting(true);
+    try {
+      const { checkId } = await startPerpsCheck(agentId, crypto.randomUUID());
+      if (!alive.current) {
+        return;
+      }
+      setCheck(null);
+      setPollId(checkId);
+      void readRuntimeWith(tools, false);
+    } catch (caught) {
+      if (caught instanceof StudioError && caught.code === "CHECK_RUNNING") {
+        void readRuntimeWith(tools, true);
+      } else if (
+        caught instanceof StudioError &&
+        (caught.code === "MANUAL_LIMIT" || caught.code === "RUNTIME_DISABLED")
+      ) {
+        void readRuntimeWith(tools, false);
+      }
+      throw caught;
+    } finally {
+      if (alive.current) {
+        setStarting(false);
+      }
+    }
+  }, [guard, agentId, alive, tools, readRuntimeWith]);
+
+  return {
+    ...studio,
+    activity,
+    activityFailed,
+    record,
+    positions,
+    check,
+    checking: starting || pollId !== null || checkRunning(check),
+    readActivity,
+    saveInterval,
+    publish,
+    runCheck,
+  };
 }

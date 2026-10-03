@@ -404,13 +404,37 @@ throws `PREVIEW`); `draft/use-draft.ts` is built on it through `readMore` and `S
 the activity, the interval and Go Public. The pure rules are `model.ts` (rail and tile shapes),
 `x-model.ts`, `identity-model.ts`, `build-model.ts` (brief, sources, a setup save's failure, a
 wallet's read), `wallet-model.ts` (ledger, allocation row) and `clock.ts`; the draft's own are
-`draft/model.ts`, `draft/caps-model.ts` and `draft/run-model.ts`. Shared rules live in
+`draft/model.ts`, `draft/caps-model.ts`, `draft/run-model.ts` and `draft/runtime-model.ts`. Shared rules live in
 `shell/shell.module.css` (chrome, `srOnly`), `cards.module.css` (cards, pills, tags, Talk, Trade,
 Master; its white and dark pills dim on `aria-disabled` as on `:disabled`), `x-connect.module.css`,
 `build.module.css` (also the web's sites and the arrivals) and `identity.module.css`; a draft sheet composes them
 under its own names. The bundler resolves one level of `composes`, so a class composing one that
 itself composes names both, and `design:source` wants every shell class named by a shell component
 or composed inside its own sheet.
+
+The draft Console runs on the Perpl paper runtime (docs/specs/perpl-paper-runtime-v1.md R2, R17).
+`use-draft.ts` reads `GET /perps/record`, `GET /perps/positions` and the newest check (the first
+of `GET /perps/checks`, then `GET /perps/checks/:id`) with its other reads; their failures stay in
+their own fields and never reach the shell's error, so a draft the runtime does not know still
+opens. Only a record whose `runtimeEnabled` is true opens the Console; unread or false, the
+Console, Trades and Overview's Trades keep the Soon state of D12 exactly. Open, "Run it on paper"
+(`runCheck`) posts a manual check with a fresh Idempotency-Key per press, and the check is polled
+through `startPolling` every 1.5 s (`CHECK_POLL_MS`) until `finished`, then the positions and the
+record are read again; a check found running on load is polled the same way, and a 409
+CHECK_RUNNING reads and polls the running one. `runtime-model.ts` is pure and pinned in
+`studio-draft-runtime.test.ts`: `runButtonView` ("Run it on paper" / "Running" / "Run it again",
+shut with its reason while a check runs, at the manual limit or for a view-only member, always
+with "N OF 6 TODAY"), `runState`, `didMeta`, `checkRefusal` (the words for MANUAL_LIMIT,
+CHECK_RUNNING, RUNTIME_DISABLED, NOT_A_PERPL_AGENT), `stepLines` (What it did: each step timed
+from the check's start, its dot from the runner's words, the last in the outcome's tone),
+`outcomeCard` (the outcome tag, the call's instrument, action, probability and horizon, the paper
+size of the position it opened, the entries met and held, exits met, never lines broken, the
+rationale), `tradeRows` and `tradeCount` (Trades and Overview's newest three: open positions, then
+closed, with P&L). Accept / Reject / Ask are decision review and stay out. The client calls are
+the runtime block at the end of `api.ts` (`startPerpsCheck`, `perpsChecks`, `perpsCheck`,
+`perpsPositions`, `perpsRecord`), which the live studio shares. `?stage=draft-console-ran` and
+`?stage=draft-trades-active` stage one finished run (`DraftStaged.perps`); every other draft stage
+has no runtime reads.
 
 `features/studio/live/` is the studio of a published Perpl agent (docs/specs/studio-live-v1.md):
 `studio.tsx` asks `studioKind(agent)` (`live/model.ts`: `draft`, `live` for a non-draft with

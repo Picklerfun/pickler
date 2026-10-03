@@ -423,3 +423,45 @@ export const marketplaceDirectory = (signal?: AbortSignal) =>
 /** `GET /marketplace/leaderboard`: ranked by score, with the weights that make it. */
 export const marketplaceLeaderboard = (signal?: AbortSignal) =>
   marketplaceApi<LeaderboardDto>("/leaderboard", signal);
+
+// ─── The Perpl paper runtime (perpl-paper-runtime-v1 §4) ────────────────────────────────────────
+// Shared by both studios: the draft Console runs manual checks with these, and the live studio
+// reads the same routes. Its DTO types are named in this block rather than in the import list.
+
+type PerpsSchema = typeof import("@pickler/api-schema");
+export type PerpsChecksDto = ReturnType<PerpsSchema["perpsChecksResponseSchema"]["parse"]>;
+export type PerpsCheckSummaryDto = import("@pickler/api-schema").PerpsCheckSummaryDto;
+export type PerpsCheckDetailDto = import("@pickler/api-schema").PerpsCheckDetailDto;
+export type PerpsPositionsResponseDto = import("@pickler/api-schema").PerpsPositionsResponseDto;
+export type PerpsRecordDto = import("@pickler/api-schema").PerpsRecordDto;
+
+/**
+ * `POST /agents/:id/perps/checks` ("Run it on paper"): queues a manual check, 202 `{ checkId }`.
+ * `key` is the Idempotency-Key, one per press, so a retried request is the same check. 409
+ * NOT_A_PERPL_AGENT, RUNTIME_DISABLED, CHECK_RUNNING; 429 MANUAL_LIMIT (6 a UTC day).
+ */
+export const startPerpsCheck = (agentId: string, key: string) =>
+  studioApi<{ checkId: string }>(`/agents/${agentId}/perps/checks`, {
+    method: "POST",
+    headers: { "Idempotency-Key": key },
+    body: "{}",
+  });
+
+/** `GET /agents/:id/perps/checks`: the Decisions feed, newest first, 50 a page. */
+export const perpsChecks = (agentId: string, signal?: AbortSignal) =>
+  studioApi<PerpsChecksDto>(`/agents/${agentId}/perps/checks`, signal ? { signal } : {});
+
+/** `GET /perps/checks/:id`: one check with its timed steps, polled while it runs. */
+export const perpsCheck = (checkId: string, signal?: AbortSignal) =>
+  studioApi<PerpsCheckDetailDto>(`/perps/checks/${checkId}`, signal ? { signal } : {});
+
+/** `GET /agents/:id/perps/positions`: open paper positions marked to the board, and closed ones. */
+export const perpsPositions = (agentId: string, signal?: AbortSignal) =>
+  studioApi<PerpsPositionsResponseDto>(
+    `/agents/${agentId}/perps/positions`,
+    signal ? { signal } : {},
+  );
+
+/** `GET /agents/:id/perps/record`: the record, `runtimeEnabled` and today's figures. */
+export const perpsRecord = (agentId: string, signal?: AbortSignal) =>
+  studioApi<PerpsRecordDto>(`/agents/${agentId}/perps/record`, signal ? { signal } : {});

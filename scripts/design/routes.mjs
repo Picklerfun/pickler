@@ -584,6 +584,16 @@ const ALL = [
     task: "Draft dashboard",
     proves: "#draft-section-console",
   },
+  /* The Console after one paper run with the Perpl runtime open (perpl-paper-runtime-v1 R17):
+   * the run button open, the steps and the outcome card. */
+  {
+    path: "/studio?stage=draft-console-ran",
+    name: "studio-draft-console-ran",
+    product: "studio",
+    surface: "dark",
+    task: "Draft dashboard",
+    proves: "#draft-console-outcome",
+  },
   {
     path: "/studio?stage=draft-trades",
     name: "studio-draft-trades",
@@ -591,6 +601,15 @@ const ALL = [
     surface: "dark",
     task: "Draft dashboard",
     proves: "#draft-section-picks",
+  },
+  /* Trades with the paper positions that run opened, open and closed. */
+  {
+    path: "/studio?stage=draft-trades-active",
+    name: "studio-draft-trades-active",
+    product: "studio",
+    surface: "dark",
+    task: "Draft dashboard",
+    proves: "#draft-trades-list",
   },
   {
     path: "/studio?stage=draft-brief",

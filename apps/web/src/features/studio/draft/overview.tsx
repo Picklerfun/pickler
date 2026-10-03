@@ -6,6 +6,7 @@ import { capsOf, starterCaps } from "./caps-model";
 import type { DraftGoPublicStage } from "./fixture";
 import { GoPublic } from "./go-public";
 import { activityView, walletCardView } from "./model";
+import { tradeCount, tradeRows } from "./runtime-model";
 import { DraftSection, type DraftSectionProps } from "./draft-section";
 import styles from "./draft.module.css";
 
@@ -17,8 +18,9 @@ export interface OverviewProps extends DraftSectionProps {
 /**
  * Overview (canvas 339–441, spec §3.1): Go Public with Connect X (`go-public.tsx`,
  * `x-connect.tsx`); its wallet, read as Limits reads it, and the schedule, which unlocks with the
- * Perpl runtime (D19); its trades, none yet, and its activity (D18), read from the API, never
- * made up, with Retry when the read failed.
+ * Perpl runtime (D19); its trades, the newest three paper positions as Trades lists them
+ * (`runtime-model.ts`, perpl-paper-runtime-v1 R17), and its activity (D18), read from the API,
+ * never made up, with Retry when the read failed.
  */
 export function Overview({ goPublic, ...props }: OverviewProps) {
   const { agent, draft, canManage, now, onSection, onWallets } = props;
@@ -36,6 +38,7 @@ export function Overview({ goPublic, ...props }: OverviewProps) {
     draft.wallets,
   );
   const activity = draft.activity ? activityView(draft.activity, new Date(now)) : null;
+  const trades = tradeRows(draft.positions).slice(0, 3);
 
   async function retryActivity() {
     if (retrying) {
@@ -154,19 +157,34 @@ export function Overview({ goPublic, ...props }: OverviewProps) {
           <div className={styles.list}>
             <div className={styles.listHead}>
               <h3 className={styles.listTitle}>Trades</h3>
-              <span className={styles.cardCount}>0</span>
+              <span className={styles.cardCount}>{tradeCount(draft.positions)}</span>
             </div>
-            <div className={styles.empty}>
-              <span>Nothing yet. Run it on paper in the Console to see what it would do.</span>
-              <button
-                type="button"
-                className={styles.whiteButton}
-                data-size="small"
-                onClick={() => onSection("console")}
-              >
-                Open Console
-              </button>
-            </div>
+            {trades.length > 0 && (
+              <ul className={styles.events} id="draft-overview-trades">
+                {trades.map((row) => (
+                  <li key={row.id} className={styles.event}>
+                    <span className={styles.tradeDot} data-state={row.state} aria-hidden="true" />
+                    <span className={styles.tradeTitle}>{row.title}</span>
+                    <span className={styles.tradePnl} data-tone={row.pnl.tone}>
+                      {row.state === "OPEN" ? `OPEN · ${row.pnl.text}` : row.pnl.text}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {trades.length === 0 && (
+              <div className={styles.empty}>
+                <span>Nothing yet. Run it on paper in the Console to see what it would do.</span>
+                <button
+                  type="button"
+                  className={styles.whiteButton}
+                  data-size="small"
+                  onClick={() => onSection("console")}
+                >
+                  Open Console
+                </button>
+              </div>
+            )}
           </div>
           <div className={styles.list} id="draft-overview-activity">
             <div className={styles.listHead}>
