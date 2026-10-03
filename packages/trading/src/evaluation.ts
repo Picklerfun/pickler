@@ -6,3 +6,5 @@ export * from "./features/evaluation/perps-runner.js";
 export * from "./features/evaluation/benchmark-runner.js";
 export * from "./features/evaluation/reconciliation.js";
 export * from "./features/evaluation/lease-heartbeat.js";
+
+export * from "./features/perps-study/audit.js";
