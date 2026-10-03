@@ -3,7 +3,6 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
   CONSOLE_STARTERS,
-  DECISION_FILTERS,
   DECISIONS_EMPTY,
   FLAT_LINE,
   POSTS_NOTE,
@@ -36,7 +35,6 @@ test("Decisions has the canvas's six filters, each at zero, the chosen one on", 
     filters.map((filter) => filter.label),
     ["All", "Entered", "Held", "Exited", "Blocked", "Posted"],
   );
-  assert.equal(DECISION_FILTERS.length, 6);
   assert.ok(filters.every((filter) => filter.count === 0));
   assert.deepEqual(
     filters.filter((filter) => filter.on).map((filter) => filter.key),

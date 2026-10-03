@@ -3,16 +3,18 @@ import Image from "next/image";
 import type { ReactElement } from "react";
 import { Ledger, MasterCard } from "../shell/master";
 import { useCopied } from "../shell/use-copied";
-import { limitsWallet } from "./build-model";
+import { limitsWallet, pullReason } from "./build-model";
 import { LiveSection, type LiveSectionProps } from "./live-section";
 import { liveAllocation } from "./market-model";
 import { liveWalletRead, walletCards } from "./model";
+import { Reason } from "./reason";
 import styles from "./market.module.css";
 
 /**
  * Wallets (canvas 749–790, spec L20). Master, the shell's card (`MasterCard`) as the live canvas
- * words it: "YOURS · MASTER · @{account}", the allocation of this agent's wallet and AI credits
- * (Soon), "Fund {name}" (the Wallets modal toward the agent) and "Deposit · copy address". Its
+ * words it: "YOURS · MASTER · @{account}", the address without a COPY chip, the allocation of this
+ * agent's wallet and AI credits (Soon), "Fund {name}" (the Wallets modal toward the agent) and
+ * "Deposit · copy address", which is the address's one copy action. Its
  * agent's wallet: NO WITHDRAWALS, the address and Copy, AUSD · FREE, AUSD · IN POSITIONS (0),
  * MON · GAS, who moves money, "Pull free AUSD back" (the Wallets modal back to master) and
  * "Caps & limits" (→ Limits). Then the shell's ledger, read the first time this section opens.
@@ -43,11 +45,14 @@ export const Wallets: (props: LiveSectionProps) => ReactElement = ({
             fundLabel={cards.master.fund}
             onFund={() => onWallets(agent.wallet ? true : null)}
             deposit={{ label: cards.master.deposit, copied: cards.master.copied }}
+            copyChip={false}
           />
           <AgentWallet
             card={cards.agent}
-            canPull={limitsWallet(liveWalletRead(agent.wallet, live.wallets)).canPull}
-            canManage={canManage}
+            pullShut={pullReason(
+              canManage,
+              limitsWallet(liveWalletRead(agent.wallet, live.wallets)).canPull,
+            )}
             onPull={() => onWallets(false)}
             onLimits={() => onSection("limits")}
           />
@@ -60,14 +65,13 @@ export const Wallets: (props: LiveSectionProps) => ReactElement = ({
 
 function AgentWallet({
   card,
-  canPull,
-  canManage,
+  pullShut,
   onPull,
   onLimits,
 }: {
   card: ReturnType<typeof walletCards>["agent"];
-  canPull: boolean;
-  canManage: boolean;
+  /** Why "Pull free AUSD back" is shut (`pullReason`: view-only, then nothing free), or null. */
+  pullShut: string | null;
   onPull(): void;
   onLimits(): void;
 }) {
@@ -123,15 +127,21 @@ function AgentWallet({
         <button
           type="button"
           className={styles.whiteButton}
-          disabled={!canManage || !canPull}
-          title={canPull ? undefined : "No free AUSD to pull back"}
-          onClick={onPull}
+          aria-disabled={pullShut !== null || undefined}
+          aria-describedby={pullShut ? "live-wallets-pull-reason" : undefined}
+          title={pullShut ?? undefined}
+          onClick={() => {
+            if (!pullShut) {
+              onPull();
+            }
+          }}
         >
           {card.pull}
         </button>
         <button type="button" className={styles.darkButton} onClick={onLimits}>
           {card.limits}
         </button>
+        <Reason id="live-wallets-pull-reason" text={pullShut} />
       </div>
     </div>
   );

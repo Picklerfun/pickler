@@ -17,8 +17,6 @@ import {
   RISK_BOUNDS,
   RISK_DEFAULTS,
   abilities,
-  beatFilters,
-  boardFilters,
   boardHeader,
   boardRows,
   briefBar,
@@ -27,6 +25,7 @@ import {
   entryView,
   fixTarget,
   headerParts,
+  healthIssues,
   healthLabel,
   healthRows,
   isLiveSection,
@@ -278,7 +277,6 @@ test("health reads the market data, sources, gas, credits Soon and the brief", (
     sourcesOn: 2,
     monWei: MON / 10n,
     version: 4,
-    briefDirty: true,
   });
 
   assert.deepEqual(
@@ -288,11 +286,21 @@ test("health reads the market data, sources, gas, credits Soon and the brief", (
       ["Sources", "2 ON", "good"],
       ["Gas · MON", "0.1 · LOW", "caution"],
       ["AI credits", "Soon", "quiet"],
-      ["Brief", "v4 · UNAPPLIED EDITS", "caution"],
+      ["Brief", "v4 · APPLIED", "good"],
     ],
   );
   assert.equal(healthLabel(0), "ALL GOOD");
   assert.equal(healthLabel(2), "2 TO FIX");
+});
+
+test("HEALTH's tag counts the warnings and every bad row: Perpl unreachable is one to fix", () => {
+  const reachable = healthRows({ market: "connected", sourcesOn: 1, monWei: MON, version: 1 });
+  const unreachable = healthRows({ market: "unreachable", sourcesOn: 1, monWei: MON, version: 1 });
+  const lowGas = healthRows({ market: "connected", sourcesOn: 1, monWei: MON / 10n, version: 1 });
+
+  assert.equal(healthIssues(0, reachable), 0);
+  assert.equal(healthLabel(healthIssues(0, unreachable)), "1 TO FIX");
+  assert.equal(healthIssues(1, lowGas), 1);
 });
 
 test("the meters are real zeros against the caps", () => {
@@ -368,6 +376,7 @@ test("five cap rows with the canvas's titles and lines, stepping within core's b
     ],
   );
   assert.equal(view.rows[0]?.sub, "THE MOST IT PUTS INTO ONE POSITION");
+  assert.equal(view.rows[4]?.sub, "LOST IN A DAY · ONCE IT RUNS, IT PAUSES ITSELF THERE");
   assert.equal(view.rows[3]?.next, null);
   assert.equal(view.rows[4]?.prev, null);
   assert.equal(view.rows[4]?.next, 10);
@@ -408,9 +417,31 @@ test("How it runs: asking first, the status note and the mode note", () => {
   );
   assert.equal(
     view.modeNote,
-    "EVERY ENTRY WAITS FOR YOUR TAP, 4 MIN, THEN IT IS SKIPPED · EXITS NEVER WAIT",
+    "ONCE IT RUNS · EVERY ENTRY WAITS FOR YOUR TAP, 4 MIN, THEN IT IS SKIPPED · EXITS NEVER WAIT",
   );
   assert.equal(view.chip, "ASKS YOU FIRST");
+});
+
+test("every mode note is said of the setting, not of today (D19)", () => {
+  assert.equal(
+    entryView({ mode: "auto", meanwhile: "wait", smallAusd: 5 }, 25).modeNote,
+    "ONCE IT RUNS · EVERY ENTRY INSIDE THE CAPS GOES ON ITS OWN · YOU CAN STILL CLOSE ANY POSITION, ANY TIME · EXITS NEVER WAIT",
+  );
+  assert.equal(
+    entryView({ mode: "approve", meanwhile: "small", smallAusd: 5 }, 25).modeNote,
+    "ONCE IT RUNS · EVERY ENTRY GOES IN AT 5 AUSD RIGHT AWAY · THE REST UP TO 25 WAITS FOR YOU, 4 MIN · EXITS NEVER WAIT",
+  );
+});
+
+test("the small entry steps 1, then round fives, up to the per-trade cap", () => {
+  const amount = (smallAusd: number, perTrade = 25) =>
+    entryView({ mode: "approve", meanwhile: "small", smallAusd }, perTrade).amount;
+
+  assert.deepEqual([amount(1).prev, amount(1).next], [null, 5]);
+  assert.deepEqual([amount(5).prev, amount(5).next], [1, 10]);
+  assert.deepEqual([amount(10).prev, amount(10).next], [5, 15]);
+  assert.deepEqual([amount(3).prev, amount(3).next], [1, 5]);
+  assert.deepEqual([amount(1, 3).next, amount(3, 3).next], [3, null]);
 });
 
 test("going in small names the amount, clamped to the per-trade cap", () => {
@@ -476,6 +507,7 @@ test("a configured market the board does not list reads in dashes", () => {
 
   assert.equal(view.cards[0]?.listed, false);
   assert.equal(view.cards[0]?.mark, "—");
+  assert.equal(view.cards[0]?.up, null);
 });
 
 test("loading, failed and the sample board each say so, and health follows", () => {
@@ -563,6 +595,10 @@ test("Posts says where calls will go, and that there are none yet", () => {
     "No posts yet. Entries and exits will post on Pickler when it trades.",
   );
   assert.equal(postsHeader(null).tag, "PICKLER ONLY");
+  assert.equal(
+    postsHeader(null).connect,
+    "Posts will go out on Pickler only. Connect an X account and every call will mirror there.",
+  );
 });
 
 // ─── Marketplace ───────────────────────────────────────────────────────────────────────────────
@@ -599,7 +635,11 @@ test("beat filters: All and each beat with its count, the chosen one on", () => 
   ];
 
   assert.deepEqual(
-    beatFilters(directory, "news").map((filter) => [filter.label, filter.count, filter.on]),
+    directoryCards(directory, undefined, "news").filters.map((filter) => [
+      filter.label,
+      filter.count,
+      filter.on,
+    ]),
     [
       ["All", 3, false],
       ["news", 2, true],
@@ -657,7 +697,7 @@ test("the board's filters come from the markets, and rows say what nobody counte
   const view = boardRows(markets, "Monad");
 
   assert.deepEqual(
-    boardFilters(markets, "All").map((filter) => [filter.label, filter.count]),
+    boardRows(markets, "All").filters.map((filter) => [filter.label, filter.count]),
     [
       ["All", 2],
       ["Crypto", 1],
@@ -713,7 +753,6 @@ test("the leaderboard ranks the DTO's entries; hit rate is a dash; the tag is ca
     ],
   );
   assert.equal(view.rows[0]?.beat, "news · 48 RESOLVED");
-  assert.equal(view.empty, "No agent has a resolved record yet.");
 });
 
 test("a score made of several weights says them instead", () => {
@@ -747,7 +786,6 @@ test("the wallet cards: master named for the account, the agent's with no withdr
   );
 
   assert.equal(cards.master.title, "YOURS · MASTER · @NIGHTOWL");
-  assert.equal(cards.master.ausd, "177.6");
   assert.equal(cards.master.fund, "Fund Halftime");
   assert.equal(cards.agent?.title, "HALFTIME'S · AGENT WALLET");
   assert.equal(cards.agent?.short, "0x91bE…4a07");
@@ -764,7 +802,6 @@ test("unread wallets are dashes, and an agent without a wallet has no card", () 
   const cards = walletCards(null, { name: "Halftime", wallet: null }, null);
 
   assert.equal(cards.master.title, "YOURS · MASTER");
-  assert.equal(cards.master.ausd, "—");
   assert.equal(cards.agent, null);
 });
 

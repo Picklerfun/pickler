@@ -38,7 +38,7 @@ export const POSTS_NOTE = "Voice is set in Identity & voice; the numbers are nev
 export type DecisionFilterKey = "all" | "entered" | "held" | "exited" | "blocked" | "posted";
 
 /** The canvas's six (`FILTERS`), in its order. */
-export const DECISION_FILTERS: readonly { key: DecisionFilterKey; label: string }[] = [
+const DECISION_FILTERS: readonly { key: DecisionFilterKey; label: string }[] = [
   { key: "all", label: "All" },
   { key: "entered", label: "Entered" },
   { key: "held", label: "Held" },

@@ -2,40 +2,23 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
+  NO_FREE_AUSD,
+  VIEW_ONLY_FUNDS,
   entryDirty,
   entryPatch,
   limitsWallet,
   liveBriefTags,
-  liveCapsView,
-  liveEntryView,
   pluginCount,
   pluginRows,
+  pullReason,
   stopRows,
 } from "../src/features/studio/live/build-model";
 
-const caps = {
-  perTradeAusd: 25,
-  perDayAusd: 100,
-  maxLeverage: 3,
-  maxOpenPositions: 3,
-  dayLossStopAusd: 20,
-};
-
-test("the mode note is said of the setting, not of today (D19)", () => {
-  const view = liveEntryView({ mode: "approve", meanwhile: "wait", smallAusd: 10 }, 25);
-
-  assert.equal(
-    view.modeNote,
-    "ONCE IT RUNS · EVERY ENTRY WAITS FOR YOUR TAP, 4 MIN, THEN IT IS SKIPPED · EXITS NEVER WAIT",
-  );
-});
-
-test("the day-loss line no longer claims it pauses itself today; the others are kept", () => {
-  const view = liveCapsView(caps, caps);
-
-  assert.equal(view.rows[4]?.sub, "LOST IN A DAY · ONCE IT RUNS, IT PAUSES ITSELF THERE");
-  assert.equal(view.rows[0]?.sub, "THE MOST IT PUTS INTO ONE POSITION");
-  assert.equal(view.tag, "SAVED · 25/100/3/3/20");
+test("Pull free AUSD back says why it is shut: view-only first, then nothing free", () => {
+  assert.equal(pullReason(true, true), null);
+  assert.equal(pullReason(true, false), NO_FREE_AUSD);
+  assert.equal(pullReason(false, true), VIEW_ONLY_FUNDS);
+  assert.equal(pullReason(false, false), VIEW_ONLY_FUNDS);
 });
 
 test("a brief tag reads the version where the draft's says DEFAULT", () => {

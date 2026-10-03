@@ -74,7 +74,7 @@
   background: transparent;
   color: var(--pk-ink-muted);
 }
-.barDiscard:hover:not(:disabled) {
+.barDiscard:hover:not([aria-disabled="true"]) {
   color: var(--pk-ink);
 }
 .barApply {
@@ -86,7 +86,7 @@
 }
 .barApply:disabled,
 .barApply[aria-disabled="true"],
-.barDiscard:disabled {
+.barDiscard[aria-disabled="true"] {
   cursor: not-allowed;
   opacity: 0.55;
 }
@@ -273,29 +273,8 @@ li.plugin {
   background: var(--pk-state-loss-bg);
   color: var(--pk-magenta-ink);
 }
-.web {
-  composes: web from "../new-agent/new-agent.module.css";
-}
-.webHead {
-  composes: webHead from "../new-agent/new-agent.module.css";
-}
-.webTitle {
-  composes: webTitle from "../new-agent/new-agent.module.css";
-}
 .webMode {
   composes: webMode from "../new-agent/new-agent.module.css";
-}
-.sites {
-  composes: sites from "../new-agent/new-agent.module.css";
-}
-.site {
-  composes: site from "../new-agent/new-agent.module.css";
-}
-.siteRemove {
-  composes: siteRemove from "../new-agent/new-agent.module.css";
-}
-.siteInput {
-  composes: siteInput from "../new-agent/new-agent.module.css";
 }
 
 /* ---------- Cards (Limits, Controls) ---------- */
@@ -386,39 +365,6 @@ li.plugin {
   letter-spacing: 0.08em;
   color: var(--pk-ink-faint);
 }
-.arrivals {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.arrival {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  border-radius: var(--pk-radius-md);
-  background: var(--pk-bg);
-}
-.arrivalDot {
-  flex: none;
-  width: 8px;
-  height: 8px;
-  border-radius: 3px;
-  background: var(--pk-blue);
-}
-.arrivalText {
-  flex: 1;
-  min-width: 0;
-  font: 500 12.5px/1.3 var(--pk-font);
-}
-.arrivalAt {
-  font: 600 10px/1 var(--pk-font);
-  color: var(--pk-ink-faint);
-  font-variant-numeric: tabular-nums;
-}
 .pair {
   display: flex;
   flex-wrap: wrap;
@@ -439,22 +385,22 @@ li.plugin {
   background: var(--pk-ink);
   color: var(--pk-bg);
 }
-.fundButton:hover:not(:disabled) {
+.fundButton:hover:not([aria-disabled="true"]) {
   background: var(--pk-ink-soft);
 }
 .pullButton {
   background: var(--pk-bg);
   color: var(--pk-ink);
 }
-.pullButton:hover:not(:disabled) {
+.pullButton:hover:not([aria-disabled="true"]) {
   background: var(--pk-panel-2);
 }
-.fundButton:disabled,
-.pullButton:disabled {
+.fundButton[aria-disabled="true"],
+.pullButton[aria-disabled="true"] {
   cursor: not-allowed;
   color: var(--pk-ink-faint);
 }
-.fundButton:disabled {
+.fundButton[aria-disabled="true"] {
   background: var(--pk-panel-3);
 }
 
@@ -479,8 +425,8 @@ li.plugin {
 .saveButton:hover:not(:disabled, [aria-disabled="true"]) {
   background: var(--pk-lime-hover);
 }
-/* Shut while saving or with nothing to save, but focusable (aria-disabled); only a view-only
-   member gets a real disabled button. */
+/* Shut while saving, with nothing to save, or for a view-only member (with the reason), but
+   focusable (aria-disabled). */
 .saveButton:disabled,
 .saveButton[aria-disabled="true"] {
   background: var(--pk-panel-3);
@@ -498,10 +444,10 @@ li.plugin {
   cursor: pointer;
   transition: color var(--pk-duration);
 }
-.discardButton:hover:not(:disabled) {
+.discardButton:hover:not([aria-disabled="true"]) {
   color: var(--pk-ink);
 }
-.discardButton:disabled {
+.discardButton[aria-disabled="true"] {
   cursor: not-allowed;
   opacity: 0.55;
 }
@@ -730,7 +676,6 @@ li.plugin {
 .barDiscard:focus-visible,
 .barApply:focus-visible,
 .plugin:focus-visible,
-.siteRemove:focus-visible,
 .fundButton:focus-visible,
 .pullButton:focus-visible,
 .saveButton:focus-visible,

@@ -11,12 +11,12 @@ import type { AllocationRow } from "../shell/wallet-model";
 import type { LiveRead } from "./use-live";
 
 /** What a section draws for one of its reads. */
-export type ReadState = "loading" | "failed" | "empty" | "ready";
+export type ReadState = "loading" | "failed" | "empty" | "preview" | "ready";
 
 /**
  * A live read's state: `failed` says so with Retry; null is still reading, except in a preview
- * studio, which reads nothing and so has nothing to wait for (drawn as the empty state); an empty
- * list is empty.
+ * studio, which reads nothing and so has nothing to wait for: it says it is a preview
+ * (`PREVIEW_NOTE`), never that the list is empty. An empty list is empty.
  */
 export function readState<T>(
   read: LiveRead<T>,
@@ -27,7 +27,7 @@ export function readState<T>(
     return "failed";
   }
   if (read === null) {
-    return preview ? "empty" : "loading";
+    return preview ? "preview" : "loading";
   }
   return isEmpty(read) ? "empty" : "ready";
 }
@@ -36,6 +36,7 @@ export function readState<T>(
 export const SHUT = {
   ask: "Paid reads are not open yet.",
   back: "Agent tokens are not launched yet.",
+  launch: "The token launcher is not deployed yet.",
   trade: "Trading from your master wallet comes with live Perpl trading.",
   sessions: "Other signed-in devices cannot be listed yet.",
   toggle: "Nothing stores this preference yet.",
@@ -63,9 +64,12 @@ export const READ_WORDS = {
 
 /**
  * An agent card's second shut button (canvas `a.cta`): the owner's own agent has no token to back,
- * so it reads "Launch its token"; any other "Back it". Both wait on the launcher (`SHUT.back`).
+ * so it reads "Launch its token" (shut, `SHUT.launch`); any other "Back it" (`SHUT.back`).
  */
 export const backLabel = (own: boolean): string => (own ? "Launch its token" : "Back it");
+
+/** Why the card's second button is shut: the launcher for the owner's agent, a token otherwise. */
+export const backReason = (own: boolean): string => (own ? SHUT.launch : SHUT.back);
 
 /** The leaderboard's shut Ask: its DTO carries no read price, so no price is printed. */
 export const LEADER_ASK = "Ask";

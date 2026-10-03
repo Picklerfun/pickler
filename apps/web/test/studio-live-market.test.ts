@@ -8,6 +8,7 @@ import {
   READ_WORDS,
   SHUT,
   backLabel,
+  backReason,
   liveAllocation,
   passkeyTag,
   readState,
@@ -24,9 +25,9 @@ test("readState: failed says so, whatever the studio", () => {
   assert.equal(readState<string[]>("failed", true, isEmpty), "failed");
 });
 
-test("readState: unread is loading, except in a preview, which reads nothing", () => {
+test("readState: unread is loading, except in a preview, which says so rather than empty", () => {
   assert.equal(readState<string[]>(null, false, isEmpty), "loading");
-  assert.equal(readState<string[]>(null, true, isEmpty), "empty");
+  assert.equal(readState<string[]>(null, true, isEmpty), "preview");
 });
 
 test("readState: a read list is empty or ready by the section's own test", () => {
@@ -57,6 +58,11 @@ test("READ_WORDS: each marketplace read has its three lines", () => {
 test("backLabel: the owner's own agent has no token to back", () => {
   assert.equal(backLabel(true), "Launch its token");
   assert.equal(backLabel(false), "Back it");
+});
+
+test("backReason: Launch its token waits on the launcher, Back it on a token", () => {
+  assert.equal(backReason(true), "The token launcher is not deployed yet.");
+  assert.equal(backReason(false), SHUT.back);
 });
 
 test("LEADER_ASK: no price is printed, because the leaderboard carries none", () => {

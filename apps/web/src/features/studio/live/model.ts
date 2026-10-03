@@ -176,7 +176,11 @@ const RAIL_DEFS: readonly {
   },
 ];
 
-/** What the rail counts: open positions and proposals waiting on the owner (both 0 until the runtime). */
+/**
+ * What the rail counts: open positions and proposals waiting on the owner. Both are 0 until the
+ * Perpl runtime opens one (the studio passes `{ positions: 0, decisions: 0 }`); the shape is the
+ * seam the runtime's counts will fill.
+ */
 export interface RailCounts {
   positions: number;
   decisions: number;
@@ -387,14 +391,17 @@ const MARKET_HEALTH: Record<MarketHealth, { value: string; tone: HealthRow["tone
   unread: { value: "—", tone: "quiet" },
 };
 
-/** Spec L13's HEALTH: Perpl's market data (from L8's read), sources, gas, AI credits, the brief. */
+/**
+ * Spec L13's HEALTH: Perpl's market data (from L8's read), sources, gas, AI credits, the brief. The
+ * brief's row is always "v{n} · APPLIED": Brief's edits live in the Brief section and are dropped
+ * when it closes, so while HEALTH shows nothing can be unapplied (a deviation from L13 noted there).
+ */
 export function healthRows(input: {
   market: MarketHealth;
   /** Perpl, and the web when it is on. */
   sourcesOn: number;
   monWei: bigint | null;
   version: number;
-  briefDirty: boolean;
 }): HealthRow[] {
   const gasLow = input.monWei !== null && input.monWei < GAS_LOW_WEI;
   let gas: Pick<HealthRow, "value" | "tone"> = { value: "—", tone: "quiet" };
@@ -409,18 +416,20 @@ export function healthRows(input: {
     { key: "sources", label: "Sources", value: `${input.sourcesOn} ON`, tone: "good" },
     { key: "gas", label: "Gas · MON", ...gas },
     { key: "credits", label: "AI credits", value: "Soon", tone: "quiet" },
-    {
-      key: "brief",
-      label: "Brief",
-      value: `v${input.version} · ${input.briefDirty ? "UNAPPLIED EDITS" : "APPLIED"}`,
-      tone: input.briefDirty ? "caution" : "good",
-    },
+    { key: "brief", label: "Brief", value: `v${input.version} · APPLIED`, tone: "good" },
   ];
 }
 
+/**
+ * How many things HEALTH says need fixing: the banner's warnings, plus every row that is bad
+ * (Perpl UNREACHABLE). A low-gas row is caution, and the gas warning already counts it.
+ */
+export const healthIssues = (warnings: number, rows: readonly HealthRow[]): number =>
+  warnings + rows.filter((row) => row.tone === "bad").length;
+
 /** HEALTH's tag: what needs fixing, or ALL GOOD. */
-export const healthLabel = (warnings: number): string =>
-  warnings > 0 ? `${warnings} TO FIX` : "ALL GOOD";
+export const healthLabel = (issues: number): string =>
+  issues > 0 ? `${issues} TO FIX` : "ALL GOOD";
 
 export interface MeterRow {
   key: "putIn" | "open" | "dayLoss" | "leverage";
@@ -506,6 +515,12 @@ export function liveCaps(source: LiveCapsSource): { caps: LiveCaps; defaults: bo
   };
 }
 
+/*
+ * What the canvas says the runtime will do, said of the setting (draft spec D19): nothing runs yet,
+ * so a line that describes behaviour starts with when it will hold.
+ */
+const ONCE_IT_RUNS = "ONCE IT RUNS";
+
 /* The canvas's `CAP_DEFS`: titles, the line under each, steps and floors. The spend and leverage
    ceilings are core's bounds (as the draft's are), the risk rows core's `RISK_BOUNDS`. */
 const CAP_DEFS: readonly {
@@ -556,7 +571,7 @@ const CAP_DEFS: readonly {
   {
     key: "dayLossStopAusd",
     title: "DAY-LOSS STOP",
-    sub: "LOST IN A DAY · THEN IT PAUSES ITSELF",
+    sub: `LOST IN A DAY · ${ONCE_IT_RUNS}, IT PAUSES ITSELF THERE`,
     step: RISK_BOUNDS.dayLossStopAusd.step,
     min: RISK_BOUNDS.dayLossStopAusd.min,
     max: RISK_BOUNDS.dayLossStopAusd.max,
@@ -661,26 +676,43 @@ export interface EntryView {
   amount: { value: number; display: string; prev: number | null; next: number | null };
   /** HOW IT RUNS' paragraph (spec L13). */
   statusNote: string;
-  /** The canvas's three mode notes. */
+  /** The canvas's three mode notes, each said of the setting ("ONCE IT RUNS · …"). */
   modeNote: string;
   /** The canvas's mode chip. */
   chip: string;
 }
 
-/** Spec L13's "How it runs": `config.entry` with the canvas's control, notes and chip. */
+/* The small amount's steps: 1, then round fives, never above the per-trade cap. */
+const smallPrev = (value: number): number | null => {
+  if (value > 5) {
+    return value - 5;
+  }
+  return value > 1 ? 1 : null;
+};
+const smallNext = (value: number, perTradeAusd: number): number | null => {
+  if (value >= perTradeAusd) {
+    return null;
+  }
+  return value < 5 ? Math.min(5, perTradeAusd) : Math.min(perTradeAusd, value + 5);
+};
+
+/**
+ * Spec L13's "How it runs": `config.entry` with the canvas's control, notes and chip. The mode notes
+ * describe the setting, not today's behaviour, so each starts "ONCE IT RUNS". The small amount steps
+ * 1, 5, 10, 15… up to the per-trade cap.
+ */
 export function entryView(entry: LiveEntry, perTradeAusd: number): EntryView {
   const asks = entry.mode === "approve";
   const small = asks && entry.meanwhile === "small";
   const value = Math.max(1, Math.min(entry.smallAusd, perTradeAusd));
   let then = "enters on its own inside the caps";
-  let modeNote =
-    "EVERY ENTRY INSIDE THE CAPS GOES ON ITS OWN · YOU CAN STILL CLOSE ANY POSITION, ANY TIME · EXITS NEVER WAIT";
+  let modeNote = `${ONCE_IT_RUNS} · EVERY ENTRY INSIDE THE CAPS GOES ON ITS OWN · YOU CAN STILL CLOSE ANY POSITION, ANY TIME · EXITS NEVER WAIT`;
   if (small) {
     then = `goes in at ${value} AUSD and asks you to size up`;
-    modeNote = `EVERY ENTRY GOES IN AT ${value} AUSD RIGHT AWAY · THE REST UP TO ${perTradeAusd} WAITS FOR YOU, 4 MIN · EXITS NEVER WAIT`;
+    modeNote = `${ONCE_IT_RUNS} · EVERY ENTRY GOES IN AT ${value} AUSD RIGHT AWAY · THE REST UP TO ${perTradeAusd} WAITS FOR YOU, 4 MIN · EXITS NEVER WAIT`;
   } else if (asks) {
     then = "asks you before entering";
-    modeNote = "EVERY ENTRY WAITS FOR YOUR TAP, 4 MIN, THEN IT IS SKIPPED · EXITS NEVER WAIT";
+    modeNote = `${ONCE_IT_RUNS} · EVERY ENTRY WAITS FOR YOUR TAP, 4 MIN, THEN IT IS SKIPPED · EXITS NEVER WAIT`;
   }
   let chip = "ENTERS ON ITS OWN";
   if (asks) {
@@ -693,8 +725,8 @@ export function entryView(entry: LiveEntry, perTradeAusd: number): EntryView {
     amount: {
       value,
       display: `${value} AUSD`,
-      prev: value > 1 ? Math.max(1, value - 5) : null,
-      next: value < perTradeAusd ? Math.min(perTradeAusd, value + 5) : null,
+      prev: smallPrev(value),
+      next: smallNext(value, perTradeAusd),
     },
     statusNote: `It is public on Pickler. It starts watching Perpl and its sources when the Perpl runtime opens; then it ${then}.`,
     modeNote,
@@ -741,7 +773,8 @@ export interface WatchCard {
   name: string;
   mark: string;
   change: string;
-  up: boolean;
+  /** The day's direction; null for a market the board does not list (drawn neutral). */
+  up: boolean | null;
   /** The hourly rate. */
   funding: string;
   /** The last 24 h of marks, oldest first, for the sparkline; null until read. */
@@ -785,7 +818,7 @@ export function marketsView(
         name: name.toUpperCase(),
         mark: "—",
         change: "—",
-        up: true,
+        up: null,
         funding: "—",
         trail: null,
         listed: false,
@@ -956,7 +989,7 @@ export function postsHeader(xHandle: string | null): PostsHeader {
     empty: `No posts yet. Entries and exits will post on Pickler${xHandle ? " and X" : ""} when it trades.`,
     connect: xHandle
       ? null
-      : "Posting on Pickler only. Connect an X account and every call mirrors there.",
+      : "Posts will go out on Pickler only. Connect an X account and every call will mirror there.",
   };
 }
 
@@ -970,7 +1003,7 @@ export interface BeatFilter {
 }
 
 /** "All" and each beat the directory has, in the order it first appears, with its count. */
-export function beatFilters(directory: readonly DirectoryAgentDto[], beat: string): BeatFilter[] {
+function beatFilters(directory: readonly DirectoryAgentDto[], beat: string): BeatFilter[] {
   const beats = [...new Set(directory.map((entry) => entry.beat))];
   return [
     { key: "All", label: "All", count: directory.length, on: beat === "All" },
@@ -1052,11 +1085,11 @@ export function directoryCards(
 // ─── Marketplace: markets ──────────────────────────────────────────────────────────────────────
 
 /** A market's category, from the DTO: Monad's own token, or crypto (the canvas's two). */
-export const marketCategory = (market: Pick<PerpMarketDto, "base">): "Monad" | "Crypto" =>
+const marketCategory = (market: Pick<PerpMarketDto, "base">): "Monad" | "Crypto" =>
   market.base.toUpperCase() === "MON" ? "Monad" : "Crypto";
 
 /** "All" and each category the board has, with its count; a category with none is left out. */
-export function boardFilters(markets: readonly PerpMarketDto[], category: string): BeatFilter[] {
+function boardFilters(markets: readonly PerpMarketDto[], category: string): BeatFilter[] {
   const categories = (["Crypto", "Monad"] as const).filter((key) =>
     markets.some((market) => marketCategory(market) === key),
   );
@@ -1138,12 +1171,13 @@ export interface LeaderRow {
   own: boolean;
 }
 
+/** The leaderboard's title (spec L19), drawn before its read answers. */
+export const LEADER_TITLE = "Who said the truth";
+
 export interface LeaderView {
-  title: "Who said the truth";
   /** The canvas's line only when the score is calibration alone; otherwise the DTO's weights. */
   tag: string;
   rows: LeaderRow[];
-  empty: string;
 }
 
 const CALIBRATION_TAG = "SCORE = CALIBRATION · 30 DAYS · LOSSES STAY UP";
@@ -1159,9 +1193,7 @@ export function leaderRows(board: LeaderboardDto, ownHandle?: string): LeaderVie
     tag = `SCORE = ${board.weights.map((weight) => weight.label.toUpperCase()).join(" + ")}`;
   }
   return {
-    title: "Who said the truth",
     tag,
-    empty: "No agent has a resolved record yet.",
     rows: board.entries.map((entry, index) => ({
       key: entry.agent.handle,
       rank: index + 1,
@@ -1181,11 +1213,9 @@ export function leaderRows(board: LeaderboardDto, ownHandle?: string): LeaderVie
 
 // ─── Wallets ───────────────────────────────────────────────────────────────────────────────────
 
-export interface MasterCard {
+/** The live canvas's words for the shell's `MasterCard` (its head, fund and deposit buttons). */
+export interface MasterCardWords {
   title: string;
-  address: string;
-  ausd: string;
-  mon: string;
   /** "Fund {name}": the Wallets modal toward the agent. */
   fund: string;
   deposit: "Deposit · copy address";
@@ -1218,15 +1248,12 @@ export function walletCards(
     wallet: { walletId: string; address: string; balanceAusd: number } | null;
   },
   account: string | null,
-): { master: MasterCard; agent: AgentWalletCard | null } {
+): { master: MasterCardWords; agent: AgentWalletCard | null } {
   const name = agent.name ?? "Your agent";
   const read = liveWalletRead(agent.wallet, wallets);
   return {
     master: {
       title: account ? `YOURS · MASTER · @${account.toUpperCase()}` : "YOURS · MASTER",
-      address: wallets?.master.address ?? "—",
-      ausd: formatUnits(unitsOf(wallets?.master.ausdMicro ?? null), "AUSD"),
-      mon: formatUnits(unitsOf(wallets?.master.monWei ?? null), "MON"),
       fund: `Fund ${name}`,
       deposit: "Deposit · copy address",
       copied: "Address copied",

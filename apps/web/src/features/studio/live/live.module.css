@@ -146,14 +146,15 @@
   cursor: pointer;
   transition: background var(--pk-duration);
 }
-.pauseButton:hover:not(:disabled) {
+.pauseButton:hover:not([aria-disabled="true"]) {
   background: var(--pk-panel-2);
 }
 .pauseButton[data-paused="true"] {
   background: var(--pk-state-caution-bg);
   color: var(--pk-state-caution-ink);
 }
-.pauseButton:disabled {
+/* Shut for a view-only member, or while its write runs: still focusable (aria-disabled). */
+.pauseButton[aria-disabled="true"] {
   cursor: not-allowed;
   opacity: 0.6;
 }

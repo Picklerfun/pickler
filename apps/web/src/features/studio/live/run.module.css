@@ -127,6 +127,10 @@
 .change[data-up="false"] {
   color: var(--pk-loss);
 }
+/* A market the board does not list has no direction: its dashes are neutral. */
+.change:not([data-up]) {
+  color: var(--pk-ink-muted);
+}
 .watchState {
   display: flex;
   align-items: center;
@@ -246,10 +250,6 @@
   border-radius: var(--pk-radius-xl);
   border: 1px solid var(--pk-rule-strong);
   background: var(--pk-panel);
-}
-.xMark {
-  flex: none;
-  fill: var(--pk-ink);
 }
 .xText {
   flex: 1;

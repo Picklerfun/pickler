@@ -1,54 +1,36 @@
 "use client";
-import { useState } from "react";
-import { Icon, Segmented } from "@pickler/ui";
-import type { WebMode } from "../new-agent/model";
-import { addSite, sourcesView, webForm, type WebForm } from "../shell/build-model";
+import { Icon } from "@pickler/ui";
+import { sourcesView, webForm, type WebForm } from "../shell/build-model";
 import { SaveOutcome, saveLabel, useSavedForm, useSetupSave } from "../shell/setup-save";
-import { useVersionedStudio } from "./brief";
-import { pluginCount, pluginRows } from "./build-model";
+import { WebSites, useSiteBox } from "../shell/web-sites";
+import { VIEW_ONLY_REASON, pluginCount, pluginRows } from "./build-model";
 import { LiveSection, type LiveSectionProps } from "./live-section";
 import { SOURCES_BAR, abilities } from "./model";
+import { Reason } from "./reason";
 import styles from "./build.module.css";
-
-const MODES: { value: WebMode; label: string }[] = [
-  { value: "anywhere", label: "Anywhere" },
-  { value: "prefer", label: "Prefer these" },
-  { value: "only", label: "Only these" },
-];
 
 /**
  * Sources & rules (canvas 393–454, spec L15). IT READS: Perpl fixed, the web a switch with the
  * draft's site editing (`sourcesView`, `addSite`), X feeds and Open interest shut, Soon. Saving is
  * "Apply as v{n+1}" in the bar, one `PUT /setup` with `sources.web` (null when off). IT MAY is
- * read-only: opening follows Pause entries, the rest are fixed or Soon.
+ * read-only: opening follows Pause entries, the rest are fixed or Soon. The site editing is the
+ * draft's own (`../shell/web-sites.tsx`).
  */
 export function Sources({ agent, live, canManage }: LiveSectionProps) {
   const saved = webForm(agent.config.sources?.web);
   const [form, setForm] = useSavedForm<WebForm>(agent.version, saved);
-  const [typed, setTyped] = useState("");
-  const [siteError, setSiteError] = useState<string | null>(null);
-  const studio = useVersionedStudio(live);
-  const { state, save, touch, saving } = useSetupSave(studio);
-
-  const view = sourcesView(form, saved, siteError);
-  /* A rejected site still in the box: applying now would quietly leave it out. */
-  const refusedSite = Boolean(typed.trim() && siteError);
-  const canApply = canManage && view.dirty && !view.needsSite && !refusedSite && !saving;
-  const shut = !canManage || saving;
+  const { state, save, touch, saving } = useSetupSave(live);
 
   function edit(next: Partial<WebForm>) {
     setForm({ ...form, ...next });
     touch();
   }
 
-  function add() {
-    const result = addSite(form.sites, typed);
-    setTyped(result.draft);
-    setSiteError(result.error);
-    if (result.sites.length !== form.sites.length) {
-      edit({ sites: result.sites });
-    }
-  }
+  const box = useSiteBox(form.sites, (sites) => edit({ sites }));
+  const view = sourcesView(form, saved, box.error);
+  /* A rejected site still in the box (`box.refused`): applying now would quietly leave it out. */
+  const canApply = canManage && view.dirty && !view.needsSite && !box.refused && !saving;
+  const shut = !canManage || saving;
 
   return (
     <LiveSection section="skills">
@@ -56,26 +38,30 @@ export function Sources({ agent, live, canManage }: LiveSectionProps) {
         <div className={styles.bar} id="live-sources-bar">
           <span className={styles.barDot} aria-hidden="true" />
           <span className={styles.barText}>{SOURCES_BAR}</span>
-          {(view.dirty || saving) && (
+          {(view.dirty || state.kind !== "idle") && (
             <>
-              <button
-                type="button"
-                className={styles.barDiscard}
-                disabled={shut}
-                onClick={() => {
-                  setForm(saved);
-                  setTyped("");
-                  setSiteError(null);
-                  touch();
-                }}
-              >
-                Discard
-              </button>
+              {view.dirty && (
+                <button
+                  type="button"
+                  className={styles.barDiscard}
+                  aria-disabled={shut || undefined}
+                  onClick={() => {
+                    if (!shut) {
+                      setForm(saved);
+                      box.clear();
+                      touch();
+                    }
+                  }}
+                >
+                  Discard
+                </button>
+              )}
               <button
                 type="button"
                 className={styles.barApply}
-                disabled={!canManage}
                 aria-disabled={!canApply || undefined}
+                aria-describedby={canManage ? undefined : "live-sources-reason"}
+                title={canManage ? undefined : VIEW_ONLY_REASON}
                 onClick={() => {
                   if (canApply) {
                     void save({ sources: view.sources });
@@ -84,6 +70,7 @@ export function Sources({ agent, live, canManage }: LiveSectionProps) {
               >
                 {saveLabel(state, view.dirty, `Apply as v${agent.version + 1}`)}
               </button>
+              <Reason id="live-sources-reason" text={canManage ? null : VIEW_ONLY_REASON} />
             </>
           )}
         </div>
@@ -98,11 +85,21 @@ export function Sources({ agent, live, canManage }: LiveSectionProps) {
           </div>
           <div className={styles.plugins}>
             {pluginRows(form.on).map((plugin) => {
+              const noteId = `live-sources-note-${plugin.key}`;
+              /* A switch's ON / OFF line is its state, which `aria-checked` already says: its name
+                 is "Web", and the note describes it. */
               const text = (
                 <span className={styles.pluginText}>
                   <span className={styles.pluginName}>{plugin.name}</span>
-                  <span className={styles.pluginNote}>{plugin.note}</span>
-                  <span className={styles.pluginLine}>{plugin.line}</span>
+                  <span className={styles.pluginNote} id={noteId}>
+                    {plugin.note}
+                  </span>
+                  <span
+                    className={styles.pluginLine}
+                    aria-hidden={plugin.kind === "switch" || undefined}
+                  >
+                    {plugin.line}
+                  </span>
                 </span>
               );
               if (plugin.kind === "switch") {
@@ -114,6 +111,8 @@ export function Sources({ agent, live, canManage }: LiveSectionProps) {
                     data-on={plugin.on}
                     role="switch"
                     aria-checked={plugin.on}
+                    aria-label={plugin.name}
+                    aria-describedby={noteId}
                     disabled={shut}
                     title={plugin.tools}
                     onClick={() => edit({ on: !form.on })}
@@ -146,73 +145,15 @@ export function Sources({ agent, live, canManage }: LiveSectionProps) {
             })}
           </div>
           {form.on && (
-            <div className={styles.web} id="live-sources-web">
-              <div className={styles.webHead}>
-                <span className={styles.webTitle}>WEB · WHERE EXA MAY LOOK</span>
-                <Segmented
-                  label="Where the web may look"
-                  options={MODES}
-                  optionClassName={styles.webMode}
-                  value={form.mode}
-                  disabled={shut}
-                  onChange={(mode) => edit({ mode })}
-                />
-              </div>
-              {form.mode === "anywhere" ? (
-                <span className={styles.hint}>
-                  SEARCHES THE OPEN WEB · PICK “PREFER” OR “ONLY” TO NAME SITES
-                </span>
-              ) : (
-                <>
-                  <div className={styles.sites}>
-                    {form.sites.map((host) => (
-                      <span key={host} className={styles.site}>
-                        {host}
-                        <button
-                          type="button"
-                          className={styles.siteRemove}
-                          aria-label={`Remove ${host}`}
-                          disabled={shut}
-                          onClick={() =>
-                            edit({ sites: form.sites.filter((site) => site !== host) })
-                          }
-                        >
-                          ×
-                        </button>
-                      </span>
-                    ))}
-                    <input
-                      className={styles.siteInput}
-                      aria-label="Add a site"
-                      value={typed}
-                      disabled={shut}
-                      autoComplete="off"
-                      spellCheck={false}
-                      placeholder="add a site…"
-                      onChange={(event) => {
-                        setTyped(event.target.value);
-                        setSiteError(null);
-                      }}
-                      onBlur={add}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter") {
-                          event.preventDefault();
-                          add();
-                        }
-                      }}
-                    />
-                  </div>
-                  <span
-                    className={styles.hint}
-                    data-bad={view.note.bad}
-                    role="status"
-                    aria-live="polite"
-                  >
-                    {view.note.text}
-                  </span>
-                </>
-              )}
-            </div>
+            <WebSites
+              idPrefix="live"
+              form={form}
+              box={box}
+              note={view.note}
+              disabled={shut}
+              placeholder="add a site…"
+              onEdit={edit}
+            />
           )}
         </div>
         <div className={styles.field} data-roomy="true" id="live-sources-may">

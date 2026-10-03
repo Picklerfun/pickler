@@ -1,17 +1,21 @@
 "use client";
 import Image from "next/image";
-import { useState } from "react";
 import { Icon } from "@pickler/ui";
-import type { StudioWallets } from "../api";
-import { arrived, shortAddress } from "../new-agent/model";
-import { agentWalletRead, readClock } from "../shell/build-model";
+import { shortAddress } from "../new-agent/model";
+import { ArrivalList, useArrivals } from "../shell/arrivals";
 import { CapSteppers } from "../shell/build-parts";
 import { SaveOutcome, saveLabel, useSavedForm, useSetupSave } from "../shell/setup-save";
 import { useCopied } from "../shell/use-copied";
-import { useVersionedStudio } from "./brief";
-import { capsPatch, limitsWallet, liveCapsView } from "./build-model";
+import {
+  VIEW_ONLY_FUNDS,
+  VIEW_ONLY_REASON,
+  capsPatch,
+  limitsWallet,
+  pullReason,
+} from "./build-model";
 import { LiveSection, type LiveSectionProps } from "./live-section";
-import { PULL_NOTE, liveCaps, liveWalletRead, type LiveCaps } from "./model";
+import { PULL_NOTE, liveCaps, liveCapsStepper, liveWalletRead, type LiveCaps } from "./model";
+import { Reason } from "./reason";
 import styles from "./build.module.css";
 
 /**
@@ -24,9 +28,8 @@ import styles from "./build.module.css";
 export function Limits({ agent, live, canManage, onWallets }: LiveSectionProps) {
   const { caps: savedCaps, defaults } = liveCaps(agent);
   const [caps, setCaps] = useSavedForm<LiveCaps>(agent.version, savedCaps);
-  const studio = useVersionedStudio(live);
-  const { state, save, touch, saving } = useSetupSave(studio);
-  const view = liveCapsView(caps, savedCaps, defaults);
+  const { state, save, touch, saving } = useSetupSave(live);
+  const view = liveCapsStepper(caps, savedCaps, defaults);
   const canSave = canManage && view.canSave && !saving;
 
   return (
@@ -35,7 +38,7 @@ export function Limits({ agent, live, canManage, onWallets }: LiveSectionProps) 
         <WalletCard agent={agent} live={live} canManage={canManage} onWallets={onWallets} />
         <div className={styles.card} data-dirty={view.dirty} id="live-limits-caps">
           <div className={styles.cardHead}>
-            <h3 className={styles.cardLabel}>HARD CAPS</h3>
+            <h3 className={styles.cardLabel}>CAPS</h3>
             <span className={styles.headTag} data-tone={view.dirty ? "caution" : "good"}>
               {view.tag}
             </span>
@@ -60,8 +63,9 @@ export function Limits({ agent, live, canManage, onWallets }: LiveSectionProps) 
               <button
                 type="button"
                 className={styles.saveButton}
-                disabled={!canManage}
                 aria-disabled={!canSave || undefined}
+                aria-describedby={canManage ? undefined : "live-caps-reason"}
+                title={canManage ? undefined : VIEW_ONLY_REASON}
                 onClick={() => {
                   if (canSave) {
                     void save({ caps: capsPatch(caps) });
@@ -74,15 +78,18 @@ export function Limits({ agent, live, canManage, onWallets }: LiveSectionProps) 
                 <button
                   type="button"
                   className={styles.discardButton}
-                  disabled={!canManage || saving}
+                  aria-disabled={!canManage || saving || undefined}
                   onClick={() => {
-                    setCaps(savedCaps);
-                    touch();
+                    if (canManage && !saving) {
+                      setCaps(savedCaps);
+                      touch();
+                    }
                   }}
                 >
                   Discard
                 </button>
               )}
+              <Reason id="live-caps-reason" text={canManage ? null : VIEW_ONLY_REASON} />
             </div>
           )}
           <SaveOutcome state={state} />
@@ -90,13 +97,6 @@ export function Limits({ agent, live, canManage, onWallets }: LiveSectionProps) 
       </div>
     </LiveSection>
   );
-}
-
-/** What arrived between two reads of this wallet, newest first. */
-interface Arrivals {
-  /** The read the list was last compared against. */
-  seen: StudioWallets | null;
-  list: { text: string; at: string }[];
 }
 
 function WalletCard({
@@ -108,16 +108,8 @@ function WalletCard({
   const wallet = agent.wallet;
   const [copied, copy] = useCopied();
 
-  /* Every new read of the wallets, a transfer's or a refresh's, is compared with the one before
-     it (`arrived`): a balance that grew is news, stamped with the read's time. */
-  const [arrivals, setArrivals] = useState<Arrivals>({ seen: live.wallets, list: [] });
-  if (live.wallets !== arrivals.seen) {
-    const before = wallet ? agentWalletRead(arrivals.seen, wallet.walletId) : null;
-    const after = wallet ? agentWalletRead(live.wallets, wallet.walletId) : null;
-    const found =
-      before && after && live.wallets ? arrived(before, after, readClock(live.wallets.readAt)) : [];
-    setArrivals({ seen: live.wallets, list: [...found, ...arrivals.list] });
-  }
+  /* Every new read of the wallets, a transfer's or a refresh's, is compared with the one before it. */
+  const arrivals = useArrivals(live.wallets, wallet?.walletId ?? null);
 
   if (!wallet) {
     return (
@@ -131,6 +123,7 @@ function WalletCard({
   }
 
   const view = limitsWallet(liveWalletRead(wallet, live.wallets));
+  const pullShut = pullReason(canManage, view.canPull);
 
   return (
     <div className={styles.card} id="live-limits-wallet">
@@ -168,37 +161,38 @@ function WalletCard({
           <span className={styles.balanceLabel}>MON · GAS</span>
         </span>
       </div>
-      {arrivals.list.length > 0 && (
-        <ol className={styles.arrivals} aria-label="Arrived">
-          {arrivals.list.map((entry, index) => (
-            <li key={`${entry.at}-${entry.text}-${index}`} className={styles.arrival}>
-              <span className={styles.arrivalDot} aria-hidden="true" />
-              <span className={styles.arrivalText}>{entry.text}</span>
-              <span className={styles.arrivalAt} suppressHydrationWarning>
-                {entry.at}
-              </span>
-            </li>
-          ))}
-        </ol>
-      )}
+      <ArrivalList arrivals={arrivals} radius="md" />
       <div className={styles.pair}>
         <button
           type="button"
           className={styles.fundButton}
-          disabled={!canManage}
-          onClick={() => onWallets(true)}
+          aria-disabled={!canManage || undefined}
+          aria-describedby={canManage ? undefined : "live-fund-reason"}
+          title={canManage ? undefined : VIEW_ONLY_FUNDS}
+          onClick={() => {
+            if (canManage) {
+              onWallets(true);
+            }
+          }}
         >
           Fund from master
         </button>
         <button
           type="button"
           className={styles.pullButton}
-          disabled={!canManage || !view.canPull}
-          title={view.canPull ? undefined : "No free AUSD to pull back"}
-          onClick={() => onWallets(false)}
+          aria-disabled={pullShut !== null || undefined}
+          aria-describedby={pullShut ? "live-pull-reason" : undefined}
+          title={pullShut ?? undefined}
+          onClick={() => {
+            if (!pullShut) {
+              onWallets(false);
+            }
+          }}
         >
           Pull free AUSD back
         </button>
+        <Reason id="live-fund-reason" text={canManage ? null : VIEW_ONLY_FUNDS} />
+        <Reason id="live-pull-reason" text={pullShut} />
       </div>
       <span className={styles.hint} data-align="center">
         {PULL_NOTE}

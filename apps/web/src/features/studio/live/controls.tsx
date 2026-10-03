@@ -1,11 +1,11 @@
 "use client";
-import { useState } from "react";
 import { Icon, Meter, Segmented } from "@pickler/ui";
 import { SaveOutcome, saveLabel, useSavedForm, useSetupSave } from "../shell/setup-save";
-import { useVersionedStudio } from "./brief";
-import { entryDirty, entryPatch, liveEntryView, stopRows } from "./build-model";
+import { VIEW_ONLY_REASON, entryDirty, entryPatch, stopRows } from "./build-model";
 import { LiveSection, type LiveSectionProps } from "./live-section";
 import {
+  entryView,
+  healthIssues,
   healthLabel,
   healthRows,
   liveCaps,
@@ -18,6 +18,7 @@ import {
   meters,
   type LiveEntry,
 } from "./model";
+import { Reason } from "./reason";
 import styles from "./build.module.css";
 
 const MODES: { value: LiveEntry["mode"]; label: string }[] = [
@@ -37,7 +38,7 @@ const MEANWHILE: { value: LiveEntry["meanwhile"]; label: string }[] = [
  * "Save" (one `PUT /setup` with `entry`). The meters are real zeros against the caps, and HEALTH
  * reads the markets, its sources, gas, credits and the brief's version.
  */
-export function Controls({ agent, live, canManage }: LiveSectionProps) {
+export function Controls({ agent, live, canManage, pause }: LiveSectionProps) {
   const { caps } = liveCaps(agent);
   const read = liveWalletRead(agent.wallet, live.wallets);
   const warnings = liveWarnings(read, caps.perTradeAusd);
@@ -49,13 +50,15 @@ export function Controls({ agent, live, canManage }: LiveSectionProps) {
     sourcesOn: agent.config.sources?.web ? 2 : 1,
     monWei: read?.monWei ?? null,
     version: agent.version,
-    briefDirty: false,
   });
+  /* HEALTH's brief row is always APPLIED: Brief's edits are dropped when Brief closes, so none can
+     be unapplied while Controls shows (`healthRows`). */
+  const issues = healthIssues(warnings.length, health);
 
   return (
     <LiveSection section="controls">
       <div className={styles.grid}>
-        <Stops agent={agent} live={live} canManage={canManage} />
+        <Stops agent={agent} canManage={canManage} pause={pause} />
         <div className={styles.card} id="live-controls-runs">
           <HowItRuns agent={agent} live={live} canManage={canManage} />
           <div className={styles.meters}>
@@ -73,8 +76,8 @@ export function Controls({ agent, live, canManage }: LiveSectionProps) {
         <div className={styles.card} id="live-controls-health">
           <div className={styles.cardHead}>
             <h3 className={styles.cardLabel}>HEALTH</h3>
-            <span className={styles.healthTag} data-bad={warnings.length > 0}>
-              {healthLabel(warnings.length)}
+            <span className={styles.healthTag} data-bad={issues > 0}>
+              {healthLabel(issues)}
             </span>
           </div>
           <ul className={styles.healthList}>
@@ -94,25 +97,16 @@ export function Controls({ agent, live, canManage }: LiveSectionProps) {
   );
 }
 
-/** STOPS · YOURS IN EVERY MODE: Pause entries is the header's own call, here a second time. */
-function Stops({ agent, live, canManage }: Pick<LiveSectionProps, "agent" | "live" | "canManage">) {
-  const [pending, setPending] = useState(false);
-  const [failure, setFailure] = useState("");
-
-  async function flip() {
-    if (pending) {
-      return;
-    }
-    setPending(true);
-    setFailure("");
-    try {
-      await live.pause(!agent.paused);
-    } catch (caught) {
-      setFailure(caught instanceof Error ? caught.message : "Could not change it.");
-    } finally {
-      setPending(false);
-    }
-  }
+/**
+ * STOPS · YOURS IN EVERY MODE: Pause entries is the header's own control here a second time, with
+ * the same pending state (`usePauseToggle`); a failure pressed here is said here.
+ */
+function Stops({
+  agent,
+  canManage,
+  pause,
+}: Pick<LiveSectionProps, "agent" | "canManage" | "pause">) {
+  const shut = !canManage || pause.pending;
 
   return (
     <div className={styles.card} data-tone="stops" id="live-controls-stops">
@@ -133,12 +127,17 @@ function Stops({ agent, live, canManage }: Pick<LiveSectionProps, "agent" | "liv
                 type="button"
                 className={styles.stopButton}
                 data-paused={agent.paused}
-                disabled={!canManage}
-                aria-disabled={pending || undefined}
-                aria-busy={pending}
-                onClick={() => void flip()}
+                aria-disabled={shut || undefined}
+                aria-busy={pause.pending || undefined}
+                aria-describedby={canManage ? undefined : "live-stops-reason"}
+                title={canManage ? undefined : VIEW_ONLY_REASON}
+                onClick={() => {
+                  if (!shut) {
+                    void pause.toggle("stops");
+                  }
+                }}
               >
-                {pending ? (agent.paused ? "Resuming…" : "Pausing…") : row.action.label}
+                {pause.pendingLabel ?? row.action.label}
               </button>
             ) : (
               <span className={styles.stopTag}>{row.action.label}</span>
@@ -146,10 +145,11 @@ function Stops({ agent, live, canManage }: Pick<LiveSectionProps, "agent" | "liv
           </li>
         ))}
       </ul>
-      {failure && (
+      <Reason id="live-stops-reason" text={canManage ? null : VIEW_ONLY_REASON} />
+      {pause.error?.from === "stops" && (
         <p className={styles.alert} role="alert">
           <Icon name="alert" size={12} />
-          {failure}
+          {pause.error.text}
         </p>
       )}
     </div>
@@ -165,10 +165,9 @@ function HowItRuns({
   const { caps } = liveCaps(agent);
   const saved = liveEntry({ entry: agent.config.entry, spend: { perCallAusd: caps.perTradeAusd } });
   const [form, setForm] = useSavedForm<LiveEntry>(agent.version, saved);
-  const studio = useVersionedStudio(live);
-  const { state, save, touch, saving } = useSetupSave(studio);
+  const { state, save, touch, saving } = useSetupSave(live);
   const status = liveStatus(agent);
-  const view = liveEntryView(form, caps.perTradeAusd);
+  const view = entryView(form, caps.perTradeAusd);
   const dirty = entryDirty(form, saved, caps.perTradeAusd);
   const canSave = canManage && dirty && !saving;
   const shut = !canManage || saving;
@@ -255,8 +254,9 @@ function HowItRuns({
           <button
             type="button"
             className={styles.saveButton}
-            disabled={!canManage}
             aria-disabled={!canSave || undefined}
+            aria-describedby={canManage ? undefined : "live-entry-reason"}
+            title={canManage ? undefined : VIEW_ONLY_REASON}
             onClick={() => {
               if (canSave) {
                 void save({ entry: entryPatch(form, caps.perTradeAusd) });
@@ -269,15 +269,18 @@ function HowItRuns({
             <button
               type="button"
               className={styles.discardButton}
-              disabled={shut}
+              aria-disabled={shut || undefined}
               onClick={() => {
-                setForm(saved);
-                touch();
+                if (!shut) {
+                  setForm(saved);
+                  touch();
+                }
               }}
             >
               Discard
             </button>
           )}
+          <Reason id="live-entry-reason" text={canManage ? null : VIEW_ONLY_REASON} />
         </div>
       )}
       <SaveOutcome state={state} />

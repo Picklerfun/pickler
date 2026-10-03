@@ -3,15 +3,15 @@ import { useEffect, useRef, useState } from "react";
 import { Icon } from "@pickler/ui";
 import { useMarketplaceHref } from "@/features/site/studio-href";
 import { useNow } from "@/lib/now";
-import { errorCode, type Agent } from "../api";
+import type { Agent } from "../api";
 import { HeaderDot } from "../shell/header";
 import { railItemId } from "../shell/rail";
 import { StatusChip } from "../shell/status-chip";
 import { StudioShell, useShellModals } from "../shell/studio-shell";
-import { PREVIEW_NOTE } from "../shell/use-agent-studio";
 import { Account } from "./account";
 import { Agents } from "./agents";
 import { Brief } from "./brief";
+import { VIEW_ONLY_REASON } from "./build-model";
 import { Console } from "./console";
 import { Controls } from "./controls";
 import { Decisions } from "./decisions";
@@ -39,9 +39,11 @@ import {
 import { Overview } from "./overview";
 import { Positions } from "./positions";
 import { Posts } from "./posts";
+import { Reason } from "./reason";
 import { RecordSection } from "./record";
 import { Sources } from "./sources";
 import { useLive } from "./use-live";
+import { usePauseToggle, type PauseToggle } from "./use-pause";
 import { Wallets } from "./wallets";
 import styles from "./live.module.css";
 
@@ -93,8 +95,10 @@ export function LiveStudio({
   const now = staged ? staged.now : wallClock;
   const live = useLive({ agent, staged, preview, section, onRefreshAgent });
   const modals = useShellModals(live.readWallets);
+  const pause = usePauseToggle(live.pause, agent.paused);
   const profile = useMarketplaceHref(publicProfilePath(agent.handle) ?? "/agents");
-  /* "Fix it" and "EVERY DECISION →" move the section from outside the rail: its item takes focus. */
+  /* "Fix it", "EVERY DECISION →" and every section's own links ("Connect X", "Caps & limits") move
+     the section from outside the rail: the control pressed unmounts, so its rail item takes focus. */
   const focusRail = useRef(false);
 
   useEffect(() => {
@@ -119,9 +123,10 @@ export function LiveStudio({
     agent,
     live,
     canManage,
+    pause,
     now,
     accountHandle,
-    onSection: setSection,
+    onSection: goFromOutside,
     onWallets: modals.openWallets,
     onCredits: modals.openCredits,
   };
@@ -178,6 +183,7 @@ export function LiveStudio({
       agents={agents}
       canManage={canManage}
       newAgentLock={newAgentLock}
+      newAgentLabel="Create another agent"
       studio={live}
       modals={modals}
       status={
@@ -185,6 +191,7 @@ export function LiveStudio({
           {status.label}
         </StatusChip>
       }
+      /* Nothing is open and nothing waits on the owner until the Perpl runtime (`RailCounts`). */
       rail={liveRail(section, { positions: 0, decisions: 0 })}
       railFooter={
         <>
@@ -227,7 +234,7 @@ export function LiveStudio({
           paused={agent.paused}
           action={status.action}
           canManage={canManage}
-          onPause={live.pause}
+          pause={pause}
         />
       }
       tiles={liveTiles(read, caps.perDayAusd)}
@@ -267,44 +274,23 @@ function HeaderPart({ first, children }: { first: boolean; children: string }) {
 }
 
 /**
- * The header's controls (spec L4): "Pause entries" / "Resume", real, with its pending state and an
- * inline failure that changes nothing; "Stop · close all" drawn shut with Soon, because closing
- * positions needs live trading.
+ * The header's controls (spec L4): "Pause entries" / "Resume", real, with its pending state (shared
+ * with Controls' STOPS) and an inline failure that changes nothing; "Stop · close all" drawn shut
+ * with Soon, because closing positions needs live trading. A view-only member's Pause stays
+ * reachable, with the reason.
  */
 function HeaderControls({
   paused,
   action,
   canManage,
-  onPause,
+  pause,
 }: {
   paused: boolean;
   action: "Pause entries" | "Resume";
   canManage: boolean;
-  onPause(paused: boolean): Promise<void>;
+  pause: PauseToggle;
 }) {
-  const [pending, setPending] = useState(false);
-  const [error, setError] = useState("");
-
-  async function toggle() {
-    setPending(true);
-    setError("");
-    try {
-      await onPause(!paused);
-    } catch (caught) {
-      if (errorCode(caught) === "PREVIEW") {
-        setError(PREVIEW_NOTE);
-      } else {
-        setError(caught instanceof Error ? caught.message : "It didn't change. Try again.");
-      }
-    } finally {
-      setPending(false);
-    }
-  }
-
-  let label: string = action;
-  if (pending) {
-    label = paused ? "Resuming…" : "Pausing…";
-  }
+  const shut = !canManage || pause.pending;
 
   return (
     <div className={styles.controls}>
@@ -314,12 +300,20 @@ function HeaderControls({
           className={styles.pauseButton}
           id="live-pause"
           data-paused={paused}
-          disabled={!canManage || pending}
-          onClick={() => void toggle()}
+          aria-disabled={shut || undefined}
+          aria-busy={pause.pending || undefined}
+          aria-describedby={canManage ? undefined : "live-pause-reason"}
+          title={canManage ? undefined : VIEW_ONLY_REASON}
+          onClick={() => {
+            if (!shut) {
+              void pause.toggle("header");
+            }
+          }}
         >
           <Icon name={paused ? "play" : "pause"} size={14} />
-          {label}
+          {pause.pendingLabel ?? action}
         </button>
+        <Reason id="live-pause-reason" text={canManage ? null : VIEW_ONLY_REASON} />
         <button
           type="button"
           className={styles.stopButton}
@@ -331,9 +325,9 @@ function HeaderControls({
           <span className={styles.soon}>SOON</span>
         </button>
       </div>
-      {error && (
+      {pause.error?.from === "header" && (
         <p className={styles.controlError} role="alert">
-          {error}
+          {pause.error.text}
         </p>
       )}
     </div>

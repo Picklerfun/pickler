@@ -4,7 +4,8 @@ import { accentVars } from "@/lib/accent";
 import { LiveSection, type LiveSectionProps } from "./live-section";
 import { LEADER_ASK, READ_WORDS, SHUT, readState } from "./market-model";
 import { ReadNote, Shut } from "./market-parts";
-import { leaderRows } from "./model";
+import shell from "../shell/shell.module.css";
+import { LEADER_TITLE, leaderRows } from "./model";
 import styles from "./market.module.css";
 
 /**
@@ -12,7 +13,8 @@ import styles from "./market.module.css";
  * section opens, in the DTO's order. "Who said the truth" with the calibration line only when the
  * score is calibration alone (the DTO's weights otherwise); rank, initials, name, ticker, beat ·
  * resolved, score, hit ("—": the DTO has none) and net. "Ask" is shut with Soon, and carries no
- * price because the leaderboard's DTO has none. The owner's own agent wears the lime edge.
+ * price because the leaderboard's DTO has none. The owner's own agent wears the lime edge, and says
+ * "(yours)" to assistive technology, which cannot see an edge.
  */
 export const Leaders: (props: LiveSectionProps) => ReactElement = ({ agent, live }) => {
   const board = live.leaderboard;
@@ -23,7 +25,7 @@ export const Leaders: (props: LiveSectionProps) => ReactElement = ({ agent, live
     <LiveSection section="leaders">
       <div className={styles.board} id="live-leaders" data-state={state}>
         <div className={styles.listHead}>
-          <h3 className={styles.listTitle}>Who said the truth</h3>
+          <h3 className={styles.listTitle}>{LEADER_TITLE}</h3>
           {view && <span className={styles.listMeta}>{view.tag}</span>}
         </div>
 
@@ -45,7 +47,9 @@ export const Leaders: (props: LiveSectionProps) => ReactElement = ({ agent, live
                 </span>
                 <span>
                   <span className={styles.leaderName}>
-                    {row.name} <span className={styles.ticker}>{row.ticker}</span>
+                    {row.name}
+                    {row.own && <span className={shell.srOnly}> (yours)</span>}{" "}
+                    <span className={styles.ticker}>{row.ticker}</span>
                   </span>
                   <span className={styles.leaderBeat}>{row.beat}</span>
                 </span>

@@ -5,6 +5,7 @@ import type {
   LeaderboardDto,
   MarketDetailDto,
   PerpMarketDto,
+  SetupUpdateDto,
 } from "@pickler/api-schema";
 import {
   agentVersions,
@@ -45,8 +46,9 @@ export interface LiveData extends AgentStudioData {
 /**
  * The reads again, and the live studio's writes, each one call: the ones both studios make
  * (`UseAgentStudio`: setup, identity, X) and pause. `refresh` reads the versions and the markets
- * too. A failed live read says so in its own field (each section draws it with Retry), not in the
- * shell's `error`.
+ * too, and so does every `saveSetup`, whatever it answered: every saved setup is a version row
+ * (spec L10), and after a 409 CONFLICT the other writer's save is one. A failed live read says so
+ * in its own field (each section draws it with Retry), not in the shell's `error`.
  */
 export interface UseLive extends UseAgentStudio, LiveData {
   /** The board and the watched markets' details again (Retry on "Couldn't read Perpl."). */
@@ -157,6 +159,19 @@ export function useLive({
   const readVersions = useCallback(() => readVersionsWith(tools), [readVersionsWith, tools]);
   const readMarkets = useCallback(() => readMarketsWith(tools), [readMarketsWith, tools]);
 
+  /* VERSIONS is read again after every save, a refused one included (CONFLICT moved the version). */
+  const { saveSetup: saveSetupOnce } = studio;
+  const saveSetup = useCallback(
+    async (patch: Omit<SetupUpdateDto, "expectedVersion">) => {
+      try {
+        return await saveSetupOnce(patch);
+      } finally {
+        void readVersions();
+      }
+    },
+    [saveSetupOnce, readVersions],
+  );
+
   const readDirectory = useCallback(async () => {
     if (offline) {
       return;
@@ -216,6 +231,7 @@ export function useLive({
 
   return {
     ...studio,
+    saveSetup,
     versions,
     markets,
     details,

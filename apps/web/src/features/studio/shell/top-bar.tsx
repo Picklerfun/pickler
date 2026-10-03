@@ -22,6 +22,8 @@ export interface StudioTopBarProps {
   canManage: boolean;
   /** Why "+ New agent" is shut (`home/gate.ts`'s `newAgentLock`), or "". */
   newAgentLock: string;
+  /** The new-agent item's words: "+ New agent" by default, "Create another agent" in the live studio. */
+  newAgentLabel?: string | undefined;
   /** The status chip (`StatusChip`), between the agent and the spacer. */
   status: ReactNode;
   /** The master wallet as `GET /wallets` read it; null draws dashes. */
@@ -42,7 +44,7 @@ export interface StudioTopBarProps {
 
 /**
  * The studio's top bar, the same for a draft and a published agent (studio-live-v1 L2): the brand,
- * the agent and its switcher with "+ New agent", the status chip, TESTNET, the master wallet's
+ * the agent and its switcher with "+ New agent" (or the studio's own words for it), the status chip, TESTNET, the master wallet's
  * AUSD | MON opening "Your wallets", AI credits, and the account.
  */
 export function StudioTopBar({
@@ -51,6 +53,7 @@ export function StudioTopBar({
   agents,
   canManage,
   newAgentLock,
+  newAgentLabel = "+ New agent",
   status,
   master,
   onWallets,
@@ -131,11 +134,11 @@ export function StudioTopBar({
                   onNew();
                 }}
               >
-                + New agent
+                {newAgentLabel}
               </button>
             ) : (
               <div className={home.newAgentLocked} title={access.createNote} aria-disabled="true">
-                <span className={home.newAgentLabel}>+ New agent</span>
+                <span className={home.newAgentLabel}>{newAgentLabel}</span>
                 <span className={home.newAgentNote}>{access.createNote}</span>
               </div>
             )}

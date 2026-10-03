@@ -1,46 +1,16 @@
 /**
- * The live studio's BUILD sections (docs/specs/studio-live-v1.md L9–L16): the words `model.ts`
- * already holds, worded so that none of them promises what the Perpl runtime will do (draft spec
- * D19), plus what Brief, Sources & rules, Limits and Controls draw beyond it: the brief's tags
- * against its version, the plugins, the stops, the wallet card's balances and the entry form.
+ * The live studio's BUILD sections (docs/specs/studio-live-v1.md L9–L16): what Brief, Sources &
+ * rules, Limits and Controls draw beyond `model.ts` (which already words the caps and the entry
+ * notes so that none of them promises what the Perpl runtime will do, draft spec D19): the brief's
+ * tags against its version, the plugins, the stops, the wallet card's balances, the entry form and
+ * why a shut control is shut.
  *
  * Pure, no React and no transport; pinned in `apps/web/test/studio-live-build.test.ts`.
  */
 import { formatUnits } from "../new-agent/model";
 import type { BriefKey, BriefView } from "../shell/build-model";
-import {
-  GAS_LOW_WEI,
-  entryView,
-  liveCapsStepper,
-  type EntryView,
-  type LiveCaps,
-  type LiveCapsView,
-  type LiveEntry,
-  type LiveWalletRead,
-} from "./model";
-
-/**
- * What the canvas says the runtime does, said of the setting: nothing runs yet, so a mode note or
- * a cap's line that describes behaviour starts with when it will hold.
- */
-export const ONCE_IT_RUNS = "ONCE IT RUNS";
-
-/** HOW IT RUNS (spec L13): `entryView` with its mode note said of the setting, not of today. */
-export function liveEntryView(entry: LiveEntry, perTradeAusd: number): EntryView {
-  const view = entryView(entry, perTradeAusd);
-  return { ...view, modeNote: `${ONCE_IT_RUNS} · ${view.modeNote}` };
-}
-
-/* A cap's line that describes the runtime, and the line said of the setting instead. */
-const CAP_SUBS: Readonly<Record<string, string>> = {
-  "LOST IN A DAY · THEN IT PAUSES ITSELF": `LOST IN A DAY · ${ONCE_IT_RUNS}, IT PAUSES ITSELF THERE`,
-};
-
-/** The five caps (spec L12): `liveCapsStepper` with every row's line said of the setting. */
-export function liveCapsView(current: LiveCaps, saved: LiveCaps, defaults = false): LiveCapsView {
-  const view = liveCapsStepper(current, saved, defaults);
-  return { ...view, rows: view.rows.map((row) => ({ ...row, sub: CAP_SUBS[row.sub] ?? row.sub })) };
-}
+import { VIEW_ONLY_FUNDS } from "../shell/wallet-model";
+import { GAS_LOW_WEI, type LiveCaps, type LiveEntry, type LiveWalletRead } from "./model";
 
 /** What `PUT /setup` takes as `caps`: the five, as they are. */
 export const capsPatch = (caps: LiveCaps): LiveCaps => ({
@@ -213,4 +183,23 @@ export function limitsWallet(read: LiveWalletRead | null): LimitsWalletView {
     gasLow: mon !== null && mon < GAS_LOW_WEI,
     canPull: ausd !== null && ausd > 0n,
   };
+}
+
+// ─── Why a control is shut ─────────────────────────────────────────────────────────────────────
+
+/** A view-only member's reason on every write of the live studio. */
+export const VIEW_ONLY_REASON = "View-only: ask an owner to change this.";
+
+/** A view-only member's reason on a move of money (Fund, Pull back): the shell's, for both studios. */
+export { VIEW_ONLY_FUNDS };
+
+/** "Pull free AUSD back" with nothing free in its wallet. */
+export const NO_FREE_AUSD = "No free AUSD to pull back.";
+
+/** Why "Pull free AUSD back" is shut, or null when it opens: view-only first, then the balance. */
+export function pullReason(canManage: boolean, canPull: boolean): string | null {
+  if (!canManage) {
+    return VIEW_ONLY_FUNDS;
+  }
+  return canPull ? null : NO_FREE_AUSD;
 }

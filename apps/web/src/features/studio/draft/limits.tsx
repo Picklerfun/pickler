@@ -2,9 +2,9 @@
 import Image from "next/image";
 import { useState } from "react";
 import { Icon } from "@pickler/ui";
-import type { StudioWallets } from "../api";
-import { arrived, formatUnits, shortAddress } from "../new-agent/model";
-import { agentWalletRead, readClock } from "../shell/build-model";
+import { formatUnits, shortAddress } from "../new-agent/model";
+import { ArrivalList, useArrivals } from "../shell/arrivals";
+import { agentWalletRead } from "../shell/build-model";
 import { CapSteppers } from "../shell/build-parts";
 import { SaveOutcome, saveLabel, useSavedForm, useSetupSave } from "../shell/setup-save";
 import { useCopied } from "../shell/use-copied";
@@ -37,7 +37,7 @@ export function Limits({ agent, draft, canManage, onWallets }: DraftSectionProps
         <WalletCard agent={agent} draft={draft} canManage={canManage} onWallets={onWallets} />
         <div className={styles.card} id="draft-limits-caps">
           <div className={styles.cardHead}>
-            <h3 className={styles.cardLabel}>HARD CAPS</h3>
+            <h3 className={styles.cardLabel}>CAPS</h3>
             <span className={styles.stateTag} data-dirty={view.dirty}>
               {view.tag}
             </span>
@@ -90,13 +90,6 @@ export function Limits({ agent, draft, canManage, onWallets }: DraftSectionProps
   );
 }
 
-/** What arrived between two reads of this wallet, newest first. */
-interface Arrivals {
-  /** The read the list was last compared against. */
-  seen: StudioWallets | null;
-  list: { text: string; at: string }[];
-}
-
 function WalletCard({
   agent,
   draft,
@@ -107,18 +100,8 @@ function WalletCard({
   const [copied, copy] = useCopied();
   const [refreshing, setRefreshing] = useState(false);
 
-  /* Every new read of the wallets, Refresh's or a transfer's, is compared with the one before it
-     (`arrived`): a balance that grew is news, stamped with the read's time. */
-  const [arrivals, setArrivals] = useState<Arrivals>({ seen: draft.wallets, list: [] });
-  if (draft.wallets !== arrivals.seen) {
-    const before = wallet ? agentWalletRead(arrivals.seen, wallet.walletId) : null;
-    const after = wallet ? agentWalletRead(draft.wallets, wallet.walletId) : null;
-    const found =
-      before && after && draft.wallets
-        ? arrived(before, after, readClock(draft.wallets.readAt))
-        : [];
-    setArrivals({ seen: draft.wallets, list: [...found, ...arrivals.list] });
-  }
+  /* Every new read of the wallets, Refresh's or a transfer's, is compared with the one before it. */
+  const arrivals = useArrivals(draft.wallets, wallet?.walletId ?? null);
 
   if (!wallet) {
     return (
@@ -197,19 +180,7 @@ function WalletCard({
       <span className={styles.hint} data-tone="muted" suppressHydrationWarning>
         {checkedLabel(draft.wallets?.readAt ?? null, read)}
       </span>
-      {arrivals.list.length > 0 && (
-        <ol className={styles.arrivals} aria-label="Arrived">
-          {arrivals.list.map((entry, index) => (
-            <li key={`${entry.at}-${entry.text}-${index}`} className={styles.arrival}>
-              <span className={styles.arrivalDot} aria-hidden="true" />
-              <span className={styles.arrivalText}>{entry.text}</span>
-              <span className={styles.arrivalAt} suppressHydrationWarning>
-                {entry.at}
-              </span>
-            </li>
-          ))}
-        </ol>
-      )}
+      <ArrivalList arrivals={arrivals} radius="sm" />
       <button
         type="button"
         className={styles.fundButton}

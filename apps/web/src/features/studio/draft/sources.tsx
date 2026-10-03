@@ -1,18 +1,11 @@
 "use client";
-import { useState } from "react";
-import { Icon, Segmented } from "@pickler/ui";
-import type { WebMode } from "../new-agent/model";
-import { addSite, sourcesView, webForm, type WebForm } from "../shell/build-model";
+import { Icon } from "@pickler/ui";
+import { sourcesView, webForm, type WebForm } from "../shell/build-model";
 import { SaveOutcome, saveLabel, useSavedForm, useSetupSave } from "../shell/setup-save";
+import { WebSites, useSiteBox } from "../shell/web-sites";
 import { RunNote } from "./run-note";
 import { DraftSection, type DraftSectionProps } from "./draft-section";
 import styles from "./build.module.css";
-
-const MODES: { value: WebMode; label: string }[] = [
-  { value: "anywhere", label: "Anywhere" },
-  { value: "prefer", label: "Prefer these" },
-  { value: "only", label: "Only these" },
-];
 
 /**
  * Sources & rules (canvas 712–766, spec §3.5): IT READS, Perpl always and the web through Exa
@@ -23,29 +16,18 @@ const MODES: { value: WebMode; label: string }[] = [
 export function Sources({ agent, draft, canManage, onSection }: DraftSectionProps) {
   const saved = webForm(agent.config.sources?.web);
   const [form, setForm] = useSavedForm<WebForm>(agent.version, saved);
-  const [typed, setTyped] = useState("");
-  const [siteError, setSiteError] = useState<string | null>(null);
   const { state, save, touch, saving } = useSetupSave(draft);
-
-  const view = sourcesView(form, saved, siteError);
-  /* A rejected site still in the box: saving now would quietly leave it out. */
-  const refusedSite = Boolean(typed.trim() && siteError);
-  const canSave = canManage && view.dirty && !view.needsSite && !refusedSite && !saving;
-  const shut = !canManage || saving;
 
   function edit(next: Partial<WebForm>) {
     setForm({ ...form, ...next });
     touch();
   }
 
-  function add() {
-    const result = addSite(form.sites, typed);
-    setTyped(result.draft);
-    setSiteError(result.error);
-    if (result.sites.length !== form.sites.length) {
-      edit({ sites: result.sites });
-    }
-  }
+  const box = useSiteBox(form.sites, (sites) => edit({ sites }));
+  const view = sourcesView(form, saved, box.error);
+  /* A rejected site still in the box (`box.refused`): saving now would quietly leave it out. */
+  const canSave = canManage && view.dirty && !view.needsSite && !box.refused && !saving;
+  const shut = !canManage || saving;
 
   return (
     <DraftSection section="skills">
@@ -96,73 +78,15 @@ export function Sources({ agent, draft, canManage, onSection }: DraftSectionProp
             </button>
           </div>
           {form.on && (
-            <div className={styles.web} id="draft-sources-web">
-              <div className={styles.webHead}>
-                <span className={styles.webTitle}>WEB · WHERE EXA MAY LOOK</span>
-                <Segmented
-                  label="Where the web may look"
-                  options={MODES}
-                  optionClassName={styles.webMode}
-                  value={form.mode}
-                  disabled={shut}
-                  onChange={(mode) => edit({ mode })}
-                />
-              </div>
-              {form.mode === "anywhere" ? (
-                <span className={styles.hint}>
-                  SEARCHES THE OPEN WEB · PICK “PREFER” OR “ONLY” TO NAME SITES
-                </span>
-              ) : (
-                <>
-                  <div className={styles.sites}>
-                    {form.sites.map((host) => (
-                      <span key={host} className={styles.site}>
-                        {host}
-                        <button
-                          type="button"
-                          className={styles.siteRemove}
-                          aria-label={`Remove ${host}`}
-                          disabled={shut}
-                          onClick={() =>
-                            edit({ sites: form.sites.filter((site) => site !== host) })
-                          }
-                        >
-                          ×
-                        </button>
-                      </span>
-                    ))}
-                    <input
-                      className={styles.siteInput}
-                      aria-label="Add a site"
-                      value={typed}
-                      disabled={shut}
-                      autoComplete="off"
-                      spellCheck={false}
-                      placeholder={form.sites.length ? "Add a site" : "coindesk.com, x.com…"}
-                      onChange={(event) => {
-                        setTyped(event.target.value);
-                        setSiteError(null);
-                      }}
-                      onBlur={add}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter") {
-                          event.preventDefault();
-                          add();
-                        }
-                      }}
-                    />
-                  </div>
-                  <span
-                    className={styles.hint}
-                    data-bad={view.note.bad}
-                    role="status"
-                    aria-live="polite"
-                  >
-                    {view.note.text}
-                  </span>
-                </>
-              )}
-            </div>
+            <WebSites
+              idPrefix="draft"
+              form={form}
+              box={box}
+              note={view.note}
+              disabled={shut}
+              placeholder={form.sites.length ? "Add a site" : "coindesk.com, x.com…"}
+              onEdit={edit}
+            />
           )}
         </div>
         <button

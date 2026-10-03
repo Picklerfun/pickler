@@ -69,7 +69,7 @@
   background: var(--pk-ink);
   color: var(--pk-bg);
 }
-.whiteButton:hover:not(:disabled) {
+.whiteButton:hover:not(:disabled, [aria-disabled="true"]) {
   background: var(--pk-ink-soft);
 }
 .whiteButton[data-size="small"] {
@@ -81,11 +81,14 @@
   background: var(--pk-bg);
   color: var(--pk-ink);
 }
-.darkButton:hover:not(:disabled) {
+.darkButton:hover:not(:disabled, [aria-disabled="true"]) {
   background: var(--pk-panel-2);
 }
+/* Shut: disabled, or aria-disabled where the reason must stay reachable by keyboard. */
 .whiteButton:disabled,
-.darkButton:disabled {
+.darkButton:disabled,
+.whiteButton[aria-disabled="true"],
+.darkButton[aria-disabled="true"] {
   cursor: not-allowed;
   opacity: 0.5;
 }

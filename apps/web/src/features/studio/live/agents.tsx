@@ -3,7 +3,7 @@ import { useState, type ReactElement } from "react";
 import { Chip } from "@pickler/ui";
 import { accentVars } from "@/lib/accent";
 import { LiveSection, type LiveSectionProps } from "./live-section";
-import { READ_WORDS, SHUT, backLabel, readState } from "./market-model";
+import { READ_WORDS, SHUT, backLabel, backReason, readState } from "./market-model";
 import { ReadNote, Shut } from "./market-parts";
 import { directoryCards } from "./model";
 import styles from "./market.module.css";
@@ -74,7 +74,7 @@ export const Agents: (props: LiveSectionProps) => ReactElement = ({ agent, live 
                   </div>
                   <div className={styles.actions}>
                     <Shut tone="ask" label={card.ask} reason={SHUT.ask} />
-                    <Shut label={backLabel(card.own)} reason={SHUT.back} />
+                    <Shut label={backLabel(card.own)} reason={backReason(card.own)} />
                   </div>
                 </li>
               ))}

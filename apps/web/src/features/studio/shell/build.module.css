@@ -1,5 +1,5 @@
 /* What the Build sections of both studios share (studio-live-v1 L2): the column's measure, the
- * small capitals under a box, a save's outcome and the caps steppers (draft canvas 479–526,
+ * small capitals under a box, the web's sites, what arrived, a save's outcome and the caps steppers (draft canvas 479–526,
  * 676–710). The steppers are the create screen's (`new-agent.module.css`), composed so each stays
  * one drawing; the colour mapping is `shell.module.css`'s, and this sheet holds no literal colour.
  */
@@ -30,6 +30,77 @@
 }
 p.hint {
   margin: 0;
+}
+
+/* ---------- The web's sites (Sources & rules) ---------- */
+
+/* The create screen's drawing (`new-agent.module.css`), composed so each stays one drawing. */
+.web {
+  composes: web from "../new-agent/new-agent.module.css";
+}
+.webHead {
+  composes: webHead from "../new-agent/new-agent.module.css";
+}
+.webTitle {
+  composes: webTitle from "../new-agent/new-agent.module.css";
+}
+.webMode {
+  composes: webMode from "../new-agent/new-agent.module.css";
+}
+.sites {
+  composes: sites from "../new-agent/new-agent.module.css";
+}
+.site {
+  composes: site from "../new-agent/new-agent.module.css";
+}
+.siteRemove {
+  composes: siteRemove from "../new-agent/new-agent.module.css";
+}
+.siteInput {
+  composes: siteInput from "../new-agent/new-agent.module.css";
+}
+.siteRemove:focus-visible {
+  outline: 2px solid var(--pk-focus);
+  outline-offset: 2px;
+}
+
+/* ---------- What arrived in its wallet (Limits) ---------- */
+
+.arrivals {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.arrival {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--pk-radius-sm);
+  background: var(--pk-bg);
+}
+.arrival[data-radius="md"] {
+  border-radius: var(--pk-radius-md);
+}
+.arrivalDot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 3px;
+  background: var(--pk-blue);
+}
+.arrivalText {
+  flex: 1;
+  min-width: 0;
+  font: 500 12.5px/1.3 var(--pk-font);
+}
+.arrivalAt {
+  font: 600 10px/1 var(--pk-font);
+  color: var(--pk-ink-faint);
+  font-variant-numeric: tabular-nums;
 }
 
 /* ---------- A save's outcome ---------- */

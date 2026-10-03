@@ -1,6 +1,4 @@
 "use client";
-import { useCallback, useMemo } from "react";
-import type { SetupUpdateDto } from "@pickler/api-schema";
 import { Icon } from "@pickler/ui";
 import {
   briefLists,
@@ -10,32 +8,16 @@ import {
   type BriefText,
 } from "../shell/build-model";
 import { SaveOutcome, saveLabel, useSavedForm, useSetupSave } from "../shell/setup-save";
-import { liveBriefTags } from "./build-model";
+import { VIEW_ONLY_REASON, liveBriefTags } from "./build-model";
 import { LiveSection, type LiveSectionProps } from "./live-section";
 import { briefBar, versionRows } from "./model";
+import { Reason } from "./reason";
 import type { UseLive } from "./use-live";
 import styles from "./build.module.css";
 
 export interface BriefProps extends LiveSectionProps {
   /** The textareas with edits not applied (`?stage=perpl-brief-dirty`), or null. */
   stagedDraft: BriefText | null;
-}
-
-/**
- * The live studio's data with a `saveSetup` that reads VERSIONS again once a save landed: every
- * saved setup is a version row (spec L10), whichever BUILD section saved it.
- */
-export function useVersionedStudio(live: UseLive): UseLive {
-  const { saveSetup, readVersions } = live;
-  const save = useCallback(
-    async (patch: Omit<SetupUpdateDto, "expectedVersion">) => {
-      const saved = await saveSetup(patch);
-      void readVersions();
-      return saved;
-    },
-    [saveSetup, readVersions],
-  );
-  return useMemo(() => ({ ...live, saveSetup: save }), [live, save]);
 }
 
 /* The canvas's `SECTIONS`: each list's line under its label and its height. */
@@ -49,14 +31,15 @@ const SECTIONS: readonly { key: BriefKey; label: string; sub: string; rows: numb
 /**
  * Brief (canvas 368–391, spec L9, L10): the note bar ("BRIEF V{n} · LIVE", or the edits not
  * applied with Discard and "Apply as v{n+1}", one `PUT /setup` with `brief`), the four sections
- * with their tags against the version it runs on, and VERSIONS, read again after a save. A brief
- * with no entry rule is refused by core, so Apply waits for one.
+ * with their tags against the version it runs on, and VERSIONS, read again after every save
+ * (`useLive`). A brief with no entry rule is refused by core, so Apply waits for one. The bar's
+ * buttons stay while a save has an outcome to say ("Saved", the reload), so focus stays on Apply.
+ * The edits live here: leaving Brief drops them, as it drops every section's form.
  */
 export function Brief({ agent, live, canManage, now, stagedDraft }: BriefProps) {
   const savedText = briefText(agent.config.brief);
   const [form, setForm] = useSavedForm<BriefText>(agent.version, stagedDraft ?? savedText);
-  const studio = useVersionedStudio(live);
-  const { state, save, touch, saving } = useSetupSave(studio);
+  const { state, save, touch, saving } = useSetupSave(live);
 
   const view = briefView(form, savedText);
   const tags = liveBriefTags(view.tags, agent.version);
@@ -76,24 +59,29 @@ export function Brief({ agent, live, canManage, now, stagedDraft }: BriefProps) 
           <span className={styles.barText} role="status">
             {bar.text}
           </span>
-          {(bar.dirty || saving) && (
+          {(bar.dirty || state.kind !== "idle") && (
             <>
-              <button
-                type="button"
-                className={styles.barDiscard}
-                disabled={!canManage || saving}
-                onClick={() => {
-                  setForm(savedText);
-                  touch();
-                }}
-              >
-                Discard
-              </button>
+              {bar.dirty && (
+                <button
+                  type="button"
+                  className={styles.barDiscard}
+                  aria-disabled={!canManage || saving || undefined}
+                  onClick={() => {
+                    if (canManage && !saving) {
+                      setForm(savedText);
+                      touch();
+                    }
+                  }}
+                >
+                  Discard
+                </button>
+              )}
               <button
                 type="button"
                 className={styles.barApply}
-                disabled={!canManage}
                 aria-disabled={!canApply || undefined}
+                aria-describedby={canManage ? undefined : "live-brief-reason"}
+                title={canManage ? undefined : VIEW_ONLY_REASON}
                 onClick={() => {
                   if (canApply) {
                     void save({ brief: briefLists(form) });
@@ -102,6 +90,7 @@ export function Brief({ agent, live, canManage, now, stagedDraft }: BriefProps) 
               >
                 {saveLabel(state, view.dirty, bar.apply)}
               </button>
+              <Reason id="live-brief-reason" text={canManage ? null : VIEW_ONLY_REASON} />
             </>
           )}
         </div>
@@ -143,14 +132,28 @@ export function Brief({ agent, live, canManage, now, stagedDraft }: BriefProps) 
             Write an entry rule to apply it · it needs at least one.
           </p>
         )}
-        <Versions live={live} version={agent.version} now={now} />
+        <Versions live={live} version={agent.version} now={now} canManage={canManage} />
       </div>
     </LiveSection>
   );
 }
 
-/** VERSIONS (spec L10): the recorded saves, the current one lit; a failed read says so. */
-function Versions({ live, version, now }: { live: UseLive; version: number; now: number }) {
+/**
+ * VERSIONS (spec L10): the recorded saves, the current one lit; a failed read says so with Retry.
+ * The route is the owner's, so a view-only member's read always fails: they get the current row
+ * and no failure they could not fix.
+ */
+function Versions({
+  live,
+  version,
+  now,
+  canManage,
+}: {
+  live: UseLive;
+  version: number;
+  now: number;
+  canManage: boolean;
+}) {
   const read = Array.isArray(live.versions) ? live.versions : [];
   const rows = versionRows(read, version, new Date(now));
   return (
@@ -169,7 +172,7 @@ function Versions({ live, version, now }: { live: UseLive; version: number; now:
           </li>
         ))}
       </ol>
-      {live.versions === "failed" && (
+      {live.versions === "failed" && canManage && (
         <span className={styles.versionsFailed}>
           <span className={styles.hint} data-bad="true">
             COULDN&apos;T READ THE VERSIONS

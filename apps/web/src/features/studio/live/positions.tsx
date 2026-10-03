@@ -1,5 +1,5 @@
 "use client";
-import { useState, type ReactElement, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactElement, type ReactNode } from "react";
 import { LiveSection, type LiveSectionProps } from "./live-section";
 import { FUNDING_LABEL, MARKETS_FAILED_LINE, marketsView } from "./model";
 import {
@@ -47,11 +47,23 @@ export function FlatPositions({
 export const Positions: (props: LiveSectionProps) => ReactElement = ({ agent, live }) => {
   const [retrying, setRetrying] = useState(false);
   const view = marketsView(live.markets, live.details, agent.config.perpl?.markets ?? []);
+  /* Retry unmounts with the failure it answers: once the read leaves `failed`, the heading takes
+     focus so it does not drop to the page. */
+  const heading = useRef<HTMLHeadingElement>(null);
+  const retried = useRef(false);
+
+  useEffect(() => {
+    if (retried.current && view.state !== "failed") {
+      retried.current = false;
+      heading.current?.focus();
+    }
+  }, [view.state]);
 
   async function retry() {
     if (retrying) {
       return;
     }
+    retried.current = true;
     setRetrying(true);
     try {
       await live.readMarkets();
@@ -66,7 +78,9 @@ export const Positions: (props: LiveSectionProps) => ReactElement = ({ agent, li
         <FlatPositions id="live-positions-open" title="Open">
           <div className={styles.watch} id="live-positions-watch" data-state={view.state}>
             <div className={styles.watchHead}>
-              <h4 className={styles.watchLabel}>WHAT IT WATCHES</h4>
+              <h4 className={styles.watchLabel} ref={heading} tabIndex={-1}>
+                WHAT IT WATCHES
+              </h4>
               {view.tag && <span className={styles.sourceTag}>{view.tag}</span>}
               <span className={styles.watchMeta}>{WATCH_META}</span>
             </div>
@@ -107,11 +121,11 @@ export const Positions: (props: LiveSectionProps) => ReactElement = ({ agent, li
                     </span>
                     <Sparkline trail={card.trail} up={card.up} />
                     <span className={styles.srOnly}>
-                      {card.listed ? trailText(card.trail) : "Not on Perpl's board."}
+                      {card.listed ? trailText(card.trail) : "Not on the board."}
                     </span>
                     <span className={styles.watchMark}>
                       <span className={styles.mark}>{card.mark}</span>
-                      <span className={styles.change} data-up={card.up}>
+                      <span className={styles.change} data-up={card.up ?? undefined}>
                         {card.change}
                       </span>
                     </span>

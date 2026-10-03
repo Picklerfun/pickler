@@ -241,9 +241,12 @@
 }
 .actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
   margin-top: auto;
 }
+/* Equal halves while they fit; at 375 px "Launch its token" beside a priced Ask wraps to two
+   rows (a flex item is never narrower than its nowrap content). */
 .actions > .shut {
   flex: 1;
   padding: 12px;

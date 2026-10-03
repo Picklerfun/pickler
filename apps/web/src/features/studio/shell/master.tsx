@@ -5,9 +5,10 @@ import type { Agent } from "../api";
 import { formatUnits, unitsOf } from "../new-agent/model";
 import type { UseAgentStudio } from "./use-agent-studio";
 import { useCopied } from "./use-copied";
-import { ledgerRows, type AllocationRow } from "./wallet-model";
+import { VIEW_ONLY_FUNDS, ledgerRows, type AllocationRow } from "./wallet-model";
 import type { StudioIdPrefix } from "./model";
 import styles from "./cards.module.css";
+import shell from "./shell.module.css";
 
 export interface MasterCardProps {
   /** `draft` or `live`: the card is `#<idPrefix>-master-wallet`. */
@@ -15,7 +16,7 @@ export interface MasterCardProps {
   agent: Agent;
   /** `GET /wallets`; null until read (dashes). */
   wallets: UseAgentStudio["wallets"];
-  /** The person may change this workspace; a view-only member sees the fund button shut. */
+  /** The person may change this workspace; a view-only member sees the fund button shut, with why. */
   canManage: boolean;
   /** The signed-in account's handle, which the head names ("MASTER WALLET · @nightowl"). */
   accountHandle: string | null;
@@ -31,6 +32,11 @@ export interface MasterCardProps {
   onCredits?(): void;
   /** "Deposit · copy address" beside it, which copies master's address and says so a moment. */
   deposit?: { label: string; copied: string };
+  /**
+   * The COPY chip beside the address (default true). The live canvas draws the address without it,
+   * because its Deposit already copies the address.
+   */
+  copyChip?: boolean;
 }
 
 export interface MasterProps extends Omit<MasterCardProps, "wallets"> {
@@ -72,7 +78,9 @@ export function MasterCard({
   onFund,
   onCredits,
   deposit,
+  copyChip = true,
 }: MasterCardProps) {
+  const reasonId = `${idPrefix}-master-fund-reason`;
   const [copied, copy] = useCopied();
   const [deposited, copyForDeposit] = useCopied();
   const master = wallets?.master ?? null;
@@ -90,7 +98,7 @@ export function MasterCard({
         <span className={styles.addressText} title={master?.address}>
           {master?.address ?? "—"}
         </span>
-        {master && (
+        {master && copyChip && (
           <button
             type="button"
             className={styles.copyChip}
@@ -131,7 +139,18 @@ export function MasterCard({
         })}
       </ul>
       <div className={styles.pair}>
-        <button type="button" className={styles.fund} disabled={!canManage} onClick={onFund}>
+        <button
+          type="button"
+          className={styles.fund}
+          aria-disabled={!canManage || undefined}
+          aria-describedby={canManage ? undefined : reasonId}
+          title={canManage ? undefined : VIEW_ONLY_FUNDS}
+          onClick={() => {
+            if (canManage) {
+              onFund();
+            }
+          }}
+        >
           {fundLabel}
         </button>
         {onCredits && (
@@ -152,6 +171,17 @@ export function MasterCard({
           >
             {deposited ? deposit.copied : deposit.label}
           </button>
+        )}
+        {/* What the Deposit copied, said once (its label changes, which is not announced). */}
+        {deposit && (
+          <span className={shell.srOnly} role="status">
+            {deposited ? deposit.copied : ""}
+          </span>
+        )}
+        {!canManage && (
+          <span id={reasonId} className={shell.srOnly}>
+            {VIEW_ONLY_FUNDS}
+          </span>
         )}
       </div>
     </div>

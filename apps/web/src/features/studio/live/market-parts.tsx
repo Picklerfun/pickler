@@ -1,12 +1,13 @@
 "use client";
 import { useState } from "react";
+import { PREVIEW_NOTE } from "../shell/use-agent-studio";
 import type { ReadState } from "./market-model";
 import styles from "./market.module.css";
 
 /**
  * A shut button (draft spec D19): drawn as the canvas draws it with its SOON, `aria-disabled` so a
- * keyboard still reaches it, and the reason in its title and its accessible name. A click does
- * nothing.
+ * keyboard still reaches it, named "{label}, soon" with the reason in its title (its accessible
+ * description, so it is read once). A click does nothing.
  */
 export function Shut({
   label,
@@ -28,7 +29,7 @@ export function Shut({
       data-tone={tone}
       data-size={size}
       aria-disabled="true"
-      aria-label={`${label}, soon. ${reason}`}
+      aria-label={`${label}, soon`}
       title={reason}
     >
       {label}
@@ -40,8 +41,9 @@ export function Shut({
 }
 
 /**
- * A marketplace read that is not ready: "Reading…" while it reads, the failure with Retry, or the
- * empty line. Retry says "Retrying…" until the read answers.
+ * A marketplace read that is not ready: "Reading…" while it reads, the failure with Retry, the
+ * empty line, or, in a preview studio that read nothing, `PREVIEW_NOTE`. Retry says "Retrying…"
+ * until the read answers.
  */
 export function ReadNote({
   state,
@@ -87,6 +89,9 @@ export function ReadNote({
         </button>
       </div>
     );
+  }
+  if (state === "preview") {
+    return <p className={styles.note}>{PREVIEW_NOTE}</p>;
   }
   return <p className={styles.note}>{words.empty}</p>;
 }

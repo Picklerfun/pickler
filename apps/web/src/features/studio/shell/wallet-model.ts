@@ -7,6 +7,9 @@
 import { formatUnits, parseAmount } from "../new-agent/model";
 import { stamp } from "./clock";
 
+/** Why a view-only member's move of money is shut (Fund, Pull back), in both studios. */
+export const VIEW_ONLY_FUNDS = "View-only: ask an owner to move funds.";
+
 export interface AllocationRow {
   /** `master`, an agent wallet's id, or the studio's own keys for what is not a wallet. */
   key: string;

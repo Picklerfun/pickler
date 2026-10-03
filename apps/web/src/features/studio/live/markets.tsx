@@ -22,7 +22,12 @@ export const Markets: (props: LiveSectionProps) => ReactElement = ({ live }) => 
   return (
     <LiveSection section="markets">
       <div className={styles.stack} id="live-markets" data-state={state}>
-        <div className={styles.filters} role="group" aria-label="Categories">
+        {/* A group only once it has chips: before the board is read it holds just the header. */}
+        <div
+          className={styles.filters}
+          role={state === "ready" ? "group" : undefined}
+          aria-label={state === "ready" ? "Categories" : undefined}
+        >
           {state === "ready" &&
             view?.filters.map((filter) => (
               <Chip key={filter.key} selected={filter.on} onClick={() => setCategory(filter.key)}>

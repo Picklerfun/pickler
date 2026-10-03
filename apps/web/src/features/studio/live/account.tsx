@@ -61,14 +61,17 @@ async function sessionToken(): Promise<string | null> {
  *   (Remove shut, as there), "Add a device" (the account's add-passkey ceremony; the list is read
  *   again once a passkey is added), WHAT AGENTS MAY DO WITHOUT YOU with honest tags, and SESSIONS,
  *   Soon.
- * - Public profile: the account page's profile section as it is (handle, joined, the link it
- *   cannot open yet, the bio it cannot store; the API keeps no display name to edit), the WHAT
- *   SHOWS switches shut with Soon, and the line that records are always public.
+ * - Public profile: PUBLIC PROFILE, the account page's profile section embedded (the link it cannot
+ *   open yet and the bio it cannot store; the handle and JOINED are this section's head, and the API
+ *   keeps no display name to edit), the WHAT SHOWS switches shut with Soon, and the line that
+ *   records are always public.
  * - Notifications: the five rows, shut with Soon (owner notices have no backend).
  *
- * The passkeys and the profile are read once, when this section opens, with the Supabase session.
- * A staged or preview studio reads nothing: the stage's passkeys and an account named for its
- * handle. There is no public page for a person yet, so "View as public" is left out.
+ * The passkeys and the profile are read once, when this section opens, with the Supabase session;
+ * until the session is known "Add a device" is shut with no reason to give. A staged studio reads
+ * nothing: the stage's passkeys and an account named for its handle. A preview studio with no stage
+ * has no list to show, so its passkeys read as unread rather than as none. There is no public page
+ * for a person yet, so "View as public" is left out.
  */
 export const Account: (props: AccountProps) => ReactElement = ({
   live,
@@ -79,13 +82,17 @@ export const Account: (props: AccountProps) => ReactElement = ({
 }) => {
   const offline = live.preview;
   const [tab, setTab] = useState<AccountTab>(initialTab);
-  const [passkeys, setPasskeys] = useState<PasskeyState>(
-    offline ? { kind: "ready", passkeys: stagedPasskeys ?? [] } : { kind: "loading" },
-  );
+  const [passkeys, setPasskeys] = useState<PasskeyState>(() => {
+    if (!offline) {
+      return { kind: "loading" };
+    }
+    return stagedPasskeys ? { kind: "ready", passkeys: stagedPasskeys } : { kind: "failed" };
+  });
   const [profile, setProfile] = useState<ProfileDto | null>(
     offline ? stagedProfile(accountHandle, now) : null,
   );
-  const [signedIn, setSignedIn] = useState(false);
+  /* Null until the session is read: a signed-in person is not told to sign in meanwhile. */
+  const [signedIn, setSignedIn] = useState<boolean | null>(null);
   const origin = useSyncExternalStore(subscribeOrigin, readOrigin, originOnServer);
   const mounted = useRef(true);
 
@@ -111,11 +118,22 @@ export const Account: (props: AccountProps) => ReactElement = ({
       return;
     }
     void (async () => {
-      const token = await sessionToken();
+      /* A session that cannot be read is a list that was not read: `failed`, never "READING…". */
+      let token: string | null;
+      try {
+        token = await sessionToken();
+      } catch {
+        if (mounted.current) {
+          setSignedIn(false);
+          setPasskeys({ kind: "failed" });
+        }
+        return;
+      }
       if (!mounted.current) {
         return;
       }
       if (!token) {
+        setSignedIn(false);
         setPasskeys({ kind: "failed" });
         return;
       }
@@ -135,11 +153,17 @@ export const Account: (props: AccountProps) => ReactElement = ({
   const addDevice = useAddPasskey({
     onAdded: () => {
       void (async () => {
-        const token = await sessionToken();
-        if (token) {
-          const keys = await readKeys(token);
+        try {
+          const token = await sessionToken();
+          if (token) {
+            const keys = await readKeys(token);
+            if (mounted.current) {
+              setPasskeys(keys);
+            }
+          }
+        } catch {
           if (mounted.current) {
-            setPasskeys(keys);
+            setPasskeys({ kind: "failed" });
           }
         }
       })();
@@ -156,11 +180,11 @@ export const Account: (props: AccountProps) => ReactElement = ({
   }
 
   const joined = joinedLabel(profile?.created_at);
-  const canAdd = !offline && signedIn;
+  const canAdd = !offline && signedIn === true;
   let addReason: string | undefined;
   if (offline) {
     addReason = PREVIEW_NOTE;
-  } else if (!signedIn) {
+  } else if (signedIn === false) {
     addReason = "Sign in to add a passkey.";
   }
 
@@ -185,7 +209,7 @@ export const Account: (props: AccountProps) => ReactElement = ({
               id={tabId(item.key)}
               className={styles.tab}
               aria-selected={item.key === tab}
-              aria-controls={panelId(item.key)}
+              aria-controls={item.key === tab ? panelId(tab) : undefined}
               tabIndex={item.key === tab ? 0 : -1}
               onClick={() => setTab(item.key)}
               onKeyDown={onTabKey}
@@ -200,6 +224,7 @@ export const Account: (props: AccountProps) => ReactElement = ({
           role="tabpanel"
           id={panelId(tab)}
           aria-labelledby={tabId(tab)}
+          tabIndex={0}
         >
           {tab === "security" && (
             <>
@@ -253,7 +278,12 @@ export const Account: (props: AccountProps) => ReactElement = ({
 
           {tab === "profile" && (
             <>
-              <ProfileSection profile={profile} origin={origin} />
+              <div className={styles.card} id="live-account-profile">
+                <div className={styles.cardHead}>
+                  <h3 className={styles.cardLabel}>PUBLIC PROFILE</h3>
+                </div>
+                <ProfileSection profile={profile} origin={origin} embedded />
+              </div>
               <div className={styles.card} id="live-account-shows">
                 <div className={styles.cardHead}>
                   <h3 className={styles.cardLabel}>WHAT SHOWS ON YOUR PROFILE</h3>
@@ -304,7 +334,7 @@ function ShutRows({ rows, reason }: { rows: AccountRow[]; reason: string }) {
             className={styles.switch}
             aria-checked="false"
             aria-disabled="true"
-            aria-label={`${row.name}, soon. ${reason}`}
+            aria-label={`${row.name}, soon`}
             title={reason}
           >
             <span className={styles.track}>

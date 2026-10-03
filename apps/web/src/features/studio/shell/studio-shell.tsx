@@ -55,6 +55,8 @@ export interface StudioShellProps<K extends string> {
   canManage: boolean;
   /** Why "+ New agent" is shut (`home/gate.ts`'s `newAgentLock`), or "". */
   newAgentLock: string;
+  /** The switcher's new-agent item: "+ New agent" unless given (the live studio's "Create another agent"). */
+  newAgentLabel?: string | undefined;
   /** The studio's data (`useAgentStudio`, or a hook built on it). */
   studio: Pick<UseAgentStudio, "wallets" | "preview" | "error" | "refresh">;
   /** `useShellModals(studio.readWallets)`. */
@@ -99,6 +101,7 @@ export function StudioShell<K extends string>({
   agents,
   canManage,
   newAgentLock,
+  newAgentLabel,
   studio,
   modals,
   status,
@@ -126,6 +129,7 @@ export function StudioShell<K extends string>({
         agents={agents}
         canManage={canManage}
         newAgentLock={newAgentLock}
+        newAgentLabel={newAgentLabel}
         status={status}
         master={studio.wallets?.master ?? null}
         onWallets={() => modals.openWallets(null)}
