@@ -294,3 +294,7 @@ See [PAPER-STUDY.md](PAPER-STUDY.md) for bounded BTC 5m/15m and sports sessions,
 The separate [perpetual comparison laboratory](PERPS-STUDY.md) uses the [unified evaluation host](EVALUATIONS.md) to initialize,
 preflight, run/resume, stop and report a prospective rules/DeepSeek/Jev comparison. It has dedicated
 virtual accounts, private PostgreSQL records and an independently authorized model budget.
+
+The [Perpl decision audit](PERPS-DECISION-AUDIT.md) adds read-only `evaluate audit-export` and
+packet-only `evaluate audit`. It traces saved model responses through the frozen policies and
+recorded virtual fills without another run, provider call or historical write.

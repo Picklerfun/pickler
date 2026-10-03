@@ -404,3 +404,7 @@ capture in `@pickler/perpl-context` and recorded candles in `test/fixtures/`.
 ## Local four-way perpetual comparison
 
 Perpetual configuration v2 persists four agents and four reserved lanes in the existing study JSONB. Historical unknown usage may be acknowledged only by exact failed call identity/hash/reservation with no active owner; full reserved cost remains accounted. Any new unknown blocks admissions. The four-way paid ceiling is 35 calls and all sessions still share the original tenant/network/database USD 5 campaign.
+
+## Read-only Perpl audit export
+
+exportPerpsAudit uses a scoped repeatable-read READ ONLY transaction for study, rounds, events, paper accounts, attempts and movements. Never replace it with paper.view(), which can recover attempts and write history. It exports document data, not lease owners, credentials or database connection values. It releases the client on success and failure, and never initializes missing records.

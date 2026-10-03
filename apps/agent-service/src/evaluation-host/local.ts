@@ -24,6 +24,16 @@ export interface EvaluationHostRequest {
 }
 /** Public application service: no process.argv, chdir, or alternate provider/strategy implementation. */
 export async function executeEvaluation(input: EvaluationHostRequest) {
+  if (input.command === "audit-export") {
+    const { runPerpsAudit } = await import("../perps-study/audit.js");
+    return runPerpsAudit({
+      command: "audit-export",
+      configPath: input.configPath,
+      envFile: input.envFile,
+      output: input.output,
+      allowPaid: input.allowPaid,
+    });
+  }
   const path = resolve(input.configPath);
   const raw = JSON.parse(await readFile(path, "utf8")) as {
     protocol: EvaluationProtocol;
