@@ -504,7 +504,9 @@ trading's `marginOpenedSince` over that same snapshot.
   `{ checks, nextCursor }`, 50 a page; `GET /perps/checks/:id` adds steps, `startedAt`, `finishedAt`.
 - `GET /agents/:id/perps/positions`: `{ network, account, open, closed }`; open positions carry the
   board's mark and unrealized P&L (null without a fresh mark), stop, target, time stop and
-  trading's `liquidationPrice`; closed are newest 50 with `realizedPnl` (net of fees).
+  trading's `liquidationPrice`; closed are newest 50 with `realizedPnl` net of every fee the
+  position paid (its open's `<id>:fee`, each size-up's fee and the close), which the record's
+  `wins` and `hitRate` count too.
 - `POST /perps/positions/:id/close`: the position's owner from `PostgresPerpsOwnerStore.findPosition`;
   409 `POSITION_CLOSED`; writes a `close` action; 202 `{ actionId }`.
 - `POST /agents/:id/perps/stop`: pauses the agent at once (`repository.pause`, the existing pause

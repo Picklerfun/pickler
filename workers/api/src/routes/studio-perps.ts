@@ -168,10 +168,27 @@ function liquidationEstimate(p: PerpsPaperPosition) {
   return paperUnits(price) > 0n ? price : null;
 }
 
-function closedPnl(view: PerpsPaperView, positionId: string) {
+/**
+ * A closed position's realized P&L net of every fee it paid: its close (`close:<id>:*`), its open's
+ * fee (`<id>:fee`: a position's id is its open attempt's key) and the fee of each size-up, a filled
+ * `size_up` attempt on its market while it was open (one position per market at a time).
+ */
+function closedPnl(view: PerpsPaperView, position: PerpsPaperPosition) {
+  const fees = new Set([`${position.id}:fee`]);
+  for (const attempt of view.attempts) {
+    if (
+      attempt.reason === "size_up" &&
+      attempt.status === "filled" &&
+      attempt.intent.symbol === position.symbol &&
+      attempt.createdAt >= position.openedAt &&
+      (position.closedAt === null || attempt.createdAt <= position.closedAt)
+    ) {
+      fees.add(`${attempt.key}:fee`);
+    }
+  }
   let total = 0n;
   for (const movement of view.movements) {
-    if (movement.key.startsWith(`close:${positionId}:`)) {
+    if (movement.key.startsWith(`close:${position.id}:`) || fees.has(movement.key)) {
       total += paperUnits(movement.delta);
     }
   }
@@ -417,7 +434,7 @@ export function studioPerpsRoutes(context: Context) {
               openedAt: iso(p.openedAt),
               closedAt: iso(p.closedAt!),
               closeReason: p.closeReason ?? null,
-              realizedPnl: paperDecimal(closedPnl(view!, p.id)),
+              realizedPnl: paperDecimal(closedPnl(view!, p)),
             })),
         }),
       );
@@ -614,7 +631,7 @@ export function studioPerpsRoutes(context: Context) {
               .filter((p) => p.closedAt !== null)
               .map((p) => ({
                 closedAt: p.closedAt!,
-                pnl: Number(paperDecimal(closedPnl(view, p.id))),
+                pnl: Number(paperDecimal(closedPnl(view, p))),
               }))
           : [],
         openPnl: openPnl === null ? null : Number(paperDecimal(openPnl)),

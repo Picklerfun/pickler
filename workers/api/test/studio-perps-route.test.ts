@@ -131,7 +131,7 @@ function position(overrides: Partial<PerpsPaperPosition> = {}): PerpsPaperPositi
   };
 }
 
-function view(positions: PerpsPaperPosition[]): PerpsPaperView {
+function view(positions: PerpsPaperPosition[], ethClosePnl = "-1.5"): PerpsPaperView {
   return {
     account: {
       scope: {
@@ -152,13 +152,47 @@ function view(positions: PerpsPaperPosition[]): PerpsPaperView {
       fundingPending: false,
       positions,
     },
-    attempts: [],
+    attempts: [
+      {
+        key: "check:bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb:size-up",
+        intent: {
+          kind: "open",
+          symbol: "ETH",
+          side: "short",
+          notional: "15",
+          feeReserve: "0.1",
+          leverage: 3,
+        },
+        status: "filled",
+        reserved: "0",
+        createdAt: NOW - 90 * 60_000,
+        finishedAt: NOW - 90 * 60_000,
+        reason: "size_up",
+        evidence: null,
+      },
+    ],
     movements: [
       { key: "initial", kind: "initial", delta: "200", at: NOW - 2 * HOUR, evidence: null },
+      // The fees of eth-1's open and of its size-up, and of the BTC long still open.
+      { key: "eth-1:fee", kind: "fee", delta: "-0.25", at: NOW - 2 * HOUR, evidence: null },
+      {
+        key: "check:bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb:size-up:fee",
+        kind: "fee",
+        delta: "-0.1",
+        at: NOW - 90 * 60_000,
+        evidence: null,
+      },
+      {
+        key: `check:${CHECK}:open:fee`,
+        kind: "fee",
+        delta: "-0.2",
+        at: NOW - HOUR,
+        evidence: null,
+      },
       {
         key: "close:eth-1:pnl",
         kind: "realized-pnl",
-        delta: "-1.5",
+        delta: ethClosePnl,
         at: NOW - 30 * 60_000,
         evidence: null,
       },
@@ -197,6 +231,7 @@ function app({
   account = true,
   proposals = [proposal()],
   actionError = null as PilotError | null,
+  ethClosePnl = "-1.5",
 }: {
   enabled?: boolean;
   readOnly?: boolean;
@@ -206,6 +241,8 @@ function app({
   account?: boolean;
   proposals?: PerpsProposal[];
   actionError?: PilotError | null;
+  /** The realized P&L movement of eth-1's close, before any fee. */
+  ethClosePnl?: string;
 } = {}) {
   const sent: PerpsQueueMessage[] = [];
   const actions: (Omit<PerpsOwnerAction, "id" | "createdAt" | "updatedAt"> & {
@@ -361,7 +398,7 @@ function app({
         if (!account) {
           throw new PilotError("NOT_FOUND", "Paper account not found");
         }
-        return view(positions);
+        return view(positions, ethClosePnl);
       },
     },
     marks: async () => [{ network: "testnet", symbol: "BTC", mark: "61000" }],
@@ -556,7 +593,8 @@ test("positions mark open ones to the board, with P&L, exits and a liquidation e
   });
   assert.deepEqual(
     body.closed.map((p) => [p.id, p.closeReason, p.realizedPnl]),
-    [["eth-1", "stop", "-2"]],
+    // Net of every fee it paid: the close (-1.5 - 0.5), its open (-0.25) and its size-up (-0.1).
+    [["eth-1", "stop", "-2.35"]],
   );
 });
 
@@ -734,8 +772,8 @@ test("the record carries the ledger's stats, today's figures and whether the run
 
   assert.equal(body.runtimeEnabled, false);
   assert.equal(body.account, true);
-  assert.equal(body.realizedAusd, -2);
-  assert.equal(body.feesAndFundingAusd, -0.5);
+  assert.equal(body.realizedAusd, -2.55);
+  assert.equal(body.feesAndFundingAusd, -1.05);
   assert.equal(body.openPnlAusd, 1);
   assert.equal(body.closedCount, 1);
   assert.equal(body.hitRate, 0);
@@ -745,7 +783,7 @@ test("the record carries the ledger's stats, today's figures and whether the run
   // From the same read-only snapshot: both positions opened today (20 + 10 margin).
   assert.deepEqual(body.today, {
     newMarginAusd: 30,
-    realizedAusd: -2,
+    realizedAusd: -2.55,
     openCount: 1,
     leverageInUse: 3,
     checks: 4,
@@ -753,6 +791,22 @@ test("the record carries the ledger's stats, today's figures and whether the run
     manualLimit: 6,
     costMicros: "4500",
   });
+});
+
+test("a close that made less than its open and size-up fees is a loss in the record and its hit rate", async () => {
+  // eth-1's close made 0.6 before fees; its close (0.5), open (0.25) and size-up (0.1) fees took 0.85.
+  const f = app({ ethClosePnl: "0.6" });
+
+  const positions = perpsPositionsResponseSchema.parse(
+    await (await f.root.request(`/agents/${PERPL}/perps/positions`, get())).json(),
+  );
+  const record = perpsRecordSchema.parse(
+    await (await f.root.request(`/agents/${PERPL}/perps/record`, get())).json(),
+  );
+
+  assert.equal(positions.closed[0]!.realizedPnl, "-0.25");
+  assert.equal(record.wins, 0);
+  assert.equal(record.hitRate, 0);
 });
 
 test("the DTO vocabularies mirror trading's", () => {
