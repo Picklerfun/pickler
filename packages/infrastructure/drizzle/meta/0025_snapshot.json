@@ -1,5 +1,5 @@
 {
-  "id": "bc979ff5-fe81-4452-afd6-5e3ce629d06f",
+  "id": "43813747-88c7-4bda-92ae-bb0200fc2be8",
   "prevId": "c58e7325-881c-4cf5-8326-970dfd6eba62",
   "version": "7",
   "dialect": "postgresql",
@@ -2327,6 +2327,448 @@
       "checkConstraints": {},
       "isRLSEnabled": true
     },
+    "pickler.advice_calls": {
+      "name": "advice_calls",
+      "schema": "pickler",
+      "columns": {
+        "job_id": {
+          "name": "job_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "lane": {
+          "name": "lane",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "model": {
+          "name": "model",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "provider": {
+          "name": "provider",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "reserved_micros": {
+          "name": "reserved_micros",
+          "type": "numeric(30, 0)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "cost_micros": {
+          "name": "cost_micros",
+          "type": "numeric(30, 0)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "input_tokens": {
+          "name": "input_tokens",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "output_tokens": {
+          "name": "output_tokens",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "started_at": {
+          "name": "started_at",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "finished_at": {
+          "name": "finished_at",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "request_hash": {
+          "name": "request_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "advice_calls_job_id_advice_jobs_id_fk": {
+          "name": "advice_calls_job_id_advice_jobs_id_fk",
+          "tableFrom": "advice_calls",
+          "tableTo": "advice_jobs",
+          "schemaTo": "pickler",
+          "columnsFrom": ["job_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "advice_calls_job_id_lane_pk": {
+          "name": "advice_calls_job_id_lane_pk",
+          "columns": ["job_id", "lane"]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "advice_lane": {
+          "name": "advice_lane",
+          "value": "\"pickler\".\"advice_calls\".\"lane\" in ('jev','deepseek','web','web-fallback')"
+        },
+        "advice_call_status": {
+          "name": "advice_call_status",
+          "value": "\"pickler\".\"advice_calls\".\"status\" in ('reserved','started','completed','released')"
+        },
+        "advice_amounts": {
+          "name": "advice_amounts",
+          "value": "\"pickler\".\"advice_calls\".\"reserved_micros\" >= 0 AND (\"pickler\".\"advice_calls\".\"cost_micros\" is null OR \"pickler\".\"advice_calls\".\"cost_micros\" >= 0)"
+        }
+      },
+      "isRLSEnabled": true
+    },
+    "pickler.advice_events": {
+      "name": "advice_events",
+      "schema": "pickler",
+      "columns": {
+        "job_id": {
+          "name": "job_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sequence": {
+          "name": "sequence",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "at": {
+          "name": "at",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "kind": {
+          "name": "kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "data": {
+          "name": "data",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "advice_events_job_id_advice_jobs_id_fk": {
+          "name": "advice_events_job_id_advice_jobs_id_fk",
+          "tableFrom": "advice_events",
+          "tableTo": "advice_jobs",
+          "schemaTo": "pickler",
+          "columnsFrom": ["job_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "advice_events_job_id_sequence_pk": {
+          "name": "advice_events_job_id_sequence_pk",
+          "columns": ["job_id", "sequence"]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": true
+    },
+    "pickler.advice_jobs": {
+      "name": "advice_jobs",
+      "schema": "pickler",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "public_agent_id": {
+          "name": "public_agent_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tenant_id": {
+          "name": "tenant_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "agent_id": {
+          "name": "agent_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "request_key": {
+          "name": "request_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "symbol": {
+          "name": "symbol",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "started_at": {
+          "name": "started_at",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "finished_at": {
+          "name": "finished_at",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "config_version": {
+          "name": "config_version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "config": {
+          "name": "config",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "policy": {
+          "name": "policy",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "result": {
+          "name": "result",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "error": {
+          "name": "error",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "lease_owner": {
+          "name": "lease_owner",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "lease_expires_at": {
+          "name": "lease_expires_at",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "advice_request_identity": {
+          "name": "advice_request_identity",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "public_agent_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "request_key",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "advice_user_active": {
+          "name": "advice_user_active",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"pickler\".\"advice_jobs\".\"status\" in ('queued','running')",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "advice_agent_active": {
+          "name": "advice_agent_active",
+          "columns": [
+            {
+              "expression": "tenant_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "agent_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"pickler\".\"advice_jobs\".\"status\" in ('queued','running')",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "advice_pending": {
+          "name": "advice_pending",
+          "columns": [
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "where": "\"pickler\".\"advice_jobs\".\"status\" = 'queued'",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "advice_history": {
+          "name": "advice_history",
+          "columns": [
+            {
+              "expression": "public_agent_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": false,
+              "nulls": "last"
+            },
+            {
+              "expression": "id",
+              "isExpression": false,
+              "asc": false,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "where": "\"pickler\".\"advice_jobs\".\"status\" = 'completed'",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "advice_jobs_public_agent_id_product_agents_product_agent_id_fk": {
+          "name": "advice_jobs_public_agent_id_product_agents_product_agent_id_fk",
+          "tableFrom": "advice_jobs",
+          "tableTo": "product_agents",
+          "schemaTo": "pickler",
+          "columnsFrom": ["public_agent_id"],
+          "columnsTo": ["product_agent_id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "advice_jobs_tenant_id_agent_id_agents_tenant_id_id_fk": {
+          "name": "advice_jobs_tenant_id_agent_id_agents_tenant_id_id_fk",
+          "tableFrom": "advice_jobs",
+          "tableTo": "agents",
+          "schemaTo": "pickler",
+          "columnsFrom": ["tenant_id", "agent_id"],
+          "columnsTo": ["tenant_id", "id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "advice_symbol": {
+          "name": "advice_symbol",
+          "value": "\"pickler\".\"advice_jobs\".\"symbol\" in ('BTC','ETH')"
+        },
+        "advice_status": {
+          "name": "advice_status",
+          "value": "\"pickler\".\"advice_jobs\".\"status\" in ('queued','running','completed','failed')"
+        },
+        "advice_completion": {
+          "name": "advice_completion",
+          "value": "(\"pickler\".\"advice_jobs\".\"status\" = 'completed') = (\"pickler\".\"advice_jobs\".\"result\" is not null)"
+        },
+        "advice_lease": {
+          "name": "advice_lease",
+          "value": "\"pickler\".\"advice_jobs\".\"status\" <> 'running' OR (\"pickler\".\"advice_jobs\".\"lease_owner\" is not null AND \"pickler\".\"advice_jobs\".\"lease_expires_at\" is not null)"
+        }
+      },
+      "isRLSEnabled": true
+    },
     "agents.agent_configs": {
       "name": "agent_configs",
       "schema": "agents",
@@ -3007,69 +3449,6 @@
         "agents_published_consistent": {
           "name": "agents_published_consistent",
           "value": "(\"agents\".\"agents\".\"visibility\" = 'public') = (\"agents\".\"agents\".\"published_at\" is not null)"
-        }
-      },
-      "isRLSEnabled": true
-    },
-    "agents.setup_versions": {
-      "name": "setup_versions",
-      "schema": "agents",
-      "columns": {
-        "agent_id": {
-          "name": "agent_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "summary": {
-          "name": "summary",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "setup_versions_agent_id_agents_id_fk": {
-          "name": "setup_versions_agent_id_agents_id_fk",
-          "tableFrom": "setup_versions",
-          "tableTo": "agents",
-          "schemaTo": "agents",
-          "columnsFrom": ["agent_id"],
-          "columnsTo": ["id"],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "setup_versions_agent_id_version_pk": {
-          "name": "setup_versions_agent_id_version_pk",
-          "columns": ["agent_id", "version"]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "setup_versions_version_positive": {
-          "name": "setup_versions_version_positive",
-          "value": "\"agents\".\"setup_versions\".\"version\" > 0"
-        },
-        "setup_versions_summary_length": {
-          "name": "setup_versions_summary_length",
-          "value": "char_length(\"agents\".\"setup_versions\".\"summary\") BETWEEN 1 AND 200"
         }
       },
       "isRLSEnabled": true

@@ -1,0 +1,17 @@
+{
+  "name": "@pickler/perpl-context",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./fixtures/context.json": "./test/fixtures/context.json"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@pickler/typescript-config": "*"
+  },
+  "dependencies": {}
+}

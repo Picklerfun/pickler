@@ -466,3 +466,32 @@ test("the lookup reads auth.users where it exists, and says nothing it cannot kn
   });
   await assert.rejects(down({ id: USER_ID }), /connection refused/);
 });
+
+test("only this address's own marked wallet account is its own", async () => {
+  const marked = facts({ appMetadata: { pickler_account: "wallet" } });
+  assert.equal(
+    await discarding(marked).accounts.isOwnWalletAccount(marked.id, "eip155", EVM),
+    true,
+  );
+
+  const others: [string, AuthUserFacts | null][] = [
+    ["an email account", facts({ email: "ana@x.io", appMetadata: { pickler_account: "wallet" } })],
+    [
+      "another address's wallet account",
+      facts({
+        email: syntheticEmail("solana", SOLANA, "wallet.pickler.fun"),
+        appMetadata: { pickler_account: "wallet" },
+      }),
+    ],
+    ["an unmarked account at the synthetic email", facts({})],
+    ["a pre-registration with a password", facts({ hasPassword: true })],
+    ["an account that is gone", null],
+  ];
+  for (const [label, user] of others) {
+    assert.equal(
+      await discarding(user).accounts.isOwnWalletAccount(USER_ID, "eip155", EVM),
+      false,
+      label,
+    );
+  }
+});

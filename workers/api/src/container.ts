@@ -1,3 +1,6 @@
+import { createAdviceService } from "@pickler/core";
+import { PostgresAdviceStore } from "@pickler/infrastructure";
+import { parseAdvicePolicy } from "@pickler/trading/perps";
 import {
   VENUE_CONTRACTS,
   createAgentQueries,
@@ -303,6 +306,8 @@ function walletAuthServices(
   }
 
   const store = new PostgresWalletIdentityStore(pool);
+  const profiles = new PostgresProfileRepository(pool);
+  const custodyAccounts = new PostgresCustodyStore(pool);
   const supabase = {
     url: required(env, "SUPABASE_URL"),
     secretKey: required(env, "SUPABASE_SECRET_KEY"),
@@ -327,6 +332,11 @@ function walletAuthServices(
         // it, and this isolate's admin client is shared across requests.
         sessionClient: () => createSupabaseAdmin(supabase),
       }),
+      // A username is what makes an account worth keeping: `join` gives up only one without.
+      hasProfile: async (userId) => (await profiles.findByUserId(userId)) !== null,
+      // A sub-organization and its master wallet have no row tied to the auth user, so an account
+      // that has them is never removed: read from the table `register` writes.
+      hasCustodyAccount: async (userId) => (await custodyAccounts.findByUserId(userId)) !== null,
       // The hyphens must go. viem's builder enforces /^[a-zA-Z0-9]{8,}$/ on the nonce, but its
       // parser reads `Nonce: (?<nonce>[a-zA-Z0-9]+)` — so a hyphenated nonce does not fail on the
       // way back, it silently truncates at the first hyphen and stops matching what was issued.
@@ -337,7 +347,8 @@ function walletAuthServices(
         buildSiweMessage({
           domain: fields.domain,
           address: fields.address as `0x${string}`,
-          statement: "Sign in to Pickler",
+          // Core writes the sentence: it is what the signature is for, and core checks it.
+          statement: fields.statement,
           uri: `https://${fields.domain}`,
           chainId: fields.chainReference,
           nonce: fields.nonce,
@@ -416,9 +427,24 @@ export function createServices(env: Env): Services & { close(): Promise<void> } 
   const walletAuth = walletAuthServices(env, repository.pool, authenticate);
   return {
     authenticate,
+    advice: {
+      authenticate,
+      service: createAdviceService(new PostgresAdviceStore(repository.pool), {
+        enabled: env.ADVICE_ENABLED === "true" && Boolean(env.RESEARCH_QUEUE),
+        policy: parseAdvicePolicy(env.ADVICE_POLICY_JSON),
+      }),
+      notify: async () => {
+        if (!env.RESEARCH_QUEUE) {
+          throw new Error("Missing research queue");
+        }
+        await env.RESEARCH_QUEUE.send({ kind: "advice-wakeup" });
+      },
+    },
     ...(custody ? { custody } : {}),
     ...(walletAuth ? { walletAuth } : {}),
-    growth: createGrowthServices(repository.pool),
+    growth: createGrowthServices(repository.pool, {
+      ...(env.PERPL_BOARD_NETWORK ? { perplBoardNetwork: env.PERPL_BOARD_NETWORK } : {}),
+    }),
     launches: new PostgresLaunchReadModel(repository.pool),
     close: () => repository.close(),
     onboard: (userId) => directory.onboard(userId),

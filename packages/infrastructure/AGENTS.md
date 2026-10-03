@@ -237,7 +237,7 @@ at that same version would otherwise drop them. The one exception is `{ writeSpe
 a setup passes with new caps: the incoming `spend` (checked by `assertSpendLimits`) is
 written in the same transaction as the rest of the config.
 
-Setup versions (docs/specs/studio-live-v1.md L9, migration 0025): `agents.setup_versions` holds
+Setup versions (docs/specs/studio-live-v1.md L9, migration 0026): `agents.setup_versions` holds
 one row per saved setup, `(agent_id, version)` with a summary of 1–200 characters; RLS is on and
 the service role may only select and insert. `updateConfig` takes `{ perplOnly?, writeSpend?,
 versionSummary? }`. `perplOnly` refuses with `NOT_A_PERPL_AGENT` when the stored config, read under
@@ -382,3 +382,41 @@ header latency and total duration. Generic deadlines do not establish a DNS/TLS 
 three-second public request, no redirects, body storage or retry, guarded before and after.
 
 Perpl public stream reconstruction lives in `src/perpl/stream.ts`. REST and WebSocket share ticker/book normalization. Only public fixed hosts are permitted; snapshots precede deltas, o:0 removes levels, disconnects discard state, and heartbeats never refresh data. Enforce 2 MiB messages, 32 queued messages and 10,000 levels per side. Reconnect at most twice per minute within active guarded acquisition. Public captures are bounded by the local host.
+
+## Market board
+
+`src/markets/perpl-market-board.ts` implements core's `MarketBoard` over Perpl
+(`docs/specs/perps-board-live-v1.md`). `createPerplMarketBoard({ network, memory })` lists every
+open market from one request to `/v1/pub/context`, parsed by `@pickler/perpl-context` — the parser
+the mobile app trades on, so the two surfaces cannot list different markets or limits — and sent
+through `PerplTransport` (no redirects, a ten-second timeout, one request a second per schedule).
+`PerplBoardMemory` holds the venue's last answer, each market's hourly history, the reads in
+flight and two schedules (the board and the histories are paced apart, so market pages never delay
+the list); the caller owns it, because the API composes services per request. A board younger than
+ten seconds is served from memory. A read is shared by everyone who asks while it is in flight.
+While the venue fails, the last answer is served as `stale` for five minutes, and the venue is
+asked again at most every ten seconds (a 429 counts as a failure for as long as the venue said to
+wait; nothing sleeps through it); past five minutes the board throws
+`MarketDataUnavailableError`. Nobody waits long: a caller the board can already answer waits two
+seconds for a newer answer, and a market page two and a half for its history, then is served what
+is held. The detail's history is one request for thirty days of hourly candles, cached five
+minutes, not retried for thirty seconds after a failure; without it the market is still served,
+with no trail and a `null` reach. A read nobody has heard from in fifteen seconds is given up on
+and its schedule replaced, so a request that died with its Worker invocation cannot hold the rest.
+An answer for
+another chain is refused. `src/markets/sample-market-board.ts` remains for the design harness and
+for an API with no network configured, and labels itself `source: sample`.
+
+This adapter and the agents' client in `src/perpl/` both read the venue's context, with different
+contracts: the agents' client is two symbols with provenance on every value and raw provider
+fractions. Do not route one through the other. Tests: `test/perpl-market-board.test.ts`, over the
+capture in `@pickler/perpl-context` and recorded candles in `test/fixtures/`.
+
+## Advice persistence
+
+`PostgresAdviceStore` implements core advice ports with private jobs/events/calls in migration
+0025, serialized admission, idempotency, shared execution limits and renewable fenced leases.
+Started unknown charges remain reserved and block the agent; never restart their calls. The
+trusted `reconcileCall` method requires terminal failure and verified evidence, uses frozen rates
+and records an audit event; it has no consumer HTTP route. Apply migration before updated
+research/preview admission queries. See [Agent advice](../../docs/agent-advice.md).

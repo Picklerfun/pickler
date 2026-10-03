@@ -98,6 +98,13 @@ message, or a field viem's builder refuses, 400 `invalid_message`. Core's `issue
 the address and the chain and builds the message before it stores the nonce, so a refused request
 leaves no row in `identity.siwe_nonces`.
 
+`POST /v1/auth/wallet/verify` and `/link` accept an optional `kind`, `"mera"` or `"eoa"`: which of
+the marketplace's two wallets signed (`docs/specs/mera-web-v1.md`, M7). The route's `presented()`
+passes it to core, which stores `mera` or `external` in `identity.wallet_links.kind`; a body
+without one is `eoa`, and any other value is 400 `invalid_wallet_kind` before anything is read. It
+is the caller's statement and nothing proves it, so no route may authorise by it. It has nothing to
+do with custody: a Mera wallet is never a Turnkey wallet, and the custody routes never read it.
+
 `POST /v1/auth/wallet/nonce` is public and has no rate limit of its own. What bounds it is in the
 store: every issue deletes up to `EXPIRED_NONCE_PURGE_BATCH` (100) expired nonces, and an address
 holds `MAX_OPEN_NONCES_PER_ADDRESS` (5, core) at most — a further issue evicts its oldest and is
@@ -106,6 +113,27 @@ of signing in. An evicted nonce answers 400 `nonce_invalid`, which a retry fixes
 `link` answer 400 `nonce_invalid` for one presented in a message naming another address. There is
 no cap per client yet: `CF-Connecting-IP` is available to the route, but keeping its hash needs a
 column `identity.siwe_nonces` does not have.
+
+`POST /v1/auth/wallet/join` is the one route through which an address changes account
+(`docs/specs/mera-web-v1.md` §9). It is for a person who connected a wallet with no account — which
+made it one — and already has an account under another wallet. The caller's session is the account
+given up; the body is a message signed by the other wallet, the account kept — not the sign-in
+message but the one `POST /v1/auth/wallet/nonce` writes when its body carries `joining`, whose
+sentence names the wallet being let in (`joinStatement` in core). `/join` accepts it only for the
+caller's own wallet, `/verify` and `/link` accept only the sign-in sentence, and a message
+presented to the wrong one is 400 `wrong_purpose` with its nonce spent. Core's `join`
+moves the caller's wallet with `links.reassignSole` — one statement that holds again that the
+caller has exactly one wallet and no profile and that the kept account still has a wallet — and
+then removes the emptied account through `discardAccount`, unless it gained a profile in that
+instant. A failed removal is tolerated, but unlike after a lost link this account has a live
+session: it stays without a wallet until that session ends. The route answers with a session for
+the kept account. It refuses with 404 `no_account` (the wallet that signed opens no account), 409
+`same_account`, and 409 `join_has_profile`, `join_has_custody`, `join_not_wallet_account` and
+`join_changed`: only the bare account wallet sign-in made for its one wallet, with no username and
+no custody account, is ever given up — never an email or Google account that linked a wallet, and
+never one with a Turnkey sub-organization, whose rows nothing ties to the auth user. `hasProfile`
+and `hasCustodyAccount` in `walletAuthServices` are those two checks. Do not widen these conditions without the owner: a join cannot be undone, and `/link` still
+answers 409 for an address owned elsewhere.
 
 A first wallet sign-in can lose its link: the address was linked to nobody when `verify` looked,
 and a signed-in account's `POST /v1/auth/wallet/link` of the same wallet wrote the link first
@@ -179,8 +207,14 @@ workspace agent list ported from Relayer; mounting the public list on the same p
 behind that route's credentials. The invented agents that used to answer here now live in
 `scripts/design/fixtures/` and are served only by the design harness's fixture API.
 
-`/v1/marketplace/markets` and `/v1/marketplace/markets/:symbol` still answer from
-`createSampleMarketBoard`: no venue is polled and private research never feeds them. The detail
+`/v1/marketplace/markets` and `/v1/marketplace/markets/:symbol` answer from the board
+`marketBoardFor(PERPL_BOARD_NETWORK)` composes in `growth/services.ts`: Perpl on `testnet` or
+`mainnet` (`createPerplMarketBoard`, one request to the venue's public context, cached ten
+seconds), or the sample board for any other value and for none. What the board remembers lives in
+a module-level `PerplBoardMemory` per network, because services are composed per request. A venue
+that cannot be read and has nothing recent held raises `MarketDataUnavailableError`, which the
+error handler answers as 503 with `error: "MARKET_DATA_UNAVAILABLE"`; an empty list is never the
+answer to a failure. Private research never feeds these routes. The detail
 response includes `readQuestion` — core's `readQuestionAtLevel` with `{level}` left for the client —
 so the sentence a paid read answers is written once, here, and not in a page.
 
@@ -419,3 +453,22 @@ Studio paper endpoints also expose POST /runs/:id/paper-order/settle (empty body
 Trading rules and financial ports are owned by `@pickler/trading` public subpaths. Core retains identity, configuration and research contracts. Hosts must not duplicate risk, fills or accounting.
 
 The launch catalogue is mounted at `/v1/launches` using the request-scoped PostgreSQL pool. `/v1/console` and `/v1/demo` remain aliases of the authenticated Studio and public marketplace surfaces respectively. The Studio creation contract still requires the approved wallet introduced by this branch; the alias does not bypass that requirement.
+
+## Generated OpenAPI
+
+`GET /v1/openapi.json` publicly describes the mounted routes; the web delegates
+`/api/v1/openapi.json` unchanged through its existing transport. Describe each explicit operation
+beside its handler with `src/openapi/operation.ts`, using portable schemas from api-schema.
+Descriptions must not change validation or authorization. New endpoints without documentation,
+concrete response schemas or unique operation ids fail the coverage check. Optional groups are
+included only when mounted. `npm run api:openapi -- --output /tmp/pickler-openapi.json` exports the
+complete contract using non-executable services; the OpenAPI CI workflow validates and uploads it.
+See [API contract](../../docs/api-contract.md) for extension and consumption instructions.
+
+## Agent advice
+
+`src/routes/advice.ts` mounts independent `/v1/agent-advice` routes with user-only authentication,
+no-store responses, strict requests and OpenAPI metadata. Container admission requires explicit
+ADVICE_ENABLED, valid reviewed USD policy and research Queue; reads remain mounted when disabled.
+Never accept internal tenant/runtime IDs or models from consumers. Completed history is shared;
+other statuses are requester-only. See [Agent advice](../../docs/agent-advice.md).

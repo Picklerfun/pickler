@@ -5,7 +5,7 @@ import frames from "./fixtures/perpl/ws-frames.json";
 import { generateTradingKey, wsSigninCanonical } from "../src/perpl/apiKey";
 import { openIntent } from "../src/perpl/orders";
 import { parseContext } from "../src/perpl/context";
-import contextJson from "./fixtures/perpl/context.json";
+import contextJson from "@pickler/perpl-context/fixtures/context.json";
 import { type SocketEvent, TradingSocket, type WebSocketLike } from "../src/perpl/ws";
 
 class FakeSocket implements WebSocketLike {

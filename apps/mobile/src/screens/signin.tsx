@@ -15,7 +15,7 @@ type Mode = "in" | "up";
 type Phase = { step: "idle" } | { step: "busy" } | { step: "done"; address: string };
 const DONE_MS = 1000; // el banner ACCOUNT CREATED / WELCOME BACK se ve antes de navegar (D20)
 
-export function SigninScreen({ onWallet, finishSignin, startOnboarding }: AppCtx) {
+export function SigninScreen({ onWallet, finishSignin, startOnboarding, identity }: AppCtx) {
   const held = heldActionFor((useRoute().params as SigninParams)?.next);
   const [mode, setMode] = useState<Mode>("in");
   const [phase, setPhase] = useState<Phase>({ step: "idle" });
@@ -70,7 +70,8 @@ export function SigninScreen({ onWallet, finishSignin, startOnboarding }: AppCtx
       ) : null}
       {error ? <T w={400} s={13} lh={1.4} color={C.down}>{error}</T> : null}
       <T w={400} s={13} lh={1.5} color={C.dim}>Reading and following never need an account. Passkey only: no seed phrase, no extension, no password.</T>
-      <T w={400} s={12} lh={1.4} color={C.faint}>Connecting is not signing. Every operation is confirmed on its own.</T>
+      {/* Sin PICKLER_API_URL la app no entra a ninguna cuenta: el texto de siempre, para que ese build no cambie en nada. */}
+      <T w={400} s={12} lh={1.4} color={C.faint}>{identity.identity.status === "off" ? "Connecting is not signing. Every operation is confirmed on its own." : "Your passkey opens the wallet and signs you in to the same account as on the web. Every operation is confirmed on its own."}</T>
     </Page>
   );
 }

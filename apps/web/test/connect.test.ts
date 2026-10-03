@@ -1,6 +1,12 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { signIn, ConnectError } from "../src/features/wallet/lib/connect";
+import {
+  challenge,
+  join,
+  JoinUnsettledError,
+  signIn,
+  ConnectError,
+} from "../src/features/wallet/lib/connect";
 
 // The trailing newline is load-bearing, not untidiness. This fixture exists to catch a client
 // that normalises the server's string, and the commonest way to do that — `.trim()` — is
@@ -87,4 +93,78 @@ test("a failure to get a nonce never reaches the wallet", async () => {
   );
   // Prompting for a signature that cannot be used trains people to approve prompts.
   assert.equal(asked, false);
+});
+
+test("joining presents the other wallet's signature with the session of the account given up", async () => {
+  const calls: { url: string; init: RequestInit }[] = [];
+  const fetchImpl = (async (url: string | URL | Request, init?: RequestInit) => {
+    calls.push({ url: String(url), init: init ?? {} });
+    return Response.json({
+      data: { userId: "kept", session: { accessToken: "at-kept", refreshToken: "rt-kept" } },
+    });
+  }) as typeof fetch;
+
+  const kept = await join("the server's message", "0xsig", "token-of-the-new-account", fetchImpl);
+
+  assert.deepEqual(kept, {
+    userId: "kept",
+    session: { accessToken: "at-kept", refreshToken: "rt-kept" },
+  });
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0]!.url, "/api/v1/auth/wallet/join");
+  assert.equal(calls[0]!.init.method, "POST");
+  assert.equal(
+    (calls[0]!.init.headers as Record<string, string>).Authorization,
+    "Bearer token-of-the-new-account",
+  );
+  // The string unchanged, and nothing about which kind of wallet: the link it has stands.
+  assert.deepEqual(JSON.parse(String(calls[0]!.init.body)), {
+    raw: "the server's message",
+    signature: "0xsig",
+  });
+});
+
+test("a refused join surfaces the API's code, so the screen can say what to do instead", async () => {
+  const fetchImpl = (async () =>
+    Response.json(
+      { message: "That wallet has no Pickler account yet", error: "no_account" },
+      { status: 404 },
+    )) as typeof fetch;
+
+  await assert.rejects(
+    join("m", "0xsig", "t", fetchImpl),
+    (caught: unknown) => caught instanceof ConnectError && caught.code === "no_account",
+  );
+});
+
+test("the message asked for names the wallet to let in only when there is one", async () => {
+  const bodies: unknown[] = [];
+  const fetchImpl = (async (_url: string | URL | Request, init?: RequestInit) => {
+    bodies.push(JSON.parse(String(init?.body)));
+    return Response.json({ data: { nonce: "n1", message: "the server's message" } });
+  }) as typeof fetch;
+
+  assert.equal(await challenge("0xA", 10143, fetchImpl), "the server's message");
+  await challenge("0xA", 10143, fetchImpl, "0xB");
+
+  assert.deepEqual(bodies, [
+    { address: "0xA", chain_id: 10143 },
+    { address: "0xA", chain_id: 10143, joining: "0xB" },
+  ]);
+});
+
+test("a join that left and was not answered is unsettled; one the API refused is not", async () => {
+  const offline = (async () => {
+    throw new TypeError("Failed to fetch");
+  }) as typeof fetch;
+  const failing = (async () => Response.json({ message: "boom" }, { status: 500 })) as typeof fetch;
+  const refusing = (async () =>
+    Response.json({ message: "no", error: "same_account" }, { status: 409 })) as typeof fetch;
+
+  await assert.rejects(join("m", "0xsig", "t", offline), JoinUnsettledError);
+  await assert.rejects(join("m", "0xsig", "t", failing), JoinUnsettledError);
+  await assert.rejects(
+    join("m", "0xsig", "t", refusing),
+    (caught: unknown) => caught instanceof ConnectError && caught.code === "same_account",
+  );
 });

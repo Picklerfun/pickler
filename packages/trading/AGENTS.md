@@ -88,3 +88,11 @@ Perpl data policy `coherent-20s-v1` bounds joint acquisition to twenty seconds w
 The evaluation heartbeat exposes a synchronous liveness check. Hosts and runner admissions must call it before new work: a ninety-second local renewal gap aborts even before a delayed timer fires. This is a fail-closed process-interruption guard, not a replacement for PostgreSQL ownership or a lease extension.
 
 Perpl acquisition also supports explicitly frozen `rest-paced-20s-v1` and `stream-20s-v1`. `transport-choice.ts` owns the predeclared 9/10-and-strict-superiority rule. Preserve 30-second age, five-second future/skew, twenty-second joint deadline, twelve REST requests and original historical policy. REST repeated timestamps consume a two-second wait; no model retry or automatic transport fallback.
+
+## Perpetual advice
+
+The `perps` export includes `features/advice`: provider-neutral evidence validation, routing
+coordination and exact USD model reservation arithmetic. Require 60 closed hourly candles and
+existing snapshot/book coherence. Only coherent insufficiency becomes wait; data/provider failures
+fail. Models and data ports are injected; no positions, wallets or trading executors are reachable.
+See [Agent advice](../../docs/agent-advice.md) and deterministic advice tests.

@@ -25,7 +25,8 @@ interface AskTicketProps {
  */
 export function AskTicket({ detail, square, onStepLevel, onClear }: AskTicketProps) {
   const { market } = detail;
-  const covered = market.agentsReading > 0;
+  // A count nobody has measured is not a zero: the directory still says who covers what.
+  const covered = market.agentsReading === null || market.agentsReading > 0;
 
   if (!square) {
     return (

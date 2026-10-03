@@ -20,6 +20,11 @@ npm run check:staging
 npm run build:workers
 ```
 
+`workers/api/wrangler.staging.jsonc` sets `PERPL_BOARD_NETWORK=testnet`, so the public market
+board (`/v1/marketplace/markets`) reads Perpl testnet's public API: an outbound, unauthenticated
+GET from the API Worker, in staging and in this local run alike. Remove the variable to serve the
+labelled sample board instead. See `docs/specs/perps-board-live-v1.md`.
+
 For authenticated local browsing, set only public Supabase URL/publishable-key values in the
 web's ignored `.env.local` before building. Set API secrets in its ignored `.dev.vars`. Set APP_ENV=local and DATABASE_URL in each backend Worker’s ignored .dev.vars for
 the disposable loopback database. The consumer may keep admissions disabled for UI tests:

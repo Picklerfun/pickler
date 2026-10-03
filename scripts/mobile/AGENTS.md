@@ -12,10 +12,11 @@ npm run agents:check --prefix scripts/mobile   # instruction files, skills, mani
 npm run agents:test --prefix scripts/mobile
 npm run docs:html --prefix scripts/mobile      # regenerate every view
 npm run docs:check --prefix scripts/mobile     # fail on a stale or missing view
+npm run app:tree --prefix scripts/mobile       # fail when the app resolves another dependency tree
 ```
 
 - `agents:check` audits only `apps/mobile/`, `docs/mobile/`, `services/reads/`, `infra/`,
-  `scripts/mobile/` and `packages/mera-account/`, plus the skills in `.agents/skills/`. There,
+  `scripts/mobile/`, `packages/mera-account/` and `packages/perpl-context/`, plus the skills in `.agents/skills/`. There,
   `AGENTS.md` is the real file, a `CLAUDE.md` is the one-line adapter `@AGENTS.md`, and the
   instruction chain inside that tree stays under 24 KiB (the repository root's own `AGENTS.md` is
   not counted). It does not judge the rest of

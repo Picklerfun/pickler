@@ -38,10 +38,55 @@ export class BadSignatureError extends Error {
     this.name = "BadSignatureError";
   }
 }
+/**
+ * The signed message was written for something else: a sign-in message presented to join an
+ * account, or a join message presented to sign in.
+ */
+export class WrongPurposeError extends Error {
+  constructor() {
+    super("That signature was made for something else");
+    this.name = "WrongPurposeError";
+  }
+}
 export class AddressTakenError extends Error {
   constructor() {
     super("That wallet is already linked to another Pickler account");
     this.name = "AddressTakenError";
+  }
+}
+
+/** The wallet that signed opens no Pickler account, so there is none to join. */
+export class NoAccountToJoinError extends Error {
+  constructor() {
+    super("That wallet has no Pickler account yet");
+    this.name = "NoAccountToJoinError";
+  }
+}
+
+/** The wallet that signed already opens the account that asked. */
+export class SameAccountError extends Error {
+  constructor() {
+    super("That wallet already opens this account");
+    this.name = "SameAccountError";
+  }
+}
+
+const NOT_JOINABLE = {
+  has_profile: "This account already has a username, so it cannot be folded into another",
+  has_custody: "This account already has a Pickler wallet, so it cannot be folded into another",
+  not_wallet_account: "Only an account made by connecting a wallet can be folded into another",
+  changed: "That account changed while it was being joined. Try again.",
+} as const;
+
+/**
+ * The account that asked to join another cannot be given up: it has a username or a custody
+ * wallet, it is not the bare account a wallet's first sign-in makes, or it stopped being one
+ * while the join was under way.
+ */
+export class AccountNotJoinableError extends Error {
+  constructor(readonly reason: keyof typeof NOT_JOINABLE) {
+    super(NOT_JOINABLE[reason]);
+    this.name = "AccountNotJoinableError";
   }
 }
 
@@ -74,11 +119,26 @@ export interface SignedMessage {
   issuedAt: string;
 }
 
+/**
+ * Which wallet signed, as the client says: the Mera passkey wallet or a browser wallet. It is
+ * outside the signed message and cannot be verified — both are plain accounts, told apart by
+ * nothing a signature shows — so it describes a link and decides nothing.
+ */
+export type PresentedWalletKind = "mera" | "eoa";
+
+export const PRESENTED_WALLET_KINDS: readonly PresentedWalletKind[] = ["mera", "eoa"];
+
 export interface Presented {
   /** The exact string that was signed — the one this service handed out. Nothing else is trusted. */
   raw: string;
   signature: string;
+  /** Recorded on the link when the link is made. Absent means a browser wallet. */
+  kind?: PresentedWalletKind;
 }
+
+/** What `identity.wallet_links.kind` stores for a presented kind. */
+const storedKind = (kind: PresentedWalletKind | undefined): "mera" | "external" =>
+  kind === "mera" ? "mera" : "external";
 
 export interface WalletSignInDependencies {
   clock: Clock;
@@ -87,6 +147,13 @@ export interface WalletSignInDependencies {
   links: WalletLinkRepository;
   verifier: SignatureVerifier;
   accounts: AccountProvisioner;
+  /** Whether the account has a profile, and so a username. `join` gives up only one without. */
+  hasProfile: (userId: string) => Promise<boolean>;
+  /**
+   * Whether the account has a custody account: a Turnkey sub-organization and its master wallet.
+   * Nothing ties those rows to the auth user, so removing the account would strand the wallet.
+   */
+  hasCustodyAccount: (userId: string) => Promise<boolean>;
   randomNonce: () => string;
   /** Builds the string to sign. Lives in infrastructure because it is viem's format. */
   buildMessage: (fields: MessageFields) => string;
@@ -94,8 +161,21 @@ export interface WalletSignInDependencies {
   parseMessage: (raw: string) => SignedMessage;
 }
 
+/** What a wallet reads, and signs, to sign in. */
+export const SIGN_IN_STATEMENT = "Sign in to Pickler";
+
+/**
+ * What the wallet of an account reads, and signs, to let another wallet open that account. It
+ * names the wallet being let in, so the signature is good for that wallet and for nothing else:
+ * not for signing in, and not for attaching any other address.
+ */
+export const joinStatement = (joining: string) =>
+  `Link wallet ${joining} to this wallet's Pickler account`;
+
 export interface MessageFields {
   domain: string;
+  /** The sentence of the message: what the signature is for. */
+  statement: string;
   address: string;
   chainReference: number;
   nonce: string;
@@ -146,7 +226,22 @@ export function createWalletSignIn(deps: WalletSignInDependencies) {
     if (!ok) {
       throw new BadSignatureError();
     }
-    return { address, namespace: parsed.namespace, chainReference: parsed.chainReference };
+    return {
+      address,
+      namespace: parsed.namespace,
+      chainReference: parsed.chainReference,
+      // Covered by the signature, like the rest of the string: what the wallet agreed to.
+      statement: parsed.statement,
+    };
+  }
+
+  /** A sign-in or a link takes a sign-in message, and no other. The nonce is spent either way. */
+  async function provenToSignIn(presented: Presented) {
+    const proof = await proven(presented);
+    if (proof.statement !== SIGN_IN_STATEMENT) {
+      throw new WrongPurposeError();
+    }
+    return proof;
   }
 
   /**
@@ -187,16 +282,30 @@ export function createWalletSignIn(deps: WalletSignInDependencies) {
      * signature is what proves it. It is checked for shape, though, and so is the chain: a
      * malformed one is `InvalidAddressError` or `InvalidChainError` and stores nothing.
      */
-    async issueNonce(input: { address: string; namespace: Namespace; chainReference: number }) {
+    async issueNonce(input: {
+      address: string;
+      namespace: Namespace;
+      chainReference: number;
+      /**
+       * Set when the message is for `join`: the wallet that is to be let into this wallet's
+       * account. Unverified here, like the address — it goes into the sentence the wallet signs,
+       * and `join` holds the signature to the wallet that actually asks.
+       */
+      joining?: { namespace: Namespace; address: string };
+    }) {
       // Everything that can refuse the request runs before the nonce is stored. This route is
       // public, and a nonce stored ahead of a refusal is a row anyone can make for free.
       const address = normalizeAddress(input.namespace, input.address);
       if (!Number.isSafeInteger(input.chainReference) || input.chainReference <= 0) {
         throw new InvalidChainError(String(input.chainReference));
       }
+      const statement = input.joining
+        ? joinStatement(normalizeAddress(input.joining.namespace, input.joining.address))
+        : SIGN_IN_STATEMENT;
       const nonce = deps.randomNonce();
       const message = deps.buildMessage({
         domain: deps.domain,
+        statement,
         address,
         chainReference: input.chainReference,
         nonce,
@@ -211,7 +320,7 @@ export function createWalletSignIn(deps: WalletSignInDependencies) {
 
     /** Sign in: an address already linked returns its account; a new one gets an account made. */
     async verify(presented: Presented) {
-      const { address, namespace, chainReference } = await proven(presented);
+      const { address, namespace, chainReference } = await provenToSignIn(presented);
       const existing = await deps.links.findByAddress(namespace, address);
       if (existing) {
         await deps.accounts.markWalletAccount(existing.userId, namespace, address);
@@ -223,7 +332,7 @@ export function createWalletSignIn(deps: WalletSignInDependencies) {
         namespace,
         address,
         verifiedChain: caip2(namespace, chainReference),
-        kind: "external",
+        kind: storedKind(presented.kind),
       });
       const userId = created ? made.userId : await holderOfLostLink(made, namespace, address);
       await deps.accounts.markWalletAccount(userId, namespace, address);
@@ -232,7 +341,7 @@ export function createWalletSignIn(deps: WalletSignInDependencies) {
 
     /** Link to the signed-in account. An address owned elsewhere is refused, never moved. */
     async link(userId: string, presented: Presented) {
-      const { address, namespace, chainReference } = await proven(presented);
+      const { address, namespace, chainReference } = await provenToSignIn(presented);
       const existing = await deps.links.findByAddress(namespace, address);
       if (existing && existing.userId !== userId) {
         throw new AddressTakenError();
@@ -242,12 +351,84 @@ export function createWalletSignIn(deps: WalletSignInDependencies) {
         namespace,
         address,
         verifiedChain: caip2(namespace, chainReference),
-        kind: "external",
+        kind: storedKind(presented.kind),
       });
       if (!created && !existing) {
         throw new AddressTakenError();
       }
       return { linked: true as const };
+    },
+
+    /**
+     * The signed-in account joins the account of the wallet that signed, and is given up.
+     *
+     * This is for somebody who connected a wallet Pickler had not seen — which made it an account,
+     * as every first sign-in does — and who already has an account under another wallet. They are
+     * asked for a username, say "I already have one", and sign with the other wallet. The first
+     * wallet then opens the account they already had, and the one made a moment ago is removed.
+     *
+     * It is the only place an address changes account, so both sides have to agree and the side
+     * given up has to be worth nothing:
+     *
+     * - the account that is kept agrees with a signature of its wallet over a fresh nonce, in a
+     *   message that says what it is for and names the wallet being let in (`joinStatement`), so
+     *   a signature given to sign in cannot be presented here, nor one given for another wallet;
+     * - the account given up agrees with its session, which is the caller's;
+     * - it has no username and no custody wallet, and it is the bare account wallet sign-in made
+     *   for its one wallet — never an email or Google account that linked a wallet, never one
+     *   with more than the wallet it was made for.
+     *
+     * Those are read here, to say why a join is refused, and held again by the statement that
+     * moves the wallet (`reassignSole`), so that nothing moves if they stopped being true.
+     *
+     * `link` still refuses an address owned elsewhere: adding a wallet to an account never takes
+     * it from another.
+     */
+    async join(userId: string, presented: Presented) {
+      const { address, namespace, statement } = await proven(presented);
+      const kept = await deps.links.findByAddress(namespace, address);
+      if (!kept) {
+        throw new NoAccountToJoinError();
+      }
+      if (kept.userId === userId) {
+        throw new SameAccountError();
+      }
+
+      const [own, ...others] = await deps.links.listForUser(userId);
+      const bare =
+        own !== undefined &&
+        others.length === 0 &&
+        (await deps.accounts.isOwnWalletAccount(userId, own.namespace, own.address));
+      if (!bare) {
+        throw new AccountNotJoinableError("not_wallet_account");
+      }
+      // The kept wallet agreed to let this wallet in, and no other.
+      if (statement !== joinStatement(own.address)) {
+        throw new WrongPurposeError();
+      }
+      if (await deps.hasProfile(userId)) {
+        throw new AccountNotJoinableError("has_profile");
+      }
+      if (await deps.hasCustodyAccount(userId)) {
+        throw new AccountNotJoinableError("has_custody");
+      }
+
+      // The check every sign-in into the kept account gets, before anything moves.
+      await deps.accounts.markWalletAccount(kept.userId, namespace, address);
+      if (!(await deps.links.reassignSole(userId, kept.userId))) {
+        // Another request got there first: a second join, a username claimed, the kept account
+        // itself given up. Nothing moved, and no session is handed out for a join that did not
+        // happen.
+        throw new AccountNotJoinableError("changed");
+      }
+      // The account holds no wallet now. Removing it is tidying and its failure does not undo the
+      // join — but unlike an account lost to a race at sign-in, this one has a live session, and
+      // a username claimed with it in this instant would be deleted with it. So it is removed
+      // only while it still has none; a leftover can do nothing a wallet opens.
+      if (!(await deps.hasProfile(userId))) {
+        await deps.accounts.discardAccount(userId, own.namespace, own.address).catch(() => {});
+      }
+      return { userId: kept.userId, session: await deps.accounts.session(kept.userId) };
     },
 
     /** No catch: a failed read must not render as an account with no wallets. */

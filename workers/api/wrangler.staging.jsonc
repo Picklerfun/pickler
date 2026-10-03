@@ -17,9 +17,12 @@
   "hyperdrive": [{ "binding": "DATABASE", "id": "05150d06f7164d26a991288a88044710" }],
   "observability": { "enabled": true },
   "vars": {
+    "ADVICE_ENABLED": "false",
     "APP_ENV": "staging",
     "TRADING_ADMISSIONS_ENABLED": "false",
     "ADMISSIONS_ENABLED": "true",
     "JWT_AUDIENCE": "authenticated",
+    // The public market board reads Perpl on this network (docs/specs/perps-board-live-v1.md).
+    "PERPL_BOARD_NETWORK": "testnet",
   },
 }

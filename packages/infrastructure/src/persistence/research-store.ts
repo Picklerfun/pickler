@@ -511,6 +511,7 @@ export class PostgresResearchStore implements ResearchRepository {
         select tenant_id as "tenantId" from pickler.runs where status = 'running'
         union all
         select tenant_id from pickler.preview_runs where status = 'running'
+        union all select tenant_id from pickler.advice_jobs where status = 'running'
       `);
       const active = running.rows;
       if (active.length >= policy.globalLimit) {

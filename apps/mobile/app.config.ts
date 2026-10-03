@@ -9,6 +9,9 @@ const perplWs = process.env.PICKLER_PERPL_WS ?? "";
 const perplMarketDataWs = process.env.PICKLER_PERPL_MARKET_DATA_WS ?? "";
 // Servicio de reads (services/reads, Supabase pickler). Vacío = el de producción (src/config/reads.ts).
 const readsUrl = process.env.PICKLER_READS_URL ?? "";
+// API del producto (workers/api tras el host web), p. ej. https://pickler.fun/api/v1. Vacío = sin cuenta: la app no
+// inicia sesión ni pide username (src/config/api.ts). Requiere que la API tenga SIWE_DOMAIN configurado.
+const apiUrl = process.env.PICKLER_API_URL ?? "";
 const bundleIdentifier = "fun.pickler.app";
 
 const config: ExpoConfig = {
@@ -43,7 +46,7 @@ const config: ExpoConfig = {
     ["expo-notifications", { enableBackgroundRemoteNotifications: false }],
     ["expo-splash-screen", { image: "./assets/splash-mark.png", imageWidth: 140, resizeMode: "contain", backgroundColor: "#FFFFFF" }],
   ],
-  extra: { rpId, monadscanKey, perplRest, perplWs, perplMarketDataWs, readsUrl },
+  extra: { rpId, monadscanKey, perplRest, perplWs, perplMarketDataWs, readsUrl, apiUrl },
 };
 
 export default config;

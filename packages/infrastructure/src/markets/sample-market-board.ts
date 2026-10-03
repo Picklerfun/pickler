@@ -3,7 +3,7 @@ import type { AgentSquare, MarketBoard, MarketDetail, PerpMarket } from "@pickle
 // Sample content from the "Pickler Market Web" design. Not live data: no venue is polled, no mark
 // is streamed, and the calls listed here belong to the sample agents, not to anyone's position.
 
-const MARKETS: PerpMarket[] = [
+const LISTED: Omit<PerpMarket, "limits" | "source">[] = [
   {
     symbol: "BTC-PERP",
     base: "BTC",
@@ -96,6 +96,21 @@ const MARKETS: PerpMarket[] = [
   },
 ];
 
+// What the page assumed of the venue before it read one: the sample keeps those figures so the
+// design fixtures do not move.
+const SAMPLE_LIMITS = {
+  takerFee: 0.0005,
+  maintenanceMargin: 0.05,
+  slippageCap: 0.005,
+  minimumAccountOpen: 10,
+} as const;
+
+const MARKETS: PerpMarket[] = LISTED.map((market) => ({
+  ...market,
+  limits: { ...SAMPLE_LIMITS },
+  source: { venue: "sample" },
+}));
+
 /** The squares the sample agents hold a public call on, by market. */
 const CALLS: Record<string, AgentSquare[]> = {
   "BTC-PERP": [
@@ -123,7 +138,7 @@ const TRAIL_WOBBLE = [0, 0.4, -0.6, 0.3, -0.5, 0.2, -0.4, 0.5, -0.3, 0.25, -0.2,
 
 function trailFor(market: PerpMarket): number[] {
   const open = market.mark / (1 + market.change24h);
-  const swing = (market.mark * market.hourlyReach) / 100;
+  const swing = (market.mark * (market.hourlyReach ?? 0)) / 100;
 
   return TRAIL_SHAPE.map(
     (progress, index) =>
@@ -134,7 +149,7 @@ function trailFor(market: PerpMarket): number[] {
 /** Reads the sample market board. No network, no venue credentials, no chain. */
 export function createSampleMarketBoard(): MarketBoard {
   return {
-    listMarkets: async () => MARKETS.map((market) => ({ ...market })),
+    listMarkets: async () => MARKETS.map((market) => structuredClone(market)),
     getMarket: async (symbol: string): Promise<MarketDetail | null> => {
       const market = MARKETS.find((candidate) => candidate.symbol === symbol);
       if (!market) {
@@ -142,7 +157,7 @@ export function createSampleMarketBoard(): MarketBoard {
       }
 
       return {
-        market: { ...market },
+        market: structuredClone(market),
         calls: CALLS[symbol] ?? [],
         trail: trailFor(market),
       };

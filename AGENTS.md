@@ -10,28 +10,29 @@ Keep each project's `AGENTS.md` updated in the same change whenever its structur
 
 ## Project map
 
-| Project                      | Responsibility                                        | Required local instructions                       |
-| ---------------------------- | ----------------------------------------------------- | ------------------------------------------------- |
-| `apps/agent-service`         | Local Mastra Studio, API and research worker          | [AGENTS.md](apps/agent-service/AGENTS.md)         |
-| `apps/web`                   | Next.js presentation and HTTP entry points            | [AGENTS.md](apps/web/AGENTS.md)                   |
-| `apps/mobile`                | Expo iOS app: the marketplace on the phone            | [AGENTS.md](apps/mobile/AGENTS.md)                |
-| `workers/api`                | Public API on Cloudflare Workers, ported from Relayer | [AGENTS.md](workers/api/AGENTS.md)                |
-| `workers/research`           | Queue/Cron research execution                         | [AGENTS.md](workers/research/AGENTS.md)           |
-| `packages/agent-runtime`     | Shared Mastra library and host lifecycle              | [AGENTS.md](packages/agent-runtime/AGENTS.md)     |
-| `packages/trading`           | Trading rules, financial ports and evaluation engine  | [AGENTS.md](packages/trading/AGENTS.md)           |
-| `packages/core`              | Business rules, use cases, and ports                  | [AGENTS.md](packages/core/AGENTS.md)              |
-| `packages/infrastructure`    | Implementations of business ports                     | [AGENTS.md](packages/infrastructure/AGENTS.md)    |
-| `packages/api-schema`        | Public HTTP DTOs                                      | [AGENTS.md](packages/api-schema/AGENTS.md)        |
-| `packages/ui`                | Reusable React components and styles                  | [AGENTS.md](packages/ui/AGENTS.md)                |
-| `packages/chain`             | Public blockchain metadata and future generated ABIs  | [AGENTS.md](packages/chain/AGENTS.md)             |
-| `packages/mera-account`      | The one rule from a Mera passkey to the account       | [AGENTS.md](packages/mera-account/AGENTS.md)      |
-| `packages/typescript-config` | Shared compiler configuration                         | [AGENTS.md](packages/typescript-config/AGENTS.md) |
-| `contracts`                  | Foundry/Solidity project                              | [AGENTS.md](contracts/AGENTS.md)                  |
-| `supabase`                   | Local Supabase stack configuration                    | [AGENTS.md](supabase/AGENTS.md)                   |
-| `services/reads`             | Supabase Edge Functions behind Ask in the mobile app  | [AGENTS.md](services/reads/AGENTS.md)             |
-| `infra`                      | Cloudflare projects serving the passkey association   | [AGENTS.md](infra/AGENTS.md)                      |
-| `scripts/mobile`             | Docs and agent tooling of `docs/mobile`               | [AGENTS.md](scripts/mobile/AGENTS.md)             |
-| `docs/mobile`                | The mobile app's specs, plans, audits and catalogue   | [AGENTS.md](docs/mobile/AGENTS.md)                |
+| Project                      | Responsibility                                          | Required local instructions                       |
+| ---------------------------- | ------------------------------------------------------- | ------------------------------------------------- |
+| `apps/agent-service`         | Local Mastra Studio, API and research worker            | [AGENTS.md](apps/agent-service/AGENTS.md)         |
+| `apps/web`                   | Next.js presentation and HTTP entry points              | [AGENTS.md](apps/web/AGENTS.md)                   |
+| `apps/mobile`                | Expo iOS app: the marketplace on the phone              | [AGENTS.md](apps/mobile/AGENTS.md)                |
+| `workers/api`                | Public API on Cloudflare Workers, ported from Relayer   | [AGENTS.md](workers/api/AGENTS.md)                |
+| `workers/research`           | Queue/Cron research execution                           | [AGENTS.md](workers/research/AGENTS.md)           |
+| `packages/agent-runtime`     | Shared Mastra library and host lifecycle                | [AGENTS.md](packages/agent-runtime/AGENTS.md)     |
+| `packages/trading`           | Trading rules, financial ports and evaluation engine    | [AGENTS.md](packages/trading/AGENTS.md)           |
+| `packages/core`              | Business rules, use cases, and ports                    | [AGENTS.md](packages/core/AGENTS.md)              |
+| `packages/infrastructure`    | Implementations of business ports                       | [AGENTS.md](packages/infrastructure/AGENTS.md)    |
+| `packages/api-schema`        | Public HTTP DTOs                                        | [AGENTS.md](packages/api-schema/AGENTS.md)        |
+| `packages/ui`                | Reusable React components and styles                    | [AGENTS.md](packages/ui/AGENTS.md)                |
+| `packages/chain`             | Public blockchain metadata and future generated ABIs    | [AGENTS.md](packages/chain/AGENTS.md)             |
+| `packages/mera-account`      | The one rule from a Mera passkey to the account         | [AGENTS.md](packages/mera-account/AGENTS.md)      |
+| `packages/perpl-context`     | Parser of Perpl's public context, shared by app and API | [AGENTS.md](packages/perpl-context/AGENTS.md)     |
+| `packages/typescript-config` | Shared compiler configuration                           | [AGENTS.md](packages/typescript-config/AGENTS.md) |
+| `contracts`                  | Foundry/Solidity project                                | [AGENTS.md](contracts/AGENTS.md)                  |
+| `supabase`                   | Local Supabase stack configuration                      | [AGENTS.md](supabase/AGENTS.md)                   |
+| `services/reads`             | Supabase Edge Functions behind Ask in the mobile app    | [AGENTS.md](services/reads/AGENTS.md)             |
+| `infra`                      | Cloudflare projects serving the passkey association     | [AGENTS.md](infra/AGENTS.md)                      |
+| `scripts/mobile`             | Docs and agent tooling of `docs/mobile`                 | [AGENTS.md](scripts/mobile/AGENTS.md)             |
+| `docs/mobile`                | The mobile app's specs, plans, audits and catalogue     | [AGENTS.md](docs/mobile/AGENTS.md)                |
 
 See [README.md](README.md) for setup, [docs/architecture.md](docs/architecture.md) for architectural decisions, and [the agent runtime V1 specification](docs/specs/agent-runtime-v1.md) for the planned Mastra service, capability interfaces, tenant isolation, scheduling, and implementation phases. The research-only subset is implemented; read [the pilot guide](apps/agent-service/README.md) for actual commands, limits and exclusions.
 
@@ -68,7 +69,7 @@ npm run contracts:test
 
 The mobile app is a workspace but sits outside Turborepo's build and outside the root ESLint and Prettier: `npm run typecheck` covers it, and its Jest suite is `npm test --workspace=@pickler/mobile`. `services/reads` and `scripts/mobile` are not workspaces; each installs with `npm ci --prefix <path>` and has its own checks (`npm test --prefix services/reads`, `npm run agents:check --prefix scripts/mobile`). [The specification of the move](docs/specs/mobile-monorepo-v1.md) says why.
 
-Run checks relevant to the change. Documentation-only changes require checking links, paths, examples, and command accuracy; they do not require a full application build. `npm test` builds shared packages and discovers the core, infrastructure, chain, `mera-account`, `workers/api`, `workers/research`, web and agent-service package-root test files; extend discovery when adding other suites. Core, infrastructure and API schemas export compiled ESM from `dist`; run `npm run build:shared` before direct consumers. `npm run dev:agent` does this automatically. The normal `npm run dev` starts only the web app. Foundry commands are separate from the web build and currently have no contracts to compile or test.
+Run checks relevant to the change. Documentation-only changes require checking links, paths, examples, and command accuracy; they do not require a full application build. `npm test` builds shared packages and discovers the core, infrastructure, chain, `mera-account`, `perpl-context`, `workers/api`, `workers/research`, web and agent-service package-root test files; extend discovery when adding other suites. Core, infrastructure and API schemas export compiled ESM from `dist`; run `npm run build:shared` before direct consumers. `npm run dev:agent` does this automatically. The normal `npm run dev` starts only the web app. Foundry commands are separate from the web build and currently have no contracts to compile or test.
 
 Never commit dependencies, build output, secrets, private keys, or local environment files. Keep changes scoped to the request and preserve unrelated work.
 
@@ -145,3 +146,19 @@ runtime composes adapters and models. Hosts must not duplicate risk, fills or ac
 
 The canonical trading boundaries and plugin extension rules are in [Trading architecture](docs/trading-architecture.md).
 Run `npm run check:architecture` to reject retired commands, imports and broken documentation links.
+
+## API contract
+
+The API Worker owns generated OpenAPI at `/v1/openapi.json`, served through the web at
+`/api/v1/openapi.json`. Route metadata and api-schema wire schemas are authoritative, not a static
+JSON file. `npm run api:openapi -- --output /tmp/pickler-openapi.json` validates and exports all
+route groups without executing services. Read [API contract](docs/api-contract.md) before adding
+or changing endpoints; CI rejects undocumented operations.
+
+## Consumer recommendations
+
+The separate JWT-only `/v1/agent-advice` API returns asynchronous BTC/ETH 24-hour analysis, not
+orders. Read [Agent advice](docs/agent-advice.md) before changes. Core owns authorization/admission
+ports; trading owns analysis policy; runtime owns providers/prompts; infrastructure owns private
+jobs/events/call reserves and migration 0025. Research Queue advice wakeups never notify trading.
+Keep admissions disabled by default; no payments, paid retries or implicit AUSD-to-USD conversion.

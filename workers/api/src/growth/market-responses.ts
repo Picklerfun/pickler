@@ -16,6 +16,8 @@ export function toPerpMarketDto(market: PerpMarket): PerpMarketDto {
     lastCall: market.lastCall && { ...market.lastCall },
     note: market.note,
     hourlyReach: market.hourlyReach,
+    limits: { ...market.limits },
+    source: { ...market.source },
   };
 }
 

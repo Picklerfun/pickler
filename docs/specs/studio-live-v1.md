@@ -82,7 +82,7 @@ Everything else is existing: `PUT /pause`, `PUT /identity`, the X routes, `/wall
 
 ## 5. Data model
 
-Migration `0025_setup_versions`:
+Migration `0026_setup_versions`:
 
 ```sql
 CREATE TABLE agents.setup_versions (
@@ -135,7 +135,7 @@ All drawn in `Pickler Studio v5 Live.dc.html`. Staged states (`?stage=`, never i
 
 ## 10. Rollout
 
-Migration 0025 is additive and goes before the API. Nothing else to configure.
+Migration 0026 is additive and goes before the API. Nothing else to configure.
 
 ## 11. Out of scope, and the specs that follow
 

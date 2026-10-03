@@ -149,3 +149,11 @@ Perpl model POST requests keep their twenty-second deadline. Deadline cancellati
 business code. Non-HTTP transport errors return `MODEL_TRANSPORT_FAILURE`. Errors never include
 provider bodies or credentials. `createPerpsStudyModels` accepts an optional timeout-signal factory
 for controlled tests; hosts use the production default and never widen deadlines implicitly.
+
+## Consumer advice runtime
+
+`composition/advice.ts` composes Perpl, permitted site-scoped web evidence and distinct versioned
+Jev/DeepSeek advice prompts. `workers/advice.ts` consumes generic advice wakeups and reconciles
+leases, closing its invocation pool on every outcome. Started calls are persisted before
+transport; no paid retries. Forecasts exclude Jev answers and portfolio state. Advice is not a
+new plugin or a trading executor. See [Agent advice](../../docs/agent-advice.md).

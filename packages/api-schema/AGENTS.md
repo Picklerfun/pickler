@@ -74,8 +74,13 @@ The opt-in Polymarket pilot remains disabled by default. Read `../../apps/agent-
 
 `src/markets.ts` carries `PerpMarketDto`, `AgentSquareDto` and `MarketDetailDto`, plus the options a
 client needs to draw the surface before it can ask anyone: `HORIZON_OPTIONS`, `LEVEL_OPTIONS`,
-`READ_HORIZON_DTO`, `LEVERAGE_OPTIONS` and `PERP_LIMITS_DTO`. These mirror the business rules in
+`READ_HORIZON_DTO` and `LEVERAGE_OPTIONS`. These mirror the business rules in
 core the way `CATEGORY_OPTIONS` mirrors `CATEGORIES`; core stays authoritative for anything sent.
+What the venue charges and demands is not an option of ours: each `PerpMarketDto` carries it in
+`limits` (`MarketLimitsDto`), beside `source` (`MarketSourceDto`: `sample`, or `perpl` with its
+network, the time it was read and `stale`). `agentsReading`, `openCalls` and `hourlyReach` are
+`number | null`: null is "nobody has measured", never zero. `PERP_LIMITS_DTO` was removed on
+2026-10-01 (`docs/specs/perps-board-live-v1.md`).
 
 Wire units: prices in the market's quote currency, amounts in AUSD, `change24h` and `funding1h` as
 signed fractions, and `hourlyReach` in per cent because a square's level is. `readQuestion` carries
@@ -106,3 +111,20 @@ Perpl DTOs include explicit funding history bounds, event provenance, estimates 
 `perps-study.ts` exports the strict portable local study configuration DTO with explicit identity,
 fixed USD 5 ceiling, model IDs and reviewed pricing sources. It contains no credentials. The paper
 account DTO accepts optional permanent admission closure without rewriting historical accounts.
+
+## HTTP documentation contracts
+
+`http.ts` defines the existing response envelopes and identity, custody and workspace-agent wire
+schemas. `public-schemas.ts` defines schemas for public marketplace, growth and launch DTOs;
+marketplace schemas are checked against their existing TypeScript DTOs. These are documentation
+and consumer contracts, not automatic replacements for producer validation. Hono metadata remains
+in the API Worker. Never add Hono or OpenAPI dependencies here. See
+[API contract](../../docs/api-contract.md); changes to a wire response must update its schema and
+representative contract tests in the same change.
+
+## Consumer advice DTOs
+
+`src/advice.ts` exports strict portable BTC/ETH requests, capabilities, asynchronous job states,
+24-hour directional results and cursor history. No requester identity, internal scope, private
+configuration, prices/rates, prompts or provider traces may cross these DTOs. Wallet sign-in
+`kind` is `eoa | mera`. See [Agent advice](../../docs/agent-advice.md).

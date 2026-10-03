@@ -1,3 +1,6 @@
+import * as dto from "@pickler/api-schema";
+import { z } from "zod";
+import { operation } from "../openapi/operation";
 import { Hono } from "hono";
 
 import { LAUNCH_LIST_LIMITS, type LaunchErrorDto } from "@pickler/api-schema";
@@ -18,49 +21,83 @@ import type { AppEnv } from "../env";
 export function launchRoutes(readModel: PostgresLaunchReadModel) {
   const api = new Hono<AppEnv>();
 
-  api.get("/", async (c) => {
-    const limit = parseLimit(c.req.query("limit"));
-    if (limit instanceof Response) {
-      return limit;
-    }
+  api.get(
+    "/",
+    operation("launchesList", {
+      errors: z.union([dto.launchErrorSchema, dto.envelopeErrorSchema]),
+      errorStatuses: [400, 404, 500, 503],
+      response: dto.launchesReadSchema,
+      query: {
+        chainId: {},
+        phase: {},
+        limit: { schema: { type: "integer", minimum: 1, maximum: 100, default: 25 } },
+        cursor: {},
+      },
+    }),
+    async (c) => {
+      const limit = parseLimit(c.req.query("limit"));
+      if (limit instanceof Response) {
+        return limit;
+      }
 
-    const result = await readModel.listLaunches({
-      chain: c.req.query("chainId"),
-      phase: c.req.query("phase"),
-      limit,
-      cursor: c.req.query("cursor"),
-    });
+      const result = await readModel.listLaunches({
+        chain: c.req.query("chainId"),
+        phase: c.req.query("phase"),
+        limit,
+        cursor: c.req.query("cursor"),
+      });
 
-    return c.json(result);
-  });
+      return c.json(result);
+    },
+  );
 
-  api.get("/:id", async (c) => {
-    const result = await readModel.getLaunch(c.req.param("id"));
+  api.get(
+    "/:id",
+    operation("launchesGet", {
+      errors: z.union([dto.launchErrorSchema, dto.envelopeErrorSchema]),
+      errorStatuses: [400, 404, 500, 503],
+      response: dto.freshnessReadSchema(dto.launchDetailSchema),
+    }),
+    async (c) => {
+      const result = await readModel.getLaunch(c.req.param("id"));
 
-    if (result === null) {
-      return notFound(c);
-    }
+      if (result === null) {
+        return notFound(c);
+      }
 
-    return c.json(result);
-  });
+      return c.json(result);
+    },
+  );
 
-  api.get("/:id/trades", async (c) => {
-    const limit = parseLimit(c.req.query("limit"));
-    if (limit instanceof Response) {
-      return limit;
-    }
+  api.get(
+    "/:id/trades",
+    operation("launchesTrades", {
+      errors: z.union([dto.launchErrorSchema, dto.envelopeErrorSchema]),
+      errorStatuses: [400, 404, 500, 503],
+      response: dto.freshnessReadSchema(dto.launchTradeSchema.array()),
+      query: {
+        limit: { schema: { type: "integer", minimum: 1, maximum: 100, default: 25 } },
+        cursor: {},
+      },
+    }),
+    async (c) => {
+      const limit = parseLimit(c.req.query("limit"));
+      if (limit instanceof Response) {
+        return limit;
+      }
 
-    const result = await readModel.listTrades(c.req.param("id"), {
-      limit,
-      cursor: c.req.query("cursor"),
-    });
+      const result = await readModel.listTrades(c.req.param("id"), {
+        limit,
+        cursor: c.req.query("cursor"),
+      });
 
-    if (result === null) {
-      return notFound(c);
-    }
+      if (result === null) {
+        return notFound(c);
+      }
 
-    return c.json(result);
-  });
+      return c.json(result);
+    },
+  );
 
   return api;
 }

@@ -26,3 +26,8 @@ export * from "./perps-paper.js";
 export * from "./perps-study.js";
 
 export * from "./launches.js";
+
+export * from "./http.js";
+export * from "./public-schemas.js";
+
+export * from "./advice.js";

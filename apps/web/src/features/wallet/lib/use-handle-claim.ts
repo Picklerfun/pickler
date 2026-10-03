@@ -1,29 +1,24 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Button, Field, Input, type FieldTone } from "@pickler/ui";
+import type { FieldTone } from "@pickler/ui";
 import { HANDLE_RULES, RESERVED_HANDLES } from "@pickler/api-schema";
-import styles from "./claim-handle.module.css";
-import { useWallet } from "../lib/wallet-context";
+import { useWallet } from "./wallet-context";
 import {
   checkAvailability,
   claimHandle,
   localProblem,
   type Availability,
   type HandleProblem,
-} from "../lib/handles";
+} from "./handles";
 
 /**
- * Asks for a handle once there is an account to hang it on.
- *
- * It is dismissible on purpose. Claiming is not a gate: somebody who closes this can still trade,
- * and it comes back next visit because the dismissal lives in component state and nothing writes
- * it down. A person without a handle is an address on the leaderboard, which is a worse experience
- * rather than a blocked one — so the way out is an ordinary button, not something to defeat.
+ * Everything about claiming a username except how it is drawn: the field's value, what is wrong
+ * with it, whether it is free, and the claim itself. The chooser's username step draws it.
  *
  * The rules come in from `@pickler/api-schema`, which mirrors core and is held to it by
  * workers/api/test/handle-rules.test.ts. They are handed to `localProblem` rather than read inside
- * it, which is what lets that function be tested here at all.
+ * it, which is what lets that function be tested at all.
  */
 const WORDS: Record<HandleProblem, string> = {
   too_short: `At least ${HANDLE_RULES.min} characters.`,
@@ -56,10 +51,12 @@ function note(
     : { text: WORDS.taken, tone: "bad" };
 }
 
-export function ClaimHandle({ onClaimed }: { onClaimed?: () => void }) {
+/** Where the field stands, for a screen that words it in its own voice. */
+export type HandleState = "empty" | HandleProblem | "checking" | "unknown" | "ok";
+
+export function useHandleClaim(onClaimed?: () => void) {
   const wallet = useWallet();
   const [handle, setHandle] = useState("");
-  const [dismissed, setDismissed] = useState(false);
   /**
    * The answer is stored with the handle it was asked about, rather than cleared when the field
    * changes. That keeps every `setState` out of the effect body — the rule this project enforces —
@@ -89,15 +86,11 @@ export function ClaimHandle({ onClaimed }: { onClaimed?: () => void }) {
     return () => clearTimeout(timer);
   }, [trimmed, askable]);
 
-  if (dismissed) {
-    return null;
-  }
-
   /**
-   * Claiming is the first thing on the marketplace that needs an account, so this is where the
-   * signature is asked for — inside an action the person started, rather than sprung on them when
-   * they connected. If they close the prompt, `signInWithWallet` answers with no error to show,
-   * and the panel simply stays as it was.
+   * A username needs an account, so this signs in when nobody has yet. Straight after connecting
+   * the session is already there and nothing is asked again; after a reload the page no longer
+   * holds its token, and the claim costs one signature. If the person closes that prompt,
+   * `signInWithWallet` answers with no error to show and the form simply stays as it was.
    */
   async function claim() {
     setBusy(true);
@@ -110,10 +103,8 @@ export function ClaimHandle({ onClaimed }: { onClaimed?: () => void }) {
         setFailed(signedIn.error);
         return;
       }
-      await claimHandle(
-        { handle: handle.trim().toLowerCase(), displayName: handle.trim() },
-        signedIn.token,
-      );
+      await claimHandle({ handle: trimmed, displayName: handle.trim() }, signedIn.token);
+      wallet.profileClaimed();
       onClaimed?.();
     } catch (caught) {
       setFailed(caught instanceof Error ? caught.message : "That handle could not be claimed");
@@ -122,58 +113,29 @@ export function ClaimHandle({ onClaimed }: { onClaimed?: () => void }) {
     }
   }
 
-  const shown = handle.trim() ? note(problem, availability) : null;
+  let state: HandleState = "checking";
+  if (!handle.trim()) {
+    state = "empty";
+  } else if (problem) {
+    state = problem;
+  } else if (availability) {
+    state = !availability.known ? "unknown" : availability.available ? "ok" : "taken";
+  }
 
-  return (
-    <section className={styles.panel} aria-label="Claim your handle">
-      <p className={styles.eyebrow}>YOUR HANDLE</p>
-      <h2 className={styles.title}>Pick a name for the board.</h2>
-      <p className={styles.lead}>
-        Every pick you back shows the name you go by. Without one you appear as your address, which
-        works — it just reads like a wallet rather than a person.
-      </p>
-      <div className={styles.row}>
-        <Field
-          className={styles.field}
-          label="HANDLE"
-          htmlFor="claim-handle"
-          {...(shown ? { note: shown.text, tone: shown.tone } : {})}
-        >
-          <Input
-            id="claim-handle"
-            value={handle}
-            mono
-            prefix="@"
-            autoComplete="off"
-            spellCheck={false}
-            maxLength={HANDLE_RULES.max}
-            invalid={problem !== null}
-            placeholder="nightowl"
-            onChange={(event) => setHandle(event.target.value)}
-          />
-        </Field>
-        <div className={styles.actions}>
-          <Button variant="primary" disabled={!askable || busy} onClick={() => void claim()}>
-            {busy ? (wallet.session === "signing" ? "Check your wallet…" : "Claiming…") : "Claim"}
-          </Button>
-          <button type="button" className={styles.dismiss} onClick={() => setDismissed(true)}>
-            Not now
-          </button>
-        </div>
-      </div>
-      {/* The chooser promises "connecting is not signing", and this is the moment that changes.
-          Saying so before the wallet opens is the difference between a prompt somebody expected and
-          one that appeared at them — and an unexpected prompt is how people learn to approve them
-          without reading. */}
-      <p className={styles.foot}>
-        Claiming asks your wallet to sign one line of text, so the board knows the name is yours. It
-        costs nothing and moves nothing.
-      </p>
-      {failed && (
-        <p className={styles.failed} role="alert">
-          {failed}
-        </p>
-      )}
-    </section>
-  );
+  return {
+    handle,
+    setHandle,
+    state,
+    minLength: HANDLE_RULES.min,
+    problem,
+    askable,
+    busy,
+    failed,
+    claim,
+    /** What to say under the field, or null while it is empty. */
+    shown: handle.trim() ? note(problem, availability) : null,
+    /** A wallet prompt is open: the button says to look at the wallet. */
+    signing: wallet.session === "signing",
+    maxLength: HANDLE_RULES.max,
+  };
 }

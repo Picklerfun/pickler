@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { EMPTY_LEADERBOARD, emptyAnalytics, readOrEmpty, readOrNull } from "../src/server/api-read";
+import {
+  EMPTY_LEADERBOARD,
+  emptyAnalytics,
+  readOrEmpty,
+  readOrNull,
+  readVenueItemOrNull,
+} from "../src/server/api-read";
 
 /* A public board whose API is behind the web renders its empty screen, not a 500. One behaviour
    per test. */
@@ -78,4 +84,13 @@ test("empty analytics keep the range that was asked", () => {
 
 test("empty analytics fall back to 30d for a range the board does not offer", () => {
   assert.equal(emptyAnalytics("1y").range, "30d");
+});
+
+test("a venue that is down is an error, not a market that does not exist", async () => {
+  await assert.rejects(
+    quiet(() => readVenueItemOrNull(json(503), "/marketplace/markets/BTC-PERP")),
+    /temporarily unavailable/,
+  );
+  assert.equal(await readVenueItemOrNull(json(404), "/marketplace/markets/NOPE-PERP"), null);
+  assert.equal(await quiet(() => readVenueItemOrNull(json(502), "/x/1")), null);
 });
