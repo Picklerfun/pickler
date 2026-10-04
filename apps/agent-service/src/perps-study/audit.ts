@@ -115,7 +115,9 @@ export async function runPerpsAudit(input: {
     }
     const config = JSON.parse(await readFile(resolve(input.configPath), "utf8"));
     if (
-      !["perps-comparison-v1", "perps-four-way-v2"].includes(config.protocol) ||
+      !["perps-comparison-v1", "perps-four-way-v2", "perps-multiframe-v3"].includes(
+        config.protocol,
+      ) ||
       !config.tenantId ||
       !config.sessionId ||
       !["mainnet", "testnet"].includes(config.network)
