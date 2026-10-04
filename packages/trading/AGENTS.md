@@ -182,3 +182,12 @@ and never carries hypothetical positions forward. `traceMultiframeProposal` repo
 gate's first reason plus overlapping predicate failures, without changing policy or execution.
 Only valid common complete slots enter paired counts. Preserve failed-call reservations and
 mark missing contexts, request phases and root causes unverifiable; no counterfactual P&L.
+
+## SMA entry ablation
+
+Evaluation config v3 `perps-sma-ablation-v1` selects three explicit SMA variants, empty call maps
+and independent accounts. `perps-strategies/sma-ablation.ts` owns hourly entries, optional
+activity gating and common exits; historical multiframe 1.1.0 remains unchanged.
+`perps-study/sma-report.ts` owns financial/report projections with unknown funding preserved.
+The runner uses one final validated BTC/ETH set, prevents initial holds becoming entries and
+reopening after exits. Never route SMA variants into model registry arms or create paid lanes.
