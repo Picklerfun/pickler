@@ -221,3 +221,12 @@ analysis needs only the packet and a new output directory. The HTML/CSV/JSON sho
 proposals, original model reasons, explicit-claim checks, Jev answers and timeout identities.
 Read PERPS-DECISION-AUDIT.md. Do not call providers, resume studies or promote a policy from
 these diagnostic counts. Source study results and unknown reservations remain unchanged.
+
+## SMA entry ablation
+
+Read [PERPS-SMA-ABLATION.md](PERPS-SMA-ABLATION.md). The unified CLI dispatches config v3
+`perps-sma-ablation-v1` before paid host composition. `perps-study/sma-host.ts` loads only
+loopback PostgreSQL and public Perpl data; no model/signing keys or clients. Preserve exclusive
+output/start markers, frozen commit/configuration, 24 slots and automatic local reports. No
+monitor, resume, paid calls, transport override or automatic repeat. Trading owns decisions and
+metrics; the host owns lifecycle and safe artifacts.
