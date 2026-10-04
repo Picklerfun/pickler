@@ -2,6 +2,26 @@ import { BENCHMARK_VARIANTS } from "../paper-study/benchmark.js";
 import { PERPS_FOUR_WAY_STRATEGIES, PERPS_STUDY_STRATEGIES } from "../perps-study/types.js";
 import { PilotError } from "@pickler/core";
 export const EVALUATION_PROTOCOLS = {
+  "perps-multiframe-v3": {
+    version: 2,
+    instrument: "perpetual",
+    strategySetVersion: 2,
+    strategies: PERPS_FOUR_WAY_STRATEGIES,
+    commands: [
+      "prepare",
+      "preflight",
+      "validate",
+      "run",
+      "status",
+      "stop",
+      "settle",
+      "report",
+      "audit-export",
+    ],
+    paidCommands: ["validate", "run"],
+    riskPolicy: "conservative-1x-v1",
+    accounting: "acknowledged-historical-reservations-v2",
+  },
   "perps-four-way-v2": {
     version: 2,
     instrument: "perpetual",
