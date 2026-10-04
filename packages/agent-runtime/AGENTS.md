@@ -203,3 +203,10 @@ Studio model adapters live in `composition/studio-perps-models.ts`. Their foreca
 ## Multiframe laboratory prompts
 
 The opt-in local perps-multiframe-v3 model adapter selects forecast and atomic prompts 1.1.0. It sends sixty close/time pairs per 1h/15m/5m series with shared features, explicit cadence/horizon and its own account. Original proposals remain intact; trading owns final policy gates. Missing inputs fail before transport. The old prompt snapshots, thresholds, 30,000-byte bound, deadlines, usage hooks and no-retry behavior remain unchanged. No deployed strategy is selected implicitly.
+
+## Pure multiframe audit projection
+
+`composition/perps-model-state` also exports `perpsMultiframeModelState`, the same pure 1.1.0
+projection used by the live laboratory adapter and offline auditor. Preserve validation, object
+ordering, close/time candle columns, policy/features, prompts and request fingerprints. This
+projection is not a historical HTTP capture. Offline consumers must not import model transports.
