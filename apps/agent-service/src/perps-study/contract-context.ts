@@ -109,9 +109,29 @@ function studyEvidence(now: number): PerpsEvidence {
     })),
   };
 }
-export function contractContext(now = 1800000000000): PerpsDecisionContext {
+export function contractContext(now = 1800000000000, multiframe = false): PerpsDecisionContext {
+  const evidence = studyEvidence(now);
+  if (multiframe) {
+    for (const frame of evidence.frames) {
+      for (const resolution of [300, 900]) {
+        const interval = resolution * 1000;
+        const end = Math.floor(now / interval) * interval;
+        const hourly = evidence.candles.find(
+          (c) => c.market.symbol === frame.snapshot.market.symbol,
+        )!;
+        evidence.candles.push({
+          ...structuredClone(hourly),
+          resolution,
+          from: end - 60 * interval,
+          to: end,
+          candles: hourly.candles.map((c, i) => ({ ...c, openTime: end - (60 - i) * interval })),
+        });
+        evidence.sourceIds.push(`${frame.snapshot.market.symbol}:candles:${resolution}`);
+      }
+    }
+  }
   return {
-    evidence: studyEvidence(now),
+    evidence,
     account: initialPaperAccount({ ...studyConfig, agentId: "controlled" }, 1, now),
   };
 }
