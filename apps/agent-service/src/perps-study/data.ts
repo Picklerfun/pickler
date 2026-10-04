@@ -27,8 +27,10 @@ export function createStudyData(
     }
     readerPolicy = policy;
     reader ??= createPerplAcquisitionReader(agents, { ...options, schedule, policy });
+    const agentId =
+      record.config.version === 3 ? record.agentIds["sma-hourly"]! : record.agentIds.rules!;
     return reader.read(
-      { tenantId: record.config.tenantId, agentId: record.agentIds.rules },
+      { tenantId: record.config.tenantId, agentId },
       ["BTC", "ETH"],
       signal,
       guard,
@@ -42,7 +44,7 @@ export function createStudyData(
     observe: async (record, signal, guard) => {
       if (!record.dataPolicy) {
         return runtime.data.observation(
-          { ...record.config, agentId: record.agentIds.rules },
+          { ...record.config, agentId: record.agentIds.rules! },
           record.startedAt ?? Date.now(),
           signal,
         );
@@ -50,7 +52,11 @@ export function createStudyData(
       const frames = await read(record, signal, guard);
       const { service } = await createPerplSession(
         agents,
-        { tenantId: record.config.tenantId, agentId: record.agentIds.rules },
+        {
+          tenantId: record.config.tenantId,
+          agentId:
+            record.config.version === 3 ? record.agentIds["sma-hourly"]! : record.agentIds.rules!,
+        },
         signal,
         { ...options, schedule, ...(guard ? { guard } : {}) },
       );
@@ -72,11 +78,14 @@ export function createStudyData(
     },
     async evidence(record, observation, signal, guard) {
       await guard?.();
-      const resolutions = record.config.strategyVersion === "1.1.0" ? [3600, 900, 300] : [3600];
+      const multiframe = record.config.strategyVersion === "1.1.0" || record.config.version === 3;
+      const agentId =
+        record.config.version === 3 ? record.agentIds["sma-hourly"]! : record.agentIds.rules!;
+      const resolutions = multiframe ? [3600, 900, 300] : [3600];
       const candles: PerpCandles[] = [];
       const { service } = await createPerplSession(
         agents,
-        { tenantId: record.config.tenantId, agentId: record.agentIds.rules },
+        { tenantId: record.config.tenantId, agentId },
         signal,
         { ...options, schedule, ...(guard ? { guard } : {}) },
       );
@@ -84,7 +93,7 @@ export function createStudyData(
         for (const resolution of resolutions) {
           await guard?.();
           const end = Math.floor(Date.now() / (resolution * 1000)) * resolution * 1000;
-          const key = `${record.config.tenantId}:${record.agentIds.rules}:${symbol}:${resolution}`;
+          const key = `${record.config.tenantId}:${agentId}:${symbol}:${resolution}`;
           let series = cache.get(key);
           if (record.config.strategyVersion === "1.1.0" || series?.to !== end) {
             series = await service.getPerpCandles({
@@ -105,10 +114,9 @@ export function createStudyData(
         }
       }
       await guard?.();
-      const frames =
-        record.config.strategyVersion === "1.1.0"
-          ? await read(record, signal, guard)
-          : structuredClone(observation.frames);
+      const frames = multiframe
+        ? await read(record, signal, guard)
+        : structuredClone(observation.frames);
       await guard?.();
       return {
         observedAt: Date.now(),
@@ -121,7 +129,7 @@ export function createStudyData(
           "ETH:market",
           "ETH:book",
           "ETH:candles",
-          ...(record.config.strategyVersion === "1.1.0"
+          ...(multiframe
             ? ["BTC:candles:300", "BTC:candles:900", "ETH:candles:300", "ETH:candles:900"]
             : []),
         ],
@@ -135,7 +143,7 @@ export function createStudyData(
       for (const symbol of ["BTC", "ETH"] as const) {
         frames.push(
           await runtime.data.frame(
-            { ...record.config, agentId: record.agentIds.rules },
+            { ...record.config, agentId: record.agentIds.rules! },
             symbol,
             signal,
           ),
