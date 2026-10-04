@@ -6,6 +6,7 @@ import {
   decisionSchema,
   eventResponseSchema,
   spendLimitsSchema,
+  studioPerpsStrategySchema,
   VOICE_KEYS,
 } from "./research.js";
 
@@ -254,7 +255,11 @@ export type WalletsDto = z.infer<typeof walletsResponseSchema>;
 export const setupUpdateSchema = z
   .object({
     expectedVersion: z.number().int().positive(),
-    brief: draftCreateSchema.shape.brief.optional(),
+    perpsStrategy: studioPerpsStrategySchema.optional(),
+    brief: draftCreateSchema.shape.brief
+      .extend({ entersWhen: z.array(z.string()).max(8) })
+      .strict()
+      .optional(),
     sources: draftCreateSchema.shape.sources.optional(),
     caps: draftCreateSchema.shape.caps
       .extend({

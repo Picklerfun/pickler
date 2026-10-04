@@ -22,6 +22,7 @@ import { copyWeb, webDerived, type VoiceKey } from "./create.js";
 
 /** What the setup screens can change; an absent field is left as it is. */
 export interface SetupPatch {
+  perpsStrategy?: AgentConfig["perpsStrategy"];
   brief?: {
     thesis: string;
     entersWhen: readonly string[];
@@ -57,6 +58,9 @@ export interface SetupPatch {
  */
 export function reviseSetup(config: AgentConfig, patch: SetupPatch): AgentConfig {
   const next = structuredClone(config);
+  if (patch.perpsStrategy) {
+    next.perpsStrategy = { ...patch.perpsStrategy };
+  }
   if (patch.brief) {
     const brief = normalizeBrief({
       thesis: patch.brief.thesis,
@@ -65,7 +69,7 @@ export function reviseSetup(config: AgentConfig, patch: SetupPatch): AgentConfig
       exitsWhen: [...patch.brief.exitsWhen],
       never: [...patch.brief.never],
     });
-    assertBrief(brief);
+    assertBrief(brief, next.perpsStrategy?.id !== "rules");
     next.brief = brief;
   }
   if (patch.caps) {

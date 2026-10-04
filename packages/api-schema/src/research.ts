@@ -140,6 +140,13 @@ export const RISK_BOUNDS = {
 } as const;
 
 /** A stored `config.risk` (studio-live-v1 L12): open at once, and the day-loss stop in AUSD. */
+export const studioPerpsStrategySchema = z
+  .object({
+    id: z.enum(["rules", "deepseek", "jev", "combined"]),
+    version: z.literal("2.0.0"),
+  })
+  .strict();
+
 export const riskLimitsSchema = z
   .object({
     maxOpenPositions: z
@@ -177,7 +184,7 @@ export const agentBriefSchema = z
   .object({
     thesis: z.string().max(BRIEF_LIMITS.thesis),
     reads: z.array(briefLine).max(BRIEF_LIMITS.reads),
-    entersWhen: z.array(briefLine).min(1).max(BRIEF_LIMITS.entersWhen),
+    entersWhen: z.array(briefLine).max(BRIEF_LIMITS.entersWhen),
     exitsWhen: z.array(briefLine).max(BRIEF_LIMITS.exitsWhen),
     never: z.array(briefLine).max(BRIEF_LIMITS.never),
   })
@@ -265,6 +272,7 @@ export const agentConfigSchema = z
     /** Absent means core's `RISK_DEFAULTS` and `ENTRY_DEFAULTS`. */
     risk: riskLimitsSchema.optional(),
     entry: entrySettingSchema.optional(),
+    perpsStrategy: studioPerpsStrategySchema.optional(),
   })
   .strict()
   .refine(
@@ -275,6 +283,11 @@ export const agentConfigSchema = z
           config.discoveryPolicy === undefined
         : config.categoryIds !== undefined,
     { message: "Choose marketScope or legacy selection fields, never both" },
+  )
+  .refine(
+    (config) =>
+      !config.brief || config.perpsStrategy?.id === "rules" || config.brief.entersWhen.length > 0,
+    { message: "AI brief requires an entry condition", path: ["brief", "entersWhen"] },
   );
 export const configUpdateSchema = z
   .object({ expectedVersion: z.number().int().positive(), config: agentConfigSchema })

@@ -17,8 +17,9 @@ import type {
 function descriptor(
   id: PerpsStrategyId,
   capabilities: PerpsStrategyCapability[],
+  version: PerpsStrategyDescriptor["version"] = "1.0.0",
 ): PerpsStrategyDescriptor {
-  return Object.freeze({ id, version: "1.0.0", capabilities: Object.freeze(capabilities) });
+  return Object.freeze({ id, version, capabilities: Object.freeze(capabilities) });
 }
 
 export const PERPS_STRATEGIES: readonly PerpsStrategyDescriptor[] = Object.freeze([
@@ -26,10 +27,16 @@ export const PERPS_STRATEGIES: readonly PerpsStrategyDescriptor[] = Object.freez
   descriptor("deepseek", ["direct"]),
   descriptor("jev", ["decide"]),
   descriptor("combined", ["direct", "review"]),
+  descriptor("rules", [], "2.0.0"),
+  descriptor("deepseek", ["direct"], "2.0.0"),
+  descriptor("jev", ["decide"], "2.0.0"),
+  descriptor("combined", ["direct", "review"], "2.0.0"),
 ]);
 
 export function resolvePerpsStrategy(selection: PerpsStrategySelection): PerpsStrategyDescriptor {
-  const descriptor = PERPS_STRATEGIES.find((item) => item.id === selection.id);
+  const descriptor = PERPS_STRATEGIES.find(
+    (item) => item.id === selection.id && item.version === selection.version,
+  );
   if (!descriptor || descriptor.version !== selection.version) {
     throw new PilotError("STRATEGY_UNAVAILABLE", "Unknown perpetual strategy or policy version");
   }
@@ -58,6 +65,12 @@ export async function executePerpsStrategy(
   deps: PerpsStrategyDependencies,
 ): Promise<PerpsProposal[]> {
   const descriptor = resolvePerpsStrategy(selection);
+  if (descriptor.version !== "1.0.0") {
+    throw new PilotError(
+      "STRATEGY_CONTEXT_MISMATCH",
+      "Studio strategies require the versioned Studio context",
+    );
+  }
   deps.signal.throwIfAborted();
   for (const capability of descriptor.capabilities) {
     if (typeof deps.models[capability] !== "function") {

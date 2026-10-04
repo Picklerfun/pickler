@@ -8,3 +8,4 @@ export * from "./features/paper-study/study.js";
 export * from "./features/perps-strategies/types.js";
 export * from "./features/perps-strategies/policy.js";
 export * from "./features/perps-strategies/registry.js";
+export * from "./features/perps-strategies/studio.js";

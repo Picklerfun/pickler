@@ -153,3 +153,5 @@ amounts are decimal strings; the record's computed figures are AUSD numbers; tim
 `PERPS_CHECK_OUTCOMES`, `PERPS_CHECK_TRIGGERS`, `PERPS_CLOSE_REASONS`, `PERPS_OWNER_ACTION_KINDS`
 and `PERPS_OWNER_ACTION_STATUSES` mirror trading's lists
 (pinned by `workers/api/test/studio-perps-route.test.ts`); `PERPS_MANUAL_CHECKS_PER_DAY` is 6.
+
+Studio setup and stored configuration accept `perpsStrategy` with an explicit identifier and version 2.0.0. Setup permits an empty entry section for rules; core still rejects missing AI entry conditions and unverified free-text rules conditions. No model or financial policy belongs in these portable DTOs.

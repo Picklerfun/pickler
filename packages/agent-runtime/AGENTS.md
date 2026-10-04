@@ -256,6 +256,7 @@ there first); a stop-all pauses the agent if the API's pause has not landed; an 
 crossing the day-loss stop pauses the agent. `createPerpsRuntime` also answers `owner`, so the same
 composition serves checks, actions and the Cron's re-drive. Tests:
 `workers/research/test/perps-actions.test.ts` (real PostgreSQL, fake Perpl).
+
 ## Perpetual strategy adapters
 
 Perpl model composition imports decision policies and model ports from
@@ -263,3 +264,5 @@ Perpl model composition imports decision policies and model ports from
 the trading registry owns their routing. Prompts, hashes, provider/model configuration and
 transport limits remain unchanged. Keep readiness for historical v1 only; it is not the v2
 `combined` strategy. Never construct a parallel strategy registry or financial policy here.
+
+Studio model adapters live in `composition/studio-perps-models.ts`. Their forecast and atomic Jev prompts are version 2.0.0, separate from laboratory prompts and advice. Every transport awaits the injected before-call hook and records verified model token usage; no repair or retry is permitted. Atomic condition support retains the 0.7 threshold, material review retains the 0.9 threshold; neither is a financial probability. Composition of these adapters alone does not enable the product.

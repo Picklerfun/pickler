@@ -46,14 +46,17 @@ const selection = (id: string) => ({ id, version: "1.0.0" });
 
 test("registry covers each strategy once, freezes metadata and refuses unknown versions", async () => {
   assert.deepEqual(
-    PERPS_STRATEGIES.map((s) => s.id),
+    PERPS_STRATEGIES.filter((s) => s.version === "1.0.0").map((s) => s.id),
     ["rules", "deepseek", "jev", "combined"],
   );
-  assert.equal(new Set(PERPS_STRATEGIES.map((s) => s.id)).size, 4);
+  assert.equal(
+    new Set(PERPS_STRATEGIES.filter((s) => s.version === "1.0.0").map((s) => s.id)).size,
+    4,
+  );
   assert.ok(Object.isFrozen(PERPS_STRATEGIES));
   assert.ok(PERPS_STRATEGIES.every((s) => Object.isFrozen(s) && Object.isFrozen(s.capabilities)));
   assert.throws(() => resolvePerpsStrategy(selection("legacy")), { code: "STRATEGY_UNAVAILABLE" });
-  assert.throws(() => resolvePerpsStrategy({ id: "rules", version: "2.0.0" }), {
+  assert.throws(() => resolvePerpsStrategy({ id: "rules", version: "3.0.0" }), {
     code: "STRATEGY_UNAVAILABLE",
   });
   const { deps, lanes } = dependencies({ direct: async () => proposal });

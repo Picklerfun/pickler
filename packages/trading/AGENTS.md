@@ -167,6 +167,7 @@ price or reach an account; hosts inject state and act on the result. In `perps-p
 `sizeUps`, the fee; exits unchanged) behind `PerpsProductPaperRepository.sizeUp`, and
 `productFreeEquity(account, attempts, marks)` is a product account's free AUSD at trusted marks
 (`min(cash, cash + unrealized) − margin − reserved`; null when an open position has no mark).
+
 ## Versioned perpetual strategies
 
 The `strategies` export owns `PERPS_STRATEGIES`, `resolvePerpsStrategy` and
@@ -182,3 +183,7 @@ The evaluator uses the registry for v2 and the explicit `perps-study/legacy-stra
 for historical v1 readiness -> blind forecast. Preserve serialized lanes, answers and proposals.
 The evaluation export retains historical policy/type names backed by the same implementations.
 No persisted plugin IDs, agent selector or new financial policy are introduced.
+
+## Studio strategy version 2
+
+The common registry identifies strategies by both id and version. Version 1.0.0 keeps laboratory behavior; `executeStudioPerpsStrategy` requires the separate `studio-perps-strategy-v2` context and version 2.0.0. Studio proposals carry complete three-state brief evaluations and evidence references, never probabilities, sizes or leverage. Unknown conditions cannot establish an entry or authored exit. Opposite openings become close-only proposals. Combined invokes its own direct proposal and material-veto review; it cannot reuse another account response. Every model invocation goes through the injected reservation/call gate. These contracts alone do not enable product execution.

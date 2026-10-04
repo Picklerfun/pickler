@@ -1,3 +1,4 @@
+import { effectiveStudioStrategy } from "../research/trading-config.js";
 /**
  * The one line a saved setup is recorded under (docs/specs/studio-live-v1.md L10): what changed
  * between two configs, built here from the stored configs so a version never carries client text.
@@ -84,6 +85,10 @@ function entryPart(config: AgentConfig): string {
  */
 export function setupChangeSummary(prev: AgentConfig, next: AgentConfig): string {
   const parts: string[] = [];
+  const strategy = effectiveStudioStrategy(next);
+  if (!same(effectiveStudioStrategy(prev), strategy)) {
+    parts.push(`Strategy ${strategy.id}@${strategy.version}`);
+  }
   if ((prev.brief?.thesis ?? "") !== (next.brief?.thesis ?? "")) {
     parts.push("Thesis changed");
   }
