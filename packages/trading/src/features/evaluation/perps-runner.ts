@@ -10,7 +10,13 @@ import {
   type PerpsProposal,
   type PerpsCallLane,
   type PerpsStudyRecord,
+  type SmaVariant,
 } from "../perps-study/types.js";
+import {
+  smaAblationProposal,
+  finalSmaProposal,
+  commonSmaExit,
+} from "../perps-strategies/sma-ablation.js";
 import { executePerpsStrategy } from "../perps-strategies/registry.js";
 import {
   validateMultiframeEvidence,
@@ -68,7 +74,7 @@ export function createPerpsStudyRunner(deps: {
   study: PerpsStudyRepository;
   paper: PerpsPaperRepository;
   data: StudyData;
-  models: PerpsModels;
+  models?: PerpsModels;
   now?: () => number;
   paperForLease?: (
     scope: PerpsStudyScope,
@@ -76,6 +82,7 @@ export function createPerpsStudyRunner(deps: {
     signal: AbortSignal,
   ) => PerpsPaperRepository;
   leaseDiagnostic?: (event: LeaseDiagnostic) => void;
+  onCycle?: () => Promise<void>;
 }) {
   const { study, data, models } = deps;
   let paper = deps.paper;
@@ -145,6 +152,9 @@ export function createPerpsStudyRunner(deps: {
         frame,
       );
     } catch (failure) {
+      if (record.config.version === 3) {
+        throw failure;
+      }
       if (!(failure instanceof PilotError)) {
         throw failure;
       }
@@ -176,7 +186,8 @@ export function createPerpsStudyRunner(deps: {
     await ownedGuard();
     let { record } = await study.view(scope);
     const strategies = perpsStrategies(record.config);
-    const stopped = record.config.version === 2 && !!record.decisionStopReason;
+    const ablation = record.config.version === 3;
+    const stopped = record.config.version >= 2 && !!record.decisionStopReason;
     if (now() >= record.endsAt! || record.stopRequested || stopped) {
       for (const strategy of strategies) {
         await paper.closeAdmissions(accountScope(record, strategy));
@@ -227,6 +238,26 @@ export function createPerpsStudyRunner(deps: {
     }
     const closing = now() >= record.endsAt! || record.stopRequested || stopped;
     const closedThisRound = new Set<string>();
+    let sharedEvidence: PerpsEvidence | undefined;
+    if (ablation && !closing) {
+      try {
+        sharedEvidence = await data.evidence(record, observation, signal, () => ownedGuard());
+        validateCommonFrames(sharedEvidence.frames, record.config.network, now());
+        validateMultiframeEvidence(sharedEvidence);
+      } catch (error) {
+        signal.throwIfAborted();
+        if (!transientPerpsData(error)) {
+          throw error;
+        }
+        if (attempted) {
+          await skip("before-model", error);
+        }
+        await study.event(scope, lease, `${key}:candles`, "evidence-failed", {
+          code: safeCode(error),
+        });
+        // Missing candles must not prevent a deterministic risk/horizon exit on valid frames.
+      }
+    }
     for (const strategy of strategies) {
       const risk = paperRisk(views[strategy]!.account, views[strategy]!.attempts, now());
       for (const position of views[strategy]!.account.positions.filter(
@@ -235,7 +266,13 @@ export function createPerpsStudyRunner(deps: {
         if (
           closing ||
           risk.closeSymbols.includes(position.symbol) ||
-          (record.config.strategyVersion === "1.1.0" && now() - position.openedAt >= 30 * 60000)
+          ((record.config.strategyVersion === "1.1.0" || ablation) &&
+            now() - position.openedAt >= 30 * 60000) ||
+          (sharedEvidence &&
+            commonSmaExit(
+              { evidence: sharedEvidence, account: views[strategy]!.account },
+              position.symbol,
+            )?.action === "close")
         ) {
           closedThisRound.add(`${strategy}:${position.symbol}`);
           await execute(
@@ -247,15 +284,20 @@ export function createPerpsStudyRunner(deps: {
             {
               symbol: position.symbol,
               action: "close",
-              reason: closing
-                ? "SESSION_END"
-                : now() - position.openedAt >= 30 * 60000 &&
-                    record.config.strategyVersion === "1.1.0"
-                  ? "HORIZON_EXIT"
-                  : "RISK_EXIT",
+              reason:
+                ablation && risk.closeSymbols.includes(position.symbol)
+                  ? "RISK_EXIT"
+                  : closing
+                    ? "SESSION_END"
+                    : now() - position.openedAt >= 30 * 60000 &&
+                        (record.config.strategyVersion === "1.1.0" || ablation)
+                      ? "HORIZON_EXIT"
+                      : risk.closeSymbols.includes(position.symbol)
+                        ? "RISK_EXIT"
+                        : "THESIS_EXIT",
               sourceIds: [],
             },
-            observation.frames,
+            sharedEvidence?.frames ?? observation.frames,
             signal,
           );
         }
@@ -274,6 +316,7 @@ export function createPerpsStudyRunner(deps: {
             risk: paperRisk(views[s]!.account, views[s]!.attempts, now()),
             positions: views[s]!.account.positions.filter((p) => p.closedAt === null).length,
             fundingPending: views[s]!.account.fundingPending,
+            fundingDisputed: views[s]!.account.fundingDisputed ?? false,
           },
         ]),
       ),
@@ -301,12 +344,16 @@ export function createPerpsStudyRunner(deps: {
     if (!attempted) {
       return true;
     }
+    if (ablation && !sharedEvidence) {
+      return true;
+    }
     let evidence: PerpsEvidence;
     try {
-      evidence = await data.evidence(record, observation, signal, () => ownedGuard());
+      evidence =
+        sharedEvidence ?? (await data.evidence(record, observation, signal, () => ownedGuard()));
       signal.throwIfAborted();
       validateCommonFrames(evidence.frames, record.config.network, now());
-      if (record.config.strategyVersion === "1.1.0") {
+      if (record.config.strategyVersion === "1.1.0" || ablation) {
         validateMultiframeEvidence(evidence);
       }
     } catch (error) {
@@ -324,25 +371,43 @@ export function createPerpsStudyRunner(deps: {
     const accounts = Object.fromEntries(
       strategies.map((s) => [s, views[s]!.account]),
     ) as Parameters<PerpsStudyRepository["reserve"]>[4];
-    const rules = await executePerpsStrategy(
-      { id: "rules", version: record.config.strategyVersion ?? "1.0.0" },
-      { evidence, account: accounts.rules },
-      {
-        models: {},
-        signal,
-        calls: {
-          run: async () => {
-            throw new PilotError("MODEL_CONFIG_MISMATCH", "Rules cannot call models");
+    const rules = ablation
+      ? []
+      : await executePerpsStrategy(
+          { id: "rules", version: record.config.strategyVersion ?? "1.0.0" },
+          { evidence, account: accounts.rules! },
+          {
+            models: {},
+            signal,
+            calls: {
+              run: async () => {
+                throw new PilotError("MODEL_CONFIG_MISMATCH", "Rules cannot call models");
+              },
+            },
           },
-        },
-      },
-    );
+        );
     const round = await study.reserve(scope, lease, slot, evidence, accounts, rules);
     if (!round) {
       return true;
     }
     const deadline = AbortSignal.any([signal, AbortSignal.timeout(45000)]);
-    const proposals: Partial<Record<PerpsStudyStrategy, PerpsProposal[]>> = { rules };
+    const proposals: Partial<Record<PerpsStudyStrategy, PerpsProposal[]>> = ablation
+      ? {}
+      : { rules };
+    if (ablation) {
+      for (const strategy of strategies) {
+        const choices = smaAblationProposal(
+          { evidence, account: accounts[strategy]! },
+          strategy as SmaVariant,
+        );
+        proposals[strategy] = choices.map((c) => c.proposal);
+        await study.event(scope, lease, `${round.key}:${strategy}:initial`, "sma-initial", {
+          slot,
+          strategy,
+          choices,
+        });
+      }
+    }
     async function call<T>(
       lane: PerpsCallLane,
       fn: (hooks: PerpsModelHooks) => Promise<T>,
@@ -379,7 +444,7 @@ export function createPerpsStudyRunner(deps: {
       }
     }
     // Preserve the historical launch order; account/report order is a separate protocol detail.
-    const modelStrategies: PerpsStudyStrategy[] = ["deepseek", "jev"];
+    const modelStrategies: PerpsStudyStrategy[] = ablation ? [] : ["deepseek", "jev"];
     if (record.config.version === 2) {
       modelStrategies.push("combined");
     }
@@ -390,6 +455,12 @@ export function createPerpsStudyRunner(deps: {
           throw new PilotError("MODEL_CONFIG_MISMATCH", "Strategy account unavailable");
         }
         const context = { evidence, account };
+        if (!models) {
+          throw new PilotError(
+            "MODEL_CONFIG_MISMATCH",
+            "Models required by this historical protocol",
+          );
+        }
         const dependencies = { models, signal: deadline, calls: { run: call } };
         proposals[strategy] =
           record.config.version === 1 && strategy === "jev"
@@ -419,7 +490,7 @@ export function createPerpsStudyRunner(deps: {
       const finalAt = now();
       validateCommonFrames(frames, record.config.network, finalAt);
       await ownedGuard(true);
-      if (record.config.strategyVersion === "1.1.0") {
+      if (record.config.strategyVersion === "1.1.0" || ablation) {
         validateMultiframeEvidence({ ...evidence, observedAt: finalAt, frames });
       }
       executionStarted = true;
@@ -452,8 +523,16 @@ export function createPerpsStudyRunner(deps: {
           );
         }
         for (const originalProposal of proposals[strategy]!) {
-          const proposal =
-            record.config.strategyVersion === "1.1.0"
+          const proposal = ablation
+            ? finalSmaProposal(
+                {
+                  evidence: { ...evidence, observedAt: finalAt, frames },
+                  account: current.account,
+                },
+                strategy as SmaVariant,
+                originalProposal,
+              )
+            : record.config.strategyVersion === "1.1.0"
               ? gateMultiframeProposal(
                   {
                     evidence: { ...evidence, observedAt: finalAt, frames },
@@ -462,13 +541,30 @@ export function createPerpsStudyRunner(deps: {
                   originalProposal,
                 )
               : originalProposal;
-          if (proposal !== originalProposal) {
+          if (proposal !== originalProposal || ablation) {
             await study.event(
               scope,
               lease,
               `${round.key}:${strategy}:${proposal.symbol}:final-gate`,
               "final-policy-gate",
-              { originalProposal, proposal, strategyVersion: "1.1.0" },
+              {
+                originalProposal,
+                proposal,
+                strategyVersion: record.config.strategyVersion,
+                finalRisk: risk,
+                closedThisRound: closedThisRound.has(`${strategy}:${proposal.symbol}`),
+                ...(ablation
+                  ? {
+                      trace: smaAblationProposal(
+                        {
+                          evidence: { ...evidence, observedAt: finalAt, frames },
+                          account: current.account,
+                        },
+                        strategy as SmaVariant,
+                      ).find((c) => c.proposal.symbol === proposal.symbol)?.trace,
+                    }
+                  : {}),
+              },
             );
           }
           if (closedThisRound.has(`${strategy}:${proposal.symbol}`)) {
@@ -489,6 +585,13 @@ export function createPerpsStudyRunner(deps: {
       await study.finishExecution(scope, lease, round.key, "complete");
     } catch (error) {
       signal.throwIfAborted();
+      if (
+        ablation &&
+        (!(error instanceof PilotError) ||
+          ["LEASE_LOST", "PERSISTENCE_FAILED", "EVENT_PERSISTENCE_FAILED"].includes(error.code))
+      ) {
+        throw error;
+      }
       if (!executionStarted && transientPerpsData(error)) {
         await skip("execution-refresh", error);
         await study.finishExecution(scope, lease, round.key, "skipped_data_unavailable");
@@ -506,6 +609,7 @@ export function createPerpsStudyRunner(deps: {
     cycle,
     async run(scope: PerpsStudyScope, signal: AbortSignal) {
       const lease = await study.claim(scope);
+      const ablation = (await study.view(scope)).record.config.version === 3;
       const heartbeat = startLeaseHeartbeat({
         lease,
         renew: () => study.renew(scope, lease),
@@ -518,25 +622,42 @@ export function createPerpsStudyRunner(deps: {
       try {
         for (;;) {
           const start = now();
+          const { record } = await study.view(scope);
+          if (
+            record.config.version === 3 &&
+            record.startedAt !== null &&
+            now() < record.startedAt
+          ) {
+            await wait(Math.min(60000, record.startedAt - now()), combined);
+            continue;
+          }
           if (!(await cycle(scope, lease, combined))) {
+            await deps.onCycle?.();
             break;
           }
-          const wait = Math.max(0, 60000 - (now() - start));
-          await new Promise<void>((resolve, reject) => {
-            const abort = () => {
-              clearTimeout(timer);
-              reject(combined.reason);
-            };
-            const timer = setTimeout(() => {
-              combined.removeEventListener("abort", abort);
-              resolve();
-            }, wait);
-            combined.addEventListener("abort", abort, { once: true });
-            if (combined.aborted) {
-              abort();
-            }
-          });
+          await deps.onCycle?.();
+          const delay = Math.max(0, 60000 - (now() - start));
+          await wait(delay, combined);
         }
+      } catch (error) {
+        if (
+          ablation &&
+          error instanceof PilotError &&
+          [
+            "CONFIG_CHANGED",
+            "CONFIG_CHANGED_DURING_READ",
+            "PAUSED",
+            "PLUGIN_DISABLED",
+            "TOOL_DISABLED",
+            "PERMISSION_DENIED",
+          ].includes(error.code) &&
+          !combined.aborted
+        ) {
+          heartbeat.assertActive();
+          await study.stopDecisions(scope, lease, error.code);
+          await study.complete(scope, lease);
+        }
+        throw error;
       } finally {
         await heartbeat.stop();
         await study.release(scope, lease).catch(() => {
@@ -553,4 +674,21 @@ export function createPerpsStudyRunner(deps: {
       }
     },
   };
+}
+
+function wait(delay: number, combined: AbortSignal) {
+  return new Promise<void>((resolve, reject) => {
+    const abort = () => {
+      clearTimeout(timer);
+      reject(combined.reason);
+    };
+    const timer = setTimeout(() => {
+      combined.removeEventListener("abort", abort);
+      resolve();
+    }, delay);
+    combined.addEventListener("abort", abort, { once: true });
+    if (combined.aborted) {
+      abort();
+    }
+  });
 }
