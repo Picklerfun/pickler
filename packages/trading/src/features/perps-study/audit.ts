@@ -150,7 +150,9 @@ export function auditPerpsDecisions(
     for (const symbol of ["BTC", "ETH"] as const) {
       const initial = round?.evidence?.frames?.find((f) => f?.snapshot?.market?.symbol === symbol);
       const final = frames?.find((f) => f?.snapshot?.market?.symbol === symbol);
-      const series = round?.evidence?.candles?.find((c) => c?.market?.symbol === symbol);
+      const series = round?.evidence?.candles?.find(
+        (c) => c?.market?.symbol === symbol && c.resolution === 3600,
+      );
       const candles = series?.candles ?? [];
       const candleHash = series ? hash(series.candles) : null;
       const previous = candleHistory.get(symbol);
