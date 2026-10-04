@@ -34,7 +34,7 @@ export function createStudyData(
       guard,
     );
   };
-  let cache: { hour: number; candles: PerpCandles[] } | undefined;
+  const cache = new Map<string, PerpCandles>();
   return {
     close: async () => {
       await reader?.close();
@@ -72,40 +72,48 @@ export function createStudyData(
     },
     async evidence(record, observation, signal, guard) {
       await guard?.();
-      const hour = Math.floor(Date.now() / 3600000) * 3600000;
-      if (cache?.hour !== hour) {
-        const { service } = await createPerplSession(
-          agents,
-          { tenantId: record.config.tenantId, agentId: record.agentIds.rules },
-          signal,
-          { ...options, schedule, ...(guard ? { guard } : {}) },
-        );
-        const candles = [];
-        for (const symbol of ["BTC", "ETH"] as const) {
-          const series = await service.getPerpCandles({
-            symbol,
-            resolution: 3600,
-            from: hour - 60 * 3600000,
-            to: hour,
-          });
-          if (
-            series.candles.filter((c) => c.closed).length !== 60 ||
-            series.missingOpenTimes.length
-          ) {
-            throw new PilotError(
-              "DATA_UNAVAILABLE",
-              "Sixty consecutive closed hourly candles required",
-            );
+      const resolutions = record.config.strategyVersion === "1.1.0" ? [3600, 900, 300] : [3600];
+      const candles: PerpCandles[] = [];
+      const { service } = await createPerplSession(
+        agents,
+        { tenantId: record.config.tenantId, agentId: record.agentIds.rules },
+        signal,
+        { ...options, schedule, ...(guard ? { guard } : {}) },
+      );
+      for (const symbol of ["BTC", "ETH"] as const) {
+        for (const resolution of resolutions) {
+          await guard?.();
+          const end = Math.floor(Date.now() / (resolution * 1000)) * resolution * 1000;
+          const key = `${record.config.tenantId}:${record.agentIds.rules}:${symbol}:${resolution}`;
+          let series = cache.get(key);
+          if (record.config.strategyVersion === "1.1.0" || series?.to !== end) {
+            series = await service.getPerpCandles({
+              symbol,
+              resolution,
+              from: end - 60 * resolution * 1000,
+              to: end,
+            });
+            if (
+              series.candles.filter((c) => c.closed).length !== 60 ||
+              series.missingOpenTimes.length
+            ) {
+              throw new PilotError("DATA_UNAVAILABLE", "Sixty consecutive closed candles required");
+            }
+            cache.set(key, series);
           }
-          candles.push(series);
+          candles.push(structuredClone(series));
         }
-        cache = { hour, candles };
       }
+      await guard?.();
+      const frames =
+        record.config.strategyVersion === "1.1.0"
+          ? await read(record, signal, guard)
+          : structuredClone(observation.frames);
       await guard?.();
       return {
         observedAt: Date.now(),
-        frames: structuredClone(observation.frames),
-        candles: structuredClone(cache.candles),
+        frames,
+        candles,
         sourceIds: [
           "BTC:market",
           "BTC:book",
@@ -113,6 +121,9 @@ export function createStudyData(
           "ETH:market",
           "ETH:book",
           "ETH:candles",
+          ...(record.config.strategyVersion === "1.1.0"
+            ? ["BTC:candles:300", "BTC:candles:900", "ETH:candles:300", "ETH:candles:900"]
+            : []),
         ],
       };
     },
