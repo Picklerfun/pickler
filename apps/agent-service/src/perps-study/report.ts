@@ -158,6 +158,7 @@ export function perpsStudyReport(
     rows.every((r) => !r.fundingPending && !r.fundingDisputed && !r.openPositions);
   return {
     protocol: record.config.protocol,
+    strategyVersion: record.config.strategyVersion ?? "1.0.0",
     dataPolicy: record.dataPolicy ?? "legacy",
     config: record.config,
     metadata: record.metadata,
@@ -172,6 +173,7 @@ export function perpsStudyReport(
       proposals: r.proposals,
       calls: r.calls,
     })),
+    finalPolicyGates: events.filter((e) => e.kind === "final-policy-gate"),
     modelDiagnostics: events.filter((e) => e.kind === "model-diagnostic"),
     executionDetails: events.filter((e) => e.kind === "execution" || e.kind === "execution-input"),
     incompleteRounds,
@@ -192,6 +194,12 @@ export function perpsStudyReport(
       "Funding uses the laboratory formula; liquidity is independent for each agent.",
       "No liquidation, signing, real orders, or on-chain activity.",
       "This short experimental sample cannot establish profitability.",
+      ...(record.config.strategyVersion === "1.1.0"
+        ? [
+            "Activity cost hurdle is experimental, not a prediction of future return.",
+            "Historical version 1.0.0 results are not a paired economic control.",
+          ]
+        : []),
       ...(!comparable ? ["Incomplete comparison: no profitability ranking."] : []),
     ],
     rows,
@@ -216,7 +224,7 @@ export function renderPerpsReport(report: ReturnType<typeof perpsStudyReport>) {
       fields.map(csvCell).join(","),
       ...report.rows.map((row) => fields.map((f) => csvCell(row[f as keyof typeof row])).join(",")),
     ].join("\n") + "\n";
-  const html = `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Perpetual virtual comparison</title><style>body{font:16px system-ui;margin:32px;color:#142332;background:#f5f7fa}table{border-collapse:collapse;background:white}td,th{border:1px solid #ccc;padding:8px;text-align:left}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><h1>Perpetual virtual comparison</h1><p>Status: ${escape(report.status)}. Comparable: ${report.comparable}. Rounds: ${report.rounds}. Incomplete: ${report.incompleteRounds}. Data-unavailable: ${report.omittedRounds}. Unobserved milliseconds: ${report.unobservedMs}.</p><table><tr><th>Metric</th>${report.rows.map((r) => `<th>${escape(r.strategy)}</th>`).join("")}</tr>${fields.map((f) => `<tr><th>${escape(f)}</th>${report.rows.map((r) => `<td>${escape(r[f as keyof typeof r])}</td>`).join("")}</tr>`).join("")}</table><ul>${report.limitations.map((l) => `<li>${escape(l)}</li>`).join("")}</ul><details><summary>Configuration and protocol</summary><pre>${escape(JSON.stringify({ config: report.config, metadata: report.metadata }, null, 2))}</pre></details><details><summary>Round decisions and reviews</summary><pre>${escape(JSON.stringify(report.roundDetails, null, 2))}</pre></details></html>`;
+  const html = `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Perpetual virtual comparison</title><style>body{font:16px system-ui;margin:32px;color:#142332;background:#f5f7fa}table{border-collapse:collapse;background:white}td,th{border:1px solid #ccc;padding:8px;text-align:left}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><h1>Perpetual virtual comparison</h1><p>Protocol: ${escape(report.protocol)}. Strategy: ${escape(report.strategyVersion)}. Status: ${escape(report.status)}. Comparable: ${report.comparable}. Rounds: ${report.rounds}. Incomplete: ${report.incompleteRounds}. Data-unavailable: ${report.omittedRounds}. Unobserved milliseconds: ${report.unobservedMs}.</p><table><tr><th>Metric</th>${report.rows.map((r) => `<th>${escape(r.strategy)}</th>`).join("")}</tr>${fields.map((f) => `<tr><th>${escape(f)}</th>${report.rows.map((r) => `<td>${escape(r[f as keyof typeof r])}</td>`).join("")}</tr>`).join("")}</table><ul>${report.limitations.map((l) => `<li>${escape(l)}</li>`).join("")}</ul><details><summary>Configuration and protocol</summary><pre>${escape(JSON.stringify({ config: report.config, metadata: report.metadata }, null, 2))}</pre></details><details><summary>Final policy blocks</summary><pre>${escape(JSON.stringify(report.finalPolicyGates, null, 2))}</pre></details><details><summary>Round decisions and reviews</summary><pre>${escape(JSON.stringify(report.roundDetails, null, 2))}</pre></details></html>`;
   const roundsCsv =
     [
       ["slot", "executionStatus", "proposals", "calls"].map(csvCell).join(","),
