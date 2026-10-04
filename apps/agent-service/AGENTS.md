@@ -208,3 +208,7 @@ Perpetual evaluation routes its four variants through the versioned
 never add a host-specific strategy switch or model route. Controlled boundary and PostgreSQL
 replay tests cover this preparation. No Studio selector, paid session, restart or activation is
 part of it; the v1 readiness protocol remains separately interpreted.
+
+## Experimental multiframe comparison
+
+Read [PERPS-MULTIFRAME.md](PERPS-MULTIFRAME.md). The explicit local perps-multiframe-v3 protocol selects strategy 1.1.0 in config shape v2. It reads sixty closed candles at 1h/15m/5m through the guarded plugin, refreshes initial frames after acquisition and retains common final data. Never reconstruct short histories from hourly candles or change historical studies. Thirty-minute exits and final gates belong to trading. New contract checks and runs require explicit operator authorization and share the original USD 5 campaign.
