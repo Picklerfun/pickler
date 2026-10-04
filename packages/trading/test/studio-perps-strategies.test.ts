@@ -67,8 +67,8 @@ function run(id: string, input = context(), models: StudioPerpsModels = {}) {
 }
 const answer = (choice: string) => ({ choice, confidence: 1, probabilities: { [choice]: 1 } });
 
-test("registry keeps all eight id/version pairs distinct and defaults do not enable execution", () => {
-  assert.equal(new Set(PERPS_STRATEGIES.map((value) => `${value.id}@${value.version}`)).size, 8);
+test("registry keeps all twelve id/version pairs distinct and defaults do not enable execution", () => {
+  assert.equal(new Set(PERPS_STRATEGIES.map((value) => `${value.id}@${value.version}`)).size, 12);
   assert.deepEqual(effectiveStudioStrategy(DEFAULT_CONFIG), { id: "combined", version: "2.0.0" });
   assert.equal(DEFAULT_CONFIG.perpsStrategy, undefined);
 });
