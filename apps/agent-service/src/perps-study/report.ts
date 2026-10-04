@@ -104,12 +104,14 @@ export function perpsStudyReport(
     return {
       strategy:
         record.config.version === 2
-          ? {
-              rules: "rules",
-              jev: "jev-only",
-              deepseek: "deepseek-only",
-              combined: "deepseek-jev",
-            }[strategy]
+          ? (
+              {
+                rules: "rules",
+                jev: "jev-only",
+                deepseek: "deepseek-only",
+                combined: "deepseek-jev",
+              } as Record<string, string>
+            )[strategy]
           : strategy,
       initialVirtualAUSD: "1000",
       cashVirtualAUSD: risk.cash,
