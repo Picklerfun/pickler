@@ -378,7 +378,7 @@ export async function runPerpsStudy(args: string[], signal?: AbortSignal) {
       for (const frame of evidence.frames) {
         validatePaperFrame(frame, config.network, frame.snapshot.market.symbol, Date.now());
       }
-      if (config.strategyVersion === "1.1.0") {
+      if (config.version === 2 && config.strategyVersion === "1.1.0") {
         validateMultiframeEvidence(evidence);
       }
       for (const [url, key, id] of [
