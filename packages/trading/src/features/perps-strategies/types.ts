@@ -56,7 +56,7 @@ export interface PerpsStrategySelection {
 }
 export interface PerpsStrategyDescriptor {
   readonly id: PerpsStrategyId;
-  readonly version: "1.0.0" | "2.0.0";
+  readonly version: "1.0.0" | "1.1.0" | "2.0.0";
   readonly capabilities: readonly PerpsStrategyCapability[];
 }
 export type PerpsStrategyInput = DeepReadonly<PerpsDecisionContext>;
