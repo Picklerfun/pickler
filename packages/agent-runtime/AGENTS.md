@@ -199,3 +199,7 @@ transport limits remain unchanged. Keep readiness for historical v1 only; it is 
 `combined` strategy. Never construct a parallel strategy registry or financial policy here.
 
 Studio model adapters live in `composition/studio-perps-models.ts`. Their forecast and atomic Jev prompts are version 2.0.0, separate from laboratory prompts and advice. Every transport awaits the injected before-call hook and records verified model token usage; no repair or retry is permitted. Atomic condition support retains the 0.7 threshold, material review retains the 0.9 threshold; neither is a financial probability. Composition of these adapters alone does not enable the product.
+
+## Multiframe laboratory prompts
+
+The opt-in local perps-multiframe-v3 model adapter selects forecast and atomic prompts 1.1.0. It sends sixty close/time pairs per 1h/15m/5m series with shared features, explicit cadence/horizon and its own account. Original proposals remain intact; trading owns final policy gates. Missing inputs fail before transport. The old prompt snapshots, thresholds, 30,000-byte bound, deadlines, usage hooks and no-retry behavior remain unchanged. No deployed strategy is selected implicitly.
