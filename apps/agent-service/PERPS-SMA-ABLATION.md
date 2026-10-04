@@ -1,0 +1,86 @@
+# Local SMA entry ablation
+
+`perps-sma-ablation-v1` uses configuration version 3. It compares `sma-hourly`,
+`sma-multiframe`, and `sma-direction` in three independent 1,000 virtual AUSD accounts.
+It never constructs model/signing clients or reserves model calls. Historical budgets and
+studies retain their original meaning. Public Perpl traffic remains subject to existing permissions.
+
+Hourly entries select 1h explicitly and require a SMA20/50 gap strictly greater than 10 bps.
+Multiframe entries retain historical 1.1.0. Direction entries remove only the activity magnitude
+hurdle; known costs, depth, directional momentum, sizing, fees, funding and risk remain required.
+All variants use common exits: risk first, invalidated hourly trend, adverse 5m momentum, or
+30-minute holding age. A close prevents reopening that asset in the same cycle.
+This hourly arm is not a full replay of the old historical strategy.
+
+## Commands
+
+Run from `apps/agent-service`, using Node 22.22+ after `npm run build:shared` from the root:
+
+```sh
+node --import tsx src/evaluate.ts prepare --config /absolute/new-study/study.json --env-file /absolute/new-study/database.env
+node --import tsx src/evaluate.ts preflight --config /absolute/new-study/study.json --env-file /absolute/new-study/database.env
+node --import tsx src/evaluate.ts run --config /absolute/new-study/study.json --env-file /absolute/new-study/database.env
+node --import tsx src/evaluate.ts report --config /absolute/new-study/study.json --env-file /absolute/new-study/database.env
+node --import tsx src/evaluate.ts stop --config /absolute/new-study/study.json --env-file /absolute/new-study/database.env
+```
+
+`database.env` contains only `DATABASE_URL` for loopback PostgreSQL. No model, trading or
+signer credentials are needed. `settle` is a read-only report projection for this protocol;
+only the original runner observes funding and performs deterministic exits. `validate`,
+paid overrides, acquisition overrides and resume are rejected.
+
+Example configuration (proposed values; preparation creates dedicated agents):
+
+```json
+{
+  "version": 3,
+  "protocol": "perps-sma-ablation-v1",
+  "tenantId": "perps-lab",
+  "sessionId": "sma-example",
+  "network": "mainnet",
+  "hours": 6,
+  "acquisitionPolicy": "rest-paced-20s-v1",
+  "strategyVersion": "sma-ablation-v1",
+  "entryPolicyVersion": "sma-ablation-entries-v1",
+  "exitPolicyVersion": "multiframe-common-exits-v1"
+}
+```
+
+## Frozen execution and failure handling
+
+Commit all code before admission. Preparation records HEAD and the canonical configuration hash;
+preflight/run reject differing metadata, dirty code and already-started studies. Each owned read
+rechecks the configuration text and HEAD. Preserve the checkout throughout the run.
+
+Claim schedules the next quarter-hour at minute one, followed by 24 slots over six hours.
+Admission tolerance is 30 seconds, with no recovery or extension. Minute observations reconcile
+risk, funding and exits. The lease remains 90 seconds with renewal every 20 seconds. macOS
+retains the existing closed-lid rejection and idle sleep protection.
+
+Each round records initial multiframe evidence and independent proposals. A single final BTC/ETH
+set validates before execution writes. Initial holds cannot become openings; directions cannot
+switch. Simulations do not consume each other's liquidity. Acquisition remains
+`rest-paced-20s-v1`: 20 seconds jointly, 30-second freshness, 5-second future/skew, and existing
+serialized REST limits. No missing prices or candles are substituted.
+
+Unavailable data omits the slot, including already-computed proposals. Partial execution failures
+stop new decisions and require reconciliation. Lost ownership or persistence aborts immediately.
+There is no automatic reclaim or restart. Six hours end admissions; at most 15 minutes remain
+for deterministic exits. Unknown funding and unclosed positions stay pending.
+
+## Reports
+
+The runner atomically regenerates `report.html`, `report.csv` and `report.json` after each cycle
+and termination. There are always 144 decision rows, with separate observations/exit events,
+initial/final evidence, original accounts, filter traces and provenance. Output directories have
+an exclusive study marker; do not reuse historical directories. Read-only report export uses a
+consistent PostgreSQL snapshot. Local runner errors override the displayed active status while
+preserving the persisted status and pending positions.
+
+Fees, realized cash movements, reconciled funding, sampled equity/drawdown and open positions
+are separate. Unknown funding suppresses net/equity conclusions. Marked drawdown reports only
+verified samples and their count, not continuous valuation. Missing slots are not holds or zero
+returns. Compare direction versus multiframe for the activity hurdle and direction versus hourly
+for directional confirmation; accounts evolve independently, so economic differences are not
+single-round causal estimates. Six hours remain exploratory. Do not pool past studies as paired
+controls, promote a policy, repeat automatically, or alter parameters for a positive outcome.
