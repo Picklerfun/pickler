@@ -20,6 +20,7 @@ the session's private artifacts and the explicitly selected database. `--env-fil
 | Protocol              | Version                        | Available commands                                                       |
 | --------------------- | ------------------------------ | ------------------------------------------------------------------------ |
 | Perpetual comparison  | 1, `perps-comparison-v1`       | prepare, preflight, run, resume, status, stop, settle, report            |
+| SMA entry ablation    | 3, `perps-sma-ablation-v1`     | prepare, preflight, run, status, stop, settle, report                    |
 | BTC benchmark         | 4, `btc-decision-benchmark-v1` | prepare, preflight, validate, run, status, stop, settle, report, compare |
 | Original paper study  | 1, no protocol field           | status, report                                                           |
 | Quantitative BTC      | 2, `btc-quant-jev-v1`          | status, report, settle, history, replay                                  |
@@ -95,3 +96,7 @@ See [the 2026-10-01 public results](PERPL-STREAM-VALIDATION.md): both transports
 The perpetual protocols support audit-export. The separate audit command reads a versioned export
 without a study config, environment file, database or provider clients. See
 [the audit guide](PERPS-DECISION-AUDIT.md) for exact commands, provenance and acceptance boundaries.
+
+For the model-free SMA protocol, read [PERPS-SMA-ABLATION.md](PERPS-SMA-ABLATION.md).
+Do not pass `--allow-paid`. Its preflight is database/permission-only; `settle` only renders a
+read-only report. Only its original runner may observe public data and close virtual positions.
