@@ -173,3 +173,12 @@ The common registry identifies strategies by both id and version. Version 1.0.0 
 ## Experimental laboratory strategy 1.1.0
 
 `features/perps-strategies/multiframe.ts` owns validated 1h/15m/5m evidence, the hourly SMA plus short confirmation variant, the explicit thirty-minute horizon and the common final entry gate. The activity hurdle is a versioned uncalibrated assumption, never expected profit. perps-multiframe-v3 uses four accounts and config shape v2 with explicit strategyVersion 1.1.0. Keep laboratory 1.0.0 and Studio 2.0.0 unchanged. Invalid short evidence fails before reservation; all final frames and candles validate before execution writes.
+
+## Offline multiframe filter audit
+
+The evaluation subpath exports `auditPerpsFilters` for `perps-decision-audit-v2`. It pairs SMA
+1.0.0/1.1.0 proposals on each original rules account, explicitly selects hourly baseline series,
+and never carries hypothetical positions forward. `traceMultiframeProposal` reports the actual
+gate's first reason plus overlapping predicate failures, without changing policy or execution.
+Only valid common complete slots enter paired counts. Preserve failed-call reservations and
+mark missing contexts, request phases and root causes unverifiable; no counterfactual P&L.
