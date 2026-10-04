@@ -4,3 +4,7 @@ export * from "./features/paper-study/comparison.js";
 export * from "./features/paper-study/quant-session.js";
 export * from "./features/paper-study/quant.js";
 export * from "./features/paper-study/study.js";
+
+export * from "./features/perps-strategies/types.js";
+export * from "./features/perps-strategies/policy.js";
+export * from "./features/perps-strategies/registry.js";

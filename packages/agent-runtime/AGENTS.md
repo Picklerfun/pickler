@@ -167,3 +167,11 @@ transport; no paid retries. Forecasts exclude Jev answers and portfolio state. A
 new plugin or a trading executor. See [Agent advice](../../docs/agent-advice.md).
 
 Advice reuses MODEL_BASE_URL, MODEL_ID and MODEL_API_KEY from the configured research provider. It never reads ADVICE_DEEPSEEK_API_KEY. Reject mismatched frozen provider/model policies before Jev or forecast transport; retain no retries and bounded accounting. Jev keeps its separate ADVICE_JEV_API_KEY.
+
+## Perpetual strategy adapters
+
+Perpl model composition imports decision policies and model ports from
+`@pickler/trading/strategies`. It implements direct, atomic decision and review capabilities;
+the trading registry owns their routing. Prompts, hashes, provider/model configuration and
+transport limits remain unchanged. Keep readiness for historical v1 only; it is not the v2
+`combined` strategy. Never construct a parallel strategy registry or financial policy here.

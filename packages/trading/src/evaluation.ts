@@ -8,3 +8,6 @@ export * from "./features/evaluation/reconciliation.js";
 export * from "./features/evaluation/lease-heartbeat.js";
 
 export * from "./features/perps-study/audit.js";
+
+// Historical public policies retain their names without a second implementation.
+export * from "./features/perps-strategies/policy.js";

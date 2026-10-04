@@ -7,7 +7,12 @@ import {
 import type { PerpsPaperView } from "../perps-paper/types.js";
 import type { PerpsStudyMap } from "./types.js";
 import { paperUnits, paperDecimal } from "../perps-paper/decimal.js";
-import { perpsRules, perpsJevDecisions, perpsJevReviewed, type PerpsJevAnswers } from "./policy.js";
+import {
+  perpsRules,
+  perpsJevDecisions,
+  perpsJevReviewed,
+  type PerpsJevAnswers,
+} from "../perps-strategies/policy.js";
 import {
   perpsStrategies,
   type PerpsStudyView,

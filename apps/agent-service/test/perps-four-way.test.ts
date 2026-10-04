@@ -2,12 +2,14 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   perpsJevDecisions,
+  perpsRules,
   perpsJevReviewed,
   perpsStrategies,
   type PerpsJevAnswers,
   type PerpsStudyConfig,
   type PerpsStudyMap,
 } from "@pickler/trading/evaluation";
+import { executePerpsStrategy, PERPS_STRATEGIES } from "@pickler/trading/strategies";
 import { PostgresPerpsStudyStore, PostgresPerpsPaperStore } from "@pickler/infrastructure";
 import { createTestStore } from "@pickler/infrastructure/testing";
 import { studyConfig, studyContext, studyEvidence } from "./perps-study-fixtures.js";
@@ -260,6 +262,11 @@ test("four-way round keeps independent portfolios and one common final refresh",
   });
   await runner.cycle(config, lease, new AbortController().signal);
   assert.equal(finalRefreshes, 1);
+  assert.deepEqual(seen.slice(0, 3), [
+    view.record.agentIds.deepseek,
+    view.record.agentIds.jev,
+    view.record.agentIds.combined,
+  ]);
   assert.equal(new Set(seen).size, 3);
   assert.equal(seen.filter((id) => id === view.record.agentIds.combined).length, 2);
   const saved = await study.view(config);
@@ -327,4 +334,39 @@ test("valid atomic Jev answers pass strict runtime contracts and preserve positi
   );
   assert.deepEqual(reviewed.proposals, decided.proposals);
   assert.deepEqual(usage, [12, 12]);
+});
+
+test("registry rules preserve exact SMA boundaries and never use model capabilities", async () => {
+  assert.deepEqual(
+    new Set(PERPS_STRATEGIES.map((s) => s.id)),
+    new Set(perpsStrategies({ version: 2 })),
+  );
+  for (const [first, last, expected] of [
+    ["2998", "3003", "hold"],
+    ["2998", "3003.000001", "open-long"],
+    ["3002", "2997", "hold"],
+    ["3002", "2996.999999", "open-short"],
+  ] as const) {
+    const input = studyContext();
+    for (const series of input.evidence.candles) {
+      series.candles = series.candles.slice(-50);
+      series.candles.forEach((candle, index) => {
+        candle.close = index < 30 ? first : last;
+      });
+    }
+    const proposals = await executePerpsStrategy({ id: "rules", version: "1.0.0" }, input, {
+      models: {},
+      signal: new AbortController().signal,
+      calls: {
+        async run() {
+          throw new Error("Rules called a model");
+        },
+      },
+    });
+    assert.deepEqual(
+      proposals.map((p) => p.action),
+      [expected, expected],
+    );
+    assert.deepEqual(proposals, perpsRules(input));
+  }
 });
