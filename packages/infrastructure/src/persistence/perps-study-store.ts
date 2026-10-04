@@ -554,8 +554,8 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
       }
       if (x.record.config.version === 2) {
         const v2Calls = await c.query<{ document: PerpsRound }>(
-          `SELECT r.document FROM pickler.perps_study_rounds r JOIN pickler.perps_studies s ON s.id=r.study_id WHERE s.tenant_id=$1 AND s.network=$2 AND s.document->'config'->>'protocol'='perps-four-way-v2'`,
-          [scope.tenantId, scope.network],
+          `SELECT r.document FROM pickler.perps_study_rounds r JOIN pickler.perps_studies s ON s.id=r.study_id WHERE s.tenant_id=$1 AND s.network=$2 AND s.document->'config'->>'protocol'=$3`,
+          [scope.tenantId, scope.network, x.record.config.protocol],
         );
         const admitted = v2Calls.rows
           .flatMap((r) => Object.values(r.document.calls))
