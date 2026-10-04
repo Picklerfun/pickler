@@ -4,6 +4,22 @@ import type { PerpsStudyConfig, PerpsRound, PerpsCallLane } from "./types.js";
 export const PERPS_INPUT_LIMIT = 65536;
 export const PERPS_OUTPUT_LIMIT = 4096;
 export function assertPerpsStudyConfig(c: PerpsStudyConfig) {
+  if (c.version === 3) {
+    if (
+      c.protocol !== "perps-sma-ablation-v1" ||
+      c.hours !== 6 ||
+      c.acquisitionPolicy !== "rest-paced-20s-v1" ||
+      c.entryPolicyVersion !== "sma-ablation-entries-v1" ||
+      c.exitPolicyVersion !== "multiframe-common-exits-v1" ||
+      c.strategyVersion !== "sma-ablation-v1" ||
+      !c.tenantId ||
+      !/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,39}$/.test(c.sessionId) ||
+      !["mainnet", "testnet"].includes(c.network)
+    ) {
+      throw new PilotError("INVALID_INPUT", "Invalid SMA ablation configuration");
+    }
+    return;
+  }
   if (
     !(
       (c.version === 1 && c.protocol === "perps-comparison-v1" && c.hours === 24) ||
@@ -70,6 +86,9 @@ export function perpsCallCost(
   input: number,
   output: number,
 ) {
+  if (config.version === 3) {
+    throw new PilotError("PAID_CALL_FORBIDDEN", "SMA ablation cannot reserve model calls");
+  }
   if (
     !Number.isSafeInteger(input) ||
     !Number.isSafeInteger(output) ||
