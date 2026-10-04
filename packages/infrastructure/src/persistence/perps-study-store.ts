@@ -299,6 +299,9 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
       ) {
         throw new PilotError("STUDY_COMPLETE", "Study is complete");
       }
+      if (x.record.config.version === 3 && x.record.startedAt !== null) {
+        throw new PilotError("STUDY_ALREADY_STARTED", "SMA comparison cannot resume or restart");
+      }
       await this.permissions(c, x);
       for (const r of await this.rounds(c, x.id)) {
         if (r.status === "completed" && r.executionStatus === "pending") {
@@ -323,8 +326,11 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
         }
       }
       if (x.record.startedAt === null) {
-        x.record.startedAt = x.now;
-        x.record.endsAt = x.now + x.record.config.hours * 3600000;
+        x.record.startedAt =
+          x.record.config.version === 3
+            ? Math.ceil((x.now - 60000) / 900000) * 900000 + 60000
+            : x.now;
+        x.record.endsAt = x.record.startedAt + x.record.config.hours * 3600000;
         x.record.graceUntil = x.record.endsAt + 900000;
       }
       x.record.status = x.record.decisionStopReason ? "monitoring" : "running";
@@ -344,13 +350,36 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
       this.owned(c, x, lease);
       await this.permissions(c, x);
       if (
+        x.record.config.version === 3 &&
+        x.record.startedAt !== null &&
+        !x.record.decisionStopReason &&
+        !x.record.stopRequested
+      ) {
+        const current = Math.min(23, Math.floor((x.now - x.record.startedAt) / 900000));
+        for (let lost = (x.record.lastAttemptedSlot ?? -1) + 1; lost <= current; lost++) {
+          if (
+            lost === slot &&
+            x.now - (x.record.startedAt + lost * 900000) <= 30000 &&
+            x.now < x.record.endsAt!
+          ) {
+            break;
+          }
+          await c.query(
+            "INSERT INTO pickler.perps_study_events(study_id,key,at,kind,data) VALUES($1,$2,$3,'slot-missed',$4) ON CONFLICT DO NOTHING",
+            [x.id, `slot-${lost}:missed`, x.now, { slot: lost, reason: "WINDOW_MISSED" }],
+          );
+          x.record.lastAttemptedSlot = lost;
+        }
+        await this.save(c, x);
+      }
+      if (
         x.record.decisionStopReason ||
         x.record.stopRequested ||
         x.record.startedAt === null ||
         x.now >= x.record.endsAt! ||
         !Number.isInteger(slot) ||
         slot !== Math.floor((x.now - x.record.startedAt) / 900000) ||
-        (x.now - x.record.startedAt) % 900000 >= 60000 ||
+        (x.now - x.record.startedAt) % 900000 > (x.record.config.version === 3 ? 30000 : 59999) ||
         slot <= Math.max(x.record.lastAttemptedSlot ?? -1, x.record.lastRoundSlot)
       ) {
         return false;
@@ -379,6 +408,12 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
   async release(scope: PerpsStudyScope, lease: PerpsStudyLease) {
     await this.tx(async (c) => {
       const x = await this.lock(c, scope);
+      if (x.record.config.version === 3) {
+        if (Number(x.expires_at) <= x.now) {
+          return;
+        }
+        lease.assertActive?.();
+      }
       if (x.owner === lease.owner) {
         await c.query("UPDATE pickler.perps_studies SET owner=null,expires_at=null WHERE id=$1", [
           x.id,
@@ -416,8 +451,8 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
       const x = await this.lock(c, scope);
       this.owned(c, x, lease);
       x.record.decisionStopReason ??= reason;
-      x.record.status = x.record.config.version === 2 ? "closing" : "monitoring";
-      if (x.record.config.version === 2) {
+      x.record.status = x.record.config.version >= 2 ? "closing" : "monitoring";
+      if (x.record.config.version >= 2) {
         x.record.graceUntil = Math.min(x.record.graceUntil!, x.now + 900000);
       }
       await this.save(c, x);
@@ -471,6 +506,32 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
       ) {
         return null;
       }
+      if (x.record.config.version === 3) {
+        const key = `round-${String(slot).padStart(3, "0")}`;
+        if (!perpsStrategies(x.record.config).every((s) => accounts[s])) {
+          throw new PilotError("INVALID_INPUT", "All three original accounts required");
+        }
+        const round: PerpsRound = {
+          key,
+          slot,
+          executionStatus: "pending",
+          status: "reserved",
+          createdAt: x.now,
+          finishedAt: null,
+          evidence,
+          accounts,
+          proposals: {},
+          calls: {},
+        };
+        await c.query(
+          "INSERT INTO pickler.perps_study_rounds(study_id,key,document) VALUES($1,$2,$3)",
+          [x.id, key, round],
+        );
+        x.record.lastRoundSlot = slot;
+        await this.save(c, x);
+        return round;
+      }
+      const paidConfig = x.record.config;
       const calls = Object.fromEntries(
         (x.record.config.version === 2
           ? (["direct", "jev", "fallback", "review"] as const)
@@ -481,8 +542,8 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
             lane,
             model:
               lane === "jev" || lane === "review"
-                ? x.record.config.jev.model
-                : x.record.config.deepseek.model,
+                ? paidConfig.jev.model
+                : paidConfig.deepseek.model,
             status: "reserved",
             reservationUsd: perpsCallCost(
               x.record.config,
@@ -504,9 +565,9 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
         x.record.config.version === 2 &&
         (x.record.metadata as { purpose?: string })?.purpose === "contracts-v2"
       ) {
-        calls.fallback.status = "skipped";
-        calls.fallback.finishedAt = x.now;
-        calls.fallback.reservationUsd = "0";
+        calls.fallback!.status = "skipped";
+        calls.fallback!.finishedAt = x.now;
+        calls.fallback!.reservationUsd = "0";
       }
       const reserved = Object.values(calls).reduce(
         (sum, call) => sum + paperUnits(call.reservationUsd),
@@ -712,19 +773,22 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
           call.finishedAt = x.now;
         }
       }
-      const routed = r.calls.jev.result as { skip?: boolean } | null;
+      const routed = r.calls.jev?.result as { skip?: boolean } | null;
       const contractProbe = (x.record.metadata as { purpose?: string })?.purpose === "contracts-v2";
       const valid =
-        r.calls.direct.status === "completed" &&
-        r.calls.jev.status === "completed" &&
-        (x.record.config.version === 2
-          ? r.calls.review?.status === "completed" &&
-            (contractProbe || r.calls.fallback.status === "completed")
-          : routed?.skip === true || r.calls.fallback.status === "completed") &&
-        perpsStrategies(x.record.config).every((s) => !!proposals[s]) &&
-        !Object.values(r.calls).some(
-          (call) => call.status === "failed" || call.status === "started",
-        );
+        x.record.config.version === 3
+          ? Object.keys(r.calls).length === 0 &&
+            perpsStrategies(x.record.config).every((s) => proposals[s]?.length === 2)
+          : r.calls.direct?.status === "completed" &&
+            r.calls.jev?.status === "completed" &&
+            (x.record.config.version === 2
+              ? r.calls.review?.status === "completed" &&
+                (contractProbe || r.calls.fallback?.status === "completed")
+              : routed?.skip === true || r.calls.fallback?.status === "completed") &&
+            perpsStrategies(x.record.config).every((s) => !!proposals[s]) &&
+            !Object.values(r.calls).some(
+              (call) => call.status === "failed" || call.status === "started",
+            );
       r.status = valid ? "completed" : "failed";
       r.proposals = { ...r.proposals, ...proposals };
       r.finishedAt = x.now;
@@ -764,7 +828,7 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
       const x = await this.lock(c, scope);
       this.owned(c, x, lease);
       x.record.status =
-        x.record.config.version === 2 &&
+        x.record.config.version >= 2 &&
         x.record.decisionStopReason &&
         x.record.decisionStopReason !== "SESSION_END"
           ? "interrupted"
