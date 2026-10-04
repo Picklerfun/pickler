@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { initialPaperAccount, type PerpsPaperFrame } from "@pickler/trading/perps";
 import { type PerpSymbol } from "@pickler/core";
 import {
-  type PerpsStudyConfig,
+  type LegacyPerpsStudyConfig as PerpsStudyConfig,
   type PerpsEvidence,
   type PerpsDecisionContext,
 } from "@pickler/trading/evaluation";
