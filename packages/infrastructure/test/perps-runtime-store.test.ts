@@ -19,6 +19,7 @@ import {
   paperDecimal,
   paperUnits,
   perpsCheckMinute,
+  simulatePerpsFill,
   type PerpsPaperFrame,
   type PerpsPaperScope,
 } from "@pickler/trading/perps";
@@ -38,6 +39,215 @@ const NOON = Date.UTC(2026, 9, 3, 12);
 
 /** A product agent id whose hourly check runs at `minute`. */
 const idAt = (minute: number) => `${minute.toString(16).padStart(8, "0")}-${randomUUID().slice(9)}`;
+
+test("hourly admission requires current preparation; manual preparation remains available", async (t) => {
+  const f = await setup(t);
+  const agent = await f.agent({ id: idAt(0) });
+  assert.equal((await f.store.dueAgents()).length, 0);
+  await assert.rejects(f.store.startCheck({ productAgentId: agent.id, trigger: "hourly" }), {
+    code: "NOT_READY",
+  });
+  const manual = await f.store.startCheck({ productAgentId: agent.id, trigger: "manual" });
+  const claim = (await f.store.claimAgent(manual.id))!;
+  await f.store.finishCheck(claim.lease, { outcome: "held", outcomeText: "Prepared" });
+  await f.prepareHourly(agent);
+  assert.equal((await f.store.dueAgents()).length, 1);
+
+  for (const change of [
+    "config_version=0",
+    "decision='{}'",
+    'decision=\'{"protocol":"studio-perps-check-v2","incomplete":true}\'',
+    "outcome='failed'",
+  ]) {
+    await f.db.pool.query(`UPDATE pickler.perps_checks SET ${change} WHERE id=$1`, [manual.id]);
+    assert.equal((await f.store.dueAgents()).length, 0, change);
+    await assert.rejects(f.store.startCheck({ productAgentId: agent.id, trigger: "hourly" }), {
+      code: "NOT_READY",
+    });
+    await f.db.pool.query(
+      "UPDATE pickler.perps_checks SET config_version=1,decision=$2,outcome='held' WHERE id=$1",
+      [manual.id, { protocol: "studio-perps-check-v2", incomplete: false }],
+    );
+  }
+  await f.db.pool.query("DELETE FROM pickler.metadata WHERE key=$1", [
+    `connections_checked:${agent.scope.tenantId}:${agent.scope.agentId}:1`,
+  ]);
+  assert.equal((await f.store.dueAgents()).length, 0);
+  assert.equal((await f.db.readiness(agent.scope)).connectionsChecked, false);
+});
+
+test("schedule revocation after dispatch finishes a queued hourly check without a lease", async (t) => {
+  const f = await setup(t);
+  const agent = await f.agent({ id: idAt(0) });
+  await f.prepareHourly(agent);
+  assert.equal((await f.store.dueAgents()).length, 1);
+  const queued = await f.store.startCheck({
+    productAgentId: agent.id,
+    trigger: "hourly",
+    requestKey: "hourly:controlled",
+  });
+  await f.disableHourly(agent.scope);
+  assert.equal(await f.store.claimAgent(queued.id), null);
+  const finished = (await f.store.getCheck(queued.id))!;
+  assert.equal(finished.status, "finished");
+  assert.equal(finished.outcome, "skipped");
+  assert.equal(finished.error, "NOT_READY");
+  const lease = await f.db.pool.query(
+    "SELECT lease_owner,lease_expires_at FROM pickler.perps_checks WHERE id=$1",
+    [queued.id],
+  );
+  assert.equal(lease.rows[0].lease_owner, null);
+  assert.equal(lease.rows[0].lease_expires_at, null);
+  const replay = await f.store.startCheck({
+    productAgentId: agent.id,
+    trigger: "hourly",
+    requestKey: "hourly:controlled",
+  });
+  assert.equal(replay.id, queued.id);
+  assert.ok(await f.store.claimSupervision(agent.id));
+});
+
+test("a concurrent schedule disable wins before an hourly claim can acquire ownership", async (t) => {
+  const f = await setup(t);
+  const agent = await f.agent();
+  await f.prepareHourly(agent);
+  const queued = await f.store.startCheck({ productAgentId: agent.id, trigger: "hourly" });
+  const writer = await f.db.pool.connect();
+  await writer.query("BEGIN");
+  const pid = (await writer.query("SELECT pg_backend_pid() AS pid")).rows[0].pid;
+  let claiming: Promise<Awaited<ReturnType<typeof f.peer.claimAgent>>> | undefined;
+  try {
+    await writer.query(
+      "UPDATE pickler.agents SET schedule_enabled=false WHERE tenant_id=$1 AND id=$2",
+      [agent.scope.tenantId, agent.scope.agentId],
+    );
+    claiming = f.peer.claimAgent(queued.id);
+    let blocked = false;
+    const deadline = Date.now() + 5000;
+    while (Date.now() < deadline) {
+      const waiting = await f.db.pool.query(
+        "SELECT 1 FROM pg_stat_activity WHERE $1 = ANY(pg_blocking_pids(pid))",
+        [pid],
+      );
+      if (waiting.rowCount) {
+        blocked = true;
+        break;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+    assert.ok(blocked, "Claim must wait for the schedule writer's row lock");
+    await writer.query("COMMIT");
+  } finally {
+    await writer.query("ROLLBACK");
+    writer.release();
+    if (claiming) {
+      await claiming;
+    }
+  }
+  assert.equal(await claiming, null);
+  assert.equal((await f.store.getCheck(queued.id))!.outcome, "skipped");
+});
+
+test("disabling hourly decisions blocks later calls while started usage settles", async (t) => {
+  const { PostgresPerpsCheckCostStore } =
+    await import("../src/persistence/perps-check-cost-store.js");
+  const f = await setup(t);
+  const agent = await f.agent();
+  await f.prepareHourly(agent);
+  const queued = await f.store.startCheck({ productAgentId: agent.id, trigger: "hourly" });
+  const claim = (await f.store.claimAgent(queued.id))!;
+  const costs = new PostgresPerpsCheckCostStore(f.db.pool, f.now);
+  const scope = { ...agent.scope, checkId: queued.id, configVersion: 1, lease: claim.lease };
+  const plan = {
+    provider: "controlled",
+    model: "controlled",
+    promptVersion: "2.0.0",
+    promptSha256: "a".repeat(64),
+    maxInputTokens: 1000,
+    maxOutputTokens: 100,
+    inputMicrosPerMillion: "1000000",
+    outputMicrosPerMillion: "0",
+  };
+  await costs.reserve(
+    scope,
+    { id: "combined", version: "2.0.0" },
+    {
+      version: 1,
+      enabled: true,
+      reviewedAt: new Date(f.now()).toISOString(),
+      perOperationMicros: "2000",
+      perDayMicros: "4000",
+    },
+    [
+      { ...plan, key: "direct" },
+      { ...plan, key: "review" },
+    ],
+  );
+  await costs.start(scope, "direct", { sha256: "b".repeat(64), bytes: 100 });
+  await f.disableHourly(agent.scope);
+  await assert.rejects(costs.start(scope, "review", { sha256: "c".repeat(64), bytes: 100 }), {
+    code: "NOT_READY",
+  });
+  await costs.complete(scope, "direct", { input: 10, output: 0 });
+  assert.deepEqual(await costs.finish(scope), { costMicros: "10", accountedMicros: "10" });
+});
+
+test("hourly financial admission blocks exposure after disable but permits closes", async (t) => {
+  const f = await setup(t);
+  const agent = await f.agent();
+  await f.prepareHourly(agent);
+  const queued = await f.store.startCheck({ productAgentId: agent.id, trigger: "hourly" });
+  const claim = (await f.store.claimAgent(queued.id))!;
+  const bound = new PostgresPerpsPaperStore(f.db.pool, f.now, undefined, () => ({
+    scope: agent.scope,
+    configVersion: 1,
+    lease: claim.lease,
+    requireReservation: false,
+  }));
+  await bound.initialize(agent.scope, 1, "100");
+  const intent = {
+    kind: "open" as const,
+    symbol: "ETH" as const,
+    side: "long" as const,
+    notional: "1",
+    feeReserve: "0.1",
+    leverage: 1,
+  };
+  const pending = await bound.begin(agent.scope, 1, "pending-before-disable", intent);
+  assert.ok(pending.lease);
+  const before = await bound.snapshot(agent.scope);
+  const fill = simulatePerpsFill(before.account, intent, frame("ETH", f.now(), "3000"), f.now());
+  await f.disableHourly(agent.scope);
+  await assert.rejects(bound.complete(agent.scope, pending.lease!, fill), { code: "NOT_READY" });
+  await bound.fail(agent.scope, pending.lease!, "NOT_READY");
+  await assert.rejects(
+    open({ ...f, paper: bound }, agent.scope, "blocked-open", "ETH", {
+      notional: "1",
+      leverage: 1,
+    }),
+    {
+      code: "NOT_READY",
+    },
+  );
+  await f.prepareHourly(agent);
+  const opened = await open({ ...f, paper: bound }, agent.scope, "controlled-open", "BTC", {
+    notional: "1",
+    leverage: 1,
+    price: "1000",
+    stop: "970",
+    target: "1060",
+  });
+  const position = opened.account.positions[0]!;
+  assert.ok(position);
+  await f.disableHourly(agent.scope);
+  const closed = await bound.closePosition(
+    agent.scope,
+    position.id,
+    "owner",
+    frame("BTC", f.now(), "1000"),
+  );
+  assert.ok(closed.view.account.positions.find((p) => p.id === position.id)!.closedAt);
+});
 
 async function setup(t: TestContext) {
   let clock = NOON;
@@ -117,6 +327,43 @@ async function setup(t: TestContext) {
     peer,
     paper,
     agent,
+    async disableHourly(scope: PerpsPaperScope) {
+      await db.pool.query(
+        "UPDATE pickler.agents SET schedule_enabled=false WHERE tenant_id=$1 AND id=$2",
+        [scope.tenantId, scope.agentId],
+      );
+    },
+    async prepareHourly(agent: { id: string; scope: PerpsPaperScope }) {
+      const current = await db.agent(agent.scope);
+      const decision = { protocol: "studio-perps-check-v2", incomplete: false };
+      const existing = await db.pool.query(
+        "SELECT id FROM pickler.perps_checks WHERE tenant_id=$1 AND agent_id=$2 AND trigger='manual' AND status='finished' LIMIT 1",
+        [agent.scope.tenantId, agent.scope.agentId],
+      );
+      if (existing.rowCount) {
+        await db.pool.query(
+          "UPDATE pickler.perps_checks SET decision=$2,config_version=$3 WHERE id=$1",
+          [existing.rows[0].id, decision, current.version],
+        );
+      } else {
+        await store.recordCheck({
+          productAgentId: agent.id,
+          trigger: "manual",
+          configVersion: current.version,
+          outcome: "held",
+          outcomeText: "Preparation completed",
+          decision,
+        });
+      }
+      await db.pool.query(
+        "INSERT INTO pickler.metadata(key,value) VALUES($1,'true') ON CONFLICT(key) DO UPDATE SET value='true'",
+        [`connections_checked:${agent.scope.tenantId}:${agent.scope.agentId}:${current.version}`],
+      );
+      await db.pool.query(
+        "UPDATE pickler.agents SET schedule_enabled=true WHERE tenant_id=$1 AND id=$2",
+        [agent.scope.tenantId, agent.scope.agentId],
+      );
+    },
     config,
     now: () => clock,
     set: (at: number) => {
@@ -309,7 +556,9 @@ test("manual checks replay by request key and refuse agents without Perpl", asyn
 
 test("an expired lease frees the agent; the old owner can no longer write", async (t) => {
   const f = await setup(t);
-  const { id } = await f.agent();
+  const agent = await f.agent();
+  await f.prepareHourly(agent);
+  const { id } = agent;
   const check = await f.store.startCheck({ productAgentId: id, trigger: "hourly" });
   const { lease } = (await f.store.claimAgent(check.id))!;
 
@@ -379,6 +628,9 @@ test("the due list is staggered by id and skips private, paused, non-Perpl and b
   await f.agent({ id: idAt(7), paused: true });
   await f.agent({ id: idAt(8), perpl: false });
   const busy = await f.agent({ id: idAt(9) });
+  await f.prepareHourly(at5);
+  await f.prepareHourly(at20);
+  await f.prepareHourly(busy);
   assert.equal(perpsCheckMinute(at5.id), 5);
 
   f.set(NOON + 4 * 60_000);
@@ -489,6 +741,7 @@ test("counts and cost of today, per agent and global", async (t) => {
   }
   f.set(NOON - 13 * HOUR);
   await run(one.id, "manual", "999");
+  await f.prepareHourly(one);
   f.set(NOON);
   await run(one.id, "manual", "100");
   await run(one.id, "hourly", "50");
@@ -933,6 +1186,8 @@ test("the due list carries the slot, skips killed agents, and one key makes one 
   const f = await setup(t);
   const at5 = await f.agent({ id: idAt(5) });
   const killed = await f.agent({ id: idAt(6) });
+  await f.prepareHourly(at5);
+  await f.prepareHourly(killed);
   await f.db.pool.query(
     "UPDATE agents.agents SET status = 'killed', killed_at = now() WHERE id = $1",
     [killed.id],
@@ -961,7 +1216,7 @@ test("the due list carries the slot, skips killed agents, and one key makes one 
   assert.equal(replay.id, a.id);
   assert.equal(replay.status, "finished");
   const hourly = await f.db.pool.query(
-    "SELECT count(*)::int AS n FROM pickler.perps_checks WHERE product_agent_id = $1",
+    "SELECT count(*)::int AS n FROM pickler.perps_checks WHERE product_agent_id = $1 AND trigger='hourly'",
     [at5.id],
   );
   assert.equal(hourly.rows[0].n, 1);
