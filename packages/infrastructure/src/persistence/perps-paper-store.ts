@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { Pool, PoolClient } from "pg";
 import { PilotError, type AgentRecord } from "@pickler/core";
+import { assertPerpsHourlyReady } from "./perps-hourly-readiness.js";
 import {
   applyPaperObservation,
   type PerpsPaperObservation,
@@ -351,6 +352,12 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
       return;
     }
     if (this.productOwner) {
+      const check = await client.query("SELECT trigger FROM pickler.perps_checks WHERE id=$1", [
+        this.productOwner().lease.checkId,
+      ]);
+      if (check.rows[0]?.trigger === "hourly") {
+        await assertPerpsHourlyReady(client, scope);
+      }
       const denied = await client.query(
         `SELECT 1 FROM pickler.product_agents pa JOIN agents.agents p ON p.id=pa.product_agent_id
         WHERE pa.tenant_id=$1 AND pa.runtime_agent_id=$2 AND p.killed_at IS NOT NULL
