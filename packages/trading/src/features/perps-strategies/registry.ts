@@ -1,5 +1,6 @@
 import { PilotError } from "@pickler/core";
 import { perpsRules } from "./policy.js";
+import { perpsMultiframeRules, validateMultiframeEvidence } from "./multiframe.js";
 import type {
   PerpsDecisionContext,
   PerpsProposal,
@@ -27,6 +28,10 @@ export const PERPS_STRATEGIES: readonly PerpsStrategyDescriptor[] = Object.freez
   descriptor("deepseek", ["direct"]),
   descriptor("jev", ["decide"]),
   descriptor("combined", ["direct", "review"]),
+  descriptor("rules", [], "1.1.0"),
+  descriptor("deepseek", ["direct"], "1.1.0"),
+  descriptor("jev", ["decide"], "1.1.0"),
+  descriptor("combined", ["direct", "review"], "1.1.0"),
   descriptor("rules", [], "2.0.0"),
   descriptor("deepseek", ["direct"], "2.0.0"),
   descriptor("jev", ["decide"], "2.0.0"),
@@ -65,7 +70,7 @@ export async function executePerpsStrategy(
   deps: PerpsStrategyDependencies,
 ): Promise<PerpsProposal[]> {
   const descriptor = resolvePerpsStrategy(selection);
-  if (descriptor.version !== "1.0.0") {
+  if (descriptor.version === "2.0.0") {
     throw new PilotError(
       "STRATEGY_CONTEXT_MISMATCH",
       "Studio strategies require the versioned Studio context",
@@ -85,8 +90,20 @@ export async function executePerpsStrategy(
     });
   };
   const context = perpsStrategySnapshot(input);
+  if (descriptor.version === "1.1.0") {
+    validateMultiframeEvidence(context.evidence);
+    if (
+      descriptor.capabilities.length &&
+      (deps.models.metadata as { strategyVersion?: string })?.strategyVersion !== "1.1.0"
+    ) {
+      throw new PilotError(
+        "MODEL_CONFIG_MISMATCH",
+        "Multiframe policy requires its versioned model adapters",
+      );
+    }
+  }
   if (descriptor.id === "rules") {
-    return perpsRules(context);
+    return descriptor.version === "1.1.0" ? perpsMultiframeRules(context) : perpsRules(context);
   }
   if (descriptor.id === "deepseek") {
     const proposals = await call("direct", (hooks) =>
