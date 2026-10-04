@@ -113,3 +113,73 @@ historical study, accounts and diagnostics remained unchanged. Private artifacts
 untracked. The final analyzer report contains 64 rows, 56 matching conversions, zero divergences,
 42 model holds, six complete slots and two documented omissions. Historical missing request bytes
 and execution-time risk state remain unverifiable rather than reconstructed.
+
+## Multiframe filter audit (analysis v2)
+
+The same two commands accept `perps-multiframe-v3` with strategy 1.1.0. Export format remains v1;
+analysis becomes `perps-decision-audit-v2`. Historical protocols keep their original v1 analysis.
+Output directories must be new. Analysis performs no provider requests, environment loading,
+model calls or database operations. CSV formula protection and HTML escaping apply to saved text.
+
+The paired diagnostic uses the same original rules account and clock for both SMA versions.
+The baseline receives only explicitly selected hourly candles, independent of input series order.
+No hypothetical position is carried into a later round. The report shows first-block precedence
+and overlapping failed conditions; overlapping counts must not be added as independent causes.
+These are proposals, not executed trades, profit estimates or a paired economic backtest.
+
+The runtime and auditor share the pure 1.1.0 context projection: close/time pairs, frozen policy
+and reproducible features. Original OHLC remains evidence, but was not all sent to the models.
+A current projection is not the original request bytes. Literal reason codes and specifically
+named quantities can be checked against recorded values; free-form claims without a precise
+correspondence remain unverifiable. Claim checks do not infer internal reasoning or ignored data.
+
+### Captured perps-multiframe-20261004 results
+
+Frozen study commit: d4e6053326870242d6de7c2615d2d8b0b393819a. The export contains six recorded
+rounds and eight slots: five complete, two omitted before model calls, one incomplete. The report
+has 64 slot/asset/variant rows; paired counts use only the ten valid complete asset/round pairs.
+
+- SMA 1.0.0 proposes ten shorts on the shared original accounts; SMA 1.1.0 retains none.
+- Seven are first blocked by direction confirmation and three by the activity hurdle.
+- All ten also fail the activity hurdle. Removing direction confirmation alone would retain none.
+- The common complete slots have thirty matched model holds; two additional Jev holds belong
+  to the incomplete slot and are not common execution outcomes.
+- No action-conversion divergence or unexplained discarded executable action was found.
+- DeepSeek's slot-3 ETH `CONFLICTING_SIGNAL` description is inconsistent with the supplied short
+  trend and negative momentum. The cost hurdle still fails; this descriptive discrepancy does
+  not establish that an executable entry should have been admitted.
+- Slots 0/6 are recorded as `DATA_UNAVAILABLE` before models. Detailed component/request
+  diagnostics are absent in this capture, so their acquisition root causes remain unverifiable.
+- Slot 7 has independent direct/combined DeepSeek timeouts at 19,998/19,985 ms. The combined
+  review never started. No stored transport phase establishes whether headers or body stalled.
+  Both USD 0.024576 reservations remain intact; unknown tokens/cost are not assigned zero.
+
+The source-study accounted/reserved amount is USD 0.077555304, separate from virtual AUSD.
+No observed fills or economic counterfactuals are added. The diagnostic export payload fingerprint
+is 33ae952f8986e6887a2823f5fe72da92031e73b7ac4ea996b167214e50d8eb42.
+
+### Recommendations, not policy changes
+
+The dominant measurable restriction is the uncalibrated past-movement hurdle: even aligned
+signals in this sample fail it. Plan a separate evaluation of its economic justification and
+holding horizon before changing thresholds; current data cannot establish profitable entries.
+Audit the model's directional wording using controlled examples, retaining the observed prompt
+as reference. Future safe phase instrumentation could distinguish headers/body timeouts, and
+per-request acquisition diagnostics could explain omissions. Neither new instrumentation nor
+another paid comparison is enabled by this audit. Monitoring remains paused.
+
+### V2 validation record
+
+- Root PostgreSQL and controlled suite: 2,781 passed, zero failures, three optional skips.
+- Root formatting, lint and types: passed.
+- Shared packages, Node agent-service and all Worker consumer builds, including Web: passed.
+- Controlled DeepSeek, Jev decision and Jev review request fingerprints match the frozen
+  d4e60533 implementation after extracting the shared context projection.
+- Offline tests reject network/credential dependencies, preserve unknown reservations, verify
+  deterministic output and escaping, and exclude both assets when one final frame is invalid.
+- Export payload SHA-256 remains
+  33ae952f8986e6887a2823f5fe72da92031e73b7ac4ea996b167214e50d8eb42.
+
+Build telemetry was disabled. Sandbox restrictions on npm cache and public font retrieval were
+resolved for local compilation only. No deployment, provider/model validation call or historical
+write was performed. The historical acquisitions and timeout transport phases remain unverifiable.
