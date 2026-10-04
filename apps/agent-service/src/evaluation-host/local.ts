@@ -96,6 +96,38 @@ export async function executeEvaluation(input: EvaluationHostRequest) {
         return runPerpsStudy(args, signal);
       },
     },
+    "perps-multiframe-v3": {
+      async execute(request) {
+        if (request.command === "stability" || request.command === "data-diagnostic") {
+          const { runPerpsStability } = await import("../perps-study/stability.js");
+          return runPerpsStability(
+            { ...input, diagnostic: request.command === "data-diagnostic" },
+            signal,
+          );
+        }
+        const { runPerpsStudy } = await import("../perps-study/host.js");
+        const command =
+          request.command === "prepare"
+            ? "init"
+            : request.command === "status"
+              ? "report"
+              : request.command;
+        const args = [command, "--config", path];
+        if (input.acquisitionChoice) {
+          args.push("--acquisition-choice", resolve(input.acquisitionChoice));
+        }
+        if (input.envFile) {
+          args.push("--env-file", resolve(input.envFile));
+        }
+        if (input.output) {
+          args.push("--output", resolve(input.output));
+        }
+        if (request.allowPaid) {
+          args.push("--allow-paid");
+        }
+        return runPerpsStudy(args, signal);
+      },
+    },
     "perps-four-way-v2": {
       async execute(request) {
         if (request.command === "stability" || request.command === "data-diagnostic") {
