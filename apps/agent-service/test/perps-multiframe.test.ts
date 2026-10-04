@@ -292,8 +292,9 @@ test("new protocol runs four independent accounts through the PostgreSQL coordin
   assert.equal(paidCalls, 4);
   const view = await study.view(cfg);
   for (const strategy of perpsStrategies(cfg)) {
-    const account = (await paper.view({ ...cfg, agentId: view.record.agentIds[strategy]! }))
-      .account;
+    const account: import("@pickler/trading/perps").PerpsPaperAccount = (
+      await paper.view({ ...cfg, agentId: view.record.agentIds[strategy]! })
+    ).account;
     assert.equal(account.positions.filter((p) => p.closedAt === null).length, 2);
   }
   await study.release(cfg, lease);
@@ -301,8 +302,9 @@ test("new protocol runs four independent accounts through the PostgreSQL coordin
   lease = await study.claim(cfg);
   await runner.cycle(cfg, lease, new AbortController().signal);
   for (const strategy of ["jev", "deepseek", "combined"] as const) {
-    const account = (await paper.view({ ...cfg, agentId: view.record.agentIds[strategy]! }))
-      .account;
+    const account: import("@pickler/trading/perps").PerpsPaperAccount = (
+      await paper.view({ ...cfg, agentId: view.record.agentIds[strategy]! })
+    ).account;
     assert.equal(account.positions.filter((p) => p.closedAt === null).length, 0);
   }
   assert.equal(paidCalls, 8);
