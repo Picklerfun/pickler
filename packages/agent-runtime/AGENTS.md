@@ -210,3 +210,9 @@ The opt-in local perps-multiframe-v3 model adapter selects forecast and atomic p
 projection used by the live laboratory adapter and offline auditor. Preserve validation, object
 ordering, close/time candle columns, policy/features, prompts and request fingerprints. This
 projection is not a historical HTTP capture. Offline consumers must not import model transports.
+
+## Model-free SMA laboratory
+
+Perps model composition accepts only legacy/model-backed config shapes. Config v3 SMA
+ablation is composed separately by the local service with public Perpl data and PostgreSQL;
+never initialize model transports or infer model defaults for its empty call maps.
