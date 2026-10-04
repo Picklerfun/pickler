@@ -256,3 +256,10 @@ there first); a stop-all pauses the agent if the API's pause has not landed; an 
 crossing the day-loss stop pauses the agent. `createPerpsRuntime` also answers `owner`, so the same
 composition serves checks, actions and the Cron's re-drive. Tests:
 `workers/research/test/perps-actions.test.ts` (real PostgreSQL, fake Perpl).
+## Perpetual strategy adapters
+
+Perpl model composition imports decision policies and model ports from
+`@pickler/trading/strategies`. It implements direct, atomic decision and review capabilities;
+the trading registry owns their routing. Prompts, hashes, provider/model configuration and
+transport limits remain unchanged. Keep readiness for historical v1 only; it is not the v2
+`combined` strategy. Never construct a parallel strategy registry or financial policy here.

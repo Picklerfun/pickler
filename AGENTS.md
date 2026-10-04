@@ -164,3 +164,10 @@ jobs/events/call reserves and migration 0025. Research Queue advice wakeups neve
 Keep admissions disabled by default; no payments, paid retries or implicit AUSD-to-USD conversion.
 
 Advice forecast configuration reuses the Research Worker’s MODEL_BASE_URL, MODEL_ID and MODEL_API_KEY. New advice policy v2 freezes the reviewed provider URL/model; v1 retains its historical direct-DeepSeek meaning. Never copy a provider key to a different endpoint or enable advice with unreviewed tariffs.
+
+## Perpetual strategy registry
+
+`@pickler/trading/strategies` exports four versioned perpetual strategy descriptors and their
+injected execution contract. These are strategy modules, not new harness plugin IDs. Evaluation
+is the first consumer; Studio selection and product execution are a separate integration.
+See [Trading architecture](docs/trading-architecture.md) before adding a strategy or consumer.

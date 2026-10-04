@@ -81,7 +81,7 @@ only `settleProposal(id, opened)` makes it `approved` (or puts it back to `pendi
 was refused); expiry also ends approvals stuck five minutes past their time.
 
 `features/perps-study` exports the independent comparison contracts, exact model reservation math
-and deterministic SMA20/50 policy. Unknown/missing candles imply hold, not a fabricated neutral
+and study budget policy. SMA20/50 and atomic Jev policies live in `features/perps-strategies`. Unknown/missing candles imply hold, not a fabricated neutral
 signal. Paper accounts may permanently close admissions while permitting reducing exits. Study
 models never choose size or receive repository/configuration access.
 
@@ -122,7 +122,7 @@ Perpl acquisition also supports explicitly frozen `rest-paced-20s-v1` and `strea
 
 ## Local four-way perpetual comparison
 
-`perps-four-way-v2` owns the frozen Jev-only support/invalidation policy and DeepSeek-to-Jev material veto policy in `features/perps-study`. Keep the legacy three-arm protocol readable. The shared runner refreshes BTC/ETH once for all four accounts, bounds models to 45 seconds and enters closing-only state on technical failure. Jev selected probabilities are answer measures, never financial win probabilities.
+`perps-four-way-v2` owns the frozen Jev-only support/invalidation policy and DeepSeek-to-Jev material veto policy in `features/perps-strategies`. Keep the legacy three-arm protocol readable. The shared runner refreshes BTC/ETH once for all four accounts, bounds models to 45 seconds and enters closing-only state on technical failure. Jev selected probabilities are answer measures, never financial win probabilities.
 
 ## Perpl decision audit
 
@@ -167,3 +167,18 @@ price or reach an account; hosts inject state and act on the result. In `perps-p
 `sizeUps`, the fee; exits unchanged) behind `PerpsProductPaperRepository.sizeUp`, and
 `productFreeEquity(account, attempts, marks)` is a product account's free AUSD at trusted marks
 (`min(cash, cash + unrealized) − margin − reserved`; null when an open position has no mark).
+## Versioned perpetual strategies
+
+The `strategies` export owns `PERPS_STRATEGIES`, `resolvePerpsStrategy` and
+`executePerpsStrategy`, including their input, model and call-gate ports. IDs are `rules`,
+`deepseek`, `jev` and `combined`, all policy version 1.0.0. Provider/prompt versions remain
+separate. Unknown selections and missing capabilities fail closed before model calls.
+Execution clones and recursively freezes evidence/account inputs; never mutate another strategy's
+portfolio. Every model operation passes through an injected durable call gate using the existing
+reserved lane and request/usage hooks. The gate is mandatory; it is not an optional logging hook.
+Risk, sizing, fills and accounting remain outside strategy decisions.
+
+The evaluator uses the registry for v2 and the explicit `perps-study/legacy-strategy.ts` adapter
+for historical v1 readiness -> blind forecast. Preserve serialized lanes, answers and proposals.
+The evaluation export retains historical policy/type names backed by the same implementations.
+No persisted plugin IDs, agent selector or new financial policy are introduced.
