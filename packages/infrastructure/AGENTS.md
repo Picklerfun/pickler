@@ -537,3 +537,7 @@ rechecks creator caps and unknown costs under that lock. Supervision and owner a
 unpaid leases; closers use stored scopes even after a network/plugin edit. `claimSupervision`
 skips busy agents and public observations reuse the existing funding deduplication/dispute policy.
 See [Studio perpetual execution](../../docs/studio-perps-execution.md).
+
+## Multiframe comparison admission
+
+Perps study call admission counts the explicitly frozen protocol under the existing transaction: perps-four-way-v2 retains its original 35-call campaign, and the separately authorized perps-multiframe-v3 experiment has at most 35 new calls. Both still share every historical cost and unknown reservation under the original tenant/network/database USD 5 ceiling. No schema changes or historical resets are permitted.
