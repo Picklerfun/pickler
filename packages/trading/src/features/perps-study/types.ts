@@ -2,12 +2,17 @@ import type { PerpNetwork } from "@pickler/core";
 import type { PerpsPaperAccount } from "../perps-paper/types.js";
 export const PERPS_STUDY_STRATEGIES = ["rules", "deepseek", "jev"] as const;
 export type PerpsStrategy = (typeof PERPS_STUDY_STRATEGIES)[number];
-export type PerpsStudyStrategy = PerpsStrategy | "combined";
-export type PerpsStudyMap<T> = Record<PerpsStrategy, T> & Partial<Record<"combined", T>>;
+export const PERPS_SMA_STRATEGIES = ["sma-hourly", "sma-multiframe", "sma-direction"] as const;
+export type SmaVariant = (typeof PERPS_SMA_STRATEGIES)[number];
+export type PerpsStudyStrategy = PerpsStrategy | "combined" | SmaVariant;
+export type PerpsStudyMap<T> = Partial<Record<PerpsStudyStrategy, T>>;
 export const PERPS_FOUR_WAY_STRATEGIES = ["rules", "jev", "deepseek", "combined"] as const;
 export function perpsStrategies(
   config: Pick<PerpsStudyConfig, "version">,
 ): readonly PerpsStudyStrategy[] {
+  if (config.version === 3) {
+    return PERPS_SMA_STRATEGIES;
+  }
   return config.version === 2 ? PERPS_FOUR_WAY_STRATEGIES : PERPS_STUDY_STRATEGIES;
 }
 export type {
@@ -22,7 +27,7 @@ export interface PerpsStudyScope {
   sessionId: string;
   network: PerpNetwork;
 }
-export interface PerpsStudyConfig extends PerpsStudyScope {
+export interface LegacyPerpsStudyConfig extends PerpsStudyScope {
   version: 1 | 2;
   /** Opt-in local policy; absence preserves historical 1.0.0. */
   strategyVersion?: "1.1.0" | undefined;
@@ -41,6 +46,16 @@ export interface PerpsStudyConfig extends PerpsStudyScope {
   pricingVerifiedAt: string;
   pricingSources: string[];
 }
+export interface SmaStudyConfig extends PerpsStudyScope {
+  version: 3;
+  protocol: "perps-sma-ablation-v1";
+  hours: 6;
+  acquisitionPolicy: "rest-paced-20s-v1";
+  entryPolicyVersion: "sma-ablation-entries-v1";
+  exitPolicyVersion: "multiframe-common-exits-v1";
+  strategyVersion: "sma-ablation-v1";
+}
+export type PerpsStudyConfig = LegacyPerpsStudyConfig | SmaStudyConfig;
 export interface PerpsCall {
   requestHash?: string;
   inputBytes?: number;
@@ -67,7 +82,7 @@ export interface PerpsRound {
   evidence: PerpsEvidence;
   accounts: PerpsStudyMap<PerpsPaperAccount>;
   proposals: Partial<Record<PerpsStudyStrategy, PerpsProposal[]>>;
-  calls: Record<"direct" | "jev" | "fallback", PerpsCall> & Partial<Record<"review", PerpsCall>>;
+  calls: Partial<Record<PerpsCallLane, PerpsCall>>;
 }
 export interface PerpsStudyRecord {
   config: PerpsStudyConfig;
