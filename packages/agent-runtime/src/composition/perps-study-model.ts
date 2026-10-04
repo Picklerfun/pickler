@@ -1,9 +1,6 @@
-import { perpsModelState } from "./perps-model-state.js";
+import { perpsModelState, perpsMultiframeModelState } from "./perps-model-state.js";
 export { perpsModelState } from "./perps-model-state.js";
 import {
-  PERPS_MULTIFRAME_POLICY,
-  multiframeFeatures,
-  validateMultiframeEvidence,
   perpsJevDecisions,
   perpsJevReviewed,
   type PerpsJevAnswers,
@@ -109,21 +106,7 @@ export function createPerpsStudyModels(
   const experimental = config.strategyVersion === "1.1.0";
   const forecastPrompt = experimental ? perpsMultiframeForecastPrompt : perpsForecastPrompt;
   const state = (context: PerpsDecisionContext) => {
-    if (!experimental) {
-      return perpsModelState(context);
-    }
-    validateMultiframeEvidence(context.evidence);
-    const original = perpsModelState(context);
-    return {
-      ...original,
-      policy: PERPS_MULTIFRAME_POLICY,
-      features: (["BTC", "ETH"] as const).map((symbol) => multiframeFeatures(context, symbol)),
-      candles: original.candles.map((c) => ({
-        ...c,
-        columns: ["openTime", "close"],
-        rows: c.rows.map((row) => [row[0], row[4]]),
-      })),
-    };
+    return experimental ? perpsMultiframeModelState(context) : perpsModelState(context);
   };
   const post = async (
     url: string,
