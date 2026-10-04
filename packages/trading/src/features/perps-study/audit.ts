@@ -213,15 +213,15 @@ export function auditPerpsDecisions(
                   ? perpsMultiframeRules(context)
                   : perpsRules(context);
             } else if (strategy === "jev" && record.config.version === 2) {
-              answers = checkedAnswers(round!.calls.jev.result, false);
+              answers = checkedAnswers(round!.calls.jev?.result, false);
               replay = perpsJevDecisions(context, answers);
-              const saved = proposals(resultObject(round!.calls.jev.result).proposals);
+              const saved = proposals(resultObject(round!.calls.jev?.result).proposals);
               if (canonicalAudit(saved) !== canonicalAudit(replay)) {
                 conversion = "RESULT_DIVERGENCE";
               }
             } else if (strategy === "combined") {
               answers = checkedAnswers(round!.calls.review?.result, true);
-              const proposed = proposals(round!.calls.fallback.result);
+              const proposed = proposals(round!.calls.fallback?.result);
               original = proposed.find((p) => p.symbol === symbol);
               replay = perpsJevReviewed(proposed, answers);
               if (
@@ -231,7 +231,7 @@ export function auditPerpsDecisions(
                 conversion = "RESULT_DIVERGENCE";
               }
             } else if (strategy === "deepseek") {
-              replay = proposals(round!.calls.direct.result);
+              replay = proposals(round!.calls.direct?.result);
               original = replay.find((p) => p.symbol === symbol);
             } else {
               // Legacy routing is retained as observed; do not invent a four-way interpretation.
