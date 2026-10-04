@@ -1,5 +1,5 @@
 import { PilotError, type PerpSymbol } from "@pickler/core";
-import { paperUnits as u } from "../perps-paper/decimal.js";
+import { paperUnits as u, paperDecimal as d } from "../perps-paper/decimal.js";
 import { validatePaperFrame } from "../perps-paper/simulation.js";
 import type { PerpsDecisionContext, PerpsEvidence, PerpsProposal } from "./types.js";
 
@@ -185,16 +185,7 @@ export function gateMultiframeProposal(
   ) {
     return blocked("RECENT_MOVE_BELOW_COST_HURDLE");
   }
-  const frame = context.evidence.frames.find((f) => f.snapshot.market.symbol === proposal.symbol)!;
-  const levels = direction === "long" ? frame.book.asks : frame.book.bids;
-  const best = u(levels[0]!.price);
-  const depth = levels
-    .filter((l) =>
-      direction === "long"
-        ? u(l.price) * 10000n <= best * 10050n
-        : u(l.price) * 10000n >= best * 9950n,
-    )
-    .reduce((sum, l) => sum + (u(l.price) * u(l.size)) / u("1"), 0n);
+  const depth = multiframeDepth(context, proposal.symbol, direction);
   if (depth < u("100")) {
     return blocked("INSUFFICIENT_DEPTH");
   }
@@ -229,4 +220,93 @@ export function perpsMultiframeRules(context: PerpsDecisionContext): PerpsPropos
       ],
     });
   });
+}
+
+function multiframeDepth(
+  context: PerpsDecisionContext,
+  symbol: PerpSymbol,
+  direction: "long" | "short",
+) {
+  const frame = context.evidence.frames.find((f) => f.snapshot.market.symbol === symbol)!;
+  const levels = direction === "long" ? frame.book.asks : frame.book.bids;
+  const best = u(levels[0]!.price);
+  return levels
+    .filter((l) =>
+      direction === "long"
+        ? u(l.price) * 10000n <= best * 10050n
+        : u(l.price) * 10000n >= best * 9950n,
+    )
+    .reduce((sum, l) => sum + (u(l.price) * u(l.size)) / u("1"), 0n);
+}
+
+/** Diagnostic trace only: the authoritative gate still determines the action and first reason. */
+export function traceMultiframeProposal(context: PerpsDecisionContext, proposal: PerpsProposal) {
+  const executable = gateMultiframeProposal(context, proposal);
+  const f = multiframeFeatures(context, proposal.symbol);
+  const position = context.account.positions.find(
+    (p) => p.symbol === proposal.symbol && p.closedAt === null,
+  );
+  const direction = proposal.action === "open-short" ? "short" : "long";
+  const sign = direction === "long" ? 1 : -1;
+  const hourly = context.evidence.candles
+    .find((c) => c.market.symbol === proposal.symbol && c.resolution === 3600)!
+    .candles.slice(-50);
+  const frame = context.evidence.frames.find((v) => v.snapshot.market.symbol === proposal.symbol)!;
+  const levels = direction === "long" ? frame.book.asks : frame.book.bids;
+  const depth = levels.length ? multiframeDepth(context, proposal.symbol, direction) : null;
+  const costKnown = f.activityHurdleBps !== null && Number.isFinite(f.activityHurdleBps);
+  const checks = [
+    {
+      code: "POSITION_ALREADY_OPEN",
+      passed: !position,
+      value: position?.side ?? null,
+      limit: "no open position",
+    },
+    {
+      code: "DIRECTION_NOT_CONFIRMED",
+      passed: f.trend === direction && f.momentum5Bps * sign > 0 && f.momentum15Bps * sign > 0,
+      value: { trend: f.trend, momentum5Bps: f.momentum5Bps, momentum15Bps: f.momentum15Bps },
+      limit: { direction, directionalMomentumStrictlyAbove: 0 },
+    },
+    {
+      code: "COST_DATA_UNAVAILABLE",
+      passed: costKnown,
+      value: f.activityHurdleBps,
+      limit: "known finite costs",
+    },
+    {
+      code: "RECENT_MOVE_BELOW_COST_HURDLE",
+      passed: costKnown
+        ? Math.abs(f.momentum5Bps) > f.activityHurdleBps! &&
+          Math.abs(f.momentum15Bps) > f.activityHurdleBps!
+        : null,
+      value: { five: Math.abs(f.momentum5Bps), fifteen: Math.abs(f.momentum15Bps) },
+      limit: f.activityHurdleBps,
+    },
+    {
+      code: "INSUFFICIENT_DEPTH",
+      passed: depth === null ? null : depth >= u("100"),
+      value: depth === null ? null : d(depth),
+      limit: "100 AUSD within 50 bps",
+    },
+  ];
+  return {
+    proposal,
+    executable,
+    firstBlock:
+      executable.action === "hold" && proposal.action.startsWith("open-")
+        ? executable.reason
+        : null,
+    entryApplicable: proposal.action.startsWith("open-") && executable.reason !== "HORIZON_EXIT",
+    horizon: {
+      positionAgeMs: position ? context.evidence.observedAt - position.openedAt : null,
+      limitMs: PERPS_MULTIFRAME_POLICY.horizonMs,
+      triggered: executable.reason === "HORIZON_EXIT",
+    },
+    sma20: d(hourly.slice(-20).reduce((sum, c) => sum + u(c.close), 0n) / 20n),
+    sma50: d(hourly.reduce((sum, c) => sum + u(c.close), 0n) / 50n),
+    features: f,
+    checks,
+    coincidentBlocks: checks.filter((c) => c.passed === false).map((c) => c.code),
+  };
 }
