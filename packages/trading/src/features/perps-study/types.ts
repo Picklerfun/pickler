@@ -24,7 +24,9 @@ export interface PerpsStudyScope {
 }
 export interface PerpsStudyConfig extends PerpsStudyScope {
   version: 1 | 2;
-  protocol: "perps-comparison-v1" | "perps-four-way-v2";
+  /** Opt-in local policy; absence preserves historical 1.0.0. */
+  strategyVersion?: "1.1.0" | undefined;
+  protocol: "perps-comparison-v1" | "perps-four-way-v2" | "perps-multiframe-v3";
   hours: 24 | 2;
   acknowledgedUnknownCalls?: {
     sessionId: string;
