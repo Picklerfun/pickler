@@ -1,7 +1,9 @@
 # Staging Worker Builds configuration
 
 This guide configures Cloudflare Workers Builds connected to `Picklerfun/pickler`.
-It does not configure GitHub Actions. For database operations, access controls, deployment
+These settings remain current until the opt-in
+[coordinated GitHub Actions cutover](../../docs/staging-deployment-pipeline.md) is completed.
+Do not keep independent main deployments enabled after that cutover. For database operations, access controls, deployment
 order, and remote acceptance, follow [staging operations](../../docs/cloudflare-staging.md).
 
 ## Common dashboard settings

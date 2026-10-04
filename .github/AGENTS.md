@@ -1,0 +1,16 @@
+# GitHub automation
+
+Read the root instructions and the instructions for any workspace affected by a workflow.
+Workflows must use the committed lockfile, Node 22.22+ and npm 10.9.3. Controlled tests must not
+use provider or hosted database credentials.
+
+`workflows/staging-deploy.yml` owns the opt-in coordinated release: checks/builds, reconciled
+migrations, Research, Trading, API and Web. It runs only on main pushes/dispatch and requires the
+explicit repository enable variable plus a staging environment. Keep credentials scoped to the
+preflight/release steps, main-only environment branch restrictions and non-cancelling concurrency.
+Never add pull-request deployment or automatic database reset/rollback. Do not cancel a running
+release when a new push arrives. Keep independent Worker Builds disabled before enabling it.
+
+Read [the deployment guide](../docs/staging-deployment-pipeline.md) and run the controlled
+`scripts/cloudflare/deploy-staging.test.mjs` suite when changing gates, order or credentials.
+Root tests discover that suite. A local dry run is not remote deployment acceptance.

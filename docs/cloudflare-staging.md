@@ -146,6 +146,10 @@ Set ALLOWED_ORIGINS to the exact web URL. Configure Supabase site URL and allowe
 
 ## Deployment order
 
+The opt-in [coordinated deployment pipeline](staging-deployment-pipeline.md) automates this order
+after its explicit Worker Builds cutover. Until enabled, the existing dashboard builds remain the
+release owner. Do not run independent publishers alongside the coordinated pipeline.
+
 1. Run format, lint, types, PostgreSQL/Supabase tests and all Worker builds. Apply migrations
    against an isolated database first, including historical migration reconciliation tests.
 2. Commit the tested configuration and record its SHA. Run `npm run check:staging -- --provisioned`.
