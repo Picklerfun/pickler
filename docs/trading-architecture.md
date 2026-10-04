@@ -16,7 +16,7 @@ flowchart TD
 
 `@pickler/trading/polymarket` owns live execution contracts, paper fills and settlement.
 `@pickler/trading/perps` owns virtual perpetual accounts, exact arithmetic, margin, funding and
-risk. `@pickler/trading/strategies` owns binary study/benchmark policies.
+risk. `@pickler/trading/strategies` owns binary study/benchmark policies and the versioned perpetual strategy registry.
 `@pickler/trading/evaluation` owns protocol admission, model ports, perpetual rounds, prospective
 BTC scheduling and historical reconciliation. It accepts data, models, repositories, clocks,
 cancellation and persistence callbacks. It does not import Node, transport, Mastra or storage.
@@ -68,3 +68,37 @@ part of this extraction. Unknown costs retain reservations. Historical STOP file
 Run `npm run check:architecture`, root tests (including isolated PostgreSQL), types, lint,
 format and shared/service/Worker builds before publishing changes. Controlled replay establishes
 compatibility, not provider reliability or profitability.
+
+## Perpetual strategy contract
+
+`PERPS_STRATEGIES` lists `rules`, `deepseek`, `jev` and `combined`, each at policy version
+`1.0.0`. `resolvePerpsStrategy({ id, version })` refuses unknown IDs/versions.
+`executePerpsStrategy(selection, input, dependencies)` receives evidence and an isolated account,
+clones/freezes the snapshot, and returns proposals only. Dependencies supply model capabilities,
+a mandatory durable call gate and cancellation. No repository, provider, credential or execution
+service is part of the strategy input. Strategy versions identify unchanged decision semantics,
+not a new provider/prompt version or a historical data migration.
+
+| Strategy   | Required capabilities   | Existing persisted call lanes |
+| ---------- | ----------------------- | ----------------------------- |
+| `rules`    | None                    | None                          |
+| `deepseek` | `direct`                | `direct`                      |
+| `jev`      | `decide`                | `jev`                         |
+| `combined` | `direct`, then `review` | `fallback`, then `review`     |
+
+`combined` gets its own account and direct proposal, never the other DeepSeek arm's response.
+Historical v1 uses an explicit readiness adapter: `jev`, then conditional `fallback`. It is not
+an alias of v2's atomic `jev` or `combined`. Existing evaluation exports remain available for
+historical callers, backed by the moved policies, not duplicated implementations.
+
+The evaluator retains joint USD reservations, started-call hashes, usage, unknown-cost handling,
+shared execution frames and independent financial accounts. A consumer must implement the call
+gate with equivalent admission/ownership and durable accounting before provider transport;
+this refactor does not add those guarantees to Studio. It introduces no selector HTTP API,
+agent configuration field, migration, live activation or paid evaluation.
+
+To add a strategy, add one versioned descriptor and implementation in trading, declare required
+model capabilities, supply runtime adapters, and test exact registry coverage, controlled parity,
+isolation, cancellation and call accounting. New execution consumers must use the common risk,
+funding, simulator and ledger services. Run `npm run check:architecture`, relevant PostgreSQL
+replay tests, types, lint, format and shared/service/Worker builds.

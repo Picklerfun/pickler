@@ -1,5 +1,4 @@
-import type { PerpNetwork, PerpCandles, PerpSymbol } from "@pickler/core";
-import type { PerpsPaperFrame } from "../perps-paper/simulation.js";
+import type { PerpNetwork } from "@pickler/core";
 import type { PerpsPaperAccount } from "../perps-paper/types.js";
 export const PERPS_STUDY_STRATEGIES = ["rules", "deepseek", "jev"] as const;
 export type PerpsStrategy = (typeof PERPS_STUDY_STRATEGIES)[number];
@@ -11,7 +10,13 @@ export function perpsStrategies(
 ): readonly PerpsStudyStrategy[] {
   return config.version === 2 ? PERPS_FOUR_WAY_STRATEGIES : PERPS_STUDY_STRATEGIES;
 }
-export type PerpsCallLane = "direct" | "jev" | "fallback" | "review";
+export type {
+  PerpsCallLane,
+  PerpsEvidence,
+  PerpsProposal,
+  PerpsDecisionContext,
+} from "../perps-strategies/types.js";
+import type { PerpsCallLane, PerpsEvidence, PerpsProposal } from "../perps-strategies/types.js";
 export interface PerpsStudyScope {
   tenantId: string;
   sessionId: string;
@@ -33,22 +38,6 @@ export interface PerpsStudyConfig extends PerpsStudyScope {
   jev: { model: "jev-1.13.0"; inputPerMillion: string; outputPerMillion: "0" };
   pricingVerifiedAt: string;
   pricingSources: string[];
-}
-export interface PerpsEvidence {
-  observedAt: number;
-  frames: PerpsPaperFrame[];
-  candles: PerpCandles[];
-  sourceIds: string[];
-}
-export interface PerpsProposal {
-  symbol: PerpSymbol;
-  action: "hold" | "open-long" | "open-short" | "close";
-  reason: string;
-  sourceIds: string[];
-}
-export interface PerpsDecisionContext {
-  evidence: PerpsEvidence;
-  account: PerpsPaperAccount;
 }
 export interface PerpsCall {
   requestHash?: string;

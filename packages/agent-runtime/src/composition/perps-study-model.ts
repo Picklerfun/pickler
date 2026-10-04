@@ -4,8 +4,8 @@ import {
   perpsJevDecisions,
   perpsJevReviewed,
   type PerpsJevAnswers,
-} from "@pickler/trading/evaluation";
-import type { PerpsModels, PerpsModelHooks } from "@pickler/trading/evaluation";
+} from "@pickler/trading/strategies";
+import type { PerpsModels, PerpsModelHooks } from "@pickler/trading/strategies";
 import { createHash } from "node:crypto";
 import { z } from "zod";
 import {

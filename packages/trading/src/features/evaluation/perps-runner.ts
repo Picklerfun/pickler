@@ -11,7 +11,8 @@ import {
   type PerpsCallLane,
   type PerpsStudyRecord,
 } from "../perps-study/types.js";
-import { perpsRules } from "../perps-study/policy.js";
+import { executePerpsStrategy } from "../perps-strategies/registry.js";
+import { executeLegacyPerpsReadiness } from "../perps-study/legacy-strategy.js";
 import { PilotError } from "@pickler/core";
 import {
   createPerpsPaperService,
@@ -307,7 +308,19 @@ export function createPerpsStudyRunner(deps: {
     const accounts = Object.fromEntries(
       strategies.map((s) => [s, views[s]!.account]),
     ) as Parameters<PerpsStudyRepository["reserve"]>[4];
-    const rules = perpsRules({ evidence, account: accounts.rules });
+    const rules = await executePerpsStrategy(
+      { id: "rules", version: "1.0.0" },
+      { evidence, account: accounts.rules },
+      {
+        models: {},
+        signal,
+        calls: {
+          run: async () => {
+            throw new PilotError("MODEL_CONFIG_MISMATCH", "Rules cannot call models");
+          },
+        },
+      },
+    );
     const round = await study.reserve(scope, lease, slot, evidence, accounts, rules);
     if (!round) {
       return true;
@@ -349,58 +362,24 @@ export function createPerpsStudyRunner(deps: {
         throw error;
       }
     }
+    // Preserve the historical launch order; account/report order is a separate protocol detail.
+    const modelStrategies: PerpsStudyStrategy[] = ["deepseek", "jev"];
+    if (record.config.version === 2) {
+      modelStrategies.push("combined");
+    }
     const outcomes = await Promise.allSettled(
-      record.config.version === 2
-        ? [
-            (async () => {
-              proposals.deepseek = await call("direct", (hooks) =>
-                models.direct({ evidence, account: accounts.deepseek }, deadline, hooks),
-              );
-            })(),
-            (async () => {
-              if (!models.decide) {
-                throw new PilotError("MODEL_CONFIG_MISMATCH", "Jev decision adapter unavailable");
-              }
-              const result = await call("jev", (hooks) =>
-                models.decide!({ evidence, account: accounts.jev }, deadline, hooks),
-              );
-              proposals.jev = result.proposals;
-            })(),
-            (async () => {
-              if (!models.review || !accounts.combined) {
-                throw new PilotError("MODEL_CONFIG_MISMATCH", "Combination adapter unavailable");
-              }
-              const context = { evidence, account: accounts.combined };
-              const proposed = await call("fallback", (hooks) =>
-                models.direct(context, deadline, hooks),
-              );
-              const reviewed = await call("review", (hooks) =>
-                models.review!(context, proposed, deadline, hooks),
-              );
-              proposals.combined = reviewed.proposals;
-            })(),
-          ]
-        : [
-            (async () => {
-              proposals.deepseek = await call("direct", (hooks) =>
-                models.direct({ evidence, account: accounts.deepseek }, deadline, hooks),
-              );
-            })(),
-            (async () => {
-              const context = { evidence, account: accounts.jev };
-              const result = await call("jev", (hooks) =>
-                models.readiness(context, deadline, hooks),
-              );
-              proposals.jev = result.skip
-                ? (["BTC", "ETH"] as const).map((symbol) => ({
-                    symbol,
-                    action: "hold",
-                    reason: "JEV_MATERIAL_INSUFFICIENCY",
-                    sourceIds: [],
-                  }))
-                : await call("fallback", (hooks) => models.direct(context, deadline, hooks));
-            })(),
-          ],
+      modelStrategies.map(async (strategy) => {
+        const account = accounts[strategy];
+        if (!account) {
+          throw new PilotError("MODEL_CONFIG_MISMATCH", "Strategy account unavailable");
+        }
+        const context = { evidence, account };
+        const dependencies = { models, signal: deadline, calls: { run: call } };
+        proposals[strategy] =
+          record.config.version === 1 && strategy === "jev"
+            ? await executeLegacyPerpsReadiness(context, dependencies)
+            : await executePerpsStrategy({ id: strategy, version: "1.0.0" }, context, dependencies);
+      }),
     );
     await study.finishRound(scope, lease, round.key, proposals);
     if (outcomes.some((o) => o.status === "rejected")) {

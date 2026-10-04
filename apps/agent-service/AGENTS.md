@@ -200,3 +200,11 @@ The explicit local `perps-four-way-v2` workflow and its three paid synthetic con
 ## Perpl decision audit
 
 Read [PERPS-DECISION-AUDIT.md](PERPS-DECISION-AUDIT.md). The unified CLI exposes audit-export for an explicit loopback PostgreSQL read-only snapshot, and audit for an offline packet-only analysis. Audit dispatch must precede environment/provider composition. Never overwrite historical studies, reconstruct missing request bytes, call providers or reinterpret omissions as holds. The host owns packet integrity, safe diagnostics and HTML/CSV/JSON.
+
+## Shared perpetual strategy preparation
+
+Perpetual evaluation routes its four variants through the versioned
+`@pickler/trading/strategies` registry. The host still owns files/configuration/report rendering;
+never add a host-specific strategy switch or model route. Controlled boundary and PostgreSQL
+replay tests cover this preparation. No Studio selector, paid session, restart or activation is
+part of it; the v1 readiness protocol remains separately interpreted.
