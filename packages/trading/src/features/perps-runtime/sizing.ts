@@ -1,31 +1,10 @@
 import { LEVERAGE_BOUNDS } from "@pickler/core";
-
-/** Below `min` it holds (LOW_CONVICTION); from `full` it puts in the whole per-call amount. */
-export const CONVICTION = { min: 0.55, full: 0.65 } as const;
+import { paperDecimal, paperUnits } from "../perps-paper/decimal.js";
+import { productFeeReserve } from "../perps-paper/policy.js";
 
 /** AUSD amounts in the runtime's rules are kept to micro-AUSD. */
 export function microAusd(value: number): number {
   return Math.round(value * 1e6) / 1e6;
-}
-
-/** R7: margin = per call × 1.0 from 0.65, × 0.5 from 0.55, nothing below. */
-export function marginFor(probability: number, perCallAusd: number): number {
-  if (probability >= CONVICTION.full) {
-    return microAusd(perCallAusd);
-  }
-  if (probability >= CONVICTION.min) {
-    return microAusd(perCallAusd * 0.5);
-  }
-  return 0;
-}
-
-/**
- * Whether free paper AUSD cannot fund even the smallest open R7 sizes (half the per-call amount at
- * 0.55; its fee reserve only adds to that). R6 would end any open `blocked` "NO FREE AUSD", so a
- * check with nothing open can say so before it pays for a model call.
- */
-export function cannotFundAnyOpen(freeEquity: number, perCallAusd: number): boolean {
-  return freeEquity < marginFor(CONVICTION.min, perCallAusd);
 }
 
 /** The brief's MAX LEVERAGE as a whole number inside the core bounds; absent means 1×. */
@@ -37,7 +16,7 @@ export function leverageFor(maxLeverage: number | undefined): number {
 }
 
 export function notionalFor(margin: number, leverage: number): number {
-  return microAusd(margin * leverage);
+  return Number(paperDecimal(paperUnits(String(margin)) * BigInt(leverage)));
 }
 
 /** The fee reserve's buffer over the taker fee (R7): a fill's fee may round or the rate may move. */
@@ -51,5 +30,5 @@ export function feeReserveFor(notional: number, takerFee: number): number {
   if (!Number.isFinite(takerFee) || takerFee <= 0 || !(notional > 0)) {
     return 0;
   }
-  return Math.ceil(notional * takerFee * FEE_RESERVE_BUFFER * 1e6 - 1e-6) / 1e6;
+  return Number(productFeeReserve(String(notional), String(takerFee)));
 }

@@ -376,6 +376,15 @@ export class PostgresResearchStore implements ResearchRepository {
       ? `connections_checked:${scope.tenantId}:${scope.agentId}:${agent.version}`
       : "connections_checked";
     const [checked] = await tx.select().from(metadata).where(eq(metadata.key, readinessKey));
+    if (agent.config.perpl) {
+      const success = await tx.execute(
+        sql`SELECT 1 FROM pickler.perps_checks WHERE tenant_id=${scope.tenantId} AND agent_id=${scope.agentId} AND config_version=${agent.version} AND trigger='manual' AND status='finished' AND outcome NOT IN ('failed','skipped','system') AND decision->>'protocol'='studio-perps-check-v2' AND decision->>'incomplete'='false' LIMIT 1`,
+      );
+      return {
+        connectionsChecked: checked?.value === "true",
+        manualSucceeded: success.rows.length > 0,
+      };
+    }
     const success = await tx
       .select({ id: runs.id })
       .from(runs)

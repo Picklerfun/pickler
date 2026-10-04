@@ -1,3 +1,7 @@
+> Historical specification of PR #87 at commit 818f3d771eef31d8443d46f9e7e2fc85bc582084.
+> Its exclusive model routing, score sizing and reversal behavior are retired for new checks.
+> Use [Studio perpetual execution](../studio-perps-execution.md) for current operation.
+
 # Perpl paper runtime for studio agents (v1)
 
 Status: decided autonomously on 2026-10-03 (the owner asked for no questions and is away). It

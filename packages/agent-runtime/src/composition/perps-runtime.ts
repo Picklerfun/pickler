@@ -1,6 +1,8 @@
-import { PilotError, type PerpNetwork, type PerpSymbol } from "@pickler/core";
+import { createStudioPerpsCheckDependencies } from "./studio-perps-runtime.js";
+import { runStudioPerpsCheck } from "@pickler/trading/perps";
+import type { StudioPerpsModels } from "@pickler/trading/strategies";
+import { PilotError, type PerpNetwork } from "@pickler/core";
 import {
-  ExaResearch,
   PERPL_CHECK_SESSION_LIMIT,
   PerplBoardMemory,
   PerplMarketData,
@@ -15,26 +17,17 @@ import {
   type DatabaseConnectionOptions,
 } from "@pickler/infrastructure";
 import type { PerpsPaperMark } from "@pickler/trading/perps";
-import { createPerplSession } from "../plugins/perpl/index.js";
-import { siteScopedWeb } from "../plugins/exa.js";
 import type { PerpsBackground } from "../workers/perps.js";
 import type { PerpsActionsBackground } from "../workers/perps-actions.js";
-import { readPerplInstrument } from "./advice.js";
-import { createPerpsCheckModel, type PerpsCheckModel } from "./perps-check-model.js";
-import {
-  PERPS_CHECK_CANDLES,
-  perpsFrame,
-  runPerpsCheck,
-  type PerpsCheckDependencies,
-  type PerpsCheckWeb,
-  type PerpsMarks,
-} from "./perps-check.js";
+import { perpsFrame, type PerpsMarks } from "./perps-check.js";
 
 /** The chain the agent wallets' AUSD is read on when `CHAIN_ID` is absent: Monad testnet. */
 export const PERPS_DEFAULT_CHAIN_ID = 10143;
 
 export interface PerpsRuntimeEnvironment {
   DATABASE_URL: string;
+  PERPS_RUNTIME_POLICY_JSON?: string;
+  PERPS_JEV_API_KEY?: string;
   MODEL_BASE_URL?: string;
   MODEL_ID?: string;
   MODEL_API_KEY?: string;
@@ -74,47 +67,6 @@ export function boardMarks(): PerpsMarks {
 }
 
 /**
- * Exa under the agent's site rules; the cost is Exa's reported total, when it reports one. Without
- * an `EXA_API_KEY` it answers `WEB_UNAVAILABLE` before any request, and the check goes on with
- * Perpl alone (a step says so).
- */
-function exaWeb(apiKey: string): PerpsCheckWeb {
-  const exa = new ExaResearch(apiKey);
-  return {
-    async search(web, query, signal) {
-      if (!apiKey) {
-        throw new PilotError("WEB_UNAVAILABLE", "Web search is not configured");
-      }
-      let micros: bigint | null = 0n;
-      const search = siteScopedWeb(
-        {
-          read: (url, s) => exa.read(url, s),
-          async search(q, s, domains) {
-            const result = await exa.search(q, s, domains);
-            const usage = result.usage as { total?: unknown } | number | null;
-            const amount =
-              typeof usage === "number"
-                ? usage
-                : typeof usage?.total === "number"
-                  ? usage.total
-                  : null;
-            micros =
-              micros === null || amount === null || !Number.isFinite(amount) || amount < 0
-                ? null
-                : micros + BigInt(Math.ceil(amount * 1_000_000));
-            return result;
-          },
-        },
-        web,
-        async () => {},
-      );
-      const result = await search.search(query, signal);
-      return { sources: result.sources, costMicros: micros === null ? null : String(micros) };
-    },
-  };
-}
-
-/**
  * The deployed composition of the Perpl paper runtime for one research-worker invocation: one
  * pool (closed by `close`), the runtime and paper stores, the agent wallets' AUSD reader, bounded
  * Perpl sessions of 24 requests, the board's marks, site-scoped Exa and the configured model, plus
@@ -123,7 +75,7 @@ function exaWeb(apiKey: string): PerpsCheckWeb {
 export function createPerpsRuntime(
   env: PerpsRuntimeEnvironment,
   options: DatabaseConnectionOptions,
-  overrides: { model?: PerpsCheckModel } = {},
+  overrides: { models?: StudioPerpsModels } = {},
 ): PerpsBackground & PerpsActionsBackground {
   const research = new PostgresResearchStore(env.DATABASE_URL, undefined, options);
   const store = new PostgresPerpsRuntimeStore(research.pool);
@@ -141,52 +93,19 @@ export function createPerpsRuntime(
     },
   };
   const marks = boardMarks();
-  const deps: PerpsCheckDependencies = {
-    store,
-    paper,
-    agents: research,
-    wallets: custody,
-    balances,
-    marks,
-    market: {
-      // No session-wide timer: each Perpl request has the transport's own 10 s timeout, and the
-      // session lives within the check's three-minute deadline (`signal`), so a slow read or the
-      // model's 20 s never leaves the open's or the close's frame without time.
-      async open(scope, signal) {
-        const perplSignal = signal;
-        const { service } = await createPerplSession(research, scope, perplSignal, {
-          schedule,
-          sessionLimit: PERPL_CHECK_SESSION_LIMIT,
-        });
-        const guard = async () => perplSignal.throwIfAborted();
-        return {
-          read: (symbol: PerpSymbol) =>
-            readPerplInstrument(service, symbol, {
-              candles: PERPS_CHECK_CANDLES,
-              guard,
-              prefix: `perpl-${symbol.toLowerCase()}`,
-            }),
-          async frame(symbol: PerpSymbol) {
-            const book = await service.getPerpOrderBook({ symbol, levels: 20 });
-            const snapshot = await service.getPerpSnapshot({ symbol });
-            return perpsFrame(snapshot, book);
-          },
-        };
-      },
-    },
-    web: exaWeb(env.EXA_API_KEY ?? ""),
-    model:
-      overrides.model ??
-      createPerpsCheckModel({
-        baseUrl: env.MODEL_BASE_URL ?? "",
-        model: env.MODEL_ID ?? "",
-        apiKey: env.MODEL_API_KEY ?? "",
-      }),
-  };
   const exitData = new PerplMarketData({ schedule, sessionLimit: PERPL_CHECK_SESSION_LIMIT });
   return {
     store,
     paper,
+    bindPaper(scope, version, holder, signal) {
+      return new PostgresPerpsPaperStore(research.pool, undefined, undefined, () => ({
+        scope,
+        configVersion: version,
+        lease: holder.lease,
+        requireReservation: false,
+        signal,
+      }));
+    },
     agents: research,
     marks,
     async exitFrame(network, symbol, signal) {
@@ -198,11 +117,32 @@ export function createPerpsRuntime(
       const snapshot = await exitData.snapshot(network, symbol, ctx);
       return perpsFrame(snapshot, book);
     },
+    async funding(network, symbol, from, to, signal) {
+      return exitData.funding(
+        network,
+        { symbol, from, to },
+        {
+          signal,
+          guard: async () => {
+            signal.throwIfAborted();
+          },
+        },
+      );
+    },
     async check(check, holder, signal) {
       if (check.trigger !== "hourly" && check.trigger !== "manual") {
         throw new PilotError("INVALID_INPUT", "Only hourly and manual checks run");
       }
-      return runPerpsCheck(deps, check, holder, signal);
+      const studio = createStudioPerpsCheckDependencies({
+        env,
+        research,
+        custody,
+        store,
+        balances,
+        schedule,
+        ...(overrides.models ? { models: overrides.models } : {}),
+      });
+      return runStudioPerpsCheck(studio, check, holder, signal);
     },
     // The owner's actions (workers/perps-actions.ts) and the Cron's re-drive share this pool.
     owner: new PostgresPerpsOwnerStore(research.pool),

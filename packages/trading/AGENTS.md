@@ -138,41 +138,23 @@ See [Agent advice](../../docs/agent-advice.md) and deterministic advice tests.
 
 Advice policy v2 validates and freezes the HTTPS forecast base URL alongside its reviewed model/rates. Version 1 remains bound to direct DeepSeek. Reject credential-bearing/query/fragment URLs; reserve using the job’s frozen rates.
 
-## Perpl paper runtime rules
+## Studio execution and historical reading
 
-The `perps` export includes `features/perps-runtime`: the pure rules of studio Perpl checks
-([spec](../../docs/specs/perpl-paper-runtime-v1.md)). `decision.ts` validates the model's
-`perps-check-v1` answer by hand (no zod): clamps stop/target bps and horizon, cuts long text, and
-refuses anything malformed as `MODEL_INVALID`. A probability outside [0, 1] (a percent such as 70)
-is malformed, never clamped into full size; inside it the value is kept, so under 0.55 an open holds
-LOW_CONVICTION. A repeated line index (per section; per instrument for exits) is malformed. `null`
-means absent, missing `exits`/`never` mean none, and a `hold` may omit its horizon (24). Exit lines
-may carry the held `instrument` they were judged for (absent: the decision's). `outcome.ts` (`decideOutcome`) applies R6
-in order: exit lines met or a `close` call exit; for an open call paused, its `markets` ("NOT ITS
-MARKET"), never, entries, conviction, one position per instrument, caps (open count, per-day margin,
-day-loss), free equity (margin plus `feeReserveFor(notional, takerFee)`), then the entry mode.
-Indexes past the brief's counts are ignored and an entry line with no answer is not met. `exitsMet`
-reads exit lines per held instrument, so hosts close every position with a met line. An opposite
-call that passes the brief closes the held position first (the runtime does it in two phases).
-`sizing.ts` owns R7 margin/leverage and the fee reserve (and `cannotFundAnyOpen`: free AUSD
-below the smallest open, half the per-call amount, which hosts check before a model call), `exits.ts` R10 levels and due exits:
-`exitLevels({ leverage })` clamps the stop so its loss stays within 90% of margin
-(`maxStopLossBps` = 9000 / leverage, 900 bps at 10×); `liquidationPrice` is the spec's liquidation
-estimate (entry × (1 ∓ 1 / leverage), no maintenance margin, fees or funding), and `exitDue` treats a
-mark at or beyond it as an immediate `stop` even without a stop price (paper has no venue
-liquidation; the store's `openDuePositions` mirrors it). Also there: R11 day-loss and the
-15-minute proposal expiry, `record.ts` R13 stats, drawdown and the equity series. Models never size,
-price or reach an account; hosts inject state and act on the result. In `perps-paper/policy.ts`,
-`applyPaperSizeUp` is R8's size-up accounting (average entry, margin at the position's leverage,
-`sizeUps`, the fee; exits unchanged) behind `PerpsProductPaperRepository.sizeUp`, and
-`productFreeEquity(account, attempts, marks)` is a product account's free AUSD at trusted marks
-(`min(cash, cash + unrealized) − margin − reserved`; null when an open position has no mark).
+`features/perps-runtime/studio-check.ts` coordinates product checks through injected ports.
+`studio-execution.ts` owns fixed creator sizing and approval admission; `studio-costs.ts` owns
+frozen USD reservation arithmetic. Existing paper services own fills, funding and accounting.
+New positions use a 3% stop, 6% target and 24-hour deadline with the existing leverage clamp.
+Opposite proposals close only; compulsory exits precede strategies and run again on final data.
+Funding pending/unknown blocks additional exposure. Every financial write is transaction-fenced.
+`decision.ts` is a historical perps-check-v1 reader only. No new executor uses its probability,
+stop or horizon. The old conviction sizing and decideOutcome policy are removed.
+See [Studio perpetual execution](../../docs/studio-perps-execution.md).
 
 ## Versioned perpetual strategies
 
 The `strategies` export owns `PERPS_STRATEGIES`, `resolvePerpsStrategy` and
 `executePerpsStrategy`, including their input, model and call-gate ports. IDs are `rules`,
-`deepseek`, `jev` and `combined`, all policy version 1.0.0. Provider/prompt versions remain
+`deepseek`, `jev` and `combined`, laboratory policy version 1.0.0 and distinct Studio version 2.0.0. Provider/prompt versions remain
 separate. Unknown selections and missing capabilities fail closed before model calls.
 Execution clones and recursively freezes evidence/account inputs; never mutate another strategy's
 portfolio. Every model operation passes through an injected durable call gate using the existing
@@ -182,7 +164,7 @@ Risk, sizing, fills and accounting remain outside strategy decisions.
 The evaluator uses the registry for v2 and the explicit `perps-study/legacy-strategy.ts` adapter
 for historical v1 readiness -> blind forecast. Preserve serialized lanes, answers and proposals.
 The evaluation export retains historical policy/type names backed by the same implementations.
-No persisted plugin IDs, agent selector or new financial policy are introduced.
+No new persisted harness plugin IDs are introduced. Studio uses the separate 2.0.0 contract.
 
 ## Studio strategy version 2
 

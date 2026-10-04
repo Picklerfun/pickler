@@ -1,14 +1,13 @@
-import { PilotError, effectiveRisk, type AgentConfig, type PerpSymbol } from "@pickler/core";
+import { PilotError, effectiveRisk, type PerpSymbol } from "@pickler/core";
 import {
   PRODUCT_PAPER_SESSION,
   createPerpsPaperService,
   dayLossReached,
   exitLevels,
-  feeReserveFor,
-  leverageFor,
-  microAusd,
+  proposalRefusal,
+  paperDecimal,
+  paperUnits,
   notionalFor,
-  parseCheckDecision,
   productFreeEquity,
   realizedSince,
   utcDayStart,
@@ -20,7 +19,6 @@ import {
   type PerpsCheckOutcome,
   type PerpsPaperCloseReason,
   type PerpsPaperFrame,
-  type PerpsPaperPosition,
   type PerpsPaperScope,
   type PerpsPaperView,
   type PerpsProposal,
@@ -40,7 +38,7 @@ export interface PerpsActionMessage {
 
 export type PerpsActionsBackground = Pick<
   PerpsBackground,
-  "store" | "paper" | "agents" | "marks" | "exitFrame" | "close" | "clock"
+  "store" | "paper" | "bindPaper" | "agents" | "marks" | "exitFrame" | "funding" | "close" | "clock"
 > & { owner: PerpsOwnerActionRepository };
 
 /** An owner action may run at most one minute once it holds the agent. */
@@ -91,64 +89,7 @@ function closePnl(view: PerpsPaperView, positionId: string) {
     .reduce((sum, m) => sum + Number(m.delta), 0);
 }
 
-/** What an approve would break, in R6's order for the parts that still apply; null when clear. */
-export function proposalRefusal(input: {
-  kind: PerpsProposal["kind"];
-  instrument: PerpSymbol;
-  margin: number;
-  leverage: number;
-  paused: boolean;
-  config: Pick<AgentConfig, "maxLeverage" | "risk"> & {
-    spend: { perCallAusd: number; perDayAusd: number };
-  };
-  open: PerpsPaperPosition[];
-  /** The position a size-up adds to; null once it closed. */
-  position: PerpsPaperPosition | null;
-  newMarginToday: number;
-  realizedToday: number;
-  /** Free paper AUSD at marks; null without a mark for an open position. */
-  freeEquity: number | null;
-  takerFee: number;
-}): { code: string; text: string } | null {
-  const { instrument } = input;
-  if (input.kind === "size_up" && !input.position) {
-    return { code: "POSITION_CLOSED", text: `POSITION CLOSED · ${instrument}` };
-  }
-  if (input.paused) {
-    return { code: "PAUSED", text: "PAUSED" };
-  }
-  if (input.kind === "enter") {
-    const held = input.open.find((p) => p.symbol === instrument);
-    if (held) {
-      return { code: "ALREADY_OPEN", text: `ALREADY ${name(held.side, instrument)}` };
-    }
-  }
-  if (input.leverage > leverageFor(input.config.maxLeverage)) {
-    return { code: "CAP_LEVERAGE", text: "BLOCKED BY CAP · LEVERAGE" };
-  }
-  const already = input.position ? Number(input.position.margin ?? 0) : 0;
-  if (microAusd(already + input.margin) > input.config.spend.perCallAusd) {
-    return { code: "CAP_TRADE", text: "BLOCKED BY CAP · PER TRADE" };
-  }
-  const risk = effectiveRisk(input.config);
-  if (input.kind === "enter" && input.open.length >= risk.maxOpenPositions) {
-    return { code: "CAP_OPEN", text: `BLOCKED BY CAP · ${input.open.length} OPEN` };
-  }
-  if (microAusd(input.newMarginToday + input.margin) > input.config.spend.perDayAusd) {
-    return { code: "CAP_DAY", text: "BLOCKED BY CAP · PER DAY" };
-  }
-  if (dayLossReached(input.realizedToday, risk)) {
-    return { code: "DAY_LOSS", text: "DAY-LOSS STOP" };
-  }
-  if (input.freeEquity === null) {
-    return { code: "NO_MARK", text: `NO MARK · ${instrument}` };
-  }
-  const reserve = feeReserveFor(notionalFor(input.margin, input.leverage), input.takerFee);
-  if (input.freeEquity < microAusd(input.margin + reserve)) {
-    return { code: "NO_FREE_AUSD", text: "NO FREE AUSD" };
-  }
-  return null;
-}
+export { proposalRefusal } from "@pickler/trading/perps";
 
 type ActionResult = PerpsCheckFinish & {
   steps: string[];
@@ -334,8 +275,50 @@ async function approveProposal(
           sessionId: PRODUCT_PAPER_SESSION,
           network,
         };
+        runtime = {
+          ...runtime,
+          paper: runtime.bindPaper?.(scope, agent.version, holder, signal) ?? runtime.paper,
+        };
+        const original = await runtime.store.getCheck(proposal.checkId);
+        if (original?.configVersion !== null && original?.configVersion !== agent.version) {
+          return await settleRefused("CONFIG_CHANGED", "PROPOSAL CONFIGURATION CHANGED", [
+            "Run a new check before approving a proposal",
+          ]);
+        }
         const frame = await runtime.exitFrame(network, proposal.instrument, signal);
+        const beforeFunding = await runtime.paper.view(scope);
+        if (runtime.funding && beforeFunding.account.positions.length) {
+          const histories = [];
+          for (const symbol of new Set(beforeFunding.account.positions.map((p) => p.symbol))) {
+            await fence(runtime, holder, signal);
+            histories.push(
+              await runtime.funding(
+                network,
+                symbol,
+                Math.min(
+                  ...beforeFunding.account.positions
+                    .filter((p) => p.symbol === symbol)
+                    .map((p) => p.openedAt),
+                ),
+                now(),
+                signal,
+              ),
+            );
+          }
+          await runtime.paper.observe(scope, `approval:${check.id}:funding`, {
+            frames: beforeFunding.account.positions.some((p) => p.symbol === proposal.instrument)
+              ? [frame]
+              : [],
+            funding: histories,
+          });
+        }
+
         const view = await runtime.paper.view(scope);
+        if (view.account.fundingPending) {
+          return await settleRefused("FUNDING_PENDING", "FUNDING PENDING", [
+            "Reconcile funding before increasing exposure",
+          ]);
+        }
         const open = openPositions(view);
         const board = await runtime.marks(network, signal).catch(() => []);
         const marks: Partial<Record<PerpSymbol, string>> = {};
@@ -355,16 +338,20 @@ async function approveProposal(
         const refusal = proposalRefusal({
           kind: proposal.kind,
           instrument: proposal.instrument,
-          margin,
+          margin: proposal.margin,
           leverage: proposal.leverage,
           paused: agent.paused,
           config: { ...config, spend: config.spend },
           open,
           position,
-          newMarginToday: Number(await runtime.paper.newMarginSince(scope, dayStart)),
-          realizedToday: realizedSince(view.movements, dayStart),
-          freeEquity: free === null ? null : Number(free),
-          takerFee: Number(frame.book.market.fees.taker),
+          newMarginToday: await runtime.paper.newMarginSince(scope, dayStart),
+          realizedToday: paperDecimal(
+            view.movements
+              .filter((m) => m.kind !== "initial" && m.at >= dayStart)
+              .reduce((sum, m) => sum + paperUnits(m.delta), 0n),
+          ),
+          freeEquity: free,
+          takerFee: frame.book.market.fees.taker,
         });
         if (refusal) {
           return await settleRefused(refusal.code, refusal.text, [
@@ -387,10 +374,7 @@ async function approveProposal(
           ]);
         }
 
-        // Exits from the check that proposed it (R10's defaults when it named none).
-        const origin = await runtime.store.getCheck(proposal.checkId);
-        const parsed = parseCheckDecision(origin?.decision ?? undefined);
-        const called = parsed.ok ? parsed.decision : null;
+        // All new positions use the product execution policy, including owner approvals.
         const key = `check:${check.id}:open`;
         await fence(runtime, holder, signal);
         const service = createPerpsPaperService(
@@ -419,9 +403,9 @@ async function approveProposal(
               exitLevels({
                 side: proposal.side,
                 entryPrice: fill.price,
-                stopLossBps: called?.stopLossBps,
-                takeProfitBps: called?.takeProfitBps,
-                horizonHours: called?.horizonHours ?? 24,
+                stopLossBps: 300,
+                takeProfitBps: 600,
+                horizonHours: 24,
                 openedAt: now(),
                 // The stop's loss stays within 90% of margin at this leverage (inside liquidation).
                 leverage: proposal.leverage,
@@ -469,7 +453,7 @@ async function closePositions(
       tenantId: check.tenantId,
       agentId: check.agentId,
     });
-    const network = agent.config.perpl?.network;
+
     const finish = (
       outcome: PerpsCheckOutcome,
       outcomeText: string,
@@ -490,31 +474,21 @@ async function closePositions(
         steps.push(STOP_ALL_TEXT);
       }
     }
-    if (!network) {
-      return finish(
-        "failed",
-        "NOT CONFIGURED",
-        [...steps, "It has no Perpl config"],
-        "PLUGIN_NOT_CONFIGURED",
-        "failed",
-      );
-    }
-    const scope: PerpsPaperScope = {
-      tenantId: check.tenantId,
-      agentId: check.agentId,
-      sessionId: PRODUCT_PAPER_SESSION,
-      network,
-    };
-    let view: PerpsPaperView;
-    try {
-      view = await runtime.paper.view(scope);
-    } catch (error) {
-      if (!(error instanceof PilotError) || error.code !== "NOT_FOUND") {
-        throw error;
+    const accounts = ((await runtime.paper.openProductAccounts?.()) ?? []).filter(
+      (item) => item.productAgentId === check.productAgentId,
+    );
+    const targets: {
+      position: import("@pickler/trading/perps").PerpsPaperPosition;
+      scope: PerpsPaperScope;
+    }[] = [];
+    for (const item of accounts) {
+      const view = await runtime.paper.snapshot(item.scope);
+      for (const position of openPositions(view).filter(
+        (p) => stopAll || p.id === action.positionId,
+      )) {
+        targets.push({ position, scope: item.scope });
       }
-      return finish("system", "STOPPED · NOTHING OPEN", [...steps, "It has no paper account yet"]);
     }
-    const targets = openPositions(view).filter((p) => stopAll || p.id === action.positionId);
     if (!targets.length) {
       return stopAll
         ? finish("system", "STOPPED · NOTHING OPEN", [...steps, "Nothing was open"])
@@ -527,18 +501,23 @@ async function closePositions(
     }
 
     const reason: PerpsPaperCloseReason = stopAll ? "stop_all" : "owner";
-    const frames = new Map<PerpSymbol, PerpsPaperFrame>();
+    const frames = new Map<string, PerpsPaperFrame>();
     let closed = 0;
     let failed = 0;
-    for (const position of targets) {
+    for (const { position, scope } of targets) {
       try {
-        let frame = frames.get(position.symbol);
+        if (!runtime.bindPaper) {
+          throw new PilotError("INVALID_INPUT", "Closing requires transaction ownership");
+        }
+        const paper = runtime.bindPaper(scope, agent.version, holder, signal);
+        const key = `${scope.network}:${position.symbol}`;
+        let frame = frames.get(key);
         if (!frame) {
-          frame = await runtime.exitFrame(network, position.symbol, signal);
-          frames.set(position.symbol, frame);
+          frame = await runtime.exitFrame(scope.network, position.symbol, signal);
+          frames.set(key, frame);
         }
         await fence(runtime, holder, signal);
-        const result = await runtime.paper.closePosition(scope, position.id, reason, frame);
+        const result = await paper.closePosition(scope, position.id, reason, frame);
         if (!result.closed) {
           // Its exit (or another closer) got there first.
           steps.push(`${name(position.side, position.symbol)} was already closed`);
@@ -558,8 +537,11 @@ async function closePositions(
     }
 
     if (closed && !stopAll && !agent.paused) {
-      const after = await runtime.paper.view(scope);
-      const realized = realizedSince(after.movements, utcDayStart((runtime.clock ?? Date.now)()));
+      let realized = 0;
+      for (const item of accounts) {
+        const after = await runtime.paper.snapshot(item.scope);
+        realized += realizedSince(after.movements, utcDayStart((runtime.clock ?? Date.now)()));
+      }
       if (dayLossReached(realized, effectiveRisk(agent.config))) {
         if (await runtime.store.pauseAgent(check.productAgentId, DAY_LOSS_TEXT)) {
           steps.push(DAY_LOSS_TEXT);
@@ -578,7 +560,7 @@ async function closePositions(
     if (stopAll) {
       return finish("exited", `STOPPED · CLOSED ${closed}`, steps, error, retry);
     }
-    const only = targets[0]!;
+    const only = targets[0]!.position;
     return finish("exited", `CLOSED BY YOU · ${name(only.side, only.symbol)}`, steps, error, retry);
   });
 }

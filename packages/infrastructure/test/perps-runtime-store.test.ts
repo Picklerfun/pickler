@@ -1111,3 +1111,258 @@ test("snapshot reads without locks or writes, projecting lapsed attempts", async
   assert.ok(stored.rows[0].owner);
   await assert.rejects(f.paper.snapshot({ ...scope, agentId: "nobody" }), { code: "NOT_FOUND" });
 });
+
+test("Studio calls reserve before transport and retain unknown usage across recovery", async (t) => {
+  const { PostgresPerpsCheckCostStore } =
+    await import("../src/persistence/perps-check-cost-store.js");
+  const f = await setup(t);
+  const agent = await f.agent();
+  const queued = await f.store.startCheck({ productAgentId: agent.id, trigger: "manual" });
+  const claim = (await f.store.claimAgent(queued.id))!;
+  const costs = new PostgresPerpsCheckCostStore(f.db.pool, f.now);
+  const scope = { ...agent.scope, checkId: queued.id, configVersion: 1, lease: claim.lease };
+  const policy = {
+    version: 1 as const,
+    enabled: true,
+    reviewedAt: new Date(f.now()).toISOString(),
+    perOperationMicros: "1000",
+    perDayMicros: "2000",
+  };
+  const plan = {
+    key: "direct",
+    provider: "controlled",
+    model: "controlled",
+    promptVersion: "2.0.0",
+    promptSha256: "a".repeat(64),
+    maxInputTokens: 1000,
+    maxOutputTokens: 100,
+    inputMicrosPerMillion: "1000000",
+    outputMicrosPerMillion: "0",
+  };
+  await costs.reserve(scope, { id: "deepseek", version: "2.0.0" }, policy, [plan]);
+  const starts = await Promise.allSettled([
+    costs.start(scope, "direct", { sha256: "b".repeat(64), bytes: 100 }),
+    costs.start(scope, "direct", { sha256: "b".repeat(64), bytes: 100 }),
+  ]);
+  assert.equal(starts.filter((result) => result.status === "fulfilled").length, 1);
+  await costs.unknown(scope, "direct");
+  assert.deepEqual(await costs.finish(scope), { costMicros: null, accountedMicros: "1000" });
+  await f.store.finishCheck(claim.lease, { outcome: "failed", outcomeText: "COST UNKNOWN" });
+  await assert.rejects(f.store.startCheck({ productAgentId: agent.id, trigger: "manual" }), {
+    code: "COST_UNKNOWN",
+  });
+  const observation = await f.store.claimSupervision(agent.id);
+  assert.ok(observation, "Unknown USD costs must not block public observation");
+  await f.store.finishCheck(observation.lease, {
+    outcome: "system",
+    outcomeText: "SUPERVISED",
+    costMicros: "0",
+  });
+  await assert.rejects(
+    costs.reconcileCall({
+      tenantId: scope.tenantId,
+      agentId: scope.agentId,
+      checkId: scope.checkId,
+      key: "direct",
+      requestSha256: "f".repeat(64),
+      evidence: "controlled billing capture",
+      usage: { input: 100, output: 0 },
+    }),
+    { code: "RECONCILIATION_NOT_ALLOWED" },
+  );
+  await costs.reconcileCall({
+    tenantId: scope.tenantId,
+    agentId: scope.agentId,
+    checkId: scope.checkId,
+    key: "direct",
+    requestSha256: "b".repeat(64),
+    evidence: "controlled billing capture",
+    usage: { input: 100, output: 0 },
+  });
+  assert.equal((await f.store.getCheck(queued.id))!.costMicros, "100");
+  assert.equal(await f.store.costToday(agent.id), "100");
+  await assert.rejects(
+    costs.reconcileCall({
+      tenantId: scope.tenantId,
+      agentId: scope.agentId,
+      checkId: scope.checkId,
+      key: "direct",
+      requestSha256: "b".repeat(64),
+      evidence: "duplicate billing capture",
+      usage: { input: 100, output: 0 },
+    }),
+    { code: "RECONCILIATION_NOT_ALLOWED" },
+  );
+});
+
+test("Studio financial fencing rejects a recovered owner within the write transaction", async (t) => {
+  const f = await setup(t);
+  const agent = await f.agent();
+  const queued = await f.store.startCheck({ productAgentId: agent.id, trigger: "manual" });
+  const claim = (await f.store.claimAgent(queued.id))!;
+  const bound = new PostgresPerpsPaperStore(f.db.pool, f.now, undefined, () => ({
+    scope: agent.scope,
+    configVersion: 1,
+    lease: claim.lease,
+    requireReservation: false,
+  }));
+  await bound.initialize(agent.scope, 1, "100");
+  const paid = new PostgresPerpsPaperStore(f.db.pool, f.now, undefined, () => ({
+    scope: agent.scope,
+    configVersion: 1,
+    lease: claim.lease,
+    requireReservation: true,
+  }));
+  await assert.rejects(paid.initialize(agent.scope, 1, "100"), {
+    code: "COST_RESERVATION_LOST",
+  });
+  await f.db.pool.query("UPDATE pickler.agents SET version=2 WHERE tenant_id=$1 AND id=$2", [
+    agent.scope.tenantId,
+    agent.scope.agentId,
+  ]);
+  await assert.rejects(bound.initialize(agent.scope, 1, "100"), { code: "CONFIG_CHANGED" });
+  await f.db.pool.query("UPDATE pickler.agents SET version=1 WHERE tenant_id=$1 AND id=$2", [
+    agent.scope.tenantId,
+    agent.scope.agentId,
+  ]);
+  assert.equal((await f.paper.snapshot(agent.scope)).account.cash, "100");
+  f.advance(60_001);
+  await f.store.recoverChecks();
+  await assert.rejects(bound.initialize(agent.scope, 1, "100"), { code: "LEASE_LOST" });
+  assert.equal((await f.paper.snapshot(agent.scope)).account.cash, "100");
+});
+
+test("Studio v2 composes the shared strategy, call ledger and simulator without a probability", async (t) => {
+  const { runStudioPerpsCheck } = await import("@pickler/trading/perps");
+  const { PostgresPerpsCheckCostStore } =
+    await import("../src/persistence/perps-check-cost-store.js");
+  const { createHash } = await import("node:crypto");
+  const f = await setup(t);
+  const a = await f.agent();
+  const config = {
+    ...f.config,
+    perpl: { ...f.config.perpl!, markets: ["BTC" as const] },
+    perpsStrategy: { id: "deepseek" as const, version: "2.0.0" as const },
+    entry: { mode: "auto" as const, meanwhile: "wait" as const, smallAusd: 1 },
+    brief: { thesis: "controlled", reads: [], entersWhen: ["trend"], exitsWhen: [], never: [] },
+  };
+  await f.db.pool.query("UPDATE pickler.agents SET config=$3 WHERE tenant_id=$1 AND id=$2", [
+    a.scope.tenantId,
+    a.scope.agentId,
+    config,
+  ]);
+  const queued = await f.store.startCheck({ productAgentId: a.id, trigger: "manual" });
+  const claim = (await f.store.claimAgent(queued.id))!;
+  const holder = { lease: claim.lease };
+  let transports = 0;
+  const costStore = new PostgresPerpsCheckCostStore(f.db.pool, f.now);
+  const completed = await runStudioPerpsCheck(
+    {
+      store: f.store,
+      agents: f.db,
+      costs: costStore,
+      now: f.now,
+      policy: {
+        version: 1,
+        enabled: true,
+        reviewedAt: new Date(f.now()).toISOString(),
+        perOperationMicros: "1000",
+        perDayMicros: "2000",
+      },
+      callPlans: [
+        {
+          key: "direct",
+          provider: "controlled",
+          model: "controlled",
+          promptVersion: "2.0.0",
+          promptSha256: "a".repeat(64),
+          maxInputTokens: 1000,
+          maxOutputTokens: 100,
+          inputMicrosPerMillion: "1000000",
+          outputMicrosPerMillion: "0",
+        },
+      ],
+      hash: (document) => createHash("sha256").update(JSON.stringify(document)).digest("hex"),
+      paper: (scope, version, owner, signal) =>
+        new PostgresPerpsPaperStore(f.db.pool, f.now, undefined, () => ({
+          scope,
+          configVersion: version,
+          lease: owner.lease,
+          requireReservation: true,
+          signal,
+        })),
+      initialCash: async () => "100",
+      web: async () => {
+        throw new Error("web must remain off");
+      },
+      models: {
+        direct: async (context, _signal, hooks) => {
+          assert.equal(context.account.cash, "100");
+          await hooks.before({ sha256: "b".repeat(64), bytes: 100 });
+          transports++;
+          await hooks.usage(10, 2);
+          return [
+            {
+              symbol: "BTC",
+              action: "open-long",
+              reason: "controlled",
+              sourceIds: ["BTC:candles"],
+              brief: {
+                entries: [
+                  { index: 1, state: "met", reason: "controlled", sourceIds: ["BTC:candles"] },
+                ],
+                exits: [],
+                never: [],
+              },
+            },
+          ];
+        },
+      },
+      data: async () => ({
+        frame: async (symbol) => frame(symbol, f.now(), "100"),
+        funding: async () => {
+          throw new Error("no historical positions yet");
+        },
+        read: async (symbol) => {
+          const current = frame(symbol, f.now(), "100");
+          return {
+            frame: current,
+            sources: [],
+            candles: {
+              market: current.snapshot.market,
+              resolution: 3600,
+              from: f.now() - 60 * HOUR,
+              to: f.now(),
+              missingOpenTimes: [],
+              provenance: current.book.provenance,
+              candles: Array.from({ length: 60 }, (_, index) => ({
+                openTime: f.now() - (60 - index) * HOUR,
+                open: "100",
+                high: "100",
+                low: "100",
+                close: "100",
+                volumeCollateral: "100",
+                trades: 1,
+                closed: true,
+              })),
+            },
+          };
+        },
+      }),
+    },
+    claim.check,
+    holder,
+    new AbortController().signal,
+  );
+  assert.equal(completed.outcome, "entered", completed.error ?? completed.outcomeText ?? "");
+  assert.equal(transports, 1);
+  assert.equal(completed.costMicros, "10");
+  const decision = completed.decision as { protocol: string; actions: { proposal: unknown }[] };
+  assert.equal(decision.protocol, "studio-perps-check-v2");
+  assert.equal("probability" in (decision.actions[0]!.proposal as object), false);
+  const position = (await f.paper.snapshot(a.scope)).account.positions[0]!;
+  assert.equal(position.stopPrice, "97");
+  assert.equal(position.takeProfitPrice, "106");
+  assert.equal(position.exitDueAt, f.now() + 24 * HOUR);
+  assert.equal(position.checkId, queued.id);
+});

@@ -117,7 +117,7 @@ test("direct and atomic Jev use only their own adapters and preserve immutable a
       answers: {
         BTC_long: answer("SUPPORTED"),
         BTC_short: answer("UNSUPPORTED"),
-        BTC_thesis: answer("SUPPORTED"),
+        BTC_thesis: answer("INTACT"),
       },
       brief: { BTC: proposal().brief },
     }),
@@ -132,9 +132,9 @@ test("combined uses own proposal then review; material veto remains a hold", asy
       assert.ok(Object.isFrozen(proposals));
       return {
         answers: {
-          BTC_identity: answer("SUPPORTED"),
+          BTC_identity: answer("CONSISTENT"),
           BTC_evidence: answer("CONTRADICTED"),
-          BTC_costs: answer("SUPPORTED"),
+          BTC_costs: answer("CONSISTENT"),
         },
       };
     },

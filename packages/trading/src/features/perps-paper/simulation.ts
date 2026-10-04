@@ -234,6 +234,9 @@ export function applyPaperObservation(
   }
   a.cash = d(u(a.cash) + movements.reduce((sum, m) => sum + u(m.delta), 0n));
   a.fundingPending = pending;
+  if (a.scope.sessionId === "product" && !observation.marksOnly) {
+    a.lastFundingAt = now;
+  }
   const risk = paperRisk(a, [], now);
   const day = new Date(now).toISOString().slice(0, 10);
   if (day !== a.day) {

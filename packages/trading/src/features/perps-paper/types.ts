@@ -59,6 +59,8 @@ export interface PerpsPaperAccount {
   blocked: boolean;
   fundingPending: boolean;
   fundingDisputed?: boolean;
+  /** Product-only freshness; historical laboratory documents remain unchanged. */
+  lastFundingAt?: number;
   admissionsClosed?: boolean;
   lastValuationAt?: number;
   positions: PerpsPaperPosition[];
@@ -200,6 +202,17 @@ export interface PerpsProductPaperRepository extends PerpsPaperRepository {
     input: { key: string; margin: string },
     frame: import("./simulation.js").PerpsPaperFrame,
   ): Promise<{ added: boolean; position: PerpsPaperPosition; view: PerpsPaperView }>;
+  /** Account identities with open product positions, for unpaid reconciliation. */
+  openProductAccounts?(): Promise<{ productAgentId: string; scope: PerpsPaperScope }[]>;
   /** Networks with an open product position, for the exits job's marks. */
   openNetworks(): Promise<PerpNetwork[]>;
+}
+
+/** Trusted execution owner, bound by composition rather than caller/model input. */
+export interface PerpsProductPaperFence {
+  scope: PerpsPaperScope;
+  configVersion: number;
+  lease: import("./checks.js").PerpsCheckLease;
+  requireReservation: boolean;
+  signal?: AbortSignal;
 }

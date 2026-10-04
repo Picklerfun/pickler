@@ -1,3 +1,7 @@
+import {
+  runControlledStudioCheck as runPerpsCheck,
+  type FixtureCheckAnswer as PerpsCheckModelAnswer,
+} from "./studio-check-fixture.js";
 import { test, type TestContext } from "node:test";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
@@ -26,11 +30,9 @@ import {
 import {
   consumePerpsAction,
   consumePerpsCheck,
-  runPerpsCheck,
   superviseChecks,
   type PerpsActionsBackground,
   type PerpsBackground,
-  type PerpsCheckModelAnswer,
 } from "@pickler/agent-runtime";
 import type { Env } from "../src/index.js";
 import { createResearchWorker } from "../src/worker.js";
@@ -110,7 +112,7 @@ function answer(instrument: PerpSymbol = "BTC", action = "open-long") {
     exits: [{ index: 1, met: false, why: "Not yet" }],
     never: [{ index: 1, broken: false }],
     rationale: "Momentum with the brief",
-    sources: [],
+    sources: [`${instrument}:candles`],
   });
 }
 
@@ -146,6 +148,7 @@ async function setup(t: TestContext) {
     const handle = `actor${count}`;
     const full: AgentConfig = {
       ...base,
+      perpsStrategy: { id: "deepseek", version: "2.0.0" },
       brief: {
         ...base.brief!,
         entersWhen: ["Trend up"],
@@ -211,6 +214,19 @@ async function setup(t: TestContext) {
     const deps = {
       store,
       paper,
+      bindPaper: (
+        scope: PerpsPaperScope,
+        version: number,
+        holder: PerpsLeaseHolder,
+        signal: AbortSignal,
+      ) =>
+        new PostgresPerpsPaperStore(db.pool, now, undefined, () => ({
+          scope,
+          configVersion: version,
+          lease: holder.lease,
+          requireReservation: false,
+          signal,
+        })),
       agents: db,
       wallets: { findAgentWallet: async () => ({ address: "0xwallet" }) },
       balances: { read: async () => 200 },
@@ -236,6 +252,14 @@ async function setup(t: TestContext) {
           };
         },
       },
+      funding: async (_network: string, symbol: PerpSymbol, from: number, to: number) => ({
+        market: frame(symbol, now(), prices[symbol]).snapshot.market,
+        from,
+        to,
+        complete: true,
+        events: [],
+        pages: [frame(symbol, now(), prices[symbol]).book.provenance],
+      }),
       marks: async () => [],
       web: {
         search: async () => {
@@ -258,6 +282,19 @@ async function setup(t: TestContext) {
     return {
       store,
       paper,
+      bindPaper: (
+        scope: PerpsPaperScope,
+        version: number,
+        holder: PerpsLeaseHolder,
+        signal: AbortSignal,
+      ) =>
+        new PostgresPerpsPaperStore(db.pool, now, undefined, () => ({
+          scope,
+          configVersion: version,
+          lease: holder.lease,
+          requireReservation: false,
+          signal,
+        })),
       agents: db,
       marks: deps.marks,
       exitFrame,
@@ -269,6 +306,22 @@ async function setup(t: TestContext) {
   const actions = (): PerpsActionsBackground => ({
     store,
     paper,
+    bindPaper: (scope, version, holder, signal) =>
+      new PostgresPerpsPaperStore(db.pool, now, undefined, () => ({
+        scope,
+        configVersion: version,
+        lease: holder.lease,
+        requireReservation: false,
+        signal,
+      })),
+    funding: async (_network, symbol, from, to) => ({
+      market: frame(symbol, now(), prices[symbol]).snapshot.market,
+      from,
+      to,
+      complete: true,
+      events: [],
+      pages: [frame(symbol, now(), prices[symbol]).book.provenance],
+    }),
     agents: db,
     marks: async () => [],
     exitFrame,
@@ -361,9 +414,9 @@ test("approve opens within the caps at a fresh frame, with the proposing check's
   const [position] = open(await f.paper.view(scope));
   assert.equal(position!.entryPrice, "61000");
   assert.equal(position!.checkId, checkId);
-  // 500 bps from the proposing check; its 4 h horizon.
-  assert.equal(position!.stopPrice, "57950");
-  assert.equal(position!.exitDueAt, f.now() + 4 * HOUR);
+  // Version 2 uses the product stop and horizon, never model-authored prices.
+  assert.equal(position!.stopPrice, "59170");
+  assert.equal(position!.exitDueAt, f.now() + 24 * HOUR);
   assert.equal((await f.store.getProposal(proposal!.id))!.status, "approved");
   assert.deepEqual(await f.store.listProposals(id), []);
 

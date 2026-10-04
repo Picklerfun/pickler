@@ -102,8 +102,10 @@ closes and recovery still run. Vars in `wrangler.jsonc`: `PERPL_RUNTIME_ENABLED`
 `wrangler.staging.jsonc` carries the same value; `npm run check:staging` asserts they match) and
 `PERPL_RUNTIME_DAILY_CHECKS` "500"; optional `CHAIN_ID` and `MONAD_RPC_URL` choose where agent
 wallets' AUSD is read (default Monad testnet, as the API). The model reuses `MODEL_*`, the web
-`EXA_API_KEY` (without it a check with the web on goes on with Perpl alone and a step says so).
-Apply migration 0027 before enabling. `test/perps-runtime.test.ts` runs checks end to end over
+`EXA_API_KEY` (missing enabled evidence sources fail without a model retry).
+Apply migrations 0027 and 0028 before deploying this composition. A reviewed explicit
+`PERPS_RUNTIME_POLICY_JSON` and `PERPS_JEV_API_KEY` additionally configure Studio version 2.0.0;
+see [Studio perpetual execution](../../docs/studio-perps-execution.md). No paid acceptance or activation is implied. `test/perps-runtime.test.ts` runs checks end to end over
 real PostgreSQL with fake Perpl, board, wallet and model.
 
 The Queue also carries `{ kind: "perps-action", actionId }`: a wakeup for an owner action (approve,

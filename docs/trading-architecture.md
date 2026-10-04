@@ -71,8 +71,7 @@ compatibility, not provider reliability or profitability.
 
 ## Perpetual strategy contract
 
-`PERPS_STRATEGIES` lists `rules`, `deepseek`, `jev` and `combined`, each at policy version
-`1.0.0`. `resolvePerpsStrategy({ id, version })` refuses unknown IDs/versions.
+`PERPS_STRATEGIES` lists `rules`, `deepseek`, `jev` and `combined`, at laboratory policy version `1.0.0` and distinct Studio product version `2.0.0`. `resolvePerpsStrategy({ id, version })` refuses unknown IDs/versions.
 `executePerpsStrategy(selection, input, dependencies)` receives evidence and an isolated account,
 clones/freezes the snapshot, and returns proposals only. Dependencies supply model capabilities,
 a mandatory durable call gate and cancellation. No repository, provider, credential or execution
@@ -94,11 +93,29 @@ historical callers, backed by the moved policies, not duplicated implementations
 The evaluator retains joint USD reservations, started-call hashes, usage, unknown-cost handling,
 shared execution frames and independent financial accounts. A consumer must implement the call
 gate with equivalent admission/ownership and durable accounting before provider transport;
-this refactor does not add those guarantees to Studio. It introduces no selector HTTP API,
-agent configuration field, migration, live activation or paid evaluation.
+Studio now uses the version 2.0.0 execution service and its own transaction-fenced USD call ledger.
+It introduces neither live activation nor paid evaluation.
 
 To add a strategy, add one versioned descriptor and implementation in trading, declare required
 model capabilities, supply runtime adapters, and test exact registry coverage, controlled parity,
 isolation, cancellation and call accounting. New execution consumers must use the common risk,
 funding, simulator and ledger services. Run `npm run check:architecture`, relevant PostgreSQL
 replay tests, types, lint, format and shared/service/Worker builds.
+
+## Studio product execution
+
+[Studio perpetual execution](studio-perps-execution.md) is the operational guide for the product
+consumer. The common versioned strategy registry remains authoritative; there is no product-only
+model routing or probability-based sizing. Laboratory prompts, policies and results stay frozen.
+
+```mermaid
+flowchart LR
+  Studio[Studio setup and controls] --> API[JWT workspace API]
+  API --> Queue[Durable check or owner action]
+  Queue --> Runtime[Runtime providers and prompts]
+  Runtime --> Strategy[Trading strategies 2.0.0]
+  Strategy --> Policy[Trading fixed-size execution policy]
+  Policy --> Ledger[Infrastructure fenced financial transaction]
+  Runtime --> Costs[Separate frozen USD reservation and call ledger]
+  Public[Public supervision without models] --> Ledger
+```

@@ -515,3 +515,17 @@ and records an audit event; it has no consumer HTTP route. Apply migration befor
 research/preview admission queries. See [Agent advice](../../docs/agent-advice.md).
 
 Advice v2 call rows record the frozen forecast provider origin, not a misleading direct-DeepSeek label. Historical v1 rows retain their original meaning. This is a JSON policy extension and requires no schema migration.
+
+## Studio strategy attribution and USD reservations
+
+Migration 0028 appends private RLS evidence, call and reservation tables; never rewrite 0027.
+`PostgresPerpsCheckCostStore` records calls before transport under agent/check locks, uses frozen
+rates and keeps unknown/start reservations across recovery. `reconcileCall` is a trusted operator
+method requiring original request hash, verified usage evidence, a failed terminal check and no
+active owner; it has no HTTP endpoint or provider retry.
+`PostgresPerpsPaperStore` supports a product fence checked before/after each transaction, including
+configuration, lease, identity and (for paid checks) active USD reservation. Opening admission
+rechecks creator caps and unknown costs under that lock. Supervision and owner actions claim
+unpaid leases; closers use stored scopes even after a network/plugin edit. `claimSupervision`
+skips busy agents and public observations reuse the existing funding deduplication/dispute policy.
+See [Studio perpetual execution](../../docs/studio-perps-execution.md).

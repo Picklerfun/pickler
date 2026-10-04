@@ -132,12 +132,16 @@ export interface PerpsRuntimeRepository {
     trigger: "hourly" | "manual";
     requestKey?: string | null;
   }): Promise<PerpsCheck>;
+  /** Claims an unpaid supervision slot; returns null while another check owns the agent. */
+  claimSupervision?(
+    productAgentId: string,
+  ): Promise<{ check: PerpsCheck; lease: PerpsCheckLease } | null>;
   /** Takes the agent's lease for a queued check; null when it is not claimable. */
   claimAgent(checkId: string): Promise<{ check: PerpsCheck; lease: PerpsCheckLease } | null>;
   /**
    * Extends the lease. The runtime renews it right before every paper action (open, close,
    * size-up) and abandons the check (`CHECK_INTERRUPTED`) when it fails, so a check whose lease was
-   * recovered can never act; the paper store does not see the check lease itself.
+   * recovered can never act; product financial writes also verify this lease within their own transactions.
    */
   renewAgent(lease: PerpsCheckLease): Promise<PerpsCheckLease>;
   /** Ends a claimed check as `failed` with `code` and frees the agent. */
@@ -180,7 +184,7 @@ export interface PerpsRuntimeRepository {
   checksToday(productAgentId: string): Promise<number>;
   manualChecksToday(productAgentId: string): Promise<number>;
   globalChecksToday(): Promise<number>;
-  costToday(productAgentId: string): Promise<string>;
+  costToday(productAgentId: string): Promise<string | null>;
 }
 
 /** The minute of the hour an agent's hourly check runs at: its id spreads agents over the hour. */

@@ -19,6 +19,8 @@ export interface Env extends Environment {
   ADMISSIONS_ENABLED: string;
   /** The Perpl paper runtime (docs/specs/perpl-paper-runtime-v1.md R3); anything but "true" is off. */
   PERPL_RUNTIME_ENABLED?: string;
+  PERPS_RUNTIME_POLICY_JSON?: string;
+  PERPS_JEV_API_KEY?: string;
   /** Hourly and manual checks a UTC day across every agent; above it, `RUNTIME_CEILING`. */
   PERPL_RUNTIME_DAILY_CHECKS?: string;
   /** The chain the agent wallets' AUSD is read on (default Monad testnet, as the API). */

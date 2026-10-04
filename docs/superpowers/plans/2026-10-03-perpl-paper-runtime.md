@@ -1,3 +1,6 @@
+> Historical implementation plan for PR #87 at commit 818f3d771eef31d8443d46f9e7e2fc85bc582084.
+> Replaced for new execution by [Studio perpetual execution](../../studio-perps-execution.md).
+
 # Perpl paper runtime — Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.

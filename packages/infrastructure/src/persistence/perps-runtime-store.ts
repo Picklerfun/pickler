@@ -274,7 +274,7 @@ export class PostgresPerpsRuntimeStore implements PerpsRuntimeRepository {
     db: PoolClient,
     agent: PerpsAgentMapping,
     input: {
-      trigger: "hourly" | "manual" | "owner";
+      trigger: "hourly" | "manual" | "owner" | "exits";
       requestKey: string | null;
       at: number;
       lease: { owner: string; expiresAt: number } | null;
@@ -289,11 +289,24 @@ export class PostgresPerpsRuntimeStore implements PerpsRuntimeRepository {
     if (active.rowCount) {
       throw new PilotError("CHECK_RUNNING", "A check is already queued or running");
     }
+    if (input.trigger === "hourly" || input.trigger === "manual") {
+      const unknown = await db.query(
+        `SELECT 1 FROM pickler.perps_check_reservations r WHERE r.tenant_id=$1 AND r.agent_id=$2 AND (r.status='unknown' OR EXISTS (SELECT 1 FROM pickler.perps_check_calls c WHERE c.check_id=r.check_id AND c.status IN ('started','unknown'))) LIMIT 1`,
+        [agent.tenantId, agent.agentId],
+      );
+      if (unknown.rowCount) {
+        throw new PilotError(
+          "COST_UNKNOWN",
+          "Reconcile prior model usage before admitting another check",
+        );
+      }
+    }
     const id = randomUUID();
     await db.query(
       `INSERT INTO pickler.perps_checks(id, product_agent_id, tenant_id, agent_id, trigger, request_key, status,
-        created_at, started_at, lease_owner, lease_expires_at)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+        created_at, started_at, lease_owner, lease_expires_at, config_version)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11,
+        (SELECT version FROM pickler.agents WHERE tenant_id=$3 AND id=$4))`,
       [
         id,
         agent.productAgentId,
@@ -309,6 +322,29 @@ export class PostgresPerpsRuntimeStore implements PerpsRuntimeRepository {
       ],
     );
     return id;
+  }
+
+  async claimSupervision(productAgentId: string) {
+    try {
+      return await this.transaction(async (db) => {
+        const mapping = await this.mapping(db, productAgentId, true);
+        const at = await this.now(db);
+        const owner = randomUUID();
+        const expiresAt = at + PERPS_CHECK_LEASE_MS;
+        const id = await this.insertCheck(db, mapping, {
+          trigger: "exits",
+          requestKey: null,
+          at,
+          lease: { owner, expiresAt },
+        });
+        return { check: (await this.read(db, id))!, lease: { checkId: id, owner, expiresAt } };
+      });
+    } catch (error) {
+      if (error instanceof PilotError && error.code === "CHECK_RUNNING") {
+        return null;
+      }
+      throw error;
+    }
   }
 
   async claimAgent(checkId: string) {
@@ -753,6 +789,13 @@ export class PostgresPerpsRuntimeStore implements PerpsRuntimeRepository {
       return "0";
     }
     const day = utcDayStart(await this.now(this.pool));
+    const unknown = await this.pool.query(
+      `SELECT 1 FROM pickler.perps_check_reservations r JOIN pickler.perps_checks c ON c.id=r.check_id WHERE c.product_agent_id=$1 AND (r.status='unknown' OR EXISTS (SELECT 1 FROM pickler.perps_check_calls cc WHERE cc.check_id=r.check_id AND cc.status IN ('started','unknown'))) LIMIT 1`,
+      [productAgentId],
+    );
+    if (unknown.rowCount) {
+      return null;
+    }
     const result = await this.pool.query<{ total: string }>(
       `SELECT coalesce(sum(cost_micros), 0)::text AS total FROM pickler.perps_checks
       WHERE product_agent_id = $1 AND created_at >= $2`,

@@ -3,6 +3,7 @@ import {
   effectiveRisk,
   type AgentRecord,
   type PerpNetwork,
+  type PerpFundingHistory,
   type PerpSymbol,
   type Scope,
 } from "@pickler/core";
@@ -15,6 +16,7 @@ import {
   type PerpsDuePosition,
   type PerpsOwnerActionRepository,
   type PerpsPaperFrame,
+  type PerpsPaperScope,
   type PerpsProductPaperRepository,
   type PerpsRuntimeRepository,
 } from "@pickler/trading/perps";
@@ -32,6 +34,12 @@ export interface PerpsCheckMessage {
 export interface PerpsBackground {
   store: PerpsRuntimeRepository;
   paper: PerpsProductPaperRepository;
+  bindPaper?(
+    scope: PerpsPaperScope,
+    version: number,
+    holder: PerpsLeaseHolder,
+    signal: AbortSignal,
+  ): PerpsProductPaperRepository;
   agents: { agent(scope: Scope): Promise<AgentRecord> };
   marks: PerpsMarks;
   /** A fresh book and snapshot for the exits job, outside any agent's read session. */
@@ -40,6 +48,13 @@ export interface PerpsBackground {
     symbol: PerpSymbol,
     signal: AbortSignal,
   ): Promise<PerpsPaperFrame>;
+  funding?(
+    network: PerpNetwork,
+    symbol: PerpSymbol,
+    from: number,
+    to: number,
+    signal: AbortSignal,
+  ): Promise<PerpFundingHistory>;
   check(check: PerpsCheck, holder: PerpsLeaseHolder, signal: AbortSignal): Promise<unknown>;
   close(): Promise<void>;
   clock?: () => number;
@@ -171,6 +186,65 @@ export async function dispatchDueChecks(
   return queued;
 }
 
+/** Public-only valuation/funding continues while paid decisions are disabled or blocked. */
+export async function reconcilePerpsPositions(runtime: PerpsBackground, signal: AbortSignal) {
+  if (!runtime.paper.openProductAccounts || !runtime.funding || !runtime.bindPaper) {
+    return;
+  }
+  for (const item of await runtime.paper.openProductAccounts()) {
+    let holder: PerpsLeaseHolder | null = null;
+    try {
+      signal.throwIfAborted();
+      const claim = await runtime.store.claimSupervision?.(item.productAgentId);
+      if (!claim) {
+        continue;
+      }
+      holder = { lease: claim.lease };
+      const agent = await runtime.agents.agent(item.scope);
+      const paper = runtime.bindPaper(item.scope, agent.version, holder, signal);
+      const view = await paper.view(item.scope);
+      const frames: PerpsPaperFrame[] = [];
+      const funding: PerpFundingHistory[] = [];
+      for (const symbol of new Set(view.account.positions.map((p) => p.symbol))) {
+        signal.throwIfAborted();
+        holder.lease = await runtime.store.renewAgent(holder.lease);
+        const from = Math.min(
+          ...view.account.positions.filter((p) => p.symbol === symbol).map((p) => p.openedAt),
+        );
+        funding.push(
+          await runtime.funding(
+            item.scope.network,
+            symbol,
+            from,
+            (runtime.clock ?? Date.now)(),
+            signal,
+          ),
+        );
+        frames.push(await runtime.exitFrame(item.scope.network, symbol, signal));
+      }
+      holder.lease = await runtime.store.renewAgent(holder.lease);
+      const observed = await paper.observe(item.scope, `supervision:${claim.check.id}`, {
+        frames,
+        funding,
+      });
+      await runtime.store.finishCheck(holder.lease, {
+        outcome: "system",
+        outcomeText: observed.account.fundingPending
+          ? "FUNDING PENDING"
+          : "VALUATION AND FUNDING UPDATED",
+        configVersion: agent.version,
+        costMicros: "0",
+      });
+      holder = null;
+    } catch {
+      if (holder) {
+        await runtime.store.releaseAgent(holder.lease, "RECONCILIATION_FAILED").catch(() => {});
+      }
+      console.error("Perpl funding reconciliation remains pending; public exits continue");
+    }
+  }
+}
+
 const EXIT_LABEL = { stop: "STOP", take_profit: "TARGET", time: "TIME" } as const;
 
 /** R11 after a close: realized P&L today at or below −dayLossStop pauses the agent once. */
@@ -203,6 +277,7 @@ async function dayLossPause(
  * the rest. Answers how many closed.
  */
 export async function runExits(runtime: PerpsBackground, signal: AbortSignal): Promise<number> {
+  await reconcilePerpsPositions(runtime, signal);
   const networks = await runtime.paper.openNetworks();
   if (!networks.length) {
     return 0;
@@ -215,20 +290,32 @@ export async function runExits(runtime: PerpsBackground, signal: AbortSignal): P
   let closed = 0;
   for (const item of due) {
     const { position, scope } = item;
+    let holder: PerpsLeaseHolder | null = null;
     try {
+      const claim = await runtime.store.claimSupervision?.(item.productAgentId);
+      if (!claim) {
+        continue;
+      }
+      holder = { lease: claim.lease };
+      const agent = await runtime.agents.agent(scope);
+      if (!runtime.bindPaper) {
+        throw new PilotError("INVALID_INPUT", "Financial supervision requires a transaction fence");
+      }
+      const paper = runtime.bindPaper(scope, agent.version, holder, signal);
       const key = `${scope.network}:${position.symbol}`;
       let frame = frames.get(key);
       if (!frame) {
         frame = runtime.exitFrame(scope.network, position.symbol, signal);
         frames.set(key, frame);
       }
-      const result = await runtime.paper.closePosition(
-        scope,
-        position.id,
-        item.reason,
-        await frame,
-      );
+      holder.lease = await runtime.store.renewAgent(holder.lease);
+      const result = await paper.closePosition(scope, position.id, item.reason, await frame);
       if (!result.closed) {
+        await runtime.store.finishCheck(holder.lease, {
+          outcome: "held",
+          outcomeText: "ALREADY CLOSED",
+        });
+        holder = null;
         continue;
       }
       closed++;
@@ -236,20 +323,20 @@ export async function runExits(runtime: PerpsBackground, signal: AbortSignal): P
         .filter((m) => m.key.startsWith(`close:${position.id}:`))
         .reduce((sum, m) => sum + Number(m.delta), 0);
       const name = `${position.side.toUpperCase()} ${position.symbol}`;
-      await runtime.store.recordCheck({
-        productAgentId: item.productAgentId,
-        trigger: "exits",
+      await runtime.store.appendStep(holder.lease, {
+        text: `Closed ${name} at ${result.position.exitPrice} · ${pnl >= 0 ? "+" : "−"}${Math.abs(pnl).toFixed(2)} AUSD`,
+      });
+      await runtime.store.finishCheck(holder.lease, {
         outcome: "exited",
         outcomeText: `${EXIT_LABEL[item.reason]} · ${name}`,
         configVersion: position.configVersion ?? null,
-        steps: [
-          {
-            text: `Closed ${name} at ${result.position.exitPrice} · ${pnl >= 0 ? "+" : "−"}${Math.abs(pnl).toFixed(2)} AUSD`,
-          },
-        ],
       });
+      holder = null;
       await dayLossPause(runtime, item.productAgentId, item);
     } catch {
+      if (holder) {
+        await runtime.store.releaseAgent(holder.lease, "EXIT_FAILED").catch(() => {});
+      }
       console.error("A Perpl paper exit failed; the next minute retries it");
     }
   }

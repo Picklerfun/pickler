@@ -18,6 +18,8 @@ import {
   paperOpenReserve,
   paperUnits,
   productFeeReserve,
+  proposalRefusal,
+  utcDayStart,
   simulatePerpsFill,
   type PerpsDuePosition,
   type PerpsPaperCloseReason,
@@ -34,6 +36,7 @@ import {
   type PerpsPaperFill,
   type PerpsPaperLease,
   type PerpsPaperMovement,
+  type PerpsProductPaperFence,
 } from "@pickler/trading/perps";
 /** The least a product account starts with (perpl-paper-runtime-v1 R9). */
 export const PRODUCT_PAPER_MINIMUM = "10";
@@ -60,14 +63,17 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
       assertActive?: () => void;
       signal?: AbortSignal;
     },
+    private readonly productOwner?: () => PerpsProductPaperFence,
   ) {}
   private async transaction<T>(action: (client: PoolClient) => Promise<T>) {
     const client = await this.pool.connect();
     try {
       await client.query("BEGIN");
       await this.guardStudy(client);
+      await this.guardProduct(client);
       const result = await action(client);
       await this.guardStudy(client);
+      await this.guardProduct(client);
       await client.query("COMMIT");
       return result;
     } catch (error) {
@@ -97,7 +103,58 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
     this.studyOwner.assertActive?.();
     this.studyOwner.signal?.throwIfAborted();
   }
+  private async guardProduct(client: PoolClient) {
+    if (!this.productOwner) {
+      return;
+    }
+    const owner = this.productOwner();
+    owner.signal?.throwIfAborted();
+    const agent = await client.query(
+      "SELECT version FROM pickler.agents WHERE tenant_id=$1 AND id=$2 FOR UPDATE",
+      [owner.scope.tenantId, owner.scope.agentId],
+    );
+    if (agent.rows[0]?.version !== owner.configVersion) {
+      throw new PilotError("CONFIG_CHANGED", "Studio configuration changed before financial write");
+    }
+    const check = await client.query(
+      `SELECT 1 FROM pickler.perps_checks WHERE id=$1 AND tenant_id=$2 AND agent_id=$3 AND status='running' AND lease_owner=$4 AND lease_expires_at>$5 FOR UPDATE`,
+      [
+        owner.lease.checkId,
+        owner.scope.tenantId,
+        owner.scope.agentId,
+        owner.lease.owner,
+        await this.now(client),
+      ],
+    );
+    if (!check.rowCount) {
+      throw new PilotError("LEASE_LOST", "Studio ownership expired before financial write");
+    }
+    if (owner.requireReservation) {
+      const reservation = await client.query(
+        "SELECT 1 FROM pickler.perps_check_reservations WHERE check_id=$1 AND tenant_id=$2 AND agent_id=$3 AND config_version=$4 AND status='active' FOR UPDATE",
+        [owner.lease.checkId, owner.scope.tenantId, owner.scope.agentId, owner.configVersion],
+      );
+      if (!reservation.rowCount) {
+        throw new PilotError(
+          "COST_RESERVATION_LOST",
+          "Studio reservation no longer admits financial writes",
+        );
+      }
+    }
+    owner.signal?.throwIfAborted();
+  }
   private async agent(client: PoolClient, scope: PerpsPaperScope) {
+    if (this.productOwner) {
+      const expected = this.productOwner().scope;
+      if (
+        scope.tenantId !== expected.tenantId ||
+        scope.agentId !== expected.agentId ||
+        scope.sessionId !== expected.sessionId ||
+        scope.network !== expected.network
+      ) {
+        throw new PilotError("FORBIDDEN", "Financial write crossed its bound Studio identity");
+      }
+    }
     if (
       !/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,79}$/.test(scope.sessionId) ||
       !["mainnet", "testnet"].includes(scope.network)
@@ -190,10 +247,28 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
       if (old.rows[0]) {
         return locked.view;
       }
-      assertPerpsPaperAgent(locked.agent, scope, locked.view.account.agentVersion);
-      for (const frame of observation.frames) {
-        if (!locked.agent.config.perpl!.markets.includes(frame.snapshot.market.symbol)) {
-          throw new PilotError("MARKET_NOT_ALLOWED", "Observation market is not permitted");
+      const supervision = this.productOwner && !this.productOwner().requireReservation;
+      if (supervision) {
+        assertPerpsPaperScope(locked.agent, scope);
+        if (
+          observation.frames.some(
+            (frame) =>
+              !locked.view.account.positions.some(
+                (position) => position.symbol === frame.snapshot.market.symbol,
+              ),
+          )
+        ) {
+          throw new PilotError(
+            "MARKET_NOT_ALLOWED",
+            "Public supervision only observes recorded positions",
+          );
+        }
+      } else {
+        assertPerpsPaperAgent(locked.agent, scope, locked.view.account.agentVersion);
+        for (const frame of observation.frames) {
+          if (!locked.agent.config.perpl!.markets.includes(frame.snapshot.market.symbol)) {
+            throw new PilotError("MARKET_NOT_ALLOWED", "Observation market is not permitted");
+          }
         }
       }
       const result = applyPaperObservation(
@@ -265,10 +340,68 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
    * never wait"): an owner's edit to plugins, policy, network or markets can never strand an open
    * position. Operator sessions keep their version pin in `begin`.
    */
-  private allowed(locked: Locked, scope: PerpsPaperScope, intent: PerpsPaperIntent) {
+  private async allowed(
+    client: PoolClient,
+    locked: Locked,
+    scope: PerpsPaperScope,
+    intent: PerpsPaperIntent,
+  ) {
     if (intent.kind === "close") {
       assertPerpsPaperScope(locked.agent, scope);
       return;
+    }
+    if (this.productOwner) {
+      const denied = await client.query(
+        `SELECT 1 FROM pickler.product_agents pa JOIN agents.agents p ON p.id=pa.product_agent_id
+        WHERE pa.tenant_id=$1 AND pa.runtime_agent_id=$2 AND p.killed_at IS NOT NULL
+        UNION ALL SELECT 1 FROM pickler.perps_check_reservations r WHERE r.tenant_id=$1 AND r.agent_id=$2 AND (r.status='unknown' OR EXISTS
+          (SELECT 1 FROM pickler.perps_check_calls c WHERE c.check_id=r.check_id AND c.status IN ('started','unknown'))) LIMIT 1`,
+        [scope.tenantId, scope.agentId],
+      );
+      if (denied.rowCount) {
+        throw new PilotError(
+          "OPENING_BLOCKED",
+          "Revoked agent or unknown usage blocks additional exposure",
+        );
+      }
+      if (
+        locked.view.account.fundingPending ||
+        (locked.view.account.positions.length > 0 &&
+          (locked.view.account.lastFundingAt === undefined ||
+            locked.now - locked.view.account.lastFundingAt > 30000))
+      ) {
+        throw new PilotError("FUNDING_PENDING", "Reconcile funding before additional exposure");
+      }
+      const config = locked.agent.config;
+      if (!config.spend) {
+        throw new PilotError("PLUGIN_NOT_CONFIGURED", "Creator caps are required");
+      }
+      const position =
+        locked.view.account.positions.find(
+          (p) => p.closedAt === null && p.symbol === intent.symbol,
+        ) ?? null;
+      const refusal = proposalRefusal({
+        kind: position ? "size_up" : "enter",
+        instrument: intent.symbol,
+        margin: paperDecimal(paperUnits(intent.notional) / BigInt(intent.leverage ?? 1)),
+        leverage: intent.leverage ?? 1,
+        paused: locked.agent.paused,
+        config: { ...config, spend: config.spend },
+        open: locked.view.account.positions.filter((p) => p.closedAt === null),
+        position,
+        newMarginToday: marginOpenedSince(locked.view.account.positions, utcDayStart(locked.now)),
+        realizedToday: paperDecimal(
+          locked.view.movements
+            .filter((m) => m.kind !== "initial" && m.at >= utcDayStart(locked.now))
+            .reduce((sum, m) => sum + paperUnits(m.delta), 0n),
+        ),
+        freeEquity: null,
+        checkAvailable: false,
+        takerFee: 0,
+      });
+      if (refusal) {
+        throw new PilotError(refusal.code, refusal.text);
+      }
     }
     assertPerpsPaperAgent(locked.agent, scope, locked.view.account.agentVersion);
     if (!locked.agent.config.perpl!.markets.includes(intent.symbol)) {
@@ -308,7 +441,7 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
       if (!isProductPaperSession(scope) && locked.view.account.agentVersion !== expectedVersion) {
         throw new PilotError("CONFIG_CHANGED", "Paper session version differs");
       }
-      this.allowed(locked, scope, intent);
+      await this.allowed(client, locked, scope, intent);
       const risk = paperRisk(locked.view.account, locked.view.attempts, locked.now, intent);
       const owner = randomUUID();
       const expiresAt = locked.now + 60000;
@@ -350,7 +483,7 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
   async assertLease(scope: PerpsPaperScope, lease: PerpsPaperLease) {
     await this.transaction(async (client) => {
       const locked = await this.owned(client, scope, lease);
-      this.allowed(locked, scope, locked.attempt.intent);
+      await this.allowed(client, locked, scope, locked.attempt.intent);
     });
   }
   private async persist(
@@ -405,7 +538,7 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
     }
     return this.transaction(async (client) => {
       const locked = await this.owned(client, scope, lease);
-      this.allowed(locked, scope, locked.attempt.intent);
+      await this.allowed(client, locked, scope, locked.attempt.intent);
       const risk = paperRisk(
         locked.view.account,
         locked.view.attempts.filter((a) => a.key !== lease.key),
@@ -647,7 +780,7 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
         leverage,
       };
       assertPaperIntent(intent);
-      this.allowed(locked, scope, intent);
+      await this.allowed(client, locked, scope, intent);
       const risk = paperRisk(locked.view.account, locked.view.attempts, locked.now);
       if (
         risk.available === null ||
@@ -682,6 +815,24 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
         view,
       };
     });
+  }
+  async openProductAccounts() {
+    const result = await this.pool.query(
+      `SELECT DISTINCT pa.product_agent_id::text AS "productAgentId", a.tenant_id AS "tenantId", a.agent_id AS "agentId", a.network
+      FROM pickler.perps_paper_accounts a JOIN pickler.perps_paper_positions p ON p.account_id=a.id
+      JOIN pickler.product_agents pa ON pa.tenant_id=a.tenant_id AND pa.runtime_agent_id=a.agent_id
+      WHERE a.session_id=$1 AND p.closed_at IS NULL`,
+      [PRODUCT_PAPER_SESSION],
+    );
+    return result.rows.map((row) => ({
+      productAgentId: row.productAgentId,
+      scope: {
+        tenantId: row.tenantId,
+        agentId: row.agentId,
+        network: row.network,
+        sessionId: PRODUCT_PAPER_SESSION,
+      },
+    }));
   }
   /** Networks with an open product position. */
   async openNetworks() {

@@ -1,3 +1,8 @@
+import {
+  runControlledStudioCheck as runPerpsCheck,
+  type FixtureCheckDependencies as PerpsCheckDependencies,
+  type FixtureCheckAnswer as PerpsCheckModelAnswer,
+} from "./studio-check-fixture.js";
 import { test, type TestContext } from "node:test";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
@@ -27,12 +32,9 @@ import {
   dispatchDueChecks,
   expirePerpsProposals,
   runExits,
-  runPerpsCheck,
   superviseChecks,
   type PerpsBackground,
   type PerpsCheckMessage,
-  type PerpsCheckDependencies,
-  type PerpsCheckModelAnswer,
 } from "@pickler/agent-runtime";
 
 type PerpsBackgroundWeb = PerpsCheckDependencies["web"];
@@ -184,6 +186,7 @@ async function setup(t: TestContext) {
     const visibility = options.visibility ?? "public";
     const config: AgentConfig = {
       ...base,
+      perpsStrategy: { id: "deepseek", version: "2.0.0" },
       brief: {
         ...base.brief!,
         entersWhen: ["Trend up"],
@@ -236,6 +239,19 @@ async function setup(t: TestContext) {
     const deps = {
       store: runtimeStore,
       paper,
+      bindPaper: (
+        scope: PerpsPaperScope,
+        version: number,
+        holder: PerpsLeaseHolder,
+        signal: AbortSignal,
+      ) =>
+        new PostgresPerpsPaperStore(db.pool, now, undefined, () => ({
+          scope,
+          configVersion: version,
+          lease: holder.lease,
+          requireReservation: false,
+          signal,
+        })),
       agents: db,
       wallets: { findAgentWallet: async () => ({ address: "0xwallet" }) },
       balances: { read: async () => balance },
@@ -269,6 +285,14 @@ async function setup(t: TestContext) {
           };
         },
       },
+      funding: async (_network: string, symbol: PerpSymbol, from: number, to: number) => ({
+        market: frame(symbol, now(), prices[symbol]).snapshot.market,
+        from,
+        to,
+        complete: true,
+        events: [],
+        pages: [frame(symbol, now(), prices[symbol]).book.provenance],
+      }),
       marks: async () => {
         const hook = onMarks;
         onMarks = async () => {};
@@ -294,6 +318,19 @@ async function setup(t: TestContext) {
     return {
       store: runtimeStore,
       paper,
+      bindPaper: (
+        scope: PerpsPaperScope,
+        version: number,
+        holder: PerpsLeaseHolder,
+        signal: AbortSignal,
+      ) =>
+        new PostgresPerpsPaperStore(db.pool, now, undefined, () => ({
+          scope,
+          configVersion: version,
+          lease: holder.lease,
+          requireReservation: false,
+          signal,
+        })),
       agents: db,
       marks: deps.marks,
       exitFrame: async (_network, symbol) => frame(symbol, clock, prices[symbol]),
@@ -360,17 +397,12 @@ test("entered: an auto agent opens a paper position with exits and timed steps",
   const done = await f.check(id);
 
   assert.equal(done.outcome, "entered");
-  assert.equal(done.outcomeText, "ENTERED LONG BTC");
+  assert.match(done.outcomeText!, /BTC: open/);
   assert.equal(done.costMicros, "1500");
   assert.deepEqual(done.inputs, { instruments: ["BTC", "ETH"], web: false });
   assert.equal(done.configVersion, 1);
   const texts = done.steps.map((s) => s.text);
-  assert.equal(texts[0], "Read the brief · 1 entry, 1 exit, 1 never");
-  assert.ok(texts.includes("Opened its paper account · 200.00 AUSD"));
-  assert.ok(texts.some((s) => /^Read Perpl BTC, ETH · \d+\.\ds$/.test(s)));
-  assert.ok(texts.some((s) => s.startsWith("Asked the model · ")));
-  assert.ok(texts.includes("Entry 1 met"));
-  assert.equal(texts.at(-1), "ENTERED LONG BTC");
+  assert.equal(texts[0], "Strategy deepseek@2.0.0");
   const [position] = open(await f.paper.view(scope));
   assert.equal(position!.symbol, "BTC");
   assert.equal(position!.leverage, 2);
@@ -387,8 +419,7 @@ test("held: an entry line not met holds, and nothing opens", async (t) => {
   const done = await f.check(id);
 
   assert.equal(done.outcome, "held");
-  assert.equal(done.outcomeText, "ENTRY 1 HELD");
-  assert.ok(done.steps.some((s) => s.text === "Entry 1 held"));
+  assert.match(done.outcomeText!, /STUDIO_BRIEF_UNSUPPORTED/);
   assert.deepEqual(open(await f.paper.view(scope)), []);
 });
 
@@ -399,8 +430,8 @@ test("blocked: an unfunded wallet, and the open-positions cap", async (t) => {
 
   const unfunded = await f.check(poor.id);
 
-  assert.equal(unfunded.outcome, "blocked");
-  assert.equal(unfunded.outcomeText, "FUND ITS WALLET");
+  assert.equal(unfunded.outcome, "failed");
+  assert.equal(unfunded.outcomeText, "WALLET_UNFUNDED");
   assert.equal(unfunded.error, "WALLET_UNFUNDED");
   assert.equal(f.calls.model, 0);
 
@@ -411,41 +442,20 @@ test("blocked: an unfunded wallet, and the open-positions cap", async (t) => {
   f.answer(answer({ instrument: "BTC" }));
   const blocked = await f.check(capped.id);
   assert.equal(blocked.outcome, "blocked");
-  assert.equal(blocked.outcomeText, "BLOCKED BY CAP · 1 OPEN");
+  assert.match(blocked.outcomeText!, /CAP_OPEN/);
   assert.equal(open(await f.paper.view(capped.scope)).length, 1);
 });
 
-test("blocked before the model: free paper AUSD below half a trade reads nothing and costs nothing", async (t) => {
+test("fixed creator amount blocks an underfunded open after a bounded proposal", async (t) => {
   const f = await setup(t);
-  // 12 AUSD opens the account, but half of a 30 AUSD trade is 15.
   const { id, scope } = await f.agent({ config: { spend: { perCallAusd: 30, perDayAusd: 100 } } });
   f.balance(12);
-
   const done = await f.check(id);
-
   assert.equal(done.outcome, "blocked");
-  assert.equal(done.outcomeText, "NO FREE AUSD");
-  assert.equal(done.error, "NO_FREE_AUSD");
-  assert.equal(done.costMicros, null);
-  assert.deepEqual(f.calls, { model: 0, perpl: 0 });
-  assert.deepEqual(
-    done.steps.map((s) => s.text),
-    [
-      "Read the brief · 1 entry, 1 exit, 1 never",
-      "Opened its paper account · 12.00 AUSD",
-      "It has 12.00 AUSD free on paper · not enough for half a trade",
-    ],
-  );
-  assert.deepEqual(open(await f.paper.view(scope)), []);
-
-  // With enough free for half a trade (a 20 AUSD per call), the check reads Perpl and asks again.
-  await f.db.pool.query(
-    "UPDATE pickler.agents SET config = jsonb_set(config, '{spend}', $2) WHERE id = $1",
-    [scope.agentId, JSON.stringify({ perCallAusd: 20, perDayAusd: 100 })],
-  );
-  await f.check(id);
+  assert.match(done.outcomeText!, /NO_FREE_AUSD/);
+  assert.equal(done.costMicros, "1500");
   assert.equal(f.calls.model, 1);
-  assert.ok(f.calls.perpl > 0);
+  assert.deepEqual(open(await f.paper.view(scope)), []);
 });
 
 test("proposed: approve and wait leaves a 15-minute proposal and opens nothing", async (t) => {
@@ -480,13 +490,13 @@ test("small + size-up: approve and small enters small and proposes the rest", as
 
   assert.equal(done.error, null);
   assert.equal(done.outcome, "entered");
-  assert.equal(done.outcomeText, "ENTERED LONG BTC SMALL · SIZE-UP PROPOSED");
+  assert.match(done.outcomeText!, /BTC: open/);
   const [position] = open(await f.paper.view(scope));
   // 5 AUSD × 2 at 60,000 fills one 0.0001 BTC step: margin 3.
   assert.equal(position!.margin, "3");
   const [proposal] = await f.store.listProposals(id);
   assert.equal(proposal!.kind, "size_up");
-  assert.equal(proposal!.margin, "5");
+  assert.equal(proposal!.margin, "7");
   assert.equal(proposal!.positionId, position!.id);
 
   const sized = await f.paper.sizeUp(
@@ -495,11 +505,11 @@ test("small + size-up: approve and small enters small and proposes the rest", as
     { key: `sizeup:${proposal!.id}`, margin: proposal!.margin },
     frame("BTC", f.now(), "60000"),
   );
-  assert.equal(sized.position.margin, "6");
+  assert.equal(sized.position.margin, "9");
   assert.equal(sized.position.sizeUps!.length, 1);
 });
 
-test("failed: a malformed answer is MODEL_INVALID, keeps its cost and never trades", async (t) => {
+test("failed: a malformed answer is MODEL_OUTPUT_INVALID, keeps its cost and never trades", async (t) => {
   const f = await setup(t);
   const { id, scope } = await f.agent();
   f.answer('{"instrument":"BTC","action":"buy everything"}');
@@ -507,15 +517,15 @@ test("failed: a malformed answer is MODEL_INVALID, keeps its cost and never trad
   const done = await f.check(id);
 
   assert.equal(done.outcome, "failed");
-  assert.equal(done.error, "MODEL_INVALID");
+  assert.equal(done.error, "MODEL_OUTPUT_INVALID");
   assert.equal(done.costMicros, "1500");
   assert.deepEqual(open(await f.paper.view(scope)), []);
 
   f.answer("not json");
-  assert.equal((await f.check(id)).error, "MODEL_INVALID");
+  assert.equal((await f.check(id)).error, "MODEL_OUTPUT_INVALID");
 });
 
-test("opposite open: the close is its own exited row, then it opens the other side", async (t) => {
+test("opposite open closes without reopening in the same check", async (t) => {
   const f = await setup(t);
   const { id, scope } = await f.agent();
   await f.check(id);
@@ -524,17 +534,17 @@ test("opposite open: the close is its own exited row, then it opens the other si
 
   const done = await f.check(id);
 
-  assert.equal(done.outcome, "entered");
-  assert.equal(done.outcomeText, "ENTERED SHORT BTC");
+  assert.equal(done.outcome, "exited");
+  assert.match(done.outcomeText!, /OPPOSITE_SIGNAL_CLOSE_ONLY/);
   const exited = await f.store.listChecks(id, { outcomes: ["exited"] });
   assert.equal(exited.items.length, 1);
-  assert.equal(exited.items[0]!.outcomeText, "CLOSED LONG BTC · REVERSING");
+  assert.equal(exited.items[0]!.id, done.id);
   const view = await f.paper.view(scope);
   const closed = view.account.positions.find((p) => p.closedAt !== null)!;
   assert.equal(closed.closeReason, "brief");
   assert.deepEqual(
     open(view).map((p) => [p.symbol, p.side]),
-    [["BTC", "short"]],
+    [],
   );
 });
 
@@ -596,7 +606,7 @@ test("day-loss: an exit past the day-loss stop pauses the agent with a system ro
 
   f.prices.BTC = "60000";
   const after = await f.check(id);
-  assert.equal(after.outcomeText, "PAUSED");
+  assert.equal(after.error, "AGENT_REVOKED");
 });
 
 test("ceiling and disabled: a refused check never reads Perpl or asks the model", async (t) => {
@@ -647,7 +657,10 @@ test("lease conflict: two deliveries run one check; a check that lost its lease 
   const stalled = await f.check(other.id);
   assert.equal(stalled.status, "running");
   f.onModel(async () => {});
-  await f.store.startCheck({ productAgentId: other.id, trigger: "manual" });
+  await f.store.recoverChecks();
+  await assert.rejects(f.store.startCheck({ productAgentId: other.id, trigger: "manual" }), {
+    code: "COST_UNKNOWN",
+  });
   const recovered = (await f.store.getCheck(stalled.id))!;
   assert.equal(recovered.outcome, "failed");
   assert.equal(recovered.error, "CHECK_INTERRUPTED");
@@ -680,7 +693,7 @@ test("the dispatcher queues hourly checks for due agents only", async (t) => {
   assert.equal(check.trigger, "hourly");
 });
 
-test("an instrument outside its markets holds, it does not fail", async (t) => {
+test("an unauthorized strategy market fails without trading", async (t) => {
   const f = await setup(t);
   const { id, scope } = await f.agent({
     config: { perpl: { version: 1, network: "testnet", markets: ["BTC"] } },
@@ -689,9 +702,8 @@ test("an instrument outside its markets holds, it does not fail", async (t) => {
 
   const done = await f.check(id);
 
-  assert.equal(done.outcome, "held");
-  assert.equal(done.outcomeText, "NOT ITS MARKET");
-  assert.equal(done.error, null);
+  assert.equal(done.outcome, "failed");
+  assert.equal(done.error, "STRATEGY_RESPONSE_INVALID");
   assert.deepEqual(open(await f.paper.view(scope)), []);
 });
 
@@ -713,18 +725,18 @@ test("brief exit lines close every held position the model reported a met line f
       ],
       never: [{ index: 1, broken: false }],
       rationale: "BTC broke its trend",
-      sources: [],
+      sources: ["BTC:candles", "ETH:candles"],
     }),
   );
 
   const done = await f.check(id);
 
-  assert.equal(done.outcome, "held");
-  assert.equal(done.outcomeText, "HOLD");
+  assert.equal(done.outcome, "exited");
+  assert.match(done.outcomeText!, /STUDIO_BRIEF_EXIT_MET/);
   const exited = await f.store.listChecks(id, { outcomes: ["exited"] });
   assert.deepEqual(
     exited.items.map((c) => [c.outcomeText, c.trigger]),
-    [["EXIT 1 MET · LONG BTC", "system"]],
+    [[done.outcomeText, "manual"]],
   );
   const view = await f.paper.view(scope);
   assert.deepEqual(
@@ -734,7 +746,7 @@ test("brief exit lines close every held position the model reported a met line f
   assert.equal(view.account.positions.find((p) => p.symbol === "BTC")!.closeReason, "brief");
 });
 
-test("at 10x a wide stop is pulled inside the liquidation estimate (90% of margin)", async (t) => {
+test("Studio stop stays at three percent when inside the leverage clamp", async (t) => {
   const f = await setup(t);
   const { id, scope } = await f.agent({ config: { maxLeverage: 10 } });
   f.answer(JSON.stringify({ ...JSON.parse(answer()), stopLossBps: 1500, takeProfitBps: null }));
@@ -745,7 +757,7 @@ test("at 10x a wide stop is pulled inside the liquidation estimate (90% of margi
   const [position] = open(await f.paper.view(scope));
   assert.equal(position!.leverage, 10);
   const entry = Number(position!.entryPrice);
-  assert.ok(Math.abs(Number(position!.stopPrice) - entry * 0.91) < 0.01);
+  assert.ok(Math.abs(Number(position!.stopPrice) - entry * 0.97) < 0.01);
   assert.ok(Number(position!.takeProfitPrice) > entry);
 });
 
@@ -808,18 +820,17 @@ test("off: the minute Cron still closes due exits and sweeps stuck checks, and d
   assert.equal(f.calls.model, 1);
 });
 
-test("an empty search key degrades to Perpl only, with a step, not a failure", async (t) => {
+test("missing enabled search fails before model transport", async (t) => {
   const f = await setup(t);
-  const { id } = await f.agent({ config: f.webOn });
+  const { id, scope } = await f.agent({ config: f.webOn });
   f.web(async () => {
-    throw new PilotError("WEB_UNAVAILABLE", "Web search is not configured");
+    throw new PilotError("WEB_UNAVAILABLE", "Missing search credential");
   });
-
   const done = await f.check(id);
-
-  assert.equal(done.outcome, "entered");
-  assert.deepEqual(done.inputs, { instruments: ["BTC", "ETH"], web: false });
-  assert.ok(done.steps.some((s) => s.text === "Skipped the web · search is not set up here"));
+  assert.equal(done.outcome, "failed");
+  assert.equal(done.error, "WEB_UNAVAILABLE");
+  assert.equal(f.calls.model, 0);
+  assert.deepEqual(open(await f.paper.view(scope)), []);
 });
 
 test("a model timeout ends the check with a step and keeps the web's cost", async (t) => {
@@ -834,12 +845,12 @@ test("a model timeout ends the check with a step and keeps the web's cost", asyn
 
   assert.equal(done.outcome, "failed");
   assert.equal(done.error, "MODEL_TIMEOUT");
-  assert.equal(done.costMicros, "700");
-  assert.equal(done.steps.at(-1)!.text, "Asked the model · it did not answer");
+  assert.equal(done.costMicros, null);
+  assert.equal(await f.store.costToday(id), null);
   assert.deepEqual(open(await f.paper.view(scope)), []);
 });
 
-test("cited sources are kept only when the check gave them", async (t) => {
+test("invented cited sources fail rather than being silently filtered", async (t) => {
   const f = await setup(t);
   const { id } = await f.agent();
   f.answer(
@@ -851,10 +862,8 @@ test("cited sources are kept only when the check gave them", async (t) => {
 
   const done = await f.check(id);
 
-  assert.deepEqual((done.decision as { sources: string[] }).sources, [
-    "perpl-btc-ticker",
-    "perpl-eth-ticker",
-  ]);
+  assert.equal(done.outcome, "failed");
+  assert.equal(done.error, "STRATEGY_RESPONSE_INVALID");
 });
 
 test("a close the exits job made first is reported as such, not as this check's", async (t) => {
@@ -864,17 +873,16 @@ test("a close the exits job made first is reported as such, not as this check's"
   const [position] = open(await f.paper.view(scope));
   f.advance(60_000);
   f.answer(answer({ action: "close" }));
-  // The exits job closes it after the check read the account, before its own close.
-  f.onMarks(async () => {
-    await f.paper.closePosition(scope, position!.id, "stop", {
-      ...(await f.runtime().exitFrame("testnet", "BTC", AbortSignal.timeout(1000))),
-    });
-  });
+  await f.paper.closePosition(
+    scope,
+    position!.id,
+    "stop",
+    await f.runtime().exitFrame("testnet", "BTC", AbortSignal.timeout(1000)),
+  );
 
   const done = await f.check(id);
 
-  assert.equal(done.outcomeText, "ALREADY CLOSED · BTC");
-  assert.ok(done.steps.some((s) => s.text === "LONG BTC was already closed (by its exit)"));
+  assert.match(done.outcomeText!, /NOTHING_TO_CLOSE/);
   const closed = (await f.paper.view(scope)).account.positions[0]!;
   assert.equal(closed.closeReason, "stop");
   const exited = await f.store.listChecks(id, { outcomes: ["exited"] });
