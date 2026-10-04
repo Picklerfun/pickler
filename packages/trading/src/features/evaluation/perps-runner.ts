@@ -12,6 +12,10 @@ import {
   type PerpsStudyRecord,
 } from "../perps-study/types.js";
 import { executePerpsStrategy } from "../perps-strategies/registry.js";
+import {
+  validateMultiframeEvidence,
+  gateMultiframeProposal,
+} from "../perps-strategies/multiframe.js";
 import { executeLegacyPerpsReadiness } from "../perps-study/legacy-strategy.js";
 import { PilotError } from "@pickler/core";
 import {
@@ -228,7 +232,11 @@ export function createPerpsStudyRunner(deps: {
       for (const position of views[strategy]!.account.positions.filter(
         (p) => p.closedAt === null,
       )) {
-        if (closing || risk.closeSymbols.includes(position.symbol)) {
+        if (
+          closing ||
+          risk.closeSymbols.includes(position.symbol) ||
+          (record.config.strategyVersion === "1.1.0" && now() - position.openedAt >= 30 * 60000)
+        ) {
           closedThisRound.add(`${strategy}:${position.symbol}`);
           await execute(
             scope,
@@ -239,7 +247,12 @@ export function createPerpsStudyRunner(deps: {
             {
               symbol: position.symbol,
               action: "close",
-              reason: closing ? "SESSION_END" : "RISK_EXIT",
+              reason: closing
+                ? "SESSION_END"
+                : now() - position.openedAt >= 30 * 60000 &&
+                    record.config.strategyVersion === "1.1.0"
+                  ? "HORIZON_EXIT"
+                  : "RISK_EXIT",
               sourceIds: [],
             },
             observation.frames,
@@ -293,6 +306,9 @@ export function createPerpsStudyRunner(deps: {
       evidence = await data.evidence(record, observation, signal, () => ownedGuard());
       signal.throwIfAborted();
       validateCommonFrames(evidence.frames, record.config.network, now());
+      if (record.config.strategyVersion === "1.1.0") {
+        validateMultiframeEvidence(evidence);
+      }
     } catch (error) {
       signal.throwIfAborted();
       if (transientPerpsData(error)) {
@@ -309,7 +325,7 @@ export function createPerpsStudyRunner(deps: {
       strategies.map((s) => [s, views[s]!.account]),
     ) as Parameters<PerpsStudyRepository["reserve"]>[4];
     const rules = await executePerpsStrategy(
-      { id: "rules", version: "1.0.0" },
+      { id: "rules", version: record.config.strategyVersion ?? "1.0.0" },
       { evidence, account: accounts.rules },
       {
         models: {},
@@ -378,7 +394,11 @@ export function createPerpsStudyRunner(deps: {
         proposals[strategy] =
           record.config.version === 1 && strategy === "jev"
             ? await executeLegacyPerpsReadiness(context, dependencies)
-            : await executePerpsStrategy({ id: strategy, version: "1.0.0" }, context, dependencies);
+            : await executePerpsStrategy(
+                { id: strategy, version: record.config.strategyVersion ?? "1.0.0" },
+                context,
+                dependencies,
+              );
       }),
     );
     await study.finishRound(scope, lease, round.key, proposals);
@@ -396,8 +416,12 @@ export function createPerpsStudyRunner(deps: {
         observedAt: now(),
         frames,
       });
-      validateCommonFrames(frames, record.config.network, now());
+      const finalAt = now();
+      validateCommonFrames(frames, record.config.network, finalAt);
       await ownedGuard(true);
+      if (record.config.strategyVersion === "1.1.0") {
+        validateMultiframeEvidence({ ...evidence, observedAt: finalAt, frames });
+      }
       executionStarted = true;
       // New marks refresh admission after model latency; the earlier funding reconciliation is retained.
       for (const strategy of strategies) {
@@ -427,7 +451,26 @@ export function createPerpsStudyRunner(deps: {
             signal,
           );
         }
-        for (const proposal of proposals[strategy]!) {
+        for (const originalProposal of proposals[strategy]!) {
+          const proposal =
+            record.config.strategyVersion === "1.1.0"
+              ? gateMultiframeProposal(
+                  {
+                    evidence: { ...evidence, observedAt: finalAt, frames },
+                    account: current.account,
+                  },
+                  originalProposal,
+                )
+              : originalProposal;
+          if (proposal !== originalProposal) {
+            await study.event(
+              scope,
+              lease,
+              `${round.key}:${strategy}:${proposal.symbol}:final-gate`,
+              "final-policy-gate",
+              { originalProposal, proposal, strategyVersion: "1.1.0" },
+            );
+          }
           if (closedThisRound.has(`${strategy}:${proposal.symbol}`)) {
             continue;
           }
