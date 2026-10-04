@@ -90,6 +90,10 @@ See [Agent advice](../../docs/agent-advice.md).
 
 ## Perpl paper runtime
 
+Hourly dispatch additionally requires enabled scheduling and current Studio preparation in the
+repository. The transactional claim revalidates these prerequisites; a revoked queued check is
+skipped without model transport. Manual preparation and unpaid exit supervision remain available.
+
 The Queue also carries `{ kind: "perps-check", checkId }` (the API's manual checks and the hourly
 dispatcher). Each delivery calls the runtime's `consumePerpsCheck` with `perpsAdmission(env)`:
 off, the check is claimed and refused `RUNTIME_DISABLED` without reading Perpl or asking the
