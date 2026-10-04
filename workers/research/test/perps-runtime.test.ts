@@ -673,6 +673,21 @@ test("the dispatcher queues hourly checks for due agents only", async (t) => {
   const hour = Math.floor(Date.now() / HOUR) * HOUR;
   f.set(hour + 7 * 60_000 + 30_000);
   const due = await f.agent({ id: idAt(7) });
+  await f.store.recordCheck({
+    productAgentId: due.id,
+    trigger: "manual",
+    configVersion: 1,
+    outcome: "held",
+    outcomeText: "Preparation completed",
+    decision: { protocol: "studio-perps-check-v2", incomplete: false },
+  });
+  await f.db.pool.query("INSERT INTO pickler.metadata(key,value) VALUES($1,'true')", [
+    `connections_checked:${due.scope.tenantId}:${due.scope.agentId}:1`,
+  ]);
+  await f.db.pool.query(
+    "UPDATE pickler.agents SET schedule_enabled=true WHERE tenant_id=$1 AND id=$2",
+    [due.scope.tenantId, due.scope.agentId],
+  );
   await f.agent({ id: idAt(30) });
   await f.agent({ id: idAt(5), paused: true });
   await f.agent({ id: idAt(6), visibility: "private" });
@@ -766,6 +781,21 @@ test("the dispatcher keys each hourly check by its slot", async (t) => {
   const hour = Math.floor(Date.now() / HOUR) * HOUR;
   f.set(hour + 7 * 60_000 + 30_000);
   const due = await f.agent({ id: idAt(7) });
+  await f.store.recordCheck({
+    productAgentId: due.id,
+    trigger: "manual",
+    configVersion: 1,
+    outcome: "held",
+    outcomeText: "Preparation completed",
+    decision: { protocol: "studio-perps-check-v2", incomplete: false },
+  });
+  await f.db.pool.query("INSERT INTO pickler.metadata(key,value) VALUES($1,'true')", [
+    `connections_checked:${due.scope.tenantId}:${due.scope.agentId}:1`,
+  ]);
+  await f.db.pool.query(
+    "UPDATE pickler.agents SET schedule_enabled=true WHERE tenant_id=$1 AND id=$2",
+    [due.scope.tenantId, due.scope.agentId],
+  );
 
   const [checkId] = await dispatchDueChecks(f.runtime(), ON, async () => {});
   const row = await f.db.pool.query("SELECT request_key FROM pickler.perps_checks WHERE id = $1", [
