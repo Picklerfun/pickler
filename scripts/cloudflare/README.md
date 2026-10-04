@@ -93,6 +93,10 @@ This guide lives under `scripts/*`, which is intentionally included in all four 
 Merging a change here can trigger all four production-branch builds without modifying
 business behavior. Inspect each deployment result afterward.
 
+After correcting a repository connection, merge a documentation-only change under `scripts/*`
+to exercise the configured watch filters. Verify a successful main-branch build and the active
+deployment separately for each Worker; saving dashboard settings alone is not deployment proof.
+
 Official references: [build image and version selectors](https://developers.cloudflare.com/workers/ci-cd/builds/build-image/),
 [Builds configuration](https://developers.cloudflare.com/workers/ci-cd/builds/configuration/),
 and [build watch paths](https://developers.cloudflare.com/workers/ci-cd/builds/build-watch-paths/).
