@@ -19,6 +19,7 @@ import {
   assertPerpsStudyConfig,
 } from "@pickler/trading/evaluation";
 import { PilotError } from "@pickler/core";
+import { validateMultiframeEvidence } from "@pickler/trading/strategies";
 import { validatePaperFrame, type PerpsPaperView } from "@pickler/trading/perps";
 import { z } from "zod";
 import { perpsStudyConfigSchema } from "@pickler/api-schema";
@@ -60,8 +61,9 @@ export async function runPerpsStudy(args: string[], signal?: AbortSignal) {
   const v2 = perpsStudyConfigSchema
     .extend({
       version: z.literal(2),
-      protocol: z.literal("perps-four-way-v2"),
+      protocol: z.enum(["perps-four-way-v2", "perps-multiframe-v3"]),
       hours: z.literal(2),
+      strategyVersion: z.literal("1.1.0").optional(),
       acknowledgedUnknownCalls: z
         .array(
           z
@@ -169,7 +171,7 @@ export async function runPerpsStudy(args: string[], signal?: AbortSignal) {
         throw new PilotError("CONFLICT", "Contract checks cannot be repeated");
       }
       const { contractContext } = await import("./contract-context.js");
-      const context = contractContext(Date.now());
+      const context = contractContext(Date.now(), config.strategyVersion === "1.1.0");
       const lease = await study.claim(probeConfig).catch((error) => {
         releaseAwake();
         throw error;
@@ -375,6 +377,9 @@ export async function runPerpsStudy(args: string[], signal?: AbortSignal) {
       const evidence = await data.evidence(view.record, observation, signal);
       for (const frame of evidence.frames) {
         validatePaperFrame(frame, config.network, frame.snapshot.market.symbol, Date.now());
+      }
+      if (config.strategyVersion === "1.1.0") {
+        validateMultiframeEvidence(evidence);
       }
       for (const [url, key, id] of [
         [
