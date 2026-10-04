@@ -541,3 +541,11 @@ See [Studio perpetual execution](../../docs/studio-perps-execution.md).
 ## Multiframe comparison admission
 
 Perps study call admission counts the explicitly frozen protocol under the existing transaction: perps-four-way-v2 retains its original 35-call campaign, and the separately authorized perps-multiframe-v3 experiment has at most 35 new calls. Both still share every historical cost and unknown reservation under the original tenant/network/database USD 5 ceiling. No schema changes or historical resets are permitted.
+
+## SMA study persistence
+
+`PostgresPerpsStudyStore` discriminates config v3 `perps-sma-ablation-v1`: three dedicated
+SMA agents/accounts, no model reservations/calls, next quarter-minute-one start, 24 durable slots
+with 30-second tolerance and no resume. Existing tables/JSONB and read-only audit export remain
+the persistence boundary. Preserve 90-second ownership and reject post-expiry release writes;
+never reinterpret historical cost records as zero.
