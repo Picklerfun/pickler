@@ -174,6 +174,6 @@ Advice forecast configuration reuses the Research Worker’s MODEL_BASE_URL, MOD
 ## Perpetual strategy registry
 
 `@pickler/trading/strategies` exports four versioned perpetual strategy descriptors and their
-injected execution contract. These are strategy modules, not new harness plugin IDs. Evaluation uses version 1.0.0; Studio uses distinct version 2.0.0 with fixed creator sizing and
+injected execution contract. These are strategy modules, not new harness plugin IDs. Evaluation retains version 1.0.0 and has an explicit local multiframe experiment at version 1.1.0 (apps/agent-service/PERPS-MULTIFRAME.md); Studio uses distinct version 2.0.0 with fixed creator sizing and
 transaction-fenced execution. See [Studio perpetual execution](docs/studio-perps-execution.md).
 See [Trading architecture](docs/trading-architecture.md) before adding a strategy or consumer.
