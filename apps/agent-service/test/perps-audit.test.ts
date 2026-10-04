@@ -220,7 +220,7 @@ test("read-only export and actual coordinator execute controlled long, short and
     stale.rounds[0]!.evidence.frames[0]!.book.provenance.providerTimestamp! - 31000;
   assert.equal(auditPerpsDecisions(stale, [], hash).rows[0]!.initialValidity, "STALE_MARKET_DATA");
   const invalid = structuredClone(before.study);
-  invalid.rounds[0]!.calls.jev.result = { answers: {}, proposals: [] };
+  invalid.rounds[0]!.calls.jev!.result = { answers: {}, proposals: [] };
   assert.equal(
     auditPerpsDecisions(invalid, [], hash).rows.find((r) => r.strategy === "jev")!.conversion,
     "JEV_ANSWERS_INVALID",
