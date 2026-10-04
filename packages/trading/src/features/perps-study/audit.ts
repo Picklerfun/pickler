@@ -1,3 +1,4 @@
+import { perpsMultiframeRules } from "../perps-strategies/multiframe.js";
 import { PilotError, type PerpSymbol } from "@pickler/core";
 import {
   validatePaperFrame,
@@ -205,7 +206,10 @@ export function auditPerpsDecisions(
           if (context) {
             let replay: PerpsProposal[];
             if (strategy === "rules") {
-              replay = perpsRules(context);
+              replay =
+                record.config.strategyVersion === "1.1.0"
+                  ? perpsMultiframeRules(context)
+                  : perpsRules(context);
             } else if (strategy === "jev" && record.config.version === 2) {
               answers = checkedAnswers(round!.calls.jev.result, false);
               replay = perpsJevDecisions(context, answers);
