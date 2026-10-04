@@ -587,7 +587,21 @@ export function decisionRow(check: PerpsCheckSummaryDto, now: number): DecisionR
   if (check.action && check.instrument) {
     parts.push(`${ACTIONS[check.action]} ${check.instrument}`);
   }
-  if (check.probability !== null) {
+  if (check.strategyResult) {
+    parts.push(`${check.strategyResult.strategy.id}@${check.strategyResult.strategy.version}`);
+    parts.push(
+      ...check.strategyResult.actions.map(
+        (item) => `${item.proposal.symbol}: ${item.execution.kind}`,
+      ),
+    );
+    if (check.strategyResult.fundingPending) {
+      parts.push("FUNDING PENDING");
+    }
+    if (check.strategyResult.incomplete) {
+      parts.push("INCOMPLETE");
+    }
+  }
+  if (!check.strategyResult && check.probability !== null) {
     parts.push(
       `${Math.round(check.probability * 100)}%${check.horizonHours ? ` OVER ${check.horizonHours}H` : ""}`,
     );
@@ -605,6 +619,17 @@ export function decisionRow(check: PerpsCheckSummaryDto, now: number): DecisionR
   }
 
   const lines: DecisionLine[] = [
+    ...(check.strategyResult?.actions.flatMap((item) =>
+      (["entries", "exits", "never"] as const).flatMap((section) =>
+        item.proposal.brief[section].map((finding) => ({
+          key: `${item.proposal.symbol}-${section}-${finding.index}`,
+          label: `${item.proposal.symbol} ${section.toUpperCase()} ${finding.index}`,
+          tag: finding.state.toUpperCase(),
+          good: section === "never" ? finding.state === "not-met" : finding.state === "met",
+          why: finding.reason,
+        })),
+      ),
+    ) ?? []),
     ...check.entries.map((line) => ({
       key: `entry-${line.index}`,
       label: `ENTRY ${line.index}`,

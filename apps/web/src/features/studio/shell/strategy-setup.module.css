@@ -1,0 +1,52 @@
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.fieldLabel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  color: var(--pk-ink);
+  font: 600 13.5px/1.4 var(--pk-font);
+}
+.input {
+  width: 100%;
+  padding: 12px;
+  background: var(--pk-panel);
+  color: var(--pk-ink);
+  border: 1px solid var(--pk-border-strong);
+  border-radius: var(--pk-radius-sm);
+  font: inherit;
+}
+.input:disabled {
+  color: var(--pk-ink-muted);
+  opacity: 1;
+}
+.hint {
+  composes: hint from "./build.module.css";
+}
+.notice {
+  composes: notice from "./build.module.css";
+}
+.saveButton {
+  align-self: flex-start;
+  padding: 12px 18px;
+  border: none;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-lime);
+  color: var(--pk-on-lime);
+  font: 600 13.5px/1 var(--pk-font);
+  cursor: pointer;
+}
+.saveButton:disabled {
+  background: var(--pk-panel-3);
+  color: var(--pk-ink-muted);
+  opacity: 1;
+  cursor: not-allowed;
+}
+.input:focus-visible,
+.saveButton:focus-visible {
+  outline: 2px solid var(--pk-focus);
+  outline-offset: 2px;
+}

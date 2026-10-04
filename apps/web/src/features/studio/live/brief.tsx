@@ -1,4 +1,5 @@
 "use client";
+import { StrategySetup } from "../shell/strategy-setup";
 import { Icon } from "@pickler/ui";
 import {
   briefLists,
@@ -44,7 +45,11 @@ export function Brief({ agent, live, canManage, now, stagedDraft }: BriefProps) 
   const view = briefView(form, savedText);
   const tags = liveBriefTags(view.tags, agent.version);
   const bar = briefBar(agent.version, view.dirty);
-  const canApply = canManage && view.dirty && !view.needsEntry && !saving;
+  const canApply =
+    canManage &&
+    view.dirty &&
+    (agent.config.perpsStrategy?.id === "rules" || !view.needsEntry) &&
+    !saving;
 
   function edit(key: BriefKey, value: string) {
     setForm({ ...form, [key]: value });
@@ -54,6 +59,7 @@ export function Brief({ agent, live, canManage, now, stagedDraft }: BriefProps) 
   return (
     <LiveSection section="brief">
       <div className={styles.column}>
+        <StrategySetup agent={agent} studio={live} canManage={canManage} />
         <div className={styles.bar} data-dirty={bar.dirty} id="live-brief-bar">
           <span className={styles.barDot} aria-hidden="true" />
           <span className={styles.barText} role="status">
@@ -103,7 +109,11 @@ export function Brief({ agent, live, canManage, now, stagedDraft }: BriefProps) 
               key={section.key}
               className={styles.field}
               data-edited={tag.edited}
-              data-needed={section.key === "enters" && view.needsEntry}
+              data-needed={
+                section.key === "enters" &&
+                agent.config.perpsStrategy?.id !== "rules" &&
+                view.needsEntry
+              }
             >
               <div className={styles.fieldHead}>
                 <label className={styles.fieldLabel} htmlFor={id}>
@@ -126,7 +136,7 @@ export function Brief({ agent, live, canManage, now, stagedDraft }: BriefProps) 
             </div>
           );
         })}
-        {view.needsEntry && (
+        {agent.config.perpsStrategy?.id !== "rules" && view.needsEntry && (
           <p className={styles.alert} role="alert">
             <Icon name="alert" size={12} />
             Write an entry rule to apply it · it needs at least one.

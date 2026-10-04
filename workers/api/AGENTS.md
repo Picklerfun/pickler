@@ -531,3 +531,14 @@ stops stay on. Keep it equal to the research worker's: `npm run check:staging` a
 `workers/api/test/studio-perps-route.test.ts` covers every code, each action written and each
 Queue payload. The OpenAPI description marks the actions' `Idempotency-Key` optional
 (`idempotent: "optional"` in `src/openapi/operation.ts`).
+
+## Studio strategy version 2
+
+Studio setup selects a versioned common strategy; absent selection resolves combined@2.0.0.
+New check results expose `strategyResult` with per-market proposals, three-state brief findings,
+execution outcomes, funding status and incompleteness. Historical fields retain their recorded
+values and are null/empty for new results rather than fabricated percentages. Model costs remain
+USD micros, separately from virtual financial metrics; unknown daily costs stay null. The API
+retains workspace authorization and generated OpenAPI. The web displays the strategy in both
+agent studios and explicitly confirms clearing unsupported authored conditions for rules.
+See [Studio perpetual execution](../../docs/studio-perps-execution.md).

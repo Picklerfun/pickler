@@ -120,6 +120,10 @@ function summary(check: PerpsCheck): PerpsCheckSummaryDto {
   const decision = parsed?.ok ? parsed.decision : null;
   return {
     id: check.id,
+    strategyResult: (() => {
+      const result = dto.studioCheckDecisionSchema.safeParse(check.decision);
+      return result.success ? result.data : null;
+    })(),
     at: iso(check.createdAt),
     trigger: check.trigger,
     status: check.status,
@@ -279,7 +283,7 @@ export function studioPerpsRoutes(context: Context) {
     "/agents/:id/perps/checks",
     describeOperation("studioPerpsCheckCreate", {
       ...errors,
-      description: `${routeDescription} Queues a manual check (202 { checkId }); poll GET /perps/checks/{id}. 409 NOT_A_PERPL_AGENT, RUNTIME_DISABLED (PERPL_RUNTIME_ENABLED is off), CHECK_RUNNING, AGENT_KILLED; 429 MANUAL_LIMIT after ${PERPS_MANUAL_CHECKS_PER_DAY} manual checks a UTC day.`,
+      description: `${routeDescription} Queues a manual check (202 { checkId }); poll GET /perps/checks/{id}. 409 NOT_A_PERPL_AGENT, RUNTIME_DISABLED (PERPL_RUNTIME_ENABLED is off), CHECK_RUNNING, AGENT_KILLED, COST_UNKNOWN (prior usage needs reconciliation); 429 MANUAL_LIMIT after ${PERPS_MANUAL_CHECKS_PER_DAY} manual checks a UTC day.`,
       response: dto.perpsCheckStartedSchema,
       status: 202,
       idempotent: true,

@@ -1,8 +1,9 @@
 import { BRIEF_LIMITS, type PerpSymbol } from "@pickler/core";
 
 /**
- * The model's answer for one Perpl check (`perps-check-v1`, spec R4). The model never outputs
- * size, leverage, price or account: code decides those (`outcome.ts`, `sizing.ts`).
+ * Read-only parser for stored historical `perps-check-v1` answers (historical spec R4).
+ * Its probability, horizon and stop fields do not control new Studio executions. Version 2
+ * proposals and execution policy belong to the common strategies and Studio coordinator.
  */
 export const PERPS_CHECK_DECISION_VERSION = "perps-check-v1" as const;
 export const CHECK_INSTRUMENTS = ["BTC", "ETH"] as const satisfies readonly PerpSymbol[];

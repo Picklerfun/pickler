@@ -39,7 +39,7 @@ export interface PerpsCheck {
   finishedAt: number | null;
   configVersion: number | null;
   inputs: PerpsCheckInputs | null;
-  /** The validated `perps-check-v1` decision, stored as the runtime parsed it. */
+  /** Versioned Studio result or unchanged historical perps-check-v1 answer. */
   decision: unknown;
   outcome: PerpsCheckOutcome | null;
   outcomeText: string | null;

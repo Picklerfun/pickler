@@ -188,7 +188,12 @@ function pilotStatus(code: string): 400 | 404 | 409 | 429 | 503 {
   if (code === "QUOTA" || code === "TOO_MANY_CHECKS" || code === "MANUAL_LIMIT") {
     return 429;
   }
-  if (code === "INVALID_INPUT" || code === "INVALID_X_HANDLE") {
+  if (
+    code === "INVALID_INPUT" ||
+    code === "INVALID_X_HANDLE" ||
+    code === "RULES_BRIEF_UNSUPPORTED" ||
+    code === "STRATEGY_UNAVAILABLE"
+  ) {
     return 400;
   }
   if (code === "X_UNAVAILABLE") {
@@ -794,6 +799,7 @@ export function studioRoutes(services: StudioServices) {
         ...(body.caps ? { caps: body.caps } : {}),
         ...(body.voice ? { voice: body.voice } : {}),
         ...(body.entry ? { entry: body.entry } : {}),
+        ...(body.perpsStrategy ? { perpsStrategy: body.perpsStrategy } : {}),
       };
       const record = await repo.agent(scope);
       // `reviseSetup` gives a config a Perpl agent's tools and plugins, so a config without

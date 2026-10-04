@@ -155,3 +155,14 @@ and `PERPS_OWNER_ACTION_STATUSES` mirror trading's lists
 (pinned by `workers/api/test/studio-perps-route.test.ts`); `PERPS_MANUAL_CHECKS_PER_DAY` is 6.
 
 Studio setup and stored configuration accept `perpsStrategy` with an explicit identifier and version 2.0.0. Setup permits an empty entry section for rules; core still rejects missing AI entry conditions and unverified free-text rules conditions. No model or financial policy belongs in these portable DTOs.
+
+## Studio strategy version 2
+
+Studio setup selects a versioned common strategy; absent selection resolves combined@2.0.0.
+New check results expose `strategyResult` with per-market proposals, three-state brief findings,
+execution outcomes, funding status and incompleteness. Historical fields retain their recorded
+values and are null/empty for new results rather than fabricated percentages. Model costs remain
+USD micros, separately from virtual financial metrics; unknown daily costs stay null. The API
+retains workspace authorization and generated OpenAPI. The web displays the strategy in both
+agent studios and explicitly confirms clearing unsupported authored conditions for rules.
+See [Studio perpetual execution](../../docs/studio-perps-execution.md).

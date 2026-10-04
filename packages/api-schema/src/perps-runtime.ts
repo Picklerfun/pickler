@@ -83,11 +83,81 @@ const lineSchema = z
   })
   .strict();
 
+export const studioBriefFindingSchema = z
+  .object({
+    index: z.number().int().positive(),
+    state: z.enum(["met", "not-met", "unknown"]),
+    reason: z.string(),
+    sourceIds: z.array(z.string()),
+  })
+  .strict();
+export const studioBriefFindingsSchema = z
+  .object({
+    entries: z.array(studioBriefFindingSchema),
+    exits: z.array(studioBriefFindingSchema),
+    never: z.array(studioBriefFindingSchema),
+  })
+  .strict();
+export const studioExecutionSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("hold"), reason: z.string() }).strict(),
+  z.object({ kind: z.literal("close"), positionId: z.string(), reason: z.string() }).strict(),
+  z
+    .object({
+      kind: z.literal("propose"),
+      margin: decimal,
+      leverage: z.number().int().positive(),
+      side,
+    })
+    .strict(),
+  z
+    .object({
+      kind: z.literal("open"),
+      margin: decimal,
+      notional: decimal,
+      leverage: z.number().int().positive(),
+      side,
+      sizeUpMargin: decimal.nullable(),
+    })
+    .strict(),
+]);
+export const studioCheckDecisionSchema = z
+  .object({
+    protocol: z.literal("studio-perps-check-v2"),
+    strategy: z
+      .object({ id: z.enum(["rules", "deepseek", "jev", "combined"]), version: z.literal("2.0.0") })
+      .strict(),
+    generatedAt: z.number().int().nonnegative(),
+    actions: z.array(
+      z
+        .object({
+          proposal: z
+            .object({
+              symbol: instrument,
+              action: z.enum(["hold", "open-long", "open-short", "close"]),
+              reason: z.string(),
+              sourceIds: z.array(z.string()),
+              brief: studioBriefFindingsSchema,
+            })
+            .strict(),
+          execution: studioExecutionSchema,
+          positionId: z.string().nullable(),
+        })
+        .strict(),
+    ),
+    fundingPending: z.boolean(),
+    incomplete: z.boolean(),
+    mandatoryExits: z.array(
+      z.object({ symbol: instrument, positionId: z.string(), reason: z.string() }).strict(),
+    ),
+  })
+  .strict();
+
 /** One check in the Decisions feed. Model fields are null where the check asked no model. */
 export const perpsCheckSummarySchema = z
   .object({
     id: z.string().uuid(),
     at: iso,
+    strategyResult: studioCheckDecisionSchema.nullable().optional(),
     trigger: z.enum(PERPS_CHECK_TRIGGERS),
     status: z.enum(["queued", "running", "finished"]),
     outcome: perpsCheckOutcomeSchema.nullable(),
@@ -240,7 +310,10 @@ export const perpsRecordSchema = z
         checks: z.number().int().nonnegative(),
         manualChecks: z.number().int().nonnegative(),
         manualLimit: z.number().int().positive(),
-        costMicros: z.string().regex(/^\d{1,30}$/),
+        costMicros: z
+          .string()
+          .regex(/^\d{1,30}$/)
+          .nullable(),
       })
       .strict(),
   })

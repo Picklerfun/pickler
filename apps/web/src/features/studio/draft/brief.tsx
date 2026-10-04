@@ -1,4 +1,5 @@
 "use client";
+import { StrategySetup } from "../shell/strategy-setup";
 import { Icon } from "@pickler/ui";
 import { briefLists, briefText, briefView, type BriefKey } from "../shell/build-model";
 import { CapSteppers } from "../shell/build-parts";
@@ -65,7 +66,12 @@ export function Brief({ agent, draft, canManage, onSection }: DraftSectionProps)
   const view = briefView(form.text, savedText);
   const caps = capsStepper(form.caps, savedCaps, starterCaps(capsSource));
   const dirty = view.dirty || caps.dirty;
-  const canSave = canManage && dirty && !view.needsEntry && !caps.inverted && !saving;
+  const canSave =
+    canManage &&
+    dirty &&
+    (agent.config.perpsStrategy?.id === "rules" || !view.needsEntry) &&
+    !caps.inverted &&
+    !saving;
   /* The steppers shut while saving; the textareas only go read-only, so a focused one keeps it. */
   const shut = !canManage || saving;
 
@@ -77,6 +83,7 @@ export function Brief({ agent, draft, canManage, onSection }: DraftSectionProps)
   return (
     <DraftSection section="brief">
       <div className={styles.column}>
+        <StrategySetup agent={agent} studio={draft} canManage={canManage} />
         <RunNote onRun={() => onSection("console")} />
         {SECTIONS.map((section) => {
           const tag = view.tags[section.key];
@@ -85,7 +92,11 @@ export function Brief({ agent, draft, canManage, onSection }: DraftSectionProps)
             <div
               key={section.key}
               className={styles.field}
-              data-needed={section.key === "enters" && view.needsEntry}
+              data-needed={
+                section.key === "enters" &&
+                agent.config.perpsStrategy?.id !== "rules" &&
+                view.needsEntry
+              }
             >
               <div className={styles.fieldHead}>
                 <label className={styles.fieldLabel} htmlFor={id}>
@@ -131,7 +142,7 @@ export function Brief({ agent, draft, canManage, onSection }: DraftSectionProps)
             </p>
           )}
         </div>
-        {view.needsEntry && (
+        {agent.config.perpsStrategy?.id !== "rules" && view.needsEntry && (
           <p className={styles.hint}>WRITE AN ENTRY RULE TO SAVE · IT NEEDS AT LEAST ONE</p>
         )}
         <button

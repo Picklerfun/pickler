@@ -713,3 +713,14 @@ The existing `/api/v1/[...path]` transport also forwards `/api/v1/openapi.json` 
 public generated document. The web owns no duplicate specification or route catalogue. See
 [API contract](../../docs/api-contract.md). This requires an API deployment to become remotely
 available; no new web business endpoint is introduced.
+
+## Studio strategy version 2
+
+Studio setup selects a versioned common strategy; absent selection resolves combined@2.0.0.
+New check results expose `strategyResult` with per-market proposals, three-state brief findings,
+execution outcomes, funding status and incompleteness. Historical fields retain their recorded
+values and are null/empty for new results rather than fabricated percentages. Model costs remain
+USD micros, separately from virtual financial metrics; unknown daily costs stay null. The API
+retains workspace authorization and generated OpenAPI. The web displays the strategy in both
+agent studios and explicitly confirms clearing unsupported authored conditions for rules.
+See [Studio perpetual execution](../../docs/studio-perps-execution.md).

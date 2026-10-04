@@ -184,7 +184,7 @@ export const agentBriefSchema = z
   .object({
     thesis: z.string().max(BRIEF_LIMITS.thesis),
     reads: z.array(briefLine).max(BRIEF_LIMITS.reads),
-    entersWhen: z.array(briefLine).max(BRIEF_LIMITS.entersWhen),
+    entersWhen: z.array(briefLine).min(1).max(BRIEF_LIMITS.entersWhen),
     exitsWhen: z.array(briefLine).max(BRIEF_LIMITS.exitsWhen),
     never: z.array(briefLine).max(BRIEF_LIMITS.never),
   })
@@ -265,7 +265,9 @@ export const agentConfigSchema = z
     sources: sourcesSchema.optional(),
     skills: z.array(skillSchema).max(8).optional(),
     spend: spendLimitsSchema.optional(),
-    brief: agentBriefSchema.optional(),
+    brief: agentBriefSchema
+      .extend({ entersWhen: z.array(briefLine).max(BRIEF_LIMITS.entersWhen) })
+      .optional(),
     maxLeverage: z.number().int().min(LEVERAGE_BOUNDS.min).max(LEVERAGE_BOUNDS.max).optional(),
     /** How every post reads (studio-create-simplified-v1 D8); core's `VOICE_KEYS`. */
     voice: z.enum(VOICE_KEYS).optional(),

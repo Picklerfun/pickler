@@ -274,13 +274,38 @@ export function outcomeCard(
     }
   }
   const parts: string[] = [];
-  if (check.probability !== null) {
+  if (check.strategyResult) {
+    title =
+      check.strategyResult.actions
+        .map((item) => `${item.proposal.symbol}: ${item.execution.kind}`)
+        .join(" · ") ||
+      check.outcomeText ||
+      "NO DECISION";
+    parts.push(`${check.strategyResult.strategy.id}@${check.strategyResult.strategy.version}`);
+    if (check.strategyResult.fundingPending) {
+      parts.push("FUNDING PENDING");
+    }
+    if (check.strategyResult.incomplete) {
+      parts.push("INCOMPLETE");
+    }
+  }
+  if (!check.strategyResult && check.probability !== null) {
     parts.push(`${Math.round(check.probability * 100)}%`);
   }
   if (check.horizonHours !== null) {
     parts.push(`${check.horizonHours}H HORIZON`);
   }
   const lines: OutcomeLine[] = [
+    ...(check.strategyResult?.actions.flatMap((item) =>
+      (["entries", "exits", "never"] as const).flatMap((section) =>
+        item.proposal.brief[section].map((finding) => ({
+          text: `${item.proposal.symbol} ${section} ${finding.index}`,
+          why: finding.reason,
+          tag: finding.state.toUpperCase(),
+          kind: finding.state === "met" ? ("met" as const) : ("held" as const),
+        })),
+      ),
+    ) ?? []),
     ...check.entries.map((line) => ({
       text: brief?.entersWhen[line.index - 1] ?? `Entry ${line.index}`,
       why: line.why,
