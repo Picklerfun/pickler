@@ -1,3 +1,8 @@
+import {
+  PERPS_MULTIFRAME_POLICY,
+  multiframeFeatures,
+  validateMultiframeEvidence,
+} from "@pickler/trading/strategies";
 import type { PerpsDecisionContext } from "@pickler/trading/evaluation";
 export function perpsModelState(context: PerpsDecisionContext) {
   return {
@@ -31,5 +36,21 @@ export function perpsModelState(context: PerpsDecisionContext) {
       dailyBlocked: context.account.dailyBlocked,
       fundingPending: context.account.fundingPending,
     },
+  };
+}
+
+/** Pure versioned projection; it is not a capture of historical HTTP request bytes. */
+export function perpsMultiframeModelState(context: PerpsDecisionContext) {
+  validateMultiframeEvidence(context.evidence);
+  const original = perpsModelState(context);
+  return {
+    ...original,
+    policy: PERPS_MULTIFRAME_POLICY,
+    features: (["BTC", "ETH"] as const).map((symbol) => multiframeFeatures(context, symbol)),
+    candles: original.candles.map((c) => ({
+      ...c,
+      columns: ["openTime", "close"],
+      rows: c.rows.map((row) => [row[0], row[4]]),
+    })),
   };
 }
