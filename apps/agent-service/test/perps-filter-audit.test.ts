@@ -191,15 +191,15 @@ test("failed slots retain reservations, omit comparisons and do not invent timeo
   const study = view();
   const round = study.rounds[0]!;
   round.executionStatus = "incomplete";
-  round.calls.direct = {
-    ...round.calls.direct,
+  round.calls.direct! = {
+    ...round.calls.direct!,
     result: null,
     status: "failed",
     error: "MODEL_TIMEOUT",
     costUsd: null,
     inputTokens: null,
     outputTokens: null,
-    finishedAt: round.calls.direct.startedAt! + 20000,
+    finishedAt: round.calls.direct!.startedAt! + 20000,
   };
   const r = auditPerpsFilters(study, [], hash);
   assert.equal(r.pairedSummary.observations, 0);
@@ -293,7 +293,7 @@ test("v2 reports are deterministic, escaped and offline; unknown reasons stay li
   const study = view();
   const literal = "NO_SIGNAL: <script>alert(1)</script>; undefined outside confirmation";
   study.rounds[0]!.proposals.deepseek![0]!.reason = literal;
-  (study.rounds[0]!.calls.direct.result as { reason: string }[])[0]!.reason = literal;
+  (study.rounds[0]!.calls.direct!.result as { reason: string }[])[0]!.reason = literal;
   const root = await mkdtemp(join(tmpdir(), "filter-audit-"));
   t.after(() => rm(root, { recursive: true, force: true }));
   const payload = { study, diagnostics: [], accounts: {} };
