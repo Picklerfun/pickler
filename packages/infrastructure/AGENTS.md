@@ -12,6 +12,14 @@ Actual adapters live in `src/research`, `src/polymarket` and `src/persistence`. 
 
 ## Rules
 
+The migration CLI uses `migrationPoolConfig`: loopback stays local; hosted operator connections
+require Supabase direct/session port 5432 and `DATABASE_MIGRATION_CA_CERT`, verified TLS and no
+endpoint/SSL query overrides. Transaction poolers and Hyperdrive are not migration transports.
+Migration credentials are operator/CI-only and must never be forwarded to Worker deployment
+children. Failures report sanitized codes and stop publication; the reconciled migrator retains
+its transaction, advisory locks and historical SQL identities. Run migration connection and real
+PostgreSQL history tests when changing this path.
+
 - Depend on core and trading ports; neither business package may depend on infrastructure.
 - Keep provider SDK types, queries, protocol details, and technical response validation inside adapters. Return values matching business-owned interfaces.
 - No Next.js, React, web app imports, HTTP response construction, or UI behavior.

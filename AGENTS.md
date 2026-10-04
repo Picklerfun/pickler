@@ -97,6 +97,12 @@ Manual paper trading is an opt-in plugin, with no model-executable tool. Read [t
 
 ## Cloudflare unification in progress
 
+The opt-in coordinated release is documented in [Staging deployment pipeline](docs/staging-deployment-pipeline.md).
+It validates/builds before migrating, then publishes Research, Trading, API and Web from one main
+commit. Keep it disabled until the independent Cloudflare main publishers are disabled and its
+staging environment credentials are configured. `npm run deploy:staging` defaults to preflight;
+only the explicitly gated main Actions run may publish. Root tests include its controlled suite.
+
 The unified implementation adds request-scoped Hono composition in `workers/api`, private console
 identity links, PostgreSQL monetary budgets and shared research runtime. Read `workers/api/AGENTS.md` before changes.
 See [delivery status and contracts](docs/cloudflare-unification.md); do not describe the planned
