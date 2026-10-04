@@ -212,3 +212,12 @@ part of it; the v1 readiness protocol remains separately interpreted.
 ## Experimental multiframe comparison
 
 Read [PERPS-MULTIFRAME.md](PERPS-MULTIFRAME.md). The explicit local perps-multiframe-v3 protocol selects strategy 1.1.0 in config shape v2. It reads sixty closed candles at 1h/15m/5m through the guarded plugin, refreshes initial frames after acquisition and retains common final data. Never reconstruct short histories from hourly candles or change historical studies. Thirty-minute exits and final gates belong to trading. New contract checks and runs require explicit operator authorization and share the original USD 5 campaign.
+
+## Offline SMA filter comparison
+
+The existing audit commands select analysis v2 for `perps-multiframe-v3` / strategy 1.1.0,
+while historical packets retain v1 analysis. Export remains a read-only PostgreSQL snapshot;
+analysis needs only the packet and a new output directory. The HTML/CSV/JSON show paired SMA
+proposals, original model reasons, explicit-claim checks, Jev answers and timeout identities.
+Read PERPS-DECISION-AUDIT.md. Do not call providers, resume studies or promote a policy from
+these diagnostic counts. Source study results and unknown reservations remain unchanged.
