@@ -32,7 +32,56 @@ import {
   PAPER_BUDGET_AUSD,
   VOICE_KEYS,
   setupUpdateSchema,
+  studioCheckDecisionSchema,
 } from "@pickler/api-schema";
+
+test("Studio strategy results preserve uncertainty without accepting financial probabilities", () => {
+  const result = {
+    protocol: "studio-perps-check-v2",
+    strategy: { id: "combined", version: "2.0.0" },
+    generatedAt: 1_759_536_000_000,
+    actions: [
+      {
+        proposal: {
+          symbol: "BTC",
+          action: "hold",
+          reason: "An entry condition remains unknown",
+          sourceIds: ["BTC:candles"],
+          brief: {
+            entries: [
+              { index: 1, state: "unknown", reason: "No confirming source", sourceIds: [] },
+            ],
+            exits: [],
+            never: [],
+          },
+        },
+        execution: { kind: "hold", reason: "No admissible opening" },
+        positionId: null,
+      },
+    ],
+    fundingPending: true,
+    incomplete: false,
+    mandatoryExits: [],
+  };
+
+  assert.deepEqual(studioCheckDecisionSchema.parse(result), result);
+  assert.equal(
+    studioCheckDecisionSchema.safeParse({
+      ...result,
+      actions: [
+        { ...result.actions[0], proposal: { ...result.actions[0]!.proposal, probability: 0.9 } },
+      ],
+    }).success,
+    false,
+  );
+  assert.equal(
+    studioCheckDecisionSchema.safeParse({
+      ...result,
+      strategy: { id: "combined", version: "1.0.0" },
+    }).success,
+    false,
+  );
+});
 
 /* api-schema may not import core, so it carries its own copy of each list. This is the one place
    that may hold both, so it is where a value added to one and not the other fails. */
@@ -187,4 +236,21 @@ test("the risk bounds in api-schema are core's, and a revised setup is a valid w
 
 test("the paper budget in api-schema is trading's", () => {
   assert.equal(PAPER_BUDGET_AUSD, TRADING_PAPER_BUDGET_AUSD);
+});
+
+test("rules configuration accepts an empty entry section without relaxing ordinary brief contracts", () => {
+  const config = briefToConfig({
+    brief: { thesis: "trend", reads: [], entersWhen: ["x"], exitsWhen: [], never: [] },
+    spend: { perCallAusd: 5, perDayAusd: 20 },
+    maxLeverage: 1,
+  });
+  const rules = {
+    ...config,
+    perpsStrategy: { id: "rules", version: "2.0.0" },
+    brief: { ...config.brief!, entersWhen: [] },
+  };
+  assert.doesNotThrow(() => agentConfigSchema.parse(rules));
+  assert.throws(() =>
+    agentConfigSchema.parse({ ...rules, perpsStrategy: { id: "combined", version: "2.0.0" } }),
+  );
 });

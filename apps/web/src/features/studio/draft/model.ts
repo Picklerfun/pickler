@@ -10,7 +10,8 @@
  *
  * Section keys are the canvas's (`picks` is Trades, `skills` is Sources & rules).
  */
-import type { PublishBlockerDto, WalletsDto } from "@pickler/api-schema";
+import type { PerpsPositionsResponseDto, PublishBlockerDto, WalletsDto } from "@pickler/api-schema";
+import { formatSignedTwo, formatTwo } from "../../agents/lib/format";
 import { formatUnits, shortAddress, unitsOf } from "../new-agent/model";
 import { agentWalletRead } from "../shell/build-model";
 import { dayLabel, dayNumber, stamp } from "../shell/clock";
@@ -119,11 +120,39 @@ export const lockedCopy = (key: DraftSectionKey): string =>
   `${SECTION_LABELS[key]} opens when it's public.`;
 
 /**
- * The header's five tiles: master and the agents' wallets are read from `GET /wallets`, the other
- * three read "Soon". Dashes while the wallets are unread, and when any agent wallet's chain read
- * failed, because a total with a hole in it is not a smaller total.
+ * IN YOUR POSITIONS and OPEN P&L from the draft's open paper positions (perpl-paper-runtime-v1
+ * R17): the margin they hold and their P&L at the board's marks, a dash while a mark is unknown;
+ * "Soon" while it holds none.
  */
-export function headerTiles(wallets: WalletsDto | null): HeaderTile[] {
+function paperTiles(positions: PerpsPositionsResponseDto | null): HeaderTile[] {
+  const open = positions?.open ?? [];
+  if (open.length === 0) {
+    return [
+      { label: "IN YOUR POSITIONS · AUSD", value: "Soon", soon: true },
+      { label: "OPEN P&L · AUSD", value: "Soon", soon: true },
+    ];
+  }
+  const margin = open.reduce((sum, p) => sum + Number(p.margin), 0);
+  const marks = open.map((p) => (p.unrealizedPnl === null ? null : Number(p.unrealizedPnl)));
+  const pnl = marks.some((value) => value === null)
+    ? "—"
+    : formatSignedTwo(Math.round(marks.reduce<number>((sum, v) => sum + (v ?? 0), 0) * 100) / 100);
+  return [
+    { label: "IN YOUR POSITIONS · PAPER · AUSD", value: formatTwo(margin), soon: false },
+    { label: "OPEN P&L · PAPER · AUSD", value: pnl, soon: false },
+  ];
+}
+
+/**
+ * The header's five tiles: master and the agents' wallets are read from `GET /wallets`; IN YOUR
+ * POSITIONS and OPEN P&L from its open paper positions once it holds one (`paperTiles`), else
+ * "Soon"; AI CREDITS "Soon". Dashes while the wallets are unread, and when any agent wallet's chain
+ * read failed, because a total with a hole in it is not a smaller total.
+ */
+export function headerTiles(
+  wallets: WalletsDto | null,
+  positions: PerpsPositionsResponseDto | null = null,
+): HeaderTile[] {
   let master = "—";
   let inAgents = "—";
   if (wallets) {
@@ -139,8 +168,7 @@ export function headerTiles(wallets: WalletsDto | null): HeaderTile[] {
   return [
     { label: "MASTER · AUSD", value: master, soon: false },
     { label: "IN AGENT WALLETS · AUSD", value: inAgents, soon: false },
-    { label: "IN YOUR POSITIONS · AUSD", value: "Soon", soon: true },
-    { label: "OPEN P&L · AUSD", value: "Soon", soon: true },
+    ...paperTiles(positions),
     { label: "AI CREDITS", value: "Soon", soon: true },
   ];
 }

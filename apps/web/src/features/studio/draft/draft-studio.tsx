@@ -208,7 +208,7 @@ export function DraftStudio({
         </>
       }
       headerSide={<StatusChip>DRAFT · PRIVATE</StatusChip>}
-      tiles={headerTiles(draft.wallets)}
+      tiles={headerTiles(draft.wallets, draft.positions)}
       tilesLabel="Your money"
       onRefreshAgent={onRefreshAgent}
       onSwitch={onSwitch}

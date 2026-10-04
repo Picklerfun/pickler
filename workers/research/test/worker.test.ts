@@ -114,3 +114,145 @@ test("closed admissions recover expired leases without scheduling and always clo
   assert.equal(recovered, true);
   assert.equal(closed, true);
 });
+
+test("perps-check messages reach the Perpl runtime with its admission; Cron runs it only when on", async () => {
+  const consumed: string[] = [];
+  let supervised = 0;
+  let acknowledged = 0;
+  const perps = {
+    store: {
+      claimAgent: async (id: string) => {
+        consumed.push(id);
+        return null;
+      },
+      globalChecksToday: async () => {
+        supervised++;
+        return 0;
+      },
+      dueAgents: async () => [],
+      expireProposals: async () => [],
+    },
+    paper: { openNetworks: async () => [] },
+    close: async () => {},
+  };
+  const repository = {
+    recover: async () => {},
+    close: async () => {},
+  } as unknown as PostgresResearchStore;
+  const worker = createResearchWorker({
+    repository: () => repository,
+    runtime: () => assert.fail("No research runtime"),
+    perpsRuntime: () => perps as never,
+  });
+
+  await worker.queue!(
+    {
+      messages: [
+        {
+          body: { kind: "perps-check", checkId: "check-1" },
+          ack: () => {
+            acknowledged++;
+          },
+          retry: () => assert.fail("Unexpected retry"),
+        },
+      ],
+    } as never,
+    { ADMISSIONS_ENABLED: "false" } as Env,
+    {} as never,
+  );
+  await worker.scheduled!({} as never, { ADMISSIONS_ENABLED: "false" } as Env, {} as never);
+  const off = supervised;
+  await worker.scheduled!(
+    {} as never,
+    { ADMISSIONS_ENABLED: "false", PERPL_RUNTIME_ENABLED: "true" } as Env,
+    {} as never,
+  );
+
+  assert.deepEqual(consumed, ["check-1"]);
+  assert.equal(acknowledged, 1);
+  assert.equal(off, 0);
+  assert.equal(supervised, 1);
+});
+
+test("the minute Cron runs Perpl supervision beside research, so a slow venue never delays it", async (t) => {
+  t.mock.method(console, "error", () => {});
+  const order: string[] = [];
+  let researchRecovered!: () => void;
+  const recovered = new Promise<void>((resolve) => {
+    researchRecovered = resolve;
+  });
+  const perps = {
+    store: {
+      // Perpl's first job waits until research has recovered: run one after the other, they
+      // never finish.
+      recoverChecks: async () => {
+        order.push("perps started");
+        await recovered;
+        order.push("perps finished");
+        throw new Error("The venue is down");
+      },
+      dueAgents: async () => [],
+      expireProposals: async () => [],
+    },
+    paper: { openNetworks: async () => [] },
+    close: async () => {},
+  };
+  let closed = false;
+  const repository = {
+    recover: async () => {
+      order.push("research recovered");
+      researchRecovered();
+    },
+    close: async () => {
+      closed = true;
+    },
+  } as unknown as PostgresResearchStore;
+  const worker = createResearchWorker({
+    repository: () => repository,
+    runtime: () => assert.fail("No research runtime"),
+    perpsRuntime: () => perps as never,
+  });
+
+  let timer: NodeJS.Timeout | undefined;
+  await Promise.race([
+    worker.scheduled!({} as never, { ADMISSIONS_ENABLED: "false" } as Env, {} as never),
+    new Promise((_, reject) => {
+      timer = setTimeout(() => reject(new Error("Supervision ran serially")), 2_000);
+    }),
+  ]).finally(() => clearTimeout(timer));
+
+  assert.deepEqual(order, ["perps started", "research recovered", "perps finished"]);
+  assert.equal(closed, true);
+});
+
+test("a research reconciliation failure still fails the Cron after Perpl supervision ran", async () => {
+  let supervised = false;
+  const perps = {
+    store: {
+      recoverChecks: async () => {
+        supervised = true;
+      },
+      dueAgents: async () => [],
+      expireProposals: async () => [],
+    },
+    paper: { openNetworks: async () => [] },
+    close: async () => {},
+  };
+  const repository = {
+    recover: async () => {
+      throw new Error("Database unavailable");
+    },
+    close: async () => {},
+  } as unknown as PostgresResearchStore;
+  const worker = createResearchWorker({
+    repository: () => repository,
+    runtime: () => assert.fail("No research runtime"),
+    perpsRuntime: () => perps as never,
+  });
+
+  await assert.rejects(
+    worker.scheduled!({} as never, { ADMISSIONS_ENABLED: "false" } as Env, {} as never),
+    /Database unavailable/,
+  );
+  assert.equal(supervised, true);
+});

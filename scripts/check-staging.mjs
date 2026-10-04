@@ -47,6 +47,17 @@ assert.equal(
   research.vars.ADMISSIONS_ENABLED,
   "Coordinate API and consumer admissions",
 );
+for (const worker of [api, research]) {
+  assert.ok(
+    ["true", "false"].includes(worker.vars.PERPL_RUNTIME_ENABLED),
+    "Set PERPL_RUNTIME_ENABLED explicitly",
+  );
+}
+assert.equal(
+  api.vars.PERPL_RUNTIME_ENABLED,
+  research.vars.PERPL_RUNTIME_ENABLED,
+  "Coordinate the API's and the research worker's Perpl runtime",
+);
 assert.equal(api.hyperdrive[0].id, research.hyperdrive[0].id);
 assert.equal(research.queues.consumers[0].max_batch_size, 1);
 assert.equal(research.queues.consumers[0].max_concurrency, 5);

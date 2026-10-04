@@ -367,3 +367,7 @@ results are authenticated shared history while the agent is public. Keep financi
 provider calculations out of core. See [Agent advice](../../docs/agent-advice.md).
 
 Advice pricing v2 pins the reviewed OpenAI-compatible forecast base URL and model in each job. Preserve v1 policies and their direct-DeepSeek meaning; provider changes require a new policy, never a historical rewrite.
+
+## Studio strategy configuration
+
+`AgentConfig.perpsStrategy` and `SetupPatch.perpsStrategy` select rules, deepseek, jev or combined at product policy version 2.0.0. Missing selection resolves combined without enabling execution. Core owns selection validation and setup history, never strategy execution. Rules reject all free-text entry, exit and prohibition conditions; an empty rules brief is allowed. AI briefs still require entry conditions.

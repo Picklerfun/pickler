@@ -35,6 +35,10 @@ MONAD_RPC_URL=
 # board, labelled SAMPLE DATA on the page. With it set, /v1/marketplace/markets calls Perpl's
 # public API from this machine.
 PERPL_BOARD_NETWORK=testnet
+# The Perpl paper runtime (docs/specs/perpl-paper-runtime-v1.md R3): "true" admits manual checks
+# and proposal approvals, which the research worker runs; keep it equal to the research worker's.
+# Anything else answers 409 RUNTIME_DISABLED; reads, closes and stops stay on.
+PERPL_RUNTIME_ENABLED=false
 
 # Wallet sign-in. Both are required together: `walletAuthServices` returns undefined when either
 # is missing, so /v1/auth/wallet is simply not mounted rather than mounted and broken.

@@ -155,7 +155,9 @@ export {
   type SiweFields,
 } from "./chain/siwe.js";
 
-export { PostgresPerpsPaperStore } from "./persistence/perps-paper-store.js";
+export { PostgresPerpsPaperStore, PRODUCT_PAPER_MINIMUM } from "./persistence/perps-paper-store.js";
+export { PostgresPerpsRuntimeStore } from "./persistence/perps-runtime-store.js";
+export { PostgresPerpsOwnerStore } from "./persistence/perps-owner-store.js";
 export { PostgresPerpsStudyStore } from "./persistence/perps-study-store.js";
 
 export { QuantData } from "./polymarket/quant-data.js";
@@ -199,7 +201,11 @@ export {
 
 /** Applies the committed migrations. Operational, not test-only: `db:migrate` uses it too. */
 
-export { PerplRequestSchedule } from "./perpl/transport.js";
+export {
+  PerplRequestSchedule,
+  PERPL_CHECK_SESSION_LIMIT,
+  PERPL_SESSION_LIMIT,
+} from "./perpl/transport.js";
 export type { PerplRequestDiagnostic } from "./perpl/transport.js";
 
 export { abortable as abortablePerplRead } from "./perpl/transport.js";
@@ -221,3 +227,5 @@ export { createXClient, XUnavailableError, type XClient, type XUser } from "./x/
 
 export { exportPerpsAudit } from "./persistence/perps-audit-export.js";
 export * from "./persistence/advice-store.js";
+
+export * from "./persistence/perps-check-cost-store.js";

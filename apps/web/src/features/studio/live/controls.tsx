@@ -19,6 +19,16 @@ import {
   type LiveEntry,
 } from "./model";
 import { Reason } from "./reason";
+import { StopAll } from "./runtime-parts";
+import {
+  paperShown,
+  runtimeEntryView,
+  runtimeHealthRows,
+  runtimeMeters,
+  runtimeOn,
+  runtimeStatus,
+  runtimeStopRows,
+} from "./runtime-model";
 import styles from "./build.module.css";
 
 const MODES: { value: LiveEntry["mode"]; label: string }[] = [
@@ -37,20 +47,31 @@ const MEANWHILE: { value: LiveEntry["meanwhile"]; label: string }[] = [
  * RUNS: `config.entry` with the canvas's control and its notes, said of the setting, saved with
  * "Save" (one `PUT /setup` with `entry`). The meters are real zeros against the caps, and HEALTH
  * reads the markets, its sources, gas, credits and the brief's version.
+ *
+ * With the Perpl runtime on (perpl-paper-runtime-v1 R11, R12, R16): "Stop · close all" is real on
+ * paper with an inline confirm, Auto-pause is ON for the day-loss stop, HOW IT RUNS says it checks
+ * hourly on paper, the meters are today's figures, and HEALTH adds the runtime and the model's cost
+ * today. With it off and a paper account (R3), the stops, meters and HEALTH are the same, saying
+ * checks are paused; HOW IT RUNS keeps describing the setting.
  */
 export function Controls({ agent, live, canManage, pause }: LiveSectionProps) {
+  const record = paperShown(live.record) ? live.record : null;
+  const running = record?.runtimeEnabled ?? false;
   const { caps } = liveCaps(agent);
   const read = liveWalletRead(agent.wallet, live.wallets);
   const warnings = liveWarnings(read, caps.perTradeAusd);
   const market = marketHealth(
     marketsView(live.markets, live.details, agent.config.perpl?.markets ?? []),
   );
-  const health = healthRows({
-    market,
-    sourcesOn: agent.config.sources?.web ? 2 : 1,
-    monWei: read?.monWei ?? null,
-    version: agent.version,
-  });
+  const health = runtimeHealthRows(
+    healthRows({
+      market,
+      sourcesOn: agent.config.sources?.web ? 2 : 1,
+      monWei: read?.monWei ?? null,
+      version: agent.version,
+    }),
+    live.record,
+  );
   /* HEALTH's brief row is always APPLIED: Brief's edits are dropped when Brief closes, so none can
      be unapplied while Controls shows (`healthRows`). */
   const issues = healthIssues(warnings.length, health);
@@ -58,11 +79,18 @@ export function Controls({ agent, live, canManage, pause }: LiveSectionProps) {
   return (
     <LiveSection section="controls">
       <div className={styles.grid}>
-        <Stops agent={agent} canManage={canManage} pause={pause} />
+        <Stops
+          agent={agent}
+          live={live}
+          canManage={canManage}
+          pause={pause}
+          runtime={!!record}
+          running={running}
+        />
         <div className={styles.card} id="live-controls-runs">
-          <HowItRuns agent={agent} live={live} canManage={canManage} />
+          <HowItRuns agent={agent} live={live} canManage={canManage} paper={!!record} />
           <div className={styles.meters}>
-            {meters(caps).map((meter) => (
+            {(record ? runtimeMeters(caps, record.today) : meters(caps)).map((meter) => (
               <div key={meter.key} className={styles.meter}>
                 <div className={styles.meterHead}>
                   <span className={styles.meterTitle}>{meter.title}</span>
@@ -99,13 +127,21 @@ export function Controls({ agent, live, canManage, pause }: LiveSectionProps) {
 
 /**
  * STOPS · YOURS IN EVERY MODE: Pause entries is the header's own control here a second time, with
- * the same pending state (`usePauseToggle`); a failure pressed here is said here.
+ * the same pending state (`usePauseToggle`); a failure pressed here is said here. With paper held
+ * (`runtime`: the runtime on, or a paper account), "Stop · close all" is the header's too, asked
+ * here inline; `running` says whether the runtime is on.
  */
 function Stops({
   agent,
+  live,
   canManage,
   pause,
-}: Pick<LiveSectionProps, "agent" | "canManage" | "pause">) {
+  runtime,
+  running,
+}: Pick<LiveSectionProps, "agent" | "live" | "canManage" | "pause"> & {
+  runtime: boolean;
+  running: boolean;
+}) {
   const shut = !canManage || pause.pending;
 
   return (
@@ -114,7 +150,7 @@ function Stops({
         <h3 className={styles.cardLabel}>STOPS · YOURS IN EVERY MODE</h3>
       </div>
       <ul className={styles.stops}>
-        {stopRows(agent.paused).map((row) => (
+        {(runtime ? runtimeStopRows(agent.paused, running) : stopRows(agent.paused)).map((row) => (
           <li key={row.key} className={styles.stop}>
             <span className={styles.stopText}>
               <span className={styles.stopName} data-danger={row.key === "stop"}>
@@ -122,7 +158,14 @@ function Stops({
               </span>
               <span className={styles.stopNote}>{row.note}</span>
             </span>
-            {row.action.kind === "button" ? (
+            {runtime && row.key === "stop" ? (
+              <StopAll
+                live={live}
+                canManage={canManage}
+                id="live-stops-stop"
+                className={styles.stopButton}
+              />
+            ) : row.action.kind === "button" ? (
               <button
                 type="button"
                 className={styles.stopButton}
@@ -156,18 +199,24 @@ function Stops({
   );
 }
 
-/** HOW IT RUNS: the status, its note, BEFORE IT ENTERS and WHILE YOU DECIDE, and Save. */
+/**
+ * HOW IT RUNS: the status, its note, BEFORE IT ENTERS and WHILE YOU DECIDE, and Save. The notes say
+ * it checks hourly on paper only with the runtime on; the status is the header's (`paper`: held).
+ */
 function HowItRuns({
   agent,
   live,
   canManage,
-}: Pick<LiveSectionProps, "agent" | "live" | "canManage">) {
+  paper,
+}: Pick<LiveSectionProps, "agent" | "live" | "canManage"> & { paper: boolean }) {
+  const runtime = runtimeOn(live.record);
   const { caps } = liveCaps(agent);
   const saved = liveEntry({ entry: agent.config.entry, spend: { perCallAusd: caps.perTradeAusd } });
   const [form, setForm] = useSavedForm<LiveEntry>(agent.version, saved);
   const { state, save, touch, saving } = useSetupSave(live);
-  const status = liveStatus(agent);
-  const view = entryView(form, caps.perTradeAusd);
+  const status = paper ? runtimeStatus(agent.paused, runtime) : liveStatus(agent);
+  const plain = entryView(form, caps.perTradeAusd);
+  const view = runtime ? runtimeEntryView(plain) : plain;
   const dirty = entryDirty(form, saved, caps.perTradeAusd);
   const canSave = canManage && dirty && !saving;
   const shut = !canManage || saving;

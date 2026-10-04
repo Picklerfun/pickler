@@ -46,8 +46,9 @@ export type CreateStage = (typeof CREATE_STAGES)[number];
 
 /**
  * The draft studio (studio-draft-dashboard-v1 §7): the Overview right after create, Connect X at
- * each moment (the row open, the post not found yet, verified, skipped), then each section, and a
- * locked one. `draft/fixture.ts` draws each.
+ * each moment (the row open, the post not found yet, verified, skipped), then each section (the
+ * Console and Trades also after a paper run, perpl-paper-runtime-v1 R17), and a locked one.
+ * `draft/fixture.ts` draws each.
  */
 export const DRAFT_STAGES = [
   "draft",
@@ -56,7 +57,9 @@ export const DRAFT_STAGES = [
   "draft-x-ok",
   "draft-x-skipped",
   "draft-console",
+  "draft-console-ran",
   "draft-trades",
+  "draft-trades-active",
   "draft-brief",
   "draft-sources",
   "draft-limits",
@@ -71,7 +74,9 @@ export type DraftStage = (typeof DRAFT_STAGES)[number];
 /**
  * The live studio of a published Perpl agent (studio-live-v1 §7): the Overview, paused, with the
  * degraded banner, then each section, the brief with edits not applied, and the account's three
- * tabs. `live/fixture.ts` draws each.
+ * tabs, all with the Perpl runtime off; then the runtime on (perpl-paper-runtime-v1 §7): Overview
+ * with a position and a proposal, Decisions and Record populated, and Positions with a close
+ * waiting for the running check. `live/fixture.ts` draws each.
  */
 export const LIVE_STAGES = [
   "perpl-live",
@@ -95,6 +100,11 @@ export const LIVE_STAGES = [
   "perpl-account",
   "perpl-account-profile",
   "perpl-account-notify",
+  "perpl-live-active",
+  "perpl-decisions-active",
+  "perpl-record-active",
+  "perpl-positions-active",
+  "perpl-positions-paused",
 ] as const;
 
 export type LiveStage = (typeof LIVE_STAGES)[number];

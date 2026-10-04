@@ -4,6 +4,9 @@ import {
   requireTool,
   type AdviceExecutionRepository,
   type AdviceJob,
+  type PerpCandles,
+  type PerpReadTools,
+  type PerpSymbol,
 } from "@pickler/core";
 import {
   PostgresAdviceStore,
@@ -17,10 +20,63 @@ import {
   usdMicros,
   createAdviceRunner,
   type AdviceEvidence,
+  type AdviceSource,
+  type PerpsPaperFrame,
 } from "@pickler/trading/perps";
 import { createPerplSession } from "../plugins/perpl/index.js";
 import { siteScopedWeb } from "../plugins/exa.js";
 import { adviceProviderMatches, createAdviceModels } from "./advice-model.js";
+/**
+ * One instrument's market evidence from a bounded Perpl session, read in this order: `candles`
+ * closed hourly candles, a 20-level book, then the snapshot (the ticker last, so the book's request
+ * delay does not add to its lag). `guard` runs after each read. Advice and the Perpl paper runtime
+ * share it; `prefix` names the source ids (`perpl-ticker`, `perpl-book`, `perpl-candles` for advice).
+ */
+export async function readPerplInstrument(
+  service: PerpReadTools,
+  symbol: PerpSymbol,
+  options: { candles: number; guard: () => Promise<void>; prefix?: string; now?: () => number },
+): Promise<{ frame: PerpsPaperFrame; candles: PerpCandles; sources: AdviceSource[] }> {
+  const prefix = options.prefix ?? "perpl";
+  const hour = Math.floor((options.now ?? Date.now)() / 3600000) * 3600000;
+  const candles = await service.getPerpCandles({
+    symbol,
+    resolution: 3600,
+    from: hour - options.candles * 3600000,
+    to: hour,
+  });
+  await options.guard();
+  const book = await service.getPerpOrderBook({ symbol, levels: 20 });
+  await options.guard();
+  const snapshot = await service.getPerpSnapshot({ symbol });
+  await options.guard();
+  const frame = {
+    snapshot,
+    book,
+    hash: createHash("sha256").update(JSON.stringify({ snapshot, book })).digest("hex"),
+  };
+  const sources: AdviceSource[] = [
+    {
+      id: `${prefix}-ticker`,
+      name: "Perpl ticker",
+      url: snapshot.ticker.provenance.url,
+      observedAt: new Date(snapshot.ticker.provenance.receivedAt).toISOString(),
+    },
+    {
+      id: `${prefix}-book`,
+      name: "Perpl order book",
+      url: book.provenance.url,
+      observedAt: new Date(book.provenance.receivedAt).toISOString(),
+    },
+    {
+      id: `${prefix}-candles`,
+      name: "Perpl closed hourly candles",
+      url: candles.provenance.url,
+      observedAt: new Date(candles.provenance.receivedAt).toISOString(),
+    },
+  ];
+  return { frame, candles, sources };
+}
 export function createAdviceData(
   repository: AdviceExecutionRepository,
   research: Pick<PostgresResearchStore, "agent">,
@@ -86,45 +142,12 @@ export function createAdviceData(
     await guard();
     const perplSignal = AbortSignal.any([signal, AbortSignal.timeout(20000)]);
     const perpl = await createPerplSession(research, scope, perplSignal);
-    const hour = Math.floor(Date.now() / 3600000) * 3600000;
-    const candles = await perpl.service.getPerpCandles({
-      symbol: job.symbol,
-      resolution: 3600,
-      from: hour - 60 * 3600000,
-      to: hour,
+    const read = await readPerplInstrument(perpl.service, job.symbol, {
+      candles: 60,
+      guard,
     });
-    await guard();
-    const book = await perpl.service.getPerpOrderBook({ symbol: job.symbol, levels: 20 });
-    await guard();
-    const snapshot = await perpl.service.getPerpSnapshot({ symbol: job.symbol });
-    await guard();
-    const frame = {
-      snapshot,
-      book,
-      hash: createHash("sha256").update(JSON.stringify({ snapshot, book })).digest("hex"),
-    };
-    sources.push(
-      ...[
-        {
-          id: "perpl-ticker",
-          name: "Perpl ticker",
-          url: snapshot.ticker.provenance.url,
-          observedAt: new Date(snapshot.ticker.provenance.receivedAt).toISOString(),
-        },
-        {
-          id: "perpl-book",
-          name: "Perpl order book",
-          url: book.provenance.url,
-          observedAt: new Date(book.provenance.receivedAt).toISOString(),
-        },
-        {
-          id: "perpl-candles",
-          name: "Perpl closed hourly candles",
-          url: candles.provenance.url,
-          observedAt: new Date(candles.provenance.receivedAt).toISOString(),
-        },
-      ],
-    );
+    const { frame, candles } = read;
+    sources.push(...read.sources);
     return { frame, candles, sources, web };
   };
 }

@@ -7,6 +7,11 @@ EXA_API_KEY=
 BALLDONTLIE_API_KEY=
 THE_ODDS_API_KEY=
 ADMISSIONS_ENABLED=false
+PERPL_RUNTIME_ENABLED=false
+PERPL_RUNTIME_DAILY_CHECKS=500
+# Optional: the chain agent wallets' AUSD is read on (default 10143) and its RPC.
+CHAIN_ID=
+MONAD_RPC_URL=
 
 # DATABASE_URL is for local development only.
 # Hosted research requires the DATABASE Hyperdrive binding configured in Wrangler.

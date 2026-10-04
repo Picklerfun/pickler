@@ -153,6 +153,33 @@ test("three tiles read Soon, never a made-up number", () => {
   );
 });
 
+test("with a paper position open, IN YOUR POSITIONS and OPEN P&L read it, labelled PAPER", () => {
+  const { perps } = draftStudioFixture("draft-console-ran");
+  const positions = perps.positions!;
+  const tiles = headerTiles(wallets("1000000"), positions);
+  const margin = positions.open.reduce((sum, p) => sum + Number(p.margin), 0);
+
+  assert.ok(positions.open.length > 0);
+  assert.deepEqual(
+    tiles.slice(2, 4).map(({ label, soon }) => ({ label, soon })),
+    [
+      { label: "IN YOUR POSITIONS · PAPER · AUSD", soon: false },
+      { label: "OPEN P&L · PAPER · AUSD", soon: false },
+    ],
+  );
+  assert.equal(tiles[2]!.value, margin.toFixed(2));
+  assert.match(tiles[3]!.value, /^[+−]\d/);
+  assert.equal(tiles[4]!.value, "Soon");
+
+  const unmarked = {
+    ...positions,
+    open: positions.open.map((p) => ({ ...p, unrealizedPnl: null })),
+  };
+  assert.equal(headerTiles(wallets("1000000"), unmarked)[3]!.value, "—");
+  // Only closed positions: nothing is held, so the two tiles stay Soon.
+  assert.equal(headerTiles(wallets("1000000"), { ...positions, open: [] })[2]!.value, "Soon");
+});
+
 test("tiles are dashes while the wallets are unread", () => {
   const tiles = headerTiles(null);
   assert.deepEqual(
@@ -426,7 +453,7 @@ test("a run days out says how many days, not tomorrow", () => {
    each fixture is the state its name says. */
 
 test("each draft stage is staged outside production only", () => {
-  assert.equal(DRAFT_STAGES.length, 14);
+  assert.equal(DRAFT_STAGES.length, 16);
   for (const stage of DRAFT_STAGES) {
     assert.equal(stageFromSearch("development", stage), stage);
     assert.equal(stageFromSearch("production", stage), undefined);

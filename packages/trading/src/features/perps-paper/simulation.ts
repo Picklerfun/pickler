@@ -85,7 +85,7 @@ export function simulatePerpsFill(
   const step = 10n ** BigInt(18 - frame.book.market.sizeDecimals);
   let quantity: bigint;
   if (intent.kind === "open") {
-    // Upper price bound protects the 100-unit notional ceiling for either side.
+    // Upper price bound keeps the fill within the intent's notional for either side.
     quantity = ((u(intent.notional) * S) / ((best * 10050n) / 10000n) / step) * step;
   } else {
     const position = account.positions.find(
@@ -234,6 +234,9 @@ export function applyPaperObservation(
   }
   a.cash = d(u(a.cash) + movements.reduce((sum, m) => sum + u(m.delta), 0n));
   a.fundingPending = pending;
+  if (a.scope.sessionId === "product" && !observation.marksOnly) {
+    a.lastFundingAt = now;
+  }
   const risk = paperRisk(a, [], now);
   const day = new Date(now).toISOString().slice(0, 10);
   if (day !== a.day) {

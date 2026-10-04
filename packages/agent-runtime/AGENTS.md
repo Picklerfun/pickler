@@ -168,6 +168,28 @@ new plugin or a trading executor. See [Agent advice](../../docs/agent-advice.md)
 
 Advice reuses MODEL_BASE_URL, MODEL_ID and MODEL_API_KEY from the configured research provider. It never reads ADVICE_DEEPSEEK_API_KEY. Reject mismatched frozen provider/model policies before Jev or forecast transport; retain no retries and bounded accounting. Jev keeps its separate ADVICE_JEV_API_KEY.
 
+## Perpl paper runtime
+
+New Studio checks use `composition/studio-perps-runtime.ts` to inject providers, prompts,
+repositories, clock and cancellation into trading's `runStudioPerpsCheck`. Strategy IDs and
+versions come exclusively from the common registry; runtime does not choose financial amounts.
+`composition/perps-check.ts` retains the read-only v1 context projection and frame hashing, not
+an executor. The old perps-check model adapter, prompt and score-based execution are retired.
+Advice continues to use the unchanged shared `composition/chat-completion.ts` transport.
+
+`createPerpsRuntime` binds every product financial writer to the current check lease, identity
+and configuration. Paid decisions require an active USD reservation as well. `workers/perps.ts`
+claims Queue work, renews leases, reconciles public funding/valuation and handles required exits;
+public supervision and owner closes remain available while paid admissions are disabled.
+Owner actions use their own leases, refresh funding before additional exposure, and resolve
+closing scopes from stored positions rather than the current selected network.
+
+Default `PERPL_RUNTIME_ENABLED=false` stays unchanged. A reviewed `PERPS_RUNTIME_POLICY_JSON`
+is additionally required for checks; model calls reuse `MODEL_*`, while Jev uses the separate
+`PERPS_JEV_API_KEY`. Never invent tariffs or reuse advice/study budgets. See
+[Studio perpetual execution](../../docs/studio-perps-execution.md) for policy fields, ownership,
+versions, limitations and controlled acceptance. No setup save enables paid operations.
+
 ## Perpetual strategy adapters
 
 Perpl model composition imports decision policies and model ports from
@@ -175,3 +197,5 @@ Perpl model composition imports decision policies and model ports from
 the trading registry owns their routing. Prompts, hashes, provider/model configuration and
 transport limits remain unchanged. Keep readiness for historical v1 only; it is not the v2
 `combined` strategy. Never construct a parallel strategy registry or financial policy here.
+
+Studio model adapters live in `composition/studio-perps-models.ts`. Their forecast and atomic Jev prompts are version 2.0.0, separate from laboratory prompts and advice. Every transport awaits the injected before-call hook and records verified model token usage; no repair or retry is permitted. Atomic condition support retains the 0.7 threshold, material review retains the 0.9 threshold; neither is a financial probability. Composition of these adapters alone does not enable the product.

@@ -1,16 +1,16 @@
 "use client";
 import { useState } from "react";
-import { stripView } from "./model";
+import type { StripView } from "./model";
 import styles from "./live.module.css";
 
 /**
  * The live strip under the top bar (canvas 88–109, spec L6): the last check in one line with the
  * count, and under it, when opened, that check's steps and "EVERY DECISION →". With no runtime
- * there is no check: the line says so and the log is empty.
+ * there is no check: the line says so and the log is empty (`stripView`); with it, the newest
+ * check's (`runtimeStrip`).
  */
-export function LiveStrip({ onDecisions }: { onDecisions(): void }) {
+export function LiveStrip({ view, onDecisions }: { view: StripView; onDecisions(): void }) {
   const [open, setOpen] = useState(false);
-  const view = stripView();
   return (
     <div className={styles.strip} id="live-strip">
       <button
@@ -21,7 +21,9 @@ export function LiveStrip({ onDecisions }: { onDecisions(): void }) {
         onClick={() => setOpen(!open)}
       >
         <span className={styles.stripDot} aria-hidden="true" />
-        <span className={styles.stripLine}>{view.line}</span>
+        <span className={styles.stripLine} suppressHydrationWarning>
+          {view.line}
+        </span>
         <span className={styles.stripCount}>{view.count}</span>
         <span className={styles.stripToggle}>{open ? "HIDE" : "SHOW"}</span>
       </button>

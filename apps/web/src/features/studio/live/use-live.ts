@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
   DirectoryAgentDto,
   LeaderboardDto,
@@ -8,15 +8,37 @@ import type {
   SetupUpdateDto,
 } from "@pickler/api-schema";
 import {
+  StudioError,
   agentVersions,
+  approvePerpsProposal,
+  closePerpsPosition,
+  errorCode,
   marketplaceDirectory,
   marketplaceLeaderboard,
   marketplaceMarket,
   marketplaceMarkets,
+  perpsAction,
+  perpsCheck,
+  perpsChecks,
+  perpsChecksBefore,
+  perpsPositions,
+  perpsProposals,
+  perpsRecord,
   setPaused,
+  skipPerpsProposal,
+  startPerpsCheck,
+  stopPerps,
   type Agent,
+  type PerpsActionDto,
+  type PerpsActionStartedDto,
+  type PerpsCheckDetailDto,
+  type PerpsCheckSummaryDto,
+  type PerpsPositionsResponseDto,
+  type PerpsProposalDto,
+  type PerpsRecordDto,
   type SetupVersion,
 } from "../api";
+import { startPolling } from "../lib/polling";
 import {
   useAgentStudio,
   type AgentStudioData,
@@ -25,6 +47,12 @@ import {
 } from "../shell/use-agent-studio";
 import type { LiveStaged } from "./fixture";
 import { watchedSymbols, type LiveSectionKey, type MarketsRead } from "./model";
+import {
+  ownerActionView,
+  paperShown,
+  runtimeErrorText,
+  type OwnerActionKind,
+} from "./runtime-model";
 
 /** A read the live studio makes on its own: null until read, `failed` when it did not answer. */
 export type LiveRead<T> = T | null | "failed";
@@ -41,6 +69,102 @@ export interface LiveData extends AgentStudioData {
   directory: LiveRead<DirectoryAgentDto[]>;
   /** `GET /marketplace/leaderboard`, read the first time Leaderboard opens. */
   leaderboard: LiveRead<LeaderboardDto>;
+  /**
+   * `GET /agents/:id/perps/record`, read first: `runtimeEnabled` and `account` decide whether the
+   * rest is read (either one: an agent's paper stays drawn and closable with the runtime off, R3)
+   * and whether the studio says what runs (draft spec D19).
+   */
+  record: LiveRead<PerpsRecordDto>;
+  /** `GET /agents/:id/perps/checks`, newest first, with any older pages read since. */
+  checks: LiveRead<PerpsCheckSummaryDto[]>;
+  /** Whether an older page of checks exists ("Show older"). */
+  moreChecks: boolean;
+  /** `GET /agents/:id/perps/positions`. */
+  positions: LiveRead<PerpsPositionsResponseDto>;
+  /** `GET /agents/:id/perps/proposals`: what waits on the owner. */
+  proposals: LiveRead<PerpsProposalDto[]>;
+  /** The newest check with its steps (`GET /perps/checks/:id`), for the strip. */
+  lastCheck: PerpsCheckDetailDto | null;
+  /** Checks read with their steps, by id (a Decisions row opened, or "Why this trade"). */
+  checkDetails: Record<string, PerpsCheckDetailDto | "failed">;
+  /** The manual check "Run a check now" started, polled every 2 s until it has finished, or null. */
+  checking: string | null;
+  /**
+   * The owner's approvals, closes and stops this session, one per thing pressed: each polled every
+   * 2 s (`GET /perps/actions/:id`) until done or failed, then its check read for what happened.
+   * A settled one stays, so its outcome is said, until the same thing is pressed again.
+   */
+  actions: OwnerAction[];
+}
+
+/**
+ * An approve, a close or a stop: a durable action the research worker carries out. `actionId` is
+ * null while the POST is out; `action` is its last read; `outcome` is its check once done (null
+ * until read, `failed` when it could not be read).
+ */
+export interface OwnerAction {
+  kind: OwnerActionKind;
+  /** The proposal, the position, or `all` for a stop. */
+  target: string;
+  actionId: string | null;
+  action: PerpsActionDto | null;
+  outcome: PerpsCheckDetailDto | null | "failed";
+}
+
+/** The action pressed on `target`, if any. */
+export const ownerActionFor = (
+  actions: readonly OwnerAction[],
+  kind: OwnerActionKind,
+  target: string,
+): OwnerAction | null =>
+  actions.find((action) => action.kind === kind && action.target === target) ?? null;
+
+/** Whether an action still has something to read: its status, or its outcome once done. */
+const unsettled = (action: OwnerAction): boolean =>
+  action.actionId !== null && !ownerActionView(action).settled;
+
+/** The wire's kind for each thing pressed. */
+const WIRE_KINDS: Record<OwnerActionKind, PerpsActionDto["kind"]> = {
+  approve: "approve",
+  close: "close",
+  stop: "stop_all",
+};
+
+/** An action Pickler answers 404 for: failed with NOT_FOUND, so the poll stops and says so. */
+function lostAction(item: OwnerAction): PerpsActionDto {
+  const now = new Date().toISOString();
+  return {
+    id: item.actionId!,
+    kind: WIRE_KINDS[item.kind],
+    positionId: item.kind === "close" ? item.target : null,
+    proposalId: item.kind === "approve" ? item.target : null,
+    attempts: 0,
+    checkId: null,
+    createdAt: now,
+    updatedAt: now,
+    ...item.action,
+    status: "failed",
+    lastError: "NOT_FOUND",
+  };
+}
+
+/** An answer that may never have reached the API (none, or a 5xx): the press's key is kept. */
+const uncertain = (caught: unknown): boolean => {
+  const code = errorCode(caught);
+  return !code || /^5\d\d$/.test(code);
+};
+
+/** The sections that poll every 30 s while the page is visible. */
+const POLLED: readonly LiveSectionKey[] = ["overview", "positions", "decisions"];
+const SLOW_MS = 30_000;
+const FAST_MS = 2_000;
+
+/** A runtime write's refusal in the owner's words, keeping its code. */
+function runtimeError(caught: unknown): Error {
+  if (caught instanceof StudioError) {
+    return new StudioError(caught.code, runtimeErrorText(caught.code, caught.message));
+  }
+  return caught instanceof Error ? caught : new Error("Something went wrong. Try again.");
 }
 
 /**
@@ -61,13 +185,41 @@ export interface UseLive extends UseAgentStudio, LiveData {
    * caller, which says so inline and changes nothing.
    */
   pause(paused: boolean): Promise<void>;
+  /**
+   * The record, then (when the runtime is on or it has a paper account) the checks, positions and
+   * proposals, again.
+   */
+  readRuntime(): Promise<void>;
+  /** The next older page of checks. */
+  readOlderChecks(): Promise<void>;
+  /** One check with its steps, kept in `checkDetails`. */
+  readCheckDetail(checkId: string): Promise<void>;
+  /**
+   * The paper runtime's writes. Each throws a `StudioError` in the owner's words (MANUAL_LIMIT,
+   * PROPOSAL_EXPIRED, POSITION_CLOSED, AGENT_KILLED, ...) and changes nothing. A manual check is
+   * polled every 2 s until it has finished; an approve, a close or a stop joins `actions` and is
+   * polled until done or failed. Each press has one Idempotency-Key, kept until an answer is
+   * certain, so a retry after a dropped answer is the same check or the same action.
+   */
+  runCheck(): Promise<void>;
+  approve(proposalId: string): Promise<void>;
+  skip(proposalId: string): Promise<void>;
+  closePosition(positionId: string): Promise<void>;
+  /** "Stop · close all": pauses at once and closes every paper position; reloads the agent. */
+  stopAll(): Promise<void>;
+  /** Forgets a settled action's outcome line. */
+  dismissAction(kind: OwnerActionKind, target: string): void;
 }
 
 /**
  * The live studio's data: what every agent's studio reads and writes (`../shell/use-agent-studio.ts`),
  * plus its versions and the markets it watches, read with them, the directory and the leaderboard,
- * read the first time their section opens, and pause. With `staged` (a `?stage=perpl-*` fixture)
- * or `preview` nothing touches the API: the reads come from the fixture, and the writes throw.
+ * read the first time their section opens, and pause. The Perpl paper runtime's record is read with
+ * them (it says whether the runtime is on and whether a paper account exists); with either, the
+ * checks, positions and proposals too,
+ * every 30 s on Overview, Positions and Decisions while the page shows, and every 2 s while a
+ * manual check runs or an owner action is not settled. With `staged` (a `?stage=perpl-*` fixture) or
+ * `preview` nothing touches the API: the reads come from the fixture, and the writes throw.
  */
 export function useLive({
   agent,
@@ -95,6 +247,181 @@ export function useLive({
     staged?.leaderboard ?? null,
   );
   const wanted = (agent.config.perpl?.markets ?? []).join(",");
+  const stagedRuntime = staged?.runtime ?? null;
+  const [record, setRecord] = useState<LiveRead<PerpsRecordDto>>(stagedRuntime?.record ?? null);
+  const [firstPage, setFirstPage] = useState<LiveRead<PerpsCheckSummaryDto[]>>(
+    stagedRuntime?.checks ?? null,
+  );
+  const [olderPages, setOlderPages] = useState<PerpsCheckSummaryDto[]>([]);
+  const [cursor, setCursor] = useState<string | null>(null);
+  const [positions, setPositions] = useState<LiveRead<PerpsPositionsResponseDto>>(
+    stagedRuntime?.positions ?? null,
+  );
+  const [proposals, setProposals] = useState<LiveRead<PerpsProposalDto[]>>(
+    stagedRuntime?.proposals ?? null,
+  );
+  const [checkDetails, setCheckDetails] = useState<Record<string, PerpsCheckDetailDto | "failed">>(
+    stagedRuntime?.details ?? {},
+  );
+  const [lastCheck, setLastCheck] = useState<PerpsCheckDetailDto | null>(() => {
+    const newest = stagedRuntime?.checks[0];
+    return newest ? (stagedRuntime?.details[newest.id] ?? null) : null;
+  });
+  const [checking, setChecking] = useState<string | null>(null);
+  const [actions, setActions] = useState<OwnerAction[]>(stagedRuntime?.actions ?? []);
+  /* The latest of what the poll reads, so its reader stays one function. */
+  const checkingRef = useRef<string | null>(null);
+  const actionsRef = useRef<OwnerAction[]>(stagedRuntime?.actions ?? []);
+  const lastCheckRef = useRef<PerpsCheckDetailDto | null>(null);
+  const lastReadAt = useRef(0);
+
+  /* Every change to the actions goes through here, so the poll's ref and the state agree. */
+  const updateActions = useCallback((change: (current: OwnerAction[]) => OwnerAction[]) => {
+    const next = change(actionsRef.current);
+    actionsRef.current = next;
+    setActions(next);
+  }, []);
+
+  /*
+   * Each owner action not settled, read again: its status, and once done its check (what really
+   * happened). A request Pickler no longer has (404) fails with NOT_FOUND; any other failed read
+   * is tried on the next poll.
+   */
+  const readActionsWith = useCallback(
+    async (tools: StudioTools, signal?: AbortSignal) => {
+      const open = actionsRef.current.filter(unsettled);
+      if (open.length === 0) {
+        return;
+      }
+      const read = await Promise.all(
+        open.map(async (item): Promise<OwnerAction> => {
+          let action: PerpsActionDto;
+          try {
+            action = await perpsAction(item.actionId!, signal);
+          } catch (caught) {
+            const code = errorCode(caught);
+            if (code === "NOT_FOUND" || code === "404") {
+              return { ...item, action: lostAction(item) };
+            }
+            return item;
+          }
+          let outcome = item.outcome;
+          if (action.status === "done" && action.checkId) {
+            try {
+              outcome = await perpsCheck(action.checkId, signal);
+            } catch {
+              outcome = "failed";
+            }
+          }
+          return { ...item, action, outcome };
+        }),
+      );
+      if (!tools.alive.current || signal?.aborted) {
+        return;
+      }
+      updateActions((current) =>
+        current.map(
+          (item) =>
+            read.find(
+              (fresh) =>
+                fresh.actionId === item.actionId &&
+                fresh.kind === item.kind &&
+                fresh.target === item.target,
+            ) ?? item,
+        ),
+      );
+    },
+    [updateActions],
+  );
+
+  /*
+   * The owner actions first, so what they did is in the reads that follow. Then the record: with
+   * the runtime off and no paper account nothing else is read (and the studio keeps its "runs
+   * soon" copy). With it on, or a paper account (its positions still exit and close with the
+   * runtime off), the checks, positions and proposals side by side, each failing on its own; then
+   * the newest check's steps for the strip, and the manual check's while it runs.
+   */
+  const readRuntimeWith = useCallback(
+    async (tools: StudioTools, signal?: AbortSignal) => {
+      if (tools.offline) {
+        return;
+      }
+      lastReadAt.current = Date.now();
+      await readActionsWith(tools, signal);
+      if (!tools.alive.current || signal?.aborted) {
+        return;
+      }
+      let read: PerpsRecordDto;
+      try {
+        read = await perpsRecord(tools.agentId, signal);
+      } catch {
+        if (tools.alive.current && !signal?.aborted) {
+          setRecord("failed");
+        }
+        return;
+      }
+      if (!tools.alive.current || signal?.aborted) {
+        return;
+      }
+      setRecord(read);
+      if (!paperShown(read)) {
+        return;
+      }
+
+      const quietly = async <T>(call: () => Promise<T>): Promise<T | "failed"> => {
+        try {
+          return await call();
+        } catch {
+          return "failed";
+        }
+      };
+      const [page, open, waiting] = await Promise.all([
+        quietly(() => perpsChecks(tools.agentId, signal)),
+        quietly(() => perpsPositions(tools.agentId, signal)),
+        quietly(() => perpsProposals(tools.agentId, signal)),
+      ]);
+      if (!tools.alive.current || signal?.aborted) {
+        return;
+      }
+      setFirstPage(page === "failed" ? "failed" : page.checks);
+      if (page !== "failed") {
+        setCursor((current) => current ?? page.nextCursor);
+      }
+      setPositions(open);
+      setProposals(waiting === "failed" ? "failed" : waiting.proposals);
+
+      /* The newest check's steps, read again while it runs or once a newer one lands. */
+      const newest = page === "failed" ? null : (page.checks[0] ?? null);
+      let detail = lastCheckRef.current;
+      if (newest && (detail?.id !== newest.id || detail.status !== "finished")) {
+        const fresh = await quietly(() => perpsCheck(newest.id, signal));
+        if (fresh !== "failed") {
+          detail = fresh;
+        }
+      }
+      /* A manual check that is not the newest any more is read on its own. */
+      const manual = checkingRef.current;
+      let manualDetail = detail;
+      if (manual && detail?.id !== manual) {
+        const fresh = await quietly(() => perpsCheck(manual, signal));
+        manualDetail = fresh === "failed" ? null : fresh;
+      }
+      if (!tools.alive.current || signal?.aborted) {
+        return;
+      }
+      if (detail) {
+        lastCheckRef.current = detail;
+        setLastCheck(detail);
+        setCheckDetails((current) => ({ ...current, [detail.id]: detail }));
+      }
+
+      if (manual && manualDetail?.id === manual && manualDetail.status === "finished") {
+        checkingRef.current = null;
+        setChecking(null);
+      }
+    },
+    [readActionsWith],
+  );
 
   const readVersionsWith = useCallback(async (tools: StudioTools) => {
     if (tools.offline) {
@@ -149,8 +476,9 @@ export function useLive({
   );
 
   const readMore = useCallback(
-    (tools: StudioTools) => Promise.all([readVersionsWith(tools), readMarketsWith(tools)]),
-    [readVersionsWith, readMarketsWith],
+    (tools: StudioTools) =>
+      Promise.all([readVersionsWith(tools), readMarketsWith(tools), readRuntimeWith(tools)]),
+    [readVersionsWith, readMarketsWith, readRuntimeWith],
   );
 
   const { studio, tools } = useAgentStudio({ agent, staged, preview, onRefreshAgent, readMore });
@@ -229,6 +557,201 @@ export function useLive({
     [guard, agentId, reloadAfterWrite],
   );
 
+  const readRuntime = useCallback(() => readRuntimeWith(tools), [readRuntimeWith, tools]);
+
+  /*
+   * Overview, Positions and Decisions read the runtime again every 30 s while the page shows; any
+   * section, every 2 s while a manual check runs or an owner action is not settled. The first poll
+   * is skipped when the mount's read just ran.
+   */
+  const polled = POLLED.includes(section);
+  const busy = () => checkingRef.current !== null || actionsRef.current.some(unsettled);
+  const fast = checking !== null || actions.some(unsettled);
+  /* With the runtime off its paper is still polled: exits close positions, and the owner's closes
+     and stops run (R3). */
+  const paperNow = paperShown(record);
+  useEffect(() => {
+    if (offline || !paperNow || !(polled || fast)) {
+      return;
+    }
+    return startPolling(
+      async (signal) => {
+        if (fast || Date.now() - lastReadAt.current > FAST_MS) {
+          await readRuntimeWith(tools, signal);
+        }
+        if (busy()) {
+          return FAST_MS;
+        }
+        return polled ? SLOW_MS : null;
+      },
+      () => undefined,
+    );
+  }, [offline, paperNow, polled, fast, readRuntimeWith, tools]);
+
+  /* The manual check started is polled; the 2 s poll (restarted by it) reads at once. */
+  const watchCheck = useCallback((checkId: string) => {
+    checkingRef.current = checkId;
+    setChecking(checkId);
+  }, []);
+
+  /*
+   * One owner action: drawn as sending at once, then posted with the press's Idempotency-Key. The
+   * key is kept while the answer is uncertain, so pressing again is the same action; a refusal
+   * drops the line and throws in the owner's words.
+   */
+  const actionKeys = useRef(new Map<string, string>());
+  const sendAction = useCallback(
+    async (
+      kind: OwnerActionKind,
+      target: string,
+      post: (key: string) => Promise<PerpsActionStartedDto>,
+    ): Promise<void> => {
+      const slot = `${kind}:${target}`;
+      const key = actionKeys.current.get(slot) ?? crypto.randomUUID();
+      actionKeys.current.set(slot, key);
+      const others = (current: OwnerAction[]) =>
+        current.filter((item) => item.kind !== kind || item.target !== target);
+      updateActions((current) => [
+        ...others(current),
+        { kind, target, actionId: null, action: null, outcome: null },
+      ]);
+      let started: PerpsActionStartedDto;
+      try {
+        started = await post(key);
+      } catch (caught) {
+        if (!uncertain(caught)) {
+          actionKeys.current.delete(slot);
+        }
+        updateActions(others);
+        throw runtimeError(caught);
+      }
+      actionKeys.current.delete(slot);
+      updateActions((current) =>
+        current.map((item) =>
+          item.kind === kind && item.target === target && item.actionId === null
+            ? { ...item, actionId: started.actionId }
+            : item,
+        ),
+      );
+    },
+    [updateActions],
+  );
+
+  const dismissAction = useCallback(
+    (kind: OwnerActionKind, target: string) =>
+      updateActions((current) =>
+        current.filter((item) => item.kind !== kind || item.target !== target),
+      ),
+    [updateActions],
+  );
+
+  const readOlderChecks = useCallback(async () => {
+    if (offline || !cursor) {
+      return;
+    }
+    try {
+      const page = await perpsChecksBefore(agentId, cursor);
+      if (alive.current) {
+        setOlderPages((current) => [...current, ...page.checks]);
+        setCursor(page.nextCursor ?? "");
+      }
+    } catch {
+      /* The button stays; pressing it again tries again. */
+    }
+  }, [offline, cursor, agentId, alive]);
+
+  const readCheckDetail = useCallback(
+    async (checkId: string) => {
+      if (offline) {
+        return;
+      }
+      try {
+        const detail = await perpsCheck(checkId);
+        if (alive.current) {
+          setCheckDetails((current) => ({ ...current, [checkId]: detail }));
+        }
+      } catch {
+        if (alive.current) {
+          setCheckDetails((current) => ({ ...current, [checkId]: "failed" }));
+        }
+      }
+    },
+    [offline, alive],
+  );
+
+  /* One key per press, kept until the answer is certain: a dropped answer retried is the same check. */
+  const checkKey = useRef<string | null>(null);
+  const runCheck = useCallback(async () => {
+    guard();
+    checkKey.current ??= crypto.randomUUID();
+    let started: { checkId: string };
+    try {
+      started = await startPerpsCheck(agentId, checkKey.current);
+    } catch (caught) {
+      if (!uncertain(caught)) {
+        checkKey.current = null;
+      }
+      throw runtimeError(caught);
+    }
+    checkKey.current = null;
+    watchCheck(started.checkId);
+  }, [guard, agentId, watchCheck]);
+
+  const approve = useCallback(
+    async (proposalId: string) => {
+      guard();
+      try {
+        await sendAction("approve", proposalId, (key) => approvePerpsProposal(proposalId, key));
+      } catch (caught) {
+        void readRuntime();
+        throw caught;
+      }
+    },
+    [guard, sendAction, readRuntime],
+  );
+
+  const skip = useCallback(
+    async (proposalId: string) => {
+      guard();
+      try {
+        await skipPerpsProposal(proposalId);
+      } catch (caught) {
+        throw runtimeError(caught);
+      } finally {
+        void readRuntime();
+      }
+    },
+    [guard, readRuntime],
+  );
+
+  const closePosition = useCallback(
+    async (positionId: string) => {
+      guard();
+      try {
+        await sendAction("close", positionId, (key) => closePerpsPosition(positionId, key));
+      } catch (caught) {
+        void readRuntime();
+        throw caught;
+      }
+    },
+    [guard, sendAction, readRuntime],
+  );
+
+  const stopAll = useCallback(async () => {
+    guard();
+    await sendAction("stop", "all", (key) => stopPerps(agentId, key));
+    await reloadAfterWrite();
+  }, [guard, agentId, sendAction, reloadAfterWrite]);
+
+  /* The feed: the newest page as polled, then the older pages read since, each check once. */
+  const checks = useMemo<LiveRead<PerpsCheckSummaryDto[]>>(() => {
+    if (firstPage === null || firstPage === "failed") {
+      return firstPage;
+    }
+    const seen = new Set(firstPage.map((check) => check.id));
+    return [...firstPage, ...olderPages.filter((check) => !seen.has(check.id))];
+  }, [firstPage, olderPages]);
+
   return {
     ...studio,
     saveSetup,
@@ -242,5 +765,23 @@ export function useLive({
     readDirectory,
     readLeaderboard,
     pause,
+    record,
+    checks,
+    moreChecks: Boolean(cursor),
+    positions,
+    proposals,
+    lastCheck,
+    checkDetails,
+    checking,
+    actions,
+    readRuntime,
+    readOlderChecks,
+    readCheckDetail,
+    runCheck,
+    approve,
+    skip,
+    closePosition,
+    stopAll,
+    dismissAction,
   };
 }

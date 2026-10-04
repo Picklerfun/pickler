@@ -1,12 +1,15 @@
 import { PilotError } from "@pickler/core";
 import type { PerpSymbol } from "@pickler/core";
 import type {
+  PerpsPaperExits,
+  PerpsPaperFill,
   PerpsPaperRepository,
   PerpsPaperScope,
   PerpsPaperSide,
   PerpsPaperIntent,
 } from "./types.js";
-import { paperRisk } from "./policy.js";
+import { paperRisk, productFeeReserve } from "./policy.js";
+import { isProductPaperSession } from "./types.js";
 import {
   simulatePerpsFill,
   type PerpsPaperFrame,
@@ -19,6 +22,19 @@ export interface PerpsPaperData {
     signal: AbortSignal,
   ): Promise<PerpsPaperObservation>;
   frame(scope: PerpsPaperScope, symbol: PerpSymbol, signal: AbortSignal): Promise<PerpsPaperFrame>;
+}
+/**
+ * The taker fee a product open reserves for when no frame is given up front: 10 bps, above any
+ * Perpl taker fee seen so far.
+ */
+export const PRODUCT_FALLBACK_TAKER_FEE = "0.001";
+/** How an open is sized and what it records; the operator default is 100 at 1x, no exits. */
+export interface PerpsPaperTradeOptions {
+  notional?: string | undefined;
+  leverage?: number | undefined;
+  checkId?: string | undefined;
+  /** The position's exits from its fill (product sessions; R10). */
+  exits?: ((fill: PerpsPaperFill) => PerpsPaperExits) | undefined;
 }
 export function createPerpsPaperService(
   repository: PerpsPaperRepository,
@@ -33,16 +49,23 @@ export function createPerpsPaperService(
     side: PerpsPaperSide,
     signal: AbortSignal,
     frame?: PerpsPaperFrame,
+    options: PerpsPaperTradeOptions = {},
   ) {
     signal.throwIfAborted();
     let view = await repository.view(scope);
-    const intent: PerpsPaperIntent = {
-      kind,
-      symbol,
-      side,
-      notional: kind === "open" ? "100" : "0",
-      feeReserve: "1",
-    };
+    const notional = kind === "open" ? (options.notional ?? "100") : "0";
+    // Operator opens keep the fixed 1 AUSD; a product open reserves notional × taker fee × 1.5.
+    const feeReserve =
+      kind === "open" && isProductPaperSession(scope)
+        ? productFeeReserve(notional, frame?.book.market.fees.taker ?? PRODUCT_FALLBACK_TAKER_FEE)
+        : "1";
+    const intent: PerpsPaperIntent = { kind, symbol, side, notional, feeReserve };
+    if (kind === "open" && options.leverage !== undefined) {
+      intent.leverage = options.leverage;
+    }
+    if (options.checkId !== undefined) {
+      intent.checkId = options.checkId;
+    }
     // Durable admission precedes fetching execution evidence; repeat keys make no provider call.
     const admitted = await repository.begin(scope, view.account.agentVersion, key, intent);
     if (!admitted.lease) {
@@ -60,7 +83,8 @@ export function createPerpsPaperService(
       view = await repository.view(scope);
       const fill = simulatePerpsFill(view.account, intent, current, clock());
       deadline.throwIfAborted();
-      return await repository.complete(scope, lease, fill);
+      const exits = kind === "open" ? options.exits?.(fill) : undefined;
+      return await repository.complete(scope, lease, fill, exits);
     } catch (error) {
       const code =
         error instanceof PilotError && /^[A-Z_]{1,80}$/.test(error.code)

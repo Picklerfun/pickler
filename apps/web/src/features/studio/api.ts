@@ -423,3 +423,108 @@ export const marketplaceDirectory = (signal?: AbortSignal) =>
 /** `GET /marketplace/leaderboard`: ranked by score, with the weights that make it. */
 export const marketplaceLeaderboard = (signal?: AbortSignal) =>
   marketplaceApi<LeaderboardDto>("/leaderboard", signal);
+
+// ─── The Perpl paper runtime (perpl-paper-runtime-v1 §4) ────────────────────────────────────────
+// Shared by both studios: the draft Console runs manual checks with these, and the live studio
+// reads the same routes. Its DTO types are named in this block rather than in the import list.
+
+type PerpsSchema = typeof import("@pickler/api-schema");
+export type PerpsChecksDto = ReturnType<PerpsSchema["perpsChecksResponseSchema"]["parse"]>;
+export type PerpsCheckSummaryDto = import("@pickler/api-schema").PerpsCheckSummaryDto;
+export type PerpsCheckDetailDto = import("@pickler/api-schema").PerpsCheckDetailDto;
+export type PerpsPositionsResponseDto = import("@pickler/api-schema").PerpsPositionsResponseDto;
+export type PerpsRecordDto = import("@pickler/api-schema").PerpsRecordDto;
+
+/**
+ * `POST /agents/:id/perps/checks` ("Run it on paper"): queues a manual check, 202 `{ checkId }`.
+ * `key` is the Idempotency-Key, one per press, so a retried request is the same check. 409
+ * NOT_A_PERPL_AGENT, RUNTIME_DISABLED, CHECK_RUNNING, AGENT_KILLED; 429 MANUAL_LIMIT (6 a UTC day).
+ */
+export const startPerpsCheck = (agentId: string, key: string) =>
+  studioApi<{ checkId: string }>(`/agents/${agentId}/perps/checks`, {
+    method: "POST",
+    headers: { "Idempotency-Key": key },
+    body: "{}",
+  });
+
+/** `GET /agents/:id/perps/checks`: the Decisions feed, newest first, 50 a page. */
+export const perpsChecks = (agentId: string, signal?: AbortSignal) =>
+  studioApi<PerpsChecksDto>(`/agents/${agentId}/perps/checks`, signal ? { signal } : {});
+
+/** `GET /perps/checks/:id`: one check with its timed steps, polled while it runs. */
+export const perpsCheck = (checkId: string, signal?: AbortSignal) =>
+  studioApi<PerpsCheckDetailDto>(`/perps/checks/${checkId}`, signal ? { signal } : {});
+
+/** `GET /agents/:id/perps/positions`: open paper positions marked to the board, and closed ones. */
+export const perpsPositions = (agentId: string, signal?: AbortSignal) =>
+  studioApi<PerpsPositionsResponseDto>(
+    `/agents/${agentId}/perps/positions`,
+    signal ? { signal } : {},
+  );
+
+/** `GET /agents/:id/perps/record`: the record, `runtimeEnabled` and today's figures. */
+export const perpsRecord = (agentId: string, signal?: AbortSignal) =>
+  studioApi<PerpsRecordDto>(`/agents/${agentId}/perps/record`, signal ? { signal } : {});
+
+// ─── The Perpl paper runtime: the live studio's own calls (perpl-paper-runtime-v1 §4) ───────────
+// The live studio reads the record, the checks, the positions and the proposals above, and adds an
+// older page of the feed, the proposals and the owner's paper actions here. An approve, a close or
+// a stop writes a durable owner action and answers 202 `{ actionId }`; the research worker carries
+// it out, and the studio polls `GET /perps/actions/:id` until it is `done` or `failed`. Each takes
+// the press's Idempotency-Key, so a retry after an answer that never came is the same action.
+
+export type PerpsProposalDto = import("@pickler/api-schema").PerpsProposalDto;
+export type PerpsActionStartedDto = import("@pickler/api-schema").PerpsActionStartedDto;
+export type PerpsActionDto = import("@pickler/api-schema").PerpsActionDto;
+
+/** `GET /agents/:id/perps/checks?before=`: the feed's next page, older than `before`. */
+export const perpsChecksBefore = (agentId: string, before: string, signal?: AbortSignal) =>
+  studioApi<PerpsChecksDto>(
+    `/agents/${agentId}/perps/checks?before=${encodeURIComponent(before)}`,
+    signal ? { signal } : {},
+  );
+
+/** `GET /agents/:id/perps/proposals`: the pending approve-mode proposals ("Waiting on you"). */
+export const perpsProposals = (agentId: string, signal?: AbortSignal) =>
+  studioApi<{ proposals: PerpsProposalDto[] }>(
+    `/agents/${agentId}/perps/proposals`,
+    signal ? { signal } : {},
+  );
+
+/** An owner action's POST: no body, the press's Idempotency-Key. */
+const ownerAction = (path: string, key: string) =>
+  studioApi<PerpsActionStartedDto>(path, {
+    method: "POST",
+    headers: { "Idempotency-Key": key },
+    body: "{}",
+  });
+
+/**
+ * `POST /perps/proposals/:id/approve` ("Enter" / "Size up"): 202 `{ actionId }`. 409
+ * PROPOSAL_DECIDED, PROPOSAL_EXPIRED, RUNTIME_DISABLED, AGENT_KILLED.
+ */
+export const approvePerpsProposal = (proposalId: string, key: string) =>
+  ownerAction(`/perps/proposals/${proposalId}/approve`, key);
+
+/** `POST /perps/proposals/:id/skip` ("Skip" / "Keep it small"): decided at once. 409 as approve. */
+export const skipPerpsProposal = (proposalId: string) =>
+  studioApi<{ id: string; status: "approved" | "skipped" | "expired" }>(
+    `/perps/proposals/${proposalId}/skip`,
+    { method: "POST", body: "{}" },
+  );
+
+/** `POST /perps/positions/:id/close` ("Close now", paper): 202 `{ actionId }`. 409 POSITION_CLOSED. */
+export const closePerpsPosition = (positionId: string, key: string) =>
+  ownerAction(`/perps/positions/${encodeURIComponent(positionId)}/close`, key);
+
+/** `POST /agents/:id/perps/stop` ("Stop · close all", paper): pauses at once, 202 `{ actionId }`. */
+export const stopPerps = (agentId: string, key: string) =>
+  ownerAction(`/agents/${agentId}/perps/stop`, key);
+
+/**
+ * `GET /perps/actions/:id`: `pending` (waiting for the worker, or for a running check to free the
+ * agent: `lastError` CHECK_RUNNING), `running`, `done` (its `checkId` says what happened) or
+ * `failed` (`lastError`).
+ */
+export const perpsAction = (actionId: string, signal?: AbortSignal) =>
+  studioApi<PerpsActionDto>(`/perps/actions/${actionId}`, signal ? { signal } : {});

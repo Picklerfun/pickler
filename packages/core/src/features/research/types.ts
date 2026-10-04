@@ -1,3 +1,4 @@
+import { STUDIO_PERPS_STRATEGY_IDS } from "./trading-config.js";
 import {
   assertMarketScope,
   type MarketScope,
@@ -56,6 +57,8 @@ export const MAX_SKILLS = 8;
 export const MAX_SKILL_PROMPT = 600;
 export const MAX_SITES = 20;
 export interface AgentConfig {
+  /** Product strategy selection; absent historical configs resolve without enabling execution. */
+  perpsStrategy?: import("./trading-config.js").StudioPerpsStrategySelection | undefined;
   perpsPaper?: import("./trading-config.js").PerpsPaperConfig | undefined;
   perpl?: PerplConfig | undefined;
   trading?: import("./trading-config.js").TradingConfig | undefined;
@@ -652,7 +655,7 @@ export function normalizeBrief(input: AgentBrief): AgentBrief {
 }
 
 /** Every write path runs this on a normalized brief; it never fixes one up. */
-export function assertBrief(brief: AgentBrief): void {
+export function assertBrief(brief: AgentBrief, requireEntry = true): void {
   if (typeof brief.thesis !== "string" || brief.thesis !== brief.thesis.trim()) {
     throw new BriefError("thesis", "not_trimmed");
   }
@@ -676,7 +679,7 @@ export function assertBrief(brief: AgentBrief): void {
       }
     }
   }
-  if (brief.entersWhen.length === 0) {
+  if (requireEntry && brief.entersWhen.length === 0) {
     throw new BriefError("entersWhen", "required");
   }
 }
@@ -832,8 +835,9 @@ export function assertConfig(config: AgentConfig): void {
     assertSpendLimits(config.spend);
   }
   if (config.brief !== undefined) {
-    assertBrief(config.brief);
+    assertBrief(config.brief, config.perpsStrategy?.id !== "rules");
   }
+  assertStudioStrategy(config);
   if (config.maxLeverage !== undefined) {
     assertMaxLeverage(config.maxLeverage);
   }
@@ -923,5 +927,27 @@ export function assertMarket(market: Market, categories: string[], now: number):
   }
   if (!isMarketOpen(market, now)) {
     throw new PilotError("MARKET_NOT_OPEN", "Market needs a valid future closing date");
+  }
+}
+
+export function assertStudioStrategy(config: AgentConfig): void {
+  const selection = config.perpsStrategy;
+  if (
+    selection &&
+    (!STUDIO_PERPS_STRATEGY_IDS.includes(selection.id) || selection.version !== "2.0.0")
+  ) {
+    throw new PilotError("STRATEGY_UNAVAILABLE", "Unsupported Studio strategy or version");
+  }
+  if (selection?.id === "rules") {
+    const brief = config.brief;
+    const sections = (["entersWhen", "exitsWhen", "never"] as const).filter(
+      (key) => brief?.[key].length,
+    );
+    if (sections.length) {
+      throw new PilotError(
+        "RULES_BRIEF_UNSUPPORTED",
+        `Rules cannot verify free-text conditions: ${sections.join(", ")}. Clear these conditions or choose an AI strategy.`,
+      );
+    }
   }
 }

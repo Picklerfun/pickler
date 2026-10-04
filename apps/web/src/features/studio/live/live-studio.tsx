@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Icon } from "@pickler/ui";
 import { useMarketplaceHref } from "@/features/site/studio-href";
 import { useNow } from "@/lib/now";
@@ -33,6 +33,7 @@ import {
   liveWalletRead,
   liveWarnings,
   publicProfilePath,
+  stripView,
   warningLine,
   type LiveSectionKey,
 } from "./model";
@@ -41,6 +42,14 @@ import { Positions } from "./positions";
 import { Posts } from "./posts";
 import { Reason } from "./reason";
 import { RecordSection } from "./record";
+import { StopAll } from "./runtime-parts";
+import {
+  paperShown,
+  runtimeCounts,
+  runtimeStatus,
+  runtimeStrip,
+  runtimeTiles,
+} from "./runtime-model";
 import { Sources } from "./sources";
 import { useLive } from "./use-live";
 import { usePauseToggle, type PauseToggle } from "./use-pause";
@@ -100,6 +109,8 @@ export function LiveStudio({
   /* "Fix it", "EVERY DECISION →" and every section's own links ("Connect X", "Caps & limits") move
      the section from outside the rail: the control pressed unmounts, so its rail item takes focus. */
   const focusRail = useRef(false);
+  /* "Why this trade" opens Decisions on one check; any other way in shows the whole feed. */
+  const [focusCheck, setFocusCheck] = useState<string | null>(null);
 
   useEffect(() => {
     if (focusRail.current) {
@@ -110,10 +121,26 @@ export function LiveStudio({
 
   const goFromOutside = (key: LiveSectionKey) => {
     focusRail.current = true;
+    setFocusCheck(null);
     setSection(key);
   };
 
-  const status = liveStatus(agent);
+  const onWhy = (checkId: string | null) => {
+    if (checkId === null) {
+      setFocusCheck(null);
+      return;
+    }
+    focusRail.current = true;
+    setFocusCheck(checkId);
+    setSection("decisions");
+  };
+
+  /* With the Perpl runtime on, the chip, the tiles, the strip and the rail's counts say what runs;
+     off with a paper account, they still show its paper and say checks are paused (R3: exits,
+     Close now and Stop · close all still run); otherwise (or the record unread) they keep the
+     honest "runs soon" copy (draft spec D19). */
+  const record = paperShown(live.record) ? live.record : null;
+  const status = record ? runtimeStatus(agent.paused, record.runtimeEnabled) : liveStatus(agent);
   const { caps } = liveCaps(agent);
   const read = liveWalletRead(agent.wallet, live.wallets);
   const warnings = liveWarnings(read, caps.perTradeAusd);
@@ -127,6 +154,8 @@ export function LiveStudio({
     now,
     accountHandle,
     onSection: goFromOutside,
+    focusCheck,
+    onWhy,
     onWallets: modals.openWallets,
     onCredits: modals.openCredits,
   };
@@ -191,8 +220,12 @@ export function LiveStudio({
           {status.label}
         </StatusChip>
       }
-      /* Nothing is open and nothing waits on the owner until the Perpl runtime (`RailCounts`). */
-      rail={liveRail(section, { positions: 0, decisions: 0 })}
+      /* Positions counts the open paper positions, Decisions the proposals waiting on the owner;
+         both are 0 with the runtime off and no paper account. */
+      rail={liveRail(
+        section,
+        record ? runtimeCounts(live.positions, live.proposals) : { positions: 0, decisions: 0 },
+      )}
       railFooter={
         <>
           <div className={styles.help}>
@@ -224,7 +257,10 @@ export function LiveStudio({
           )}
         </>
       }
-      onSection={setSection}
+      onSection={(key) => {
+        setFocusCheck(null);
+        setSection(key);
+      }}
       headerSub={headerParts({
         handle: agent.handle,
         publishedAt: agent.publishedAt,
@@ -241,9 +277,21 @@ export function LiveStudio({
           action={status.action}
           canManage={canManage}
           pause={pause}
+          stop={
+            record ? (
+              <StopAll
+                live={live}
+                canManage={canManage}
+                id="live-stop"
+                className={styles.stopButton}
+              />
+            ) : null
+          }
         />
       }
-      tiles={liveTiles(read, caps.perDayAusd)}
+      tiles={
+        record ? runtimeTiles(read, caps.perDayAusd, record) : liveTiles(read, caps.perDayAusd)
+      }
       tilesLabel="Its money"
       banner={
         warnings.length > 0 && (
@@ -262,7 +310,23 @@ export function LiveStudio({
       onSwitch={onSwitch}
       onNew={onNew}
       onAccount={() => setSection("account")}
-      strip={<LiveStrip onDecisions={() => goFromOutside("decisions")} />}
+      strip={
+        <LiveStrip
+          view={
+            record
+              ? runtimeStrip({
+                  newest: Array.isArray(live.checks) ? (live.checks[0] ?? null) : null,
+                  detail: live.lastCheck,
+                  total: record.checks,
+                  paused: agent.paused,
+                  now,
+                  running: record.runtimeEnabled,
+                })
+              : stripView()
+          }
+          onDecisions={() => goFromOutside("decisions")}
+        />
+      }
     >
       {body()}
     </StudioShell>
@@ -282,19 +346,22 @@ function HeaderPart({ first, children }: { first: boolean; children: string }) {
 /**
  * The header's controls (spec L4): "Pause entries" / "Resume", real, with its pending state (shared
  * with Controls' STOPS) and an inline failure that changes nothing; "Stop · close all" drawn shut
- * with Soon, because closing positions needs live trading. A view-only member's Pause stays
- * reachable, with the reason.
+ * with Soon while the Perpl runtime is off and no paper account exists, and real on paper once it
+ * is on or a paper account exists (`stop`, with its inline confirm). A view-only member's controls stay reachable, with the reason.
  */
 function HeaderControls({
   paused,
   action,
   canManage,
   pause,
+  stop,
 }: {
   paused: boolean;
   action: "Pause entries" | "Resume";
   canManage: boolean;
   pause: PauseToggle;
+  /** The runtime's "Stop · close all", or null to draw it shut with Soon. */
+  stop: ReactNode;
 }) {
   const shut = !canManage || pause.pending;
 
@@ -320,16 +387,18 @@ function HeaderControls({
           {pause.pendingLabel ?? action}
         </button>
         <Reason id="live-pause-reason" text={canManage ? null : VIEW_ONLY_REASON} />
-        <button
-          type="button"
-          className={styles.stopButton}
-          aria-disabled="true"
-          title="Closing positions comes with live trading."
-        >
-          <Icon name="x" size={14} />
-          Stop · close all
-          <span className={styles.soon}>SOON</span>
-        </button>
+        {stop ?? (
+          <button
+            type="button"
+            className={styles.stopButton}
+            aria-disabled="true"
+            title="Closing positions comes with live trading."
+          >
+            <Icon name="x" size={14} />
+            Stop · close all
+            <span className={styles.soon}>SOON</span>
+          </button>
+        )}
       </div>
       {pause.error?.from === "header" && (
         <p className={styles.controlError} role="alert">

@@ -1,5 +1,6 @@
 import type { Principal, Workspace } from "@pickler/core";
 import type { AgentLedger } from "./budget/agent-ledger";
+import type { PerpsQueueMessage } from "./routes/studio-perps";
 
 /** Worker bindings. Secrets come from `wrangler secret put` / `.dev.vars`. */
 export interface Env {
@@ -13,7 +14,13 @@ export interface Env {
   DATABASE?: Hyperdrive;
   /** Loopback development only; hosted requests require DATABASE. */
   DATABASE_URL?: string;
-  RESEARCH_QUEUE?: Queue<{ kind: "research-wakeup" | "advice-wakeup" }>;
+  RESEARCH_QUEUE?: Queue<{ kind: "research-wakeup" | "advice-wakeup" } | PerpsQueueMessage>;
+  /**
+   * The Perpl paper runtime (docs/specs/perpl-paper-runtime-v1.md R3): "true" admits manual checks
+   * and approvals; anything else answers 409 RUNTIME_DISABLED. Reads, closes and stops stay on.
+   * Keep it equal to the research worker's.
+   */
+  PERPL_RUNTIME_ENABLED?: string;
   SUPABASE_URL: string;
   SUPABASE_SECRET_KEY: string;
   /** Supabase Auth issuer, e.g. https://<ref>.supabase.co/auth/v1 (no trailing slash). */

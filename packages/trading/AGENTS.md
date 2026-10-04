@@ -49,6 +49,37 @@ Core retains `features/perps`, which exports perpetual-data contracts and `creat
 
 Perpetual simulation adds `simulatePerpsFill`, `applyPaperObservation` and `createPerpsPaperService`: full-depth 50-bps virtual execution, sampled mark risk, versioned estimated funding and sticky discrepancies. No inferred zero funding or liquidation. Trusted marks-only refreshes preserve funding status; model proposals cannot call the store.
 
+Product paper sessions (`PRODUCT_PAPER_SESSION = "product"`, perpl-paper-runtime-v1 R9) are not
+pinned to a config version in `assertPerpsPaperAgent`; operator sessions still are. In a product
+account `paperRisk` keeps only the ledger rules (margin = notional / leverage via
+`paperOpenReserve`, reservations, one position per market, insolvency): caps, stops and day-loss
+belong to the runtime, so the 100 cap, exposure, day baseline, drawdown and the conservative
+close requests do not apply, and unknown marks do not block. Product positions record `leverage`,
+`margin`, `checkId`, `configVersion`, exits and `closeReason`; operator documents keep their shape
+and refuse leverage (`LEVERAGE_NOT_ALLOWED`). `createPerpsPaperService().trade` takes
+`{ notional, leverage, checkId, exits }` (default 100 at 1x). Intents take leverage within core's
+`LEVERAGE_BOUNDS` (1–10) and a lowercase-UUID `checkId`. A product open's fee reserve is
+`productFeeReserve(notional, takerFee)` = notional × the frame's taker fee × 1.5, rounded up to
+micro-AUSD (10 bps without a frame); operator opens keep 1 AUSD, and a reserve may exceed 10 AUSD
+only up to 1% of the notional. Closes check only the scope (`assertPerpsPaperScope`: tenant and
+agent), never the agent's current plugins, policy, network or markets, so an owner's edit never
+strands a position; opens keep the full `assertPerpsPaperAgent`. `features/perps-paper/checks.ts`
+owns the runtime's storage port `PerpsRuntimeRepository` (checks, steps, leases, proposals, daily
+counts) and `perpsCheckMinute`; `PerpsProductPaperRepository` adds `closePosition`,
+`openDuePositions`, `newMarginSince` and the read-only `snapshot` to the paper port;
+`marginOpenedSince(positions, since)` is the pure new-margin sum hosts compute from a snapshot.
+`PerpsOwnerActionRepository` is the port of the owner's durable actions (`PERPS_OWNER_ACTION_KINDS`
+`close` | `stop_all` | `approve`, statuses `pending` → `running` → `done` | `failed`, a 180 s claim
+`PERPS_ACTION_LEASE_MS`, re-drive after `PERPS_ACTION_REDRIVE_MS` 30 s, at most
+`PERPS_ACTION_MAX_ATTEMPTS` 30). `pauseAgent` is idempotent (null when already paused). In a product
+account `applyPaperFill` caps a close's loss (realized P&L plus its fee) at the position's margin:
+isolated margin, so a fill past the liquidation estimate is a liquidation and cash never goes
+negative. Due agents carry their `slot` and the
+dispatcher keys hourly checks `hourlyRequestKey(slot)` (one check per slot); `recoverChecks` is
+the Cron's sweep of stuck checks. An approval goes `pending → approving` (`decideProposal`) and
+only `settleProposal(id, opened)` makes it `approved` (or puts it back to `pending` when the open
+was refused); expiry also ends approvals stuck five minutes past their time.
+
 `features/perps-study` exports the independent comparison contracts, exact model reservation math
 and study budget policy. SMA20/50 and atomic Jev policies live in `features/perps-strategies`. Unknown/missing candles imply hold, not a fabricated neutral
 signal. Paper accounts may permanently close admissions while permitting reducing exits. Study
@@ -107,11 +138,23 @@ See [Agent advice](../../docs/agent-advice.md) and deterministic advice tests.
 
 Advice policy v2 validates and freezes the HTTPS forecast base URL alongside its reviewed model/rates. Version 1 remains bound to direct DeepSeek. Reject credential-bearing/query/fragment URLs; reserve using the job’s frozen rates.
 
+## Studio execution and historical reading
+
+`features/perps-runtime/studio-check.ts` coordinates product checks through injected ports.
+`studio-execution.ts` owns fixed creator sizing and approval admission; `studio-costs.ts` owns
+frozen USD reservation arithmetic. Existing paper services own fills, funding and accounting.
+New positions use a 3% stop, 6% target and 24-hour deadline with the existing leverage clamp.
+Opposite proposals close only; compulsory exits precede strategies and run again on final data.
+Funding pending/unknown blocks additional exposure. Every financial write is transaction-fenced.
+`decision.ts` is a historical perps-check-v1 reader only. No new executor uses its probability,
+stop or horizon. The old conviction sizing and decideOutcome policy are removed.
+See [Studio perpetual execution](../../docs/studio-perps-execution.md).
+
 ## Versioned perpetual strategies
 
 The `strategies` export owns `PERPS_STRATEGIES`, `resolvePerpsStrategy` and
 `executePerpsStrategy`, including their input, model and call-gate ports. IDs are `rules`,
-`deepseek`, `jev` and `combined`, all policy version 1.0.0. Provider/prompt versions remain
+`deepseek`, `jev` and `combined`, laboratory policy version 1.0.0 and distinct Studio version 2.0.0. Provider/prompt versions remain
 separate. Unknown selections and missing capabilities fail closed before model calls.
 Execution clones and recursively freezes evidence/account inputs; never mutate another strategy's
 portfolio. Every model operation passes through an injected durable call gate using the existing
@@ -121,4 +164,8 @@ Risk, sizing, fills and accounting remain outside strategy decisions.
 The evaluator uses the registry for v2 and the explicit `perps-study/legacy-strategy.ts` adapter
 for historical v1 readiness -> blind forecast. Preserve serialized lanes, answers and proposals.
 The evaluation export retains historical policy/type names backed by the same implementations.
-No persisted plugin IDs, agent selector or new financial policy are introduced.
+No new persisted harness plugin IDs are introduced. Studio uses the separate 2.0.0 contract.
+
+## Studio strategy version 2
+
+The common registry identifies strategies by both id and version. Version 1.0.0 keeps laboratory behavior; `executeStudioPerpsStrategy` requires the separate `studio-perps-strategy-v2` context and version 2.0.0. Studio proposals carry complete three-state brief evaluations and evidence references, never probabilities, sizes or leverage. Unknown conditions cannot establish an entry or authored exit. Opposite openings become close-only proposals. Combined invokes its own direct proposal and material-veto review; it cannot reuse another account response. Every model invocation goes through the injected reservation/call gate. These contracts alone do not enable product execution.

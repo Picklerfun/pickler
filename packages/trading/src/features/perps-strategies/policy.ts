@@ -1,8 +1,11 @@
-import { PilotError } from "@pickler/core";
+import { PilotError, type PerpSymbol } from "@pickler/core";
 import { paperUnits as u } from "../perps-paper/decimal.js";
 import type { PerpsDecisionContext, PerpsProposal } from "./types.js";
-export function perpsRules(context: PerpsDecisionContext): PerpsProposal[] {
-  return (["BTC", "ETH"] as const).map((symbol) => {
+export function perpsRules(
+  context: PerpsDecisionContext,
+  symbols: readonly PerpSymbol[] = ["BTC", "ETH"],
+): PerpsProposal[] {
+  return symbols.map((symbol) => {
     const series = context.evidence.candles.find((c) => c.market.symbol === symbol);
     const closed =
       series?.candles
@@ -64,8 +67,9 @@ export type PerpsJevAnswers = Record<string, PerpsJevAnswer>;
 export function perpsJevDecisions(
   context: PerpsDecisionContext,
   answers: PerpsJevAnswers,
+  symbols: readonly PerpSymbol[] = ["BTC", "ETH"],
 ): PerpsProposal[] {
-  return (["BTC", "ETH"] as const).map((symbol) => {
+  return symbols.map((symbol) => {
     const position = context.account.positions.find(
       (p) => p.symbol === symbol && p.closedAt === null,
     );

@@ -24,5 +24,8 @@
     "JWT_AUDIENCE": "authenticated",
     // The public market board reads Perpl on this network (docs/specs/perps-board-live-v1.md).
     "PERPL_BOARD_NETWORK": "testnet",
+    // The Perpl paper runtime's manual checks and approvals (docs/specs/perpl-paper-runtime-v1.md
+    // R3). Keep it equal to the research worker's: npm run check:staging asserts it.
+    "PERPL_RUNTIME_ENABLED": "false",
   },
 }

@@ -22,6 +22,7 @@ import {
   JevClientError,
 } from "@pickler/infrastructure/model-providers/jev";
 import { definePrompt } from "../prompts/define-prompt.js";
+import { postChatCompletion } from "./chat-completion.js";
 export const adviceReadinessPrompt = definePrompt({
   id: "perps-advice-readiness",
   version: "1.0.0",
@@ -99,21 +100,6 @@ export function adviceModelState(job: AdviceJob, e: AdviceEvidence) {
       v.volumeCollateral,
     ]),
   };
-}
-async function bounded<T>(work: Promise<T>, signal: AbortSignal): Promise<T> {
-  let abort = () => {};
-  const cancelled = new Promise<never>((_, reject) => {
-    abort = () => reject(signal.reason);
-    signal.addEventListener("abort", abort, { once: true });
-    if (signal.aborted) {
-      abort();
-    }
-  });
-  try {
-    return await Promise.race([work, cancelled]);
-  } finally {
-    signal.removeEventListener("abort", abort);
-  }
 }
 export interface AdviceModelConfiguration {
   jev: string;
@@ -243,52 +229,13 @@ export function createAdviceModels(
       signal.throwIfAborted();
       await started(job, "deepseek", body);
       signal.throwIfAborted();
-      const response = await bounded(
-        transport(`${adviceForecastBaseUrl(job.policy)}/chat/completions`, {
-          method: "POST",
-          headers: {
-            authorization: `Bearer ${credentials.apiKey}`,
-            "content-type": "application/json",
-          },
-          body,
-          signal,
-          redirect: "manual",
-        }),
+      const raw = await postChatCompletion({
+        transport,
+        baseUrl: adviceForecastBaseUrl(job.policy),
+        apiKey: credentials.apiKey,
+        body,
         signal,
-      );
-      if (!response.ok || !response.body) {
-        void response.body?.cancel();
-        throw new PilotError("MODEL_HTTP_FAILURE", "Model analysis failed");
-      }
-      const reader = response.body.getReader();
-      let size = 0,
-        text = "";
-      const decoder = new TextDecoder();
-      try {
-        for (;;) {
-          signal.throwIfAborted();
-          const chunk = await bounded(reader.read(), signal);
-          if (chunk.done) {
-            break;
-          }
-          size += chunk.value.byteLength;
-          if (size > 1024 * 1024) {
-            throw new PilotError("MODEL_RESPONSE_LIMIT", "Model response exceeds its limit");
-          }
-          text += decoder.decode(chunk.value, { stream: true });
-        }
-        text += decoder.decode();
-      } finally {
-        void reader.cancel().catch(() => {});
-        reader.releaseLock();
-      }
-      signal.throwIfAborted();
-      let raw: unknown;
-      try {
-        raw = JSON.parse(text);
-      } catch {
-        throw new PilotError("MODEL_RESPONSE_INVALID", "Invalid model response");
-      }
+      });
       const envelope = z
         .object({
           model: z.literal(job.policy.deepseekModel),

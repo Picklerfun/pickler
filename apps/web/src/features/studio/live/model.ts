@@ -177,9 +177,8 @@ const RAIL_DEFS: readonly {
 ];
 
 /**
- * What the rail counts: open positions and proposals waiting on the owner. Both are 0 until the
- * Perpl runtime opens one (the studio passes `{ positions: 0, decisions: 0 }`); the shape is the
- * seam the runtime's counts will fill.
+ * What the rail counts: open positions and proposals waiting on the owner. Both are 0 while the
+ * Perpl runtime is off; with it on, `runtimeCounts` (`./runtime-model.ts`) fills them.
  */
 export interface RailCounts {
   positions: number;
@@ -231,8 +230,12 @@ export const publicProfilePath = (handle: string | undefined): string | null =>
 
 export interface LiveStatus {
   state: "public" | "paused";
-  /** Spec L4: not the canvas's "LIVE · WATCHING", because nothing watches yet (D19). */
-  label: "PUBLIC · RUNS SOON" | "PAUSED · EXITS ONLY";
+  /**
+   * Spec L4: not the canvas's "LIVE · WATCHING", because nothing watches yet (D19); once the Perpl
+   * runtime is on, "LIVE · ON PAPER", and "PAPER · CHECKS PAUSED" with it off and paper held
+   * (`runtimeStatus` in `./runtime-model.ts`).
+   */
+  label: "PUBLIC · RUNS SOON" | "LIVE · ON PAPER" | "PAPER · CHECKS PAUSED" | "PAUSED · EXITS ONLY";
   tone: "good" | "caution";
   /** The header's control: "Pause entries" while public, "Resume" while paused. */
   action: "Pause entries" | "Resume";
@@ -377,7 +380,8 @@ export const warningLine = (warnings: readonly LiveWarning[]): string =>
 export type MarketHealth = "connected" | "sample" | "stale" | "unreachable" | "unread";
 
 export interface HealthRow {
-  key: "perpl" | "sources" | "gas" | "credits" | "brief";
+  /** `runtime` and `cost` are added once the record is read (`runtimeHealthRows`). */
+  key: "perpl" | "sources" | "gas" | "credits" | "brief" | "runtime" | "cost";
   label: string;
   value: string;
   tone: "good" | "caution" | "bad" | "quiet";
@@ -1276,8 +1280,15 @@ export function walletCards(
   };
 }
 
-/** Limits' wallet card's line (spec L12): flat, so all of it is free. */
-export const PULL_NOTE = "ONLY YOU MOVE FUNDS · PASSKEY · IT IS FLAT, EVERYTHING IS FREE";
+/**
+ * Limits' wallet card's line (spec L12): flat, so all of it is free. Once it holds paper
+ * (`paper`: the runtime is on or it has a paper account), its positions are paper, so the wallet's
+ * AUSD is still all free, but "flat" would contradict Positions.
+ */
+export const pullNote = (paper: boolean): string =>
+  paper
+    ? "ONLY YOU MOVE FUNDS · PASSKEY · ITS POSITIONS ARE PAPER, EVERY AUSD IS FREE"
+    : "ONLY YOU MOVE FUNDS · PASSKEY · IT IS FLAT, EVERYTHING IS FREE";
 
 // ─── Account ───────────────────────────────────────────────────────────────────────────────────
 

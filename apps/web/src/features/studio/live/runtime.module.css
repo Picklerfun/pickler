@@ -1,0 +1,854 @@
+/* The live studio once the Perpl paper runtime is on (perpl-paper-runtime-v1 §7), from `Pickler
+ * Studio v5 Live.dc.html`: "Waiting on you" (canvas 178–203), the position cards with their
+ * stop–target meter and time stop (205–258), Record's equity, stats and closed list (264–283),
+ * Decisions' rows with their steps (293–322), the manual check and the inline "Stop · close all".
+ *
+ * The colour mapping is `run.module.css`'s: #0B0D1A wells `--pk-bg`, #15182A cards `--pk-panel`,
+ * #9AA0B8 `--pk-ink-muted`, #5A5F78 `--pk-ink-faint`, #C7CAD8 `--pk-ink-soft`; lime and pink moves
+ * `--pk-win` and `--pk-loss`, the proposal's violet `--pk-violet`, the time stop's blue
+ * `--pk-blue`, a side's wash the good and loss state washes.
+ *
+ * A class here that composes a shell class names every class that one is made of: the bundler
+ * resolves one level of `composes`.
+ */
+
+/* ---------- Lists ---------- */
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+.listHead {
+  composes: listHead from "../shell/cards.module.css";
+}
+.listTitle {
+  composes: listTitle from "../shell/cards.module.css";
+}
+.listMeta {
+  composes: listMeta from "../shell/cards.module.css";
+}
+.empty {
+  composes: empty from "../shell/cards.module.css";
+}
+.proposalSub {
+  composes: listMeta from "../shell/cards.module.css";
+  color: var(--pk-violet-ink);
+}
+/* The runtime is off with paper held: what still runs, under the list's head. */
+.offNote {
+  margin: 0;
+  font: 500 12.5px/1.45 var(--pk-font);
+  color: var(--pk-state-caution-ink);
+  text-wrap: pretty;
+}
+
+/* ---------- Buttons ---------- */
+
+.whiteButton {
+  composes: whiteButton from "../shell/cards.module.css";
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 13px;
+  font-size: 12px;
+}
+.darkButton {
+  composes: darkButton from "../shell/cards.module.css";
+  padding: 9px 13px;
+  font-size: 12px;
+}
+.quietButton {
+  composes: darkButton from "../shell/cards.module.css";
+  padding: 9px 13px;
+  font-size: 12px;
+  color: var(--pk-ink-soft);
+}
+.inlineButton {
+  composes: whiteButton from "../shell/cards.module.css";
+  align-self: flex-start;
+  padding: 8px 12px;
+  font-size: 12px;
+}
+.limeButton,
+.skipButton,
+.dangerButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 13px 10px;
+  border-radius: var(--pk-radius-pill);
+  font: 600 14px/1 var(--pk-font);
+  letter-spacing: -0.02em;
+  cursor: pointer;
+  transition: background var(--pk-duration);
+}
+.limeButton {
+  border: none;
+  background: var(--pk-lime);
+  color: var(--pk-on-lime);
+}
+.limeButton:hover:not([aria-disabled="true"]) {
+  background: var(--pk-lime-hover);
+}
+.skipButton {
+  border: 1px solid var(--pk-magenta-edge);
+  background: transparent;
+  color: var(--pk-loss);
+}
+.skipButton:hover:not([aria-disabled="true"]) {
+  background: var(--pk-state-loss-bg);
+}
+.dangerButton {
+  padding: 10px 14px;
+  border: none;
+  background: var(--pk-loss);
+  color: var(--pk-bg);
+  font-size: 12.5px;
+}
+.limeButton[aria-disabled="true"],
+.skipButton[aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.error {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font: 500 12px/1.4 var(--pk-font);
+  color: var(--pk-state-caution-ink);
+}
+.rowBreak {
+  flex-basis: 100%;
+}
+
+/* An owner action's line: sending, waiting, carried out, then what happened or why it failed. */
+.actionLine {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font: 500 12px/1.4 var(--pk-font);
+  color: var(--pk-ink-muted);
+}
+.actionLine[data-tone="good"] {
+  color: var(--pk-state-good-ink);
+}
+.actionLine[data-tone="caution"] {
+  color: var(--pk-state-caution-ink);
+}
+.actionLine[data-tone="bad"] {
+  color: var(--pk-state-loss-ink);
+}
+.actionDot {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-violet-ink);
+  animation: actionPulse 1.4s ease-in-out infinite;
+}
+.actionText {
+  min-width: 0;
+}
+.actionDismiss {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: 600 11px/1.4 var(--pk-font);
+  color: var(--pk-ink-soft);
+  text-decoration: underline;
+  cursor: pointer;
+}
+.goneActions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+@keyframes actionPulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .actionDot {
+    animation: none;
+  }
+}
+
+/* ---------- Waiting on you ---------- */
+
+.proposal {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 18px;
+  border-radius: var(--pk-radius-xl);
+  border: 1px solid var(--pk-violet-edge);
+  background: var(--pk-panel);
+}
+.proposalHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.proposalKind {
+  font: 600 10px/1 var(--pk-font);
+  letter-spacing: 0.12em;
+  color: var(--pk-violet-ink);
+}
+.proposalAt {
+  margin-left: auto;
+  font: 600 10px/1 var(--pk-font);
+  font-variant-numeric: tabular-nums;
+  color: var(--pk-ink-muted);
+}
+.proposalTitle {
+  margin: 0;
+  font: 700 28px/0.95 var(--pk-font-display);
+  font-variation-settings: var(--pk-display-wdth);
+  letter-spacing: -0.04em;
+}
+.proposalActions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+.why {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.whyRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: var(--pk-radius-md);
+  background: var(--pk-bg);
+}
+.whyDot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 2px;
+  background: var(--pk-win);
+}
+.whyDot[data-tag="HELD"] {
+  background: var(--pk-amber);
+}
+.whyDot[data-tag="ASK"] {
+  background: var(--pk-violet);
+}
+.whyText {
+  flex: 1;
+  min-width: 0;
+  font: 500 12.5px/1.3 var(--pk-font);
+  color: var(--pk-ink-soft);
+}
+.whyTag {
+  font: 600 9.5px/1 var(--pk-font);
+  letter-spacing: 0.08em;
+  color: var(--pk-win);
+}
+.whyTag[data-tag="HELD"] {
+  color: var(--pk-amber-ink);
+}
+.whyTag[data-tag="ASK"] {
+  color: var(--pk-violet-ink);
+}
+
+/* ---------- Positions ---------- */
+
+.position {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  border-radius: var(--pk-radius-xl);
+  background: var(--pk-panel);
+}
+.position[data-full="true"] {
+  padding: 16px 18px;
+}
+.positionHead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.side {
+  padding: 5px 8px;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-state-loss-bg);
+  font: 600 9.5px/1 var(--pk-font);
+  letter-spacing: 0.1em;
+  color: var(--pk-state-loss-ink);
+}
+.side[data-long="true"] {
+  background: var(--pk-state-good-bg);
+  color: var(--pk-state-good-ink);
+}
+.market {
+  flex: 1;
+  min-width: 0;
+  font: 700 16px/1 var(--pk-font-display);
+  font-variation-settings: var(--pk-display-wdth);
+  letter-spacing: -0.02em;
+}
+.position[data-full="true"] .market,
+.position[data-full="true"] .pnl {
+  font-size: 20px;
+  letter-spacing: -0.03em;
+}
+.pnl {
+  font: 700 16px/1 var(--pk-font);
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--pk-ink-soft);
+}
+.pnl[data-tone="up"],
+.figureValue[data-tone="up"] {
+  color: var(--pk-win);
+}
+.pnl[data-tone="down"],
+.figureValue[data-tone="down"] {
+  color: var(--pk-loss);
+}
+.pnlPct {
+  font-size: 12px;
+  font-weight: 600;
+}
+.positionLine {
+  margin: 0;
+  font: 500 13px/1.4 var(--pk-font);
+  color: var(--pk-ink-muted);
+  text-wrap: pretty;
+}
+.figures {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+}
+.figures[data-two="true"] {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.figure {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+  padding: 9px 10px;
+  border-radius: var(--pk-radius-md);
+  background: var(--pk-bg);
+}
+.figureValue {
+  font: 700 13px/1 var(--pk-font);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.figureLabel {
+  font: 600 8.5px/1 var(--pk-font);
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--pk-ink-faint);
+}
+
+/* The stop–target meter: pink at the stop, lime at the target, the mark as the knob. */
+.meter {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.meterTrack {
+  position: relative;
+  height: 6px;
+  border-radius: var(--pk-radius-pill);
+  background: linear-gradient(90deg, var(--pk-loss) 0%, var(--pk-panel-3) 50%, var(--pk-win) 100%);
+}
+.meterKnob {
+  position: absolute;
+  top: -5px;
+  width: 16px;
+  height: 16px;
+  margin-left: -8px;
+  border-radius: var(--pk-radius-pill);
+  border: 3px solid var(--pk-panel);
+  background: var(--pk-ink);
+  transition: left var(--pk-duration);
+}
+.meterLabels {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font: 600 9.5px/1.3 var(--pk-font);
+  letter-spacing: 0.06em;
+}
+.meterStop {
+  white-space: nowrap;
+  color: var(--pk-loss);
+}
+.meterText {
+  text-align: center;
+  color: var(--pk-ink-soft);
+}
+.meterTarget {
+  white-space: nowrap;
+  color: var(--pk-win);
+}
+.meterNone {
+  margin: 0;
+  font: 600 9.5px/1 var(--pk-font);
+  letter-spacing: 0.06em;
+  color: var(--pk-ink-faint);
+}
+
+.time {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.timeHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font: 600 9.5px/1 var(--pk-font);
+  letter-spacing: 0.06em;
+  color: var(--pk-ink-faint);
+}
+.timeCloses {
+  margin-left: auto;
+  color: var(--pk-blue);
+}
+.timeTrack {
+  display: block;
+  height: 3px;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-bg);
+  overflow: hidden;
+}
+.timeFill {
+  display: block;
+  height: 3px;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-blue);
+}
+.facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  font: 600 10px/1 var(--pk-font);
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  color: var(--pk-ink-faint);
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.opened {
+  margin-left: auto;
+  font: 600 10px/1 var(--pk-font);
+  color: var(--pk-ink-faint);
+}
+
+/* ---------- Stop · close all and the manual check ---------- */
+
+.stopAll {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+.confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 340px;
+  padding: 12px 14px;
+  border-radius: var(--pk-radius-lg);
+  border: 1px solid var(--pk-magenta-edge);
+  background: var(--pk-panel);
+  text-align: left;
+}
+.confirmTitle {
+  font: 700 14px/1.2 var(--pk-font);
+  letter-spacing: -0.01em;
+}
+.confirmNote {
+  font: 600 10px/1.4 var(--pk-font);
+  letter-spacing: 0.06em;
+  color: var(--pk-ink-muted);
+}
+.confirmActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.runCheck {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.runNote {
+  font: 600 9.5px/1 var(--pk-font);
+  letter-spacing: 0.08em;
+  color: var(--pk-ink-faint);
+}
+
+/* ---------- Record ---------- */
+
+.equity {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: var(--pk-radius-xl);
+  background: var(--pk-panel);
+}
+.equityHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.equityLabel {
+  font: 600 10px/1 var(--pk-font);
+  letter-spacing: 0.12em;
+  color: var(--pk-ink-muted);
+}
+.equityMeta {
+  margin-left: auto;
+  font: 600 9.5px/1 var(--pk-font);
+  letter-spacing: 0.08em;
+  color: var(--pk-ink-faint);
+}
+.equityChart {
+  height: 120px;
+}
+/* The sparkline is drawn 36px high in a row; here it fills the chart's height. */
+.equityChart > svg {
+  height: 100%;
+}
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  margin: 0;
+  padding: 4px 14px;
+  border-radius: var(--pk-radius-xl);
+  background: var(--pk-panel);
+  list-style: none;
+}
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 10px 12px 0;
+}
+.statValue {
+  font: 700 20px/1 var(--pk-font);
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.statValue[data-tone="up"],
+.closedPnl[data-tone="up"] {
+  color: var(--pk-win);
+}
+.statValue[data-tone="down"],
+.closedPnl[data-tone="down"] {
+  color: var(--pk-loss);
+}
+.statLabel {
+  font: 600 9px/1.3 var(--pk-font);
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+  color: var(--pk-ink-faint);
+}
+.closed {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.closedRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 14px;
+  border-radius: var(--pk-radius-lg);
+  background: var(--pk-panel);
+}
+.closedDot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 3px;
+  background: var(--pk-ink-faint);
+}
+.closedDot[data-tone="up"] {
+  background: var(--pk-win);
+}
+.closedDot[data-tone="down"] {
+  background: var(--pk-loss);
+}
+.closedText {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.closedTitle {
+  font: 600 13px/1.2 var(--pk-font);
+  letter-spacing: -0.01em;
+}
+.closedSub,
+.closedAt {
+  font: 600 9.5px/1 var(--pk-font);
+  letter-spacing: 0.06em;
+  color: var(--pk-ink-faint);
+}
+.closedPnl {
+  font: 700 13.5px/1 var(--pk-font);
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* ---------- Decisions ---------- */
+
+.decisionsHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.focus {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: var(--pk-radius-lg);
+  background: var(--pk-panel);
+  font: 600 10px/1.3 var(--pk-font);
+  letter-spacing: 0.08em;
+  color: var(--pk-ink-muted);
+}
+.rows {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.row {
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--pk-radius-lg);
+  border: 1px solid transparent;
+  background: var(--pk-panel);
+  overflow: hidden;
+}
+.row[data-open="true"] {
+  border-color: var(--pk-rule-strong);
+}
+.rowButton {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
+  padding: 11px 14px;
+  border: none;
+  background: transparent;
+  color: var(--pk-ink);
+  text-align: left;
+  cursor: pointer;
+}
+.rowButton:hover {
+  background: var(--pk-panel-2);
+}
+.rowAt {
+  flex: none;
+  width: 44px;
+  font: 600 10px/1.5 var(--pk-font);
+  font-variant-numeric: tabular-nums;
+  color: var(--pk-ink-faint);
+}
+.rowDot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  margin-top: 5px;
+  border-radius: 3px;
+  background: var(--pk-ink-soft);
+}
+.rowDot[data-kind="entered"] {
+  background: var(--pk-lime);
+}
+.rowDot[data-kind="held"] {
+  background: var(--pk-amber);
+}
+.rowDot[data-kind="exited"] {
+  background: var(--pk-blue);
+}
+.rowDot[data-kind="blocked"],
+.rowDot[data-kind="failed"] {
+  background: var(--pk-loss);
+}
+.rowDot[data-kind="proposed"],
+.rowDot[data-kind="running"] {
+  background: var(--pk-violet);
+}
+.rowDot[data-kind="skipped"],
+.rowDot[data-kind="system"] {
+  background: var(--pk-ink-muted);
+}
+.rowText {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.rowLine {
+  font: 500 13.5px/1.35 var(--pk-font);
+  letter-spacing: -0.01em;
+  text-wrap: pretty;
+}
+.rowMeta {
+  font: 600 9.5px/1.4 var(--pk-font);
+  letter-spacing: 0.06em;
+  color: var(--pk-ink-faint);
+}
+.rowTag {
+  color: var(--pk-ink-soft);
+}
+.rowChevron {
+  flex: none;
+  margin-top: 4px;
+  color: var(--pk-ink-faint);
+  transition: transform var(--pk-duration);
+}
+.row[data-open="true"] .rowChevron {
+  transform: rotate(180deg);
+}
+.rowBody {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 4px 14px 14px 78px;
+}
+.rationale {
+  margin: 0;
+  font: 500 13px/1.45 var(--pk-font);
+  color: var(--pk-ink-soft);
+  text-wrap: pretty;
+}
+.lines,
+.steps {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.lineRow {
+  display: flex;
+  gap: 10px;
+  font: 500 12.5px/1.35 var(--pk-font);
+  color: var(--pk-ink-soft);
+}
+.lineLabel {
+  flex: none;
+  width: 64px;
+  font: 600 9.5px/1.6 var(--pk-font);
+  letter-spacing: 0.06em;
+  color: var(--pk-ink-faint);
+}
+.lineTag {
+  flex: none;
+  font: 600 9.5px/1.6 var(--pk-font);
+  letter-spacing: 0.06em;
+  color: var(--pk-amber-ink);
+}
+.lineTag[data-good="true"] {
+  color: var(--pk-win);
+}
+.stepRow {
+  display: flex;
+  gap: 12px;
+  font: 500 12.5px/1.35 var(--pk-font);
+  color: var(--pk-ink-muted);
+}
+.stepRow:first-child {
+  color: var(--pk-ink);
+}
+.stepAt {
+  flex: none;
+  width: 34px;
+  font-variant-numeric: tabular-nums;
+  color: var(--pk-ink-faint);
+}
+.stepsNote {
+  margin: 0;
+  font: 500 12px/1.4 var(--pk-font);
+  color: var(--pk-ink-faint);
+}
+.older {
+  composes: darkButton from "../shell/cards.module.css";
+  align-self: flex-start;
+  padding: 9px 13px;
+  font-size: 12px;
+}
+
+.whiteButton:focus-visible,
+.darkButton:focus-visible,
+.quietButton:focus-visible,
+.inlineButton:focus-visible,
+.actionDismiss:focus-visible,
+.limeButton:focus-visible,
+.skipButton:focus-visible,
+.dangerButton:focus-visible,
+.rowButton:focus-visible,
+.older:focus-visible {
+  outline: 2px solid var(--pk-focus);
+  outline-offset: 2px;
+}
+
+@media (max-width: 560px) {
+  .rowBody {
+    padding-left: 14px;
+  }
+  .figures {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .meterKnob,
+  .rowChevron,
+  .limeButton,
+  .skipButton,
+  .dangerButton {
+    transition: none;
+  }
+}

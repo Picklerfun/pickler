@@ -474,3 +474,71 @@ Never accept internal tenant/runtime IDs or models from consumers. Completed his
 other statuses are requester-only. See [Agent advice](../../docs/agent-advice.md).
 
 Advice admissions consume the same reviewed ADVICE_POLICY_JSON as Research. Policy v2 pins its forecast provider URL/model and limits; forecast credentials remain exclusively in Research. No new public DTO or database schema is introduced by the provider correction.
+
+## Perpl paper runtime
+
+`src/routes/studio-perps.ts` (mounted by `studioRoutes` at `/v1/studio` and its `/v1/console`
+alias) serves docs/specs/perpl-paper-runtime-v1.md §4 over `services.studio.perps`
+(`StudioPerpsServices`: `PostgresPerpsRuntimeStore`, `PostgresPerpsOwnerStore`,
+`PostgresPerpsPaperStore`, the market board's marks via `perpsBoardMarks` in `container.ts`, and
+`RESEARCH_QUEUE`); absent, every route is 503 `RUNTIME_UNAVAILABLE`. Reads need workspace
+membership, writes `authorize(principal, true)` (403 otherwise); another workspace's agent, check,
+position or proposal is 404 `NOT_FOUND`. DTOs are `src/perps-runtime.ts` in api-schema.
+
+Actions that need a Perpl frame or touch paper positions run in the research worker, not here: the
+API checks ownership and state, writes a durable owner action in the request
+(`PostgresPerpsOwnerStore.createAction`, `pickler.perps_owner_actions`; an optional
+`Idempotency-Key` answers the same action, a key used for another action is 409 `CONFLICT`, and
+without one each request is its own action, keyed `auto:<uuid>`), sends the wakeup
+`{ kind: "perps-action", actionId }` (a failed send is logged; the research Cron re-drives pending
+actions) and answers 202 `{ actionId }`. The web polls `GET /perps/actions/:id`. Reads go through
+the paper store's read-only `snapshot` (no row locks, no writes); the record's new margin today is
+trading's `marginOpenedSince` over that same snapshot.
+
+- `POST /agents/:id/perps/checks` (`Idempotency-Key` required): 409 `NOT_A_PERPL_AGENT`,
+  `RUNTIME_DISABLED` (`PERPL_RUNTIME_ENABLED` is not "true"), `CHECK_RUNNING`, `AGENT_KILLED`
+  (refused by `startCheck`); 429 `MANUAL_LIMIT`
+  at 6 manual checks a UTC day (a replay after the sixth is also 429); else `startCheck` (trigger
+  `manual`) and `{ kind: "perps-check", checkId }`, 202 `{ checkId }`.
+- `GET /agents/:id/perps/checks?before=&kind=` (`kind`: comma-separated outcomes, 400 otherwise):
+  `{ checks, nextCursor }`, 50 a page; `GET /perps/checks/:id` adds steps, `startedAt`, `finishedAt`.
+- `GET /agents/:id/perps/positions`: `{ network, account, open, closed }`; open positions carry the
+  board's mark and unrealized P&L (null without a fresh mark), stop, target, time stop and
+  trading's `liquidationPrice`; closed are newest 50 with `realizedPnl` net of every fee the
+  position paid (its open's `<id>:fee`, each size-up's fee and the close), which the record's
+  `wins` and `hitRate` count too.
+- `POST /perps/positions/:id/close`: the position's owner from `PostgresPerpsOwnerStore.findPosition`;
+  409 `POSITION_CLOSED`; writes a `close` action; 202 `{ actionId }`.
+- `POST /agents/:id/perps/stop`: pauses the agent at once (`repository.pause`, the existing pause
+  path), then writes a `stop_all` action; 202 `{ actionId }`.
+- `GET /agents/:id/perps/proposals`: pending ones. `POST /perps/proposals/:id/approve`: 409
+  `PROPOSAL_DECIDED` (not pending), `PROPOSAL_EXPIRED` (past 15 minutes), `RUNTIME_DISABLED`,
+  `AGENT_KILLED` (refused by `createAction`); writes an `approve` action, decides nothing itself;
+  202 `{ actionId }`.
+- `GET /perps/actions/:id` (members): `{ id, kind, status, positionId, proposalId, attempts,
+lastError, checkId, createdAt, updatedAt }`; `checkId` is the latest attempt's `owner` check
+  (its outcome says what happened); another workspace's action is 404.
+  `POST /perps/proposals/:id/skip` is synchronous: `decideProposal(id, "skipped")` and an `owner`
+  row "SKIPPED · ENTRY SHORT ETH"; answers `{ id, status }`.
+- `GET /agents/:id/perps/record`: trading's `recordStats` (all-time checks and entries from
+  `PostgresPerpsOwnerStore.counts`) plus `today` (new margin, realized, open count, leverage in use
+  = highest open leverage, checks, manual checks and limit, cost in micro-USD) and `runtimeEnabled`.
+
+`PERPL_RUNTIME_ENABLED` ("false" in `wrangler.staging.jsonc`, the deployed config, and in
+`wrangler.jsonc` and `.dev.vars.example`) gates manual checks and approvals only; reads, closes and
+stops stay on. Keep it equal to the research worker's: `npm run check:staging` asserts that
+`wrangler.staging.jsonc` and `workers/research/wrangler.jsonc` set the same "true" or "false".
+`workers/api/test/studio-perps-route.test.ts` covers every code, each action written and each
+Queue payload. The OpenAPI description marks the actions' `Idempotency-Key` optional
+(`idempotent: "optional"` in `src/openapi/operation.ts`).
+
+## Studio strategy version 2
+
+Studio setup selects a versioned common strategy; absent selection resolves combined@2.0.0.
+New check results expose `strategyResult` with per-market proposals, three-state brief findings,
+execution outcomes, funding status and incompleteness. Historical fields retain their recorded
+values and are null/empty for new results rather than fabricated percentages. Model costs remain
+USD micros, separately from virtual financial metrics; unknown daily costs stay null. The API
+retains workspace authorization and generated OpenAPI. The web displays the strategy in both
+agent studios and explicitly confirms clearing unsupported authored conditions for rules.
+See [Studio perpetual execution](../../docs/studio-perps-execution.md).

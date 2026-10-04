@@ -584,6 +584,16 @@ const ALL = [
     task: "Draft dashboard",
     proves: "#draft-section-console",
   },
+  /* The Console after one paper run with the Perpl runtime open (perpl-paper-runtime-v1 R17):
+   * the run button open, the steps and the outcome card. */
+  {
+    path: "/studio?stage=draft-console-ran",
+    name: "studio-draft-console-ran",
+    product: "studio",
+    surface: "dark",
+    task: "Draft dashboard",
+    proves: "#draft-console-outcome",
+  },
   {
     path: "/studio?stage=draft-trades",
     name: "studio-draft-trades",
@@ -591,6 +601,15 @@ const ALL = [
     surface: "dark",
     task: "Draft dashboard",
     proves: "#draft-section-picks",
+  },
+  /* Trades with the paper positions that run opened, open and closed. */
+  {
+    path: "/studio?stage=draft-trades-active",
+    name: "studio-draft-trades-active",
+    product: "studio",
+    surface: "dark",
+    task: "Draft dashboard",
+    proves: "#draft-trades-list",
   },
   {
     path: "/studio?stage=draft-brief",
@@ -821,6 +840,49 @@ const ALL = [
     surface: "dark",
     task: "Live studio",
     proves: "#live-account-panel-notify",
+  },
+  /* The Perpl paper runtime on (perpl-paper-runtime-v1 §7): Overview with a proposal waiting and a
+   * paper position, Decisions' feed, Record's figures and Positions with an owner's close waiting
+   * for the running check, each proving what only the runtime draws. */
+  {
+    path: "/studio?stage=perpl-live-active",
+    name: "studio-live-active",
+    product: "studio",
+    surface: "dark",
+    task: "Live studio",
+    proves: "#live-overview-proposals",
+  },
+  {
+    path: "/studio?stage=perpl-decisions-active",
+    name: "studio-live-decisions-active",
+    product: "studio",
+    surface: "dark",
+    task: "Live studio",
+    proves: "#live-decisions-feed",
+  },
+  {
+    path: "/studio?stage=perpl-record-active",
+    name: "studio-live-record-active",
+    product: "studio",
+    surface: "dark",
+    task: "Live studio",
+    proves: "#live-record-equity",
+  },
+  {
+    path: "/studio?stage=perpl-positions-active",
+    name: "studio-live-positions-active",
+    product: "studio",
+    surface: "dark",
+    task: "Live studio",
+    proves: "#live-action-close-pos-preview-btc",
+  },
+  {
+    path: "/studio?stage=perpl-positions-paused",
+    name: "studio-live-positions-paused",
+    product: "studio",
+    surface: "dark",
+    task: "Live studio",
+    proves: "#live-positions-open-off",
   },
   // The second-passkey suggestion on the home. The staged home carries the canvas's account, one
   // passkey, so the suggestion is drawn there with nothing read; this proves it rendered.

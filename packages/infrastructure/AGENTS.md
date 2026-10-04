@@ -422,6 +422,89 @@ Perpetual configuration v2 persists four agents and four reserved lanes in the e
 
 exportPerpsAudit uses a scoped repeatable-read READ ONLY transaction for study, rounds, events, paper accounts, attempts and movements. Never replace it with paper.view(), which can recover attempts and write history. It exports document data, not lease owners, credentials or database connection values. It releases the client on success and failure, and never initializes missing records.
 
+## Perpl paper runtime persistence
+
+Migration 0027 (`docs/specs/perpl-paper-runtime-v1.md` R9, R10, R12, R14, R15) adds
+`pickler.perps_checks`, `pickler.perps_proposals` and `pickler.perps_owner_actions` (declared in
+`src/persistence/product/perps-checks.ts`, RLS on, the service role may select, insert and update;
+the grants follow 0025, not 0012/0013 as spec §5 said, because those grant nothing)
+and eight nullable columns on `pickler.perps_paper_positions` (`check_id`, `config_version`,
+`leverage`, `margin`, `stop_price`, `take_profit_price`, `exit_due_at`, `close_reason`, with an
+index on `exit_due_at` where open). The position document stays authoritative; the columns serve
+queries. `check_id` has no FK to `perps_checks`: `schema.ts` would have to import
+`product/perps-checks.ts`, which imports it, and drizzle-kit's CommonJS load cannot resolve that
+cycle; trading requires a UUID and the check row always exists first. Proposal statuses include
+`approving`. drizzle-kit loads schema files through CommonJS and cannot import trading's ESM exports,
+so the enum lists (`PERPS_CLOSE_REASON_VALUES`, `PERPS_CHECK_TRIGGER_VALUES`,
+`PERPS_CHECK_OUTCOME_VALUES`) are spelled out and pinned to trading's lists by a test. **Apply 0027
+before deploying the API or the research worker**: the product paper store writes the new columns
+on every position change, and the runtime store reads the new tables.
+
+`PostgresPerpsRuntimeStore` implements trading's `PerpsRuntimeRepository`. A check is `queued`
+(`startCheck`: `NOT_A_PERPL_AGENT`, `AGENT_KILLED`, `CHECK_RUNNING`, replay by request key; every
+check row is inserted by the one protected `insertCheck`, which recovers the agent's lapsed checks
+and refuses `CHECK_RUNNING` under the agent row lock), `running` with a 60 s
+lease (`claimAgent` → `{ check, lease }`, `renewAgent`, `appendStep`, `createProposal`), then
+`finished` (`finishCheck`, `releaseAgent`). A partial unique index keeps one queued or running
+check per agent; starting and claiming lock the runtime agent row first, then the check. Expired
+leases end as `CHECK_INTERRUPTED` and checks queued over ten minutes as `CHECK_EXPIRED`, recovered
+whenever the agent is started or claimed, and across agents by `recoverChecks()` (the minute Cron's
+sweep, so a paused or draft agent's crashed check never stays `running`). `recordCheck` writes finished rows at once (exits, owner
+actions, system notes); `pauseAgent` sets `paused` and writes a `system` row in one transaction,
+and only when the agent was not paused yet (null otherwise), so racing closers pause it once.
+`listChecks` pages 50 newest first with an outcome filter. `dueAgents` answers public, unkilled,
+unpaused agents with a Perpl config whose hourly slot (`perpsCheckMinute` of the product id)
+opened under ten minutes ago with no hourly check since (read through `perps_checks_feed`) and no
+live check, each with its `slot`; the dispatcher's `hourly:<slot>` request key and the request index
+make one check per agent and slot. Proposals expire after trading's `PROPOSAL_TTL_MS`;
+`decideProposal` commits an expiry before raising `PROPOSAL_EXPIRED`, a skip is final and an
+approval becomes `approving`; `settleProposal(id, opened)` makes it `approved` or back to `pending`.
+`expireProposals` expires each pending row once, and approvals stuck five minutes past expiry.
+Proposal leverage is within core's `LEVERAGE_BOUNDS` (1–10). Counts and cost are per UTC day and use the
+store clock (the database's `clock_timestamp()` outside tests).
+
+`PostgresPerpsOwnerStore` (`perps-owner-store.ts`) extends the runtime store (one check-insertion
+path, `insertCheck`) and implements trading's `PerpsOwnerActionRepository` over
+`pickler.perps_owner_actions`: `createAction` (the API, in the request; replay by
+`(product agent, request key)`, `CONFLICT` for a key used for another action, `AGENT_KILLED` for an
+approval of a killed agent; a `close` names its position and an `approve` its proposal, a CHECK
+holds that), `getAction`, `claimAction` (a pending row, or a running one whose 180 s claim lapsed,
+becomes `running` with a fresh claim owner and `attempts + 1`; past 30 attempts it ends `failed`
+`TOO_MANY_ATTEMPTS`), `startActionCheck` (one transaction: the agent row locked, the claim
+re-checked, lapsed checks recovered, and an `owner` check inserted already `running` with its 60 s
+lease, keyed `action:<id>:<attempt>`; `CHECK_RUNNING` while another check is live; null when the
+claim no longer holds the action), `releaseAction` (back to `pending` with the attempt's code, only
+for the claim that holds it), `finishAction` (the check's lease fences one transaction that
+finishes the check and sets the action `done`, `failed` or `pending`) and `pendingActions` (pending
+rows untouched for 30 s and running rows whose claim lapsed, for the Cron's re-drive). Beside them:
+`findPosition(id)` answers the product agent and paper scope holding a position; `counts(id)`
+answers all-time hourly/manual checks and `entered` checks for the record.
+
+`PostgresPerpsPaperStore` also serves product sessions (`sessionId = "product"`, trading's
+`PRODUCT_PAPER_SESSION`): `initialize(scope, version, startingCash)` takes the wallet's AUSD
+(`WALLET_UNFUNDED` under `PRODUCT_PAPER_MINIMUM`, 10) and keeps the first stake on later calls;
+product accounts are not version-pinned and each position records the version it opened on.
+`complete(scope, lease, fill, exits?)` stores a product position's exits with its fill.
+`closePosition(scope, id, reason, frame)` closes a product position from `open` exactly once (a
+closed position answers `closed: false`; operator sessions are refused). Closes, here and through
+the service's leased attempts, check only the scope (tenant and agent), never the agent's current
+plugins, policy, network or markets: an owner's edit never strands an open position.
+`openDuePositions(marks)` reads due exits across product accounts (a mark at or beyond the
+liquidation estimate or the stop, then target, then time, as trading's `exitDue`), and `newMarginSince(scope, since)` sums margin opened since (positions
+and their `sizeUps`, each on the day it was added). `sizeUp(scope, id, { key, margin }, frame)`
+adds margin to an open product position at its leverage through trading's `applyPaperSizeUp`
+(its fee reserve is `productFeeReserve` at the frame's taker fee)
+(idempotent by key, recorded as a filled attempt; `POSITION_CLOSED`, `PAUSED`,
+`INSUFFICIENT_AVAILABLE`), and `openNetworks()` lists networks with open product positions for
+the exits job's marks. `snapshot(scope)` is the read the studio's routes use: one repeatable-read
+read-only transaction with no row locks and no writes, attempts whose lease lapsed projected
+`interrupted` as `view` would rewrite them; `newMarginSince` reads through it (trading's
+`marginOpenedSince`). A product close loses at most the position's margin, fees included (trading's
+`applyPaperFill`), so a fill past the liquidation estimate never takes cash below zero. Operator
+sessions keep the version pin, the 1x policy and the 100 cap.
+`PerplTransport` takes a trusted `sessionLimit` (1–24, default 12; `PERPL_CHECK_SESSION_LIMIT` is
+24 for the runtime's checks and exit frames).
+
 ## Advice persistence
 
 `PostgresAdviceStore` implements core advice ports with private jobs/events/calls in migration
@@ -432,3 +515,17 @@ and records an audit event; it has no consumer HTTP route. Apply migration befor
 research/preview admission queries. See [Agent advice](../../docs/agent-advice.md).
 
 Advice v2 call rows record the frozen forecast provider origin, not a misleading direct-DeepSeek label. Historical v1 rows retain their original meaning. This is a JSON policy extension and requires no schema migration.
+
+## Studio strategy attribution and USD reservations
+
+Migration 0028 appends private RLS evidence, call and reservation tables; never rewrite 0027.
+`PostgresPerpsCheckCostStore` records calls before transport under agent/check locks, uses frozen
+rates and keeps unknown/start reservations across recovery. `reconcileCall` is a trusted operator
+method requiring original request hash, verified usage evidence, a failed terminal check and no
+active owner; it has no HTTP endpoint or provider retry.
+`PostgresPerpsPaperStore` supports a product fence checked before/after each transaction, including
+configuration, lease, identity and (for paid checks) active USD reservation. Opening admission
+rechecks creator caps and unknown costs under that lock. Supervision and owner actions claim
+unpaid leases; closers use stored scopes even after a network/plugin edit. `claimSupervision`
+skips busy agents and public observations reuse the existing funding deduplication/dispute policy.
+See [Studio perpetual execution](../../docs/studio-perps-execution.md).

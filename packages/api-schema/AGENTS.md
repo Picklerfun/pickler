@@ -137,3 +137,32 @@ representative contract tests in the same change.
 24-hour directional results and cursor history. No requester identity, internal scope, private
 configuration, prices/rates, prompts or provider traces may cross these DTOs. Wallet sign-in
 `kind` is `eoa | mera`. See [Agent advice](../../docs/agent-advice.md).
+
+## Perpl paper runtime
+
+`src/perps-runtime.ts` holds the studio runtime's DTOs (docs/specs/perpl-paper-runtime-v1.md §4):
+`perpsCheckStartedSchema` (`{ checkId }`), `perpsActionStartedSchema` (`{ actionId }`, the 202 of
+an approve, close or stop: a durable owner action the research worker carries out) and
+`perpsActionSchema` (`GET /perps/actions/:id`: kind, status `pending` | `running` | `done` |
+`failed`, attempts, last error, the latest `owner` check), `perpsCheckSummarySchema` / `perpsCheckDetailSchema` (the detail adds
+timed steps) and `perpsChecksResponseSchema`, `perpsPositionsResponseSchema` (open with mark,
+unrealized P&L, exits and `liquidationEstimate`; closed with `realizedPnl`),
+`perpsProposalSchema` / `perpsProposalsResponseSchema`, `perpsProposalDecidedSchema` and
+`perpsRecordSchema` (R13 stats, equity series, `today`, `runtimeEnabled`). Prices and stored paper
+amounts are decimal strings; the record's computed figures are AUSD numbers; times are ISO.
+`PERPS_CHECK_OUTCOMES`, `PERPS_CHECK_TRIGGERS`, `PERPS_CLOSE_REASONS`, `PERPS_OWNER_ACTION_KINDS`
+and `PERPS_OWNER_ACTION_STATUSES` mirror trading's lists
+(pinned by `workers/api/test/studio-perps-route.test.ts`); `PERPS_MANUAL_CHECKS_PER_DAY` is 6.
+
+Studio setup and stored configuration accept `perpsStrategy` with an explicit identifier and version 2.0.0. Setup permits an empty entry section for rules; core still rejects missing AI entry conditions and unverified free-text rules conditions. No model or financial policy belongs in these portable DTOs.
+
+## Studio strategy version 2
+
+Studio setup selects a versioned common strategy; absent selection resolves combined@2.0.0.
+New check results expose `strategyResult` with per-market proposals, three-state brief findings,
+execution outcomes, funding status and incompleteness. Historical fields retain their recorded
+values and are null/empty for new results rather than fabricated percentages. Model costs remain
+USD micros, separately from virtual financial metrics; unknown daily costs stay null. The API
+retains workspace authorization and generated OpenAPI. The web displays the strategy in both
+agent studios and explicitly confirms clearing unsupported authored conditions for rules.
+See [Studio perpetual execution](../../docs/studio-perps-execution.md).

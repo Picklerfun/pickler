@@ -87,3 +87,33 @@ ADVICE_JEV_API_KEY exclusively here; forecasts reuse the existing MODEL_BASE_URL
 MODEL_API_KEY. A reviewed matching v2 policy pins the provider base URL and model. Changing either
 refuses execution before model transport; no separate DeepSeek key is accepted.
 See [Agent advice](../../docs/agent-advice.md).
+
+## Perpl paper runtime
+
+The Queue also carries `{ kind: "perps-check", checkId }` (the API's manual checks and the hourly
+dispatcher). Each delivery calls the runtime's `consumePerpsCheck` with `perpsAdmission(env)`:
+off, the check is claimed and refused `RUNTIME_DISABLED` without reading Perpl or asking the
+model. The minute Cron always runs `superviseChecks` beside advice and research supervision
+(`Promise.allSettled`, each on its own pool, so a slow venue never delays them; a Perpl or advice
+failure is logged and never stops the others, and only research's failure fails the invocation): the stuck-check sweep, the exits job, proposal expiry and the
+re-drive of pending owner actions run whether or not the runtime is on, and only the hourly
+dispatcher waits for `PERPL_RUNTIME_ENABLED` "true". Off: no model calls and nothing opens; exits,
+closes and recovery still run. Vars in `wrangler.jsonc`: `PERPL_RUNTIME_ENABLED` "false" (the API's
+`wrangler.staging.jsonc` carries the same value; `npm run check:staging` asserts they match) and
+`PERPL_RUNTIME_DAILY_CHECKS` "500"; optional `CHAIN_ID` and `MONAD_RPC_URL` choose where agent
+wallets' AUSD is read (default Monad testnet, as the API). The model reuses `MODEL_*`, the web
+`EXA_API_KEY` (missing enabled evidence sources fail without a model retry).
+Apply migrations 0027 and 0028 before deploying this composition. A reviewed explicit
+`PERPS_RUNTIME_POLICY_JSON` and `PERPS_JEV_API_KEY` additionally configure Studio version 2.0.0;
+see [Studio perpetual execution](../../docs/studio-perps-execution.md). No paid acceptance or activation is implied. `test/perps-runtime.test.ts` runs checks end to end over
+real PostgreSQL with fake Perpl, board, wallet and model.
+
+The Queue also carries `{ kind: "perps-action", actionId }`: a wakeup for an owner action (approve,
+close, stop) the API wrote durably in `pickler.perps_owner_actions`. It is routed to
+`consumePerpsAction` over `perpsActions(env)` (the same `createPerpsRuntime`), whether or not the
+runtime is on (closing is always allowed; an approve while off ends blocked). The delivery claims
+the row, waits up to 45 s for a running check to free the agent and carries it out; still busy, it
+leaves the action `pending` and acknowledges the message, and the Cron re-drives pending actions
+older than 30 s (`perpsRuntime(env).owner.pendingActions`). Only a host failure retries the
+message (30 s). `test/perps-actions.test.ts` covers the actions, the wait, the re-drive and two
+concurrent deliveries of one approve.
