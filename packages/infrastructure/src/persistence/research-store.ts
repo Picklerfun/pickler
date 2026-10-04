@@ -26,6 +26,7 @@ import {
   type UpdateConfigOptions,
 } from "@pickler/core";
 import * as schema from "./schema.js";
+import { PERPS_MANUAL_READY_SQL } from "./perps-hourly-readiness.js";
 
 const { agents, runs, events, metadata, executionPolicy } = schema;
 const {
@@ -378,7 +379,9 @@ export class PostgresResearchStore implements ResearchRepository {
     const [checked] = await tx.select().from(metadata).where(eq(metadata.key, readinessKey));
     if (agent.config.perpl) {
       const success = await tx.execute(
-        sql`SELECT 1 FROM pickler.perps_checks WHERE tenant_id=${scope.tenantId} AND agent_id=${scope.agentId} AND config_version=${agent.version} AND trigger='manual' AND status='finished' AND outcome NOT IN ('failed','skipped','system') AND decision->>'protocol'='studio-perps-check-v2' AND decision->>'incomplete'='false' LIMIT 1`,
+        sql`SELECT 1 FROM pickler.agents r WHERE r.tenant_id=${scope.tenantId}
+          AND r.id=${scope.agentId} AND r.version=${agent.version}
+          AND ${sql.raw(PERPS_MANUAL_READY_SQL)}`,
       );
       return {
         connectionsChecked: checked?.value === "true",

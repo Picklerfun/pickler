@@ -461,7 +461,8 @@ sweep, so a paused or draft agent's crashed check never stays `running`). `recor
 actions, system notes); `pauseAgent` sets `paused` and writes a `system` row in one transaction,
 and only when the agent was not paused yet (null otherwise), so racing closers pause it once.
 `listChecks` pages 50 newest first with an outcome filter. `dueAgents` answers public, unkilled,
-unpaused agents with a Perpl config whose hourly slot (`perpsCheckMinute` of the product id)
+unpaused agents with a Perpl config, scheduling enabled, validated connections and a complete
+successful manual Studio v2 check for the current configuration version, whose hourly slot (`perpsCheckMinute` of the product id)
 opened under ten minutes ago with no hourly check since (read through `perps_checks_feed`) and no
 live check, each with its `slot`; the dispatcher's `hourly:<slot>` request key and the request index
 make one check per agent and slot. Proposals expire after trading's `PROPOSAL_TTL_MS`;
@@ -470,6 +471,12 @@ approval becomes `approving`; `settleProposal(id, opened)` makes it `approved` o
 `expireProposals` expires each pending row once, and approvals stuck five minutes past expiry.
 Proposal leverage is within core's `LEVERAGE_BOUNDS` (1–10). Counts and cost are per UTC day and use the
 store clock (the database's `clock_timestamp()` outside tests).
+
+`perps-hourly-readiness.ts` shares the current manual preparation predicate with schedule readiness.
+Hourly admission is rechecked under the runtime-agent row lock at insertion, claim, USD reservation,
+call start and exposure-increasing paper writes. A revoked queued check finishes as skipped without
+acquiring a lease. Settling started usage, releasing reservations, manual preparation, owner closes
+and public exit supervision remain available when scheduling is disabled.
 
 `PostgresPerpsOwnerStore` (`perps-owner-store.ts`) extends the runtime store (one check-insertion
 path, `insertCheck`) and implements trading's `PerpsOwnerActionRepository` over

@@ -11,6 +11,7 @@ import {
   type StudioCostScope,
 } from "@pickler/trading/perps";
 import type { PerpsStrategySelection } from "@pickler/trading/strategies";
+import { assertPerpsHourlyReady } from "./perps-hourly-readiness.js";
 
 /** Agent/check lock order matches financial writes; started calls are never replayed. */
 export class PostgresPerpsCheckCostStore implements StudioCostRepository {
@@ -80,6 +81,7 @@ export class PostgresPerpsCheckCostStore implements StudioCostRepository {
   ) {
     const maximum = assertStudioCostPolicy(policy, plans);
     return this.transaction(scope, async (db, at) => {
+      await this.hourlyAdmission(db, scope);
       const existing = await db.query(
         "SELECT strategy,policy,reserved_micros::text AS maximum FROM pickler.perps_check_reservations WHERE check_id=$1",
         [scope.checkId],
@@ -138,6 +140,7 @@ export class PostgresPerpsCheckCostStore implements StudioCostRepository {
       throw new PilotError("MODEL_INPUT_TOO_LARGE", "Invalid request identity or bound");
     }
     await this.transaction(scope, async (db, at) => {
+      await this.hourlyAdmission(db, scope);
       const revoked = await db.query(
         `SELECT 1 FROM pickler.product_agents pa JOIN agents.agents p ON p.id=pa.product_agent_id
         JOIN pickler.agents a ON a.tenant_id=pa.tenant_id AND a.id=pa.runtime_agent_id
@@ -160,6 +163,14 @@ export class PostgresPerpsCheckCostStore implements StudioCostRepository {
         );
       }
     });
+  }
+  private async hourlyAdmission(db: PoolClient, scope: StudioCostScope) {
+    const check = await db.query("SELECT trigger FROM pickler.perps_checks WHERE id=$1", [
+      scope.checkId,
+    ]);
+    if (check.rows[0]?.trigger === "hourly") {
+      await assertPerpsHourlyReady(db, scope);
+    }
   }
   async complete(
     scope: StudioCostScope,

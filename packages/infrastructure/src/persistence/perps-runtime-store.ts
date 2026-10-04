@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { Pool, PoolClient } from "pg";
+import { assertPerpsHourlyReady, PERPS_HOURLY_READY_SQL } from "./perps-hourly-readiness.js";
 import { LEVERAGE_BOUNDS, PilotError } from "@pickler/core";
 import {
   CHECK_OUTCOMES,
@@ -280,6 +281,9 @@ export class PostgresPerpsRuntimeStore implements PerpsRuntimeRepository {
       lease: { owner: string; expiresAt: number } | null;
     },
   ) {
+    if (input.trigger === "hourly") {
+      await assertPerpsHourlyReady(db, agent);
+    }
     await this.recover(db, agent.tenantId, agent.agentId, input.at);
     const active = await db.query(
       `SELECT 1 FROM pickler.perps_checks
@@ -362,6 +366,28 @@ export class PostgresPerpsRuntimeStore implements PerpsRuntimeRepository {
       );
       if (current.rows[0]?.status !== "queued") {
         return null;
+      }
+      if (queued.trigger === "hourly") {
+        try {
+          await assertPerpsHourlyReady(db, queued);
+          const version = await db.query(
+            "SELECT version FROM pickler.agents WHERE tenant_id=$1 AND id=$2",
+            [queued.tenantId, queued.agentId],
+          );
+          if (version.rows[0]?.version !== queued.configVersion) {
+            throw new PilotError("CONFIG_CHANGED", "Queued hourly configuration is stale");
+          }
+        } catch (error) {
+          if (!(error instanceof PilotError)) {
+            throw error;
+          }
+          await this.finish(db, checkId, at, {
+            outcome: "skipped",
+            outcomeText: "Hourly execution is no longer prepared or enabled",
+            error: error.code,
+          });
+          return null;
+        }
       }
       const running = await db.query(
         `SELECT 1 FROM pickler.perps_checks
@@ -574,7 +600,8 @@ export class PostgresPerpsRuntimeStore implements PerpsRuntimeRepository {
   }
 
   /**
-   * Published (public, not killed), unpaused agents with a Perpl config whose hourly slot opened
+   * Published (public, not killed), unpaused Perpl agents with enabled, current preparation
+   * whose hourly slot opened
    * under ten minutes ago with no hourly check since, and no live check. An agent's slot is the
    * minute of the hour `perpsCheckMinute` gives its product id; each answer carries its slot so
    * the dispatcher can key the check `hourly:<slot>` (exactly one per slot, by the request index).
@@ -598,7 +625,7 @@ export class PostgresPerpsRuntimeStore implements PerpsRuntimeRepository {
         SELECT $1::bigint - ((($1::bigint - o.offset_ms) % $3) + $3) % $3 AS slot
       ) s
       WHERE a.visibility = 'public' AND a.killed_at IS NULL AND NOT r.paused
-        AND jsonb_typeof(r.config->'perpl') = 'object'
+        AND ${PERPS_HOURLY_READY_SQL}
         AND $1::bigint - s.slot < $4
         AND NOT EXISTS (
           SELECT 1 FROM pickler.perps_checks c

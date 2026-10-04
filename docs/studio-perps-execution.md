@@ -11,6 +11,14 @@ Every agent selects `rules`, `deepseek`, `jev` or `combined` at `2.0.0`. Missing
 `combined@2.0.0` without enabling execution. A setup save increments configuration version,
 records its selection and disables scheduling until preparation succeeds for that version.
 
+Hourly checks require explicit scheduling, validated connections and a complete successful manual
+Studio v2 check for the current configuration version. Listing a due agent is not authorization:
+the database revalidates readiness when queuing and claiming the check, reserving USD, starting
+each paid call and increasing exposure. Revoked queued checks finish as skipped without a lease.
+Manual preparation remains available with scheduling disabled. Disabling scheduling blocks new
+hourly calls and openings, while started usage can settle and owner closes and public exit
+supervision continue. No strategy, tariff or activation default changes with these checks.
+
 - Rules reuse SMA20/50 over closed hourly candles, with the existing strict 0.1% boundary. They
   call no models or paid sources. Authored entry/exit/prohibition conditions are rejected; Studio
   offers an explicit clear-conditions save. The thesis can remain.
