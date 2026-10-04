@@ -43,7 +43,12 @@ if (values.help) {
       if (positionals.length !== 1 || !values.config) {
         throw new PilotError("INVALID_INPUT", "One command and --config required");
       }
-      const { executeEvaluation } = await import("./evaluation-host/local.js");
+      const { readFile } = await import("node:fs/promises");
+      const protocol = JSON.parse(await readFile(values.config, "utf8")).protocol;
+      const executeEvaluation =
+        protocol === "perps-sma-ablation-v1"
+          ? (await import("./perps-study/sma-host.js")).runSmaStudy
+          : (await import("./evaluation-host/local.js")).executeEvaluation;
       await executeEvaluation({
         command: positionals[0] as EvaluationCommand,
         configPath: values.config,
