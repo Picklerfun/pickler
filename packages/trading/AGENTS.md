@@ -169,3 +169,7 @@ No new persisted harness plugin IDs are introduced. Studio uses the separate 2.0
 ## Studio strategy version 2
 
 The common registry identifies strategies by both id and version. Version 1.0.0 keeps laboratory behavior; `executeStudioPerpsStrategy` requires the separate `studio-perps-strategy-v2` context and version 2.0.0. Studio proposals carry complete three-state brief evaluations and evidence references, never probabilities, sizes or leverage. Unknown conditions cannot establish an entry or authored exit. Opposite openings become close-only proposals. Combined invokes its own direct proposal and material-veto review; it cannot reuse another account response. Every model invocation goes through the injected reservation/call gate. These contracts alone do not enable product execution.
+
+## Experimental laboratory strategy 1.1.0
+
+`features/perps-strategies/multiframe.ts` owns validated 1h/15m/5m evidence, the hourly SMA plus short confirmation variant, the explicit thirty-minute horizon and the common final entry gate. The activity hurdle is a versioned uncalibrated assumption, never expected profit. perps-multiframe-v3 uses four accounts and config shape v2 with explicit strategyVersion 1.1.0. Keep laboratory 1.0.0 and Studio 2.0.0 unchanged. Invalid short evidence fails before reservation; all final frames and candles validate before execution writes.
