@@ -14,7 +14,10 @@ import {
   JevClientError,
 } from "@pickler/infrastructure/model-providers/jev";
 import { PilotError } from "@pickler/core";
-import { type PerpsDecisionContext, type PerpsStudyConfig } from "@pickler/trading/evaluation";
+import {
+  type PerpsDecisionContext,
+  type LegacyPerpsStudyConfig,
+} from "@pickler/trading/evaluation";
 import { definePrompt } from "../prompts/define-prompt.js";
 export const perpsForecastPrompt = definePrompt({
   id: "perps-paper-proposal",
@@ -98,7 +101,7 @@ async function bounded<T>(work: Promise<T>, signal: AbortSignal): Promise<T> {
   }
 }
 export function createPerpsStudyModels(
-  config: PerpsStudyConfig,
+  config: LegacyPerpsStudyConfig,
   credentials: { deepseek: string; jev: string },
   transport: typeof fetch = fetch,
   timeoutSignal: (milliseconds: number) => AbortSignal = AbortSignal.timeout,
