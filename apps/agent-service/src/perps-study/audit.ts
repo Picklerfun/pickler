@@ -5,13 +5,17 @@ import { createHash } from "node:crypto";
 import { PilotError } from "@pickler/core";
 import {
   auditPerpsDecisions,
+  auditPerpsFilters,
   canonicalAudit,
   type PerpsStudyView,
   type AuditDiagnostic,
   type PerpsStudyMap,
 } from "@pickler/trading/evaluation";
 import type { PerpsPaperView } from "@pickler/trading/perps";
-import { perpsModelState } from "@pickler/agent-runtime/composition/perps-model-state";
+import {
+  perpsModelState,
+  perpsMultiframeModelState,
+} from "@pickler/agent-runtime/composition/perps-model-state";
 
 const hash = (v: unknown) => createHash("sha256").update(canonicalAudit(v)).digest("hex");
 const commit = () => execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim();
@@ -185,12 +189,15 @@ export async function runPerpsAudit(input: {
     throw new PilotError("INVALID_INPUT", "Invalid or modified audit packet");
   }
   refuseSecrets(packet.payload);
-  const analysis = auditPerpsDecisions(
+  const multiframe = packet.payload.study.record.config.protocol === "perps-multiframe-v3";
+  const analyze = multiframe ? auditPerpsFilters : auditPerpsDecisions;
+  const analysis = analyze(
     packet.payload.study,
     packet.payload.diagnostics,
     hash,
     packet.payload.accounts,
   );
+  const project = multiframe ? perpsMultiframeModelState : perpsModelState;
   const contexts = packet.payload.study.rounds.map((r) => ({
     slot: r.slot,
     states: Object.fromEntries(
@@ -203,8 +210,8 @@ export async function runPerpsAudit(input: {
             s,
             {
               representation: "CURRENT_TRANSFORM_OF_RECORDED_CONTEXT_NOT_ORIGINAL_BYTES",
-              hash: hash(perpsModelState({ evidence: r.evidence, account })),
-              state: perpsModelState({ evidence: r.evidence, account }),
+              hash: hash(project({ evidence: r.evidence, account })),
+              state: project({ evidence: r.evidence, account }),
             },
           ];
         } catch {
@@ -220,6 +227,7 @@ export async function runPerpsAudit(input: {
     exportCommit: packet.exportCommit,
     analyzerCommit: commit(),
     contexts,
+    strategyVersion: packet.payload.study.record.config.strategyVersion ?? "1.0.0",
   };
   const escape = (v: unknown) =>
     String(v ?? "unknown").replace(
@@ -246,19 +254,36 @@ export async function runPerpsAudit(input: {
     "unexplainedAction",
     "diagnostics",
   ] as const;
+  const extra = multiframe
+    ? ["pairedSma", "multiframeEvidence", "modelReasonCheck", "finalPolicyGate", "explanation"]
+    : [];
+  const columns: string[] = [...fields, ...extra];
   const cell = (v: unknown) => {
     const text = typeof v === "object" && v !== null ? JSON.stringify(v) : String(v ?? "");
     return `"${(/^[=+@\-\t\r]/.test(text) ? "'" : "") + text.replaceAll('"', '""')}"`;
   };
   const csv =
     [
-      fields.map(cell).join(","),
-      ...report.rows.map((r) => fields.map((k) => cell(r[k])).join(",")),
+      columns.map(cell).join(","),
+      ...report.rows.map((r) =>
+        columns.map((k) => cell((r as unknown as Record<string, unknown>)[k])).join(","),
+      ),
     ].join("\n") + "\n";
   const divergences = report.rows.filter(
     (r) => r.conversion.includes("DIVERGENCE") || r.unexplainedAction,
   );
-  const html = `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Perpl decision audit</title><style>body{font:16px system-ui;margin:24px;background:#10151c;color:#e4ebf5}table{border-collapse:collapse;width:100%}td,th{padding:10px;border:1px solid #465465;text-align:left}pre{white-space:pre-wrap;overflow-wrap:anywhere}details{margin:12px 0}a{color:#a9caff}</style><h1>Perpl decision audit</h1><p>${escape(report.sessionId)} — ${report.completeSlots.length} common complete slots; ${report.omissions.length} data omissions; ${divergences.length} divergences or unexplained actions.</p><p>No providers, model calls or historical writes. No profitability claim.</p><h2>Evidence summary</h2><pre>${escape(JSON.stringify(report.summary, null, 2))}</pre><ul>${report.limitations.map((l) => `<li>${escape(l)}</li>`).join("")}</ul><table><thead><tr><th>Slot / asset</th><th>Variant</th><th>Data</th><th>Recorded decision</th><th>Policy replay / execution</th></tr></thead><tbody>${report.rows.map((r) => `<tr><td>${r.slot} / ${escape(r.symbol)}</td><td>${escape(r.strategy)}</td><td>${escape(r.initialValidity)} / ${escape(r.finalValidity)}<br>Hourly candles: ${escape(r.candles.validity)}; ${escape(r.candles.repeatInterpretation)}<br>SMA20 ${escape(r.candles.sma20)} / SMA50 ${escape(r.candles.sma50)}</td><td>${escape(r.recordedProposal?.action)}<br>${escape(r.recordedProposal?.reason)}<details><summary>Original proposal and Jev answers</summary><pre>${escape(JSON.stringify({ original: r.originalProposal, answers: r.answers }, null, 2))}</pre></details></td><td>${escape(r.conversion)}<br>${escape(r.executionStatus)}<br>${escape(r.phase)}<details><summary>Evidence and execution</summary><pre>${escape(JSON.stringify(r, null, 2))}</pre></details></td></tr>`).join("")}</tbody></table><details><summary>Provenance and transformed contexts</summary><pre>${escape(JSON.stringify({ ...report, rows: undefined }, null, 2))}</pre></details></html>`;
+  const comparisonCell = (row: (typeof report.rows)[number]) => {
+    if (!("pairedSma" in row)) {
+      return "Historical v1; no paired reconstruction";
+    }
+    const pair = row.pairedSma;
+    if (!pair) {
+      return "NOT_VERIFIABLE";
+    }
+    const f = pair.trace.features;
+    return `${escape(pair.previous.action)} → ${escape(pair.current.action)}<br>${escape(pair.trace.firstBlock ?? "No entry block")}<br>Momentum 5m / 15m: ${escape(f.momentum5Bps)} / ${escape(f.momentum15Bps)} bps<br>Activity hurdle: ${escape(f.activityHurdleBps)} bps<details><summary>Filter values, literal claims and final gate</summary><pre>${escape(JSON.stringify({ sma: pair, reasonCheck: row.modelReasonCheck, finalGate: row.finalPolicyGate }, null, 2))}</pre></details>`;
+  };
+  const html = `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Perpl decision audit</title><style>body{font:16px system-ui;margin:24px;background:#10151c;color:#e4ebf5}table{border-collapse:collapse;width:100%}td,th{padding:10px;border:1px solid #465465;text-align:left}pre{white-space:pre-wrap;overflow-wrap:anywhere}details{margin:12px 0}a{color:#a9caff}</style><h1>Perpl decision audit</h1><p>${escape(report.sessionId)} — ${report.completeSlots.length} common complete slots; ${report.omissions.length} data omissions; ${divergences.length} divergences or unexplained actions.</p><p>No providers, model calls or historical writes. No profitability claim.</p><h2>Paired SMA proposals and technical failures</h2><pre>${escape(JSON.stringify("pairedSummary" in report ? { paired: report.pairedSummary, technical: report.technical } : { comparison: "Not available in historical v1" }, null, 2))}</pre><h2>Evidence summary</h2><pre>${escape(JSON.stringify(report.summary, null, 2))}</pre><ul>${report.limitations.map((l) => `<li>${escape(l)}</li>`).join("")}</ul><table><thead><tr><th>Slot / asset</th><th>Variant</th><th>Data</th><th>Paired SMA and model reason</th><th>Recorded decision</th><th>Policy replay / execution</th></tr></thead><tbody>${report.rows.map((r) => `<tr><td>${r.slot} / ${escape(r.symbol)}</td><td>${escape(r.strategy)}</td><td>${escape(r.initialValidity)} / ${escape(r.finalValidity)}<br>Hourly candles: ${escape(r.candles.validity)}; ${escape(r.candles.repeatInterpretation)}<br>SMA20 ${escape(r.candles.sma20)} / SMA50 ${escape(r.candles.sma50)}</td><td>${comparisonCell(r)}</td><td>${escape(r.recordedProposal?.action)}<br>${escape(r.recordedProposal?.reason)}<details><summary>Original proposal and Jev answers</summary><pre>${escape(JSON.stringify({ original: r.originalProposal, answers: r.answers }, null, 2))}</pre></details></td><td>${escape(r.conversion)}<br>${escape(r.executionStatus)}<br>${escape(r.phase)}<details><summary>Evidence and execution</summary><pre>${escape(JSON.stringify(r, null, 2))}</pre></details></td></tr>`).join("")}</tbody></table><details><summary>Provenance and transformed contexts</summary><pre>${escape(JSON.stringify({ ...report, rows: undefined }, null, 2))}</pre></details></html>`;
   input.signal?.throwIfAborted();
   const output = await outputDirectory(input.output);
   for (const [name, value] of [
