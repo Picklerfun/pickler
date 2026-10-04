@@ -7,8 +7,16 @@ export function assertPerpsStudyConfig(c: PerpsStudyConfig) {
   if (
     !(
       (c.version === 1 && c.protocol === "perps-comparison-v1" && c.hours === 24) ||
-      (c.version === 2 && c.protocol === "perps-four-way-v2" && c.hours === 2)
+      (c.version === 2 &&
+        c.protocol === "perps-four-way-v2" &&
+        c.hours === 2 &&
+        c.strategyVersion === undefined) ||
+      (c.version === 2 &&
+        c.protocol === "perps-multiframe-v3" &&
+        c.hours === 2 &&
+        c.strategyVersion === "1.1.0")
     ) ||
+    (c.strategyVersion !== undefined && (c.version !== 2 || c.strategyVersion !== "1.1.0")) ||
     c.budgetUsd !== "5" ||
     !c.tenantId ||
     !/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,39}$/.test(c.sessionId) ||
