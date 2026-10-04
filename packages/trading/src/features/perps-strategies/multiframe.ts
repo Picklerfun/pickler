@@ -154,6 +154,31 @@ export function gateMultiframeProposal(
   context: PerpsDecisionContext,
   proposal: PerpsProposal,
 ): PerpsProposal {
+  return gateEntry(context, proposal, true, true);
+}
+
+/** Laboratory ablation only; the historical public gate always enables both filters. */
+export function gateSmaEntry(
+  context: PerpsDecisionContext,
+  proposal: PerpsProposal,
+  variant: import("../perps-study/types.js").SmaVariant,
+): PerpsProposal {
+  if (variant === "sma-hourly" && proposal.action.startsWith("open-")) {
+    const trend = multiframeFeatures(context, proposal.symbol).trend;
+    const direction = proposal.action === "open-long" ? "long" : "short";
+    if (trend !== direction) {
+      return { ...proposal, action: "hold", reason: "TREND_NOT_CONFIRMED" };
+    }
+  }
+  return gateEntry(context, proposal, variant !== "sma-hourly", variant === "sma-multiframe");
+}
+
+function gateEntry(
+  context: PerpsDecisionContext,
+  proposal: PerpsProposal,
+  directionFilter: boolean,
+  activityFilter: boolean,
+): PerpsProposal {
   const position = context.account.positions.find(
     (p) => p.symbol === proposal.symbol && p.closedAt === null,
   );
@@ -173,15 +198,19 @@ export function gateMultiframeProposal(
   const f = multiframeFeatures(context, proposal.symbol);
   const direction = proposal.action === "open-long" ? "long" : "short";
   const sign = direction === "long" ? 1 : -1;
-  if (f.trend !== direction || f.momentum5Bps * sign <= 0 || f.momentum15Bps * sign <= 0) {
+  if (
+    directionFilter &&
+    (f.trend !== direction || f.momentum5Bps * sign <= 0 || f.momentum15Bps * sign <= 0)
+  ) {
     return blocked("DIRECTION_NOT_CONFIRMED");
   }
   if (f.activityHurdleBps === null || !Number.isFinite(f.activityHurdleBps)) {
     return blocked("COST_DATA_UNAVAILABLE");
   }
   if (
-    Math.abs(f.momentum5Bps) <= f.activityHurdleBps ||
-    Math.abs(f.momentum15Bps) <= f.activityHurdleBps
+    activityFilter &&
+    (Math.abs(f.momentum5Bps) <= f.activityHurdleBps ||
+      Math.abs(f.momentum15Bps) <= f.activityHurdleBps)
   ) {
     return blocked("RECENT_MOVE_BELOW_COST_HURDLE");
   }
