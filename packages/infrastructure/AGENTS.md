@@ -553,3 +553,7 @@ rechecks creator caps and unknown costs under that lock. Supervision and owner a
 unpaid leases; closers use stored scopes even after a network/plugin edit. `claimSupervision`
 skips busy agents and public observations reuse the existing funding deduplication/dispute policy.
 See [Studio perpetual execution](../../docs/studio-perps-execution.md).
+
+## AI credit persistence
+
+`PostgresAiCreditStore` implements core credit ports over eight private RLS billing tables. Migrations 0029–0031 append schema and ledger projection/immutability fences. Lock the user account before runtime/check locks; do not nest this repository inside existing admission transactions. It links existing perps_check_calls without starting models or activating billing. Failed/incomplete analyses release customer reservations without refunding internal provider costs. Run the real PostgreSQL suite in `test/ai-credit-store.test.ts`. See [AI credits](../../docs/ai-credits.md).
