@@ -19,6 +19,15 @@ Manual preparation remains available with scheduling disabled. Disabling schedul
 hourly calls and openings, while started usage can settle and owner closes and public exit
 supervision continue. No strategy, tariff or activation default changes with these checks.
 
+Successful, complete manual Studio v2 completion records the current connection-validation
+marker under the same ownership transaction. The generic research probe is not required for
+Perpl. Studio Controls exposes explicit hourly activation through the existing schedule endpoint;
+runtime availability and publication alone do not turn it on. The shared schedule policy uses
+Perpl's authorized markets instead of binary sports categories.
+
+See [controlled acceptance](studio-acceptance.md) for the compiled web/API/Queue/PostgreSQL
+journey, external-provider fixtures, independent cash oracle and remaining real-provider limits.
+
 - Rules reuse SMA20/50 over closed hourly candles, with the existing strict 0.1% boundary. They
   call no models or paid sources. Authored entry/exit/prohibition conditions are rejected; Studio
   offers an explicit clear-conditions save. The thesis can remain.
