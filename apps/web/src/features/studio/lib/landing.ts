@@ -18,8 +18,11 @@ export function studioLanding(
   agents: readonly unknown[],
   section: string,
 ): Landing {
+  if (!loaded) {
+    return "loading";
+  }
   if (agents.length === 0) {
-    return loaded ? "new" : "loading";
+    return "new";
   }
   if (section === "new") {
     return "new";
