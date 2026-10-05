@@ -40,6 +40,55 @@ const NOON = Date.UTC(2026, 9, 3, 12);
 /** A product agent id whose hourly check runs at `minute`. */
 const idAt = (minute: number) => `${minute.toString(16).padStart(8, "0")}-${randomUUID().slice(9)}`;
 
+test("complete current Studio preparation records connections without the research-only probe", async (t) => {
+  const f = await setup(t);
+  const agent = await f.agent({ id: idAt(0) });
+  const key = `connections_checked:${agent.scope.tenantId}:${agent.scope.agentId}:1`;
+  for (const decision of [
+    { protocol: "perps-check-v1" },
+    { protocol: "studio-perps-check-v2", incomplete: true },
+    { protocol: "studio-perps-check-v2", incomplete: false },
+  ]) {
+    const check = await f.store.startCheck({ productAgentId: agent.id, trigger: "manual" });
+    const claim = (await f.store.claimAgent(check.id))!;
+    await f.store.finishCheck(claim.lease, { outcome: "held", outcomeText: "Prepared", decision });
+    const checked = await f.db.pool.query("SELECT value FROM pickler.metadata WHERE key=$1", [key]);
+    assert.equal(checked.rows[0]?.value === "true", decision.incomplete === false);
+  }
+  const history = await f.db.pool.query(
+    "SELECT count(*)::int AS n FROM pickler.perps_checks WHERE product_agent_id=$1",
+    [agent.id],
+  );
+  assert.equal(history.rows[0].n, 3);
+  assert.equal((await f.db.readiness(agent.scope)).connectionsChecked, true);
+  await f.db.pool.query(
+    `UPDATE pickler.research_access SET enabled=true WHERE user_id IN (
+    SELECT owner_user_id FROM identity.workspaces WHERE id IN (
+      SELECT workspace_id FROM pickler.product_agents WHERE product_agent_id=$1))`,
+    [agent.id],
+  );
+  await f.db.schedule(agent.scope, true, NOON);
+  assert.equal((await f.db.agent(agent.scope)).scheduleEnabled, true);
+  await f.db.schedule(agent.scope, false, NOON);
+  await f.db.pool.query("DELETE FROM pickler.metadata WHERE key=$1", [key]);
+  const failed = await f.store.startCheck({ productAgentId: agent.id, trigger: "manual" });
+  const failedClaim = (await f.store.claimAgent(failed.id))!;
+  await f.store.finishCheck(failedClaim.lease, {
+    outcome: "failed",
+    outcomeText: "Transport failed",
+    decision: { protocol: "studio-perps-check-v2", incomplete: false },
+  });
+  assert.equal((await f.db.readiness(agent.scope)).connectionsChecked, false);
+  await f.db.pool.query("UPDATE pickler.agents SET version=2 WHERE tenant_id=$1 AND id=$2", [
+    agent.scope.tenantId,
+    agent.scope.agentId,
+  ]);
+  assert.deepEqual(await f.db.readiness(agent.scope), {
+    connectionsChecked: false,
+    manualSucceeded: false,
+  });
+});
+
 test("hourly admission requires current preparation; manual preparation remains available", async (t) => {
   const f = await setup(t);
   const agent = await f.agent({ id: idAt(0) });
