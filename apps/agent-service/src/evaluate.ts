@@ -12,6 +12,7 @@ const { positionals, values } = parseArgs({
     output: { type: "string" },
     help: { type: "boolean" },
     state: { type: "string", multiple: true },
+    independent: { type: "boolean" },
   },
 });
 if (values.help) {
@@ -20,10 +21,19 @@ if (values.help) {
   );
 } else {
   const controller = new AbortController();
-  const abort = () => controller.abort();
-  process.once("SIGINT", abort);
-  process.once("SIGTERM", abort);
+  const interrupt = () =>
+    controller.abort(new PilotError("RUNNER_SIGNAL_SIGINT", "Runner interrupted"));
+  const terminate = () =>
+    controller.abort(new PilotError("RUNNER_SIGNAL_SIGTERM", "Runner terminated"));
+  const hangup = () =>
+    controller.abort(new PilotError("RUNNER_SIGNAL_SIGHUP", "Runner lost its terminal"));
+  process.once("SIGINT", interrupt);
+  process.once("SIGTERM", terminate);
+  process.once("SIGHUP", hangup);
   try {
+    if (values.independent && (positionals.length !== 1 || positionals[0] !== "run")) {
+      throw new PilotError("INVALID_INPUT", "Independent supervision is limited to run");
+    }
     if (positionals.length === 1 && ["audit", "audit-export"].includes(positionals[0]!)) {
       const { runPerpsAudit } = await import("./perps-study/audit.js");
       if (values.state && values.state.length !== 1) {
@@ -45,22 +55,42 @@ if (values.help) {
       }
       const { readFile } = await import("node:fs/promises");
       const protocol = JSON.parse(await readFile(values.config, "utf8")).protocol;
-      const executeEvaluation =
-        protocol === "perps-sma-ablation-v1"
-          ? (await import("./perps-study/sma-host.js")).runSmaStudy
-          : (await import("./evaluation-host/local.js")).executeEvaluation;
-      await executeEvaluation({
-        command: positionals[0] as EvaluationCommand,
-        configPath: values.config,
-        allowPaid: values["allow-paid"] ?? false,
-        ...(values["env-file"] ? { envFile: values["env-file"] } : {}),
-        ...(values.output ? { output: values.output } : {}),
-        signal: controller.signal,
-        ...(values["acquisition-choice"]
-          ? { acquisitionChoice: values["acquisition-choice"] }
-          : {}),
-        ...(values.state ? { states: values.state } : {}),
-      });
+      if (values.independent) {
+        if (
+          protocol !== "perps-sma-ablation-v1" ||
+          positionals[0] !== "run" ||
+          !values["env-file"] ||
+          values["allow-paid"] ||
+          values.output ||
+          values.state ||
+          values["acquisition-choice"]
+        ) {
+          throw new PilotError(
+            "INVALID_INPUT",
+            "Independent launch requires the SMA run and database-only file",
+          );
+        }
+        const { launchIndependentSma } = await import("./perps-study/sma-supervision.js");
+        await launchIndependentSma(values.config, values["env-file"]);
+        process.exitCode = 0;
+      } else {
+        const executeEvaluation =
+          protocol === "perps-sma-ablation-v1"
+            ? (await import("./perps-study/sma-host.js")).runSmaStudy
+            : (await import("./evaluation-host/local.js")).executeEvaluation;
+        await executeEvaluation({
+          command: positionals[0] as EvaluationCommand,
+          configPath: values.config,
+          allowPaid: values["allow-paid"] ?? false,
+          ...(values["env-file"] ? { envFile: values["env-file"] } : {}),
+          ...(values.output ? { output: values.output } : {}),
+          signal: controller.signal,
+          ...(values["acquisition-choice"]
+            ? { acquisitionChoice: values["acquisition-choice"] }
+            : {}),
+          ...(values.state ? { states: values.state } : {}),
+        });
+      }
     }
   } catch (error) {
     console.error(
@@ -70,7 +100,8 @@ if (values.help) {
     );
     process.exitCode = 1;
   } finally {
-    process.removeListener("SIGINT", abort);
-    process.removeListener("SIGTERM", abort);
+    process.removeListener("SIGINT", interrupt);
+    process.removeListener("SIGTERM", terminate);
+    process.removeListener("SIGHUP", hangup);
   }
 }
