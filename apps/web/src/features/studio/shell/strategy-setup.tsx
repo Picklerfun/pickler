@@ -36,6 +36,7 @@ export function StrategySetup({
       <label className={styles.fieldLabel}>
         Strategy
         <select
+          aria-label="Strategy"
           className={styles.input}
           value={selected}
           disabled={!canManage || saving}
