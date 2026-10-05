@@ -166,3 +166,7 @@ USD micros, separately from virtual financial metrics; unknown daily costs stay 
 retains workspace authorization and generated OpenAPI. The web displays the strategy in both
 agent studios and explicitly confirms clearing unsupported authored conditions for rules.
 See [Studio perpetual execution](../../docs/studio-perps-execution.md).
+
+## AI credit DTOs
+
+`src/ai-credits.ts` exports strict portable balance, purchase, ledger history and agent/model allocation schemas. Exact amounts are decimal strings in micro-credit units; one credit is 1,000,000 units. Never expose internal provider costs, proof data or payer identity. No HTTP route is introduced by these DTOs. See [AI credits](../../docs/ai-credits.md).

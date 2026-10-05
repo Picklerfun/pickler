@@ -33,3 +33,5 @@ export * from "./public-schemas.js";
 export * from "./advice.js";
 
 export * from "./perps-runtime.js";
+
+export * from "./ai-credits.js";

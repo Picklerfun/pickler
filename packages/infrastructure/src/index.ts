@@ -229,3 +229,5 @@ export { exportPerpsAudit } from "./persistence/perps-audit-export.js";
 export * from "./persistence/advice-store.js";
 
 export * from "./persistence/perps-check-cost-store.js";
+
+export * from "./persistence/ai-credit-store.js";
