@@ -1,5 +1,7 @@
 "use client";
-import { Icon, Meter, Segmented } from "@pickler/ui";
+import { useState } from "react";
+import { Button, Icon, Meter, Segmented } from "@pickler/ui";
+import { setSchedule } from "../api";
 import { SaveOutcome, saveLabel, useSavedForm, useSetupSave } from "../shell/setup-save";
 import { VIEW_ONLY_REASON, entryDirty, entryPatch, stopRows } from "./build-model";
 import { LiveSection, type LiveSectionProps } from "./live-section";
@@ -89,6 +91,7 @@ export function Controls({ agent, live, canManage, pause }: LiveSectionProps) {
         />
         <div className={styles.card} id="live-controls-runs">
           <HowItRuns agent={agent} live={live} canManage={canManage} paper={!!record} />
+          <HourlySchedule agent={agent} live={live} canManage={canManage} />
           <div className={styles.meters}>
             {(record ? runtimeMeters(caps, record.today) : meters(caps)).map((meter) => (
               <div key={meter.key} className={styles.meter}>
@@ -122,6 +125,64 @@ export function Controls({ agent, live, canManage, pause }: LiveSectionProps) {
         </div>
       </div>
     </LiveSection>
+  );
+}
+
+/** Explicit scheduling remains separate from publication and entry approval mode. */
+function HourlySchedule({
+  agent,
+  live,
+  canManage,
+}: Pick<LiveSectionProps, "agent" | "live" | "canManage">) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const on = agent.scheduleEnabled;
+  const ready =
+    paperShown(live.record) && live.record.runtimeEnabled && agent.canSchedule.ok && !agent.paused;
+  const disabled = busy || live.preview || !canManage || (!on && !ready);
+  let note =
+    "Hourly checks are off. Complete a successful manual check for this configuration first.";
+  if (on) {
+    note = "Hourly checks are on. Turning them off preserves positions and their exits.";
+  } else if (ready) {
+    note = "Prepared for this configuration. Enable hourly paper checks when ready.";
+  } else if (!agent.canSchedule.ok && agent.canSchedule.reason === "unfunded") {
+    note = "Fund its wallet with at least 10 AUSD before enabling hourly checks.";
+  }
+  async function toggle() {
+    if (disabled) {
+      return;
+    }
+    setBusy(true);
+    setError("");
+    try {
+      await setSchedule(agent.productId ?? agent.id, !on);
+      await live.refreshAgent();
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : "Could not change hourly checks.");
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <div className={styles.well} id="live-hourly-schedule">
+      <span className={styles.wellLabel}>HOURLY PAPER CHECKS</span>
+      <p className={styles.cardNote}>{note}</p>
+      <Button
+        role="switch"
+        aria-label="Hourly paper checks"
+        aria-checked={on}
+        disabled={disabled}
+        onClick={() => void toggle()}
+      >
+        {busy ? "Saving…" : on ? "Disable hourly checks" : "Enable hourly checks"}
+      </Button>
+      {error && (
+        <p className={styles.alert} role="alert">
+          {error}
+        </p>
+      )}
+    </div>
   );
 }
 
@@ -216,7 +277,7 @@ function HowItRuns({
   const { state, save, touch, saving } = useSetupSave(live);
   const status = paper ? runtimeStatus(agent.paused, runtime) : liveStatus(agent);
   const plain = entryView(form, caps.perTradeAusd);
-  const view = runtime ? runtimeEntryView(plain) : plain;
+  const view = runtime ? runtimeEntryView(plain, agent.scheduleEnabled && !agent.paused) : plain;
   const dirty = entryDirty(form, saved, caps.perTradeAusd);
   const canSave = canManage && dirty && !saving;
   const shut = !canManage || saving;
