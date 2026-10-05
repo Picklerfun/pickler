@@ -45,6 +45,15 @@ export function smaAblationProposal(context: PerpsDecisionContext, variant: SmaV
     const original = commonSmaExit(context, raw.symbol) ?? raw;
     const proposal = gateSmaEntry(context, original, variant);
     const trace = traceMultiframeProposal(context, original);
+    const checks = trace.checks.map((c) => ({
+      ...c,
+      enforced:
+        c.code === "DIRECTION_NOT_CONFIRMED"
+          ? variant !== "sma-hourly"
+          : c.code === "RECENT_MOVE_BELOW_COST_HURDLE"
+            ? variant === "sma-multiframe"
+            : true,
+    }));
     return {
       original,
       proposal,
@@ -55,15 +64,8 @@ export function smaAblationProposal(context: PerpsDecisionContext, variant: SmaV
           original.action.startsWith("open-") && proposal.action === "hold"
             ? proposal.reason
             : null,
-        checks: trace.checks.map((c) => ({
-          ...c,
-          enforced:
-            c.code === "DIRECTION_NOT_CONFIRMED"
-              ? variant !== "sma-hourly"
-              : c.code === "RECENT_MOVE_BELOW_COST_HURDLE"
-                ? variant === "sma-multiframe"
-                : true,
-        })),
+        checks,
+        coincidentBlocks: checks.filter((c) => c.enforced && c.passed === false).map((c) => c.code),
       },
     };
   });
