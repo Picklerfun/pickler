@@ -228,7 +228,7 @@ Read [PERPS-SMA-ABLATION.md](PERPS-SMA-ABLATION.md). The unified CLI dispatches 
 `perps-sma-ablation-v1` before paid host composition. `perps-study/sma-host.ts` loads only
 loopback PostgreSQL and public Perpl data; no model/signing keys or clients. Preserve exclusive
 output/start markers, frozen commit/configuration, 24 slots and automatic local reports. No
-monitor, resume, paid calls, transport override or automatic repeat. Trading owns decisions and
+recurring Codex monitor, resume, paid calls, transport override or automatic repeat. Trading owns decisions and
 metrics; the host owns lifecycle and safe artifacts.
 
 The SMA runner observes while waiting for its first slot, but admits no negative slots.
@@ -236,3 +236,11 @@ Preserve the original UTC daily-equity rule; `DAY_BASELINE_PENDING` is a termina
 admission failure. Interrupted study reports mark future slots NOT_ADMITTED. The initial
 midnight attempt and its rejected openings are retained; it must not be resumed or repeated
 without new operator authorization.
+
+The explicitly authorized SMA `run --independent` flag installs two one-shot macOS launchd
+jobs with no automatic restart. `sma-supervision.ts` owns lifecycle, identity checks, exit/signal
+records, watchdog health and one terminal local notice. It constructs no provider/database/model
+clients; read-only report regeneration delegates to the existing CLI. Keep the direct run path
+for controlled tests, but use independent supervision for long operator runs. Never mistake
+notification submission for delivery or restart a failed study automatically. This explicit
+local supervision is separate from paused recurring Codex monitors.
