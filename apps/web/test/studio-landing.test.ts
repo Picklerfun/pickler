@@ -15,10 +15,11 @@ import { emptyForm, funded } from "../src/features/studio/new-agent/model";
 
 /* What `/studio` shows: the home, a section, the create screen, or nothing yet while agents are read. */
 
-test("with an agent, the home or the section asked for, read or not", () => {
+test("only a completed initial read admits the home or section", () => {
   assert.equal(studioLanding(true, [{ id: "a" }], "home"), "home");
-  assert.equal(studioLanding(false, [{ id: "a" }], "home"), "home");
+  assert.equal(studioLanding(false, [{ id: "a" }], "home"), "loading");
   assert.equal(studioLanding(true, [{ id: "a" }], "limits"), "section");
+  assert.equal(studioLanding(false, [{ id: "a" }], "limits"), "loading");
 });
 
 test("no agents, once read, is the create screen rather than a redirect", () => {
@@ -31,9 +32,9 @@ test("?section= with no agents is the create screen too", () => {
   }
 });
 
-test('with agents, "+ New agent" (the section `new`) is the create screen, read or not', () => {
+test('with agents, "+ New agent" (the section `new`) waits for complete initial loading', () => {
   assert.equal(studioLanding(true, [{ id: "a" }], "new"), "new");
-  assert.equal(studioLanding(false, [{ id: "a" }], "new"), "new");
+  assert.equal(studioLanding(false, [{ id: "a" }], "new"), "loading");
 });
 
 test("no agents before the read is still loading, not an empty studio", () => {
