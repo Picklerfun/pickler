@@ -18,7 +18,7 @@ export function isReadyToSchedule(agent: AgentRecord, readiness: ScheduleReadine
     readiness.connectionsChecked &&
     readiness.manualSucceeded &&
     !agent.paused &&
-    hasMarketSelection(agent.config)
+    (agent.config.perpl ? agent.config.perpl.markets.length > 0 : hasMarketSelection(agent.config))
   );
 }
 

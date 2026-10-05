@@ -7,7 +7,11 @@ import {
   canSchedule,
 } from "../src/features/studio/locks.js";
 import { assertCanSchedule, isReadyToSchedule } from "../src/features/research/policy.js";
-import { DEFAULT_CONFIG, type AgentRecord } from "../src/features/research/types.js";
+import {
+  DEFAULT_CONFIG,
+  type AgentConfig,
+  type AgentRecord,
+} from "../src/features/research/types.js";
 
 test("the schedule needs one successful run and ten AUSD", () => {
   assert.deepEqual(canSchedule({ ready: false, balanceAusd: 50 }), {
@@ -48,10 +52,15 @@ test("isReadyToSchedule agrees with the NOT_READY refusal in every combination",
     },
   };
   const unscoped = { ...DEFAULT_CONFIG, categoryIds: [] };
+  const perpl: AgentConfig = {
+    ...unscoped,
+    perpl: { version: 1, network: "testnet", markets: ["BTC", "ETH"] },
+  };
+  const emptyPerpl: AgentConfig = { ...perpl, perpl: { ...perpl.perpl!, markets: [] } };
   let readyCount = 0;
 
   for (const paused of [false, true]) {
-    for (const config of [scoped, unscoped]) {
+    for (const config of [scoped, unscoped, perpl, emptyPerpl]) {
       for (const connectionsChecked of [false, true]) {
         for (const manualSucceeded of [false, true]) {
           const agent: AgentRecord = {
@@ -81,5 +90,5 @@ test("isReadyToSchedule agrees with the NOT_READY refusal in every combination",
     }
   }
 
-  assert.equal(readyCount, 1);
+  assert.equal(readyCount, 2);
 });

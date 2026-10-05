@@ -22,6 +22,11 @@ The runner owns permission rechecks, evidence attribution, bounded capability us
 
 ## Checks
 
+Scheduling readiness uses the configured venue: Perpl requires authorized perpetual markets,
+while binary research retains its category selection. Both require current connection validation,
+successful manual preparation and an unpaused agent. This scheduling predicate does not admit a
+Perpl agent into the binary research runner.
+
 From root, run `npm test`, `npm run typecheck` and `npm run lint`. Root tests build shared packages first and include runner integration tests under infrastructure, which inject providers and use isolated PostgreSQL databases. Core health tests remain in `test`. Add framework-independent unit tests here for standalone domain policy. Do not move persistence implementations into core.
 
 `ResearchModel.metadata()` includes research and market-selection `PromptSnapshot` values plus an optional final-decision snapshot for backwards compatibility: ID, version, SHA-256 and exact instructions. Core only persists these trusted adapter values in the first runtime event; prompt definitions and hashing stay in the agent service. Record metadata before permission checks/provider calls so failed started runs retain provenance too. This snapshot describes the runtime that starts a job, not a prompt version pinned at enqueue time.

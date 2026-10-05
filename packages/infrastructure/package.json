@@ -9,6 +9,7 @@
       "import": "./dist/index.js"
     },
     "./testing": "./test/database.ts",
+    "./testing/controlled-worker": "./test/controlled-worker.ts",
     "./wallet": {
       "types": "./src/trading/wallet-file.ts",
       "import": "./dist/trading/wallet-file.js"

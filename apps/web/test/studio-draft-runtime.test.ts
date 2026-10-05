@@ -334,12 +334,12 @@ test("the schedule says it unlocks with the runtime; once open, a draft runs onl
 
   const on = scheduleCopy(true, 4);
 
-  assert.equal(on.tag, "HOURLY ONCE PUBLIC");
+  assert.equal(on.tag, "PREPARE THEN ENABLE");
   assert.match(
     on.note,
-    /^A draft runs only when you run it on paper\. Once it is public it checks Perpl every hour/,
+    /Publish it, complete a successful check.*then enable hourly paper checks in Controls/,
   );
-  assert.equal(on.title, "Run on its own · hourly once public");
+  assert.equal(on.title, "Run on its own · explicit hourly scheduling");
   assert.equal(on.rowNote, "A draft runs only when you run it on paper.");
   assert.doesNotMatch(
     `${on.tag} ${on.note} ${on.title} ${on.rowNote}`,

@@ -5,8 +5,8 @@
  * meter and time stop, "Waiting on you", the record, the manual check, the stops and the words for
  * the runtime's refusals.
  *
- * Every line here describes what really runs (draft spec D19): the runtime checks every hour on
- * paper once `GET /perps/record` answered `runtimeEnabled: true` (`runtimeOn`). With it off, the
+ * Runtime availability (`runtimeEnabled`) permits manual paper checks; explicit prepared
+ * scheduling permits hourly checks. With the runtime off, the
  * paper an agent already holds is still drawn (`paperShown`: it has a paper account), because
  * exits, Close now and Stop · close all still run (R3); the lines say checks are paused by the
  * operator. With neither, the studio keeps `./model.ts`'s and `./run-model.ts`'s "runs soon" copy.
@@ -233,7 +233,7 @@ export function runtimeHealthRows(
   return [
     ...rows,
     record.runtimeEnabled
-      ? { key: "runtime", label: "Runtime", value: "ON · PAPER · HOURLY", tone: "good" }
+      ? { key: "runtime", label: "Runtime", value: "ON · PAPER", tone: "good" }
       : { key: "runtime", label: "Runtime", value: "CHECKS PAUSED · EXITS RUN", tone: "quiet" },
     {
       key: "cost",
@@ -267,11 +267,13 @@ export const RUNTIME_DECISIONS_EMPTY =
  * HOW IT RUNS' notes once it runs: the status note says it checks hourly on paper, and the mode
  * notes lose "ONCE IT RUNS", because it does.
  */
-export function runtimeEntryView(view: EntryView): EntryView {
+export function runtimeEntryView(view: EntryView, scheduleEnabled = false): EntryView {
   const then = view.statusNote.replace(/^.*; then it /, "").replace(/\.$/, "");
   return {
     ...view,
-    statusNote: `It is public on Pickler and checks Perpl and its sources every hour, on paper; it ${then}.`,
+    statusNote: scheduleEnabled
+      ? `Hourly paper checks are enabled; it ${then}.`
+      : `Hourly paper checks are off. Prepare this configuration and enable them in Controls; it ${then}.`,
     modeNote: view.modeNote.replace(/^ONCE IT RUNS · /, "ON PAPER · "),
   };
 }
@@ -698,7 +700,7 @@ export function runtimeStrip(input: {
   const count = `${total} ${total === 1 ? "CHECK" : "CHECKS"}`;
   const more = "EVERY DECISION →";
   if (!newest) {
-    let line = "No checks yet · it checks Perpl every hour, on paper";
+    let line = "No checks yet · prepare it manually, then enable hourly paper checks in Controls";
     if (!running) {
       line = "No checks · checks are paused by the operator";
     } else if (input.paused) {

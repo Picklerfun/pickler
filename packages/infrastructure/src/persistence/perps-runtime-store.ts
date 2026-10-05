@@ -1,6 +1,10 @@
 import { randomUUID } from "node:crypto";
 import type { Pool, PoolClient } from "pg";
-import { assertPerpsHourlyReady, PERPS_HOURLY_READY_SQL } from "./perps-hourly-readiness.js";
+import {
+  assertPerpsHourlyReady,
+  PERPS_HOURLY_READY_SQL,
+  perpsManualReadySql,
+} from "./perps-hourly-readiness.js";
 import { LEVERAGE_BOUNDS, PilotError } from "@pickler/core";
 import {
   CHECK_OUTCOMES,
@@ -467,7 +471,22 @@ export class PostgresPerpsRuntimeStore implements PerpsRuntimeRepository {
     assertFinish(result);
     return this.transaction(async (db) => {
       const at = await this.owned(db, lease);
-      return this.finish(db, lease.checkId, at, result);
+      const finished = await this.finish(db, lease.checkId, at, result);
+      // A complete Studio check has validated the configured adapters and evidence. The
+      // generic connection probe requires Polymarket/Exa and cannot prepare a Perpl agent.
+      // Use the same current-version predicate as admission, while ownership is locked.
+      if (finished.trigger === "manual") {
+        await db.query(
+          `INSERT INTO pickler.metadata(key, value)
+          SELECT 'connections_checked:' || r.tenant_id || ':' || r.id || ':' || r.version, 'true'
+          FROM pickler.agents r
+          WHERE r.tenant_id=$1 AND r.id=$2 AND r.version=$3
+            AND jsonb_typeof(r.config->'perpl')='object' AND ${perpsManualReadySql("$4")}
+          ON CONFLICT(key) DO UPDATE SET value=EXCLUDED.value`,
+          [finished.tenantId, finished.agentId, finished.configVersion, finished.id],
+        );
+      }
+      return finished;
     });
   }
 

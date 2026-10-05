@@ -1,5 +1,12 @@
 # Research Worker
 
+The controlled Studio entry `test/studio-fixture-worker.ts` reuses the production Queue host and
+Perpl composition, with only external HTTP transports replaced. Guard the dedicated loopback
+database, UUID marker and synthetic credentials before Queue, Cron and its private dispatch
+handler. That handler controls only the dispatch clock (within one hour); actual check execution
+uses the production clock, lease, strategy, budget and accounting. Never deploy this fixture.
+See [controlled Studio acceptance](../../docs/studio-acceptance.md) for reproduction and limits.
+
 Read the root and packages/agent-runtime instructions first. This is the deployed Queue and
 Cron host, distinct from the protected local experiment in apps/agent-service. Do not remove
 that experiment's database/loopback guards. No HTTP handler, Studio, or tenant tokens here.
