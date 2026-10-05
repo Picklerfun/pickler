@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { type AccountState, accountAddress } from "../account";
 import { API_URL } from "../config/api";
 import { CHAIN } from "../config/chain";
+import { RP_ID } from "../config/rp";
 import { createProfile, describeIdentityError, fetchProfile, handleAvailable, isHandleRefusal } from "../identity/api";
 import { normalizeHandle } from "../identity/handle";
 import { type IdentitySession, sessionFor, signInWithWallet } from "../identity/session";
@@ -58,7 +59,7 @@ export function useIdentity(account: AccountState, onUnlock: (w: Wallet) => void
   const ensureSession = useCallback(async (w: Wallet): Promise<IdentitySession> => {
     const current = sessionFor(session.current, w.address);
     if (current) return current;
-    const fresh = await signInWithWallet({ base: API_URL!, address: w.address, chainId: CHAIN.id, sign: (message) => w.account.signMessage({ message }) });
+    const fresh = await signInWithWallet({ base: API_URL!, address: w.address, chainId: CHAIN.id, domain: RP_ID, sign: (message) => w.account.signMessage({ message }) });
     session.current = fresh;
     return fresh;
   }, []);

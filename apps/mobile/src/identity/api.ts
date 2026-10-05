@@ -31,6 +31,7 @@ const COPY: Record<string, string> = {
   handle_taken: "Someone already has that one.",
   invalid_profile: "That username is not allowed. Try another.",
   profile_exists: "This account already has a username.",
+  unexpected_message: "Pickler asked for something that is not a sign-in. Nothing was signed.",
 };
 
 export function describeIdentityError(e: unknown): string {
@@ -38,19 +39,26 @@ export function describeIdentityError(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
 }
 
-/** Respuesta `{ data }` del envelope de la API; un cuerpo sin él es un error del servidor, no un dato. */
-async function call(url: string, init: RequestInit, doFetch: DoFetch): Promise<unknown> {
+/**
+ * Respuesta `{ data }` del envelope de la API; un cuerpo sin él es un error del servidor, no un dato.
+ * El deadline cubre la petición entera, body incluido: unos headers seguidos de un body que nunca llega son un `timeout`,
+ * no un «Claiming…» para siempre. (El fetch de RN entrega el body completo antes de resolver; el cliente no depende de eso.)
+ */
+export async function call(url: string, init: RequestInit, doFetch: DoFetch): Promise<unknown> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
   let res: Response;
+  let body: unknown;
   try {
     res = await doFetch(url, { ...init, signal: controller.signal });
+    // Un body ilegible no es un dato; uno cortado por el deadline tampoco, y eso se dice abajo.
+    body = await res.json().catch(() => undefined);
   } catch (e) {
     throw new IdentityError(0, controller.signal.aborted || (e instanceof Error && e.name === "AbortError") ? "timeout" : "network");
   } finally {
     clearTimeout(timer);
   }
-  const body: unknown = await res.json().catch(() => undefined);
+  if (controller.signal.aborted) throw new IdentityError(0, "timeout");
   const fields = body !== null && typeof body === "object" ? (body as { error?: unknown; message?: unknown; data?: unknown }) : {};
   if (!res.ok) {
     const code = typeof fields.error === "string" ? fields.error : String(res.status);

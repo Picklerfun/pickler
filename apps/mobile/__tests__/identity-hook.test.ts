@@ -1,4 +1,5 @@
 import { base64urlnopad, utf8 } from "@scure/base";
+import { createSiweMessage } from "viem/siwe";
 import { createElement } from "react";
 import { act, create, type ReactTestRenderer } from "react-test-renderer";
 import type { AccountState } from "../src/account";
@@ -16,6 +17,8 @@ jest.mock("expo-secure-store", () => ({
 (globalThis as unknown as { __store: Map<string, string> }).__store = store;
 
 jest.mock("../src/config/api", () => ({ API_URL: "https://pickler.test/api/v1" }));
+// `config/rp` lee app.config.ts vía expo-constants, que no existe bajo Jest.
+jest.mock("../src/config/rp", () => ({ RP_ID: "pickler.fun", RP_NAME: "Pickler" }));
 jest.mock("../src/wallet/wallet", () => ({ unlockStoredWallet: jest.fn(), describeError: (e: unknown) => ((e as { code?: string } | null)?.code === "ERR_AUTHENTICATION" ? "" : e instanceof Error ? e.message : String(e)) }));
 jest.mock("../src/identity/api", () => ({
   ...jest.requireActual("../src/identity/api"),
@@ -32,6 +35,10 @@ const { unlockStoredWallet } = jest.requireMock("../src/wallet/wallet") as { unl
 
 const A = "0x7E5F4552091A69125d5DfCb7b8C2659029395Bdf";
 const B = "0x2B5AD5c4795c026514f8317c7a215E218DcCD6cF";
+// Lo que la API contesta en /nonce: un SIWE de entrada para esa dirección. La sesión lo comprueba antes de firmar, así
+// que un texto cualquiera ya no vale como mensaje.
+const challenge = (address: string) =>
+  createSiweMessage({ version: "1", domain: "pickler.fun", uri: "https://pickler.fun", address: address as `0x${string}`, chainId: 10143, nonce: "a1b2c3d4e5f6a1b2c3d4e5f6", issuedAt: new Date(1_790_000_000_000), statement: "Sign in to Pickler" });
 const b64 = (o: unknown) => base64urlnopad.encode(utf8.decode(JSON.stringify(o)));
 const token = (sub: string) => `${b64({ alg: "HS256" })}.${b64({ sub, exp: Math.floor(Date.now() / 1000) + 3600 })}.sig`;
 const wallet = (address: string) => ({ address, credentialId: "cred", session: { end() {} }, account: { signMessage: jest.fn(async () => "0xsig") } });
@@ -54,7 +61,7 @@ async function mount(account: AccountState) {
 beforeEach(() => {
   store.clear();
   jest.clearAllMocks();
-  api.fetchChallenge.mockResolvedValue("the server's message");
+  api.fetchChallenge.mockImplementation(async (_base: string, address: string) => challenge(address));
   api.presentSignature.mockImplementation(async () => ({ userId: "user-1", token: token("user-1") }));
 });
 
@@ -70,7 +77,7 @@ test("an unlocked wallet signs in by itself and an account without a username is
   await mount({ status: "unlocked", wallet: opened as never });
   expect(api.fetchChallenge).toHaveBeenCalledWith("https://pickler.test/api/v1", A, 10143, expect.anything());
   // Firma el mensaje del servidor con la wallet abierta: sin prompt.
-  expect(opened.account.signMessage).toHaveBeenCalledWith({ message: "the server's message" });
+  expect(opened.account.signMessage).toHaveBeenCalledWith({ message: challenge(A) });
   expect(latest.identity).toEqual({ status: "none" });
 });
 
@@ -93,12 +100,24 @@ test("a locked wallet with nothing stored is not asked: that would be a Face ID 
   expect(unlockStoredWallet).not.toHaveBeenCalled();
 });
 
+test("a message that is not this wallet's sign-in is never signed, and holds nobody", async () => {
+  // La misma ruta de /nonce puede emitir el mensaje que deja entrar a otra wallet a la cuenta. Si llega, no se firma y
+  // la cuenta queda como no alcanzable: nadie se queda fuera de sus fondos por ello.
+  api.fetchChallenge.mockResolvedValue(createSiweMessage({ version: "1", domain: "pickler.fun", uri: "https://pickler.fun", address: A, chainId: 10143, nonce: "a1b2c3d4e5f6a1b2c3d4e5f6", issuedAt: new Date(1_790_000_000_000), statement: `Link wallet ${B} to this wallet's Pickler account` }));
+  api.fetchProfile.mockResolvedValue(null);
+  const opened = wallet(A);
+  await mount({ status: "unlocked", wallet: opened as never });
+  expect(opened.account.signMessage).not.toHaveBeenCalled();
+  expect(api.presentSignature).not.toHaveBeenCalled();
+  expect(latest.identity).toEqual({ status: "unreachable" });
+});
+
 test("an API that cannot be reached holds nobody", async () => {
   api.fetchChallenge.mockRejectedValue(new IdentityError(0, "network"));
   await mount(unlocked(A));
   expect(latest.identity).toEqual({ status: "unreachable" });
 
-  api.fetchChallenge.mockResolvedValue("the server's message");
+  api.fetchChallenge.mockResolvedValue(challenge(B));
   api.fetchProfile.mockRejectedValue(new IdentityError(500, "500"));
   await mount(unlocked(B));
   expect(latest.identity).toEqual({ status: "unreachable" });

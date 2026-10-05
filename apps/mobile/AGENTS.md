@@ -38,7 +38,13 @@ code. Do not rely on what earlier SDKs did.
 - **The account is the web's, and its username is not optional**
   ([spec](../../docs/mobile/superpowers/specs/2026-10-02-mobile-account-design.md)). With the wallet
   unlocked, `useIdentity` signs in to the product API (`workers/api`, through the web host) with the
-  server's own message and `kind: "mera"`, at no extra prompt, and reads the profile. An account the
+  server's own message and `kind: "mera"`, at no extra prompt, and reads the profile. Because there
+  is no prompt, the wallet signs nothing it has not checked: `checkSignInMessage`
+  (`src/identity/session.ts`) refuses anything that is not a well-formed SIWE for this address, the
+  app's chain, the exact statement `Sign in to Pickler` and the passkey's domain (`RP_ID`) or a
+  subdomain of it. The same API route also issues the message that lets another wallet into an
+  account (`Link wallet 0x… to this wallet's Pickler account`); the app never asks for it and
+  never signs it. An account the
   server says has no username gets `UsernameGate` (`src/screens/username.tsx`) over the whole app,
   outside the navigation tree: the only ways out are claiming one or signing out. Only that answer
   holds anybody, and only while there is a way out: an API that is not configured, unreachable or
@@ -46,7 +52,11 @@ code. Do not rely on what earlier SDKs did.
   reason that is not the username itself the gate lets go for the session. The app moves funds; do
   not add a path where the account keeps somebody out of them. Before saying a claim failed the
   hook signs in again and reads the account, because the answer may only have been lost. The gate
-  does not open over a treasury operation or a read in flight (`App.tsx`). The access token stays in
+  does not open over a treasury operation, a read in flight or Perpl's onboarding while it runs
+  (`appQuiet` and `perplOnboardingActive` in `src/identity/state.ts`, read by `App.tsx`): each of
+  those unlocks the wallet, and unlocking is what triggers the check. An onboarding stopped on an
+  error runs nothing and does not count. The identity client's deadline (`src/identity/api.ts`) covers the body
+  as well as the headers. The access token stays in
   memory and is never stored; what is stored is `{ address, handle, api }` (`pickler.identity.v1`). Linking to an account under a browser wallet happens
   on the web, where that wallet can sign; the gate says so and checks again. The feature is **off
   unless `PICKLER_API_URL` is set** (`src/config/api.ts`), e.g. `https://pickler.fun/api/v1`, and
