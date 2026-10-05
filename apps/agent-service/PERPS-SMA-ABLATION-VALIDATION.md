@@ -63,3 +63,29 @@ Operator persistence now writes only the historical columns; product sessions re
 extended schema contract. This correction adds no migration and does not rewrite either attempt.
 A PostgreSQL regression removes the product-only columns in its isolated database and checks
 an operator open and close through the actual repository.
+
+## Independent process supervision acceptance
+
+The 12-round study `perps-sma-20261005-1405` ended abruptly at 2026-10-05 17:14:12 UTC.
+The macOS power log records the runner's caffeinate client ending at the same time; no caught
+runner error or terminal signal survived. This proves termination, not its initiating cause.
+Its 12 common rounds, 23 hourly opens/closes and seven direction opens/closes are preserved.
+Both active variants had negative net virtual results; these are not a completed six-hour run.
+
+Supervision controlled checks now use actual one-shot launchd jobs and real Node processes.
+The first killed supervisor ended its child through launchd process-group cleanup; the separate
+watchdog recorded RUNNER_DIED and an interrupted report. A second canary deliberately enabled
+AbandonProcessGroup only in its synthetic plist: after SIGKILL of the parent, the independent
+watchdog detected SUPERVISOR_DIED, signaled the orphaned child, confirmed its termination and
+recorded a single terminal notice. Both pairs of synthetic jobs were unloaded. No provider,
+database account, model call or order was involved. Local canary acceptance JSON remains in
+ignored `.data/sma-supervision-canary*/`; these are controlled lifecycle results, not strategy
+or live-provider acceptance. Production plists retain normal process-group cleanup.
+
+Final supervision checks: the repository suite discovered 2,800 tests, with 2,799 passing,
+one skipped and zero failures. The final targeted suite passed all 16 cases, including a
+PostgreSQL read-only projection of interrupted remaining slots. All 17 workspace type checks,
+root lint, formatting, architecture links, Node compilation and Worker dry-run builds passed.
+A controlled macOS notification submission succeeded; visible delivery remains NOT_VERIFIABLE.
+The operator's explicit continuation goal authorizes one newly frozen independently supervised
+run after these corrections. It does not authorize restarting any historical study.
