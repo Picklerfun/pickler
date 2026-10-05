@@ -549,3 +549,8 @@ SMA agents/accounts, no model reservations/calls, next quarter-minute-one start,
 with 30-second tolerance and no resume. Existing tables/JSONB and read-only audit export remain
 the persistence boundary. Preserve 90-second ownership and reject post-expiry release writes;
 never reinterpret historical cost records as zero.
+
+Operator paper-position persistence uses only the original five position columns. Studio-only
+columns are written exclusively for product sessions; laboratory execution does not require
+migration 0027. The PostgreSQL regression removes those columns in an isolated test database
+and verifies an operator open and close. Product persistence still requires its migrations.
