@@ -18,6 +18,9 @@ export function smaStudyReport(
     const omission = study.events.find(
       (e) => e.kind === "data-unavailable" && (e.data as { slot?: number }).slot === slot,
     );
+    const startup = study.events.find(
+      (e) => e.kind === "admission-failed" && (e.data as { slot?: number }).slot === slot,
+    );
     const missed = study.events.find(
       (e) => e.kind === "slot-missed" && (e.data as { slot?: number }).slot === slot,
     );
@@ -40,22 +43,28 @@ export function smaStudyReport(
           (e) => e.key === `${round?.key}:${variant}:${symbol}:final-gate`,
         );
         const execution = study.events.find((e) => e.key === `${variant}:${round?.key}:${symbol}`);
-        const status = omission
-          ? "DATA_UNAVAILABLE"
-          : missed
-            ? "WINDOW_MISSED"
-            : round
-              ? round.executionStatus
-              : scheduledAt === null || now <= scheduledAt + 30000
-                ? "PENDING"
-                : "NOT_ADMITTED";
+        const status = startup
+          ? "STARTUP_BLOCKED"
+          : omission
+            ? "DATA_UNAVAILABLE"
+            : missed
+              ? "WINDOW_MISSED"
+              : round
+                ? round.executionStatus
+                : study.record.stopRequested ||
+                    study.record.decisionStopReason ||
+                    ["completed", "interrupted"].includes(study.record.status)
+                  ? "NOT_ADMITTED"
+                  : scheduledAt === null || now <= scheduledAt + 30000
+                    ? "PENDING"
+                    : "NOT_ADMITTED";
         return {
           slot,
           symbol,
           variant,
           scheduledAt,
           status,
-          phase: omission?.data ?? null,
+          phase: startup?.data ?? omission?.data ?? null,
           initial: choice ?? null,
           final: final?.data ?? null,
           execution: execution?.data ?? null,
