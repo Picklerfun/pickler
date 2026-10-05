@@ -27,6 +27,15 @@
 
 window.DOCS = [
   {
+    date: '2026-10-03',
+    title: 'TestFlight build 12 · primer build desde el monorepo',
+    summary: 'Build 0.1.0 (12) con el código del build 11 ya dentro de Picklerfun/pickler: derivación y parser de Perpl en paquetes compartidos, cuenta de la web apagada. Verifica el release desde el monorepo.',
+    file: 'dev/2026-10-03-testflight-build12.html',
+    types: ['feature'],
+    status: 'shipped',
+    tags: ['mobile', 'testflight', 'ios', 'monorepo'],
+  },
+  {
     date: '2026-10-02',
     title: 'La misma cuenta que en la web · username obligatorio',
     summary: 'Con la wallet desbloqueada la app entra sola a la API del producto y, si la cuenta no tiene username, lo pide sin dejar saltarlo. Apagado mientras no se configure PICKLER_API_URL.',
