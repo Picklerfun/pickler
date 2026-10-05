@@ -1,0 +1,2 @@
+ALTER TABLE "billing"."ai_credit_ledger" ADD COLUMN "entry_id" uuid DEFAULT gen_random_uuid() NOT NULL;--> statement-breakpoint
+CREATE UNIQUE INDEX "ai_credit_ledger_entry_id" ON "billing"."ai_credit_ledger" USING btree ("entry_id");
