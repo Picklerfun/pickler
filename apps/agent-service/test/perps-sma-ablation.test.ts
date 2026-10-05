@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { createHash } from "node:crypto";
 import { PilotError } from "@pickler/core";
 import {
   PERPS_SMA_STRATEGIES,
@@ -13,6 +14,7 @@ import {
   startLeaseHeartbeat,
   smaStudyReport,
   perpsCallCost,
+  canonicalAudit,
   type SmaStudyConfig,
   type PerpsStudyMap,
 } from "@pickler/trading/evaluation";
@@ -405,6 +407,39 @@ test("host rejects paid overrides and model/signing environment fields before da
       }),
     { code: "INVALID_INPUT" },
   );
+});
+
+test("supervision failure projects remaining slots as not admitted without rewriting the study", async (t) => {
+  const f = await fixture(t);
+  const directory = await mkdtemp(join(tmpdir(), "sma-death-report-"));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const configPath = join(directory, "study.json");
+  const envFile = join(directory, "database.env");
+  await writeFile(configPath, JSON.stringify(config));
+  await writeFile(envFile, `DATABASE_URL=${f.research.pool.options.connectionString}\n`, {
+    mode: 0o600,
+  });
+  await writeFile(
+    join(directory, "SMA_STUDY"),
+    JSON.stringify({
+      sessionId: config.sessionId,
+      configHash: createHash("sha256").update(canonicalAudit(config)).digest("hex"),
+    }),
+  );
+  await writeFile(
+    join(directory, "supervision-failure.json"),
+    JSON.stringify({ at: Date.now(), code: "RUNNER_DIED" }),
+  );
+
+  await runSmaStudy({ command: "report", configPath, envFile, output: directory });
+  const report = JSON.parse(await readFile(join(directory, "report.json"), "utf8"));
+
+  assert.equal(report.status, "interrupted");
+  assert.equal(report.persistedStatus, "running");
+  assert.equal(report.rows.length, 144);
+  assert.ok(report.rows.every((row: { status: string }) => row.status === "NOT_ADMITTED"));
+  assert.equal((await f.study.view(config)).record.status, "running");
+  assert.equal(report.modelCalls, 0);
 });
 
 test("pre-start observations preserve the daily baseline across UTC midnight without early entries", async (t) => {
