@@ -84,3 +84,16 @@ returns. Compare direction versus multiframe for the activity hurdle and directi
 for directional confirmation; accounts evolve independently, so economic differences are not
 single-round causal estimates. Six hours remain exploratory. Do not pool past studies as paired
 controls, promote a policy, repeat automatically, or alter parameters for a positive outcome.
+
+## UTC-day startup regression
+
+A prepared account may belong to the UTC day before the first scheduled slot. The original
+risk engine requires continuous minute observations across midnight to establish its daily
+equity baseline. Waiting without observations before admission can therefore leave
+`DAY_BASELINE_PENDING`; it is not an SMA or activity filter rejection.
+
+The runner now performs public risk/funding observations while waiting for the first slot.
+Negative slots cannot admit decisions. This preserves the existing financial baseline rule;
+no day-equity value or timestamp is fabricated or reset. If a valid first observation still
+leaves a baseline pending, the session records `admission-failed`, closes new admission and
+reports `STARTUP_BLOCKED`, rather than silently running a comparison that cannot open.
