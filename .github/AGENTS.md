@@ -11,6 +11,10 @@ preflight/release steps, main-only environment branch restrictions and non-cance
 Never add pull-request deployment or automatic database reset/rollback. Do not cancel a running
 release when a new push arrives. Keep independent Worker Builds disabled before enabling it.
 
+Web builds receive the staging environment's public marketplace and Studio host variables.
+Their fallbacks match the web's canonical two-host defaults; they are build settings, not
+backend runtime secrets. Changing them requires a web rebuild and aligned DNS/auth callbacks.
+
 Read [the deployment guide](../docs/staging-deployment-pipeline.md) and run the controlled
 `scripts/cloudflare/deploy-staging.test.mjs` suite when changing gates, order or credentials.
 Root tests discover that suite. A local dry run is not remote deployment acceptance.
