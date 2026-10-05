@@ -23,6 +23,7 @@ import {
 import type { EvaluationHostRequest } from "../evaluation-host/local.js";
 import { createStudyData } from "./data.js";
 import { keepAwake } from "../paper-study/comparison-host.js";
+import { writeSupervisionJson } from "./sma-supervision.js";
 
 const schema = z
   .object({
@@ -79,7 +80,7 @@ export async function writeSmaReport(directory: string, report: ReturnType<typeo
     ],
     ["report.html", html],
   ]) {
-    const temp = join(directory, `${name}.tmp`);
+    const temp = join(directory, `${name}.${process.pid}.tmp`);
     await writeFile(temp, content!, { mode: 0o600 });
     await rename(temp, join(directory, name!));
   }
@@ -142,11 +143,22 @@ export async function runSmaStudy(input: EvaluationHostRequest) {
     let diagnostics = Promise.resolve();
     let failed = false;
     const diagnostic = (event: unknown) => {
-      diagnostics = diagnostics.then(() =>
-        appendFile(join(output, "diagnostics.jsonl"), JSON.stringify(event) + "\n", {
+      diagnostics = diagnostics.then(async () => {
+        await appendFile(join(output, "diagnostics.jsonl"), JSON.stringify(event) + "\n", {
           mode: 0o600,
-        }),
-      );
+        });
+        if (
+          (event as { kind?: string }).kind === "renewed" &&
+          process.env.PICKLER_SMA_SUPERVISION_TOKEN
+        ) {
+          await writeSupervisionJson(join(output, "runner-health.json"), {
+            token: process.env.PICKLER_SMA_SUPERVISION_TOKEN,
+            pid: process.pid,
+            at: Date.now(),
+            renewal: event,
+          });
+        }
+      });
       void diagnostics.catch(() =>
         controller.abort(new PilotError("PERSISTENCE_FAILED", "Local diagnostics unavailable")),
       );
@@ -180,15 +192,28 @@ export async function runSmaStudy(input: EvaluationHostRequest) {
       const localFailure = await readFile(join(output, "runner-error.jsonl"), "utf8").catch(
         () => "",
       );
+      const supervisionFailure = await readFile(
+        join(output, "supervision-failure.json"),
+        "utf8",
+      ).catch(() => "");
+      const interrupted = Boolean(
+        localFailure ||
+        supervisionFailure ||
+        (processState === "DEAD" && ["running", "closing"].includes(projection.status)),
+      );
+      const effective = interrupted
+        ? smaStudyReport(
+            { ...snapshot.study, record: { ...snapshot.study.record, status: "interrupted" } },
+            snapshot.accounts,
+            Date.now(),
+          )
+        : projection;
       const report = {
-        ...projection,
-        ...(localFailure ||
-        (processState === "DEAD" && ["running", "closing"].includes(projection.status))
-          ? { status: "interrupted" as const }
-          : {}),
+        ...effective,
         processState,
         persistedStatus: projection.status,
         localFailure: localFailure ? JSON.parse(localFailure.trim().split("\n").at(-1)!) : null,
+        supervisionFailure: supervisionFailure ? JSON.parse(supervisionFailure) : null,
         sourcePayloadHash: digest(snapshot),
       };
       await writeSmaReport(output, report);
