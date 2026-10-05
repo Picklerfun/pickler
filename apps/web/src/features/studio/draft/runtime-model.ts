@@ -62,12 +62,12 @@ export function scheduleCopy(open: boolean, intervalHours: number): ScheduleCopy
     };
   }
   return {
-    tag: "HOURLY ONCE PUBLIC",
-    note: "A draft runs only when you run it on paper. Once it is public it checks Perpl every hour on its own; there is no schedule to set.",
-    title: "Run on its own · hourly once public",
+    tag: "PREPARE THEN ENABLE",
+    note: "A draft runs only when you run it on paper. Publish it, complete a successful check for the current configuration, then enable hourly paper checks in Controls.",
+    title: "Run on its own · explicit hourly scheduling",
     rowNote: "A draft runs only when you run it on paper.",
     switchLabel:
-      "Run on its own: a draft runs only when you run it on paper, and hourly once public",
+      "Run on its own: manual while a draft; prepare and enable hourly checks once public",
     intervals: false,
   };
 }
