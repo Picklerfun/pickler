@@ -35,6 +35,7 @@
     "check:staging": "node scripts/check-staging.mjs",
     "build:workers": "npm run build:shared && npm run build:worker --workspace=@pickler/api && npm run build:worker --workspace=@pickler/research-worker && npm run build:worker --workspace=@pickler/trading-worker && npm run build:worker --workspace=@pickler/indexer-worker && npm run build:worker --workspace=@pickler/web",
     "test:workers-local": "node --import tsx --test workers/research/test/worker-flow.test.ts",
+    "test:studio-local": "node scripts/studio/acceptance.mjs",
     "evaluate": "npm run evaluate --workspace=@pickler/agent-service --",
     "check:architecture": "node scripts/check-trading-architecture.mjs",
     "contracts:test:fork": "forge test --root contracts --match-path 'test/fork/*'",
