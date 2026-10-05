@@ -35,6 +35,8 @@ jobs:
           --health-timeout 5s
           --health-retries 10
     env:
+      NEXT_PUBLIC_MARKETPLACE_HOST: ${{ vars.NEXT_PUBLIC_MARKETPLACE_HOST || 'pickler.fun' }}
+      NEXT_PUBLIC_STUDIO_HOST: ${{ vars.NEXT_PUBLIC_STUDIO_HOST || 'app.pickler.fun' }}
       NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
       NEXT_PUBLIC_OAUTH_X_ENABLED: "false"
