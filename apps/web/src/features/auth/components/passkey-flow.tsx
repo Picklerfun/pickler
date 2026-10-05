@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useEffectEvent, useReducer, useState } from "react";
+import { useEffect, useEffectEvent, useReducer, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { WebauthnStamper } from "@turnkey/webauthn-stamper";
 import styles from "../auth.module.css";
@@ -51,6 +51,13 @@ import { WelcomeStep } from "./steps/welcome-step";
 const BACKUP_LABEL = "Backup passkey";
 
 const userAgent = () => (typeof navigator === "undefined" ? null : navigator.userAgent);
+const subscribeDevice = () => () => {};
+const serverUserAgent = () => null;
+
+/** Device copy must match the server for the hydration render, including a closed sheet. */
+function useUserAgent() {
+  return useSyncExternalStore(subscribeDevice, userAgent, serverUserAgent);
+}
 
 /**
  * `window.localStorage`, or null where there is none. Reading the property itself throws in a
@@ -232,7 +239,8 @@ function SignFlow({
   /** The account could not be read after a verified code; the code screen says so, with a retry. */
   const [readFailed, setReadFailed] = useState(false);
 
-  const device = describeDevice(userAgent());
+  const agent = useUserAgent();
+  const device = describeDevice(agent);
 
   /**
    * A ceremony that did not finish — including one the person dismissed, which is why the null
@@ -593,7 +601,7 @@ function SignFlow({
         phase={sheet?.phase ?? "idle"}
         error={sheet?.error ?? null}
         rpId={sheet?.options?.rp.id ?? null}
-        userAgent={userAgent()}
+        userAgent={agent}
         step={sheet?.ceremony === "here" ? sheet.step : undefined}
         onConfirm={confirm}
         // A fresh challenge and back to the question: the one the ceremony failed on is spent or
@@ -645,6 +653,7 @@ function PasskeyAddFlow({
   const studio = useStudioHref();
   const target = destination ?? studio;
   // A preview opens on the screen with its fixture list and reads nothing.
+  const agent = useUserAgent();
   const [screen, setScreen] = useState<AddFlowScreen>(preview === "add" ? "add" : "loading");
   const [passkeysState, setPasskeysState] = useState<PasskeysRead>(
     preview === "add" ? { kind: "ready", passkeys: PREVIEW_PASSKEYS } : { kind: "loading" },
@@ -774,7 +783,7 @@ function PasskeyAddFlow({
         phase={sheet?.phase ?? "idle"}
         error={sheet?.error ?? null}
         rpId={sheet?.options?.rp.id ?? null}
-        userAgent={userAgent()}
+        userAgent={agent}
         onConfirm={confirm}
         onRetry={openSheet}
         onCancel={() => setSheet(null)}
