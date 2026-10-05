@@ -52,3 +52,14 @@ Post-correction repository suite: 2,795 passed, one skipped, zero failed (2,796 
 All 17 workspace type checks and Node/Worker builds passed again. The new traces exclude
 disabled checks from coincident rejection counts; the original stored trace retains its
 explicit `enforced` flags and is not rewritten. No live repetition has been started.
+
+## Operator position persistence regression
+
+The corrected startup attempt `perps-sma-20261005-0053` stopped on its first BTC opening.
+Offline replay of its saved execution frame produced a valid fill. Read-only schema inspection
+showed the laboratory database retained the original five position columns, while shared
+persistence attempted to write eight Studio-only columns. No fill or model charge occurred.
+Operator persistence now writes only the historical columns; product sessions retain their
+extended schema contract. This correction adds no migration and does not rewrite either attempt.
+A PostgreSQL regression removes the product-only columns in its isolated database and checks
+an operator open and close through the actual repository.
