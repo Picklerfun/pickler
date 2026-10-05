@@ -234,7 +234,7 @@ test("HEALTH adds the runtime and the model's cost today once on; off, only the 
       .slice(base.length)
       .map((row) => [row.label, row.value]),
     [
-      ["Runtime", "ON · PAPER · HOURLY"],
+      ["Runtime", "ON · PAPER"],
       ["Model cost today", "≈ $0.06"],
     ],
   );
@@ -249,14 +249,17 @@ test("the model's cost reads in dollars, under a cent said so, unknown a dash", 
 
 // ─── Words for what runs ───────────────────────────────────────────────────────────────────────
 
-test("once on, HOW IT RUNS says it checks hourly on paper and drops ONCE IT RUNS", () => {
-  const view = runtimeEntryView(
-    entryView({ mode: "approve", meanwhile: "wait", smallAusd: 10 }, 25),
-  );
+test("HOW IT RUNS distinguishes available runtime from explicitly enabled scheduling", () => {
+  const base = entryView({ mode: "approve", meanwhile: "wait", smallAusd: 10 }, 25);
+  const view = runtimeEntryView(base);
 
   assert.equal(
     view.statusNote,
-    "It is public on Pickler and checks Perpl and its sources every hour, on paper; it asks you before entering.",
+    "Hourly paper checks are off. Prepare this configuration and enable them in Controls; it asks you before entering.",
+  );
+  assert.equal(
+    runtimeEntryView(base, true).statusNote,
+    "Hourly paper checks are enabled; it asks you before entering.",
   );
   assert.equal(view.modeNote, "ON PAPER · EVERY ENTRY WAITS FOR YOUR TAP · EXITS NEVER WAIT");
   assert.doesNotMatch(view.statusNote, /when the Perpl runtime opens/);
@@ -653,7 +656,10 @@ test("a check's steps read newest first, each at its offset from the start", () 
 test("the strip with no check yet says it checks hourly, or that paused runs none", () => {
   const none = runtimeStrip({ newest: null, detail: null, total: 0, paused: false, now: NOW });
 
-  assert.equal(none.line, "No checks yet · it checks Perpl every hour, on paper");
+  assert.equal(
+    none.line,
+    "No checks yet · prepare it manually, then enable hourly paper checks in Controls",
+  );
   assert.equal(none.count, "0 CHECKS");
   assert.deepEqual(none.log, []);
   assert.match(
