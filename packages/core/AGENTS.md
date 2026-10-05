@@ -376,3 +376,7 @@ Advice pricing v2 pins the reviewed OpenAI-compatible forecast base URL and mode
 ## Studio strategy configuration
 
 `AgentConfig.perpsStrategy` and `SetupPatch.perpsStrategy` select rules, deepseek, jev or combined at product policy version 2.0.0. Missing selection resolves combined without enabling execution. Core owns selection validation and setup history, never strategy execution. Rules reject all free-text entry, exit and prohibition conditions; an empty rules brief is allowed. AI briefs still require entry conditions.
+
+## AI credits
+
+`features/ai-credits/index.ts` exports exact integer unit validation, immutable pricing contracts, account/purchase/operation/ledger ports and the injected trusted payment service. One credit is 1,000,000 units. No provider SDK, database or checkout belongs here. See [AI credits](../../docs/ai-credits.md).
