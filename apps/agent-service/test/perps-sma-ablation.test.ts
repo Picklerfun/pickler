@@ -10,6 +10,7 @@ import {
   finalSmaProposal,
   commonSmaExit,
   createPerpsStudyRunner,
+  startLeaseHeartbeat,
   smaStudyReport,
   perpsCallCost,
   type SmaStudyConfig,
@@ -71,6 +72,8 @@ test("ablation isolates activity and direction while preserving hourly selection
     assert.equal(direction[0]!.proposal.action, hourly[0]!.proposal.action);
     assert.equal(full[0]!.proposal.reason, "RECENT_MOVE_BELOW_COST_HURDLE");
     assert.equal(full[0]!.trace.firstBlock, "RECENT_MOVE_BELOW_COST_HURDLE");
+    assert.deepEqual(hourly[0]!.trace.coincidentBlocks, []);
+    assert.deepEqual(direction[0]!.trace.coincidentBlocks, []);
     assert.equal(
       direction[0]!.trace.checks.find((c) => c.code === "RECENT_MOVE_BELOW_COST_HURDLE")!.enforced,
       false,
@@ -164,14 +167,16 @@ test("real simulator opens and common exits close long/short with identical hori
   }
 });
 
-async function fixture(t: TestContext) {
-  let now = 1800000060000;
+async function fixture(t: TestContext, initialNow = 1800000060000, keepPreparationClock = false) {
+  let now = initialNow;
   const research = await createTestStore(t, () => now);
   const study = new PostgresPerpsStudyStore(research.pool, () => now);
   const paper = new PostgresPerpsPaperStore(research.pool, () => now);
   await study.initialize(config, { acquisitionPolicy: "rest-paced-20s-v1", fixture: true });
   const lease = await study.claim(config);
-  now = (await study.view(config)).record.startedAt!;
+  if (!keepPreparationClock) {
+    now = (await study.view(config)).record.startedAt!;
+  }
   const accounts = async () => {
     const view = await study.view(config);
     const result: PerpsStudyMap<PerpsPaperView> = {};
@@ -400,4 +405,130 @@ test("host rejects paid overrides and model/signing environment fields before da
       }),
     { code: "INVALID_INPUT" },
   );
+});
+
+test("pre-start observations preserve the daily baseline across UTC midnight without early entries", async (t) => {
+  const f = await fixture(t, Date.parse("2026-10-04T23:59:10Z"), true);
+  const runner = createPerpsStudyRunner({
+    study: f.study,
+    paper: f.paper,
+    now: f.now,
+    data: {
+      observe: async () => ({ frames: context(f.now()).evidence.frames, funding: [] }),
+      evidence: async () => context(f.now()).evidence,
+      execution: async () => context(f.now()).evidence.frames,
+    },
+  });
+  await runner.cycle(config, f.lease, new AbortController().signal);
+  assert.equal((await f.study.view(config)).rounds.length, 0);
+  for (let i = 0; i < 3; i++) {
+    f.set(f.now() + 20000);
+    await f.study.renew(config, f.lease);
+  }
+  await runner.cycle(config, f.lease, new AbortController().signal);
+  for (const a of Object.values(await f.accounts())) {
+    assert.equal(a.account.dayEquity, "1000");
+    assert.equal(a.account.positions.length, 0);
+  }
+  for (let i = 0; i < 3; i++) {
+    f.set(f.now() + 20000);
+    await f.study.renew(config, f.lease);
+  }
+  await runner.cycle(config, f.lease, new AbortController().signal);
+  assert.equal((await f.study.view(config)).rounds[0]!.executionStatus, "complete");
+  for (const a of Object.values(await f.accounts())) {
+    assert.equal(a.account.positions.length, 2);
+  }
+});
+test("missing the midnight baseline stops admission instead of running a comparison that cannot open", async (t) => {
+  const f = await fixture(t, Date.parse("2026-10-04T23:59:10Z"), true);
+  for (let i = 0; i < 6; i++) {
+    f.set(f.now() + 20000);
+    await f.study.renew(config, f.lease);
+  }
+  const runner = createPerpsStudyRunner({
+    study: f.study,
+    paper: f.paper,
+    now: f.now,
+    data: {
+      observe: async () => ({ frames: context(f.now()).evidence.frames, funding: [] }),
+      evidence: async () => {
+        throw new Error("No proposals admitted");
+      },
+      execution: async () => {
+        throw new Error("No execution admitted");
+      },
+    },
+  });
+  await runner.cycle(config, f.lease, new AbortController().signal);
+  const view = await f.study.view(config);
+  assert.equal(view.record.decisionStopReason, "DAY_BASELINE_PENDING");
+  assert.equal(view.record.status, "closing");
+  assert.equal(view.rounds.length, 0);
+  for (const a of Object.values(await f.accounts())) {
+    assert.equal(a.account.dayEquity, null);
+    assert.equal(a.account.positions.length, 0);
+  }
+  const report = smaStudyReport(view, await f.accounts(), f.now());
+  assert.equal(report.rows[0]!.status, "STARTUP_BLOCKED");
+  assert.ok(report.rows.filter((r) => r.slot > 0).every((r) => r.status === "NOT_ADMITTED"));
+});
+
+test("the runner itself samples before its first slot across midnight, opens, stops and releases", async (t) => {
+  let now = Date.parse("2026-10-04T23:59:10Z");
+  const research = await createTestStore(t, () => now);
+  const study = new PostgresPerpsStudyStore(research.pool, () => now);
+  const paper = new PostgresPerpsPaperStore(research.pool, () => now);
+  await study.initialize(config, { acquisitionPolicy: "rest-paced-20s-v1" });
+  let timer: ReturnType<typeof startLeaseHeartbeat>;
+  const runner = createPerpsStudyRunner({
+    study,
+    paper,
+    now: () => now,
+    data: {
+      observe: async () => ({ frames: context(now).evidence.frames, funding: [] }),
+      evidence: async () => context(now).evidence,
+      execution: async () => context(now).evidence.frames,
+    },
+    heartbeat: (input) => {
+      timer = startLeaseHeartbeat(input);
+      void timer.stop();
+      return timer;
+    },
+    wait: async (delay, signal) => {
+      while (delay > 0) {
+        signal.throwIfAborted();
+        const step = Math.min(delay, 20000);
+        now += step;
+        delay -= step;
+        timer.tick();
+        await timer.stop();
+      }
+    },
+    onCycle: async () => {
+      const v = await study.view(config);
+      if (v.rounds.length && !v.record.stopRequested) {
+        await study.stop(config);
+      }
+    },
+  });
+  await runner.run(config, new AbortController().signal);
+  const view = await study.view(config);
+  assert.equal(view.rounds.length, 1);
+  assert.deepEqual(view.rounds[0]!.calls, {});
+  for (const v of PERPS_SMA_STRATEGIES) {
+    const a = await paper.view({ ...config, agentId: view.record.agentIds[v]! });
+    assert.equal(a.account.dayEquity, "1000");
+    assert.equal(
+      a.attempts.filter((x) => x.status === "filled" && x.intent.kind === "open").length,
+      2,
+    );
+    assert.equal(a.account.positions.filter((p) => p.closedAt === null).length, 0);
+  }
+  const owner = await research.pool.query(
+    "SELECT owner,expires_at FROM pickler.perps_studies WHERE session_id=$1",
+    [config.sessionId],
+  );
+  assert.equal(owner.rows[0].owner, null);
+  assert.equal(owner.rows[0].expires_at, null);
 });
