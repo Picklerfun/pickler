@@ -97,3 +97,33 @@ Negative slots cannot admit decisions. This preserves the existing financial bas
 no day-equity value or timestamp is fabricated or reset. If a valid first observation still
 leaves a baseline pending, the session records `admission-failed`, closes new admission and
 reports `STARTUP_BLOCKED`, rather than silently running a comparison that cannot open.
+
+## Independent execution and failure notice
+
+The explicitly authorized independent launcher uses two one-shot macOS launchd jobs. Run the
+existing unified CLI with `run --independent --config FILE --env-file DATABASE_ONLY_FILE` after
+preparation. The launcher admits only config v3 SMA and runs preflight first. No model/signing
+credentials are inherited by children. There is no KeepAlive, repeating schedule, resume,
+automatic restart, missed-slot recovery or strategy change. This is local process supervision,
+not a recurring Codex automation or a deployed service.
+
+The supervisor records child identity, exit status and terminating signal. A separate watchdog
+checks the original child and supervisor every ten seconds, and checks renewal health and the
+fixed exit deadline. The supervisor also stops the child if the watchdog disappears. A missing
+heartbeat after 120 seconds or a failed component stops the verified original child, never a
+reused or unrelated PID. PostgreSQL still fences every write with its original lease rules.
+SIGINT, SIGTERM and SIGHUP are named failures. Abrupt SIGKILL may only be observed by the other
+process; the report labels the cause as unavailable unless an exit signal was captured.
+
+`supervision.json`, both plists, identity/health files, `runner-exit.json`,
+`supervision-failure.json` and `supervision-notice.json` are private local evidence. Only one
+terminal notice is admitted. macOS notification submission is recorded separately; submission
+is not proof of visible delivery. An independent process cannot notify while the entire machine
+is powered off. On failure the read-only report includes the supervision diagnostic and marks
+remaining slots NOT_ADMITTED. Missing positions/funding remain pending; the watchdog cannot
+trade, fetch prices, claim a lease, reset history or restart a campaign.
+
+Keep the frozen worktree and the local study directory throughout execution. At completion,
+inspect JSON/CSV/HTML, pending positions/funding and PostgreSQL lease release, then unload only
+the two labels recorded by this study using `launchctl bootout gui/UID/LABEL`. Do not unload jobs
+belonging to other studies or sessions. A future repeat still requires explicit authorization.
