@@ -4,6 +4,15 @@ Read [the root instructions](../../AGENTS.md) and [core instructions](../core/AG
 
 ## Responsibility and current state
 
+`PostgresPerpsRuntimeStore.finishCheck` records current-version connection validation only for
+the completing, successful, complete manual Studio v2 check, under its ownership transaction.
+Historical, incomplete, failed and stale checks cannot set or restore that marker. The generic
+Polymarket/Exa probe is not a Perpl preparation path. Scheduling still requires explicit activation.
+
+The test-only export `@pickler/infrastructure/testing/controlled-worker` holds the dedicated
+port/UUID database fence and controlled HTTP boundary. Production composition must never import
+or install it. See [controlled Studio acceptance](../../docs/studio-acceptance.md).
+
 `@pickler/infrastructure` implements interfaces owned by core and trading. It exports `systemClock`, `ExaResearch` (`WebSearch`/`PageReader`), `PolymarketData` (`MarketData`) and `PostgresResearchStore` (scoped configuration, runs, evidence, decisions and job persistence). Constructors accept configuration; no credentials are embedded.
 
 It also carries the adapters ported from Relayer for the public product: AES-256-GCM crypto byte-compatible with stored values, the Supabase JWT verifier (`jose`), and Turnkey stamping and activity forwarding. The Supabase data adapters that came with them (workspaces, API keys, agents, budgets, profiles, and the PostgREST client the growth functions used) were removed on 2026-09-29: the API reads those tables through the PostgreSQL classes below. supabase-js remains for auth only (`createSupabaseJwtVerifier`, and `createSupabaseAdmin` inside `createWalletAccounts`). `createSampleMarketBoard`, `createSampleLandingReadModel` and `createInMemoryApplicantStore` serve sample content for the public pages until a venue and an indexer exist. The invented agents are not here: they live in `scripts/design/fixtures/` and only the design harness's fixture API serves them; the marketplace reads its agents through `PostgresAgentDirectory` below. `createSampleMarketBoard` (`src/markets/sample-market-board.ts`) holds the six perpetual markets, the squares agents have a public call on, and a deterministic 24-hour trail derived from each mark and its change; it polls no venue and reads no chain. These adapters read the product schemas defined in `src/persistence/product/`; see [supabase/AGENTS.md](../../supabase/AGENTS.md) for the hosted project.
