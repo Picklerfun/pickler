@@ -48,6 +48,31 @@ const fill = (now: number): PerpsPaperFill => ({
   timestamp: now,
   evidence: { fixture: true },
 });
+test("operator opens and closes without Studio-only position columns", async (t) => {
+  const x = await setup(t);
+  await x.research.pool.query(`ALTER TABLE pickler.perps_paper_positions
+    DROP COLUMN check_id, DROP COLUMN config_version, DROP COLUMN leverage,
+    DROP COLUMN margin, DROP COLUMN stop_price, DROP COLUMN take_profit_price,
+    DROP COLUMN exit_due_at, DROP COLUMN close_reason`);
+  await x.repo.initialize(x.scope, 2);
+
+  const opened = await x.repo.begin(x.scope, 2, "legacy-open", intent);
+  await x.repo.complete(x.scope, opened.lease!, fill(x.now()));
+  const closing = await x.repo.begin(x.scope, 2, "legacy-close", {
+    ...intent,
+    kind: "close",
+    notional: "0",
+  });
+  const result = await x.repo.complete(x.scope, closing.lease!, fill(x.now()));
+
+  assert.equal(result.account.positions.length, 1);
+  assert.equal(result.account.positions[0]!.closedAt, x.now());
+  assert.equal(result.account.cash, "999.8");
+  const persisted = await x.research.pool.query(
+    "SELECT document FROM pickler.perps_paper_positions",
+  );
+  assert.equal(persisted.rows[0].document.closedAt, x.now());
+});
 test("parallel initialization grants capital exactly once and scope cannot cross accounts", async (t) => {
   const x = await setup(t);
   await Promise.all([x.repo.initialize(x.scope, 2), x.peer.initialize(x.scope, 2)]);
