@@ -6,6 +6,12 @@ Read [the root instructions](../../AGENTS.md), [core](../../packages/core/AGENTS
 
 ## Current state
 
+`test/studio-fixture-worker.ts` composes the production app and services for controlled local
+acceptance only. It checks the disposable database marker before composition and reroutes only
+external provider transports. Its private dispatcher bridge is test-only, uses a local Research
+Service Binding, and never exists in production routes or OpenAPI. The fixture is typechecked;
+never use it as a deployment entry. See [Studio acceptance](../../docs/studio-acceptance.md).
+
 ```text
 src/
   index.ts                  # Worker entry; builds services lazily from bindings
