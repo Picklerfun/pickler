@@ -83,11 +83,14 @@ export function createPerpsStudyRunner(deps: {
   ) => PerpsPaperRepository;
   leaseDiagnostic?: (event: LeaseDiagnostic) => void;
   onCycle?: () => Promise<void>;
+  wait?: (delay: number, signal: AbortSignal) => Promise<void>;
+  heartbeat?: typeof startLeaseHeartbeat;
 }) {
   const { study, data, models } = deps;
   let paper = deps.paper;
   let assertActive = () => {};
   const now = deps.now ?? Date.now;
+  const pause = deps.wait ?? wait;
   // Every execution receives a common captured frame. No hidden provider fetch is permitted.
   const unavailable: PerpsPaperData = {
     frame: async () => {
@@ -236,10 +239,27 @@ export function createPerpsStudyRunner(deps: {
       });
       return true;
     }
+    if (
+      ablation &&
+      attempted &&
+      strategies.some((s) =>
+        paperRisk(views[s]!.account, views[s]!.attempts, now()).reasons.includes(
+          "DAY_BASELINE_PENDING",
+        ),
+      )
+    ) {
+      await study.event(scope, lease, `slot-${slot}:admission-failed`, "admission-failed", {
+        slot,
+        code: "DAY_BASELINE_PENDING",
+        phase: "startup",
+      });
+      await study.stopDecisions(scope, lease, "DAY_BASELINE_PENDING");
+      return true;
+    }
     const closing = now() >= record.endsAt! || record.stopRequested || stopped;
     const closedThisRound = new Set<string>();
     let sharedEvidence: PerpsEvidence | undefined;
-    if (ablation && !closing) {
+    if (ablation && !closing && slot >= 0) {
       try {
         sharedEvidence = await data.evidence(record, observation, signal, () => ownedGuard());
         validateCommonFrames(sharedEvidence.frames, record.config.network, now());
@@ -610,7 +630,7 @@ export function createPerpsStudyRunner(deps: {
     async run(scope: PerpsStudyScope, signal: AbortSignal) {
       const lease = await study.claim(scope);
       const ablation = (await study.view(scope)).record.config.version === 3;
-      const heartbeat = startLeaseHeartbeat({
+      const heartbeat = (deps.heartbeat ?? startLeaseHeartbeat)({
         lease,
         renew: () => study.renew(scope, lease),
         now,
@@ -628,7 +648,17 @@ export function createPerpsStudyRunner(deps: {
             record.startedAt !== null &&
             now() < record.startedAt
           ) {
-            await wait(Math.min(60000, record.startedAt - now()), combined);
+            // Keep the original daily baseline rule satisfied across UTC midnight.
+            // claimSlot rejects negative slots, so these observations cannot admit entries.
+            if (!(await cycle(scope, lease, combined))) {
+              await deps.onCycle?.();
+              break;
+            }
+            await deps.onCycle?.();
+            await pause(
+              Math.min(Math.max(0, 60000 - (now() - start)), Math.max(0, record.startedAt - now())),
+              combined,
+            );
             continue;
           }
           if (!(await cycle(scope, lease, combined))) {
@@ -637,7 +667,7 @@ export function createPerpsStudyRunner(deps: {
           }
           await deps.onCycle?.();
           const delay = Math.max(0, 60000 - (now() - start));
-          await wait(delay, combined);
+          await pause(delay, combined);
         }
       } catch (error) {
         if (
