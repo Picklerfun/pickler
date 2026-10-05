@@ -1,5 +1,14 @@
 # Web app instructions
 
+The compiled-product acceptance in [Studio acceptance](../../docs/studio-acceptance.md) uses
+real requests and local Queue execution, separate from inert `?stage=` design previews.
+Published Perpl Controls expose explicit hourly scheduling through the existing schedule API.
+Activation requires preparation, runtime availability, management permission and an unpaused
+agent; an existing schedule can still be disabled when those activation conditions disappear.
+Publication alone never enables scheduling. The strategy selector has an explicit accessible name.
+Passkey device copy uses a server-safe external-store snapshot, including closed ceremony sheets,
+so the browser does not replace the server tree during hydration. Acceptance rejects page errors.
+
 Read the root and affected dependency AGENTS.md files before changes. Keep documentation in English.
 
 ## Responsibility and structure
@@ -435,7 +444,8 @@ size of the position it opened, the entries met and held, exits met, never lines
 rationale), `tradeRows` and `tradeCount` (Trades and Overview's newest three: open positions, then
 closed, with P&L), `scheduleCopy` (Console's ON ITS OWN and Overview's switch row: "Unlocks with
 the Perpl runtime" while it is off; once open, a draft runs only when you run it on paper and
-checks hourly once public, and the interval picker is not drawn, R2). Accept / Reject / Ask are decision review and stay out. The client calls are
+requires publication, current preparation and explicit activation in Controls before hourly
+checks; the interval picker is not drawn). Accept / Reject / Ask are decision review and stay out. The client calls are
 the runtime block at the end of `api.ts` (`startPerpsCheck`, `perpsChecks`, `perpsCheck`,
 `perpsPositions`, `perpsRecord`), which the live studio shares. `?stage=draft-console-ran` and
 `?stage=draft-trades-active` stage one finished run (`DraftStaged.perps`); every other draft stage
