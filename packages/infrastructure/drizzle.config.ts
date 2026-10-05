@@ -19,6 +19,7 @@ export default defineConfig({
     "market",
     "wallets",
     "launch",
+    "billing",
   ],
   dbCredentials: { url: process.env.DATABASE_MIGRATION_URL ?? "" },
   strict: true,
