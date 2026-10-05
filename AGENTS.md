@@ -163,6 +163,10 @@ or changing endpoints; CI rejects undocumented operations.
 
 ## Consumer recommendations
 
+Controlled Studio creation and perpetual acceptance is documented in
+[Studio acceptance](docs/studio-acceptance.md). Its test entries and provider boundary must stay
+local-only; ordinary databases, remote providers and deployed activation are outside the suite.
+
 The separate JWT-only `/v1/agent-advice` API returns asynchronous BTC/ETH 24-hour analysis, not
 orders. Read [Agent advice](docs/agent-advice.md) before changes. Core owns authorization/admission
 ports; trading owns analysis policy; runtime owns providers/prompts; infrastructure owns private
