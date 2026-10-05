@@ -230,3 +230,9 @@ loopback PostgreSQL and public Perpl data; no model/signing keys or clients. Pre
 output/start markers, frozen commit/configuration, 24 slots and automatic local reports. No
 monitor, resume, paid calls, transport override or automatic repeat. Trading owns decisions and
 metrics; the host owns lifecycle and safe artifacts.
+
+The SMA runner observes while waiting for its first slot, but admits no negative slots.
+Preserve the original UTC daily-equity rule; `DAY_BASELINE_PENDING` is a terminal startup
+admission failure. Interrupted study reports mark future slots NOT_ADMITTED. The initial
+midnight attempt and its rejected openings are retained; it must not be resumed or repeated
+without new operator authorization.
