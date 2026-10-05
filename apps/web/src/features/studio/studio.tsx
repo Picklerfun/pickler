@@ -57,6 +57,7 @@ import { isLiveSection, studioKind, type LiveSectionKey } from "./live/model";
 import { newAgentFixture } from "./new-agent/fixture";
 import { NewAgent } from "./new-agent/new-agent";
 import { studioLanding } from "./lib/landing";
+import { StudioPending } from "./shell/pending";
 import styles from "./studio.module.css";
 
 type Access = { enabled: boolean; canManage: boolean; workspaceId: string };
@@ -449,6 +450,9 @@ export function Studio({
   /* With no agent every section would be empty, so any section asked for lands on the create
      screen; its Menu lists them disabled. With agents, "+ New agent" opens the same screen. */
   const landing = studioLanding(loaded, agents, section);
+  if (landing === "loading") {
+    return <StudioPending error={error} onRetry={() => window.location.reload()} />;
+  }
   if (landing === "new") {
     return (
       <NewAgent
@@ -476,7 +480,7 @@ export function Studio({
 
   /* A private draft has its own studio (studio-draft-dashboard-v1 D1), whichever section was
      asked for; publishing reloads the agent, which then opens below as a live one. */
-  if (landing !== "loading" && agent && kind === "draft") {
+  if (agent && kind === "draft") {
     return (
       <DraftStudio
         key={agentId}
@@ -511,7 +515,7 @@ export function Studio({
 
   /* A published Perpl agent has its own studio too (live L1), whichever section was asked for; a
      `?section=` it also has carries over, and Go Public lands on its Overview. */
-  if (landing !== "loading" && agent && kind === "live") {
+  if (agent && kind === "live") {
     return (
       <LiveStudio
         key={agentId}
