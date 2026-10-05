@@ -37,6 +37,8 @@ to `main`. Configure secrets and variables as follows; do not put these in runti
 | Repository Actions variable  | `STAGING_DEPLOYMENT_ENABLED`           | `false` initially; `true` only after cutover                                                                          |
 | staging environment variable | `STAGING_WORKER_BUILDS_DISABLED`       | `true` only after independently publishing Cloudflare main triggers are disabled                                      |
 | staging environment variable | `CLOUDFLARE_ACCOUNT_ID`                | `bc8d4adf4860284fda426b24e7377bc2`                                                                                    |
+| staging environment variable | `NEXT_PUBLIC_MARKETPLACE_HOST`         | `pickler.fun`; hostname only, consumed during the web build                                                           |
+| staging environment variable | `NEXT_PUBLIC_STUDIO_HOST`              | `app.pickler.fun`; hostname only, consumed during the web build                                                       |
 | staging environment variable | `NEXT_PUBLIC_SUPABASE_URL`             | Existing staging project's HTTPS origin                                                                               |
 | staging environment variable | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Same public publishable/legacy anon key currently built into staging web; never a service-role key                    |
 | staging environment secret   | `CLOUDFLARE_API_TOKEN`                 | Dedicated reviewed token for deploying the four existing Workers and their bindings in the stated account             |
