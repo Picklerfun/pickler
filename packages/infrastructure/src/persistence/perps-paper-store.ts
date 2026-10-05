@@ -497,6 +497,16 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
       account,
     ]);
     for (const p of account.positions) {
+      if (!isProductPaperSession(account.scope)) {
+        await client.query(
+          `INSERT INTO pickler.perps_paper_positions(account_id,id,symbol,closed_at,document)
+           VALUES($1,$2,$3,$4,$5)
+           ON CONFLICT(account_id,id) DO UPDATE SET
+             closed_at=excluded.closed_at,document=excluded.document`,
+          [id, p.id, p.symbol, p.closedAt, p],
+        );
+        continue;
+      }
       await client.query(
         `INSERT INTO pickler.perps_paper_positions(account_id,id,symbol,closed_at,document,check_id,config_version,leverage,margin,stop_price,take_profit_price,exit_due_at,close_reason)
       VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
