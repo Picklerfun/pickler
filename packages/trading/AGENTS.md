@@ -191,3 +191,9 @@ activity gating and common exits; historical multiframe 1.1.0 remains unchanged.
 `perps-study/sma-report.ts` owns financial/report projections with unknown funding preserved.
 The runner uses one final validated BTC/ETH set, prevents initial holds becoming entries and
 reopening after exits. Never route SMA variants into model registry arms or create paid lanes.
+
+SMA startup waits retain minute observations before slot zero so the unchanged UTC daily
+baseline can be verified. Negative slots never admit decisions. A pending first baseline
+records `admission-failed` and stops admission; do not invent equity, reset the day ledger or
+reinterpret this configuration failure as a strategy hold. Controlled runner tests inject
+clock/wait/heartbeat scheduling while retaining the actual heartbeat and database fencing.
