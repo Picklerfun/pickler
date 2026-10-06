@@ -34,7 +34,7 @@ export function StudioPending({
   const href = useStudioHref();
   return (
     <StudioSidebarProvider>
-      <main className={home.home} data-surface="dark" id="studio-pending">
+      <div className={home.home} data-surface="dark" id="studio-pending">
         <header className={home.top}>
           <Link href={href} className={home.brand}>
             <Image src="/brand/logo.png" alt="" width={22} height={23} priority />
@@ -70,7 +70,7 @@ export function StudioPending({
               ))}
             </SidebarContent>
           </Sidebar>
-          <div className={home.emptyMain}>
+          <main className={home.emptyMain}>
             {error ? (
               <section role="alert">
                 <h1 className={studio.stubTitle}>Could not open Studio</h1>
@@ -80,9 +80,9 @@ export function StudioPending({
             ) : (
               <StudioSkeleton />
             )}
-          </div>
+          </main>
         </div>
-      </main>
+      </div>
     </StudioSidebarProvider>
   );
 }
