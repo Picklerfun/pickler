@@ -251,3 +251,8 @@ local supervision is separate from paused recurring Codex monitors.
 SMA composition writes the runner's safe data-failure phase/predicate diagnostics to its local
 diagnostic log, including failures outside a decision slot. Preserve the original error and
 unknown predicates; diagnostics do not grant retries, relax validation or call models.
+
+New SMA runs identify their native-exception diagnostic format as safe-phase-predicate-native-v2.
+The trading-owned fixed exception/code/cause projection is diagnostic only. Preserve historical
+version-1 records and unknown causes; never infer a network timeout or PostgreSQL failure solely
+from the generic STUDY_OPERATION_FAILED code.
