@@ -129,6 +129,7 @@ test("real simulator opens and common exits close long/short with identical hori
   for (const sign of [1, -1]) {
     for (const variant of PERPS_SMA_STRATEGIES) {
       const ctx = context(undefined, sign);
+      const startingCash = ctx.account.cash;
       const p = smaAblationProposal(ctx, variant)[0]!.proposal;
       const intent = {
         kind: "open" as const,
@@ -165,6 +166,36 @@ test("real simulator opens and common exits close long/short with identical hori
       ctx.evidence.observedAt++;
       assert.equal(commonSmaExit(ctx, "BTC")!.reason, "HORIZON_EXIT");
       assert.equal(finalSmaProposal(ctx, variant, p).action, "close");
+
+      const closeIntent = { ...intent, kind: "close" as const, notional: "0" };
+      const refreshed = context(ctx.evidence.observedAt, sign);
+      const closeFill = simulatePerpsFill(
+        ctx.account,
+        closeIntent,
+        refreshed.evidence.frames[0]!,
+        ctx.evidence.observedAt,
+      );
+      const closed = applyPaperFill(
+        ctx.account,
+        {
+          key: "close-1",
+          intent: closeIntent,
+          status: "pending",
+          reserved: "0",
+          createdAt: ctx.evidence.observedAt,
+          finishedAt: null,
+          reason: null,
+          evidence: null,
+        },
+        closeFill,
+        ctx.evidence.observedAt,
+      );
+      assert.equal(
+        closed.account.positions.filter((position) => position.closedAt === null).length,
+        0,
+      );
+      assert.equal(closed.account.positions[0]!.closedAt, ctx.evidence.observedAt);
+      assert.ok(Number(closed.account.cash) < Number(startingCash));
     }
   }
 });
