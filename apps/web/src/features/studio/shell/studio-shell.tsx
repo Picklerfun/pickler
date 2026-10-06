@@ -8,7 +8,8 @@ import { StudioHeader, StudioTiles } from "./header";
 import type { HeaderTile, RailGroup, StudioIdPrefix } from "./model";
 import { StudioRail } from "./rail";
 import { AgentSelector } from "./agent-selector";
-import { useStudioSidebar } from "./sidebar";
+import { StudioSidebarProvider } from "./sidebar";
+import { Sidebar } from "@pickler/ui/sidebar";
 import { StudioTopBar } from "./top-bar";
 import type { UseAgentStudio } from "./use-agent-studio";
 import styles from "./shell.module.css";
@@ -122,99 +123,96 @@ export function StudioShell<K extends string>({
   children,
 }: StudioShellProps<K>) {
   const { modal } = modals;
-  const sidebar = useStudioSidebar();
   const sidebarId = `${idPrefix}-sidebar`;
   return (
-    <main className={styles.studio} id={`${idPrefix}-studio`} data-surface="dark">
-      <StudioTopBar
-        sidebarOpen={sidebar.open}
-        onToggleSidebar={sidebar.toggle}
-        sidebarId={sidebarId}
-        master={studio.wallets?.master ?? null}
-        onWallets={() => modals.openWallets(null)}
-        onCredits={modals.openCredits}
-        accountHandle={accountHandle}
-        preview={studio.preview}
-        returnContext={{
-          agent: agent.productId ?? agent.id,
-          section: rail.flatMap((group) => group.items).find((item) => item.on)?.key,
-        }}
-      />
-      {strip}
+    <StudioSidebarProvider>
+      <main className={styles.studio} id={`${idPrefix}-studio`} data-surface="dark">
+        <StudioTopBar
+          sidebarId={sidebarId}
+          master={studio.wallets?.master ?? null}
+          onWallets={() => modals.openWallets(null)}
+          onCredits={modals.openCredits}
+          accountHandle={accountHandle}
+          preview={studio.preview}
+          returnContext={{
+            agent: agent.productId ?? agent.id,
+            section: rail.flatMap((group) => group.items).find((item) => item.on)?.key,
+          }}
+        />
+        {strip}
 
-      <div className={styles.body}>
-        <aside
-          className={styles.sidebar}
-          aria-label="Agent workspace"
-          id={sidebarId}
-          data-wide={sidebar.open}
-          data-studio-sidebar
-          inert={sidebar.mobile && !sidebar.open}
-          aria-hidden={(sidebar.mobile && !sidebar.open) || undefined}
-        >
-          <AgentSelector
-            idPrefix={idPrefix}
-            agent={agent}
-            agents={agents}
-            canManage={canManage}
-            newAgentLock={newAgentLock}
-            newAgentLabel={newAgentLabel}
-            status={status}
-            onSwitch={onSwitch}
-            onNew={onNew}
-          />
-          <StudioRail
-            idPrefix={idPrefix}
-            groups={rail}
-            onSection={onSection}
-            footer={railFooter}
-            expanded={sidebar.open}
-          />
-        </aside>
-
-        <div className={styles.main}>
-          <div className={styles.column}>
-            {studio.preview && <PreviewBanner />}
-            <StudioHeader
-              accent={agent.accent}
-              pattern={agent.avatarPattern}
-              name={agent.name ?? "Your agent"}
-              sub={headerSub}
-              side={headerSide}
+        <div className={styles.body}>
+          <Sidebar
+            collapsible="icon"
+            surface="dark"
+            className={styles.sidebar}
+            aria-label="Agent workspace"
+            id={sidebarId}
+            data-studio-sidebar
+          >
+            <AgentSelector
+              idPrefix={idPrefix}
+              agent={agent}
+              agents={agents}
+              canManage={canManage}
+              newAgentLock={newAgentLock}
+              newAgentLabel={newAgentLabel}
+              status={status}
+              onSwitch={onSwitch}
+              onNew={onNew}
             />
-            <StudioTiles tiles={tiles} label={tilesLabel} />
-            {studio.error && <ErrorBanner>{studio.error}</ErrorBanner>}
-            {banner}
-            {children}
+            <StudioRail
+              idPrefix={idPrefix}
+              groups={rail}
+              onSection={onSection}
+              footer={railFooter}
+            />
+          </Sidebar>
+
+          <div className={styles.main}>
+            <div className={styles.column}>
+              {studio.preview && <PreviewBanner />}
+              <StudioHeader
+                accent={agent.accent}
+                pattern={agent.avatarPattern}
+                name={agent.name ?? "Your agent"}
+                sub={headerSub}
+                side={headerSide}
+              />
+              <StudioTiles tiles={tiles} label={tilesLabel} />
+              {studio.error && <ErrorBanner>{studio.error}</ErrorBanner>}
+              {banner}
+              {children}
+            </div>
           </div>
         </div>
-      </div>
 
-      <WalletsModal
-        open={modal?.kind === "wallets"}
-        wallets={studio.wallets}
-        openOn={
-          modal?.kind === "wallets" && modal.toAgent !== null
-            ? (agent.wallet?.walletId ?? null)
-            : null
-        }
-        openToAgent={modal?.kind === "wallets" ? (modal.toAgent ?? true) : true}
-        draft={null}
-        preview={studio.preview}
-        onClose={modals.close}
-        onCredits={modals.openCredits}
-        onMoved={() => {
-          /* The wallets say what moved; the agent's own balance follows on its next read, so a
+        <WalletsModal
+          open={modal?.kind === "wallets"}
+          wallets={studio.wallets}
+          openOn={
+            modal?.kind === "wallets" && modal.toAgent !== null
+              ? (agent.wallet?.walletId ?? null)
+              : null
+          }
+          openToAgent={modal?.kind === "wallets" ? (modal.toAgent ?? true) : true}
+          draft={null}
+          preview={studio.preview}
+          onClose={modals.close}
+          onCredits={modals.openCredits}
+          onMoved={() => {
+            /* The wallets say what moved; the agent's own balance follows on its next read, so a
              failed reload here is not worth a second alert over the modal. */
-          void studio.refresh();
-          void onRefreshAgent().catch(() => undefined);
-        }}
-      />
-      <CreditsModal
-        open={modal?.kind === "credits"}
-        onClose={modals.close}
-        onWallets={() => modals.openWallets(null)}
-      />
-    </main>
+            void studio.refresh();
+            void onRefreshAgent().catch(() => undefined);
+          }}
+        />
+        <CreditsModal
+          open={modal?.kind === "credits"}
+          onClose={modals.close}
+          onWallets={() => modals.openWallets(null)}
+        />
+      </main>
+    </StudioSidebarProvider>
   );
 }
