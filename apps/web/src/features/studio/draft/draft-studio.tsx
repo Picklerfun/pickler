@@ -86,7 +86,7 @@ export function DraftStudio({
   onNew(): void;
 }) {
   const [section, setSection] = useState<DraftSectionKey>(
-    staged?.section ?? initialSection ?? "overview",
+    initialSection ?? staged?.section ?? "overview",
   );
   const wallClock = useNow();
   const now = staged ? staged.now : wallClock;
