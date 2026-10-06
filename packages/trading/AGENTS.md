@@ -197,3 +197,7 @@ baseline can be verified. Negative slots never admit decisions. A pending first 
 records `admission-failed` and stops admission; do not invent equity, reset the day ledger or
 reinterpret this configuration failure as a strategy hold. Controlled runner tests inject
 clock/wait/heartbeat scheduling while retaining the actual heartbeat and database fencing.
+
+SMA observation acquisition rechecks the fixed exit deadline after the public read and before
+observation or execution writes. A read crossing that deadline ends the study with positions
+and funding left pending; it does not extend the closing window.
