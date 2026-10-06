@@ -123,14 +123,6 @@
   background: var(--pk-panel-2);
 }
 
-/* The account as a button (the live studio opens its Account section): the home's round swatch. */
-.accountButton {
-  composes: account from "../home/home.module.css";
-  padding: 0;
-  border: none;
-  cursor: pointer;
-}
-
 /* The status chip (`StatusChip`), in the top bar and beside the name. The draft's DRAFT · PRIVATE
    is the canvas's amber on the panel, not on a wash; the live studio's are on their washes. */
 .status {
@@ -386,8 +378,7 @@
 }
 
 .railItem:focus-visible,
-.chipButton:focus-visible,
-.accountButton:focus-visible {
+.chipButton:focus-visible {
   outline: 2px solid var(--pk-focus);
   outline-offset: 2px;
 }
