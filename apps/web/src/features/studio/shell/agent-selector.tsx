@@ -88,7 +88,7 @@ export function AgentSelector({
             <b>{name}</b>
             {agent.handle && <small>@{agent.handle}</small>}
           </span>
-          <Icon name="chevronDown" size={13} />
+          <Icon name="chevronsUpDown" size={15} />
         </button>
         {menuOpen && (
           <div className={styles.chipMenu} id={menuId}>
