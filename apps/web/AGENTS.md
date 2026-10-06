@@ -901,14 +901,14 @@ completed reads, bounded request counts, visible failure and missing-wallet redi
 ## Wallet ownership and transfers
 
 `shell/wallet-balance-button.tsx` is the shared account-balance disclosure for creation and
-agent Studio. Its `Your wallet` label identifies the creator's wallet, independently of the
+agent Studio. Its `Master wallet` label identifies the creator's wallet, independently of the
 selected agent. AUSD uses the official Agora mark from UI's BrandMark; MON keeps Monad's mark.
 These balances share one control, never a combined total or an implied conversion.
 
 Agent cards say `Agent wallet` or name the agent. `Add funds to agent` opens the existing Wallets
-modal focused on that wallet; `Return to your wallet` reverses the same transfer flow. The focused
+modal focused on that wallet; `Return to master wallet` reverses the same transfer flow. The focused
 view displays From/To names and addresses, available balance for the selected asset, network,
 and the existing passkey review. `All wallets` returns to the creator/agent overview. Reuse the
 same transfer model, prepare/confirm endpoints and refresh ownership; do not create another wallet
 picker, signer or transaction implementation. Persisted `master` identifiers and section keys
-are unchanged even where their visible labels now say `Your wallet`.
+are unchanged even where their visible labels now say `Master wallet`.
