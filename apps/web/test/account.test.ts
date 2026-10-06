@@ -4,6 +4,7 @@ import {
   AUTH_CALLBACK_PATH,
   isEmail,
   sendEmailCode,
+  signOutAccount,
   signInWithProvider,
   verifyEmailCode,
 } from "../src/features/auth/lib/account";
@@ -142,4 +143,52 @@ test("anything that is not a rejected code throws, so it is not read as a wrong 
       JSON.stringify(broken),
     );
   }
+});
+
+test("sign-out waits for Supabase to end the session before succeeding", async () => {
+  const calls: string[] = [];
+  let complete!: () => void;
+  const finished = new Promise<void>((resolve) => {
+    complete = resolve;
+  });
+  const pending = signOutAccount({
+    auth: {
+      async signOut() {
+        calls.push("started");
+        await finished;
+        calls.push("completed");
+        return { error: null };
+      },
+    },
+  });
+  assert.deepEqual(calls, ["started"]);
+  complete();
+  await pending;
+  assert.deepEqual(calls, ["started", "completed"]);
+});
+
+test("sign-out cannot succeed with missing auth or a provider error", async () => {
+  await assert.rejects(() => signOutAccount(null), /not configured/);
+  await assert.rejects(
+    () =>
+      signOutAccount({
+        auth: {
+          async signOut() {
+            return { error: { message: "Session could not be revoked" } };
+          },
+        },
+      }),
+    /could not be revoked/,
+  );
+  await assert.rejects(
+    () =>
+      signOutAccount({
+        auth: {
+          async signOut() {
+            throw new Error("Transport failed");
+          },
+        },
+      }),
+    /Transport failed/,
+  );
 });
