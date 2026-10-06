@@ -39,3 +39,6 @@ From the root: `npm run typecheck --workspace=@pickler/ui` and `npm run lint`. R
 shapes. It uses the surface rule token and carries no visible loading copy or animation. Consumers
 provide a labelled `role="status"` region and `aria-busy`, and own geometry matching their content.
 Never replace errors, unknown balances or passkey authorization prompts with indefinite skeletons.
+
+`Icon` includes `sidebar` (PanelLeft) for a labelled sidebar disclosure. Keep the control visible
+in both expanded and collapsed states; its accessible name and expanded state belong to its host.
