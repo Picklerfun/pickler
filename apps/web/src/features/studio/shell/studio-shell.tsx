@@ -64,7 +64,7 @@ export interface StudioShellProps<K extends string> {
   studio: Pick<UseAgentStudio, "wallets" | "preview" | "error" | "refresh" | "readWallets">;
   /** `useShellModals(studio.readWallets)`. */
   modals: ShellModals;
-  /** The selected workspace's status chip (`StatusChip`), below its switcher. */
+  /** The selected workspace's status chip (`StatusChip`), beside its content heading. */
   status: ReactNode;
   /** The rail's groups, with the current section on. */
   rail: RailGroup<K>[];
@@ -157,7 +157,11 @@ export function StudioShell<K extends string>({
               canManage={canManage}
               newAgentLock={newAgentLock}
               newAgentLabel={newAgentLabel}
-              status={status}
+              wallet={
+                studio.wallets?.agents.find(
+                  (wallet) => wallet.walletId === agent.wallet?.walletId,
+                ) ?? null
+              }
               onSwitch={onSwitch}
               onNew={onNew}
             />
@@ -177,7 +181,12 @@ export function StudioShell<K extends string>({
                 pattern={agent.avatarPattern}
                 name={agent.name ?? "Your agent"}
                 sub={headerSub}
-                side={headerSide}
+                side={
+                  <div className={styles.headerActions}>
+                    {status}
+                    {headerSide}
+                  </div>
+                }
               />
               <StudioTiles tiles={tiles} label={tilesLabel} />
               {studio.error && <ErrorBanner>{studio.error}</ErrorBanner>}
