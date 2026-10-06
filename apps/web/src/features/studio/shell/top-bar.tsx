@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { StudioWallets } from "../api";
 import { formatUnits, unitsOf } from "../new-agent/model";
 import type { StudioReturnContext } from "./account-return";
+import { StudioSidebarToggle } from "./sidebar";
 import { AccountMenu } from "./account-menu";
 import home from "../home/home.module.css";
 import topBar from "../new-agent/new-agent.module.css";
@@ -16,6 +17,9 @@ export interface StudioTopBarProps {
   onWallets(): void;
   /** The AI credits pill: open the credits modal. */
   onCredits(): void;
+  sidebarOpen: boolean;
+  onToggleSidebar(): void;
+  sidebarId: string;
   accountHandle: string | null;
   preview: boolean;
   returnContext?: StudioReturnContext;
@@ -24,6 +28,9 @@ export interface StudioTopBarProps {
 /** Global account and balance controls; workspace selection belongs to the sidebar. */
 export function StudioTopBar({
   master,
+  sidebarOpen,
+  onToggleSidebar,
+  sidebarId,
   onWallets,
   onCredits,
   accountHandle,
@@ -36,6 +43,7 @@ export function StudioTopBar({
         <Image src="/brand/logo.png" alt="" width={22} height={23} priority />
         <span>PICKLER</span>
       </Link>
+      <StudioSidebarToggle open={sidebarOpen} onToggle={onToggleSidebar} controls={sidebarId} />
       <span className={home.spacer} />
       <span className={styles.testnet}>TESTNET</span>
       <button
