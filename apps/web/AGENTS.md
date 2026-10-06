@@ -855,3 +855,14 @@ The sidebar motion acceptance also checks delayed hover labels, pointer exit/act
 return-focus without stale tooltips, genuine keyboard labels, collapse reset, and navigation icon
 focus/stroke geometry on draft/live fixtures. Do not disable keyboard focus or remount menu controls
 to clear a tooltip.
+
+## Route loading indicator
+
+The server root layout mounts `nextjs-toploader` once for both products, using `--pk-lime`,
+a three-pixel fixed bar, no spinner and no shadow. Use the library's `useRouter` from
+`nextjs-toploader/app` for programmatic `push`/`replace`; ordinary Next.js links remain unchanged.
+Do not add another progress timer or navigation listener. Hash-only changes and sidebar section
+selection are not route loads. Reduced-motion preferences disable bar transitions. This global
+navigation indicator complements component Skeletons; it does not report model or trading progress.
+The controlled account-menu acceptance delays a real local route response and verifies the bar
+appears without layout displacement, then clears after navigation.
