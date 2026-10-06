@@ -102,6 +102,11 @@ It validates/builds before migrating, then publishes Research, Trading, API and 
 commit. Keep it disabled until the independent Cloudflare main publishers are disabled and its
 staging environment credentials are configured. `npm run deploy:staging` defaults to preflight;
 only the explicitly gated main Actions run may publish. Root tests include its controlled suite.
+The independent `staging-migrations.yml` workflow runs the canonical Supabase migrator on main
+while that coordinated gate is disabled. Existing Cloudflare Builds continue independently; the
+user accepts their running concurrently with migrations. This does not guarantee database-first
+publication. Operator secrets remain scoped to GitHub staging; no Cloudflare token is needed for
+this migration-only job.
 
 The unified implementation adds request-scoped Hono composition in `workers/api`, private console
 identity links, PostgreSQL monetary budgets and shared research runtime. Read `workers/api/AGENTS.md` before changes.
