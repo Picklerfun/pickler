@@ -2,8 +2,16 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button, Icon, Skeleton } from "@pickler/ui";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+} from "@pickler/ui/dropdown-menu";
 import { getSupabase } from "@/features/auth/lib/supabase-browser";
 import { signOutAccount } from "@/features/auth/lib/account";
 import { profileFromStudio, type StudioReturnContext } from "./account-return";
@@ -21,9 +29,7 @@ export function AccountMenu({
   returnContext?: StudioReturnContext | undefined;
 }) {
   const router = useRouter();
-  const id = useId();
   const root = useRef<HTMLDivElement>(null);
-  const profile = useRef<HTMLAnchorElement>(null);
   const username = useRef<HTMLSpanElement>(null);
   const signingOut = useRef(false);
   const [profileHref, setProfileHref] = useState("/account?section=profile");
@@ -50,31 +56,6 @@ export function AccountMenu({
     return () => observer.disconnect();
   }, [handle]);
 
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-    profile.current?.focus();
-    const away = (event: PointerEvent) => {
-      if (event.target instanceof Node && !root.current?.contains(event.target)) {
-        setOpen(false);
-      }
-    };
-    const escape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        setOpen(false);
-        root.current?.querySelector<HTMLButtonElement>("button")?.focus();
-      }
-    };
-    document.addEventListener("pointerdown", away);
-    document.addEventListener("keydown", escape);
-    return () => {
-      document.removeEventListener("pointerdown", away);
-      document.removeEventListener("keydown", escape);
-    };
-  }, [open]);
-
   async function signOut() {
     if (preview || signingOut.current) {
       return;
@@ -95,17 +76,7 @@ export function AccountMenu({
   }
 
   return (
-    <div
-      ref={root}
-      className={styles.wrap}
-      data-account-menu
-      data-open={open}
-      onBlur={(event) => {
-        if (!event.currentTarget.contains(event.relatedTarget)) {
-          setOpen(false);
-        }
-      }}
-    >
+    <div ref={root} className={styles.wrap} data-account-menu data-open={open}>
       {handle && (
         <span className={styles.username} aria-hidden="true">
           <span ref={username} className={styles.label}>
@@ -113,50 +84,63 @@ export function AccountMenu({
           </span>
         </span>
       )}
-      <Button
-        variant="ghost"
-        size="sm"
-        className={styles.trigger}
-        aria-label={handle ? `Account, @${handle}` : "Account"}
-        aria-expanded={open}
-        aria-controls={id}
-        onClick={() => {
-          setProfileHref(
-            profileFromStudio(window.location.pathname, window.location.search, returnContext),
-          );
-          setOpen(!open);
+      <DropdownMenu
+        modal={false}
+        open={open}
+        onOpenChange={(next) => {
+          if (busy && !next) {
+            return;
+          }
+          if (next) {
+            setProfileHref(
+              profileFromStudio(window.location.pathname, window.location.search, returnContext),
+            );
+          }
+          setOpen(next);
         }}
       >
-        <span className={studio.swatch} aria-hidden="true">
-          <i data-swatch="lime" />
-          <i data-swatch="violet" />
-          <i data-swatch="amber" />
-          <i data-swatch="blue" />
-        </span>
-      </Button>
-      {open && (
-        <div className={styles.panel} id={id}>
-          {handle && <p className={styles.identity}>@{handle}</p>}
-          <Link
-            ref={profile}
-            href={profileHref}
-            className={styles.item}
-            onClick={() => setOpen(false)}
-          >
-            <Icon name="user" size={16} />
-            My profile
-          </Link>
+        <DropdownMenuTrigger asChild>
           <Button
             variant="ghost"
             size="sm"
-            className={styles.item}
-            disabled={busy || preview}
-            title={preview ? "Sign out is unavailable in a design preview." : undefined}
-            onClick={() => void signOut()}
+            className={styles.trigger}
+            aria-label={handle ? `Account, @${handle}` : "Account"}
           >
-            <Icon name="lock" size={16} />
-            {busy ? <Skeleton shape="line" className={styles.loading} /> : "Sign out"}
+            <span className={studio.swatch} aria-hidden="true">
+              <i data-swatch="lime" />
+              <i data-swatch="violet" />
+              <i data-swatch="amber" />
+              <i data-swatch="blue" />
+            </span>
           </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          data-surface="dark"
+          className={styles.panel}
+          align="end"
+          sideOffset={10}
+        >
+          <DropdownMenuGroup>
+            {handle && <DropdownMenuLabel className={styles.identity}>@{handle}</DropdownMenuLabel>}
+            <DropdownMenuItem asChild>
+              <Link href={profileHref} className={styles.item} onClick={() => setOpen(false)}>
+                <Icon name="user" size={16} />
+                My profile
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              className={styles.item}
+              disabled={busy || preview}
+              title={preview ? "Sign out is unavailable in a design preview." : undefined}
+              onSelect={(event) => {
+                event.preventDefault();
+                void signOut();
+              }}
+            >
+              <Icon name="lock" size={16} />
+              {busy ? <Skeleton shape="line" className={styles.loading} /> : "Sign out"}
+            </DropdownMenuItem>
+          </DropdownMenuGroup>
           {busy && (
             <span className={styles.srOnly} role="status">
               Signing out
@@ -167,8 +151,8 @@ export function AccountMenu({
               {error}
             </p>
           )}
-        </div>
-      )}
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   );
 }
