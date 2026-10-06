@@ -15,7 +15,7 @@ import styles from "./build.module.css";
 /**
  * Limits & funding (canvas 479–526, spec §3.3, D11). Left, its wallet: the address, Refresh
  * (re-reads `GET /wallets`), AUSD and MON, when it was last read, what arrived between two reads,
- * and "Fund from master wallet". Right, the hard caps, saved through `draft.saveSetup`: Pickler
+ * and "Add funds to agent". Right, the hard caps, saved through `draft.saveSetup`: Pickler
  * holds each trade to them, so the copy says so and nothing is signed (D11). Caps it was never
  * given read STARTER CAPS, as the canvas tags them, and Save writes them as they are.
  */
@@ -107,7 +107,7 @@ function WalletCard({
     return (
       <div className={styles.card} id="draft-limits-wallet">
         <div className={styles.cardHead}>
-          <h3 className={styles.cardLabel}>ITS WALLET</h3>
+          <h3 className={styles.cardLabel}>AGENT WALLET</h3>
         </div>
         <p className={styles.cardNote}>
           This draft was made before agents came with their own wallet, so it has none. It needs one
@@ -136,7 +136,7 @@ function WalletCard({
   return (
     <div className={styles.card} id="draft-limits-wallet">
       <div className={styles.cardHead}>
-        <h3 className={styles.cardLabel}>ITS WALLET</h3>
+        <h3 className={styles.cardLabel}>AGENT WALLET</h3>
         <span className={styles.plainTag}>PICKLER MAY TRADE</span>
       </div>
       <div className={styles.walletRow}>
@@ -187,7 +187,7 @@ function WalletCard({
         disabled={!canManage}
         onClick={() => onWallets(true)}
       >
-        Fund from master wallet
+        Add funds to agent
       </button>
       <span className={styles.hint} data-align="center">
         ONE PASSKEY PER TOKEN · OR SEND TO THE ADDRESS FROM ANY MONAD WALLET
