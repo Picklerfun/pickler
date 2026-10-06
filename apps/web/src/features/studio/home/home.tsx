@@ -278,7 +278,11 @@ export function Home({
           onSwitch={onSwitch}
           onNew={onNew}
         />
-        <AccountMenu handle={accountHandle} preview={preview !== null} />
+        <AccountMenu
+          handle={accountHandle}
+          preview={preview !== null}
+          returnContext={{ agent: agent.productId ?? agent.id, section: "home" }}
+        />
       </header>
 
       {status.strip && latest && <Strip strip={status.strip} log={stripLog(events, latest)} />}
