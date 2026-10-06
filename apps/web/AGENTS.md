@@ -800,11 +800,14 @@ and touch screens, including sections selected after the initial page load.
 
 ## Collapsible agent sidebar
 
-The shared draft/live shell and pending frame compose the official shadcn Sidebar from
+The shared draft/live shell and pending frame compose the installed shadcn Sidebar from
 `@pickler/ui/sidebar`. `shell/sidebar.tsx` only bridges the existing `lib/rail.ts` desktop
 preference to the controlled `SidebarProvider` and labels `SidebarTrigger`. It does not implement
 collapse, mobile state, keyboard listeners, animation or focus handling. Desktop widths remain
-218px and 64px. shadcn owns the gap/container transition and group/menu collapse styling.
+218px and 64px. shadcn owns state, layout slots and interactions; shared UI styling synchronizes
+the gap/container, labels and header contraction with 320ms easing. Menu button nodes, row heights
+and icon padding stay stable. Tooltips retain their trigger tree on desktop; only collapsed
+TooltipContent mounts. Never reparent buttons when toggling state.
 
 Below 768px, shadcn opens a modal Sheet with vertical navigation, backdrop, Escape dismissal,
 focus containment and return to the navbar disclosure. Mobile state is separate from the saved
@@ -825,3 +828,25 @@ also includes the existing Pickler stylesheet. Semantic colors/radii/shadows map
 `--pk-*` in that stylesheet. Existing CSS Modules and controls retain their presentation.
 Use the package public subpaths, never relative imports into the UI package. See
 [UI instructions](../../packages/ui/AGENTS.md) for adding or updating registry components.
+
+## Studio layout and motion
+
+The shell is a chrome wrapper with a global header, a body containing Sidebar and a single main
+content landmark, and portal dialogs. The pending frame follows the same landmark hierarchy.
+The global wallet/credits/account group stays on one row; below 640px that group occupies an
+explicit second header row. Sidebar state never changes navbar dimensions.
+
+The body is an inline-size container. The desktop reading measure is derived from its full width,
+the configured expanded sidebar width and main padding, capped at 1120px. Collapsing navigation
+centers the same canvas smoothly rather than reflowing cards. Below 768px the Sheet does not take
+layout width and content uses the available mobile width. Use CSS for layout, not React resize
+state, frame-by-frame DOM measurements or global `transition: all`.
+
+Metrics and draft Overview/Build and live Build grids use explicit screen breakpoints rather than
+`auto-fit` thresholds that change mid-collapse. Responsive row changes occur at documented screen
+sizes; they are not animated as if CSS could interpolate grid row counts or text wrapping.
+`scripts/design/sidebar-motion.mjs` checks both directions at 1440/1086/900/768px, DOM identity,
+fading labels, geometry synchronization, stable content measure and vertical placement, then
+resizes through the mobile and grid breakpoints. It is part of the Design rendered CI job and can
+reuse an explicit loopback fixture with `DESIGN_BASE_URL`. Keep the account-menu acceptance for
+keyboard, mobile Sheet and profile-return interactions.
