@@ -58,9 +58,9 @@ export function StudioRail<K extends string>({
                         setOpenMobile(false);
                       }}
                     >
-                      <Icon name={item.icon} />
+                      <Icon name={item.icon} size={16} />
                       <span data-sidebar-label>{item.label}</span>
-                      {item.locked && <Icon name="lock" />}
+                      {item.locked && <Icon name="lock" size={16} />}
                     </SidebarMenuButton>
                     {item.badge !== undefined && item.badge > 0 && (
                       <SidebarMenuBadge>{item.badge}</SidebarMenuBadge>
