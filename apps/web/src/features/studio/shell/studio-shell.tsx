@@ -8,6 +8,7 @@ import { StudioHeader, StudioTiles } from "./header";
 import type { HeaderTile, RailGroup, StudioIdPrefix } from "./model";
 import { StudioRail } from "./rail";
 import { AgentSelector } from "./agent-selector";
+import { useStudioSidebar } from "./sidebar";
 import { StudioTopBar } from "./top-bar";
 import type { UseAgentStudio } from "./use-agent-studio";
 import styles from "./shell.module.css";
@@ -121,9 +122,14 @@ export function StudioShell<K extends string>({
   children,
 }: StudioShellProps<K>) {
   const { modal } = modals;
+  const sidebar = useStudioSidebar();
+  const sidebarId = `${idPrefix}-sidebar`;
   return (
     <main className={styles.studio} id={`${idPrefix}-studio`} data-surface="dark">
       <StudioTopBar
+        sidebarOpen={sidebar.open}
+        onToggleSidebar={sidebar.toggle}
+        sidebarId={sidebarId}
         master={studio.wallets?.master ?? null}
         onWallets={() => modals.openWallets(null)}
         onCredits={modals.openCredits}
@@ -137,7 +143,13 @@ export function StudioShell<K extends string>({
       {strip}
 
       <div className={styles.body}>
-        <aside className={styles.sidebar} aria-label="Agent workspace">
+        <aside
+          className={styles.sidebar}
+          aria-label="Agent workspace"
+          id={sidebarId}
+          data-wide={sidebar.open}
+          data-studio-sidebar
+        >
           <AgentSelector
             idPrefix={idPrefix}
             agent={agent}
@@ -149,7 +161,13 @@ export function StudioShell<K extends string>({
             onSwitch={onSwitch}
             onNew={onNew}
           />
-          <StudioRail idPrefix={idPrefix} groups={rail} onSection={onSection} footer={railFooter} />
+          <StudioRail
+            idPrefix={idPrefix}
+            groups={rail}
+            onSection={onSection}
+            footer={railFooter}
+            expanded={sidebar.open}
+          />
         </aside>
 
         <div className={styles.main}>
