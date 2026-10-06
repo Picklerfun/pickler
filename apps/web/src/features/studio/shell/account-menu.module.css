@@ -2,7 +2,8 @@
   position: relative;
   display: flex;
   align-items: center;
-  flex: 0 0 auto;
+  flex: 0 1 auto;
+  min-width: 38px;
   height: 38px;
   border-radius: var(--pk-radius-pill);
   isolation: isolate;
@@ -36,6 +37,8 @@
 }
 .username {
   display: block;
+  flex: 0 1 auto;
+  min-width: 0;
   width: max-content;
   max-width: 0;
   height: 38px;
@@ -43,8 +46,8 @@
   overflow: hidden;
   opacity: 0;
   transition:
-    max-width 240ms ease,
-    opacity 180ms ease;
+    max-width 360ms ease,
+    opacity 240ms ease;
 }
 .label {
   display: block;
@@ -61,7 +64,7 @@
 .wrap:hover .username,
 .wrap:focus-within .username,
 .wrap[data-open="true"] .username {
-  max-width: min(240px, calc(100vw - 80px));
+  max-width: min(var(--account-label-width, 240px), calc(100vw - 80px));
   opacity: 1;
 }
 .panel {
@@ -126,7 +129,7 @@
   }
 }
 
-@media (hover: none) {
+@media (hover: none), (max-width: 640px) {
   .username {
     display: none;
   }
