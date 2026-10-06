@@ -247,3 +247,7 @@ clients; read-only report regeneration delegates to the existing CLI. Keep the d
 for controlled tests, but use independent supervision for long operator runs. Never mistake
 notification submission for delivery or restart a failed study automatically. This explicit
 local supervision is separate from paused recurring Codex monitors.
+
+SMA composition writes the runner's safe data-failure phase/predicate diagnostics to its local
+diagnostic log, including failures outside a decision slot. Preserve the original error and
+unknown predicates; diagnostics do not grant retries, relax validation or call models.
