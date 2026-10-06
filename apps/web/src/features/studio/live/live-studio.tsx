@@ -207,6 +207,7 @@ export function LiveStudio({
 
   return (
     <StudioShell<LiveSectionKey>
+      accountHandle={accountHandle}
       idPrefix="live"
       agent={agent}
       agents={agents}
@@ -309,7 +310,6 @@ export function LiveStudio({
       onRefreshAgent={onRefreshAgent}
       onSwitch={onSwitch}
       onNew={onNew}
-      onAccount={() => setSection("account")}
       strip={
         <LiveStrip
           view={
