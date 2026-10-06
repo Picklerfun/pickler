@@ -931,6 +931,13 @@ h2 {
   cursor: pointer;
   font-family: var(--pk-font);
 }
+/* A crisp outline shares the product focus treatment; no halo around small navigation icons. */
+[data-sidebar="menu-button"]:focus-visible,
+[data-slot="sidebar-trigger"]:focus-visible {
+  box-shadow: none;
+  outline: 2px solid var(--pk-focus);
+  outline-offset: 2px;
+}
 [data-sidebar="menu-button"]:hover,
 [data-sidebar="menu-button"][data-active="true"] {
   background: var(--pk-panel);
