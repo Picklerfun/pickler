@@ -185,8 +185,51 @@ The operator explicitly authorized one new run with “sigue, te autorizo”. St
 Its fixed decision window is 2026-10-06 02:01–08:01 UTC, with virtual exits permitted until
 08:16 UTC at most. This avoids another UTC day rollover without changing daily risk,
 strategies, costs, acquisition thresholds or model budgets. The preceding failed study remains
-intact and is not pooled as a paired control. Full prospective acceptance is pending until
-this run ends and its terminal artifacts and released resources are verified.
+intact and is not pooled as a paired control.
+
+The runner failed at 2026-10-06 07:40:17.488 UTC with `INVALID_MARKET_DATA`, after
+five hours, thirty-nine minutes and seventeen seconds of the planned decision window.
+The supervisor recorded child exit code 1 with no signal. **Six-hour acceptance failed.**
+The terminal report contains 144 unique decision rows: eighteen complete common slots,
+five `DATA_UNAVAILABLE` omissions (4, 11, 12, 17 and 18), and one `NOT_ADMITTED` slot (23).
+Four omissions occurred before initial evidence was available; slot 4 failed during final
+refresh and retained its initial proposals. These are not strategy holds or zero returns.
+
+| Variant          | Opens / closes | Gross realized AUSD | Fees AUSD | Recorded funding AUSD | Net realized cash AUSD |
+| ---------------- | -------------- | ------------------- | --------- | --------------------- | ---------------------- |
+| `sma-hourly`     | 14 / 14        | -0.272574           | 0.953118  | 0                     | -1.225692              |
+| `sma-direction`  | 5 / 5          | -0.064646           | 0.341072  | 0                     | -0.405718              |
+| `sma-multiframe` | 0 / 0          | 0                   | 0         | 0                     | 0                      |
+
+All nineteen positions closed; no funding remained pending. The eighteen common rounds
+provide thirty-six asset/round observations. Offline replay matches all 108 initial proposals
+and traces, 108 final actions and 108 final risk projections. A consistent read-only snapshot
+reproduces all 38 filled attempts, original position projections and exact cash ledgers through
+the frozen business simulator and transitions. Model calls, cost and new reservations are zero.
+Both active variants lost money after fees; the inactive variant's zero does not establish
+superiority. Earlier samples are not pooled as paired controls.
+
+The last recorded price pairs before the error passed their checks: BTC skew was one second,
+ETH skew zero. Renewal succeeded before the failure and its confirmed expiration was still
+in the future. The failure record preserves only the safe code and time, without the rejected
+payload, predicate or validation phase. The exact rejected component and underlying cause are
+`NOT_VERIFIABLE`. Do not infer a transport timeout or relax schema validation from this evidence.
+Safe stage/predicate diagnostics with bounded rejected public evidence are proposed future work,
+not a demonstrated fix or permission to repeat the run.
+
+The local report is `interrupted` and the process is dead. The PostgreSQL document remains
+historically `running` with no stop reason; the read-only audit preserves that discrepancy.
+PostgreSQL owner and expiration are null. Runner, supervisor, watchdog and awake guard are gone;
+both study-specific one-shot jobs were unloaded. No restart, provider request, historical state
+rewrite or worktree removal was performed during this diagnosis.
+
+Ignored evidence in the new study directory includes `report.html`, `report.csv`, `report.json`,
+`interrupted-terminal-snapshot.json`, `interrupted-artifact-verification.json`,
+`interrupted-decision-replay-verification.json`, `interrupted-final-risk-replay-verification.json`,
+`interrupted-fill-ledger-replay-verification.json`, `interrupted-postgresql-lease-release.json`
+and `interrupted-resource-release-verification.json`. Artifact checks prove row identity,
+CSV/JSON parity, shared data, exact ledger sums and HTML safety; visual rendering is unverified.
+The complete six-hour prospective gate remains unmet. No automatic repetition is authorized.
 
 ## Exit deadline regression discovered during continuation
 
@@ -199,9 +242,9 @@ better or worse strategy performance.
 The delivery code now rechecks the SMA exit deadline after observation acquisition, before
 observation or execution writes, and completes with unresolved positions left pending. The
 controlled regression uses the real coordinator, simulator and isolated repositories, with no
-provider or model calls. The ongoing run remains on its original frozen commit; this correction
-has not been deployed into that process. Its eventual execution timestamps must be checked
-separately, and a passing controlled regression does not prove the new boundary behavior was
+provider or model calls. The interrupted run retained its original frozen commit; this correction
+was not injected into that process. All 38 recorded attempts passed their admission and exit
+deadline checks. That timestamp evidence does not prove the corrected boundary behavior was
 exercised prospectively. No automatic repeat or restart is authorized.
 
 ## Delivery visual-check readiness correction
@@ -225,7 +268,7 @@ readiness defect and correction, without proving every historical CI failure's i
 All nine CI checks passed on delivery commit `fc766ebdfe8a41d25f0e37b3e4c535168775c8c4`,
 including the full rendered check, PostgreSQL integration, lint, types, repository tests,
 Node compilation and Worker dry-run builds. This does not establish completion of the
-still-running prospective study on its separate frozen commit.
+interrupted prospective study on its separate frozen commit.
 
 ## Controlled simulator round-trip coverage
 
@@ -237,5 +280,7 @@ These six round trips are synthetic execution checks, not provider decisions or 
 
 All fourteen SMA scenarios passed again with isolated PostgreSQL, zero skips and zero failures.
 Agent-service types, targeted lint and formatting also passed. No strategy, threshold, provider
-or frozen-run code changed. The full current-head CI must be checked after these test-only
-coverage and documentation changes are published.
+or frozen-run code changed. All nine CI checks passed on exact delivery commit
+`d3591a96a949c046e9ceb28ed50b8afb9d8b22e8`, including PostgreSQL integration, lint, types,
+repository tests, Node/Worker builds and rendered design checks. Later result-documentation
+changes require their own formatting and link checks; this CI evidence remains tied to that commit.
