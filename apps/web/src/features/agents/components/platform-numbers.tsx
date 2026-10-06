@@ -1,7 +1,7 @@
 "use client";
 
 import type { AnalyticsRangeDto, PlatformAnalyticsDto } from "@pickler/api-schema";
-import { useRouter } from "next/navigation";
+import { useRouter } from "nextjs-toploader/app";
 import { BarChart, Chip } from "@pickler/ui";
 import styles from "../agents.module.css";
 import { formatInteger } from "../lib/format";
