@@ -1,6 +1,25 @@
 # Coordinated staging deployment
 
-## Implementation and operating state
+## Independent migrations with current Cloudflare Builds
+
+The adopted mode keeps the existing Cloudflare Builds publishers and adds
+`.github/workflows/staging-migrations.yml`. On every main push (or manual dispatch on main), it
+installs locked dependencies, builds shared packages, runs migration checks on disposable
+PostgreSQL and calls `npm run db:migrate` against Supabase. Automatic execution begins only after
+this workflow is integrated into main; creating the PR does not apply remote SQL. It uses the existing staging secrets
+`DATABASE_MIGRATION_URL` and `DATABASE_MIGRATION_CA_CERT`; no Cloudflare API token is required.
+
+The user explicitly accepts migrations and Cloudflare builds running concurrently. A successful
+build does not prove migrations have finished. This mode is suitable for the current additive
+migrations; changes requiring database-first publication need the coordinated mode below.
+
+The standalone job is skipped when `STAGING_DEPLOYMENT_ENABLED=true`, so there is only one
+migration workflow owner at a time. Both workflows share non-cancelling release concurrency; the
+migrator also serializes database writes with advisory locks. Neither resets schemas, runs on PRs
+or prints connection values. A failed migration leaves Cloudflare's independent publishing behavior
+unchanged and must be investigated in the **Supabase staging migrations** Actions run.
+
+## Optional coordinated deployment
 
 `.github/workflows/staging-deploy.yml` is the single proposed staging release owner. It responds to
 main pushes and explicit workflow dispatch on main. It is **disabled until the repository variable
@@ -89,8 +108,9 @@ values in logs, summaries or artifacts.
 6. Verify the release artifact, all four active versions and public web/API transport. Subsequent
    main pushes then use the same coordinated process automatically.
 
-Running a separate migration workflow while leaving Cloudflare auto-deploying in parallel does
-not enforce migration-before-deployment. Do not enable both owners. A cutover may briefly pause
+The standalone migration workflow described above intentionally does not enforce
+migration-before-deployment. Do not enable independent Cloudflare publishers alongside the
+coordinated publishing mode. A cutover may briefly pause
 automatic publishing; it does not interrupt the currently active Worker versions.
 
 ## Failure, concurrency and recovery
