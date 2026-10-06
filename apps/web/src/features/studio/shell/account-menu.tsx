@@ -21,10 +21,30 @@ export function AccountMenu({
   const id = useId();
   const root = useRef<HTMLDivElement>(null);
   const profile = useRef<HTMLAnchorElement>(null);
+  const username = useRef<HTMLSpanElement>(null);
   const signingOut = useRef(false);
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+
+  // Animate to the actual text width, so short handles use the full transition duration too.
+  useEffect(() => {
+    const label = username.current;
+    const container = root.current;
+    if (!label || !container) {
+      return;
+    }
+    const measure = () => {
+      container.style.setProperty(
+        "--account-label-width",
+        `${label.getBoundingClientRect().width}px`,
+      );
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(label);
+    return () => observer.disconnect();
+  }, [handle]);
 
   useEffect(() => {
     if (!open) {
@@ -84,7 +104,9 @@ export function AccountMenu({
     >
       {handle && (
         <span className={styles.username} aria-hidden="true">
-          <span className={styles.label}>@{handle}</span>
+          <span ref={username} className={styles.label}>
+            @{handle}
+          </span>
         </span>
       )}
       <Button
