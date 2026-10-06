@@ -1,5 +1,6 @@
 "use client";
 import Image from "next/image";
+import { AccountMenu } from "../shell/account-menu";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { Button, Icon, Tag } from "@pickler/ui";
@@ -24,6 +25,8 @@ import styles from "./new-agent.module.css";
  */
 export function Chrome({
   form,
+  accountHandle,
+  preview,
   handle,
   hasAgents,
   canManage,
@@ -38,6 +41,8 @@ export function Chrome({
   overlays,
 }: {
   form: NewAgentForm;
+  accountHandle: string | null;
+  preview: boolean;
   handle: string;
   hasAgents: boolean;
   canManage: boolean;
@@ -139,14 +144,7 @@ export function Chrome({
             onNew={noSection}
           />
         </span>
-        <Link href="/account" className={home.account} aria-label="Account">
-          <span className={shell.swatch} aria-hidden="true">
-            <i data-swatch="lime" />
-            <i data-swatch="violet" />
-            <i data-swatch="amber" />
-            <i data-swatch="blue" />
-          </span>
-        </Link>
+        <AccountMenu handle={accountHandle} preview={preview} />
       </header>
 
       <div className={home.emptyBody}>
