@@ -1,0 +1,128 @@
+.wrap {
+  position: relative;
+  flex: 0 0 38px;
+  width: 38px;
+  height: 38px;
+  isolation: isolate;
+  z-index: 2;
+}
+.wrap .trigger {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border: 0;
+  padding: 0;
+  color: var(--pk-ink);
+  background: var(--pk-panel);
+  cursor: pointer;
+}
+.wrap .trigger:hover,
+.wrap[data-open="true"] .trigger {
+  background: var(--pk-panel-2);
+}
+.trigger:focus-visible,
+.item:focus-visible {
+  outline: 2px solid var(--pk-focus);
+  outline-offset: 3px;
+}
+.username {
+  position: absolute;
+  right: 30px;
+  top: 0;
+  display: flex;
+  align-items: center;
+  height: 38px;
+  max-width: min(240px, calc(100vw - 80px));
+  padding: 0 22px 0 14px;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-panel-2);
+  color: var(--pk-ink);
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateX(12px);
+  transition:
+    opacity 160ms ease,
+    transform 160ms ease;
+}
+.wrap:hover .username,
+.wrap:focus-within .username,
+.wrap[data-open="true"] .username {
+  opacity: 1;
+  transform: translateX(0);
+}
+.panel {
+  composes: pk-panel from global;
+  position: absolute;
+  z-index: 5;
+  top: calc(100% + 10px);
+  right: 0;
+  width: min(228px, calc(100vw - 36px));
+  padding: 8px;
+  background: var(--pk-popover);
+  box-shadow: var(--pk-popover-shadow);
+}
+.identity {
+  margin: 4px 10px 8px;
+  overflow-wrap: anywhere;
+  color: var(--pk-ink-muted);
+  font-size: 12px;
+}
+.panel .item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 12px;
+  border: 0;
+  border-radius: var(--pk-radius-md);
+  background: var(--pk-panel);
+  color: var(--pk-ink);
+  font: inherit;
+  font-size: 14px;
+  text-decoration: none;
+  text-align: left;
+  justify-content: flex-start;
+  cursor: pointer;
+}
+.panel .item:hover {
+  background: var(--pk-panel-2);
+}
+.item:disabled {
+  color: var(--pk-ink-muted);
+  cursor: default;
+}
+.loading {
+  width: 65px;
+}
+.error {
+  margin: 8px 10px;
+  color: var(--pk-loss);
+  font-size: 12px;
+}
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+@media (prefers-reduced-motion: reduce) {
+  .username {
+    transition: none;
+    transform: none;
+  }
+}
+
+@media (hover: none) {
+  .username {
+    display: none;
+  }
+}
