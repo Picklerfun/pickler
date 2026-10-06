@@ -149,6 +149,8 @@ export function StudioShell<K extends string>({
           id={sidebarId}
           data-wide={sidebar.open}
           data-studio-sidebar
+          inert={sidebar.mobile && !sidebar.open}
+          aria-hidden={(sidebar.mobile && !sidebar.open) || undefined}
         >
           <AgentSelector
             idPrefix={idPrefix}
