@@ -69,7 +69,7 @@ export function AgentSelector({
                 tooltip={{ children: `${name}, switch agent`, surface: "dark" }}
               >
                 <AgentAvatar accent={agent.accent} pattern={agent.avatarPattern} size="chip" />
-                <span className={styles.selectorIdentity}>
+                <span className={styles.selectorIdentity} data-sidebar-label>
                   <b>{name}</b>
                   {agent.handle && <small>@{agent.handle}</small>}
                 </span>
@@ -128,7 +128,7 @@ export function AgentSelector({
           </DropdownMenu>
         </SidebarMenuItem>
       </SidebarMenu>
-      <div className={`${styles.selectorStatus} tw:group-data-[collapsible=icon]:hidden`}>
+      <div className={styles.selectorStatus} data-sidebar-label>
         {status}
       </div>
     </SidebarHeader>
