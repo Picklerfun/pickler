@@ -3,7 +3,7 @@ import { StudioSkeleton } from "./skeleton";
 import Image from "next/image";
 import { AccountMenu } from "./shell/account-menu";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter } from "nextjs-toploader/app";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { Button, Icon, type IconName } from "@pickler/ui";
 import { ensureProfile } from "@/features/auth/lib/account";
