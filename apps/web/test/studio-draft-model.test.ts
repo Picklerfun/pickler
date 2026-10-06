@@ -75,7 +75,7 @@ test("the rail has the four groups of the canvas, in order", () => {
       ["RUN", ["Overview", "Console", "Trades", "Activity"]],
       ["BUILD", ["Brief", "Sources & rules", "Limits & funding", "Identity & voice"]],
       ["GROW", ["Public profile"]],
-      ["YOU", ["Trade", "Your wallet"]],
+      ["YOU", ["Trade", "Master wallet"]],
     ],
   );
 });
@@ -127,7 +127,7 @@ test("a locked section's panel names it", () => {
 test("a section's label is the canvas's", () => {
   assert.equal(sectionLabel("picks"), "Trades");
   assert.equal(sectionLabel("skills"), "Sources & rules");
-  assert.equal(sectionLabel("master"), "Your wallet");
+  assert.equal(sectionLabel("master"), "Master wallet");
 });
 
 test("the tiles read master and the agents' wallets, formatted in AUSD", () => {
@@ -135,7 +135,7 @@ test("the tiles read master and the agents' wallets, formatted in AUSD", () => {
   assert.deepEqual(
     tiles.slice(0, 2).map(({ label, value }) => ({ label, value })),
     [
-      { label: "YOUR WALLET · AUSD", value: "187.6" },
+      { label: "MASTER WALLET · AUSD", value: "187.6" },
       { label: "IN AGENT WALLETS · AUSD", value: "12.5" },
     ],
   );
