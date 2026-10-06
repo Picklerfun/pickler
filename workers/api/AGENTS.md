@@ -548,3 +548,9 @@ USD micros, separately from virtual financial metrics; unknown daily costs stay 
 retains workspace authorization and generated OpenAPI. The web displays the strategy in both
 agent studios and explicitly confirms clearing unsupported authored conditions for rules.
 See [Studio perpetual execution](../../docs/studio-perps-execution.md).
+
+Studio access-request routes inherit JWT-only authentication. GET/POST `access-request` provide
+own status and owner-only idempotent submission; GET `access-requests` requires the verified
+super-admin allowlist. All use private/no-store and generated OpenAPI schemas. Infrastructure
+records the internal team inbox notification; no external message transport or automatic grant is
+composed. Both Studio and its Console alias mount these operations.
