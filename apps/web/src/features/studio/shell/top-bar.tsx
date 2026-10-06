@@ -17,8 +17,6 @@ export interface StudioTopBarProps {
   onWallets(): void;
   /** The AI credits pill: open the credits modal. */
   onCredits(): void;
-  sidebarOpen: boolean;
-  onToggleSidebar(): void;
   sidebarId: string;
   accountHandle: string | null;
   preview: boolean;
@@ -28,8 +26,6 @@ export interface StudioTopBarProps {
 /** Global account and balance controls; workspace selection belongs to the sidebar. */
 export function StudioTopBar({
   master,
-  sidebarOpen,
-  onToggleSidebar,
   sidebarId,
   onWallets,
   onCredits,
@@ -43,7 +39,7 @@ export function StudioTopBar({
         <Image src="/brand/logo.png" alt="" width={22} height={23} priority />
         <span>PICKLER</span>
       </Link>
-      <StudioSidebarToggle open={sidebarOpen} onToggle={onToggleSidebar} controls={sidebarId} />
+      <StudioSidebarToggle controls={sidebarId} />
       <span className={home.spacer} />
       <span className={styles.testnet}>TESTNET</span>
       <button
