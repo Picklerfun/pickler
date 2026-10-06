@@ -377,3 +377,23 @@ export const ledgerResponseSchema = z.object({
   ),
 });
 export type LedgerDto = z.infer<typeof ledgerResponseSchema>;
+
+export const studioAccessRequestSchema = z.object({
+  status: z.enum(["not_requested", "pending", "enabled"]),
+  requestedAt: z.string().datetime().nullable(),
+});
+export const studioAccessRequestStatusSchema = studioAccessRequestSchema.extend({
+  canReviewRequests: z.boolean(),
+});
+export const studioAccessRequestsInboxSchema = z.object({
+  requests: z.array(
+    z.object({
+      userId: z.string().uuid(),
+      handle: z.string(),
+      displayName: z.string(),
+      requestedAt: z.string().datetime(),
+    }),
+  ),
+});
+export type StudioAccessRequestStatusDto = z.infer<typeof studioAccessRequestStatusSchema>;
+export type StudioAccessRequestsInboxDto = z.infer<typeof studioAccessRequestsInboxSchema>;
