@@ -808,3 +808,10 @@ permissions change. Cmd/Ctrl+B toggles outside editable fields; repeated keydown
 Reduced motion removes the width animation. Keep the pending frame's toggle and rail dimensions
 consistent to avoid swapping navigation layouts while loading. Collapsing never resets the active
 agent, section or unsaved edits. Agent-menu focus leaving the selector closes it.
+
+Sidebar collapse animates width and label opacity together over 320ms; category/status space
+contracts with the same timing. Do not use `display: none` for desktop labels or switch icon
+alignment/padding between states: both cause jumps while the rail is moving. Icons keep their
+horizontal anchors. Mobile collapse fades/slides and contracts navigation, marking it inert and
+aria-hidden immediately and hiding it visually at transition end. Reduced motion removes these
+transitions. The agent selector uses the shared `chevronsUpDown` icon, not a single dropdown arrow.
