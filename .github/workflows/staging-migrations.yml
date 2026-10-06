@@ -1,0 +1,56 @@
+name: Supabase staging migrations
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Share the release lock; never cancel a database transaction for a newer push.
+concurrency:
+  group: pickler-coordinated-staging
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    # If the coordinated publisher is enabled, it owns migrations as well.
+    if: github.ref == 'refs/heads/main' && vars.STAGING_DEPLOYMENT_ENABLED != 'true'
+    environment: staging
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17.6
+        env:
+          POSTGRES_USER: pickler
+          POSTGRES_PASSWORD: pickler_local_only
+          POSTGRES_DB: pickler
+        ports:
+          - 55432:5432
+        options: >-
+          --health-cmd "pg_isready -U pickler -d pickler"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.22.0
+          cache: npm
+      - run: npm install --global npm@10.9.3
+      - run: npm ci
+      - run: npm run build:shared
+      - name: Verify migrations on disposable PostgreSQL
+        run: >-
+          node --import tsx --test
+          packages/infrastructure/test/migration-cli.test.ts
+          packages/infrastructure/test/migration-history.test.ts
+          packages/infrastructure/test/migration-connection.test.ts
+      - name: Apply and verify hosted Supabase migrations
+        run: npm run db:migrate
+        env:
+          DATABASE_MIGRATION_URL: ${{ secrets.DATABASE_MIGRATION_URL }}
+          DATABASE_MIGRATION_CA_CERT: ${{ secrets.DATABASE_MIGRATION_CA_CERT }}

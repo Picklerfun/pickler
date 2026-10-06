@@ -734,3 +734,7 @@ USD micros, separately from virtual financial metrics; unknown daily costs stay 
 retains workspace authorization and generated OpenAPI. The web displays the strategy in both
 agent studios and explicitly confirms clearing unsupported authored conditions for rules.
 See [Studio perpetual execution](../../docs/studio-perps-execution.md).
+
+## Initial Studio navigation
+
+`features/studio/shell/pending.tsx` uses the modern Studio header and 218px rail during the initial session/agent read and on load errors. `studioLanding` must remain pending until that read completes, even when partial agent data has arrived. Never render the legacy section frame as a loading placeholder: its rail toggle moves the brand during account-to-Studio navigation.

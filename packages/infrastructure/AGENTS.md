@@ -557,3 +557,10 @@ See [Studio perpetual execution](../../docs/studio-perps-execution.md).
 ## AI credit persistence
 
 `PostgresAiCreditStore` implements core credit ports over eight private RLS billing tables. Migrations 0029–0031 append schema and ledger projection/immutability fences. Lock the user account before runtime/check locks; do not nest this repository inside existing admission transactions. It links existing perps_check_calls without starting models or activating billing. Failed/incomplete analyses release customer reservations without refunding internal provider costs. Run the real PostgreSQL suite in `test/ai-credit-store.test.ts`. See [AI credits](../../docs/ai-credits.md).
+
+## Migration completion evidence
+
+The operator migrator audits the journal before and after applying SQL, matching both hash and
+timestamp. It prints a sanitized `pickler_migration_status` JSON record with applied counts, pending
+tags and unknown counts; no connection values are logged. Unknown or incomplete history after
+migration fails the release. The audit uses a read-only repeatable-read transaction.

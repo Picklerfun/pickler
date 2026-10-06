@@ -13,3 +13,7 @@ any publication, preserve the checked commit, stop on failures/cancellation and 
 credentials from deployment children. It never calls business providers or changes admissions.
 Root tests include `deploy-staging.test.mjs`. Read the
 [coordinated deployment guide](../../docs/staging-deployment-pipeline.md) before changing it.
+
+The workflow guard tests also cover standalone `staging-migrations.yml`: main-only, no Cloudflare
+credential/publication, local checks before hosted SQL, secret isolation and an inverse coordinated
+gate. Independent Builds may run concurrently with this migration-only job by user decision.

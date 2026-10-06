@@ -1,11 +1,30 @@
 # Coordinated staging deployment
 
-## Implementation and operating state
+## Independent migrations with current Cloudflare Builds
+
+The adopted mode keeps the existing Cloudflare Builds publishers and adds
+`.github/workflows/staging-migrations.yml`. On every main push (or manual dispatch on main), it
+installs locked dependencies, builds shared packages, runs migration checks on disposable
+PostgreSQL and calls `npm run db:migrate` against Supabase. Automatic execution begins only after
+this workflow is integrated into main; creating the PR does not apply remote SQL. It uses the existing staging secrets
+`DATABASE_MIGRATION_URL` and `DATABASE_MIGRATION_CA_CERT`; no Cloudflare API token is required.
+
+The user explicitly accepts migrations and Cloudflare builds running concurrently. A successful
+build does not prove migrations have finished. This mode is suitable for the current additive
+migrations; changes requiring database-first publication need the coordinated mode below.
+
+The standalone job is skipped when `STAGING_DEPLOYMENT_ENABLED=true`, so there is only one
+migration workflow owner at a time. Both workflows share non-cancelling release concurrency; the
+migrator also serializes database writes with advisory locks. Neither resets schemas, runs on PRs
+or prints connection values. A failed migration leaves Cloudflare's independent publishing behavior
+unchanged and must be investigated in the **Supabase staging migrations** Actions run.
+
+## Optional coordinated deployment
 
 `.github/workflows/staging-deploy.yml` is the single proposed staging release owner. It responds to
 main pushes and explicit workflow dispatch on main. It is **disabled until the repository variable
 `STAGING_DEPLOYMENT_ENABLED=true` is configured**. The existing Cloudflare Worker Builds remain the
-current owner until the cutover below is completed. This PR does not perform that cutover.
+current owner until the cutover below is completed. A merged pipeline does not perform that cutover.
 
 The workflow installs the locked dependencies, checks deployment settings, runs formatting, lint,
 types, the full controlled PostgreSQL suite, OpenAPI validation and provisioned staging checks,
@@ -26,6 +45,23 @@ compiled by the shared build checks but is not added to this four-Worker release
 runtime provider secrets, trading signer and resource bindings remain in their existing Wrangler
 configurations/runtime settings. This pipeline does not enable advice, Perpl paper checks or real
 trading, enqueue work or call models.
+
+## Verified operational snapshot (2026-10-05)
+
+The Actions repository gate was `false` and the staging Worker Builds cutover assertion was
+`false`. The staging environment contained both operator migration secrets, but no
+`CLOUDFLARE_API_TOKEN`; the repository secret list also had no deployment token. Consequently the
+coordinated release is not active and existing Worker Builds do not apply migrations.
+
+A read-only audit of the hosted project's journal matched 29 of 32 known migrations, with zero
+unknown entries. Pending tags were `0029_bored_obadiah_stane`, `0030_ai_credit_integrity` and
+`0031_last_loki`. This is a dated observation, not a claim that they remain pending forever;
+inspect the next migrator's completion record before declaring readiness.
+
+The authenticated Wrangler OAuth session can list Workers but returned 403 for token management
+and build-trigger reads. It cannot recover a stored token value or perform the publisher cutover.
+Supply a reviewed deployment credential and the permissions needed to inspect/control Builds;
+do not upload the temporary OAuth session or mark the cutover complete on that evidence.
 
 ## Exact GitHub settings
 
@@ -72,8 +108,9 @@ values in logs, summaries or artifacts.
 6. Verify the release artifact, all four active versions and public web/API transport. Subsequent
    main pushes then use the same coordinated process automatically.
 
-Running a separate migration workflow while leaving Cloudflare auto-deploying in parallel does
-not enforce migration-before-deployment. Do not enable both owners. A cutover may briefly pause
+The standalone migration workflow described above intentionally does not enforce
+migration-before-deployment. Do not enable independent Cloudflare publishers alongside the
+coordinated publishing mode. A cutover may briefly pause
 automatic publishing; it does not interrupt the currently active Worker versions.
 
 ## Failure, concurrency and recovery
@@ -86,6 +123,10 @@ The existing migrator uses one transaction, advisory locks, SQL identity/history
 schema resets. Missing known migrations are applied once; a repeat is a no-op. Hosted migration
 connections verify the certificate/hostname and reject transaction poolers, unknown hosts and URL
 TLS/endpoint overrides. Lock and statement limits fail rather than waiting indefinitely.
+
+The migrator emits `pickler_migration_status` with before/after applied counts, pending migration
+tags and unknown history counts. A successful release requires an empty pending list and zero
+unknown entries after migration; this is journal evidence, not an inference from a merge.
 
 A migration failure stops every deployment. A Worker failure stops subsequent Workers and records
 the already published ones in `.data/staging-deployment.json`, uploaded with the generated OpenAPI.
