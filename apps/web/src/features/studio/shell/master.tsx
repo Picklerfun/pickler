@@ -90,7 +90,7 @@ export function MasterCard({
     <div className={styles.master} id={`${idPrefix}-master-wallet`}>
       <div className={styles.cardHead}>
         <h3 className={styles.cardLabel}>
-          {label ?? `MASTER WALLET${accountHandle ? ` · @${accountHandle}` : ""}`}
+          {label ?? `YOUR WALLET${accountHandle ? ` · @${accountHandle}` : ""}`}
         </h3>
         <span className={styles.passkey}>PASSKEY</span>
       </div>
@@ -102,7 +102,7 @@ export function MasterCard({
           <button
             type="button"
             className={styles.copyChip}
-            aria-label={copied ? "Address copied" : "Copy the master wallet's address"}
+            aria-label={copied ? "Address copied" : "Copy your wallet address"}
             onClick={() => copy(master.address)}
           >
             {copied ? "COPIED" : "COPY"}
