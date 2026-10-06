@@ -1237,7 +1237,7 @@ export interface AgentWalletCard {
   mon: string;
   /** Spec L20: caps are saved, not signed. */
   note: string;
-  pull: "Pull free AUSD back";
+  pull: "Return funds to your wallet";
   limits: "Caps & limits";
 }
 
@@ -1257,7 +1257,7 @@ export function walletCards(
   const read = liveWalletRead(agent.wallet, wallets);
   return {
     master: {
-      title: account ? `YOURS · MASTER · @${account.toUpperCase()}` : "YOURS · MASTER",
+      title: account ? `YOUR WALLET · @${account.toUpperCase()}` : "YOUR WALLET",
       fund: `Fund ${name}`,
       deposit: "Deposit · copy address",
       copied: "Address copied",
@@ -1273,7 +1273,7 @@ export function walletCards(
             inPositions: "0",
             mon: formatUnits(read.monWei, "MON"),
             note: `Only ${name} will trade from here, inside the caps you set. Only you move money in or out.`,
-            pull: "Pull free AUSD back",
+            pull: "Return funds to your wallet",
             limits: "Caps & limits",
           }
         : null,
