@@ -1,4 +1,5 @@
 "use client";
+import { WalletBalanceButton } from "../shell/wallet-balance-button";
 import Image from "next/image";
 import { AccountMenu } from "../shell/account-menu";
 import Link from "next/link";
@@ -10,7 +11,7 @@ import { RAIL } from "../sections/rail";
 import shell from "../studio.module.css";
 import home from "../home/home.module.css";
 import { AvatarGrid } from "./identity";
-import { formatUnits, type NewAgentForm } from "./model";
+import { type NewAgentForm } from "./model";
 import styles from "./new-agent.module.css";
 
 /**
@@ -100,24 +101,11 @@ export function Chrome({
           TESTNET
         </span>
         {master && (
-          <button
-            type="button"
-            className={styles.topPill}
-            title="Your wallets"
-            aria-haspopup="dialog"
+          <WalletBalanceButton
+            ausdMicro={master.ausdMicro}
+            monWei={master.monWei}
             onClick={onWallets}
-          >
-            <Image src="/brand/monad.png" alt="" width={16} height={16} />
-            <span>
-              {formatUnits(master.ausdMicro, "AUSD")}
-              <small> AUSD</small>
-            </span>
-            <i aria-hidden="true" />
-            <span>
-              {formatUnits(master.monWei, "MON")}
-              <small> MON</small>
-            </span>
-          </button>
+          />
         )}
         <button
           type="button"
