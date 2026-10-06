@@ -1,4 +1,9 @@
 {
   "extends": "@pickler/typescript-config/base.json",
-  "include": ["src/**/*.ts", "src/**/*.tsx"]
+  "include": ["src/**/*.ts", "src/**/*.tsx"],
+  "compilerOptions": {
+    "paths": {
+      "@pickler/ui/*": ["./src/*"]
+    }
+  }
 }
