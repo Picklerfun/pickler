@@ -22,7 +22,7 @@ import styles from "./build.module.css";
 /**
  * Limits (canvas 456–498, spec L12). Left, its wallet: NO WITHDRAWALS, the address, AUSD · FREE,
  * AUSD · IN POSITIONS (0), MON · GAS, what arrived between two reads, "Add funds to agent" and
- * "Return funds to your wallet" (the Wallets modal on this wallet). Right, the five caps, saved, not
+ * "Return funds to master wallet" (the Wallets modal on this wallet). Right, the five caps, saved, not
  * signed: "Save caps" and "Discard", one `PUT /setup` with `caps`, and the line that says who
  * holds them. With the Perpl runtime on, the day-loss line and that note say what runs now
  * (`runtimeCapsView`, perpl-paper-runtime-v1 R11).
@@ -192,7 +192,7 @@ function WalletCard({
             }
           }}
         >
-          Return funds to your wallet
+          Return funds to master wallet
         </button>
         <Reason id="live-fund-reason" text={canManage ? null : VIEW_ONLY_FUNDS} />
         <Reason id="live-pull-reason" text={pullShut} />
