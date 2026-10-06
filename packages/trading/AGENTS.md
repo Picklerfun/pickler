@@ -206,3 +206,9 @@ The runner's optional dataDiagnostic sink records fixed phase and allowlisted va
 labels before propagating a terminal cycle error. Unknown messages remain NOT_VERIFIABLE; never
 persist raw exception text or reinterpret rejected data as a hold. Sink failures cannot replace
 the original error. This instrumentation changes no validation or acquisition limits.
+
+Diagnostic version 2 also records fixed native exception categories and explicitly allowlisted
+transport/PostgreSQL codes for the exception and its immediate cause. It reads only own data
+properties, never exception getters, messages or stacks. Missing identities remain
+NOT_VERIFIABLE. Native errors still propagate unchanged; diagnostic metadata does not make a
+terminal ownership, persistence or unknown failure recoverable.
