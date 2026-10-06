@@ -89,3 +89,89 @@ root lint, formatting, architecture links, Node compilation and Worker dry-run b
 A controlled macOS notification submission succeeded; visible delivery remains NOT_VERIFIABLE.
 The operator's explicit continuation goal authorizes one newly frozen independently supervised
 run after these corrections. It does not authorize restarting any historical study.
+
+## Independently supervised prospective result
+
+Study `perps-sma-20261005-1819-independent` froze code commit
+`1d954c4c226a5c14cfa6db701e27a62e9c69893b` and configuration hash
+`28251463a45a7eb45c4114f9ab41f227afa1359611ec82d882a776b4120f542f`.
+Its planned decision window was 2026-10-05 18:31 through 2026-10-06 00:31 UTC.
+It stopped admissions at approximately 00:01:08 UTC and finished interrupted at approximately
+00:02:19 UTC. **The six-hour prospective acceptance failed.** Controlled checks remain separate
+from this interrupted public-market sample.
+
+The 144 decision rows classify all 24 scheduled slots: 19 complete common rounds, three
+`DATA_UNAVAILABLE` omissions, one `STARTUP_BLOCKED` admission failure and one `NOT_ADMITTED`
+future slot. The latter two slots were not evaluated successfully. An omission or interruption
+is not a strategy hold or a comparable zero return.
+
+| Variant          | Opens / closes | Gross realized AUSD | Fees AUSD | Recorded funding AUSD | Net realized cash AUSD |
+| ---------------- | -------------- | ------------------- | --------- | --------------------- | ---------------------- |
+| `sma-hourly`     | 32 / 32        | -0.189285           | 2.170336  | 0.011693              | -2.347928              |
+| `sma-direction`  | 13 / 13        | 0.198242            | 0.883410  | 0.011767              | -0.673401              |
+| `sma-multiframe` | 0 / 0          | 0                   | 0         | 0                     | 0                      |
+
+All positions closed and no funding remained pending or disputed. Each portfolio started with
+1,000 virtual AUSD. Net returns on that defined initial capital were -0.2347928%, -0.0673401%
+and 0%, respectively. Observed marked drawdowns were 0.2347928%, 0.0673401% and 0%; these are
+sampled verified marks, not continuous valuations. Model calls, model cost and new model
+reservations were all zero. API USD is not converted into virtual AUSD.
+
+Across the 38 valid asset/round observations, the hourly arm proposed 32 long entries and six
+position holds; direction proposed 13 long entries, six position holds and 19 holds for missing
+directional confirmation. In its own flat portfolio, multiframe held 19 times for directional
+confirmation and 19 times for the activity hurdle. Replaying all policies on the same original
+hourly portfolio instead gives multiframe 19 directional blocks, 13 activity blocks and six
+position holds. These diagnostic proposal counts are separate from evolving portfolio results;
+overlapping predicates are not independent causes.
+
+The direction arm earned positive gross price P&L but its fees exceeded that gain. The hourly
+arm had both negative gross P&L and higher turnover costs. No policy demonstrated positive net
+performance. The inactive arm's zero result does not establish profitability or superiority.
+All live entries were long, and both short momentum features can measure the same fifteen-minute
+span at aligned endpoints; they are not independent confirmations. Common exits also mean the
+hourly arm is an old-entry comparison, not a complete replay of the historical strategy.
+
+## Demonstrated midnight interruption
+
+The last successful pre-midnight observation was at 23:58:13.934 UTC; the 23:59 observation
+failed with `DATA_UNAVAILABLE`. The next successful observation was at 00:00:26.256 UTC.
+The preceding valuation was older than midnight minus ninety seconds, so the unchanged
+[daily baseline guard](../../packages/trading/src/features/perps-paper/simulation.ts) recorded
+`dayEquity: null` in every portfolio. The
+[runner admission guard](../../packages/trading/src/features/evaluation/perps-runner.ts) then
+stopped the next slot with `DAY_BASELINE_PENDING`.
+
+The historical phase label is `startup`, although this occurred during a later UTC day rollover.
+Preserve that label and explain the actual timing rather than rewriting the record. The gap and
+guard interaction are demonstrated; the underlying provider reason for unavailable data is not
+established by the code alone. Initial pre-start sampling corrected the earlier startup gap but
+did not guarantee continuous public-data sampling across a later midnight.
+
+The independent supervisor recorded `RUNNER_EXIT_WITHOUT_COMPLETION`, and the persisted study
+and final report both remain `interrupted`. Live processes and healthy lease renewals before the
+failure never established full-window acceptance. PostgreSQL owner and expiration were null at
+terminal verification. Runner, supervisor, watchdog and their awake guard were absent, and only
+this study's two one-shot launchd jobs were unloaded. Frozen checkouts remain intact.
+
+## Local result evidence and remaining acceptance
+
+Ignored artifacts are under
+`apps/agent-service/.data/perps-studies/perps-sma-20261005-1819-independent/` in the operator's
+primary checkout. They include `report.html`, `report.csv`, `report.json`,
+`terminal-snapshot.json`, `terminal-incident-and-results.json`,
+`terminal-artifact-verification.json`, `terminal-lease-verification.json` and
+`terminal-resources-verification.json`. The snapshot is a consistent read-only PostgreSQL export.
+The artifact verifier checks row uniqueness, CSV/JSON parity, common execution frames, exact
+ledger arithmetic and HTML safety. Visual rendering was not verified.
+
+Closed-position checks link original positions to filled opening/closing attempts and reconcile
+consumed depth notional, collateral-micro rounding, fees and explicitly attributed funding.
+Some horizon exits filled roughly fifty-five seconds after thirty minutes because minute
+observations and valid frames govern execution; do not describe them as exact wall-clock fills.
+Source data, historical reservations, stopped studies and unknown consumption remain unchanged.
+
+The implementation and controlled lifecycle results are reviewable, but the complete six-hour
+prospective gate remains unmet. No automatic repeat, restart, risk-rule relaxation, strategy
+promotion, merge or deployment is authorized by this report. A future run needs a separately
+reviewed way to satisfy the daily-risk continuity requirement and explicit operator authorization.
