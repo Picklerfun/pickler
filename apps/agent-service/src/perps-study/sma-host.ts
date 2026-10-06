@@ -137,7 +137,7 @@ export async function runSmaStudy(input: EvaluationHostRequest) {
       exitPolicyVersion: config.exitPolicyVersion,
       virtualCapitalPerVariant: "1000",
       modelCallsAllowed: 0,
-      dataDiagnosticVersion: "safe-phase-predicate-v1",
+      dataDiagnosticVersion: "safe-phase-predicate-native-v2",
     };
     let releaseAwake = () => {};
     let data: ReturnType<typeof createStudyData> | undefined;
