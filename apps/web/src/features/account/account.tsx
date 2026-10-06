@@ -56,7 +56,7 @@ export function Account({
   returnTo?: string | undefined;
 }) {
   const studio = studioReturnHref(returnTo, useStudioHref());
-  const router = useRouter();
+  const { replace } = useRouter();
   const [section, setSection] = useState<SectionKey>(opening);
   /**
    * The fixture, decided once at the first render rather than from an effect.
@@ -134,7 +134,7 @@ export function Account({
          at the handle step. Every section redirects, not only the wallet. */
       const away = redirectFor({ wallet: dto.kind === "none" ? null : dto, profile: found });
       if (away) {
-        router.replace(away);
+        replace(away);
         return;
       }
       setProfile(found ?? null);
@@ -144,7 +144,7 @@ export function Account({
     return () => {
       live = false;
     };
-  }, [preview, router]);
+  }, [preview, replace]);
 
   const handle = profile?.handle ?? null;
   const covered = coverage(passkeys.kind === "ready" ? passkeys.passkeys.length : null);

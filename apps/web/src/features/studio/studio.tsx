@@ -141,7 +141,8 @@ export function Studio({
       create screen with nothing staged. */
   stage?: StudioStage | undefined;
 }) {
-  const router = useRouter();
+  // The top-loader returns a new router object per render; its memoized method is stable.
+  const { replace } = useRouter();
   const directory = useMarketplaceHref("/agents");
   const leaderboard = useMarketplaceHref("/leaderboard");
   /* Built once, during the first render, so the server's HTML already carries the staged home. */
@@ -251,7 +252,7 @@ export function Studio({
         }
         const { data } = await supabase.auth.getSession();
         if (!data.session) {
-          router.replace("/signin");
+          replace("/signin");
           return;
         }
         /* The master wallet exists before any agent (spec §4.1): the profile, top right, shows it
@@ -273,7 +274,7 @@ export function Studio({
         });
         if (away) {
           if (active) {
-            router.replace(away);
+            replace(away);
           }
           return;
         }
@@ -306,7 +307,7 @@ export function Studio({
     return () => {
       active = false;
     };
-  }, [router, loadAgents, staging, openAgent]);
+  }, [replace, loadAgents, staging, openAgent]);
 
   /* One cancellable read loop owns both the run list and the selected trace. The home reads its
      own latest run, so the loop only runs while a section is showing. */

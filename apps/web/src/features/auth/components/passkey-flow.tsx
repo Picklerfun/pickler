@@ -649,7 +649,7 @@ function PasskeyAddFlow({
   destination?: string | undefined;
   preview: PasskeyPreview | undefined;
 }) {
-  const router = useRouter();
+  const { replace } = useRouter();
   const studio = useStudioHref();
   const target = destination ?? studio;
   // A preview opens on the screen with its fixture list and reads nothing.
@@ -686,7 +686,7 @@ function PasskeyAddFlow({
         }
         const away = redirectFor({ wallet: found, profile });
         if (away) {
-          router.replace(away);
+          replace(away);
           return;
         }
         setScreen("add");
@@ -700,7 +700,7 @@ function PasskeyAddFlow({
     return () => {
       live = false;
     };
-  }, [router, preview]);
+  }, [replace, preview]);
 
   /** Re-reads the list after a passkey is added, the same failed-read-is-not-empty rule as above. */
   function refreshPasskeys() {
