@@ -73,7 +73,7 @@ export function AgentSelector({
                   <b>{name}</b>
                   {agent.handle && <small>@{agent.handle}</small>}
                 </span>
-                <Icon name="chevronsUpDown" />
+                <Icon name="chevronsUpDown" size={16} />
               </SidebarMenuButton>
             </DropdownMenuTrigger>
             <DropdownMenuContent
