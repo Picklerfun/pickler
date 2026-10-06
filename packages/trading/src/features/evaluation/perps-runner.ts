@@ -66,7 +66,9 @@ export function perpsDataFailureDiagnostic(error: unknown, phase: PerpsDataPhase
     phase,
     code: safeCode(error),
     predicate:
-      error instanceof PilotError ? (reasons[error.message] ?? "NOT_VERIFIABLE") : "NOT_VERIFIABLE",
+      error instanceof PilotError && Object.hasOwn(reasons, error.message)
+        ? reasons[error.message]!
+        : "NOT_VERIFIABLE",
   };
 }
 
