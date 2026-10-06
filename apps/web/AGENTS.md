@@ -770,8 +770,9 @@ creation fixtures for layout checks; none reads or submits an access request.
 live, legacy and pending Studio headers. Supply the authenticated creator's profile handle from
 Studio's existing read, never the selected agent's handle. Hover and keyboard focus reveal the
 username to the left by smoothly expanding the account chip in the header flow. The preceding
-wallet, network and credits controls slide left while the account icon stays anchored on the right. The disclosure uses native link/button
-navigation, restores focus on Escape, and closes on outside pointer or focus movement.
+wallet, network and credits controls slide left while the account icon stays anchored on the right. The disclosure composes the shared shadcn `DropdownMenu`; Radix owns arrow-key navigation,
+Escape, outside interactions, collision-aware placement and focus restoration. The profile item
+renders the existing Next.js link with `asChild`. Do not add document listeners for menu behavior.
 `/account?section=profile` opens the public-profile tab in every environment; other section query
 links remain non-production design controls. Sign-out uses Supabase Auth, navigates only after
 success, preserves errors and disables duplicate submissions. Design previews cannot sign out.
@@ -780,7 +781,7 @@ Run `node scripts/design/account-menu.mjs` for the controlled desktop/mobile int
 alongside web tests, typecheck, lint and rendered design checks. It uses local fixture servers only.
 
 The draft/live navbar contains global controls only. Their shared sidebar holds the existing
-agent switcher and status, outside the horizontal navigation scroller on small screens. Moving
+agent switcher and status. On small screens the official mobile Sheet contains vertical navigation. Moving
 that switcher must preserve its permissions, agent IDs and New agent callback. The draft status
 is rendered once. Desktop header controls stay on one row during account expansion; the account
 chip may shrink to the available width and its icon never leaves the pointer. At widths of 640px
@@ -799,19 +800,28 @@ and touch screens, including sections selected after the initial page load.
 
 ## Collapsible agent sidebar
 
-The shared draft/live shell and initial pending frame reuse `lib/rail.ts`'s existing browser
-preference through `shell/sidebar.tsx`. The navbar always keeps a labelled toggle beside Pickler.
-Desktop collapse reduces the rail from 218px to 64px, showing icons with accessible names and
-native hover titles; the agent avatar still opens the same agent selector. Mobile collapse hides
-the navigation and expanding restores its existing scrolling row. No agent settings or backend
-permissions change. Cmd/Ctrl+B toggles outside editable fields; repeated keydown is ignored.
-Reduced motion removes the width animation. Keep the pending frame's toggle and rail dimensions
-consistent to avoid swapping navigation layouts while loading. Collapsing never resets the active
-agent, section or unsaved edits. Agent-menu focus leaving the selector closes it.
+The shared draft/live shell and pending frame compose the official shadcn Sidebar from
+`@pickler/ui/sidebar`. `shell/sidebar.tsx` only bridges the existing `lib/rail.ts` desktop
+preference to the controlled `SidebarProvider` and labels `SidebarTrigger`. It does not implement
+collapse, mobile state, keyboard listeners, animation or focus handling. Desktop widths remain
+218px and 64px. shadcn owns the gap/container transition and group/menu collapse styling.
 
-Sidebar collapse animates width and label opacity together over 320ms; category/status space
-contracts with the same timing. Do not use `display: none` for desktop labels or switch icon
-alignment/padding between states: both cause jumps while the rail is moving. Icons keep their
-horizontal anchors. Mobile collapse fades/slides and contracts navigation, marking it inert and
-aria-hidden immediately and hiding it visually at transition end. Reduced motion removes these
-transitions. The agent selector uses the shared `chevronsUpDown` icon, not a single dropdown arrow.
+Below 768px, shadcn opens a modal Sheet with vertical navigation, backdrop, Escape dismissal,
+focus containment and return to the navbar disclosure. Mobile state is separate from the saved
+desktop preference. Selecting a section closes the Sheet. The same provider and skeleton menu
+components render during loading. Do not restore the retired inline mobile rail or custom toggle
+hook. Cmd/Ctrl+B is handled in the shared component with an editable-field/repeat guard.
+Reduced motion disables the shared Sidebar, Sheet, DropdownMenu and Tooltip animations.
+
+The agent switcher composes SidebarHeader/Menu/Button with shadcn DropdownMenu and the shared
+paired `chevronsUpDown` icon. Preserve product/runtime IDs, permission checks and callbacks.
+Rail groups, item badges, tooltips and footer links use shared Sidebar components. Locked sections
+still open the existing explanatory panels; their labels include the reason, without granting
+management access. No collapse or menu interaction changes agent configuration or backend rules.
+
+Tailwind 4 is limited to installed shadcn components, with a `tw:` prefix and no preflight.
+`postcss.config.mjs` compiles the utilities; root layout imports `@pickler/ui/shadcn.css`, which
+also includes the existing Pickler stylesheet. Semantic colors/radii/shadows map directly to
+`--pk-*` in that stylesheet. Existing CSS Modules and controls retain their presentation.
+Use the package public subpaths, never relative imports into the UI package. See
+[UI instructions](../../packages/ui/AGENTS.md) for adding or updating registry components.
