@@ -18,6 +18,7 @@ export default async function StudioPage({
     section?: string | string[];
     stage?: string | string[];
     agent?: string | string[];
+    resume?: string | string[];
   }>;
 }) {
   const search = await searchParams;
@@ -27,6 +28,7 @@ export default async function StudioPage({
         openSection={sectionFromSearch(process.env.NODE_ENV, search.section)}
         stage={stageFromSearch(process.env.NODE_ENV, search.stage)}
         openAgent={agentFromSearch(search.agent)}
+        resumeSection={Array.isArray(search.resume) ? search.resume[0] : search.resume}
       />
     </OfflineGate>
   );
