@@ -144,7 +144,7 @@ export function Chrome({
             onNew={noSection}
           />
         </span>
-        <AccountMenu handle={accountHandle} preview={preview} />
+        <AccountMenu handle={accountHandle} preview={preview} returnContext={{ section: "new" }} />
       </header>
 
       <div className={home.emptyBody}>
