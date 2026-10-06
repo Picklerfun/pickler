@@ -145,6 +145,125 @@ try {
       }
     }
 
+    // Tooltip state must not outlive hover, activation, a menu, or the collapsed context.
+    const disclosure = page.locator("[data-sidebar-toggle]");
+    await disclosure.click();
+    await page.waitForFunction(
+      () =>
+        document.querySelector('[data-slot="sidebar"][data-state]')?.dataset.state === "collapsed",
+    );
+    await page.waitForFunction(() => {
+      const sidebar = document.querySelector('[data-slot="sidebar-container"]');
+      return Math.abs(sidebar.getBoundingClientRect().width - 64) < 0.5;
+    });
+    const tooltip = page.locator('[data-slot="tooltip-content"]');
+    const selector = page.locator(`#${prefix}-agent-chip`);
+    const overview = page.locator(`#${prefix}-rail-overview`);
+    const brief = page.locator(`#${prefix}-rail-brief`);
+    const leaveSidebar = () => page.mouse.move(1000, 950, { steps: 10 });
+    const noTooltip = () => tooltip.waitFor({ state: "hidden" });
+
+    await overview.hover();
+    await tooltip.waitFor({ state: "visible" });
+    assert.equal(await tooltip.count(), 1, "Only the current icon owns a tooltip");
+    await tooltip.hover();
+    assert.equal(await tooltip.isVisible(), true, "Tooltip text remains reachable by pointer");
+    await leaveSidebar();
+    await noTooltip();
+
+    await brief.hover();
+    await tooltip.waitFor({ state: "visible" });
+    await brief.click();
+    await page.locator(`#${prefix}-section-brief`).waitFor();
+    await leaveSidebar();
+    await noTooltip();
+
+    for (const activation of ["pointer", "keyboard", "select"]) {
+      await selector.hover();
+      await tooltip.waitFor({ state: "visible" });
+      if (activation === "keyboard") {
+        await selector.focus();
+        await page.keyboard.press("Enter");
+      } else {
+        await selector.click();
+      }
+      const menu = page.locator(`#${prefix}-agent-menu[data-state="open"]`);
+      await menu.waitFor();
+      await noTooltip();
+      await leaveSidebar();
+      if (activation === "select") {
+        await menu.getByRole("menuitem", { name: /Halftime/ }).click();
+      } else {
+        await page.keyboard.press("Escape");
+      }
+      await page.waitForFunction(
+        (prefix) => document.activeElement?.id === `${prefix}-agent-chip`,
+        prefix,
+      );
+      await noTooltip();
+      // Sample after return-focus/exit effects; a transient hidden state is not enough.
+      const restored = await page.evaluate(async () => {
+        const samples = [];
+        const started = performance.now();
+        while (performance.now() - started < 450) {
+          await new Promise(requestAnimationFrame);
+          samples.push(document.querySelectorAll('[data-slot="tooltip-content"]').length);
+        }
+        return samples;
+      });
+      assert.ok(
+        restored.every((count) => count === 0),
+        `No restored-focus tooltip: ${activation}`,
+      );
+    }
+
+    // Genuine keyboard navigation still provides the collapsed label and a clean focus outline.
+    await page.keyboard.press("Tab");
+    await page.waitForFunction(
+      (prefix) => document.activeElement?.id === `${prefix}-rail-overview`,
+      prefix,
+    );
+    await tooltip.waitFor({ state: "visible" });
+    const focusedIcon = await overview.evaluate((element) => {
+      const style = getComputedStyle(element);
+      const svg = element.querySelector("svg");
+      return {
+        shadow: style.boxShadow,
+        outline: style.outlineStyle,
+        outlineWidth: style.outlineWidth,
+        svgWidth: svg.getBoundingClientRect().width,
+        intrinsicWidth: Number(svg.getAttribute("width")),
+        svgShadow: getComputedStyle(svg).boxShadow,
+        svgFilter: getComputedStyle(svg).filter,
+      };
+    });
+    assert.equal(focusedIcon.shadow, "none", "No focus shadow halo around navigation icons");
+    assert.equal(focusedIcon.outline, "solid", "Keyboard focus remains visible");
+    assert.equal(focusedIcon.outlineWidth, "2px");
+    assert.equal(
+      focusedIcon.svgWidth,
+      focusedIcon.intrinsicWidth,
+      "SVG stroke uses its actual size",
+    );
+    assert.equal(focusedIcon.svgShadow, "none");
+    assert.equal(focusedIcon.svgFilter, "none");
+    await page.keyboard.press("Escape");
+    await noTooltip();
+    await page.keyboard.press("Tab");
+    await tooltip.waitFor({ state: "visible" });
+    await page.keyboard.press("Control+b");
+    await noTooltip();
+    await page.keyboard.press("Control+b");
+    await noTooltip();
+    await page.keyboard.press("Tab");
+    await tooltip.waitFor({ state: "visible" });
+    await page.keyboard.press("Escape");
+    await noTooltip();
+    await page.screenshot({ path: path.join(tmpdir(), `pickler-${prefix}-sidebar-tooltips.png`) });
+    await disclosure.click();
+    await leaveSidebar();
+    await noTooltip();
+
     // Responsive mode may change at a breakpoint, but must not recreate the page or overflow it.
     const main = await page.locator("main").elementHandle();
     for (const width of [1240, 1239, 920, 919, 768, 767, 640, 480, 390, 360, 768, 1440]) {
@@ -183,7 +302,7 @@ try {
   }
   assert.deepEqual(errors, [], "No browser errors");
   console.log(
-    "PASS: stable DOM, synchronized sidebar geometry, fading labels, anchored avatar/navbar, fixed card measure, responsive breakpoints and no overflow. Controlled fixtures only.",
+    "PASS: stable DOM, synchronized sidebar geometry, fading labels, anchored avatar/navbar, fixed card measure, tooltip dismissal/keyboard access, crisp icons, responsive breakpoints and no overflow. Controlled fixtures only.",
   );
 } finally {
   await browser?.close();
