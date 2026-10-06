@@ -38,7 +38,7 @@ import { Brief } from "./sections/brief";
 import { Trading } from "./sections/trading";
 import { Limits } from "./sections/limits";
 import { Context } from "./sections/context";
-import type { SectionKey } from "./sections/keys";
+import { SECTIONS, type SectionKey } from "./sections/keys";
 import { RAIL, isPanel, isSoon } from "./sections/rail";
 import { Soon } from "./sections/soon";
 import { Home } from "./home/home";
@@ -129,8 +129,11 @@ export function Studio({
   openSection,
   stage,
   openAgent,
+  resumeSection,
 }: {
   openSection?: SectionKey | undefined;
+  /** Restored navigation, validated against the selected studio’s existing section registry. */
+  resumeSection?: string | undefined;
   /** `?agent=<id>`: the agent to open on; the first one when absent or not the person's. */
   openAgent?: string | undefined;
   /** `?stage=`, outside production only: the home at one moment of the canvas's first run, the
@@ -150,7 +153,12 @@ export function Studio({
   /* Every staged screen stands alone: no session is read and nothing is fetched. */
   const staging = staged !== null || stagedDraft !== null || stagedLive !== null || stagedEmpty;
   const stagedAgent = staged?.agent ?? stagedDraft?.agent ?? stagedLive?.agent ?? null;
-  const [section, setSection] = useState<View>(openSection ?? "home");
+  const [section, setSection] = useState<View>(() => {
+    if (resumeSection === "new" || resumeSection === "home") {
+      return resumeSection;
+    }
+    return SECTIONS.find((key) => key === resumeSection) ?? openSection ?? "home";
+  });
   const wide = useSyncExternalStore(subscribeRail, railSnapshot, railOnServer);
   const [access, setAccess] = useState<Access | null>(
     staging ? { enabled: true, canManage: true, workspaceId: "preview" } : null,
@@ -499,7 +507,7 @@ export function Studio({
         newAgentLock={newAgentLock}
         staged={stagedDraft}
         preview={preview}
-        initialSection={draftSection(openSection)}
+        initialSection={draftSection(resumeSection ?? openSection)}
         accountHandle={stagedDraft?.accountHandle ?? accountHandle}
         onRefreshAgent={refreshAgent}
         onPublished={() => {
@@ -534,7 +542,7 @@ export function Studio({
         newAgentLock={newAgentLock}
         staged={stagedLive}
         preview={preview}
-        initialSection={published ? "overview" : liveSection(openSection)}
+        initialSection={published ? "overview" : liveSection(resumeSection ?? openSection)}
         accountHandle={stagedLive?.accountHandle ?? accountHandle}
         onRefreshAgent={refreshAgent}
         onSwitch={(id) => {
@@ -694,7 +702,11 @@ export function Studio({
           STAGING
         </span>
 
-        <AccountMenu handle={accountHandle} preview={preview} />
+        <AccountMenu
+          handle={accountHandle}
+          preview={preview}
+          returnContext={{ agent: agentId ?? undefined, section }}
+        />
       </header>
 
       <div className={styles.body}>
@@ -914,11 +926,11 @@ export function Studio({
 }
 
 /** A `?section=` deep link the draft studio also has (`brief`, `limits`, `skills` …), or none. */
-function draftSection(section: SectionKey | undefined): DraftSectionKey | undefined {
+function draftSection(section: string | undefined): DraftSectionKey | undefined {
   return DRAFT_SECTIONS.flatMap((group) => group.items).find((item) => item.key === section)?.key;
 }
 
 /** A `?section=` deep link the live studio also has (`overview`, `brief`, `skills` …), or none. */
-function liveSection(section: SectionKey | undefined): LiveSectionKey | undefined {
+function liveSection(section: string | undefined): LiveSectionKey | undefined {
   return isLiveSection(section) ? section : undefined;
 }
