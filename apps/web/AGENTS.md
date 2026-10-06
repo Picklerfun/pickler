@@ -786,3 +786,13 @@ is rendered once. Desktop header controls stay on one row during account expansi
 chip may shrink to the available width and its icon never leaves the pointer. At widths of 640px
 or less, hover expansion is disabled and wrapping remains available. The 360ms expansion reverses
 once on pointer exit, rather than repeatedly entering/leaving a relocated icon.
+
+Account profile links include a local `returnTo` carrying the active agent, section and any
+non-production preview stage. `shell/account-return.ts` accepts only the Studio home path for
+that host (`/` on the dedicated Studio host, `/studio` on shared hosts) and filters query keys.
+Never send account return links to arbitrary origins or use unbounded browser history as the
+fallback. `resume` restores only a section from the selected studio's existing rail registry;
+agent selection still uses the authenticated workspace list. Preview stages remain disabled in
+production. Returning restores navigation, not unsaved form edits. Direct Account visits fall
+back to the host's Studio home. The controlled account-menu check covers round trips on desktop
+and touch screens, including sections selected after the initial page load.
