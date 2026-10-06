@@ -1099,6 +1099,19 @@
   color: var(--pk-ink-muted);
   text-wrap: pretty;
 }
+
+.walletRefresh {
+  display: flex;
+  align-items: center;
+  margin-bottom: 16px;
+}
+.refreshLabel {
+  width: 9em;
+}
+.balancePlaceholder {
+  display: inline-block;
+  width: 60px;
+}
 .listTitle {
   padding-top: 4px;
   font: 600 10px/1 var(--pk-font);
