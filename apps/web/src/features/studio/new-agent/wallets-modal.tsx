@@ -273,7 +273,7 @@ export function WalletsModal({
           <p className={styles.modalLead}>
             {focused
               ? "Review the source and destination, choose an asset, then authorize with your passkey."
-              : "Your wallet holds your funds. Each agent has a separate wallet with its own balance and limits."}
+              : "Your master wallet holds your funds. Each agent has a separate wallet with its own balance and limits."}
           </p>
           <div className={styles.walletRefresh}>
             <Tag className={styles.walletNetwork}>
@@ -328,7 +328,7 @@ export function WalletsModal({
                       <i data-swatch="blue" />
                     </span>
                     <span className={styles.walletBoxName}>
-                      <b>Your wallet</b>
+                      <b>Master wallet</b>
                       <small title={wallets.master.address}>{wallets.master.address}</small>
                     </span>
                     <span className={styles.walletTag} data-tone="good">
@@ -339,8 +339,8 @@ export function WalletsModal({
                       className={styles.chipButton}
                       aria-label={
                         copied === wallets.master.address
-                          ? "Your wallet address copied"
-                          : "Copy your wallet address"
+                          ? "Master wallet address copied"
+                          : "Copy master wallet address"
                       }
                       onClick={() => copy(wallets.master.address)}
                     >
