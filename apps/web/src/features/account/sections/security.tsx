@@ -1,4 +1,5 @@
 "use client";
+import { StudioSkeleton } from "../../studio/skeleton";
 
 import { Button, Icon } from "@pickler/ui";
 import { coverage, coverageCopy, EMAIL_RECOVERY_ON } from "../lib/coverage";
@@ -31,14 +32,18 @@ export function SecuritySection({
 
   return (
     <section id="account-panel-security" className={styles.section} aria-label="Security">
-      <div className={styles.risk}>
-        <p className={styles.riskEyebrow} data-tone={copy.tone}>
-          <span className={styles.riskSquare} aria-hidden="true" />
-          {copy.eyebrow}
-        </p>
-        <h2 className={styles.riskHeadline}>{copy.headline}</h2>
-        <p className={styles.riskBody}>{copy.body}</p>
-      </div>
+      {read.kind === "loading" ? (
+        <StudioSkeleton variant="access" />
+      ) : (
+        <div className={styles.risk}>
+          <p className={styles.riskEyebrow} data-tone={copy.tone}>
+            <span className={styles.riskSquare} aria-hidden="true" />
+            {copy.eyebrow}
+          </p>
+          <h2 className={styles.riskHeadline}>{copy.headline}</h2>
+          <p className={styles.riskBody}>{copy.body}</p>
+        </div>
+      )}
 
       <h3 className={styles.heading}>PASSKEYS · CAN MOVE FUNDS</h3>
       <PasskeyList state={read} secondPasskeyId="account-second-passkey" />
