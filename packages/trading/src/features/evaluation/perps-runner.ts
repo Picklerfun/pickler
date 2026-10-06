@@ -217,6 +217,11 @@ export function createPerpsStudyRunner(deps: {
     let observationWritesStarted = false;
     try {
       observation = await data.observe(record, signal, () => ownedGuard());
+      if (ablation && now() >= record.graceUntil!) {
+        await ownedGuard();
+        await study.complete(scope, lease);
+        return false;
+      }
       validateCommonFrames(observation.frames, record.config.network, now());
       observationWritesStarted = true;
       for (const strategy of strategies) {
