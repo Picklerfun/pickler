@@ -1,4 +1,5 @@
 "use client";
+import { StudioSkeleton } from "../skeleton";
 import { useEffect, useId, useRef, useState } from "react";
 import { Icon } from "@pickler/ui";
 import type { StudioWallets } from "../api";
@@ -223,9 +224,7 @@ export function WalletsModal({
             {copied ? "Address copied" : ""}
           </span>
           {!wallets ? (
-            <p className={styles.modalLead} role="status">
-              Reading your wallets…
-            </p>
+            <StudioSkeleton variant="wallet" />
           ) : (
             <>
               <div className={styles.walletBox} data-master="true">
