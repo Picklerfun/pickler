@@ -16,7 +16,7 @@ import styles from "./market.module.css";
  * agent's wallet and AI credits (Soon), "Fund {name}" (the Wallets modal toward the agent) and
  * "Deposit · copy address", which is the address's one copy action. Its
  * agent's wallet: NO WITHDRAWALS, the address and Copy, AUSD · FREE, AUSD · IN POSITIONS (0),
- * MON · GAS, who moves money, "Pull free AUSD back" (the Wallets modal back to master) and
+ * MON · GAS, who moves money, "Return funds to your wallet" (the Wallets modal back to master) and
  * "Caps & limits" (→ Limits). Then the shell's ledger, read the first time this section opens.
  */
 export const Wallets: (props: LiveSectionProps) => ReactElement = ({
@@ -70,7 +70,7 @@ function AgentWallet({
   onLimits,
 }: {
   card: ReturnType<typeof walletCards>["agent"];
-  /** Why "Pull free AUSD back" is shut (`pullReason`: view-only, then nothing free), or null. */
+  /** Why "Return funds to your wallet" is shut (`pullReason`: view-only, then nothing free), or null. */
   pullShut: string | null;
   onPull(): void;
   onLimits(): void;
