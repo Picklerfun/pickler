@@ -59,7 +59,7 @@ export function StudioRail<K extends string>({
                       }}
                     >
                       <Icon name={item.icon} />
-                      <span>{item.label}</span>
+                      <span data-sidebar-label>{item.label}</span>
                       {item.locked && <Icon name="lock" />}
                     </SidebarMenuButton>
                     {item.badge !== undefined && item.badge > 0 && (
