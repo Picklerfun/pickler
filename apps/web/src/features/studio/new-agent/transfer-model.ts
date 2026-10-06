@@ -67,14 +67,14 @@ function transferBlock(input: TransferInput): { ok: boolean; label: string } {
   if (units > input.held) {
     return {
       ok: false,
-      label: `More ${input.token} than ${input.toAgent ? "your wallet" : input.agentName} holds`,
+      label: `More ${input.token} than ${input.toAgent ? "master wallet" : input.agentName} holds`,
     };
   }
   return {
     ok: true,
     label: input.toAgent
       ? `Send ${amount} ${input.token} to ${input.agentName}`
-      : `Return ${amount} ${input.token} to your wallet`,
+      : `Return ${amount} ${input.token} to master wallet`,
   };
 }
 
@@ -123,7 +123,7 @@ export function moveNote(input: {
   token: Token;
   keptForGas?: boolean;
 }): string {
-  const holds = `${input.toAgent ? "YOUR WALLET HOLDS" : "AGENT WALLET HOLDS"} ${formatUnits(input.held, input.token)} ${input.token}`;
+  const holds = `${input.toAgent ? "MASTER WALLET HOLDS" : "AGENT WALLET HOLDS"} ${formatUnits(input.held, input.token)} ${input.token}`;
   const positions = input.toAgent ? "" : " · OPEN POSITIONS STAY";
   const gas = input.keptForGas
     ? ` · KEEPS ${formatUnits(MON_GAS_RESERVE_WEI, "MON")} MON FOR GAS`
@@ -144,12 +144,12 @@ export function moveSheetCopy(input: {
   return input.toAgent
     ? {
         title: `Move ${amount} to ${input.agentName}?`,
-        body: `YOUR WALLET → ${agent} · AUTHORIZE WITH YOUR PASSKEY`,
+        body: `MASTER WALLET → ${agent} · AUTHORIZE WITH YOUR PASSKEY`,
         done: "Moved",
       }
     : {
-        title: `Return ${amount} to your wallet?`,
-        body: `${agent} → YOUR WALLET · AUTHORIZE WITH YOUR PASSKEY`,
+        title: `Return ${amount} to master wallet?`,
+        body: `${agent} → MASTER WALLET · AUTHORIZE WITH YOUR PASSKEY`,
         done: "Moved",
       };
 }
