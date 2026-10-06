@@ -305,3 +305,45 @@ execution, records `evidence-validation` / `CROSSED_BOOK`, preserves the origina
 when the diagnostic sink throws, and verifies no account has an execution attempt. Targeted
 lint, agent-service types, shared compilation and architecture/link checks passed. Full-window
 prospective acceptance remains pending for the newly frozen study.
+
+## Interrupted diagnostic continuation on 2026-10-06
+
+Study `perps-sma-20261006-1205-diagnostic` used frozen commit
+`93fc1bd7fc3b75145b8cef32a378b66970d8b559` with a fixed 12:16–18:16 UTC window.
+It ended with 19 complete common rounds, one omitted slot (14), and four future slots that
+were not admitted. The terminal local phase was `observation-read` at 17:05:49.527 UTC,
+with `STUDY_OPERATION_FAILED` / `NOT_VERIFIABLE`; the runner exited with code 1 at
+17:05:54.577 UTC. This is another interrupted comparison, not six-hour acceptance.
+
+The omitted slot's BTC ticker/book timestamps remained eight seconds apart, exceeding the
+unchanged five-second maximum. ETH was coherent. The whole slot was skipped before decision
+preparation, without execution or model calls; the next scheduled slot completed. All 114
+saved decisions from the 19 complete rounds reproduced exactly. Each initial action was a
+hold under the common neutral hourly trend. There were no virtual fills, open positions or
+pending funding, and each independent portfolio retained 1,000 AUSD.
+
+The last successful PostgreSQL renewal took 22,756 ms; an earlier timer was 13,431 ms late.
+These observations do not establish the cause of the native exception. Version-1 diagnostic
+records retain neither its native category nor its immediate cause, and the original request
+payload is absent. The root cause remains unverifiable. A read-only PostgreSQL check confirmed
+that the original owner and expiry were cleared; its historical document still says running,
+while the report explicitly projects the dead process as interrupted. No record was rewritten
+to claim completion.
+
+New diagnostic version 2 preserves fixed exception categories and reviewed transport/PostgreSQL
+codes for the exception and immediate cause, without messages, stacks, credentials or arbitrary
+fields. It does not evaluate exception code/cause getters. The SMA host identifies this format
+as `safe-phase-predicate-native-v2`. Unknown causes remain unknown, and native errors still
+propagate unchanged rather than becoming holds or recoverable omissions. This fixes missing
+diagnostic identity, not a demonstrated historical network or database cause. Full prospective
+acceptance remains pending.
+
+Read-only macOS power evidence records clamshell sleep at 17:04:42 UTC, before the
+17:05:49 terminal diagnostic, followed by partial wakes and further sleep cycles. Host
+suspension is demonstrated; the precise native exception and its causal transport/database
+phase remain unverifiable. Idle-sleep protection cannot prevent closing the lid. A local
+six-hour continuation requires the lid to remain open; no global sleep setting is changed.
+
+All eighteen controlled SMA tests passed with isolated PostgreSQL, zero failures or skips,
+including native transport/database categories, unknown identities, getter rejection, safe
+redaction and unchanged propagation through the real coordinator without account writes.
