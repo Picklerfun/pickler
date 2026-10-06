@@ -1,6 +1,6 @@
 "use client";
 import { useId } from "react";
-import { Button, Icon, Segmented } from "@pickler/ui";
+import { Button, Icon, Segmented, Skeleton } from "@pickler/ui";
 import type { StudioWallets } from "../api";
 import { accentVars } from "@/lib/accent";
 import { AvatarGrid } from "./identity";
@@ -35,6 +35,7 @@ export interface AgentWalletBoxProps {
   error: string;
   copied: boolean;
   preview: boolean;
+  refreshing: boolean;
   onPick(toAgent: boolean): void;
   onToken(token: Token): void;
   onAmount(text: string): void;
@@ -61,6 +62,7 @@ export function AgentWalletBox({
   error,
   copied,
   preview,
+  refreshing,
   onPick,
   onToken,
   onAmount,
@@ -116,11 +118,23 @@ export function AgentWalletBox({
       </div>
       <div className={styles.tiles}>
         <span className={styles.tile}>
-          <b>{formatUnits(unitsOf(agent.ausdMicro), "AUSD")}</b>
+          <b>
+            {refreshing ? (
+              <Skeleton className={styles.balancePlaceholder} />
+            ) : (
+              formatUnits(unitsOf(agent.ausdMicro), "AUSD")
+            )}
+          </b>
           <small>AUSD · TRADES</small>
         </span>
         <span className={styles.tile}>
-          <b>{formatUnits(unitsOf(agent.monWei), "MON")}</b>
+          <b>
+            {refreshing ? (
+              <Skeleton className={styles.balancePlaceholder} />
+            ) : (
+              formatUnits(unitsOf(agent.monWei), "MON")
+            )}
+          </b>
           <small>MON · GAS</small>
         </span>
       </div>
@@ -137,7 +151,7 @@ export function AgentWalletBox({
           data-fund={agent.walletId}
           aria-expanded={moving !== null && toAgent}
           aria-controls={formId}
-          disabled={preview}
+          disabled={preview || refreshing}
           onClick={() => onPick(true)}
         >
           <Icon name="arrowUp" size={12} />
@@ -148,7 +162,7 @@ export function AgentWalletBox({
           className={styles.direction}
           aria-expanded={moving !== null && !toAgent}
           aria-controls={formId}
-          disabled={preview}
+          disabled={preview || refreshing}
           onClick={() => onPick(false)}
         >
           <Icon name="arrowDown" size={12} />
@@ -181,7 +195,7 @@ export function AgentWalletBox({
                 type="button"
                 className={styles.chipButton}
                 aria-label={`Fill the most ${token} the source can send`}
-                disabled={held === null}
+                disabled={held === null || refreshing}
                 onClick={() => onMax(held)}
               >
                 MAX
@@ -190,7 +204,7 @@ export function AgentWalletBox({
             </span>
           </div>
           <div className={styles.moveButtons}>
-            <Button block disabled={!ok || preview} onClick={() => onSend(move)}>
+            <Button block disabled={!ok || preview || refreshing} onClick={() => onSend(move)}>
               {label}
             </Button>
             <Button variant="ghost" onClick={onCancel}>
