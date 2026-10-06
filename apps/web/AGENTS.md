@@ -738,7 +738,7 @@ See [Studio perpetual execution](../../docs/studio-perps-execution.md).
 
 ## Initial Studio navigation
 
-`features/studio/shell/pending.tsx` uses the modern Studio header and 218px rail during the initial session/agent read and on load errors. `studioLanding` must remain pending until that read completes, even when partial agent data has arrived. Never render the legacy section frame as a loading placeholder: its rail toggle moves the brand during account-to-Studio navigation.
+`features/studio/shell/pending.tsx` uses the modern Studio header and the shared expanded/icon rail preference during the initial session/agent read and on load errors. `studioLanding` must remain pending until that read completes, even when partial agent data has arrived. Never render the legacy section frame as a loading placeholder: its rail toggle moves the brand during account-to-Studio navigation.
 
 ## Creator access requests
 
@@ -796,3 +796,15 @@ agent selection still uses the authenticated workspace list. Preview stages rema
 production. Returning restores navigation, not unsaved form edits. Direct Account visits fall
 back to the host's Studio home. The controlled account-menu check covers round trips on desktop
 and touch screens, including sections selected after the initial page load.
+
+## Collapsible agent sidebar
+
+The shared draft/live shell and initial pending frame reuse `lib/rail.ts`'s existing browser
+preference through `shell/sidebar.tsx`. The navbar always keeps a labelled toggle beside Pickler.
+Desktop collapse reduces the rail from 218px to 64px, showing icons with accessible names and
+native hover titles; the agent avatar still opens the same agent selector. Mobile collapse hides
+the navigation and expanding restores its existing scrolling row. No agent settings or backend
+permissions change. Cmd/Ctrl+B toggles outside editable fields; repeated keydown is ignored.
+Reduced motion removes the width animation. Keep the pending frame's toggle and rail dimensions
+consistent to avoid swapping navigation layouts while loading. Collapsing never resets the active
+agent, section or unsaved edits. Agent-menu focus leaving the selector closes it.
