@@ -100,6 +100,43 @@ try {
     const returnUrl = new URL(profileUrl.searchParams.get("returnTo"), baseUrl);
     assert.equal(returnUrl.pathname, "/studio");
     assert.equal(returnUrl.searchParams.get("stage"), stage);
+    await profile.hover();
+    const signOutRow = page.getByRole("menuitem", { name: "Sign out", exact: true });
+    const profileBounds = await profile.boundingBox();
+    const signOutBounds = await signOutRow.boundingBox();
+    assert.ok(
+      signOutBounds.y >= profileBounds.y + profileBounds.height + 4,
+      "Menu rows do not overlap",
+    );
+    assert.ok(
+      await profile.evaluate((element) => parseFloat(getComputedStyle(element).outlineOffset) <= 0),
+      "The profile focus outline stays inside its own row",
+    );
+    await page.mouse.move(
+      signOutBounds.x + signOutBounds.width / 2,
+      signOutBounds.y + signOutBounds.height / 2,
+    );
+    assert.equal(
+      await profile.getAttribute("data-highlighted"),
+      null,
+      "Profile hover clears on row exit",
+    );
+    assert.equal(
+      await signOutRow.getAttribute("data-highlighted"),
+      null,
+      "Disabled sign-out never looks active",
+    );
+    await page.getByText("Sign out is disabled in this preview.", { exact: true }).waitFor();
+    assert.equal(await signOutRow.locator("svg.lucide-log-out").count(), 1);
+    await page.mouse.click(
+      signOutBounds.x + signOutBounds.width / 2,
+      signOutBounds.y + signOutBounds.height / 2,
+    );
+    assert.equal(
+      await trigger.getAttribute("aria-expanded"),
+      "true",
+      "Disabled preview sign-out does not navigate or dismiss",
+    );
     await page.keyboard.press("ArrowDown");
     assert.equal(await profile.evaluate((element) => element === document.activeElement), true);
     assert.equal(
