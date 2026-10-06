@@ -391,7 +391,8 @@ indigo). A staged or preview studio refuses every write, the shell's included, a
 share (docs/specs/studio-live-v1.md L2); `draft/` keeps only what a private draft draws. The shell
 is one implementation configured by props, never forked: `studio-shell.tsx` (`StudioShell`, the
 frame: top bar, rail, preview note, header, tiles, failed read, section, the Wallets and credits
-modals, with `useShellModals`), `top-bar.tsx`, `rail.tsx` (groups of items with `on`, `locked`, a
+modals, with `useShellModals`), `top-bar.tsx` (global balances and account),
+`agent-selector.tsx` (the existing workspace switcher above the sidebar navigation), `rail.tsx` (groups of items with `on`, `locked`, a
 `badge` drawn above zero, and a footer slot), `header.tsx` (`StudioHeader`, `HeaderDot`,
 `StudioTiles`), `status-chip.tsx`, `agent-avatar.tsx`, `banners.tsx`, `section.tsx`
 (`StudioSection`, `#<idPrefix>-section-<key>`), `identity.tsx`, `master.tsx` (`Master`, which the
@@ -402,7 +403,7 @@ a view-only member's Fund is `aria-disabled` with `VIEW_ONLY_FUNDS` from `wallet
 (`CapSteppers`, with an optional `sub` line under each row's title), `arrivals.tsx` (`useArrivals`
 and `ArrivalList`: what arrived in an agent's wallet between two reads, both Limits) and
 `web-sites.tsx` (`useSiteBox` and `WebSites`: WEB · WHERE EXA MAY LOOK with its site box, both
-Sources & rules, `#<idPrefix>-sources-web`). The top bar's new-agent item reads `newAgentLabel`
+Sources & rules, `#<idPrefix>-sources-web`). The sidebar selector's new-agent item reads `newAgentLabel`
 ("+ New agent" by default; the live studio passes "Create another agent"). Every id
 takes an `idPrefix` typed `StudioIdPrefix` (`"draft" | "live"`, `shell/model.ts`), so the draft's ids
 are unchanged and a typo cannot move one; a rail item's id is `railItemId(idPrefix, key)`
@@ -777,3 +778,11 @@ success, preserves errors and disables duplicate submissions. Design previews ca
 The busy sign-out action uses the shared Skeleton with an accessible status label.
 Run `node scripts/design/account-menu.mjs` for the controlled desktop/mobile interaction check,
 alongside web tests, typecheck, lint and rendered design checks. It uses local fixture servers only.
+
+The draft/live navbar contains global controls only. Their shared sidebar holds the existing
+agent switcher and status, outside the horizontal navigation scroller on small screens. Moving
+that switcher must preserve its permissions, agent IDs and New agent callback. The draft status
+is rendered once. Desktop header controls stay on one row during account expansion; the account
+chip may shrink to the available width and its icon never leaves the pointer. At widths of 640px
+or less, hover expansion is disabled and wrapping remains available. The 360ms expansion reverses
+once on pointer exit, rather than repeatedly entering/leaving a relocated icon.
