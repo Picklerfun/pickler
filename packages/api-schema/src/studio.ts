@@ -228,6 +228,11 @@ const baseUnitBalances = {
 
 /** `GET /v1/studio/wallets` (§4.2). */
 export const walletsResponseSchema = z.object({
+  /** Deployment-selected balance/transfer chain; absent in legacy responses, null if unavailable. */
+  chainId: z
+    .union([z.literal(143), z.literal(10143)])
+    .nullable()
+    .optional(),
   master: z.object({ address: z.string(), ...baseUnitBalances }),
   agents: z.array(
     z.object({
