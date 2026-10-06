@@ -225,6 +225,13 @@
       "when": 1791236241419,
       "tag": "0031_last_loki",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1791248857916,
+      "tag": "0032_bored_the_fallen",
+      "breakpoints": true
     }
   ]
 }

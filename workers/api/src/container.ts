@@ -1,3 +1,4 @@
+import { PostgresStudioAccessRequests } from "@pickler/infrastructure";
 import { createAdviceService } from "@pickler/core";
 import { PostgresAdviceStore } from "@pickler/infrastructure";
 import { parseAdvicePolicy } from "@pickler/trading/perps";
@@ -475,6 +476,7 @@ export function createServices(env: Env): Services & { close(): Promise<void> } 
     close: () => repository.close(),
     onboard: (userId) => directory.onboard(userId),
     studio: {
+      accessRequests: new PostgresStudioAccessRequests(repository.pool),
       admissionsEnabled: env.ADMISSIONS_ENABLED === "true",
       trading: {
         repository: new PostgresTradingStore(repository.pool),

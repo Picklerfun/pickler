@@ -1020,8 +1020,8 @@ const ALL = [
     task: "Task 13",
     proves: "#account-panel-wallet",
   },
-  // The account's three sections sit behind a rail and only the wallet renders on load, so the
-  // other two are never on screen for a check to read. `?section=` puts one there, outside
+  // The account sections sit behind a rail and only the wallet renders on load, so the
+  // other sections are never on screen for a check to read. `?section=` puts one there, outside
   // production only. MUST_NEST in surfaces.mjs keys on name, so only `account` carries the nesting
   // assertion — right, because the white wallet card exists only in the wallet section.
   {
@@ -1039,6 +1039,14 @@ const ALL = [
     surface: "dark",
     task: "Task 13",
     proves: "#account-panel-profile",
+  },
+  {
+    path: "/account?section=access",
+    name: "account-access",
+    product: "studio",
+    surface: "dark",
+    task: "Creator access",
+    proves: "#creator-access-panel",
   },
   // The signup's mandatory passkey step, straight after the code and before the handle: its one
   // prompt creates the sub-organization and the master wallet, and every signed-in screen sends a

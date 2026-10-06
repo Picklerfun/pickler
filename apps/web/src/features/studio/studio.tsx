@@ -73,8 +73,8 @@ const BLOCKED: Record<
   RESEARCH_ACCESS_DENIED: {
     tint: "magenta",
     icon: "lock",
-    title: "Research is not enabled on this workspace yet",
-    note: "An operator switches it on by hand. Creating agents, editing settings and starting runs stay locked until then.",
+    title: "Creator access required",
+    note: "Your account does not yet have permission to create agents or their wallets. Request access from the Pickler team to continue.",
     cta: "Refresh access",
     to: null,
   },

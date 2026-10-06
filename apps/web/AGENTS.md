@@ -738,3 +738,12 @@ See [Studio perpetual execution](../../docs/studio-perps-execution.md).
 ## Initial Studio navigation
 
 `features/studio/shell/pending.tsx` uses the modern Studio header and 218px rail during the initial session/agent read and on load errors. `studioLanding` must remain pending until that read completes, even when partial agent data has arrived. Never render the legacy section frame as a loading placeholder: its rail toggle moves the brand during account-to-Studio navigation.
+
+## Creator access requests
+
+The New agent access warning offers an authenticated request, never a passkey prompt or implicit
+approval. `features/studio/access-request.tsx` is also Account's Creator access section. It reads
+and posts `/v1/studio/access-request`; repeated requests keep the first timestamp. Preview controls
+never send requests. Server-authorized operators see a pending inbox in that section, using
+`SUPER_ADMIN_EMAILS`; ordinary users never receive another user's request. These are internal inbox
+notifications, not email/Slack/Telegram delivery. Approval remains the existing operator command.
