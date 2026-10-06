@@ -568,7 +568,7 @@ const ALL = [
     proves: "#draft-section-overview",
     act: {
       click: "[data-account-menu] > button",
-      proves: '[data-account-menu] a[href^="/account?section=profile&returnTo="]',
+      proves: '[data-slot="dropdown-menu-content"] a[href^="/account?section=profile&returnTo="]',
     },
   },
   {
@@ -580,7 +580,7 @@ const ALL = [
     proves: "#draft-section-overview",
     act: {
       click: '[data-sidebar-toggle][aria-expanded="true"]',
-      proves: '#draft-sidebar[data-wide="false"]',
+      proves: '#draft-sidebar[data-slot="sidebar-container"]:is([data-collapsible="icon"] *)',
     },
   },
   {
@@ -592,7 +592,7 @@ const ALL = [
     proves: "#live-section-overview",
     act: {
       click: '[data-sidebar-toggle][aria-expanded="true"]',
-      proves: '#live-sidebar[data-wide="false"]',
+      proves: '#live-sidebar[data-slot="sidebar-container"]:is([data-collapsible="icon"] *)',
     },
   },
   {
