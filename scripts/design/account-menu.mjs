@@ -95,7 +95,11 @@ try {
     assert.equal(page.url(), route, "Trigger opens disclosure instead of navigating");
     const profile = account.getByRole("link", { name: "My profile", exact: true });
     await profile.waitFor();
-    assert.equal(await profile.getAttribute("href"), "/account?section=profile");
+    const profileUrl = new URL(await profile.getAttribute("href"), baseUrl);
+    assert.equal(profileUrl.searchParams.get("section"), "profile");
+    const returnUrl = new URL(profileUrl.searchParams.get("returnTo"), baseUrl);
+    assert.equal(returnUrl.pathname, "/studio");
+    assert.equal(returnUrl.searchParams.get("stage"), stage);
     assert.equal(await profile.evaluate((element) => element === document.activeElement), true);
     assert.equal(
       await account.getByRole("button", { name: "Sign out", exact: true }).isDisabled(),
@@ -168,6 +172,29 @@ try {
     }
   }
 
+  // Navigation must restore state selected through the rail, not just its initial URL.
+  for (const [stage, section, label, selector] of [
+    ["draft", "master", "Master wallet", "#draft-section-master"],
+    ["perpl-live", "controls", "Controls", "#live-section-controls"],
+  ]) {
+    await page.goto(`${baseUrl}/studio?stage=${stage}`);
+    await page.getByRole("button", { name: label, exact: true }).click();
+    await page.locator(selector).waitFor();
+    await page.locator("[data-account-menu] > button").click();
+    const link = page.getByRole("link", { name: "My profile", exact: true });
+    const destination = new URL(await link.getAttribute("href"), baseUrl);
+    const returnTo = destination.searchParams.get("returnTo");
+    const workspace = new URL(returnTo, baseUrl);
+    assert.equal(workspace.searchParams.get("resume"), section);
+    assert.ok(workspace.searchParams.get("agent"), "Selected agent is preserved");
+    await link.click();
+    await page.waitForURL(/\/account\?section=profile/);
+    await page.getByRole("link", { name: "← Back to studio", exact: true }).click();
+    await page.waitForURL(`${baseUrl}${returnTo}`);
+    await page.locator(selector).waitFor();
+    assert.equal(await page.locator(`#${stage === "draft" ? "draft" : "live"}-studio`).count(), 1);
+  }
+
   await page.close();
   const mobile = await browser.newPage({
     viewport: { width: 390, height: 844 },
@@ -209,9 +236,12 @@ try {
       .getAttribute("aria-current"),
     "true",
   );
+  await mobile.getByRole("link", { name: "← Back to studio", exact: true }).click();
+  await mobile.locator("#draft-studio").waitFor();
+  assert.equal(new URL(mobile.url()).searchParams.get("stage"), "draft");
   assert.deepEqual(errors, []);
   console.log(
-    "PASS: hover geometry, click, profile, Escape/focus, Tab, outside click and mobile. Controlled previews only.",
+    "PASS: hover geometry, click, profile round trips preserving agent/section/stage, Escape/focus, Tab, outside click and mobile. Controlled previews only.",
   );
 } finally {
   await browser?.close();
