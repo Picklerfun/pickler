@@ -82,6 +82,11 @@
 }
 
 /* Agent identity remains product data inside the shared shadcn header. */
+.sidebar :global([data-slot="sidebar-header"] [data-sidebar="menu-button"][data-size="lg"]) {
+  /* The 26px product avatar shares the collapsed navigation's center line. */
+  padding-inline: 11px;
+}
+
 .selectorIdentity {
   display: flex;
   flex: none;
