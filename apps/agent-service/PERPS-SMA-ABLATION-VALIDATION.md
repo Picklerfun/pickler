@@ -203,3 +203,23 @@ provider or model calls. The ongoing run remains on its original frozen commit; 
 has not been deployed into that process. Its eventual execution timestamps must be checked
 separately, and a passing controlled regression does not prove the new boundary behavior was
 exercised prospectively. No automatic repeat or restart is authorized.
+
+## Delivery visual-check readiness correction
+
+On delivery head `1e3317b0`, the first rendered CI attempt reported nine contrast failures in
+wallet screens while opacity was 0.24 or 0.79. One diagnostic repetition on the same commit
+passed contrast over all 108 routes but could not prove two Studio screens. These failures and
+their logs remain separate from the live SMA comparison; they did not stop or restart it.
+
+The design harness previously counted proof selectors immediately and waited only for
+post-click CSS transitions. Its readiness repair now waits up to ten seconds for each existing
+proof selector and up to five seconds for finite animation/transition completion before
+measurement. Infinite decoration is excluded from that wait. A missing screen or motion timeout
+remains blocked. Selectors, colours, contrast thresholds and product UI are unchanged.
+
+All 83 controlled design tests passed locally. An isolated Chromium fixture reproduced a delayed
+mount and active entry animation (opacity 0.582989), then measured opacity 1 after completion;
+it also verified that a missing screen and paused finite animation remain blocked. It made no
+provider calls and did not use the app ports occupied by another process. This demonstrates the
+readiness defect and correction, without proving every historical CI failure's internal cause.
+The corrected full rendered CI result remains to be checked on its new commit.
