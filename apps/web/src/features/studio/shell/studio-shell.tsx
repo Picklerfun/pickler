@@ -126,7 +126,7 @@ export function StudioShell<K extends string>({
   const sidebarId = `${idPrefix}-sidebar`;
   return (
     <StudioSidebarProvider>
-      <main className={styles.studio} id={`${idPrefix}-studio`} data-surface="dark">
+      <div className={styles.studio} id={`${idPrefix}-studio`} data-surface="dark">
         <StudioTopBar
           sidebarId={sidebarId}
           master={studio.wallets?.master ?? null}
@@ -169,7 +169,7 @@ export function StudioShell<K extends string>({
             />
           </Sidebar>
 
-          <div className={styles.main}>
+          <main className={styles.main}>
             <div className={styles.column}>
               {studio.preview && <PreviewBanner />}
               <StudioHeader
@@ -184,7 +184,7 @@ export function StudioShell<K extends string>({
               {banner}
               {children}
             </div>
-          </div>
+          </main>
         </div>
 
         <WalletsModal
@@ -212,7 +212,7 @@ export function StudioShell<K extends string>({
           onClose={modals.close}
           onWallets={() => modals.openWallets(null)}
         />
-      </main>
+      </div>
     </StudioSidebarProvider>
   );
 }
