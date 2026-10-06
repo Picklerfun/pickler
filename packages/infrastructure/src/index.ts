@@ -231,3 +231,4 @@ export * from "./persistence/advice-store.js";
 export * from "./persistence/perps-check-cost-store.js";
 
 export * from "./persistence/ai-credit-store.js";
+export { PostgresStudioAccessRequests } from "./studio/access-requests.js";
