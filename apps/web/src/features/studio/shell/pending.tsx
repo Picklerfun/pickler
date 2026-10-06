@@ -1,6 +1,8 @@
 "use client";
 
 import Image from "next/image";
+import { StudioSidebarToggle, useStudioSidebar } from "./sidebar";
+import shell from "./shell.module.css";
 import { AccountMenu } from "./account-menu";
 import Link from "next/link";
 import { Button, Icon } from "@pickler/ui";
@@ -21,6 +23,7 @@ export function StudioPending({
   accountHandle: string | null;
 }) {
   const href = useStudioHref();
+  const sidebar = useStudioSidebar();
 
   return (
     <main className={home.home} data-surface="dark" id="studio-pending">
@@ -29,6 +32,11 @@ export function StudioPending({
           <Image src="/brand/logo.png" alt="" width={22} height={23} priority />
           <span>PICKLER</span>
         </Link>
+        <StudioSidebarToggle
+          open={sidebar.open}
+          onToggle={sidebar.toggle}
+          controls="pending-sidebar"
+        />
         <span className={home.spacer} />
         <span className={home.pill} data-tint="grey">
           TESTNET
@@ -36,7 +44,14 @@ export function StudioPending({
         <AccountMenu handle={accountHandle} preview={false} />
       </header>
       <div className={home.emptyBody}>
-        <nav className={home.emptyRail} aria-label="Studio sections" aria-busy={!error}>
+        <nav
+          className={`${home.emptyRail} ${shell.pendingSidebar}`}
+          id="pending-sidebar"
+          data-wide={sidebar.open}
+          data-studio-sidebar
+          aria-label="Studio sections"
+          aria-busy={!error}
+        >
           {RAIL.map((group) => (
             <div key={group.title}>
               <p className={studio.railTitle}>{group.title}</p>
