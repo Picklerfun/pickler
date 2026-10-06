@@ -850,3 +850,8 @@ fading labels, geometry synchronization, stable content measure and vertical pla
 resizes through the mobile and grid breakpoints. It is part of the Design rendered CI job and can
 reuse an explicit loopback fixture with `DESIGN_BASE_URL`. Keep the account-menu acceptance for
 keyboard, mobile Sheet and profile-return interactions.
+
+The sidebar motion acceptance also checks delayed hover labels, pointer exit/activation, dropdown
+return-focus without stale tooltips, genuine keyboard labels, collapse reset, and navigation icon
+focus/stroke geometry on draft/live fixtures. Do not disable keyboard focus or remount menu controls
+to clear a tooltip.
