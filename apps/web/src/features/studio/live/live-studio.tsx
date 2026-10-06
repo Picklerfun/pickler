@@ -98,7 +98,7 @@ export function LiveStudio({
   onNew(): void;
 }) {
   const [section, setSection] = useState<LiveSectionKey>(
-    staged?.section ?? initialSection ?? "overview",
+    initialSection ?? staged?.section ?? "overview",
   );
   const wallClock = useNow();
   const now = staged ? staged.now : wallClock;
