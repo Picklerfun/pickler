@@ -191,6 +191,7 @@
   display: flex;
   flex-direction: column;
   border-right: 1px solid var(--pk-rule);
+  transition: flex-basis 260ms ease;
 }
 .rail {
   /* Positioned, so the locked rows' visually hidden text is laid out in the rail: unpositioned, it
@@ -497,6 +498,66 @@
   }
   .railItem,
   .chipButton {
+    transition: none;
+  }
+}
+
+/* The same preference is used while loading and after the agent has been selected. */
+.sidebarToggle[data-size="sm"] {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+}
+.sidebar[data-wide="false"],
+.pendingSidebar[data-wide="false"] {
+  flex-basis: 64px;
+}
+.sidebar[data-wide="false"] .agentSelector {
+  padding-inline: 8px;
+}
+.sidebar[data-wide="false"] .selectorIdentity,
+.sidebar[data-wide="false"] .selectorStatus,
+.sidebar[data-wide="false"] .chipButton > svg,
+.sidebar[data-wide="false"] .railTitle,
+.sidebar[data-wide="false"] .railLabel,
+.sidebar[data-wide="false"] .railBadge,
+.sidebar[data-wide="false"] .railLock,
+.sidebar[data-wide="false"] [data-sidebar-label],
+.pendingSidebar[data-wide="false"] p,
+.pendingSidebar[data-wide="false"] [aria-disabled] > span {
+  display: none;
+}
+.sidebar[data-wide="false"] .chipButton {
+  justify-content: center;
+}
+.sidebar[data-wide="false"] .rail {
+  padding-inline: 8px;
+}
+.sidebar[data-wide="false"] .railItem,
+.sidebar[data-wide="false"] .railFoot a {
+  justify-content: center;
+  padding-inline: 10px;
+}
+.sidebar[data-wide="false"] .chipMenu {
+  width: 218px;
+  max-width: calc(100vw - 32px);
+}
+.pendingSidebar {
+  transition: flex-basis 260ms ease;
+}
+.pendingSidebar[data-wide="false"] {
+  padding-inline: 8px;
+}
+@media (max-width: 860px) {
+  .sidebar[data-wide="false"],
+  .pendingSidebar[data-wide="false"] {
+    display: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sidebar,
+  .pendingSidebar {
     transition: none;
   }
 }
