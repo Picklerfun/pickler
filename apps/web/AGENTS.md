@@ -747,3 +747,18 @@ and posts `/v1/studio/access-request`; repeated requests keep the first timestam
 never send requests. Server-authorized operators see a pending inbox in that section, using
 `SUPER_ADMIN_EMAILS`; ordinary users never receive another user's request. These are internal inbox
 notifications, not email/Slack/Telegram delivery. Approval remains the existing operator command.
+
+## Creator access layout and loading
+
+The creation screen places the sole creator-access request panel inside Its wallet, step 0,
+rather than above the identity form. Pending requests show a status tag and one secondary refresh
+action; wallet creation stays blocked. On narrow screens this access card precedes the form.
+The second-passkey reminder follows the setup fields. Account retains its own access section and
+server-authorized team inbox. Request submission and permission checks remain unchanged.
+
+`features/studio/skeleton.tsx` composes the shared UI `Skeleton` for workspace, wallet, access and
+row reads. Initial Studio/Account reads, creator access, agent wallets, wallet modals, passkey lists
+and handle availability use placeholders, not visible loading text. Accessible busy/status labels
+remain. Errors retain retry actions; an unread or failed balance is never represented as zero.
+`create-access`, `create-access-pending` and `create-access-loading` are inert non-production
+creation fixtures for layout checks; none reads or submits an access request.
