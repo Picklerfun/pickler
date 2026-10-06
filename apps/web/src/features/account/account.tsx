@@ -17,6 +17,7 @@ import { accountPreview } from "./lib/preview";
 import { SECTIONS, type SectionKey } from "./lib/sections";
 import { ProfileSection } from "./sections/profile";
 import { SecuritySection, type PasskeyState } from "./sections/security";
+import { StudioAccessRequest } from "../studio/access-request";
 import { WalletSection, type WalletState } from "./sections/wallet";
 import styles from "./account.module.css";
 
@@ -206,6 +207,7 @@ export function Account({ opening }: { opening: SectionKey }) {
           ) : (
             <>
               {section === "wallet" && <WalletSection state={wallet} />}
+              {section === "access" && <StudioAccessRequest preview={Boolean(preview)} />}
               {section === "security" && (
                 <SecuritySection
                   state={passkeys}
