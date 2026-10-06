@@ -232,8 +232,11 @@ recurring Codex monitor, resume, paid calls, transport override or automatic rep
 metrics; the host owns lifecycle and safe artifacts.
 
 The SMA runner observes while waiting for its first slot, but admits no negative slots.
-Preserve the original UTC daily-equity rule; `DAY_BASELINE_PENDING` is a terminal startup
-admission failure. Interrupted study reports mark future slots NOT_ADMITTED. The initial
+Preserve the original UTC daily-equity rule; `DAY_BASELINE_PENDING` is a terminal admission
+failure, including a later UTC day rollover after interrupted valuation continuity. Do not
+describe its historical `startup` phase label as proof that only the first slot can fail.
+Read [the validation record](PERPS-SMA-ABLATION-VALIDATION.md) for the interrupted prospective
+result and remaining six-hour acceptance. Interrupted study reports mark future slots NOT_ADMITTED. The initial
 midnight attempt and its rejected openings are retained; it must not be resumed or repeated
 without new operator authorization.
 
