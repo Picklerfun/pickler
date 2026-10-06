@@ -564,3 +564,9 @@ The operator migrator audits the journal before and after applying SQL, matching
 timestamp. It prints a sanitized `pickler_migration_status` JSON record with applied counts, pending
 tags and unknown counts; no connection values are logged. Unknown or incomplete history after
 migration fails the release. The audit uses a read-only repeatable-read transaction.
+
+`PostgresStudioAccessRequests` persists one internal team notification per user in the private RLS
+`pickler.studio_access_requests` table. Owner/access rows are revalidated under transaction locks;
+concurrent submissions retain their first timestamp. The inbox excludes enabled or inactive owners.
+`research-access requests` lists pending entries; enable/disable retains the existing explicit
+operator workflow and now uses the verified operator connection configuration.
