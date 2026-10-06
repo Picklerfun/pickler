@@ -165,6 +165,10 @@
   letter-spacing: 0.08em;
   color: var(--pk-ink-faint);
 }
+.handleSkeleton {
+  width: 112px;
+  height: 12px;
+}
 .handleNote[data-tone="lime"] {
   color: var(--pk-lime-ink);
 }
@@ -1444,5 +1448,18 @@
   .accentOption:hover,
   .patternOption:hover {
     transform: none;
+  }
+}
+
+/* A blocked creator sees step 0 first when the two columns stack. */
+@media (max-width: 960px) {
+  .side[data-access="true"] {
+    order: -1;
+    flex-basis: 100%;
+    max-width: 680px;
+    margin-top: 0;
+  }
+  .side[data-access="true"] .mascot {
+    display: none;
   }
 }
