@@ -567,3 +567,37 @@ test("the runner itself samples before its first slot across midnight, opens, st
   assert.equal(owner.rows[0].owner, null);
   assert.equal(owner.rows[0].expires_at, null);
 });
+
+test("a public observation crossing the exit deadline cannot close positions", async (t) => {
+  const f = await fixture(t);
+  let crossDeadline = false;
+  const runner = createPerpsStudyRunner({
+    study: f.study,
+    paper: f.paper,
+    now: f.now,
+    data: {
+      observe: async () => {
+        if (crossDeadline) {
+          f.set(f.now() + 2000);
+        }
+        return { frames: context(f.now()).evidence.frames, funding: [] };
+      },
+      evidence: async () => context(f.now()).evidence,
+      execution: async () => context(f.now()).evidence.frames,
+    },
+  });
+  await runner.cycle(config, f.lease, new AbortController().signal);
+  const record = (await f.study.view(config)).record;
+  const beforeDeadline = record.graceUntil! - 1000;
+  while (f.now() < beforeDeadline) {
+    f.set(Math.min(f.now() + 20000, beforeDeadline));
+    await f.study.renew(config, f.lease);
+  }
+  crossDeadline = true;
+  const result = await runner.cycle(config, f.lease, new AbortController().signal);
+  for (const account of Object.values(await f.accounts())) {
+    assert.equal(account.attempts.filter((a) => a.intent.kind === "close").length, 0);
+    assert.equal(account.account.positions.filter((p) => p.closedAt === null).length, 2);
+  }
+  assert.equal(result, false);
+});
