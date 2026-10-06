@@ -14,6 +14,7 @@ import {
   startLeaseHeartbeat,
   smaStudyReport,
   perpsCallCost,
+  perpsDataFailureDiagnostic,
   canonicalAudit,
   type SmaStudyConfig,
   type PerpsStudyMap,
@@ -631,4 +632,57 @@ test("a public observation crossing the exit deadline cannot close positions", a
     assert.equal(account.account.positions.filter((p) => p.closedAt === null).length, 2);
   }
   assert.equal(result, false);
+});
+
+test("SMA data failure diagnostics preserve phase and allowlisted predicate without raw errors", () => {
+  const error = new PilotError("INVALID_MARKET_DATA", "Crossed order book");
+  assert.deepEqual(perpsDataFailureDiagnostic(error, "evidence-validation", 123), {
+    kind: "data-failure",
+    version: 1,
+    at: 123,
+    phase: "evidence-validation",
+    code: "INVALID_MARKET_DATA",
+    predicate: "CROSSED_BOOK",
+  });
+  for (const unknown of [
+    new Error("private-key-secret"),
+    new PilotError("INVALID_MARKET_DATA", "private-key-secret"),
+  ]) {
+    const diagnostic = perpsDataFailureDiagnostic(unknown, "evidence-read", 123);
+    assert.equal(diagnostic.predicate, "NOT_VERIFIABLE");
+    assert.equal(JSON.stringify(diagnostic).includes("private-key-secret"), false);
+  }
+});
+
+test("SMA coordinator records rejected evidence phase before propagating the unchanged error", async (t) => {
+  const f = await fixture(t);
+  const failures: ReturnType<typeof perpsDataFailureDiagnostic>[] = [];
+  const evidence = context(f.now()).evidence;
+  evidence.frames[0]!.book.bids[0]!.price = "1000000";
+  const runner = createPerpsStudyRunner({
+    study: f.study,
+    paper: f.paper,
+    now: f.now,
+    dataDiagnostic: (event) => {
+      failures.push(event);
+      throw new Error("secondary diagnostic sink failure");
+    },
+    data: {
+      observe: async () => ({ frames: context(f.now()).evidence.frames, funding: [] }),
+      evidence: async () => evidence,
+      execution: async () => {
+        throw new Error("must not execute rejected evidence");
+      },
+    },
+  });
+  await assert.rejects(() => runner.cycle(config, f.lease, new AbortController().signal), {
+    code: "INVALID_MARKET_DATA",
+    message: "Crossed order book",
+  });
+  assert.equal(failures.length, 1);
+  assert.equal(failures[0]!.phase, "evidence-validation");
+  assert.equal(failures[0]!.predicate, "CROSSED_BOOK");
+  for (const account of Object.values(await f.accounts())) {
+    assert.equal(account.attempts.length, 0);
+  }
 });
