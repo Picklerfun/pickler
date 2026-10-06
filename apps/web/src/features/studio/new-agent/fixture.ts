@@ -101,6 +101,7 @@ export function newAgentFixture(stage: CreateStage): NewAgentStaged {
         ? { kind: "create", phase, step: 1 }
         : null,
     wallets: {
+      chainId: 10143,
       master: { address: MASTER, ausdMicro: "187600000", monWei: "4200000000000000000" },
       agents: wallet
         ? [
