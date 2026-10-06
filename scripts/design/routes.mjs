@@ -566,6 +566,10 @@ const ALL = [
     surface: "dark",
     task: "Draft dashboard",
     proves: "#draft-section-overview",
+    act: {
+      click: "[data-account-menu] > button",
+      proves: '[data-account-menu] a[href="/account?section=profile"]',
+    },
   },
   {
     path: "/studio?stage=draft-x-open",
