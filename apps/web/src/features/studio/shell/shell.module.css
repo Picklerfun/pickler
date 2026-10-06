@@ -15,7 +15,7 @@
 
 .studio {
   composes: home from "../home/home.module.css";
-  /* Nothing on this page scrolls sideways; the rail scrolls inside itself on a phone. */
+  /* Mobile navigation is a Sheet; only content participates in the page layout. */
   overflow-x: clip;
 }
 
@@ -84,7 +84,8 @@
 /* Agent identity remains product data inside the shared shadcn header. */
 .selectorIdentity {
   display: flex;
-  flex: 1;
+  flex: none;
+  width: calc(var(--sidebar-width) - 92px);
   min-width: 0;
   flex-direction: column;
   gap: 3px;
@@ -103,6 +104,12 @@
 .selectorStatus {
   overflow: hidden;
   white-space: nowrap;
+  height: 30px;
+  transition-property: height, opacity, transform;
+}
+.sidebar:global([data-slot="sidebar-container"]):is(:global([data-collapsible="icon"]) *)
+  .selectorStatus {
+  height: 0;
 }
 .agentMenu {
   width: 240px;
@@ -133,11 +140,30 @@
   letter-spacing: 0.08em;
 }
 
+/* Global controls have one responsive row; wallet/account controls never wrap independently. */
+.globalControls {
+  display: flex;
+  align-items: center;
+  flex: 0 1 auto;
+  min-width: 0;
+  gap: 10px;
+}
+.globalControls > button {
+  flex: none;
+}
+@media (max-width: 640px) {
+  .globalControls {
+    flex: 1 0 100%;
+    justify-content: flex-end;
+  }
+}
+
 /* ---------- Body: rail and main ---------- */
 
 .body {
   display: flex;
   align-items: stretch;
+  container-type: inline-size;
   flex: 1 1 auto;
   min-width: 0;
 }
@@ -166,8 +192,10 @@
   padding: 36px 28px 60px;
 }
 .column {
-  flex: 1 1 auto;
-  max-width: 1120px;
+  flex: 0 1 auto;
+  width: 100%;
+  /* Stable reading measure: toggling navigation moves the canvas, not card breakpoints. */
+  max-width: min(1120px, calc(100cqw - var(--sidebar-width) - 56px));
   min-width: 0;
   display: flex;
   flex-direction: column;
@@ -211,7 +239,7 @@
 }
 .tiles {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 6px;
   margin: 0;
   padding: 0;
@@ -222,6 +250,7 @@
   flex-direction: column;
   gap: 6px;
   min-width: 0;
+  min-height: 84px;
   padding: 12px 14px;
   border-radius: var(--pk-radius-md);
   background: var(--pk-panel);
@@ -282,6 +311,17 @@
 @media (max-width: 767px) {
   .main {
     padding: 24px 16px 48px;
+  }
+  .column {
+    max-width: 1120px;
+  }
+  .tiles {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (max-width: 480px) {
+  .tiles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
