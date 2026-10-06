@@ -27,7 +27,7 @@
   position: relative;
   z-index: 3;
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   gap: 10px;
   padding: 12px 18px;
@@ -1052,5 +1052,12 @@
   .rangeBand,
   .nextItem {
     animation: none;
+  }
+}
+
+/* Touch-sized headers may wrap, but never expand the hover chip. */
+@media (max-width: 640px) {
+  .top {
+    flex-wrap: wrap;
   }
 }
