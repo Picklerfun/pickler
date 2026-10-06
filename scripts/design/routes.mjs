@@ -572,6 +572,30 @@ const ALL = [
     },
   },
   {
+    path: "/studio?stage=draft",
+    name: "studio-draft-collapsed",
+    product: "studio",
+    surface: "dark",
+    task: "Draft dashboard",
+    proves: "#draft-section-overview",
+    act: {
+      click: '[data-sidebar-toggle][aria-expanded="true"]',
+      proves: '#draft-sidebar[data-wide="false"]',
+    },
+  },
+  {
+    path: "/studio?stage=perpl-live",
+    name: "studio-live-collapsed",
+    product: "studio",
+    surface: "dark",
+    task: "Live dashboard",
+    proves: "#live-section-overview",
+    act: {
+      click: '[data-sidebar-toggle][aria-expanded="true"]',
+      proves: '#live-sidebar[data-wide="false"]',
+    },
+  },
+  {
     path: "/studio?stage=draft-x-open",
     name: "studio-draft-x-open",
     product: "studio",
