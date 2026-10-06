@@ -502,6 +502,7 @@ export function createServices(env: Env): Services & { close(): Promise<void> } 
       repository,
       previews: new PostgresPreviewStore(repository.pool),
       wallets: new PostgresCustodyStore(repository.pool),
+      walletChainId: chainId,
       balances: chainId === null ? noBalances : ausdBalances(env, chainId),
       ...(custody ? { custody: custody.custody } : {}),
       // Without X_BEARER_TOKEN the client is unavailable: Connect X says it is not open yet and
