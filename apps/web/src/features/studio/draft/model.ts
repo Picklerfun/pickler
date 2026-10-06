@@ -54,7 +54,7 @@ const SECTION_LABELS: Record<DraftSectionKey, string> = {
   identity: "Identity & voice",
   profile: "Public profile",
   trade: "Trade",
-  master: "Master wallet",
+  master: "Your wallet",
 };
 
 /** Sections that open once the agent is public (spec D2): the canvas's `OPEN_SECTIONS` leaves them out. */
@@ -166,7 +166,7 @@ export function headerTiles(
         );
   }
   return [
-    { label: "MASTER · AUSD", value: master, soon: false },
+    { label: "YOUR WALLET · AUSD", value: master, soon: false },
     { label: "IN AGENT WALLETS · AUSD", value: inAgents, soon: false },
     ...paperTiles(positions),
     { label: "AI CREDITS", value: "Soon", soon: true },
