@@ -511,6 +511,22 @@ function SidebarMenuButton({
 } & VariantProps<typeof sidebarMenuButtonVariants>) {
   const Comp = asChild ? Slot.Root : "button";
   const { isMobile, state } = useSidebar();
+  const tooltipEnabled =
+    !!tooltip &&
+    !isMobile &&
+    state === "collapsed" &&
+    props["aria-expanded"] !== true &&
+    props["aria-expanded"] !== "true";
+  const [tooltipState, setTooltipState] = React.useState({
+    enabled: tooltipEnabled,
+    open: false,
+  });
+  const suppressReturnedFocus = React.useRef(false);
+
+  // Reset before committing a changed visibility context, without replacing the trigger DOM.
+  if (tooltipState.enabled !== tooltipEnabled) {
+    setTooltipState({ enabled: tooltipEnabled, open: false });
+  }
 
   const button = (
     <Comp
@@ -534,9 +550,41 @@ function SidebarMenuButton({
   }
 
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>{button}</TooltipTrigger>
-      {state === "collapsed" && <TooltipContent side="right" align="center" {...tooltip} />}
+    <Tooltip
+      open={tooltipEnabled && tooltipState.open}
+      onOpenChange={(open) => setTooltipState({ enabled: tooltipEnabled, open })}
+      delayDuration={350}
+    >
+      <TooltipTrigger
+        asChild
+        onFocus={(event) => {
+          // A menu returning focus is not a new request for its tooltip.
+          if (
+            !tooltipEnabled ||
+            suppressReturnedFocus.current ||
+            !event.currentTarget.matches(":focus-visible")
+          ) {
+            event.preventDefault();
+          }
+          suppressReturnedFocus.current = false;
+        }}
+        onPointerMove={(event) => {
+          if (!tooltipEnabled) {
+            event.preventDefault();
+          }
+        }}
+        onPointerDown={() => {
+          suppressReturnedFocus.current = props["aria-haspopup"] === "menu";
+        }}
+        onKeyDown={(event) => {
+          if (props["aria-haspopup"] === "menu" && (event.key === "Enter" || event.key === " ")) {
+            suppressReturnedFocus.current = true;
+          }
+        }}
+      >
+        {button}
+      </TooltipTrigger>
+      {tooltipEnabled && <TooltipContent side="right" align="center" {...tooltip} />}
     </Tooltip>
   );
 }
