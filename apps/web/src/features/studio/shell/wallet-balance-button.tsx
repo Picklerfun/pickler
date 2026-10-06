@@ -18,12 +18,12 @@ export function WalletBalanceButton({
     <button
       type="button"
       className={styles.topPill}
-      title="Your wallet"
-      aria-label={`Your wallet: ${formatUnits(ausdMicro, "AUSD")} AUSD, ${formatUnits(monWei, "MON")} MON`}
+      title="Master wallet"
+      aria-label={`Master wallet: ${formatUnits(ausdMicro, "AUSD")} AUSD, ${formatUnits(monWei, "MON")} MON`}
       aria-haspopup="dialog"
       onClick={onClick}
     >
-      <small className={styles.walletOwner}>Your wallet</small>
+      <small className={styles.walletOwner}>Master wallet</small>
       <span className={styles.assetBalance}>
         <BrandMark name="ausd" size={16} />
         <span>
