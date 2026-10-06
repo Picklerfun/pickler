@@ -5,6 +5,7 @@ import { HOLDS } from "../routes.mjs";
 import { openBrowser } from "./browser.mjs";
 import { afterNotFound, appPages, pageFor } from "./not-found.mjs";
 import { settle } from "./settle.mjs";
+import { proveScreen, settleMotion } from "./readiness.mjs";
 import { SIGNATURE, resolve, surface } from "./tokens-file.mjs";
 
 /* No default, deliberately. This machine runs more than one checkout of this repository at once,
@@ -388,9 +389,9 @@ export async function eachRoute(routes, visit, { width = 1400, height = 1000 } =
         // screen contains and a stub cannot. A count only where no authored hook exists yet.
         let proof;
         if (route.proves) {
-          const found = await page.locator(route.proves).count();
-          if (!found) {
-            blocked.push({ route, kind: "stub", detail: `nothing matches ${route.proves}` });
+          const missing = await proveScreen(page, route.proves);
+          if (missing) {
+            blocked.push({ route, kind: "stub", detail: missing });
             continue;
           }
           proof = route.proves;
@@ -433,31 +434,8 @@ export async function eachRoute(routes, visit, { width = 1400, height = 1000 } =
          * route that was never measured. */
         if (route.act) {
           await page.click(route.act.click);
-          /* Let the click's transitions finish before anything reads a colour.
-           *
-           * This is not caution, it is a defect that was caught. `.cell` carries
-           * `transition: background 140ms`, so the first run measured eleven lit squares mid-fade
-           * and reported #EDF7CE — a solid token with no alpha — as "at 0.106 alpha, in no token".
-           * A plausible, specific, entirely false finding, and one that would have sent somebody
-           * looking for a literal nobody typed.
-           *
-           * Waiting on the animations rather than on a duration, because a duration is a guess that
-           * ages: --pk-duration is a token and can change. Transitions only, and bounded, since a
-           * looping decoration never finishes and waiting on one would hang the run rather than
-           * measure it. */
-          await page
-            .waitForFunction(
-              () =>
-                document
-                  .getAnimations()
-                  .filter((a) => a.constructor.name === "CSSTransition")
-                  .every((a) => a.playState === "finished"),
-              null,
-              { timeout: 2000 },
-            )
-            .catch(() => {});
-          const landed = await page.locator(route.act.proves).count();
-          if (!landed) {
+          const missing = await proveScreen(page, route.act.proves);
+          if (missing) {
             blocked.push({
               route,
               kind: "click-missed",
@@ -466,6 +444,11 @@ export async function eachRoute(routes, visit, { width = 1400, height = 1000 } =
             continue;
           }
           proof = `${proof} → ${route.act.proves}`;
+        }
+        const moving = await settleMotion(page);
+        if (moving) {
+          blocked.push({ route, kind: "unsettled", detail: moving });
+          continue;
         }
         results.push({ route, proof, value: await visit(page, route) });
       } finally {
