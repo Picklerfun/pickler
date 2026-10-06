@@ -1,14 +1,15 @@
 .wrap {
   position: relative;
-  flex: 0 0 38px;
-  width: 38px;
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
   height: 38px;
+  border-radius: var(--pk-radius-pill);
   isolation: isolate;
   z-index: 2;
 }
 .wrap .trigger {
-  position: relative;
-  z-index: 1;
+  flex: none;
   display: grid;
   place-items: center;
   width: 38px;
@@ -28,35 +29,40 @@
   outline: 2px solid var(--pk-focus);
   outline-offset: 3px;
 }
-.username {
-  position: absolute;
-  right: 30px;
-  top: 0;
-  display: flex;
-  align-items: center;
-  height: 38px;
-  max-width: min(240px, calc(100vw - 80px));
-  padding: 0 22px 0 14px;
-  border-radius: var(--pk-radius-pill);
+.wrap:hover,
+.wrap:focus-within,
+.wrap[data-open="true"] {
   background: var(--pk-panel-2);
+}
+.username {
+  display: block;
+  width: max-content;
+  max-width: 0;
+  height: 38px;
+  line-height: 38px;
+  overflow: hidden;
+  opacity: 0;
+  transition:
+    max-width 240ms ease,
+    opacity 180ms ease;
+}
+.label {
+  display: block;
+  width: max-content;
+  max-width: 240px;
+  padding: 0 12px 0 14px;
   color: var(--pk-ink);
   font-size: 13px;
   font-weight: 700;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  pointer-events: none;
-  opacity: 0;
-  transform: translateX(12px);
-  transition:
-    opacity 160ms ease,
-    transform 160ms ease;
 }
 .wrap:hover .username,
 .wrap:focus-within .username,
 .wrap[data-open="true"] .username {
+  max-width: min(240px, calc(100vw - 80px));
   opacity: 1;
-  transform: translateX(0);
 }
 .panel {
   composes: pk-panel from global;
@@ -117,7 +123,6 @@
 @media (prefers-reduced-motion: reduce) {
   .username {
     transition: none;
-    transform: none;
   }
 }
 
