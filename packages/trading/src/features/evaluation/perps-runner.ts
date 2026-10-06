@@ -47,6 +47,63 @@ export type PerpsDataPhase =
   | "execution-validation"
   | "execution-write";
 
+function exceptionIdentity(error: unknown) {
+  const codes = new Set([
+    "ABORT_ERR",
+    "ECONNREFUSED",
+    "ECONNRESET",
+    "EPIPE",
+    "ETIMEDOUT",
+    "ENOTFOUND",
+    "EAI_AGAIN",
+    "ENETUNREACH",
+    "EHOSTUNREACH",
+    "UND_ERR_CONNECT_TIMEOUT",
+    "UND_ERR_HEADERS_TIMEOUT",
+    "UND_ERR_BODY_TIMEOUT",
+    "08000",
+    "08001",
+    "08003",
+    "08006",
+    "53300",
+    "53400",
+    "57014",
+    "57P01",
+    "57P02",
+    "57P03",
+    "40P01",
+  ]);
+  let kind = "NOT_VERIFIABLE";
+  if (error instanceof PilotError) {
+    kind = "PILOT_ERROR";
+  } else if (error instanceof TypeError) {
+    kind = "TYPE_ERROR";
+  } else if (error instanceof RangeError) {
+    kind = "RANGE_ERROR";
+  } else if (error instanceof SyntaxError) {
+    kind = "SYNTAX_ERROR";
+  } else if (error instanceof Error) {
+    kind = "ERROR";
+  }
+  if (error instanceof DOMException) {
+    if (error.name === "AbortError") {
+      kind = "ABORT_ERROR";
+    } else if (error.name === "TimeoutError") {
+      kind = "TIMEOUT_ERROR";
+    } else {
+      kind = "DOM_EXCEPTION";
+    }
+  }
+  const candidate =
+    error instanceof Error || error instanceof DOMException
+      ? Object.getOwnPropertyDescriptor(error, "code")?.value
+      : undefined;
+  return {
+    kind,
+    code: typeof candidate === "string" && codes.has(candidate) ? candidate : "NOT_VERIFIABLE",
+  };
+}
+
 export function perpsDataFailureDiagnostic(error: unknown, phase: PerpsDataPhase, at: number) {
   const reasons: Record<string, string> = {
     "BTC and ETH common frames required": "COMMON_ASSET_IDENTITY",
@@ -61,10 +118,15 @@ export function perpsDataFailureDiagnostic(error: unknown, phase: PerpsDataPhase
   };
   return {
     kind: "data-failure" as const,
-    version: 1,
+    version: 2,
     at,
     phase,
     code: safeCode(error),
+    exception: exceptionIdentity(error),
+    cause:
+      error instanceof Error
+        ? exceptionIdentity(Object.getOwnPropertyDescriptor(error, "cause")?.value)
+        : exceptionIdentity(undefined),
     predicate:
       error instanceof PilotError && Object.hasOwn(reasons, error.message)
         ? reasons[error.message]!
