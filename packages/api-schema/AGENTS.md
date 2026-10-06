@@ -170,3 +170,7 @@ See [Studio perpetual execution](../../docs/studio-perps-execution.md).
 ## AI credit DTOs
 
 `src/ai-credits.ts` exports strict portable balance, purchase, ledger history and agent/model allocation schemas. Exact amounts are decimal strings in micro-credit units; one credit is 1,000,000 units. Never expose internal provider costs, proof data or payer identity. No HTTP route is introduced by these DTOs. See [AI credits](../../docs/ai-credits.md).
+
+Creator-access status and inbox schemas are exported from `studio.ts`. User status exposes only
+its own request time/status and whether the authenticated operator may review the inbox. Inbox
+profile identifiers are operator-only. Requests do not include caller-supplied user/workspace IDs.
