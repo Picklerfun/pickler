@@ -61,7 +61,7 @@ export interface StudioShellProps<K extends string> {
   /** The switcher's new-agent item: "+ New agent" unless given (the live studio's "Create another agent"). */
   newAgentLabel?: string | undefined;
   /** The studio's data (`useAgentStudio`, or a hook built on it). */
-  studio: Pick<UseAgentStudio, "wallets" | "preview" | "error" | "refresh">;
+  studio: Pick<UseAgentStudio, "wallets" | "preview" | "error" | "refresh" | "readWallets">;
   /** `useShellModals(studio.readWallets)`. */
   modals: ShellModals;
   /** The selected workspace's status chip (`StatusChip`), below its switcher. */
@@ -200,6 +200,7 @@ export function StudioShell<K extends string>({
           preview={studio.preview}
           onClose={modals.close}
           onCredits={modals.openCredits}
+          onRefresh={async () => Boolean(await studio.readWallets())}
           onMoved={() => {
             /* The wallets say what moved; the agent's own balance follows on its next read, so a
              failed reload here is not worth a second alert over the modal. */
