@@ -49,6 +49,8 @@ export function StudioPending({
           id="pending-sidebar"
           data-wide={sidebar.open}
           data-studio-sidebar
+          inert={sidebar.mobile && !sidebar.open}
+          aria-hidden={(sidebar.mobile && !sidebar.open) || undefined}
           aria-label="Studio sections"
           aria-busy={!error}
         >
