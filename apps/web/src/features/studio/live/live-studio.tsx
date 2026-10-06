@@ -234,13 +234,15 @@ export function LiveStudio({
               <a
                 key={link.label}
                 href={link.href}
+                aria-label={link.label}
+                title={link.label}
                 className={styles.helpLink}
                 {...(link.href.startsWith("http")
                   ? { target: "_blank", rel: "noopener noreferrer" }
                   : {})}
               >
                 <Icon name={link.icon} size={15} />
-                {link.label}
+                <span data-sidebar-label>{link.label}</span>
               </a>
             ))}
           </div>
@@ -249,10 +251,12 @@ export function LiveStudio({
               href={profile}
               className={styles.profileLink}
               id="live-public-profile"
+              aria-label="Its public profile"
+              title="Its public profile"
               target="_blank"
               rel="noopener noreferrer"
             >
-              ITS PUBLIC PROFILE
+              <span data-sidebar-label>ITS PUBLIC PROFILE</span>
               <Icon name="external" size={13} />
             </a>
           )}
