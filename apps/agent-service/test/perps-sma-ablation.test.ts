@@ -638,10 +638,12 @@ test("SMA data failure diagnostics preserve phase and allowlisted predicate with
   const error = new PilotError("INVALID_MARKET_DATA", "Crossed order book");
   assert.deepEqual(perpsDataFailureDiagnostic(error, "evidence-validation", 123), {
     kind: "data-failure",
-    version: 1,
+    version: 2,
     at: 123,
     phase: "evidence-validation",
     code: "INVALID_MARKET_DATA",
+    exception: { kind: "PILOT_ERROR", code: "NOT_VERIFIABLE" },
+    cause: { kind: "NOT_VERIFIABLE", code: "NOT_VERIFIABLE" },
     predicate: "CROSSED_BOOK",
   });
   for (const unknown of [
@@ -652,6 +654,77 @@ test("SMA data failure diagnostics preserve phase and allowlisted predicate with
     const diagnostic = perpsDataFailureDiagnostic(unknown, "evidence-read", 123);
     assert.equal(diagnostic.predicate, "NOT_VERIFIABLE");
     assert.equal(JSON.stringify(diagnostic).includes("private-key-secret"), false);
+  }
+});
+
+test("SMA native diagnostics retain safe identities without messages, stacks or getter access", () => {
+  const cause = Object.assign(new Error("private underlying transport"), {
+    code: "UND_ERR_HEADERS_TIMEOUT",
+  });
+  const error = new TypeError("private request data", { cause });
+  const diagnostic = perpsDataFailureDiagnostic(error, "observation-read", 123);
+  assert.equal(diagnostic.code, "STUDY_OPERATION_FAILED");
+  assert.deepEqual(diagnostic.exception, { kind: "TYPE_ERROR", code: "NOT_VERIFIABLE" });
+  assert.deepEqual(diagnostic.cause, { kind: "ERROR", code: "UND_ERR_HEADERS_TIMEOUT" });
+  assert.equal(JSON.stringify(diagnostic).includes("private"), false);
+
+  const database = Object.assign(new Error("private database detail"), { code: "57P01" });
+  assert.deepEqual(perpsDataFailureDiagnostic(database, "observation-read", 123).exception, {
+    kind: "ERROR",
+    code: "57P01",
+  });
+  const timeout = new DOMException("private deadline", "TimeoutError");
+  assert.equal(
+    perpsDataFailureDiagnostic(timeout, "observation-read", 123).exception.kind,
+    "TIMEOUT_ERROR",
+  );
+  const getters = new Error("private body");
+  Object.defineProperties(getters, {
+    code: { get: () => assert.fail("Do not evaluate an exception code getter") },
+    cause: { get: () => assert.fail("Do not evaluate an exception cause getter") },
+  });
+  assert.deepEqual(perpsDataFailureDiagnostic(getters, "observation-read", 123).exception, {
+    kind: "ERROR",
+    code: "NOT_VERIFIABLE",
+  });
+  const unreviewed = Object.assign(new Error("private"), { code: "PRIVATE_KEY_SECRET" });
+  assert.equal(
+    perpsDataFailureDiagnostic(unreviewed, "observation-read", 123).exception.code,
+    "NOT_VERIFIABLE",
+  );
+});
+
+test("SMA native observation errors remain terminal without fabricated holds or execution", async (t) => {
+  const f = await fixture(t);
+  const failure = Object.assign(new Error("private database detail"), { code: "ECONNRESET" });
+  const failures: ReturnType<typeof perpsDataFailureDiagnostic>[] = [];
+  const runner = createPerpsStudyRunner({
+    study: f.study,
+    paper: f.paper,
+    now: f.now,
+    dataDiagnostic: (event) => failures.push(event),
+    data: {
+      observe: async () => {
+        throw failure;
+      },
+      evidence: async () => {
+        throw new Error("No evidence after a terminal failure");
+      },
+      execution: async () => {
+        throw new Error("No execution after a terminal failure");
+      },
+    },
+  });
+  await assert.rejects(
+    () => runner.cycle(config, f.lease, new AbortController().signal),
+    (error) => error === failure,
+  );
+  assert.equal(failures.length, 1);
+  assert.equal(failures[0]!.phase, "observation-read");
+  assert.deepEqual(failures[0]!.exception, { kind: "ERROR", code: "ECONNRESET" });
+  for (const account of Object.values(await f.accounts())) {
+    assert.equal(account.attempts.length, 0);
+    assert.equal(account.account.positions.length, 0);
   }
 });
 
