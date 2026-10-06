@@ -284,3 +284,24 @@ or frozen-run code changed. All nine CI checks passed on exact delivery commit
 `d3591a96a949c046e9ceb28ed50b8afb9d8b22e8`, including PostgreSQL integration, lint, types,
 repository tests, Node/Worker builds and rendered design checks. Later result-documentation
 changes require their own formatting and link checks; this CI evidence remains tied to that commit.
+
+## Explicit continuation and safe rejection diagnostics
+
+The operator reiterated authorization to continue through results on 2026-10-06. A new
+prospective study may be prepared after controlled verification; previous studies remain
+immutable. This authorization does not change entries, exits, risk, timestamps, budgets or
+permit model calls or real trading.
+
+The runner now emits `data-failure` version 1 diagnostics with a fixed cycle phase, original
+safe error code and an allowlisted predicate label. Unknown exception messages remain
+`NOT_VERIFIABLE`; no raw message, credentials or arbitrary response fields are logged. The
+SMA host records diagnostic version `safe-phase-predicate-v1` in new preparation metadata.
+A failing diagnostic callback cannot replace the original error. Historical generic failures
+remain unverifiable; this change cannot retroactively identify the earlier rejected payload.
+
+All sixteen SMA tests passed with isolated PostgreSQL, zero failures/skips and no external
+providers or models. The added real-coordinator regression rejects crossed evidence before
+execution, records `evidence-validation` / `CROSSED_BOOK`, preserves the original error even
+when the diagnostic sink throws, and verifies no account has an execution attempt. Targeted
+lint, agent-service types, shared compilation and architecture/link checks passed. Full-window
+prospective acceptance remains pending for the newly frozen study.
