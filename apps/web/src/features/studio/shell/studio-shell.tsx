@@ -129,6 +129,10 @@ export function StudioShell<K extends string>({
         onCredits={modals.openCredits}
         accountHandle={accountHandle}
         preview={studio.preview}
+        returnContext={{
+          agent: agent.productId ?? agent.id,
+          section: rail.flatMap((group) => group.items).find((item) => item.on)?.key,
+        }}
       />
       {strip}
 
