@@ -42,3 +42,5 @@ Never replace errors, unknown balances or passkey authorization prompts with ind
 
 `Icon` includes `sidebar` (PanelLeft) for a labelled sidebar disclosure. Keep the control visible
 in both expanded and collapsed states; its accessible name and expanded state belong to its host.
+
+`Icon` includes `chevronsUpDown` for a workspace selector, showing both directions together.
