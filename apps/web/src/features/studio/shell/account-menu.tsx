@@ -84,7 +84,7 @@ export function AccountMenu({
     >
       {handle && (
         <span className={styles.username} aria-hidden="true">
-          @{handle}
+          <span className={styles.label}>@{handle}</span>
         </span>
       )}
       <Button
