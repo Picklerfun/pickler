@@ -458,8 +458,8 @@ whichever section was asked for; Go Public lands on its Overview, and a `?sectio
 rail also has carries over. `live-studio.tsx` configures the shell: the live strip under the top
 bar (`live-strip.tsx`, the shell's `strip` slot), the rail of RUN / BUILD / MARKETPLACE / YOU with
 Docs, Community, Support and "ITS PUBLIC PROFILE" (each http link in a new tab, `noopener
-noreferrer`) in its footer, the account button opening Account
-(the top bar's `onAccount`), the PUBLIC · RUNS SOON / PAUSED · EXITS ONLY chip, "Pause entries" /
+noreferrer`) in its footer, the shared account menu linking to the creator profile and sign-out,
+the PUBLIC · RUNS SOON / PAUSED · EXITS ONLY chip, "Pause entries" /
 "Resume" (real, `PUT /pause`, pending and inline failure) and "Stop · close all" shut with Soon,
 the four tiles, and the degraded banner whose "Fix it" opens Limits. Section keys are the canvas's
 (`skills` is Sources & rules, `master` Wallets, `leaders` Leaderboard). "Pause entries" / "Resume"
@@ -762,3 +762,17 @@ and handle availability use placeholders, not visible loading text. Accessible b
 remain. Errors retain retry actions; an unread or failed balance is never represented as zero.
 `create-access`, `create-access-pending` and `create-access-loading` are inert non-production
 creation fixtures for layout checks; none reads or submits an access request.
+
+## Studio account menu
+
+`features/studio/shell/account-menu.tsx` is the account disclosure for creation, home, draft,
+live, legacy and pending Studio headers. Supply the authenticated creator's profile handle from
+Studio's existing read, never the selected agent's handle. Hover and keyboard focus reveal the
+username to the left without changing header geometry. The disclosure uses native link/button
+navigation, restores focus on Escape, and closes on outside pointer or focus movement.
+`/account?section=profile` opens the public-profile tab in every environment; other section query
+links remain non-production design controls. Sign-out uses Supabase Auth, navigates only after
+success, preserves errors and disables duplicate submissions. Design previews cannot sign out.
+The busy sign-out action uses the shared Skeleton with an accessible status label.
+Run `node scripts/design/account-menu.mjs` for the controlled desktop/mobile interaction check,
+alongside web tests, typecheck, lint and rendered design checks. It uses local fixture servers only.
