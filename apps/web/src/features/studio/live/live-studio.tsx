@@ -256,8 +256,8 @@ export function LiveStudio({
               target="_blank"
               rel="noopener noreferrer"
             >
-              <span data-sidebar-label>ITS PUBLIC PROFILE</span>
               <Icon name="external" size={13} />
+              <span data-sidebar-label>ITS PUBLIC PROFILE</span>
             </a>
           )}
         </>
