@@ -128,6 +128,7 @@ try {
     const account = page.locator("[data-account-menu]");
     const trigger = account.getByRole("button", { name: /^Account/ });
     await trigger.waitFor();
+    await page.evaluate(() => document.fonts.ready);
     const before = await trigger.boundingBox();
     await page.mouse.move(before.x + before.width / 2, before.y + before.height / 2);
     const settled = await page.evaluate(async () => {
@@ -195,6 +196,77 @@ try {
     assert.equal(await page.locator(`#${stage === "draft" ? "draft" : "live"}-studio`).count(), 1);
   }
 
+  // Sidebar state is independent of the selected agent and survives account navigation/reload.
+  await page.setViewportSize({ width: 1086, height: 1000 });
+  for (const [stage, prefix] of [
+    ["draft", "draft"],
+    ["perpl-live", "live"],
+  ]) {
+    await page.goto(`${baseUrl}/studio?stage=${stage}`);
+    await page.getByRole("button", { name: "Collapse sidebar", exact: true }).click();
+    await page.waitForFunction(
+      (id) => document.getElementById(id)?.getBoundingClientRect().width === 64,
+      `${prefix}-sidebar`,
+    );
+    assert.equal(await page.locator(`#${prefix}-sidebar`).getAttribute("data-wide"), "false");
+    const iconNavigation = page.locator(`#${prefix}-rail-master`);
+    assert.equal(await iconNavigation.isVisible(), true, "Collapsed navigation remains accessible");
+    await iconNavigation.click();
+    await page.locator(`#${prefix}-section-master`).waitFor();
+    const selector = page.getByRole("button", { name: "Halftime, switch agent", exact: true });
+    await selector.click();
+    const menu = page.locator(`#${prefix}-agent-menu`);
+    await menu.waitFor();
+    const bounds = await menu.boundingBox();
+    assert.ok(
+      bounds && bounds.width >= 200 && bounds.x + bounds.width <= 1086,
+      "Collapsed agent selector remains usable",
+    );
+    await page.keyboard.press("Escape");
+    await page.screenshot({ path: path.join(tmpdir(), `pickler-sidebar-collapsed-${prefix}.png`) });
+    await page.locator("[data-account-menu] > button").click();
+    await page.getByRole("link", { name: "My profile", exact: true }).click();
+    await page.waitForURL(/\/account\?section=profile/);
+    await page.getByRole("link", { name: "← Back to studio", exact: true }).click();
+    await page.locator(`#${prefix}-section-master`).waitFor();
+    assert.equal(
+      await page.locator(`#${prefix}-sidebar`).getAttribute("data-wide"),
+      "false",
+      "Profile return preserves collapsed sidebar",
+    );
+    await page.reload();
+    await page.waitForFunction(
+      (id) => document.getElementById(id)?.getBoundingClientRect().width === 64,
+      `${prefix}-sidebar`,
+    );
+    await page.getByRole("button", { name: "Expand sidebar", exact: true }).click();
+    await page.waitForFunction(
+      (id) => document.getElementById(id)?.getBoundingClientRect().width === 218,
+      `${prefix}-sidebar`,
+    );
+    await page.keyboard.press("Control+b");
+    await page.getByRole("button", { name: "Expand sidebar", exact: true }).waitFor();
+    await page.keyboard.press("Control+b");
+    await page.getByRole("button", { name: "Collapse sidebar", exact: true }).waitFor();
+  }
+  await page.goto(`${baseUrl}/studio?stage=draft-brief`);
+  await page.locator("#draft-section-brief").waitFor();
+  await page.locator("#draft-section-brief textarea").first().focus();
+  await page.keyboard.press("Control+b");
+  assert.equal(
+    await page.locator("#draft-sidebar").getAttribute("data-wide"),
+    "true",
+    "Editing text never toggles the sidebar shortcut",
+  );
+
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  assert.equal(
+    await page
+      .locator("#draft-sidebar")
+      .evaluate((element) => getComputedStyle(element).transitionDuration),
+    "0s",
+  );
+
   await page.close();
   const mobile = await browser.newPage({
     viewport: { width: 390, height: 844 },
@@ -203,6 +275,39 @@ try {
   });
   mobile.on("pageerror", (error) => errors.push(error.message));
   await mobile.goto(`${baseUrl}/studio?stage=draft`);
+  await mobile.getByRole("button", { name: "Master wallet", exact: true }).click();
+  await mobile.locator("#draft-section-master").waitFor();
+  await mobile.getByRole("button", { name: "Collapse sidebar", exact: true }).click();
+  assert.equal(
+    await mobile.locator("#draft-sidebar").isVisible(),
+    false,
+    "Mobile collapse hides navigation",
+  );
+  assert.equal(
+    await mobile.getByRole("button", { name: "Master wallet", exact: true }).count(),
+    0,
+    "Hidden mobile navigation is absent from the accessibility tree",
+  );
+  await mobile.getByRole("button", { name: "Expand sidebar", exact: true }).click();
+  assert.equal(await mobile.locator("#draft-sidebar").isVisible(), true);
+  await mobile.waitForFunction(() => {
+    const item = document.getElementById("draft-rail-master");
+    if (!item) {
+      return false;
+    }
+    const bounds = item.getBoundingClientRect();
+    return bounds.x >= 0 && bounds.right <= innerWidth;
+  });
+  assert.equal(await mobile.locator("#draft-rail-master").getAttribute("aria-current"), "page");
+  await mobile.getByRole("button", { name: "Master wallet", exact: true }).focus();
+  await mobile.keyboard.press("Control+b");
+  const expand = mobile.getByRole("button", { name: "Expand sidebar", exact: true });
+  assert.equal(
+    await expand.evaluate((element) => element === document.activeElement),
+    true,
+    "Keyboard collapse restores focus to its toggle on mobile",
+  );
+  await expand.click();
   const trigger = mobile.locator("[data-account-menu] > button");
   const mobileSelector = mobile.getByRole("button", {
     name: "Halftime, switch agent",
@@ -241,7 +346,7 @@ try {
   assert.equal(new URL(mobile.url()).searchParams.get("stage"), "draft");
   assert.deepEqual(errors, []);
   console.log(
-    "PASS: hover geometry, click, profile round trips preserving agent/section/stage, Escape/focus, Tab, outside click and mobile. Controlled previews only.",
+    "PASS: hover geometry, click, profile round trips preserving agent/section/stage, Escape/focus, Tab, outside click, sidebar collapse/persistence/selector/keyboard and mobile. Controlled previews only.",
   );
 } finally {
   await browser?.close();
