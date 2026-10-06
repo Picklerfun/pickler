@@ -1,7 +1,7 @@
 "use client";
 import { StudioSkeleton } from "../skeleton";
 import { useEffect, useId, useRef, useState } from "react";
-import { Icon } from "@pickler/ui";
+import { Button, Icon, Skeleton } from "@pickler/ui";
 import type { StudioWallets } from "../api";
 import shell from "../studio.module.css";
 import { AgentWalletBox } from "./agent-wallet-box";
@@ -32,6 +32,8 @@ export interface WalletsModalProps {
   onClose(): void;
   /** The canvas's "AI credits" tab. */
   onCredits(): void;
+  /** Read balances through the owning screen; false retains the last known data. */
+  onRefresh(): Promise<boolean>;
   /** A transfer went through, or may have: read the wallets again. */
   onMoved(): void;
 }
@@ -56,6 +58,7 @@ export function WalletsModal({
   preview,
   onClose,
   onCredits,
+  onRefresh,
   onMoved,
 }: WalletsModalProps) {
   const titleId = useId();
@@ -65,6 +68,9 @@ export function WalletsModal({
   /* The amount is MAX's for MON, which kept the gas reserve back: the note says so. */
   const [keptForGas, setKeptForGas] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshError, setRefreshError] = useState("");
+  const refreshPending = useRef(false);
   /* A new object per request, so asking for the same wallet twice focuses it twice. */
   const [focusOn, setFocusOn] = useState<{ walletId: string } | null>(null);
   /* The wallet whose move just went through: its "Fund from master" takes the focus back. */
@@ -120,6 +126,7 @@ export function WalletsModal({
       setToken("AUSD");
       setAmount("");
       transfer.setError("");
+      setRefreshError("");
       setFocusOn(openOn ? { walletId: openOn } : null);
     }
   }
@@ -171,6 +178,33 @@ export function WalletsModal({
     );
   }
 
+  async function refreshBalances() {
+    if (preview || transfer.busy || refreshPending.current) {
+      return;
+    }
+    refreshPending.current = true;
+    setRefreshing(true);
+    setRefreshError("");
+    try {
+      if (!(await onRefresh()) && mounted.current) {
+        setRefreshError(
+          "Could not refresh your balances. Last known balances are shown. Try again.",
+        );
+      }
+    } catch {
+      if (mounted.current) {
+        setRefreshError(
+          "Could not refresh your balances. Last known balances are shown. Try again.",
+        );
+      }
+    } finally {
+      refreshPending.current = false;
+      if (mounted.current) {
+        setRefreshing(false);
+      }
+    }
+  }
+
   return (
     <>
       <dialog
@@ -220,6 +254,29 @@ export function WalletsModal({
             One master wallet funds everything. Each agent gets its own, capped by its brief. All on
             Monad testnet, all behind your passkey.
           </p>
+          <div className={styles.walletRefresh}>
+            <Button
+              variant="secondary"
+              size="sm"
+              aria-label="Refresh balances"
+              aria-busy={refreshing}
+              disabled={preview || refreshing || transfer.busy}
+              onClick={() => void refreshBalances()}
+            >
+              <Icon name="refresh" size={14} />
+              <span className={styles.refreshLabel}>
+                {refreshing ? <Skeleton /> : "Refresh balances"}
+              </span>
+            </Button>
+            <span className={styles.srOnly} role="status">
+              {refreshing ? "Refreshing wallet balances" : ""}
+            </span>
+          </div>
+          {refreshError && (
+            <p className={styles.alert} role="alert">
+              {refreshError}
+            </p>
+          )}
           <span className={styles.srOnly} role="status">
             {copied ? "Address copied" : ""}
           </span>
@@ -257,11 +314,23 @@ export function WalletsModal({
                 </div>
                 <div className={styles.tiles}>
                   <span className={styles.tile}>
-                    <b>{formatUnits(unitsOf(wallets.master.ausdMicro), "AUSD")}</b>
+                    <b>
+                      {refreshing ? (
+                        <Skeleton className={styles.balancePlaceholder} />
+                      ) : (
+                        formatUnits(unitsOf(wallets.master.ausdMicro), "AUSD")
+                      )}
+                    </b>
                     <small>AUSD</small>
                   </span>
                   <span className={styles.tile}>
-                    <b>{formatUnits(unitsOf(wallets.master.monWei), "MON")}</b>
+                    <b>
+                      {refreshing ? (
+                        <Skeleton className={styles.balancePlaceholder} />
+                      ) : (
+                        formatUnits(unitsOf(wallets.master.monWei), "MON")
+                      )}
+                    </b>
                     <small>MON · GAS</small>
                   </span>
                 </div>
@@ -300,6 +369,7 @@ export function WalletsModal({
                     error={isOpen ? transfer.error : ""}
                     copied={copied === agent.address}
                     preview={preview}
+                    refreshing={refreshing}
                     onPick={(toAgent) => pick(agent.walletId, toAgent)}
                     onToken={(next) => {
                       setToken(next);
