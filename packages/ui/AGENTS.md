@@ -100,3 +100,9 @@ It verifies real DOM identity and content geometry, not just final screenshots o
 Navigation focus uses the product's 2px outline rather than a shadow halo. Keep keyboard focus
 visible. Product icons passed into size-4 menu slots must use size={16}, so Lucide's absolute
 stroke calculation matches the rendered geometry instead of being scaled twice.
+
+Collapsed group menu buttons retain their row height but contract to a centered 32px square,
+so the active/hover background has equal space around its icon. Width and inline margin use the
+shared motion timing; label nodes remain mounted. Consumer avatar padding belongs in the app,
+not this generic component. Motion acceptance checks selection geometry and Studio's avatar
+alignment, including the reported 811px viewport.
