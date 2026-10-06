@@ -1,6 +1,6 @@
-// Which of the account's three sections is on screen, and how a check reaches the other two.
+// Which account section is on screen, and how a check reaches the other two.
 //
-// The sections are a rail rather than three routes: they are one screen's tabs, they share the top
+// The sections are a rail rather than separate routes: they are one screen's tabs, they share the top
 // bar, the rail and the person's identity, and nothing about them is worth a page load or a
 // browser-history entry. That choice has a cost, and it is the reason this file exists — two of the
 // three are unreachable to anything that only opens `/account`, so every contrast, token and type
@@ -12,12 +12,13 @@
 // sections behind it are gated by exactly the authentication the rest of the screen is — but
 // because a query parameter that exists to be measured is not part of the product's public surface.
 
-export type SectionKey = "wallet" | "security" | "profile";
+export type SectionKey = "wallet" | "security" | "profile" | "access";
 
 export const SECTIONS: { key: SectionKey; label: string; tint: "lime" | "amber" | "violet" }[] = [
   { key: "wallet", label: "Wallet", tint: "lime" },
   { key: "security", label: "Security", tint: "amber" },
   { key: "profile", label: "Public profile", tint: "violet" },
+  { key: "access", label: "Creator access", tint: "amber" },
 ];
 
 const KEYS = new Set<string>(SECTIONS.map((section) => section.key));
