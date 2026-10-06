@@ -106,3 +106,6 @@ so the active/hover background has equal space around its icon. Width and inline
 shared motion timing; label nodes remain mounted. Consumer avatar padding belongs in the app,
 not this generic component. Motion acceptance checks selection geometry and Studio's avatar
 alignment, including the reported 811px viewport.
+
+`Icon` includes `logOut` (Lucide LogOut) for sign-out actions. Keep the lock icon for locked
+permissions rather than using it to represent leaving a session.
