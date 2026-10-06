@@ -14,6 +14,8 @@ export interface StudioRailProps<K extends string> {
   /** The groups as the studio's model builds them (`draftRail`, `liveRail`). */
   groups: RailGroup<K>[];
   onSection(key: K): void;
+  /** Reopening the mobile rail brings its selected item back into view. */
+  expanded: boolean;
   /** Under the groups, at the rail's foot: the live studio's "PUBLIC PAGE" link. */
   footer?: ReactNode;
 }
@@ -27,6 +29,7 @@ export function StudioRail<K extends string>({
   idPrefix,
   groups,
   onSection,
+  expanded,
   footer,
 }: StudioRailProps<K>) {
   const current = groups.flatMap((group) => group.items).find((item) => item.on)?.key;
@@ -34,11 +37,11 @@ export function StudioRail<K extends string>({
   /* The current item stays in view on the phone's scrolling row (a deep link to Master wallet
      starts past the edge). */
   useEffect(() => {
-    if (current !== undefined) {
+    if (expanded && current !== undefined) {
       const item = document.getElementById(railItemId(idPrefix, current));
       item?.scrollIntoView?.({ inline: "nearest", block: "nearest" });
     }
-  }, [idPrefix, current]);
+  }, [idPrefix, current, expanded]);
 
   return (
     <nav className={styles.rail} aria-label="Agent sections">
@@ -54,7 +57,10 @@ export function StudioRail<K extends string>({
                 id={railItemId(idPrefix, item.key)}
                 aria-current={item.on ? "page" : undefined}
                 aria-disabled={item.locked || undefined}
-                title={item.locked ? undefined : (item.title ?? item.label)}
+                aria-label={
+                  item.locked ? `${item.label} · ${item.title ?? item.label}` : item.label
+                }
+                title={item.title ?? item.label}
                 onClick={() => onSection(item.key)}
               >
                 <Icon name={item.icon} size={17} />
