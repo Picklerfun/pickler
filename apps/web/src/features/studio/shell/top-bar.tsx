@@ -8,7 +8,7 @@ import { menuAccess } from "../home/access";
 import { formatUnits, unitsOf } from "../new-agent/model";
 import { AgentAvatar } from "./agent-avatar";
 import type { StudioIdPrefix } from "./model";
-import studio from "../studio.module.css";
+import { AccountMenu } from "./account-menu";
 import home from "../home/home.module.css";
 import topBar from "../new-agent/new-agent.module.css";
 import styles from "./shell.module.css";
@@ -35,11 +35,8 @@ export interface StudioTopBarProps {
   onSwitch(agentId: string): void;
   /** "+ New agent": open the create screen. */
   onNew(): void;
-  /**
-   * The account button: the live studio opens its Account section (studio-live-v1 L3). Without it
-   * the button links to `/account`, as the draft's does.
-   */
-  onAccount?: (() => void) | undefined;
+  accountHandle: string | null;
+  preview: boolean;
 }
 
 /**
@@ -60,7 +57,8 @@ export function StudioTopBar({
   onCredits,
   onSwitch,
   onNew,
-  onAccount,
+  accountHandle,
+  preview,
 }: StudioTopBarProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const name = agent.name ?? "Your agent";
@@ -92,15 +90,6 @@ export function StudioTopBar({
       window.removeEventListener("click", away);
     };
   }, [menuOpen]);
-
-  const swatch = (
-    <span className={studio.swatch} aria-hidden="true">
-      <i data-swatch="lime" />
-      <i data-swatch="violet" />
-      <i data-swatch="amber" />
-      <i data-swatch="blue" />
-    </span>
-  );
 
   return (
     <header className={home.top}>
@@ -203,20 +192,7 @@ export function StudioTopBar({
         <small className={topBar.creditsLabel}>AI CREDITS</small>
         <span>Soon</span>
       </button>
-      {onAccount ? (
-        <button
-          type="button"
-          className={styles.accountButton}
-          aria-label="Account"
-          onClick={onAccount}
-        >
-          {swatch}
-        </button>
-      ) : (
-        <Link href="/account" className={home.account} aria-label="Account">
-          {swatch}
-        </Link>
-      )}
+      <AccountMenu handle={accountHandle} preview={preview} />
     </header>
   );
 }
