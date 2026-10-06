@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter } from "nextjs-toploader/app";
 import { useEffect, useRef, useState } from "react";
 import { Button, Icon, Skeleton } from "@pickler/ui";
 import {
