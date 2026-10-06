@@ -872,3 +872,11 @@ selection are not route loads. Reduced-motion preferences disable bar transition
 navigation indicator complements component Skeletons; it does not report model or trading progress.
 The controlled account-menu acceptance delays a real local route response and verifies the bar
 appears without layout displacement, then clears after navigation.
+
+The top-loader's router object changes on every render. Effects that load Studio, Account or
+passkeys depend on its memoized `replace` method, never on the whole object: otherwise state
+updates cancel in-flight reads and restart loading. Keep the component cleanup guards.
+`node scripts/design/studio-loading.mjs` exercises authenticated presentation with synthetic
+session cookies and delayed API responses on dedicated loopback ports 3012/8812. It verifies
+completed reads, bounded request counts, visible failure and missing-wallet redirection without
+`?stage=`. This is a client regression test, not backend authorization or live-provider acceptance.
