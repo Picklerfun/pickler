@@ -568,7 +568,7 @@ const ALL = [
     proves: "#draft-section-overview",
     act: {
       click: "[data-account-menu] > button",
-      proves: '[data-account-menu] a[href="/account?section=profile"]',
+      proves: '[data-account-menu] a[href^="/account?section=profile&returnTo="]',
     },
   },
   {
