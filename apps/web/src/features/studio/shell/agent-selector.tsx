@@ -64,7 +64,15 @@ export function AgentSelector({
 
   return (
     <div className={styles.agentSelector}>
-      <div className={styles.chipWrap} onClick={(event) => event.stopPropagation()}>
+      <div
+        className={styles.chipWrap}
+        onClick={(event) => event.stopPropagation()}
+        onBlur={(event) => {
+          if (!event.currentTarget.contains(event.relatedTarget)) {
+            setMenuOpen(false);
+          }
+        }}
+      >
         <button
           type="button"
           className={styles.chipButton}
@@ -72,6 +80,7 @@ export function AgentSelector({
           aria-expanded={menuOpen}
           aria-controls={menuId}
           aria-label={`${name}, switch agent`}
+          title={`${name}, switch agent`}
           onClick={() => setMenuOpen(!menuOpen)}
         >
           <AgentAvatar accent={agent.accent} pattern={agent.avatarPattern} size="chip" />
