@@ -7,6 +7,7 @@ import { ErrorBanner, PreviewBanner } from "./banners";
 import { StudioHeader, StudioTiles } from "./header";
 import type { HeaderTile, RailGroup, StudioIdPrefix } from "./model";
 import { StudioRail } from "./rail";
+import { AgentSelector } from "./agent-selector";
 import { StudioTopBar } from "./top-bar";
 import type { UseAgentStudio } from "./use-agent-studio";
 import styles from "./shell.module.css";
@@ -61,7 +62,7 @@ export interface StudioShellProps<K extends string> {
   studio: Pick<UseAgentStudio, "wallets" | "preview" | "error" | "refresh">;
   /** `useShellModals(studio.readWallets)`. */
   modals: ShellModals;
-  /** The top bar's status chip (`StatusChip`). */
+  /** The selected workspace's status chip (`StatusChip`), below its switcher. */
   status: ReactNode;
   /** The rail's groups, with the current section on. */
   rail: RailGroup<K>[];
@@ -123,25 +124,29 @@ export function StudioShell<K extends string>({
   return (
     <main className={styles.studio} id={`${idPrefix}-studio`} data-surface="dark">
       <StudioTopBar
-        idPrefix={idPrefix}
-        agent={agent}
-        agents={agents}
-        canManage={canManage}
-        newAgentLock={newAgentLock}
-        newAgentLabel={newAgentLabel}
-        status={status}
         master={studio.wallets?.master ?? null}
         onWallets={() => modals.openWallets(null)}
         onCredits={modals.openCredits}
-        onSwitch={onSwitch}
-        onNew={onNew}
         accountHandle={accountHandle}
         preview={studio.preview}
       />
       {strip}
 
       <div className={styles.body}>
-        <StudioRail idPrefix={idPrefix} groups={rail} onSection={onSection} footer={railFooter} />
+        <aside className={styles.sidebar} aria-label="Agent workspace">
+          <AgentSelector
+            idPrefix={idPrefix}
+            agent={agent}
+            agents={agents}
+            canManage={canManage}
+            newAgentLock={newAgentLock}
+            newAgentLabel={newAgentLabel}
+            status={status}
+            onSwitch={onSwitch}
+            onNew={onNew}
+          />
+          <StudioRail idPrefix={idPrefix} groups={rail} onSection={onSection} footer={railFooter} />
+        </aside>
 
         <div className={styles.main}>
           <div className={styles.column}>
