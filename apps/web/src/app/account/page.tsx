@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 export default async function AccountPage({
   searchParams,
 }: {
-  searchParams: Promise<{ section?: string | string[] }>;
+  searchParams: Promise<{ section?: string | string[]; returnTo?: string | string[] }>;
 }) {
   const search = await searchParams;
   /**
@@ -25,5 +25,10 @@ export default async function AccountPage({
    */
   const asked = Array.isArray(search.section) ? search.section[0] : search.section;
   const opening = openingSection(process.env.NODE_ENV, asked);
-  return <Account opening={opening} />;
+  return (
+    <Account
+      opening={opening}
+      returnTo={Array.isArray(search.returnTo) ? search.returnTo[0] : search.returnTo}
+    />
+  );
 }
