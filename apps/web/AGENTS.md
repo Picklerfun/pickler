@@ -800,9 +800,10 @@ Run `node scripts/design/account-menu.mjs` for the controlled desktop/mobile int
 alongside web tests, typecheck, lint and rendered design checks. It uses local fixture servers only.
 
 The draft/live navbar contains global controls only. Their shared sidebar holds the existing
-agent switcher and status. On small screens the official mobile Sheet contains vertical navigation. Moving
+agent switcher and the selected agent wallet’s AUSD/MON balances. The status appears once beside
+the agent name in the content header. On small screens the official mobile Sheet contains vertical navigation. Moving
 that switcher must preserve its permissions, agent IDs and New agent callback. The draft status
-is rendered once. Desktop header controls stay on one row during account expansion; the account
+is rendered once in the content header. Desktop header controls stay on one row during account expansion; the account
 chip may shrink to the available width and its icon never leaves the pointer. At widths of 640px
 or less, hover expansion is disabled and wrapping remains available. The 360ms expansion reverses
 once on pointer exit, rather than repeatedly entering/leaving a relocated icon.
@@ -912,3 +913,10 @@ and the existing passkey review. `All wallets` returns to the creator/agent over
 same transfer model, prepare/confirm endpoints and refresh ownership; do not create another wallet
 picker, signer or transaction implementation. Persisted `master` identifiers and section keys
 are unchanged even where their visible labels now say `Master wallet`.
+
+The shared agent selector reads balances from the existing wallet list, matched by the selected
+agent’s wallet ID; it never reads the master wallet or sends additional requests. Each asset uses
+its own official mark. Unknown amounts use Skeletons, not zero. The balance row remains mounted
+and fades/contracts with the existing sidebar motion; it is hidden from assistive technology
+when the desktop rail is collapsed. Status stays in the content header beside the agent name,
+alongside published-agent controls.
