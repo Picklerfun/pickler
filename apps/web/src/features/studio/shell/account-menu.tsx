@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "nextjs-toploader/app";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Button, Icon, Skeleton } from "@pickler/ui";
 import {
   DropdownMenu,
@@ -29,6 +29,7 @@ export function AccountMenu({
   returnContext?: StudioReturnContext | undefined;
 }) {
   const router = useRouter();
+  const previewHintId = useId();
   const root = useRef<HTMLDivElement>(null);
   const username = useRef<HTMLSpanElement>(null);
   const signingOut = useRef(false);
@@ -120,7 +121,7 @@ export function AccountMenu({
           align="end"
           sideOffset={10}
         >
-          <DropdownMenuGroup>
+          <DropdownMenuGroup className={styles.items}>
             {handle && <DropdownMenuLabel className={styles.identity}>@{handle}</DropdownMenuLabel>}
             <DropdownMenuItem asChild>
               <Link href={profileHref} className={styles.item} onClick={() => setOpen(false)}>
@@ -131,16 +132,21 @@ export function AccountMenu({
             <DropdownMenuItem
               className={styles.item}
               disabled={busy || preview}
-              title={preview ? "Sign out is unavailable in a design preview." : undefined}
+              aria-describedby={preview ? previewHintId : undefined}
               onSelect={(event) => {
                 event.preventDefault();
                 void signOut();
               }}
             >
-              <Icon name="lock" size={16} />
+              <Icon name="logOut" size={16} />
               {busy ? <Skeleton shape="line" className={styles.loading} /> : "Sign out"}
             </DropdownMenuItem>
           </DropdownMenuGroup>
+          {preview && (
+            <p id={previewHintId} className={styles.previewHint}>
+              Sign out is disabled in this preview.
+            </p>
+          )}
           {busy && (
             <span className={styles.srOnly} role="status">
               Signing out
