@@ -1,4 +1,5 @@
 "use client";
+import { StudioSkeleton } from "../../studio/skeleton";
 
 import { useState } from "react";
 import Link from "next/link";
@@ -67,7 +68,7 @@ export function WalletSection({ state }: { state: WalletState }) {
           its own. Everything inside reads the light value of the same token names. */}
       <div id="account-wallet-card" className={styles.card} data-surface="light">
         <p className={styles.cardLabel}>MASTER WALLET · AVAILABLE</p>
-        {state.kind === "loading" && <p className={styles.cardNote}>Reading the chain…</p>}
+        {state.kind === "loading" && <StudioSkeleton variant="wallet" />}
         {state.kind === "none" && (
           <>
             {/* Signed in, the account screen sends a person without a sub-organization to the signup's passkey step
