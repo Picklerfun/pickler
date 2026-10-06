@@ -211,6 +211,13 @@ export function WalletsModal({
     }
   }
 
+  const selectedAgent = moving
+    ? wallets?.agents.find((agent) => agent.walletId === moving.walletId)
+    : null;
+  const focused = Boolean(selectedAgent);
+  const selectedName = selectedAgent ? walletName(selectedAgent, draft) : "";
+  const visibleAgents = selectedAgent ? [selectedAgent] : (wallets?.agents ?? []);
+
   return (
     <>
       <dialog
@@ -236,14 +243,20 @@ export function WalletsModal({
       >
         <div className={styles.modalCard}>
           <div className={styles.modalHead}>
-            <span className={styles.tabs} role="group" aria-label="Wallets and AI credits">
-              <span className={styles.tab} aria-current="true">
-                Wallets
+            {focused ? (
+              <Button variant="ghost" size="sm" onClick={() => setMoving(null)}>
+                <Icon name="arrowLeft" size={14} /> All wallets
+              </Button>
+            ) : (
+              <span className={styles.tabs} role="group" aria-label="Wallets and AI credits">
+                <span className={styles.tab} aria-current="true">
+                  Wallets
+                </span>
+                <button type="button" className={styles.tab} onClick={onCredits}>
+                  AI credits
+                </button>
               </span>
-              <button type="button" className={styles.tab} onClick={onCredits}>
-                AI credits
-              </button>
-            </span>
+            )}
             <button
               type="button"
               className={styles.modalClose}
@@ -254,11 +267,13 @@ export function WalletsModal({
             </button>
           </div>
           <h2 className={styles.modalTitle} id={titleId}>
-            YOUR WALLETS<span>.</span>
+            {focused ? (moving?.toAgent ? `Fund ${selectedName}` : "Return funds") : "Your wallets"}
+            <span>.</span>
           </h2>
           <p className={styles.modalLead}>
-            One master wallet funds everything. Each agent gets its own, capped by its brief. All
-            behind your passkey.
+            {focused
+              ? "Review the source and destination, choose an asset, then authorize with your passkey."
+              : "Your wallet holds your funds. Each agent has a separate wallet with its own balance and limits."}
           </p>
           <div className={styles.walletRefresh}>
             <Tag className={styles.walletNetwork}>
@@ -303,59 +318,63 @@ export function WalletsModal({
             <StudioSkeleton variant="wallet" />
           ) : (
             <>
-              <div className={styles.walletBox} data-master="true">
-                <div className={styles.walletBoxHead}>
-                  <span className={`${shell.swatch} ${styles.masterMark}`} aria-hidden="true">
-                    <i data-swatch="lime" />
-                    <i data-swatch="violet" />
-                    <i data-swatch="amber" />
-                    <i data-swatch="blue" />
-                  </span>
-                  <span className={styles.walletBoxName}>
-                    <b>Master wallet</b>
-                    <small title={wallets.master.address}>{wallets.master.address}</small>
-                  </span>
-                  <span className={styles.walletTag} data-tone="good">
-                    FUNDS AGENTS
-                  </span>
-                  <button
-                    type="button"
-                    className={styles.chipButton}
-                    aria-label={
-                      copied === wallets.master.address
-                        ? "Master address copied"
-                        : "Copy the master address"
-                    }
-                    onClick={() => copy(wallets.master.address)}
-                  >
-                    {copied === wallets.master.address ? "COPIED" : "COPY"}
-                  </button>
+              {!focused && (
+                <div className={styles.walletBox} data-master="true">
+                  <div className={styles.walletBoxHead}>
+                    <span className={`${shell.swatch} ${styles.masterMark}`} aria-hidden="true">
+                      <i data-swatch="lime" />
+                      <i data-swatch="violet" />
+                      <i data-swatch="amber" />
+                      <i data-swatch="blue" />
+                    </span>
+                    <span className={styles.walletBoxName}>
+                      <b>Your wallet</b>
+                      <small title={wallets.master.address}>{wallets.master.address}</small>
+                    </span>
+                    <span className={styles.walletTag} data-tone="good">
+                      FUNDS AGENTS
+                    </span>
+                    <button
+                      type="button"
+                      className={styles.chipButton}
+                      aria-label={
+                        copied === wallets.master.address
+                          ? "Your wallet address copied"
+                          : "Copy your wallet address"
+                      }
+                      onClick={() => copy(wallets.master.address)}
+                    >
+                      {copied === wallets.master.address ? "COPIED" : "COPY"}
+                    </button>
+                  </div>
+                  <div className={styles.tiles}>
+                    <span className={styles.tile}>
+                      <b>
+                        {refreshing ? (
+                          <Skeleton className={styles.balancePlaceholder} />
+                        ) : (
+                          formatUnits(unitsOf(wallets.master.ausdMicro), "AUSD")
+                        )}
+                      </b>
+                      <small>AUSD</small>
+                    </span>
+                    <span className={styles.tile}>
+                      <b>
+                        {refreshing ? (
+                          <Skeleton className={styles.balancePlaceholder} />
+                        ) : (
+                          formatUnits(unitsOf(wallets.master.monWei), "MON")
+                        )}
+                      </b>
+                      <small>MON · GAS</small>
+                    </span>
+                  </div>
                 </div>
-                <div className={styles.tiles}>
-                  <span className={styles.tile}>
-                    <b>
-                      {refreshing ? (
-                        <Skeleton className={styles.balancePlaceholder} />
-                      ) : (
-                        formatUnits(unitsOf(wallets.master.ausdMicro), "AUSD")
-                      )}
-                    </b>
-                    <small>AUSD</small>
-                  </span>
-                  <span className={styles.tile}>
-                    <b>
-                      {refreshing ? (
-                        <Skeleton className={styles.balancePlaceholder} />
-                      ) : (
-                        formatUnits(unitsOf(wallets.master.monWei), "MON")
-                      )}
-                    </b>
-                    <small>MON · GAS</small>
-                  </span>
-                </div>
-              </div>
+              )}
 
-              <span className={styles.listTitle}>AGENT WALLETS · {wallets.agents.length}</span>
+              {!focused && (
+                <span className={styles.listTitle}>AGENT WALLETS · {wallets.agents.length}</span>
+              )}
               {wallets.agents.length === 0 && (
                 <div className={styles.walletBox}>
                   <div className={styles.walletBoxHead}>
@@ -371,7 +390,7 @@ export function WalletsModal({
                   </div>
                 </div>
               )}
-              {wallets.agents.map((agent) => {
+              {visibleAgents.map((agent) => {
                 const name = walletName(agent, draft);
                 const isOpen = moving?.walletId === agent.walletId;
                 return (
