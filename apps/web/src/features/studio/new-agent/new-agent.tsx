@@ -455,6 +455,7 @@ export function NewAgent({
               setFundOn(null);
               setModal("credits");
             }}
+            onRefresh={reads.refresh}
             onMoved={() => void reads.refresh()}
           />
           <CreditsModal
