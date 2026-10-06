@@ -125,11 +125,11 @@ test("MAX parses back to the balance and opens the move", () => {
 test("the move's note says which side holds what, and that positions stay on a pull", () => {
   assert.equal(
     moveNote({ toAgent: true, held: 50_000_000n, token: "AUSD" }),
-    "MASTER HOLDS 50 AUSD · ONE TOKEN PER TRANSACTION",
+    "YOUR WALLET HOLDS 50 AUSD · ONE TOKEN PER TRANSACTION",
   );
   assert.equal(
     moveNote({ toAgent: false, held: 3_000_000n, token: "AUSD" }),
-    "IT HOLDS 3 AUSD · ONE TOKEN PER TRANSACTION · OPEN POSITIONS STAY",
+    "AGENT WALLET HOLDS 3 AUSD · ONE TOKEN PER TRANSACTION · OPEN POSITIONS STAY",
   );
 });
 
@@ -139,15 +139,15 @@ test("the transfer sheet names the amount, the agent and both sides", () => {
     moveSheetCopy({ amount: " 5 ", token: "AUSD", toAgent: true, agentName: "Halftime", address }),
     {
       title: "Move 5 AUSD to Halftime?",
-      body: "MASTER → 0x91be…0a07 · ONE TRANSACTION",
+      body: "YOUR WALLET → 0x91be…0a07 · AUTHORIZE WITH YOUR PASSKEY",
       done: "Moved",
     },
   );
   assert.deepEqual(
     moveSheetCopy({ amount: "0.1", token: "MON", toAgent: false, agentName: "Halftime", address }),
     {
-      title: "Move 0.1 MON back to master?",
-      body: "0x91be…0a07 → MASTER · ONE TRANSACTION",
+      title: "Return 0.1 MON to your wallet?",
+      body: "0x91be…0a07 → YOUR WALLET · AUTHORIZE WITH YOUR PASSKEY",
       done: "Moved",
     },
   );
@@ -199,7 +199,7 @@ test("a move still opens up to the whole MON balance: the reserve is only MAX's"
 test("the note says MAX kept MON for gas", () => {
   assert.equal(
     moveNote({ toAgent: true, held: 2_000_000_000_000_000_000n, token: "MON", keptForGas: true }),
-    "MASTER HOLDS 2 MON · ONE TOKEN PER TRANSACTION · KEEPS 0.01 MON FOR GAS",
+    "YOUR WALLET HOLDS 2 MON · ONE TOKEN PER TRANSACTION · KEEPS 0.01 MON FOR GAS",
   );
 });
 
