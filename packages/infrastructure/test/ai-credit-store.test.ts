@@ -648,10 +648,11 @@ test("billing migrations preserve prior AUSD documents, checks and provider rese
   const before = await read();
   // This is a test-owned disposable database, never an operator rollback recipe.
   await f.db.pool.query("DROP SCHEMA billing CASCADE");
-  const recent = readMigrationFiles({ migrationsFolder }).slice(29);
+  // Only remove the fixed billing history; later unrelated tables stay applied.
+  const billingMigrations = readMigrationFiles({ migrationsFolder }).slice(29, 32);
   await f.db.pool.query(
     "DELETE FROM pickler_migrations.__drizzle_migrations WHERE hash=ANY($1::text[])",
-    [recent.map((m) => m.hash)],
+    [billingMigrations.map((m) => m.hash)],
   );
   await Promise.all([migrateDatabase(f.db.pool), migrateDatabase(f.db.pool)]);
   assert.deepEqual(await read(), before);
