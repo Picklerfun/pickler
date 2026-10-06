@@ -42,37 +42,39 @@ export function StudioTopBar({
       <StudioSidebarToggle controls={sidebarId} />
       <span className={home.spacer} />
       <span className={styles.testnet}>TESTNET</span>
-      <button
-        type="button"
-        className={topBar.topPill}
-        title="Your wallets"
-        aria-haspopup="dialog"
-        onClick={onWallets}
-      >
-        <Image src="/brand/monad.png" alt="" width={16} height={16} />
-        <span>
-          {master ? formatUnits(unitsOf(master.ausdMicro), "AUSD") : "—"}
-          <small> AUSD</small>
-        </span>
-        <i aria-hidden="true" />
-        <span>
-          {master ? formatUnits(unitsOf(master.monWei), "MON") : "—"}
-          <small> MON</small>
-        </span>
-      </button>
-      <button
-        type="button"
-        className={topBar.topPill}
-        title="AI credits"
-        aria-label="AI credits, soon"
-        aria-haspopup="dialog"
-        onClick={onCredits}
-      >
-        <i className={topBar.creditsDot} aria-hidden="true" />
-        <small className={topBar.creditsLabel}>AI CREDITS</small>
-        <span>Soon</span>
-      </button>
-      <AccountMenu handle={accountHandle} preview={preview} returnContext={returnContext} />
+      <div className={styles.globalControls}>
+        <button
+          type="button"
+          className={topBar.topPill}
+          title="Your wallets"
+          aria-haspopup="dialog"
+          onClick={onWallets}
+        >
+          <Image src="/brand/monad.png" alt="" width={16} height={16} />
+          <span>
+            {master ? formatUnits(unitsOf(master.ausdMicro), "AUSD") : "—"}
+            <small> AUSD</small>
+          </span>
+          <i aria-hidden="true" />
+          <span>
+            {master ? formatUnits(unitsOf(master.monWei), "MON") : "—"}
+            <small> MON</small>
+          </span>
+        </button>
+        <button
+          type="button"
+          className={topBar.topPill}
+          title="AI credits"
+          aria-label="AI credits, soon"
+          aria-haspopup="dialog"
+          onClick={onCredits}
+        >
+          <i className={topBar.creditsDot} aria-hidden="true" />
+          <small className={topBar.creditsLabel}>AI CREDITS</small>
+          <span>Soon</span>
+        </button>
+        <AccountMenu handle={accountHandle} preview={preview} returnContext={returnContext} />
+      </div>
     </header>
   );
 }
