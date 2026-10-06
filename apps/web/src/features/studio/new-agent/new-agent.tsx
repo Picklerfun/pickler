@@ -480,9 +480,6 @@ export function NewAgent({
             {error}
           </p>
         )}
-        {locked && <StudioAccessRequest preview={preview} />}
-        <SecondPasskey passkeys={passkeys} id="home-second-passkey" />
-
         <p className={styles.kicker}>
           {hasAgents ? "A NEW AGENT" : "YOUR FIRST AGENT"} · SET UP ITS TRADING STRATEGY
         </p>
@@ -506,6 +503,8 @@ export function NewAgent({
           onToggle={() => setAdvancedOpen((current) => !current)}
           onChange={edit}
         />
+
+        <SecondPasskey passkeys={passkeys} id="home-second-passkey" />
 
         {!locked && access.createNote && <p className={home.newAgentNote}>{access.createNote}</p>}
         <div className={styles.create}>
@@ -537,6 +536,17 @@ export function NewAgent({
       </section>
 
       <WalletPanel
+        accessRequest={
+          locked || staged?.accessStatus ? (
+            <StudioAccessRequest
+              preview={preview}
+              placement="wallet"
+              previewStatus={staged?.accessStatus ?? "not_requested"}
+              previewLoading={staged?.accessLoading ?? false}
+            />
+          ) : undefined
+        }
+        loading={!preview && reads.seq === 0}
         wallet={ready}
         firstTime={firstTime}
         pendingDelegate={resumeStep === 2}

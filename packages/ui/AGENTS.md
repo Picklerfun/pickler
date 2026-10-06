@@ -2,7 +2,7 @@
 
 Read [the root instructions](../../AGENTS.md) first. Read the web app's local instructions when changing consumption there. Update this file when components, styling exports, or client boundaries change.
 
-`@pickler/ui` contains product-independent React components and the control system both surfaces share. Current files are `src/brand.tsx`, `src/button.tsx`, `src/chart.tsx`, `src/chip.tsx`, `src/field.tsx`, `src/icon.tsx`, `src/meter.tsx`, `src/segmented.tsx`, `src/tokens.ts`, `src/index.ts`, and `src/styles.css`. The package exports `BrandMark`, `Button`, `ButtonLink`, `CandleChart`, `BarChart`, `Chip`, `ChipLink`, `ChipText`, `Tag`, `Field`, `Input`, `Textarea`, `Icon`, `Meter`, `Segmented`, `TOKEN_MIRROR` (also as `@pickler/ui/tokens`) and the stylesheet `@pickler/ui/styles.css`. The web root layout imports that stylesheet.
+`@pickler/ui` contains product-independent React components and the control system both surfaces share. Current files are `src/brand.tsx`, `src/button.tsx`, `src/chart.tsx`, `src/chip.tsx`, `src/field.tsx`, `src/icon.tsx`, `src/meter.tsx`, `src/segmented.tsx`, `src/skeleton.tsx`, `src/tokens.ts`, `src/index.ts`, and `src/styles.css`. The package exports `BrandMark`, `Button`, `ButtonLink`, `CandleChart`, `BarChart`, `Chip`, `ChipLink`, `ChipText`, `Tag`, `Field`, `Input`, `Textarea`, `Icon`, `Meter`, `Segmented`, `Skeleton`, `TOKEN_MIRROR` (also as `@pickler/ui/tokens`) and the stylesheet `@pickler/ui/styles.css`. The web root layout imports that stylesheet.
 
 ## The control system
 
@@ -32,3 +32,10 @@ One set of shapes, two surfaces. The public site and the creator studio share ra
 - Expose public components deliberately; do not require consumers to import internal source paths.
 
 From the root: `npm run typecheck --workspace=@pickler/ui` and `npm run lint`. Run `npm run build` for export or rendering-boundary changes; check the consuming page visually and with keyboard interaction for UI behavior changes. No standalone UI test suite or component explorer exists yet.
+
+## Loading placeholders
+
+`Skeleton` is a server-compatible decorative span with line, title, avatar, button and panel
+shapes. It uses the surface rule token and carries no visible loading copy or animation. Consumers
+provide a labelled `role="status"` region and `aria-busy`, and own geometry matching their content.
+Never replace errors, unknown balances or passkey authorization prompts with indefinite skeletons.

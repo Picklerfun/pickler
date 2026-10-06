@@ -27,6 +27,9 @@ export type HomeStage = (typeof STAGES)[number];
  */
 export const CREATE_STAGES = [
   "create-empty",
+  "create-access",
+  "create-access-loading",
+  "create-access-pending",
   "create-wallet",
   "create-funded",
   "create-advanced",

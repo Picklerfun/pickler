@@ -161,6 +161,9 @@ test("wallet, not funded: a named form and an empty wallet", () => {
 });
 
 const UNFUNDED: readonly string[] = [
+  "create-access",
+  "create-access-pending",
+  "create-access-loading",
   "create-empty",
   "create-wallet",
   "create-wallet-sheet",

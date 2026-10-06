@@ -6,6 +6,8 @@ import type { SheetPhase } from "./passkey-sheet";
 /** The create screen filled in for the design harness, at one moment. Nothing is sent. */
 export interface NewAgentStaged {
   form: NewAgentForm;
+  accessStatus?: "not_requested" | "pending" | undefined;
+  accessLoading?: boolean;
   available: boolean;
   wallet: WalletView | null;
   firstTime: boolean;
@@ -49,7 +51,11 @@ const MODALS: Partial<Record<CreateStage, NonNullable<NewAgentStaged["modal"]>>>
  * still empty, waiting for Pickler's delegated user.
  */
 export function newAgentFixture(stage: CreateStage): NewAgentStaged {
-  const blank = stage === "create-empty";
+  const blank =
+    stage === "create-empty" ||
+    stage === "create-access" ||
+    stage === "create-access-pending" ||
+    stage === "create-access-loading";
   const walletStep = WALLET_SHEET_STEPS[stage];
   const noWallet = blank || walletStep === 1;
   const funded = !noWallet && stage !== "create-wallet" && walletStep !== 2;
@@ -76,6 +82,13 @@ export function newAgentFixture(stage: CreateStage): NewAgentStaged {
 
   return {
     form,
+    accessStatus:
+      stage === "create-access" || stage === "create-access-loading"
+        ? "not_requested"
+        : stage === "create-access-pending"
+          ? "pending"
+          : undefined,
+    accessLoading: stage === "create-access-loading",
     available: true,
     wallet,
     firstTime: blank || walletStep !== undefined,

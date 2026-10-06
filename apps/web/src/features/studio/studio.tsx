@@ -1,4 +1,5 @@
 "use client";
+import { StudioSkeleton } from "./skeleton";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -840,7 +841,7 @@ export function Studio({
           {!agent ? (
             /* Only while the agents are read, or when that read failed: none at all is the empty
                home, above. */
-            !error && <p className={styles.stubBody}>Reading your agents…</p>
+            !error && <StudioSkeleton />
           ) : section === "overview" ? (
             <Overview
               agent={agent}

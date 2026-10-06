@@ -846,3 +846,32 @@ h2 {
   --pk-tint-bg: var(--pk-panel);
   --pk-tint-bd: var(--pk-rule-strong);
 }
+
+/* Placeholders keep layout while data is being read; no text or motion is required. */
+.pk-skeleton {
+  display: block;
+  flex-shrink: 0;
+  width: 100%;
+  height: 14px;
+  border-radius: var(--pk-radius-sm);
+  background: var(--pk-rule-strong);
+}
+.pk-skeleton[data-shape="title"] {
+  width: 70%;
+  height: 28px;
+}
+.pk-skeleton[data-shape="avatar"] {
+  width: 80px;
+  height: 80px;
+  border-radius: var(--pk-radius-xl);
+}
+.pk-skeleton[data-shape="button"] {
+  width: 160px;
+  max-width: 100%;
+  height: 44px;
+  border-radius: var(--pk-radius-pill);
+}
+.pk-skeleton[data-shape="panel"] {
+  height: 120px;
+  border-radius: var(--pk-radius-xl);
+}

@@ -44,3 +44,17 @@
   border-bottom: 1px solid var(--pk-rule);
   font: 400 14px/1.5 var(--pk-font);
 }
+
+.notice[data-placement="wallet"] {
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  background: transparent;
+  gap: 14px;
+}
+.notice[data-placement="wallet"] h2 {
+  font-size: 16px;
+}
+.notice[data-placement="wallet"] button {
+  width: 100%;
+}

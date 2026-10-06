@@ -6,4 +6,5 @@ export { Field, Input, Textarea, type FieldTone } from "./field";
 export { Icon, ICON_NAMES, type IconName } from "./icon";
 export { Meter, type MeterTone } from "./meter";
 export { Segmented, type SegmentedOption } from "./segmented";
+export { Skeleton } from "./skeleton";
 export { TOKEN_MIRROR } from "./tokens";

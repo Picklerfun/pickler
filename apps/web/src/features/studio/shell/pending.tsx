@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Button, Icon } from "@pickler/ui";
 import { useStudioHref } from "@/features/site/studio-href";
+import { StudioSkeleton } from "../skeleton";
 import { RAIL } from "../sections/rail";
 import home from "../home/home.module.css";
 import studio from "../studio.module.css";
@@ -49,13 +50,15 @@ export function StudioPending({ error, onRetry }: { error: string; onRetry(): vo
           ))}
         </nav>
         <div className={home.emptyMain}>
-          <section role={error ? "alert" : "status"}>
-            <h1 className={studio.stubTitle}>
-              {error ? "Could not open Studio" : "Opening Studio"}
-            </h1>
-            <p className={studio.stubBody}>{error || "Reading your agents…"}</p>
-            {error && <Button onClick={onRetry}>Try again</Button>}
-          </section>
+          {error ? (
+            <section role="alert">
+              <h1 className={studio.stubTitle}>Could not open Studio</h1>
+              <p className={studio.stubBody}>{error}</p>
+              <Button onClick={onRetry}>Try again</Button>
+            </section>
+          ) : (
+            <StudioSkeleton />
+          )}
         </div>
       </div>
     </main>
