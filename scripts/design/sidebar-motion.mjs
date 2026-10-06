@@ -312,11 +312,11 @@ try {
         `Resize avoids overflow: ${stage}, ${width}px`,
       );
       const controls = await page
-        .locator('[title="Your wallets"], [aria-label="AI credits, soon"], [data-account-menu]')
+        .locator('[title="Your wallet"], [aria-label="AI credits, soon"], [data-account-menu]')
         .evaluateAll((elements) => elements.map((element) => element.getBoundingClientRect().y));
       // Buttons have different heights, so compare their centers rather than top edges.
       const centers = await page
-        .locator('[title="Your wallets"], [aria-label="AI credits, soon"], [data-account-menu]')
+        .locator('[title="Your wallet"], [aria-label="AI credits, soon"], [data-account-menu]')
         .evaluateAll((elements) =>
           elements.map((element) => {
             const bounds = element.getBoundingClientRect();
