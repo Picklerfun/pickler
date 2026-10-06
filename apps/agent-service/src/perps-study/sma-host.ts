@@ -137,6 +137,7 @@ export async function runSmaStudy(input: EvaluationHostRequest) {
       exitPolicyVersion: config.exitPolicyVersion,
       virtualCapitalPerVariant: "1000",
       modelCallsAllowed: 0,
+      dataDiagnosticVersion: "safe-phase-predicate-v1",
     };
     let releaseAwake = () => {};
     let data: ReturnType<typeof createStudyData> | undefined;
@@ -362,6 +363,7 @@ export async function runSmaStudy(input: EvaluationHostRequest) {
             signal: ownedSignal,
           }),
         leaseDiagnostic: diagnostic,
+        dataDiagnostic: diagnostic,
         onCycle: async () => {
           const report = await render();
           console.log(
