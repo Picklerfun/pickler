@@ -207,10 +207,16 @@ try {
       await page.getByText(/Controlled load failure/).waitFor();
       await page.getByRole("button", { name: /try again/i }).waitFor();
     } else if (scenario === "studio-wallets") {
-      await page.getByTitle("Your wallets", { exact: true }).click();
-      const modal = page.getByRole("dialog", { name: /your wallets/i });
+      await page.getByTitle("Your wallet", { exact: true }).click();
+      const modal = page.locator("#new-agent-wallets");
       await modal.getByText("MONAD TESTNET", { exact: true }).waitFor();
-      await modal.getByRole("button", { name: "Fund from master" }).click();
+      await modal.getByRole("button", { name: "Add funds to agent" }).click();
+      await modal.getByRole("button", { name: "All wallets" }).waitFor();
+      assert.equal(await modal.locator('[data-master="true"]').count(), 0);
+      const route = modal.getByLabel("Transfer route");
+      await route.getByText("Your wallet", { exact: true }).waitFor();
+      await route.getByText("From", { exact: true }).waitFor();
+      await route.getByText("To", { exact: true }).waitFor();
       const amount = modal.locator('[data-amount="controlled-agent"]');
       await amount.fill("2");
       const refresh = modal.getByRole("button", { name: "Refresh balances" });
@@ -220,9 +226,9 @@ try {
       await refresh.press("Enter");
       assert.equal(await refresh.isDisabled(), true);
       assert.equal(await refresh.getAttribute("aria-busy"), "true");
-      assert.ok((await modal.locator(".pk-skeleton").count()) >= 5);
+      assert.ok((await modal.locator(".pk-skeleton").count()) >= 4);
       assert.equal(
-        await modal.getByRole("button", { name: "Fund from master" }).isDisabled(),
+        await modal.getByRole("button", { name: "Add funds to agent" }).isDisabled(),
         true,
       );
       assert.equal(await amount.inputValue(), "2");
@@ -259,12 +265,14 @@ try {
         .getByText(/network could not be confirmed/)
         .waitFor();
       assert.equal(
-        await modal.getByRole("button", { name: "Fund from master" }).isDisabled(),
+        await modal.getByRole("button", { name: "Add funds to agent" }).isDisabled(),
         true,
       );
       assert.equal(await modal.getByRole("button", { name: /Send 2 AUSD/ }).isDisabled(), true);
       assert.equal(await amount.inputValue(), "2");
       assert.equal(counts.get("/api/v1/studio/wallets"), before + 4);
+      await modal.getByRole("button", { name: "All wallets" }).click();
+      await modal.locator('[data-master="true"]').waitFor();
     } else if (scenario === "studio") {
       await page.getByRole("button", { name: /Create its wallet/ }).waitFor();
       assert.equal(await page.locator("#studio-pending").count(), 0);
