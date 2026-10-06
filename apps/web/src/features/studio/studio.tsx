@@ -1,6 +1,7 @@
 "use client";
 import { StudioSkeleton } from "./skeleton";
 import Image from "next/image";
+import { AccountMenu } from "./shell/account-menu";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
@@ -169,7 +170,7 @@ export function Studio({
   const [blocked, setBlocked] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  const [menu, setMenu] = useState<"agent" | "account" | null>(null);
+  const [menu, setMenu] = useState<"agent" | null>(null);
   /* The signed-in account's handle, for the draft studio's YOU sections. */
   const [accountHandle, setAccountHandle] = useState<string | null>(null);
   /* Go Public landed: the live studio that replaces the draft opens on its Overview (live L1). */
@@ -452,11 +453,18 @@ export function Studio({
      screen; its Menu lists them disabled. With agents, "+ New agent" opens the same screen. */
   const landing = studioLanding(loaded, agents, section);
   if (landing === "loading") {
-    return <StudioPending error={error} onRetry={() => window.location.reload()} />;
+    return (
+      <StudioPending
+        accountHandle={accountHandle}
+        error={error}
+        onRetry={() => window.location.reload()}
+      />
+    );
   }
   if (landing === "new") {
     return (
       <NewAgent
+        accountHandle={accountHandle}
         passkeys={passkeys}
         canManage={canManage}
         preview={preview}
@@ -549,6 +557,7 @@ export function Studio({
   if (landing === "home" && agent) {
     return (
       <Home
+        accountHandle={accountHandle}
         key={agentId}
         agent={agent}
         passkeys={passkeys}
@@ -685,46 +694,7 @@ export function Studio({
           STAGING
         </span>
 
-        <div className={styles.menuWrap} onClick={(event) => event.stopPropagation()}>
-          <button
-            type="button"
-            className={styles.switcher}
-            data-quiet="true"
-            aria-expanded={menu === "account"}
-            aria-label="Account"
-            onClick={() => setMenu(menu === "account" ? null : "account")}
-          >
-            <span className={styles.swatch} aria-hidden="true">
-              <i data-swatch="lime" />
-              <i data-swatch="violet" />
-              <i data-swatch="amber" />
-              <i data-swatch="blue" />
-            </span>
-            <Icon name="chevronDown" size={14} />
-          </button>
-          {menu === "account" && (
-            <div className={styles.menu} data-align="right" role="menu">
-              <Link href={directory} className={styles.menuItem} role="menuitem">
-                <Icon name="globe" size={15} />
-                Explore the board
-              </Link>
-              <button
-                type="button"
-                role="menuitem"
-                className={styles.menuItem}
-                onClick={() =>
-                  void (async () => {
-                    await getSupabase()?.auth.signOut();
-                    router.replace("/signin");
-                  })()
-                }
-              >
-                <Icon name="lock" size={15} />
-                Sign out
-              </button>
-            </div>
-          )}
-        </div>
+        <AccountMenu handle={accountHandle} preview={preview} />
       </header>
 
       <div className={styles.body}>
