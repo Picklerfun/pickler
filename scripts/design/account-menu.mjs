@@ -185,6 +185,62 @@ try {
     }
   }
 
+  // Delay a real local route response: progress must remain visible until navigation commits.
+  const loadingPage = await browser.newPage({ viewport: { width: 1086, height: 1000 } });
+  loadingPage.on("pageerror", (error) => errors.push(error.message));
+  let releaseNavigation;
+  const navigationGate = new Promise((resolve) => {
+    releaseNavigation = resolve;
+  });
+  await loadingPage.route("**/account?**", async (route) => {
+    await navigationGate;
+    await route.continue();
+  });
+  try {
+    await loadingPage.goto(`${baseUrl}/studio?stage=draft`);
+    await loadingPage.locator("[data-account-menu] > button").click();
+    const header = loadingPage.locator("#draft-studio > header");
+    const beforeNavigation = await header.boundingBox();
+    await loadingPage.getByRole("menuitem", { name: "My profile", exact: true }).click();
+    const bar = loadingPage.locator("#nprogress .bar");
+    await bar.waitFor({ state: "visible" });
+    const style = await bar.evaluate((element) => {
+      const computed = getComputedStyle(element);
+      const sample = document.createElement("span");
+      sample.style.color = "var(--pk-lime)";
+      document.body.append(sample);
+      const lime = getComputedStyle(sample).color;
+      sample.remove();
+      return {
+        color: computed.backgroundColor,
+        lime,
+        height: computed.height,
+        position: computed.position,
+        top: computed.top,
+        pointerEvents: computed.pointerEvents,
+      };
+    });
+    assert.equal(style.color, style.lime);
+    assert.equal(style.height, "3px");
+    assert.equal(style.position, "fixed");
+    assert.equal(style.top, "0px");
+    assert.equal(style.pointerEvents, "none");
+    assert.equal(await loadingPage.locator("#nprogress .spinner").count(), 0);
+    assert.deepEqual(await header.boundingBox(), beforeNavigation, "Progress never moves layout");
+    await loadingPage.emulateMedia({ reducedMotion: "reduce" });
+    assert.equal(
+      await bar.evaluate((element) => getComputedStyle(element).transitionDuration),
+      "0s",
+    );
+    releaseNavigation();
+    await loadingPage.waitForURL(/\/account\?section=profile/);
+    await loadingPage.getByRole("button", { name: "Public profile", exact: true }).waitFor();
+    await bar.waitFor({ state: "detached" });
+  } finally {
+    releaseNavigation();
+    await loadingPage.close();
+  }
+
   // Navigation must restore state selected through the rail, not just its initial URL.
   for (const [stage, section, label, selector] of [
     ["draft", "master", "Master wallet", "#draft-section-master"],
@@ -429,7 +485,7 @@ try {
   assert.equal(new URL(mobile.url()).searchParams.get("stage"), "draft");
   assert.deepEqual(errors, []);
   console.log(
-    "PASS: hover geometry, click, profile round trips preserving agent/section/stage, Escape/focus, Tab, outside click, sidebar collapse/persistence/selector/keyboard and mobile. Controlled previews only.",
+    "PASS: delayed route loading without layout shift, hover geometry, profile round trips preserving agent/section/stage, Escape/focus, Tab, outside click, sidebar collapse/persistence/selector/keyboard and mobile. Controlled previews only.",
   );
 } finally {
   await browser?.close();
