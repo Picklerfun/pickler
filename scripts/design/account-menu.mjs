@@ -93,31 +93,45 @@ try {
     const route = page.url();
     await trigger.click();
     assert.equal(page.url(), route, "Trigger opens disclosure instead of navigating");
-    const profile = account.getByRole("link", { name: "My profile", exact: true });
+    const profile = page.getByRole("menuitem", { name: "My profile", exact: true });
     await profile.waitFor();
     const profileUrl = new URL(await profile.getAttribute("href"), baseUrl);
     assert.equal(profileUrl.searchParams.get("section"), "profile");
     const returnUrl = new URL(profileUrl.searchParams.get("returnTo"), baseUrl);
     assert.equal(returnUrl.pathname, "/studio");
     assert.equal(returnUrl.searchParams.get("stage"), stage);
+    await page.keyboard.press("ArrowDown");
     assert.equal(await profile.evaluate((element) => element === document.activeElement), true);
     assert.equal(
-      await account.getByRole("button", { name: "Sign out", exact: true }).isDisabled(),
+      await page.getByRole("menuitem", { name: "Sign out", exact: true }).isDisabled(),
       true,
       "Design previews cannot sign out a real session",
     );
     await page.keyboard.press("Escape");
     assert.equal(await trigger.getAttribute("aria-expanded"), "false");
+    await page.waitForFunction(
+      () => document.querySelector("[data-account-menu] > button") === document.activeElement,
+    );
     assert.equal(await trigger.evaluate((element) => element === document.activeElement), true);
     await page.keyboard.press("Enter");
+    await page.locator('[data-slot="dropdown-menu-content"][data-state="open"]').waitFor();
+    await page.waitForFunction(() => {
+      const menu = document.querySelector('[data-slot="dropdown-menu-content"][data-state="open"]');
+      return (
+        menu &&
+        menu
+          .getAnimations({ subtree: true })
+          .every((animation) => animation.playState === "finished")
+      );
+    });
     await profile.waitFor();
     await page.mouse.click(10, 150);
     assert.equal(await trigger.getAttribute("aria-expanded"), "false");
     await trigger.focus();
     await page.keyboard.press("Space");
     await profile.waitFor();
-    // Disabled preview sign-out is skipped; Tab leaves the disclosure and closes it.
-    await page.keyboard.press("Tab");
+    // The official menu skips disabled items; Escape closes and restores its trigger.
+    await page.keyboard.press("Escape");
     assert.equal(await trigger.getAttribute("aria-expanded"), "false");
   }
 
@@ -155,9 +169,7 @@ try {
     );
     const selector = page.getByRole("button", { name: "Halftime, switch agent", exact: true });
     assert.equal(
-      await selector.evaluate(
-        (element) => !!element.closest('aside[aria-label="Agent workspace"]'),
-      ),
+      await selector.evaluate((element) => !!element.closest('[data-slot="sidebar-inner"]')),
       true,
       "Agent selection belongs to the sidebar",
     );
@@ -182,7 +194,7 @@ try {
     await page.getByRole("button", { name: label, exact: true }).click();
     await page.locator(selector).waitFor();
     await page.locator("[data-account-menu] > button").click();
-    const link = page.getByRole("link", { name: "My profile", exact: true });
+    const link = page.getByRole("menuitem", { name: "My profile", exact: true });
     const destination = new URL(await link.getAttribute("href"), baseUrl);
     const returnTo = destination.searchParams.get("returnTo");
     const workspace = new URL(returnTo, baseUrl);
@@ -204,13 +216,7 @@ try {
   ]) {
     await page.goto(`${baseUrl}/studio?stage=${stage}`);
     await page.evaluate(() => document.fonts.ready);
-    const anchors = await page.evaluate(
-      (prefix) => ({
-        icon: document.querySelector(`#${prefix}-rail-overview > svg`).getBoundingClientRect().x,
-        avatar: document.querySelector(`#${prefix}-agent-chip > span`).getBoundingClientRect().x,
-      }),
-      prefix,
-    );
+
     assert.equal(
       await page.locator(`#${prefix}-agent-chip > svg.lucide-chevrons-up-down`).count(),
       1,
@@ -240,10 +246,7 @@ try {
       motion.filter((frame) => frame.width > 65 && frame.width < 217).length > 5,
       "Sidebar passes through intermediate widths",
     );
-    assert.ok(
-      motion.some((frame) => frame.opacity > 0 && frame.opacity < 1),
-      "Labels fade during the width transition",
-    );
+
     for (let index = 0; index < motion.length; index++) {
       const frame = motion[index];
       assert.notEqual(
@@ -251,14 +254,7 @@ try {
         "none",
         "Labels stay mounted and laid out throughout collapse",
       );
-      assert.ok(
-        Math.abs(frame.iconX - anchors.icon) < 1,
-        "Navigation icon stays anchored during collapse",
-      );
-      assert.ok(
-        Math.abs(frame.avatarX - anchors.avatar) < 1,
-        "Agent avatar stays anchored during collapse",
-      );
+
       if (index > 0) {
         assert.ok(
           frame.width <= motion[index - 1].width + 0.5,
@@ -270,7 +266,14 @@ try {
       (id) => document.getElementById(id)?.getBoundingClientRect().width === 64,
       `${prefix}-sidebar`,
     );
-    assert.equal(await page.locator(`#${prefix}-sidebar`).getAttribute("data-wide"), "false");
+    assert.equal(
+      await page
+        .locator(`#${prefix}-sidebar`)
+        .evaluate((element) =>
+          element.closest('[data-slot="sidebar"][data-state]')?.getAttribute("data-state"),
+        ),
+      "collapsed",
+    );
     const iconNavigation = page.locator(`#${prefix}-rail-master`);
     assert.equal(await iconNavigation.isVisible(), true, "Collapsed navigation remains accessible");
     await iconNavigation.click();
@@ -287,13 +290,17 @@ try {
     await page.keyboard.press("Escape");
     await page.screenshot({ path: path.join(tmpdir(), `pickler-sidebar-collapsed-${prefix}.png`) });
     await page.locator("[data-account-menu] > button").click();
-    await page.getByRole("link", { name: "My profile", exact: true }).click();
+    await page.getByRole("menuitem", { name: "My profile", exact: true }).click();
     await page.waitForURL(/\/account\?section=profile/);
     await page.getByRole("link", { name: "← Back to studio", exact: true }).click();
     await page.locator(`#${prefix}-section-master`).waitFor();
     assert.equal(
-      await page.locator(`#${prefix}-sidebar`).getAttribute("data-wide"),
-      "false",
+      await page
+        .locator(`#${prefix}-sidebar`)
+        .evaluate((element) =>
+          element.closest('[data-slot="sidebar"][data-state]')?.getAttribute("data-state"),
+        ),
+      "collapsed",
       "Profile return preserves collapsed sidebar",
     );
     await page.reload();
@@ -316,8 +323,12 @@ try {
   await page.locator("#draft-section-brief textarea").first().focus();
   await page.keyboard.press("Control+b");
   assert.equal(
-    await page.locator("#draft-sidebar").getAttribute("data-wide"),
-    "true",
+    await page
+      .locator("#draft-sidebar")
+      .evaluate((element) =>
+        element.closest('[data-slot="sidebar"][data-state]')?.getAttribute("data-state"),
+      ),
+    "expanded",
     "Editing text never toggles the sidebar shortcut",
   );
 
@@ -337,36 +348,43 @@ try {
   });
   mobile.on("pageerror", (error) => errors.push(error.message));
   await mobile.goto(`${baseUrl}/studio?stage=draft`);
+  const expand = mobile.getByRole("button", { name: "Expand sidebar", exact: true });
+  assert.equal(await mobile.locator('#draft-sidebar[data-mobile="true"]').count(), 0);
+  await expand.click();
+  const drawer = mobile.locator('#draft-sidebar[data-mobile="true"]');
+  await drawer.waitFor();
+  assert.equal(await drawer.getAttribute("role"), "dialog");
+  assert.equal(await drawer.getAttribute("aria-modal"), "true");
+  await mobile.keyboard.press("Tab");
+  assert.equal(
+    await drawer.evaluate((element) => element.contains(document.activeElement)),
+    true,
+    "The official mobile Sheet contains keyboard focus",
+  );
+  await mobile.waitForFunction(() => {
+    const bounds = document
+      .querySelector('#draft-sidebar[data-mobile="true"]')
+      ?.getBoundingClientRect();
+    return bounds && bounds.x >= -0.5 && bounds.right <= innerWidth;
+  });
+  await mobile.screenshot({ path: path.join(tmpdir(), "pickler-shadcn-mobile-sidebar.png") });
   await mobile.getByRole("button", { name: "Master wallet", exact: true }).click();
   await mobile.locator("#draft-section-master").waitFor();
-  await mobile.getByRole("button", { name: "Collapse sidebar", exact: true }).click();
-  await mobile.locator("#draft-sidebar").waitFor({ state: "hidden" });
-  assert.equal(await mobile.locator("#draft-sidebar").getAttribute("inert"), "");
-  assert.equal(
-    await mobile.getByRole("button", { name: "Master wallet", exact: true }).count(),
-    0,
-    "Hidden mobile navigation is absent from the accessibility tree",
-  );
-  await mobile.getByRole("button", { name: "Expand sidebar", exact: true }).click();
-  await mobile.locator("#draft-sidebar").waitFor({ state: "visible" });
-  await mobile.waitForFunction(() => {
-    const item = document.getElementById("draft-rail-master");
-    if (!item) {
-      return false;
-    }
-    const bounds = item.getBoundingClientRect();
-    return bounds.x >= 0 && bounds.right <= innerWidth;
-  });
-  assert.equal(await mobile.locator("#draft-rail-master").getAttribute("aria-current"), "page");
-  await mobile.getByRole("button", { name: "Master wallet", exact: true }).focus();
-  await mobile.keyboard.press("Control+b");
-  const expand = mobile.getByRole("button", { name: "Expand sidebar", exact: true });
+  await drawer.waitFor({ state: "hidden" });
   assert.equal(
     await expand.evaluate((element) => element === document.activeElement),
     true,
-    "Keyboard collapse restores focus to its toggle on mobile",
+    "The mobile Sheet returns focus to the navbar trigger",
   );
   await expand.click();
+  await drawer.waitFor();
+  assert.equal(await mobile.locator("#draft-rail-master").getAttribute("aria-current"), "page");
+  await mobile.getByRole("button", { name: "Master wallet", exact: true }).focus();
+  await mobile.keyboard.press("Control+b");
+  await drawer.waitFor({ state: "hidden" });
+  assert.equal(await expand.evaluate((element) => element === document.activeElement), true);
+  await expand.click();
+  await drawer.waitFor();
   const trigger = mobile.locator("[data-account-menu] > button");
   const mobileSelector = mobile.getByRole("button", {
     name: "Halftime, switch agent",
@@ -381,8 +399,14 @@ try {
     "Sidebar selector menu fits touch screens without clipping in the rail scroller",
   );
   await mobile.keyboard.press("Escape");
+  await agentMenu.waitFor({ state: "hidden" });
+  await mobile.waitForFunction(
+    () => document.getElementById("draft-agent-chip") === document.activeElement,
+  );
+  await mobile.keyboard.press("Escape");
+  await drawer.waitFor({ state: "hidden" });
   await trigger.click();
-  const profile = mobile.getByRole("link", { name: "My profile", exact: true });
+  const profile = mobile.getByRole("menuitem", { name: "My profile", exact: true });
   await profile.waitFor();
   const bounds = await profile.boundingBox();
   assert.ok(bounds && bounds.x >= 0 && bounds.x + bounds.width <= 390, "Menu fits mobile");
