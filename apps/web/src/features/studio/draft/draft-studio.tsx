@@ -190,6 +190,7 @@ export function DraftStudio({
 
   return (
     <StudioShell<DraftSectionKey>
+      accountHandle={accountHandle}
       idPrefix="draft"
       agent={agent}
       agents={agents}
