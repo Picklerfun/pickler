@@ -49,7 +49,7 @@ export interface AgentWalletBoxProps {
 
 /**
  * One agent wallet in "Your wallets": its name, address, tag, balances and caps, "Fund from
- * master" and "Pull back to master", and the move form when one is open. The rules are
+ * master" and "Return to your wallet", and the move form when one is open. The rules are
  * `transfer-model.ts`'s; the state is the modal's.
  */
 export function AgentWalletBox({
@@ -83,6 +83,10 @@ export function AgentWalletBox({
   const label = transferLabel(input);
   const ok = canMove(input);
   const over = label.startsWith("More");
+  const sourceName = toAgent ? "Your wallet" : `${name}'s wallet`;
+  const targetName = toAgent ? `${name}'s wallet` : "Your wallet";
+  const sourceAddress = toAgent ? wallets.master.address : agent.address;
+  const targetAddress = toAgent ? agent.address : wallets.master.address;
 
   return (
     <div className={styles.walletBox}>
@@ -158,7 +162,7 @@ export function AgentWalletBox({
           onClick={() => onPick(true)}
         >
           <Icon name="arrowUp" size={12} />
-          Fund from master
+          Add funds to agent
         </button>
         <button
           type="button"
@@ -169,14 +173,39 @@ export function AgentWalletBox({
           onClick={() => onPick(false)}
         >
           <Icon name="arrowDown" size={12} />
-          Pull back to master
+          Return to your wallet
         </button>
       </div>
       {moving && (
         <div className={styles.move} id={formId}>
+          <div className={styles.transferRoute} aria-label="Transfer route">
+            <div className={styles.transferParty}>
+              <small>From</small>
+              <span>
+                <b>{sourceName}</b>
+                <address title={sourceAddress}>{sourceAddress}</address>
+              </span>
+            </div>
+            <div className={styles.transferParty}>
+              <small>To</small>
+              <span>
+                <b>{targetName}</b>
+                <address title={targetAddress}>{targetAddress}</address>
+              </span>
+            </div>
+            <span className={styles.transferAvailable}>
+              Available to send:{" "}
+              {refreshing ? (
+                <Skeleton className={styles.balancePlaceholder} />
+              ) : (
+                <b>{formatUnits(held, token)}</b>
+              )}{" "}
+              {token}
+            </span>
+          </div>
           <div className={styles.moveRow}>
             <Segmented
-              label="Token"
+              label="Asset"
               className={styles.tokenSwitch}
               options={TOKENS}
               value={token}
