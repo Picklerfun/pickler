@@ -2,10 +2,11 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { StudioWallets } from "../api";
-import { formatUnits, unitsOf } from "../new-agent/model";
+import { unitsOf } from "../new-agent/model";
 import type { StudioReturnContext } from "./account-return";
 import { StudioSidebarToggle } from "./sidebar";
 import { AccountMenu } from "./account-menu";
+import { WalletBalanceButton } from "./wallet-balance-button";
 import home from "../home/home.module.css";
 import topBar from "../new-agent/new-agent.module.css";
 import styles from "./shell.module.css";
@@ -43,24 +44,11 @@ export function StudioTopBar({
       <span className={home.spacer} />
       <span className={styles.testnet}>TESTNET</span>
       <div className={styles.globalControls}>
-        <button
-          type="button"
-          className={topBar.topPill}
-          title="Your wallets"
-          aria-haspopup="dialog"
+        <WalletBalanceButton
+          ausdMicro={unitsOf(master?.ausdMicro ?? null)}
+          monWei={unitsOf(master?.monWei ?? null)}
           onClick={onWallets}
-        >
-          <Image src="/brand/monad.png" alt="" width={16} height={16} />
-          <span>
-            {master ? formatUnits(unitsOf(master.ausdMicro), "AUSD") : "—"}
-            <small> AUSD</small>
-          </span>
-          <i aria-hidden="true" />
-          <span>
-            {master ? formatUnits(unitsOf(master.monWei), "MON") : "—"}
-            <small> MON</small>
-          </span>
-        </button>
+        />
         <button
           type="button"
           className={topBar.topPill}
