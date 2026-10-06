@@ -207,14 +207,14 @@ try {
       await page.getByText(/Controlled load failure/).waitFor();
       await page.getByRole("button", { name: /try again/i }).waitFor();
     } else if (scenario === "studio-wallets") {
-      await page.getByTitle("Your wallet", { exact: true }).click();
+      await page.getByTitle("Master wallet", { exact: true }).click();
       const modal = page.locator("#new-agent-wallets");
       await modal.getByText("MONAD TESTNET", { exact: true }).waitFor();
       await modal.getByRole("button", { name: "Add funds to agent" }).click();
       await modal.getByRole("button", { name: "All wallets" }).waitFor();
       assert.equal(await modal.locator('[data-master="true"]').count(), 0);
       const route = modal.getByLabel("Transfer route");
-      await route.getByText("Your wallet", { exact: true }).waitFor();
+      await route.getByText("Master wallet", { exact: true }).waitFor();
       await route.getByText("From", { exact: true }).waitFor();
       await route.getByText("To", { exact: true }).waitFor();
       const amount = modal.locator('[data-amount="controlled-agent"]');
