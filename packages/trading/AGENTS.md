@@ -201,3 +201,8 @@ clock/wait/heartbeat scheduling while retaining the actual heartbeat and databas
 SMA observation acquisition rechecks the fixed exit deadline after the public read and before
 observation or execution writes. A read crossing that deadline ends the study with positions
 and funding left pending; it does not extend the closing window.
+
+The runner's optional dataDiagnostic sink records fixed phase and allowlisted validation predicate
+labels before propagating a terminal cycle error. Unknown messages remain NOT_VERIFIABLE; never
+persist raw exception text or reinterpret rejected data as a hold. Sink failures cannot replace
+the original error. This instrumentation changes no validation or acquisition limits.
