@@ -40,7 +40,7 @@ try {
       ),
     );
 
-    for (const width of [1440, 1086, 900, 768]) {
+    for (const width of [1440, 1086, 900, 811, 768]) {
       await page.setViewportSize({ width, height: 1000 });
       await page.mouse.move(width - 10, 950);
       for (const direction of ["collapse", "expand"]) {
@@ -142,6 +142,36 @@ try {
           Math.abs(samples.at(-1).width - (direction === "collapse" ? 64 : 218)) < 0.5,
           `Settles at target: ${context}`,
         );
+        if (direction === "collapse") {
+          const alignment = await page.evaluate((prefix) => {
+            const sidebar = document.getElementById(`${prefix}-sidebar`);
+            const rail = sidebar.getBoundingClientRect();
+            const avatar = sidebar.querySelector('[data-size="chip"]').getBoundingClientRect();
+            return [
+              ...sidebar.querySelectorAll(
+                '[data-slot="sidebar-group"] [data-sidebar="menu-button"]',
+              ),
+            ].map((button) => {
+              const box = button.getBoundingClientRect();
+              const icon = button.querySelector("svg").getBoundingClientRect();
+              return {
+                width: box.width,
+                height: box.height,
+                iconOffset: icon.x + icon.width / 2 - (box.x + box.width / 2),
+                railOffset: box.x + box.width / 2 - (rail.x + rail.width / 2),
+                avatarOffset: icon.x + icon.width / 2 - (avatar.x + avatar.width / 2),
+              };
+            });
+          }, prefix);
+          assert.ok(alignment.length > 0);
+          for (const item of alignment) {
+            assert.equal(item.width, 32, `Compact selection background: ${context}`);
+            assert.equal(item.height, 32, `Square selection background: ${context}`);
+            assert.ok(Math.abs(item.iconOffset) < 0.5, `Icon centered in its button: ${context}`);
+            assert.ok(Math.abs(item.railOffset) < 1, `Button centered in the rail: ${context}`);
+            assert.ok(Math.abs(item.avatarOffset) < 1, `Avatar and icons align: ${context}`);
+          }
+        }
       }
     }
 
