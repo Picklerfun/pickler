@@ -25,6 +25,18 @@ export const researchAccess = pickler
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   })
   .enableRLS();
+export const studioAccessRequests = pickler
+  .table("studio_access_requests", {
+    userId: uuid("user_id")
+      .primaryKey()
+      .references(() => researchAccess.userId),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id),
+    requestedAt: timestamp("requested_at", { withTimezone: true }).notNull().defaultNow(),
+  })
+  .enableRLS();
+
 export const workspaceTenants = pickler
   .table(
     "workspace_tenants",
