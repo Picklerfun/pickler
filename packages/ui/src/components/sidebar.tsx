@@ -475,7 +475,7 @@ function SidebarMenuItem({ className, ...props }: React.ComponentProps<"li">) {
 }
 
 const sidebarMenuButtonVariants = cva(
-  "tw:peer/menu-button tw:flex tw:w-full tw:items-center tw:gap-2 tw:overflow-hidden tw:rounded-md tw:p-2 tw:text-left tw:text-sm tw:ring-sidebar-ring tw:outline-hidden tw:transition-[width,height,padding] tw:group-has-data-[sidebar=menu-action]/menu-item:pr-8 tw:group-data-[collapsible=icon]:size-8! tw:group-data-[collapsible=icon]:p-2! tw:hover:bg-sidebar-accent tw:hover:text-sidebar-accent-foreground tw:focus-visible:ring-2 tw:active:bg-sidebar-accent tw:active:text-sidebar-accent-foreground tw:disabled:pointer-events-none tw:disabled:opacity-50 tw:aria-disabled:pointer-events-none tw:aria-disabled:opacity-50 tw:data-[active=true]:bg-sidebar-accent tw:data-[active=true]:font-medium tw:data-[active=true]:text-sidebar-accent-foreground tw:data-[state=open]:hover:bg-sidebar-accent tw:data-[state=open]:hover:text-sidebar-accent-foreground tw:[&>span:last-child]:truncate tw:[&>svg]:size-4 tw:[&>svg]:shrink-0",
+  "tw:peer/menu-button tw:flex tw:w-full tw:items-center tw:gap-2 tw:overflow-hidden tw:rounded-md tw:p-2 tw:text-left tw:text-sm tw:ring-sidebar-ring tw:outline-hidden tw:transition-[width,height,padding] tw:group-has-data-[sidebar=menu-action]/menu-item:pr-8 tw:hover:bg-sidebar-accent tw:hover:text-sidebar-accent-foreground tw:focus-visible:ring-2 tw:active:bg-sidebar-accent tw:active:text-sidebar-accent-foreground tw:disabled:pointer-events-none tw:disabled:opacity-50 tw:aria-disabled:pointer-events-none tw:aria-disabled:opacity-50 tw:data-[active=true]:bg-sidebar-accent tw:data-[active=true]:font-medium tw:data-[active=true]:text-sidebar-accent-foreground tw:data-[state=open]:hover:bg-sidebar-accent tw:data-[state=open]:hover:text-sidebar-accent-foreground tw:[&>span:last-child]:truncate tw:[&>svg]:size-4 tw:[&>svg]:shrink-0",
   {
     variants: {
       variant: {
@@ -486,7 +486,7 @@ const sidebarMenuButtonVariants = cva(
       size: {
         default: "tw:h-8 tw:text-sm",
         sm: "tw:h-7 tw:text-xs",
-        lg: "tw:h-12 tw:text-sm tw:group-data-[collapsible=icon]:p-0!",
+        lg: "tw:h-12 tw:text-sm",
       },
     },
     defaultVariants: {
@@ -523,7 +523,7 @@ function SidebarMenuButton({
     />
   );
 
-  if (!tooltip || isMobile || state !== "collapsed") {
+  if (!tooltip || isMobile) {
     return button;
   }
 
@@ -536,12 +536,7 @@ function SidebarMenuButton({
   return (
     <Tooltip>
       <TooltipTrigger asChild>{button}</TooltipTrigger>
-      <TooltipContent
-        side="right"
-        align="center"
-        hidden={state !== "collapsed" || isMobile}
-        {...tooltip}
-      />
+      {state === "collapsed" && <TooltipContent side="right" align="center" {...tooltip} />}
     </Tooltip>
   );
 }
@@ -589,7 +584,7 @@ function SidebarMenuBadge({ className, ...props }: React.ComponentProps<"div">) 
         "tw:peer-data-[size=sm]/menu-button:top-1",
         "tw:peer-data-[size=default]/menu-button:top-1.5",
         "tw:peer-data-[size=lg]/menu-button:top-2.5",
-        "tw:group-data-[collapsible=icon]:hidden",
+        "tw:transition-opacity tw:group-data-[collapsible=icon]:opacity-0",
         className,
       )}
       {...props}
