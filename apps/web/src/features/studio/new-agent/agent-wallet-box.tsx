@@ -36,6 +36,8 @@ export interface AgentWalletBoxProps {
   copied: boolean;
   preview: boolean;
   refreshing: boolean;
+  /** The API identified the network these balances and transfers use. */
+  networkKnown: boolean;
   onPick(toAgent: boolean): void;
   onToken(token: Token): void;
   onAmount(text: string): void;
@@ -63,6 +65,7 @@ export function AgentWalletBox({
   copied,
   preview,
   refreshing,
+  networkKnown,
   onPick,
   onToken,
   onAmount,
@@ -151,7 +154,7 @@ export function AgentWalletBox({
           data-fund={agent.walletId}
           aria-expanded={moving !== null && toAgent}
           aria-controls={formId}
-          disabled={preview || refreshing}
+          disabled={preview || refreshing || !networkKnown}
           onClick={() => onPick(true)}
         >
           <Icon name="arrowUp" size={12} />
@@ -162,7 +165,7 @@ export function AgentWalletBox({
           className={styles.direction}
           aria-expanded={moving !== null && !toAgent}
           aria-controls={formId}
-          disabled={preview || refreshing}
+          disabled={preview || refreshing || !networkKnown}
           onClick={() => onPick(false)}
         >
           <Icon name="arrowDown" size={12} />
@@ -204,7 +207,11 @@ export function AgentWalletBox({
             </span>
           </div>
           <div className={styles.moveButtons}>
-            <Button block disabled={!ok || preview || refreshing} onClick={() => onSend(move)}>
+            <Button
+              block
+              disabled={!ok || preview || refreshing || !networkKnown}
+              onClick={() => onSend(move)}
+            >
               {label}
             </Button>
             <Button variant="ghost" onClick={onCancel}>
