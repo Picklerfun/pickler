@@ -646,6 +646,7 @@ test("SMA data failure diagnostics preserve phase and allowlisted predicate with
   });
   for (const unknown of [
     new Error("private-key-secret"),
+    new PilotError("INVALID_MARKET_DATA", "__proto__"),
     new PilotError("INVALID_MARKET_DATA", "private-key-secret"),
   ]) {
     const diagnostic = perpsDataFailureDiagnostic(unknown, "evidence-read", 123);
