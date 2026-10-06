@@ -101,6 +101,7 @@
   max-width: 100%;
 }
 .chipWrap .chipButton {
+  overflow: hidden;
   width: 100%;
   max-width: 100%;
   padding: 10px;
@@ -110,7 +111,7 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
-  padding: 14px 12px 0;
+  padding: 14px 8px 0;
   position: relative;
   z-index: 2;
 }
@@ -120,6 +121,8 @@
   min-width: 0;
   flex-direction: column;
   gap: 3px;
+  overflow: hidden;
+  transition: opacity 200ms ease;
   text-align: left;
 }
 .selectorIdentity small {
@@ -130,6 +133,11 @@
 .selectorStatus {
   display: flex;
   align-items: center;
+  max-height: 32px;
+  overflow: hidden;
+  transition:
+    max-height 320ms ease,
+    opacity 200ms ease;
 }
 .chipButton b {
   min-width: 0;
@@ -140,6 +148,7 @@
 .chipButton svg {
   flex: none;
   color: var(--pk-ink-muted);
+  transition: opacity 200ms ease;
 }
 .chipMenu {
   composes: menu from "../home/home.module.css";
@@ -191,7 +200,7 @@
   display: flex;
   flex-direction: column;
   border-right: 1px solid var(--pk-rule);
-  transition: flex-basis 260ms ease;
+  transition: flex-basis 320ms ease;
 }
 .rail {
   /* Positioned, so the locked rows' visually hidden text is laid out in the rail: unpositioned, it
@@ -202,12 +211,19 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
-  padding: 14px 12px;
+  padding: 14px 8px;
 }
 .railGroup {
   min-width: 0;
 }
 .railTitle {
+  max-height: 10px;
+  overflow: hidden;
+  white-space: nowrap;
+  transition:
+    max-height 320ms ease,
+    margin-bottom 320ms ease,
+    opacity 200ms ease;
   margin: 0 0 7px;
   padding: 0 10px;
   font: 600 10px/1 var(--pk-font);
@@ -220,11 +236,12 @@
   gap: 3px;
 }
 .railItem {
+  overflow: hidden;
   display: flex;
   align-items: center;
   gap: 11px;
   width: 100%;
-  padding: 9px 10px;
+  padding: 9px 15px;
   border: none;
   border-radius: var(--pk-radius-md);
   background: transparent;
@@ -259,6 +276,7 @@
   opacity: 0.5;
 }
 .railLock {
+  transition: opacity 200ms ease;
   flex: none;
   display: inline-flex;
   color: var(--pk-ink-faint);
@@ -267,6 +285,7 @@
   background: var(--pk-panel);
 }
 .railLabel {
+  transition: opacity 200ms ease;
   flex: 1;
   min-width: 0;
   overflow: hidden;
@@ -275,6 +294,7 @@
 }
 /* A count beside the label (the live studio's Positions and Decisions), drawn only above zero. */
 .railBadge {
+  transition: opacity 200ms ease;
   flex: none;
   min-width: 18px;
   padding: 4px 6px;
@@ -513,9 +533,6 @@
 .pendingSidebar[data-wide="false"] {
   flex-basis: 64px;
 }
-.sidebar[data-wide="false"] .agentSelector {
-  padding-inline: 8px;
-}
 .sidebar[data-wide="false"] .selectorIdentity,
 .sidebar[data-wide="false"] .selectorStatus,
 .sidebar[data-wide="false"] .chipButton > svg,
@@ -523,41 +540,96 @@
 .sidebar[data-wide="false"] .railLabel,
 .sidebar[data-wide="false"] .railBadge,
 .sidebar[data-wide="false"] .railLock,
-.sidebar[data-wide="false"] [data-sidebar-label],
-.pendingSidebar[data-wide="false"] p,
-.pendingSidebar[data-wide="false"] [aria-disabled] > span {
-  display: none;
+.sidebar[data-wide="false"] [data-sidebar-label] {
+  opacity: 0;
 }
-.sidebar[data-wide="false"] .chipButton {
-  justify-content: center;
+.sidebar[data-wide="false"] .railTitle {
+  max-height: 0;
+  margin-bottom: 0;
 }
-.sidebar[data-wide="false"] .rail {
-  padding-inline: 8px;
+.sidebar[data-wide="false"] .selectorStatus {
+  max-height: 0;
 }
-.sidebar[data-wide="false"] .railItem,
-.sidebar[data-wide="false"] .railFoot a {
-  justify-content: center;
-  padding-inline: 10px;
+.sidebar .railFoot a {
+  justify-content: flex-start;
+  padding-inline: 15px;
+  overflow: hidden;
+}
+.sidebar [data-sidebar-label] {
+  display: inline-block;
+  flex: 0 1 auto;
+  max-width: 170px;
+  overflow: hidden;
+  white-space: nowrap;
+  transition:
+    max-width 320ms ease,
+    opacity 200ms ease;
+}
+.sidebar[data-wide="false"] [data-sidebar-label] {
+  max-width: 0;
 }
 .sidebar[data-wide="false"] .chipMenu {
   width: 218px;
   max-width: calc(100vw - 32px);
 }
 .pendingSidebar {
-  transition: flex-basis 260ms ease;
+  transition: flex-basis 320ms ease;
 }
-.pendingSidebar[data-wide="false"] {
+.pendingSidebar {
   padding-inline: 8px;
 }
+.pendingSidebar p,
+.pendingSidebar [aria-disabled] > span {
+  overflow: hidden;
+  white-space: nowrap;
+  transition: opacity 200ms ease;
+}
+.pendingSidebar[data-wide="false"] p,
+.pendingSidebar[data-wide="false"] [aria-disabled] > span {
+  opacity: 0;
+}
 @media (max-width: 860px) {
-  .sidebar[data-wide="false"],
-  .pendingSidebar[data-wide="false"] {
-    display: none;
+  .sidebar,
+  .sidebar[data-wide="false"] {
+    flex-basis: auto;
+    max-height: 180px;
+    opacity: 1;
+    transform: translateY(0);
+    visibility: visible;
+    transition:
+      max-height 320ms ease,
+      opacity 200ms ease,
+      transform 320ms ease,
+      visibility 0s;
+  }
+  .sidebar[data-wide="false"] {
+    max-height: 0;
+    opacity: 0;
+    transform: translateY(-8px);
+    overflow: hidden;
+    pointer-events: none;
+    visibility: hidden;
+    transition:
+      max-height 320ms ease,
+      opacity 200ms ease,
+      transform 320ms ease,
+      visibility 0s 320ms;
   }
 }
 @media (prefers-reduced-motion: reduce) {
   .sidebar,
-  .pendingSidebar {
+  .sidebar[data-wide="false"],
+  .pendingSidebar,
+  .selectorIdentity,
+  .selectorStatus,
+  .chipButton svg,
+  .railTitle,
+  .railLabel,
+  .railBadge,
+  .railLock,
+  .sidebar [data-sidebar-label],
+  .pendingSidebar p,
+  .pendingSidebar [aria-disabled] > span {
     transition: none;
   }
 }
