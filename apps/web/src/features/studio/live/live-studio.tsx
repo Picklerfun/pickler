@@ -1,4 +1,5 @@
 "use client";
+import { SidebarMenu, SidebarMenuItem, SidebarMenuButton } from "@pickler/ui/sidebar";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Icon } from "@pickler/ui";
 import { useMarketplaceHref } from "@/features/site/studio-href";
@@ -229,36 +230,48 @@ export function LiveStudio({
       )}
       railFooter={
         <>
-          <div className={styles.help}>
+          <SidebarMenu className={styles.help}>
             {HELP_LINKS.map((link) => (
-              <a
-                key={link.label}
-                href={link.href}
-                aria-label={link.label}
-                title={link.label}
-                className={styles.helpLink}
-                {...(link.href.startsWith("http")
-                  ? { target: "_blank", rel: "noopener noreferrer" }
-                  : {})}
-              >
-                <Icon name={link.icon} size={15} />
-                <span data-sidebar-label>{link.label}</span>
-              </a>
+              <SidebarMenuItem key={link.label}>
+                <SidebarMenuButton asChild tooltip={{ children: link.label, surface: "dark" }}>
+                  <a
+                    href={link.href}
+                    aria-label={link.label}
+                    title={link.label}
+                    className={styles.helpLink}
+                    {...(link.href.startsWith("http")
+                      ? { target: "_blank", rel: "noopener noreferrer" }
+                      : {})}
+                  >
+                    <Icon name={link.icon} size={15} />
+                    <span>{link.label}</span>
+                  </a>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             ))}
-          </div>
+          </SidebarMenu>
           {agent.handle && (
-            <a
-              href={profile}
-              className={styles.profileLink}
-              id="live-public-profile"
-              aria-label="Its public profile"
-              title="Its public profile"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <Icon name="external" size={13} />
-              <span data-sidebar-label>ITS PUBLIC PROFILE</span>
-            </a>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  tooltip={{ children: "Its public profile", surface: "dark" }}
+                >
+                  <a
+                    href={profile}
+                    className={styles.profileLink}
+                    id="live-public-profile"
+                    aria-label="Its public profile"
+                    title="Its public profile"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <Icon name="external" size={13} />
+                    <span>ITS PUBLIC PROFILE</span>
+                  </a>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
           )}
         </>
       }
