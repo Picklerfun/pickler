@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { AccountMenu } from "./account-menu";
 import Link from "next/link";
 import { Button, Icon } from "@pickler/ui";
 import { useStudioHref } from "@/features/site/studio-href";
@@ -10,7 +11,15 @@ import home from "../home/home.module.css";
 import studio from "../studio.module.css";
 
 /** Keep the modern Studio frame while its session and agent selection are still unresolved. */
-export function StudioPending({ error, onRetry }: { error: string; onRetry(): void }) {
+export function StudioPending({
+  error,
+  onRetry,
+  accountHandle,
+}: {
+  error: string;
+  onRetry(): void;
+  accountHandle: string | null;
+}) {
   const href = useStudioHref();
 
   return (
@@ -24,14 +33,7 @@ export function StudioPending({ error, onRetry }: { error: string; onRetry(): vo
         <span className={home.pill} data-tint="grey">
           TESTNET
         </span>
-        <Link href="/account" className={home.account} aria-label="Account">
-          <span className={studio.swatch} aria-hidden="true">
-            <i data-swatch="lime" />
-            <i data-swatch="violet" />
-            <i data-swatch="amber" />
-            <i data-swatch="blue" />
-          </span>
-        </Link>
+        <AccountMenu handle={accountHandle} preview={false} />
       </header>
       <div className={home.emptyBody}>
         <nav className={home.emptyRail} aria-label="Studio sections" aria-busy={!error}>
