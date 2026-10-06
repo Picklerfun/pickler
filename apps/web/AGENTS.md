@@ -776,7 +776,9 @@ renders the existing Next.js link with `asChild`. Do not add document listeners 
 `/account?section=profile` opens the public-profile tab in every environment; other section query
 links remain non-production design controls. Sign-out uses Supabase Auth, navigates only after
 success, preserves errors and disables duplicate submissions. Design previews cannot sign out.
-The busy sign-out action uses the shared Skeleton with an accessible status label.
+The busy sign-out action uses the shared Skeleton with an accessible status label. Menu rows have
+separate hit areas and an inset focus outline; profile focus must not paint over sign-out. Preview
+sign-out remains disabled, uses the standard exit icon and has a visible, associated explanation.
 Run `node scripts/design/account-menu.mjs` for the controlled desktop/mobile interaction check,
 alongside web tests, typecheck, lint and rendered design checks. It uses local fixture servers only.
 
