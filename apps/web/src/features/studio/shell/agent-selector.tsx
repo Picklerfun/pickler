@@ -1,15 +1,30 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { Icon } from "@pickler/ui";
+import {
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuItem,
+  SidebarMenuButton,
+  useSidebar,
+} from "@pickler/ui/sidebar";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuLabel,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from "@pickler/ui/dropdown-menu";
 import type { Agent } from "../api";
 import { menuAccess } from "../home/access";
 import { AgentAvatar } from "./agent-avatar";
 import type { StudioIdPrefix } from "./model";
-import home from "../home/home.module.css";
 import styles from "./shell.module.css";
 
-/** Workspace selection lives above the agent's navigation, outside its mobile scroller. */
+/** The official team switcher composition, backed by the existing agent permissions. */
 export function AgentSelector({
   idPrefix,
   agent,
@@ -31,10 +46,9 @@ export function AgentSelector({
   onSwitch(agentId: string): void;
   onNew(): void;
 }) {
-  const [menuOpen, setMenuOpen] = useState(false);
+  const { isMobile, setOpenMobile } = useSidebar();
   const name = agent.name ?? "Your agent";
   const agentId = agent.productId ?? agent.id;
-  const menuId = `${idPrefix}-agent-menu`;
   const access = menuAccess({
     hasAgent: true,
     canManage,
@@ -42,102 +56,81 @@ export function AgentSelector({
     fundLock: newAgentLock,
     draftLock: "",
   });
-
-  /* The switcher closes on Escape and on any click outside it, as the home's Menu does. */
-  useEffect(() => {
-    if (!menuOpen) {
-      return;
-    }
-    const close = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setMenuOpen(false);
-      }
-    };
-    const away = () => setMenuOpen(false);
-    window.addEventListener("keydown", close);
-    window.addEventListener("click", away);
-    return () => {
-      window.removeEventListener("keydown", close);
-      window.removeEventListener("click", away);
-    };
-  }, [menuOpen]);
-
   return (
-    <div className={styles.agentSelector}>
-      <div
-        className={styles.chipWrap}
-        onClick={(event) => event.stopPropagation()}
-        onBlur={(event) => {
-          if (!event.currentTarget.contains(event.relatedTarget)) {
-            setMenuOpen(false);
-          }
-        }}
-      >
-        <button
-          type="button"
-          className={styles.chipButton}
-          id={`${idPrefix}-agent-chip`}
-          aria-expanded={menuOpen}
-          aria-controls={menuId}
-          aria-label={`${name}, switch agent`}
-          title={`${name}, switch agent`}
-          onClick={() => setMenuOpen(!menuOpen)}
-        >
-          <AgentAvatar accent={agent.accent} pattern={agent.avatarPattern} size="chip" />
-          <span className={styles.selectorIdentity}>
-            <b>{name}</b>
-            {agent.handle && <small>@{agent.handle}</small>}
-          </span>
-          <Icon name="chevronsUpDown" size={15} />
-        </button>
-        {menuOpen && (
-          <div className={styles.chipMenu} id={menuId}>
-            {access.create ? (
-              <button
-                type="button"
-                className={home.newAgent}
-                onClick={() => {
-                  setMenuOpen(false);
-                  onNew();
-                }}
+    <SidebarHeader>
+      <SidebarMenu>
+        <SidebarMenuItem>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <SidebarMenuButton
+                size="lg"
+                id={`${idPrefix}-agent-chip`}
+                aria-label={`${name}, switch agent`}
+                tooltip={{ children: `${name}, switch agent`, surface: "dark" }}
               >
-                {newAgentLabel}
-              </button>
-            ) : (
-              <div className={home.newAgentLocked} title={access.createNote} aria-disabled="true">
-                <span className={home.newAgentLabel}>{newAgentLabel}</span>
-                <span className={home.newAgentNote}>{access.createNote}</span>
-              </div>
-            )}
-            <div className={home.menuGroup}>
-              <p className={home.menuTitle}>YOUR AGENTS</p>
-              {agents.map((other) => {
-                const id = other.productId ?? other.id;
-                const current = id === agentId;
-                return (
-                  <button
-                    key={id}
-                    type="button"
-                    className={`${home.menuItem} ${styles.menuAgent}`}
-                    aria-current={current}
-                    onClick={() => {
-                      setMenuOpen(false);
-                      if (!current) {
-                        onSwitch(id);
-                      }
-                    }}
-                  >
-                    <AgentAvatar accent={other.accent} pattern={other.avatarPattern} size="chip" />
-                    <span className={home.grow}>{other.name ?? id.slice(0, 8)}</span>
-                    {other.draft && <span className={home.menuNote}>DRAFT</span>}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
+                <AgentAvatar accent={agent.accent} pattern={agent.avatarPattern} size="chip" />
+                <span className={styles.selectorIdentity}>
+                  <b>{name}</b>
+                  {agent.handle && <small>@{agent.handle}</small>}
+                </span>
+                <Icon name="chevronsUpDown" />
+              </SidebarMenuButton>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              id={`${idPrefix}-agent-menu`}
+              data-surface="dark"
+              side={isMobile ? "bottom" : "right"}
+              align="start"
+              sideOffset={8}
+              className={styles.agentMenu}
+            >
+              <DropdownMenuGroup>
+                <DropdownMenuLabel>Your agents</DropdownMenuLabel>
+                {agents.map((other) => {
+                  const id = other.productId ?? other.id;
+                  const current = id === agentId;
+                  return (
+                    <DropdownMenuItem
+                      key={id}
+                      aria-current={current ? "true" : undefined}
+                      onSelect={() => {
+                        if (!current) {
+                          setOpenMobile(false);
+                          onSwitch(id);
+                        }
+                      }}
+                    >
+                      <AgentAvatar
+                        accent={other.accent}
+                        pattern={other.avatarPattern}
+                        size="chip"
+                      />
+                      <span>{other.name ?? id.slice(0, 8)}</span>
+                      {other.draft && <span>DRAFT</span>}
+                    </DropdownMenuItem>
+                  );
+                })}
+              </DropdownMenuGroup>
+              <DropdownMenuSeparator />
+              <DropdownMenuGroup>
+                <DropdownMenuItem
+                  disabled={!access.create}
+                  onSelect={() => {
+                    setOpenMobile(false);
+                    onNew();
+                  }}
+                >
+                  <span>{newAgentLabel}</span>
+                </DropdownMenuItem>
+                {!access.create && <DropdownMenuLabel>{access.createNote}</DropdownMenuLabel>}
+              </DropdownMenuGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </SidebarMenuItem>
+      </SidebarMenu>
+      <div className={`${styles.selectorStatus} tw:group-data-[collapsible=icon]:hidden`}>
+        {status}
       </div>
-      <div className={styles.selectorStatus}>{status}</div>
-    </div>
+    </SidebarHeader>
   );
 }
