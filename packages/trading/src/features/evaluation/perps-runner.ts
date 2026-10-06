@@ -36,6 +36,40 @@ import {
   type PerpsPaperView,
 } from "../../perps.js";
 import type { PerpsModels, PerpsModelHooks } from "./model.js";
+export type PerpsDataPhase =
+  | "cycle-start"
+  | "observation-read"
+  | "observation-validation"
+  | "observation-write"
+  | "evidence-read"
+  | "evidence-validation"
+  | "execution-read"
+  | "execution-validation"
+  | "execution-write";
+
+export function perpsDataFailureDiagnostic(error: unknown, phase: PerpsDataPhase, at: number) {
+  const reasons: Record<string, string> = {
+    "BTC and ETH common frames required": "COMMON_ASSET_IDENTITY",
+    "Exactly one frame per asset required": "FRAME_CARDINALITY",
+    "Invalid cost metadata": "COST_METADATA",
+    "Invalid price or depth": "PRICE_OR_DEPTH",
+    "Crossed order book": "CROSSED_BOOK",
+    "Candle identity does not match the execution market": "CANDLE_IDENTITY",
+    "Invalid or nonconsecutive closed candle": "CANDLE_VALUES_OR_CONTINUITY",
+    "Sixty current closed candles per timeframe required": "CANDLE_WINDOW",
+    "Sixty consecutive closed candles required": "CANDLE_WINDOW",
+  };
+  return {
+    kind: "data-failure" as const,
+    version: 1,
+    at,
+    phase,
+    code: safeCode(error),
+    predicate:
+      error instanceof PilotError ? (reasons[error.message] ?? "NOT_VERIFIABLE") : "NOT_VERIFIABLE",
+  };
+}
+
 export interface StudyData {
   observe(
     record: PerpsStudyRecord,
@@ -82,6 +116,7 @@ export function createPerpsStudyRunner(deps: {
     signal: AbortSignal,
   ) => PerpsPaperRepository;
   leaseDiagnostic?: (event: LeaseDiagnostic) => void;
+  dataDiagnostic?: (event: ReturnType<typeof perpsDataFailureDiagnostic>) => void;
   onCycle?: () => Promise<void>;
   wait?: (delay: number, signal: AbortSignal) => Promise<void>;
   heartbeat?: typeof startLeaseHeartbeat;
@@ -172,7 +207,8 @@ export function createPerpsStudyRunner(deps: {
       reason: attempt?.reason ?? error,
     });
   }
-  async function cycle(
+  let dataPhase: PerpsDataPhase = "cycle-start";
+  async function cycleWork(
     scope: PerpsStudyScope,
     lease: PerpsStudyLease,
     signal: AbortSignal,
@@ -216,14 +252,17 @@ export function createPerpsStudyRunner(deps: {
     let observation: PerpsPaperObservation;
     let observationWritesStarted = false;
     try {
+      dataPhase = "observation-read";
       observation = await data.observe(record, signal, () => ownedGuard());
       if (ablation && now() >= record.graceUntil!) {
         await ownedGuard();
         await study.complete(scope, lease);
         return false;
       }
+      dataPhase = "observation-validation";
       validateCommonFrames(observation.frames, record.config.network, now());
       observationWritesStarted = true;
+      dataPhase = "observation-write";
       for (const strategy of strategies) {
         await ownedGuard();
         views[strategy] = await paper.observe(accountScope(record, strategy), key, observation);
@@ -266,7 +305,9 @@ export function createPerpsStudyRunner(deps: {
     let sharedEvidence: PerpsEvidence | undefined;
     if (ablation && !closing && slot >= 0) {
       try {
+        dataPhase = "evidence-read";
         sharedEvidence = await data.evidence(record, observation, signal, () => ownedGuard());
+        dataPhase = "evidence-validation";
         validateCommonFrames(sharedEvidence.frames, record.config.network, now());
         validateMultiframeEvidence(sharedEvidence);
       } catch (error) {
@@ -374,9 +415,11 @@ export function createPerpsStudyRunner(deps: {
     }
     let evidence: PerpsEvidence;
     try {
+      dataPhase = "evidence-read";
       evidence =
         sharedEvidence ?? (await data.evidence(record, observation, signal, () => ownedGuard()));
       signal.throwIfAborted();
+      dataPhase = "evidence-validation";
       validateCommonFrames(evidence.frames, record.config.network, now());
       if (record.config.strategyVersion === "1.1.0" || ablation) {
         validateMultiframeEvidence(evidence);
@@ -505,6 +548,7 @@ export function createPerpsStudyRunner(deps: {
     let executionStarted = false;
     try {
       await ownedGuard(true);
+      dataPhase = "execution-read";
       const frames = await data.execution(record, signal, () => ownedGuard());
       signal.throwIfAborted();
       // Persist the common execution input even if validation rejects it before any fill.
@@ -512,6 +556,7 @@ export function createPerpsStudyRunner(deps: {
         observedAt: now(),
         frames,
       });
+      dataPhase = "execution-validation";
       const finalAt = now();
       validateCommonFrames(frames, record.config.network, finalAt);
       await ownedGuard(true);
@@ -519,6 +564,7 @@ export function createPerpsStudyRunner(deps: {
         validateMultiframeEvidence({ ...evidence, observedAt: finalAt, frames });
       }
       executionStarted = true;
+      dataPhase = "execution-write";
       // New marks refresh admission after model latency; the earlier funding reconciliation is retained.
       for (const strategy of strategies) {
         signal.throwIfAborted();
@@ -629,6 +675,20 @@ export function createPerpsStudyRunner(deps: {
       await study.stopDecisions(scope, lease, "INCOMPLETE_EXECUTION");
     }
     return true;
+  }
+  async function cycle(scope: PerpsStudyScope, lease: PerpsStudyLease, signal: AbortSignal) {
+    dataPhase = "cycle-start";
+    try {
+      return await cycleWork(scope, lease, signal);
+    } catch (error) {
+      // Local diagnostics do not write through a lost PostgreSQL lease or change the failure.
+      try {
+        deps.dataDiagnostic?.(perpsDataFailureDiagnostic(error, dataPhase, now()));
+      } catch {
+        // Preserve the original operational failure even if a diagnostic sink fails.
+      }
+      throw error;
+    }
   }
   return {
     cycle,
