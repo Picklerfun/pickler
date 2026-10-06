@@ -2,8 +2,9 @@ import type { Metadata, Viewport } from "next";
 import { Archivo, Instrument_Sans } from "next/font/google";
 import { headers } from "next/headers";
 import type { ReactNode } from "react";
+import NextTopLoader from "nextjs-toploader";
 import { TOKEN_MIRROR } from "@pickler/ui/tokens";
-import "@pickler/ui/styles.css";
+import "@pickler/ui/shadcn.css";
 import "./globals.css";
 import { ProductProvider } from "@/features/site/studio-href";
 import { PRODUCT_HOSTS, productFor } from "@/server/hosts";
@@ -44,6 +45,14 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   return (
     <html lang="en" className={`${display.variable} ${body.variable}`}>
       <body>
+        <NextTopLoader
+          color="currentColor"
+          height={3}
+          showSpinner={false}
+          shadow={false}
+          showForHashAnchor={false}
+          template='<div class="bar" role="bar" aria-hidden="true"><div class="peg"></div></div>'
+        />
         <ProductProvider product={productFor(host, PRODUCT_HOSTS)}>
           <WalletProvider>{children}</WalletProvider>
         </ProductProvider>

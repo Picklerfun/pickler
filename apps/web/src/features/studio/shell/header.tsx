@@ -8,7 +8,7 @@ import styles from "./shell.module.css";
 /**
  * The header over every section: the avatar, the agent's name, the line under it (`sub`, its parts
  * as spans with `HeaderDot` between them), and on the right whatever the studio puts there: the
- * draft's status chip, the live studio's controls.
+ * live studio's controls. The workspace status lives under the sidebar switcher.
  */
 export function StudioHeader({
   accent,

@@ -139,3 +139,18 @@ export async function ensureProfile(
     throw error;
   }
 }
+
+/** A failed sign-out must not navigate away while the session is still active. */
+export async function signOutAccount(
+  client: {
+    auth: { signOut(): Promise<{ error: { message: string } | null }> };
+  } | null,
+): Promise<void> {
+  if (!client) {
+    throw new Error("Authentication is not configured");
+  }
+  const { error } = await client.auth.signOut();
+  if (error) {
+    throw new Error(error.message);
+  }
+}

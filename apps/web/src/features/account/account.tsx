@@ -2,7 +2,8 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter } from "nextjs-toploader/app";
+import { studioReturnHref } from "../studio/shell/account-return";
 import { useStudioHref } from "@/features/site/studio-href";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { MONAD_TESTNET } from "@pickler/chain";
@@ -47,8 +48,14 @@ function Mark({ className }: { className: string | undefined }) {
   );
 }
 
-export function Account({ opening }: { opening: SectionKey }) {
-  const studio = useStudioHref();
+export function Account({
+  opening,
+  returnTo,
+}: {
+  opening: SectionKey;
+  returnTo?: string | undefined;
+}) {
+  const studio = studioReturnHref(returnTo, useStudioHref());
   const router = useRouter();
   const [section, setSection] = useState<SectionKey>(opening);
   /**

@@ -1,7 +1,7 @@
 "use client";
 
 import type { ApiErrorResponse, JoinWaitlistResponse } from "@pickler/api-schema";
-import { useRouter } from "next/navigation";
+import { useRouter } from "nextjs-toploader/app";
 import { useState, type FormEvent } from "react";
 import styles from "../landing.module.css";
 import { formatInteger } from "../lib/format";

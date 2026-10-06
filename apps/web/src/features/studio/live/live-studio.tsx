@@ -1,4 +1,5 @@
 "use client";
+import { SidebarMenu, SidebarMenuItem, SidebarMenuButton } from "@pickler/ui/sidebar";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Icon } from "@pickler/ui";
 import { useMarketplaceHref } from "@/features/site/studio-href";
@@ -98,7 +99,7 @@ export function LiveStudio({
   onNew(): void;
 }) {
   const [section, setSection] = useState<LiveSectionKey>(
-    staged?.section ?? initialSection ?? "overview",
+    initialSection ?? staged?.section ?? "overview",
   );
   const wallClock = useNow();
   const now = staged ? staged.now : wallClock;
@@ -207,6 +208,7 @@ export function LiveStudio({
 
   return (
     <StudioShell<LiveSectionKey>
+      accountHandle={accountHandle}
       idPrefix="live"
       agent={agent}
       agents={agents}
@@ -228,32 +230,48 @@ export function LiveStudio({
       )}
       railFooter={
         <>
-          <div className={styles.help}>
+          <SidebarMenu className={styles.help}>
             {HELP_LINKS.map((link) => (
-              <a
-                key={link.label}
-                href={link.href}
-                className={styles.helpLink}
-                {...(link.href.startsWith("http")
-                  ? { target: "_blank", rel: "noopener noreferrer" }
-                  : {})}
-              >
-                <Icon name={link.icon} size={15} />
-                {link.label}
-              </a>
+              <SidebarMenuItem key={link.label}>
+                <SidebarMenuButton asChild tooltip={{ children: link.label, surface: "dark" }}>
+                  <a
+                    href={link.href}
+                    aria-label={link.label}
+                    title={link.label}
+                    className={styles.helpLink}
+                    {...(link.href.startsWith("http")
+                      ? { target: "_blank", rel: "noopener noreferrer" }
+                      : {})}
+                  >
+                    <Icon name={link.icon} size={15} />
+                    <span>{link.label}</span>
+                  </a>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             ))}
-          </div>
+          </SidebarMenu>
           {agent.handle && (
-            <a
-              href={profile}
-              className={styles.profileLink}
-              id="live-public-profile"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              ITS PUBLIC PROFILE
-              <Icon name="external" size={13} />
-            </a>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  tooltip={{ children: "Its public profile", surface: "dark" }}
+                >
+                  <a
+                    href={profile}
+                    className={styles.profileLink}
+                    id="live-public-profile"
+                    aria-label="Its public profile"
+                    title="Its public profile"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <Icon name="external" size={13} />
+                    <span>ITS PUBLIC PROFILE</span>
+                  </a>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
           )}
         </>
       }
@@ -309,7 +327,6 @@ export function LiveStudio({
       onRefreshAgent={onRefreshAgent}
       onSwitch={onSwitch}
       onNew={onNew}
-      onAccount={() => setSection("account")}
       strip={
         <LiveStrip
           view={

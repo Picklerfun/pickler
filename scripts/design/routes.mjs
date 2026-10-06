@@ -566,6 +566,34 @@ const ALL = [
     surface: "dark",
     task: "Draft dashboard",
     proves: "#draft-section-overview",
+    act: {
+      click: "[data-account-menu] > button",
+      proves: '[data-slot="dropdown-menu-content"] a[href^="/account?section=profile&returnTo="]',
+    },
+  },
+  {
+    path: "/studio?stage=draft&resume=overview",
+    name: "studio-draft-collapsed",
+    product: "studio",
+    surface: "dark",
+    task: "Draft dashboard",
+    proves: "#draft-section-overview",
+    act: {
+      click: '[data-sidebar-toggle][aria-expanded="true"]',
+      proves: '#draft-sidebar[data-slot="sidebar-container"]:is([data-collapsible="icon"] *)',
+    },
+  },
+  {
+    path: "/studio?stage=perpl-live&resume=overview",
+    name: "studio-live-collapsed",
+    product: "studio",
+    surface: "dark",
+    task: "Live dashboard",
+    proves: "#live-section-overview",
+    act: {
+      click: '[data-sidebar-toggle][aria-expanded="true"]',
+      proves: '#live-sidebar[data-slot="sidebar-container"]:is([data-collapsible="icon"] *)',
+    },
   },
   {
     path: "/studio?stage=draft-x-open",

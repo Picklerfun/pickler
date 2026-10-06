@@ -24,3 +24,7 @@ while the coordinated release is disabled. It preserves independent Cloudflare B
 no Cloudflare credential and scopes operator secrets to the hosted migration step. It tests against
 disposable PostgreSQL first and shares non-cancelling release concurrency. There is deliberately no
 migration-before-Cloudflare-build guarantee. The coordinated gate disables this standalone job.
+
+The Design rendered job also runs `scripts/design/sidebar-motion.mjs` against the same local-only
+fixture architecture, in a fresh server lifecycle after the surface checks. It checks both draft
+and published-agent Studio frames and responsive breakpoints. No deployed credentials are used.

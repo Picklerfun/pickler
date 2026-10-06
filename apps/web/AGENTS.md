@@ -391,7 +391,8 @@ indigo). A staged or preview studio refuses every write, the shell's included, a
 share (docs/specs/studio-live-v1.md L2); `draft/` keeps only what a private draft draws. The shell
 is one implementation configured by props, never forked: `studio-shell.tsx` (`StudioShell`, the
 frame: top bar, rail, preview note, header, tiles, failed read, section, the Wallets and credits
-modals, with `useShellModals`), `top-bar.tsx`, `rail.tsx` (groups of items with `on`, `locked`, a
+modals, with `useShellModals`), `top-bar.tsx` (global balances and account),
+`agent-selector.tsx` (the existing workspace switcher above the sidebar navigation), `rail.tsx` (groups of items with `on`, `locked`, a
 `badge` drawn above zero, and a footer slot), `header.tsx` (`StudioHeader`, `HeaderDot`,
 `StudioTiles`), `status-chip.tsx`, `agent-avatar.tsx`, `banners.tsx`, `section.tsx`
 (`StudioSection`, `#<idPrefix>-section-<key>`), `identity.tsx`, `master.tsx` (`Master`, which the
@@ -402,7 +403,7 @@ a view-only member's Fund is `aria-disabled` with `VIEW_ONLY_FUNDS` from `wallet
 (`CapSteppers`, with an optional `sub` line under each row's title), `arrivals.tsx` (`useArrivals`
 and `ArrivalList`: what arrived in an agent's wallet between two reads, both Limits) and
 `web-sites.tsx` (`useSiteBox` and `WebSites`: WEB · WHERE EXA MAY LOOK with its site box, both
-Sources & rules, `#<idPrefix>-sources-web`). The top bar's new-agent item reads `newAgentLabel`
+Sources & rules, `#<idPrefix>-sources-web`). The sidebar selector's new-agent item reads `newAgentLabel`
 ("+ New agent" by default; the live studio passes "Create another agent"). Every id
 takes an `idPrefix` typed `StudioIdPrefix` (`"draft" | "live"`, `shell/model.ts`), so the draft's ids
 are unchanged and a typo cannot move one; a rail item's id is `railItemId(idPrefix, key)`
@@ -458,8 +459,8 @@ whichever section was asked for; Go Public lands on its Overview, and a `?sectio
 rail also has carries over. `live-studio.tsx` configures the shell: the live strip under the top
 bar (`live-strip.tsx`, the shell's `strip` slot), the rail of RUN / BUILD / MARKETPLACE / YOU with
 Docs, Community, Support and "ITS PUBLIC PROFILE" (each http link in a new tab, `noopener
-noreferrer`) in its footer, the account button opening Account
-(the top bar's `onAccount`), the PUBLIC · RUNS SOON / PAUSED · EXITS ONLY chip, "Pause entries" /
+noreferrer`) in its footer, the shared account menu linking to the creator profile and sign-out,
+the PUBLIC · RUNS SOON / PAUSED · EXITS ONLY chip, "Pause entries" /
 "Resume" (real, `PUT /pause`, pending and inline failure) and "Stop · close all" shut with Soon,
 the four tiles, and the degraded banner whose "Fix it" opens Limits. Section keys are the canvas's
 (`skills` is Sources & rules, `master` Wallets, `leaders` Leaderboard). "Pause entries" / "Resume"
@@ -737,7 +738,7 @@ See [Studio perpetual execution](../../docs/studio-perps-execution.md).
 
 ## Initial Studio navigation
 
-`features/studio/shell/pending.tsx` uses the modern Studio header and 218px rail during the initial session/agent read and on load errors. `studioLanding` must remain pending until that read completes, even when partial agent data has arrived. Never render the legacy section frame as a loading placeholder: its rail toggle moves the brand during account-to-Studio navigation.
+`features/studio/shell/pending.tsx` uses the modern Studio header and the shared expanded/icon rail preference during the initial session/agent read and on load errors. `studioLanding` must remain pending until that read completes, even when partial agent data has arrived. Never render the legacy section frame as a loading placeholder: its rail toggle moves the brand during account-to-Studio navigation.
 
 ## Creator access requests
 
@@ -762,3 +763,110 @@ and handle availability use placeholders, not visible loading text. Accessible b
 remain. Errors retain retry actions; an unread or failed balance is never represented as zero.
 `create-access`, `create-access-pending` and `create-access-loading` are inert non-production
 creation fixtures for layout checks; none reads or submits an access request.
+
+## Studio account menu
+
+`features/studio/shell/account-menu.tsx` is the account disclosure for creation, home, draft,
+live, legacy and pending Studio headers. Supply the authenticated creator's profile handle from
+Studio's existing read, never the selected agent's handle. Hover and keyboard focus reveal the
+username to the left by smoothly expanding the account chip in the header flow. The preceding
+wallet, network and credits controls slide left while the account icon stays anchored on the right. The disclosure composes the shared shadcn `DropdownMenu`; Radix owns arrow-key navigation,
+Escape, outside interactions, collision-aware placement and focus restoration. The profile item
+renders the existing Next.js link with `asChild`. Do not add document listeners for menu behavior.
+`/account?section=profile` opens the public-profile tab in every environment; other section query
+links remain non-production design controls. Sign-out uses Supabase Auth, navigates only after
+success, preserves errors and disables duplicate submissions. Design previews cannot sign out.
+The busy sign-out action uses the shared Skeleton with an accessible status label.
+Run `node scripts/design/account-menu.mjs` for the controlled desktop/mobile interaction check,
+alongside web tests, typecheck, lint and rendered design checks. It uses local fixture servers only.
+
+The draft/live navbar contains global controls only. Their shared sidebar holds the existing
+agent switcher and status. On small screens the official mobile Sheet contains vertical navigation. Moving
+that switcher must preserve its permissions, agent IDs and New agent callback. The draft status
+is rendered once. Desktop header controls stay on one row during account expansion; the account
+chip may shrink to the available width and its icon never leaves the pointer. At widths of 640px
+or less, hover expansion is disabled and wrapping remains available. The 360ms expansion reverses
+once on pointer exit, rather than repeatedly entering/leaving a relocated icon.
+
+Account profile links include a local `returnTo` carrying the active agent, section and any
+non-production preview stage. `shell/account-return.ts` accepts only the Studio home path for
+that host (`/` on the dedicated Studio host, `/studio` on shared hosts) and filters query keys.
+Never send account return links to arbitrary origins or use unbounded browser history as the
+fallback. `resume` restores only a section from the selected studio's existing rail registry;
+agent selection still uses the authenticated workspace list. Preview stages remain disabled in
+production. Returning restores navigation, not unsaved form edits. Direct Account visits fall
+back to the host's Studio home. The controlled account-menu check covers round trips on desktop
+and touch screens, including sections selected after the initial page load.
+
+## Collapsible agent sidebar
+
+The shared draft/live shell and pending frame compose the installed shadcn Sidebar from
+`@pickler/ui/sidebar`. `shell/sidebar.tsx` only bridges the existing `lib/rail.ts` desktop
+preference to the controlled `SidebarProvider` and labels `SidebarTrigger`. It does not implement
+collapse, mobile state, keyboard listeners, animation or focus handling. Desktop widths remain
+218px and 64px. shadcn owns state, layout slots and interactions; shared UI styling synchronizes
+the gap/container, labels and header contraction with 320ms easing. Menu button nodes, row heights
+and icon padding stay stable. Tooltips retain their trigger tree on desktop; only collapsed
+TooltipContent mounts. Never reparent buttons when toggling state.
+
+Below 768px, shadcn opens a modal Sheet with vertical navigation, backdrop, Escape dismissal,
+focus containment and return to the navbar disclosure. Mobile state is separate from the saved
+desktop preference. Selecting a section closes the Sheet. The same provider and skeleton menu
+components render during loading. Do not restore the retired inline mobile rail or custom toggle
+hook. Cmd/Ctrl+B is handled in the shared component with an editable-field/repeat guard.
+Reduced motion disables the shared Sidebar, Sheet, DropdownMenu and Tooltip animations.
+
+The agent switcher composes SidebarHeader/Menu/Button with shadcn DropdownMenu and the shared
+paired `chevronsUpDown` icon. Preserve product/runtime IDs, permission checks and callbacks.
+Rail groups, item badges, tooltips and footer links use shared Sidebar components. Locked sections
+still open the existing explanatory panels; their labels include the reason, without granting
+management access. No collapse or menu interaction changes agent configuration or backend rules.
+
+Tailwind 4 is limited to installed shadcn components, with a `tw:` prefix and no preflight.
+`postcss.config.mjs` compiles the utilities; root layout imports `@pickler/ui/shadcn.css`, which
+also includes the existing Pickler stylesheet. Semantic colors/radii/shadows map directly to
+`--pk-*` in that stylesheet. Existing CSS Modules and controls retain their presentation.
+Use the package public subpaths, never relative imports into the UI package. See
+[UI instructions](../../packages/ui/AGENTS.md) for adding or updating registry components.
+
+## Studio layout and motion
+
+The shell is a chrome wrapper with a global header, a body containing Sidebar and a single main
+content landmark, and portal dialogs. The pending frame follows the same landmark hierarchy.
+The global wallet/credits/account group stays on one row; below 640px that group occupies an
+explicit second header row. Sidebar state never changes navbar dimensions.
+
+The body is an inline-size container. The desktop reading measure is derived from its full width,
+the configured expanded sidebar width and main padding, capped at 1120px. Collapsing navigation
+centers the same canvas smoothly rather than reflowing cards. Below 768px the Sheet does not take
+layout width and content uses the available mobile width. Use CSS for layout, not React resize
+state, frame-by-frame DOM measurements or global `transition: all`.
+
+Metrics and draft Overview/Build and live Build grids use explicit screen breakpoints rather than
+`auto-fit` thresholds that change mid-collapse. Responsive row changes occur at documented screen
+sizes; they are not animated as if CSS could interpolate grid row counts or text wrapping.
+`scripts/design/sidebar-motion.mjs` checks both directions at 1440/1086/900/768px, DOM identity,
+fading labels, geometry synchronization, stable content measure and vertical placement, then
+resizes through the mobile and grid breakpoints. It is part of the Design rendered CI job and can
+reuse an explicit loopback fixture with `DESIGN_BASE_URL`. Keep the account-menu acceptance for
+keyboard, mobile Sheet and profile-return interactions.
+
+The sidebar motion acceptance also checks delayed hover labels, pointer exit/activation, dropdown
+return-focus without stale tooltips, genuine keyboard labels, collapse reset, and navigation icon
+focus/stroke geometry on draft/live fixtures. Do not disable keyboard focus or remount menu controls
+to clear a tooltip.
+
+The Studio selector's 26px avatar uses stable 11px inline padding in `shell.module.css`, aligning
+with the collapsed navigation center line. Shared Sidebar group buttons contract to centered
+32px controls so active/hover backgrounds remain symmetric around their icons.
+
+## Route loading indicator
+
+The server root layout mounts `nextjs-toploader` once for both products, using `--pk-lime`,
+a three-pixel fixed bar, no spinner and no shadow. Use the library's `useRouter` from
+`nextjs-toploader/app` for programmatic `push`/`replace`; ordinary Next.js links remain unchanged.
+Do not add another progress timer or navigation listener. Hash-only changes and sidebar section
+selection are not route loads. Reduced-motion preferences disable bar transitions. This global
+navigation indicator complements component Skeletons; it does not report model or trading progress.
+The controlled account-menu acceptance delays a real local route response and verifies the bar
+appears without layout displacement, then clears after navigation.

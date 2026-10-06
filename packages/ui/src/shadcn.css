@@ -1,0 +1,7 @@
+/* Official shadcn utilities are prefixed; existing Pickler CSS is not reset. */
+@import "tailwindcss/theme.css" layer(theme) prefix(tw);
+@import "tailwindcss/utilities.css" layer(utilities) prefix(tw);
+@import "tw-animate-css";
+@import "./styles.css";
+@source "./components";
+@custom-variant dark (&:is([data-surface="dark"], [data-surface="dark"] *));

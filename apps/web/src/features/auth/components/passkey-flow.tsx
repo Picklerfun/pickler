@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useEffectEvent, useReducer, useState, useSyncExternalStore } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter } from "nextjs-toploader/app";
 import { WebauthnStamper } from "@turnkey/webauthn-stamper";
 import styles from "../auth.module.css";
 import { ensureProfile } from "../lib/account";

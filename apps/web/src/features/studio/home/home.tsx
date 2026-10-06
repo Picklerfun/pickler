@@ -1,5 +1,6 @@
 "use client";
 import Image from "next/image";
+import { AccountMenu } from "../shell/account-menu";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "@pickler/ui";
@@ -32,7 +33,6 @@ import { Schedule } from "./schedule";
 import { homeStatus, nextUp, pickCard, stripLog, type OrderState, type Pill } from "./status";
 import { Strip } from "./strip";
 import { WalletCard } from "./wallet-card";
-import shell from "../studio.module.css";
 import styles from "./home.module.css";
 
 /** What a preview hands the home instead of the API: a fixed clock, runs, events and an order. */
@@ -68,6 +68,7 @@ const PILL_TINT: Record<Pill, string> = {
  */
 export function Home({
   agent,
+  accountHandle,
   passkeys,
   agents,
   canManage,
@@ -79,6 +80,7 @@ export function Home({
   onNew,
 }: {
   agent: Agent;
+  accountHandle: string | null;
   /** The shell's one read of the account's passkeys, for the second-passkey suggestion. */
   passkeys: PasskeysKnown;
   agents: Agent[];
@@ -276,14 +278,11 @@ export function Home({
           onSwitch={onSwitch}
           onNew={onNew}
         />
-        <Link href="/account" className={styles.account} aria-label="Account">
-          <span className={shell.swatch} aria-hidden="true">
-            <i data-swatch="lime" />
-            <i data-swatch="violet" />
-            <i data-swatch="amber" />
-            <i data-swatch="blue" />
-          </span>
-        </Link>
+        <AccountMenu
+          handle={accountHandle}
+          preview={preview !== null}
+          returnContext={{ agent: agent.productId ?? agent.id, section: "home" }}
+        />
       </header>
 
       {status.strip && latest && <Strip strip={status.strip} log={stripLog(events, latest)} />}

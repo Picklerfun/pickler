@@ -91,6 +91,7 @@ class StepTwoClosed extends Error {
  */
 export function NewAgent({
   passkeys,
+  accountHandle,
   canManage,
   preview: previewProp,
   locked,
@@ -103,6 +104,7 @@ export function NewAgent({
   onCreated,
 }: {
   passkeys: PasskeysKnown;
+  accountHandle: string | null;
   canManage: boolean;
   /** A staged or fixture studio, which says so. Nothing on it is sent. */
   preview: boolean;
@@ -397,6 +399,8 @@ export function NewAgent({
 
   return (
     <Chrome
+      accountHandle={accountHandle}
+      preview={preview}
       form={form}
       handle={handle}
       hasAgents={hasAgents}

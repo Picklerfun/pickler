@@ -1,8 +1,9 @@
 "use client";
 import { StudioSkeleton } from "./skeleton";
 import Image from "next/image";
+import { AccountMenu } from "./shell/account-menu";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter } from "nextjs-toploader/app";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { Button, Icon, type IconName } from "@pickler/ui";
 import { ensureProfile } from "@/features/auth/lib/account";
@@ -37,7 +38,7 @@ import { Brief } from "./sections/brief";
 import { Trading } from "./sections/trading";
 import { Limits } from "./sections/limits";
 import { Context } from "./sections/context";
-import type { SectionKey } from "./sections/keys";
+import { SECTIONS, type SectionKey } from "./sections/keys";
 import { RAIL, isPanel, isSoon } from "./sections/rail";
 import { Soon } from "./sections/soon";
 import { Home } from "./home/home";
@@ -128,8 +129,11 @@ export function Studio({
   openSection,
   stage,
   openAgent,
+  resumeSection,
 }: {
   openSection?: SectionKey | undefined;
+  /** Restored navigation, validated against the selected studio’s existing section registry. */
+  resumeSection?: string | undefined;
   /** `?agent=<id>`: the agent to open on; the first one when absent or not the person's. */
   openAgent?: string | undefined;
   /** `?stage=`, outside production only: the home at one moment of the canvas's first run, the
@@ -149,7 +153,12 @@ export function Studio({
   /* Every staged screen stands alone: no session is read and nothing is fetched. */
   const staging = staged !== null || stagedDraft !== null || stagedLive !== null || stagedEmpty;
   const stagedAgent = staged?.agent ?? stagedDraft?.agent ?? stagedLive?.agent ?? null;
-  const [section, setSection] = useState<View>(openSection ?? "home");
+  const [section, setSection] = useState<View>(() => {
+    if (resumeSection === "new" || resumeSection === "home") {
+      return resumeSection;
+    }
+    return SECTIONS.find((key) => key === resumeSection) ?? openSection ?? "home";
+  });
   const wide = useSyncExternalStore(subscribeRail, railSnapshot, railOnServer);
   const [access, setAccess] = useState<Access | null>(
     staging ? { enabled: true, canManage: true, workspaceId: "preview" } : null,
@@ -169,7 +178,7 @@ export function Studio({
   const [blocked, setBlocked] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  const [menu, setMenu] = useState<"agent" | "account" | null>(null);
+  const [menu, setMenu] = useState<"agent" | null>(null);
   /* The signed-in account's handle, for the draft studio's YOU sections. */
   const [accountHandle, setAccountHandle] = useState<string | null>(null);
   /* Go Public landed: the live studio that replaces the draft opens on its Overview (live L1). */
@@ -452,11 +461,18 @@ export function Studio({
      screen; its Menu lists them disabled. With agents, "+ New agent" opens the same screen. */
   const landing = studioLanding(loaded, agents, section);
   if (landing === "loading") {
-    return <StudioPending error={error} onRetry={() => window.location.reload()} />;
+    return (
+      <StudioPending
+        accountHandle={accountHandle}
+        error={error}
+        onRetry={() => window.location.reload()}
+      />
+    );
   }
   if (landing === "new") {
     return (
       <NewAgent
+        accountHandle={accountHandle}
         passkeys={passkeys}
         canManage={canManage}
         preview={preview}
@@ -491,7 +507,7 @@ export function Studio({
         newAgentLock={newAgentLock}
         staged={stagedDraft}
         preview={preview}
-        initialSection={draftSection(openSection)}
+        initialSection={draftSection(resumeSection ?? openSection)}
         accountHandle={stagedDraft?.accountHandle ?? accountHandle}
         onRefreshAgent={refreshAgent}
         onPublished={() => {
@@ -526,7 +542,7 @@ export function Studio({
         newAgentLock={newAgentLock}
         staged={stagedLive}
         preview={preview}
-        initialSection={published ? "overview" : liveSection(openSection)}
+        initialSection={published ? "overview" : liveSection(resumeSection ?? openSection)}
         accountHandle={stagedLive?.accountHandle ?? accountHandle}
         onRefreshAgent={refreshAgent}
         onSwitch={(id) => {
@@ -549,6 +565,7 @@ export function Studio({
   if (landing === "home" && agent) {
     return (
       <Home
+        accountHandle={accountHandle}
         key={agentId}
         agent={agent}
         passkeys={passkeys}
@@ -685,46 +702,11 @@ export function Studio({
           STAGING
         </span>
 
-        <div className={styles.menuWrap} onClick={(event) => event.stopPropagation()}>
-          <button
-            type="button"
-            className={styles.switcher}
-            data-quiet="true"
-            aria-expanded={menu === "account"}
-            aria-label="Account"
-            onClick={() => setMenu(menu === "account" ? null : "account")}
-          >
-            <span className={styles.swatch} aria-hidden="true">
-              <i data-swatch="lime" />
-              <i data-swatch="violet" />
-              <i data-swatch="amber" />
-              <i data-swatch="blue" />
-            </span>
-            <Icon name="chevronDown" size={14} />
-          </button>
-          {menu === "account" && (
-            <div className={styles.menu} data-align="right" role="menu">
-              <Link href={directory} className={styles.menuItem} role="menuitem">
-                <Icon name="globe" size={15} />
-                Explore the board
-              </Link>
-              <button
-                type="button"
-                role="menuitem"
-                className={styles.menuItem}
-                onClick={() =>
-                  void (async () => {
-                    await getSupabase()?.auth.signOut();
-                    router.replace("/signin");
-                  })()
-                }
-              >
-                <Icon name="lock" size={15} />
-                Sign out
-              </button>
-            </div>
-          )}
-        </div>
+        <AccountMenu
+          handle={accountHandle}
+          preview={preview}
+          returnContext={{ agent: agentId ?? undefined, section }}
+        />
       </header>
 
       <div className={styles.body}>
@@ -944,11 +926,11 @@ export function Studio({
 }
 
 /** A `?section=` deep link the draft studio also has (`brief`, `limits`, `skills` …), or none. */
-function draftSection(section: SectionKey | undefined): DraftSectionKey | undefined {
+function draftSection(section: string | undefined): DraftSectionKey | undefined {
   return DRAFT_SECTIONS.flatMap((group) => group.items).find((item) => item.key === section)?.key;
 }
 
 /** A `?section=` deep link the live studio also has (`overview`, `brief`, `skills` …), or none. */
-function liveSection(section: SectionKey | undefined): LiveSectionKey | undefined {
+function liveSection(section: string | undefined): LiveSectionKey | undefined {
   return isLiveSection(section) ? section : undefined;
 }

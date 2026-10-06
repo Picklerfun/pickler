@@ -2,7 +2,7 @@
 
 Read [the root instructions](../../AGENTS.md) first. Read the web app's local instructions when changing consumption there. Update this file when components, styling exports, or client boundaries change.
 
-`@pickler/ui` contains product-independent React components and the control system both surfaces share. Current files are `src/brand.tsx`, `src/button.tsx`, `src/chart.tsx`, `src/chip.tsx`, `src/field.tsx`, `src/icon.tsx`, `src/meter.tsx`, `src/segmented.tsx`, `src/skeleton.tsx`, `src/tokens.ts`, `src/index.ts`, and `src/styles.css`. The package exports `BrandMark`, `Button`, `ButtonLink`, `CandleChart`, `BarChart`, `Chip`, `ChipLink`, `ChipText`, `Tag`, `Field`, `Input`, `Textarea`, `Icon`, `Meter`, `Segmented`, `Skeleton`, `TOKEN_MIRROR` (also as `@pickler/ui/tokens`) and the stylesheet `@pickler/ui/styles.css`. The web root layout imports that stylesheet.
+`@pickler/ui` contains product-independent React components and the control system both surfaces share. Current files are `src/brand.tsx`, `src/button.tsx`, `src/chart.tsx`, `src/chip.tsx`, `src/field.tsx`, `src/icon.tsx`, `src/meter.tsx`, `src/segmented.tsx`, `src/skeleton.tsx`, `src/tokens.ts`, `src/index.ts`, and `src/styles.css`. The package exports `BrandMark`, `Button`, `ButtonLink`, `CandleChart`, `BarChart`, `Chip`, `ChipLink`, `ChipText`, `Tag`, `Field`, `Input`, `Textarea`, `Icon`, `Meter`, `Segmented`, `Skeleton`, `TOKEN_MIRROR` (also as `@pickler/ui/tokens`) and the stylesheet `@pickler/ui/styles.css`. The web root layout imports `@pickler/ui/shadcn.css`, which includes that stylesheet. Other consumers may import the original stylesheet directly.
 
 ## The control system
 
@@ -39,3 +39,70 @@ From the root: `npm run typecheck --workspace=@pickler/ui` and `npm run lint`. R
 shapes. It uses the surface rule token and carries no visible loading copy or animation. Consumers
 provide a labelled `role="status"` region and `aria-busy`, and own geometry matching their content.
 Never replace errors, unknown balances or passkey authorization prompts with indefinite skeletons.
+
+`Icon` includes `sidebar` (PanelLeft) for a labelled sidebar disclosure. Keep the control visible
+in both expanded and collapsed states; its accessible name and expanded state belong to its host.
+
+`Icon` includes `chevronsUpDown` for a workspace selector, showing both directions together.
+
+## shadcn Sidebar and menus
+
+`src/components/` contains official shadcn new-york/Radix source installed with the registry CLI.
+`components.json` is the reproducible registry configuration. Public subpaths `@pickler/ui/sidebar`
+and `@pickler/ui/dropdown-menu` export the composable components; `./components/*` and `./hooks/*`
+resolve their internal dependencies for CLI additions. Existing product Button/Input/Skeleton
+exports are unchanged. The registry's supporting controls remain inside its component area.
+
+The initial Sidebar/DropdownMenu installation used shadcn CLI 4.21.3:
+`npx shadcn@4.21.3 add @shadcn/sidebar @shadcn/dropdown-menu --yes --cwd packages/ui`.
+The installed dependency versions are frozen by the root lockfile.
+
+Add components with `npx shadcn@latest add @shadcn/<name> --cwd packages/ui`; inspect `--dry-run`
+and `--diff` before updating an installed component. Never blindly overwrite the local changes.
+Record integration changes here. Read the official Sidebar and DropdownMenu docs before extending
+composition. Prefer shared components over local event listeners or duplicate navigation code.
+
+The generated Sidebar owns state, gap/container transitions, mobile Sheet, shortcut and tooltips.
+Local adaptations: package-relative internal imports; keyboard guard for editable targets/repeat;
+external-store mobile breakpoint (768px) to avoid a hydration setState effect; deterministic
+skeleton width; mobile props forwarded to SheetContent; host surface and explicit modal semantics forwarded to the portal;
+mobile close restores focus to its associated `[data-sidebar-toggle]` (SidebarProvider uses a
+custom global-header trigger). On desktop, tooltip roots/triggers stay mounted through collapse to preserve menu-button DOM
+identity; only collapsed TooltipContent mounts. Tooltip openness resets when collapse/menu context changes.
+Initial hover is delayed by 350ms; normal keyboard focus opens labels immediately, while returned dropdown
+focus does not reopen a dismissed tooltip. Native Radix hover-content and Escape behavior remain intact.
+Mobile tooltips are omitted, so hidden tooltips
+cannot consume Escape before the Sheet. Dropdown checkbox props omit unknown `checked` for exact optional
+types. An exiting dropdown does not restore focus over another newly opened dropdown. These adaptations do not add a second sidebar state machine.
+
+Tailwind utilities use `tw:` and omit preflight. `src/shadcn.css` imports the utility/theme and
+animation packages plus the existing stylesheet. Only `styles.css` defines semantic color, radius
+and shadow mappings to the existing `--pk-*` roles. Portal callers explicitly pass their surface;
+TooltipContent accepts `surface`, Sidebar passes it to the mobile Sheet, and DropdownMenuContent
+accepts `data-surface`. Do not inject raw palette values or allow portals to inherit the body's
+wrong surface. Component palette classes (including scrim, focus and destructive roles) use
+those semantic mappings; disabled menu copy retains full opacity for contrast. Reduced-motion rules cover all installed navigation/overlay slots.
+
+Controlled browser coverage in `scripts/design/account-menu.mjs` verifies desktop collapse,
+preference persistence, mobile dialog focus/dismissal, agent switching, paired chevrons, account
+menus and safe profile return. Run web/UI types, lint, format, design source/rendered checks and a
+web build after changing these components or their CSS toolchain.
+
+Sidebar motion uses shared `--pk-sidebar-duration`/`--pk-sidebar-ease` tokens. Menu buttons keep
+row heights and icon padding while the container width changes; labels and badges fade without `display:none`.
+Group-label margins and Studio's header status contract with the same easing. Keep these small
+source/style adaptations when updating the registry. Do not conditionally wrap/unmount controls
+based on expanded state: that resets focus and CSS transitions.
+
+`scripts/design/sidebar-motion.mjs` adds frame-based acceptance to the rendered Design job.
+It verifies real DOM identity and content geometry, not just final screenshots or width endpoints.
+
+Navigation focus uses the product's 2px outline rather than a shadow halo. Keep keyboard focus
+visible. Product icons passed into size-4 menu slots must use size={16}, so Lucide's absolute
+stroke calculation matches the rendered geometry instead of being scaled twice.
+
+Collapsed group menu buttons retain their row height but contract to a centered 32px square,
+so the active/hover background has equal space around its icon. Width and inline margin use the
+shared motion timing; label nodes remain mounted. Consumer avatar padding belongs in the app,
+not this generic component. Motion acceptance checks selection geometry and Studio's avatar
+alignment, including the reported 811px viewport.

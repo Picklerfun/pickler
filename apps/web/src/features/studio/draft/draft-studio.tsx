@@ -86,7 +86,7 @@ export function DraftStudio({
   onNew(): void;
 }) {
   const [section, setSection] = useState<DraftSectionKey>(
-    staged?.section ?? initialSection ?? "overview",
+    initialSection ?? staged?.section ?? "overview",
   );
   const wallClock = useNow();
   const now = staged ? staged.now : wallClock;
@@ -190,6 +190,7 @@ export function DraftStudio({
 
   return (
     <StudioShell<DraftSectionKey>
+      accountHandle={accountHandle}
       idPrefix="draft"
       agent={agent}
       agents={agents}
@@ -207,7 +208,6 @@ export function DraftStudio({
           <span>{sectionLabel(section)}</span>
         </>
       }
-      headerSide={<StatusChip>DRAFT · PRIVATE</StatusChip>}
       tiles={headerTiles(draft.wallets, draft.positions)}
       tilesLabel="Your money"
       onRefreshAgent={onRefreshAgent}

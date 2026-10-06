@@ -21,11 +21,11 @@ test("a section named outside production opens that section", () => {
   assert.equal(openingSection("development", "wallet"), "wallet");
 });
 
-test("the section parameter is refused in a production build", () => {
+test("production accepts the profile product link but refuses design-only sections", () => {
   // The other half of the gate. Without this the guard could be gone and every assertion above
   // would still pass, which is the shape of a guard that never closes.
   assert.equal(openingSection("production", "security"), "wallet");
-  assert.equal(openingSection("production", "profile"), "wallet");
+  assert.equal(openingSection("production", "profile"), "profile");
 });
 
 test("anything that is not a section falls back to the wallet", () => {
