@@ -102,7 +102,7 @@ export function MasterCard({
           <button
             type="button"
             className={styles.copyChip}
-            aria-label={copied ? "Address copied" : "Copy the master wallet's address"}
+            aria-label={copied ? "Address copied" : "Copy master wallet address"}
             onClick={() => copy(master.address)}
           >
             {copied ? "COPIED" : "COPY"}

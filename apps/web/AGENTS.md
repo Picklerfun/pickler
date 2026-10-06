@@ -764,6 +764,23 @@ remain. Errors retain retry actions; an unread or failed balance is never repres
 `create-access`, `create-access-pending` and `create-access-loading` are inert non-production
 creation fixtures for layout checks; none reads or submits an access request.
 
+The shared Wallets modal exposes `Refresh balances` through the owning screen's existing wallet
+read. Creation, home and agent Studio use the same control; no transfer or passkey authorization
+is sent by refreshing. Balance and button placeholders use Skeleton while pending. Keep the
+selected wallet, token, direction and typed amount mounted, disable transfers until the read
+settles, and preserve last-known balances with a retryable error on failure. Reject duplicate
+refresh presses and disable refresh during a transfer or on inert previews. The controlled
+`scripts/design/studio-loading.mjs` regression covers successful and failed refreshes without
+wallet writes or external requests.
+
+The modal's network badge comes from the wallets response's `chainId`, resolved with public
+`@pickler/chain` metadata. It labels all displayed balances and transfers as Monad Testnet or
+Monad mainnet; never infer this from APP_ENV, SIWE or the agent's Perpl market configuration.
+Absent/unknown network metadata shows an explicit unavailable state and disables transfer actions
+until a successful refresh identifies it. This is a network indicator, not a chain selector:
+the API deployment still selects the balance and custody transfer network. Controlled fixtures
+declare their network and the browser regression verifies both labels and unavailable handling.
+
 ## Studio account menu
 
 `features/studio/shell/account-menu.tsx` is the account disclosure for creation, home, draft,
@@ -783,9 +800,10 @@ Run `node scripts/design/account-menu.mjs` for the controlled desktop/mobile int
 alongside web tests, typecheck, lint and rendered design checks. It uses local fixture servers only.
 
 The draft/live navbar contains global controls only. Their shared sidebar holds the existing
-agent switcher and status. On small screens the official mobile Sheet contains vertical navigation. Moving
+agent switcher and the selected agent wallet’s AUSD/MON balances. The status appears once beside
+the agent name in the content header. On small screens the official mobile Sheet contains vertical navigation. Moving
 that switcher must preserve its permissions, agent IDs and New agent callback. The draft status
-is rendered once. Desktop header controls stay on one row during account expansion; the account
+is rendered once in the content header. Desktop header controls stay on one row during account expansion; the account
 chip may shrink to the available width and its icon never leaves the pointer. At widths of 640px
 or less, hover expansion is disabled and wrapping remains available. The 360ms expansion reverses
 once on pointer exit, rather than repeatedly entering/leaving a relocated icon.
@@ -880,3 +898,25 @@ updates cancel in-flight reads and restart loading. Keep the component cleanup g
 session cookies and delayed API responses on dedicated loopback ports 3012/8812. It verifies
 completed reads, bounded request counts, visible failure and missing-wallet redirection without
 `?stage=`. This is a client regression test, not backend authorization or live-provider acceptance.
+
+## Wallet ownership and transfers
+
+`shell/wallet-balance-button.tsx` is the shared account-balance disclosure for creation and
+agent Studio. Its `Master wallet` label identifies the creator's wallet, independently of the
+selected agent. AUSD uses the official Agora mark from UI's BrandMark; MON keeps Monad's mark.
+These balances share one control, never a combined total or an implied conversion.
+
+Agent cards say `Agent wallet` or name the agent. `Add funds to agent` opens the existing Wallets
+modal focused on that wallet; `Return to master wallet` reverses the same transfer flow. The focused
+view displays From/To names and addresses, available balance for the selected asset, network,
+and the existing passkey review. `All wallets` returns to the creator/agent overview. Reuse the
+same transfer model, prepare/confirm endpoints and refresh ownership; do not create another wallet
+picker, signer or transaction implementation. Persisted `master` identifiers and section keys
+are unchanged even where their visible labels now say `Master wallet`.
+
+The shared agent selector reads balances from the existing wallet list, matched by the selected
+agent’s wallet ID; it never reads the master wallet or sends additional requests. Each asset uses
+its own official mark. Unknown amounts use Skeletons, not zero. The balance row remains mounted
+and fades/contracts with the existing sidebar motion; it is hidden from assistive technology
+when the desktop rail is collapsed. Status stays in the content header beside the agent name,
+alongside published-agent controls.

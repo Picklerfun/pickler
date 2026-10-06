@@ -61,10 +61,10 @@ export interface StudioShellProps<K extends string> {
   /** The switcher's new-agent item: "+ New agent" unless given (the live studio's "Create another agent"). */
   newAgentLabel?: string | undefined;
   /** The studio's data (`useAgentStudio`, or a hook built on it). */
-  studio: Pick<UseAgentStudio, "wallets" | "preview" | "error" | "refresh">;
+  studio: Pick<UseAgentStudio, "wallets" | "preview" | "error" | "refresh" | "readWallets">;
   /** `useShellModals(studio.readWallets)`. */
   modals: ShellModals;
-  /** The selected workspace's status chip (`StatusChip`), below its switcher. */
+  /** The selected workspace's status chip (`StatusChip`), beside its content heading. */
   status: ReactNode;
   /** The rail's groups, with the current section on. */
   rail: RailGroup<K>[];
@@ -157,7 +157,11 @@ export function StudioShell<K extends string>({
               canManage={canManage}
               newAgentLock={newAgentLock}
               newAgentLabel={newAgentLabel}
-              status={status}
+              wallet={
+                studio.wallets?.agents.find(
+                  (wallet) => wallet.walletId === agent.wallet?.walletId,
+                ) ?? null
+              }
               onSwitch={onSwitch}
               onNew={onNew}
             />
@@ -177,7 +181,12 @@ export function StudioShell<K extends string>({
                 pattern={agent.avatarPattern}
                 name={agent.name ?? "Your agent"}
                 sub={headerSub}
-                side={headerSide}
+                side={
+                  <div className={styles.headerActions}>
+                    {status}
+                    {headerSide}
+                  </div>
+                }
               />
               <StudioTiles tiles={tiles} label={tilesLabel} />
               {studio.error && <ErrorBanner>{studio.error}</ErrorBanner>}
@@ -200,6 +209,7 @@ export function StudioShell<K extends string>({
           preview={studio.preview}
           onClose={modals.close}
           onCredits={modals.openCredits}
+          onRefresh={async () => Boolean(await studio.readWallets())}
           onMoved={() => {
             /* The wallets say what moved; the agent's own balance follows on its next read, so a
              failed reload here is not worth a second alert over the modal. */

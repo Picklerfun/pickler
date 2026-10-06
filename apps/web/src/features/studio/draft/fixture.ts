@@ -167,6 +167,7 @@ function agent(xHandle: string | null): Agent {
 }
 
 const wallets: StudioWallets = {
+  chainId: 10143,
   master: { address: MASTER, ausdMicro: "177600000", monWei: "3700000000000000000" },
   agents: [
     {

@@ -129,6 +129,8 @@ export interface StudioServices {
   };
   /** The wallet linked to an agent at creation, by product agent id. */
   wallets: { findAgentWallet(agentId: string): Promise<AgentWallet | null> };
+  /** Custody balance/transfer chain selected by deployment; not the Perpl market network. */
+  walletChainId?: number | null;
   /**
    * The AUSD display balance of an address. A read that fails throws; it is never zero. Where the
    * chain is not composed it throws `PilotError` BALANCES_UNAVAILABLE (503).
@@ -1271,6 +1273,7 @@ export function studioRoutes(services: StudioServices) {
     studioWalletRoutes({
       access,
       custody: deposits,
+      chainId: services.walletChainId ?? null,
       ...(services.transfers ? { transfers: services.transfers } : {}),
     }),
   );

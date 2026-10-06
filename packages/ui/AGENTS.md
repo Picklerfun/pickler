@@ -109,3 +109,8 @@ alignment, including the reported 811px viewport.
 
 `Icon` includes `logOut` (Lucide LogOut) for sign-out actions. Keep the lock icon for locked
 permissions rather than using it to represent leaving a session.
+
+`BrandMark` also accepts `ausd`, using Agora's official standalone mark from
+https://www.agora.finance/agora-brandkit/agora-bug--dark-mode.svg. It uses the original geometry
+and currentColor for the monochrome mark. Keep token marks distinct: Agora represents AUSD;
+Monad represents MON or a network, never an AUSD balance. Source attribution remains in brand.tsx.

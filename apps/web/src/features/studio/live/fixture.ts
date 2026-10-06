@@ -200,6 +200,7 @@ function agent(paused: boolean, balanceAusd: number): Agent {
 /* `GET /wallets`. The warnings stage has 0.12 MON (under 0.2) and 18 AUSD (under one 25 trade). */
 function wallets(ausdMicro: string, monWei: string): StudioWallets {
   return {
+    chainId: 10143,
     master: { address: MASTER, ausdMicro: "177600000", monWei: "3700000000000000000" },
     agents: [
       {

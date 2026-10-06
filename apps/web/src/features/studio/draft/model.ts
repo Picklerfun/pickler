@@ -166,7 +166,7 @@ export function headerTiles(
         );
   }
   return [
-    { label: "MASTER · AUSD", value: master, soon: false },
+    { label: "MASTER WALLET · AUSD", value: master, soon: false },
     { label: "IN AGENT WALLETS · AUSD", value: inAgents, soon: false },
     ...paperTiles(positions),
     { label: "AI CREDITS", value: "Soon", soon: true },

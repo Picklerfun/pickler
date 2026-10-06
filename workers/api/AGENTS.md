@@ -163,6 +163,12 @@ for the cleanup that has not been written.
 
 ### The agent wallet ceremony
 
+`GET /v1/studio/wallets` (and its Console alias) includes `chainId`, supplied by composition from
+the same validated CHAIN_ID used for custody balances and transfers. It is null when no supported
+chain is composed; request query parameters never change it. The wallet DTO/OpenAPI describes
+10143 (Monad Testnet) and 143 (Monad mainnet). This does not expose a per-user network selector or
+change transfer signing, admissions or configured provider endpoints.
+
 Under the same mount, `/v1/signing/agents` runs docs/specs/studio-create-and-fund-v1.md §4.1 as
 prepare → passkey stamp in the browser → confirm, three times: Pickler's delegated user (first
 agent only), the agent's wallet (no body, `{}` at most: a `handle` is refused; the wallet is named

@@ -212,6 +212,11 @@ try {
     );
     assert.equal(await page.locator('header button[id$="-agent-chip"]').count(), 0);
     assert.equal(await page.getByText("DRAFT · PRIVATE", { exact: true }).count(), 1);
+    assert.equal(await page.locator("#draft-sidebar #draft-status").count(), 0);
+    assert.equal(await page.locator("main #draft-status").count(), 1);
+    const agentBalances = page.getByRole("group", { name: "Halftime's wallet balances" });
+    assert.match(await agentBalances.innerText(), /10\s*AUSD/);
+    assert.match(await agentBalances.innerText(), /0\.5\s*MON/);
     await selector.click();
     await page.locator("#draft-agent-menu").waitFor();
     await page.keyboard.press("Escape");

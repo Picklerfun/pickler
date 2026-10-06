@@ -43,6 +43,12 @@ configuration.
 
 ## Studio contracts
 
+`walletsResponseSchema` carries optional nullable `chainId` for the deployment-selected custody
+balance/transfer network (10143: Monad Testnet; 143: Monad mainnet). Current producers always
+return it, null if unavailable; omission remains accepted for legacy responses. Consumers must
+not label missing metadata as testnet or confuse it with a Perpl market network. No network
+selection parameter is added to wallet or transfer requests.
+
 `src/studio.ts` validates agent identity and idempotency keys. Studio research responses reuse runtime schemas and preserve 202 plus runId. Product, growth and research response families remain distinct; see ../../docs/cloudflare-unification.md.
 
 An agent is created one way: `draftCreateSchema`, the strict body of `POST /v1/studio/drafts` (name,

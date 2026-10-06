@@ -1,7 +1,7 @@
 "use client";
 
-import type { ReactNode } from "react";
-import { Icon } from "@pickler/ui";
+import Image from "next/image";
+import { BrandMark, Icon, Skeleton } from "@pickler/ui";
 import {
   SidebarHeader,
   SidebarMenu,
@@ -18,7 +18,8 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
 } from "@pickler/ui/dropdown-menu";
-import type { Agent } from "../api";
+import type { Agent, StudioWallets } from "../api";
+import { formatUnits, unitsOf } from "../new-agent/model";
 import { menuAccess } from "../home/access";
 import { AgentAvatar } from "./agent-avatar";
 import type { StudioIdPrefix } from "./model";
@@ -32,7 +33,7 @@ export function AgentSelector({
   canManage,
   newAgentLock,
   newAgentLabel = "+ New agent",
-  status,
+  wallet,
   onSwitch,
   onNew,
 }: {
@@ -42,11 +43,11 @@ export function AgentSelector({
   canManage: boolean;
   newAgentLock: string;
   newAgentLabel?: string | undefined;
-  status: ReactNode;
+  wallet: StudioWallets["agents"][number] | null;
   onSwitch(agentId: string): void;
   onNew(): void;
 }) {
-  const { isMobile, setOpenMobile } = useSidebar();
+  const { isMobile, state, setOpenMobile } = useSidebar();
   const name = agent.name ?? "Your agent";
   const agentId = agent.productId ?? agent.id;
   const access = menuAccess({
@@ -128,8 +129,41 @@ export function AgentSelector({
           </DropdownMenu>
         </SidebarMenuItem>
       </SidebarMenu>
-      <div className={styles.selectorStatus} data-sidebar-label>
-        {status}
+      <div
+        className={styles.selectorBalances}
+        data-sidebar-label
+        role="group"
+        aria-label={`${name}'s wallet balances`}
+        aria-hidden={!isMobile && state === "collapsed"}
+      >
+        {agent.wallet ? (
+          <>
+            <span className={styles.selectorAsset}>
+              <BrandMark name="ausd" size={13} />
+              {wallet?.ausdMicro == null ? (
+                <Skeleton className={styles.selectorBalancePlaceholder} />
+              ) : (
+                <b title={formatUnits(unitsOf(wallet.ausdMicro), "AUSD")}>
+                  {formatUnits(unitsOf(wallet.ausdMicro), "AUSD")}
+                </b>
+              )}
+              <small>AUSD</small>
+            </span>
+            <span className={styles.selectorAsset}>
+              <Image src="/brand/monad.png" alt="" width={13} height={13} />
+              {wallet?.monWei == null ? (
+                <Skeleton className={styles.selectorBalancePlaceholder} />
+              ) : (
+                <b title={formatUnits(unitsOf(wallet.monWei), "MON")}>
+                  {formatUnits(unitsOf(wallet.monWei), "MON")}
+                </b>
+              )}
+              <small>MON</small>
+            </span>
+          </>
+        ) : (
+          <small className={styles.selectorAsset}>No agent wallet</small>
+        )}
       </div>
     </SidebarHeader>
   );

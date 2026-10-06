@@ -210,10 +210,17 @@ export function Home({
   /* The wallets are read each time the modal opens and after every move; a preview reads none. */
   function readWallets() {
     if (preview) {
-      return;
+      return Promise.resolve(false);
     }
-    studioWallets().then(setWallets, (caught: unknown) =>
-      setRefreshError(caught instanceof Error ? caught.message : "Could not read your wallets."),
+    return studioWallets().then(
+      (read) => {
+        setWallets(read);
+        return true;
+      },
+      (caught: unknown) => {
+        setRefreshError(caught instanceof Error ? caught.message : "Could not read your wallets.");
+        return false;
+      },
     );
   }
 
@@ -363,6 +370,7 @@ export function Home({
         preview={preview !== null}
         onClose={() => setModal(null)}
         onCredits={() => setModal({ kind: "credits" })}
+        onRefresh={readWallets}
         onMoved={() => {
           readWallets();
           void refresh().catch((caught: unknown) =>

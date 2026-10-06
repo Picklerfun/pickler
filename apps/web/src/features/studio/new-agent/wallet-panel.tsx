@@ -54,7 +54,7 @@ const COPIED_MS = 1400;
 /**
  * "Its wallet" (canvas: Studio · Agent wallet overview). Step 0 until the wallet and Pickler's
  * delegated user both exist, then the address, the balances against the minimums, the caps the
- * create sheet will set, what arrived, and "Fund from master wallet". The words are `model.ts`'s.
+ * create sheet will set, what arrived, and "Add funds to agent". The words are `model.ts`'s.
  */
 export function WalletPanel({
   wallet,
@@ -118,7 +118,7 @@ export function WalletPanel({
   }
 
   return (
-    <aside className={styles.side} data-access={Boolean(accessRequest)} aria-label="Its wallet">
+    <aside className={styles.side} data-access={Boolean(accessRequest)} aria-label="Agent wallet">
       <Image className={styles.mascot} src="/brand/mascot.webp" alt="" width={96} height={80} />
       <div
         className={styles.walletCard}
@@ -128,7 +128,9 @@ export function WalletPanel({
         data-funded={isFunded}
       >
         <div className={styles.walletHead}>
-          <span className={styles.walletTitle}>ITS WALLET</span>
+          <span className={styles.walletTitle}>
+            {form.name.trim() ? `${form.name.trim()}'s wallet` : "Agent wallet"}
+          </span>
           <span
             className={styles.walletTag}
             data-tone={!accessRequest && isFunded ? "good" : "caution"}
@@ -213,7 +215,7 @@ export function WalletPanel({
                 type="button"
                 className={styles.iconButton}
                 aria-label="Refresh balance"
-                title="Refresh balance · if you sent AUSD from elsewhere"
+                title="Refresh this agent wallet’s AUSD and MON balances"
                 aria-busy={refreshing}
                 aria-disabled={refreshing || undefined}
                 disabled={busy || preview}
@@ -273,7 +275,7 @@ export function WalletPanel({
                   onClick={onFund}
                 >
                   <Icon name="wallet" size={14} />
-                  Fund from master wallet
+                  Add funds to agent
                 </Button>
                 <span className={styles.fundNote}>
                   ONE PASSKEY PER TOKEN · OR SEND TO THE ADDRESS FROM ANY MONAD WALLET, THEN REFRESH

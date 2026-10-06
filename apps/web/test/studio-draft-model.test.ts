@@ -135,7 +135,7 @@ test("the tiles read master and the agents' wallets, formatted in AUSD", () => {
   assert.deepEqual(
     tiles.slice(0, 2).map(({ label, value }) => ({ label, value })),
     [
-      { label: "MASTER · AUSD", value: "187.6" },
+      { label: "MASTER WALLET · AUSD", value: "187.6" },
       { label: "IN AGENT WALLETS · AUSD", value: "12.5" },
     ],
   );
