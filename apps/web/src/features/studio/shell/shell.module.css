@@ -8,8 +8,8 @@
  * faint ink (the dark ramp's floor that still reads), its lime `--pk-lime`, its amber status
  * `--pk-amber-ink`; its 8% hairlines `--pk-rule` and its 16% dashed edges `--pk-rule-strong` (12%, the ramp's
  * strong rule).
- * The top bar's brand, chip, pills and account are the home's (`home.module.css`) and the create
- * screen's (`new-agent.module.css`), composed here so the two bars stay one drawing. The cards the
+ * The top bar's brand, pills and account reuse the home and create-screen styles. The workspace
+ * switcher sits above the sidebar navigation rather than competing with global controls. The cards the
  * sections share are `cards.module.css`'s.
  */
 
@@ -96,12 +96,40 @@
 }
 .chipWrap {
   composes: menuWrap from "../home/home.module.css";
-  /* A long name ellipsises inside the bar instead of pushing the chip past the viewport. */
+  /* A long name ellipsises inside the sidebar selector. */
   min-width: 0;
   max-width: 100%;
 }
-.chipButton {
+.chipWrap .chipButton {
+  width: 100%;
   max-width: 100%;
+  padding: 10px;
+  border-radius: var(--pk-radius-md);
+}
+.agentSelector {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 12px 0;
+  position: relative;
+  z-index: 2;
+}
+.selectorIdentity {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+  text-align: left;
+}
+.selectorIdentity small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.selectorStatus {
+  display: flex;
+  align-items: center;
 }
 .chipButton b {
   min-width: 0;
@@ -117,6 +145,7 @@
   composes: menu from "../home/home.module.css";
   left: 0;
   right: auto;
+  width: 100%;
 }
 /* The agent switcher's rows: the current agent is marked, not linked. */
 .menuAgent[aria-current="true"] {
@@ -156,17 +185,23 @@
   flex: 1 1 auto;
   min-width: 0;
 }
+.sidebar {
+  flex: 0 0 218px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--pk-rule);
+}
 .rail {
   /* Positioned, so the locked rows' visually hidden text is laid out in the rail: unpositioned, it
      escaped the phone rail's own scroller and widened the page to the rail's full length. */
   position: relative;
-  flex: 0 0 218px;
+  flex: 1 1 auto;
   min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 16px;
   padding: 14px 12px;
-  border-right: 1px solid var(--pk-rule);
 }
 .railGroup {
   min-width: 0;
@@ -391,6 +426,18 @@
   .body {
     flex-direction: column;
   }
+  .sidebar {
+    flex: none;
+    border-right: none;
+  }
+  .agentSelector {
+    flex-direction: row;
+    align-items: center;
+    padding: 10px 16px 0;
+  }
+  .chipWrap {
+    flex: 1;
+  }
   .rail {
     flex: none;
     flex-direction: row;
@@ -429,20 +476,6 @@
   }
   .main {
     padding: 24px 16px 48px;
-  }
-}
-
-/* On a phone the switcher hangs from the whole bar (the header is its positioned parent), inside
-   the gutters, wherever the chip wrapped to: anchored to the chip it would run past the edge. */
-@media (max-width: 640px) {
-  .chipWrap {
-    position: static;
-  }
-  .chipMenu {
-    top: calc(100% + 4px);
-    left: 16px;
-    right: 16px;
-    width: auto;
   }
 }
 
