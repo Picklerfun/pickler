@@ -856,6 +856,10 @@ return-focus without stale tooltips, genuine keyboard labels, collapse reset, an
 focus/stroke geometry on draft/live fixtures. Do not disable keyboard focus or remount menu controls
 to clear a tooltip.
 
+The Studio selector's 26px avatar uses stable 11px inline padding in `shell.module.css`, aligning
+with the collapsed navigation center line. Shared Sidebar group buttons contract to centered
+32px controls so active/hover backgrounds remain symmetric around their icons.
+
 ## Route loading indicator
 
 The server root layout mounts `nextjs-toploader` once for both products, using `--pk-lime`,
