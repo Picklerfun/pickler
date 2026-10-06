@@ -572,7 +572,7 @@ const ALL = [
     },
   },
   {
-    path: "/studio?stage=draft",
+    path: "/studio?stage=draft&resume=overview",
     name: "studio-draft-collapsed",
     product: "studio",
     surface: "dark",
@@ -584,7 +584,7 @@ const ALL = [
     },
   },
   {
-    path: "/studio?stage=perpl-live",
+    path: "/studio?stage=perpl-live&resume=overview",
     name: "studio-live-collapsed",
     product: "studio",
     surface: "dark",
