@@ -120,6 +120,7 @@ try {
     "passkey",
     "studio-error",
     "studio-missing-wallet",
+    "studio-wallets",
   ]) {
     const context = await browser.newContext();
     await context.addCookies([
@@ -130,6 +131,7 @@ try {
       },
     ]);
     const counts = new Map();
+    let walletPhase = "initial";
     await context.route("**/*", async (route) => {
       const url = new URL(route.request().url());
       if (!["localhost", "127.0.0.1"].includes(url.hostname)) {
@@ -152,6 +154,35 @@ try {
       } else if (url.pathname === "/api/v1/studio/access-request") {
         json = { status: "enabled", canReview: false };
       }
+      if (url.pathname === "/api/v1/studio/wallets" && scenario === "studio-wallets") {
+        assert.equal(route.request().method(), "GET");
+        if (walletPhase === "failed") {
+          status = 503;
+          json = { error: "UNAVAILABLE", message: "Controlled balance failure" };
+        } else {
+          const updated = walletPhase === "updated";
+          json = {
+            ...responses[url.pathname],
+            master: {
+              ...responses[url.pathname].master,
+              ausdMicro: updated ? "20000000" : "10000000",
+            },
+            agents: [
+              {
+                walletId: "controlled-agent",
+                address: "0x0000000000000000000000000000000000000002",
+                agentId: null,
+                agentName: null,
+                caps: null,
+                policiesApproved: true,
+                ausdMicro: updated ? "12000000" : "0",
+                monWei: "0",
+              },
+            ],
+            readAt: Date.now(),
+          };
+        }
+      }
       if (!json) {
         errors.push(`Unexpected API request: ${url.pathname}`);
         return route.abort();
@@ -167,6 +198,43 @@ try {
     } else if (scenario === "studio-error") {
       await page.getByText(/Controlled load failure/).waitFor();
       await page.getByRole("button", { name: /try again/i }).waitFor();
+    } else if (scenario === "studio-wallets") {
+      await page.getByTitle("Your wallets", { exact: true }).click();
+      const modal = page.getByRole("dialog", { name: /your wallets/i });
+      await modal.getByRole("button", { name: "Fund from master" }).click();
+      const amount = modal.locator('[data-amount="controlled-agent"]');
+      await amount.fill("2");
+      const refresh = modal.getByRole("button", { name: "Refresh balances" });
+      const before = counts.get("/api/v1/studio/wallets");
+      walletPhase = "updated";
+      await refresh.focus();
+      await refresh.press("Enter");
+      assert.equal(await refresh.isDisabled(), true);
+      assert.equal(await refresh.getAttribute("aria-busy"), "true");
+      assert.ok((await modal.locator(".pk-skeleton").count()) >= 5);
+      assert.equal(
+        await modal.getByRole("button", { name: "Fund from master" }).isDisabled(),
+        true,
+      );
+      assert.equal(await amount.inputValue(), "2");
+      await modal.getByText("20", { exact: true }).waitFor();
+      await modal.getByText("12", { exact: true }).waitFor();
+      assert.equal(await amount.inputValue(), "2");
+      assert.equal(counts.get("/api/v1/studio/wallets"), before + 1);
+      await page.setViewportSize({ width: 1000, height: 1186 });
+      await modal.screenshot({ path: path.join(output, "wallet-refresh.png") });
+
+      walletPhase = "failed";
+      await refresh.click();
+      await modal
+        .getByRole("alert")
+        .getByText(/Last known balances/)
+        .waitFor();
+      assert.equal(await refresh.isEnabled(), true);
+      assert.equal(await modal.getByText("20", { exact: true }).count(), 1);
+      assert.equal(await modal.getByText("12", { exact: true }).count(), 1);
+      assert.equal(await amount.inputValue(), "2");
+      assert.equal(counts.get("/api/v1/studio/wallets"), before + 2);
     } else if (scenario === "studio") {
       await page.getByRole("button", { name: /Create its wallet/ }).waitFor();
       assert.equal(await page.locator("#studio-pending").count(), 0);
@@ -182,7 +250,7 @@ try {
     await page.setViewportSize({ width: 900, height: 1000 });
     await delay(1500);
     for (const [endpoint, count] of counts) {
-      const maximum = scenario === "studio-missing-wallet" ? 4 : 2;
+      const maximum = ["studio-missing-wallet", "studio-wallets"].includes(scenario) ? 4 : 2;
       assert.ok(count <= maximum, `${scenario}: ${endpoint} repeated ${count} times`);
     }
     assert.deepEqual(errors, [], scenario);
