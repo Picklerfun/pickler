@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter } from "nextjs-toploader/app";
 import { studioReturnHref } from "../studio/shell/account-return";
 import { useStudioHref } from "@/features/site/studio-href";
 import { useEffect, useState, useSyncExternalStore } from "react";
