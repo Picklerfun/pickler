@@ -1,4 +1,6 @@
 "use client";
+import type { ReactNode } from "react";
+import { StudioSkeleton } from "../skeleton";
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { Button, Icon } from "@pickler/ui";
@@ -18,6 +20,8 @@ import styles from "./new-agent.module.css";
 
 export interface WalletPanelProps {
   wallet: WalletView | null;
+  accessRequest?: ReactNode;
+  loading?: boolean;
   /** No delegated user yet: creating the wallet is two signatures. */
   firstTime: boolean;
   /**
@@ -54,6 +58,8 @@ const COPIED_MS = 1400;
  */
 export function WalletPanel({
   wallet,
+  accessRequest,
+  loading = false,
   firstTime,
   pendingDelegate,
   outlined,
@@ -81,9 +87,19 @@ export function WalletPanel({
     };
   }, []);
   const isFunded = funded(wallet);
-  /* What the harness proves: no wallet yet, one below either minimum, or one that can create. */
-  const walletState = !wallet ? "none" : isFunded ? "funded" : "empty";
   const step0 = step0Copy({ firstTime, pendingDelegate });
+  let walletState = "none";
+  let tag = step0.tag;
+  if (accessRequest) {
+    walletState = "access";
+    tag = "STEP 0 · ACCESS";
+  } else if (loading) {
+    walletState = "loading";
+    tag = "STEP 0";
+  } else if (wallet) {
+    walletState = isFunded ? "funded" : "empty";
+    tag = walletTag(wallet);
+  }
 
   function copy(address: string) {
     navigator.clipboard?.writeText(address).then(
@@ -102,7 +118,7 @@ export function WalletPanel({
   }
 
   return (
-    <aside className={styles.side} aria-label="Its wallet">
+    <aside className={styles.side} data-access={Boolean(accessRequest)} aria-label="Its wallet">
       <Image className={styles.mascot} src="/brand/mascot.webp" alt="" width={96} height={80} />
       <div
         className={styles.walletCard}
@@ -113,11 +129,20 @@ export function WalletPanel({
       >
         <div className={styles.walletHead}>
           <span className={styles.walletTitle}>ITS WALLET</span>
-          <span className={styles.walletTag} data-tone={isFunded ? "good" : "caution"}>
-            {wallet ? walletTag(wallet) : step0.tag}
+          <span
+            className={styles.walletTag}
+            data-tone={!accessRequest && isFunded ? "good" : "caution"}
+          >
+            {tag}
           </span>
         </div>
-        {!wallet ? (
+        {accessRequest ? (
+          <div className={styles.step0} id="new-agent-wallet-step0">
+            {accessRequest}
+          </div>
+        ) : loading ? (
+          <StudioSkeleton variant="wallet" />
+        ) : !wallet ? (
           <div className={styles.step0} id="new-agent-wallet-step0">
             <div className={styles.step0Head}>
               <span className={styles.step0Mark} aria-hidden="true">
