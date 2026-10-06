@@ -6,6 +6,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { Button, Icon, Skeleton } from "@pickler/ui";
 import { getSupabase } from "@/features/auth/lib/supabase-browser";
 import { signOutAccount } from "@/features/auth/lib/account";
+import { profileFromStudio, type StudioReturnContext } from "./account-return";
 import studio from "../studio.module.css";
 import styles from "./account-menu.module.css";
 
@@ -13,9 +14,11 @@ import styles from "./account-menu.module.css";
 export function AccountMenu({
   handle,
   preview = false,
+  returnContext,
 }: {
   handle: string | null;
   preview?: boolean;
+  returnContext?: StudioReturnContext | undefined;
 }) {
   const router = useRouter();
   const id = useId();
@@ -23,6 +26,7 @@ export function AccountMenu({
   const profile = useRef<HTMLAnchorElement>(null);
   const username = useRef<HTMLSpanElement>(null);
   const signingOut = useRef(false);
+  const [profileHref, setProfileHref] = useState("/account?section=profile");
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -116,7 +120,12 @@ export function AccountMenu({
         aria-label={handle ? `Account, @${handle}` : "Account"}
         aria-expanded={open}
         aria-controls={id}
-        onClick={() => setOpen(!open)}
+        onClick={() => {
+          setProfileHref(
+            profileFromStudio(window.location.pathname, window.location.search, returnContext),
+          );
+          setOpen(!open);
+        }}
       >
         <span className={studio.swatch} aria-hidden="true">
           <i data-swatch="lime" />
@@ -130,7 +139,7 @@ export function AccountMenu({
           {handle && <p className={styles.identity}>@{handle}</p>}
           <Link
             ref={profile}
-            href="/account?section=profile"
+            href={profileHref}
             className={styles.item}
             onClick={() => setOpen(false)}
           >
