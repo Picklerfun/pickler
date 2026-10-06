@@ -95,6 +95,8 @@
   --pk-display-wdth: "wdth" 112;
 
   --pk-duration: 140ms;
+  --pk-sidebar-duration: 320ms;
+  --pk-sidebar-ease: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* One dark in the product and one light, and either can appear inside the other. A surface is not
@@ -952,4 +954,38 @@ h2 {
 /* Disabled menu copy remains legible; Radix still prevents selection. */
 [data-slot="dropdown-menu-item"][data-disabled] {
   opacity: 1;
+}
+
+/* Keep shadcn's state/structure; synchronize geometry and reveal without remounting rows. */
+[data-slot="sidebar-gap"],
+[data-slot="sidebar-container"],
+[data-sidebar="menu-button"],
+[data-slot="sidebar-group-label"],
+[data-slot="sidebar-menu-badge"],
+[data-sidebar-label] {
+  transition-duration: var(--pk-sidebar-duration);
+  transition-timing-function: var(--pk-sidebar-ease);
+}
+[data-sidebar-label] {
+  flex-shrink: 0;
+  transition-property: opacity, transform;
+}
+[data-slot="sidebar"][data-collapsible="icon"] [data-sidebar-label],
+[data-slot="sidebar"][data-collapsible="icon"]
+  [data-sidebar="menu-button"]
+  > svg:not(:first-child) {
+  opacity: 0;
+  transform: translateX(-4px);
+  pointer-events: none;
+}
+[data-sidebar="menu-button"] > svg:not(:first-child) {
+  transition:
+    opacity var(--pk-sidebar-duration) var(--pk-sidebar-ease),
+    transform var(--pk-sidebar-duration) var(--pk-sidebar-ease);
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-sidebar-label],
+  [data-sidebar="menu-button"] > svg:not(:first-child) {
+    transition: none;
+  }
 }
