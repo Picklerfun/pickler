@@ -53,6 +53,7 @@ const responses = {
   "/api/v1/studio/market-categories": { version: 1, categories: [] },
   "/api/v1/studio/options": { plugins: [] },
   "/api/v1/studio/wallets": {
+    chainId: 10143,
     master: {
       walletId: "controlled-master",
       address: wallet.address,
@@ -161,8 +162,15 @@ try {
           json = { error: "UNAVAILABLE", message: "Controlled balance failure" };
         } else {
           const updated = walletPhase === "updated";
+          let chainId = 10143;
+          if (walletPhase === "unknown-network") {
+            chainId = null;
+          } else if (walletPhase === "mainnet") {
+            chainId = 143;
+          }
           json = {
             ...responses[url.pathname],
+            chainId,
             master: {
               ...responses[url.pathname].master,
               ausdMicro: updated ? "20000000" : "10000000",
@@ -201,6 +209,7 @@ try {
     } else if (scenario === "studio-wallets") {
       await page.getByTitle("Your wallets", { exact: true }).click();
       const modal = page.getByRole("dialog", { name: /your wallets/i });
+      await modal.getByText("MONAD TESTNET", { exact: true }).waitFor();
       await modal.getByRole("button", { name: "Fund from master" }).click();
       const amount = modal.locator('[data-amount="controlled-agent"]');
       await amount.fill("2");
@@ -235,6 +244,27 @@ try {
       assert.equal(await modal.getByText("12", { exact: true }).count(), 1);
       assert.equal(await amount.inputValue(), "2");
       assert.equal(counts.get("/api/v1/studio/wallets"), before + 2);
+
+      walletPhase = "mainnet";
+      await refresh.click();
+      await modal.getByText("MONAD MAINNET", { exact: true }).waitFor();
+      assert.equal(await modal.getByText("MONAD TESTNET", { exact: true }).count(), 0);
+      assert.equal(counts.get("/api/v1/studio/wallets"), before + 3);
+
+      walletPhase = "unknown-network";
+      await refresh.click();
+      await modal.getByText("NETWORK UNAVAILABLE", { exact: true }).waitFor();
+      await modal
+        .getByRole("alert")
+        .getByText(/network could not be confirmed/)
+        .waitFor();
+      assert.equal(
+        await modal.getByRole("button", { name: "Fund from master" }).isDisabled(),
+        true,
+      );
+      assert.equal(await modal.getByRole("button", { name: /Send 2 AUSD/ }).isDisabled(), true);
+      assert.equal(await amount.inputValue(), "2");
+      assert.equal(counts.get("/api/v1/studio/wallets"), before + 4);
     } else if (scenario === "studio") {
       await page.getByRole("button", { name: /Create its wallet/ }).waitFor();
       assert.equal(await page.locator("#studio-pending").count(), 0);
@@ -250,7 +280,15 @@ try {
     await page.setViewportSize({ width: 900, height: 1000 });
     await delay(1500);
     for (const [endpoint, count] of counts) {
-      const maximum = ["studio-missing-wallet", "studio-wallets"].includes(scenario) ? 4 : 2;
+      const walletRead = ["/api/v1/studio/wallets", "/api/v1/signing/agents/state"].includes(
+        endpoint,
+      );
+      let maximum = 2;
+      if (scenario === "studio-wallets" && walletRead) {
+        maximum = 6;
+      } else if (scenario === "studio-missing-wallet") {
+        maximum = 4;
+      }
       assert.ok(count <= maximum, `${scenario}: ${endpoint} repeated ${count} times`);
     }
     assert.deepEqual(errors, [], scenario);
