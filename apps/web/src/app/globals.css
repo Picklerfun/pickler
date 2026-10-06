@@ -20,8 +20,19 @@ input {
   font: inherit;
 }
 
+#nprogress {
+  color: var(--pk-lime);
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
+  }
+
+  #nprogress,
+  #nprogress .bar,
+  #nprogress .peg {
+    animation: none !important;
+    transition: none !important;
   }
 }
