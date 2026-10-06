@@ -1,4 +1,6 @@
 "use client";
+
+import { StudioAccessRequest } from "../access-request";
 import { useEffect, useRef, useState } from "react";
 import { Button, Icon } from "@pickler/ui";
 import { SecondPasskey } from "@/features/auth/components/second-passkey";
@@ -478,6 +480,7 @@ export function NewAgent({
             {error}
           </p>
         )}
+        {locked && <StudioAccessRequest preview={preview} />}
         <SecondPasskey passkeys={passkeys} id="home-second-passkey" />
 
         <p className={styles.kicker}>
@@ -504,7 +507,7 @@ export function NewAgent({
           onChange={edit}
         />
 
-        {access.createNote && <p className={home.newAgentNote}>{access.createNote}</p>}
+        {!locked && access.createNote && <p className={home.newAgentNote}>{access.createNote}</p>}
         <div className={styles.create}>
           {/* aria-disabled, not disabled: a shut button stays focusable, so its label (the
               reason it is shut) is announced. press() refuses while shut. */}
