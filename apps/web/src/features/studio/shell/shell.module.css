@@ -106,21 +106,53 @@
 .selectorIdentity small {
   color: var(--pk-ink-muted);
 }
-.selectorStatus {
+.selectorBalances {
+  width: calc(var(--sidebar-width) - 16px);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-inline: 11px;
   overflow: hidden;
   white-space: nowrap;
   height: 30px;
   transition-property: height, opacity, transform;
 }
 .sidebar:global([data-slot="sidebar-container"]):is(:global([data-collapsible="icon"]) *)
-  .selectorStatus {
+  .selectorBalances {
   height: 0;
+}
+.selectorAsset {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1 1 0;
+  min-width: 0;
+  font: 500 11px/1.2 var(--pk-font);
+  font-variant-numeric: tabular-nums;
+  color: var(--pk-ink);
+}
+.selectorAsset b {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.selectorAsset small {
+  flex: none;
+  font: inherit;
+  color: var(--pk-ink-muted);
+}
+.selectorAsset svg,
+.selectorAsset img {
+  flex: none;
+}
+.selectorBalancePlaceholder {
+  width: 24px;
+  height: 12px;
 }
 .agentMenu {
   width: 240px;
   max-width: calc(100vw - 32px);
 }
-/* The status chip (`StatusChip`), in the top bar and beside the name. The draft's DRAFT · PRIVATE
+/* The status chip (`StatusChip`), beside the name. The draft's DRAFT · PRIVATE
    is the canvas's amber on the panel, not on a wash; the live studio's are on their washes. */
 .status {
   composes: pill from "../home/home.module.css";
@@ -219,6 +251,13 @@
 .headText {
   flex: 1 1 220px;
   min-width: 0;
+}
+.headerActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
 }
 .name {
   margin: 0;
