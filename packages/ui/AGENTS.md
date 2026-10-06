@@ -67,8 +67,9 @@ Local adaptations: package-relative internal imports; keyboard guard for editabl
 external-store mobile breakpoint (768px) to avoid a hydration setState effect; deterministic
 skeleton width; mobile props forwarded to SheetContent; host surface and explicit modal semantics forwarded to the portal;
 mobile close restores focus to its associated `[data-sidebar-toggle]` (SidebarProvider uses a
-custom global-header trigger). Sidebar tooltips mount only for collapsed desktop navigation,
-so hidden mobile/expanded tooltips cannot consume Escape before the Sheet. Dropdown checkbox props omit unknown `checked` for exact optional
+custom global-header trigger). On desktop, tooltip roots/triggers stay mounted through collapse to preserve menu-button DOM
+identity; only collapsed TooltipContent mounts. Mobile tooltips are omitted, so hidden tooltips
+cannot consume Escape before the Sheet. Dropdown checkbox props omit unknown `checked` for exact optional
 types. An exiting dropdown does not restore focus over another newly opened dropdown. These adaptations do not add a second sidebar state machine.
 
 Tailwind utilities use `tw:` and omit preflight. `src/shadcn.css` imports the utility/theme and
@@ -83,3 +84,12 @@ Controlled browser coverage in `scripts/design/account-menu.mjs` verifies deskto
 preference persistence, mobile dialog focus/dismissal, agent switching, paired chevrons, account
 menus and safe profile return. Run web/UI types, lint, format, design source/rendered checks and a
 web build after changing these components or their CSS toolchain.
+
+Sidebar motion uses shared `--pk-sidebar-duration`/`--pk-sidebar-ease` tokens. Menu buttons keep
+row heights and icon padding while the container width changes; labels and badges fade without `display:none`.
+Group-label margins and Studio's header status contract with the same easing. Keep these small
+source/style adaptations when updating the registry. Do not conditionally wrap/unmount controls
+based on expanded state: that resets focus and CSS transitions.
+
+`scripts/design/sidebar-motion.mjs` adds frame-based acceptance to the rendered Design job.
+It verifies real DOM identity and content geometry, not just final screenshots or width endpoints.
