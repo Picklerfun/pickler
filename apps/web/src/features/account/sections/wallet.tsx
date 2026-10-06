@@ -67,7 +67,7 @@ export function WalletSection({ state }: { state: WalletState }) {
           the night-blue page, built by nesting the opposite data-surface rather than by a rule of
           its own. Everything inside reads the light value of the same token names. */}
       <div id="account-wallet-card" className={styles.card} data-surface="light">
-        <p className={styles.cardLabel}>MASTER WALLET · AVAILABLE</p>
+        <p className={styles.cardLabel}>YOUR WALLET · AVAILABLE</p>
         {state.kind === "loading" && <StudioSkeleton variant="wallet" />}
         {state.kind === "none" && (
           <>
