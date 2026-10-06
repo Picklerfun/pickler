@@ -768,7 +768,8 @@ creation fixtures for layout checks; none reads or submits an access request.
 `features/studio/shell/account-menu.tsx` is the account disclosure for creation, home, draft,
 live, legacy and pending Studio headers. Supply the authenticated creator's profile handle from
 Studio's existing read, never the selected agent's handle. Hover and keyboard focus reveal the
-username to the left without changing header geometry. The disclosure uses native link/button
+username to the left by smoothly expanding the account chip in the header flow. The preceding
+wallet, network and credits controls slide left while the account icon stays anchored on the right. The disclosure uses native link/button
 navigation, restores focus on Escape, and closes on outside pointer or focus movement.
 `/account?section=profile` opens the public-profile tab in every environment; other section query
 links remain non-production design controls. Sign-out uses Supabase Auth, navigates only after
