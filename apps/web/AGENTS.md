@@ -764,6 +764,15 @@ remain. Errors retain retry actions; an unread or failed balance is never repres
 `create-access`, `create-access-pending` and `create-access-loading` are inert non-production
 creation fixtures for layout checks; none reads or submits an access request.
 
+The shared Wallets modal exposes `Refresh balances` through the owning screen's existing wallet
+read. Creation, home and agent Studio use the same control; no transfer or passkey authorization
+is sent by refreshing. Balance and button placeholders use Skeleton while pending. Keep the
+selected wallet, token, direction and typed amount mounted, disable transfers until the read
+settles, and preserve last-known balances with a retryable error on failure. Reject duplicate
+refresh presses and disable refresh during a transfer or on inert previews. The controlled
+`scripts/design/studio-loading.mjs` regression covers successful and failed refreshes without
+wallet writes or external requests.
+
 ## Studio account menu
 
 `features/studio/shell/account-menu.tsx` is the account disclosure for creation, home, draft,
