@@ -69,10 +69,6 @@
 }
 .panel {
   composes: pk-panel from global;
-  position: absolute;
-  z-index: 5;
-  top: calc(100% + 10px);
-  right: 0;
   width: min(228px, calc(100vw - 36px));
   padding: 8px;
   background: var(--pk-popover);
@@ -101,10 +97,11 @@
   justify-content: flex-start;
   cursor: pointer;
 }
-.panel .item:hover {
+.panel .item:hover,
+.panel .item[data-highlighted] {
   background: var(--pk-panel-2);
 }
-.item:disabled {
+.item[data-disabled] {
   color: var(--pk-ink-muted);
   cursor: default;
 }
