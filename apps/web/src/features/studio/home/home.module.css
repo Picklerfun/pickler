@@ -115,17 +115,6 @@
 .spacer {
   flex: 1 1 20px;
 }
-.account {
-  display: grid;
-  place-items: center;
-  width: 38px;
-  height: 38px;
-  border-radius: var(--pk-radius-pill);
-  background: var(--pk-panel);
-}
-.account:hover {
-  background: var(--pk-panel-2);
-}
 
 /* ---------- Menu ---------- */
 
