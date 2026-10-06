@@ -875,3 +875,81 @@ h2 {
   height: 120px;
   border-radius: var(--pk-radius-xl);
 }
+
+/* shadcn semantic roles share the existing Pickler token source. No second palette. */
+@theme inline {
+  --color-scrim: var(--pk-scrim);
+  --color-background: var(--pk-bg);
+  --color-foreground: var(--pk-ink);
+  --color-popover: var(--pk-popover);
+  --color-popover-foreground: var(--pk-ink);
+  --color-primary: var(--pk-lime);
+  --color-primary-foreground: var(--pk-on-lime);
+  --color-secondary: var(--pk-panel);
+  --color-secondary-foreground: var(--pk-ink);
+  --color-muted: var(--pk-panel);
+  --color-muted-foreground: var(--pk-ink-muted);
+  --color-accent: var(--pk-panel-2);
+  --color-accent-foreground: var(--pk-ink);
+  --color-destructive: var(--pk-loss);
+  --color-destructive-surface: var(--pk-state-loss-bg);
+  --color-destructive-foreground: var(--pk-state-loss-ink);
+  --color-border: var(--pk-rule);
+  --color-input: var(--pk-rule-strong);
+  --color-ring: var(--pk-focus);
+  --color-sidebar: var(--pk-bg);
+  --color-sidebar-foreground: var(--pk-ink-muted);
+  --color-sidebar-accent: var(--pk-panel);
+  --color-sidebar-accent-foreground: var(--pk-ink);
+  --color-sidebar-border: var(--pk-rule);
+  --color-sidebar-ring: var(--pk-focus);
+  --radius-xs: var(--pk-radius-mark);
+  --radius-sm: var(--pk-radius-sm);
+  --radius-md: var(--pk-radius-md);
+  --radius-lg: var(--pk-radius-lg);
+  --radius-xl: var(--pk-radius-xl);
+  --shadow-xs: var(--pk-popover-shadow);
+  --shadow-sm: var(--pk-popover-shadow);
+  --shadow-md: var(--pk-popover-shadow);
+  --shadow-lg: var(--pk-popover-shadow);
+}
+
+/* Tailwind preflight is intentionally absent. Normalize only installed component slots. */
+[data-slot="sidebar-menu"],
+[data-slot="sidebar-menu-sub"] {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+[data-sidebar="menu-button"],
+[data-slot="sidebar-trigger"] {
+  border: 0;
+  background: transparent;
+  color: var(--pk-ink-muted);
+  cursor: pointer;
+  font-family: var(--pk-font);
+}
+[data-sidebar="menu-button"]:hover,
+[data-sidebar="menu-button"][data-active="true"] {
+  background: var(--pk-panel);
+  color: var(--pk-ink);
+}
+[data-slot="dropdown-menu-content"],
+[data-slot="sheet-content"] {
+  border-color: var(--pk-rule);
+  font-family: var(--pk-font);
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-slot^="sidebar"],
+  [data-slot^="sheet"],
+  [data-slot^="dropdown-menu"],
+  [data-slot^="tooltip"] {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* Disabled menu copy remains legible; Radix still prevents selection. */
+[data-slot="dropdown-menu-item"][data-disabled] {
+  opacity: 1;
+}
