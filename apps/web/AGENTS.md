@@ -773,6 +773,14 @@ refresh presses and disable refresh during a transfer or on inert previews. The 
 `scripts/design/studio-loading.mjs` regression covers successful and failed refreshes without
 wallet writes or external requests.
 
+The modal's network badge comes from the wallets response's `chainId`, resolved with public
+`@pickler/chain` metadata. It labels all displayed balances and transfers as Monad Testnet or
+Monad mainnet; never infer this from APP_ENV, SIWE or the agent's Perpl market configuration.
+Absent/unknown network metadata shows an explicit unavailable state and disables transfer actions
+until a successful refresh identifies it. This is a network indicator, not a chain selector:
+the API deployment still selects the balance and custody transfer network. Controlled fixtures
+declare their network and the browser regression verifies both labels and unavailable handling.
+
 ## Studio account menu
 
 `features/studio/shell/account-menu.tsx` is the account disclosure for creation, home, draft,
