@@ -175,3 +175,31 @@ The implementation and controlled lifecycle results are reviewable, but the comp
 prospective gate remains unmet. No automatic repeat, restart, risk-rule relaxation, strategy
 promotion, merge or deployment is authorized by this report. A future run needs a separately
 reviewed way to satisfy the daily-risk continuity requirement and explicit operator authorization.
+
+## Explicitly authorized single-day continuation
+
+The operator explicitly authorized one new run with “sigue, te autorizo”. Study
+`perps-sma-20261006-0150-single-day` retains frozen code
+`1d954c4c226a5c14cfa6db701e27a62e9c69893b`, with configuration hash
+`05cfc77de23049fa5e1b994bd879f839e440b8b1d2dd88cc4cb5ea3542f99934`.
+Its fixed decision window is 2026-10-06 02:01–08:01 UTC, with virtual exits permitted until
+08:16 UTC at most. This avoids another UTC day rollover without changing daily risk,
+strategies, costs, acquisition thresholds or model budgets. The preceding failed study remains
+intact and is not pooled as a paired control. Full prospective acceptance is pending until
+this run ends and its terminal artifacts and released resources are verified.
+
+## Exit deadline regression discovered during continuation
+
+An isolated PostgreSQL test demonstrated that the frozen runner checks the exit deadline
+before observation acquisition but did not recheck it after that acquisition. When a controlled
+read advanced the clock from one second before the deadline to one second after it, every
+variant recorded two late virtual close attempts. This is a lifecycle defect, not evidence of
+better or worse strategy performance.
+
+The delivery code now rechecks the SMA exit deadline after observation acquisition, before
+observation or execution writes, and completes with unresolved positions left pending. The
+controlled regression uses the real coordinator, simulator and isolated repositories, with no
+provider or model calls. The ongoing run remains on its original frozen commit; this correction
+has not been deployed into that process. Its eventual execution timestamps must be checked
+separately, and a passing controlled regression does not prove the new boundary behavior was
+exercised prospectively. No automatic repeat or restart is authorized.
