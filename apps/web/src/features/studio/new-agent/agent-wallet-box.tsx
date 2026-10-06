@@ -49,7 +49,7 @@ export interface AgentWalletBoxProps {
 
 /**
  * One agent wallet in "Your wallets": its name, address, tag, balances and caps, "Fund from
- * master" and "Return to your wallet", and the move form when one is open. The rules are
+ * master" and "Return to master wallet", and the move form when one is open. The rules are
  * `transfer-model.ts`'s; the state is the modal's.
  */
 export function AgentWalletBox({
@@ -83,8 +83,8 @@ export function AgentWalletBox({
   const label = transferLabel(input);
   const ok = canMove(input);
   const over = label.startsWith("More");
-  const sourceName = toAgent ? "Your wallet" : `${name}'s wallet`;
-  const targetName = toAgent ? `${name}'s wallet` : "Your wallet";
+  const sourceName = toAgent ? "Master wallet" : `${name}'s wallet`;
+  const targetName = toAgent ? `${name}'s wallet` : "Master wallet";
   const sourceAddress = toAgent ? wallets.master.address : agent.address;
   const targetAddress = toAgent ? agent.address : wallets.master.address;
 
@@ -173,7 +173,7 @@ export function AgentWalletBox({
           onClick={() => onPick(false)}
         >
           <Icon name="arrowDown" size={12} />
-          Return to your wallet
+          Return to master wallet
         </button>
       </div>
       {moving && (
