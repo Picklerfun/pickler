@@ -222,4 +222,20 @@ mount and active entry animation (opacity 0.582989), then measured opacity 1 aft
 it also verified that a missing screen and paused finite animation remain blocked. It made no
 provider calls and did not use the app ports occupied by another process. This demonstrates the
 readiness defect and correction, without proving every historical CI failure's internal cause.
-The corrected full rendered CI result remains to be checked on its new commit.
+All nine CI checks passed on delivery commit `fc766ebdfe8a41d25f0e37b3e4c535168775c8c4`,
+including the full rendered check, PostgreSQL integration, lint, types, repository tests,
+Node compilation and Worker dry-run builds. This does not establish completion of the
+still-running prospective study on its separate frozen commit.
+
+## Controlled simulator round-trip coverage
+
+The existing long/short horizon scenario originally checked an actual opening fill and the
+common close proposal. It now also applies the actual closing fill to the account for all
+three variants in both directions, using a fresh controlled frame at the horizon. Every
+position closes and the controlled unchanged-price spread/fee round trip reduces cash.
+These six round trips are synthetic execution checks, not provider decisions or prospective P&L.
+
+All fourteen SMA scenarios passed again with isolated PostgreSQL, zero skips and zero failures.
+Agent-service types, targeted lint and formatting also passed. No strategy, threshold, provider
+or frozen-run code changed. The full current-head CI must be checked after these test-only
+coverage and documentation changes are published.
