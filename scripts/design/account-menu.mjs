@@ -47,7 +47,10 @@ try {
         const label = document.querySelector("[data-account-menu] > span");
         return (
           label &&
-          getComputedStyle(label).maxWidth === "240px" &&
+          Math.abs(
+            parseFloat(getComputedStyle(label).maxWidth) -
+              label.firstElementChild.getBoundingClientRect().width,
+          ) < 0.5 &&
           label.getBoundingClientRect().width > 70
         );
       });
@@ -73,7 +76,13 @@ try {
       await trigger.hover();
       await page.waitForFunction(() => {
         const label = document.querySelector("[data-account-menu] > span");
-        return label && getComputedStyle(label).maxWidth === "240px";
+        return (
+          label &&
+          Math.abs(
+            parseFloat(getComputedStyle(label).maxWidth) -
+              label.firstElementChild.getBoundingClientRect().width,
+          ) < 0.5
+        );
       });
     }
     assert.deepEqual(
@@ -108,6 +117,57 @@ try {
     assert.equal(await trigger.getAttribute("aria-expanded"), "false");
   }
 
+  // Keep the pointer stationary where the reported loop occurred, and cover narrower desktops.
+  for (const width of [1086, 900, 768]) {
+    await page.setViewportSize({ width, height: 1186 });
+    await page.goto(`${baseUrl}/studio?stage=draft`);
+    const account = page.locator("[data-account-menu]");
+    const trigger = account.getByRole("button", { name: /^Account/ });
+    await trigger.waitFor();
+    const before = await trigger.boundingBox();
+    await page.mouse.move(before.x + before.width / 2, before.y + before.height / 2);
+    const settled = await page.evaluate(async () => {
+      const frames = [];
+      const started = performance.now();
+      while (performance.now() - started < 1400) {
+        await new Promise(requestAnimationFrame);
+        const icon = document.querySelector("[data-account-menu] > button").getBoundingClientRect();
+        const label = document.querySelector("[data-account-menu] > span").getBoundingClientRect();
+        frames.push({ x: icon.x, y: icon.y, width: label.width });
+      }
+      return frames.slice(-25);
+    });
+    assert.ok(settled.length > 1);
+    for (const frame of settled) {
+      assert.equal(frame.y, before.y, "The icon must not wrap away from the stationary pointer");
+      assert.ok(Math.abs(frame.x - before.x) < 1, "The right edge remains anchored");
+      assert.ok(frame.width > 60, "Username remains expanded under a stationary hover");
+      assert.ok(Math.abs(frame.width - settled[0].width) < 1, "Animation settles without a loop");
+    }
+    assert.equal(
+      await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+      true,
+    );
+    const selector = page.getByRole("button", { name: "Halftime, switch agent", exact: true });
+    assert.equal(
+      await selector.evaluate(
+        (element) => !!element.closest('aside[aria-label="Agent workspace"]'),
+      ),
+      true,
+      "Agent selection belongs to the sidebar",
+    );
+    assert.equal(await page.locator('header button[id$="-agent-chip"]').count(), 0);
+    assert.equal(await page.getByText("DRAFT · PRIVATE", { exact: true }).count(), 1);
+    await selector.click();
+    await page.locator("#draft-agent-menu").waitFor();
+    await page.keyboard.press("Escape");
+    assert.equal(await selector.getAttribute("aria-expanded"), "false");
+    if (width === 1086) {
+      await trigger.hover();
+      await page.screenshot({ path: path.join(tmpdir(), "pickler-navbar-sidebar-desktop.png") });
+    }
+  }
+
   await page.close();
   const mobile = await browser.newPage({
     viewport: { width: 390, height: 844 },
@@ -117,6 +177,19 @@ try {
   mobile.on("pageerror", (error) => errors.push(error.message));
   await mobile.goto(`${baseUrl}/studio?stage=draft`);
   const trigger = mobile.locator("[data-account-menu] > button");
+  const mobileSelector = mobile.getByRole("button", {
+    name: "Halftime, switch agent",
+    exact: true,
+  });
+  await mobileSelector.click();
+  const agentMenu = mobile.locator("#draft-agent-menu");
+  await agentMenu.waitFor();
+  const menuBounds = await agentMenu.boundingBox();
+  assert.ok(
+    menuBounds && menuBounds.x >= 0 && menuBounds.x + menuBounds.width <= 390,
+    "Sidebar selector menu fits touch screens without clipping in the rail scroller",
+  );
+  await mobile.keyboard.press("Escape");
   await trigger.click();
   const profile = mobile.getByRole("link", { name: "My profile", exact: true });
   await profile.waitFor();
