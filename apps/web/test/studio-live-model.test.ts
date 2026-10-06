@@ -782,7 +782,7 @@ test("the wallet cards: master named for the account, the agent's with no withdr
     "nightowl",
   );
 
-  assert.equal(cards.master.title, "YOUR WALLET · @NIGHTOWL");
+  assert.equal(cards.master.title, "MASTER WALLET · @NIGHTOWL");
   assert.equal(cards.master.fund, "Fund Halftime");
   assert.equal(cards.agent?.title, "HALFTIME'S · AGENT WALLET");
   assert.equal(cards.agent?.short, "0x91bE…4a07");
@@ -798,7 +798,7 @@ test("the wallet cards: master named for the account, the agent's with no withdr
 test("unread wallets are dashes, and an agent without a wallet has no card", () => {
   const cards = walletCards(null, { name: "Halftime", wallet: null }, null);
 
-  assert.equal(cards.master.title, "YOUR WALLET");
+  assert.equal(cards.master.title, "MASTER WALLET");
   assert.equal(cards.agent, null);
 });
 
