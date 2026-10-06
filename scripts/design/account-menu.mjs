@@ -280,7 +280,7 @@ try {
 
   // Navigation must restore state selected through the rail, not just its initial URL.
   for (const [stage, section, label, selector] of [
-    ["draft", "master", "Master wallet", "#draft-section-master"],
+    ["draft", "master", "Your wallet", "#draft-section-master"],
     ["perpl-live", "controls", "Controls", "#live-section-controls"],
   ]) {
     await page.goto(`${baseUrl}/studio?stage=${stage}`);
@@ -461,7 +461,7 @@ try {
     return bounds && bounds.x >= -0.5 && bounds.right <= innerWidth;
   });
   await mobile.screenshot({ path: path.join(tmpdir(), "pickler-shadcn-mobile-sidebar.png") });
-  await mobile.getByRole("button", { name: "Master wallet", exact: true }).click();
+  await mobile.getByRole("button", { name: "Your wallet", exact: true }).click();
   await mobile.locator("#draft-section-master").waitFor();
   await drawer.waitFor({ state: "hidden" });
   assert.equal(
@@ -472,7 +472,7 @@ try {
   await expand.click();
   await drawer.waitFor();
   assert.equal(await mobile.locator("#draft-rail-master").getAttribute("aria-current"), "page");
-  await mobile.getByRole("button", { name: "Master wallet", exact: true }).focus();
+  await mobile.getByRole("button", { name: "Your wallet", exact: true }).focus();
   await mobile.keyboard.press("Control+b");
   await drawer.waitFor({ state: "hidden" });
   assert.equal(await expand.evaluate((element) => element === document.activeElement), true);
