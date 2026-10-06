@@ -203,7 +203,69 @@ try {
     ["perpl-live", "live"],
   ]) {
     await page.goto(`${baseUrl}/studio?stage=${stage}`);
+    await page.evaluate(() => document.fonts.ready);
+    const anchors = await page.evaluate(
+      (prefix) => ({
+        icon: document.querySelector(`#${prefix}-rail-overview > svg`).getBoundingClientRect().x,
+        avatar: document.querySelector(`#${prefix}-agent-chip > span`).getBoundingClientRect().x,
+      }),
+      prefix,
+    );
+    assert.equal(
+      await page.locator(`#${prefix}-agent-chip > svg.lucide-chevrons-up-down`).count(),
+      1,
+      "Agent selector shows both directions together",
+    );
     await page.getByRole("button", { name: "Collapse sidebar", exact: true }).click();
+    const motion = await page.evaluate(async (prefix) => {
+      const samples = [];
+      const start = performance.now();
+      while (performance.now() - start < 450) {
+        await new Promise(requestAnimationFrame);
+        const sidebar = document.getElementById(`${prefix}-sidebar`);
+        const label = document.querySelector(`#${prefix}-rail-overview > span`);
+        const icon = document.querySelector(`#${prefix}-rail-overview > svg`);
+        const avatar = document.querySelector(`#${prefix}-agent-chip > span`);
+        samples.push({
+          width: sidebar.getBoundingClientRect().width,
+          opacity: parseFloat(getComputedStyle(label).opacity),
+          display: getComputedStyle(label).display,
+          iconX: icon.getBoundingClientRect().x,
+          avatarX: avatar.getBoundingClientRect().x,
+        });
+      }
+      return samples;
+    }, prefix);
+    assert.ok(
+      motion.filter((frame) => frame.width > 65 && frame.width < 217).length > 5,
+      "Sidebar passes through intermediate widths",
+    );
+    assert.ok(
+      motion.some((frame) => frame.opacity > 0 && frame.opacity < 1),
+      "Labels fade during the width transition",
+    );
+    for (let index = 0; index < motion.length; index++) {
+      const frame = motion[index];
+      assert.notEqual(
+        frame.display,
+        "none",
+        "Labels stay mounted and laid out throughout collapse",
+      );
+      assert.ok(
+        Math.abs(frame.iconX - anchors.icon) < 1,
+        "Navigation icon stays anchored during collapse",
+      );
+      assert.ok(
+        Math.abs(frame.avatarX - anchors.avatar) < 1,
+        "Agent avatar stays anchored during collapse",
+      );
+      if (index > 0) {
+        assert.ok(
+          frame.width <= motion[index - 1].width + 0.5,
+          "Width moves continuously toward collapsed state",
+        );
+      }
+    }
     await page.waitForFunction(
       (id) => document.getElementById(id)?.getBoundingClientRect().width === 64,
       `${prefix}-sidebar`,
@@ -278,18 +340,15 @@ try {
   await mobile.getByRole("button", { name: "Master wallet", exact: true }).click();
   await mobile.locator("#draft-section-master").waitFor();
   await mobile.getByRole("button", { name: "Collapse sidebar", exact: true }).click();
-  assert.equal(
-    await mobile.locator("#draft-sidebar").isVisible(),
-    false,
-    "Mobile collapse hides navigation",
-  );
+  await mobile.locator("#draft-sidebar").waitFor({ state: "hidden" });
+  assert.equal(await mobile.locator("#draft-sidebar").getAttribute("inert"), "");
   assert.equal(
     await mobile.getByRole("button", { name: "Master wallet", exact: true }).count(),
     0,
     "Hidden mobile navigation is absent from the accessibility tree",
   );
   await mobile.getByRole("button", { name: "Expand sidebar", exact: true }).click();
-  assert.equal(await mobile.locator("#draft-sidebar").isVisible(), true);
+  await mobile.locator("#draft-sidebar").waitFor({ state: "visible" });
   await mobile.waitForFunction(() => {
     const item = document.getElementById("draft-rail-master");
     if (!item) {
