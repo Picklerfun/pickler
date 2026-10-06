@@ -1,7 +1,8 @@
 "use client";
 import { StudioSkeleton } from "../skeleton";
 import { useEffect, useId, useRef, useState } from "react";
-import { Button, Icon, Skeleton } from "@pickler/ui";
+import { Button, Icon, Skeleton, Tag } from "@pickler/ui";
+import { networkByChainId } from "@pickler/chain";
 import type { StudioWallets } from "../api";
 import shell from "../studio.module.css";
 import { AgentWalletBox } from "./agent-wallet-box";
@@ -62,6 +63,11 @@ export function WalletsModal({
   onMoved,
 }: WalletsModalProps) {
   const titleId = useId();
+  const network = wallets?.chainId == null ? null : networkByChainId(wallets.chainId);
+  let networkLabel = "NETWORK UNAVAILABLE";
+  if (network) {
+    networkLabel = network.testnet ? "MONAD TESTNET" : "MONAD MAINNET";
+  }
   const [moving, setMoving] = useState<{ walletId: string; toAgent: boolean } | null>(null);
   const [token, setToken] = useState<Token>("AUSD");
   const [amount, setAmountText] = useState("");
@@ -251,10 +257,13 @@ export function WalletsModal({
             YOUR WALLETS<span>.</span>
           </h2>
           <p className={styles.modalLead}>
-            One master wallet funds everything. Each agent gets its own, capped by its brief. All on
-            Monad testnet, all behind your passkey.
+            One master wallet funds everything. Each agent gets its own, capped by its brief. All
+            behind your passkey.
           </p>
           <div className={styles.walletRefresh}>
+            <Tag className={styles.walletNetwork}>
+              {wallets === null ? <Skeleton /> : networkLabel}
+            </Tag>
             <Button
               variant="secondary"
               size="sm"
@@ -272,6 +281,16 @@ export function WalletsModal({
               {refreshing ? "Refreshing wallet balances" : ""}
             </span>
           </div>
+          {network && (
+            <p className={styles.networkNote}>
+              Balances and transfers on {network.name}. Fund these wallets on this network only.
+            </p>
+          )}
+          {wallets !== null && network === null && (
+            <p className={styles.alert} role="alert">
+              The wallet network could not be confirmed. Refresh before transferring funds.
+            </p>
+          )}
           {refreshError && (
             <p className={styles.alert} role="alert">
               {refreshError}
@@ -370,6 +389,7 @@ export function WalletsModal({
                     copied={copied === agent.address}
                     preview={preview}
                     refreshing={refreshing}
+                    networkKnown={network !== null}
                     onPick={(toAgent) => pick(agent.walletId, toAgent)}
                     onToken={(next) => {
                       setToken(next);
