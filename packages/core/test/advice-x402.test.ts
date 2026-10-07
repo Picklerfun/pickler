@@ -132,6 +132,7 @@ function fixture(options: { enabled?: boolean } = {}) {
     },
     settled: async (paymentId, txHash, blockNumber) => {
       calls.push(`settled:${paymentId}:${txHash}:${blockNumber}`);
+      state.record = { id: paymentId, jobId: null, status: "settled", txHash };
     },
     failed: async (paymentId, error) => {
       calls.push(`failed:${paymentId}:${error}`);
@@ -422,7 +423,7 @@ test("8. a settled payment without a job is enqueued without a new settlement", 
   assert.ok(f.calls.includes(`attachJob:payment-0:${jobId}`));
 });
 
-test("9. a busy enqueue after settlement marks the payment refund_owed and rethrows", async () => {
+test("9. a busy enqueue after settlement keeps the payment settled for the same key", async () => {
   const f = fixture();
   f.state.enqueueError = new PilotError("ADVICE_BUSY", "Busy");
   await assert.rejects(
@@ -430,8 +431,23 @@ test("9. a busy enqueue after settlement marks the payment refund_owed and rethr
     (error: unknown) => error instanceof PilotError && error.code === "ADVICE_BUSY",
   );
   assert.ok(f.calls.includes(`settled:payment-1:${TX}:42`));
-  assert.ok(f.calls.includes("refundOwed:payment-1:ADVICE_BUSY"));
+  assert.ok(!f.calls.some((call) => call.startsWith("refundOwed")));
   assert.ok(!f.calls.some((call) => call.startsWith("attachJob")));
+  assert.equal(f.calls.filter((call) => call === "settle").length, 1);
+  f.state.enqueueError = null;
+  f.calls.length = 0;
+  const retried = await f.paid.request(
+    principal,
+    id,
+    "BTC",
+    "key-1",
+    header({ nonce: `0x${"12".repeat(32)}` }),
+  );
+  assert.equal(retried.kind, "accepted");
+  assert.ok(!f.calls.includes("settle"));
+  assert.ok(!f.calls.includes("insertPending"));
+  assert.ok(f.calls.includes("enqueue"));
+  assert.ok(f.calls.includes(`attachJob:payment-1:${jobId}`));
 });
 
 test("10. stored payment states for the key: in flight or owed refuse, settled with a job returns it", async () => {

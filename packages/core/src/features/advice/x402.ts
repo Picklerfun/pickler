@@ -234,14 +234,8 @@ export function createPaidAdvice(deps: {
     key: string,
     paymentId: string,
   ): Promise<AdviceJob> => {
-    let job: AdviceJob;
-    try {
-      job = await deps.advice.request(principal, publicAgentId, symbol, key);
-    } catch (error) {
-      const code = error instanceof PilotError ? error.code : "ENQUEUE_FAILED";
-      await deps.store.refundOwed(paymentId, code);
-      throw error;
-    }
+    // An enqueue failure leaves the payment settled without a job, so the same key reuses it (D7).
+    const job = await deps.advice.request(principal, publicAgentId, symbol, key);
     await deps.store.attachJob(paymentId, job.id);
     return job;
   };

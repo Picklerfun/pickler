@@ -383,8 +383,9 @@ is fixed: `admit` (the service's admission checks without enqueueing) → replay
 payment row → sale terms (`NOT_FOUND`/`ADVICE_NOT_FOR_SALE`) → 402 → static checks → payer link
 → signature → nonce → balance → pending row → settle → enqueue. A replay or a settled row never
 settles again; a `pending` or `refund_owed` row for the key refuses with `invalid_payment`; an
-enqueue failure after settlement marks the row `refund_owed` and rethrows. Core stays pure: chain
-and database live behind the two ports.
+enqueue failure after settlement leaves the row `settled` without a job and rethrows, so the next
+request with the same key reuses that payment (D7); core does not call `refundOwed` in phase 1.
+Core stays pure: chain and database live behind the two ports.
 
 Advice pricing v2 pins the reviewed OpenAI-compatible forecast base URL and model in each job. Preserve v1 policies and their direct-DeepSeek meaning; provider changes require a new policy, never a historical rewrite.
 
