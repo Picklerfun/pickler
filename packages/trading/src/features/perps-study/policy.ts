@@ -1,9 +1,46 @@
-import { PilotError } from "@pickler/core";
+import { PilotError, PERPL_LAB_SYMBOLS } from "@pickler/core";
 import { paperUnits as u, paperDecimal as d } from "../perps-paper/decimal.js";
 import type { PerpsStudyConfig, PerpsRound, PerpsCallLane, PerpsStudyRecord } from "./types.js";
 export const PERPS_INPUT_LIMIT = 65536;
 export const PERPS_OUTPUT_LIMIT = 4096;
 export function assertPerpsStudyConfig(c: PerpsStudyConfig) {
+  if (c.version === 5) {
+    assertPerpsStudyConfig({
+      ...c,
+      version: 4,
+      protocol: "perps-sma-jev-exa-v1",
+      providerBudgetUSD: "0.50",
+    });
+    if (
+      c.protocol !== "perps-sma-jev-exa-all-markets-v1" ||
+      c.providerBudgetUSD !== "2.50" ||
+      c.markets.length !== 11 ||
+      new Set(c.markets.map((m) => m.symbol)).size !== 11 ||
+      new Set(c.markets.map((m) => m.marketId)).size !== 11 ||
+      c.markets.some(
+        (m) =>
+          !PERPL_LAB_SYMBOLS.includes(m.symbol) ||
+          !Number.isSafeInteger(m.marketId) ||
+          m.marketId <= 0,
+      ) ||
+      new Set(c.historicalUnknownReservations.map((a) => `${a.sessionId}:${a.roundKey}:${a.lane}`))
+        .size !== c.historicalUnknownReservations.length ||
+      c.historicalUnknownReservations.some(
+        (a) => !a.sessionId || a.sessionId === c.sessionId || !a.roundKey || !a.lane,
+      ) ||
+      !/^[a-f0-9]{64}$/.test(c.historicalBudget.recordHash) ||
+      u(c.historicalBudget.upperBoundUSD) < u(c.historicalBudget.databaseAccountedUSD) ||
+      u(c.historicalBudget.upperBoundUSD) < 0n ||
+      u(c.historicalBudget.databaseAccountedUSD) < 0n ||
+      u(c.historicalBudget.upperBoundUSD) + u(c.providerBudgetUSD) > u("5")
+    ) {
+      throw new PilotError(
+        "INVALID_INPUT",
+        "Frozen universe and verified campaign upper bound required",
+      );
+    }
+    return;
+  }
   if (c.version === 4) {
     if (
       c.protocol !== "perps-sma-jev-exa-v1" ||
@@ -123,6 +160,21 @@ export function perpsCallCost(
 ) {
   if (config.version === 3) {
     throw new PilotError("MODELS_DISABLED", "Original SMA cannot reserve model calls");
+  }
+  if (config.version === 5) {
+    const [base, symbol] = lane.split(":");
+    if (
+      !config.markets.some((m) => m.symbol === symbol) ||
+      !["sma-review", "news-review"].includes(base!)
+    ) {
+      throw new PilotError("MODEL_CONFIG_MISMATCH", "Asset-specific Jev lane required");
+    }
+    return perpsCallCost(
+      { ...config, version: 4, protocol: "perps-sma-jev-exa-v1", providerBudgetUSD: "0.50" },
+      base as PerpsCallLane,
+      input,
+      output,
+    );
   }
   if (
     !Number.isSafeInteger(input) ||
