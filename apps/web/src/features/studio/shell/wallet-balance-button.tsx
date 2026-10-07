@@ -1,6 +1,6 @@
 "use client";
 import Image from "next/image";
-import { BrandMark } from "@pickler/ui";
+import { BrandMark, Icon } from "@pickler/ui";
 import { formatUnits } from "../new-agent/model";
 import styles from "../new-agent/new-agent.module.css";
 
@@ -24,6 +24,7 @@ export function WalletBalanceButton({
       onClick={onClick}
     >
       <small className={styles.walletOwner}>Master wallet</small>
+      <Icon name="wallet" size={16} />
       <span className={styles.assetBalance}>
         <BrandMark name="ausd" size={16} />
         <span>
