@@ -385,3 +385,7 @@ Studio creator-access requests use the shared authenticated user identity, requi
 owner for submission, and require server-verified super-admin status for the team inbox. They never
 enable research, grant custody permissions or create wallets. Ports and policy live in
 `features/studio/access-requests.ts`; persistence and HTTP are adapters.
+
+## Local universe comparison
+
+Private operator Perpl configuration v2 permits the fixed eleven-asset laboratory catalog. PerpSymbol represents that internal union; v1 validation and public HTTP configuration remain BTC/ETH-only. This adds no plugin ID or deployed activation.
