@@ -878,7 +878,11 @@ Metrics and draft Overview/Build and live Build grids use explicit screen breakp
 sizes; they are not animated as if CSS could interpolate grid row counts or text wrapping.
 `scripts/design/sidebar-motion.mjs` checks both directions at 1440/1086/900/768px, DOM identity,
 fading labels, geometry synchronization, stable content measure and vertical placement, then
-resizes through the mobile and grid breakpoints. It is part of the Design rendered CI job and can
+resizes through the mobile and grid breakpoints. Frame capture stops when the requested sidebar
+state is committed and its CSS transitions finish, bounded to ten seconds; a fixed elapsed
+window is not proof of settled geometry on a slow CI runner. Endpoint failures save frames and
+local screenshot diagnostics. `DESIGN_CPU_SLOWDOWN=6 node scripts/design/sidebar-motion.mjs`
+reproduces slow-client scheduling while retaining the normal geometry assertions. It is part of the Design rendered CI job and can
 reuse an explicit loopback fixture with `DESIGN_BASE_URL`. Keep the account-menu acceptance for
 keyboard, mobile Sheet and profile-return interactions.
 
