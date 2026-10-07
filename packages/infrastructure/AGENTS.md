@@ -582,3 +582,7 @@ Perpetual study v4 jointly reserves sma-review, news-review and exa in existing 
 ## Explicit SMA continuation
 
 authorizeContinuation is a trusted explicit operator operation for interrupted SMA v4 sessions only. It rejects live ownership, partial execution, unknown consumption and reused authorization; reservations and portfolios are never reset. release records interruption only for its own owner, including an expired owner, and never alters a replacement owner.
+
+## Local universe comparison
+
+Private universe adapters explicitly enable bulk ticker/funding reads, a three-second guarded ticker cache and the existing trusted 24-request cap; default sessions remain twelve. Study v5 reserves only selected asset calls jointly, retains their full reservations and verifies the documentary historical campaign ceiling in existing JSONB. No migrations or public DTO changes.
