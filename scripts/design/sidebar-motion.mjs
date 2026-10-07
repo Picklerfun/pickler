@@ -1,9 +1,11 @@
 /** Frame-based regression for Studio chrome. Local fixtures only; no provider calls. */
 import assert from "node:assert/strict";
 import { tmpdir } from "node:os";
+import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { openBrowser } from "./lib/browser.mjs";
+import { saveBlocked } from "./lib/ready.mjs";
 import { BASE_URL, listening, start } from "./lib/servers.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
@@ -22,6 +24,15 @@ try {
   }
   browser = await openBrowser();
   const page = await browser.newPage({ viewport: { width: 1086, height: 1000 } });
+  const slowdown = Number(process.env.DESIGN_CPU_SLOWDOWN ?? 1);
+  assert.ok(
+    Number.isFinite(slowdown) && slowdown >= 1 && slowdown <= 8,
+    "CPU slowdown must be between 1 and 8",
+  );
+  if (slowdown > 1) {
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send("Emulation.setCPUThrottlingRate", { rate: slowdown });
+  }
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
 
@@ -67,8 +78,10 @@ try {
             avatar: bounds(avatar),
           };
           const samples = [];
+          const expectedState = group.dataset.state === "expanded" ? "collapsed" : "expanded";
           document.querySelector("[data-sidebar-toggle]").click();
           const start = performance.now();
+          let finished = false;
           do {
             await new Promise(requestAnimationFrame);
             samples.push({
@@ -90,11 +103,43 @@ try {
               ),
               overflow: document.documentElement.scrollWidth > innerWidth + 1,
             });
-          } while (performance.now() - start < 500);
-          return { baseline, samples };
+            // A slow React commit can begin the transition after a fixed 500ms capture ends.
+            // Read geometry first to flush styles, then wait for the actual CSS transitions.
+            const moving = group
+              .getAnimations({ subtree: true })
+              .some(
+                (animation) =>
+                  animation.constructor.name === "CSSTransition" &&
+                  (animation.playState === "running" || animation.pending),
+              );
+            finished = group.dataset.state === expectedState && !moving;
+          } while (!finished && performance.now() - start < 10_000);
+          return { baseline, samples, finished };
         }, prefix);
-        const { baseline, samples } = frames;
+        const { baseline, samples, finished } = frames;
         const context = `${stage}, ${width}px, ${direction}`;
+        const target = direction === "collapse" ? 64 : 218;
+        if (!finished || Math.abs(samples.at(-1).width - target) >= 0.5) {
+          const output = path.join(root, "scripts/design/.shots/diagnostics");
+          mkdirSync(output, { recursive: true });
+          const stem = `sidebar-${stage}-${width}-${direction}`;
+          writeFileSync(
+            path.join(output, `${stem}-frames.json`),
+            JSON.stringify(frames, null, 2) + "\n",
+          );
+          await saveBlocked(
+            page,
+            {
+              name: stem,
+              path: `/studio?stage=${stage}`,
+              proves: `#${prefix}-sidebar`,
+            },
+            { errors, consoleErrors: [] },
+            `Expected settled width ${target}px: ${context}`,
+            output,
+          );
+        }
+        assert.ok(finished, `Transitions finish within 10s: ${context}`);
         assert.ok(samples.length > 2, `Captured animation frames: ${context}`);
         assert.ok(
           samples.some((frame) => frame.width > 65 && frame.width < 217),
