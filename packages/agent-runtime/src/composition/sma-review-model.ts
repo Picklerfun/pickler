@@ -7,7 +7,12 @@ import {
   jevChoiceSchema,
   JevClientError,
 } from "@pickler/infrastructure/model-providers/jev";
-import { type SmaReviewModels, type PerpsSmaReviewConfig } from "@pickler/trading/evaluation";
+import {
+  type SmaReviewModels,
+  type PerpsSmaReviewConfig,
+  type PerpsSmaUniverseConfig,
+} from "@pickler/trading/evaluation";
+import { paperRisk } from "@pickler/trading/perps";
 import { perpsModelState } from "./perps-model-state.js";
 import { definePrompt } from "../prompts/define-prompt.js";
 const options = ["CONSISTENT", "CONTRADICTED", "UNKNOWN"] as const;
@@ -31,24 +36,38 @@ export const smaReviewDefinition = {
   version: "1.0.0",
   vetoThreshold: 0.9,
 };
+export const smaUniverseReviewPrompt = definePrompt({
+  ...smaReviewPrompt,
+  version: "1.1.0",
+  instructions: smaReviewPrompt.instructions.replace("BTC/ETH", "the identified Perpl instrument"),
+});
+export const smaUniverseReviewDefinition = {
+  ...smaReviewDefinition,
+  prompt: smaUniverseReviewPrompt,
+  version: "1.1.0",
+  context: "single-asset-with-own-portfolio-risk-v1",
+};
 export function createSmaReviewModels(
-  config: PerpsSmaReviewConfig,
+  config: PerpsSmaReviewConfig | PerpsSmaUniverseConfig,
   credentials: { jev: string; exa: string },
   guards: { exa(): Promise<void>; review(): Promise<void> },
   transport: typeof fetch = fetch,
 ): SmaReviewModels {
+  const prompt = config.version === 5 ? smaUniverseReviewPrompt : smaReviewPrompt;
   const exa = new ExaResearch(credentials.exa, transport);
   const labels: Record<string, string[]> = {};
   const questions: Record<string, unknown> = {};
   const shape: Record<string, z.ZodType> = {};
-  for (const symbol of ["BTC", "ETH"]) {
+  for (const symbol of config.version === 5
+    ? config.markets.map((m) => m.symbol)
+    : ["BTC", "ETH"]) {
     for (const [kind, question] of Object.entries(kinds)) {
       const key = `${symbol}_${kind}`;
       labels[key] = [...options];
       shape[key] = jevChoiceSchema(options);
       questions[key] = {
         type: "choice",
-        instructions: `${smaReviewPrompt.instructions} ${symbol}: ${question}`,
+        instructions: `${prompt.instructions} ${symbol}: ${question}`,
         criteria: {
           CONSISTENT: "No supplied material contradiction found; not approval.",
           CONTRADICTED: "A specific supplied material contradiction exists.",
@@ -57,13 +76,20 @@ export function createSmaReviewModels(
       };
     }
   }
-  return {
+  const adapter: SmaReviewModels = {
     metadata: {
-      prompt: smaReviewPrompt,
+      prompt,
       questions,
       model: config.jev.model,
       vetoThreshold: 0.9,
-      search: { type: "auto", lookbackHours: 24, results: 5, oneSearchPerProposedRound: true },
+      search: {
+        type: "auto",
+        lookbackHours: 24,
+        results: 5,
+        ...(config.version === 5
+          ? { oneSearchPerSelectedAsset: true }
+          : { oneSearchPerProposedRound: true }),
+      },
       perRequestDeadlineMs: 20000,
     },
     async news(context, parent, hooks) {
@@ -71,7 +97,24 @@ export function createSmaReviewModels(
       const cutoff = context.evidence.observedAt;
       const from = new Date(cutoff - 86400000).toISOString();
       const to = new Date(cutoff).toISOString();
-      const query = `Bitcoin BTC Ethereum ETH market news regulatory exchange outage ETF macroeconomic events ${from.slice(0, 10)} ${to.slice(0, 10)}`;
+      const symbol = context.evidence.frames[0]?.snapshot.market.symbol;
+      const names: Record<string, string> = {
+        BTC: "Bitcoin",
+        ETH: "Ethereum",
+        MON: "Monad",
+        SOL: "Solana",
+        HYPE: "Hyperliquid",
+        ZEC: "Zcash",
+        LIT: "Lighter",
+        VVV: "Venice",
+        PUMP: "pump.fun",
+        NEAR: "Near Protocol",
+        UNI: "Uniswap",
+      };
+      const query =
+        config.version === 5
+          ? `${names[symbol!] ?? symbol} ${symbol} cryptocurrency market news regulatory exchange outage ${from.slice(0, 10)} ${to.slice(0, 10)}`
+          : `Bitcoin BTC Ethereum ETH market news regulatory exchange outage ETF macroeconomic events ${from.slice(0, 10)} ${to.slice(0, 10)}`;
       const request = {
         ...exaSearchRequest(query),
         type: "auto",
@@ -107,9 +150,30 @@ export function createSmaReviewModels(
                 reason: "PUBLICATION_TIME_OUTSIDE_WINDOW_OR_UNKNOWN",
               });
             }
+            if (
+              valid &&
+              config.version === 5 &&
+              !(
+                `${source.title} ${source.content}`
+                  .toLowerCase()
+                  .includes(names[symbol!]!.toLowerCase()) ||
+                new RegExp(`\\b${symbol}\\b`, "i").test(`${source.title} ${source.content}`)
+              )
+            ) {
+              excluded.push({ id: source.id, reason: "ASSET_ATTRIBUTION_ABSENT" });
+              return false;
+            }
             return valid;
           })
-          .map((source) => ({ ...source, content: source.content.slice(0, 1800) }));
+          .map((source) => ({
+            ...source,
+            content:
+              config.version === 5
+                ? new TextDecoder()
+                    .decode(new TextEncoder().encode(source.content).slice(0, 1797))
+                    .replace(/\uFFFD$/, "")
+                : source.content.slice(0, 1800),
+          }));
         return { sources, excluded, cutoff };
       } catch (error) {
         if (signal.aborted) {
@@ -130,15 +194,33 @@ export function createSmaReviewModels(
       const deadline = AbortSignal.timeout(20000);
       const signal = AbortSignal.any([parent, deadline]);
       try {
+        const activeSymbols = new Set(context.evidence.frames.map((f) => f.snapshot.market.symbol));
+        const selected = (value: Record<string, unknown>) =>
+          config.version === 5
+            ? Object.fromEntries(
+                Object.entries(value).filter(([key]) =>
+                  activeSymbols.has(key.split("_")[0] as import("@pickler/core").PerpSymbol),
+                ),
+              )
+            : value;
+        const activeShape = selected(shape) as Record<string, z.ZodType>;
+        const activeLabels = selected(labels) as Record<string, string[]>;
         const result = await evaluateJev({
           apiKey: credentials.jev,
           payload: {
             model: config.jev.model,
-            state: { ...perpsModelState(context), proposals, news },
-            questions,
+            state: {
+              ...perpsModelState(context),
+              ...(config.version === 5
+                ? { portfolioRisk: paperRisk(context.account, [], context.evidence.observedAt) }
+                : {}),
+              proposals,
+              news,
+            },
+            questions: selected(questions),
           },
-          answersSchema: z.object(shape).strict(),
-          labels,
+          answersSchema: z.object(activeShape).strict(),
+          labels: activeLabels,
           signal,
           timeoutMs: 20000,
           maxRequestBytes: 30000,
@@ -178,5 +260,53 @@ export function createSmaReviewModels(
           : new PilotError("MODEL_TRANSPORT_FAILURE", "Jev transport failed");
       }
     },
+  };
+  if (config.version !== 5) {
+    return adapter;
+  }
+  const queues = { jev: limitedProvider(2), exa: limitedProvider(2) };
+  return {
+    ...adapter,
+    news: (context, signal, hooks) =>
+      queues.exa(signal, () => adapter.news(context, signal, hooks)),
+    review: (context, proposals, news, signal, hooks) =>
+      queues.jev(signal, () => adapter.review(context, proposals, news, signal, hooks)),
+  };
+}
+/** Waiting consumes the global model deadline; no queued request may start after cancellation. */
+function limitedProvider(max: number) {
+  let active = 0;
+  const waiting: { grant(): void; abort(): void }[] = [];
+  return async <T>(signal: AbortSignal, operation: () => Promise<T>): Promise<T> => {
+    signal.throwIfAborted();
+    await new Promise<void>((resolve, reject) => {
+      const ticket = {
+        grant() {
+          signal.removeEventListener("abort", ticket.abort);
+          active++;
+          resolve();
+        },
+        abort() {
+          const index = waiting.indexOf(ticket);
+          if (index >= 0) {
+            waiting.splice(index, 1);
+          }
+          reject(signal.reason);
+        },
+      };
+      if (active < max) {
+        ticket.grant();
+      } else {
+        waiting.push(ticket);
+        signal.addEventListener("abort", ticket.abort, { once: true });
+      }
+    });
+    try {
+      signal.throwIfAborted();
+      return await operation();
+    } finally {
+      active--;
+      waiting.shift()?.grant();
+    }
   };
 }
