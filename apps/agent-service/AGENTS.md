@@ -216,3 +216,7 @@ Read [SMA-ORIGINAL.md](SMA-ORIGINAL.md). Configuration v3 `perps-original-sma-v1
 ## Local SMA review comparison
 
 Read SMA-JEV-EXA.md for local v4 perps-sma-jev-exa-v1. One-shot synthetic validate uses an exclusive marker and run requires matching passed checks. Only PostgreSQL, public Perpl and explicitly authorized Jev/Exa are composed. Report/status call no providers. No automation, resume or real trading.
+
+## Explicit SMA continuation
+
+SMA v4 resume requires --allow-paid and a local operator-resume.json. It retains original checks, metadata, calls and portfolios and schedules only untouched slots with a new recorded clock segment. No automatic paid retry.
