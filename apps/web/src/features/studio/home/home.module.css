@@ -1061,3 +1061,18 @@
     flex-wrap: wrap;
   }
 }
+
+/* Preserve the brand link's accessible name while freeing narrow navbar space. */
+@media (max-width: 480px) {
+  .brand > span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+  }
+}
