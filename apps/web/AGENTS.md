@@ -882,7 +882,11 @@ resizes through the mobile and grid breakpoints. Frame capture stops when the re
 state is committed and its CSS transitions finish, bounded to ten seconds; a fixed elapsed
 window is not proof of settled geometry on a slow CI runner. Endpoint failures save frames and
 local screenshot diagnostics. `DESIGN_CPU_SLOWDOWN=6 node scripts/design/sidebar-motion.mjs`
-reproduces slow-client scheduling while retaining the normal geometry assertions. It is part of the Design rendered CI job and can
+reproduces slow-client scheduling while retaining the normal geometry assertions. Compact-hover
+capture begins on the real pointer-entry event; Web Animations inspects the actual CSS interpolation
+at one quarter of its duration, then resumes and checks natural completion and stationary-pointer
+geometry. This prevents missed RAF samples on busy runners from masquerading as instant expansion.
+Focus and exit checks also wait for actual CSS completion rather than fixed sleeps. It is part of the Design rendered CI job and can
 reuse an explicit loopback fixture with `DESIGN_BASE_URL`. Keep the account-menu acceptance for
 keyboard, mobile Sheet and profile-return interactions.
 
