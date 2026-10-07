@@ -210,7 +210,7 @@
 @media (max-width: 360px) {
   .top[data-agent-navbar] {
     gap: 4px;
-    padding-inline: 8px;
+    padding-inline: 6px;
   }
   .globalControls {
     gap: 4px;
