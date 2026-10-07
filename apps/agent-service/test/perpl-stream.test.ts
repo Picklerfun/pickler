@@ -203,11 +203,11 @@ test("repeated timestamp delays only public acquisition; BTC alone cannot return
     signal: new AbortController().signal,
     guard: async () => {},
     hash: () => "a".repeat(64),
-    snapshot: async (symbol: "BTC" | "ETH") => {
+    snapshot: async (symbol: string) => {
       clock += 1000;
       return studyFrame(symbol === "BTC" ? clock : now - 15000, symbol).snapshot;
     },
-    book: async (symbol: "BTC" | "ETH") => {
+    book: async (symbol: string) => {
       clock += 1000;
       return studyFrame(clock, symbol).book;
     },
