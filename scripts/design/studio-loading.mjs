@@ -45,6 +45,10 @@ const keys = [
 const envelope = (data) => ({ success: true, message: "Controlled response", data });
 const responses = {
   "/api/v1/profile": envelope(profile),
+  "/api/v1/handles/loadingcheck/availability": envelope({
+    handle: "loadingcheck",
+    available: true,
+  }),
   "/api/v1/signing/wallets/me": envelope(wallet),
   "/api/v1/signing/passkeys": envelope(keys),
   "/api/v1/studio/onboard": {},
@@ -122,6 +126,7 @@ try {
     "studio-error",
     "studio-missing-wallet",
     "studio-wallets",
+    "studio-markets",
   ]) {
     const context = await browser.newContext();
     await context.addCookies([
@@ -133,6 +138,9 @@ try {
     ]);
     const counts = new Map();
     let walletPhase = "initial";
+    let cataloguePhase = "ready";
+    let clientClockOffset = 0;
+    const catalogueCounts = new Map();
     await context.route("**/*", async (route) => {
       const url = new URL(route.request().url());
       if (!["localhost", "127.0.0.1"].includes(url.hostname)) {
@@ -146,6 +154,32 @@ try {
       await delay(250);
       let status = 200;
       let json = responses[url.pathname];
+      if (url.pathname === "/api/v1/studio/perpl/markets") {
+        const network = url.searchParams.get("network");
+        if (!["testnet", "mainnet"].includes(network)) {
+          errors.push(`Unexpected catalogue network: ${network}`);
+          return route.abort();
+        }
+        catalogueCounts.set(network, (catalogueCounts.get(network) ?? 0) + 1);
+        if (cataloguePhase === "failed") {
+          status = 503;
+          json = { error: "UNAVAILABLE", message: "Controlled catalogue failure" };
+        } else {
+          json = {
+            network,
+            observedAt: Date.now() + clientClockOffset,
+            markets: ["BTC", "ETH", "SOL"].map((symbol, index) => ({
+              marketId: 16 * (index + 1),
+              symbol,
+              name: `${symbol} Perp`,
+              collateral: { symbol: "AUSD", decimals: 6 },
+              status: "open",
+              available: true,
+              reasons: [],
+            })),
+          };
+        }
+      }
       if (url.pathname === "/api/v1/signing/wallets/me" && scenario === "studio-missing-wallet") {
         status = 404;
         json = { success: false, error: "not_found", message: "No wallet" };
@@ -198,6 +232,9 @@ try {
       return route.fulfill({ status, json });
     });
     const page = await context.newPage();
+    if (scenario === "studio-markets") {
+      await page.clock.install();
+    }
     page.on("pageerror", (error) => errors.push(error.message));
     const route = scenario.startsWith("studio") ? "/studio" : `/${scenario}`;
     await page.goto(`${base}${route}`);
@@ -206,6 +243,35 @@ try {
     } else if (scenario === "studio-error") {
       await page.getByText(/Controlled load failure/).waitFor();
       await page.getByRole("button", { name: /try again/i }).waitFor();
+    } else if (scenario === "studio-markets") {
+      const panel = page.getByRole("region", { name: "Trading markets" });
+      const name = page.getByRole("textbox", { name: "Name it", exact: true });
+      await page.getByRole("textbox", { name: "Its handle", exact: true }).fill("loadingcheck");
+      await name.fill("Preserved creator input");
+      const selector = panel.getByRole("button", { name: "Select trading markets" });
+      await selector.click();
+      await page.getByRole("menuitemcheckbox", { name: "ETH", exact: true }).click();
+      await page.keyboard.press("Escape");
+      await panel.getByRole("button", { name: "ETH · Remove", exact: true }).waitFor();
+      assert.equal(catalogueCounts.get("testnet"), 1);
+      // Expire the real client timer without waiting thirty seconds or changing the UI.
+      clientClockOffset = 31_000;
+      await page.clock.fastForward(clientClockOffset);
+      await panel.getByRole("alert").waitFor();
+      cataloguePhase = "failed";
+      await panel.getByRole("button", { name: "Retry catalogue" }).click();
+      await panel.getByRole("alert").waitFor();
+      assert.equal(await selector.isDisabled(), true);
+      assert.equal(await name.inputValue(), "Preserved creator input");
+      assert.equal(await panel.getByRole("button", { name: "ETH · Remove" }).count(), 1);
+      assert.equal(catalogueCounts.get("testnet"), 2);
+      cataloguePhase = "ready";
+      await panel.getByRole("button", { name: "Retry catalogue" }).click();
+      await selector.waitFor();
+      assert.equal(await selector.isEnabled(), true);
+      assert.equal(await name.inputValue(), "Preserved creator input");
+      assert.equal(await panel.getByRole("button", { name: "ETH · Remove" }).count(), 1);
+      assert.equal(catalogueCounts.get("testnet"), 3);
     } else if (scenario === "studio-wallets") {
       await page.getByTitle("Master wallet", { exact: true }).click();
       const modal = page.locator("#new-agent-wallets");
@@ -254,6 +320,13 @@ try {
       walletPhase = "mainnet";
       await refresh.click();
       await modal.getByText("MONAD MAINNET", { exact: true }).waitFor();
+      await page.waitForFunction(
+        () =>
+          document.querySelector(
+            '[aria-label="Trading markets"] button[aria-label="Select trading markets"]',
+          )?.disabled === false,
+      );
+      assert.equal(catalogueCounts.get("mainnet"), 1);
       assert.equal(await modal.getByText("MONAD TESTNET", { exact: true }).count(), 0);
       assert.equal(counts.get("/api/v1/studio/wallets"), before + 3);
 
@@ -292,7 +365,9 @@ try {
         endpoint,
       );
       let maximum = 2;
-      if (scenario === "studio-wallets" && walletRead) {
+      if (endpoint === "/api/v1/studio/perpl/markets" && scenario === "studio-markets") {
+        maximum = 3;
+      } else if (scenario === "studio-wallets" && walletRead) {
         maximum = 6;
       } else if (scenario === "studio-missing-wallet") {
         maximum = 4;
