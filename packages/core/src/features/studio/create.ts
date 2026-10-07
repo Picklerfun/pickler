@@ -63,13 +63,13 @@ export const STARTER_CAPS = { perTradeAusd: 5, perDayAusd: 20, maxLeverage: 1 } 
 export const MIN_START_MICRO_AUSD = 10_000_000n;
 export const MIN_START_MON_WEI = 500_000_000_000_000_000n;
 
-/** A draft's profile prose; the perps study's own is per strategy, so a draft states what it does. */
+/** Historical v1 profile prose; new drafts derive their prose from explicit selected markets. */
 export const DRAFT_PROFILE = "Paper trades BTC and ETH perpetuals on Perpl.";
 
 /** The working brief a new agent starts with: the canvas's Wire. */
 export const DEFAULT_BRIEF = {
   thesis:
-    "Headlines move BTC and ETH before the order book does. The edge is the 30 to 90 seconds between a credible headline and the first big print.",
+    "Headlines move the selected markets before the order book does. The edge is the 30 to 90 seconds between a credible headline and the first big print.",
   entersWhen: [
     "Two of my sources carry the same headline within 60s",
     "Price has moved less than 0.3% since the headline",
@@ -101,6 +101,7 @@ export interface CreateDraftInput {
   };
   caps: { perTradeAusd: number; perDayAusd: number; maxLeverage: number };
   walletId: string;
+  markets: string[];
 }
 
 /** What the draft's profile row gets: the avatar and the voice's name. */
@@ -135,7 +136,10 @@ export function webDerived(
  * Normalize, check, and build. Brief problems are `BriefError` (400 naming the section); caps,
  * voice, avatar and sources are `PilotError("INVALID_INPUT")`.
  */
-export function prepareDraft(input: CreateDraftInput): {
+export function prepareDraft(
+  input: CreateDraftInput,
+  network: import("../perps/types.js").PerpNetwork = "testnet",
+): {
   config: AgentConfig;
   profile: DraftProfile;
 } {
@@ -166,8 +170,9 @@ export function prepareDraft(input: CreateDraftInput): {
   assertMaxLeverage(input.caps.maxLeverage);
   const config: AgentConfig = {
     ...structuredClone(DEFAULT_CONFIG),
-    profile: DRAFT_PROFILE,
-    perpl: { version: 1, network: "testnet", markets: ["BTC", "ETH"] },
+    profile: `Paper trades ${input.markets.join(", ")} perpetuals on Perpl.`,
+    perpl: { version: 2, network, markets: [...input.markets] },
+    perpsStrategy: { id: "combined", version: "2.1.0" },
     perpsPaper: { version: 1, policy: "conservative-1x-v1" },
     ...webDerived(input.sources.web),
     sources: { web: copyWeb(input.sources.web), books: [] },
