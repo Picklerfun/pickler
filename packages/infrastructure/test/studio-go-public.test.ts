@@ -25,6 +25,7 @@ import { PostgresXStore } from "../src/studio/x-store.js";
 import { createTestStore } from "./database.js";
 
 const { config, profile } = prepareDraft({
+  markets: ["BTC", "ETH"],
   name: "Halftime",
   handle: "halftime",
   voice: "analyst",
