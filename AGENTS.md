@@ -183,10 +183,17 @@ Advice forecast configuration reuses the Research Worker’s MODEL_BASE_URL, MOD
 ## Perpetual strategy registry
 
 `@pickler/trading/strategies` exports four versioned perpetual strategy descriptors and their
-injected execution contract. These are strategy modules, not new harness plugin IDs. Evaluation uses version 1.0.0; Studio uses distinct version 2.0.0 with fixed creator sizing and
+injected execution contract. These are strategy modules, not new harness plugin IDs. Evaluation uses version 1.0.0; Studio preserves version 2.0.0 and uses version 2.1.0 for dynamic markets, with fixed creator sizing and
 transaction-fenced execution. See [Studio perpetual execution](docs/studio-perps-execution.md).
 See [Trading architecture](docs/trading-architecture.md) before adding a strategy or consumer.
 
 ## AI credit foundation
 
 Core owns user credit contracts and exact token pricing; infrastructure owns the private billing schema and transactional repository. API-schema carries portable credit DTOs, without endpoints. See [AI credits](docs/ai-credits.md). No commercial tariffs, checkout, runtime activation or USD/AUSD conversion are introduced. Keep user charges separate from provider cost reservations and historical budgets.
+
+## Dynamic Studio markets
+
+See the canonical selection/version, preservation and controlled acceptance boundaries below. No
+runtime activation is implied.
+
+See [agent-selected Perpl markets](docs/studio-perpl-markets.md).
