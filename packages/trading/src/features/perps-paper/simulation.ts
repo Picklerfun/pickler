@@ -32,6 +32,7 @@ export function validatePaperFrame(
   network: string,
   symbol: PerpSymbol,
   now: number,
+  reducing = false,
 ) {
   const { snapshot: s, book: b } = frame;
   if (
@@ -39,13 +40,17 @@ export function validatePaperFrame(
     s.market.symbol !== symbol ||
     b.market.symbol !== symbol ||
     s.market.marketId !== b.market.marketId ||
+    s.market.perpetualId !== b.market.perpetualId ||
+    s.market.instanceId !== b.market.instanceId ||
+    s.market.exchangeAddress !== b.market.exchangeAddress ||
+    s.market.collateral.address !== b.market.collateral.address ||
+    s.market.collateral.decimals !== b.market.collateral.decimals ||
     s.market.configVersion !== b.market.configVersion ||
     s.market.priceDecimals !== b.market.priceDecimals ||
     s.market.sizeDecimals !== b.market.sizeDecimals ||
     s.market.provenance.network !== network ||
     b.provenance.network !== network ||
-    !s.market.open ||
-    !b.market.open
+    (!reducing && (!s.market.open || !b.market.open))
   ) {
     failure("INVALID_MARKET_DATA");
   }
@@ -74,7 +79,20 @@ export function simulatePerpsFill(
   frame: PerpsPaperFrame,
   now: number,
 ): PerpsPaperFill {
-  validatePaperFrame(frame, account.scope.network, intent.symbol, now);
+  validatePaperFrame(frame, account.scope.network, intent.symbol, now, intent.kind === "close");
+  const held = account.positions.find(
+    (position) => position.symbol === intent.symbol && position.closedAt === null,
+  );
+  if (
+    held?.market &&
+    (held.market.marketId !== frame.snapshot.market.marketId ||
+      held.market.perpetualId !== frame.snapshot.market.perpetualId ||
+      held.market.instanceId !== frame.snapshot.market.instanceId ||
+      held.market.exchangeAddress !== frame.snapshot.market.exchangeAddress ||
+      held.market.collateral.address !== frame.snapshot.market.collateral.address)
+  ) {
+    failure("PERPL_MARKET_IDENTITY");
+  }
   const buying = (intent.kind === "open") === (intent.side === "long");
   const levels = buying ? frame.book.asks : frame.book.bids;
   if (!levels[0]) {
@@ -129,6 +147,9 @@ export function simulatePerpsFill(
   const fee = d(-u(paperCash(d((-notional * u(feeRate)) / S))));
   const average = (notional * S) / quantity;
   return {
+    ...(account.scope.sessionId === "product"
+      ? { market: structuredClone(frame.snapshot.market) }
+      : {}),
     quantity: d(quantity),
     price: d(average),
     notional: d(notional),
@@ -162,10 +183,24 @@ export function applyPaperObservation(
   const a = structuredClone(account);
   const movements: PerpsPaperMovement[] = [];
   for (const frame of observation.frames) {
-    validatePaperFrame(frame, a.scope.network, frame.snapshot.market.symbol, now);
+    validatePaperFrame(
+      frame,
+      a.scope.network,
+      frame.snapshot.market.symbol,
+      now,
+      a.positions.some((p) => p.symbol === frame.snapshot.market.symbol),
+    );
     for (const p of a.positions.filter(
       (p) => p.closedAt === null && p.symbol === frame.snapshot.market.symbol,
     )) {
+      if (
+        p.market &&
+        (p.market.marketId !== frame.snapshot.market.marketId ||
+          p.market.perpetualId !== frame.snapshot.market.perpetualId ||
+          p.market.collateral.address !== frame.snapshot.market.collateral.address)
+      ) {
+        failure("PERPL_MARKET_IDENTITY");
+      }
       if (p.markAt !== null && p.markAt > frame.snapshot.ticker.provenance.providerTimestamp!) {
         failure("OUT_OF_ORDER_MARK");
       }
@@ -178,6 +213,10 @@ export function applyPaperObservation(
     const history = observation.funding.find((h) => h.market.symbol === p.symbol);
     if (
       !history ||
+      (p.market !== undefined &&
+        (p.market.marketId !== history.market.marketId ||
+          p.market.perpetualId !== history.market.perpetualId ||
+          p.market.collateral.address !== history.market.collateral.address)) ||
       history.market.provenance.network !== a.scope.network ||
       !history.complete ||
       history.from > p.openedAt ||
