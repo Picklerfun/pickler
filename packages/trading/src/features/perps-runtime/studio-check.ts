@@ -48,6 +48,7 @@ export interface StudioPerpsDataSession {
   read(symbol: PerpSymbol): Promise<StudioInstrumentRead>;
   frame(symbol: PerpSymbol): Promise<PerpsPaperFrame>;
   funding(symbol: PerpSymbol, from: number, to: number): Promise<PerpFundingHistory>;
+  remainingRequests?(): number;
 }
 export interface StudioPerpsCheckDependencies {
   store: PerpsRuntimeRepository;
@@ -58,12 +59,17 @@ export interface StudioPerpsCheckDependencies {
     holder: { lease: PerpsCheckLease },
     signal: AbortSignal,
   ): PerpsProductPaperRepository;
-  data(scope: Scope, signal: AbortSignal): Promise<StudioPerpsDataSession>;
+  data(
+    scope: Scope,
+    signal: AbortSignal,
+    positions?: readonly import("../perps-paper/types.js").PerpsPaperPosition[],
+  ): Promise<StudioPerpsDataSession>;
   initialCash(productAgentId: string, signal: AbortSignal): Promise<string>;
   models: StudioPerpsModels;
   costs: StudioCostRepository;
   policy: StudioCostPolicy;
-  callPlans: readonly StudioCallPlan[];
+  callPlans: readonly StudioCallPlan[] | ((agent: AgentRecord) => readonly StudioCallPlan[]);
+  requestLimit?: number;
   web(
     web: NonNullable<NonNullable<AgentRecord["config"]["sources"]>["web"]>,
     signal: AbortSignal,
@@ -71,6 +77,7 @@ export interface StudioPerpsCheckDependencies {
       before(key: string, request: { sha256: string; bytes: number }): Promise<void>;
       usage(key: string, costMicros: string | null): Promise<void>;
     },
+    markets?: readonly PerpSymbol[],
   ): Promise<Source[]>;
   hash(document: unknown): string;
   now(): number;
@@ -96,6 +103,13 @@ function validateRead(read: StudioInstrumentRead, scope: PerpsPaperScope, now: n
   if (
     read.candles.market.symbol !== symbol ||
     read.candles.market.marketId !== read.frame.snapshot.market.marketId ||
+    read.candles.market.perpetualId !== read.frame.snapshot.market.perpetualId ||
+    read.candles.market.instanceId !== read.frame.snapshot.market.instanceId ||
+    read.candles.market.exchangeAddress !== read.frame.snapshot.market.exchangeAddress ||
+    read.candles.market.priceDecimals !== read.frame.snapshot.market.priceDecimals ||
+    read.candles.market.sizeDecimals !== read.frame.snapshot.market.sizeDecimals ||
+    read.candles.market.collateral.address !== read.frame.snapshot.market.collateral.address ||
+    read.candles.market.collateral.decimals !== read.frame.snapshot.market.collateral.decimals ||
     read.candles.market.provenance.network !== scope.network ||
     read.candles.resolution !== 3600 ||
     read.candles.missingOpenTimes.length ||
@@ -109,6 +123,24 @@ function validateRead(read: StudioInstrumentRead, scope: PerpsPaperScope, now: n
       "Studio needs sixty consecutive closed hourly candles",
     );
   }
+}
+/** Version 2.1 bounds projected web text in bytes, within the existing 4,000-character limit. */
+function sourceText(text: string, version: string): string {
+  const limited = text.slice(0, 4000);
+  if (version !== "2.1.0") {
+    return limited;
+  }
+  const encoder = new TextEncoder();
+  let result = "";
+  let bytes = 0;
+  for (const character of limited) {
+    bytes += encoder.encode(JSON.stringify(character)).length - 2;
+    if (bytes > 4000) {
+      break;
+    }
+    result += character;
+  }
+  return result;
 }
 /** Host-independent product coordination; strategy proposals never receive these dependencies. */
 export async function runStudioPerpsCheck(
@@ -169,8 +201,10 @@ export async function runStudioPerpsCheck(
       ? ["search-1", ...(config.sources!.web!.mode === "prefer" ? ["search-2"] : [])]
       : []),
   ];
+  const availablePlans =
+    typeof deps.callPlans === "function" ? deps.callPlans(agent) : deps.callPlans;
   const plans = keys.map((key) => {
-    const plan = deps.callPlans.find((p) => p.key === key);
+    const plan = availablePlans.find((p) => p.key === key);
     if (!plan) {
       throw new PilotError("COST_POLICY_INVALID", "Required reviewed call plan is missing");
     }
@@ -191,16 +225,19 @@ export async function runStudioPerpsCheck(
   const step = (text: string) => deps.store.appendStep(holder.lease, { text });
   const record = (key: string, document: unknown) =>
     deps.costs.evidence(costScope(), key, deps.hash(document), document);
+  let validatePaidEvidence = () => {};
   const calls = {
     async run<T>(
       lane: PerpsCallLane,
       operation: (hooks: PerpsModelHooks) => Promise<T>,
     ): Promise<T> {
       await guard();
+      validatePaidEvidence();
       try {
         return await operation({
           before: async (request) => {
             await guard();
+            validatePaidEvidence();
             await deps.costs.start(costScope(), lane, request);
             signal.throwIfAborted();
           },
@@ -229,7 +266,25 @@ export async function runStudioPerpsCheck(
       await guard();
       view = await paper.initialize(scope, agent.version, cash);
     }
-    const session = await deps.data(agentScope, signal);
+    const heldSymbols = [...new Set(view.account.positions.map((p) => p.symbol))];
+    const supervisedSymbols = [...new Set([...config.perpl.markets, ...heldSymbols])];
+    if (
+      deps.requestLimit !== undefined &&
+      1 +
+        5 * config.perpl.markets.length +
+        2 * heldSymbols.length +
+        4 *
+          supervisedSymbols.filter(
+            (symbol) => !config.perpl!.markets.some((market) => market === symbol),
+          ).length >
+        deps.requestLimit
+    ) {
+      throw new PilotError(
+        "DATA_UNAVAILABLE",
+        "The complete market set exceeds the existing public transport limit. Select fewer markets.",
+      );
+    }
+    const session = await deps.data(agentScope, signal, view.account.positions);
     const reads: StudioInstrumentRead[] = [];
     for (const symbol of config.perpl.markets) {
       await guard();
@@ -238,21 +293,45 @@ export async function runStudioPerpsCheck(
     for (const read of reads) {
       validateRead(read, scope, deps.now());
     }
+    if (strategy.version === "2.1.0") {
+      validatePaidEvidence = () => {
+        for (const read of reads) {
+          validateRead(read, scope, deps.now());
+        }
+      };
+    }
+    const heldFrames: PerpsPaperFrame[] = [];
+    for (const symbol of heldSymbols.filter(
+      (symbol) => !config.perpl!.markets.some((market) => market === symbol),
+    )) {
+      await guard();
+      const frame = await session.frame(symbol);
+      validatePaperFrame(frame, scope.network, symbol, deps.now(), true);
+      heldFrames.push(frame);
+    }
+    const fundingRange = (current: PerpsPaperView, symbol: PerpSymbol, deadline = false) => {
+      const positions = current.account.positions.filter((position) => position.symbol === symbol);
+      const from = Math.min(...positions.map((position) => position.openedAt));
+      // Historical Studio keeps its original ranges. Dynamic positions cease accruing at exit.
+      const end =
+        strategy.version === "2.1.0" && positions.every((position) => position.closedAt !== null)
+          ? Math.max(...positions.map((position) => position.closedAt!))
+          : deps.now() + (deadline ? 180000 : 0);
+      return { from, end };
+    };
     const reconcileFunding = async (current: PerpsPaperView) => {
       const funding: PerpFundingHistory[] = [];
       for (const symbol of new Set(current.account.positions.map((p) => p.symbol))) {
         await guard();
-        const from = Math.min(
-          ...current.account.positions.filter((p) => p.symbol === symbol).map((p) => p.openedAt),
-        );
-        funding.push(await session.funding(symbol, from, deps.now()));
+        const { from, end } = fundingRange(current, symbol);
+        funding.push(await session.funding(symbol, from, end));
       }
       return funding;
     };
     const funding = await reconcileFunding(view);
     await guard();
     view = await paper.observe(scope, `check:${check.id}:funding`, {
-      frames: reads.map((r) => r.frame),
+      frames: [...reads.map((r) => r.frame), ...heldFrames],
       funding,
     });
     const enforceExits = async (frames: PerpsPaperFrame[]) => {
@@ -278,7 +357,7 @@ export async function runStudioPerpsCheck(
             );
         if (reason) {
           await guard();
-          validatePaperFrame(frame, scope.network, position.symbol, deps.now());
+          validatePaperFrame(frame, scope.network, position.symbol, deps.now(), true);
           const closed = await paper.closePosition(scope, position.id, reason, frame);
           view = closed.view;
           if (closed.closed) {
@@ -290,31 +369,11 @@ export async function runStudioPerpsCheck(
         await deps.store.pauseAgent(check.productAgentId, "Paused itself · day-loss stop");
       }
     };
-    await enforceExits(reads.map((read) => read.frame));
-    let documents: Source[] = [];
-    if (searchEnabled) {
-      requireTool(config, "searchWeb");
-      documents = await deps.web(config.sources!.web!, signal, {
-        before: async (key, request) => {
-          await guard();
-          await deps.costs.start(costScope(), key, request);
-          signal.throwIfAborted();
-        },
-        usage: async (key, costMicros) => {
-          if (costMicros === null) {
-            await deps.costs.unknown(costScope(), key);
-            throw new PilotError("COST_UNKNOWN", "Search cost is unknown");
-          }
-          await deps.costs.complete(costScope(), key, { costMicros });
-        },
-      });
-    }
-    for (const read of reads) {
-      validateRead(read, scope, deps.now());
-    }
-    const context: StudioPerpsContext = {
+    await enforceExits([...reads.map((read) => read.frame), ...heldFrames]);
+    const makeContext = (documents: Source[]): StudioPerpsContext => ({
       protocol: "studio-perps-strategy-v2",
-      markets: [...config.perpl.markets],
+      strategyVersion: strategy.version,
+      markets: [...config.perpl!.markets],
       evidence: {
         observedAt: deps.now(),
         frames: reads.map((r) => r.frame),
@@ -327,14 +386,82 @@ export async function runStudioPerpsCheck(
           ...documents.map((s) => s.id),
         ],
       },
-      account: view.account,
-      brief: config.brief,
+      account: view!.account,
+      brief: config.brief!,
       sources: config.sources ?? { web: null, books: [] },
       documents: documents.map((source) => ({
         id: source.id,
-        text: source.content.slice(0, 4000),
+        text: sourceText(source.content, strategy.version),
       })),
-    };
+    });
+    if (strategy.version === "2.1.0" && session.remainingRequests) {
+      const finalFundingPages = heldSymbols.reduce((sum, symbol) => {
+        const market = [...reads.map((read) => read.frame), ...heldFrames].find(
+          (frame) => frame.snapshot.market.symbol === symbol,
+        )!.snapshot.market;
+        const { from, end } = fundingRange(view!, symbol, true);
+        const span = market.fundingIntervalSeconds * 1000 * 1023;
+        // Reserve the existing three-minute execution deadline, including boundary crossings.
+        return sum + Math.max(1, Math.ceil((end - from) / span));
+      }, 0);
+      const finalRequests = 2 * supervisedSymbols.length + finalFundingPages + 2;
+      if (finalRequests > session.remainingRequests()) {
+        throw new PilotError(
+          "DATA_UNAVAILABLE",
+          "Complete execution and funding would exceed the existing public transport limit",
+        );
+      }
+    }
+    if (strategy.version === "2.1.0" && strategy.id !== "rules") {
+      const capabilities =
+        strategy.id === "jev"
+          ? ["decide" as const]
+          : strategy.id === "deepseek"
+            ? ["direct" as const]
+            : ["direct" as const, "review" as const];
+      // The adapter accepts at most ten sources; v2.1 projections are bounded to 4,000 UTF-8 bytes each.
+      const maximumSources: Source[] = searchEnabled
+        ? Array.from({ length: 10 }, (_, index) => ({
+            id: `reserved-web-reference-${index}`,
+            url: "https://example.com",
+            title: "",
+            content: "x".repeat(4000),
+            truncated: true,
+            retrievedAt: new Date(deps.now()).toISOString(),
+            publishedAt: null,
+            provider: "exa",
+          }))
+        : [];
+      deps.models.preflight?.(makeContext(maximumSources), capabilities);
+    }
+    let documents: Source[] = [];
+    if (searchEnabled) {
+      requireTool(config, "searchWeb");
+      documents = await deps.web(
+        config.sources!.web!,
+        signal,
+        {
+          before: async (key, request) => {
+            await guard();
+            validatePaidEvidence();
+            await deps.costs.start(costScope(), key, request);
+            signal.throwIfAborted();
+          },
+          usage: async (key, costMicros) => {
+            if (costMicros === null) {
+              await deps.costs.unknown(costScope(), key);
+              throw new PilotError("COST_UNKNOWN", "Search cost is unknown");
+            }
+            await deps.costs.complete(costScope(), key, { costMicros });
+          },
+        },
+        strategy.version === "2.1.0" ? config.perpl.markets : undefined,
+      );
+    }
+    for (const read of reads) {
+      validateRead(read, scope, deps.now());
+    }
+    const context = makeContext(documents);
     await record("decision-input", context);
     const proposals = await executeStudioPerpsStrategy(strategy, context, {
       models: deps.models,
@@ -345,18 +472,30 @@ export async function runStudioPerpsCheck(
     await guard();
     // Validate the complete refreshed package before the first strategy action.
     const executionFrames: PerpsPaperFrame[] = [];
-    for (const symbol of config.perpl.markets) {
+    for (const symbol of supervisedSymbols) {
       executionFrames.push(await session.frame(symbol));
     }
     for (const frame of executionFrames) {
-      validatePaperFrame(frame, scope.network, frame.snapshot.market.symbol, deps.now());
+      validatePaperFrame(
+        frame,
+        scope.network,
+        frame.snapshot.market.symbol,
+        deps.now(),
+        !config.perpl.markets.some((market) => market === frame.snapshot.market.symbol),
+      );
     }
     await record("execution-input", executionFrames);
     await guard();
     const finalFunding = await reconcileFunding(await paper.view(scope));
     await guard();
     for (const frame of executionFrames) {
-      validatePaperFrame(frame, scope.network, frame.snapshot.market.symbol, deps.now());
+      validatePaperFrame(
+        frame,
+        scope.network,
+        frame.snapshot.market.symbol,
+        deps.now(),
+        !config.perpl.markets.some((market) => market === frame.snapshot.market.symbol),
+      );
     }
     view = await paper.observe(scope, `check:${check.id}:final-funding`, {
       frames: executionFrames,

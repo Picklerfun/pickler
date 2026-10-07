@@ -104,6 +104,9 @@ export function setupChangeSummary(prev: AgentConfig, next: AgentConfig): string
   ) {
     parts.push(capsPart(next));
   }
+  if (!same(prev.perpl?.markets, next.perpl?.markets)) {
+    parts.push(`Markets ${next.perpl?.markets.join(", ") ?? "none"}`);
+  }
   if (!same(prev.sources, next.sources)) {
     parts.push("Sources changed");
   }

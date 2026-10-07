@@ -198,4 +198,13 @@ the trading registry owns their routing. Prompts, hashes, provider/model configu
 transport limits remain unchanged. Keep readiness for historical v1 only; it is not the v2
 `combined` strategy. Never construct a parallel strategy registry or financial policy here.
 
-Studio model adapters live in `composition/studio-perps-models.ts`. Their forecast and atomic Jev prompts are version 2.0.0, separate from laboratory prompts and advice. Every transport awaits the injected before-call hook and records verified model token usage; no repair or retry is permitted. Atomic condition support retains the 0.7 threshold, material review retains the 0.9 threshold; neither is a financial probability. Composition of these adapters alone does not enable the product.
+Studio model adapters live in `composition/studio-perps-models.ts`. Their forecast and atomic Jev prompts preserve version 2.0.0 and add dynamic version 2.1.0, separate from laboratory prompts and advice. Every transport awaits the injected before-call hook and records verified model token usage; no repair or retry is permitted. Atomic condition support retains the 0.7 threshold, material review retains the 0.9 threshold; neither is a financial probability. Composition of these adapters alone does not enable the product.
+
+## Dynamic Studio markets
+
+Studio adapters select immutable 2.0.0 or dynamic 2.1.0 prompt snapshots, source queries and
+response schemas from configuration. Model-input preflight is pure; actual calls retain reviewed
+rates/reservations and pre-transport recording. One Perpl session budget covers selected and
+persisted position reads. No new plugin identity or alternative decision executor.
+
+See [agent-selected Perpl markets](../../docs/studio-perpl-markets.md).

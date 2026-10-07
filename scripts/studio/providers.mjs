@@ -10,7 +10,7 @@ const status = JSON.parse(await readFile(join(directory, "status.json"), "utf8")
 const database = new URL(status.DB_URL);
 if (
   database.hostname !== "127.0.0.1" ||
-  database.port !== "55522" ||
+  !["55522", "55532"].includes(database.port) ||
   database.pathname !== "/postgres" ||
   database.search
 ) {
@@ -59,7 +59,7 @@ function perpl(url) {
   }
   const units = 10 ** market.config.price_decimals;
   const price = (market.size_units === "BTC" ? 60000 : 3000) * units;
-  if (scenario === "stale") {
+  if (scenario === "stale" || (scenario === "partial" && market.size_units === "SOL")) {
     at.t -= 60000;
   }
   if (url.pathname.endsWith("/ticker")) {
@@ -102,7 +102,7 @@ function perpl(url) {
     const d = [];
     for (let t = from, i = 0; t <= to; t += resolution * 1000, i++) {
       const slope =
-        scenario === "close" && market.size_units === "ETH"
+        scenario === "close" && market.size_units !== "BTC"
           ? 0
           : market.size_units === "BTC"
             ? 20
@@ -274,6 +274,7 @@ const server = createServer(async (req, res) => {
               "close",
               "veto",
               "stale",
+              "partial",
               "uncertain",
               "format",
               "transport",

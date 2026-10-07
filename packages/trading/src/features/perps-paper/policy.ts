@@ -53,7 +53,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 export function assertPaperIntent(intent: PerpsPaperIntent) {
   if (
     !["open", "close"].includes(intent.kind) ||
-    !["BTC", "ETH"].includes(intent.symbol) ||
+    !/^[A-Z0-9][A-Z0-9._-]{0,31}(?![\s\S])/.test(intent.symbol) ||
     !["long", "short"].includes(intent.side) ||
     u(intent.notional) < 0n ||
     u(intent.feeReserve) < 0n ||
@@ -130,7 +130,7 @@ export function paperRisk(
     available = u(account.cash) - margin - reserved;
   }
   const reasons: string[] = [];
-  const closeSymbols = new Set<"BTC" | "ETH">();
+  const closeSymbols = new Set<string>();
   if (equity === null && !product) {
     reasons.push("UNKNOWN_MARKS");
   }
@@ -333,6 +333,9 @@ export function applyPaperFill(
     };
     if (isProductPaperSession(a.scope)) {
       const leverage = attempt.intent.leverage ?? 1;
+      if (fill.market) {
+        position.market = structuredClone(fill.market);
+      }
       position.leverage = leverage;
       position.margin = d(u(fill.notional) / BigInt(leverage));
       position.checkId = attempt.intent.checkId ?? null;

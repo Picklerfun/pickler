@@ -1,0 +1,60 @@
+.panel {
+  composes: pk-panel from global;
+  padding: 24px;
+  display: grid;
+  gap: 12px;
+}
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.head h3 {
+  margin: 0;
+  font-size: 18px;
+  color: var(--pk-ink);
+}
+.panel p,
+.detail,
+.empty,
+.selected > span {
+  margin: 0;
+  color: var(--pk-ink-muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+.selected {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.trigger {
+  width: 100%;
+  justify-content: space-between;
+}
+.placeholder {
+  width: 100%;
+}
+.menu {
+  width: var(--radix-dropdown-menu-trigger-width);
+}
+.search {
+  padding: 8px;
+}
+.options {
+  max-height: 240px;
+  overflow-y: auto;
+}
+.option {
+  display: grid;
+  gap: 2px;
+  padding-block: 4px;
+}
+.detail {
+  overflow-wrap: anywhere;
+}
+.empty {
+  padding: 12px;
+}

@@ -47,6 +47,7 @@ export interface PerpsBackground {
     network: PerpNetwork,
     symbol: PerpSymbol,
     signal: AbortSignal,
+    market?: import("@pickler/core").PerpMarketInfo,
   ): Promise<PerpsPaperFrame>;
   funding?(
     network: PerpNetwork,
@@ -54,6 +55,7 @@ export interface PerpsBackground {
     from: number,
     to: number,
     signal: AbortSignal,
+    market?: import("@pickler/core").PerpMarketInfo,
   ): Promise<PerpFundingHistory>;
   check(check: PerpsCheck, holder: PerpsLeaseHolder, signal: AbortSignal): Promise<unknown>;
   close(): Promise<void>;
@@ -218,9 +220,17 @@ export async function reconcilePerpsPositions(runtime: PerpsBackground, signal: 
             from,
             (runtime.clock ?? Date.now)(),
             signal,
+            view.account.positions.find((position) => position.symbol === symbol)?.market,
           ),
         );
-        frames.push(await runtime.exitFrame(item.scope.network, symbol, signal));
+        frames.push(
+          await runtime.exitFrame(
+            item.scope.network,
+            symbol,
+            signal,
+            view.account.positions.find((position) => position.symbol === symbol)?.market,
+          ),
+        );
       }
       holder.lease = await runtime.store.renewAgent(holder.lease);
       const observed = await paper.observe(item.scope, `supervision:${claim.check.id}`, {
@@ -305,7 +315,7 @@ export async function runExits(runtime: PerpsBackground, signal: AbortSignal): P
       const key = `${scope.network}:${position.symbol}`;
       let frame = frames.get(key);
       if (!frame) {
-        frame = runtime.exitFrame(scope.network, position.symbol, signal);
+        frame = runtime.exitFrame(scope.network, position.symbol, signal, position.market);
         frames.set(key, frame);
       }
       holder.lease = await runtime.store.renewAgent(holder.lease);

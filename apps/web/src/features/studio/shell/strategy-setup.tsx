@@ -53,8 +53,8 @@ export function StrategySetup({
         </select>
       </label>
       <p className={styles.hint}>
-        Version 2.0.0. A change requires a new preparation check. Models propose actions; your caps
-        and exits still apply.
+        Version {agent.config.perpl?.version === 2 ? "2.1.0" : "2.0.0"}. A change requires a new
+        preparation check. Models propose actions; your caps and exits still apply.
       </p>
       {clearsConditions && (
         <p className={styles.notice}>
@@ -71,7 +71,10 @@ export function StrategySetup({
             return;
           }
           void save({
-            perpsStrategy: { id: selected, version: "2.0.0" },
+            perpsStrategy: {
+              id: selected,
+              version: agent.config.perpl?.version === 2 ? "2.1.0" : "2.0.0",
+            },
             ...(clearsConditions && brief
               ? { brief: { thesis: brief.thesis, entersWhen: [], exitsWhen: [], never: [] } }
               : {}),

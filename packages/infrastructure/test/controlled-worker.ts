@@ -4,11 +4,13 @@ export function assertControlledDatabaseUrl(connectionString: string): void {
   if (
     !["postgres:", "postgresql:"].includes(url.protocol) ||
     url.hostname !== "127.0.0.1" ||
-    url.port !== "55522" ||
+    !["55522", "55532"].includes(url.port) ||
     url.pathname !== "/postgres" ||
     url.search !== ""
   ) {
-    throw new Error("Controlled tests require the dedicated Supabase database on 127.0.0.1:55522");
+    throw new Error(
+      "Controlled tests require the dedicated Supabase database on 127.0.0.1:55522 or 55532",
+    );
   }
 }
 
@@ -49,7 +51,10 @@ export function installControlledStudioTransport(
     const request = new Request(input, init);
     request.signal.throwIfAborted();
     const url = new URL(request.url);
-    if (url.origin === "http://127.0.0.1:55521" && url.pathname.startsWith("/auth/v1/")) {
+    if (
+      ["http://127.0.0.1:55521", "http://127.0.0.1:55531"].includes(url.origin) &&
+      url.pathname.startsWith("/auth/v1/")
+    ) {
       return noRedirect(await transport(new Request(request, { redirect: "manual" })));
     }
     if (url.origin === "http://127.0.0.1:8798" && url.pathname === "/rpc") {

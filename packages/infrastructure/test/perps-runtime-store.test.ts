@@ -310,6 +310,7 @@ async function setup(t: TestContext) {
   await studio.onboard(owner);
   const access = (await studio.access(owner, null))!;
   const { config } = prepareDraft({
+    markets: ["BTC", "ETH"],
     name: "Trader",
     handle: "trader",
     voice: "analyst",
@@ -1546,7 +1547,7 @@ test("Studio v2 composes the shared strategy, call ledger and simulator without 
   const config = {
     ...f.config,
     perpl: { ...f.config.perpl!, markets: ["BTC" as const] },
-    perpsStrategy: { id: "deepseek" as const, version: "2.0.0" as const },
+    perpsStrategy: { id: "deepseek" as const, version: "2.1.0" as const },
     entry: { mode: "auto" as const, meanwhile: "wait" as const, smallAusd: 1 },
     brief: { thesis: "controlled", reads: [], entersWhen: ["trend"], exitsWhen: [], never: [] },
   };

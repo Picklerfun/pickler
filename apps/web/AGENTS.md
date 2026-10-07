@@ -727,7 +727,7 @@ available; no new web business endpoint is introduced.
 
 ## Studio strategy version 2
 
-Studio setup selects a versioned common strategy; absent selection resolves combined@2.0.0.
+Studio setup selects a versioned common strategy; legacy absent selection resolves combined@2.0.0; new agents use combined@2.1.0.
 New check results expose `strategyResult` with per-market proposals, three-state brief findings,
 execution outcomes, funding status and incompleteness. Historical fields retain their recorded
 values and are null/empty for new results rather than fabricated percentages. Model costs remain
@@ -804,9 +804,10 @@ agent switcher and the selected agent wallet’s AUSD/MON balances. The status a
 the agent name in the content header. On small screens the official mobile Sheet contains vertical navigation. Moving
 that switcher must preserve its permissions, agent IDs and New agent callback. The draft status
 is rendered once in the content header. Desktop header controls stay on one row during account expansion; the account
-chip may shrink to the available width and its icon never leaves the pointer. At widths of 640px
-or less, hover expansion is disabled and wrapping remains available. The 360ms expansion reverses
-once on pointer exit, rather than repeatedly entering/leaving a relocated icon.
+chip may shrink to the available width and its icon never leaves the pointer. Fine-pointer hover
+also reveals the username on narrow screens; touch screens open the menu without hover expansion.
+The selected-agent navbar keeps its controls on one row. The 360ms expansion reverses once on
+pointer exit, rather than repeatedly entering/leaving a relocated icon.
 
 Account profile links include a local `returnTo` carrying the active agent, section and any
 non-production preview stage. `shell/account-return.ts` accepts only the Studio home path for
@@ -853,8 +854,18 @@ Use the package public subpaths, never relative imports into the UI package. See
 
 The shell is a chrome wrapper with a global header, a body containing Sidebar and a single main
 content landmark, and portal dialogs. The pending frame follows the same landmark hierarchy.
-The global wallet/credits/account group stays on one row; below 640px that group occupies an
-explicit second header row. Sidebar state never changes navbar dimensions.
+The selected-agent navbar keeps the global wallet/credits/account controls on one row at every
+supported width. At 768px and below, the brand shows only its logo while retaining the link's
+accessible name. At 640px and below, wallet and credits become labelled 38px icon buttons opening
+the same existing dialogs; the wallet's accessible name retains its actual balances. Fine-pointer
+hover and keyboard focus reveal each label to the left with the account chip's 360ms expansion.
+The disclosure icon stays anchored; preceding controls slide within the same row. Compact wallet
+balances use two asset rows; credits show their label and status. The network badge contracts to
+a dot while revealing wallet, credits or profile, retaining its accessible name and tooltip.
+Compact profile labels retain ellipsis for long handles and the same anchored avatar. Touch only
+opens the existing dialog, without sticky hover; reduced motion disables these transitions. Network and account
+controls remain visible. Do not force a second controls row or hide an actionable control
+to make the selected-agent header fit. Sidebar state never changes navbar dimensions.
 
 The body is an inline-size container. The desktop reading measure is derived from its full width,
 the configured expanded sidebar width and main padding, capped at 1120px. Collapsing navigation
@@ -867,7 +878,18 @@ Metrics and draft Overview/Build and live Build grids use explicit screen breakp
 sizes; they are not animated as if CSS could interpolate grid row counts or text wrapping.
 `scripts/design/sidebar-motion.mjs` checks both directions at 1440/1086/900/768px, DOM identity,
 fading labels, geometry synchronization, stable content measure and vertical placement, then
-resizes through the mobile and grid breakpoints. It is part of the Design rendered CI job and can
+resizes through the mobile and grid breakpoints. Frame capture stops when the requested sidebar
+state is committed and its CSS transitions finish, bounded to ten seconds; a fixed elapsed
+window is not proof of settled geometry on a slow CI runner. Endpoint failures save frames and
+local screenshot diagnostics. `DESIGN_CPU_SLOWDOWN=6 node scripts/design/sidebar-motion.mjs`
+reproduces slow-client scheduling while retaining the normal geometry assertions. Compact-hover
+capture begins on the real pointer-entry event; Web Animations inspects the actual CSS interpolation
+at one quarter of its duration, then resumes and checks natural completion and stationary-pointer
+geometry. This prevents missed RAF samples on busy runners from masquerading as instant expansion.
+Focus and exit checks also wait for actual CSS completion rather than fixed sleeps. A controlled
+17px layout gutter additionally covers classic scrollbars at 320px; smallest-screen header gaps
+and padding leave room for the complete wallet balances. Content failures retain measured widths,
+font information, frames and screenshots rather than relaxing the visibility assertion. It is part of the Design rendered CI job and can
 reuse an explicit loopback fixture with `DESIGN_BASE_URL`. Keep the account-menu acceptance for
 keyboard, mobile Sheet and profile-return interactions.
 
@@ -898,6 +920,11 @@ updates cancel in-flight reads and restart loading. Keep the component cleanup g
 session cookies and delayed API responses on dedicated loopback ports 3012/8812. It verifies
 completed reads, bounded request counts, visible failure and missing-wallet redirection without
 `?stage=`. This is a client regression test, not backend authorization or live-provider acceptance.
+Its controlled catalogue responses resolve the requested testnet/mainnet network and timestamp
+against the test clock. Catalogue expiry, read failure and explicit retry preserve the form and
+selected markets; unknown API paths and all external requests remain failures. The browser
+route-readiness acceptance proves the avatar dialog opens through React on cold and delayed
+hydration, without opening it from the test or weakening its `[open]` route proof.
 
 ## Wallet ownership and transfers
 
@@ -920,3 +947,21 @@ its own official mark. Unknown amounts use Skeletons, not zero. The balance row 
 and fades/contracts with the existing sidebar motion; it is hidden from assistive technology
 when the desktop rail is collapsed. Status stays in the content header beside the agent name,
 alongside published-agent controls.
+
+## Dynamic Studio markets
+
+The shared shell/trading-markets selector is used by new, draft and live Sources & rules. It
+composes shadcn DropdownMenu checkbox items with catalogue search and removable selected chips.
+The menu exposes every returned market, including disabled rows with their blocking reasons;
+multiple selections keep it open. Radix owns navigation, dismissal and focus restoration.
+Preserve
+forms/selections on read failures, use Skeletons and explicit retry, and never auto-select real
+markets. Console distinguishes loading/read-error/confirmed-disabled/available; chat remains
+non-actionable. Preview catalogue fixtures are not functional acceptance. The testnet selector preview uses the
+public capture in `shell/perpl-testnet-catalogue.fixture.json`, obtained through PerplMarketData's
+production catalogue adapter. Its preview clock is synthetic; never use that capture as a live
+fallback or as evidence of current market availability. Production reads the protected Studio
+catalogue endpoint, which fetches Perpl's original public context. The navbar wallet icon identifies
+the master balance group; AUSD and MON retain their separate asset marks.
+
+See [agent-selected Perpl markets](../../docs/studio-perpl-markets.md).

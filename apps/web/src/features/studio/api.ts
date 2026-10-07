@@ -528,3 +528,10 @@ export const stopPerps = (agentId: string, key: string) =>
  */
 export const perpsAction = (actionId: string, signal?: AbortSignal) =>
   studioApi<PerpsActionDto>(`/perps/actions/${actionId}`, signal ? { signal } : {});
+
+/** Server catalogue; never execution identifiers or provider configuration. */
+export const studioPerplMarkets = (network: "testnet" | "mainnet", signal?: AbortSignal) =>
+  studioApi<import("@pickler/api-schema").PerplMarketCatalogDto>(
+    `/perpl/markets?network=${network}`,
+    signal ? { signal } : {},
+  );

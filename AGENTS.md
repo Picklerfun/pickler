@@ -87,6 +87,12 @@ Run `npm run format` to format files and `npm run format:check` to verify them. 
 
 Colours, fonts, radii and shadows in `apps/web` and `packages/ui` come from `--pk-*` tokens in `packages/ui/src/styles.css`. `npm run design:source` is the static check over both source trees and exits 1 on any violation. `npm run design:check` runs it, then starts the fixture API and the web app on ports 8799 and 3001 and runs the rendered checks (surfaces, tokens, contrast, type) over every route in `scripts/design/routes.mjs`. The token check reads background colours and images, text, borders, box and text shadows, drop-shadow filters, drawn outlines and SVG fill and stroke, and compares each against the tokens of the element's own `[data-surface]`. It needs Playwright installed globally, never in `package.json`. The `Design` workflow (`.github/workflows/design.yml`) runs the static check and the harness unit tests on every pull request, and runs `npm run design:check` in a second job with Playwright installed on the runner.
 
+Rendered Design checks wait up to ten seconds for each route's exact proof selector before
+measuring it. Missing proofs and client exceptions still fail. Local controlled failures save
+URL/selector, browser errors and screenshots in `scripts/design/.shots/diagnostics/`, uploaded
+alongside server logs by CI; never capture deployed accounts. The rendered job also runs
+`node scripts/design/route-readiness.mjs` for cold/delayed avatar hydration and negative proofs.
+
 Write one statement per line and separate logical phases with blank lines. Expand schemas, transaction blocks and complex callbacks for readability. Prefer named predicates or explicit branches over nested ternaries. Write long SQL queries as multiline template literals without changing query semantics or parameter order. Separate test setup, action and assertions visually. Keep formatting-only changes distinguishable from behavior changes; do not add abstractions solely to satisfy a line-length target.
 
 PostgreSQL is hosted by Supabase in deployed environments. Drizzle and database clients belong only in infrastructure. Use direct or session-pooler connections. Research ownership uses renewable per-run leases; concurrency admission uses a short transaction. Never expose `pickler`, `pickler_migrations`, or `mastra` through the Supabase Data API. Local PostgreSQL runs through `compose.yaml`; credentials there are disposable local development values only.
@@ -183,10 +189,17 @@ Advice forecast configuration reuses the Research Worker’s MODEL_BASE_URL, MOD
 ## Perpetual strategy registry
 
 `@pickler/trading/strategies` exports four versioned perpetual strategy descriptors and their
-injected execution contract. These are strategy modules, not new harness plugin IDs. Evaluation uses version 1.0.0; Studio uses distinct version 2.0.0 with fixed creator sizing and
+injected execution contract. These are strategy modules, not new harness plugin IDs. Evaluation uses version 1.0.0; Studio preserves version 2.0.0 and uses version 2.1.0 for dynamic markets, with fixed creator sizing and
 transaction-fenced execution. See [Studio perpetual execution](docs/studio-perps-execution.md).
 See [Trading architecture](docs/trading-architecture.md) before adding a strategy or consumer.
 
 ## AI credit foundation
 
 Core owns user credit contracts and exact token pricing; infrastructure owns the private billing schema and transactional repository. API-schema carries portable credit DTOs, without endpoints. See [AI credits](docs/ai-credits.md). No commercial tariffs, checkout, runtime activation or USD/AUSD conversion are introduced. Keep user charges separate from provider cost reservations and historical budgets.
+
+## Dynamic Studio markets
+
+See the canonical selection/version, preservation and controlled acceptance boundaries below. No
+runtime activation is implied.
+
+See [agent-selected Perpl markets](docs/studio-perpl-markets.md).

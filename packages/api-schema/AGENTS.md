@@ -160,11 +160,11 @@ amounts are decimal strings; the record's computed figures are AUSD numbers; tim
 and `PERPS_OWNER_ACTION_STATUSES` mirror trading's lists
 (pinned by `workers/api/test/studio-perps-route.test.ts`); `PERPS_MANUAL_CHECKS_PER_DAY` is 6.
 
-Studio setup and stored configuration accept `perpsStrategy` with an explicit identifier and version 2.0.0. Setup permits an empty entry section for rules; core still rejects missing AI entry conditions and unverified free-text rules conditions. No model or financial policy belongs in these portable DTOs.
+Studio setup and stored configuration accept `perpsStrategy` with an explicit identifier and version 2.0.0 or 2.1.0. Setup permits an empty entry section for rules; core still rejects missing AI entry conditions and unverified free-text rules conditions. No model or financial policy belongs in these portable DTOs.
 
 ## Studio strategy version 2
 
-Studio setup selects a versioned common strategy; absent selection resolves combined@2.0.0.
+Studio setup selects a versioned common strategy; legacy absent selection resolves combined@2.0.0; new agents use combined@2.1.0.
 New check results expose `strategyResult` with per-market proposals, three-state brief findings,
 execution outcomes, funding status and incompleteness. Historical fields retain their recorded
 values and are null/empty for new results rather than fabricated percentages. Model costs remain
@@ -180,3 +180,12 @@ See [Studio perpetual execution](../../docs/studio-perps-execution.md).
 Creator-access status and inbox schemas are exported from `studio.ts`. User status exposes only
 its own request time/status and whether the authenticated operator may review the inbox. Inbox
 profile identifiers are operator-only. Requests do not include caller-supplied user/workspace IDs.
+
+## Dynamic Studio markets
+
+`perplMarketCatalogSchema`/DTO and `perplSelectionSchema` are portable public contracts. Perpl
+configuration is a discriminated v1 BTC/ETH and v2 dynamic union. Draft creation requires markets;
+setup markets are optional with expectedVersion. Studio strategy versions accept 2.0.0 and 2.1.0.
+Generate OpenAPI from routes; never maintain JSON manually.
+
+See [agent-selected Perpl markets](../../docs/studio-perpl-markets.md).

@@ -5,6 +5,7 @@ import {
   DEFAULT_BRIEF,
   DEFAULT_CONFIG,
   PilotError,
+  AuthenticationRequiredError,
   PublishBlockedError,
   STARTER_CAPS,
   buildUserPrincipal,
@@ -28,6 +29,7 @@ const ADDRESS = "0x1111111111111111111111111111111111111111";
 const PUBLISHED_AT = new Date("2026-10-02T12:00:00.000Z");
 
 const { config: draftConfig } = prepareDraft({
+  markets: ["BTC", "ETH"],
   name: "Halftime",
   handle: "halftime",
   voice: "analyst",
@@ -56,6 +58,9 @@ function app({
   wallet = true,
   publishConflict = false,
   readOnly = false,
+  catalogAge = 0,
+  catalogFails = false,
+  auth = "user",
   ledger = [] as TransferLedgerEntry[],
 }: {
   balance?: number;
@@ -65,6 +70,9 @@ function app({
   publishConflict?: boolean;
   /** The caller is a member of someone else's workspace: it reads, and writes nothing. */
   readOnly?: boolean;
+  catalogAge?: number;
+  catalogFails?: boolean;
+  auth?: "user" | "anonymous" | "api-key";
   ledger?: TransferLedgerEntry[];
 } = {}) {
   const agents: Agent[] = [
@@ -193,6 +201,26 @@ function app({
     },
   } as Partial<StudioDirectory> as StudioDirectory;
   const studio = studioRoutes({
+    perplMarkets: {
+      catalog: async (network) => {
+        if (catalogFails) {
+          throw new Error("Controlled catalogue outage");
+        }
+        return {
+          network,
+          observedAt: Date.now() - catalogAge,
+          markets: ["BTC", "ETH", "SOL"].map((symbol, index) => ({
+            marketId: index + 1,
+            symbol,
+            name: symbol,
+            collateral: { symbol: "AUSD", decimals: 6 },
+            status: "open",
+            available: true,
+            reasons: [],
+          })),
+        };
+      },
+    },
     directory,
     repository: {
       agent: async (scope: { agentId: string }) => record(scope.agentId),
@@ -261,14 +289,20 @@ function app({
         return ledger;
       },
     },
-    authenticate: async () => ({
-      principal: buildUserPrincipal({
-        user: { id: "user" },
-        integrator: { id: "workspace" },
-        memberRole: "admin",
-      }),
-      workspace: null,
-    }),
+    authenticate: async (_credentials, options) => {
+      if (auth !== "user") {
+        assert.equal(options?.userOnly, true);
+        throw new AuthenticationRequiredError();
+      }
+      return {
+        principal: buildUserPrincipal({
+          user: { id: "user" },
+          integrator: { id: "workspace" },
+          memberRole: "admin",
+        }),
+        workspace: null,
+      };
+    },
   });
   const root = new Hono<AppEnv>();
   root.use("*", async (c, next) => {
@@ -731,4 +765,96 @@ test("the ledger answers the caller's transfers, read by their own user id", asy
     ],
   });
   assert.deepEqual(f.ledgerReads, ["user"]);
+});
+
+test("catalogue is an owner-authorized no-store read; network and absent selections are rejected", async () => {
+  const f = app();
+  const response = await f.root.request("/perpl/markets?network=mainnet");
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get("cache-control"), "private, no-store");
+  assert.equal((await response.json()).network, "mainnet");
+  assert.equal((await f.root.request("/perpl/markets?network=unknown")).status, 400);
+  assert.equal(
+    (await app({ readOnly: true }).root.request("/perpl/markets?network=testnet")).status,
+    200,
+  );
+  const bad = await f.root.request(
+    `/agents/${DRAFT}/setup`,
+    send("PUT", { expectedVersion: 1, markets: ["NOTLISTED"] }),
+  );
+  assert.equal(bad.status, 409);
+  const accepted = await f.root.request(
+    `/agents/${DRAFT}/setup`,
+    send("PUT", { expectedVersion: 1, markets: ["SOL"] }),
+  );
+  assert.equal(accepted.status, 200, await accepted.clone().text());
+  const config = (await accepted.json()).config;
+  assert.deepEqual(config.perpl.markets, ["SOL"]);
+  assert.equal(config.perpsStrategy.version, "2.1.0");
+});
+
+test("catalogue authentication and outages cannot admit changed selections or discard saved configuration", async () => {
+  for (const auth of ["anonymous", "api-key"] as const) {
+    const f = app({ auth });
+    assert.equal((await f.root.request("/perpl/markets?network=testnet")).status, 401);
+  }
+  for (const settings of [{ catalogFails: true }, { catalogAge: 30001 }]) {
+    const f = app(settings);
+    const before = structuredClone(f.configs.get(DRAFT));
+    const refused = await f.root.request(
+      `/agents/${DRAFT}/setup`,
+      send("PUT", {
+        expectedVersion: 1,
+        markets: ["SOL"],
+      }),
+    );
+    assert.equal(refused.status, 503);
+    assert.deepEqual(f.configs.get(DRAFT), before);
+    assert.equal(f.versions.length, 0);
+
+    const unrelated = await f.root.request(
+      `/agents/${DRAFT}/setup`,
+      send("PUT", {
+        expectedVersion: 1,
+        voice: "professor",
+      }),
+    );
+    assert.equal(unrelated.status, 200);
+    assert.deepEqual(f.configs.get(DRAFT)!.config.perpl, before!.config.perpl);
+  }
+});
+
+test("generic config edits upgrade changed legacy markets without rewriting untouched agents", async () => {
+  const f = app();
+  const legacy = structuredClone(f.configs.get(DRAFT)!.config);
+  legacy.perpl = { version: 1, network: "testnet", markets: ["BTC", "ETH"] };
+  legacy.perpsStrategy = { id: "deepseek", version: "2.0.0" };
+  delete legacy.categoryIds;
+  legacy.marketScope = { version: 1, category: "sports", subcategories: "all" };
+  f.configs.set(DRAFT, { version: 1, config: legacy });
+
+  const unchanged = await f.root.request(
+    `/agents/${DRAFT}/config`,
+    send("PUT", { expectedVersion: 1, config: legacy }),
+  );
+  assert.equal(unchanged.status, 200, await unchanged.clone().text());
+  assert.deepEqual(f.configs.get(DRAFT)!.config.perpl, legacy.perpl);
+  assert.deepEqual(f.configs.get(DRAFT)!.config.perpsStrategy, legacy.perpsStrategy);
+
+  const edited = structuredClone(legacy);
+  edited.perpl = { version: 1, network: "testnet", markets: ["ETH"] };
+  const changed = await f.root.request(
+    `/agents/${DRAFT}/config`,
+    send("PUT", { expectedVersion: 2, config: edited }),
+  );
+  assert.equal(changed.status, 200, await changed.clone().text());
+  assert.deepEqual(f.configs.get(DRAFT)!.config.perpl, {
+    version: 2,
+    network: "testnet",
+    markets: ["ETH"],
+  });
+  assert.deepEqual(f.configs.get(DRAFT)!.config.perpsStrategy, {
+    id: "deepseek",
+    version: "2.1.0",
+  });
 });

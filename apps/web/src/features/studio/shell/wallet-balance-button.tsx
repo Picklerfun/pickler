@@ -1,6 +1,6 @@
 "use client";
 import Image from "next/image";
-import { BrandMark } from "@pickler/ui";
+import { BrandMark, Icon } from "@pickler/ui";
 import { formatUnits } from "../new-agent/model";
 import styles from "../new-agent/new-agent.module.css";
 
@@ -18,25 +18,33 @@ export function WalletBalanceButton({
     <button
       type="button"
       className={styles.topPill}
+      data-wallet-balance
       title="Master wallet"
       aria-label={`Master wallet: ${formatUnits(ausdMicro, "AUSD")} AUSD, ${formatUnits(monWei, "MON")} MON`}
       aria-haspopup="dialog"
       onClick={onClick}
     >
       <small className={styles.walletOwner}>Master wallet</small>
-      <span className={styles.assetBalance}>
-        <BrandMark name="ausd" size={16} />
-        <span>
-          {formatUnits(ausdMicro, "AUSD")}
-          <small> AUSD</small>
-        </span>
+      <span className={styles.navIcon}>
+        <Icon name="wallet" size={16} />
       </span>
-      <i aria-hidden="true" />
-      <span className={styles.assetBalance}>
-        <Image src="/brand/monad.png" alt="" width={16} height={16} />
-        <span>
-          {formatUnits(monWei, "MON")}
-          <small> MON</small>
+      <span className={styles.navReveal}>
+        <span className={styles.navDetails}>
+          <span className={styles.assetBalance}>
+            <BrandMark name="ausd" size={16} />
+            <span>
+              {formatUnits(ausdMicro, "AUSD")}
+              <small> AUSD</small>
+            </span>
+          </span>
+          <i aria-hidden="true" />
+          <span className={styles.assetBalance}>
+            <Image src="/brand/monad.png" alt="" width={16} height={16} />
+            <span>
+              {formatUnits(monWei, "MON")}
+              <small> MON</small>
+            </span>
+          </span>
         </span>
       </span>
     </button>

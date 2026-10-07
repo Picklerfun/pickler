@@ -28,12 +28,17 @@ export interface StudioPerpsProposal extends PerpsProposal {
 export interface StudioPerpsContext extends PerpsDecisionContext {
   protocol: "studio-perps-strategy-v2";
   markets: PerpSymbol[];
+  strategyVersion?: "2.0.0" | "2.1.0";
   brief: AgentBrief;
   sources: AgentSources;
   /** Untrusted source bodies; references must also occur in evidence.sourceIds. */
   documents: { id: string; text: string }[];
 }
 export interface StudioPerpsModels {
+  preflight?(
+    context: StudioPerpsContext,
+    capabilities: readonly ("direct" | "decide" | "review")[],
+  ): void;
   direct?(
     context: StudioPerpsContext,
     signal: AbortSignal,
@@ -188,8 +193,15 @@ export async function executeStudioPerpsStrategy(
   dependencies: { models: StudioPerpsModels; calls: PerpsStrategyCalls; signal: AbortSignal },
 ): Promise<StudioPerpsProposal[]> {
   const descriptor = resolvePerpsStrategy(selection);
-  if (descriptor.version !== "2.0.0" || input.protocol !== "studio-perps-strategy-v2") {
-    throw new PilotError("STRATEGY_CONTEXT_MISMATCH", "Studio requires strategy version 2.0.0");
+  if (
+    !["2.0.0", "2.1.0"].includes(descriptor.version) ||
+    input.protocol !== "studio-perps-strategy-v2" ||
+    (input.strategyVersion !== undefined && input.strategyVersion !== descriptor.version)
+  ) {
+    throw new PilotError(
+      "STRATEGY_CONTEXT_MISMATCH",
+      "Studio requires a matching versioned strategy context",
+    );
   }
   const { signal, models, calls } = dependencies;
   signal.throwIfAborted();
@@ -202,7 +214,9 @@ export async function executeStudioPerpsStrategy(
   if (
     !context.markets.length ||
     new Set(context.markets).size !== context.markets.length ||
-    context.markets.some((symbol) => !["BTC", "ETH"].includes(symbol))
+    context.markets.some((symbol) => !/^[A-Z0-9][A-Z0-9._-]{0,31}(?![\s\S])/.test(symbol)) ||
+    (descriptor.version === "2.0.0" &&
+      context.markets.some((symbol) => !["BTC", "ETH"].includes(symbol)))
   ) {
     throw new PilotError("STRATEGY_CONTEXT_MISMATCH", "Invalid authorized markets");
   }

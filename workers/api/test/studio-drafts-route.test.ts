@@ -31,6 +31,7 @@ const body = {
   sources: { web: null },
   brief: { ...DEFAULT_BRIEF },
   caps: { ...STARTER_CAPS },
+  markets: ["BTC", "ETH"],
   walletId: "wal-agent",
 };
 
@@ -52,6 +53,7 @@ function app({
   read = "ok",
   replay = false,
   fleetRead = "ok",
+  chainId = 10143,
 }: {
   listed?: { id: string; draft: boolean; wallet: boolean }[];
   refuse?: string;
@@ -65,6 +67,7 @@ function app({
   replay?: boolean;
   /** How the lock's reads of the other agents' wallets go: as given, or the RPC failing. */
   fleetRead?: "ok" | "rpc_error";
+  chainId?: number | null;
 } = {}) {
   const drafts: Created[] = [];
   const balanceReads: { userId: string; walletId: string }[] = [];
@@ -116,6 +119,22 @@ function app({
     agentScope: async (_access, id) => ({ tenantId: "trusted", agentId: id }),
   } as Partial<StudioDirectory> as StudioDirectory;
   const studio = studioRoutes({
+    walletChainId: chainId,
+    perplMarkets: {
+      catalog: async (network) => ({
+        network,
+        observedAt: Date.now(),
+        markets: ["BTC", "ETH"].map((symbol, index) => ({
+          marketId: index + 1,
+          symbol,
+          name: symbol,
+          collateral: { symbol: "AUSD", decimals: 6 },
+          status: "open",
+          available: true,
+          reasons: [],
+        })),
+      }),
+    },
     directory,
     repository: {
       agent: async (scope: { agentId: string }) => record(scope.agentId),
@@ -420,4 +439,24 @@ test("a funded agent without a draft leaves the lock open", async () => {
   const { agents } = await response.json();
   assert.equal(agents[0].draft, false);
   assert.deepEqual(agents[0].canCreateAnother, { ok: true, reason: null });
+});
+
+test("creation requires explicit markets and a supported server-configured network", async () => {
+  const without = { ...body } as Partial<typeof body>;
+  delete without.markets;
+  for (const payload of [without, { ...body, markets: [] }, { ...body, markets: ["UNKNOWN"] }]) {
+    const f = app();
+    const response = await f.root.request("/drafts", post(payload));
+    assert.ok([400, 409].includes(response.status));
+    assert.equal(f.drafts.length, 0);
+    assert.equal(f.balanceReads.length, 0);
+  }
+  for (const chainId of [null, 1]) {
+    const f = app({ chainId });
+    assert.equal((await f.root.request("/drafts", post(body))).status, 503);
+    assert.equal(f.balanceReads.length, 0);
+  }
+  const mainnet = app({ chainId: 143 });
+  assert.equal((await mainnet.root.request("/drafts", post(body))).status, 201);
+  assert.equal(mainnet.drafts[0].config.perpl?.network, "mainnet");
 });

@@ -45,6 +45,7 @@ import {
   type NewAgentForm,
 } from "./model";
 import { PasskeySheet, type SheetPhase } from "./passkey-sheet";
+import { TradingMarkets, useTradingMarkets } from "../shell/trading-markets";
 import { Reads } from "./reads";
 import { useAgentWallet } from "./use-agent-wallet";
 import { Voice } from "./voice";
@@ -150,6 +151,13 @@ export function NewAgent({
   const [recheck, setRecheck] = useState(0);
   const [advancedOpen, setAdvancedOpen] = useState(staged?.advancedOpen ?? false);
   const reads = useAgentWallet(preview, staged);
+  const marketNetwork =
+    reads.wallets?.chainId === 143
+      ? "mainnet"
+      : reads.wallets?.chainId === 10143
+        ? "testnet"
+        : null;
+  const catalogue = useTradingMarkets(marketNetwork, preview);
   const [sheet, setSheet] = useState<Sheet | null>(staged?.sheet ?? null);
   const [modal, setModal] = useState<Modal>(staged?.modal ?? null);
   const [fundOn, setFundOn] = useState<string | null>(staged?.fundOn ?? null);
@@ -207,7 +215,10 @@ export function NewAgent({
   /* Whether the button reads as open. A preview draws it as the person would see it, and
      `creatable` still refuses the press there. */
   const drawnOpen =
-    access.create && created === null && canCreate(form, nameState, ready, draftLock);
+    access.create &&
+    catalogue.allows(form.markets) &&
+    created === null &&
+    canCreate(form, nameState, ready, draftLock);
   const creatable = !preview && drawnOpen;
   const disabled = busy || created !== null;
 
@@ -501,6 +512,13 @@ export function NewAgent({
         />
         <Voice form={form} disabled={disabled} onChange={edit} />
         <Reads form={form} disabled={disabled} onChange={edit} />
+        <TradingMarkets
+          read={catalogue}
+          network={marketNetwork}
+          value={form.markets}
+          disabled={disabled}
+          onChange={(markets) => edit({ ...form, markets })}
+        />
         <Advanced
           form={form}
           open={advancedOpen}

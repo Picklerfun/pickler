@@ -570,3 +570,12 @@ migration fails the release. The audit uses a read-only repeatable-read transact
 concurrent submissions retain their first timestamp. The inbox excludes enabled or inactive owners.
 `research-access requests` lists pending entries; enable/disable retains the existing explicit
 operator workflow and now uses the verified operator connection configuration.
+
+## Dynamic Studio markets
+
+`PerplMarketData.catalog` uses the same bounded public transport and strict execution metadata.
+Position metadata is trusted repository input, never client input. Migration 0033 only generalizes
+the proposal symbol CHECK. Test-only controlled Supabase supports fixed 55522/55532 database slots,
+both requiring UUID ownership markers; ordinary databases remain refused.
+
+See [agent-selected Perpl markets](../../docs/studio-perpl-markets.md).

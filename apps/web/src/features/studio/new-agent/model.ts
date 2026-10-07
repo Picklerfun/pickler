@@ -85,7 +85,7 @@ export const LEVERAGE_BOUNDS = { min: 1, max: 10 } as const;
 
 export const DEFAULT_BRIEF = {
   thesis:
-    "Headlines move BTC and ETH before the order book does. The edge is the 30 to 90 seconds between a credible headline and the first big print.",
+    "Headlines move the selected markets before the order book does. The edge is the 30 to 90 seconds between a credible headline and the first big print.",
   enters:
     "Two of my sources carry the same headline within 60s\nPrice has moved less than 0.3% since the headline\nFunding is not already leaning my way by more than 0.05%",
   exits:
@@ -95,6 +95,7 @@ export const DEFAULT_BRIEF = {
 } as const;
 
 export interface NewAgentForm {
+  markets: string[];
   name: string;
   /** "" follows the name. */
   handle: string;
@@ -114,6 +115,7 @@ export interface NewAgentForm {
 }
 
 export const emptyForm = (): NewAgentForm => ({
+  markets: [],
   name: "",
   handle: "",
   voice: null,
@@ -247,6 +249,9 @@ export function createBlock(
   }
   if (!form.voice) {
     return blocked("Pick a voice to create");
+  }
+  if (!form.markets.length) {
+    return blocked("Choose trading markets to create");
   }
   if (lines(form.enters).length === 0) {
     return blocked("Write an entry rule to create");
@@ -436,6 +441,7 @@ export function toDraftRequest(form: NewAgentForm, walletId: string): DraftCreat
     },
     caps: { perTradeAusd: form.perTrade, perDayAusd: form.perDay, maxLeverage: form.leverage },
     walletId,
+    markets: [...form.markets],
   };
 }
 

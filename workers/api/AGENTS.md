@@ -560,3 +560,12 @@ own status and owner-only idempotent submission; GET `access-requests` requires 
 super-admin allowlist. All use private/no-store and generated OpenAPI schemas. Infrastructure
 records the internal team inbox notification; no external message transport or automatic grant is
 composed. Both Studio and its Console alias mount these operations.
+
+## Dynamic Studio markets
+
+Studio mounts the JWT-protected GET /perpl/markets catalogue, with a required network query and
+generated OpenAPI. Creation and changed selections validate a fresh authorized catalogue; setup
+preserves expectedVersion and the existing history/readiness/schedule transaction. Never accept
+execution addresses/ids or client-selected creation networks.
+
+See [agent-selected Perpl markets](../../docs/studio-perpl-markets.md).

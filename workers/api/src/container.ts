@@ -25,6 +25,7 @@ import {
   PostgresPaperStore,
   PostgresPreviewStore,
   PolymarketData,
+  PerplMarketData,
   PolymarketPaperResolution,
   PostgresStudioDirectory,
   PostgresBudgetLedger,
@@ -78,7 +79,8 @@ export async function perpsBoardMarks(network: PerpNetwork): Promise<PerpsPaperM
     const fresh = market.source.venue === "perpl" && !market.source.stale;
     if (
       fresh &&
-      (market.base === "BTC" || market.base === "ETH") &&
+      /^[A-Z0-9][A-Z0-9._-]{0,31}$/.test(market.base) &&
+      markets.filter((row) => row.base === market.base).length === 1 &&
       Number.isFinite(market.mark) &&
       market.mark > 0
     ) {
@@ -476,6 +478,13 @@ export function createServices(env: Env): Services & { close(): Promise<void> } 
     close: () => repository.close(),
     onboard: (userId) => directory.onboard(userId),
     studio: {
+      perplMarkets: {
+        catalog: (network, signal) =>
+          new PerplMarketData().catalog(network, {
+            signal,
+            guard: async () => signal.throwIfAborted(),
+          }),
+      },
       accessRequests: new PostgresStudioAccessRequests(repository.pool),
       admissionsEnabled: env.ADMISSIONS_ENABLED === "true",
       trading: {

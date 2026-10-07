@@ -29,6 +29,7 @@ export const PERPL_SESSION_LIMIT = 12;
 /** A studio Perpl check reads two instruments, refreshes a frame before acting, and the web. */
 export const PERPL_CHECK_SESSION_LIMIT = 24;
 export interface PerplDataOptions {
+  positionMarkets?: readonly import("@pickler/core").PerpMarketInfo[];
   schedule?: PerplRequestSchedule;
   /** Requests this session may make: 1–24, default 12. Trusted host configuration only. */
   sessionLimit?: number;
@@ -82,6 +83,9 @@ export class PerplTransport {
     this.limit = limit;
     this.now = options.now ?? Date.now;
     this.schedule = options.schedule ?? new PerplRequestSchedule();
+  }
+  get remainingRequests(): number {
+    return Math.max(0, this.limit - this.requests);
   }
   get(network: PerpNetwork, path: string, ctx: PerpReadContext): Promise<PerplPublicResponse> {
     const result = this.schedule.tail.then(() => this.request(network, path, ctx));

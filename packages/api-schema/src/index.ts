@@ -35,3 +35,6 @@ export * from "./advice.js";
 export * from "./perps-runtime.js";
 
 export * from "./ai-credits.js";
+
+export { perplMarketCatalogSchema, perplSelectionSchema } from "./perps.js";
+export type { PerplMarketCatalogDto } from "./perps.js";

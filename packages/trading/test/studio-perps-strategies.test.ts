@@ -67,8 +67,8 @@ function run(id: string, input = context(), models: StudioPerpsModels = {}) {
 }
 const answer = (choice: string) => ({ choice, confidence: 1, probabilities: { [choice]: 1 } });
 
-test("registry keeps all eight id/version pairs distinct and defaults do not enable execution", () => {
-  assert.equal(new Set(PERPS_STRATEGIES.map((value) => `${value.id}@${value.version}`)).size, 8);
+test("registry keeps all twelve id/version pairs distinct and defaults do not enable execution", () => {
+  assert.equal(new Set(PERPS_STRATEGIES.map((value) => `${value.id}@${value.version}`)).size, 12);
   assert.deepEqual(effectiveStudioStrategy(DEFAULT_CONFIG), { id: "combined", version: "2.0.0" });
   assert.equal(DEFAULT_CONFIG.perpsStrategy, undefined);
 });
@@ -175,5 +175,92 @@ test("cancelled admission never reaches transport, unknown version never falls b
       },
     }),
     { code: "STRATEGY_CONTEXT_MISMATCH" },
+  );
+});
+
+test("all four 2.1 strategies accept authorized SOL without changing call lanes or veto policy", async () => {
+  for (const id of ["rules", "deepseek", "jev", "combined"] as const) {
+    const input = context();
+    input.strategyVersion = "2.1.0";
+    input.markets = ["SOL"];
+    input.evidence.sourceIds = ["SOL:candles"];
+    const proposed = proposal();
+    proposed.symbol = "SOL";
+    proposed.sourceIds = ["SOL:candles"];
+    for (const section of Object.values(proposed.brief)) {
+      for (const finding of section) {
+        finding.sourceIds = ["SOL:candles"];
+      }
+    }
+    if (id === "rules") {
+      input.brief.entersWhen = [];
+      input.brief.exitsWhen = [];
+      input.brief.never = [];
+    }
+    const lanes: PerpsCallLane[] = [];
+    const output = await executeStudioPerpsStrategy({ id, version: "2.1.0" }, input, {
+      signal: new AbortController().signal,
+      models: {
+        direct: async (read) => {
+          assert.deepEqual(read.markets, ["SOL"]);
+          assert.ok(Object.isFrozen(read.account));
+          return [proposed];
+        },
+        decide: async () => ({
+          answers: {
+            SOL_long: answer("SUPPORTED"),
+            SOL_short: answer("UNSUPPORTED"),
+            SOL_thesis: answer("INTACT"),
+          },
+          brief: { SOL: proposed.brief },
+        }),
+        review: async () => ({
+          answers: {
+            SOL_identity: answer("CONSISTENT"),
+            SOL_evidence: answer("CONSISTENT"),
+            SOL_costs: answer("CONSISTENT"),
+          },
+        }),
+      },
+      calls: {
+        async run(lane, operation) {
+          lanes.push(lane);
+          return operation({ before: async () => {}, usage: async () => {} });
+        },
+      },
+    });
+    assert.equal(output[0]!.symbol, "SOL");
+    assert.equal(output[0]!.action, id === "rules" ? "hold" : "open-long");
+    assert.deepEqual(
+      lanes,
+      { rules: [], deepseek: ["direct"], jev: ["jev"], combined: ["fallback", "review"] }[id],
+    );
+    await assert.rejects(
+      executeStudioPerpsStrategy({ id, version: "2.0.0" }, input, {
+        models: {},
+        signal: new AbortController().signal,
+        calls: {
+          run: async () => {
+            throw Error("must not call");
+          },
+        },
+      }),
+    );
+  }
+});
+test("2.1 rejects a response for a removed market instead of executing a partial analysis", async () => {
+  const input = context();
+  input.markets = ["SOL"];
+  input.strategyVersion = "2.1.0";
+  await assert.rejects(
+    executeStudioPerpsStrategy({ id: "deepseek", version: "2.1.0" }, input, {
+      signal: new AbortController().signal,
+      models: { direct: async () => [proposal()] },
+      calls: {
+        run: async (_lane, operation) =>
+          operation({ before: async () => {}, usage: async () => {} }),
+      },
+    }),
+    { code: "STRATEGY_RESPONSE_INVALID" },
   );
 });

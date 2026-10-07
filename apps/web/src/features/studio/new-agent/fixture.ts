@@ -63,6 +63,7 @@ export function newAgentFixture(stage: CreateStage): NewAgentStaged {
     ? emptyForm()
     : {
         ...emptyForm(),
+        markets: ["BTC", "ETH"],
         name: "Halftime",
         voice: "analyst",
         ...(stage === "create-web"

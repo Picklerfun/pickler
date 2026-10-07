@@ -12,6 +12,7 @@ import { PostgresStudioDirectory } from "../src/studio/directory.js";
 import { createTestStore } from "./database.js";
 
 const { config, profile } = prepareDraft({
+  markets: ["BTC", "ETH"],
   name: "Halftime",
   handle: "halftime",
   voice: "analyst",
@@ -235,6 +236,7 @@ test("a retry with another voice, brief, caps or sites is WALLET_ASSIGNED, not t
   await f.directory.createDraft(owner.access, owner.userId, f.terms(walletId));
   const changed = (edit: Partial<Parameters<typeof prepareDraft>[0]>) =>
     prepareDraft({
+      markets: ["BTC", "ETH"],
       name: "Halftime",
       handle: "halftime",
       voice: "analyst",

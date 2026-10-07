@@ -307,3 +307,6 @@ export * from "./features/advice/index.js";
 
 export * from "./features/ai-credits/index.js";
 export * from "./features/studio/access-requests.js";
+
+export { assertPerplSelection } from "./features/perps/service.js";
+export type { PerplMarketCatalog } from "./features/perps/types.js";

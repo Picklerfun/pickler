@@ -1,3 +1,4 @@
+import { perplSelectionSchema } from "./perps.js";
 import { z } from "zod";
 import { ACCENTS } from "./landing.js";
 import {
@@ -147,6 +148,7 @@ export type PreviewRunDto = z.infer<typeof previewRunResponseSchema>;
  */
 export const draftCreateSchema = z
   .object({
+    markets: perplSelectionSchema,
     name: z.string().trim().min(1).max(40),
     handle: z.string().regex(/^[a-z0-9_]{3,15}$/),
     voice: z.enum(VOICE_KEYS),
@@ -259,6 +261,7 @@ export type WalletsDto = z.infer<typeof walletsResponseSchema>;
  */
 export const setupUpdateSchema = z
   .object({
+    markets: perplSelectionSchema.optional(),
     expectedVersion: z.number().int().positive(),
     perpsStrategy: studioPerpsStrategySchema.optional(),
     brief: draftCreateSchema.shape.brief

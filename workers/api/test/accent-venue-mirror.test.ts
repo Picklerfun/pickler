@@ -145,6 +145,7 @@ test("the draft request's voices are core's, and core's starting draft is a vali
     brief: CORE_DEFAULT_BRIEF,
     caps: CORE_STARTER_CAPS,
     walletId: "wal-agent",
+    markets: ["BTC", "ETH"],
   };
   assert.doesNotThrow(() => draftCreateSchema.parse(request));
   assert.throws(() => draftCreateSchema.parse({ ...request, handle: "Half Time" }));
@@ -164,6 +165,7 @@ test("api-schema's voice keys are core's", () => {
 test("every config prepareDraft writes is a config the agent responses accept", () => {
   for (const web of [null, { mode: "prefer" as const, sites: ["coindesk.com"] }]) {
     const { config } = prepareDraft({
+      markets: ["BTC", "ETH"],
       name: "Halftime",
       handle: "halftime",
       voice: "analyst",
@@ -183,6 +185,7 @@ test("every config prepareDraft writes is a config the agent responses accept", 
 test("the risk bounds in api-schema are core's, and a revised setup is a valid wire config", () => {
   assert.deepEqual(RISK_BOUNDS, CORE_RISK_BOUNDS);
   const { config } = prepareDraft({
+    markets: ["BTC", "ETH"],
     name: "Halftime",
     handle: "halftime",
     voice: "analyst",

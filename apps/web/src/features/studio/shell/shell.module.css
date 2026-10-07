@@ -177,7 +177,11 @@
   letter-spacing: 0.08em;
 }
 
-/* Global controls have one responsive row; wallet/account controls never wrap independently. */
+/* The selected-agent navbar keeps all global controls in one responsive row. */
+.top {
+  composes: top from "../home/home.module.css";
+}
+
 .globalControls {
   display: flex;
   align-items: center;
@@ -186,12 +190,111 @@
   gap: 10px;
 }
 .globalControls > button {
-  flex: none;
+  flex: 0 1 auto;
+}
+@media (max-width: 768px) {
+  .top[data-agent-navbar] {
+    flex-wrap: nowrap;
+    gap: 6px;
+    padding-inline: 12px;
+  }
+  .top > a {
+    margin-right: 0;
+  }
+  .globalControls {
+    gap: 6px;
+  }
+}
+
+/* Classic scrollbars reduce the usable width below the viewport's reported 320px. */
+@media (max-width: 360px) {
+  .top[data-agent-navbar] {
+    gap: 4px;
+    padding-inline: 6px;
+  }
+  .globalControls {
+    gap: 4px;
+  }
+}
+
+/* Make room for compact disclosures without hiding network identity or moving their anchors. */
+.networkDot {
+  display: none;
 }
 @media (max-width: 640px) {
-  .globalControls {
-    flex: 1 0 100%;
-    justify-content: flex-end;
+  .top > [data-navbar-spacer] {
+    flex-basis: 0;
+  }
+  .testnet {
+    position: relative;
+    flex: none;
+    justify-content: center;
+    width: 78px;
+    height: 27px;
+    padding: 0;
+    overflow: hidden;
+    transition: width 360ms ease;
+  }
+  .networkLabel {
+    transition: opacity 240ms ease;
+  }
+  .networkDot {
+    display: block;
+    position: absolute;
+    width: 6px;
+    height: 6px;
+    border-radius: var(--pk-radius-pill);
+    background: var(--pk-ink-muted);
+    opacity: 0;
+    transition: opacity 240ms ease;
+  }
+  .top:has(
+      [data-wallet-balance]:focus-visible,
+      [data-credits-control]:focus-visible,
+      [data-account-menu]:focus-within,
+      [data-account-menu][data-open="true"]
+    )
+    .testnet {
+    width: 12px;
+  }
+  .top:has(
+      [data-wallet-balance]:focus-visible,
+      [data-credits-control]:focus-visible,
+      [data-account-menu]:focus-within,
+      [data-account-menu][data-open="true"]
+    )
+    .networkLabel {
+    opacity: 0;
+  }
+  .top:has(
+      [data-wallet-balance]:focus-visible,
+      [data-credits-control]:focus-visible,
+      [data-account-menu]:focus-within,
+      [data-account-menu][data-open="true"]
+    )
+    .networkDot {
+    opacity: 1;
+  }
+}
+@media (max-width: 640px) and (hover: hover) and (pointer: fine) {
+  .top:has([data-wallet-balance]:hover, [data-credits-control]:hover, [data-account-menu]:hover)
+    .testnet {
+    width: 12px;
+  }
+  .top:has([data-wallet-balance]:hover, [data-credits-control]:hover, [data-account-menu]:hover)
+    .networkLabel {
+    opacity: 0;
+  }
+  .top:has([data-wallet-balance]:hover, [data-credits-control]:hover, [data-account-menu]:hover)
+    .networkDot {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .testnet,
+  .networkLabel,
+  .networkDot {
+    transition: none;
   }
 }
 

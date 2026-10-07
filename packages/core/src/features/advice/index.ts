@@ -85,7 +85,8 @@ export function adviceMarkets(agent: AdviceAgent): AdviceSymbol[] {
   ) {
     return [];
   }
-  return agent.config.perpl.markets.filter((symbol) => symbol === "BTC" || symbol === "ETH");
+  const markets: readonly string[] = agent.config.perpl.markets;
+  return markets.filter((symbol): symbol is AdviceSymbol => symbol === "BTC" || symbol === "ETH");
 }
 export function assertAdviceAgent(agent: AdviceAgent, symbol?: AdviceSymbol): void {
   if (!agent.published) {

@@ -71,7 +71,7 @@ compatibility, not provider reliability or profitability.
 
 ## Perpetual strategy contract
 
-`PERPS_STRATEGIES` lists `rules`, `deepseek`, `jev` and `combined`, at laboratory policy version `1.0.0` and distinct Studio product version `2.0.0`. `resolvePerpsStrategy({ id, version })` refuses unknown IDs/versions.
+`PERPS_STRATEGIES` lists `rules`, `deepseek`, `jev` and `combined`, at laboratory policy version `1.0.0` and distinct Studio product versions `2.0.0` (legacy BTC/ETH) and `2.1.0` (explicit dynamic markets). `resolvePerpsStrategy({ id, version })` refuses unknown IDs/versions.
 `executePerpsStrategy(selection, input, dependencies)` receives evidence and an isolated account,
 clones/freezes the snapshot, and returns proposals only. Dependencies supply model capabilities,
 a mandatory durable call gate and cancellation. No repository, provider, credential or execution
@@ -93,7 +93,7 @@ historical callers, backed by the moved policies, not duplicated implementations
 The evaluator retains joint USD reservations, started-call hashes, usage, unknown-cost handling,
 shared execution frames and independent financial accounts. A consumer must implement the call
 gate with equivalent admission/ownership and durable accounting before provider transport;
-Studio now uses the version 2.0.0 execution service and its own transaction-fenced USD call ledger.
+Studio uses the versioned product execution service and its own transaction-fenced USD call ledger.
 It introduces neither live activation nor paid evaluation.
 
 To add a strategy, add one versioned descriptor and implementation in trading, declare required
@@ -113,9 +113,11 @@ flowchart LR
   Studio[Studio setup and controls] --> API[JWT workspace API]
   API --> Queue[Durable check or owner action]
   Queue --> Runtime[Runtime providers and prompts]
-  Runtime --> Strategy[Trading strategies 2.0.0]
+  Runtime --> Strategy[Trading strategies 2.0.0 / 2.1.0]
   Strategy --> Policy[Trading fixed-size execution policy]
   Policy --> Ledger[Infrastructure fenced financial transaction]
   Runtime --> Costs[Separate frozen USD reservation and call ledger]
   Public[Public supervision without models] --> Ledger
 ```
+
+See [agent-selected Perpl markets](studio-perpl-markets.md) for current catalogue, version, migration and exit-preservation rules.

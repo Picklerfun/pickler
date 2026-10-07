@@ -16,3 +16,10 @@ disabled access and permission enforcement. Never duplicate the catalog in an ap
 Perps-paper exposes a coherent public reader separately from its account simulator. Use one reader/schedule across BTC and ETH; do not rebuild a second acquisition algorithm in a CLI or deployed host.
 
 The Perpl acquisition reader has explicit read/latest/close lifecycle and one frozen REST or public WebSocket policy. Hosts share it across observation and final refresh, recheck the owner around reads, and close it on every outcome. No implicit fallback or authenticated stream is allowed.
+
+## Dynamic Studio markets
+
+See the canonical selection/version, preservation and controlled acceptance boundaries below. No
+runtime activation is implied.
+
+See [agent-selected Perpl markets](../../../../docs/studio-perpl-markets.md).

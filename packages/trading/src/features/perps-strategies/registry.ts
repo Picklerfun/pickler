@@ -31,6 +31,10 @@ export const PERPS_STRATEGIES: readonly PerpsStrategyDescriptor[] = Object.freez
   descriptor("deepseek", ["direct"], "2.0.0"),
   descriptor("jev", ["decide"], "2.0.0"),
   descriptor("combined", ["direct", "review"], "2.0.0"),
+  descriptor("rules", [], "2.1.0"),
+  descriptor("deepseek", ["direct"], "2.1.0"),
+  descriptor("jev", ["decide"], "2.1.0"),
+  descriptor("combined", ["direct", "review"], "2.1.0"),
 ]);
 
 export function resolvePerpsStrategy(selection: PerpsStrategySelection): PerpsStrategyDescriptor {

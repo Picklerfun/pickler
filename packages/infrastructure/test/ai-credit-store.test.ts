@@ -55,6 +55,7 @@ async function setup(t: TestContext) {
   await studio.onboard(owner);
   const access = (await studio.access(owner, null))!;
   const { config } = prepareDraft({
+    markets: ["BTC", "ETH"],
     name: "Credit agent",
     handle: "credit_agent",
     voice: "analyst",

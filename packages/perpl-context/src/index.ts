@@ -158,3 +158,20 @@ export function parseServerTime(
   const age = Number(ageHeader ?? 0);
   return ms + (Number.isFinite(age) && age > 0 ? age * 1000 : 0);
 }
+
+/** Unambiguous identity for server execution; board/mobile parsing remains lenient. */
+export function parsePerplMarketIdentity(market: {
+  symbol?: unknown;
+  name?: unknown;
+  size_units?: unknown;
+}): string | null {
+  const unit = market.size_units;
+  if (typeof unit !== "string" || !/^[A-Z0-9][A-Z0-9._-]{0,31}(?![\s\S])/.test(unit)) {
+    return null;
+  }
+  return market.symbol === unit ||
+    market.symbol === `${unit}-PERP` ||
+    (market.symbol === "" && (market.name === unit || market.name === `${unit} Perp`))
+    ? unit
+    : null;
+}
