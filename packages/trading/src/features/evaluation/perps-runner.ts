@@ -1,3 +1,4 @@
+import { universeProposals, universeFinal, reviewUniverse } from "../perps-study/universe.js";
 import { perpsSlotClock } from "../perps-study/policy.js";
 import { perpsRules } from "../perps-strategies/policy.js";
 import {
@@ -51,7 +52,34 @@ export interface StudyData {
     guard?: () => Promise<void>,
   ): Promise<PerpsPaperFrame[]>;
 }
-function validateCommonFrames(frames: PerpsPaperFrame[], network: string, at: number) {
+function validateCommonFrames(
+  frames: PerpsPaperFrame[],
+  network: string,
+  at: number,
+  record?: PerpsStudyRecord,
+) {
+  if (record?.config.version === 5) {
+    if (frames.length === 0) {
+      throw new PilotError("DATA_UNAVAILABLE", "No valid universe frames");
+    }
+    const config = record.config;
+    if (
+      new Set(frames.map((f) => f.snapshot.market.symbol)).size !== frames.length ||
+      frames.some(
+        (f) =>
+          !config.markets.some(
+            (m) =>
+              m.symbol === f.snapshot.market.symbol && m.marketId === f.snapshot.market.marketId,
+          ),
+      )
+    ) {
+      throw new PilotError("PERPL_MARKET_IDENTITY", "Universe frame identity mismatch");
+    }
+    for (const f of frames) {
+      validatePaperFrame(f, network, f.snapshot.market.symbol, at);
+    }
+    return;
+  }
   if (
     frames.length !== 2 ||
     !frames.some((frame) => frame.snapshot.market.symbol === "BTC") ||
@@ -153,6 +181,19 @@ export function createPerpsStudyRunner(deps: {
       if (!(failure instanceof PilotError)) {
         throw failure;
       }
+      if (
+        record.config.version === 5 &&
+        [
+          "LEASE_LOST",
+          "PROCESS_INTERRUPTED",
+          "PERSISTENCE_FAILED",
+          "PERMISSION_DENIED",
+          "CONFIG_CHANGED",
+          "PLUGIN_DISABLED",
+        ].includes(failure.code)
+      ) {
+        throw failure;
+      }
       error = safeCode(failure);
     }
     const after = await paper.view(target);
@@ -192,6 +233,19 @@ export function createPerpsStudyRunner(deps: {
       return false;
     }
     const slot = perpsSlotClock(record, now()).slot;
+    if (record.config.version === 5) {
+      const saved = await study.view(scope);
+      for (let missed = 0; missed < Math.min(slot, 8); missed++) {
+        if (
+          !saved.events.some((e) => e.key === `slot-${missed}` || e.key === `slot-${missed}:missed`)
+        ) {
+          await study.event(scope, lease, `slot-${missed}:missed`, "slot-missed", {
+            slot: missed,
+            code: "WINDOW_MISSED",
+          });
+        }
+      }
+    }
     const attempted = !record.decisionStopReason && (await study.claimSlot(scope, lease, slot));
     const skip = async (phase: "before-model" | "execution-refresh", error: unknown) => {
       await study.event(scope, lease, `slot-${slot}:data-unavailable`, "data-unavailable", {
@@ -208,7 +262,7 @@ export function createPerpsStudyRunner(deps: {
     let observationWritesStarted = false;
     try {
       observation = await data.observe(record, signal, () => ownedGuard());
-      validateCommonFrames(observation.frames, record.config.network, now());
+      validateCommonFrames(observation.frames, record.config.network, now(), record);
       observationWritesStarted = true;
       for (const strategy of strategies) {
         await ownedGuard();
@@ -237,7 +291,10 @@ export function createPerpsStudyRunner(deps: {
       for (const position of views[strategy]!.account.positions.filter(
         (p) => p.closedAt === null,
       )) {
-        if (closing || risk.closeSymbols.includes(position.symbol)) {
+        if (
+          (closing || risk.closeSymbols.includes(position.symbol)) &&
+          observation.frames.some((f) => f.snapshot.market.symbol === position.symbol)
+        ) {
           closedThisRound.add(`${strategy}:${position.symbol}`);
           await execute(
             scope,
@@ -301,7 +358,7 @@ export function createPerpsStudyRunner(deps: {
     try {
       evidence = await data.evidence(record, observation, signal, () => ownedGuard());
       signal.throwIfAborted();
-      validateCommonFrames(evidence.frames, record.config.network, now());
+      validateCommonFrames(evidence.frames, record.config.network, now(), record);
     } catch (error) {
       signal.throwIfAborted();
       if (transientPerpsData(error)) {
@@ -317,19 +374,35 @@ export function createPerpsStudyRunner(deps: {
     const accounts = Object.fromEntries(
       strategies.map((s) => [s, views[s]!.account]),
     ) as Parameters<PerpsStudyRepository["reserve"]>[4];
-    const rules = await executePerpsStrategy(
-      { id: "rules", version: "1.0.0" },
-      { evidence, account: accounts.rules },
-      {
-        models: {},
-        signal,
-        calls: {
-          run: async () => {
-            throw new PilotError("MODEL_CONFIG_MISMATCH", "Rules cannot call models");
-          },
-        },
-      },
-    );
+    const blockInitialOpenings =
+      record.config.version === 5 &&
+      Object.values(accounts).some((a) =>
+        a!.positions.some(
+          (p) =>
+            p.closedAt === null &&
+            !evidence.frames.some((f) => f.snapshot.market.symbol === p.symbol),
+        ),
+      );
+    const rules =
+      record.config.version === 5
+        ? universeProposals(
+            { evidence, account: accounts.rules },
+            record.config,
+            blockInitialOpenings,
+          )
+        : await executePerpsStrategy(
+            { id: "rules", version: "1.0.0" },
+            { evidence, account: accounts.rules },
+            {
+              models: {},
+              signal,
+              calls: {
+                run: async () => {
+                  throw new PilotError("MODEL_CONFIG_MISMATCH", "Rules cannot call models");
+                },
+              },
+            },
+          );
     const round = await study.reserve(scope, lease, slot, evidence, accounts, rules);
     if (!round) {
       return true;
@@ -369,17 +442,24 @@ export function createPerpsStudyRunner(deps: {
         await study.finishCall(scope, lease, round!.key, lane, result, null);
         return result;
       } catch (error) {
+        const failure =
+          record.config.version === 5 && deadline.aborted && !signal.aborted
+            ? new PilotError(
+                "MODEL_TIMEOUT",
+                "Global model phase deadline expired, including queue wait",
+              )
+            : error;
         if (started) {
-          await study.finishCall(scope, lease, round!.key, lane, null, safeCode(error));
+          await study.finishCall(scope, lease, round!.key, lane, null, safeCode(failure));
         } else {
-          await study.stopDecisions(scope, lease, safeCode(error));
+          await study.stopDecisions(scope, lease, safeCode(failure));
         }
-        throw error;
+        throw failure;
       }
     }
     // Preserve the historical launch order; account/report order is a separate protocol detail.
     const modelStrategies: PerpsStudyStrategy[] =
-      record.config.version === 4
+      record.config.version === 4 || record.config.version === 5
         ? ["sma-jev", "sma-exa-jev"]
         : record.config.version === 3
           ? []
@@ -394,24 +474,38 @@ export function createPerpsStudyRunner(deps: {
           throw new PilotError("MODEL_CONFIG_MISMATCH", "Strategy account unavailable");
         }
         const context = { evidence, account };
-        if (record.config.version === 4) {
+        if (record.config.version === 4 || record.config.version === 5) {
           if (!deps.smaModels || (strategy !== "sma-jev" && strategy !== "sma-exa-jev")) {
             throw new PilotError("MODELS_DISABLED", "SMA review models required");
           }
+          const original =
+            record.config.version === 5
+              ? universeProposals(context, record.config, blockInitialOpenings)
+              : perpsRules(context);
           await study.event(
             scope,
             lease,
             `${round.key}:${strategy}:original`,
             "strategy-proposal",
-            { strategy, proposals: perpsRules(context), account },
+            { strategy, proposals: original, account },
           );
-          proposals[strategy] = await executeSmaReviewVariant(
-            strategy,
-            context,
-            deps.smaModels,
-            { run: call },
-            deadline,
-          );
+          proposals[strategy] =
+            record.config.version === 5
+              ? await reviewUniverse(
+                  strategy,
+                  context,
+                  original,
+                  deps.smaModels,
+                  { run: call },
+                  deadline,
+                )
+              : await executeSmaReviewVariant(
+                  strategy,
+                  context,
+                  deps.smaModels,
+                  { run: call },
+                  deadline,
+                );
           return;
         }
         if (!models) {
@@ -439,8 +533,35 @@ export function createPerpsStudyRunner(deps: {
         observedAt: now(),
         frames,
       });
-      validateCommonFrames(frames, record.config.network, now());
+      validateCommonFrames(frames, record.config.network, now(), record);
       await ownedGuard(record.config.version !== 3);
+      const finalClock = now();
+      const finalEvidence =
+        record.config.version === 5
+          ? {
+              ...evidence,
+              frames,
+              observedAt: finalClock,
+              excluded: [
+                ...(evidence.excluded ?? []),
+                ...record.config.markets
+                  .filter((m) => !frames.some((f) => f.snapshot.market.symbol === m.symbol))
+                  .map((m) => ({
+                    symbol: m.symbol,
+                    code: "DATA_UNAVAILABLE",
+                    phase: "execution-refresh",
+                  })),
+              ],
+            }
+          : { ...evidence, frames, observedAt: finalClock };
+      const finalBlock =
+        record.config.version === 5 &&
+        Object.values(accounts).some((a) =>
+          a!.positions.some(
+            (p) =>
+              p.closedAt === null && !frames.some((f) => f.snapshot.market.symbol === p.symbol),
+          ),
+        );
       executionStarted = true;
       // New marks refresh admission after model latency; the earlier funding reconciliation is retained.
       for (const strategy of strategies) {
@@ -456,7 +577,10 @@ export function createPerpsStudyRunner(deps: {
         const current = await paper.view(accountScope(record, strategy));
         const risk = paperRisk(current.account, current.attempts, now());
         for (const position of current.account.positions.filter(
-          (p) => p.closedAt === null && risk.closeSymbols.includes(p.symbol),
+          (p) =>
+            p.closedAt === null &&
+            risk.closeSymbols.includes(p.symbol) &&
+            frames.some((f) => f.snapshot.market.symbol === p.symbol),
         )) {
           closedThisRound.add(`${strategy}:${position.symbol}`);
           await execute(
@@ -471,20 +595,41 @@ export function createPerpsStudyRunner(deps: {
           );
         }
         const finalProposals =
-          record.config.version === 4
-            ? smaFinalProposals(proposals[strategy]!, {
-                evidence: { ...evidence, frames, observedAt: now() },
-                account: current.account,
-              })
-            : proposals[strategy]!;
-        if (record.config.version === 4) {
+          record.config.version === 5
+            ? universeFinal(
+                proposals[strategy]!,
+                { evidence: finalEvidence, account: current.account },
+                record.config,
+                finalBlock,
+              )
+            : record.config.version === 4
+              ? smaFinalProposals(proposals[strategy]!, {
+                  evidence: { ...evidence, frames, observedAt: now() },
+                  account: current.account,
+                })
+              : proposals[strategy]!;
+        if (record.config.version === 4 || record.config.version === 5) {
           await study.event(scope, lease, `${round.key}:${strategy}:final-gate`, "final-gate", {
             strategy,
             initial: proposals[strategy],
             final: finalProposals,
           });
         }
-        for (const proposal of finalProposals) {
+        const ordered =
+          record.config.version === 5
+            ? [
+                ...finalProposals.filter((p) => p.action === "close"),
+                ...finalProposals
+                  .filter((p) => p.action.startsWith("open-"))
+                  .sort(
+                    (a, b) =>
+                      (a as PerpsProposal & { rank?: number }).rank! -
+                      (b as PerpsProposal & { rank?: number }).rank!,
+                  ),
+                ...finalProposals.filter((p) => p.action === "hold"),
+              ]
+            : finalProposals;
+        for (const proposal of ordered) {
           if (closedThisRound.has(`${strategy}:${proposal.symbol}`)) {
             continue;
           }
@@ -538,7 +683,11 @@ export function createPerpsStudyRunner(deps: {
           if (!continuing) {
             break;
           }
-          const wait = Math.max(0, 60000 - (now() - start));
+          const latest = (await study.view(scope)).record;
+          const wait =
+            latest.config.version === 5
+              ? Math.max(1, 60000 - (now() % 60000) + 100)
+              : Math.max(0, 60000 - (now() - start));
           await new Promise<void>((resolve, reject) => {
             const abort = () => {
               clearTimeout(timer);
