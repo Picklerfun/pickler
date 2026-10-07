@@ -1,0 +1,102 @@
+{
+  "network": "testnet",
+  "observedAt": 1791337731229,
+  "markets": [
+    {
+      "marketId": 16,
+      "symbol": "BTC",
+      "name": "BTC Perp",
+      "collateral": {
+        "symbol": "AUSD",
+        "decimals": 6
+      },
+      "status": "open",
+      "available": true,
+      "reasons": []
+    },
+    {
+      "marketId": 32,
+      "symbol": "ETH",
+      "name": "ETH Perp",
+      "collateral": {
+        "symbol": "AUSD",
+        "decimals": 6
+      },
+      "status": "open",
+      "available": true,
+      "reasons": []
+    },
+    {
+      "marketId": 48,
+      "symbol": "SOL",
+      "name": "SOL Perp",
+      "collateral": {
+        "symbol": "AUSD",
+        "decimals": 6
+      },
+      "status": "open",
+      "available": true,
+      "reasons": []
+    },
+    {
+      "marketId": 64,
+      "symbol": "MON",
+      "name": "MON Perp",
+      "collateral": {
+        "symbol": "AUSD",
+        "decimals": 6
+      },
+      "status": "open",
+      "available": true,
+      "reasons": []
+    },
+    {
+      "marketId": 256,
+      "symbol": "ZEC",
+      "name": "ZEC Perp",
+      "collateral": {
+        "symbol": "AUSD",
+        "decimals": 6
+      },
+      "status": "open",
+      "available": true,
+      "reasons": []
+    },
+    {
+      "marketId": 272,
+      "symbol": "LIT",
+      "name": "LIT Perp",
+      "collateral": {
+        "symbol": "AUSD",
+        "decimals": 6
+      },
+      "status": "open",
+      "available": true,
+      "reasons": []
+    },
+    {
+      "marketId": 320,
+      "symbol": "PUMP",
+      "name": "PUMP Perp",
+      "collateral": {
+        "symbol": "AUSD",
+        "decimals": 6
+      },
+      "status": "open",
+      "available": true,
+      "reasons": []
+    },
+    {
+      "marketId": 336,
+      "symbol": "NEAR",
+      "name": "NEAR Perp",
+      "collateral": {
+        "symbol": "AUSD",
+        "decimals": 6
+      },
+      "status": "open",
+      "available": true,
+      "reasons": []
+    }
+  ]
+}
