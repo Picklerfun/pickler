@@ -94,7 +94,7 @@ export function createPerpsStudyModels(
   transport: typeof fetch = fetch,
   timeoutSignal: (milliseconds: number) => AbortSignal = AbortSignal.timeout,
 ): PerpsModels {
-  if (inputConfig.version === 3) {
+  if (inputConfig.version === 3 || inputConfig.version === 4) {
     throw new PilotError("MODELS_DISABLED", "Original SMA cannot construct model clients");
   }
   const config = inputConfig;
