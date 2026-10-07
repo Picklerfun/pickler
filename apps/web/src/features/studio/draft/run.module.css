@@ -31,14 +31,11 @@
   composes: meta from "../shell/cards.module.css";
 }
 
-/* The canvas's tags: amber STARTS WITH THE PERPL RUNTIME, quiet SOON. */
+/* The canvas's amber STARTS WITH THE PERPL RUNTIME tag. */
 .caution {
   composes: tag headTag from "../shell/cards.module.css";
   background: var(--pk-state-caution-bg);
   color: var(--pk-state-caution-ink);
-}
-.soon {
-  composes: tag soon from "../shell/cards.module.css";
 }
 
 /* ---------- Console ---------- */
