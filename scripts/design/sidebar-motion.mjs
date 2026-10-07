@@ -29,6 +29,7 @@ try {
     ["draft", "draft"],
     ["perpl-live", "live"],
   ]) {
+    await page.setViewportSize({ width: 1086, height: 1000 });
     await page.goto(`${baseUrl}/studio?stage=${stage}`);
     await page.locator(`#${prefix}-agent-chip`).waitFor();
     await page.evaluate(() => document.fonts.ready);
@@ -341,10 +342,129 @@ try {
         `Brand, network and global controls share a row: ${stage}, ${width}px`,
       );
     }
+
+    // Stationary hover must reveal compact controls without moving the icon out from under it.
+    for (const width of [560, 480, 390, 360, 320]) {
+      await page.setViewportSize({ width, height: 1000 });
+      for (const selector of ["[data-wallet-balance]", "[data-credits-control]"]) {
+        await page.mouse.move(width / 2, 950);
+        await page.waitForTimeout(400);
+        const control = page.locator(selector);
+        const before = await control.boundingBox();
+        assert.equal(before.width, 38, "Compact control starts as an icon");
+        const preceding =
+          selector === "[data-wallet-balance]"
+            ? page.getByLabel("Monad testnet", { exact: true })
+            : page.locator("[data-wallet-balance]");
+        const precedingBefore = await preceding.boundingBox();
+        const anchor = { x: before.x + before.width - 19, y: before.y + 19 };
+        await page.evaluate((selector) => {
+          const button = document.querySelector(selector);
+          const navbar = button.closest("header");
+          const height = navbar.getBoundingClientRect().height;
+          window.compactFrames = (async () => {
+            const frames = [];
+            const start = performance.now();
+            do {
+              await new Promise(requestAnimationFrame);
+              const box = button.getBoundingClientRect();
+              frames.push({
+                width: box.width,
+                right: box.right,
+                height: navbar.getBoundingClientRect().height,
+                sameButton: document.querySelector(selector) === button,
+                hover: button.matches(":hover"),
+                overflow: document.documentElement.scrollWidth > innerWidth + 1,
+              });
+            } while (performance.now() - start < 800);
+            return { height, frames };
+          })();
+        }, selector);
+        await page.mouse.move(anchor.x, anchor.y);
+        const { height, frames } = await page.evaluate(() => window.compactFrames);
+        const context = `${stage}, ${width}px, ${selector}`;
+        const hovered = frames.filter((frame) => frame.hover);
+        assert.ok(hovered.length > 2, `Hover stays reachable: ${context}`);
+        assert.ok(
+          hovered.some((frame) => frame.width > 40 && frame.width < 90),
+          `Intermediate expansion: ${context}`,
+        );
+        for (const frame of hovered) {
+          assert.ok(frame.sameButton, `No remount: ${context}`);
+          assert.ok(
+            Math.abs(frame.right - (before.x + before.width)) < 0.5,
+            `Right icon stays anchored: ${context}`,
+          );
+          assert.equal(frame.height, height, `No navbar row jump: ${context}`);
+          assert.equal(frame.overflow, false, `No expansion overflow: ${context}`);
+        }
+        const precedingAfter = await preceding.boundingBox();
+        assert.ok(
+          precedingAfter.x + precedingAfter.width < precedingBefore.x + precedingBefore.width - 40,
+          `Preceding control slides left: ${context}`,
+        );
+        assert.ok(frames.at(-1).hover, `No hover oscillation: ${context}`);
+        assert.ok(frames.at(-1).width > 85, `Details settle visibly: ${context}`);
+        const details = await control.locator('[class*="navReveal"]').evaluate((element) => ({
+          width: element.clientWidth,
+          contentWidth: element.firstElementChild.scrollWidth,
+          opacity: getComputedStyle(element).opacity,
+        }));
+        assert.equal(details.opacity, "1", `Labels are visible: ${context}`);
+        assert.ok(
+          details.contentWidth <= details.width + 1,
+          `Complete fixture balances/credits: ${context}`,
+        );
+        await page.mouse.move(width / 2, 950);
+        await page.waitForTimeout(400);
+        assert.ok(
+          Math.abs((await control.boundingBox()).width - 38) < 0.5,
+          `Pointer exit contracts once: ${context}`,
+        );
+        await page.keyboard.press("Tab");
+        await control.focus();
+        await page.waitForTimeout(400);
+        assert.ok((await control.boundingBox()).width > 85, `Keyboard reveals details: ${context}`);
+        await control.evaluate((element) => element.blur());
+        await page.waitForTimeout(400);
+      }
+    }
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.locator("[data-credits-control]").hover();
+    assert.equal(
+      await page
+        .locator('[data-credits-control] [class*="navReveal"]')
+        .evaluate((element) => getComputedStyle(element).transitionDuration),
+      "0s",
+      "Reduced motion disables compact expansion animation",
+    );
+    await page.mouse.move(100, 950);
+    await page.emulateMedia({ reducedMotion: "no-preference" });
   }
+  const touch = await browser.newContext({
+    viewport: { width: 390, height: 1000 },
+    isMobile: true,
+    hasTouch: true,
+  });
+  const touchPage = await touch.newPage();
+  touchPage.on("pageerror", (error) => errors.push(error.message));
+  await touchPage.goto(`${baseUrl}/studio?stage=draft`);
+  for (const [selector, dialog] of [
+    ["[data-wallet-balance]", "#new-agent-wallets"],
+    ["[data-credits-control]", "#new-agent-credits"],
+  ]) {
+    const control = touchPage.locator(selector);
+    await control.tap();
+    await touchPage.locator(`${dialog}[open]`).waitFor();
+    await touchPage.locator(dialog).getByRole("button", { name: "Close", exact: true }).tap();
+    await touchPage.locator(`${dialog}[open]`).waitFor({ state: "hidden" });
+    await touchPage.waitForTimeout(400);
+    assert.equal((await control.boundingBox()).width, 38, "Touch does not retain hover expansion");
+  }
+  await touch.close();
   assert.deepEqual(errors, [], "No browser errors");
   console.log(
-    "PASS: stable DOM, synchronized sidebar geometry, fading labels, anchored avatar/navbar, fixed card measure, tooltip dismissal/keyboard access, crisp icons, responsive breakpoints and no overflow. Controlled fixtures only.",
+    "PASS: stable DOM, synchronized sidebar geometry, fading labels, anchored avatar/navbar, fixed card measure, tooltip dismissal/keyboard access, crisp icons, responsive breakpoints, compact wallet/credits hover and focus, touch dialogs, reduced motion and no overflow. Controlled fixtures only.",
   );
 } finally {
   await browser?.close();
