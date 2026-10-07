@@ -268,6 +268,11 @@ async function approveProposal(
             "It has no Perpl config and caps",
           ]);
         }
+        if (!config.perpl.markets.some((market) => market === proposal.instrument)) {
+          return await settleRefused("MARKET_NOT_ALLOWED", "MARKET REMOVED", [
+            "Choose the market and run a new check before increasing exposure",
+          ]);
+        }
         const network = config.perpl.network;
         const scope: PerpsPaperScope = {
           tenantId: check.tenantId,
@@ -302,6 +307,8 @@ async function approveProposal(
                 ),
                 now(),
                 signal,
+                beforeFunding.account.positions.find((position) => position.symbol === symbol)
+                  ?.market,
               ),
             );
           }
@@ -513,7 +520,7 @@ async function closePositions(
         const key = `${scope.network}:${position.symbol}`;
         let frame = frames.get(key);
         if (!frame) {
-          frame = await runtime.exitFrame(scope.network, position.symbol, signal);
+          frame = await runtime.exitFrame(scope.network, position.symbol, signal, position.market);
           frames.set(key, frame);
         }
         await fence(runtime, holder, signal);
