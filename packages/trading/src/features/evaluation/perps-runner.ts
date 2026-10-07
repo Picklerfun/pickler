@@ -64,7 +64,8 @@ export function createPerpsStudyRunner(deps: {
   study: PerpsStudyRepository;
   paper: PerpsPaperRepository;
   data: StudyData;
-  models: PerpsModels;
+  models?: PerpsModels;
+  afterCycle?: () => Promise<void>;
   now?: () => number;
   paperForLease?: (
     scope: PerpsStudyScope,
@@ -172,7 +173,7 @@ export function createPerpsStudyRunner(deps: {
     await ownedGuard();
     let { record } = await study.view(scope);
     const strategies = perpsStrategies(record.config);
-    const stopped = record.config.version === 2 && !!record.decisionStopReason;
+    const stopped = record.config.version !== 1 && !!record.decisionStopReason;
     if (now() >= record.endsAt! || record.stopRequested || stopped) {
       for (const strategy of strategies) {
         await paper.closeAdmissions(accountScope(record, strategy));
@@ -363,7 +364,8 @@ export function createPerpsStudyRunner(deps: {
       }
     }
     // Preserve the historical launch order; account/report order is a separate protocol detail.
-    const modelStrategies: PerpsStudyStrategy[] = ["deepseek", "jev"];
+    const modelStrategies: PerpsStudyStrategy[] =
+      record.config.version === 3 ? [] : ["deepseek", "jev"];
     if (record.config.version === 2) {
       modelStrategies.push("combined");
     }
@@ -374,6 +376,9 @@ export function createPerpsStudyRunner(deps: {
           throw new PilotError("MODEL_CONFIG_MISMATCH", "Strategy account unavailable");
         }
         const context = { evidence, account };
+        if (!models) {
+          throw new PilotError("MODELS_DISABLED", "Model composition unavailable");
+        }
         const dependencies = { models, signal: deadline, calls: { run: call } };
         proposals[strategy] =
           record.config.version === 1 && strategy === "jev"
@@ -388,7 +393,7 @@ export function createPerpsStudyRunner(deps: {
     }
     let executionStarted = false;
     try {
-      await ownedGuard(true);
+      await ownedGuard(record.config.version !== 3);
       const frames = await data.execution(record, signal, () => ownedGuard());
       signal.throwIfAborted();
       // Persist the common execution input even if validation rejects it before any fill.
@@ -397,7 +402,7 @@ export function createPerpsStudyRunner(deps: {
         frames,
       });
       validateCommonFrames(frames, record.config.network, now());
-      await ownedGuard(true);
+      await ownedGuard(record.config.version !== 3);
       executionStarted = true;
       // New marks refresh admission after model latency; the earlier funding reconciliation is retained.
       for (const strategy of strategies) {
@@ -475,7 +480,9 @@ export function createPerpsStudyRunner(deps: {
       try {
         for (;;) {
           const start = now();
-          if (!(await cycle(scope, lease, combined))) {
+          const continuing = await cycle(scope, lease, combined);
+          await deps.afterCycle?.();
+          if (!continuing) {
             break;
           }
           const wait = Math.max(0, 60000 - (now() - start));
