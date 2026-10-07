@@ -804,9 +804,10 @@ agent switcher and the selected agent wallet’s AUSD/MON balances. The status a
 the agent name in the content header. On small screens the official mobile Sheet contains vertical navigation. Moving
 that switcher must preserve its permissions, agent IDs and New agent callback. The draft status
 is rendered once in the content header. Desktop header controls stay on one row during account expansion; the account
-chip may shrink to the available width and its icon never leaves the pointer. At widths of 640px
-or less, hover expansion is disabled. The selected-agent navbar keeps its controls on one row. The 360ms expansion reverses
-once on pointer exit, rather than repeatedly entering/leaving a relocated icon.
+chip may shrink to the available width and its icon never leaves the pointer. Fine-pointer hover
+also reveals the username on narrow screens; touch screens open the menu without hover expansion.
+The selected-agent navbar keeps its controls on one row. The 360ms expansion reverses once on
+pointer exit, rather than repeatedly entering/leaving a relocated icon.
 
 Account profile links include a local `returnTo` carrying the active agent, section and any
 non-production preview stage. `shell/account-return.ts` accepts only the Studio home path for
@@ -855,13 +856,14 @@ The shell is a chrome wrapper with a global header, a body containing Sidebar an
 content landmark, and portal dialogs. The pending frame follows the same landmark hierarchy.
 The selected-agent navbar keeps the global wallet/credits/account controls on one row at every
 supported width. At 768px and below, the brand shows only its logo while retaining the link's
-accessible name. At 560px and below, wallet and credits become labelled 38px icon buttons opening
+accessible name. At 640px and below, wallet and credits become labelled 38px icon buttons opening
 the same existing dialogs; the wallet's accessible name retains its actual balances. Fine-pointer
 hover and keyboard focus reveal each label to the left with the account chip's 360ms expansion.
 The disclosure icon stays anchored; preceding controls slide within the same row. Compact wallet
 balances use two asset rows; credits show their label and status. The network badge contracts to
-a dot while revealing, retaining its accessible name and tooltip. Touch only opens the existing
-dialog, without sticky hover; reduced motion disables these transitions. Network and account
+a dot while revealing wallet, credits or profile, retaining its accessible name and tooltip.
+Compact profile labels retain ellipsis for long handles and the same anchored avatar. Touch only
+opens the existing dialog, without sticky hover; reduced motion disables these transitions. Network and account
 controls remain visible. Do not force a second controls row or hide an actionable control
 to make the selected-agent header fit. Sidebar state never changes navbar dimensions.
 
