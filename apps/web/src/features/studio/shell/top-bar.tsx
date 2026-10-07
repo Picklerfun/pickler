@@ -1,6 +1,7 @@
 "use client";
 import Image from "next/image";
 import Link from "next/link";
+import { Icon } from "@pickler/ui";
 import type { StudioWallets } from "../api";
 import { unitsOf } from "../new-agent/model";
 import type { StudioReturnContext } from "./account-return";
@@ -35,7 +36,7 @@ export function StudioTopBar({
   returnContext,
 }: StudioTopBarProps) {
   return (
-    <header className={home.top}>
+    <header className={styles.top} data-agent-navbar>
       <Link href="/" className={home.brand}>
         <Image src="/brand/logo.png" alt="" width={22} height={23} priority />
         <span>PICKLER</span>
@@ -52,6 +53,7 @@ export function StudioTopBar({
         <button
           type="button"
           className={topBar.topPill}
+          data-credits-control
           title="AI credits"
           aria-label="AI credits, soon"
           aria-haspopup="dialog"
@@ -59,7 +61,8 @@ export function StudioTopBar({
         >
           <i className={topBar.creditsDot} aria-hidden="true" />
           <small className={topBar.creditsLabel}>AI CREDITS</small>
-          <span>Soon</span>
+          <span className={topBar.creditsStatus}>Soon</span>
+          <Icon name="coin" size={18} className={topBar.creditsIcon} />
         </button>
         <AccountMenu handle={accountHandle} preview={preview} returnContext={returnContext} />
       </div>
