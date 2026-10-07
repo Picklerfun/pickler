@@ -886,7 +886,10 @@ reproduces slow-client scheduling while retaining the normal geometry assertions
 capture begins on the real pointer-entry event; Web Animations inspects the actual CSS interpolation
 at one quarter of its duration, then resumes and checks natural completion and stationary-pointer
 geometry. This prevents missed RAF samples on busy runners from masquerading as instant expansion.
-Focus and exit checks also wait for actual CSS completion rather than fixed sleeps. It is part of the Design rendered CI job and can
+Focus and exit checks also wait for actual CSS completion rather than fixed sleeps. A controlled
+17px layout gutter additionally covers classic scrollbars at 320px; smallest-screen header gaps
+and padding leave room for the complete wallet balances. Content failures retain measured widths,
+font information, frames and screenshots rather than relaxing the visibility assertion. It is part of the Design rendered CI job and can
 reuse an explicit loopback fixture with `DESIGN_BASE_URL`. Keep the account-menu acceptance for
 keyboard, mobile Sheet and profile-return interactions.
 
