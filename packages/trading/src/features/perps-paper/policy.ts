@@ -1,4 +1,10 @@
-import { LEVERAGE_BOUNDS, PilotError, type AgentRecord } from "@pickler/core";
+import {
+  LEVERAGE_BOUNDS,
+  PilotError,
+  type AgentRecord,
+  PERPL_LAB_SYMBOLS,
+  type PerpSymbol,
+} from "@pickler/core";
 import { pluginEnabled } from "@pickler/core";
 import {
   PAPER_SCALE,
@@ -53,7 +59,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 export function assertPaperIntent(intent: PerpsPaperIntent) {
   if (
     !["open", "close"].includes(intent.kind) ||
-    !["BTC", "ETH"].includes(intent.symbol) ||
+    !PERPL_LAB_SYMBOLS.includes(intent.symbol) ||
     !["long", "short"].includes(intent.side) ||
     u(intent.notional) < 0n ||
     u(intent.feeReserve) < 0n ||
@@ -130,7 +136,7 @@ export function paperRisk(
     available = u(account.cash) - margin - reserved;
   }
   const reasons: string[] = [];
-  const closeSymbols = new Set<"BTC" | "ETH">();
+  const closeSymbols = new Set<PerpSymbol>();
   if (equity === null && !product) {
     reasons.push("UNKNOWN_MARKS");
   }
