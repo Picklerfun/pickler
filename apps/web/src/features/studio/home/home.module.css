@@ -1062,8 +1062,8 @@
   }
 }
 
-/* Preserve the brand link's accessible name while freeing narrow navbar space. */
-@media (max-width: 480px) {
+/* Match the compact header breakpoint and preserve the brand link's accessible name. */
+@media (max-width: 640px) {
   .brand > span {
     position: absolute;
     width: 1px;
