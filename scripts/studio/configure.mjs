@@ -9,10 +9,10 @@ const status = JSON.parse(await readFile(join(directory, "status.json"), "utf8")
 const url = new URL(status.DB_URL);
 if (
   url.hostname !== "127.0.0.1" ||
-  url.port !== "55522" ||
+  !["55522", "55532"].includes(url.port) ||
   url.pathname !== "/postgres" ||
   url.search ||
-  status.API_URL !== "http://127.0.0.1:55521"
+  status.API_URL !== `http://127.0.0.1:${Number(url.port) - 1}`
 ) {
   throw new Error("Refusing an uncontrolled stack");
 }
