@@ -97,6 +97,9 @@ own `kind='agent'` row and throws `AgentWalletNotFoundError` when none matched, 
 confirm produced can never land on someone else's wallet. This is the only path that sets the
 column — the studio's draft-create transaction only ever reads it.
 
+`PostgresStudioDirectory.setAdvicePrice(userId, productAgentId, micro)` writes
+`agents.agents.advice_price_micro_ausd` for the workspace owner (NOT_FOUND otherwise); a price needs a
+row in `wallets.agent_wallets` (CONFLICT `AGENT_WALLET_REQUIRED`), null clears without one.
 `PostgresStudioDirectory.createDraft` creates a private draft with its agent wallet in one
 transaction (studio-create-simplified-v1 §4.1). It locks the workspace and first looks for a replay:
 a `pickler.product_agents` row with `request_key = 'draft:<walletId>'` answers that draft again

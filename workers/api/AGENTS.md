@@ -383,6 +383,11 @@ never writes `spend`: the store keeps the stored limits and ignores any `spend` 
 `spendEnforced: false`. The limits are not enforced yet; the trading work enforces them through a
 per-call and daily ledger period or a Turnkey value cap. The monthly budget ledger is not used.
 
+`PUT /agents/:id/advice-price { priceAusd: string | null }` (owner only) sets or clears the AUSD
+price of one fresh advice analysis (0.10 to 100, at most 6 decimals, parsed by core's
+`parseAusdToMicro`) through `directory.setAdvicePrice`. `:id` is the product agent id. It answers
+`{ advicePrice }`; a price needs the agent's wallet (409 `AGENT_WALLET_REQUIRED`), clearing does not.
+
 `PUT /agents/:id/interval { hours }` accepts only 3, 6, 12 or 24 (the home's "every 3h / 6h / 12h /
 daily") and writes only `config.intervalHours` through `repository.updateInterval`, with manage
 rights and the agent's `agentScope`. Like the limits it takes no version and keeps the version, the
