@@ -727,7 +727,7 @@ available; no new web business endpoint is introduced.
 
 ## Studio strategy version 2
 
-Studio setup selects a versioned common strategy; absent selection resolves combined@2.0.0.
+Studio setup selects a versioned common strategy; legacy absent selection resolves combined@2.0.0; new agents use combined@2.1.0.
 New check results expose `strategyResult` with per-market proposals, three-state brief findings,
 execution outcomes, funding status and incompleteness. Historical fields retain their recorded
 values and are null/empty for new results rather than fabricated percentages. Model costs remain
@@ -920,3 +920,12 @@ its own official mark. Unknown amounts use Skeletons, not zero. The balance row 
 and fades/contracts with the existing sidebar motion; it is hidden from assistive technology
 when the desktop rail is collapsed. Status stays in the content header beside the agent name,
 alongside published-agent controls.
+
+## Dynamic Studio markets
+
+The shared shell/trading-markets selector is used by new, draft and live Sources & rules. Preserve
+forms/selections on read failures, use Skeletons and explicit retry, and never auto-select real
+markets. Console distinguishes loading/read-error/confirmed-disabled/available; chat remains
+non-actionable. Preview catalogue fixtures are not functional acceptance.
+
+See [agent-selected Perpl markets](../../docs/studio-perpl-markets.md).
