@@ -145,8 +145,11 @@ async function run(strategy) {
     await page.getByLabel("Name it", { exact: true }).fill(`A${suffix} ${strategy}`);
     await page.getByRole("button", { name: "Analyst", exact: true }).click();
     const marketPicker = page.getByRole("region", { name: "Trading markets" });
-    await marketPicker.getByRole("button", { name: "BTC", exact: true }).click();
-    await marketPicker.getByRole("button", { name: "SOL", exact: true }).click();
+    await marketPicker.getByRole("button", { name: "Select trading markets", exact: true }).click();
+    const marketMenu = page.getByRole("menu", { name: "Select trading markets", exact: true });
+    await marketMenu.getByRole("menuitemcheckbox", { name: "BTC", exact: true }).click();
+    await marketMenu.getByRole("menuitemcheckbox", { name: "SOL", exact: true }).click();
+    await page.keyboard.press("Escape");
     await page
       .getByRole("button", { name: "Create its wallet · 2 signatures", exact: true })
       .click();
@@ -228,13 +231,10 @@ async function run(strategy) {
     const retryMarkets = marketPicker.getByRole("button", { name: "Retry catalogue", exact: true });
     if (await retryMarkets.isVisible()) {
       await retryMarkets.click();
-      await marketPicker
-        .getByRole("button", { name: "SOL", exact: true })
-        .waitFor({ state: "visible" });
       await page.waitForFunction(
         () =>
           document.querySelector(
-            '[aria-label="Trading markets"] [aria-label="Perpl market catalogue"] button',
+            '[aria-label="Trading markets"] [aria-label="Select trading markets"]',
           )?.disabled === false,
       );
     }
