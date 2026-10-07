@@ -42,8 +42,11 @@ export function StudioTopBar({
         <span>PICKLER</span>
       </Link>
       <StudioSidebarToggle controls={sidebarId} />
-      <span className={home.spacer} />
-      <span className={styles.testnet}>TESTNET</span>
+      <span className={home.spacer} data-navbar-spacer />
+      <span className={styles.testnet} title="Monad testnet" aria-label="Monad testnet">
+        <span className={styles.networkLabel}>TESTNET</span>
+        <span className={styles.networkDot} aria-hidden="true" />
+      </span>
       <div className={styles.globalControls}>
         <WalletBalanceButton
           ausdMicro={unitsOf(master?.ausdMicro ?? null)}
@@ -59,10 +62,16 @@ export function StudioTopBar({
           aria-haspopup="dialog"
           onClick={onCredits}
         >
-          <i className={topBar.creditsDot} aria-hidden="true" />
-          <small className={topBar.creditsLabel}>AI CREDITS</small>
-          <span className={topBar.creditsStatus}>Soon</span>
-          <Icon name="coin" size={18} className={topBar.creditsIcon} />
+          <span className={topBar.navReveal}>
+            <span className={topBar.navDetails}>
+              <i className={topBar.creditsDot} aria-hidden="true" />
+              <small className={topBar.creditsLabel}>AI CREDITS</small>
+              <span className={topBar.creditsStatus}>Soon</span>
+            </span>
+          </span>
+          <span className={topBar.creditsIcon}>
+            <Icon name="coin" size={18} />
+          </span>
         </button>
         <AccountMenu handle={accountHandle} preview={preview} returnContext={returnContext} />
       </div>
