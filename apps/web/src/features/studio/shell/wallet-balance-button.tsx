@@ -18,6 +18,7 @@ export function WalletBalanceButton({
     <button
       type="button"
       className={styles.topPill}
+      data-wallet-balance
       title="Master wallet"
       aria-label={`Master wallet: ${formatUnits(ausdMicro, "AUSD")} AUSD, ${formatUnits(monWei, "MON")} MON`}
       aria-haspopup="dialog"
