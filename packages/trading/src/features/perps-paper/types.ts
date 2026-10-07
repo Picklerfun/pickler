@@ -22,6 +22,7 @@ export interface PerpsPaperExits {
 }
 export interface PerpsPaperPosition {
   id: string;
+  market?: import("@pickler/core").PerpMarketInfo;
   symbol: PerpSymbol;
   side: PerpsPaperSide;
   quantity: string;
@@ -115,6 +116,7 @@ export interface PerpsPaperRisk {
   exposure: string | null;
 }
 export interface PerpsPaperFill {
+  market?: import("@pickler/core").PerpMarketInfo;
   mark?: { price: string; timestamp: number };
   quantity: string;
   price: string;
