@@ -220,3 +220,7 @@ Read SMA-JEV-EXA.md for local v4 perps-sma-jev-exa-v1. One-shot synthetic valida
 ## Explicit SMA continuation
 
 SMA v4 resume requires --allow-paid and a local operator-resume.json. It retains original checks, metadata, calls and portfolios and schedules only untouched slots with a new recorded clock segment. No automatic paid retry.
+
+## Local universe comparison
+
+Read [SMA-ALL-MARKETS.md](SMA-ALL-MARKETS.md) for configuration v5 and the one-shot eleven-market SMA/Jev/Exa comparison. `universe-data.ts` composes public data; `universe-report.ts` renders 264 identities offline. Synthetic contracts use their own record, renew ownership and exclude live news from controlled facts. USD 2.50 new retained reserves include checks, within the same USD 5 historical campaign. No resume, automation, merge or deployment.
