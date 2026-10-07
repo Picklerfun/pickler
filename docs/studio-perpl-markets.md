@@ -74,6 +74,12 @@ selected. Loading uses Skeletons, leaves the form mounted and preserves selectio
 expired catalogues offer retry and cannot admit changed markets; unrelated setup fields can still
 be saved. A missing listing remains visible in selected chips and can be explicitly removed.
 
+The live selector reads the protected Studio catalogue endpoint. Its PerplMarketData adapter
+fetches the original network's `/api/v1/pub/context`; there is no manually maintained market list.
+Design previews use a recorded public testnet catalogue from that same adapter, with a synthetic
+preview clock. They never substitute that capture when a live read fails. Refresh a preview capture
+through the existing adapter rather than inventing identities or compatibility diagnostics.
+
 Console displays saved selected symbols. Runtime loading, read failure with retry, confirmed
 runtime disablement and available paper checks are separate states. A failed read is never
 presented as a successful disablement. Chat has no submission/actions and explains that paper
