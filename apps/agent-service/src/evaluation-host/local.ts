@@ -96,6 +96,12 @@ export async function executeEvaluation(input: EvaluationHostRequest) {
         return runPerpsStudy(args, signal);
       },
     },
+    "perps-sma-jev-exa-v1": {
+      async execute(request) {
+        const { runSmaReview } = await import("../perps-study/sma-review.js");
+        return runSmaReview({ ...input, command: request.command, configPath: path }, signal);
+      },
+    },
     "perps-original-sma-v1": {
       async execute(request) {
         const { runOriginalSma } = await import("../perps-study/original-sma.js");
