@@ -560,3 +560,7 @@ own status and owner-only idempotent submission; GET `access-requests` requires 
 super-admin allowlist. All use private/no-store and generated OpenAPI schemas. Infrastructure
 records the internal team inbox notification; no external message transport or automatic grant is
 composed. Both Studio and its Console alias mount these operations.
+
+## Local universe comparison
+
+Studio check summaries validate against the existing public response schema before serialization. Private eleven-market laboratory types do not broaden public BTC/ETH DTOs or activate product trading.
