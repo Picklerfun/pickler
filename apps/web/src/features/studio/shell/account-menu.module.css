@@ -140,7 +140,14 @@
   }
 }
 
-@media (hover: none), (max-width: 640px) {
+@media (max-width: 640px) {
+  .label {
+    max-width: min(140px, calc(100vw - 244px));
+    padding: 0 8px;
+    font-size: 11px;
+  }
+}
+@media (hover: none) {
   .username {
     display: none;
   }
