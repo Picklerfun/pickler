@@ -1,4 +1,5 @@
 "use client";
+import { TradingMarkets, useTradingMarkets } from "../shell/trading-markets";
 import { Icon } from "@pickler/ui";
 import { sourcesView, webForm, type WebForm } from "../shell/build-model";
 import { SaveOutcome, saveLabel, useSavedForm, useSetupSave } from "../shell/setup-save";
@@ -17,6 +18,18 @@ export function Sources({ agent, draft, canManage, onSection }: DraftSectionProp
   const saved = webForm(agent.config.sources?.web);
   const [form, setForm] = useSavedForm<WebForm>(agent.version, saved);
   const { state, save, touch, saving } = useSetupSave(draft);
+  const [markets, setMarkets] = useSavedForm<string[]>(
+    agent.version,
+    agent.config.perpl?.markets ?? [],
+  );
+  const network = agent.config.perpl?.network ?? null;
+  const catalogue = useTradingMarkets(network, draft.preview);
+  const marketsDirty =
+    JSON.stringify(markets) !== JSON.stringify(agent.config.perpl?.markets ?? []);
+  const dirty = viewDirty();
+  function viewDirty() {
+    return JSON.stringify(form) !== JSON.stringify(saved) || marketsDirty;
+  }
 
   function edit(next: Partial<WebForm>) {
     setForm({ ...form, ...next });
@@ -26,13 +39,29 @@ export function Sources({ agent, draft, canManage, onSection }: DraftSectionProp
   const box = useSiteBox(form.sites, (sites) => edit({ sites }));
   const view = sourcesView(form, saved, box.error);
   /* A rejected site still in the box (`box.refused`): saving now would quietly leave it out. */
-  const canSave = canManage && view.dirty && !view.needsSite && !box.refused && !saving;
+  const canSave =
+    canManage &&
+    dirty &&
+    !view.needsSite &&
+    !box.refused &&
+    !saving &&
+    (!marketsDirty || catalogue.allows(markets));
   const shut = !canManage || saving;
 
   return (
     <DraftSection section="skills">
       <div className={styles.column}>
         <RunNote onRun={() => onSection("console")} />
+        <TradingMarkets
+          read={catalogue}
+          network={network}
+          value={markets}
+          disabled={shut}
+          onChange={(next) => {
+            setMarkets(next);
+            touch();
+          }}
+        />
         <div className={styles.field} data-roomy="true">
           <div className={styles.fieldHead}>
             <span className={styles.fieldLabel}>IT READS</span>
@@ -96,11 +125,11 @@ export function Sources({ agent, draft, canManage, onSection }: DraftSectionProp
           aria-disabled={!canSave || undefined}
           onClick={() => {
             if (canSave) {
-              void save({ sources: view.sources });
+              void save({ sources: view.sources, ...(marketsDirty ? { markets } : {}) });
             }
           }}
         >
-          {saveLabel(state, view.dirty, "Save sources")}
+          {saveLabel(state, dirty, "Save sources")}
         </button>
         <SaveOutcome state={state} />
       </div>
