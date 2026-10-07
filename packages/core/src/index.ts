@@ -303,6 +303,7 @@ export * from "./features/perps/service.js";
 export * from "./features/research/trading-config.js";
 
 export * from "./features/advice/index.js";
+export * from "./features/advice/price.js";
 
 export * from "./features/ai-credits/index.js";
 export * from "./features/studio/access-requests.js";

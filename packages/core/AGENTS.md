@@ -370,6 +370,9 @@ finality, cursor concurrency safety or projection rollback.
 visibility and job/policy/repository ports. Pending/failed jobs are requester-only; completed
 results are authenticated shared history while the agent is public. Keep financial analysis and
 provider calculations out of core. See [Agent advice](../../docs/agent-advice.md).
+`features/advice/price.ts` exports `AdvicePrice`, `formatMicroAusd` and `advicePrice`: the wire shape
+of an agent's analysis price (micro-AUSD bigint to a decimal string). `AgentSummary`, `AgentPersona`
+and `DirectoryAgent.agent` carry the agent `id` and its nullable `advicePrice`.
 
 Advice pricing v2 pins the reviewed OpenAI-compatible forecast base URL and model in each job. Preserve v1 policies and their direct-DeepSeek meaning; provider changes require a new policy, never a historical rewrite.
 

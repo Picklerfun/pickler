@@ -162,7 +162,9 @@ covers them against the Docker PostgreSQL, including `onboard` right after `crea
 behind the marketplace. It reads one join: `agents.agents` left-joined to `agents.agent_profiles`
 (an agent created before profiles existed is still an agent, and gets the profile's defaults), to
 `identity.profiles` for the creator's handle, and to `market.tokens` restricted to `pre_graduation`
-and `graduated`. A `reserved`, `launching` or `failed` token is not a token: the agent's `ticker`
+and `graduated`. Every summary, persona and directory entry carries the agent `id` and its
+`advicePrice` (`agents.advice_price_micro_ausd`, read as text and mapped by core's `advicePrice`). A
+`reserved`, `launching` or `failed` token is not a token: the agent's `ticker`
 and `token` are null, and its ticker has no profile page. Tickers are stored and compared with
 their `$`. Killed agents are off the listing and the directory but keep a persona, so an old link
 still resolves. Only `visibility = 'public'` agents appear anywhere in it (migration 0024,

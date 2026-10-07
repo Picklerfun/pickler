@@ -559,8 +559,14 @@ const hours = (now: Date, n: number) => new Date(now.getTime() - n * 3_600_000);
 
 const persona = (agent: SampleAgent) => PERSONAS[agent.ticker]!;
 
+/** A deterministic uuid per sample agent, by its place in the board. */
+const agentId = (agent: SampleAgent) =>
+  `00000000-0000-0000-0000-${String(AGENTS.indexOf(agent) + 1).padStart(12, "0")}`;
+
 function summary(agent: SampleAgent, now: Date): AgentSummary {
   return {
+    id: agentId(agent),
+    advicePrice: null,
     name: agent.name,
     handle: persona(agent).handle,
     ticker: agent.ticker,
@@ -891,6 +897,8 @@ export function createSampleAgentDirectory(clock: Clock): AgentDirectory {
       const p = persona(agent);
       const now = clock.now();
       return {
+        id: agentId(agent),
+        advicePrice: null,
         name: agent.name,
         handle: p.handle,
         ticker: agent.ticker,
@@ -932,7 +940,14 @@ export function createSampleAgentDirectory(clock: Clock): AgentDirectory {
       return AGENTS.map((agent) => {
         const p = persona(agent);
         return {
-          agent: { name: agent.name, handle: p.handle, ticker: agent.ticker, accent: agent.accent },
+          agent: {
+            id: agentId(agent),
+            advicePrice: null,
+            name: agent.name,
+            handle: p.handle,
+            ticker: agent.ticker,
+            accent: agent.accent,
+          },
           beat: agent.beat,
           venue: p.venue,
           decides: p.decides,

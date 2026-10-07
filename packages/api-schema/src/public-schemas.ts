@@ -83,7 +83,12 @@ export const agentReadSchema = z.object({
     .nullable(),
   outcome: z.object({ final: text, observedAt: text }).nullable(),
 }) satisfies z.ZodType<AgentReadDto>;
+const advicePriceSchema = z
+  .object({ amount: text, asset: z.literal("AUSD"), decimals: z.literal(6) })
+  .nullable();
 export const agentSummarySchema = z.object({
+  id: z.string().uuid(),
+  advicePrice: advicePriceSchema,
   slug: nullableText,
   name: text,
   handle: text,
@@ -110,7 +115,7 @@ export const agentSummarySchema = z.object({
     .nullable(),
 }) satisfies z.ZodType<AgentSummaryDto>;
 export const directoryAgentSchema = z.object({
-  agent: activityAgentSchema,
+  agent: activityAgentSchema.extend({ id: z.string().uuid(), advicePrice: advicePriceSchema }),
   beat: text,
   venue,
   decides: text,
@@ -181,6 +186,8 @@ export const pickDetailSchema = agentCallSchema.extend({
   }),
 }) satisfies z.ZodType<PickDetailDto>;
 export const agentPersonaSchema = z.object({
+  id: z.string().uuid(),
+  advicePrice: advicePriceSchema,
   launchedToken: agentTokenSchema.nullable().optional(),
   tokenConfirmation: z.enum(["absent", "pending", "confirmed"]).optional(),
   name: text,
