@@ -930,6 +930,11 @@ multiple selections keep it open. Radix owns navigation, dismissal and focus res
 Preserve
 forms/selections on read failures, use Skeletons and explicit retry, and never auto-select real
 markets. Console distinguishes loading/read-error/confirmed-disabled/available; chat remains
-non-actionable. Preview catalogue fixtures are not functional acceptance.
+non-actionable. Preview catalogue fixtures are not functional acceptance. The testnet selector preview uses the
+public capture in `shell/perpl-testnet-catalogue.fixture.json`, obtained through PerplMarketData's
+production catalogue adapter. Its preview clock is synthetic; never use that capture as a live
+fallback or as evidence of current market availability. Production reads the protected Studio
+catalogue endpoint, which fetches Perpl's original public context. The navbar wallet icon identifies
+the master balance group; AUSD and MON retain their separate asset marks.
 
 See [agent-selected Perpl markets](../../docs/studio-perpl-markets.md).
