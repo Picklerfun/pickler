@@ -1,3 +1,4 @@
+import { perpsSlotClock } from "../perps-study/policy.js";
 import { perpsRules } from "../perps-strategies/policy.js";
 import {
   executeSmaReviewVariant,
@@ -190,7 +191,7 @@ export function createPerpsStudyRunner(deps: {
       await study.complete(scope, lease);
       return false;
     }
-    const slot = Math.floor((now() - record.startedAt!) / 900000);
+    const slot = perpsSlotClock(record, now()).slot;
     const attempted = !record.decisionStopReason && (await study.claimSlot(scope, lease, slot));
     const skip = async (phase: "before-model" | "execution-refresh", error: unknown) => {
       await study.event(scope, lease, `slot-${slot}:data-unavailable`, "data-unavailable", {
@@ -528,6 +529,7 @@ export function createPerpsStudyRunner(deps: {
       assertActive = heartbeat.assertActive;
       lease.assertActive = assertActive;
       const combined = AbortSignal.any([signal, heartbeat.signal]);
+      let interruption: string | undefined;
       try {
         for (;;) {
           const start = now();
@@ -552,9 +554,12 @@ export function createPerpsStudyRunner(deps: {
             }
           });
         }
+      } catch (error) {
+        interruption = safeCode(error);
+        throw error;
       } finally {
         await heartbeat.stop();
-        await study.release(scope, lease).catch(() => {
+        await study.release(scope, lease, interruption).catch(() => {
           deps.leaseDiagnostic?.({
             kind: "release-failed",
             at: now(),
