@@ -47,6 +47,7 @@ import { DRAFT_LIMIT_NOTE } from "../src/features/studio/lib/messages";
 
 const filled = (patch: Partial<NewAgentForm> = {}): NewAgentForm => ({
   ...emptyForm(),
+  markets: ["BTC", "ETH"],
   name: "Halftime",
   voice: "analyst",
   ...patch,
