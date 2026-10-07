@@ -12,3 +12,5 @@ export * from "./features/advice/runner.js";
 
 export * from "./features/perps-runtime/index.js";
 export * from "./features/perps-paper/checks.js";
+
+export * from "./features/perps-paper/universe-acquisition.js";

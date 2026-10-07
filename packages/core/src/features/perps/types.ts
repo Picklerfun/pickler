@@ -8,9 +8,22 @@ export const PERP_TOOLS = [
 ] as const;
 export type PerpTool = (typeof PERP_TOOLS)[number];
 export type PerpNetwork = "mainnet" | "testnet";
-export type PerpSymbol = "BTC" | "ETH";
+export const PERPL_LAB_SYMBOLS = [
+  "BTC",
+  "MON",
+  "ETH",
+  "SOL",
+  "HYPE",
+  "ZEC",
+  "LIT",
+  "VVV",
+  "PUMP",
+  "NEAR",
+  "UNI",
+] as const;
+export type PerpSymbol = (typeof PERPL_LAB_SYMBOLS)[number];
 export interface PerplConfig {
-  version: 1;
+  version: 1 | 2;
   network: PerpNetwork;
   markets: PerpSymbol[];
 }

@@ -1,7 +1,11 @@
 import {
   createSmaReviewModels,
   smaReviewDefinition,
+  smaUniverseReviewDefinition,
 } from "@pickler/agent-runtime/composition/sma-review-model";
+import { syntheticUniverseEvidence } from "./universe-contract.js";
+import { createUniverseStudyData } from "./universe-data.js";
+import { universeReport } from "./universe-report.js";
 import { syntheticSmaContext } from "./sma-review-contract.js";
 import { readFile, mkdir, writeFile, appendFile } from "node:fs/promises";
 import { resolve, join } from "node:path";
@@ -19,6 +23,8 @@ import {
   assertPerpsStudyConfig,
   createPerpsStudyRunner,
   canonicalAudit,
+  startLeaseHeartbeat,
+  type PerpsSmaUniverseConfig,
   type PerpsSmaReviewConfig,
   type EvaluationCommand,
 } from "@pickler/trading/evaluation";
@@ -44,9 +50,9 @@ export async function runSmaReview(
     throw new PilotError("INVALID_INPUT", "SMA review requires --env-file and --output");
   }
   const configText = await readFile(resolve(input.configPath), "utf8");
-  const config = JSON.parse(configText) as PerpsSmaReviewConfig;
+  const config = JSON.parse(configText) as PerpsSmaReviewConfig | PerpsSmaUniverseConfig;
   assertPerpsStudyConfig(config);
-  if (config.version !== 4) {
+  if (config.version !== 4 && config.version !== 5) {
     throw new PilotError("INVALID_INPUT", "SMA review protocol required");
   }
   const environment = parse(await readFile(resolve(input.envFile), "utf8"));
@@ -58,7 +64,7 @@ export async function runSmaReview(
   const metadata = {
     commit,
     originalCommit: "760ad3eae3001ee8ca81d02b4356f6065782db5e",
-    acquisitionPolicy: "rest-paced-20s-v1",
+    acquisitionPolicy: config.version === 5 ? "rest-universe-20s-v1" : "rest-paced-20s-v1",
     strategy: {
       id: "rules",
       version: "1.0.0",
@@ -67,7 +73,14 @@ export async function runSmaReview(
       maxHoldingHours: 4,
     },
     configurationHash: createHash("sha256").update(canonicalAudit(config)).digest("hex"),
-    reviewer: smaReviewDefinition,
+    reviewer: config.version === 5 ? smaUniverseReviewDefinition : smaReviewDefinition,
+    ...(config.version === 5
+      ? {
+          catalog: config.markets,
+          ranking: "sma-separation-rank-v1",
+          historicalBudget: config.historicalBudget,
+        }
+      : {}),
     spendingAuthorization: config.authorization,
     historicalAccountedOrReservedUSD: config.historicalAccountedOrReservedUSD,
     historicalUnknownReservations: config.historicalUnknownReservations,
@@ -93,10 +106,10 @@ export async function runSmaReview(
   process.once("SIGINT", interrupt);
   process.once("SIGTERM", interrupt);
   const combined = AbortSignal.any([signal, controller.signal]);
-  const data = createStudyData(paper, research, {
-    onDiagnostic: diagnostic,
-    onAcquisition: diagnostic,
-  });
+  const data =
+    config.version === 5
+      ? createUniverseStudyData(research, { onDiagnostic: diagnostic, onAcquisition: diagnostic })
+      : createStudyData(paper, research, { onDiagnostic: diagnostic, onAcquisition: diagnostic });
   let releaseAwake = () => {};
   let processState = "idle";
   const report = async () => {
@@ -138,9 +151,54 @@ export async function runSmaReview(
       processState,
       generatedAt: Date.now(),
     };
+    const universe =
+      config.version === 5
+        ? universeReport(snapshot, processState, {
+            combinedReportedOrReservedUSD: combinedProviderUSD,
+            contractAccounting,
+            historicalBudget: config.historicalBudget,
+            historicalUnknownReservations: config.historicalUnknownReservations,
+            exactHistoricalCampaignUSD: null,
+            fullNewReservationCeilingUSD: config.providerBudgetUSD,
+            campaignMaximumUpperBoundUSD: paperDecimal(
+              paperUnits(config.historicalBudget.upperBoundUSD) +
+                paperUnits(config.providerBudgetUSD),
+            ),
+          })
+        : null;
     const rendered = renderPerpsReport(result, processState);
+    if (universe) {
+      rendered.html = universe.html;
+      rendered.roundsCsv = universe.csv;
+    }
     for (const [name, content] of Object.entries({
-      "report.json": JSON.stringify(result, null, 2) + "\n",
+      "report.json":
+        JSON.stringify(
+          {
+            ...result,
+            ...(universe
+              ? {
+                  decisions: universe.rows,
+                  assetResults: universe.assetResults,
+                  observations: universe.observations,
+                  campaignUpperBoundUSD: paperDecimal(
+                    paperUnits(config.version === 5 ? config.historicalBudget.upperBoundUSD : "0") +
+                      paperUnits(universe.reservationsUSD) +
+                      paperUnits(
+                        contract?.rows.reduce(
+                          (sum, r) =>
+                            paperDecimal(paperUnits(sum) + paperUnits(r.providerReservedUSD)),
+                          "0",
+                        ) ?? "0",
+                      ),
+                  ),
+                  exactCampaignTotalUSD: null,
+                }
+              : {}),
+          },
+          null,
+          2,
+        ) + "\n",
       "report.html": rendered.html,
       "report.csv": rendered.csv,
       "rounds.csv": rendered.roundsCsv,
@@ -205,6 +263,13 @@ export async function runSmaReview(
       console.log(
         JSON.stringify({
           status: "public-data-verified",
+          ...(config.version === 5
+            ? {
+                eligible: evidence.frames.map((f) => f.snapshot.market.symbol),
+                excluded: evidence.excluded,
+                registered: config.markets,
+              }
+            : {}),
           candles: evidence.candles.map((c) => ({
             symbol: c.market.symbol,
             count: c.candles.length,
@@ -212,6 +277,12 @@ export async function runSmaReview(
         }),
       );
       return;
+    }
+    if (config.version === 5 && input.command === "resume") {
+      throw new PilotError(
+        "CONTINUATION_NOT_ALLOWED",
+        "All-markets study has no resume or automatic repeat",
+      );
     }
     if (["run", "resume", "validate"].includes(input.command)) {
       if (!input.allowPaid || !environment.TYPESAFE_API_KEY || !environment.EXA_API_KEY) {
@@ -253,17 +324,33 @@ export async function runSmaReview(
       assertPerpsStudyConfig(probeConfig);
       const probe = await study.initialize(probeConfig, {
         ...metadata,
-        purpose: "contracts-sma-v1",
+        purpose: config.version === 5 ? "contracts-universe-v1" : "contracts-sma-v1",
       });
       const lease = await study.claim(probeConfig);
-      const synthetic = () => syntheticSmaContext(Date.now()).evidence;
+      const synthetic = () =>
+        config.version === 5
+          ? syntheticUniverseEvidence(config, Date.now())
+          : syntheticSmaContext(Date.now()).evidence;
+      releaseAwake = process.platform === "darwin" ? await keepAwake() : () => {};
+      const heartbeat = startLeaseHeartbeat({
+        lease,
+        renew: () => study.renew(probeConfig, lease),
+        diagnostic,
+      });
+      lease.assertActive = heartbeat.assertActive;
+      const contractSignal = AbortSignal.any([combined, heartbeat.signal]);
       const live = modelsFor(probe.record);
       const contractModels = {
         ...live,
         news: async (...args: Parameters<typeof live.news>) => {
           const result = await live.news(...args);
           await writeFile(
-            join(output, "exa-contract-source.json"),
+            join(
+              output,
+              config.version === 5
+                ? `exa-contract-${args[0].evidence.frames[0]!.snapshot.market.symbol}.json`
+                : "exa-contract-source.json",
+            ),
             JSON.stringify(result, null, 2) + "\n",
             { mode: 0o600 },
           );
@@ -304,10 +391,11 @@ export async function runSmaReview(
             ...scope,
             owner: l.owner,
             signal: ownedSignal,
+            assertActive: heartbeat.assertActive,
           }),
       });
       try {
-        await runner.cycle(probeConfig, lease, combined);
+        await runner.cycle(probeConfig, lease, contractSignal);
         const saved = await study.view(probeConfig);
         if (
           saved.rounds[0]?.executionStatus !== "complete" ||
@@ -320,7 +408,10 @@ export async function runSmaReview(
         }
         for (const id of Object.values(probe.record.agentIds)) {
           const account = await paper.view({ ...probeConfig, agentId: id });
-          if (account.account.positions.filter((p) => p.closedAt === null).length !== 2) {
+          if (
+            account.account.positions.filter((p) => p.closedAt === null).length !==
+            (config.version === 5 ? 5 : 2)
+          ) {
             throw new PilotError("CONTRACT_VETO_UNEXPECTED", "Coherent synthetic openings blocked");
           }
         }
@@ -343,7 +434,7 @@ export async function runSmaReview(
               configurationHash: metadata.configurationHash,
               commit,
               probe: probeConfig.sessionId,
-              paidCalls: 3,
+              paidCalls: config.version === 5 ? 15 : 3,
               synthetic: true,
               actualExaNewsExcludedFromSyntheticReviewer: true,
             },
@@ -353,6 +444,7 @@ export async function runSmaReview(
           { mode: 0o600 },
         );
       } finally {
+        await heartbeat.stop();
         await study.release(probeConfig, lease);
       }
       await report();

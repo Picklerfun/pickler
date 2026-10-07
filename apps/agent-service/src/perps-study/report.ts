@@ -41,9 +41,9 @@ export function perpsStudyReport(
       .flatMap((r) => Object.values(r.calls))
       .filter((c) =>
         strategy === "sma-jev"
-          ? c.lane === "sma-review"
+          ? c.lane.split(":")[0] === "sma-review"
           : strategy === "sma-exa-jev"
-            ? c.lane === "news-review" || c.lane === "exa"
+            ? c.lane.split(":")[0] === "news-review" || c.lane.split(":")[0] === "exa"
             : strategy === "deepseek"
               ? c.lane === "direct"
               : strategy === "jev"
@@ -102,7 +102,7 @@ export function perpsStudyReport(
       0n,
     );
     const costs = calls
-      .filter((c) => c.lane !== "exa")
+      .filter((c) => c.lane.split(":")[0] !== "exa")
       .reduce((v, c) => v + u(c.costUsd ?? "0"), 0n);
     const latency = calls
       .filter((c) => c.startedAt !== null && c.finishedAt !== null)
@@ -140,22 +140,25 @@ export function perpsStudyReport(
       fills: filled.length,
       rejections: view.attempts.filter((a) => a.status !== "filled").length,
       riskExits: filled.filter((a) => a.key.includes(":risk:")).length,
-      modelCalls: calls.filter((c) => c.startedAt !== null && c.lane !== "exa").length,
-      exaCalls: calls.filter((c) => c.startedAt !== null && c.lane === "exa").length,
+      modelCalls: calls.filter((c) => c.startedAt !== null && c.lane.split(":")[0] !== "exa")
+        .length,
+      exaCalls: calls.filter((c) => c.startedAt !== null && c.lane.split(":")[0] === "exa").length,
       exaReportedCostUSD: d(
-        calls.filter((c) => c.lane === "exa").reduce((v, c) => v + u(c.costUsd ?? "0"), 0n),
+        calls
+          .filter((c) => c.lane.split(":")[0] === "exa")
+          .reduce((v, c) => v + u(c.costUsd ?? "0"), 0n),
       ),
-      unknownProviderCosts: calls.filter(
-        (c) => c.lane !== "exa" && c.startedAt !== null && c.costUsd === null,
-      ).length,
+      unknownProviderCosts: calls.filter((c) => c.startedAt !== null && c.costUsd === null).length,
       providerReservedUSD: d(
-        calls.filter((c) => c.status !== "skipped").reduce((v, c) => v + u(c.reservationUsd), 0n),
+        calls
+          .filter((c) => record.config.version === 5 || c.status !== "skipped")
+          .reduce((v, c) => v + u(c.reservationUsd), 0n),
       ),
       modelCostEstimateUSD: d(costs),
       inputTokens: calls.reduce((sum, c) => sum + (c.inputTokens ?? 0), 0),
       outputTokens: calls.reduce((sum, c) => sum + (c.outputTokens ?? 0), 0),
       unknownModelCosts: calls.filter(
-        (c) => c.lane !== "exa" && c.startedAt !== null && c.costUsd === null,
+        (c) => c.lane.split(":")[0] !== "exa" && c.startedAt !== null && c.costUsd === null,
       ).length,
       meanModelLatencyMs: latency.length
         ? Math.round(latency.reduce((a, b) => a + b, 0) / latency.length)
@@ -203,8 +206,13 @@ export function perpsStudyReport(
     unobservedMs,
     accountedOrReservedUSD: perpsAccountedUsd(rounds),
     historicalAccountedOrReservedUSD:
-      record.config.version === 4 ? record.config.historicalAccountedOrReservedUSD : undefined,
-    newProviderBudgetUSD: record.config.version === 4 ? record.config.providerBudgetUSD : undefined,
+      record.config.version === 4 || record.config.version === 5
+        ? record.config.historicalAccountedOrReservedUSD
+        : undefined,
+    newProviderBudgetUSD:
+      record.config.version === 4 || record.config.version === 5
+        ? record.config.providerBudgetUSD
+        : undefined,
     observedModelSavingPct:
       record.config.version !== 1 || unknownCalls.length || direct === 0n
         ? null

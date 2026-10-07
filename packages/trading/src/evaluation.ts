@@ -13,3 +13,5 @@ export * from "./features/perps-study/audit.js";
 export * from "./features/perps-strategies/policy.js";
 
 export * from "./features/perps-study/sma-review.js";
+
+export * from "./features/perps-study/universe.js";

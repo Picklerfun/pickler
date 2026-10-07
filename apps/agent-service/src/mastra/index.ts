@@ -82,10 +82,12 @@ const configure = createWorkflow({
       outputSchema: agentResponseSchema,
       execute: async ({ inputData }) => {
         const { repository } = await getContainer();
-        return repository.updateConfig(
-          { tenantId: inputData.preset, agentId: `pickle-${inputData.preset}` },
-          inputData.expectedVersion,
-          inputData.config,
+        return agentResponseSchema.parse(
+          await repository.updateConfig(
+            { tenantId: inputData.preset, agentId: `pickle-${inputData.preset}` },
+            inputData.expectedVersion,
+            inputData.config,
+          ),
         );
       },
     }),
@@ -112,7 +114,10 @@ const catalog = createWorkflow({
         return {
           marketCategories: marketCatalogSchema.parse(MARKET_CATALOG),
           categories: await c.markets.categories(AbortSignal.timeout(20000)),
-          agents: [...(await c.repository.agents("alpha")), ...(await c.repository.agents("beta"))],
+          agents: [
+            ...(await c.repository.agents("alpha")),
+            ...(await c.repository.agents("beta")),
+          ].map((a) => agentResponseSchema.parse(a)),
           plugins,
         };
       },

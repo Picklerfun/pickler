@@ -1,6 +1,7 @@
 import {
   PilotError,
   PERPL_PLUGIN_VERSION,
+  PERPL_LAB_SYMBOLS,
   PERP_RESOLUTIONS,
   type PerpNetwork,
   type PerpSymbol,
@@ -88,9 +89,24 @@ interface ContextSnapshot {
 }
 export class PerplMarketData implements PerpMarketData {
   private readonly transport: PerplTransport;
+  private readonly universe: boolean;
+  private bulkTicker:
+    { response: PerplPublicResponse; parsed: z.infer<typeof tickerSchema> } | undefined;
+  private bulkFunding:
+    | {
+        from: number;
+        to: number;
+        response: PerplPublicResponse;
+        parsed: {
+          at: { t?: number | undefined; b?: number | undefined };
+          d: Record<string, z.infer<typeof fundingSeriesSchema>["d"]>;
+        };
+      }
+    | undefined;
   private readonly contexts = new Map<PerpNetwork, ContextSnapshot>();
   constructor(options: PerplDataOptions = {}) {
     this.transport = new PerplTransport(options);
+    this.universe = options.universe === true;
   }
   private async context(network: PerpNetwork, ctx: PerpReadContext): Promise<ContextSnapshot> {
     if (!Object.hasOwn(PERPL_NETWORKS, network)) {
@@ -120,7 +136,10 @@ export class PerplMarketData implements PerpMarketData {
     symbol: PerpSymbol,
     context: ContextSnapshot,
   ): { wire: WireMarket; info: PerpMarketInfo } {
-    if (symbol !== "BTC" && symbol !== "ETH") {
+    if (
+      !PERPL_LAB_SYMBOLS.includes(symbol) ||
+      (!this.universe && symbol !== "BTC" && symbol !== "ETH")
+    ) {
       throw new PilotError("MARKET_NOT_ALLOWED", "Only BTC and ETH are supported");
     }
     // Empty provider symbols are resolved only when both name and size unit confirm the asset.
@@ -145,6 +164,9 @@ export class PerplMarketData implements PerpMarketData {
       invalid();
     }
     const token = tokens[0]!;
+    if (this.universe && (token.symbol !== "AUSD" || token.decimals !== 6)) {
+      invalid();
+    }
     return {
       wire,
       info: {
@@ -202,12 +224,46 @@ export class PerplMarketData implements PerpMarketData {
     let complete = true;
     for (let start = from; start <= to;) {
       const end = Math.min(to, start + span);
-      const response = await this.transport.get(
-        network,
-        `/v1/market-data/${market.marketId}/funding/${start}-${end}`,
-        ctx,
-      );
-      const raw = parse(response, fundingSeriesSchema);
+      let response: PerplPublicResponse;
+      let raw: z.infer<typeof fundingSeriesSchema>;
+      if (this.universe) {
+        await ctx.guard();
+        const shortest = Math.min(...context.data.markets.map((m) => m.funding_interval_sec));
+        if (to - from > shortest * 1000 * 127) {
+          throw new PilotError("INVALID_INPUT", "Universe funding range exceeds 128 intervals");
+        }
+        if (!this.bulkFunding || this.bulkFunding.from !== from || this.bulkFunding.to !== to) {
+          response = await this.transport.get(
+            network,
+            `/v1/market-data/funding/${from}-${to}`,
+            ctx,
+          );
+          const parsed = parse(
+            response,
+            z.object({
+              mt: z.number().int().nonnegative(),
+              at: fundingSeriesSchema.shape.at,
+              d: z.record(z.string(), fundingSeriesSchema.shape.d),
+            }),
+          );
+          this.bulkFunding = { from, to, response, parsed };
+        }
+        response = this.bulkFunding.response;
+        raw = {
+          mt: 0,
+          m: market.marketId,
+          at: this.bulkFunding.parsed.at,
+          d: this.bulkFunding.parsed.d[String(market.marketId)] ?? [],
+        };
+        await ctx.guard();
+      } else {
+        response = await this.transport.get(
+          network,
+          `/v1/market-data/${market.marketId}/funding/${start}-${end}`,
+          ctx,
+        );
+        raw = parse(response, fundingSeriesSchema);
+      }
       if (raw.m !== market.marketId) {
         invalid();
       }
@@ -265,14 +321,30 @@ export class PerplMarketData implements PerpMarketData {
   ): Promise<PerpSnapshot> {
     const context = await this.context(network, ctx);
     const { wire, info: market } = this.market(network, symbol, context);
-    const response = await this.transport.get(
-      network,
-      `/v1/market-data/${market.marketId}/ticker`,
-      ctx,
-    );
-    const parsed = parse(response, tickerSchema);
-    if (Object.keys(parsed.d).length !== 1 || !Object.hasOwn(parsed.d, market.marketId)) {
-      invalid();
+    let response: PerplPublicResponse;
+    let parsed: z.infer<typeof tickerSchema>;
+    if (this.universe) {
+      await ctx.guard();
+      if (!this.bulkTicker || this.transport.now() - this.bulkTicker.response.receivedAt >= 3000) {
+        response = await this.transport.get(network, "/v1/market-data/ticker", ctx);
+        parsed = parse(response, tickerSchema);
+        this.bulkTicker = { response, parsed };
+      }
+      ({ response, parsed } = this.bulkTicker);
+      await ctx.guard();
+      if (!Object.hasOwn(parsed.d, market.marketId)) {
+        throw new PilotError("DATA_UNAVAILABLE", "Market ticker absent");
+      }
+    } else {
+      response = await this.transport.get(
+        network,
+        `/v1/market-data/${market.marketId}/ticker`,
+        ctx,
+      );
+      parsed = parse(response, tickerSchema);
+      if (Object.keys(parsed.d).length !== 1 || !Object.hasOwn(parsed.d, market.marketId)) {
+        invalid();
+      }
     }
     const state = parsed.d[String(market.marketId)]!;
     const funding = wire.funding;

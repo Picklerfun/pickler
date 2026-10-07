@@ -6,7 +6,9 @@ export function perpsRules(
   symbols: readonly PerpSymbol[] = ["BTC", "ETH"],
 ): PerpsProposal[] {
   return symbols.map((symbol) => {
-    const series = context.evidence.candles.find((c) => c.market.symbol === symbol);
+    const series = context.evidence.candles.find(
+      (c) => c.market.symbol === symbol && c.resolution === 3600,
+    );
     const closed =
       series?.candles
         .filter((c) => c.closed && c.openTime + 3600000 <= context.evidence.observedAt)
