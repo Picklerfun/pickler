@@ -16,10 +16,10 @@ const { identity } = JSON.parse(await readFile(join(directory, "controlled-stack
 const status = JSON.parse(await readFile(join(directory, "status.json"), "utf8"));
 const database = new URL(status.DB_URL);
 assert.equal(database.hostname, "127.0.0.1");
-assert.equal(database.port, "55522");
+assert.ok(["55522", "55532"].includes(database.port));
 assert.equal(database.pathname, "/postgres");
 assert.equal(database.search, "");
-assert.equal(status.API_URL, "http://127.0.0.1:55521");
+assert.equal(status.API_URL, `http://127.0.0.1:${Number(database.port) - 1}`);
 const pool = new Pool({ connectionString: status.DB_URL, max: 1 });
 const marker = await pool.query(
   "SELECT identity FROM pickler_worker_test.identity WHERE singleton=true",
@@ -48,11 +48,7 @@ async function run(strategy) {
     if (!["localhost", "127.0.0.1"].includes(url.hostname)) {
       return route.abort("blockedbyclient");
     }
-    if (
-      !["http://localhost:8790", "http://127.0.0.1:8790", "http://127.0.0.1:55521"].includes(
-        url.origin,
-      )
-    ) {
+    if (!["http://localhost:8790", "http://127.0.0.1:8790", status.API_URL].includes(url.origin)) {
       return route.abort("blockedbyclient");
     }
     return route.continue();
@@ -148,6 +144,9 @@ async function run(strategy) {
     await page.goto("http://localhost:8790/studio");
     await page.getByLabel("Name it", { exact: true }).fill(`A${suffix} ${strategy}`);
     await page.getByRole("button", { name: "Analyst", exact: true }).click();
+    const marketPicker = page.getByRole("region", { name: "Trading markets" });
+    await marketPicker.getByRole("button", { name: "BTC", exact: true }).click();
+    await marketPicker.getByRole("button", { name: "SOL", exact: true }).click();
     await page
       .getByRole("button", { name: "Create its wallet · 2 signatures", exact: true })
       .click();
@@ -226,6 +225,19 @@ async function run(strategy) {
     };
     await control("open");
     console.log(`${strategy}: wallet ready; creating draft`);
+    const retryMarkets = marketPicker.getByRole("button", { name: "Retry catalogue", exact: true });
+    if (await retryMarkets.isVisible()) {
+      await retryMarkets.click();
+      await marketPicker
+        .getByRole("button", { name: "SOL", exact: true })
+        .waitFor({ state: "visible" });
+      await page.waitForFunction(
+        () =>
+          document.querySelector(
+            '[aria-label="Trading markets"] [aria-label="Perpl market catalogue"] button',
+          )?.disabled === false,
+      );
+    }
     const creation = waitForResponse(
       (response) =>
         response.url().endsWith("/api/v1/studio/drafts") && response.request().method() === "POST",
@@ -319,7 +331,7 @@ async function run(strategy) {
     let agent = (await api(product)).body;
     assert.equal(agent.scheduleEnabled, false);
     assert.equal(agent.config.perpsStrategy?.id ?? "combined", strategy);
-    assert.equal(agent.config.perpsStrategy?.version ?? "2.0.0", "2.0.0");
+    assert.equal(agent.config.perpsStrategy?.version ?? "2.1.0", "2.1.0");
     await control("open", { funded: false });
     const unfunded = await api(product + "/publish", {});
     assert.equal(unfunded.status, 409, JSON.stringify(unfunded.body));
@@ -385,7 +397,7 @@ async function run(strategy) {
     const open = await check("open");
     assert.notEqual(open.outcome, "failed", JSON.stringify(open));
     assert.equal(open.strategyResult.protocol, "studio-perps-check-v2");
-    assert.deepEqual(open.strategyResult.strategy, { id: strategy, version: "2.0.0" });
+    assert.deepEqual(open.strategyResult.strategy, { id: strategy, version: "2.1.0" });
     const models = (await control("open")).calls
       .filter((call) => call.check_id === open.id)
       .map((call) => call.key);
@@ -421,6 +433,33 @@ async function run(strategy) {
       assert.equal(Number(position.quantity), expected);
       assert.equal(Number(position.notional), expected * best);
     }
+    // The first market is usable but the complete selected set is not: no partial paid analysis.
+    const partial = await check("partial");
+    assert.equal(partial.outcome, "failed", JSON.stringify(partial));
+    const partialCalls = (await control("hold")).calls.filter(
+      (call) => call.check_id === partial.id,
+    );
+    assert.equal(partialCalls.length, 0);
+    assert.equal((await api(product + "/perps/positions")).body.open.length, 1);
+    // A real read transport failure must not look like confirmed runtime disablement.
+    const recordPath = `**${product}/perps/record`;
+    await page.route(recordPath, (route) => route.abort("failed"));
+    await page.goto(`http://localhost:8790/studio?agent=${productId}`);
+    await page.locator("#live-rail-console").click();
+    await page.getByRole("button", { name: "Retry runtime", exact: true }).waitFor();
+    assert.ok(
+      (
+        await page
+          .getByRole("alert")
+          .filter({ hasText: "Runtime availability could not be read" })
+          .innerText()
+      ).includes("could not be read"),
+    );
+    await page.unroute(recordPath);
+    await page.getByRole("button", { name: "Retry runtime", exact: true }).click();
+    await page
+      .getByRole("button", { name: "Retry runtime", exact: true })
+      .waitFor({ state: "hidden" });
     const held = await check("hold");
     assert.notEqual(held.outcome, "failed", JSON.stringify(held));
     assert.equal((await api(product + "/perps/positions")).body.open.length, 1);
@@ -473,10 +512,48 @@ async function run(strategy) {
     await approvePending();
     positions = (await api(product + "/perps/positions")).body;
     assert.equal(positions.open.length, 1, JSON.stringify(positions));
-    const stale = await check("stale");
-    assert.equal(stale.outcome, "failed", JSON.stringify(stale));
-    const staleCalls = (await control("hold")).calls.filter((call) => call.check_id === stale.id);
-    assert.equal(staleCalls.length, 0);
+    // Edit through the actual Sources form while its removed market still has exposure.
+    const removedSymbol = positions.open[0].instrument;
+    const beforeEdit = (await api(product)).body;
+    await page.goto(`http://localhost:8790/studio?agent=${productId}`);
+    await page.locator("#live-rail-skills").click();
+    const picker = page.getByRole("region", { name: "Trading markets", exact: true });
+    await picker.getByRole("button", { name: `${removedSymbol} · Remove`, exact: true }).click();
+    const retry = picker.getByRole("button", { name: "Retry catalogue", exact: true });
+    if (await retry.isVisible()) {
+      await retry.click();
+    }
+    const marketSaved = waitForResponse(
+      (response) =>
+        response.url().endsWith(product + "/setup") && response.request().method() === "PUT",
+    );
+    await page
+      .locator("#live-sources-bar")
+      .getByRole("button", { name: /^Apply as v/ })
+      .click();
+    assert.equal((await marketSaved).status(), 200);
+    agent = (await api(product)).body;
+    assert.equal(agent.version, beforeEdit.version + 1);
+    assert.equal(agent.scheduleEnabled, false);
+    assert.deepEqual(agent.config.perpl.markets, [removedSymbol === "BTC" ? "SOL" : "BTC"]);
+    assert.deepEqual(agent.config.perpsStrategy, { id: strategy, version: "2.1.0" });
+    const prepared = await pool.query(
+      `SELECT m.value FROM pickler.product_agents p LEFT JOIN pickler.metadata m
+       ON m.key='connections_checked:' || p.tenant_id || ':' || p.runtime_agent_id || ':' || $2
+       WHERE p.product_agent_id=$1`,
+      [productId, String(agent.version)],
+    );
+    assert.notEqual(prepared.rows[0]?.value, "true");
+    const supervised = await check("hold");
+    assert.notEqual(supervised.outcome, "failed", JSON.stringify(supervised));
+    assert.ok(
+      supervised.strategyResult.actions.every((action) => action.proposal.symbol !== removedSymbol),
+    );
+    assert.equal((await api(product + "/perps/positions")).body.open.length, 1);
+    // The earlier partial frame already proves stale data fails without paid calls.
+    // Reuse that evidence instead of exceeding the unchanged six-manual-check daily limit.
+    const stale = partial;
+    const staleCalls = partialCalls;
     const paused = await api(product + "/pause", { paused: true }, "PUT");
     assert.equal(paused.status, 200);
     for (const position of positions.open) {
@@ -544,6 +621,13 @@ async function run(strategy) {
       held: held.outcome,
       hourly: hourly.outcome,
       signalClose: signalClose.outcome,
+      partial: { outcome: partial.outcome, calls: partialCalls.length },
+      removedMarket: {
+        symbol: removedSymbol,
+        selected: agent.config.perpl.markets,
+        outcome: supervised.outcome,
+      },
+      runtimeReadFailureRecovered: true,
       stale: { outcome: stale.outcome, calls: staleCalls.length },
       closed: positions.closed.length,
       cashAusd: record.cashAusd,
@@ -551,7 +635,7 @@ async function run(strategy) {
       modelCostMicros: open.costMicros,
     });
     console.log(
-      `${strategy}@2.0.0: creation, configuration, Queue decisions, scheduling and paused closes passed`,
+      `${strategy}@2.1.0: creation, configuration, Queue decisions, scheduling and paused closes passed`,
     );
   } catch (error) {
     await writeFile(
@@ -589,8 +673,8 @@ try {
         fullAcceptance: strategies.length === 4,
         dispatchClock: "Controlled within one hour; execution clock remains real",
         configuration: {
-          strategies: "2.0.0",
-          markets: ["BTC", "ETH"],
+          strategies: "2.1.0",
+          markets: ["BTC", "SOL"],
           creatorMarginAusd: 5,
           maxOpenPositions: 1,
           modelUsage: { inputTokens: 100, outputTokens: 10 },
