@@ -10,7 +10,7 @@ export const PERPS_FOUR_WAY_STRATEGIES = ["rules", "jev", "deepseek", "combined"
 export function perpsStrategies(
   config: Pick<PerpsStudyConfig, "version">,
 ): readonly PerpsStudyStrategy[] {
-  return config.version === 4
+  return config.version === 4 || config.version === 5
     ? SMA_REVIEW_VARIANTS
     : config.version === 3
       ? ["rules"]
@@ -67,7 +67,25 @@ export interface PerpsSmaReviewConfig extends PerpsStudyScope {
   pricingVerifiedAt: string;
   pricingSources: string[];
 }
-export type PerpsStudyConfig = PerpsPaidStudyConfig | PerpsOriginalSmaConfig | PerpsSmaReviewConfig;
+export interface PerpsSmaUniverseConfig extends Omit<
+  PerpsSmaReviewConfig,
+  "version" | "protocol" | "providerBudgetUSD" | "historicalUnknownReservations"
+> {
+  version: 5;
+  historicalUnknownReservations: {
+    sessionId: string;
+    roundKey: string;
+    lane: PerpsCallLane;
+    requestHash: string;
+    reservationUsd: string;
+  }[];
+  protocol: "perps-sma-jev-exa-all-markets-v1";
+  providerBudgetUSD: "2.50";
+  markets: { symbol: import("@pickler/core").PerpSymbol; marketId: number }[];
+  historicalBudget: { upperBoundUSD: string; recordHash: string; databaseAccountedUSD: string };
+}
+export type PerpsStudyConfig =
+  PerpsPaidStudyConfig | PerpsOriginalSmaConfig | PerpsSmaReviewConfig | PerpsSmaUniverseConfig;
 export interface PerpsCall {
   requestHash?: string;
   inputBytes?: number;
