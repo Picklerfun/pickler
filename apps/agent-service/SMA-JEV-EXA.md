@@ -80,3 +80,11 @@ remain explicit. Two hours check the circuit and give exploratory evidence, not 
 ## Validation record
 
 The implementation passed 83 controlled and local PostgreSQL regression tests, workspace type checks, lint, the architecture check and shared/Workers consumer builds. Provider fixtures made no paid calls. The real single contract check and prospective run are separate operator artifacts; build success does not establish provider acceptance.
+
+## Authorized recovery after interruption
+
+`evaluate resume --allow-paid` requires `operator-resume.json` beside the report, containing `sessionId`, `approved: true`, the operator's `statement` and a unique recorded timestamp. This is an explicit trusted operator action, never automatic. It schedules only slots after the last attempted slot against a fresh clock, preserving the original start, prior end and interruption in an event. Completed or omitted slots and paid calls are never replayed. Existing positions first undergo fresh public risk and funding observation, including original holding limits. No budget, tariff, prompt or strategy changes are permitted. Partial execution or unknown consumption requires reconciliation rather than resume. The report labels continuation as a discontinuous sample.
+
+A process failure records an interrupted terminal state when relinquishing its own lease. This administrative status write cannot touch another owner's session and does not authorize any execution after lease loss. macOS idle-sleep prevention does not prevent clamshell sleep; keep the lid open during the local run.
+
+Recovery validation passed 86 controlled/local PostgreSQL tests, including untouched-slot scheduling, unknown-cost refusal and stale-owner fencing; workspace types, lint, formatting, architecture and shared/Workers builds also passed without paid test calls.
