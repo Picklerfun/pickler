@@ -40,15 +40,19 @@ export function perpsStudyReport(
     const calls = rounds
       .flatMap((r) => Object.values(r.calls))
       .filter((c) =>
-        strategy === "deepseek"
-          ? c.lane === "direct"
-          : strategy === "jev"
-            ? record.config.version === 2
-              ? c.lane === "jev"
-              : c.lane !== "direct"
-            : strategy === "combined"
-              ? c.lane === "fallback" || c.lane === "review"
-              : false,
+        strategy === "sma-jev"
+          ? c.lane === "sma-review"
+          : strategy === "sma-exa-jev"
+            ? c.lane === "news-review" || c.lane === "exa"
+            : strategy === "deepseek"
+              ? c.lane === "direct"
+              : strategy === "jev"
+                ? record.config.version === 2
+                  ? c.lane === "jev"
+                  : c.lane !== "direct"
+                : strategy === "combined"
+                  ? c.lane === "fallback" || c.lane === "review"
+                  : false,
       );
     const sum = (kind: string) =>
       d(view.movements.filter((m) => m.kind === kind).reduce((v, m) => v + u(m.delta), 0n));
@@ -97,7 +101,9 @@ export function perpsStudyReport(
           : 0n),
       0n,
     );
-    const costs = calls.reduce((v, c) => v + u(c.costUsd ?? "0"), 0n);
+    const costs = calls
+      .filter((c) => c.lane !== "exa")
+      .reduce((v, c) => v + u(c.costUsd ?? "0"), 0n);
     const latency = calls
       .filter((c) => c.startedAt !== null && c.finishedAt !== null)
       .map((c) => c.finishedAt! - c.startedAt!);
@@ -109,7 +115,7 @@ export function perpsStudyReport(
               jev: "jev-only",
               deepseek: "deepseek-only",
               combined: "deepseek-jev",
-            }[strategy]
+            }[strategy as "rules" | "jev" | "deepseek" | "combined"]
           : strategy,
       initialVirtualAUSD: "1000",
       cashVirtualAUSD: risk.cash,
@@ -134,11 +140,23 @@ export function perpsStudyReport(
       fills: filled.length,
       rejections: view.attempts.filter((a) => a.status !== "filled").length,
       riskExits: filled.filter((a) => a.key.includes(":risk:")).length,
-      modelCalls: calls.filter((c) => c.startedAt !== null).length,
+      modelCalls: calls.filter((c) => c.startedAt !== null && c.lane !== "exa").length,
+      exaCalls: calls.filter((c) => c.startedAt !== null && c.lane === "exa").length,
+      exaReportedCostUSD: d(
+        calls.filter((c) => c.lane === "exa").reduce((v, c) => v + u(c.costUsd ?? "0"), 0n),
+      ),
+      unknownProviderCosts: calls.filter(
+        (c) => c.lane !== "exa" && c.startedAt !== null && c.costUsd === null,
+      ).length,
+      providerReservedUSD: d(
+        calls.filter((c) => c.status !== "skipped").reduce((v, c) => v + u(c.reservationUsd), 0n),
+      ),
       modelCostEstimateUSD: d(costs),
       inputTokens: calls.reduce((sum, c) => sum + (c.inputTokens ?? 0), 0),
       outputTokens: calls.reduce((sum, c) => sum + (c.outputTokens ?? 0), 0),
-      unknownModelCosts: calls.filter((c) => c.startedAt !== null && c.costUsd === null).length,
+      unknownModelCosts: calls.filter(
+        (c) => c.lane !== "exa" && c.startedAt !== null && c.costUsd === null,
+      ).length,
       meanModelLatencyMs: latency.length
         ? Math.round(latency.reduce((a, b) => a + b, 0) / latency.length)
         : null,
@@ -173,15 +191,20 @@ export function perpsStudyReport(
       calls: r.calls,
     })),
     modelDiagnostics: events.filter((e) => e.kind === "model-diagnostic"),
-    executionDetails: events.filter((e) => e.kind === "execution" || e.kind === "execution-input"),
+    executionDetails: events.filter((e) =>
+      ["execution", "execution-input", "final-gate", "strategy-proposal"].includes(e.kind),
+    ),
     incompleteRounds,
     omittedRounds: omitted.length,
     omittedSlots: omitted.map((e) => e.data),
     unknownCalls: unknownCalls.length,
     unobservedMs,
     accountedOrReservedUSD: perpsAccountedUsd(rounds),
+    historicalAccountedOrReservedUSD:
+      record.config.version === 4 ? record.config.historicalAccountedOrReservedUSD : undefined,
+    newProviderBudgetUSD: record.config.version === 4 ? record.config.providerBudgetUSD : undefined,
     observedModelSavingPct:
-      record.config.version === 2 || unknownCalls.length || direct === 0n
+      record.config.version !== 1 || unknownCalls.length || direct === 0n
         ? null
         : d(((direct - routed) * 100n * u("1")) / direct),
     comparable,
