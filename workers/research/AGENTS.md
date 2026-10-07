@@ -128,3 +128,11 @@ leaves the action `pending` and acknowledges the message, and the Cron re-drives
 older than 30 s (`perpsRuntime(env).owner.pendingActions`). Only a host failure retries the
 message (30 s). `test/perps-actions.test.ts` covers the actions, the wait, the re-drive and two
 concurrent deliveries of one approve.
+
+## Dynamic Studio markets
+
+Controlled acceptance uses current 2.1.0 model answers and BTC/SOL through the existing
+Queue/runtime. Fresh test stacks can use the alternate fixed 55531/55532 slot without stopping other
+stacks. UUID marker and loopback-only transport guards are mandatory.
+
+See [agent-selected Perpl markets](../../docs/studio-perpl-markets.md).
