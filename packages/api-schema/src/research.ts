@@ -143,7 +143,7 @@ export const RISK_BOUNDS = {
 export const studioPerpsStrategySchema = z
   .object({
     id: z.enum(["rules", "deepseek", "jev", "combined"]),
-    version: z.literal("2.0.0"),
+    version: z.enum(["2.0.0", "2.1.0"]),
   })
   .strict();
 
