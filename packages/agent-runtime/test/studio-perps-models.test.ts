@@ -104,3 +104,68 @@ test("request is recorded before transport; usage survives invalid financial out
   );
   assert.deepEqual(events, ["recorded", "transport", "usage"]);
 });
+
+test("dynamic prompts send actual selected identities and record their effective request before transport", async () => {
+  const events: string[] = [];
+  const input = structuredClone(context);
+  input.strategyVersion = "2.1.0";
+  input.markets = ["SOL", "MON"];
+  input.evidence.sourceIds = ["SOL:candles", "MON:candles"];
+  const models = createStudioPerpsModels(config, async (_url, init) => {
+    events.push("transport");
+    const body = JSON.parse(String(init?.body));
+    assert.doesNotMatch(body.messages[0].content, /BTC or ETH/);
+    assert.deepEqual(JSON.parse(body.messages[1].content).markets, ["SOL", "MON"]);
+    return Response.json({
+      model: "controlled-model",
+      usage: { prompt_tokens: 100, completion_tokens: 10 },
+      choices: [
+        {
+          finish_reason: "stop",
+          message: {
+            content: JSON.stringify({
+              actions: input.markets.map((symbol) => ({
+                symbol,
+                action: "hold",
+                reason: "Controlled dynamic evidence",
+                sourceIds: [],
+                brief: { entries: [], exits: [], never: [] },
+              })),
+            }),
+          },
+        },
+      ],
+    });
+  });
+  models.preflight!(input, ["direct", "review"]);
+  const result = await models.direct!(input, new AbortController().signal, {
+    before: async ({ sha256, bytes }) => {
+      assert.match(sha256, /^[a-f0-9]{64}$/);
+      assert.ok(bytes > 0 && bytes <= 120000);
+      events.push("recorded");
+    },
+    usage: async () => {
+      events.push("usage");
+    },
+  });
+  assert.deepEqual(
+    result.map((proposal) => proposal.symbol),
+    ["SOL", "MON"],
+  );
+  assert.deepEqual(events, ["recorded", "transport", "usage"]);
+});
+
+test("complete dynamic context bounds fail before forecast, Jev or paid search transports", () => {
+  let transports = 0;
+  const models = createStudioPerpsModels(config, async () => {
+    transports++;
+    throw new Error("Preflight must never transport");
+  });
+  const input = structuredClone(context);
+  input.strategyVersion = "2.1.0";
+  input.documents = [{ id: "oversized", text: "界".repeat(45000) }];
+  for (const capabilities of [["direct"], ["decide"], ["direct", "review"]] as const) {
+    assert.throws(() => models.preflight!(input, capabilities), { code: "MODEL_INPUT_TOO_LARGE" });
+  }
+  assert.equal(transports, 0);
+});
