@@ -206,6 +206,17 @@
   }
 }
 
+/* Classic scrollbars reduce the usable width below the viewport's reported 320px. */
+@media (max-width: 360px) {
+  .top[data-agent-navbar] {
+    gap: 4px;
+    padding-inline: 8px;
+  }
+  .globalControls {
+    gap: 4px;
+  }
+}
+
 /* Make room for compact disclosures without hiding network identity or moving their anchors. */
 .networkDot {
   display: none;
