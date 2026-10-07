@@ -296,7 +296,9 @@ try {
 
     // Responsive mode may change at a breakpoint, but must not recreate the page or overflow it.
     const main = await page.locator("main").elementHandle();
-    for (const width of [1240, 1239, 920, 919, 768, 767, 640, 480, 390, 360, 768, 1440]) {
+    for (const width of [
+      1240, 1239, 920, 919, 769, 768, 767, 641, 640, 600, 561, 560, 480, 390, 360, 320, 768, 1440,
+    ]) {
       await page.setViewportSize({ width, height: 1000 });
       await page.evaluate(
         () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
@@ -327,6 +329,16 @@ try {
       assert.ok(
         Math.max(...centers) - Math.min(...centers) < 0.5,
         `Global controls share a row: ${stage}, ${width}px`,
+      );
+      const navbarCenters = await page.locator(`#${prefix}-studio > header`).evaluate((header) =>
+        [...header.children]
+          .map((element) => element.getBoundingClientRect())
+          .filter((bounds) => bounds.width > 0 && bounds.height > 0)
+          .map((bounds) => bounds.y + bounds.height / 2),
+      );
+      assert.ok(
+        Math.max(...navbarCenters) - Math.min(...navbarCenters) < 0.5,
+        `Brand, network and global controls share a row: ${stage}, ${width}px`,
       );
     }
   }
