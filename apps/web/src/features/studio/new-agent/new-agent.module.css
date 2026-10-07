@@ -1544,3 +1544,28 @@
     display: none;
   }
 }
+
+/* Narrow navbars expose wallet balances and credits inside their existing dialogs. */
+.creditsIcon {
+  display: none;
+}
+@media (max-width: 560px) {
+  .topPill[data-wallet-balance],
+  .topPill[data-credits-control] {
+    width: 38px;
+    height: 38px;
+    padding: 0;
+    gap: 0;
+    justify-content: center;
+  }
+  .topPill[data-wallet-balance] .assetBalance,
+  .topPill[data-wallet-balance] > i,
+  .topPill[data-credits-control] .creditsDot,
+  .topPill[data-credits-control] .creditsLabel,
+  .topPill[data-credits-control] .creditsStatus {
+    display: none;
+  }
+  .topPill[data-credits-control] .creditsIcon {
+    display: block;
+  }
+}
