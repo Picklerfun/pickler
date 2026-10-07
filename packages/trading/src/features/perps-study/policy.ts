@@ -4,6 +4,40 @@ import type { PerpsStudyConfig, PerpsRound, PerpsCallLane } from "./types.js";
 export const PERPS_INPUT_LIMIT = 65536;
 export const PERPS_OUTPUT_LIMIT = 4096;
 export function assertPerpsStudyConfig(c: PerpsStudyConfig) {
+  if (c.version === 4) {
+    if (
+      c.protocol !== "perps-sma-jev-exa-v1" ||
+      c.hours !== 2 ||
+      c.budgetUsd !== "5" ||
+      c.providerBudgetUSD !== "0.50" ||
+      !c.tenantId ||
+      !/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,39}$/.test(c.sessionId) ||
+      !["mainnet", "testnet"].includes(c.network) ||
+      c.authorization?.jevApproved !== true ||
+      c.authorization?.exaApproved !== true ||
+      !/^[a-f0-9]{64}$/.test(c.authorization.operatorRecordHash) ||
+      c.jev?.model !== "jev-1.13.0" ||
+      c.jev.outputPerMillion !== "0" ||
+      c.jev.inputPerMillion !== "0.042" ||
+      c.exa?.reservationPerSearchUSD !== "0.05" ||
+      c.exa.lookbackHours !== 24 ||
+      c.exa.results !== 5 ||
+      !Number.isFinite(Date.parse(c.pricingVerifiedAt)) ||
+      !Array.isArray(c.pricingSources) ||
+      c.pricingSources.length < 2 ||
+      !Array.isArray(c.historicalUnknownReservations) ||
+      (c.historicalAccountedOrReservedUSD !== null && u(c.historicalAccountedOrReservedUSD) < 0n) ||
+      c.historicalUnknownReservations.some(
+        (a) => !/^[a-f0-9]{64}$/.test(a.requestHash) || u(a.reservationUsd) <= 0n,
+      )
+    ) {
+      throw new PilotError(
+        "INVALID_INPUT",
+        "Explicit study-specific Jev/Exa authorization required",
+      );
+    }
+    return;
+  }
   if (c.version === 3) {
     if (
       c.protocol !== "perps-original-sma-v1" ||
@@ -96,11 +130,18 @@ export function perpsCallCost(
     input < 0 ||
     output < 0 ||
     input > PERPS_INPUT_LIMIT ||
-    output > (lane === "jev" || lane === "review" ? PERPS_INPUT_LIMIT : PERPS_OUTPUT_LIMIT)
+    output >
+      (["jev", "review", "sma-review", "news-review"].includes(lane)
+        ? PERPS_INPUT_LIMIT
+        : PERPS_OUTPUT_LIMIT)
   ) {
     throw new PilotError("USAGE_UNVERIFIED", "Usage exceeds the pinned reservation");
   }
-  const pricing = lane === "jev" || lane === "review" ? config.jev : config.deepseek;
+  if (config.version === 4 && !["sma-review", "news-review"].includes(lane)) {
+    throw new PilotError("MODEL_CONFIG_MISMATCH", "Only Jev token lanes allowed");
+  }
+  const pricing =
+    config.version === 4 || lane === "jev" || lane === "review" ? config.jev : config.deepseek;
   return d(
     (BigInt(input) * u(pricing.inputPerMillion) + BigInt(output) * u(pricing.outputPerMillion)) /
       1000000n,

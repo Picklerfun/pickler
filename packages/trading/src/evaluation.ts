@@ -11,3 +11,5 @@ export * from "./features/perps-study/audit.js";
 
 // Historical public policies retain their names without a second implementation.
 export * from "./features/perps-strategies/policy.js";
+
+export * from "./features/perps-study/sma-review.js";

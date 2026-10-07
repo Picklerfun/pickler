@@ -574,3 +574,7 @@ operator workflow and now uses the verified operator connection configuration.
 ## Rules-only study persistence
 
 Perpetual study v3 initializes only the rules agent/account, persists empty call maps and rejects paid guards/model lanes. Free rounds do not consume or release historical monetary reservations. Reporting uses the existing read-only audit export. No tables or migrations are added.
+
+## Local SMA review comparison
+
+Perpetual study v4 jointly reserves sma-review, news-review and exa in existing JSONB. A shared authorization hash fences 27 calls, nine searches and USD 0.50 new reservations including checks. Existing campaign gates and historical reservations remain unchanged. searchWindow adds temporal filters without changing legacy Exa behavior.

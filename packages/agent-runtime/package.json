@@ -99,6 +99,10 @@
     "./composition/perps-model-state": {
       "types": "./src/composition/perps-model-state.ts",
       "import": "./dist/composition/perps-model-state.js"
+    },
+    "./composition/sma-review-model": {
+      "types": "./src/composition/sma-review-model.ts",
+      "import": "./dist/composition/sma-review-model.js"
     }
   },
   "scripts": {

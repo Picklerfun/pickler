@@ -213,10 +213,20 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
             {
               ...structuredClone(DEFAULT_CONFIG),
               profile: `Dedicated perpetual simulation: ${strategy}`,
-              tools: [...PERP_TOOLS],
+              tools: [
+                ...PERP_TOOLS,
+                ...(config.version === 4 && strategy === "sma-exa-jev" ? ["searchWeb"] : []),
+              ],
               perpl: { version: 1, network: config.network, markets: ["BTC", "ETH"] },
               perpsPaper: { version: 1, policy: "conservative-1x-v1" },
-              plugins: { version: 1, enabled: ["perpl", "perps-paper"] },
+              plugins: {
+                version: 1,
+                enabled: [
+                  "perpl",
+                  "perps-paper",
+                  ...(config.version === 4 && strategy === "sma-exa-jev" ? ["exa"] : []),
+                ],
+              },
             },
           ],
         );
@@ -475,7 +485,30 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
         return null;
       }
       let calls: PerpsRound["calls"] = {};
-      if (x.record.config.version !== 3) {
+      if (x.record.config.version === 4) {
+        const config = x.record.config;
+        calls = Object.fromEntries(
+          (["sma-review", "news-review", "exa"] as const).map((lane) => [
+            lane,
+            {
+              lane,
+              model: lane === "exa" ? "exa-auto-search" : config.jev.model,
+              status: "reserved",
+              reservationUsd:
+                lane === "exa"
+                  ? config.exa.reservationPerSearchUSD
+                  : perpsCallCost(config, lane, PERPS_INPUT_LIMIT, 0),
+              costUsd: null,
+              inputTokens: null,
+              outputTokens: null,
+              startedAt: null,
+              finishedAt: null,
+              error: null,
+              result: null,
+            },
+          ]),
+        );
+      } else if (x.record.config.version !== 3) {
         const paidConfig = x.record.config;
         calls = Object.fromEntries(
           (paidConfig.version === 2
@@ -515,6 +548,44 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
         calls.fallback!.finishedAt = x.now;
         calls.fallback!.reservationUsd = "0";
       }
+      if (x.record.config.version === 4 && (await this.rounds(c, x.id)).length >= 8) {
+        throw new PilotError("CALL_LIMIT_EXCEEDED", "Eight fixed rounds only");
+      }
+      if (x.record.config.version === 4) {
+        const related = await c.query<{ document: PerpsRound }>(
+          `SELECT r.document FROM pickler.perps_study_rounds r JOIN pickler.perps_studies s ON s.id=r.study_id
+           WHERE s.tenant_id=$1 AND s.network=$2 AND s.document->'config'->>'protocol'='perps-sma-jev-exa-v1'
+           AND s.document->'config'->'authorization'->>'operatorRecordHash'=$3`,
+          [scope.tenantId, scope.network, x.record.config.authorization.operatorRecordHash],
+        );
+        const existing = related.rows
+          .flatMap((r) => Object.values(r.document.calls))
+          .filter((c) => c.status !== "skipped");
+        if (existing.some((call) => call.startedAt !== null && call.costUsd === null)) {
+          throw new PilotError(
+            "CAMPAIGN_USAGE_UNVERIFIED",
+            "Unknown comparison provider cost remains reserved",
+          );
+        }
+        const retained = existing.reduce((sum, c) => sum + paperUnits(c.reservationUsd), 0n);
+        const additional = Object.values(calls).reduce(
+          (sum, c) => sum + paperUnits(c.reservationUsd),
+          0n,
+        );
+        if (retained + additional > paperUnits(x.record.config.providerBudgetUSD)) {
+          throw new PilotError(
+            "BUDGET_EXHAUSTED",
+            "Comparison provider reservation ceiling reached",
+          );
+        }
+
+        if (existing.length + 3 > 27 || existing.filter((c) => c.lane === "exa").length + 1 > 9) {
+          throw new PilotError(
+            "CALL_LIMIT_EXCEEDED",
+            "One contract check and eight prospective rounds only",
+          );
+        }
+      }
       const reserved = Object.values(calls).reduce(
         (sum, call) => sum + paperUnits(call.reservationUsd),
         0n,
@@ -550,10 +621,17 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
             item.call.status === "failed" &&
             !(item.row.owner && Number(item.row.expires_at) > x.now),
         );
-      if (x.record.config.version !== 3 && unknown.some((item) => !recognized(item))) {
+      if (
+        x.record.config.version !== 3 &&
+        unknown.some((item) =>
+          x.record.config.version === 4
+            ? item.row.session_id === scope.sessionId
+            : !recognized(item),
+        )
+      ) {
         x.record.decisionStopReason = "CAMPAIGN_USAGE_UNVERIFIED";
         x.record.status = x.record.config.version !== 1 ? "closing" : "monitoring";
-        if (x.record.config.version === 2) {
+        if (x.record.config.version !== 1) {
           x.record.graceUntil = Math.min(x.record.graceUntil!, x.now + 900000);
         }
         await this.save(c, x);
@@ -575,11 +653,12 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
       }
       if (
         x.record.config.version !== 3 &&
+        x.record.config.version !== 4 &&
         paperUnits(perpsAccountedUsd(rounds)) + reserved > paperUnits(x.record.config.budgetUsd)
       ) {
         x.record.decisionStopReason = "BUDGET_EXHAUSTED";
         x.record.status = x.record.config.version !== 1 ? "closing" : "monitoring";
-        if (x.record.config.version === 2) {
+        if (x.record.config.version !== 1) {
           x.record.graceUntil = Math.min(x.record.graceUntil!, x.now + 900000);
         }
         await this.save(c, x);
@@ -663,6 +742,33 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
       await this.saveRound(c, x.id, r);
     });
   }
+  async providerCost(
+    scope: PerpsStudyScope,
+    lease: PerpsStudyLease,
+    key: string,
+    lane: PerpsCallLane,
+    costUSD: string,
+  ) {
+    await this.tx(async (c) => {
+      const x = await this.lock(c, scope);
+      this.owned(c, x, lease);
+      const r = await this.round(c, x.id, key);
+      const call = r.calls[lane];
+      if (
+        x.record.config.version !== 4 ||
+        lane !== "exa" ||
+        !call ||
+        call.status !== "started" ||
+        call.costUsd !== null ||
+        paperUnits(costUSD) < 0n ||
+        paperUnits(costUSD) > paperUnits(call.reservationUsd)
+      ) {
+        throw new PilotError("USAGE_UNVERIFIED", "Invalid Exa reported cost");
+      }
+      call.costUsd = costUSD;
+      await this.saveRound(c, x.id, r);
+    });
+  }
   async finishCall(
     scope: PerpsStudyScope,
     lease: PerpsStudyLease,
@@ -690,9 +796,9 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
       call.result = result;
       call.finishedAt = x.now;
       if (error) {
-        x.record.decisionStopReason ??= x.record.config.version === 2 ? error : "MODEL_FAILURE";
+        x.record.decisionStopReason ??= x.record.config.version !== 1 ? error : "MODEL_FAILURE";
         x.record.status = x.record.config.version !== 1 ? "closing" : "monitoring";
-        if (x.record.config.version === 2) {
+        if (x.record.config.version !== 1) {
           x.record.graceUntil = Math.min(x.record.graceUntil!, x.now + 900000);
         }
         await this.save(c, x);
@@ -722,25 +828,28 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
       const routed = r.calls.jev?.result as { skip?: boolean } | null;
       const contractProbe = (x.record.metadata as { purpose?: string })?.purpose === "contracts-v2";
       const valid =
-        x.record.config.version === 3
-          ? Object.keys(r.calls).length === 0 && !!proposals.rules
-          : r.calls.direct?.status === "completed" &&
-            r.calls.jev?.status === "completed" &&
-            (x.record.config.version === 2
-              ? r.calls.review?.status === "completed" &&
-                (contractProbe || r.calls.fallback?.status === "completed")
-              : routed?.skip === true || r.calls.fallback?.status === "completed") &&
-            perpsStrategies(x.record.config).every((s) => !!proposals[s]) &&
-            !Object.values(r.calls).some(
-              (call) => call.status === "failed" || call.status === "started",
-            );
+        x.record.config.version === 4
+          ? perpsStrategies(x.record.config).every((s) => !!proposals[s]) &&
+            Object.values(r.calls).every((c) => c.status === "completed" || c.status === "skipped")
+          : x.record.config.version === 3
+            ? Object.keys(r.calls).length === 0 && !!proposals.rules
+            : r.calls.direct?.status === "completed" &&
+              r.calls.jev?.status === "completed" &&
+              (x.record.config.version === 2
+                ? r.calls.review?.status === "completed" &&
+                  (contractProbe || r.calls.fallback?.status === "completed")
+                : routed?.skip === true || r.calls.fallback?.status === "completed") &&
+              perpsStrategies(x.record.config).every((s) => !!proposals[s]) &&
+              !Object.values(r.calls).some(
+                (call) => call.status === "failed" || call.status === "started",
+              );
       r.status = valid ? "completed" : "failed";
       r.proposals = { ...r.proposals, ...proposals };
       r.finishedAt = x.now;
       if (!valid) {
         x.record.decisionStopReason ??= "INCOMPLETE_ROUND";
         x.record.status = x.record.config.version !== 1 ? "closing" : "monitoring";
-        if (x.record.config.version === 2) {
+        if (x.record.config.version !== 1) {
           x.record.graceUntil = Math.min(x.record.graceUntil!, x.now + 900000);
         }
         await this.save(c, x);
@@ -773,7 +882,7 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
       const x = await this.lock(c, scope);
       this.owned(c, x, lease);
       x.record.status =
-        x.record.config.version === 2 &&
+        x.record.config.version !== 1 &&
         x.record.decisionStopReason &&
         x.record.decisionStopReason !== "SESSION_END"
           ? "interrupted"

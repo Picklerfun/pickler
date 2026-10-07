@@ -2,18 +2,21 @@ import type { PerpNetwork } from "@pickler/core";
 import type { PerpsPaperAccount } from "../perps-paper/types.js";
 export const PERPS_STUDY_STRATEGIES = ["rules", "deepseek", "jev"] as const;
 export type PerpsStrategy = (typeof PERPS_STUDY_STRATEGIES)[number];
-export type PerpsStudyStrategy = PerpsStrategy | "combined";
+export type PerpsStudyStrategy = PerpsStrategy | "combined" | "sma-jev" | "sma-exa-jev";
+export const SMA_REVIEW_VARIANTS = ["rules", "sma-jev", "sma-exa-jev"] as const;
 export type PerpsStudyMap<T> = Record<"rules", T> &
   Partial<Record<Exclude<PerpsStudyStrategy, "rules">, T>>;
 export const PERPS_FOUR_WAY_STRATEGIES = ["rules", "jev", "deepseek", "combined"] as const;
 export function perpsStrategies(
   config: Pick<PerpsStudyConfig, "version">,
 ): readonly PerpsStudyStrategy[] {
-  return config.version === 3
-    ? ["rules"]
-    : config.version === 2
-      ? PERPS_FOUR_WAY_STRATEGIES
-      : PERPS_STUDY_STRATEGIES;
+  return config.version === 4
+    ? SMA_REVIEW_VARIANTS
+    : config.version === 3
+      ? ["rules"]
+      : config.version === 2
+        ? PERPS_FOUR_WAY_STRATEGIES
+        : PERPS_STUDY_STRATEGIES;
 }
 export type {
   PerpsCallLane,
@@ -50,7 +53,21 @@ export interface PerpsOriginalSmaConfig extends PerpsStudyScope {
   hours: 24;
   budgetUsd: "5";
 }
-export type PerpsStudyConfig = PerpsPaidStudyConfig | PerpsOriginalSmaConfig;
+export interface PerpsSmaReviewConfig extends PerpsStudyScope {
+  version: 4;
+  protocol: "perps-sma-jev-exa-v1";
+  hours: 2;
+  budgetUsd: "5";
+  providerBudgetUSD: "0.50";
+  authorization: { jevApproved: true; exaApproved: true; operatorRecordHash: string };
+  historicalAccountedOrReservedUSD: string | null;
+  historicalUnknownReservations: { requestHash: string; reservationUsd: string }[];
+  jev: { model: "jev-1.13.0"; inputPerMillion: string; outputPerMillion: "0" };
+  exa: { reservationPerSearchUSD: "0.05"; lookbackHours: 24; results: 5 };
+  pricingVerifiedAt: string;
+  pricingSources: string[];
+}
+export type PerpsStudyConfig = PerpsPaidStudyConfig | PerpsOriginalSmaConfig | PerpsSmaReviewConfig;
 export interface PerpsCall {
   requestHash?: string;
   inputBytes?: number;
@@ -145,6 +162,13 @@ export interface PerpsStudyRepository {
     lane: PerpsCallLane,
     input: number,
     output: number,
+  ): Promise<void>;
+  providerCost?(
+    scope: PerpsStudyScope,
+    lease: PerpsStudyLease,
+    key: string,
+    lane: PerpsCallLane,
+    costUSD: string,
   ): Promise<void>;
   finishCall(
     scope: PerpsStudyScope,
