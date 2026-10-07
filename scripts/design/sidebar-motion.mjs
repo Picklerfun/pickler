@@ -408,8 +408,19 @@ try {
     }
 
     // Stationary hover must reveal compact controls without moving the icon out from under it.
-    for (const width of [640, 560, 390, 360, 320]) {
+    for (const [width, gutter] of [
+      [640, 0],
+      [560, 0],
+      [390, 0],
+      [360, 0],
+      [320, 0],
+      [320, 17],
+    ]) {
       await page.setViewportSize({ width, height: 1000 });
+      // macOS overlay scrollbars reserve no layout space; also reproduce a classic gutter.
+      await page.evaluate((gutter) => {
+        document.body.style.width = gutter ? `calc(100% - ${gutter}px)` : "";
+      }, gutter);
       for (const selector of [
         "[data-wallet-balance]",
         "[data-credits-control]",
@@ -499,7 +510,7 @@ try {
         const { height, frames, intermediate, finished, error } = await page.evaluate(
           () => window.compactResult,
         );
-        const context = `${stage}, ${width}px, ${selector}`;
+        const context = `${stage}, ${width}px, ${gutter}px scrollbar gutter, ${selector}`;
         const interpolates =
           intermediate &&
           intermediate.width > before.width + 0.5 &&
@@ -551,10 +562,39 @@ try {
             contentWidth: element.firstElementChild.scrollWidth,
             opacity: getComputedStyle(element).opacity,
           }));
+        if (details.opacity !== "1" || details.contentWidth > details.width + 1) {
+          const output = path.join(root, "scripts/design/.shots/diagnostics");
+          mkdirSync(output, { recursive: true });
+          const stem = `hover-content-${stage}-${width}-${selector.replace(/[^a-zA-Z0-9_-]/g, "")}`;
+          const geometry = await control.evaluate((button) => {
+            const reveal =
+              button.querySelector('[class*="navReveal"]') ?? button.querySelector(":scope > span");
+            const content = reveal.firstElementChild;
+            return {
+              button: button.getBoundingClientRect().toJSON(),
+              reveal: reveal.getBoundingClientRect().toJSON(),
+              content: content.getBoundingClientRect().toJSON(),
+              font: getComputedStyle(content).font,
+              maxWidth: getComputedStyle(reveal).maxWidth,
+              text: content.textContent,
+            };
+          });
+          writeFileSync(
+            path.join(output, `${stem}-frames.json`),
+            JSON.stringify({ details, geometry, frames }, null, 2) + "\n",
+          );
+          await saveBlocked(
+            page,
+            { name: stem, path: `/studio?stage=${stage}`, proves: selector },
+            { errors, consoleErrors: [] },
+            `Hover content incomplete: ${context}; ${JSON.stringify({ details, geometry })}`,
+            output,
+          );
+        }
         assert.equal(details.opacity, "1", `Labels are visible: ${context}`);
         assert.ok(
           details.contentWidth <= details.width + 1,
-          `Complete fixture balances/credits: ${context}`,
+          `Complete fixture balances/credits: ${context}; ${JSON.stringify(details)}`,
         );
         await page.mouse.move(width / 2, 950);
         await settledControl(page, selector);
@@ -570,6 +610,9 @@ try {
         await settledControl(page, selector);
       }
     }
+    await page.evaluate(() => {
+      document.body.style.width = "";
+    });
     await page.emulateMedia({ reducedMotion: "reduce" });
     await page.locator("[data-credits-control]").hover();
     assert.equal(
