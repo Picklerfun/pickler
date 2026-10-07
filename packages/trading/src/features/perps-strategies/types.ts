@@ -2,12 +2,20 @@ import type { PerpCandles, PerpSymbol } from "@pickler/core";
 import type { PerpsPaperFrame } from "../perps-paper/simulation.js";
 import type { PerpsPaperAccount } from "../perps-paper/types.js";
 export type PerpsCallLane =
-  "direct" | "jev" | "fallback" | "review" | "sma-review" | "news-review" | "exa";
+  | "direct"
+  | "jev"
+  | "fallback"
+  | "review"
+  | "sma-review"
+  | "news-review"
+  | "exa"
+  | `${"sma-review" | "news-review" | "exa"}:${PerpSymbol}`;
 export interface PerpsEvidence {
   observedAt: number;
   frames: PerpsPaperFrame[];
   candles: PerpCandles[];
   sourceIds: string[];
+  excluded?: { symbol: PerpSymbol; code: string; phase: string }[];
 }
 export interface PerpsProposal {
   symbol: PerpSymbol;
