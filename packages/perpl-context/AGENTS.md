@@ -32,3 +32,11 @@ this returns.
 From the root: `node --import tsx --test packages/perpl-context/test/*.test.ts` (also part of
 `npm test`), `npm run typecheck --workspace=@pickler/perpl-context`, and
 `npm test --workspace=@pickler/mobile`, three of whose suites parse the same capture.
+
+## Dynamic Studio markets
+
+The package additionally exports pure `parsePerplMarketIdentity` for conservative canonical identity
+parsing. It contains no transport or clock. Strict agent metadata validation remains in
+infrastructure; the mobile parseContext contract and captured expected output remain unchanged.
+
+See [agent-selected Perpl markets](../../docs/studio-perpl-markets.md).
