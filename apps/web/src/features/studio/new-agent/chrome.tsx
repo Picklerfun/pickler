@@ -110,6 +110,7 @@ export function Chrome({
         <button
           type="button"
           className={styles.topPill}
+          data-credits-control
           title="AI credits"
           aria-label="AI credits, soon"
           aria-haspopup="dialog"
@@ -117,7 +118,8 @@ export function Chrome({
         >
           <i className={styles.creditsDot} aria-hidden="true" />
           <small className={styles.creditsLabel}>AI CREDITS</small>
-          <span>Soon</span>
+          <span className={styles.creditsStatus}>Soon</span>
+          <Icon name="coin" size={18} className={styles.creditsIcon} />
         </button>
         <span className={home.emptyMenu}>
           <HomeMenu
