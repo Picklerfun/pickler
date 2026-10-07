@@ -856,8 +856,13 @@ content landmark, and portal dialogs. The pending frame follows the same landmar
 The selected-agent navbar keeps the global wallet/credits/account controls on one row at every
 supported width. At 768px and below, the brand shows only its logo while retaining the link's
 accessible name. At 560px and below, wallet and credits become labelled 38px icon buttons opening
-the same existing dialogs; the wallet's accessible name retains its actual balances. Network and
-account controls remain visible. Do not force a second controls row or hide an actionable control
+the same existing dialogs; the wallet's accessible name retains its actual balances. Fine-pointer
+hover and keyboard focus reveal each label to the left with the account chip's 360ms expansion.
+The disclosure icon stays anchored; preceding controls slide within the same row. Compact wallet
+balances use two asset rows; credits show their label and status. The network badge contracts to
+a dot while revealing, retaining its accessible name and tooltip. Touch only opens the existing
+dialog, without sticky hover; reduced motion disables these transitions. Network and account
+controls remain visible. Do not force a second controls row or hide an actionable control
 to make the selected-agent header fit. Sidebar state never changes navbar dimensions.
 
 The body is an inline-size container. The desktop reading measure is derived from its full width,
