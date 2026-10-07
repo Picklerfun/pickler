@@ -5,6 +5,7 @@ import { HOLDS } from "../routes.mjs";
 import { openBrowser } from "./browser.mjs";
 import { afterNotFound, appPages, pageFor } from "./not-found.mjs";
 import { settle } from "./settle.mjs";
+import { observeClient, ready, saveBlocked } from "./ready.mjs";
 import { SIGNATURE, resolve, surface } from "./tokens-file.mjs";
 
 /* No default, deliberately. This machine runs more than one checkout of this repository at once,
@@ -203,8 +204,8 @@ const KINDS = {
       "  mid-request is a different picture on every run.",
   },
   "error-boundary": {
-    line: (route) =>
-      `${route.path} — 200, but rendered the error/not-found fallback instead of the page`,
+    line: (route, detail) =>
+      `${route.path} — ${detail ?? "200, but rendered the error/not-found fallback instead of the page"}`,
     remedy:
       "That is what a client-side throw looks like. Read the browser console, not the tokens.",
   },
@@ -321,6 +322,7 @@ export async function eachRoute(routes, visit, { width = 1400, height = 1000 } =
         continue;
       }
       const page = await browser.newPage({ viewport: { width, height } });
+      const client = observeClient(page);
       try {
         await passGuard(page, route);
         let response;
@@ -388,9 +390,14 @@ export async function eachRoute(routes, visit, { width = 1400, height = 1000 } =
         // screen contains and a stub cannot. A count only where no authored hook exists yet.
         let proof;
         if (route.proves) {
-          const found = await page.locator(route.proves).count();
-          if (!found) {
-            blocked.push({ route, kind: "stub", detail: `nothing matches ${route.proves}` });
+          const failure = await ready(page, route.proves, client);
+          if (failure) {
+            const artifact = await saveBlocked(page, route, client, failure);
+            blocked.push({
+              route,
+              kind: client.errors.length ? "error-boundary" : "stub",
+              detail: `${failure}${artifact ? `; diagnostics: ${artifact}` : ""}`,
+            });
             continue;
           }
           proof = route.proves;
@@ -469,6 +476,7 @@ export async function eachRoute(routes, visit, { width = 1400, height = 1000 } =
         }
         results.push({ route, proof, value: await visit(page, route) });
       } finally {
+        client.dispose();
         await page.close();
       }
     }
