@@ -1,0 +1,2 @@
+ALTER TABLE "pickler"."perps_proposals" DROP CONSTRAINT "perps_proposals_instrument";--> statement-breakpoint
+ALTER TABLE "pickler"."perps_proposals" ADD CONSTRAINT "perps_proposals_instrument" CHECK ("pickler"."perps_proposals"."instrument" ~ '^[A-Z0-9][A-Z0-9._-]{0,31}$');
