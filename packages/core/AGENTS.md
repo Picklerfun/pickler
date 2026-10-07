@@ -374,6 +374,17 @@ provider calculations out of core. See [Agent advice](../../docs/agent-advice.md
 of an agent's analysis price (micro-AUSD bigint to a decimal string). `parseAusdToMicro` is the
 inverse (INVALID_INPUT beyond 6 decimals or outside `ADVICE_PRICE_MIN_MICRO`..`MAX_MICRO`, 0.10 to 100). `AgentSummary`, `AgentPersona`
 and `DirectoryAgent.agent` carry the agent `id` and its nullable `advicePrice`.
+`features/advice/x402.ts` owns the paid request of docs/specs/agent-advice-x402-v1.md §4.3:
+`X402_NETWORK`, `AUSD_TESTNET`, the x402 v1 wire types (`Authorization`, `PaymentPayload`,
+`PaymentRequirements`, `PaymentError`), `decodePaymentHeader` (throws `X402Refusal`),
+`encodeSettlement`, the ports `AdvicePaymentStore` (sale terms, payer links, payment rows) and
+`AdvicePaymentGateway` (signature, nonce, balance, settlement), and `createPaidAdvice`. Its order
+is fixed: `admit` (the service's admission checks without enqueueing) → replay → the key's
+payment row → sale terms (`NOT_FOUND`/`ADVICE_NOT_FOR_SALE`) → 402 → static checks → payer link
+→ signature → nonce → balance → pending row → settle → enqueue. A replay or a settled row never
+settles again; a `pending` or `refund_owed` row for the key refuses with `invalid_payment`; an
+enqueue failure after settlement marks the row `refund_owed` and rethrows. Core stays pure: chain
+and database live behind the two ports.
 
 Advice pricing v2 pins the reviewed OpenAI-compatible forecast base URL and model in each job. Preserve v1 policies and their direct-DeepSeek meaning; provider changes require a new policy, never a historical rewrite.
 
