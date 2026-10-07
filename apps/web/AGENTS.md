@@ -923,7 +923,11 @@ alongside published-agent controls.
 
 ## Dynamic Studio markets
 
-The shared shell/trading-markets selector is used by new, draft and live Sources & rules. Preserve
+The shared shell/trading-markets selector is used by new, draft and live Sources & rules. It
+composes shadcn DropdownMenu checkbox items with catalogue search and removable selected chips.
+The menu exposes every returned market, including disabled rows with their blocking reasons;
+multiple selections keep it open. Radix owns navigation, dismissal and focus restoration.
+Preserve
 forms/selections on read failures, use Skeletons and explicit retry, and never auto-select real
 markets. Console distinguishes loading/read-error/confirmed-disabled/available; chat remains
 non-actionable. Preview catalogue fixtures are not functional acceptance.
