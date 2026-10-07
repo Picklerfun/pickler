@@ -8,12 +8,10 @@ export const PERP_TOOLS = [
 ] as const;
 export type PerpTool = (typeof PERP_TOOLS)[number];
 export type PerpNetwork = "mainnet" | "testnet";
-export type PerpSymbol = "BTC" | "ETH";
-export interface PerplConfig {
-  version: 1;
-  network: PerpNetwork;
-  markets: PerpSymbol[];
-}
+export type PerpSymbol = string;
+export type PerplConfig =
+  | { version: 1; network: PerpNetwork; markets: ("BTC" | "ETH")[] }
+  | { version: 2; network: PerpNetwork; markets: PerpSymbol[] };
 export interface PerpProvenance {
   provider: "perpl";
   pluginVersion: "1.0.0" | "1.1.0";
@@ -160,4 +158,19 @@ export interface PerpReadTools {
   getPerpSnapshot(input: { symbol: PerpSymbol }): Promise<PerpSnapshot>;
   getPerpOrderBook(input: { symbol: PerpSymbol; levels?: number }): Promise<PerpOrderBook>;
   getPerpCandles(input: PerpCandleRequest): Promise<PerpCandles>;
+}
+
+/** Public catalogue identity only; execution metadata is resolved by the server. */
+export interface PerplMarketCatalog {
+  network: PerpNetwork;
+  observedAt: number;
+  markets: {
+    marketId: number | null;
+    symbol: string | null;
+    name: string;
+    collateral: { symbol: string; decimals: number } | null;
+    status: "open" | "closed" | "invalid";
+    available: boolean;
+    reasons: string[];
+  }[];
 }
