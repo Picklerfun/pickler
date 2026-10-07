@@ -96,6 +96,12 @@ export async function executeEvaluation(input: EvaluationHostRequest) {
         return runPerpsStudy(args, signal);
       },
     },
+    "perps-original-sma-v1": {
+      async execute(request) {
+        const { runOriginalSma } = await import("../perps-study/original-sma.js");
+        return runOriginalSma({ ...input, command: request.command, configPath: path }, signal);
+      },
+    },
     "perps-four-way-v2": {
       async execute(request) {
         if (request.command === "stability" || request.command === "data-diagnostic") {

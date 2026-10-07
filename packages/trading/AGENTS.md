@@ -169,3 +169,7 @@ No new persisted harness plugin IDs are introduced. Studio uses the separate 2.0
 ## Studio strategy version 2
 
 The common registry identifies strategies by both id and version. Version 1.0.0 keeps laboratory behavior; `executeStudioPerpsStrategy` requires the separate `studio-perps-strategy-v2` context and version 2.0.0. Studio proposals carry complete three-state brief evaluations and evidence references, never probabilities, sizes or leverage. Unknown conditions cannot establish an entry or authored exit. Opposite openings become close-only proposals. Combined invokes its own direct proposal and material-veto review; it cannot reuse another account response. Every model invocation goes through the injected reservation/call gate. These contracts alone do not enable product execution.
+
+## Original SMA laboratory
+
+`perps-original-sma-v1` selects one rules 1.0.0 arm and configuration v3. Reuse the original hourly inputs and conservative four-hour operator risk; no multiframe exits. The common runner accepts no models for this protocol, uses an empty call map and reports each cycle through an injected callback. Paid and historical protocols retain their interpretations.

@@ -570,3 +570,7 @@ migration fails the release. The audit uses a read-only repeatable-read transact
 concurrent submissions retain their first timestamp. The inbox excludes enabled or inactive owners.
 `research-access requests` lists pending entries; enable/disable retains the existing explicit
 operator workflow and now uses the verified operator connection configuration.
+
+## Rules-only study persistence
+
+Perpetual study v3 initializes only the rules agent/account, persists empty call maps and rejects paid guards/model lanes. Free rounds do not consume or release historical monetary reservations. Reporting uses the existing read-only audit export. No tables or migrations are added.

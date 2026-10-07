@@ -36,7 +36,7 @@ async function setup(t: TestContext) {
   const view = await study.initialize(scope, { fixture: true });
   const accounts = {} as Record<PerpsStrategy, PerpsPaperAccount>;
   for (const s of PERPS_STUDY_STRATEGIES) {
-    accounts[s] = (await paper.view({ ...scope, agentId: view.record.agentIds[s] })).account;
+    accounts[s] = (await paper.view({ ...scope, agentId: view.record.agentIds[s]! })).account;
   }
   return {
     research,
@@ -92,7 +92,7 @@ test("real PostgreSQL isolates dedicated agents, serializes admissions and recov
   await x.study.initialize(x.scope, { fixture: true });
   for (const s of PERPS_STUDY_STRATEGIES) {
     assert.equal(
-      (await x.paper.view({ ...x.scope, agentId: x.view.record.agentIds[s] })).movements.length,
+      (await x.paper.view({ ...x.scope, agentId: x.view.record.agentIds[s]! })).movements.length,
       1,
     );
   }
@@ -121,7 +121,7 @@ test("real PostgreSQL isolates dedicated agents, serializes admissions and recov
   const after = await x.study.view(x.scope);
   assert.equal(after.record.startedAt, x.view.record.createdAt);
   assert.equal(after.rounds[0]!.status, "interrupted");
-  assert.equal(after.rounds[0]!.calls.direct.costUsd, null);
+  assert.equal(after.rounds[0]!.calls.direct!.costUsd, null);
   assert.equal(perpsAccountedUsd(after.rounds), "0.024576");
   assert.equal(await peer.reserve(x.scope, replacement, 1, evidence, x.accounts, holds), null);
 });
@@ -157,7 +157,7 @@ test("parallel known usage commits independently; budget exhaustion admits neith
     jev: holds,
   });
   await x.study.finishExecution(x.scope, lease, round.key, "complete");
-  assert.equal((await x.study.view(x.scope)).rounds[0]!.calls.fallback.status, "skipped");
+  assert.equal((await x.study.view(x.scope)).rounds[0]!.calls.fallback!.status, "skipped");
   const expensive = {
     ...x.scope,
     sessionId: "expensive",
@@ -431,7 +431,7 @@ test("deterministic replay shares evidence, executes baseline, and supervises ri
   await runner.cycle(x.scope, next, new AbortController().signal);
   view = await x.study.view(x.scope);
   assert.equal(view.record.decisionStopReason, "MODEL_FAILURE");
-  assert.equal(view.rounds[1]!.calls.direct.error, "MODEL_TIMEOUT");
+  assert.equal(view.rounds[1]!.calls.direct!.error, "MODEL_TIMEOUT");
   const calls = paid;
   x.advance(4 * 3600000);
   await x.study.release(x.scope, next);
@@ -446,7 +446,7 @@ test("deterministic replay shares evidence, executes baseline, and supervises ri
   );
   const accounts = {} as Record<PerpsStrategy, PerpsPaperView>;
   for (const s of PERPS_STUDY_STRATEGIES) {
-    accounts[s] = await x.paper.view({ ...x.scope, agentId: x.view.record.agentIds[s] });
+    accounts[s] = await x.paper.view({ ...x.scope, agentId: x.view.record.agentIds[s]! });
   }
   const report = perpsStudyReport(await x.study.view(x.scope), accounts, x.now());
   assert.equal(report.comparable, false);
@@ -652,7 +652,7 @@ test("unknown historical usage blocks a new session without resetting its reserv
     null,
   );
   assert.equal((await x.study.view(config)).record.decisionStopReason, "CAMPAIGN_USAGE_UNVERIFIED");
-  assert.equal((await x.study.view(x.scope)).rounds[0]!.calls.direct.costUsd, null);
+  assert.equal((await x.study.view(x.scope)).rounds[0]!.calls.direct!.costUsd, null);
 });
 
 test("stale evidence is rejected before model spend and invalid execution frames remain inspectable", async (t) => {

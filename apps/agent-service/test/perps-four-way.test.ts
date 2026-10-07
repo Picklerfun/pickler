@@ -263,8 +263,8 @@ test("four-way round keeps independent portfolios and one common final refresh",
   await runner.cycle(config, lease, new AbortController().signal);
   assert.equal(finalRefreshes, 1);
   assert.deepEqual(seen.slice(0, 3), [
-    view.record.agentIds.deepseek,
-    view.record.agentIds.jev,
+    view.record.agentIds.deepseek!,
+    view.record.agentIds.jev!,
     view.record.agentIds.combined,
   ]);
   assert.equal(new Set(seen).size, 3);
