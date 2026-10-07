@@ -95,3 +95,7 @@ See [the 2026-10-01 public results](PERPL-STREAM-VALIDATION.md): both transports
 The perpetual protocols support audit-export. The separate audit command reads a versioned export
 without a study config, environment file, database or provider clients. See
 [the audit guide](PERPS-DECISION-AUDIT.md) for exact commands, provenance and acceptance boundaries.
+
+## Eleven-market SMA comparison
+
+Local configuration v5 selects `perps-sma-jev-exa-all-markets-v1`: prepare, preflight, validate, run, status, stop and report. Read [SMA-ALL-MARKETS.md](SMA-ALL-MARKETS.md) for its one-shot paid gate, retained budget, eleven-asset catalog and limitations. No resume or automatic repeat is allowed.
