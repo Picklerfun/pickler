@@ -12,22 +12,19 @@ import {
 } from "@pickler/ui/dropdown-menu";
 import { studioPerplMarkets } from "../api";
 import styles from "./trading-markets.module.css";
+import testnetCatalogue from "./perpl-testnet-catalogue.fixture.json";
 
 type Network = "testnet" | "mainnet";
-/** Deliberately controlled preview evidence, never a fallback for a live catalogue. */
+/**
+ * Captured from Perpl's public context through the production catalogue adapter.
+ * Preview-only: the live read never falls back to this captured catalogue.
+ */
 function previewCatalog(network: Network): PerplMarketCatalogDto {
+  const captured = testnetCatalogue as PerplMarketCatalogDto;
   return {
     network,
     observedAt: Date.now(),
-    markets: ["BTC", "ETH", "SOL"].map((symbol, index) => ({
-      marketId: index + 1,
-      symbol,
-      name: `${symbol} Perp`,
-      collateral: { symbol: "AUSD", decimals: 6 },
-      status: "open",
-      available: true,
-      reasons: [],
-    })),
+    markets: network === captured.network ? structuredClone(captured.markets) : [],
   };
 }
 export function useTradingMarkets(network: Network | null, preview: boolean) {
