@@ -1607,13 +1607,13 @@
     font-size: 10px;
   }
   .topPill:focus-visible .navReveal {
-    max-width: min(100px, calc(100vw - 240px));
+    max-width: min(100px, calc(100vw - 236px));
     opacity: 1;
   }
 }
 @media (max-width: 640px) and (hover: hover) and (pointer: fine) {
   .topPill:hover .navReveal {
-    max-width: min(100px, calc(100vw - 240px));
+    max-width: min(100px, calc(100vw - 236px));
     opacity: 1;
   }
 }
