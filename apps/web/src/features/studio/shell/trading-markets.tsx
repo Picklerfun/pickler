@@ -1,7 +1,15 @@
 "use client";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { PerplMarketCatalogDto } from "@pickler/api-schema";
-import { Button, Chip, Field, Input, Skeleton, Tag } from "@pickler/ui";
+import { Button, Chip, Icon, Input, Skeleton, Tag } from "@pickler/ui";
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@pickler/ui/dropdown-menu";
 import { studioPerplMarkets } from "../api";
 import styles from "./trading-markets.module.css";
 
@@ -113,17 +121,75 @@ export function TradingMarkets({
         <h3>Trading markets</h3>
         <Tag>{network ? `Monad ${network}` : "Network unavailable"}</Tag>
       </div>
-      <p>
-        Choose the markets this agent may open positions in. New listings are never selected
-        automatically.
-      </p>
-      <Field label="Find a market">
-        <Input
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-          placeholder="Search symbols or names"
-        />
-      </Field>
+      {read.phase === "loading" ? (
+        <div role="status" aria-label="Loading Perpl markets" aria-busy="true">
+          <Skeleton shape="button" className={styles.placeholder} />
+        </div>
+      ) : (
+        <DropdownMenu onOpenChange={() => setSearch("")}>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="secondary"
+              className={styles.trigger}
+              disabled={disabled || !read.ready}
+              aria-label="Select trading markets"
+            >
+              <span>{value.length ? `${value.length} selected` : "Select markets"}</span>
+              <Icon name="chevronsUpDown" size={16} />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent data-surface="dark" className={styles.menu} align="start">
+            <div className={styles.search}>
+              <Input
+                aria-label="Search markets"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                onKeyDown={(event) => {
+                  // Keep typing/editing in the input; Radix still handles menu navigation.
+                  if (!["ArrowDown", "ArrowUp", "Escape", "Tab"].includes(event.key)) {
+                    event.stopPropagation();
+                  }
+                }}
+                placeholder="Search markets…"
+              />
+            </div>
+            <DropdownMenuSeparator />
+            <DropdownMenuGroup className={styles.options} aria-label="Perpl market catalogue">
+              {visible.map((row, index) => {
+                const symbol = row.symbol;
+                const selected = symbol !== null && value.includes(symbol);
+                return (
+                  <DropdownMenuCheckboxItem
+                    key={`${row.marketId ?? "invalid"}-${index}`}
+                    checked={selected}
+                    disabled={disabled || !read.ready || !row.available || symbol === null}
+                    textValue={symbol ?? row.name}
+                    aria-label={symbol ?? row.name}
+                    onSelect={(event) => event.preventDefault()}
+                    onCheckedChange={(checked) => {
+                      if (symbol) {
+                        onChange(
+                          checked ? [...value, symbol] : value.filter((item) => item !== symbol),
+                        );
+                      }
+                    }}
+                  >
+                    <span className={styles.option}>
+                      <span>{symbol ?? row.name}</span>
+                      {!row.available && (
+                        <span className={styles.detail}>
+                          {row.reasons.join("; ") || row.status}
+                        </span>
+                      )}
+                    </span>
+                  </DropdownMenuCheckboxItem>
+                );
+              })}
+            </DropdownMenuGroup>
+            {visible.length === 0 && <p className={styles.empty}>No matching markets.</p>}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
       <div className={styles.selected} aria-label="Selected trading markets">
         {value.length ? (
           value.map((symbol) => (
@@ -131,33 +197,20 @@ export function TradingMarkets({
               key={symbol}
               selected
               disabled={disabled}
+              aria-label={`${symbol} · Remove`}
               onClick={() => onChange(value.filter((item) => item !== symbol))}
             >
-              {symbol} · Remove
+              {symbol}
+              <Icon name="x" size={14} />
             </Chip>
           ))
         ) : (
           <span>No markets selected</span>
         )}
       </div>
-      {read.phase === "loading" && (
-        <div
-          role="status"
-          aria-label="Loading Perpl markets"
-          aria-busy="true"
-          className={styles.loading}
-        >
-          <Skeleton shape="button" />
-          <Skeleton shape="button" />
-          <Skeleton shape="button" />
-        </div>
-      )}
       {(read.phase === "error" || !network) && (
         <div role="alert">
-          <p>
-            The current catalogue could not be confirmed. Saved markets are preserved; new
-            selections need a fresh catalogue.
-          </p>
+          <p>Catalogue unavailable. Your selected markets are unchanged.</p>
           <Button
             variant="secondary"
             size="sm"
@@ -168,41 +221,7 @@ export function TradingMarkets({
           </Button>
         </div>
       )}
-      <ul className={styles.list} aria-label="Perpl market catalogue">
-        {visible.map((row, index) => {
-          const selected = row.symbol !== null && value.includes(row.symbol);
-          const shut = disabled || !read.ready || !row.available || row.symbol === null;
-          return (
-            <li key={`${row.marketId ?? "invalid"}-${index}`}>
-              <Chip
-                selected={selected}
-                disabled={shut}
-                onClick={() => {
-                  if (row.symbol) {
-                    onChange(
-                      selected
-                        ? value.filter((symbol) => symbol !== row.symbol)
-                        : [...value, row.symbol],
-                    );
-                  }
-                }}
-              >
-                {row.symbol ?? row.name}
-              </Chip>
-              <span>
-                {row.collateral?.symbol ?? "Unknown collateral"} · {row.status}
-                {row.reasons.length ? ` · ${row.reasons.join("; ")}` : ""}
-              </span>
-            </li>
-          );
-        })}
-      </ul>
-      {read.ready && visible.length === 0 && <p>No matching markets.</p>}
-      <p>
-        Changing markets requires new preparation and turns scheduling off. Removing a market
-        preserves supervision and closing of its existing positions. Funding a wallet does not
-        enable execution.
-      </p>
+      <p>Changes pause scheduling and require a new readiness check.</p>
     </section>
   );
 }
