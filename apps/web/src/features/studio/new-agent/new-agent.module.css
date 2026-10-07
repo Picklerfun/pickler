@@ -1560,7 +1560,7 @@
 .creditsIcon {
   display: none;
 }
-@media (max-width: 560px) {
+@media (max-width: 640px) {
   .topPill[data-wallet-balance],
   .topPill[data-credits-control] {
     min-width: 38px;
@@ -1611,7 +1611,7 @@
     opacity: 1;
   }
 }
-@media (max-width: 560px) and (hover: hover) and (pointer: fine) {
+@media (max-width: 640px) and (hover: hover) and (pointer: fine) {
   .topPill:hover .navReveal {
     max-width: min(100px, calc(100vw - 240px));
     opacity: 1;
