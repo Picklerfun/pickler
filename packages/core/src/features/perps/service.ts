@@ -2,6 +2,7 @@ import { PilotError, type AgentRecord, type Scope } from "../research/types.js";
 import { requireTool } from "../research/plugins.js";
 import {
   PERP_RESOLUTIONS,
+  PERPL_LAB_SYMBOLS,
   type PerpMarketData,
   type PerplConfig,
   type PerpReadContext,
@@ -12,12 +13,16 @@ import {
 
 export function assertPerplConfig(config: PerplConfig): void {
   if (
-    config.version !== 1 ||
+    ![1, 2].includes(config.version) ||
     !["mainnet", "testnet"].includes(config.network) ||
     !Array.isArray(config.markets) ||
     config.markets.length === 0 ||
-    config.markets.length > 2 ||
-    config.markets.some((symbol) => symbol !== "BTC" && symbol !== "ETH") ||
+    config.markets.length > (config.version === 2 ? 11 : 2) ||
+    config.markets.some((symbol) =>
+      config.version === 1
+        ? symbol !== "BTC" && symbol !== "ETH"
+        : !PERPL_LAB_SYMBOLS.includes(symbol),
+    ) ||
     new Set(config.markets).size !== config.markets.length
   ) {
     throw new PilotError("INVALID_INPUT", "Invalid Perpl configuration");
