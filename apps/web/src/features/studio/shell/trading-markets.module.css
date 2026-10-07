@@ -1,0 +1,47 @@
+.panel {
+  composes: pk-panel from global;
+  padding: 24px;
+  display: grid;
+  gap: 16px;
+}
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.head h3 {
+  margin: 0;
+  font-size: 18px;
+  color: var(--pk-ink);
+}
+.panel p,
+.list span,
+.selected > span {
+  margin: 0;
+  color: var(--pk-ink-muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+.selected,
+.loading {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  max-height: 320px;
+  overflow: auto;
+  display: grid;
+  gap: 12px;
+}
+.list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
