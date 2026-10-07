@@ -1,3 +1,9 @@
+import { perpsRules } from "../perps-strategies/policy.js";
+import {
+  executeSmaReviewVariant,
+  smaFinalProposals,
+  type SmaReviewModels,
+} from "../perps-study/sma-review.js";
 import { startLeaseHeartbeat, type LeaseDiagnostic } from "./lease-heartbeat.js";
 import {
   perpsStrategies,
@@ -65,6 +71,7 @@ export function createPerpsStudyRunner(deps: {
   paper: PerpsPaperRepository;
   data: StudyData;
   models?: PerpsModels;
+  smaModels?: SmaReviewModels;
   afterCycle?: () => Promise<void>;
   now?: () => number;
   paperForLease?: (
@@ -349,6 +356,12 @@ export function createPerpsStudyRunner(deps: {
               value,
             ),
           usage: (input, output) => study.usage(scope, lease, round!.key, lane, input, output),
+          cost: async (usd) => {
+            if (!study.providerCost) {
+              throw new PilotError("USAGE_UNVERIFIED", "Provider cost persistence unavailable");
+            }
+            await study.providerCost(scope, lease, round!.key, lane, usd);
+          },
         });
         assertActive();
         deadline.throwIfAborted();
@@ -365,7 +378,11 @@ export function createPerpsStudyRunner(deps: {
     }
     // Preserve the historical launch order; account/report order is a separate protocol detail.
     const modelStrategies: PerpsStudyStrategy[] =
-      record.config.version === 3 ? [] : ["deepseek", "jev"];
+      record.config.version === 4
+        ? ["sma-jev", "sma-exa-jev"]
+        : record.config.version === 3
+          ? []
+          : ["deepseek", "jev"];
     if (record.config.version === 2) {
       modelStrategies.push("combined");
     }
@@ -376,6 +393,26 @@ export function createPerpsStudyRunner(deps: {
           throw new PilotError("MODEL_CONFIG_MISMATCH", "Strategy account unavailable");
         }
         const context = { evidence, account };
+        if (record.config.version === 4) {
+          if (!deps.smaModels || (strategy !== "sma-jev" && strategy !== "sma-exa-jev")) {
+            throw new PilotError("MODELS_DISABLED", "SMA review models required");
+          }
+          await study.event(
+            scope,
+            lease,
+            `${round.key}:${strategy}:original`,
+            "strategy-proposal",
+            { strategy, proposals: perpsRules(context), account },
+          );
+          proposals[strategy] = await executeSmaReviewVariant(
+            strategy,
+            context,
+            deps.smaModels,
+            { run: call },
+            deadline,
+          );
+          return;
+        }
         if (!models) {
           throw new PilotError("MODELS_DISABLED", "Model composition unavailable");
         }
@@ -432,7 +469,21 @@ export function createPerpsStudyRunner(deps: {
             signal,
           );
         }
-        for (const proposal of proposals[strategy]!) {
+        const finalProposals =
+          record.config.version === 4
+            ? smaFinalProposals(proposals[strategy]!, {
+                evidence: { ...evidence, frames, observedAt: now() },
+                account: current.account,
+              })
+            : proposals[strategy]!;
+        if (record.config.version === 4) {
+          await study.event(scope, lease, `${round.key}:${strategy}:final-gate`, "final-gate", {
+            strategy,
+            initial: proposals[strategy],
+            final: finalProposals,
+          });
+        }
+        for (const proposal of finalProposals) {
           if (closedThisRound.has(`${strategy}:${proposal.symbol}`)) {
             continue;
           }
