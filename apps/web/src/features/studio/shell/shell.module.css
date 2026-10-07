@@ -177,7 +177,11 @@
   letter-spacing: 0.08em;
 }
 
-/* Global controls have one responsive row; wallet/account controls never wrap independently. */
+/* The selected-agent navbar keeps all global controls in one responsive row. */
+.top {
+  composes: top from "../home/home.module.css";
+}
+
 .globalControls {
   display: flex;
   align-items: center;
@@ -188,10 +192,17 @@
 .globalControls > button {
   flex: none;
 }
-@media (max-width: 640px) {
+@media (max-width: 768px) {
+  .top[data-agent-navbar] {
+    flex-wrap: nowrap;
+    gap: 6px;
+    padding-inline: 12px;
+  }
+  .top > a {
+    margin-right: 0;
+  }
   .globalControls {
-    flex: 1 0 100%;
-    justify-content: flex-end;
+    gap: 6px;
   }
 }
 
