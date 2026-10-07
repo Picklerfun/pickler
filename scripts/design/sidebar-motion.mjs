@@ -16,6 +16,25 @@ assert.ok(
 );
 let servers;
 let browser;
+
+async function settledControl(page, selector) {
+  await page.waitForFunction(
+    (selector) => {
+      const control = document.querySelector(selector);
+      const header = control.closest("header");
+      control.getBoundingClientRect();
+      return header
+        .getAnimations({ subtree: true })
+        .every(
+          (animation) =>
+            animation.constructor.name !== "CSSTransition" ||
+            (animation.playState !== "running" && !animation.pending),
+        );
+    },
+    selector,
+    { timeout: 10_000 },
+  );
+}
 try {
   if (!process.env.DESIGN_BASE_URL) {
     assert.equal(await listening(8799), false, "Fixture port is already in use");
@@ -397,7 +416,7 @@ try {
         "[data-account-menu]",
       ]) {
         await page.mouse.move(width / 2, 950);
-        await page.waitForTimeout(400);
+        await settledControl(page, selector);
         const control = page.locator(selector);
         const account = selector === "[data-account-menu]";
         const trigger = account ? control.locator(":scope > button") : control;
@@ -413,31 +432,100 @@ try {
           const button = document.querySelector(selector);
           const navbar = button.closest("header");
           const height = navbar.getBoundingClientRect().height;
-          window.compactFrames = (async () => {
-            const frames = [];
-            const start = performance.now();
-            do {
-              await new Promise(requestAnimationFrame);
-              const box = button.getBoundingClientRect();
-              frames.push({
-                width: box.width,
-                right: box.right,
-                height: navbar.getBoundingClientRect().height,
-                sameButton: document.querySelector(selector) === button,
-                hover: button.matches(":hover"),
-                overflow: document.documentElement.scrollWidth > innerWidth + 1,
-              });
-            } while (performance.now() - start < 800);
-            return { height, frames };
-          })();
+          window.compactResult = null;
+          button.addEventListener(
+            "pointerenter",
+            async () => {
+              const frames = [];
+              const sample = () => {
+                const box = button.getBoundingClientRect();
+                return {
+                  width: box.width,
+                  right: box.right,
+                  height: navbar.getBoundingClientRect().height,
+                  sameButton: document.querySelector(selector) === button,
+                  hover: button.matches(":hover"),
+                  overflow: document.documentElement.scrollWidth > innerWidth + 1,
+                };
+              };
+              try {
+                // Capture at the input event, not before a cross-process mouse move arrives.
+                frames.push(sample());
+                const transitions = navbar
+                  .getAnimations({ subtree: true })
+                  .filter(
+                    (animation) =>
+                      animation.constructor.name === "CSSTransition" &&
+                      (animation.playState === "running" || animation.pending),
+                  );
+                // Inspect the real CSS interpolation at a deterministic fraction. A loaded
+                // runner may skip RAF samples even while the compositor animates smoothly.
+                // Resume naturally; never force a width or jump to the endpoint.
+                for (const animation of transitions) {
+                  animation.pause();
+                }
+                await Promise.all(transitions.map((animation) => animation.ready));
+                for (const animation of transitions) {
+                  animation.currentTime = Number(animation.effect.getTiming().duration) / 4;
+                }
+                const intermediate = sample();
+                frames.push(intermediate);
+                for (const animation of transitions) {
+                  animation.play();
+                }
+                const start = performance.now();
+                let finished = false;
+                do {
+                  await new Promise(requestAnimationFrame);
+                  frames.push(sample());
+                  finished = navbar
+                    .getAnimations({ subtree: true })
+                    .every(
+                      (animation) =>
+                        animation.constructor.name !== "CSSTransition" ||
+                        (animation.playState !== "running" && !animation.pending),
+                    );
+                } while (!finished && performance.now() - start < 10_000);
+                window.compactResult = { height, frames, intermediate, finished };
+              } catch (error) {
+                window.compactResult = { error: String(error), height, frames };
+              }
+            },
+            { once: true },
+          );
         }, selector);
         await page.mouse.move(anchor.x, anchor.y);
-        const { height, frames } = await page.evaluate(() => window.compactFrames);
+        await page.waitForFunction(() => window.compactResult !== null, null, { timeout: 12_000 });
+        const { height, frames, intermediate, finished, error } = await page.evaluate(
+          () => window.compactResult,
+        );
         const context = `${stage}, ${width}px, ${selector}`;
+        const interpolates =
+          intermediate &&
+          intermediate.width > before.width + 0.5 &&
+          intermediate.width < frames.at(-1).width - 0.5;
+        if (error || !finished || !interpolates) {
+          const output = path.join(root, "scripts/design/.shots/diagnostics");
+          mkdirSync(output, { recursive: true });
+          const stem = `hover-${stage}-${width}-${selector.replace(/[^a-zA-Z0-9_-]/g, "")}`;
+          writeFileSync(
+            path.join(output, `${stem}-frames.json`),
+            JSON.stringify({ height, frames, intermediate, finished, error }, null, 2) + "\n",
+          );
+          await saveBlocked(
+            page,
+            { name: stem, path: `/studio?stage=${stage}`, proves: selector },
+            { errors, consoleErrors: [] },
+            `Hover interpolation or completion failed: ${context}`,
+            output,
+          );
+        }
+        assert.equal(error, undefined, `Animation probe succeeds: ${context}`);
+        assert.ok(finished, `Hover transitions finish within 10s: ${context}`);
         const hovered = frames.filter((frame) => frame.hover);
         assert.ok(hovered.length > 2, `Hover stays reachable: ${context}`);
         assert.ok(
-          hovered.some((frame) => frame.width > 40 && frame.width < 90),
+          intermediate.width > before.width + 0.5 && intermediate.width < frames.at(-1).width - 0.5,
           `Intermediate expansion: ${context}`,
         );
         for (const frame of hovered) {
@@ -469,17 +557,17 @@ try {
           `Complete fixture balances/credits: ${context}`,
         );
         await page.mouse.move(width / 2, 950);
-        await page.waitForTimeout(400);
+        await settledControl(page, selector);
         assert.ok(
           Math.abs((await control.boundingBox()).width - 38) < 0.5,
           `Pointer exit contracts once: ${context}`,
         );
         await page.keyboard.press("Tab");
         await trigger.focus();
-        await page.waitForTimeout(400);
+        await settledControl(page, selector);
         assert.ok((await control.boundingBox()).width > 85, `Keyboard reveals details: ${context}`);
         await trigger.evaluate((element) => element.blur());
-        await page.waitForTimeout(400);
+        await settledControl(page, selector);
       }
     }
     await page.emulateMedia({ reducedMotion: "reduce" });
