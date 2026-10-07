@@ -10,7 +10,10 @@ import { validatePaperFrame, type PerpsPaperFrame } from "./simulation.js";
 export const PERPS_REST_PACED_POLICY = "rest-paced-20s-v1" as const;
 export const PERPS_STREAM_POLICY = "stream-20s-v1" as const;
 export type PerpsDataPolicy =
-  "coherent-20s-v1" | typeof PERPS_REST_PACED_POLICY | typeof PERPS_STREAM_POLICY;
+  | "coherent-20s-v1"
+  | "rest-universe-20s-v1"
+  | typeof PERPS_REST_PACED_POLICY
+  | typeof PERPS_STREAM_POLICY;
 
 export const PERPS_DATA_POLICY = "coherent-20s-v1" as const;
 export function transientPerpsData(error: unknown): boolean {
@@ -36,17 +39,17 @@ export interface AcquisitionDiagnostic {
   code: string | null;
 }
 /** The host supplies a twenty-second cancellation deadline covering every read and wait. */
-export async function acquirePerpsFrames(input: {
+export async function acquirePerpsFrames<S extends PerpSymbol>(input: {
   network: PerpNetwork;
-  symbols: readonly PerpSymbol[];
+  symbols: readonly S[];
   now: () => number;
   signal: AbortSignal;
   guard: () => Promise<void>;
-  snapshot: (symbol: PerpSymbol) => Promise<PerpSnapshot>;
-  book: (symbol: PerpSymbol) => Promise<PerpOrderBook>;
+  snapshot: (symbol: S) => Promise<PerpSnapshot>;
+  book: (symbol: S) => Promise<PerpOrderBook>;
   hash: (value: unknown) => string;
   repeatedTimestampWait?: (
-    symbol: PerpSymbol,
+    symbol: S,
     component: "book" | "ticker",
     signal: AbortSignal,
   ) => Promise<void>;
