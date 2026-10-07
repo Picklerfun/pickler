@@ -177,3 +177,7 @@ The common registry identifies strategies by both id and version. Version 1.0.0 
 ## Local SMA review comparison
 
 Configuration v4 perps-sma-jev-exa-v1 owns three explicit SMA review arms, entry-only material veto and common final gates in features/perps-study/sma-review.ts. Reuse original SMA/risk versions. The fixed eight slots, 27-call limit and USD 0.50 new reservation ceiling include contract checks; no retries.
+
+## Explicit SMA continuation
+
+perpsSlotClock uses recorded operator continuation segments; the original start and completed slots remain unchanged. Runner release carries safe interruption codes for administrative terminal reporting.
