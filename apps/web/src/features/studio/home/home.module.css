@@ -1062,8 +1062,8 @@
   }
 }
 
-/* Match the compact header breakpoint and preserve the brand link's accessible name. */
-@media (max-width: 640px) {
+/* Compact the brand alongside the mobile sidebar, preserving its accessible name. */
+@media (max-width: 768px) {
   .brand > span {
     position: absolute;
     width: 1px;
