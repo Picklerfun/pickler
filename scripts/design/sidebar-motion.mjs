@@ -344,18 +344,24 @@ try {
     }
 
     // Stationary hover must reveal compact controls without moving the icon out from under it.
-    for (const width of [560, 480, 390, 360, 320]) {
+    for (const width of [640, 560, 390, 360, 320]) {
       await page.setViewportSize({ width, height: 1000 });
-      for (const selector of ["[data-wallet-balance]", "[data-credits-control]"]) {
+      for (const selector of [
+        "[data-wallet-balance]",
+        "[data-credits-control]",
+        "[data-account-menu]",
+      ]) {
         await page.mouse.move(width / 2, 950);
         await page.waitForTimeout(400);
         const control = page.locator(selector);
+        const account = selector === "[data-account-menu]";
+        const trigger = account ? control.locator(":scope > button") : control;
         const before = await control.boundingBox();
         assert.equal(before.width, 38, "Compact control starts as an icon");
         const preceding =
           selector === "[data-wallet-balance]"
             ? page.getByLabel("Monad testnet", { exact: true })
-            : page.locator("[data-wallet-balance]");
+            : page.locator(account ? "[data-credits-control]" : "[data-wallet-balance]");
         const precedingBefore = await preceding.boundingBox();
         const anchor = { x: before.x + before.width - 19, y: before.y + 19 };
         await page.evaluate((selector) => {
@@ -405,11 +411,13 @@ try {
         );
         assert.ok(frames.at(-1).hover, `No hover oscillation: ${context}`);
         assert.ok(frames.at(-1).width > 85, `Details settle visibly: ${context}`);
-        const details = await control.locator('[class*="navReveal"]').evaluate((element) => ({
-          width: element.clientWidth,
-          contentWidth: element.firstElementChild.scrollWidth,
-          opacity: getComputedStyle(element).opacity,
-        }));
+        const details = await control
+          .locator(account ? ":scope > span" : '[class*="navReveal"]')
+          .evaluate((element) => ({
+            width: element.clientWidth,
+            contentWidth: element.firstElementChild.scrollWidth,
+            opacity: getComputedStyle(element).opacity,
+          }));
         assert.equal(details.opacity, "1", `Labels are visible: ${context}`);
         assert.ok(
           details.contentWidth <= details.width + 1,
@@ -422,10 +430,10 @@ try {
           `Pointer exit contracts once: ${context}`,
         );
         await page.keyboard.press("Tab");
-        await control.focus();
+        await trigger.focus();
         await page.waitForTimeout(400);
         assert.ok((await control.boundingBox()).width > 85, `Keyboard reveals details: ${context}`);
-        await control.evaluate((element) => element.blur());
+        await trigger.evaluate((element) => element.blur());
         await page.waitForTimeout(400);
       }
     }
@@ -464,7 +472,7 @@ try {
   await touch.close();
   assert.deepEqual(errors, [], "No browser errors");
   console.log(
-    "PASS: stable DOM, synchronized sidebar geometry, fading labels, anchored avatar/navbar, fixed card measure, tooltip dismissal/keyboard access, crisp icons, responsive breakpoints, compact wallet/credits hover and focus, touch dialogs, reduced motion and no overflow. Controlled fixtures only.",
+    "PASS: stable DOM, synchronized sidebar geometry, fading labels, anchored avatar/navbar, fixed card measure, tooltip dismissal/keyboard access, crisp icons, responsive breakpoints, compact wallet/credits/profile hover and focus, touch dialogs, reduced motion and no overflow. Controlled fixtures only.",
   );
 } finally {
   await browser?.close();
