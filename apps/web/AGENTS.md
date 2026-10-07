@@ -805,7 +805,7 @@ the agent name in the content header. On small screens the official mobile Sheet
 that switcher must preserve its permissions, agent IDs and New agent callback. The draft status
 is rendered once in the content header. Desktop header controls stay on one row during account expansion; the account
 chip may shrink to the available width and its icon never leaves the pointer. At widths of 640px
-or less, hover expansion is disabled and wrapping remains available. The 360ms expansion reverses
+or less, hover expansion is disabled. The selected-agent navbar keeps its controls on one row. The 360ms expansion reverses
 once on pointer exit, rather than repeatedly entering/leaving a relocated icon.
 
 Account profile links include a local `returnTo` carrying the active agent, section and any
@@ -853,10 +853,12 @@ Use the package public subpaths, never relative imports into the UI package. See
 
 The shell is a chrome wrapper with a global header, a body containing Sidebar and a single main
 content landmark, and portal dialogs. The pending frame follows the same landmark hierarchy.
-The global wallet/credits/account group stays on one row; at 640px and below that group occupies an
-explicit second header row. The brand wordmark is visually hidden at the same breakpoint, retaining
-the link's accessible name; do not introduce a separate smaller logo-only cutoff. Sidebar state
-never changes navbar dimensions.
+The selected-agent navbar keeps the global wallet/credits/account controls on one row at every
+supported width. At 768px and below, the brand shows only its logo while retaining the link's
+accessible name. At 560px and below, wallet and credits become labelled 38px icon buttons opening
+the same existing dialogs; the wallet's accessible name retains its actual balances. Network and
+account controls remain visible. Do not force a second controls row or hide an actionable control
+to make the selected-agent header fit. Sidebar state never changes navbar dimensions.
 
 The body is an inline-size container. The desktop reading measure is derived from its full width,
 the configured expanded sidebar width and main padding, capped at 1120px. Collapsing navigation
