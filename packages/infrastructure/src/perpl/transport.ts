@@ -30,6 +30,8 @@ export const PERPL_SESSION_LIMIT = 12;
 export const PERPL_CHECK_SESSION_LIMIT = 24;
 export interface PerplDataOptions {
   schedule?: PerplRequestSchedule;
+  /** Explicit private universe adapter; never selected by public tools. */
+  universe?: boolean;
   /** Requests this session may make: 1–24, default 12. Trusted host configuration only. */
   sessionLimit?: number;
   retryTransient?: boolean;
