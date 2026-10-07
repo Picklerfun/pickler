@@ -3,12 +3,17 @@ import type { PerpsPaperAccount } from "../perps-paper/types.js";
 export const PERPS_STUDY_STRATEGIES = ["rules", "deepseek", "jev"] as const;
 export type PerpsStrategy = (typeof PERPS_STUDY_STRATEGIES)[number];
 export type PerpsStudyStrategy = PerpsStrategy | "combined";
-export type PerpsStudyMap<T> = Record<PerpsStrategy, T> & Partial<Record<"combined", T>>;
+export type PerpsStudyMap<T> = Record<"rules", T> &
+  Partial<Record<Exclude<PerpsStudyStrategy, "rules">, T>>;
 export const PERPS_FOUR_WAY_STRATEGIES = ["rules", "jev", "deepseek", "combined"] as const;
 export function perpsStrategies(
   config: Pick<PerpsStudyConfig, "version">,
 ): readonly PerpsStudyStrategy[] {
-  return config.version === 2 ? PERPS_FOUR_WAY_STRATEGIES : PERPS_STUDY_STRATEGIES;
+  return config.version === 3
+    ? ["rules"]
+    : config.version === 2
+      ? PERPS_FOUR_WAY_STRATEGIES
+      : PERPS_STUDY_STRATEGIES;
 }
 export type {
   PerpsCallLane,
@@ -22,7 +27,7 @@ export interface PerpsStudyScope {
   sessionId: string;
   network: PerpNetwork;
 }
-export interface PerpsStudyConfig extends PerpsStudyScope {
+export interface PerpsPaidStudyConfig extends PerpsStudyScope {
   version: 1 | 2;
   protocol: "perps-comparison-v1" | "perps-four-way-v2";
   hours: 24 | 2;
@@ -39,6 +44,13 @@ export interface PerpsStudyConfig extends PerpsStudyScope {
   pricingVerifiedAt: string;
   pricingSources: string[];
 }
+export interface PerpsOriginalSmaConfig extends PerpsStudyScope {
+  version: 3;
+  protocol: "perps-original-sma-v1";
+  hours: 24;
+  budgetUsd: "5";
+}
+export type PerpsStudyConfig = PerpsPaidStudyConfig | PerpsOriginalSmaConfig;
 export interface PerpsCall {
   requestHash?: string;
   inputBytes?: number;
@@ -65,7 +77,7 @@ export interface PerpsRound {
   evidence: PerpsEvidence;
   accounts: PerpsStudyMap<PerpsPaperAccount>;
   proposals: Partial<Record<PerpsStudyStrategy, PerpsProposal[]>>;
-  calls: Record<"direct" | "jev" | "fallback", PerpsCall> & Partial<Record<"review", PerpsCall>>;
+  calls: Partial<Record<PerpsCallLane, PerpsCall>>;
 }
 export interface PerpsStudyRecord {
   config: PerpsStudyConfig;
