@@ -909,6 +909,11 @@ updates cancel in-flight reads and restart loading. Keep the component cleanup g
 session cookies and delayed API responses on dedicated loopback ports 3012/8812. It verifies
 completed reads, bounded request counts, visible failure and missing-wallet redirection without
 `?stage=`. This is a client regression test, not backend authorization or live-provider acceptance.
+Its controlled catalogue responses resolve the requested testnet/mainnet network and timestamp
+against the test clock. Catalogue expiry, read failure and explicit retry preserve the form and
+selected markets; unknown API paths and all external requests remain failures. The browser
+route-readiness acceptance proves the avatar dialog opens through React on cold and delayed
+hydration, without opening it from the test or weakening its `[open]` route proof.
 
 ## Wallet ownership and transfers
 
