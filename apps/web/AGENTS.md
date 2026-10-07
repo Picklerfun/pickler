@@ -853,8 +853,10 @@ Use the package public subpaths, never relative imports into the UI package. See
 
 The shell is a chrome wrapper with a global header, a body containing Sidebar and a single main
 content landmark, and portal dialogs. The pending frame follows the same landmark hierarchy.
-The global wallet/credits/account group stays on one row; below 640px that group occupies an
-explicit second header row. Sidebar state never changes navbar dimensions.
+The global wallet/credits/account group stays on one row; at 640px and below that group occupies an
+explicit second header row. The brand wordmark is visually hidden at the same breakpoint, retaining
+the link's accessible name; do not introduce a separate smaller logo-only cutoff. Sidebar state
+never changes navbar dimensions.
 
 The body is an inline-size container. The desktop reading measure is derived from its full width,
 the configured expanded sidebar width and main padding, capped at 1120px. Collapsing navigation
