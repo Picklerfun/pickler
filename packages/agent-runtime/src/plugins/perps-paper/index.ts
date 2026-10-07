@@ -243,7 +243,11 @@ export function createPerplAcquisitionReader(
         try {
           const initial = await check(scope, guard);
           signal.throwIfAborted();
-          if (symbols.some((symbol) => !initial.config.perpl!.markets.includes(symbol))) {
+          if (
+            symbols.some(
+              (symbol) => !initial.config.perpl!.markets.some((market) => market === symbol),
+            )
+          ) {
             throw new PilotError("MARKET_NOT_ALLOWED", "Perpl market disabled");
           }
           if (options.policy !== "stream-20s-v1") {
