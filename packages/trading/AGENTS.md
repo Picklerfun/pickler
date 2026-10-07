@@ -154,7 +154,7 @@ See [Studio perpetual execution](../../docs/studio-perps-execution.md).
 
 The `strategies` export owns `PERPS_STRATEGIES`, `resolvePerpsStrategy` and
 `executePerpsStrategy`, including their input, model and call-gate ports. IDs are `rules`,
-`deepseek`, `jev` and `combined`, laboratory policy version 1.0.0 and distinct Studio version 2.0.0. Provider/prompt versions remain
+`deepseek`, `jev` and `combined`, laboratory policy version 1.0.0 and distinct Studio versions 2.0.0 and 2.1.0. Provider/prompt versions remain
 separate. Unknown selections and missing capabilities fail closed before model calls.
 Execution clones and recursively freezes evidence/account inputs; never mutate another strategy's
 portfolio. Every model operation passes through an injected durable call gate using the existing
@@ -164,8 +164,17 @@ Risk, sizing, fills and accounting remain outside strategy decisions.
 The evaluator uses the registry for v2 and the explicit `perps-study/legacy-strategy.ts` adapter
 for historical v1 readiness -> blind forecast. Preserve serialized lanes, answers and proposals.
 The evaluation export retains historical policy/type names backed by the same implementations.
-No new persisted harness plugin IDs are introduced. Studio uses the separate 2.0.0 contract.
+No new persisted harness plugin IDs are introduced. Studio uses separate 2.0.0 historical and 2.1.0 dynamic contracts.
 
 ## Studio strategy version 2
 
-The common registry identifies strategies by both id and version. Version 1.0.0 keeps laboratory behavior; `executeStudioPerpsStrategy` requires the separate `studio-perps-strategy-v2` context and version 2.0.0. Studio proposals carry complete three-state brief evaluations and evidence references, never probabilities, sizes or leverage. Unknown conditions cannot establish an entry or authored exit. Opposite openings become close-only proposals. Combined invokes its own direct proposal and material-veto review; it cannot reuse another account response. Every model invocation goes through the injected reservation/call gate. These contracts alone do not enable product execution.
+The common registry identifies strategies by both id and version. Version 1.0.0 keeps laboratory behavior; `executeStudioPerpsStrategy` requires the separate `studio-perps-strategy-v2` context and matching version 2.0.0 or 2.1.0. Studio proposals carry complete three-state brief evaluations and evidence references, never probabilities, sizes or leverage. Unknown conditions cannot establish an entry or authored exit. Opposite openings become close-only proposals. Combined invokes its own direct proposal and material-veto review; it cannot reuse another account response. Every model invocation goes through the injected reservation/call gate. These contracts alone do not enable product execution.
+
+## Dynamic Studio markets
+
+The registry adds four dynamic Studio 2.1.0 descriptors while preserving 1.0.0 and 2.0.0. Complete
+selected evidence and remaining public/model-input bounds precede paid transports. Product fills
+persist market identity; selected markets authorize exposure, recorded positions remain supervised
+and closeable. No financial formula, threshold or lab protocol changes.
+
+See [agent-selected Perpl markets](../../docs/studio-perpl-markets.md).
