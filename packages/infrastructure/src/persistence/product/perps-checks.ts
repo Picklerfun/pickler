@@ -124,7 +124,7 @@ export const perpsProposals = pickler
       }),
       index("perps_proposals_expiry").on(t.status, t.expiresAt),
       index("perps_proposals_agent").on(t.productAgentId, t.createdAt.desc()),
-      check("perps_proposals_instrument", sql`${t.instrument} in ('BTC','ETH')`),
+      check("perps_proposals_instrument", sql`${t.instrument} ~ '^[A-Z0-9][A-Z0-9._-]{0,31}$'`),
       check("perps_proposals_side", sql`${t.side} in ('long','short')`),
       check("perps_proposals_kind", sql`${t.kind} in ('enter','size_up')`),
       check(
