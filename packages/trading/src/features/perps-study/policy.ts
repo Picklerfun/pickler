@@ -4,6 +4,31 @@ import type { PerpsStudyConfig, PerpsRound, PerpsCallLane } from "./types.js";
 export const PERPS_INPUT_LIMIT = 65536;
 export const PERPS_OUTPUT_LIMIT = 4096;
 export function assertPerpsStudyConfig(c: PerpsStudyConfig) {
+  if (c.version === 3) {
+    if (
+      c.protocol !== "perps-original-sma-v1" ||
+      c.hours !== 24 ||
+      c.budgetUsd !== "5" ||
+      !c.tenantId ||
+      !/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,39}$/.test(c.sessionId) ||
+      !["mainnet", "testnet"].includes(c.network) ||
+      Object.keys(c).some(
+        (k) =>
+          ![
+            "version",
+            "protocol",
+            "hours",
+            "budgetUsd",
+            "tenantId",
+            "sessionId",
+            "network",
+          ].includes(k),
+      )
+    ) {
+      throw new PilotError("INVALID_INPUT", "Invalid original SMA configuration");
+    }
+    return;
+  }
   if (
     !(
       (c.version === 1 && c.protocol === "perps-comparison-v1" && c.hours === 24) ||
@@ -62,6 +87,9 @@ export function perpsCallCost(
   input: number,
   output: number,
 ) {
+  if (config.version === 3) {
+    throw new PilotError("MODELS_DISABLED", "Original SMA cannot reserve model calls");
+  }
   if (
     !Number.isSafeInteger(input) ||
     !Number.isSafeInteger(output) ||
