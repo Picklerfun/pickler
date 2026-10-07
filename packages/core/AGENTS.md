@@ -375,7 +375,7 @@ Advice pricing v2 pins the reviewed OpenAI-compatible forecast base URL and mode
 
 ## Studio strategy configuration
 
-`AgentConfig.perpsStrategy` and `SetupPatch.perpsStrategy` select rules, deepseek, jev or combined at product policy version 2.0.0. Missing selection resolves combined without enabling execution. Core owns selection validation and setup history, never strategy execution. Rules reject all free-text entry, exit and prohibition conditions; an empty rules brief is allowed. AI briefs still require entry conditions.
+`AgentConfig.perpsStrategy` and `SetupPatch.perpsStrategy` select rules, deepseek, jev or combined at product policy version 2.0.0 or 2.1.0. Missing selection resolves combined without enabling execution. Core owns selection validation and setup history, never strategy execution. Rules reject all free-text entry, exit and prohibition conditions; an empty rules brief is allowed. AI briefs still require entry conditions.
 
 ## AI credits
 
@@ -385,3 +385,12 @@ Studio creator-access requests use the shared authenticated user identity, requi
 owner for submission, and require server-verified super-admin status for the team inbox. They never
 enable research, grant custody permissions or create wallets. Ports and policy live in
 `features/studio/access-requests.ts`; persistence and HTTP are adapters.
+
+## Dynamic Studio markets
+
+Core owns portable catalogue/selection admission and configuration v1/v2. `prepareDraft` requires
+explicit markets and a trusted network; setup market edits preserve strategy id, upgrade to 2.1.0
+and reuse configuration transactions. Advice remains BTC/ETH. Core never fetches Perpl or executes
+strategies.
+
+See [agent-selected Perpl markets](../../docs/studio-perpl-markets.md).
