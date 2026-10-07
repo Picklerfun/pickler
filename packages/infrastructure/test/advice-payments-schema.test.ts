@@ -67,3 +67,32 @@ test("one nonce pays once, and one key buys once", async (t) => {
   await assert.rejects(row("0x01", "key-2"), /advice_payments_nonce_key/);
   await assert.rejects(row("0x02", "key-1"), /advice_payments_request_key/);
 });
+
+test("an unknown payment status is refused by the database", async (t) => {
+  const { pool, agentId, userId } = await setup(t);
+  await assert.rejects(
+    pool.query(
+      `INSERT INTO pickler.advice_payments
+         (user_id, public_agent_id, request_key, payer, pay_to, amount_micro_ausd, nonce, valid_before, status)
+       VALUES ($1,$2,'k','0xa','0xb',1500000,'0x03', now(),'paid')`,
+      [userId, agentId],
+    ),
+    /advice_payments_status/,
+  );
+});
+
+test("the service role may select, insert and update payments (when the role exists)", async (t) => {
+  const { pool } = await setup(t);
+  const role = await pool.query("SELECT 1 FROM pg_roles WHERE rolname = 'service_role'");
+  if (role.rowCount === 0) {
+    t.skip("service_role does not exist on this PostgreSQL");
+    return;
+  }
+  for (const privilege of ["SELECT", "INSERT", "UPDATE"]) {
+    const r = await pool.query(
+      "SELECT has_table_privilege('service_role','pickler.advice_payments',$1) AS ok",
+      [privilege],
+    );
+    assert.equal(r.rows[0].ok, true, privilege);
+  }
+});
