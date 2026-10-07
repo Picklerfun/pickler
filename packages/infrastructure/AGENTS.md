@@ -578,3 +578,7 @@ Perpetual study v3 initializes only the rules agent/account, persists empty call
 ## Local SMA review comparison
 
 Perpetual study v4 jointly reserves sma-review, news-review and exa in existing JSONB. A shared authorization hash fences 27 calls, nine searches and USD 0.50 new reservations including checks. Existing campaign gates and historical reservations remain unchanged. searchWindow adds temporal filters without changing legacy Exa behavior.
+
+## Explicit SMA continuation
+
+authorizeContinuation is a trusted explicit operator operation for interrupted SMA v4 sessions only. It rejects live ownership, partial execution, unknown consumption and reused authorization; reservations and portfolios are never reset. release records interruption only for its own owner, including an expired owner, and never alters a replacement owner.

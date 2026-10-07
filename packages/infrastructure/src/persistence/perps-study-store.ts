@@ -3,6 +3,7 @@ import type { Pool, PoolClient } from "pg";
 import { DEFAULT_CONFIG, PERP_TOOLS, PilotError, type AgentRecord } from "@pickler/core";
 import {
   perpsStrategies,
+  perpsSlotClock,
   type PerpsStudyMap,
   type PerpsStudyStrategy,
   PERPS_INPUT_LIMIT,
@@ -348,6 +349,90 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
       return lease;
     });
   }
+  /** Explicit operator continuation, never called by claim or the heartbeat. */
+  async authorizeContinuation(
+    scope: PerpsStudyScope,
+    authorization: { hash: string; reason: string; commit: string },
+  ) {
+    return this.tx(async (c) => {
+      const x = await this.lock(c, scope);
+      if (x.owner && Number(x.expires_at) > x.now) {
+        throw new PilotError("CONFLICT", "Cannot resume a live owner");
+      }
+      if (
+        x.record.config.version !== 4 ||
+        x.record.startedAt === null ||
+        x.record.stopRequested ||
+        !["running", "interrupted"].includes(x.record.status) ||
+        (x.record.decisionStopReason !== null &&
+          !["PROCESS_INTERRUPTED", "LEASE_LOST"].includes(x.record.decisionStopReason)) ||
+        !/^[a-f0-9]{64}$/.test(authorization.hash) ||
+        !/^[a-f0-9]{40}$/.test(authorization.commit) ||
+        !authorization.reason.trim()
+      ) {
+        throw new PilotError(
+          "CONTINUATION_NOT_ALLOWED",
+          "Explicit interruption-only continuation required",
+        );
+      }
+      await this.permissions(c, x);
+      const rounds = await this.rounds(c, x.id);
+      if (
+        rounds.some(
+          (r) =>
+            r.status !== "completed" ||
+            r.executionStatus === "pending" ||
+            r.executionStatus === "incomplete" ||
+            Object.values(r.calls).some(
+              (call) =>
+                call.startedAt !== null && (call.costUsd === null || call.status !== "completed"),
+            ),
+        )
+      ) {
+        throw new PilotError(
+          "RECONCILIATION_REQUIRED",
+          "Never replay uncertain calls or partial executions",
+        );
+      }
+      const fromSlot = Math.max(x.record.lastAttemptedSlot ?? -1, x.record.lastRoundSlot) + 1;
+      if (
+        fromSlot >= 8 ||
+        x.record.continuations?.some((s) => s.authorizedBy === authorization.hash)
+      ) {
+        throw new PilotError(
+          "CONTINUATION_NOT_ALLOWED",
+          "No untouched slots or authorization already consumed",
+        );
+      }
+      const segment = {
+        fromSlot,
+        at: x.now,
+        previousEndsAt: x.record.endsAt!,
+        previousStatus: x.record.status,
+        authorizedBy: authorization.hash,
+        commit: authorization.commit,
+      };
+      x.record.continuations = [...(x.record.continuations ?? []), segment];
+      x.record.endsAt = x.now + (8 - fromSlot) * 900000;
+      x.record.graceUntil = x.record.endsAt + 900000;
+      x.record.status = "running";
+      x.record.decisionStopReason = null;
+      await this.save(c, x);
+      await c.query("UPDATE pickler.perps_studies SET owner=null,expires_at=null WHERE id=$1", [
+        x.id,
+      ]);
+      await c.query(
+        "INSERT INTO pickler.perps_study_events(study_id,key,at,kind,data) VALUES($1,$2,$3,'operator-continuation',$4)",
+        [
+          x.id,
+          `continuation:${authorization.hash}`,
+          x.now,
+          { ...segment, reason: authorization.reason },
+        ],
+      );
+      return segment;
+    });
+  }
   async claimSlot(scope: PerpsStudyScope, lease: PerpsStudyLease, slot: number) {
     return this.tx(async (c) => {
       const x = await this.lock(c, scope);
@@ -359,8 +444,8 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
         x.record.startedAt === null ||
         x.now >= x.record.endsAt! ||
         !Number.isInteger(slot) ||
-        slot !== Math.floor((x.now - x.record.startedAt) / 900000) ||
-        (x.now - x.record.startedAt) % 900000 >= 60000 ||
+        slot !== perpsSlotClock(x.record, x.now).slot ||
+        perpsSlotClock(x.record, x.now).withinSlotMs >= 60000 ||
         slot <= Math.max(x.record.lastAttemptedSlot ?? -1, x.record.lastRoundSlot)
       ) {
         return false;
@@ -386,10 +471,20 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
     });
     lease.expiresAt = expiresAt;
   }
-  async release(scope: PerpsStudyScope, lease: PerpsStudyLease) {
+  async release(scope: PerpsStudyScope, lease: PerpsStudyLease, interruption?: string) {
     await this.tx(async (c) => {
       const x = await this.lock(c, scope);
       if (x.owner === lease.owner) {
+        // Administrative relinquishment only; never an execution write or replacement owner's state.
+        if (interruption && x.record.config.version === 4) {
+          x.record.status = "interrupted";
+          x.record.decisionStopReason ??= interruption;
+          await this.save(c, x);
+          await c.query(
+            "INSERT INTO pickler.perps_study_events(study_id,key,at,kind,data) VALUES($1,$2,$3,'process-interrupted',$4) ON CONFLICT DO NOTHING",
+            [x.id, `interruption:${lease.owner}`, x.now, { code: interruption }],
+          );
+        }
         await c.query("UPDATE pickler.perps_studies SET owner=null,expires_at=null WHERE id=$1", [
           x.id,
         ]);

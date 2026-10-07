@@ -165,6 +165,7 @@ export function perpsStudyReport(
   const direct = u(rows[1]?.modelCostEstimateUSD ?? "0"),
     routed = u(rows[2]?.modelCostEstimateUSD ?? "0");
   const comparable =
+    !record.continuations?.length &&
     record.status === "completed" &&
     !record.stopRequested &&
     !record.decisionStopReason?.match(/FAIL|INTERRUPT|INCOMPLETE|UNVERIFIED/) &&
@@ -183,6 +184,7 @@ export function perpsStudyReport(
     startedAt: record.startedAt,
     endsAt: record.endsAt,
     stopReason: record.decisionStopReason,
+    continuations: record.continuations ?? [],
     rounds: rounds.length,
     roundDetails: rounds.map((r) => ({
       slot: r.slot,
@@ -215,6 +217,11 @@ export function perpsStudyReport(
       "Funding uses the laboratory formula; liquidity is independent for each agent.",
       "No liquidation, signing, real orders, or on-chain activity.",
       "This short experimental sample cannot establish profitability.",
+      ...(record.continuations?.length
+        ? [
+            "Operator-authorized continuation after interruption: discontinuous market sample; untouched slots only, no historical replay.",
+          ]
+        : []),
       ...(!comparable ? ["Incomplete comparison: no profitability ranking."] : []),
     ],
     rows,

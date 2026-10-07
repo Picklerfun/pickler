@@ -1,6 +1,6 @@
 import { PilotError } from "@pickler/core";
 import { paperUnits as u, paperDecimal as d } from "../perps-paper/decimal.js";
-import type { PerpsStudyConfig, PerpsRound, PerpsCallLane } from "./types.js";
+import type { PerpsStudyConfig, PerpsRound, PerpsCallLane, PerpsStudyRecord } from "./types.js";
 export const PERPS_INPUT_LIMIT = 65536;
 export const PERPS_OUTPUT_LIMIT = 4096;
 export function assertPerpsStudyConfig(c: PerpsStudyConfig) {
@@ -159,4 +159,15 @@ export function perpsAccountedUsd(rounds: PerpsRound[]): string {
       0n,
     ),
   );
+}
+
+/** Continuations schedule only untouched slots against fresh time; historical start remains intact. */
+export function perpsSlotClock(record: PerpsStudyRecord, at: number) {
+  const segment = record.continuations?.at(-1);
+  const origin = segment?.at ?? record.startedAt!;
+  const offset = segment?.fromSlot ?? 0;
+  return {
+    slot: offset + Math.floor((at - origin) / 900000),
+    withinSlotMs: (at - origin) % 900000,
+  };
 }

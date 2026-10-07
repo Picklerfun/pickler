@@ -192,7 +192,10 @@ export async function runSmaReview(
       await study.stop(config);
       return;
     }
-    const view = await study.initialize(config, metadata);
+    const view =
+      input.command === "resume"
+        ? await study.view(config)
+        : await study.initialize(config, metadata);
     if (input.command === "preflight") {
       const observation = await data.observe(view.record, combined);
       const evidence = await data.evidence(view.record, observation, combined);
@@ -210,7 +213,7 @@ export async function runSmaReview(
       );
       return;
     }
-    if (["run", "validate"].includes(input.command)) {
+    if (["run", "resume", "validate"].includes(input.command)) {
       if (!input.allowPaid || !environment.TYPESAFE_API_KEY || !environment.EXA_API_KEY) {
         throw new PilotError(
           "PLUGIN_NOT_CONFIGURED",
@@ -355,23 +358,56 @@ export async function runSmaReview(
       await report();
       return;
     }
-    if (input.command === "run") {
+    if (["run", "resume"].includes(input.command)) {
       const checks = JSON.parse(await readFile(join(output, "contract-checks.json"), "utf8"));
       if (
         !checks.passed ||
         checks.configurationHash !== metadata.configurationHash ||
-        checks.commit !== commit
+        checks.commit !==
+          (input.command === "resume"
+            ? (view.record.metadata as { commit: string }).commit
+            : commit)
       ) {
         throw new PilotError("CONTRACT_REQUIRED", "Frozen paid contract checks required");
       }
     }
-    if (input.command !== "run" || view.record.startedAt !== null) {
+    if (
+      !["run", "resume"].includes(input.command) ||
+      (input.command === "run" && view.record.startedAt !== null)
+    ) {
       throw new PilotError(
         "STUDY_ALREADY_STARTED",
         "Only one SMA comparison is allowed; no restart or resume",
       );
     }
     releaseAwake = process.platform === "darwin" ? await keepAwake() : () => {};
+    if (input.command === "resume") {
+      const authorization = JSON.parse(
+        await readFile(join(output, "operator-resume.json"), "utf8"),
+      );
+      if (
+        authorization.sessionId !== config.sessionId ||
+        authorization.approved !== true ||
+        !authorization.statement?.trim()
+      ) {
+        throw new PilotError(
+          "CONTINUATION_NOT_ALLOWED",
+          "Recorded operator authorization required",
+        );
+      }
+      const original = view.record.metadata as typeof metadata;
+      if (canonicalAudit({ ...original, commit }) !== canonicalAudit(metadata)) {
+        throw new PilotError(
+          "CONFIG_CHANGED",
+          "Strategy, reviewer and original configuration must remain unchanged",
+        );
+      }
+      await study.authorizeContinuation(config, {
+        hash: createHash("sha256").update(canonicalAudit(authorization)).digest("hex"),
+        reason: authorization.statement,
+        commit,
+      });
+    }
     processState = "active";
     await createPerpsStudyRunner({
       study,

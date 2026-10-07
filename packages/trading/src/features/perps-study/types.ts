@@ -111,6 +111,14 @@ export interface PerpsStudyRecord {
   lastObservationAt: number | null;
   lastRoundSlot: number;
   lastAttemptedSlot?: number;
+  continuations?: {
+    fromSlot: number;
+    at: number;
+    previousEndsAt: number;
+    previousStatus: string;
+    authorizedBy: string;
+    commit: string;
+  }[];
   dataPolicy?: import("../perps-paper/acquisition.js").PerpsDataPolicy;
 }
 export interface PerpsStudyView {
@@ -130,7 +138,7 @@ export interface PerpsStudyRepository {
   claim(scope: PerpsStudyScope): Promise<PerpsStudyLease>;
   claimSlot(scope: PerpsStudyScope, lease: PerpsStudyLease, slot: number): Promise<boolean>;
   renew(scope: PerpsStudyScope, lease: PerpsStudyLease): Promise<void>;
-  release(scope: PerpsStudyScope, lease: PerpsStudyLease): Promise<void>;
+  release(scope: PerpsStudyScope, lease: PerpsStudyLease, interruption?: string): Promise<void>;
   guard(scope: PerpsStudyScope, lease: PerpsStudyLease, paid?: boolean): Promise<void>;
   stop(scope: PerpsStudyScope): Promise<void>;
   event(
