@@ -89,11 +89,15 @@ async function bounded<T>(work: Promise<T>, signal: AbortSignal): Promise<T> {
   }
 }
 export function createPerpsStudyModels(
-  config: PerpsStudyConfig,
+  inputConfig: PerpsStudyConfig,
   credentials: { deepseek: string; jev: string },
   transport: typeof fetch = fetch,
   timeoutSignal: (milliseconds: number) => AbortSignal = AbortSignal.timeout,
 ): PerpsModels {
+  if (inputConfig.version === 3) {
+    throw new PilotError("MODELS_DISABLED", "Original SMA cannot construct model clients");
+  }
+  const config = inputConfig;
   const post = async (
     url: string,
     key: string,
