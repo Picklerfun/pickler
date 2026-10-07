@@ -7,6 +7,9 @@ import { bodyLimit } from "hono/body-limit";
 import { z } from "zod";
 import {
   createStudioAccess,
+  assertPerplSelection,
+  type PerplMarketCatalog,
+  type PerpNetwork,
   MARKET_CATALOG,
   DEFAULT_CONFIG,
   PLUGINS,
@@ -104,6 +107,9 @@ import { studioWalletRoutes, WalletRefusal, walletWork } from "./studio-wallets"
 import { studioPerpsRoutes, type StudioPerpsServices } from "./studio-perps";
 
 export interface StudioServices {
+  perplMarkets?: {
+    catalog(network: PerpNetwork, signal: AbortSignal): Promise<PerplMarketCatalog>;
+  };
   accessRequests?: StudioAccessRequestRepository;
   trading?: {
     repository: TradingRepository;
@@ -129,7 +135,7 @@ export interface StudioServices {
   };
   /** The wallet linked to an agent at creation, by product agent id. */
   wallets: { findAgentWallet(agentId: string): Promise<AgentWallet | null> };
-  /** Custody balance/transfer chain selected by deployment; not the Perpl market network. */
+  /** Deployment-owned custody and new-agent network; existing agents retain their saved network. */
   walletChainId?: number | null;
   /**
    * The AUSD display balance of an address. A read that fails throws; it is never zero. Where the
@@ -207,7 +213,11 @@ function pilotStatus(code: string): 400 | 404 | 409 | 429 | 503 {
   if (code === "PREVIEW_UNAVAILABLE") {
     return 503;
   }
-  if (code === "BALANCES_UNAVAILABLE" || code === "RUNTIME_UNAVAILABLE") {
+  if (
+    code === "BALANCES_UNAVAILABLE" ||
+    code === "RUNTIME_UNAVAILABLE" ||
+    code === "PERPL_CATALOG_UNAVAILABLE"
+  ) {
     return 503;
   }
   return 409;
@@ -646,6 +656,47 @@ export function studioRoutes(services: StudioServices) {
   // directory then checks the handle and the wallet in its transaction, in that order, and runs
   // the admit callback below, which holds the lock and that reading to the minimums. A replay of
   // a create that committed never reaches it.
+  async function marketCatalog(
+    network: PerpNetwork,
+    signal: AbortSignal,
+  ): Promise<PerplMarketCatalog> {
+    if (!services.perplMarkets) {
+      throw new PilotError("PERPL_CATALOG_UNAVAILABLE", "Perpl catalogue is unavailable. Retry.");
+    }
+    try {
+      return dto.perplMarketCatalogSchema.parse(
+        await services.perplMarkets.catalog(network, signal),
+      );
+    } catch (error) {
+      if (error instanceof PilotError && error.code === "PERPL_CATALOG_UNAVAILABLE") {
+        throw error;
+      }
+      throw new PilotError(
+        "PERPL_CATALOG_UNAVAILABLE",
+        "Perpl catalogue could not be read. Retry.",
+      );
+    }
+  }
+  api.get(
+    "/perpl/markets",
+    describeOperation("studioPerplMarkets", {
+      security: "user",
+      errors: dto.studioErrorSchema,
+      errorStatuses: [400, 401, 403, 503],
+      query: {
+        network: { required: true, schema: { type: "string", enum: ["testnet", "mainnet"] } },
+      },
+      response: dto.perplMarketCatalogSchema,
+      description:
+        "Studio JWT access required. Public network catalogue with server-owned compatibility diagnostics; unavailable rows cannot be selected.",
+    }),
+    async (c) => {
+      await access.authorize(c.get("principal"));
+      const network = z.enum(["testnet", "mainnet"]).parse(c.req.query("network"));
+      c.header("Cache-Control", "private, no-store");
+      return c.json(await marketCatalog(network, c.req.raw.signal));
+    },
+  );
   api.post(
     "/drafts",
     describeOperation("studioDraftCreate", {
@@ -662,7 +713,20 @@ export function studioRoutes(services: StudioServices) {
       const principal = c.get("principal");
       const current = await access.authorize(principal, true);
       const body = draftCreateSchema.parse(await c.req.json());
-      const { config, profile } = prepareDraft({ ...body, sources: bareSites(body.sources) });
+      if (![10143, 143].includes(services.walletChainId ?? 0)) {
+        throw new PilotError("PERPL_CATALOG_UNAVAILABLE", "Creation network is not configured");
+      }
+      const network = services.walletChainId === 143 ? "mainnet" : "testnet";
+      assertPerplSelection(
+        await marketCatalog(network, c.req.raw.signal),
+        network,
+        body.markets,
+        Date.now(),
+      );
+      const { config, profile } = prepareDraft(
+        { ...body, sources: bareSites(body.sources) },
+        network,
+      );
       const requestId = c.get("requestId");
       const custody = await walletWork(requestId, async () => deposits(requestId));
       // A wallet that is not the caller's has no reading: the directory refuses it in its order.
@@ -800,6 +864,7 @@ export function studioRoutes(services: StudioServices) {
       const scope = await services.directory.agentScope(current, productId);
       const body = setupUpdateSchema.parse(await c.req.json());
       const patch: SetupPatch = {
+        ...(body.markets !== undefined ? { markets: body.markets } : {}),
         ...(body.brief ? { brief: body.brief } : {}),
         ...(body.sources ? { sources: bareSites(body.sources) } : {}),
         ...(body.caps ? { caps: body.caps } : {}),
@@ -812,6 +877,14 @@ export function studioRoutes(services: StudioServices) {
       // `perpl` never reaches it. The write checks again under its own lock.
       if (!record.config.perpl) {
         throw new PilotError("NOT_A_PERPL_AGENT", "Only a Perpl agent's setup is edited here");
+      }
+      if (body.markets !== undefined) {
+        assertPerplSelection(
+          await marketCatalog(record.config.perpl.network, c.req.raw.signal),
+          record.config.perpl.network,
+          body.markets,
+          Date.now(),
+        );
       }
       // New caps write `spend` in the write's transaction, and so is the version recorded (L10):
       // its summary is core's, from the two stored configs, never the client's words.
@@ -1120,6 +1193,23 @@ export function studioRoutes(services: StudioServices) {
       const current = await access.authorize(c.get("principal"), true);
       const scope = await services.directory.agentScope(current, c.req.param("id"));
       const body = configUpdateSchema.parse(await c.req.json());
+      const previous = await repo.agent(scope);
+      let config = body.config;
+      if (
+        body.config.perpl &&
+        JSON.stringify(body.config.perpl) !== JSON.stringify(previous.config.perpl)
+      ) {
+        if (previous.config.perpl && body.config.perpl.network !== previous.config.perpl.network) {
+          throw new PilotError("INVALID_INPUT", "Studio network cannot be changed");
+        }
+        assertPerplSelection(
+          await marketCatalog(body.config.perpl.network, c.req.raw.signal),
+          body.config.perpl.network,
+          body.config.perpl.markets,
+          Date.now(),
+        );
+        config = reviseSetup(config, { markets: body.config.perpl.markets });
+      }
       if (
         body.config.trading?.mode === "automatic" &&
         (await repo.agent(scope)).config.trading?.mode !== "automatic"
@@ -1136,9 +1226,7 @@ export function studioRoutes(services: StudioServices) {
         throw new PilotError("INVALID_INPUT", "Category selection required");
       }
       return c.json(
-        agentResponseSchema.parse(
-          await repo.updateConfig(scope, body.expectedVersion, body.config),
-        ),
+        agentResponseSchema.parse(await repo.updateConfig(scope, body.expectedVersion, config)),
       );
     },
   );
