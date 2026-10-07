@@ -1,13 +1,16 @@
 # Controlled Studio and Perpl acceptance
 
 This suite verifies functionality and reliability, not profitability. It exercises the compiled
-web, production authenticated API, local Cloudflare Queue, existing Studio v2 strategies and
+web, production authenticated API, local Cloudflare Queue, existing Studio versioned strategies and
 real PostgreSQL repositories. It never substitutes product endpoint responses. No deployment,
-real transaction, paid provider call, remote activation or schema migration is introduced.
+real transaction, paid provider call, remote activation is introduced. Existing migrations, including the dynamic-market proposal
+constraint migration 0033, are applied only to the explicitly marked disposable database.
 
 See [Studio execution](studio-perps-execution.md) for business rules and
-[trading architecture](trading-architecture.md) for ownership. The acceptance branch starts from
-`ec9716669254d97fa05d8187293315f52ddf5a6a` (main including PR #97).
+[trading architecture](trading-architecture.md) for ownership. The original acceptance harness started from
+`ec9716669254d97fa05d8187293315f52ddf5a6a` (main including PR #97); the dynamic-market
+delivery starts from `29f4ba62ce4d554245070109c27ea33dbfbb8a07`. The exact executed source
+commit is recorded in each private acceptance artifact.
 
 ## Boundaries
 
@@ -95,23 +98,25 @@ status captures and failure diagnostics stay in the private stack directory. Pos
 configuration history, complete evidence, checks, actions, proposals, calls and movements.
 Run only after committing the reviewed source to attribute this artifact to an exact commit.
 
-The compiled journey exercises these scenarios for four independent `2.0.0` strategies:
+The compiled journey exercises these scenarios for four independent `2.1.0` strategies with explicitly selected BTC/SOL:
 
-| Scenario                         | Expected evidence                                                                                                                 |
-| -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| Authentication and custody       | Real Supabase JWT, virtual passkey, master wallet, agent wallet, delegated user and approved policies                             |
-| Ceremony cancellation/resumption | Combined creator cancels before signing and after wallet creation; step two resumes with exactly one agent wallet                 |
-| Draft creation                   | Concurrent replay of the same wallet/terms returns the same product id; changed terms refuse wallet reassignment                  |
-| Owner isolation                  | Missing/invalid JWT rejected; subsequent creators cannot read prior creators' agents or positions                                 |
-| Setup and publication            | Current version and strategy saved; publication rejected with controlled insufficient funds; publication never enables scheduling |
-| Preparation and scheduling       | Not-ready scheduling refused; complete current v2 check enables explicit Controls activation; real dispatcher sends a Queue check |
-| Model routing                    | Rules makes no calls; DeepSeek uses `direct`; Jev uses `jev`; combined uses its own `fallback` then `review`                      |
-| Opening and approval             | Actual book fills; creator's unchanged five-AUSD sizing and one-position cap; combined approvals go through owner-action Queue    |
-| Maintenance and signal exit      | Position held, then signal closes it with no same-check reopening; separate later check can reopen                                |
-| Stale data                       | Check fails before model calls; later public data remains usable for exits                                                        |
-| Pause and manual exit            | Entries paused and scheduling disabled; owner close still completes through Queue; API/UI show persisted closed positions         |
-| Accounting                       | Independent integer sizing/fee/spread oracle matches cash; call started before controlled transport and exact usage cost persists |
-| Interface                        | Actual rail navigation and product requests, no inert preview stages; no browser page/hydration errors                            |
+| Scenario                                | Expected evidence                                                                                                                                 |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Authentication and custody              | Real Supabase JWT, virtual passkey, master wallet, agent wallet, delegated user and approved policies                                             |
+| Ceremony cancellation/resumption        | Combined creator cancels before signing and after wallet creation; step two resumes with exactly one agent wallet                                 |
+| Draft creation                          | Concurrent replay of the same wallet/terms returns the same product id; changed terms refuse wallet reassignment                                  |
+| Owner isolation                         | Missing/invalid JWT rejected; subsequent creators cannot read prior creators' agents or positions                                                 |
+| Setup and publication                   | Current version and strategy saved; publication rejected with controlled insufficient funds; publication never enables scheduling                 |
+| Preparation and scheduling              | Not-ready scheduling refused; complete current v2 check enables explicit Controls activation; real dispatcher sends a Queue check                 |
+| Model routing                           | Rules makes no calls; DeepSeek uses `direct`; Jev uses `jev`; combined uses its own `fallback` then `review`                                      |
+| Opening and approval                    | Actual book fills; creator's unchanged five-AUSD sizing and one-position cap; combined approvals go through owner-action Queue                    |
+| Partial evidence / Console read failure | BTC valid and SOL stale fails before paid calls; aborted record read shows retry and recovers from the real endpoint                              |
+| Market removal                          | Sources form removes a held market, increments version, disables scheduling, invalidates preparation; supervision and paused owner close continue |
+| Maintenance and signal exit             | Position held, then signal closes it with no same-check reopening; separate later check can reopen                                                |
+| Stale data                              | Check fails before model calls; later public data remains usable for exits                                                                        |
+| Pause and manual exit                   | Entries paused and scheduling disabled; owner close still completes through Queue; API/UI show persisted closed positions                         |
+| Accounting                              | Independent integer sizing/fee/spread oracle matches cash; call started before controlled transport and exact usage cost persists                 |
+| Interface                               | Actual rail navigation and product requests, no inert preview stages; no browser page/hydration errors                                            |
 
 The synthetic tariff is 100,000 micro-USD per million input/output tokens. Controlled usage is
 100 input plus 10 output tokens, so each call costs exactly 11 micro-USD in the test ledger.
@@ -139,9 +144,10 @@ Run `npm test`, `npm run typecheck`, `npm run lint`, `npm run format:check`,
 generic local Worker flow unless explicitly configured; this Studio journey is a separate
 explicit command and must not be described as having run merely because `npm test` passed.
 
-## Corrections and remaining acceptance
+## Historical baseline corrections and remaining acceptance
 
-The controlled journeys have passed individually for all four strategies. The final
+The original 2.0.0 controlled journeys passed for all four strategies. For current 2.1.0 coverage,
+see the delivery table in [agent-selected Perpl markets](studio-perpl-markets.md). The final
 `acceptance.json` is the authoritative record of the complete run against its recorded commit;
 never infer a complete run from separate diagnostic artifacts. Regression coverage below uses
 production policies and real isolated PostgreSQL, not a second trading implementation.
@@ -170,3 +176,7 @@ Still pending: real Turnkey/passkey signature and policy acceptance, real balanc
 responses, deployed Queue/Cron/Hyperdrive behavior and deployed configuration/secrets. Controlled
 funding and fees do not prove exchange accounting equivalence. This suite establishes neither
 profitability nor authorization to activate real execution.
+
+The previous 2.0.0 acceptance at main commit 29f4ba62ce4d554245070109c27ea33dbfbb8a07 is historical. Current market selection coverage uses the current 2.1.0 adapters without translating old answers. To preserve an existing dedicated stack, run `node workers/research/test/prepare-controlled-stack.mjs prepare alternate`; this creates a fresh marked stack on the fixed 55531/55532 ports. All remaining commands take that generated directory as before.
+
+See [agent-selected Perpl markets](studio-perpl-markets.md) for current catalogue, version, migration and exit-preservation rules.
