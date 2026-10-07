@@ -212,3 +212,7 @@ part of it; the v1 readiness protocol remains separately interpreted.
 ## Original SMA rules-only study
 
 Read [SMA-ORIGINAL.md](SMA-ORIGINAL.md). Configuration v3 `perps-original-sma-v1` loads only loopback PostgreSQL and public Perpl data. Preserve hourly rules 1.0.0 and four-hour operator risk; no model clients, keys, reserves, fake arms or resume. The process writes reports each cycle; no automation is created.
+
+## Local SMA review comparison
+
+Read SMA-JEV-EXA.md for local v4 perps-sma-jev-exa-v1. One-shot synthetic validate uses an exclusive marker and run requires matching passed checks. Only PostgreSQL, public Perpl and explicitly authorized Jev/Exa are composed. Report/status call no providers. No automation, resume or real trading.
