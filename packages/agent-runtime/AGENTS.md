@@ -203,3 +203,7 @@ Studio model adapters live in `composition/studio-perps-models.ts`. Their foreca
 ## Rules-only evaluation composition
 
 `createPerpsStudyModels` rejects original SMA configuration v3 with MODELS_DISABLED before constructing transports. Its host uses the existing public-data composition only; no model or signer credentials are needed.
+
+## Local SMA review comparison
+
+composition/sma-review-model is a separate public local original-SMA reviewer with pinned Jev, explicit Exa permission guards and bounded provider consumption. Only time-valid attributed news differs between reviewed arms. No DeepSeek, signer, retry or exit veto. Known usage precedes answer interpretation.
