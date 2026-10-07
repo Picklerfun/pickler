@@ -116,10 +116,16 @@ export function Chrome({
           aria-haspopup="dialog"
           onClick={onCredits}
         >
-          <i className={styles.creditsDot} aria-hidden="true" />
-          <small className={styles.creditsLabel}>AI CREDITS</small>
-          <span className={styles.creditsStatus}>Soon</span>
-          <Icon name="coin" size={18} className={styles.creditsIcon} />
+          <span className={styles.navReveal}>
+            <span className={styles.navDetails}>
+              <i className={styles.creditsDot} aria-hidden="true" />
+              <small className={styles.creditsLabel}>AI CREDITS</small>
+              <span className={styles.creditsStatus}>Soon</span>
+            </span>
+          </span>
+          <span className={styles.creditsIcon}>
+            <Icon name="coin" size={18} />
+          </span>
         </button>
         <span className={home.emptyMenu}>
           <HomeMenu
