@@ -118,7 +118,7 @@ const errors = {
 function summary(check: PerpsCheck): PerpsCheckSummaryDto {
   const parsed = check.decision ? parseCheckDecision(check.decision) : null;
   const decision = parsed?.ok ? parsed.decision : null;
-  return {
+  return dto.perpsCheckSummarySchema.parse({
     id: check.id,
     strategyResult: (() => {
       const result = dto.studioCheckDecisionSchema.safeParse(check.decision);
@@ -141,7 +141,7 @@ function summary(check: PerpsCheck): PerpsCheckSummaryDto {
     configVersion: check.configVersion,
     costMicros: check.costMicros,
     error: check.error,
-  };
+  });
 }
 
 function marksFor(marks: PerpsPaperMark[], network: PerpNetwork) {
