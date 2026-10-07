@@ -1545,27 +1545,89 @@
   }
 }
 
-/* Narrow navbars expose wallet balances and credits inside their existing dialogs. */
+/* Keep the icon at the right edge while compact labels reveal into the header flow. */
+.navDetails {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.navIcon {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+}
 .creditsIcon {
   display: none;
 }
 @media (max-width: 560px) {
   .topPill[data-wallet-balance],
   .topPill[data-credits-control] {
-    width: 38px;
+    min-width: 38px;
     height: 38px;
     padding: 0;
     gap: 0;
-    justify-content: center;
+    flex: 0 1 auto;
   }
-  .topPill[data-wallet-balance] .assetBalance,
-  .topPill[data-wallet-balance] > i,
-  .topPill[data-credits-control] .creditsDot,
-  .topPill[data-credits-control] .creditsLabel,
-  .topPill[data-credits-control] .creditsStatus {
+  .navReveal {
+    flex: 0 1 auto;
+    min-width: 0;
+    max-width: 0;
+    overflow: hidden;
+    opacity: 0;
+    transition:
+      max-width 360ms ease,
+      opacity 240ms ease;
+  }
+  .navDetails {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    width: max-content;
+    padding-left: 10px;
+    font-size: 11px;
+  }
+  .navIcon,
+  .topPill[data-credits-control] .creditsIcon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    order: 1;
+    width: 38px;
+    height: 38px;
+  }
+  .topPill[data-wallet-balance] .navDetails > i,
+  .topPill[data-credits-control] .creditsDot {
     display: none;
   }
-  .topPill[data-credits-control] .creditsIcon {
-    display: block;
+  .topPill[data-credits-control] .creditsLabel {
+    display: inline;
+    font-size: 10px;
+  }
+  .topPill:focus-visible .navReveal {
+    max-width: min(100px, calc(100vw - 240px));
+    opacity: 1;
+  }
+}
+@media (max-width: 560px) and (hover: hover) and (pointer: fine) {
+  .topPill:hover .navReveal {
+    max-width: min(100px, calc(100vw - 240px));
+    opacity: 1;
+  }
+}
+@media (max-width: 360px) {
+  .navDetails {
+    padding-left: 4px;
+    font-size: 10px;
+  }
+  .topPill[data-credits-control] .creditsLabel {
+    font-size: 9.5px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .navReveal {
+    transition: none;
   }
 }
