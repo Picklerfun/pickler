@@ -1,3 +1,4 @@
+import { returnTo } from "../../../server/guard";
 /**
  * Where the provider callback sends a person, decided on the server before any redirect, from
  * what the account already holds. One hop, straight to the step that is missing, in the signup's
@@ -34,17 +35,21 @@ export const SIGNUP_RESUME = "/signup";
 export function callbackDestination(
   account: { profile: Read; wallet: Read },
   studio: string,
+  requested?: string,
 ): string {
+  const next = returnTo(requested);
+  const resume = (path: string) =>
+    next ? `${path}${path.includes("?") ? "&" : "?"}next=${encodeURIComponent(next)}` : path;
   if (account.wallet === "failed") {
-    return SIGNUP_RESUME;
+    return resume(SIGNUP_RESUME);
   }
   if (account.wallet === "missing") {
-    return SIGNUP_PASSKEY_STEP;
+    return resume(SIGNUP_PASSKEY_STEP);
   }
   if (account.profile === "failed") {
-    return SIGNUP_RESUME;
+    return resume(SIGNUP_RESUME);
   }
-  return account.profile === "missing" ? SIGNUP_HANDLE_STEP : studio;
+  return account.profile === "missing" ? resume(SIGNUP_HANDLE_STEP) : (next ?? studio);
 }
 
 /** A status code as a read: 2xx found, 404 missing, anything else failed. */
