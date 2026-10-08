@@ -187,13 +187,15 @@ export function createProfileStudyRunner(deps: {
     }
     const closed = new Set(
       saved.events
-        .filter(
-          (e) =>
+        .filter((e) => {
+          const execution = e.data as { slot?: number; action?: string; status?: string };
+          return (
             e.kind === "profile-execution" &&
-            (e.data as { slot?: number }).slot === slot &&
-            (e.data as { action?: string }).action === "close" &&
-            (e.data as { status?: string }).status === "filled",
-        )
+            execution.action === "close" &&
+            execution.status === "filled" &&
+            (execution.slot === slot || perpsSlotClock(r, e.at).slot === slot)
+          );
+        })
         .map(
           (e) =>
             `${(e.data as { variant: string }).variant}:${(e.data as { symbol: string }).symbol}`,
@@ -270,6 +272,7 @@ export function createProfileStudyRunner(deps: {
       await study.event(scope, lease, `${v}:${attemptKey}`, "profile-execution", {
         variant: v,
         slot,
+        decisionSlot: perpsSlotClock(r, now()).slot,
         symbol: p.symbol,
         action: p.action,
         reason: p.reason,
