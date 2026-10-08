@@ -101,10 +101,23 @@ Local acceptance on 2026-10-08 used main base `a677fc3fb1d3ba63384ca438897755caf
 controlled stack port 55532 and synthetic providers on 8798. The four-strategy run passed with
 `rules`, `deepseek`, `jev` and `combined` at version 2.1.0. The final compiled route regression
 passed against a real version conflict and a different creator's agent. Web/harness tests passed
-984 cases; Design passed 124 routes, including all original 114 and ten canonical examples.
+986 cases; Design passed 124 routes, including all original 114 and ten canonical examples.
 The private run evidence records timestamps, controlled configuration, financial oracle results
 and requests. A private delivery manifest records the final Git commit and local check results.
 
 The controlled test database and all generated credentials, browser captures and provider logs
 stay outside Git. The original private fixture routes remain measured by Design; representative
 canonical routes are measured in addition. A successful local run does not confirm deployment.
+
+## Design measurement regressions
+
+The profile-return regression waits for both the target URL and Brief form before opening the
+account menu. Next navigation is asynchronous; checking the old menu during a pending transition
+is not evidence of a wrong return destination.
+
+Radix Select renders a native form shim before hydration. It is absolutely positioned with a
+zero-area `clip` rectangle, but Chromium's `checkVisibility()` still returns true. The color probe
+now excludes only positioned rectangles with no painted area. Partial clips and ignored clips on
+static elements still reject non-token colors. The regression reproduces the false positive and
+checks both rejection cases; it does not exempt Select, hidden accessibility nodes or any route
+from color validation.
