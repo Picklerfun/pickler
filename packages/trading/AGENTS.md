@@ -185,3 +185,20 @@ perpsSlotClock uses recorded operator continuation segments; the original start 
 ## Local universe comparison
 
 Evaluation v5 `perps-sma-jev-exa-all-markets-v1` owns exact SMA separation ranking, at most five positions, common invalid-asset exclusions and asset-specific review lanes in `perps-study/universe.ts`. `perps-paper/universe-acquisition.ts` validates the bounded partial universe. Original risk, sizing and hourly policy remain unchanged. No replacement after veto, resume or paid repeat.
+
+## SMA profiles and selective exposure laboratory
+
+Local `perps-sma-profile-risk-v1` configuration v6 has four independent variants:
+`hourly-legacy`, `hourly-selective`, `fast-legacy`, and `fast-selective`. It composes no
+model, news, signer, or real order capability. Preserve v1–v5 records and monetary reservations.
+The new optional account `riskManagement` is assigned from the trusted study at initialization;
+absence retains historical collective exposure exits. No intent can change it.
+
+Trading exports versioned profiles through `strategies`/`evaluation`, and the bounded selective
+planner through `perps`. The profile runner serializes public observations, full ledger closes,
+common final refreshes, and four portfolio executions; no host may duplicate these policies.
+Selective accounts admit projected post-fill exposure at most 40% of marked equity and reduce
+strictly above 50% using full closes. Global emergency exits and historical risk stay intact.
+
+Read [the local guide](../../apps/agent-service/SMA-PROFILES-RISK.md) for frozen parameters,
+commands, one-shot execution, and report limitations. Tests never make paid provider calls.
