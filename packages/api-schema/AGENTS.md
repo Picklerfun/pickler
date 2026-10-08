@@ -204,3 +204,11 @@ X timeline preview DTOs return at most five posts and a null nextCursor. Cursor 
 ## X profile presentation
 
 X connection account DTOs include optional nullable displayName/profileImageUrl for additive compatibility. Earlier connections can omit both; current producers return null when unavailable. No provider or credential fields are added.
+
+## Price history timestamps
+
+MarketDetailDto and marketDetailDtoSchema accept optional trailTimestamps: nullable ISO UTC values aligned with trail. Existing consumers/producers remain compatible. These describe hourly closes and the appended current mark, not OHLC or interpolated dates.
+
+`priceHistory` is an optional array of `{ price, at }`, bounded to 721 ISO-timestamped samples
+(720 hourly closes and one observed mark). It adds range views without changing `trail`'s 24h
+meaning or requiring legacy/sample producers to fabricate history.
