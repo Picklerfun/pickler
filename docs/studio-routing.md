@@ -101,7 +101,7 @@ Local acceptance on 2026-10-08 used main base `a677fc3fb1d3ba63384ca438897755caf
 controlled stack port 55532 and synthetic providers on 8798. The four-strategy run passed with
 `rules`, `deepseek`, `jev` and `combined` at version 2.1.0. The final compiled route regression
 passed against a real version conflict and a different creator's agent. Web/harness tests passed
-986 cases; Design passed 124 routes, including all original 114 and ten canonical examples.
+989 cases; Design passed 124 routes, including all original 114 and ten canonical examples.
 The private run evidence records timestamps, controlled configuration, financial oracle results
 and requests. A private delivery manifest records the final Git commit and local check results.
 
@@ -121,3 +121,8 @@ now excludes only positioned rectangles with no painted area. Partial clips and 
 static elements still reject non-token colors. The regression reproduces the false positive and
 checks both rejection cases; it does not exempt Select, hidden accessibility nodes or any route
 from color validation.
+
+The Home funding reminder fades in after client hydration. Design now waits for finite entry
+animations and transitions on every route before reading paint, rather than only after clicks.
+Infinite decorative loops remain active. A paused or otherwise stuck finite animation blocks the
+route with saved diagnostics; it never silently passes. Browser regressions cover all three cases.
