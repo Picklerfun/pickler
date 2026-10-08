@@ -41,8 +41,11 @@ refreshes candles across boundaries. Exclude a missing asset from all four arms.
 cannot become an opening, nor can the final refresh change its direction.
 
 Slots start at minute one of five-minute intervals, with thirty-second admission tolerance.
-Minute observations never overlap; missed observations/slots are retained. The runner immediately checks the current minute when a slow cycle has crossed a minute boundary;
-it never sleeps past an otherwise unexpired admission or recovers an expired slot. The PostgreSQL
+Minute observations never overlap; missed observations/slots are retained. The runner immediately
+checks the current minute when a slow cycle has crossed a minute boundary; it never sleeps past
+an otherwise unexpired admission or recovers an expired slot.
+Reopening is fenced by both the cycle slot and the slot containing the confirmed exit, so an
+observation crossing a boundary cannot reopen that position in the new slot. The PostgreSQL
 lease remains ninety seconds, renewed every twenty. macOS rejects a closed lid and holds its
 existing idle-sleep guard. Data failure before execution is an omission; uncertainty after
 partial writes requires interruption/reconciliation. Lost ownership admits no further writes.
