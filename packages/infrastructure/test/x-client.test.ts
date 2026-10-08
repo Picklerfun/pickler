@@ -210,3 +210,59 @@ test("disabled post reads never reach X even while OAuth is enabled", async () =
   };
   assert.deepEqual(parseXApiPolicy(JSON.stringify(policy)), policy);
 });
+
+test("identity includes profile decoration in the existing single request", async () => {
+  let calls = 0;
+  const provider = createXOAuthProvider({
+    ...options,
+    fetch: async (url) => {
+      calls++;
+      const request = new URL(String(url));
+      assert.equal(request.pathname, "/2/users/me");
+      assert.equal(request.searchParams.get("user.fields"), "name,profile_image_url");
+      return Response.json({
+        data: {
+          id: "123",
+          username: "ControlledX",
+          name: "Controlled creator",
+          profile_image_url: "https://pbs.twimg.com/profile_images/123/photo_normal.jpg",
+        },
+      });
+    },
+  });
+
+  assert.deepEqual(await provider.identity("access"), {
+    id: "123",
+    handle: "ControlledX",
+    displayName: "Controlled creator",
+    profileImageUrl: "https://pbs.twimg.com/profile_images/123/photo_normal.jpg",
+  });
+  assert.equal(calls, 1);
+});
+
+test("missing or unsafe profile decoration does not invalidate the verified identity", async () => {
+  for (const image of [
+    undefined,
+    "http://pbs.twimg.com/profile_images/a.jpg",
+    "https://evil.example/a.jpg",
+    "https://pbs.twimg.com@evil.example/a.jpg",
+    "data:image/svg+xml,private",
+    "https://pbs.twimg.com:8443/profile_images/a.jpg",
+    "https://pbs.twimg.com/media/a.jpg",
+  ]) {
+    const provider = createXOAuthProvider({
+      ...options,
+      fetch: async () =>
+        Response.json({
+          data: { id: "123", username: "ControlledX", name: null, profile_image_url: image },
+        }),
+    });
+
+    assert.deepEqual(await provider.identity("access"), {
+      id: "123",
+      handle: "ControlledX",
+      displayName: null,
+      profileImageUrl: null,
+    });
+  }
+});
