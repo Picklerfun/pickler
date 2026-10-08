@@ -10,11 +10,17 @@ export interface PerplPublicResponse {
   body: string;
 }
 export interface PerplRequestDiagnostic {
+  version?: 2;
+  queuedAt?: number;
+  startedAt?: number | null;
+  queueMs?: number;
+  bodyMs?: number | null;
+  validationMs?: number | null;
   operation: string;
   status: number | null;
   durationMs: number;
   code: string | null;
-  phase: "response_headers" | "response_body" | "validation" | "complete";
+  phase: "request_queue" | "response_headers" | "response_body" | "validation" | "complete";
   headersMs: number | null;
   network: NetworkFailure | null;
 }
@@ -37,9 +43,16 @@ export interface PerplDataOptions {
   retryTransient?: boolean;
   guard?: () => Promise<void>;
   onDiagnostic?: (event: PerplRequestDiagnostic) => void;
+  onValidation?: (event: {
+    version: 1;
+    operation: string;
+    durationMs: number;
+    code: string | null;
+  }) => void;
 
   transport?: typeof fetch;
   now?: () => number;
+  monotonic?: () => number;
   /** Trusted host hook for private captures; no headers or credentials are supplied. */
   onResponse?: (response: PerplPublicResponse) => Promise<void>;
 }
@@ -86,7 +99,51 @@ export class PerplTransport {
     this.schedule = options.schedule ?? new PerplRequestSchedule();
   }
   get(network: PerpNetwork, path: string, ctx: PerpReadContext): Promise<PerplPublicResponse> {
-    const result = this.schedule.tail.then(() => this.request(network, path, ctx));
+    const queuedAt = this.now();
+    const queuedMono = (this.options.monotonic ?? (() => performance.now()))();
+    let dispatched = false;
+    const result = this.schedule.tail
+      .then(() =>
+        this.request(network, path, ctx, queuedAt, queuedMono, () => {
+          dispatched = true;
+        }),
+      )
+      .catch((error) => {
+        if (!dispatched) {
+          this.options.onDiagnostic?.({
+            version: 2,
+            operation: path.endsWith("/ticker")
+              ? "ticker"
+              : path.includes("/book?")
+                ? "book"
+                : path.includes("/candles/")
+                  ? "candles"
+                  : path.includes("funding")
+                    ? "funding"
+                    : "metadata",
+            queuedAt,
+            startedAt: null,
+            queueMs: Math.max(
+              0,
+              (this.options.monotonic ?? (() => performance.now()))() - queuedMono,
+            ),
+            durationMs: 0,
+            headersMs: null,
+            bodyMs: null,
+            validationMs: null,
+            status: null,
+            code:
+              error instanceof PilotError
+                ? error.code
+                : ctx.signal.aborted
+                  ? "PERPL_CANCELLED"
+                  : "PERPL_TRANSPORT_FAILURE",
+            phase: "request_queue",
+            network: networkFailure(error, ctx.signal.aborted ? "cancelled" : undefined),
+          });
+        }
+        throw error;
+      });
     this.schedule.tail = result.catch(() => {});
     return result;
   }
@@ -94,6 +151,9 @@ export class PerplTransport {
     network: PerpNetwork,
     path: string,
     ctx: PerpReadContext,
+    queuedAt: number,
+    queuedMono: number,
+    dispatched: () => void,
   ): Promise<PerplPublicResponse> {
     await ctx.guard();
     await this.options.guard?.();
@@ -118,10 +178,17 @@ export class PerplTransport {
     await this.options.guard?.();
     const signal = AbortSignal.any([ctx.signal, AbortSignal.timeout(10_000)]);
     signal.throwIfAborted();
+    dispatched();
     this.schedule.lastStart = Date.now();
     this.requests++;
     const url = PERPL_NETWORKS[network].base + path;
-    const started = Date.now();
+    const started = this.now();
+    const mono = this.options.monotonic ?? (() => performance.now());
+    const startedMono = mono();
+    let bodyMs: number | null = null;
+    let validationMs: number | null = null;
+    let bodyStart: number | null = null;
+    let validationStart: number | null = null;
     let status: number | null = null;
     let code: string | null = null;
     let phase: PerplRequestDiagnostic["phase"] = "response_headers";
@@ -133,7 +200,8 @@ export class PerplTransport {
         signal,
       );
       status = response.status;
-      headersMs = Date.now() - started;
+      headersMs = mono() - startedMono;
+      bodyStart = mono();
       phase = "response_body";
       if (status === 429) {
         const retry = response.headers.get("retry-after");
@@ -179,12 +247,15 @@ export class PerplTransport {
         void reader.cancel().catch(() => {});
         reader.releaseLock();
       }
+      bodyMs = mono() - bodyStart!;
+      validationStart = mono();
       phase = "validation";
       signal.throwIfAborted();
       await ctx.guard();
       await this.options.guard?.();
       const result = { url, receivedAt: this.now(), body };
       await this.options.onResponse?.(result);
+      validationMs = mono() - validationStart;
       phase = "complete";
       return result;
     } catch (error) {
@@ -219,11 +290,17 @@ export class PerplTransport {
               : path.includes("funding")
                 ? "funding"
                 : "metadata",
+        version: 2,
+        queuedAt,
+        startedAt: started,
+        queueMs: Math.max(0, startedMono - queuedMono),
+        bodyMs: bodyMs ?? (bodyStart === null ? null : mono() - bodyStart),
+        validationMs: validationMs ?? (validationStart === null ? null : mono() - validationStart),
         status,
         phase,
         headersMs,
         network: networkDiagnostic,
-        durationMs: Date.now() - started,
+        durationMs: mono() - startedMono,
         code,
       });
     }
