@@ -338,6 +338,16 @@ export class PostgresStudioDirectory implements StudioDirectory {
         throw new PublishBlockedError(blockers);
       }
       const published = await this.transaction(async (client) => {
+        const owner = await client.query(
+          `SELECT w.id FROM identity.workspaces w
+          JOIN pickler.research_access r ON r.user_id=w.owner_user_id
+          WHERE w.id=$1 AND w.owner_user_id=$2 AND w.is_active AND r.enabled
+          FOR SHARE OF w,r`,
+          [access.workspaceId, access.ownerUserId],
+        );
+        if (!owner.rowCount) {
+          throw new AccessDeniedError("Creator access changed");
+        }
         // A separate statement: Postgres refuses FOR SHARE on the nullable side of an outer join.
         await client.query(
           "SELECT 1 FROM wallets.agent_wallets WHERE agent_id::text = $1 FOR SHARE",
@@ -357,6 +367,24 @@ export class PostgresStudioDirectory implements StudioDirectory {
         if (now.killed) {
           throw new PublishBlockedError(["KILLED"]);
         }
+        // Same agent lock as OAuth writes: revocation cannot interleave this publication.
+        const connection = await client.query(
+          `SELECT 1 FROM agents.x_oauth_grants g
+          JOIN agents.x_accounts x ON x.agent_id=g.agent_id
+          JOIN identity.workspaces w ON w.id=g.workspace_id
+          JOIN pickler.research_access r ON r.user_id=w.owner_user_id
+          WHERE g.agent_id=$1 AND g.user_id=$2 AND g.workspace_id=$3 AND g.tenant_id=$4
+            AND w.owner_user_id=$2 AND w.is_active AND r.enabled
+            AND g.status='connected' AND g.refresh_claim IS NULL AND g.expires_at>now()
+            AND g.validated_at>now()-interval '30 seconds'
+            AND g.scopes @> '["users.read","tweet.read","offline.access"]'::jsonb
+            AND x.verification_method='oauth' FOR SHARE OF g,w,r`,
+          [productAgentId, access.ownerUserId, access.workspaceId, access.tenantId],
+        );
+        if (!connection.rowCount) {
+          throw new PublishBlockedError(["X_CONNECTION_REQUIRED"]);
+        }
+
         const { rows } = await client.query<{ publishedAt: Date }>(
           `UPDATE agents.agents SET visibility = 'public', published_at = now(),
              status = CASE WHEN status = 'draft' THEN 'active' ELSE status END
