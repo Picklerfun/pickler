@@ -1,4 +1,14 @@
 "use client";
+import { useId } from "react";
+import { Field } from "@pickler/ui";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@pickler/ui/select";
 import type { StudioAgentDto } from "@pickler/api-schema";
 import type { UseAgentStudio } from "./use-agent-studio";
 import { SaveOutcome, saveLabel, useSavedForm, useSetupSave } from "./setup-save";
@@ -21,6 +31,7 @@ export function StrategySetup({
   studio: Pick<UseAgentStudio, "saveSetup" | "refreshAgent">;
   canManage: boolean;
 }) {
+  const fieldId = useId();
   const saved = agent.config.perpsStrategy?.id ?? "combined";
   const [selected, setSelected] = useSavedForm<StrategyId>(agent.version, saved);
   const { state, save, touch, saving } = useSetupSave(studio);
@@ -33,26 +44,35 @@ export function StrategySetup({
   const canSave = canManage && dirty && !saving;
   return (
     <div className={styles.field}>
-      <label className={styles.fieldLabel}>
-        Strategy
-        <select
-          aria-label="Strategy"
-          className={styles.input}
+      <Field label="Strategy" htmlFor={fieldId}>
+        <Select
           value={selected}
           disabled={!canManage || saving}
-          onChange={(event) => {
-            setSelected(event.target.value as StrategyId);
+          onValueChange={(value) => {
+            setSelected(value as StrategyId);
             touch();
           }}
         >
-          {options.map(([id, label]) => (
-            <option key={id} value={id}>
-              {label}
-            </option>
-          ))}
-        </select>
-      </label>
-      <p className={styles.hint}>
+          <SelectTrigger
+            id={fieldId}
+            aria-labelledby={`${fieldId}-label`}
+            aria-describedby={`${fieldId}-hint`}
+            className={styles.input}
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent data-surface="dark" position="popper" align="start">
+            <SelectGroup>
+              {options.map(([id, label]) => (
+                <SelectItem key={id} value={id}>
+                  {label}
+                </SelectItem>
+              ))}
+            </SelectGroup>
+          </SelectContent>
+        </Select>
+      </Field>
+      <p id={`${fieldId}-hint`} className={styles.hint}>
         Version {agent.config.perpl?.version === 2 ? "2.1.0" : "2.0.0"}. A change requires a new
         preparation check. Models propose actions; your caps and exits still apply.
       </p>
