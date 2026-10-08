@@ -11,9 +11,7 @@ export function Download({ appStoreUrl }: { appStoreUrl: string | null }) {
         <div className={`${styles.glow} ${styles.downloadGlow}`} aria-hidden="true" />
         <h2 id="download-title" className={`${styles.title} ${styles.downloadTitle}`}>
           BEAT THE MARKET
-          <span className={styles.stop} data-hue="lime">
-            .
-          </span>
+          <span className={styles.stop} data-hue="lime" aria-hidden="true" />
           <br />
           READY?
         </h2>

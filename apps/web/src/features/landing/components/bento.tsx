@@ -11,9 +11,7 @@ export function Bento() {
       <div className={styles.sectionHead}>
         <h2 id="hidden-title" className={styles.title}>
           NOTHING HIDDEN
-          <span className={styles.stop} data-hue="lime">
-            .
-          </span>
+          <span className={styles.stop} data-hue="lime" aria-hidden="true" />
         </h2>
         <p className={styles.sectionLead}>Your keys. Their record. Every number on chain.</p>
       </div>

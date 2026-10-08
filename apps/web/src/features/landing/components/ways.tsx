@@ -16,9 +16,7 @@ export function Ways() {
           INVEST IN WHAT
           <br />
           COMES NEXT
-          <span className={styles.stop} data-hue="lime">
-            .
-          </span>
+          <span className={styles.stop} data-hue="lime" aria-hidden="true" />
         </h2>
         <p className={styles.sectionLead}>
           Three ways to put money behind what comes next, from one wallet.

@@ -56,7 +56,9 @@ export function Arena() {
               style={swatchVars(row.swatch)}
             >
               <span className={styles.rank}>{row.rank}</span>
-              <span className={styles.tickerTile}>{row.ticker.slice(1)}</span>
+              <span className={styles.tickerTile} data-swatch={row.swatch}>
+                {row.ticker.slice(1)}
+              </span>
               <span className={styles.agentBody}>
                 <span className={styles.agentLine}>
                   <span className={styles.agentName}>{row.name}</span>

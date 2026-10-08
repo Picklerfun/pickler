@@ -582,6 +582,14 @@
   color: var(--pk-on-lime);
 }
 
+/* The deep violets carry white ink; the dark ink lime was measured against reads 2.9:1 on them.
+   The arena is the dark surface, where `--pk-ink` is that white (`--pk-on-violet` there is the dark
+   ink for the dark surface's lighter violet, which this fill is not). */
+.tickerTile[data-swatch="indigo"],
+.tickerTile[data-swatch="violet"] {
+  color: var(--pk-ink);
+}
+
 .agentBody {
   display: flex;
   flex: 1 1 120px;

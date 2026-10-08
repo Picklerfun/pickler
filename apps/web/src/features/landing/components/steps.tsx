@@ -32,9 +32,7 @@ export function Steps({ appStoreUrl }: { appStoreUrl: string | null }) {
         </p>
         <h2 id="app-title" className={styles.title}>
           FOUR STEPS
-          <span className={styles.stop} data-hue="lime">
-            .
-          </span>
+          <span className={styles.stop} data-hue="lime" aria-hidden="true" />
         </h2>
         <p className={styles.sectionLead}>
           A passkey and some AUSD. No seed phrase, no extension, no waiting.
