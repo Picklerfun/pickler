@@ -1,18 +1,12 @@
 "use client";
+import { Skeleton } from "@pickler/ui";
 import { useEffect, useRef, useState, type ReactElement, type ReactNode } from "react";
 import { LiveSection, type LiveSectionProps } from "./live-section";
 import { FUNDING_LABEL, MARKETS_FAILED_LINE, marketsView } from "./model";
-import {
-  FLAT_LINE,
-  OPEN_COUNT,
-  WATCH_META,
-  WATCH_NONE,
-  trailText,
-  watchLoading,
-} from "./run-model";
+import { FLAT_LINE, OPEN_COUNT, WATCH_META, WATCH_NONE, trailText } from "./run-model";
 import { PositionCards } from "./runtime-parts";
 import { paperShown } from "./runtime-model";
-import { Sparkline } from "./sparkline";
+import { PriceTrail } from "./sparkline";
 import styles from "./run.module.css";
 
 /**
@@ -43,7 +37,7 @@ export function FlatPositions({
 /**
  * WHAT IT WATCHES (spec L8): the real board for the markets in its setup: mark, 24 h change, the
  * hourly funding and a sparkline of the trail, tagged SAMPLE DATA or STALE when the board is
- * either, "Reading Perpl…" before the read, and "Couldn't read Perpl." with Retry when it failed.
+ * either, Skeletons before the read, and "Couldn't read Perpl." with Retry when it failed.
  */
 function WhatItWatches({ agent, live }: Pick<LiveSectionProps, "agent" | "live">) {
   const [retrying, setRetrying] = useState(false);
@@ -84,9 +78,15 @@ function WhatItWatches({ agent, live }: Pick<LiveSectionProps, "agent" | "live">
       </div>
 
       {view.state === "loading" && (
-        <p className={styles.watchState} role="status">
-          {watchLoading(live.preview)}
-        </p>
+        <div
+          className={styles.watchSkeleton}
+          role="status"
+          aria-label="Loading markets"
+          aria-busy="true"
+        >
+          <Skeleton shape="panel" />
+          <Skeleton shape="panel" />
+        </div>
       )}
 
       {view.state === "failed" && (
@@ -117,14 +117,14 @@ function WhatItWatches({ agent, live }: Pick<LiveSectionProps, "agent" | "live">
                   {FUNDING_LABEL} {card.funding}
                 </span>
               </span>
-              <Sparkline trail={card.trail} up={card.up} />
+              <PriceTrail trail={card.trail} up={card.up} market={card.name} />
               <span className={styles.srOnly}>
                 {card.listed ? trailText(card.trail) : "Not on the board."}
               </span>
               <span className={styles.watchMark}>
                 <span className={styles.mark}>{card.mark}</span>
                 <span className={styles.change} data-up={card.up ?? undefined}>
-                  {card.change}
+                  {card.change} <span className={styles.changePeriod}>24h</span>
                 </span>
               </span>
             </li>
