@@ -571,3 +571,7 @@ See [agent-selected Perpl markets](../../docs/studio-perpl-markets.md).
 ## X preview cost controls
 
 The private X posts operation is now a paid five-post preview, capped at one attempt per agent per UTC day. Cursor requests return INVALID_INPUT without transport; generated OpenAPI documents this restriction. Disabled reads return X_UNAVAILABLE before token renewal. OAuth identity verification remains independently available.
+
+## X profile presentation
+
+X state metadata describes the persisted optional profile name/photo. GET /agents/:id/x remains owner-only and no-store; it never fetches X to decorate the UI.
