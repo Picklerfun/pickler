@@ -54,6 +54,7 @@ export function decide(
   pathname: string,
   hosts: ProductHosts,
   auth: AuthState,
+  search = "",
 ): Decision {
   const product = productFor(host, hosts);
 
@@ -85,7 +86,7 @@ export function decide(
   // would leave the studio's own front door open. `pathname` is what goes into `next`, so whoever
   // comes back lands on the address they asked for.
   if (auth.configured && !auth.session && requiresSession(studioRoot ? "/studio" : pathname)) {
-    return { kind: "signIn", to: signInPath(pathname) };
+    return { kind: "signIn", to: signInPath(pathname + search) };
   }
 
   return studioRoot ? { kind: "rewrite", to: "/studio" } : { kind: "serve" };
@@ -95,13 +96,19 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
 const configured = authConfigured(supabaseUrl, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY);
 
 export function middleware(request: NextRequest) {
-  const decision = decide(request.headers.get("host"), request.nextUrl.pathname, PRODUCT_HOSTS, {
-    configured,
-    session: hasSessionCookie(
-      request.cookies.getAll().map((cookie) => cookie.name),
-      supabaseUrl,
-    ),
-  });
+  const decision = decide(
+    request.headers.get("host"),
+    request.nextUrl.pathname,
+    PRODUCT_HOSTS,
+    {
+      configured,
+      session: hasSessionCookie(
+        request.cookies.getAll().map((cookie) => cookie.name),
+        supabaseUrl,
+      ),
+    },
+    request.nextUrl.search,
+  );
   switch (decision.kind) {
     case "serve":
       return NextResponse.next();
