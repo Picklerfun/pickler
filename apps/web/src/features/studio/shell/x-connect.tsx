@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { Button, BrandMark } from "@pickler/ui";
+import { Button, ButtonLink, BrandMark } from "@pickler/ui";
 import type { XPostsDto } from "@pickler/api-schema";
 import type { XState } from "../api";
 import { StudioSkeleton } from "../skeleton";
@@ -29,6 +29,8 @@ export function XConnect({
   const [reading, setReading] = useState(false);
   const [posts, setPosts] = useState<XPostsDto | null>(null);
   const [error, setError] = useState("");
+  const attempted = useRef<XState | null>(null);
+  const [readAttempted, setReadAttempted] = useState(false);
   const current = useRef(x);
   useEffect(() => {
     current.current = x;
@@ -37,6 +39,7 @@ export function XConnect({
   if (x !== seen) {
     setSeen(x);
     setPosts(null);
+    setReadAttempted(false);
   }
   async function action(run: () => Promise<void>) {
     if (busy) {
@@ -52,20 +55,24 @@ export function XConnect({
       setBusy(false);
     }
   }
-  async function read(cursor?: string) {
-    if (reading) {
+  async function read() {
+    if (!x || !canManage || !x.readsAvailable || reading || attempted.current === x) {
       return;
     }
+    attempted.current = x;
+    setReadAttempted(true);
     setReading(true);
     setError("");
     try {
       const connection = x;
-      const result = await onPosts(cursor);
+      const result = await onPosts();
       if (current.current === connection) {
         setPosts(result);
       }
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Could not read posts. Try again.");
+      setError(
+        caught instanceof Error ? caught.message : "Could not read posts. View them on X instead.",
+      );
     } finally {
       setReading(false);
     }
@@ -87,7 +94,7 @@ export function XConnect({
         <span>{x.account ? `@${x.account.handle}` : "Connect your X account"}</span>
       </div>
       <p className={styles.xNoteLine}>
-        Allow Pickler to read your posts. This does not allow posting or activate trading.
+        Verify your X account. Connecting does not load posts, allow posting or activate trading.
       </p>
       {x.status === "reconnect_required" && (
         <p className={styles.xLine}>
@@ -127,20 +134,37 @@ export function XConnect({
               Disconnect
             </Button>
           )}
-          {connected && (
+          {connected && x.account && (
+            <ButtonLink
+              variant="secondary"
+              size="sm"
+              href={`https://x.com/${encodeURIComponent(x.account.handle)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              View posts on X
+            </ButtonLink>
+          )}
+          {connected && x.readsAvailable && !readAttempted && (
             <Button
               variant="secondary"
               size="sm"
               disabled={!canManage || !x.readsAvailable || reading}
               onClick={() => void read()}
             >
-              {posts ? "Refresh posts" : "Load posts"}
+              Load 5 posts (paid)
             </Button>
           )}
         </div>
       )}
       {connected && !x.readsAvailable && (
-        <p className={styles.xNoteLine}>Post reading is not enabled yet.</p>
+        <p className={styles.xNoteLine}>In-app post reading is disabled to avoid X API charges.</p>
+      )}
+      {connected && x.readsAvailable && (
+        <p className={styles.xNoteLine}>
+          Optional preview uses X API credits: up to 5 posts, one attempt per day. View posts on X
+          without an API request instead.
+        </p>
       )}
       {reading && <StudioSkeleton variant="rows" />}
       {!reading && posts && connected && (
@@ -157,16 +181,6 @@ export function XConnect({
               </time>
             </article>
           ))}
-          {posts.nextCursor && (
-            <Button
-              variant="secondary"
-              size="sm"
-              disabled={reading || !canManage}
-              onClick={() => void read(posts.nextCursor!)}
-            >
-              Next posts
-            </Button>
-          )}
         </div>
       )}
       {error && (
