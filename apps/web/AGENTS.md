@@ -22,7 +22,9 @@ Auth values are the exception: authentication uses its publishable key in the br
 src/app/
   api/v1/[...path]/route.ts # Transport-only delegation; no business decisions
   auth/callback/route.ts    # Supabase code exchange, cookies, return to studio
-  studio/page.tsx           # The studio: opens on the home; no agents opens the create screen
+  (workspace)/layout.tsx    # Temporary owner-scoped form memory across Account and Studio
+  (workspace)/account/      # Account pages and sanitized return to Studio
+  (workspace)/studio/       # Persistent Studio layout, entry/new and explicit agent section pages
   (auth)/                  # Existing signup/signin design
   apply/                   # Creator application using API-backed cookie access
   agents/, tokens/, reads/  # Existing public demonstrations
