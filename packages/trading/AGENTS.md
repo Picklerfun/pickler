@@ -209,3 +209,7 @@ finishes in a newer minute, it immediately checks that minute instead of sleepin
 unexpired admission. Durable slot fencing still rejects duplicates, late slots and recovery.
 Confirmed exits fence reopening by both the originating cycle slot and the confirmation's
 decision slot, including observations that cross an admission boundary.
+
+## SMA reopening and timing protocol
+
+Configuration v7 (`perps-sma-reentry-latency-v1`) adds `sma-reference` and `sma-once-bar`, both hourly/selective. `features/perps-study/reentry.ts` owns immutable entry policies and the final hourly key; apply its gate after selection, never rerank replacements. `reentry-metrics.ts` checks common slots, pre-maintenance valuation and detected exits. The shared profile runner prioritizes price maintenance before funding/candle preparation and uses `nextPriceCycleDelay` after overruns. Preserve v6 actions and risk semantics. Infrastructure must atomically persist confirmed fills and consumed keys; hosts must not manufacture either. See [local protocol guide](../../apps/agent-service/PERPS-SMA-REENTRY.md).
