@@ -180,22 +180,16 @@ export interface GoPublicView {
   task: { title: "Connect X"; meta: string; done: boolean };
   canPublish: boolean;
   label: string;
-  skipLabel: string;
   /** Spliced into "it shows on Pickler{xNote}" and the live button (D19). */
   xNote: string;
 }
 
 /**
- * Go Public is one task, Connect X, which can be skipped (spec D3; the skip is a screen choice,
- * not stored). The button opens when the task is done or skipped.
+ * Go Public requires a current OAuth connection. Historical proof alone never opens the button.
  */
-export function goPublicView(input: {
-  xHandle: string | null;
-  skipped: boolean;
-  publishing: boolean;
-}): GoPublicView {
+export function goPublicView(input: { xHandle: string | null; publishing: boolean }): GoPublicView {
   const done = input.xHandle !== null;
-  const open = done || input.skipped;
+  const open = done;
   const canPublish = open && !input.publishing;
   let label = "Connect X to go public";
   if (input.publishing) {
@@ -203,25 +197,18 @@ export function goPublicView(input: {
   } else if (open) {
     label = "Go public";
   }
-  let skipLabel = "SKIP X FOR NOW · IT POSTS ON PICKLER ONLY";
-  if (done) {
-    skipLabel = "";
-  } else if (input.skipped) {
-    skipLabel = "POSTS ON PICKLER ONLY · UNDO";
-  }
   return {
     title: "GO PUBLIC",
     done: done ? 1 : 0,
     of: 1,
     task: {
       title: "Connect X",
-      meta: input.xHandle ? `@${input.xHandle.toUpperCase()}` : "WHERE IT POSTS",
+      meta: input.xHandle ? `@${input.xHandle.toUpperCase()}` : "READ ACCESS",
       done,
     },
     canPublish,
     label,
-    skipLabel,
-    xNote: done ? " and X" : "",
+    xNote: "",
   };
 }
 
@@ -236,6 +223,7 @@ const PUBLISH_BLOCKER_TEXT: Record<PublishBlocker, string> = {
   KILLED: "It has been shut down, so it can't go public.",
   WALLET: "It needs its own wallet to go public.",
   FUNDS: "Its wallet needs at least 10 AUSD to go public.",
+  X_CONNECTION_REQUIRED: "Connect X to verify ownership before publishing.",
 };
 
 /** The 409 `PUBLISH_BLOCKED` blockers in words (spec §3.1); only FUNDS has a fix on the screen. */
