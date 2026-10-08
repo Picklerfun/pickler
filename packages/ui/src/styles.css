@@ -367,6 +367,10 @@ h2 {
     transform var(--pk-duration);
 }
 
+.pk-button[data-shape="box"] {
+  border-radius: var(--pk-radius-sm);
+}
+
 .pk-button:active {
   transform: scale(0.98);
 }
