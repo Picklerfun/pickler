@@ -68,3 +68,12 @@ Turborepo coordinates builds and type checks. ESLint checks conventions and impo
 Read the root and relevant project `AGENTS.md` before working in any project. Update local instructions alongside changes to structure, exports, commands, or responsibilities. Keep documentation in English and distinguish working code from proposed examples.
 
 References: [Next.js backend for frontend](https://nextjs.org/docs/app/guides/backend-for-frontend), [Route Handlers](https://nextjs.org/docs/app/getting-started/route-handlers), [Turborepo internal packages](https://turborepo.dev/docs/core-concepts/internal-packages).
+
+## Agent-owned X authorization
+
+[Studio X OAuth](studio-x-oauth.md) replaces proof posts with confidential OAuth2 PKCE. Supabase
+identity remains authoritative. Core coordinates read-only linking and publication, infrastructure
+owns private encrypted tokens and resource reservations, API composes JWT-owner routes plus one
+state/cookie callback, and Web presents consent/manual posts. X content never reaches the trading
+engine or public feed. Publication/disconnect/refresh share transaction fences; old public agents
+keep visibility. The old proof-post specifications are historical.
