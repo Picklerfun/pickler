@@ -266,9 +266,9 @@ run its controlled-clock regression tests with `node --import tsx --test apps/we
 ## Creating an agent
 
 There is one creation flow, the create screen in `features/studio/new-agent/` ("Pickler Studio
-Empty v5", docs/specs/studio-create-simplified-v1.md). `/studio/new`, `features/studio/create`, the
-brief home (`home/empty.tsx`, `brief/*`) and its paper run are gone. The screen renders inside
-`/studio`: a person with no agents lands on it, and with agents "+ New agent" (the home's Menu and
+Empty v5", docs/specs/studio-create-simplified-v1.md), at `/studio/new`. Retired `features/studio/create`,
+the brief home (`home/empty.tsx`, `brief/*`) and its paper run remain removed. The Studio entry
+redirects a person with no agents to creation; with agents "+ New agent" (the home's Menu and
 the shell's switcher) opens it, with "Back to {agent}" in the top bar in place of the chip (shut
 while a passkey is up or once the draft exists). `lib/landing.ts` decides this:
 `studioLanding(loaded, agents, section)` answers `new` with no agents once read (whatever
@@ -351,8 +351,9 @@ rewrite of the studio root keeps the query, so `/?agent=<id>&section=<key>` is
 `/studio` opens on `home/home.tsx` once an agent exists: the "Pickler Studio v5" canvas limited to
 docs/specs/studio-create-and-fund-v1.md §5, with its own top bar (agent chip, status pill, Menu)
 instead of the rail. The Menu reaches every section the rail does, built from `RAIL` in its four groups, and
-the rail has a Home item back. `/studio?agent=<id>` opens on that agent; without it, or for an id that is not the person's, the studio opens
-on the first agent. `lib/select.ts` decides it, pure and pinned in `studio-select.test.ts`, and it
+the rail has a Home item back. `/studio?agent=<id>` resolves that authorized agent and replaces the URL with its section route.
+Without an explicit ID, entry selects the first authorized agent. A missing/foreign explicit ID
+fails closed rather than selecting another agent. `lib/select.ts` decides it, pure and pinned in `studio-select.test.ts`, and it
 is not a preview parameter, so it works in production. `Agent` in `api.ts` is the studio agent DTO (wallet, balance,
 `canSchedule`, `canCreateAnother`, `spend`, `spendEnforced`); the writes answer `AgentRecord`.
 
@@ -810,12 +811,12 @@ The selected-agent navbar keeps its controls on one row. The 360ms expansion rev
 pointer exit, rather than repeatedly entering/leaving a relocated icon.
 
 Account profile links include a local `returnTo` carrying the active agent, section and any
-non-production preview stage. `shell/account-return.ts` accepts only the Studio home path for
-that host (`/` on the dedicated Studio host, `/studio` on shared hosts) and filters query keys.
+non-production preview stage. `shell/account-return.ts` accepts the host’s Studio entry, `/studio/new` and registered
+`/studio/agents/<id>/<section>` routes, and filters query keys.
 Never send account return links to arbitrary origins or use unbounded browser history as the
 fallback. `resume` restores only a section from the selected studio's existing rail registry;
 agent selection still uses the authenticated workspace list. Preview stages remain disabled in
-production. Returning restores navigation, not unsaved form edits. Direct Account visits fall
+production. Returning restores navigation and temporary form edits through the workspace memory provider. Direct Account visits fall
 back to the host's Studio home. The controlled account-menu check covers round trips on desktop
 and touch screens, including sections selected after the initial page load.
 
@@ -982,7 +983,7 @@ The browser receives the Location and cookie headers; API service bindings never
 
 ## X preview cost controls
 
-Optional X timeline previews use an explicit paid action for five posts, once per mounted connection. Refresh and paging are absent. View posts on X is a plain external link with no provider request. Daily admission is enforced in PostgreSQL, including after reload or another tab. Reads remain disabled remotely until separately approved; linking still works.
+Optional X timeline previews use an explicit paid action for five posts, once per workspace-memory connection. Refresh and paging are absent. View posts on X is a plain external link with no provider request. Daily admission is enforced in PostgreSQL, including after reload or another tab. Reads remain disabled remotely until separately approved; linking still works.
 
 ## X profile presentation
 
@@ -998,3 +999,30 @@ warnings, strategy versions and the existing versioned setup save. Multi-choice 
 continues to use DropdownMenu checkbox items, rather than this single-choice control. Its trigger
 uses the shared Button `shape="box"`, matching Strategy’s field radius. Profile and navigation
 chips retain their pill shapes; feature styles must not redeclare those radii.
+
+## Studio App Router navigation
+
+The `(workspace)` route group shares a memory provider between Account and Studio. Its `studio`
+layout owns the persistent authenticated controller and shell; explicit server page files under
+`studio/agents/[agentId]/<section>` select the client section outlet. The URL is the active
+section. Sidebar links use Next Link with private prefetch disabled. Do not recreate the shell
+for each section or put section selection back in local React state. Existing client transports,
+JWT authorization and API version checks remain authoritative. Route layouts do not access a DB.
+
+`features/studio/routing/routes.ts` is the closed URL registry for draft, published and historical
+sections. Agent IDs resolve only against the authenticated workspace list. An invalid/foreign
+requested ID never selects a different agent. Unsupported section/kind combinations fail closed.
+Old entry links with `agent`/`resume` are replaced with the canonical URL after loading; root X
+callback outcomes are processed before this replacement. Preview `stage` stays non-production.
+
+Temporary drafts are scoped by agent and form, kept in memory across route/profile navigation,
+and cleared on sign-out or user change. Clean forms follow server versions; dirty forms preserve
+the original version. A stale save requires explicit discard, never automatic overwriting. Keep
+write admission synchronous across remounts and ignore completions from a prior user generation.
+Reload/tab closing warns about drafts or pending writes; switching via the agent selector asks
+before discarding edits and is blocked during writes. Never store tokens or X post text here.
+
+See [Studio routing](../../docs/studio-routing.md) for compatibility and acceptance commands.
+`node scripts/design/studio-routing.mjs` verifies every draft/live sidebar link, stable shell,
+deep reload, history and profile return. Design includes canonical deep routes alongside the
+original fixture URLs. Controlled loading remains distinct from compiled-product acceptance.
