@@ -37,6 +37,16 @@ export function renderProfileReport(
   if (rounds.some((r) => Object.keys(r.calls).length > 0)) {
     throw new Error("Model calls are forbidden in profile reports");
   }
+  const evidenceHashes = new Map<PerpsEvidence, string>();
+  const evidenceHash = (evidence: PerpsEvidence) => {
+    const cached = evidenceHashes.get(evidence);
+    if (cached) {
+      return cached;
+    }
+    const hash = createHash("sha256").update(canonicalAudit(evidence)).digest("hex");
+    evidenceHashes.set(evidence, hash);
+    return hash;
+  };
   const rows = Array.from({ length: 72 }, (_, slot) =>
     config.markets.flatMap((m) =>
       SMA_PROFILE_VARIANTS.map((variant) => {
@@ -92,12 +102,8 @@ export function renderProfileReport(
                     ? "NOT_EVALUATED"
                     : "SCHEDULED")),
           initialClock: round?.evidence.observedAt ?? null,
-          initialEvidenceHash: round
-            ? createHash("sha256").update(canonicalAudit(round.evidence)).digest("hex")
-            : null,
-          finalEvidenceHash: input
-            ? createHash("sha256").update(canonicalAudit(input)).digest("hex")
-            : null,
+          initialEvidenceHash: round ? evidenceHash(round.evidence) : null,
+          finalEvidenceHash: input ? evidenceHash(input) : null,
           profile: profileDescriptor(variant),
           sma20: trace?.sma20 ?? null,
           sma50: trace?.sma50 ?? null,
