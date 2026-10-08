@@ -186,7 +186,6 @@ export * from "./features/studio/locks.js";
 export * from "./features/studio/create.js";
 export * from "./features/studio/revise.js";
 export * from "./features/studio/setup-summary.js";
-export * from "./features/studio/x-verify.js";
 export * from "./features/studio/publish.js";
 
 export {
@@ -310,3 +309,5 @@ export * from "./features/studio/access-requests.js";
 
 export { assertPerplSelection } from "./features/perps/service.js";
 export type { PerplMarketCatalog } from "./features/perps/types.js";
+
+export * from "./features/studio/x-oauth.js";
