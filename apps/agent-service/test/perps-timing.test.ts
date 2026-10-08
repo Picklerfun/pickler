@@ -9,8 +9,9 @@ import { canonicalAudit } from "@pickler/trading/evaluation";
 import { runTimingCheck } from "../src/perps-study/timing-check.js";
 import { timingReport } from "../src/perps-study/timing-report.js";
 import { localStudyDatabase } from "../src/perps-study/database-env.js";
+import { runPerpsAudit } from "../src/perps-study/audit.js";
 import { timeEvaluationPool } from "@pickler/infrastructure";
-import { evidence } from "./perps-reentry-fixtures.js";
+import { evidence, config } from "./perps-reentry-fixtures.js";
 
 test("offline timing-check verifies inputs, thirty paired denominators and financial parity without network", async (t) => {
   const directory = await mkdtemp(join(tmpdir(), "sma-timing-"));
@@ -95,6 +96,21 @@ test("public-only environment refuses model settings without constructing client
     "DATABASE_URL=postgresql://fixture:fixture@127.0.0.1:55432/test\nMODEL_API_KEY=controlled-do-not-load\n",
   );
   await assert.rejects(localStudyDatabase(file), /dedicated/);
+  const configPath = join(directory, "study.json");
+  await writeFile(configPath, JSON.stringify(config));
+  const network = t.mock.method(globalThis, "fetch", async () => {
+    throw new Error("Audit cannot access providers");
+  });
+  await assert.rejects(
+    runPerpsAudit({
+      command: "audit-export",
+      configPath,
+      envFile: file,
+      output: join(directory, "forbidden-export"),
+    }),
+    /dedicated/,
+  );
+  assert.equal(network.mock.callCount(), 0);
   await writeFile(file, "DATABASE_URL=postgresql://fixture:fixture@127.0.0.1:55432/test\n");
   assert.match(await localStudyDatabase(file), /127\.0\.0\.1/);
 });
