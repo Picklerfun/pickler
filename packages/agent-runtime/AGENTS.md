@@ -211,3 +211,20 @@ composition/sma-review-model is a separate public local original-SMA reviewer wi
 ## Local universe comparison
 
 Operator universe composition exports `createUniversePerplReader` through the existing perps-paper plugin. It pins identity/configuration and closes on host shutdown. SMA review adapter 1.1.0 uses single-asset evidence, portfolio risk and bounded provider queues; original 1.0.0 remains intact. No automatic fallback or strategy sizing belongs here.
+
+## SMA profiles and selective exposure laboratory
+
+Local `perps-sma-profile-risk-v1` configuration v6 has four independent variants:
+`hourly-legacy`, `hourly-selective`, `fast-legacy`, and `fast-selective`. It composes no
+model, news, signer, or real order capability. Preserve v1–v5 records and monetary reservations.
+The new optional account `riskManagement` is assigned from the trusted study at initialization;
+absence retains historical collective exposure exits. No intent can change it.
+
+Trading exports versioned profiles through `strategies`/`evaluation`, and the bounded selective
+planner through `perps`. The profile runner serializes public observations, full ledger closes,
+common final refreshes, and four portfolio executions; no host may duplicate these policies.
+Selective accounts admit projected post-fill exposure at most 40% of marked equity and reduce
+strictly above 50% using full closes. Global emergency exits and historical risk stay intact.
+
+Read [the local guide](../../apps/agent-service/SMA-PROFILES-RISK.md) for frozen parameters,
+commands, one-shot execution, and report limitations. Tests never make paid provider calls.
