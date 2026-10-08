@@ -204,3 +204,6 @@ Read [the local guide](../../apps/agent-service/SMA-PROFILES-RISK.md) for frozen
 commands, one-shot execution, and report limitations. Tests never make paid provider calls.
 All registered perpetual protocols permit a read-only audit export. Export support does not
 authorize running an older model-decision analyzer against a new profile protocol.
+The profile runner accepts an injected sleep port for controlled scheduling tests. If a cycle
+finishes in a newer minute, it immediately checks that minute instead of sleeping past an
+unexpired admission. Durable slot fencing still rejects duplicates, late slots and recovery.
