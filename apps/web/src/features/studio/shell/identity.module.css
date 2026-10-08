@@ -129,53 +129,6 @@
   background: var(--pk-state-good-bg);
   color: var(--pk-lime-ink);
 }
-.xAccount {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 12px 14px;
-  border-radius: var(--pk-radius-md);
-  background: var(--pk-bg);
-}
-.xDot {
-  flex: none;
-  width: 8px;
-  height: 8px;
-  border-radius: 3px;
-  background: var(--pk-lime);
-}
-.xHandle {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font: 600 13.5px/1 var(--pk-font);
-  color: var(--pk-ink);
-}
-.disconnect {
-  flex: none;
-  padding: 7px 10px;
-  border: none;
-  border-radius: var(--pk-radius-pill);
-  background: var(--pk-panel);
-  font: 600 10px/1 var(--pk-font);
-  letter-spacing: 0.08em;
-  color: var(--pk-ink-muted);
-  cursor: pointer;
-  transition: color var(--pk-duration);
-}
-.disconnect:hover:not(:disabled) {
-  color: var(--pk-magenta-ink);
-}
-.disconnect:disabled {
-  color: var(--pk-ink-faint);
-  cursor: not-allowed;
-}
-.disconnect:focus-visible {
-  outline: 2px solid var(--pk-focus);
-  outline-offset: 2px;
-}
 .notice {
   composes: notice from "./build.module.css";
 }
