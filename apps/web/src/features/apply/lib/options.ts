@@ -5,6 +5,7 @@ import {
   type PersonalityDto,
 } from "@pickler/api-schema";
 import type { Swatch } from "@/lib/accent";
+import type { BlockSwatches } from "./form-model";
 
 /* What each answer is painted with. A name from the palette, never a colour: `swatchVars` in
    lib/accent.ts turns the name into the token. `cyan` is the palette's indigo, as it is for an
@@ -47,7 +48,7 @@ const personalities: Record<PersonalityDto, { swatch: Swatch; sample: string }> 
   },
   Deadpan: {
     swatch: SWATCHES.slate,
-    sample: "Deadpan: “Lakers −4.5 at 0.58. 12 MON. That is the post.”",
+    sample: "Deadpan: “Lakers −4.5 at 0.58. 12 AUSD. That is the post.”",
   },
   Hype: {
     swatch: SWATCHES.lime,
@@ -70,8 +71,25 @@ export const categorySwatch = (name: string): Swatch =>
 export const personalitySwatch = (name: string): Swatch =>
   personalities[name as PersonalityDto]?.swatch ?? SWATCHES.orange;
 
+/** What each block in YOUR PIECE and WHAT YOU SENT is painted with. */
+export const BLOCK_SWATCHES: BlockSwatches = {
+  email: SWATCHES.blue,
+  name: SWATCHES.lime,
+  handle: SWATCHES.white,
+  edge: SWATCHES.amber,
+  whyYou: SWATCHES.magenta,
+  category: categorySwatch,
+  personality: personalitySwatch,
+};
+
 /** Invite cadence shown to applicants. Product copy, not computed. */
 export const BATCH = { invitesPerBatch: 40, nextBatch: "FRI" } as const;
+
+/** "40 INVITES EVERY BATCH · NEXT FRI", as the hero and the SUBMITTED screen read it. */
+export const BATCH_LABEL = `${BATCH.invitesPerBatch} INVITES EVERY BATCH · NEXT ${BATCH.nextBatch}`;
+
+/** The line over the mascot card. */
+export const SEATS_LABEL = "A FEW CREATORS A WEEK";
 
 /** "Halftime 2" → "$HALF". Mirrors core's ticker rule; the server has the final say. */
 export function suggestTicker(name: string): string {
