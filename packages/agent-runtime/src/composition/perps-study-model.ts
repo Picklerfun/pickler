@@ -98,7 +98,8 @@ export function createPerpsStudyModels(
     inputConfig.version === 3 ||
     inputConfig.version === 4 ||
     inputConfig.version === 5 ||
-    inputConfig.version === 6
+    inputConfig.version === 6 ||
+    inputConfig.version === 7
   ) {
     throw new PilotError("MODELS_DISABLED", "Original SMA cannot construct model clients");
   }
