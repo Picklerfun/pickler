@@ -504,7 +504,7 @@ server-only). Each section is its own file taking `LiveSectionProps` (`live-sect
 
 The sections by file: RUN is `overview.tsx`, `positions.tsx` (also `FlatPositions`, which Overview
 draws), `record.tsx`, `decisions.tsx`, `console.tsx` (the shell's `TalkSoon`) and `posts.tsx`, with
-`sparkline.tsx` (WHAT IT WATCHES' trail, `aria-hidden` beside its words) and `run.module.css`; their
+`sparkline.tsx` (WHAT IT WATCHES' price inspector and Record's decorative trail) and `run.module.css`; their
 own rules are `run-model.ts` (empty lines, Decisions' filters, Console's words, the sparkline's
 points; `studio-live-run.test.ts`). Posts' X glyph is `BrandMark` from `@pickler/ui`. BUILD is
 `brief.tsx`, `sources.tsx`, `limits.tsx`, `controls.tsx` and `identity.tsx` with `build.module.css`,
@@ -1028,3 +1028,13 @@ See [Studio routing](../../docs/studio-routing.md) for compatibility and accepta
 `node scripts/design/studio-routing.mjs` verifies every draft/live sidebar link, stable shell,
 deep reload, history and profile return. Design includes canonical deep routes alongside the
 original fixture URLs. Controlled loading remains distinct from compiled-product acceptance.
+
+## Studio price trails
+
+Positions' What it watches uses the existing public market trail, with a 64px line/area, last
+sample marker, observed low/high and a native range input for pointer, touch and keyboard
+inspection. The inspector snaps to actual finite samples, never interpolated prices. The trail
+contract has no per-sample timestamps: do not invent time labels or candles. Current board mark
+and 24h change remain separate from the sampled trail. Market loading uses Skeletons; missing
+history is explicit. At 640px and below, the plot sits under the market and current price. Record
+retains its existing equity drawing and geometry. These interactions add no API requests.
