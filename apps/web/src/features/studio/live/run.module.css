@@ -58,7 +58,36 @@
 }
 .watchHead {
   composes: cardHead from "../shell/cards.module.css";
+  flex-wrap: wrap;
+  gap: 8px;
   margin-bottom: 4px;
+}
+.watchControls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+.watch .watchRanges {
+  padding: 2px;
+}
+.watch .watchRange {
+  padding: 5px 8px;
+  font-size: 11px;
+}
+.watchChart {
+  min-width: 0;
+}
+.historySince {
+  display: block;
+  margin-top: 4px;
+  font: 500 9px/1.3 var(--pk-font);
+  color: var(--pk-ink-muted);
+}
+@media (max-width: 640px) {
+  .watchControls .watchMeta {
+    display: none;
+  }
 }
 .watchLabel {
   composes: cardLabel from "../shell/cards.module.css";
@@ -148,6 +177,12 @@
   font-size: 12px;
 }
 
+.priceUpdated {
+  font: 500 9px/1.3 var(--pk-font);
+  font-variant-numeric: tabular-nums;
+  color: var(--pk-ink-muted);
+  white-space: nowrap;
+}
 .changePeriod {
   margin-left: 3px;
   font-weight: 500;
@@ -207,6 +242,9 @@
   pointer-events: none;
 }
 .trailTooltip {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
   position: absolute;
   top: 0;
   z-index: 1;
@@ -220,6 +258,10 @@
   white-space: nowrap;
   transform: translateX(-50%);
   pointer-events: none;
+}
+.trailTooltip time {
+  font-weight: 500;
+  color: var(--pk-ink-muted);
 }
 .trailInput {
   position: absolute;
@@ -263,8 +305,7 @@
     grid-column: 2;
     grid-row: 1;
   }
-  .priceTrail,
-  .trailEmpty {
+  .watchChart {
     grid-column: 1 / -1;
     grid-row: 2;
   }
