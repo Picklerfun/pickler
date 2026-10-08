@@ -10,6 +10,7 @@ import {
   SMA_PROFILE_VARIANTS,
   createProfileStudyRunner,
   perpsCallCost,
+  EVALUATION_PROTOCOLS,
   type PerpsSmaProfileConfig,
   type PerpsEvidence,
 } from "@pickler/trading/evaluation";
@@ -115,6 +116,8 @@ test("frozen profile config rejects models and a changed catalog", () => {
     }),
   );
   assert.equal(calls, 0);
+  assert.ok(EVALUATION_PROTOCOLS[config.protocol].commands.includes("audit-export"));
+  assert.deepEqual(EVALUATION_PROTOCOLS[config.protocol].paidCommands, []);
 });
 test("hourly parity, fast independence, strict 10bps and 5m equality", () => {
   const e = evidence(),
@@ -508,5 +511,99 @@ test("public-only host rejects paid opt-in before reading configuration or crede
       new AbortController().signal,
     ),
     /paid calls are forbidden/,
+  );
+});
+
+test("resource cleanup continues after reader and diagnostic failures", async () => {
+  const { closeProfileResources } = await import("../src/perps-study/profiles-resources.js");
+  const calls: string[] = [];
+  const failures = await closeProfileResources([
+    () => {
+      calls.push("awake");
+    },
+    async () => {
+      calls.push("reader");
+      throw new Error("fixture reader failure");
+    },
+    async () => {
+      calls.push("diagnostics");
+      throw new Error("fixture file failure");
+    },
+    async () => {
+      calls.push("postgres");
+    },
+  ]);
+  assert.deepEqual(calls, ["awake", "reader", "diagnostics", "postgres"]);
+  assert.deepEqual(failures, [1, 2]);
+});
+
+test("read-only reporting preserves completion, historical data and final exits outside admission slots", async (t) => {
+  const { mkdtemp, writeFile, readFile, rm } = await import("node:fs/promises");
+  const { tmpdir } = await import("node:os");
+  const { join } = await import("node:path");
+  const { runSmaProfiles } = await import("../src/perps-study/profiles-host.js");
+  const { runPerpsAudit } = await import("../src/perps-study/audit.js");
+  const db = await createTestStore(t, () => at);
+  const study = new PostgresPerpsStudyStore(db.pool, () => at);
+  const c = { ...config, sessionId: "finished-report" };
+  await study.initialize(c, {
+    acquisitionPolicy: "rest-universe-20s-v1",
+    commit: "frozen-fixture",
+  });
+  const lease = await study.claim(c);
+  await study.event(c, lease, "closing-fixture", "profile-execution", {
+    variant: "hourly-legacy",
+    slot: 72,
+    symbol: "BTC",
+    action: "close",
+    reason: "SESSION_END",
+    status: "filled",
+    before: { reasons: [] },
+    after: {},
+    openSymbolsAfter: [],
+  });
+  await study.event(c, lease, "observe-fixture:missed", "observation-missed", {
+    code: "OBSERVATION_WINDOW_MISSED",
+  });
+  await study.complete(c, lease);
+  await study.release(c, lease);
+  const before = await exportPerpsAudit(db.pool, c);
+  const directory = await mkdtemp(join(tmpdir(), "profile-report-"));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const configPath = join(directory, "study.json");
+  const envFile = join(directory, "database.env");
+  await writeFile(configPath, JSON.stringify(c));
+  await writeFile(envFile, `DATABASE_URL=${db.pool.options.connectionString}\n`, { mode: 0o600 });
+  t.mock.method(globalThis, "fetch", async () => {
+    throw new Error("Network is forbidden");
+  });
+
+  await runSmaProfiles(
+    { command: "report", configPath, envFile, output: directory },
+    new AbortController().signal,
+  );
+
+  const rendered = JSON.parse(await readFile(join(directory, "report.json"), "utf8"));
+  assert.equal(rendered.processState, "finished");
+  assert.equal(rendered.metadata.commit, "frozen-fixture");
+  assert.equal(typeof rendered.reportCommit, "string");
+  assert.deepEqual(await exportPerpsAudit(db.pool, c), before);
+  const executions = JSON.parse(await readFile(join(directory, "executions.json"), "utf8"));
+  assert.equal(executions[0].slot, 72);
+  assert.equal(executions[0].reason, "SESSION_END");
+  assert.ok((await readFile(join(directory, "executions.csv"), "utf8")).includes('"SESSION_END"'));
+  const html = await readFile(join(directory, "report.html"), "utf8");
+  assert.ok(html.includes("All executions, including final exits"));
+  assert.ok(html.includes("OBSERVATION_WINDOW_MISSED"));
+  const exportDirectory = join(directory, "export");
+  await runPerpsAudit({ command: "audit-export", configPath, envFile, output: exportDirectory });
+  const state = join(exportDirectory, "audit-export.json");
+  const packet = JSON.parse(await readFile(state, "utf8"));
+  assert.equal(packet.payload.study.record.config.version, 6);
+  assert.deepEqual(packet.payload.study, before.study);
+  assert.deepEqual(await exportPerpsAudit(db.pool, c), before);
+  await assert.rejects(
+    runPerpsAudit({ command: "audit", state, output: join(directory, "unsupported") }),
+    /model decision analyzer supports only/,
   );
 });
