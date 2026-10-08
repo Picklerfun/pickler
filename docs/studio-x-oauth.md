@@ -66,8 +66,7 @@ agent HMAC do not qualify. The callback is the sole bearer exception and uses st
 OpenAPI is generated from mounted route metadata, with the relative server `/api`.
 Old `/x/challenge` and `/x/verify` operations, consumers and matching algorithms are removed.
 
-Posts are optional and are not needed to verify the connected account. Studio offers **View posts
-on X**, a plain external link that makes no X API request. The optional **Load 5 posts (paid)**
+Posts are optional and are not needed to verify the connected account. Studio links the connected profile name/photo/handle directly to X, without an X API request. The optional **Load 5 posts (paid)**
 action requests X's minimum page size, only when reads are explicitly enabled. There is no
 refresh button or pagination. The endpoint rejects cursor requests before transport and returns
 at most five `id`, `text`, `createdAt`, `url` values with `nextCursor: null`.
@@ -130,6 +129,7 @@ npm run build:shared
 node --import tsx --test \
   packages/core/test/studio-x-oauth.test.ts \
   packages/infrastructure/test/x-client.test.ts \
+  packages/infrastructure/test/x-profile-migration.test.ts \
   packages/infrastructure/test/controlled-worker.test.ts \
   packages/infrastructure/test/studio-go-public.test.ts \
   workers/api/test/studio-x-route.test.ts \
@@ -195,3 +195,18 @@ merging these controls does not re-enable them.
 The minimum timeline page is documented in [X user posts](https://docs.x.com/x-api/users/get-posts).
 Reducing twenty resources to five lowers the maximum resources requested by 75%; no specific
 charge is promised because eligibility and billing are controlled by X.
+
+## Connected profile presentation
+
+Identity & voice places the X account first, showing its photo, name, handle and explicit connection
+state. The profile itself links to X; there is no separate View posts button. Consent copy remains
+read-only, and paid timeline previews stay explicit and separately gated.
+
+The existing `/2/users/me` verification requests `user.fields=name,profile_image_url`, documented in
+[X Get Users Me](https://docs.x.com/x-api/users/get-my-user). No extra profile API call is added.
+Migration 0035 stores nullable decoration on the private OAuth grant, alongside the existing
+verified identity. Owner state reads reuse that snapshot without contacting X. Name/photo fields
+are optional: existing authorizations keep working and use an X icon until a later authorization
+supplies the photo. No automatic backfill, reconnection, profile polling or paid read is performed.
+Images load from allowlisted HTTPS X avatar CDN paths without tokens or referrer; failed images
+show the X mark. Controlled previews use a local image instead of contacting that CDN.
