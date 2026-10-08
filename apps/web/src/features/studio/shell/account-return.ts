@@ -1,10 +1,11 @@
+import { studioAgentRoute, agentSectionHref } from "../routing/routes";
 /** Local Studio navigation only; this value never grants workspace access. */
 export interface StudioReturnContext {
   agent?: string | undefined;
   section?: string | undefined;
 }
 
-const RETURN_PARAMETERS = ["stage", "agent", "section", "resume"] as const;
+const RETURN_PARAMETERS = ["stage", "agent", "section", "resume", "check"] as const;
 
 /** Attach the current workspace to a profile link without persisting private configuration. */
 export function profileFromStudio(
@@ -12,7 +13,14 @@ export function profileFromStudio(
   search: string,
   context: StudioReturnContext = {},
 ): string {
-  const path = pathname === "/" ? "/" : "/studio";
+  const routed = studioAgentRoute(pathname);
+  const path = routed
+    ? agentSectionHref(routed.agentId, routed.section)
+    : pathname === "/studio/new"
+      ? pathname
+      : pathname === "/"
+        ? "/"
+        : "/studio";
   const source = new URLSearchParams(search);
   const params = new URLSearchParams();
   for (const key of RETURN_PARAMETERS) {
@@ -21,10 +29,10 @@ export function profileFromStudio(
       params.set(key, value);
     }
   }
-  if (context.agent) {
+  if (!routed && context.agent) {
     params.set("agent", context.agent);
   }
-  if (context.section) {
+  if (!routed && context.section) {
     params.set("resume", context.section);
   }
   const suffix = params.size ? `?${params}` : "";
@@ -40,10 +48,14 @@ export function studioReturnHref(asked: string | undefined, fallback: string): s
   try {
     const url = new URL(asked, "https://studio.invalid");
     if (
+      /[\\\u0000-\u001f\u007f]/.test(asked) ||
+      /(?:^|\/)(?:\.|%2e){1,2}(?:\/|$)/i.test(asked.split("?")[0]!) ||
       !asked.startsWith("/") ||
       asked.startsWith("//") ||
       url.origin !== "https://studio.invalid" ||
-      url.pathname !== fallback ||
+      (url.pathname !== fallback &&
+        url.pathname !== "/studio/new" &&
+        !studioAgentRoute(url.pathname)) ||
       url.hash
     ) {
       return fallback;
@@ -55,7 +67,7 @@ export function studioReturnHref(asked: string | undefined, fallback: string): s
         params.set(key, value);
       }
     }
-    return `${fallback}${params.size ? `?${params}` : ""}`;
+    return `${url.pathname}${params.size ? `?${params}` : ""}`;
   } catch {
     return fallback;
   }
