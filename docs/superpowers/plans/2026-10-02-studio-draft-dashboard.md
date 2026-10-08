@@ -1,15 +1,14 @@
 # Studio draft dashboard, Connect X and Go Public — Implementation Plan
 
-> Historical X verification and posting design: the post-code routes, bearer-token setup,
-> optional posting and Skip X described below are superseded by [Studio X OAuth](../../studio-x-oauth.md).
-> Use that canonical guide for the current read-only routes, callback, dedicated runtime secrets
-> and disabled-by-default resource policy. These older sections are retained as historical evidence.
+> This is an archive of the non-X dashboard implementation. Current X code, configuration and
+> tests are defined by [Studio X OAuth](../../studio-x-oauth.md); obsolete connection instructions
+> have been removed. Do not replay this archive as a migration or deployment plan.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Implement `docs/specs/studio-draft-dashboard-v1.md`: the created (draft) agent's studio from the canvas `Pickler Studio Draft.dc.html`, Connect X by verification post, and Go Public.
+**Goal:** Implement `docs/specs/studio-draft-dashboard-v1.md`: the created (draft) agent's studio from the canvas `Pickler Studio Draft.dc.html`, read-only Connect X OAuth, and Go Public.
 
-**Architecture:** Core holds the pure rules (`reviseDraft`, X verification matching, publish blockers). Infrastructure adds migration `0024_go_public`, the X/publish/identity/activity/ledger stores and an X API client. The API adds the routes of spec §4. The web adds `apps/web/src/features/studio/draft/`, a self-contained studio for draft agents (shell + sections), wired in `studio.tsx` when the selected agent is a draft; live agents are untouched.
+**Architecture:** Core holds the pure rules (`reviseDraft`, publish blockers). Infrastructure adds migration `0024_go_public`, the X/publish/identity/activity/ledger stores and an X API client. The API adds the routes of spec §4. The web adds `apps/web/src/features/studio/draft/`, a self-contained studio for draft agents (shell + sections), wired in `studio.tsx` when the selected agent is a draft; live agents are untouched.
 
 **Tech Stack:** TypeScript, Hono (workers/api), Drizzle + pg (packages/infrastructure), zod (packages/api-schema), Next 16 / React 19 with CSS modules (apps/web), node:test via `node --import tsx --test`.
 
@@ -26,10 +25,9 @@
 **Core (`packages/core/src/features/studio/`)**
 
 - Create `revise.ts`: `reviseDraft(config, patch)` — the draft config edit rules (spec D10).
-- Create `x-verify.ts`: handle normalization, challenge codes, verification text, post matching.
 - Create `publish.ts`: `publishBlockers(...)`, `PublishBlockedError`, `MIN_PUBLISH_AUSD_MICRO`.
 - Modify `packages/core/src/index.ts`: export the above.
-- Tests: `packages/core/test/studio-revise.test.ts`, `studio-x-verify.test.ts`, `studio-publish.test.ts`.
+- Tests: `packages/core/test/studio-revise.test.ts`, ``studio-publish.test.ts`.
 
 **Infrastructure (`packages/infrastructure/`)**
 
@@ -37,15 +35,13 @@
 - Modify `src/persistence/product/agents.ts`: `visibility`, `publishedAt`, `xChallenges`, `xAccounts`.
 - Modify `src/persistence/agent-directory.ts`: the three `status <> 'draft'` filters → `visibility = 'public'`.
 - Modify `src/studio/directory.ts`: list returns `visibility`, `publishedAt`, `xHandle`; add `updateIdentity`, `activity`, `publish`.
-- Create `src/studio/x-store.ts`: `PostgresXStore`.
 - Create `src/studio/ledger.ts`: `listTransfers(userId)`.
-- Create `src/x/x-client.ts`: `createXClient({ bearerToken, fetch })`, `XUnavailableError`.
 - Tests: `test/studio-go-public.test.ts` (Postgres), `test/x-client.test.ts`.
 
 **API (`workers/api/`, `packages/api-schema/src/studio.ts`)**
 
-- Schemas: `setupUpdateSchema`, `identityUpdateSchema`, `xChallengeSchema`, `xStateResponseSchema`, `publishResponseSchema`, `activityResponseSchema`, `ledgerResponseSchema`; studio agent DTO gains `visibility`, `publishedAt`, `xHandle`.
-- Modify `src/routes/studio.ts` (setup, identity, activity, x, publish), `src/routes/studio-wallets.ts` (ledger), `src/container.ts`, `src/env.ts` (`X_BEARER_TOKEN?`), `.dev.vars.example`.
+- Schemas: `setupUpdateSchema`, `identityUpdateSchema`, `xStateResponseSchema`, `publishResponseSchema`, `activityResponseSchema`, `ledgerResponseSchema`; studio agent DTO gains `visibility`, `publishedAt`, `xHandle`.
+- Modify `src/routes/studio.ts` (setup, identity, activity, x, publish), `src/routes/studio-wallets.ts` (ledger), `src/container.ts`, `src/env.ts`, `.dev.vars.example`.
 - Tests: `test/studio-draft-routes.test.ts`, `test/studio-x-route.test.ts`.
 
 **Web (`apps/web/src/features/studio/draft/`)**
@@ -61,9 +57,9 @@
 
 ---
 
-### Task 1: Core rules — reviseDraft, X verification, publish blockers
+### Task 1: Core rules — reviseDraft and publish blockers
 
-**Files:** create `packages/core/src/features/studio/{revise,x-verify,publish}.ts`; modify `packages/core/src/index.ts`; tests `packages/core/test/studio-{revise,x-verify,publish}.test.ts`.
+**Files:** create `packages/core/src/features/studio/{revise,publish}.ts`; modify `packages/core/src/index.ts`; tests `packages/core/test/studio-{revise,publish}.test.ts`.
 
 - [ ] **Step 1: Write the failing tests.**
 
@@ -114,69 +110,7 @@ test("an empty patch is the same config", () => {
 });
 ```
 
-`studio-x-verify.test.ts`:
-
-```ts
-test("handles: @ optional, 1-15 of [A-Za-z0-9_]", () => {
-  assert.equal(normalizeXHandle("@HalftimeBot"), "HalftimeBot");
-  assert.equal(normalizeXHandle(" halftime_bot "), "halftime_bot");
-  assert.equal(normalizeXHandle("half time"), null);
-  assert.equal(normalizeXHandle("a".repeat(16)), null);
-  assert.equal(normalizeXHandle("@"), null);
-});
-test("a challenge code is pk- and 8 base32 characters, from the given random bytes", () => {
-  assert.match(challengeCode(new Uint8Array([1, 2, 3, 4, 5])), /^pk-[a-z2-7]{8}$/);
-});
-test("the line to post names the agent and the code", () => {
-  assert.equal(
-    verificationText("Halftime", "pk-7f3a2b9c"),
-    "Verifying Halftime on @pickler · pk-7f3a2b9c",
-  );
-});
-test("a post matches only from the user, after the challenge, with the code", () => {
-  const since = new Date("2026-10-02T10:00:00Z");
-  const post = {
-    id: "1",
-    authorId: "u1",
-    text: "Verifying Halftime on @pickler · pk-abcdefgh",
-    createdAt: new Date("2026-10-02T10:05:00Z"),
-  };
-  assert.equal(findVerificationPost([post], { userId: "u1", code: "pk-abcdefgh", since })?.id, "1");
-  assert.equal(
-    findVerificationPost([{ ...post, authorId: "u2" }], {
-      userId: "u1",
-      code: "pk-abcdefgh",
-      since,
-    }),
-    null,
-  );
-  assert.equal(
-    findVerificationPost([{ ...post, createdAt: new Date("2026-10-02T09:59:00Z") }], {
-      userId: "u1",
-      code: "pk-abcdefgh",
-      since,
-    }),
-    null,
-  );
-  assert.equal(
-    findVerificationPost([{ ...post, text: "pk-abcdefgX" }], {
-      userId: "u1",
-      code: "pk-abcdefgh",
-      since,
-    }),
-    null,
-  );
-  // Case-insensitive on the code, as X may not change case but people retype it.
-  assert.equal(
-    findVerificationPost([{ ...post, text: "PK-ABCDEFGH" }], {
-      userId: "u1",
-      code: "pk-abcdefgh",
-      since,
-    })?.id,
-    "1",
-  );
-});
-```
+The current OAuth rules and regression suite are documented in [Studio X OAuth](../../studio-x-oauth.md).
 
 `studio-publish.test.ts`:
 
@@ -202,16 +136,15 @@ test("the minimum is the schedule's 10 AUSD", () => {
 });
 ```
 
-- [ ] **Step 2: Run them and see them fail** — `npm run build:shared >/dev/null; node --import tsx --test packages/core/test/studio-revise.test.ts packages/core/test/studio-x-verify.test.ts packages/core/test/studio-publish.test.ts` → FAIL (not exported).
+- [ ] **Step 2: Run them and see them fail** — `npm run build:shared >/dev/null; node --import tsx --test packages/core/test/studio-revise.test.ts packages/core/test/studio-publish.test.ts` → FAIL (not exported).
 
 - [ ] **Step 3: Implement.**
   - `revise.ts`: `export interface DraftPatch { brief?: { thesis: string; entersWhen: readonly string[]; exitsWhen: readonly string[]; never: readonly string[] }; sources?: { web: { mode: WebMode; sites: readonly string[] } | null }; caps?: { perTradeAusd: number; perDayAusd: number; maxLeverage: number }; voice?: VoiceKey }`. `export function reviseDraft(config: AgentConfig, patch: DraftPatch): AgentConfig` — structuredClone the config; brief via `normalizeBrief({ ...patch.brief, reads: [] })` + `assertBrief`; caps via `assertSpendLimits` + `assertMaxLeverage` into `spend`/`maxLeverage`; sources: set `sources.web`, and recompute `tools` (`PERP_TOOLS` + web tools when on) and `plugins.enabled` (`perpl`, `perps-paper`, `exa` when on) exactly as `prepareDraft` does — extract the shared piece from `create.ts` into a helper both call, do not duplicate it; voice must be in `VOICE_KEYS` else `PilotError("INVALID_INPUT", "Unknown voice")`; finish with `assertConfig`. Site validation: reuse whatever `prepareDraft`/the schema uses for sites (max 20, host format).
-  - `x-verify.ts`: `normalizeXHandle(raw): string | null`; `challengeCode(bytes: Uint8Array): string` (RFC 4648 base32 lowercase of the bytes, first 8 chars, prefixed `pk-`; caller passes `crypto.getRandomValues(new Uint8Array(5))`); `verificationText(name, code)`; `interface XPost { id; authorId; text; createdAt: Date }`; `findVerificationPost(posts, { userId, code, since }): XPost | null` — author equal, `createdAt >= since`, text contains code case-insensitively as a whole token (`/(^|[^a-z0-9-])pk-xxxxxxxx($|[^a-z0-9])/i` built from the code). Export `X_CHALLENGE_TTL_MS = 24h`, `X_CHECK_INTERVAL_MS = 10_000`.
   - `publish.ts`: `export type PublishBlocker = "KILLED" | "WALLET" | "FUNDS"`; `MIN_PUBLISH_AUSD_MICRO = 10_000_000n`; `publishBlockers({ killed, walletLinked, ausdMicro: bigint | null })` in the order KILLED, WALLET, FUNDS (FUNDS only when a wallet is linked and `ausdMicro < min`; `ausdMicro === null` with a wallet is the caller's 503, not a blocker — document it); `class PublishBlockedError extends Error { blockers }`.
   - Export all from `packages/core/src/index.ts`.
 
 - [ ] **Step 4: Run the tests** → PASS. Run `node --import tsx --test packages/core/test/*.test.ts` → all pass.
-- [ ] **Step 5: Commit** — `git commit -m "Core: reviseDraft, X verification and publish blockers" -- <paths>`.
+- [ ] **Step 5: Commit** — `git commit -m "Core: reviseDraft and publish blockers" -- <paths>`.
 
 ---
 
@@ -235,24 +168,18 @@ test("the minimum is the schedule's 10 AUSD", () => {
 **Files:** create `packages/infrastructure/src/studio/x-store.ts`, `src/studio/ledger.ts`; modify `src/studio/directory.ts`, core `access.ts` (interface additions), `packages/infrastructure/src/index.ts`; extend `test/studio-go-public.test.ts`.
 
 - [ ] **Step 1: Failing Postgres tests:**
-  - `PostgresXStore`: `saveChallenge(agentId, { handle, code, expiresAt })` replaces any previous; `challenge(agentId)` returns it or null; `markChecked(agentId, at)` and `lastChecked`; `connect(agentId, { xUserId, handle, postId, at })` writes `x_accounts` and sets `agent_profiles.x_handle`, deletes the challenge; connecting a second agent with the same `xUserId` or same handle (any case) throws `XHandleTakenError`; `account(agentId)`; `disconnect(agentId)` clears both; `handleTaken(handle, exceptAgentId)` true when another agent has it in `x_accounts` or `agent_profiles.x_handle`.
   - `directory.publish(access, productId, check)`: in one transaction locks the agent row, reads killed/linked wallet, calls `check({ killed, walletAddress })` (async, returns blockers or throws), and when `[]` sets `visibility='public'`, `published_at=now()`, `status='active'` if it was `draft`; returns `{ visibility, publishedAt }`; already public → returns current without calling check.
   - `directory.updateIdentity(access, productId, { name?, accent?, avatarPattern? })` updates `agents.name` and profile columns (names 1–40, pattern 0–5 enforced by DB checks; map violations to `PilotError("INVALID_INPUT")`).
   - `directory.activity(access, productId)`: events `created` (agent `created_at`, text "{name} created"), `wallet` (linked agent wallet's creation time, text "Agent wallet created · 0x91be…4a07" with the short address), and one `transfer` per `wallets.transfers` row touching that wallet ("To {name}'s wallet · 10 AUSD" / "Back to master · 1 AUSD"), newest first, ≤ 50.
   - `listTransfers(pool, userId)`: the user's transfers, newest first, ≤ 100, with `direction` (`to_agent` when `to` is an agent wallet), token (`AUSD`/`MON`), amount as a decimal string in token units, agent name (null if unlinked), tx hash, `at`.
-- [ ] **Step 2: Run** → FAIL. **Step 3: Implement** following `custody-store.ts` / `directory.ts` patterns (raw SQL through the pool, transactions via the existing helper). **Step 4: Run** → PASS. **Step 5: Commit** — "Stores: X verification, publish, identity, activity and the transfer ledger".
+- [ ] **Step 2: Run** → FAIL. **Step 3: Implement** following `custody-store.ts` / `directory.ts` patterns (raw SQL through the pool, transactions via the existing helper). **Step 4: Run** → PASS. **Step 5: Commit** — "Stores: publish, identity, activity and the transfer ledger".
 
 ---
 
-### Task 4: X API client
+### Task 4: X OAuth
 
-**Files:** create `packages/infrastructure/src/x/x-client.ts`, export from index; test `packages/infrastructure/test/x-client.test.ts`.
-
-- [ ] **Step 1: Failing tests with a fake `fetch`:**
-  - no bearer token → `createXClient({ bearerToken: undefined })` returns a client whose methods throw `XUnavailableError`.
-  - `userByHandle("halftimebot")` calls `GET https://api.x.com/2/users/by/username/halftimebot` with `Authorization: Bearer <token>`; 200 `{ data: { id: "42", username: "HalftimeBot" } }` → `{ id: "42", handle: "HalftimeBot" }`; 200 with `errors` and no data (not found) → `null`; 429/5xx/network error → `XUnavailableError` (message never includes X's body).
-  - `recentPosts("42", since)` calls `GET /2/users/42/tweets?max_results=20&start_time=<since ISO>&tweet.fields=created_at,author_id`; maps to `XPost[]`; 200 with no `data` → `[]`.
-- [ ] **Step 2–4:** fail, implement (zod-parse X's responses; 5 s `AbortSignal.timeout`), pass. **Step 5: Commit** — "X API client: user lookup and recent posts, unavailable without a token".
+Connection implementation and tests are maintained in [Studio X OAuth](../../studio-x-oauth.md).
+No separate post-verification client or algorithm is needed.
 
 ---
 
@@ -265,15 +192,11 @@ Routes exactly as spec §4. Details:
 - `PUT /agents/:id/setup`: `access.authorize(principal, true)`; scope; read the agent record; not a draft → 409 `NOT_A_DRAFT`; `reviseDraft(record.config, body)`; `repo.updateConfig(scope, body.expectedVersion, next)` (its stale-version error already maps to 409 — check its code and reuse; spec name `STALE_CONFIG` only if that is the existing code, otherwise keep the existing code and note it in the commit); if `voice` changed also write the profile's voice name (`VOICES` name) via `updateIdentity`-like store call; respond with the studio agent (reuse `studioAgent(...)`).
 - `PUT /agents/:id/identity`: name/avatar → `directory.updateIdentity`; respond the studio agent.
 - `GET /agents/:id/activity` → `{ events }` (ISO `at`).
-- `GET /agents/:id/x` → `{ account, challenge, available }` (`available` = client has a token).
-- `POST /agents/:id/x/challenge`: normalize handle (400 `INVALID_X_HANDLE`); account exists → 409 `X_ALREADY_CONNECTED`; `handleTaken` → 409 `X_HANDLE_TAKEN`; X unavailable → 503 `X_UNAVAILABLE` (check availability before saving); save with `challengeCode(crypto.getRandomValues(new Uint8Array(5)))`, `expiresAt = now + X_CHALLENGE_TTL_MS`; respond `{ handle, text: verificationText(agentName, code), expiresAt }`.
-- `POST /agents/:id/x/verify`: no challenge → 404; expired → 409 `CHALLENGE_EXPIRED`; `lastChecked` within 10 s → 429 `TOO_MANY_CHECKS`; mark checked; `userByHandle` null → `{ verified: false, reason: "NOT_FOUND" }`; `recentPosts(user.id, challenge.createdAt)`; `findVerificationPost`; found → `connect` (taken → 409 `X_HANDLE_TAKEN`) → `{ verified: true, handle: user.handle }`; else `{ verified: false, reason: "NOT_FOUND" }`; `XUnavailableError` → 503.
-- `DELETE /agents/:id/x`: public agent → 409 `X_ON_PUBLIC_AGENT`; else disconnect.
+- X routes, callback and owner authorization follow [Studio X OAuth](../../studio-x-oauth.md).
 - `POST /agents/:id/publish`: `directory.publish(access, id, async ({ killed, walletAddress }) => { ausd = walletAddress ? (await services.balances.read(walletAddress)).ausdMicro : null; if walletAddress && ausd == null → throw BalancesUnreadableError; return publishBlockers({ killed, walletLinked: !!walletAddress, ausdMicro: ausd }) })`; blockers → 409 `PUBLISH_BLOCKED` `{ detail: { blockers } }`; unreadable → 503 `BALANCES_UNAVAILABLE`. Use the balance reader the funding check uses (see `readFunding` in core `create.ts` and `fundedWallet` in `studio.ts`); the read happens inside the check callback but must not hold the DB transaction across the RPC — so `directory.publish` must read killed/wallet, release, run the check, then re-lock and re-read in a short second transaction, publishing only if killed/wallet are unchanged (same pattern the drafts route uses for "balances read just before the transaction"). Document it.
 - `GET /wallets/ledger` in `studio-wallets.ts`.
 - Studio agent DTO (`studioAgentSchema`): add `visibility: z.enum(["private","public"])`, `publishedAt: z.string().datetime().nullable()`, `xHandle: z.string().nullable()`; fill from `directory.list`. Update every fixture constructing a studio agent in `apps/web` (`home/fixture.ts`, `preview.ts`, `new-agent/fixture.ts`, tests) so typecheck passes.
-- `env.ts`: `X_BEARER_TOKEN?: string`; container builds `createXClient({ bearerToken: env.X_BEARER_TOKEN })` and the stores; `.dev.vars.example` documents `X_BEARER_TOKEN=` (empty → Connect X says it isn't open yet).
-- Tests cover: each error code above; publish happy path flips the DTO's `visibility`; setup on a non-draft → 409; ledger only the caller's rows; x verify happy path with a fake client; 503 with no token.
+- Tests cover: each error code above; publish happy path flips the DTO's `visibility`; setup on a non-draft → 409; ledger only the caller's rows; controlled OAuth consent and unavailable configuration.
 - [ ] Steps: failing tests → implement → `npm run build:shared && node --import tsx --test workers/api/test/*.test.ts` PASS → typecheck → commit "API: draft setup, identity, activity, ledger, Connect X and publish".
 
 ---
@@ -282,12 +205,12 @@ Routes exactly as spec §4. Details:
 
 **Files:** modify `apps/web/src/features/studio/api.ts`; create `apps/web/src/features/studio/draft/model.ts`; test `apps/web/test/studio-draft-model.test.ts`.
 
-- `api.ts`: `saveDraftSetup(agentId, body)`, `saveIdentity(agentId, body)`, `agentActivity(agentId)`, `xState(agentId)`, `xChallenge(agentId, handle)`, `xVerify(agentId)`, `xDisconnect(agentId)`, `publishAgent(agentId)`, `walletLedger()`; types from api-schema. Follow the existing `studioApi` helper and error mapping (`errorCode`).
+- `api.ts`: `saveDraftSetup(agentId, body)`, `saveIdentity(agentId, body)`, `agentActivity(agentId)`, `xState(agentId)`, `authorizeX(agentId, returnTo)`, `xDisconnect(agentId)`, `publishAgent(agentId)`, `walletLedger()`; types from api-schema. Follow the existing `studioApi` helper and error mapping (`errorCode`).
 - `model.ts` pure functions (no React), each with tests:
   - `DRAFT_SECTIONS` and `draftRail(section)`: the four groups of spec D2 with labels and icons (`grid, chat, target, activity, file, sliders, wallet, user, globe, coin`), `locked` true for `activity` and `profile`, `on` for the current one. `sectionLabel(key)` (canvas `SECTION_LABELS`).
   - `headerTiles(wallets | null)`: `[{ label: "MASTER · AUSD", value }, { label: "IN AGENT WALLETS · AUSD", value }, { "IN YOUR POSITIONS · AUSD", "Soon" }, { "OPEN P&L · AUSD", "Soon" }, { "AI CREDITS", "Soon" }]`; values formatted with the existing `formatUnits` from `new-agent/model.ts`; `"—"` while wallets are null.
-  - `goPublicView({ xHandle, skipped, publishing, error })`: `{ title: "GO PUBLIC", done: 0|1, of: 1, task: { title: "Connect X", meta: "WHERE IT POSTS" | "@HANDLE", done }, canPublish, label: "Go public" | "Connect X to go public" | "Going public…", skipLabel: "SKIP X FOR NOW · IT POSTS ON PICKLER ONLY" | "POSTS ON PICKLER ONLY · UNDO" | "", xNote: " and X" | "" }`.
-  - `xView(state)`: button "Verify" / "Checking…" / "Check again"; miss prompt; unavailable line (spec D5); taken line.
+  - Go Public requires the current OAuth state; use the shared connection panel and publication blockers.
+  - Connect X states and explicit private reads follow the canonical OAuth UI.
   - `publishBlockedCopy(blockers)` (spec §3.1 lines).
   - `capsStepper(current, saved)`: steps and bounds from core's `SPEND_BOUNDS`/`LEVERAGE_BOUNDS` mirrors already in the web (`new-agent/model.ts` `STARTER_CAPS` etc.; if bounds are not mirrored yet, mirror them in `new-agent/model.ts` with a pin test against core like the existing mirrors), `dirty`, tag "SAVED"/"UNSAVED CHANGES".
   - `briefTags(brief, saved)`: per canvas `sections` rule (EMPTY / n LINE(S) · EDITED|DEFAULT; thesis without the count).
@@ -319,11 +242,11 @@ Routes exactly as spec §4. Details:
 **Files:** create `draft/overview.tsx`, `draft/go-public.tsx`, `draft/x-connect.tsx`; CSS in `draft.module.css`.
 
 - Canvas markup 339–441 (Go public card 343–382, wallet + schedule 384–416, trades + activity 418–439). Copy from the canvas, with `goPublicView`/`xView`.
-- `x-connect.tsx` is shared with Identity: input with the X mark, Verify/Check again, miss block (line to post with a Copy chip, "POST THIS FROM @HANDLE · THEN CHECK AGAIN"), unavailable/taken/error lines (`role="alert"` for errors, `role="status"` for the miss).
+- Reuse the shared OAuth connection panel in Overview and Identity; no manual handle proof or post matching.
 - Go public button: `publishAgent`; on 409 shows `publishBlockedCopy` (FUNDS adds "Fund from master" opening the Wallets modal on the agent's wallet); on success shows `{NAME} IS LIVE` and calls `onRefreshAgent` (the studio then shows the live agent).
 - Wallet card: address short + Copy, `CAPS {perTrade} / {perDay} / {lev}×` from `agent.spend`/`config.maxLeverage`, AUSD (`agent.wallet.balanceAusd`) and MON (from `wallets`), "Fund from master" (Wallets modal on this wallet, toward the agent), "Limits" → section. No wallet → spec §3.1 last paragraph's copy. Schedule row: "Run on its own · every {interval}h", "Unlocks once it's public.", a disabled switch.
 - Trades: empty state + "Open Console". Activity: `events` with dots and times (`hh:mm`, "TODAY"/date).
-- [ ] Verify typecheck, lint, design:source; staged `?stage=draft`, `draft-x-open`, `draft-x-miss`, `draft-x-ok`, `draft-x-skipped` render. Commit "Web: the draft Overview, Go Public and Connect X".
+- [ ] Verify typecheck, lint, design:source; staged `?stage=draft`, `draft-x-open`, `draft-x-ok` render. Commit "Web: the draft Overview, Go Public and Connect X".
 
 ---
 
