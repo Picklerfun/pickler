@@ -1,7 +1,8 @@
 import * as dto from "@pickler/api-schema";
 import { operation as describeOperation } from "../openapi/operation";
 import type { TradingRepository } from "@pickler/trading/polymarket";
-import { XUnavailableError, type XClient } from "@pickler/infrastructure";
+import { XFailure, type XOAuthService } from "@pickler/core";
+import { studioXRoutes } from "./studio-x";
 import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { z } from "zod";
@@ -44,15 +45,9 @@ import {
   PublishBlockedError,
   XHandleTakenError,
   VOICES,
-  X_CHALLENGE_TTL_MS,
-  X_CHECK_INTERVAL_MS,
-  challengeCode,
-  findVerificationPost,
-  parseXHandle,
   publishBlockers,
   reviseSetup,
   setupChangeSummary,
-  verificationText,
   type createCustodyService,
   type Accent,
   type AgentWallet,
@@ -64,7 +59,6 @@ import {
   type ResearchRepository,
   type SetupPatch,
   type TransferLedgerEntry,
-  type XStore,
 } from "@pickler/core";
 import {
   studioOptionsSchema,
@@ -91,10 +85,6 @@ import {
   identityUpdateSchema,
   activityResponseSchema,
   versionsResponseSchema,
-  xChallengeRequestSchema,
-  xChallengeSchema,
-  xStateResponseSchema,
-  xVerifyResponseSchema,
   publishResponseSchema,
   type DraftCreateDto,
   type StudioAgentDto,
@@ -168,7 +158,7 @@ export interface StudioServices {
    * is the caller's (`agentScope`) first. Absent, `GET /x` answers `available: false` and every
    * other X route 503 X_UNAVAILABLE.
    */
-  x?: { store: XStore; client: XClient };
+  x?: XOAuthService;
   /** The Master wallet's ledger (D17). Absent, `GET /wallets/ledger` answers 503. */
   transfers?: { list(userId: string): Promise<TransferLedgerEntry[]> };
   /**
@@ -193,15 +183,14 @@ const intervalUpdateSchema = z
 type FundedWallet = AgentWallet & { balanceAusd: number };
 
 function pilotStatus(code: string): 400 | 404 | 409 | 429 | 503 {
-  if (code === "NOT_FOUND" || code === "WALLET_NOT_FOUND" || code === "CHALLENGE_NOT_FOUND") {
+  if (code === "NOT_FOUND" || code === "WALLET_NOT_FOUND") {
     return 404;
   }
-  if (code === "QUOTA" || code === "TOO_MANY_CHECKS" || code === "MANUAL_LIMIT") {
+  if (code === "QUOTA" || code === "MANUAL_LIMIT") {
     return 429;
   }
   if (
     code === "INVALID_INPUT" ||
-    code === "INVALID_X_HANDLE" ||
     code === "RULES_BRIEF_UNSUPPORTED" ||
     code === "STRATEGY_UNAVAILABLE"
   ) {
@@ -352,9 +341,14 @@ export function studioRoutes(services: StudioServices) {
     if (error instanceof XHandleTakenError) {
       return c.json({ error: "X_HANDLE_TAKEN", message: error.message }, 409);
     }
-    if (error instanceof XUnavailableError) {
+    if (error instanceof XFailure) {
+      if (error.retryAfter !== null) {
+        c.header("Retry-After", String(error.retryAfter));
+      }
+      const status =
+        error.code === "X_RATE_LIMITED" ? 429 : error.code === "X_RECONNECT_REQUIRED" ? 409 : 503;
       // Never X's words: its body can echo the request, and the owner can do nothing with it.
-      return c.json({ error: "X_UNAVAILABLE", message: "X is not available right now" }, 503);
+      return c.json({ error: error.code, message: "X is not available right now" }, status);
     }
     if (error instanceof PreviewRateLimited) {
       return c.json({ error: error.code, message: error.message, retryAt: error.retryAt }, 429);
@@ -817,17 +811,6 @@ export function studioRoutes(services: StudioServices) {
     return studioAgent(scope, wallet, another, identity);
   }
 
-  /** The caller's agent as `directory.list` has it; NOT_FOUND for anyone else's. */
-  async function ownAgent(current: StudioAccess, productId: string) {
-    const scope = await services.directory.agentScope(current, productId);
-    const listed = await services.directory.list(current);
-    const agent = listed.find((candidate) => candidate.id === productId);
-    if (!agent) {
-      throw new PilotError("NOT_FOUND", "Agent not found");
-    }
-    return { ...agent, scope };
-  }
-
   api.get(
     "/agents/:id",
     describeOperation("studioAgent", {
@@ -961,184 +944,7 @@ export function studioRoutes(services: StudioServices) {
     },
   );
 
-  /** Connect X's store and client, or 503 X_UNAVAILABLE where they are not composed. */
-  function connectX() {
-    if (!services.x) {
-      throw new PilotError("X_UNAVAILABLE", "X verification is not composed here");
-    }
-    return services.x;
-  }
-
-  function challengeDto(
-    name: string,
-    challenge: { handle: string; code: string; expiresAt: Date },
-  ) {
-    return xChallengeSchema.parse({
-      handle: challenge.handle,
-      text: verificationText(name, challenge.code),
-      expiresAt: challenge.expiresAt.toISOString(),
-    });
-  }
-
-  // Connect X by verification post (D4). `available` is false until Pickler's X app has a token
-  // (D5), or where X is not composed at all (no state either, then); a lapsed challenge is not
-  // shown, so the card starts over. Owner-only: it answers the live challenge code.
-  api.get(
-    "/agents/:id/x",
-    describeOperation("studioX", {
-      security: "user",
-      errors: dto.studioErrorSchema,
-      errorStatuses: [400, 401, 403, 404, 409, 429, 500, 502, 503],
-      response: dto.xStateResponseSchema,
-    }),
-    async (c) => {
-      const current = await access.authorize(c.get("principal"), true);
-      const productId = c.req.param("id");
-      const agent = await ownAgent(current, productId);
-      if (!services.x) {
-        return c.json(
-          xStateResponseSchema.parse({ account: null, challenge: null, available: false }),
-        );
-      }
-      const { store, client } = services.x;
-      const [account, challenge] = await Promise.all([
-        store.account(productId),
-        store.challenge(productId),
-      ]);
-      const live = challenge && challenge.expiresAt.getTime() > Date.now() ? challenge : null;
-      return c.json(
-        xStateResponseSchema.parse({
-          account: account && {
-            handle: account.handle,
-            verifiedAt: account.verifiedAt.toISOString(),
-          },
-          challenge: live && challengeDto(agent.name, live),
-          available: client.available,
-        }),
-      );
-    },
-  );
-  // A new challenge replaces the old. X's availability is checked before anything is saved, so
-  // no challenge is issued that could never be checked.
-  api.post(
-    "/agents/:id/x/challenge",
-    describeOperation("studioXChallenge", {
-      security: "user",
-      errors: dto.studioErrorSchema,
-      errorStatuses: [400, 401, 403, 404, 409, 429, 500, 502, 503],
-      response: dto.xChallengeSchema,
-      body: dto.xChallengeRequestSchema,
-    }),
-    async (c) => {
-      const current = await access.authorize(c.get("principal"), true);
-      const productId = c.req.param("id");
-      const agent = await ownAgent(current, productId);
-      const { store, client } = connectX();
-      const body = xChallengeRequestSchema.parse(await c.req.json());
-      const handle = parseXHandle(body.handle);
-      if (!handle) {
-        throw new PilotError("INVALID_X_HANDLE", "1 to 15 letters, digits or _");
-      }
-      if (await store.account(productId)) {
-        throw new PilotError("X_ALREADY_CONNECTED", "This agent already has an X account");
-      }
-      if (await store.handleTaken(handle, productId)) {
-        throw new XHandleTakenError();
-      }
-      if (!client.available) {
-        throw new PilotError("X_UNAVAILABLE", "X verification is not open yet");
-      }
-      // At most one new challenge per 10 s, and the check clock carries over, so alternating
-      // challenge and verify cannot spend more X reads than verify alone (spec §8).
-      const saved = await store.saveChallenge(
-        productId,
-        {
-          handle,
-          code: challengeCode(crypto.getRandomValues(new Uint8Array(5))),
-          expiresAt: new Date(Date.now() + X_CHALLENGE_TTL_MS),
-        },
-        X_CHECK_INTERVAL_MS,
-      );
-      if (!saved) {
-        throw new PilotError("TOO_MANY_CHECKS", "Wait a few seconds before starting again");
-      }
-      return c.json(challengeDto(agent.name, saved));
-    },
-  );
-  // "Check again": one read of X per challenge per 10 s, claimed atomically before X is called,
-  // so concurrent checks cannot spend the app's X quota twice. Only a post by the looked-up user,
-  // made at or after the challenge, carrying the code, verifies (spec §8).
-  api.post(
-    "/agents/:id/x/verify",
-    describeOperation("studioXVerify", {
-      security: "user",
-      errors: dto.studioErrorSchema,
-      errorStatuses: [400, 401, 403, 404, 409, 429, 500, 502, 503],
-      response: dto.xVerifyResponseSchema,
-    }),
-    async (c) => {
-      const current = await access.authorize(c.get("principal"), true);
-      const productId = c.req.param("id");
-      await ownAgent(current, productId);
-      const { store, client } = connectX();
-      emptyBody(await c.req.text());
-      const challenge = await store.challenge(productId);
-      if (!challenge) {
-        throw new PilotError("CHALLENGE_NOT_FOUND", "Start with your handle");
-      }
-      const now = new Date();
-      if (challenge.expiresAt.getTime() <= now.getTime()) {
-        throw new PilotError("CHALLENGE_EXPIRED", "This line has lapsed; start again");
-      }
-      if (!client.available) {
-        throw new PilotError("X_UNAVAILABLE", "X verification is not open yet");
-      }
-      if (!(await store.claimCheck(productId, now, X_CHECK_INTERVAL_MS))) {
-        throw new PilotError("TOO_MANY_CHECKS", "Wait a few seconds before checking again");
-      }
-
-      const notFound = xVerifyResponseSchema.parse({ verified: false, reason: "NOT_FOUND" });
-      const user = await client.userByHandle(challenge.handle);
-      if (!user) {
-        return c.json(notFound);
-      }
-      const posts = await client.recentPosts(user.id, challenge.createdAt);
-      const post = findVerificationPost(posts, {
-        userId: user.id,
-        code: challenge.code,
-        since: challenge.createdAt,
-      });
-      if (!post) {
-        return c.json(notFound);
-      }
-
-      await store.connect(productId, {
-        xUserId: user.id,
-        handle: user.handle,
-        postId: post.id,
-        at: new Date(),
-      });
-      return c.json(xVerifyResponseSchema.parse({ verified: true, handle: user.handle }));
-    },
-  );
-  // Allowed while private; a public agent keeps its handle (D6), refused by the store under the
-  // agent row's lock.
-  api.delete(
-    "/agents/:id/x",
-    describeOperation("studioXDisconnect", {
-      security: "user",
-      errors: dto.studioErrorSchema,
-      errorStatuses: [400, 401, 403, 404, 409, 429, 500, 502, 503],
-      response: z.object({ disconnected: z.literal(true) }),
-    }),
-    async (c) => {
-      const current = await access.authorize(c.get("principal"), true);
-      const productId = c.req.param("id");
-      await ownAgent(current, productId);
-      await connectX().store.disconnect(productId);
-      return c.json({ disconnected: true });
-    },
-  );
+  api.route("/", studioXRoutes(services));
   // Go Public (D8): the server re-checks. The directory reads killed and the linked wallet, runs
   // this check with no transaction open (it reads the chain), then publishes under the agent row's
   // lock only if neither changed. A balance the chain did not answer is 503, never FUNDS.
@@ -1153,6 +959,31 @@ export function studioRoutes(services: StudioServices) {
     async (c) => {
       const current = await access.authorize(c.get("principal"), true);
       emptyBody(await c.req.text());
+      const productId = c.req.param("id");
+      const existing = (await services.directory.list(current)).find(
+        (agent) => agent.id === productId,
+      );
+      if (existing?.visibility !== "public") {
+        if (!services.x) {
+          throw new PublishBlockedError(["X_CONNECTION_REQUIRED"]);
+        }
+        const connection = await services.x.state(
+          current.ownerUserId,
+          current.workspaceId,
+          productId,
+        );
+        if (connection.status !== "connected") {
+          throw new PublishBlockedError(["X_CONNECTION_REQUIRED"]);
+        }
+        try {
+          await services.x.validateForPublish(current, productId);
+        } catch (error) {
+          if (error instanceof XFailure && error.code === "X_RECONNECT_REQUIRED") {
+            throw new PublishBlockedError(["X_CONNECTION_REQUIRED"]);
+          }
+          throw error;
+        }
+      }
       const published = await services.directory.publish(
         current,
         c.req.param("id"),
