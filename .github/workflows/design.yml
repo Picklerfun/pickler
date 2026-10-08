@@ -42,6 +42,7 @@ jobs:
       - run: npm run build:shared
       - run: npm install --global playwright@1.63.0
       - run: playwright install --with-deps chromium
+      - run: node --test scripts/design/probe.test.mjs
       - run: node scripts/design/route-readiness.mjs
       - run: npm run design:check
       - run: node scripts/design/sidebar-motion.mjs
