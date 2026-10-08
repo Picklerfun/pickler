@@ -17,6 +17,8 @@ export interface XActor {
 export interface XIdentity {
   id: string;
   handle: string;
+  displayName?: string | null;
+  profileImageUrl?: string | null;
 }
 export interface XTokens {
   accessToken: string;
@@ -243,7 +245,12 @@ export function createXOAuthService(deps: {
           grant?.status ??
           (pending.length ? "revocation_pending" : old ? "reconnect_required" : "disconnected"),
         account: grant
-          ? { handle: grant.identity.handle, verifiedAt: grant.verifiedAt.toISOString() }
+          ? {
+              handle: grant.identity.handle,
+              displayName: grant.identity.displayName ?? null,
+              profileImageUrl: grant.identity.profileImageUrl ?? null,
+              verifiedAt: grant.verifiedAt.toISOString(),
+            }
           : old
             ? { handle: old.handle, verifiedAt: old.verifiedAt.toISOString() }
             : null,
