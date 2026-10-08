@@ -995,4 +995,6 @@ Field frame. The labelled trigger describes its version hint; the dark portal co
 existing strategies. Radix owns keyboard navigation, typeahead, dismissal and focus restoration.
 Feature CSS only sizes the control. Preserve permission/busy disabling, authored-condition
 warnings, strategy versions and the existing versioned setup save. Multi-choice market selection
-continues to use DropdownMenu checkbox items, rather than this single-choice control.
+continues to use DropdownMenu checkbox items, rather than this single-choice control. Its trigger
+uses the shared Button `shape="box"`, matching Strategy’s field radius. Profile and navigation
+chips retain their pill shapes; feature styles must not redeclare those radii.
