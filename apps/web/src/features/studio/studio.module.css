@@ -279,6 +279,7 @@
   font: 600 13.5px/1.2 var(--pk-font);
   letter-spacing: -0.02em;
   text-align: left;
+  text-decoration: none;
   cursor: pointer;
 }
 .railItem:hover {
