@@ -4,7 +4,6 @@ import { Icon } from "@pickler/ui";
 import { accentVars } from "@/lib/accent";
 import { errorCode, type Agent } from "../api";
 import { AvatarPicker, type AvatarChoice } from "../new-agent/avatar-picker";
-import { AvatarGrid } from "../new-agent/identity";
 import { VOICES, radioStep, type VoiceKey } from "../new-agent/model";
 import { AgentAvatar } from "./agent-avatar";
 import { nameChange, voiceOf, NAME_MAX } from "./identity-model";
@@ -181,75 +180,76 @@ export function Identity({
   return (
     <>
       <div className={build.column}>
-        <div className={styles.card} id={`${idPrefix}-identity-x`}>
-          <XConnect
-            x={studio.x}
-            canManage={canManage}
-            onConnect={() => studio.connectX("identity")}
-            onDisconnect={studio.disconnectX}
-            onPosts={studio.readPosts}
-            idPrefix={`${idPrefix}-identity`}
-            well
-          />
-        </div>
-
-        <div className={styles.identity} id={`${idPrefix}-identity-card`}>
-          {avatarEditable ? (
-            <button
-              type="button"
-              className={styles.avatarButton}
-              style={accentVars(avatar.accent)}
-              aria-label="Pick its avatar"
-              title="Pick its avatar"
-              aria-haspopup="dialog"
-              disabled={!canManage || avatarState.kind === "saving"}
-              onClick={() => {
-                setAvatarState(IDLE);
-                setPicking(avatar);
-              }}
-            >
-              <AvatarGrid pattern={avatar.pattern} />
-            </button>
-          ) : (
-            <AgentAvatar accent={avatar.accent} pattern={avatar.pattern} size="large" />
-          )}
-          <div className={styles.identityText}>
-            <label className={styles.nameLabel} htmlFor={nameId}>
-              NAME
-            </label>
-            <input
-              id={nameId}
-              className={styles.nameInput}
-              type="text"
-              value={name}
-              maxLength={NAME_MAX}
-              autoComplete="off"
-              spellCheck={false}
-              disabled={!canManage}
-              aria-invalid={nameState.kind === "error" || undefined}
-              aria-describedby={`${nameId}-state`}
-              onChange={(event) => {
-                setName(event.target.value);
-                if (nameState.kind !== "saving") {
-                  setNameState(IDLE);
-                }
-              }}
-              onBlur={() => void commitName()}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") {
-                  event.preventDefault();
-                  void commitName();
-                }
-              }}
+        <div className={styles.identityRow}>
+          <div className={styles.identity} id={`${idPrefix}-identity-card`}>
+            {avatarEditable ? (
+              <button
+                type="button"
+                className={styles.avatarButton}
+                style={accentVars(avatar.accent)}
+                aria-label="Pick its avatar"
+                title="Pick its avatar"
+                aria-haspopup="dialog"
+                disabled={!canManage || avatarState.kind === "saving"}
+                onClick={() => {
+                  setAvatarState(IDLE);
+                  setPicking(avatar);
+                }}
+              >
+                <AgentAvatar accent={avatar.accent} pattern={avatar.pattern} size="head" />
+              </button>
+            ) : (
+              <AgentAvatar accent={avatar.accent} pattern={avatar.pattern} size="head" />
+            )}
+            <div className={styles.identityText}>
+              <label className={styles.nameLabel} htmlFor={nameId}>
+                NAME
+              </label>
+              <input
+                id={nameId}
+                className={styles.nameInput}
+                type="text"
+                value={name}
+                maxLength={NAME_MAX}
+                autoComplete="off"
+                spellCheck={false}
+                disabled={!canManage}
+                aria-invalid={nameState.kind === "error" || undefined}
+                aria-describedby={`${nameId}-state`}
+                onChange={(event) => {
+                  setName(event.target.value);
+                  if (nameState.kind !== "saving") {
+                    setNameState(IDLE);
+                  }
+                }}
+                onBlur={() => void commitName()}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    void commitName();
+                  }
+                }}
+              />
+              <span className={styles.handleRow}>
+                {agent.handle ? `@${agent.handle}` : "NO HANDLE"}
+                <span className={styles.fixed}>{handleNote}</span>
+              </span>
+              <span id={`${nameId}-state`}>
+                <WriteLine state={nameState} />
+                <WriteLine state={avatarState} />
+              </span>
+            </div>
+          </div>
+          <div className={`${styles.card} ${styles.xCard}`} id={`${idPrefix}-identity-x`}>
+            <XConnect
+              x={studio.x}
+              canManage={canManage}
+              onConnect={() => studio.connectX("identity")}
+              onDisconnect={studio.disconnectX}
+              onPosts={studio.readPosts}
+              idPrefix={`${idPrefix}-identity`}
+              well
             />
-            <span className={styles.handleRow}>
-              {agent.handle ? `@${agent.handle}` : "NO HANDLE"}
-              <span className={styles.fixed}>{handleNote}</span>
-            </span>
-            <span id={`${nameId}-state`}>
-              <WriteLine state={nameState} />
-              <WriteLine state={avatarState} />
-            </span>
           </div>
         </div>
 
