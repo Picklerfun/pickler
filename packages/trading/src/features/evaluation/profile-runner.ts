@@ -43,9 +43,27 @@ export function createProfileStudyRunner(deps: {
   ) => PerpsPaperRepository;
   afterCycle?: () => Promise<void>;
   now?: () => number;
+  sleep?: (delayMs: number, signal: AbortSignal) => Promise<void>;
   leaseDiagnostic?: (e: LeaseDiagnostic) => void;
 }) {
   const now = deps.now ?? Date.now;
+  const sleep =
+    deps.sleep ??
+    ((delay: number, signal: AbortSignal) =>
+      new Promise<void>((resolve, reject) => {
+        const abort = () => {
+          clearTimeout(timer);
+          reject(signal.reason);
+        };
+        const timer = setTimeout(() => {
+          signal.removeEventListener("abort", abort);
+          resolve();
+        }, delay);
+        signal.addEventListener("abort", abort, { once: true });
+        if (signal.aborted) {
+          abort();
+        }
+      }));
   const { study, data } = deps;
   let paper = deps.paper;
   const target = (r: PerpsStudyRecord, v: SmaProfileVariant) => ({
@@ -485,26 +503,19 @@ export function createProfileStudyRunner(deps: {
       let interruption: string | undefined;
       try {
         for (;;) {
+          const cycleMinute = Math.floor(now() / 60000);
           const continuing = await cycle(scope, lease, owned);
           await deps.afterCycle?.();
           if (!continuing) {
             break;
           }
-          const delay = Math.max(1, 60000 - (now() % 60000) + 100);
-          await new Promise<void>((resolve, reject) => {
-            const abort = () => {
-              clearTimeout(timer);
-              reject(owned.reason);
-            };
-            const timer = setTimeout(() => {
-              owned.removeEventListener("abort", abort);
-              resolve();
-            }, delay);
-            owned.addEventListener("abort", abort, { once: true });
-            if (owned.aborted) {
-              abort();
-            }
-          });
+          // A slow acquisition can finish inside the next minute's still-open slot. Start its
+          // observation/admission now; PostgreSQL still rejects expired or already-claimed slots.
+          const delay =
+            Math.floor(now() / 60000) > cycleMinute
+              ? 1
+              : Math.max(1, 60000 - (now() % 60000) + 100);
+          await sleep(delay, owned);
         }
       } catch (e) {
         interruption = code(e);
