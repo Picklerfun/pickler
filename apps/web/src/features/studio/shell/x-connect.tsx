@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { Button, ButtonLink, BrandMark } from "@pickler/ui";
+import Image from "next/image";
+import { Button, BrandMark, Tag } from "@pickler/ui";
 import type { XPostsDto } from "@pickler/api-schema";
 import type { XState } from "../api";
 import { StudioSkeleton } from "../skeleton";
@@ -31,6 +32,7 @@ export function XConnect({
   const [error, setError] = useState("");
   const attempted = useRef<XState | null>(null);
   const [readAttempted, setReadAttempted] = useState(false);
+  const [failedImage, setFailedImage] = useState<string | null>(null);
   const current = useRef(x);
   useEffect(() => {
     current.current = x;
@@ -81,6 +83,14 @@ export function XConnect({
     return <StudioSkeleton variant="rows" />;
   }
   const connected = x.status === "connected";
+  const account = x.account;
+  const imageUrl = account?.profileImageUrl;
+  const statusLabel = {
+    connected: "Connected",
+    disconnected: "Not connected",
+    reconnect_required: "Reconnect required",
+    revocation_pending: "Disconnect pending",
+  }[x.status];
   return (
     <div
       className={styles.xConnect}
@@ -89,12 +99,49 @@ export function XConnect({
       data-x-available={x?.available}
       id={`${idPrefix}-x-connect`}
     >
-      <div className={styles.xRow}>
-        <BrandMark name="x" size={20} />
-        <span>{x.account ? `@${x.account.handle}` : "Connect your X account"}</span>
+      <div className={styles.xHeader}>
+        <span className={styles.xLabel}>
+          <BrandMark name="x" size={18} /> X account
+        </span>
+        <Tag className={styles.xStatus} data-connected={connected} role="status">
+          {statusLabel}
+        </Tag>
       </div>
+      {account ? (
+        <a
+          className={styles.xProfile}
+          href={`https://x.com/${encodeURIComponent(account.handle)}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label={`Open @${account.handle} on X`}
+        >
+          <span className={styles.xAvatar} aria-hidden="true">
+            {imageUrl && failedImage !== imageUrl ? (
+              <Image
+                src={imageUrl}
+                alt=""
+                width={56}
+                height={56}
+                unoptimized
+                referrerPolicy="no-referrer"
+                onError={() => setFailedImage(imageUrl)}
+              />
+            ) : (
+              <BrandMark name="x" size={26} />
+            )}
+          </span>
+          <span className={styles.xProfileText}>
+            <span className={styles.xName}>{account.displayName || `@${account.handle}`}</span>
+            {account.displayName && <span className={styles.xHandle}>@{account.handle}</span>}
+          </span>
+        </a>
+      ) : (
+        <p className={styles.xEmpty}>Connect your X account</p>
+      )}
       <p className={styles.xNoteLine}>
-        Verify your X account. Connecting does not load posts, allow posting or activate trading.
+        {connected
+          ? "Linked to this agent. Read-only access."
+          : "Verify ownership to publish your agent. Read-only access."}
       </p>
       {x.status === "reconnect_required" && (
         <p className={styles.xLine}>
@@ -134,17 +181,6 @@ export function XConnect({
               Disconnect
             </Button>
           )}
-          {connected && x.account && (
-            <ButtonLink
-              variant="secondary"
-              size="sm"
-              href={`https://x.com/${encodeURIComponent(x.account.handle)}`}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              View posts on X
-            </ButtonLink>
-          )}
           {connected && x.readsAvailable && !readAttempted && (
             <Button
               variant="secondary"
@@ -157,14 +193,8 @@ export function XConnect({
           )}
         </div>
       )}
-      {connected && !x.readsAvailable && (
-        <p className={styles.xNoteLine}>In-app post reading is disabled to avoid X API charges.</p>
-      )}
       {connected && x.readsAvailable && (
-        <p className={styles.xNoteLine}>
-          Optional preview uses X API credits: up to 5 posts, one attempt per day. View posts on X
-          without an API request instead.
-        </p>
+        <p className={styles.xNoteLine}>Optional: 5 posts · once a day · uses X API credits.</p>
       )}
       {reading && <StudioSkeleton variant="rows" />}
       {!reading && posts && connected && (
