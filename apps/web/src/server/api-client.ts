@@ -8,6 +8,8 @@ interface ApiBinding {
 
 /** Transport only: the API verifies identity and owns every business decision. */
 export async function apiFetch(request: Request): Promise<Response> {
+  // OAuth redirects must reach the browser; following one here asks the API for a web page.
+  const outgoing = new Request(request, { redirect: "manual" });
   const local = process.env.PICKLER_API_LOCAL_URL;
   if (local) {
     const target = new URL(local);
@@ -20,7 +22,7 @@ export async function apiFetch(request: Request): Promise<Response> {
     const source = new URL(request.url);
     target.pathname = source.pathname;
     target.search = source.search;
-    const response = await fetch(new Request(target, request), { cache: "no-store" });
+    const response = await fetch(new Request(target, outgoing), { cache: "no-store" });
     /* fetch negotiates compression with the local worker and hands back a decoded body, but the
        headers still describe the encoded one. Passing those on verbatim tells the browser to
        gunzip plain JSON, which fails the request before any handler sees it. The body we are
@@ -39,7 +41,7 @@ export async function apiFetch(request: Request): Promise<Response> {
   if (!binding) {
     throw new Error("Missing API service binding");
   }
-  return binding.fetch(request);
+  return binding.fetch(outgoing);
 }
 
 export async function apiJson<T>(path: string, init?: RequestInit): Promise<T> {
