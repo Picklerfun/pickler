@@ -237,5 +237,8 @@ completion. Freeze commit, catalog, and configuration before the single six-hour
 the study commit separately from the report commit and export all execution/observation events,
 including exits after admission slot 71. Read-only reporting never infers process liveness from
 a persisted running state.
+Risk summaries count the full confirmed mandatory-exit batch when an exposure breach initiated
+it; they do not count only the first close whose pre-exit snapshot still exceeds the limit.
+Individual exit conditions can coincide with that batch and are not independent causes.
 `audit-export` accepts the registered perpetual protocols; the historical model-decision
 `audit` analyzer explicitly rejects unsupported profile protocols rather than fabricating arms.
