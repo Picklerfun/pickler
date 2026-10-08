@@ -56,6 +56,7 @@ node --import tsx src/evaluate.ts prepare --config /absolute/study.json --env-fi
 node --import tsx src/evaluate.ts preflight --config /absolute/study.json --env-file /absolute/database.env --output /absolute/new-study-directory
 node --import tsx src/evaluate.ts run --config /absolute/study.json --env-file /absolute/database.env --output /absolute/new-study-directory
 node --import tsx src/evaluate.ts report --config /absolute/study.json --env-file /absolute/database.env --output /absolute/new-study-directory
+node --import tsx src/evaluate.ts audit-export --config /absolute/study.json --env-file /absolute/database.env --diagnostics /absolute/new-study-directory/diagnostics.jsonl --output /absolute/new-export-directory
 ```
 
 A v6 config contains only version/protocol/hours/budgetUsd/tenantId/sessionId/network/markets.
@@ -63,12 +64,21 @@ Use `version: 6`, `protocol: perps-sma-profile-risk-v1`, `hours: 6`, and histori
 The exact catalog is BTC1, MON10, ETH20, SOL31, HYPE40, ZEC50, LIT60, VVV70, PUMP90, NEAR100,
 and UNI110. No provider tariff/key/paid opt-in is accepted. `report`/`status` are read-only and
 make no provider call. `run` rejects any already-started study; initialization never rewrites it.
+`audit-export` writes one consistent read-only `audit-export.json` packet in a new directory.
+The historical model-decision `audit` analyzer does not support this profile protocol; use its
+own offline report and shared profile business functions for proposal diagnostics.
 
 ## Evidence and interpretation
 
 Outputs are `report.json`, `report.html`, `report.csv`, `rounds.csv`, `decisions.json`, local safe
-diagnostics, and runtime state. Exactly 3,168 rows identify scheduled, complete, omitted, missed,
-and not-evaluated decisions. Full closes/risk observations are separate events. Fees and
+diagnostics, and runtime state. `executions.json`/`executions.csv` retain every execution event,
+including closing-window exits outside the 72 admission slots. `observations.json`/`observations.csv`
+retain risk, failed/missed observations and selective projections. Exactly 3,168 rows identify
+scheduled, complete, omitted, missed, and not-evaluated decisions. Full closes/risk observations
+are separate events. The original study commit and report-generation commit are distinct;
+regenerating a read-only report cannot rewrite frozen metadata or establish process liveness.
+Cleanup attempts all resources even when an earlier cleanup rejects, without hiding the primary
+failure. Fees and
 funding form net realized AUSD P&L; marked equity/drawdown exist only at verifiable observations.
 Spread/slippage already in fill prices are diagnostics, never a second subtraction. Pending
 positions/funding are not assumed losses or zero. Compare common valid asset/slots and report
