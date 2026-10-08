@@ -979,3 +979,7 @@ read retry. See [Studio X OAuth](../../docs/studio-x-oauth.md).
 
 The server HTTP facade forwards redirects without following them, including OAuth callback 303s.
 The browser receives the Location and cookie headers; API service bindings never fetch Studio pages.
+
+## X preview cost controls
+
+Optional X timeline previews use an explicit paid action for five posts, once per mounted connection. Refresh and paging are absent. View posts on X is a plain external link with no provider request. Daily admission is enforced in PostgreSQL, including after reload or another tab. Reads remain disabled remotely until separately approved; linking still works.

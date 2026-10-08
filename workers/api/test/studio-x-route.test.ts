@@ -277,10 +277,10 @@ test("controlled API → PKCE → encrypted PostgreSQL → publication → priva
     headers: f.headers,
   });
   assert.equal(published.status, 200);
-  const posts = await f.request(`${f.owned}/posts?cursor=page2`, { headers: f.headers });
+  const posts = await f.request(`${f.owned}/posts`, { headers: f.headers });
   assert.equal(posts.status, 200);
   assert.equal(xPostsResponseSchema.parse(await posts.json()).posts[0]?.text, "Controlled reply");
-  assert.ok(f.calls.at(-1)?.url.includes("pagination_token=page2"));
+  assert.equal(new URL(f.calls.at(-1)!.url).searchParams.get("max_results"), "5");
   assert.equal(
     (await f.repo.pool.query("SELECT count(*) FROM agents.x_api_calls")).rows[0].count,
     "3",
@@ -288,7 +288,7 @@ test("controlled API → PKCE → encrypted PostgreSQL → publication → priva
   assert.equal(
     (await f.repo.pool.query("SELECT post_resources FROM agents.x_api_usage")).rows[0]
       .post_resources,
-    20,
+    5,
   );
   // A public agent disconnects without changing trading/publication state.
   const before = (
@@ -518,12 +518,12 @@ test("concurrent quotas reserve before transport; 429 preserves resources and Re
   const responses = await Promise.all(
     [1, 2, 3].map(() => f.request(`${f.owned}/posts`, { headers: f.headers })),
   );
-  assert.deepEqual(responses.map((r) => r.status).sort(), [200, 200, 429]);
-  assert.equal(f.calls.filter((c) => c.url.includes("/tweets")).length, 2);
+  assert.deepEqual(responses.map((r) => r.status).sort(), [200, 429, 429]);
+  assert.equal(f.calls.filter((c) => c.url.includes("/tweets")).length, 1);
   assert.equal(
     (await f.repo.pool.query("SELECT post_resources FROM agents.x_api_usage")).rows[0]
       .post_resources,
-    40,
+    5,
   );
   await assert.rejects(
     f.repo.pool.query("UPDATE agents.x_api_calls SET reserved_resources=0"),
@@ -686,4 +686,65 @@ test("partial revocation retains only the remaining token and explicitly retries
     ["controlled-refresh"],
   );
   assert.equal((await f.store.pendingRevocations(f.actor)).length, 0);
+});
+
+test("pagination and exhausted daily quota cannot renew tokens or call X", async (t) => {
+  const f = await fixture(t);
+  await f.connect();
+  const calls = f.calls.length;
+
+  assert.equal(
+    (await f.request(`${f.owned}/posts?cursor=page2`, { headers: f.headers })).status,
+    400,
+  );
+  assert.equal(f.calls.length, calls);
+  assert.equal((await f.request(`${f.owned}/posts`, { headers: f.headers })).status, 200);
+  const afterRead = f.calls.length;
+  f.setClock(new Date(f.getClock().getTime() + 7200000));
+
+  assert.equal((await f.request(`${f.owned}/posts`, { headers: f.headers })).status, 429);
+  assert.equal(f.calls.length, afterRead);
+  assert.equal((await f.store.grant(f.actor))?.status, "connected");
+});
+
+test("a new UTC day permits only one new preview without rewriting earlier reservations", async (t) => {
+  const f = await fixture(t);
+  await f.connect();
+  assert.equal((await f.request(`${f.owned}/posts`, { headers: f.headers })).status, 200);
+  f.setClock(new Date(f.getClock().getTime() + 86400000));
+
+  assert.equal((await f.request(`${f.owned}/posts`, { headers: f.headers })).status, 200);
+  assert.equal((await f.request(`${f.owned}/posts`, { headers: f.headers })).status, 429);
+  const usage = await f.repo.pool.query(
+    "SELECT post_requests,post_resources FROM agents.x_api_usage ORDER BY day",
+  );
+  assert.deepEqual(usage.rows, [
+    { post_requests: 1, post_resources: 5 },
+    { post_requests: 1, post_resources: 5 },
+  ]);
+});
+
+test("disabled reads do not renew tokens or reserve resources while linking remains available", async (t) => {
+  const f = await fixture(t);
+  await f.connect();
+  f.setClock(new Date(f.getClock().getTime() + 7200000));
+  const service = createXOAuthService({
+    directory: f.directory,
+    store: f.store,
+    provider: { ...f.provider, readsAvailable: false },
+    secrets: xSecrets(),
+    policy,
+    now: () => f.getClock(),
+  });
+  const calls = f.calls.length;
+
+  await assert.rejects(service.posts(f.userId, null, f.agentId), XFailure);
+  const state = await service.state(f.userId, null, f.agentId);
+  assert.equal(state.available, true);
+  assert.equal(state.readsAvailable, false);
+  assert.equal(f.calls.length, calls);
+  const usage = await f.repo.pool.query(
+    "SELECT post_requests,post_resources FROM agents.x_api_usage",
+  );
+  assert.deepEqual(usage.rows, [{ post_requests: 0, post_resources: 0 }]);
 });

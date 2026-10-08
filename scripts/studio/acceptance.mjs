@@ -349,7 +349,7 @@ async function run(strategy) {
     await page.getByRole("button", { name: "Connect X", exact: true }).click();
     const consentPopup = await popupOpened;
     await page.locator('#draft-go-public [role="progressbar"][aria-valuenow="1"]').waitFor();
-    await page.getByRole("button", { name: "Load posts", exact: true }).click();
+    await page.getByRole("button", { name: "Load 5 posts (paid)", exact: true }).click();
     await page.getByText("Controlled X reply; acceptance only.", { exact: true }).waitFor();
     assert.ok(consentPopup.isClosed());
     assert.equal(await mountedStudio.evaluate((element) => element.isConnected), true);

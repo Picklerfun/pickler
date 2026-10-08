@@ -6,6 +6,8 @@ import {
   XFailure,
   XHandleTakenError,
   X_READ_SCOPES,
+  X_POST_PREVIEW_SIZE,
+  X_POST_REQUESTS_PER_DAY,
   type XActor,
   type XApiPolicy,
   type XAttempt,
@@ -440,8 +442,9 @@ export class PostgresXOAuthStore implements XOAuthStore {
       if (
         (kind === "identity" && row.identity_requests >= policy.identityRequestsPerDay) ||
         (kind === "posts" &&
-          (row.post_requests >= policy.postRequestsPerDay ||
-            row.post_resources + 20 > policy.postResourcesPerDay))
+          (row.post_requests >= Math.min(policy.postRequestsPerDay, X_POST_REQUESTS_PER_DAY) ||
+            row.post_resources + X_POST_PREVIEW_SIZE >
+              Math.min(policy.postResourcesPerDay, X_POST_PREVIEW_SIZE)))
       ) {
         throw new XFailure(
           "X_RATE_LIMITED",
@@ -450,7 +453,14 @@ export class PostgresXOAuthStore implements XOAuthStore {
       }
       await db.query(
         "INSERT INTO agents.x_api_calls (id,agent_id,kind,policy_version,reserved_resources,started_at) VALUES ($1,$2,$3,$4,$5,$6)",
-        [randomUUID(), a.agentId, kind, policy.version, kind === "posts" ? 20 : 1, now],
+        [
+          randomUUID(),
+          a.agentId,
+          kind,
+          policy.version,
+          kind === "posts" ? X_POST_PREVIEW_SIZE : 1,
+          now,
+        ],
       );
       await db.query(
         `UPDATE agents.x_api_usage SET identity_requests=identity_requests+$3,post_requests=post_requests+$4,post_resources=post_resources+$5,policy_version=$6 WHERE agent_id=$1 AND day=$2`,
@@ -459,7 +469,7 @@ export class PostgresXOAuthStore implements XOAuthStore {
           day,
           kind === "identity" ? 1 : 0,
           kind === "posts" ? 1 : 0,
-          kind === "posts" ? 20 : 0,
+          kind === "posts" ? X_POST_PREVIEW_SIZE : 0,
           policy.version,
         ],
       );

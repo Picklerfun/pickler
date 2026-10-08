@@ -590,3 +590,7 @@ workspace/access/product → agent → grant/usage; publishing uses the same ord
 revocations with the current encryption key before changing its version. No post content is
 stored. Legacy post search/store implementations are removed, their tables remain historical.
 See [Studio X OAuth](../../docs/studio-x-oauth.md).
+
+## X preview cost controls
+
+X preview transport requests five posts with no expansions or pagination; disabled reads fail before transport. PostgreSQL reserves five resources and clamps reviewed policy to one attempt/five resources per agent per UTC day, including concurrent calls, failures, reloads and reconnects. Earlier reservations remain unchanged. No post content cache or persistence is introduced.

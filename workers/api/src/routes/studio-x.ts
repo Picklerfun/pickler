@@ -33,7 +33,9 @@ export function studioXRoutes(services: StudioServices) {
           message:
             error.code === "X_RECONNECT_REQUIRED"
               ? "Reconnect X to continue"
-              : "X is unavailable; try again later",
+              : error.code === "X_RATE_LIMITED"
+                ? "X request limit reached. View posts on X instead; respect Retry-After."
+                : "X is unavailable; try again later",
         },
         status,
       );
@@ -141,7 +143,7 @@ export function studioXRoutes(services: StudioServices) {
       errorStatuses: errors,
       query: { cursor: { schema: { type: "string", maxLength: 512 } } },
       description:
-        "Explicit owner-only read of at most twenty original posts including replies; reserves daily resource quota before X transport. No polling or content persistence.",
+        "Explicit paid owner-only preview of at most five original posts including replies, limited to one attempt per agent per UTC day. Reserves quota before token renewal or X transport. Pagination is disabled; cursor is rejected. No polling or content persistence.",
     }),
     async (c) => {
       const current = await access.authorize(c.get("principal"), true);

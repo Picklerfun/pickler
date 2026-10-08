@@ -401,3 +401,7 @@ See [agent-selected Perpl markets](../../docs/studio-perpl-markets.md).
 rechecks, explicit timeline reads and renewal/disconnect policy through injected ports. No provider
 SDK or token encryption lives in core. Publication requires `X_CONNECTION_REQUIRED` to be resolved
 through current OAuth, never historical post evidence. See [Studio X OAuth](../../docs/studio-x-oauth.md).
+
+## X preview cost controls
+
+X post preview policy exports a five-resource page size and one attempt per agent per UTC day. Cursor requests are refused before any provider call. Quota is reserved before token renewal; exhausted or disabled reads cannot trigger transport. This is an X cost-control ceiling, separate from AI credits.

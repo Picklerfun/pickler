@@ -66,17 +66,23 @@ agent HMAC do not qualify. The callback is the sole bearer exception and uses st
 OpenAPI is generated from mounted route metadata, with the relative server `/api`.
 Old `/x/challenge` and `/x/verify` operations, consumers and matching algorithms are removed.
 
-Posts are read only after Load posts, Refresh posts or Next posts. The timeline includes replies,
-excludes reposts and returns at most twenty `id`, `text`, `createdAt`, `url` values plus a cursor.
+Posts are optional and are not needed to verify the connected account. Studio offers **View posts
+on X**, a plain external link that makes no X API request. The optional **Load 5 posts (paid)**
+action requests X's minimum page size, only when reads are explicitly enabled. There is no
+refresh button or pagination. The endpoint rejects cursor requests before transport and returns
+at most five `id`, `text`, `createdAt`, `url` values with `nextCursor: null`.
 Returned authors must equal the linked identity. Content is held in the owner's page only, never
-persisted or fed to the engine. Replies are included; partial/error responses are not presented
-as a successful empty page. All responses use `Cache-Control: private, no-store`.
+persisted or fed to the engine. Replies are included and reposts excluded; partial/error responses
+are not presented as a successful empty page. Responses use `Cache-Control: private, no-store`.
 
-Before each identity/timeline transport a transaction reserves daily quota and inserts an
-immutable request record. UTC counters and `Retry-After` are shared by operations on that agent.
-A timeline request conservatively reserves twenty resources even if fewer posts return; failure
-or uncertain transport does not refund that quota. This is platform X resource accounting, not
-billing the user. There is no polling or automatic retry.
+Before identity/timeline transport a transaction reserves daily quota and inserts an immutable
+request record. Timeline admission additionally clamps policy to **one attempt and five reserved
+resources per agent per UTC day**, even if configured limits are higher. Reservation happens
+before token renewal. Concurrent requests, another tab, reload and reconnect share the existing
+PostgreSQL counter. Failures and uncertain transport consume the attempt; there is no automatic
+retry, polling, or page loading. Existing historical reservations are not rewritten. A per-agent
+ceiling is not an application-wide spending cap; keep reads disabled unless the platform budget
+is reviewed. X API charges are separate from AI credits.
 
 ## API Worker runtime configuration
 
@@ -95,7 +101,7 @@ Research, GitHub publishing credentials or a client bundle:
 | `X_API_POLICY_JSON`              | Required reviewed policy described below; absent means no transports are admitted                       |
 
 The policy contains a positive integer `version`, ISO UTC `reviewedAt`, and positive integers
-`identityRequestsPerDay`, `postRequestsPerDay`, `postResourcesPerDay` (at least twenty).
+`identityRequestsPerDay`, `postRequestsPerDay`, `postResourcesPerDay` (at least five).
 Those quotas are per agent and counted in UTC. Decreasing quotas applies to future reservations;
 already reserved requests remain attributed to their admitted policy version. The product supplies
 no commercial rates, credits-to-USD conversion, or production quota defaults. Review the current
@@ -138,7 +144,7 @@ It traverses actual JWT-only route middleware, core services, encrypted PostgreS
 Provider tests cover S256, confidential exchange, timeline attribution and explicit failures.
 
 [Controlled Studio acceptance](studio-acceptance.md) now includes the real Connect X UI, protected
-callback, PostgreSQL link, publication and Load posts in its existing isolated Supabase/Workers
+callback, PostgreSQL link, publication and the paid five-post preview in its existing isolated Supabase/Workers
 flow. `scripts/studio/configure.mjs` generates fake credentials and reviewed **test-only** quotas.
 The browser intercepts only the external X consent destination and sends it to the loopback
 provider; PKCE is checked there. Product endpoints are never stubbed. Run the documented local
@@ -157,7 +163,7 @@ No controlled response demonstrates these remote capabilities or authorizes real
 | Legacy proof preservation, mandatory OAuth publication and disconnect/publication races                  | Passed    | Isolated migration and locked publication repository                                                |
 | Concurrent, interrupted and uncertain renewal without repeating exchanges                                | Passed    | Controlled provider and version-fenced PostgreSQL claims                                            |
 | Public/private disconnect, failed revocation, explicit cleanup and immediate local blocking              | Passed    | Controlled provider; publication/trading state is retained                                          |
-| Timeline attribution, paging, resource quotas, 429/Retry-After and no content persistence                | Passed    | Controlled provider and immutable request reservations                                              |
+| Timeline attribution, resource quotas, 429/Retry-After and no content persistence                        | Passed    | Controlled provider and immutable request reservations                                              |
 | Callback forwarding through Web and member access to the owner connection                                | Corrected | Redirects are no longer followed by the facade; actual principal is checked before owner operations |
 | Public-page copy implying that connection enables posting to X                                           | Corrected | Connection is described as read-only; no public post feed is introduced                             |
 | Studio creation, OAuth, publication, manual posts and existing four strategy journeys                    | Passed    | Compiled local Web/API/Research, external fixtures and dedicated Supabase                           |
@@ -177,3 +183,15 @@ revocation-only correction is verified by the focused PostgreSQL suite, includin
 and refresh revocation and partial cleanup without retaining or resending the completed token.
 The final commit is additionally verified by CI. Reproduce the full journey with the command above;
 its artifact records the new checkout's exact commit rather than importing this historical result.
+
+## Cost-control regression acceptance
+
+Run the focused provider/API suites above. They cover the five-result request, disabled reads
+without transport, concurrent admission of exactly one preview, cursor refusal, exhausted quota
+before renewal, UTC-day rollover and retained immutable reservations. No real X reads are used
+for this regression. Remote reads were disabled operationally while OAuth linking stayed enabled;
+merging these controls does not re-enable them.
+
+The minimum timeline page is documented in [X user posts](https://docs.x.com/x-api/users/get-posts).
+Reducing twenty resources to five lowers the maximum resources requested by 75%; no specific
+charge is promised because eligibility and billing are controlled by X.
