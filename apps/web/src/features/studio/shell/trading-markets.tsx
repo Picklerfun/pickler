@@ -127,6 +127,7 @@ export function TradingMarkets({
           <DropdownMenuTrigger asChild>
             <Button
               variant="secondary"
+              shape="box"
               className={styles.trigger}
               disabled={disabled || !read.ready}
               aria-label="Select trading markets"
