@@ -274,6 +274,9 @@ try {
     await noTooltip();
 
     for (const activation of ["pointer", "keyboard", "select"]) {
+      // Each case requests a new hover; returned focus alone must not reopen the tooltip.
+      await leaveSidebar();
+      await noTooltip();
       await selector.hover();
       await tooltip.waitFor({ state: "visible" });
       if (activation === "keyboard") {
