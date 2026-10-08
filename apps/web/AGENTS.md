@@ -983,3 +983,7 @@ The browser receives the Location and cookie headers; API service bindings never
 ## X preview cost controls
 
 Optional X timeline previews use an explicit paid action for five posts, once per mounted connection. Refresh and paging are absent. View posts on X is a plain external link with no provider request. Daily admission is enforced in PostgreSQL, including after reload or another tab. Reads remain disabled remotely until separately approved; linking still works.
+
+## X profile presentation
+
+Identity & voice leads with the shared X account panel. The profile photo/name/handle is the external X link, with a visible connection status and no separate View posts button. Missing/failed images use the X mark. Profile snapshots come from the existing connection read; opening the section performs no X profile or timeline query. Controlled fixtures use local decorative images, and paid reading is disabled in the connected draft preview.
