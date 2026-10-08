@@ -43,8 +43,18 @@ const sourceCommit = execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf
 const startedAt = new Date().toISOString();
 async function run(strategy) {
   const context = await browser.newContext({ timezoneId: "UTC" });
-  await context.route("**/*", (route) => {
+  await context.route("**/*", async (route) => {
     const url = new URL(route.request().url());
+    if (url.origin === "https://x.com" && url.pathname === "/i/oauth2/authorize") {
+      const consent = await fetch("http://127.0.0.1:8798/x/authorize", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Controlled-Identity": identity },
+        body: JSON.stringify({ url: url.href }),
+      });
+      assert.equal(consent.status, 200);
+      const { callback } = await consent.json();
+      return route.fulfill({ status: 302, headers: { Location: callback }, body: "" });
+    }
     if (!["localhost", "127.0.0.1"].includes(url.hostname)) {
       return route.abort("blockedbyclient");
     }
@@ -332,15 +342,26 @@ async function run(strategy) {
     assert.equal(agent.scheduleEnabled, false);
     assert.equal(agent.config.perpsStrategy?.id ?? "combined", strategy);
     assert.equal(agent.config.perpsStrategy?.version ?? "2.1.0", "2.1.0");
+    await page.locator("#draft-rail-overview").click();
+    await page.getByRole("button", { name: "Connect", exact: true }).click();
+    const mountedStudio = await page.locator("#draft-studio").elementHandle();
+    const popupOpened = context.waitForEvent("page");
+    await page.getByRole("button", { name: "Connect X", exact: true }).click();
+    const consentPopup = await popupOpened;
+    await page.locator('#draft-go-public [role="progressbar"][aria-valuenow="1"]').waitFor();
+    await page.getByRole("button", { name: "Load posts", exact: true }).click();
+    await page.getByText("Controlled X reply; acceptance only.", { exact: true }).waitFor();
+    assert.ok(consentPopup.isClosed());
+    assert.equal(await mountedStudio.evaluate((element) => element.isConnected), true);
+    assert.equal(new URL(page.url()).searchParams.get("agent"), productId);
+    const oauthState = await api(product + "/x");
+    assert.equal(oauthState.body.status, "connected");
     await control("open", { funded: false });
     const unfunded = await api(product + "/publish", {});
     assert.equal(unfunded.status, 409, JSON.stringify(unfunded.body));
     assert.equal(unfunded.body.error, "PUBLISH_BLOCKED");
     await control("open", { funded: true });
     await page.locator("#draft-rail-overview").click();
-    await page
-      .getByRole("button", { name: "SKIP X FOR NOW · IT POSTS ON PICKLER ONLY", exact: true })
-      .click();
     const published = waitForResponse(
       (response) =>
         response.url().endsWith(product + "/publish") && response.request().method() === "POST",
