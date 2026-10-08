@@ -939,8 +939,9 @@ export function liveStudioFixture(stage: LiveStage): LiveStaged {
       : wallets("75800000", "900000000000000000"),
     x: {
       account: { handle: X_HANDLE, verifiedAt: at(1760) },
-      challenge: null,
+      status: "connected",
       available: true,
+      readsAvailable: true,
     },
     ledger,
     versions,
