@@ -239,7 +239,7 @@ try {
     const route = scenario.startsWith("studio") ? "/studio" : `/${scenario}`;
     await page.goto(`${base}${route}`);
     if (scenario === "studio-missing-wallet") {
-      await page.waitForURL("**/signup?step=passkey");
+      await page.waitForURL("**/signup?step=passkey&next=%2Fstudio");
     } else if (scenario === "studio-error") {
       await page.getByText(/Controlled load failure/).waitFor();
       await page.getByRole("button", { name: /try again/i }).waitFor();
