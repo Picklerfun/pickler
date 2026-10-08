@@ -252,3 +252,9 @@ retains the same canonical digest without hashing a full snapshot again for each
 The unified evaluation npm entry includes Node’s option separator before the script. Preserve it
 so laboratory `--env-file` is handled by the application rather than preloaded by Node. V7 requires
 a dedicated database-only file; offline timing and audit never load an environment.
+
+V7 reports include `reentry-economics.json`/`.csv`, matching blocked keys to actual reference
+positions and ledger postings. Pending funding and incomplete inputs remain unverifiable. Read
+[the 2026-10-08 acceptance record](PERPS-SMA-REENTRY-ACCEPTANCE-20261008.md) before further public
+work: the single qualification failed, so no six-hour comparison was started or authorized to
+repeat automatically. Its artifacts and frozen qualification commit must remain intact.
