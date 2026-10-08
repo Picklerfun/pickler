@@ -6,7 +6,7 @@
 /** The schedule's minimum an agent's wallet must hold to go public: 10 AUSD. */
 export const MIN_PUBLISH_AUSD_MICRO = 10_000_000n;
 
-export type PublishBlocker = "KILLED" | "WALLET" | "FUNDS";
+export type PublishBlocker = "KILLED" | "WALLET" | "FUNDS" | "X_CONNECTION_REQUIRED";
 
 /**
  * What stops a publish, in the order the owner should fix it. `ausdMicro` is the wallet's chain

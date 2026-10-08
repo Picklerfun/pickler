@@ -40,6 +40,7 @@ const providers = new Set([
   "https://api.typesafe.ai",
   "https://controlled.invalid",
   "https://api.exa.ai",
+  "https://api.x.com",
 ]);
 
 /** Production entry points never import or install this transport. No external request escapes. */
@@ -69,6 +70,9 @@ export function installControlledStudioTransport(
         headers: { "Content-Type": "application/json", "X-Controlled-Identity": identity },
         body: JSON.stringify({
           url: request.url,
+          ...(url.origin === "https://api.x.com" && request.method === "GET"
+            ? { authorization: controlledXBearer(request.headers.get("authorization")) }
+            : {}),
           method: request.method,
           body: request.method === "GET" ? null : await request.text(),
         }),
@@ -85,4 +89,11 @@ function noRedirect(response: Response): Response {
     throw new Error("Controlled transport refuses redirects");
   }
   return response;
+}
+
+function controlledXBearer(value: string | null) {
+  if (!value?.startsWith("Bearer controlled-x-")) {
+    throw new Error("Controlled X transport requires synthetic credentials");
+  }
+  return value;
 }

@@ -1,5 +1,10 @@
 # Cross-review of the 2026-09-30 spec set
 
+> Historical X verification and posting design: the post-code routes, bearer-token setup,
+> optional posting and Skip X described below are superseded by [Studio X OAuth](../studio-x-oauth.md).
+> Use that canonical guide for the current read-only routes, callback, dedicated runtime secrets
+> and disabled-by-default resource policy. These older sections are retained as historical evidence.
+
 Status: review draft, 2026-09-30. Read-only review of the 18 specs written in parallel that night
 against `docs/product-map/conventions.md` and research 01–06. Nothing here changes a spec; every
 finding names the spec that should change.

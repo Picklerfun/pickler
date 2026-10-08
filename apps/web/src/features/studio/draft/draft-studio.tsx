@@ -152,8 +152,6 @@ export function DraftStudio({
               avatarEditable
               handleNote="HANDLE IS FIXED"
               voiceSub="how every post reads"
-              xSub="where it posts · optional"
-              canDisconnectX
             />
           </DraftSection>
         );

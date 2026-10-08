@@ -7,16 +7,14 @@ import {
   saveIdentity as putIdentity,
   studioWallets,
   walletLedger,
-  xChallenge,
+  xAuthorize,
+  xPosts,
   xDisconnect,
   xState,
-  xVerify,
   type Agent,
   type LedgerEntry,
   type StudioWallets,
-  type XChallenge,
   type XState,
-  type XVerify,
 } from "../api";
 
 /** What a staged or preview studio says when anything on it tries to write. */
@@ -26,7 +24,7 @@ export const PREVIEW_NOTE = "Preview · fixture data, nothing is saved.";
 export interface AgentStudioData {
   /** `GET /wallets`: the master wallet and the agent wallets; null until read. */
   wallets: StudioWallets | null;
-  /** `GET /agents/:id/x`: the verified account, the live challenge, whether X is open; null until read. */
+  /** `GET /agents/:id/x`: OAuth connection state and availability; null until read. */
   x: XState | null;
   /** `GET /wallets/ledger`, read the first time Master wallet asks (`readLedger`); null until then. */
   ledger: LedgerEntry[] | null;
@@ -60,12 +58,12 @@ export interface UseAgentStudio extends AgentStudioData {
   saveSetup(patch: Omit<SetupUpdateDto, "expectedVersion">): Promise<Agent>;
   /** `PUT /identity`: name and/or avatar; reloads the agent. */
   saveIdentity(body: IdentityUpdateDto): Promise<Agent>;
-  /** `POST /x/challenge`: the line to post; the X state keeps it as the live challenge. */
-  challengeX(handle: string): Promise<XChallenge>;
-  /** `POST /x/verify` ("Check again"); found re-reads X and the agent (its `xHandle`). */
-  verifyX(): Promise<XVerify>;
-  /** `DELETE /x`, while private; re-reads X and the agent. */
-  disconnectX(): Promise<void>;
+  /** `POST /x/authorize`: opens consent without unmounting the current form. */
+  connectX(section?: "overview" | "identity"): Promise<void>;
+  readPosts(cursor?: string): ReturnType<typeof xPosts>;
+
+  /** `DELETE /x`, private or public; re-reads X and the agent. */
+  disconnectX(section?: "overview" | "identity"): Promise<void>;
 }
 
 /**
@@ -271,26 +269,115 @@ export function useAgentStudio({
     [guard, agentId, reloadAfterWrite],
   );
 
-  const challengeX = useCallback(
-    async (handle: string) => {
-      guard();
-      const challenge = await xChallenge(agentId, handle);
-      if (alive.current) {
-        setX((current) => ({ account: null, available: true, ...current, challenge }));
+  const connectionPopup = useRef<Window | null>(null);
+  const connectionChannel = useRef<BroadcastChannel | null>(null);
+  const connectionFlow = useRef<string | null>(null);
+  const completeConnection = useCallback(
+    (outcome: string) => {
+      if (outcome !== "connected") {
+        const messages: Record<string, string> = {
+          cancelled: "X connection was cancelled. Try again when ready.",
+          x_account_mismatch: "Disconnect the previous X account before changing it.",
+          x_handle_taken: "That X account is already connected to another agent.",
+          x_revocation_pending: "Finish disconnecting before reconnecting.",
+        };
+        fail(
+          new Error(messages[outcome] ?? "Could not connect X. Please try again."),
+          "Could not connect X.",
+        );
       }
-      return challenge;
+      void Promise.all([readX(), reloadAfterWrite()]);
+    },
+    [fail, readX, reloadAfterWrite],
+  );
+  useEffect(
+    () => () => {
+      connectionChannel.current?.close();
+      connectionChannel.current = null;
+      connectionFlow.current = null;
+      connectionPopup.current?.close();
+      connectionPopup.current = null;
+    },
+    [agentId],
+  );
+  const connectX = useCallback(
+    async (section: "overview" | "identity" = "identity") => {
+      guard();
+      if (connectionPopup.current && !connectionPopup.current.closed) {
+        connectionPopup.current.focus();
+        return;
+      }
+      const popup = window.open("about:blank", "pickler-x-connect", "popup,width=640,height=720");
+      connectionPopup.current = popup;
+      if (!popup) {
+        throw new Error("Allow popups to connect X without leaving your setup.");
+      }
+      try {
+        const path = window.location.pathname === "/" ? "/" : "/studio";
+        const result = await xAuthorize(
+          agentId,
+          `${path}?agent=${encodeURIComponent(agentId)}&resume=${encodeURIComponent(section)}`,
+        );
+        const flow = new URL(result.authorizationUrl).searchParams.get("state");
+        if (!flow || !/^[A-Za-z0-9_-]{43}$/.test(flow)) {
+          throw new Error("Could not start X authorization.");
+        }
+        connectionFlow.current = flow;
+        connectionChannel.current?.close();
+        if (typeof BroadcastChannel !== "undefined") {
+          const channel = new BroadcastChannel(`pickler-x-${flow}`);
+          connectionChannel.current = channel;
+          channel.onmessage = (event) => {
+            if (
+              event.data?.type !== "pickler-x-oauth" ||
+              event.data?.flow !== flow ||
+              (event.data?.agentId && event.data.agentId !== agentId)
+            ) {
+              return;
+            }
+            channel.postMessage({ type: "received", flow });
+            channel.onmessage = null;
+            connectionFlow.current = null;
+            completeConnection(event.data.outcome);
+          };
+        }
+        popup.location.href = result.authorizationUrl;
+      } catch (error) {
+        popup.close();
+        throw error;
+      }
+    },
+    [guard, agentId, completeConnection],
+  );
+
+  const readPosts = useCallback(
+    async (cursor?: string) => {
+      guard();
+      return xPosts(agentId, cursor);
     },
     [guard, agentId],
   );
 
-  const verifyX = useCallback(async () => {
-    guard();
-    const result = await xVerify(agentId);
-    if (result.verified) {
-      await Promise.all([readX(), reloadAfterWrite()]);
+  useEffect(() => {
+    if (offline) {
+      return;
     }
-    return result;
-  }, [guard, agentId, readX, reloadAfterWrite]);
+    const complete = (event: MessageEvent) => {
+      if (
+        event.source !== connectionPopup.current ||
+        event.origin !== window.location.origin ||
+        event.data?.type !== "pickler-x-oauth" ||
+        (event.data?.agentId && event.data.agentId !== agentId) ||
+        event.data?.flow !== connectionFlow.current
+      ) {
+        return;
+      }
+      connectionFlow.current = null;
+      completeConnection(event.data.outcome);
+    };
+    window.addEventListener("message", complete);
+    return () => window.removeEventListener("message", complete);
+  }, [agentId, offline, completeConnection]);
 
   const disconnectX = useCallback(async () => {
     guard();
@@ -311,8 +398,8 @@ export function useAgentStudio({
       refreshAgent: reloadAgent,
       saveSetup,
       saveIdentity,
-      challengeX,
-      verifyX,
+      connectX,
+      readPosts,
       disconnectX,
     },
     tools,

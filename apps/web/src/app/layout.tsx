@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Archivo, Instrument_Sans } from "next/font/google";
 import { headers } from "next/headers";
 import type { ReactNode } from "react";
+import { XOAuthReturn } from "@/features/studio/shell/x-oauth-return";
 import NextTopLoader from "nextjs-toploader";
 import { TOKEN_MIRROR } from "@pickler/ui/tokens";
 import "@pickler/ui/shadcn.css";
@@ -45,6 +46,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   return (
     <html lang="en" className={`${display.variable} ${body.variable}`}>
       <body>
+        <XOAuthReturn />
         <NextTopLoader
           color="currentColor"
           height={3}

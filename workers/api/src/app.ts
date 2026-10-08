@@ -1,3 +1,4 @@
+import { studioXCallbackRoutes } from "./routes/studio-x";
 import { operation } from "./openapi/operation";
 import { apiDocument } from "./openapi/document";
 import { envelopeSchema, jsonObjectSchema } from "@pickler/api-schema";
@@ -66,6 +67,7 @@ export function createApp(services: Services) {
     app.route("/v1/agent-advice", adviceRoutes(services.advice));
   }
   if (services.studio) {
+    app.route("/v1/studio/x", studioXCallbackRoutes(services.studio));
     app.route("/v1/studio", studioRoutes(services.studio));
     app.route("/v1/console", studioRoutes(services.studio));
   }

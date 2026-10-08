@@ -23,10 +23,8 @@ import type {
   TransferRequestDto,
   VersionsDto,
   WalletsDto,
-  XChallengeDto,
-  XChallengeRequestDto,
   XStateDto,
-  XVerifyDto,
+  XPostsDto,
 } from "@pickler/api-schema";
 import { knownMessage, messageFor } from "./lib/messages";
 export type Config = ReturnType<typeof agentConfigSchema.parse>;
@@ -49,8 +47,6 @@ export type ActivityEvent = ActivityDto["events"][number];
 export type SetupVersion = VersionsDto["versions"][number];
 export type LedgerEntry = LedgerDto["entries"][number];
 export type XState = XStateDto;
-export type XChallenge = XChallengeDto;
-export type XVerify = XVerifyDto;
 
 /**
  * The studio transport answers a failure with `{ error: CODE }`. The code is what the Studio
@@ -194,26 +190,20 @@ export const setPaused = (agentId: string, paused: boolean) =>
 export const xState = (agentId: string, signal?: AbortSignal) =>
   studioApi<XState>(`/agents/${agentId}/x`, signal ? { signal } : {});
 
-/**
- * `POST /agents/:id/x/challenge`: the line to post from `handle` ("@" optional). 400
- * INVALID_X_HANDLE; 409 X_HANDLE_TAKEN, X_ALREADY_CONNECTED; 503 X_UNAVAILABLE.
- */
-export const xChallenge = (agentId: string, handle: string) =>
-  studioApi<XChallenge>(`/agents/${agentId}/x/challenge`, {
+export const xAuthorize = (agentId: string, returnTo: string) =>
+  studioApi<{ authorizationUrl: string }>(`/agents/${agentId}/x/authorize`, {
     method: "POST",
-    body: JSON.stringify({ handle } satisfies XChallengeRequestDto),
+    body: JSON.stringify({ returnTo }),
   });
-
-/**
- * `POST /agents/:id/x/verify` ("Check again"). 404 CHALLENGE_NOT_FOUND; 409 CHALLENGE_EXPIRED,
- * X_HANDLE_TAKEN; 429 TOO_MANY_CHECKS (one per 10 s); 503 X_UNAVAILABLE.
- */
-export const xVerify = (agentId: string) =>
-  studioApi<XVerify>(`/agents/${agentId}/x/verify`, { method: "POST", body: "{}" });
-
-/** `DELETE /agents/:id/x`: while private only; 409 X_ON_PUBLIC_AGENT. */
+export const xPosts = (agentId: string, cursor?: string) =>
+  studioApi<XPostsDto>(
+    `/agents/${agentId}/x/posts${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ""}`,
+  );
 export const xDisconnect = (agentId: string) =>
-  studioApi<{ disconnected: true }>(`/agents/${agentId}/x`, { method: "DELETE" });
+  studioApi<{ disconnected: true; status: "disconnected" | "revocation_pending" }>(
+    `/agents/${agentId}/x`,
+    { method: "DELETE" },
+  );
 
 /**
  * `POST /agents/:id/publish`: Go Public; idempotent. 409 PUBLISH_BLOCKED with

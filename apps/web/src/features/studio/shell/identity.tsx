@@ -7,7 +7,7 @@ import { AvatarPicker, type AvatarChoice } from "../new-agent/avatar-picker";
 import { AvatarGrid } from "../new-agent/identity";
 import { VOICES, radioStep, type VoiceKey } from "../new-agent/model";
 import { AgentAvatar } from "./agent-avatar";
-import { disconnectProblem, nameChange, voiceOf, xAccountTag, NAME_MAX } from "./identity-model";
+import { nameChange, voiceOf, NAME_MAX } from "./identity-model";
 import { SaveOutcome, useSetupSave } from "./setup-save";
 import { PREVIEW_NOTE, type UseAgentStudio } from "./use-agent-studio";
 import { XConnect } from "./x-connect";
@@ -37,7 +37,7 @@ export interface IdentityProps {
   /** The studio's data and writes: identity, setup (the voice) and X. */
   studio: Pick<
     UseAgentStudio,
-    "x" | "saveIdentity" | "saveSetup" | "refreshAgent" | "challengeX" | "verifyX" | "disconnectX"
+    "x" | "saveIdentity" | "saveSetup" | "refreshAgent" | "connectX" | "readPosts" | "disconnectX"
   >;
   /** The person may change this workspace; a view-only member sees every control shut. */
   canManage: boolean;
@@ -47,12 +47,6 @@ export interface IdentityProps {
   handleNote: string;
   /** VOICE's line: "how every post reads", and from when for a public agent. */
   voiceSub: string;
-  /** X ACCOUNT's line: what the agent does with the account. */
-  xSub: string;
-  /** A connected account shows DISCONNECT (a draft); a public agent keeps its account. */
-  canDisconnectX: boolean;
-  /** Said under a connected account that cannot be disconnected. */
-  xKeptNote?: string;
 }
 
 /**
@@ -60,9 +54,8 @@ export interface IdentityProps {
  * the published agent, whose differences are props (studio-live-v1 L17). The avatar opens the
  * create screen's picker and saves accent and pattern once it closes; NAME saves on blur or Enter
  * (1–40 once trimmed, an unchanged name sends nothing); the handle is fixed. VOICE is a radio group
- * that saves the pick at once through `PUT /setup`, with its sample under it. X ACCOUNT connects by
- * a post (`x-connect.tsx`) or shows the verified handle, with DISCONNECT while the agent is
- * private. A view-only member sees every control shut; a staged or preview studio says nothing is
+ * that saves the pick at once through `PUT /setup`, with its sample under it. X ACCOUNT connects
+ * through read-only OAuth, with explicit disconnect available for private and public agents. A view-only member sees every control shut; a staged or preview studio says nothing is
  * saved. The section's frame is the studio's own.
  */
 export function Identity({
@@ -73,9 +66,6 @@ export function Identity({
   avatarEditable,
   handleNote,
   voiceSub,
-  xSub,
-  canDisconnectX,
-  xKeptNote,
 }: IdentityProps) {
   const nameId = useId();
   const voiceLabel = useId();
@@ -188,52 +178,6 @@ export function Identity({
     }
   }
 
-  /* X ACCOUNT: the verified handle as the X read has it, else as the agent carries it. */
-  const xHandle = studio.x ? (studio.x.account?.handle ?? null) : (agent.xHandle ?? null);
-  const [xState, setXState] = useState<WriteState>(IDLE);
-
-  /* A verified post unmounts Connect X and its Verify button, which held the focus: the
-     connected handle takes it, so the focus never drops to the page. */
-  const xHandleRef = useRef<HTMLSpanElement>(null);
-  const wasConnected = useRef(xHandle !== null);
-  useEffect(() => {
-    if (xHandle !== null && !wasConnected.current) {
-      const active = document.activeElement;
-      if (!active || active === document.body) {
-        xHandleRef.current?.focus();
-      }
-    }
-    wasConnected.current = xHandle !== null;
-  }, [xHandle]);
-
-  async function disconnect() {
-    if (!canManage || xState.kind === "saving") {
-      return;
-    }
-    setXState({ kind: "saving" });
-    try {
-      await studio.disconnectX();
-      if (alive.current) {
-        setXState(IDLE);
-      }
-    } catch (caught) {
-      if (!alive.current) {
-        return;
-      }
-      if (errorCode(caught) === "PREVIEW") {
-        setXState({ kind: "preview" });
-        return;
-      }
-      setXState({
-        kind: "error",
-        text: disconnectProblem(
-          errorCode(caught),
-          caught instanceof Error ? caught.message : "Could not disconnect X.",
-        ),
-      });
-    }
-  }
-
   return (
     <>
       <div className={build.column}>
@@ -338,42 +282,20 @@ export function Identity({
         <div className={styles.card} id={`${idPrefix}-identity-x`}>
           <div className={styles.cardHead}>
             <span className={styles.label}>X ACCOUNT</span>
-            <span className={styles.sub}>{xSub}</span>
-            <span className={styles.xTag} data-on={xHandle !== null}>
-              {xAccountTag(xHandle)}
+            <span className={styles.sub}>Read access · no posting permission</span>
+            <span className={styles.xTag} data-on={studio.x?.status === "connected"}>
+              {studio.x?.status === "connected" ? "CONNECTED" : "NOT CONNECTED"}
             </span>
           </div>
-          {xHandle ? (
-            <div className={styles.xAccount}>
-              <span className={styles.xDot} aria-hidden="true" />
-              <span className={styles.xHandle} ref={xHandleRef} tabIndex={-1}>
-                @{xHandle}
-              </span>
-              {canDisconnectX && (
-                <button
-                  type="button"
-                  className={styles.disconnect}
-                  disabled={!canManage || xState.kind === "saving"}
-                  aria-label={`Disconnect @${xHandle}`}
-                  onClick={() => void disconnect()}
-                >
-                  {xState.kind === "saving" ? "DISCONNECTING…" : "DISCONNECT"}
-                </button>
-              )}
-            </div>
-          ) : (
-            <XConnect
-              x={studio.x}
-              canManage={canManage}
-              onChallenge={studio.challengeX}
-              onVerify={studio.verifyX}
-              idPrefix={`${idPrefix}-identity`}
-              well
-            />
-          )}
-          {xHandle && !canDisconnectX && xKeptNote && <p className={styles.notice}>{xKeptNote}</p>}
-          {/* The button says DISCONNECTING… while it is out. */}
-          <WriteLine state={xState.kind === "saving" ? IDLE : xState} />
+          <XConnect
+            x={studio.x}
+            canManage={canManage}
+            onConnect={() => studio.connectX("identity")}
+            onDisconnect={studio.disconnectX}
+            onPosts={studio.readPosts}
+            idPrefix={`${idPrefix}-identity`}
+            well
+          />
         </div>
       </div>
 

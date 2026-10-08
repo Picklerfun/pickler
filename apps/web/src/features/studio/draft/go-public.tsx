@@ -13,31 +13,30 @@ export interface GoPublicProps extends Pick<
   DraftSectionProps,
   "agent" | "draft" | "canManage" | "onWallets"
 > {
-  /** The `?stage=draft-x-*` state: the X row open, the skip, the card; null starts it closed. */
+  /** The `?stage=draft-x-*` state: the consent, reconnect or disabled card; null starts it closed. */
   stage: DraftGoPublicStage | null;
 }
 
 /**
- * Go Public (spec D3, §3.1; canvas 343–382): one task, Connect X, which can be skipped for this
- * screen only, then `POST /publish`. The server re-checks everything (D8) and the 409 names what
+ * Go Public (spec D3, §3.1; canvas 343–382): one task, Connect X, required before `POST /publish`. The server re-checks everything (D8) and the 409 names what
  * stands in the way; FUNDS has its fix right there, "Fund from master", and the line goes once the
  * wallets are read again. Once public the title says so, the button says where it shows (D19),
  * and `useDraft` reloads the agent, which swaps this studio for the live one.
  *
  * Focus never drops to the page: the button stays focusable while it publishes, the title takes
- * the focus once it is live, and the button takes it when a verified X account closes the X row.
+ * the focus once it is live, and the button can take it when OAuth enables publication.
  */
 export function GoPublic({ agent, draft, canManage, onWallets, stage }: GoPublicProps) {
   const [xOpen, setXOpen] = useState(stage?.xOpen ?? false);
-  const [skipped, setSkipped] = useState(stage?.skipped ?? false);
+
   const [publishing, setPublishing] = useState(false);
   const [live, setLive] = useState(false);
   const [problem, setProblem] = useState<PublishProblem | null>(null);
   const titleRef = useRef<HTMLHeadingElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
-  const xHandle = agent.xHandle ?? draft.x?.account?.handle ?? null;
-  const view = goPublicView({ xHandle, skipped, publishing });
+  const xHandle = draft.x?.status === "connected" ? (draft.x.account?.handle ?? null) : null;
+  const view = goPublicView({ xHandle, publishing });
   const name = (agent.name ?? "Your agent").toUpperCase();
   const task = view.task;
 
@@ -51,7 +50,7 @@ export function GoPublic({ agent, draft, canManage, onWallets, stage }: GoPublic
     }
   }
 
-  /* A verified X account unmounts the X row and its Verify button, which held the focus. */
+  /* A successful OAuth connection enables publication without replacing the consent panel. */
   const wasDone = useRef(task.done);
   useEffect(() => {
     if (task.done && !wasDone.current) {
@@ -122,7 +121,7 @@ export function GoPublic({ agent, draft, canManage, onWallets, stage }: GoPublic
         <span className={styles.progressFill} data-done={view.done === view.of} />
       </span>
       <p className={styles.cardNote}>
-        Private until you flip it. Once public it shows on Pickler{view.xNote}.
+        Connect X to verify ownership, then publish on Pickler. This does not post to X.
       </p>
 
       <div className={styles.task}>
@@ -141,20 +140,20 @@ export function GoPublic({ agent, draft, canManage, onWallets, stage }: GoPublic
               type="button"
               className={styles.whiteButton}
               aria-expanded={xOpen}
-              aria-controls="draft-go-public-x"
+              aria-controls="draft-go-public-x-connect"
               onClick={() => setXOpen(!xOpen)}
             >
               Connect
             </button>
           )}
         </div>
-        {xOpen && !task.done && (
+        {(xOpen || task.done) && (
           <XConnect
             x={draft.x}
             canManage={canManage}
-            staged={stage ? { handle: stage.handle, card: stage.card } : null}
-            onChallenge={draft.challengeX}
-            onVerify={draft.verifyX}
+            onConnect={() => draft.connectX("overview")}
+            onDisconnect={draft.disconnectX}
+            onPosts={draft.readPosts}
             idPrefix="draft-go-public"
           />
         )}
@@ -172,17 +171,6 @@ export function GoPublic({ agent, draft, canManage, onWallets, stage }: GoPublic
       >
         {label}
       </button>
-      {view.skipLabel && !live && (
-        <button
-          type="button"
-          className={styles.skipButton}
-          aria-pressed={skipped}
-          disabled={!canManage}
-          onClick={() => setSkipped(!skipped)}
-        >
-          {view.skipLabel}
-        </button>
-      )}
 
       {problem?.kind === "blocked" &&
         problem.lines.map((line) => (

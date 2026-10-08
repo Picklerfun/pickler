@@ -965,3 +965,17 @@ catalogue endpoint, which fetches Perpl's original public context. The navbar wa
 the master balance group; AUSD and MON retain their separate asset marks.
 
 See [agent-selected Perpl markets](../../docs/studio-perpl-markets.md).
+
+## Read-only Connect X
+
+The shared `shell/x-connect.tsx` presents OAuth state, explicit Connect/Reconnect/Disconnect and
+manual posts in Overview and Identity & voice. It uses the authenticated same-origin Studio API;
+there are no handle/code proof inputs or Skip X publication path. `use-agent-studio.ts` opens
+consent in a window while keeping forms mounted. `shell/x-oauth-return.tsx`, mounted in the root
+layout, reports sanitized outcomes through a flow-keyed BroadcastChannel and closes only after
+acknowledgement. The parent rereads authenticated state; messages cannot authorize a connection.
+Post text is memory-only and discarded when the connection changes. No post polling or automatic
+read retry. See [Studio X OAuth](../../docs/studio-x-oauth.md).
+
+The server HTTP facade forwards redirects without following them, including OAuth callback 303s.
+The browser receives the Location and cookie headers; API service bindings never fetch Studio pages.

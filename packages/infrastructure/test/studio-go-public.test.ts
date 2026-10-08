@@ -10,7 +10,6 @@ import {
   PilotError,
   PublishBlockedError,
   STARTER_CAPS,
-  XHandleTakenError,
   prepareDraft,
   reviseSetup,
   setupChangeSummary,
@@ -21,7 +20,6 @@ import { PostgresAgentDirectory } from "../src/persistence/agent-directory.js";
 import { migrateDatabase, migrationsFolder } from "../src/persistence/migrate-database.js";
 import { PostgresStudioDirectory } from "../src/studio/directory.js";
 import { listTransfers } from "../src/studio/ledger.js";
-import { PostgresXStore } from "../src/studio/x-store.js";
 import { createTestStore } from "./database.js";
 
 const { config, profile } = prepareDraft({
@@ -306,245 +304,12 @@ test("0024 publishes every agent that is not a draft, as of when it was created,
   assert.deepEqual(trigger.rows, [{ tgenabled: "O" }]);
 });
 
-type Fixture = Awaited<ReturnType<typeof setup>>;
-
-/** A second agent in the same workspace; it and its handle reference each other (deferred). */
-async function otherAgent(f: Fixture, handle = "other_one"): Promise<string> {
-  const id = randomUUID();
-  const client = await f.pool.connect();
-  try {
-    await client.query("BEGIN");
-    await client.query(
-      `INSERT INTO agents.agents (id, workspace_id, name, handle, status)
-       SELECT $1, workspace_id, 'Other', $3, 'draft' FROM agents.agents WHERE id=$2`,
-      [id, f.agentId, handle],
-    );
-    await client.query("INSERT INTO identity.handles (handle, agent_id) VALUES ($1, $2)", [
-      handle,
-      id,
-    ]);
-    await client.query("INSERT INTO agents.agent_profiles (agent_id) VALUES ($1)", [id]);
-    await client.query("COMMIT");
-  } finally {
-    client.release();
-  }
-  return id;
-}
-
-/** Moves an agent's challenge 11 s into the past, as if issued before the 10 s limit. */
-async function backdate(pool: Pool, agentId: string) {
-  await pool.query(
-    "UPDATE agents.x_challenges SET created_at = created_at - interval '11 seconds' WHERE agent_id = $1",
-    [agentId],
-  );
-}
-
 const isCode = (code: string) => (error: unknown) =>
   error instanceof PilotError && error.code === code;
 
-test("an agent keeps one live X challenge, and its checks", async (t) => {
-  const f = await setup(t);
-  const x = new PostgresXStore(f.pool);
-  const expiresAt = new Date(Date.now() + 86_400_000);
-
-  assert.equal(await x.challenge(f.agentId), null);
-  await x.saveChallenge(f.agentId, { handle: "OldBot", code: "pk-aaaaaaaa", expiresAt }, 10_000);
-  await backdate(f.pool, f.agentId);
-  const saved = await x.saveChallenge(
-    f.agentId,
-    { handle: "HalftimeBot", code: "pk-bbbbbbbb", expiresAt },
-    10_000,
-  );
-
-  const challenge = await x.challenge(f.agentId);
-  assert.deepEqual(challenge, saved);
-  assert.equal(challenge?.handle, "HalftimeBot");
-  assert.equal(challenge?.code, "pk-bbbbbbbb");
-  assert.deepEqual(challenge?.expiresAt, expiresAt);
-  assert.ok(challenge?.createdAt instanceof Date);
-  assert.equal(challenge?.lastCheckedAt, null);
-
-  // A check claims the slot; a second within the interval does not, one after it does.
-  const at = new Date("2026-10-02T12:00:00Z");
-  assert.equal(await x.claimCheck(f.agentId, at, 10_000), true);
-  assert.deepEqual((await x.challenge(f.agentId))?.lastCheckedAt, at);
-  assert.equal(await x.claimCheck(f.agentId, new Date(at.getTime() + 9_999), 10_000), false);
-  assert.deepEqual((await x.challenge(f.agentId))?.lastCheckedAt, at);
-  const later = new Date(at.getTime() + 10_000);
-  assert.equal(await x.claimCheck(f.agentId, later, 10_000), true);
-  assert.deepEqual((await x.challenge(f.agentId))?.lastCheckedAt, later);
-
-  // A new challenge within 10 s of the last is refused and writes nothing.
-  assert.equal(
-    await x.saveChallenge(
-      f.agentId,
-      { handle: "HalftimeBot", code: "pk-cccccccc", expiresAt },
-      10_000,
-    ),
-    null,
-  );
-  assert.equal((await x.challenge(f.agentId))?.code, "pk-bbbbbbbb");
-
-  // One after it replaces the code and the start, but keeps the agent's last check, so re-issuing
-  // never resets the check limit.
-  await backdate(f.pool, f.agentId);
-  const renewed = await x.saveChallenge(
-    f.agentId,
-    { handle: "HalftimeBot", code: "pk-dddddddd", expiresAt },
-    10_000,
-  );
-  assert.equal(renewed?.code, "pk-dddddddd");
-  assert.deepEqual(renewed?.lastCheckedAt, later);
-  assert.equal(await x.claimCheck(f.agentId, new Date(later.getTime() + 9_999), 10_000), false);
-});
-
-test("concurrent new challenges: exactly one is issued", async (t) => {
-  const f = await setup(t);
-  const x = new PostgresXStore(f.pool);
-  const expiresAt = new Date(Date.now() + 86_400_000);
-  await x.saveChallenge(f.agentId, { handle: "HalftimeBot", code: "pk-aaaaaaaa", expiresAt }, 0);
-  await backdate(f.pool, f.agentId);
-
-  const issued = await Promise.all(
-    Array.from({ length: 5 }, (_, index) =>
-      x.saveChallenge(
-        f.agentId,
-        { handle: "HalftimeBot", code: `pk-bbbbbbb${index + 2}`, expiresAt },
-        10_000,
-      ),
-    ),
-  );
-
-  assert.equal(issued.filter(Boolean).length, 1);
-});
-
-test("concurrent checks of one challenge: exactly one claims the slot", async (t) => {
-  const f = await setup(t);
-  const x = new PostgresXStore(f.pool);
-  await x.saveChallenge(
-    f.agentId,
-    {
-      handle: "HalftimeBot",
-      code: "pk-aaaaaaaa",
-      expiresAt: new Date(Date.now() + 86_400_000),
-    },
-    0,
-  );
-  const at = new Date();
-
-  const claims = await Promise.all(
-    Array.from({ length: 5 }, () => x.claimCheck(f.agentId, at, 10_000)),
-  );
-
-  assert.equal(claims.filter(Boolean).length, 1);
-});
-
-test("an agent with no challenge claims no check", async (t) => {
-  const f = await setup(t);
-  const x = new PostgresXStore(f.pool);
-
-  assert.equal(await x.claimCheck(f.agentId, new Date(), 10_000), false);
-});
-
-test("connecting X writes the account and the profile handle, and spends the challenge", async (t) => {
-  const f = await setup(t);
-  const x = new PostgresXStore(f.pool);
-  const at = new Date("2026-10-02T12:00:00Z");
-  await x.saveChallenge(
-    f.agentId,
-    {
-      handle: "HalftimeBot",
-      code: "pk-aaaaaaaa",
-      expiresAt: new Date(Date.now() + 86_400_000),
-    },
-    0,
-  );
-
-  await x.connect(f.agentId, { xUserId: "42", handle: "HalftimeBot", postId: "1001", at });
-
-  assert.deepEqual(await x.account(f.agentId), {
-    xUserId: "42",
-    handle: "HalftimeBot",
-    verifiedAt: at,
-    postId: "1001",
-  });
-  assert.equal(await x.challenge(f.agentId), null);
-  const profile = await f.pool.query(
-    "SELECT x_handle FROM agents.agent_profiles WHERE agent_id=$1",
-    [f.agentId],
-  );
-  assert.equal(profile.rows[0].x_handle, "@HalftimeBot");
-  assert.equal((await f.studio.list(f.access))[0]?.xHandle, "HalftimeBot");
-
-  await x.disconnect(f.agentId);
-  assert.equal(await x.account(f.agentId), null);
-  const cleared = await f.pool.query(
-    "SELECT x_handle FROM agents.agent_profiles WHERE agent_id=$1",
-    [f.agentId],
-  );
-  assert.equal(cleared.rows[0].x_handle, null);
-});
-
-test("one X account and one handle, whatever its case, belong to one agent", async (t) => {
-  const f = await setup(t);
-  const x = new PostgresXStore(f.pool);
-  const other = await otherAgent(f);
-  const at = new Date();
-  await x.connect(f.agentId, { xUserId: "42", handle: "HalftimeBot", postId: "1001", at });
-
-  await assert.rejects(
-    x.connect(other, { xUserId: "42", handle: "RenamedBot", postId: "1002", at }),
-    XHandleTakenError,
-  );
-  await assert.rejects(
-    x.connect(other, { xUserId: "43", handle: "halftimebot", postId: "1002", at }),
-    XHandleTakenError,
-  );
-  assert.equal(await x.account(other), null);
-
-  assert.equal(await x.handleTaken("HALFTIMEBOT", other), true);
-  assert.equal(await x.handleTaken("halftimebot", f.agentId), false);
-  assert.equal(await x.handleTaken("NobodyBot", other), false);
-
-  // A handle on a profile alone (set before verification existed) is taken too.
-  await f.pool.query("UPDATE agents.agent_profiles SET x_handle='@LegacyBot' WHERE agent_id=$1", [
-    other,
-  ]);
-  assert.equal(await x.handleTaken("legacybot", f.agentId), true);
-  assert.equal(await x.handleTaken("legacybot", other), false);
-});
-
-test("connecting a handle another agent holds on its profile alone is taken", async (t) => {
-  const f = await setup(t);
-  const x = new PostgresXStore(f.pool);
-  const other = await otherAgent(f);
-  await f.pool.query("UPDATE agents.agent_profiles SET x_handle='@LegacyBot' WHERE agent_id=$1", [
-    other,
-  ]);
-
-  await assert.rejects(
-    x.connect(f.agentId, { xUserId: "44", handle: "legacybot", postId: "1", at: new Date() }),
-    XHandleTakenError,
-  );
-
-  assert.equal(await x.account(f.agentId), null);
-});
-
-test("a public agent keeps its X handle", async (t) => {
-  const f = await setup(t);
-  const x = new PostgresXStore(f.pool);
-  await x.connect(f.agentId, { xUserId: "42", handle: "HalftimeBot", postId: "1", at: new Date() });
-  await f.pool.query(
-    "UPDATE agents.agents SET visibility='public', published_at=now() WHERE id=$1",
-    [f.agentId],
-  );
-
-  await assert.rejects(x.disconnect(f.agentId), isCode("X_ON_PUBLIC_AGENT"));
-  assert.equal((await x.account(f.agentId))?.handle, "HalftimeBot");
-});
-
 test("publish checks the agent's state, then makes a draft public and active", async (t) => {
   const f = await setup(t);
+  await seedOAuth(f);
   const seen: unknown[] = [];
   const check: PublishCheck = async (state) => {
     seen.push(state);
@@ -615,6 +380,7 @@ const setupOptions = { perplOnly: true, versionSummary: setupChangeSummary };
 
 test("a brief saved on a public Perpl agent is a new version with one recorded row", async (t) => {
   const f = await setup(t);
+  await seedOAuth(f);
   await f.studio.publish(f.access, f.agentId, async () => []);
   const scope = await f.studio.agentScope(f.access, f.agentId);
   const first = await f.store.agent(scope);
@@ -923,6 +689,7 @@ test("publishing a private agent that is not a draft leaves its status alone", a
   const f = await setup(t);
   await f.pool.query("UPDATE agents.agents SET status='paused' WHERE id=$1", [f.agentId]);
 
+  await seedOAuth(f);
   await f.studio.publish(f.access, f.agentId, async () => []);
 
   const { rows } = await f.pool.query(
@@ -934,6 +701,7 @@ test("publishing a private agent that is not a draft leaves its status alone", a
 
 test("two concurrent publishes answer the same publishedAt", async (t) => {
   const f = await setup(t);
+  await seedOAuth(f);
 
   const [one, two] = await Promise.all([
     f.studio.publish(f.access, f.agentId, async () => []),
@@ -1003,6 +771,8 @@ test("identity gives an agent without a profile one, so its avatar and voice are
   );
   assert.deepEqual(rows, [{ accent: "magenta", avatar_pattern: 4, voice: "Deadpan" }]);
 });
+
+type Fixture = Awaited<ReturnType<typeof setup>>;
 
 /** The person's master wallet and a transfer between it and the agent's. */
 async function master(f: Fixture) {
@@ -1157,4 +927,97 @@ test("the ledger lists the person's transfers, newest first, in token units", as
       at: new Date("2026-10-01T11:00:00Z"),
     },
   ]);
+});
+
+async function seedOAuth(f: Awaited<ReturnType<typeof setup>>) {
+  await f.pool.query(
+    "INSERT INTO agents.x_accounts (agent_id,x_user_id,handle,verification_method,verified_at) VALUES ($1,$2,$3,'oauth',now())",
+    [f.agentId, randomUUID(), `x_${hex(10)}`],
+  );
+  await f.pool.query(
+    `INSERT INTO agents.x_oauth_grants (agent_id,user_id,workspace_id,tenant_id,status,tokens,key_version,scopes,expires_at,validated_at)
+    VALUES ($1,$2,$3,$4,'connected','controlled-fixture',1,'["users.read","tweet.read","offline.access"]',now()+interval '1 hour',now())`,
+    [f.agentId, f.userId, f.access.workspaceId, f.access.tenantId],
+  );
+}
+
+test("0034 preserves historical X proof and public visibility while creating private OAuth tables", async (t) => {
+  const url = new URL(
+    process.env.TEST_DATABASE_URL ??
+      "postgresql://pickler:pickler_local_only@127.0.0.1:55432/pickler",
+  );
+  assert.ok(["127.0.0.1", "localhost", "[::1]"].includes(url.hostname));
+  const admin = new Pool({ connectionString: url.toString(), max: 1 });
+  const name = `pickler_test_${randomUUID().replaceAll("-", "")}`;
+  await admin.query(`CREATE DATABASE "${name}"`);
+  url.pathname = `/${name}`;
+  const pool = new Pool({ connectionString: url.toString(), max: 1 });
+  const folder = await mkdtemp(join(tmpdir(), "pickler-x-migration-"));
+  t.after(async () => {
+    await pool.end();
+    await admin.query(`DROP DATABASE "${name}"`);
+    await admin.end();
+    await rm(folder, { recursive: true, force: true });
+  });
+  const journal = JSON.parse(await readFile(join(migrationsFolder, "meta/_journal.json"), "utf8"));
+  journal.entries = journal.entries.filter((entry: { idx: number }) => entry.idx < 34);
+  await mkdir(join(folder, "meta"));
+  await writeFile(join(folder, "meta/_journal.json"), JSON.stringify(journal));
+  for (const entry of journal.entries) {
+    await copyFile(join(migrationsFolder, `${entry.tag}.sql`), join(folder, `${entry.tag}.sql`));
+  }
+  await migrateDatabase(pool, folder);
+  const userId = randomUUID();
+  const workspaceId = randomUUID();
+  const agentId = randomUUID();
+  await pool.query("SELECT identity.create_profile($1,'Maker','legacy_owner')", [userId]);
+  await pool.query(
+    "INSERT INTO identity.workspaces(id,owner_user_id,name) VALUES ($1,$2,'Legacy')",
+    [workspaceId, userId],
+  );
+  await pool.query("BEGIN");
+  await pool.query(
+    "INSERT INTO agents.agents(id,workspace_id,name,handle,status,visibility,published_at) VALUES ($1,$2,'Legacy','legacy_oauth','active','public',now())",
+    [agentId, workspaceId],
+  );
+  await pool.query("INSERT INTO identity.handles(handle,agent_id) VALUES ('legacy_oauth',$1)", [
+    agentId,
+  ]);
+  await pool.query("COMMIT");
+  await pool.query(
+    "INSERT INTO agents.x_accounts(agent_id,x_user_id,handle,verification_post_id,verified_at) VALUES ($1,'456','LegacyX','789',now())",
+    [agentId],
+  );
+  const before = (await pool.query("SELECT * FROM agents.agents WHERE id=$1", [agentId])).rows[0];
+  await migrateDatabase(pool);
+  assert.deepEqual(
+    (await pool.query("SELECT * FROM agents.agents WHERE id=$1", [agentId])).rows[0],
+    before,
+  );
+  const old = (
+    await pool.query(
+      "SELECT verification_method,verification_post_id FROM agents.x_accounts WHERE agent_id=$1",
+      [agentId],
+    )
+  ).rows[0];
+  assert.deepEqual(old, { verification_method: "post", verification_post_id: "789" });
+  assert.deepEqual(
+    (
+      await pool.query(
+        "SELECT verification_method,verification_post_id FROM agents.x_account_history WHERE agent_id=$1",
+        [agentId],
+      )
+    ).rows[0],
+    old,
+  );
+  assert.equal((await pool.query("SELECT count(*) FROM agents.x_oauth_grants")).rows[0].count, "0");
+  const tables = await pool.query(
+    "SELECT relname,relrowsecurity FROM pg_class JOIN pg_namespace n ON n.oid=relnamespace WHERE n.nspname='agents' AND relname IN ('x_oauth_attempts','x_oauth_grants','x_oauth_revocations','x_api_usage','x_api_calls','x_account_history')",
+  );
+  assert.equal(tables.rows.length, 6);
+  assert.ok(tables.rows.every((row) => row.relrowsecurity));
+  await assert.rejects(
+    pool.query("UPDATE agents.x_account_history SET handle='Changed'"),
+    /append-only/,
+  );
 });

@@ -189,3 +189,10 @@ setup markets are optional with expectedVersion. Studio strategy versions accept
 Generate OpenAPI from routes; never maintain JSON manually.
 
 See [agent-selected Perpl markets](../../docs/studio-perpl-markets.md).
+
+## X connection DTOs
+
+Studio exports portable OAuth connection state, authorization request/URL, disconnect status and
+bounded private timeline DTOs. `X_CONNECTION_REQUIRED` is a publication blocker. No DTO exposes
+tokens, PKCE verifier, provider payloads, spending costs or historical proof details. Retired
+challenge/verify DTOs are removed. See [Studio X OAuth](../../docs/studio-x-oauth.md).

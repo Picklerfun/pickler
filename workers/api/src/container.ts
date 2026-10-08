@@ -1,3 +1,4 @@
+import { createXOAuthService } from "@pickler/core";
 import { PostgresStudioAccessRequests } from "@pickler/infrastructure";
 import { createAdviceService } from "@pickler/core";
 import { PostgresAdviceStore } from "@pickler/infrastructure";
@@ -50,11 +51,13 @@ import {
   parseSiweMessage,
   PostgresWalletIdentityStore,
   PostgresTradingStore,
-  PostgresXStore,
+  PostgresXOAuthStore,
+  createXOAuthProvider,
+  parseXApiPolicy,
+  xSecrets,
   PostgresPerpsOwnerStore,
   PostgresPerpsPaperStore,
   PostgresPerpsRuntimeStore,
-  createXClient,
   listTransfers,
 } from "@pickler/infrastructure";
 import type { PerpNetwork } from "@pickler/core";
@@ -514,12 +517,26 @@ export function createServices(env: Env): Services & { close(): Promise<void> } 
       walletChainId: chainId,
       balances: chainId === null ? noBalances : ausdBalances(env, chainId),
       ...(custody ? { custody: custody.custody } : {}),
-      // Without X_BEARER_TOKEN the client is unavailable: Connect X says it is not open yet and
-      // its challenge and verify answer 503 X_UNAVAILABLE (studio-draft-dashboard-v1 D5).
-      x: {
-        store: new PostgresXStore(repository.pool),
-        client: createXClient({ bearerToken: env.X_BEARER_TOKEN || undefined }),
-      },
+      x: createXOAuthService({
+        directory: directory,
+        store: new PostgresXOAuthStore(
+          repository.pool,
+          env.X_TOKEN_ENCRYPTION_KEY ?? "",
+          Number(env.X_TOKEN_ENCRYPTION_KEY_VERSION ?? "1"),
+        ),
+        provider: createXOAuthProvider({
+          clientId: env.X_CLIENT_ID,
+          clientSecret: env.X_CLIENT_SECRET,
+          redirectUri: env.X_REDIRECT_URI,
+          enabled:
+            env.X_OAUTH_ENABLED === "true" &&
+            /^[a-fA-F0-9]{64}$/.test(env.X_TOKEN_ENCRYPTION_KEY ?? "") &&
+            /^[1-9]\d*$/.test(env.X_TOKEN_ENCRYPTION_KEY_VERSION ?? ""),
+          readsEnabled: env.X_READS_ENABLED === "true",
+        }),
+        secrets: xSecrets(),
+        policy: parseXApiPolicy(env.X_API_POLICY_JSON),
+      }),
       transfers: { list: (userId) => listTransfers(repository.pool, userId) },
       paper: createPaperPlugin(
         new PostgresPaperStore(repository.pool),

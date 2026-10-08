@@ -21,3 +21,12 @@ See the canonical selection/version, preservation and controlled acceptance boun
 runtime activation is implied.
 
 See [agent-selected Perpl markets](../../docs/studio-perpl-markets.md).
+
+## Controlled X authorization
+
+The loopback provider simulates only X's external consent/token/identity/revoke/timeline endpoints.
+Authorization codes are single-use and the provider validates S256 verifiers. The browser replaces
+only X's external consent page with a controlled redirect; the actual Studio API, cookie callback,
+core, private PostgreSQL, publication and posts are exercised unchanged. Generated X credentials
+and quotas are test-only. Production transports never import this fixture. See
+[Studio X OAuth](../../docs/studio-x-oauth.md).

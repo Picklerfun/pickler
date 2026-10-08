@@ -10,6 +10,8 @@ export interface OperationOptions {
   optionalBody?: boolean;
   status?: number;
   also?: number[];
+  redirect?: boolean;
+  responseHeaders?: Record<string, { description: string; schema: { type: "string" } }>;
   security?: Security;
   description?: string;
   query?: Record<
@@ -39,7 +41,24 @@ export function operation(id: string, options: OperationOptions) {
   };
   const response = {
     description: "Successful response",
-    content: { "application/json": { schema: resolver(options.response) } },
+    ...(options.redirect
+      ? {}
+      : { content: { "application/json": { schema: resolver(options.response) } } }),
+    ...(options.redirect || options.responseHeaders
+      ? {
+          headers: {
+            ...(options.redirect
+              ? {
+                  Location: {
+                    description: "Same-origin Studio return",
+                    schema: { type: "string" as const },
+                  },
+                }
+              : {}),
+            ...options.responseHeaders,
+          },
+        }
+      : {}),
   };
   const responses: NonNullable<DescribeRouteOptions["responses"]> = {};
   for (const status of [options.status ?? 200, ...(options.also ?? [])]) {

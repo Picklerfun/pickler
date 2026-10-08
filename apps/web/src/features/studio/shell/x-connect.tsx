@@ -1,239 +1,177 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { BrandMark } from "@pickler/ui";
-import { errorCode, type XChallenge, type XState, type XVerify } from "../api";
-import { PREVIEW_NOTE } from "./use-agent-studio";
-import { useCopied } from "./use-copied";
-import { xHandleInput, xProblem, xView, type XCardState } from "./x-model";
-import shell from "./shell.module.css";
+import { Button, BrandMark } from "@pickler/ui";
+import type { XPostsDto } from "@pickler/api-schema";
+import type { XState } from "../api";
+import { StudioSkeleton } from "../skeleton";
 import styles from "./x-connect.module.css";
 
-const idle: XCardState = {
-  challenge: null,
-  checking: false,
-  unavailable: false,
-  taken: null,
-  missed: false,
-};
-
-/** The card as the X state read from the API leaves it: its live challenge, and D5 when shut. */
-const cardFrom = (x: XState | null): XCardState => ({
-  ...idle,
-  challenge: x?.challenge ? { handle: x.challenge.handle, text: x.challenge.text } : null,
-  unavailable: x?.available === false,
-});
-
 export interface XConnectProps {
-  /** The studio's `x`: the live challenge and whether X is open; null while it is read. */
   x: XState | null;
-  /** The person may change this agent; a view-only member sees the card shut. */
   canManage: boolean;
-  /** A `?stage=draft-x-*` card: the typed handle and the card's state, in place of the read. */
-  staged?: { handle: string; card: XCardState } | null;
-  /** The studio's `challengeX`: `POST /x/challenge`, the line to post. */
-  onChallenge(handle: string): Promise<XChallenge>;
-  /** The studio's `verifyX`: `POST /x/verify` ("Check again"); found reloads the agent's `xHandle`. */
-  onVerify(): Promise<XVerify>;
-  /** Prefix for the ids the card's controls carry, unique per screen. */
+  onConnect(): Promise<void>;
+  onDisconnect(): Promise<void>;
+  onPosts(cursor?: string): Promise<XPostsDto>;
   idPrefix: string;
-  /** Drawn on a card (Identity & voice): the row is a well, not a card of its own. */
   well?: boolean;
 }
-
-/**
- * Connect X by a post (draft spec D4, §3.1), shared by the draft's Go Public and by Identity & voice
- * in both studios (`useAgentStudio` holds the X state and the two calls): the handle with
- * the X mark and Verify; Verify issues the line to post and the miss block shows it with a Copy
- * chip; "Check again" looks for it, and says so when the post is not there yet. A handle edited
- * since the line was issued reads Verify again, because it gets a new line. The server decides
- * every answer; the handle rule is mirrored only so a typo is said before anything is sent. A
- * found post reloads the agent, whose `xHandle` then closes this card in the parent.
- */
+/** OAuth consent and private, explicitly requested timeline; shared by both agent studios. */
 export function XConnect({
   x,
   canManage,
-  staged,
-  onChallenge,
-  onVerify,
+  onConnect,
+  onDisconnect,
+  onPosts,
   idPrefix,
   well = false,
 }: XConnectProps) {
-  const [handle, setHandle] = useState(staged?.handle ?? x?.challenge?.handle ?? "");
-  const [card, setCard] = useState<XCardState>(staged?.card ?? cardFrom(x));
+  const [busy, setBusy] = useState(false);
+  const [reading, setReading] = useState(false);
+  const [posts, setPosts] = useState<XPostsDto | null>(null);
   const [error, setError] = useState("");
-  const [note, setNote] = useState("");
-  const [copied, copy] = useCopied();
-  const mounted = useRef(true);
+  const current = useRef(x);
   useEffect(() => {
-    mounted.current = true;
-    return () => {
-      mounted.current = false;
-    };
-  }, []);
-
-  /* The X state lands after the first paint: a live challenge it carries fills the card once,
-     unless the person already started one here. */
+    current.current = x;
+  }, [x]);
   const [seen, setSeen] = useState(x);
   if (x !== seen) {
     setSeen(x);
-    if (!staged && !card.challenge && !card.checking) {
-      setCard(cardFrom(x));
-      if (x?.challenge && !handle) {
-        setHandle(x.challenge.handle);
-      }
-    }
+    setPosts(null);
   }
-
-  const typed = xHandleInput(handle);
-  const view = xView(card, typed);
-  const shut = !canManage || card.unavailable;
-
-  function fail(caught: unknown, forHandle: string) {
-    const problem = xProblem(
-      errorCode(caught),
-      forHandle,
-      caught instanceof Error ? caught.message : "Could not reach X. Try again.",
-    );
-    switch (problem.kind) {
-      case "unavailable":
-        setCard((current) => ({ ...current, checking: false, unavailable: true }));
-        return;
-      case "taken":
-        setCard((current) => ({ ...current, checking: false, taken: problem.handle }));
-        return;
-      case "expired":
-        setCard((current) => ({ ...current, checking: false, challenge: null }));
-        setError(problem.text);
-        return;
-      case "preview":
-        setCard((current) => ({ ...current, checking: false }));
-        setNote(PREVIEW_NOTE);
-        return;
-      default:
-        setCard((current) => ({ ...current, checking: false }));
-        setError(problem.text);
-    }
-  }
-
-  async function submit() {
-    if (shut || card.checking || !handle.trim()) {
+  async function action(run: () => Promise<void>) {
+    if (busy) {
       return;
     }
+    setBusy(true);
     setError("");
-    setNote("");
-    if (!typed) {
-      setError("That isn't an X handle.");
+    try {
+      await run();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Could not connect X. Try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function read(cursor?: string) {
+    if (reading) {
       return;
     }
-    setCard((current) => ({ ...current, checking: true, taken: null, missed: false }));
-    /* The same handle with a line out: look for the post. A new handle: a new line for it. */
-    const sameHandle = card.challenge?.handle.toLowerCase() === typed.toLowerCase();
+    setReading(true);
+    setError("");
     try {
-      if (sameHandle) {
-        const result = await onVerify();
-        if (mounted.current) {
-          setCard((current) => ({
-            ...current,
-            checking: false,
-            challenge: result.verified ? null : current.challenge,
-            missed: !result.verified,
-          }));
-        }
-      } else {
-        const issued = await onChallenge(typed);
-        if (mounted.current) {
-          setCard((current) => ({
-            ...current,
-            checking: false,
-            challenge: { handle: issued.handle, text: issued.text },
-          }));
-        }
+      const connection = x;
+      const result = await onPosts(cursor);
+      if (current.current === connection) {
+        setPosts(result);
       }
     } catch (caught) {
-      if (mounted.current) {
-        fail(caught, typed);
-      }
+      setError(caught instanceof Error ? caught.message : "Could not read posts. Try again.");
+    } finally {
+      setReading(false);
     }
   }
-
-  const inputId = `${idPrefix}-x-handle`;
+  if (!x) {
+    return <StudioSkeleton variant="rows" />;
+  }
+  const connected = x.status === "connected";
   return (
-    <div className={styles.xConnect} id={`${idPrefix}-x`} data-well={well || undefined}>
-      <form
-        className={styles.xRow}
-        onSubmit={(event) => {
-          event.preventDefault();
-          void submit();
-        }}
-      >
-        <BrandMark name="x" size={13} />
-        <label htmlFor={inputId} className={shell.srOnly}>
-          X handle
-        </label>
-        <input
-          id={inputId}
-          className={styles.xInput}
-          type="text"
-          value={handle}
-          placeholder="@halftimebot"
-          autoComplete="off"
-          spellCheck={false}
-          maxLength={64}
-          disabled={!canManage}
-          onChange={(event) => {
-            setHandle(event.target.value);
-            setError("");
-            /* A taken handle or a missed check is about what was sent, not what is typed now. */
-            setCard((current) =>
-              current.taken || current.missed
-                ? { ...current, taken: null, missed: false }
-                : current,
-            );
-          }}
-        />
-        <button
-          type="submit"
-          className={styles.xVerify}
-          disabled={shut || view.disabled || !handle.trim()}
-        >
-          {view.button}
-        </button>
-      </form>
-      {view.miss && (
-        <div className={styles.xMiss} id={`${idPrefix}-x-miss`} role="status">
-          <span className={styles.xMissTitle}>{view.miss.title}</span>
-          <span className={styles.xPost}>
-            <span className={styles.xPostText}>{view.miss.line}</span>
-            <button
-              type="button"
-              className={styles.xCopy}
-              onClick={() => copy(view.miss?.line ?? "")}
+    <div
+      className={styles.xConnect}
+      data-well={well}
+      data-x-status={x?.status}
+      data-x-available={x?.available}
+      id={`${idPrefix}-x-connect`}
+    >
+      <div className={styles.xRow}>
+        <BrandMark name="x" size={20} />
+        <span>{x.account ? `@${x.account.handle}` : "Connect your X account"}</span>
+      </div>
+      <p className={styles.xNoteLine}>
+        Allow Pickler to read your posts. This does not allow posting or activate trading.
+      </p>
+      {x.status === "reconnect_required" && (
+        <p className={styles.xLine}>
+          Reconnect X required. Your previous verification does not grant read access.
+        </p>
+      )}
+      {x.status === "revocation_pending" && (
+        <p className={styles.xLine}>
+          Read access is blocked. Disconnect is pending at X; try Disconnect again.
+        </p>
+      )}
+      {!x.available && (
+        <p className={styles.xLine}>
+          X connection is not configured yet. Publishing requires Connect X.
+        </p>
+      )}
+      {busy ? (
+        <StudioSkeleton variant="rows" />
+      ) : (
+        <div className={styles.xActions}>
+          {!connected && (
+            <Button
+              size="sm"
+              disabled={!canManage || !x.available || x.status === "revocation_pending"}
+              onClick={() => void action(onConnect)}
             >
-              {copied ? "COPIED" : "COPY"}
-            </button>
-          </span>
-          <span className={styles.xMissHint}>{view.miss.hint}</span>
-          {view.miss.missed && <span className={styles.xMissed}>{view.miss.missed}</span>}
+              {x.account ? "Reconnect X" : "Connect X"}
+            </Button>
+          )}
+          {(x.account || x.status === "revocation_pending") && (
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={!canManage}
+              onClick={() => void action(onDisconnect)}
+            >
+              Disconnect
+            </Button>
+          )}
+          {connected && (
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={!canManage || !x.readsAvailable || reading}
+              onClick={() => void read()}
+            >
+              {posts ? "Refresh posts" : "Load posts"}
+            </Button>
+          )}
         </div>
       )}
-      {view.unavailable && (
-        <p className={styles.xLine} role="alert">
-          {view.unavailable}
-        </p>
+      {connected && !x.readsAvailable && (
+        <p className={styles.xNoteLine}>Post reading is not enabled yet.</p>
       )}
-      {view.taken && (
-        <p className={styles.xLine} role="alert">
-          {view.taken}
-        </p>
+      {reading && <StudioSkeleton variant="rows" />}
+      {!reading && posts && connected && (
+        <div className={styles.xPosts}>
+          {posts.posts.length === 0 && <p className={styles.xNoteLine}>No posts found.</p>}
+          {posts.posts.map((post) => (
+            <article className={styles.xPost} key={post.id}>
+              <p className={styles.xPostText}>{post.text}</p>
+              <a href={post.url} target="_blank" rel="noopener noreferrer">
+                View on X
+              </a>
+              <time dateTime={post.createdAt}>
+                {new Date(post.createdAt).toLocaleDateString("en-US")}
+              </time>
+            </article>
+          ))}
+          {posts.nextCursor && (
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={reading || !canManage}
+              onClick={() => void read(posts.nextCursor!)}
+            >
+              Next posts
+            </Button>
+          )}
+        </div>
       )}
       {error && (
         <p className={styles.xLine} role="alert">
           {error}
-        </p>
-      )}
-      {note && (
-        <p className={styles.xNoteLine} role="status">
-          {note}
         </p>
       )}
     </div>

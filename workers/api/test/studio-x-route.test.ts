@@ -1,561 +1,689 @@
-import test from "node:test";
+import test, { type TestContext } from "node:test";
 import assert from "node:assert/strict";
+import { randomUUID } from "node:crypto";
 import { Hono } from "hono";
 import {
-  DEFAULT_CONFIG,
-  PilotError,
-  X_CHECK_INTERVAL_MS,
-  XHandleTakenError,
+  AuthenticationRequiredError,
+  DEFAULT_BRIEF,
+  STARTER_CAPS,
+  XFailure,
   buildUserPrincipal,
-  type AgentRecord,
-  type ResearchRepository,
-  type StudioDirectory,
-  type XAccount,
-  type XChallenge,
-  type XPost,
-  type XStore,
+  createXOAuthService,
+  prepareDraft,
 } from "@pickler/core";
-import { XUnavailableError, type XClient } from "@pickler/infrastructure";
-import { xStateResponseSchema } from "@pickler/api-schema";
+import {
+  PostgresStudioDirectory,
+  PostgresXOAuthStore,
+  createXOAuthProvider,
+  xSecrets,
+} from "@pickler/infrastructure";
+import { createTestStore } from "@pickler/infrastructure/testing";
+import { xStateResponseSchema, xPostsResponseSchema } from "@pickler/api-schema";
 import type { AppEnv } from "../src/env.js";
-import { studioRoutes } from "../src/routes/studio.js";
+import { studioRoutes, type StudioServices } from "../src/routes/studio.js";
+import { studioXCallbackRoutes } from "../src/routes/studio-x.js";
 
-const AGENT = "33333333-3333-4333-8333-333333333333";
-const OTHER = "99999999-9999-4999-8999-999999999999";
-const HOUR = 3_600_000;
+const policy = {
+  version: 1,
+  reviewedAt: "2026-10-07T00:00:00Z",
+  identityRequestsPerDay: 10,
+  postRequestsPerDay: 2,
+  postResourcesPerDay: 40,
+};
+const key = "01".repeat(32);
+const json = (body: unknown) => Response.json(body);
 
-/** An in-memory XStore with the Postgres store's rules. */
-function memoryStore(options: { taken?: string[]; public?: boolean } = {}) {
-  const challenges = new Map<string, XChallenge>();
-  const accounts = new Map<string, XAccount>();
-  const claims: Date[] = [];
-  const store: XStore = {
-    async saveChallenge(agentId, challenge, intervalMs) {
-      const previous = challenges.get(agentId);
-      const now = new Date();
-      if (previous && now.getTime() - previous.createdAt.getTime() < intervalMs) {
-        return null;
-      }
-      // The check clock is the agent's: it carries over to the new challenge.
-      const saved = {
-        ...challenge,
-        createdAt: now,
-        lastCheckedAt: previous?.lastCheckedAt ?? null,
-      };
-      challenges.set(agentId, saved);
-      return saved;
-    },
-    async challenge(agentId) {
-      return challenges.get(agentId) ?? null;
-    },
-    async claimCheck(agentId, at, intervalMs) {
-      const challenge = challenges.get(agentId);
-      if (!challenge) {
-        return false;
-      }
-      if (
-        challenge.lastCheckedAt &&
-        at.getTime() - challenge.lastCheckedAt.getTime() < intervalMs
-      ) {
-        return false;
-      }
-      challenge.lastCheckedAt = at;
-      claims.push(at);
-      return true;
-    },
-    async connect(agentId, account) {
-      if (options.taken?.some((handle) => handle.toLowerCase() === account.handle.toLowerCase())) {
-        throw new XHandleTakenError();
-      }
-      if (accounts.has(agentId)) {
-        throw new PilotError("X_ALREADY_CONNECTED", "connected");
-      }
-      accounts.set(agentId, {
-        xUserId: account.xUserId,
-        handle: account.handle,
-        verifiedAt: account.at,
-        postId: account.postId,
-      });
-      challenges.delete(agentId);
-    },
-    async account(agentId) {
-      return accounts.get(agentId) ?? null;
-    },
-    async disconnect(agentId) {
-      if (options.public) {
-        throw new PilotError("X_ON_PUBLIC_AGENT", "public");
-      }
-      accounts.delete(agentId);
-      challenges.delete(agentId);
-    },
-    async handleTaken(handle) {
-      return options.taken?.some((taken) => taken.toLowerCase() === handle.toLowerCase()) ?? false;
-    },
-  };
-  return { store, challenges, accounts, claims };
-}
-
-function fakeClient({
-  available = true,
-  user = { id: "42", handle: "HalftimeBot" } as { id: string; handle: string } | null,
-  posts = [] as XPost[],
-  down = false,
-} = {}) {
-  const reads: { userId: string; since: Date }[] = [];
-  const client: XClient = {
-    available,
-    async userByHandle() {
-      if (!available || down) {
-        throw new XUnavailableError("X answered 503: secret body");
-      }
-      return user;
-    },
-    async recentPosts(userId, since) {
-      reads.push({ userId, since });
-      if (down) {
-        throw new XUnavailableError();
-      }
-      return posts;
-    },
-  };
-  return { client, reads };
-}
-
-function app({
-  store = memoryStore(),
-  x = fakeClient(),
-  composed = true,
-  owner = true,
-}: {
-  store?: ReturnType<typeof memoryStore>;
-  x?: ReturnType<typeof fakeClient>;
-  composed?: boolean;
-  /** False: a read-only member of the workspace, not its owner. */
-  owner?: boolean;
-} = {}) {
-  const record = (id: string): AgentRecord => ({
-    id,
-    tenantId: "trusted",
-    version: 1,
-    config: { ...DEFAULT_CONFIG },
-    paused: false,
-    scheduleEnabled: false,
-    nextDueAt: null,
+async function fixture(t: TestContext, existing?: Awaited<ReturnType<typeof createTestStore>>) {
+  // Reject remote databases before the isolated helper creates anything.
+  const url = new URL(
+    process.env.TEST_DATABASE_URL ??
+      "postgresql://pickler:pickler_local_only@127.0.0.1:55432/pickler",
+  );
+  assert.ok(["127.0.0.1", "localhost", "[::1]"].includes(url.hostname));
+  const repo = existing ?? (await createTestStore(t));
+  const directory = new PostgresStudioDirectory(repo.pool);
+  const userId = randomUUID();
+  await repo.pool.query("SELECT identity.create_profile($1,'Maker',$2)", [
+    userId,
+    `owner_${randomUUID().slice(0, 8)}`,
+  ]);
+  await directory.onboard(userId);
+  await repo.pool.query("UPDATE pickler.research_access SET enabled=true WHERE user_id=$1", [
+    userId,
+  ]);
+  const access = (await directory.access(userId, null))!;
+  const walletId = `controlled-${randomUUID()}`;
+  await repo.pool.query(
+    "INSERT INTO wallets.wallets (user_id,wallet_id,sub_organization_id,kind,name,approved_policy_ids) VALUES ($1,$2,'controlled-org','agent','Controlled',ARRAY['p1','p2','p3'])",
+    [userId, walletId],
+  );
+  await repo.pool.query(
+    "INSERT INTO wallets.wallet_accounts (wallet_id,chain,address,address_format,path) VALUES ($1,'monad',$2,'ADDRESS_FORMAT_ETHEREUM','m/44')",
+    [walletId, `0x${randomUUID().replaceAll("-", "")}${randomUUID().slice(0, 8)}`],
+  );
+  const handle = `agent_${randomUUID().slice(0, 8)}`;
+  const draft = prepareDraft({
+    name: "Controlled",
+    handle,
+    markets: ["BTC"],
+    voice: "analyst",
+    avatar: { accent: "lime", pattern: 1 },
+    sources: { web: null },
+    brief: DEFAULT_BRIEF,
+    caps: STARTER_CAPS,
+    walletId,
   });
-  const directory = {
-    access: async () => ({
-      workspaceId: "workspace",
-      tenantId: "trusted",
-      ownerUserId: owner ? "user" : "someone-else",
-      role: "admin",
-      enabled: true,
-    }),
-    list: async () => [
-      {
-        id: AGENT,
-        name: "Halftime",
-        handle: "halftime",
-        accent: "lime" as const,
-        avatarPattern: 0,
-        draft: true,
-        visibility: "private" as const,
-        publishedAt: null,
-        xHandle: null,
-        scope: { tenantId: "trusted", agentId: AGENT },
-      },
-    ],
-    agentScope: async (_access, id) => {
-      if (id !== AGENT) {
-        throw new PilotError("NOT_FOUND", "Agent not found");
+  const created = await directory.createDraft(access, userId, {
+    ...draft,
+    name: "Controlled",
+    handle,
+    walletId,
+  });
+  const agentId = created.productId;
+  const actor = { userId, workspaceId: access.workspaceId, tenantId: access.tenantId, agentId };
+  const store = new PostgresXOAuthStore(repo.pool, key, 1);
+  const calls: { url: string; body: URLSearchParams | null }[] = [];
+  let clock = new Date();
+  let principalUserId = userId;
+  let scopes = "users.read tweet.read offline.access";
+  let identityId = "123";
+  let fail: "identity" | "refresh" | "revoke" | "revoke-refresh" | "posts" | "token" | null = null;
+  let afterIdentity: (() => Promise<void>) | null = null;
+  const provider = createXOAuthProvider({
+    clientId: "controlled-id",
+    clientSecret: "controlled-secret",
+    redirectUri: "http://localhost:3001/api/v1/studio/x/callback",
+    enabled: true,
+    readsEnabled: true,
+    now: () => clock,
+    fetch: async (url, init) => {
+      const path = new URL(String(url)).pathname;
+      const body = init?.body instanceof URLSearchParams ? init.body : null;
+      calls.push({ url: String(url), body });
+      if (path.endsWith("/token")) {
+        if (fail === "token") {
+          throw new Error("uncertain exchange");
+        }
+        if (body?.get("grant_type") === "refresh_token" && fail === "refresh") {
+          throw new Error("uncertain private response");
+        }
+        if (body?.get("code") === "invalid-pkce") {
+          return new Response("private", { status: 400 });
+        }
+        return json({
+          access_token: "controlled-access",
+          refresh_token: "controlled-refresh",
+          token_type: "bearer",
+          scope: scopes,
+          expires_in: 7200,
+        });
       }
-      return { tenantId: "trusted", agentId: id };
+      if (path.endsWith("/users/me")) {
+        if (afterIdentity) {
+          await afterIdentity();
+        }
+        if (fail === "identity") {
+          return new Response("private", { status: 500 });
+        }
+        return json({ data: { id: identityId, username: "ControlledX" } });
+      }
+      if (path.endsWith("/revoke")) {
+        return fail === "revoke" ||
+          (fail === "revoke-refresh" && body?.get("token") === "controlled-refresh")
+          ? new Response("private", { status: 500 })
+          : json({ revoked: true });
+      }
+      if (path.endsWith("/tweets")) {
+        if (fail === "posts") {
+          return new Response("private", { status: 429, headers: { "retry-after": "120" } });
+        }
+        return json({
+          data: [
+            {
+              id: "456",
+              author_id: identityId,
+              text: "Controlled reply",
+              created_at: "2026-10-07T00:00:00Z",
+            },
+          ],
+          meta: { next_token: "next-page" },
+        });
+      }
+      throw new Error(`Unexpected X transport ${path}`);
     },
-  } as Partial<StudioDirectory> as StudioDirectory;
-  const studio = studioRoutes({
+  });
+  const service = createXOAuthService({
     directory,
-    repository: {
-      agent: async (scope: { agentId: string }) => record(scope.agentId),
-      readiness: async () => ({ connectionsChecked: false, manualSucceeded: true }),
-    } as unknown as ResearchRepository,
+    store,
+    provider,
+    secrets: xSecrets(),
+    policy,
+    now: () => clock,
+  });
+  const services: StudioServices = {
+    directory,
+    repository: repo,
     notifyQueued: async () => {},
     wallets: { findAgentWallet: async () => null },
-    balances: { read: async () => 50, forget: () => {} },
-    ...(composed ? { x: { store: store.store, client: x.client } } : {}),
-    authenticate: async () => ({
-      principal: buildUserPrincipal({
-        user: { id: "user" },
-        integrator: { id: "workspace" },
-        memberRole: "admin",
-      }),
-      workspace: null,
-    }),
-  });
-  const root = new Hono<AppEnv>();
-  root.use("*", async (c, next) => {
-    c.set("requestId", "request-1");
-    await next();
-  });
-  root.route("/", studio);
-  return root;
-}
-
-const send = (method: string, payload?: unknown) => ({
-  method,
-  headers: { "Content-Type": "application/json", Authorization: "Bearer token" },
-  ...(payload === undefined ? {} : { body: JSON.stringify(payload) }),
-});
-const get = () => ({ headers: { Authorization: "Bearer token" } });
-
-async function challenged(store: ReturnType<typeof memoryStore>, createdAgo = 0) {
-  const now = Date.now();
-  store.challenges.set(AGENT, {
-    handle: "HalftimeBot",
-    code: "pk-abcdefgh",
-    createdAt: new Date(now - createdAgo),
-    expiresAt: new Date(now - createdAgo + 24 * HOUR),
-    lastCheckedAt: null,
-  });
-}
-
-test("a challenge for a free handle answers the line to post, for 24 h", async () => {
-  const store = memoryStore();
-  const root = app({ store });
-
-  const response = await root.request(
-    `/agents/${AGENT}/x/challenge`,
-    send("POST", { handle: "@HalftimeBot" }),
-  );
-
-  assert.equal(response.status, 200);
-  const body = await response.json();
-  assert.equal(body.handle, "HalftimeBot");
-  assert.match(body.text, /^Verifying Halftime on @pickler · pk-[a-z2-7]{8}$/);
-  const saved = store.challenges.get(AGENT)!;
-  assert.ok(body.text.endsWith(saved.code));
-  const ttl = new Date(body.expiresAt).getTime() - Date.now();
-  assert.ok(ttl > 24 * HOUR - 60_000 && ttl <= 24 * HOUR);
-});
-
-test("a handle X would not accept is 400 INVALID_X_HANDLE", async () => {
-  const store = memoryStore();
-  const root = app({ store });
-
-  for (const handle of ["", "@", "has space", "sixteen_chars_xx", "dash-ed"]) {
-    const response = await root.request(`/agents/${AGENT}/x/challenge`, send("POST", { handle }));
-    assert.equal(response.status, 400, handle);
-    assert.equal((await response.json()).error, "INVALID_X_HANDLE");
+    balances: { read: async () => 100, forget: () => {} },
+    x: service,
+    authenticate: async (credentials, options) => {
+      assert.equal(options?.userOnly, true);
+      if (credentials.bearerToken !== "controlled-jwt" || credentials.apiKey) {
+        throw new AuthenticationRequiredError();
+      }
+      return {
+        principal: buildUserPrincipal({
+          user: { id: principalUserId },
+          integrator: { id: access.workspaceId },
+          memberRole: "admin",
+        }),
+        workspace: null,
+      };
+    },
+  };
+  const app = new Hono<AppEnv>();
+  app.route("/v1/studio/x", studioXCallbackRoutes(services));
+  app.route("/v1/studio", studioRoutes(services));
+  const request = (path: string, init: RequestInit = {}) =>
+    app.request(`/v1/studio${path}`, init, { APP_ENV: "local" } as AppEnv["Bindings"]);
+  const owned = `/agents/${agentId}/x`;
+  const headers = { Authorization: "Bearer controlled-jwt", "content-type": "application/json" };
+  async function begin() {
+    const response = await request(`${owned}/authorize`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ returnTo: `/studio?agent=${agentId}&resume=identity` }),
+    });
+    assert.equal(response.status, 200);
+    const auth = new URL(
+      ((await response.json()) as { authorizationUrl: string }).authorizationUrl,
+    );
+    return {
+      state: auth.searchParams.get("state")!,
+      cookie: response.headers.get("set-cookie")!.split(";")[0]!,
+      auth,
+    };
   }
-  assert.equal(store.challenges.size, 0);
-});
+  async function callback(
+    attempt: Awaited<ReturnType<typeof begin>>,
+    tail = "code=approved",
+    cookie = attempt.cookie,
+  ) {
+    return request(`/x/callback?state=${attempt.state}&${tail}`, { headers: { cookie } });
+  }
+  async function connect() {
+    const attempt = await begin();
+    const response = await callback(attempt);
+    assert.match(response.headers.get("location") ?? "", /xResult=connected/);
+    return attempt;
+  }
+  return {
+    repo,
+    directory,
+    userId,
+    access,
+    actor,
+    agentId,
+    store,
+    service,
+    provider,
+    calls,
+    request,
+    owned,
+    headers,
+    begin,
+    callback,
+    connect,
+    setPrincipal: (value: string) => {
+      principalUserId = value;
+    },
+    setClock: (value: Date) => {
+      clock = value;
+    },
+    getClock: () => clock,
+    setScopes: (value: string) => {
+      scopes = value;
+    },
+    setIdentity: (value: string) => {
+      identityId = value;
+    },
+    setFail: (value: typeof fail) => {
+      fail = value;
+    },
+    afterIdentity: (value: typeof afterIdentity) => {
+      afterIdentity = value;
+    },
+  };
+}
 
-test("a handle another agent holds is 409 X_HANDLE_TAKEN", async () => {
-  const store = memoryStore({ taken: ["halftimebot"] });
-  const root = app({ store });
-
-  const response = await root.request(
-    `/agents/${AGENT}/x/challenge`,
-    send("POST", { handle: "HalftimeBot" }),
+test("controlled API → PKCE → encrypted PostgreSQL → publication → private manual timeline", async (t) => {
+  const f = await fixture(t);
+  const attempt = await f.connect();
+  assert.equal(attempt.auth.searchParams.get("code_challenge_method"), "S256");
+  const state = await f.request(f.owned, { headers: f.headers });
+  assert.equal(state.headers.get("cache-control"), "private, no-store");
+  assert.equal(xStateResponseSchema.parse(await state.json()).status, "connected");
+  const rows = await f.repo.pool.query(
+    "SELECT g.tokens,a.state_hash,a.browser_hash,a.verifier,a.status FROM agents.x_oauth_grants g JOIN agents.x_oauth_attempts a ON a.agent_id=g.agent_id WHERE g.agent_id=$1",
+    [f.agentId],
   );
-
-  assert.equal(response.status, 409);
-  assert.equal((await response.json()).error, "X_HANDLE_TAKEN");
-  assert.equal(store.challenges.size, 0);
-});
-
-test("a challenge for an agent that already has X is 409 X_ALREADY_CONNECTED", async () => {
-  const store = memoryStore();
-  store.accounts.set(AGENT, {
-    xUserId: "42",
-    handle: "HalftimeBot",
-    verifiedAt: new Date(),
-    postId: "1",
+  assert.ok(!rows.rows[0].tokens.includes("controlled-refresh"));
+  assert.notEqual(rows.rows[0].state_hash, attempt.state);
+  assert.notEqual(rows.rows[0].browser_hash, attempt.cookie.split("=")[1]);
+  assert.equal(rows.rows[0].verifier, "");
+  const published = await f.request(`/agents/${f.agentId}/publish`, {
+    method: "POST",
+    headers: f.headers,
   });
-  const root = app({ store });
-
-  const response = await root.request(
-    `/agents/${AGENT}/x/challenge`,
-    send("POST", { handle: "OtherBot" }),
+  assert.equal(published.status, 200);
+  const posts = await f.request(`${f.owned}/posts?cursor=page2`, { headers: f.headers });
+  assert.equal(posts.status, 200);
+  assert.equal(xPostsResponseSchema.parse(await posts.json()).posts[0]?.text, "Controlled reply");
+  assert.ok(f.calls.at(-1)?.url.includes("pagination_token=page2"));
+  assert.equal(
+    (await f.repo.pool.query("SELECT count(*) FROM agents.x_api_calls")).rows[0].count,
+    "3",
   );
-
-  assert.equal(response.status, 409);
-  assert.equal((await response.json()).error, "X_ALREADY_CONNECTED");
-});
-
-test("without a bearer token a challenge is 503 X_UNAVAILABLE and nothing is saved", async () => {
-  const store = memoryStore();
-  const root = app({ store, x: fakeClient({ available: false }) });
-
-  const response = await root.request(
-    `/agents/${AGENT}/x/challenge`,
-    send("POST", { handle: "HalftimeBot" }),
+  assert.equal(
+    (await f.repo.pool.query("SELECT post_resources FROM agents.x_api_usage")).rows[0]
+      .post_resources,
+    20,
   );
-
-  assert.equal(response.status, 503);
-  assert.equal((await response.json()).error, "X_UNAVAILABLE");
-  assert.equal(store.challenges.size, 0);
-});
-
-test("X state: the account, the live challenge and whether X is open", async () => {
-  const store = memoryStore();
-  await challenged(store);
-  const root = app({ store, x: fakeClient({ available: false }) });
-
-  const response = await root.request(`/agents/${AGENT}/x`, get());
-
-  assert.equal(response.status, 200);
-  const state = xStateResponseSchema.parse(await response.json());
-  assert.equal(state.available, false);
-  assert.equal(state.account, null);
-  assert.deepEqual(state.challenge, {
-    handle: "HalftimeBot",
-    text: "Verifying Halftime on @pickler · pk-abcdefgh",
-    expiresAt: store.challenges.get(AGENT)!.expiresAt.toISOString(),
-  });
-});
-
-test("X state hides a lapsed challenge", async () => {
-  const store = memoryStore();
-  await challenged(store, 25 * HOUR);
-  const root = app({ store });
-
-  const state = await (await root.request(`/agents/${AGENT}/x`, get())).json();
-
-  assert.equal(state.challenge, null);
-  assert.equal(state.available, true);
-});
-
-test("verify finds the post and connects the account", async () => {
-  const store = memoryStore();
-  await challenged(store);
-  const since = store.challenges.get(AGENT)!.createdAt;
-  const x = fakeClient({
-    posts: [
-      {
-        id: "7",
-        authorId: "42",
-        text: "Verifying Halftime on @pickler · pk-abcdefgh",
-        createdAt: new Date(),
-      },
-    ],
-  });
-  const root = app({ store, x });
-
-  const response = await root.request(`/agents/${AGENT}/x/verify`, send("POST", {}));
-
-  assert.equal(response.status, 200);
-  assert.deepEqual(await response.json(), { verified: true, handle: "HalftimeBot" });
-  assert.deepEqual(x.reads, [{ userId: "42", since }]);
-  assert.equal(store.accounts.get(AGENT)?.postId, "7");
-  assert.equal(store.accounts.get(AGENT)?.xUserId, "42");
-
-  const state = await (await root.request(`/agents/${AGENT}/x`, get())).json();
-  assert.equal(state.account.handle, "HalftimeBot");
-  assert.equal(state.challenge, null);
-});
-
-test("verify without the post answers NOT_FOUND, and a second check within 10 s is 429", async () => {
-  const store = memoryStore();
-  await challenged(store);
-  const root = app({ store, x: fakeClient({ posts: [] }) });
-
-  const first = await root.request(`/agents/${AGENT}/x/verify`, send("POST", {}));
-  const second = await root.request(`/agents/${AGENT}/x/verify`, send("POST"));
-
-  assert.equal(first.status, 200);
-  assert.deepEqual(await first.json(), { verified: false, reason: "NOT_FOUND" });
-  assert.equal(second.status, 429);
-  assert.equal((await second.json()).error, "TOO_MANY_CHECKS");
-  assert.equal(store.claims.length, 1);
-  assert.equal(store.accounts.size, 0);
-  assert.ok(X_CHECK_INTERVAL_MS === 10_000);
-});
-
-test("verify of a handle X does not know answers NOT_FOUND without reading posts", async () => {
-  const store = memoryStore();
-  await challenged(store);
-  const x = fakeClient({ user: null });
-  const root = app({ store, x });
-
-  const response = await root.request(`/agents/${AGENT}/x/verify`, send("POST", {}));
-
-  assert.deepEqual(await response.json(), { verified: false, reason: "NOT_FOUND" });
-  assert.deepEqual(x.reads, []);
-});
-
-test("a post by someone else, or before the challenge, does not verify", async () => {
-  const store = memoryStore();
-  await challenged(store, HOUR);
-  const x = fakeClient({
-    posts: [
-      { id: "1", authorId: "43", text: "pk-abcdefgh", createdAt: new Date() },
-      { id: "2", authorId: "42", text: "pk-abcdefgh", createdAt: new Date(Date.now() - 2 * HOUR) },
-    ],
-  });
-  const root = app({ store, x });
-
-  const response = await root.request(`/agents/${AGENT}/x/verify`, send("POST", {}));
-
-  assert.deepEqual(await response.json(), { verified: false, reason: "NOT_FOUND" });
-  assert.equal(store.accounts.size, 0);
-});
-
-test("verify with no challenge is 404 CHALLENGE_NOT_FOUND, and a lapsed one 409 CHALLENGE_EXPIRED", async () => {
-  const none = app();
-  const lapsedStore = memoryStore();
-  await challenged(lapsedStore, 25 * HOUR);
-  const lapsed = app({ store: lapsedStore });
-
-  const missing = await none.request(`/agents/${AGENT}/x/verify`, send("POST", {}));
-  const expired = await lapsed.request(`/agents/${AGENT}/x/verify`, send("POST", {}));
-
-  assert.equal(missing.status, 404);
-  assert.equal((await missing.json()).error, "CHALLENGE_NOT_FOUND");
-  assert.equal(expired.status, 409);
-  assert.equal((await expired.json()).error, "CHALLENGE_EXPIRED");
-  assert.equal(lapsedStore.claims.length, 0);
-});
-
-test("verify when another agent took the account meanwhile is 409 X_HANDLE_TAKEN", async () => {
-  const store = memoryStore({ taken: ["HalftimeBot"] });
-  await challenged(store);
-  const x = fakeClient({
-    posts: [{ id: "7", authorId: "42", text: "pk-abcdefgh", createdAt: new Date() }],
-  });
-  const root = app({ store, x });
-
-  const response = await root.request(`/agents/${AGENT}/x/verify`, send("POST", {}));
-
-  assert.equal(response.status, 409);
-  assert.equal((await response.json()).error, "X_HANDLE_TAKEN");
-});
-
-test("verify when X is down is 503 X_UNAVAILABLE without X's words", async () => {
-  const store = memoryStore();
-  await challenged(store);
-  const root = app({ store, x: fakeClient({ down: true }) });
-
-  const response = await root.request(`/agents/${AGENT}/x/verify`, send("POST", {}));
-
-  assert.equal(response.status, 503);
-  const text = await response.text();
-  assert.equal(JSON.parse(text).error, "X_UNAVAILABLE");
-  assert.ok(!text.includes("secret body"));
-});
-
-test("verify without a bearer token is 503 and spends no check", async () => {
-  const store = memoryStore();
-  await challenged(store);
-  const root = app({ store, x: fakeClient({ available: false }) });
-
-  const response = await root.request(`/agents/${AGENT}/x/verify`, send("POST", {}));
-
-  assert.equal(response.status, 503);
-  assert.equal(store.claims.length, 0);
-});
-
-test("disconnect clears the account; a public agent's is 409 X_ON_PUBLIC_AGENT", async () => {
-  const store = memoryStore();
-  store.accounts.set(AGENT, {
-    xUserId: "42",
-    handle: "HalftimeBot",
-    verifiedAt: new Date(),
-    postId: "1",
-  });
-  const root = app({ store });
-  const publicRoot = app({ store: memoryStore({ public: true }) });
-
-  const response = await root.request(`/agents/${AGENT}/x`, send("DELETE"));
-  const refused = await publicRoot.request(`/agents/${AGENT}/x`, send("DELETE"));
-
-  assert.equal(response.status, 200);
-  assert.deepEqual(await response.json(), { disconnected: true });
-  assert.equal(store.accounts.size, 0);
-  assert.equal(refused.status, 409);
-  assert.equal((await refused.json()).error, "X_ON_PUBLIC_AGENT");
-});
-
-test("another owner's agent is 404 on every X route and its store is never touched", async () => {
-  const store = memoryStore();
-  const root = app({ store });
-
-  const responses = await Promise.all([
-    root.request(`/agents/${OTHER}/x`, get()),
-    root.request(`/agents/${OTHER}/x/challenge`, send("POST", { handle: "HalftimeBot" })),
-    root.request(`/agents/${OTHER}/x/verify`, send("POST", {})),
-    root.request(`/agents/${OTHER}/x`, send("DELETE")),
-  ]);
-
+  // A public agent disconnects without changing trading/publication state.
+  const before = (
+    await f.repo.pool.query(
+      "SELECT status,visibility,published_at FROM agents.agents WHERE id=$1",
+      [f.agentId],
+    )
+  ).rows[0];
+  const disconnected = await f.request(f.owned, { method: "DELETE", headers: f.headers });
+  assert.equal(disconnected.status, 200);
+  assert.deepEqual(await disconnected.json(), { disconnected: true, status: "disconnected" });
   assert.deepEqual(
-    responses.map((response) => response.status),
-    [404, 404, 404, 404],
+    (
+      await f.repo.pool.query(
+        "SELECT status,visibility,published_at FROM agents.agents WHERE id=$1",
+        [f.agentId],
+      )
+    ).rows[0],
+    before,
   );
-  assert.equal(store.challenges.size, 0);
+  assert.equal((await f.request(`${f.owned}/posts`, { headers: f.headers })).status, 409);
 });
 
-test("where X is not composed the state says not available, and the other X routes are 503", async () => {
-  const root = app({ composed: false });
+test("JWT-only routes reject missing/invalid bearer, API keys and HMAC; callback has no JWT", async (t) => {
+  const f = await fixture(t);
+  for (const headers of [
+    {},
+    { Authorization: "Bearer invalid" },
+    { "x-api-key": "key" },
+    { Authorization: "ApiKey key" },
+    { "x-agent-id": f.agentId, "x-agent-signature": "signature" },
+  ]) {
+    assert.equal((await f.request(f.owned, { headers })).status, 401);
+  }
+  const attempt = await f.begin();
+  const result = await f.callback(attempt);
+  assert.equal(result.status, 303);
+  assert.match(result.headers.get("location") ?? "", /xResult=connected/);
+  for (const old of ["/challenge", "/verify"]) {
+    assert.equal(
+      (await f.request(f.owned + old, { method: "POST", headers: f.headers, body: "{}" })).status,
+      404,
+    );
+  }
+});
 
-  const state = await root.request(`/agents/${AGENT}/x`, get());
-  const challenge = await root.request(
-    `/agents/${AGENT}/x/challenge`,
-    send("POST", { handle: "HalftimeBot" }),
+test("bad state/cookie, denied consent, expired attempts and duplicate callbacks never repeat an exchange", async (t) => {
+  const f = await fixture(t);
+  const attempt = await f.begin();
+  assert.match(
+    (await f.callback(attempt, "code=approved", "wrong=wrong")).headers.get("location") ?? "",
+    /failed/,
   );
+  assert.match(
+    (await f.callback({ ...attempt, state: "a".repeat(43) })).headers.get("location") ?? "",
+    /failed/,
+  );
+  assert.equal(f.calls.length, 0);
+  assert.match(
+    (await f.callback(attempt, "error=access_denied")).headers.get("location") ?? "",
+    /cancelled/,
+  );
+  assert.match((await f.callback(attempt)).headers.get("location") ?? "", /failed/);
+  assert.equal(f.calls.length, 0);
+  await f.repo.pool.query(
+    "UPDATE agents.x_oauth_attempts SET created_at=now()-interval '20 seconds'",
+  );
+  const expired = await f.begin();
+  await f.repo.pool.query(
+    "UPDATE agents.x_oauth_attempts SET expires_at=now()-interval '1 second'",
+  );
+  assert.match((await f.callback(expired)).headers.get("location") ?? "", /failed/);
+  assert.equal(f.calls.length, 0);
+});
 
-  assert.equal(state.status, 200);
-  assert.deepEqual(await state.json(), { account: null, challenge: null, available: false });
-  assert.equal(challenge.status, 503);
-  assert.deepEqual(await challenge.json(), {
-    error: "X_UNAVAILABLE",
-    message: "X verification is not composed here",
+for (const scenario of [
+  "scopes",
+  "pkce",
+  "uncertain",
+  "token-uncertain",
+  "revoked-access",
+] as const) {
+  test(`OAuth ${scenario} does not link or replay`, async (t) => {
+    const f = await fixture(t);
+    const attempt = await f.begin();
+    if (scenario === "scopes") {
+      f.setScopes("users.read");
+    }
+    if (scenario === "token-uncertain") {
+      f.setFail("token");
+    }
+    if (scenario === "uncertain") {
+      f.setFail("identity");
+    }
+    if (scenario === "revoked-access") {
+      await f.repo.pool.query("UPDATE pickler.research_access SET enabled=false WHERE user_id=$1", [
+        f.userId,
+      ]);
+    }
+    const result = await f.callback(
+      attempt,
+      scenario === "pkce" ? "code=invalid-pkce" : "code=approved",
+    );
+    assert.match(result.headers.get("location") ?? "", /failed/);
+    assert.equal(
+      (await f.repo.pool.query("SELECT count(*) FROM agents.x_oauth_grants")).rows[0].count,
+      "0",
+    );
+    const count = f.calls.length;
+    await f.callback(attempt);
+    assert.equal(f.calls.length, count);
   });
-});
+}
 
-test("X state is the owner's: a read-only member is 403 and sees no code", async () => {
-  const store = memoryStore();
-  await challenged(store);
-  const root = app({ store, owner: false });
-
-  const response = await root.request(`/agents/${AGENT}/x`, get());
-
-  assert.equal(response.status, 403);
-  const text = await response.text();
-  assert.equal(JSON.parse(text).error, "RESEARCH_ACCESS_DENIED");
-  assert.ok(!text.includes("pk-abcdefgh"));
-});
-
-test("alternating challenge and verify spends no more X reads than verify alone", async () => {
-  const store = memoryStore();
-  const x = fakeClient({ posts: [] });
-  const root = app({ store, x });
-
-  const first = await root.request(
-    `/agents/${AGENT}/x/challenge`,
-    send("POST", { handle: "HalftimeBot" }),
+test("historical verification requires OAuth, keeps evidence, reconnect requires the same X ID", async (t) => {
+  const f = await fixture(t);
+  await f.repo.pool.query(
+    "INSERT INTO agents.x_accounts(agent_id,x_user_id,handle,verification_post_id,verified_at) VALUES ($1,'123','ControlledX','old-proof',now())",
+    [f.agentId],
   );
-  const checked = await root.request(`/agents/${AGENT}/x/verify`, send("POST", {}));
-  // Within 10 s of the first: no new challenge.
-  const again = await root.request(
-    `/agents/${AGENT}/x/challenge`,
-    send("POST", { handle: "HalftimeBot" }),
-  );
-  // Even a challenge issued later keeps the agent's last check time.
-  store.challenges.get(AGENT)!.createdAt = new Date(Date.now() - X_CHECK_INTERVAL_MS);
-  const later = await root.request(
-    `/agents/${AGENT}/x/challenge`,
-    send("POST", { handle: "HalftimeBot" }),
-  );
-  const rechecked = await root.request(`/agents/${AGENT}/x/verify`, send("POST", {}));
-
-  assert.equal(first.status, 200);
-  assert.deepEqual(await checked.json(), { verified: false, reason: "NOT_FOUND" });
-  assert.equal(again.status, 429);
-  assert.deepEqual(await again.json(), {
-    error: "TOO_MANY_CHECKS",
-    message: "Wait a few seconds before starting again",
+  assert.equal((await f.service.state(f.userId, null, f.agentId)).status, "reconnect_required");
+  const blocked = await f.request(`/agents/${f.agentId}/publish`, {
+    method: "POST",
+    headers: f.headers,
   });
-  assert.equal(later.status, 200);
-  assert.equal(rechecked.status, 429);
-  assert.equal((await rechecked.json()).error, "TOO_MANY_CHECKS");
-  assert.equal(x.reads.length, 1);
-  assert.equal(store.claims.length, 1);
+  assert.equal(blocked.status, 409);
+  assert.match(await blocked.text(), /X_CONNECTION_REQUIRED/);
+  f.setIdentity("999");
+  const attempt = await f.begin();
+  assert.match((await f.callback(attempt)).headers.get("location") ?? "", /x_account_mismatch/);
+  await f.repo.pool.query(
+    "UPDATE agents.x_oauth_attempts SET created_at=now()-interval '20 seconds'",
+  );
+  f.setIdentity("123");
+  await f.connect();
+  const row = (
+    await f.repo.pool.query(
+      "SELECT verification_method,verification_post_id FROM agents.x_accounts WHERE agent_id=$1",
+      [f.agentId],
+    )
+  ).rows[0];
+  assert.deepEqual(row, { verification_method: "oauth", verification_post_id: "old-proof" });
+});
+
+test("publication races and provider failures cannot bypass OAuth or reinterpret outages as revocation", async (t) => {
+  const f = await fixture(t);
+  await f.connect();
+  f.setFail("identity");
+  assert.equal(
+    (await f.request(`/agents/${f.agentId}/publish`, { method: "POST", headers: f.headers }))
+      .status,
+    503,
+  );
+  assert.equal((await f.service.state(f.userId, null, f.agentId)).status, "connected");
+  f.setFail(null);
+  f.afterIdentity(async () => {
+    await f.store.disconnect(f.actor);
+  });
+  assert.equal(
+    (await f.request(`/agents/${f.agentId}/publish`, { method: "POST", headers: f.headers }))
+      .status,
+    409,
+  );
+  assert.equal(
+    (await f.repo.pool.query("SELECT visibility FROM agents.agents WHERE id=$1", [f.agentId]))
+      .rows[0].visibility,
+    "private",
+  );
+});
+
+test("failed revocation blocks local access immediately and can be explicitly retried", async (t) => {
+  const f = await fixture(t);
+  await f.connect();
+  f.setFail("revoke");
+  const response = await f.request(f.owned, { method: "DELETE", headers: f.headers });
+  assert.deepEqual(await response.json(), { disconnected: true, status: "revocation_pending" });
+  assert.equal((await f.service.state(f.userId, null, f.agentId)).status, "revocation_pending");
+  assert.equal((await f.store.grant(f.actor))?.tokens?.accessToken, "");
+  assert.equal((await f.store.grant(f.actor))?.tokens?.refreshToken, "");
+  assert.deepEqual((await f.store.pendingRevocations(f.actor)).map((item) => item.token).sort(), [
+    "controlled-access",
+    "controlled-refresh",
+  ]);
+  assert.equal((await f.request(`${f.owned}/posts`, { headers: f.headers })).status, 409);
+  f.setFail(null);
+  assert.equal((await f.service.disconnect(f.userId, null, f.agentId)).status, "disconnected");
+  assert.equal(
+    (await f.repo.pool.query("SELECT count(*) FROM agents.x_oauth_grants")).rows[0].count,
+    "0",
+  );
+});
+
+test("refresh concurrency/lost claim/uncertain response stops without repeating initiated exchanges", async (t) => {
+  const f = await fixture(t);
+  await f.connect();
+  const grant = (await f.store.grant(f.actor))!;
+  const claims = await Promise.allSettled([
+    f.store.claimRefresh(f.actor, grant.version, new Date()),
+    f.store.claimRefresh(f.actor, grant.version, new Date()),
+  ]);
+  assert.equal(claims.filter((c) => c.status === "fulfilled").length, 1);
+  await f.repo.pool.query(
+    "UPDATE agents.x_oauth_grants SET refresh_started_at=now()-interval '31 seconds'",
+  );
+  await assert.rejects(f.store.claimRefresh(f.actor, grant.version, new Date()), XFailure);
+  assert.equal((await f.store.grant(f.actor))?.status, "reconnect_required");
+  const calls = f.calls.length;
+  await assert.rejects(f.service.posts(f.userId, null, f.agentId), XFailure);
+  assert.equal(f.calls.length, calls);
+});
+
+test("a refresh with an uncertain response is not retried by a later read", async (t) => {
+  const f = await fixture(t);
+  await f.connect();
+  f.setClock(new Date(f.getClock().getTime() + 7200000));
+  f.setFail("refresh");
+  await assert.rejects(f.service.posts(f.userId, null, f.agentId), XFailure);
+  const calls = f.calls.length;
+  await assert.rejects(f.service.posts(f.userId, null, f.agentId), XFailure);
+  assert.equal(f.calls.length, calls);
+  assert.equal((await f.store.grant(f.actor))?.status, "reconnect_required");
+});
+
+test("concurrent quotas reserve before transport; 429 preserves resources and Retry-After", async (t) => {
+  const f = await fixture(t);
+  await f.connect();
+  const responses = await Promise.all(
+    [1, 2, 3].map(() => f.request(`${f.owned}/posts`, { headers: f.headers })),
+  );
+  assert.deepEqual(responses.map((r) => r.status).sort(), [200, 200, 429]);
+  assert.equal(f.calls.filter((c) => c.url.includes("/tweets")).length, 2);
+  assert.equal(
+    (await f.repo.pool.query("SELECT post_resources FROM agents.x_api_usage")).rows[0]
+      .post_resources,
+    40,
+  );
+  await assert.rejects(
+    f.repo.pool.query("UPDATE agents.x_api_calls SET reserved_resources=0"),
+    /append-only/,
+  );
+});
+
+test("provider rate-limit blocks a second read without automatic polling", async (t) => {
+  const f = await fixture(t);
+  await f.connect();
+  f.setFail("posts");
+  const first = await f.request(`${f.owned}/posts`, { headers: f.headers });
+  assert.equal(first.status, 429);
+  assert.equal(first.headers.get("retry-after"), "120");
+  const calls = f.calls.length;
+  assert.equal((await f.request(`${f.owned}/posts`, { headers: f.headers })).status, 429);
+  assert.equal(f.calls.length, calls);
+});
+
+test("private X state and reads cannot cross owners or workspaces", async (t) => {
+  const first = await fixture(t);
+  const second = await fixture(t, first.repo);
+  await first.connect();
+  for (const [tail, method] of [
+    ["", "GET"],
+    ["/posts", "GET"],
+    ["", "DELETE"],
+    ["/authorize", "POST"],
+  ]) {
+    const response = await second.request(first.owned + tail, {
+      method,
+      headers: second.headers,
+      body: method === "POST" ? JSON.stringify({ returnTo: "/studio" }) : undefined,
+    });
+    assert.ok([403, 404].includes(response.status));
+  }
+  assert.equal(second.calls.length, 0);
+  assert.equal((await first.service.state(first.userId, null, first.agentId)).status, "connected");
+});
+
+test("concurrent connections cannot claim the same X identity twice", async (t) => {
+  const first = await fixture(t);
+  const second = await fixture(t, first.repo);
+  const attempts = await Promise.all([first.begin(), second.begin()]);
+  const responses = await Promise.all([
+    first.callback(attempts[0]!),
+    second.callback(attempts[1]!),
+  ]);
+  assert.equal(
+    responses.filter((r) => r.headers.get("location")?.includes("xResult=connected")).length,
+    1,
+  );
+  assert.equal(
+    responses.filter((r) => r.headers.get("location")?.includes("x_handle_taken")).length,
+    1,
+  );
+  assert.equal(
+    (await first.repo.pool.query("SELECT count(*) FROM agents.x_oauth_grants")).rows[0].count,
+    "1",
+  );
+});
+
+test("creator permission revoked after identity transport prevents linking but still allows disconnect", async (t) => {
+  const f = await fixture(t);
+  f.afterIdentity(async () => {
+    await f.repo.pool.query("UPDATE pickler.research_access SET enabled=false WHERE user_id=$1", [
+      f.userId,
+    ]);
+  });
+  const attempt = await f.begin();
+  assert.match((await f.callback(attempt)).headers.get("location") ?? "", /failed/);
+  assert.equal(
+    (await f.repo.pool.query("SELECT count(*) FROM agents.x_oauth_grants")).rows[0].count,
+    "0",
+  );
+  assert.equal((await f.request(f.owned, { headers: f.headers })).status, 200);
+  assert.equal((await f.request(f.owned, { method: "DELETE", headers: f.headers })).status, 200);
+});
+
+test("successful refresh advances the encrypted grant once; a stale claim cannot overwrite it", async (t) => {
+  const f = await fixture(t);
+  await f.connect();
+  const previous = (await f.store.grant(f.actor))!;
+  f.setClock(new Date(f.getClock().getTime() + 7200000));
+  await f.service.posts(f.userId, null, f.agentId);
+  const current = (await f.store.grant(f.actor))!;
+  assert.equal(current.version, previous.version + 1);
+  assert.equal(f.calls.filter((c) => c.body?.get("grant_type") === "refresh_token").length, 1);
+  await assert.rejects(
+    f.store.finishRefresh(f.actor, previous.version, randomUUID(), current.tokens!, f.getClock()),
+    XFailure,
+  );
+  assert.equal((await f.store.grant(f.actor))?.version, current.version);
+});
+
+test("a workspace member cannot impersonate its owner for X state or disconnect", async (t) => {
+  const f = await fixture(t);
+  await f.connect();
+  const memberId = randomUUID();
+  await f.repo.pool.query(
+    "INSERT INTO identity.workspace_members(workspace_id,user_id,role) VALUES ($1,$2,'auditor')",
+    [f.access.workspaceId, memberId],
+  );
+  f.setPrincipal(memberId);
+  for (const method of ["GET", "DELETE"]) {
+    assert.equal((await f.request(f.owned, { headers: f.headers, method })).status, 403);
+  }
+  assert.equal((await f.store.grant(f.actor))?.status, "connected");
+});
+
+test("ownership changed during OAuth cannot complete; the new owner can clean up pending revocation", async (t) => {
+  const f = await fixture(t);
+  const nextOwner = randomUUID();
+  await f.repo.pool.query("SELECT identity.create_profile($1,'Next','next_x_owner')", [nextOwner]);
+  await f.repo.pool.query("INSERT INTO pickler.research_access(user_id,enabled) VALUES ($1,true)", [
+    nextOwner,
+  ]);
+  f.setFail("revoke");
+  f.afterIdentity(async () => {
+    await f.repo.pool.query("UPDATE identity.workspaces SET owner_user_id=$2 WHERE id=$1", [
+      f.access.workspaceId,
+      nextOwner,
+    ]);
+  });
+  const attempt = await f.begin();
+  assert.match((await f.callback(attempt)).headers.get("location") ?? "", /failed/);
+  assert.equal(
+    (await f.repo.pool.query("SELECT count(*) FROM agents.x_oauth_grants")).rows[0].count,
+    "0",
+  );
+  await assert.rejects(f.service.state(f.userId, f.access.workspaceId, f.agentId));
+  assert.equal(
+    (await f.service.state(nextOwner, f.access.workspaceId, f.agentId)).status,
+    "revocation_pending",
+  );
+  f.setFail(null);
+  assert.equal(
+    (await f.service.disconnect(nextOwner, f.access.workspaceId, f.agentId)).status,
+    "disconnected",
+  );
+});
+
+test("partial revocation retains only the remaining token and explicitly retries that token", async (t) => {
+  const f = await fixture(t);
+  await f.connect();
+  f.setFail("revoke-refresh");
+  assert.equal(
+    (await f.service.disconnect(f.userId, null, f.agentId)).status,
+    "revocation_pending",
+  );
+  assert.deepEqual(
+    (await f.store.pendingRevocations(f.actor)).map((item) => item.token),
+    ["controlled-refresh"],
+  );
+  const before = f.calls.length;
+  f.setFail(null);
+  assert.equal((await f.service.disconnect(f.userId, null, f.agentId)).status, "disconnected");
+  assert.deepEqual(
+    f.calls.slice(before).map((call) => call.body?.get("token")),
+    ["controlled-refresh"],
+  );
+  assert.equal((await f.store.pendingRevocations(f.actor)).length, 0);
 });

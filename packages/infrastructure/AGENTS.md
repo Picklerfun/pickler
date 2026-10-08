@@ -579,3 +579,14 @@ the proposal symbol CHECK. Test-only controlled Supabase supports fixed 55522/55
 both requiring UUID ownership markers; ordinary databases remain refused.
 
 See [agent-selected Perpl markets](../../docs/studio-perpl-markets.md).
+
+## Studio X OAuth persistence
+
+`src/x/oauth-provider.ts` implements fixed confidential X endpoints, S256 secrets and reviewed
+resource policy parsing. `src/studio/x-oauth-store.ts` owns encrypted attempts/grants, versioned
+renewal claims, UTC quotas, immutable request/history records and pending revocation tokens.
+Migration 0034 preserves historical verification without importing it as OAuth. Locks follow
+workspace/access/product → agent → grant/usage; publishing uses the same ordering. Drain pending
+revocations with the current encryption key before changing its version. No post content is
+stored. Legacy post search/store implementations are removed, their tables remain historical.
+See [Studio X OAuth](../../docs/studio-x-oauth.md).

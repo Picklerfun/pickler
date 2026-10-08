@@ -236,7 +236,8 @@ export const xAccounts = agentsSchema
       xUserId: text("x_user_id").notNull().unique("x_accounts_x_user_id_key"),
       handle: text("handle").notNull(),
       verifiedAt: timestamp("verified_at", { withTimezone: true }).notNull(),
-      verificationPostId: text("verification_post_id").notNull(),
+      verificationPostId: text("verification_post_id"),
+      verificationMethod: text("verification_method").notNull().default("post"),
     },
     (t) => [uniqueIndex("x_accounts_handle_key").on(sql`lower(${t.handle})`)],
   )

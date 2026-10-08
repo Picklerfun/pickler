@@ -394,3 +394,10 @@ and reuse configuration transactions. Advice remains BTC/ETH. Core never fetches
 strategies.
 
 See [agent-selected Perpl markets](../../docs/studio-perpl-markets.md).
+
+## Studio X OAuth
+
+`features/studio/x-oauth.ts` owns read-only PKCE linking, same-account reconnect, current owner
+rechecks, explicit timeline reads and renewal/disconnect policy through injected ports. No provider
+SDK or token encryption lives in core. Publication requires `X_CONNECTION_REQUIRED` to be resolved
+through current OAuth, never historical post evidence. See [Studio X OAuth](../../docs/studio-x-oauth.md).

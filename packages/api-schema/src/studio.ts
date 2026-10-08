@@ -332,32 +332,40 @@ export const versionsResponseSchema = z.object({
 });
 export type VersionsDto = z.infer<typeof versionsResponseSchema>;
 
-/** `POST /v1/studio/agents/:id/x/challenge`'s body: the handle, "@" optional. */
-export const xChallengeRequestSchema = z.object({ handle: z.string().max(64) }).strict();
-export type XChallengeRequestDto = z.infer<typeof xChallengeRequestSchema>;
-
-/** The live challenge: the handle it is for, the line to post, and when it lapses. */
-export const xChallengeSchema = z.object({
-  handle: z.string(),
-  text: z.string(),
-  expiresAt: z.string().datetime(),
-});
-export type XChallengeDto = z.infer<typeof xChallengeSchema>;
-
-/** `GET /v1/studio/agents/:id/x`: `available` is false until Pickler's X app is configured (D5). */
+/** Owner-only OAuth connection; no provider credentials cross this contract. */
+export const xConnectionStatusSchema = z.enum([
+  "disconnected",
+  "connected",
+  "reconnect_required",
+  "revocation_pending",
+]);
 export const xStateResponseSchema = z.object({
+  status: xConnectionStatusSchema,
   account: z.object({ handle: z.string(), verifiedAt: z.string().datetime() }).nullable(),
-  challenge: xChallengeSchema.nullable(),
   available: z.boolean(),
+  readsAvailable: z.boolean(),
 });
 export type XStateDto = z.infer<typeof xStateResponseSchema>;
-
-/** `POST /v1/studio/agents/:id/x/verify`. */
-export const xVerifyResponseSchema = z.union([
-  z.object({ verified: z.literal(true), handle: z.string() }),
-  z.object({ verified: z.literal(false), reason: z.literal("NOT_FOUND") }),
-]);
-export type XVerifyDto = z.infer<typeof xVerifyResponseSchema>;
+export const xAuthorizeRequestSchema = z.object({ returnTo: z.string().min(1).max(512) }).strict();
+export const xAuthorizeResponseSchema = z.object({ authorizationUrl: z.string().url() });
+export const xDisconnectResponseSchema = z.object({
+  disconnected: z.literal(true),
+  status: z.enum(["disconnected", "revocation_pending"]),
+});
+export const xPostsResponseSchema = z.object({
+  posts: z
+    .array(
+      z.object({
+        id: z.string(),
+        text: z.string(),
+        createdAt: z.string().datetime(),
+        url: z.string().url(),
+      }),
+    )
+    .max(20),
+  nextCursor: z.string().nullable(),
+});
+export type XPostsDto = z.infer<typeof xPostsResponseSchema>;
 
 /** `POST /v1/studio/agents/:id/publish` (D8); idempotent on a public agent. */
 export const publishResponseSchema = z.object({
@@ -367,7 +375,7 @@ export const publishResponseSchema = z.object({
 export type PublishDto = z.infer<typeof publishResponseSchema>;
 
 /** Mirrors core's `PublishBlocker`: what a 409 PUBLISH_BLOCKED lists in `detail.blockers`. */
-export const PUBLISH_BLOCKERS = ["KILLED", "WALLET", "FUNDS"] as const;
+export const PUBLISH_BLOCKERS = ["KILLED", "WALLET", "FUNDS", "X_CONNECTION_REQUIRED"] as const;
 export type PublishBlockerDto = (typeof PUBLISH_BLOCKERS)[number];
 
 /** `GET /v1/studio/wallets/ledger` (D17): the person's transfers, newest first, at most 100. */
