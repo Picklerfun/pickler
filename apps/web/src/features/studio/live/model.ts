@@ -783,6 +783,12 @@ export interface WatchCard {
   funding: string;
   /** The last 24 h of marks, oldest first, for the sparkline; null until read. */
   trail: number[] | null;
+  trailTimestamps: (string | null)[] | null;
+  /** Optional longer history from the same public detail read; never another request. */
+  priceHistory: MarketDetailDto["priceHistory"] | null;
+  /** The current board mark's observation, independent of history acquisition. */
+  observedAt: string | null;
+  stale: boolean;
   /** The board lists it: one it does not reads in dashes. */
   listed: boolean;
 }
@@ -825,6 +831,10 @@ export function marketsView(
         up: null,
         funding: "—",
         trail: null,
+        trailTimestamps: null,
+        priceHistory: null,
+        observedAt: null,
+        stale: false,
         listed: false,
       };
     }
@@ -836,6 +846,10 @@ export function marketsView(
       up: market.change24h >= 0,
       funding: formatFunding(market.funding1h),
       trail: details[market.symbol]?.trail ?? null,
+      trailTimestamps: details[market.symbol]?.trailTimestamps ?? null,
+      priceHistory: details[market.symbol]?.priceHistory ?? null,
+      observedAt: market.source.venue === "perpl" ? market.source.observedAt : null,
+      stale: market.source.venue === "perpl" && market.source.stale,
       listed: true,
     };
   });

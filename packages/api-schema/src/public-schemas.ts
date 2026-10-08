@@ -311,6 +311,11 @@ export const marketDetailDtoSchema = z.object({
     z.object({ level: number, horizon: z.enum(["1H", "4H", "12H", "24H"]), agents: number }),
   ),
   trail: z.array(number),
+  trailTimestamps: z.array(z.iso.datetime().nullable()).optional(),
+  priceHistory: z
+    .array(z.object({ price: number, at: z.iso.datetime() }))
+    .max(721)
+    .optional(),
 }) satisfies z.ZodType<MarketDetailDto>;
 const agentRef = z.object({ name: text, ticker: text, beat: text, accent, markSize: number });
 export const landingSchema = z.object({

@@ -1,18 +1,21 @@
 "use client";
+import { Segmented, Skeleton } from "@pickler/ui";
 import { useEffect, useRef, useState, type ReactElement, type ReactNode } from "react";
 import { LiveSection, type LiveSectionProps } from "./live-section";
 import { FUNDING_LABEL, MARKETS_FAILED_LINE, marketsView } from "./model";
 import {
   FLAT_LINE,
   OPEN_COUNT,
-  WATCH_META,
+  PRICE_RANGES,
   WATCH_NONE,
+  priceTime,
+  rangeTrail,
   trailText,
-  watchLoading,
+  type PriceRange,
 } from "./run-model";
 import { PositionCards } from "./runtime-parts";
 import { paperShown } from "./runtime-model";
-import { Sparkline } from "./sparkline";
+import { PriceTrail } from "./sparkline";
 import styles from "./run.module.css";
 
 /**
@@ -43,10 +46,11 @@ export function FlatPositions({
 /**
  * WHAT IT WATCHES (spec L8): the real board for the markets in its setup: mark, 24 h change, the
  * hourly funding and a sparkline of the trail, tagged SAMPLE DATA or STALE when the board is
- * either, "Reading Perpl…" before the read, and "Couldn't read Perpl." with Retry when it failed.
+ * either, Skeletons before the read, and "Couldn't read Perpl." with Retry when it failed.
  */
 function WhatItWatches({ agent, live }: Pick<LiveSectionProps, "agent" | "live">) {
   const [retrying, setRetrying] = useState(false);
+  const [range, setRange] = useState<PriceRange>("24H");
   const view = marketsView(live.markets, live.details, agent.config.perpl?.markets ?? []);
   /* Retry unmounts with the failure it answers: once the read leaves `failed`, the heading takes
      focus so it does not drop to the page. */
@@ -80,13 +84,29 @@ function WhatItWatches({ agent, live }: Pick<LiveSectionProps, "agent" | "live">
           WHAT IT WATCHES
         </h4>
         {view.tag && <span className={styles.sourceTag}>{view.tag}</span>}
-        <span className={styles.watchMeta}>{WATCH_META}</span>
+        <span className={styles.watchControls}>
+          <span className={styles.watchMeta}>PERPL</span>
+          <Segmented
+            label="Price history range"
+            options={PRICE_RANGES}
+            value={range}
+            onChange={setRange}
+            className={styles.watchRanges}
+            optionClassName={styles.watchRange}
+          />
+        </span>
       </div>
 
       {view.state === "loading" && (
-        <p className={styles.watchState} role="status">
-          {watchLoading(live.preview)}
-        </p>
+        <div
+          className={styles.watchSkeleton}
+          role="status"
+          aria-label="Loading markets"
+          aria-busy="true"
+        >
+          <Skeleton shape="panel" />
+          <Skeleton shape="panel" />
+        </div>
       )}
 
       {view.state === "failed" && (
@@ -109,26 +129,50 @@ function WhatItWatches({ agent, live }: Pick<LiveSectionProps, "agent" | "live">
 
       {view.state === "ready" && view.cards.length > 0 && (
         <ul className={styles.watchRows}>
-          {view.cards.map((card) => (
-            <li key={card.key} className={styles.watchRow}>
-              <span className={styles.watchName}>
-                <span className={styles.marketName}>{card.name}</span>
-                <span className={styles.funding}>
-                  {FUNDING_LABEL} {card.funding}
+          {view.cards.map((card) => {
+            const updated = priceTime(card.observedAt);
+            const visible = rangeTrail(card.priceHistory, card.trail, card.trailTimestamps, range);
+            const since = priceTime(visible.since);
+            return (
+              <li key={card.key} className={styles.watchRow}>
+                <span className={styles.watchName}>
+                  <span className={styles.marketName}>{card.name}</span>
+                  <span className={styles.funding}>
+                    {FUNDING_LABEL} {card.funding}
+                  </span>
                 </span>
-              </span>
-              <Sparkline trail={card.trail} up={card.up} />
-              <span className={styles.srOnly}>
-                {card.listed ? trailText(card.trail) : "Not on the board."}
-              </span>
-              <span className={styles.watchMark}>
-                <span className={styles.mark}>{card.mark}</span>
-                <span className={styles.change} data-up={card.up ?? undefined}>
-                  {card.change}
+                <div className={styles.watchChart}>
+                  <PriceTrail
+                    trail={visible.trail}
+                    timestamps={visible.timestamps}
+                    market={card.name}
+                    range={range}
+                  />
+                  {since && (
+                    <span className={styles.historySince}>History since {since.label}</span>
+                  )}
+                </div>
+                <span className={styles.srOnly}>
+                  {card.listed ? trailText(visible.trail, range) : "Not on the board."}
                 </span>
-              </span>
-            </li>
-          ))}
+                <span className={styles.watchMark}>
+                  <span className={styles.mark}>{card.mark}</span>
+                  <span className={styles.change} data-up={card.up ?? undefined}>
+                    {card.change} <span className={styles.changePeriod}>24h</span>
+                  </span>
+                  {updated && (
+                    <time
+                      className={styles.priceUpdated}
+                      dateTime={updated.iso}
+                      title={updated.label}
+                    >
+                      {card.stale ? "Last read" : "Updated"} {updated.clock}
+                    </time>
+                  )}
+                </span>
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>

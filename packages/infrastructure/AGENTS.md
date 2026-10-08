@@ -598,3 +598,11 @@ X preview transport requests five posts with no expansions or pagination; disabl
 ## X profile presentation
 
 Migration 0035 adds nullable name/photo fields to the private OAuth grant, without rewriting existing links. The existing users/me request includes name/profile_image_url; HTTPS X avatar CDN paths are allowlisted and missing/unsafe decoration becomes null. Connecting saves the snapshot transactionally; token renewal retains it and state reads do not query X.
+
+## Price history timestamps
+
+The public market board retains timestamp/price pairs from the existing hourly candle read. trailTimestamps uses each candle opening time plus its hourly resolution; the appended mark uses held board observation. Cached prices retain their original dates. No additional provider query or persistence is introduced.
+
+The same cached thirty-day candle read supplies bounded `priceHistory` for 24h/7d/30d view
+selection. Detail responses clone at most 720 hourly samples plus the observed mark; the existing
+24h trail and hourly-reach calculation remain unchanged. Range views add no transport or retry.

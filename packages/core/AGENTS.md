@@ -409,3 +409,11 @@ X post preview policy exports a five-resource page size and one attempt per agen
 ## X profile presentation
 
 OAuth identities may carry optional displayName/profileImageUrl decoration from the existing identity verification. State reads return the stored snapshot; decoration never grants access or triggers provider reads.
+
+## Price history timestamps
+
+MarketDetail optionally carries trailTimestamps aligned with the existing numeric trail. Candle points identify their closing instant; the final mark identifies its board observation. Unknown timestamps remain absent/null and do not change any financial policy.
+
+`MarketDetail.priceHistory` optionally exposes up to thirty days of paired hourly prices and UTC
+closing times plus the observed mark. The existing `trail` retains its 24h meaning. This is public
+market history only; no strategy, horizon or financial policy changes with the chart's view.
