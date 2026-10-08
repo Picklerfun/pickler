@@ -537,6 +537,54 @@ test("resource cleanup continues after reader and diagnostic failures", async ()
   assert.deepEqual(failures, [1, 2]);
 });
 
+test("slow public cycle does not sleep past the next still-open admission", async (t) => {
+  let time = at + 299000;
+  const db = await createTestStore(t, () => time);
+  const study = new PostgresPerpsStudyStore(db.pool, () => time);
+  const paper = new PostgresPerpsPaperStore(db.pool, () => time);
+  const c = { ...config, sessionId: "slow-cycle" };
+  await study.initialize(c, { acquisitionPolicy: "rest-universe-20s-v1" });
+  const controller = new AbortController();
+  let cycles = 0;
+  const delays: number[] = [];
+  const runner = createProfileStudyRunner({
+    study,
+    paper,
+    now: () => time,
+    data: {
+      observe: async () => {
+        if (cycles === 0) {
+          time += 66000;
+        }
+        return { frames: evidence(time).frames, funding: [] };
+      },
+      evidence: async () => evidence(time),
+      execution: async () => evidence(time).frames,
+      finalEvidence: async () => evidence(time),
+    },
+    sleep: async (delay, signal) => {
+      signal.throwIfAborted();
+      delays.push(delay);
+      time += delay;
+    },
+    afterCycle: async () => {
+      cycles++;
+      if (cycles === 2) {
+        controller.abort(new Error("Controlled stop after current admission"));
+      }
+    },
+  });
+
+  await assert.rejects(runner.run(c, controller.signal), /Controlled stop/);
+
+  assert.deepEqual(delays, [1]);
+  const result = await exportPerpsAudit(db.pool, c);
+  assert.equal(result.study.rounds.length, 1);
+  assert.equal(result.study.rounds[0]!.slot, 0);
+  assert.equal(result.study.rounds[0]!.executionStatus, "complete");
+  assert.equal(result.study.events.filter((e) => e.kind === "slot-attempted").length, 1);
+});
+
 test("read-only reporting preserves completion, historical data and final exits outside admission slots", async (t) => {
   const { mkdtemp, writeFile, readFile, rm } = await import("node:fs/promises");
   const { tmpdir } = await import("node:os");
