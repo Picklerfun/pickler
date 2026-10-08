@@ -8,7 +8,8 @@ import { useLanding } from "../lib/landing-data";
 /**
  * The newest announcement, and only that one. The snapshot carries several and the canvas has room
  * for one, so this shows the first rather than rotating through them: a headline that changes under
- * you on a timer is a thing to chase, not to read.
+ * you on a timer is a thing to chase, not to read. The canvas draws the tag, the title and a way to
+ * dismiss it; the announcement's own link is on the title.
  */
 export function NewsPill() {
   const { announcements } = useLanding().data;
@@ -20,23 +21,21 @@ export function NewsPill() {
   }
 
   return (
-    <aside className={styles.news} aria-label="Announcement">
-      <span className={styles.newsTag}>{item.tag}</span>
-      <span className={styles.newsTitle}>{item.title}</span>
-      <a href={item.href} className={styles.newsCta}>
-        {item.cta}
-        <span className={styles.arrowBadge} aria-hidden="true">
-          <Icon name="arrow" size={12} />
-        </span>
-      </a>
-      <button
-        type="button"
-        className={styles.newsClose}
-        onClick={() => setOpen(false)}
-        aria-label="Dismiss announcement"
-      >
-        <Icon name="x" size={13} />
-      </button>
-    </aside>
+    <div className={styles.newsRow}>
+      <aside className={styles.news} aria-label="Announcement">
+        <span className={styles.newsTag}>{item.tag}</span>
+        <a href={item.href} className={styles.newsTitle}>
+          {item.title}
+        </a>
+        <button
+          type="button"
+          className={styles.newsClose}
+          onClick={() => setOpen(false)}
+          aria-label="Dismiss announcement"
+        >
+          <Icon name="x" size={13} />
+        </button>
+      </aside>
+    </div>
   );
 }

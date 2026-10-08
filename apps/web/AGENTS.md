@@ -26,7 +26,7 @@ src/app/
   (workspace)/account/      # Account pages and sanitized return to Studio
   (workspace)/studio/       # Persistent Studio layout, entry/new and explicit agent section pages
   (auth)/                  # Existing signup/signin design
-  apply/                   # Creator application using API-backed cookie access
+  apply/                   # The public creator application; the seat cookie is taken on send
   agents/, tokens/, reads/  # Existing public demonstrations
   markets/                  # The perpetuals board and one market's level × time surface
 src/features/studio/       # Studio sections, history, research result and API client
@@ -43,10 +43,14 @@ src/server/
   http/auth-board.ts       # Presentation formatting only
 ```
 
-Landing, signup, applications, token pages, paid reads, wallet and ranking designs are retained.
-The marketplace reads `/api/v1/marketplace/*`: agents come from the database, the perpetuals board
-is read from Perpl (or is the sample board, labelled, where the API has no network configured), and research results never appear there automatically. `/api/v1/landing` keeps its polling behavior. Hono sets the HttpOnly,
-Secure `pk_apply` cookie; the web only transports it. Never put that bearer token in URLs or JSON.
+Signup, token pages, paid reads, wallet and ranking designs are retained; the landing and the
+application are the "Pickler Landing Trade v2" and "Pickler Create Agent" canvases (see "The landing
+and the application" below). The marketplace reads `/api/v1/marketplace/*`: agents come from the
+database, the perpetuals board is read from Perpl (or is the sample board, labelled, where the API
+has no network configured), and research results never appear there automatically.
+`/api/v1/landing` keeps its polling behavior; the landing reads only its announcements. Hono sets
+the HttpOnly, Secure `pk_apply` cookie; the web only transports it. Never put that bearer token in
+URLs or JSON.
 
 ## Three-layer implementation example
 
@@ -141,9 +145,50 @@ What is real today: the address, the chain and the native balance. What is not: 
 
 ## One navigation bar
 
-`features/site/site-nav.tsx` is the navigation for every public route, landing included: the same brand, the same Explore / Build / Resources menus, the same height. Only two things change. The landing hangs the price tape above it, and nowhere else does. The explore routes — everything inside `PublicShell` — also carry the wallet: CONNECT WALLET beside JOIN TESTNET, and once connected the address, its balance, and the three pages that only exist for it.
+`features/site/site-nav.tsx` is the navigation for every public route, the landing and the
+application included: the same brand, the same Explore / Build / Resources menus, the same height.
+It ends in two pills, a quiet one and a lit one, which default to "Get the app" (`/#app`) and
+"Create agent" (`/apply`): the studio is behind an invite, and the application is the way to one,
+so no public route points at the studio's entry any more. Build › "Create Agent" goes to `/apply`
+too. A page that is asking for something names the pills itself through `secondary` and `action` —
+`/apply` passes "Trade with AI" (`/`) and "Apply" (`#apply`), as its canvas draws them. The landing
+and the explore routes (everything inside `PublicShell`) also carry the wallet with `connect`: Connect
+wallet beside the pills, and once connected the address, its balance, and the three pages that only
+exist for it. The auth screens keep their own bar — a flow that is asking for something should not
+offer six ways out of it. Lime stays for what the product does — a filled action, a win, a
+graduated token — not for who made it.
 
-The apply flow and the auth screens keep their own bar on purpose — a flow that is asking for something should not offer six ways out of it — but the bar is the same height as the navigation and carries the same brand, so only the right-hand side differs. The brand mark is lit in cyan on every surface, the flows included. Lime stays for what the product does — a filled action, a win, a graduated token — not for who made it.
+## The landing and the application
+
+Both are specified in `docs/specs/landing-trade-v1.md`. `/` (`features/landing/`) is the "Pickler
+Landing Trade v2" canvas: a light page with four dark blocks, each a subtree taking
+`data-surface="dark"` — the hero phone (`#hero-phone`), the three ways in (`#how`, cards
+`#how-hire`, `#how-back`, `#how-trade`, to `/agents`, `/tokens` and `/markets`), the FOUR STEPS
+phone (`#steps-phone`, under `#app`) and the closing block (`#download`). The one live figure on the
+page is the announcement pill, read from `/api/v1/landing` through `lib/landing-data.tsx`; every
+other figure is the canvas's worked example inside the card that explains it (`lib/demo.ts`, pure
+and pinned in `apps/web/test/landing-demo.test.ts`: the six question/answer pairs over the phone,
+the candle game, the token curve, the padlock, the steps, the questions), drawn `aria-hidden` where
+it is decoration and still under `prefers-reduced-motion` (`lib/use-ticker.ts` is the one clock,
+and it also stops in a hidden tab). Nothing on the landing counts up on its own as if measured.
+The four phone screens under `components/phone/` are static mockups of the mobile app's canvases at
+the phone's own size, scaled into their panels; they are never interactive. "Download on the App
+Store" is a link only when `NEXT_PUBLIC_APP_STORE_URL` is set (`components/app-store-link.tsx`);
+otherwise it is drawn `aria-disabled` with the reason in its title. `scripts/design/routes.mjs`
+proves `#how-title`, and `surfaces.mjs` names the four dark blocks.
+
+`/apply` (`features/apply/`) is the "Pickler Create Agent" canvas and is public: the email is the
+form's first field. Sending runs the two existing requests in order — `POST /api/v1/waitlist`
+(which seats the browser with the `pk_apply` cookie), then `POST /api/v1/applications` with the six
+answers — and the page shows SUBMITTED in place. A seat is still bound to a browser: an email
+already in line, typed in a browser that does not hold its seat, is refused by core and the form
+says so and keeps the answers; a browser that already holds a seat with an application sees
+SUBMITTED on load, read server-side. The limits are `APPLICATION_LIMITS_DTO` (why-you is 200). The
+pure rules are `lib/form-model.ts`, pinned in `apps/web/test/apply-form.test.ts`; `lib/options.ts`
+keeps the swatches, the batch copy and the ticker and handle helpers. The page is the light
+surface with the hero card (`#apply-hero`), the arena (`#arena`) and YOUR PIECE (`#apply-piece`)
+nested dark; `routes.mjs` proves `#apply-form`. Accepting an applicant is not built here:
+applications land in `growth.applications` as `submitted`.
 
 ## Markets
 

@@ -70,8 +70,9 @@ const ALL = [
     product: "marketplace",
     surface: "light",
     task: "Task 9",
-    // The section the canvas is built around. Present only when the landing itself rendered.
-    proves: "#four-moves-title",
+    // The title of INVEST IN WHAT COMES NEXT, the section the canvas is built around. Present only
+    // when the landing itself rendered.
+    proves: "#how-title",
   },
   {
     path: "/portfolio",
@@ -371,20 +372,17 @@ const ALL = [
     task: "Wallet",
     proves: "dialog[open] #connect-step-joined",
   },
-  // /apply has a gate of its own and it is not the wallet's: the six-question form renders only
-  // for a request carrying the apply cookie, and without one the route answers with NoSeat — a
-  // whole authored screen, so this measures a screen rather than a stub. The form behind it is
-  // unmeasured, and the cookie is a door this file does not have either.
-  //
-  // The only dark ground in the marketplace list: ApplyShell pins data-surface="dark", where
-  // PublicShell leaves every other route here on the light default.
+  // /apply is public since docs/specs/landing-trade-v1.md A1: the six-question form renders for
+  // anyone, with the email as its first field, and the seat is taken when the form is sent. The
+  // form is what this proves; a browser that already holds a seat with an application sees the
+  // SUBMITTED screen instead, which the harness has no cookie to reach.
   {
     path: "/apply",
-    name: "apply-no-seat",
+    name: "apply",
     product: "marketplace",
-    surface: "dark",
+    surface: "light",
     task: "Apply",
-    proves: 'main h1:text-is("GET IN LINE FIRST.")',
+    proves: "#apply-form",
   },
 
   {

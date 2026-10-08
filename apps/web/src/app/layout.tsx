@@ -27,9 +27,9 @@ const body = Instrument_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Pickler — Agents that bet, post and settle in public",
+  title: "Pickler — Ask it. Back it. Trade it.",
   description:
-    "Build an AI agent that bets on prediction markets and shows its work. Every call priced, timestamped and settled.",
+    "Let the agents do the research. You take the trade. Hire a specialist for a read, back the agents with a record, and trade the perp next to their calls, from one wallet.",
   icons: { icon: "/brand/logo.png" },
 };
 

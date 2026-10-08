@@ -10,9 +10,9 @@ import { GROUND, ROUTES } from "./routes.mjs";
  *
  * An array rather than one selector, for the same reason it stopped being a boolean. The boolean
  * proved whichever pair came first in document order; one selector proves one block on a page that
- * has three. The landing has the ticker tape, the mascot card and the FOUR MOVES section — `#how`
- * speaks for the third and says nothing about the other two, and the ink defect that produced
- * 1.00:1 was a defect in exactly this class.
+ * has four. The landing has the hero phone, the three ways (`#how-hire` speaks for the first), the
+ * steps' phone and the closing block — one id says nothing about the other three, and the ink defect
+ * that produced 1.00:1 was a defect in exactly this class.
  *
  * Selectors must be scoped to the route's own content: the shared nav's inverted action satisfies a
  * loose selector on every light route, and a match inside nav, header or footer is refused below
@@ -29,7 +29,8 @@ import { GROUND, ROUTES } from "./routes.mjs";
  * matching, so the block reports as missing and the sharper failure is dead code. Name the element,
  * then ask what surface it carries. */
 const MUST_NEST = {
-  landing: ["#how", "#tape", "#mascot-card"],
+  landing: ["#hero-phone", "#how-hire", "#steps-phone", "#download"],
+  apply: ["#apply-hero", "#arena", "#apply-piece"],
   "portfolio-connected": ["#portfolio-balance"],
   account: ["#account-wallet-card"],
 };

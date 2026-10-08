@@ -155,6 +155,28 @@
   color: var(--pk-ink-faint);
 }
 
+/* The quiet pill beside the action: the same height and type, on the panel ground, so the two read
+   as a pair in which one is lit. */
+.secondary {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  height: 45px;
+  margin-left: auto;
+  padding: 0 19px;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-panel-2);
+  font: 600 15px/1 var(--pk-font);
+  letter-spacing: -0.02em;
+  color: var(--pk-ink);
+  text-decoration: none;
+  transition: background var(--pk-duration);
+}
+
+.secondary:hover {
+  background: var(--pk-panel-3);
+}
+
 /* The page's one action, and the only dark thing on a white bar.
  *
  * It takes the surface opposite the bar's, so ground, ink and hover all come from the other ramp and
@@ -166,7 +188,6 @@
   align-items: center;
   gap: 11px;
   height: 45px;
-  margin-left: auto;
   padding: 0 13px 0 19px;
   border-radius: var(--pk-radius-pill);
   background: var(--pk-bg);
@@ -197,6 +218,8 @@
    own, at a weight that wins, so a menu row behaves the same wherever you are. */
 .nav a.cta,
 .nav a.cta:hover,
+.nav a.secondary,
+.nav a.secondary:hover,
 .nav a.item,
 .nav a.item:hover .itemTitle {
   color: var(--pk-ink);

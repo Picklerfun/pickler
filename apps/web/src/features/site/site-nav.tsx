@@ -4,14 +4,13 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Icon } from "@pickler/ui";
-import { useStudioHref } from "./studio-href";
 import { AccountMenu } from "@/features/wallet/components/account-menu";
 import { useState } from "react";
 import styles from "./site-nav.module.css";
 
 /**
- * The public navigation, the same on every route. The landing hangs the price tape above it and
- * nothing else differs, so the brand and the menus never move as you go from the landing to the
+ * The public navigation, the same on every route. The landing hangs the announcement pill under it
+ * and nothing else differs, so the brand and the menus never move as you go from the landing to the
  * board to an agent.
  *
  * Sections that exist are links; the rest are announced as coming rather than linked to nothing.
@@ -35,7 +34,7 @@ const MENUS = [
     key: "build",
     label: "Build",
     items: [
-      { title: "Deploy Agent", sub: "Launch one with its rules and its budget" },
+      { title: "Create Agent", href: "/apply", sub: "Apply for a creator seat on the testnet" },
       { title: "MCP & Skills", sub: "Give it tools, feeds and a way to act" },
       {
         title: "Reputation",
@@ -55,16 +54,34 @@ const MENUS = [
   },
 ] as const;
 
+/** A pill at the right end of the bar: where it goes and what it says. */
+export interface NavAction {
+  label: string;
+  href: string;
+}
+
+/**
+ * The two pills every page ends its bar with. The quiet one points at the app, the lit one at the
+ * application: the studio is behind an invite, and applying is the way to one. A flow that is
+ * asking for something says so in its own words instead (`/apply` passes "Trade with AI" and
+ * "Apply").
+ */
+const SECONDARY: NavAction = { label: "Get the app", href: "/#app" };
+const ACTION: NavAction = { label: "Create agent", href: "/apply" };
+
 export function SiteNav({
   connect = false,
   surface = "light",
+  secondary = SECONDARY,
+  action = ACTION,
 }: {
   connect?: boolean;
   /** The surface the bar is sitting on, so the one inverted control in it knows what to invert. */
   surface?: "light" | "dark";
+  secondary?: NavAction;
+  action?: NavAction;
 }) {
   const pathname = usePathname();
-  const studio = useStudioHref();
   const [open, setOpen] = useState<string | null>(null);
   const owner = MENUS.find((menu) =>
     menu.items.some((item) => "href" in item && pathname.startsWith(item.href.split("#")[0]!)),
@@ -130,19 +147,23 @@ export function SiteNav({
           </div>
 
           {/* Two different people, side by side: connecting a wallet is for readers and backers,
-              and the action beside it goes to the studio, which is where an agent is made. */}
+              and the actions beside it are for someone arriving — the app, and a creator's seat. */}
           {connect && <AccountMenu />}
+          <Link href={secondary.href} className={styles.secondary}>
+            {secondary.href.endsWith("#app") && <Icon name="phone" size={15} />}
+            {secondary.label}
+          </Link>
           {/* The one inverted thing in the bar. An inverted block has to be told what it inverts
               *from*: hard-coding dark here is right only while the bar is light, and on the dark
               bar it painted a dark action on a dark ground and disappeared. */}
           <Link
-            href={studio}
+            href={action.href}
             className={styles.cta}
             data-surface={surface === "dark" ? "light" : "dark"}
           >
-            Create agent
+            {action.label}
             <span className={styles.arrow} aria-hidden="true">
-              <Icon name="arrow" size={13} />
+              <Icon name={action.href.startsWith("#") ? "arrowDown" : "arrow"} size={13} />
             </span>
           </Link>
         </div>
