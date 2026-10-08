@@ -181,6 +181,18 @@ export function Identity({
   return (
     <>
       <div className={build.column}>
+        <div className={styles.card} id={`${idPrefix}-identity-x`}>
+          <XConnect
+            x={studio.x}
+            canManage={canManage}
+            onConnect={() => studio.connectX("identity")}
+            onDisconnect={studio.disconnectX}
+            onPosts={studio.readPosts}
+            idPrefix={`${idPrefix}-identity`}
+            well
+          />
+        </div>
+
         <div className={styles.identity} id={`${idPrefix}-identity-card`}>
           {avatarEditable ? (
             <button
@@ -277,25 +289,6 @@ export function Identity({
           </p>
           {voiceSave.saving && <p className={styles.notice}>Saving…</p>}
           <SaveOutcome state={voiceSave.state} />
-        </div>
-
-        <div className={styles.card} id={`${idPrefix}-identity-x`}>
-          <div className={styles.cardHead}>
-            <span className={styles.label}>X ACCOUNT</span>
-            <span className={styles.sub}>Read access · no posting permission</span>
-            <span className={styles.xTag} data-on={studio.x?.status === "connected"}>
-              {studio.x?.status === "connected" ? "CONNECTED" : "NOT CONNECTED"}
-            </span>
-          </div>
-          <XConnect
-            x={studio.x}
-            canManage={canManage}
-            onConnect={() => studio.connectX("identity")}
-            onDisconnect={studio.disconnectX}
-            onPosts={studio.readPosts}
-            idPrefix={`${idPrefix}-identity`}
-            well
-          />
         </div>
       </div>
 
