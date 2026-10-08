@@ -1,4 +1,5 @@
 "use client";
+import { useStudioMemory } from "../routing/memory";
 import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import type { IdentityUpdateDto, SetupUpdateDto } from "@pickler/api-schema";
 import {
@@ -121,6 +122,7 @@ export function useAgentStudio({
    */
   readMore?(tools: StudioTools): Promise<unknown>;
 }): { studio: UseAgentStudio; tools: StudioTools } {
+  const memory = useStudioMemory();
   const offline = preview || staged !== null;
   const agentId = agent.productId ?? agent.id;
   const [wallets, setWallets] = useState<StudioWallets | null>(staged?.wallets ?? null);
@@ -353,9 +355,16 @@ export function useAgentStudio({
   const readPosts = useCallback(
     async (cursor?: string) => {
       guard();
+      const scope = `${agentId}:x-preview:${x?.account?.handle ?? "disconnected"}:${x?.account?.verifiedAt ?? ""}`;
+      if (memory.outcome(scope, false)) {
+        throw new Error(
+          "This session already requested an X preview. Open the account on X to view more posts.",
+        );
+      }
+      memory.setOutcome(scope, true);
       return xPosts(agentId, cursor);
     },
-    [guard, agentId],
+    [guard, agentId, memory, x?.account?.handle, x?.account?.verifiedAt],
   );
 
   useEffect(() => {
