@@ -10,10 +10,6 @@
   flex-wrap: wrap;
   gap: 8px;
 }
-.xStatus[data-connected="true"] {
-  background: var(--pk-state-good-bg);
-  color: var(--pk-lime-ink);
-}
 .xProfile {
   display: flex;
   align-items: center;
