@@ -362,8 +362,8 @@ export const xPostsResponseSchema = z.object({
         url: z.string().url(),
       }),
     )
-    .max(20),
-  nextCursor: z.string().nullable(),
+    .max(5),
+  nextCursor: z.null(),
 });
 export type XPostsDto = z.infer<typeof xPostsResponseSchema>;
 
