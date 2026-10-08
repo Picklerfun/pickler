@@ -135,9 +135,7 @@ export function XConnect({
             <BrandMark name="x" size={20} />
           </span>
         )}
-        <Tag className={styles.xStatus} data-connected={connected} role="status">
-          {statusLabel}
-        </Tag>
+        {!connected && <Tag role="status">{statusLabel}</Tag>}
       </div>
       <div className={styles.xFooter}>
         <p className={styles.xNoteLine}>
