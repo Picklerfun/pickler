@@ -199,7 +199,12 @@ export class PostgresXOAuthStore implements XOAuthStore {
     const status = r.status === "connected" && !tokens ? "reconnect_required" : r.status;
     return {
       ...a,
-      identity: { id: r.x_user_id, handle: r.handle },
+      identity: {
+        id: r.x_user_id,
+        handle: r.handle,
+        displayName: r.display_name ?? null,
+        profileImageUrl: r.profile_image_url ?? null,
+      },
       status,
       tokens,
       version: r.version,
@@ -244,9 +249,9 @@ export class PostgresXOAuthStore implements XOAuthStore {
           [a.agentId, identity.id, identity.handle, now],
         );
         await db.query(
-          `INSERT INTO agents.x_oauth_grants (agent_id,user_id,workspace_id,tenant_id,status,tokens,key_version,scopes,expires_at)
-          VALUES ($1,$2,$3,$4,'connected',$5,$6,$7,$8)
-          ON CONFLICT (agent_id) DO UPDATE SET user_id=$2,workspace_id=$3,tenant_id=$4,status='connected',tokens=$5,key_version=$6,scopes=$7,expires_at=$8,version=agents.x_oauth_grants.version+1,refresh_claim=NULL,refresh_started_at=NULL,validated_at=NULL`,
+          `INSERT INTO agents.x_oauth_grants (agent_id,user_id,workspace_id,tenant_id,status,tokens,key_version,scopes,expires_at,display_name,profile_image_url)
+          VALUES ($1,$2,$3,$4,'connected',$5,$6,$7,$8,$9,$10)
+          ON CONFLICT (agent_id) DO UPDATE SET user_id=$2,workspace_id=$3,tenant_id=$4,status='connected',tokens=$5,key_version=$6,scopes=$7,expires_at=$8,display_name=$9,profile_image_url=$10,version=agents.x_oauth_grants.version+1,refresh_claim=NULL,refresh_started_at=NULL,validated_at=NULL`,
           [
             a.agentId,
             a.userId,
@@ -256,6 +261,8 @@ export class PostgresXOAuthStore implements XOAuthStore {
             this.keyVersion,
             JSON.stringify(tokens.scopes),
             tokens.expiresAt,
+            identity.displayName ?? null,
+            identity.profileImageUrl ?? null,
           ],
         );
         await db.query("UPDATE agents.agent_profiles SET x_handle=$2 WHERE agent_id=$1", [
