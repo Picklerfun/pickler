@@ -248,6 +248,8 @@ export async function runSmaReentry(
           null,
           2,
         ) + "\n",
+      "reentry-economics.json": JSON.stringify(rendered.economics, null, 2) + "\n",
+      "reentry-economics.csv": rendered.economicsCsv,
     })) {
       const temporary = join(output, name + ".tmp");
       await writeFile(temporary, content, { mode: 0o600 });
