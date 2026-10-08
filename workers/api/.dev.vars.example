@@ -52,12 +52,14 @@ SIWE_DOMAIN=
 WALLET_EMAIL_DOMAIN=
 
 # Read-only Connect X OAuth. API runtime only, disabled by default.
-# Hosted callback must be registered exactly as shown; register a separate local callback for tests.
+# Hosted callback defaults to https://app.pickler.fun/api/v1/studio/x/callback.
+# Local OAuth requires an explicit registered loopback callback matching the local web port.
 X_CLIENT_ID=
 X_CLIENT_SECRET=
-X_REDIRECT_URI=https://app.pickler.fun/api/v1/studio/x/callback
+X_REDIRECT_URI=http://localhost:3001/api/v1/studio/x/callback
 X_TOKEN_ENCRYPTION_KEY=
-X_TOKEN_ENCRYPTION_KEY_VERSION=1
+# Optional when rotating the dedicated key; defaults to 1.
+# X_TOKEN_ENCRYPTION_KEY_VERSION=1
 X_OAUTH_ENABLED=false
 X_READS_ENABLED=false
 # Reviewed version, reviewedAt, identityRequestsPerDay, postRequestsPerDay, postResourcesPerDay.
