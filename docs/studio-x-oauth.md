@@ -64,7 +64,7 @@ are never displayed as current OAuth connections.
 All connection/state, disconnect and timeline operations require an owner JWT; API keys and
 agent HMAC do not qualify. The callback is the sole bearer exception and uses state/cookie/PKCE.
 OpenAPI is generated from mounted route metadata, with the relative server `/api`.
-Old `/x/challenge` and `/x/verify` operations, consumers and matching algorithms are removed.
+Retired post-code operations, consumers and matching algorithms are removed.
 
 Posts are read only after Load posts, Refresh posts or Next posts. The timeline includes replies,
 excludes reposts and returns at most twenty `id`, `text`, `createdAt`, `url` values plus a cursor.
@@ -80,19 +80,28 @@ billing the user. There is no polling or automatic retry.
 
 ## API Worker runtime configuration
 
-These eight variables belong only to `pickler-api-staging` runtime, not Next.js build variables,
-Research, GitHub publishing credentials or a client bundle:
+Configuration belongs only to `pickler-api-staging` runtime, not Next.js build variables,
+Research, GitHub publishing credentials or a client bundle. Hosted deployments need five settings
+to connect and validate an account; enabling manual posts adds a sixth. The canonical callback and
+first encryption-key version have trusted defaults, so neither needs an environment override:
 
-| Variable                         | Meaning / value                                                                                         |
-| -------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| `X_CLIENT_ID`                    | Confidential Web application's client ID from the X console                                             |
-| `X_CLIENT_SECRET`                | Application secret, stored as a Worker secret                                                           |
-| `X_REDIRECT_URI`                 | Exactly `https://app.pickler.fun/api/v1/studio/x/callback`                                              |
-| `X_TOKEN_ENCRYPTION_KEY`         | Dedicated randomly generated 32-byte secret encoded as 64 hex characters; do not reuse `ENCRYPTION_KEY` |
-| `X_TOKEN_ENCRYPTION_KEY_VERSION` | Positive integer identifying that key; drain pending revocations before rotating                        |
-| `X_OAUTH_ENABLED`                | `false` until credentials, identity-read pricing and policy are reviewed                                |
-| `X_READS_ENABLED`                | `false` until timeline pricing, quota and X platform budget are reviewed                                |
-| `X_API_POLICY_JSON`              | Required reviewed policy described below; absent means no transports are admitted                       |
+| Variable                         | Meaning / value                                                                                                                  |
+| -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `X_CLIENT_ID`                    | Confidential Web application's client ID from the X console                                                                      |
+| `X_CLIENT_SECRET`                | Application secret, stored as a Worker secret                                                                                    |
+| `X_REDIRECT_URI`                 | Optional hosted override; defaults to `https://app.pickler.fun/api/v1/studio/x/callback`. Required explicit loopback URL locally |
+| `X_TOKEN_ENCRYPTION_KEY`         | Dedicated randomly generated 32-byte secret encoded as 64 hex characters; do not reuse `ENCRYPTION_KEY`                          |
+| `X_TOKEN_ENCRYPTION_KEY_VERSION` | Optional; defaults to `1`. Set the new positive integer when rotating; drain pending revocations first                           |
+| `X_OAUTH_ENABLED`                | `false` until credentials, identity-read pricing and policy are reviewed                                                         |
+| `X_READS_ENABLED`                | `false` until timeline pricing, quota and X platform budget are reviewed                                                         |
+| `X_API_POLICY_JSON`              | Required reviewed policy described below; absent means no transports are admitted                                                |
+
+The five connection settings are `X_CLIENT_ID`, `X_CLIENT_SECRET`, `X_TOKEN_ENCRYPTION_KEY`,
+`X_API_POLICY_JSON` and `X_OAUTH_ENABLED=true`. `X_READS_ENABLED` may remain absent/false until
+manual posts are approved. Independent flags allow connection without enabling timeline reads.
+An explicitly invalid callback or key version never falls back. Missing credentials or a dedicated
+key cannot enable transports. Callback defaults apply only to `APP_ENV=staging|production` and never
+derive from request headers. Local consent always needs a separately registered loopback callback.
 
 The policy contains a positive integer `version`, ISO UTC `reviewedAt`, and positive integers
 `identityRequestsPerDay`, `postRequestsPerDay`, `postResourcesPerDay` (at least twenty).
@@ -105,8 +114,8 @@ by that explicit X application budget. Exhaustion must never be worked around by
 
 Create/review a confidential Web app in [X Console](https://console.x.com), enable read-only
 OAuth 2.0, and register the exact callback. For controlled local acceptance, register/use the
-separate loopback callback only; the test provider has no real X credentials. The old
-`X_BEARER_TOKEN` is no longer used by this flow. API secrets have no effect until that Worker
+separate loopback callback only; the test provider has no real X credentials.
+API secrets have no effect until that Worker
 version is deployed; a merge alone is not remote OAuth acceptance.
 
 Reference: [official authorization-code documentation](https://docs.x.com/fundamentals/authentication/oauth-2-0/authorization-code),
@@ -122,6 +131,7 @@ allowed in acceptance:
 npm ci
 npm run build:shared
 node --import tsx --test \
+  workers/api/test/x-config.test.ts \
   packages/core/test/studio-x-oauth.test.ts \
   packages/infrastructure/test/x-client.test.ts \
   packages/infrastructure/test/controlled-worker.test.ts \
