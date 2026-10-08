@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { HOLDS } from "../routes.mjs";
 import { openBrowser } from "./browser.mjs";
 import { afterNotFound, appPages, pageFor } from "./not-found.mjs";
-import { settle } from "./settle.mjs";
+import { settle, settleMotion } from "./settle.mjs";
 import { observeClient, ready, saveBlocked } from "./ready.mjs";
 import { SIGNATURE, resolve, surface } from "./tokens-file.mjs";
 
@@ -440,29 +440,6 @@ export async function eachRoute(routes, visit, { width = 1400, height = 1000 } =
          * route that was never measured. */
         if (route.act) {
           await page.click(route.act.click);
-          /* Let the click's transitions finish before anything reads a colour.
-           *
-           * This is not caution, it is a defect that was caught. `.cell` carries
-           * `transition: background 140ms`, so the first run measured eleven lit squares mid-fade
-           * and reported #EDF7CE — a solid token with no alpha — as "at 0.106 alpha, in no token".
-           * A plausible, specific, entirely false finding, and one that would have sent somebody
-           * looking for a literal nobody typed.
-           *
-           * Waiting on the animations rather than on a duration, because a duration is a guess that
-           * ages: --pk-duration is a token and can change. Transitions only, and bounded, since a
-           * looping decoration never finishes and waiting on one would hang the run rather than
-           * measure it. */
-          await page
-            .waitForFunction(
-              () =>
-                document
-                  .getAnimations()
-                  .filter((a) => a.constructor.name === "CSSTransition")
-                  .every((a) => a.playState === "finished"),
-              null,
-              { timeout: 2000 },
-            )
-            .catch(() => {});
           const landed = await page.locator(route.act.proves).count();
           if (!landed) {
             blocked.push({
@@ -473,6 +450,16 @@ export async function eachRoute(routes, visit, { width = 1400, height = 1000 } =
             continue;
           }
           proof = `${proof} → ${route.act.proves}`;
+        }
+        const moving = await settleMotion(page);
+        if (moving) {
+          const artifact = await saveBlocked(page, route, client, moving);
+          blocked.push({
+            route,
+            kind: "unsettled",
+            detail: artifact ? `${moving}; diagnostics: ${artifact}` : moving,
+          });
+          continue;
         }
         results.push({ route, proof, value: await visit(page, route) });
       } finally {
