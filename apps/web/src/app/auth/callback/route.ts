@@ -41,7 +41,11 @@ export async function GET(request: Request) {
     readAccount("/v1/signing/wallets/me", token),
   ]);
   const studio = studioHref(product, PRODUCT_HOSTS);
-  const destination = callbackDestination({ profile, wallet }, studio);
+  const destination = callbackDestination(
+    { profile, wallet },
+    studio,
+    url.searchParams.get("next") ?? undefined,
+  );
   return noStore(NextResponse.redirect(new URL(destination, origin)));
 }
 
