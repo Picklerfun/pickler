@@ -108,6 +108,12 @@ export async function executeEvaluation(input: EvaluationHostRequest) {
         return runSmaReview({ ...input, command: request.command, configPath: path }, signal);
       },
     },
+    "perps-sma-profile-risk-v1": {
+      async execute(request) {
+        const { runSmaProfiles } = await import("../perps-study/profiles-host.js");
+        return runSmaProfiles({ ...input, command: request.command, configPath: path }, signal);
+      },
+    },
     "perps-original-sma-v1": {
       async execute(request) {
         const { runOriginalSma } = await import("../perps-study/original-sma.js");
