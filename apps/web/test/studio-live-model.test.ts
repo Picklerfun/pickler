@@ -580,22 +580,14 @@ test("IT MAY: opening follows Pause entries; closing always, posting Soon, movin
   assert.equal(abilities(true)[0]?.on, false);
 });
 
-test("Posts says where calls will go, and that there are none yet", () => {
-  assert.deepEqual(postsHeader("HalftimeBot"), {
+test("public posts never present read-only X OAuth as publishing permission", () => {
+  assert.deepEqual(postsHeader(), {
     title: "Every call, in public",
-    tag: "PICKLER + X · @HALFTIMEBOT",
-    empty: "No posts yet. Entries and exits will post on Pickler and X when it trades.",
-    connect: null,
+    tag: "PICKLER ONLY",
+    empty: "No public posts yet.",
+    connect:
+      "Manage X in Identity & voice to read your recent posts. Connecting does not authorize publishing to X.",
   });
-  assert.equal(
-    postsHeader(null).empty,
-    "No posts yet. Entries and exits will post on Pickler when it trades.",
-  );
-  assert.equal(postsHeader(null).tag, "PICKLER ONLY");
-  assert.equal(
-    postsHeader(null).connect,
-    "Posts will go out on Pickler only. Connect an X account and every call will mirror there.",
-  );
 });
 
 // ─── Marketplace ───────────────────────────────────────────────────────────────────────────────
