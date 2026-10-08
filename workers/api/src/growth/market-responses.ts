@@ -27,5 +27,9 @@ export function toMarketDetailDto(detail: MarketDetail): MarketDetailDto {
     readQuestion: readQuestionAtLevel("perps", detail.market.symbol, "{level}"),
     calls: detail.calls.map((call) => ({ ...call })),
     trail: [...detail.trail],
+    ...(detail.trailTimestamps ? { trailTimestamps: [...detail.trailTimestamps] } : {}),
+    ...(detail.priceHistory
+      ? { priceHistory: detail.priceHistory.map((point) => ({ ...point })) }
+      : {}),
   };
 }
