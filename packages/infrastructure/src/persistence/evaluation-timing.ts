@@ -25,8 +25,13 @@ export function timeEvaluationPool(
         if (property === "connect" && object === pool) {
           return async () => {
             const started = monotonic();
+            let code: string | null = null;
             try {
               return wrap(await pool.connect());
+            } catch (error) {
+              const supplied = (error as { code?: string }).code;
+              code = supplied && /^[A-Z0-9_]{1,40}$/.test(supplied) ? supplied : "DATABASE_FAILED";
+              throw error;
             } finally {
               diagnostic({
                 version: 1,
@@ -36,7 +41,7 @@ export function timeEvaluationPool(
                 statement: "CONNECT",
                 at: Date.now(),
                 durationMs: monotonic() - started,
-                code: null,
+                code,
               });
             }
           };
