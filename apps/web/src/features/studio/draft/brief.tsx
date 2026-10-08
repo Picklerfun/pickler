@@ -60,8 +60,16 @@ export function Brief({ agent, draft, canManage, onSection }: DraftSectionProps)
     maxLeverage: agent.config.maxLeverage,
   };
   const savedCaps = capsOf(capsSource);
-  const [form, setForm] = useSavedForm(agent.version, { text: savedText, caps: savedCaps });
-  const { state, save, touch, saving } = useSetupSave(draft);
+  const [form, setForm] = useSavedForm(
+    agent.version,
+    { text: savedText, caps: savedCaps },
+    `${agent.productId ?? agent.id}:brief:form`,
+  );
+  const { state, save, touch, saving } = useSetupSave(
+    draft,
+    `${agent.productId ?? agent.id}:brief`,
+    agent.version,
+  );
 
   const view = briefView(form.text, savedText);
   const caps = capsStepper(form.caps, savedCaps, starterCaps(capsSource));
