@@ -594,3 +594,7 @@ See [Studio X OAuth](../../docs/studio-x-oauth.md).
 ## X preview cost controls
 
 X preview transport requests five posts with no expansions or pagination; disabled reads fail before transport. PostgreSQL reserves five resources and clamps reviewed policy to one attempt/five resources per agent per UTC day, including concurrent calls, failures, reloads and reconnects. Earlier reservations remain unchanged. No post content cache or persistence is introduced.
+
+## X profile presentation
+
+Migration 0035 adds nullable name/photo fields to the private OAuth grant, without rewriting existing links. The existing users/me request includes name/profile_image_url; HTTPS X avatar CDN paths are allowlisted and missing/unsafe decoration becomes null. Connecting saves the snapshot transactionally; token renewal retains it and state reads do not query X.
