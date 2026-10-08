@@ -1,5 +1,10 @@
 # Studio draft dashboard, Connect X and Go Public — Implementation Plan
 
+> Historical X verification and posting design: the post-code routes, bearer-token setup,
+> optional posting and Skip X described below are superseded by [Studio X OAuth](../../studio-x-oauth.md).
+> Use that canonical guide for the current read-only routes, callback, dedicated runtime secrets
+> and disabled-by-default resource policy. These older sections are retained as historical evidence.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Implement `docs/specs/studio-draft-dashboard-v1.md`: the created (draft) agent's studio from the canvas `Pickler Studio Draft.dc.html`, Connect X by verification post, and Go Public.
