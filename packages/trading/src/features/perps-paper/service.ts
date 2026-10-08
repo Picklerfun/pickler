@@ -30,6 +30,8 @@ export interface PerpsPaperData {
 export const PRODUCT_FALLBACK_TAKER_FEE = "0.001";
 /** How an open is sized and what it records; the operator default is 100 at 1x, no exits. */
 export interface PerpsPaperTradeOptions {
+  entryEvidence?: PerpsPaperIntent["entryEvidence"];
+  onSimulation?: (durationMs: number) => void;
   notional?: string | undefined;
   leverage?: number | undefined;
   checkId?: string | undefined;
@@ -66,6 +68,9 @@ export function createPerpsPaperService(
     if (options.checkId !== undefined) {
       intent.checkId = options.checkId;
     }
+    if (options.entryEvidence !== undefined) {
+      intent.entryEvidence = options.entryEvidence;
+    }
     // Durable admission precedes fetching execution evidence; repeat keys make no provider call.
     const admitted = await repository.begin(scope, view.account.agentVersion, key, intent);
     if (!admitted.lease) {
@@ -81,7 +86,9 @@ export function createPerpsPaperService(
       deadline.throwIfAborted();
       await repository.assertLease(scope, lease);
       view = await repository.view(scope);
+      const simulationStart = performance.now();
       const fill = simulatePerpsFill(view.account, intent, current, clock());
+      options.onSimulation?.(performance.now() - simulationStart);
       deadline.throwIfAborted();
       const exits = kind === "open" ? options.exits?.(fill) : undefined;
       return await repository.complete(scope, lease, fill, exits);
