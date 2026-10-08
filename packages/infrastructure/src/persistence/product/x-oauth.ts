@@ -45,6 +45,8 @@ export const xOAuthGrants = agentsSchema
         .references(() => workspaces.id),
       tenantId: text("tenant_id").notNull(),
       status: text("status").notNull(),
+      displayName: text("display_name"),
+      profileImageUrl: text("profile_image_url"),
       tokens: text("tokens"),
       keyVersion: integer("key_version").notNull(),
       scopes: jsonb("scopes").$type<string[]>().notNull(),
