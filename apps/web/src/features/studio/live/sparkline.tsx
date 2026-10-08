@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useId, useState } from "react";
 import { formatPrice } from "../../markets/lib/format";
 import { sparkPoints, sparkSamples } from "./run-model";
 import styles from "./run.module.css";
@@ -34,6 +34,7 @@ export function PriceTrail({
   market: string;
 }) {
   const [active, setActive] = useState<number | null>(null);
+  const gradientId = useId();
   const samples = sparkSamples(trail ?? []);
   const last = samples.at(-1);
 
@@ -64,7 +65,20 @@ export function PriceTrail({
           aria-hidden="true"
           focusable="false"
         >
-          <polygon className={styles.trailArea} points={`0,100 ${points} 100,100`} />
+          <defs>
+            <linearGradient
+              id={gradientId}
+              x1="0"
+              y1="0"
+              x2="0"
+              y2="100"
+              gradientUnits="userSpaceOnUse"
+            >
+              <stop className={styles.trailGradientStop} offset="0%" stopOpacity={0.22} />
+              <stop className={styles.trailGradientStop} offset="100%" stopOpacity={0} />
+            </linearGradient>
+          </defs>
+          <polygon fill={`url(#${gradientId})`} points={`0,100 ${points} 100,100`} />
           <polyline
             className={styles.trailLine}
             points={points}
