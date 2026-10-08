@@ -151,12 +151,16 @@ try {
   await page.goForward();
   await page.locator("#draft-section-skills").waitFor();
   await page.locator("#draft-rail-brief").click();
+  await page.waitForURL("**/studio/agents/preview-draft/brief?stage=draft");
+  await page.locator("#draft-section-brief").waitFor();
+  assert.equal(await input.inputValue(), editedThesis);
   await page.locator("[data-account-menu] > button").click();
   const profile = page.getByRole("menuitem", { name: "My profile", exact: true });
   const returnTo = new URL(await profile.getAttribute("href"), base).searchParams.get("returnTo");
   assert.equal(new URL(returnTo, base).pathname, "/studio/agents/preview-draft/brief");
   await profile.click();
   await page.getByRole("link", { name: "Back to studio", exact: false }).click();
+  await page.waitForURL("**/studio/agents/preview-draft/brief?stage=draft");
   await page.locator("#draft-section-brief").waitFor();
   assert.equal(await input.inputValue(), editedThesis);
   assert.deepEqual(errors, [], "Successful navigation has no React errors");
