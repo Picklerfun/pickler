@@ -104,9 +104,39 @@ export class PerplMarketData implements PerpMarketData {
       }
     | undefined;
   private readonly contexts = new Map<PerpNetwork, ContextSnapshot>();
-  constructor(options: PerplDataOptions = {}) {
+  constructor(private readonly options: PerplDataOptions = {}) {
     this.transport = new PerplTransport(options);
     this.universe = options.universe === true;
+  }
+  private parse<T>(response: PerplPublicResponse, schema: z.ZodType<T>): T {
+    if (!this.options.onValidation) {
+      return parse(response, schema);
+    }
+    const clock = this.options.monotonic ?? (() => performance.now());
+    const started = clock();
+    let code: string | null = null;
+    try {
+      return parse(response, schema);
+    } catch (error) {
+      code = "PERPL_INVALID_RESPONSE";
+      throw error;
+    } finally {
+      const operation = response.url.includes("/candles/")
+        ? "candles"
+        : response.url.includes("/book?")
+          ? "book"
+          : response.url.endsWith("/ticker")
+            ? "ticker"
+            : response.url.includes("funding")
+              ? "funding"
+              : "metadata";
+      this.options.onValidation({
+        version: 1,
+        operation: `schema-validation:${operation}`,
+        durationMs: clock() - started,
+        code,
+      });
+    }
   }
   private async context(network: PerpNetwork, ctx: PerpReadContext): Promise<ContextSnapshot> {
     if (!Object.hasOwn(PERPL_NETWORKS, network)) {
@@ -120,7 +150,7 @@ export class PerplMarketData implements PerpMarketData {
       return cached;
     }
     const response = await this.transport.get(network, "/v1/pub/context", ctx);
-    const data = parse(response, contextSchema);
+    const data = this.parse(response, contextSchema);
     if (
       data.chain.chain_id !== PERPL_NETWORKS[network].chainId ||
       new Set(data.markets.map((m) => m.id)).size !== data.markets.length
@@ -262,7 +292,7 @@ export class PerplMarketData implements PerpMarketData {
           `/v1/market-data/${market.marketId}/funding/${start}-${end}`,
           ctx,
         );
-        raw = parse(response, fundingSeriesSchema);
+        raw = this.parse(response, fundingSeriesSchema);
       }
       if (raw.m !== market.marketId) {
         invalid();
@@ -327,7 +357,7 @@ export class PerplMarketData implements PerpMarketData {
       await ctx.guard();
       if (!this.bulkTicker || this.transport.now() - this.bulkTicker.response.receivedAt >= 3000) {
         response = await this.transport.get(network, "/v1/market-data/ticker", ctx);
-        parsed = parse(response, tickerSchema);
+        parsed = this.parse(response, tickerSchema);
         this.bulkTicker = { response, parsed };
       }
       ({ response, parsed } = this.bulkTicker);
@@ -341,7 +371,7 @@ export class PerplMarketData implements PerpMarketData {
         `/v1/market-data/${market.marketId}/ticker`,
         ctx,
       );
-      parsed = parse(response, tickerSchema);
+      parsed = this.parse(response, tickerSchema);
       if (Object.keys(parsed.d).length !== 1 || !Object.hasOwn(parsed.d, market.marketId)) {
         invalid();
       }
@@ -381,7 +411,7 @@ export class PerplMarketData implements PerpMarketData {
       `/v1/market-data/${market.marketId}/book?levels=${levels}`,
       ctx,
     );
-    const book = parse(response, bookSchema);
+    const book = this.parse(response, bookSchema);
     if (book.bid.length > levels || book.ask.length > levels) {
       invalid();
     }
@@ -415,7 +445,7 @@ export class PerplMarketData implements PerpMarketData {
       `/v1/market-data/${market.marketId}/candles/${resolution}/${from}-${to - interval}`,
       ctx,
     );
-    const series = parse(response, candlesSchema);
+    const series = this.parse(response, candlesSchema);
     if (series.r !== resolution) {
       invalid();
     }
