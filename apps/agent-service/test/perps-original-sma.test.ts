@@ -89,7 +89,7 @@ for (const side of ["long", "short"] as const) {
       },
     });
     assert.equal(await runner.cycle(config, lease, new AbortController().signal), true);
-    const scope = { ...config, agentId: initialized.record.agentIds.rules };
+    const scope = { ...config, agentId: initialized.record.agentIds.rules! };
     let account = await paper.view(scope);
     assert.equal(account.attempts.filter((a) => a.status === "filled").length, 2);
     assert.ok(account.account.positions.every((p) => p.side === side && p.closedAt === null));
