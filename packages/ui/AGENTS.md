@@ -48,8 +48,8 @@ in both expanded and collapsed states; its accessible name and expanded state be
 ## shadcn Sidebar and menus
 
 `src/components/` contains official shadcn new-york/Radix source installed with the registry CLI.
-`components.json` is the reproducible registry configuration. Public subpaths `@pickler/ui/sidebar`
-and `@pickler/ui/dropdown-menu` export the composable components; `./components/*` and `./hooks/*`
+`components.json` is the reproducible registry configuration. Public subpaths `@pickler/ui/sidebar`,
+`@pickler/ui/dropdown-menu` and `@pickler/ui/select` export the composable components; `./components/*` and `./hooks/*`
 resolve their internal dependencies for CLI additions. Existing product Button/Input/Skeleton
 exports are unchanged. The registry's supporting controls remain inside its component area.
 
@@ -114,3 +114,14 @@ permissions rather than using it to represent leaving a session.
 https://www.agora.finance/agora-brandkit/agora-bug--dark-mode.svg. It uses the original geometry
 and currentColor for the monochrome mark. Keep token marks distinct: Agora represents AUSD;
 Monad represents MON or a network, never an AUSD balance. Source attribution remains in brand.tsx.
+
+## shadcn Select
+
+`src/components/select.tsx` is installed from the official new-york/Radix registry with
+`npx shadcn@latest add @shadcn/select --yes --cwd packages/ui`. It reuses the existing Radix and
+class-name dependencies. Public `@pickler/ui/select` exports the composable single-choice control.
+Use SelectGroup around items, a labelled trigger, and an explicit `data-surface` on portal content.
+Radix owns keyboard selection, typeahead, dismissal and focus restoration. Local styling uses
+Pickler semantic tokens, the shared 2px focus outline, legible disabled text, wrapping option
+labels and reduced motion. Trigger values truncate at narrow widths without moving the chevron.
+Do not restore the registry's shadow focus ring or add native select styling in consuming features.
