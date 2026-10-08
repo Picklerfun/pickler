@@ -289,15 +289,15 @@ try {
     ["perpl-live", "controls", "Controls", "#live-section-controls"],
   ]) {
     await page.goto(`${baseUrl}/studio?stage=${stage}`);
-    await page.getByRole("button", { name: label, exact: true }).click();
+    await page.getByRole("link", { name: label, exact: true }).click();
     await page.locator(selector).waitFor();
     await page.locator("[data-account-menu] > button").click();
     const link = page.getByRole("menuitem", { name: "My profile", exact: true });
     const destination = new URL(await link.getAttribute("href"), baseUrl);
     const returnTo = destination.searchParams.get("returnTo");
     const workspace = new URL(returnTo, baseUrl);
-    assert.equal(workspace.searchParams.get("resume"), section);
-    assert.ok(workspace.searchParams.get("agent"), "Selected agent is preserved");
+    assert.equal(workspace.pathname.split("/").at(-1), section);
+    assert.ok(workspace.pathname.includes("/studio/agents/"), "Selected agent is preserved");
     await link.click();
     await page.waitForURL(/\/account\?section=profile/);
     await page.getByRole("link", { name: "← Back to studio", exact: true }).click();
@@ -466,7 +466,7 @@ try {
     return bounds && bounds.x >= -0.5 && bounds.right <= innerWidth;
   });
   await mobile.screenshot({ path: path.join(tmpdir(), "pickler-shadcn-mobile-sidebar.png") });
-  await mobile.getByRole("button", { name: "Master wallet", exact: true }).click();
+  await mobile.getByRole("link", { name: "Master wallet", exact: true }).click();
   await mobile.locator("#draft-section-master").waitFor();
   await drawer.waitFor({ state: "hidden" });
   assert.equal(
@@ -477,7 +477,7 @@ try {
   await expand.click();
   await drawer.waitFor();
   assert.equal(await mobile.locator("#draft-rail-master").getAttribute("aria-current"), "page");
-  await mobile.getByRole("button", { name: "Master wallet", exact: true }).focus();
+  await mobile.getByRole("link", { name: "Master wallet", exact: true }).focus();
   await mobile.keyboard.press("Control+b");
   await drawer.waitFor({ state: "hidden" });
   assert.equal(await expand.evaluate((element) => element === document.activeElement), true);
