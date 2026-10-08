@@ -102,6 +102,126 @@ export function sparkSamples(trail: readonly number[]): { value: number; x: numb
   }));
 }
 
+const priceDate = new Intl.DateTimeFormat("en-US", {
+  month: "short",
+  day: "numeric",
+  timeZone: "UTC",
+});
+const priceClock = new Intl.DateTimeFormat("en-GB", {
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+  timeZone: "UTC",
+});
+
+/** An explicit UTC label, identical on server and client; unknown dates stay unknown. */
+export function priceTime(at: string | null | undefined) {
+  if (!at || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$/.test(at)) {
+    return null;
+  }
+  const value = Date.parse(at);
+  if (!Number.isFinite(value)) {
+    return null;
+  }
+  const iso = new Date(value).toISOString();
+  if (iso.slice(0, 19) !== at.slice(0, 19)) {
+    return null;
+  }
+  const clock = `${priceClock.format(value)} UTC`;
+  return { iso, clock, label: `${priceDate.format(value)}, ${clock}` };
+}
+
+export interface PriceSample {
+  value: number;
+  x: number;
+  y: number;
+  at: string | null;
+}
+
+/** Keep timestamp/price pairs through filtering; only a coherent series gets a time axis. */
+export function priceSamples(
+  trail: readonly number[],
+  timestamps: readonly (string | null)[] | null,
+): PriceSample[] {
+  const aligned = timestamps?.length === trail.length;
+  const marks = trail.flatMap((value, index) =>
+    Number.isFinite(value)
+      ? [{ value, at: aligned ? (priceTime(timestamps?.[index])?.iso ?? null) : null }]
+      : [],
+  );
+  const times = marks.map(({ at }) => (at ? Date.parse(at) : Number.NaN));
+  const ordered = times.every(
+    (at, index) => Number.isFinite(at) && (index === 0 || at > times[index - 1]!),
+  );
+  const duration = (times.at(-1) ?? 0) - (times[0] ?? 0);
+
+  return sparkSamples(marks.map(({ value }) => value)).map((point, index) => ({
+    ...point,
+    at: marks[index]!.at,
+    x: ordered && duration > 0 ? ((times[index]! - times[0]!) / duration) * 100 : point.x,
+  }));
+}
+
+export const PRICE_RANGES = [
+  { value: "24H", label: "24H", hours: 24 },
+  { value: "7D", label: "7D", hours: 168 },
+  { value: "30D", label: "30D", hours: 720 },
+] as const;
+export type PriceRange = (typeof PRICE_RANGES)[number]["value"];
+
+interface RangeTrail {
+  trail: readonly number[] | null;
+  timestamps: readonly (string | null)[] | null;
+  /** A shorter listing/history is explicit; missing hourly points are never generated. */
+  since: string | null;
+}
+
+/** Anchor the view to the supplied last observation, so stale data never becomes current. */
+export function rangeTrail(
+  history: readonly { price: number; at: string }[] | null | undefined,
+  trail: readonly number[] | null,
+  timestamps: readonly (string | null)[] | null,
+  range: PriceRange,
+): RangeTrail {
+  const points = (history ?? [])
+    .flatMap(({ price, at }) => {
+      const time = priceTime(at);
+      return Number.isFinite(price) && time ? [{ price, at: time.iso }] : [];
+    })
+    .sort((a, b) => Date.parse(a.at) - Date.parse(b.at));
+  // Keep the last supplied value when the observed mark shares an hourly closing instant.
+  const unique = points.filter((point, index) => point.at !== points[index + 1]?.at);
+  const last = unique.at(-1);
+  if (!last) {
+    return range === "24H"
+      ? { trail, timestamps, since: null }
+      : { trail: null, timestamps: null, since: null };
+  }
+
+  const hours = PRICE_RANGES.find((option) => option.value === range)!.hours;
+  const from = Date.parse(last.at) - hours * 3_600_000;
+  const visible = unique.filter((point) => Date.parse(point.at) >= from);
+  const first = visible[0]!;
+  const shorter = Date.parse(first.at) > from + 3_600_000;
+  return {
+    trail: visible.map((point) => point.price),
+    timestamps: visible.map((point) => point.at),
+    since: shorter ? first.at : null,
+  };
+}
+
+/** Pointer and touch inspect the nearest real point, including gaps between hourly candles. */
+export function nearestPriceSample(samples: readonly PriceSample[], fraction: number): number {
+  const x = Math.max(0, Math.min(1, fraction)) * 100;
+  let nearest = 0;
+  for (let index = 1; index < samples.length; index += 1) {
+    if (Math.abs(samples[index]!.x - x) < Math.abs(samples[nearest]!.x - x)) {
+      nearest = index;
+    }
+  }
+  return nearest;
+}
+
 /** The same geometry is used by the drawing and its point inspector. */
 export function sparkPoints(trail: readonly number[]): string {
   return sparkSamples(trail)
@@ -110,23 +230,20 @@ export function sparkPoints(trail: readonly number[]): string {
 }
 
 /** The sparkline in words, for the row's text alternative (the drawing itself is hidden). */
-export function trailText(trail: readonly number[] | null): string {
+export function trailText(trail: readonly number[] | null, range: PriceRange = "24H"): string {
   const marks = (trail ?? []).filter((value) => Number.isFinite(value));
   if (marks.length < 2) {
-    return "No 24 h trail read.";
+    return `No ${range === "24H" ? "24 h" : range.toLowerCase()} trail read.`;
   }
 
   const first = marks[0]!;
   const last = marks[marks.length - 1]!;
-  return `Last 24 h: from ${formatPrice(first)} to ${formatPrice(last)}, low ${formatPrice(
+  return `Last ${range === "24H" ? "24 h" : range.toLowerCase()}: from ${formatPrice(first)} to ${formatPrice(last)}, low ${formatPrice(
     Math.min(...marks),
   )}, high ${formatPrice(Math.max(...marks))}.`;
 }
 
 // ─── What it watches ───────────────────────────────────────────────────────────────────────────
-
-/** The card's head, beside WHAT IT WATCHES: the venue and the trail's span. */
-export const WATCH_META = "PERPL · 24H";
 
 /** A setup with no market listed: nothing to read. */
 export const WATCH_NONE = "No market in its setup.";
