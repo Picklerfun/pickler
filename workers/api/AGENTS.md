@@ -366,6 +366,10 @@ except the ledger. The studio agent DTO carries `visibility`, `publishedAt` (ISO
   encryption key and confidential OAuth app credentials; both OAuth and reads default disabled.
   Historical proof tables remain but challenge/verify routes and search algorithms are removed.
   See [Studio X OAuth](../../docs/studio-x-oauth.md) for quotas, cookies, renewal and revocation.
+  `src/x-config.ts` resolves the trusted hosted callback and first encryption-key version without
+  mandatory environment overrides. Local OAuth needs an explicit loopback callback. Invalid
+  explicit versions or callbacks never fall back; dedicated credentials/key, reviewed policy
+  and the independent OAuth/read flags remain required before enabling transports.
 - `POST /agents/:id/publish {}`: `directory.publish` with a check that reads the linked wallet's
   AUSD through `balances.read` outside any transaction; 409 `PUBLISH_BLOCKED` with
   `detail.blockers` (`KILLED`, `WALLET`, `FUNDS`, `X_CONNECTION_REQUIRED`), 409 `PUBLISH_CONFLICT` (the agent changed twice
