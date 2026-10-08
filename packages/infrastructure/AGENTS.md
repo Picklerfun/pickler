@@ -586,3 +586,20 @@ authorizeContinuation is a trusted explicit operator operation for interrupted S
 ## Local universe comparison
 
 Private universe adapters explicitly enable bulk ticker/funding reads, a three-second guarded ticker cache and the existing trusted 24-request cap; default sessions remain twelve. Study v5 reserves only selected asset calls jointly, retains their full reservations and verifies the documentary historical campaign ceiling in existing JSONB. No migrations or public DTO changes.
+
+## SMA profiles and selective exposure laboratory
+
+Local `perps-sma-profile-risk-v1` configuration v6 has four independent variants:
+`hourly-legacy`, `hourly-selective`, `fast-legacy`, and `fast-selective`. It composes no
+model, news, signer, or real order capability. Preserve v1–v5 records and monetary reservations.
+The new optional account `riskManagement` is assigned from the trusted study at initialization;
+absence retains historical collective exposure exits. No intent can change it.
+
+Trading exports versioned profiles through `strategies`/`evaluation`, and the bounded selective
+planner through `perps`. The profile runner serializes public observations, full ledger closes,
+common final refreshes, and four portfolio executions; no host may duplicate these policies.
+Selective accounts admit projected post-fill exposure at most 40% of marked equity and reduce
+strictly above 50% using full closes. Global emergency exits and historical risk stay intact.
+
+Read [the local guide](../../apps/agent-service/SMA-PROFILES-RISK.md) for frozen parameters,
+commands, one-shot execution, and report limitations. Tests never make paid provider calls.
