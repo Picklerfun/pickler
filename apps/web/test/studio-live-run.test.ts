@@ -10,6 +10,7 @@ import {
   consoleIntro,
   decisionFilters,
   sparkPoints,
+  sparkSamples,
   trailText,
   watchLoading,
 } from "../src/features/studio/live/run-model";
@@ -73,4 +74,17 @@ test("the trail in words gives first, last, low and high", () => {
 test("an unread board waits, except in a preview, which reads nothing", () => {
   assert.equal(watchLoading(false), "Reading Perpl…");
   assert.equal(watchLoading(true), "Nothing is read in a preview.");
+});
+
+test("the point inspector retains only actual finite prices and preserves flat trails", () => {
+  assert.deepEqual(sparkSamples([10, Number.NaN, 20, Number.POSITIVE_INFINITY, 15]), [
+    { value: 10, x: 0, y: 92 },
+    { value: 20, x: 50, y: 8 },
+    { value: 15, x: 100, y: 50 },
+  ]);
+  assert.deepEqual(sparkSamples([5, 5]), [
+    { value: 5, x: 0, y: 50 },
+    { value: 5, x: 100, y: 50 },
+  ]);
+  assert.deepEqual(sparkSamples([Number.NaN, 4]), []);
 });
