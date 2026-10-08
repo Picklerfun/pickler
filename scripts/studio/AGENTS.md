@@ -34,3 +34,17 @@ and quotas are test-only. Production transports never import this fixture. See
 ## X preview cost controls
 
 Controlled X acceptance uses the explicit Load 5 posts (paid) preview action. Provider credentials and spending remain synthetic; the browser never refreshes or auto-pages X posts.
+
+## Studio route acceptance
+
+Acceptance follows real `/studio/agents/<product-id>/<section>` links, verifies canonical URLs
+and checks that section navigation retains the mounted shell. Keep the legacy entry link checks:
+they must select that authenticated agent before replacing the URL. No route preview fixtures or
+product endpoint substitutions are allowed. See [Studio routing](../../docs/studio-routing.md).
+
+`routing.mjs` takes the private stack directory and a completed full acceptance run directory.
+It verifies the same loopback/UUID database fence, authenticates that run's synthetic actor and
+uses the compiled product to test memory draft retention, a real setup version conflict and
+invalid/foreign route isolation. It advances only that disposable agent's setup version. It must
+not invoke execution, X timeline reads, transfers or real providers; generated artifacts stay
+under the private stack directory.
