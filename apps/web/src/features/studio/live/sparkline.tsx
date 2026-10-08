@@ -1,7 +1,13 @@
 "use client";
-import { useId, useState } from "react";
+import { useId, useMemo, useState, type PointerEvent } from "react";
 import { formatPrice } from "../../markets/lib/format";
-import { sparkPoints, sparkSamples } from "./run-model";
+import {
+  nearestPriceSample,
+  priceSamples,
+  priceTime,
+  sparkPoints,
+  type PriceRange,
+} from "./run-model";
 import styles from "./run.module.css";
 
 /** Decorative trail used by Record; its textual alternative belongs to the caller. */
@@ -23,37 +29,52 @@ export function Sparkline({ trail, up }: { trail: readonly number[] | null; up: 
   );
 }
 
-/** Explore actual price samples only: this wire trail has no per-point timestamps or OHLC. */
+/** Inspect real samples and their supplied UTC times; legacy trails retain price-only inspection. */
 export function PriceTrail({
   trail,
-  up,
+  timestamps,
   market,
+  range,
 }: {
   trail: readonly number[] | null;
-  up: boolean | null;
+  timestamps: readonly (string | null)[] | null;
   market: string;
+  range: PriceRange;
 }) {
   const [active, setActive] = useState<number | null>(null);
   const gradientId = useId();
-  const samples = sparkSamples(trail ?? []);
-  const last = samples.at(-1);
+  const geometry = useMemo(() => {
+    const samples = priceSamples(trail ?? [], timestamps);
+    return {
+      samples,
+      last: samples.at(-1),
+      points: samples.map(({ x, y }) => `${x.toFixed(1)},${y.toFixed(1)}`).join(" "),
+      low: Math.min(...samples.map(({ value }) => value)),
+      high: Math.max(...samples.map(({ value }) => value)),
+    };
+  }, [trail, timestamps]);
+  const { samples, last, points, low, high } = geometry;
 
   if (!last) {
-    return <span className={styles.trailEmpty}>Price history unavailable</span>;
+    return <span className={styles.trailEmpty}>{range} history unavailable</span>;
   }
 
+  const up = last.value >= samples[0]!.value;
   const selected = active === null ? null : samples[Math.min(active, samples.length - 1)];
   const point = selected ?? last;
-  const points = samples.map(({ x, y }) => `${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
-  const low = Math.min(...samples.map(({ value }) => value));
-  const high = Math.max(...samples.map(({ value }) => value));
+  const time = priceTime(point.at);
+
+  function inspect(event: PointerEvent<HTMLInputElement>) {
+    const bounds = event.currentTarget.getBoundingClientRect();
+    setActive(nearestPriceSample(samples, (event.clientX - bounds.left) / bounds.width));
+  }
 
   return (
     <div className={styles.priceTrail} data-up={up ?? undefined}>
       <div
         className={styles.trailPlot}
         onPointerLeave={(event) => {
-          if (event.pointerType !== "touch") {
+          if (event.pointerType !== "touch" && event.buttons === 0) {
             setActive(null);
           }
         }}
@@ -94,10 +115,11 @@ export function PriceTrail({
             />
             <span
               className={styles.trailTooltip}
-              style={{ left: `${Math.max(16, Math.min(84, point.x))}%` }}
+              style={{ left: `clamp(65px, ${point.x}%, calc(100% - 65px))` }}
               aria-hidden="true"
             >
-              {formatPrice(point.value)}
+              <span>{formatPrice(point.value)}</span>
+              {time && <time dateTime={time.iso}>{time.label}</time>}
             </span>
           </>
         )}
@@ -120,10 +142,15 @@ export function PriceTrail({
           max={samples.length - 1}
           step={1}
           value={active ?? samples.length - 1}
-          aria-label={`${market} price history`}
-          aria-valuetext={formatPrice(point.value)}
+          aria-label={`${market} ${range} price history`}
+          aria-valuetext={`${formatPrice(point.value)}${time ? `, ${time.label}` : ""}`}
           onChange={(event) => setActive(Number(event.currentTarget.value))}
-          onPointerDown={(event) => event.currentTarget.focus({ preventScroll: true })}
+          onPointerDown={(event) => {
+            event.preventDefault();
+            event.currentTarget.focus({ preventScroll: true });
+            event.currentTarget.setPointerCapture(event.pointerId);
+            inspect(event);
+          }}
           onKeyDown={(event) => {
             if (event.key === "Escape") {
               setActive(null);
@@ -133,12 +160,9 @@ export function PriceTrail({
           onFocus={() => setActive(samples.length - 1)}
           onBlur={() => setActive(null)}
           onPointerMove={(event) => {
-            if (event.pointerType === "touch") {
-              return;
+            if (event.pointerType !== "touch" || event.buttons === 1) {
+              inspect(event);
             }
-            const bounds = event.currentTarget.getBoundingClientRect();
-            const fraction = Math.max(0, Math.min(1, (event.clientX - bounds.left) / bounds.width));
-            setActive(Math.round(fraction * (samples.length - 1)));
           }}
         />
       </div>
