@@ -3,6 +3,11 @@ import { StudioSkeleton } from "./skeleton";
 import Image from "next/image";
 import { AccountMenu } from "./shell/account-menu";
 import Link from "next/link";
+import { useParams, usePathname, useSearchParams, notFound } from "next/navigation";
+import type { ReactNode } from "react";
+import { agentSectionHref, studioAgentRoute, isStudioRouteSection } from "./routing/routes";
+import { StudioContentContext } from "./routing/content";
+import { useStudioMemory } from "./routing/memory";
 import { useRouter } from "nextjs-toploader/app";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { Button, Icon, type IconName } from "@pickler/ui";
@@ -130,11 +135,13 @@ export function Studio({
   stage,
   openAgent,
   resumeSection,
+  children,
 }: {
+  children?: ReactNode;
   openSection?: SectionKey | undefined;
   /** Restored navigation, validated against the selected studio’s existing section registry. */
   resumeSection?: string | undefined;
-  /** `?agent=<id>`: the agent to open on; the first one when absent or not the person's. */
+  /** `?agent=<id>`: the authorized agent to open; only an absent ID uses the first agent. */
   openAgent?: string | undefined;
   /** `?stage=`, outside production only: the home at one moment of the canvas's first run, the
       create screen at one moment (`create-*`), the draft studio (`draft*`), or `empty`, the
@@ -142,7 +149,21 @@ export function Studio({
   stage?: StudioStage | undefined;
 }) {
   // The top-loader returns a new router object per render; its memoized method is stable.
-  const { replace } = useRouter();
+  const { replace, push } = useRouter();
+  const pathname = usePathname();
+  const search = useSearchParams();
+  const params = useParams<{ agentId?: string }>();
+  const routed = studioAgentRoute(pathname);
+  const entryPath = pathname === "/" || pathname === "/studio";
+  const requestedAgent = params.agentId ?? openAgent;
+  const memory = useStudioMemory();
+  const initialRequestedAgent = useRef(requestedAgent);
+  const initialReturnPath = useRef(pathname + (search.size ? `?${search}` : ""));
+  const [storedSection, storeSection] = useState<View>(
+    () => SECTIONS.find((key) => key === resumeSection) ?? openSection ?? "home",
+  );
+  const section: View =
+    pathname === "/studio/new" ? "new" : ((routed?.section as View | undefined) ?? storedSection);
   const directory = useMarketplaceHref("/agents");
   const leaderboard = useMarketplaceHref("/leaderboard");
   /* Built once, during the first render, so the server's HTML already carries the staged home. */
@@ -154,12 +175,6 @@ export function Studio({
   /* Every staged screen stands alone: no session is read and nothing is fetched. */
   const staging = staged !== null || stagedDraft !== null || stagedLive !== null || stagedEmpty;
   const stagedAgent = staged?.agent ?? stagedDraft?.agent ?? stagedLive?.agent ?? null;
-  const [section, setSection] = useState<View>(() => {
-    if (resumeSection === "new" || resumeSection === "home") {
-      return resumeSection;
-    }
-    return SECTIONS.find((key) => key === resumeSection) ?? openSection ?? "home";
-  });
   const wide = useSyncExternalStore(subscribeRail, railSnapshot, railOnServer);
   const [access, setAccess] = useState<Access | null>(
     staging ? { enabled: true, canManage: true, workspaceId: "preview" } : null,
@@ -167,7 +182,7 @@ export function Studio({
   /* Whether the agents have been read, so an empty list means "none yet" rather than "not read". */
   const [loaded, setLoaded] = useState(staging);
   const [agents, setAgents] = useState<Agent[]>(stagedAgent ? [stagedAgent] : []);
-  const [agentId, setAgentId] = useState<string | null>(stagedAgent?.id ?? null);
+  const [rememberedAgentId, setAgentId] = useState<string | null>(stagedAgent?.id ?? null);
   const [catalog, setCatalog] = useState<Catalog | null>(null);
   const [options, setOptions] = useState<Options | null>(null);
   const [runs, setRuns] = useState<Run[]>(staged?.runs ?? []);
@@ -194,7 +209,40 @@ export function Studio({
   );
   const requestKeys = useRef(new Map<string, string>());
 
-  const agent = agents.find((candidate) => (candidate.productId ?? candidate.id) === agentId);
+  const agentId = requestedAgent ?? rememberedAgentId;
+  const activeAgentId = agentId;
+  const agent = agents.find((candidate) => (candidate.productId ?? candidate.id) === activeAgentId);
+  const setSection = useCallback(
+    (next: View) => {
+      if (next === "new") {
+        push(`/studio/new${stage ? `?stage=${stage}` : ""}`);
+        return;
+      }
+      if (agent && isStudioRouteSection(next === "home" ? "overview" : next)) {
+        push(
+          agentSectionHref(
+            agent.productId ?? agent.id,
+            next === "home" ? "overview" : next,
+            search.toString(),
+          ),
+        );
+        return;
+      }
+      storeSection(next);
+    },
+    [agent, push, search, stage],
+  );
+  function switchAgent(id: string) {
+    if (memory.writing()) {
+      return;
+    }
+    if (memory.dirty() && !window.confirm("Discard unsaved changes and switch agents?")) {
+      return;
+    }
+    memory.discardForms();
+    push(agentSectionHref(id, "overview", search.toString()));
+  }
+
   const canManage = Boolean(access?.canManage);
   /* The same lock the home's "+ New agent" honours, so neither entry reaches a passkey prompt the
      API would refuse after it. */
@@ -203,15 +251,19 @@ export function Studio({
   const now = useNow();
 
   const loadAgents = useCallback(async () => {
+    const generation = memory.generation();
     const [current, list] = await Promise.all([
       studioApi<Access>("/me"),
       studioApi<{ agents: Agent[] }>("/agents"),
     ]);
+    if (memory.generation() !== generation) {
+      return [];
+    }
     setAccess(current);
     setAgents(list.agents);
     setBlocked(current.enabled ? "" : "RESEARCH_ACCESS_DENIED");
     return list.agents;
-  }, []);
+  }, [memory, setAccess, setAgents, setBlocked]);
 
   useEffect(() => {
     if (staging) {
@@ -242,7 +294,7 @@ export function Studio({
           /* The empty studio's fixture has neither, and indexing into it threw where the catch
              turned a crash into a blank screen with the catalog never set. */
           const run = fixture.runs[0];
-          setAgentId(selectAgent(fixture.agents, openAgent));
+          setAgentId(selectAgent(fixture.agents, initialRequestedAgent.current));
           if (run) {
             setRuns(fixture.runs);
             setRunId(run.id);
@@ -251,8 +303,11 @@ export function Studio({
           return;
         }
         const { data } = await supabase.auth.getSession();
+        if (!active) {
+          return;
+        }
         if (!data.session) {
-          replace("/signin");
+          replace(`/signin?next=${encodeURIComponent(initialReturnPath.current)}`);
           return;
         }
         /* The master wallet exists before any agent (spec §4.1): the profile, top right, shows it
@@ -274,8 +329,13 @@ export function Studio({
         });
         if (away) {
           if (active) {
-            replace(away);
+            replace(
+              `${away}${away.includes("?") ? "&" : "?"}next=${encodeURIComponent(initialReturnPath.current)}`,
+            );
           }
+          return;
+        }
+        if (!active) {
           return;
         }
         await studioApi("/onboard", { method: "POST" });
@@ -296,7 +356,7 @@ export function Studio({
         setLoaded(true);
         setCatalog(cat);
         setOptions(opts);
-        setAgentId(selectAgent(list, openAgent));
+        setAgentId(selectAgent(list, initialRequestedAgent.current));
       } catch (caught) {
         if (active) {
           setBlocked(errorCode(caught) in BLOCKED ? errorCode(caught) : "");
@@ -307,7 +367,40 @@ export function Studio({
     return () => {
       active = false;
     };
-  }, [replace, loadAgents, staging, openAgent]);
+  }, [replace, loadAgents, staging]);
+
+  useEffect(() => {
+    if (!entryPath || !loaded || preview || staging || routed?.agentId || search.has("xResult")) {
+      return;
+    }
+    if (requestedAgent && !agent) {
+      return;
+    }
+    const asked = resumeSection ?? openSection;
+    if (asked === "new" || !agents.length) {
+      replace("/studio/new");
+      return;
+    }
+    if (agent) {
+      const target = asked && isStudioRouteSection(asked) ? asked : "overview";
+      replace(agentSectionHref(agent.productId ?? agent.id, target));
+    }
+  }, [
+    entryPath,
+    loaded,
+    preview,
+    staging,
+    pathname,
+    requestedAgent,
+    agent,
+    agents.length,
+    resumeSection,
+    openSection,
+    search,
+    replace,
+    routed?.agentId,
+    routed?.section,
+  ]);
 
   /* One cancellable read loop owns both the run list and the selected trace. The home reads its
      own latest run, so the loop only runs while a section is showing. */
@@ -357,7 +450,7 @@ export function Studio({
         (candidate.productId ?? candidate.id) === agentId ? fresh : candidate,
       ),
     );
-  }, [agentId, preview]);
+  }, [agentId, preview, setAgents]);
 
   const act = useCallback(
     async (operation: () => Promise<void>) => {
@@ -382,7 +475,7 @@ export function Studio({
         setBusy(false);
       }
     },
-    [loadAgents, preview],
+    [loadAgents, preview, setError, setBlocked, setBusy, setRefresh],
   );
 
   const runNow = useCallback(
@@ -402,21 +495,40 @@ export function Studio({
         setRunId(result.runId);
         setSection("activity");
       }),
-    [act, agentId],
+    [act, agentId, setSection],
   );
 
+  const legacySaveScope = `${agent?.productId ?? agent?.id}:legacy-${section}`;
   const saveConfig = useCallback(
     (config: Config) =>
       act(async () => {
         if (!agent) {
           return;
         }
-        await studioApi(`/agents/${agent.productId ?? agent.id}/config`, {
-          method: "PUT",
-          body: JSON.stringify({ expectedVersion: agent.version, config }),
-        });
+        if (memory.stale(legacySaveScope, agent.version)) {
+          setError("The configuration changed. Discard your edits before saving again.");
+          return;
+        }
+        if (memory.busy(legacySaveScope)) {
+          return;
+        }
+        const generation = memory.generation();
+        memory.begin(legacySaveScope);
+        try {
+          await studioApi(`/agents/${agent.productId ?? agent.id}/config`, {
+            method: "PUT",
+            body: JSON.stringify({ expectedVersion: agent.version, config }),
+          });
+          if (memory.generation() === generation) {
+            memory.committed(legacySaveScope);
+          }
+        } finally {
+          if (memory.generation() === generation) {
+            memory.end(legacySaveScope);
+          }
+        }
       }),
-    [act, agent],
+    [act, agent, memory, legacySaveScope, setError],
   );
 
   const counts = useMemo(() => {
@@ -470,29 +582,73 @@ export function Studio({
       />
     );
   }
+  if (loaded && requestedAgent && !agent) {
+    notFound();
+  }
+  if (loaded && !entryPath && pathname !== "/studio/new" && !routed) {
+    notFound();
+  }
+  if (agent && routed) {
+    const kind = studioKind(agent);
+    const supported =
+      kind === "draft"
+        ? Boolean(draftSection(routed.section))
+        : kind === "live"
+          ? Boolean(liveSection(routed.section))
+          : SECTIONS.some((key) => key === routed.section);
+    if (!supported) {
+      notFound();
+    }
+  }
+  // Resolve entry links before mounting an agent/creation controller and its reads.
+  if (!preview && !staging && !routed && pathname !== "/studio/new" && !search.has("xResult")) {
+    return (
+      <StudioPending
+        accountHandle={accountHandle}
+        error={error}
+        onRetry={() => window.location.reload()}
+      />
+    );
+  }
   if (landing === "new") {
     return (
-      <NewAgent
-        accountHandle={accountHandle}
-        passkeys={passkeys}
-        canManage={canManage}
-        preview={preview}
-        locked={blockedState ? { title: `${blockedState.title}.`, note: blockedState.note } : null}
-        error={error}
-        staged={stagedCreate}
-        hasAgents={agents.length > 0}
-        draftLock={draftLimitLock(agents)}
-        onBack={agent ? () => setSection("home") : undefined}
-        backTo={agent?.name ?? undefined}
-        onCreated={async (productId) => {
-          await loadAgents();
-          setAgentId(productId);
-          setRunId(null);
-          setRuns([]);
-          setTrace(null);
-          setSection("home");
+      <StudioContentContext.Provider
+        value={{
+          section: "new",
+          content: (
+            <NewAgent
+              accountHandle={accountHandle}
+              passkeys={passkeys}
+              canManage={canManage}
+              preview={preview}
+              locked={
+                blockedState ? { title: `${blockedState.title}.`, note: blockedState.note } : null
+              }
+              error={error}
+              staged={stagedCreate}
+              hasAgents={agents.length > 0}
+              draftLock={draftLimitLock(agents)}
+              onBack={agent ? () => setSection("home") : undefined}
+              backTo={agent?.name ?? undefined}
+              onCreated={async (productId) => {
+                const generation = memory.generation();
+                await loadAgents();
+                if (memory.generation() !== generation) {
+                  return;
+                }
+                setAgentId(productId);
+                setRunId(null);
+                setRuns([]);
+                setTrace(null);
+                memory.discard("create");
+                push(agentSectionHref(productId, "overview"));
+              }}
+            />
+          ),
         }}
-      />
+      >
+        {children}
+      </StudioContentContext.Provider>
     );
   }
 
@@ -501,33 +657,28 @@ export function Studio({
   if (agent && kind === "draft") {
     return (
       <DraftStudio
-        key={agentId}
+        key={activeAgentId}
         agent={agent}
         agents={agents}
         canManage={canManage}
         newAgentLock={newAgentLock}
         staged={stagedDraft}
         preview={preview}
-        initialSection={draftSection(resumeSection ?? openSection)}
+        initialSection={draftSection(routed?.section ?? resumeSection ?? openSection)}
         accountHandle={stagedDraft?.accountHandle ?? accountHandle}
         onRefreshAgent={refreshAgent}
         onPublished={() => {
           setPublished(true);
           setSection("home");
         }}
-        onSwitch={(id) => {
-          setAgentId(id);
-          setRunId(null);
-          setRuns([]);
-          setTrace(null);
-          setError("");
-          setSection("home");
-        }}
+        onSwitch={switchAgent}
         onNew={() => {
           setError("");
           setSection("new");
         }}
-      />
+      >
+        {children}
+      </DraftStudio>
     );
   }
 
@@ -536,30 +687,26 @@ export function Studio({
   if (agent && kind === "live") {
     return (
       <LiveStudio
-        key={agentId}
+        key={activeAgentId}
         agent={agent}
         agents={agents}
         canManage={canManage}
         newAgentLock={newAgentLock}
         staged={stagedLive}
         preview={preview}
-        initialSection={published ? "overview" : liveSection(resumeSection ?? openSection)}
+        initialSection={liveSection(
+          routed?.section ?? (published ? "overview" : (resumeSection ?? openSection)),
+        )}
         accountHandle={stagedLive?.accountHandle ?? accountHandle}
         onRefreshAgent={refreshAgent}
-        onSwitch={(id) => {
-          setAgentId(id);
-          setRunId(null);
-          setRuns([]);
-          setTrace(null);
-          setError("");
-          setPublished(false);
-          setSection("home");
-        }}
+        onSwitch={switchAgent}
         onNew={() => {
           setError("");
           setSection("new");
         }}
-      />
+      >
+        {children}
+      </LiveStudio>
     );
   }
 
@@ -567,7 +714,7 @@ export function Studio({
     return (
       <Home
         accountHandle={accountHandle}
-        key={agentId}
+        key={activeAgentId}
         agent={agent}
         passkeys={passkeys}
         agents={agents}
@@ -588,13 +735,7 @@ export function Studio({
           setRunId(id);
           setSection("picks");
         }}
-        onSwitch={(id) => {
-          setAgentId(id);
-          setRunId(null);
-          setRuns([]);
-          setTrace(null);
-          setError("");
-        }}
+        onSwitch={switchAgent}
         onNew={() => {
           setError("");
           setSection("new");
@@ -603,326 +744,363 @@ export function Studio({
     );
   }
 
+  const legacyContent = (
+    <>
+      {" "}
+      {!agent ? (
+        /* Only while the agents are read, or when that read failed: none at all is the empty
+               home, above. */
+        !error && <StudioSkeleton />
+      ) : section === "overview" ? (
+        <Overview
+          agent={agent}
+          runs={runs}
+          runsToday={counts.today}
+          now={now}
+          busy={busy}
+          canManage={canManage}
+          runsLocked={runsLocked}
+          scheduleLocked={scheduleLocked}
+          blocked={blocked}
+          onRun={runNow}
+          onSchedule={() =>
+            void act(async () => {
+              await studioApi(`/agents/${agentId}/schedule`, {
+                method: "PUT",
+                body: JSON.stringify({ enabled: !agent.scheduleEnabled }),
+              });
+            })
+          }
+          onOpen={(run) => {
+            setRunId(run.id);
+            setSection(run.decision ? "picks" : "activity");
+          }}
+          go={go}
+        />
+      ) : section === "picks" ? (
+        <Picks
+          runs={runs}
+          runId={runId}
+          events={events}
+          onSelect={setRunId}
+          onTrace={(id) => {
+            setRunId(id);
+            setSection("activity");
+          }}
+        />
+      ) : section === "activity" ? (
+        <Activity
+          runs={runs}
+          runId={runId}
+          events={events}
+          onSelect={setRunId}
+          onDecision={(id) => {
+            setRunId(id);
+            setSection("picks");
+          }}
+        />
+      ) : section === "skills" ? (
+        <Skills
+          key={`skills-${agentId}-${agent.version}`}
+          agent={agent}
+          options={options}
+          busy={busy}
+          canManage={canManage}
+          broken={blocked === "PLUGIN_NOT_CONFIGURED"}
+          onSave={saveConfig}
+        />
+      ) : section === "brief" ? (
+        <Brief
+          key={`brief-${agentId}-${agent.version}`}
+          agent={agent}
+          catalog={catalog}
+          busy={busy}
+          canManage={canManage}
+          onSave={saveConfig}
+        />
+      ) : section === "limits" ? (
+        <>
+          <Trading
+            key={`trading-${agentId}-${agent.version}`}
+            agent={agent}
+            canManage={canManage}
+            onSave={saveConfig}
+          />
+          <Limits
+            key={`limits-${agentId}-${agent.version}`}
+            agent={agent}
+            busy={busy}
+            canManage={canManage}
+            onSave={saveConfig}
+          />
+        </>
+      ) : section === "context" ? (
+        <Context agent={agent} go={go} />
+      ) : section !== "home" && section !== "new" && isPanel(section) ? (
+        <Soon section={section} agent={agent} />
+      ) : null}
+    </>
+  );
   return (
-    <main className={styles.studio} data-surface="dark" onClick={() => setMenu(null)}>
-      <header className={styles.topbar}>
-        <button
-          type="button"
-          className={styles.iconButton}
-          onClick={() => setRail(!wide)}
-          aria-label={wide ? "Collapse the rail" : "Expand the rail"}
-        >
-          <Icon name={wide ? "chevronLeft" : "chevronRight"} size={16} />
-        </button>
-        <Link href="/" className={styles.brand}>
-          <Image src="/brand/logo.png" alt="" width={22} height={22} priority />
-          <span>PICKLER</span>
-        </Link>
-
-        <div className={styles.menuWrap} onClick={(event) => event.stopPropagation()}>
+    <StudioContentContext.Provider value={{ section, content: legacyContent }}>
+      <main className={styles.studio} data-surface="dark" onClick={() => setMenu(null)}>
+        <header className={styles.topbar}>
           <button
             type="button"
-            className={styles.switcher}
-            aria-expanded={menu === "agent"}
-            onClick={() => setMenu(menu === "agent" ? null : "agent")}
+            className={styles.iconButton}
+            onClick={() => setRail(!wide)}
+            aria-label={wide ? "Collapse the rail" : "Expand the rail"}
           >
-            <span className={styles.avatar} data-tint="lime">
-              {agentInitials(name)}
-            </span>
-            <span>
-              <b>{name}</b>
-              <small>
-                {agent?.handle ? `@${agent.handle}` : "no handle"} ·{" "}
-                {agent?.config.marketScope?.subcategories === "all"
-                  ? "all sports"
-                  : (agent?.config.marketScope?.subcategories ?? []).join(", ") || "sports"}
-              </small>
-            </span>
-            <Icon name="chevronDown" size={14} />
+            <Icon name={wide ? "chevronLeft" : "chevronRight"} size={16} />
           </button>
-          {menu === "agent" && (
-            <div className={styles.menu} role="menu">
-              {agents.map((candidate) => {
-                const id = candidate.productId ?? candidate.id;
-                return (
-                  <button
-                    key={id}
-                    type="button"
-                    role="menuitem"
-                    className={styles.menuItem}
-                    aria-current={id === agentId}
-                    onClick={() => {
-                      setAgentId(id);
-                      setRunId(null);
-                      setRuns([]);
-                      setTrace(null);
-                      setBlocked(access?.enabled ? "" : "RESEARCH_ACCESS_DENIED");
-                      setError("");
-                      setMenu(null);
-                    }}
-                  >
-                    <Icon name="target" size={15} />
-                    {candidate.name ?? id.slice(0, 8)}
-                  </button>
-                );
-              })}
-              <button
-                type="button"
-                role="menuitem"
-                className={styles.menuItem}
-                disabled={!canManage || newAgentLock !== ""}
-                title={newAgentLock || undefined}
-                onClick={() => {
-                  setMenu(null);
-                  setError("");
-                  setSection("new");
-                }}
-              >
-                <Icon name="bolt" size={15} />
-                <span className={styles.menuLabel}>
-                  New agent
-                  {newAgentLock && <small className={styles.menuNote}>{newAgentLock}</small>}
-                </span>
-              </button>
-            </div>
-          )}
-        </div>
+          <Link href="/" className={styles.brand}>
+            <Image src="/brand/logo.png" alt="" width={22} height={22} priority />
+            <span>PICKLER</span>
+          </Link>
 
-        <span className={styles.status} data-tint={statusTint}>
-          <span className={styles.dot} data-live={statusLabel === "RUNNING"} />
-          {statusLabel}
-        </span>
-        <span className={styles.spacer} />
-        {quotaMax > 0 && (
-          <span className={styles.pill} title="Runs started in the last rolling day">
-            {counts.today}
-            <em>/{quotaMax} RUNS</em>
-          </span>
-        )}
-        <span className={styles.pill} data-quiet="true">
-          STAGING
-        </span>
-
-        <AccountMenu
-          handle={accountHandle}
-          preview={preview}
-          returnContext={{ agent: agentId ?? undefined, section }}
-        />
-      </header>
-
-      <div className={styles.body}>
-        <nav className={styles.rail} data-wide={wide} aria-label="Studio sections">
-          <div className={styles.railGroups}>
-            <div className={styles.railItems}>
-              <button
-                type="button"
-                className={styles.railItem}
-                title="Home"
-                onClick={() => go("home")}
-              >
-                <Icon name="arrowLeft" size={17} />
-                {wide && <span className={styles.railLabel}>Home</span>}
-              </button>
-            </div>
-            {RAIL.map((group) => (
-              <div key={group.title}>
-                {wide && <p className={styles.railTitle}>{group.title}</p>}
-                <div className={styles.railItems}>
-                  {group.items.map((item) => {
-                    const badge = badgeFor(item.key);
-                    return (
-                      <button
-                        key={item.key}
-                        type="button"
-                        className={styles.railItem}
-                        aria-current={section === item.key}
-                        title={item.label}
-                        onClick={() => go(item.key)}
-                      >
-                        <Icon name={item.icon} size={17} />
-                        {wide && (
-                          <>
-                            <span className={styles.railLabel}>{item.label}</span>
-                            {badge?.text && (
-                              <span className={styles.badge} data-tint={badge.tint}>
-                                {badge.text}
-                              </span>
-                            )}
-                          </>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className={styles.railFoot}>
-            {wide && (
-              <>
-                <Link href={directory} className={styles.railLink}>
-                  <Icon name="users" size={15} />
-                  Every agent
-                </Link>
-                <Link href={leaderboard} className={styles.railLink}>
-                  <Icon name="bars" size={15} />
-                  Leaderboard
-                </Link>
-              </>
-            )}
+          <div className={styles.menuWrap} onClick={(event) => event.stopPropagation()}>
             <button
               type="button"
-              className={styles.railPause}
-              data-paused={agent?.paused ?? false}
-              disabled={!agent || !canManage || busy}
-              title={agent?.paused ? "Resume agent" : "Pause agent"}
-              onClick={() =>
-                void act(async () => {
-                  await studioApi(`/agents/${agentId}/pause`, {
-                    method: "PUT",
-                    body: JSON.stringify({ paused: !agent?.paused }),
-                  });
-                })
-              }
+              className={styles.switcher}
+              aria-expanded={menu === "agent"}
+              onClick={() => setMenu(menu === "agent" ? null : "agent")}
             >
-              <Icon name={agent?.paused ? "play" : "pause"} size={14} />
-              {wide && <span>{agent?.paused ? "Resume agent" : "Pause agent"}</span>}
+              <span className={styles.avatar} data-tint="lime">
+                {agentInitials(name)}
+              </span>
+              <span>
+                <b>{name}</b>
+                <small>
+                  {agent?.handle ? `@${agent.handle}` : "no handle"} ·{" "}
+                  {agent?.config.marketScope?.subcategories === "all"
+                    ? "all sports"
+                    : (agent?.config.marketScope?.subcategories ?? []).join(", ") || "sports"}
+                </small>
+              </span>
+              <Icon name="chevronDown" size={14} />
             </button>
+            {menu === "agent" && (
+              <div className={styles.menu} role="menu">
+                {agents.map((candidate) => {
+                  const id = candidate.productId ?? candidate.id;
+                  return (
+                    <button
+                      key={id}
+                      type="button"
+                      role="menuitem"
+                      className={styles.menuItem}
+                      aria-current={id === agentId}
+                      onClick={() => {
+                        switchAgent(id);
+                        setRunId(null);
+                        setRuns([]);
+                        setTrace(null);
+                        setBlocked(access?.enabled ? "" : "RESEARCH_ACCESS_DENIED");
+                        setError("");
+                        setMenu(null);
+                      }}
+                    >
+                      <Icon name="target" size={15} />
+                      {candidate.name ?? id.slice(0, 8)}
+                    </button>
+                  );
+                })}
+                <button
+                  type="button"
+                  role="menuitem"
+                  className={styles.menuItem}
+                  disabled={!canManage || newAgentLock !== ""}
+                  title={newAgentLock || undefined}
+                  onClick={() => {
+                    setMenu(null);
+                    setError("");
+                    setSection("new");
+                  }}
+                >
+                  <Icon name="bolt" size={15} />
+                  <span className={styles.menuLabel}>
+                    New agent
+                    {newAgentLock && <small className={styles.menuNote}>{newAgentLock}</small>}
+                  </span>
+                </button>
+              </div>
+            )}
           </div>
-        </nav>
 
-        <div className={styles.main} id={`studio-panel-${section}`}>
-          {preview && (
-            <p className={styles.preview} role="status">
-              <Icon name="alert" size={13} />
-              {staged
-                ? "Preview · fixture data, nothing is saved."
-                : "Design preview. This build has no authentication configured, so the studio is drawn from a fixture — every number below is from the canvas, not from a workspace."}
-            </p>
+          <span className={styles.status} data-tint={statusTint}>
+            <span className={styles.dot} data-live={statusLabel === "RUNNING"} />
+            {statusLabel}
+          </span>
+          <span className={styles.spacer} />
+          {quotaMax > 0 && (
+            <span className={styles.pill} title="Runs started in the last rolling day">
+              {counts.today}
+              <em>/{quotaMax} RUNS</em>
+            </span>
           )}
-          {blockedState && (
-            <section className={styles.blocked} data-tint={blockedState.tint} role="status">
-              <span className={styles.blockedMark}>
-                <Icon name={blockedState.icon} size={18} />
-              </span>
-              <span className={styles.blockedBody}>
-                <span className={styles.blockedHead}>
-                  <b>{blockedState.title}</b>
-                  <span className={styles.code}>{blocked}</span>
-                </span>
-                <span className={styles.blockedNote}>{blockedState.note}</span>
-              </span>
-              <Button
-                className={styles.blockedCta}
-                onClick={() => (blockedState.to ? go(blockedState.to) : window.location.reload())}
+          <span className={styles.pill} data-quiet="true">
+            STAGING
+          </span>
+
+          <AccountMenu
+            handle={accountHandle}
+            preview={preview}
+            returnContext={{ agent: agentId ?? undefined, section }}
+          />
+        </header>
+
+        <div className={styles.body}>
+          <nav className={styles.rail} data-wide={wide} aria-label="Studio sections">
+            <div className={styles.railGroups}>
+              <div className={styles.railItems}>
+                <button
+                  type="button"
+                  className={styles.railItem}
+                  title="Home"
+                  onClick={() => go("home")}
+                >
+                  <Icon name="arrowLeft" size={17} />
+                  {wide && <span className={styles.railLabel}>Home</span>}
+                </button>
+              </div>
+              {RAIL.map((group) => (
+                <div key={group.title}>
+                  {wide && <p className={styles.railTitle}>{group.title}</p>}
+                  <div className={styles.railItems}>
+                    {group.items.map((item) => {
+                      const badge = badgeFor(item.key);
+                      return (
+                        <Link
+                          key={item.key}
+                          href={agentSectionHref(
+                            agent!.productId ?? agent!.id,
+                            item.key,
+                            search.toString(),
+                          )}
+                          prefetch={false}
+                          className={styles.railItem}
+                          aria-current={section === item.key ? "page" : undefined}
+                          title={item.label}
+                          onClick={() => {
+                            if (
+                              item.key === "picks" &&
+                              !runs.find((run) => run.id === runId)?.decision
+                            ) {
+                              setRunId(runs.find((run) => run.decision)?.id ?? null);
+                            }
+                            setMenu(null);
+                          }}
+                        >
+                          <Icon name={item.icon} size={17} />
+                          {wide && (
+                            <>
+                              <span className={styles.railLabel}>{item.label}</span>
+                              {badge?.text && (
+                                <span className={styles.badge} data-tint={badge.tint}>
+                                  {badge.text}
+                                </span>
+                              )}
+                            </>
+                          )}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className={styles.railFoot}>
+              {wide && (
+                <>
+                  <Link href={directory} className={styles.railLink}>
+                    <Icon name="users" size={15} />
+                    Every agent
+                  </Link>
+                  <Link href={leaderboard} className={styles.railLink}>
+                    <Icon name="bars" size={15} />
+                    Leaderboard
+                  </Link>
+                </>
+              )}
+              <button
+                type="button"
+                className={styles.railPause}
+                data-paused={agent?.paused ?? false}
+                disabled={!agent || !canManage || busy}
+                title={agent?.paused ? "Resume agent" : "Pause agent"}
+                onClick={() =>
+                  void act(async () => {
+                    await studioApi(`/agents/${agentId}/pause`, {
+                      method: "PUT",
+                      body: JSON.stringify({ paused: !agent?.paused }),
+                    });
+                  })
+                }
               >
-                {blockedState.cta}
-              </Button>
-            </section>
-          )}
+                <Icon name={agent?.paused ? "play" : "pause"} size={14} />
+                {wide && <span>{agent?.paused ? "Resume agent" : "Pause agent"}</span>}
+              </button>
+            </div>
+          </nav>
 
-          {!agent ? (
-            /* Only while the agents are read, or when that read failed: none at all is the empty
-               home, above. */
-            !error && <StudioSkeleton />
-          ) : section === "overview" ? (
-            <Overview
-              agent={agent}
-              runs={runs}
-              runsToday={counts.today}
-              now={now}
-              busy={busy}
-              canManage={canManage}
-              runsLocked={runsLocked}
-              scheduleLocked={scheduleLocked}
-              blocked={blocked}
-              onRun={runNow}
-              onSchedule={() =>
-                void act(async () => {
-                  await studioApi(`/agents/${agentId}/schedule`, {
-                    method: "PUT",
-                    body: JSON.stringify({ enabled: !agent.scheduleEnabled }),
-                  });
-                })
-              }
-              onOpen={(run) => {
-                setRunId(run.id);
-                setSection(run.decision ? "picks" : "activity");
-              }}
-              go={go}
-            />
-          ) : section === "picks" ? (
-            <Picks
-              runs={runs}
-              runId={runId}
-              events={events}
-              onSelect={setRunId}
-              onTrace={(id) => {
-                setRunId(id);
-                setSection("activity");
-              }}
-            />
-          ) : section === "activity" ? (
-            <Activity
-              runs={runs}
-              runId={runId}
-              events={events}
-              onSelect={setRunId}
-              onDecision={(id) => {
-                setRunId(id);
-                setSection("picks");
-              }}
-            />
-          ) : section === "skills" ? (
-            <Skills
-              key={`skills-${agentId}-${agent.version}`}
-              agent={agent}
-              options={options}
-              busy={busy}
-              canManage={canManage}
-              broken={blocked === "PLUGIN_NOT_CONFIGURED"}
-              onSave={saveConfig}
-            />
-          ) : section === "brief" ? (
-            <Brief
-              key={`brief-${agentId}-${agent.version}`}
-              agent={agent}
-              catalog={catalog}
-              busy={busy}
-              canManage={canManage}
-              onSave={saveConfig}
-            />
-          ) : section === "limits" ? (
-            <>
-              <Trading
-                key={`trading-${agentId}-${agent.version}`}
-                agent={agent}
-                canManage={canManage}
-                onSave={saveConfig}
-              />
-              <Limits
-                key={`limits-${agentId}-${agent.version}`}
-                agent={agent}
-                busy={busy}
-                canManage={canManage}
-                onSave={saveConfig}
-              />
-            </>
-          ) : section === "context" ? (
-            <Context agent={agent} go={go} />
-          ) : section !== "home" && section !== "new" && isPanel(section) ? (
-            <Soon section={section} agent={agent} />
-          ) : null}
+          <div className={styles.main} id={`studio-panel-${section}`}>
+            {preview && (
+              <p className={styles.preview} role="status">
+                <Icon name="alert" size={13} />
+                {staged
+                  ? "Preview · fixture data, nothing is saved."
+                  : "Design preview. This build has no authentication configured, so the studio is drawn from a fixture — every number below is from the canvas, not from a workspace."}
+              </p>
+            )}
+            {blockedState && (
+              <section className={styles.blocked} data-tint={blockedState.tint} role="status">
+                <span className={styles.blockedMark}>
+                  <Icon name={blockedState.icon} size={18} />
+                </span>
+                <span className={styles.blockedBody}>
+                  <span className={styles.blockedHead}>
+                    <b>{blockedState.title}</b>
+                    <span className={styles.code}>{blocked}</span>
+                  </span>
+                  <span className={styles.blockedNote}>{blockedState.note}</span>
+                </span>
+                <Button
+                  className={styles.blockedCta}
+                  onClick={() => (blockedState.to ? go(blockedState.to) : window.location.reload())}
+                >
+                  {blockedState.cta}
+                </Button>
+              </section>
+            )}
 
-          {error && (
-            <p role="alert" className={styles.mainAlert}>
-              <Icon name="alert" size={13} />
-              {error}
-            </p>
-          )}
+            {children}
+
+            {agent &&
+              memory.stale(`${agent.productId ?? agent.id}:legacy-${section}`, agent.version) && (
+                <div role="status">
+                  <p>The configuration changed. Your unsaved edits are kept.</p>
+                  <button
+                    type="button"
+                    className={styles.pill}
+                    onClick={() => {
+                      memory.discard(`${agent.productId ?? agent.id}:legacy-${section}`);
+                      setError("");
+                    }}
+                  >
+                    Discard edits and reload
+                  </button>
+                </div>
+              )}
+            {error && (
+              <p role="alert" className={styles.mainAlert}>
+                <Icon name="alert" size={13} />
+                {error}
+              </p>
+            )}
+          </div>
         </div>
-      </div>
-    </main>
+      </main>
+    </StudioContentContext.Provider>
   );
 }
 
