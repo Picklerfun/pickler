@@ -244,3 +244,11 @@ Report hashes are memoized per immutable evidence object within one rendering; e
 retains the same canonical digest without hashing a full snapshot again for each market/variant.
 `audit-export` accepts the registered perpetual protocols; the historical model-decision
 `audit` analyzer explicitly rejects unsupported profile protocols rather than fabricating arms.
+
+## SMA reentry/latency comparison
+
+[PERPS-SMA-REENTRY.md](PERPS-SMA-REENTRY.md) documents configuration v7 and the public-only two-portfolio protocol. `evaluate timing-check --state EXPORT --output NEW_DIRECTORY` runs offline before environment/provider composition and rejects environment/paid flags. `stability` performs one independent 30-minute eleven-market capture; `run` requires its passing proof matching commit/configuration. `reentry-host.ts` composes only local PostgreSQL and public Perpl, emits compact per-observation status and coalesces full reports through `reentry-report-worker.mjs`. All file publication is atomic. Do not call models, restart, repeat qualification, extend deadlines, create monitors, merge or deploy automatically. Old monitors remain paused. New model calls/tokens/reservations are zero; historical budgets and records are unchanged. Tests include PostgreSQL atomic key consumption, common final evidence, mandatory price-exit priority and historical v6 parity.
+
+The unified evaluation npm entry includes Node’s option separator before the script. Preserve it
+so laboratory `--env-file` is handled by the application rather than preloaded by Node. V7 requires
+a dedicated database-only file; offline timing and audit never load an environment.
