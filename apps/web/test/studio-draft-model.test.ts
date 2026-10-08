@@ -15,19 +15,7 @@ import {
   sectionLabel,
   walletCardView,
 } from "../src/features/studio/draft/model";
-import {
-  disconnectProblem,
-  nameChange,
-  voiceOf,
-  xAccountTag,
-} from "../src/features/studio/shell/identity-model";
-import {
-  X_NOT_FOUND_LINE,
-  X_UNAVAILABLE_LINE,
-  xHandleInput,
-  xProblem,
-  xView,
-} from "../src/features/studio/shell/x-model";
+import { nameChange, voiceOf } from "../src/features/studio/shell/identity-model";
 import { addSite, briefTags } from "../src/features/studio/shell/build-model";
 import { capsStepper } from "../src/features/studio/draft/caps-model";
 import { clock, dayLabel, stamp } from "../src/features/studio/shell/clock";
@@ -59,13 +47,6 @@ const wallets = (master: string | null, agents: (string | null)[] = []): Wallets
   readAt: 0,
 });
 const caps = { perTradeAusd: 5, perDayAusd: 20, maxLeverage: 1 };
-const noX = {
-  challenge: null,
-  checking: false,
-  unavailable: false,
-  taken: null,
-  missed: false,
-} as const;
 
 test("the rail has the four groups of the canvas, in order", () => {
   const rail = draftRail("overview");
@@ -197,99 +178,39 @@ test("no agent wallets is zero in them", () => {
 });
 
 test("Go Public starts at 0 of 1 with Connect X and a shut button", () => {
-  const view = goPublicView({ xHandle: null, skipped: false, publishing: false });
+  const view = goPublicView({ xHandle: null, publishing: false });
   assert.equal(view.title, "GO PUBLIC");
   assert.deepEqual([view.done, view.of], [0, 1]);
-  assert.deepEqual(view.task, { title: "Connect X", meta: "WHERE IT POSTS", done: false });
+  assert.deepEqual(view.task, { title: "Connect X", meta: "READ ACCESS", done: false });
   assert.equal(view.canPublish, false);
   assert.equal(view.label, "Connect X to go public");
-  assert.equal(view.skipLabel, "SKIP X FOR NOW · IT POSTS ON PICKLER ONLY");
   assert.equal(view.xNote, "");
 });
 
 test("a verified X account completes the task and adds X to the line", () => {
   const view = goPublicView({
     xHandle: "halftimebot",
-    skipped: false,
     publishing: false,
   });
   assert.deepEqual([view.done, view.of], [1, 1]);
   assert.deepEqual(view.task, { title: "Connect X", meta: "@HALFTIMEBOT", done: true });
   assert.equal(view.canPublish, true);
   assert.equal(view.label, "Go public");
-  assert.equal(view.xNote, " and X");
-  assert.equal(view.skipLabel, "");
+  assert.equal(view.xNote, "");
 });
 
-test("skipping X opens the button without completing the task, and offers undo", () => {
-  const view = goPublicView({ xHandle: null, skipped: true, publishing: false });
+test("missing OAuth cannot enable publication", () => {
+  const view = goPublicView({ xHandle: null, publishing: false });
   assert.equal(view.done, 0);
-  assert.equal(view.canPublish, true);
-  assert.equal(view.label, "Go public");
-  assert.equal(view.skipLabel, "POSTS ON PICKLER ONLY · UNDO");
+  assert.equal(view.canPublish, false);
+  assert.equal(view.label, "Connect X to go public");
   assert.equal(view.xNote, "");
 });
 
 test("while publishing the button is shut and says so", () => {
-  const view = goPublicView({ xHandle: null, skipped: true, publishing: true });
+  const view = goPublicView({ xHandle: null, publishing: true });
   assert.equal(view.canPublish, false);
   assert.equal(view.label, "Going public…");
-});
-
-test("Verify becomes Check again once a challenge exists, and Checking… while it runs", () => {
-  assert.equal(xView(noX).button, "Verify");
-  const challenge = { handle: "halftimebot", text: "Verifying Halftime on @pickler · pk-7f3a" };
-  assert.equal(xView({ ...noX, challenge }).button, "Check again");
-  assert.deepEqual(
-    [
-      xView({ ...noX, challenge, checking: true }).button,
-      xView({ ...noX, checking: true }).disabled,
-    ],
-    ["Checking…", true],
-  );
-});
-
-test("with a challenge the miss block shows the line to post and where from", () => {
-  const challenge = { handle: "halftimebot", text: "Verifying Halftime on @pickler · pk-7f3a" };
-  assert.deepEqual(xView({ ...noX, challenge }).miss, {
-    title: "We couldn't find the post yet.",
-    line: "Verifying Halftime on @pickler · pk-7f3a",
-    hint: "POST THIS FROM @HALFTIMEBOT · THEN CHECK AGAIN",
-    missed: null,
-  });
-  assert.equal(xView(noX).miss, null);
-});
-
-test("a check that did not find the post says so inside the miss block", () => {
-  const challenge = { handle: "halftimebot", text: "Verifying Halftime on @pickler · pk-7f3a" };
-  assert.equal(xView({ ...noX, challenge, missed: true }).miss?.missed, X_NOT_FOUND_LINE);
-  assert.equal(X_NOT_FOUND_LINE, "Not found yet. Post the line, then check again.");
-  assert.equal(xView({ ...noX, challenge, missed: true }, "other").miss?.missed, null);
-});
-
-test("a handle edited away from the challenge's reads Verify: it gets a new line", () => {
-  const challenge = { handle: "HalftimeBot", text: "Verifying Halftime on @pickler · pk-7f3a" };
-  assert.equal(xView({ ...noX, challenge }, "halftimebot").button, "Check again");
-  assert.equal(xView({ ...noX, challenge }, "halftime").button, "Verify");
-  assert.equal(xView({ ...noX, challenge }, null).button, "Check again");
-});
-
-test("without X credentials the card says so and shows no miss block", () => {
-  const view = xView({ ...noX, unavailable: true });
-  assert.equal(view.unavailable, X_UNAVAILABLE_LINE);
-  assert.equal(
-    X_UNAVAILABLE_LINE,
-    "X verification isn't open yet. Skip it for now; you can connect X later in Identity & voice.",
-  );
-  assert.equal(xView(noX).unavailable, null);
-});
-
-test("a handle that is another agent's says so", () => {
-  assert.equal(
-    xView({ ...noX, taken: "halftimebot" }).taken,
-    "@halftimebot is already another agent's.",
-  );
-  assert.equal(xView(noX).taken, null);
 });
 
 test("each publish blocker has its line, and only FUNDS offers funding", () => {
@@ -491,7 +412,6 @@ test("a draft made by the create screen has only Connect X left", () => {
   const { agent, x } = draftStudioFixture("draft");
   const view = goPublicView({
     xHandle: agent.xHandle,
-    skipped: false,
     publishing: false,
   });
 
@@ -499,34 +419,15 @@ test("a draft made by the create screen has only Connect X left", () => {
   assert.ok((agent.wallet?.balanceAusd ?? 0) >= 10);
   assert.equal(x.account, null);
   assert.equal(view.done, 0);
-  assert.deepEqual(view.task, { title: "Connect X", meta: "WHERE IT POSTS", done: false });
+  assert.deepEqual(view.task, { title: "Connect X", meta: "READ ACCESS", done: false });
   assert.equal(view.label, "Connect X to go public");
 });
 
-test("the X stages are the row open, the post not found, verified, and skipped", () => {
-  const open = draftStudioFixture("draft-x-open").goPublic;
-  assert.equal(open.xOpen, true);
-  assert.equal(xView(open.card).button, "Verify");
-
-  const miss = draftStudioFixture("draft-x-miss");
-  const missView = xView(miss.goPublic.card);
-  assert.equal(missView.button, "Check again");
-  assert.match(missView.miss?.line ?? "", /^Verifying Halftime on @pickler · pk-[a-z2-7]{8}$/);
-  assert.equal(miss.x.challenge?.text, missView.miss?.line);
-
-  const ok = draftStudioFixture("draft-x-ok");
-  assert.equal(ok.agent.xHandle, "HalftimeBot");
-  assert.equal(ok.x.account?.handle, "HalftimeBot");
-  assert.equal(
-    goPublicView({ xHandle: ok.agent.xHandle, skipped: false, publishing: false }).label,
-    "Go public",
-  );
-
-  const skipped = draftStudioFixture("draft-x-skipped").goPublic;
-  assert.equal(
-    goPublicView({ xHandle: null, skipped: skipped.skipped, publishing: false }).canPublish,
-    true,
-  );
+test("OAuth fixtures distinguish current, historical and unavailable authorizations", () => {
+  assert.equal(draftStudioFixture("draft-x-open").x.status, "disconnected");
+  assert.equal(draftStudioFixture("draft-x-miss").x.status, "reconnect_required");
+  assert.equal(draftStudioFixture("draft-x-ok").x.status, "connected");
+  assert.equal(draftStudioFixture("draft-x-skipped").x.available, false);
 });
 
 test("the staged wallets fill the header's two real tiles", () => {
@@ -535,35 +436,6 @@ test("the staged wallets fill the header's two real tiles", () => {
     tiles.slice(0, 2).map((tile) => tile.value),
     [formatUnits(177_600_000n, "AUSD"), formatUnits(10_000_000n, "AUSD")],
   );
-});
-
-test("xHandleInput mirrors core's parseXHandle: an optional @, 1 to 15 letters, digits or _", () => {
-  assert.equal(xHandleInput("  @HalftimeBot "), "HalftimeBot");
-  assert.equal(xHandleInput("half_time_2"), "half_time_2");
-  assert.equal(xHandleInput(""), null);
-  assert.equal(xHandleInput("@"), null);
-  assert.equal(xHandleInput("half time"), null);
-  assert.equal(xHandleInput("a".repeat(16)), null);
-});
-
-test("xProblem maps the X routes' error codes to the card's words", () => {
-  assert.deepEqual(xProblem("X_UNAVAILABLE", "bot", "x"), { kind: "unavailable" });
-  assert.deepEqual(xProblem("X_HANDLE_TAKEN", "bot", "x"), { kind: "taken", handle: "bot" });
-  assert.deepEqual(xProblem("TOO_MANY_CHECKS", "bot", "x"), {
-    kind: "error",
-    text: "Wait a few seconds, then check again.",
-  });
-  assert.deepEqual(xProblem("INVALID_X_HANDLE", "bot", "x"), {
-    kind: "error",
-    text: "That isn't an X handle.",
-  });
-  assert.equal(xProblem("CHALLENGE_EXPIRED", "bot", "x").kind, "expired");
-  assert.equal(xProblem("CHALLENGE_NOT_FOUND", "bot", "x").kind, "expired");
-  assert.deepEqual(xProblem("PREVIEW", "bot", "x"), { kind: "preview" });
-  assert.deepEqual(xProblem("NETWORK", "bot", "Could not reach it."), {
-    kind: "error",
-    text: "Could not reach it.",
-  });
 });
 
 test("publishProblem names a 409's known blockers; FUNDS carries the fund action", () => {
@@ -780,14 +652,4 @@ test("the voice is the config's, or Analyst without one", () => {
   assert.equal(voiceOf("deadpan"), "deadpan");
   assert.equal(voiceOf(undefined), "analyst");
   assert.equal(voiceOf("shouty"), "analyst");
-});
-
-test("X ACCOUNT's tag, and a public agent's refused disconnect in words", () => {
-  assert.equal(xAccountTag("HalftimeBot"), "CONNECTED");
-  assert.equal(xAccountTag(null), "NOT CONNECTED");
-  assert.equal(
-    disconnectProblem("X_ON_PUBLIC_AGENT", "Conflict"),
-    "A public agent keeps its X account.",
-  );
-  assert.equal(disconnectProblem("NOT_FOUND", "Agent not found"), "Agent not found");
 });
