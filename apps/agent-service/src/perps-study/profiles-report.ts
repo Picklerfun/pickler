@@ -26,7 +26,7 @@ const csv = (v: unknown) => {
 };
 export function renderProfileReport(
   packet: Packet,
-  summary: ReturnType<typeof perpsStudyReport>,
+  summary: ReturnType<typeof perpsStudyReport> & { reportCommit?: string },
   processState: string,
 ) {
   const { record, rounds, events } = packet.study;
@@ -138,6 +138,26 @@ export function renderProfileReport(
       aggregateKeys.map(csv).join(","),
       ...summary.rows.map((r) => aggregateKeys.map((k) => csv(r[k as keyof typeof r])).join(",")),
     ].join("\n") + "\n";
+  // Decision slots stop at 71; risk observations and final exits may continue in the grace window.
+  const executions = events
+    .filter((e) => e.kind === "profile-execution")
+    .map((e) => ({ eventKey: e.key, eventAt: e.at, ...(e.data as Record<string, unknown>) }));
+  const observations = events.filter((e) =>
+    ["observation", "observation-failed", "observation-missed", "selective-reduction"].includes(
+      e.kind,
+    ),
+  );
+  const eventCsv = (values: object[]) => {
+    const keys = [...new Set(values.flatMap((row) => Object.keys(row)))];
+    return (
+      [
+        keys.map(csv).join(","),
+        ...values.map((row) =>
+          keys.map((key) => csv((row as Record<string, unknown>)[key])).join(","),
+        ),
+      ].join("\n") + "\n"
+    );
+  };
   const table = (data: object[]) => {
     if (!data.length) {
       return "<p>No observations.</p>";
@@ -230,11 +250,15 @@ export function renderProfileReport(
       note: "Same-portfolio requests are immediate risk projections, not future P&L for retained positions. Independently evolving portfolios are not interchangeable controls.",
     };
   });
-  const html = `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>SMA profiles and selective risk</title><style>body{font:15px system-ui;background:#101721;color:#e8edf4;margin:24px}table{border-collapse:collapse;width:100%;font-size:12px}th,td{padding:9px;border:1px solid #344353;text-align:left;vertical-align:top}th{background:#1c2938;position:sticky;top:0}section{overflow:auto;margin:25px 0}details{margin:16px 0}input{padding:10px;width:300px;background:#fff;color:#111}p{max-width:1000px}a{color:#91c8ff}</style><h1>SMA profiles and selective risk</h1><p>State: <strong>${escape(processState)}</strong>; persisted: ${escape(record.status)}. Commit: ${escape((record.metadata as { commit?: string }).commit)}. New model calls / tokens / API USD / model reserves: <strong>0 / 0 / 0 / 0</strong>.</p><p>Six hours are exploratory. Historical samples are context, not paired controls. SMA separation is not a probability of profit. Spread and slippage are already included in fill prices and are not subtracted again. Unknown marks, positions and funding remain pending.</p><section>${table(summary.rows)}</section><h2>Comparison coverage</h2><section>${table(comparisons)}</section><p>${completeSlots.length}/72 completed slots. ${rows.filter((r) => r.status === "DATA_UNAVAILABLE").length} unavailable decision identities; ${rows.filter((r) => r.status === "MISSED_SLOT").length} missed identities. Net realized AUSD and API USD are separate units. Portfolio outcomes include every confirmed trade; paired decision coverage excludes omitted assets.</p><h2>Decisions: ${rows.length} identities</h2><input id="filter" placeholder="Filter market, variant, reason…"><section id="decisions">${table(rows.map((r) => ({ slot: r.slot, symbol: r.symbol, variant: r.variant, status: r.status, sma20: r.sma20, sma50: r.sma50, separationBps: r.separationBps, confirmation: r.confirmation, initialAction: r.initialAction, initialReason: r.initialReason, finalAction: r.finalAction, finalReason: r.finalReason, executions: r.executions })))}</section><details><summary>Risk observations and selective projections</summary><section>${table(events.filter((e) => ["selective-reduction", "observation", "observation-failed"].includes(e.kind)))}</section></details><details><summary>Full provenance</summary><pre>${escape(JSON.stringify({ record, comparisons }, null, 2))}</pre></details><script>document.getElementById('filter').addEventListener('input',function(){const q=this.value.toLowerCase();document.querySelectorAll('#decisions tbody tr').forEach(r=>r.hidden=!r.textContent.toLowerCase().includes(q));});</script></html>`;
+  const html = `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>SMA profiles and selective risk</title><style>body{font:15px system-ui;background:#101721;color:#e8edf4;margin:24px}table{border-collapse:collapse;width:100%;font-size:12px}th,td{padding:9px;border:1px solid #344353;text-align:left;vertical-align:top}th{background:#1c2938;position:sticky;top:0}section{overflow:auto;margin:25px 0}details{margin:16px 0}input{padding:10px;width:300px;background:#fff;color:#111}p{max-width:1000px}a{color:#91c8ff}</style><h1>SMA profiles and selective risk</h1><p>State: <strong>${escape(processState)}</strong>; persisted: ${escape(record.status)}. Study commit: ${escape((record.metadata as { commit?: string }).commit)}. Report commit: ${escape(summary.reportCommit ?? (record.metadata as { commit?: string }).commit)}. New model calls / tokens / API USD / model reserves: <strong>0 / 0 / 0 / 0</strong>.</p><p>Six hours are exploratory. Historical samples are context, not paired controls. SMA separation is not a probability of profit. Spread and slippage are already included in fill prices and are not subtracted again. Unknown marks, positions and funding remain pending.</p><section>${table(summary.rows)}</section><h2>Comparison coverage</h2><section>${table(comparisons)}</section><p>${completeSlots.length}/72 completed slots. ${rows.filter((r) => r.status === "DATA_UNAVAILABLE").length} unavailable decision identities; ${rows.filter((r) => r.status === "MISSED_SLOT").length} missed identities. Net realized AUSD and API USD are separate units. Portfolio outcomes include every confirmed trade; paired decision coverage excludes omitted assets.</p><h2>Decisions: ${rows.length} identities</h2><input id="filter" placeholder="Filter market, variant, reason…"><section id="decisions">${table(rows.map((r) => ({ slot: r.slot, symbol: r.symbol, variant: r.variant, status: r.status, sma20: r.sma20, sma50: r.sma50, separationBps: r.separationBps, confirmation: r.confirmation, initialAction: r.initialAction, initialReason: r.initialReason, finalAction: r.finalAction, finalReason: r.finalReason, executions: r.executions })))}</section><details><summary>All executions, including final exits</summary><p>Execution events include the closing grace window and are separate from the 72 admission slots. <a href="executions.csv">Execution CSV</a> · <a href="executions.json">Execution JSON</a></p><section>${table(executions)}</section></details><details><summary>Risk observations, missed observations and selective projections</summary><p><a href="observations.csv">Observation CSV</a> · <a href="observations.json">Observation JSON</a></p><section>${table(observations)}</section></details><details><summary>Full provenance</summary><pre>${escape(JSON.stringify({ record, comparisons }, null, 2))}</pre></details><script>document.getElementById('filter').addEventListener('input',function(){const q=this.value.toLowerCase();document.querySelectorAll('#decisions tbody tr').forEach(r=>r.hidden=!r.textContent.toLowerCase().includes(q));});</script></html>`;
   return {
     rows,
     comparisons,
     riskSummary,
+    executions,
+    executionsCsv: eventCsv(executions),
+    observations,
+    observationsCsv: eventCsv(observations),
     html: html.replace(
       "<h2>Comparison coverage</h2>",
       `<h2>Risk reduction</h2><section>${table(riskSummary)}</section><h2>Comparison coverage</h2>`,
