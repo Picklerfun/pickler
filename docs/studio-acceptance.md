@@ -180,3 +180,13 @@ profitability nor authorization to activate real execution.
 The previous 2.0.0 acceptance at main commit 29f4ba62ce4d554245070109c27ea33dbfbb8a07 is historical. Current market selection coverage uses the current 2.1.0 adapters without translating old answers. To preserve an existing dedicated stack, run `node workers/research/test/prepare-controlled-stack.mjs prepare alternate`; this creates a fresh marked stack on the fixed 55531/55532 ports. All remaining commands take that generated directory as before.
 
 See [agent-selected Perpl markets](studio-perpl-markets.md) for current catalogue, version, migration and exit-preservation rules.
+
+## Read-only X OAuth extension
+
+The existing acceptance now connects X through the actual shared UI and API callback before
+publication, using external-only loopback consent/token/identity fixtures. It verifies PKCE and
+single-use code exchange, encrypted connection persistence, current publication and manual Load
+posts without X or model spending. Re-run `scripts/studio/configure.mjs` after migrating the marked
+disposable stack so only fake X credentials and test quotas are generated. The browser's consent
+interception is not a product endpoint stub. See [Studio X OAuth](studio-x-oauth.md) for operational
+configuration and separate real-provider acceptance.
