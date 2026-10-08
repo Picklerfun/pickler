@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useStudioForm } from "../routing/memory";
 import { Button, Chip, Field, Textarea } from "@pickler/ui";
 import type { Agent, Catalog, Config } from "../api";
 import styles from "../studio.module.css";
@@ -27,8 +27,14 @@ export function Brief({
   onSave(config: Config): void;
 }) {
   /* The parent remounts this on a new config version, so the draft starts from what was saved. */
-  const [profile, setProfile] = useState(agent.config.profile);
-  const [sports, setSports] = useState<Sport[]>(() =>
+  const [profile, setProfile] = useStudioForm(
+    `${agent.productId ?? agent.id}:legacy-brief:profile`,
+    agent.version,
+    agent.config.profile,
+  );
+  const [sports, setSports] = useStudioForm<Sport[]>(
+    `${agent.productId ?? agent.id}:legacy-brief:sports`,
+    agent.version,
     agent.config.marketScope?.subcategories === "all"
       ? (catalog?.categories[0]?.subcategories.map((sport) => sport.id) ?? [])
       : ((agent.config.marketScope?.subcategories as Sport[] | undefined) ?? []),
