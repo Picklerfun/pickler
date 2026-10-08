@@ -85,22 +85,27 @@ const SPARK_PAD = 8;
  * A trail's points in a 100 × 100 box (the SVG stretches it), oldest at the left, on the trail's
  * own low and high; a flat trail is a line across the middle. Fewer than two marks draw nothing.
  */
-export function sparkPoints(trail: readonly number[]): string {
+export function sparkSamples(trail: readonly number[]): { value: number; x: number; y: number }[] {
   const marks = trail.filter((value) => Number.isFinite(value));
   if (marks.length < 2) {
-    return "";
+    return [];
   }
 
   const low = Math.min(...marks);
   const high = Math.max(...marks);
   const span = high - low;
 
-  return marks
-    .map((value, index) => {
-      const x = (index / (marks.length - 1)) * 100;
-      const y = span === 0 ? 50 : SPARK_PAD + ((high - value) / span) * (100 - 2 * SPARK_PAD);
-      return `${x.toFixed(1)},${y.toFixed(1)}`;
-    })
+  return marks.map((value, index) => ({
+    value,
+    x: (index / (marks.length - 1)) * 100,
+    y: span === 0 ? 50 : SPARK_PAD + ((high - value) / span) * (100 - 2 * SPARK_PAD),
+  }));
+}
+
+/** The same geometry is used by the drawing and its point inspector. */
+export function sparkPoints(trail: readonly number[]): string {
+  return sparkSamples(trail)
+    .map(({ x, y }) => `${x.toFixed(1)},${y.toFixed(1)}`)
     .join(" ");
 }
 
