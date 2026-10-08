@@ -4,6 +4,50 @@ import type { PerpsStudyConfig, PerpsRound, PerpsCallLane, PerpsStudyRecord } fr
 export const PERPS_INPUT_LIMIT = 65536;
 export const PERPS_OUTPUT_LIMIT = 4096;
 export function assertPerpsStudyConfig(c: PerpsStudyConfig) {
+  if (c.version === 6) {
+    const catalog = [
+      ["BTC", 1],
+      ["MON", 10],
+      ["ETH", 20],
+      ["SOL", 31],
+      ["HYPE", 40],
+      ["ZEC", 50],
+      ["LIT", 60],
+      ["VVV", 70],
+      ["PUMP", 90],
+      ["NEAR", 100],
+      ["UNI", 110],
+    ];
+    if (
+      c.protocol !== "perps-sma-profile-risk-v1" ||
+      c.hours !== 6 ||
+      c.budgetUsd !== "5" ||
+      !c.tenantId ||
+      !/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,39}$/.test(c.sessionId) ||
+      !["mainnet", "testnet"].includes(c.network) ||
+      !Array.isArray(c.markets) ||
+      c.markets.length !== 11 ||
+      catalog.some(
+        ([symbol, id]) => !c.markets.some((m) => m.symbol === symbol && m.marketId === id),
+      ) ||
+      Object.keys(c).some(
+        (k) =>
+          ![
+            "version",
+            "protocol",
+            "hours",
+            "budgetUsd",
+            "tenantId",
+            "sessionId",
+            "network",
+            "markets",
+          ].includes(k),
+      )
+    ) {
+      throw new PilotError("INVALID_INPUT", "Frozen rules-only profile configuration required");
+    }
+    return;
+  }
   if (c.version === 5) {
     assertPerpsStudyConfig({
       ...c,
@@ -158,7 +202,7 @@ export function perpsCallCost(
   input: number,
   output: number,
 ) {
-  if (config.version === 3) {
+  if (config.version === 3 || config.version === 6) {
     throw new PilotError("MODELS_DISABLED", "Original SMA cannot reserve model calls");
   }
   if (config.version === 5) {
@@ -218,8 +262,9 @@ export function perpsSlotClock(record: PerpsStudyRecord, at: number) {
   const segment = record.continuations?.at(-1);
   const origin = segment?.at ?? record.startedAt!;
   const offset = segment?.fromSlot ?? 0;
+  const cadence = record.config.version === 6 ? 300000 : 900000;
   return {
-    slot: offset + Math.floor((at - origin) / 900000),
-    withinSlotMs: (at - origin) % 900000,
+    slot: offset + Math.floor((at - origin) / cadence),
+    withinSlotMs: (at - origin) % cadence,
   };
 }

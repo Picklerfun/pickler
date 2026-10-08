@@ -60,9 +60,14 @@ export function perpsStudyReport(
       .filter((e) => e.kind === "observation")
       .map(
         (e) =>
-          (e.data as Record<string, { risk: { equity: string | null; exposure: string | null } }>)[
-            strategy
-          ]?.risk,
+          (
+            (record.config.version === 6
+              ? (e.data as { variants: unknown }).variants
+              : e.data) as Record<
+              string,
+              { risk: { equity: string | null; exposure: string | null } }
+            >
+          )[strategy]?.risk,
       )
       .filter(Boolean);
     metrics.push(risk);
@@ -139,7 +144,18 @@ export function perpsStudyReport(
       openPositions: view.account.positions.filter((p) => p.closedAt === null).length,
       fills: filled.length,
       rejections: view.attempts.filter((a) => a.status !== "filled").length,
-      riskExits: filled.filter((a) => a.key.includes(":risk:")).length,
+      riskExits:
+        record.config.version === 6
+          ? events.filter((e) => {
+              const value = e.data as { variant?: string; status?: string; reason?: string };
+              return (
+                e.kind === "profile-execution" &&
+                value.variant === strategy &&
+                value.status === "filled" &&
+                ["RISK_EXIT", "SELECTIVE_EXPOSURE"].includes(value.reason ?? "")
+              );
+            }).length
+          : filled.filter((a) => a.key.includes(":risk:")).length,
       modelCalls: calls.filter((c) => c.startedAt !== null && c.lane.split(":")[0] !== "exa")
         .length,
       exaCalls: calls.filter((c) => c.startedAt !== null && c.lane.split(":")[0] === "exa").length,
@@ -176,7 +192,7 @@ export function perpsStudyReport(
     omitted.length === 0 &&
     unknownCalls.length === 0 &&
     unobservedMs === 0 &&
-    rounds.length === record.config.hours * 4 &&
+    rounds.length === record.config.hours * (record.config.version === 6 ? 12 : 4) &&
     rows.every((r) => !r.fundingPending && !r.fundingDisputed && !r.openPositions);
   return {
     protocol: record.config.protocol,

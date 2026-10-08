@@ -2,21 +2,35 @@ import type { PerpNetwork } from "@pickler/core";
 import type { PerpsPaperAccount } from "../perps-paper/types.js";
 export const PERPS_STUDY_STRATEGIES = ["rules", "deepseek", "jev"] as const;
 export type PerpsStrategy = (typeof PERPS_STUDY_STRATEGIES)[number];
-export type PerpsStudyStrategy = PerpsStrategy | "combined" | "sma-jev" | "sma-exa-jev";
+export const SMA_PROFILE_VARIANTS = [
+  "hourly-legacy",
+  "hourly-selective",
+  "fast-legacy",
+  "fast-selective",
+] as const;
+export type SmaProfileVariant = (typeof SMA_PROFILE_VARIANTS)[number];
+export type PerpsStudyStrategy =
+  PerpsStrategy | "combined" | "sma-jev" | "sma-exa-jev" | SmaProfileVariant;
 export const SMA_REVIEW_VARIANTS = ["rules", "sma-jev", "sma-exa-jev"] as const;
-export type PerpsStudyMap<T> = Record<"rules", T> &
-  Partial<Record<Exclude<PerpsStudyStrategy, "rules">, T>>;
+export type PerpsStudyMap<T> = Partial<Record<PerpsStudyStrategy, T>>;
+export type SmaProfileMap<T> = Record<SmaProfileVariant, T>;
+/** Protocol-discriminated maps never require fictitious model/rules arms in v6. */
+export type PerpsVariantMap<C extends { version: number }, T> = C extends { version: 6 }
+  ? SmaProfileMap<T>
+  : PerpsStudyMap<T>;
 export const PERPS_FOUR_WAY_STRATEGIES = ["rules", "jev", "deepseek", "combined"] as const;
 export function perpsStrategies(
   config: Pick<PerpsStudyConfig, "version">,
 ): readonly PerpsStudyStrategy[] {
-  return config.version === 4 || config.version === 5
-    ? SMA_REVIEW_VARIANTS
-    : config.version === 3
-      ? ["rules"]
-      : config.version === 2
-        ? PERPS_FOUR_WAY_STRATEGIES
-        : PERPS_STUDY_STRATEGIES;
+  return config.version === 6
+    ? SMA_PROFILE_VARIANTS
+    : config.version === 4 || config.version === 5
+      ? SMA_REVIEW_VARIANTS
+      : config.version === 3
+        ? ["rules"]
+        : config.version === 2
+          ? PERPS_FOUR_WAY_STRATEGIES
+          : PERPS_STUDY_STRATEGIES;
 }
 export type {
   PerpsCallLane,
@@ -84,8 +98,19 @@ export interface PerpsSmaUniverseConfig extends Omit<
   markets: { symbol: import("@pickler/core").PerpSymbol; marketId: number }[];
   historicalBudget: { upperBoundUSD: string; recordHash: string; databaseAccountedUSD: string };
 }
+export interface PerpsSmaProfileConfig extends PerpsStudyScope {
+  version: 6;
+  protocol: "perps-sma-profile-risk-v1";
+  hours: 6;
+  budgetUsd: "5";
+  markets: { symbol: import("@pickler/core").PerpSymbol; marketId: number }[];
+}
 export type PerpsStudyConfig =
-  PerpsPaidStudyConfig | PerpsOriginalSmaConfig | PerpsSmaReviewConfig | PerpsSmaUniverseConfig;
+  | PerpsPaidStudyConfig
+  | PerpsOriginalSmaConfig
+  | PerpsSmaReviewConfig
+  | PerpsSmaUniverseConfig
+  | PerpsSmaProfileConfig;
 export interface PerpsCall {
   requestHash?: string;
   inputBytes?: number;

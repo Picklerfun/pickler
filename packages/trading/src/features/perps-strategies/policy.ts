@@ -4,21 +4,22 @@ import type { PerpsDecisionContext, PerpsProposal } from "./types.js";
 export function perpsRules(
   context: PerpsDecisionContext,
   symbols: readonly PerpSymbol[] = ["BTC", "ETH"],
+  resolution: 3600 | 900 = 3600,
 ): PerpsProposal[] {
   return symbols.map((symbol) => {
     const series = context.evidence.candles.find(
-      (c) => c.market.symbol === symbol && c.resolution === 3600,
+      (c) => c.market.symbol === symbol && c.resolution === resolution,
     );
     const closed =
       series?.candles
-        .filter((c) => c.closed && c.openTime + 3600000 <= context.evidence.observedAt)
+        .filter((c) => c.closed && c.openTime + resolution * 1000 <= context.evidence.observedAt)
         .slice(-50) ?? [];
     const position = context.account.positions.find(
       (p) => p.symbol === symbol && p.closedAt === null,
     );
     const valid =
       closed.length === 50 &&
-      closed.every((c, i) => i === 0 || c.openTime - closed[i - 1]!.openTime === 3600000);
+      closed.every((c, i) => i === 0 || c.openTime - closed[i - 1]!.openTime === resolution * 1000);
     if (!valid) {
       return {
         symbol,
@@ -30,7 +31,7 @@ export function perpsRules(
     let direction: "long" | "short" | null = null;
     if (
       closed.length === 50 &&
-      closed.every((c, i) => i === 0 || c.openTime - closed[i - 1]!.openTime === 3600000)
+      closed.every((c, i) => i === 0 || c.openTime - closed[i - 1]!.openTime === resolution * 1000)
     ) {
       const fast = closed.slice(-20).reduce((s, c) => s + u(c.close), 0n) * 50n;
       const slow = closed.reduce((s, c) => s + u(c.close), 0n) * 20n;

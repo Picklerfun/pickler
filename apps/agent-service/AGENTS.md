@@ -224,3 +224,23 @@ SMA v4 resume requires --allow-paid and a local operator-resume.json. It retains
 ## Local universe comparison
 
 Read [SMA-ALL-MARKETS.md](SMA-ALL-MARKETS.md) for configuration v5 and the one-shot eleven-market SMA/Jev/Exa comparison. `universe-data.ts` composes public data; `universe-report.ts` renders 264 identities offline. Synthetic contracts use their own record, renew ownership and exclude live news from controlled facts. USD 2.50 new retained reserves include checks, within the same USD 5 historical campaign. No resume, automation, merge or deployment.
+
+## SMA profiles and selective exposure
+
+Read [SMA-PROFILES-RISK.md](SMA-PROFILES-RISK.md). Configuration v6 exposes the four
+profile/risk variants through the unified evaluator. `profiles-host.ts` parses only local
+DATABASE_URL; `profiles-data.ts` composes the runtime public reader, and `profiles-report.ts`
+renders 3,168 decision identities. No model/news/signing clients, paid validation, restart,
+resume, automation, or deployment. The runner regenerates reports after observations and at
+completion. Freeze commit, catalog, and configuration before the single six-hour run.
+`profiles-resources.ts` attempts every cleanup and preserves the primary failure. Reports retain
+the study commit separately from the report commit and export all execution/observation events,
+including exits after admission slot 71. Read-only reporting never infers process liveness from
+a persisted running state.
+Risk summaries count the full confirmed mandatory-exit batch when an exposure breach initiated
+it; they do not count only the first close whose pre-exit snapshot still exceeds the limit.
+Individual exit conditions can coincide with that batch and are not independent causes.
+Report hashes are memoized per immutable evidence object within one rendering; every decision
+retains the same canonical digest without hashing a full snapshot again for each market/variant.
+`audit-export` accepts the registered perpetual protocols; the historical model-decision
+`audit` analyzer explicitly rejects unsupported profile protocols rather than fabricating arms.

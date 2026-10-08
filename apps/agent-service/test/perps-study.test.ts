@@ -170,7 +170,7 @@ test("parallel known usage commits independently; budget exhaustion admits neith
     null,
   );
   assert.equal((await x.study.view(expensive)).record.decisionStopReason, "BUDGET_EXHAUSTED");
-  assert.ok(v.record.agentIds.rules !== x.view.record.agentIds.rules);
+  assert.ok(v.record.agentIds.rules! !== x.view.record.agentIds.rules!);
 });
 test("blind direct proposals persist usage before validation and never retry malformed output", async () => {
   let requests = 0,
@@ -420,7 +420,7 @@ test("deterministic replay shares evidence, executes baseline, and supervises ri
   assert.equal(view.rounds[0]!.executionStatus, "complete");
   assert.equal(
     (
-      await x.paper.view({ ...x.scope, agentId: x.view.record.agentIds.rules })
+      await x.paper.view({ ...x.scope, agentId: x.view.record.agentIds.rules! })
     ).account.positions.filter((p) => p.closedAt === null).length,
     2,
   );
@@ -440,7 +440,7 @@ test("deterministic replay shares evidence, executes baseline, and supervises ri
   assert.equal(paid, calls);
   assert.equal(
     (
-      await x.paper.view({ ...x.scope, agentId: x.view.record.agentIds.rules })
+      await x.paper.view({ ...x.scope, agentId: x.view.record.agentIds.rules! })
     ).account.positions.filter((p) => p.closedAt === null).length,
     0,
   );
@@ -526,7 +526,7 @@ test("expired grace preserves unresolved positions and permanently closes admiss
     }).cycle(x.scope, next, new AbortController().signal),
     false,
   );
-  const view = await x.paper.view({ ...x.scope, agentId: x.view.record.agentIds.rules });
+  const view = await x.paper.view({ ...x.scope, agentId: x.view.record.agentIds.rules! });
   assert.equal(view.account.admissionsClosed, true);
   assert.equal((await x.study.view(x.scope)).record.status, "completed");
 });
@@ -803,7 +803,7 @@ test("paper account writes are fenced by the study lease in their own transactio
     ...x.scope,
     owner: lease.owner,
   });
-  const target = { ...x.scope, agentId: x.view.record.agentIds.rules };
+  const target = { ...x.scope, agentId: x.view.record.agentIds.rules! };
   await bound.observe(target, "owned", { frames: studyEvidence(x.now()).frames, funding: [] });
   x.advance(90001);
   await assert.rejects(
@@ -895,7 +895,7 @@ test("a process interruption fences writes even while PostgreSQL still sees a li
     owner: lease.owner,
     assertActive: lease.assertActive,
   });
-  const target = { ...x.scope, agentId: x.view.record.agentIds.rules };
+  const target = { ...x.scope, agentId: x.view.record.agentIds.rules! };
   await assert.rejects(
     bound.observe(target, "after-wake", { frames: studyEvidence(x.now()).frames, funding: [] }),
     { code: "PROCESS_INTERRUPTED" },

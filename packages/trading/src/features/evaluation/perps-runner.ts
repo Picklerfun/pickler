@@ -386,13 +386,13 @@ export function createPerpsStudyRunner(deps: {
     const rules =
       record.config.version === 5
         ? universeProposals(
-            { evidence, account: accounts.rules },
+            { evidence, account: accounts.rules! },
             record.config,
             blockInitialOpenings,
           )
         : await executePerpsStrategy(
             { id: "rules", version: "1.0.0" },
-            { evidence, account: accounts.rules },
+            { evidence, account: accounts.rules! },
             {
               models: {},
               signal,

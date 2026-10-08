@@ -50,6 +50,8 @@ export interface PerpsPaperAccount {
   scope: PerpsPaperScope;
   agentVersion: number;
   policy: "conservative-1x-v1";
+  /** Absent in historical documents; selected only by trusted study initialization. */
+  riskManagement?: "legacy-1x-v1" | "buffered-selective-1x-v1";
   createdAt: number;
   cash: string;
   peakEquity: string;

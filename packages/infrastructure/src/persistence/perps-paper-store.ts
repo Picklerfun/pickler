@@ -306,6 +306,22 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
       assertPerpsPaperAgent(agent, scope, expectedVersion);
       const now = await this.now(client);
       const account = initialPaperAccount(scope, expectedVersion, now, startingCash);
+      const study = await client.query<{
+        document: import("@pickler/trading/evaluation").PerpsStudyRecord;
+      }>(
+        "SELECT document FROM pickler.perps_studies WHERE tenant_id=$1 AND session_id=$2 AND network=$3",
+        [scope.tenantId, scope.sessionId, scope.network],
+      );
+      const record = study.rows[0]?.document;
+      if (record?.config.version === 6) {
+        const variant = Object.entries(record.agentIds).find(([, id]) => id === scope.agentId)?.[0];
+        if (!variant) {
+          throw new PilotError("FORBIDDEN", "Account is not a profile study member");
+        }
+        account.riskManagement = variant.endsWith("-selective")
+          ? "buffered-selective-1x-v1"
+          : "legacy-1x-v1";
+      }
       const id = randomUUID();
       const inserted = await client.query(
         "INSERT INTO pickler.perps_paper_accounts(id,tenant_id,agent_id,session_id,network,document) VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT(tenant_id,agent_id,session_id,network) DO NOTHING RETURNING id",
@@ -347,6 +363,28 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
     scope: PerpsPaperScope,
     intent: PerpsPaperIntent,
   ) {
+    const study = await client.query<{
+      document: import("@pickler/trading/evaluation").PerpsStudyRecord;
+    }>(
+      "SELECT document FROM pickler.perps_studies WHERE tenant_id=$1 AND session_id=$2 AND network=$3",
+      [scope.tenantId, scope.sessionId, scope.network],
+    );
+    const record = study.rows[0]?.document;
+    if (record?.config.version === 6) {
+      const variant = Object.entries(record.agentIds).find(([, id]) => id === scope.agentId)?.[0];
+      const expected = variant?.endsWith("-selective")
+        ? "buffered-selective-1x-v1"
+        : "legacy-1x-v1";
+      if (!variant || locked.view.account.riskManagement !== expected) {
+        throw new PilotError("CONFIG_CHANGED", "Trusted account risk management changed");
+      }
+      if (
+        intent.kind === "open" &&
+        locked.view.account.positions.filter((p) => p.closedAt === null).length >= 5
+      ) {
+        throw new PilotError("RISK_REJECTED", "Maximum five positions");
+      }
+    }
     if (intent.kind === "close") {
       assertPerpsPaperScope(locked.agent, scope);
       return;
@@ -556,6 +594,19 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
         throw new PilotError("RISK_REJECTED", risk.reasons.join(","));
       }
       const result = applyPaperFill(locked.view.account, locked.attempt, fill, locked.now);
+      if (
+        locked.attempt.intent.kind === "open" &&
+        result.account.riskManagement === "buffered-selective-1x-v1"
+      ) {
+        const projected = paperRisk(result.account, [], locked.now);
+        if (
+          projected.equity === null ||
+          projected.exposure === null ||
+          paperUnits(projected.exposure) * 5n > paperUnits(projected.equity) * 2n
+        ) {
+          throw new PilotError("RISK_REJECTED", "Post-fill exposure exceeds buffered target");
+        }
+      }
       const opened = result.account.positions.find((p) => p.id === lease.key);
       if (isProductPaperSession(scope) && locked.attempt.intent.kind === "open" && opened) {
         // The version it opened on (R9) and its exits (R10), in the same transaction as the fill.
