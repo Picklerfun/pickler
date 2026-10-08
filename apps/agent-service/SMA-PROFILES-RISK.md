@@ -92,3 +92,80 @@ proof of superiority or profitability. Historical runs are context, not paired c
 The offline incident replay uses saved position marks and contemporaneous captured books only.
 It compares immediate requested exits/projections, never hypothetical future performance of
 retained positions. Missing inputs are explicitly not verifiable.
+
+## Recorded six-hour acceptance: 2026-10-08
+
+The single authorized `sma-profiles-risk-20261007` run completed from
+2026-10-08 00:56:00 UTC to 06:56:00 UTC. Admissions were not extended or repeated. The runner
+and idle-sleep guard exited, and read-only PostgreSQL inspection confirmed the lease owner and
+expiry were released. All positions closed and funding was reconciled. There were 1,029
+successful renewals and no renewal/release failure. Model/news/signing calls, tokens, API USD
+and new model reservations were zero; historical reservations were not changed.
+
+| Variant          | Open/close fills | Gross realized AUSD | Fees paid AUSD | Funding AUSD | Net realized AUSD | Return on initial 1,000 AUSD |
+| ---------------- | ---------------- | ------------------- | -------------- | ------------ | ----------------- | ---------------------------- |
+| hourly-legacy    | 14 / 14          | -1.294496           | 0.959257       | 0.054219     | -2.199534         | -0.2199534%                  |
+| hourly-selective | 9 / 9            | 0.465915            | 0.617350       | 0.038548     | -0.112887         | -0.0112887%                  |
+| fast-legacy      | 20 / 20          | -15.182113          | 1.367653       | -0.054124    | -16.603890        | -1.6603890%                  |
+| fast-selective   | 12 / 12          | -6.942098           | 0.822372       | -0.018717    | -7.783187         | -0.7783187%                  |
+
+Net equals gross realized fill P&L minus actual fees plus recorded funding. Spread and slippage
+were already included in fills and are not subtracted again. Portfolio cash reconciled to the
+initial 1,000 AUSD plus net movements. Observed maximum marked drawdowns were approximately
+1.2092%, 0.9402%, 1.7972% and 0.7783%, respectively; these are sampled valuations, not continuous
+price paths.
+
+Coverage was incomplete: 52 of 72 slots completed; 20 were durably recorded as missed and were
+not recovered. Within completed rounds, 43 asset/slots were excluded from all four variants:
+45 initial/final component diagnostics comprised 35 inconsistent-data, eight unavailable-data,
+and two stale-data reports. Components can coincide within an asset/slot. There were 529 valid
+common asset/slots and 26 missed minute observations. The 3,168 decision identities comprise
+2,116 valid rows, 172 unavailable-data rows and 880 missed-slot rows. No whole round was omitted
+after admission, and no partial/uncertain execution or ownership violation was found. Missing
+slots and assets are not holds or zero-return observations. The report therefore does not mark
+the complete scheduled comparison as fully comparable.
+
+Selective management had a higher observed net result within each signal profile: +2.086647 AUSD
+for hourly and +8.820703 AUSD for fast relative to legacy management. The fast profile had a worse
+observed result within each management policy. All four portfolios finished negative. These are
+independently evolving portfolio totals, not causal per-slot estimates or proof of superiority.
+The common-input proposal diagnostic separately reuses the original hourly-legacy account in
+each round without carrying hypothetical positions forward or assigning them P&L.
+
+Both legacy accounts experienced one exposure-related collective batch of five confirmed closes.
+The selective accounts experienced none, but neither live selective account reached the
+above-50% subset-reduction path. That path is validated by controlled tests and saved-snapshot
+replay, not claimed as a live execution. On the same five-position hourly-legacy snapshot from
+05:37 UTC, the historical policy requested all five closes. Selective rules first required the
+MON individual exit; its existing simulator/ledger projection restored exposure to
+398.483673 / 999.810017 AUSD, at most 40%, so four positions could remain. No later performance
+or hypothetical P&L is assigned to those retained positions.
+
+The frozen runner used commit `7c87ed691bca3ecb567de4a5b2580f965f8791ca`. Source, configuration
+and catalog hashes remained unchanged. Post-freeze delivery changes through
+`b03ec38a9da5bc6c6fe2c564f9b74e563758d9ab` correct cleanup, scheduling across minute boundaries,
+cross-slot reopening fences and reporting; they were not patched into the running experiment.
+Financial policy, simulator, data and PostgreSQL admission implementations remained identical
+to the frozen run. Controlled report-hash memoization reduced the same saved report from
+10.56 seconds to 0.54 seconds with identical HTML/CSV/decision hashes. That observation does
+not establish the cause of every missed slot, and corrected prospective coverage remains
+unvalidated without another separately authorized experiment.
+
+Local artifacts are in the original checkout under
+`apps/agent-service/.data/perps-studies/sma-profiles-risk-20261007/`: `report.html`, JSON/CSV
+reports, `analysis.json`, `common-input-proposals.csv`, execution/observation exports,
+`verification.json`, `resource-verification.json`, and both immediate incident replays.
+The consistent read-only final packet is `final-evidence/audit-export.json`, payload SHA-256
+`f02793ae734902e322b310cf42ab559f4dff463f354a73d89416b96cb8e4ac18`.
+Its exporter/analyzer commit is recorded separately from the frozen study commit. Offline
+verification passed 3,168 identity, ownership, slot, post-fill exposure, no-reopening and
+confirmed-execution-window checks. These private local artifacts are not committed.
+
+Validation through the delivery code commit passed formatting, lint, types, PostgreSQL tests,
+Node and Worker builds, architecture checks and all PR checks. The targeted profile suite
+passed 17/17 tests; the CI root suite reported 2,858 tests, 2,855 passes, three explicit skips
+and no failures. Two browser-only tests were skipped in that job (the separate rendered Design
+check passed), and one optional Supabase-stack consumer test was skipped. No provider calls
+were made in CI. This run demonstrates the circuit and tested financial invariants, with
+explicit operational coverage gaps; it does not establish profitability or authorize promotion,
+automatic repeats, merge or deployment.
