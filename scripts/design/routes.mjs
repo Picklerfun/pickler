@@ -555,8 +555,8 @@ const ALL = [
   },
   /* The draft studio (studio-draft-dashboard-v1 §7), one route per `?stage=draft*` in DRAFT_STAGES
    * (apps/web/src/features/studio/home/stage.ts). `draft` is the Overview right after create; the
-   * four X stages are Go Public's card on the Overview with the X row open, the post not found
-   * after "Check again", the account verified and X skipped, so each proves that card's state
+   * four historical X stage names now show OAuth consent, reconnection required,
+   * a connected account and disabled OAuth, so each proves the current card state
    * rather than the Overview, which all four share. The rest prove their section, and
    * `draft-locked` proves the panel Activity shows while the agent is private. */
   {
@@ -601,7 +601,7 @@ const ALL = [
     product: "studio",
     surface: "dark",
     task: "Draft dashboard",
-    proves: "#draft-go-public-x:not(:has(#draft-go-public-x-miss)) #draft-go-public-x-handle",
+    proves: '#draft-go-public-x-connect[data-x-status="disconnected"]',
   },
   {
     path: "/studio?stage=draft-x-miss",
@@ -609,7 +609,7 @@ const ALL = [
     product: "studio",
     surface: "dark",
     task: "Draft dashboard",
-    proves: "#draft-go-public-x-miss",
+    proves: '#draft-go-public-x-connect[data-x-status="reconnect_required"]',
   },
   {
     path: "/studio?stage=draft-x-ok",
@@ -625,8 +625,7 @@ const ALL = [
     product: "studio",
     surface: "dark",
     task: "Draft dashboard",
-    proves:
-      '#draft-go-public:has(button[aria-pressed="true"]) #draft-go-public-button[data-state="ready"]',
+    proves: '#draft-go-public-x-connect[data-x-available="false"]',
   },
   {
     path: "/studio?stage=draft-console",
