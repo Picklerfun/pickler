@@ -28,3 +28,26 @@ export async function settle(page, route, timeout = SETTLE_MS) {
     return `${gone} still matched after ${timeout}ms`;
   }
 }
+
+/** Wait for finite entry animations and transitions on every route, including routes without a
+ * click. Infinite decorative loops remain active. A stuck finite animation blocks measurement. */
+export async function settleMotion(page, timeout = SETTLE_MS) {
+  try {
+    await page.waitForFunction(
+      () =>
+        document.getAnimations().every((animation) => {
+          const timing = animation.effect?.getComputedTiming();
+          return (
+            timing?.iterations === Infinity ||
+            animation.playState === "finished" ||
+            animation.playState === "idle"
+          );
+        }),
+      null,
+      { timeout },
+    );
+    return null;
+  } catch {
+    return `finite animation or transition did not finish within ${timeout}ms`;
+  }
+}
