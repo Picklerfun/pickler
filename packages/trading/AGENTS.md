@@ -213,3 +213,8 @@ decision slot, including observations that cross an admission boundary.
 ## SMA reopening and timing protocol
 
 Configuration v7 (`perps-sma-reentry-latency-v1`) adds `sma-reference` and `sma-once-bar`, both hourly/selective. `features/perps-study/reentry.ts` owns immutable entry policies and the final hourly key; apply its gate after selection, never rerank replacements. `reentry-metrics.ts` checks common slots, pre-maintenance valuation and detected exits. The shared profile runner prioritizes price maintenance before funding/candle preparation and uses `nextPriceCycleDelay` after overruns. Preserve v6 actions and risk semantics. Infrastructure must atomically persist confirmed fills and consumed keys; hosts must not manufacture either. See [local protocol guide](../../apps/agent-service/PERPS-SMA-REENTRY.md).
+
+`reentryEconomics` matches blocked keys only to confirmed reference openings in the same common
+valid slot, direction and final hourly bar. It reads the existing fee, realized-P&L and funding
+postings; missing/duplicate postings or pending funding cannot establish a net result. These are
+actual reference positions, not hypothetical P&L for a blocked proposal or causal fee savings.
