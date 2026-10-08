@@ -134,3 +134,47 @@ test(
     ]);
   },
 );
+
+test(
+  "zero-area clips do not paint, including a pre-hydration native form shim",
+  { skip: unavailable },
+  async () => {
+    const page = await browser.newPage();
+    try {
+      for (const position of ["absolute", "fixed"]) {
+        await page.setContent(`<!doctype html><style>${css}</style><body>
+        <select aria-hidden="true" tabindex="-1" style="position:${position};width:1px;height:1px;clip:rect(0px,0px,0px,0px);background:#123456"><option>hidden</option></select>
+      </body>`);
+        assert.equal(await page.locator("select").evaluate((node) => node.checkVisibility()), true);
+        const tokens = await page.evaluate(resolveTokens);
+        const painted = await page.evaluate(paintedColours, COLOUR);
+        assert.deepEqual(strays(tokens, painted), [], position);
+      }
+    } finally {
+      await page.close();
+    }
+  },
+);
+
+test(
+  "nonzero clips and inactive static clips still reject literal paint",
+  { skip: unavailable },
+  async () => {
+    const page = await browser.newPage();
+    try {
+      for (const [position, clip] of [
+        ["absolute", "rect(0px,10px,10px,0px)"],
+        ["static", "rect(0px,0px,0px,0px)"],
+      ]) {
+        await page.setContent(`<!doctype html><style>${css}</style><body>
+        <div style="position:${position};width:20px;height:20px;clip:${clip};background:#123456"></div>
+      </body>`);
+        const tokens = await page.evaluate(resolveTokens);
+        const painted = await page.evaluate(paintedColours, COLOUR);
+        assert.ok(strays(tokens, painted).some(({ paint }) => paint.role === "background"));
+      }
+    } finally {
+      await page.close();
+    }
+  },
+);
