@@ -1,6 +1,10 @@
 "use client";
+import { useRouter } from "nextjs-toploader/app";
+import { useSearchParams } from "next/navigation";
+import { StudioContentContext } from "../routing/content";
+import { agentSectionHref } from "../routing/routes";
 import { SidebarMenu, SidebarMenuItem, SidebarMenuButton } from "@pickler/ui/sidebar";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { Icon } from "@pickler/ui";
 import { useMarketplaceHref } from "@/features/site/studio-href";
 import { useNow } from "@/lib/now";
@@ -75,11 +79,13 @@ export function LiveStudio({
   staged,
   preview,
   initialSection,
+  children,
   accountHandle,
   onRefreshAgent,
   onSwitch,
   onNew,
 }: {
+  children?: ReactNode;
   agent: Agent;
   agents: Agent[];
   canManage: boolean;
@@ -98,9 +104,12 @@ export function LiveStudio({
   /** "+ New agent": open the create screen. */
   onNew(): void;
 }) {
-  const [section, setSection] = useState<LiveSectionKey>(
-    initialSection ?? staged?.section ?? "overview",
-  );
+  const section: LiveSectionKey = initialSection ?? staged?.section ?? "overview";
+  const { push } = useRouter();
+  const search = useSearchParams();
+  const setSection = (next: LiveSectionKey, check?: string | null) => {
+    push(agentSectionHref(agent.productId ?? agent.id, next, search.toString(), check));
+  };
   const wallClock = useNow();
   const now = staged ? staged.now : wallClock;
   const live = useLive({ agent, staged, preview, section, onRefreshAgent });
@@ -111,7 +120,7 @@ export function LiveStudio({
      the section from outside the rail: the control pressed unmounts, so its rail item takes focus. */
   const focusRail = useRef(false);
   /* "Why this trade" opens Decisions on one check; any other way in shows the whole feed. */
-  const [focusCheck, setFocusCheck] = useState<string | null>(null);
+  const focusCheck = search.get("check");
 
   useEffect(() => {
     if (focusRail.current) {
@@ -122,18 +131,15 @@ export function LiveStudio({
 
   const goFromOutside = (key: LiveSectionKey) => {
     focusRail.current = true;
-    setFocusCheck(null);
     setSection(key);
   };
 
   const onWhy = (checkId: string | null) => {
     if (checkId === null) {
-      setFocusCheck(null);
       return;
     }
     focusRail.current = true;
-    setFocusCheck(checkId);
-    setSection("decisions");
+    setSection("decisions", checkId);
   };
 
   /* With the Perpl runtime on, the chip, the tiles, the strip and the rail's counts say what runs;
@@ -207,146 +213,151 @@ export function LiveStudio({
   }
 
   return (
-    <StudioShell<LiveSectionKey>
-      accountHandle={accountHandle}
-      idPrefix="live"
-      agent={agent}
-      agents={agents}
-      canManage={canManage}
-      newAgentLock={newAgentLock}
-      newAgentLabel="Create another agent"
-      studio={live}
-      modals={modals}
-      status={
-        <StatusChip id="live-status" tone={status.tone}>
-          {status.label}
-        </StatusChip>
-      }
-      /* Positions counts the open paper positions, Decisions the proposals waiting on the owner;
+    <StudioContentContext.Provider value={{ section, content: body() }}>
+      <StudioShell<LiveSectionKey>
+        accountHandle={accountHandle}
+        idPrefix="live"
+        agent={agent}
+        agents={agents}
+        canManage={canManage}
+        newAgentLock={newAgentLock}
+        newAgentLabel="Create another agent"
+        studio={live}
+        modals={modals}
+        status={
+          <StatusChip id="live-status" tone={status.tone}>
+            {status.label}
+          </StatusChip>
+        }
+        /* Positions counts the open paper positions, Decisions the proposals waiting on the owner;
          both are 0 with the runtime off and no paper account. */
-      rail={liveRail(
-        section,
-        record ? runtimeCounts(live.positions, live.proposals) : { positions: 0, decisions: 0 },
-      )}
-      railFooter={
-        <>
-          <SidebarMenu className={styles.help}>
-            {HELP_LINKS.map((link) => (
-              <SidebarMenuItem key={link.label}>
-                <SidebarMenuButton asChild tooltip={{ children: link.label, surface: "dark" }}>
-                  <a
-                    href={link.href}
-                    aria-label={link.label}
-                    title={link.label}
-                    className={styles.helpLink}
-                    {...(link.href.startsWith("http")
-                      ? { target: "_blank", rel: "noopener noreferrer" }
-                      : {})}
-                  >
-                    <Icon name={link.icon} size={15} />
-                    <span>{link.label}</span>
-                  </a>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            ))}
-          </SidebarMenu>
-          {agent.handle && (
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  asChild
-                  tooltip={{ children: "Its public profile", surface: "dark" }}
-                >
-                  <a
-                    href={profile}
-                    className={styles.profileLink}
-                    id="live-public-profile"
-                    aria-label="Its public profile"
-                    title="Its public profile"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    <Icon name="external" size={13} />
-                    <span>ITS PUBLIC PROFILE</span>
-                  </a>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
+        rail={liveRail(
+          section,
+          record ? runtimeCounts(live.positions, live.proposals) : { positions: 0, decisions: 0 },
+        )}
+        railFooter={
+          <>
+            <SidebarMenu className={styles.help}>
+              {HELP_LINKS.map((link) => (
+                <SidebarMenuItem key={link.label}>
+                  <SidebarMenuButton asChild tooltip={{ children: link.label, surface: "dark" }}>
+                    <a
+                      href={link.href}
+                      aria-label={link.label}
+                      title={link.label}
+                      className={styles.helpLink}
+                      {...(link.href.startsWith("http")
+                        ? { target: "_blank", rel: "noopener noreferrer" }
+                        : {})}
+                    >
+                      <Icon name={link.icon} size={15} />
+                      <span>{link.label}</span>
+                    </a>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
             </SidebarMenu>
-          )}
-        </>
-      }
-      onSection={(key) => {
-        setFocusCheck(null);
-        setSection(key);
-      }}
-      headerSub={headerParts({
-        handle: agent.handle,
-        publishedAt: agent.publishedAt,
-        now,
-        section,
-      }).map((part, index) => (
-        <HeaderPart key={part} first={index === 0}>
-          {part}
-        </HeaderPart>
-      ))}
-      headerSide={
-        <HeaderControls
-          paused={agent.paused}
-          action={status.action}
-          canManage={canManage}
-          pause={pause}
-          stop={
-            record ? (
-              <StopAll
-                live={live}
-                canManage={canManage}
-                id="live-stop"
-                className={styles.stopButton}
-              />
-            ) : null
-          }
-        />
-      }
-      tiles={
-        record ? runtimeTiles(read, caps.perDayAusd, record) : liveTiles(read, caps.perDayAusd)
-      }
-      tilesLabel="Its money"
-      banner={
-        warnings.length > 0 && (
-          <div className={styles.banner} id="live-banner" role="status">
-            <Icon name="alert" size={14} />
-            <span className={styles.bannerText}>{warningLine(warnings)}</span>
-            {fix && (
-              <button type="button" className={styles.bannerFix} onClick={() => goFromOutside(fix)}>
-                Fix it
-              </button>
+            {agent.handle && (
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    asChild
+                    tooltip={{ children: "Its public profile", surface: "dark" }}
+                  >
+                    <a
+                      href={profile}
+                      className={styles.profileLink}
+                      id="live-public-profile"
+                      aria-label="Its public profile"
+                      title="Its public profile"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <Icon name="external" size={13} />
+                      <span>ITS PUBLIC PROFILE</span>
+                    </a>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
             )}
-          </div>
-        )
-      }
-      onRefreshAgent={onRefreshAgent}
-      onSwitch={onSwitch}
-      onNew={onNew}
-      strip={
-        <LiveStrip
-          view={
-            record
-              ? runtimeStrip({
-                  newest: Array.isArray(live.checks) ? (live.checks[0] ?? null) : null,
-                  detail: live.lastCheck,
-                  total: record.checks,
-                  paused: agent.paused,
-                  now,
-                  running: record.runtimeEnabled,
-                })
-              : stripView()
-          }
-          onDecisions={() => goFromOutside("decisions")}
-        />
-      }
-    >
-      {body()}
-    </StudioShell>
+          </>
+        }
+        onSection={(key) => {
+          setSection(key);
+        }}
+        headerSub={headerParts({
+          handle: agent.handle,
+          publishedAt: agent.publishedAt,
+          now,
+          section,
+        }).map((part, index) => (
+          <HeaderPart key={part} first={index === 0}>
+            {part}
+          </HeaderPart>
+        ))}
+        headerSide={
+          <HeaderControls
+            paused={agent.paused}
+            action={status.action}
+            canManage={canManage}
+            pause={pause}
+            stop={
+              record ? (
+                <StopAll
+                  live={live}
+                  canManage={canManage}
+                  id="live-stop"
+                  className={styles.stopButton}
+                />
+              ) : null
+            }
+          />
+        }
+        tiles={
+          record ? runtimeTiles(read, caps.perDayAusd, record) : liveTiles(read, caps.perDayAusd)
+        }
+        tilesLabel="Its money"
+        banner={
+          warnings.length > 0 && (
+            <div className={styles.banner} id="live-banner" role="status">
+              <Icon name="alert" size={14} />
+              <span className={styles.bannerText}>{warningLine(warnings)}</span>
+              {fix && (
+                <button
+                  type="button"
+                  className={styles.bannerFix}
+                  onClick={() => goFromOutside(fix)}
+                >
+                  Fix it
+                </button>
+              )}
+            </div>
+          )
+        }
+        onRefreshAgent={onRefreshAgent}
+        onSwitch={onSwitch}
+        onNew={onNew}
+        strip={
+          <LiveStrip
+            view={
+              record
+                ? runtimeStrip({
+                    newest: Array.isArray(live.checks) ? (live.checks[0] ?? null) : null,
+                    detail: live.lastCheck,
+                    total: record.checks,
+                    paused: agent.paused,
+                    now,
+                    running: record.runtimeEnabled,
+                  })
+                : stripView()
+            }
+            onDecisions={() => goFromOutside("decisions")}
+          />
+        }
+      >
+        {children}
+      </StudioShell>
+    </StudioContentContext.Provider>
   );
 }
 
