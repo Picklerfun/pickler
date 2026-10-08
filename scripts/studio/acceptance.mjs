@@ -303,14 +303,28 @@ async function run(strategy) {
     assert.equal((await api(product, undefined, "GET", randomUUID(), "invalid")).status, 401);
 
     await page.goto(`http://localhost:8790/studio?agent=${productId}`);
+    const draftSidebar = await page.locator("#draft-sidebar").elementHandle();
     await page.locator("#draft-rail-brief").click();
+    await page.waitForURL(`**/studio/agents/${productId}/brief`);
+    assert.equal(await draftSidebar.evaluate((node) => node.isConnected), true);
+
     console.log(`${strategy}: draft created; configuring`);
+    const selectStrategy = async () => {
+      const labels = {
+        rules: "Rules · SMA20/50",
+        deepseek: "DeepSeek · direct proposal",
+        jev: "Jev · evidence questions",
+        combined: "DeepSeek + Jev · reviewed proposal",
+      };
+      await page.getByRole("combobox", { name: "Strategy", exact: true }).click();
+      await page.getByRole("option", { name: labels[strategy], exact: true }).click();
+    };
     const saved = waitForResponse(
       (response) =>
         response.url().endsWith(product + "/setup") && response.request().method() === "PUT",
     );
     if (strategy === "rules") {
-      await page.getByLabel("Strategy", { exact: true }).selectOption(strategy);
+      await selectStrategy();
       await page
         .getByRole("button", { name: "Clear conditions and save rules", exact: true })
         .click();
@@ -334,7 +348,7 @@ async function run(strategy) {
         (response) =>
           response.url().endsWith(product + "/setup") && response.request().method() === "PUT",
       );
-      await page.getByLabel("Strategy", { exact: true }).selectOption(strategy);
+      await selectStrategy();
       await page.getByRole("button", { name: "Save strategy", exact: true }).click();
       assert.equal((await selected).status(), 200);
     }
@@ -353,7 +367,7 @@ async function run(strategy) {
     await page.getByText("Controlled X reply; acceptance only.", { exact: true }).waitFor();
     assert.ok(consentPopup.isClosed());
     assert.equal(await mountedStudio.evaluate((element) => element.isConnected), true);
-    assert.equal(new URL(page.url()).searchParams.get("agent"), productId);
+    assert.equal(new URL(page.url()).pathname, `/studio/agents/${productId}/overview`);
     const oauthState = await api(product + "/x");
     assert.equal(oauthState.body.status, "connected");
     await control("open", { funded: false });
@@ -467,6 +481,8 @@ async function run(strategy) {
     await page.route(recordPath, (route) => route.abort("failed"));
     await page.goto(`http://localhost:8790/studio?agent=${productId}`);
     await page.locator("#live-rail-console").click();
+    await page.waitForURL(`**/studio/agents/${productId}/console`);
+
     await page.getByRole("button", { name: "Retry runtime", exact: true }).waitFor();
     assert.ok(
       (
