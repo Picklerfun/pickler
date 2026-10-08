@@ -1,120 +1,41 @@
-/* Connect X by a post (draft canvas 343–382, 443–477), shared by the draft's Go Public and by
- * Identity & voice in both studios. The colour mapping is `shell.module.css`'s; the Verify pill and
- * the Copy chip are `cards.module.css`'s.
- */
-
 .xConnect {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
 }
 .xRow {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin: 0;
-  padding: 0 5px 0 14px;
-  border-radius: var(--pk-radius-pill);
-  background: var(--pk-panel);
 }
-.xRow svg {
-  flex: none;
+.xActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
-/* On a card (Identity & voice's X ACCOUNT) the row is the canvas's #0B0D1A well. */
-.xConnect[data-well="true"] .xRow {
-  background: var(--pk-bg);
-}
-.xInput {
-  flex: 1;
-  min-width: 0;
-  padding: 12px 0;
-  border: none;
-  background: transparent;
-  font: 600 14px/1.2 var(--pk-font);
-  color: var(--pk-ink);
-  outline: none;
-}
-.xInput::placeholder {
-  color: var(--pk-ink-faint);
-}
-.xRow:focus-within {
-  box-shadow: 0 0 0 2px var(--pk-focus);
-}
-.xVerify {
-  composes: whiteButton from "./cards.module.css";
-  padding: 9px 13px;
-  font-size: 12.5px;
-  letter-spacing: 0;
-}
-.xMiss {
+.xPosts {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 12px 14px;
-  border-radius: var(--pk-radius-md);
-  background: var(--pk-state-loss-bg);
-  animation: pkIn 220ms ease-out;
-}
-.xMissTitle {
-  font: 600 13.5px/1.3 var(--pk-font);
+  gap: 12px;
 }
 .xPost {
+  composes: pk-panel from global;
   display: flex;
+  flex-direction: column;
   align-items: flex-start;
   gap: 8px;
-  padding: 10px 12px;
-  border-radius: 10px;
-  background: var(--pk-bg);
+  padding: 14px;
 }
 .xPostText {
-  flex: 1;
-  min-width: 0;
+  margin: 0;
+  white-space: pre-wrap;
   overflow-wrap: anywhere;
-  font: 500 13px/1.45 var(--pk-font);
-  color: var(--pk-ink-soft);
-}
-/* The Copy chip sits on the well here, so it takes the panel. */
-.xCopy {
-  composes: copyChip from "./cards.module.css";
-}
-.xPost .xCopy {
-  background: var(--pk-panel);
-}
-.xMissHint {
-  font: 600 10px/1.3 var(--pk-font);
-  letter-spacing: 0.08em;
-  color: var(--pk-state-loss-ink);
-}
-/* The last check's answer: the post was not there yet. */
-.xMissed {
-  font: 500 12.5px/1.4 var(--pk-font);
-  color: var(--pk-ink-soft);
 }
 .xLine {
   margin: 0;
-  font: 500 12.5px/1.45 var(--pk-font);
   color: var(--pk-state-loss-ink);
-  text-wrap: pretty;
 }
 .xNoteLine {
-  composes: xLine;
+  margin: 0;
   color: var(--pk-ink-muted);
-}
-
-/* ---------- Motion (restated: keyframes are module-scoped) ---------- */
-
-@keyframes pkIn {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .xMiss {
-    animation: none;
-  }
 }
