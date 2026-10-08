@@ -544,6 +544,12 @@ test("slow public cycle does not sleep past the next still-open admission", asyn
   const paper = new PostgresPerpsPaperStore(db.pool, () => time);
   const c = { ...config, sessionId: "slow-cycle" };
   await study.initialize(c, { acquisitionPolicy: "rest-universe-20s-v1" });
+  let activeLease: Awaited<ReturnType<typeof study.claim>>;
+  const claim = study.claim.bind(study);
+  study.claim = async (scope) => {
+    activeLease = await claim(scope);
+    return activeLease;
+  };
   const controller = new AbortController();
   let cycles = 0;
   const delays: number[] = [];
@@ -555,6 +561,18 @@ test("slow public cycle does not sleep past the next still-open admission", asyn
       observe: async () => {
         if (cycles === 0) {
           time += 66000;
+          // A confirmed exit can belong to an observation begun before the new slot, while
+          // confirmation occurs inside it. No portfolio may reopen that asset in this slot.
+          await study.event(c, activeLease, "fixture-cross-boundary-close", "profile-execution", {
+            slot: -1,
+            variant: "hourly-legacy",
+            symbol: "BTC",
+            action: "close",
+            status: "filled",
+            reason: "RISK_EXIT",
+            before: { reasons: [] },
+            openSymbolsAfter: [],
+          });
         }
         return { frames: evidence(time).frames, funding: [] };
       },
@@ -583,6 +601,16 @@ test("slow public cycle does not sleep past the next still-open admission", asyn
   assert.equal(result.study.rounds[0]!.slot, 0);
   assert.equal(result.study.rounds[0]!.executionStatus, "complete");
   assert.equal(result.study.events.filter((e) => e.kind === "slot-attempted").length, 1);
+  assert.ok(
+    !result.accounts["hourly-legacy"]!.attempts.some(
+      (a) => a.intent.kind === "open" && a.intent.symbol === "BTC",
+    ),
+  );
+  assert.ok(
+    result.accounts["fast-legacy"]!.attempts.some(
+      (a) => a.intent.kind === "open" && a.intent.symbol === "BTC",
+    ),
+  );
 });
 
 test("read-only reporting preserves completion, historical data and final exits outside admission slots", async (t) => {
