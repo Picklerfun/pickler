@@ -6,6 +6,7 @@ import { readFileSync } from "node:fs";
 import test, { after } from "node:test";
 import { openBrowser } from "./lib/browser.mjs";
 import { hex } from "./lib/colour.mjs";
+import { settleMotion } from "./lib/settle.mjs";
 import { COLOUR, coloursIn, paintedColours, resolveTokens } from "./lib/probe.mjs";
 import { strays } from "./lib/strays.mjs";
 
@@ -173,6 +174,68 @@ test(
         const painted = await page.evaluate(paintedColours, COLOUR);
         assert.ok(strays(tokens, painted).some(({ paint }) => paint.role === "background"));
       }
+    } finally {
+      await page.close();
+    }
+  },
+);
+
+test("finite entry fades settle before paint is measured", { skip: unavailable }, async () => {
+  const page = await browser.newPage();
+  try {
+    await page.setContent('<p id="entry">Fund its wallet</p>');
+    await page.evaluate(() => {
+      window.entryFade = document
+        .querySelector("#entry")
+        .animate([{ opacity: 0 }, { opacity: 1 }], { duration: 320, fill: "both" });
+    });
+    assert.equal(await settleMotion(page), null);
+    assert.equal(await page.evaluate(() => window.entryFade.playState), "finished");
+    assert.equal(
+      await page.locator("#entry").evaluate((node) => getComputedStyle(node).opacity),
+      "1",
+    );
+  } finally {
+    await page.close();
+  }
+});
+
+test("decorative infinite loops do not block measurement", { skip: unavailable }, async () => {
+  const page = await browser.newPage();
+  try {
+    await page.setContent('<div id="ring"></div>');
+    await page.evaluate(() => {
+      window.ringLoop = document
+        .querySelector("#ring")
+        .animate([{ transform: "scale(1)" }, { transform: "scale(1.35)" }], {
+          duration: 320,
+          iterations: Infinity,
+        });
+    });
+    assert.equal(await settleMotion(page, 1000), null);
+    assert.equal(await page.evaluate(() => window.ringLoop.playState), "running");
+  } finally {
+    await page.close();
+  }
+});
+
+test(
+  "stuck finite motion blocks measurement with a bounded diagnostic",
+  { skip: unavailable },
+  async () => {
+    const page = await browser.newPage();
+    try {
+      await page.setContent('<p id="entry">Fund its wallet</p>');
+      await page.evaluate(() => {
+        const animation = document
+          .querySelector("#entry")
+          .animate([{ opacity: 0 }, { opacity: 1 }], { duration: 320, fill: "both" });
+        animation.pause();
+      });
+      assert.equal(
+        await settleMotion(page, 50),
+        "finite animation or transition did not finish within 50ms",
+      );
     } finally {
       await page.close();
     }
