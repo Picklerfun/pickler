@@ -27,7 +27,21 @@ test("full document validates, covers mounted routes and retains unique alias op
   assert.ok(document.paths["/v1/studio/wallets/ledger"]?.get);
   assert.ok(document.paths["/v1/studio/agents/{id}/setup"]?.put);
   assert.ok(document.paths["/v1/studio/agents/{id}/publish"]?.post);
-  assert.ok(document.paths["/v1/studio/agents/{id}/x/verify"]?.post);
+  assert.ok(document.paths["/v1/studio/agents/{id}/x/authorize"]?.post);
+  for (const [path, method] of [
+    ["/v1/studio/agents/{id}/x", "get"],
+    ["/v1/studio/agents/{id}/x", "delete"],
+    ["/v1/studio/agents/{id}/x/authorize", "post"],
+    ["/v1/studio/agents/{id}/x/posts", "get"],
+  ] as const) {
+    assert.deepEqual(document.paths[path]?.[method]?.security, [{ bearerAuth: [] }]);
+  }
+  const callback = document.paths["/v1/studio/x/callback"]?.get;
+  assert.deepEqual(callback?.security, []);
+  const redirect = callback?.responses?.["303"];
+  assert.ok(redirect && "headers" in redirect && redirect.headers?.Location);
+  assert.ok(!document.paths["/v1/studio/agents/{id}/x/challenge"]);
+  assert.ok(!document.paths["/v1/studio/agents/{id}/x/verify"]);
   for (const [path, method] of [
     ["/v1/studio/agents/{id}/perps/checks", "post"],
     ["/v1/studio/agents/{id}/perps/checks", "get"],
