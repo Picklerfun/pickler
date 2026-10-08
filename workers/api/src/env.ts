@@ -72,8 +72,10 @@ export interface Env {
   /** Read-only OAuth application; credentials stay in API runtime, never Web or Research. */
   X_CLIENT_ID?: string;
   X_CLIENT_SECRET?: string;
+  /** Optional hosted override; local OAuth requires an explicit loopback callback. */
   X_REDIRECT_URI?: string;
   X_TOKEN_ENCRYPTION_KEY?: string;
+  /** Optional rotation version; first key defaults to version 1. */
   X_TOKEN_ENCRYPTION_KEY_VERSION?: string;
   X_OAUTH_ENABLED?: string;
   X_READS_ENABLED?: string;
