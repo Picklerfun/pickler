@@ -32,6 +32,89 @@ const original = JSON.parse(
 let scenario = "open";
 let funded = true;
 const calls = [];
+const xAuthorizations = new Map();
+const xTokens = new Map();
+function xAuthorize(raw) {
+  const query = new URL(raw).searchParams;
+  if (
+    query.get("client_id") !== "controlled-x-client" ||
+    query.get("redirect_uri") !== "http://localhost:8790/api/v1/studio/x/callback" ||
+    query.get("code_challenge_method") !== "S256" ||
+    query.get("scope") !== "users.read tweet.read offline.access"
+  ) {
+    throw new Error("Unexpected controlled OAuth consent");
+  }
+  const code = randomUUID();
+  xAuthorizations.set(code, {
+    challenge: query.get("code_challenge"),
+    id: `${Date.now()}${xAuthorizations.size}`,
+    claimed: false,
+  });
+  return {
+    callback: `http://localhost:8790/api/v1/studio/x/callback?state=${query.get("state")}&code=${code}`,
+  };
+}
+function xProvider(url, raw, authorization) {
+  const body = new URLSearchParams(raw ?? "");
+  if (url.pathname === "/2/oauth2/token") {
+    let subject;
+    if (body.get("grant_type") === "authorization_code") {
+      const attempt = xAuthorizations.get(body.get("code"));
+      if (
+        !attempt ||
+        attempt.claimed ||
+        createHash("sha256")
+          .update(body.get("code_verifier") ?? "")
+          .digest("base64url") !== attempt.challenge
+      ) {
+        throw new Error("Controlled PKCE mismatch or replay");
+      }
+      attempt.claimed = true;
+      subject = attempt.id;
+    } else {
+      subject = xTokens.get(body.get("refresh_token"));
+    }
+    if (!subject) {
+      throw new Error("Unknown controlled authorization");
+    }
+    const access = `controlled-x-access-${randomUUID()}`;
+    const refresh = `controlled-x-refresh-${randomUUID()}`;
+    xTokens.set(access, subject);
+    xTokens.set(refresh, subject);
+    return {
+      access_token: access,
+      refresh_token: refresh,
+      expires_in: 7200,
+      token_type: "bearer",
+      scope: "users.read tweet.read offline.access",
+    };
+  }
+  if (url.pathname === "/2/oauth2/revoke") {
+    xTokens.delete(body.get("token"));
+    return { revoked: true };
+  }
+  const subject = xTokens.get(authorization?.replace(/^Bearer /, ""));
+  if (!subject) {
+    throw new Error("Controlled bearer missing");
+  }
+  if (url.pathname === "/2/users/me") {
+    return { data: { id: subject, username: `x${subject.slice(-12)}` } };
+  }
+  if (url.pathname === `/2/users/${subject}/tweets`) {
+    return {
+      data: [
+        {
+          id: subject,
+          author_id: subject,
+          text: "Controlled X reply; acceptance only.",
+          created_at: new Date().toISOString(),
+        },
+      ],
+      meta: { result_count: 1 },
+    };
+  }
+  throw new Error("Unexpected controlled X operation");
+}
 const fundingTime = Date.now() - 120000;
 const address = () => `0x${randomUUID().replaceAll("-", "")}00000000`;
 
@@ -265,7 +348,9 @@ const server = createServer(async (req, res) => {
         res.writeHead(403).end();
         return;
       }
-      if (req.url === "/control") {
+      if (req.url === "/x/authorize") {
+        result = xAuthorize(payload.url);
+      } else if (req.url === "/control") {
         if (payload.scenario) {
           if (
             ![
@@ -290,8 +375,11 @@ const server = createServer(async (req, res) => {
         result = { scenario, funded, calls };
       } else if (req.url === "/provider") {
         const url = new URL(payload.url);
-        const body = payload.body ? JSON.parse(payload.body) : null;
-        if (url.origin === "https://api.turnkey.com") {
+        const body =
+          payload.body && url.origin !== "https://api.x.com" ? JSON.parse(payload.body) : null;
+        if (url.origin === "https://api.x.com") {
+          result = xProvider(url, payload.body, payload.authorization);
+        } else if (url.origin === "https://api.turnkey.com") {
           result = turnkey(body);
         } else if (["https://testnet.perpl.xyz", "https://app.perpl.xyz"].includes(url.origin)) {
           result = perpl(url);
