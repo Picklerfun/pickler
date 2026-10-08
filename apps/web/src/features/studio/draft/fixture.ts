@@ -21,15 +21,11 @@ import type {
 } from "../api";
 import type { DraftStage } from "../home/stage";
 import { previewConfig } from "../preview";
-import type { XCardState } from "../shell/x-model";
 import type { DraftSectionKey } from "./model";
 
 /** Go Public's screen state on a Connect X stage: the X row, the skip, the typed handle, the card. */
 export interface DraftGoPublicStage {
   xOpen: boolean;
-  skipped: boolean;
-  handle: string;
-  card: XCardState;
 }
 
 /** The draft studio filled in for the design harness, at one moment. */
@@ -58,8 +54,6 @@ export interface DraftStaged {
 
 const NOW = Date.UTC(2026, 9, 2, 14, 30, 0);
 const MINUTE = 60_000;
-/** A challenge lives a day (spec §4, `POST /agents/:id/x/challenge`). */
-const CHALLENGE_TTL = 24 * 60 * MINUTE;
 const at = (minutesAgo: number) => new Date(NOW - minutesAgo * MINUTE).toISOString();
 
 const AGENT_ID = "preview-draft";
@@ -67,8 +61,6 @@ const WALLET_ID = "wal-preview";
 const ADDRESS = "0x91bE6f20A3c7D45e81B0F9a2C6d13E7b58Fd4a07";
 const MASTER = "0x7f3a9C41e02bB7d5F8a16E3c90D4b27A51f0c21e";
 const X_HANDLE = "HalftimeBot";
-/** Core's challenge form: "pk-" and eight lowercase base32 characters. */
-const CHALLENGE = `Verifying Halftime on @pickler · pk-k7q4m2xa`;
 
 /** Which section each stage opens on; the X stages are all the Overview's Go Public card. */
 const SECTIONS: Record<DraftStage, DraftSectionKey> = {
@@ -331,27 +323,16 @@ const ranRecord: PerpsRecordDto = {
   },
 };
 
-const idleCard: XCardState = {
-  challenge: null,
-  checking: false,
-  unavailable: false,
-  taken: null,
-  missed: false,
-};
-
 /**
  * The draft studio at one `?stage=draft*`. `draft` is the Overview right after "Create Halftime";
- * the X stages are Go Public's card with the X row open, the post not found yet ("Check again"),
- * the account verified, and X skipped; the rest open their section, and `draft-locked` opens
+ * the X stages are Go Public's card with the X row open, reconnection required,
+ * connected OAuth, and unavailable configuration (historical stage names); the rest open their section, and `draft-locked` opens
  * Activity, which a private agent has locked. `draft-console-ran` and `draft-trades-active` are the
  * Console and Trades after one paper run with the Perpl runtime open.
  */
 export function draftStudioFixture(stage: DraftStage): DraftStaged {
   const verified = stage === "draft-x-ok";
   const miss = stage === "draft-x-miss";
-  const challenge = miss
-    ? { handle: X_HANDLE, text: CHALLENGE, expiresAt: new Date(NOW + CHALLENGE_TTL).toISOString() }
-    : null;
   return {
     now: NOW,
     agent: agent(verified ? X_HANDLE : null),
@@ -359,21 +340,14 @@ export function draftStudioFixture(stage: DraftStage): DraftStaged {
     wallets,
     activity,
     x: {
-      account: verified ? { handle: X_HANDLE, verifiedAt: at(2) } : null,
-      challenge,
-      available: true,
+      account: verified || miss ? { handle: X_HANDLE, verifiedAt: at(2) } : null,
+      status: verified ? "connected" : miss ? "reconnect_required" : "disconnected",
+      available: stage !== "draft-x-skipped",
+      readsAvailable: stage !== "draft-x-skipped",
     },
     ledger,
     goPublic: {
-      xOpen: stage === "draft-x-open" || miss,
-      skipped: stage === "draft-x-skipped",
-      handle: miss ? X_HANDLE : "",
-      /* The miss stage is after a "Check again" that did not find the post. */
-      card: {
-        ...idleCard,
-        challenge: challenge && { handle: X_HANDLE, text: CHALLENGE },
-        missed: miss,
-      },
+      xOpen: stage === "draft-x-open" || miss || stage === "draft-x-skipped",
     },
     accountHandle: "nightowl",
     perps:
