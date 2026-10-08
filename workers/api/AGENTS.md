@@ -359,18 +359,16 @@ except the ledger. The studio agent DTO carries `visibility`, `publishedAt` (ISO
   another owner's agent is 404 `NOT_FOUND`. A version saved before migration 0026 has no row.
 - `PUT /agents/:id/identity { name?, avatar?: { accent, pattern 0–5 } }`: the studio agent; 400
   `INVALID_INPUT`. `GET /agents/:id/activity` answers `{ events }` (ISO `at`).
-- Connect X, composed as `services.studio.x` (`PostgresXStore`, `createXClient` on
-  `X_BEARER_TOKEN`). The store checks no ownership, so every X route calls `agentScope` first.
-  `GET /agents/:id/x` answers `{ account, challenge, available }` (a lapsed challenge is null).
-  `POST /x/challenge { handle }`: 400 `INVALID_X_HANDLE`, 409 `X_ALREADY_CONNECTED`,
-  `X_HANDLE_TAKEN`, 503 `X_UNAVAILABLE` (no token; checked before anything is saved).
-  `POST /x/verify`: 404 `CHALLENGE_NOT_FOUND`, 409 `CHALLENGE_EXPIRED`, 503 `X_UNAVAILABLE`, then
-  `XStore.claimCheck` (one atomic UPDATE; 429 `TOO_MANY_CHECKS` within 10 s) before X is read; a
-  match connects (409 `X_HANDLE_TAKEN` if another agent won it). `DELETE /x`: 409
-  `X_ON_PUBLIC_AGENT`. X's failures are 503 `X_UNAVAILABLE` without X's body.
+- Connect X is `createXOAuthService` with `PostgresXOAuthStore` and `createXOAuthProvider`.
+  Owner JWT routes expose state, authorize, disconnect and manual private posts. The state/cookie
+  callback is separately mounted before Studio JWT middleware, never a blanket authentication
+  exception. No API key or HMAC is accepted for connection/reading. API runtime holds the dedicated
+  encryption key and confidential OAuth app credentials; both OAuth and reads default disabled.
+  Historical proof tables remain but challenge/verify routes and search algorithms are removed.
+  See [Studio X OAuth](../../docs/studio-x-oauth.md) for quotas, cookies, renewal and revocation.
 - `POST /agents/:id/publish {}`: `directory.publish` with a check that reads the linked wallet's
   AUSD through `balances.read` outside any transaction; 409 `PUBLISH_BLOCKED` with
-  `detail.blockers` (`KILLED`, `WALLET`, `FUNDS`), 409 `PUBLISH_CONFLICT` (the agent changed twice
+  `detail.blockers` (`KILLED`, `WALLET`, `FUNDS`, `X_CONNECTION_REQUIRED`), 409 `PUBLISH_CONFLICT` (the agent changed twice
   during the check), 503 `BALANCES_UNAVAILABLE`. Idempotent on a public agent.
 - `GET /wallets/ledger` (`studio-wallets.ts`, `services.studio.transfers` over `listTransfers`):
   the caller's own transfers, newest first, at most 100; 503 `WALLETS_UNAVAILABLE` where not
