@@ -125,7 +125,14 @@ async function fixture(t: TestContext, existing?: Awaited<ReturnType<typeof crea
         if (fail === "identity") {
           return new Response("private", { status: 500 });
         }
-        return json({ data: { id: identityId, username: "ControlledX" } });
+        return json({
+          data: {
+            id: identityId,
+            username: "ControlledX",
+            name: "Controlled creator",
+            profile_image_url: "https://pbs.twimg.com/profile_images/123/photo_normal.jpg",
+          },
+        });
       }
       if (path.endsWith("/revoke")) {
         return fail === "revoke" ||
@@ -263,7 +270,17 @@ test("controlled API → PKCE → encrypted PostgreSQL → publication → priva
   assert.equal(attempt.auth.searchParams.get("code_challenge_method"), "S256");
   const state = await f.request(f.owned, { headers: f.headers });
   assert.equal(state.headers.get("cache-control"), "private, no-store");
-  assert.equal(xStateResponseSchema.parse(await state.json()).status, "connected");
+  const connection = xStateResponseSchema.parse(await state.json());
+  assert.equal(connection.status, "connected");
+  assert.equal(connection.account?.displayName, "Controlled creator");
+  assert.equal(
+    connection.account?.profileImageUrl,
+    "https://pbs.twimg.com/profile_images/123/photo_normal.jpg",
+  );
+  const callCount = f.calls.length;
+  const stored = await f.request(f.owned, { headers: f.headers });
+  assert.deepEqual(xStateResponseSchema.parse(await stored.json()), connection);
+  assert.equal(f.calls.length, callCount, "reading the profile never queries X");
   const rows = await f.repo.pool.query(
     "SELECT g.tokens,a.state_hash,a.browser_hash,a.verifier,a.status FROM agents.x_oauth_grants g JOIN agents.x_oauth_attempts a ON a.agent_id=g.agent_id WHERE g.agent_id=$1",
     [f.agentId],
@@ -747,4 +764,23 @@ test("disabled reads do not renew tokens or reserve resources while linking rema
     "SELECT post_requests,post_resources FROM agents.x_api_usage",
   );
   assert.deepEqual(usage.rows, [{ post_requests: 0, post_resources: 0 }]);
+});
+
+test("earlier connected grants with no profile photo remain connected without provider reads", async (t) => {
+  const f = await fixture(t);
+  await f.connect();
+  await f.repo.pool.query(
+    "UPDATE agents.x_oauth_grants SET display_name=NULL,profile_image_url=NULL WHERE agent_id=$1",
+    [f.agentId],
+  );
+  const before = f.calls.length;
+
+  const response = await f.request(f.owned, { headers: f.headers });
+  const state = xStateResponseSchema.parse(await response.json());
+
+  assert.equal(state.status, "connected");
+  assert.equal(state.account?.handle, "ControlledX");
+  assert.equal(state.account?.displayName, null);
+  assert.equal(state.account?.profileImageUrl, null);
+  assert.equal(f.calls.length, before);
 });
