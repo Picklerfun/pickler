@@ -207,3 +207,5 @@ authorize running an older model-decision analyzer against a new profile protoco
 The profile runner accepts an injected sleep port for controlled scheduling tests. If a cycle
 finishes in a newer minute, it immediately checks that minute instead of sleeping past an
 unexpired admission. Durable slot fencing still rejects duplicates, late slots and recovery.
+Confirmed exits fence reopening by both the originating cycle slot and the confirmation's
+decision slot, including observations that cross an admission boundary.
