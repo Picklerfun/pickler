@@ -982,18 +982,17 @@ export interface PostsHeader {
   tag: string;
   /** Spec L7's empty line. */
   empty: string;
-  /** Without X: the canvas's line over "Connect X", or null with X. */
+  /** Connection management is separate from public product posts. */
   connect: string | null;
 }
 
-export function postsHeader(xHandle: string | null): PostsHeader {
+export function postsHeader(): PostsHeader {
   return {
     title: "Every call, in public",
-    tag: xHandle ? `PICKLER + X · @${xHandle.toUpperCase()}` : "PICKLER ONLY",
-    empty: `No posts yet. Entries and exits will post on Pickler${xHandle ? " and X" : ""} when it trades.`,
-    connect: xHandle
-      ? null
-      : "Posts will go out on Pickler only. Connect an X account and every call will mirror there.",
+    tag: "PICKLER ONLY",
+    empty: "No public posts yet.",
+    connect:
+      "Manage X in Identity & voice to read your recent posts. Connecting does not authorize publishing to X.",
   };
 }
 
