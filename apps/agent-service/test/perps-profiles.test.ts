@@ -11,6 +11,7 @@ import {
   createProfileStudyRunner,
   perpsCallCost,
   EVALUATION_PROTOCOLS,
+  canonicalAudit,
   type PerpsSmaProfileConfig,
   type PerpsEvidence,
 } from "@pickler/trading/evaluation";
@@ -340,6 +341,13 @@ test("real coordinator and simulator open and close all four arms, shared final 
     "active",
   );
   assert.equal(rendered.rows.length, 3168);
+  const { createHash } = await import("node:crypto");
+  const initialHash = createHash("sha256")
+    .update(canonicalAudit(frozen.study.rounds[0]!.evidence))
+    .digest("hex");
+  assert.ok(
+    rendered.rows.filter((r) => r.slot === 0).every((r) => r.initialEvidenceHash === initialHash),
+  );
   const again = renderProfileReport(
     frozen,
     perpsStudyReport(frozen.study, frozen.accounts, time),
