@@ -428,8 +428,6 @@ route whose shape changes.
 | GET    | `/v1/studio/agents/:id/go-public`                   | studio    | GP §4        |                                                          |
 | PUT    | `/v1/studio/agents/:id/voice`                       | studio    | GP §4        |                                                          |
 | GET    | `/v1/studio/voice-presets`                          | studio    | GP §4        |                                                          |
-| POST   | `/v1/studio/agents/:id/x/challenge`                 | studio    | GP §4        |                                                          |
-| POST   | `/v1/studio/agents/:id/x/verify`                    | studio    | GP §4        |                                                          |
 | GET    | `/v1/studio/agents/:id/x/authorize`                 | studio    | GP §4        |                                                          |
 | GET    | `/v1/studio/x/callback`                             | state     | GP §4        | an X redirect carries no Bearer (E7)                     |
 | PUT    | `/v1/studio/agents/:id/x/posting`                   | studio    | GP §4        |                                                          |
@@ -709,7 +707,7 @@ today.
 | Binding       | `SEND_EMAIL`, `tail_consumers` on every Worker                                                                 | OPS         | no                            |
 | Binding       | `IMAGES` (Cloudflare Images)                                                                                   | TL          | no                            |
 | Secret        | `RATE_LIMIT_SALT`, `OPS_ALERT_WEBHOOK_URL`                                                                     | OPS         | no                            |
-| Secret        | `X_BEARER_TOKEN`, `X_CLIENT_ID`, `X_CLIENT_SECRET`, `X_TOKEN_ENCRYPTION_KEY`                                   | GP          | no                            |
+| Secret        | `X_CLIENT_SECRET`, `X_TOKEN_ENCRYPTION_KEY`                                                                    | GP          | no                            |
 | Secret        | `TREASURY_TURNKEY_API_PUBLIC_KEY`, `TREASURY_TURNKEY_API_PRIVATE_KEY`, `EMAIL_API_KEY`                         | PRD         | no                            |
 | Secret        | `PERPL_KEY_ENCRYPTION_KEY`, `PERPL_TESTNET_FAUCET_PRIVATE_KEY`, `TURNKEY_DELEGATED_API_PRIVATE_KEY` (trading)  | PERPL       | no (PE has it on api only)    |
 | Secret        | `LAUNCH_AUTHORITY_TURNKEY_KEY_ID`                                                                              | LD          | no                            |
