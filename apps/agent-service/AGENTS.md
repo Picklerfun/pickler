@@ -240,5 +240,7 @@ a persisted running state.
 Risk summaries count the full confirmed mandatory-exit batch when an exposure breach initiated
 it; they do not count only the first close whose pre-exit snapshot still exceeds the limit.
 Individual exit conditions can coincide with that batch and are not independent causes.
+Report hashes are memoized per immutable evidence object within one rendering; every decision
+retains the same canonical digest without hashing a full snapshot again for each market/variant.
 `audit-export` accepts the registered perpetual protocols; the historical model-decision
 `audit` analyzer explicitly rejects unsupported profile protocols rather than fabricating arms.
