@@ -61,8 +61,8 @@ test("timeline includes replies, excludes reposts, and binds all returned author
       const query = new URL(String(url));
       assert.equal(query.pathname, "/2/users/123/tweets");
       assert.equal(query.searchParams.get("exclude"), "retweets");
-      assert.equal(query.searchParams.get("pagination_token"), "page2");
-      assert.equal(query.searchParams.get("max_results"), "20");
+      assert.equal(query.searchParams.get("pagination_token"), null);
+      assert.equal(query.searchParams.get("max_results"), "5");
       return Response.json({
         data: [
           { id: "456", author_id: "123", text: "A reply", created_at: "2026-10-07T00:00:00Z" },
@@ -71,7 +71,7 @@ test("timeline includes replies, excludes reposts, and binds all returned author
       });
     },
   });
-  assert.deepEqual(await provider.posts("access", "123", "page2"), {
+  assert.deepEqual(await provider.posts("access", "123"), {
     posts: [
       {
         id: "456",
@@ -80,7 +80,7 @@ test("timeline includes replies, excludes reposts, and binds all returned author
         url: "https://x.com/i/web/status/456",
       },
     ],
-    nextCursor: "page3",
+    nextCursor: null,
   });
   for (const response of [
     {
@@ -89,6 +89,14 @@ test("timeline includes replies, excludes reposts, and binds all returned author
       ],
     },
     { errors: [{ detail: "private-provider-error" }] },
+    {
+      data: Array.from({ length: 6 }, (_, index) => ({
+        id: String(index + 1),
+        author_id: "123",
+        text: "Too many",
+        created_at: "2026-10-07T00:00:00Z",
+      })),
+    },
     {
       data: [{ id: "1", author_id: "123", text: "RT @other", created_at: "2026-10-07T00:00:00Z" }],
     },
@@ -178,4 +186,27 @@ test("hosted callbacks require the exact canonical origin and path", () => {
       /Invalid X_REDIRECT_URI/,
     );
   }
+});
+
+test("disabled post reads never reach X even while OAuth is enabled", async () => {
+  let calls = 0;
+  const provider = createXOAuthProvider({
+    ...options,
+    readsEnabled: false,
+    fetch: async () => {
+      calls++;
+      throw new Error("No transport expected");
+    },
+  });
+  await assert.rejects(provider.posts("access", "123"), XFailure);
+  assert.equal(provider.available, true);
+  assert.equal(calls, 0);
+  const policy = {
+    version: 2,
+    reviewedAt: "2026-10-08T00:00:00Z",
+    identityRequestsPerDay: 10,
+    postRequestsPerDay: 1,
+    postResourcesPerDay: 5,
+  };
+  assert.deepEqual(parseXApiPolicy(JSON.stringify(policy)), policy);
 });
