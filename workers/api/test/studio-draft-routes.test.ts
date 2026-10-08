@@ -201,6 +201,15 @@ function app({
     },
   } as Partial<StudioDirectory> as StudioDirectory;
   const studio = studioRoutes({
+    x: {
+      state: async () => ({
+        status: "connected",
+        account: { handle: "controlled", verifiedAt: PUBLISHED_AT.toISOString() },
+        available: true,
+        readsAvailable: false,
+      }),
+      validateForPublish: async () => {},
+    } as unknown as NonNullable<Parameters<typeof studioRoutes>[0]["x"]>,
     perplMarkets: {
       catalog: async (network) => {
         if (catalogFails) {
