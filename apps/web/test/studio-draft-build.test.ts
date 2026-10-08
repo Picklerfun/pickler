@@ -135,7 +135,10 @@ test("setupProblem: a stale version reloads, a preview says so, anything else in
     kind: "error",
     text: "Check the brief.",
   });
-  assert.equal(CONFLICT_LINE, "It changed somewhere else. Reloaded.");
+  assert.equal(
+    CONFLICT_LINE,
+    "The configuration changed. Your edits are kept; discard them to load the current version.",
+  );
 });
 
 const read = (ausdMicro: string, monWei: string | null, readAt: number): WalletsDto => ({
