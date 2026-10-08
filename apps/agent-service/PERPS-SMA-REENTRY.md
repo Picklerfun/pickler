@@ -89,6 +89,13 @@ entry keys, blocked reentries, filters, fees, funding, realized net AUSD, verifi
 and drawdown. API calls, tokens, spend and new reservations are explicitly zero. Spread/slippage
 already in fill prices are never deducted twice. Historical results are preserved, not paired controls.
 
+`reentry-economics.json` and `.csv` link blocked keys to actual confirmed reference openings on
+the same common valid slot, direction and final hourly bar. Closed positions use their original
+fee, realized-P&L and reconciled funding postings to classify reference wins, losses or flat
+outcomes. Missing or duplicate postings and unknown funding remain `NOT_VERIFIABLE`; open
+positions remain pending. This does not assign P&L to the unexecuted once-bar proposal. The
+observed aggregate fee difference between evolving portfolios is not a causal per-slot saving.
+
 `coverage.json` checks 69/72 complete rounds, 753/792 common valid asset-slots, 342/360 recorded
 and valued observations, 95% of held-at-minute-start minutes valued, no exposed valuation gap
 above 120 seconds, all detected exits traced, and no ownership violations. Missing observations
@@ -99,3 +106,6 @@ concern independently evolving portfolios and the reopening restriction; a bette
 is loss reduction. Sparse reentry activity is inconclusive. Six hours cannot establish profitability,
 optimal parameters or automatic promotion. If qualification or operating coverage fails, publish
 its quantified causes and explicitly limit or defer the economic comparison.
+
+See [the 2026-10-08 delivery record](PERPS-SMA-REENTRY-ACCEPTANCE-20261008.md) for the controlled
+checks, actual failed public qualification, frozen provenance and pending economic acceptance.
