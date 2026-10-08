@@ -340,10 +340,18 @@ export function draftStudioFixture(stage: DraftStage): DraftStaged {
     wallets,
     activity,
     x: {
-      account: verified || miss ? { handle: X_HANDLE, verifiedAt: at(2) } : null,
+      account:
+        verified || miss
+          ? {
+              handle: X_HANDLE,
+              displayName: "Halftime",
+              profileImageUrl: verified ? "/brand/mascot.webp" : null,
+              verifiedAt: at(2),
+            }
+          : null,
       status: verified ? "connected" : miss ? "reconnect_required" : "disconnected",
       available: stage !== "draft-x-skipped",
-      readsAvailable: stage !== "draft-x-skipped",
+      readsAvailable: false,
     },
     ledger,
     goPublic: {
