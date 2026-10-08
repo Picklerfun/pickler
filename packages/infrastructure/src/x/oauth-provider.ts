@@ -19,8 +19,32 @@ const identitySchema = z.object({
   data: z.object({
     id: z.string().regex(/^\d+$/),
     username: z.string().regex(/^[A-Za-z0-9_]{1,15}$/),
+    name: z.unknown().optional(),
+    profile_image_url: z.unknown().optional(),
   }),
 });
+/** Profile decoration never authorizes an account or adds another provider request. */
+function profileImageUrl(value: unknown): string | null {
+  if (typeof value !== "string" || value.length > 2048) {
+    return null;
+  }
+  try {
+    const url = new URL(value);
+    const profile = url.hostname === "pbs.twimg.com" && url.pathname.startsWith("/profile_images/");
+    const fallback =
+      url.hostname === "abs.twimg.com" &&
+      url.pathname.startsWith("/sticky/default_profile_images/");
+    return url.protocol === "https:" &&
+      !url.username &&
+      !url.password &&
+      !url.port &&
+      (profile || fallback)
+      ? url.href
+      : null;
+  } catch {
+    return null;
+  }
+}
 const postsSchema = z.object({
   data: z
     .array(
@@ -190,14 +214,23 @@ export function createXOAuthProvider(options: {
       );
     },
     async identity(token) {
-      const response = await request("/users/me", {
+      const response = await request("/users/me?user.fields=name,profile_image_url", {
         headers: { authorization: `Bearer ${token}` },
       });
       const parsed = identitySchema.safeParse(await response.json().catch(() => null));
       if (!parsed.success) {
         throw new XFailure("X_UNAVAILABLE");
       }
-      return { id: parsed.data.data.id, handle: parsed.data.data.username };
+      const user = parsed.data.data;
+      return {
+        id: user.id,
+        handle: user.username,
+        displayName:
+          typeof user.name === "string" && user.name.trim().length <= 100
+            ? user.name.trim() || null
+            : null,
+        profileImageUrl: profileImageUrl(user.profile_image_url),
+      };
     },
     async posts(token, userId, cursor) {
       if (!options.readsEnabled || cursor) {
