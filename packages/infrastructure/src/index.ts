@@ -232,3 +232,8 @@ export * from "./persistence/perps-check-cost-store.js";
 
 export * from "./persistence/ai-credit-store.js";
 export { PostgresStudioAccessRequests } from "./studio/access-requests.js";
+
+export {
+  timeEvaluationPool,
+  type EvaluationDatabaseTiming,
+} from "./persistence/evaluation-timing.js";
