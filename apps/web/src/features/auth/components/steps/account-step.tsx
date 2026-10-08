@@ -27,7 +27,9 @@ export function AccountStep({
   email: initialEmail,
   onMode,
   onSent,
+  destination,
 }: {
+  destination?: string;
   mode: Choice;
   email: string;
   onMode: (mode: Choice) => void;
@@ -68,7 +70,7 @@ export function AccountStep({
     if (supabase) {
       // On success the browser leaves for the provider and never comes back here; /auth/callback
       // exchanges the code. So there is nothing to do after the await but report a failure.
-      void run(name, () => signInWithProvider(supabase, name));
+      void run(name, () => signInWithProvider(supabase, name, window.location.origin, destination));
     }
   }
 
