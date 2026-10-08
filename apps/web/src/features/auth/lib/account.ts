@@ -1,5 +1,6 @@
 "use client";
 
+import { returnTo } from "../../../server/guard";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { ApiError, createProfile, getProfile, type ProfileDto } from "./pickler-api";
 
@@ -39,10 +40,16 @@ export async function signInWithProvider(
   supabase: { auth: AuthCalls },
   provider: OAuthProvider,
   origin: string = window.location.origin,
+  destination?: string,
 ): Promise<void> {
+  const redirect = new URL(AUTH_CALLBACK_PATH, origin);
+  const safe = returnTo(destination);
+  if (safe) {
+    redirect.searchParams.set("next", safe);
+  }
   const { error } = await supabase.auth.signInWithOAuth({
     provider,
-    options: { redirectTo: `${origin}${AUTH_CALLBACK_PATH}` },
+    options: { redirectTo: redirect.href },
   });
   if (error) {
     throw new Error(error.message);
