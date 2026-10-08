@@ -31,7 +31,7 @@ export function createUniverseStudyData(
   let acquisitionExclusions: NonNullable<typeof cache>["excluded"] | undefined;
   const identity = (record: PerpsStudyRecord) => ({
     tenantId: record.config.tenantId,
-    agentId: record.agentIds.rules,
+    agentId: record.agentIds.rules!,
   });
   const config = (record: PerpsStudyRecord) => {
     if (record.config.version !== 5) {
