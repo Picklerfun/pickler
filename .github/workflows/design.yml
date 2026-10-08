@@ -46,6 +46,7 @@ jobs:
       - run: npm run design:check
       - run: node scripts/design/sidebar-motion.mjs
       - run: node scripts/design/studio-loading.mjs
+      - run: node scripts/design/studio-routing.mjs
       - if: failure()
         uses: actions/upload-artifact@v4
         with:
