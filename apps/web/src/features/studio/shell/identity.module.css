@@ -121,14 +121,6 @@
 .sample {
   composes: sample from "../new-agent/new-agent.module.css";
 }
-/* CONNECTED (lime) / NOT CONNECTED (faint). */
-.xTag {
-  composes: tag from "../new-agent/new-agent.module.css";
-}
-.xTag[data-on="true"] {
-  background: var(--pk-state-good-bg);
-  color: var(--pk-lime-ink);
-}
 .notice {
   composes: notice from "./build.module.css";
 }
