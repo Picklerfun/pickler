@@ -51,10 +51,18 @@ SIWE_DOMAIN=
 # internal key and never a contact, so this domain must never be made to accept mail.
 WALLET_EMAIL_DOMAIN=
 
-# Connect X (verification by post): Pickler's X app bearer token, read-only and a secret. Empty
-# means Connect X says it isn't open yet, its challenge and verify answer 503 X_UNAVAILABLE, and
-# Go Public still works without X.
-X_BEARER_TOKEN=
+# Read-only Connect X OAuth. API runtime only, disabled by default.
+# Hosted callback must be registered exactly as shown; register a separate local callback for tests.
+X_CLIENT_ID=
+X_CLIENT_SECRET=
+X_REDIRECT_URI=https://app.pickler.fun/api/v1/studio/x/callback
+X_TOKEN_ENCRYPTION_KEY=
+X_TOKEN_ENCRYPTION_KEY_VERSION=1
+X_OAUTH_ENABLED=false
+X_READS_ENABLED=false
+# Reviewed version, reviewedAt, identityRequestsPerDay, postRequestsPerDay, postResourcesPerDay.
+# No commercial quotas or tariffs are supplied; see docs/studio-x-oauth.md.
+X_API_POLICY_JSON=
 
 # Comma-separated. Empty means nobody; this is not a fallback that opens up when unset.
 SUPER_ADMIN_EMAILS=
