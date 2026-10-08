@@ -100,49 +100,87 @@ export function XConnect({
       id={`${idPrefix}-x-connect`}
     >
       <div className={styles.xHeader}>
-        <span className={styles.xLabel}>
-          <BrandMark name="x" size={18} /> X account
-        </span>
+        {account ? (
+          <a
+            className={styles.xProfile}
+            href={`https://x.com/${encodeURIComponent(account.handle)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={`Open @${account.handle} on X`}
+          >
+            <span className={styles.xAvatar} aria-hidden="true">
+              {imageUrl && failedImage !== imageUrl ? (
+                <Image
+                  src={imageUrl}
+                  alt=""
+                  width={36}
+                  height={36}
+                  unoptimized
+                  referrerPolicy="no-referrer"
+                  onError={() => setFailedImage(imageUrl)}
+                />
+              ) : (
+                <BrandMark name="x" size={20} />
+              )}
+            </span>
+            <span className={styles.xProfileText}>
+              <span className={styles.xName}>{account.displayName || `@${account.handle}`}</span>
+              <span className={styles.xHandle}>
+                {account.displayName ? `@${account.handle} · X` : "X"}
+              </span>
+            </span>
+          </a>
+        ) : (
+          <span className={styles.xEmpty} aria-label="X">
+            <BrandMark name="x" size={20} />
+          </span>
+        )}
         <Tag className={styles.xStatus} data-connected={connected} role="status">
           {statusLabel}
         </Tag>
       </div>
-      {account ? (
-        <a
-          className={styles.xProfile}
-          href={`https://x.com/${encodeURIComponent(account.handle)}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label={`Open @${account.handle} on X`}
-        >
-          <span className={styles.xAvatar} aria-hidden="true">
-            {imageUrl && failedImage !== imageUrl ? (
-              <Image
-                src={imageUrl}
-                alt=""
-                width={56}
-                height={56}
-                unoptimized
-                referrerPolicy="no-referrer"
-                onError={() => setFailedImage(imageUrl)}
-              />
-            ) : (
-              <BrandMark name="x" size={26} />
+      <div className={styles.xFooter}>
+        <p className={styles.xNoteLine}>
+          {connected
+            ? "Read-only access."
+            : "Verify ownership to publish your agent. Read-only access."}
+        </p>
+        {busy ? (
+          <StudioSkeleton variant="rows" />
+        ) : (
+          <div className={styles.xActions}>
+            {!connected && (
+              <Button
+                size="sm"
+                disabled={!canManage || !x.available || x.status === "revocation_pending"}
+                onClick={() => void action(onConnect)}
+              >
+                {x.account ? "Reconnect X" : "Connect X"}
+              </Button>
             )}
-          </span>
-          <span className={styles.xProfileText}>
-            <span className={styles.xName}>{account.displayName || `@${account.handle}`}</span>
-            {account.displayName && <span className={styles.xHandle}>@{account.handle}</span>}
-          </span>
-        </a>
-      ) : (
-        <p className={styles.xEmpty}>Connect your X account</p>
-      )}
-      <p className={styles.xNoteLine}>
-        {connected
-          ? "Linked to this agent. Read-only access."
-          : "Verify ownership to publish your agent. Read-only access."}
-      </p>
+            {(x.account || x.status === "revocation_pending") && (
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled={!canManage}
+                onClick={() => void action(onDisconnect)}
+              >
+                Disconnect
+              </Button>
+            )}
+            {connected && x.readsAvailable && !readAttempted && (
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled={!canManage || !x.readsAvailable || reading}
+                onClick={() => void read()}
+              >
+                Load 5 posts (paid)
+              </Button>
+            )}
+          </div>
+        )}
+      </div>
       {x.status === "reconnect_required" && (
         <p className={styles.xLine}>
           Reconnect X required. Your previous verification does not grant read access.
@@ -157,41 +195,6 @@ export function XConnect({
         <p className={styles.xLine}>
           X connection is not configured yet. Publishing requires Connect X.
         </p>
-      )}
-      {busy ? (
-        <StudioSkeleton variant="rows" />
-      ) : (
-        <div className={styles.xActions}>
-          {!connected && (
-            <Button
-              size="sm"
-              disabled={!canManage || !x.available || x.status === "revocation_pending"}
-              onClick={() => void action(onConnect)}
-            >
-              {x.account ? "Reconnect X" : "Connect X"}
-            </Button>
-          )}
-          {(x.account || x.status === "revocation_pending") && (
-            <Button
-              variant="secondary"
-              size="sm"
-              disabled={!canManage}
-              onClick={() => void action(onDisconnect)}
-            >
-              Disconnect
-            </Button>
-          )}
-          {connected && x.readsAvailable && !readAttempted && (
-            <Button
-              variant="secondary"
-              size="sm"
-              disabled={!canManage || !x.readsAvailable || reading}
-              onClick={() => void read()}
-            >
-              Load 5 posts (paid)
-            </Button>
-          )}
-        </div>
       )}
       {connected && x.readsAvailable && (
         <p className={styles.xNoteLine}>Optional: 5 posts · once a day · uses X API credits.</p>
