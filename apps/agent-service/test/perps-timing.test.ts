@@ -9,6 +9,7 @@ import { canonicalAudit } from "@pickler/trading/evaluation";
 import { runTimingCheck } from "../src/perps-study/timing-check.js";
 import { timingReport } from "../src/perps-study/timing-report.js";
 import { localStudyDatabase } from "../src/perps-study/database-env.js";
+import { timeEvaluationPool } from "@pickler/infrastructure";
 import { evidence } from "./perps-reentry-fixtures.js";
 
 test("offline timing-check verifies inputs, thirty paired denominators and financial parity without network", async (t) => {
@@ -96,4 +97,22 @@ test("public-only environment refuses model settings without constructing client
   await assert.rejects(localStudyDatabase(file), /dedicated/);
   await writeFile(file, "DATABASE_URL=postgresql://fixture:fixture@127.0.0.1:55432/test\n");
   assert.match(await localStudyDatabase(file), /127\.0\.0\.1/);
+});
+
+test("connection failure retains the safe PostgreSQL code without private error details", async () => {
+  const failure = Object.assign(new Error("PRIVATE_CONNECTION_DETAIL"), { code: "3D000" });
+  const pool = {
+    connect: async () => {
+      throw failure;
+    },
+  } as unknown as Parameters<typeof timeEvaluationPool>[0];
+  const rows: unknown[] = [];
+  const timed = timeEvaluationPool(
+    pool,
+    (e) => rows.push(e),
+    () => "controlled-connect",
+  );
+  await assert.rejects(timed.connect(), { code: "3D000" });
+  assert.equal((rows[0] as { code: string }).code, "3D000");
+  assert.ok(!JSON.stringify(rows).includes("PRIVATE_CONNECTION_DETAIL"));
 });
