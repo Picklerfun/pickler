@@ -357,6 +357,31 @@ test("real coordinator and simulator open and close all four arms, shared final 
   );
   assert.ok(!safe.html.includes("<script>alert(1)</script>"));
   assert.ok(safe.roundsCsv.includes("'=\u003cscript>"));
+  const collective = structuredClone(frozen);
+  for (const [index, symbol] of ["BTC", "MON", "ETH", "SOL", "HYPE"].entries()) {
+    const attemptKey = `observe-fixture:mandatory:${symbol}`;
+    collective.study.events.push({
+      key: `hourly-legacy:${attemptKey}`,
+      at: time + index,
+      kind: "profile-execution",
+      data: {
+        variant: "hourly-legacy",
+        action: "close",
+        status: "filled",
+        reason: "RISK_EXIT",
+        attemptKey,
+        before: { reasons: index === 0 ? ["EXPOSURE_LIMIT"] : [] },
+        openSymbolsAfter: [],
+      },
+    });
+  }
+  const collectiveReport = renderProfileReport(
+    collective,
+    perpsStudyReport(collective.study, collective.accounts, time),
+    "active",
+  ).riskSummary.find((r) => r.variant === "hourly-legacy")!;
+  assert.equal(collectiveReport.collectiveExposureBatches, 1);
+  assert.equal(collectiveReport.collectiveExposureCloses, 5);
   assert.equal(frozen.study.rounds[0]!.executionStatus, "complete");
   assert.deepEqual(frozen.study.rounds[0]!.calls, {});
   await runner.cycle(v.record.config, lease, new AbortController().signal);
