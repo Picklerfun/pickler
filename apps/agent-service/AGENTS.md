@@ -233,3 +233,9 @@ DATABASE_URL; `profiles-data.ts` composes the runtime public reader, and `profil
 renders 3,168 decision identities. No model/news/signing clients, paid validation, restart,
 resume, automation, or deployment. The runner regenerates reports after observations and at
 completion. Freeze commit, catalog, and configuration before the single six-hour run.
+`profiles-resources.ts` attempts every cleanup and preserves the primary failure. Reports retain
+the study commit separately from the report commit and export all execution/observation events,
+including exits after admission slot 71. Read-only reporting never infers process liveness from
+a persisted running state.
+`audit-export` accepts the registered perpetual protocols; the historical model-decision
+`audit` analyzer explicitly rejects unsupported profile protocols rather than fabricating arms.
