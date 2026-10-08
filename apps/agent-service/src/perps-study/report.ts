@@ -61,7 +61,7 @@ export function perpsStudyReport(
       .map(
         (e) =>
           (
-            (record.config.version === 6
+            (record.config.version === 6 || record.config.version === 7
               ? (e.data as { variants: unknown }).variants
               : e.data) as Record<
               string,
@@ -145,7 +145,7 @@ export function perpsStudyReport(
       fills: filled.length,
       rejections: view.attempts.filter((a) => a.status !== "filled").length,
       riskExits:
-        record.config.version === 6
+        record.config.version === 6 || record.config.version === 7
           ? events.filter((e) => {
               const value = e.data as { variant?: string; status?: string; reason?: string };
               return (
@@ -192,7 +192,8 @@ export function perpsStudyReport(
     omitted.length === 0 &&
     unknownCalls.length === 0 &&
     unobservedMs === 0 &&
-    rounds.length === record.config.hours * (record.config.version === 6 ? 12 : 4) &&
+    rounds.length ===
+      record.config.hours * (record.config.version === 6 || record.config.version === 7 ? 12 : 4) &&
     rows.every((r) => !r.fundingPending && !r.fundingDisputed && !r.openPositions);
   return {
     protocol: record.config.protocol,
