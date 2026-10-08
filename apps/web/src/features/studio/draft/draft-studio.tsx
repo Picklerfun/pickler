@@ -1,5 +1,9 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useRouter } from "nextjs-toploader/app";
+import { useSearchParams } from "next/navigation";
+import { StudioContentContext } from "../routing/content";
+import { agentSectionHref } from "../routing/routes";
+import { useEffect, useRef, type ReactNode } from "react";
 import { useNow } from "@/lib/now";
 import type { Agent } from "../api";
 import { HeaderDot } from "../shell/header";
@@ -60,12 +64,14 @@ export function DraftStudio({
   staged,
   preview,
   initialSection,
+  children,
   accountHandle,
   onRefreshAgent,
   onPublished,
   onSwitch,
   onNew,
 }: {
+  children?: ReactNode;
   agent: Agent;
   agents: Agent[];
   canManage: boolean;
@@ -85,9 +91,12 @@ export function DraftStudio({
   /** "+ New agent": open the create screen. */
   onNew(): void;
 }) {
-  const [section, setSection] = useState<DraftSectionKey>(
-    initialSection ?? staged?.section ?? "overview",
-  );
+  const section: DraftSectionKey = initialSection ?? staged?.section ?? "overview";
+  const { push } = useRouter();
+  const search = useSearchParams();
+  const setSection = (next: DraftSectionKey, check?: string | null) => {
+    push(agentSectionHref(agent.productId ?? agent.id, next, search.toString(), check));
+  };
   const wallClock = useNow();
   const now = staged ? staged.now : wallClock;
   const draft = useDraft({ agent, staged, preview, onRefreshAgent, onPublished });
@@ -187,32 +196,34 @@ export function DraftStudio({
   }
 
   return (
-    <StudioShell<DraftSectionKey>
-      accountHandle={accountHandle}
-      idPrefix="draft"
-      agent={agent}
-      agents={agents}
-      canManage={canManage}
-      newAgentLock={newAgentLock}
-      studio={draft}
-      modals={modals}
-      status={<StatusChip id="draft-status">DRAFT · PRIVATE</StatusChip>}
-      rail={draftRail(section)}
-      onSection={setSection}
-      headerSub={
-        <>
-          <span>{headerWho(you, agent.handle, accountHandle)}</span>
-          <HeaderDot />
-          <span>{sectionLabel(section)}</span>
-        </>
-      }
-      tiles={headerTiles(draft.wallets, draft.positions)}
-      tilesLabel="Your money"
-      onRefreshAgent={onRefreshAgent}
-      onSwitch={onSwitch}
-      onNew={onNew}
-    >
-      {body()}
-    </StudioShell>
+    <StudioContentContext.Provider value={{ section, content: body() }}>
+      <StudioShell<DraftSectionKey>
+        accountHandle={accountHandle}
+        idPrefix="draft"
+        agent={agent}
+        agents={agents}
+        canManage={canManage}
+        newAgentLock={newAgentLock}
+        studio={draft}
+        modals={modals}
+        status={<StatusChip id="draft-status">DRAFT · PRIVATE</StatusChip>}
+        rail={draftRail(section)}
+        onSection={setSection}
+        headerSub={
+          <>
+            <span>{headerWho(you, agent.handle, accountHandle)}</span>
+            <HeaderDot />
+            <span>{sectionLabel(section)}</span>
+          </>
+        }
+        tiles={headerTiles(draft.wallets, draft.positions)}
+        tilesLabel="Your money"
+        onRefreshAgent={onRefreshAgent}
+        onSwitch={onSwitch}
+        onNew={onNew}
+      >
+        {children}
+      </StudioShell>
+    </StudioContentContext.Provider>
   );
 }
