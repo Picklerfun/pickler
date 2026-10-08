@@ -24,6 +24,7 @@ import { keepAwake } from "../paper-study/comparison-host.js";
 import { createProfileStudyData } from "./profiles-data.js";
 import { perpsStudyReport } from "./report.js";
 import { renderProfileReport } from "./profiles-report.js";
+import { closeProfileResources } from "./profiles-resources.js";
 
 /** Only local PostgreSQL and public Perpl data are composed; no model or signer imports. */
 export async function runSmaProfiles(
@@ -99,22 +100,37 @@ export async function runSmaProfiles(
   });
   let releaseAwake = () => {};
   let processState = "idle";
+  let primaryFailure = false;
   const report = async () => {
     const snapshot = await exportPerpsAudit(research.pool, config);
     const measured = perpsStudyReport(snapshot.study, snapshot.accounts);
+    let state = processState;
+    if (["report", "status"].includes(input.command)) {
+      state = "process-unverified";
+      if (snapshot.study.record.status === "completed") {
+        state = "finished";
+      } else if (snapshot.study.record.status === "interrupted") {
+        state = "interrupted";
+      }
+    }
     const result = {
       ...measured,
-      status: processState === "interrupted" ? ("interrupted" as const) : measured.status,
-      processState,
+      status: state === "interrupted" ? ("interrupted" as const) : measured.status,
+      processState: state,
+      reportCommit: commit,
       generatedAt: Date.now(),
     };
-    const rendered = renderProfileReport(snapshot, result, processState);
+    const rendered = renderProfileReport(snapshot, result, state);
     for (const [name, content] of Object.entries({
       "report.json": JSON.stringify(result, null, 2) + "\n",
       "report.html": rendered.html,
       "report.csv": rendered.csv,
       "rounds.csv": rendered.roundsCsv,
       "decisions.json": JSON.stringify(rendered.rows, null, 2) + "\n",
+      "executions.json": JSON.stringify(rendered.executions, null, 2) + "\n",
+      "executions.csv": rendered.executionsCsv,
+      "observations.json": JSON.stringify(rendered.observations, null, 2) + "\n",
+      "observations.csv": rendered.observationsCsv,
       "comparisons.json":
         JSON.stringify(
           { comparisons: rendered.comparisons, riskSummary: rendered.riskSummary },
@@ -131,7 +147,7 @@ export async function runSmaProfiles(
       join(output, "runtime-status.json"),
       JSON.stringify(
         {
-          processState,
+          processState: state,
           studyStatus: result.status,
           rounds: result.rounds,
           at: Date.now(),
@@ -228,6 +244,7 @@ export async function runSmaProfiles(
     processState = "finished";
     await report();
   } catch (error) {
+    primaryFailure = true;
     processState = "interrupted";
     await report().catch(() => {});
     await writeFile(
@@ -246,12 +263,33 @@ export async function runSmaProfiles(
     ).catch(() => {});
     throw error;
   } finally {
-    releaseAwake();
-    signal.removeEventListener("abort", interrupt);
-    process.removeListener("SIGINT", interrupt);
-    process.removeListener("SIGTERM", interrupt);
-    await data.close();
-    await diagnostics;
-    await research.close();
+    const cleanupFailures = await closeProfileResources([
+      () => releaseAwake(),
+      () => signal.removeEventListener("abort", interrupt),
+      () => {
+        process.removeListener("SIGINT", interrupt);
+      },
+      () => {
+        process.removeListener("SIGTERM", interrupt);
+      },
+      () => data.close(),
+      () => diagnostics,
+      () => research.close(),
+    ]);
+    if (cleanupFailures.length && !primaryFailure) {
+      await writeFile(
+        join(output, "runtime-status.json"),
+        JSON.stringify({
+          processState: "interrupted",
+          phase: "cleanup",
+          error: "RESOURCE_CLEANUP_FAILED",
+          cleanupFailures,
+          at: Date.now(),
+          modelCalls: 0,
+        }) + "\n",
+        { mode: 0o600 },
+      ).catch(() => {});
+      throw new PilotError("RESOURCE_CLEANUP_FAILED", "SMA profile resource cleanup failed");
+    }
   }
 }
