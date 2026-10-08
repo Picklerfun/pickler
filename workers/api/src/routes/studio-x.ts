@@ -45,6 +45,8 @@ export function studioXRoutes(services: StudioServices) {
   api.get(
     "/agents/:id/x",
     operation("studioX", {
+      description:
+        "Returns stored X connection state and optional profile name/photo. Reading this state makes no X API request; earlier connections may have no photo.",
       security: "user",
       response: dto.xStateResponseSchema,
       errors: dto.studioErrorSchema,
