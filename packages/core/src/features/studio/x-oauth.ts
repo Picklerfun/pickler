@@ -4,6 +4,8 @@ import { createStudioAccess, type StudioAccess, type StudioDirectory } from "./a
 
 export const X_READ_SCOPES = ["users.read", "tweet.read", "offline.access"] as const;
 export const X_OAUTH_TTL_MS = 600_000;
+export const X_POST_PREVIEW_SIZE = 5;
+export const X_POST_REQUESTS_PER_DAY = 1;
 export type XConnectionStatus =
   "disconnected" | "connected" | "reconnect_required" | "revocation_pending";
 export interface XActor {
@@ -317,8 +319,16 @@ export function createXOAuthService(deps: {
       if (!provider.readsAvailable) {
         throw new XFailure("X_UNAVAILABLE");
       }
-      const grant = await token(value);
+      if (cursor) {
+        throw new PilotError("INVALID_INPUT", "Post pagination is disabled. View more on X.");
+      }
+      enabled();
+      const existing = await store.grant(value);
+      if (!existing || existing.status !== "connected" || !existing.tokens) {
+        throw new XFailure("X_RECONNECT_REQUIRED");
+      }
       await store.reserveRead(value, "posts", deps.policy!, now());
+      const grant = await token(value);
       try {
         const posts = await provider.posts(grant.tokens.accessToken, grant.identity.id, cursor);
         await recheck(value);
