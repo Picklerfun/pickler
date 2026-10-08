@@ -1,5 +1,6 @@
 import {
   SMA_PROFILE_VARIANTS,
+  SMA_REENTRY_VARIANTS,
   profileSmaTrace,
   profileDescriptor,
   canonicalAudit,
@@ -30,10 +31,11 @@ export function renderProfileReport(
   processState: string,
 ) {
   const { record, rounds, events } = packet.study;
-  if (record.config.version !== 6) {
+  if (record.config.version !== 6 && record.config.version !== 7) {
     throw new Error("Profile report requires v6");
   }
   const config = record.config;
+  const variants = config.version === 7 ? SMA_REENTRY_VARIANTS : SMA_PROFILE_VARIANTS;
   if (rounds.some((r) => Object.keys(r.calls).length > 0)) {
     throw new Error("Model calls are forbidden in profile reports");
   }
@@ -49,7 +51,7 @@ export function renderProfileReport(
   };
   const rows = Array.from({ length: 72 }, (_, slot) =>
     config.markets.flatMap((m) =>
-      SMA_PROFILE_VARIANTS.map((variant) => {
+      variants.map((variant) => {
         const round = rounds.find((r) => r.slot === slot);
         const context = round?.accounts[variant]
           ? { evidence: round.evidence, account: round.accounts[variant]! }
@@ -120,6 +122,10 @@ export function renderProfileReport(
           bookAt: frame?.book.provenance.providerTimestamp ?? null,
           fees: frame?.snapshot.market.fees ?? null,
           funding: frame?.snapshot.funding ?? null,
+          entryKey:
+            (final as { entryKey?: string } | undefined)?.entryKey ??
+            (initial as { entryKey?: string } | undefined)?.entryKey ??
+            null,
           initialAction: initial?.action ?? null,
           initialReason: initial?.reason ?? null,
           initialTrace: initial ?? null,
@@ -175,13 +181,17 @@ export function renderProfileReport(
     .filter((r) => r.executionStatus === "complete" && r.status === "completed")
     .map((r) => r.slot);
   const common = rows.filter((r) => completeSlots.includes(r.slot) && r.status === "complete");
-  const comparisons = [
-    ["hourly-selective", "hourly-legacy"],
-    ["fast-selective", "fast-legacy"],
-    ["fast-legacy", "hourly-legacy"],
-    ["fast-selective", "hourly-selective"],
-    ["fast-selective", "hourly-legacy"],
-  ].map(([variant, reference]) => ({
+  const pairs =
+    config.version === 7
+      ? [["sma-once-bar", "sma-reference"]]
+      : [
+          ["hourly-selective", "hourly-legacy"],
+          ["fast-selective", "fast-legacy"],
+          ["fast-legacy", "hourly-legacy"],
+          ["fast-selective", "hourly-selective"],
+          ["fast-selective", "hourly-legacy"],
+        ];
+  const comparisons = pairs.map(([variant, reference]) => ({
     variant,
     reference,
     validCommonAssetSlots: common.filter((r) => r.variant === variant).length,
@@ -205,7 +215,7 @@ export function renderProfileReport(
     })(),
     note: "Common valid decision identities only in proposal counts. Economic totals are separately evolving portfolios, including all actual fills; not a per-slot causal attribution.",
   }));
-  const riskSummary = SMA_PROFILE_VARIANTS.map((variant) => {
+  const riskSummary = variants.map((variant) => {
     const executions = events
       .filter((e) => e.kind === "profile-execution")
       .map(
