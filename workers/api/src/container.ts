@@ -68,6 +68,7 @@ import { HttpError } from "./http/http-error";
 import type { SigningRouteServices } from "./routes/signing";
 import type { WalletAuthServices } from "./routes/wallet-auth";
 import { apiDatabase } from "./database";
+import { xOAuthConfiguration } from "./x-config";
 
 import { createGrowthServices, marketBoardFor } from "./growth/services";
 
@@ -457,6 +458,7 @@ export function createServices(env: Env): Services & { close(): Promise<void> } 
   const chainId = supportedChainId(env);
   const custody = custodyServices(env, repository.pool, authenticate, profiles, chainId);
   const walletAuth = walletAuthServices(env, repository.pool, authenticate);
+  const xConfig = xOAuthConfiguration(env);
   return {
     authenticate,
     advice: {
@@ -522,18 +524,9 @@ export function createServices(env: Env): Services & { close(): Promise<void> } 
         store: new PostgresXOAuthStore(
           repository.pool,
           env.X_TOKEN_ENCRYPTION_KEY ?? "",
-          Number(env.X_TOKEN_ENCRYPTION_KEY_VERSION ?? "1"),
+          xConfig.keyVersion,
         ),
-        provider: createXOAuthProvider({
-          clientId: env.X_CLIENT_ID,
-          clientSecret: env.X_CLIENT_SECRET,
-          redirectUri: env.X_REDIRECT_URI,
-          enabled:
-            env.X_OAUTH_ENABLED === "true" &&
-            /^[a-fA-F0-9]{64}$/.test(env.X_TOKEN_ENCRYPTION_KEY ?? "") &&
-            /^[1-9]\d*$/.test(env.X_TOKEN_ENCRYPTION_KEY_VERSION ?? ""),
-          readsEnabled: env.X_READS_ENABLED === "true",
-        }),
+        provider: createXOAuthProvider(xConfig.provider),
         secrets: xSecrets(),
         policy: parseXApiPolicy(env.X_API_POLICY_JSON),
       }),
