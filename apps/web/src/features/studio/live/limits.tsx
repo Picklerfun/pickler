@@ -29,8 +29,16 @@ import styles from "./build.module.css";
  */
 export function Limits({ agent, live, canManage, onWallets }: LiveSectionProps) {
   const { caps: savedCaps, defaults } = liveCaps(agent);
-  const [caps, setCaps] = useSavedForm<LiveCaps>(agent.version, savedCaps);
-  const { state, save, touch, saving } = useSetupSave(live);
+  const [caps, setCaps] = useSavedForm<LiveCaps>(
+    agent.version,
+    savedCaps,
+    `${agent.productId ?? agent.id}:limits:form`,
+  );
+  const { state, save, touch, saving } = useSetupSave(
+    live,
+    `${agent.productId ?? agent.id}:limits`,
+    agent.version,
+  );
   const stepper = liveCapsStepper(caps, savedCaps, defaults);
   const view = runtimeOn(live.record) ? runtimeCapsView(stepper) : stepper;
   const canSave = canManage && view.canSave && !saving;

@@ -1,4 +1,7 @@
 "use client";
+import Link from "next/link";
+import { useParams, useSearchParams } from "next/navigation";
+import { agentSectionHref } from "../routing/routes";
 import type { ReactNode } from "react";
 import { Icon } from "@pickler/ui";
 import {
@@ -23,6 +26,7 @@ export interface StudioRailProps<K extends string> {
   groups: RailGroup<K>[];
   onSection(key: K): void;
   footer?: ReactNode;
+  agentId?: string;
 }
 
 /** shadcn supplies collapse, focus and tooltips; Studio supplies permitted sections. */
@@ -31,8 +35,12 @@ export function StudioRail<K extends string>({
   groups,
   onSection,
   footer,
+  agentId: suppliedAgentId,
 }: StudioRailProps<K>) {
   const { setOpenMobile } = useSidebar();
+  const params = useParams<{ agentId?: string }>();
+  const search = useSearchParams();
+  const agentId = params.agentId ?? suppliedAgentId ?? search.get("agent");
   return (
     <>
       <SidebarContent role="navigation" aria-label="Agent sections">
@@ -45,7 +53,7 @@ export function StudioRail<K extends string>({
                   <SidebarMenuItem key={item.key}>
                     <SidebarMenuButton
                       id={railItemId(idPrefix, item.key)}
-                      type="button"
+                      asChild
                       isActive={item.on}
                       aria-current={item.on ? "page" : undefined}
                       aria-label={
@@ -53,14 +61,24 @@ export function StudioRail<K extends string>({
                       }
                       data-locked={item.locked || undefined}
                       tooltip={{ children: item.title ?? item.label, surface: "dark" }}
-                      onClick={() => {
-                        onSection(item.key);
-                        setOpenMobile(false);
-                      }}
                     >
-                      <Icon name={item.icon} size={16} />
-                      <span data-sidebar-label>{item.label}</span>
-                      {item.locked && <Icon name="lock" size={16} />}
+                      <Link
+                        href={
+                          agentId ? agentSectionHref(agentId, item.key, search.toString()) : "#"
+                        }
+                        prefetch={false}
+                        onClick={(event) => {
+                          if (!agentId) {
+                            event.preventDefault();
+                            onSection(item.key);
+                          }
+                          setOpenMobile(false);
+                        }}
+                      >
+                        <Icon name={item.icon} size={16} />
+                        <span data-sidebar-label>{item.label}</span>
+                        {item.locked && <Icon name="lock" size={16} />}
+                      </Link>
                     </SidebarMenuButton>
                     {item.badge !== undefined && item.badge > 0 && (
                       <SidebarMenuBadge>{item.badge}</SidebarMenuBadge>

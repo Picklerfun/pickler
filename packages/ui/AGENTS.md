@@ -97,6 +97,9 @@ based on expanded state: that resets focus and CSS transitions.
 `scripts/design/sidebar-motion.mjs` adds frame-based acceptance to the rendered Design job.
 It verifies real DOM identity and content geometry, not just final screenshots or width endpoints.
 
+Sidebar menu controls explicitly suppress native link underlines so `asChild` navigation links
+retain the same row treatment as buttons. Keep this normalization when updating the registry.
+
 Navigation focus uses the product's 2px outline rather than a shadow halo. Keep keyboard focus
 visible. Product icons passed into size-4 menu slots must use size={16}, so Lucide's absolute
 stroke calculation matches the rendered geometry instead of being scaled twice.

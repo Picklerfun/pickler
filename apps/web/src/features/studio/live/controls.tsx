@@ -273,8 +273,16 @@ function HowItRuns({
   const runtime = runtimeOn(live.record);
   const { caps } = liveCaps(agent);
   const saved = liveEntry({ entry: agent.config.entry, spend: { perCallAusd: caps.perTradeAusd } });
-  const [form, setForm] = useSavedForm<LiveEntry>(agent.version, saved);
-  const { state, save, touch, saving } = useSetupSave(live);
+  const [form, setForm] = useSavedForm<LiveEntry>(
+    agent.version,
+    saved,
+    `${agent.productId ?? agent.id}:controls:form`,
+  );
+  const { state, save, touch, saving } = useSetupSave(
+    live,
+    `${agent.productId ?? agent.id}:controls`,
+    agent.version,
+  );
   const status = paper ? runtimeStatus(agent.paused, runtime) : liveStatus(agent);
   const plain = entryView(form, caps.perTradeAusd);
   const view = runtime ? runtimeEntryView(plain, agent.scheduleEnabled && !agent.paused) : plain;

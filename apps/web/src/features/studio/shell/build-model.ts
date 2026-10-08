@@ -188,7 +188,8 @@ export function sourcesView(current: WebForm, saved: WebForm, error: string | nu
 }
 
 /** Spec §3.5: a stale save reloads the agent and says so. */
-export const CONFLICT_LINE = "It changed somewhere else. Reloaded.";
+export const CONFLICT_LINE =
+  "The configuration changed. Your edits are kept; discard them to load the current version.";
 
 /** What a failed `PUT /setup` shows, by the API's error code. */
 export type SetupProblem =

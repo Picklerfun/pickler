@@ -40,6 +40,30 @@
 import { only } from "./lib/only.mjs";
 
 const ALL = [
+  ...["brief", "skills", "console", "identity"].map((section) => ({
+    path: `/studio/agents/preview-draft/${section}?stage=draft`,
+    name: `studio-route-draft-${section}`,
+    product: "studio",
+    surface: "dark",
+    task: "Studio routes",
+    proves: `#draft-section-${section}`,
+  })),
+  ...["brief", "skills", "console", "decisions", "controls"].map((section) => ({
+    path: `/studio/agents/preview-live/${section}?stage=perpl-live`,
+    name: `studio-route-live-${section}`,
+    product: "studio",
+    surface: "dark",
+    task: "Studio routes",
+    proves: `#live-section-${section}`,
+  })),
+  {
+    path: "/studio/new?stage=create-empty",
+    name: "studio-route-new",
+    product: "studio",
+    surface: "dark",
+    task: "Studio routes",
+    proves: "#new-agent",
+  },
   {
     path: "/",
     name: "landing",

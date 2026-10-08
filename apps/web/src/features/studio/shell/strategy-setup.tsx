@@ -33,8 +33,16 @@ export function StrategySetup({
 }) {
   const fieldId = useId();
   const saved = agent.config.perpsStrategy?.id ?? "combined";
-  const [selected, setSelected] = useSavedForm<StrategyId>(agent.version, saved);
-  const { state, save, touch, saving } = useSetupSave(studio);
+  const [selected, setSelected] = useSavedForm<StrategyId>(
+    agent.version,
+    saved,
+    `${agent.productId ?? agent.id}:strategy:form`,
+  );
+  const { state, save, touch, saving } = useSetupSave(
+    studio,
+    `${agent.productId ?? agent.id}:strategy`,
+    agent.version,
+  );
   const brief = agent.config.brief;
   const freeConditions = Boolean(
     brief && (brief.entersWhen.length || brief.exitsWhen.length || brief.never.length),

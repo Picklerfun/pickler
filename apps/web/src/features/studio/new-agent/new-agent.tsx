@@ -1,4 +1,5 @@
 "use client";
+import { useStudioForm } from "../routing/memory";
 
 import { StudioAccessRequest } from "../access-request";
 import { useEffect, useRef, useState } from "react";
@@ -138,7 +139,11 @@ export function NewAgent({
     draftLock,
   });
 
-  const [form, setForm] = useState<NewAgentForm>(staged?.form ?? emptyForm());
+  const [form, setForm] = useStudioForm<NewAgentForm>(
+    "create:form",
+    0,
+    staged?.form ?? emptyForm(),
+  );
   const [availability, setAvailability] = useState<{
     handle: string;
     available: boolean | "failed";

@@ -26,8 +26,16 @@ export function Limits({ agent, draft, canManage, onWallets }: DraftSectionProps
     maxLeverage: agent.config.maxLeverage,
   };
   const savedCaps = capsOf(capsSource);
-  const [caps, setCaps] = useSavedForm(agent.version, savedCaps);
-  const { state, save, touch, saving } = useSetupSave(draft);
+  const [caps, setCaps] = useSavedForm(
+    agent.version,
+    savedCaps,
+    `${agent.productId ?? agent.id}:limits:form`,
+  );
+  const { state, save, touch, saving } = useSetupSave(
+    draft,
+    `${agent.productId ?? agent.id}:limits`,
+    agent.version,
+  );
   const view = capsStepper(caps, savedCaps, starterCaps(capsSource));
   const canSave = canManage && view.canSave && !saving;
 

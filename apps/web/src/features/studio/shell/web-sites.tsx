@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useStudioForm } from "../routing/memory";
 import { Segmented } from "@pickler/ui";
 import type { WebMode } from "../new-agent/model";
 import { addSite, type WebForm } from "./build-model";
@@ -30,9 +30,14 @@ export interface SiteBox {
  * The site box both studios' Sources & rules edit (studio-live-v1 L2, L15): adding a typed site
  * goes through `addSite`, and a site that changed the list is handed to `onSites`.
  */
-export function useSiteBox(sites: readonly string[], onSites: (next: string[]) => void): SiteBox {
-  const [typed, setTyped] = useState("");
-  const [error, setError] = useState<string | null>(null);
+export function useSiteBox(
+  sites: readonly string[],
+  onSites: (next: string[]) => void,
+  scope: string,
+  version: number,
+): SiteBox {
+  const [typed, setTyped] = useStudioForm(`${scope}:typedSite`, version, "");
+  const [error, setError] = useStudioForm<string | null>(`${scope}:siteError`, version, null);
   return {
     typed,
     error,

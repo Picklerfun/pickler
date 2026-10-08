@@ -167,6 +167,7 @@ export function StudioShell<K extends string>({
             />
             <StudioRail
               idPrefix={idPrefix}
+              agentId={agent.productId ?? agent.id}
               groups={rail}
               onSection={onSection}
               footer={railFooter}
