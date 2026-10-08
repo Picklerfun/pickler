@@ -2,6 +2,16 @@ import { BENCHMARK_VARIANTS } from "../paper-study/benchmark.js";
 import { PERPS_FOUR_WAY_STRATEGIES, PERPS_STUDY_STRATEGIES } from "../perps-study/types.js";
 import { PilotError } from "@pickler/core";
 export const EVALUATION_PROTOCOLS = {
+  "perps-sma-profile-risk-v1": {
+    version: 6,
+    instrument: "perpetual",
+    strategySetVersion: 1,
+    strategies: ["hourly-legacy", "hourly-selective", "fast-legacy", "fast-selective"],
+    commands: ["prepare", "preflight", "run", "status", "stop", "report"],
+    paidCommands: [],
+    riskPolicy: "profile-risk-paired-v1",
+    accounting: "zero-model-calls-v1",
+  },
   "perps-sma-jev-exa-all-markets-v1": {
     version: 5,
     instrument: "perpetual",
