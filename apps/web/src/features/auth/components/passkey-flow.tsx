@@ -528,6 +528,7 @@ function SignFlow({
           )}
           {!resuming && state.step === "auth" && (
             <AccountStep
+              destination={target}
               mode={state.mode === "in" ? "in" : "up"}
               email={state.email}
               onMode={(chosen) => dispatch({ type: "mode_chosen", mode: chosen })}
@@ -686,7 +687,7 @@ function PasskeyAddFlow({
         }
         const away = redirectFor({ wallet: found, profile });
         if (away) {
-          replace(away);
+          replace(`${away}${away.includes("?") ? "&" : "?"}next=${encodeURIComponent(target)}`);
           return;
         }
         setScreen("add");
@@ -700,7 +701,7 @@ function PasskeyAddFlow({
     return () => {
       live = false;
     };
-  }, [replace, preview]);
+  }, [replace, preview, target]);
 
   /** Re-reads the list after a passkey is added, the same failed-read-is-not-empty rule as above. */
   function refreshPasskeys() {
