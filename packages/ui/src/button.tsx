@@ -9,6 +9,8 @@ export type ButtonSize = "sm" | "md" | "lg";
 interface ButtonOwnProps {
   variant?: ButtonVariant | undefined;
   size?: ButtonSize | undefined;
+  /** Box for a form disclosure; pill for actions and navigation chips. */
+  shape?: "box" | "pill" | undefined;
   /** Uppercase mono label, for navigation and utility actions. */
   mono?: boolean | undefined;
   block?: boolean | undefined;
@@ -30,6 +32,7 @@ const classes = (...values: (string | undefined)[]) => values.filter(Boolean).jo
 export function Button({
   variant = "primary",
   size = "md",
+  shape = "pill",
   mono = false,
   block = false,
   arrow = false,
@@ -45,6 +48,7 @@ export function Button({
       type={type}
       data-variant={variant}
       data-size={size}
+      data-shape={shape === "box" ? "box" : undefined}
       data-mono={mono || undefined}
       data-block={block || undefined}
       data-glow={glow || undefined}
@@ -64,6 +68,7 @@ export function ButtonLink<T extends ElementType = "a">({
   as,
   variant = "secondary",
   size = "md",
+  shape = "pill",
   mono = false,
   block = false,
   arrow = false,
@@ -78,6 +83,7 @@ export function ButtonLink<T extends ElementType = "a">({
       className={classes("pk-button", className)}
       data-variant={variant}
       data-size={size}
+      data-shape={shape === "box" ? "box" : undefined}
       data-mono={mono || undefined}
       data-block={block || undefined}
       data-glow={glow || undefined}

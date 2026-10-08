@@ -367,6 +367,10 @@ h2 {
     transform var(--pk-duration);
 }
 
+.pk-button[data-shape="box"] {
+  border-radius: var(--pk-radius-sm);
+}
+
 .pk-button:active {
   transform: scale(0.98);
 }
@@ -948,11 +952,45 @@ h2 {
   border-color: var(--pk-rule);
   font-family: var(--pk-font);
 }
+/* shadcn Select keeps Radix interactions and uses the shared field/portal treatment. */
+[data-slot="select-trigger"] {
+  border-style: solid;
+  box-shadow: none;
+  color: var(--pk-ink);
+  font-family: var(--pk-font);
+  cursor: pointer;
+}
+[data-slot="select-trigger"]:focus-visible {
+  outline: 2px solid var(--pk-focus);
+  outline-offset: 2px;
+}
+[data-slot="select-trigger"][data-placeholder] {
+  color: var(--pk-ink-muted);
+}
+[data-slot="select-trigger"]:disabled {
+  color: var(--pk-ink-muted);
+  opacity: 1;
+  cursor: not-allowed;
+}
+[data-slot="select-content"] {
+  border: 1px solid var(--pk-rule);
+  font-family: var(--pk-font);
+}
+[data-slot="select-item"] {
+  min-height: 36px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+[data-slot="select-item"][data-disabled] {
+  color: var(--pk-ink-muted);
+  opacity: 1;
+}
 @media (prefers-reduced-motion: reduce) {
   [data-slot^="sidebar"],
   [data-slot^="sheet"],
   [data-slot^="dropdown-menu"],
-  [data-slot^="tooltip"] {
+  [data-slot^="tooltip"],
+  [data-slot^="select"] {
     animation: none !important;
     transition: none !important;
   }

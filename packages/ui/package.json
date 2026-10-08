@@ -9,6 +9,7 @@
     "./tokens": "./src/tokens.ts",
     "./sidebar": "./src/components/sidebar.tsx",
     "./dropdown-menu": "./src/components/dropdown-menu.tsx",
+    "./select": "./src/components/select.tsx",
     "./shadcn.css": "./src/shadcn.css",
     "./components/*": "./src/components/*.tsx",
     "./hooks/*": "./src/hooks/*.ts"

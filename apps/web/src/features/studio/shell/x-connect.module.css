@@ -1,11 +1,70 @@
 .xConnect {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
 }
-.xRow {
+.xHeader {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.xProfile {
+  display: flex;
+  align-items: center;
+  align-self: flex-start;
+  max-width: 100%;
+  gap: 10px;
+  color: var(--pk-ink);
+  text-decoration: none;
+  border-radius: var(--pk-radius-sm);
+}
+.xProfile:hover .xName {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.xProfile:focus-visible {
+  outline: 2px solid var(--pk-focus);
+  outline-offset: 4px;
+}
+.xAvatar {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  overflow: hidden;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-bg);
+}
+.xAvatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.xProfileText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 2px;
+}
+.xName {
+  font: 600 16px/1.2 var(--pk-font);
+  overflow-wrap: anywhere;
+}
+.xHandle {
+  color: var(--pk-ink-muted);
+  font-size: 12px;
+}
+.xEmpty {
+  display: inline-flex;
+}
+.xFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
   gap: 8px;
 }
 .xActions {
@@ -38,4 +97,5 @@
 .xNoteLine {
   margin: 0;
   color: var(--pk-ink-muted);
+  font-size: 12px;
 }

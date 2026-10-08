@@ -405,3 +405,7 @@ through current OAuth, never historical post evidence. See [Studio X OAuth](../.
 ## X preview cost controls
 
 X post preview policy exports a five-resource page size and one attempt per agent per UTC day. Cursor requests are refused before any provider call. Quota is reserved before token renewal; exhausted or disabled reads cannot trigger transport. This is an X cost-control ceiling, separate from AI credits.
+
+## X profile presentation
+
+OAuth identities may carry optional displayName/profileImageUrl decoration from the existing identity verification. State reads return the stored snapshot; decoration never grants access or triggers provider reads.

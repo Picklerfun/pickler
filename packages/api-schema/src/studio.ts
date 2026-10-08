@@ -341,7 +341,14 @@ export const xConnectionStatusSchema = z.enum([
 ]);
 export const xStateResponseSchema = z.object({
   status: xConnectionStatusSchema,
-  account: z.object({ handle: z.string(), verifiedAt: z.string().datetime() }).nullable(),
+  account: z
+    .object({
+      handle: z.string(),
+      displayName: z.string().max(100).nullable().optional(),
+      profileImageUrl: z.string().url().max(2048).nullable().optional(),
+      verifiedAt: z.string().datetime(),
+    })
+    .nullable(),
   available: z.boolean(),
   readsAvailable: z.boolean(),
 });

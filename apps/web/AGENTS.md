@@ -983,3 +983,18 @@ The browser receives the Location and cookie headers; API service bindings never
 ## X preview cost controls
 
 Optional X timeline previews use an explicit paid action for five posts, once per mounted connection. Refresh and paging are absent. View posts on X is a plain external link with no provider request. Daily admission is enforced in PostgreSQL, including after reload or another tab. Reads remain disabled remotely until separately approved; linking still works.
+
+## X profile presentation
+
+Identity & voice places compact identity and shared X account cards side by side, stacking below 600px. The profile photo/name/handle is the external X link, with no redundant Connected badge or separate View posts button. Disconnected and recovery states remain explicit. Missing/failed images use the X mark. Profile snapshots come from the existing connection read; opening the section performs no X profile or timeline query. Controlled fixtures use local decorative images, and paid reading is disabled in the connected draft preview.
+
+## Strategy selection
+
+Studio Brief uses the shared shadcn/Radix Select from `@pickler/ui/select` inside the existing
+Field frame. The labelled trigger describes its version hint; the dark portal contains the four
+existing strategies. Radix owns keyboard navigation, typeahead, dismissal and focus restoration.
+Feature CSS only sizes the control. Preserve permission/busy disabling, authored-condition
+warnings, strategy versions and the existing versioned setup save. Multi-choice market selection
+continues to use DropdownMenu checkbox items, rather than this single-choice control. Its trigger
+uses the shared Button `shape="box"`, matching Strategy’s field radius. Profile and navigation
+chips retain their pill shapes; feature styles must not redeclare those radii.
