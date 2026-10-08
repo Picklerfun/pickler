@@ -77,6 +77,11 @@ try {
       const link = page.locator(`#${prefix}-rail-${section}`);
       await link.waitFor();
       assert.equal(await link.evaluate((node) => node.tagName), "A", "Navigation uses links");
+      assert.equal(
+        await link.evaluate((node) => getComputedStyle(node).textDecorationLine),
+        "none",
+        "Sidebar links have no browser-default underline",
+      );
       await link.click();
       await page.waitForURL(`**/studio/agents/${agentId}/${section}?stage=${stage}`);
       await page.waitForFunction(
@@ -124,7 +129,15 @@ try {
     "token",
     "board",
   ]) {
-    await page.locator(`a[href="/studio/agents/${historicalAgent}/${section}?stage=live"]`).click();
+    const historicalLink = page.locator(
+      `a[href="/studio/agents/${historicalAgent}/${section}?stage=live"]`,
+    );
+    assert.equal(
+      await historicalLink.evaluate((node) => getComputedStyle(node).textDecorationLine),
+      "none",
+      "Historical sidebar links have no browser-default underline",
+    );
+    await historicalLink.click();
     await page.waitForURL(`**/studio/agents/${historicalAgent}/${section}?stage=live`);
     assert.equal(
       await historicalRail.evaluate((node) => node.isConnected),
