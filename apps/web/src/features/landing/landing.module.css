@@ -467,7 +467,7 @@
   right: 0;
   bottom: 0;
   z-index: 2;
-  height: 160px;
+  height: 200px;
   background: linear-gradient(180deg, transparent 0%, var(--pk-bg) 100%);
 }
 
@@ -1574,9 +1574,11 @@
   }
 }
 
+/* The phone keeps its proportions as the panel narrows: a smaller scale, and a panel tall enough
+   that the fade still lands between the screen and the closing line. */
 @media (max-width: 820px) {
   .heroPhone {
-    min-height: 560px;
+    min-height: 720px;
   }
 
   .heroPhoneInner {
@@ -1586,12 +1588,16 @@
 
 @media (max-width: 560px) {
   .heroPhone {
-    min-height: 460px;
+    min-height: 600px;
   }
 
   .heroPhoneInner {
     top: 44px;
-    transform: translateX(-50%) scale(0.56);
+    transform: translateX(-50%) scale(0.5);
+  }
+
+  .cornerRight {
+    display: none;
   }
 
   .stepsPhone {
