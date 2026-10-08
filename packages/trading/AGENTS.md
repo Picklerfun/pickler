@@ -202,3 +202,5 @@ strictly above 50% using full closes. Global emergency exits and historical risk
 
 Read [the local guide](../../apps/agent-service/SMA-PROFILES-RISK.md) for frozen parameters,
 commands, one-shot execution, and report limitations. Tests never make paid provider calls.
+All registered perpetual protocols permit a read-only audit export. Export support does not
+authorize running an older model-decision analyzer against a new profile protocol.
