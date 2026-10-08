@@ -986,4 +986,4 @@ Optional X timeline previews use an explicit paid action for five posts, once pe
 
 ## X profile presentation
 
-Identity & voice leads with the shared X account panel. The profile photo/name/handle is the external X link, with a visible connection status and no separate View posts button. Missing/failed images use the X mark. Profile snapshots come from the existing connection read; opening the section performs no X profile or timeline query. Controlled fixtures use local decorative images, and paid reading is disabled in the connected draft preview.
+Identity & voice places compact identity and shared X account cards side by side, stacking below 600px. The profile photo/name/handle is the external X link, with no redundant Connected badge or separate View posts button. Disconnected and recovery states remain explicit. Missing/failed images use the X mark. Profile snapshots come from the existing connection read; opening the section performs no X profile or timeline query. Controlled fixtures use local decorative images, and paid reading is disabled in the connected draft preview.
