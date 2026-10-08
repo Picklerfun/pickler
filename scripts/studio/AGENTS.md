@@ -30,3 +30,7 @@ only X's external consent page with a controlled redirect; the actual Studio API
 core, private PostgreSQL, publication and posts are exercised unchanged. Generated X credentials
 and quotas are test-only. Production transports never import this fixture. See
 [Studio X OAuth](../../docs/studio-x-oauth.md).
+
+## X preview cost controls
+
+Controlled X acceptance uses the explicit Load 5 posts (paid) preview action. Provider credentials and spending remain synthetic; the browser never refreshes or auto-pages X posts.
