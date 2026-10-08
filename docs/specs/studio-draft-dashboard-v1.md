@@ -1,8 +1,8 @@
-# Historical X verification
+# Studio dashboard archive
 
-The post-verification and Skip X sections of this specification are historical. Current behavior
-is defined by [Studio X OAuth](../studio-x-oauth.md); existing evidence is preserved, but new
-publication requires OAuth and authorization never grants posting permission.
+This document retains the original non-X dashboard design. All X behavior is defined by
+[Studio X OAuth](../studio-x-oauth.md). Obsolete connection instructions have been removed;
+applied migrations and historical evidence remain unchanged.
 
 # Studio: the draft dashboard, Connect X and Go Public (v1)
 
@@ -13,8 +13,7 @@ Sources & rules, Limits & funding, Identity & voice, Trade, Master wallet, plus 
 sections. The canvas's "creating" phase is `studio-create-simplified-v1.md`, already built.
 
 This narrows `go-public-v1.md` to what the new canvas draws. Voice, the wallet and its funding all
-happen at creation now, so Go Public is one step: Connect X, which can be skipped. X posting (OAuth,
-the outbox), the per-venue ALLOW, avatars by upload, Public profile and Audience stay in
+happen at creation now, so Go Public is one step: Connect X. Read-only OAuth is implemented separately; X posting (the outbox), the per-venue ALLOW, avatars by upload, Public profile and Audience stay in
 `go-public-v1.md` for later.
 
 ## 1. Problem and users
@@ -31,7 +30,7 @@ The canvas makes the created agent's studio one consistent dashboard:
 - a rail with RUN / BUILD / GROW / YOU, where sections with nothing to show for a private agent are
   locked ("opens when it's public");
 - a header with the agent, its status, and five money tiles;
-- Go Public: Connect X by posting a verification line, or skip it, then "Go public".
+- Go Public: Connect X through read-only OAuth, then "Go public".
 
 Users: a studio account with a private agent (status `draft`).
 
@@ -41,10 +40,10 @@ Users: a studio account with a private agent (status `draft`).
 | --- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
 | D1  | **A draft gets its own studio, `features/studio/draft/`.** When the selected agent is a draft, the studio draws the canvas's shell (top bar, rail, header, section) instead of the three-column home. Live agents keep today's home and rail shell, unchanged.                                                                                                                                                                         | The canvas is the draft's studio. Rebuilding the live studio is a separate canvas ("Studio v5").                                        |
 | D2  | **Rail:** RUN = Overview, Console, Trades, Activity; BUILD = Brief, Sources & rules, Limits & funding, Identity & voice; GROW = Public profile; YOU = Trade, Master wallet. **Activity and Public profile are locked** while private ("{Section} opens when it's public." with "Back to Overview"), as the canvas's `OPEN_SECTIONS` says.                                                                                              | The canvas.                                                                                                                             |
-| D3  | **Go Public is one step, Connect X, and it can be skipped.** "Skip X for now · it posts on Pickler only" makes the button "Go public" without X; "Undo" brings the step back. The skip is a screen choice, not stored.                                                                                                                                                                                                                 | The canvas (`tasks` has one entry, `allDone = done \|\| xSkipped`). It answers go-public-v1 Q2: X is optional.                          |
-| D4  | **Connect X is verification by post** (go-public-v1 D6): the owner types the handle and presses Verify; Pickler issues a challenge and shows the line to post, "Verifying {Name} on @pickler · pk-XXXXXXXX"; "Check again" reads the account's recent posts with the app's bearer token and looks for the code in a post made after the challenge.                                                                                     | Proves control without write access, exactly the canvas's flow (`xMiss`). Answers go-public-v1 Q3: the line keeps "@pickler".           |
-| D5  | **Without `X_BEARER_TOKEN` the API answers 503 `X_UNAVAILABLE`,** and the card says "X verification isn't open yet. Skip it for now; you can connect X later in Identity & voice." Nothing pretends to verify.                                                                                                                                                                                                                         | Pickler's X developer app (go-public-v1 Q1) is not set up yet; the flow must still be honest and Go Public must still work (D3).        |
-| D6  | **One verified X account per agent, one agent per X account.** `x_user_id` and the handle are unique. Disconnect is allowed while private; a public agent keeps its handle (409 `X_ON_PUBLIC_AGENT`).                                                                                                                                                                                                                                  | go-public-v1 §8.                                                                                                                        |
+| D3  | **New publication requires a current OAuth connection.** No bypass is offered.                                                                                                                                                                                                                                                                                                                                                         | [Studio X OAuth](../studio-x-oauth.md).                                                                                                 |
+| D4  | **Connect X uses Authorization Code + PKCE.** Identity is obtained from X, never a client claim.                                                                                                                                                                                                                                                                                                                                       | Owner authorization and browser-bound consent.                                                                                          |
+| D5  | **Unconfigured OAuth remains unavailable.** Connecting and reading have independent disabled-by-default gates.                                                                                                                                                                                                                                                                                                                         | Explicit operational configuration.                                                                                                     |
+| D6  | **One X account per agent, one agent per account.** Public agents may disconnect without losing publication.                                                                                                                                                                                                                                                                                                                           | [Studio X OAuth](../studio-x-oauth.md).                                                                                                 |
 | D7  | **Publishing is its own column** (go-public-v1 D1, D2): `agents.agents.visibility` (`private`/`public`) and `published_at`. The migration makes every non-draft agent public with `published_at = created_at`. The marketplace filters on `visibility = 'public'` instead of `status <> 'draft'`.                                                                                                                                      | A status cannot say both "has a wallet and runs" and "private".                                                                         |
 | D8  | **`POST /agents/:id/publish` re-checks on the server** in one transaction: not killed, a linked agent wallet, and that wallet holding at least 10 AUSD (read on chain, the schedule's minimum). It sets `visibility = 'public'`, `published_at = now()` and a draft's `status` to `active`. There is no FIRST_RUN check: a Perpl draft cannot run yet (D12).                                                                           | The screen never decides what is public. Creation already demanded the money; a pull-back since then must not slip through.             |
 | D9  | **No unpublish** (go-public-v1 D16).                                                                                                                                                                                                                                                                                                                                                                                                   | A record that vanishes on demand is not a record.                                                                                       |
@@ -66,19 +65,9 @@ Users: a studio account with a private agent (status `draft`).
 The studio opens the draft's Overview. Header: avatar, name, `@handle · Overview`, the
 `DRAFT · PRIVATE` chip; tiles below. Overview has three blocks:
 
-1. **Go public.** Title `GO PUBLIC.`, `0 / 1`, a progress bar, "Private until you flip it. Once public it shows on Pickler{ and X}." (the canvas's "and it starts trading on its rules" waits for the Perpl runtime, D19) One task,
-   **Connect X**, with "Connect":
-   - Connect opens the X row: the X mark, `@halftimebot` placeholder, **Verify**.
-   - Verify (`POST .../x/challenge`) shows "We couldn't find the post yet.", the line to post, and
-     "POST THIS FROM @HANDLE · THEN CHECK AGAIN"; the button reads **Check again**
-     (`POST .../x/verify`). Found: the task is done, meta `@HANDLE`, `1 / 1`. Not found: the same
-     prompt stays. Taken: "@handle is already another agent's." 503: D5's line.
-   - **Go public** is enabled when the task is done or skipped; otherwise it reads "Connect X to go
-     public". Under it, "SKIP X FOR NOW · IT POSTS ON PICKLER ONLY" / "POSTS ON PICKLER ONLY · UNDO".
-   - Go public (`POST .../publish`): the title becomes `{NAME} IS LIVE`, then the studio reloads the
-     agents; the agent is no longer a draft and opens in the live studio. A 409 `PUBLISH_BLOCKED`
-     names the blocker (`FUNDS`: "Its wallet needs at least 10 AUSD to go public." with "Fund from
-     master"; `WALLET`: "It needs its own wallet to go public."; `KILLED`).
+1. **Go public.** Connect X through the shared read-only OAuth consent panel. Publish is enabled
+   only for a current connection and the existing funding/lifecycle checks. Connect, reconnect,
+   disconnect and manual owner-only posts follow [Studio X OAuth](../studio-x-oauth.md).
 2. **Its wallet** (READY): address, `CAPS 5 / 20 / 1×`, Copy; AUSD · TRADES and MON · GAS; "Fund
    from master" (Wallets modal on this wallet) and "Limits". Under it: "Run on its own · every
    {N}h", "Unlocks with the Perpl runtime." (D19), a shut switch.
@@ -92,8 +81,7 @@ answers `WALLET`.
 
 Avatar (opens the avatar picker; saving writes accent and pattern), NAME input (saved on blur or
 Enter, 1–40), `@handle` with "HANDLE IS FIXED". VOICE: six chips, the sample under them; picking
-one saves it. X ACCOUNT ("where it posts · optional", tag CONNECTED / NOT CONNECTED): the same
-input and Verify as the Go Public task, or `@handle` with DISCONNECT.
+one saves it. X ACCOUNT uses the same read-only OAuth connection panel as Overview.
 
 ### 3.3 Limits & funding
 
@@ -128,23 +116,21 @@ Trade: D16's Soon panel. Master wallet: D17.
 
 ## 4. API
 
+X endpoints and contracts are maintained in [Studio X OAuth](../studio-x-oauth.md) and generated OpenAPI.
+
 `/v1/studio/*` routes answer bare JSON; errors `{ error, message, detail? }`, except 400
 `INVALID_BRIEF`, which is `{ error, message, field, reason }` (`field` the brief section, `reason`
 one of `required`, `too_long`, `too_many`, `not_trimmed`). All require the owner's studio JWT;
 another owner's agent, or none, is 404 `NOT_FOUND` on every `/agents/:id/*` route. A malformed body
 is 400 `INVALID_INPUT`.
 
-| Method | Path                      | Request                                                                                                                                   | Response                                                                                                            | Errors                                                                                                                                                                                                                                                                                            |
-| ------ | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| PUT    | `/agents/:id/setup`       | `{ expectedVersion, brief?: {thesis,entersWhen,exitsWhen,never}, sources?: {web}, caps?: {perTradeAusd,perDayAusd,maxLeverage}, voice? }` | the studio agent                                                                                                    | 400 `INVALID_BRIEF` / `INVALID_INPUT`; 404 `NOT_FOUND`; 409 `CONFLICT` (stale `expectedVersion`), `NOT_A_DRAFT`                                                                                                                                                                                   |
-| PUT    | `/agents/:id/identity`    | `{ name?, avatar?: { accent, pattern } }`                                                                                                 | the studio agent                                                                                                    | 400 `INVALID_INPUT`; 404 `NOT_FOUND`                                                                                                                                                                                                                                                              |
-| GET    | `/agents/:id/activity`    | —                                                                                                                                         | `{ events: [{ kind: "created" \| "wallet" \| "transfer", text, at }] }`, newest first, ≤ 50                         | 404 `NOT_FOUND`                                                                                                                                                                                                                                                                                   |
-| GET    | `/agents/:id/x`           | —                                                                                                                                         | `{ account: { handle, verifiedAt } \| null, challenge: { handle, text, expiresAt } \| null, available }`            | 403 `RESEARCH_ACCESS_DENIED` for a workspace member who is not the owner (it carries the live code); 404 `NOT_FOUND`                                                                                                                                                                              |
-| POST   | `/agents/:id/x/challenge` | `{ handle }` (`@` optional, 1–15 of `[A-Za-z0-9_]`)                                                                                       | `{ handle, text, expiresAt }` (24 h; a new one replaces the old)                                                    | 400 `INVALID_X_HANDLE`; 404 `NOT_FOUND`; 409 `X_HANDLE_TAKEN`, `X_ALREADY_CONNECTED`; 429 `TOO_MANY_CHECKS` (one per 10 s); 503 `X_UNAVAILABLE`                                                                                                                                                   |
-| POST   | `/agents/:id/x/verify`    | `{}`                                                                                                                                      | `{ verified: true, handle }` or `{ verified: false, reason: "NOT_FOUND" }`                                          | 404 `NOT_FOUND`, `CHALLENGE_NOT_FOUND`; 409 `CHALLENGE_EXPIRED`, `X_HANDLE_TAKEN`, `X_ALREADY_CONNECTED`; 429 `TOO_MANY_CHECKS` (one per 10 s); 503 `X_UNAVAILABLE`                                                                                                                               |
-| DELETE | `/agents/:id/x`           | —                                                                                                                                         | `{ disconnected: true }`                                                                                            | 404 `NOT_FOUND`; 409 `X_ON_PUBLIC_AGENT`                                                                                                                                                                                                                                                          |
-| POST   | `/agents/:id/publish`     | `{}`                                                                                                                                      | `{ visibility: "public", publishedAt }`                                                                             | 400 `INVALID_INPUT` (a non-empty body); 404 `NOT_FOUND`; 409 `PUBLISH_BLOCKED` with `detail.blockers` ⊆ `WALLET`, `FUNDS`, `KILLED` (api-schema's `PUBLISH_BLOCKERS`); 503 `BALANCES_UNAVAILABLE`; 409 `PUBLISH_CONFLICT` (the agent's wallet or state changed twice while publishing; try again) |
-| GET    | `/wallets/ledger`         | —                                                                                                                                         | `{ entries: [{ direction: "to_agent" \| "to_master", token, amount, agentName, txHash, at }] }` newest first, ≤ 100 | 503 `WALLETS_UNAVAILABLE` where the ledger is not composed                                                                                                                                                                                                                                        |
+| Method | Path                   | Request                                                                                                                                   | Response                                                                                                            | Errors                                                                                                                                                                                                                                                                                            |
+| ------ | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| PUT    | `/agents/:id/setup`    | `{ expectedVersion, brief?: {thesis,entersWhen,exitsWhen,never}, sources?: {web}, caps?: {perTradeAusd,perDayAusd,maxLeverage}, voice? }` | the studio agent                                                                                                    | 400 `INVALID_BRIEF` / `INVALID_INPUT`; 404 `NOT_FOUND`; 409 `CONFLICT` (stale `expectedVersion`), `NOT_A_DRAFT`                                                                                                                                                                                   |
+| PUT    | `/agents/:id/identity` | `{ name?, avatar?: { accent, pattern } }`                                                                                                 | the studio agent                                                                                                    | 400 `INVALID_INPUT`; 404 `NOT_FOUND`                                                                                                                                                                                                                                                              |
+| GET    | `/agents/:id/activity` | —                                                                                                                                         | `{ events: [{ kind: "created" \| "wallet" \| "transfer", text, at }] }`, newest first, ≤ 50                         | 404 `NOT_FOUND`                                                                                                                                                                                                                                                                                   |
+| POST   | `/agents/:id/publish`  | `{}`                                                                                                                                      | `{ visibility: "public", publishedAt }`                                                                             | 400 `INVALID_INPUT` (a non-empty body); 404 `NOT_FOUND`; 409 `PUBLISH_BLOCKED` with `detail.blockers` ⊆ `WALLET`, `FUNDS`, `KILLED` (api-schema's `PUBLISH_BLOCKERS`); 503 `BALANCES_UNAVAILABLE`; 409 `PUBLISH_CONFLICT` (the agent's wallet or state changed twice while publishing; try again) |
+| GET    | `/wallets/ledger`      | —                                                                                                                                         | `{ entries: [{ direction: "to_agent" \| "to_master", token, amount, agentName, txHash, at }] }` newest first, ≤ 100 | 503 `WALLETS_UNAVAILABLE` where the ledger is not composed                                                                                                                                                                                                                                        |
 
 The studio agent DTO gains `visibility`, `publishedAt` and `xHandle` (verified handle or null).
 `PUT /setup` with `caps` writes the new per-trade and per-day caps to the config's `spend` in the
@@ -171,37 +157,17 @@ ALTER TABLE agents.agents ADD CONSTRAINT agents_published_consistent
   CHECK ((visibility = 'public') = (published_at IS NOT NULL));
 CREATE INDEX agents_public_idx ON agents.agents (published_at DESC NULLS LAST) WHERE visibility = 'public';
 
-CREATE TABLE agents.x_challenges (
-  agent_id uuid PRIMARY KEY REFERENCES agents.agents(id) ON DELETE CASCADE, -- one live challenge
-  handle text NOT NULL CONSTRAINT x_challenges_handle_format CHECK (handle ~ '^[A-Za-z0-9_]{1,15}$'),
-  code text NOT NULL,                     -- 'pk-' + 8 base32 chars
-  created_at timestamptz NOT NULL DEFAULT now(),
-  expires_at timestamptz NOT NULL,
-  last_checked_at timestamptz
-);
-CREATE TABLE agents.x_accounts (
-  agent_id uuid PRIMARY KEY REFERENCES agents.agents(id) ON DELETE CASCADE,
-  x_user_id text NOT NULL CONSTRAINT x_accounts_x_user_id_key UNIQUE,
-  handle text NOT NULL,
-  verified_at timestamptz NOT NULL,
-  verification_post_id text NOT NULL
-);
-CREATE UNIQUE INDEX x_accounts_handle_key ON agents.x_accounts (lower(handle));
--- Both X tables have RLS enabled; the service role (where it exists) gets
--- SELECT, INSERT, UPDATE, DELETE on them.
 ```
 
-On verify, `agent_profiles.x_handle` is set to the handle too (its unique index already exists);
-disconnect clears both. Readers that change: the three `status <> 'draft'` filters in
-`agent-directory.ts` become `visibility = 'public'`; `studio/directory.ts` returns `visibility`,
-`published_at` and the verified handle.
+Existing X evidence tables are retained by the applied migrations. OAuth grants and
+private history are added by migration 0034; do not rerun or rewrite migration 0024.
 
 ## 6. Integrations
 
-| System    | Use                                                                                                                                                                                                                                | Config                                               |
-| --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
-| X API v2  | `GET /2/users/by/username/:u` (id), `GET /2/users/:id/tweets?max_results=20&start_time=&tweet.fields=created_at,author_id&exclude=retweets` (match code; `start_time` is the challenge's creation floored to the second, RFC 3339) | `X_BEARER_TOKEN` (API secret, optional; absent → D5) |
-| Monad RPC | the publish funding check (existing balance reader)                                                                                                                                                                                | existing                                             |
+| System    | Use                                                 | Config                                            |
+| --------- | --------------------------------------------------- | ------------------------------------------------- |
+| X API v2  | Read-only OAuth identity and manual owner timeline  | [API runtime configuration](../studio-x-oauth.md) |
+| Monad RPC | the publish funding check (existing balance reader) | existing                                          |
 
 ## 7. Design work
 
@@ -212,12 +178,7 @@ production): `draft` (Overview), `draft-x-open`, `draft-x-miss`, `draft-x-ok`, `
 
 ## 8. Security and abuse
 
-- Verification: single live challenge per agent, 24 h, code bound to agent and handle; only posts
-  created at or after the challenge count (retweets never); the post's author id must be the
-  looked-up user id; checks limited to one per 10 s per agent.
-- `x_user_id` and `lower(handle)` unique: one X account, one agent.
-- The bearer token never leaves the API; X errors map to 503 without echoing X's body.
-- Publish re-checks on the server; the client's skip is not trusted for anything.
+- X authorization, uniqueness, privacy and publication fences follow [Studio X OAuth](../studio-x-oauth.md).
 - `PUT /setup` is draft-only and versioned; caps keep core's bounds.
 
 ## 9. Acceptance criteria and tests
@@ -226,8 +187,7 @@ production): `draft` (Overview), `draft-x-open`, `draft-x-miss`, `draft-x-ok`, `
    public after the migration (Postgres test).
 2. `publish` answers 409 with exactly the failing blockers; it flips visibility, `published_at`
    and status together; a second call is idempotent.
-3. X: verify succeeds only for a post by the looked-up user containing the code and created after
-   the challenge; a second agent cannot claim the same X user or handle; no token → 503.
+3. X: controlled OAuth consent, uniqueness and encrypted persistence are covered by the canonical suite.
 4. `reviseDraft` keeps every `prepareDraft` rule (pinned with the same inputs) and leaves
    `marketScope` alone; a stale `expectedVersion` is 409.
 5. Ledger and activity list only the person's own transfers, newest first.
@@ -236,12 +196,11 @@ production): `draft` (Overview), `draft-x-open`, `draft-x-miss`, `draft-x-ok`, `
 
 ## 10. Rollout
 
-`X_BEARER_TOKEN` is set on `pickler-api-staging` (which serves pickler.fun) when Pickler's X app
-exists; until then Connect X says D5's line and Go Public works through the skip. The migration is
-additive and safe before the code.
+Follow [Studio X OAuth](../studio-x-oauth.md). Confirm migration and deployed versions; configure
+the confidential application, dedicated key, reviewed quotas and independent activation gates.
 
 ## 11. Out of scope
 
-X posting (OAuth grant, outbox, post classes), Public profile and Audience sections, avatar upload,
+X posting (outbox, post classes), Public profile and Audience sections, avatar upload,
 the per-venue ALLOW and signed caps, paper runs of Perpl agents and decision review (Accept, Reject,
 Ask why), "Talk to it", personal trading, AI credits, the live studio's redesign.
