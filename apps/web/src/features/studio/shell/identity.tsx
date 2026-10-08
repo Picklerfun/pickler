@@ -9,6 +9,7 @@ import { AgentAvatar } from "./agent-avatar";
 import { nameChange, voiceOf, NAME_MAX } from "./identity-model";
 import { SaveOutcome, useSetupSave } from "./setup-save";
 import { PREVIEW_NOTE, type UseAgentStudio } from "./use-agent-studio";
+import { useStudioForm, useStudioMemory } from "../routing/memory";
 import { XConnect } from "./x-connect";
 import type { StudioIdPrefix } from "./model";
 import build from "./build.module.css";
@@ -78,15 +79,15 @@ export function Identity({
 
   /* The NAME box, starting over whenever the saved name moves (its own save, or a reload). */
   const savedName = agent.name ?? "";
-  const [name, setName] = useState(savedName);
-  const [seenName, setSeenName] = useState(savedName);
-  if (savedName !== seenName) {
-    setSeenName(savedName);
-    setName(savedName);
-  }
+  const memory = useStudioMemory();
+  const nameScope = `${agent.productId ?? agent.id}:name`;
+  const [name, setName] = useStudioForm(`${nameScope}:form`, agent.version, savedName);
   const [nameState, setNameState] = useState<WriteState>(IDLE);
 
   async function commitName() {
+    if (memory.busy(nameScope)) {
+      return;
+    }
     const change = nameChange(agent.name, name);
     if (change.kind === "same") {
       setName(savedName);
@@ -96,9 +97,15 @@ export function Identity({
       setNameState({ kind: "error", text: change.text });
       return;
     }
+    const generation = memory.generation();
+    memory.begin(nameScope);
     setNameState({ kind: "saving" });
     try {
       await studio.saveIdentity({ name: change.name });
+      if (memory.generation() !== generation) {
+        return;
+      }
+      memory.committed(nameScope);
       if (alive.current) {
         setNameState({ kind: "saved" });
       }
@@ -106,17 +113,29 @@ export function Identity({
       if (alive.current) {
         setNameState(failed(caught, "Could not save the name."));
       }
+    } finally {
+      if (memory.generation() === generation) {
+        memory.end(nameScope);
+      }
     }
   }
 
   /* The avatar: the picker edits a copy, saved once when it closes if it changed. */
   const savedAvatar: AvatarChoice = { accent: agent.accent, pattern: agent.avatarPattern };
-  const [picking, setPicking] = useState<AvatarChoice | null>(null);
+  const avatarScope = `${agent.productId ?? agent.id}:avatar`;
+  const [picking, setPicking] = useStudioForm<AvatarChoice | null>(
+    `${avatarScope}:choice`,
+    agent.version,
+    null,
+  );
   const [savingAvatar, setSavingAvatar] = useState<AvatarChoice | null>(null);
   const [avatarState, setAvatarState] = useState<WriteState>(IDLE);
   const avatar = picking ?? savingAvatar ?? savedAvatar;
 
   async function closeAvatar() {
+    if (memory.busy(avatarScope)) {
+      return;
+    }
     const choice = picking;
     setPicking(null);
     if (
@@ -125,6 +144,8 @@ export function Identity({
     ) {
       return;
     }
+    const generation = memory.generation();
+    memory.begin(avatarScope);
     setSavingAvatar(choice);
     setAvatarState({ kind: "saving" });
     try {
@@ -140,11 +161,14 @@ export function Identity({
       if (alive.current) {
         setSavingAvatar(null);
       }
+      if (memory.generation() === generation) {
+        memory.end(avatarScope);
+      }
     }
   }
 
   /* VOICE: the pick is drawn at once and saved; a stale save reloads and says so. */
-  const voiceSave = useSetupSave(studio);
+  const voiceSave = useSetupSave(studio, `${agent.productId ?? agent.id}:voice`, agent.version);
   const [pendingVoice, setPendingVoice] = useState<VoiceKey | null>(null);
   const savedVoice = voiceOf(agent.config.voice);
   const voice = voiceSave.saving && pendingVoice ? pendingVoice : savedVoice;
@@ -214,6 +238,7 @@ export function Identity({
                 autoComplete="off"
                 spellCheck={false}
                 disabled={!canManage}
+                readOnly={memory.busy(nameScope)}
                 aria-invalid={nameState.kind === "error" || undefined}
                 aria-describedby={`${nameId}-state`}
                 onChange={(event) => {
