@@ -19,11 +19,20 @@ import styles from "./build.module.css";
  */
 export function Sources({ agent, live, canManage }: LiveSectionProps) {
   const saved = webForm(agent.config.sources?.web);
-  const [form, setForm] = useSavedForm<WebForm>(agent.version, saved);
-  const { state, save, touch, saving } = useSetupSave(live);
+  const [form, setForm] = useSavedForm<WebForm>(
+    agent.version,
+    saved,
+    `${agent.productId ?? agent.id}:sources:form`,
+  );
+  const { state, save, touch, saving } = useSetupSave(
+    live,
+    `${agent.productId ?? agent.id}:sources`,
+    agent.version,
+  );
   const [markets, setMarkets] = useSavedForm<string[]>(
     agent.version,
     agent.config.perpl?.markets ?? [],
+    `${agent.productId ?? agent.id}:sources:markets`,
   );
   const network = agent.config.perpl?.network ?? null;
   const catalogue = useTradingMarkets(network, live.preview);
@@ -36,7 +45,12 @@ export function Sources({ agent, live, canManage }: LiveSectionProps) {
     touch();
   }
 
-  const box = useSiteBox(form.sites, (sites) => edit({ sites }));
+  const box = useSiteBox(
+    form.sites,
+    (sites) => edit({ sites }),
+    `${agent.productId ?? agent.id}:sources`,
+    agent.version,
+  );
   const view = sourcesView(form, saved, box.error);
   /* A rejected site still in the box (`box.refused`): applying now would quietly leave it out. */
   const canApply =
