@@ -575,3 +575,11 @@ The private X posts operation is now a paid five-post preview, capped at one att
 ## X profile presentation
 
 X state metadata describes the persisted optional profile name/photo. GET /agents/:id/x remains owner-only and no-store; it never fetches X to decorate the UI.
+
+## Price history timestamps
+
+The existing public marketplace market detail response forwards optional aligned trailTimestamps. Generated OpenAPI uses the portable date-time schema; legacy and sample producers may omit this metadata. No new endpoint or market read is introduced.
+
+Public market detail also forwards optional bounded `priceHistory`, cloning its paired values.
+The existing route/schema owns the additive OpenAPI contract; no range endpoint/query or new
+provider call is introduced. The original 24h trail remains compatible with public consumers.
