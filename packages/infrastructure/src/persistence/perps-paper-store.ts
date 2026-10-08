@@ -1,3 +1,10 @@
+import {
+  assertEntryEvidence,
+  canonicalAudit,
+  SMA_ENTRY_POLICIES,
+  type SmaReentryVariant,
+  type PerpsEvidence,
+} from "@pickler/trading/evaluation";
 import { randomUUID } from "node:crypto";
 import type { Pool, PoolClient } from "pg";
 import { PilotError, type AgentRecord } from "@pickler/core";
@@ -313,14 +320,22 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
         [scope.tenantId, scope.sessionId, scope.network],
       );
       const record = study.rows[0]?.document;
-      if (record?.config.version === 6) {
+      if (record?.config.version === 6 || record?.config.version === 7) {
         const variant = Object.entries(record.agentIds).find(([, id]) => id === scope.agentId)?.[0];
         if (!variant) {
           throw new PilotError("FORBIDDEN", "Account is not a profile study member");
         }
-        account.riskManagement = variant.endsWith("-selective")
-          ? "buffered-selective-1x-v1"
-          : "legacy-1x-v1";
+        account.riskManagement =
+          record.config.version === 7 || variant.endsWith("-selective")
+            ? "buffered-selective-1x-v1"
+            : "legacy-1x-v1";
+      }
+      if (record?.config.version === 7) {
+        const variant = Object.entries(record.agentIds).find(
+          ([, id]) => id === scope.agentId,
+        )?.[0] as SmaReentryVariant;
+        account.entryPolicy = SMA_ENTRY_POLICIES[variant];
+        account.consumedEntryKeys = [];
       }
       const id = randomUUID();
       const inserted = await client.query(
@@ -370,11 +385,12 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
       [scope.tenantId, scope.sessionId, scope.network],
     );
     const record = study.rows[0]?.document;
-    if (record?.config.version === 6) {
+    if (record?.config.version === 6 || record?.config.version === 7) {
       const variant = Object.entries(record.agentIds).find(([, id]) => id === scope.agentId)?.[0];
-      const expected = variant?.endsWith("-selective")
-        ? "buffered-selective-1x-v1"
-        : "legacy-1x-v1";
+      const expected =
+        record.config.version === 7 || variant?.endsWith("-selective")
+          ? "buffered-selective-1x-v1"
+          : "legacy-1x-v1";
       if (!variant || locked.view.account.riskManagement !== expected) {
         throw new PilotError("CONFIG_CHANGED", "Trusted account risk management changed");
       }
@@ -384,6 +400,22 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
       ) {
         throw new PilotError("RISK_REJECTED", "Maximum five positions");
       }
+    }
+    if (record?.config.version === 7) {
+      const variant = Object.entries(record.agentIds).find(
+        ([, id]) => id === scope.agentId,
+      )?.[0] as SmaReentryVariant;
+      if (
+        !SMA_ENTRY_POLICIES[variant] ||
+        locked.view.account.entryPolicy !== SMA_ENTRY_POLICIES[variant]
+      ) {
+        throw new PilotError("CONFIG_CHANGED", "Account entry policy is immutable");
+      }
+      if (intent.kind === "open") {
+        await this.entryKey(client, locked, scope, intent);
+      }
+    } else if (intent.entryEvidence !== undefined) {
+      throw new PilotError("INVALID_INPUT", "Entry evidence is restricted to the v7 laboratory");
     }
     if (intent.kind === "close") {
       assertPerpsPaperScope(locked.agent, scope);
@@ -456,6 +488,64 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
       throw new PilotError("PAUSED", "Agent is paused");
     }
   }
+  private async entryKey(
+    client: PoolClient,
+    locked: Locked,
+    scope: PerpsPaperScope,
+    intent: PerpsPaperIntent,
+    fill?: PerpsPaperFill,
+  ) {
+    const ref = intent.entryEvidence;
+    if (!ref || !/^round-[0-9]{3}$/.test(ref.roundKey)) {
+      throw new PilotError("DATA_UNAVAILABLE", "Persisted final round required");
+    }
+    const saved = await client.query(
+      `SELECT e.data FROM pickler.perps_study_events e
+      JOIN pickler.perps_studies s ON s.id=e.study_id
+      WHERE s.tenant_id=$1 AND s.session_id=$2 AND s.network=$3 AND e.key=$4`,
+      [scope.tenantId, scope.sessionId, scope.network, `${ref.roundKey}:final-evidence`],
+    );
+    const document = saved.rows[0]?.data as
+      { evidence?: PerpsEvidence; data?: { evidence?: PerpsEvidence } } | undefined;
+    const evidence = document?.evidence ?? document?.data?.evidence;
+    if (!evidence) {
+      throw new PilotError("DATA_UNAVAILABLE", "Trusted final snapshot absent");
+    }
+    const key = assertEntryEvidence(locked.view.account, intent, evidence, locked.now);
+    const variant =
+      locked.view.account.entryPolicy === "once-hourly-bar-v1" ? "sma-once-bar" : "sma-reference";
+    const gate = await client.query(
+      "SELECT data FROM pickler.perps_study_events WHERE study_id=(SELECT id FROM pickler.perps_studies WHERE tenant_id=$1 AND session_id=$2 AND network=$3) AND key=$4",
+      [scope.tenantId, scope.sessionId, scope.network, `${ref.roundKey}:${variant}:final-gate`],
+    );
+    const decision = gate.rows[0]?.data as
+      | {
+          initial?: { symbol: string; action: string }[];
+          final?: { symbol: string; action: string }[];
+        }
+      | undefined;
+    const action = intent.side === "long" ? "open-long" : "open-short";
+    if (
+      !decision?.initial?.some((p) => p.symbol === intent.symbol && p.action === action) ||
+      !decision?.final?.some((p) => p.symbol === intent.symbol && p.action === action)
+    ) {
+      throw new PilotError(
+        "RISK_REJECTED",
+        "Opening must match both persisted proposal and final admission",
+      );
+    }
+    if (fill) {
+      const frame = evidence.frames.find((f) => f.snapshot.market.symbol === intent.symbol)!;
+      const expected = simulatePerpsFill(locked.view.account, intent, frame, locked.now);
+      if (canonicalAudit(fill) !== canonicalAudit(expected)) {
+        throw new PilotError(
+          "INVALID_MARKET_DATA",
+          "Fill must use the shared persisted final evidence",
+        );
+      }
+    }
+    return key;
+  }
   async begin(
     scope: PerpsPaperScope,
     expectedVersion: number,
@@ -477,7 +567,8 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
           paperUnits(previous.intent.notional) !== paperUnits(intent.notional) ||
           paperUnits(previous.intent.feeReserve) !== paperUnits(intent.feeReserve) ||
           previous.intent.leverage !== intent.leverage ||
-          previous.intent.checkId !== intent.checkId
+          previous.intent.checkId !== intent.checkId ||
+          JSON.stringify(previous.intent.entryEvidence) !== JSON.stringify(intent.entryEvidence)
         ) {
           throw new PilotError("CONFLICT", "Request key was used with another intent");
         }
@@ -614,6 +705,15 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
         opened.stopPrice = exits?.stopPrice ?? null;
         opened.takeProfitPrice = exits?.takeProfitPrice ?? null;
         opened.exitDueAt = exits?.exitDueAt ?? null;
+      }
+      if (locked.attempt.intent.kind === "open" && result.account.entryPolicy) {
+        const entryKey = await this.entryKey(client, locked, scope, locked.attempt.intent, fill);
+        if (result.account.entryPolicy === "once-hourly-bar-v1" && entryKey) {
+          result.account.consumedEntryKeys = [
+            ...(result.account.consumedEntryKeys ?? []),
+            entryKey,
+          ];
+        }
       }
       await this.persist(client, locked.id, result.account, result.movements);
       const attempt = {
