@@ -198,9 +198,10 @@ charge is promised because eligibility and billing are controlled by X.
 
 ## Connected profile presentation
 
-Identity & voice places the X account first, showing its photo, name, handle and explicit connection
-state. The profile itself links to X; there is no separate View posts button. Consent copy remains
-read-only, and paid timeline previews stay explicit and separately gated.
+Identity & voice places compact identity and X cards side by side, stacking below 600px. The linked
+photo/name/handle identifies the account without a redundant Connected badge; disconnected and
+recovery states remain explicit. The profile itself links to X; there is no separate View posts
+button. Consent copy remains read-only, and paid timeline previews stay explicit and separately gated.
 
 The existing `/2/users/me` verification requests `user.fields=name,profile_image_url`, documented in
 [X Get Users Me](https://docs.x.com/x-api/users/get-my-user). No extra profile API call is added.
