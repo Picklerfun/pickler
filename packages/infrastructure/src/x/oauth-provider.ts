@@ -2,6 +2,7 @@ import { z } from "zod";
 import {
   XFailure,
   X_READ_SCOPES,
+  X_POST_PREVIEW_SIZE,
   type XApiPolicy,
   type XOAuthProvider,
   type XTokens,
@@ -30,7 +31,7 @@ const postsSchema = z.object({
         created_at: z.string().datetime(),
       }),
     )
-    .max(20)
+    .max(X_POST_PREVIEW_SIZE)
     .optional(),
   meta: z.object({ next_token: z.string().max(512).optional() }).optional(),
   errors: z.array(z.unknown()).optional(),
@@ -41,7 +42,7 @@ const policySchema = z
     reviewedAt: z.string().datetime(),
     identityRequestsPerDay: z.number().int().positive().max(10_000),
     postRequestsPerDay: z.number().int().positive().max(10_000),
-    postResourcesPerDay: z.number().int().min(20).max(200_000),
+    postResourcesPerDay: z.number().int().min(X_POST_PREVIEW_SIZE).max(200_000),
   })
   .strict();
 export function parseXApiPolicy(raw?: string): XApiPolicy | null {
@@ -199,14 +200,14 @@ export function createXOAuthProvider(options: {
       return { id: parsed.data.data.id, handle: parsed.data.data.username };
     },
     async posts(token, userId, cursor) {
+      if (!options.readsEnabled || cursor) {
+        throw new XFailure("X_UNAVAILABLE");
+      }
       const query = new URLSearchParams({
-        max_results: "20",
+        max_results: String(X_POST_PREVIEW_SIZE),
         "tweet.fields": "created_at,author_id",
         exclude: "retweets",
       });
-      if (cursor) {
-        query.set("pagination_token", cursor);
-      }
       const response = await request(`/users/${encodeURIComponent(userId)}/tweets?${query}`, {
         headers: { authorization: `Bearer ${token}` },
       });
@@ -225,7 +226,7 @@ export function createXOAuthProvider(options: {
           createdAt: post.created_at,
           url: `https://x.com/i/web/status/${post.id}`,
         })),
-        nextCursor: parsed.data.meta?.next_token ?? null,
+        nextCursor: null,
       };
     },
     async revoke(token) {
