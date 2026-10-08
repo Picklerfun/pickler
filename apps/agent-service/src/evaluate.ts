@@ -6,6 +6,7 @@ const { positionals, values } = parseArgs({
   options: {
     config: { type: "string" },
     diagnostics: { type: "string" },
+    qualification: { type: "string" },
     "allow-paid": { type: "boolean" },
     "env-file": { type: "string" },
     "acquisition-choice": { type: "string" },
@@ -16,7 +17,7 @@ const { positionals, values } = parseArgs({
 });
 if (values.help) {
   console.log(
-    "evaluate audit-export|audit|data-diagnostic|stability|prepare|preflight|validate|run|resume|status|stop|settle|report|compare|history|replay --config FILE [--env-file FILE] [--allow-paid] [--output DIRECTORY]\nOffline audit: evaluate audit --state EXPORT_JSON --output NEW_DIRECTORY. Export: evaluate audit-export --config STUDY_JSON --env-file PRIVATE_ENV [--diagnostics LOCAL_JSONL] --output NEW_DIRECTORY.\nSingle evaluation entry point; protocol comes from the frozen config. No automatic paid restart or migration.",
+    "evaluate timing-check|audit-export|audit|data-diagnostic|stability|prepare|preflight|validate|run|resume|status|stop|settle|report|compare|history|replay --config FILE [--env-file FILE] [--allow-paid] [--output DIRECTORY]\nOffline audit: evaluate audit --state EXPORT_JSON --output NEW_DIRECTORY. Offline timing: evaluate timing-check --state EXPORT_JSON --output NEW_DIRECTORY. Export: evaluate audit-export --config STUDY_JSON --env-file PRIVATE_ENV [--diagnostics LOCAL_JSONL] --output NEW_DIRECTORY. V7 run requires --qualification CAPTURE_REPORT_JSON.\nSingle evaluation entry point; protocol comes from the frozen config. No automatic paid restart or migration.",
   );
 } else {
   const controller = new AbortController();
@@ -24,7 +25,21 @@ if (values.help) {
   process.once("SIGINT", abort);
   process.once("SIGTERM", abort);
   try {
-    if (positionals.length === 1 && ["audit", "audit-export"].includes(positionals[0]!)) {
+    if (positionals.length === 1 && positionals[0] === "timing-check") {
+      if (
+        values["env-file"] ||
+        values["allow-paid"] ||
+        values.state?.length !== 1 ||
+        !values.output
+      ) {
+        throw new PilotError(
+          "INVALID_INPUT",
+          "Offline timing-check requires one --state and new --output; no environment or paid mode",
+        );
+      }
+      const { runTimingCheck } = await import("./perps-study/timing-check.js");
+      await runTimingCheck(values.state[0]!, values.output, controller.signal);
+    } else if (positionals.length === 1 && ["audit", "audit-export"].includes(positionals[0]!)) {
       const { runPerpsAudit } = await import("./perps-study/audit.js");
       if (values.state && values.state.length !== 1) {
         throw new PilotError("INVALID_INPUT", "Audit requires exactly one --state");
@@ -55,6 +70,7 @@ if (values.help) {
           ? { acquisitionChoice: values["acquisition-choice"] }
           : {}),
         ...(values.state ? { states: values.state } : {}),
+        ...(values.qualification ? { qualification: values.qualification } : {}),
       });
     }
   } catch (error) {
