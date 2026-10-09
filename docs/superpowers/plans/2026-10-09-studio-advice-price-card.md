@@ -71,8 +71,7 @@ targets `codex/agent-advice-x402` until #125 merges, then `main`.
 - Modify: `workers/api/src/routes/studio.ts:615-645, 665, 830-845` (`studioAgent()` identity gains
   `advicePriceMicro`; the fallback identity uses `null`; serialise with core's `advicePrice()`)
 - Modify fixtures: `apps/web/src/features/studio/live/fixture.ts`,
-  `apps/web/src/features/studio/draft/fixture.ts`, `scripts/design/fixture-api.mjs`, and every
-  studio agent literal in `apps/web/test/*.test.ts` that typecheck reports
+  `apps/web/src/features/studio/draft/fixture.ts`, and every studio agent literal in `apps/web/test/*.test.ts` that typecheck reports
 - Modify: `packages/api-schema/AGENTS.md`, `workers/api/AGENTS.md` (one line each: the Studio agent
   DTO carries `advicePrice`; this supersedes phase 1's Ruling 4)
 - Test: `packages/infrastructure/test/studio-advice-price.test.ts` (extend),
@@ -279,8 +278,8 @@ const saveAdvicePrice = useCallback(
 - Modify: `apps/web/src/features/studio/live/build.module.css` only if an existing class does not
   fit (reuse `card`, `cardHead`, `cardLabel`, `headTag`, `cardNote`, `saveRow`, `saveButton`,
   `discardButton`, `alert`, `hint`)
-- Modify: `scripts/design/routes.mjs` (a route entry for `/studio?stage=perpl-limits` proving
-  `#live-limits-advice`)
+- Modify: `scripts/design/routes.mjs` (the existing `studio-live-limits` route on
+  `/studio?stage=perpl-limits` also proves `#live-limits-advice`)
 - Modify: `apps/web/AGENTS.md` (Studio section: the card, its endpoint, live only), and
   `docs/agent-advice.md` (one line in "Payment (x402)": creators set the price in Studio → Limits)
 
@@ -315,16 +314,17 @@ const saveAdvicePrice = useCallback(
 
 Save handler: `if (view.canSave && view.body) { setState(saving); try { await live.saveAdvicePrice(view.body); setState(saved) } catch … }`.
 
-- [ ] **Step 2: Design route** — add to `scripts/design/routes.mjs`:
+- [ ] **Step 2: Design route** — in `scripts/design/routes.mjs`, fold the proof into the existing
+      `studio-live-limits` route (Ruling P2-2: `studio-landing.test.ts` allows one route per stage):
 
 ```js
   {
     path: "/studio?stage=perpl-limits",
-    name: "studio-live-limits-advice",
+    name: "studio-live-limits",
     product: "studio",
     surface: "dark",
     task: "Live studio",
-    proves: "#live-limits-advice",
+    proves: "#live-section-limits #live-limits-advice",
   },
 ```
 
