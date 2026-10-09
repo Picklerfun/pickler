@@ -26,6 +26,8 @@ class UniverseSocket implements PerplSocket {
   missing: number | undefined;
   rejected = false;
   publicationAt: number | undefined;
+  tickerPublicationAt: number | undefined;
+  heartbeat = false;
   constructor() {
     queueMicrotask(() => {
       this.readyState = 1;
@@ -59,7 +61,7 @@ class UniverseSocket implements PerplSocket {
       }
       const prices = ticker();
       for (const value of Object.values(prices.d)) {
-        value.at.t = publicationAt;
+        value.at.t = this.tickerPublicationAt ?? publicationAt;
       }
       this.emit("message", { ...prices, sid: 2 });
       for (let i = 0; i < 11; i++) {
@@ -72,6 +74,9 @@ class UniverseSocket implements PerplSocket {
             ask: [{ p: 100010, s: 1000, o: 1 }],
           });
         }
+      }
+      if (this.heartbeat) {
+        this.emit("message", { mt: 100, sn: 1, h: 1 });
       }
     });
   }
@@ -528,6 +533,68 @@ test("stream universe freezes thirteen subscriptions and reuses one guarded gene
     code: "DATA_READER_CLOSED",
   });
 });
+test("capture-only component policy uses one continuous generation without rewriting asynchronous dates", async (t) => {
+  clocks(t);
+  const urls: string[] = [];
+  const socket = new UniverseSocket();
+  const buffers: import("@pickler/trading/perps").UniverseStreamBuffer[] = [];
+  socket.heartbeat = true;
+  socket.tickerPublicationAt = NOW - 10000;
+  const reader = createUniversePerplReader(
+    { agent: async () => agent() },
+    {
+      acquisitionPolicy: "stream-universe-component-20s-v2",
+      transport: transport(urls),
+      socket: () => {
+        queueMicrotask(() => socket.emit("open"));
+        return socket;
+      },
+      onBuffer: (value) => buffers.push(value),
+    },
+  );
+  t.after(() => reader.close());
+  const parent = new AbortController();
+  const initial = await settle(t, reader.read(scope, markets, parent.signal));
+  const final = await settle(t, reader.read(scope, markets, parent.signal));
+  const copied = buffers.at(-1)!;
+
+  assert.equal(initial.frames.length, 11);
+  assert.equal(final.frames.length, 11);
+  assert.ok(
+    final.frames.every((f) => f.snapshot.ticker.provenance.providerTimestamp === NOW - 10000),
+  );
+  assert.ok(final.frames.every((f) => f.book.provenance.providerTimestamp === NOW));
+  assert.equal(copied.continuity!.heartbeatSequence, 1);
+  assert.equal(socket.sent.length, 1);
+  assert.deepEqual(
+    urls.map((url) => new URL(url).pathname),
+    ["/api/v1/pub/context"],
+  );
+  await reader.close();
+  assert.equal(socket.readyState, 3);
+});
+
+test("capture-only cold start without a heartbeat exhausts twenty seconds and closes on cancellation", async (t) => {
+  clocks(t);
+  const urls: string[] = [];
+  const reader = createUniversePerplReader(
+    { agent: async () => agent() },
+    {
+      acquisitionPolicy: "stream-universe-component-20s-v2",
+      transport: transport(urls),
+      socket: () => new UniverseSocket(),
+    },
+  );
+  t.after(() => reader.close());
+  const parent = new AbortController();
+  const result = await settle(t, reader.read(scope, markets, parent.signal));
+  assert.equal(result.frames.length, 0);
+  assert.equal(result.excluded.length, 11);
+  assert.ok(Date.now() - NOW >= 20000 && Date.now() - NOW <= 20100);
+  assert.equal(urls.length, 1);
+  parent.abort(new PilotError("CANCELLED", "Controlled"));
+  await assert.rejects(reader.latest(scope, markets, parent.signal), { code: "CANCELLED" });
+});
 
 test("one unavailable stream market exhausts the original twenty seconds and is not repaired through REST", async (t) => {
   clocks(t);
@@ -639,47 +706,58 @@ test("partial subscription rejection remains fatal rather than an availability o
 
 test("stream buffer revocation, changed configuration, lease loss and cancellation forbid reuse", async (t) => {
   clocks(t);
-  for (const reason of ["PLUGIN_DISABLED", "CONFIG_CHANGED", "LEASE_LOST", "CANCELLED"] as const) {
-    t.mock.timers.setTime(NOW);
-    const current = agent();
-    let owned = true;
-    const parent = new AbortController();
-    const sockets: UniverseSocket[] = [];
-    const guard = async () => {
-      if (!owned) {
-        throw new PilotError("LEASE_LOST", "Controlled");
-      }
-    };
-    const reader = createUniversePerplReader(
-      { agent: async () => current },
-      {
-        acquisitionPolicy: "stream-universe-20s-v1",
-        transport: transport([]),
-        socket: () => {
-          const s = new UniverseSocket();
-          sockets.push(s);
-          return s;
+  for (const acquisitionPolicy of [
+    "stream-universe-20s-v1",
+    "stream-universe-component-20s-v2",
+  ] as const) {
+    for (const reason of [
+      "PLUGIN_DISABLED",
+      "CONFIG_CHANGED",
+      "LEASE_LOST",
+      "CANCELLED",
+    ] as const) {
+      t.mock.timers.setTime(NOW);
+      const current = agent();
+      let owned = true;
+      const parent = new AbortController();
+      const sockets: UniverseSocket[] = [];
+      const guard = async () => {
+        if (!owned) {
+          throw new PilotError("LEASE_LOST", "Controlled");
+        }
+      };
+      const reader = createUniversePerplReader(
+        { agent: async () => current },
+        {
+          acquisitionPolicy,
+          transport: transport([]),
+          socket: () => {
+            const s = new UniverseSocket();
+            s.heartbeat = true;
+            sockets.push(s);
+            return s;
+          },
         },
-      },
-    );
-    t.after(() => reader.close());
-    await settle(t, reader.read(scope, markets, parent.signal, guard));
-    if (reason === "PLUGIN_DISABLED") {
-      current.config.plugins.enabled = [];
-    }
-    if (reason === "CONFIG_CHANGED") {
-      current.version++;
-    }
-    if (reason === "LEASE_LOST") {
-      owned = false;
-    }
-    if (reason === "CANCELLED") {
-      parent.abort(new PilotError(reason, "Controlled"));
-    }
+      );
+      t.after(() => reader.close());
+      await settle(t, reader.read(scope, markets, parent.signal, guard));
+      if (reason === "PLUGIN_DISABLED") {
+        current.config.plugins.enabled = [];
+      }
+      if (reason === "CONFIG_CHANGED") {
+        current.version++;
+      }
+      if (reason === "LEASE_LOST") {
+        owned = false;
+      }
+      if (reason === "CANCELLED") {
+        parent.abort(new PilotError(reason, "Controlled"));
+      }
 
-    await assert.rejects(reader.latest(scope, markets, parent.signal, guard), { code: reason });
-    await reader.close();
-    assert.ok(sockets.every((s) => s.readyState === 3));
+      await assert.rejects(reader.latest(scope, markets, parent.signal, guard), { code: reason });
+      await reader.close();
+      assert.ok(sockets.every((s) => s.readyState === 3));
+    }
   }
 });
 
