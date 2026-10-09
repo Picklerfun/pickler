@@ -6,8 +6,23 @@ import { tmpdir } from "node:os";
 import { createHash } from "node:crypto";
 import { canonicalAudit, auditUniverseCapture } from "@pickler/trading/evaluation";
 import { PERPL_LAB_SYMBOLS } from "@pickler/core";
+import { PilotError } from "@pickler/core";
+import { setTimeout as wait } from "node:timers/promises";
 import { createStreamCapture, publicMarketCsv } from "../src/perps-study/stream-capture.js";
 import { runReaderAudit } from "../src/perps-study/reader-audit.js";
+import { captureFailureCode } from "../src/perps-study/universe-stability.js";
+
+test("between-slot timer cancellation preserves the original reader error rather than a generic failure", async () => {
+  const controller = new AbortController();
+  const pending = wait(1000, undefined, { signal: controller.signal });
+  controller.abort(new PilotError("PERPL_STREAM_MESSAGE_LIMIT", "Public reader stopped"));
+  await assert.rejects(pending, (error) => {
+    assert.equal((error as { name: string }).name, "AbortError");
+    assert.equal(captureFailureCode(error, controller.signal), "PERPL_STREAM_MESSAGE_LIMIT");
+    return true;
+  });
+  assert.equal(captureFailureCode(new Error("private transport text")), "STABILITY_FAILED");
+});
 
 test("bounded public capture retains a hashed contiguous prefix and continues counters after truncation", async (t) => {
   const directory = await mkdtemp(join(tmpdir(), "perpl-stream-capture-"));
@@ -22,6 +37,13 @@ test("bounded public capture retains a hashed contiguous prefix and continues co
       publicMessage: { mt: 100, sn: i + 1, h: i + 100 },
     });
   }
+  capture.record({
+    kind: "error",
+    receivedAt: 1019,
+    generation: 1,
+    code: "PERPL_STREAM_MESSAGE_LIMIT",
+    limit: { component: "message-queue", observed: 33, maximum: 32 },
+  });
   capture.record({ kind: "closed", receivedAt: 1020, generation: 2 });
   await capture.flush();
   const source = await readFile(join(directory, "events.jsonl"));
@@ -32,6 +54,11 @@ test("bounded public capture retains a hashed contiguous prefix and continues co
   assert.equal(facts.truncated, true);
   assert.equal(facts.socketClosed, true);
   assert.equal(facts.messages, 10);
+  assert.deepEqual(facts.errors[0]!.limit, {
+    component: "message-queue",
+    observed: 33,
+    maximum: 32,
+  });
   assert.ok(facts.droppedEvents > 0);
 });
 
@@ -82,7 +109,23 @@ test("stream offline audit emits 330 identities, verifies frozen hashes and neve
   };
   const result = auditUniverseCapture(capture);
   assert.equal(result.rows.length, 330);
+  assert.equal(result.counts.attemptedCycles, 30);
+  assert.equal(result.counts.notAdmittedCycles, 0);
+  assert.equal(result.rows[0]!.slotOutcome, "TECHNICAL_FAILURE");
   assert.equal(result.streamEvidence!.acquisitionMs.observations, 0);
+  const interrupted = structuredClone(capture);
+  Object.assign(interrupted.cycles[2]!, {
+    missed: true,
+    code: "NOT_ADMITTED_AFTER_INTERRUPTION",
+  });
+  const interruption = auditUniverseCapture(interrupted);
+  assert.equal(interruption.counts.attemptedCycles, 29);
+  assert.equal(interruption.counts.notAdmittedCycles, 1);
+  assert.equal(interruption.counts.windowMissedCycles, 0);
+  assert.equal(
+    interruption.rows.find((row) => row.slot === 2)!.slotOutcome,
+    "NOT_ADMITTED_AFTER_INTERRUPTION",
+  );
   assert.doesNotMatch(JSON.stringify(result), /DO_NOT_FORWARD|credentials/);
   const statePath = join(directory, "report.json");
   await writeFile(statePath, JSON.stringify(capture));
