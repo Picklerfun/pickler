@@ -1,10 +1,12 @@
 import test from "node:test";
+import { AUSD } from "@pickler/chain";
 import assert from "node:assert/strict";
 import { Hono } from "hono";
 import {
   AuthenticationRequiredError,
   buildUserPrincipal,
   createTokenLaunchService,
+  tokenReferenceEconomics,
 } from "@pickler/core";
 import { tokenFixture } from "@pickler/infrastructure/testing/token";
 import { tokenStateSchema, tokenAuthorizationSchema, tokenDraftSchema } from "@pickler/api-schema";
@@ -61,6 +63,7 @@ test("owner JWT -> private draft -> controlled grant -> stored state; no browser
     { creator: "0x1111111111111111111111111111111111111111" },
     { agentKey: "0x11" },
     { txHash: "0x22" },
+    { economics: { source: "reference" } },
   ]) {
     assert.equal(
       (
@@ -102,7 +105,16 @@ test("owner JWT -> private draft -> controlled grant -> stored state; no browser
   assert.deepEqual(await again.json(), grant);
   assert.equal(f.signer.calls(), 1);
   assert.equal(tokenStateSchema.parse(await (await request("", { headers })).json()).token, null);
-  services.tokens = createTokenLaunchService({ repository: f.repository, chainId: 10143 });
+  services.tokens = createTokenLaunchService({
+    repository: f.repository,
+    chainId: 10143,
+    referenceEconomics: tokenReferenceEconomics(AUSD[10143]),
+  });
+  const reference = tokenStateSchema.parse(await (await request("", { headers })).json());
+  assert.equal(reference.economics?.quoteAddress, AUSD[10143].address);
+  assert.equal(reference.economics?.netReserveAtCompletion, "31999999998");
+  assert.equal(reference.available, false);
+  assert.equal(reference.preset, null);
   const hosted = await request("/authorize", {
     method: "POST",
     headers: { ...headers, "Idempotency-Key": "controlled_hosted_launch" },
