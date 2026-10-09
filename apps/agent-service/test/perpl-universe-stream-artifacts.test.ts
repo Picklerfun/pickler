@@ -116,6 +116,25 @@ test("stream offline audit emits 330 identities, verifies frozen hashes and neve
   assert.equal(result.counts.notAdmittedCycles, 0);
   assert.equal(result.rows[0]!.slotOutcome, "TECHNICAL_FAILURE");
   assert.equal(result.streamEvidence!.acquisitionMs.observations, 0);
+  for (const adapterVersion of ["public-universe-stream-v2", "public-universe-stream-v3"]) {
+    const revised = { ...capture, adapterVersion };
+    assert.equal(auditUniverseCapture(revised).streamEvidence!.adapterVersion, adapterVersion);
+    const diagnostic = {
+      ...revised,
+      protocol: "perpl-reader-check-v1",
+      qualification: "DIAGNOSTIC_ONLY_NOT_ACCEPTANCE",
+      expectedCycles: 3,
+      requiredValid: null,
+      passed: false,
+      cycles: revised.cycles.slice(0, 3),
+    };
+    const audited = auditUniverseCapture(diagnostic);
+    assert.equal(audited.sourceQualification, "DIAGNOSTIC_ONLY_NOT_ACCEPTANCE");
+    assert.equal(audited.rows.length, 33);
+    assert.throws(() => auditUniverseCapture({ ...diagnostic, passed: true }), {
+      code: "INVALID_INPUT",
+    });
+  }
   const interrupted = structuredClone(capture);
   Object.assign(interrupted.cycles[2]!, {
     missed: true,
