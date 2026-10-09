@@ -564,9 +564,14 @@ Creator applications are reviewed through `routes/studio-applications.ts`, mount
 GET `applications` (newest first, at most 500, `?status=submitted|invited|rejected`) and PUT
 `applications/:id` (`{ status: "invited" | "rejected", note? }`, note at most 500 characters).
 Both require the verified super-admin allowlist through core's `createApplicationReview`; a 403
-never reveals another person's answers. The one write is `growth.review_application` (migration
-0036), which records the status, the reviewer's email and the note; it enables no studio access
-and sends no email. Without `applicationReview` in `StudioServices` the routes answer 503.
+never reveals another person's answers. The one write is `growth.review_application` (migrations
+0036 and 0037), which records the status, the reviewer's email and the note, and on `invited`
+enables `pickler.research_access` for any `auth.users` account carrying that email. An account
+created afterwards claims its invite as it onboards: `POST studio/onboard` passes the principal's
+email to `directory.onboard`, which calls `growth.claim_invite`. `GET access-request` carries
+`application` (the status under the account's email, from `growth.application_status_for`, or
+null), so the studio can say where a person stands. No email is sent from any of this. Without
+`applicationReview` in `StudioServices` the review routes answer 503.
 
 ## Dynamic Studio markets
 

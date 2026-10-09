@@ -12,12 +12,19 @@ import type { AppEnv } from "../src/env.js";
 
 const userId = "11111111-1111-4111-8111-111111111111";
 function setup({ kind = "user", admin = false, pending = false } = {}) {
-  const principal = { kind, id: userId, tenantId: null, isSuperAdmin: admin } as Principal;
+  const principal = {
+    kind,
+    id: userId,
+    tenantId: null,
+    email: "creator@example.com",
+    isSuperAdmin: admin,
+  } as Principal;
   const at = new Date("2026-10-05T00:00:00Z");
   const repository = {
-    read: async () => ({
+    read: async (_userId: string, email?: string) => ({
       status: pending ? ("pending" as const) : ("not_requested" as const),
       requestedAt: pending ? at : null,
+      application: email ? ("submitted" as const) : null,
     }),
     pending: async () => [{ userId, handle: "creator", displayName: "Creator", requestedAt: at }],
   };
@@ -62,6 +69,7 @@ test("a person reads their own status in the documented shape, and nothing else"
   assert.equal(status.headers.get("cache-control"), "private, no-store");
   const parsed = studioAccessRequestStatusSchema.parse(await status.json());
   assert.equal(parsed.status, "not_requested");
+  assert.equal(parsed.application, "submitted");
   assert.equal(parsed.canReviewRequests, false);
   const recorded = studioAccessRequestStatusSchema.parse(
     await (await setup({ pending: true }).app.request("/access-request")).json(),

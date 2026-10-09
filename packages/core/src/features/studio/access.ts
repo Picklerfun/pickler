@@ -54,7 +54,11 @@ export interface SetupVersion {
 }
 
 export interface StudioDirectory {
-  onboard(userId: string): Promise<void>;
+  /**
+   * Creates the workspace and the access row. With the account's email, an application invited
+   * under it is claimed and access enabled at once (docs/specs/landing-trade-v1.md §7, R5).
+   */
+  onboard(userId: string, email?: string | undefined): Promise<void>;
   access(userId: string, workspaceId: string | null): Promise<StudioAccess | null>;
   /**
    * Creates the private draft with its wallet (studio-create-simplified-v1 §4.1), in one

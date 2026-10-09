@@ -387,7 +387,11 @@ export function studioRoutes(services: StudioServices) {
       response: dto.okSchema,
     }),
     async (c) => {
-      await services.directory.onboard(c.get("principal").id);
+      const principal = c.get("principal");
+      await services.directory.onboard(
+        principal.id,
+        principal.kind === "user" ? principal.email : undefined,
+      );
       return c.json({ ok: true });
     },
   );

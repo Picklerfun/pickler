@@ -73,8 +73,8 @@ export const PREVIEW_APPLICATIONS: StudioApplicationDto[] = [
 
 /**
  * The operators' inbox for creator applications: what /apply received, and the one decision each
- * one gets. Drawn only for a super admin (the server decides; this component just asks). A decision
- * records nothing but the decision — enabling studio access and the acceptance email stay separate.
+ * one gets. Drawn only for a super admin (the server decides; this component just asks). Inviting
+ * turns access on by email (spec R5); the acceptance email stays separate.
  */
 export function ApplicationsInbox({ preview = false }: { preview?: boolean }) {
   const [filter, setFilter] = useState<Filter>("submitted");
@@ -129,8 +129,8 @@ export function ApplicationsInbox({ preview = false }: { preview?: boolean }) {
         </div>
       </div>
       <p className={styles.note}>
-        Inviting records the decision here. Studio access is still enabled with the operator
-        command, and the acceptance email is sent separately.
+        Inviting turns studio access on for the account under that email, or the moment it signs up.
+        The acceptance email is sent separately.
       </p>
       {loading ? (
         <StudioSkeleton variant="access" />

@@ -1,9 +1,12 @@
 import { AccessDeniedError } from "../access/domain/errors.js";
 import type { Principal } from "../access/domain/principal.js";
+import type { ApplicationStatus } from "../applications/ports/application-review-repository.js";
 
 export interface StudioAccessRequest {
   status: "not_requested" | "pending" | "enabled";
   requestedAt: Date | null;
+  /** The status of the application sent under this account's email, or null without one. */
+  application: ApplicationStatus | null;
 }
 export interface StudioAccessRequestEntry {
   userId: string;
@@ -12,14 +15,15 @@ export interface StudioAccessRequestEntry {
   requestedAt: Date;
 }
 export interface StudioAccessRequestRepository {
-  read(userId: string): Promise<StudioAccessRequest>;
+  read(userId: string, email?: string | undefined): Promise<StudioAccessRequest>;
   pending(): Promise<StudioAccessRequestEntry[]>;
 }
 
 /**
  * Creator access as a person and an operator read it. Requesting access from the studio was
  * retired on 2026-10-08 (docs/specs/landing-trade-v1.md §7): the way in is the public application,
- * reviewed by `createApplicationReview`. `pending` still lists the requests recorded before that.
+ * reviewed by `createApplicationReview`, and a person's status carries their application's state
+ * so the studio can say where they stand. `pending` still lists the requests recorded before that.
  */
 export function createStudioAccessRequests(repository: StudioAccessRequestRepository) {
   function user(principal: Principal) {
@@ -31,7 +35,10 @@ export function createStudioAccessRequests(repository: StudioAccessRequestReposi
   return {
     async read(principal: Principal) {
       const caller = user(principal);
-      return { ...(await repository.read(caller.id)), canReviewRequests: caller.isSuperAdmin };
+      return {
+        ...(await repository.read(caller.id, caller.email)),
+        canReviewRequests: caller.isSuperAdmin,
+      };
     },
     async pending(principal: Principal) {
       if (!user(principal).isSuperAdmin) {

@@ -479,7 +479,7 @@ export function createServices(env: Env): Services & { close(): Promise<void> } 
     }),
     launches: new PostgresLaunchReadModel(repository.pool),
     close: () => repository.close(),
-    onboard: (userId) => directory.onboard(userId),
+    onboard: (userId, email) => directory.onboard(userId, email),
     studio: {
       perplMarkets: {
         catalog: (network, signal) =>

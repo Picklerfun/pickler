@@ -404,6 +404,8 @@ export type LedgerDto = z.infer<typeof ledgerResponseSchema>;
 export const studioAccessRequestSchema = z.object({
   status: z.enum(["not_requested", "pending", "enabled"]),
   requestedAt: z.string().datetime().nullable(),
+  /** The application sent under the account's email: in review, invited, rejected, or none. */
+  application: z.enum(["submitted", "invited", "rejected"]).nullable(),
 });
 export const studioAccessRequestStatusSchema = studioAccessRequestSchema.extend({
   canReviewRequests: z.boolean(),
