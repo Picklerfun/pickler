@@ -16,3 +16,8 @@ distinct from receipt times, and `onTickerRead` labels physical reads versus leg
 ## Priority laboratory reader
 
 `priority-study.ts` composes the existing eleven-market public reader for v7. `observe` obtains prices without candle/funding waits; `prepareEvidence` and `finalEvidence` require the same 1h/15m/5m eligibility; `reconcile` handles open and closed positions. Keep request sessions, deadlines and guards identical to the frozen universe policy. No models, credentials, signer, persistence or host filesystem belongs here.
+
+`universe-stream.ts` adds the explicit local v7 stream selector. Preserve legacy BTC/ETH stream
+and REST meanings. The latest buffer is copied from one connection generation and validated
+by trading. Cancellation never extends acquisition or initiates a reconnect beyond its deadline.
+Close on permission/configuration/ownership loss; never turn those failures into omissions.
