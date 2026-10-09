@@ -493,7 +493,9 @@ The POST request is sold with x402 when `paidAdviceFrom` (`src/container.ts`) co
 secret (32-byte hex) and `MONAD_RPC_URL`. It shares the invocation's advice store and service
 with the free path and builds `PostgresAdvicePayments` on the invocation's pool and
 `createAusdAuthorizationGateway`. The flag with a missing or refused key/RPC logs one line naming
-no value and leaves `paid` absent; absent, the route is free and unchanged. With `paid`, the handler
+no value and fails closed: `paid` is a request that throws `PilotError("ADVICE_UNAVAILABLE")`, so
+every POST answers 503 and nothing is enqueued. Only the flag off leaves `paid` absent; absent, the
+route is free and unchanged. With `paid`, the handler
 answers core's `payment_required` as 402 with x402 v1's own body (`paymentRequiredSchema`, not the
 envelope) and sets `X-PAYMENT-RESPONSE` on a 202 that settled. `PilotError("NOT_FOUND",
 "ADVICE_NOT_FOR_SALE")` maps to 404 `{ error: "ADVICE_NOT_FOR_SALE" }` before the generic mapper;

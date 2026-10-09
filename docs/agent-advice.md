@@ -64,8 +64,9 @@ The wire contract is [the x402 specification](specs/agent-advice-x402-v1.md) §4
 paths are §3.3. `POST /agents/:agentId/recommendations` is paid only when the API Worker has
 `ADVICE_X402_ENABLED=true`, the `X402_RELAYER_PRIVATE_KEY` secret and `MONAD_RPC_URL`. With the
 flag off the request is free exactly as above, and no 402 or payment header is ever produced. With
-the flag on but the key or RPC missing, or a key that is not 32-byte hex, paid advice is off and the
-Worker logs one line per composition naming the variable, never a value. The composition is
+the flag on but the key or RPC missing, or a key that is not 32-byte hex, the request fails closed:
+every `POST` answers 503 `ADVICE_UNAVAILABLE`, nothing is enqueued and no analysis is ever free,
+and the Worker logs one line per composition naming the variable, never a value. The composition is
 `paidAdviceFrom` in `workers/api/src/container.ts`: core's `createPaidAdvice` over the request's
 advice service and store, `PostgresAdvicePayments` on the invocation's pool and
 `createAusdAuthorizationGateway` (AUSD on Monad testnet, EIP-3009). The `GET` routes are unchanged

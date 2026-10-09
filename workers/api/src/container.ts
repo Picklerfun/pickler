@@ -182,10 +182,23 @@ export function delegatedPublicKeyFrom(
 const PRIVATE_KEY = /^0x[0-9a-fA-F]{64}$/;
 
 /**
- * The paid advice request (x402), or undefined when it is off. It is on only when
- * `ADVICE_X402_ENABLED` is "true" and both the relayer key and `MONAD_RPC_URL` are set; the flag
- * without them, or with a key viem refuses, turns it off and says so by variable name, never by
- * value. Off, `POST /v1/agent-advice/.../recommendations` is free exactly as before.
+ * A paid request that refuses every call with 503 `ADVICE_UNAVAILABLE`: x402 is on but cannot sell,
+ * and a free analysis must never stand in for a paid one.
+ */
+function unavailablePaidAdvice(): ReturnType<typeof createPaidAdvice> {
+  return {
+    async request() {
+      throw new PilotError("ADVICE_UNAVAILABLE", "Paid analyses are not configured");
+    },
+  };
+}
+
+/**
+ * The paid advice request (x402), or undefined when it is off. It is off unless
+ * `ADVICE_X402_ENABLED` is "true"; off, `POST /v1/agent-advice/.../recommendations` is free exactly
+ * as before. On, it sells only with both the relayer key and `MONAD_RPC_URL`: the flag without
+ * them, or with a key viem refuses, fails closed (every request answers 503) and says so by
+ * variable name, never by value.
  */
 export function paidAdviceFrom(
   env: Pick<Env, "ADVICE_X402_ENABLED" | "X402_RELAYER_PRIVATE_KEY" | "MONAD_RPC_URL">,
@@ -202,12 +215,12 @@ export function paidAdviceFrom(
   const relayerPrivateKey = env.X402_RELAYER_PRIVATE_KEY;
   const rpcUrl = env.MONAD_RPC_URL;
   if (!relayerPrivateKey || !rpcUrl) {
-    log("x402 is on but its relayer or RPC is missing; paid advice is off");
-    return undefined;
+    log("x402 is on but its relayer or RPC is missing; advice requests are refused");
+    return unavailablePaidAdvice();
   }
   if (!PRIVATE_KEY.test(relayerPrivateKey)) {
-    log("X402_RELAYER_PRIVATE_KEY is not a 32-byte hex private key; paid advice is off");
-    return undefined;
+    log("X402_RELAYER_PRIVATE_KEY is not a 32-byte hex private key; advice requests are refused");
+    return unavailablePaidAdvice();
   }
   let gateway: ReturnType<typeof createAusdAuthorizationGateway>;
   try {
@@ -217,8 +230,8 @@ export function paidAdviceFrom(
     });
   } catch {
     // The error is dropped unread: it may quote the key.
-    log("X402_RELAYER_PRIVATE_KEY or MONAD_RPC_URL was refused; paid advice is off");
-    return undefined;
+    log("X402_RELAYER_PRIVATE_KEY or MONAD_RPC_URL was refused; advice requests are refused");
+    return unavailablePaidAdvice();
   }
   return createPaidAdvice({
     advice: deps.advice,

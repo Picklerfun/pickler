@@ -24,6 +24,7 @@ import {
   paymentRequiredSchema,
 } from "@pickler/api-schema";
 import { createApp } from "../src/app.js";
+import { paidAdviceFrom } from "../src/container.js";
 import { documentationServices } from "../src/openapi/composition.js";
 import { apiDocument } from "../src/openapi/document.js";
 import { assertDocumentCoverage } from "../src/openapi/coverage.js";
@@ -70,7 +71,11 @@ function paidState(): PaidState {
     settled: 0,
   };
 }
-function fixture(enabled = true, paid?: PaidState) {
+type PaidFactory = (
+  advice: ReturnType<typeof createAdviceService>,
+  repository: AdviceRepository,
+) => ReturnType<typeof createPaidAdvice> | undefined;
+function fixture(enabled = true, paid?: PaidState, compose?: PaidFactory) {
   let notified = 0,
     created = 0;
   const agent: AdviceAgent = {
@@ -126,10 +131,12 @@ function fixture(enabled = true, paid?: PaidState) {
   };
   services.authenticate = authenticate;
   const advice = createAdviceService(repository, { enabled, policy });
+  const composed = compose?.(advice, repository);
   services.advice = {
     authenticate,
     service: advice,
     ...(paid ? { paid: paidAdvice(paid, advice, repository) } : {}),
+    ...(composed ? { paid: composed } : {}),
     notify: async () => {
       notified++;
     },
@@ -447,6 +454,40 @@ test("x402 on: disabled advice answers 503 before any 402, and a replay stays fr
 
 test("x402 off: the request stays free, with no payment header and no 402", async () => {
   const f = fixture();
+
+  const response = await ask(f);
+
+  assert.equal(response.status, 202);
+  assert.equal(response.headers.get("x-payment-response"), null);
+  assert.equal(f.created(), 1);
+});
+
+test("x402 on but misconfigured: the request answers 503 and never runs a free analysis", async () => {
+  const misconfigured: PaidFactory = (advice, repository) =>
+    paidAdviceFrom(
+      { ADVICE_X402_ENABLED: "true", X402_RELAYER_PRIVATE_KEY: `0x${"7a".repeat(32)}` },
+      { advice, repository, pool: {} as Parameters<typeof paidAdviceFrom>[1]["pool"] },
+      () => {},
+    );
+  const f = fixture(true, undefined, misconfigured);
+
+  const response = await ask(f, { "x-payment": payment() });
+
+  assert.equal(response.status, 503);
+  assert.equal((await response.json()).error, "ADVICE_UNAVAILABLE");
+  assert.equal(response.headers.get("x-payment-response"), null);
+  assert.equal(f.created(), 0);
+  assert.equal(f.notified(), 0);
+});
+
+test("x402 flag off through the container: the request stays free and answers 202", async () => {
+  const off: PaidFactory = (advice, repository) =>
+    paidAdviceFrom(
+      { ADVICE_X402_ENABLED: "false" },
+      { advice, repository, pool: {} as Parameters<typeof paidAdviceFrom>[1]["pool"] },
+      () => {},
+    );
+  const f = fixture(true, undefined, off);
 
   const response = await ask(f);
 

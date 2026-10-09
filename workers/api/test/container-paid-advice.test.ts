@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createAdviceService, type AdviceRepository } from "@pickler/core";
+import { createAdviceService, PilotError, type AdviceRepository } from "@pickler/core";
 import { paidAdviceFrom } from "../src/container";
 
 const KEY = `0x${"7a".repeat(32)}`;
@@ -40,7 +40,7 @@ test("paid advice is composed only with the flag, the relayer key and the RPC", 
   }
 });
 
-test("the flag without its relayer or RPC turns paid advice off and logs no value", () => {
+test("the flag without a usable relayer or RPC fails closed with 503 and logs no value", async () => {
   for (const env of [
     { ADVICE_X402_ENABLED: "true", MONAD_RPC_URL: RPC },
     { ADVICE_X402_ENABLED: "true", X402_RELAYER_PRIVATE_KEY: KEY },
@@ -53,9 +53,19 @@ test("the flag without its relayer or RPC turns paid advice off and logs no valu
   ]) {
     const { paid, logged } = compose(env);
 
-    assert.equal(paid, undefined);
+    assert.ok(paid, "a flag that is on never leaves the request free");
+    await assert.rejects(
+      paid.request(
+        { kind: "user", id: "user-1" } as Parameters<typeof paid.request>[0],
+        "agent-1",
+        "BTC",
+        "key-1",
+        undefined,
+      ),
+      (error) => error instanceof PilotError && error.code === "ADVICE_UNAVAILABLE",
+    );
     assert.equal(logged.length, 1);
-    assert.match(logged[0]!, /paid advice is off/);
+    assert.match(logged[0]!, /advice requests are refused/);
     for (const value of [KEY, "not-a-key", "00".repeat(32), RPC, "secret-token"]) {
       assert.equal(logged[0]!.includes(value), false, "no value is ever logged");
     }

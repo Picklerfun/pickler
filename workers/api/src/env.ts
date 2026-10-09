@@ -7,9 +7,9 @@ export interface Env {
   ADVICE_ENABLED?: string;
   ADVICE_POLICY_JSON?: string;
   /**
-   * "true" sells each fresh advice analysis with x402 (docs/specs/agent-advice-x402-v1.md), and
-   * only while X402_RELAYER_PRIVATE_KEY and MONAD_RPC_URL are also set. Anything else keeps the
-   * request free, as before.
+   * "true" sells each fresh advice analysis with x402 (docs/specs/agent-advice-x402-v1.md); it
+   * needs X402_RELAYER_PRIVATE_KEY and MONAD_RPC_URL too, and without them every request answers
+   * 503 (fails closed). Anything other than "true" keeps the request free, as before.
    */
   ADVICE_X402_ENABLED?: string;
   /**
