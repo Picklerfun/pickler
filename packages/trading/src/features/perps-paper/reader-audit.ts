@@ -12,6 +12,12 @@ type CaptureAttempt = {
 export interface UniverseReaderAuditRow {
   slot: number;
   symbol: PerpSymbol;
+  slotOutcome?:
+    | "ACQUIRED"
+    | "NOT_ADMITTED_AFTER_INTERRUPTION"
+    | "WINDOW_MISSED"
+    | "DATA_UNAVAILABLE"
+    | "TECHNICAL_FAILURE";
   finalValid: boolean | null;
   checks: number;
   initialCode: string | null;
@@ -52,6 +58,9 @@ export interface UniverseReaderAudit {
     cycles: number;
     validCycles: number;
     missedCycles: number;
+    attemptedCycles?: number;
+    notAdmittedCycles?: number;
+    windowMissedCycles?: number;
     validMarkets: number;
     marketObservations: number;
     ownershipFailures: number;
@@ -165,6 +174,24 @@ const percentile = (values: number[], fraction: number): number | null => {
   return sorted[Math.max(0, Math.ceil(sorted.length * fraction) - 1)]!;
 };
 
+function streamSlotOutcome(
+  cycle: Record<string, unknown>,
+): NonNullable<UniverseReaderAuditRow["slotOutcome"]> {
+  if (cycle.valid === true) {
+    return "ACQUIRED";
+  }
+  if (cycle.code === "NOT_ADMITTED_AFTER_INTERRUPTION") {
+    return "NOT_ADMITTED_AFTER_INTERRUPTION";
+  }
+  if (cycle.code === "WINDOW_MISSED") {
+    return "WINDOW_MISSED";
+  }
+  if (cycle.code === "DATA_UNAVAILABLE") {
+    return "DATA_UNAVAILABLE";
+  }
+  return "TECHNICAL_FAILURE";
+}
+
 /** Facts from recorded checks, not counterfactual replay of unavailable provider responses. */
 export function auditUniverseCapture(input: unknown): UniverseReaderAudit {
   const capture = object(input);
@@ -277,6 +304,7 @@ export function auditUniverseCapture(input: unknown): UniverseReaderAudit {
       rows.push({
         slot,
         symbol: name,
+        ...(streaming ? { slotOutcome: streamSlotOutcome(cycle) } : {}),
         finalValid: markets.get(name) ?? null,
         checks: checks.length,
         initialCode: first?.code ?? null,
@@ -344,6 +372,16 @@ export function auditUniverseCapture(input: unknown): UniverseReaderAudit {
       cycles: cycles.length,
       validCycles,
       missedCycles,
+      ...(streaming
+        ? {
+            attemptedCycles: cycles.filter((value) => !object(value).missed).length,
+            notAdmittedCycles: cycles.filter(
+              (value) => object(value).code === "NOT_ADMITTED_AFTER_INTERRUPTION",
+            ).length,
+            windowMissedCycles: cycles.filter((value) => object(value).code === "WINDOW_MISSED")
+              .length,
+          }
+        : {}),
       validMarkets: rows.filter((row) => row.finalValid === true).length,
       marketObservations: rows.length,
       ownershipFailures: number(capture.ownershipFailures),
