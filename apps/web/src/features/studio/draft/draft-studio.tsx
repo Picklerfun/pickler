@@ -7,6 +7,8 @@ import { useEffect, useRef, type ReactNode } from "react";
 import { useNow } from "@/lib/now";
 import type { Agent } from "../api";
 import { HeaderDot } from "../shell/header";
+import { TokenPanel } from "../../tokens/token-panel";
+import { tokenPreview } from "../../tokens/fixture";
 import { Identity } from "../shell/identity";
 import { Master } from "../shell/master";
 import { railItemId } from "../shell/rail";
@@ -150,6 +152,18 @@ export function DraftStudio({
         return <Sources {...props} />;
       case "limits":
         return <Limits {...props} />;
+      case "token":
+        return (
+          <DraftSection section="token">
+            <TokenPanel
+              agent={agent}
+              preview={preview || !!staged}
+              initialState={preview || staged ? tokenPreview(false, true) : null}
+              canManage={canManage}
+              onGoPublic={() => setSection("overview")}
+            />
+          </DraftSection>
+        );
       case "identity":
         return (
           <DraftSection section="identity">
