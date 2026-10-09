@@ -162,3 +162,7 @@ snapshots. Current runtime does not send those redundant requests. A subscriptio
 not make an old ticker fresh; unavailable source dates still produce `DATA_UNAVAILABLE`.
 Controlled regressions include one thousand ordered updates during blocked SQL, no lost delta,
 no delivered buffer before live ownership verification, and rejection after cancellation.
+
+The [2026-10-09 repair record](PERPL-UNIVERSE-WEBSOCKET-REPAIR-20261009.md) distinguishes the
+completed v3 technical measurement from its failed 17/30 availability result. The economic
+qualification gate remains closed; a healthy connection does not establish valid joint prices.
