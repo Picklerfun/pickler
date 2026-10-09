@@ -1,22 +1,34 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Button, Field, Icon, Input, Skeleton, Tag } from "@pickler/ui";
-import { tokenStateSchema, tokenDraftSchema, type TokenStateDto } from "@pickler/api-schema";
+import { Button, Field, Icon, Input, Meter, Skeleton, Tag } from "@pickler/ui";
+import {
+  AGENT_TOKEN_TOTAL_SUPPLY,
+  tokenStateSchema,
+  tokenDraftSchema,
+  type TokenStateDto,
+} from "@pickler/api-schema";
 import { studioApi, type Agent } from "../studio/api";
 import { AgentAvatar } from "../studio/shell/agent-avatar";
 import { useStudioForm, useStudioMemory } from "../studio/routing/memory";
 import { AgentTokenCard } from "./agent-token-card";
-import { PREVIEW_TOKEN } from "./fixture";
 import styles from "./token.module.css";
 
-type Phase = "editing" | "review" | "awaiting" | "confirming" | "error" | "launched";
 const wholeTokens = (units: string) => {
   const value = BigInt(units);
   const fraction = (value % 10n ** 18n).toString().padStart(18, "0").replace(/0+$/, "");
   return (value / 10n ** 18n).toLocaleString("en-US") + (fraction ? `.${fraction}` : "");
 };
 
-/** Only the local fixture advances a launch. Hosted composition has no grant issuer or sender. */
+/** Formatting only. All economic calculations come from the versioned server summary. */
+const amount = (units: string, decimals: number, places: number) => {
+  const scale = 10n ** BigInt(decimals);
+  const rounding = 10n ** BigInt(decimals - places);
+  const rounded = ((BigInt(units) + rounding / 2n) / rounding) * rounding;
+  const fraction = (rounded % scale).toString().padStart(decimals, "0").slice(0, places);
+  return (rounded / scale).toLocaleString("en-US") + (places ? "." + fraction : "");
+};
+
+/** Draft details update locally. No signer or transaction sender is composed here. */
 export function TokenPanel({
   agent,
   initialState,
@@ -35,20 +47,12 @@ export function TokenPanel({
   const [state, setState] = useState<TokenStateDto | null>(() =>
     preview ? memory.outcome(scope + ":saved", initialState) : initialState,
   );
-  const [phase, changePhase] = useState<Phase>(() =>
-    preview ? memory.outcome(scope + ":phase", "editing") : "editing",
-  );
-  function setPhase(next: Phase) {
-    changePhase(next);
-    if (preview) {
-      memory.setOutcome(scope + ":phase", next);
-    }
-  }
   const [readError, setReadError] = useState(false);
   const [writeError, setWriteError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
   const [loading, setLoading] = useState(!initialState);
   const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
   const [form, edit] = useStudioForm(scope + ":fields", state?.draft?.version ?? 0, {
     name: state?.draft?.name ?? agent.name ?? "Agent",
     ticker:
@@ -105,15 +109,13 @@ export function TokenPanel({
     availabilityMessage = "Token draft editing is currently unavailable.";
   }
   const avatar = <AgentAvatar accent={agent.accent} pattern={agent.avatarPattern} size="head" />;
-  const launched =
-    phase === "launched"
-      ? { ...PREVIEW_TOKEN, name: form.name, ticker: form.ticker }
-      : state?.token;
+  const launched = state?.token;
   async function save() {
     if (!canManage || saving || loading || readError || stale || saveBlocked) {
       return;
     }
     setSaving(true);
+    setSaved(false);
     setWriteError(null);
     memory.begin(scope);
     try {
@@ -131,6 +133,7 @@ export function TokenPanel({
         setState(saved);
         memory.setOutcome(scope + ":saved", saved);
         memory.committed(scope);
+        setSaved(true);
         return;
       }
       const draft = tokenDraftSchema.parse(
@@ -141,6 +144,7 @@ export function TokenPanel({
       );
       setState((previous) => (previous ? { ...previous, draft } : previous));
       memory.committed(scope);
+      setSaved(true);
     } catch {
       setWriteError("Could not save. Your edits are kept; reload the state before trying again.");
     } finally {
@@ -151,22 +155,19 @@ export function TokenPanel({
   const privateAgent = agent.draft || state?.blockers.includes("GO_PUBLIC_FIRST");
   const valid =
     !!form.name.trim() && form.name.trim().length <= 40 && /^[A-Z][A-Z0-9]{1,5}$/.test(form.ticker);
-  const reviewing = phase !== "editing" && phase !== "launched";
+  const economics = state?.economics;
+  const allocation = (units: string, percent: number) => `${wholeTokens(units)} · ${percent}%`;
   return (
     <div className={styles.panel}>
-      {preview && (
-        <p className={styles.quiet}>Preview · simulated launch, no signatures or transactions</p>
-      )}
       {launched ? (
         <AgentTokenCard token={launched} avatar={avatar} preview={preview} />
       ) : (
         <>
           <section className={styles.card} aria-label="Token launch">
             <div className={styles.head}>
-              {avatar}
               <div className={styles.identity}>
-                <h3>Token</h3>
-                <p className={styles.quiet}>Launch a token for {agent.name}.</p>
+                <h3>Launch token</h3>
+                <p className={styles.quiet}>For {agent.name}</p>
               </div>
               {state?.chainId && <Tag>{state.chainId === 10143 ? "TESTNET" : "MAINNET"}</Tag>}
             </div>
@@ -189,18 +190,22 @@ export function TokenPanel({
                 <Input
                   value={form.name}
                   maxLength={40}
-                  disabled={!canManage || reviewing}
-                  onChange={(event) => edit({ ...form, name: event.target.value })}
+                  disabled={!canManage || saving}
+                  onChange={(event) => {
+                    setSaved(false);
+                    edit({ ...form, name: event.target.value });
+                  }}
                 />
               </Field>
               <Field label="Ticker">
                 <Input
                   value={form.ticker}
                   maxLength={6}
-                  disabled={!canManage || reviewing}
-                  onChange={(event) =>
-                    edit({ ...form, ticker: event.target.value.toUpperCase().replace(/^\$/, "") })
-                  }
+                  disabled={!canManage || saving}
+                  onChange={(event) => {
+                    setSaved(false);
+                    edit({ ...form, ticker: event.target.value.toUpperCase().replace(/^\$/, "") });
+                  }}
                 />
               </Field>
             </div>
@@ -220,121 +225,196 @@ export function TokenPanel({
                 </Button>
               </div>
             )}
-            <div className={styles.actions}>
+            <section className={styles.summary} aria-label="Token launch details">
+              <div className={styles.supplyHero}>
+                <div className={styles.supply}>
+                  <span className={styles.quiet}>Total supply</span>
+                  <strong>{wholeTokens(AGENT_TOKEN_TOTAL_SUPPLY)}</strong>
+                </div>
+                <div className={styles.tokenPreview}>
+                  <div className={styles.previewIdentity}>
+                    <AgentAvatar accent={agent.accent} pattern={agent.avatarPattern} size="chip" />
+                    <strong>
+                      {form.name || "—"} · ${form.ticker || "—"}
+                    </strong>
+                  </div>
+                  <span className={styles.quiet}>Fixed forever · no further minting</span>
+                </div>
+              </div>
+              {loading ? (
+                <div role="status" aria-label="Loading launch details">
+                  <Skeleton shape="line" />
+                  <Skeleton shape="line" />
+                </div>
+              ) : readError ? (
+                <p className={styles.quiet}>
+                  Wallet and launch terms are unavailable. Retry above.
+                </p>
+              ) : (
+                <>
+                  <div className={styles.distribution}>
+                    <div className={styles.head}>
+                      <h4>Distribution</h4>
+                      <Tag>REFERENCE</Tag>
+                    </div>
+                    {economics ? (
+                      <>
+                        <Meter
+                          value={economics.salePercent}
+                          tone="lime"
+                          className={styles.distributionTrack}
+                        />
+                        <dl className={styles.allocations}>
+                          <div>
+                            <dt>
+                              <span className={styles.curveDot} />
+                              Bonding curve
+                            </dt>
+                            <dd>{allocation(economics.saleAllocation, economics.salePercent)}</dd>
+                          </div>
+                          <div>
+                            <dt>
+                              <span className={styles.liquidityDot} />
+                              Liquidity
+                            </dt>
+                            <dd>{allocation(economics.lpAllocation, economics.lpPercent)}</dd>
+                          </div>
+                        </dl>
+                        <dl className={styles.details}>
+                          <div className={styles.detail}>
+                            <dt>Creator / project reserve</dt>
+                            <dd>0 tokens</dd>
+                          </div>
+                        </dl>
+                      </>
+                    ) : (
+                      <p className={styles.quiet}>Launch terms are unavailable.</p>
+                    )}
+                  </div>
+                  {economics && (
+                    <section className={styles.economics} aria-label="Launch economics">
+                      <h4>Launch economics</h4>
+                      <dl className={styles.economicFigures}>
+                        <div>
+                          <dt>Initial valuation · FDV</dt>
+                          <dd>
+                            ≈{amount(economics.initialFdvWad, 18, 0)} <span>AUSD</span>
+                          </dd>
+                        </div>
+                        <div>
+                          <dt>At curve completion · FDV</dt>
+                          <dd>
+                            ≈{amount(economics.finalFdvWad, 18, 0)} <span>AUSD</span>
+                          </dd>
+                        </div>
+                        <div>
+                          <dt>Net reserve at completion</dt>
+                          <dd>
+                            ≈{amount(economics.netReserveAtCompletion, 6, 0)} <span>AUSD</span>
+                          </dd>
+                        </div>
+                      </dl>
+                      <dl className={styles.priceDetails}>
+                        <div className={styles.detail}>
+                          <dt>Initial / final token price</dt>
+                          <dd>
+                            ≈{amount(economics.initialPriceWad, 18, 8)} /{" "}
+                            {amount(economics.finalPriceWad, 18, 8)} AUSD
+                          </dd>
+                        </div>
+                      </dl>
+                    </section>
+                  )}
+                  <dl className={styles.walletDetails}>
+                    <div>
+                      <dt>
+                        <Icon name="wallet" size={16} />
+                        Creator wallet
+                      </dt>
+                      <dd>
+                        {state?.masterAddress ? (
+                          <abbr title={state.masterAddress}>
+                            {state.masterAddress.slice(0, 8)}…{state.masterAddress.slice(-6)}
+                          </abbr>
+                        ) : state?.masterAddress === null ? (
+                          "Not registered"
+                        ) : (
+                          "Unavailable"
+                        )}
+                      </dd>
+                      <dd className={styles.quiet}>Creator & fee recipient</dd>
+                    </div>
+                    <div>
+                      <dt>
+                        <Icon name="shield" size={16} />
+                        Token admin
+                      </dt>
+                      <dd>None</dd>
+                      <dd className={styles.quiet}>No owner privileges</dd>
+                    </div>
+                  </dl>
+                  {economics && (
+                    <div className={styles.preset}>
+                      <h4>Fees</h4>
+                      <dl className={styles.fees}>
+                        {[
+                          [
+                            "Buy / sell",
+                            `${economics.buyFeeBps / 100}% / ${economics.sellFeeBps / 100}%`,
+                          ],
+                          ["Launch fee", `${amount(economics.launchFee, 6, 0)} AUSD`],
+                          [
+                            "Trade fees · creator / Pickler",
+                            `${(10000 - economics.protocolShareBps) / 100}% / ${economics.protocolShareBps / 100}%`,
+                          ],
+                          ["Network gas", "Paid separately in MON"],
+                        ].map(([label, value]) => (
+                          <div className={styles.detail} key={label}>
+                            <dt>{label}</dt>
+                            <dd>{value}</dd>
+                          </div>
+                        ))}
+                      </dl>
+                    </div>
+                  )}
+                  {economics && (
+                    <p className={styles.exampleNote}>
+                      After migration: Pending DEX configuration.
+                    </p>
+                  )}
+                  <p className={styles.exampleNote}>
+                    {preview ? "Local preview" : "Reference terms"} · Launch disabled.
+                  </p>
+                </>
+              )}
+            </section>
+            <div className={styles.launchActions}>
               {privateAgent ? (
-                <Button size="sm" onClick={onGoPublic} disabled={!onGoPublic}>
+                <Button onClick={onGoPublic} disabled={!onGoPublic}>
                   Go public first
                 </Button>
               ) : (
-                <Button
-                  size="sm"
-                  disabled={
-                    !preview ||
-                    stale ||
-                    !state?.available ||
-                    !canManage ||
-                    !valid ||
-                    loading ||
-                    readError ||
-                    reviewing
-                  }
-                  onClick={() => setPhase("review")}
-                >
-                  Review launch
-                </Button>
+                <Button disabled>Launch token</Button>
               )}
               <Button
                 size="sm"
                 variant="secondary"
                 disabled={
-                  !canManage ||
-                  loading ||
-                  readError ||
-                  saving ||
-                  reviewing ||
-                  !valid ||
-                  stale ||
-                  saveBlocked
+                  !canManage || loading || readError || saving || !valid || stale || saveBlocked
                 }
                 onClick={() => void save()}
               >
                 {saving ? "Saving…" : "Save draft"}
               </Button>
             </div>
-            {state?.confirmation === "pending" && <p role="status">Token confirmation pending</p>}
-            {!preview && !loading && !readError && (
-              <p className={styles.quiet}>{availabilityMessage}</p>
+            {saved && (
+              <p className={styles.quiet} role="status">
+                Draft saved
+              </p>
             )}
+            {state?.confirmation === "pending" && <p role="status">Token confirmation pending</p>}
+            {!loading && !readError && <p className={styles.quiet}>{availabilityMessage}</p>}
           </section>
-          {reviewing && state?.preset && (
-            <section className={styles.card} aria-label="Review token launch">
-              <div className={styles.head}>
-                <Icon name="coin" />
-                <h3>Review launch</h3>
-                <Tag>SIMULATED</Tag>
-              </div>
-              <dl className={styles.details}>
-                {[
-                  ["Network", state.chainId === 10143 ? "Monad testnet" : "Monad mainnet"],
-                  ["Token", `${form.name} · $${form.ticker}`],
-                  ["Supply", wholeTokens(state.preset.totalSupply)],
-                  ["Curve allocation", wholeTokens(state.preset.saleAllocation)],
-                  ["Liquidity allocation", wholeTokens(state.preset.lpAllocation)],
-                  [
-                    "Buy / sell fee",
-                    `${state.preset.buyFeeBps / 100}% / ${state.preset.sellFeeBps / 100}%`,
-                  ],
-                  ["Protocol share of fees", `${state.preset.protocolShareBps / 100}%`],
-                  ["Creator share of LP fees", `${state.preset.lpCreatorShareBps / 100}%`],
-                  ["Launch cost", `${wholeTokens(state.preset.launchFee)} MON`],
-                ].map(([label, value]) => (
-                  <div className={styles.detail} key={label}>
-                    <dt>{label}</dt>
-                    <dd>{value}</dd>
-                  </div>
-                ))}
-              </dl>
-              <p className={styles.quiet}>Demo preset · these values are not a launch quote.</p>
-              <div className={styles.status} aria-live="polite">
-                {phase === "awaiting" && <p>Awaiting signature · simulated</p>}
-                {phase === "confirming" && <p>Confirming · simulated</p>}
-                {phase === "error" && (
-                  <p role="alert">Simulated launch failed. Your draft is kept.</p>
-                )}
-                <div className={styles.actions}>
-                  {(phase === "review" || phase === "error") && (
-                    <Button size="sm" onClick={() => setPhase("awaiting")}>
-                      {phase === "error" ? "Try again" : "Simulate launch"}
-                    </Button>
-                  )}
-                  {phase === "awaiting" && (
-                    <Button size="sm" onClick={() => setPhase("confirming")}>
-                      Simulate signature
-                    </Button>
-                  )}
-                  {phase === "confirming" && (
-                    <Button
-                      size="sm"
-                      onClick={() => {
-                        memory.committed(scope);
-                        setPhase("launched");
-                      }}
-                    >
-                      Simulate confirmation
-                    </Button>
-                  )}
-                  {(phase === "awaiting" || phase === "confirming") && (
-                    <Button size="sm" variant="secondary" onClick={() => setPhase("error")}>
-                      Simulate failure
-                    </Button>
-                  )}
-                  <Button size="sm" variant="secondary" onClick={() => setPhase("editing")}>
-                    Cancel
-                  </Button>
-                </div>
-              </div>
-            </section>
-          )}
         </>
       )}
     </div>
