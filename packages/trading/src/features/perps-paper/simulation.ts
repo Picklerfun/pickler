@@ -14,10 +14,20 @@ import {
   paperProduct,
 } from "./decimal.js";
 import { paperRisk } from "./policy.js";
+import { COMPONENT_PAPER_POLICY, type PerpsPaperDataPolicy } from "./types.js";
 export interface PerpsPaperFrame {
   snapshot: PerpSnapshot;
   book: PerpOrderBook;
   hash: string;
+  /** Copied stream continuity, independent of original price/book timestamps. */
+  streamEvidence?: {
+    policy: typeof COMPONENT_PAPER_POLICY;
+    generation: number;
+    copiedAt: number;
+    heartbeatSequence: number;
+    headBlock: number;
+    heartbeatReceivedAt: number;
+  };
 }
 export interface PerpsPaperObservation {
   marksOnly?: boolean;
@@ -79,7 +89,44 @@ export function validatePaperFrame(
   network: string,
   symbol: PerpSymbol,
   now: number,
+  policy?: PerpsPaperDataPolicy,
 ) {
+  if (policy !== undefined) {
+    if (policy !== COMPONENT_PAPER_POLICY) {
+      failure("INVALID_INPUT");
+    }
+    for (const provenance of [frame.snapshot.ticker.provenance, frame.book.provenance]) {
+      if (
+        ![provenance.providerTimestamp, provenance.block].every(
+          (value) => value !== null && Number.isSafeInteger(value) && value >= 0,
+        )
+      ) {
+        failure("INVALID_MARKET_DATA");
+      }
+    }
+    validatePaperFrameComponents(frame, network, symbol, now);
+    const stream = frame.streamEvidence ?? failure("INVALID_MARKET_DATA");
+    if (
+      stream.policy !== policy ||
+      ![
+        stream.generation,
+        stream.copiedAt,
+        stream.heartbeatSequence,
+        stream.headBlock,
+        stream.heartbeatReceivedAt,
+        now,
+      ].every((value) => Number.isSafeInteger(value) && value >= 0) ||
+      stream.generation < 1 ||
+      stream.heartbeatReceivedAt > stream.copiedAt ||
+      stream.copiedAt > now
+    ) {
+      failure("INVALID_MARKET_DATA");
+    }
+    if (now - stream.heartbeatReceivedAt > 5000) {
+      failure("STALE_MARKET_DATA");
+    }
+    return;
+  }
   validateFrameIdentityAndDates(frame, network, symbol, now);
   if (
     Math.abs(
@@ -91,13 +138,40 @@ export function validatePaperFrame(
     failure("INCONSISTENT_MARKET_DATA");
   }
 }
+/** A final set must come from one copied connection generation and a common clock. */
+export function validatePaperFrameSet(
+  frames: readonly PerpsPaperFrame[],
+  network: string,
+  now: number,
+  policy?: PerpsPaperDataPolicy,
+) {
+  for (const frame of frames) {
+    validatePaperFrame(frame, network, frame.snapshot.market.symbol, now, policy);
+  }
+  if (policy === COMPONENT_PAPER_POLICY && frames.length) {
+    const first = frames[0]!.streamEvidence!;
+    if (
+      frames.some((frame) =>
+        Object.keys(first).some(
+          (key) =>
+            frame.streamEvidence![key as keyof typeof first] !== first[key as keyof typeof first],
+        ),
+      )
+    ) {
+      failure("INVALID_MARKET_DATA");
+    }
+  }
+}
 export function simulatePerpsFill(
   account: PerpsPaperAccount,
   intent: PerpsPaperIntent,
   frame: PerpsPaperFrame,
   now: number,
 ): PerpsPaperFill {
-  validatePaperFrame(frame, account.scope.network, intent.symbol, now);
+  if (account.scope.sessionId === "product" && account.marketDataPolicy !== undefined) {
+    failure("INVALID_INPUT");
+  }
+  validatePaperFrame(frame, account.scope.network, intent.symbol, now, account.marketDataPolicy);
   const buying = (intent.kind === "open") === (intent.side === "long");
   const levels = buying ? frame.book.asks : frame.book.bids;
   if (!levels[0]) {
@@ -184,8 +258,11 @@ export function applyPaperObservation(
 ) {
   const a = structuredClone(account);
   const movements: PerpsPaperMovement[] = [];
+  if (a.scope.sessionId === "product" && a.marketDataPolicy !== undefined) {
+    failure("INVALID_INPUT");
+  }
+  validatePaperFrameSet(observation.frames, a.scope.network, now, a.marketDataPolicy);
   for (const frame of observation.frames) {
-    validatePaperFrame(frame, a.scope.network, frame.snapshot.market.symbol, now);
     for (const p of a.positions.filter(
       (p) => p.closedAt === null && p.symbol === frame.snapshot.market.symbol,
     )) {
