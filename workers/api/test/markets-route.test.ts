@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createGetMarket, createListMarkets, READ_HORIZON } from "@pickler/core";
-import { createSampleMarketBoard } from "@pickler/infrastructure";
+import { createSampleMarketBoard } from "../../../scripts/design/fixtures/sample-market-board.mts";
 import { marketplaceRoutes } from "../src/routes/marketplace.js";
 import type { createGrowthServices } from "../src/growth/services.js";
 import type { MarketDetailDto, PerpMarketDto } from "@pickler/api-schema";

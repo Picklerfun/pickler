@@ -1,4 +1,4 @@
-import type { AnalyticsRangeDto, LeaderboardDto, PlatformAnalyticsDto } from "@pickler/api-schema";
+import type { AnalyticsRangeDto, PlatformAnalyticsDto } from "@pickler/api-schema";
 
 /* A public board reads data anyone may see, and the API it reads can be behind the web: the web
    deploys from main on every merge, the API does not. A route the API does not have yet (404) or a
@@ -60,8 +60,6 @@ export async function readVenueItemOrNull<T>(response: Response, path: string): 
   }
   return readOrNull<T>(response, path);
 }
-
-export const EMPTY_LEADERBOARD: LeaderboardDto = { entries: [], weights: [], calibration: [] };
 
 const RANGES: readonly AnalyticsRangeDto[] = ["7d", "30d", "90d"];
 

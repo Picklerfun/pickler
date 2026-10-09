@@ -1,12 +1,6 @@
 import { LandingPage } from "@/features/landing/components/landing-page";
-import { services } from "@/server/container";
 
-// The announcement changes; the client also refreshes it through /api/v1/landing.
-export const dynamic = "force-dynamic";
-
-export default async function Home() {
-  const snapshot = await services.getLanding();
-  return (
-    <LandingPage initial={snapshot} appStoreUrl={process.env.NEXT_PUBLIC_APP_STORE_URL || null} />
-  );
+// Copy and illustrations only: the landing reads no API (docs/specs/marketplace-real-only-v1.md N4).
+export default function Home() {
+  return <LandingPage appStoreUrl={process.env.NEXT_PUBLIC_APP_STORE_URL || null} />;
 }

@@ -43,10 +43,10 @@ describe("the four steps", () => {
 });
 
 describe("the three ways in", () => {
-  it("each go to a page that exists", () => {
+  it("link only to a page that exists; the launchpad says soon", () => {
     assert.deepEqual(
       WAYS.map((way) => way.href),
-      ["/agents", "/tokens", "/markets"],
+      ["/agents", null, "/markets"],
     );
   });
 });

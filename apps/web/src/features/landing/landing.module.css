@@ -96,56 +96,6 @@
   border-radius: var(--pk-radius-mark);
 }
 
-/* ---------- Announcement ---------- */
-
-.newsRow {
-  display: flex;
-  justify-content: center;
-  padding-top: 28px;
-}
-
-.news {
-  display: inline-flex;
-  align-items: center;
-  gap: 12px;
-  max-width: 100%;
-  padding: 9px 10px 9px 16px;
-  border-radius: var(--pk-radius-pill);
-  background: var(--pk-panel-2);
-}
-
-.newsTag {
-  flex: none;
-  font: 600 12px/1 var(--pk-font);
-  letter-spacing: 0.1em;
-  color: var(--pk-violet);
-}
-
-.newsTitle {
-  overflow: hidden;
-  font: 600 15px/1.3 var(--pk-font);
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-
-.newsClose {
-  display: grid;
-  flex: none;
-  place-items: center;
-  width: 26px;
-  height: 26px;
-  padding: 0;
-  border: none;
-  border-radius: var(--pk-radius-pill);
-  background: transparent;
-  color: var(--pk-ink-muted);
-  cursor: pointer;
-}
-
-.newsClose:hover {
-  color: var(--pk-ink);
-}
-
 /* ---------- Headline ---------- */
 
 .headline {
@@ -617,6 +567,30 @@
 
 .wayCta:hover {
   transform: translateY(-2px);
+}
+
+/* The launchpad is not open: the call to action's place, quiet, and the badge the bar uses. */
+.waySoon {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  align-self: flex-start;
+  margin-top: auto;
+  padding: 15px 22px;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-panel);
+  font: 600 15px/1 var(--pk-font);
+  letter-spacing: -0.02em;
+  color: var(--pk-ink-muted);
+}
+
+.soonTag {
+  padding: 3px 7px;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-panel-3);
+  font: 600 9px/1 var(--pk-font);
+  letter-spacing: 0.08em;
+  color: var(--pk-ink-soft);
 }
 
 /* ---------- FOUR STEPS ---------- */

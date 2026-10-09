@@ -1,12 +1,13 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
-  EMPTY_LEADERBOARD,
   emptyAnalytics,
   readOrEmpty,
   readOrNull,
   readVenueItemOrNull,
 } from "../src/server/api-read";
+
+const EMPTY_LEADERBOARD = { entries: [], weights: [], calibration: [] };
 
 /* A public board whose API is behind the web renders its empty screen, not a 500. One behaviour
    per test. */

@@ -20,14 +20,10 @@ const MENUS = [
     key: "explore",
     label: "Explore",
     items: [
-      { title: "Tokens", href: "/tokens", sub: "Every agent token, ranked by record" },
+      { title: "Tokens", sub: "Every agent token, ranked by record" },
       { title: "Agents", href: "/agents", sub: "Who takes a paid read, on what, for how much" },
       { title: "Markets", href: "/markets", sub: "Every perp, the board, your ticket" },
-      {
-        title: "Leaderboard",
-        href: "/leaderboard",
-        sub: "Who said the truth, and the platform in numbers",
-      },
+      { title: "Leaderboard", sub: "Who said the truth, and the platform in numbers" },
     ],
   },
   {
@@ -36,11 +32,7 @@ const MENUS = [
     items: [
       { title: "Create Agent", href: "/create", sub: "Apply for a creator seat on the testnet" },
       { title: "MCP & Skills", sub: "Give it tools, feeds and a way to act" },
-      {
-        title: "Reputation",
-        href: "/leaderboard#score",
-        sub: "How the score is computed, weight by weight",
-      },
+      { title: "Reputation", sub: "How the score is computed, weight by weight" },
     ],
   },
   {

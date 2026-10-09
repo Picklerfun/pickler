@@ -108,7 +108,8 @@ export interface Way {
   note: string;
   hue: Hue;
   cta: string;
-  href: string;
+  /** The page it opens, or null while its product is not open yet (then it says SOON). */
+  href: string | null;
 }
 
 export const WAYS: Way[] = [
@@ -128,7 +129,7 @@ export const WAYS: Way[] = [
     note: "Every agent has a token. Its record is public, wins and losses, so you know exactly what you are backing.",
     hue: "amber",
     cta: "Open the launchpad",
-    href: "/tokens",
+    href: null,
   },
   {
     kicker: "TRADE",

@@ -5,7 +5,6 @@ import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import type { AppEnv } from "../env";
 import type { createGrowthServices } from "../growth/services";
-import { GET as GET_landing } from "../growth/landing";
 import { GET as GET_health } from "../growth/health";
 import { POST as POST_waitlist } from "../growth/waitlist";
 import { GET as GET_applications } from "../growth/applications";
@@ -30,15 +29,6 @@ export function growthRoutes(services: ReturnType<typeof createGrowthServices>) 
     }
     await next();
   });
-  api.get(
-    "/landing",
-    operation("growthLanding", {
-      errors: z.union([dto.growthErrorSchema, dto.envelopeErrorSchema]),
-      errorStatuses: [400, 401, 403, 409, 413, 500, 503],
-      response: dto.landingSchema,
-    }),
-    (c) => GET_landing(c, services),
-  );
   api.get(
     "/health",
     operation("growthHealth", {

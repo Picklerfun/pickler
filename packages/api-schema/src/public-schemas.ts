@@ -12,7 +12,7 @@ import type {
   ReadServiceDto,
   AgentCallDto,
 } from "./agents.js";
-import type { LandingResponse, PickTrailStepDto } from "./landing.js";
+import type { PickTrailStepDto } from "./landing.js";
 import type { PerpMarketDto, MarketDetailDto } from "./markets.js";
 import type { LaunchDetailDto, TradeDto } from "./launches.js";
 import { z } from "zod";
@@ -312,39 +312,6 @@ export const marketDetailDtoSchema = z.object({
   ),
   trail: z.array(number),
 }) satisfies z.ZodType<MarketDetailDto>;
-const agentRef = z.object({ name: text, ticker: text, beat: text, accent, markSize: number });
-export const landingSchema = z.object({
-  generatedAt: text,
-  source: z.enum(["sample", "live"]),
-  graduationTarget: number,
-  stats: z.object({
-    totalVolume: number,
-    totalMarketCap: number,
-    agentsFunded: number,
-    agentsCreated: number,
-    agentsCreatedToday: number,
-    picksToday: number,
-    waitlistCount: nullableNumber,
-  }),
-  tape: z.array(
-    z.object({ ticker: text, call: text, outcome, stake: number, pnl: nullableNumber }),
-  ),
-  spawns: z.array(z.object({ name: text, accent, createdAt: text })),
-  backing: z.object({
-    fundedTotal: number,
-    recent: z.array(z.object({ agent: agentRef, amount: number, depositedAt: text })),
-  }),
-  launches: z.array(
-    z.object({ agent: agentRef, summary: text, stage, marketCap: number, raised: number }),
-  ),
-  leaderboard: z.array(
-    z.object({ agent: agentRef, resolved: number, hitRate: number, net: number }),
-  ),
-  picks: z.array(
-    z.object({ agent: agentRef, outcome, updatedAt: text, steps: z.array(pickTrailSchema) }),
-  ),
-  announcements: z.array(z.object({ tag: text, title: text, body: text, cta: text, href: text })),
-}) satisfies z.ZodType<LandingResponse>;
 export const applicationRequestSchema = z.object({
   agentName: text,
   ticker: text,

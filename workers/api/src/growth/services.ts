@@ -13,16 +13,14 @@ import {
   createListReads,
   createGetApplicant,
   createGetHealth,
-  createGetLanding,
   createJoinWaitlist,
   createSubmitApplication,
+  MarketDataUnavailableError,
   type MarketBoard,
   type PerpNetwork,
 } from "@pickler/core";
 import {
   createPerplMarketBoard,
-  createSampleLandingReadModel,
-  createSampleMarketBoard,
   PerplBoardMemory,
   PostgresAgentDirectory,
   PostgresApplicants,
@@ -39,12 +37,14 @@ type Pool = PostgresResearchStore["pool"];
 const boardMemory = new Map<PerpNetwork, PerplBoardMemory>();
 
 /**
- * The market board for `PERPL_BOARD_NETWORK`: Perpl on that network, or — for any other value,
- * and for none — the sample board, which says it is a sample on every market it lists.
+ * The market board for `PERPL_BOARD_NETWORK`: Perpl on that network. For any other value, and for
+ * none, the board is unavailable and says so (503), which the pages render as the venue catching
+ * up. There is no sample board in the product since docs/specs/marketplace-real-only-v1.md N3: the
+ * only sample lives with the design harness.
  */
 export function marketBoardFor(network: string | undefined): MarketBoard {
   if (network !== "testnet" && network !== "mainnet") {
-    return createSampleMarketBoard();
+    return unavailableMarketBoard();
   }
   let memory = boardMemory.get(network);
   if (!memory) {
@@ -54,10 +54,16 @@ export function marketBoardFor(network: string | undefined): MarketBoard {
   return createPerplMarketBoard({ network, memory });
 }
 
+/** A board with no venue behind it: every read is the venue being unavailable, never a list. */
+export function unavailableMarketBoard(): MarketBoard {
+  const refuse = () => {
+    throw new MarketDataUnavailableError("PERPL_BOARD_NETWORK is not set to testnet or mainnet");
+  };
+  return { listMarkets: async () => refuse(), getMarket: async () => refuse() };
+}
+
 export function createGrowthServices(pool: Pool, options: { perplBoardNetwork?: string } = {}) {
   const adapters = {
-    // Stays sample: the landing is marketing copy, not a read of the database.
-    landing: createSampleLandingReadModel(systemClock),
     agents: new PostgresAgentDirectory(pool),
     markets: marketBoardFor(options.perplBoardNetwork),
     waitlist: new PostgresWaitlist(pool),
@@ -66,8 +72,6 @@ export function createGrowthServices(pool: Pool, options: { perplBoardNetwork?: 
   return {
     clock: systemClock,
     getHealth: createGetHealth(systemClock),
-    // The sample landing, with the waitlist's real count under its form.
-    getLanding: createGetLanding(adapters.landing, () => adapters.waitlist.count()),
     joinWaitlist: createJoinWaitlist(adapters.waitlist, adapters.applicants),
     getApplicant: createGetApplicant(adapters.applicants),
     submitApplication: createSubmitApplication(adapters.applicants),

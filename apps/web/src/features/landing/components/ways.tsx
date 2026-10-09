@@ -6,7 +6,8 @@ import { Mark } from "./mark";
 
 /**
  * INVEST IN WHAT COMES NEXT: the three things the marketplace is for, each on its own dark card
- * with the colour it carries everywhere else, and each a link to the page where it happens.
+ * with the colour it carries everywhere else. A way whose page exists is a link to it; one whose
+ * product is not open yet (the launchpad) says SOON where the link would be, as the bar does.
  */
 export function Ways() {
   return (
@@ -37,10 +38,17 @@ export function Ways() {
             </div>
             <p className={styles.wayTitle}>{way.title}</p>
             <p className={styles.wayNote}>{way.note}</p>
-            <Link href={way.href} className={`${styles.wayCta} ${styles.hue}`} data-hue={way.hue}>
-              {way.cta}
-              <Icon name="arrow" size={13} />
-            </Link>
+            {way.href ? (
+              <Link href={way.href} className={`${styles.wayCta} ${styles.hue}`} data-hue={way.hue}>
+                {way.cta}
+                <Icon name="arrow" size={13} />
+              </Link>
+            ) : (
+              <span className={styles.waySoon}>
+                {way.cta}
+                <span className={styles.soonTag}>SOON</span>
+              </span>
+            )}
           </article>
         ))}
       </div>

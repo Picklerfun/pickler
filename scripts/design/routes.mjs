@@ -113,18 +113,6 @@ const ALL = [
   // measured, which is why two labels wearing <h2> sat there in the wrong face for the whole of
   // this change. A route nobody checks is where a defect lives longest, and this one has no task
   // coming to find it.
-  {
-    path: "/leaderboard",
-    name: "leaderboard",
-    product: "marketplace",
-    surface: "light",
-    task: "Inherited",
-    // Two screens, one of which must be present. #leaderboard-empty is the launch-day screen:
-    // nothing has settled, so the page draws that instead of an empty table. #score is the weights
-    // panel of the populated board, authored on this page and on no stub. A page that has neither
-    // is the stub this pairing refuses.
-    proves: "#leaderboard-empty, #score",
-  },
 
   /* The marketplace, which is the larger half of what had never been rendered in a check.
    *
@@ -177,37 +165,6 @@ const ALL = [
     // such in the report rather than quietly counted here.
     proves:
       'main:has([role="group"][aria-label="Market"]) p:text-is("clock starts at delivery · equal counts as no")',
-  },
-  {
-    path: "/tokens",
-    name: "tokens",
-    product: "marketplace",
-    surface: "light",
-    task: "Marketplace",
-    // The launch catalogue with rows in it: the harness's fixture API serves two launches, and
-    // the link proves the first of them is on the board. #launch-board-empty is the screen the
-    // product shows today, and a page showing it here means the fixture was not what answered.
-    proves: '#launch-board a[href="/tokens/HALF"]',
-  },
-  {
-    path: "/tokens/half",
-    name: "token",
-    product: "marketplace",
-    surface: "light",
-    task: "Marketplace",
-    // The calls panel, on the page that links back to the agent it belongs to. Same pairing and
-    // same reason as the profile: one component serves nine tokens.
-    proves: 'main:has(a[href="/agents/halftime"]) #calls-title',
-  },
-  {
-    path: "/tokens/half/picks/half-1",
-    name: "token-pick",
-    product: "marketplace",
-    surface: "light",
-    task: "Marketplace",
-    // The trail and the post, which are the two blocks this screen exists for and which no list
-    // page draws.
-    proves: "main:has(#post-title) #trail-title",
   },
   {
     path: "/markets",
@@ -1168,7 +1125,7 @@ const ALL = [
     product: "studio",
     surface: "dark",
     task: "Auth",
-    proves: 'main:has(aside[aria-label="Sample agent activity"]) h1:text-is("GET IN")',
+    proves: 'main h1:text-is("GET IN")',
   },
   {
     path: "/signup",
@@ -1176,7 +1133,7 @@ const ALL = [
     product: "studio",
     surface: "dark",
     task: "Auth",
-    proves: 'main:has(aside[aria-label="Sample agent activity"]) h1:text-is("JOIN THE BOARD")',
+    proves: 'main h1:text-is("JOIN THE BOARD")',
   },
 ];
 

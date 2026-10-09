@@ -27,7 +27,7 @@ src/
   middleware/agent-auth.ts  # agentOnly() (HMAC) and agentScoped() (HMAC or JWT/API key, optional self-access)
   routes/auth.ts            # GET /v1/auth/me
   routes/agents.ts          # Agent read endpoints
-  routes/marketplace.ts     # Public marketplace reads: agents from the database, markets from the sample board
+  routes/marketplace.ts     # Public marketplace reads: agents from the database, markets from Perpl
   routes/signing.ts         # Passkey custody: challenge, register, add device, wallet read
   growth/market-responses.ts# Perpetual market read models mapped to their DTOs
   budget/agent-ledger.ts    # AgentLedger Durable Object: budget authority per agent
@@ -222,7 +222,9 @@ behind that route's credentials. The invented agents that used to answer here no
 `/v1/marketplace/markets` and `/v1/marketplace/markets/:symbol` answer from the board
 `marketBoardFor(PERPL_BOARD_NETWORK)` composes in `growth/services.ts`: Perpl on `testnet` or
 `mainnet` (`createPerplMarketBoard`, one request to the venue's public context, cached ten
-seconds), or the sample board for any other value and for none. What the board remembers lives in
+seconds), or, for any other value and for none, a board that answers every read with
+MarketDataUnavailableError (503): no sample board ships in the product since
+docs/specs/marketplace-real-only-v1.md N3, and `/v1/landing` is gone with its sample read model (N4). What the board remembers lives in
 a module-level `PerplBoardMemory` per network, because services are composed per request. A venue
 that cannot be read and has nothing recent held raises `MarketDataUnavailableError`, which the
 error handler answers as 503 with `error: "MARKET_DATA_UNAVAILABLE"`; an empty list is never the

@@ -5,8 +5,7 @@
  * one they answer 500 and a surface check reads a stack trace instead of a page. This serves the
  * same endpoints the real worker serves. The invented agents are the harness's own, in ./fixtures:
  * the product reads its agents from the database, and a marketplace with nothing in it is what a
- * person sees at launch, not what a design check should be measuring. The market board, the landing
- * model, the use cases and the DTO mappers are still the product's own, imported from where the
+ * person sees at launch, not what a design check should be measuring. The market board, the use cases and the DTO mappers are still the product's own, imported from where the
  * worker imports them, so if a response shape changes this changes with it or fails to start.
  *
  * It is a verification fixture, not product code. Nothing ships against it, and the only thing that
@@ -28,7 +27,6 @@ import { createServer } from "node:http";
 import {
   createGetAgentPersona,
   createGetAgentProfile,
-  createGetLanding,
   createGetLeaderboard,
   createGetMarket,
   createGetPickDetail,
@@ -39,14 +37,10 @@ import {
   createListMarkets,
   createListReads,
 } from "@pickler/core";
-import {
-  createSampleLandingReadModel,
-  createSampleMarketBoard,
-  systemClock,
-} from "@pickler/infrastructure";
+import { systemClock } from "@pickler/infrastructure";
+import { createSampleMarketBoard } from "./fixtures/sample-market-board.mts";
 import { createSampleAgentDirectory } from "./fixtures/sample-agent-directory.mts";
 import { sampleLaunches } from "./fixtures/sample-launches.mts";
-import { toLandingResponse } from "../../workers/api/src/growth/landing-response.ts";
 import {
   toAgentPersonaDto,
   toAgentProfileDto,
@@ -64,10 +58,8 @@ import {
 
 const agents = createSampleAgentDirectory(systemClock);
 const markets = createSampleMarketBoard();
-const landing = createSampleLandingReadModel(systemClock);
 
 const services = {
-  getLanding: createGetLanding(landing),
   listAgents: createListAgents(agents),
   listDirectory: createListDirectory(agents),
   listReads: createListReads(agents),
@@ -85,7 +77,6 @@ const one = (value, map) => (value ? map(value) : null);
 
 /** Path patterns in the order the worker mounts them, each answering the DTO the worker answers. */
 const routes = [
-  [/^\/v1\/landing$/, async () => toLandingResponse(await services.getLanding())],
   // The worker reads launches from its index; the harness has none, so the board gets two rows.
   [/^\/v1\/launches$/, async () => sampleLaunches()],
   [/^\/v1\/marketplace\/agents$/, async () => (await services.listAgents()).map(toAgentSummaryDto)],

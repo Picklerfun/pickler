@@ -30,10 +30,9 @@ export {
   type LogQuery,
 } from "./features/launch/ports/chain-reader.js";
 
+// Shared public-view types (accents, agent refs, pick outcomes); the landing read model they were
+// written for is gone (docs/specs/marketplace-real-only-v1.md N4).
 export * from "./features/landing/domain/landing.js";
-export type { LandingReadModel } from "./features/landing/ports/landing-read-model.js";
-export { createGetLanding, LANDING_LIMITS } from "./features/landing/application/get-landing.js";
-
 export { InvalidEmailError, normalizeEmail } from "./features/waitlist/domain/email.js";
 export type {
   WaitlistPlacement,

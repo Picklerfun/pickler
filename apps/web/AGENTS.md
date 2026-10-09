@@ -46,9 +46,9 @@ src/server/
 Signup, token pages, paid reads, wallet and ranking designs are retained; the landing and the
 application are the "Pickler Landing Trade v2" and "Pickler Create Agent" canvases (see "The landing
 and the application" below). The marketplace reads `/api/v1/marketplace/*`: agents come from the
-database, the perpetuals board is read from Perpl (or is the sample board, labelled, where the API
-has no network configured), and research results never appear there automatically.
-`/api/v1/landing` keeps its polling behavior; the landing reads only its announcements. Hono sets
+database, the perpetuals board is read from Perpl (without `PERPL_BOARD_NETWORK` the API answers 503 and the board shows its
+catching-up state; the sample board lives only with the design harness), and research results never appear there automatically.
+The landing reads no API (docs/specs/marketplace-real-only-v1.md N4). Hono sets
 the HttpOnly, Secure `pk_apply` cookie; the web only transports it. Never put that bearer token in
 URLs or JSON.
 
@@ -164,9 +164,7 @@ Both are specified in `docs/specs/landing-trade-v1.md`. `/` (`features/landing/`
 Landing Trade v2" canvas: a light page with four dark blocks, each a subtree taking
 `data-surface="dark"` — the hero phone (`#hero-phone`), the three ways in (`#how`, cards
 `#how-hire`, `#how-back`, `#how-trade`, to `/agents`, `/tokens` and `/markets`), the FOUR STEPS
-phone (`#steps-phone`, under `#app`) and the closing block (`#download`). The one live figure on the
-page is the announcement pill, read from `/api/v1/landing` through `lib/landing-data.tsx`; every
-other figure is the canvas's worked example inside the card that explains it (`lib/demo.ts`, pure
+phone (`#steps-phone`, under `#app`) and the closing block (`#download`). Nothing on the page is read from an API (marketplace-real-only-v1.md N4): every figure is the canvas's worked example inside the card that explains it (`lib/demo.ts`, pure
 and pinned in `apps/web/test/landing-demo.test.ts`: the six question/answer pairs over the phone,
 the candle game, the token curve, the padlock, the steps, the questions), drawn `aria-hidden` where
 it is decoration and still under `prefers-reduced-motion` (`lib/use-ticker.ts` is the one clock,
@@ -196,7 +194,7 @@ applications land in `growth.applications` as `submitted`.
 API reads them from the venue through the parser the mobile app trades on
 (`docs/specs/perps-board-live-v1.md`), and every market carries its `source`: the line over the
 title names the venue, the network and the time of the read, adds `STALE` when the venue has not
-answered since, and says `SAMPLE DATA` for the sample board (`sourceEyebrow` and `sourceFootnote`
+answered since, and says `SAMPLE DATA` for the harness's sample board (`sourceEyebrow` and `sourceFootnote`
 in `lib/format.ts`). A count nobody has measured — agents reading, open calls — is `null` on the
 wire and a dash on the page, never a zero; a `null` reach refuses no square. When the venue cannot be
 read the API answers 503: the list shows its empty state with the catching-up line, and a market
@@ -242,7 +240,7 @@ Nothing charges yet: the pay button carries the note rather than pretending. A r
 
 ## Dashboard and the public site
 
-The private creator studio lives at `/studio` and calls the Hono API. The studio lived at `/console` until 2026-09-25; no redirect is kept because nobody had launched. The public surface retains landing, `/create`, auth screens, `/tokens`, `/agents`, `/reads` and `/leaderboard`. Keep private research and public demonstration data separate; share visual components without automatically publishing results.
+The private creator studio lives at `/studio` and calls the Hono API. The studio lived at `/console` until 2026-09-25; no redirect is kept because nobody had launched. The public surface is the landing, `/create`, the auth screens, `/agents`, `/markets` and `/reads`; `/tokens` and `/leaderboard` answer 404 while their products are soon, and the navigation announces them as such (docs/specs/marketplace-real-only-v1.md N1, N2). Keep private research and public demonstration data separate; share visual components without automatically publishing results.
 
 <!-- BEGIN:nextjs-agent-rules -->
 
@@ -750,7 +748,7 @@ needs a session with no wallet and the design harness has none;
 
 The studio Limits & funding section includes `sections/trading.tsx`: public account, preparation/explicit confirmation, mode and order history. Use private studio API DTOs and visibility-aware polling. Never import signer or infrastructure code.
 
-`/tokens` renders the real launch catalogue through the API, with explicit unavailable/empty states; it does not restore the removed sample token board.
+`/tokens` is not mounted while the launchpad is soon (marketplace-real-only-v1.md N2); `features/agents` keeps the launch board, the token page and the leaderboard for when it is.
 
 ## Design checks
 

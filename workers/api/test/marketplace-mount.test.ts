@@ -5,7 +5,6 @@ import {
   createGetAgentPersona,
   createGetAgentProfile,
   createGetHealth,
-  createGetLanding,
   createGetLeaderboard,
   createGetMarket,
   createGetPickDetail,
@@ -19,11 +18,8 @@ import {
   type AgentDirectory,
   type MarketBoard,
 } from "@pickler/core";
-import {
-  createSampleLandingReadModel,
-  createSampleMarketBoard,
-  systemClock,
-} from "@pickler/infrastructure";
+import { systemClock } from "@pickler/infrastructure";
+import { createSampleMarketBoard } from "../../../scripts/design/fixtures/sample-market-board.mts";
 import { createApp } from "../src/app.js";
 import { marketBoardFor, type createGrowthServices } from "../src/growth/services.js";
 
@@ -55,7 +51,6 @@ function app(markets: MarketBoard = createSampleMarketBoard()) {
   const growth = {
     clock: systemClock,
     getHealth: createGetHealth(systemClock),
-    getLanding: createGetLanding(createSampleLandingReadModel(systemClock)),
     listAgents: createListAgents(emptyDirectory),
     getAgentProfile: createGetAgentProfile(emptyDirectory),
     getPickDetail: createGetPickDetail(emptyDirectory),
@@ -86,7 +81,6 @@ function app(markets: MarketBoard = createSampleMarketBoard()) {
 }
 
 const PUBLIC_READS = [
-  "/v1/landing",
   "/v1/health",
   "/v1/marketplace/agents",
   "/v1/marketplace/directory",
@@ -150,13 +144,11 @@ test("a venue that cannot be read answers 503 with a code, and the list is never
   }
 });
 
-test("without a network the board is the sample, and every market says so", async () => {
-  const sample = await marketBoardFor(undefined).listMarkets();
-  const unknown = await marketBoardFor("devnet").listMarkets();
-
-  assert.equal(sample.length, 6);
-  assert.ok(sample.every((market) => market.source.venue === "sample"));
-  assert.ok(unknown.every((market) => market.source.venue === "sample"));
+test("without a network the board is unavailable, never a sample", async () => {
+  // docs/specs/marketplace-real-only-v1.md N3: no venue configured means 503, not invented markets.
+  await assert.rejects(marketBoardFor(undefined).listMarkets(), MarketDataUnavailableError);
+  await assert.rejects(marketBoardFor("devnet").listMarkets(), MarketDataUnavailableError);
+  await assert.rejects(marketBoardFor(undefined).getMarket("BTC-PERP"), MarketDataUnavailableError);
 });
 
 test("with a network the board is Perpl's, and what it remembers outlives the request that read it", async (t) => {
