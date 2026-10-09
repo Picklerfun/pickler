@@ -212,7 +212,7 @@ test("insertPending over a failed row reuses it with the new nonce", async (t) =
 
   const next = f.auth();
   const again = await f.insert("k1", next);
-  assert.equal(again.id, id);
+  assert.notEqual(again.id, id);
   assert.equal(again.status, "pending");
   assert.equal(again.nonce, next.nonce.toLowerCase());
   const stored = await f.row("k1");
@@ -244,4 +244,58 @@ test("two concurrent insertPending over a failed row: exactly one wins", async (
   assert.equal(lost.length, 1);
   assert.ok(conflict((lost[0] as PromiseRejectedResult).reason));
   assert.equal((await f.row("race")).status, "pending");
+});
+
+test("a stale failed(oldId) after reuse leaves the newer pending attempt untouched", async (t) => {
+  const f = await setup(t);
+  const { id: oldId } = await f.insert("k1", f.auth());
+  await f.store.failed(oldId, "expired_unsettled");
+  const next = f.auth();
+  await f.insert("k1", next);
+
+  await f.store.failed(oldId, "settlement_failed");
+
+  const stored = await f.row("k1");
+  assert.equal(stored.status, "pending");
+  assert.equal(stored.nonce, next.nonce.toLowerCase());
+  assert.equal(stored.error, null);
+});
+
+test("settled, failed and refundOwed are no-ops outside their expected status", async (t) => {
+  const f = await setup(t);
+  const { id } = await f.insert("k1", f.auth());
+  await f.store.refundOwed(id, "too early");
+  assert.equal((await f.row("k1")).status, "pending");
+
+  const txHash = `0x${hex(32)}`;
+  await f.store.settled(id, txHash, 1n);
+  await f.store.settled(id, `0x${hex(32)}`, 2n);
+  await f.store.failed(id, "late");
+  const stored = await f.row("k1");
+  assert.equal(stored.status, "settled");
+  assert.equal(stored.tx_hash, txHash);
+  assert.equal(stored.block_number, "1");
+  assert.equal(stored.error, null);
+});
+
+test("attachJob is a no-op on a row that already has a job or is not settled", async (t) => {
+  const f = await setup(t);
+  const { id } = await f.insert("k1", f.auth());
+  const jobs = [randomUUID(), randomUUID()];
+  for (const [index, jobId] of jobs.entries()) {
+    await f.pool.query(
+      `INSERT INTO pickler.advice_jobs
+         (id,public_agent_id,tenant_id,agent_id,user_id,request_key,symbol,status,created_at,config_version,config,policy)
+       VALUES ($1,$2,$3,'runtime-pay',$4,$5,'BTC',$6,1,1,'{}','{}')`,
+      [jobId, f.agentId, f.tenantId, f.buyer, `job-${index}`, index === 0 ? "queued" : "failed"],
+    );
+  }
+
+  await f.store.attachJob(id, jobs[0]!);
+  assert.equal((await f.row("k1")).job_id, null);
+
+  await f.store.settled(id, `0x${hex(32)}`, 1n);
+  await f.store.attachJob(id, jobs[0]!);
+  await f.store.attachJob(id, jobs[1]!);
+  assert.equal((await f.row("k1")).job_id, jobs[0]);
 });

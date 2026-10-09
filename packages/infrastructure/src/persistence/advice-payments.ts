@@ -92,6 +92,7 @@ export class PostgresAdvicePayments implements AdvicePaymentStore {
            valid_before, status)
         VALUES ($1, $2, $3, lower($4), lower($5), $6, lower($7), to_timestamp($8::bigint), 'pending')
         ON CONFLICT (user_id, public_agent_id, request_key) DO UPDATE SET
+          id = gen_random_uuid(),
           payer = EXCLUDED.payer,
           pay_to = EXCLUDED.pay_to,
           amount_micro_ausd = EXCLUDED.amount_micro_ausd,
@@ -137,18 +138,18 @@ export class PostgresAdvicePayments implements AdvicePaymentStore {
       `
       UPDATE pickler.advice_payments
          SET status = 'settled', tx_hash = $2, block_number = $3, updated_at = clock_timestamp()
-       WHERE id = $1
+       WHERE id = $1 AND status = 'pending'
       `,
       [id, txHash, blockNumber.toString()],
     );
   }
 
   async failed(id: string, error: string): Promise<void> {
-    await this.setStatus(id, "failed", error);
+    await this.setStatus(id, "failed", "pending", error);
   }
 
   async refundOwed(id: string, error: string): Promise<void> {
-    await this.setStatus(id, "refund_owed", error);
+    await this.setStatus(id, "refund_owed", "settled", error);
   }
 
   async attachJob(id: string, jobId: string): Promise<void> {
@@ -156,20 +157,20 @@ export class PostgresAdvicePayments implements AdvicePaymentStore {
       `
       UPDATE pickler.advice_payments
          SET job_id = $2, updated_at = clock_timestamp()
-       WHERE id = $1
+       WHERE id = $1 AND status = 'settled' AND job_id IS NULL
       `,
       [id, jobId],
     );
   }
 
-  private async setStatus(id: string, status: string, error: string): Promise<void> {
+  private async setStatus(id: string, status: string, from: string, error: string): Promise<void> {
     await this.pool.query(
       `
       UPDATE pickler.advice_payments
          SET status = $2, error = $3, updated_at = clock_timestamp()
-       WHERE id = $1
+       WHERE id = $1 AND status = $4
       `,
-      [id, status, error],
+      [id, status, error, from],
     );
   }
 }

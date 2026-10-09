@@ -547,7 +547,11 @@ research/preview admission queries. See [Agent advice](../../docs/agent-advice.m
 (migration 0038). `insertPending` is one atomic upsert on (user, agent, request key) that only
 overwrites a `failed` row; any other existing row, or a reused nonce, is `CONFLICT`, so exactly one
 of two concurrent requests proceeds. Payer, recipient and nonce are stored lowercased and address
-comparisons are case-insensitive. `byKey` returns `validBefore` as unix seconds. `saleTerms` is
+comparisons are case-insensitive.
+Reusing a `failed` row assigns a fresh `id`, so every attempt owns its id; `settled` and `failed`
+only write a `pending` row, `refundOwed` and `attachJob` only a `settled` one (`attachJob` also only
+while `job_id` is null), and a write that matches nothing is a silent no-op, so a stale writer
+cannot touch a newer attempt. `byKey` returns `validBefore` as unix seconds. `saleTerms` is
 `null` without a public, unkilled, priced agent or without a wallet account.
 
 Advice v2 call rows record the frozen forecast provider origin, not a misleading direct-DeepSeek label. Historical v1 rows retain their original meaning. This is a JSON policy extension and requires no schema migration.
