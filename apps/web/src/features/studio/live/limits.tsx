@@ -26,6 +26,7 @@ import {
   advicePriceLocks,
   advicePriceOutcome,
   advicePriceView,
+  priceFormDirty,
   savedPriceForm,
   type PriceForm,
 } from "./advice-price-model";
@@ -150,8 +151,14 @@ function AdvicePriceCard({
   const saving = state.kind === "saving";
   const canSave = view.canSave && !saving;
 
+  /* The memory compares raw text; the card compares prices. When the card sees no edit ("1.50" for
+     a saved 1.5, or text hidden by the toggle), the memory is told so too, so leaving does not
+     warn, while the field keeps what was typed. */
   const edit = (next: PriceForm) => {
     setForm(next);
+    if (!priceFormDirty(agent, next)) {
+      memory.committed(scope);
+    }
     setState({ kind: "idle" });
   };
 
@@ -202,6 +209,7 @@ function AdvicePriceCard({
           <Input
             id="live-advice-price"
             aria-labelledby="live-advice-price-label"
+            aria-describedby={view.inputError ? "live-advice-price-error" : undefined}
             inputMode="decimal"
             mono
             prefix="AUSD"
@@ -214,7 +222,7 @@ function AdvicePriceCard({
         </Field>
       )}
       {view.inputError && (
-        <p className={styles.alert} role="alert">
+        <p className={styles.alert} role="alert" id="live-advice-price-error">
           <Icon name="alert" size={12} />
           {view.inputError}
         </p>

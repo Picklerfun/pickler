@@ -10,6 +10,7 @@ import {
   advicePriceOutcome,
   advicePriceView,
   parsePriceText,
+  priceFormDirty,
   savedPriceForm,
 } from "../src/features/studio/live/advice-price-model";
 import { VIEW_ONLY_REASON } from "../src/features/studio/live/build-model";
@@ -121,7 +122,8 @@ test("the view follows the saved price when the form is clean", () => {
 test("advicePriceError words each API code", () => {
   assert.equal(advicePriceError("AGENT_WALLET_REQUIRED"), NO_WALLET);
   assert.equal(advicePriceError("INVALID_INPUT"), PRICE_BOUNDS);
-  assert.equal(advicePriceError("FORBIDDEN"), VIEW_ONLY_REASON);
+  assert.equal(advicePriceError("RESEARCH_ACCESS_DENIED"), VIEW_ONLY_REASON);
+  assert.equal(advicePriceError("NOT_FOUND"), "This agent was not found. Reload the studio.");
   assert.equal(advicePriceError("OTHER"), "The price was not saved. Try again.");
 });
 
@@ -161,4 +163,28 @@ test("a refused save on a preview studio says so; any other refusal is worded", 
     kind: "error",
     text: "The price was not saved. Try again.",
   });
+});
+
+test("an equal price written differently is not an edit, so a saved 1.50 settles", () => {
+  const priced = agent(true);
+
+  assert.equal(priceFormDirty(priced, { forSale: true, text: "1.50" }), false);
+  assert.equal(priceFormDirty(priced, { forSale: true, text: " 1.5 " }), false);
+  assert.equal(priceFormDirty(priced, { forSale: true, text: "1.500000" }), false);
+  assert.equal(advicePriceView(priced, { forSale: true, text: "1.50" }, true).dirty, false);
+  assert.equal(advicePriceView(priced, { forSale: true, text: "1.50" }, true).body, null);
+
+  assert.equal(priceFormDirty(priced, { forSale: true, text: "1.55" }), true);
+  assert.equal(priceFormDirty(priced, { forSale: true, text: "1." }), true);
+  assert.equal(priceFormDirty(priced, { forSale: false, text: "1.5" }), true);
+  assert.equal(priceFormDirty(agent(false), { forSale: false, text: "2" }), false);
+  assert.equal(priceFormDirty(agent(false), { forSale: true, text: "" }), true);
+});
+
+test("a priced agent without a wallet is not for sale, and its tag says so", () => {
+  const unlinked = agent(true, false);
+  const view = advicePriceView(unlinked, savedPriceForm(unlinked), true);
+
+  assert.equal(view.tag, "PRICED · NO WALLET");
+  assert.equal(view.tone, "caution");
 });

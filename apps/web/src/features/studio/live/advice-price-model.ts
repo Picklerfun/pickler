@@ -28,6 +28,7 @@ export const PRICE_BOUNDS = "Between 0.10 and 100 AUSD, up to 6 decimals.";
 export const NO_WALLET = "This agent needs its own wallet before it can sell analyses.";
 const COMMA = "Use a dot for decimals.";
 const NOT_SAVED = "The price was not saved. Try again.";
+const NOT_FOUND = "This agent was not found. Reload the studio.";
 const NOTE =
   "Buyers pay this once per fresh analysis. A failed analysis is not refunded automatically.";
 
@@ -58,11 +59,37 @@ export function savedPriceForm(agent: Agent): PriceForm {
   return { forSale: agent.advicePrice !== null, text: agent.advicePrice?.amount ?? "" };
 }
 
+/* Spec D4: an agent without a linked wallet is not for sale, even with a price saved. */
 function savedTag(agent: Agent): Pick<AdvicePriceView, "tag" | "tone"> {
   if (agent.advicePrice === null) {
     return { tag: "NOT FOR SALE", tone: "quiet" };
   }
+  if (agent.wallet === null) {
+    return { tag: "PRICED · NO WALLET", tone: "caution" };
+  }
   return { tag: `FOR SALE · ${agent.advicePrice.amount} AUSD`, tone: "good" };
+}
+
+/** Two price texts name the same price: equal micro-AUSD when both parse, else equal trimmed text. */
+function samePrice(text: string, saved: string): boolean {
+  const typed = parsePriceText(text);
+  const kept = parsePriceText(saved);
+  if (typed.ok && kept.ok) {
+    return toMicro(typed.priceAusd) === toMicro(kept.priceAusd);
+  }
+  return text.trim() === saved;
+}
+
+/**
+ * Whether the form says something other than what is saved: the toggle moved, or, while on, a
+ * different price ("1.50" and " 1.5" are the saved 1.5; hidden text while off counts for nothing).
+ */
+export function priceFormDirty(agent: Agent, form: PriceForm): boolean {
+  const saved = savedPriceForm(agent);
+  if (form.forSale !== saved.forSale) {
+    return true;
+  }
+  return form.forSale && !samePrice(form.text, saved.text);
 }
 
 export function advicePriceView(
@@ -74,7 +101,7 @@ export function advicePriceView(
   const wallet = agent.wallet;
   const turnedOff = saved.forSale && !form.forSale;
   const turnedOn = form.forSale;
-  const dirty = form.forSale !== saved.forSale || (turnedOn && form.text.trim() !== saved.text);
+  const dirty = priceFormDirty(agent, form);
 
   const parsed = turnedOn ? parsePriceText(form.text) : null;
   const typed = turnedOn && form.text.trim() !== "";
@@ -134,8 +161,11 @@ export function advicePriceError(code: string): string {
   if (code === "INVALID_INPUT") {
     return PRICE_BOUNDS;
   }
-  if (code === "FORBIDDEN") {
+  if (code === "RESEARCH_ACCESS_DENIED") {
     return VIEW_ONLY_REASON;
+  }
+  if (code === "NOT_FOUND") {
+    return NOT_FOUND;
   }
   return NOT_SAVED;
 }
