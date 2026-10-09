@@ -247,7 +247,7 @@ retains the same canonical digest without hashing a full snapshot again for each
 
 ## SMA reentry/latency comparison
 
-[PERPS-SMA-REENTRY.md](PERPS-SMA-REENTRY.md) documents configuration v7 and the public-only two-portfolio protocol. `evaluate timing-check --state EXPORT --output NEW_DIRECTORY` runs offline before environment/provider composition and rejects environment/paid flags. `stability` performs one independent 30-minute eleven-market capture; `run` requires its passing proof matching commit/configuration. `reentry-host.ts` composes only local PostgreSQL and public Perpl, emits compact per-observation status and coalesces full reports through `reentry-report-worker.mjs`. All file publication is atomic. Do not call models, restart, repeat qualification, extend deadlines, create monitors, merge or deploy automatically. Old monitors remain paused. New model calls/tokens/reservations are zero; historical budgets and records are unchanged. Tests include PostgreSQL atomic key consumption, common final evidence, mandatory price-exit priority and historical v6 parity.
+[PERPS-SMA-REENTRY.md](PERPS-SMA-REENTRY.md) documents configuration v7 and the public-only two-portfolio protocol. `evaluate timing-check --state EXPORT --output NEW_DIRECTORY` runs offline before environment/provider composition and rejects environment/paid flags. `stability` performs one independent 30-minute eleven-market capture; `run` requires its passing proof matching commit/configuration, or the explicit pinned adoption for the separately authorized component paper policy below. `reentry-host.ts` composes only local PostgreSQL and public Perpl, emits compact per-observation status and coalesces full reports through `reentry-report-worker.mjs`. All file publication is atomic. Do not call models, restart, repeat qualification, extend deadlines, create monitors, merge or deploy automatically. Old monitors remain paused. New model calls/tokens/reservations are zero; historical budgets and records are unchanged. Tests include PostgreSQL atomic key consumption, common final evidence, mandatory price-exit priority and historical v6 parity.
 
 The unified evaluation npm entry includes Node’s option separator before the script. Preserve it
 so laboratory `--env-file` is handled by the application rather than preloaded by Node. V7 requires
@@ -307,5 +307,13 @@ The component-policy public measurement at frozen commit `46bcca8c36d91edd0508ff
 passed 30/30 joint cycles and 330/330 market observations; the unchanged strict rule accepts
 11/30 of the same snapshots. Independent offline/PostgreSQL proof confirmed hashes, closure,
 release and zero diagnostic accounts/decision rounds. This is capture acceptance only.
-Do not reuse it to authorize financial execution, upgrade the old 17/30 failure, or start an
-economic run. Read the component-policy record for immutable artifact paths and limitations.
+That capture alone does not authorize financial execution or upgrade the old 17/30 failure.
+Read the component-policy record for immutable artifact paths and limitations.
+
+The operator separately authorized `stream-universe-component-paper-20s-v1` and one six-hour
+v7 economic experiment on 2026-10-09. Read [the paper policy](PERPL-COMPONENT-PAPER.md).
+It requires immutable account policy, native freshness and copied heartbeat proof through financial
+validation and transactional admission. `component-qualification.ts` explicitly adopts a pinned,
+complete capture with offline replay and unchanged transport source; it never invents historical
+fills. New paper preflight is offline; financial-selector stability is rejected. Preserve capture
+artifacts, strategies, historical reservations, one-shot deadlines and zero models/signers.
