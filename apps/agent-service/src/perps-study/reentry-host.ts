@@ -29,6 +29,7 @@ import {
 } from "@pickler/trading/evaluation";
 import {
   COMPONENT_PAPER_POLICY,
+  PerpsFrameValidationFailure,
   universeStreamValidation,
   validatePaperFrameSet,
 } from "@pickler/trading/perps";
@@ -418,6 +419,14 @@ export async function runSmaReentry(
     await compact({ state: "completed" });
   } catch (error) {
     primaryFailure = true;
+    if (error instanceof PerpsFrameValidationFailure) {
+      diagnostic({
+        operation: "financial-frame-validation-failed",
+        at: Date.now(),
+        code: error.code,
+        ...error.details,
+      });
+    }
     processState = "interrupted";
     reports.request();
     await reports.flush().catch(() => {});
@@ -428,6 +437,9 @@ export async function runSmaReentry(
           processState,
           at: Date.now(),
           error: error instanceof PilotError ? error.code : "STUDY_OPERATION_FAILED",
+          ...(error instanceof PerpsFrameValidationFailure
+            ? { frameValidation: error.details }
+            : {}),
           modelCalls: 0,
         },
         null,
