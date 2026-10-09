@@ -433,3 +433,5 @@ export type StudioAccessRequestsInboxDto = z.infer<typeof studioAccessRequestsIn
 export const advicePriceUpdateSchema = z
   .object({ priceAusd: z.string().max(12).nullable() })
   .strict();
+export type AdvicePriceUpdateDto = z.infer<typeof advicePriceUpdateSchema>;
+export type AdvicePriceResponseDto = z.infer<typeof advicePriceResponseSchema>;
