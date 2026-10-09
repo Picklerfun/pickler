@@ -31,7 +31,7 @@ export async function runReaderAudit(statePath: string, outputPath: string, sign
   const capture = JSON.parse(source.toString("utf8"));
   const audit = auditUniverseCapture(capture);
   let replay: unknown = null;
-  if (audit.version === 3) {
+  if (audit.version === 3 || audit.version === 4) {
     const digest = (value: string | Buffer) => createHash("sha256").update(value).digest("hex");
     if (
       digest(canonicalAudit(capture.config)) !== capture.configurationHash ||
@@ -120,7 +120,7 @@ export async function runReaderAudit(statePath: string, outputPath: string, sign
     analysisMode: "OFFLINE_RECORDED_FACTS_ONLY",
     modelsCalled: 0,
     providersCalled: 0,
-    ...(audit.version === 3 ? { replay } : {}),
+    ...(audit.version === 3 || audit.version === 4 ? { replay } : {}),
   };
   const output = resolve(outputPath);
   signal.throwIfAborted();
