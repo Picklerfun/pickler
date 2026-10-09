@@ -1,4 +1,5 @@
-import { createTokenLaunchService } from "@pickler/core";
+import { AUSD } from "@pickler/chain";
+import { tokenReferenceEconomics, createTokenLaunchService } from "@pickler/core";
 import { PostgresTokenLaunchStore } from "@pickler/infrastructure";
 import { createXOAuthService } from "@pickler/core";
 import { PostgresStudioAccessRequests } from "@pickler/infrastructure";
@@ -586,6 +587,9 @@ export function createServices(env: Env): Services & { close(): Promise<void> } 
       tokens: createTokenLaunchService({
         repository: new PostgresTokenLaunchStore(repository.pool),
         chainId,
+        ...(chainId === 143 || chainId === 10143
+          ? { referenceEconomics: tokenReferenceEconomics(AUSD[chainId]) }
+          : {}),
       }),
       perplMarkets: {
         catalog: (network, signal) =>
