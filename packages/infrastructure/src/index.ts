@@ -225,6 +225,7 @@ export { normalizePerplBook, normalizePerplTicker } from "./perpl/data.js";
 
 export { exportPerpsAudit } from "./persistence/perps-audit-export.js";
 export * from "./persistence/advice-store.js";
+export * from "./persistence/advice-payments.js";
 
 export * from "./persistence/perps-check-cost-store.js";
 
