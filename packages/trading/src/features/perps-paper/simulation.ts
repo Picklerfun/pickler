@@ -34,6 +34,55 @@ export interface PerpsPaperObservation {
   frames: PerpsPaperFrame[];
   funding: PerpFundingHistory[];
 }
+export type PerpsFrameValidationReason =
+  | "invalid-native-date-or-block"
+  | "native-freshness-or-identity"
+  | "missing-stream-proof"
+  | "invalid-stream-proof"
+  | "heartbeat-after-buffer-copy"
+  | "buffer-copy-ahead-of-receipt-clock"
+  | "heartbeat-expired-at-receipt-clock"
+  | "mixed-stream-generation-or-reference";
+export class PerpsFrameValidationFailure extends PilotError {
+  readonly details: {
+    version: 1;
+    reason: PerpsFrameValidationReason;
+    symbol: PerpSymbol;
+    frameHash: string | null;
+    financialAt: number | null;
+    receiptAt: number | null;
+    tickerAt: number | null;
+    bookAt: number | null;
+    generation: number | null;
+    copiedAt: number | null;
+    heartbeatReceivedAt: number | null;
+  };
+  constructor(
+    code: string,
+    reason: PerpsFrameValidationReason,
+    frame: PerpsPaperFrame,
+    symbol: PerpSymbol,
+    financialAt: number,
+    receiptAt: number,
+  ) {
+    super(code, `Perpetual component validation failed: ${reason}`);
+    const safe = (value: unknown) =>
+      typeof value === "number" && Number.isSafeInteger(value) ? value : null;
+    this.details = {
+      version: 1,
+      reason,
+      symbol,
+      frameHash: /^[a-f0-9]{64}$/.test(frame.hash) ? frame.hash : null,
+      financialAt: safe(financialAt),
+      receiptAt: safe(receiptAt),
+      tickerAt: safe(frame.snapshot.ticker.provenance.providerTimestamp),
+      bookAt: safe(frame.book.provenance.providerTimestamp),
+      generation: safe(frame.streamEvidence?.generation),
+      copiedAt: safe(frame.streamEvidence?.copiedAt),
+      heartbeatReceivedAt: safe(frame.streamEvidence?.heartbeatReceivedAt),
+    };
+  }
+}
 const failure = (code: string): never => {
   throw new PilotError(code, "Perpetual paper data is not admissible");
 };
@@ -90,22 +139,33 @@ export function validatePaperFrame(
   symbol: PerpSymbol,
   now: number,
   policy?: PerpsPaperDataPolicy,
+  receiptNow = now,
 ) {
   if (policy !== undefined) {
     if (policy !== COMPONENT_PAPER_POLICY) {
       failure("INVALID_INPUT");
     }
+    const rejected = (code: string, reason: PerpsFrameValidationReason): never => {
+      throw new PerpsFrameValidationFailure(code, reason, frame, symbol, now, receiptNow);
+    };
     for (const provenance of [frame.snapshot.ticker.provenance, frame.book.provenance]) {
       if (
         ![provenance.providerTimestamp, provenance.block].every(
           (value) => value !== null && Number.isSafeInteger(value) && value >= 0,
         )
       ) {
-        failure("INVALID_MARKET_DATA");
+        rejected("INVALID_MARKET_DATA", "invalid-native-date-or-block");
       }
     }
-    validatePaperFrameComponents(frame, network, symbol, now);
-    const stream = frame.streamEvidence ?? failure("INVALID_MARKET_DATA");
+    try {
+      validatePaperFrameComponents(frame, network, symbol, now);
+    } catch (error) {
+      if (error instanceof PilotError) {
+        rejected(error.code, "native-freshness-or-identity");
+      }
+      throw error;
+    }
+    const stream = frame.streamEvidence ?? rejected("INVALID_MARKET_DATA", "missing-stream-proof");
     if (
       stream.policy !== policy ||
       ![
@@ -115,15 +175,20 @@ export function validatePaperFrame(
         stream.headBlock,
         stream.heartbeatReceivedAt,
         now,
+        receiptNow,
       ].every((value) => Number.isSafeInteger(value) && value >= 0) ||
-      stream.generation < 1 ||
-      stream.heartbeatReceivedAt > stream.copiedAt ||
-      stream.copiedAt > now
+      stream.generation < 1
     ) {
-      failure("INVALID_MARKET_DATA");
+      rejected("INVALID_MARKET_DATA", "invalid-stream-proof");
     }
-    if (now - stream.heartbeatReceivedAt > 5000) {
-      failure("STALE_MARKET_DATA");
+    if (stream.heartbeatReceivedAt > stream.copiedAt) {
+      rejected("INVALID_MARKET_DATA", "heartbeat-after-buffer-copy");
+    }
+    if (stream.copiedAt > receiptNow) {
+      rejected("INVALID_MARKET_DATA", "buffer-copy-ahead-of-receipt-clock");
+    }
+    if (receiptNow - stream.heartbeatReceivedAt > 5000) {
+      rejected("STALE_MARKET_DATA", "heartbeat-expired-at-receipt-clock");
     }
     return;
   }
@@ -144,9 +209,10 @@ export function validatePaperFrameSet(
   network: string,
   now: number,
   policy?: PerpsPaperDataPolicy,
+  receiptNow = now,
 ) {
   for (const frame of frames) {
-    validatePaperFrame(frame, network, frame.snapshot.market.symbol, now, policy);
+    validatePaperFrame(frame, network, frame.snapshot.market.symbol, now, policy, receiptNow);
   }
   if (policy === COMPONENT_PAPER_POLICY && frames.length) {
     const first = frames[0]!.streamEvidence!;
@@ -158,7 +224,20 @@ export function validatePaperFrameSet(
         ),
       )
     ) {
-      failure("INVALID_MARKET_DATA");
+      const divergent = frames.find((frame) =>
+        Object.keys(first).some(
+          (key) =>
+            frame.streamEvidence![key as keyof typeof first] !== first[key as keyof typeof first],
+        ),
+      )!;
+      throw new PerpsFrameValidationFailure(
+        "INVALID_MARKET_DATA",
+        "mixed-stream-generation-or-reference",
+        divergent,
+        divergent.snapshot.market.symbol,
+        now,
+        receiptNow,
+      );
     }
   }
 }
@@ -167,11 +246,19 @@ export function simulatePerpsFill(
   intent: PerpsPaperIntent,
   frame: PerpsPaperFrame,
   now: number,
+  receiptNow = now,
 ): PerpsPaperFill {
   if (account.scope.sessionId === "product" && account.marketDataPolicy !== undefined) {
     failure("INVALID_INPUT");
   }
-  validatePaperFrame(frame, account.scope.network, intent.symbol, now, account.marketDataPolicy);
+  validatePaperFrame(
+    frame,
+    account.scope.network,
+    intent.symbol,
+    now,
+    account.marketDataPolicy,
+    receiptNow,
+  );
   const buying = (intent.kind === "open") === (intent.side === "long");
   const levels = buying ? frame.book.asks : frame.book.bids;
   if (!levels[0]) {
@@ -255,13 +342,14 @@ export function applyPaperObservation(
   observation: PerpsPaperObservation,
   key: string,
   now: number,
+  receiptNow = now,
 ) {
   const a = structuredClone(account);
   const movements: PerpsPaperMovement[] = [];
   if (a.scope.sessionId === "product" && a.marketDataPolicy !== undefined) {
     failure("INVALID_INPUT");
   }
-  validatePaperFrameSet(observation.frames, a.scope.network, now, a.marketDataPolicy);
+  validatePaperFrameSet(observation.frames, a.scope.network, now, a.marketDataPolicy, receiptNow);
   for (const frame of observation.frames) {
     for (const p of a.positions.filter(
       (p) => p.closedAt === null && p.symbol === frame.snapshot.market.symbol,
