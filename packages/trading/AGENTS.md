@@ -224,6 +224,12 @@ may remain eligible only with their original provenance and the final freshness/
 a failed request never advances their dates. A successfully received batch missing a symbol is
 different: it discards that symbol's previous snapshot instead of substituting it.
 
+`auditUniverseCapture`, exported through `evaluation`, owns the pure `perpl-reader-audit-v2`
+analysis of versioned public captures. It emits allowlisted facts and never invokes data ports.
+Recovery intervals require both original ticker and book dates; ticker-only initialization is
+excluded. Optional per-request market IDs remain absent for historical captures. Missing request
+bytes, cache attribution or transport targets are unverifiable, not reconstructed evidence.
+
 ## SMA reopening and timing protocol
 
 Configuration v7 (`perps-sma-reentry-latency-v1`) adds `sma-reference` and `sma-once-bar`, both hourly/selective. `features/perps-study/reentry.ts` owns immutable entry policies and the final hourly key; apply its gate after selection, never rerank replacements. `reentry-metrics.ts` checks common slots, pre-maintenance valuation and detected exits. The shared profile runner prioritizes price maintenance before funding/candle preparation and uses `nextPriceCycleDelay` after overruns. Preserve v6 actions and risk semantics. Infrastructure must atomically persist confirmed fills and consumed keys; hosts must not manufacture either. See [local protocol guide](../../apps/agent-service/PERPS-SMA-REENTRY.md).
