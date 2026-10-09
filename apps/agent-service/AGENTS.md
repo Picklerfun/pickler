@@ -280,3 +280,10 @@ Read [the one-shot result](PERPL-UNIVERSE-WEBSOCKET-ACCEPTANCE-20261008.md): it 
 valid cycles. Preserve the original generic summary and specific stream error. Post-check safe
 limit counters and cancellation fixes have controlled validation only; missing historical limit
 dimensions remain unverifiable and never authorize another public check.
+
+The operator explicitly authorized further WSS repair and verification on 2026-10-08. Keep each
+diagnostic and qualification in a new directory; preserve previous failed captures. `reader-check`
+also accepts the explicit universe stream for three diagnostic reads and cannot pass economic
+qualification. Stream v2 records processing/guard/queue counters and bounded snapshot requests.
+Only a complete passing thirty-minute stability record establishes capture acceptance. This repair
+authorization enables no trading, models, automation, merge, deployment, or economic comparison.
