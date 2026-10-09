@@ -583,3 +583,15 @@ The existing public marketplace market detail response forwards optional aligned
 Public market detail also forwards optional bounded `priceHistory`, cloning its paired values.
 The existing route/schema owns the additive OpenAPI contract; no range endpoint/query or new
 provider call is introduced. The original 24h trail remains compatible with public consumers.
+
+## Owner token contracts
+
+`routes/studio-token.ts`, mounted under JWT-only Studio middleware, documents state, versioned
+name/ticker draft saves and idempotent launch authorization. Every response is private/no-store;
+API keys and HMAC are refused. Scope comes from membership and persisted ownership; client-supplied
+chain, wallet, agent key, preset and receipt are rejected. `container.ts` composes the PostgreSQL
+repository with the configured supported custody chain and deliberately omits `TokenGrantIssuer`.
+No environment flag enables signing. Controlled API acceptance injects a public test signer through
+`@pickler/infrastructure/testing/token`; real signing and broadcast are not implemented. Public
+persona DTOs include explicit confirmed token identity and confirmation state. See
+[the token guide](../../docs/agent-token-preview.md) and `test/studio-token-route.test.ts`.
