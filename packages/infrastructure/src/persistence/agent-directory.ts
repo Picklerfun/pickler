@@ -1,3 +1,4 @@
+import { readAgentToken } from "../studio/token-read.js";
 import type { Pool } from "pg";
 import type {
   Accent,
@@ -25,6 +26,7 @@ import type {
  * null because there is no rate to state. See docs/specs/marketplace-real-data-v1.md §3.
  */
 interface AgentRow {
+  id: string;
   name: string;
   handle: string;
   createdAt: Date;
@@ -52,7 +54,7 @@ interface AgentRow {
 }
 
 const AGENT_SELECT = `
-  SELECT a.name,
+  SELECT a.id, a.name,
          a.handle,
          a.created_at AS "createdAt",
          floor(extract(epoch from now() - a.created_at) / 86400)::int AS "aliveDays",
@@ -143,7 +145,10 @@ function summary(row: AgentRow): AgentSummary {
 }
 
 export class PostgresAgentDirectory implements AgentDirectory {
-  constructor(private readonly pool: Pool) {}
+  constructor(
+    private readonly pool: Pool,
+    private readonly tokenChainId: number | null = null,
+  ) {}
 
   /**
    * Every agent that has not been killed, newest first. A killed agent is not deleted, but it is
@@ -219,7 +224,10 @@ export class PostgresAgentDirectory implements AgentDirectory {
       return null;
     }
     const s = summary(row);
+    const token = await readAgentToken(this.pool, row.id, this.tokenChainId);
     return {
+      launchedToken: token.token,
+      tokenConfirmation: token.token ? "confirmed" : token.pending ? "pending" : "absent",
       name: s.name,
       handle: s.handle,
       ticker: s.ticker,
