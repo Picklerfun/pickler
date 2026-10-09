@@ -417,3 +417,14 @@ MarketDetail optionally carries trailTimestamps aligned with the existing numeri
 `MarketDetail.priceHistory` optionally exposes up to thirty days of paired hourly prices and UTC
 closing times plus the observed mark. The existing `trail` retains its 24h meaning. This is public
 market history only; no strategy, horizon or financial policy changes with the chart's view.
+
+## Agent token admission
+
+`features/launch/token-launch.ts` exports `createTokenLaunchService`, business-owned launch scope,
+context, draft/preset/authorization contracts, `TokenLaunchRepository`, `TokenGrantIssuer` and
+`TokenLaunchError` through the package root. Admission requires enabled creator access, workspace
+ownership, actual publication, a registered master wallet and no confirmed or pending token on the
+server-selected chain. Drafts allow private agents, use optimistic versions and cannot change during
+an active grant. Five-minute authorizations are idempotent and bind server-owned parameters.
+No SDK, HTTP object or signer key belongs in core. Ordinary composition omits the issuer and refuses
+authorization. See [the token guide](../../docs/agent-token-preview.md) and `test/token-launch.test.ts`.
