@@ -12,23 +12,35 @@ import {
   PerplRequestSchedule,
   pausePerplRead,
   type PerplDataOptions,
+  type PerplSocket,
+  type PerplStreamEvent,
 } from "@pickler/infrastructure";
 import {
   acquireUniverse,
   acquireUniverseV2,
   type AcquisitionDiagnostic,
+  type UniverseStreamBuffer,
 } from "@pickler/trading/perps";
-export type UniverseAcquisitionPolicy = "rest-universe-20s-v1" | "rest-universe-coherent-20s-v2";
+import { createUniverseStreamReader } from "./universe-stream.js";
+export type UniverseAcquisitionPolicy =
+  "rest-universe-20s-v1" | "rest-universe-coherent-20s-v2" | "stream-universe-20s-v1";
 /** Private v2 plugin composition: no Mastra tools, model or signer is constructed. */
 export function createUniversePerplReader(
   agents: { agent(scope: Scope): Promise<AgentRecord> },
   options: PerplDataOptions & {
     onAcquisition?: (value: AcquisitionDiagnostic) => void;
     acquisitionPolicy?: UniverseAcquisitionPolicy;
+    socket?: (url: string) => PerplSocket;
+    onStream?: (event: PerplStreamEvent) => void;
+    onBuffer?: (value: UniverseStreamBuffer) => void;
   } = {},
 ) {
   const acquisitionPolicy = options.acquisitionPolicy ?? "rest-universe-20s-v1";
-  if (!["rest-universe-20s-v1", "rest-universe-coherent-20s-v2"].includes(acquisitionPolicy)) {
+  if (
+    !["rest-universe-20s-v1", "rest-universe-coherent-20s-v2", "stream-universe-20s-v1"].includes(
+      acquisitionPolicy,
+    )
+  ) {
     throw new PilotError("INVALID_INPUT", "Unknown universe acquisition policy");
   }
   const schedule = options.schedule ?? new PerplRequestSchedule();
@@ -79,6 +91,16 @@ export function createUniversePerplReader(
   async function session(scope: Scope, signal: AbortSignal, guard?: () => Promise<void>) {
     return (await sessionData(scope, signal, guard)).service;
   }
+  const stream =
+    acquisitionPolicy === "stream-universe-20s-v1"
+      ? createUniverseStreamReader({
+          ...options,
+          now,
+          signal: lifetime.signal,
+          check,
+          session,
+        })
+      : undefined;
   return {
     session,
     async read(
@@ -87,6 +109,9 @@ export function createUniversePerplReader(
       parent: AbortSignal,
       guard?: () => Promise<void>,
     ) {
+      if (stream) {
+        return stream.read(scope, markets, parent, guard);
+      }
       const deadlineAt = now() + 20000;
       const timeout = AbortSignal.timeout(20000);
       const signal = AbortSignal.any([parent, lifetime.signal, timeout]);
@@ -152,9 +177,24 @@ export function createUniversePerplReader(
       await check(scope, parent, guard);
       return result;
     },
+    async latest(
+      scope: Scope,
+      markets: readonly { symbol: PerpSymbol; marketId: number }[],
+      parent: AbortSignal,
+      guard?: () => Promise<void>,
+    ) {
+      if (!stream) {
+        throw new PilotError(
+          "INVALID_INPUT",
+          "Only explicit WebSocket acquisition has a live buffer",
+        );
+      }
+      return stream.latest(scope, markets, parent, guard);
+    },
     async close() {
       closed = true;
       lifetime.abort(new PilotError("DATA_READER_CLOSED", "Universe reader closed"));
+      await stream?.close();
     },
   };
 }
