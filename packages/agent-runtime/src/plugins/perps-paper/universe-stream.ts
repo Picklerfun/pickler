@@ -20,6 +20,7 @@ import {
   type AcquisitionDiagnostic,
   type UniverseStreamResult,
   type UniverseStreamBuffer,
+  type UniverseStreamPolicy,
 } from "@pickler/trading/perps";
 
 type Catalog = readonly { symbol: PerpSymbol; marketId: number }[];
@@ -38,6 +39,7 @@ export function createUniverseStreamReader(options: {
   onStream?: (event: PerplStreamEvent) => void;
   onBuffer?: (value: UniverseStreamBuffer) => void;
   onAcquisition?: (value: AcquisitionDiagnostic) => void;
+  policy?: UniverseStreamPolicy;
 }) {
   let stream: PerplPublicStream | undefined;
   let frozenCatalog: string | undefined;
@@ -85,6 +87,7 @@ export function createUniverseStreamReader(options: {
       buffer,
       now: options.now(),
       hash,
+      ...(options.policy ? { policy: options.policy } : {}),
       ...(options.onAcquisition ? { diagnostic: options.onAcquisition } : {}),
     });
   }
@@ -168,6 +171,7 @@ export function createUniverseStreamReader(options: {
             return buffer;
           },
           hash,
+          ...(options.policy ? { policy: options.policy } : {}),
           wait: pausePerplRead,
           ...(options.onAcquisition ? { diagnostic: options.onAcquisition } : {}),
         });
