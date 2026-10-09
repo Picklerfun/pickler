@@ -1,0 +1,347 @@
+{
+  "buys": [
+    {
+      "fee": "0",
+      "grossQuote": "0",
+      "netQuote": "0",
+      "netSold": "0",
+      "tokensOut": "0"
+    },
+    {
+      "fee": "1",
+      "grossQuote": "1",
+      "netQuote": "0",
+      "netSold": "0",
+      "tokensOut": "0"
+    },
+    {
+      "fee": "10000",
+      "grossQuote": "1000000",
+      "netQuote": "990000",
+      "netSold": "0",
+      "tokensOut": "2078807060849590338699"
+    },
+    {
+      "fee": "1000000",
+      "grossQuote": "100000000",
+      "netQuote": "99000000",
+      "netSold": "0",
+      "tokensOut": "205988172288818662556201"
+    },
+    {
+      "fee": "80000000",
+      "grossQuote": "8000000000",
+      "netQuote": "7920000000",
+      "netSold": "0",
+      "tokensOut": "9544906743527435679466550"
+    },
+    {
+      "fee": "320000000",
+      "grossQuote": "32000000000",
+      "netQuote": "31680000000",
+      "netSold": "0",
+      "tokensOut": "16757682619911172585326057"
+    },
+    {
+      "fee": "0",
+      "grossQuote": "0",
+      "netQuote": "0",
+      "netSold": "1000000000000000000",
+      "tokensOut": "0"
+    },
+    {
+      "fee": "1",
+      "grossQuote": "1",
+      "netQuote": "0",
+      "netSold": "1000000000000000000",
+      "tokensOut": "0"
+    },
+    {
+      "fee": "10000",
+      "grossQuote": "1000000",
+      "netQuote": "990000",
+      "netSold": "1000000000000000000",
+      "tokensOut": "2078806475280137007612"
+    },
+    {
+      "fee": "1000000",
+      "grossQuote": "100000000",
+      "netQuote": "99000000",
+      "netSold": "1000000000000000000",
+      "tokensOut": "205988153588861720354311"
+    },
+    {
+      "fee": "80000000",
+      "grossQuote": "8000000000",
+      "netQuote": "7920000000",
+      "netSold": "1000000000000000000",
+      "tokensOut": "9544906072743230169801897"
+    },
+    {
+      "fee": "320000000",
+      "grossQuote": "32000000000",
+      "netQuote": "31680000000",
+      "netSold": "1000000000000000000",
+      "tokensOut": "16757681683333945950612351"
+    },
+    {
+      "fee": "0",
+      "grossQuote": "0",
+      "netQuote": "0",
+      "netSold": "8400000000000000000000000",
+      "tokensOut": "0"
+    },
+    {
+      "fee": "1",
+      "grossQuote": "1",
+      "netQuote": "0",
+      "netSold": "8400000000000000000000000",
+      "tokensOut": "0"
+    },
+    {
+      "fee": "10000",
+      "grossQuote": "1000000",
+      "netQuote": "990000",
+      "netSold": "8400000000000000000000000",
+      "tokensOut": "812061776964506334004"
+    },
+    {
+      "fee": "1000000",
+      "grossQuote": "100000000",
+      "netQuote": "99000000",
+      "netSold": "8400000000000000000000000",
+      "tokensOut": "80742567046696173276763"
+    },
+    {
+      "fee": "80000000",
+      "grossQuote": "8000000000",
+      "netQuote": "7920000000",
+      "netSold": "8400000000000000000000000",
+      "tokensOut": "4437566702201011653028349"
+    },
+    {
+      "fee": "320000000",
+      "grossQuote": "32000000000",
+      "netQuote": "31680000000",
+      "netSold": "8400000000000000000000000",
+      "tokensOut": "9098468271473552662454648"
+    },
+    {
+      "fee": "0",
+      "grossQuote": "0",
+      "netQuote": "0",
+      "netSold": "16799999000000000000000000",
+      "tokensOut": "0"
+    },
+    {
+      "fee": "1",
+      "grossQuote": "1",
+      "netQuote": "0",
+      "netSold": "16799999000000000000000000",
+      "tokensOut": "0"
+    },
+    {
+      "fee": "10000",
+      "grossQuote": "1000000",
+      "netQuote": "990000",
+      "netSold": "16799999000000000000000000",
+      "tokensOut": "129934406353790107358"
+    },
+    {
+      "fee": "1000000",
+      "grossQuote": "100000000",
+      "netQuote": "99000000",
+      "netSold": "16799999000000000000000000",
+      "tokensOut": "12963674734642632577595"
+    },
+    {
+      "fee": "80000000",
+      "grossQuote": "8000000000",
+      "netQuote": "7920000000",
+      "netSold": "16799999000000000000000000",
+      "tokensOut": "876753056098879934562377"
+    },
+    {
+      "fee": "320000000",
+      "grossQuote": "32000000000",
+      "netQuote": "31680000000",
+      "netSold": "16799999000000000000000000",
+      "tokensOut": "2386227356493114778894139"
+    }
+  ],
+  "exact": [
+    {
+      "grossQuote": "0",
+      "netQuote": "0",
+      "netSold": "0",
+      "tokensOut": "0"
+    },
+    {
+      "grossQuote": "2",
+      "netQuote": "1",
+      "netSold": "0",
+      "tokensOut": "1"
+    },
+    {
+      "grossQuote": "32323232322",
+      "netQuote": "31999999998",
+      "netSold": "0",
+      "tokensOut": "16800000000000000000000000"
+    },
+    {
+      "grossQuote": "0",
+      "netQuote": "0",
+      "netSold": "1000000000000000000",
+      "tokensOut": "0"
+    },
+    {
+      "grossQuote": "2",
+      "netQuote": "1",
+      "netSold": "1000000000000000000",
+      "tokensOut": "1"
+    },
+    {
+      "grossQuote": "32323231841",
+      "netQuote": "31999999522",
+      "netSold": "1000000000000000000",
+      "tokensOut": "16799999000000000000000000"
+    },
+    {
+      "grossQuote": "0",
+      "netQuote": "0",
+      "netSold": "8400000000000000000000000",
+      "tokensOut": "0"
+    },
+    {
+      "grossQuote": "2",
+      "netQuote": "1",
+      "netSold": "8400000000000000000000000",
+      "tokensOut": "1"
+    },
+    {
+      "grossQuote": "25858585858",
+      "netQuote": "25599999999",
+      "netSold": "8400000000000000000000000",
+      "tokensOut": "8400000000000000000000000"
+    },
+    {
+      "grossQuote": "0",
+      "netQuote": "0",
+      "netSold": "16799999000000000000000000",
+      "tokensOut": "0"
+    },
+    {
+      "grossQuote": "2",
+      "netQuote": "1",
+      "netSold": "16799999000000000000000000",
+      "tokensOut": "1"
+    },
+    {
+      "grossQuote": "7697",
+      "netQuote": "7620",
+      "netSold": "16799999000000000000000000",
+      "tokensOut": "1000000000000000000"
+    }
+  ],
+  "lpAllocation": "4200000000000000000000000",
+  "prices": [
+    {
+      "netSold": "0",
+      "priceWad": "476190476160714"
+    },
+    {
+      "netSold": "1000000000000000000",
+      "priceWad": "476190518677723"
+    },
+    {
+      "netSold": "8400000000000000000000000",
+      "priceWad": "1219047618971428"
+    },
+    {
+      "netSold": "16799999000000000000000000",
+      "priceWad": "7619044897483722"
+    },
+    {
+      "netSold": "16800000000000000000000000",
+      "priceWad": "7619047618571428"
+    }
+  ],
+  "saleAllocation": "16800000000000000000000000",
+  "sells": [
+    {
+      "grossQuote": "0",
+      "netQuote": "0",
+      "netSold": "0",
+      "tokensIn": "0"
+    },
+    {
+      "grossQuote": "0",
+      "netQuote": "0",
+      "netSold": "0",
+      "tokensIn": "1"
+    },
+    {
+      "grossQuote": "476",
+      "netQuote": "471",
+      "netSold": "0",
+      "tokensIn": "1000000000000000000"
+    },
+    {
+      "grossQuote": "0",
+      "netQuote": "0",
+      "netSold": "1000000000000000000",
+      "tokensIn": "0"
+    },
+    {
+      "grossQuote": "0",
+      "netQuote": "0",
+      "netSold": "1000000000000000000",
+      "tokensIn": "1"
+    },
+    {
+      "grossQuote": "476",
+      "netQuote": "471",
+      "netSold": "1000000000000000000",
+      "tokensIn": "1000000000000000000"
+    },
+    {
+      "grossQuote": "0",
+      "netQuote": "0",
+      "netSold": "8400000000000000000000000",
+      "tokensIn": "0"
+    },
+    {
+      "grossQuote": "0",
+      "netQuote": "0",
+      "netSold": "8400000000000000000000000",
+      "tokensIn": "1"
+    },
+    {
+      "grossQuote": "1218",
+      "netQuote": "1205",
+      "netSold": "8400000000000000000000000",
+      "tokensIn": "1000000000000000000"
+    },
+    {
+      "grossQuote": "0",
+      "netQuote": "0",
+      "netSold": "16799999000000000000000000",
+      "tokensIn": "0"
+    },
+    {
+      "grossQuote": "0",
+      "netQuote": "0",
+      "netSold": "16799999000000000000000000",
+      "tokensIn": "1"
+    },
+    {
+      "grossQuote": "7618",
+      "netQuote": "7541",
+      "netSold": "16799999000000000000000000",
+      "tokensIn": "1000000000000000000"
+    }
+  ],
+  "targetReserve": "32000000000",
+  "virtualQuoteReserve": "10666666666",
+  "virtualTokenReserve": "22400000000000000000000000"
+}
