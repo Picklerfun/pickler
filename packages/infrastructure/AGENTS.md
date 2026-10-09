@@ -662,3 +662,11 @@ advancing heartbeat's sequence, head block and original local receipt. Exact dup
 refresh receipt; reset discards continuity. This proof does not alter native price/book dates.
 Study diagnostics may explicitly select `stream-universe-component-20s-v2` in v7 without changing
 source accounts. Financial initialization rejects this capture-only policy before writes.
+
+The explicit v7 `stream-universe-component-paper-20s-v1` selector initializes only new laboratory
+accounts with immutable `marketDataPolicy`. Every financial mutation rechecks the trusted study
+policy, membership and bound live study owner. Completion recomputes both open and close fills
+from hashed component/heartbeat evidence under the account lock. Unbound reads cannot recover
+expired attempts in these accounts. Existing entry-gate/once-bar atomicity remains unchanged;
+product accounts and historical missing fields retain strict data rules. No migration, provider
+key or new monetary reservation is introduced. See [paper policy](../../apps/agent-service/PERPL-COMPONENT-PAPER.md).
