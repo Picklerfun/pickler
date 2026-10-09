@@ -796,7 +796,7 @@ so the New agent access warning and Account's Creator access section
 without access reads "Not approved yet", that the team reads every application and the invite
 lands by email, with a link to the application (`useMarketplaceHref("/apply")`) and "Check
 access". The component reads only `GET /v1/studio/access-request` for `status` and
-`canReviewRequests`; the POST is not called from the web any more. A server-authorized operator
+`canReviewRequests`; the POST was retired from the API. A server-authorized operator
 (`SUPER_ADMIN_EMAILS`) gets `features/studio/applications-inbox.tsx` under the notice in Account:
 the applications from `GET /v1/studio/applications`, filtered by status (To review, Invited,
 Rejected, All), each with its six answers, and Invite / Reject with an optional note through

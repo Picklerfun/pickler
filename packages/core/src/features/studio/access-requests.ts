@@ -1,6 +1,5 @@
 import { AccessDeniedError } from "../access/domain/errors.js";
 import type { Principal } from "../access/domain/principal.js";
-import { createStudioAccess, type StudioDirectory } from "./access.js";
 
 export interface StudioAccessRequest {
   status: "not_requested" | "pending" | "enabled";
@@ -14,15 +13,15 @@ export interface StudioAccessRequestEntry {
 }
 export interface StudioAccessRequestRepository {
   read(userId: string): Promise<StudioAccessRequest>;
-  request(userId: string, workspaceId: string): Promise<StudioAccessRequest>;
   pending(): Promise<StudioAccessRequestEntry[]>;
 }
 
-export function createStudioAccessRequests(
-  directory: StudioDirectory,
-  repository: StudioAccessRequestRepository,
-) {
-  const access = createStudioAccess(directory);
+/**
+ * Creator access as a person and an operator read it. Requesting access from the studio was
+ * retired on 2026-10-08 (docs/specs/landing-trade-v1.md §7): the way in is the public application,
+ * reviewed by `createApplicationReview`. `pending` still lists the requests recorded before that.
+ */
+export function createStudioAccessRequests(repository: StudioAccessRequestRepository) {
   function user(principal: Principal) {
     if (principal.kind !== "user") {
       throw new AccessDeniedError("User session required");
@@ -33,14 +32,6 @@ export function createStudioAccessRequests(
     async read(principal: Principal) {
       const caller = user(principal);
       return { ...(await repository.read(caller.id)), canReviewRequests: caller.isSuperAdmin };
-    },
-    async request(principal: Principal) {
-      const caller = user(principal);
-      const current = await access.authorize(caller);
-      if (current.ownerUserId !== caller.id) {
-        throw new AccessDeniedError("Only the workspace owner can request creator access");
-      }
-      return repository.request(caller.id, current.workspaceId);
     },
     async pending(principal: Principal) {
       if (!user(principal).isSuperAdmin) {

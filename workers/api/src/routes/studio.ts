@@ -304,7 +304,7 @@ export function studioRoutes(services: StudioServices) {
     await next();
   });
   api.use("*", authenticated(services.authenticate, { userOnly: true }));
-  api.route("/", studioAccessRequestRoutes(services.directory, services.accessRequests));
+  api.route("/", studioAccessRequestRoutes(services.accessRequests));
   api.route("/", studioApplicationRoutes(services.applicationReview));
   api.onError((error, c) => {
     if (error instanceof z.ZodError || error instanceof SyntaxError) {

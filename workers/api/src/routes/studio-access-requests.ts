@@ -1,20 +1,18 @@
 import { Hono } from "hono";
-import { z } from "zod";
-import {
-  createStudioAccessRequests,
-  type StudioDirectory,
-  type StudioAccessRequestRepository,
-} from "@pickler/core";
+import { createStudioAccessRequests, type StudioAccessRequestRepository } from "@pickler/core";
 import * as dto from "@pickler/api-schema";
 import type { AppEnv } from "../env";
 import { operation } from "../openapi/operation";
 
-export function studioAccessRequestRoutes(
-  directory: StudioDirectory,
-  repository?: StudioAccessRequestRepository,
-) {
+/**
+ * Creator access, read only. The request that used to be posted here was retired with the public
+ * application (docs/specs/landing-trade-v1.md §7): the way in is /apply, reviewed through
+ * studio-applications.ts. What stays is a person's own status and the operators' view of the
+ * requests recorded before that.
+ */
+export function studioAccessRequestRoutes(repository?: StudioAccessRequestRepository) {
   const app = new Hono<AppEnv>();
-  const service = repository ? createStudioAccessRequests(directory, repository) : null;
+  const service = repository ? createStudioAccessRequests(repository) : null;
   const errors = {
     security: "user" as const,
     errors: dto.studioErrorSchema,
@@ -36,26 +34,6 @@ export function studioAccessRequestRoutes(
         return c.json({ error: "ACCESS_REQUEST_UNAVAILABLE" }, 503);
       }
       const state = await service.read(c.get("principal"));
-      return c.json({ ...state, requestedAt: state.requestedAt?.toISOString() ?? null });
-    },
-  );
-  app.post(
-    "/access-request",
-    operation("studioRequestAccess", {
-      ...errors,
-      description:
-        "Workspace owner requests creator access. Idempotent per user; records a team inbox entry without enabling research, creating a wallet or sending external messages.",
-      body: z.object({}).strict(),
-      response: dto.studioAccessRequestSchema,
-    }),
-    async (c) => {
-      z.object({})
-        .strict()
-        .parse(await c.req.json());
-      if (!service) {
-        return c.json({ error: "ACCESS_REQUEST_UNAVAILABLE" }, 503);
-      }
-      const state = await service.request(c.get("principal"));
       return c.json({ ...state, requestedAt: state.requestedAt?.toISOString() ?? null });
     },
   );

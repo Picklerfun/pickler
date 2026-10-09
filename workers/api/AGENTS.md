@@ -553,12 +553,12 @@ retains workspace authorization and generated OpenAPI. The web displays the stra
 agent studios and explicitly confirms clearing unsupported authored conditions for rules.
 See [Studio perpetual execution](../../docs/studio-perps-execution.md).
 
-Studio access-request routes inherit JWT-only authentication. GET/POST `access-request` provide
-own status and owner-only idempotent submission; GET `access-requests` requires the verified
-super-admin allowlist. All use private/no-store and generated OpenAPI schemas. Infrastructure
-records the internal team inbox notification; no external message transport or automatic grant is
-composed. Both Studio and its Console alias mount these operations. The web no longer offers the
-POST (docs/specs/landing-trade-v1.md §7: the way in is the public application), but the routes stay.
+Studio access routes inherit JWT-only authentication and are read only. GET `access-request` is a
+person's own status (`not_requested`, `pending`, `enabled`) with `canReviewRequests`; GET
+`access-requests` lists the requests recorded before 2026-10-08 and requires the verified
+super-admin allowlist. `POST access-request` was retired with the public application
+(docs/specs/landing-trade-v1.md §7): nothing writes `pickler.studio_access_requests` any more. Both
+use private/no-store and generated OpenAPI schemas; no automatic grant is composed.
 
 Creator applications are reviewed through `routes/studio-applications.ts`, mounted beside them:
 GET `applications` (newest first, at most 500, `?status=submitted|invited|rejected`) and PUT

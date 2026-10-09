@@ -1,11 +1,15 @@
 import type { Pool } from "pg";
-import {
-  AccessDeniedError,
-  type StudioAccessRequest,
-  type StudioAccessRequestEntry,
-  type StudioAccessRequestRepository,
+import type {
+  StudioAccessRequest,
+  StudioAccessRequestEntry,
+  StudioAccessRequestRepository,
 } from "@pickler/core";
 
+/**
+ * Reads over pickler.studio_access_requests. Nothing writes to it any more: the request was
+ * retired with the public application (docs/specs/landing-trade-v1.md §7), and the rows recorded
+ * before that stay readable for operators.
+ */
 export class PostgresStudioAccessRequests implements StudioAccessRequestRepository {
   constructor(private readonly pool: Pool) {}
 
@@ -21,44 +25,6 @@ export class PostgresStudioAccessRequests implements StudioAccessRequestReposito
       status: row?.enabled ? "enabled" : row?.requested_at ? "pending" : "not_requested",
       requestedAt: row?.requested_at ?? null,
     };
-  }
-
-  async request(userId: string, workspaceId: string): Promise<StudioAccessRequest> {
-    const client = await this.pool.connect();
-    try {
-      await client.query("BEGIN");
-      const owner = await client.query(
-        `SELECT a.enabled FROM identity.workspaces w
-         JOIN pickler.research_access a ON a.user_id = w.owner_user_id
-         WHERE w.id = $1 AND w.owner_user_id = $2 AND w.is_active
-         FOR NO KEY UPDATE OF w, a`,
-        [workspaceId, userId],
-      );
-      if (!owner.rows[0]) {
-        throw new AccessDeniedError("Workspace owner required");
-      }
-      if (!owner.rows[0].enabled) {
-        await client.query(
-          `INSERT INTO pickler.studio_access_requests (user_id, workspace_id)
-           VALUES ($1, $2) ON CONFLICT (user_id) DO NOTHING`,
-          [userId, workspaceId],
-        );
-      }
-      const requested = await client.query(
-        "SELECT requested_at FROM pickler.studio_access_requests WHERE user_id = $1",
-        [userId],
-      );
-      await client.query("COMMIT");
-      return {
-        status: owner.rows[0].enabled ? "enabled" : "pending",
-        requestedAt: requested.rows[0]?.requested_at ?? null,
-      };
-    } catch (error) {
-      await client.query("ROLLBACK").catch(() => {});
-      throw error;
-    } finally {
-      client.release();
-    }
   }
 
   async pending(): Promise<StudioAccessRequestEntry[]> {
