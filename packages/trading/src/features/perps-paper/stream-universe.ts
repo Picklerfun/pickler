@@ -1,11 +1,33 @@
 import { PilotError, type PerpSymbol, type PerpSnapshot, type PerpOrderBook } from "@pickler/core";
-import { validatePaperFrame, type PerpsPaperFrame } from "./simulation.js";
+import {
+  validatePaperFrame,
+  validatePaperFrameComponents,
+  type PerpsPaperFrame,
+} from "./simulation.js";
 import type { AcquisitionDiagnostic } from "./acquisition.js";
 
 export const UNIVERSE_STREAM_POLICY = "stream-universe-20s-v1" as const;
+/** Capture-only experiment: independently fresh components plus a continuous live stream. */
+export const UNIVERSE_COMPONENT_STREAM_POLICY = "stream-universe-component-20s-v2" as const;
+export type UniverseStreamPolicy =
+  typeof UNIVERSE_STREAM_POLICY | typeof UNIVERSE_COMPONENT_STREAM_POLICY;
+export function universeStreamValidation(policy: UniverseStreamPolicy) {
+  if (![UNIVERSE_STREAM_POLICY, UNIVERSE_COMPONENT_STREAM_POLICY].includes(policy)) {
+    throw new PilotError("INVALID_INPUT", "Unknown stream validation policy");
+  }
+  return {
+    policy,
+    componentMaximumAgeMs: 30000,
+    maximumFutureMs: 5000,
+    tickerBookSkewGateMs: policy === UNIVERSE_STREAM_POLICY ? 5000 : null,
+    streamHeartbeatMaximumAgeMs: policy === UNIVERSE_COMPONENT_STREAM_POLICY ? 5000 : null,
+    financialAdmission: false,
+  } as const;
+}
 export interface UniverseStreamBuffer {
   generation: number;
   observedAt: number;
+  continuity?: { heartbeatSequence: number; headBlock: number; heartbeatReceivedAt: number };
   components: {
     symbol: PerpSymbol;
     snapshot?: PerpSnapshot;
@@ -26,6 +48,7 @@ export function validateUniverseStream(input: {
   hash(value: unknown): string;
   attempt?: number;
   diagnostic?(value: AcquisitionDiagnostic): void;
+  policy?: UniverseStreamPolicy;
 }): UniverseStreamResult {
   const frames: PerpsPaperFrame[] = [];
   const excluded: UniverseStreamResult["excluded"] = [];
@@ -37,11 +60,32 @@ export function validateUniverseStream(input: {
   ) {
     throw new PilotError("INVALID_MARKET_DATA", "Stream buffer identity is invalid");
   }
+  const policy = input.policy ?? UNIVERSE_STREAM_POLICY;
+  universeStreamValidation(policy);
+  let continuityCode: string | null = null;
+  if (policy === UNIVERSE_COMPONENT_STREAM_POLICY) {
+    const continuity = input.buffer.continuity;
+    if (!continuity) {
+      continuityCode = "DATA_UNAVAILABLE";
+    } else if (
+      ![continuity.heartbeatSequence, continuity.headBlock, continuity.heartbeatReceivedAt].every(
+        (value) => Number.isSafeInteger(value) && value >= 0,
+      ) ||
+      !Number.isSafeInteger(input.buffer.observedAt) ||
+      !Number.isSafeInteger(input.now) ||
+      continuity.heartbeatReceivedAt > input.buffer.observedAt ||
+      input.buffer.observedAt > input.now
+    ) {
+      throw new PilotError("INVALID_MARKET_DATA", "Stream continuity evidence is invalid");
+    } else if (input.now - continuity.heartbeatReceivedAt > 5000) {
+      continuityCode = "DATA_UNAVAILABLE";
+    }
+  }
   for (const market of input.markets) {
     const pair = input.buffer.components.find((c) => c.symbol === market.symbol);
     const tickerAt = pair?.snapshot?.ticker.provenance.providerTimestamp ?? null;
     const bookAt = pair?.book?.provenance.providerTimestamp ?? null;
-    let code: string | null = null;
+    let code: string | null = continuityCode;
     if (!pair?.snapshot || !pair.book) {
       code = "DATA_UNAVAILABLE";
     } else {
@@ -57,8 +101,14 @@ export function validateUniverseStream(input: {
         hash: input.hash({ snapshot: pair.snapshot, book: pair.book }),
       };
       try {
-        validatePaperFrame(frame, input.network, market.symbol, input.now);
-        frames.push(frame);
+        if (policy === UNIVERSE_COMPONENT_STREAM_POLICY) {
+          validatePaperFrameComponents(frame, input.network, market.symbol, input.now);
+        } else {
+          validatePaperFrame(frame, input.network, market.symbol, input.now);
+        }
+        if (!code) {
+          frames.push(frame);
+        }
       } catch (error) {
         if (
           !(error instanceof PilotError) ||
@@ -98,6 +148,7 @@ export async function acquireUniverseStream(input: {
   hash(value: unknown): string;
   wait(ms: number, signal: AbortSignal): Promise<void>;
   diagnostic?(value: AcquisitionDiagnostic): void;
+  policy?: UniverseStreamPolicy;
 }): Promise<UniverseStreamResult> {
   let attempt = 0;
   while (input.now() < input.deadlineAt) {
