@@ -22,6 +22,9 @@ test("between-slot timer cancellation preserves the original reader error rather
     return true;
   });
   assert.equal(captureFailureCode(new Error("private transport text")), "STABILITY_FAILED");
+  const cancelled = new AbortController();
+  cancelled.abort();
+  assert.equal(captureFailureCode(new Error("timer cancellation"), cancelled.signal), "CANCELLED");
 });
 
 test("bounded public capture retains a hashed contiguous prefix and continues counters after truncation", async (t) => {
