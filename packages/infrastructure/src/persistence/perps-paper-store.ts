@@ -29,6 +29,7 @@ import {
   proposalRefusal,
   utcDayStart,
   simulatePerpsFill,
+  validatePaperFrame,
   COMPONENT_PAPER_POLICY,
   type PerpsDuePosition,
   type PerpsPaperCloseReason,
@@ -78,7 +79,10 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
   private receiptNow() {
     return this.receiptClock?.() ?? this.clock?.() ?? Date.now();
   }
-  private async transaction<T>(action: (client: PoolClient) => Promise<T>) {
+  private async transaction<T>(
+    action: (client: PoolClient) => Promise<T>,
+    beforeCommit?: (client: PoolClient) => Promise<void>,
+  ) {
     const client = await this.pool.connect();
     try {
       await client.query("BEGIN");
@@ -87,6 +91,7 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
       const result = await action(client);
       await this.guardStudy(client);
       await this.guardProduct(client);
+      await beforeCommit?.(client);
       await client.query("COMMIT");
       return result;
     } catch (error) {
@@ -617,47 +622,136 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
       throw new PilotError("INVALID_INPUT", "Invalid request key");
     }
     assertPaperIntent(intent);
-    return this.transaction(async (client) => {
-      const locked = await this.lock(client, scope);
-      const previous = locked.view.attempts.find((a) => a.key === key);
-      if (previous) {
+    return this.transaction(async (client) =>
+      this.beginLocked(client, await this.lock(client, scope), scope, expectedVersion, key, intent),
+    );
+  }
+  private async beginLocked(
+    client: PoolClient,
+    locked: Locked,
+    scope: PerpsPaperScope,
+    expectedVersion: number,
+    key: string,
+    intent: PerpsPaperIntent,
+  ) {
+    const previous = locked.view.attempts.find((a) => a.key === key);
+    if (previous) {
+      if (
+        previous.intent.kind !== intent.kind ||
+        previous.intent.symbol !== intent.symbol ||
+        previous.intent.side !== intent.side ||
+        paperUnits(previous.intent.notional) !== paperUnits(intent.notional) ||
+        paperUnits(previous.intent.feeReserve) !== paperUnits(intent.feeReserve) ||
+        previous.intent.leverage !== intent.leverage ||
+        previous.intent.checkId !== intent.checkId ||
+        JSON.stringify(previous.intent.entryEvidence) !== JSON.stringify(intent.entryEvidence)
+      ) {
+        throw new PilotError("CONFLICT", "Request key was used with another intent");
+      }
+      return { attempt: previous, lease: null };
+    }
+    if (!isProductPaperSession(scope) && locked.view.account.agentVersion !== expectedVersion) {
+      throw new PilotError("CONFIG_CHANGED", "Paper session version differs");
+    }
+    await this.allowed(client, locked, scope, intent);
+    const risk = paperRisk(locked.view.account, locked.view.attempts, locked.now, intent);
+    const owner = randomUUID();
+    const expiresAt = locked.now + 60000;
+    const attempt: PerpsPaperAttempt = {
+      key,
+      intent,
+      status: risk.allowed ? "pending" : "rejected",
+      reserved: risk.allowed && intent.kind === "open" ? paperOpenReserve(intent) : "0",
+      createdAt: locked.now,
+      finishedAt: risk.allowed ? null : locked.now,
+      reason: risk.allowed ? null : risk.reasons.join(","),
+      evidence: null,
+    };
+    await client.query(
+      "INSERT INTO pickler.perps_paper_attempts(account_id,key,document,owner,expires_at) VALUES($1,$2,$3,$4,$5)",
+      [locked.id, key, attempt, risk.allowed ? owner : null, risk.allowed ? expiresAt : null],
+    );
+    return { attempt, lease: risk.allowed ? { key, owner, expiresAt } : null };
+  }
+  async executeFrame(
+    scope: PerpsPaperScope,
+    key: string,
+    intent: PerpsPaperIntent,
+    frame: PerpsPaperFrame,
+    onSimulation?: (durationMs: number) => void,
+  ): Promise<PerpsPaperView> {
+    if (!/^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,127}$/.test(key)) {
+      throw new PilotError("INVALID_INPUT", "Invalid request key");
+    }
+    assertPaperIntent(intent);
+    const captured = structuredClone(frame);
+    let attemptExpiresAt: number | null = null;
+    return this.transaction(
+      async (client) => {
+        const locked = await this.lock(client, scope);
         if (
-          previous.intent.kind !== intent.kind ||
-          previous.intent.symbol !== intent.symbol ||
-          previous.intent.side !== intent.side ||
-          paperUnits(previous.intent.notional) !== paperUnits(intent.notional) ||
-          paperUnits(previous.intent.feeReserve) !== paperUnits(intent.feeReserve) ||
-          previous.intent.leverage !== intent.leverage ||
-          previous.intent.checkId !== intent.checkId ||
-          JSON.stringify(previous.intent.entryEvidence) !== JSON.stringify(intent.entryEvidence)
+          isProductPaperSession(scope) ||
+          locked.view.account.marketDataPolicy !== COMPONENT_PAPER_POLICY
         ) {
-          throw new PilotError("CONFLICT", "Request key was used with another intent");
+          throw new PilotError("INVALID_INPUT", "Captured execution is component-paper only");
         }
-        return { attempt: previous, lease: null };
-      }
-      if (!isProductPaperSession(scope) && locked.view.account.agentVersion !== expectedVersion) {
-        throw new PilotError("CONFIG_CHANGED", "Paper session version differs");
-      }
-      await this.allowed(client, locked, scope, intent);
-      const risk = paperRisk(locked.view.account, locked.view.attempts, locked.now, intent);
-      const owner = randomUUID();
-      const expiresAt = locked.now + 60000;
-      const attempt: PerpsPaperAttempt = {
-        key,
-        intent,
-        status: risk.allowed ? "pending" : "rejected",
-        reserved: risk.allowed && intent.kind === "open" ? paperOpenReserve(intent) : "0",
-        createdAt: locked.now,
-        finishedAt: risk.allowed ? null : locked.now,
-        reason: risk.allowed ? null : risk.reasons.join(","),
-        evidence: null,
-      };
-      await client.query(
-        "INSERT INTO pickler.perps_paper_attempts(account_id,key,document,owner,expires_at) VALUES($1,$2,$3,$4,$5)",
-        [locked.id, key, attempt, risk.allowed ? owner : null, risk.allowed ? expiresAt : null],
-      );
-      return { attempt, lease: risk.allowed ? { key, owner, expiresAt } : null };
-    });
+        await this.checkDataPolicy(client, scope, locked.view.account, true);
+        const admitted = await this.beginLocked(
+          client,
+          locked,
+          scope,
+          locked.view.account.agentVersion,
+          key,
+          intent,
+        );
+        if (!locked.view.attempts.some((a) => a.key === key)) {
+          locked.view.attempts.push(admitted.attempt);
+        }
+        if (!admitted.lease) {
+          return locked.view;
+        }
+        attemptExpiresAt = admitted.lease.expiresAt;
+        locked.now = await this.now(client);
+        if (locked.now >= attemptExpiresAt) {
+          throw new PilotError("LEASE_LOST", "Paper lease expired during captured execution");
+        }
+        const started = performance.now();
+        const fill = simulatePerpsFill(
+          locked.view.account,
+          intent,
+          captured,
+          locked.now,
+          this.receiptNow(),
+        );
+        onSimulation?.(performance.now() - started);
+        return this.completeLocked(
+          client,
+          { ...locked, attempt: admitted.attempt },
+          scope,
+          admitted.lease,
+          fill,
+          undefined,
+          true,
+        );
+      },
+      async (client) => {
+        if (attemptExpiresAt === null) {
+          return;
+        }
+        const financialAt = await this.now(client);
+        if (financialAt >= attemptExpiresAt) {
+          throw new PilotError("LEASE_LOST", "Paper lease expired during captured execution");
+        }
+        validatePaperFrame(
+          captured,
+          scope.network,
+          intent.symbol,
+          financialAt,
+          COMPONENT_PAPER_POLICY,
+          this.receiptNow(),
+        );
+      },
+    );
   }
   private async owned(client: PoolClient, scope: PerpsPaperScope, lease: PerpsPaperLease) {
     const locked = await this.lock(client, scope);
@@ -734,92 +828,115 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
     if (exits !== undefined) {
       assertExits(exits, isProductPaperSession(scope));
     }
-    return this.transaction(async (client) => {
-      const locked = await this.owned(client, scope, lease);
-      await this.allowed(client, locked, scope, locked.attempt.intent);
-      if (locked.view.account.marketDataPolicy === COMPONENT_PAPER_POLICY) {
-        const frame = (fill.evidence as { frame?: PerpsPaperFrame } | null)?.frame;
-        if (!frame) {
-          throw new PilotError("INVALID_MARKET_DATA", "A component-policy fill requires its frame");
-        }
-        const digest = createHash("sha256")
-          .update(
-            JSON.stringify({
-              snapshot: frame.snapshot,
-              book: frame.book,
-              streamEvidence: frame.streamEvidence,
-            }),
-          )
-          .digest("hex");
-        if (
-          digest !== frame.hash ||
-          canonicalAudit(
-            simulatePerpsFill(
-              locked.view.account,
-              locked.attempt.intent,
-              frame,
-              locked.now,
-              this.receiptNow(),
-            ),
-          ) !== canonicalAudit(fill)
-        ) {
-          throw new PilotError("INVALID_MARKET_DATA", "Component-policy fill evidence changed");
-        }
+    return this.transaction(async (client) =>
+      this.completeLocked(
+        client,
+        await this.owned(client, scope, lease),
+        scope,
+        lease,
+        fill,
+        exits,
+      ),
+    );
+  }
+  private async completeLocked(
+    client: PoolClient,
+    locked: Locked & { attempt: PerpsPaperAttempt },
+    scope: PerpsPaperScope,
+    lease: PerpsPaperLease,
+    fill: PerpsPaperFill,
+    exits?: PerpsPaperExits,
+    inlineView = false,
+  ) {
+    await this.allowed(client, locked, scope, locked.attempt.intent);
+    if (locked.view.account.marketDataPolicy === COMPONENT_PAPER_POLICY) {
+      const frame = (fill.evidence as { frame?: PerpsPaperFrame } | null)?.frame;
+      if (!frame) {
+        throw new PilotError("INVALID_MARKET_DATA", "A component-policy fill requires its frame");
       }
-      const risk = paperRisk(
-        locked.view.account,
-        locked.view.attempts.filter((a) => a.key !== lease.key),
-        locked.now,
-        locked.attempt.intent,
-      );
-      if (!risk.allowed) {
-        throw new PilotError("RISK_REJECTED", risk.reasons.join(","));
-      }
-      const result = applyPaperFill(locked.view.account, locked.attempt, fill, locked.now);
+      const digest = createHash("sha256")
+        .update(
+          JSON.stringify({
+            snapshot: frame.snapshot,
+            book: frame.book,
+            streamEvidence: frame.streamEvidence,
+          }),
+        )
+        .digest("hex");
       if (
-        locked.attempt.intent.kind === "open" &&
-        result.account.riskManagement === "buffered-selective-1x-v1"
+        digest !== frame.hash ||
+        canonicalAudit(
+          simulatePerpsFill(
+            locked.view.account,
+            locked.attempt.intent,
+            frame,
+            locked.now,
+            this.receiptNow(),
+          ),
+        ) !== canonicalAudit(fill)
       ) {
-        const projected = paperRisk(result.account, [], locked.now);
-        if (
-          projected.equity === null ||
-          projected.exposure === null ||
-          paperUnits(projected.exposure) * 5n > paperUnits(projected.equity) * 2n
-        ) {
-          throw new PilotError("RISK_REJECTED", "Post-fill exposure exceeds buffered target");
-        }
+        throw new PilotError("INVALID_MARKET_DATA", "Component-policy fill evidence changed");
       }
-      const opened = result.account.positions.find((p) => p.id === lease.key);
-      if (isProductPaperSession(scope) && locked.attempt.intent.kind === "open" && opened) {
-        // The version it opened on (R9) and its exits (R10), in the same transaction as the fill.
-        opened.configVersion = locked.agent.version;
-        opened.stopPrice = exits?.stopPrice ?? null;
-        opened.takeProfitPrice = exits?.takeProfitPrice ?? null;
-        opened.exitDueAt = exits?.exitDueAt ?? null;
+    }
+    const risk = paperRisk(
+      locked.view.account,
+      locked.view.attempts.filter((a) => a.key !== lease.key),
+      locked.now,
+      locked.attempt.intent,
+    );
+    if (!risk.allowed) {
+      throw new PilotError("RISK_REJECTED", risk.reasons.join(","));
+    }
+    const result = applyPaperFill(locked.view.account, locked.attempt, fill, locked.now);
+    if (
+      locked.attempt.intent.kind === "open" &&
+      result.account.riskManagement === "buffered-selective-1x-v1"
+    ) {
+      const projected = paperRisk(result.account, [], locked.now);
+      if (
+        projected.equity === null ||
+        projected.exposure === null ||
+        paperUnits(projected.exposure) * 5n > paperUnits(projected.equity) * 2n
+      ) {
+        throw new PilotError("RISK_REJECTED", "Post-fill exposure exceeds buffered target");
       }
-      if (locked.attempt.intent.kind === "open" && result.account.entryPolicy) {
-        const entryKey = await this.entryKey(client, locked, scope, locked.attempt.intent, fill);
-        if (result.account.entryPolicy === "once-hourly-bar-v1" && entryKey) {
-          result.account.consumedEntryKeys = [
-            ...(result.account.consumedEntryKeys ?? []),
-            entryKey,
-          ];
-        }
+    }
+    const opened = result.account.positions.find((p) => p.id === lease.key);
+    if (isProductPaperSession(scope) && locked.attempt.intent.kind === "open" && opened) {
+      // The version it opened on (R9) and its exits (R10), in the same transaction as the fill.
+      opened.configVersion = locked.agent.version;
+      opened.stopPrice = exits?.stopPrice ?? null;
+      opened.takeProfitPrice = exits?.takeProfitPrice ?? null;
+      opened.exitDueAt = exits?.exitDueAt ?? null;
+    }
+    if (locked.attempt.intent.kind === "open" && result.account.entryPolicy) {
+      const entryKey = await this.entryKey(client, locked, scope, locked.attempt.intent, fill);
+      if (result.account.entryPolicy === "once-hourly-bar-v1" && entryKey) {
+        result.account.consumedEntryKeys = [...(result.account.consumedEntryKeys ?? []), entryKey];
       }
-      await this.persist(client, locked.id, result.account, result.movements);
-      const attempt = {
-        ...locked.attempt,
-        status: "filled",
-        reserved: "0",
-        finishedAt: locked.now,
-        evidence: fill.evidence,
-      };
-      await client.query(
-        "UPDATE pickler.perps_paper_attempts SET document=$3,owner=null,expires_at=null WHERE account_id=$1 AND key=$2",
-        [locked.id, lease.key, attempt],
-      );
+    }
+    await this.persist(client, locked.id, result.account, result.movements);
+    const attempt: PerpsPaperAttempt = {
+      ...locked.attempt,
+      status: "filled",
+      reserved: "0",
+      finishedAt: locked.now,
+      evidence: fill.evidence,
+    };
+    await client.query(
+      "UPDATE pickler.perps_paper_attempts SET document=$3,owner=null,expires_at=null WHERE account_id=$1 AND key=$2",
+      [locked.id, lease.key, attempt],
+    );
+    if (!inlineView) {
       return (await this.lock(client, scope)).view;
-    });
+    }
+    const byKey = (a: { key: string }, b: { key: string }) =>
+      a.key < b.key ? -1 : a.key > b.key ? 1 : 0;
+    return {
+      account: result.account,
+      attempts: locked.view.attempts.map((a) => (a.key === lease.key ? attempt : a)).sort(byKey),
+      movements: [...locked.view.movements, ...result.movements].sort(byKey),
+    };
   }
   async fail(
     scope: PerpsPaperScope,
