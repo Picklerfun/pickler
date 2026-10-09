@@ -10,6 +10,7 @@ import {
   DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@pickler/ui/dropdown-menu";
 import { useStudioHref } from "./studio-href";
@@ -75,7 +76,11 @@ function MenuItems({
   compact?: boolean;
 }) {
   return (
-    <DropdownMenuGroup>
+    <DropdownMenuGroup
+      aria-label={menu.label}
+      className={compact ? styles.compactGroup : undefined}
+      data-menu={menu.key}
+    >
       <DropdownMenuLabel className={styles.groupLabel}>{menu.label}</DropdownMenuLabel>
       {menu.items.map((item) =>
         "href" in item ? (
@@ -204,33 +209,40 @@ export function SiteNav({
             >
               <DropdownMenuTrigger asChild>
                 <Button
-                  variant="chip"
+                  variant="ghost"
                   className={styles.compactTrigger}
                   aria-label="Navigation menu"
                 >
                   <Icon name="menu" size={20} />
-                  <span className={styles.compactLabel}>Menu</span>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent
                 align="end"
                 sideOffset={10}
                 collisionPadding={12}
-                className={styles.dropdown}
+                className={styles.navigationDropdown}
                 data-surface={surface}
                 aria-label="Navigation"
               >
-                <DropdownMenuGroup>
-                  <DropdownMenuItem asChild className={styles.item}>
-                    <Link href={studio}>
-                      <span className={styles.itemTitle}>Create agent</span>
-                      <Icon name="arrow" size={16} />
-                    </Link>
+                <div className={styles.navigationGroups}>
+                  {MENUS.map((menu) => (
+                    <MenuItems key={menu.key} menu={menu} pathname={pathname} compact />
+                  ))}
+                </div>
+                <DropdownMenuGroup className={styles.mobileLaunch}>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild className={styles.launchItem}>
+                    <ButtonLink
+                      as={Link}
+                      href={studio}
+                      variant="ghost"
+                      data-surface={surface === "dark" ? "light" : "dark"}
+                      arrow
+                    >
+                      Create agent
+                    </ButtonLink>
                   </DropdownMenuItem>
                 </DropdownMenuGroup>
-                {MENUS.map((menu) => (
-                  <MenuItems key={menu.key} menu={menu} pathname={pathname} compact />
-                ))}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
