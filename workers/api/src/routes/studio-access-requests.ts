@@ -6,7 +6,7 @@ import { operation } from "../openapi/operation";
 
 /**
  * Creator access, read only. The request that used to be posted here was retired with the public
- * application (docs/specs/landing-trade-v1.md §7): the way in is /apply, reviewed through
+ * application (docs/specs/landing-trade-v1.md §7): the way in is /create, reviewed through
  * studio-applications.ts. What stays is a person's own status and the operators' view of the
  * requests recorded before that.
  */

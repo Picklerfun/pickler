@@ -46,12 +46,12 @@ test("studio paths belong to the studio", () => {
   assert.equal(ownerOf("/account"), "studio");
   assert.equal(ownerOf("/signin"), "studio");
   assert.equal(ownerOf("/signup"), "studio");
-  assert.equal(ownerOf("/apply"), "studio");
   assert.equal(ownerOf("/passkey"), "studio");
   assert.equal(ownerOf("/auth/callback"), "studio");
 });
 
 test("marketplace paths belong to the marketplace", () => {
+  assert.equal(ownerOf("/create"), "marketplace");
   assert.equal(ownerOf("/"), "marketplace");
   assert.equal(ownerOf("/leaderboard"), "marketplace");
   assert.equal(ownerOf("/markets/BTC-PERP"), "marketplace");
@@ -105,19 +105,19 @@ test("the studio's home has a different address on each host", () => {
 });
 
 test("a studio path gets an origin only where it has to cross one", () => {
-  // /apply is the live case: the waitlist form is on the marketplace landing and sends whoever
-  // joins to a studio route, which the marketplace host now 404s rather than forwarding.
+  // The marketplace host 404s studio paths rather than forwarding them, so a link to one carries
+  // the studio's origin from there and nowhere else.
   const hosts = { marketplace: "pickler.fun", studio: "app.pickler.fun" };
-  assert.equal(studioUrl("marketplace", hosts, "/apply"), "https://app.pickler.fun/apply");
-  assert.equal(studioUrl("studio", hosts, "/apply"), "/apply");
-  assert.equal(studioUrl("either", hosts, "/apply"), "/apply");
+  assert.equal(studioUrl("marketplace", hosts, "/signin"), "https://app.pickler.fun/signin");
+  assert.equal(studioUrl("studio", hosts, "/signin"), "/signin");
+  assert.equal(studioUrl("either", hosts, "/signin"), "/signin");
 });
 
 test("the studio link follows a reconfigured studio host", () => {
   // Hard-coding the production hostname would make a preview pair link at production.
   const hosts = { marketplace: "market.test", studio: "studio.test" };
   assert.equal(studioHref("marketplace", hosts), "https://studio.test/");
-  assert.equal(studioUrl("marketplace", hosts, "/apply"), "https://studio.test/apply");
+  assert.equal(studioUrl("marketplace", hosts, "/signin"), "https://studio.test/signin");
 });
 
 test("a marketplace path gets an origin only from the studio host", () => {

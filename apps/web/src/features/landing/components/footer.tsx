@@ -22,7 +22,7 @@ export function Footer() {
         <a href="#app" className={styles.footerLink}>
           THE APP
         </a>
-        <Link href="/apply" className={styles.footerLink}>
+        <Link href="/create" className={styles.footerLink}>
           CREATE AN AGENT
         </Link>
         <span className={styles.footerNote}>PICKLER · 2026</span>

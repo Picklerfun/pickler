@@ -57,7 +57,7 @@ export function accessNotice(application: Application): {
 
 /**
  * Creator access, as the studio tells it. Since docs/specs/landing-trade-v1.md §7 the way in is the
- * application at /apply, read by the team: a signed-in person without access is told where their
+ * application at /create, read by the team: a signed-in person without access is told where their
  * application stands (in review, invited, not accepted, or none under this email) rather than
  * offered a request button, and a super admin gets the applications inbox under this notice.
  * Never a grant or a passkey ceremony.
@@ -91,7 +91,7 @@ export function StudioAccessRequest({
   );
   const [loading, setLoading] = useState(!preview || previewLoading);
   const [error, setError] = useState("");
-  const applyHref = useMarketplaceHref("/apply");
+  const applyHref = useMarketplaceHref("/create");
 
   useEffect(() => {
     if (preview) {

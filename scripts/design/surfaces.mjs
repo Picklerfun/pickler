@@ -30,7 +30,7 @@ import { GROUND, ROUTES } from "./routes.mjs";
  * then ask what surface it carries. */
 const MUST_NEST = {
   landing: ["#hero-phone", "#how-hire", "#steps-phone", "#download"],
-  apply: ["#apply-hero", "#arena", "#apply-piece"],
+  create: ["#apply-hero", "#arena", "#apply-piece"],
   "portfolio-connected": ["#portfolio-balance"],
   account: ["#account-wallet-card"],
 };

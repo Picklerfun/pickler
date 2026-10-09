@@ -31,7 +31,7 @@ export function Download({ appStoreUrl }: { appStoreUrl: string | null }) {
             </span>
             Download on the App Store
           </AppStoreLink>
-          <Link href="/apply" className={`${styles.pill} ${styles.pillPanel}`}>
+          <Link href="/create" className={`${styles.pill} ${styles.pillPanel}`}>
             Create an agent
             <span className={`${styles.pillBadge} ${styles.pillBadgeLime}`} aria-hidden="true">
               <Icon name="arrow" size={13} />

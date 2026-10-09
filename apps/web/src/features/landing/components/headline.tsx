@@ -34,7 +34,7 @@ export function Headline() {
         </a>
         {/* The dark pill on the white page: a subtree taking the opposite surface, so its ground,
             ink and hover come from the dark ramp rather than from values typed here. */}
-        <Link href="/apply" className={`${styles.pill} ${styles.pillInk}`} data-surface="dark">
+        <Link href="/create" className={`${styles.pill} ${styles.pillInk}`} data-surface="dark">
           Create an agent
           <span className={`${styles.pillBadge} ${styles.pillBadgeLime}`} aria-hidden="true">
             <Icon name="arrow" size={13} />

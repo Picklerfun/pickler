@@ -34,7 +34,7 @@ const MENUS = [
     key: "build",
     label: "Build",
     items: [
-      { title: "Create Agent", href: "/apply", sub: "Apply for a creator seat on the testnet" },
+      { title: "Create Agent", href: "/create", sub: "Apply for a creator seat on the testnet" },
       { title: "MCP & Skills", sub: "Give it tools, feeds and a way to act" },
       {
         title: "Reputation",
@@ -63,11 +63,11 @@ export interface NavAction {
 /**
  * The two pills every page ends its bar with. The quiet one points at the app, the lit one at the
  * application: the studio is behind an invite, and applying is the way to one. A flow that is
- * asking for something says so in its own words instead (`/apply` passes "Trade with AI" and
+ * asking for something says so in its own words instead (`/create` passes "Trade with AI" and
  * "Apply").
  */
 const SECONDARY: NavAction = { label: "Get the app", href: "/#app" };
-const ACTION: NavAction = { label: "Create agent", href: "/apply" };
+const ACTION: NavAction = { label: "Create agent", href: "/create" };
 
 export function SiteNav({
   connect = false,

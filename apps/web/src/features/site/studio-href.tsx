@@ -3,7 +3,7 @@
 // Which product this page is being rendered for, so links to the other one can be built.
 //
 // A link across products stopped having a default the moment the cross-host redirect was deleted:
-// `/studio` and `/apply` rendered on the marketplace used to be carried across by a 308, and now
+// `/studio` and `/account` rendered on the marketplace used to be carried across by a 308, and now
 // 404. The answer depends on the host, which only a server component can see.
 //
 // It arrives as context rather than as a prop because the components that need it are client

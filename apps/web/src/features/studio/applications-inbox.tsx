@@ -72,7 +72,7 @@ export const PREVIEW_APPLICATIONS: StudioApplicationDto[] = [
 ];
 
 /**
- * The operators' inbox for creator applications: what /apply received, and the one decision each
+ * The operators' inbox for creator applications: what /create received, and the one decision each
  * one gets. Drawn only for a super admin (the server decides; this component just asks). Inviting
  * turns access on by email (spec R5); the acceptance email stays separate.
  */

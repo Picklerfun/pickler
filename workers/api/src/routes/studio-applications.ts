@@ -20,7 +20,7 @@ const toDto = (entry: ApplicationReviewEntry): dto.StudioApplicationDto => ({
 
 /**
  * The operators' inbox for creator applications (docs/specs/landing-trade-v1.md §7): list what
- * /apply received, decide invited or rejected. Every call needs a verified user JWT whose email is
+ * /create received, decide invited or rejected. Every call needs a verified user JWT whose email is
  * on the server's SUPER_ADMIN_EMAILS allowlist; everyone else gets 403 and never sees another
  * person's answers. A decision records nothing but the decision: no studio access is enabled and
  * no email is sent from here.

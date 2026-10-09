@@ -372,13 +372,13 @@ const ALL = [
     task: "Wallet",
     proves: "dialog[open] #connect-step-joined",
   },
-  // /apply is public since docs/specs/landing-trade-v1.md A1: the six-question form renders for
+  // /create is public since docs/specs/landing-trade-v1.md A1: the six-question form renders for
   // anyone, with the email as its first field, and the seat is taken when the form is sent. The
   // form is what this proves; a browser that already holds a seat with an application sees the
   // SUBMITTED screen instead, which the harness has no cookie to reach.
   {
-    path: "/apply",
-    name: "apply",
+    path: "/create",
+    name: "create",
     product: "marketplace",
     surface: "light",
     task: "Apply",
@@ -1216,7 +1216,7 @@ export const HOLDS = {
   Gated: ["apps/web/src/features/wallet", "apps/web/src/features/agents"],
   // The chooser is drawn over the market board, so an edit in flight in either can explain it.
   Wallet: ["apps/web/src/features/wallet", "apps/web/src/features/markets"],
-  Apply: ["apps/web/src/features/apply"],
+  Apply: ["apps/web/src/features/create"],
   // Neither does any task build the auth screens — they predate this design work, which is how
   // they went fifteen routes without being measured. Their own key rather than `Inherited`
   // because attribution is the whole purpose of this map: sharing a key with the leaderboard

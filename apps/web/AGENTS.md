@@ -148,10 +148,10 @@ What is real today: the address, the chain and the native balance. What is not: 
 `features/site/site-nav.tsx` is the navigation for every public route, the landing and the
 application included: the same brand, the same Explore / Build / Resources menus, the same height.
 It ends in two pills, a quiet one and a lit one, which default to "Get the app" (`/#app`) and
-"Create agent" (`/apply`): the studio is behind an invite, and the application is the way to one,
-so no public route points at the studio's entry any more. Build › "Create Agent" goes to `/apply`
+"Create agent" (`/create`): the studio is behind an invite, and the application is the way to one,
+so no public route points at the studio's entry any more. Build › "Create Agent" goes to `/create`
 too. A page that is asking for something names the pills itself through `secondary` and `action` —
-`/apply` passes "Trade with AI" (`/`) and "Apply" (`#apply`), as its canvas draws them. The landing
+`/create` passes "Trade with AI" (`/`) and "Apply" (`#apply`), as its canvas draws them. The landing
 and the explore routes (everything inside `PublicShell`) also carry the wallet with `connect`: Connect
 wallet beside the pills, and once connected the address, its balance, and the three pages that only
 exist for it. The auth screens keep their own bar — a flow that is asking for something should not
@@ -177,7 +177,7 @@ Store" is a link only when `NEXT_PUBLIC_APP_STORE_URL` is set (`components/app-s
 otherwise it is drawn `aria-disabled` with the reason in its title. `scripts/design/routes.mjs`
 proves `#how-title`, and `surfaces.mjs` names the four dark blocks.
 
-`/apply` (`features/apply/`) is the "Pickler Create Agent" canvas and is public: the email is the
+`/create` (`features/apply/`) is the "Pickler Create Agent" canvas and is public: the email is the
 form's first field. Sending runs the two existing requests in order — `POST /api/v1/waitlist`
 (which seats the browser with the `pk_apply` cookie), then `POST /api/v1/applications` with the six
 answers — and the page shows SUBMITTED in place. A seat is still bound to a browser: an email
@@ -242,7 +242,7 @@ Nothing charges yet: the pay button carries the note rather than pretending. A r
 
 ## Dashboard and the public site
 
-The private creator studio lives at `/studio` and calls the Hono API. The studio lived at `/console` until 2026-09-25; no redirect is kept because nobody had launched. The public surface retains landing, `/apply`, auth screens, `/tokens`, `/agents`, `/reads` and `/leaderboard`. Keep private research and public demonstration data separate; share visual components without automatically publishing results.
+The private creator studio lives at `/studio` and calls the Hono API. The studio lived at `/console` until 2026-09-25; no redirect is kept because nobody had launched. The public surface retains landing, `/create`, auth screens, `/tokens`, `/agents`, `/reads` and `/leaderboard`. Keep private research and public demonstration data separate; share visual components without automatically publishing results.
 
 <!-- BEGIN:nextjs-agent-rules -->
 
@@ -790,12 +790,12 @@ See [Studio perpetual execution](../../docs/studio-perps-execution.md).
 
 ## Creator access requests
 
-The way into the studio is the public application at `/apply` (docs/specs/landing-trade-v1.md §7),
+The way into the studio is the public application at `/create` (docs/specs/landing-trade-v1.md §7),
 so the New agent access warning and Account's Creator access section
 (`features/studio/access-request.tsx`) no longer offer a request button: a signed-in person
 without access reads where their application stands (`accessNotice`, by the DTO's `application`:
 "In review", "Invited", "Not accepted", or none under this email), with a link to the application
-(`useMarketplaceHref("/apply")`) where applying makes sense and "Check access". Inviting turns
+(`useMarketplaceHref("/create")`) where applying makes sense and "Check access". Inviting turns
 access on by email (spec R5), so "Invited" without access is a moment, not a state. The component
 reads only `GET /v1/studio/access-request` for `status`, `application` and `canReviewRequests`; the
 POST was retired from the API. A server-authorized operator
