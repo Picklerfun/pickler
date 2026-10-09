@@ -25,19 +25,34 @@ import {
 } from "@pickler/trading/evaluation";
 import { assertPerpsPaperAgent, paperUnits, type PerpsPaperAccount } from "@pickler/trading/perps";
 import { PostgresPerpsPaperStore } from "./perps-paper-store.js";
-function acquisitionPolicy(metadata: unknown): PerpsStudyRecord["dataPolicy"] {
+function acquisitionPolicy(
+  metadata: unknown,
+  config: PerpsStudyConfig,
+): PerpsStudyRecord["dataPolicy"] {
   const value =
     metadata && typeof metadata === "object"
       ? (metadata as { acquisition?: { policy?: unknown }; acquisitionPolicy?: unknown })
       : {};
-  const policy = value.acquisition?.policy ?? value.acquisitionPolicy ?? "coherent-20s-v1";
+  const metadataPolicy = value.acquisition?.policy ?? value.acquisitionPolicy;
+  const configured = config.version === 7 ? config.acquisitionPolicy : undefined;
+  if (configured !== undefined && metadataPolicy !== undefined && configured !== metadataPolicy) {
+    throw new PilotError("INVALID_INPUT", "Acquisition metadata differs from frozen configuration");
+  }
+  const policy = configured ?? metadataPolicy ?? "coherent-20s-v1";
   if (
     policy !== "coherent-20s-v1" &&
     policy !== "rest-paced-20s-v1" &&
     policy !== "stream-20s-v1" &&
-    policy !== "rest-universe-20s-v1"
+    policy !== "rest-universe-20s-v1" &&
+    policy !== "rest-universe-coherent-20s-v2"
   ) {
     throw new PilotError("INVALID_INPUT", "Unknown frozen acquisition policy");
+  }
+  if (policy === "rest-universe-coherent-20s-v2" && configured !== policy) {
+    throw new PilotError(
+      "INVALID_INPUT",
+      "Coherent universe v2 requires explicit v7 configuration",
+    );
   }
   return policy;
 }
@@ -263,7 +278,7 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
         lastObservationAt: null,
         lastRoundSlot: -1,
         lastAttemptedSlot: -1,
-        dataPolicy: acquisitionPolicy(metadata)!,
+        dataPolicy: acquisitionPolicy(metadata, config)!,
       };
       await c.query(
         "INSERT INTO pickler.perps_studies(id,tenant_id,session_id,network,document) VALUES($1,$2,$3,$4,$5)",
@@ -287,9 +302,34 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
       return { record: x.record, rounds: await this.rounds(c, x.id), events: events.rows };
     });
   }
-  async initializeDiagnostic(source: PerpsStudyScope, sessionId: string, metadata: unknown) {
+  async initializeDiagnostic(
+    source: PerpsStudyScope,
+    sessionId: string,
+    metadata: unknown,
+    diagnosticConfig?: PerpsStudyConfig,
+  ) {
     const { record } = await this.view(source);
-    const config = { ...record.config, sessionId };
+    const config = { ...(diagnosticConfig ?? record.config), sessionId };
+    if (diagnosticConfig !== undefined) {
+      assertPerpsStudyConfig(config);
+      const frozenFields = (value: PerpsStudyConfig) =>
+        Object.fromEntries(
+          Object.entries(value).filter(
+            ([key]) => key !== "sessionId" && key !== "acquisitionPolicy",
+          ),
+        );
+      if (
+        record.config.version !== 7 ||
+        config.version !== 7 ||
+        config.acquisitionPolicy !== "rest-universe-coherent-20s-v2" ||
+        canonical(frozenFields(record.config)) !== canonical(frozenFields(config))
+      ) {
+        throw new PilotError(
+          "INVALID_INPUT",
+          "Diagnostic override may only select explicit v7 coherent acquisition",
+        );
+      }
+    }
     const document: PerpsStudyRecord = {
       ...record,
       config,
@@ -304,7 +344,7 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
       lastRoundSlot: -1,
       lastAttemptedSlot: -1,
       lastObservationAt: null,
-      dataPolicy: acquisitionPolicy(metadata)!,
+      dataPolicy: acquisitionPolicy(metadata, config)!,
     };
     await this.pool.query(
       "INSERT INTO pickler.perps_studies(id,tenant_id,session_id,network,document) VALUES($1,$2,$3,$4,$5)",
