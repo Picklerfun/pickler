@@ -210,6 +210,20 @@ unexpired admission. Durable slot fencing still rejects duplicates, late slots a
 Confirmed exits fence reopening by both the originating cycle slot and the confirmation's
 decision slot, including observations that cross an admission boundary.
 
+`acquireUniverseV2` is the opt-in `rest-universe-coherent-20s-v2` acquisition policy. The injected
+absolute deadline includes metadata work before acquisition. Every batch snapshot operation must
+perform a fresh guarded bulk ticker request; returned states update all pairs, and a missing state
+discards that asset's prior snapshot. One recovery operation can precede an unread book, followed by
+that book's turn. Repeated timestamps postpone only their component by two seconds; ready work
+continues instead of a global sleep. Timestamp regressions permanently exclude the affected asset.
+Revalidate the latest components at one final clock and keep all historical v1 behavior unchanged.
+Transport still owns one-second serialized starts and the twenty-four-request cap. Controlled
+counterexamples demonstrate scheduling corrections, not live availability or economic improvement.
+Transient request failures are recorded with their operation code. Previously received components
+may remain eligible only with their original provenance and the final freshness/coherence checks;
+a failed request never advances their dates. A successfully received batch missing a symbol is
+different: it discards that symbol's previous snapshot instead of substituting it.
+
 ## SMA reopening and timing protocol
 
 Configuration v7 (`perps-sma-reentry-latency-v1`) adds `sma-reference` and `sma-once-bar`, both hourly/selective. `features/perps-study/reentry.ts` owns immutable entry policies and the final hourly key; apply its gate after selection, never rerank replacements. `reentry-metrics.ts` checks common slots, pre-maintenance valuation and detected exits. The shared profile runner prioritizes price maintenance before funding/candle preparation and uses `nextPriceCycleDelay` after overruns. Preserve v6 actions and risk semantics. Infrastructure must atomically persist confirmed fills and consumed keys; hosts must not manufacture either. See [local protocol guide](../../apps/agent-service/PERPS-SMA-REENTRY.md).
