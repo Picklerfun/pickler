@@ -32,7 +32,7 @@ try {
   });
   page = await context.newPage();
   page.on("pageerror", (error) => errors.push(error.message));
-  for (const width of [1280, 380]) {
+  for (const width of [1280, 380, 320]) {
     await page.setViewportSize({ width, height: 1000 });
     await page.goto(`${base}/studio/agents/preview-live/token?stage=perpl-token-empty`);
     const name = page.getByRole("textbox", { name: "Token name", exact: true });
@@ -43,11 +43,15 @@ try {
       await page.locator("#live-section-identity").waitFor();
       await page.locator("#live-rail-token").click();
     } else {
-      await page.getByRole("button", { name: "Review launch", exact: true }).click();
-      await page.getByRole("region", { name: "Review token launch" }).waitFor();
-      await page.getByRole("button", { name: "Cancel", exact: true }).click();
+      await page.getByRole("button", { name: "Save draft", exact: true }).click();
+      await page.getByText("Draft saved", { exact: true }).waitFor();
     }
     await name.waitFor();
+    if (width === 1280) {
+      await page.getByRole("region", { name: "Token launch", exact: true }).screenshot({
+        path: path.join(output, "launcher-card.png"),
+      });
+    }
     await name.fill("My preview token");
     await page.getByRole("textbox", { name: "Ticker", exact: true }).fill("DEMO");
     if (width === 1280) {
@@ -60,31 +64,52 @@ try {
       assert.equal(await sidebar.evaluate((node) => node.isConnected), true);
       assert.equal(await header.evaluate((node) => node.isConnected), true);
     }
-    const review = page.getByRole("button", { name: "Review launch", exact: true });
-    await review.focus();
-    await page.keyboard.press("Enter");
-    await page.getByRole("region", { name: "Review token launch" }).waitFor();
-    await page.getByRole("button", { name: "Cancel", exact: true }).click();
-    assert.equal(await name.inputValue(), "My preview token");
-    await review.click();
-    await page.getByRole("button", { name: "Simulate launch", exact: true }).click();
-    await page.getByText("Awaiting signature · simulated", { exact: true }).waitFor();
-    await page.getByRole("button", { name: "Simulate failure", exact: true }).click();
-    await page
-      .getByRole("alert")
-      .getByText("Simulated launch failed. Your draft is kept.")
-      .waitFor();
-    await page.getByRole("button", { name: "Try again", exact: true }).click();
-    await page.getByRole("button", { name: "Simulate signature", exact: true }).click();
-    await page.getByText("Confirming · simulated", { exact: true }).waitFor();
-    await page.getByRole("button", { name: "Simulate confirmation", exact: true }).click();
-    await page.locator('[data-token-state="launched"]:visible').waitFor();
-    await page.getByRole("heading", { name: "My preview token", exact: true }).waitFor();
+    const details = page.getByRole("region", { name: "Token launch details" });
+    await details.getByText("My preview token · $DEMO", { exact: true }).waitFor();
+    assert.equal(await details.getByText("21,000,000", { exact: true }).count(), 1);
+    assert.equal(await details.getByText("16,800,000 · 80%", { exact: true }).count(), 1);
+    assert.equal(await details.getByText("4,200,000 · 20%", { exact: true }).count(), 1);
     assert.equal(
-      await page.getByRole("button", { name: "Explorer", exact: true }).isDisabled(),
+      await details.locator('abbr[title="0x5555555555555555555555555555555555555555"]').count(),
+      1,
+    );
+    await details.getByText("≈10,000", { exact: false }).waitFor();
+    await details.getByText("≈160,000", { exact: false }).waitFor();
+    await details.getByText("≈32,000", { exact: false }).waitFor();
+    assert.equal(await details.getByText("0 AUSD", { exact: true }).count(), 1);
+    assert.equal(await details.getByText("Paid separately in MON", { exact: true }).count(), 1);
+    assert.equal(await details.getByText("50% / 50%", { exact: true }).count(), 1);
+    assert.equal(
+      await details
+        .getByText("After migration: Pending DEX configuration.", { exact: true })
+        .count(),
+      1,
+    );
+    assert.equal(await details.getByText("Creator share of LP fees", { exact: true }).count(), 0);
+    const allocationTrack = await details.locator(".pk-meter").boundingBox();
+    const curveFill = await details.locator(".pk-meter-fill").boundingBox();
+    assert.ok(allocationTrack && curveFill);
+    assert.ok(Math.abs(curveFill.width / allocationTrack.width - 0.8) < 0.01);
+    assert.equal(await page.getByRole("button", { name: /Simulate|Review launch/ }).count(), 0);
+    assert.equal(
+      await page.getByRole("button", { name: "Launch token", exact: true }).isDisabled(),
       true,
     );
-    await page.screenshot({ path: path.join(output, `simulated-${width}.png`), fullPage: true });
+    const save = page.getByRole("button", { name: "Save draft", exact: true });
+    await save.focus();
+    await page.keyboard.press("Enter");
+    await page.getByText("Draft saved", { exact: true }).waitFor();
+    assert.equal(await name.inputValue(), "My preview token");
+    await name.fill("Another name");
+    await details.getByText("Another name · $DEMO", { exact: true }).waitFor();
+    assert.equal(await details.getByText("21,000,000", { exact: true }).count(), 1);
+    assert.equal(await page.getByText("Draft saved", { exact: true }).count(), 0);
+    assert.equal(
+      await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+      true,
+      `Inline summary fits ${width}`,
+    );
+    await page.screenshot({ path: path.join(output, `inline-${width}.png`), fullPage: true });
 
     for (const [suffix, state] of [
       ["/studio/agents/preview-live/token?stage=perpl-token-launched", "launched"],
@@ -119,7 +144,7 @@ try {
   assert.deepEqual(errors, [], "No client exceptions");
   assert.deepEqual(forbidden, [], "Token previews never consult APIs or external providers");
   console.log(
-    "Token previews passed: both Studio/public states, private agent, review, keyboard, cancel, failure, retry, confirmation, stable layout and mobile.",
+    "Token previews passed: both Studio/public states, fixed 21-million supply, live details, no simulated launch, saved drafts, keyboard, stable layout and mobile.",
   );
 } catch (error) {
   writeFileSync(
