@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.30;
 
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+
 /// @title Pickler curve arithmetic
 /// @notice Constant product over virtual reserves. The only place curve maths exists on chain.
 /// @dev Rounding is directional and uniform: the quote reserve is floored and any term
@@ -56,6 +58,22 @@ library PicklerCurveMath {
         uint256 x = config.virtualTokenReserve - netSold;
 
         return (k * 1e18) / x / x;
+    }
+
+    /// @notice Whole quote asset per whole 18-decimal token, scaled by 1e18.
+    /// @dev Normalize before division, never after a truncated legacy price. mulDiv uses
+    ///      a 512-bit intermediate. Checked x*x rejects unsupported reserve ranges.
+    function marginalPriceWad(CurveConfig memory config, uint256 netSold, uint8 quoteDecimals)
+        internal
+        pure
+        returns (uint256)
+    {
+        if (quoteDecimals > 18 || netSold > config.saleAllocation) {
+            revert InvalidAllocation();
+        }
+
+        uint256 x = config.virtualTokenReserve - netSold;
+        return Math.mulDiv(_invariant(config), 10 ** (36 - quoteDecimals), x * x);
     }
 
     /// @notice Tokens delivered for a net quote amount, after fees have already been deducted.
