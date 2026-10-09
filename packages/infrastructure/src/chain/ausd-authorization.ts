@@ -11,7 +11,12 @@ import {
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 
-import { SettlementRejected, type AdvicePaymentGateway, type Authorization } from "@pickler/core";
+import {
+  SettlementRejected,
+  SettlementUnknown,
+  type AdvicePaymentGateway,
+  type Authorization,
+} from "@pickler/core";
 
 const AUSD_ADDRESS = "0xa9012a055bd4e0eDfF8Ce09f960291C09D5322dC";
 const MONAD_TESTNET_ID = 10143;
@@ -227,16 +232,23 @@ export function createAusdAuthorizationGateway(
 
     async settle(authorization, signature) {
       // A revert is only a proven rejection while the nonce is unused: if it is consumed, the same
-      // authorization already executed (e.g. front-run) and the funds moved.
-      const rejectIfUnused = async (message: string): Promise<never> => {
+      // authorization already executed (e.g. front-run) and the funds moved. `hash` is the
+      // reverted transaction's, or null when nothing was broadcast.
+      const rejectIfUnused = async (message: string, hash: Hex | null): Promise<never> => {
         let consumed: boolean;
         try {
           consumed = await gateway.nonceUsed(authorization.from, authorization.nonce);
         } catch {
-          throw new Error("Settlement reverted but the authorization state is unknown");
+          throw new SettlementUnknown(
+            "Settlement reverted but the authorization state is unknown",
+            hash,
+          );
         }
         if (consumed) {
-          throw new Error("Settlement reverted but the authorization was already used");
+          throw new SettlementUnknown(
+            "Settlement reverted but the authorization was already used",
+            hash,
+          );
         }
         throw new SettlementRejected(message);
       };
@@ -272,7 +284,7 @@ export function createAusdAuthorizationGateway(
       try {
         await client.simulateContract(request);
       } catch {
-        return rejectIfUnused("Settlement simulation reverted");
+        return rejectIfUnused("Settlement simulation reverted", null);
       }
 
       // A failure of writeContract is ambiguous: the raw transaction may have reached the node.
@@ -280,18 +292,18 @@ export function createAusdAuthorizationGateway(
       try {
         hash = await wallet.writeContract(request);
       } catch {
-        throw new Error("Settlement broadcast outcome unknown");
+        throw new SettlementUnknown("Settlement broadcast outcome unknown");
       }
 
       let receipt: Awaited<ReturnType<PublicClientLike["waitForTransactionReceipt"]>>;
       try {
         receipt = await client.waitForTransactionReceipt({ hash, timeout: receiptTimeoutMs });
       } catch {
-        throw new Error(`Settlement receipt unavailable for ${hash}`);
+        throw new SettlementUnknown(`Settlement receipt unavailable for ${hash}`, hash);
       }
 
       if (receipt.status === "reverted") {
-        return rejectIfUnused("Settlement transaction reverted");
+        return rejectIfUnused("Settlement transaction reverted", hash);
       }
 
       const logs = parseEventLogs({
@@ -300,7 +312,7 @@ export function createAusdAuthorizationGateway(
         logs: receipt.logs as never,
       }) as unknown as TransferLog[];
       if (!transferMatches(logs, authorization, asset)) {
-        throw new Error(`Settlement ${hash} mined without the expected transfer`);
+        throw new SettlementUnknown(`Settlement ${hash} mined without the expected transfer`, hash);
       }
 
       return { txHash: hash, blockNumber: receipt.blockNumber };

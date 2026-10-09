@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { createAdviceService, PilotError, type AdviceRepository } from "@pickler/core";
-import { paidAdviceFrom } from "../src/container";
+import { paidAdviceFrom, reportUnrecordedSettlement } from "../src/container";
 
 const KEY = `0x${"7a".repeat(32)}`;
 const RPC = "https://rpc.example.test/secret-token";
@@ -70,4 +70,28 @@ test("the flag without a usable relayer or RPC fails closed with 503 and logs no
       assert.equal(logged[0]!.includes(value), false, "no value is ever logged");
     }
   }
+});
+
+test("an unrecorded settlement is logged with its ids, nonce and hash", () => {
+  const logged: string[] = [];
+  const report = reportUnrecordedSettlement((message) => logged.push(message));
+  const trail = {
+    paymentId: "payment-1",
+    userId: "user-1",
+    publicAgentId: "agent-1",
+    key: "key-1",
+    payer: `0x${"22".repeat(20)}`,
+    nonce: `0x${"ab".repeat(32)}`,
+  };
+  const hash = `0x${"ef".repeat(32)}`;
+
+  report({ ...trail, reason: "settled_not_recorded", txHash: hash });
+  report({ ...trail, reason: "settlement_unknown", txHash: null });
+
+  assert.equal(logged.length, 2);
+  for (const value of [...Object.values(trail), "settled_not_recorded", hash]) {
+    assert.ok(logged[0]!.includes(value), `the line names ${value}`);
+  }
+  assert.match(logged[1]!, /settlement_unknown/);
+  assert.match(logged[1]!, /tx unknown/);
 });

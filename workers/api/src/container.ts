@@ -2,7 +2,12 @@ import { createTokenLaunchService } from "@pickler/core";
 import { PostgresTokenLaunchStore } from "@pickler/infrastructure";
 import { createXOAuthService } from "@pickler/core";
 import { PostgresStudioAccessRequests } from "@pickler/infrastructure";
-import { createAdviceService, createPaidAdvice, type AdviceRepository } from "@pickler/core";
+import {
+  createAdviceService,
+  createPaidAdvice,
+  type AdviceRepository,
+  type UnrecordedSettlement,
+} from "@pickler/core";
 import {
   createAusdAuthorizationGateway,
   PostgresAdvicePayments,
@@ -240,7 +245,22 @@ export function paidAdviceFrom(
     gateway,
     now: () => Date.now(),
     resourceBase: "https://pickler.fun/api",
+    reportUnrecordedSettlement: reportUnrecordedSettlement(log),
   });
+}
+
+/**
+ * The log line for an x402 payment whose AUSD may have moved (or did) without a `settled` row:
+ * the start of its manual reconciliation. Ids, payer, nonce and hash only; core never hands over
+ * the signature.
+ */
+export function reportUnrecordedSettlement(log: (message: string) => void = console.error) {
+  return (settlement: UnrecordedSettlement) => {
+    const hash = settlement.txHash ?? "unknown";
+    log(
+      `unrecorded advice settlement (${settlement.reason}) payment ${settlement.paymentId} tx ${hash} for user ${settlement.userId} agent ${settlement.publicAgentId} key ${JSON.stringify(settlement.key)} payer ${settlement.payer} nonce ${settlement.nonce}; reconcile out of band`,
+    );
+  };
 }
 
 /**

@@ -378,8 +378,9 @@ and `DirectoryAgent.agent` carry the agent `id` and its nullable `advicePrice`.
 `X402_NETWORK`, `AUSD_TESTNET`, the x402 v1 wire types (`Authorization`, `PaymentPayload`,
 `PaymentRequirements`, `PaymentError`), `decodePaymentHeader` (throws `X402Refusal`),
 `encodeSettlement`, the ports `AdvicePaymentStore` (sale terms, payer links, payment rows) and
-`AdvicePaymentGateway` (signature, nonce, balance, settlement), `SettlementRejected` and
-`createPaidAdvice`. Its order is fixed: user principal → replay (returned even while advice is
+`AdvicePaymentGateway` (signature, nonce, balance, settlement), `SettlementRejected`,
+`SettlementUnknown` (an unknown outcome, with `txHash` once broadcast), `UnrecordedSettlement`,
+`PENDING_ABANDON_GRACE_SECONDS` and `createPaidAdvice`. Its order is fixed: user principal → replay (returned even while advice is
 disabled, as in the service; another symbol is `CONFLICT`) → `admit` (the service's admission
 checks without enqueueing) → the key's payment row → sale terms
 (`NOT_FOUND`/`ADVICE_NOT_FOR_SALE`) → 402 → static checks (signature exactly 65 bytes) → payer
@@ -387,7 +388,11 @@ link → signature → nonce → balance → pending row → settle → enqueue.
 never settles again; a `refund_owed` row refuses with `invalid_payment`. `settle` throws
 `SettlementRejected` only when the authorization provably never executed (simulation revert,
 reverted receipt): the row becomes `failed` and the key may pay again. Any other throw is an
-unknown outcome: the row stays `pending` and the answer is 402 `settlement_failed`. A `pending`
+unknown outcome: the row stays `pending` and the answer is 402 `settlement_failed`. That outcome,
+and a `store.settled` that throws after a successful settlement (rethrown), call the optional
+`reportUnrecordedSettlement` dep with the reason, payment id, user, public agent, key, payer, nonce
+and the tx hash when known (from `SettlementUnknown.txHash` or the receipt), never the signature;
+the API logs it with `console.error` (`reportUnrecordedSettlement` in `workers/api/src/container.ts`). A `pending`
 row refuses with `invalid_payment` until `validBefore + PENDING_ABANDON_GRACE_SECONDS` (120 s, server
 clock) has passed and a single `nonceUsed(payer, nonce)` read is false; then it is marked `failed`
 (`expired_unsettled`) and the flow continues. The grace absorbs a server clock ahead of block time

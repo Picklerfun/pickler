@@ -86,7 +86,8 @@ export interface AdvicePaymentGateway {
    * Submits `transferWithAuthorization` and waits for the receipt. Throws `SettlementRejected`
    * ONLY when the authorization provably never executed (simulation reverted before broadcast, or
    * a mined receipt with status reverted). Any other throw means the outcome is unknown: the
-   * transaction may still mine until `validBefore`.
+   * transaction may still mine until `validBefore`. A `SettlementUnknown` carries the hash when
+   * the transaction was broadcast.
    */
   settle(
     authorization: Authorization,
@@ -100,6 +101,35 @@ export class SettlementRejected extends Error {
     super(message);
     this.name = "SettlementRejected";
   }
+}
+
+/**
+ * The settlement's outcome is unknown: the transaction was, or may have been, broadcast. `txHash`
+ * is set once the relayer has one. It never carries the signature, the key or a cause.
+ */
+export class SettlementUnknown extends Error {
+  constructor(
+    message: string,
+    public readonly txHash: string | null = null,
+  ) {
+    super(message);
+    this.name = "SettlementUnknown";
+  }
+}
+
+/**
+ * A payment whose money may have moved (or did move) without a `settled` row saying so: the trail
+ * that manual reconciliation starts from. Ids, payer, nonce and hash only, never the signature.
+ */
+export interface UnrecordedSettlement {
+  reason: "settlement_unknown" | "settled_not_recorded";
+  paymentId: string;
+  userId: string;
+  publicAgentId: string;
+  key: string;
+  payer: string;
+  nonce: string;
+  txHash: string | null;
 }
 
 export class X402Refusal extends Error {
@@ -234,6 +264,8 @@ export function createPaidAdvice(deps: {
   gateway: AdvicePaymentGateway;
   now: () => number;
   resourceBase: string;
+  /** Called when a settlement's outcome is unknown or its success could not be recorded. */
+  reportUnrecordedSettlement?(settlement: UnrecordedSettlement): void;
 }) {
   const requirementsFor = (
     publicAgentId: string,
@@ -351,6 +383,14 @@ export function createPaidAdvice(deps: {
         key,
         authorization,
       });
+      const trail = {
+        paymentId: pending.id,
+        userId,
+        publicAgentId,
+        key,
+        payer: authorization.from,
+        nonce: authorization.nonce,
+      };
       let receipt: { txHash: string; blockNumber: bigint };
       try {
         receipt = await deps.gateway.settle(authorization, signature);
@@ -358,10 +398,23 @@ export function createPaidAdvice(deps: {
         // Only a proven rejection frees the key; an unknown outcome stays pending (may still mine).
         if (error instanceof SettlementRejected) {
           await deps.store.failed(pending.id, "settlement_failed");
+        } else {
+          const txHash = error instanceof SettlementUnknown ? error.txHash : null;
+          deps.reportUnrecordedSettlement?.({ ...trail, reason: "settlement_unknown", txHash });
         }
         return { kind: "payment_required", requirements, error: "settlement_failed" };
       }
-      await deps.store.settled(pending.id, receipt.txHash, receipt.blockNumber);
+      try {
+        await deps.store.settled(pending.id, receipt.txHash, receipt.blockNumber);
+      } catch (error) {
+        // The transfer landed but the row stays pending: this report is its only record.
+        deps.reportUnrecordedSettlement?.({
+          ...trail,
+          reason: "settled_not_recorded",
+          txHash: receipt.txHash,
+        });
+        throw error;
+      }
       const job = await enqueue(principal, publicAgentId, symbol, key, pending.id);
       const settlement = encodeSettlement({
         transaction: receipt.txHash,

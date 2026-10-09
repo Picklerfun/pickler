@@ -113,6 +113,11 @@ Settlement outcomes:
 - **Two attempts on one key at once** — the second `insertPending` is refused and answers 409
   `CONFLICT`; nothing is settled for it.
 
+Every unknown outcome, and a confirmed transfer whose `settled` write fails (that request answers
+500 and the row stays `pending`), is logged by the Worker as an `unrecorded advice settlement` line
+with the payment id, user, agent, `Idempotency-Key`, payer, nonce and the transaction hash when
+one exists, never the signature or a key. That line is where manual reconciliation starts.
+
 `refund_owed` is reserved for an analysis that fails after its job exists; v1 marks it manually
 and refunds nothing automatically. The relayer is a testnet EOA that holds no AUSD and pays gas in
 MON; its key never appears in logs, errors or responses. The `resource` in the requirements is

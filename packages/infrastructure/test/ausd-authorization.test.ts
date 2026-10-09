@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { SettlementRejected, type Authorization } from "@pickler/core";
+import { SettlementRejected, SettlementUnknown, type Authorization } from "@pickler/core";
 import { encodeAbiParameters, encodeEventTopics, getAddress, parseAbi, type Hex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import {
@@ -55,6 +55,11 @@ function decodedLog(address: string, from: string, to: string, value: bigint) {
 }
 
 const revertError = new Error("execution reverted");
+
+/** An unknown outcome: a typed `SettlementUnknown` with the broadcast hash, or null before it. */
+function unknownOutcome(hash: string | null) {
+  return (error: unknown) => error instanceof SettlementUnknown && error.txHash === hash;
+}
 
 function gateway(overrides: {
   simulate?: PublicClientLike["simulateContract"];
@@ -217,7 +222,7 @@ test("a simulation revert before broadcast is a SettlementRejected and never wri
   assert.deepEqual(calls, []);
 });
 
-test("an error from writeContract is ambiguous and stays a plain Error", async () => {
+test("an error from writeContract is ambiguous, a SettlementUnknown without a hash", async () => {
   const { gateway: subject } = gateway({
     write: async () => {
       throw new Error("socket hang up");
@@ -225,10 +230,7 @@ test("an error from writeContract is ambiguous and stays a plain Error", async (
   });
   const signed = authorization();
 
-  await assert.rejects(
-    subject.settle(signed, await sign(signed)),
-    (error) => error instanceof Error && !(error instanceof SettlementRejected),
-  );
+  await assert.rejects(subject.settle(signed, await sign(signed)), unknownOutcome(null));
 });
 
 test("a reverted receipt is a SettlementRejected", async () => {
@@ -243,7 +245,7 @@ test("a reverted receipt is a SettlementRejected", async () => {
   );
 });
 
-test("a receipt-wait timeout is a plain Error and asks for 30 seconds", async () => {
+test("a receipt-wait timeout is a SettlementUnknown with the hash and asks for 30 seconds", async () => {
   const timeouts: number[] = [];
   const { gateway: subject } = gateway({
     wait: async (request) => {
@@ -253,14 +255,11 @@ test("a receipt-wait timeout is a plain Error and asks for 30 seconds", async ()
   });
   const signed = authorization();
 
-  await assert.rejects(
-    subject.settle(signed, await sign(signed)),
-    (error) => error instanceof Error && !(error instanceof SettlementRejected),
-  );
+  await assert.rejects(subject.settle(signed, await sign(signed)), unknownOutcome(HASH));
   assert.deepEqual(timeouts, [30_000]);
 });
 
-test("an RPC error after the hash exists is a plain Error", async () => {
+test("an RPC error after the hash exists is a SettlementUnknown with the hash", async () => {
   const { gateway: subject } = gateway({
     wait: async () => {
       throw new Error("HTTP request failed");
@@ -268,13 +267,10 @@ test("an RPC error after the hash exists is a plain Error", async () => {
   });
   const signed = authorization();
 
-  await assert.rejects(
-    subject.settle(signed, await sign(signed)),
-    (error) => error instanceof Error && !(error instanceof SettlementRejected),
-  );
+  await assert.rejects(subject.settle(signed, await sign(signed)), unknownOutcome(HASH));
 });
 
-test("a success receipt without the matching AUSD transfer is a plain Error", async () => {
+test("a success receipt without the matching AUSD transfer is a SettlementUnknown with the hash", async () => {
   const { gateway: subject } = gateway({
     wait: async () => ({
       status: "success",
@@ -284,10 +280,7 @@ test("a success receipt without the matching AUSD transfer is a plain Error", as
   });
   const signed = authorization();
 
-  await assert.rejects(
-    subject.settle(signed, await sign(signed)),
-    (error) => error instanceof Error && !(error instanceof SettlementRejected),
-  );
+  await assert.rejects(subject.settle(signed, await sign(signed)), unknownOutcome(HASH));
 });
 
 const ALREADY_USED = { read: async () => true };
@@ -297,7 +290,7 @@ const STATE_READ_FAILS = {
   },
 };
 
-test("a simulation revert with a consumed nonce is a plain Error", async () => {
+test("a simulation revert with a consumed nonce is a SettlementUnknown without a hash", async () => {
   const { gateway: subject } = gateway({
     ...ALREADY_USED,
     simulate: async () => {
@@ -306,36 +299,27 @@ test("a simulation revert with a consumed nonce is a plain Error", async () => {
   });
   const signed = authorization();
 
-  await assert.rejects(
-    subject.settle(signed, await sign(signed)),
-    (error) => error instanceof Error && !(error instanceof SettlementRejected),
-  );
+  await assert.rejects(subject.settle(signed, await sign(signed)), unknownOutcome(null));
 });
 
-test("a reverted receipt with a consumed nonce is a plain Error", async () => {
+test("a reverted receipt with a consumed nonce is a SettlementUnknown with the hash", async () => {
   const { gateway: subject } = gateway({
     ...ALREADY_USED,
     wait: async () => ({ status: "reverted", blockNumber: 9n, logs: [] }),
   });
   const signed = authorization();
 
-  await assert.rejects(
-    subject.settle(signed, await sign(signed)),
-    (error) => error instanceof Error && !(error instanceof SettlementRejected),
-  );
+  await assert.rejects(subject.settle(signed, await sign(signed)), unknownOutcome(HASH));
 });
 
-test("a reverted receipt whose nonce state cannot be read is a plain Error", async () => {
+test("a reverted receipt whose nonce state cannot be read is a SettlementUnknown with the hash", async () => {
   const { gateway: subject } = gateway({
     ...STATE_READ_FAILS,
     wait: async () => ({ status: "reverted", blockNumber: 9n, logs: [] }),
   });
   const signed = authorization();
 
-  await assert.rejects(
-    subject.settle(signed, await sign(signed)),
-    (error) => error instanceof Error && !(error instanceof SettlementRejected),
-  );
+  await assert.rejects(subject.settle(signed, await sign(signed)), unknownOutcome(HASH));
 });
 
 test("a signature that cannot be parsed is rejected before anything is sent", async () => {
@@ -348,7 +332,7 @@ test("a signature that cannot be parsed is rejected before anything is sent", as
   assert.deepEqual(calls, []);
 });
 
-test("no settle error carries the relayer key or a cause", async () => {
+test("no settle error carries the relayer key, the signature or a cause", async () => {
   const leak = () => new Error(`failed with ${RELAYER}`);
   const failing: Parameters<typeof gateway>[0][] = [
     {
@@ -383,6 +367,7 @@ test("no settle error carries the relayer key or a cause", async () => {
       return (
         error instanceof Error &&
         !error.message.includes(RELAYER.slice(2)) &&
+        !JSON.stringify({ ...error, message: error.message }).includes(signature.slice(2)) &&
         error.cause === undefined
       );
     });

@@ -11,6 +11,7 @@ import {
   PENDING_ABANDON_GRACE_SECONDS,
   PilotError,
   SettlementRejected,
+  SettlementUnknown,
   type AdviceAgent,
   type AdviceJob,
   type AdvicePaymentGateway,
@@ -21,6 +22,7 @@ import {
   type Authorization,
   type PaidAdviceResult,
   type SaleTerms,
+  type UnrecordedSettlement,
 } from "../src/index.js";
 
 const id = randomUUID();
@@ -105,7 +107,9 @@ function fixture(options: { enabled?: boolean } = {}) {
     nonceUsed: false,
     balance: 10_000_000n,
     settleError: null as Error | null,
+    settledError: null as Error | null,
   };
+  const reported: UnrecordedSettlement[] = [];
   const repository: AdviceRepository = {
     requestReplay: async () => {
       calls.push("requestReplay");
@@ -153,6 +157,9 @@ function fixture(options: { enabled?: boolean } = {}) {
     },
     settled: async (paymentId, txHash, blockNumber) => {
       calls.push(`settled:${paymentId}:${txHash}:${blockNumber}`);
+      if (state.settledError) {
+        throw state.settledError;
+      }
       state.record = paymentRow({ ...state.record, id: paymentId, status: "settled", txHash });
     },
     failed: async (paymentId, error) => {
@@ -195,8 +202,11 @@ function fixture(options: { enabled?: boolean } = {}) {
     gateway,
     now: () => NOW_MS,
     resourceBase: RESOURCE_BASE,
+    reportUnrecordedSettlement: (settlement) => {
+      reported.push(settlement);
+    },
   });
-  return { paid, state, calls, job };
+  return { paid, state, calls, job, reported };
 }
 
 function authorization(overrides: Partial<Authorization> = {}): Authorization {
@@ -622,4 +632,63 @@ test("11e. a signature that is not 65 bytes is an invalid payment", async () => 
     assert.ok(!f.calls.includes("signatureValid"), signature);
     assert.ok(!f.calls.includes("settle"), signature);
   }
+});
+
+const TRAIL = {
+  paymentId: "payment-1",
+  userId,
+  publicAgentId: id,
+  key: "key-1",
+  payer: PAYER,
+  nonce: NONCE,
+};
+
+function assertNoSignature(reported: UnrecordedSettlement[]) {
+  const text = JSON.stringify(reported);
+
+  assert.equal(text.includes(SIGNATURE), false, "the signature is never reported");
+  assert.equal(text.includes("cd".repeat(65)), false, "nor any part of it");
+}
+
+test("12a. an unknown settlement outcome is reported with its tx hash and no signature", async () => {
+  const f = fixture();
+  f.state.settleError = new SettlementUnknown("Settlement receipt unavailable", TX);
+
+  const result = await f.paid.request(principal, id, "BTC", "key-1", header());
+
+  refused(result, "settlement_failed");
+  assert.deepEqual(f.reported, [{ ...TRAIL, reason: "settlement_unknown", txHash: TX }]);
+  assertNoSignature(f.reported);
+});
+
+test("12b. an unknown settlement without a hash is reported with a null hash", async () => {
+  const f = fixture();
+  f.state.settleError = new Error("Settlement broadcast outcome unknown");
+
+  const result = await f.paid.request(principal, id, "BTC", "key-1", header());
+
+  refused(result, "settlement_failed");
+  assert.deepEqual(f.reported, [{ ...TRAIL, reason: "settlement_unknown", txHash: null }]);
+  assertNoSignature(f.reported);
+});
+
+test("12c. a proven rejection is not reported: nothing moved", async () => {
+  const f = fixture();
+  f.state.settleError = new SettlementRejected("simulation reverted");
+
+  await f.paid.request(principal, id, "BTC", "key-1", header());
+
+  assert.deepEqual(f.reported, []);
+});
+
+test("12d. a settled transfer that cannot be recorded is reported with its hash and rethrown", async () => {
+  const f = fixture();
+  const failure = new Error("database unavailable");
+  f.state.settledError = failure;
+
+  await assert.rejects(f.paid.request(principal, id, "BTC", "key-1", header()), failure);
+
+  assert.deepEqual(f.reported, [{ ...TRAIL, reason: "settled_not_recorded", txHash: TX }]);
+  assertNoSignature(f.reported);
+  assert.ok(!f.calls.includes("enqueue"));
 });
