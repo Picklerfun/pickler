@@ -1,3 +1,4 @@
+import { agentTokenSchema } from "./token-launch.js";
 import type {
   ActivityAgentDto,
   ActivityEventDto,
@@ -180,6 +181,8 @@ export const pickDetailSchema = agentCallSchema.extend({
   }),
 }) satisfies z.ZodType<PickDetailDto>;
 export const agentPersonaSchema = z.object({
+  launchedToken: agentTokenSchema.nullable().optional(),
+  tokenConfirmation: z.enum(["absent", "pending", "confirmed"]).optional(),
   name: text,
   handle: text,
   ticker: nullableText,
