@@ -112,6 +112,7 @@ test("an independent diagnostic can explicitly select v2 without changing the hi
 
   assert.equal(selected.sessionId, "independent-v2-diagnostic");
   assert.equal(diagnostic.record.dataPolicy, "rest-universe-coherent-20s-v2");
+  assert.ok(diagnostic.record.config.version === 7);
   assert.equal(diagnostic.record.config.acquisitionPolicy, "rest-universe-coherent-20s-v2");
   assert.equal(diagnostic.record.decisionStopReason, "DIAGNOSTIC_ONLY");
   assert.deepEqual(diagnostic.record.agentIds, source.record.agentIds);
