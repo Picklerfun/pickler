@@ -1,4 +1,4 @@
-import { createUniversePerplReader } from "./universe.js";
+import { createUniversePerplReader, type UniverseAcquisitionPolicy } from "./universe.js";
 import { PerplRequestSchedule, type PerplDataOptions } from "@pickler/infrastructure";
 import {
   PilotError,
@@ -19,6 +19,7 @@ export function createPriorityPerplStudyData(
   agents: { agent(scope: Scope): Promise<AgentRecord> },
   options: PerplDataOptions & {
     onAcquisition?: (e: AcquisitionDiagnostic) => void;
+    acquisitionPolicy?: UniverseAcquisitionPolicy;
     onTiming?: (e: {
       version: 1;
       cycle: string;
@@ -45,6 +46,12 @@ export function createPriorityPerplStudyData(
   const config = (r: PerpsStudyRecord) => {
     if (r.config.version !== 7) {
       throw new PilotError("INVALID_INPUT", "Profile configuration required");
+    }
+    if (
+      (r.config.acquisitionPolicy ?? "rest-universe-20s-v1") !==
+      (options.acquisitionPolicy ?? "rest-universe-20s-v1")
+    ) {
+      throw new PilotError("CONFIG_CHANGED", "Reader policy differs from the frozen study");
     }
     return r.config;
   };
