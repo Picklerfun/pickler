@@ -212,3 +212,12 @@ MarketDetailDto and marketDetailDtoSchema accept optional trailTimestamps: nulla
 `priceHistory` is an optional array of `{ price, at }`, bounded to 721 ISO-timestamped samples
 (720 hourly closes and one observed mark). It adds range views without changing `trail`'s 24h
 meaning or requiring legacy/sample producers to fabricate history.
+
+## Agent token DTOs
+
+`src/token-launch.ts` exports strict name/ticker/version inputs, token state, preset and authorization
+schemas and portable DTOs through the package root. Base units and nonces are decimal strings;
+networks are explicit Monad chain IDs. Public persona DTOs add optional nullable `launchedToken`
+and `tokenConfirmation` for historical consumers. Absence, confirmation pending and failed reads
+are different outcomes. No signer, credentials, provider trace or metadata persistence belongs here.
+OpenAPI is generated from API route metadata; see [the token guide](../../docs/agent-token-preview.md).
