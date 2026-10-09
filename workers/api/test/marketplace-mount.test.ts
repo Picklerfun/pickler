@@ -10,6 +10,7 @@ import {
   createGetPickDetail,
   createGetPlatformAnalytics,
   createGetRead,
+  createListAgentActions,
   createListAgents,
   createListDirectory,
   createListMarkets,
@@ -52,6 +53,7 @@ function app(markets: MarketBoard = createSampleMarketBoard()) {
     clock: systemClock,
     getHealth: createGetHealth(systemClock),
     listAgents: createListAgents(emptyDirectory),
+    listAgentActions: createListAgentActions({ listRecent: async () => [] }),
     getAgentProfile: createGetAgentProfile(emptyDirectory),
     getPickDetail: createGetPickDetail(emptyDirectory),
     getAgentPersona: createGetAgentPersona(emptyDirectory),
@@ -83,6 +85,7 @@ function app(markets: MarketBoard = createSampleMarketBoard()) {
 const PUBLIC_READS = [
   "/v1/health",
   "/v1/marketplace/agents",
+  "/v1/marketplace/activity",
   "/v1/marketplace/directory",
   "/v1/marketplace/reads",
   "/v1/marketplace/markets",

@@ -7,6 +7,7 @@ import {
   createGetMarket,
   createGetPlatformAnalytics,
   createGetRead,
+  createListAgentActions,
   createListAgents,
   createListDirectory,
   createListMarkets,
@@ -22,6 +23,7 @@ import {
 import {
   createPerplMarketBoard,
   PerplBoardMemory,
+  PostgresAgentActionFeed,
   PostgresAgentDirectory,
   PostgresApplicants,
   PostgresWaitlist,
@@ -65,6 +67,7 @@ export function unavailableMarketBoard(): MarketBoard {
 export function createGrowthServices(pool: Pool, options: { perplBoardNetwork?: string } = {}) {
   const adapters = {
     agents: new PostgresAgentDirectory(pool),
+    actions: new PostgresAgentActionFeed(pool),
     markets: marketBoardFor(options.perplBoardNetwork),
     waitlist: new PostgresWaitlist(pool),
     applicants: new PostgresApplicants(pool),
@@ -77,6 +80,7 @@ export function createGrowthServices(pool: Pool, options: { perplBoardNetwork?: 
     submitApplication: createSubmitApplication(adapters.applicants),
     checkTicker: createCheckTicker(adapters.applicants),
     listAgents: createListAgents(adapters.agents),
+    listAgentActions: createListAgentActions(adapters.actions),
     getAgentProfile: createGetAgentProfile(adapters.agents),
     getPickDetail: createGetPickDetail(adapters.agents),
     getAgentPersona: createGetAgentPersona(adapters.agents),

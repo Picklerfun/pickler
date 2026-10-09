@@ -105,6 +105,17 @@ export {
   createListDirectory,
   createListReads,
 } from "./features/agents/application/agents.js";
+export {
+  AGENT_ACTION_CALLS,
+  AGENT_ACTION_OUTCOMES,
+  AGENT_ACTIONS_DEFAULT,
+  AGENT_ACTIONS_MAX,
+  createListAgentActions,
+  type AgentAction,
+  type AgentActionCall,
+  type AgentActionFeed,
+  type AgentActionOutcome,
+} from "./features/agents/domain/agent-actions.js";
 
 export * from "./features/markets/domain/markets.js";
 export type { MarketBoard } from "./features/markets/ports/market-board.js";

@@ -1,4 +1,5 @@
 import type {
+  AgentActionDto,
   ActivityAgentDto,
   ActivityEventDto,
   AgentReadDto,
@@ -380,3 +381,15 @@ export function freshnessReadSchema<T extends z.ZodType>(data: T) {
   });
 }
 export const launchesReadSchema = freshnessReadSchema(z.array(launchSummary));
+
+export const agentActionSchema = z.object({
+  id: text,
+  at: text,
+  agent: activityAgentSchema,
+  outcome: z.enum(["entered", "exited", "held", "blocked", "proposed"]),
+  outcomeText: nullableText,
+  instrument: nullableText,
+  call: z.enum(["open-long", "open-short", "close", "hold"]).nullable(),
+  probability: nullableNumber,
+  horizonHours: nullableNumber,
+}) satisfies z.ZodType<AgentActionDto>;

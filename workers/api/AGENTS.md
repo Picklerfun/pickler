@@ -27,7 +27,7 @@ src/
   middleware/agent-auth.ts  # agentOnly() (HMAC) and agentScoped() (HMAC or JWT/API key, optional self-access)
   routes/auth.ts            # GET /v1/auth/me
   routes/agents.ts          # Agent read endpoints
-  routes/marketplace.ts     # Public marketplace reads: agents from the database, markets from Perpl
+  routes/marketplace.ts     # Public marketplace reads: agents and their actions from the database, markets from Perpl
   routes/signing.ts         # Passkey custody: challenge, register, add device, wallet read
   growth/market-responses.ts# Perpetual market read models mapped to their DTOs
   budget/agent-ledger.ts    # AgentLedger Durable Object: budget authority per agent
@@ -224,7 +224,10 @@ behind that route's credentials. The invented agents that used to answer here no
 `mainnet` (`createPerplMarketBoard`, one request to the venue's public context, cached ten
 seconds), or, for any other value and for none, a board that answers every read with
 MarketDataUnavailableError (503): no sample board ships in the product since
-docs/specs/marketplace-real-only-v1.md N3, and `/v1/landing` is gone with its sample read model (N4). What the board remembers lives in
+docs/specs/marketplace-real-only-v1.md N3, and `/v1/landing` is gone with its sample read model (N4).
+`GET /v1/marketplace/activity` (`?limit=`, 1 to 50, default 12) is the agents' latest actions:
+`PostgresAgentActionFeed` reads finished `pickler.perps_checks` of public, living agents and
+answers the call and the outcome only, never the rationale, the steps or the cost (N8). What the board remembers lives in
 a module-level `PerplBoardMemory` per network, because services are composed per request. A venue
 that cannot be read and has nothing recent held raises `MarketDataUnavailableError`, which the
 error handler answers as 503 with `error: "MARKET_DATA_UNAVAILABLE"`; an empty list is never the

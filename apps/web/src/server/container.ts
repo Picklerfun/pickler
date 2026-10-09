@@ -2,6 +2,7 @@ import type { ReadDto, LaunchSummaryDto } from "@pickler/api-schema";
 import "server-only";
 import type {
   ApplicantResponse,
+  AgentActionDto,
   AgentSummaryDto,
   AgentProfileDto,
   PickDetailDto,
@@ -19,6 +20,7 @@ import { emptyAnalytics } from "./api-read";
 export const services = {
   clock: { now: () => new Date() },
   listAgents: () => apiRead<AgentSummaryDto[]>("/marketplace/agents", []),
+  listAgentActions: () => apiRead<AgentActionDto[]>("/marketplace/activity", []),
   listLaunches: async (): Promise<ReadDto<LaunchSummaryDto[]> | null> => {
     const response = await apiFetch(new Request("https://pickler.internal/v1/launches"));
 

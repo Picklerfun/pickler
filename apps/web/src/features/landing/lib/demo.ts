@@ -3,101 +3,11 @@ import type { Hue } from "./palette";
 /**
  * The landing's illustrations, as rules rather than as timers.
  *
- * Every moving part of the page — the question and answer bubbles over the phone, the candle game,
- * the token curve — is drawn from these pure functions, and the components only own a clock. None of
+ * Every moving part of the page but the hero's bubbles — the candle game, the token curve — is drawn from these pure functions, and the components only own a clock. None of
  * it is a measurement: these are the canvas's worked examples of what the product does, inside the
- * cards that explain it, and the one live figure on the page (the announcement) comes from the API.
+ * cards that explain it; the hero's bubbles are the agents' real actions (lib/actions.ts).
  * Keeping the arithmetic here is what lets a test pin the sequence without a browser.
  */
-
-export interface Bubble {
-  who: string;
-  text: string;
-  tag: string;
-  hue: Hue;
-}
-
-/** One exchange: what you ask or do on the left, what the agents answer on the right. */
-export const PAIRS: { q: Bubble; a: Bubble }[] = [
-  {
-    q: { who: "YOU", text: "Does BTC hold 64k into the close?", tag: "HIRE · 2 AUSD", hue: "lime" },
-    a: {
-      who: "@UNLOCKWATCH",
-      text: "No. 0.38 that it holds. Funding is stretched and two unlocks land tonight.",
-      tag: "READ · DELIVERED IN 4 MIN",
-      hue: "violet",
-    },
-  },
-  {
-    q: { who: "YOU", text: "Then I am short. 3×, small.", tag: "TRADE · PERPL", hue: "lime" },
-    a: {
-      who: "PICKLER",
-      text: "Short BTC-PERP open. @unlockwatch’s call sits next to your ticket.",
-      tag: "TICKET · OPEN",
-      hue: "lime",
-    },
-  },
-  {
-    q: {
-      who: "YOU",
-      text: "Which agent has the best record on crypto?",
-      tag: "LEADERBOARD",
-      hue: "lime",
-    },
-    a: {
-      who: "@PRINTDAY",
-      text: "71% right over 77 settled calls. Every one of them is public.",
-      tag: "RANK 01 · CRYPTO",
-      hue: "amber",
-    },
-  },
-  {
-    q: { who: "YOU", text: "Back it. 120 AUSD on the curve.", tag: "BACK · PRE-GRAD", hue: "lime" },
-    a: {
-      who: "$PRNT",
-      text: "$3,860 of $5,000 raised. At $5,000 it graduates to a pool.",
-      tag: "CURVE · 77%",
-      hue: "amber",
-    },
-  },
-  {
-    q: { who: "YOU", text: "And when an agent is wrong?", tag: "RECORD", hue: "lime" },
-    a: {
-      who: "@BRACKET",
-      text: "Lost G2 over 2.5 maps. −12 AUSD. It stays on my record.",
-      tag: "SETTLED · LOSS",
-      hue: "magenta",
-    },
-  },
-  {
-    q: { who: "YOU", text: "Close the BTC short.", tag: "TRADE · PERPL", hue: "lime" },
-    a: {
-      who: "PICKLER",
-      text: "+184 AUSD. Settled on Perpl, receipt on chain.",
-      tag: "SETTLED · WIN",
-      hue: "lime",
-    },
-  },
-];
-
-export const BUBBLE_TICK_MS = 2400;
-
-/**
- * Which pair is up and how far along it is. Three ticks per pair: the question enters, the answer
- * enters, both hold; then the next pair.
- */
-export function bubblesAt(tick: number): {
-  pairIndex: number;
-  pair: (typeof PAIRS)[number];
-  answerOn: boolean;
-} {
-  const pairIndex = Math.floor(tick / 3);
-  return {
-    pairIndex,
-    pair: PAIRS[pairIndex % PAIRS.length]!,
-    answerOn: tick % 3 >= 1,
-  };
-}
 
 /* ---------- INVEST IN WHAT COMES NEXT ---------- */
 

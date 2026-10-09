@@ -112,6 +112,7 @@ export {
 export { PostgresCustodyStore } from "./persistence/custody-store.js";
 export { PostgresWalletIdentityStore } from "./persistence/wallet-identity-store.js";
 export { PostgresAgentDirectory } from "./persistence/agent-directory.js";
+export { PostgresAgentActionFeed } from "./persistence/agent-actions.js";
 
 export { createBalanceReader, type Balance, type Balances } from "./chain/balances.js";
 export {

@@ -251,3 +251,16 @@ export interface PickDetailDto extends AgentCallDto {
   steps: PickTrailStepDto[];
   chain: { positionTx: string | null; settlementTx: string | null; agentWallet: string | null };
 }
+
+/** GET /api/v1/marketplace/activity: one finished paper check of a public agent, newest first. */
+export interface AgentActionDto {
+  id: string;
+  at: string;
+  agent: ActivityAgentDto;
+  outcome: "entered" | "exited" | "held" | "blocked" | "proposed";
+  outcomeText: string | null;
+  instrument: string | null;
+  call: "open-long" | "open-short" | "close" | "hold" | null;
+  probability: number | null;
+  horizonHours: number | null;
+}

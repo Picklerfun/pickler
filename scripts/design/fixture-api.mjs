@@ -32,6 +32,7 @@ import {
   createGetPickDetail,
   createGetPlatformAnalytics,
   createGetRead,
+  createListAgentActions,
   createListAgents,
   createListDirectory,
   createListMarkets,
@@ -40,8 +41,10 @@ import {
 import { systemClock } from "@pickler/infrastructure";
 import { createSampleMarketBoard } from "./fixtures/sample-market-board.mts";
 import { createSampleAgentDirectory } from "./fixtures/sample-agent-directory.mts";
+import { createSampleActionFeed } from "./fixtures/sample-actions.mts";
 import { sampleLaunches } from "./fixtures/sample-launches.mts";
 import {
+  toAgentActionDto,
   toAgentPersonaDto,
   toAgentProfileDto,
   toAgentReadDto,
@@ -61,6 +64,7 @@ const markets = createSampleMarketBoard();
 
 const services = {
   listAgents: createListAgents(agents),
+  listAgentActions: createListAgentActions(createSampleActionFeed(systemClock)),
   listDirectory: createListDirectory(agents),
   listReads: createListReads(agents),
   getRead: createGetRead(agents),
@@ -80,6 +84,10 @@ const routes = [
   // The worker reads launches from its index; the harness has none, so the board gets two rows.
   [/^\/v1\/launches$/, async () => sampleLaunches()],
   [/^\/v1\/marketplace\/agents$/, async () => (await services.listAgents()).map(toAgentSummaryDto)],
+  [
+    /^\/v1\/marketplace\/activity$/,
+    async () => (await services.listAgentActions()).map(toAgentActionDto),
+  ],
   [
     /^\/v1\/marketplace\/directory$/,
     async () => (await services.listDirectory()).map(toDirectoryAgentDto),
