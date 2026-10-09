@@ -130,6 +130,10 @@ without retries or lost ownership: **0/3 joint sets and 25/33 individual market 
 There were 55 HTTP 200 responses, three cancellations while queued, no HTTP 400/429, fourteen
 ticker emissions from the network and zero from cache. Five renewals succeeded and the lease was
 released. No accounts, positions, models, tokens or monetary reservations were created.
+The generic study record retains status `interrupted` because its permanent stop reason is
+`DIAGNOSTIC_ONLY`; that status is not evidence of a crash. The capture process ended normally,
+recorded all three slots, and reported no terminal error. Read the capture and release fields
+alongside that administrative status instead of labelling it an active comparison.
 
 These are the last observed candidates, not accepted final snapshots. All available components
 were within thirty seconds of age; the seven date-pair failures exceeded the five-second skew.
