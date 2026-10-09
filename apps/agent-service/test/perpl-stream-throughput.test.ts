@@ -39,6 +39,7 @@ class Socket implements PerplSocket {
 
 function setup(input: {
   batched?: boolean;
+  direct?: boolean;
   guard?: () => Promise<void>;
   clock?: () => number;
   events?: PerplStreamEvent[];
@@ -50,7 +51,11 @@ function setup(input: {
     now: input.clock ?? (() => now),
     signal: input.signal ?? new AbortController().signal,
     guard: input.guard ?? (async () => {}),
-    ...(input.batched ? { messageProcessing: "guarded-batches" as const } : {}),
+    ...(input.direct
+      ? { messageProcessing: "direct-reconstruction" as const }
+      : input.batched
+        ? { messageProcessing: "guarded-batches" as const }
+        : {}),
     event: (event) => input.events?.push(event),
     socket: () => {
       queueMicrotask(() => {
@@ -66,7 +71,7 @@ function setup(input: {
 function initial(socket: Socket, stream: PerplPublicStream) {
   socket.message({
     mt: 6,
-    subs: stream.state.streams().map((name, i) => ({ stream: name, sid: i + 1 })),
+    subs: stream.streams().map((name, i) => ({ stream: name, sid: i + 1 })),
   });
   socket.message({
     mt: 15,
@@ -103,11 +108,11 @@ test("thirty controlled paired bursts preserve exact results with fewer ownershi
   const signal = new AbortController().signal;
   for (let repetition = 0; repetition < 30; repetition++) {
     const results = [];
-    for (const batched of [false, true]) {
+    for (const direct of [false, true]) {
       let checks = 0;
       const events: PerplStreamEvent[] = [];
       const { socket, stream } = setup({
-        batched,
+        direct,
         events,
         guard: async () => {
           checks++;
@@ -141,10 +146,10 @@ test("thirty controlled paired bursts preserve exact results with fewer ownershi
           events.some((event) => event.kind === "error"),
           false,
         );
-        assert.equal(guardChecks, batched ? 4 : 33);
+        assert.equal(guardChecks, direct ? 3 : 33);
         measurements.push({
           repetition,
-          mode: batched ? "guarded-batches" : "per-message",
+          mode: direct ? "direct-reconstruction" : "per-message",
           durationMs,
           guardChecks,
           queuePeak: metrics.queuePeak,
@@ -222,13 +227,97 @@ test("a failed live ownership check discards the entire pending batch and blocks
     await stream.close();
     assert.equal(socket.readyState, 3);
     assert.equal(events.filter((event) => event.kind === "message").length, 0);
-    assert.throws(() => stream.state.frame("BTC", now), { code: "DATA_UNAVAILABLE" });
+    await assert.rejects(stream.latest(["BTC"], signal), { code: "LEASE_LOST" });
+    assert.equal("state" in stream, false);
   } finally {
     await stream.close();
   }
 });
 
-test("snapshot refresh preserves one socket and thirteen-entry semantics with bounded requests", async () => {
+test("direct reconstruction absorbs ordered updates during blocked SQL without granting buffer access", async () => {
+  let blocking = false;
+  let owned = true;
+  let release: () => void = () => {};
+  const blocked = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const events: PerplStreamEvent[] = [];
+  const { stream, socket } = setup({
+    direct: true,
+    events,
+    guard: async () => {
+      if (blocking) {
+        await blocked;
+      }
+      if (!owned) {
+        throw new PilotError("LEASE_LOST", "Controlled ownership loss");
+      }
+    },
+  });
+  const signal = new AbortController().signal;
+  try {
+    await stream.connect(signal);
+    initial(socket, stream);
+    await stream.latest(["BTC"], signal);
+    blocking = true;
+    let delivered = false;
+    const pending = stream.latest(["BTC"], signal);
+    void pending.then(
+      () => {
+        delivered = true;
+      },
+      () => {},
+    );
+    for (let i = 0; i < 1000; i++) {
+      socket.message({
+        mt: 16,
+        sid: 3,
+        at: { t: now + i + 1, b: 101 + i },
+        bid: [{ p: 999, s: 10000000 + i, o: 1 }],
+        ask: [],
+      });
+    }
+    assert.equal(events.filter((event) => event.kind === "message").length, 1003);
+    assert.equal(delivered, false);
+    assert.equal(events.filter((event) => event.kind === "error").length, 0);
+    owned = false;
+    release();
+    await assert.rejects(pending, { code: "LEASE_LOST" });
+    await stream.close();
+    const metrics = events.filter((event) => event.kind === "closed").at(-1)!.processing!;
+    assert.equal(metrics.processedMessages, 1003);
+    assert.equal(metrics.receivedMessages, 1003);
+    assert.equal(metrics.queuePeak, 1);
+    assert.equal(socket.readyState, 3);
+    await assert.rejects(stream.latest(["BTC"], signal), { code: "LEASE_LOST" });
+    assert.equal("state" in stream, false);
+  } finally {
+    release();
+    await stream.close();
+  }
+});
+
+test("direct replication rejects buffered delivery and subsequent messages after cancellation", async () => {
+  const controller = new AbortController();
+  const events: PerplStreamEvent[] = [];
+  const { stream, socket } = setup({ direct: true, signal: controller.signal, events });
+  try {
+    await stream.connect(controller.signal);
+    initial(socket, stream);
+    await stream.latest(["BTC"], controller.signal);
+    controller.abort(new PilotError("LEASE_LOST", "Controlled cancellation"));
+    const count = events.filter((event) => event.kind === "message").length;
+    socket.message({ mt: 100, sn: 1, h: 100 });
+    await assert.rejects(stream.latest(["BTC"], controller.signal), { code: "LEASE_LOST" });
+    await stream.close();
+    assert.equal(events.filter((event) => event.kind === "message").length, count);
+    assert.equal(socket.readyState, 3);
+  } finally {
+    await stream.close();
+  }
+});
+
+test("legacy batched subscription refresh stays bounded without implying newer source dates", async () => {
   let clock = now;
   const events: PerplStreamEvent[] = [];
   const { stream, socket } = setup({ batched: true, events, clock: () => clock });
