@@ -157,6 +157,14 @@ export interface PerpsPaperRepository {
     key: string,
     intent: PerpsPaperIntent,
   ): Promise<{ attempt: PerpsPaperAttempt; lease: PerpsPaperLease | null }>;
+  /** Explicit component-paper execution of an already shared frame in one fenced transaction. */
+  executeFrame?(
+    scope: PerpsPaperScope,
+    key: string,
+    intent: PerpsPaperIntent,
+    frame: import("./simulation.js").PerpsPaperFrame,
+    onSimulation?: (durationMs: number) => void,
+  ): Promise<PerpsPaperView>;
   assertLease(scope: PerpsPaperScope, lease: PerpsPaperLease): Promise<void>;
   complete(
     scope: PerpsPaperScope,
