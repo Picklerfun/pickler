@@ -276,3 +276,7 @@ at most a 32 MiB contiguous validated prefix with hashes and explicit truncation
 reader-audit v3 verifies hashes and replays retained messages through pure reconstruction,
 without environment, credentials or connections. Partial evidence cannot upgrade joint validity.
 No economic run, paid call, restart, repeat, automation, merge or deployment is implicit.
+Read [the one-shot result](PERPL-UNIVERSE-WEBSOCKET-ACCEPTANCE-20261008.md): it failed after two
+valid cycles. Preserve the original generic summary and specific stream error. Post-check safe
+limit counters and cancellation fixes have controlled validation only; missing historical limit
+dimensions remain unverifiable and never authorize another public check.
