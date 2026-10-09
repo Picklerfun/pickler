@@ -1,4 +1,5 @@
 import test from "node:test";
+import { tokenReferenceEconomics } from "../src/features/launch/domain/token-economics.js";
 import assert from "node:assert/strict";
 import {
   createTokenLaunchService,
@@ -42,9 +43,9 @@ function fixture() {
       version: 1,
       configHash: hash,
       quoteAddress: address,
-      totalSupply: "1000",
-      saleAllocation: "800",
-      lpAllocation: "200",
+      totalSupply: "21000000000000000000000000",
+      saleAllocation: "16800000000000000000000000",
+      lpAllocation: "4200000000000000000000000",
       buyFeeBps: 100,
       sellFeeBps: 100,
       protocolShareBps: 5000,
@@ -218,4 +219,78 @@ test("name and ticker validation happens before persistence", async () => {
     async () => f.service.authorize(scope, 0, "controlled_launch_001"),
     /TOKEN_DRAFT_INVALID/,
   );
+});
+
+test("only a fully allocated 21-million supply is admitted before signing", async () => {
+  for (const patch of [
+    { totalSupply: "1000", saleAllocation: "800", lpAllocation: "200" },
+    { totalSupply: "21000000000000000000000001" },
+    { saleAllocation: "16800000000000000000000001" },
+    { lpAllocation: "-1" },
+  ]) {
+    const f = fixture();
+    Object.assign(f.issuer.preset, patch);
+    const state = await f.service.state(scope);
+    assert.equal(state.available, false);
+    assert.ok(state.blockers.includes("LAUNCH_UNAVAILABLE"));
+    await assert.rejects(
+      f.service.authorize(scope, 1, "controlled_launch_001"),
+      /TOKEN_LAUNCH_BLOCKED/,
+    );
+    assert.equal(f.calls(), 0);
+    assert.equal(f.grants.size, 0);
+  }
+});
+test("owner-only launch details use the registered master wallet", async () => {
+  const f = fixture();
+  assert.equal((await f.service.state(scope)).masterAddress, address);
+  assert.equal(f.calls(), 0);
+  await assert.rejects(f.service.state({ ...scope, userId: "other" }), /TOKEN_OWNER_REQUIRED/);
+  f.context.masterAddress = null;
+  assert.equal((await f.service.state(scope)).masterAddress, null);
+});
+test("a preset changed during issuance cannot be recorded", async () => {
+  const f = fixture();
+  const original = f.issuer.issue;
+  f.issuer.issue = async (input) => {
+    const result = await original(input);
+    f.issuer.preset.totalSupply = "1000";
+    return result;
+  };
+  await assert.rejects(
+    f.service.authorize(scope, 1, "controlled_launch_001"),
+    /TOKEN_LAUNCH_BLOCKED/,
+  );
+  assert.equal(f.grants.size, 0);
+});
+
+test("reference economics do not compose a signer or authorize a launch", async () => {
+  const f = fixture();
+  const terms = tokenReferenceEconomics({ address, decimals: 6 });
+  const service = createTokenLaunchService({
+    repository: f.repository,
+    chainId: 10143,
+    referenceEconomics: terms,
+  });
+  const state = await service.state(scope);
+  assert.deepEqual(state.economics, terms);
+  assert.equal(state.preset, null);
+  assert.equal(state.available, false);
+  assert.ok(state.blockers.includes("LAUNCH_UNAVAILABLE"));
+  await assert.rejects(
+    service.authorize(scope, 1, "controlled_reference_01"),
+    /TOKEN_LAUNCH_BLOCKED/,
+  );
+  assert.equal(f.calls(), 0);
+
+  state.economics!.launchFee = "100";
+  assert.equal((await service.state(scope)).economics?.launchFee, "0");
+  const unavailable = createTokenLaunchService({
+    repository: f.repository,
+    chainId: null,
+    referenceEconomics: terms,
+  });
+  assert.equal((await unavailable.state(scope)).economics, null);
+  f.context.ownerUserId = "someone-else";
+  await assert.rejects(service.state(scope), /TOKEN_OWNER_REQUIRED/);
 });
