@@ -136,6 +136,7 @@ export function createUniverseStreamReader(options: {
               await guard();
             },
             now: options.now,
+            messageProcessing: "guarded-batches",
             ...(options.socket ? { socket: options.socket } : {}),
             ...(options.onStream ? { event: options.onStream } : {}),
           });
@@ -167,6 +168,7 @@ export function createUniverseStreamReader(options: {
             return buffer;
           },
           hash,
+          refresh: () => stream!.requestSnapshots(signal),
           wait: pausePerplRead,
           ...(options.onAcquisition ? { diagnostic: options.onAcquisition } : {}),
         });
