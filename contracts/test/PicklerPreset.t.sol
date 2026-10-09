@@ -10,15 +10,15 @@ contract PicklerPresetTest is Test {
     address internal quoteToken = makeAddr("quoteToken");
 
     function _valid() internal view returns (PicklerPreset.LaunchPreset memory preset) {
-        (uint256 x0, uint256 q0) = PicklerCurveMath.deriveReserves(800e18, 200e18, 1_000e6);
+        (uint256 x0, uint256 q0) = PicklerCurveMath.deriveReserves(16_800_000e18, 4_200_000e18, 21_000_000e6);
 
         preset = PicklerPreset.LaunchPreset({
             presetId: 1,
             version: 1,
             quoteToken: quoteToken,
-            totalSupply: 1_000e18,
-            saleAllocation: 800e18,
-            lpAllocation: 200e18,
+            totalSupply: 21_000_000e18,
+            saleAllocation: 16_800_000e18,
+            lpAllocation: 4_200_000e18,
             virtualTokenReserve: x0,
             virtualQuoteReserve: q0,
             buyFeeBps: 100,
@@ -36,9 +36,18 @@ contract PicklerPresetTest is Test {
         PicklerPreset.validate(_valid());
     }
 
+    function testFuzz_onlyTwentyOneMillionIsAnAcceptedSupply(uint256 supply) public {
+        vm.assume(supply != PicklerPreset.TOTAL_SUPPLY);
+        PicklerPreset.LaunchPreset memory preset = _valid();
+        preset.totalSupply = supply;
+
+        vm.expectRevert(PicklerPreset.InvalidTotalSupply.selector);
+        this.exposedValidate(preset);
+    }
+
     function test_allocationsMustAccountForTheWholeSupply() public {
         PicklerPreset.LaunchPreset memory preset = _valid();
-        preset.totalSupply = 1_001e18;
+        preset.saleAllocation += 1e18;
 
         vm.expectRevert(PicklerPreset.AllocationsDoNotSumToSupply.selector);
         this.exposedValidate(preset);
@@ -55,9 +64,9 @@ contract PicklerPresetTest is Test {
     /// The floor the fuzzer found in A1. A preset landing under it prices a token more finely
     /// than the arithmetic can represent, so it is refused here rather than deployed.
     function test_aPresetBelowThePrecisionFloorIsRefused() public {
-        uint256 saleAllocation = 1e27;
-        uint256 lpAllocation = 99e25;
-        uint256 targetReserve = 100e6;
+        uint256 saleAllocation = 11_000_000e18;
+        uint256 lpAllocation = 10_000_000e18;
+        uint256 targetReserve = 10;
 
         (uint256 x0, uint256 q0) = PicklerCurveMath.deriveReserves(saleAllocation, lpAllocation, targetReserve);
 
