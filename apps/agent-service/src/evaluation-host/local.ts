@@ -19,11 +19,44 @@ export interface EvaluationHostRequest {
   envFile?: string;
   output?: string;
   acquisitionChoice?: string;
+  qualification?: string;
   signal?: AbortSignal;
   states?: string[];
 }
 /** Public application service: no process.argv, chdir, or alternate provider/strategy implementation. */
 export async function executeEvaluation(input: EvaluationHostRequest) {
+  if (input.command === "reader-audit") {
+    if (
+      input.envFile ||
+      input.allowPaid ||
+      input.states?.length !== 1 ||
+      !input.output ||
+      input.acquisitionChoice ||
+      input.qualification
+    ) {
+      throw new PilotError("INVALID_INPUT", "Reader audit is offline and requires one capture");
+    }
+    const { runReaderAudit } = await import("../perps-study/reader-audit.js");
+    return runReaderAudit(
+      input.states[0]!,
+      input.output,
+      input.signal ?? new AbortController().signal,
+    );
+  }
+  if (input.command === "timing-check") {
+    if (input.envFile || input.allowPaid || input.states?.length !== 1 || !input.output) {
+      throw new PilotError(
+        "INVALID_INPUT",
+        "Offline timing-check requires one state and new output, without environment or paid mode",
+      );
+    }
+    const { runTimingCheck } = await import("../perps-study/timing-check.js");
+    return runTimingCheck(
+      input.states[0]!,
+      input.output,
+      input.signal ?? new AbortController().signal,
+    );
+  }
   if (input.command === "audit-export") {
     const { runPerpsAudit } = await import("../perps-study/audit.js");
     return runPerpsAudit({
@@ -106,6 +139,19 @@ export async function executeEvaluation(input: EvaluationHostRequest) {
       async execute(request) {
         const { runSmaReview } = await import("../perps-study/sma-review.js");
         return runSmaReview({ ...input, command: request.command, configPath: path }, signal);
+      },
+    },
+    "perps-sma-reentry-latency-v1": {
+      async execute(request) {
+        if (request.command === "stability" || request.command === "reader-check") {
+          const { runUniverseStability } = await import("../perps-study/universe-stability.js");
+          return runUniverseStability(
+            { ...input, configPath: path, diagnosticOnly: request.command === "reader-check" },
+            signal,
+          );
+        }
+        const { runSmaReentry } = await import("../perps-study/reentry-host.js");
+        return runSmaReentry({ ...input, command: request.command, configPath: path }, signal);
       },
     },
     "perps-sma-profile-risk-v1": {

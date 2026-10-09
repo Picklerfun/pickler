@@ -12,6 +12,7 @@ export const PERPS_STREAM_POLICY = "stream-20s-v1" as const;
 export type PerpsDataPolicy =
   | "coherent-20s-v1"
   | "rest-universe-20s-v1"
+  | "rest-universe-coherent-20s-v2"
   | typeof PERPS_REST_PACED_POLICY
   | typeof PERPS_STREAM_POLICY;
 

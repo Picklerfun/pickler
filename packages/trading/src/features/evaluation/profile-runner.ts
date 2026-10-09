@@ -1,8 +1,11 @@
+import { nextPriceCycleDelay } from "./sma-timing.js";
 import { PilotError } from "@pickler/core";
 import { perpsSlotClock } from "../perps-study/policy.js";
 import { profileProposals, profileFinal, profileSignal } from "../perps-study/profiles.js";
 import {
   SMA_PROFILE_VARIANTS,
+  SMA_REENTRY_VARIANTS,
+  type SmaReentryVariant,
   type SmaProfileVariant,
   type PerpsStudyRepository,
   type PerpsStudyScope,
@@ -12,6 +15,7 @@ import {
   type PerpsProposal,
   type PerpsStudyMap,
 } from "../perps-study/types.js";
+import { reentryGate, SMA_ENTRY_POLICIES } from "../perps-study/reentry.js";
 import { startLeaseHeartbeat, type LeaseDiagnostic } from "./lease-heartbeat.js";
 import {
   createPerpsPaperService,
@@ -19,12 +23,24 @@ import {
   selectiveReduction,
   transientPerpsData,
   validatePaperFrame,
+  simulatePerpsFill,
   type PerpsPaperRepository,
   type PerpsPaperFrame,
   type PerpsPaperView,
 } from "../../perps.js";
 import type { StudyData } from "./perps-runner.js";
 export interface ProfileStudyData extends StudyData {
+  prepareEvidence?(
+    record: PerpsStudyRecord,
+    signal: AbortSignal,
+    guard: () => Promise<void>,
+  ): Promise<PerpsEvidence>;
+  reconcile?(
+    record: PerpsStudyRecord,
+    accounts: PerpsStudyMap<PerpsPaperView>,
+    signal: AbortSignal,
+    guard: () => Promise<void>,
+  ): Promise<import("../../perps.js").PerpsPaperObservation>;
   finalEvidence(
     record: PerpsStudyRecord,
     signal: AbortSignal,
@@ -42,11 +58,30 @@ export function createProfileStudyRunner(deps: {
     signal: AbortSignal,
   ) => PerpsPaperRepository;
   afterCycle?: () => Promise<void>;
+  afterObservation?: (value: unknown) => Promise<void>;
+  timing?: (value: {
+    version: 1;
+    cycle: string;
+    operation: string;
+    at: number;
+    durationMs: number;
+    timerDelayMs?: number;
+  }) => void;
+  monotonic?: () => number;
   now?: () => number;
   sleep?: (delayMs: number, signal: AbortSignal) => Promise<void>;
   leaseDiagnostic?: (e: LeaseDiagnostic) => void;
 }) {
   const now = deps.now ?? Date.now;
+  const monotonic = deps.monotonic ?? (() => performance.now());
+  async function measured<T>(cycle: string, operation: string, work: () => Promise<T>): Promise<T> {
+    const start = monotonic();
+    try {
+      return await work();
+    } finally {
+      deps.timing?.({ version: 1, cycle, operation, at: now(), durationMs: monotonic() - start });
+    }
+  }
   const sleep =
     deps.sleep ??
     ((delay: number, signal: AbortSignal) =>
@@ -66,12 +101,12 @@ export function createProfileStudyRunner(deps: {
       }));
   const { study, data } = deps;
   let paper = deps.paper;
-  const target = (r: PerpsStudyRecord, v: SmaProfileVariant) => ({
+  const target = (r: PerpsStudyRecord, v: SmaProfileVariant | SmaReentryVariant) => ({
     ...r.config,
     agentId: r.agentIds[v]!,
   });
   function valid(e: PerpsEvidence, r: PerpsStudyRecord) {
-    if (r.config.version !== 6) {
+    if (r.config.version !== 6 && r.config.version !== 7) {
       throw new PilotError("INVALID_INPUT", "Profile protocol required");
     }
     if (!e.frames.length) {
@@ -103,13 +138,14 @@ export function createProfileStudyRunner(deps: {
     await guard();
     const saved = await study.view(scope),
       r = saved.record;
-    if (r.config.version !== 6) {
+    if (r.config.version !== 6 && r.config.version !== 7) {
       throw new PilotError("INVALID_INPUT", "Profile protocol required");
     }
     const config = r.config;
+    const variants = config.version === 7 ? SMA_REENTRY_VARIANTS : SMA_PROFILE_VARIANTS;
     if (
-      Object.keys(r.agentIds).length !== 4 ||
-      SMA_PROFILE_VARIANTS.some((v) => !r.agentIds[v] || r.agentVersions[v] !== 1)
+      Object.keys(r.agentIds).length !== variants.length ||
+      variants.some((v) => !r.agentIds[v] || r.agentVersions[v] !== 1)
     ) {
       throw new PilotError("CONFIG_CHANGED", "Four frozen independent variant identities required");
     }
@@ -120,7 +156,7 @@ export function createProfileStudyRunner(deps: {
     const slot = perpsSlotClock(r, now()).slot;
     const closing = now() >= r.endsAt! || r.stopRequested || !!r.decisionStopReason;
     if (closing) {
-      for (const v of SMA_PROFILE_VARIANTS) {
+      for (const v of variants) {
         await paper.closeAdmissions(target(r, v));
       }
     }
@@ -164,9 +200,9 @@ export function createProfileStudyRunner(deps: {
     );
     let observation, evidence: PerpsEvidence;
     try {
-      observation = await data.observe(r, signal, guard);
+      observation = await measured(key, "prices", () => data.observe(r, signal, guard));
       evidence = await data.evidence(r, observation, signal, guard);
-      valid(evidence, r);
+      await measured(key, "frame-validation", async () => valid(evidence, r));
     } catch (e) {
       signal.throwIfAborted();
       if (!transientPerpsData(e)) {
@@ -203,7 +239,7 @@ export function createProfileStudyRunner(deps: {
     );
     const processedCloses = new Set<string>();
     async function trade(
-      v: SmaProfileVariant,
+      v: SmaProfileVariant | SmaReentryVariant,
       p: PerpsProposal,
       frames: PerpsPaperFrame[],
       attemptKey: string,
@@ -225,6 +261,25 @@ export function createProfileStudyRunner(deps: {
       }
       const frame = frames.find((f) => f.snapshot.market.symbol === p.symbol);
       if (!frame) {
+        if (isClose) {
+          await study.event(scope, lease, `${v}:${attemptKey}:exit-detected`, "exit-detected", {
+            variant: v,
+            symbol: p.symbol,
+            positionId: position!.id,
+            slot,
+            reason: p.reason,
+            detectedAt: now(),
+            firstExecutableObservedAt: null,
+            impediment: "DATA_UNAVAILABLE",
+            positionBefore: position,
+          });
+          await study.event(scope, lease, `${v}:${attemptKey}`, "exit-impediment", {
+            variant: v,
+            symbol: p.symbol,
+            error: "DATA_UNAVAILABLE",
+            status: "not-attempted",
+          });
+        }
         return;
       }
       if (isClose) {
@@ -234,16 +289,107 @@ export function createProfileStudyRunner(deps: {
         processedCloses.add(`${v}:${p.symbol}`);
       }
       const before = paperRisk(current.account, current.attempts, now());
+      const detectedAt = now();
+      if (isClose) {
+        const exitIntent = {
+          kind: "close" as const,
+          symbol: p.symbol,
+          side: position!.side,
+          notional: "0",
+          feeReserve: "1",
+        };
+        const admission = paperRisk(current.account, current.attempts, now(), exitIntent);
+        let executable = admission.allowed;
+        let impediment: string | null = admission.allowed ? null : admission.reasons.join(":");
+        try {
+          simulatePerpsFill(
+            current.account,
+            {
+              kind: "close",
+              symbol: p.symbol,
+              side: position!.side,
+              notional: "0",
+              feeReserve: "1",
+            },
+            frame,
+            now(),
+          );
+        } catch (e) {
+          executable = false;
+          impediment = code(e);
+        }
+        await study.event(scope, lease, `${v}:${attemptKey}:exit-detected`, "exit-detected", {
+          variant: v,
+          symbol: p.symbol,
+          positionId: position!.id,
+          slot,
+          reason: p.reason,
+          detectedAt,
+          firstExecutableObservedAt: executable
+            ? (saved.events
+                .filter((e) => e.kind === "exit-detected")
+                .map(
+                  (e) =>
+                    e.data as {
+                      variant?: string;
+                      positionId?: string;
+                      firstExecutableObservedAt?: number | null;
+                    },
+                )
+                .find(
+                  (e) =>
+                    e.variant === v &&
+                    e.positionId === position!.id &&
+                    e.firstExecutableObservedAt != null,
+                )?.firstExecutableObservedAt ?? detectedAt)
+            : null,
+          impediment,
+          frameHash: frame.hash,
+          positionBefore: position,
+          riskBefore: before,
+          detectedConditions: {
+            ageMs: now() - position!.openedAt,
+            mark: position!.mark,
+            entryPrice: position!.entryPrice,
+            requestedByRisk: before.closeSymbols.includes(p.symbol),
+            riskReasons: before.reasons,
+          },
+          limitation: "Observed opportunity; market crossing time is not known",
+        });
+      }
       let failure: string | null = null;
       try {
-        await simulator.trade(
-          target(r, v),
-          attemptKey,
-          isClose ? "close" : "open",
-          p.symbol,
-          isClose ? position!.side : p.action === "open-long" ? "long" : "short",
-          signal,
-          frame,
+        await measured(attemptKey, "simulation-and-transaction", () =>
+          simulator.trade(
+            target(r, v),
+            attemptKey,
+            isClose ? "close" : "open",
+            p.symbol,
+            isClose ? position!.side : p.action === "open-long" ? "long" : "short",
+            signal,
+            frame,
+            {
+              ...(config.version === 7 && !isClose
+                ? {
+                    entryEvidence: {
+                      roundKey: attemptKey.split(":")[0]!,
+                      resolution: 3600 as const,
+                      candleOpenTime: evidence.candles
+                        .find((c) => c.market.symbol === p.symbol && c.resolution === 3600)!
+                        .candles.at(-1)!.openTime,
+                    },
+                  }
+                : {}),
+              onSimulation: (durationMs) =>
+                deps.timing?.({
+                  version: 1,
+                  cycle: attemptKey,
+                  operation: "simulation",
+                  at: now(),
+                  durationMs,
+                }),
+            },
+          ),
         );
       } catch (e) {
         signal.throwIfAborted();
@@ -255,6 +401,7 @@ export function createProfileStudyRunner(deps: {
             "SLIPPAGE_LIMIT",
             "OPEN_NOTIONAL_LIMIT",
             "DATA_UNAVAILABLE",
+            "HOURLY_ENTRY_ALREADY_CONSUMED",
           ].includes(e.code)
         ) {
           throw e;
@@ -289,7 +436,11 @@ export function createProfileStudyRunner(deps: {
         attemptKey,
       });
     }
-    async function maintain(v: SmaProfileVariant, captured: PerpsEvidence, phaseKey: string) {
+    async function maintain(
+      v: SmaProfileVariant | SmaReentryVariant,
+      captured: PerpsEvidence,
+      phaseKey: string,
+    ) {
       const currentView = await paper.view(target(r, v));
       const risk = paperRisk(currentView.account, currentView.attempts, now());
       const signals = profileSignal(
@@ -360,16 +511,32 @@ export function createProfileStudyRunner(deps: {
       }
     }
     const views: PerpsStudyMap<PerpsPaperView> = {};
-    for (const v of SMA_PROFILE_VARIANTS) {
+    const beforeMaintenance: PerpsStudyMap<unknown> = {};
+    for (const v of variants) {
       await guard();
-      views[v] = await paper.observe(target(r, v), key, observation);
+      const before = await paper.view(target(r, v));
+      views[v] = await measured(key, `valuation:${v}`, () =>
+        paper.observe(target(r, v), key, observation),
+      );
+      beforeMaintenance[v] = {
+        positions: before.account.positions.filter((p) => p.closedAt === null),
+        risk: paperRisk(views[v]!.account, views[v]!.attempts, now()),
+        evidence: observation.frames.map((f) => ({
+          symbol: f.snapshot.market.symbol,
+          hash: f.hash,
+          tickerAt: f.snapshot.ticker.provenance.providerTimestamp,
+          bookAt: f.book.provenance.providerTimestamp,
+        })),
+        observedAt: now(),
+      };
       await maintain(v, evidence, key);
       views[v] = await paper.view(target(r, v));
     }
     await study.event(scope, lease, key, "observation", {
       slot,
+      beforeMaintenance,
       variants: Object.fromEntries(
-        SMA_PROFILE_VARIANTS.map((v) => [
+        variants.map((v) => [
           v,
           {
             risk: paperRisk(views[v]!.account, views[v]!.attempts, now()),
@@ -378,10 +545,20 @@ export function createProfileStudyRunner(deps: {
         ]),
       ),
     });
+    await deps.afterObservation?.({ key, at: now(), slot, beforeMaintenance });
+    // Price valuation and mandatory closes always precede slower funding/candle preparation.
+    if (config.version === 7 && data.reconcile) {
+      const funding = await measured(key, "funding", () =>
+        data.reconcile!(r, views, signal, guard),
+      );
+      for (const v of variants) {
+        views[v] = await paper.observe(target(r, v), `${key}:funding`, funding);
+      }
+    }
     if (closing) {
       await study.stopDecisions(scope, lease, r.decisionStopReason ?? "SESSION_END");
       if (
-        SMA_PROFILE_VARIANTS.every(
+        variants.every(
           (v) =>
             views[v]!.account.positions.every((p) => p.closedAt !== null) &&
             !views[v]!.account.fundingPending &&
@@ -396,9 +573,46 @@ export function createProfileStudyRunner(deps: {
     if (!admitted) {
       return true;
     }
-    const accounts = Object.fromEntries(SMA_PROFILE_VARIANTS.map((v) => [v, views[v]!.account]));
-    for (const v of SMA_PROFILE_VARIANTS) {
-      const expected = v.endsWith("-selective") ? "buffered-selective-1x-v1" : "legacy-1x-v1";
+    if (config.version === 7 && data.prepareEvidence) {
+      try {
+        evidence = await measured(key, "initial-evidence", () =>
+          data.prepareEvidence!(r, signal, guard),
+        );
+        await measured(key, "frame-validation", async () => valid(evidence, r));
+        for (const v of variants) {
+          await paper.observe(target(r, v), `${key}:initial-marks`, {
+            frames: evidence.frames,
+            funding: [],
+            marksOnly: true,
+          });
+          await maintain(v, evidence, `${key}:initial`);
+          views[v] = await paper.view(target(r, v));
+        }
+      } catch (e) {
+        signal.throwIfAborted();
+        if (!transientPerpsData(e)) {
+          throw e;
+        }
+        await study.event(scope, lease, `slot-${slot}:data-unavailable`, "data-unavailable", {
+          slot,
+          phase: "initial-evidence",
+          cause: code(e),
+        });
+        return true;
+      }
+    }
+    const accounts = Object.fromEntries(variants.map((v) => [v, views[v]!.account]));
+    for (const v of variants) {
+      const expected =
+        config.version === 7 || v.endsWith("-selective")
+          ? "buffered-selective-1x-v1"
+          : "legacy-1x-v1";
+      if (
+        config.version === 7 &&
+        accounts[v]!.entryPolicy !== SMA_ENTRY_POLICIES[v as SmaReentryVariant]
+      ) {
+        throw new PilotError("CONFIG_CHANGED", "Account entry policy differs from frozen variant");
+      }
       if (accounts[v]!.riskManagement !== expected) {
         throw new PilotError("CONFIG_CHANGED", "Account risk policy differs from frozen variant");
       }
@@ -411,9 +625,17 @@ export function createProfileStudyRunner(deps: {
       ),
     );
     const proposals = Object.fromEntries(
-      SMA_PROFILE_VARIANTS.map((v) => [
+      variants.map((v) => [
         v,
-        profileProposals({ evidence, account: accounts[v]! }, config, v, block).map((p) =>
+        (config.version === 7
+          ? reentryGate(
+              profileProposals({ evidence, account: accounts[v]! }, config, v, block),
+              accounts[v]!,
+              evidence,
+              v as SmaReentryVariant,
+            )
+          : profileProposals({ evidence, account: accounts[v]! }, config, v, block)
+        ).map((p) =>
           closed.has(`${v}:${p.symbol}`) && p.action.startsWith("open-")
             ? { ...p, action: "hold" as const, reason: "CLOSED_THIS_SLOT" }
             : p,
@@ -427,14 +649,17 @@ export function createProfileStudyRunner(deps: {
     await study.finishRound(scope, lease, round.key, proposals);
     let financialWrites = false;
     try {
-      const final = await data.finalEvidence(r, signal, guard);
-      valid(final, r);
+      const final = await measured(round.key, "final-evidence", () =>
+        data.finalEvidence(r, signal, guard),
+      );
+      await measured(round.key, "final-frame-validation", async () => valid(final, r));
+      evidence = final;
       await study.event(scope, lease, `${round.key}:final-evidence`, "execution-input", {
         evidence: final,
       });
       // Validate the entire common input before touching any portfolio.
       financialWrites = true;
-      for (const v of SMA_PROFILE_VARIANTS) {
+      for (const v of variants) {
         await guard();
         await paper.observe(target(r, v), `${round.key}:final-marks`, {
           frames: final.frames,
@@ -442,14 +667,14 @@ export function createProfileStudyRunner(deps: {
           marksOnly: true,
         });
       }
-      for (const v of SMA_PROFILE_VARIANTS) {
+      for (const v of variants) {
         await maintain(v, final, `${round.key}:final`);
         const current = await paper.view(target(r, v));
         const missing = current.account.positions.some(
           (p) =>
             p.closedAt === null && !final.frames.some((f) => f.snapshot.market.symbol === p.symbol),
         );
-        const finalProposals = profileFinal(
+        const refreshed = profileFinal(
           proposals[v]!,
           { evidence: final, account: current.account },
           config,
@@ -460,6 +685,10 @@ export function createProfileStudyRunner(deps: {
             ? { ...p, action: "hold" as const, reason: "CLOSED_THIS_SLOT" }
             : p,
         );
+        const finalProposals =
+          config.version === 7
+            ? reentryGate(refreshed, current.account, final, v as SmaReentryVariant)
+            : refreshed;
         await study.event(scope, lease, `${round.key}:${v}:final-gate`, "final-gate", {
           strategy: v,
           initial: proposals[v],
@@ -498,6 +727,7 @@ export function createProfileStudyRunner(deps: {
         lease,
         renew: () => study.renew(scope, lease),
         now,
+        monotonic,
         ...(deps.leaseDiagnostic ? { diagnostic: deps.leaseDiagnostic } : {}),
       });
       lease.assertActive = heartbeat.assertActive;
@@ -514,11 +744,18 @@ export function createProfileStudyRunner(deps: {
           }
           // A slow acquisition can finish inside the next minute's still-open slot. Start its
           // observation/admission now; PostgreSQL still rejects expired or already-claimed slots.
-          const delay =
-            Math.floor(now() / 60000) > cycleMinute
-              ? 1
-              : Math.max(1, 60000 - (now() % 60000) + 100);
+          const delay = nextPriceCycleDelay(now(), cycleMinute);
+          const scheduled = now() + delay;
+          const waiting = monotonic();
           await sleep(delay, owned);
+          deps.timing?.({
+            version: 1,
+            cycle: `minute-${Math.floor(now() / 60000)}`,
+            operation: "scheduler-wait",
+            at: now(),
+            durationMs: monotonic() - waiting,
+            timerDelayMs: Math.max(0, now() - scheduled),
+          });
         }
       } catch (e) {
         interruption = code(e);

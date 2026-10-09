@@ -4,7 +4,7 @@ import type { PerpsStudyConfig, PerpsRound, PerpsCallLane, PerpsStudyRecord } fr
 export const PERPS_INPUT_LIMIT = 65536;
 export const PERPS_OUTPUT_LIMIT = 4096;
 export function assertPerpsStudyConfig(c: PerpsStudyConfig) {
-  if (c.version === 6) {
+  if (c.version === 6 || c.version === 7) {
     const catalog = [
       ["BTC", 1],
       ["MON", 10],
@@ -19,7 +19,8 @@ export function assertPerpsStudyConfig(c: PerpsStudyConfig) {
       ["UNI", 110],
     ];
     if (
-      c.protocol !== "perps-sma-profile-risk-v1" ||
+      c.protocol !==
+        (c.version === 7 ? "perps-sma-reentry-latency-v1" : "perps-sma-profile-risk-v1") ||
       c.hours !== 6 ||
       c.budgetUsd !== "5" ||
       !c.tenantId ||
@@ -27,6 +28,9 @@ export function assertPerpsStudyConfig(c: PerpsStudyConfig) {
       !["mainnet", "testnet"].includes(c.network) ||
       !Array.isArray(c.markets) ||
       c.markets.length !== 11 ||
+      (c.version === 7 &&
+        c.acquisitionPolicy !== undefined &&
+        !["rest-universe-20s-v1", "rest-universe-coherent-20s-v2"].includes(c.acquisitionPolicy)) ||
       catalog.some(
         ([symbol, id]) => !c.markets.some((m) => m.symbol === symbol && m.marketId === id),
       ) ||
@@ -41,6 +45,7 @@ export function assertPerpsStudyConfig(c: PerpsStudyConfig) {
             "sessionId",
             "network",
             "markets",
+            ...(c.version === 7 ? ["acquisitionPolicy"] : []),
           ].includes(k),
       )
     ) {
@@ -202,7 +207,7 @@ export function perpsCallCost(
   input: number,
   output: number,
 ) {
-  if (config.version === 3 || config.version === 6) {
+  if (config.version === 3 || config.version === 6 || config.version === 7) {
     throw new PilotError("MODELS_DISABLED", "Original SMA cannot reserve model calls");
   }
   if (config.version === 5) {
@@ -262,7 +267,7 @@ export function perpsSlotClock(record: PerpsStudyRecord, at: number) {
   const segment = record.continuations?.at(-1);
   const origin = segment?.at ?? record.startedAt!;
   const offset = segment?.fromSlot ?? 0;
-  const cadence = record.config.version === 6 ? 300000 : 900000;
+  const cadence = record.config.version >= 6 ? 300000 : 900000;
   return {
     slot: offset + Math.floor((at - origin) / cadence),
     withinSlotMs: (at - origin) % cadence,

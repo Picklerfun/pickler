@@ -127,8 +127,14 @@ export async function runPerpsAudit(input: {
       throw new PilotError("INVALID_INPUT", "Perpetual study scope required");
     }
     // Parse only DATABASE_URL; never populate process.env or read model/trading keys.
-    const { parse } = await import("dotenv");
-    const url = parse(await readFile(resolve(input.envFile), "utf8")).DATABASE_URL;
+    let url: string | undefined;
+    if (config.version === 7) {
+      const { localStudyDatabase } = await import("./database-env.js");
+      url = await localStudyDatabase(resolve(input.envFile));
+    } else {
+      const { parse } = await import("dotenv");
+      url = parse(await readFile(resolve(input.envFile), "utf8")).DATABASE_URL;
+    }
     if (!url || !["127.0.0.1", "localhost", "[::1]"].includes(new URL(url).hostname)) {
       throw new PilotError("INVALID_INPUT", "Audit export requires explicit loopback PostgreSQL");
     }

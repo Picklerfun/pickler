@@ -1,8 +1,10 @@
 import {
   SMA_PROFILE_VARIANTS,
+  SMA_REENTRY_VARIANTS,
   profileSmaTrace,
   profileDescriptor,
   canonicalAudit,
+  reentryEconomics,
   type PerpsStudyView,
   type PerpsStudyMap,
   type PerpsProposal,
@@ -30,10 +32,11 @@ export function renderProfileReport(
   processState: string,
 ) {
   const { record, rounds, events } = packet.study;
-  if (record.config.version !== 6) {
+  if (record.config.version !== 6 && record.config.version !== 7) {
     throw new Error("Profile report requires v6");
   }
   const config = record.config;
+  const variants = config.version === 7 ? SMA_REENTRY_VARIANTS : SMA_PROFILE_VARIANTS;
   if (rounds.some((r) => Object.keys(r.calls).length > 0)) {
     throw new Error("Model calls are forbidden in profile reports");
   }
@@ -49,7 +52,7 @@ export function renderProfileReport(
   };
   const rows = Array.from({ length: 72 }, (_, slot) =>
     config.markets.flatMap((m) =>
-      SMA_PROFILE_VARIANTS.map((variant) => {
+      variants.map((variant) => {
         const round = rounds.find((r) => r.slot === slot);
         const context = round?.accounts[variant]
           ? { evidence: round.evidence, account: round.accounts[variant]! }
@@ -120,6 +123,10 @@ export function renderProfileReport(
           bookAt: frame?.book.provenance.providerTimestamp ?? null,
           fees: frame?.snapshot.market.fees ?? null,
           funding: frame?.snapshot.funding ?? null,
+          entryKey:
+            (final as { entryKey?: string } | undefined)?.entryKey ??
+            (initial as { entryKey?: string } | undefined)?.entryKey ??
+            null,
           initialAction: initial?.action ?? null,
           initialReason: initial?.reason ?? null,
           initialTrace: initial ?? null,
@@ -175,13 +182,17 @@ export function renderProfileReport(
     .filter((r) => r.executionStatus === "complete" && r.status === "completed")
     .map((r) => r.slot);
   const common = rows.filter((r) => completeSlots.includes(r.slot) && r.status === "complete");
-  const comparisons = [
-    ["hourly-selective", "hourly-legacy"],
-    ["fast-selective", "fast-legacy"],
-    ["fast-legacy", "hourly-legacy"],
-    ["fast-selective", "hourly-selective"],
-    ["fast-selective", "hourly-legacy"],
-  ].map(([variant, reference]) => ({
+  const pairs =
+    config.version === 7
+      ? [["sma-once-bar", "sma-reference"]]
+      : [
+          ["hourly-selective", "hourly-legacy"],
+          ["fast-selective", "fast-legacy"],
+          ["fast-legacy", "hourly-legacy"],
+          ["fast-selective", "hourly-selective"],
+          ["fast-selective", "hourly-legacy"],
+        ];
+  const comparisons = pairs.map(([variant, reference]) => ({
     variant,
     reference,
     validCommonAssetSlots: common.filter((r) => r.variant === variant).length,
@@ -205,7 +216,7 @@ export function renderProfileReport(
     })(),
     note: "Common valid decision identities only in proposal counts. Economic totals are separately evolving portfolios, including all actual fills; not a per-slot causal attribution.",
   }));
-  const riskSummary = SMA_PROFILE_VARIANTS.map((variant) => {
+  const riskSummary = variants.map((variant) => {
     const executions = events
       .filter((e) => e.kind === "profile-execution")
       .map(
@@ -274,8 +285,14 @@ export function renderProfileReport(
     };
   });
   const html = `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>SMA profiles and selective risk</title><style>body{font:15px system-ui;background:#101721;color:#e8edf4;margin:24px}table{border-collapse:collapse;width:100%;font-size:12px}th,td{padding:9px;border:1px solid #344353;text-align:left;vertical-align:top}th{background:#1c2938;position:sticky;top:0}section{overflow:auto;margin:25px 0}details{margin:16px 0}input{padding:10px;width:300px;background:#fff;color:#111}p{max-width:1000px}a{color:#91c8ff}</style><h1>SMA profiles and selective risk</h1><p>State: <strong>${escape(processState)}</strong>; persisted: ${escape(record.status)}. Study commit: ${escape((record.metadata as { commit?: string }).commit)}. Report commit: ${escape(summary.reportCommit ?? (record.metadata as { commit?: string }).commit)}. New model calls / tokens / API USD / model reserves: <strong>0 / 0 / 0 / 0</strong>.</p><p>Six hours are exploratory. Historical samples are context, not paired controls. SMA separation is not a probability of profit. Spread and slippage are already included in fill prices and are not subtracted again. Unknown marks, positions and funding remain pending.</p><section>${table(summary.rows)}</section><h2>Comparison coverage</h2><section>${table(comparisons)}</section><p>${completeSlots.length}/72 completed slots. ${rows.filter((r) => r.status === "DATA_UNAVAILABLE").length} unavailable decision identities; ${rows.filter((r) => r.status === "MISSED_SLOT").length} missed identities. Net realized AUSD and API USD are separate units. Portfolio outcomes include every confirmed trade; paired decision coverage excludes omitted assets.</p><h2>Decisions: ${rows.length} identities</h2><input id="filter" placeholder="Filter market, variant, reason…"><section id="decisions">${table(rows.map((r) => ({ slot: r.slot, symbol: r.symbol, variant: r.variant, status: r.status, sma20: r.sma20, sma50: r.sma50, separationBps: r.separationBps, confirmation: r.confirmation, initialAction: r.initialAction, initialReason: r.initialReason, finalAction: r.finalAction, finalReason: r.finalReason, executions: r.executions })))}</section><details><summary>All executions, including final exits</summary><p>Execution events include the closing grace window and are separate from the 72 admission slots. <a href="executions.csv">Execution CSV</a> · <a href="executions.json">Execution JSON</a></p><section>${table(executions)}</section></details><details><summary>Risk observations, missed observations and selective projections</summary><p><a href="observations.csv">Observation CSV</a> · <a href="observations.json">Observation JSON</a></p><section>${table(observations)}</section></details><details><summary>Full provenance</summary><pre>${escape(JSON.stringify({ record, comparisons }, null, 2))}</pre></details><script>document.getElementById('filter').addEventListener('input',function(){const q=this.value.toLowerCase();document.querySelectorAll('#decisions tbody tr').forEach(r=>r.hidden=!r.textContent.toLowerCase().includes(q));});</script></html>`;
+  const economics = config.version === 7 ? reentryEconomics(packet.study, packet.accounts) : null;
+  const economicsHtml = economics
+    ? `<details><summary>Confirmed reference positions matching blocked reentries</summary><p>${escape(economics.interpretation)}</p><p>Winning: ${economics.referenceWinningPositions}; losing: ${economics.referenceLosingPositions}; pending: ${economics.pendingPositions}; unverifiable: ${economics.unverifiable}.</p><section>${table(economics.rows)}</section><a href="reentry-economics.csv">Economic detail CSV</a> · <a href="reentry-economics.json">Economic detail JSON</a></details>`
+    : "";
   return {
     rows,
+    economics,
+    economicsCsv: eventCsv(economics?.rows ?? []),
     comparisons,
     riskSummary,
     executions,
@@ -284,7 +301,7 @@ export function renderProfileReport(
     observationsCsv: eventCsv(observations),
     html: html.replace(
       "<h2>Comparison coverage</h2>",
-      `<h2>Risk reduction</h2><section>${table(riskSummary)}</section><h2>Comparison coverage</h2>`,
+      `<h2>Risk reduction</h2><section>${table(riskSummary)}</section>${economicsHtml}<h2>Comparison coverage</h2>`,
     ),
     csv: aggregateCsv,
     roundsCsv,

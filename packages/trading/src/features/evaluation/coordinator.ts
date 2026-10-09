@@ -2,6 +2,28 @@ import { BENCHMARK_VARIANTS } from "../paper-study/benchmark.js";
 import { PERPS_FOUR_WAY_STRATEGIES, PERPS_STUDY_STRATEGIES } from "../perps-study/types.js";
 import { PilotError } from "@pickler/core";
 export const EVALUATION_PROTOCOLS = {
+  "perps-sma-reentry-latency-v1": {
+    version: 7,
+    instrument: "perpetual",
+    strategySetVersion: 1,
+    strategies: ["sma-reference", "sma-once-bar"],
+    commands: [
+      "prepare",
+      "preflight",
+      "run",
+      "stop",
+      "status",
+      "report",
+      "audit-export",
+      "stability",
+      "timing-check",
+      "reader-audit",
+      "reader-check",
+    ],
+    paidCommands: [],
+    riskPolicy: "buffered-selective-1x-v1",
+    accounting: "zero-model-calls-v1",
+  },
   "perps-sma-profile-risk-v1": {
     version: 6,
     instrument: "perpetual",
@@ -156,6 +178,9 @@ export const EVALUATION_PROTOCOLS = {
 } as const;
 export type EvaluationProtocol = keyof typeof EVALUATION_PROTOCOLS;
 export type EvaluationCommand =
+  | "reader-audit"
+  | "reader-check"
+  | "timing-check"
   | "audit"
   | "audit-export"
   | "stability"

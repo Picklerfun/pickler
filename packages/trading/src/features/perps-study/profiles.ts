@@ -4,7 +4,12 @@ import { paperUnits as u, paperDecimal as d } from "../perps-paper/decimal.js";
 import { paperRisk, applyPaperFill } from "../perps-paper/policy.js";
 import { simulatePerpsFill } from "../perps-paper/simulation.js";
 import type { PerpsDecisionContext, PerpsProposal } from "../perps-strategies/types.js";
-import type { PerpsSmaProfileConfig, SmaProfileVariant } from "./types.js";
+import type {
+  PerpsSmaProfileConfig,
+  PerpsSmaReentryConfig,
+  SmaProfileVariant,
+  SmaReentryVariant,
+} from "./types.js";
 
 export const SMA_PROFILES = {
   hourly: {
@@ -36,12 +41,12 @@ export const SELECTIVE_RISK = {
   ceilingPercent: 50,
   maximumPositions: 5,
 } as const;
-export function profileDescriptor(variant: SmaProfileVariant) {
+export function profileDescriptor(variant: SmaProfileVariant | SmaReentryVariant) {
   return SMA_PROFILES[variant.startsWith("fast-") ? "fast" : "hourly"];
 }
 export function profileSignal(
   context: PerpsDecisionContext,
-  variant: SmaProfileVariant,
+  variant: SmaProfileVariant | SmaReentryVariant,
   symbols: readonly PerpSymbol[],
 ): PerpsProposal[] {
   const resolution = profileDescriptor(variant).trendResolution;
@@ -101,8 +106,8 @@ export function profileSmaTrace(
 /** Pure selection on the account's initial portfolio. Rejected candidates never replace vetoed entries. */
 export function profileProposals(
   context: PerpsDecisionContext,
-  config: PerpsSmaProfileConfig,
-  variant: SmaProfileVariant,
+  config: PerpsSmaProfileConfig | PerpsSmaReentryConfig,
+  variant: SmaProfileVariant | SmaReentryVariant,
   blockOpenings = false,
   eligibleOpenings?: ReadonlySet<PerpSymbol>,
 ) {
@@ -255,8 +260,8 @@ export function profileProposals(
 export function profileFinal(
   initial: PerpsProposal[],
   context: PerpsDecisionContext,
-  config: PerpsSmaProfileConfig,
-  variant: SmaProfileVariant,
+  config: PerpsSmaProfileConfig | PerpsSmaReentryConfig,
+  variant: SmaProfileVariant | SmaReentryVariant,
   blockOpenings = false,
 ) {
   const eligible = new Set(

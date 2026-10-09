@@ -52,6 +52,9 @@ export interface PerpsPaperAccount {
   policy: "conservative-1x-v1";
   /** Absent in historical documents; selected only by trusted study initialization. */
   riskManagement?: "legacy-1x-v1" | "buffered-selective-1x-v1";
+  /** Trusted local study policy. Absence preserves historical entry behavior. */
+  entryPolicy?: "unrestricted-hourly-v1" | "once-hourly-bar-v1";
+  consumedEntryKeys?: string[];
   createdAt: number;
   cash: string;
   peakEquity: string;
@@ -73,6 +76,8 @@ export interface PerpsPaperIntent {
   side: PerpsPaperSide;
   notional: string;
   feeReserve: string;
+  /** Final evidence reference only; cannot choose the account entry policy. */
+  entryEvidence?: { roundKey: string; candleOpenTime: number; resolution: 3600 };
   /** Product opens only; operator sessions refuse anything but 1x. */
   leverage?: number;
   checkId?: string;

@@ -9,19 +9,26 @@ export const SMA_PROFILE_VARIANTS = [
   "fast-selective",
 ] as const;
 export type SmaProfileVariant = (typeof SMA_PROFILE_VARIANTS)[number];
+export const SMA_REENTRY_VARIANTS = ["sma-reference", "sma-once-bar"] as const;
+export type SmaReentryVariant = (typeof SMA_REENTRY_VARIANTS)[number];
 export type PerpsStudyStrategy =
-  PerpsStrategy | "combined" | "sma-jev" | "sma-exa-jev" | SmaProfileVariant;
+  PerpsStrategy | "combined" | "sma-jev" | "sma-exa-jev" | SmaProfileVariant | SmaReentryVariant;
 export const SMA_REVIEW_VARIANTS = ["rules", "sma-jev", "sma-exa-jev"] as const;
 export type PerpsStudyMap<T> = Partial<Record<PerpsStudyStrategy, T>>;
 export type SmaProfileMap<T> = Record<SmaProfileVariant, T>;
 /** Protocol-discriminated maps never require fictitious model/rules arms in v6. */
 export type PerpsVariantMap<C extends { version: number }, T> = C extends { version: 6 }
   ? SmaProfileMap<T>
-  : PerpsStudyMap<T>;
+  : C extends { version: 7 }
+    ? Record<SmaReentryVariant, T>
+    : PerpsStudyMap<T>;
 export const PERPS_FOUR_WAY_STRATEGIES = ["rules", "jev", "deepseek", "combined"] as const;
 export function perpsStrategies(
   config: Pick<PerpsStudyConfig, "version">,
 ): readonly PerpsStudyStrategy[] {
+  if (config.version === 7) {
+    return SMA_REENTRY_VARIANTS;
+  }
   return config.version === 6
     ? SMA_PROFILE_VARIANTS
     : config.version === 4 || config.version === 5
@@ -105,12 +112,19 @@ export interface PerpsSmaProfileConfig extends PerpsStudyScope {
   budgetUsd: "5";
   markets: { symbol: import("@pickler/core").PerpSymbol; marketId: number }[];
 }
+export interface PerpsSmaReentryConfig extends Omit<PerpsSmaProfileConfig, "version" | "protocol"> {
+  version: 7;
+  protocol: "perps-sma-reentry-latency-v1";
+  /** Absence preserves the acquisition used by historical v7 studies. */
+  acquisitionPolicy?: "rest-universe-20s-v1" | "rest-universe-coherent-20s-v2";
+}
 export type PerpsStudyConfig =
   | PerpsPaidStudyConfig
   | PerpsOriginalSmaConfig
   | PerpsSmaReviewConfig
   | PerpsSmaUniverseConfig
-  | PerpsSmaProfileConfig;
+  | PerpsSmaProfileConfig
+  | PerpsSmaReentryConfig;
 export interface PerpsCall {
   requestHash?: string;
   inputBytes?: number;

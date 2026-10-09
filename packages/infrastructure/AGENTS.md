@@ -587,6 +587,29 @@ authorizeContinuation is a trusted explicit operator operation for interrupted S
 
 Private universe adapters explicitly enable bulk ticker/funding reads, a three-second guarded ticker cache and the existing trusted 24-request cap; default sessions remain twelve. Study v5 reserves only selected asset calls jointly, retains their full reservations and verifies the documentary historical campaign ceiling in existing JSONB. No migrations or public DTO changes.
 
+The explicit `rest-universe-coherent-20s-v2` laboratory policy uses `PerplMarketData.snapshotBatch`:
+every invocation makes one fresh bulk ticker GET and returns only requested states present in that
+response. It preserves each state's original `at.t`/`at.b` and the shared response receipt time.
+The historical per-symbol method retains its guarded three-second cache. Consumers select one
+acquisition policy per session; a fresh batch does not rewrite the legacy method's cache.
+`onTickerRead` is an optional safe diagnostic that distinguishes network reads from cache reuse,
+records requested symbols and original component dates, and contains no response bodies or headers.
+Schema, identity, cancellation and permission failures never return substituted ticker states.
+
+Study persistence accepts coherent universe v2 only when configuration v7 explicitly selects it.
+Missing legacy fields retain their previous policy interpretation; contradictory frozen metadata
+is rejected. Diagnostic records inherit that explicit selection without altering source studies.
+The trusted `initializeDiagnostic` method also accepts an optional fourth configuration argument
+for an independent v7 coherent-v2 diagnostic sourced from a historical v1 study. It validates the
+configuration, permits only that acquisition selection and the new diagnostic session ID, and
+retains every other frozen field and source agent ID. It creates no agents or paper accounts.
+
+Request diagnostics v3 add optional numeric `marketId` for recognized individual-market book and
+ticker paths, including requests cancelled while queued. Bulk ticker and other paths omit the
+field; diagnostics never include the full URL, query or response body. Legacy v2/absent versions
+remain readable. This instrumentation does not retroactively attribute historical requests and
+has only controlled-test validation until separately authorized public capture.
+
 ## SMA profiles and selective exposure laboratory
 
 Local `perps-sma-profile-risk-v1` configuration v6 has four independent variants:
@@ -603,3 +626,7 @@ strictly above 50% using full closes. Global emergency exits and historical risk
 
 Read [the local guide](../../apps/agent-service/SMA-PROFILES-RISK.md) for frozen parameters,
 commands, one-shot execution, and report limitations. Tests never make paid provider calls.
+
+## Local SMA v7 persistence and timing
+
+The existing study/paper JSONB supports v7 with two trusted entry policies. `perps-paper-store.ts` checks persisted initial/final gates and the common final fill under the account lock, consuming a once-hourly key only with a confirmed fill. Closes retain keys; accounts without the field retain historical semantics. No migration is required. `timeEvaluationPool` measures connections, queries and transactions without logging SQL, parameters, results or credentials; it preserves PostgreSQL fences and clock semantics. Capture qualification uses a separate study diagnostic lease and does not initialize paper accounts. See [protocol guide](../../apps/agent-service/PERPS-SMA-REENTRY.md).

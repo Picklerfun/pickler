@@ -25,19 +25,34 @@ import {
 } from "@pickler/trading/evaluation";
 import { assertPerpsPaperAgent, paperUnits, type PerpsPaperAccount } from "@pickler/trading/perps";
 import { PostgresPerpsPaperStore } from "./perps-paper-store.js";
-function acquisitionPolicy(metadata: unknown): PerpsStudyRecord["dataPolicy"] {
+function acquisitionPolicy(
+  metadata: unknown,
+  config: PerpsStudyConfig,
+): PerpsStudyRecord["dataPolicy"] {
   const value =
     metadata && typeof metadata === "object"
       ? (metadata as { acquisition?: { policy?: unknown }; acquisitionPolicy?: unknown })
       : {};
-  const policy = value.acquisition?.policy ?? value.acquisitionPolicy ?? "coherent-20s-v1";
+  const metadataPolicy = value.acquisition?.policy ?? value.acquisitionPolicy;
+  const configured = config.version === 7 ? config.acquisitionPolicy : undefined;
+  if (configured !== undefined && metadataPolicy !== undefined && configured !== metadataPolicy) {
+    throw new PilotError("INVALID_INPUT", "Acquisition metadata differs from frozen configuration");
+  }
+  const policy = configured ?? metadataPolicy ?? "coherent-20s-v1";
   if (
     policy !== "coherent-20s-v1" &&
     policy !== "rest-paced-20s-v1" &&
     policy !== "stream-20s-v1" &&
-    policy !== "rest-universe-20s-v1"
+    policy !== "rest-universe-20s-v1" &&
+    policy !== "rest-universe-coherent-20s-v2"
   ) {
     throw new PilotError("INVALID_INPUT", "Unknown frozen acquisition policy");
+  }
+  if (policy === "rest-universe-coherent-20s-v2" && configured !== policy) {
+    throw new PilotError(
+      "INVALID_INPUT",
+      "Coherent universe v2 requires explicit v7 configuration",
+    );
   }
   return policy;
 }
@@ -223,10 +238,11 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
                   : []),
               ],
               perpl: {
-                version: config.version === 5 || config.version === 6 ? 2 : 1,
+                version:
+                  config.version === 5 || config.version === 6 || config.version === 7 ? 2 : 1,
                 network: config.network,
                 markets:
-                  config.version === 5 || config.version === 6
+                  config.version === 5 || config.version === 6 || config.version === 7
                     ? config.markets.map((m) => m.symbol)
                     : ["BTC", "ETH"],
               },
@@ -262,7 +278,7 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
         lastObservationAt: null,
         lastRoundSlot: -1,
         lastAttemptedSlot: -1,
-        dataPolicy: acquisitionPolicy(metadata)!,
+        dataPolicy: acquisitionPolicy(metadata, config)!,
       };
       await c.query(
         "INSERT INTO pickler.perps_studies(id,tenant_id,session_id,network,document) VALUES($1,$2,$3,$4,$5)",
@@ -286,9 +302,34 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
       return { record: x.record, rounds: await this.rounds(c, x.id), events: events.rows };
     });
   }
-  async initializeDiagnostic(source: PerpsStudyScope, sessionId: string, metadata: unknown) {
+  async initializeDiagnostic(
+    source: PerpsStudyScope,
+    sessionId: string,
+    metadata: unknown,
+    diagnosticConfig?: PerpsStudyConfig,
+  ) {
     const { record } = await this.view(source);
-    const config = { ...record.config, sessionId };
+    const config = { ...(diagnosticConfig ?? record.config), sessionId };
+    if (diagnosticConfig !== undefined) {
+      assertPerpsStudyConfig(config);
+      const frozenFields = (value: PerpsStudyConfig) =>
+        Object.fromEntries(
+          Object.entries(value).filter(
+            ([key]) => key !== "sessionId" && key !== "acquisitionPolicy",
+          ),
+        );
+      if (
+        record.config.version !== 7 ||
+        config.version !== 7 ||
+        config.acquisitionPolicy !== "rest-universe-coherent-20s-v2" ||
+        canonical(frozenFields(record.config)) !== canonical(frozenFields(config))
+      ) {
+        throw new PilotError(
+          "INVALID_INPUT",
+          "Diagnostic override may only select explicit v7 coherent acquisition",
+        );
+      }
+    }
     const document: PerpsStudyRecord = {
       ...record,
       config,
@@ -303,7 +344,7 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
       lastRoundSlot: -1,
       lastAttemptedSlot: -1,
       lastObservationAt: null,
-      dataPolicy: acquisitionPolicy(metadata)!,
+      dataPolicy: acquisitionPolicy(metadata, config)!,
     };
     await this.pool.query(
       "INSERT INTO pickler.perps_studies(id,tenant_id,session_id,network,document) VALUES($1,$2,$3,$4,$5)",
@@ -348,7 +389,7 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
       }
       if (x.record.startedAt === null) {
         x.record.startedAt =
-          x.record.config.version === 6
+          x.record.config.version === 6 || x.record.config.version === 7
             ? Math.floor(x.now / 300000) * 300000 + 360000
             : x.record.config.version === 5 &&
                 (x.record.metadata as { purpose?: string })?.purpose !== "contracts-universe-v1"
@@ -465,9 +506,15 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
         !Number.isInteger(slot) ||
         slot !== perpsSlotClock(x.record, x.now).slot ||
         perpsSlotClock(x.record, x.now).withinSlotMs >=
-          (x.record.config.version === 5 || x.record.config.version === 6 ? 30000 : 60000) ||
+          (x.record.config.version === 5 ||
+          x.record.config.version === 6 ||
+          x.record.config.version === 7
+            ? 30000
+            : 60000) ||
         slot < 0 ||
-        slot >= x.record.config.hours * (x.record.config.version === 6 ? 12 : 4) ||
+        slot >=
+          x.record.config.hours *
+            (x.record.config.version === 6 || x.record.config.version === 7 ? 12 : 4) ||
         slot <= Math.max(x.record.lastAttemptedSlot ?? -1, x.record.lastRoundSlot)
       ) {
         return false;
@@ -496,7 +543,10 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
   async release(scope: PerpsStudyScope, lease: PerpsStudyLease, interruption?: string) {
     await this.tx(async (c) => {
       const x = await this.lock(c, scope);
-      if (x.record.config.version === 6 && Number(x.expires_at) <= x.now) {
+      if (
+        (x.record.config.version === 6 || x.record.config.version === 7) &&
+        Number(x.expires_at) <= x.now
+      ) {
         return;
       }
       if (x.owner === lease.owner) {
@@ -505,7 +555,8 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
           interruption &&
           (x.record.config.version === 4 ||
             x.record.config.version === 5 ||
-            x.record.config.version === 6)
+            x.record.config.version === 6 ||
+            x.record.config.version === 7)
         ) {
           x.record.status = "interrupted";
           x.record.decisionStopReason ??= interruption;
@@ -526,7 +577,12 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
       const x = await this.lock(c, scope);
       this.owned(c, x, lease);
       await this.permissions(c, x);
-      if (paid && (x.record.config.version === 3 || x.record.config.version === 6)) {
+      if (
+        paid &&
+        (x.record.config.version === 3 ||
+          x.record.config.version === 6 ||
+          x.record.config.version === 7)
+      ) {
         throw new PilotError("MODELS_DISABLED", "Original SMA cannot access paid admissions");
       }
       if (
@@ -604,12 +660,14 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
         x.now >= x.record.endsAt! ||
         !Number.isInteger(slot) ||
         slot < 0 ||
-        slot >= x.record.config.hours * (x.record.config.version === 6 ? 12 : 4) ||
+        slot >=
+          x.record.config.hours *
+            (x.record.config.version === 6 || x.record.config.version === 7 ? 12 : 4) ||
         slot <= x.record.lastRoundSlot
       ) {
         return null;
       }
-      if (x.record.config.version === 6) {
+      if (x.record.config.version === 6 || x.record.config.version === 7) {
         const key = `round-${String(slot).padStart(3, "0")}`;
         const round: PerpsRound = {
           executionStatus: "pending",
@@ -1097,7 +1155,8 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
       const valid =
         x.record.config.version === 4 ||
         x.record.config.version === 5 ||
-        x.record.config.version === 6
+        x.record.config.version === 6 ||
+        x.record.config.version === 7
           ? perpsStrategies(x.record.config).every((s) => !!proposals[s]) &&
             Object.values(r.calls).every((c) => c.status === "completed" || c.status === "skipped")
           : x.record.config.version === 3

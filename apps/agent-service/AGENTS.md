@@ -244,3 +244,25 @@ Report hashes are memoized per immutable evidence object within one rendering; e
 retains the same canonical digest without hashing a full snapshot again for each market/variant.
 `audit-export` accepts the registered perpetual protocols; the historical model-decision
 `audit` analyzer explicitly rejects unsupported profile protocols rather than fabricating arms.
+
+## SMA reentry/latency comparison
+
+[PERPS-SMA-REENTRY.md](PERPS-SMA-REENTRY.md) documents configuration v7 and the public-only two-portfolio protocol. `evaluate timing-check --state EXPORT --output NEW_DIRECTORY` runs offline before environment/provider composition and rejects environment/paid flags. `stability` performs one independent 30-minute eleven-market capture; `run` requires its passing proof matching commit/configuration. `reentry-host.ts` composes only local PostgreSQL and public Perpl, emits compact per-observation status and coalesces full reports through `reentry-report-worker.mjs`. All file publication is atomic. Do not call models, restart, repeat qualification, extend deadlines, create monitors, merge or deploy automatically. Old monitors remain paused. New model calls/tokens/reservations are zero; historical budgets and records are unchanged. Tests include PostgreSQL atomic key consumption, common final evidence, mandatory price-exit priority and historical v6 parity.
+
+The unified evaluation npm entry includes Node’s option separator before the script. Preserve it
+so laboratory `--env-file` is handled by the application rather than preloaded by Node. V7 requires
+a dedicated database-only file; offline timing and audit never load an environment.
+
+V7 reports include `reentry-economics.json`/`.csv`, matching blocked keys to actual reference
+positions and ledger postings. Pending funding and incomplete inputs remain unverifiable. Read
+[the 2026-10-08 acceptance record](PERPS-SMA-REENTRY-ACCEPTANCE-20261008.md) before further public
+work: the single qualification failed, so no six-hour comparison was started or authorized to
+repeat automatically. Its artifacts and frozen qualification commit must remain intact.
+
+Read [Perpl reader evidence](PERPL-READER-EVIDENCE.md) for the explicitly selected v7 acquisition
+correction. `reader-audit` is offline and emits only allowlisted recorded facts in a new directory;
+`reader-check` makes three public diagnostic captures with an independent local lease, never
+qualification, trading or models. Its protocol cannot pass the six-hour run's qualification gate.
+Preserve the failed acceptance and default v1 reader. The v2 selector, genuinely fresh bulk reads,
+cache/network diagnostics and policy persistence are covered by controlled regressions. No
+automatic acceptance repeat or strategy change is authorized by the correction.

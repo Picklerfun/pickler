@@ -104,9 +104,39 @@ export class PerplMarketData implements PerpMarketData {
       }
     | undefined;
   private readonly contexts = new Map<PerpNetwork, ContextSnapshot>();
-  constructor(options: PerplDataOptions = {}) {
+  constructor(private readonly options: PerplDataOptions = {}) {
     this.transport = new PerplTransport(options);
     this.universe = options.universe === true;
+  }
+  private parse<T>(response: PerplPublicResponse, schema: z.ZodType<T>): T {
+    if (!this.options.onValidation) {
+      return parse(response, schema);
+    }
+    const clock = this.options.monotonic ?? (() => performance.now());
+    const started = clock();
+    let code: string | null = null;
+    try {
+      return parse(response, schema);
+    } catch (error) {
+      code = "PERPL_INVALID_RESPONSE";
+      throw error;
+    } finally {
+      const operation = response.url.includes("/candles/")
+        ? "candles"
+        : response.url.includes("/book?")
+          ? "book"
+          : response.url.endsWith("/ticker")
+            ? "ticker"
+            : response.url.includes("funding")
+              ? "funding"
+              : "metadata";
+      this.options.onValidation({
+        version: 1,
+        operation: `schema-validation:${operation}`,
+        durationMs: clock() - started,
+        code,
+      });
+    }
   }
   private async context(network: PerpNetwork, ctx: PerpReadContext): Promise<ContextSnapshot> {
     if (!Object.hasOwn(PERPL_NETWORKS, network)) {
@@ -120,7 +150,7 @@ export class PerplMarketData implements PerpMarketData {
       return cached;
     }
     const response = await this.transport.get(network, "/v1/pub/context", ctx);
-    const data = parse(response, contextSchema);
+    const data = this.parse(response, contextSchema);
     if (
       data.chain.chain_id !== PERPL_NETWORKS[network].chainId ||
       new Set(data.markets.map((m) => m.id)).size !== data.markets.length
@@ -262,7 +292,7 @@ export class PerplMarketData implements PerpMarketData {
           `/v1/market-data/${market.marketId}/funding/${start}-${end}`,
           ctx,
         );
-        raw = parse(response, fundingSeriesSchema);
+        raw = this.parse(response, fundingSeriesSchema);
       }
       if (raw.m !== market.marketId) {
         invalid();
@@ -323,12 +353,15 @@ export class PerplMarketData implements PerpMarketData {
     const { wire, info: market } = this.market(network, symbol, context);
     let response: PerplPublicResponse;
     let parsed: z.infer<typeof tickerSchema>;
+    let source: "network" | "cache" = "network";
     if (this.universe) {
       await ctx.guard();
       if (!this.bulkTicker || this.transport.now() - this.bulkTicker.response.receivedAt >= 3000) {
         response = await this.transport.get(network, "/v1/market-data/ticker", ctx);
-        parsed = parse(response, tickerSchema);
+        parsed = this.parse(response, tickerSchema);
         this.bulkTicker = { response, parsed };
+      } else {
+        source = "cache";
       }
       ({ response, parsed } = this.bulkTicker);
       await ctx.guard();
@@ -341,12 +374,91 @@ export class PerplMarketData implements PerpMarketData {
         `/v1/market-data/${market.marketId}/ticker`,
         ctx,
       );
-      parsed = parse(response, tickerSchema);
+      parsed = this.parse(response, tickerSchema);
       if (Object.keys(parsed.d).length !== 1 || !Object.hasOwn(parsed.d, market.marketId)) {
         invalid();
       }
     }
     const state = parsed.d[String(market.marketId)]!;
+    const result = this.snapshotFromTicker(market, wire, context, response, state);
+    await ctx.guard();
+    ctx.signal.throwIfAborted();
+    this.options.onTickerRead?.({
+      version: 1,
+      source,
+      batch: false,
+      receivedAt: response.receivedAt,
+      requestedSymbols: [symbol],
+      symbols: [
+        {
+          symbol,
+          marketId: market.marketId,
+          providerTimestamp: state.at.t ?? null,
+          block: state.at.b ?? null,
+        },
+      ],
+    });
+    return result;
+  }
+  /** Private universe acquisition v2: each invocation obtains one fresh bulk response. */
+  async snapshotBatch(
+    network: PerpNetwork,
+    symbols: readonly PerpSymbol[],
+    ctx: PerpReadContext,
+  ): Promise<PerpSnapshot[]> {
+    if (!this.universe || symbols.length === 0 || new Set(symbols).size !== symbols.length) {
+      throw new PilotError("INVALID_INPUT", "A batch requires distinct universe markets");
+    }
+    const context = await this.context(network, ctx);
+    const markets = symbols.map((symbol) => this.market(network, symbol, context));
+    await ctx.guard();
+    ctx.signal.throwIfAborted();
+
+    const response = await this.transport.get(network, "/v1/market-data/ticker", ctx);
+    const parsed = this.parse(response, tickerSchema);
+    await ctx.guard();
+    ctx.signal.throwIfAborted();
+
+    const result: PerpSnapshot[] = [];
+    for (const { wire, info: market } of markets) {
+      if (!Object.hasOwn(parsed.d, market.marketId)) {
+        continue;
+      }
+      result.push(
+        this.snapshotFromTicker(
+          market,
+          wire,
+          context,
+          response,
+          parsed.d[String(market.marketId)]!,
+        ),
+      );
+    }
+    await ctx.guard();
+    ctx.signal.throwIfAborted();
+    this.options.onTickerRead?.({
+      version: 1,
+      source: "network",
+      batch: true,
+      receivedAt: response.receivedAt,
+      requestedSymbols: [...symbols],
+      symbols: result.map(({ market, ticker }) => ({
+        symbol: market.symbol,
+        marketId: market.marketId,
+        providerTimestamp: ticker.provenance.providerTimestamp,
+        block: ticker.provenance.block,
+      })),
+    });
+    return result;
+  }
+  private snapshotFromTicker(
+    market: PerpMarketInfo,
+    wire: WireMarket,
+    context: ContextSnapshot,
+    response: PerplPublicResponse,
+    state: z.infer<typeof tickerSchema>["d"][string],
+  ): PerpSnapshot {
+    const network = market.provenance.network;
     const funding = wire.funding;
     return {
       market,
@@ -381,7 +493,7 @@ export class PerplMarketData implements PerpMarketData {
       `/v1/market-data/${market.marketId}/book?levels=${levels}`,
       ctx,
     );
-    const book = parse(response, bookSchema);
+    const book = this.parse(response, bookSchema);
     if (book.bid.length > levels || book.ask.length > levels) {
       invalid();
     }
@@ -415,7 +527,7 @@ export class PerplMarketData implements PerpMarketData {
       `/v1/market-data/${market.marketId}/candles/${resolution}/${from}-${to - interval}`,
       ctx,
     );
-    const series = parse(response, candlesSchema);
+    const series = this.parse(response, candlesSchema);
     if (series.r !== resolution) {
       invalid();
     }
