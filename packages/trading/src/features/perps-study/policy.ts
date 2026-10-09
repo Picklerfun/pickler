@@ -28,6 +28,9 @@ export function assertPerpsStudyConfig(c: PerpsStudyConfig) {
       !["mainnet", "testnet"].includes(c.network) ||
       !Array.isArray(c.markets) ||
       c.markets.length !== 11 ||
+      (c.version === 7 &&
+        c.acquisitionPolicy !== undefined &&
+        !["rest-universe-20s-v1", "rest-universe-coherent-20s-v2"].includes(c.acquisitionPolicy)) ||
       catalog.some(
         ([symbol, id]) => !c.markets.some((m) => m.symbol === symbol && m.marketId === id),
       ) ||
@@ -42,6 +45,7 @@ export function assertPerpsStudyConfig(c: PerpsStudyConfig) {
             "sessionId",
             "network",
             "markets",
+            ...(c.version === 7 ? ["acquisitionPolicy"] : []),
           ].includes(k),
       )
     ) {
