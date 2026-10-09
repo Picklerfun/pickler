@@ -21,13 +21,15 @@ import {
   type AcquisitionDiagnostic,
   type UniverseStreamBuffer,
   UNIVERSE_COMPONENT_STREAM_POLICY,
+  COMPONENT_PAPER_POLICY,
 } from "@pickler/trading/perps";
 import { createUniverseStreamReader } from "./universe-stream.js";
 export type UniverseAcquisitionPolicy =
   | "rest-universe-20s-v1"
   | "rest-universe-coherent-20s-v2"
   | "stream-universe-20s-v1"
-  | typeof UNIVERSE_COMPONENT_STREAM_POLICY;
+  | typeof UNIVERSE_COMPONENT_STREAM_POLICY
+  | typeof COMPONENT_PAPER_POLICY;
 /** Private v2 plugin composition: no Mastra tools, model or signer is constructed. */
 export function createUniversePerplReader(
   agents: { agent(scope: Scope): Promise<AgentRecord> },
@@ -46,6 +48,7 @@ export function createUniversePerplReader(
       "rest-universe-coherent-20s-v2",
       "stream-universe-20s-v1",
       UNIVERSE_COMPONENT_STREAM_POLICY,
+      COMPONENT_PAPER_POLICY,
     ].includes(acquisitionPolicy)
   ) {
     throw new PilotError("INVALID_INPUT", "Unknown universe acquisition policy");
@@ -100,7 +103,8 @@ export function createUniversePerplReader(
   }
   const stream =
     acquisitionPolicy === "stream-universe-20s-v1" ||
-    acquisitionPolicy === UNIVERSE_COMPONENT_STREAM_POLICY
+    acquisitionPolicy === UNIVERSE_COMPONENT_STREAM_POLICY ||
+    acquisitionPolicy === COMPONENT_PAPER_POLICY
       ? createUniverseStreamReader({
           ...options,
           now,
