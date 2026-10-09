@@ -1,5 +1,8 @@
 /** Agent-token intent and admission. Chain existence is always a confirmed projection. */
+import type { TokenReferenceEconomics } from "./domain/token-economics.js";
 import type { Accent } from "../landing/domain/landing.js";
+/** Fixed initial supply in 18-decimal token units; no later issuance is permitted. */
+export const AGENT_TOKEN_TOTAL_SUPPLY = "21000000000000000000000000";
 export interface AgentToken {
   name: string;
   ticker: string;
@@ -160,8 +163,25 @@ export function createTokenLaunchService(deps: {
   repository: TokenLaunchRepository;
   chainId: number | null;
   issuer?: TokenGrantIssuer;
+  referenceEconomics?: TokenReferenceEconomics;
 }) {
-  const available = deps.chainId !== null && deps.issuer !== undefined;
+  function available() {
+    const preset = deps.issuer?.preset;
+    if (deps.chainId === null || !preset || preset.totalSupply !== AGENT_TOKEN_TOTAL_SUPPLY) {
+      return false;
+    }
+    if (
+      ![preset.saleAllocation, preset.lpAllocation].every((units) =>
+        /^(0|[1-9][0-9]*)$/.test(units),
+      )
+    ) {
+      return false;
+    }
+    return (
+      BigInt(preset.saleAllocation) + BigInt(preset.lpAllocation) ===
+      BigInt(AGENT_TOKEN_TOTAL_SUPPLY)
+    );
+  }
   function owner(scope: TokenScope, tx: TokenTransaction) {
     if (tx.context.ownerUserId !== scope.userId) {
       throw new TokenLaunchError("TOKEN_OWNER_REQUIRED");
@@ -173,8 +193,9 @@ export function createTokenLaunchService(deps: {
         owner(scope, tx);
         return {
           chainId: deps.chainId,
-          available,
-          blockers: tokenLaunchBlockers(tx.context, available),
+          available: available(),
+          blockers: tokenLaunchBlockers(tx.context, available()),
+          masterAddress: tx.context.masterAddress,
           draft: await tx.draft(),
           token: tx.context.token,
           confirmation: tx.context.token
@@ -183,6 +204,10 @@ export function createTokenLaunchService(deps: {
               ? ("pending" as const)
               : ("absent" as const),
           preset: deps.issuer?.preset ?? null,
+          economics:
+            deps.chainId === null || !deps.referenceEconomics
+              ? null
+              : { ...deps.referenceEconomics },
         };
       });
     },
@@ -222,7 +247,7 @@ export function createTokenLaunchService(deps: {
       }
       return deps.repository.transaction(scope, deps.chainId, async (tx) => {
         owner(scope, tx);
-        const blockers = tokenLaunchBlockers(tx.context, available);
+        const blockers = tokenLaunchBlockers(tx.context, available());
         if (blockers.length) {
           throw new TokenLaunchError("TOKEN_LAUNCH_BLOCKED", blockers);
         }
@@ -254,6 +279,7 @@ export function createTokenLaunchService(deps: {
         const p = result.params;
         // An injected adapter cannot widen the business-owned permission.
         if (
+          !available() ||
           result.chainId !== deps.chainId ||
           result.factory !== deps.issuer!.factory ||
           result.grantDeadline !== deadline ||
