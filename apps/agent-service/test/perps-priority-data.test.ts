@@ -143,7 +143,7 @@ test("priority public reader observes without candles, caches guarded closed win
   await reader.finalEvidence(record, signal, guard);
   assert.equal(paths.filter((p) => p.includes("candles")).length, reads + 11);
   assert.ok(guards > paths.length);
-  assert.ok(diagnostics.every((d) => (d as { version: number }).version === 2));
+  assert.ok(diagnostics.every((d) => (d as { version: number }).version === 3));
   revoked = true;
   await assert.rejects(reader.finalEvidence(record, signal, guard), { code: "CONFIG_CHANGED" });
   await reader.close();
