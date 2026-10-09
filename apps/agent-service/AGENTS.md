@@ -287,3 +287,8 @@ also accepts the explicit universe stream for three diagnostic reads and cannot 
 qualification. Stream v2 records processing/guard/queue counters and bounded snapshot requests.
 Only a complete passing thirty-minute stability record establishes capture acceptance. This repair
 authorization enables no trading, models, automation, merge, deployment, or economic comparison.
+
+The current universe stream v3 reconstructs messages synchronously and requires fresh guards
+for buffer delivery. Its public repair qualification must preserve any failed earlier check.
+Offline reader audit supports v2/v3 adapter captures and three-read stream diagnostics without
+converting them to acceptance. No repeated subscription is considered evidence of fresh data.
