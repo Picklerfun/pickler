@@ -149,9 +149,11 @@ The apply flow and the auth screens keep their own bar on purpose — a flow tha
 
 `features/site/site-nav.tsx` is shared by the landing and every `PublicShell` route. Its header
 never wraps: above 1100px the three desktop groups are inline; at 1100px and below a compact
-navigation disclosure contains the same groups and Create agent. At 640px and below the header
-keeps the brand, a labelled 44px wallet icon, and a labelled 44px navigation icon; Create agent
-remains available inside the menu. The wallet label contracts at 860px to leave room for pending
+navigation icon opens the same three named groups, separated into columns. On small screens,
+Explore spans a two-column row above Build and Resources. Group labels are visually distinct from
+links and unavailable destinations retain their disabled state. Create agent appears exactly once:
+in the header above 640px, or in a separated menu footer at 640px and below. The small header
+keeps the brand, a labelled 44px wallet icon, and a labelled 44px navigation icon. The wallet label contracts at 860px to leave room for pending
 wallet states. CSS handles layout without client resize state; crossing the 1100px breakpoint
 dismisses the disclosure whose trigger becomes hidden. At 360px and below the brand keeps only
 its mark while retaining the accessible home-link name.
