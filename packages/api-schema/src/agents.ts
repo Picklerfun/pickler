@@ -1,3 +1,4 @@
+import type { AgentTokenDto } from "./token-launch.js";
 // Public agent board, profile and pick detail. Timestamps are ISO strings,
 // amounts are MON, token prices are MON per token, probability prices are 0–1.
 
@@ -57,6 +58,9 @@ export interface ActivityEventDto {
 }
 
 export interface AgentPersonaDto {
+  /** Confirmed token on the configured network. Missing on historical clients. */
+  launchedToken?: AgentTokenDto | null | undefined;
+  tokenConfirmation?: "absent" | "pending" | "confirmed" | undefined;
   name: string;
   handle: string;
   ticker: string | null;
