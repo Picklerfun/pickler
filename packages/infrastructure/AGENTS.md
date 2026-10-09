@@ -587,6 +587,23 @@ authorizeContinuation is a trusted explicit operator operation for interrupted S
 
 Private universe adapters explicitly enable bulk ticker/funding reads, a three-second guarded ticker cache and the existing trusted 24-request cap; default sessions remain twelve. Study v5 reserves only selected asset calls jointly, retains their full reservations and verifies the documentary historical campaign ceiling in existing JSONB. No migrations or public DTO changes.
 
+The explicit `rest-universe-coherent-20s-v2` laboratory policy uses `PerplMarketData.snapshotBatch`:
+every invocation makes one fresh bulk ticker GET and returns only requested states present in that
+response. It preserves each state's original `at.t`/`at.b` and the shared response receipt time.
+The historical per-symbol method retains its guarded three-second cache. Consumers select one
+acquisition policy per session; a fresh batch does not rewrite the legacy method's cache.
+`onTickerRead` is an optional safe diagnostic that distinguishes network reads from cache reuse,
+records requested symbols and original component dates, and contains no response bodies or headers.
+Schema, identity, cancellation and permission failures never return substituted ticker states.
+
+Study persistence accepts coherent universe v2 only when configuration v7 explicitly selects it.
+Missing legacy fields retain their previous policy interpretation; contradictory frozen metadata
+is rejected. Diagnostic records inherit that explicit selection without altering source studies.
+The trusted `initializeDiagnostic` method also accepts an optional fourth configuration argument
+for an independent v7 coherent-v2 diagnostic sourced from a historical v1 study. It validates the
+configuration, permits only that acquisition selection and the new diagnostic session ID, and
+retains every other frozen field and source agent ID. It creates no agents or paper accounts.
+
 ## SMA profiles and selective exposure laboratory
 
 Local `perps-sma-profile-risk-v1` configuration v6 has four independent variants:
