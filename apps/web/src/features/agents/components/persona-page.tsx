@@ -1,4 +1,5 @@
 "use client";
+import { AgentTokenCard } from "@/features/tokens/agent-token-card";
 
 import type { AgentPersonaDto } from "@pickler/api-schema";
 import Link from "next/link";
@@ -47,7 +48,15 @@ function recordNote(gap: number | null): string {
  * will it take my question — and the tabs hold what it has done, what it has answered in public,
  * and the record underneath both.
  */
-export function PersonaPage({ persona, nowMs }: { persona: AgentPersonaDto; nowMs: number }) {
+export function PersonaPage({
+  persona,
+  nowMs,
+  preview = false,
+}: {
+  persona: AgentPersonaDto;
+  nowMs: number;
+  preview?: boolean;
+}) {
   const [tab, setTab] = useState<Tab>("activity");
   const wallet = useWallet();
   const follows = useFollowing(wallet.address);
@@ -123,16 +132,10 @@ export function PersonaPage({ persona, nowMs }: { persona: AgentPersonaDto; nowM
             ) : (
               <Tag className={styles.closedTag}>NOT TAKING QUESTIONS</Tag>
             )}
-            {persona.slug !== null && persona.ticker !== null ? (
-              <ButtonLink as={Link} href={`/tokens/${persona.slug}`} variant="secondary">
-                Buy {persona.ticker}
-              </ButtonLink>
-            ) : (
-              <span className={styles.quiet}>No token launched yet</span>
-            )}
             <Button
               variant="secondary"
               className={following ? styles.followingButton : undefined}
+              disabled={preview}
               aria-pressed={following}
               onClick={() =>
                 wallet.status === "connected"
@@ -154,6 +157,14 @@ export function PersonaPage({ persona, nowMs }: { persona: AgentPersonaDto; nowM
           )}
         </div>
       </header>
+
+      <div className={styles.personaToken}>
+        <AgentTokenCard
+          token={persona.launchedToken ?? null}
+          confirmationPending={persona.tokenConfirmation === "pending"}
+          preview={preview}
+        />
+      </div>
 
       <div className={styles.tabs} role="tablist" aria-label="Agent sections">
         {TABS.map((key) => (
