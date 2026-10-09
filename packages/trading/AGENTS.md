@@ -247,3 +247,6 @@ no matching historical component is selected. The reader audit accepts stream ca
 emits `perpl-reader-audit-v3` while preserving older interpretations. No strategy, risk or
 financial calculation changes are part of this selector. See the local WebSocket guide in
 `apps/agent-service/PERPL-UNIVERSE-WEBSOCKET.md`.
+Stream acquisition accepts an injected bounded snapshot-refresh port after invalid evidence.
+The transport owns subscription rate limits; trading revalidates the new components under the
+same clock/deadline and never treats a refresh request as proof that a price timestamp advanced.
