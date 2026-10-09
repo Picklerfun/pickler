@@ -71,6 +71,9 @@ async function openMenu() {
   await page.keyboard.press("Enter");
   const menu = page.getByRole("menu");
   await menu.waitFor();
+  await menu.evaluate((node) =>
+    Promise.allSettled(node.getAnimations().map((animation) => animation.finished)),
+  );
   const box = await menu.boundingBox();
   assert.ok(box.x >= 0 && box.x + box.width <= width, "Menu fits inside the viewport");
   assert.ok(box.y >= 0 && box.y + box.height <= (await page.evaluate(() => innerHeight)));
@@ -89,10 +92,22 @@ async function openMenu() {
       .getAttribute("data-disabled"),
     "",
   );
-  assert.equal(
-    await menu.getByRole("menuitem", { name: "Create agent", exact: true }).getAttribute("href"),
-    "/studio",
-  );
+  const viewport = await page.evaluate(() => innerWidth);
+  const create = menu.getByRole("menuitem", { name: "Create agent", exact: true });
+  assert.equal(await create.count(), viewport <= 640 ? 1 : 0, "No duplicated Create agent");
+  if (viewport <= 640) {
+    assert.equal(await create.getAttribute("href"), "/studio");
+  }
+  const groups = menu.getByRole("group");
+  assert.equal(await groups.getByRole("menuitem", { name: "Agents", exact: true }).count(), 1);
+  for (const label of ["Explore", "Build", "Resources"]) {
+    await menu.getByRole("group", { name: label, exact: true }).waitFor();
+  }
+  assert.ok(box.height < 420, "Groups stay compact rather than becoming one long list");
+  const visibleCreates = await page
+    .locator('a[href="/studio"]')
+    .evaluateAll((nodes) => nodes.filter((node) => node.getClientRects().length).length);
+  assert.equal(visibleCreates, 1, "Create agent is available exactly once while the menu is open");
   await page.keyboard.press("ArrowDown");
   assert.equal(await menu.evaluate((node) => node.contains(document.activeElement)), true);
   await page.keyboard.press("Escape");
@@ -148,6 +163,27 @@ try {
   await page.screenshot({ path: path.join(output, "mobile-380.png"), fullPage: true });
   await page.setViewportSize({ width: 797, height: 900 });
   await page.screenshot({ path: path.join(output, "tablet-797.png"), fullPage: true });
+  await page.getByRole("button", { name: "Navigation menu", exact: true }).click();
+  await page.getByRole("menu").waitFor();
+  await page
+    .getByRole("menu")
+    .evaluate((node) =>
+      Promise.allSettled(node.getAnimations().map((animation) => animation.finished)),
+    );
+  await page.screenshot({ path: path.join(output, "menu-tablet-797.png"), fullPage: true });
+  await page.keyboard.press("Escape");
+  await page.getByRole("menu").waitFor({ state: "hidden" });
+  await page.setViewportSize({ width: 380, height: 900 });
+  await page.getByRole("button", { name: "Navigation menu", exact: true }).click();
+  await page.getByRole("menu").waitFor();
+  await page
+    .getByRole("menu")
+    .evaluate((node) =>
+      Promise.allSettled(node.getAnimations().map((animation) => animation.finished)),
+    );
+  await page.screenshot({ path: path.join(output, "menu-mobile-380.png"), fullPage: true });
+  await page.keyboard.press("Escape");
+  await page.getByRole("menu").waitFor({ state: "hidden" });
 
   const touch = await context({
     hasTouch: true,
