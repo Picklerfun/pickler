@@ -28,8 +28,8 @@ export interface UniverseReaderAuditRow {
 }
 
 export interface UniverseReaderAudit {
-  version: 1;
-  protocol: "perpl-reader-audit-v1";
+  version: 2;
+  protocol: "perpl-reader-audit-v2";
   sourceCommit: string;
   sourceConfigurationHash: string;
   acquisitionPolicy: string;
@@ -61,6 +61,7 @@ export interface UniverseReaderAudit {
     slot: number;
     requestId: number;
     operation: string;
+    marketId: number | null;
     startedAt: number | null;
     status: number | null;
     queueMs: number | null;
@@ -86,6 +87,16 @@ const number = (value: unknown): number => {
   return value;
 };
 const nullableNumber = (value: unknown) => (value == null ? null : number(value));
+const nullableMarketId = (value: unknown): number | null => {
+  if (value == null) {
+    return null;
+  }
+  const id = number(value);
+  if (!Number.isSafeInteger(id) || id === 0) {
+    throw new PilotError("INVALID_INPUT", "Invalid recorded request market identity");
+  }
+  return id;
+};
 const array = (value: unknown, maximum: number): unknown[] => {
   if (!Array.isArray(value) || value.length > maximum) {
     throw new PilotError("INVALID_INPUT", "Invalid or oversized public capture array");
@@ -227,7 +238,11 @@ export function auditUniverseCapture(input: unknown): UniverseReaderAudit {
       }
       const first = checks[0];
       const invalidIndex = checks.findIndex(
-        (check) => check.code !== null && check.code !== "VALID",
+        (check) =>
+          check.code !== null &&
+          check.code !== "VALID" &&
+          check.tickerAt !== null &&
+          check.bookAt !== null,
       );
       const invalid = invalidIndex < 0 ? undefined : checks[invalidIndex];
       const recovery = invalidIndex < 0 ? undefined : checks[invalidIndex + 1];
@@ -269,6 +284,7 @@ export function auditUniverseCapture(input: unknown): UniverseReaderAudit {
         )
           ? (request.operation as string)
           : "NOT_VERIFIABLE",
+        marketId: nullableMarketId(request.marketId),
         startedAt: nullableNumber(request.startedAt),
         status: nullableNumber(request.status),
         queueMs: nullableNumber(request.queueMs),
@@ -295,8 +311,8 @@ export function auditUniverseCapture(input: unknown): UniverseReaderAudit {
     row.symbol !== "BTC" || row.recoveryDelayMs === null ? [] : [row.recoveryDelayMs],
   );
   return {
-    version: 1,
-    protocol: "perpl-reader-audit-v1",
+    version: 2,
+    protocol: "perpl-reader-audit-v2",
     sourceCommit: hash(capture.commit, 40),
     sourceConfigurationHash: hash(capture.configurationHash, 64),
     acquisitionPolicy: acquisitionPolicy as string,
@@ -327,6 +343,7 @@ export function auditUniverseCapture(input: unknown): UniverseReaderAudit {
     requests,
     limitations: [
       "Checks are logical acquisition observations; a second check does not prove a new HTTP request.",
+      "Recovery intervals require both source dates; initial ticker-only preparation is excluded.",
       "Historical captures lack explicit cache/network attribution; missing attribution is null.",
       "Repeated source dates do not identify the provider's internal publication or cache policy.",
       "Recorded responses cannot establish what an unmade earlier request would have returned.",
