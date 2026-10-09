@@ -35,7 +35,17 @@ export function assertPerpsStudyConfig(c: PerpsStudyConfig) {
           "rest-universe-coherent-20s-v2",
           "stream-universe-20s-v1",
           "stream-universe-component-20s-v2",
+          "stream-universe-component-paper-20s-v1",
         ].includes(c.acquisitionPolicy)) ||
+      (c.version === 7 &&
+        (c.acquisitionPolicy === "stream-universe-component-paper-20s-v1"
+          ? !c.captureQualification ||
+            !/^[a-f0-9]{40}$/.test(c.captureQualification.commit) ||
+            !/^[a-f0-9]{64}$/.test(c.captureQualification.reportSha256) ||
+            Object.keys(c.captureQualification).some(
+              (key) => !["commit", "reportSha256"].includes(key),
+            )
+          : c.captureQualification !== undefined)) ||
       catalog.some(
         ([symbol, id]) => !c.markets.some((m) => m.symbol === symbol && m.marketId === id),
       ) ||
@@ -50,7 +60,7 @@ export function assertPerpsStudyConfig(c: PerpsStudyConfig) {
             "sessionId",
             "network",
             "markets",
-            ...(c.version === 7 ? ["acquisitionPolicy"] : []),
+            ...(c.version === 7 ? ["acquisitionPolicy", "captureQualification"] : []),
           ].includes(k),
       )
     ) {
