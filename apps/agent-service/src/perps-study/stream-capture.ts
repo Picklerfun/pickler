@@ -23,7 +23,12 @@ export async function createStreamCapture(
   let connections = 0;
   let disconnects = 0;
   let closed = false;
-  const errors: { code: string; receivedAt: number; generation: number | null }[] = [];
+  const errors: {
+    code: string;
+    receivedAt: number;
+    generation: number | null;
+    limit?: PerplStreamEvent["limit"];
+  }[] = [];
   const components = new Map<
     string,
     {
@@ -55,6 +60,7 @@ export async function createStreamCapture(
           code: event.code ?? "PERPL_STREAM_MESSAGE",
           receivedAt: event.receivedAt,
           generation: event.generation ?? null,
+          ...(event.limit ? { limit: { ...event.limit } } : {}),
         });
       }
       if (event.kind === "message") {
@@ -129,7 +135,10 @@ export async function createStreamCapture(
         connections,
         disconnects,
         socketClosed: closed,
-        errors: [...errors],
+        errors: errors.map((error) => ({
+          ...error,
+          ...(error.limit ? { limit: { ...error.limit } } : {}),
+        })),
         components: [...components.values()].map((value) => ({ ...value })),
       };
     },
