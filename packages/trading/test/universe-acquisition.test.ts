@@ -12,11 +12,84 @@ import {
   acquireUniverse,
   acquireUniverseV2,
   validatePaperFrame,
+  validateUniverseStream,
+  acquireUniverseStream,
   type UniverseAcquisitionDiagnostic,
 } from "@pickler/trading/perps";
 
 const epoch = 1791493920000;
 const hash = () => "a".repeat(64);
+
+test("one stream generation is validated against a common clock at exact age/future/skew limits", () => {
+  const markets = PERPL_LAB_SYMBOLS.map((symbol) => ({
+    symbol,
+    marketId: market(symbol).marketId,
+  }));
+  const components = PERPL_LAB_SYMBOLS.map((symbol) => ({
+    symbol,
+    snapshot: snapshot(symbol, 0, 0),
+    book: book(symbol, 0, 0),
+  }));
+  const input = {
+    markets,
+    network: "mainnet",
+    now: epoch,
+    hash,
+    buffer: { generation: 1, observedAt: epoch, components },
+  };
+  assert.equal(validateUniverseStream(input).frames.length, 11);
+  for (const [tickerTime, bookTime, reference, expected] of [
+    [-30000, -30000, 0, true],
+    [-30001, -30001, 0, false],
+    [5000, 5000, 0, true],
+    [5001, 5001, 0, false],
+    [-5000, 0, 0, true],
+    [-5001, 0, 0, false],
+  ] as const) {
+    const testInput = { ...input, buffer: structuredClone(input.buffer) };
+    testInput.now = epoch + reference;
+    testInput.buffer.components[0]!.snapshot = snapshot("BTC", tickerTime, 0);
+    testInput.buffer.components[0]!.book = book("BTC", bookTime, 0);
+    const result = validateUniverseStream(testInput);
+    assert.equal(result.excluded.length, expected ? 0 : 1);
+    assert.equal(result.frames.length, expected ? 11 : 10);
+  }
+  const invalid = { ...input, buffer: structuredClone(input.buffer) };
+  invalid.buffer.components[0]!.book.market.marketId = 999;
+  assert.throws(() => validateUniverseStream(invalid), { code: "INVALID_MARKET_DATA" });
+});
+
+test("stream acquisition waits for the latest ticker and never selects a coherent older book", async () => {
+  let elapsed = 0;
+  const seen: number[] = [];
+  const result = await acquireUniverseStream({
+    network: "mainnet",
+    markets: [{ symbol: "BTC", marketId: market("BTC").marketId }],
+    now: () => epoch + elapsed,
+    deadlineAt: epoch + 20000,
+    signal: new AbortController().signal,
+    guard: async () => {},
+    hash,
+    read: async () => ({
+      generation: 1,
+      observedAt: epoch + elapsed,
+      components: [
+        {
+          symbol: "BTC",
+          snapshot: snapshot("BTC", elapsed >= 1000 ? 7000 : 0, elapsed),
+          book: book("BTC", 7000, elapsed),
+        },
+      ],
+    }),
+    wait: async (ms) => {
+      elapsed += ms;
+    },
+    diagnostic: (d) => seen.push(d.bookAt!),
+  });
+  assert.equal(result.frames.length, 1);
+  assert.ok(elapsed >= 1000);
+  assert.ok(seen.every((at) => at === epoch + 7000));
+});
 
 function market(symbol: PerpSymbol): PerpMarketInfo {
   const marketId = PERPL_LAB_SYMBOLS.indexOf(symbol) + 1;
