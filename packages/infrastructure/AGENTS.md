@@ -649,10 +649,16 @@ cancellation closes without awaiting a stalled ownership query. Active acquisiti
 the same subscriptions again for provider snapshots, at most once per ten seconds; it never
 advances timestamps locally. Processing counters contain only safe numeric summaries.
 
-The current universe adapter `public-universe-stream-v3` reconstructs each public message
+The universe adapter `public-universe-stream-v3` reconstructs each public message
 synchronously in a private replica. It has no database-backed receive queue; all wire updates
 still pass the unchanged schema, identity, ordering, message-size and book-state bounds. Fresh
 permission/ownership guards remain mandatory before every request and buffer delivery, and the
 periodic guard closes an idle revoked reader. Replication does not admit financial writes. No
 consumer can access the live replica directly; `streams()` returns subscription names only.
 The previous guarded-batch mode remains available for historical controlled comparisons.
+
+Current universe adapter v4 retains direct reconstruction and additionally copies the last
+advancing heartbeat's sequence, head block and original local receipt. Exact duplicates never
+refresh receipt; reset discards continuity. This proof does not alter native price/book dates.
+Study diagnostics may explicitly select `stream-universe-component-20s-v2` in v7 without changing
+source accounts. Financial initialization rejects this capture-only policy before writes.
