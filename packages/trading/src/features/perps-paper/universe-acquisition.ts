@@ -7,6 +7,7 @@ import {
 } from "@pickler/core";
 import { validatePaperFrame, type PerpsPaperFrame } from "./simulation.js";
 import { transientPerpsData, type AcquisitionDiagnostic } from "./acquisition.js";
+export * from "./universe-acquisition-v2.js";
 /** Bounded partial universe acquisition; individual exclusions are shared by every strategy. */
 export async function acquireUniverse(input: {
   network: PerpNetwork;
