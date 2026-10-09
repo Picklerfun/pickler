@@ -1,10 +1,19 @@
 "use client";
+import { useState } from "react";
 import Image from "next/image";
-import { Icon } from "@pickler/ui";
+import { Chip, Field, Icon, Input } from "@pickler/ui";
+import { errorCode } from "../api";
+import { useStudioMemory } from "../routing/memory";
 import { shortAddress } from "../new-agent/model";
 import { ArrivalList, useArrivals } from "../shell/arrivals";
 import { CapSteppers } from "../shell/build-parts";
-import { SaveOutcome, saveLabel, useSavedForm, useSetupSave } from "../shell/setup-save";
+import {
+  SaveOutcome,
+  saveLabel,
+  useSavedForm,
+  useSetupSave,
+  type SaveState,
+} from "../shell/setup-save";
 import { useCopied } from "../shell/use-copied";
 import {
   VIEW_ONLY_FUNDS,
@@ -13,6 +22,13 @@ import {
   limitsWallet,
   pullReason,
 } from "./build-model";
+import {
+  advicePriceLocks,
+  advicePriceOutcome,
+  advicePriceView,
+  savedPriceForm,
+  type PriceForm,
+} from "./advice-price-model";
 import { LiveSection, type LiveSectionProps } from "./live-section";
 import { liveCaps, liveCapsStepper, liveWalletRead, pullNote, type LiveCaps } from "./model";
 import { Reason } from "./reason";
@@ -25,7 +41,8 @@ import styles from "./build.module.css";
  * "Return funds to master wallet" (the Wallets modal on this wallet). Right, the five caps, saved, not
  * signed: "Save caps" and "Discard", one `PUT /setup` with `caps`, and the line that says who
  * holds them. With the Perpl runtime on, the day-loss line and that note say what runs now
- * (`runtimeCapsView`, perpl-paper-runtime-v1 R11).
+ * (`runtimeCapsView`, perpl-paper-runtime-v1 R11). Under the wallet, ANALYSES IN THE APP: the
+ * price of one analysis bought in the app, saved with `PUT /advice-price` (`AdvicePriceCard`).
  */
 export function Limits({ agent, live, canManage, onWallets }: LiveSectionProps) {
   const { caps: savedCaps, defaults } = liveCaps(agent);
@@ -46,7 +63,10 @@ export function Limits({ agent, live, canManage, onWallets }: LiveSectionProps) 
   return (
     <LiveSection section="limits">
       <div className={styles.grid}>
-        <WalletCard agent={agent} live={live} canManage={canManage} onWallets={onWallets} />
+        <div className={styles.column}>
+          <WalletCard agent={agent} live={live} canManage={canManage} onWallets={onWallets} />
+          <AdvicePriceCard agent={agent} live={live} canManage={canManage} />
+        </div>
         <div className={styles.card} data-dirty={view.dirty} id="live-limits-caps">
           <div className={styles.cardHead}>
             <h3 className={styles.cardLabel}>CAPS</h3>
@@ -107,6 +127,133 @@ export function Limits({ agent, live, canManage, onWallets }: LiveSectionProps) 
         </div>
       </div>
     </LiveSection>
+  );
+}
+
+/**
+ * ANALYSES IN THE APP (agent-advice phase 2): the AUSD price of one analysis, or not for sale.
+ * Saved by `PUT /advice-price`, which carries no version, so the card keeps its own outcome
+ * instead of the `PUT /setup` hook's. Without a wallet the price cannot be set, only cleared.
+ */
+function AdvicePriceCard({
+  agent,
+  live,
+  canManage,
+}: Pick<LiveSectionProps, "agent" | "live" | "canManage">) {
+  const memory = useStudioMemory();
+  const scope = `${agent.productId ?? agent.id}:advice`;
+  const saved = savedPriceForm(agent);
+  const [form, setForm] = useSavedForm<PriceForm>(agent.version, saved, `${scope}:form`);
+  const [state, setState] = useState<SaveState>({ kind: "idle" });
+  const view = advicePriceView(agent, form, canManage);
+  const locks = advicePriceLocks(agent, form, canManage);
+  const saving = state.kind === "saving";
+  const canSave = view.canSave && !saving;
+
+  const edit = (next: PriceForm) => {
+    setForm(next);
+    setState({ kind: "idle" });
+  };
+
+  const save = async () => {
+    if (!canSave || view.body === null) {
+      return;
+    }
+    setState({ kind: "saving" });
+    memory.begin(scope);
+    try {
+      await live.saveAdvicePrice(view.body);
+      /* Not dirty any more: the form follows the reloaded price, and leaving asks nothing. */
+      memory.committed(scope);
+      setState({ kind: "saved" });
+    } catch (caught) {
+      setState(advicePriceOutcome(errorCode(caught)));
+    } finally {
+      memory.end(scope);
+    }
+  };
+
+  return (
+    <div className={styles.card} data-dirty={view.dirty} id="live-limits-advice">
+      <div className={styles.cardHead}>
+        <h3 className={styles.cardLabel}>ANALYSES IN THE APP</h3>
+        <span className={styles.headTag} data-tone={view.tone}>
+          {view.tag}
+        </span>
+      </div>
+      <p className={styles.cardNote}>{view.note}</p>
+      {view.walletLine && <p className={styles.hint}>{view.walletLine}</p>}
+      <Chip
+        className={styles.saleChip}
+        selected={form.forSale}
+        aria-disabled={locks.toggle || saving || undefined}
+        aria-describedby={view.disabledReason ? "live-advice-reason" : undefined}
+        title={view.disabledReason ?? undefined}
+        onClick={() => {
+          if (!locks.toggle && !saving) {
+            edit({ ...form, forSale: !form.forSale });
+          }
+        }}
+      >
+        For sale
+      </Chip>
+      {form.forSale && (
+        <Field label="PRICE PER ANALYSIS" htmlFor="live-advice-price">
+          <Input
+            id="live-advice-price"
+            aria-labelledby="live-advice-price-label"
+            inputMode="decimal"
+            mono
+            prefix="AUSD"
+            placeholder="1.50"
+            invalid={view.inputError !== null}
+            disabled={locks.input || saving}
+            value={form.text}
+            onChange={(event) => edit({ ...form, text: event.target.value })}
+          />
+        </Field>
+      )}
+      {view.inputError && (
+        <p className={styles.alert} role="alert">
+          <Icon name="alert" size={12} />
+          {view.inputError}
+        </p>
+      )}
+      {(view.dirty || state.kind !== "idle") && (
+        <div className={styles.saveRow}>
+          <button
+            type="button"
+            className={styles.saveButton}
+            aria-disabled={!canSave || undefined}
+            aria-describedby={view.disabledReason ? "live-advice-reason" : undefined}
+            title={view.disabledReason ?? undefined}
+            onClick={() => void save()}
+          >
+            {saveLabel(state, view.dirty, "Save price")}
+          </button>
+          {view.dirty && (
+            <button
+              type="button"
+              className={styles.discardButton}
+              aria-disabled={!canManage || saving || undefined}
+              onClick={() => {
+                if (canManage && !saving) {
+                  edit(saved);
+                }
+              }}
+            >
+              Discard
+            </button>
+          )}
+        </div>
+      )}
+      {view.disabledReason && (
+        <p className={styles.hint} id="live-advice-reason">
+          {view.disabledReason}
+        </p>
+      )}
+      <SaveOutcome state={state} />
+    </div>
   );
 }
 

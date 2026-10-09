@@ -619,6 +619,19 @@ hourly check running and the owner's close of the BTC long waiting for it, stage
 `scripts/design/routes.mjs` proves `#live-overview-proposals`, `#live-decisions-feed`,
 `#live-record-equity`, `#live-action-close-pos-preview-btc` and `#live-positions-open-off` for them.
 
+Limits has a third card, under its wallet, ANALYSES IN THE APP (`AdvicePriceCard` in `live/limits.tsx`,
+`#live-limits-advice`), in the live studio only: a draft is private and cannot be bought, so the
+creator prices it after Go Public. A "For sale" toggle and a price in AUSD per analysis (0.10–100, up
+to 6 decimals) are saved with `PUT /agents/:id/advice-price` (`saveAdvicePrice` on
+`use-agent-studio.ts`, `{ priceAusd }`, `null` to stop selling), which carries no version, so the
+card keeps its own outcome rather than `useSetupSave`'s. The card says the money goes to the agent's
+wallet and that a failed analysis is not refunded automatically. Without a wallet the price cannot
+be set, only cleared, and the card says why; a view-only member has every control shut. The rules
+are `live/advice-price-model.ts` (`advicePriceView`, `advicePriceLocks`, `advicePriceOutcome`,
+`parsePriceText`), pure and pinned in `apps/web/test/studio-advice-price-model.test.ts`; the fixture
+prices its agent at 1.5 AUSD, and saving there answers `PREVIEW_NOTE`. `scripts/design/routes.mjs`
+proves `#live-section-limits #live-limits-advice` on `perpl-limits`.
+
 `?stage=live|researching|decided` (`home/stage.ts`, outside production only) renders the home from
 `home/fixture.ts`, `?stage=draft*` the draft studio from `draft/fixture.ts`, `?stage=perpl-*`
 (`LIVE_STAGES`, spec §7) the live studio from `live/fixture.ts` (Perpl's board, but the labelled

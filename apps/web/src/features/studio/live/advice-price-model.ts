@@ -113,6 +113,20 @@ export function advicePriceView(
   };
 }
 
+/**
+ * Which controls are shut. A view-only member has none open. Without a wallet the price cannot be
+ * typed and the toggle cannot be turned on, but a priced agent can still be taken off sale.
+ */
+export function advicePriceLocks(
+  agent: Agent,
+  form: PriceForm,
+  canManage: boolean,
+): { toggle: boolean; input: boolean } {
+  const noWallet = agent.wallet === null;
+  const cannotTurnOn = noWallet && !form.forSale;
+  return { toggle: !canManage || cannotTurnOn, input: !canManage || noWallet };
+}
+
 export function advicePriceError(code: string): string {
   if (code === "AGENT_WALLET_REQUIRED") {
     return NO_WALLET;
@@ -124,4 +138,14 @@ export function advicePriceError(code: string): string {
     return VIEW_ONLY_REASON;
   }
   return NOT_SAVED;
+}
+
+/** A refused save: the preview studio's note, or the API's code in the card's words. */
+export function advicePriceOutcome(
+  code: string,
+): { kind: "preview" } | { kind: "error"; text: string } {
+  if (code === "PREVIEW") {
+    return { kind: "preview" };
+  }
+  return { kind: "error", text: advicePriceError(code) };
 }

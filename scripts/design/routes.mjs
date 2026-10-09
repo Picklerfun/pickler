@@ -887,7 +887,8 @@ const ALL = [
     product: "studio",
     surface: "dark",
     task: "Live studio",
-    proves: "#live-section-limits",
+    /* One route per stage (studio-landing.test.ts): the section and its ANALYSES IN THE APP card. */
+    proves: "#live-section-limits #live-limits-advice",
   },
   {
     path: "/studio?stage=perpl-controls",

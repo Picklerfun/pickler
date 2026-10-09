@@ -317,6 +317,25 @@ li.plugin {
   color: var(--pk-state-caution-ink);
 }
 
+/* ---------- Limits: analyses in the app ---------- */
+
+/* The left column: the wallet, then the price, so the price does not wait under the caps' row. */
+.column {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-width: 0;
+}
+
+/* The "For sale" toggle keeps its own width; shut, it stays focusable with its reason. */
+.saleChip {
+  align-self: flex-start;
+}
+.saleChip[aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
 /* ---------- Limits: its wallet ---------- */
 
 .walletRow {

@@ -6,6 +6,8 @@ import {
   NO_WALLET,
   PRICE_BOUNDS,
   advicePriceError,
+  advicePriceLocks,
+  advicePriceOutcome,
   advicePriceView,
   parsePriceText,
   savedPriceForm,
@@ -136,4 +138,27 @@ test("an unpriced agent without a wallet cannot be priced", () => {
 
   assert.equal(view.canSave, false);
   assert.equal(view.body, null);
+});
+
+test("without a wallet only the toggle off stays open; a view-only member has nothing open", () => {
+  const owner = advicePriceLocks(agent(true), { forSale: true, text: "1.5" }, true);
+  assert.deepEqual(owner, { toggle: false, input: false });
+
+  const unlinkedPriced = advicePriceLocks(agent(true, false), { forSale: true, text: "1.5" }, true);
+  assert.deepEqual(unlinkedPriced, { toggle: false, input: true });
+
+  const unlinkedOff = advicePriceLocks(agent(true, false), { forSale: false, text: "1.5" }, true);
+  assert.deepEqual(unlinkedOff, { toggle: true, input: true });
+
+  const viewer = advicePriceLocks(agent(true), { forSale: true, text: "1.5" }, false);
+  assert.deepEqual(viewer, { toggle: true, input: true });
+});
+
+test("a refused save on a preview studio says so; any other refusal is worded", () => {
+  assert.deepEqual(advicePriceOutcome("PREVIEW"), { kind: "preview" });
+  assert.deepEqual(advicePriceOutcome("AGENT_WALLET_REQUIRED"), { kind: "error", text: NO_WALLET });
+  assert.deepEqual(advicePriceOutcome("NETWORK"), {
+    kind: "error",
+    text: "The price was not saved. Try again.",
+  });
 });
