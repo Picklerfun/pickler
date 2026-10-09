@@ -21,3 +21,7 @@ distinct from receipt times, and `onTickerRead` labels physical reads versus leg
 and REST meanings. The latest buffer is copied from one connection generation and validated
 by trading. Cancellation never extends acquisition or initiates a reconnect beyond its deadline.
 Close on permission/configuration/ownership loss; never turn those failures into omissions.
+The universe stream uses guarded FIFO batches. Invalid joint evidence may request fresh provider
+snapshots through the same public socket, with the transport's ten-second request cooldown. The
+twenty-second deadline and thirty/five-second coherence checks remain unchanged. There is no REST
+price fallback; returned dates remain provider dates, including a repeated or stale snapshot.
