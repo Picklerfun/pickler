@@ -276,3 +276,8 @@ proof. Native component freshness and financial dates retain the financial clock
 remain the pure-function default; legacy/product formulas and codes are unchanged.
 `PerpsFrameValidationFailure` exports safe allowlisted clock provenance and a bounded reason
 union, never raw provider content. Do not infer missing historical failure clocks.
+
+Component-paper services may use the optional captured-frame execution port to admit, simulate
+and confirm one shared frame in a single fenced transaction. The runner reuses its committed
+view only for this explicit policy; historical and product paths retain their prior lifecycle.
+The port does not acquire fresh data, alter proof timestamps, change prices or financial rules.
