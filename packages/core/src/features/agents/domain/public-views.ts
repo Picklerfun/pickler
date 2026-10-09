@@ -2,6 +2,7 @@
 // and the leaderboard. Implemented from the "Pickler Public" design canvas.
 // Amounts are display units; a ratio is 0–1 unless the field says otherwise.
 
+import type { AgentToken } from "../../launch/token-launch.js";
 import type { Accent } from "../../landing/domain/landing.js";
 import type { TokenStage } from "./agents.js";
 import type { AgentRead, ReadService } from "./reads.js";
@@ -51,6 +52,8 @@ export interface PersonaAnswer {
 
 /** One agent up close: how it behaves, what it has settled, and what it answers. */
 export interface AgentPersona {
+  launchedToken?: AgentToken | null;
+  tokenConfirmation?: "absent" | "pending" | "confirmed";
   name: string;
   handle: string;
   ticker: string | null;
