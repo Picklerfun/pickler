@@ -212,6 +212,16 @@ composition/sma-review-model is a separate public local original-SMA reviewer wi
 
 Operator universe composition exports `createUniversePerplReader` through the existing perps-paper plugin. It pins identity/configuration and closes on host shutdown. SMA review adapter 1.1.0 uses single-asset evidence, portfolio risk and bounded provider queues; original 1.0.0 remains intact. No automatic fallback or strategy sizing belongs here.
 
+`createUniversePerplReader` defaults to historical `rest-universe-20s-v1`. Its explicit
+`acquisitionPolicy: "rest-universe-coherent-20s-v2"` selects trading's batch/repair coordinator,
+with one absolute twenty-second deadline measured before metadata acquisition. Fresh bulk ticker
+reads recheck live snapshot permission and the allowed configuration for every requested symbol
+before and after awaits. Deadline cancellation can return a validated subset only after the live
+parent ownership/configuration guard passes; operator cancellation and lease loss propagate.
+The v7 priority composition requires its reader selection to match the frozen study configuration.
+Optional ticker diagnostics distinguish cache reuse from real network reads without model clients,
+signers or a new public tool.
+
 ## SMA profiles and selective exposure laboratory
 
 Local `perps-sma-profile-risk-v1` configuration v6 has four independent variants:
