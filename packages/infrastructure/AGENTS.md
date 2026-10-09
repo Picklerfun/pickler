@@ -606,3 +606,20 @@ The public market board retains timestamp/price pairs from the existing hourly c
 The same cached thirty-day candle read supplies bounded `priceHistory` for 24h/7d/30d view
 selection. Detail responses clone at most 720 hourly samples plus the observed mark; the existing
 24h trail and hourly-reach calculation remain unchanged. Range views add no transport or retry.
+
+## Agent token persistence
+
+`studio/token-launch-store.ts` implements `TokenLaunchRepository` using short owner/access/agent
+transactions, the registered master account and versioned `launch.drafts`. Drizzle migrations 0036
+and 0037 append private `launch.agent_keys`/`launch.grants`, their constraints and agent/network
+uniqueness. Applied migrations and historical rows are not rewritten. `tokenAgentKey` uses the
+versioned UUID/network ABI encoding documented in [the guide](../../docs/agent-token-preview.md).
+`studio/token-read.ts` returns a confirmed token only from canonical confirmed indexed evidence;
+failed reads are errors and observed/orphaned evidence is pending. The launch projector attributes
+an agent only when its key, recorded grant, factory, creator and committed parameters match.
+
+The explicit `@pickler/infrastructure/testing/token` subpath exports the loopback-only PostgreSQL
+fixture and public controlled signer used by API acceptance. No host imports it. It makes no RPC or
+provider calls. `test/token-launch.test.ts` covers concurrent admission, upgrade preservation,
+isolation and confirmed attribution. Operational signing, durable metadata and indexer activation
+remain absent.
