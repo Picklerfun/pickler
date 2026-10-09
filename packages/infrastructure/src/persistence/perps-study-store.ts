@@ -46,7 +46,8 @@ function acquisitionPolicy(
     policy !== "rest-universe-20s-v1" &&
     policy !== "rest-universe-coherent-20s-v2" &&
     policy !== "stream-universe-20s-v1" &&
-    policy !== "stream-universe-component-20s-v2"
+    policy !== "stream-universe-component-20s-v2" &&
+    policy !== "stream-universe-component-paper-20s-v1"
   ) {
     throw new PilotError("INVALID_INPUT", "Unknown frozen acquisition policy");
   }
@@ -55,6 +56,7 @@ function acquisitionPolicy(
       "rest-universe-coherent-20s-v2",
       "stream-universe-20s-v1",
       "stream-universe-component-20s-v2",
+      "stream-universe-component-paper-20s-v1",
     ].includes(policy) &&
     configured !== policy
   ) {
