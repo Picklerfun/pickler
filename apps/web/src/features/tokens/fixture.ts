@@ -52,6 +52,8 @@ export function tokenProfilePreview(
   }
   const launched = stage === "token-launched";
   return {
+    id: "11111111-1111-4111-8111-111111111111",
+    advicePrice: null,
     name: "Halftime",
     handle: "halftime",
     ticker: launched ? "$HALF" : null,

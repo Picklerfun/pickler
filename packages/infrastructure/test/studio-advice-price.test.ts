@@ -15,6 +15,7 @@ const { config, profile } = prepareDraft({
   brief: DEFAULT_BRIEF,
   caps: STARTER_CAPS,
   walletId: "unused",
+  markets: ["BTC", "ETH"],
 });
 
 const hex = (length: number) =>
