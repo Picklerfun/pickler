@@ -64,11 +64,7 @@ function gateway(overrides: {
 }) {
   const calls: string[] = [];
   const client: PublicClientLike = {
-    readContract:
-      overrides.read ??
-      (async () => {
-        throw new Error("unexpected read");
-      }),
+    readContract: overrides.read ?? (async () => false),
     simulateContract:
       overrides.simulate ??
       (async () => {
@@ -294,15 +290,101 @@ test("a success receipt without the matching AUSD transfer is a plain Error", as
   );
 });
 
-test("errors never carry the relayer key", async () => {
+const ALREADY_USED = { read: async () => true };
+const STATE_READ_FAILS = {
+  read: async () => {
+    throw new Error("rpc down");
+  },
+};
+
+test("a simulation revert with a consumed nonce is a plain Error", async () => {
   const { gateway: subject } = gateway({
-    write: async () => {
-      throw new Error(`failed with ${RELAYER}`);
+    ...ALREADY_USED,
+    simulate: async () => {
+      throw revertError;
     },
   });
   const signed = authorization();
 
-  await assert.rejects(subject.settle(signed, await sign(signed)), (error) => {
-    return error instanceof Error && !error.message.includes(RELAYER.slice(2));
+  await assert.rejects(
+    subject.settle(signed, await sign(signed)),
+    (error) => error instanceof Error && !(error instanceof SettlementRejected),
+  );
+});
+
+test("a reverted receipt with a consumed nonce is a plain Error", async () => {
+  const { gateway: subject } = gateway({
+    ...ALREADY_USED,
+    wait: async () => ({ status: "reverted", blockNumber: 9n, logs: [] }),
   });
+  const signed = authorization();
+
+  await assert.rejects(
+    subject.settle(signed, await sign(signed)),
+    (error) => error instanceof Error && !(error instanceof SettlementRejected),
+  );
+});
+
+test("a reverted receipt whose nonce state cannot be read is a plain Error", async () => {
+  const { gateway: subject } = gateway({
+    ...STATE_READ_FAILS,
+    wait: async () => ({ status: "reverted", blockNumber: 9n, logs: [] }),
+  });
+  const signed = authorization();
+
+  await assert.rejects(
+    subject.settle(signed, await sign(signed)),
+    (error) => error instanceof Error && !(error instanceof SettlementRejected),
+  );
+});
+
+test("a signature that cannot be parsed is rejected before anything is sent", async () => {
+  const { gateway: subject, calls } = gateway({});
+
+  await assert.rejects(
+    subject.settle(authorization(), "0xzz"),
+    (error) => error instanceof SettlementRejected,
+  );
+  assert.deepEqual(calls, []);
+});
+
+test("no settle error carries the relayer key or a cause", async () => {
+  const leak = () => new Error(`failed with ${RELAYER}`);
+  const failing: Parameters<typeof gateway>[0][] = [
+    {
+      simulate: async () => {
+        throw leak();
+      },
+    },
+    {
+      write: async () => {
+        throw leak();
+      },
+    },
+    {
+      wait: async () => {
+        throw leak();
+      },
+    },
+    {
+      wait: async () => ({ status: "reverted", blockNumber: 9n, logs: [] }),
+      read: async () => {
+        throw leak();
+      },
+    },
+  ];
+  const signed = authorization();
+  const signature = await sign(signed);
+
+  for (const overrides of failing) {
+    const { gateway: subject } = gateway(overrides);
+
+    await assert.rejects(subject.settle(signed, signature), (error) => {
+      return (
+        error instanceof Error &&
+        !error.message.includes(RELAYER.slice(2)) &&
+        error.cause === undefined
+      );
+    });
+  }
 });

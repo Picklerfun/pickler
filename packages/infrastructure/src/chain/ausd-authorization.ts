@@ -191,7 +191,7 @@ export function createAusdAuthorizationGateway(
       transport: http(input.rpcUrl),
     }) as unknown as WalletClientLike);
 
-  return {
+  const gateway: AdvicePaymentGateway = {
     async signatureValid(authorization, signature) {
       try {
         return await verifyTypedData({
@@ -226,31 +226,55 @@ export function createAusdAuthorizationGateway(
     },
 
     async settle(authorization, signature) {
-      const parsed = parseSignature(signature as Hex);
-      const v = parsed.v === undefined ? 27 + (parsed.yParity ?? 0) : Number(parsed.v);
-      const request: TransferWithAuthorizationRequest = {
-        account,
-        address: asset,
-        abi: AUSD_ABI,
-        functionName: "transferWithAuthorization",
-        args: [
-          authorization.from as `0x${string}`,
-          authorization.to as `0x${string}`,
-          BigInt(authorization.value),
-          BigInt(authorization.validAfter),
-          BigInt(authorization.validBefore),
-          authorization.nonce as Hex,
-          v,
-          parsed.r,
-          parsed.s,
-        ],
+      // A revert is only a proven rejection while the nonce is unused: if it is consumed, the same
+      // authorization already executed (e.g. front-run) and the funds moved.
+      const rejectIfUnused = async (message: string): Promise<never> => {
+        let consumed: boolean;
+        try {
+          consumed = await gateway.nonceUsed(authorization.from, authorization.nonce);
+        } catch {
+          throw new Error("Settlement reverted but the authorization state is unknown");
+        }
+        if (consumed) {
+          throw new Error("Settlement reverted but the authorization was already used");
+        }
+        throw new SettlementRejected(message);
       };
-      // Nothing is broadcast by a simulation, so a failure here provably never executed.
+
+      let request: TransferWithAuthorizationRequest;
+      try {
+        const parsed = parseSignature(signature as Hex);
+        const v = parsed.v === undefined ? 27 + (parsed.yParity ?? 0) : Number(parsed.v);
+        request = {
+          account,
+          address: asset,
+          abi: AUSD_ABI,
+          functionName: "transferWithAuthorization",
+          args: [
+            authorization.from as `0x${string}`,
+            authorization.to as `0x${string}`,
+            BigInt(authorization.value),
+            BigInt(authorization.validAfter),
+            BigInt(authorization.validBefore),
+            authorization.nonce as Hex,
+            v,
+            parsed.r,
+            parsed.s,
+          ],
+        };
+      } catch {
+        // Nothing was sent, so an unparsable signature provably never executed.
+        throw new SettlementRejected("Settlement signature could not be parsed");
+      }
+
+      // Nothing is broadcast by a simulation, so any failure here (revert or transport) is a
+      // rejection, provided the nonce is still unused.
       try {
         await client.simulateContract(request);
       } catch {
-        throw new SettlementRejected("Settlement simulation reverted");
+        return rejectIfUnused("Settlement simulation reverted");
       }
+
       // A failure of writeContract is ambiguous: the raw transaction may have reached the node.
       let hash: Hex;
       try {
@@ -258,15 +282,18 @@ export function createAusdAuthorizationGateway(
       } catch {
         throw new Error("Settlement broadcast outcome unknown");
       }
+
       let receipt: Awaited<ReturnType<PublicClientLike["waitForTransactionReceipt"]>>;
       try {
         receipt = await client.waitForTransactionReceipt({ hash, timeout: receiptTimeoutMs });
       } catch {
         throw new Error(`Settlement receipt unavailable for ${hash}`);
       }
+
       if (receipt.status === "reverted") {
-        throw new SettlementRejected("Settlement transaction reverted");
+        return rejectIfUnused("Settlement transaction reverted");
       }
+
       const logs = parseEventLogs({
         abi: AUSD_ABI,
         eventName: "Transfer",
@@ -275,7 +302,9 @@ export function createAusdAuthorizationGateway(
       if (!transferMatches(logs, authorization, asset)) {
         throw new Error(`Settlement ${hash} mined without the expected transfer`);
       }
+
       return { txHash: hash, blockNumber: receipt.blockNumber };
     },
   };
+  return gateway;
 }
