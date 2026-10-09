@@ -94,3 +94,17 @@ PICKLER_CONTROLLED_TIMING_FILE=/absolute/path/to/new-measurements.json \
 ```
 
 The optional output is test evidence only and must not replace a public qualification report.
+
+## Failure diagnostics
+
+The compatibility code `PERPL_STREAM_MESSAGE_LIMIT` covers three distinct bounds. New error
+events carry an allowlisted `limit` dimension (`message-type`, `message-bytes`, or `message-queue`)
+with numeric observed/maximum values where applicable. No rejected payload is retained. Absence
+of that dimension in an earlier capture leaves the exceeded component `NOT_VERIFIABLE`.
+Timer cancellation between slots preserves the original abort code instead of replacing it with
+`STABILITY_FAILED`. Offline v3 reports distinguish attempted acquisitions, missed admission windows,
+and identities not admitted after interruption; these are not thirty attempted failures.
+
+The [2026-10-08 one-shot record](PERPL-UNIVERSE-WEBSOCKET-ACCEPTANCE-20261008.md) failed after
+two valid cycles. Its artifacts are immutable; post-check diagnostic corrections are controlled
+validation only and do not authorize another qualification or economic run.
