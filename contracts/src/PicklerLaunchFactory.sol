@@ -141,6 +141,7 @@ contract PicklerLaunchFactory is EIP712 {
         }
 
         preset.validate();
+        preset.validateQuoteDecimals();
 
         _presets[preset.presetId][preset.version] = preset;
         presetPublished[preset.presetId][preset.version] = true;
