@@ -34,6 +34,7 @@ export function assertPerpsStudyConfig(c: PerpsStudyConfig) {
           "rest-universe-20s-v1",
           "rest-universe-coherent-20s-v2",
           "stream-universe-20s-v1",
+          "stream-universe-component-20s-v2",
         ].includes(c.acquisitionPolicy)) ||
       catalog.some(
         ([symbol, id]) => !c.markets.some((m) => m.symbol === symbol && m.marketId === id),
