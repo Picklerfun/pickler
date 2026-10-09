@@ -52,6 +52,10 @@ export interface AdvicePaymentRecord {
   jobId: string | null;
   status: "pending" | "settled" | "failed" | "refund_owed";
   txHash: string | null;
+  payer: string;
+  nonce: string;
+  /** Unix seconds, decimal string. */
+  validBefore: string;
 }
 export interface AdvicePaymentStore {
   saleTerms(publicAgentId: string): Promise<SaleTerms | null>;
@@ -72,10 +76,24 @@ export interface AdvicePaymentGateway {
   signatureValid(authorization: Authorization, signature: string): Promise<boolean>;
   nonceUsed(from: string, nonce: string): Promise<boolean>;
   balance(address: string): Promise<bigint>;
+  /**
+   * Submits `transferWithAuthorization` and waits for the receipt. Throws `SettlementRejected`
+   * ONLY when the authorization provably never executed (simulation reverted before broadcast, or
+   * a mined receipt with status reverted). Any other throw means the outcome is unknown: the
+   * transaction may still mine until `validBefore`.
+   */
   settle(
     authorization: Authorization,
     signature: string,
   ): Promise<{ txHash: string; blockNumber: bigint }>;
+}
+
+/** The settlement provably never executed; a new attempt for the same key is safe. */
+export class SettlementRejected extends Error {
+  constructor(message = "Settlement rejected") {
+    super(message);
+    this.name = "SettlementRejected";
+  }
 }
 
 export class X402Refusal extends Error {
@@ -94,7 +112,7 @@ export type PaidAdviceResult =
 
 const ADDRESS = /^0x[0-9a-fA-F]{40}$/;
 const NONCE = /^0x[0-9a-fA-F]{64}$/;
-const HEX = /^0x[0-9a-fA-F]+$/;
+const SIGNATURE = /^0x[0-9a-fA-F]{130}$/;
 const UINT = /^\d{1,78}$/;
 
 function toBase64(text: string): string {
@@ -139,7 +157,7 @@ export function decodePaymentHeader(header: string): PaymentPayload {
     envelope.x402Version !== 1 ||
     envelope.scheme !== "exact" ||
     envelope.network !== X402_NETWORK ||
-    !matches(payload.signature, HEX) ||
+    !matches(payload.signature, SIGNATURE) ||
     !matches(authorization.from, ADDRESS) ||
     !matches(authorization.to, ADDRESS) ||
     !matches(authorization.value, UINT) ||
@@ -239,6 +257,13 @@ export function createPaidAdvice(deps: {
     await deps.store.attachJob(paymentId, job.id);
     return job;
   };
+  // A pending payment is abandoned once its authorization expired without the nonce being used.
+  const abandoned = async (record: AdvicePaymentRecord): Promise<boolean> => {
+    if (Number(record.validBefore) > deps.now() / 1000) {
+      return false;
+    }
+    return !(await deps.gateway.nonceUsed(record.payer, record.nonce));
+  };
   return {
     async request(
       principal: Principal,
@@ -247,7 +272,9 @@ export function createPaidAdvice(deps: {
       key: string,
       header: string | undefined,
     ): Promise<PaidAdviceResult> {
-      await deps.advice.admit(principal, publicAgentId, symbol);
+      if (principal.kind !== "user") {
+        throw new PilotError("FORBIDDEN", "User session required");
+      }
       const userId = principal.id;
       const replay = await deps.repository.requestReplay(userId, publicAgentId, key);
       if (replay) {
@@ -256,6 +283,7 @@ export function createPaidAdvice(deps: {
         }
         return { kind: "accepted", job: replay, settlement: null };
       }
+      await deps.advice.admit(principal, publicAgentId, symbol);
       const existing = await deps.store.byKey(userId, publicAgentId, key);
       if (existing?.status === "settled" && existing.jobId !== null) {
         const job = await deps.repository.get(existing.jobId);
@@ -270,8 +298,14 @@ export function createPaidAdvice(deps: {
         throw new PilotError("NOT_FOUND", "ADVICE_NOT_FOR_SALE");
       }
       const requirements = requirementsFor(publicAgentId, symbol, terms);
-      if (existing?.status === "pending" || existing?.status === "refund_owed") {
+      if (existing?.status === "refund_owed") {
         return { kind: "payment_required", requirements, error: "invalid_payment" };
+      }
+      if (existing?.status === "pending") {
+        if (!(await abandoned(existing))) {
+          return { kind: "payment_required", requirements, error: "invalid_payment" };
+        }
+        await deps.store.failed(existing.id, "expired_unsettled");
       }
       if (header === undefined) {
         return { kind: "payment_required", requirements, error: null };
@@ -312,8 +346,11 @@ export function createPaidAdvice(deps: {
       let receipt: { txHash: string; blockNumber: bigint };
       try {
         receipt = await deps.gateway.settle(authorization, signature);
-      } catch {
-        await deps.store.failed(pending.id, "settlement_failed");
+      } catch (error) {
+        // Only a proven rejection frees the key; an unknown outcome stays pending (may still mine).
+        if (error instanceof SettlementRejected) {
+          await deps.store.failed(pending.id, "settlement_failed");
+        }
         return { kind: "payment_required", requirements, error: "settlement_failed" };
       }
       await deps.store.settled(pending.id, receipt.txHash, receipt.blockNumber);

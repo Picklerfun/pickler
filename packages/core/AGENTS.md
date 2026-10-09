@@ -378,14 +378,21 @@ and `DirectoryAgent.agent` carry the agent `id` and its nullable `advicePrice`.
 `X402_NETWORK`, `AUSD_TESTNET`, the x402 v1 wire types (`Authorization`, `PaymentPayload`,
 `PaymentRequirements`, `PaymentError`), `decodePaymentHeader` (throws `X402Refusal`),
 `encodeSettlement`, the ports `AdvicePaymentStore` (sale terms, payer links, payment rows) and
-`AdvicePaymentGateway` (signature, nonce, balance, settlement), and `createPaidAdvice`. Its order
-is fixed: `admit` (the service's admission checks without enqueueing) → replay → the key's
-payment row → sale terms (`NOT_FOUND`/`ADVICE_NOT_FOR_SALE`) → 402 → static checks → payer link
-→ signature → nonce → balance → pending row → settle → enqueue. A replay or a settled row never
-settles again; a `pending` or `refund_owed` row for the key refuses with `invalid_payment`; an
-enqueue failure after settlement leaves the row `settled` without a job and rethrows, so the next
-request with the same key reuses that payment (D7); core does not call `refundOwed` in phase 1.
-Core stays pure: chain and database live behind the two ports.
+`AdvicePaymentGateway` (signature, nonce, balance, settlement), `SettlementRejected` and
+`createPaidAdvice`. Its order is fixed: user principal → replay (returned even while advice is
+disabled, as in the service; another symbol is `CONFLICT`) → `admit` (the service's admission
+checks without enqueueing) → the key's payment row → sale terms
+(`NOT_FOUND`/`ADVICE_NOT_FOR_SALE`) → 402 → static checks (signature exactly 65 bytes) → payer
+link → signature → nonce → balance → pending row → settle → enqueue. A replay or a settled row
+never settles again; a `refund_owed` row refuses with `invalid_payment`. `settle` throws
+`SettlementRejected` only when the authorization provably never executed (simulation revert,
+reverted receipt): the row becomes `failed` and the key may pay again. Any other throw is an
+unknown outcome: the row stays `pending` and the answer is 402 `settlement_failed`. A `pending`
+row refuses with `invalid_payment` until its `validBefore` passed and `nonceUsed(payer, nonce)` is
+false; then it is marked `failed` (`expired_unsettled`) and the flow continues. An enqueue failure
+after settlement leaves the row `settled` without a job and rethrows, so the next request with the
+same key reuses that payment (D7); core does not call `refundOwed` in phase 1. Core stays pure:
+chain and database live behind the two ports.
 
 Advice pricing v2 pins the reviewed OpenAI-compatible forecast base URL and model in each job. Preserve v1 policies and their direct-DeepSeek meaning; provider changes require a new policy, never a historical rewrite.
 

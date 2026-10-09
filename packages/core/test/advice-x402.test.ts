@@ -9,6 +9,7 @@ import {
   createPaidAdvice,
   DEFAULT_CONFIG,
   PilotError,
+  SettlementRejected,
   type AdviceAgent,
   type AdviceJob,
   type AdvicePaymentGateway,
@@ -51,6 +52,19 @@ const NOW_MS = 1_800_000_000_000;
 const NOW_S = NOW_MS / 1000;
 const RESOURCE_BASE = "https://pickler.fun/api";
 const principal = buildUserPrincipal({ user: { id: userId } });
+
+function paymentRow(overrides: Partial<AdvicePaymentRecord> = {}): AdvicePaymentRecord {
+  return {
+    id: "payment-0",
+    jobId: null,
+    status: "pending",
+    txHash: null,
+    payer: PAYER,
+    nonce: NONCE,
+    validBefore: String(NOW_S + 240),
+    ...overrides,
+  };
+}
 
 function fixture(options: { enabled?: boolean } = {}) {
   const calls: string[] = [];
@@ -126,16 +140,23 @@ function fixture(options: { enabled?: boolean } = {}) {
       calls.push("byKey");
       return state.record;
     },
-    insertPending: async () => {
+    insertPending: async (input) => {
       calls.push("insertPending");
-      return { id: "payment-1", jobId: null, status: "pending", txHash: null };
+      state.record = paymentRow({
+        id: "payment-1",
+        payer: input.authorization.from,
+        nonce: input.authorization.nonce,
+        validBefore: input.authorization.validBefore,
+      });
+      return state.record;
     },
     settled: async (paymentId, txHash, blockNumber) => {
       calls.push(`settled:${paymentId}:${txHash}:${blockNumber}`);
-      state.record = { id: paymentId, jobId: null, status: "settled", txHash };
+      state.record = paymentRow({ ...state.record, id: paymentId, status: "settled", txHash });
     },
     failed: async (paymentId, error) => {
       calls.push(`failed:${paymentId}:${error}`);
+      state.record = paymentRow({ ...state.record, id: paymentId, status: "failed" });
     },
     attachJob: async (paymentId, jobIdArg) => {
       calls.push(`attachJob:${paymentId}:${jobIdArg}`);
@@ -149,8 +170,8 @@ function fixture(options: { enabled?: boolean } = {}) {
       calls.push("signatureValid");
       return state.signatureValid;
     },
-    nonceUsed: async () => {
-      calls.push("nonceUsed");
+    nonceUsed: async (from, nonce) => {
+      calls.push(`nonceUsed:${from}:${nonce}`);
       return state.nonceUsed;
     },
     balance: async () => {
@@ -393,9 +414,9 @@ test("5b. recipient comparison ignores address case", async () => {
   assert.equal(result.kind, "accepted");
 });
 
-test("6. a failed settlement marks the payment failed and enqueues nothing", async () => {
+test("6. a rejected settlement marks the payment failed and enqueues nothing", async () => {
   const f = fixture();
-  f.state.settleError = new Error("reverted");
+  f.state.settleError = new SettlementRejected("reverted");
   const result = await f.paid.request(principal, id, "BTC", "key-1", header());
   refused(result, "settlement_failed");
   assert.ok(f.calls.includes("failed:payment-1:settlement_failed"));
@@ -414,7 +435,7 @@ test("7. a replayed key returns its job and never settles, even with a fresh val
 
 test("8. a settled payment without a job is enqueued without a new settlement", async () => {
   const f = fixture();
-  f.state.record = { id: "payment-0", jobId: null, status: "settled", txHash: TX };
+  f.state.record = paymentRow({ status: "settled", txHash: TX });
   const result = await f.paid.request(principal, id, "BTC", "key-1", undefined);
   assert.equal(result.kind, "accepted");
   assert.ok(!f.calls.includes("settle"));
@@ -453,20 +474,131 @@ test("9. a busy enqueue after settlement keeps the payment settled for the same 
 test("10. stored payment states for the key: in flight or owed refuse, settled with a job returns it", async () => {
   for (const status of ["pending", "refund_owed"] as const) {
     const f = fixture();
-    f.state.record = { id: "payment-0", jobId: null, status, txHash: null };
+    f.state.record = paymentRow({ status });
     const result = await f.paid.request(principal, id, "BTC", "key-1", header());
     refused(result, "invalid_payment");
     assert.ok(!f.calls.includes("settle"), status);
   }
   const failed = fixture();
-  failed.state.record = { id: "payment-0", jobId: null, status: "failed", txHash: null };
+  failed.state.record = paymentRow({ status: "failed" });
   const retried = await failed.paid.request(principal, id, "BTC", "key-1", header());
   assert.equal(retried.kind, "accepted");
   assert.equal(failed.calls.filter((call) => call === "settle").length, 1);
   const linked = fixture();
-  linked.state.record = { id: "payment-0", jobId, status: "settled", txHash: TX };
+  linked.state.record = paymentRow({ jobId, status: "settled", txHash: TX });
   const existing = await linked.paid.request(principal, id, "BTC", "key-1", header());
   assert.deepEqual(existing, { kind: "accepted", job: linked.job, settlement: null });
   assert.ok(linked.calls.includes(`get:${jobId}`));
   assert.ok(!linked.calls.includes("settle"));
+});
+
+const FRESH_NONCE = `0x${"34".repeat(32)}`;
+
+test("11a. an ambiguous settlement error leaves the payment pending and blocks a second charge", async () => {
+  const f = fixture();
+  f.state.settleError = new Error("receipt timeout");
+  const first = await f.paid.request(principal, id, "BTC", "key-1", header());
+  refused(first, "settlement_failed");
+  assert.ok(!f.calls.some((call) => call.startsWith("failed:")));
+  assert.equal(f.state.record?.status, "pending");
+  f.state.settleError = null;
+  f.calls.length = 0;
+  const second = await f.paid.request(
+    principal,
+    id,
+    "BTC",
+    "key-1",
+    header({ nonce: FRESH_NONCE }),
+  );
+  refused(second, "invalid_payment");
+  assert.ok(!f.calls.includes("settle"));
+  assert.ok(!f.calls.includes("insertPending"));
+});
+
+test("11b. a proven rejection marks the payment failed and the same key may pay once more", async () => {
+  const f = fixture();
+  f.state.settleError = new SettlementRejected("simulation reverted");
+  const first = await f.paid.request(principal, id, "BTC", "key-1", header());
+  refused(first, "settlement_failed");
+  assert.ok(f.calls.includes("failed:payment-1:settlement_failed"));
+  f.state.settleError = null;
+  f.calls.length = 0;
+  const second = await f.paid.request(
+    principal,
+    id,
+    "BTC",
+    "key-1",
+    header({ nonce: FRESH_NONCE }),
+  );
+  assert.equal(second.kind, "accepted");
+  assert.equal(f.calls.filter((call) => call === "settle").length, 1);
+});
+
+test("11c. an expired pending payment whose nonce is unused is failed and the flow continues", async () => {
+  const f = fixture();
+  f.state.record = paymentRow({ validBefore: String(NOW_S - 1) });
+  const result = await f.paid.request(
+    principal,
+    id,
+    "BTC",
+    "key-1",
+    header({ nonce: FRESH_NONCE }),
+  );
+  assert.equal(result.kind, "accepted");
+  assert.ok(f.calls.includes(`nonceUsed:${PAYER}:${NONCE}`));
+  assert.ok(f.calls.includes("failed:payment-0:expired_unsettled"));
+  assert.equal(f.calls.filter((call) => call === "settle").length, 1);
+  const used = fixture();
+  used.state.record = paymentRow({ validBefore: String(NOW_S - 1) });
+  used.state.nonceUsed = true;
+  const refusedResult = await used.paid.request(
+    principal,
+    id,
+    "BTC",
+    "key-1",
+    header({ nonce: FRESH_NONCE }),
+  );
+  refused(refusedResult, "invalid_payment");
+  assert.ok(!used.calls.includes("settle"));
+  assert.ok(!used.calls.some((call) => call.startsWith("failed:")));
+  const live = fixture();
+  live.state.record = paymentRow({ validBefore: String(NOW_S + 1) });
+  const liveResult = await live.paid.request(
+    principal,
+    id,
+    "BTC",
+    "key-1",
+    header({ nonce: FRESH_NONCE }),
+  );
+  refused(liveResult, "invalid_payment");
+  assert.ok(!live.calls.includes("settle"));
+});
+
+test("11d. a replay returns its job even while advice is disabled", async () => {
+  const f = fixture({ enabled: false });
+  f.state.replay = f.job;
+  const result = await f.paid.request(principal, id, "BTC", "key-1", header());
+  assert.deepEqual(result, { kind: "accepted", job: f.job, settlement: null });
+  assert.ok(!f.calls.includes("settle"));
+  f.state.replay = { ...f.job, symbol: "ETH" };
+  await assert.rejects(
+    f.paid.request(principal, id, "BTC", "key-1", header()),
+    (error: unknown) => error instanceof PilotError && error.code === "CONFLICT",
+  );
+});
+
+test("11e. a signature that is not 65 bytes is an invalid payment", async () => {
+  for (const signature of [`0x${"cd".repeat(64)}`, `0x${"cd".repeat(66)}`, "0xcd"]) {
+    const f = fixture();
+    const value = encode({
+      x402Version: 1,
+      scheme: "exact",
+      network: X402_NETWORK,
+      payload: { signature, authorization: authorization() },
+    });
+    const result = await f.paid.request(principal, id, "BTC", "key-1", value);
+    refused(result, "invalid_payment");
+    assert.ok(!f.calls.includes("signatureValid"), signature);
+    assert.ok(!f.calls.includes("settle"), signature);
+  }
 });
