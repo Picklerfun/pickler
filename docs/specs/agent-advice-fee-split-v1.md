@@ -69,7 +69,7 @@ A fork test on Monad testnet, gated by `MONAD_TESTNET_RPC_URL` like the existing
 - an entry in `packages/chain` (address, block, code hash), recorded the way `deployments.ts` records verified contracts;
 - the generated ABI.
 
-The repository's contract license is still the `UNLICENSED` placeholder, and `contracts/AGENTS.md` says to choose a real license before anything is deployed (§8).
+The contracts move from the `UNLICENSED` placeholder to MIT before this deployment (§8).
 
 ## 4. API changes (on top of phase 1)
 
@@ -129,9 +129,11 @@ Steps 1 and 2 can be one PR. Acceptance (x402 spec §9) gains:
 Configurable or per-agent fees, fee changes without redeploying, refunds, a creator claim/escrow
 flow (shares go straight to the wallets), and mainnet.
 
-## 8. Owner decisions needed before deployment
+## 8. Owner decisions (answered 2026-10-09)
 
-1. **Treasury address** on Monad testnet: an EOA or a multisig, and who holds it.
-2. **Contract license** to replace `UNLICENSED` (`contracts/AGENTS.md` requires one before anything is deployed).
-3. **Who deploys**, and authorization to deploy on Monad testnet. The deployer pays a little MON; the relayer key can deploy.
-4. **Bounty timing:** the deadline is 2026-10-13 21:59 CST. The contract and API need about 1.5 days, and the app about 1.5 days. Does the bounty build need the split, or can it ship 100%-to-creator with the split right after?
+1. **Treasury:** a plain EOA for now, chosen and held by the owner; a multisig later (a new
+   splitter deployment, S3). The address is a deployment parameter.
+2. **License:** MIT for Pickler's contracts, replacing the `UNLICENSED` placeholder.
+3. **Deployment on Monad testnet:** authorized by the owner. The deployer key and the treasury
+   address come from the owner's local environment; neither is committed or pasted into a chat.
+4. **Timing:** no rush; the split ships when it is ready, and phase 3 (app) is planned against it.
