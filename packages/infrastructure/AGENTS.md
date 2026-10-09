@@ -641,3 +641,10 @@ acquisition. Diagnostic v7 overrides may select the explicit stream policy witho
 source accounts or histories. No schemas, migrations, signing, or hosted transport changes.
 Stream bound errors retain their compatibility code and now carry an allowlisted dimension plus
 numeric counters. Never retain rejected message bodies or infer missing historical dimensions.
+
+The explicit universe adapter `public-universe-stream-v2` checks live ownership once per bounded
+FIFO batch and applies that batch synchronously, preserving every delta and the 32-message cap.
+Legacy readers retain per-message checks. Delivery and connection still perform fresh guards;
+cancellation closes without awaiting a stalled ownership query. Active acquisition may request
+the same subscriptions again for provider snapshots, at most once per ten seconds; it never
+advances timestamps locally. Processing counters contain only safe numeric summaries.
