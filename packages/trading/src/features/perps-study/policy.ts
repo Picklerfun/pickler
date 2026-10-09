@@ -30,7 +30,11 @@ export function assertPerpsStudyConfig(c: PerpsStudyConfig) {
       c.markets.length !== 11 ||
       (c.version === 7 &&
         c.acquisitionPolicy !== undefined &&
-        !["rest-universe-20s-v1", "rest-universe-coherent-20s-v2"].includes(c.acquisitionPolicy)) ||
+        ![
+          "rest-universe-20s-v1",
+          "rest-universe-coherent-20s-v2",
+          "stream-universe-20s-v1",
+        ].includes(c.acquisitionPolicy)) ||
       catalog.some(
         ([symbol, id]) => !c.markets.some((m) => m.symbol === symbol && m.marketId === id),
       ) ||
