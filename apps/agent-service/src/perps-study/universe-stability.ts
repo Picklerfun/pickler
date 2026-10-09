@@ -4,7 +4,11 @@ import { execFileSync } from "node:child_process";
 import { setTimeout as wait } from "node:timers/promises";
 import { localStudyDatabase } from "./database-env.js";
 import { PilotError } from "@pickler/core";
-import { PostgresResearchStore, PostgresPerpsStudyStore } from "@pickler/infrastructure";
+import {
+  PostgresResearchStore,
+  PostgresPerpsStudyStore,
+  PERPL_UNIVERSE_STREAM_VERSION,
+} from "@pickler/infrastructure";
 import { createPriorityPerplStudyData } from "@pickler/agent-runtime/plugins/perps-paper";
 import {
   assertPerpsStudyConfig,
@@ -13,10 +17,28 @@ import {
   type PerpsSmaReentryConfig,
   type LeaseDiagnostic,
 } from "@pickler/trading/evaluation";
-import { validatePaperFrame, transientPerpsData } from "@pickler/trading/perps";
+import {
+  validatePaperFrame,
+  validatePaperFrameComponents,
+  transientPerpsData,
+  validateUniverseStream,
+  universeStreamValidation,
+  UNIVERSE_COMPONENT_STREAM_POLICY,
+  type UniverseStreamBuffer,
+} from "@pickler/trading/perps";
 import { createHash } from "node:crypto";
 import { keepAwake } from "../paper-study/comparison-host.js";
 import { closeProfileResources } from "./profiles-resources.js";
+import { createStreamCapture, publicMarketCsv, PUBLIC_CAPTURE_LIMIT } from "./stream-capture.js";
+
+/** Node timer cancellation wraps the original reason; retain the admitted failure code. */
+export function captureFailureCode(failure: unknown, signal?: AbortSignal): string {
+  const cause = signal?.aborted ? signal.reason : failure;
+  if (signal?.aborted && cause instanceof DOMException && cause.name === "AbortError") {
+    return "CANCELLED";
+  }
+  return cause instanceof PilotError ? cause.code : "STABILITY_FAILED";
+}
 
 /** Capture only: fixed qualification or three diagnostic reads, never accounts or models. */
 export async function runUniverseStability(
@@ -43,10 +65,20 @@ export async function runUniverseStability(
     throw new PilotError("INVALID_INPUT", "Eleven-market v7 required");
   }
   const diagnosticOnly = input.diagnosticOnly === true;
-  if (diagnosticOnly && config.acquisitionPolicy !== "rest-universe-coherent-20s-v2") {
+  const componentStream = config.acquisitionPolicy === UNIVERSE_COMPONENT_STREAM_POLICY;
+  const streaming = config.acquisitionPolicy === "stream-universe-20s-v1" || componentStream;
+  const validateCapturedFrame = componentStream ? validatePaperFrameComponents : validatePaperFrame;
+  if (
+    diagnosticOnly &&
+    ![
+      "rest-universe-coherent-20s-v2",
+      "stream-universe-20s-v1",
+      UNIVERSE_COMPONENT_STREAM_POLICY,
+    ].includes(config.acquisitionPolicy ?? "")
+  ) {
     throw new PilotError(
       "INVALID_INPUT",
-      "Reader check requires the explicitly selected v2 reader",
+      "Reader check requires the explicitly selected coherent REST or universe stream reader",
     );
   }
   const expectedCycles = diagnosticOnly ? 3 : 30;
@@ -66,18 +98,48 @@ export async function runUniverseStability(
   const requests: unknown[] = [];
   const acquisition: unknown[] = [];
   const tickerReads: unknown[] = [];
+  const buffers: UniverseStreamBuffer[] = [];
+  const capture = streaming
+    ? await createStreamCapture(
+        output,
+        PUBLIC_CAPTURE_LIMIT,
+        config.markets.map((m) => m.marketId),
+      )
+    : undefined;
   const data = createPriorityPerplStudyData(research, {
     acquisitionPolicy: config.acquisitionPolicy ?? "rest-universe-20s-v1",
     onDiagnostic: (value) => requests.push(value),
     onAcquisition: (value) => acquisition.push(value),
     onTickerRead: (value) => tickerReads.push(value),
+    ...(streaming
+      ? {
+          onBuffer: (buffer: UniverseStreamBuffer) => {
+            buffers.splice(0, buffers.length, buffer);
+          },
+        }
+      : {}),
+    ...(capture
+      ? {
+          onStream: (event: Parameters<typeof capture.record>[0]) => {
+            capture.record(event);
+            if (event.kind === "error") {
+              controller.abort(
+                new PilotError(event.code ?? "PERPL_STREAM_MESSAGE", "Public reader stopped"),
+              );
+            }
+          },
+        }
+      : {}),
   });
   const id = `${diagnosticOnly ? "readercheck7" : "stability7"}-${new Date().toISOString().replace(/[-:.]/g, "").slice(0, 18)}`;
   let releaseAwake = () => {};
   let lease: Awaited<ReturnType<typeof study.claim>> | undefined;
   let scope: Awaited<ReturnType<typeof study.initializeDiagnostic>> | undefined;
   let heartbeat: ReturnType<typeof startLeaseHeartbeat> | undefined;
+  let operationSignal: AbortSignal | undefined;
   let released = false;
+  let readerClosed = false;
+  let isolationProof: { accounts: number; decisionRounds: number } | null = null;
   let error: string | null = null;
   const cycles: {
     slot: number;
@@ -97,6 +159,8 @@ export async function runUniverseStability(
   const startedAt = Math.floor(Date.now() / 60000) * 60000 + 60000;
   const end = startedAt + expectedCycles * intervalMs;
   const render = async () => {
+    await capture?.flush();
+    const stream = capture?.summary();
     const valid = cycles.filter((c) => c.valid).length;
     const failedOwnership =
       renewals.filter((r) => r.kind !== "renewed").length +
@@ -105,12 +169,33 @@ export async function runUniverseStability(
         ? 1
         : 0);
     const result = {
-      version: 2,
+      version: componentStream ? 4 : streaming ? 3 : 2,
       protocol: diagnosticOnly ? "perpl-reader-check-v1" : "perps-universe-stability-v1",
       qualification: diagnosticOnly ? "DIAGNOSTIC_ONLY_NOT_ACCEPTANCE" : "CAPTURE_ONLY",
       commit,
+      ...(streaming
+        ? {
+            adapterVersion: PERPL_UNIVERSE_STREAM_VERSION,
+            exporterCommit: commit,
+            diagnosticSessionId: id,
+            sourceSessionId: config.sessionId,
+            catalogHash: createHash("sha256").update(canonicalAudit(config.markets)).digest("hex"),
+            readerClosed,
+            stream,
+            reconstructionErrors:
+              stream?.errors.filter((e) => e.code.startsWith("PERPL_STREAM_")).length ?? 0,
+          }
+        : {}),
       configurationHash: createHash("sha256").update(canonicalAudit(config)).digest("hex"),
       acquisitionPolicy: config.acquisitionPolicy ?? "rest-universe-20s-v1",
+      ...(componentStream
+        ? {
+            dataValidation: universeStreamValidation(UNIVERSE_COMPONENT_STREAM_POLICY),
+            strictValidCycles: cycles.filter(
+              (c) => "strictJointValid" in c && c.strictJointValid === true,
+            ).length,
+          }
+        : {}),
       config,
       startedAt,
       endsAt: end,
@@ -122,12 +207,16 @@ export async function runUniverseStability(
       error,
       modelCalls: 0,
       modelCostUSD: "0",
+      ...(streaming ? { modelTokens: 0, modelReservationsUSD: "0", isolationProof } : {}),
       passed:
         !diagnosticOnly &&
         cycles.length === 30 &&
         valid >= 29 &&
         failedOwnership === 0 &&
         released &&
+        (!streaming ||
+          (readerClosed && stream?.socketClosed === true && stream.errors.length === 0)) &&
+        (!streaming || (isolationProof?.accounts === 0 && isolationProof.decisionRounds === 0)) &&
         error === null,
       limitation:
         "Flat public capture validates acquisition, not mandatory exits or profitability.",
@@ -164,6 +253,7 @@ export async function runUniverseStability(
     for (const [name, content] of Object.entries({
       "report.json": JSON.stringify(result, null, 2) + "\n",
       "report.csv": csv,
+      ...(streaming ? { "markets.csv": publicMarketCsv(cycles) } : {}),
       "report.html": `<!doctype html><html lang="en"><meta charset="utf-8"><title>Eleven-market reader evidence</title><body><h1>${diagnosticOnly ? "Three public reader checks; not qualification" : "Public acquisition qualification"}</h1><p>${valid}/${expectedCycles} joint valid cycles; lease released: ${released}; accepted: ${result.passed}. No trading or models.</p><pre>${JSON.stringify(result, null, 2).replaceAll("&", "&amp;").replaceAll("<", "&lt;")}</pre></body></html>`,
     })) {
       await writeFile(join(output, name + ".tmp"), content, { mode: 0o600 });
@@ -181,7 +271,7 @@ export async function runUniverseStability(
         acquisitionPolicy: config.acquisitionPolicy ?? "rest-universe-20s-v1",
         qualification: diagnosticOnly ? "DIAGNOSTIC_ONLY_NOT_ACCEPTANCE" : "CAPTURE_ONLY",
       },
-      diagnosticOnly ? config : undefined,
+      diagnosticOnly || streaming ? config : undefined,
     );
     lease = await study.claim(scope);
     heartbeat = startLeaseHeartbeat({
@@ -192,6 +282,7 @@ export async function runUniverseStability(
     });
     lease.assertActive = heartbeat.assertActive;
     const signal = AbortSignal.any([parent, controller.signal, heartbeat.signal]);
+    operationSignal = signal;
     const guard = async () => {
       signal.throwIfAborted();
       heartbeat!.assertActive();
@@ -205,6 +296,7 @@ export async function runUniverseStability(
       requests.length = 0;
       acquisition.length = 0;
       tickerReads.length = 0;
+      buffers.length = 0;
       const at = Date.now(),
         mono = performance.now();
       const missed = at - scheduledAt > (diagnosticOnly ? 5000 : 30000);
@@ -217,8 +309,27 @@ export async function runUniverseStability(
           frames = (await data.observe(record, signal, guard)).frames;
           const reference = Date.now();
           validatedAt = reference;
+          if (componentStream && frames.length) {
+            const buffer = buffers.at(-1);
+            if (
+              !buffer ||
+              validateUniverseStream({
+                network: config.network,
+                markets: config.markets,
+                buffer,
+                now: reference,
+                policy: UNIVERSE_COMPONENT_STREAM_POLICY,
+                hash: (value) => createHash("sha256").update(JSON.stringify(value)).digest("hex"),
+              }).excluded.length
+            ) {
+              throw new PilotError(
+                "DATA_UNAVAILABLE",
+                "Final stream continuity or components expired",
+              );
+            }
+          }
           for (const f of frames) {
-            validatePaperFrame(f, config.network, f.snapshot.market.symbol, reference);
+            validateCapturedFrame(f, config.network, f.snapshot.market.symbol, reference);
           }
         } catch (failure) {
           const cause = signal.aborted ? signal.reason : failure;
@@ -230,18 +341,71 @@ export async function runUniverseStability(
           }
         }
       }
+      if (!frames.length || code) {
+        validatedAt = Date.now();
+      }
       const valid = !code && frames.length === 11;
+      const observedBuffer = buffers.at(-1);
+      const componentValidation =
+        componentStream && observedBuffer
+          ? validateUniverseStream({
+              markets: config.markets,
+              network: config.network,
+              buffer: observedBuffer,
+              now: validatedAt,
+              policy: UNIVERSE_COMPONENT_STREAM_POLICY,
+              hash: (value) => createHash("sha256").update(JSON.stringify(value)).digest("hex"),
+            })
+          : undefined;
+      let evidenceFrames = frames;
+      if (streaming && !frames.length && observedBuffer) {
+        // Diagnostic evidence only: a partial in-window copy never upgrades the joint outcome.
+        evidenceFrames = validateUniverseStream({
+          markets: config.markets,
+          network: config.network,
+          buffer: observedBuffer,
+          now: validatedAt,
+          ...(componentStream ? { policy: UNIVERSE_COMPONENT_STREAM_POLICY } : {}),
+          hash: (value) => createHash("sha256").update(JSON.stringify(value)).digest("hex"),
+        }).frames;
+      }
       const markets = config.markets.map((m) => {
-        const f = frames.find((x) => x.snapshot.market.symbol === m.symbol);
+        const f = evidenceFrames.find((x) => x.snapshot.market.symbol === m.symbol);
+        const pair = observedBuffer?.components.find((c) => c.symbol === m.symbol);
+        const tickerEvidence = f?.snapshot.ticker.provenance ?? pair?.snapshot?.ticker.provenance;
+        const bookEvidence = f?.book.provenance ?? pair?.book?.provenance;
         let validMarket = false;
+        let strictValid = false;
         if (f) {
           try {
-            validatePaperFrame(f, config.network, m.symbol, validatedAt);
-            validMarket = true;
+            validateCapturedFrame(f, config.network, m.symbol, validatedAt);
+            validMarket =
+              !componentStream ||
+              componentValidation?.frames.some(
+                (frame) => frame.snapshot.market.symbol === m.symbol,
+              ) === true;
           } catch {
             // Preserve the original cycle failure; presence alone does not prove validity.
           }
+          try {
+            validatePaperFrame(f, config.network, m.symbol, validatedAt);
+            strictValid = true;
+          } catch {
+            // The legacy financial rule remains a separate diagnostic, never an upgraded pass.
+          }
         }
+        const traces = acquisition as {
+          symbol: string;
+          tickerAt: number | null;
+          bookAt: number | null;
+          skewMs: number | null;
+          code: string | null;
+          at: number;
+        }[];
+        const first = traces.find((t) => t.symbol === m.symbol);
+        const last = traces.filter((t) => t.symbol === m.symbol).at(-1);
+        const firstValid = traces.find((t) => t.symbol === m.symbol && t.code === null);
+        const component = capture?.summary().components.filter((c) => c.marketId === m.marketId);
         return {
           ...m,
           valid: validMarket,
@@ -254,6 +418,39 @@ export async function runUniverseStability(
                   f.book.provenance.providerTimestamp!,
               )
             : null,
+          ...(streaming
+            ? {
+                tickerAt: f?.snapshot.ticker.provenance.providerTimestamp ?? last?.tickerAt ?? null,
+                bookAt: f?.book.provenance.providerTimestamp ?? last?.bookAt ?? null,
+                tickerBlock: tickerEvidence?.block ?? null,
+                bookBlock: bookEvidence?.block ?? null,
+                tickerReceivedAt: tickerEvidence?.receivedAt ?? null,
+                bookReceivedAt: bookEvidence?.receivedAt ?? null,
+                tickerAgeMs:
+                  tickerEvidence?.providerTimestamp !== null &&
+                  tickerEvidence?.providerTimestamp !== undefined
+                    ? validatedAt - tickerEvidence.providerTimestamp
+                    : null,
+                bookAgeMs:
+                  bookEvidence?.providerTimestamp !== null &&
+                  bookEvidence?.providerTimestamp !== undefined
+                    ? validatedAt - bookEvidence.providerTimestamp
+                    : null,
+                initialSkewMs: first?.skewMs ?? null,
+                skewMs: f
+                  ? Math.abs(
+                      f.snapshot.ticker.provenance.providerTimestamp! -
+                        f.book.provenance.providerTimestamp!,
+                    )
+                  : (last?.skewMs ?? null),
+                firstValidMs: firstValid ? firstValid.at - at : null,
+                acquisitionMs: performance.now() - mono,
+                checks: traces.filter((t) => t.symbol === m.symbol).length,
+                componentCounters: JSON.stringify(component ?? []),
+                code: validMarket ? null : (last?.code ?? code ?? "DATA_UNAVAILABLE"),
+                ...(componentStream ? { strictValid } : {}),
+              }
+            : {}),
         };
       });
       const cycle = {
@@ -266,7 +463,23 @@ export async function runUniverseStability(
         validatedAt,
         code: code ?? (valid ? null : "DATA_UNAVAILABLE"),
         markets,
-        frames,
+        frames: evidenceFrames,
+        ...(streaming
+          ? {
+              bufferGeneration: observedBuffer?.generation ?? null,
+              bufferCopiedAt: observedBuffer?.observedAt ?? null,
+              executableJoint: componentStream ? false : valid,
+              ...(componentStream
+                ? {
+                    bufferContinuity: observedBuffer?.continuity ?? null,
+                    capturedJointValid: valid,
+                    strictJointValid:
+                      valid && markets.every((m) => "strictValid" in m && m.strictValid === true),
+                    financialExecutable: false,
+                  }
+                : {}),
+            }
+          : {}),
         requests: requests.map((value, requestId) => ({
           ...(value as object),
           cycle: `capture-${slot}`,
@@ -285,8 +498,14 @@ export async function runUniverseStability(
     await wait(Math.max(1, end - Date.now()), undefined, { signal });
     await study.complete(scope, lease);
   } catch (failure) {
-    error = failure instanceof PilotError ? failure.code : "STABILITY_FAILED";
+    error = captureFailureCode(failure, operationSignal);
   } finally {
+    try {
+      await data.close();
+      readerClosed = true;
+    } catch {
+      error ??= "READER_CLEANUP_FAILED";
+    }
     await heartbeat?.stop().catch(() => {
       error ??= "RENEWAL_CLEANUP_FAILED";
     });
@@ -303,15 +522,22 @@ export async function runUniverseStability(
           state.rows.length === 1 &&
           state.rows[0].owner === null &&
           state.rows[0].expires_at === null;
+        if (streaming) {
+          const counts = await research.pool.query(
+            `SELECT (SELECT count(*)::int FROM pickler.perps_paper_accounts WHERE tenant_id=$1 AND session_id=$2 AND network=$3) AS accounts,
+              (SELECT count(*)::int FROM pickler.perps_study_rounds r JOIN pickler.perps_studies s ON s.id=r.study_id WHERE s.tenant_id=$1 AND s.session_id=$2 AND s.network=$3) AS decision_rounds`,
+            [scope.tenantId, scope.sessionId, scope.network],
+          );
+          isolationProof = {
+            accounts: counts.rows[0].accounts,
+            decisionRounds: counts.rows[0].decision_rounds,
+          };
+        }
       } catch {
         error ??= "LEASE_RELEASE_UNVERIFIABLE";
       }
     }
-    const failures = await closeProfileResources([
-      () => data.close(),
-      () => releaseAwake(),
-      () => research.close(),
-    ]);
+    const failures = await closeProfileResources([() => releaseAwake(), () => research.close()]);
     if (failures.length) {
       error ??= "RESOURCE_CLEANUP_FAILED";
     }
@@ -326,7 +552,13 @@ export async function runUniverseStability(
         missed: true,
         durationMs: 0,
         code: "NOT_ADMITTED_AFTER_INTERRUPTION",
-        markets: config.markets.map((m) => ({ ...m, valid: false })),
+        markets: config.markets.map((m) => ({
+          ...m,
+          valid: false,
+          code: "NOT_ADMITTED_AFTER_INTERRUPTION",
+          ...(componentStream ? { strictValid: false } : {}),
+        })),
+        ...(componentStream ? { strictJointValid: false, financialExecutable: false } : {}),
         frames: [],
         requests: [],
         acquisition: [],

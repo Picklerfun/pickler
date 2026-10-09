@@ -1,5 +1,10 @@
 import { createUniversePerplReader, type UniverseAcquisitionPolicy } from "./universe.js";
-import { PerplRequestSchedule, type PerplDataOptions } from "@pickler/infrastructure";
+import {
+  PerplRequestSchedule,
+  type PerplDataOptions,
+  type PerplSocket,
+  type PerplStreamEvent,
+} from "@pickler/infrastructure";
 import {
   PilotError,
   requireTool,
@@ -20,6 +25,9 @@ export function createPriorityPerplStudyData(
   options: PerplDataOptions & {
     onAcquisition?: (e: AcquisitionDiagnostic) => void;
     acquisitionPolicy?: UniverseAcquisitionPolicy;
+    socket?: (url: string) => PerplSocket;
+    onStream?: (event: PerplStreamEvent) => void;
+    onBuffer?: (value: import("@pickler/trading/perps").UniverseStreamBuffer) => void;
     onTiming?: (e: {
       version: 1;
       cycle: string;

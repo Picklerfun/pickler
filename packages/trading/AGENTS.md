@@ -238,3 +238,26 @@ Configuration v7 (`perps-sma-reentry-latency-v1`) adds `sma-reference` and `sma-
 valid slot, direction and final hourly bar. It reads the existing fee, realized-P&L and funding
 postings; missing/duplicate postings or pending funding cannot establish a net result. These are
 actual reference positions, not hypothetical P&L for a blocked proposal or causal fee savings.
+
+## Explicit universe stream acquisition
+
+`perps-paper/stream-universe.ts` owns transport-neutral joint validation and the explicit
+`stream-universe-20s-v1` policy. All components come from a copied generation and one clock;
+no matching historical component is selected. The reader audit accepts stream capture v3 and
+emits `perpl-reader-audit-v3` while preserving older interpretations. No strategy, risk or
+financial calculation changes are part of this selector. See the local WebSocket guide in
+`apps/agent-service/PERPL-UNIVERSE-WEBSOCKET.md`.
+Stream acquisition accepts an injected bounded snapshot-refresh port after invalid evidence.
+The transport owns subscription rate limits; trading revalidates the new components under the
+same clock/deadline and never treats a refresh request as proof that a price timestamp advanced.
+
+The offline reader auditor accepts recorded universe adapter versions 1, 2 and 3. Three-read
+stream diagnostics remain explicitly `DIAGNOSTIC_ONLY_NOT_ACCEPTANCE`; admitting their offline
+analysis never makes them qualification or upgrades a recorded outcome.
+
+The separate capture-only `stream-universe-component-20s-v2` policy checks native component age
+and future bounds independently and requires advancing heartbeat continuity within five seconds.
+It records ticker/book skew without applying that gate. Financial `validatePaperFrame` and fill
+simulation retain their original skew rule. Stream report/audit v4 preserves the descriptor,
+strict-rule market/cycle counts and nonfinancial admission; reject contradictory metadata.
+Capture success never admits financial execution or changes a historical outcome.

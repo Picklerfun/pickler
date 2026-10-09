@@ -630,3 +630,35 @@ commands, one-shot execution, and report limitations. Tests never make paid prov
 ## Local SMA v7 persistence and timing
 
 The existing study/paper JSONB supports v7 with two trusted entry policies. `perps-paper-store.ts` checks persisted initial/final gates and the common final fill under the account lock, consuming a once-hourly key only with a confirmed fill. Closes retain keys; accounts without the field retain historical semantics. No migration is required. `timeEvaluationPool` measures connections, queries and transactions without logging SQL, parameters, results or credentials; it preserves PostgreSQL fences and clock semantics. Capture qualification uses a separate study diagnostic lease and does not initialize paper accounts. See [protocol guide](../../apps/agent-service/PERPS-SMA-REENTRY.md).
+
+## Eleven-market public stream
+
+The existing `PerplPublicStream` also exposes guarded `latest` buffer copies for a full universe,
+with generation checks and cloned metadata. Public events include connection generations and
+validated allowlisted messages; never capture authentication or unfiltered errors. Keep existing
+message/queue/book bounds, discard disconnected state, and reconnect only within an admitted
+acquisition. Diagnostic v7 overrides may select the explicit stream policy without changing
+source accounts or histories. No schemas, migrations, signing, or hosted transport changes.
+Stream bound errors retain their compatibility code and now carry an allowlisted dimension plus
+numeric counters. Never retain rejected message bodies or infer missing historical dimensions.
+
+The explicit universe adapter `public-universe-stream-v2` checks live ownership once per bounded
+FIFO batch and applies that batch synchronously, preserving every delta and the 32-message cap.
+Legacy readers retain per-message checks. Delivery and connection still perform fresh guards;
+cancellation closes without awaiting a stalled ownership query. Active acquisition may request
+the same subscriptions again for provider snapshots, at most once per ten seconds; it never
+advances timestamps locally. Processing counters contain only safe numeric summaries.
+
+The universe adapter `public-universe-stream-v3` reconstructs each public message
+synchronously in a private replica. It has no database-backed receive queue; all wire updates
+still pass the unchanged schema, identity, ordering, message-size and book-state bounds. Fresh
+permission/ownership guards remain mandatory before every request and buffer delivery, and the
+periodic guard closes an idle revoked reader. Replication does not admit financial writes. No
+consumer can access the live replica directly; `streams()` returns subscription names only.
+The previous guarded-batch mode remains available for historical controlled comparisons.
+
+Current universe adapter v4 retains direct reconstruction and additionally copies the last
+advancing heartbeat's sequence, head block and original local receipt. Exact duplicates never
+refresh receipt; reset discards continuity. This proof does not alter native price/book dates.
+Study diagnostics may explicitly select `stream-universe-component-20s-v2` in v7 without changing
+source accounts. Financial initialization rejects this capture-only policy before writes.

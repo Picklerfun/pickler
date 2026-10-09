@@ -58,6 +58,12 @@ export async function runSmaReentry(
   if (config.version !== 7) {
     throw new PilotError("INVALID_INPUT", "SMA profiles protocol required");
   }
+  if (config.acquisitionPolicy === "stream-universe-component-20s-v2") {
+    throw new PilotError(
+      "DIAGNOSTIC_ACQUISITION_ONLY",
+      "Experimental component stream permits capture and offline audit only",
+    );
+  }
   const url = await localStudyDatabase(resolve(input.envFile));
   const commit = execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim();
   const metadata = {

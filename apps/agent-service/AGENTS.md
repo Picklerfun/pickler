@@ -266,3 +266,46 @@ qualification, trading or models. Its protocol cannot pass the six-hour run's qu
 Preserve the failed acceptance and default v1 reader. The v2 selector, genuinely fresh bulk reads,
 cache/network diagnostics and policy persistence are covered by controlled regressions. No
 automatic acceptance repeat or strategy change is authorized by the correction.
+
+## Local universe WebSocket qualification
+
+Read [PERPL-UNIVERSE-WEBSOCKET.md](PERPL-UNIVERSE-WEBSOCKET.md) before public work with the
+explicit v7 `stream-universe-20s-v1` selector. Stability v3 uses one continuous public reader,
+independent diagnostic ownership, 30 slots, and 330 market rows. `stream-capture.ts` retains
+at most a 32 MiB contiguous validated prefix with hashes and explicit truncation. Offline
+reader-audit v3 verifies hashes and replays retained messages through pure reconstruction,
+without environment, credentials or connections. Partial evidence cannot upgrade joint validity.
+No economic run, paid call, restart, repeat, automation, merge or deployment is implicit.
+Read [the one-shot result](PERPL-UNIVERSE-WEBSOCKET-ACCEPTANCE-20261008.md): it failed after two
+valid cycles. Preserve the original generic summary and specific stream error. Post-check safe
+limit counters and cancellation fixes have controlled validation only; missing historical limit
+dimensions remain unverifiable and never authorize another public check.
+
+The operator explicitly authorized further WSS repair and verification on 2026-10-08. Keep each
+diagnostic and qualification in a new directory; preserve previous failed captures. `reader-check`
+also accepts the explicit universe stream for three diagnostic reads and cannot pass economic
+qualification. Stream v2 records processing/guard/queue counters and bounded snapshot requests.
+Only a complete passing thirty-minute stability record establishes capture acceptance. This repair
+authorization enables no trading, models, automation, merge, deployment, or economic comparison.
+
+The universe stream v3 reconstructs messages synchronously and requires fresh guards
+for buffer delivery. Its public repair qualification must preserve any failed earlier check.
+Offline reader audit supports v2/v3 adapter captures and three-read stream diagnostics without
+converting them to acceptance. No repeated subscription is considered evidence of fresh data.
+Read [the v3 repair result](PERPL-UNIVERSE-WEBSOCKET-REPAIR-20261009.md): thirty slots completed
+without transport or ownership errors, but only 17/30 joint captures were valid. Preserve that
+failed availability gate and do not infer economic readiness from technical continuity.
+
+Read [the component-policy record](PERPL-UNIVERSE-COMPONENT-POLICY-20261009.md) for the separately
+authorized 2026-10-09 capture experiment `stream-universe-component-20s-v2`. Stability/audit v4
+records its independent native freshness rule, heartbeat continuity, strict-rule counts and
+`financialExecutable: false`. Financial host commands reject it before environment loading;
+account initialization rejects it before writes. Preserve old captures and their failed gates.
+Offline candidates never count as prospective acceptance or upgrade historical outcomes.
+
+The component-policy public measurement at frozen commit `46bcca8c36d91edd0508ff05e3f6b6aedab304df`
+passed 30/30 joint cycles and 330/330 market observations; the unchanged strict rule accepts
+11/30 of the same snapshots. Independent offline/PostgreSQL proof confirmed hashes, closure,
+release and zero diagnostic accounts/decision rounds. This is capture acceptance only.
+Do not reuse it to authorize financial execution, upgrade the old 17/30 failure, or start an
+economic run. Read the component-policy record for immutable artifact paths and limitations.

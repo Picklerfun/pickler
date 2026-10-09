@@ -216,6 +216,7 @@ export {
   PerplPublicStream,
   PerplStreamState,
   PERPL_STREAM_VERSION,
+  PERPL_UNIVERSE_STREAM_VERSION,
   type PerplSocket,
   type PerplStreamEvent,
 } from "./perpl/stream.js";

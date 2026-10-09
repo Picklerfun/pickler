@@ -13,6 +13,8 @@ export type PerpsDataPolicy =
   | "coherent-20s-v1"
   | "rest-universe-20s-v1"
   | "rest-universe-coherent-20s-v2"
+  | "stream-universe-20s-v1"
+  | "stream-universe-component-20s-v2"
   | typeof PERPS_REST_PACED_POLICY
   | typeof PERPS_STREAM_POLICY;
 

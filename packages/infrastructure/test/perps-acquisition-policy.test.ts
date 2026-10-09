@@ -19,6 +19,82 @@ function config(sessionId: string): PerpsSmaReentryConfig {
   };
 }
 
+test("stream qualification has its own lease without accounts, calls or historical mutation", async (t) => {
+  const research = await createTestStore(t);
+  const store = new PostgresPerpsStudyStore(research.pool);
+  const original = config("stream-source");
+  const source = await store.initialize(original, { acquisitionPolicy: "rest-universe-20s-v1" });
+  const before = (
+    await research.pool.query("SELECT id,document FROM pickler.perps_paper_accounts ORDER BY id")
+  ).rows;
+  const selected = await store.initializeDiagnostic(
+    original,
+    "stream-diagnostic",
+    { acquisitionPolicy: "stream-universe-20s-v1" },
+    { ...original, acquisitionPolicy: "stream-universe-20s-v1" },
+  );
+  const lease = await store.claim(selected);
+  await store.guard(selected, lease);
+  await store.renew(selected, lease);
+  await store.event(selected, lease, "capture-0", "capture-cycle", { valid: true });
+  await store.release(selected, lease);
+
+  const diagnostic = await store.view(selected);
+  assert.equal(diagnostic.record.dataPolicy, "stream-universe-20s-v1");
+  assert.equal(diagnostic.rounds.length, 0);
+  assert.deepEqual(await store.view(original), source);
+  assert.deepEqual(
+    (await research.pool.query("SELECT id,document FROM pickler.perps_paper_accounts ORDER BY id"))
+      .rows,
+    before,
+  );
+  await assert.rejects(store.event(selected, lease, "late", "capture-cycle", {}), {
+    code: "LEASE_LOST",
+  });
+  await assert.rejects(
+    store.initialize(config("implicit-stream"), { acquisitionPolicy: "stream-universe-20s-v1" }),
+    { code: "INVALID_INPUT" },
+  );
+});
+test("independently fresh stream is a diagnostic-only policy and cannot create financial accounts", async (t) => {
+  const research = await createTestStore(t);
+  const store = new PostgresPerpsStudyStore(research.pool);
+  const original = config("component-source");
+  const source = await store.initialize(original, { acquisitionPolicy: "rest-universe-20s-v1" });
+  const before = (
+    await research.pool.query("SELECT id,document FROM pickler.perps_paper_accounts ORDER BY id")
+  ).rows;
+  const experimental = {
+    ...original,
+    acquisitionPolicy: "stream-universe-component-20s-v2" as const,
+  };
+  await assert.rejects(store.initialize(experimental, {}), {
+    code: "DIAGNOSTIC_ACQUISITION_ONLY",
+  });
+  const selected = await store.initializeDiagnostic(
+    original,
+    "component-diagnostic",
+    { acquisitionPolicy: experimental.acquisitionPolicy },
+    experimental,
+  );
+  const lease = await store.claim(selected);
+  await store.guard(selected, lease);
+  await store.release(selected, lease);
+  const diagnostic = await store.view(selected);
+  assert.equal(diagnostic.record.dataPolicy, experimental.acquisitionPolicy);
+  assert.equal(diagnostic.record.decisionStopReason, "DIAGNOSTIC_ONLY");
+  assert.deepEqual(diagnostic.rounds, []);
+  assert.deepEqual(await store.view(original), source);
+  assert.deepEqual(
+    (await research.pool.query("SELECT id,document FROM pickler.perps_paper_accounts ORDER BY id"))
+      .rows,
+    before,
+  );
+  await assert.rejects(store.event(selected, lease, "late", "capture-cycle", {}), {
+    code: "LEASE_LOST",
+  });
+});
+
 test("explicit v7 acquisition policy is persisted from frozen configuration and inherited by diagnostics", async (t) => {
   const research = await createTestStore(t);
   const store = new PostgresPerpsStudyStore(research.pool);
