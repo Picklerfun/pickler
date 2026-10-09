@@ -19,8 +19,11 @@ import {
 } from "@pickler/trading/evaluation";
 import {
   validatePaperFrame,
+  validatePaperFrameComponents,
   transientPerpsData,
   validateUniverseStream,
+  universeStreamValidation,
+  UNIVERSE_COMPONENT_STREAM_POLICY,
   type UniverseStreamBuffer,
 } from "@pickler/trading/perps";
 import { createHash } from "node:crypto";
@@ -62,12 +65,16 @@ export async function runUniverseStability(
     throw new PilotError("INVALID_INPUT", "Eleven-market v7 required");
   }
   const diagnosticOnly = input.diagnosticOnly === true;
-  const streaming = config.acquisitionPolicy === "stream-universe-20s-v1";
+  const componentStream = config.acquisitionPolicy === UNIVERSE_COMPONENT_STREAM_POLICY;
+  const streaming = config.acquisitionPolicy === "stream-universe-20s-v1" || componentStream;
+  const validateCapturedFrame = componentStream ? validatePaperFrameComponents : validatePaperFrame;
   if (
     diagnosticOnly &&
-    !["rest-universe-coherent-20s-v2", "stream-universe-20s-v1"].includes(
-      config.acquisitionPolicy ?? "",
-    )
+    ![
+      "rest-universe-coherent-20s-v2",
+      "stream-universe-20s-v1",
+      UNIVERSE_COMPONENT_STREAM_POLICY,
+    ].includes(config.acquisitionPolicy ?? "")
   ) {
     throw new PilotError(
       "INVALID_INPUT",
@@ -162,7 +169,7 @@ export async function runUniverseStability(
         ? 1
         : 0);
     const result = {
-      version: streaming ? 3 : 2,
+      version: componentStream ? 4 : streaming ? 3 : 2,
       protocol: diagnosticOnly ? "perpl-reader-check-v1" : "perps-universe-stability-v1",
       qualification: diagnosticOnly ? "DIAGNOSTIC_ONLY_NOT_ACCEPTANCE" : "CAPTURE_ONLY",
       commit,
@@ -181,6 +188,14 @@ export async function runUniverseStability(
         : {}),
       configurationHash: createHash("sha256").update(canonicalAudit(config)).digest("hex"),
       acquisitionPolicy: config.acquisitionPolicy ?? "rest-universe-20s-v1",
+      ...(componentStream
+        ? {
+            dataValidation: universeStreamValidation(UNIVERSE_COMPONENT_STREAM_POLICY),
+            strictValidCycles: cycles.filter(
+              (c) => "strictJointValid" in c && c.strictJointValid === true,
+            ).length,
+          }
+        : {}),
       config,
       startedAt,
       endsAt: end,
@@ -294,8 +309,27 @@ export async function runUniverseStability(
           frames = (await data.observe(record, signal, guard)).frames;
           const reference = Date.now();
           validatedAt = reference;
+          if (componentStream && frames.length) {
+            const buffer = buffers.at(-1);
+            if (
+              !buffer ||
+              validateUniverseStream({
+                network: config.network,
+                markets: config.markets,
+                buffer,
+                now: reference,
+                policy: UNIVERSE_COMPONENT_STREAM_POLICY,
+                hash: (value) => createHash("sha256").update(JSON.stringify(value)).digest("hex"),
+              }).excluded.length
+            ) {
+              throw new PilotError(
+                "DATA_UNAVAILABLE",
+                "Final stream continuity or components expired",
+              );
+            }
+          }
           for (const f of frames) {
-            validatePaperFrame(f, config.network, f.snapshot.market.symbol, reference);
+            validateCapturedFrame(f, config.network, f.snapshot.market.symbol, reference);
           }
         } catch (failure) {
           const cause = signal.aborted ? signal.reason : failure;
@@ -307,8 +341,22 @@ export async function runUniverseStability(
           }
         }
       }
+      if (!frames.length || code) {
+        validatedAt = Date.now();
+      }
       const valid = !code && frames.length === 11;
       const observedBuffer = buffers.at(-1);
+      const componentValidation =
+        componentStream && observedBuffer
+          ? validateUniverseStream({
+              markets: config.markets,
+              network: config.network,
+              buffer: observedBuffer,
+              now: validatedAt,
+              policy: UNIVERSE_COMPONENT_STREAM_POLICY,
+              hash: (value) => createHash("sha256").update(JSON.stringify(value)).digest("hex"),
+            })
+          : undefined;
       let evidenceFrames = frames;
       if (streaming && !frames.length && observedBuffer) {
         // Diagnostic evidence only: a partial in-window copy never upgrades the joint outcome.
@@ -317,18 +365,33 @@ export async function runUniverseStability(
           network: config.network,
           buffer: observedBuffer,
           now: validatedAt,
+          ...(componentStream ? { policy: UNIVERSE_COMPONENT_STREAM_POLICY } : {}),
           hash: (value) => createHash("sha256").update(JSON.stringify(value)).digest("hex"),
         }).frames;
       }
       const markets = config.markets.map((m) => {
         const f = evidenceFrames.find((x) => x.snapshot.market.symbol === m.symbol);
+        const pair = observedBuffer?.components.find((c) => c.symbol === m.symbol);
+        const tickerEvidence = f?.snapshot.ticker.provenance ?? pair?.snapshot?.ticker.provenance;
+        const bookEvidence = f?.book.provenance ?? pair?.book?.provenance;
         let validMarket = false;
+        let strictValid = false;
         if (f) {
           try {
-            validatePaperFrame(f, config.network, m.symbol, validatedAt);
-            validMarket = true;
+            validateCapturedFrame(f, config.network, m.symbol, validatedAt);
+            validMarket =
+              !componentStream ||
+              componentValidation?.frames.some(
+                (frame) => frame.snapshot.market.symbol === m.symbol,
+              ) === true;
           } catch {
             // Preserve the original cycle failure; presence alone does not prove validity.
+          }
+          try {
+            validatePaperFrame(f, config.network, m.symbol, validatedAt);
+            strictValid = true;
+          } catch {
+            // The legacy financial rule remains a separate diagnostic, never an upgraded pass.
           }
         }
         const traces = acquisition as {
@@ -359,14 +422,20 @@ export async function runUniverseStability(
             ? {
                 tickerAt: f?.snapshot.ticker.provenance.providerTimestamp ?? last?.tickerAt ?? null,
                 bookAt: f?.book.provenance.providerTimestamp ?? last?.bookAt ?? null,
-                tickerBlock: f?.snapshot.ticker.provenance.block ?? null,
-                bookBlock: f?.book.provenance.block ?? null,
-                tickerReceivedAt: f?.snapshot.ticker.provenance.receivedAt ?? null,
-                bookReceivedAt: f?.book.provenance.receivedAt ?? null,
-                tickerAgeMs: f
-                  ? validatedAt - f.snapshot.ticker.provenance.providerTimestamp!
-                  : null,
-                bookAgeMs: f ? validatedAt - f.book.provenance.providerTimestamp! : null,
+                tickerBlock: tickerEvidence?.block ?? null,
+                bookBlock: bookEvidence?.block ?? null,
+                tickerReceivedAt: tickerEvidence?.receivedAt ?? null,
+                bookReceivedAt: bookEvidence?.receivedAt ?? null,
+                tickerAgeMs:
+                  tickerEvidence?.providerTimestamp !== null &&
+                  tickerEvidence?.providerTimestamp !== undefined
+                    ? validatedAt - tickerEvidence.providerTimestamp
+                    : null,
+                bookAgeMs:
+                  bookEvidence?.providerTimestamp !== null &&
+                  bookEvidence?.providerTimestamp !== undefined
+                    ? validatedAt - bookEvidence.providerTimestamp
+                    : null,
                 initialSkewMs: first?.skewMs ?? null,
                 skewMs: f
                   ? Math.abs(
@@ -379,6 +448,7 @@ export async function runUniverseStability(
                 checks: traces.filter((t) => t.symbol === m.symbol).length,
                 componentCounters: JSON.stringify(component ?? []),
                 code: validMarket ? null : (last?.code ?? code ?? "DATA_UNAVAILABLE"),
+                ...(componentStream ? { strictValid } : {}),
               }
             : {}),
         };
@@ -398,7 +468,16 @@ export async function runUniverseStability(
           ? {
               bufferGeneration: observedBuffer?.generation ?? null,
               bufferCopiedAt: observedBuffer?.observedAt ?? null,
-              executableJoint: valid,
+              executableJoint: componentStream ? false : valid,
+              ...(componentStream
+                ? {
+                    bufferContinuity: observedBuffer?.continuity ?? null,
+                    capturedJointValid: valid,
+                    strictJointValid:
+                      valid && markets.every((m) => "strictValid" in m && m.strictValid === true),
+                    financialExecutable: false,
+                  }
+                : {}),
             }
           : {}),
         requests: requests.map((value, requestId) => ({
@@ -477,7 +556,9 @@ export async function runUniverseStability(
           ...m,
           valid: false,
           code: "NOT_ADMITTED_AFTER_INTERRUPTION",
+          ...(componentStream ? { strictValid: false } : {}),
         })),
+        ...(componentStream ? { strictJointValid: false, financialExecutable: false } : {}),
         frames: [],
         requests: [],
         acquisition: [],
