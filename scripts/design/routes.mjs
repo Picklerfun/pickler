@@ -40,6 +40,51 @@
 import { only } from "./lib/only.mjs";
 
 const ALL = [
+  {
+    path: "/studio?stage=perpl-token-empty",
+    name: "studio-token-empty",
+    product: "studio",
+    surface: "dark",
+    task: "Agent token preview",
+    proves: "#live-section-token input",
+  },
+  {
+    path: "/studio?stage=perpl-token-launched",
+    name: "studio-token-launched",
+    product: "studio",
+    surface: "dark",
+    task: "Agent token preview",
+    proves: "#live-section-token [data-token-state=launched]",
+  },
+  {
+    path: "/studio/agents/preview-live/token?stage=perpl-token-empty",
+    name: "studio-token-review",
+    product: "studio",
+    surface: "dark",
+    task: "Agent token preview",
+    proves: "#live-section-token",
+    act: {
+      click: "button:text-is('Review launch')",
+      proves: "section[aria-label='Review token launch']",
+    },
+  },
+  {
+    path: "/studio/agents/preview-draft/token?stage=draft",
+    name: "studio-token-private",
+    product: "studio",
+    surface: "dark",
+    task: "Agent token preview",
+    proves: "#draft-section-token",
+  },
+  ...["empty", "launched"].map((state) => ({
+    path: `/agents/halftime?stage=token-${state}`,
+    name: `public-agent-token-${state}`,
+    product: "marketplace",
+    surface: "light",
+    task: "Agent token preview",
+    proves: `[data-token-state=${state}]`,
+  })),
+
   ...["brief", "skills", "console", "identity"].map((section) => ({
     path: `/studio/agents/preview-draft/${section}?stage=draft`,
     name: `studio-route-draft-${section}`,
@@ -162,7 +207,7 @@ const ALL = [
     // would report green for any profile; the token link says it is Halftime's, which is the
     // /signin-and-/signup lesson one prop smaller — the persona page is one component for nine
     // agents, so a selector that proves only the composition proves nothing about the data.
-    proves: 'main:has(a[href="/tokens/half"]) #panel-activity',
+    proves: 'main:has([aria-label="Agent token"]) #panel-activity',
   },
   {
     path: "/agents/halftime/ask",
