@@ -353,12 +353,15 @@ export class PerplMarketData implements PerpMarketData {
     const { wire, info: market } = this.market(network, symbol, context);
     let response: PerplPublicResponse;
     let parsed: z.infer<typeof tickerSchema>;
+    let source: "network" | "cache" = "network";
     if (this.universe) {
       await ctx.guard();
       if (!this.bulkTicker || this.transport.now() - this.bulkTicker.response.receivedAt >= 3000) {
         response = await this.transport.get(network, "/v1/market-data/ticker", ctx);
         parsed = this.parse(response, tickerSchema);
         this.bulkTicker = { response, parsed };
+      } else {
+        source = "cache";
       }
       ({ response, parsed } = this.bulkTicker);
       await ctx.guard();
@@ -377,6 +380,85 @@ export class PerplMarketData implements PerpMarketData {
       }
     }
     const state = parsed.d[String(market.marketId)]!;
+    const result = this.snapshotFromTicker(market, wire, context, response, state);
+    await ctx.guard();
+    ctx.signal.throwIfAborted();
+    this.options.onTickerRead?.({
+      version: 1,
+      source,
+      batch: false,
+      receivedAt: response.receivedAt,
+      requestedSymbols: [symbol],
+      symbols: [
+        {
+          symbol,
+          marketId: market.marketId,
+          providerTimestamp: state.at.t ?? null,
+          block: state.at.b ?? null,
+        },
+      ],
+    });
+    return result;
+  }
+  /** Private universe acquisition v2: each invocation obtains one fresh bulk response. */
+  async snapshotBatch(
+    network: PerpNetwork,
+    symbols: readonly PerpSymbol[],
+    ctx: PerpReadContext,
+  ): Promise<PerpSnapshot[]> {
+    if (!this.universe || symbols.length === 0 || new Set(symbols).size !== symbols.length) {
+      throw new PilotError("INVALID_INPUT", "A batch requires distinct universe markets");
+    }
+    const context = await this.context(network, ctx);
+    const markets = symbols.map((symbol) => this.market(network, symbol, context));
+    await ctx.guard();
+    ctx.signal.throwIfAborted();
+
+    const response = await this.transport.get(network, "/v1/market-data/ticker", ctx);
+    const parsed = this.parse(response, tickerSchema);
+    await ctx.guard();
+    ctx.signal.throwIfAborted();
+
+    const result: PerpSnapshot[] = [];
+    for (const { wire, info: market } of markets) {
+      if (!Object.hasOwn(parsed.d, market.marketId)) {
+        continue;
+      }
+      result.push(
+        this.snapshotFromTicker(
+          market,
+          wire,
+          context,
+          response,
+          parsed.d[String(market.marketId)]!,
+        ),
+      );
+    }
+    await ctx.guard();
+    ctx.signal.throwIfAborted();
+    this.options.onTickerRead?.({
+      version: 1,
+      source: "network",
+      batch: true,
+      receivedAt: response.receivedAt,
+      requestedSymbols: [...symbols],
+      symbols: result.map(({ market, ticker }) => ({
+        symbol: market.symbol,
+        marketId: market.marketId,
+        providerTimestamp: ticker.provenance.providerTimestamp,
+        block: ticker.provenance.block,
+      })),
+    });
+    return result;
+  }
+  private snapshotFromTicker(
+    market: PerpMarketInfo,
+    wire: WireMarket,
+    context: ContextSnapshot,
+    response: PerplPublicResponse,
+    state: z.infer<typeof tickerSchema>["d"][string],
+  ): PerpSnapshot {
+    const network = market.provenance.network;
     const funding = wire.funding;
     return {
       market,
