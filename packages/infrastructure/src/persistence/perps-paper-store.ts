@@ -5,7 +5,7 @@ import {
   type SmaReentryVariant,
   type PerpsEvidence,
 } from "@pickler/trading/evaluation";
-import { randomUUID } from "node:crypto";
+import { randomUUID, createHash } from "node:crypto";
 import type { Pool, PoolClient } from "pg";
 import { PilotError, type AgentRecord } from "@pickler/core";
 import { assertPerpsHourlyReady } from "./perps-hourly-readiness.js";
@@ -29,6 +29,7 @@ import {
   proposalRefusal,
   utcDayStart,
   simulatePerpsFill,
+  COMPONENT_PAPER_POLICY,
   type PerpsDuePosition,
   type PerpsPaperCloseReason,
   type PerpsPaperExits,
@@ -197,11 +198,14 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
     if (!row) {
       throw new PilotError("NOT_FOUND", "Paper account not found");
     }
+    await this.checkDataPolicy(client, scope, row.document);
     const now = await this.now(client);
-    await client.query(
-      `UPDATE pickler.perps_paper_attempts SET document = document || jsonb_build_object('status','interrupted','reserved','0','reason','LEASE_EXPIRED','finishedAt',$2::bigint), owner=null, expires_at=null WHERE account_id=$1 AND owner IS NOT NULL AND expires_at <= $2`,
-      [row.id, now],
-    );
+    if (row.document.marketDataPolicy !== COMPONENT_PAPER_POLICY || this.studyOwner) {
+      await client.query(
+        `UPDATE pickler.perps_paper_attempts SET document = document || jsonb_build_object('status','interrupted','reserved','0','reason','LEASE_EXPIRED','finishedAt',$2::bigint), owner=null, expires_at=null WHERE account_id=$1 AND owner IS NOT NULL AND expires_at <= $2`,
+        [row.id, now],
+      );
+    }
     const attempts = await client.query<{ document: PerpsPaperAttempt }>(
       "SELECT document FROM pickler.perps_paper_attempts WHERE account_id=$1 ORDER BY key",
       [row.id],
@@ -221,9 +225,50 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
       },
     };
   }
+  private async checkDataPolicy(
+    client: PoolClient,
+    scope: PerpsPaperScope,
+    account: PerpsPaperAccount,
+    requireOwner = false,
+  ) {
+    const result = await client.query<{
+      document: import("@pickler/trading/evaluation").PerpsStudyRecord;
+    }>(
+      "SELECT document FROM pickler.perps_studies WHERE tenant_id=$1 AND session_id=$2 AND network=$3",
+      [scope.tenantId, scope.sessionId, scope.network],
+    );
+    const record = result.rows[0]?.document;
+    const expected =
+      record?.config.version === 7 && record.config.acquisitionPolicy === COMPONENT_PAPER_POLICY
+        ? COMPONENT_PAPER_POLICY
+        : undefined;
+    if (
+      account.marketDataPolicy !== expected ||
+      (expected &&
+        (!Object.values(record!.agentIds).includes(scope.agentId) ||
+          record!.dataPolicy !== expected ||
+          isProductPaperSession(scope)))
+    ) {
+      throw new PilotError("CONFIG_CHANGED", "Trusted account market-data policy changed");
+    }
+    if (
+      expected &&
+      requireOwner &&
+      (!this.studyOwner ||
+        this.studyOwner.tenantId !== scope.tenantId ||
+        this.studyOwner.sessionId !== scope.sessionId ||
+        this.studyOwner.network !== scope.network)
+    ) {
+      throw new PilotError(
+        "LEASE_LOST",
+        "Component-policy financial writes require their study owner",
+      );
+    }
+  }
   async closeAdmissions(scope: PerpsPaperScope) {
     await this.transaction(async (client) => {
       const locked = await this.lock(client, scope);
+      await this.checkDataPolicy(client, scope, locked.view.account, true);
       assertPerpsPaperAgent(locked.agent, scope, locked.view.account.agentVersion);
       locked.view.account.admissionsClosed = true;
       await client.query("UPDATE pickler.perps_paper_accounts SET document=$2 WHERE id=$1", [
@@ -248,6 +293,7 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
     }
     return this.transaction(async (client) => {
       const locked = await this.lock(client, scope);
+      await this.checkDataPolicy(client, scope, locked.view.account, true);
       const old = await client.query<{ result: PerpsPaperView }>(
         "SELECT result FROM pickler.perps_paper_observations WHERE account_id=$1 AND key=$2",
         [locked.id, key],
@@ -336,6 +382,9 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
         )?.[0] as SmaReentryVariant;
         account.entryPolicy = SMA_ENTRY_POLICIES[variant];
         account.consumedEntryKeys = [];
+        if (record.config.acquisitionPolicy === COMPONENT_PAPER_POLICY) {
+          account.marketDataPolicy = COMPONENT_PAPER_POLICY;
+        }
       }
       const id = randomUUID();
       const inserted = await client.query(
@@ -378,6 +427,7 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
     scope: PerpsPaperScope,
     intent: PerpsPaperIntent,
   ) {
+    await this.checkDataPolicy(client, scope, locked.view.account, true);
     const study = await client.query<{
       document: import("@pickler/trading/evaluation").PerpsStudyRecord;
     }>(
@@ -600,6 +650,7 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
   }
   private async owned(client: PoolClient, scope: PerpsPaperScope, lease: PerpsPaperLease) {
     const locked = await this.lock(client, scope);
+    await this.checkDataPolicy(client, scope, locked.view.account, true);
     const result = await client.query(
       "SELECT owner,expires_at FROM pickler.perps_paper_attempts WHERE account_id=$1 AND key=$2",
       [locked.id, lease.key],
@@ -675,6 +726,29 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
     return this.transaction(async (client) => {
       const locked = await this.owned(client, scope, lease);
       await this.allowed(client, locked, scope, locked.attempt.intent);
+      if (locked.view.account.marketDataPolicy === COMPONENT_PAPER_POLICY) {
+        const frame = (fill.evidence as { frame?: PerpsPaperFrame } | null)?.frame;
+        if (!frame) {
+          throw new PilotError("INVALID_MARKET_DATA", "A component-policy fill requires its frame");
+        }
+        const digest = createHash("sha256")
+          .update(
+            JSON.stringify({
+              snapshot: frame.snapshot,
+              book: frame.book,
+              streamEvidence: frame.streamEvidence,
+            }),
+          )
+          .digest("hex");
+        if (
+          digest !== frame.hash ||
+          canonicalAudit(
+            simulatePerpsFill(locked.view.account, locked.attempt.intent, frame, locked.now),
+          ) !== canonicalAudit(fill)
+        ) {
+          throw new PilotError("INVALID_MARKET_DATA", "Component-policy fill evidence changed");
+        }
+      }
       const risk = paperRisk(
         locked.view.account,
         locked.view.attempts.filter((a) => a.key !== lease.key),
