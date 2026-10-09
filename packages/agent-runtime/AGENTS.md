@@ -258,3 +258,9 @@ Universe stream v3 uses synchronous public reconstruction with guarded consumer 
 Repeated subscriptions were observed to acknowledge existing streams without fresh snapshots;
 the runtime no longer issues them as an acquisition recovery mechanism. Native dates and all
 freshness/deadline controls remain unchanged.
+
+The explicit capture-only selector `stream-universe-component-20s-v2` composes adapter v4 and
+passes trading's policy through both acquisition and latest-buffer validation. It requires
+original native dates plus separately copied heartbeat continuity; no local freshness substitution
+is allowed. Financial hosts and account initialization reject this selector. Observation/final
+reader sharing remains available for controlled integration tests, not authorized financial use.
