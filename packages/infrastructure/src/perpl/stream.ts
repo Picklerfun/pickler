@@ -12,7 +12,7 @@ import { abortable } from "./transport.js";
 import type { UniverseStreamBuffer } from "@pickler/trading/perps";
 
 export const PERPL_STREAM_VERSION = "public-stream-v1";
-export const PERPL_UNIVERSE_STREAM_VERSION = "public-universe-stream-v1";
+export const PERPL_UNIVERSE_STREAM_VERSION = "public-universe-stream-v2";
 const level = z.object({ p: uint.positive(), s: uint, o: uint });
 const bookMessage = z.object({
   mt: z.union([z.literal(15), z.literal(16)]),
@@ -40,7 +40,8 @@ const heartbeat = z.object({ mt: z.literal(100), sn: uint, h: uint });
 type Book = z.infer<typeof bookMessage>;
 type State = z.infer<typeof tickerSchema>["d"][string];
 export interface PerplStreamEvent {
-  kind: "message" | "disconnected" | "connected" | "closed" | "catalog" | "error";
+  kind:
+    "message" | "disconnected" | "connected" | "closed" | "catalog" | "error" | "snapshot-request";
   receivedAt: number;
   generation?: number;
   code?: string;
@@ -50,6 +51,17 @@ export interface PerplStreamEvent {
     maximum?: number;
   };
   publicMessage?: unknown;
+  processing?: {
+    mode: "per-message" | "guarded-batches";
+    receivedMessages: number;
+    processedMessages: number;
+    guardChecks: number;
+    guardDurationMs: number;
+    maxGuardDurationMs: number;
+    queuePeak: number;
+    subscriptionRequests: number;
+    snapshotRefreshes: number;
+  };
 }
 function fail(code: string): never {
   throw new PilotError(code, "Public Perpl stream rejected");
@@ -352,6 +364,21 @@ export class PerplPublicStream {
   private timer: ReturnType<typeof setInterval>;
   private checking = false;
   private closing: Promise<void> | undefined;
+  private shutdown = new AbortController();
+  private batch: { data: string; receivedAt: number; generation: number; socket: PerplSocket }[] =
+    [];
+  private draining = false;
+  private subscriptionStarts: number[] = [];
+  private processing = {
+    receivedMessages: 0,
+    processedMessages: 0,
+    guardChecks: 0,
+    guardDurationMs: 0,
+    maxGuardDurationMs: 0,
+    queuePeak: 0,
+    subscriptionRequests: 0,
+    snapshotRefreshes: 0,
+  };
   constructor(
     private readonly options: {
       markets: PerpMarketInfo[];
@@ -360,6 +387,9 @@ export class PerplPublicStream {
       now?: () => number;
       socket?: (url: string) => PerplSocket;
       event?: (event: PerplStreamEvent) => void;
+      /** One live ownership check per FIFO batch; no permission cache and no skipped updates. */
+      messageProcessing?: "guarded-batches";
+      monotonic?: () => number;
     },
   ) {
     const first = options.markets[0];
@@ -391,14 +421,126 @@ export class PerplPublicStream {
     return this.options.now?.() ?? Date.now();
   }
   private emit(event: PerplStreamEvent) {
-    this.options.event?.({ ...event, generation: this.generation });
+    this.options.event?.({
+      ...event,
+      generation: this.generation,
+      ...(event.kind !== "message"
+        ? {
+            processing: {
+              mode: this.options.messageProcessing ?? "per-message",
+              ...this.processing,
+            },
+          }
+        : {}),
+    });
   }
   private async guard() {
     this.options.signal.throwIfAborted();
-    await this.options.guard();
+    this.shutdown.signal.throwIfAborted();
+    const start = this.options.monotonic?.() ?? performance.now();
+    this.processing.guardChecks++;
+    try {
+      await abortable(
+        this.options.guard(),
+        AbortSignal.any([this.options.signal, this.shutdown.signal]),
+      );
+    } catch (error) {
+      if (!this.stopped && !this.options.signal.aborted) {
+        this.stopError(error);
+      }
+      throw error;
+    } finally {
+      const duration = (this.options.monotonic?.() ?? performance.now()) - start;
+      this.processing.guardDurationMs += duration;
+      this.processing.maxGuardDurationMs = Math.max(this.processing.maxGuardDurationMs, duration);
+    }
+    this.options.signal.throwIfAborted();
     if (this.stopped) {
       throw this.fatal ?? new PilotError("PERPL_STREAM_CLOSED", "Reader closed");
     }
+  }
+  private apply(message: {
+    data: string;
+    receivedAt: number;
+    generation: number;
+    socket: PerplSocket;
+  }) {
+    this.options.signal.throwIfAborted();
+    this.shutdown.signal.throwIfAborted();
+    if (message.generation !== this.generation || message.socket.readyState !== 1) {
+      return;
+    }
+    const publicMessage = this.state.apply(JSON.parse(message.data), message.receivedAt);
+    this.processing.processedMessages++;
+    this.emit({ kind: "message", receivedAt: message.receivedAt, publicMessage });
+  }
+  private drain() {
+    if (this.draining) {
+      return;
+    }
+    this.draining = true;
+    this.tail = (async () => {
+      while (this.batch.length && !this.stopped) {
+        await this.guard();
+        // No await between these updates: one checked generation, exact FIFO wire order.
+        // Database latency is paid per bounded batch, never once for every book delta.
+        const messages = this.batch.splice(0);
+        for (const message of messages) {
+          try {
+            this.apply(message);
+          } finally {
+            this.queued--;
+          }
+        }
+      }
+    })()
+      .catch((error) => this.stopError(error))
+      .finally(() => {
+        this.draining = false;
+        if (this.batch.length && !this.stopped) {
+          this.drain();
+        }
+      });
+  }
+  private async subscribe(socket: PerplSocket, signal: AbortSignal, refresh: boolean) {
+    signal.throwIfAborted();
+    const now = this.now();
+    this.subscriptionStarts = this.subscriptionStarts.filter((at) => now - at < 60000);
+    // Repeated snapshot requests are bounded to six per minute, below Perpl's ten-request cap.
+    if (
+      refresh &&
+      (this.subscriptionStarts.length >= 10 ||
+        now - (this.subscriptionStarts.at(-1) ?? -Infinity) < 10000)
+    ) {
+      return;
+    }
+    await this.guard();
+    signal.throwIfAborted();
+    if (refresh && this.now() - (this.subscriptionStarts.at(-1) ?? -Infinity) < 10000) {
+      return;
+    }
+    if (socket !== this.socket || socket.readyState !== 1) {
+      fail("DATA_UNAVAILABLE");
+    }
+    socket.send(
+      JSON.stringify({
+        mt: 5,
+        subs: this.state.streams().map((stream) => ({ stream, subscribe: true })),
+      }),
+    );
+    this.subscriptionStarts.push(this.now());
+    this.processing.subscriptionRequests++;
+    if (refresh) {
+      this.processing.snapshotRefreshes++;
+      this.emit({ kind: "snapshot-request", receivedAt: this.now() });
+    }
+  }
+  /** An active acquisition may request fresh provider snapshots; never rewrite component dates. */
+  async requestSnapshots(signal: AbortSignal) {
+    if (this.options.messageProcessing !== "guarded-batches" || !this.socket) {
+      return;
+    }
+    await this.subscribe(this.socket, signal, true);
   }
   private stopError(error: unknown, limit?: PerplStreamEvent["limit"]) {
     if (this.stopped) {
@@ -442,6 +584,7 @@ export class PerplPublicStream {
     }
     this.attempts.push(this.now());
     this.state.reset();
+    this.subscriptionStarts = [];
     const generation = ++this.generation;
     const socket = (this.options.socket ?? ((url) => new WebSocket(url)))(this.state.url);
     this.socket = socket;
@@ -494,17 +637,19 @@ export class PerplPublicStream {
         return;
       }
       this.queued++;
+      this.processing.receivedMessages++;
+      this.processing.queuePeak = Math.max(this.processing.queuePeak, this.queued);
       const receivedAt = this.now();
+      const message = { data: event.data, receivedAt, generation, socket };
+      if (this.options.messageProcessing === "guarded-batches") {
+        this.batch.push(message);
+        this.drain();
+        return;
+      }
       this.tail = this.tail
         .then(async () => {
           await this.guard();
-          if (generation !== this.generation || socket.readyState !== 1) {
-            return;
-          }
-          const raw = JSON.parse(event.data as string);
-          // Only validated public-data message types can enter captures.
-          const publicMessage = this.state.apply(raw, receivedAt);
-          this.emit({ kind: "message", receivedAt, publicMessage });
+          this.apply(message);
         })
         .catch((error) => this.stopError(error))
         .finally(() => {
@@ -515,12 +660,7 @@ export class PerplPublicStream {
       await abortable(opened, signal);
       await this.guard();
       signal.throwIfAborted();
-      socket.send(
-        JSON.stringify({
-          mt: 5,
-          subs: this.state.streams().map((stream) => ({ stream, subscribe: true })),
-        }),
-      );
+      await this.subscribe(socket, signal, false);
       this.emit({ kind: "connected", receivedAt: this.now() });
     } catch (error) {
       socket.close();
@@ -562,6 +702,9 @@ export class PerplPublicStream {
       return this.closing;
     }
     this.stopped = true;
+    this.shutdown.abort(this.fatal ?? new PilotError("PERPL_STREAM_CLOSED", "Reader closed"));
+    this.queued -= this.batch.length;
+    this.batch.length = 0;
     clearInterval(this.timer);
     this.generation++;
     this.state.reset();
