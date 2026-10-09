@@ -73,6 +73,9 @@ that a day's limit is not below one call's. `limitsUpdateSchema` is the strict b
 limits keeps the configuration version.
 `advicePriceUpdateSchema` (`{ priceAusd: string | null }`) and `advicePriceResponseSchema` are the
 body and answer of `PUT /v1/studio/agents/:id/advice-price`.
+`studioAgentSchema` also carries `advicePrice` (the same nullable `{ amount, asset, decimals }`), so the
+live Studio can show the agent's current price; this supersedes phase 1's Ruling 4, which kept it
+out of the Studio agent DTO.
 
 Setup and versions (docs/specs/studio-live-v1.md L10–L13): `src/research.ts` has `RISK_BOUNDS`, a
 mirror of core's pinned by `workers/api/test/accent-venue-mirror.test.ts`, and `riskLimitsSchema`

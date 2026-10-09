@@ -101,6 +101,7 @@ function app({
         visibility: agent.draft ? ("private" as const) : ("public" as const),
         publishedAt: agent.draft ? null : new Date("2026-09-01T00:00:00Z"),
         xHandle: null,
+        advicePriceMicro: null,
         scope: { tenantId: "trusted", agentId: agent.id },
       })),
     createDraft: async (_access, _user, input, admit) => {

@@ -146,6 +146,7 @@ function agent(xHandle: string | null): Agent {
     paused: false,
     scheduleEnabled: false,
     nextDueAt: null,
+    advicePrice: null,
     wallet: { walletId: WALLET_ID, address: ADDRESS, balanceAusd: 10 },
     canSchedule: { ok: false, reason: "first_run" },
     // A lone funded draft: nothing is unfunded, and the drafts are below their limit.

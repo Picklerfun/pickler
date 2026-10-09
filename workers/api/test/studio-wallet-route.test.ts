@@ -96,6 +96,7 @@ function fixture({
         visibility: drafts.includes(id) ? ("private" as const) : ("public" as const),
         publishedAt: drafts.includes(id) ? null : new Date("2026-09-01T00:00:00Z"),
         xHandle: null,
+        advicePriceMicro: null,
         scope: scope(id),
       })),
     runs: async () => [],

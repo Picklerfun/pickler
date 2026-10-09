@@ -245,6 +245,7 @@ export function studioPreview(now: number, search = ""): PreviewState | null {
       paused: false,
       scheduleEnabled: true,
       nextDueAt: now + 134 * MINUTE,
+      advicePrice: null,
       wallet: {
         walletId: "preview-wallet",
         address: "0x7a3f5c1e9b2d4a6f8e0c3b5d7f9a1c2e4b6d91c2",

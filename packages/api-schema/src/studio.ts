@@ -37,6 +37,12 @@ export const studioAgentWalletSchema = z.object({
   balanceAusd: z.number(),
 });
 
+export const advicePriceResponseSchema = z.object({
+  advicePrice: z
+    .object({ amount: z.string(), asset: z.literal("AUSD"), decimals: z.literal(6) })
+    .nullable(),
+});
+
 export const studioAgentSchema = agentResponseSchema.extend({
   productId: z.string().uuid().optional(),
   name: z.string().optional(),
@@ -51,6 +57,8 @@ export const studioAgentSchema = agentResponseSchema.extend({
    */
   draft: z.boolean(),
   wallet: studioAgentWalletSchema.nullable(),
+  /** The AUSD price of one fresh advice analysis, or null when not for sale (x402 spec D2). */
+  advicePrice: advicePriceResponseSchema.shape.advicePrice,
   /** Schedule: one successful manual run with the current config, then at least 10 AUSD. */
   canSchedule: lockSchema,
   /**
@@ -425,8 +433,3 @@ export type StudioAccessRequestsInboxDto = z.infer<typeof studioAccessRequestsIn
 export const advicePriceUpdateSchema = z
   .object({ priceAusd: z.string().max(12).nullable() })
   .strict();
-export const advicePriceResponseSchema = z.object({
-  advicePrice: z
-    .object({ amount: z.string(), asset: z.literal("AUSD"), decimals: z.literal(6) })
-    .nullable(),
-});

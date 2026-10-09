@@ -90,3 +90,20 @@ test("someone else's agent is not found", async (t) => {
   );
   assert.equal(await stored(f.pool, f.agentId), null);
 });
+
+test("the listing carries each agent's advice price, null while never priced", async (t) => {
+  const f = await setup(t);
+  const access = (await f.studio.access(f.userId, null))!;
+  const priced = async () =>
+    (await f.studio.list(access)).find((agent) => agent.id === f.agentId)!.advicePriceMicro;
+
+  assert.equal(await priced(), null);
+
+  await f.studio.setAdvicePrice(f.userId, f.agentId, 1500000n);
+
+  assert.equal(await priced(), 1500000n);
+
+  await f.studio.setAdvicePrice(f.userId, f.agentId, null);
+
+  assert.equal(await priced(), null);
+});

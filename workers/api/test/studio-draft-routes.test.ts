@@ -154,6 +154,7 @@ function app({
         visibility: agent.visibility,
         publishedAt: agent.publishedAt,
         xHandle: agent.xHandle,
+        advicePriceMicro: null,
         scope: { tenantId: "trusted", agentId: agent.id },
       })),
     agentScope: async (_access, id) => ({ tenantId: "trusted", agentId: find(id).id }),
