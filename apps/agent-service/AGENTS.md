@@ -258,3 +258,11 @@ positions and ledger postings. Pending funding and incomplete inputs remain unve
 [the 2026-10-08 acceptance record](PERPS-SMA-REENTRY-ACCEPTANCE-20261008.md) before further public
 work: the single qualification failed, so no six-hour comparison was started or authorized to
 repeat automatically. Its artifacts and frozen qualification commit must remain intact.
+
+Read [Perpl reader evidence](PERPL-READER-EVIDENCE.md) for the explicitly selected v7 acquisition
+correction. `reader-audit` is offline and emits only allowlisted recorded facts in a new directory;
+`reader-check` makes three public diagnostic captures with an independent local lease, never
+qualification, trading or models. Its protocol cannot pass the six-hour run's qualification gate.
+Preserve the failed acceptance and default v1 reader. The v2 selector, genuinely fresh bulk reads,
+cache/network diagnostics and policy persistence are covered by controlled regressions. No
+automatic acceptance repeat or strategy change is authorized by the correction.
