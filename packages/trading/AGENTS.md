@@ -270,3 +270,9 @@ historical accounts and product sessions retain strict behavior. Financial math,
 funding and exits are unchanged. `perps-study/component-qualification.ts` revalidates an explicitly
 pinned complete capture at its original clocks; it reconstructs no historical trades and performs
 no I/O. See [paper policy](../../apps/agent-service/PERPL-COMPONENT-PAPER.md).
+
+Component paper validation accepts a separate trusted receipt clock for local heartbeat/copy
+proof. Native component freshness and financial dates retain the financial clock. Equal clocks
+remain the pure-function default; legacy/product formulas and codes are unchanged.
+`PerpsFrameValidationFailure` exports safe allowlisted clock provenance and a bounded reason
+union, never raw provider content. Do not infer missing historical failure clocks.
