@@ -28,6 +28,12 @@ import { keepAwake } from "../paper-study/comparison-host.js";
 import { closeProfileResources } from "./profiles-resources.js";
 import { createStreamCapture, publicMarketCsv, PUBLIC_CAPTURE_LIMIT } from "./stream-capture.js";
 
+/** Node timer cancellation wraps the original reason; retain the admitted failure code. */
+export function captureFailureCode(failure: unknown, signal?: AbortSignal): string {
+  const cause = signal?.aborted ? signal.reason : failure;
+  return cause instanceof PilotError ? cause.code : "STABILITY_FAILED";
+}
+
 /** Capture only: fixed qualification or three diagnostic reads, never accounts or models. */
 export async function runUniverseStability(
   input: {
@@ -115,6 +121,7 @@ export async function runUniverseStability(
   let lease: Awaited<ReturnType<typeof study.claim>> | undefined;
   let scope: Awaited<ReturnType<typeof study.initializeDiagnostic>> | undefined;
   let heartbeat: ReturnType<typeof startLeaseHeartbeat> | undefined;
+  let operationSignal: AbortSignal | undefined;
   let released = false;
   let readerClosed = false;
   let isolationProof: { accounts: number; decisionRounds: number } | null = null;
@@ -252,6 +259,7 @@ export async function runUniverseStability(
     });
     lease.assertActive = heartbeat.assertActive;
     const signal = AbortSignal.any([parent, controller.signal, heartbeat.signal]);
+    operationSignal = signal;
     const guard = async () => {
       signal.throwIfAborted();
       heartbeat!.assertActive();
@@ -403,7 +411,7 @@ export async function runUniverseStability(
     await wait(Math.max(1, end - Date.now()), undefined, { signal });
     await study.complete(scope, lease);
   } catch (failure) {
-    error = failure instanceof PilotError ? failure.code : "STABILITY_FAILED";
+    error = captureFailureCode(failure, operationSignal);
   } finally {
     try {
       await data.close();
