@@ -72,7 +72,8 @@
   color: var(--pk-ink-muted);
 }
 
-.dropdown .item {
+.dropdown .item,
+.navigationDropdown .item {
   display: flex;
   flex-wrap: wrap;
   justify-content: space-between;
@@ -126,7 +127,69 @@
 }
 
 .nav .compactTrigger {
+  width: 44px;
+  height: 44px;
+  padding: 0;
+}
+
+.navigationDropdown {
+  width: min(560px, calc(100vw - 24px));
+  padding: 12px;
+}
+
+.navigationGroups {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.compactGroup {
+  min-width: 0;
+}
+
+.compactGroup + .compactGroup {
+  border-inline-start: 1px solid var(--pk-rule);
+  padding-inline-start: 12px;
+}
+
+.navigationDropdown .groupLabel {
+  padding: 8px 10px;
+  font-weight: 700;
+  color: var(--pk-ink);
+}
+
+.navigationDropdown .item {
+  padding: 10px;
+}
+
+.navigationDropdown .itemTitle {
+  flex-wrap: wrap;
+  justify-content: space-between;
+  width: 100%;
+  gap: 4px 8px;
+}
+
+.navigationDropdown .item[data-disabled] {
+  color: var(--pk-ink-muted);
+}
+
+.mobileLaunch {
+  display: none;
+}
+
+.navigationDropdown .launchItem {
+  display: flex;
+  justify-content: space-between;
   min-height: 44px;
+  margin-top: 12px;
+  background: var(--pk-bg);
+  color: var(--pk-ink);
+}
+
+.navigationDropdown .launchItem:hover,
+.navigationDropdown .launchItem[data-highlighted] {
+  background: var(--pk-panel-3);
+  color: var(--pk-ink);
 }
 
 @media (max-width: 1100px) {
@@ -150,15 +213,38 @@
     gap: 8px;
   }
 
-  .nav .cta,
-  .compactLabel {
+  .nav .cta {
     display: none;
   }
 
-  .nav .compactTrigger {
-    width: 44px;
-    height: 44px;
-    padding: 0;
+  .navigationGroups {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .compactGroup[data-menu="explore"] {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-column: 1 / -1;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--pk-rule);
+  }
+
+  .compactGroup[data-menu="explore"] .groupLabel {
+    grid-column: 1 / -1;
+  }
+
+  .compactGroup[data-menu="build"] {
+    padding-inline-start: 0;
+    border-inline-start: 0;
+  }
+
+  .mobileLaunch {
+    display: block;
+  }
+
+  .navigationDropdown .launchItem {
+    margin-top: 8px;
   }
 }
 
