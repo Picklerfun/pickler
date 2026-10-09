@@ -12,7 +12,7 @@ import { abortable } from "./transport.js";
 import type { UniverseStreamBuffer } from "@pickler/trading/perps";
 
 export const PERPL_STREAM_VERSION = "public-stream-v1";
-export const PERPL_UNIVERSE_STREAM_VERSION = "public-universe-stream-v2";
+export const PERPL_UNIVERSE_STREAM_VERSION = "public-universe-stream-v3";
 const level = z.object({ p: uint.positive(), s: uint, o: uint });
 const bookMessage = z.object({
   mt: z.union([z.literal(15), z.literal(16)]),
@@ -52,7 +52,7 @@ export interface PerplStreamEvent {
   };
   publicMessage?: unknown;
   processing?: {
-    mode: "per-message" | "guarded-batches";
+    mode: "per-message" | "guarded-batches" | "direct-reconstruction";
     receivedMessages: number;
     processedMessages: number;
     guardChecks: number;
@@ -353,7 +353,7 @@ export interface PerplSocket {
 }
 /** No authenticated stream, signer, model, or implicit transport fallback. */
 export class PerplPublicStream {
-  readonly state: PerplStreamState;
+  #state: PerplStreamState;
   private socket: PerplSocket | undefined;
   private stopped = false;
   private fatal: unknown;
@@ -387,8 +387,8 @@ export class PerplPublicStream {
       now?: () => number;
       socket?: (url: string) => PerplSocket;
       event?: (event: PerplStreamEvent) => void;
-      /** One live ownership check per FIFO batch; no permission cache and no skipped updates. */
-      messageProcessing?: "guarded-batches";
+      /** Replication never grants access: every request and buffer delivery performs live guards. */
+      messageProcessing?: "guarded-batches" | "direct-reconstruction";
       monotonic?: () => number;
     },
   ) {
@@ -397,7 +397,7 @@ export class PerplPublicStream {
       fail("PERPL_STREAM_IDENTITY");
     }
     const url = `wss://${first.provenance.network === "mainnet" ? "app" : "testnet"}.perpl.xyz/ws/v1/market-data`;
-    this.state = new PerplStreamState(options.markets, url, first.provenance.chainId);
+    this.#state = new PerplStreamState(options.markets, url, first.provenance.chainId);
     this.timer = setInterval(() => {
       if (this.checking || this.stopped) {
         return;
@@ -416,6 +416,9 @@ export class PerplPublicStream {
       },
       { once: true },
     );
+  }
+  streams() {
+    return this.#state.streams();
   }
   private now() {
     return this.options.now?.() ?? Date.now();
@@ -470,7 +473,7 @@ export class PerplPublicStream {
     if (message.generation !== this.generation || message.socket.readyState !== 1) {
       return;
     }
-    const publicMessage = this.state.apply(JSON.parse(message.data), message.receivedAt);
+    const publicMessage = this.#state.apply(JSON.parse(message.data), message.receivedAt);
     this.processing.processedMessages++;
     this.emit({ kind: "message", receivedAt: message.receivedAt, publicMessage });
   }
@@ -525,7 +528,7 @@ export class PerplPublicStream {
     socket.send(
       JSON.stringify({
         mt: 5,
-        subs: this.state.streams().map((stream) => ({ stream, subscribe: true })),
+        subs: this.#state.streams().map((stream) => ({ stream, subscribe: true })),
       }),
     );
     this.subscriptionStarts.push(this.now());
@@ -553,7 +556,7 @@ export class PerplPublicStream {
       const socket = this.socket;
       this.socket = undefined;
       this.generation++;
-      this.state.reset();
+      this.#state.reset();
       socket?.close();
       return;
     }
@@ -583,10 +586,10 @@ export class PerplPublicStream {
       fail("DATA_UNAVAILABLE");
     }
     this.attempts.push(this.now());
-    this.state.reset();
+    this.#state.reset();
     this.subscriptionStarts = [];
     const generation = ++this.generation;
-    const socket = (this.options.socket ?? ((url) => new WebSocket(url)))(this.state.url);
+    const socket = (this.options.socket ?? ((url) => new WebSocket(url)))(this.#state.url);
     this.socket = socket;
     const opened = new Promise<void>((resolve, reject) => {
       socket.addEventListener("open", () => resolve(), { once: true });
@@ -606,7 +609,7 @@ export class PerplPublicStream {
       if (generation !== this.generation) {
         return;
       }
-      this.state.reset();
+      this.#state.reset();
       this.socket = undefined;
       this.emit({ kind: "disconnected", receivedAt: this.now() });
     });
@@ -641,6 +644,18 @@ export class PerplPublicStream {
       this.processing.queuePeak = Math.max(this.processing.queuePeak, this.queued);
       const receivedAt = this.now();
       const message = { data: event.data, receivedAt, generation, socket };
+      if (this.options.messageProcessing === "direct-reconstruction") {
+        // Reconstruct each public wire update synchronously, without a database-backed queue.
+        // The private replica cannot be delivered until latest() passes its live guards.
+        try {
+          this.apply(message);
+        } catch (error) {
+          this.stopError(error);
+        } finally {
+          this.queued--;
+        }
+        return;
+      }
       if (this.options.messageProcessing === "guarded-batches") {
         this.batch.push(message);
         this.drain();
@@ -664,7 +679,7 @@ export class PerplPublicStream {
       this.emit({ kind: "connected", receivedAt: this.now() });
     } catch (error) {
       socket.close();
-      this.state.reset();
+      this.#state.reset();
       throw error;
     }
   }
@@ -674,7 +689,7 @@ export class PerplPublicStream {
     await this.connect(signal);
     await this.guard();
     signal.throwIfAborted();
-    return this.state.frame(symbol, this.now());
+    return this.#state.frame(symbol, this.now());
   }
   /** Guarded buffer access only; this method never initiates a connection or REST fallback. */
   async latest(symbols: readonly PerpSymbol[], signal: AbortSignal): Promise<UniverseStreamBuffer> {
@@ -689,7 +704,7 @@ export class PerplPublicStream {
     }
     const generation = this.generation;
     const observedAt = this.now();
-    const components = this.state.components(symbols, observedAt);
+    const components = this.#state.components(symbols, observedAt);
     await this.guard();
     signal.throwIfAborted();
     if (generation !== this.generation || this.socket?.readyState !== 1) {
@@ -707,7 +722,7 @@ export class PerplPublicStream {
     this.batch.length = 0;
     clearInterval(this.timer);
     this.generation++;
-    this.state.reset();
+    this.#state.reset();
     const socket = this.socket;
     this.socket = undefined;
     this.closing = (async () => {
