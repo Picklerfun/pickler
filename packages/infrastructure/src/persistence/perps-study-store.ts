@@ -44,14 +44,18 @@ function acquisitionPolicy(
     policy !== "rest-paced-20s-v1" &&
     policy !== "stream-20s-v1" &&
     policy !== "rest-universe-20s-v1" &&
-    policy !== "rest-universe-coherent-20s-v2"
+    policy !== "rest-universe-coherent-20s-v2" &&
+    policy !== "stream-universe-20s-v1"
   ) {
     throw new PilotError("INVALID_INPUT", "Unknown frozen acquisition policy");
   }
-  if (policy === "rest-universe-coherent-20s-v2" && configured !== policy) {
+  if (
+    ["rest-universe-coherent-20s-v2", "stream-universe-20s-v1"].includes(policy) &&
+    configured !== policy
+  ) {
     throw new PilotError(
       "INVALID_INPUT",
-      "Coherent universe v2 requires explicit v7 configuration",
+      "New universe acquisition requires explicit v7 configuration",
     );
   }
   return policy;
@@ -321,12 +325,14 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
       if (
         record.config.version !== 7 ||
         config.version !== 7 ||
-        config.acquisitionPolicy !== "rest-universe-coherent-20s-v2" ||
+        !["rest-universe-coherent-20s-v2", "stream-universe-20s-v1"].includes(
+          config.acquisitionPolicy ?? "",
+        ) ||
         canonical(frozenFields(record.config)) !== canonical(frozenFields(config))
       ) {
         throw new PilotError(
           "INVALID_INPUT",
-          "Diagnostic override may only select explicit v7 coherent acquisition",
+          "Diagnostic override may only select explicit v7 universe acquisition",
         );
       }
     }
