@@ -54,11 +54,14 @@ export function marketBoardFor(network: string | undefined): MarketBoard {
   return createPerplMarketBoard({ network, memory });
 }
 
-export function createGrowthServices(pool: Pool, options: { perplBoardNetwork?: string } = {}) {
+export function createGrowthServices(
+  pool: Pool,
+  options: { perplBoardNetwork?: string; tokenChainId?: number | null } = {},
+) {
   const adapters = {
     // Stays sample: the landing is marketing copy, not a read of the database.
     landing: createSampleLandingReadModel(systemClock),
-    agents: new PostgresAgentDirectory(pool),
+    agents: new PostgresAgentDirectory(pool, options.tokenChainId ?? null),
     markets: marketBoardFor(options.perplBoardNetwork),
     waitlist: new PostgresWaitlist(pool),
     applicants: new PostgresApplicants(pool),
