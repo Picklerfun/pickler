@@ -32,3 +32,9 @@ The separately selected `stream-universe-component-20s-v2` is a capture-only exp
 Forward its policy to acquisition and latest checks; do not default existing sessions to it.
 Adapter v4 copies advancing-heartbeat continuity without changing component timestamps. The
 host and infrastructure reject financial use; no model, signer or automatic promotion is added.
+
+`stream-universe-component-paper-20s-v1` is a different, explicitly authorized local financial
+selector. Forward it unchanged to trading and use the same continuous reader in every phase.
+Trading attaches copied heartbeat/generation evidence; infrastructure rechecks the immutable
+account policy and financial frame under ownership. Preserve old selectors and public transport.
+The new selector does not authorize product/deployed execution or construct credentials/clients.
