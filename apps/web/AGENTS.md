@@ -145,6 +145,25 @@ What is real today: the address, the chain and the native balance. What is not: 
 
 The apply flow and the auth screens keep their own bar on purpose — a flow that is asking for something should not offer six ways out of it — but the bar is the same height as the navigation and carries the same brand, so only the right-hand side differs. The brand mark is lit in cyan on every surface, the flows included. Lime stays for what the product does — a filled action, a win, a graduated token — not for who made it.
 
+## Responsive public navigation
+
+`features/site/site-nav.tsx` is shared by the landing and every `PublicShell` route. Its header
+never wraps: above 1100px the three desktop groups are inline; at 1100px and below a compact
+navigation disclosure contains the same groups and Create agent. At 640px and below the header
+keeps the brand, a labelled 44px wallet icon, and a labelled 44px navigation icon; Create agent
+remains available inside the menu. The wallet label contracts at 860px to leave room for pending
+wallet states. CSS handles layout without client resize state; crossing the 1100px breakpoint
+dismisses the disclosure whose trigger becomes hidden. At 360px and below the brand keeps only
+its mark while retaining the accessible home-link name.
+
+Navigation and the marketplace wallet disclosure compose the existing shadcn/Radix DropdownMenu.
+Portals receive the actual surface, viewport collision padding and bounded width/height. Radix
+owns keyboard navigation, Escape, outside dismissal and focus return; no custom scrim or document
+listeners. Non-modal menus preserve the page width and scroll position. Coming-soon destinations
+remain disabled and never link to invented routes. Wallet behavior, cross-product Studio links
+and signer separation remain unchanged. Run `node scripts/design/public-navigation.mjs` against
+local fixture servers for responsive geometry, keyboard, touch, menu navigation and wallet states.
+
 ## Markets
 
 `/markets` lists every perpetual market Perpl has open and `/markets/[symbol]` is one of them. The
