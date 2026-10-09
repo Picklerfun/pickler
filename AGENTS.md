@@ -212,7 +212,15 @@ The owner-only token launch foundation is documented in [Agent token previews](d
 Core owns admission and the grant-issuer port; infrastructure owns private agent/network keys,
 versioned launch drafts, recorded grants and canonical confirmation. The API host does not compose
 a signer. Both Studio rails expose the persistent Token route, and public profiles share its
-confirmed identity card. Only development fixtures can advance a simulated launch; they never
+confirmed identity card. Development fixtures show static empty/confirmed token states; they never
 request passkeys, send transactions or open fictitious explorer addresses. No remote launch,
 metadata storage or indexer activation is introduced. The factory now requires a Pickler EIP-712
 grant in addition to creator authorization, including for direct creator calls.
+
+## Agent token reference fixtures
+
+`npm run tokens:fixtures` builds shared packages and generates the web's public reference economics
+JSON from core's pure curve calculations and reviewed chain AUSD metadata. Use
+`npm run tokens:fixtures -- --check` to verify drift; the web test also compares it to core.
+The reference profile is independent of signer/preset availability and never enables real launch.
+See [agent token admission and previews](docs/agent-token-preview.md).
