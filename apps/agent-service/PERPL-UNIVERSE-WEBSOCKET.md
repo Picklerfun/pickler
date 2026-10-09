@@ -149,7 +149,7 @@ and PostgreSQL release. This is a demonstrated new incident; the missing dimensi
 original 2026-10-08 failure remains unknown. Batching reduced database work but did not remove
 the database-backed receive queue.
 
-Current adapter `public-universe-stream-v3` reconstructs every public update synchronously in
+Adapter `public-universe-stream-v3` reconstructs every public update synchronously in
 a private replica. It checks cancellation, connection generation and all existing reconstruction
 bounds on reception; fresh database ownership/permission checks gate every connection, request
 and consumer delivery. The periodic idle guard remains active. Loss of ownership invalidates the
@@ -166,3 +166,35 @@ no delivered buffer before live ownership verification, and rejection after canc
 The [2026-10-09 repair record](PERPL-UNIVERSE-WEBSOCKET-REPAIR-20261009.md) distinguishes the
 completed v3 technical measurement from its failed 17/30 availability result. The economic
 qualification gate remains closed; a healthy connection does not establish valid joint prices.
+
+## Separately versioned component-freshness experiment
+
+The operator's 2026-10-09 instruction to own the reader repair authorizes implementing and
+checking a new capture policy, not rewriting the failed 17/30 result. The explicit selector
+`stream-universe-component-20s-v2` uses adapter `public-universe-stream-v4` and stability/audit
+format v4. Read [the component-policy record](PERPL-UNIVERSE-COMPONENT-POLICY-20261009.md).
+
+This capture-only experiment validates each latest native ticker and book date independently:
+age at most thirty seconds and future allowance at most five seconds, with the unchanged
+twenty-second acquisition deadline. Native skew is recorded without being an eligibility gate.
+It additionally requires the last advancing, contiguous heartbeat to have been received within
+five seconds in the same connection generation. Duplicate heartbeats do not refresh receipt;
+disconnects and demonstrated sequence gaps discard continuity and all market state.
+
+Neither heartbeat, local receipt nor an unchanged price substitutes for a provider timestamp.
+No older matching component is selected, and no REST price fallback is introduced. The captured
+public data showed both unchanged prices with advancing timestamps and publication pauses; it
+does not establish the provider's internal meaning or cause of every timestamp gap.
+
+The new selector is limited to `stability`, `reader-check` and offline audit. Financial study
+initialization and the financial host reject it before account creation or environment loading.
+`validatePaperFrame` and the simulator retain the original five-second ticker/book skew gate.
+A new capture pass therefore does not authorize fills or satisfy the unchanged economic gate.
+Any financial adoption requires its own reviewed policy and planning.
+
+Use a new configuration copy and output directory with the existing stability command.
+Format v4 records the validation descriptor, individual native ages, continuity proof,
+`strictValid` per market and `strictJointValid` per cycle under the unchanged financial data
+rule. `financialExecutable` is always false. Prospective availability still requires 29/30
+complete cycles, zero reconstruction/permission/ownership failures and verified resource release.
+The offline v4 audit verifies these descriptors and denominators instead of upgrading v3 outcomes.
