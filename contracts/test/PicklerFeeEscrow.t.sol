@@ -20,9 +20,9 @@ contract RejectingRecipient {
 }
 
 contract PicklerFeeEscrowTest is LaunchGrantTest {
-    uint256 internal constant SALE_ALLOCATION = 800e18;
-    uint256 internal constant LP_ALLOCATION = 200e18;
-    uint256 internal constant TARGET_RESERVE = 1_000e6;
+    uint256 internal constant SALE_ALLOCATION = 16_800_000e18;
+    uint256 internal constant LP_ALLOCATION = 4_200_000e18;
+    uint256 internal constant TARGET_RESERVE = 21_000_000e6;
     uint16 internal constant PROTOCOL_SHARE_BPS = 4000;
     uint16 internal constant LP_CREATOR_SHARE_BPS = 6000;
 
@@ -62,7 +62,7 @@ contract PicklerFeeEscrowTest is LaunchGrantTest {
         token = token_;
         curve = PicklerBondingCurve(curve_);
 
-        quote.mint(alice, 10_000e6);
+        quote.mint(alice, 210_000_000e6);
         vm.prank(alice);
         quote.approve(curve_, type(uint256).max);
     }
@@ -108,7 +108,7 @@ contract PicklerFeeEscrowTest is LaunchGrantTest {
     }
 
     function _tradeAndRemit() internal returns (uint256 fees) {
-        return _tradeAndRemit(500e6);
+        return _tradeAndRemit(10_500_000e6);
     }
 
     function _tradeAndRemit(uint256 amount) internal returns (uint256 fees) {
@@ -217,15 +217,17 @@ contract PicklerFeeEscrowTest is LaunchGrantTest {
     }
 
     function test_poolFeesUseTheLpSplitNotTheTradingSplit() public {
-        quote.mint(address(escrow), 1_000e6);
+        quote.mint(address(escrow), 21_000_000e6);
 
         vm.prank(locker);
         escrow.syncPoolFees(token, address(quote));
 
-        uint256 expectedCreator = (uint256(1_000e6) * LP_CREATOR_SHARE_BPS) / 10_000;
+        uint256 expectedCreator = (uint256(21_000_000e6) * LP_CREATOR_SHARE_BPS) / 10_000;
 
         assertEq(escrow.claimable(creator, address(quote)), expectedCreator, "creator got the wrong LP share");
-        assertEq(escrow.claimable(treasury, address(quote)), 1_000e6 - expectedCreator, "protocol got the wrong share");
+        assertEq(
+            escrow.claimable(treasury, address(quote)), 21_000_000e6 - expectedCreator, "protocol got the wrong share"
+        );
     }
 
     function test_anUnknownLaunchCannotBeAttributed() public {
