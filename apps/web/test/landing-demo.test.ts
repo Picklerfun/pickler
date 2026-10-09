@@ -3,17 +3,36 @@ import { describe, it } from "node:test";
 import {
   advanceCurve,
   advanceRecord,
+  bubblesAt,
   CURVE_GOAL,
   CURVE_SEED,
   curveView,
   DROPS,
   LOCK_GRID,
+  PAIRS,
   RECORD_CAPACITY,
   RECORD_SEED,
   stepLabel,
   STEPS,
   WAYS,
 } from "../src/features/landing/lib/demo";
+
+describe("the hero bubbles", () => {
+  it("show the question alone, then the answer, then hold, three ticks per pair", () => {
+    assert.deepEqual(
+      [0, 1, 2].map((tick) => bubblesAt(tick).answerOn),
+      [false, true, true],
+    );
+    assert.equal(bubblesAt(0).pairIndex, 0);
+    assert.equal(bubblesAt(3).pairIndex, 1);
+    assert.equal(bubblesAt(3).pair, PAIRS[1]);
+  });
+
+  it("cycle through every pair and start over", () => {
+    assert.equal(bubblesAt(PAIRS.length * 3).pair, PAIRS[0]);
+    assert.equal(bubblesAt(PAIRS.length * 3 + 5).pair, PAIRS[1]);
+  });
+});
 
 describe("the four steps", () => {
   it("label the phone panel with the step's number and screen", () => {
