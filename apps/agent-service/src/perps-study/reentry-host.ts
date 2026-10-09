@@ -63,7 +63,7 @@ export async function runSmaReentry(
   const metadata = {
     commit,
     originalCommit: "a06826a78af44aacdcac695f8254c52d65f83342",
-    acquisitionPolicy: "rest-universe-20s-v1",
+    acquisitionPolicy: config.acquisitionPolicy ?? "rest-universe-20s-v1",
     strategy: {
       id: "sma-reentry-latency-v1",
       version: "1.0.0",
@@ -145,6 +145,8 @@ export async function runSmaReentry(
   process.once("SIGTERM", interrupt);
   const combined = AbortSignal.any([signal, controller.signal]);
   const data = createPriorityPerplStudyData(research, {
+    acquisitionPolicy: config.acquisitionPolicy ?? "rest-universe-20s-v1",
+    onTickerRead: (value) => diagnostic(value),
     onDiagnostic: (value) =>
       diagnostic({
         ...value,
