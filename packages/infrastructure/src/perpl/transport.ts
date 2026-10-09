@@ -1,4 +1,4 @@
-import { PilotError, type PerpNetwork, type PerpReadContext } from "@pickler/core";
+import { PilotError, type PerpNetwork, type PerpReadContext, type PerpSymbol } from "@pickler/core";
 import { networkFailure, type NetworkFailure } from "./network-diagnostics.js";
 export const PERPL_NETWORKS = {
   mainnet: { chainId: 143, base: "https://app.perpl.xyz/api" },
@@ -24,6 +24,20 @@ export interface PerplRequestDiagnostic {
   headersMs: number | null;
   network: NetworkFailure | null;
 }
+/** A normalized ticker read is not necessarily a new HTTP request. */
+export interface PerplTickerReadDiagnostic {
+  version: 1;
+  source: "network" | "cache";
+  batch: boolean;
+  receivedAt: number;
+  requestedSymbols: PerpSymbol[];
+  symbols: {
+    symbol: PerpSymbol;
+    marketId: number;
+    providerTimestamp: number | null;
+    block: number | null;
+  }[];
+}
 /** Shared by all read sessions in one evaluation host, including retries. */
 export class PerplRequestSchedule {
   tail: Promise<unknown> = Promise.resolve();
@@ -43,6 +57,8 @@ export interface PerplDataOptions {
   retryTransient?: boolean;
   guard?: () => Promise<void>;
   onDiagnostic?: (event: PerplRequestDiagnostic) => void;
+  /** Safe original per-market dates; no response bodies, headers or credentials. */
+  onTickerRead?: (event: PerplTickerReadDiagnostic) => void;
   onValidation?: (event: {
     version: 1;
     operation: string;
