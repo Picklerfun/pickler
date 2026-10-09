@@ -100,6 +100,7 @@ contract PicklerBondingCurve is ReentrancyGuard {
 
     constructor(PicklerPreset.LaunchPreset memory preset_, address graduationAdapter_, address feeEscrow_) {
         PicklerPreset.validate(preset_);
+        PicklerPreset.validateQuoteDecimals(preset_);
 
         _preset = preset_;
         quoteToken = IERC20(preset_.quoteToken);
@@ -132,6 +133,14 @@ contract PicklerBondingCurve is ReentrancyGuard {
 
     function remainingTokens() public view returns (uint256) {
         return _config().remainingTokens(netSold);
+    }
+
+    /// @notice Whole AUSD per whole token, scaled by 1e18, for precision policy 2.
+    function marginalPriceWad() external view returns (uint256) {
+        if (_preset.roundingPolicyVersion != 2) {
+            revert PicklerPreset.UnsupportedPrecisionPolicy();
+        }
+        return _config().marginalPriceWad(netSold, 6);
     }
 
     /// @notice Tokens a buyer would receive for a gross quote amount, fees included.
