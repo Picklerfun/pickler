@@ -95,6 +95,54 @@ test("valid checks are not classified as failed recovery and later failures stay
   );
 });
 
+test("initial ticker-only preparation does not count as coherence repair latency", () => {
+  const initial = capture();
+  const input = {
+    ...initial,
+    cycles: [
+      {
+        ...initial.cycles[0],
+        acquisition: [
+          {
+            ...initial.cycles[0]!.acquisition[0],
+            at: 2000,
+            bookAt: null,
+            skewMs: null,
+            code: "DATA_UNAVAILABLE",
+          },
+          ...initial.cycles[0]!.acquisition,
+        ],
+      },
+    ],
+  };
+  const result = auditUniverseCapture(input);
+  const btc = result.rows.find((row) => row.symbol === "BTC")!;
+  assert.equal(result.version, 2);
+  assert.equal(btc.firstCheckMs, 1000);
+  assert.equal(btc.initialCode, "DATA_UNAVAILABLE");
+  assert.equal(btc.firstInvalidCheckMs, 2406);
+  assert.equal(btc.recoveryDelayMs, 13297);
+  assert.equal(result.recoveryChecks.observations, 1);
+});
+
+test("request identities remain optional for history and require safe market IDs", () => {
+  const original = capture();
+  assert.equal(auditUniverseCapture(original).requests[0]!.marketId, null);
+  const attributed = (marketId: number) => ({
+    ...original,
+    cycles: [
+      {
+        ...original.cycles[0],
+        requests: [{ ...original.cycles[0]!.requests[0], marketId }],
+      },
+    ],
+  });
+  assert.equal(auditUniverseCapture(attributed(1)).requests[0]!.marketId, 1);
+  for (const marketId of [0, 1.5, Number.MAX_SAFE_INTEGER + 1]) {
+    assert.throws(() => auditUniverseCapture(attributed(marketId)), { code: "INVALID_INPUT" });
+  }
+});
+
 test("reader audit accepts explicit v2 cache/network evidence without reinterpreting v1", () => {
   const input = {
     ...capture(),
