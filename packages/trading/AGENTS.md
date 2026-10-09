@@ -250,3 +250,7 @@ financial calculation changes are part of this selector. See the local WebSocket
 Stream acquisition accepts an injected bounded snapshot-refresh port after invalid evidence.
 The transport owns subscription rate limits; trading revalidates the new components under the
 same clock/deadline and never treats a refresh request as proof that a price timestamp advanced.
+
+The offline reader auditor accepts recorded universe adapter versions 1, 2 and 3. Three-read
+stream diagnostics remain explicitly `DIAGNOSTIC_ONLY_NOT_ACCEPTANCE`; admitting their offline
+analysis never makes them qualification or upgrades a recorded outcome.
