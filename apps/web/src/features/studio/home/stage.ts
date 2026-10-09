@@ -82,6 +82,8 @@ export type DraftStage = (typeof DRAFT_STAGES)[number];
  * waiting for the running check. `live/fixture.ts` draws each.
  */
 export const LIVE_STAGES = [
+  "perpl-token-empty",
+  "perpl-token-launched",
   "perpl-live",
   "perpl-paused",
   "perpl-warnings",
