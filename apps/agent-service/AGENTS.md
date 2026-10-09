@@ -266,3 +266,13 @@ qualification, trading or models. Its protocol cannot pass the six-hour run's qu
 Preserve the failed acceptance and default v1 reader. The v2 selector, genuinely fresh bulk reads,
 cache/network diagnostics and policy persistence are covered by controlled regressions. No
 automatic acceptance repeat or strategy change is authorized by the correction.
+
+## Local universe WebSocket qualification
+
+Read [PERPL-UNIVERSE-WEBSOCKET.md](PERPL-UNIVERSE-WEBSOCKET.md) before public work with the
+explicit v7 `stream-universe-20s-v1` selector. Stability v3 uses one continuous public reader,
+independent diagnostic ownership, 30 slots, and 330 market rows. `stream-capture.ts` retains
+at most a 32 MiB contiguous validated prefix with hashes and explicit truncation. Offline
+reader-audit v3 verifies hashes and replays retained messages through pure reconstruction,
+without environment, credentials or connections. Partial evidence cannot upgrade joint validity.
+No economic run, paid call, restart, repeat, automation, merge or deployment is implicit.
