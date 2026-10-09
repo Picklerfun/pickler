@@ -122,3 +122,18 @@ test("advicePriceError words each API code", () => {
   assert.equal(advicePriceError("FORBIDDEN"), VIEW_ONLY_REASON);
   assert.equal(advicePriceError("OTHER"), "The price was not saved. Try again.");
 });
+
+test("a creator can take a priced agent off sale after its wallet was unlinked", () => {
+  const view = advicePriceView(agent(true, false), { forSale: false, text: "" }, true);
+
+  assert.equal(view.disabledReason, NO_WALLET);
+  assert.deepEqual(view.body, { priceAusd: null });
+  assert.equal(view.canSave, true);
+});
+
+test("an unpriced agent without a wallet cannot be priced", () => {
+  const view = advicePriceView(agent(false, false), { forSale: true, text: "2" }, true);
+
+  assert.equal(view.canSave, false);
+  assert.equal(view.body, null);
+});

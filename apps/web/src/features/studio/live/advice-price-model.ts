@@ -96,7 +96,9 @@ export function advicePriceView(
     disabledReason = VIEW_ONLY_REASON;
   }
 
-  const canSave = canManage && wallet !== null && dirty && body !== null;
+  const clearing = body !== null && body.priceAusd === null;
+  const walletOk = wallet !== null || clearing;
+  const canSave = canManage && walletOk && dirty && body !== null;
 
   return {
     ...savedTag(agent),
@@ -107,7 +109,7 @@ export function advicePriceView(
     inputError,
     dirty,
     canSave,
-    body: wallet === null ? null : body,
+    body: walletOk ? body : null,
   };
 }
 
