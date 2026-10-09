@@ -253,3 +253,8 @@ Absent selection keeps historical REST. See the local eleven-market WebSocket gu
 Universe stream v2 batches ownership-checked updates and requests provider snapshots only during
 an invalid active acquisition. The same public reader serves all phases; no permission cache,
 timestamp rewriting, threshold relaxation or implicit REST price fallback is introduced.
+
+Universe stream v3 uses synchronous public reconstruction with guarded consumer delivery.
+Repeated subscriptions were observed to acknowledge existing streams without fresh snapshots;
+the runtime no longer issues them as an acquisition recovery mechanism. Native dates and all
+freshness/deadline controls remain unchanged.
