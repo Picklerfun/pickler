@@ -27,3 +27,4 @@ export * from "./features/perps-study/reentry-metrics.js";
 export { nextPriceCycleDelay } from "./features/evaluation/sma-timing.js";
 
 export * from "./features/perps-paper/reader-audit.js";
+export * from "./features/perps-study/component-qualification.js";
