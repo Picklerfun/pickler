@@ -383,6 +383,11 @@ never writes `spend`: the store keeps the stored limits and ignores any `spend` 
 `spendEnforced: false`. The limits are not enforced yet; the trading work enforces them through a
 per-call and daily ledger period or a Turnkey value cap. The monthly budget ledger is not used.
 
+`PUT /agents/:id/advice-price { priceAusd: string | null }` (owner only) sets or clears the AUSD
+price of one fresh advice analysis (0.10 to 100, at most 6 decimals, parsed by core's
+`parseAusdToMicro`) through `directory.setAdvicePrice`. `:id` is the product agent id. It answers
+`{ advicePrice }`; a price needs the agent's wallet (409 `AGENT_WALLET_REQUIRED`), clearing does not.
+
 `PUT /agents/:id/interval { hours }` accepts only 3, 6, 12 or 24 (the home's "every 3h / 6h / 12h /
 daily") and writes only `config.intervalHours` through `repository.updateInterval`, with manage
 rights and the agent's `agentScope`. Like the limits it takes no version and keeps the version, the
@@ -482,6 +487,22 @@ no-store responses, strict requests and OpenAPI metadata. Container admission re
 ADVICE_ENABLED, valid reviewed USD policy and research Queue; reads remain mounted when disabled.
 Never accept internal tenant/runtime IDs or models from consumers. Completed history is shared;
 other statuses are requester-only. See [Agent advice](../../docs/agent-advice.md).
+
+The POST request is sold with x402 when `paidAdviceFrom` (`src/container.ts`) composes
+`AdviceRouteServices.paid`: `ADVICE_X402_ENABLED === "true"` plus the `X402_RELAYER_PRIVATE_KEY`
+secret (32-byte hex) and `MONAD_RPC_URL`. It shares the invocation's advice store and service
+with the free path and builds `PostgresAdvicePayments` on the invocation's pool and
+`createAusdAuthorizationGateway`. The flag with a missing or refused key/RPC logs one line naming
+no value and fails closed: `paid` is a request that throws `PilotError("ADVICE_UNAVAILABLE")`, so
+every POST answers 503 and nothing is enqueued. A composed `paid` logs every settlement
+whose AUSD may have moved without a `settled` row (`reportUnrecordedSettlement`: reason, ids, key,
+payer, nonce and hash, never the signature). Only the flag off leaves `paid` absent; absent, the
+route is free and unchanged. With `paid`, the handler
+answers core's `payment_required` as 402 with x402 v1's own body (`paymentRequiredSchema`, not the
+envelope) and sets `X-PAYMENT-RESPONSE` on a 202 that settled. `PilotError("NOT_FOUND",
+"ADVICE_NOT_FOR_SALE")` maps to 404 `{ error: "ADVICE_NOT_FOR_SALE" }` before the generic mapper;
+an in-flight attempt on the same key (`CONFLICT`) is 409. Both wrangler files carry
+`ADVICE_X402_ENABLED: "false"`. See [Payment (x402)](../../docs/agent-advice.md#payment-x402).
 
 Advice admissions consume the same reviewed ADVICE_POLICY_JSON as Research. Policy v2 pins its forecast provider URL/model and limits; forecast credentials remain exclusively in Research. No new public DTO or database schema is introduced by the provider correction.
 

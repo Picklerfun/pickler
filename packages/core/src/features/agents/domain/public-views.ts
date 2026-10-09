@@ -4,6 +4,7 @@
 
 import type { AgentToken } from "../../launch/token-launch.js";
 import type { Accent } from "../../landing/domain/landing.js";
+import type { AdvicePrice } from "../../advice/price.js";
 import type { TokenStage } from "./agents.js";
 import type { AgentRead, ReadService } from "./reads.js";
 
@@ -80,6 +81,10 @@ export interface AgentPersona {
   /** What it does when it is wrong. */
   wrong: string;
   askPrice: string | null;
+  /** The agent uuid, which the advice API addresses. */
+  id: string;
+  /** What a paid analysis costs; null when the agent sells none. */
+  advicePrice: AdvicePrice | null;
   answers: PersonaAnswer[];
   decisions: ActivityEvent[];
   /** What it charges for a read, and whether it is taking them. Null until paid reads exist. */

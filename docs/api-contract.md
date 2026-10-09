@@ -44,7 +44,8 @@ these routes change, update their wire schemas and descriptions together.
    actual meaning. Existing interface DTOs have corresponding checked schemas.
 2. Add `operation("featureVerb", { response, body, security, ... })` next to the handler. Import
    the helper from `workers/api/src/openapi/operation.ts`. Specify success statuses, errors, query
-   parameters and idempotency headers where relevant. Path parameters come from the mounted route.
+   parameters and idempotency headers where relevant; `headers` adds other request headers and
+   `responses` a status with its own JSON body (the advice 402). Path parameters come from the mounted route.
    Use `user` only for verified user JWTs; `workspace` also accepts authorized API keys; `agent`
    additionally describes the three required HMAC headers; `apply` uses the HttpOnly seat cookie.
 3. Keep runtime validation and authorization in their current handlers/middleware. The description
@@ -62,8 +63,10 @@ execute business operations. API generation never executes endpoint handlers.
 
 The generated contract includes the JWT-only agent-advice group for asynchronous fresh
 recommendations and shared completed history. See [Agent advice](agent-advice.md) for its
-privacy, routing, disabled-by-default admissions and internal USD cost controls. It implements
-no x402 payment flow or agent order execution. The mobile Ask backend imported in PR #71
+privacy, routing, disabled-by-default admissions and internal USD cost controls. Its request
+operation documents the optional x402 payment (402, `X-PAYMENT`, `X-PAYMENT-RESPONSE`), served only
+where `ADVICE_X402_ENABLED` is on; see [Payment (x402)](agent-advice.md#payment-x402). It implements
+no agent order execution. The mobile Ask backend imported in PR #71
 remains separate; importing the app does not connect its screens to this harness automatically.
 
 Merge does not establish remote availability. Deploy the API Worker through the existing release

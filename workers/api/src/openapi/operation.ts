@@ -22,6 +22,10 @@ export interface OperationOptions {
   idempotent?: boolean | "optional";
   errors?: z.ZodType;
   errorStatuses?: number[];
+  /** Request headers beyond the security and idempotency ones. */
+  headers?: Record<string, { required?: boolean; description: string }>;
+  /** Statuses with their own JSON body, documented after (and over) the error statuses. */
+  responses?: Record<number, { description: string; schema: z.ZodType }>;
 }
 
 /** Documentation only: existing handler validation and authorization remain authoritative. */
@@ -72,6 +76,12 @@ export function operation(id: string, options: OperationOptions) {
       content: { "application/json": { schema: resolver(options.errors ?? envelopeErrorSchema) } },
     };
   }
+  for (const [status, special] of Object.entries(options.responses ?? {})) {
+    responses[status] = {
+      description: special.description,
+      content: { "application/json": { schema: resolver(special.schema) } },
+    };
+  }
   const parameters: NonNullable<DescribeRouteOptions["parameters"]> = Object.entries(
     options.query ?? {},
   ).map(([name, field]) => ({
@@ -88,6 +98,15 @@ export function operation(id: string, options: OperationOptions) {
       required: false,
       description:
         "Select an authorized workspace. Requires the agent module and read Agent permission.",
+      schema: { type: "string" },
+    });
+  }
+  for (const [name, header] of Object.entries(options.headers ?? {})) {
+    parameters.push({
+      name,
+      in: "header",
+      required: header.required ?? false,
+      description: header.description,
       schema: { type: "string" },
     });
   }

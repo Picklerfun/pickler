@@ -420,3 +420,13 @@ export const studioAccessRequestsInboxSchema = z.object({
 });
 export type StudioAccessRequestStatusDto = z.infer<typeof studioAccessRequestStatusSchema>;
 export type StudioAccessRequestsInboxDto = z.infer<typeof studioAccessRequestsInboxSchema>;
+
+/** `PUT /v1/studio/agents/:id/advice-price`: AUSD with up to 6 decimals (0.10–100), or null to clear. */
+export const advicePriceUpdateSchema = z
+  .object({ priceAusd: z.string().max(12).nullable() })
+  .strict();
+export const advicePriceResponseSchema = z.object({
+  advicePrice: z
+    .object({ amount: z.string(), asset: z.literal("AUSD"), decimals: z.literal(6) })
+    .nullable(),
+});

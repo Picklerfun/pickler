@@ -603,6 +603,8 @@ const entry = (
   overrides: Partial<DirectoryAgentDto> = {},
 ): DirectoryAgentDto => ({
   agent: {
+    id: "00000000-0000-0000-0000-000000000001",
+    advicePrice: null,
     name,
     handle: name.toLowerCase(),
     ticker: `$${name.slice(0, 4).toUpperCase()}`,
@@ -666,7 +668,15 @@ test("without a score for every agent, the directory keeps its order and the tag
     [
       entry("Drift", "trend", 71),
       entry("Half", "news", null, {
-        agent: { name: "Half", handle: "half", ticker: null, slug: null, accent: "lime" },
+        agent: {
+          id: "00000000-0000-0000-0000-000000000002",
+          advicePrice: null,
+          name: "Half",
+          handle: "half",
+          ticker: null,
+          slug: null,
+          accent: "lime",
+        },
         resolved: 0,
         hitRate: null,
       }),

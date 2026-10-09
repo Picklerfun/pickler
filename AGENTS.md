@@ -181,8 +181,10 @@ local-only; ordinary databases, remote providers and deployed activation are out
 The separate JWT-only `/v1/agent-advice` API returns asynchronous BTC/ETH 24-hour analysis, not
 orders. Read [Agent advice](docs/agent-advice.md) before changes. Core owns authorization/admission
 ports; trading owns analysis policy; runtime owns providers/prompts; infrastructure owns private
-jobs/events/call reserves and migration 0025. Research Queue advice wakeups never notify trading.
-Keep admissions disabled by default; no payments, paid retries or implicit AUSD-to-USD conversion.
+jobs/events/call reserves (migration 0025) and the x402 payment rows (migration 0038). Research
+Queue advice wakeups never notify trading. Keep admissions and x402 payments
+(`ADVICE_X402_ENABLED`) disabled by default; no paid retries or implicit AUSD-to-USD conversion.
+See [Agent advice](docs/agent-advice.md) for the x402 payment.
 
 Advice forecast configuration reuses the Research Worker’s MODEL_BASE_URL, MODEL_ID and MODEL_API_KEY. New advice policy v2 freezes the reviewed provider URL/model; v1 retains its historical direct-DeepSeek meaning. Never copy a provider key to a different endpoint or enable advice with unreviewed tariffs.
 

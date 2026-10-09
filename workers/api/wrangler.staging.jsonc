@@ -18,6 +18,9 @@
   "observability": { "enabled": true },
   "vars": {
     "ADVICE_ENABLED": "false",
+    // Sells each fresh advice analysis with x402; "true" without the X402_RELAYER_PRIVATE_KEY
+    // secret and MONAD_RPC_URL answers 503 (docs/agent-advice.md, "Payment (x402)").
+    "ADVICE_X402_ENABLED": "false",
     "APP_ENV": "staging",
     "TRADING_ADMISSIONS_ENABLED": "false",
     "ADMISSIONS_ENABLED": "true",

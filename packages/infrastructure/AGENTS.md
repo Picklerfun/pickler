@@ -17,6 +17,8 @@ or install it. See [controlled Studio acceptance](../../docs/studio-acceptance.m
 
 It also carries the adapters ported from Relayer for the public product: AES-256-GCM crypto byte-compatible with stored values, the Supabase JWT verifier (`jose`), and Turnkey stamping and activity forwarding. The Supabase data adapters that came with them (workspaces, API keys, agents, budgets, profiles, and the PostgREST client the growth functions used) were removed on 2026-09-29: the API reads those tables through the PostgreSQL classes below. supabase-js remains for auth only (`createSupabaseJwtVerifier`, and `createSupabaseAdmin` inside `createWalletAccounts`). `createSampleMarketBoard`, `createSampleLandingReadModel` and `createInMemoryApplicantStore` serve sample content for the public pages until a venue and an indexer exist. The invented agents are not here: they live in `scripts/design/fixtures/` and only the design harness's fixture API serves them; the marketplace reads its agents through `PostgresAgentDirectory` below. `createSampleMarketBoard` (`src/markets/sample-market-board.ts`) holds the six perpetual markets, the squares agents have a public call on, and a deterministic 24-hour trail derived from each mark and its change; it polls no venue and reads no chain. These adapters read the product schemas defined in `src/persistence/product/`; see [supabase/AGENTS.md](../../supabase/AGENTS.md) for the hosted project.
 
+`createAusdAuthorizationGateway` (`src/chain/ausd-authorization.ts`) implements core's `AdvicePaymentGateway` with viem: it verifies and settles EIP-3009 `transferWithAuthorization` payments in AUSD on Monad testnet, the relayer key being a Worker secret that never appears in errors. Addresses are compared case-insensitively; `nonceUsed` and `balance` read the latest block. `settle` runs `simulateContract` before `writeContract` and throws `SettlementRejected` only for an unparsable signature, a simulation failure (nothing broadcast) or a mined `reverted` receipt, and then only after reading `authorizationState` at latest shows the nonce still unused: a consumed nonce (the same authorization already executed, e.g. front-run) or a failed state read throws core's `SettlementUnknown`. A `writeContract` error, a receipt timeout (30 s), an RPC error, or a success receipt without the matching AUSD `Transfer(from, to, value)` log throws `SettlementUnknown` too, leaving the payment pending for reconciliation. `SettlementUnknown.txHash` is the broadcast hash once one exists (null after a `writeContract` error or a simulation revert); no settle error carries the signature, the key or a `cause`. Tests inject the client and wallet; none touch the network.
+
 Actual adapters live in `src/research`, `src/polymarket` and `src/persistence`. Business policy comes from core and trading; SQL implements transactional admission, idempotency, claims and scoped access. Drizzle defines the research tables in `src/persistence/schema.ts`, the product schemas (`identity`, `agents`, `budget`, `audit`, `growth`, `market`) in `src/persistence/product/`, and versioned SQL migrations in `drizzle/`. `0006_product_functions_and_grants.sql` is a custom migration holding what Drizzle cannot express: the `internal` helper schema, triggers, deferrable foreign keys, the `auth.users` references, the security-definer functions and the grants. It skips the Supabase-only parts when those roles or tables are absent, so it also runs on the Docker PostgreSQL. Admission, configuration, claims and scheduling lock agent rows in transactions. Never retry ambiguous research automatically. New providers must pass capability contract tests. Public runtime exports use compiled `dist`; relative source imports include `.js` extensions.
 
 ## Rules
@@ -97,6 +99,9 @@ own `kind='agent'` row and throws `AgentWalletNotFoundError` when none matched, 
 confirm produced can never land on someone else's wallet. This is the only path that sets the
 column — the studio's draft-create transaction only ever reads it.
 
+`PostgresStudioDirectory.setAdvicePrice(userId, productAgentId, micro)` writes
+`agents.agents.advice_price_micro_ausd` for the workspace owner (NOT_FOUND otherwise); a price needs a
+row in `wallets.agent_wallets` (CONFLICT `AGENT_WALLET_REQUIRED`), null clears without one.
 `PostgresStudioDirectory.createDraft` creates a private draft with its agent wallet in one
 transaction (studio-create-simplified-v1 §4.1). It locks the workspace and first looks for a replay:
 a `pickler.product_agents` row with `request_key = 'draft:<walletId>'` answers that draft again
@@ -162,7 +167,9 @@ covers them against the Docker PostgreSQL, including `onboard` right after `crea
 behind the marketplace. It reads one join: `agents.agents` left-joined to `agents.agent_profiles`
 (an agent created before profiles existed is still an agent, and gets the profile's defaults), to
 `identity.profiles` for the creator's handle, and to `market.tokens` restricted to `pre_graduation`
-and `graduated`. A `reserved`, `launching` or `failed` token is not a token: the agent's `ticker`
+and `graduated`. Every summary, persona and directory entry carries the agent `id` and its
+`advicePrice` (`agents.advice_price_micro_ausd`, read as text and mapped by core's `advicePrice`). A
+`reserved`, `launching` or `failed` token is not a token: the agent's `ticker`
 and `token` are null, and its ticker has no profile page. Tickers are stored and compared with
 their `$`. Killed agents are off the listing and the directory but keep a persona, so an old link
 still resolves. Only `visibility = 'public'` agents appear anywhere in it (migration 0024,
@@ -537,6 +544,18 @@ Started unknown charges remain reserved and block the agent; never restart their
 trusted `reconcileCall` method requires terminal failure and verified evidence, uses frozen rates
 and records an audit event; it has no consumer HTTP route. Apply migration before updated
 research/preview admission queries. See [Agent advice](../../docs/agent-advice.md).
+
+`PostgresAdvicePayments` implements core's `AdvicePaymentStore` over `pickler.advice_payments`
+(migration 0038). `insertPending` is one atomic upsert on (user, agent, request key) that only
+overwrites a `failed` row; any other existing row, or a reused nonce, is `CONFLICT`, so exactly one
+of two concurrent requests proceeds. Payer, recipient and nonce are stored lowercased and address
+comparisons are case-insensitive.
+Reusing a `failed` row assigns a fresh `id`, so every attempt owns its id; `settled` and `failed`
+only write a `pending` row, `refundOwed` and `attachJob` only a `settled` one (`attachJob` also only
+while `job_id` is null), and a write that matches nothing is a silent no-op, so a stale writer
+cannot touch a newer attempt. `byKey` returns `validBefore` as unix seconds. `saleTerms` is
+`null` without a public, unkilled, priced agent or without a wallet account. The API Worker builds
+it and the gateway per invocation, on that invocation's pool, only while x402 is on.
 
 Advice v2 call rows record the frozen forecast provider origin, not a misleading direct-DeepSeek label. Historical v1 rows retain their original meaning. This is a JSON policy extension and requires no schema migration.
 

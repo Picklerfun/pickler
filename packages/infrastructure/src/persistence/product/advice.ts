@@ -8,6 +8,7 @@ import {
   numeric,
   primaryKey,
   text,
+  timestamp,
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
@@ -64,6 +65,41 @@ export const adviceJobs = pickler
       check(
         "advice_lease",
         sql`${t.status} <> 'running' OR (${t.leaseOwner} is not null AND ${t.leaseExpiresAt} is not null)`,
+      ),
+    ],
+  )
+  .enableRLS();
+/** One x402 payment per (user, agent, idempotency key); settled before its job exists. */
+export const advicePayments = pickler
+  .table(
+    "advice_payments",
+    {
+      id: uuid("id").primaryKey().defaultRandom(),
+      jobId: uuid("job_id").references(() => adviceJobs.id),
+      userId: uuid("user_id").notNull(),
+      publicAgentId: uuid("public_agent_id")
+        .notNull()
+        .references(() => productAgents.productAgentId),
+      requestKey: text("request_key").notNull(),
+      payer: text("payer").notNull(),
+      payTo: text("pay_to").notNull(),
+      amountMicroAusd: bigint("amount_micro_ausd", { mode: "bigint" }).notNull(),
+      nonce: text("nonce").notNull(),
+      validBefore: timestamp("valid_before", { withTimezone: true }).notNull(),
+      status: text("status").notNull(),
+      txHash: text("tx_hash"),
+      blockNumber: bigint("block_number", { mode: "bigint" }),
+      error: text("error"),
+      createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+      updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    },
+    (t) => [
+      uniqueIndex("advice_payments_nonce_key").on(t.nonce),
+      uniqueIndex("advice_payments_tx_key").on(t.txHash),
+      uniqueIndex("advice_payments_request_key").on(t.userId, t.publicAgentId, t.requestKey),
+      check(
+        "advice_payments_status",
+        sql`${t.status} IN ('pending','settled','failed','refund_owed')`,
       ),
     ],
   )

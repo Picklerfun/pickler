@@ -125,6 +125,14 @@ export function createAdviceService(
         available: options.enabled && options.policy !== null && markets.length > 0,
       };
     },
+    async admit(principal: Principal, id: string, symbol: AdviceSymbol): Promise<void> {
+      user(principal);
+      if (!options.enabled || !options.policy) {
+        throw new PilotError("ADVICE_UNAVAILABLE", "New analyses are disabled");
+      }
+      const agent = await repository.resolve(id);
+      assertAdviceAgent(agent, symbol);
+    },
     async request(principal: Principal, id: string, symbol: AdviceSymbol, key: string) {
       const userId = user(principal);
       if (!options.enabled || !options.policy) {

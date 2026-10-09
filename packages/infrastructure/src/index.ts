@@ -169,6 +169,16 @@ export {
 export { ViemChainReader, type ViemChainReaderOptions } from "./chain/viem-chain-reader.js";
 
 export {
+  authorizationTypedData,
+  createAusdAuthorizationGateway,
+  transferMatches,
+  type AusdAuthorizationGatewayInput,
+  type PublicClientLike,
+  type TransferLog,
+  type WalletClientLike,
+} from "./chain/ausd-authorization.js";
+
+export {
   PostgresLaunchIndexStore,
   type ApplyBatchInput,
   type IndexBlockInput,
@@ -225,6 +235,7 @@ export { normalizePerplBook, normalizePerplTicker } from "./perpl/data.js";
 
 export { exportPerpsAudit } from "./persistence/perps-audit-export.js";
 export * from "./persistence/advice-store.js";
+export * from "./persistence/advice-payments.js";
 
 export * from "./persistence/perps-check-cost-store.js";
 

@@ -71,6 +71,8 @@ The DTO also carries `spend` (the config's limits or null) and `spendEnforced` (
 that a day's limit is not below one call's. `limitsUpdateSchema` is the strict body of
 `PUT /v1/studio/agents/:id/limits`: `perCallAusd` and `perDayAusd`, with no version, because saving
 limits keeps the configuration version.
+`advicePriceUpdateSchema` (`{ priceAusd: string | null }`) and `advicePriceResponseSchema` are the
+body and answer of `PUT /v1/studio/agents/:id/advice-price`.
 
 Setup and versions (docs/specs/studio-live-v1.md L10–L13): `src/research.ts` has `RISK_BOUNDS`, a
 mirror of core's pinned by `workers/api/test/accent-venue-mirror.test.ts`, and `riskLimitsSchema`
@@ -143,6 +145,9 @@ representative contract tests in the same change.
 24-hour directional results and cursor history. No requester identity, internal scope, private
 configuration, prices/rates, prompts or provider traces may cross these DTOs. Wallet sign-in
 `kind` is `eoa | mera`. See [Agent advice](../../docs/agent-advice.md).
+`paymentRequirementsSchema`, `paymentErrorSchema` and `paymentRequiredSchema` are the x402 v1 402
+body of the paid advice request: x402's own shape, not the response envelope, with one `accepts`
+entry pinned to `exact`, `monad-testnet`, 300 s and the AUSD EIP-712 domain.
 
 ## Perpl paper runtime
 

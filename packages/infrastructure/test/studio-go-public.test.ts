@@ -990,8 +990,12 @@ test("0034 preserves historical X proof and public visibility while creating pri
   );
   const before = (await pool.query("SELECT * FROM agents.agents WHERE id=$1", [agentId])).rows[0];
   await migrateDatabase(pool);
+  const after = (await pool.query("SELECT * FROM agents.agents WHERE id=$1", [agentId])).rows[0];
+  // Later migrations may add columns (0038 adds advice_price_micro_ausd, null for this row);
+  // every column that existed before 0034 keeps its value.
+  assert.equal(after.advice_price_micro_ausd, null);
   assert.deepEqual(
-    (await pool.query("SELECT * FROM agents.agents WHERE id=$1", [agentId])).rows[0],
+    Object.fromEntries(Object.keys(before).map((column) => [column, after[column]])),
     before,
   );
   const old = (

@@ -4,9 +4,10 @@
 
 The API exposes fresh, asynchronous BTC/ETH perpetual analyses with a fixed 24-hour horizon.
 This is an analysis service, not a trading service. It never signs orders, creates positions,
-changes wallet/paper balances or notifies the trading executor. Mobile screens, payments/x402,
+changes wallet/paper balances or notifies the trading executor. A fresh analysis can be sold
+with x402 behind `ADVICE_X402_ENABLED` (see [Payment (x402)](#payment-x402)); mobile screens,
 deployment and live-provider acceptance are separate deliveries. Controlled tests establish
-local behavior only. Admissions are disabled by default.
+local behavior only. Admissions and payments are disabled by default.
 
 ```mermaid
 flowchart LR
@@ -41,7 +42,8 @@ Paths below are relative to `/v1/agent-advice` on the Worker and
 
 All four operations require a verified user JWT. API keys and agent HMAC cannot access them.
 A JWT identifies a user; it does not establish that a request came exclusively from mobile,
-prove payment or replace payment verification. The API does not charge the mobile application.
+prove payment or replace payment verification. Payment is verified only by the x402 flow below,
+and only where it is turned on.
 History performs no new model/provider calls. Responses use `Cache-Control: private, no-store`,
 including access failures. Pending and failed requests are visible only to their requester;
 completed recommendations are visible to every authenticated user while the agent is public.
@@ -55,6 +57,71 @@ new POST requests return 503; exact idempotent replays and reads remain availabl
 runtime agent. 429 reports active work or exhausted budget; 503 reports unavailable configuration,
 paused agents or unresolved provider costs. Private/unpublished agents return 404.
 `statusUrl` is the canonical Worker `/v1/...` path; web clients apply the `/api` transport prefix.
+
+## Payment (x402)
+
+The wire contract is [the x402 specification](specs/agent-advice-x402-v1.md) §4.3; its failure
+paths are §3.3. `POST /agents/:agentId/recommendations` is paid only when the API Worker has
+`ADVICE_X402_ENABLED=true`, the `X402_RELAYER_PRIVATE_KEY` secret and `MONAD_RPC_URL`. With the
+flag off the request is free exactly as above, and no 402 or payment header is ever produced. With
+the flag on but the key or RPC missing, or a key that is not 32-byte hex, the request fails closed:
+every `POST` answers 503 `ADVICE_UNAVAILABLE`, nothing is enqueued and no analysis is ever free,
+and the Worker logs one line per composition naming the variable, never a value. The composition is
+`paidAdviceFrom` in `workers/api/src/container.ts`: core's `createPaidAdvice` over the request's
+advice service and store, `PostgresAdvicePayments` on the invocation's pool and
+`createAusdAuthorizationGateway` (AUSD on Monad testnet, EIP-3009). The `GET` routes are unchanged
+and free.
+
+The order of a paid request is fixed in core:
+
+1. **Replay.** A job already made for the same user, agent and `Idempotency-Key` is returned (202)
+   with no settlement and no `X-PAYMENT-RESPONSE`, even while advice is disabled. Another symbol on
+   that key is 409.
+2. **Admission.** Core's `admit` runs the checks that need no transaction before any 402:
+   disabled advice or an agent without advice markets answer 503, a symbol the agent does not
+   trade 400 and an unpublished agent 404, so nothing is signed for an analysis refused there.
+3. **The key's payment row.** A settled payment (with or without its job) is reused and never
+   charged again.
+4. **Sale terms.** An agent with no price or no wallet answers 404 `{ error: "ADVICE_NOT_FOR_SALE" }`.
+5. **402.** Without `X-PAYMENT` the answer is 402 with x402 v1's own body (not the response
+   envelope): `{ x402Version: 1, error: "X-PAYMENT header is required", accepts: [requirements] }`.
+   A refused payment is 402 with the same `accepts` and `error` one of `invalid_payment`,
+   `invalid_signature`, `wrong_amount`, `wrong_recipient`, `expired`, `nonce_used`,
+   `insufficient_funds`, `payer_not_linked` or `settlement_failed`. Every response keeps
+   `Cache-Control: private, no-store`.
+6. **Settlement, then enqueue.** A pending row is inserted, the relayer submits
+   `transferWithAuthorization`, and only a confirmed transfer enqueues the job. The 202 carries
+   `X-PAYMENT-RESPONSE`, a base64 JSON object with `success: true`, `transaction`, `network`
+   (`"monad-testnet"`) and `payer`.
+
+Settlement outcomes:
+
+- **Proven non-execution** — the simulation reverts before broadcast, or the mined receipt is
+  reverted while the authorization nonce is still unused: 402 `settlement_failed`, the row becomes
+  `failed`, nothing was charged and the same key may pay again.
+- **Unknown outcome** — a timeout, an RPC error, a success receipt without the matching AUSD
+  `Transfer` log, or a revert whose nonce was already consumed: 402 `settlement_failed`, the row
+  stays `pending` and that key is never settled again while it is. Once the authorization's
+  `validBefore` plus a 120-second grace has passed (server clock), the next request on the key
+  reads the nonce on chain: unused, the row becomes `failed` and a new payment is allowed; used, it
+  stays `pending` for manual reconciliation. Before that, the key answers `invalid_payment` without
+  reading the chain. The grace keeps a server clock ahead of block time, or an RPC some blocks
+  behind, from reading a still-landing transfer's nonce as unused.
+- **Busy or budget at enqueue** — decided in the enqueue transaction, so after settlement: 429,
+  the payment stays `settled` with no job, and the same `Idempotency-Key` reuses it to enqueue
+  without a second charge.
+- **Two attempts on one key at once** — the second `insertPending` is refused and answers 409
+  `CONFLICT`; nothing is settled for it.
+
+Every unknown outcome, and a confirmed transfer whose `settled` write fails (that request answers
+500 and the row stays `pending`), is logged by the Worker as an `unrecorded advice settlement` line
+with the payment id, user, agent, `Idempotency-Key`, payer, nonce and the transaction hash when
+one exists, never the signature or a key. That line is where manual reconciliation starts.
+
+`refund_owed` is reserved for an analysis that fails after its job exists; v1 marks it manually
+and refunds nothing automatically. The relayer is a testnet EOA that holds no AUSD and pays gas in
+MON; its key never appears in logs, errors or responses. The `resource` in the requirements is
+`https://pickler.fun/api/v1/agent-advice/agents/{agentId}/recommendations`.
 
 ## Evidence and routing
 
@@ -137,7 +204,9 @@ fail queued jobs without calling providers; this delivery leaves production advi
 
 ## OpenAPI and validation
 
-`GET /v1/openapi.json` documents mounted advice routes even when admission is off. The complete
+`GET /v1/openapi.json` documents mounted advice routes even when admission is off. The request
+operation (`adviceRequest`) documents the 402 body, the `X-PAYMENT` request header and the
+`X-PAYMENT-RESPONSE` header of the 202 whether or not x402 is on in that deployment. The complete
 controlled export includes the group: `npm run api:openapi -- --output /tmp/pickler-openapi.json`.
 OpenAPI 3.1 uses server `/api`; generated schemas document JWT, idempotency, cursor pagination,
 states and envelopes. Read [API contract](api-contract.md) when adding an endpoint.

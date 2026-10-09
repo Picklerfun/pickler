@@ -10,10 +10,13 @@
   },
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["AgentLedger"] }],
   // Non-secret configuration. Secrets (SUPABASE_SECRET_KEY, ENCRYPTION_KEY,
-  // TURNKEY_API_PUBLIC_KEY, TURNKEY_API_PRIVATE_KEY) are set with `wrangler secret put` or
+  // TURNKEY_API_PUBLIC_KEY, TURNKEY_API_PRIVATE_KEY, X402_RELAYER_PRIVATE_KEY) are set with `wrangler secret put` or
   // .dev.vars locally; never commit them.
   "vars": {
     "ADVICE_ENABLED": "false",
+    // Sells each fresh advice analysis with x402; "true" without the X402_RELAYER_PRIVATE_KEY
+    // secret and MONAD_RPC_URL answers 503 (docs/agent-advice.md, "Payment (x402)").
+    "ADVICE_X402_ENABLED": "false",
     "APP_ENV": "development",
     "SUPABASE_URL": "",
     "JWT_ISSUER": "",

@@ -11,7 +11,15 @@ export const VENUES = ["predictions", "perps", "both"] as const;
 export type VenueDto = (typeof VENUES)[number];
 export type ActivityKindDto = "call" | "position" | "settlement" | "pass" | "answer" | "perp";
 
+export interface AdvicePriceDto {
+  amount: string;
+  asset: "AUSD";
+  decimals: 6;
+}
+
 export interface AgentSummaryDto {
+  id: string;
+  advicePrice: AdvicePriceDto | null;
   /** Null until the agent launches a token; the slug names the token's page. */
   slug: string | null;
   name: string;
@@ -58,6 +66,8 @@ export interface ActivityEventDto {
 }
 
 export interface AgentPersonaDto {
+  id: string;
+  advicePrice: AdvicePriceDto | null;
   /** Confirmed token on the configured network. Missing on historical clients. */
   launchedToken?: AgentTokenDto | null | undefined;
   tokenConfirmation?: "absent" | "pending" | "confirmed" | undefined;
@@ -139,8 +149,13 @@ export interface AgentReadDto {
   outcome: { final: string; observedAt: string } | null;
 }
 
+export interface DirectoryAgentRefDto extends ActivityAgentDto {
+  id: string;
+  advicePrice: AdvicePriceDto | null;
+}
+
 export interface DirectoryAgentDto {
-  agent: ActivityAgentDto;
+  agent: DirectoryAgentRefDto;
   beat: string;
   venue: VenueDto;
   decides: string;

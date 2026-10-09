@@ -437,7 +437,15 @@ const directoryAgent = (
   handle: string,
   ticker: string | null,
   accent: DirectoryAgentDto["agent"]["accent"],
-) => ({ name, handle, ticker, slug: ticker ? ticker.slice(1).toLowerCase() : null, accent });
+) => ({
+  id: `00000000-0000-0000-0000-${Buffer.from(handle).toString("hex").padStart(12, "0").slice(-12)}`,
+  advicePrice: null,
+  name,
+  handle,
+  ticker,
+  slug: ticker ? ticker.slice(1).toLowerCase() : null,
+  accent,
+});
 
 /* `GET /marketplace/directory`: the canvas's six agents (`MKT_AGENTS`). Paid reads are not built,
    so no agent carries a service. */

@@ -2,8 +2,17 @@ import { createTokenLaunchService } from "@pickler/core";
 import { PostgresTokenLaunchStore } from "@pickler/infrastructure";
 import { createXOAuthService } from "@pickler/core";
 import { PostgresStudioAccessRequests } from "@pickler/infrastructure";
-import { createAdviceService } from "@pickler/core";
-import { PostgresAdviceStore } from "@pickler/infrastructure";
+import {
+  createAdviceService,
+  createPaidAdvice,
+  type AdviceRepository,
+  type UnrecordedSettlement,
+} from "@pickler/core";
+import {
+  createAusdAuthorizationGateway,
+  PostgresAdvicePayments,
+  PostgresAdviceStore,
+} from "@pickler/infrastructure";
 import { parseAdvicePolicy } from "@pickler/trading/perps";
 import {
   VENUE_CONTRACTS,
@@ -172,6 +181,86 @@ export function delegatedPublicKeyFrom(
     return null;
   }
   return value;
+}
+
+/** A secp256k1 private key in 0x-prefixed hex, the format viem's `privateKeyToAccount` takes. */
+const PRIVATE_KEY = /^0x[0-9a-fA-F]{64}$/;
+
+/**
+ * A paid request that refuses every call with 503 `ADVICE_UNAVAILABLE`: x402 is on but cannot sell,
+ * and a free analysis must never stand in for a paid one.
+ */
+function unavailablePaidAdvice(): ReturnType<typeof createPaidAdvice> {
+  return {
+    async request() {
+      throw new PilotError("ADVICE_UNAVAILABLE", "Paid analyses are not configured");
+    },
+  };
+}
+
+/**
+ * The paid advice request (x402), or undefined when it is off. It is off unless
+ * `ADVICE_X402_ENABLED` is "true"; off, `POST /v1/agent-advice/.../recommendations` is free exactly
+ * as before. On, it sells only with both the relayer key and `MONAD_RPC_URL`: the flag without
+ * them, or with a key viem refuses, fails closed (every request answers 503) and says so by
+ * variable name, never by value.
+ */
+export function paidAdviceFrom(
+  env: Pick<Env, "ADVICE_X402_ENABLED" | "X402_RELAYER_PRIVATE_KEY" | "MONAD_RPC_URL">,
+  deps: {
+    advice: ReturnType<typeof createAdviceService>;
+    repository: AdviceRepository;
+    pool: PostgresResearchStore["pool"];
+  },
+  log: (message: string) => void = console.error,
+): ReturnType<typeof createPaidAdvice> | undefined {
+  if (env.ADVICE_X402_ENABLED !== "true") {
+    return undefined;
+  }
+  const relayerPrivateKey = env.X402_RELAYER_PRIVATE_KEY;
+  const rpcUrl = env.MONAD_RPC_URL;
+  if (!relayerPrivateKey || !rpcUrl) {
+    log("x402 is on but its relayer or RPC is missing; advice requests are refused");
+    return unavailablePaidAdvice();
+  }
+  if (!PRIVATE_KEY.test(relayerPrivateKey)) {
+    log("X402_RELAYER_PRIVATE_KEY is not a 32-byte hex private key; advice requests are refused");
+    return unavailablePaidAdvice();
+  }
+  let gateway: ReturnType<typeof createAusdAuthorizationGateway>;
+  try {
+    gateway = createAusdAuthorizationGateway({
+      rpcUrl,
+      relayerPrivateKey: relayerPrivateKey as `0x${string}`,
+    });
+  } catch {
+    // The error is dropped unread: it may quote the key.
+    log("X402_RELAYER_PRIVATE_KEY or MONAD_RPC_URL was refused; advice requests are refused");
+    return unavailablePaidAdvice();
+  }
+  return createPaidAdvice({
+    advice: deps.advice,
+    repository: deps.repository,
+    store: new PostgresAdvicePayments(deps.pool),
+    gateway,
+    now: () => Date.now(),
+    resourceBase: "https://pickler.fun/api",
+    reportUnrecordedSettlement: reportUnrecordedSettlement(log),
+  });
+}
+
+/**
+ * The log line for an x402 payment whose AUSD may have moved (or did) without a `settled` row:
+ * the start of its manual reconciliation. Ids, payer, nonce and hash only; core never hands over
+ * the signature.
+ */
+export function reportUnrecordedSettlement(log: (message: string) => void = console.error) {
+  return (settlement: UnrecordedSettlement) => {
+    const hash = settlement.txHash ?? "unknown";
+    log(
+      `unrecorded advice settlement (${settlement.reason}) payment ${settlement.paymentId} tx ${hash} for user ${settlement.userId} agent ${settlement.publicAgentId} key ${JSON.stringify(settlement.key)} payer ${settlement.payer} nonce ${settlement.nonce}; reconcile out of band`,
+    );
+  };
 }
 
 /**
@@ -459,14 +548,23 @@ export function createServices(env: Env): Services & { close(): Promise<void> } 
   const chainId = supportedChainId(env);
   const custody = custodyServices(env, repository.pool, authenticate, profiles, chainId);
   const walletAuth = walletAuthServices(env, repository.pool, authenticate);
+  // One advice store and service per invocation, shared by the free and the paid request.
+  const adviceStore = new PostgresAdviceStore(repository.pool);
+  const adviceService = createAdviceService(adviceStore, {
+    enabled: env.ADVICE_ENABLED === "true" && Boolean(env.RESEARCH_QUEUE),
+    policy: parseAdvicePolicy(env.ADVICE_POLICY_JSON),
+  });
+  const paidAdvice = paidAdviceFrom(env, {
+    advice: adviceService,
+    repository: adviceStore,
+    pool: repository.pool,
+  });
   return {
     authenticate,
     advice: {
       authenticate,
-      service: createAdviceService(new PostgresAdviceStore(repository.pool), {
-        enabled: env.ADVICE_ENABLED === "true" && Boolean(env.RESEARCH_QUEUE),
-        policy: parseAdvicePolicy(env.ADVICE_POLICY_JSON),
-      }),
+      service: adviceService,
+      ...(paidAdvice ? { paid: paidAdvice } : {}),
       notify: async () => {
         if (!env.RESEARCH_QUEUE) {
           throw new Error("Missing research queue");
