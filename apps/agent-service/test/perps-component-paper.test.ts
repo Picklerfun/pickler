@@ -42,6 +42,7 @@ async function setup(
   t: Parameters<typeof createTestStore>[0],
   sessionId: string,
   side: "long" | "short" = "long",
+  receiptOffset = 0,
 ) {
   let time = at;
   const db = await createTestStore(t, () => time);
@@ -50,11 +51,17 @@ async function setup(
   const view = await study.initialize(c, { acquisitionPolicy: COMPONENT_PAPER_POLICY });
   const lease = await study.claim(c);
   const signal = new AbortController().signal;
-  const paper = new PostgresPerpsPaperStore(db.pool, () => time, {
-    ...c,
-    owner: lease.owner,
-    signal,
-  });
+  const paper = new PostgresPerpsPaperStore(
+    db.pool,
+    () => time,
+    {
+      ...c,
+      owner: lease.owner,
+      signal,
+    },
+    undefined,
+    () => time + receiptOffset,
+  );
   const advance = async (to: number) => {
     while (time < to) {
       time = Math.min(to, time + 20000);
@@ -63,20 +70,21 @@ async function setup(
   };
   await advance((await study.view(c)).record.startedAt!);
   const fresh = () => {
-    const value = evidence(time);
+    const receiptAt = time + receiptOffset;
+    const value = evidence(receiptAt);
     for (const frame of value.frames) {
       frame.snapshot.ticker.provenance = {
         ...frame.snapshot.ticker.provenance,
-        providerTimestamp: time - 20000,
+        providerTimestamp: receiptAt - 20000,
       };
-      frame.book.provenance = { ...frame.book.provenance, providerTimestamp: time };
+      frame.book.provenance = { ...frame.book.provenance, providerTimestamp: receiptAt };
       frame.streamEvidence = {
         policy: COMPONENT_PAPER_POLICY,
         generation: 1,
-        copiedAt: time,
+        copiedAt: receiptAt,
         heartbeatSequence: Math.floor(time / 1000),
         headBlock: Math.floor(time / 1000),
-        heartbeatReceivedAt: time,
+        heartbeatReceivedAt: receiptAt,
       };
       frame.hash = digest(frame);
     }
@@ -97,7 +105,7 @@ async function setup(
     execution: async () => fresh().frames,
     reconcile: async () => ({ frames: [], funding: [] }),
   };
-  const runner = createProfileStudyRunner({ study, paper, data, now: () => time });
+  const runner = createProfileStudyRunner({ study, paper, data, now: () => time + receiptOffset });
   const scope = (variant: SmaReentryVariant = "sma-reference") => ({
     ...c,
     agentId: view.record.agentIds[variant]!,
@@ -277,4 +285,35 @@ test("transactional close rejects tampered evidence and expired continuity befor
     simulatePerpsFill(state.account, intent, original, s.time()),
   );
   assert.equal(completed.account.positions[0]!.closedAt, s.time());
+});
+
+test("owned PostgreSQL financial writes keep receipt and database clocks distinct", async (t) => {
+  const s = await setup(t, "component-clock-domains", "long", 23);
+  await s.runner.cycle(s.c, s.lease, s.signal);
+  const first = await exportPerpsAudit(s.db.pool, s.c);
+  assert.equal(first.study.rounds[0]!.executionStatus, "complete");
+  for (const variant of SMA_REENTRY_VARIANTS) {
+    const a = first.accounts[variant]!.account;
+    assert.ok(a.positions.length > 0);
+    assert.ok(a.positions.every((position) => position.openedAt === s.time()));
+    assert.equal(a.lastValuationAt, s.time());
+  }
+  await s.advance(s.time() + 60000);
+  s.data.observe = async () => {
+    const value = s.fresh();
+    for (const frame of value.frames) {
+      frame.snapshot.ticker.mark = "97";
+      frame.hash = digest(frame);
+    }
+    return { frames: value.frames, funding: [], marksOnly: true };
+  };
+  await s.runner.cycle(s.c, s.lease, s.signal);
+  const closed = await exportPerpsAudit(s.db.pool, s.c);
+  for (const variant of SMA_REENTRY_VARIANTS) {
+    const a = closed.accounts[variant]!.account;
+    assert.ok(a.positions.every((position) => position.closedAt === s.time()));
+    assert.ok(
+      closed.accounts[variant]!.movements.some((movement) => movement.kind === "realized-pnl"),
+    );
+  }
 });
