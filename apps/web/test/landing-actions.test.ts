@@ -8,6 +8,7 @@ import {
   OUTCOME_HUE,
   OUTCOME_LABEL,
   outcomeSentence,
+  tapeEntry,
 } from "../src/features/landing/lib/actions";
 
 const action = (over: Partial<AgentActionDto> = {}): AgentActionDto => ({
@@ -100,5 +101,35 @@ describe("the exchange on screen", () => {
 
   it("is nothing with nothing on record", () => {
     assert.equal(exchangeAt([], 5), null);
+  });
+});
+
+describe("the tape", () => {
+  it("names the agent by ticker, or by handle without one, and tones the outcome", () => {
+    assert.deepEqual(tapeEntry(action({ outcomeText: "ENTERED · 40 AUSD ON PAPER" })), {
+      who: "$UNLK",
+      call: "SHORT BTC-PERP · 4H",
+      outcome: "ENTERED · 40 AUSD ON PAPER",
+      tone: "win",
+    });
+    const held = tapeEntry(
+      action({
+        agent: {
+          name: "Tape Reader",
+          handle: "tapereader",
+          ticker: null,
+          slug: null,
+          accent: "cyan",
+        },
+        call: "hold",
+        outcome: "held",
+        probability: null,
+      }),
+    );
+    assert.equal(held.who, "@tapereader");
+    assert.equal(held.call, "HOLD BTC-PERP · 4H");
+    assert.equal(held.outcome, "HELD");
+    assert.equal(held.tone, "caution");
+    assert.equal(tapeEntry(action({ outcome: "blocked" })).tone, "loss");
   });
 });

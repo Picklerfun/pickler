@@ -9,8 +9,8 @@ import { useState } from "react";
 import styles from "./site-nav.module.css";
 
 /**
- * The public navigation, the same on every route. The landing hangs the announcement pill under it
- * and nothing else differs, so the brand and the menus never move as you go from the landing to the
+ * The public navigation, the same on every route. The landing hangs the agents' tape above it and
+ * nothing else differs, so the brand and the menus never move as you go from the landing to the
  * board to an agent.
  *
  * Sections that exist are links; the rest are announced as coming rather than linked to nothing.
