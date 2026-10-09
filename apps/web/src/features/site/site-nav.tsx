@@ -3,10 +3,18 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Icon } from "@pickler/ui";
+import { Button, ButtonLink, Icon } from "@pickler/ui";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "@pickler/ui/dropdown-menu";
 import { useStudioHref } from "./studio-href";
 import { AccountMenu } from "@/features/wallet/components/account-menu";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import styles from "./site-nav.module.css";
 
 /**
@@ -55,106 +63,179 @@ const MENUS = [
   },
 ] as const;
 
+type Menu = (typeof MENUS)[number];
+
+function MenuItems({
+  menu,
+  pathname,
+  compact = false,
+}: {
+  menu: Menu;
+  pathname: string;
+  compact?: boolean;
+}) {
+  return (
+    <DropdownMenuGroup>
+      <DropdownMenuLabel className={styles.groupLabel}>{menu.label}</DropdownMenuLabel>
+      {menu.items.map((item) =>
+        "href" in item ? (
+          <DropdownMenuItem key={item.title} asChild className={styles.item}>
+            <Link
+              href={item.href}
+              aria-current={pathname === item.href.split("#")[0] ? "page" : undefined}
+            >
+              <span className={styles.itemTitle}>{item.title}</span>
+              {!compact && <span className={styles.itemSub}>{item.sub}</span>}
+            </Link>
+          </DropdownMenuItem>
+        ) : (
+          <DropdownMenuItem key={item.title} disabled className={styles.item}>
+            <span className={styles.itemTitle}>
+              {item.title}
+              <span className={styles.soon}>Soon</span>
+            </span>
+            {!compact && <span className={styles.itemSub}>{item.sub}</span>}
+          </DropdownMenuItem>
+        ),
+      )}
+    </DropdownMenuGroup>
+  );
+}
+
 export function SiteNav({
   connect = false,
   surface = "light",
 }: {
   connect?: boolean;
-  /** The surface the bar is sitting on, so the one inverted control in it knows what to invert. */
   surface?: "light" | "dark";
 }) {
   const pathname = usePathname();
   const studio = useStudioHref();
   const [open, setOpen] = useState<string | null>(null);
+
+  // Layout stays in CSS. Only dismiss a disclosure whose trigger disappears at the breakpoint.
+  useEffect(() => {
+    const compact = window.matchMedia("(max-width: 1100px)");
+    const dismiss = () =>
+      setOpen((current) => {
+        const hidden = current === "navigation" ? !compact.matches : compact.matches;
+        return hidden ? null : current;
+      });
+    compact.addEventListener("change", dismiss);
+    return () => compact.removeEventListener("change", dismiss);
+  }, []);
   const owner = MENUS.find((menu) =>
     menu.items.some((item) => "href" in item && pathname.startsWith(item.href.split("#")[0]!)),
   )?.key;
 
   return (
-    <>
-      <nav className={styles.nav} aria-label="Main">
-        <div className={styles.row}>
-          <Link href="/" className={styles.brand}>
-            <Image
-              src="/brand/logo.png"
-              alt=""
-              width={128}
-              height={135}
-              className={styles.logo}
-              priority
-              unoptimized
-            />
-            <span className={styles.name}>PICKLER</span>
-          </Link>
+    <nav className={styles.nav} aria-label="Main">
+      <div className={styles.row}>
+        <Link href="/" className={styles.brand} aria-label="Pickler home">
+          <Image
+            src="/brand/logo.png"
+            alt=""
+            width={128}
+            height={135}
+            className={styles.logo}
+            priority
+            unoptimized
+          />
+          <span className={styles.name}>PICKLER</span>
+        </Link>
 
-          <div className={styles.menus}>
-            {MENUS.map((menu) => (
-              <div key={menu.key} className={styles.menu}>
-                <button
-                  type="button"
-                  className={`${styles.menuButton} ${open === menu.key || owner === menu.key ? styles.menuButtonOn : ""}`}
-                  aria-expanded={open === menu.key}
-                  onClick={() => setOpen(open === menu.key ? null : menu.key)}
+        <div className={styles.menus}>
+          {MENUS.map((menu) => (
+            <DropdownMenu
+              key={menu.key}
+              modal={false}
+              open={open === menu.key}
+              onOpenChange={(value) =>
+                setOpen((current) => (value ? menu.key : current === menu.key ? null : current))
+              }
+            >
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  mono
+                  className={styles.menuButton}
+                  data-active={owner === menu.key || undefined}
                 >
-                  {menu.label.toUpperCase()}
-                  <Icon name={open === menu.key ? "chevronUp" : "chevronDown"} size={13} />
-                </button>
-                {open === menu.key && (
-                  <div className={styles.dropdown}>
-                    <p className={styles.dropdownLabel}>{menu.label.toUpperCase()}</p>
-                    {menu.items.map((item) =>
-                      "href" in item ? (
-                        <Link
-                          key={item.title}
-                          href={item.href}
-                          className={`${styles.item} ${pathname.startsWith(item.href.split("#")[0]!) ? styles.itemOn : ""}`}
-                          onClick={() => setOpen(null)}
-                        >
-                          <span className={styles.itemTitle}>{item.title}</span>
-                          <span className={styles.itemSub}>{item.sub}</span>
-                        </Link>
-                      ) : (
-                        <span key={item.title} className={`${styles.item} ${styles.itemSoon}`}>
-                          <span className={styles.itemTitle}>
-                            {item.title}
-                            <span className={styles.soon}>SOON</span>
-                          </span>
-                          <span className={styles.itemSub}>{item.sub}</span>
-                        </span>
-                      ),
-                    )}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
+                  {menu.label}
+                  <Icon name="chevronDown" size={16} />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="start"
+                sideOffset={10}
+                collisionPadding={12}
+                className={styles.dropdown}
+                data-surface={surface}
+                aria-label={menu.label}
+              >
+                <MenuItems menu={menu} pathname={pathname} />
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ))}
+        </div>
 
-          {/* Two different people, side by side: connecting a wallet is for readers and backers,
-              and the action beside it goes to the studio, which is where an agent is made. */}
-          {connect && <AccountMenu />}
-          {/* The one inverted thing in the bar. An inverted block has to be told what it inverts
-              *from*: hard-coding dark here is right only while the bar is light, and on the dark
-              bar it painted a dark action on a dark ground and disappeared. */}
-          <Link
+        <div className={styles.actions}>
+          {connect && <AccountMenu surface={surface} />}
+          <ButtonLink
+            as={Link}
             href={studio}
+            variant="ghost"
             className={styles.cta}
             data-surface={surface === "dark" ? "light" : "dark"}
+            arrow
           >
             Create agent
-            <span className={styles.arrow} aria-hidden="true">
-              <Icon name="arrow" size={13} />
-            </span>
-          </Link>
+          </ButtonLink>
+
+          <div className={styles.compactMenu}>
+            <DropdownMenu
+              modal={false}
+              open={open === "navigation"}
+              onOpenChange={(value) =>
+                setOpen((current) =>
+                  value ? "navigation" : current === "navigation" ? null : current,
+                )
+              }
+            >
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="chip"
+                  className={styles.compactTrigger}
+                  aria-label="Navigation menu"
+                >
+                  <Icon name="menu" size={20} />
+                  <span className={styles.compactLabel}>Menu</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="end"
+                sideOffset={10}
+                collisionPadding={12}
+                className={styles.dropdown}
+                data-surface={surface}
+                aria-label="Navigation"
+              >
+                <DropdownMenuGroup>
+                  <DropdownMenuItem asChild className={styles.item}>
+                    <Link href={studio}>
+                      <span className={styles.itemTitle}>Create agent</span>
+                      <Icon name="arrow" size={16} />
+                    </Link>
+                  </DropdownMenuItem>
+                </DropdownMenuGroup>
+                {MENUS.map((menu) => (
+                  <MenuItems key={menu.key} menu={menu} pathname={pathname} compact />
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
-      </nav>
-      {open && (
-        <button
-          type="button"
-          className={styles.scrim}
-          aria-label="Close menu"
-          onClick={() => setOpen(null)}
-        />
-      )}
-    </>
+      </div>
+    </nav>
   );
 }
