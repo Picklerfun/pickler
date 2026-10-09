@@ -139,3 +139,26 @@ The controlled throughput regression compares thirty paired bursts under the sam
 database latency and exact book updates. An optional test-only `PICKLER_STREAM_THROUGHPUT_FILE`
 writes its raw measurements to a new path. Wall times from this fixture are not Internet latency
 or evidence of profitability.
+
+## Proven queue bottleneck and direct reconstruction
+
+The explicitly authorized v2 repair qualification on 2026-10-09 reproduced
+`PERPL_STREAM_MESSAGE_LIMIT` with `component: message-queue`, `observed: 33`, and `maximum: 32`.
+It had processed 11,800 of 11,832 received updates before aborting and verified socket closure
+and PostgreSQL release. This is a demonstrated new incident; the missing dimension of the
+original 2026-10-08 failure remains unknown. Batching reduced database work but did not remove
+the database-backed receive queue.
+
+Current adapter `public-universe-stream-v3` reconstructs every public update synchronously in
+a private replica. It checks cancellation, connection generation and all existing reconstruction
+bounds on reception; fresh database ownership/permission checks gate every connection, request
+and consumer delivery. The periodic idle guard remains active. Loss of ownership invalidates the
+replica and prevents delivery; replication never grants authority to write financial records.
+The pure offline reconstructor remains separately available. Native component dates and the
+twenty-second, thirty-second and five-second controls remain unchanged.
+
+The v2 public captures also showed repeated subscription acknowledgements without new book
+snapshots. Current runtime does not send those redundant requests. A subscription request does
+not make an old ticker fresh; unavailable source dates still produce `DATA_UNAVAILABLE`.
+Controlled regressions include one thousand ordered updates during blocked SQL, no lost delta,
+no delivered buffer before live ownership verification, and rejection after cancellation.
