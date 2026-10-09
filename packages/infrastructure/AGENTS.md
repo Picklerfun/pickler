@@ -670,3 +670,9 @@ from hashed component/heartbeat evidence under the account lock. Unbound reads c
 expired attempts in these accounts. Existing entry-gate/once-bar atomicity remains unchanged;
 product accounts and historical missing fields retain strict data rules. No migration, provider
 key or new monetary reservation is introduced. See [paper policy](../../apps/agent-service/PERPL-COMPONENT-PAPER.md).
+
+Component paper persistence injects a trusted local receipt clock separately from PostgreSQL's
+financial clock. Only local heartbeat/copy checks use it; leases, native freshness, funding and
+ledger dates remain database-owned. Existing injected test clocks retain their default semantics.
+No intent, account edit or provider can supply that clock. Keep both clocks in safe validation
+diagnostics; a proven controlled offset regression does not establish missing historical values.
