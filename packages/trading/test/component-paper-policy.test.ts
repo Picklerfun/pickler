@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import {
   COMPONENT_PAPER_POLICY,
+  PerpsFrameValidationFailure,
   initialPaperAccount,
   simulatePerpsFill,
   applyPaperFill,
@@ -177,5 +178,84 @@ test("equal inputs retain identical fill/accounting results under legacy and pap
   assert.deepEqual(
     simulatePerpsFill(current, intent, value, now),
     simulatePerpsFill(legacy, intent, value, now),
+  );
+});
+
+test("receipt proof uses its local clock without changing PostgreSQL-native freshness", () => {
+  const value = frame();
+  const financialAt = now - 1;
+  validatePaperFrame(value, "testnet", "BTC", financialAt, COMPONENT_PAPER_POLICY, now);
+  validatePaperFrameSet([value], "testnet", financialAt, COMPONENT_PAPER_POLICY, now);
+  const intent = {
+    kind: "open",
+    symbol: "BTC",
+    side: "long",
+    notional: "100",
+    feeReserve: "1",
+  } as const;
+  assert.deepEqual(
+    simulatePerpsFill(account(), intent, value, financialAt, now),
+    simulatePerpsFill(account(), intent, value, now),
+  );
+  applyPaperObservation(
+    account(),
+    [],
+    { frames: [value], funding: [], marksOnly: true },
+    "separate-clocks",
+    financialAt,
+    now,
+  );
+  assert.throws(
+    () => validatePaperFrame(value, "testnet", "BTC", financialAt, COMPONENT_PAPER_POLICY, now - 1),
+    { code: "INVALID_MARKET_DATA" },
+  );
+  assert.throws(
+    () =>
+      validatePaperFrame(value, "testnet", "BTC", financialAt, COMPONENT_PAPER_POLICY, now + 5001),
+    { code: "STALE_MARKET_DATA" },
+  );
+  assert.throws(
+    () => validatePaperFrame(value, "testnet", "BTC", now + 10001, COMPONENT_PAPER_POLICY, now),
+    { code: "STALE_MARKET_DATA" },
+  );
+});
+
+test("component failures retain safe clock provenance and unchanged failure codes", () => {
+  const value = frame();
+  const financialAt = now - 1;
+  let original: unknown;
+  try {
+    validatePaperFrame(value, "testnet", "BTC", financialAt, COMPONENT_PAPER_POLICY, now - 1);
+  } catch (error) {
+    original = error;
+  }
+  assert.ok(original instanceof PerpsFrameValidationFailure);
+  assert.equal(original.code, "INVALID_MARKET_DATA");
+  assert.deepEqual(original.details, {
+    version: 1,
+    reason: "buffer-copy-ahead-of-receipt-clock",
+    symbol: "BTC",
+    frameHash: value.hash,
+    financialAt,
+    receiptAt: now - 1,
+    tickerAt: now - 20000,
+    bookAt: now,
+    generation: 1,
+    copiedAt: now,
+    heartbeatReceivedAt: now,
+  });
+  const invalid = structuredClone(value);
+  invalid.hash = "<private-response>";
+  invalid.snapshot.ticker.provenance.providerTimestamp = NaN;
+  assert.throws(
+    () => validatePaperFrame(invalid, "testnet", "BTC", now, COMPONENT_PAPER_POLICY),
+    (error: unknown) => {
+      assert.ok(error instanceof PerpsFrameValidationFailure);
+      assert.equal(error.details.frameHash, null);
+      assert.equal(error.details.tickerAt, null);
+      assert.equal(error.details.reason, "invalid-native-date-or-block");
+      assert.equal(JSON.stringify(error.details).includes("private-response"), false);
+      return true;
+    },
   );
 });
