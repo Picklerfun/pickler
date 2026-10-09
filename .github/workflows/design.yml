@@ -49,6 +49,7 @@ jobs:
       - run: node --import tsx scripts/design/studio-loading.mjs
       - run: node scripts/design/studio-routing.mjs
       - run: node scripts/design/token-preview.mjs
+      - run: node scripts/design/public-navigation.mjs
       - if: failure()
         uses: actions/upload-artifact@v4
         with:
