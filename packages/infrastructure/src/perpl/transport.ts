@@ -10,19 +10,29 @@ export interface PerplPublicResponse {
   body: string;
 }
 export interface PerplRequestDiagnostic {
-  version?: 2;
+  version?: 2 | 3;
   queuedAt?: number;
   startedAt?: number | null;
   queueMs?: number;
   bodyMs?: number | null;
   validationMs?: number | null;
   operation: string;
+  /** Present only for recognized individual-market book/ticker paths; never a URL or query. */
+  marketId?: number;
   status: number | null;
   durationMs: number;
   code: string | null;
   phase: "request_queue" | "response_headers" | "response_body" | "validation" | "complete";
   headersMs: number | null;
   network: NetworkFailure | null;
+}
+function requestMarketId(path: string): number | undefined {
+  const match = /^\/v1\/market-data\/([1-9]\d*)\/(?:ticker|book(?:\?levels=\d+)?)$/.exec(path);
+  if (!match) {
+    return undefined;
+  }
+  const value = Number(match[1]);
+  return Number.isSafeInteger(value) ? value : undefined;
 }
 /** A normalized ticker read is not necessarily a new HTTP request. */
 export interface PerplTickerReadDiagnostic {
@@ -117,6 +127,7 @@ export class PerplTransport {
   get(network: PerpNetwork, path: string, ctx: PerpReadContext): Promise<PerplPublicResponse> {
     const queuedAt = this.now();
     const queuedMono = (this.options.monotonic ?? (() => performance.now()))();
+    const marketId = requestMarketId(path);
     let dispatched = false;
     const result = this.schedule.tail
       .then(() =>
@@ -127,7 +138,8 @@ export class PerplTransport {
       .catch((error) => {
         if (!dispatched) {
           this.options.onDiagnostic?.({
-            version: 2,
+            version: 3,
+            ...(marketId === undefined ? {} : { marketId }),
             operation: path.endsWith("/ticker")
               ? "ticker"
               : path.includes("/book?")
@@ -198,6 +210,7 @@ export class PerplTransport {
     this.schedule.lastStart = Date.now();
     this.requests++;
     const url = PERPL_NETWORKS[network].base + path;
+    const marketId = requestMarketId(path);
     const started = this.now();
     const mono = this.options.monotonic ?? (() => performance.now());
     const startedMono = mono();
@@ -306,7 +319,8 @@ export class PerplTransport {
               : path.includes("funding")
                 ? "funding"
                 : "metadata",
-        version: 2,
+        version: 3,
+        ...(marketId === undefined ? {} : { marketId }),
         queuedAt,
         startedAt: started,
         queueMs: Math.max(0, startedMono - queuedMono),
