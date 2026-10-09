@@ -1,4 +1,5 @@
 import { PERPL_LAB_SYMBOLS, PilotError, type PerpSymbol } from "@pickler/core";
+import { UNIVERSE_COMPONENT_STREAM_POLICY, universeStreamValidation } from "./stream-universe.js";
 
 type CaptureAttempt = {
   symbol: PerpSymbol;
@@ -19,6 +20,7 @@ export interface UniverseReaderAuditRow {
     | "DATA_UNAVAILABLE"
     | "TECHNICAL_FAILURE";
   finalValid: boolean | null;
+  strictFinalValid?: boolean;
   checks: number;
   initialCode: string | null;
   firstCheckMs: number | null;
@@ -34,8 +36,10 @@ export interface UniverseReaderAuditRow {
 }
 
 export interface UniverseReaderAudit {
-  version: 2 | 3;
-  protocol: "perpl-reader-audit-v2" | "perpl-reader-audit-v3";
+  version: 2 | 3 | 4;
+  protocol: "perpl-reader-audit-v2" | "perpl-reader-audit-v3" | "perpl-reader-audit-v4";
+  dataValidation?: ReturnType<typeof universeStreamValidation>;
+  strictValidCycles?: number;
   streamEvidence?: {
     adapterVersion: string;
     bytes: number;
@@ -200,7 +204,7 @@ export function auditUniverseCapture(input: unknown): UniverseReaderAudit {
     !["perps-universe-stability-v1", "perpl-reader-check-v1"].includes(
       capture.protocol as string,
     ) ||
-    ![1, 2, 3].includes(capture.version as number)
+    ![1, 2, 3, 4].includes(capture.version as number)
   ) {
     throw new PilotError("INVALID_INPUT", "Expected a versioned eleven-market public capture");
   }
@@ -210,7 +214,8 @@ export function auditUniverseCapture(input: unknown): UniverseReaderAudit {
     diagnosticOnly &&
     (!(
       (capture.version === 2 && capture.acquisitionPolicy === "rest-universe-coherent-20s-v2") ||
-      (capture.version === 3 && capture.acquisitionPolicy === "stream-universe-20s-v1")
+      (capture.version === 3 && capture.acquisitionPolicy === "stream-universe-20s-v1") ||
+      (capture.version === 4 && capture.acquisitionPolicy === UNIVERSE_COMPONENT_STREAM_POLICY)
     ) ||
       capture.qualification !== "DIAGNOSTIC_ONLY_NOT_ACCEPTANCE" ||
       capture.expectedCycles !== 3 ||
@@ -221,8 +226,12 @@ export function auditUniverseCapture(input: unknown): UniverseReaderAudit {
     throw new PilotError("INVALID_INPUT", "Reader diagnostics cannot establish qualification");
   }
   const acquisitionPolicy = capture.acquisitionPolicy ?? "rest-universe-20s-v1";
-  const streaming = capture.version === 3;
-  if (streaming && acquisitionPolicy !== "stream-universe-20s-v1") {
+  const componentStream = capture.version === 4;
+  const streaming = capture.version === 3 || componentStream;
+  if (
+    (capture.version === 3 && acquisitionPolicy !== "stream-universe-20s-v1") ||
+    (componentStream && acquisitionPolicy !== UNIVERSE_COMPONENT_STREAM_POLICY)
+  ) {
     throw new PilotError("INVALID_INPUT", "Stream capture protocol mismatch");
   }
   if (
@@ -230,9 +239,22 @@ export function auditUniverseCapture(input: unknown): UniverseReaderAudit {
       "rest-universe-20s-v1",
       "rest-universe-coherent-20s-v2",
       ...(streaming ? ["stream-universe-20s-v1"] : []),
+      ...(componentStream ? [UNIVERSE_COMPONENT_STREAM_POLICY] : []),
     ].includes(acquisitionPolicy as string)
   ) {
     throw new PilotError("INVALID_INPUT", "Unknown capture acquisition policy");
+  }
+  if (componentStream) {
+    const declared = object(capture.dataValidation);
+    const effective = universeStreamValidation(UNIVERSE_COMPONENT_STREAM_POLICY);
+    if (Object.entries(effective).some(([key, value]) => declared[key] !== value)) {
+      throw new PilotError("INVALID_INPUT", "Component stream validation metadata mismatch");
+    }
+    if (
+      capture.strictValidCycles !== cycles.filter((c) => object(c).strictJointValid === true).length
+    ) {
+      throw new PilotError("INVALID_INPUT", "Legacy-rule comparison denominator mismatch");
+    }
   }
   const rows: UniverseReaderAuditRow[] = [];
   const requests: UniverseReaderAudit["requests"] = [];
@@ -252,6 +274,14 @@ export function auditUniverseCapture(input: unknown): UniverseReaderAudit {
     validCycles += Number(cycle.valid);
     missedCycles += Number(cycle.missed);
     const at = number(cycle.at);
+    if (
+      componentStream &&
+      (typeof cycle.strictJointValid !== "boolean" ||
+        (cycle.strictJointValid === true && cycle.valid !== true) ||
+        cycle.financialExecutable !== false)
+    ) {
+      throw new PilotError("INVALID_INPUT", "Capture-only cycle admission is invalid");
+    }
     const attempts = array(cycle.acquisition ?? [], 1000).map((value): CaptureAttempt => {
       const attempt = object(value);
       return {
@@ -264,6 +294,7 @@ export function auditUniverseCapture(input: unknown): UniverseReaderAudit {
       };
     });
     const markets = new Map<PerpSymbol, boolean>();
+    const strictMarkets = new Map<PerpSymbol, boolean>();
     for (const value of array(cycle.markets, 11)) {
       const market = object(value);
       const name = symbol(market.symbol);
@@ -271,6 +302,20 @@ export function auditUniverseCapture(input: unknown): UniverseReaderAudit {
         throw new PilotError("INVALID_INPUT", "Duplicate or missing final market outcome");
       }
       markets.set(name, market.valid);
+      if (componentStream) {
+        if (typeof market.strictValid !== "boolean") {
+          throw new PilotError("INVALID_INPUT", "Legacy-rule market comparison is invalid");
+        }
+        strictMarkets.set(name, market.strictValid);
+      }
+    }
+    if (
+      componentStream &&
+      cycle.strictJointValid !==
+        (cycle.valid === true &&
+          PERPL_LAB_SYMBOLS.every((name) => strictMarkets.get(name) === true))
+    ) {
+      throw new PilotError("INVALID_INPUT", "Legacy-rule cycle comparison is inconsistent");
     }
     const tickerReads =
       cycle.tickerReads === undefined
@@ -309,6 +354,7 @@ export function auditUniverseCapture(input: unknown): UniverseReaderAudit {
         symbol: name,
         ...(streaming ? { slotOutcome: streamSlotOutcome(cycle) } : {}),
         finalValid: markets.get(name) ?? null,
+        ...(componentStream ? { strictFinalValid: strictMarkets.get(name)! } : {}),
         checks: checks.length,
         initialCode: first?.code ?? null,
         firstCheckMs: first ? first.at - at : null,
@@ -363,8 +409,18 @@ export function auditUniverseCapture(input: unknown): UniverseReaderAudit {
     row.symbol !== "BTC" || row.recoveryDelayMs === null ? [] : [row.recoveryDelayMs],
   );
   return {
-    version: streaming ? 3 : 2,
-    protocol: streaming ? "perpl-reader-audit-v3" : "perpl-reader-audit-v2",
+    version: componentStream ? 4 : streaming ? 3 : 2,
+    protocol: componentStream
+      ? "perpl-reader-audit-v4"
+      : streaming
+        ? "perpl-reader-audit-v3"
+        : "perpl-reader-audit-v2",
+    ...(componentStream
+      ? {
+          dataValidation: universeStreamValidation(UNIVERSE_COMPONENT_STREAM_POLICY),
+          strictValidCycles: number(capture.strictValidCycles),
+        }
+      : {}),
     ...(streaming ? { streamEvidence: streamEvidence(capture, cycles) } : {}),
     ...(diagnosticOnly ? { sourceQualification: "DIAGNOSTIC_ONLY_NOT_ACCEPTANCE" as const } : {}),
     sourceCommit: hash(capture.commit, 40),
@@ -416,6 +472,11 @@ export function auditUniverseCapture(input: unknown): UniverseReaderAudit {
         ? [
             "Stream cadence and replay cover only the retained contiguous public capture; truncation never implies missing updates were absent.",
             "Local reception and first valid checks do not establish the exact publication time or source of provider delays.",
+            ...(componentStream
+              ? [
+                  "Independent native component freshness is a separately versioned capture policy; its pass never upgrades historical five-second-skew or financial acceptance.",
+                ]
+              : []),
           ]
         : []),
     ],
@@ -433,6 +494,7 @@ function streamEvidence(
       "public-universe-stream-v1",
       "public-universe-stream-v2",
       "public-universe-stream-v3",
+      "public-universe-stream-v4",
     ].includes(capture.adapterVersion as string) ||
     typeof stream.truncated !== "boolean" ||
     typeof stream.socketClosed !== "boolean" ||
