@@ -84,19 +84,31 @@ Without a linked agent wallet the card is disabled and says why.
 
 ### 3.3 Failure paths the buyer sees
 
-| Case                                                                     | API                                           | App                                                             |
-| ------------------------------------------------------------------------ | --------------------------------------------- | --------------------------------------------------------------- |
-| Agent not for sale / not public / no wallet                              | 404 or 409 `ADVICE_NOT_FOR_SALE`              | row not shown; stale screen says so                             |
-| Advice off, paused, provider costs unknown                               | 503 (existing codes) **before** a 402         | "This agent can't answer right now" — nothing signed            |
-| Busy / budget (checked at enqueue, after settlement)                     | 429 (existing); payment marked `refund_owed`  | "Busy right now — your payment is recorded for a manual refund" |
-| Insufficient AUSD                                                        | 402 again with `error: "insufficient_funds"`  | link to Get test AUSD                                           |
-| Bad signature, wrong amount/recipient/asset/network, expired, nonce used | 402 with the specific `error`                 | "Payment was not accepted" + reason; nothing charged            |
-| Settlement reverted or timed out                                         | 402 `settlement_failed`; payment row `failed` | nothing charged (the transfer did not happen)                   |
+| Case                                                                                | API                                                  | App                                                              |
+| ----------------------------------------------------------------------------------- | ---------------------------------------------------- | ---------------------------------------------------------------- |
+| Agent not for sale / not public / no wallet                                         | 404 or 409 `ADVICE_NOT_FOR_SALE`                     | row not shown; stale screen says so                              |
+| Advice off, paused, provider costs unknown                                          | 503 (existing codes) **before** a 402                | "This agent can't answer right now" — nothing signed             |
+| Busy / budget (checked at enqueue, after settlement)                                | 429 (existing); payment stays `settled`, no job      | "Busy right now — try again; you will not be charged twice"      |
+| Insufficient AUSD                                                                   | 402 again with `error: "insufficient_funds"`         | link to Get test AUSD                                            |
+| Bad signature, wrong amount/recipient/asset/network, expired, nonce used            | 402 with the specific `error`                        | "Payment was not accepted" + reason; nothing charged             |
+| Settlement proven not executed (revert before broadcast, or mined reverted receipt) | 402 `settlement_failed`; payment row `failed`        | nothing charged; the buyer may retry                             |
+| Settlement timed out or unknown after broadcast                                     | 402 `settlement_failed`; payment row stays `pending` | "Payment not confirmed yet"; the buyer is not asked to pay again |
+| Analysis fails after its job exists                                                 | job `failed`; payment marked `refund_owed` (D8)      | the error and the `refund_owed` note                             |
 
 Admission checks that need no database transaction (published, enabled, markets, policy) run
 **before** the 402 is issued and again before settlement. Busy and budget are decided inside the
-existing enqueue transaction, so they can only refuse after settlement; that payment is marked
-`refund_owed` (D8). This is a known gap of v1.
+existing enqueue transaction, so they can only refuse after settlement. That payment stays
+`settled` with no job, and a retry with the same `Idempotency-Key` reuses it to enqueue: the buyer
+is never charged a second time for that key. `refund_owed` is reserved for an analysis that fails
+after its job exists (D8), and v1 marks it manually.
+
+Settlement has two failure outcomes. A proven non-execution — the transaction reverts before it
+is broadcast, or its mined receipt shows a revert — answers 402 `settlement_failed`, marks the row
+`failed`, charges nothing and allows a retry. A timeout or unknown outcome after the transaction
+was broadcast also answers 402 `settlement_failed`, but the row stays `pending` because the
+transfer may still land; that key is never settled again. After `validBefore` the server checks the
+authorization nonce on chain: unused → the row becomes `failed` and a retry is allowed; used → it
+stays `pending` for manual reconciliation.
 
 ## 4. API
 
