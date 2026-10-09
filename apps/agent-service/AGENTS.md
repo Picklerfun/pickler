@@ -292,3 +292,6 @@ The current universe stream v3 reconstructs messages synchronously and requires 
 for buffer delivery. Its public repair qualification must preserve any failed earlier check.
 Offline reader audit supports v2/v3 adapter captures and three-read stream diagnostics without
 converting them to acceptance. No repeated subscription is considered evidence of fresh data.
+Read [the v3 repair result](PERPL-UNIVERSE-WEBSOCKET-REPAIR-20261009.md): thirty slots completed
+without transport or ownership errors, but only 17/30 joint captures were valid. Preserve that
+failed availability gate and do not infer economic readiness from technical continuity.
