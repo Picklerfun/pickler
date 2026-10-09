@@ -98,6 +98,21 @@ test("heartbeat gap proves discontinuity; duplicate heartbeat is harmless", () =
     code: "PERPL_STREAM_DISCONTINUITY",
   });
 });
+test("continuity proof preserves receipt of the last advancing heartbeat and resets with the book", () => {
+  const state = ready();
+  assert.equal(state.continuity(), undefined);
+  state.apply({ mt: 100, sn: 1, h: 100 }, now);
+  state.apply({ mt: 100, sn: 1, h: 100 }, now + 10000);
+  const proof = state.continuity()!;
+  assert.equal(proof.heartbeatReceivedAt, now);
+  proof.heartbeatReceivedAt = now + 99999;
+  assert.equal(state.continuity()!.heartbeatReceivedAt, now);
+  state.apply({ mt: 100, sn: 2, h: 101 }, now + 10001);
+  assert.equal(state.continuity()!.heartbeatReceivedAt, now + 10001);
+  assert.equal(state.frame("BTC", now + 10001).snapshot.ticker.provenance.providerTimestamp, now);
+  state.reset();
+  assert.equal(state.continuity(), undefined);
+});
 test("invalid levels and bounded state reject excessive data", () => {
   const state = ready();
   assert.throws(() => state.apply({ ...snapshot(), bid: [{ p: 999, s: 0, o: 1 }] }, now));
