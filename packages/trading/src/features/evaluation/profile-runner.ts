@@ -363,8 +363,9 @@ export function createProfileStudyRunner(deps: {
         });
       }
       let failure: string | null = null;
+      let completed: PerpsPaperView | undefined;
       try {
-        await measured(attemptKey, "simulation-and-transaction", () =>
+        completed = await measured(attemptKey, "simulation-and-transaction", () =>
           simulator.trade(
             target(r, v),
             attemptKey,
@@ -413,7 +414,10 @@ export function createProfileStudyRunner(deps: {
         }
         failure = e.code;
       }
-      const after = await paper.view(target(r, v));
+      const after =
+        config.version === 7 && config.acquisitionPolicy === COMPONENT_PAPER_POLICY && completed
+          ? completed
+          : await paper.view(target(r, v));
       const attempt = after.attempts.find((a) => a.key === attemptKey);
       if (attempt?.status === "pending" || attempt?.status === "interrupted") {
         throw new PilotError("INCOMPLETE_EXECUTION", "Uncertain execution requires reconciliation");
