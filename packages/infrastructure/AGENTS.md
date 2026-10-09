@@ -648,3 +648,11 @@ Legacy readers retain per-message checks. Delivery and connection still perform 
 cancellation closes without awaiting a stalled ownership query. Active acquisition may request
 the same subscriptions again for provider snapshots, at most once per ten seconds; it never
 advances timestamps locally. Processing counters contain only safe numeric summaries.
+
+The current universe adapter `public-universe-stream-v3` reconstructs each public message
+synchronously in a private replica. It has no database-backed receive queue; all wire updates
+still pass the unchanged schema, identity, ordering, message-size and book-state bounds. Fresh
+permission/ownership guards remain mandatory before every request and buffer delivery, and the
+periodic guard closes an idle revoked reader. Replication does not admit financial writes. No
+consumer can access the live replica directly; `streams()` returns subscription names only.
+The previous guarded-batch mode remains available for historical controlled comparisons.
