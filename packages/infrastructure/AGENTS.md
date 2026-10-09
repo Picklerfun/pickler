@@ -676,3 +676,10 @@ financial clock. Only local heartbeat/copy checks use it; leases, native freshne
 ledger dates remain database-owned. Existing injected test clocks retain their default semantics.
 No intent, account edit or provider can supply that clock. Keep both clocks in safe validation
 diagnostics; a proven controlled offset regression does not establish missing historical values.
+
+Component-paper captured-frame completion performs admission, simulation, persisted gate checks,
+ledger/fill and hourly-key writes in one account/study-fenced transaction. It reuses the existing
+admission and completion helpers and checks original-frame freshness again immediately before
+commit. Expiry or ownership failure rolls back all writes, including the attempt and entry key.
+Confirmed duplicate keys remain idempotent without a new fill; conflicting intents are rejected.
+No live heartbeat can extend the captured proof and no legacy/product lifecycle changes.
