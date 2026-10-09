@@ -295,6 +295,10 @@ test("one market carries a day of marks and the furthest it moved inside an hour
   assert.equal(detail!.trail[0], 83696.8);
   assert.equal(detail!.trail[23], 85182.1);
   assert.equal(detail!.trail[24], detail!.market.mark);
+  assert.deepEqual(detail!.trailTimestamps, [
+    ...candles.d.slice(-24).map((candle) => new Date(candle.t + HOUR).toISOString()),
+    new Date(NOW).toISOString(),
+  ]);
   // The hour that opened at 83,863.2 and reached 85,498.2.
   assert.equal(detail!.market.hourlyReach, 1.95);
   assert.deepEqual(detail!.calls, []);
@@ -319,6 +323,7 @@ test("candles out of order, out of range, still open or impossible change nothin
   const detail = await dirty.board.getMarket("BTC-PERP");
 
   assert.deepEqual(detail!.trail, expected!.trail);
+  assert.deepEqual(detail!.trailTimestamps, expected!.trailTimestamps);
   assert.equal(detail!.market.hourlyReach, 1.95);
 });
 
@@ -432,4 +437,55 @@ test("a symbol the venue does not list is null", async () => {
 
   assert.equal(await board.getMarket("NOPE-PERP"), null);
   assert.equal(asked.length, 1);
+});
+
+test("cached hourly samples retain their times while only a fresh board mark advances", async () => {
+  const { board, state, unpaced, candleReads } = harness();
+  const first = await board.getMarket("BTC-PERP");
+
+  state.now += 2 * 60_000;
+  const second = await unpaced(() => board.getMarket("BTC-PERP"));
+
+  assert.equal(candleReads(), 1);
+  assert.deepEqual(second!.trailTimestamps!.slice(0, -1), first!.trailTimestamps!.slice(0, -1));
+  assert.equal(second!.trailTimestamps!.at(-1), new Date(state.now).toISOString());
+
+  state.served.fail = true;
+  state.now += 2 * 60_000;
+  const held = await unpaced(() => board.getMarket("BTC-PERP"));
+  assert.deepEqual(held!.trailTimestamps, second!.trailTimestamps);
+  assert.ok(held!.market.source.venue === "perpl" && held!.market.source.stale);
+});
+
+test("longer price history reuses the same candle request and does not change the 24h contract", async () => {
+  const { board, asked, candleReads } = harness();
+
+  const detail = await board.getMarket("BTC-PERP");
+
+  assert.equal(asked.length, 2);
+  assert.equal(candleReads(), 1);
+  assert.deepEqual(detail!.priceHistory, [
+    ...candles.d.map((candle) => ({
+      price: candle.c / 10,
+      at: new Date(candle.t + HOUR).toISOString(),
+    })),
+    { price: detail!.market.mark, at: new Date(NOW).toISOString() },
+  ]);
+  assert.equal(detail!.trail.length, 25);
+  assert.ok(detail!.priceHistory!.length > detail!.trail.length);
+  const original = detail!.priceHistory![0]!.price;
+  detail!.priceHistory![0]!.price = -1;
+
+  const cached = await board.getMarket("BTC-PERP");
+
+  assert.equal(candleReads(), 1);
+  assert.equal(cached!.priceHistory![0]!.price, original);
+});
+
+test("failed history exposes no generated long-range samples", async () => {
+  const { board } = harness({ candles: { unavailable: true } });
+
+  const detail = await board.getMarket("BTC-PERP");
+
+  assert.deepEqual(detail!.priceHistory, []);
 });

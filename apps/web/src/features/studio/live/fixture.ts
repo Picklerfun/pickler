@@ -373,6 +373,42 @@ function trail(market: Pick<PerpMarketDto, "mark" | "change24h">): number[] {
   });
 }
 
+/** Synthetic times for the labelled inert fixture only, never a live fallback. */
+function fixtureTrailTimes(market: PerpMarketDto): string[] | undefined {
+  if (market.source.venue !== "perpl") {
+    return undefined;
+  }
+  const end = Date.parse(market.source.observedAt);
+  const closedHour = Math.floor(end / 3_600_000) * 3_600_000;
+  return [
+    ...Array.from({ length: 24 }, (_, index) =>
+      new Date(closedHour - (23 - index) * 3_600_000).toISOString(),
+    ),
+    new Date(end).toISOString(),
+  ];
+}
+
+/** Thirty days of synthetic hourly prices, confined to the labelled local design fixture. */
+function fixturePriceHistory(market: PerpMarketDto): MarketDetailDto["priceHistory"] {
+  const times = fixtureTrailTimes(market);
+  if (!times) {
+    return undefined;
+  }
+  const prices = trail(market);
+  const start = prices[0]!;
+  const first = Date.parse(times[0]!);
+  const older = Array.from({ length: 696 }, (_, index) => {
+    const progress = index / 696;
+    return {
+      price: Number(
+        (start * (1 - 0.12 * (1 - progress) + 0.045 * Math.sin(progress * 7))).toFixed(2),
+      ),
+      at: new Date(first - (696 - index) * 3_600_000).toISOString(),
+    };
+  });
+  return [...older, ...times.map((at, index) => ({ price: prices[index]!, at }))];
+}
+
 function details(markets: readonly PerpMarketDto[]): Record<string, MarketDetailDto> {
   return Object.fromEntries(
     markets
@@ -384,6 +420,8 @@ function details(markets: readonly PerpMarketDto[]): Record<string, MarketDetail
           readQuestion: `Is ${market.symbol} above {level} 24 hours after delivery?`,
           calls: [],
           trail: trail(market),
+          trailTimestamps: fixtureTrailTimes(market),
+          priceHistory: fixturePriceHistory(market),
         },
       ]),
   );

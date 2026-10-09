@@ -4,6 +4,8 @@ import { createGetMarket, createListMarkets, READ_HORIZON } from "@pickler/core"
 import { createSampleMarketBoard } from "../../../scripts/design/fixtures/sample-market-board.mts";
 import { marketplaceRoutes } from "../src/routes/marketplace.js";
 import type { createGrowthServices } from "../src/growth/services.js";
+import { marketDetailDtoSchema } from "@pickler/api-schema";
+import { toMarketDetailDto } from "../src/growth/market-responses.js";
 import type { MarketDetailDto, PerpMarketDto } from "@pickler/api-schema";
 
 const env = { APP_ENV: "staging", ALLOWED_ORIGINS: "https://web.example" } as never;
@@ -49,4 +51,41 @@ test("a market the venue does not list is null, not an error", async () => {
 
   assert.equal(response.status, 200);
   assert.equal(await response.json(), null);
+});
+
+test("market detail preserves aligned UTC times without requiring them from legacy producers", async () => {
+  const detail = await createSampleMarketBoard().getMarket("BTC-PERP");
+  assert.ok(detail);
+  const legacy = toMarketDetailDto(detail);
+  assert.ok(marketDetailDtoSchema.safeParse(legacy).success);
+  assert.equal(legacy.trailTimestamps, undefined);
+  const times = detail.trail.map((_, index) => new Date(Date.UTC(2026, 9, 8, index)).toISOString());
+
+  const timed = toMarketDetailDto({ ...detail, trailTimestamps: times });
+  assert.deepEqual(marketDetailDtoSchema.parse(timed).trailTimestamps, times);
+  assert.notEqual(timed.trailTimestamps, times);
+  assert.ok(
+    !marketDetailDtoSchema.safeParse({ ...timed, trailTimestamps: ["not a date"] }).success,
+  );
+});
+
+test("timestamped longer history is additive, cloned and bounded on the public contract", async () => {
+  const detail = await createSampleMarketBoard().getMarket("BTC-PERP");
+  assert.ok(detail);
+  const history = [{ price: 10, at: "2026-10-08T12:00:00.000Z" }];
+
+  const response = toMarketDetailDto({ ...detail, priceHistory: history });
+
+  assert.deepEqual(marketDetailDtoSchema.parse(response).priceHistory, history);
+  assert.notEqual(response.priceHistory, history);
+  assert.notEqual(response.priceHistory?.[0], history[0]);
+  assert.equal(toMarketDetailDto(detail).priceHistory, undefined);
+  assert.ok(
+    !marketDetailDtoSchema.safeParse({ ...response, priceHistory: [{ price: 10, at: "bad" }] })
+      .success,
+  );
+  assert.ok(
+    !marketDetailDtoSchema.safeParse({ ...response, priceHistory: Array(722).fill(history[0]) })
+      .success,
+  );
 });

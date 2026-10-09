@@ -493,6 +493,10 @@ test("WHAT IT WATCHES: one card per configured market, matched on the base, with
     up: true,
     funding: "+0.0087%",
     trail: [1, 2, 3],
+    trailTimestamps: null,
+    priceHistory: null,
+    observedAt: "2026-10-02T14:29:40.000Z",
+    stale: false,
     listed: true,
   });
   assert.equal(view.cards[1]?.up, false);
@@ -863,4 +867,36 @@ test("the staged board is Perpl's, but Markets reads the labelled sample board",
     true,
   );
   assert.equal(boardRows(markets.markets, "All").tag, "SAMPLE DATA");
+});
+
+test("price history times and board observation keep their own provenance", () => {
+  const times = ["2026-10-02T12:00:00.000Z", "2026-10-02T13:00:00.000Z"];
+  const history = [
+    { price: 1, at: times[0]! },
+    { price: 2, at: times[1]! },
+  ];
+  const detail = {
+    trail: [1, 2],
+    trailTimestamps: times,
+    priceHistory: history,
+  } as MarketDetailDto;
+  const current = market();
+  const view = marketsView([current], { "BTC-PERP": detail }, ["BTC"]);
+
+  assert.deepEqual(view.cards[0]?.trailTimestamps, times);
+  assert.deepEqual(view.cards[0]?.priceHistory, history);
+  assert.equal(view.cards[0]?.observedAt, "2026-10-02T14:29:40.000Z");
+  assert.equal(view.cards[0]?.stale, false);
+
+  const stale = market({
+    source: {
+      venue: "perpl",
+      network: "testnet",
+      observedAt: "2026-10-02T14:29:40.000Z",
+      stale: true,
+    },
+  });
+  assert.equal(marketsView([stale], {}, ["BTC"]).cards[0]?.stale, true);
+  const sample = market({ source: { venue: "sample" } });
+  assert.equal(marketsView([sample], {}, ["BTC"]).cards[0]?.observedAt, null);
 });
