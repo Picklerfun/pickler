@@ -31,6 +31,9 @@ import { createStreamCapture, publicMarketCsv, PUBLIC_CAPTURE_LIMIT } from "./st
 /** Node timer cancellation wraps the original reason; retain the admitted failure code. */
 export function captureFailureCode(failure: unknown, signal?: AbortSignal): string {
   const cause = signal?.aborted ? signal.reason : failure;
+  if (signal?.aborted && cause instanceof DOMException && cause.name === "AbortError") {
+    return "CANCELLED";
+  }
   return cause instanceof PilotError ? cause.code : "STABILITY_FAILED";
 }
 
@@ -60,10 +63,15 @@ export async function runUniverseStability(
   }
   const diagnosticOnly = input.diagnosticOnly === true;
   const streaming = config.acquisitionPolicy === "stream-universe-20s-v1";
-  if (diagnosticOnly && config.acquisitionPolicy !== "rest-universe-coherent-20s-v2") {
+  if (
+    diagnosticOnly &&
+    !["rest-universe-coherent-20s-v2", "stream-universe-20s-v1"].includes(
+      config.acquisitionPolicy ?? "",
+    )
+  ) {
     throw new PilotError(
       "INVALID_INPUT",
-      "Reader check requires the explicitly selected v2 reader",
+      "Reader check requires the explicitly selected coherent REST or universe stream reader",
     );
   }
   const expectedCycles = diagnosticOnly ? 3 : 30;
