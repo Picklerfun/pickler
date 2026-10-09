@@ -128,3 +128,6 @@ Radix owns keyboard selection, typeahead, dismissal and focus restoration. Local
 Pickler semantic tokens, the shared 2px focus outline, legible disabled text, wrapping option
 labels and reduced motion. Trigger values truncate at narrow widths without moving the chevron.
 Do not restore the registry's shadow focus ring or add native select styling in consuming features.
+
+`Icon` includes `menu` (Lucide Menu) for the compact public navigation disclosure. Its accessible
+name and expanded state belong to the host button.
