@@ -25,7 +25,8 @@
     "./migrations": {
       "types": "./src/persistence/migrate-database.ts",
       "import": "./dist/persistence/migrate-database.js"
-    }
+    },
+    "./testing/token": "./test/token-fixture.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
