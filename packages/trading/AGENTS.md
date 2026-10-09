@@ -238,3 +238,12 @@ Configuration v7 (`perps-sma-reentry-latency-v1`) adds `sma-reference` and `sma-
 valid slot, direction and final hourly bar. It reads the existing fee, realized-P&L and funding
 postings; missing/duplicate postings or pending funding cannot establish a net result. These are
 actual reference positions, not hypothetical P&L for a blocked proposal or causal fee savings.
+
+## Explicit universe stream acquisition
+
+`perps-paper/stream-universe.ts` owns transport-neutral joint validation and the explicit
+`stream-universe-20s-v1` policy. All components come from a copied generation and one clock;
+no matching historical component is selected. The reader audit accepts stream capture v3 and
+emits `perpl-reader-audit-v3` while preserving older interpretations. No strategy, risk or
+financial calculation changes are part of this selector. See the local WebSocket guide in
+`apps/agent-service/PERPL-UNIVERSE-WEBSOCKET.md`.
