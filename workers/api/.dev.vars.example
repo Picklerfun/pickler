@@ -31,6 +31,11 @@ TURNKEY_DELEGATED_API_PRIVATE_KEY=
 # Absent MONAD_RPC_URL means that network's first public endpoint (rate-limited).
 CHAIN_ID=10143
 MONAD_RPC_URL=
+# Paid advice (x402, docs/agent-advice.md "Payment (x402)"). On only when the flag is "true" and
+# both the relayer key and MONAD_RPC_URL above are set; otherwise a fresh analysis stays free. The
+# relayer key is a secret: a testnet EOA that pays gas in MON and holds no AUSD.
+ADVICE_X402_ENABLED=
+X402_RELAYER_PRIVATE_KEY=
 # The Perpl network the public market board reads: testnet or mainnet. Absent serves the sample
 # board, labelled SAMPLE DATA on the page. With it set, /v1/marketplace/markets calls Perpl's
 # public API from this machine.

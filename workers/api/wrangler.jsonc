@@ -14,6 +14,9 @@
   // .dev.vars locally; never commit them.
   "vars": {
     "ADVICE_ENABLED": "false",
+    // Sells each fresh advice analysis with x402; on only with the X402_RELAYER_PRIVATE_KEY secret
+    // and MONAD_RPC_URL also set (docs/agent-advice.md, "Payment (x402)").
+    "ADVICE_X402_ENABLED": "false",
     "APP_ENV": "development",
     "SUPABASE_URL": "",
     "JWT_ISSUER": "",
