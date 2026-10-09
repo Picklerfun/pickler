@@ -281,6 +281,19 @@ export const PicklerBondingCurveAbi = [
   },
   {
     "type": "function",
+    "name": "marginalPriceWad",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "netSold",
     "inputs": [],
     "outputs": [
@@ -789,7 +802,22 @@ export const PicklerBondingCurveAbi = [
   },
   {
     "type": "error",
+    "name": "InvalidQuoteDecimals",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "InvalidQuoteToken",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidReferenceProfile",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidTotalSupply",
     "inputs": []
   },
   {
@@ -861,9 +889,14 @@ export const PicklerBondingCurveAbi = [
   },
   {
     "type": "error",
+    "name": "UnsupportedPrecisionPolicy",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "ZeroAmount",
     "inputs": []
   }
 ] as const;
 
-export const PicklerBondingCurveAbiHash = "d19963656895f088091b2295351dd23133ae329db49caf2c0fb6ba74f8f4d073";
+export const PicklerBondingCurveAbiHash = "21add13b827418f3bb541250a83b88a8aab2239b6417bdf056850241756bf83d";

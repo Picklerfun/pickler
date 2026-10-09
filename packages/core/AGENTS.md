@@ -370,6 +370,37 @@ finality, cursor concurrency safety or projection rollback.
 visibility and job/policy/repository ports. Pending/failed jobs are requester-only; completed
 results are authenticated shared history while the agent is public. Keep financial analysis and
 provider calculations out of core. See [Agent advice](../../docs/agent-advice.md).
+`features/advice/price.ts` exports `AdvicePrice`, `formatMicroAusd` and `advicePrice`: the wire shape
+of an agent's analysis price (micro-AUSD bigint to a decimal string). `parseAusdToMicro` is the
+inverse (INVALID_INPUT beyond 6 decimals or outside `ADVICE_PRICE_MIN_MICRO`..`MAX_MICRO`, 0.10 to 100). `AgentSummary`, `AgentPersona`
+and `DirectoryAgent.agent` carry the agent `id` and its nullable `advicePrice`.
+`features/advice/x402.ts` owns the paid request of docs/specs/agent-advice-x402-v1.md §4.3:
+`X402_NETWORK`, `AUSD_TESTNET`, the x402 v1 wire types (`Authorization`, `PaymentPayload`,
+`PaymentRequirements`, `PaymentError`), `decodePaymentHeader` (throws `X402Refusal`),
+`encodeSettlement`, the ports `AdvicePaymentStore` (sale terms, payer links, payment rows) and
+`AdvicePaymentGateway` (signature, nonce, balance, settlement), `SettlementRejected`,
+`SettlementUnknown` (an unknown outcome, with `txHash` once broadcast), `UnrecordedSettlement`,
+`PENDING_ABANDON_GRACE_SECONDS` and `createPaidAdvice`. Its order is fixed: user principal → replay (returned even while advice is
+disabled, as in the service; another symbol is `CONFLICT`) → `admit` (the service's admission
+checks without enqueueing) → the key's payment row → sale terms
+(`NOT_FOUND`/`ADVICE_NOT_FOR_SALE`) → 402 → static checks (signature exactly 65 bytes) → payer
+link → signature → nonce → balance → pending row → settle → enqueue. A replay or a settled row
+never settles again; a `refund_owed` row refuses with `invalid_payment`. `settle` throws
+`SettlementRejected` only when the authorization provably never executed (simulation revert,
+reverted receipt): the row becomes `failed` and the key may pay again. Any other throw is an
+unknown outcome: the row stays `pending` and the answer is 402 `settlement_failed`. That outcome,
+and a `store.settled` that throws after a successful settlement (rethrown), call the optional
+`reportUnrecordedSettlement` dep with the reason, payment id, user, public agent, key, payer, nonce
+and the tx hash when known (from `SettlementUnknown.txHash` or the receipt), never the signature;
+the API logs it with `console.error` (`reportUnrecordedSettlement` in `workers/api/src/container.ts`). A `pending`
+row refuses with `invalid_payment` until `validBefore + PENDING_ABANDON_GRACE_SECONDS` (120 s, server
+clock) has passed and a single `nonceUsed(payer, nonce)` read is false; then it is marked `failed`
+(`expired_unsettled`) and the flow continues. The grace absorbs a server clock ahead of block time
+and a lagging RPC. An enqueue failure
+after settlement leaves the row `settled` without a job and rethrows, so the next request with the
+same key reuses that payment (D7); core does not call `refundOwed` in phase 1. Core stays pure:
+chain and database live behind the two ports. The API Worker composes it per request only behind
+`ADVICE_X402_ENABLED` (`paidAdviceFrom` in `workers/api/src/container.ts`).
 
 Advice pricing v2 pins the reviewed OpenAI-compatible forecast base URL and model in each job. Preserve v1 policies and their direct-DeepSeek meaning; provider changes require a new policy, never a historical rewrite.
 
@@ -381,10 +412,13 @@ Advice pricing v2 pins the reviewed OpenAI-compatible forecast base URL and mode
 
 `features/ai-credits/index.ts` exports exact integer unit validation, immutable pricing contracts, account/purchase/operation/ledger ports and the injected trusted payment service. One credit is 1,000,000 units. No provider SDK, database or checkout belongs here. See [AI credits](../../docs/ai-credits.md).
 
-Studio creator-access requests use the shared authenticated user identity, require the workspace
-owner for submission, and require server-verified super-admin status for the team inbox. They never
-enable research, grant custody permissions or create wallets. Ports and policy live in
-`features/studio/access-requests.ts`; persistence and HTTP are adapters.
+Studio creator-access status uses the shared authenticated user identity. Submission now belongs
+to the public `/create` application; the old Studio submission operation is retired.
+`features/applications/application/review-applications.ts` requires server-verified super-admin
+status to list or decide applications. The repository records audit fields and enables research
+access by email on invitation; it sends no email and grants no custody permissions.
+`features/studio/access-requests.ts` retains private status and the historical request inbox.
+Persistence and HTTP remain adapters.
 
 ## Dynamic Studio markets
 
@@ -417,3 +451,23 @@ MarketDetail optionally carries trailTimestamps aligned with the existing numeri
 `MarketDetail.priceHistory` optionally exposes up to thirty days of paired hourly prices and UTC
 closing times plus the observed mark. The existing `trail` retains its 24h meaning. This is public
 market history only; no strategy, horizon or financial policy changes with the chart's view.
+
+## Agent token admission
+
+`features/launch/token-launch.ts` exports `createTokenLaunchService`, business-owned launch scope,
+context, draft/preset/authorization contracts, `TokenLaunchRepository`, `TokenGrantIssuer` and
+`TokenLaunchError` through the package root. Admission requires enabled creator access, workspace
+ownership, actual publication, a registered master wallet and no confirmed or pending token on the
+server-selected chain. `AGENT_TOKEN_TOTAL_SUPPLY` fixes all new launches to exactly 21 million
+18-decimal tokens. The issuer preset must match this supply and fully allocate it before any
+signature; it is checked again before recording. Owner-only state includes the registered master
+address, which also receives creator fees. Historical projections remain readable.
+Drafts allow private agents, use optimistic versions and cannot change during
+an active grant. Five-minute authorizations are idempotent and bind server-owned parameters.
+`features/launch/domain/token-economics.ts` exports `tokenReferenceEconomics` and its version-2
+business contract. The host supplies reviewed six-decimal AUSD metadata; core derives reference
+reserves, normalized prices, FDVs and net backing using the pure curve functions exported at the
+package root. Legacy buy vectors and new buy/sell/exact-output/fee/price vectors match Solidity.
+Owner state may include this reference independently of `TokenGrantIssuer`; it never grants launch
+availability or supplies an operational preset. No SDK, HTTP object or signer key belongs in core.
+Ordinary composition omits the issuer and refuses authorization. See [the token guide](../../docs/agent-token-preview.md) and `test/token-launch.test.ts`.

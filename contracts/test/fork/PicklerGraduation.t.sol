@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.30;
 
-import {Test} from "forge-std/Test.sol";
+import {LaunchGrantTest} from "../LaunchGrantTest.sol";
 import {IERC20} from "forge-std/interfaces/IERC20.sol";
 import {MockERC20} from "solmate/src/test/utils/mocks/MockERC20.sol";
 
@@ -33,7 +33,7 @@ import {PicklerCurveMath} from "../../src/libraries/PicklerCurveMath.sol";
 ///
 /// Runs only when MONAD_TESTNET_RPC_URL is set. The deployment forked here is
 /// Monad-maintained and not an official Uniswap one; see docs/market/uniswap-v4-spike.md.
-contract PicklerGraduationForkTest is Test {
+contract PicklerGraduationForkTest is LaunchGrantTest {
     using PoolIdLibrary for PoolKey;
 
     IPoolManager internal constant POOL_MANAGER = IPoolManager(0x451D64ab3b650040d2aE1886602b97ed6eDc643d);
@@ -44,9 +44,9 @@ contract PicklerGraduationForkTest is Test {
 
     uint256 internal constant PINNED_BLOCK = 62279958;
 
-    uint256 internal constant SALE_ALLOCATION = 800e18;
-    uint256 internal constant LP_ALLOCATION = 200e18;
-    uint256 internal constant TARGET_RESERVE = 1_000e6;
+    uint256 internal constant SALE_ALLOCATION = 16_800_000e18;
+    uint256 internal constant LP_ALLOCATION = 4_200_000e18;
+    uint256 internal constant TARGET_RESERVE = 21_000_000e6;
 
     bool internal forked;
 
@@ -86,7 +86,7 @@ contract PicklerGraduationForkTest is Test {
         curveDeployer = new PicklerCurveDeployer(address(adapter), address(escrow));
 
         vm.prank(operator);
-        factory = new PicklerLaunchFactory(operator, curveDeployer);
+        factory = new PicklerLaunchFactory(operator, curveDeployer, vm.addr(PLATFORM_KEY));
 
         escrow.initialize(factory, address(locker));
 
@@ -94,12 +94,14 @@ contract PicklerGraduationForkTest is Test {
         factory.publishPreset(_preset());
 
         vm.prank(creator);
-        (address token_, address curve_) = factory.createLaunch(_params(), "");
+        (address token_, address curve_) = factory.createLaunch(
+            _params(), "", uint256(_params().agentKey), _params().deadline, _platformGrant(factory, _params())
+        );
 
         token = IERC20(token_);
         curve = PicklerBondingCurve(curve_);
 
-        quote.mint(alice, 100_000e6);
+        quote.mint(alice, 2_100_000_000e6);
 
         vm.startPrank(alice);
         quote.approve(curve_, type(uint256).max);
@@ -151,19 +153,19 @@ contract PicklerGraduationForkTest is Test {
             presetVersion: 1,
             expectedConfigHash: PicklerPreset.configHash(_preset()),
             nonce: 0,
-            deadline: block.timestamp + 1 hours
+            deadline: block.timestamp + 5 minutes
         });
     }
 
     function _exhaustCurve() internal {
         vm.prank(alice);
-        curve.buyExactInput(900e6, 0, alice, block.timestamp + 1 hours);
+        curve.buyExactInput(18_900_000e6, 0, alice, block.timestamp + 5 minutes);
 
         uint256 remaining = curve.remainingTokens();
         uint256 required = curve.quoteBuyExactOutput(remaining);
 
         vm.prank(alice);
-        curve.buyExactOutput(remaining, required * 2, alice, block.timestamp + 1 hours);
+        curve.buyExactOutput(remaining, required * 2, alice, block.timestamp + 5 minutes);
     }
 
     function test_graduationIsRefusedBeforeTheCurveIsExhausted() public onlyForked {
@@ -299,7 +301,7 @@ contract PicklerGraduationForkTest is Test {
         swapRouter.swap(
             poolKey,
             SwapParams({
-                zeroForOne: true, amountSpecified: -int256(1e6), sqrtPriceLimitX96: TickMath.MIN_SQRT_PRICE + 1
+                zeroForOne: true, amountSpecified: -int256(21_000e6), sqrtPriceLimitX96: TickMath.MIN_SQRT_PRICE + 1
             }),
             settings,
             bytes("")
@@ -307,7 +309,7 @@ contract PicklerGraduationForkTest is Test {
         swapRouter.swap(
             poolKey,
             SwapParams({
-                zeroForOne: false, amountSpecified: -int256(1e6), sqrtPriceLimitX96: TickMath.MAX_SQRT_PRICE - 1
+                zeroForOne: false, amountSpecified: -int256(21_000e6), sqrtPriceLimitX96: TickMath.MAX_SQRT_PRICE - 1
             }),
             settings,
             bytes("")

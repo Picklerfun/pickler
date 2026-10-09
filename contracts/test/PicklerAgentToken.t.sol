@@ -5,7 +5,7 @@ import {Test} from "forge-std/Test.sol";
 import {PicklerAgentToken} from "../src/PicklerAgentToken.sol";
 
 contract PicklerAgentTokenTest is Test {
-    uint256 internal constant TOTAL_SUPPLY = 1_000e18;
+    uint256 internal constant TOTAL_SUPPLY = 21_000_000e18;
 
     address internal curve = makeAddr("curve");
     address internal creator = makeAddr("creator");
@@ -71,6 +71,13 @@ contract PicklerAgentTokenTest is Test {
         // The curve's accounting assumes what it sends is what arrives. Fee-on-transfer and
         // rebasing tokens break that, and this asserts our own token never does.
         assertEq(token.balanceOf(creator), amount, "recipient received a different amount");
+    }
+
+    function testFuzz_noOtherInitialSupplyCanBeIssued(uint256 supply) public {
+        vm.assume(supply != TOTAL_SUPPLY);
+
+        vm.expectRevert(PicklerAgentToken.InvalidSupply.selector);
+        new PicklerAgentToken("Pickler Agent", "AGENT", supply, curve);
     }
 
     function test_theSupplyCannotBeZero() public {

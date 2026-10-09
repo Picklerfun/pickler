@@ -1,0 +1,289 @@
+.card {
+  composes: pk-panel from global;
+  padding: 20px;
+  display: grid;
+  gap: 14px;
+}
+.head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.head h3 {
+  margin: 0;
+  font-size: 18px;
+}
+.identity {
+  flex: 1;
+  min-width: 0;
+}
+.quiet {
+  color: var(--pk-ink-muted);
+  font-size: 14px;
+  margin: 0;
+  line-height: 1.5;
+}
+.address {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  font-variant-numeric: tabular-nums;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.panel {
+  display: grid;
+  gap: 16px;
+  max-width: 660px;
+}
+.fields {
+  display: grid;
+  grid-template-columns: 1fr 160px;
+  gap: 12px;
+}
+.details {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+}
+.detail {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+.detail dt {
+  color: var(--pk-ink-muted);
+}
+.detail dd {
+  margin: 0;
+  text-align: right;
+  min-width: 0;
+  max-width: 65%;
+  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
+}
+.summary {
+  display: grid;
+  gap: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--pk-rule);
+  font-size: 14px;
+}
+.supplyHero {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 24px;
+}
+.supply {
+  display: grid;
+  gap: 4px;
+}
+.supply strong {
+  font-family: var(--pk-font-display);
+  font-variation-settings: var(--pk-display-wdth);
+  font-size: 28px;
+  font-variant-numeric: tabular-nums;
+}
+.tokenPreview {
+  display: grid;
+  gap: 4px;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+.previewIdentity {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.tokenPreview strong {
+  font-size: 16px;
+}
+.distribution {
+  display: grid;
+  gap: 12px;
+}
+.distribution h4,
+.economics h4,
+.preset h4 {
+  margin: 0;
+  font-size: 14px;
+}
+.distributionTrack {
+  height: 12px;
+  background: var(--pk-blue);
+}
+.allocations {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+}
+.allocations > div {
+  display: grid;
+  gap: 4px;
+}
+.allocations dt {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--pk-ink-muted);
+}
+.allocations dd {
+  margin: 0;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.curveDot,
+.liquidityDot {
+  width: 7px;
+  height: 7px;
+  border-radius: var(--pk-radius-mark);
+}
+.curveDot {
+  background: var(--pk-lime);
+}
+.liquidityDot {
+  background: var(--pk-blue);
+}
+.walletDetails {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin: 0;
+  padding-block: 16px;
+  border-block: 1px solid var(--pk-rule);
+}
+.walletDetails > div {
+  display: grid;
+  gap: 5px;
+}
+.walletDetails dt {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--pk-ink-muted);
+}
+.walletDetails dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.walletDetails abbr {
+  text-decoration: none;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.preset {
+  display: grid;
+  gap: 12px;
+}
+.fees {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 24px;
+  margin: 0;
+}
+.fees .detail {
+  gap: 12px;
+}
+.fees dd {
+  flex-shrink: 0;
+  font-weight: 600;
+}
+.exampleNote {
+  color: var(--pk-ink-muted);
+  font-size: 12px;
+  line-height: 1.5;
+  margin: 0;
+}
+.launchActions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.launchActions > :first-child {
+  flex: 1;
+}
+@media (max-width: 480px) {
+  .fields,
+  .supplyHero,
+  .fees {
+    grid-template-columns: 1fr;
+  }
+  .supplyHero {
+    gap: 8px;
+  }
+  .tokenPreview {
+    text-align: left;
+  }
+  .previewIdentity {
+    justify-content: flex-start;
+  }
+  .allocations {
+    font-size: 12px;
+  }
+  .walletDetails {
+    gap: 12px;
+  }
+  .address {
+    flex-wrap: wrap;
+  }
+}
+
+.economics {
+  display: grid;
+  gap: 12px;
+}
+.economicFigures {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+}
+.economicFigures > div {
+  display: grid;
+  gap: 5px;
+}
+.economicFigures dt {
+  color: var(--pk-ink-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.economicFigures dd {
+  margin: 0;
+  font-weight: 600;
+  font-size: 18px;
+  font-variant-numeric: tabular-nums;
+}
+.economicFigures dd span {
+  font-size: 12px;
+  color: var(--pk-ink-muted);
+}
+.priceDetails {
+  margin: 0;
+  font-size: 12px;
+}
+@media (max-width: 480px) {
+  .economicFigures {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .economicFigures > div {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: baseline;
+    gap: 8px;
+  }
+  .economicFigures dd {
+    font-size: 16px;
+  }
+  .walletDetails {
+    grid-template-columns: 1fr;
+  }
+}

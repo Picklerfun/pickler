@@ -47,7 +47,7 @@ type FieldErrors = Partial<Record<ApplicationFieldDto, string>>;
 const TICKER_CHECK_DELAY_MS = 350;
 
 const NEXT = [
-  "The invite lands by email. The studio opens with a passkey, no seed phrase.",
+  "Access uses this email. The studio opens with a passkey, no seed phrase.",
   "You build the agent there: sources, venue, caps. We hold its ticker for you.",
   "It makes its first call. The record starts the same minute.",
 ];

@@ -65,9 +65,24 @@ CREATE FUNCTION "growth"."application_status_for"(p_email text) RETURNS text LAN
   where w.email = lower(btrim(p_email))
   limit 1
 $$;--> statement-breakpoint
+-- Only the trusted backend may call identity-bearing security-definer operations.
+REVOKE ALL ON FUNCTION growth.review_application(bigint, text, text, text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION growth.claim_invite(uuid, text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION growth.application_status_for(text) FROM PUBLIC;
+--> statement-breakpoint
 do $$
+declare
+  v_role text;
 begin
+  foreach v_role in array array['anon', 'authenticated'] loop
+    if to_regrole(v_role) is not null then
+      execute format('revoke all on function growth.review_application(bigint, text, text, text) from %I', v_role);
+      execute format('revoke all on function growth.claim_invite(uuid, text) from %I', v_role);
+      execute format('revoke all on function growth.application_status_for(text) from %I', v_role);
+    end if;
+  end loop;
   if to_regrole('service_role') is not null then
+    grant execute on function growth.review_application(bigint, text, text, text) to service_role;
     grant execute on function growth.claim_invite(uuid, text) to service_role;
     grant execute on function growth.application_status_for(text) to service_role;
   end if;

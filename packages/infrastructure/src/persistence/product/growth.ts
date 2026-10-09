@@ -23,7 +23,7 @@ export const waitlist = growth
     {
       id: bigint("id", { mode: "number" }).primaryKey().generatedAlwaysAsIdentity(),
       email: text("email").notNull(),
-      /** Bearer secret for /apply, delivered in an httpOnly cookie. */
+      /** Bearer secret for /create, delivered in an httpOnly cookie. */
       applyToken: uuid("apply_token").notNull().defaultRandom(),
       referralCode: text("referral_code")
         .notNull()

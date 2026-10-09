@@ -26,8 +26,8 @@ src/app/
   (workspace)/account/      # Account pages and sanitized return to Studio
   (workspace)/studio/       # Persistent Studio layout, entry/new and explicit agent section pages
   (auth)/                  # Existing signup/signin design
-  apply/                   # The public creator application; the seat cookie is taken on send
-  agents/, tokens/, reads/  # Existing public demonstrations
+  create/                  # Public email-first creator application; the seat cookie is taken on send
+  agents/, reads/          # Public marketplace; old token/leaderboard routes are unmounted
   markets/                  # The perpetuals board and one market's level × time surface
 src/features/studio/       # Studio sections, history, research result and API client
 src/features/studio/new-agent # Creating an agent: one screen, wallet first, then funding, then Create
@@ -40,15 +40,14 @@ src/server/
   api-client.ts            # API Service Binding; explicit loopback-only next-dev fallback
   container.ts             # Typed presentation facade over HTTP DTOs
   http/apply-cookie.ts     # Read the incoming cookie for the application page
-  http/auth-board.ts       # Presentation formatting only
 ```
 
-Signup, token pages, paid reads, wallet and ranking designs are retained; the landing and the
+Signup, private token launch previews, paid reads and wallet designs are retained; the landing and the
 application are the "Pickler Landing Trade v2" and "Pickler Create Agent" canvases (see "The landing
 and the application" below). The marketplace reads `/api/v1/marketplace/*`: agents come from the
 database, the perpetuals board is read from Perpl (without `PERPL_BOARD_NETWORK` the API answers 503 and the board shows its
 catching-up state; the sample board lives only with the design harness), and research results never appear there automatically.
-The landing reads no API (docs/specs/marketplace-real-only-v1.md N4). Hono sets
+The landing reads only public agent activity (docs/specs/marketplace-real-only-v1.md N8). Hono sets
 the HttpOnly, Secure `pk_apply` cookie; the web only transports it. Never put that bearer token in
 URLs or JSON.
 
@@ -147,11 +146,10 @@ What is real today: the address, the chain and the native balance. What is not: 
 
 `features/site/site-nav.tsx` is the navigation for every public route, the landing and the
 application included: the same brand, the same Explore / Build / Resources menus, the same height.
-It ends in two pills, a quiet one and a lit one, which default to "Get the app" (`/#app`) and
-"Create agent" (`/create`): the studio is behind an invite, and the application is the way to one,
-so no public route points at the studio's entry any more. Build › "Create Agent" goes to `/create`
-too. A page that is asking for something names the pills itself through `secondary` and `action` —
-`/create` passes "Trade with AI" (`/`) and "Apply" (`#apply`), as its canvas draws them. The landing
+It ends in a secondary "Get the app" link (`/#app`) and one primary "Create agent" action
+(`/create`). The action appears once, in the header or the compact menu footer; Build does not
+repeat it. Tokens, Leaderboard and Reputation remain Soon without links. `/create` changes only
+the secondary link to "Trade with AI" (`/`). The landing
 and the explore routes (everything inside `PublicShell`) also carry the wallet with `connect`: Connect
 wallet beside the pills, and once connected the address, its balance, and the three pages that only
 exist for it. The auth screens keep their own bar — a flow that is asking for something should not
@@ -185,8 +183,30 @@ SUBMITTED on load, read server-side. The limits are `APPLICATION_LIMITS_DTO` (wh
 pure rules are `lib/form-model.ts`, pinned in `apps/web/test/apply-form.test.ts`; `lib/options.ts`
 keeps the swatches, the batch copy and the ticker and handle helpers. The page is the light
 surface with the hero card (`#apply-hero`), the arena (`#arena`) and YOUR PIECE (`#apply-piece`)
-nested dark; `routes.mjs` proves `#apply-form`. Accepting an applicant is not built here:
-applications land in `growth.applications` as `submitted`.
+nested dark; `routes.mjs` proves `#apply-form`. Applications land in `growth.applications` as `submitted`; authorized operators review them
+through Account’s Creator access inbox below.
+
+## Responsive public navigation
+
+`features/site/site-nav.tsx` is shared by the landing and every `PublicShell` route. Its header
+never wraps: above 1100px the three desktop groups are inline; at 1100px and below a compact
+navigation icon opens the same three named groups, separated into columns. On small screens,
+Explore spans a two-column row above Build and Resources. Group labels are visually distinct from
+links and unavailable destinations retain their disabled state. Create agent appears exactly once:
+in the header above 640px, or in a separated menu footer at 640px and below. The secondary
+Get the app action shares that footer on small screens. The small header
+keeps the brand, a labelled 44px wallet icon, and a labelled 44px navigation icon. The wallet label contracts at 860px to leave room for pending
+wallet states. CSS handles layout without client resize state; crossing the 1100px breakpoint
+dismisses the disclosure whose trigger becomes hidden. At 360px and below the brand keeps only
+its mark while retaining the accessible home-link name.
+
+Navigation and the marketplace wallet disclosure compose the existing shadcn/Radix DropdownMenu.
+Portals receive the actual surface, viewport collision padding and bounded width/height. Radix
+owns keyboard navigation, Escape, outside dismissal and focus return; no custom scrim or document
+listeners. Non-modal menus preserve the page width and scroll position. Coming-soon destinations
+remain disabled and never link to invented routes. Wallet behavior, cross-product Studio links
+and signer separation remain unchanged. Run `node scripts/design/public-navigation.mjs` against
+local fixture servers for responsive geometry, keyboard, touch, menu navigation and wallet states.
 
 ## Markets
 
@@ -800,10 +820,16 @@ POST was retired from the API. A server-authorized operator
 (`SUPER_ADMIN_EMAILS`) gets `features/studio/applications-inbox.tsx` under the notice in Account:
 the applications from `GET /v1/studio/applications`, filtered by status (To review, Invited,
 Rejected, All), each with its six answers, and Invite / Reject with an optional note through
-`PUT /v1/studio/applications/:id`. Inviting records the decision only; enabling studio access stays
-the operator command and the acceptance email is a later piece, which the inbox says. The preview
+`PUT /v1/studio/applications/:id`. Inviting enables studio access by email for existing and future accounts. No acceptance email
+is sent; the operator command remains available for exceptions. The preview
 (`?section=access`, outside production) draws the inbox from `PREVIEW_APPLICATIONS` and sends
 nothing; `scripts/design/routes.mjs` proves `#creator-access-panel:has(#applications-inbox)`.
+After a decision, the inbox removes rows that no longer match the selected filter.
+`node --import tsx scripts/design/studio-loading.mjs` verifies invitation, rejection, filters,
+audit details, refreshed access and operator-only presentation with controlled API responses.
+`node scripts/design/creator-application.mjs` submits the public form through the local fixture's
+actual growth routes at desktop/mobile widths, verifies the HttpOnly seat and submitted reload,
+and checks that retired public routes return 404. Neither acceptance runner sends email.
 
 ## Creator access layout and loading
 
@@ -1104,3 +1130,30 @@ browser clock, and make no request. Short histories show their first available t
 responses keep the 24h trail and explicitly lack longer ranges. The mark's percentage remains
 labelled 24h independently of the selected chart range; the line direction reflects the selected samples. Fixtures supply synthetic longer series
 only on labelled local stages. Chart geometry is memoized during point inspection.
+
+## Token route and shared identity
+
+`features/tokens` owns presentation and transport for the existing `/studio/agents/:id/token` route
+in both draft and live Studio. It reuses the persistent shell and memory-only form store. Reads keep
+fields mounted with Skeletons; errors require explicit retry, and newer versions cannot silently
+overwrite preserved edits. The Launch token control stays disabled in every composition, including fixtures. A private agent shows
+Go public first. The shared `AgentTokenCard` appears below public persona headers and distinguishes
+absence and pending confirmation without a visitor launch action.
+
+Development-only `perpl-token-empty`/`perpl-token-launched` and public
+`/agents/halftime?stage=token-empty|token-launched` fixtures show static empty/confirmed states and live draft details beneath the form.
+Supply is fixed at 21 million; no review/simulation button or artificial transaction phases remain.
+The compact launcher reuses Meter for the allocation track, with textual percentages/amounts,
+creator wallet and admin roles, and an inline fee grid. The full wallet address remains available
+in its abbreviation title. Edits update identity locally without additional API requests.
+The optional version-2 `economics` state supplies approved reference terms, independently of signer
+availability. The browser formats prepared amounts only; it must not duplicate curve formulas.
+`reference-economics.json` is generated from core and chain metadata with `npm run tokens:fixtures`,
+and the web test rejects drift. Summary values include AUSD FDVs/net backing, 80/20 allocation,
+1% buy/sell fees, a 50/50 split and zero AUSD launch fee; gas is separately MON without an estimate.
+Missing economics do not receive a fake fallback. Post-migration fees show Pending DEX configuration.
+Creator/master details come from private state; never infer token admin privileges from that wallet.
+Fixtures cannot use passkeys, providers or fake explorer links
+and are refused in production. `scripts/design/token-preview.mjs` checks both states at desktop/mobile
+sizes, keyboard and persistent navigation; Design CI runs it. The controlled loading regression
+covers private token reads and preserved edits. See [the guide](../../docs/agent-token-preview.md).

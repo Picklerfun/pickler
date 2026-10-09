@@ -28,6 +28,7 @@ export type DraftSectionKey =
   | "limits"
   | "identity"
   | "profile"
+  | "token"
   | "trade"
   | "master";
 
@@ -53,6 +54,7 @@ const SECTION_LABELS: Record<DraftSectionKey, string> = {
   limits: "Limits & funding",
   identity: "Identity & voice",
   profile: "Public profile",
+  token: "Token",
   trade: "Trade",
   master: "Master wallet",
 };
@@ -88,7 +90,7 @@ export const DRAFT_SECTIONS = [
       item("identity", "user"),
     ],
   },
-  { title: "GROW", items: [item("profile", "globe")] },
+  { title: "GROW", items: [item("profile", "globe"), item("token", "coin")] },
   { title: "YOU", items: [item("trade", "coin"), item("master", "wallet")] },
 ] as const;
 

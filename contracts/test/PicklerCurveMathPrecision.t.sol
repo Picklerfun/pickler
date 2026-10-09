@@ -4,7 +4,7 @@ pragma solidity 0.8.30;
 import {Test} from "forge-std/Test.sol";
 import {PicklerCurveMath} from "../src/libraries/PicklerCurveMath.sol";
 
-/// Documents the precision floor the curve has, so preset validation can refuse to cross it.
+/// Preserves the legacy precision floor and verifies the normalized policy-2 arithmetic.
 ///
 /// A 1e18-scaled price cannot represent an arbitrarily cheap token. Pair a very large supply
 /// with a very small quote reserve and the marginal price truncates toward zero, at which
@@ -12,6 +12,29 @@ import {PicklerCurveMath} from "../src/libraries/PicklerCurveMath.sol";
 /// not a bug to fix in the library — but a preset that lands there must be rejected before it
 /// is ever deployed, which is why the boundary is pinned down here.
 contract PicklerCurveMathPrecisionTest is Test {
+    /// The normalized numerator exceeds uint256, while the final WAD price fits.
+    function test_normalizedPriceUsesAFullPrecisionIntermediate() public pure {
+        PicklerCurveMath.CurveConfig memory config = PicklerCurveMath.CurveConfig(1e27, 1e24, 5e26);
+        assertEq(PicklerCurveMath.marginalPriceWad(config, 0, 6), 1e27);
+        assertEq(PicklerCurveMath.marginalPriceWad(config, 5e26, 6), 4e27);
+    }
+
+    function normalizedPrice(PicklerCurveMath.CurveConfig memory config, uint256 sold, uint8 decimals)
+        external
+        pure
+        returns (uint256)
+    {
+        return PicklerCurveMath.marginalPriceWad(config, sold, decimals);
+    }
+
+    function test_normalizedPriceRejectsUnknownDecimalsAndSaleOverflow() public {
+        PicklerCurveMath.CurveConfig memory config = PicklerCurveMath.CurveConfig(1e27, 1e24, 5e26);
+        vm.expectRevert(PicklerCurveMath.InvalidAllocation.selector);
+        this.normalizedPrice(config, 0, 19);
+        vm.expectRevert(PicklerCurveMath.InvalidAllocation.selector);
+        this.normalizedPrice(config, 5e26 + 1, 6);
+    }
+
     function _configFor(uint256 saleAllocation, uint256 lpAllocation, uint256 targetReserve)
         internal
         pure

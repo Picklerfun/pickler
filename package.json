@@ -39,6 +39,7 @@
     "evaluate": "npm run evaluate --workspace=@pickler/agent-service --",
     "check:architecture": "node scripts/check-trading-architecture.mjs",
     "contracts:test:fork": "forge test --root contracts --match-path 'test/fork/*'",
+    "tokens:fixtures": "npm run build:shared && node --import tsx scripts/generate-token-economics.mjs",
     "contracts:abi": "npm run contracts:build && node scripts/generate-abi.mjs",
     "typecheck:design": "tsc -p scripts/design/tsconfig.json",
     "design:source": "node scripts/design/source.mjs --strict",

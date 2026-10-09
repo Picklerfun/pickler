@@ -1,5 +1,4 @@
-// Public wire format for GET /api/v1/landing. Timestamps are ISO 8601 strings;
-// amounts are MON in display units.
+// Shared public agent presentation types. Timestamps are ISO 8601 strings.
 
 /**
  * Which of the seven agent palette colours an agent wears. These tell agents apart and mean nothing

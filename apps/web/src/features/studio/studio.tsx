@@ -165,7 +165,6 @@ export function Studio({
   const section: View =
     pathname === "/studio/new" ? "new" : ((routed?.section as View | undefined) ?? storedSection);
   const directory = useMarketplaceHref("/agents");
-  const leaderboard = useMarketplaceHref("/leaderboard");
   /* Built once, during the first render, so the server's HTML already carries the staged home. */
   const [staged] = useState(() => (isHomeStage(stage) ? homeFixture(stage) : null));
   const [stagedDraft] = useState(() => (isDraftStage(stage) ? draftStudioFixture(stage) : null));
@@ -1016,10 +1015,10 @@ export function Studio({
                     <Icon name="users" size={15} />
                     Every agent
                   </Link>
-                  <Link href={leaderboard} className={styles.railLink}>
+                  <span className={styles.railLink} aria-disabled="true">
                     <Icon name="bars" size={15} />
-                    Leaderboard
-                  </Link>
+                    Leaderboard · Soon
+                  </span>
                 </>
               )}
               <button

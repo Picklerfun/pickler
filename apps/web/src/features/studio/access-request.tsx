@@ -23,7 +23,7 @@ export function accessNotice(application: Application): {
     case "submitted":
       return {
         title: "Not approved yet",
-        body: "Your application is with the Pickler team. Creators come in a few at a time, and the invite lands by email.",
+        body: "Your application is with the Pickler team. Creators come in a few at a time. Check here for the team's decision.",
         tag: "In review",
         tint: "amber",
         apply: false,
@@ -47,7 +47,7 @@ export function accessNotice(application: Application): {
     default:
       return {
         title: "Not approved yet",
-        body: "There is no application under this account's email. Creators come in a few at a time; apply first, and the invite lands by email.",
+        body: "There is no application under this account's email. Creators come in a few at a time. Apply first, then check here for access.",
         tag: null,
         tint: null,
         apply: true,

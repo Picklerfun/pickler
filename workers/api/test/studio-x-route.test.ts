@@ -707,6 +707,11 @@ test("partial revocation retains only the remaining token and explicitly retries
 
 test("pagination and exhausted daily quota cannot renew tokens or call X", async (t) => {
   const f = await fixture(t);
+  // Keep the two-hour advance inside one UTC day, including runs near midnight.
+  const quotaDay = f.getClock();
+  quotaDay.setUTCDate(quotaDay.getUTCDate() + 1);
+  quotaDay.setUTCHours(12, 0, 0, 0);
+  f.setClock(quotaDay);
   await f.connect();
   const calls = f.calls.length;
 

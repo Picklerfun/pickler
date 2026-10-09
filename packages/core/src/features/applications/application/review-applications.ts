@@ -31,12 +31,12 @@ export class ReviewValidationError extends Error {
 }
 
 /**
- * Reviewing creator applications: the operators' side of /apply.
+ * Reviewing creator applications: the operators' side of /create.
  *
  * Only a super admin — a user whose email is on the server's allowlist — may list or decide.
  * A decision is `invited` or `rejected`, with an optional note, and is recorded with the reviewer's
- * email so the decision has a name on it. It does not enable studio access or send any email:
- * those stay the operator command and a later piece, which is what the studio's own notice says.
+ * email so the decision has a name on it. The repository enables studio access when invited,
+ * for existing and future accounts under that email. No email is sent.
  */
 export function createApplicationReview(repository: ApplicationReviewRepository) {
   function operator(principal: Principal) {

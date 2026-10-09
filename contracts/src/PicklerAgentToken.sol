@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.30;
 
+import {PicklerPreset} from "./libraries/PicklerPreset.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 /// @title Pickler agent token
-/// @notice A fixed-supply ERC-20 tied to an agent's identity.
+/// @notice An ERC-20 with exactly 21 million tokens, created once for an agent.
 /// @dev Deliberately the least interesting contract in the system. The entire supply is
 ///      created once, in the constructor, and handed to the curve. There is no mint, no burn,
 ///      no owner, no pause, no blacklist and no transfer tax — not as an omission but as the
@@ -18,7 +19,7 @@ contract PicklerAgentToken is ERC20 {
     constructor(string memory name_, string memory symbol_, uint256 totalSupply_, address supplyRecipient)
         ERC20(name_, symbol_)
     {
-        if (totalSupply_ == 0) {
+        if (totalSupply_ != PicklerPreset.TOTAL_SUPPLY) {
             revert InvalidSupply();
         }
         if (supplyRecipient == address(0)) {

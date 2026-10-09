@@ -17,6 +17,8 @@ or install it. See [controlled Studio acceptance](../../docs/studio-acceptance.m
 
 It also carries the adapters ported from Relayer for the public product: AES-256-GCM crypto byte-compatible with stored values, the Supabase JWT verifier (`jose`), and Turnkey stamping and activity forwarding. The Supabase data adapters that came with them (workspaces, API keys, agents, budgets, profiles, and the PostgREST client the growth functions used) were removed on 2026-09-29: the API reads those tables through the PostgreSQL classes below. supabase-js remains for auth only (`createSupabaseJwtVerifier`, and `createSupabaseAdmin` inside `createWalletAccounts`). `createInMemoryApplicantStore` serves the application flow without a database. The sample market board and the sample landing read model left this package on 2026-10-08 (docs/specs/marketplace-real-only-v1.md N7): the board now lives in `scripts/design/fixtures/sample-market-board.mts`, for the design harness only, and the landing model is gone. The invented agents are not here: they live in `scripts/design/fixtures/` and only the design harness's fixture API serves them; the marketplace reads its agents through `PostgresAgentDirectory` below. These adapters read the product schemas defined in `src/persistence/product/`; see [supabase/AGENTS.md](../../supabase/AGENTS.md) for the hosted project.
 
+`createAusdAuthorizationGateway` (`src/chain/ausd-authorization.ts`) implements core's `AdvicePaymentGateway` with viem: it verifies and settles EIP-3009 `transferWithAuthorization` payments in AUSD on Monad testnet, the relayer key being a Worker secret that never appears in errors. Addresses are compared case-insensitively; `nonceUsed` and `balance` read the latest block. `settle` runs `simulateContract` before `writeContract` and throws `SettlementRejected` only for an unparsable signature, a simulation failure (nothing broadcast) or a mined `reverted` receipt, and then only after reading `authorizationState` at latest shows the nonce still unused: a consumed nonce (the same authorization already executed, e.g. front-run) or a failed state read throws core's `SettlementUnknown`. A `writeContract` error, a receipt timeout (30 s), an RPC error, or a success receipt without the matching AUSD `Transfer(from, to, value)` log throws `SettlementUnknown` too, leaving the payment pending for reconciliation. `SettlementUnknown.txHash` is the broadcast hash once one exists (null after a `writeContract` error or a simulation revert); no settle error carries the signature, the key or a `cause`. Tests inject the client and wallet; none touch the network.
+
 Actual adapters live in `src/research`, `src/polymarket` and `src/persistence`. Business policy comes from core and trading; SQL implements transactional admission, idempotency, claims and scoped access. Drizzle defines the research tables in `src/persistence/schema.ts`, the product schemas (`identity`, `agents`, `budget`, `audit`, `growth`, `market`) in `src/persistence/product/`, and versioned SQL migrations in `drizzle/`. `0006_product_functions_and_grants.sql` is a custom migration holding what Drizzle cannot express: the `internal` helper schema, triggers, deferrable foreign keys, the `auth.users` references, the security-definer functions and the grants. It skips the Supabase-only parts when those roles or tables are absent, so it also runs on the Docker PostgreSQL. Admission, configuration, claims and scheduling lock agent rows in transactions. Never retry ambiguous research automatically. New providers must pass capability contract tests. Public runtime exports use compiled `dist`; relative source imports include `.js` extensions.
 
 ## Rules
@@ -97,6 +99,9 @@ own `kind='agent'` row and throws `AgentWalletNotFoundError` when none matched, 
 confirm produced can never land on someone else's wallet. This is the only path that sets the
 column — the studio's draft-create transaction only ever reads it.
 
+`PostgresStudioDirectory.setAdvicePrice(userId, productAgentId, micro)` writes
+`agents.agents.advice_price_micro_ausd` for the workspace owner (NOT_FOUND otherwise); a price needs a
+row in `wallets.agent_wallets` (CONFLICT `AGENT_WALLET_REQUIRED`), null clears without one.
 `PostgresStudioDirectory.createDraft` creates a private draft with its agent wallet in one
 transaction (studio-create-simplified-v1 §4.1). It locks the workspace and first looks for a replay:
 a `pickler.product_agents` row with `request_key = 'draft:<walletId>'` answers that draft again
@@ -162,7 +167,9 @@ covers them against the Docker PostgreSQL, including `onboard` right after `crea
 behind the marketplace. It reads one join: `agents.agents` left-joined to `agents.agent_profiles`
 (an agent created before profiles existed is still an agent, and gets the profile's defaults), to
 `identity.profiles` for the creator's handle, and to `market.tokens` restricted to `pre_graduation`
-and `graduated`. A `reserved`, `launching` or `failed` token is not a token: the agent's `ticker`
+and `graduated`. Every summary, persona and directory entry carries the agent `id` and its
+`advicePrice` (`agents.advice_price_micro_ausd`, read as text and mapped by core's `advicePrice`). A
+`reserved`, `launching` or `failed` token is not a token: the agent's `ticker`
 and `token` are null, and its ticker has no profile page. Tickers are stored and compared with
 their `$`. Killed agents are off the listing and the directory but keep a persona, so an old link
 still resolves. Only `visibility = 'public'` agents appear anywhere in it (migration 0024,
@@ -538,6 +545,18 @@ trusted `reconcileCall` method requires terminal failure and verified evidence, 
 and records an audit event; it has no consumer HTTP route. Apply migration before updated
 research/preview admission queries. See [Agent advice](../../docs/agent-advice.md).
 
+`PostgresAdvicePayments` implements core's `AdvicePaymentStore` over `pickler.advice_payments`
+(migration 0038). `insertPending` is one atomic upsert on (user, agent, request key) that only
+overwrites a `failed` row; any other existing row, or a reused nonce, is `CONFLICT`, so exactly one
+of two concurrent requests proceeds. Payer, recipient and nonce are stored lowercased and address
+comparisons are case-insensitive.
+Reusing a `failed` row assigns a fresh `id`, so every attempt owns its id; `settled` and `failed`
+only write a `pending` row, `refundOwed` and `attachJob` only a `settled` one (`attachJob` also only
+while `job_id` is null), and a write that matches nothing is a silent no-op, so a stale writer
+cannot touch a newer attempt. `byKey` returns `validBefore` as unix seconds. `saleTerms` is
+`null` without a public, unkilled, priced agent or without a wallet account. The API Worker builds
+it and the gateway per invocation, on that invocation's pool, only while x402 is on.
+
 Advice v2 call rows record the frozen forecast provider origin, not a misleading direct-DeepSeek label. Historical v1 rows retain their original meaning. This is a JSON policy extension and requires no schema migration.
 
 ## Studio strategy attribution and USD reservations
@@ -606,3 +625,35 @@ The public market board retains timestamp/price pairs from the existing hourly c
 The same cached thirty-day candle read supplies bounded `priceHistory` for 24h/7d/30d view
 selection. Detail responses clone at most 720 hourly samples plus the observed mark; the existing
 24h trail and hourly-reach calculation remain unchanged. Range views add no transport or retry.
+
+## Agent token persistence
+
+`studio/token-launch-store.ts` implements `TokenLaunchRepository` using short owner/access/agent
+transactions, the registered master account and versioned `launch.drafts`. Drizzle migrations 0036
+and 0037 append private `launch.agent_keys`/`launch.grants`, their constraints and agent/network
+uniqueness. Applied migrations and historical rows are not rewritten. `tokenAgentKey` uses the
+versioned UUID/network ABI encoding documented in [the guide](../../docs/agent-token-preview.md).
+`studio/token-read.ts` returns a confirmed token only from canonical confirmed indexed evidence;
+failed reads are errors and observed/orphaned evidence is pending. The launch projector attributes
+an agent only when its key, recorded grant, factory, creator and committed parameters match.
+
+The explicit `@pickler/infrastructure/testing/token` subpath exports the loopback-only PostgreSQL
+fixture and public controlled signer used by API acceptance. No host imports it. It makes no RPC or
+provider calls. `test/token-launch.test.ts` covers concurrent admission, upgrade preservation,
+isolation and confirmed attribution. Operational signing, durable metadata and indexer activation
+remain absent.
+
+## Creator application review
+
+`PostgresApplicationReview` implements the operator inbox and delegates audited decisions to
+`growth.review_application`. Migrations `0039_application_review` and `0040_application_access`
+follow the immutable main history through `0038_advice_x402`; their snapshots are generated from
+the combined schema. Inviting enables research access for existing accounts under that email.
+`PostgresStudioDirectory.onboard(userId, email)` claims invitations for future accounts through
+`growth.claim_invite`. These functions send no email. Only verified server principals may supply
+the email; authorization belongs to core and the API. Never apply the superseded PR-only
+application migration hashes to a shared database. See [the reconciliation record](../../docs/pr124-reconciliation.md).
+The adapter converts PostgreSQL bigint application IDs into checked safe integers at its port
+boundary. The PostgreSQL API acceptance covers numeric IDs through both inbox reads and decisions.
+Security-definer review, claim and status functions revoke execution from PUBLIC, anon and
+authenticated; only the trusted backend may execute them.

@@ -1,7 +1,8 @@
 ALTER TABLE "growth"."applications" ADD COLUMN "reviewed_at" timestamp with time zone;--> statement-breakpoint
 ALTER TABLE "growth"."applications" ADD COLUMN "reviewed_by" text;--> statement-breakpoint
 ALTER TABLE "growth"."applications" ADD COLUMN "decision_note" text;--> statement-breakpoint
-ALTER TABLE "growth"."applications" ADD COLUMN "invited_at" timestamp with time zone;--> statement-breakpoint
+ALTER TABLE "growth"."applications" ADD COLUMN "invited_at" timestamp with time zone;
+--> statement-breakpoint
 -- The one write that changes an application's status: an operator's decision, with a name on it.
 CREATE FUNCTION "growth"."review_application"(p_waitlist_id bigint, p_status text, p_note text, p_reviewer text) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
 declare
@@ -27,6 +28,8 @@ begin
   return to_jsonb(v_row);
 end;
 $$;--> statement-breakpoint
+REVOKE ALL ON FUNCTION growth.review_application(bigint, text, text, text) FROM PUBLIC;
+--> statement-breakpoint
 do $$
 begin
   if to_regrole('service_role') is not null then

@@ -16,6 +16,7 @@ import {
   boolean,
   check,
   index,
+  foreignKey,
   integer,
   jsonb,
   numeric,
@@ -119,6 +120,8 @@ export const drafts = launch
     },
     (t) => [
       index("drafts_owner_idx").on(t.ownerId, t.status),
+      uniqueIndex("drafts_agent_chain_key").on(t.agentId, t.chain),
+      uniqueIndex("drafts_identity_key").on(t.id, t.agentId, t.chain),
       check("drafts_chain_format", sql`${t.chain} ~ '^eip155:[1-9][0-9]*$'`),
       check("drafts_version_positive", sql`${t.version} >= 1`),
       check(
@@ -239,6 +242,69 @@ export const outbox = launch
         .where(sql`${t.eventChain} is not null`),
       check("outbox_attempts_positive", sql`${t.attempts} >= 0`),
       check("outbox_topic_length", sql`char_length(${t.topic}) between 1 and 80`),
+    ],
+  )
+  .enableRLS();
+
+/** Stable identity before launch; no address or transaction is accepted as proof of existence. */
+export const agentKeys = launch
+  .table(
+    "agent_keys",
+    {
+      agentId: uuid("agent_id")
+        .notNull()
+        .references(() => agents.id, { onDelete: "restrict" }),
+      chain: text("chain").notNull(),
+      agentKey: text("agent_key").notNull(),
+      createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    },
+    (t) => [
+      primaryKey({ columns: [t.agentId, t.chain] }),
+      uniqueIndex("agent_keys_chain_key").on(t.chain, t.agentKey),
+      check("agent_keys_chain_format", sql`${t.chain} ~ '^eip155:[1-9][0-9]*$'`),
+      check("agent_keys_hash_format", sql`${t.agentKey} ~ '^0x[0-9a-f]{64}$'`),
+    ],
+  )
+  .enableRLS();
+
+/** Immutable short-lived permissions. Only the owner's JWT API can return their payloads. */
+export const tokenGrants = launch
+  .table(
+    "grants",
+    {
+      id: uuid("id").primaryKey().defaultRandom(),
+      agentId: uuid("agent_id").notNull(),
+      chain: text("chain").notNull(),
+      draftId: uuid("draft_id").notNull(),
+      draftVersion: integer("draft_version").notNull(),
+      ownerId: uuid("owner_id")
+        .notNull()
+        .references(() => profiles.userId, { onDelete: "restrict" }),
+      factory: text("factory").notNull(),
+      nonce: baseUnits("nonce").notNull(),
+      idempotencyKey: text("idempotency_key").notNull(),
+      payload: jsonb("payload").notNull(),
+      expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+      createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    },
+    (t) => [
+      foreignKey({
+        columns: [t.agentId, t.chain],
+        foreignColumns: [agentKeys.agentId, agentKeys.chain],
+      }),
+      foreignKey({
+        columns: [t.draftId, t.agentId, t.chain],
+        foreignColumns: [drafts.id, drafts.agentId, drafts.chain],
+      }),
+      uniqueIndex("grants_request_key").on(t.agentId, t.chain, t.idempotencyKey),
+      uniqueIndex("grants_nonce_key").on(t.chain, t.factory, t.nonce),
+      check("grants_factory_format", sql`${t.factory} ~ '^0x[0-9a-f]{40}$'`),
+      check("grants_nonce_range", sql`${t.nonce} >= 0 AND ${t.nonce} < power(2::numeric, 256)`),
+      check("grants_version_positive", sql`${t.draftVersion} > 0`),
+      check(
+        "grants_expiry",
+        sql`${t.expiresAt} > ${t.createdAt} AND ${t.expiresAt} <= ${t.createdAt} + interval '5 minutes'`,
+      ),
     ],
   )
   .enableRLS();

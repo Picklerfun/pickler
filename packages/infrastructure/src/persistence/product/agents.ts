@@ -4,6 +4,7 @@
 
 import { sql } from "drizzle-orm";
 import {
+  bigint,
   check,
   index,
   integer,
@@ -64,6 +65,8 @@ export const agents = agentsSchema
       visibility: agentVisibility("visibility").notNull().default("private"),
       /** When Go Public made it public; set exactly when `visibility` is `public`. */
       publishedAt: timestamp("published_at", { withTimezone: true }),
+      /** Micro-AUSD per fresh advice analysis; null = not for sale (agent-advice-x402-v1 D2). */
+      advicePriceMicroAusd: bigint("advice_price_micro_ausd", { mode: "bigint" }),
       createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
       updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
     },
@@ -85,6 +88,10 @@ export const agents = agentsSchema
       check(
         "agents_published_consistent",
         sql`(${t.visibility} = 'public') = (${t.publishedAt} is not null)`,
+      ),
+      check(
+        "agents_advice_price_bounds",
+        sql`${t.advicePriceMicroAusd} IS NULL OR ${t.advicePriceMicroAusd} BETWEEN 100000 AND 100000000`,
       ),
     ],
   )

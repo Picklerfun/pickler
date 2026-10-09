@@ -8,6 +8,7 @@ import { fileURLToPath } from "node:url";
 import { setTimeout as delay } from "node:timers/promises";
 import { openBrowser } from "./lib/browser.mjs";
 import { listening } from "./lib/servers.mjs";
+import { liveStudioFixture } from "../../apps/web/src/features/studio/live/fixture.ts";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const base = "http://localhost:3012";
@@ -42,6 +43,22 @@ const keys = [
     last_used_at: null,
   },
 ];
+const tokenAgentId = "20000000-0000-4000-8000-000000000002";
+const tokenFixture = liveStudioFixture("perpl-live");
+const tokenAgent = {
+  ...tokenFixture.agent,
+  id: tokenAgentId,
+  productId: tokenAgentId,
+  draft: true,
+  visibility: "private",
+  publishedAt: null,
+};
+const tokenState = {
+  ...tokenFixture.tokenState,
+  available: false,
+  blockers: ["GO_PUBLIC_FIRST", "LAUNCH_UNAVAILABLE"],
+  draft: { id: tokenAgentId, version: 1, name: "Saved token", ticker: "SAVE", status: "draft" },
+};
 const envelope = (data) => ({ success: true, message: "Controlled response", data });
 const responses = {
   "/api/v1/profile": envelope(profile),
@@ -122,11 +139,13 @@ try {
   for (const scenario of [
     "studio",
     "account",
+    "account-access",
     "passkey",
     "studio-error",
     "studio-missing-wallet",
     "studio-wallets",
     "studio-markets",
+    "studio-token",
   ]) {
     const context = await browser.newContext();
     await context.addCookies([
@@ -137,9 +156,33 @@ try {
       },
     ]);
     const counts = new Map();
+    let accessEnabled = false;
+    let reviewAllowed = true;
+    let applicationRows = [7, 8].map((id) => ({
+      id,
+      email: `creator${id}@example.test`,
+      agentName: `Creator ${id}`,
+      ticker: `$CRE${id}`,
+      xHandle: `@creator_${id}`,
+      category: "Sports",
+      personality: "Analyst",
+      edge: "Public evidence.",
+      whyYou: "Controlled browser acceptance.",
+      status: "submitted",
+      submittedAt: "2026-01-01T00:00:00.000Z",
+      reviewedAt: null,
+      reviewedBy: null,
+      decisionNote: null,
+      invitedAt: null,
+    }));
     let walletPhase = "initial";
     let cataloguePhase = "ready";
     let clientClockOffset = 0;
+    let tokenPhase = "loading";
+    let releaseToken;
+    const tokenGate = new Promise((resolve) => {
+      releaseToken = resolve;
+    });
     const catalogueCounts = new Map();
     await context.route("**/*", async (route) => {
       const url = new URL(route.request().url());
@@ -154,6 +197,35 @@ try {
       await delay(250);
       let status = 200;
       let json = responses[url.pathname];
+      if (scenario === "studio-token") {
+        const prefix = `/api/v1/studio/agents/${tokenAgentId}`;
+        const specific = {
+          "/api/v1/studio/agents": { agents: [tokenAgent] },
+          [prefix]: tokenAgent,
+          [prefix + "/x"]: tokenFixture.x,
+          [prefix + "/activity"]: { events: [] },
+          [prefix + "/runs"]: { runs: [] },
+          [prefix + "/perps/record"]: tokenFixture.runtime.record,
+          [prefix + "/perps/positions"]: tokenFixture.runtime.positions,
+          [prefix + "/perps/checks"]: { checks: [], nextCursor: null },
+        };
+        json = specific[url.pathname] ?? json;
+        if (url.pathname === prefix + "/token") {
+          assert.equal(route.request().method(), "GET");
+          if (tokenPhase === "loading") {
+            await tokenGate;
+          }
+          status = tokenPhase === "failed" ? 503 : 200;
+          json =
+            tokenPhase === "failed"
+              ? { error: "UNAVAILABLE", message: "Controlled token read failure" }
+              : tokenState;
+        } else if (url.pathname === prefix + "/token/draft") {
+          assert.equal(route.request().method(), "PUT");
+          status = 409;
+          json = { error: "TOKEN_DRAFT_CONFLICT", message: "Controlled version conflict" };
+        }
+      }
       if (url.pathname === "/api/v1/studio/perpl/markets") {
         const network = url.searchParams.get("network");
         if (!["testnet", "mainnet"].includes(network)) {
@@ -187,7 +259,46 @@ try {
         status = 503;
         json = { error: "UNAVAILABLE", message: "Controlled load failure" };
       } else if (url.pathname === "/api/v1/studio/access-request") {
-        json = { status: "enabled", canReview: false };
+        json = {
+          status: "enabled",
+          requestedAt: null,
+          application: null,
+          canReviewRequests: false,
+        };
+      }
+      if (scenario === "account-access") {
+        if (url.pathname === "/api/v1/studio/access-request") {
+          assert.equal(route.request().method(), "GET");
+          json = {
+            status: accessEnabled ? "enabled" : "not_requested",
+            requestedAt: null,
+            application: accessEnabled ? "invited" : "submitted",
+            canReviewRequests: reviewAllowed,
+          };
+        } else if (url.pathname === "/api/v1/studio/applications") {
+          assert.equal(route.request().method(), "GET");
+          const filter = url.searchParams.get("status");
+          json = {
+            applications: applicationRows.filter((row) => !filter || row.status === filter),
+          };
+        } else if (/^\/api\/v1\/studio\/applications\/\d+$/.test(url.pathname)) {
+          assert.equal(route.request().method(), "PUT");
+          const id = Number(url.pathname.split("/").at(-1));
+          const decision = route.request().postDataJSON();
+          const row = applicationRows.find((entry) => entry.id === id);
+          assert.ok(row);
+          assert.ok(["invited", "rejected"].includes(decision.status));
+          json = {
+            ...row,
+            status: decision.status,
+            reviewedAt: "2026-01-02T12:00:00.000Z",
+            reviewedBy: "ops@example.test",
+            decisionNote: decision.note ?? null,
+            invitedAt: decision.status === "invited" ? "2026-01-02T12:00:00.000Z" : null,
+          };
+          applicationRows = applicationRows.map((entry) => (entry.id === id ? json : entry));
+          accessEnabled ||= decision.status === "invited";
+        }
       }
       if (url.pathname === "/api/v1/studio/wallets" && scenario === "studio-wallets") {
         assert.equal(route.request().method(), "GET");
@@ -236,9 +347,55 @@ try {
       await page.clock.install();
     }
     page.on("pageerror", (error) => errors.push(error.message));
-    const route = scenario.startsWith("studio") ? "/studio" : `/${scenario}`;
+    const route =
+      scenario === "studio-token"
+        ? `/studio/agents/${tokenAgentId}/token`
+        : scenario === "account-access"
+          ? "/account?section=access"
+          : scenario.startsWith("studio")
+            ? "/studio"
+            : `/${scenario}`;
     await page.goto(`${base}${route}`);
-    if (scenario === "studio-missing-wallet") {
+    if (scenario === "studio-token") {
+      const name = page.getByRole("textbox", { name: "Token name", exact: true });
+      await page.getByRole("status", { name: "Loading token" }).waitFor();
+      const field = await name.elementHandle();
+      await name.fill("Kept during reads");
+      assert.equal(
+        await page.getByRole("button", { name: "Save draft", exact: true }).isDisabled(),
+        true,
+      );
+      tokenPhase = "failed";
+      releaseToken();
+      await page.getByText("Token status could not be read.", { exact: true }).waitFor();
+      assert.equal(await field.evaluate((node) => node.isConnected), true);
+      assert.equal(await name.inputValue(), "Kept during reads");
+      assert.equal(counts.get(`/api/v1/studio/agents/${tokenAgentId}/token`), 1);
+      tokenPhase = "ready";
+      await page.getByRole("button", { name: "Retry", exact: true }).click();
+      await page.getByRole("button", { name: "Use saved draft", exact: true }).waitFor();
+      assert.equal(await name.inputValue(), "Kept during reads");
+      await page.getByRole("button", { name: "Use saved draft", exact: true }).click();
+      assert.equal(await name.inputValue(), "Saved token");
+      await name.fill("Kept after save conflict");
+      await page.getByRole("button", { name: "Save draft", exact: true }).click();
+      await page.getByRole("button", { name: "Reload state", exact: true }).waitFor();
+      assert.equal(await name.inputValue(), "Kept after save conflict");
+      tokenState.draft = { ...tokenState.draft, version: 2, name: "Newer saved token" };
+      await page.getByRole("button", { name: "Reload state", exact: true }).click();
+      await page.getByRole("button", { name: "Use saved draft", exact: true }).waitFor();
+      assert.equal(await name.inputValue(), "Kept after save conflict");
+      assert.equal(
+        await page.getByRole("button", { name: "Save draft", exact: true }).isDisabled(),
+        true,
+      );
+      await page.getByRole("button", { name: "Use saved draft", exact: true }).click();
+      assert.equal(await name.inputValue(), "Newer saved token");
+      assert.equal(
+        await page.getByRole("button", { name: "Review launch", exact: true }).count(),
+        0,
+      );
+    } else if (scenario === "studio-missing-wallet") {
       await page.waitForURL("**/signup?step=passkey&next=%2Fstudio");
     } else if (scenario === "studio-error") {
       await page.getByText(/Controlled load failure/).waitFor();
@@ -349,6 +506,42 @@ try {
     } else if (scenario === "studio") {
       await page.getByRole("button", { name: /Create its wallet/ }).waitFor();
       assert.equal(await page.locator("#studio-pending").count(), 0);
+    } else if (scenario === "account-access") {
+      const inbox = page.locator("#applications-inbox");
+      const first = inbox
+        .locator("li[data-status=submitted]")
+        .filter({ hasText: "creator7@example.test" });
+      await first.getByRole("textbox", { name: "Note for Creator 7" }).fill("Clear edge.");
+      await first.getByRole("button", { name: "Invite", exact: true }).click();
+      await first.waitFor({ state: "hidden" });
+      const second = inbox
+        .locator("li[data-status=submitted]")
+        .filter({ hasText: "creator8@example.test" });
+      await second.getByRole("button", { name: "Reject", exact: true }).click();
+      await second.waitFor({ state: "hidden" });
+      await inbox.getByRole("button", { name: "Invited", exact: true }).click();
+      await inbox
+        .locator("li[data-status=invited]")
+        .getByText(/Clear edge/)
+        .waitFor();
+      assert.equal(await inbox.locator("li").count(), 1);
+      await inbox.getByRole("button", { name: "Rejected", exact: true }).click();
+      await inbox
+        .locator("li[data-status=rejected]")
+        .getByText(/ops@example.test/)
+        .waitFor();
+      assert.equal(await inbox.locator("li").count(), 1);
+      await inbox.getByRole("button", { name: "All", exact: true }).click();
+      await page.waitForFunction(
+        () => document.querySelectorAll("#applications-inbox li").length === 2,
+      );
+      await page.getByRole("button", { name: "Check access", exact: true }).click();
+      await page.getByRole("heading", { name: "Creator access enabled", exact: true }).waitFor();
+      reviewAllowed = false;
+      // A fresh account read receives the new server-controlled operator flag.
+      await page.reload();
+      await page.getByRole("heading", { name: "Creator access enabled", exact: true }).waitFor();
+      assert.equal(await inbox.count(), 0);
     } else if (scenario === "account") {
       await page
         .locator("#account-wallet-card")
@@ -365,7 +558,15 @@ try {
         endpoint,
       );
       let maximum = 2;
-      if (endpoint === "/api/v1/studio/perpl/markets" && scenario === "studio-markets") {
+      if (scenario === "account-access") {
+        // Initial load, Check access and explicit reload each exercise Strict Mode reads.
+        maximum = endpoint === "/api/v1/studio/access-request" ? 6 : 3;
+        if (endpoint === "/api/v1/studio/applications") {
+          maximum = 7;
+        }
+      } else if (endpoint === "/api/v1/studio/perpl/markets" && scenario === "studio-markets") {
+        maximum = 3;
+      } else if (scenario === "studio-token") {
         maximum = 3;
       } else if (scenario === "studio-wallets" && walletRead) {
         maximum = 6;

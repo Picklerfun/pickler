@@ -2,6 +2,8 @@ import * as dto from "@pickler/api-schema";
 import { operation as describeOperation } from "../openapi/operation";
 import type { TradingRepository } from "@pickler/trading/polymarket";
 import { XFailure, type XOAuthService } from "@pickler/core";
+import { studioTokenRoutes } from "./studio-token";
+import type { TokenLaunchService } from "@pickler/core";
 import { studioXRoutes } from "./studio-x";
 import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
@@ -11,6 +13,8 @@ import {
   assertPerplSelection,
   type PerplMarketCatalog,
   type PerpNetwork,
+  advicePrice,
+  parseAusdToMicro,
   MARKET_CATALOG,
   DEFAULT_CONFIG,
   PLUGINS,
@@ -25,6 +29,7 @@ import {
   BalancesUnreadableError,
   AccessDeniedError,
   AuthenticationRequiredError,
+  TokenLaunchError,
   canCreateAnother,
   MAX_DRAFTS_PER_WORKSPACE,
   canSchedule,
@@ -98,6 +103,7 @@ import { studioWalletRoutes, WalletRefusal, walletWork } from "./studio-wallets"
 import { studioPerpsRoutes, type StudioPerpsServices } from "./studio-perps";
 
 export interface StudioServices {
+  tokens?: TokenLaunchService;
   perplMarkets?: {
     catalog(network: PerpNetwork, signal: AbortSignal): Promise<PerplMarketCatalog>;
   };
@@ -316,6 +322,24 @@ export function studioRoutes(services: StudioServices) {
     if (error instanceof AccessDeniedError) {
       return c.json({ error: "RESEARCH_ACCESS_DENIED", message: error.message }, 403);
     }
+    if (error instanceof TokenLaunchError) {
+      const status =
+        error.code === "TOKEN_OWNER_REQUIRED"
+          ? 403
+          : error.code === "TOKEN_NOT_FOUND"
+            ? 404
+            : error.code === "TOKEN_DRAFT_INVALID"
+              ? 400
+              : 409;
+      return c.json(
+        {
+          error: error.code,
+          message: "Token launch could not proceed",
+          detail: { blockers: error.blockers },
+        },
+        status,
+      );
+    }
     if (error instanceof WalletRefusal) {
       return c.json(
         {
@@ -356,6 +380,16 @@ export function studioRoutes(services: StudioServices) {
     }
     if (error instanceof PreviewRateLimited) {
       return c.json({ error: error.code, message: error.message, retryAt: error.retryAt }, 429);
+    }
+    if (
+      error instanceof PilotError &&
+      error.code === "CONFLICT" &&
+      error.message === "AGENT_WALLET_REQUIRED"
+    ) {
+      return c.json(
+        { error: "AGENT_WALLET_REQUIRED", message: "Give the agent a wallet before pricing it" },
+        409,
+      );
     }
     if (error instanceof PilotError) {
       // Every PilotError message is server-authored, so it is safe to show (spec §4).
@@ -953,6 +987,7 @@ export function studioRoutes(services: StudioServices) {
   );
 
   api.route("/", studioXRoutes(services));
+  api.route("/", studioTokenRoutes(services));
   // Go Public (D8): the server re-checks. The directory reads killed and the linked wallet, runs
   // this check with no transaction open (it reads the chain), then publishes under the agent row's
   // lock only if neither changed. A balance the chain did not answer is 503, never FUNDS.
@@ -1088,6 +1123,25 @@ export function studioRoutes(services: StudioServices) {
       const body = limitsUpdateSchema.parse(await c.req.json());
       const spend = { perCallAusd: body.perCallAusd, perDayAusd: body.perDayAusd };
       return c.json(agentResponseSchema.parse(await repo.updateSpend(scope, spend)));
+    },
+  );
+  api.put(
+    "/agents/:id/advice-price",
+    describeOperation("studioAdvicePrice", {
+      security: "user",
+      errors: dto.studioErrorSchema,
+      errorStatuses: [400, 401, 403, 404, 409, 500],
+      description: "Owner only. Sets or clears the AUSD price of one fresh advice analysis.",
+      response: dto.advicePriceResponseSchema,
+      body: dto.advicePriceUpdateSchema,
+    }),
+    async (c) => {
+      const principal = c.get("principal");
+      await access.authorize(principal, true);
+      const body = dto.advicePriceUpdateSchema.parse(await c.req.json());
+      const micro = body.priceAusd === null ? null : parseAusdToMicro(body.priceAusd);
+      const saved = await services.directory.setAdvicePrice(principal.id, c.req.param("id"), micro);
+      return c.json(dto.advicePriceResponseSchema.parse({ advicePrice: advicePrice(saved) }));
     },
   );
   // The interval writes only `config.intervalHours`, like the limits and for the same reason: the

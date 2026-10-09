@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.30;
 
-import {Test} from "forge-std/Test.sol";
+import {LaunchGrantTest} from "./LaunchGrantTest.sol";
 import {IERC20} from "forge-std/interfaces/IERC20.sol";
 import {MockERC20} from "solmate/src/test/utils/mocks/MockERC20.sol";
 
@@ -13,10 +13,10 @@ import {PicklerCurveMath} from "../src/libraries/PicklerCurveMath.sol";
 
 /// The pieces of track A wired together: a creator launches, two wallets trade, the curve
 /// reaches READY_TO_GRADUATE and hands over exactly what it should. No stubs.
-contract PicklerLaunchIntegrationTest is Test {
-    uint256 internal constant SALE_ALLOCATION = 800e18;
-    uint256 internal constant LP_ALLOCATION = 200e18;
-    uint256 internal constant TARGET_RESERVE = 1_000e6;
+contract PicklerLaunchIntegrationTest is LaunchGrantTest {
+    uint256 internal constant SALE_ALLOCATION = 16_800_000e18;
+    uint256 internal constant LP_ALLOCATION = 4_200_000e18;
+    uint256 internal constant TARGET_RESERVE = 21_000_000e6;
 
     PicklerLaunchFactory internal factory;
     PicklerCurveDeployer internal deployer;
@@ -38,19 +38,21 @@ contract PicklerLaunchIntegrationTest is Test {
         deployer = new PicklerCurveDeployer(adapter, feeEscrow);
 
         vm.prank(operator);
-        factory = new PicklerLaunchFactory(operator, deployer);
+        factory = new PicklerLaunchFactory(operator, deployer, vm.addr(PLATFORM_KEY));
 
         vm.prank(operator);
         factory.publishPreset(_preset());
 
         vm.prank(creator);
-        (address token_, address curve_) = factory.createLaunch(_params(), "");
+        (address token_, address curve_) = factory.createLaunch(
+            _params(), "", uint256(_params().agentKey), _params().deadline, _platformGrant(factory, _params())
+        );
 
         token = IERC20(token_);
         curve = PicklerBondingCurve(curve_);
 
-        quote.mint(alice, 10_000e6);
-        quote.mint(bob, 10_000e6);
+        quote.mint(alice, 210_000_000e6);
+        quote.mint(bob, 210_000_000e6);
 
         vm.startPrank(alice);
         quote.approve(curve_, type(uint256).max);
@@ -99,7 +101,7 @@ contract PicklerLaunchIntegrationTest is Test {
             presetVersion: 1,
             expectedConfigHash: PicklerPreset.configHash(_preset()),
             nonce: 0,
-            deadline: block.timestamp + 1 hours
+            deadline: block.timestamp + 5 minutes
         });
     }
 
@@ -115,14 +117,14 @@ contract PicklerLaunchIntegrationTest is Test {
     /// The whole of track A in one pass: buy, sell, consume the remainder, hand over.
     function test_theFullPathFromLaunchToHandover() public {
         vm.prank(alice);
-        uint256 aliceTokens = curve.buyExactInput(400e6, 0, alice, block.timestamp + 1 hours);
+        uint256 aliceTokens = curve.buyExactInput(8_400_000e6, 0, alice, block.timestamp + 5 minutes);
         assertGt(aliceTokens, 0);
 
         vm.prank(bob);
-        curve.buyExactInput(300e6, 0, bob, block.timestamp + 1 hours);
+        curve.buyExactInput(6_300_000e6, 0, bob, block.timestamp + 5 minutes);
 
         vm.prank(alice);
-        uint256 refunded = curve.sellExactInput(aliceTokens / 4, 0, alice, block.timestamp + 1 hours);
+        uint256 refunded = curve.sellExactInput(aliceTokens / 4, 0, alice, block.timestamp + 5 minutes);
         assertGt(refunded, 0, "selling returned nothing");
 
         // Consume whatever is left with exact output, which is the only way to finish.
@@ -130,7 +132,7 @@ contract PicklerLaunchIntegrationTest is Test {
         uint256 required = curve.quoteBuyExactOutput(remaining);
 
         vm.prank(bob);
-        curve.buyExactOutput(remaining, required, bob, block.timestamp + 1 hours);
+        curve.buyExactOutput(remaining, required, bob, block.timestamp + 5 minutes);
 
         assertEq(uint8(curve.phase()), uint8(PicklerBondingCurve.Phase.READY_TO_GRADUATE));
         assertEq(curve.remainingTokens(), 0);
@@ -149,10 +151,10 @@ contract PicklerLaunchIntegrationTest is Test {
     /// Every token that left the curve is somewhere accountable, and none was created.
     function test_noTokenIsCreatedOrLostAlongTheWay() public {
         vm.prank(alice);
-        curve.buyExactInput(400e6, 0, alice, block.timestamp + 1 hours);
+        curve.buyExactInput(8_400_000e6, 0, alice, block.timestamp + 5 minutes);
 
         vm.prank(bob);
-        curve.buyExactInput(300e6, 0, bob, block.timestamp + 1 hours);
+        curve.buyExactInput(6_300_000e6, 0, bob, block.timestamp + 5 minutes);
 
         uint256 accounted = token.balanceOf(alice) + token.balanceOf(bob) + token.balanceOf(address(curve));
 
@@ -164,7 +166,7 @@ contract PicklerLaunchIntegrationTest is Test {
     /// only its own reserve, and the factory holds nothing at all.
     function test_theCurveHoldsOnlyItsOwnMoney() public {
         vm.prank(alice);
-        curve.buyExactInput(400e6, 0, alice, block.timestamp + 1 hours);
+        curve.buyExactInput(8_400_000e6, 0, alice, block.timestamp + 5 minutes);
 
         assertEq(quote.balanceOf(address(factory)), 0, "the factory is holding quote");
         assertEq(token.balanceOf(address(factory)), 0, "the factory is holding tokens");
@@ -182,7 +184,8 @@ contract PicklerLaunchIntegrationTest is Test {
         second.nonce = 1;
 
         vm.prank(creator);
-        (address otherToken, address otherCurve) = factory.createLaunch(second, "");
+        (address otherToken, address otherCurve) =
+            factory.createLaunch(second, "", uint256(second.agentKey), second.deadline, _platformGrant(factory, second));
 
         assertTrue(otherCurve != address(curve), "two launches share a curve");
         assertTrue(otherToken != address(token), "two launches share a token");

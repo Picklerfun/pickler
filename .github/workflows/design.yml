@@ -46,8 +46,11 @@ jobs:
       - run: node scripts/design/route-readiness.mjs
       - run: npm run design:check
       - run: node scripts/design/sidebar-motion.mjs
-      - run: node scripts/design/studio-loading.mjs
+      - run: node --import tsx scripts/design/studio-loading.mjs
       - run: node scripts/design/studio-routing.mjs
+      - run: node scripts/design/token-preview.mjs
+      - run: node scripts/design/public-navigation.mjs
+      - run: node scripts/design/creator-application.mjs
       - if: failure()
         uses: actions/upload-artifact@v4
         with:

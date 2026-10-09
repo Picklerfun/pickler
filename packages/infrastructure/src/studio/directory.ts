@@ -535,6 +535,31 @@ export class PostgresStudioDirectory implements StudioDirectory {
       .slice(0, 50)
       .map(({ kind, text, at }) => ({ kind, text, at }));
   }
+  async setAdvicePrice(
+    userId: string,
+    productAgentId: string,
+    micro: bigint | null,
+  ): Promise<bigint | null> {
+    const { rows } = await this.pool.query<{ wallet: string | null }>(
+      `SELECT l.wallet_id AS wallet
+         FROM pickler.product_agents p
+         JOIN identity.workspaces w ON w.id = p.workspace_id
+         LEFT JOIN wallets.agent_wallets l ON l.agent_id = p.product_agent_id
+        WHERE p.product_agent_id::text = $1 AND w.owner_user_id = $2`,
+      [productAgentId, userId],
+    );
+    if (!rows.length) {
+      throw notFound();
+    }
+    if (micro !== null && rows[0]!.wallet === null) {
+      throw new PilotError("CONFLICT", "AGENT_WALLET_REQUIRED");
+    }
+    await this.pool.query(
+      "UPDATE agents.agents SET advice_price_micro_ausd = $2 WHERE id::text = $1",
+      [productAgentId, micro === null ? null : micro.toString()],
+    );
+    return micro;
+  }
   /** The agent's recorded setup versions (studio-live-v1 L10), newest first, at most 20. */
   async versions(access: StudioAccess, productAgentId: string): Promise<SetupVersion[]> {
     // An agent with no version yet answers an empty list, so its ownership is its own read.

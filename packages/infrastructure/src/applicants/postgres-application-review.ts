@@ -1,10 +1,22 @@
 import type { Pool } from "pg";
-import type {
-  ApplicationDecision,
-  ApplicationReviewEntry,
-  ApplicationReviewFilter,
-  ApplicationReviewRepository,
+import {
+  DataSourceUnavailableError,
+  type ApplicationDecision,
+  type ApplicationReviewEntry,
+  type ApplicationReviewFilter,
+  type ApplicationReviewRepository,
 } from "@pickler/core";
+import { readRows } from "../persistence/data-source.js";
+
+type ApplicationRow = Omit<ApplicationReviewEntry, "id"> & { id: string };
+
+function toEntry(row: ApplicationRow): ApplicationReviewEntry {
+  const id = Number(row.id);
+  if (!Number.isSafeInteger(id) || id <= 0) {
+    throw new DataSourceUnavailableError("postgres.growth.applications.id");
+  }
+  return { ...row, id };
+}
 
 const COLUMNS = `
   a.waitlist_id AS "id", w.email, a.agent_name AS "agentName", a.ticker, a.x_handle AS "xHandle",
@@ -21,7 +33,9 @@ export class PostgresApplicationReview implements ApplicationReviewRepository {
 
   async list(filter: ApplicationReviewFilter): Promise<ApplicationReviewEntry[]> {
     const status = filter.status ?? null;
-    const result = await this.pool.query<ApplicationReviewEntry>(
+    const rows = await readRows<ApplicationRow>(
+      this.pool,
+      "growth.applications.list",
       `SELECT ${COLUMNS}
        FROM growth.applications a
        JOIN growth.waitlist w ON w.id = a.waitlist_id
@@ -30,7 +44,7 @@ export class PostgresApplicationReview implements ApplicationReviewRepository {
        LIMIT 500`,
       [status],
     );
-    return result.rows;
+    return rows.map(toEntry);
   }
 
   async review(
@@ -46,13 +60,15 @@ export class PostgresApplicationReview implements ApplicationReviewRepository {
     if (!decided.rows[0]?.result) {
       return null;
     }
-    const result = await this.pool.query<ApplicationReviewEntry>(
+    const rows = await readRows<ApplicationRow>(
+      this.pool,
+      "growth.applications.read",
       `SELECT ${COLUMNS}
        FROM growth.applications a
        JOIN growth.waitlist w ON w.id = a.waitlist_id
        WHERE a.waitlist_id = $1`,
       [id],
     );
-    return result.rows[0] ?? null;
+    return rows[0] ? toEntry(rows[0]) : null;
   }
 }

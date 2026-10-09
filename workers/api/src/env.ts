@@ -6,6 +6,17 @@ import type { PerpsQueueMessage } from "./routes/studio-perps";
 export interface Env {
   ADVICE_ENABLED?: string;
   ADVICE_POLICY_JSON?: string;
+  /**
+   * "true" sells each fresh advice analysis with x402 (docs/specs/agent-advice-x402-v1.md); it
+   * needs X402_RELAYER_PRIVATE_KEY and MONAD_RPC_URL too, and without them every request answers
+   * 503 (fails closed). Anything other than "true" keeps the request free, as before.
+   */
+  ADVICE_X402_ENABLED?: string;
+  /**
+   * Secret. The testnet relayer EOA that submits `transferWithAuthorization` and pays its gas in
+   * MON; it holds no AUSD. Never logged, returned or placed in an error.
+   */
+  X402_RELAYER_PRIVATE_KEY?: string;
   APP_ENV: string;
   TRADING_EXECUTOR?: Fetcher;
   TRADING_QUEUE?: Queue<{ kind: "trading-wakeup" }>;

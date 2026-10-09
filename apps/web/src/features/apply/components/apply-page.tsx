@@ -25,10 +25,7 @@ export function ApplyPage({
 }) {
   return (
     <div className={styles.page} data-surface="light">
-      <SiteNav
-        secondary={{ label: "Trade with AI", href: "/" }}
-        action={{ label: "Apply", href: "#apply" }}
-      />
+      <SiteNav secondary={{ label: "Trade with AI", href: "/" }} />
       <main className={styles.main}>
         <ApplyHero />
         <WhatAnAgentIs />

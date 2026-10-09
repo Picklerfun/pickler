@@ -1,5 +1,5 @@
 {
-  "id": "97d6df65-0649-489e-8adc-73238acda764",
+  "id": "c8f856d9-89cd-4cc1-8c57-6570c2568d8f",
   "prevId": "cd4af031-4f04-4ae9-a81b-1368fd95ba9a",
   "version": "7",
   "dialect": "postgresql",
@@ -5484,30 +5484,6 @@
           "notNull": true,
           "default": "'submitted'"
         },
-        "reviewed_at": {
-          "name": "reviewed_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "reviewed_by": {
-          "name": "reviewed_by",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "decision_note": {
-          "name": "decision_note",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "invited_at": {
-          "name": "invited_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
         "agent_id": {
           "name": "agent_id",
           "type": "uuid",
@@ -6575,6 +6551,91 @@
       },
       "isRLSEnabled": true
     },
+    "launch.agent_keys": {
+      "name": "agent_keys",
+      "schema": "launch",
+      "columns": {
+        "agent_id": {
+          "name": "agent_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "chain": {
+          "name": "chain",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "agent_key": {
+          "name": "agent_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "agent_keys_chain_key": {
+          "name": "agent_keys_chain_key",
+          "columns": [
+            {
+              "expression": "chain",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "agent_key",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "agent_keys_agent_id_agents_id_fk": {
+          "name": "agent_keys_agent_id_agents_id_fk",
+          "tableFrom": "agent_keys",
+          "tableTo": "agents",
+          "schemaTo": "agents",
+          "columnsFrom": ["agent_id"],
+          "columnsTo": ["id"],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "agent_keys_agent_id_chain_pk": {
+          "name": "agent_keys_agent_id_chain_pk",
+          "columns": ["agent_id", "chain"]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "agent_keys_chain_format": {
+          "name": "agent_keys_chain_format",
+          "value": "\"launch\".\"agent_keys\".\"chain\" ~ '^eip155:[1-9][0-9]*$'"
+        },
+        "agent_keys_hash_format": {
+          "name": "agent_keys_hash_format",
+          "value": "\"launch\".\"agent_keys\".\"agent_key\" ~ '^0x[0-9a-f]{64}$'"
+        }
+      },
+      "isRLSEnabled": true
+    },
     "launch.drafts": {
       "name": "drafts",
       "schema": "launch",
@@ -6676,6 +6737,54 @@
             }
           ],
           "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "drafts_agent_chain_key": {
+          "name": "drafts_agent_chain_key",
+          "columns": [
+            {
+              "expression": "agent_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "chain",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "drafts_identity_key": {
+          "name": "drafts_identity_key",
+          "columns": [
+            {
+              "expression": "id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "agent_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "chain",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
           "concurrently": false,
           "method": "btree",
           "with": {}
@@ -7155,6 +7264,196 @@
         "presets_published_block_positive": {
           "name": "presets_published_block_positive",
           "value": "\"launch\".\"presets\".\"published_block\" >= 0"
+        }
+      },
+      "isRLSEnabled": true
+    },
+    "launch.grants": {
+      "name": "grants",
+      "schema": "launch",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "agent_id": {
+          "name": "agent_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "chain": {
+          "name": "chain",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "draft_id": {
+          "name": "draft_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "draft_version": {
+          "name": "draft_version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "owner_id": {
+          "name": "owner_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "factory": {
+          "name": "factory",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "nonce": {
+          "name": "nonce",
+          "type": "numeric(78, 0)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "idempotency_key": {
+          "name": "idempotency_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "payload": {
+          "name": "payload",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "grants_request_key": {
+          "name": "grants_request_key",
+          "columns": [
+            {
+              "expression": "agent_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "chain",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "idempotency_key",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "grants_nonce_key": {
+          "name": "grants_nonce_key",
+          "columns": [
+            {
+              "expression": "chain",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "factory",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "nonce",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "grants_owner_id_profiles_user_id_fk": {
+          "name": "grants_owner_id_profiles_user_id_fk",
+          "tableFrom": "grants",
+          "tableTo": "profiles",
+          "schemaTo": "identity",
+          "columnsFrom": ["owner_id"],
+          "columnsTo": ["user_id"],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "grants_agent_id_chain_agent_keys_agent_id_chain_fk": {
+          "name": "grants_agent_id_chain_agent_keys_agent_id_chain_fk",
+          "tableFrom": "grants",
+          "tableTo": "agent_keys",
+          "schemaTo": "launch",
+          "columnsFrom": ["agent_id", "chain"],
+          "columnsTo": ["agent_id", "chain"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "grants_draft_id_agent_id_chain_drafts_id_agent_id_chain_fk": {
+          "name": "grants_draft_id_agent_id_chain_drafts_id_agent_id_chain_fk",
+          "tableFrom": "grants",
+          "tableTo": "drafts",
+          "schemaTo": "launch",
+          "columnsFrom": ["draft_id", "agent_id", "chain"],
+          "columnsTo": ["id", "agent_id", "chain"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "grants_factory_format": {
+          "name": "grants_factory_format",
+          "value": "\"launch\".\"grants\".\"factory\" ~ '^0x[0-9a-f]{40}$'"
+        },
+        "grants_nonce_range": {
+          "name": "grants_nonce_range",
+          "value": "\"launch\".\"grants\".\"nonce\" >= 0 AND \"launch\".\"grants\".\"nonce\" < power(2::numeric, 256)"
+        },
+        "grants_version_positive": {
+          "name": "grants_version_positive",
+          "value": "\"launch\".\"grants\".\"draft_version\" > 0"
+        },
+        "grants_expiry": {
+          "name": "grants_expiry",
+          "value": "\"launch\".\"grants\".\"expires_at\" > \"launch\".\"grants\".\"created_at\" AND \"launch\".\"grants\".\"expires_at\" <= \"launch\".\"grants\".\"created_at\" + interval '5 minutes'"
         }
       },
       "isRLSEnabled": true

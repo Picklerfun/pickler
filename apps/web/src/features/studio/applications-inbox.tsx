@@ -130,7 +130,7 @@ export function ApplicationsInbox({ preview = false }: { preview?: boolean }) {
       </div>
       <p className={styles.note}>
         Inviting turns studio access on for the account under that email, or the moment it signs up.
-        The acceptance email is sent separately.
+        No acceptance email is sent yet.
       </p>
       {loading ? (
         <StudioSkeleton variant="access" />
@@ -150,14 +150,18 @@ export function ApplicationsInbox({ preview = false }: { preview?: boolean }) {
               row={row}
               preview={preview}
               onDecided={(next) =>
-                setLoaded((current) =>
-                  current?.rows
-                    ? {
-                        ...current,
-                        rows: current.rows.map((item) => (item.id === next.id ? next : item)),
-                      }
-                    : current,
-                )
+                setLoaded((current) => {
+                  if (!current?.rows) {
+                    return current;
+                  }
+                  const rows = current.rows.map((item) => (item.id === next.id ? next : item));
+                  return {
+                    ...current,
+                    rows: rows.filter(
+                      (item) => current.filter === "all" || item.status === current.filter,
+                    ),
+                  };
+                })
               }
             />
           ))}

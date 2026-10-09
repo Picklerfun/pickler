@@ -56,7 +56,7 @@ export function marketBoardFor(network: string | undefined): MarketBoard {
   return createPerplMarketBoard({ network, memory });
 }
 
-/** A board with no venue behind it: every read is the venue being unavailable, never a list. */
+/** A board with no venue behind it: every read reports the venue as unavailable. */
 export function unavailableMarketBoard(): MarketBoard {
   const refuse = () => {
     throw new MarketDataUnavailableError("PERPL_BOARD_NETWORK is not set to testnet or mainnet");
@@ -64,9 +64,12 @@ export function unavailableMarketBoard(): MarketBoard {
   return { listMarkets: async () => refuse(), getMarket: async () => refuse() };
 }
 
-export function createGrowthServices(pool: Pool, options: { perplBoardNetwork?: string } = {}) {
+export function createGrowthServices(
+  pool: Pool,
+  options: { perplBoardNetwork?: string; tokenChainId?: number | null } = {},
+) {
   const adapters = {
-    agents: new PostgresAgentDirectory(pool),
+    agents: new PostgresAgentDirectory(pool, options.tokenChainId ?? null),
     actions: new PostgresAgentActionFeed(pool),
     markets: marketBoardFor(options.perplBoardNetwork),
     waitlist: new PostgresWaitlist(pool),

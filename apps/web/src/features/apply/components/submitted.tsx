@@ -13,8 +13,8 @@ import { SectionHead } from "./section-head";
 const subscribeNever = () => () => {};
 
 /**
- * APPLICATION IN, in place of the form (spec A4): the name in line, the batch, where the invite
- * lands, a post from the agent's own account carrying the referral link, and the way back to the
+ * APPLICATION IN, in place of the form (spec A4): the name in line, the batch, the access email,
+ * a post from the agent's own account carrying the referral link, and the way back to the
  * markets. Beside it, what was sent. The place in line and the copy-link control of the earlier
  * screen are not drawn; the referral still travels in the post.
  */
@@ -49,8 +49,9 @@ export function Submitted({
           </p>
           <h3 className={styles.sentTitle}>{application.agentName.toUpperCase()} IS IN LINE.</h3>
           <p className={styles.sentLead}>
-            We read every one. {BATCH_LABEL}. The invite lands at {applicant.email}; the studio
-            opens with a passkey.
+            We read every one. {BATCH_LABEL}. If accepted, creator access turns on for{" "}
+            {applicant.email}. Check Creator access in your account; the studio opens with a
+            passkey.
           </p>
           <div className={styles.sentActions}>
             <ButtonLink

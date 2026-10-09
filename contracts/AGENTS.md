@@ -10,7 +10,7 @@ Implemented, in the order the launchpad specification builds them:
 
 - `src/libraries/PicklerCurveMath.sol` — all curve arithmetic: exact-input buy, exact-input sell, exact-output buy, remaining inventory, marginal price, and the derivation of virtual reserves from a sale allocation, an LP allocation and a target reserve. Rounding is directional: the quote reserve is floored and anything subtracted from a reserve is ceilinged, so rounding always favours the curve. Tests cover hand-computed values, the derivation's price-continuity property under fuzzing, and invariants over random buy/sell sequences.
 - `src/libraries/PicklerPreset.sol` — the economic configuration a launch is fixed to, plus the validation that refuses an incoherent one, including a price below the precision floor the curve fuzzing found.
-- `src/PicklerAgentToken.sol` — a fixed-supply ERC-20 with no mint, owner, pause or transfer tax.
+- `src/PicklerAgentToken.sol` — an exactly 21-million-supply ERC-20 with no mint, owner, pause or transfer tax.
 - `src/PicklerLaunchFactory.sol` — creator authorization (EIP-712, replay-protected, ERC-1271 aware), one canonical token per agent key, and immutable published presets. It obtains a curve through `ICurveDeployer` and knows nothing else about it.
 - `src/PicklerBondingCurve.sol` — buying, selling and the end of the curve. Keeps the reserve, the accrued fees and the LP allocation strictly apart, tracked in storage rather than read from balances, so a donation moves no price and credits no one. Exhausting the sale allocation sets `READY_TO_GRADUATE`; graduation is a separate call that only the adapter may make.
 - `src/PicklerCurveDeployer.sol` — deploys a curve and binds it to its token in one call, which is the only window in which binding is possible.
@@ -52,3 +52,28 @@ npm run contracts:abi       # Regenerate public ABIs into packages/chain
 If a test suite disappears from a run rather than failing, suspect a stale build cache and re-run with `forge build --root contracts --force`. A vanished suite reports as a pass, so check the suite count, not just the colour.
 
 For formatting, use `forge fmt --root contracts --check`, and for static analysis `forge lint --root contracts`. Both run in `.github/workflows/contracts.yml` alongside the test suite and the two generated-artifact drift checks. Empty directories do not provide contract validation coverage. When introducing tests, ensure they run rather than treating an empty test result as success. Update this file alongside any change to the contract layout, dependencies, commands, or deployment process.
+
+## Mandatory launch grants
+
+`PicklerLaunchFactory` now requires a constructor-supplied nonzero launch authority and a signed
+Pickler EIP-712 `LaunchGrant` on every `createLaunch` call, including direct creator calls. The
+`Pickler` domain is version `2`. The grant binds the full launch parameters, creator/master wallet,
+agent key, chain, factory, unique grant nonce and at most five minutes of validity. Creator
+permission and its replay protection remain required. Only the operator can rotate the authority;
+rotation invalidates old grants. There is no grant-free overload. `test/LaunchGrantTest.sol` supplies
+only a public controlled test key; unit/fuzz tests cover parameter tampering, network/factory/wallet,
+expiry, reuse and rotation. No deployment script or remote transaction is added. See
+[the token guide](../docs/agent-token-preview.md).
+
+## Fixed issuance policy
+
+`PicklerPreset.TOTAL_SUPPLY` is exactly `21_000_000e18`. Both preset admission and token
+construction reject every other supply. All tokens are minted once to the curve; no external mint,
+burn or owner authority exists. Precision policy 1 preserves legacy rounding and its price floor;
+policy 2 admits the fixed AUSD reference curve (80/20, 32,000 AUSD target, 1% buy/sell, 50/50 fees,
+zero launch fee). It requires six-decimal quote metadata at factory admission and curve construction.
+Unknown policies fail. The normalized `marginalPriceWad` uses full-precision mulDiv; old quotes are
+unchanged. `test/CurveVectors.t.sol` emits legacy and reference core vectors. Offline unit/fuzz and
+both invariant profiles cover real reserve/fees/inventory/donations; `PicklerReferenceProfile.t.sol`
+tests controlled handover only. No DEX is selected or configured for the new reference profile;
+existing V4/fork results are historical evidence. See [the token guide](../docs/agent-token-preview.md).

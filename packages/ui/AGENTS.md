@@ -81,7 +81,9 @@ and shadow mappings to the existing `--pk-*` roles. Portal callers explicitly pa
 TooltipContent accepts `surface`, Sidebar passes it to the mobile Sheet, and DropdownMenuContent
 accepts `data-surface`. Do not inject raw palette values or allow portals to inherit the body's
 wrong surface. Component palette classes (including scrim, focus and destructive roles) use
-those semantic mappings; disabled menu copy retains full opacity for contrast. Reduced-motion rules cover all installed navigation/overlay slots.
+those semantic mappings; disabled menu copy retains full opacity for contrast. Reduced-motion rules cover all installed navigation/overlay slots. Enabled dropdown items, checkbox/radio options and submenu
+triggers use a pointer cursor. Disabled options use a not-allowed cursor; they receive pointer
+hits only to expose that cursor, while Radix continues to prevent focus and selection.
 
 Controlled browser coverage in `scripts/design/account-menu.mjs` verifies desktop collapse,
 preference persistence, mobile dialog focus/dismissal, agent switching, paired chevrons, account
@@ -128,3 +130,6 @@ Radix owns keyboard selection, typeahead, dismissal and focus restoration. Local
 Pickler semantic tokens, the shared 2px focus outline, legible disabled text, wrapping option
 labels and reduced motion. Trigger values truncate at narrow widths without moving the chevron.
 Do not restore the registry's shadow focus ring or add native select styling in consuming features.
+
+`Icon` includes `menu` (Lucide Menu) for the compact public navigation disclosure. Its accessible
+name and expanded state belong to the host button.

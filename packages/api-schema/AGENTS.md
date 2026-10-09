@@ -71,6 +71,8 @@ The DTO also carries `spend` (the config's limits or null) and `spendEnforced` (
 that a day's limit is not below one call's. `limitsUpdateSchema` is the strict body of
 `PUT /v1/studio/agents/:id/limits`: `perCallAusd` and `perDayAusd`, with no version, because saving
 limits keeps the configuration version.
+`advicePriceUpdateSchema` (`{ priceAusd: string | null }`) and `advicePriceResponseSchema` are the
+body and answer of `PUT /v1/studio/agents/:id/advice-price`.
 
 Setup and versions (docs/specs/studio-live-v1.md L10–L13): `src/research.ts` has `RISK_BOUNDS`, a
 mirror of core's pinned by `workers/api/test/accent-venue-mirror.test.ts`, and `riskLimitsSchema`
@@ -143,6 +145,9 @@ representative contract tests in the same change.
 24-hour directional results and cursor history. No requester identity, internal scope, private
 configuration, prices/rates, prompts or provider traces may cross these DTOs. Wallet sign-in
 `kind` is `eoa | mera`. See [Agent advice](../../docs/agent-advice.md).
+`paymentRequirementsSchema`, `paymentErrorSchema` and `paymentRequiredSchema` are the x402 v1 402
+body of the paid advice request: x402's own shape, not the response envelope, with one `accepts`
+entry pinned to `exact`, `monad-testnet`, 300 s and the AUSD EIP-712 domain.
 
 ## Perpl paper runtime
 
@@ -180,6 +185,14 @@ See [Studio perpetual execution](../../docs/studio-perps-execution.md).
 Creator-access status and inbox schemas are exported from `studio.ts`. User status exposes only
 its own request time/status and whether the authenticated operator may review the inbox. Inbox
 profile identifiers are operator-only. Requests do not include caller-supplied user/workspace IDs.
+User status also includes the application under the account's verified email, or null.
+`studioApplicationsSchema` and `studioApplicationReviewRequestSchema` describe the operator-only
+application inbox and invited/rejected decisions with optional notes. Application IDs are positive
+integer numbers, and audit timestamps are ISO UTC. Inviting enables access by email; no email is sent.
+
+`AgentActionDto` in `agents.ts` describes the public marketplace activity feed.
+The retired landing response is no longer exported; `landing.ts` retains only shared public agent
+presentation types. The API generates OpenAPI from route metadata and these wire schemas.
 
 ## Dynamic Studio markets
 
@@ -212,3 +225,19 @@ MarketDetailDto and marketDetailDtoSchema accept optional trailTimestamps: nulla
 `priceHistory` is an optional array of `{ price, at }`, bounded to 721 ISO-timestamped samples
 (720 hourly closes and one observed mark). It adds range views without changing `trail`'s 24h
 meaning or requiring legacy/sample producers to fabricate history.
+
+## Agent token DTOs
+
+`src/token-launch.ts` exports strict name/ticker/version inputs, token state, preset and authorization
+schemas and portable DTOs through the package root. Base units and nonces are decimal strings;
+networks are explicit Monad chain IDs. `AGENT_TOKEN_TOTAL_SUPPLY` mirrors the business-owned fixed
+21-million supply for new launches. Owner-only token state adds optional nullable `masterAddress`;
+older producers may omit it. Optional nullable `economics` uses the version-2
+`tokenReferenceEconomicsSchema`: explicit quote identity/decimals, atomic reserves, WAD prices/FDVs,
+distribution, curve fees and pending DEX state. Reference terms are not a published preset or an
+execution quote; unknown versions fail. Historical preset/token reads are not constrained to
+new-launch policy.
+Public persona DTOs add optional nullable `launchedToken`
+and `tokenConfirmation` for historical consumers. Absence, confirmation pending and failed reads
+are different outcomes. No signer, credentials, provider trace or metadata persistence belongs here.
+OpenAPI is generated from API route metadata; see [the token guide](../../docs/agent-token-preview.md).

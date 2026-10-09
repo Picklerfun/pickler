@@ -1003,6 +1003,25 @@ h2 {
   }
 }
 
+/* Every enabled menu option advertises its action, including nested and selection menus. */
+:is(
+  [data-slot="dropdown-menu-item"],
+  [data-slot="dropdown-menu-checkbox-item"],
+  [data-slot="dropdown-menu-radio-item"],
+  [data-slot="dropdown-menu-sub-trigger"]
+) {
+  cursor: pointer;
+}
+:is(
+  [data-slot="dropdown-menu-item"],
+  [data-slot="dropdown-menu-checkbox-item"],
+  [data-slot="dropdown-menu-radio-item"],
+  [data-slot="dropdown-menu-sub-trigger"]
+)[data-disabled] {
+  cursor: not-allowed;
+  pointer-events: auto;
+}
+
 /* Disabled menu copy remains legible; Radix still prevents selection. */
 [data-slot="dropdown-menu-item"][data-disabled] {
   opacity: 1;

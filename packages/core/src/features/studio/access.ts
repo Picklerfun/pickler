@@ -133,6 +133,16 @@ export interface StudioDirectory {
    * workspace.
    */
   versions(access: StudioAccess, productAgentId: string): Promise<SetupVersion[]>;
+  /**
+   * Sets (micro-AUSD) or clears (null) the price of one fresh advice analysis of an agent whose
+   * workspace the user owns. NOT_FOUND otherwise; setting a price needs the agent's wallet
+   * (CONFLICT, message AGENT_WALLET_REQUIRED), clearing does not. Answers the stored price.
+   */
+  setAdvicePrice(
+    userId: string,
+    productAgentId: string,
+    micro: bigint | null,
+  ): Promise<bigint | null>;
 }
 
 export function createStudioAccess(directory: StudioDirectory) {

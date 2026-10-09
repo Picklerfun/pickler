@@ -69,7 +69,7 @@ npm run contracts:test
 
 The mobile app is a workspace but sits outside Turborepo's build and outside the root ESLint and Prettier: `npm run typecheck` covers it, and its Jest suite is `npm test --workspace=@pickler/mobile`. `services/reads` and `scripts/mobile` are not workspaces; each installs with `npm ci --prefix <path>` and has its own checks (`npm test --prefix services/reads`, `npm run agents:check --prefix scripts/mobile`). [The specification of the move](docs/specs/mobile-monorepo-v1.md) says why.
 
-Run checks relevant to the change. Documentation-only changes require checking links, paths, examples, and command accuracy; they do not require a full application build. `npm test` builds shared packages and discovers the core, infrastructure, chain, `mera-account`, `perpl-context`, `workers/api`, `workers/research`, web and agent-service package-root test files; extend discovery when adding other suites. Core, infrastructure and API schemas export compiled ESM from `dist`; run `npm run build:shared` before direct consumers. `npm run dev:agent` does this automatically. The normal `npm run dev` starts only the web app. Foundry commands are separate from the web build and currently have no contracts to compile or test.
+Run checks relevant to the change. Documentation-only changes require checking links, paths, examples, and command accuracy; they do not require a full application build. `npm test` builds shared packages and discovers the core, infrastructure, chain, `mera-account`, `perpl-context`, `workers/api`, `workers/research`, web and agent-service package-root test files; extend discovery when adding other suites. Core, infrastructure and API schemas export compiled ESM from `dist`; run `npm run build:shared` before direct consumers. `npm run dev:agent` does this automatically. The normal `npm run dev` starts only the web app. Foundry commands validate the separate Solidity project; they are not part of the web build.
 
 Never commit dependencies, build output, secrets, private keys, or local environment files. Keep changes scoped to the request and preserve unrelated work.
 
@@ -181,8 +181,10 @@ local-only; ordinary databases, remote providers and deployed activation are out
 The separate JWT-only `/v1/agent-advice` API returns asynchronous BTC/ETH 24-hour analysis, not
 orders. Read [Agent advice](docs/agent-advice.md) before changes. Core owns authorization/admission
 ports; trading owns analysis policy; runtime owns providers/prompts; infrastructure owns private
-jobs/events/call reserves and migration 0025. Research Queue advice wakeups never notify trading.
-Keep admissions disabled by default; no payments, paid retries or implicit AUSD-to-USD conversion.
+jobs/events/call reserves (migration 0025) and the x402 payment rows (migration 0038). Research
+Queue advice wakeups never notify trading. Keep admissions and x402 payments
+(`ADVICE_X402_ENABLED`) disabled by default; no paid retries or implicit AUSD-to-USD conversion.
+See [Agent advice](docs/agent-advice.md) for the x402 payment.
 
 Advice forecast configuration reuses the Research Worker’s MODEL_BASE_URL, MODEL_ID and MODEL_API_KEY. New advice policy v2 freezes the reviewed provider URL/model; v1 retains its historical direct-DeepSeek meaning. Never copy a provider key to a different endpoint or enable advice with unreviewed tariffs.
 
@@ -203,3 +205,22 @@ See the canonical selection/version, preservation and controlled acceptance boun
 runtime activation is implied.
 
 See [agent-selected Perpl markets](docs/studio-perpl-markets.md).
+
+## Agent token admission and local previews
+
+The owner-only token launch foundation is documented in [Agent token previews](docs/agent-token-preview.md).
+Core owns admission and the grant-issuer port; infrastructure owns private agent/network keys,
+versioned launch drafts, recorded grants and canonical confirmation. The API host does not compose
+a signer. Both Studio rails expose the persistent Token route, and public profiles share its
+confirmed identity card. Development fixtures show static empty/confirmed token states; they never
+request passkeys, send transactions or open fictitious explorer addresses. No remote launch,
+metadata storage or indexer activation is introduced. The factory now requires a Pickler EIP-712
+grant in addition to creator authorization, including for direct creator calls.
+
+## Agent token reference fixtures
+
+`npm run tokens:fixtures` builds shared packages and generates the web's public reference economics
+JSON from core's pure curve calculations and reviewed chain AUSD metadata. Use
+`npm run tokens:fixtures -- --check` to verify drift; the web test also compares it to core.
+The reference profile is independent of signer/preset availability and never enables real launch.
+See [agent token admission and previews](docs/agent-token-preview.md).

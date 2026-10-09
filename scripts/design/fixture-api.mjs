@@ -37,8 +37,14 @@ import {
   createListDirectory,
   createListMarkets,
   createListReads,
+  createCheckTicker,
+  createGetApplicant,
+  createGetHealth,
+  createJoinWaitlist,
+  createSubmitApplication,
 } from "@pickler/core";
-import { systemClock } from "@pickler/infrastructure";
+import { createInMemoryApplicantStore, systemClock } from "@pickler/infrastructure";
+import { growthRoutes } from "../../workers/api/src/routes/growth.ts";
 import { createSampleMarketBoard } from "./fixtures/sample-market-board.mts";
 import { createSampleAgentDirectory } from "./fixtures/sample-agent-directory.mts";
 import { createSampleActionFeed } from "./fixtures/sample-actions.mts";
@@ -78,6 +84,16 @@ const services = {
 };
 
 const one = (value, map) => (value ? map(value) : null);
+const applicants = createInMemoryApplicantStore();
+const growth = growthRoutes({
+  ...services,
+  clock: systemClock,
+  getHealth: createGetHealth(systemClock),
+  joinWaitlist: createJoinWaitlist(applicants.waitlist, applicants.applicants),
+  getApplicant: createGetApplicant(applicants.applicants),
+  submitApplication: createSubmitApplication(applicants.applicants),
+  checkTicker: createCheckTicker(applicants.applicants),
+});
 
 /** Path patterns in the order the worker mounts them, each answering the DTO the worker answers. */
 const routes = [
@@ -122,6 +138,29 @@ const routes = [
 
 const server = createServer(async (request, response) => {
   const url = new URL(request.url, "http://127.0.0.1");
+  if (["/v1/waitlist", "/v1/applications", "/v1/tickers/availability"].includes(url.pathname)) {
+    let body = "";
+    for await (const chunk of request) {
+      body += chunk;
+    }
+    const endpoint = new URL(url);
+    endpoint.pathname = endpoint.pathname.replace(/^\/v1/, "");
+    const result = await growth.request(
+      endpoint.toString(),
+      {
+        method: request.method,
+        headers: request.headers,
+        ...(body ? { body } : {}),
+      },
+      {
+        APP_ENV: "local",
+        ALLOWED_ORIGINS: "http://localhost:3001,http://localhost:3012",
+      },
+    );
+    response.writeHead(result.status, Object.fromEntries(result.headers));
+    response.end(await result.text());
+    return;
+  }
   const send = (status, body) => {
     response.writeHead(status, {
       "content-type": "application/json",

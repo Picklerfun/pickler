@@ -22,8 +22,8 @@ const toDto = (entry: ApplicationReviewEntry): dto.StudioApplicationDto => ({
  * The operators' inbox for creator applications (docs/specs/landing-trade-v1.md §7): list what
  * /create received, decide invited or rejected. Every call needs a verified user JWT whose email is
  * on the server's SUPER_ADMIN_EMAILS allowlist; everyone else gets 403 and never sees another
- * person's answers. A decision records nothing but the decision: no studio access is enabled and
- * no email is sent from here.
+ * person's answers. Inviting enables studio access for the application's email; no email is
+ * sent from here.
  */
 export function studioApplicationRoutes(repository?: ApplicationReviewRepository) {
   const app = new Hono<AppEnv>();
@@ -64,7 +64,7 @@ export function studioApplicationRoutes(repository?: ApplicationReviewRepository
     operation("studioApplicationReview", {
       ...errors,
       description:
-        "Records an operator's decision on one application: invited or rejected, with an optional note. Same membership requirement. Enables no studio access and sends no email.",
+        "Records an operator's decision on one application: invited or rejected, with an optional note. Same membership requirement. Inviting enables studio access for the application's email, including accounts created later. Sends no email.",
       body: dto.studioApplicationReviewRequestSchema,
       response: dto.studioApplicationSchema,
     }),

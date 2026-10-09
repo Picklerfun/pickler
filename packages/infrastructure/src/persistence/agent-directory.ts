@@ -1,4 +1,6 @@
+import { readAgentToken } from "../studio/token-read.js";
 import type { Pool } from "pg";
+import { advicePrice } from "@pickler/core";
 import type {
   Accent,
   AgentDirectory,
@@ -25,6 +27,9 @@ import type {
  * null because there is no rate to state. See docs/specs/marketplace-real-data-v1.md §3.
  */
 interface AgentRow {
+  id: string;
+  /** bigint comes back from pg as text. */
+  advicePriceMicroAusd: string | null;
   name: string;
   handle: string;
   createdAt: Date;
@@ -52,7 +57,9 @@ interface AgentRow {
 }
 
 const AGENT_SELECT = `
-  SELECT a.name,
+  SELECT a.id AS "id",
+         a.advice_price_micro_ausd::text AS "advicePriceMicroAusd",
+         a.name,
          a.handle,
          a.created_at AS "createdAt",
          floor(extract(epoch from now() - a.created_at) / 86400)::int AS "aliveDays",
@@ -112,6 +119,10 @@ function graduationTargetOf(row: AgentRow): number {
 function summary(row: AgentRow): AgentSummary {
   const stage = stageOf(row.tokenStatus);
   return {
+    id: row.id,
+    advicePrice: advicePrice(
+      row.advicePriceMicroAusd === null ? null : BigInt(row.advicePriceMicroAusd),
+    ),
     name: row.name,
     handle: row.handle,
     ticker: stage ? row.ticker : null,
@@ -143,7 +154,10 @@ function summary(row: AgentRow): AgentSummary {
 }
 
 export class PostgresAgentDirectory implements AgentDirectory {
-  constructor(private readonly pool: Pool) {}
+  constructor(
+    private readonly pool: Pool,
+    private readonly tokenChainId: number | null = null,
+  ) {}
 
   /**
    * Every agent that has not been killed, newest first. A killed agent is not deleted, but it is
@@ -219,7 +233,12 @@ export class PostgresAgentDirectory implements AgentDirectory {
       return null;
     }
     const s = summary(row);
+    const token = await readAgentToken(this.pool, row.id, this.tokenChainId);
     return {
+      id: s.id,
+      advicePrice: s.advicePrice,
+      launchedToken: token.token,
+      tokenConfirmation: token.token ? "confirmed" : token.pending ? "pending" : "absent",
       name: s.name,
       handle: s.handle,
       ticker: s.ticker,
@@ -261,7 +280,14 @@ export class PostgresAgentDirectory implements AgentDirectory {
     return rows.map((row) => {
       const s = summary(row);
       return {
-        agent: { name: s.name, handle: s.handle, ticker: s.ticker, accent: s.accent },
+        agent: {
+          id: s.id,
+          advicePrice: s.advicePrice,
+          name: s.name,
+          handle: s.handle,
+          ticker: s.ticker,
+          accent: s.accent,
+        },
         beat: s.beat,
         venue: s.venue,
         decides: row.decides ?? "",

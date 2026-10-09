@@ -35,7 +35,15 @@ const entry = (over: Partial<ApplicationReviewEntry> = {}): ApplicationReviewEnt
   ...over,
 });
 
-function setup({ admin = false, wired = true } = {}) {
+function setup({
+  admin = false,
+  wired = true,
+  repository: injectedRepository,
+}: {
+  admin?: boolean;
+  wired?: boolean;
+  repository?: ApplicationReviewRepository;
+} = {}) {
   const principal = {
     kind: "user",
     id: userId,
@@ -78,7 +86,7 @@ function setup({ admin = false, wired = true } = {}) {
       error instanceof AccessDeniedError ? 403 : 400,
     );
   });
-  app.route("/", studioApplicationRoutes(wired ? repository : undefined));
+  app.route("/", studioApplicationRoutes(wired ? (injectedRepository ?? repository) : undefined));
   const call = app.request.bind(app);
   app.request = ((path, init = {}) =>
     call(path, {
@@ -150,4 +158,38 @@ test("a bad decision, a bad id and an unknown application are refused by status"
 test("without a repository the routes say so rather than pretending", async () => {
   const { app } = setup({ admin: true, wired: false });
   assert.equal((await app.request("/applications")).status, 503);
+});
+
+test("PostgreSQL inbox IDs remain numeric across listing and a decision", async (t) => {
+  const { createTestStore } = await import("@pickler/infrastructure/testing");
+  const { PostgresApplicationReview, PostgresWaitlist, PostgresApplicants } =
+    await import("@pickler/infrastructure");
+  const { pool } = await createTestStore(t);
+  const seat = await new PostgresWaitlist(pool).join("wire@example.com", null);
+  await new PostgresApplicants(pool).submit(seat.applyToken!, {
+    agentName: "Wire test",
+    ticker: "$WIRE",
+    xHandle: "@wire_test",
+    category: "Sports",
+    personality: "Analyst",
+    edge: "Public evidence.",
+    whyYou: "Controlled integration test.",
+  });
+  const { app } = setup({ admin: true, repository: new PostgresApplicationReview(pool) });
+
+  const response = await app.request("/applications");
+  assert.equal(response.status, 200);
+  const inbox = studioApplicationsSchema.parse(await response.json());
+  const application = inbox.applications[0]!;
+  assert.equal(typeof application.id, "number");
+  const decided = await app.request(
+    `/applications/${application.id}`,
+    review({ status: "invited" }),
+  );
+  assert.equal(decided.status, 200);
+  const saved = studioApplicationSchema.parse(await decided.json());
+  assert.equal(saved.id, application.id);
+  assert.equal(saved.status, "invited");
+  assert.equal(saved.reviewedBy, "ops@pickler.fun");
+  assert.ok(saved.invitedAt);
 });

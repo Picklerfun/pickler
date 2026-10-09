@@ -15,3 +15,18 @@ Read [the root instructions](../../AGENTS.md) first. Read [contract instructions
 - Keep server RPC access in infrastructure and user wallet interaction in the web app. Share only public artifacts here.
 
 From the root: `npm run typecheck --workspace=@pickler/chain` and `npm run lint`. Once generation is introduced, verify artifacts match the compiler output and validate all consuming packages. Keep these instructions current with the real artifact workflow.
+
+## Launch factory authorization ABI
+
+The generated `PicklerLaunchFactory` ABI uses the mandatory Pickler `LaunchGrant` entrypoint,
+operator-controlled authority rotation, grant digest and replay state. The EIP-712 domain version
+is `2`; there is no grant-free legacy overload. Regenerate with `npm run contracts:abi` after Solidity
+changes. This ABI is not a deployment record or an operational signer. See
+[the token guide](../../docs/agent-token-preview.md); Pickler factory deployments remain absent.
+
+## Reference precision ABI
+
+The generated curve ABI includes `marginalPriceWad` for precision policy 2, and preset/factory ABIs
+include unknown-policy, invalid-reference and quote-decimal errors. The struct shape and config
+hash commitment are unchanged. Generation is compiler-owned; existing external deployments are
+not evidence that a Pickler factory or DEX configuration has been deployed.

@@ -9,6 +9,12 @@ export { DataSourceUnavailableError } from "./shared/errors.js";
 export {
   remainingTokens,
   tokensOutForQuoteIn,
+  deriveCurveReserves,
+  curveMarginalPriceWad,
+  quoteOutForTokensIn,
+  quoteInForTokensOut,
+  splitCurveFee,
+  curveGrossFromNet,
   type CurveConfig,
 } from "./features/launch/domain/curve-math.js";
 
@@ -328,6 +334,8 @@ export * from "./features/perps/service.js";
 export * from "./features/research/trading-config.js";
 
 export * from "./features/advice/index.js";
+export * from "./features/advice/price.js";
+export * from "./features/advice/x402.js";
 
 export * from "./features/ai-credits/index.js";
 export * from "./features/studio/access-requests.js";
@@ -336,3 +344,7 @@ export { assertPerplSelection } from "./features/perps/service.js";
 export type { PerplMarketCatalog } from "./features/perps/types.js";
 
 export * from "./features/studio/x-oauth.js";
+
+export * from "./features/launch/token-launch.js";
+
+export * from "./features/launch/domain/token-economics.js";

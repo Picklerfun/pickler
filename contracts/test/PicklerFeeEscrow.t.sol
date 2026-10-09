@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.30;
 
-import {Test} from "forge-std/Test.sol";
+import {LaunchGrantTest} from "./LaunchGrantTest.sol";
 import {MockERC20} from "solmate/src/test/utils/mocks/MockERC20.sol";
 
 import {PicklerFeeEscrow} from "../src/PicklerFeeEscrow.sol";
@@ -19,10 +19,10 @@ contract RejectingRecipient {
     }
 }
 
-contract PicklerFeeEscrowTest is Test {
-    uint256 internal constant SALE_ALLOCATION = 800e18;
-    uint256 internal constant LP_ALLOCATION = 200e18;
-    uint256 internal constant TARGET_RESERVE = 1_000e6;
+contract PicklerFeeEscrowTest is LaunchGrantTest {
+    uint256 internal constant SALE_ALLOCATION = 16_800_000e18;
+    uint256 internal constant LP_ALLOCATION = 4_200_000e18;
+    uint256 internal constant TARGET_RESERVE = 21_000_000e6;
     uint16 internal constant PROTOCOL_SHARE_BPS = 4000;
     uint16 internal constant LP_CREATOR_SHARE_BPS = 6000;
 
@@ -47,7 +47,7 @@ contract PicklerFeeEscrowTest is Test {
         curveDeployer = new PicklerCurveDeployer(adapter, address(escrow));
 
         vm.prank(operator);
-        factory = new PicklerLaunchFactory(operator, curveDeployer);
+        factory = new PicklerLaunchFactory(operator, curveDeployer, vm.addr(PLATFORM_KEY));
 
         escrow.initialize(factory, locker);
 
@@ -55,12 +55,14 @@ contract PicklerFeeEscrowTest is Test {
         factory.publishPreset(_preset());
 
         vm.prank(creator);
-        (address token_, address curve_) = factory.createLaunch(_params(), "");
+        (address token_, address curve_) = factory.createLaunch(
+            _params(), "", uint256(_params().agentKey), _params().deadline, _platformGrant(factory, _params())
+        );
 
         token = token_;
         curve = PicklerBondingCurve(curve_);
 
-        quote.mint(alice, 10_000e6);
+        quote.mint(alice, 210_000_000e6);
         vm.prank(alice);
         quote.approve(curve_, type(uint256).max);
     }
@@ -101,17 +103,17 @@ contract PicklerFeeEscrowTest is Test {
             presetVersion: 1,
             expectedConfigHash: PicklerPreset.configHash(_preset()),
             nonce: 0,
-            deadline: block.timestamp + 1 hours
+            deadline: block.timestamp + 5 minutes
         });
     }
 
     function _tradeAndRemit() internal returns (uint256 fees) {
-        return _tradeAndRemit(500e6);
+        return _tradeAndRemit(10_500_000e6);
     }
 
     function _tradeAndRemit(uint256 amount) internal returns (uint256 fees) {
         vm.prank(alice);
-        curve.buyExactInput(amount, 0, alice, block.timestamp + 1 hours);
+        curve.buyExactInput(amount, 0, alice, block.timestamp + 5 minutes);
 
         fees = curve.accruedFees();
         curve.remitFees();
@@ -215,15 +217,17 @@ contract PicklerFeeEscrowTest is Test {
     }
 
     function test_poolFeesUseTheLpSplitNotTheTradingSplit() public {
-        quote.mint(address(escrow), 1_000e6);
+        quote.mint(address(escrow), 21_000_000e6);
 
         vm.prank(locker);
         escrow.syncPoolFees(token, address(quote));
 
-        uint256 expectedCreator = (uint256(1_000e6) * LP_CREATOR_SHARE_BPS) / 10_000;
+        uint256 expectedCreator = (uint256(21_000_000e6) * LP_CREATOR_SHARE_BPS) / 10_000;
 
         assertEq(escrow.claimable(creator, address(quote)), expectedCreator, "creator got the wrong LP share");
-        assertEq(escrow.claimable(treasury, address(quote)), 1_000e6 - expectedCreator, "protocol got the wrong share");
+        assertEq(
+            escrow.claimable(treasury, address(quote)), 21_000_000e6 - expectedCreator, "protocol got the wrong share"
+        );
     }
 
     function test_anUnknownLaunchCannotBeAttributed() public {

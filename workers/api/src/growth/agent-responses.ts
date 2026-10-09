@@ -39,6 +39,8 @@ const slugOf = (ticker: string | null): string | null =>
 
 export function toAgentSummaryDto(agent: AgentSummary): AgentSummaryDto {
   return {
+    id: agent.id,
+    advicePrice: agent.advicePrice && { ...agent.advicePrice },
     slug: slugOf(agent.ticker),
     name: agent.name,
     handle: agent.handle,
@@ -136,7 +138,11 @@ const toReadServiceDto = (service: ReadService | null, venue: Venue): ReadServic
 export function toDirectoryAgentDto(entry: DirectoryAgent): DirectoryAgentDto {
   return {
     ...entry,
-    agent: toActivityAgentDto(entry.agent),
+    agent: {
+      ...toActivityAgentDto(entry.agent),
+      id: entry.agent.id,
+      advicePrice: entry.agent.advicePrice && { ...entry.agent.advicePrice },
+    },
     service: toReadServiceDto(entry.service, entry.venue),
   };
 }
