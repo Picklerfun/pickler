@@ -11,6 +11,8 @@ import { setTimeout as wait } from "node:timers/promises";
 import { createStreamCapture, publicMarketCsv } from "../src/perps-study/stream-capture.js";
 import { runReaderAudit } from "../src/perps-study/reader-audit.js";
 import { captureFailureCode } from "../src/perps-study/universe-stability.js";
+import { universeStreamValidation, UNIVERSE_COMPONENT_STREAM_POLICY } from "@pickler/trading/perps";
+import { runSmaReentry } from "../src/perps-study/reentry-host.js";
 
 test("between-slot timer cancellation preserves the original reader error rather than a generic failure", async () => {
   const controller = new AbortController();
@@ -135,6 +137,42 @@ test("stream offline audit emits 330 identities, verifies frozen hashes and neve
       code: "INVALID_INPUT",
     });
   }
+  const experimentalConfig = { ...config, acquisitionPolicy: UNIVERSE_COMPONENT_STREAM_POLICY };
+  const experimental = {
+    ...capture,
+    version: 4,
+    adapterVersion: "public-universe-stream-v4",
+    acquisitionPolicy: UNIVERSE_COMPONENT_STREAM_POLICY,
+    config: experimentalConfig,
+    configurationHash: digest(canonicalAudit(experimentalConfig)),
+    dataValidation: universeStreamValidation(UNIVERSE_COMPONENT_STREAM_POLICY),
+    strictValidCycles: 0,
+    cycles: capture.cycles.map((cycle) => ({
+      ...cycle,
+      strictJointValid: false,
+      financialExecutable: false,
+      markets: cycle.markets.map((market) => ({ ...market, strictValid: false })),
+    })),
+  };
+  const componentAudit = auditUniverseCapture(experimental);
+  assert.equal(componentAudit.protocol, "perpl-reader-audit-v4");
+  assert.equal(componentAudit.strictValidCycles, 0);
+  assert.equal(componentAudit.rows.length, 330);
+  assert.equal(componentAudit.dataValidation!.tickerBookSkewGateMs, null);
+  assert.throws(() => auditUniverseCapture({ ...experimental, strictValidCycles: 1 }), {
+    code: "INVALID_INPUT",
+  });
+  assert.throws(
+    () =>
+      auditUniverseCapture({
+        ...experimental,
+        dataValidation: { ...experimental.dataValidation, financialAdmission: true },
+      }),
+    { code: "INVALID_INPUT" },
+  );
+  const promoted = structuredClone(experimental);
+  promoted.cycles[0]!.financialExecutable = true;
+  assert.throws(() => auditUniverseCapture(promoted), { code: "INVALID_INPUT" });
   const interrupted = structuredClone(capture);
   Object.assign(interrupted.cycles[2]!, {
     missed: true,
@@ -164,6 +202,38 @@ test("stream offline audit emits 330 identities, verifies frozen hashes and neve
   await assert.rejects(
     runReaderAudit(statePath, join(directory, "bad"), new AbortController().signal),
     { code: "INVALID_INPUT" },
+  );
+});
+test("financial host rejects the experimental capture policy before loading any environment", async (t) => {
+  const directory = await mkdtemp(join(tmpdir(), "perpl-component-financial-"));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const ids = [1, 10, 20, 31, 40, 50, 60, 70, 90, 100, 110];
+  const path = join(directory, "study.json");
+  await writeFile(
+    path,
+    JSON.stringify({
+      version: 7,
+      protocol: "perps-sma-reentry-latency-v1",
+      tenantId: "alpha",
+      sessionId: "component-capture",
+      network: "mainnet",
+      hours: 6,
+      budgetUsd: "5",
+      markets: PERPL_LAB_SYMBOLS.map((symbol, index) => ({ symbol, marketId: ids[index]! })),
+      acquisitionPolicy: UNIVERSE_COMPONENT_STREAM_POLICY,
+    }),
+  );
+  await assert.rejects(
+    runSmaReentry(
+      {
+        command: "prepare",
+        configPath: path,
+        envFile: join(directory, "ENVIRONMENT_MUST_NOT_BE_READ"),
+        output: join(directory, "NO_ACCOUNTS"),
+      },
+      new AbortController().signal,
+    ),
+    { code: "DIAGNOSTIC_ACQUISITION_ONLY" },
   );
 });
 
