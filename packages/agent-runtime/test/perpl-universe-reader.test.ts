@@ -553,11 +553,10 @@ test("one unavailable stream market exhausts the original twenty seconds and is 
   assert.equal(result.excluded.length, 11);
   assert.ok(Date.now() - NOW >= 20000 && Date.now() - NOW <= 20100);
   assert.equal(urls.length, 1);
-  assert.equal(socket.sent.length, 2);
-  assert.equal(socket.sent[1], socket.sent[0]);
+  assert.equal(socket.sent.length, 1);
 });
 
-test("an incoherent warm stream requests provider snapshots without replacing dates or using REST", async (t) => {
+test("an incoherent warm stream waits for actual source updates without replacing dates or using REST", async (t) => {
   clocks(t);
   const urls: string[] = [];
   const events: import("@pickler/infrastructure").PerplStreamEvent[] = [];
@@ -585,13 +584,28 @@ test("an incoherent warm stream requests provider snapshots without replacing da
     bid: [],
     ask: [],
   });
-  socket.publicationAt = Date.now();
+  setTimeout(() => {
+    const prices = ticker();
+    for (const value of Object.values(prices.d)) {
+      value.at.t = Date.now();
+    }
+    socket.emit("message", { ...prices, sid: 2 });
+    for (let i = 0; i < 11; i++) {
+      socket.emit("message", {
+        mt: 16,
+        sid: i + 3,
+        at: { t: Date.now(), b: 1 },
+        bid: [],
+        ask: [],
+      });
+    }
+  }, 2000);
 
   const refreshed = await settle(t, reader.read(scope, markets, parent));
 
   assert.equal(refreshed.frames.length, 11);
-  assert.equal(socket.sent.length, 2);
-  assert.equal(events.filter((event) => event.kind === "snapshot-request").length, 1);
+  assert.equal(socket.sent.length, 1);
+  assert.equal(events.filter((event) => event.kind === "snapshot-request").length, 0);
   assert.ok(refreshed.frames.every((f) => f.snapshot.ticker.provenance.providerTimestamp! > NOW));
   assert.ok(refreshed.frames.every((f) => f.book.provenance.providerTimestamp! > NOW));
   assert.deepEqual(
