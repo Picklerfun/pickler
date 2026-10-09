@@ -12,6 +12,9 @@ export const PRODUCT_PAPER_SESSION = "product";
 export const isProductPaperSession = (scope: Pick<PerpsPaperScope, "sessionId">) =>
   scope.sessionId === PRODUCT_PAPER_SESSION;
 export type PerpsPaperSide = "long" | "short";
+/** Explicit local paper adoption; absence keeps historical five-second coherence. */
+export const COMPONENT_PAPER_POLICY = "stream-universe-component-paper-20s-v1" as const;
+export type PerpsPaperDataPolicy = typeof COMPONENT_PAPER_POLICY;
 /** Why a product position closed: the runtime's `CLOSE_REASONS` (R10). */
 export type PerpsPaperCloseReason = import("../perps-runtime/exits.js").PerpsCloseReason;
 /** A product position's exits (R10), stored on the position when it opens. */
@@ -50,6 +53,8 @@ export interface PerpsPaperAccount {
   scope: PerpsPaperScope;
   agentVersion: number;
   policy: "conservative-1x-v1";
+  /** Immutable and assigned only from the trusted local study, never an intent. */
+  marketDataPolicy?: PerpsPaperDataPolicy;
   /** Absent in historical documents; selected only by trusted study initialization. */
   riskManagement?: "legacy-1x-v1" | "buffered-selective-1x-v1";
   /** Trusted local study policy. Absence preserves historical entry behavior. */
