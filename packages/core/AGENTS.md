@@ -388,8 +388,10 @@ never settles again; a `refund_owed` row refuses with `invalid_payment`. `settle
 `SettlementRejected` only when the authorization provably never executed (simulation revert,
 reverted receipt): the row becomes `failed` and the key may pay again. Any other throw is an
 unknown outcome: the row stays `pending` and the answer is 402 `settlement_failed`. A `pending`
-row refuses with `invalid_payment` until its `validBefore` passed and `nonceUsed(payer, nonce)` is
-false; then it is marked `failed` (`expired_unsettled`) and the flow continues. An enqueue failure
+row refuses with `invalid_payment` until `validBefore + PENDING_ABANDON_GRACE_SECONDS` (120 s, server
+clock) has passed and a single `nonceUsed(payer, nonce)` read is false; then it is marked `failed`
+(`expired_unsettled`) and the flow continues. The grace absorbs a server clock ahead of block time
+and a lagging RPC. An enqueue failure
 after settlement leaves the row `settled` without a job and rethrows, so the next request with the
 same key reuses that payment (D7); core does not call `refundOwed` in phase 1. Core stays pure:
 chain and database live behind the two ports. The API Worker composes it per request only behind

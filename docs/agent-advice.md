@@ -101,9 +101,11 @@ Settlement outcomes:
 - **Unknown outcome** — a timeout, an RPC error, a success receipt without the matching AUSD
   `Transfer` log, or a revert whose nonce was already consumed: 402 `settlement_failed`, the row
   stays `pending` and that key is never settled again while it is. Once the authorization's
-  `validBefore` has passed, the next request on the key reads the nonce on chain: unused, the row
-  becomes `failed` and a new payment is allowed; used, it stays `pending` for manual
-  reconciliation.
+  `validBefore` plus a 120-second grace has passed (server clock), the next request on the key
+  reads the nonce on chain: unused, the row becomes `failed` and a new payment is allowed; used, it
+  stays `pending` for manual reconciliation. Before that, the key answers `invalid_payment` without
+  reading the chain. The grace keeps a server clock ahead of block time, or an RPC some blocks
+  behind, from reading a still-landing transfer's nonce as unused.
 - **Busy or budget at enqueue** — decided in the enqueue transaction, so after settlement: 429,
   the payment stays `settled` with no job, and the same `Idempotency-Key` reuses it to enqueue
   without a second charge.

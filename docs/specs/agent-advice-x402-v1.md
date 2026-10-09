@@ -106,9 +106,11 @@ Settlement has two failure outcomes. A proven non-execution — the transaction 
 is broadcast, or its mined receipt shows a revert — answers 402 `settlement_failed`, marks the row
 `failed`, charges nothing and allows a retry. A timeout or unknown outcome after the transaction
 was broadcast also answers 402 `settlement_failed`, but the row stays `pending` because the
-transfer may still land; that key is never settled again. After `validBefore` the server checks the
-authorization nonce on chain: unused → the row becomes `failed` and a retry is allowed; used → it
-stays `pending` for manual reconciliation.
+transfer may still land; that key is never settled again. Once `validBefore` plus a 120-second grace has
+passed (server clock), the server checks the authorization nonce on chain: unused → the row
+becomes `failed` and a retry is allowed; used → it stays `pending` for manual reconciliation. The
+grace keeps a server clock ahead of block time, or a lagging RPC, from abandoning a transfer that
+is still landing.
 
 ## 4. API
 

@@ -8,6 +8,7 @@ import {
   createAdviceService,
   createPaidAdvice,
   DEFAULT_CONFIG,
+  PENDING_ABANDON_GRACE_SECONDS,
   PilotError,
   SettlementRejected,
   type AdviceAgent,
@@ -534,9 +535,11 @@ test("11b. a proven rejection marks the payment failed and the same key may pay 
   assert.equal(f.calls.filter((call) => call === "settle").length, 1);
 });
 
-test("11c. an expired pending payment whose nonce is unused is failed and the flow continues", async () => {
+const ABANDONABLE = String(NOW_S - PENDING_ABANDON_GRACE_SECONDS);
+
+test("11c. a pending payment expired by the grace with its nonce unused is failed and the flow continues", async () => {
   const f = fixture();
-  f.state.record = paymentRow({ validBefore: String(NOW_S - 1) });
+  f.state.record = paymentRow({ validBefore: ABANDONABLE });
   const result = await f.paid.request(
     principal,
     id,
@@ -549,7 +552,7 @@ test("11c. an expired pending payment whose nonce is unused is failed and the fl
   assert.ok(f.calls.includes("failed:payment-0:expired_unsettled"));
   assert.equal(f.calls.filter((call) => call === "settle").length, 1);
   const used = fixture();
-  used.state.record = paymentRow({ validBefore: String(NOW_S - 1) });
+  used.state.record = paymentRow({ validBefore: ABANDONABLE });
   used.state.nonceUsed = true;
   const refusedResult = await used.paid.request(
     principal,
@@ -572,6 +575,24 @@ test("11c. an expired pending payment whose nonce is unused is failed and the fl
   );
   refused(liveResult, "invalid_payment");
   assert.ok(!live.calls.includes("settle"));
+});
+
+test("11f. a pending payment expired by less than the grace refuses without reading the nonce", async () => {
+  const f = fixture();
+  f.state.record = paymentRow({ validBefore: String(NOW_S - PENDING_ABANDON_GRACE_SECONDS + 1) });
+
+  const result = await f.paid.request(
+    principal,
+    id,
+    "BTC",
+    "key-1",
+    header({ nonce: FRESH_NONCE }),
+  );
+
+  refused(result, "invalid_payment");
+  assert.ok(!f.calls.some((call) => call.startsWith("nonceUsed:")));
+  assert.ok(!f.calls.some((call) => call.startsWith("failed:")));
+  assert.ok(!f.calls.includes("settle"));
 });
 
 test("11d. a replay returns its job even while advice is disabled", async () => {

@@ -5,6 +5,12 @@ import type { AdviceJob, AdviceRepository, AdviceSymbol, createAdviceService } f
 export const X402_NETWORK = "monad-testnet";
 export const AUSD_TESTNET = "0xa9012a055bd4e0eDfF8Ce09f960291C09D5322dC";
 const MAX_TIMEOUT_SECONDS = 300;
+/**
+ * How long past `validBefore` (server clock) a pending payment is kept before its nonce is read to
+ * abandon it. It absorbs a server clock ahead of block time and an RPC some blocks behind, either of
+ * which could read a nonce as unused while the broadcast transfer is still landing.
+ */
+export const PENDING_ABANDON_GRACE_SECONDS = 120;
 
 export interface Authorization {
   from: string;
@@ -257,9 +263,11 @@ export function createPaidAdvice(deps: {
     await deps.store.attachJob(paymentId, job.id);
     return job;
   };
-  // A pending payment is abandoned once its authorization expired without the nonce being used.
+  // A pending payment is abandoned once its authorization expired, plus the grace, without the
+  // nonce being used.
   const abandoned = async (record: AdvicePaymentRecord): Promise<boolean> => {
-    if (Number(record.validBefore) > deps.now() / 1000) {
+    const abandonAt = Number(record.validBefore) + PENDING_ABANDON_GRACE_SECONDS;
+    if (abandonAt > deps.now() / 1000) {
       return false;
     }
     return !(await deps.gateway.nonceUsed(record.payer, record.nonce));
