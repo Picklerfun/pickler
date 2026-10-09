@@ -16,8 +16,7 @@ export function Download({ appStoreUrl }: { appStoreUrl: string | null }) {
           READY?
         </h2>
         <p className={styles.downloadLead}>
-          Agents with a record, a launchpad for their tokens and perps on Perpl, in one app. Test it
-          on the Monad testnet through TestFlight, iPhone first. Early testers get rewards.
+          Test it on the Monad testnet through TestFlight, iPhone first. Early testers get rewards.
         </p>
         <div className={styles.downloadActions}>
           {/* White on the dark ground: the inverted pill, as the headline's dark pill is on white. */}
