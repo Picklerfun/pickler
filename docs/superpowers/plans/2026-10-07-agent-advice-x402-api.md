@@ -29,7 +29,7 @@ Phases after this plan (separate plans, not here): Phase 2 Studio price card (we
 1. **Replay after settlement with the same key and a new signature** — must return the original job and never settle twice (two AUSD transfers for one analysis). Test in Task 4.
 2. **Price changed between the 402 and the paid retry** — `value` no longer equals the price; must be `wrong_amount` with nothing settled, not a charge at the old price. Test in Task 4.
 3. **Payer address case** — `from` arrives checksummed, `wallet_links.address` is stored normalized; the link check must compare lowercase or a linked buyer is refused. Test in Task 5.
-4. **Relayer RPC failure or revert** — settlement throws or the receipt has no matching `Transfer` log; must end `failed` / `settlement_failed`, not enqueue. Test in Task 4 (gateway fake) and Task 6 (log check).
+4. **Relayer RPC failure or revert** — a proven rejection (core's `SettlementRejected`: a revert before broadcast or a mined reverted receipt) ends `failed` / `settlement_failed`; an unknown outcome (timeout, RPC error after the hash, or a success receipt without the matching `Transfer` log) stays `pending` / `settlement_failed`; never enqueue. Test in Task 4 (gateway fake) and Task 6 (which errors the gateway throws).
 5. **Advice disabled while x402 is on** — must answer the existing 503 before any 402, so nobody signs for a service that is off. Test in Task 7.
 
 ---
@@ -417,6 +417,8 @@ export function createPaidAdvice(deps: {
 8. Settled payment without job (`byKey` → `{ status: "settled", jobId: null }`) → no new settle; `enqueue` called; `attachJob` called.
 9. `enqueue` throws `PilotError("ADVICE_BUSY")` after settlement → store `refundOwed(id, "ADVICE_BUSY")` and the error is rethrown.
 
+> **Rulings 5 and 9 replace steps 6 and 9 above, and the matching parts of Step 3.** A `settle` throw marks the payment `failed` only when it is core's `SettlementRejected`; any other throw leaves it `pending` (the key is not settled again). An enqueue failure after settlement leaves the payment `settled` with no job, reusable by the same `Idempotency-Key`; core does not call `refundOwed`. The code (1800f4e8, da39764d) and `packages/core/AGENTS.md` follow the rulings.
+
 - [ ] **Step 2: Run, expect failure** — `npm run build:shared && node --import tsx --test packages/core/test/advice-x402.test.ts` → FAIL (module missing).
 
 - [ ] **Step 3: Implement `x402.ts`** — order of `request` exactly: `admit` → `repository.requestReplay` (return accepted, no settle) → `store.byKey` (settled & no job → enqueue+attach; pending/failed → treat as new attempt only if the header carries a different nonce, else `payment_required` with the stored error) → `saleTerms` (null → `NOT_FOUND`/`ADVICE_NOT_FOR_SALE`) → build requirements → no header → `payment_required` → `decodePaymentHeader` → static checks (scheme, network, asset in requirements, `to`, `value === priceMicro.toString()`, time window) → `payerLinked` → `signatureValid` → `nonceUsed` → `balance` → `insertPending` → `settle` (catch → `failed` + `settlement_failed`) → `settled` → `advice.request(...)` (catch → `refundOwed(id, code)` + rethrow) → `attachJob` → `accepted` with `encodeSettlement`. Base64 via `btoa`/`atob` on JSON (both exist in Workers and Node ≥ 22). All address comparisons lowercase. One statement per line.
@@ -480,7 +482,14 @@ SELECT 1 FROM identity.wallet_links WHERE user_id = $1 AND lower(address) = lowe
   - `authorizationTypedData` returns domain `{ name: "Agora Dollar", version: "1", chainId: 10143, verifyingContract: AUSD }`, `primaryType: "TransferWithAuthorization"`, the standard six fields.
   - Signing that typed data with `privateKeyToAccount(0x…01)` and passing it to `signatureValid` → `true`; flipping `value` → `false`.
   - `transferMatches` is `true` only for a `Transfer(from, to, value)` log emitted by the AUSD address; a log from another contract or with another value → `false` (Review Focus 4).
-  - `settle` with an injected `wallet.writeContract` and `client.waitForTransactionReceipt` returning a receipt without a matching log → rejects `settlement_failed`; with `status: "reverted"` → rejects.
+  - `settle` with an injected `wallet.writeContract` and `client.waitForTransactionReceipt`:
+    - simulation/`estimateGas` revert before any broadcast → rejects with `SettlementRejected`;
+    - receipt with `status: "reverted"` → rejects with `SettlementRejected`;
+    - receipt-wait timeout (30 s) → rejects with a plain `Error`, not `SettlementRejected`;
+    - RPC error after the hash exists → rejects with a plain `Error`;
+    - `status: "success"` without the matching AUSD `Transfer(from → payTo, value)` log → rejects with a plain `Error`, not `SettlementRejected`.
+
+**Ruling 16 — which outcomes are proven.** The gateway throws core's `SettlementRejected` ONLY for (a) a simulation/`estimateGas` revert before any broadcast and (b) a mined receipt with status `reverted`. Everything else once a tx hash exists — the receipt-wait timeout (30 s), an RPC error, and a mined `success` receipt without the matching AUSD `Transfer(from → payTo, value)` log — throws a plain `Error`: the row stays `pending` for manual reconciliation, because a success receipt means the nonce is consumed.
 
 - [ ] **Step 2: Run, expect failure.**
 

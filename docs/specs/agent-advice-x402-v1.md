@@ -166,7 +166,9 @@ The API, in order:
 3. On chain: `authorizationState(from, nonce)` is false; `balanceOf(from) ≥ value`.
 4. Insert payment `pending` (unique nonce). Submit `transferWithAuthorization` from the relayer;
    wait for the receipt (≤ 30 s); confirm a `Transfer(from → to, value)` log from the AUSD
-   contract in that receipt. Mark `settled` with tx hash and block, or `failed`.
+   contract in that receipt. Mark `settled` with tx hash and block on success; `failed` only on a
+   proven non-execution (a revert before broadcast or a mined reverted receipt); otherwise the row
+   stays `pending` (§3.3).
 5. Enqueue the advice job (existing `service.request`), link payment ↔ job, answer 202 with
    `X-PAYMENT-RESPONSE` = base64 `{ success: true, transaction, network, payer }`.
 
@@ -184,7 +186,7 @@ Migration `0038_advice_x402` (the next number after `0037_token_agent_uniqueness
 - `agents.agents.advice_price_micro_ausd bigint NULL`, check `BETWEEN 100000 AND 100000000`.
 - `pickler.advice_payments`: `id uuid pk`, `job_id uuid NULL → advice_jobs`, `user_id`,
   `public_agent_id → product_agents`, `request_key`, `payer`, `pay_to`, `amount_micro_ausd bigint`,
-  `nonce bytea UNIQUE`, `valid_before timestamptz`, `status text` (`pending | settled | failed |
+  `nonce text UNIQUE` (lowercase 0x-hex), `valid_before timestamptz`, `status text` (`pending | settled | failed |
 refund_owed`), `tx_hash text UNIQUE NULL`, `block_number bigint NULL`, `error text NULL`,
   timestamps. Unique `(user_id, public_agent_id, request_key)` so one key buys once. RLS on,
   private, like the other advice tables.
