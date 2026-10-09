@@ -27,7 +27,7 @@ export interface PerpsPaperObservation {
 const failure = (code: string): never => {
   throw new PilotError(code, "Perpetual paper data is not admissible");
 };
-export function validatePaperFrame(
+function validateFrameIdentityAndDates(
   frame: PerpsPaperFrame,
   network: string,
   symbol: PerpSymbol,
@@ -61,9 +61,32 @@ export function validatePaperFrame(
       failure("STALE_MARKET_DATA");
     }
   }
+}
+/** Shared component checks; this alone never authorizes a financial fill. */
+export function validatePaperFrameComponents(
+  frame: PerpsPaperFrame,
+  network: string,
+  symbol: PerpSymbol,
+  now: number,
+) {
+  validateFrameIdentityAndDates(frame, network, symbol, now);
+  if (u(frame.snapshot.ticker.mark) <= 0n) {
+    failure("INCONSISTENT_MARKET_DATA");
+  }
+}
+export function validatePaperFrame(
+  frame: PerpsPaperFrame,
+  network: string,
+  symbol: PerpSymbol,
+  now: number,
+) {
+  validateFrameIdentityAndDates(frame, network, symbol, now);
   if (
-    Math.abs(ticker.providerTimestamp! - book.providerTimestamp!) > 5000 ||
-    u(s.ticker.mark) <= 0n
+    Math.abs(
+      frame.snapshot.ticker.provenance.providerTimestamp! -
+        frame.book.provenance.providerTimestamp!,
+    ) > 5000 ||
+    u(frame.snapshot.ticker.mark) <= 0n
   ) {
     failure("INCONSISTENT_MARKET_DATA");
   }
