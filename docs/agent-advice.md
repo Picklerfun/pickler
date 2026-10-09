@@ -90,8 +90,8 @@ The order of a paid request is fixed in core:
    `Cache-Control: private, no-store`.
 6. **Settlement, then enqueue.** A pending row is inserted, the relayer submits
    `transferWithAuthorization`, and only a confirmed transfer enqueues the job. The 202 carries
-   `X-PAYMENT-RESPONSE`, base64 JSON `{ success: true, transaction, network: "monad-testnet",
-payer }`.
+   `X-PAYMENT-RESPONSE`, a base64 JSON object with `success: true`, `transaction`, `network`
+   (`"monad-testnet"`) and `payer`.
 
 Settlement outcomes:
 
