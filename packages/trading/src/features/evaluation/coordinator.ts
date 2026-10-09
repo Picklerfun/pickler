@@ -17,6 +17,8 @@ export const EVALUATION_PROTOCOLS = {
       "audit-export",
       "stability",
       "timing-check",
+      "reader-audit",
+      "reader-check",
     ],
     paidCommands: [],
     riskPolicy: "buffered-selective-1x-v1",
@@ -176,6 +178,8 @@ export const EVALUATION_PROTOCOLS = {
 } as const;
 export type EvaluationProtocol = keyof typeof EVALUATION_PROTOCOLS;
 export type EvaluationCommand =
+  | "reader-audit"
+  | "reader-check"
   | "timing-check"
   | "audit"
   | "audit-export"
