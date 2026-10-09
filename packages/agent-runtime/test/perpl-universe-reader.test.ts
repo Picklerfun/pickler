@@ -9,12 +9,77 @@ import {
   type PerpSymbol,
 } from "@pickler/core";
 import { type PerplDataOptions, type PerplTickerReadDiagnostic } from "@pickler/infrastructure";
+import type { PerplSocket } from "@pickler/infrastructure";
+import { writeFile } from "node:fs/promises";
 import { createUniversePerplReader } from "../src/plugins/perps-paper/universe.js";
+import { createPriorityPerplStudyData } from "../src/plugins/perps-paper/priority-study.js";
+import type { PerpsStudyRecord } from "@pickler/trading/evaluation";
 
 const NOW = 1_800_000_000_000;
 const ids = [1, 10, 20, 31, 40, 50, 60, 70, 90, 100, 110];
 const markets = PERPL_LAB_SYMBOLS.map((symbol, i) => ({ symbol, marketId: ids[i]! }));
 const scope = { tenantId: "test", agentId: "agent" };
+class UniverseSocket implements PerplSocket {
+  readyState = 0;
+  sent: string[] = [];
+  listeners = new Map<string, ((event: { data?: unknown }) => void)[]>();
+  missing: number | undefined;
+  rejected = false;
+  publicationAt: number | undefined;
+  constructor() {
+    queueMicrotask(() => {
+      this.readyState = 1;
+      this.emit("open");
+    });
+  }
+  addEventListener(type: string, callback: (event: { data?: unknown }) => void) {
+    this.listeners.set(type, [...(this.listeners.get(type) ?? []), callback]);
+  }
+  emit(type: string, value?: unknown) {
+    for (const callback of this.listeners.get(type) ?? []) {
+      callback({ data: value === undefined ? undefined : JSON.stringify(value) });
+    }
+  }
+  send(value: string) {
+    this.sent.push(value);
+    const subs = JSON.parse(value).subs as { stream: string }[];
+    const publicationAt = this.publicationAt ?? NOW;
+    assert.equal(subs.length, 13);
+    queueMicrotask(() => {
+      this.emit("message", {
+        mt: 6,
+        subs: subs.map((s, i) => ({
+          ...s,
+          sid: i + 1,
+          status: { code: this.rejected && i === 12 ? 404 : 0 },
+        })),
+      });
+      if (this.rejected) {
+        return;
+      }
+      const prices = ticker();
+      for (const value of Object.values(prices.d)) {
+        value.at.t = publicationAt;
+      }
+      this.emit("message", { ...prices, sid: 2 });
+      for (let i = 0; i < 11; i++) {
+        if (i !== this.missing) {
+          this.emit("message", {
+            mt: 15,
+            sid: i + 3,
+            at: { t: publicationAt, b: 1 },
+            bid: [{ p: 99990, s: 1000, o: 1 }],
+            ask: [{ p: 100010, s: 1000, o: 1 }],
+          });
+        }
+      }
+    });
+  }
+  close() {
+    this.readyState = 3;
+    this.emit("close");
+  }
+}
 function agent(symbols: PerpSymbol[] = [...PERPL_LAB_SYMBOLS]): AgentRecord {
   return {
     id: scope.agentId,
@@ -110,7 +175,7 @@ function clocks(t: TestContext) {
     return controller.signal;
   });
 }
-async function settle<T>(t: TestContext, promise: Promise<T>): Promise<T> {
+async function settle<T>(t: TestContext, promise: Promise<T>, maximumMs = 24000): Promise<T> {
   let done = false;
   void promise.then(
     () => {
@@ -120,11 +185,11 @@ async function settle<T>(t: TestContext, promise: Promise<T>): Promise<T> {
       done = true;
     },
   );
-  for (let i = 0; i < 240 && !done; i++) {
+  for (let i = 0; i < maximumMs / 100 && !done; i++) {
     t.mock.timers.tick(100);
     await new Promise<void>((resolve) => setImmediate(resolve));
   }
-  assert.equal(done, true, "Controlled acquisition exceeded its twenty-second deadline");
+  assert.equal(done, true, "Controlled operation exceeded its bounded clock window");
   return promise;
 }
 
@@ -417,4 +482,343 @@ test("the v2 twenty-second budget starts before metadata, cancels queued books, 
   assert.ok(starts.every((at) => at < NOW + 20000));
   assert.ok(Date.now() - NOW <= 20100);
   assert.ok(liveGuards > 0);
+});
+
+test("stream universe freezes thirteen subscriptions and reuses one guarded generation without REST prices", async (t) => {
+  clocks(t);
+  const current = agent();
+  const urls: string[] = [];
+  const sockets: UniverseSocket[] = [];
+  const reader = createUniversePerplReader(
+    { agent: async () => current },
+    {
+      acquisitionPolicy: "stream-universe-20s-v1",
+      transport: transport(urls),
+      socket: () => {
+        const socket = new UniverseSocket();
+        sockets.push(socket);
+        return socket;
+      },
+    },
+  );
+  t.after(() => reader.close());
+  const parent = new AbortController();
+  const initial = await settle(t, reader.read(scope, markets, parent.signal));
+  const latest = await settle(t, reader.latest(scope, markets, parent.signal));
+  const final = await settle(t, reader.read(scope, markets, parent.signal));
+
+  assert.equal(initial.frames.length, 11);
+  assert.equal(final.frames.length, 11);
+  assert.deepEqual(
+    latest.frames.map((f) => f.snapshot.ticker.mark),
+    initial.frames.map((f) => f.snapshot.ticker.mark),
+  );
+  assert.deepEqual(
+    urls.map((url) => new URL(url).pathname),
+    ["/api/v1/pub/context"],
+  );
+  assert.equal(sockets.length, 1);
+  assert.equal(sockets[0]!.sent.length, 1);
+  initial.frames[0]!.snapshot.market.marketId = 999;
+  const unchanged = await reader.latest(scope, markets, parent.signal);
+  assert.equal(unchanged.frames[0]!.snapshot.market.marketId, 1);
+  await reader.close();
+  assert.equal(sockets[0]!.readyState, 3);
+  await assert.rejects(reader.latest(scope, markets, parent.signal), {
+    code: "DATA_READER_CLOSED",
+  });
+});
+
+test("one unavailable stream market exhausts the original twenty seconds and is not repaired through REST", async (t) => {
+  clocks(t);
+  const urls: string[] = [];
+  const socket = new UniverseSocket();
+  socket.missing = 10;
+  const reader = createUniversePerplReader(
+    { agent: async () => agent() },
+    {
+      acquisitionPolicy: "stream-universe-20s-v1",
+      transport: transport(urls),
+      socket: () => {
+        queueMicrotask(() => socket.emit("open"));
+        return socket;
+      },
+    },
+  );
+  t.after(() => reader.close());
+
+  const result = await settle(t, reader.read(scope, markets, new AbortController().signal));
+
+  assert.equal(result.frames.length, 0);
+  assert.equal(result.excluded.length, 11);
+  assert.ok(Date.now() - NOW >= 20000 && Date.now() - NOW <= 20100);
+  assert.equal(urls.length, 1);
+  assert.equal(socket.sent.length, 1);
+});
+
+test("partial subscription rejection remains fatal rather than an availability omission", async (t) => {
+  clocks(t);
+  const socket = new UniverseSocket();
+  socket.rejected = true;
+  const reader = createUniversePerplReader(
+    { agent: async () => agent() },
+    {
+      acquisitionPolicy: "stream-universe-20s-v1",
+      transport: transport([]),
+      socket: () => {
+        queueMicrotask(() => socket.emit("open"));
+        return socket;
+      },
+    },
+  );
+  t.after(() => reader.close());
+
+  await assert.rejects(settle(t, reader.read(scope, markets, new AbortController().signal)), {
+    code: "PERPL_STREAM_SUBSCRIPTION",
+  });
+  assert.equal(socket.readyState, 3);
+});
+
+test("stream buffer revocation, changed configuration, lease loss and cancellation forbid reuse", async (t) => {
+  clocks(t);
+  for (const reason of ["PLUGIN_DISABLED", "CONFIG_CHANGED", "LEASE_LOST", "CANCELLED"] as const) {
+    t.mock.timers.setTime(NOW);
+    const current = agent();
+    let owned = true;
+    const parent = new AbortController();
+    const sockets: UniverseSocket[] = [];
+    const guard = async () => {
+      if (!owned) {
+        throw new PilotError("LEASE_LOST", "Controlled");
+      }
+    };
+    const reader = createUniversePerplReader(
+      { agent: async () => current },
+      {
+        acquisitionPolicy: "stream-universe-20s-v1",
+        transport: transport([]),
+        socket: () => {
+          const s = new UniverseSocket();
+          sockets.push(s);
+          return s;
+        },
+      },
+    );
+    t.after(() => reader.close());
+    await settle(t, reader.read(scope, markets, parent.signal, guard));
+    if (reason === "PLUGIN_DISABLED") {
+      current.config.plugins.enabled = [];
+    }
+    if (reason === "CONFIG_CHANGED") {
+      current.version++;
+    }
+    if (reason === "LEASE_LOST") {
+      owned = false;
+    }
+    if (reason === "CANCELLED") {
+      parent.abort(new PilotError(reason, "Controlled"));
+    }
+
+    await assert.rejects(reader.latest(scope, markets, parent.signal, guard), { code: reason });
+    await reader.close();
+    assert.ok(sockets.every((s) => s.readyState === 3));
+  }
+});
+
+test("stream cold boot includes delayed metadata and never opens a socket after the deadline", async (t) => {
+  clocks(t);
+  let sockets = 0;
+  const reader = createUniversePerplReader(
+    { agent: async () => agent() },
+    {
+      acquisitionPolicy: "stream-universe-20s-v1",
+      transport: transport([]),
+      onResponse: async () => {
+        t.mock.timers.tick(20000);
+      },
+      socket: () => {
+        sockets++;
+        return new UniverseSocket();
+      },
+    },
+  );
+  t.after(() => reader.close());
+
+  const result = await settle(t, reader.read(scope, markets, new AbortController().signal));
+  assert.equal(result.frames.length, 0);
+  assert.equal(sockets, 0);
+});
+
+test("blocked ownership or suspension cannot extend the stream deadline or start a late socket", async (t) => {
+  clocks(t);
+  let release: () => void = () => {};
+  const blocked = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let sockets = 0;
+  const urls: string[] = [];
+  const reader = createUniversePerplReader(
+    {
+      agent: async () => {
+        await blocked;
+        return agent();
+      },
+    },
+    {
+      acquisitionPolicy: "stream-universe-20s-v1",
+      transport: transport(urls),
+      socket: () => {
+        sockets++;
+        return new UniverseSocket();
+      },
+    },
+  );
+  t.after(() => reader.close());
+  const result = await settle(t, reader.read(scope, markets, new AbortController().signal));
+  assert.equal(result.frames.length, 0);
+  assert.ok(Date.now() - NOW <= 20100);
+  release();
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  assert.equal(sockets, 0);
+  assert.deepEqual(urls, []);
+});
+
+test("priority observation, initial evidence and shared final evidence use the same stream instance", async (t) => {
+  clocks(t);
+  const urls: string[] = [];
+  let sockets = 0;
+  const current = agent();
+  const data = createPriorityPerplStudyData(
+    { agent: async () => current },
+    {
+      acquisitionPolicy: "stream-universe-20s-v1",
+      transport: async (url) => {
+        urls.push(String(url));
+        if (String(url).endsWith("/context")) {
+          return Response.json(metadata());
+        }
+        const resolution = Number(/\/candles\/(\d+)\//.exec(String(url))?.[1]);
+        assert.ok([300, 900, 3600].includes(resolution));
+        const end = Math.floor(Date.now() / (resolution * 1000)) * resolution * 1000;
+        return Response.json({
+          at: { t: Date.now(), b: 1 },
+          r: resolution,
+          d: Array.from({ length: 60 }, (_, i) => ({
+            t: end - (60 - i) * resolution * 1000,
+            o: 100000,
+            c: 100000,
+            h: 100000,
+            l: 100000,
+            v: "1000",
+            n: 1,
+          })),
+        });
+      },
+      socket: () => {
+        sockets++;
+        const socket = new UniverseSocket();
+        socket.publicationAt = Date.now();
+        return socket;
+      },
+    },
+  );
+  t.after(() => data.close());
+  const record = {
+    config: {
+      version: 7,
+      protocol: "perps-sma-reentry-latency-v1",
+      tenantId: scope.tenantId,
+      sessionId: "controlled",
+      network: "mainnet",
+      hours: 6,
+      budgetUsd: "5",
+      markets,
+      acquisitionPolicy: "stream-universe-20s-v1",
+    },
+    agentIds: { "sma-reference": scope.agentId },
+  } as unknown as PerpsStudyRecord;
+  const parent = new AbortController();
+  const initial = await settle(
+    t,
+    data.prepareEvidence!(record, parent.signal, async () => {}),
+    70000,
+  );
+  const observation = await settle(
+    t,
+    data.observe(record, parent.signal, async () => {}),
+  );
+  const final = await settle(
+    t,
+    data.finalEvidence!(record, parent.signal, async () => {}),
+  );
+  assert.equal(initial.frames.length, 11);
+  assert.equal(initial.candles.length, 33);
+  assert.equal(observation.frames.length, 11);
+  assert.equal(final.frames.length, 11);
+  assert.equal(sockets, 1);
+  assert.equal(urls.filter((url) => /\/(ticker|book)(\?|$)/.test(url)).length, 0);
+});
+
+test("thirty controlled cold and warm measurements compare identical REST/stream financial inputs", async (t) => {
+  clocks(t);
+  const measurements: unknown[] = [];
+  for (const scenario of ["cold", "warm"] as const) {
+    for (const policy of ["rest-universe-coherent-20s-v2", "stream-universe-20s-v1"] as const) {
+      for (let repetition = 0; repetition < 30; repetition++) {
+        t.mock.timers.setTime(NOW);
+        const reader = createUniversePerplReader(
+          { agent: async () => agent() },
+          {
+            acquisitionPolicy: policy,
+            transport: transport([]),
+            socket: () => new UniverseSocket(),
+          },
+        );
+        const parent = new AbortController();
+        if (scenario === "warm") {
+          await settle(t, reader.read(scope, markets, parent.signal));
+        }
+        const start = Date.now();
+        const wall = performance.now();
+        const result = await settle(t, reader.read(scope, markets, parent.signal));
+        const wallMs = performance.now() - wall;
+        assert.equal(result.frames.length, 11);
+        assert.ok(
+          result.frames.every(
+            (f) =>
+              f.snapshot.ticker.mark === "1000" &&
+              f.book.bids[0]!.price === "999.9" &&
+              f.book.asks[0]!.price === "1000.1",
+          ),
+        );
+        measurements.push({
+          scenario,
+          policy,
+          repetition,
+          simulatedMs: Date.now() - start,
+          measuredWallMs: wallMs,
+          validMarkets: result.frames.length,
+        });
+        await reader.close();
+      }
+    }
+  }
+  if (process.env.PICKLER_CONTROLLED_TIMING_FILE) {
+    await writeFile(
+      process.env.PICKLER_CONTROLLED_TIMING_FILE,
+      JSON.stringify(
+        {
+          version: 1,
+          source: "CONTROLLED_FIXTURES_NO_PROVIDERS",
+          measurements,
+          limitation:
+            "Mock-clock scheduling and measured fixture processing are separate; neither measures public network latency.",
+        },
+        null,
+        2,
+      ),
+      { flag: "wx", mode: 0o600 },
+    );
+  }
+  assert.equal(measurements.length, 120);
 });
