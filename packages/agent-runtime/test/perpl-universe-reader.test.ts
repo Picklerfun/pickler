@@ -553,7 +553,51 @@ test("one unavailable stream market exhausts the original twenty seconds and is 
   assert.equal(result.excluded.length, 11);
   assert.ok(Date.now() - NOW >= 20000 && Date.now() - NOW <= 20100);
   assert.equal(urls.length, 1);
-  assert.equal(socket.sent.length, 1);
+  assert.equal(socket.sent.length, 2);
+  assert.equal(socket.sent[1], socket.sent[0]);
+});
+
+test("an incoherent warm stream requests provider snapshots without replacing dates or using REST", async (t) => {
+  clocks(t);
+  const urls: string[] = [];
+  const events: import("@pickler/infrastructure").PerplStreamEvent[] = [];
+  const socket = new UniverseSocket();
+  const reader = createUniversePerplReader(
+    { agent: async () => agent() },
+    {
+      acquisitionPolicy: "stream-universe-20s-v1",
+      transport: transport(urls),
+      onStream: (event) => events.push(event),
+      socket: () => {
+        queueMicrotask(() => socket.emit("open"));
+        return socket;
+      },
+    },
+  );
+  t.after(() => reader.close());
+  const parent = new AbortController().signal;
+  await settle(t, reader.read(scope, markets, parent));
+  t.mock.timers.tick(15000);
+  socket.emit("message", {
+    mt: 16,
+    sid: 3,
+    at: { t: Date.now(), b: 1 },
+    bid: [],
+    ask: [],
+  });
+  socket.publicationAt = Date.now();
+
+  const refreshed = await settle(t, reader.read(scope, markets, parent));
+
+  assert.equal(refreshed.frames.length, 11);
+  assert.equal(socket.sent.length, 2);
+  assert.equal(events.filter((event) => event.kind === "snapshot-request").length, 1);
+  assert.ok(refreshed.frames.every((f) => f.snapshot.ticker.provenance.providerTimestamp! > NOW));
+  assert.ok(refreshed.frames.every((f) => f.book.provenance.providerTimestamp! > NOW));
+  assert.deepEqual(
+    urls.map((url) => new URL(url).pathname),
+    ["/api/v1/pub/context"],
+  );
 });
 
 test("partial subscription rejection remains fatal rather than an availability omission", async (t) => {
