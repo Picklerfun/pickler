@@ -23,6 +23,7 @@ export async function createStreamCapture(
   let connections = 0;
   let disconnects = 0;
   let closed = false;
+  let processing: PerplStreamEvent["processing"];
   const errors: {
     code: string;
     receivedAt: number;
@@ -45,6 +46,9 @@ export async function createStreamCapture(
   const subscriptions = new Map<number, number>();
   return {
     record(event: PerplStreamEvent) {
+      if (event.processing) {
+        processing = { ...event.processing };
+      }
       if (event.kind === "connected") {
         connections++;
         subscriptions.clear();
@@ -135,6 +139,7 @@ export async function createStreamCapture(
         connections,
         disconnects,
         socketClosed: closed,
+        ...(processing ? { processing: { ...processing } } : {}),
         errors: errors.map((error) => ({
           ...error,
           ...(error.limit ? { limit: { ...error.limit } } : {}),
