@@ -27,3 +27,8 @@ readers. No database wait can build an asynchronous raw-message queue. Acquisiti
 actual provider updates; repeated subscribe acknowledgements do not provide new snapshots. The
 twenty-second deadline and thirty/five-second checks remain unchanged. There is no REST price
 fallback and no local rewriting of component dates.
+
+The separately selected `stream-universe-component-20s-v2` is a capture-only experiment.
+Forward its policy to acquisition and latest checks; do not default existing sessions to it.
+Adapter v4 copies advancing-heartbeat continuity without changing component timestamps. The
+host and infrastructure reject financial use; no model, signer or automatic promotion is added.
