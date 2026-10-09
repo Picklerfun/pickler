@@ -45,12 +45,17 @@ function acquisitionPolicy(
     policy !== "stream-20s-v1" &&
     policy !== "rest-universe-20s-v1" &&
     policy !== "rest-universe-coherent-20s-v2" &&
-    policy !== "stream-universe-20s-v1"
+    policy !== "stream-universe-20s-v1" &&
+    policy !== "stream-universe-component-20s-v2"
   ) {
     throw new PilotError("INVALID_INPUT", "Unknown frozen acquisition policy");
   }
   if (
-    ["rest-universe-coherent-20s-v2", "stream-universe-20s-v1"].includes(policy) &&
+    [
+      "rest-universe-coherent-20s-v2",
+      "stream-universe-20s-v1",
+      "stream-universe-component-20s-v2",
+    ].includes(policy) &&
     configured !== policy
   ) {
     throw new PilotError(
@@ -205,6 +210,12 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
   }
   async initialize(config: PerpsStudyConfig, metadata: unknown) {
     assertPerpsStudyConfig(config);
+    if (config.version === 7 && config.acquisitionPolicy === "stream-universe-component-20s-v2") {
+      throw new PilotError(
+        "DIAGNOSTIC_ACQUISITION_ONLY",
+        "Component stream policy cannot initialize financial accounts",
+      );
+    }
     await this.tx(async (c) => {
       await c.query("SELECT pg_advisory_xact_lock(hashtext($1))", [
         `perps-study:${config.tenantId}:${config.sessionId}:${config.network}`,
@@ -325,9 +336,11 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
       if (
         record.config.version !== 7 ||
         config.version !== 7 ||
-        !["rest-universe-coherent-20s-v2", "stream-universe-20s-v1"].includes(
-          config.acquisitionPolicy ?? "",
-        ) ||
+        ![
+          "rest-universe-coherent-20s-v2",
+          "stream-universe-20s-v1",
+          "stream-universe-component-20s-v2",
+        ].includes(config.acquisitionPolicy ?? "") ||
         canonical(frozenFields(record.config)) !== canonical(frozenFields(config))
       ) {
         throw new PilotError(
