@@ -554,7 +554,8 @@ Reusing a `failed` row assigns a fresh `id`, so every attempt owns its id; `sett
 only write a `pending` row, `refundOwed` and `attachJob` only a `settled` one (`attachJob` also only
 while `job_id` is null), and a write that matches nothing is a silent no-op, so a stale writer
 cannot touch a newer attempt. `byKey` returns `validBefore` as unix seconds. `saleTerms` is
-`null` without a public, unkilled, priced agent or without a wallet account.
+`null` without a public, unkilled, priced agent or without a wallet account. The API Worker builds
+it and the gateway per invocation, on that invocation's pool, only while x402 is on.
 
 Advice v2 call rows record the frozen forecast provider origin, not a misleading direct-DeepSeek label. Historical v1 rows retain their original meaning. This is a JSON policy extension and requires no schema migration.
 

@@ -392,7 +392,8 @@ row refuses with `invalid_payment` until its `validBefore` passed and `nonceUsed
 false; then it is marked `failed` (`expired_unsettled`) and the flow continues. An enqueue failure
 after settlement leaves the row `settled` without a job and rethrows, so the next request with the
 same key reuses that payment (D7); core does not call `refundOwed` in phase 1. Core stays pure:
-chain and database live behind the two ports.
+chain and database live behind the two ports. The API Worker composes it per request only behind
+`ADVICE_X402_ENABLED` (`paidAdviceFrom` in `workers/api/src/container.ts`).
 
 Advice pricing v2 pins the reviewed OpenAI-compatible forecast base URL and model in each job. Preserve v1 policies and their direct-DeepSeek meaning; provider changes require a new policy, never a historical rewrite.
 

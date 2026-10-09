@@ -145,6 +145,9 @@ representative contract tests in the same change.
 24-hour directional results and cursor history. No requester identity, internal scope, private
 configuration, prices/rates, prompts or provider traces may cross these DTOs. Wallet sign-in
 `kind` is `eoa | mera`. See [Agent advice](../../docs/agent-advice.md).
+`paymentRequirementsSchema`, `paymentErrorSchema` and `paymentRequiredSchema` are the x402 v1 402
+body of the paid advice request: x402's own shape, not the response envelope, with one `accepts`
+entry pinned to `exact`, `monad-testnet`, 300 s and the AUSD EIP-712 domain.
 
 ## Perpl paper runtime
 
