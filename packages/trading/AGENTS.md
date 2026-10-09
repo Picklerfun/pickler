@@ -254,3 +254,10 @@ same clock/deadline and never treats a refresh request as proof that a price tim
 The offline reader auditor accepts recorded universe adapter versions 1, 2 and 3. Three-read
 stream diagnostics remain explicitly `DIAGNOSTIC_ONLY_NOT_ACCEPTANCE`; admitting their offline
 analysis never makes them qualification or upgrades a recorded outcome.
+
+The separate capture-only `stream-universe-component-20s-v2` policy checks native component age
+and future bounds independently and requires advancing heartbeat continuity within five seconds.
+It records ticker/book skew without applying that gate. Financial `validatePaperFrame` and fill
+simulation retain their original skew rule. Stream report/audit v4 preserves the descriptor,
+strict-rule market/cycle counts and nonfinancial admission; reject contradictory metadata.
+Capture success never admits financial execution or changes a historical outcome.
