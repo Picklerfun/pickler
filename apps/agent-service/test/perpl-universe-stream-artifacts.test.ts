@@ -1,0 +1,111 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
+import { createHash } from "node:crypto";
+import { canonicalAudit, auditUniverseCapture } from "@pickler/trading/evaluation";
+import { PERPL_LAB_SYMBOLS } from "@pickler/core";
+import { createStreamCapture, publicMarketCsv } from "../src/perps-study/stream-capture.js";
+import { runReaderAudit } from "../src/perps-study/reader-audit.js";
+
+test("bounded public capture retains a hashed contiguous prefix and continues counters after truncation", async (t) => {
+  const directory = await mkdtemp(join(tmpdir(), "perpl-stream-capture-"));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const capture = await createStreamCapture(directory, 120);
+  capture.record({ kind: "connected", receivedAt: 1000, generation: 1 });
+  for (let i = 0; i < 10; i++) {
+    capture.record({
+      kind: "message",
+      receivedAt: 1001 + i,
+      generation: 1,
+      publicMessage: { mt: 100, sn: i + 1, h: i + 100 },
+    });
+  }
+  capture.record({ kind: "closed", receivedAt: 1020, generation: 2 });
+  await capture.flush();
+  const source = await readFile(join(directory, "events.jsonl"));
+  const facts = capture.summary();
+  assert.ok(source.length <= 120);
+  assert.equal(facts.bytes, source.length);
+  assert.equal(facts.hash, createHash("sha256").update(source).digest("hex"));
+  assert.equal(facts.truncated, true);
+  assert.equal(facts.socketClosed, true);
+  assert.equal(facts.messages, 10);
+  assert.ok(facts.droppedEvents > 0);
+});
+
+test("stream offline audit emits 330 identities, verifies frozen hashes and never forwards extra fields", async (t) => {
+  const directory = await mkdtemp(join(tmpdir(), "perpl-stream-audit-"));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const digest = (value: string) => createHash("sha256").update(value).digest("hex");
+  const config = {
+    markets: PERPL_LAB_SYMBOLS.map((symbol, i) => ({ symbol, marketId: i + 1 })),
+    acquisitionPolicy: "stream-universe-20s-v1",
+  };
+  const capture = {
+    version: 3,
+    protocol: "perps-universe-stability-v1",
+    commit: "a".repeat(40),
+    configurationHash: digest(canonicalAudit(config)),
+    catalogHash: digest(canonicalAudit(config.markets)),
+    config,
+    acquisitionPolicy: "stream-universe-20s-v1",
+    adapterVersion: "public-universe-stream-v1",
+    startedAt: 1000,
+    endsAt: 1801000,
+    ownershipFailures: 0,
+    reconstructionErrors: 0,
+    leaseReleased: true,
+    credentials: "DO_NOT_FORWARD_PRIVATE_FIELD",
+    stream: {
+      bytes: 0,
+      hash: digest(""),
+      truncated: false,
+      socketClosed: true,
+      connections: 1,
+      disconnects: 0,
+      messages: 0,
+    },
+    cycles: Array.from({ length: 30 }, (_, slot) => ({
+      slot,
+      at: 1000 + slot * 60000,
+      scheduledAt: 1000 + slot * 60000,
+      valid: false,
+      missed: false,
+      durationMs: 20000,
+      markets: config.markets.map((m) => ({ ...m, valid: false })),
+      acquisition: [],
+      frames: [],
+      requests: [],
+    })),
+  };
+  const result = auditUniverseCapture(capture);
+  assert.equal(result.rows.length, 330);
+  assert.equal(result.streamEvidence!.acquisitionMs.observations, 0);
+  assert.doesNotMatch(JSON.stringify(result), /DO_NOT_FORWARD|credentials/);
+  const statePath = join(directory, "report.json");
+  await writeFile(statePath, JSON.stringify(capture));
+  const one = await runReaderAudit(statePath, join(directory, "one"), new AbortController().signal);
+  const two = await runReaderAudit(statePath, join(directory, "two"), new AbortController().signal);
+  assert.deepEqual(one, two);
+  assert.equal((one.replay as { status: string }).status, "NOT_VERIFIABLE");
+  assert.equal(
+    (await readFile(join(directory, "one", "markets.csv"), "utf8")).trim().split("\n").length,
+    331,
+  );
+  capture.catalogHash = "0".repeat(64);
+  await writeFile(statePath, JSON.stringify(capture));
+  await assert.rejects(
+    runReaderAudit(statePath, join(directory, "bad"), new AbortController().signal),
+    { code: "INVALID_INPUT" },
+  );
+});
+
+test("market CSV protects formulas and quotes in recorded diagnostics", () => {
+  const csv = publicMarketCsv([
+    { slot: 0, markets: [{ symbol: "BTC", code: '=HYPERLINK("bad")', valid: false }] },
+  ]);
+  assert.match(csv, /'=HYPERLINK/);
+  assert.match(csv, /""bad""/);
+});
