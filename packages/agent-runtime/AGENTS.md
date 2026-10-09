@@ -250,3 +250,6 @@ Observation, evidence and final refresh share the same guarded socket through pr
 Metadata, candles and funding retain scoped REST; no price fallback or model/signing client is
 constructed. Diagnostic buffer callbacks are copied evidence and confer no execution permission.
 Absent selection keeps historical REST. See the local eleven-market WebSocket guide.
+Universe stream v2 batches ownership-checked updates and requests provider snapshots only during
+an invalid active acquisition. The same public reader serves all phases; no permission cache,
+timestamp rewriting, threshold relaxation or implicit REST price fallback is introduced.
