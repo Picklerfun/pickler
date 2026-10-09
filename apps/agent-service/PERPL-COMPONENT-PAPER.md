@@ -87,3 +87,24 @@ ahead of the database clock was rejected despite admissible native timestamps an
 The regression uses distinct receipt and financial clocks; PostgreSQL coordinator tests confirm
 open, valuation and deterministic stop closes while ledger dates remain database-owned.
 This proves the defect and its correction, not the missing historical failure values.
+
+## Captured execution lifetime regression
+
+The distinct corrected-clock session at `a09ec5c215ff98a03b1be790fa89effb45443dc3` stopped in its
+first slot with a recorded heartbeat age of 5,022ms against the unchanged 5,000ms limit. Four
+reference openings committed before the other account was rejected; native prices were fresh.
+Its safe diagnostics identify `heartbeat-expired-at-receipt-clock`. Preserve the partial slot,
+positions, fees and failed session. It cannot establish a paired financial result.
+
+Captured component-paper operations now combine existing admission, simulation and completion
+inside one fenced transaction, and reuse the returned committed view. Existing business helpers
+continue to check risk, final persisted evidence, ownership, hashes and hourly keys. Original
+component/heartbeat proof is revalidated before commit; expiry rolls back the attempt, fill,
+ledger and key together. A confirmed duplicate remains idempotent and creates no new fill.
+Historical, product and uncaptured execution retain their previous paths. This optimization does
+not refresh the heartbeat proof or change any 5/30-second threshold.
+
+Paired controlled PostgreSQL benchmarks use identical portfolios and evidence with thirty samples
+per execution path/scenario. Report actual monotonic durations separately from injected query
+clock delays, complete/partial outcomes, query counts and denominator. Controlled financial
+parity and expiry rollback do not prove future capture availability or profitability.
