@@ -76,6 +76,21 @@ export {
   createGetApplicant,
   createSubmitApplication,
 } from "./features/applications/application/applications.js";
+export type {
+  ApplicationDecision,
+  ApplicationReviewEntry,
+  ApplicationReviewFilter,
+  ApplicationReviewRepository,
+  ApplicationStatus,
+} from "./features/applications/ports/application-review-repository.js";
+export {
+  APPLICATION_DECISIONS,
+  APPLICATION_STATUSES,
+  ApplicationNotFoundError,
+  createApplicationReview,
+  DECISION_NOTE_MAX,
+  ReviewValidationError,
+} from "./features/applications/application/review-applications.js";
 
 export * from "./features/agents/domain/agents.js";
 export type { AgentDirectory } from "./features/agents/ports/agent-directory.js";

@@ -1,5 +1,5 @@
 import { createXOAuthService } from "@pickler/core";
-import { PostgresStudioAccessRequests } from "@pickler/infrastructure";
+import { PostgresApplicationReview, PostgresStudioAccessRequests } from "@pickler/infrastructure";
 import { createAdviceService } from "@pickler/core";
 import { PostgresAdviceStore } from "@pickler/infrastructure";
 import { parseAdvicePolicy } from "@pickler/trading/perps";
@@ -489,6 +489,7 @@ export function createServices(env: Env): Services & { close(): Promise<void> } 
           }),
       },
       accessRequests: new PostgresStudioAccessRequests(repository.pool),
+      applicationReview: new PostgresApplicationReview(repository.pool),
       admissionsEnabled: env.ADMISSIONS_ENABLED === "true",
       trading: {
         repository: new PostgresTradingStore(repository.pool),

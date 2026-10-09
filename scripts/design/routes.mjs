@@ -1119,7 +1119,8 @@ const ALL = [
     product: "studio",
     surface: "dark",
     task: "Creator access",
-    proves: "#creator-access-panel",
+    // The notice, and under it the operators' inbox the preview draws from fixture rows.
+    proves: "#creator-access-panel:has(#applications-inbox)",
   },
   // The signup's mandatory passkey step, straight after the code and before the handle: its one
   // prompt creates the sub-organization and the master wallet, and every signed-in screen sends a

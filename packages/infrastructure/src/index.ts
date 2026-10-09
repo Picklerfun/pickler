@@ -80,6 +80,7 @@ export {
   PostgresBudgetSource,
 } from "./persistence/agent-registry.js";
 export { PostgresApplicants, PostgresWaitlist } from "./persistence/growth-store.js";
+export { PostgresApplicationReview } from "./applicants/postgres-application-review.js";
 export { PostgresBudgetLedger } from "./studio/budget.js";
 
 export { databasePoolConfig, type DatabaseConnectionOptions } from "./persistence/connection.js";

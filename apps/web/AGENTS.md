@@ -790,18 +790,27 @@ See [Studio perpetual execution](../../docs/studio-perps-execution.md).
 
 ## Creator access requests
 
-The New agent access warning offers an authenticated request, never a passkey prompt or implicit
-approval. `features/studio/access-request.tsx` is also Account's Creator access section. It reads
-and posts `/v1/studio/access-request`; repeated requests keep the first timestamp. Preview controls
-never send requests. Server-authorized operators see a pending inbox in that section, using
-`SUPER_ADMIN_EMAILS`; ordinary users never receive another user's request. These are internal inbox
-notifications, not email/Slack/Telegram delivery. Approval remains the existing operator command.
+The way into the studio is the public application at `/apply` (docs/specs/landing-trade-v1.md §7),
+so the New agent access warning and Account's Creator access section
+(`features/studio/access-request.tsx`) no longer offer a request button: a signed-in person
+without access reads "Not approved yet", that the team reads every application and the invite
+lands by email, with a link to the application (`useMarketplaceHref("/apply")`) and "Check
+access". The component reads only `GET /v1/studio/access-request` for `status` and
+`canReviewRequests`; the POST is not called from the web any more. A server-authorized operator
+(`SUPER_ADMIN_EMAILS`) gets `features/studio/applications-inbox.tsx` under the notice in Account:
+the applications from `GET /v1/studio/applications`, filtered by status (To review, Invited,
+Rejected, All), each with its six answers, and Invite / Reject with an optional note through
+`PUT /v1/studio/applications/:id`. Inviting records the decision only; enabling studio access stays
+the operator command and the acceptance email is a later piece, which the inbox says. The preview
+(`?section=access`, outside production) draws the inbox from `PREVIEW_APPLICATIONS` and sends
+nothing; `scripts/design/routes.mjs` proves `#creator-access-panel:has(#applications-inbox)`.
 
 ## Creator access layout and loading
 
-The creation screen places the sole creator-access request panel inside Its wallet, step 0,
-rather than above the identity form. Pending requests show a status tag and one secondary refresh
-action; wallet creation stays blocked. On narrow screens this access card precedes the form.
+The creation screen places the sole creator-access notice inside Its wallet, step 0, rather than
+above the identity form. Without access it shows the "In review" tag, the link to the application
+and one secondary refresh action; wallet creation stays blocked. On narrow screens this access card
+precedes the form.
 The second-passkey reminder follows the setup fields. Account retains its own access section and
 server-authorized team inbox. Request submission and permission checks remain unchanged.
 

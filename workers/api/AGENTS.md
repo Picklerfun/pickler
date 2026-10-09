@@ -557,7 +557,16 @@ Studio access-request routes inherit JWT-only authentication. GET/POST `access-r
 own status and owner-only idempotent submission; GET `access-requests` requires the verified
 super-admin allowlist. All use private/no-store and generated OpenAPI schemas. Infrastructure
 records the internal team inbox notification; no external message transport or automatic grant is
-composed. Both Studio and its Console alias mount these operations.
+composed. Both Studio and its Console alias mount these operations. The web no longer offers the
+POST (docs/specs/landing-trade-v1.md §7: the way in is the public application), but the routes stay.
+
+Creator applications are reviewed through `routes/studio-applications.ts`, mounted beside them:
+GET `applications` (newest first, at most 500, `?status=submitted|invited|rejected`) and PUT
+`applications/:id` (`{ status: "invited" | "rejected", note? }`, note at most 500 characters).
+Both require the verified super-admin allowlist through core's `createApplicationReview`; a 403
+never reveals another person's answers. The one write is `growth.review_application` (migration
+0036), which records the status, the reviewer's email and the note; it enables no studio access
+and sends no email. Without `applicationReview` in `StudioServices` the routes answer 503.
 
 ## Dynamic Studio markets
 

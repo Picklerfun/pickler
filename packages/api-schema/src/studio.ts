@@ -420,3 +420,41 @@ export const studioAccessRequestsInboxSchema = z.object({
 });
 export type StudioAccessRequestStatusDto = z.infer<typeof studioAccessRequestStatusSchema>;
 export type StudioAccessRequestsInboxDto = z.infer<typeof studioAccessRequestsInboxSchema>;
+
+/* ---------- Creator applications, reviewed by operators (docs/specs/landing-trade-v1.md §7) ---------- */
+
+export const studioApplicationStatusSchema = z.enum(["submitted", "invited", "rejected"]);
+export const studioApplicationDecisionSchema = z.enum(["invited", "rejected"]);
+
+export const studioApplicationSchema = z.object({
+  id: z.number().int().positive(),
+  email: z.string(),
+  agentName: z.string(),
+  ticker: z.string(),
+  xHandle: z.string(),
+  category: z.string(),
+  personality: z.string(),
+  edge: z.string(),
+  whyYou: z.string(),
+  status: studioApplicationStatusSchema,
+  submittedAt: z.string().datetime(),
+  reviewedAt: z.string().datetime().nullable(),
+  reviewedBy: z.string().nullable(),
+  decisionNote: z.string().nullable(),
+  invitedAt: z.string().datetime().nullable(),
+});
+export const studioApplicationsSchema = z.object({
+  applications: z.array(studioApplicationSchema),
+});
+/** PUT /v1/studio/applications/:id — an operator's decision, with an optional note. */
+export const studioApplicationReviewRequestSchema = z
+  .object({
+    status: studioApplicationDecisionSchema,
+    note: z.string().max(500).optional(),
+  })
+  .strict();
+export type StudioApplicationDto = z.infer<typeof studioApplicationSchema>;
+export type StudioApplicationsDto = z.infer<typeof studioApplicationsSchema>;
+export type StudioApplicationReviewRequestDto = z.infer<
+  typeof studioApplicationReviewRequestSchema
+>;
