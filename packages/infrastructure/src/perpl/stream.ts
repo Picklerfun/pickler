@@ -9,8 +9,10 @@ import {
 import { atSchema, uint, tickerSchema } from "./wire.js";
 import { normalizePerplBook, normalizePerplTicker } from "./data.js";
 import { abortable } from "./transport.js";
+import type { UniverseStreamBuffer } from "@pickler/trading/perps";
 
 export const PERPL_STREAM_VERSION = "public-stream-v1";
+export const PERPL_UNIVERSE_STREAM_VERSION = "public-universe-stream-v1";
 const level = z.object({ p: uint.positive(), s: uint, o: uint });
 const bookMessage = z.object({
   mt: z.union([z.literal(15), z.literal(16)]),
@@ -38,8 +40,9 @@ const heartbeat = z.object({ mt: z.literal(100), sn: uint, h: uint });
 type Book = z.infer<typeof bookMessage>;
 type State = z.infer<typeof tickerSchema>["d"][string];
 export interface PerplStreamEvent {
-  kind: "message" | "disconnected" | "connected" | "error";
+  kind: "message" | "disconnected" | "connected" | "closed" | "catalog" | "error";
   receivedAt: number;
+  generation?: number;
   code?: string;
   publicMessage?: unknown;
 }
@@ -70,7 +73,17 @@ export class PerplStreamState {
     readonly markets: readonly PerpMarketInfo[],
     readonly url: string,
     readonly chainId: number,
-  ) {}
+  ) {
+    if (
+      markets.length === 0 ||
+      markets.length + 2 > 16 ||
+      new Set(markets.map((m) => m.marketId)).size !== markets.length ||
+      new Set(markets.map((m) => m.symbol)).size !== markets.length ||
+      markets.some((m) => m.provenance.chainId !== chainId)
+    ) {
+      fail("PERPL_STREAM_IDENTITY");
+    }
+  }
   reset() {
     this.subscriptions.clear();
     this.books.clear();
@@ -93,7 +106,7 @@ export class PerplStreamState {
       const msg = subscription.parse(raw);
       const subscriptionHash = JSON.stringify(msg);
       if (this.ready && subscriptionHash === this.lastSubscription) {
-        return;
+        return msg;
       }
       const expected = this.streams();
       if (
@@ -115,7 +128,7 @@ export class PerplStreamState {
       }
       this.ready = true;
       this.lastSubscription = subscriptionHash;
-      return;
+      return msg;
     }
     if (!this.ready) {
       fail("PERPL_STREAM_SUBSCRIPTION");
@@ -127,7 +140,7 @@ export class PerplStreamState {
         msg.sn === this.lastHeartbeat.sn &&
         msg.h === this.lastHeartbeat.h
       ) {
-        return;
+        return msg;
       }
       if (
         this.lastHeartbeat &&
@@ -136,7 +149,7 @@ export class PerplStreamState {
         fail("PERPL_STREAM_DISCONTINUITY");
       }
       this.lastHeartbeat = { sn: msg.sn, h: msg.h };
-      return;
+      return msg;
     }
     if (mt === 9) {
       const msg = stateMessage.parse(raw);
@@ -165,7 +178,7 @@ export class PerplStreamState {
           this.states.set(market.marketId, { state: next, receivedAt });
         }
       }
-      return;
+      return msg;
     }
     if (mt !== 15 && mt !== 16) {
       fail("PERPL_STREAM_MESSAGE");
@@ -178,7 +191,7 @@ export class PerplStreamState {
     }
     const serialized = JSON.stringify(msg);
     if (this.lastBookMessages.get(market.marketId) === serialized) {
-      return;
+      return msg;
     }
     const old = this.books.get(market.marketId);
     monotone(msg.at, old?.book.at);
@@ -207,7 +220,7 @@ export class PerplStreamState {
       msg.mt === 15 &&
       JSON.stringify(msg) === JSON.stringify(old.book)
     ) {
-      return;
+      return msg;
     }
     const update = (current: Book["bid"], changes: Book["bid"], direction: number) => {
       const levels = new Map(current.map((l) => [l.p, l]));
@@ -234,6 +247,50 @@ export class PerplStreamState {
     normalizePerplBook(market, { url: this.url, body: "", receivedAt }, book, 20, receivedAt);
     this.books.set(market.marketId, { book, receivedAt });
     this.lastBookMessages.set(market.marketId, serialized);
+    return msg;
+  }
+  /** Synchronous copy: no await can mix markets from different connection generations. */
+  components(symbols: readonly PerpSymbol[], now: number): UniverseStreamBuffer["components"] {
+    return symbols.map((symbol) => {
+      const source = this.markets.find((m) => m.symbol === symbol);
+      if (!source) {
+        fail("PERPL_STREAM_IDENTITY");
+      }
+      if (!this.ready) {
+        return { symbol };
+      }
+      const market = structuredClone(source);
+      const ticker = this.states.get(market.marketId);
+      const book = this.books.get(market.marketId);
+      return {
+        symbol,
+        ...(ticker
+          ? {
+              snapshot: {
+                market,
+                ticker: normalizePerplTicker(
+                  market,
+                  { url: this.url, body: "", receivedAt: ticker.receivedAt },
+                  ticker.state,
+                  now,
+                ),
+                funding: null,
+              },
+            }
+          : {}),
+        ...(book
+          ? {
+              book: normalizePerplBook(
+                market,
+                { url: this.url, body: "", receivedAt: book.receivedAt },
+                book.book,
+                20,
+                now,
+              ),
+            }
+          : {}),
+      };
+    });
   }
   frame(symbol: PerpSymbol, now: number): { snapshot: PerpSnapshot; book: PerpOrderBook } {
     const market = this.markets.find((m) => m.symbol === symbol);
@@ -289,6 +346,7 @@ export class PerplPublicStream {
   private queued = 0;
   private timer: ReturnType<typeof setInterval>;
   private checking = false;
+  private closing: Promise<void> | undefined;
   constructor(
     private readonly options: {
       markets: PerpMarketInfo[];
@@ -316,10 +374,19 @@ export class PerplPublicStream {
           this.checking = false;
         });
     }, 1000);
-    options.signal.addEventListener("abort", () => this.close(), { once: true });
+    options.signal.addEventListener(
+      "abort",
+      () => {
+        void this.close().catch(() => {});
+      },
+      { once: true },
+    );
   }
   private now() {
     return this.options.now?.() ?? Date.now();
+  }
+  private emit(event: PerplStreamEvent) {
+    this.options.event?.({ ...event, generation: this.generation });
   }
   private async guard() {
     this.options.signal.throwIfAborted();
@@ -335,7 +402,7 @@ export class PerplPublicStream {
     if (error instanceof PilotError && error.code === "PERPL_STREAM_DISCONTINUITY") {
       // A proven gap invalidates all state. Only guarded acquisition may resubscribe;
       // there is no background reconnect and no reuse of the previous book.
-      this.options.event?.({ kind: "error", receivedAt: this.now(), code: error.code });
+      this.emit({ kind: "error", receivedAt: this.now(), code: error.code });
       const socket = this.socket;
       this.socket = undefined;
       this.generation++;
@@ -350,15 +417,16 @@ export class PerplPublicStream {
             error instanceof PilotError ? "PERPL_STREAM_BOOK" : "PERPL_STREAM_MESSAGE",
             "Invalid public stream data",
           );
-    this.options.event?.({
+    this.emit({
       kind: "error",
       receivedAt: this.now(),
       code: this.fatal instanceof PilotError ? this.fatal.code : "PERPL_STREAM_MESSAGE",
     });
-    this.close();
+    void this.close().catch(() => {});
   }
   async connect(signal: AbortSignal) {
     await this.guard();
+    signal.throwIfAborted();
     if (this.socket?.readyState === 1) {
       return;
     }
@@ -391,7 +459,7 @@ export class PerplPublicStream {
       }
       this.state.reset();
       this.socket = undefined;
-      this.options.event?.({ kind: "disconnected", receivedAt: this.now() });
+      this.emit({ kind: "disconnected", receivedAt: this.now() });
     });
     socket.addEventListener("message", (event) => {
       if (generation !== this.generation || this.stopped) {
@@ -416,8 +484,8 @@ export class PerplPublicStream {
           }
           const raw = JSON.parse(event.data as string);
           // Only validated public-data message types can enter captures.
-          this.state.apply(raw, receivedAt);
-          this.options.event?.({ kind: "message", receivedAt, publicMessage: raw });
+          const publicMessage = this.state.apply(raw, receivedAt);
+          this.emit({ kind: "message", receivedAt, publicMessage });
         })
         .catch((error) => this.stopError(error))
         .finally(() => {
@@ -434,7 +502,7 @@ export class PerplPublicStream {
           subs: this.state.streams().map((stream) => ({ stream, subscribe: true })),
         }),
       );
-      this.options.event?.({ kind: "connected", receivedAt: this.now() });
+      this.emit({ kind: "connected", receivedAt: this.now() });
     } catch (error) {
       socket.close();
       this.state.reset();
@@ -446,14 +514,65 @@ export class PerplPublicStream {
     signal.throwIfAborted();
     await this.connect(signal);
     await this.guard();
+    signal.throwIfAborted();
     return this.state.frame(symbol, this.now());
   }
-  async close() {
+  /** Guarded buffer access only; this method never initiates a connection or REST fallback. */
+  async latest(symbols: readonly PerpSymbol[], signal: AbortSignal): Promise<UniverseStreamBuffer> {
+    await this.guard();
+    signal.throwIfAborted();
+    const pending = this.tail;
+    await abortable(pending, signal);
+    await this.guard();
+    signal.throwIfAborted();
+    if (this.socket?.readyState !== 1) {
+      fail("DATA_UNAVAILABLE");
+    }
+    const generation = this.generation;
+    const observedAt = this.now();
+    const components = this.state.components(symbols, observedAt);
+    await this.guard();
+    signal.throwIfAborted();
+    if (generation !== this.generation || this.socket?.readyState !== 1) {
+      fail("DATA_UNAVAILABLE");
+    }
+    return { generation, observedAt, components };
+  }
+  close(): Promise<void> {
+    if (this.closing) {
+      return this.closing;
+    }
     this.stopped = true;
     clearInterval(this.timer);
     this.generation++;
     this.state.reset();
-    this.socket?.close();
+    const socket = this.socket;
     this.socket = undefined;
+    this.closing = (async () => {
+      if (socket && socket.readyState !== 3) {
+        await new Promise<void>((resolve, reject) => {
+          const timer = setTimeout(
+            () => reject(new PilotError("PERPL_STREAM_CLEANUP", "Socket closure not confirmed")),
+            5000,
+          );
+          socket.addEventListener(
+            "close",
+            () => {
+              clearTimeout(timer);
+              resolve();
+            },
+            { once: true },
+          );
+          socket.close();
+          if (socket.readyState === 3) {
+            clearTimeout(timer);
+            resolve();
+          }
+        });
+      }
+      await this.tail;
+      this.emit({ kind: "closed", receivedAt: this.now() });
+    })();
+    return this.closing;
   }
 }
