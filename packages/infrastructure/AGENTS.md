@@ -630,3 +630,12 @@ commands, one-shot execution, and report limitations. Tests never make paid prov
 ## Local SMA v7 persistence and timing
 
 The existing study/paper JSONB supports v7 with two trusted entry policies. `perps-paper-store.ts` checks persisted initial/final gates and the common final fill under the account lock, consuming a once-hourly key only with a confirmed fill. Closes retain keys; accounts without the field retain historical semantics. No migration is required. `timeEvaluationPool` measures connections, queries and transactions without logging SQL, parameters, results or credentials; it preserves PostgreSQL fences and clock semantics. Capture qualification uses a separate study diagnostic lease and does not initialize paper accounts. See [protocol guide](../../apps/agent-service/PERPS-SMA-REENTRY.md).
+
+## Eleven-market public stream
+
+The existing `PerplPublicStream` also exposes guarded `latest` buffer copies for a full universe,
+with generation checks and cloned metadata. Public events include connection generations and
+validated allowlisted messages; never capture authentication or unfiltered errors. Keep existing
+message/queue/book bounds, discard disconnected state, and reconnect only within an admitted
+acquisition. Diagnostic v7 overrides may select the explicit stream policy without changing
+source accounts or histories. No schemas, migrations, signing, or hosted transport changes.
