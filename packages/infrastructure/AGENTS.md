@@ -604,6 +604,12 @@ for an independent v7 coherent-v2 diagnostic sourced from a historical v1 study.
 configuration, permits only that acquisition selection and the new diagnostic session ID, and
 retains every other frozen field and source agent ID. It creates no agents or paper accounts.
 
+Request diagnostics v3 add optional numeric `marketId` for recognized individual-market book and
+ticker paths, including requests cancelled while queued. Bulk ticker and other paths omit the
+field; diagnostics never include the full URL, query or response body. Legacy v2/absent versions
+remain readable. This instrumentation does not retroactively attribute historical requests and
+has only controlled-test validation until separately authorized public capture.
+
 ## SMA profiles and selective exposure laboratory
 
 Local `perps-sma-profile-risk-v1` configuration v6 has four independent variants:
