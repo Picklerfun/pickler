@@ -70,4 +70,50 @@ one isolated thirty-minute qualification. Keep all original limits except the se
 skew eligibility policy; never enlarge them to obtain a pass. Require at least 29/30 joint cycles,
 330 market rows, zero reconstruction/permission/ownership errors, socket closure and PostgreSQL
 release. Report both experimental availability and the unchanged strict-rule count. The new
-measurement remains pending until its report exists; no automatic economic run follows it.
+acceptance is determined only from the completed report and independent verification; no automatic
+economic run follows it.
+
+## Completed public qualification
+
+The single new measurement ran **2026-10-09 16:33–17:03 UTC** (11:33–12:03 America/Bogota)
+from clean frozen commit `46bcca8c36d91edd0508ff05e3f6b6aedab304df`.
+It passed the experimental capture policy: **30/30 joint cycles, 330/330 market observations**,
+no missed windows, zero reconstruction or ownership errors, 91 successful lease renewals and
+no failed renewal. One disconnect was recovered within an active acquisition using a second
+connection with new subscriptions/snapshots; prior-generation state was discarded.
+
+All 40,589 received messages were reconstructed. The 23,681,378-byte retained capture was not
+truncated and replayed completely offline across two generations. Acquisition duration was
+40.120 ms median and 3,101.967 ms p95 over thirty successful cycles, including cold boot and
+reconnection. These are acquisition durations, not provider publication latency.
+
+An independent verifier reapplied the business validation to all 330 stored frames at their
+original common clocks, verified configuration/catalog/frame/capture hashes, and checked release
+in a repeatable-read, read-only PostgreSQL transaction. Ownership and expiry were cleared,
+no live owner remained, and the diagnostic contained zero accounts and zero decision rounds.
+The socket was closed. New model calls, tokens and monetary reserves were zero.
+
+The unchanged strict rule accepts **11/30 of these same joint snapshots**. Therefore the
+new result establishes availability under independent component freshness, not compliance
+with the original five-second skew gate. Financial validation remains unchanged and this
+configuration is rejected by financial initialization and commands. No economic run followed.
+The original failed 17/30 report and retained events were hash-checked again and remain unchanged.
+
+New artifacts under the ignored local study directory:
+
+- `perpl-universe-component-config-20261009/study.json`: explicit frozen selection.
+- `perpl-universe-component-qualification-20261009/`: thirty-slot HTML/CSV/JSON and public capture.
+- `perpl-universe-component-audit-20261009/`: offline v4 audit and complete replay.
+- `perpl-universe-component-proof-20261009/`: independent frame and PostgreSQL verification.
+- `perpl-universe-component-conclusion-20261009/`: readable conclusion and 330-row CSV.
+
+The new report SHA-256 is
+`d4219ba01505ee124553204b239484e2b2a5dfbef37bbf25b9fc4302e9755d04`.
+The retained events SHA-256 is
+`612c826ed6794f83f52e081e3e0d5ae512a02fb9cbb245e2e2d2d09902b71658`.
+
+Local checks passed: format, lint, types across all consumers, architecture, PostgreSQL-backed
+root suite (2,973 passed, zero failed, three skipped), Node build and Workers builds. The code
+head's nine CI checks passed, including rendered design. Controlled regressions are distinct
+from this prospective qualification. Changes retain one file per commit; no merge or deployment
+was performed.
