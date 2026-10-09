@@ -50,6 +50,11 @@ The new reader:
   markets, receipt date, per-market source date and block. No credentials, complete headers,
   raw bodies or unfiltered error messages are recorded.
 
+Request diagnostics v3 additionally identify recognized individual book/ticker requests by numeric
+market ID, including cancellation before dispatch. Bulk requests omit that field. This last
+instrumentation change has controlled-test validation only: it was added after the public
+diagnostic below and cannot retroactively identify its HTTP targets.
+
 The new policy is recorded in both study metadata and persisted diagnostic state. A configuration
 or metadata mismatch fails closed. Confirmed financial rules, positions, unknown costs and budgets
 are outside this change.
@@ -69,6 +74,10 @@ provider-mode flags. It writes HTML, JSON and two CSV files in a new directory o
 the exact input byte hash and original/analyzer commits, allowlists output fields, distinguishes
 logical checks from network calls, and retains unavailable cache attribution as `NOT_VERIFIABLE`.
 It never modifies the source file or reconstructs responses to requests that were not made.
+Audit protocol v2 excludes initial ticker-only preparation from recovery intervals. An interval
+starts at the first invalid check with both original source dates and ends at its next check;
+it does not require that next check to succeed. Do not compare this with an earlier audit that
+included initial book preparation, or interpret it as request latency.
 
 ## Controlled proof and its limits
 
@@ -112,6 +121,65 @@ This diagnostic cannot satisfy or bypass the separate thirty-minute 29/30 qualif
 economic comparison remains gated by an independently frozen, passing qualification and operator
 planning; this correction does not restart the failed acceptance or the six-hour comparison.
 
+## Recorded three-capture outcome
+
+The single bounded diagnostic ran at commit
+`e6eb1a8d0abf03d09080c741e4092a52b19da485`, beginning at 00:18:00 UTC on 2026-10-09
+(the evening of 2026-10-08 in Bogota). It completed all three scheduled opportunities,
+without retries or lost ownership: **0/3 joint sets and 25/33 individual market captures valid**.
+There were 55 HTTP 200 responses, three cancellations while queued, no HTTP 400/429, fourteen
+ticker emissions from the network and zero from cache. Five renewals succeeded and the lease was
+released. No accounts, positions, models, tokens or monetary reservations were created.
+
+These are the last observed candidates, not accepted final snapshots. All available components
+were within thirty seconds of age; the seven date-pair failures exceeded the five-second skew.
+The dates are UTC on 2026-10-09.
+
+| Slot | Market | Last ticker | Last book | Skew         | Recorded exclusion       |
+| ---- | ------ | ----------- | --------- | ------------ | ------------------------ |
+| 0    | SOL    | 00:18:17    | 00:18:09  | 8 s          | INCONSISTENT_MARKET_DATA |
+| 0    | UNI    | 00:18:11    | Missing   | Unverifiable | DATA_UNAVAILABLE         |
+| 1    | HYPE   | 00:18:40    | 00:18:33  | 7 s          | INCONSISTENT_MARKET_DATA |
+| 1    | ZEC    | 00:18:40    | 00:18:34  | 6 s          | INCONSISTENT_MARKET_DATA |
+| 1    | LIT    | 00:18:41    | 00:18:35  | 6 s          | INCONSISTENT_MARKET_DATA |
+| 2    | SOL    | 00:19:05    | 00:18:56  | 9 s          | INCONSISTENT_MARKET_DATA |
+| 2    | HYPE   | 00:19:06    | 00:18:56  | 10 s         | INCONSISTENT_MARKET_DATA |
+| 2    | LIT    | 00:19:06    | 00:19:00  | 6 s          | INCONSISTENT_MARKET_DATA |
+
+Slot 0 SOL had both dates at 00:18:09 when checked at 00:18:12.677. A genuinely new bulk ticker,
+received at 00:18:17.779, advanced the ticker to 00:18:17 while its book remained 00:18:09.
+The common latest-state check correctly excluded that now-incoherent pair. Serial collection of
+eleven books, intervening aggregate refreshes, measured response durations and mandatory spacing
+consume the available deadline; they do not guarantee convergence as source dates advance.
+
+Slot 0's last book operation entered our queue at 00:18:19.799, never started an HTTP request,
+and was cancelled after 216.208 ms. The next permitted start was 00:18:20.478, after the cycle's
+00:18:20.013 deadline. The frozen scheduler's sequence identifies the pending asset as UNI;
+the historical request diagnostic itself has no market ID, so that attribution is derived from
+the code and sequence. Slots 1 and 2 also ended with queued operations that could not dispatch
+before their deadline. These are not evidence of HTTP rejection or an unresponsive Perpl book.
+
+The first already-acquired invalid BTC pairs were checked again after 2,158, 941 and 764 ms.
+These are logical validation intervals, not causal before/after estimates; the three captures
+and the original thirty-minute qualification occurred at different market times. Neither this
+sample nor the controlled improvement establishes 29/30 joint availability or economic benefit.
+The captures contain no raw bodies that could explain Perpl's internal timestamp publication.
+
+Local immutable artifacts under `apps/agent-service/.data/perps-studies/` are:
+
+- `perpl-reader-check-capture-v2-20261008/report.{json,csv,html}`: original three-capture output.
+- `perpl-reader-check-capture-v2-20261008/lease-proof.json`: independent read-only PostgreSQL
+  check of release, zero diagnostic accounts/rounds and unchanged original study.
+- `perpl-reader-original-audit-20261008/`: offline facts from the thirty-minute original capture.
+- `perpl-reader-v2-reviewed-audit-20261008/`: reviewed offline analysis with initial book
+  preparation excluded from repair intervals. Preserve the earlier audit directory separately.
+
+The three-capture JSON byte SHA-256 is
+`4d5a86e4c8d86cfbe1a9bf47b9a6b96e382e1d546114ec60db4419c77059aeb7`.
+The independent PostgreSQL comparison matched the original study's canonical state hash before
+and after: `48e9ec5bf469d4ad56513783ba35fc941ba9e68f021c57312bb2e579ece6542b`.
+Reader corrections are demonstrated; eleven-market capture acceptance remains **not achieved**.
+
 ## Execution hosts
 
 The failed qualification uses local Node APIs, records the checkout commit and permits only
@@ -120,3 +188,7 @@ The separately deployed product API is Hono in `workers/api`; the web forwards `
 through its Cloudflare Service Binding. Its public OpenAPI route is a safe read-only availability
 check and does not execute Perpl reads or models. A successful contract GET verifies API
 reachability, not every authenticated operation or provider integration.
+The explicit GET of
+`https://pickler-web-staging.gilbertsahumada.workers.dev/api/v1/openapi.json`
+returned HTTP 200 with OpenAPI 3.1.0 and 173 documented paths. This does not establish the
+currently deployed source commit or the readiness of every operation.
