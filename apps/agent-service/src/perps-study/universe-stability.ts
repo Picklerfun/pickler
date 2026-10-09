@@ -64,6 +64,12 @@ export async function runUniverseStability(
   if (config.version !== 7) {
     throw new PilotError("INVALID_INPUT", "Eleven-market v7 required");
   }
+  if (config.acquisitionPolicy === "stream-universe-component-paper-20s-v1") {
+    throw new PilotError(
+      "INVALID_INPUT",
+      "Paper policy adopts its explicitly pinned capture; it is not a capture selector",
+    );
+  }
   const diagnosticOnly = input.diagnosticOnly === true;
   const componentStream = config.acquisitionPolicy === UNIVERSE_COMPONENT_STREAM_POLICY;
   const streaming = config.acquisitionPolicy === "stream-universe-20s-v1" || componentStream;
