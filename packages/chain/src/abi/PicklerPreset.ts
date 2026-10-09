@@ -17,14 +17,34 @@ export const PicklerPresetAbi = [
   },
   {
     "type": "error",
+    "name": "InvalidQuoteDecimals",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "InvalidQuoteToken",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidReferenceProfile",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidTotalSupply",
     "inputs": []
   },
   {
     "type": "error",
     "name": "ReservesDoNotMatchAllocations",
     "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "UnsupportedPrecisionPolicy",
+    "inputs": []
   }
 ] as const;
 
-export const PicklerPresetAbiHash = "fff354233155b6b838860d19600a30bc73e364051907a0d0f339c1931b0f8a26";
+export const PicklerPresetAbiHash = "a23551357b65daf610913dd985922eb5fa0ecade2192a9193f306d69d9465ce8";

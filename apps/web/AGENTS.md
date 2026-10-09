@@ -1077,13 +1077,24 @@ only on labelled local stages. Chart geometry is memoized during point inspectio
 `features/tokens` owns presentation and transport for the existing `/studio/agents/:id/token` route
 in both draft and live Studio. It reuses the persistent shell and memory-only form store. Reads keep
 fields mounted with Skeletons; errors require explicit retry, and newer versions cannot silently
-overwrite preserved edits. The hosted Review launch control stays disabled. A private agent shows
+overwrite preserved edits. The Launch token control stays disabled in every composition, including fixtures. A private agent shows
 Go public first. The shared `AgentTokenCard` appears below public persona headers and distinguishes
 absence and pending confirmation without a visitor launch action.
 
 Development-only `perpl-token-empty`/`perpl-token-launched` and public
-`/agents/halftime?stage=token-empty|token-launched` fixtures support explicit simulated review,
-cancellation, failure and confirmation. They cannot use passkeys, providers or fake explorer links
+`/agents/halftime?stage=token-empty|token-launched` fixtures show static empty/confirmed states and live draft details beneath the form.
+Supply is fixed at 21 million; no review/simulation button or artificial transaction phases remain.
+The compact launcher reuses Meter for the allocation track, with textual percentages/amounts,
+creator wallet and admin roles, and an inline fee grid. The full wallet address remains available
+in its abbreviation title. Edits update identity locally without additional API requests.
+The optional version-2 `economics` state supplies approved reference terms, independently of signer
+availability. The browser formats prepared amounts only; it must not duplicate curve formulas.
+`reference-economics.json` is generated from core and chain metadata with `npm run tokens:fixtures`,
+and the web test rejects drift. Summary values include AUSD FDVs/net backing, 80/20 allocation,
+1% buy/sell fees, a 50/50 split and zero AUSD launch fee; gas is separately MON without an estimate.
+Missing economics do not receive a fake fallback. Post-migration fees show Pending DEX configuration.
+Creator/master details come from private state; never infer token admin privileges from that wallet.
+Fixtures cannot use passkeys, providers or fake explorer links
 and are refused in production. `scripts/design/token-preview.mjs` checks both states at desktop/mobile
 sizes, keyboard and persistent navigation; Design CI runs it. The controlled loading regression
 covers private token reads and preserved edits. See [the guide](../../docs/agent-token-preview.md).

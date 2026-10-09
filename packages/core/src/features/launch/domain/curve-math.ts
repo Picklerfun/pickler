@@ -49,3 +49,97 @@ export function remainingTokens(config: CurveConfig, netSold: bigint): bigint {
 function ceilDiv(numerator: bigint, denominator: bigint): bigint {
   return numerator === 0n ? 0n : (numerator - 1n) / denominator + 1n;
 }
+
+/** Derives virtual reserves with the same floors as Solidity. */
+export function deriveCurveReserves(
+  saleAllocation: bigint,
+  lpAllocation: bigint,
+  targetReserve: bigint,
+): CurveConfig {
+  if (lpAllocation <= 0n || lpAllocation >= saleAllocation || targetReserve <= 0n) {
+    throw new RangeError("Invalid curve allocation");
+  }
+  const virtualTokenReserve = (saleAllocation * saleAllocation) / (saleAllocation - lpAllocation);
+  const virtualQuoteReserve =
+    (targetReserve * (virtualTokenReserve - saleAllocation)) / saleAllocation;
+  if (virtualQuoteReserve === 0n) {
+    throw new RangeError("Empty virtual quote reserve");
+  }
+  return { saleAllocation, virtualTokenReserve, virtualQuoteReserve };
+}
+
+/** Whole quote asset per whole 18-decimal token, scaled by 1e18. */
+export function curveMarginalPriceWad(
+  config: CurveConfig,
+  netSold: bigint,
+  quoteDecimals: number,
+): bigint {
+  if (
+    !Number.isInteger(quoteDecimals) ||
+    quoteDecimals < 0 ||
+    quoteDecimals > 18 ||
+    netSold < 0n ||
+    netSold > config.saleAllocation
+  ) {
+    throw new RangeError("Invalid normalized curve price");
+  }
+  const x = config.virtualTokenReserve - netSold;
+  return (
+    (config.virtualTokenReserve * config.virtualQuoteReserve * 10n ** BigInt(36 - quoteDecimals)) /
+    (x * x)
+  );
+}
+
+/** Gross quote returned before sell fees. */
+export function quoteOutForTokensIn(
+  config: CurveConfig,
+  netSold: bigint,
+  tokensIn: bigint,
+): bigint {
+  if (tokensIn === 0n) {
+    return 0n;
+  }
+  const k = config.virtualTokenReserve * config.virtualQuoteReserve;
+  const x = config.virtualTokenReserve - netSold;
+  const q = k / x;
+  const next = ceilDiv(k, x + tokensIn);
+  return next >= q ? 0n : q - next;
+}
+
+/** Net quote required for exact output, including the final remaining inventory. */
+export function quoteInForTokensOut(
+  config: CurveConfig,
+  netSold: bigint,
+  tokensOut: bigint,
+): bigint {
+  if (tokensOut < 0n || tokensOut > remainingTokens(config, netSold)) {
+    throw new RangeError("Sale allocation exceeded");
+  }
+  if (tokensOut === 0n) {
+    return 0n;
+  }
+  const k = config.virtualTokenReserve * config.virtualQuoteReserve;
+  const x = config.virtualTokenReserve - netSold;
+  const q = k / x;
+  const next = ceilDiv(k, x - tokensOut);
+  return next <= q ? 1n : next - q;
+}
+
+/** Directional fee rounding, identical for buy/sell in the contract. */
+export function splitCurveFee(gross: bigint, feeBps: number): { fee: bigint; net: bigint } {
+  checkFee(gross, feeBps);
+  const fee = ceilDiv(gross * BigInt(feeBps), 10_000n);
+  return { fee, net: gross - fee };
+}
+
+/** Gross quote required to cover a net amount; exact-output contract rounding. */
+export function curveGrossFromNet(net: bigint, feeBps: number): bigint {
+  checkFee(net, feeBps);
+  return ceilDiv(net * 10_000n, 10_000n - BigInt(feeBps));
+}
+
+function checkFee(amount: bigint, bps: number) {
+  if (amount < 0n || !Number.isInteger(bps) || bps < 0 || bps >= 10_000) {
+    throw new RangeError("Invalid curve fee");
+  }
+}

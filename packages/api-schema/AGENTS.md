@@ -222,7 +222,14 @@ meaning or requiring legacy/sample producers to fabricate history.
 
 `src/token-launch.ts` exports strict name/ticker/version inputs, token state, preset and authorization
 schemas and portable DTOs through the package root. Base units and nonces are decimal strings;
-networks are explicit Monad chain IDs. Public persona DTOs add optional nullable `launchedToken`
+networks are explicit Monad chain IDs. `AGENT_TOKEN_TOTAL_SUPPLY` mirrors the business-owned fixed
+21-million supply for new launches. Owner-only token state adds optional nullable `masterAddress`;
+older producers may omit it. Optional nullable `economics` uses the version-2
+`tokenReferenceEconomicsSchema`: explicit quote identity/decimals, atomic reserves, WAD prices/FDVs,
+distribution, curve fees and pending DEX state. Reference terms are not a published preset or an
+execution quote; unknown versions fail. Historical preset/token reads are not constrained to
+new-launch policy.
+Public persona DTOs add optional nullable `launchedToken`
 and `tokenConfirmation` for historical consumers. Absence, confirmation pending and failed reads
 are different outcomes. No signer, credentials, provider trace or metadata persistence belongs here.
 OpenAPI is generated from API route metadata; see [the token guide](../../docs/agent-token-preview.md).

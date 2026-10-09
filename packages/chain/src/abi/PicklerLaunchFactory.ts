@@ -1064,12 +1064,27 @@ export const PicklerLaunchFactoryAbi = [
   },
   {
     "type": "error",
+    "name": "InvalidQuoteDecimals",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "InvalidQuoteToken",
     "inputs": []
   },
   {
     "type": "error",
+    "name": "InvalidReferenceProfile",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "InvalidShortString",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidTotalSupply",
     "inputs": []
   },
   {
@@ -1122,7 +1137,12 @@ export const PicklerLaunchFactoryAbi = [
     "type": "error",
     "name": "SupplyTransferFailed",
     "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "UnsupportedPrecisionPolicy",
+    "inputs": []
   }
 ] as const;
 
-export const PicklerLaunchFactoryAbiHash = "aac0d4def9b590a888efd4ae7751ce58c99540a76d0e0e6857dd623de4f4d6b1";
+export const PicklerLaunchFactoryAbiHash = "eae13d37440fab33ba3d343f2f76c9d5233e767460eb66a2fdc2d81cdcc06844";

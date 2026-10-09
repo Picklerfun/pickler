@@ -25,7 +25,7 @@ export function studioTokenRoutes(services: StudioServices) {
       errors: dto.studioErrorSchema,
       errorStatuses: errors,
       description:
-        "Owner-only stored token intent and confirmed token identity. No chain or signer call. Launch authorization is unavailable in ordinary composition.",
+        "Owner-only stored token intent, confirmed identity and optional reference economics. Reference terms are not a published preset or executable quote. No chain or signer call. Launch authorization is unavailable in ordinary composition.",
     }),
     async (c) => {
       const target = await scope(c);

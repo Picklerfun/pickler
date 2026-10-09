@@ -58,14 +58,14 @@ const ALL = [
   },
   {
     path: "/studio/agents/preview-live/token?stage=perpl-token-empty",
-    name: "studio-token-review",
+    name: "studio-token-saved-draft",
     product: "studio",
     surface: "dark",
     task: "Agent token preview",
     proves: "#live-section-token",
     act: {
-      click: "button:text-is('Review launch')",
-      proves: "section[aria-label='Review token launch']",
+      click: "button:text-is('Save draft')",
+      proves: "p[role=status]:text-is('Draft saved')",
     },
   },
   {

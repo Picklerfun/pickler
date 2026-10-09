@@ -455,7 +455,16 @@ market history only; no strategy, horizon or financial policy changes with the c
 context, draft/preset/authorization contracts, `TokenLaunchRepository`, `TokenGrantIssuer` and
 `TokenLaunchError` through the package root. Admission requires enabled creator access, workspace
 ownership, actual publication, a registered master wallet and no confirmed or pending token on the
-server-selected chain. Drafts allow private agents, use optimistic versions and cannot change during
+server-selected chain. `AGENT_TOKEN_TOTAL_SUPPLY` fixes all new launches to exactly 21 million
+18-decimal tokens. The issuer preset must match this supply and fully allocate it before any
+signature; it is checked again before recording. Owner-only state includes the registered master
+address, which also receives creator fees. Historical projections remain readable.
+Drafts allow private agents, use optimistic versions and cannot change during
 an active grant. Five-minute authorizations are idempotent and bind server-owned parameters.
-No SDK, HTTP object or signer key belongs in core. Ordinary composition omits the issuer and refuses
-authorization. See [the token guide](../../docs/agent-token-preview.md) and `test/token-launch.test.ts`.
+`features/launch/domain/token-economics.ts` exports `tokenReferenceEconomics` and its version-2
+business contract. The host supplies reviewed six-decimal AUSD metadata; core derives reference
+reserves, normalized prices, FDVs and net backing using the pure curve functions exported at the
+package root. Legacy buy vectors and new buy/sell/exact-output/fee/price vectors match Solidity.
+Owner state may include this reference independently of `TokenGrantIssuer`; it never grants launch
+availability or supplies an operational preset. No SDK, HTTP object or signer key belongs in core.
+Ordinary composition omits the issuer and refuses authorization. See [the token guide](../../docs/agent-token-preview.md) and `test/token-launch.test.ts`.

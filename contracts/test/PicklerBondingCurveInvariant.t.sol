@@ -22,20 +22,23 @@ contract CurveTrader {
     MockERC20 public immutable QUOTE;
     PicklerAgentToken public immutable TOKEN;
 
+    uint256 public immutable MAX_BUY;
+
     uint256 public buysFilled;
     uint256 public sellsFilled;
 
-    constructor(PicklerBondingCurve curve_, MockERC20 quote_, PicklerAgentToken token_) {
+    constructor(PicklerBondingCurve curve_, MockERC20 quote_, PicklerAgentToken token_, uint256 maxBuy_) {
         CURVE = curve_;
         QUOTE = quote_;
         TOKEN = token_;
+        MAX_BUY = maxBuy_;
 
         QUOTE.approve(address(CURVE), type(uint256).max);
         TOKEN.approve(address(CURVE), type(uint256).max);
     }
 
     function buy(uint256 amount) external {
-        amount = _bound(amount, 1, 200e6);
+        amount = _bound(amount, 1, MAX_BUY);
 
         if (QUOTE.balanceOf(address(this)) < amount) {
             return;
@@ -65,7 +68,7 @@ contract CurveTrader {
 
     /// Anyone can send the curve money. It must never count as anyone's.
     function donate(uint256 amount) external {
-        amount = _bound(amount, 1, 1_000e6);
+        amount = _bound(amount, 1, 21_000_000e6);
 
         QUOTE.mint(address(CURVE), amount);
     }
@@ -84,8 +87,8 @@ contract CurveTrader {
 }
 
 contract PicklerBondingCurveInvariantTest is Test {
-    uint256 internal constant SALE_ALLOCATION = 800e18;
-    uint256 internal constant LP_ALLOCATION = 200e18;
+    uint256 internal constant SALE_ALLOCATION = 16_800_000e18;
+    uint256 internal constant LP_ALLOCATION = 4_200_000e18;
 
     PicklerBondingCurve internal curve;
     PicklerAgentToken internal token;
@@ -94,12 +97,16 @@ contract PicklerBondingCurveInvariantTest is Test {
 
     address internal feeEscrow;
 
-    function setUp() public {
+    function setUp() public virtual {
+        _setUp(21_000_000e6, 1);
+    }
+
+    function _setUp(uint256 targetReserve, uint32 precisionPolicy) internal {
         feeEscrow = address(new RecordingFeeEscrow());
 
         quote = new MockERC20("Quote", "QUOTE", 6);
 
-        (uint256 x0, uint256 q0) = PicklerCurveMath.deriveReserves(SALE_ALLOCATION, LP_ALLOCATION, 1_000e6);
+        (uint256 x0, uint256 q0) = PicklerCurveMath.deriveReserves(SALE_ALLOCATION, LP_ALLOCATION, targetReserve);
 
         PicklerPreset.LaunchPreset memory preset = PicklerPreset.LaunchPreset({
             presetId: 1,
@@ -117,15 +124,15 @@ contract PicklerBondingCurveInvariantTest is Test {
             lpFeeTier: 10000,
             lpTickSpacing: 200,
             launchFee: 0,
-            roundingPolicyVersion: 1
+            roundingPolicyVersion: precisionPolicy
         });
 
         curve = new PicklerBondingCurve(preset, makeAddr("adapter"), feeEscrow);
         token = new PicklerAgentToken("Agent", "AGENT", SALE_ALLOCATION + LP_ALLOCATION, address(curve));
         curve.initialize(address(token));
 
-        trader = new CurveTrader(curve, quote, token);
-        quote.mint(address(trader), 15_000e6);
+        trader = new CurveTrader(curve, quote, token, precisionPolicy == 1 ? 4_200_000e6 : 1_000e6);
+        quote.mint(address(trader), 315_000_000e6);
 
         targetContract(address(trader));
     }
@@ -160,5 +167,12 @@ contract PicklerBondingCurveInvariantTest is Test {
     /// Fees only ever go to the escrow, so whatever left the curve as fees has to be there.
     function invariant_remittedFeesAreAllAtTheEscrow() public view {
         assertLe(curve.accruedFees(), quote.balanceOf(address(curve)));
+    }
+}
+
+/// Identical inventory/solvency invariants at the approved reference scale.
+contract PicklerReferenceCurveInvariantTest is PicklerBondingCurveInvariantTest {
+    function setUp() public override {
+        _setUp(32_000e6, 2);
     }
 }

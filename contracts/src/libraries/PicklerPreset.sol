@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.30;
 
+import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+
 import {PicklerCurveMath} from "./PicklerCurveMath.sol";
 
 /// @title Pickler launch preset
@@ -32,11 +34,17 @@ library PicklerPreset {
         uint32 roundingPolicyVersion;
     }
 
+    error UnsupportedPrecisionPolicy();
+    error InvalidReferenceProfile();
+    error InvalidQuoteDecimals();
+    error InvalidTotalSupply();
     error AllocationsDoNotSumToSupply();
     error ReservesDoNotMatchAllocations();
     error EndPriceBelowPrecisionFloor();
     error FeeOutOfRange();
     error InvalidQuoteToken();
+
+    uint256 internal constant TOTAL_SUPPLY = 21_000_000e18;
 
     uint16 internal constant BPS_SCALE = 10_000;
 
@@ -46,6 +54,10 @@ library PicklerPreset {
 
     /// @notice Refuses a preset that cannot be honoured, before anything is deployed against it.
     function validate(LaunchPreset memory preset) internal pure {
+        if (preset.roundingPolicyVersion != 1 && preset.roundingPolicyVersion != 2) {
+            revert UnsupportedPrecisionPolicy();
+        }
+
         if (preset.quoteToken == address(0)) {
             revert InvalidQuoteToken();
         }
@@ -56,6 +68,10 @@ library PicklerPreset {
 
         if (preset.protocolShareBps > BPS_SCALE || preset.lpCreatorShareBps > BPS_SCALE) {
             revert FeeOutOfRange();
+        }
+
+        if (preset.totalSupply != TOTAL_SUPPLY) {
+            revert InvalidTotalSupply();
         }
 
         if (preset.totalSupply != preset.saleAllocation + preset.lpAllocation) {
@@ -77,9 +93,55 @@ library PicklerPreset {
             saleAllocation: preset.saleAllocation
         });
 
+        if (preset.roundingPolicyVersion == 2) {
+            _validateReferenceProfile(preset, config);
+            return;
+        }
+
         if (
             PicklerCurveMath.marginalPrice(config, preset.saleAllocation) < PicklerCurveMath.MIN_REPRESENTABLE_END_PRICE
         ) {
+            revert EndPriceBelowPrecisionFloor();
+        }
+    }
+
+    /// @notice Metadata is checked at factory admission and direct curve construction.
+    /// @dev Version 1 retains its historical pure admission. Version 2 supports six-decimal
+    ///      quote assets only; the server selects the reviewed AUSD identity for its network.
+    function validateQuoteDecimals(LaunchPreset memory preset) internal view {
+        if (preset.roundingPolicyVersion != 2) {
+            return;
+        }
+
+        if (preset.quoteToken.code.length == 0) {
+            revert InvalidQuoteDecimals();
+        }
+
+        try IERC20Metadata(preset.quoteToken).decimals() returns (uint8 decimals) {
+            if (decimals != 6) {
+                revert InvalidQuoteDecimals();
+            }
+        } catch {
+            revert InvalidQuoteDecimals();
+        }
+    }
+
+    function _validateReferenceProfile(LaunchPreset memory preset, PicklerCurveMath.CurveConfig memory config)
+        private
+        pure
+    {
+        (uint256 x0, uint256 q0) = PicklerCurveMath.deriveReserves(16_800_000e18, 4_200_000e18, 32_000e6);
+        if (
+            preset.saleAllocation != 16_800_000e18 || preset.lpAllocation != 4_200_000e18
+                || preset.virtualTokenReserve != x0 || preset.virtualQuoteReserve != q0 || preset.buyFeeBps != 100
+                || preset.sellFeeBps != 100 || preset.protocolShareBps != 5000 || preset.launchFee != 0
+        ) {
+            revert InvalidReferenceProfile();
+        }
+
+        // A normalized price below 1e6 WAD loses more than one part per million to flooring.
+        // Preserve a meaningful precision gate instead of removing the legacy one.
+        if (PicklerCurveMath.marginalPriceWad(config, 0, 6) < 1e6) {
             revert EndPriceBelowPrecisionFloor();
         }
     }

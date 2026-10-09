@@ -67,15 +67,15 @@ contract PicklerLaunchFactoryTest is LaunchGrantTest {
     }
 
     function _preset() internal view returns (PicklerPreset.LaunchPreset memory preset) {
-        (uint256 x0, uint256 q0) = PicklerCurveMath.deriveReserves(800e18, 200e18, 1_000e6);
+        (uint256 x0, uint256 q0) = PicklerCurveMath.deriveReserves(16_800_000e18, 4_200_000e18, 21_000_000e6);
 
         preset = PicklerPreset.LaunchPreset({
             presetId: 1,
             version: 1,
             quoteToken: quoteToken,
-            totalSupply: 1_000e18,
-            saleAllocation: 800e18,
-            lpAllocation: 200e18,
+            totalSupply: 21_000_000e18,
+            saleAllocation: 16_800_000e18,
+            lpAllocation: 4_200_000e18,
             virtualTokenReserve: x0,
             virtualQuoteReserve: q0,
             buyFeeBps: 100,
@@ -258,9 +258,9 @@ contract PicklerLaunchFactoryTest is LaunchGrantTest {
             _params(), "", uint256(_params().agentKey), _params().deadline, _platformGrant(factory, _params())
         );
 
-        assertEq(IERC20(token).balanceOf(curve), 1_000e18, "curve did not receive the supply");
+        assertEq(IERC20(token).balanceOf(curve), 21_000_000e18, "curve did not receive the supply");
         assertEq(IERC20(token).balanceOf(address(factory)), 0, "factory kept some of the supply");
-        assertEq(IERC20(token).totalSupply(), 1_000e18);
+        assertEq(IERC20(token).totalSupply(), 21_000_000e18);
     }
 
     /// A sponsor may pay the gas. That must not make the sponsor the creator.
@@ -464,7 +464,7 @@ contract PicklerLaunchFactoryTest is LaunchGrantTest {
         vm.prank(operator);
         factory.setLaunchesEnabled(false);
 
-        assertEq(IERC20(token).balanceOf(curve), 1_000e18, "an existing launch was disturbed");
+        assertEq(IERC20(token).balanceOf(curve), 21_000_000e18, "an existing launch was disturbed");
 
         vm.prank(curve);
         assertTrue(IERC20(token).transfer(stranger, 1e18), "transfer returned false");

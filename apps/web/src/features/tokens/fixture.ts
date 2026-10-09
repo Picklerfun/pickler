@@ -1,5 +1,6 @@
-/** Local-only decoration and demo economics; never fallback data for a live agent. */
+/** Local-only identity with generated reference economics. Never fallback for a live agent. */
 import type { AgentPersonaDto, AgentTokenDto, TokenStateDto } from "@pickler/api-schema";
+import reference from "./reference-economics.json";
 export const PREVIEW_TOKEN: AgentTokenDto = {
   name: "Halftime",
   ticker: "HALF",
@@ -11,9 +12,14 @@ export const PREVIEW_TOKEN: AgentTokenDto = {
 export function tokenPreview(launched = false, privateAgent = false): TokenStateDto {
   return {
     chainId: 10143,
+    masterAddress: "0x5555555555555555555555555555555555555555",
     confirmation: launched ? "confirmed" : "absent",
-    available: !privateAgent,
-    blockers: privateAgent ? ["GO_PUBLIC_FIRST"] : launched ? ["TOKEN_ALREADY_LAUNCHED"] : [],
+    available: false,
+    blockers: privateAgent
+      ? ["GO_PUBLIC_FIRST", "LAUNCH_UNAVAILABLE"]
+      : launched
+        ? ["TOKEN_ALREADY_LAUNCHED", "LAUNCH_UNAVAILABLE"]
+        : ["LAUNCH_UNAVAILABLE"],
     draft: {
       id: "11111111-1111-4111-8111-111111111111",
       version: 1,
@@ -22,20 +28,8 @@ export function tokenPreview(launched = false, privateAgent = false): TokenState
       status: "draft",
     },
     token: launched ? PREVIEW_TOKEN : null,
-    preset: {
-      id: 1,
-      version: 1,
-      configHash: `0x${"1".repeat(64)}`,
-      quoteAddress: "0x2222222222222222222222222222222222222222",
-      totalSupply: "1000000000000000000000",
-      saleAllocation: "800000000000000000000",
-      lpAllocation: "200000000000000000000",
-      buyFeeBps: 100,
-      sellFeeBps: 100,
-      launchFee: "0",
-      protocolShareBps: 5000,
-      lpCreatorShareBps: 5000,
-    },
+    preset: null,
+    economics: reference as NonNullable<TokenStateDto["economics"]>,
   };
 }
 export function tokenProfilePreview(

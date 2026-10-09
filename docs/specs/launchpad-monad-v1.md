@@ -1,5 +1,13 @@
 # Launchpad on Monad — development specification
 
+Current delivery note (2026-10-09): [Agent token admission and previews](../agent-token-preview.md)
+is authoritative for the implemented offline reference curve and UI. Supply is fixed at 21 million,
+AUSD quote precision policy 2 uses the approved 80/20 distribution, initial valuation approximately
+10,000 AUSD, final valuation approximately 160,000 AUSD, net backing 31,999.999998 AUSD, 1% buy/sell
+fees split 50/50 and zero launch fee. Earlier fee-charging or DEX-selection proposals below are
+historical; no DEX is selected for this profile. Metadata, operational signing/passkey submission,
+indexer activation and full migration remain pending. No launch is enabled by the reference summary.
+
 Status: written 2026-09-21 against commit `397863a`. All of track A (A1 to A6) and D0 are implemented on `codex/launchpad-development-spec`; track B is not. Each section notes its own state.
 
 This document translates the product specification "Pickler — Launchpad en Monad" into engineering deliverables against this repository. The product specification owns _what_ the launchpad is and which economic rules govern it. This document owns _what we build, in what order, and how we know a piece is finished_. Where the two disagree about the current state of the code, this document is authoritative about the code and the product specification is authoritative about the rules.

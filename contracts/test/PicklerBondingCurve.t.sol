@@ -26,9 +26,9 @@ contract FeeOnTransferToken is MockERC20 {
 }
 
 contract PicklerBondingCurveTest is Test {
-    uint256 internal constant SALE_ALLOCATION = 800e18;
-    uint256 internal constant LP_ALLOCATION = 200e18;
-    uint256 internal constant TARGET_RESERVE = 1_000e6;
+    uint256 internal constant SALE_ALLOCATION = 16_800_000e18;
+    uint256 internal constant LP_ALLOCATION = 4_200_000e18;
+    uint256 internal constant TARGET_RESERVE = 21_000_000e6;
     uint16 internal constant BUY_FEE_BPS = 100;
     uint16 internal constant SELL_FEE_BPS = 100;
 
@@ -51,8 +51,8 @@ contract PicklerBondingCurveTest is Test {
 
         curve.initialize(address(token));
 
-        quote.mint(alice, 10_000e6);
-        quote.mint(bob, 10_000e6);
+        quote.mint(alice, 210_000_000e6);
+        quote.mint(bob, 210_000_000e6);
 
         vm.prank(alice);
         quote.approve(address(curve), type(uint256).max);
@@ -91,25 +91,25 @@ contract PicklerBondingCurveTest is Test {
 
     function test_buyingDeliversTokensAndCreditsTheReserveNetOfFees() public {
         vm.prank(alice);
-        uint256 tokensOut = curve.buyExactInput(100e6, 0, alice, _deadline());
+        uint256 tokensOut = curve.buyExactInput(2_100_000e6, 0, alice, _deadline());
 
         assertGt(tokensOut, 0, "no tokens delivered");
         assertEq(token.balanceOf(alice), tokensOut);
 
-        uint256 expectedFee = (uint256(100e6) * BUY_FEE_BPS) / 10_000;
+        uint256 expectedFee = (uint256(2_100_000e6) * BUY_FEE_BPS) / 10_000;
 
         assertEq(curve.accruedFees(), expectedFee, "fee not accrued");
-        assertEq(curve.realQuoteReserve(), 100e6 - expectedFee, "reserve did not take the net");
+        assertEq(curve.realQuoteReserve(), 2_100_000e6 - expectedFee, "reserve did not take the net");
     }
 
     /// No unit of the quote asset may be counted as both reserve and fee, and the contract
     /// must always hold at least what those two claim.
     function test_theReserveAndTheFeesNeverOverlapWhatTheContractHolds() public {
         vm.prank(alice);
-        curve.buyExactInput(500e6, 0, alice, _deadline());
+        curve.buyExactInput(10_500_000e6, 0, alice, _deadline());
 
         vm.prank(bob);
-        curve.buyExactInput(250e6, 0, bob, _deadline());
+        curve.buyExactInput(5_250_000e6, 0, bob, _deadline());
 
         vm.prank(alice);
         token.approve(address(curve), type(uint256).max);
@@ -130,22 +130,22 @@ contract PicklerBondingCurveTest is Test {
 
     function test_buyingRespectsMinimumTokensOut() public {
         vm.prank(alice);
-        uint256 expected = curve.quoteBuy(100e6);
+        uint256 expected = curve.quoteBuy(2_100_000e6);
 
         vm.prank(alice);
         vm.expectRevert(PicklerBondingCurve.SlippageExceeded.selector);
-        curve.buyExactInput(100e6, expected + 1, alice, _deadline());
+        curve.buyExactInput(2_100_000e6, expected + 1, alice, _deadline());
     }
 
     function test_anExpiredDeadlineIsRejected() public {
         vm.prank(alice);
         vm.expectRevert(PicklerBondingCurve.DeadlinePassed.selector);
-        curve.buyExactInput(100e6, 0, alice, block.timestamp - 1);
+        curve.buyExactInput(2_100_000e6, 0, alice, block.timestamp - 1);
     }
 
     function test_theBuyerMayDeliverToSomeoneElse() public {
         vm.prank(alice);
-        uint256 tokensOut = curve.buyExactInput(100e6, 0, bob, _deadline());
+        uint256 tokensOut = curve.buyExactInput(2_100_000e6, 0, bob, _deadline());
 
         assertEq(token.balanceOf(bob), tokensOut, "recipient did not receive the tokens");
         assertEq(token.balanceOf(alice), 0, "payer received tokens meant for the recipient");
@@ -155,7 +155,7 @@ contract PicklerBondingCurveTest is Test {
 
     function test_sellingReturnsQuoteNetOfFeesAndShrinksTheReserve() public {
         vm.prank(alice);
-        uint256 bought = curve.buyExactInput(500e6, 0, alice, _deadline());
+        uint256 bought = curve.buyExactInput(10_500_000e6, 0, alice, _deadline());
 
         vm.prank(alice);
         token.approve(address(curve), type(uint256).max);
@@ -173,7 +173,7 @@ contract PicklerBondingCurveTest is Test {
     /// Round-tripping must never be profitable, or the curve funds the difference out of
     /// the reserve that belongs to everyone still holding.
     function test_aRoundTripCannotProfit() public {
-        uint256 spent = 500e6;
+        uint256 spent = 10_500_000e6;
 
         vm.prank(alice);
         uint256 bought = curve.buyExactInput(spent, 0, alice, _deadline());
@@ -192,14 +192,14 @@ contract PicklerBondingCurveTest is Test {
     function test_aBuyLargerThanTheRemainingInventoryReverts() public {
         vm.prank(alice);
         vm.expectRevert(PicklerBondingCurve.ExceedsRemainingSupply.selector);
-        curve.buyExactInput(5_000e6, 0, alice, _deadline());
+        curve.buyExactInput(105_000_000e6, 0, alice, _deadline());
     }
 
     /// The alternative the quote offers when exact-input would overshoot: name the tokens,
     /// pay only what they cost.
     function test_theRemainderIsBoughtWithExactOutputAndOnlyWhatItCostsIsCharged() public {
         vm.prank(alice);
-        curve.buyExactInput(900e6, 0, alice, _deadline());
+        curve.buyExactInput(18_900_000e6, 0, alice, _deadline());
 
         uint256 remaining = curve.remainingTokens();
         assertGt(remaining, 0, "nothing left to buy");
@@ -231,7 +231,7 @@ contract PicklerBondingCurveTest is Test {
 
         vm.prank(alice);
         vm.expectRevert(PicklerBondingCurve.CurveClosed.selector);
-        curve.buyExactInput(1e6, 0, alice, _deadline());
+        curve.buyExactInput(21_000e6, 0, alice, _deadline());
 
         vm.prank(bob);
         token.approve(address(curve), type(uint256).max);
@@ -256,7 +256,7 @@ contract PicklerBondingCurveTest is Test {
     /// filled at a price it did not agree to.
     function test_aCompetingBuyMakesTheOtherRevert() public {
         vm.prank(alice);
-        curve.buyExactInput(900e6, 0, alice, _deadline());
+        curve.buyExactInput(18_900_000e6, 0, alice, _deadline());
 
         uint256 remaining = curve.remainingTokens();
         uint256 required = curve.quoteBuyExactOutput(remaining);
@@ -317,7 +317,7 @@ contract PicklerBondingCurveTest is Test {
 
     function test_feesGoToTheEscrowAndNowhereElse() public {
         vm.prank(alice);
-        curve.buyExactInput(100e6, 0, alice, _deadline());
+        curve.buyExactInput(2_100_000e6, 0, alice, _deadline());
 
         uint256 accrued = curve.accruedFees();
         assertGt(accrued, 0);
@@ -326,7 +326,7 @@ contract PicklerBondingCurveTest is Test {
 
         assertEq(quote.balanceOf(feeEscrow), accrued, "escrow did not receive the fees");
         assertEq(curve.accruedFees(), 0, "fees still accrued after remittance");
-        assertEq(curve.realQuoteReserve(), 100e6 - accrued, "remitting fees touched the reserve");
+        assertEq(curve.realQuoteReserve(), 2_100_000e6 - accrued, "remitting fees touched the reserve");
     }
 
     // --- hostile inputs ---------------------------------------------------------------
@@ -334,14 +334,14 @@ contract PicklerBondingCurveTest is Test {
     /// A donation is not a purchase. It must not move the price or advance the phase.
     function test_aDirectDonationChangesNothing() public {
         vm.prank(alice);
-        curve.buyExactInput(100e6, 0, alice, _deadline());
+        curve.buyExactInput(2_100_000e6, 0, alice, _deadline());
 
-        uint256 priceBefore = curve.quoteBuy(10e6);
+        uint256 priceBefore = curve.quoteBuy(210_000e6);
         uint256 reserveBefore = curve.realQuoteReserve();
 
-        quote.mint(address(curve), 5_000e6);
+        quote.mint(address(curve), 105_000_000e6);
 
-        assertEq(curve.quoteBuy(10e6), priceBefore, "a donation moved the price");
+        assertEq(curve.quoteBuy(210_000e6), priceBefore, "a donation moved the price");
         assertEq(curve.realQuoteReserve(), reserveBefore, "a donation was counted as reserve");
         assertEq(uint8(curve.phase()), uint8(PicklerBondingCurve.Phase.CURVE_ACTIVE));
     }
@@ -354,13 +354,13 @@ contract PicklerBondingCurveTest is Test {
             new PicklerAgentToken("Agent", "AGENT", SALE_ALLOCATION + LP_ALLOCATION, address(hostileCurve));
         hostileCurve.initialize(address(hostileToken));
 
-        hostile.mint(alice, 1_000e6);
+        hostile.mint(alice, 21_000_000e6);
         vm.prank(alice);
         hostile.approve(address(hostileCurve), type(uint256).max);
 
         vm.prank(alice);
         vm.expectRevert(PicklerBondingCurve.UnexpectedQuoteAmount.selector);
-        hostileCurve.buyExactInput(100e6, 0, alice, _deadline());
+        hostileCurve.buyExactInput(2_100_000e6, 0, alice, _deadline());
     }
 
     function test_initializeCannotBeCalledTwice() public {
@@ -371,7 +371,7 @@ contract PicklerBondingCurveTest is Test {
     /// Buys the whole sale allocation, leaving the curve ready to graduate.
     function _exhaust() internal {
         vm.prank(alice);
-        curve.buyExactInput(900e6, 0, alice, _deadline());
+        curve.buyExactInput(18_900_000e6, 0, alice, _deadline());
 
         uint256 remaining = curve.remainingTokens();
         uint256 required = curve.quoteBuyExactOutput(remaining);

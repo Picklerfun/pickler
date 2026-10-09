@@ -10,7 +10,7 @@ Implemented, in the order the launchpad specification builds them:
 
 - `src/libraries/PicklerCurveMath.sol` — all curve arithmetic: exact-input buy, exact-input sell, exact-output buy, remaining inventory, marginal price, and the derivation of virtual reserves from a sale allocation, an LP allocation and a target reserve. Rounding is directional: the quote reserve is floored and anything subtracted from a reserve is ceilinged, so rounding always favours the curve. Tests cover hand-computed values, the derivation's price-continuity property under fuzzing, and invariants over random buy/sell sequences.
 - `src/libraries/PicklerPreset.sol` — the economic configuration a launch is fixed to, plus the validation that refuses an incoherent one, including a price below the precision floor the curve fuzzing found.
-- `src/PicklerAgentToken.sol` — a fixed-supply ERC-20 with no mint, owner, pause or transfer tax.
+- `src/PicklerAgentToken.sol` — an exactly 21-million-supply ERC-20 with no mint, owner, pause or transfer tax.
 - `src/PicklerLaunchFactory.sol` — creator authorization (EIP-712, replay-protected, ERC-1271 aware), one canonical token per agent key, and immutable published presets. It obtains a curve through `ICurveDeployer` and knows nothing else about it.
 - `src/PicklerBondingCurve.sol` — buying, selling and the end of the curve. Keeps the reserve, the accrued fees and the LP allocation strictly apart, tracked in storage rather than read from balances, so a donation moves no price and credits no one. Exhausting the sale allocation sets `READY_TO_GRADUATE`; graduation is a separate call that only the adapter may make.
 - `src/PicklerCurveDeployer.sol` — deploys a curve and binds it to its token in one call, which is the only window in which binding is possible.
@@ -64,3 +64,16 @@ rotation invalidates old grants. There is no grant-free overload. `test/LaunchGr
 only a public controlled test key; unit/fuzz tests cover parameter tampering, network/factory/wallet,
 expiry, reuse and rotation. No deployment script or remote transaction is added. See
 [the token guide](../docs/agent-token-preview.md).
+
+## Fixed issuance policy
+
+`PicklerPreset.TOTAL_SUPPLY` is exactly `21_000_000e18`. Both preset admission and token
+construction reject every other supply. All tokens are minted once to the curve; no external mint,
+burn or owner authority exists. Precision policy 1 preserves legacy rounding and its price floor;
+policy 2 admits the fixed AUSD reference curve (80/20, 32,000 AUSD target, 1% buy/sell, 50/50 fees,
+zero launch fee). It requires six-decimal quote metadata at factory admission and curve construction.
+Unknown policies fail. The normalized `marginalPriceWad` uses full-precision mulDiv; old quotes are
+unchanged. `test/CurveVectors.t.sol` emits legacy and reference core vectors. Offline unit/fuzz and
+both invariant profiles cover real reserve/fees/inventory/donations; `PicklerReferenceProfile.t.sol`
+tests controlled handover only. No DEX is selected or configured for the new reference profile;
+existing V4/fork results are historical evidence. See [the token guide](../docs/agent-token-preview.md).
