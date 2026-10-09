@@ -639,3 +639,5 @@ validated allowlisted messages; never capture authentication or unfiltered error
 message/queue/book bounds, discard disconnected state, and reconnect only within an admitted
 acquisition. Diagnostic v7 overrides may select the explicit stream policy without changing
 source accounts or histories. No schemas, migrations, signing, or hosted transport changes.
+Stream bound errors retain their compatibility code and now carry an allowlisted dimension plus
+numeric counters. Never retain rejected message bodies or infer missing historical dimensions.
