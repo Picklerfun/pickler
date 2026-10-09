@@ -242,3 +242,11 @@ commands, one-shot execution, and report limitations. Tests never make paid prov
 ## Public-only SMA priority reader
 
 `plugins/perps-paper/priority-study.ts`, exported through the perps-paper subpath, composes v7 observation, candle preparation, final refresh and funding reconciliation. Prices precede slower work. Candle reuse rechecks permissions, ownership, configuration and closed window. Mark-only observations preserve pending funding; complete histories include closed positions. The adapter constructs only the existing public Perpl reader; never initialize model or signer clients for this protocol. See [protocol guide](../../apps/agent-service/PERPS-SMA-REENTRY.md).
+
+## Local universe stream reader
+
+`plugins/perps-paper/universe-stream.ts` composes the explicit `stream-universe-20s-v1` reader.
+Observation, evidence and final refresh share the same guarded socket through priority-study.
+Metadata, candles and funding retain scoped REST; no price fallback or model/signing client is
+constructed. Diagnostic buffer callbacks are copied evidence and confer no execution permission.
+Absent selection keeps historical REST. See the local eleven-market WebSocket guide.
