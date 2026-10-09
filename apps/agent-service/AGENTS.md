@@ -302,3 +302,10 @@ records its independent native freshness rule, heartbeat continuity, strict-rule
 `financialExecutable: false`. Financial host commands reject it before environment loading;
 account initialization rejects it before writes. Preserve old captures and their failed gates.
 Offline candidates never count as prospective acceptance or upgrade historical outcomes.
+
+The component-policy public measurement at frozen commit `46bcca8c36d91edd0508ff05e3f6b6aedab304df`
+passed 30/30 joint cycles and 330/330 market observations; the unchanged strict rule accepts
+11/30 of the same snapshots. Independent offline/PostgreSQL proof confirmed hashes, closure,
+release and zero diagnostic accounts/decision rounds. This is capture acceptance only.
+Do not reuse it to authorize financial execution, upgrade the old 17/30 failure, or start an
+economic run. Read the component-policy record for immutable artifact paths and limitations.
