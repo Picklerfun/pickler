@@ -52,6 +52,9 @@ The owner decided (2026-10-06): the app keeps its own reads **and** adds Studio 
 | D9  | History stays free and shared, as advice already defines it: completed analyses are visible to every authenticated user (`docs/agent-advice.md`, consumer contract). What is sold is a **fresh** analysis.                                                                                                                                                                                                                       | yes                                               |
 | D10 | The app keeps its reads untouched. Studio agents are a new section of the Agents tab. The account flow (`PICKLER_API_URL`, `src/identity`) is turned on, because advice needs the JWT.                                                                                                                                                                                                                                           | yes                                               |
 
+D4 is replaced by [the fee split](agent-advice-fee-split-v1.md): the payment goes through a
+splitter contract, 65% to the agent wallet and 35% to Pickler, in one transaction.
+
 ## 3. Flows
 
 ### 3.1 The creator sets a price (Studio, web)
