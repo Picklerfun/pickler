@@ -206,7 +206,7 @@ export {
   PERPL_CHECK_SESSION_LIMIT,
   PERPL_SESSION_LIMIT,
 } from "./perpl/transport.js";
-export type { PerplRequestDiagnostic } from "./perpl/transport.js";
+export type { PerplRequestDiagnostic, PerplTickerReadDiagnostic } from "./perpl/transport.js";
 
 export { abortable as abortablePerplRead } from "./perpl/transport.js";
 
