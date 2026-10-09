@@ -94,6 +94,7 @@ export async function acquireUniverseStream(input: {
   now(): number;
   guard(): Promise<void>;
   read(): Promise<UniverseStreamBuffer>;
+  refresh?(): Promise<void>;
   hash(value: unknown): string;
   wait(ms: number, signal: AbortSignal): Promise<void>;
   diagnostic?(value: AcquisitionDiagnostic): void;
@@ -114,6 +115,9 @@ export async function acquireUniverseStream(input: {
       });
       if (result.excluded.length === 0 && input.now() < input.deadlineAt) {
         return result;
+      }
+      if (input.now() < input.deadlineAt) {
+        await input.refresh?.();
       }
     } catch (error) {
       input.signal.throwIfAborted();
