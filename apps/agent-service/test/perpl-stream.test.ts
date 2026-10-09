@@ -217,6 +217,14 @@ test("queue overflow closes the reader without silently discarding required upda
     code: "PERPL_STREAM_MESSAGE_LIMIT",
   });
   assert.match(JSON.stringify(events), /PERPL_STREAM_MESSAGE_LIMIT/);
+  assert.deepEqual(
+    (
+      events.find((event) => (event as { kind: string }).kind === "error") as {
+        limit: unknown;
+      }
+    ).limit,
+    { component: "message-queue", observed: 33, maximum: 32 },
+  );
 });
 
 test("queued messages from a disconnected generation cannot seed its replacement", async () => {
@@ -420,10 +428,12 @@ test("message bounds invalidate the socket without retaining an authenticated pa
     await stream.close();
   }
   const oversized = new Socket();
+  const sizeEvents: unknown[] = [];
   const bounded = new PerplPublicStream({
     markets,
     signal: new AbortController().signal,
     guard: async () => {},
+    event: (event) => sizeEvents.push(event),
     socket: () => {
       queueMicrotask(() => {
         oversized.readyState = 1;
@@ -436,6 +446,14 @@ test("message bounds invalidate the socket without retaining an authenticated pa
     await bounded.connect(new AbortController().signal);
     oversized.emit("message", { data: "x".repeat(2 * 1024 * 1024 + 1) });
     assert.equal(oversized.readyState, 3);
+    assert.deepEqual(
+      (
+        sizeEvents.find((event) => (event as { kind: string }).kind === "error") as {
+          limit: unknown;
+        }
+      ).limit,
+      { component: "message-bytes", observed: 2 * 1024 * 1024 + 1, maximum: 2 * 1024 * 1024 },
+    );
   } finally {
     await bounded.close();
   }
