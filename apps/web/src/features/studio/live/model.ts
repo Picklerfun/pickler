@@ -62,6 +62,7 @@ export type LiveSectionKey =
   | "decisions"
   | "console"
   | "posts"
+  | "token"
   | "brief"
   | "skills"
   | "limits"
@@ -87,7 +88,8 @@ export type LiveIcon =
   | "user"
   | "users"
   | "bars"
-  | "trophy";
+  | "trophy"
+  | "coin";
 
 /** The canvas's `SECTION_LABELS`. */
 const SECTION_LABELS: Record<LiveSectionKey, string> = {
@@ -97,6 +99,7 @@ const SECTION_LABELS: Record<LiveSectionKey, string> = {
   decisions: "Decisions",
   console: "Console",
   posts: "Posts",
+  token: "Token",
   brief: "Brief",
   skills: "Sources & rules",
   limits: "Limits",
@@ -124,6 +127,7 @@ export const LIVE_SECTIONS: readonly LiveSectionKey[] = [
   "limits",
   "controls",
   "identity",
+  "token",
   "agents",
   "markets",
   "leaders",
@@ -157,6 +161,7 @@ const RAIL_DEFS: readonly {
       { key: "limits", icon: "wallet" },
       { key: "controls", icon: "shield" },
       { key: "identity", icon: "user" },
+      { key: "token", icon: "coin" },
     ],
   },
   {
