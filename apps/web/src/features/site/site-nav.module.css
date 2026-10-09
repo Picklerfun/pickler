@@ -1,17 +1,7 @@
-/* The one navigation bar for every marketplace route, built from the Portfolio Light canvas: a
- * translucent white bar over a scrolling page, three menus on white panels, the wallet and one
- * action. The landing hangs the price tape above it and nothing else differs, so the brand, the
- * menus and the actions stay put as you move.
- *
- * It holds no colour of its own. Every value here is a token, which is why the same bar is correct
- * on a light page and on a dark one without a second rule.
- */
-
+/* One fixed-height public navbar. CSS selects the compact disclosure before menus can wrap. */
 .nav {
   position: sticky;
   top: 0;
-  /* Above the click-away scrim below, which has to sit under the bar or an open menu's own rows
-     would be covered by the thing that closes it. */
   z-index: 20;
   border-bottom: 1px solid var(--pk-rule);
   background: var(--pk-nav-bg);
@@ -20,19 +10,19 @@
 
 .row {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
+  gap: 16px;
+  min-height: 72px;
   max-width: 1400px;
   margin: 0 auto;
-  padding: 13px 18px;
+  padding: 12px 18px;
 }
 
 .brand {
   display: flex;
+  flex-shrink: 0;
   align-items: center;
   gap: 11px;
-  padding-right: 12px;
   color: var(--pk-ink);
   text-decoration: none;
 }
@@ -51,172 +41,215 @@
 
 .menus {
   display: flex;
-  flex: 1 1 240px;
-  flex-wrap: wrap;
+  flex: 1;
   align-items: center;
   gap: 2px;
 }
 
-.menu {
-  position: relative;
+.nav .menuButton {
+  min-height: 44px;
+  padding-inline: 14px;
+  white-space: nowrap;
 }
 
-/* A trigger is quiet until it is either open or the owner of the page you are on, and those two
-   states look the same because they mean the same thing: this menu is the one you are in. */
-.menuButton {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 9px 14px;
-  border: none;
-  border-radius: var(--pk-radius-pill);
-  background: transparent;
-  font: 600 13px/1 var(--pk-font);
-  letter-spacing: 0.04em;
-  color: var(--pk-ink-muted);
-  cursor: pointer;
-  transition:
-    background var(--pk-duration),
-    color var(--pk-duration);
-}
-
-.menuButton:hover,
-.menuButtonOn {
+.nav .menuButton[data-state="open"],
+.nav .menuButton[data-active] {
   background: var(--pk-panel-2);
   color: var(--pk-ink);
 }
 
+.menuButton[data-state="open"] > svg {
+  transform: rotate(180deg);
+}
+
 .dropdown {
-  position: absolute;
-  left: 0;
-  top: calc(100% + 10px);
-  z-index: 40;
-  width: 300px;
-  padding: 10px;
-  background: var(--pk-popover);
-  border-radius: var(--pk-radius-xl);
-  box-shadow: var(--pk-popover-shadow);
+  width: min(320px, calc(100vw - 24px));
+  padding: 8px;
 }
 
-.dropdownLabel {
-  display: block;
-  margin: 0;
-  padding: 4px 12px 8px;
-  font: 600 10px/1 var(--pk-font);
-  letter-spacing: 0.14em;
-  color: var(--pk-ink-faint);
+.groupLabel {
+  padding: 10px 12px 6px;
+  color: var(--pk-ink-muted);
 }
 
-.item {
-  display: block;
-  padding: 11px 12px;
-  border-radius: var(--pk-radius-md);
+.dropdown .item,
+.navigationDropdown .item {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 8px;
+  min-height: 44px;
+  padding: 10px 12px;
   color: var(--pk-ink);
   text-decoration: none;
-}
-
-.item:hover,
-.itemOn {
-  background: var(--pk-panel);
-}
-
-/* Announced rather than linked to nothing, and it reads as an announcement: the row goes quiet and
-   stops behaving like something you can press. */
-.itemSoon {
-  cursor: default;
-}
-
-.itemSoon .itemTitle {
-  color: var(--pk-ink-faint);
 }
 
 .itemTitle {
   display: flex;
   align-items: center;
   gap: 8px;
-  font: 600 15px/1.2 var(--pk-font);
-  letter-spacing: -0.02em;
 }
 
 .itemSub {
-  display: block;
-  margin-top: 4px;
+  flex-basis: 100%;
   font: 400 13px/1.4 var(--pk-font);
   color: var(--pk-ink-muted);
   text-wrap: pretty;
 }
 
 .soon {
-  padding: 3px 7px;
-  border-radius: var(--pk-radius-pill);
-  background: var(--pk-panel-2);
-  font: 600 9px/1 var(--pk-font);
-  letter-spacing: 0.08em;
-  color: var(--pk-ink-faint);
-}
-
-/* The page's one action, and the only dark thing on a white bar.
- *
- * It takes the surface opposite the bar's, so ground, ink and hover all come from the other ramp and
- * follow it if that ramp moves. Swapping --pk-ink and --pk-bg would express the resting state just
- * as well and would need no attribute at all; what it could not express is the hover, which wants a
- * third value from the inverted ramp rather than a second. */
-.cta {
-  display: flex;
-  align-items: center;
-  gap: 11px;
-  height: 45px;
-  margin-left: auto;
-  padding: 0 13px 0 19px;
-  border-radius: var(--pk-radius-pill);
-  background: var(--pk-bg);
-  font: 600 15px/1 var(--pk-font);
-  letter-spacing: -0.02em;
-  color: var(--pk-ink);
-  text-decoration: none;
-  transition: background var(--pk-duration);
-}
-
-.cta:hover {
-  background: var(--pk-panel-3);
-}
-
-.arrow {
-  display: grid;
-  place-items: center;
-  width: 21px;
-  height: 21px;
-  border-radius: var(--pk-radius-pill);
-  background: var(--pk-lime);
-  /* Not the surrounding ink: this badge is a lime fill wherever it sits, so it carries the ink lime
-     was measured against rather than the one the subtree happens to be using. */
-  color: var(--pk-on-lime);
-}
-
-/* Every surface styles its own links, and those rules reach inside here. The bar answers for its
-   own, at a weight that wins, so a menu row behaves the same wherever you are. */
-.nav a.cta,
-.nav a.cta:hover,
-.nav a.item,
-.nav a.item:hover .itemTitle {
-  color: var(--pk-ink);
-}
-
-.nav a.item .itemSub {
+  font: 500 11px/1 var(--pk-font);
   color: var(--pk-ink-muted);
 }
 
-.nav a.brand:hover .name {
+.actions {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.nav .cta {
+  min-height: 44px;
+  white-space: nowrap;
+  background: var(--pk-bg);
   color: var(--pk-ink);
 }
 
-/* Click-away closer: the dropdowns are the only thing it dismisses, so it sits under the bar. */
-.scrim {
-  position: fixed;
-  inset: 0;
-  z-index: 15;
+.nav .cta:hover {
+  background: var(--pk-panel-3);
+  color: var(--pk-ink);
+}
+
+.compactMenu {
+  display: none;
+}
+
+.nav .compactTrigger {
+  width: 44px;
+  height: 44px;
   padding: 0;
-  background: transparent;
-  border: none;
-  cursor: default;
+}
+
+.navigationDropdown {
+  width: min(560px, calc(100vw - 24px));
+  padding: 12px;
+}
+
+.navigationGroups {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.compactGroup {
+  min-width: 0;
+}
+
+.compactGroup + .compactGroup {
+  border-inline-start: 1px solid var(--pk-rule);
+  padding-inline-start: 12px;
+}
+
+.navigationDropdown .groupLabel {
+  padding: 8px 10px;
+  font-weight: 700;
+  color: var(--pk-ink);
+}
+
+.navigationDropdown .item {
+  padding: 10px;
+}
+
+.navigationDropdown .itemTitle {
+  flex-wrap: wrap;
+  justify-content: space-between;
+  width: 100%;
+  gap: 4px 8px;
+}
+
+.navigationDropdown .item[data-disabled] {
+  color: var(--pk-ink-muted);
+}
+
+.mobileLaunch {
+  display: none;
+}
+
+.navigationDropdown .launchItem {
+  display: flex;
+  justify-content: space-between;
+  min-height: 44px;
+  margin-top: 12px;
+  background: var(--pk-bg);
+  color: var(--pk-ink);
+}
+
+.navigationDropdown .launchItem:hover,
+.navigationDropdown .launchItem[data-highlighted] {
+  background: var(--pk-panel-3);
+  color: var(--pk-ink);
+}
+
+@media (max-width: 1100px) {
+  .menus {
+    display: none;
+  }
+
+  .compactMenu {
+    display: flex;
+  }
+}
+
+@media (max-width: 640px) {
+  .row {
+    min-height: 64px;
+    gap: 12px;
+    padding: 10px 16px;
+  }
+
+  .actions {
+    gap: 8px;
+  }
+
+  .nav .cta {
+    display: none;
+  }
+
+  .navigationGroups {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .compactGroup[data-menu="explore"] {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-column: 1 / -1;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--pk-rule);
+  }
+
+  .compactGroup[data-menu="explore"] .groupLabel {
+    grid-column: 1 / -1;
+  }
+
+  .compactGroup[data-menu="build"] {
+    padding-inline-start: 0;
+    border-inline-start: 0;
+  }
+
+  .mobileLaunch {
+    display: block;
+  }
+
+  .navigationDropdown .launchItem {
+    margin-top: 8px;
+  }
+}
+
+@media (max-width: 360px) {
+  .name {
+    display: none;
+  }
 }

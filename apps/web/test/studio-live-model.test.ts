@@ -814,7 +814,7 @@ test("the account's rows say what is true today", () => {
 // ─── Stages ────────────────────────────────────────────────────────────────────────────────────
 
 test("each live stage is staged outside production only", () => {
-  assert.equal(LIVE_STAGES.length, 26);
+  assert.equal(LIVE_STAGES.length, 28);
   for (const stage of LIVE_STAGES) {
     assert.equal(stageFromSearch("development", stage), stage);
     assert.equal(stageFromSearch("production", stage), undefined);

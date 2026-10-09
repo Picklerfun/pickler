@@ -12,12 +12,14 @@
  * the server and the browser would rehydrate into a different screen.
  */
 import type {
+  TokenStateDto,
   DirectoryAgentDto,
   LeaderboardDto,
   MarketDetailDto,
   MarketSourceDto,
   PerpMarketDto,
 } from "@pickler/api-schema";
+import { tokenPreview } from "../../tokens/fixture";
 import type { PasskeyDto } from "../../auth/lib/custody-api";
 import type {
   Agent,
@@ -41,6 +43,7 @@ import type { OwnerAction } from "./use-live";
 export interface LiveStaged {
   /** The fixed clock every time on the screen is read against. */
   now: number;
+  tokenState: TokenStateDto;
   agent: Agent;
   section: LiveSectionKey;
   wallets: StudioWallets;
@@ -91,6 +94,8 @@ const X_HANDLE = "HalftimeBot";
 
 /** Which section each stage opens on. */
 const SECTIONS: Record<LiveStage, LiveSectionKey> = {
+  "perpl-token-empty": "token",
+  "perpl-token-launched": "token",
   "perpl-live": "overview",
   "perpl-paused": "overview",
   "perpl-warnings": "overview",
@@ -970,6 +975,7 @@ export function liveStudioFixture(stage: LiveStage): LiveStaged {
   const markets = board(stage === "perpl-markets" ? sampleSource : perplSource);
   return {
     now: NOW,
+    tokenState: tokenPreview(stage === "perpl-token-launched"),
     agent: agent(stage === "perpl-paused", warned ? 18 : 75.8),
     section: SECTIONS[stage],
     wallets: warned

@@ -2,6 +2,8 @@ import * as dto from "@pickler/api-schema";
 import { operation as describeOperation } from "../openapi/operation";
 import type { TradingRepository } from "@pickler/trading/polymarket";
 import { XFailure, type XOAuthService } from "@pickler/core";
+import { studioTokenRoutes } from "./studio-token";
+import type { TokenLaunchService } from "@pickler/core";
 import { studioXRoutes } from "./studio-x";
 import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
@@ -25,6 +27,7 @@ import {
   BalancesUnreadableError,
   AccessDeniedError,
   AuthenticationRequiredError,
+  TokenLaunchError,
   canCreateAnother,
   MAX_DRAFTS_PER_WORKSPACE,
   canSchedule,
@@ -97,6 +100,7 @@ import { studioWalletRoutes, WalletRefusal, walletWork } from "./studio-wallets"
 import { studioPerpsRoutes, type StudioPerpsServices } from "./studio-perps";
 
 export interface StudioServices {
+  tokens?: TokenLaunchService;
   perplMarkets?: {
     catalog(network: PerpNetwork, signal: AbortSignal): Promise<PerplMarketCatalog>;
   };
@@ -311,6 +315,24 @@ export function studioRoutes(services: StudioServices) {
     }
     if (error instanceof AccessDeniedError) {
       return c.json({ error: "RESEARCH_ACCESS_DENIED", message: error.message }, 403);
+    }
+    if (error instanceof TokenLaunchError) {
+      const status =
+        error.code === "TOKEN_OWNER_REQUIRED"
+          ? 403
+          : error.code === "TOKEN_NOT_FOUND"
+            ? 404
+            : error.code === "TOKEN_DRAFT_INVALID"
+              ? 400
+              : 409;
+      return c.json(
+        {
+          error: error.code,
+          message: "Token launch could not proceed",
+          detail: { blockers: error.blockers },
+        },
+        status,
+      );
     }
     if (error instanceof WalletRefusal) {
       return c.json(
@@ -945,6 +967,7 @@ export function studioRoutes(services: StudioServices) {
   );
 
   api.route("/", studioXRoutes(services));
+  api.route("/", studioTokenRoutes(services));
   // Go Public (D8): the server re-checks. The directory reads killed and the linked wallet, runs
   // this check with no transaction open (it reads the chain), then publishes under the agent row's
   // lock only if neither changed. A balance the chain did not answer is 503, never FUNDS.

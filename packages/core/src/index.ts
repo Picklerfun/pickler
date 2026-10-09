@@ -311,3 +311,5 @@ export { assertPerplSelection } from "./features/perps/service.js";
 export type { PerplMarketCatalog } from "./features/perps/types.js";
 
 export * from "./features/studio/x-oauth.js";
+
+export * from "./features/launch/token-launch.js";

@@ -52,3 +52,15 @@ npm run contracts:abi       # Regenerate public ABIs into packages/chain
 If a test suite disappears from a run rather than failing, suspect a stale build cache and re-run with `forge build --root contracts --force`. A vanished suite reports as a pass, so check the suite count, not just the colour.
 
 For formatting, use `forge fmt --root contracts --check`, and for static analysis `forge lint --root contracts`. Both run in `.github/workflows/contracts.yml` alongside the test suite and the two generated-artifact drift checks. Empty directories do not provide contract validation coverage. When introducing tests, ensure they run rather than treating an empty test result as success. Update this file alongside any change to the contract layout, dependencies, commands, or deployment process.
+
+## Mandatory launch grants
+
+`PicklerLaunchFactory` now requires a constructor-supplied nonzero launch authority and a signed
+Pickler EIP-712 `LaunchGrant` on every `createLaunch` call, including direct creator calls. The
+`Pickler` domain is version `2`. The grant binds the full launch parameters, creator/master wallet,
+agent key, chain, factory, unique grant nonce and at most five minutes of validity. Creator
+permission and its replay protection remain required. Only the operator can rotate the authority;
+rotation invalidates old grants. There is no grant-free overload. `test/LaunchGrantTest.sol` supplies
+only a public controlled test key; unit/fuzz tests cover parameter tampering, network/factory/wallet,
+expiry, reuse and rotation. No deployment script or remote transaction is added. See
+[the token guide](../docs/agent-token-preview.md).

@@ -84,6 +84,9 @@ export const tokens = market
         .on(t.chain, t.address)
         .where(sql`${t.address} is not null`),
       index("tokens_agent_idx").on(t.agentId),
+      uniqueIndex("tokens_agent_chain_launch_key")
+        .on(t.agentId, t.chain)
+        .where(sql`${t.agentId} is not null AND ${t.status} in ('pre_graduation', 'graduated')`),
       check("tokens_ticker_format", sql`${t.ticker} ~ '^\\$[A-Z][A-Z0-9]{1,5}$'`),
       check("tokens_name_length", sql`char_length(${t.name}) between 1 and 40`),
       check("tokens_image_uri", sql`${t.imageUri} ~ '^(https|ipfs)://'`),

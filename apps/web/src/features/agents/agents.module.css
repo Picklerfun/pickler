@@ -1649,6 +1649,10 @@
 
 /* ---------- Persona head ---------- */
 
+.personaToken {
+  margin-bottom: 24px;
+}
+
 .personaHead {
   display: flex;
   flex-wrap: wrap;

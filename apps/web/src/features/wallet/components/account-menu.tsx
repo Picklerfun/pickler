@@ -2,6 +2,13 @@
 
 import Link from "next/link";
 import { Button, Icon } from "@pickler/ui";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@pickler/ui/dropdown-menu";
 import { useState } from "react";
 import styles from "./account-menu.module.css";
 import { useWallet } from "../lib/wallet-context";
@@ -12,10 +19,10 @@ import { formatBalance, shortAddress, TARGET_CHAIN } from "../lib/provider";
  * balance and the three things that only exist for a connected wallet — what it holds, what it
  * follows, and the reads it paid for.
  *
- * Connecting is not signing in. The creator account at /signin is for building agents; this is for
- * the person reading and backing them.
+ * This wallet belongs to readers and backers. Its existing connection/sign-in flow stays separate
+ * from the creator account and custody wallet used to build agents in Studio.
  */
-export function AccountMenu() {
+export function AccountMenu({ surface = "light" }: { surface?: "light" | "dark" }) {
   const wallet = useWallet();
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -25,13 +32,21 @@ export function AccountMenu() {
       <span className={styles.slot}>
         <Button
           variant="chip"
+          className={styles.trigger}
+          aria-label={wallet.status === "connecting" ? "Waiting for your wallet" : "Connect wallet"}
           onClick={() => wallet.connect()}
           disabled={wallet.status === "connecting"}
         >
           <Icon name="wallet" size={16} />
-          {wallet.status === "connecting" ? "Waiting for your wallet…" : "Connect wallet"}
+          <span className={styles.triggerLabel}>
+            {wallet.status === "connecting" ? "Waiting for your wallet…" : "Connect wallet"}
+          </span>
         </Button>
-        {wallet.error && <span className={styles.error}>{wallet.error}</span>}
+        {wallet.error && (
+          <span className={styles.error} role="alert">
+            {wallet.error}
+          </span>
+        )}
       </span>
     );
   }
@@ -49,86 +64,90 @@ export function AccountMenu() {
 
   return (
     <span className={styles.slot}>
-      <button
-        type="button"
-        className={styles.chip}
-        aria-expanded={open}
-        onClick={() => setOpen(!open)}
-      >
-        <span
-          className={`${styles.dot} ${wallet.onTargetChain ? "" : styles.dotWrong}`}
-          aria-hidden="true"
-        />
-        <span className={styles.chipAddress}>{shortAddress(address)}</span>
-        <Icon name={open ? "chevronUp" : "chevronDown"} size={13} />
-      </button>
-
-      {open && (
-        <>
-          <button
-            type="button"
-            className={styles.scrim}
-            aria-label="Close wallet menu"
-            onClick={() => setOpen(false)}
-          />
-          <div className={styles.menu}>
-            <p className={styles.balanceLabel}>
-              {wallet.onTargetChain ? "BALANCE" : "WRONG NETWORK"}
+      <DropdownMenu modal={false} open={open} onOpenChange={setOpen}>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="chip"
+            className={styles.trigger}
+            aria-label={`Wallet, ${shortAddress(address)}${wallet.onTargetChain ? "" : ", wrong network"}`}
+          >
+            <Icon name="wallet" size={16} className={styles.connectedIcon} />
+            <span
+              className={`${styles.dot} ${wallet.onTargetChain ? "" : styles.dotWrong}`}
+              aria-hidden="true"
+            />
+            <span className={styles.triggerLabel}>{shortAddress(address)}</span>
+            <Icon name="chevronDown" size={16} className={styles.connectedChevron} />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          align="end"
+          sideOffset={10}
+          collisionPadding={12}
+          className={styles.menu}
+          data-surface={surface}
+          aria-label="Wallet"
+        >
+          <p className={styles.balanceLabel}>
+            {wallet.onTargetChain ? "BALANCE" : "WRONG NETWORK"}
+          </p>
+          {wallet.onTargetChain && (
+            <p className={styles.balance}>
+              {wallet.balance === null ? "—" : formatBalance(wallet.balance)}{" "}
+              <span>{TARGET_CHAIN.nativeCurrency.symbol}</span>
             </p>
-            {wallet.onTargetChain ? (
-              <p className={styles.balance}>
-                {wallet.balance === null ? "—" : formatBalance(wallet.balance)}{" "}
-                <span>{TARGET_CHAIN.nativeCurrency.symbol}</span>
-              </p>
-            ) : (
-              <button
-                type="button"
-                className={styles.switch}
-                onClick={() => void wallet.switchChain()}
+          )}
+          <p className={styles.kind}>
+            {wallet.kind === "mera" ? "PASSKEY WALLET" : "BROWSER WALLET"}
+          </p>
+          <DropdownMenuGroup>
+            {!wallet.onTargetChain && (
+              <DropdownMenuItem
+                onSelect={(event) => {
+                  event.preventDefault();
+                  void wallet.switchChain();
+                }}
+                className={styles.link}
               >
                 Switch to {TARGET_CHAIN.name}
-              </button>
+              </DropdownMenuItem>
             )}
-
-            {/* Which of the marketplace's two wallets this is, so the menu names whose money the
-                portfolio below is. */}
-            <p className={styles.kind}>
-              {wallet.kind === "mera" ? "PASSKEY WALLET" : "BROWSER WALLET"}
-            </p>
-
-            <button type="button" className={styles.address} onClick={() => void copy()}>
-              {copied ? "COPIED" : shortAddress(address)}
-              <Icon name="copy" size={13} />
-            </button>
-
-            <nav className={styles.links} aria-label="Wallet">
-              <Link href="/portfolio" className={styles.link} onClick={() => setOpen(false)}>
-                Portfolio
-                <span>What this wallet holds</span>
+            <DropdownMenuItem
+              onSelect={(event) => {
+                event.preventDefault();
+                void copy();
+              }}
+              className={styles.link}
+            >
+              {copied ? "Copied" : shortAddress(address)} <Icon name="copy" size={16} />
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild className={styles.link}>
+              <Link href="/portfolio">
+                Portfolio<span>What this wallet holds</span>
               </Link>
-              <Link href="/activity" className={styles.link} onClick={() => setOpen(false)}>
-                Activity
-                <span>The agents you follow, as they act</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild className={styles.link}>
+              <Link href="/activity">
+                Activity<span>The agents you follow, as they act</span>
               </Link>
-              <Link href="/reads" className={styles.link} onClick={() => setOpen(false)}>
-                Reads
-                <span>The questions you paid for</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild className={styles.link}>
+              <Link href="/reads">
+                Reads<span>The questions you paid for</span>
               </Link>
-            </nav>
-
-            <button
-              type="button"
-              className={styles.disconnect}
-              onClick={() => {
-                setOpen(false);
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              variant="destructive"
+              className={styles.link}
+              onSelect={() => {
                 void wallet.disconnect();
               }}
             >
               Disconnect
-            </button>
-          </div>
-        </>
-      )}
+            </DropdownMenuItem>
+          </DropdownMenuGroup>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </span>
   );
 }

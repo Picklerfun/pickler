@@ -1,3 +1,5 @@
+import { createTokenLaunchService } from "@pickler/core";
+import { PostgresTokenLaunchStore } from "@pickler/infrastructure";
 import { createXOAuthService } from "@pickler/core";
 import { PostgresStudioAccessRequests } from "@pickler/infrastructure";
 import { createAdviceService } from "@pickler/core";
@@ -475,12 +477,18 @@ export function createServices(env: Env): Services & { close(): Promise<void> } 
     ...(custody ? { custody } : {}),
     ...(walletAuth ? { walletAuth } : {}),
     growth: createGrowthServices(repository.pool, {
+      tokenChainId: chainId,
       ...(env.PERPL_BOARD_NETWORK ? { perplBoardNetwork: env.PERPL_BOARD_NETWORK } : {}),
     }),
     launches: new PostgresLaunchReadModel(repository.pool),
     close: () => repository.close(),
     onboard: (userId) => directory.onboard(userId),
     studio: {
+      // Deliberately no issuer: this delivery cannot grant or broadcast a real launch.
+      tokens: createTokenLaunchService({
+        repository: new PostgresTokenLaunchStore(repository.pool),
+        chainId,
+      }),
       perplMarkets: {
         catalog: (network, signal) =>
           new PerplMarketData().catalog(network, {

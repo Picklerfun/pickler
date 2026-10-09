@@ -8,6 +8,7 @@ import { fileURLToPath } from "node:url";
 import { setTimeout as delay } from "node:timers/promises";
 import { openBrowser } from "./lib/browser.mjs";
 import { listening } from "./lib/servers.mjs";
+import { liveStudioFixture } from "../../apps/web/src/features/studio/live/fixture.ts";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const base = "http://localhost:3012";
@@ -42,6 +43,22 @@ const keys = [
     last_used_at: null,
   },
 ];
+const tokenAgentId = "20000000-0000-4000-8000-000000000002";
+const tokenFixture = liveStudioFixture("perpl-live");
+const tokenAgent = {
+  ...tokenFixture.agent,
+  id: tokenAgentId,
+  productId: tokenAgentId,
+  draft: true,
+  visibility: "private",
+  publishedAt: null,
+};
+const tokenState = {
+  ...tokenFixture.tokenState,
+  available: false,
+  blockers: ["GO_PUBLIC_FIRST", "LAUNCH_UNAVAILABLE"],
+  draft: { id: tokenAgentId, version: 1, name: "Saved token", ticker: "SAVE", status: "draft" },
+};
 const envelope = (data) => ({ success: true, message: "Controlled response", data });
 const responses = {
   "/api/v1/profile": envelope(profile),
@@ -127,6 +144,7 @@ try {
     "studio-missing-wallet",
     "studio-wallets",
     "studio-markets",
+    "studio-token",
   ]) {
     const context = await browser.newContext();
     await context.addCookies([
@@ -140,6 +158,11 @@ try {
     let walletPhase = "initial";
     let cataloguePhase = "ready";
     let clientClockOffset = 0;
+    let tokenPhase = "loading";
+    let releaseToken;
+    const tokenGate = new Promise((resolve) => {
+      releaseToken = resolve;
+    });
     const catalogueCounts = new Map();
     await context.route("**/*", async (route) => {
       const url = new URL(route.request().url());
@@ -154,6 +177,35 @@ try {
       await delay(250);
       let status = 200;
       let json = responses[url.pathname];
+      if (scenario === "studio-token") {
+        const prefix = `/api/v1/studio/agents/${tokenAgentId}`;
+        const specific = {
+          "/api/v1/studio/agents": { agents: [tokenAgent] },
+          [prefix]: tokenAgent,
+          [prefix + "/x"]: tokenFixture.x,
+          [prefix + "/activity"]: { events: [] },
+          [prefix + "/runs"]: { runs: [] },
+          [prefix + "/perps/record"]: tokenFixture.runtime.record,
+          [prefix + "/perps/positions"]: tokenFixture.runtime.positions,
+          [prefix + "/perps/checks"]: { checks: [], nextCursor: null },
+        };
+        json = specific[url.pathname] ?? json;
+        if (url.pathname === prefix + "/token") {
+          assert.equal(route.request().method(), "GET");
+          if (tokenPhase === "loading") {
+            await tokenGate;
+          }
+          status = tokenPhase === "failed" ? 503 : 200;
+          json =
+            tokenPhase === "failed"
+              ? { error: "UNAVAILABLE", message: "Controlled token read failure" }
+              : tokenState;
+        } else if (url.pathname === prefix + "/token/draft") {
+          assert.equal(route.request().method(), "PUT");
+          status = 409;
+          json = { error: "TOKEN_DRAFT_CONFLICT", message: "Controlled version conflict" };
+        }
+      }
       if (url.pathname === "/api/v1/studio/perpl/markets") {
         const network = url.searchParams.get("network");
         if (!["testnet", "mainnet"].includes(network)) {
@@ -236,9 +288,53 @@ try {
       await page.clock.install();
     }
     page.on("pageerror", (error) => errors.push(error.message));
-    const route = scenario.startsWith("studio") ? "/studio" : `/${scenario}`;
+    const route =
+      scenario === "studio-token"
+        ? `/studio/agents/${tokenAgentId}/token`
+        : scenario.startsWith("studio")
+          ? "/studio"
+          : `/${scenario}`;
     await page.goto(`${base}${route}`);
-    if (scenario === "studio-missing-wallet") {
+    if (scenario === "studio-token") {
+      const name = page.getByRole("textbox", { name: "Token name", exact: true });
+      await page.getByRole("status", { name: "Loading token" }).waitFor();
+      const field = await name.elementHandle();
+      await name.fill("Kept during reads");
+      assert.equal(
+        await page.getByRole("button", { name: "Save draft", exact: true }).isDisabled(),
+        true,
+      );
+      tokenPhase = "failed";
+      releaseToken();
+      await page.getByText("Token status could not be read.", { exact: true }).waitFor();
+      assert.equal(await field.evaluate((node) => node.isConnected), true);
+      assert.equal(await name.inputValue(), "Kept during reads");
+      assert.equal(counts.get(`/api/v1/studio/agents/${tokenAgentId}/token`), 1);
+      tokenPhase = "ready";
+      await page.getByRole("button", { name: "Retry", exact: true }).click();
+      await page.getByRole("button", { name: "Use saved draft", exact: true }).waitFor();
+      assert.equal(await name.inputValue(), "Kept during reads");
+      await page.getByRole("button", { name: "Use saved draft", exact: true }).click();
+      assert.equal(await name.inputValue(), "Saved token");
+      await name.fill("Kept after save conflict");
+      await page.getByRole("button", { name: "Save draft", exact: true }).click();
+      await page.getByRole("button", { name: "Reload state", exact: true }).waitFor();
+      assert.equal(await name.inputValue(), "Kept after save conflict");
+      tokenState.draft = { ...tokenState.draft, version: 2, name: "Newer saved token" };
+      await page.getByRole("button", { name: "Reload state", exact: true }).click();
+      await page.getByRole("button", { name: "Use saved draft", exact: true }).waitFor();
+      assert.equal(await name.inputValue(), "Kept after save conflict");
+      assert.equal(
+        await page.getByRole("button", { name: "Save draft", exact: true }).isDisabled(),
+        true,
+      );
+      await page.getByRole("button", { name: "Use saved draft", exact: true }).click();
+      assert.equal(await name.inputValue(), "Newer saved token");
+      assert.equal(
+        await page.getByRole("button", { name: "Review launch", exact: true }).count(),
+        0,
+      );
+    } else if (scenario === "studio-missing-wallet") {
       await page.waitForURL("**/signup?step=passkey&next=%2Fstudio");
     } else if (scenario === "studio-error") {
       await page.getByText(/Controlled load failure/).waitFor();
@@ -366,6 +462,8 @@ try {
       );
       let maximum = 2;
       if (endpoint === "/api/v1/studio/perpl/markets" && scenario === "studio-markets") {
+        maximum = 3;
+      } else if (scenario === "studio-token") {
         maximum = 3;
       } else if (scenario === "studio-wallets" && walletRead) {
         maximum = 6;

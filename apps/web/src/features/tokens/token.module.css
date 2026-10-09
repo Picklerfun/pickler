@@ -1,0 +1,78 @@
+.card {
+  composes: pk-panel from global;
+  padding: 20px;
+  display: grid;
+  gap: 14px;
+}
+.head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.head h3 {
+  margin: 0;
+  font-size: 18px;
+}
+.identity {
+  flex: 1;
+  min-width: 0;
+}
+.quiet {
+  color: var(--pk-ink-muted);
+  font-size: 14px;
+  margin: 0;
+  line-height: 1.5;
+}
+.address {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  font-variant-numeric: tabular-nums;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.panel {
+  display: grid;
+  gap: 16px;
+  max-width: 660px;
+}
+.fields {
+  display: grid;
+  grid-template-columns: 1fr 160px;
+  gap: 12px;
+}
+.details {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+}
+.detail {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+.detail dt {
+  color: var(--pk-ink-muted);
+}
+.detail dd {
+  margin: 0;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.status {
+  display: grid;
+  gap: 12px;
+}
+@media (max-width: 480px) {
+  .fields {
+    grid-template-columns: 1fr;
+  }
+  .address {
+    flex-wrap: wrap;
+  }
+}

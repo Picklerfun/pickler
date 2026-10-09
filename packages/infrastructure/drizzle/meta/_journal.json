@@ -253,6 +253,20 @@
       "when": 1791459645140,
       "tag": "0035_x_profile",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1791507437273,
+      "tag": "0036_token_launch_authorization",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1791508197391,
+      "tag": "0037_token_agent_uniqueness",
+      "breakpoints": true
     }
   ]
 }

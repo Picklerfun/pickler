@@ -55,7 +55,7 @@ test("the rail has the four groups of the canvas, in order", () => {
     [
       ["RUN", ["Overview", "Console", "Trades", "Activity"]],
       ["BUILD", ["Brief", "Sources & rules", "Limits & funding", "Identity & voice"]],
-      ["GROW", ["Public profile"]],
+      ["GROW", ["Public profile", "Token"]],
       ["YOU", ["Trade", "Master wallet"]],
     ],
   );
@@ -73,6 +73,7 @@ test("each rail item carries its icon", () => {
     "wallet",
     "user",
     "globe",
+    "coin",
     "coin",
     "wallet",
   ]);
