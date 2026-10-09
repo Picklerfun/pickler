@@ -257,7 +257,16 @@ analysis never makes them qualification or upgrades a recorded outcome.
 
 The separate capture-only `stream-universe-component-20s-v2` policy checks native component age
 and future bounds independently and requires advancing heartbeat continuity within five seconds.
-It records ticker/book skew without applying that gate. Financial `validatePaperFrame` and fill
-simulation retain their original skew rule. Stream report/audit v4 preserves the descriptor,
+It records ticker/book skew without applying that gate. Historical financial `validatePaperFrame`
+and fill simulation retain their original skew rule. Stream report/audit v4 preserves the descriptor,
 strict-rule market/cycle counts and nonfinancial admission; reject contradictory metadata.
 Capture success never admits financial execution or changes a historical outcome.
+
+The separately authorized `stream-universe-component-paper-20s-v1` financial laboratory policy
+is selected by the account's immutable `marketDataPolicy`, never an intent. `simulation.ts`
+validates independently fresh native components plus a copied live heartbeat proof, and hashes
+that proof with the frame. `validatePaperFrameSet` rejects mixed generations/reference clocks;
+historical accounts and product sessions retain strict behavior. Financial math, risk, signals,
+funding and exits are unchanged. `perps-study/component-qualification.ts` revalidates an explicitly
+pinned complete capture at its original clocks; it reconstructs no historical trades and performs
+no I/O. See [paper policy](../../apps/agent-service/PERPL-COMPONENT-PAPER.md).
