@@ -259,7 +259,7 @@ test("queued messages from a disconnected generation cannot seed its replacement
     sockets[0]!.emit("message", {
       data: JSON.stringify({
         mt: 6,
-        subs: stream.state.streams().map((stream, i) => ({ stream, sid: i + 1 })),
+        subs: stream.streams().map((stream, i) => ({ stream, sid: i + 1 })),
       }),
     });
     sockets[0]!.emit("message", { data: JSON.stringify(snapshot()) });
@@ -302,7 +302,9 @@ test("revocation closes socket, discards buffer and blocks reuse", async () => {
     // The periodic fence must also revoke an idle connection.
     await new Promise((resolve) => setTimeout(resolve, 1050));
     assert.equal(socket.readyState, 3);
-    assert.throws(() => stream.state.frame("BTC", now), { code: "DATA_UNAVAILABLE" });
+    await assert.rejects(stream.latest(["BTC"], new AbortController().signal), {
+      code: "LEASE_LOST",
+    });
   } finally {
     await stream.close();
   }
@@ -392,7 +394,7 @@ test("disconnect discards all state and reconnect requires a new snapshot", asyn
     const signal = new AbortController().signal;
     await stream.connect(signal);
     sockets[0]!.close();
-    assert.throws(() => stream.state.frame("BTC", now), { code: "DATA_UNAVAILABLE" });
+    await assert.rejects(stream.latest(["BTC"], signal), { code: "DATA_UNAVAILABLE" });
     await stream.connect(signal);
     sockets[1]!.close();
     await assert.rejects(stream.connect(signal), { code: "DATA_UNAVAILABLE" });
@@ -494,9 +496,7 @@ test("proven discontinuity resubscribes within its bound and cannot reuse the pr
   const subscribe = (socket: Socket) =>
     message(socket, {
       mt: 6,
-      subs: stream.state
-        .streams()
-        .map((name, i) => ({ stream: name, sid: i + 1, status: { code: 0 } })),
+      subs: stream.streams().map((name, i) => ({ stream: name, sid: i + 1, status: { code: 0 } })),
     });
   try {
     await stream.connect(signal);
