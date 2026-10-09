@@ -73,7 +73,11 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
       signal?: AbortSignal;
     },
     private readonly productOwner?: () => PerpsProductPaperFence,
+    private readonly receiptClock?: () => number,
   ) {}
+  private receiptNow() {
+    return this.receiptClock?.() ?? this.clock?.() ?? Date.now();
+  }
   private async transaction<T>(action: (client: PoolClient) => Promise<T>) {
     const client = await this.pool.connect();
     try {
@@ -331,6 +335,7 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
         observation,
         key,
         locked.now,
+        this.receiptNow(),
       );
       await this.persist(client, locked.id, result.account, result.movements);
       const view = (await this.lock(client, scope)).view;
@@ -586,7 +591,13 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
     }
     if (fill) {
       const frame = evidence.frames.find((f) => f.snapshot.market.symbol === intent.symbol)!;
-      const expected = simulatePerpsFill(locked.view.account, intent, frame, locked.now);
+      const expected = simulatePerpsFill(
+        locked.view.account,
+        intent,
+        frame,
+        locked.now,
+        this.receiptNow(),
+      );
       if (canonicalAudit(fill) !== canonicalAudit(expected)) {
         throw new PilotError(
           "INVALID_MARKET_DATA",
@@ -743,7 +754,13 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
         if (
           digest !== frame.hash ||
           canonicalAudit(
-            simulatePerpsFill(locked.view.account, locked.attempt.intent, frame, locked.now),
+            simulatePerpsFill(
+              locked.view.account,
+              locked.attempt.intent,
+              frame,
+              locked.now,
+              this.receiptNow(),
+            ),
           ) !== canonicalAudit(fill)
         ) {
           throw new PilotError("INVALID_MARKET_DATA", "Component-policy fill evidence changed");
@@ -869,7 +886,13 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
         notional: "0",
         feeReserve: "1",
       };
-      const fill = simulatePerpsFill(locked.view.account, intent, frame, locked.now);
+      const fill = simulatePerpsFill(
+        locked.view.account,
+        intent,
+        frame,
+        locked.now,
+        this.receiptNow(),
+      );
       const attempt: PerpsPaperAttempt = {
         key,
         intent,
@@ -1020,7 +1043,13 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
       ) {
         throw new PilotError("INSUFFICIENT_AVAILABLE", "Not enough free paper AUSD");
       }
-      const fill = simulatePerpsFill(locked.view.account, intent, frame, locked.now);
+      const fill = simulatePerpsFill(
+        locked.view.account,
+        intent,
+        frame,
+        locked.now,
+        this.receiptNow(),
+      );
       const result = applyPaperSizeUp(locked.view.account, positionId, input.key, fill, locked.now);
       await this.persist(client, locked.id, result.account, result.movements);
       await client.query(
