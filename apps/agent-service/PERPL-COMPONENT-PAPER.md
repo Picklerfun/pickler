@@ -24,6 +24,15 @@ the strict ticker/book skew rule. Product accounts reject this field. Financial 
 simulation, risk valuation and PostgreSQL admission use native component dates. Opening and
 closing completion verify the frame hash and recompute the fill under the account lock; trusted
 v7 initial/final gates, account policy and study ownership are rechecked transactionally.
+Native price freshness, funding, position times and lease fencing use PostgreSQL's financial
+clock in persistence. Local heartbeat receipt and buffer-copy ordering use the trusted local
+receipt clock that produced those dates; comparing them to the database clock would reject a
+valid copy when that clock trails by even one millisecond. Both limits remain unchanged: native
+age 30 seconds, native future bound five seconds and heartbeat age five seconds. The receipt
+clock is an infrastructure dependency, never an intent, configuration value or provider field.
+Component validation failures retain allowlisted reason codes, frame hashes and both clocks;
+no raw provider payload, connection value or credential is logged.
+
 All final frames must share the copied generation, heartbeat and reference time before any
 portfolio execution. Funding reconciliation and once-bar atomic key consumption remain intact.
 
@@ -64,3 +73,17 @@ exits, blocked reentries, fills, fees, funding, realized P&L, verifiable marked 
 positions. API calls, tokens and new monetary reservations are zero. Preserve historical costs.
 Independent component freshness is an experimental assumption; capture acceptance does not prove
 joint economic accuracy, profitability or a latency effect. Six hours remain exploratory.
+
+## First execution and clock regression
+
+The first frozen execution at `8af5a43503672c60ae5426c32d1a5f336944e283` stopped after four
+complete slots with `INVALID_MARKET_DATA`. Its common frame validation passed before the first
+portfolio valuation failed. The original record did not retain the rejected frame and database
+validation time, so the exact historical condition is not verifiable. Preserve this interruption,
+its open virtual positions and costs; do not report a completed six-hour comparison.
+
+Controlled replay demonstrated a separate clock-domain defect: a local copy one millisecond
+ahead of the database clock was rejected despite admissible native timestamps and heartbeat.
+The regression uses distinct receipt and financial clocks; PostgreSQL coordinator tests confirm
+open, valuation and deterministic stop closes while ledger dates remain database-owned.
+This proves the defect and its correction, not the missing historical failure values.
