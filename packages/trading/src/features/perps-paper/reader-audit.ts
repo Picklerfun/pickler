@@ -28,8 +28,21 @@ export interface UniverseReaderAuditRow {
 }
 
 export interface UniverseReaderAudit {
-  version: 2;
-  protocol: "perpl-reader-audit-v2";
+  version: 2 | 3;
+  protocol: "perpl-reader-audit-v2" | "perpl-reader-audit-v3";
+  streamEvidence?: {
+    adapterVersion: string;
+    bytes: number;
+    truncated: boolean;
+    hash: string;
+    connections: number;
+    disconnects: number;
+    messages: number;
+    socketClosed: boolean;
+    reconstructionErrors: number;
+    leaseReleased: boolean;
+    acquisitionMs: { observations: number; median: number | null; p95: number | null };
+  };
   sourceCommit: string;
   sourceConfigurationHash: string;
   acquisitionPolicy: string;
@@ -159,7 +172,7 @@ export function auditUniverseCapture(input: unknown): UniverseReaderAudit {
     !["perps-universe-stability-v1", "perpl-reader-check-v1"].includes(
       capture.protocol as string,
     ) ||
-    ![1, 2].includes(capture.version as number)
+    ![1, 2, 3].includes(capture.version as number)
   ) {
     throw new PilotError("INVALID_INPUT", "Expected a versioned eleven-market public capture");
   }
@@ -178,8 +191,16 @@ export function auditUniverseCapture(input: unknown): UniverseReaderAudit {
     throw new PilotError("INVALID_INPUT", "Reader diagnostics cannot establish qualification");
   }
   const acquisitionPolicy = capture.acquisitionPolicy ?? "rest-universe-20s-v1";
+  const streaming = capture.version === 3;
+  if (streaming && (acquisitionPolicy !== "stream-universe-20s-v1" || diagnosticOnly)) {
+    throw new PilotError("INVALID_INPUT", "Stream capture protocol mismatch");
+  }
   if (
-    !["rest-universe-20s-v1", "rest-universe-coherent-20s-v2"].includes(acquisitionPolicy as string)
+    ![
+      "rest-universe-20s-v1",
+      "rest-universe-coherent-20s-v2",
+      ...(streaming ? ["stream-universe-20s-v1"] : []),
+    ].includes(acquisitionPolicy as string)
   ) {
     throw new PilotError("INVALID_INPUT", "Unknown capture acquisition policy");
   }
@@ -311,8 +332,9 @@ export function auditUniverseCapture(input: unknown): UniverseReaderAudit {
     row.symbol !== "BTC" || row.recoveryDelayMs === null ? [] : [row.recoveryDelayMs],
   );
   return {
-    version: 2,
-    protocol: "perpl-reader-audit-v2",
+    version: streaming ? 3 : 2,
+    protocol: streaming ? "perpl-reader-audit-v3" : "perpl-reader-audit-v2",
+    ...(streaming ? { streamEvidence: streamEvidence(capture, cycles) } : {}),
     sourceCommit: hash(capture.commit, 40),
     sourceConfigurationHash: hash(capture.configurationHash, 64),
     acquisitionPolicy: acquisitionPolicy as string,
@@ -348,6 +370,48 @@ export function auditUniverseCapture(input: unknown): UniverseReaderAudit {
       "Repeated source dates do not identify the provider's internal publication or cache policy.",
       "Recorded responses cannot establish what an unmade earlier request would have returned.",
       "Controlled before/after regressions do not establish prospective 29/30 availability or profitability.",
+      ...(streaming
+        ? [
+            "Stream cadence and replay cover only the retained contiguous public capture; truncation never implies missing updates were absent.",
+            "Local reception and first valid checks do not establish the exact publication time or source of provider delays.",
+          ]
+        : []),
     ],
+  };
+}
+
+function streamEvidence(
+  capture: Record<string, unknown>,
+  cycles: unknown[],
+): NonNullable<UniverseReaderAudit["streamEvidence"]> {
+  const stream = object(capture.stream);
+  if (
+    capture.adapterVersion !== "public-universe-stream-v1" ||
+    typeof stream.truncated !== "boolean" ||
+    typeof stream.socketClosed !== "boolean" ||
+    typeof capture.leaseReleased !== "boolean"
+  ) {
+    throw new PilotError("INVALID_INPUT", "Missing stream lifecycle evidence");
+  }
+  const durations = cycles
+    .map(object)
+    .filter((c) => c.missed === false && c.valid === true)
+    .map((c) => number(c.durationMs));
+  return {
+    adapterVersion: capture.adapterVersion,
+    bytes: number(stream.bytes),
+    truncated: stream.truncated,
+    hash: hash(stream.hash, 64),
+    connections: number(stream.connections),
+    disconnects: number(stream.disconnects),
+    messages: number(stream.messages),
+    socketClosed: stream.socketClosed,
+    reconstructionErrors: number(capture.reconstructionErrors),
+    leaseReleased: capture.leaseReleased,
+    acquisitionMs: {
+      observations: durations.length,
+      median: percentile(durations, 0.5),
+      p95: percentile(durations, 0.95),
+    },
   };
 }
