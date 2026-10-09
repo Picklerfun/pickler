@@ -616,3 +616,8 @@ No environment flag enables signing. Controlled API acceptance injects a public 
 `@pickler/infrastructure/testing/token`; real signing and broadcast are not implemented. Public
 persona DTOs include explicit confirmed token identity and confirmation state. See
 [the token guide](../../docs/agent-token-preview.md) and `test/studio-token-route.test.ts`.
+
+Owner token state now optionally includes version-2 reference economics. Container resolves reviewed
+AUSD metadata from `@pickler/chain` for the configured custody chain and invokes core's pure builder.
+This performs no RPC, does not publish a preset and does not compose an issuer. The existing GET
+operation documents the additive optional schema; save/authorize requests remain unchanged.
