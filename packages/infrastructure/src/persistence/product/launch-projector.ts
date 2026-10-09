@@ -121,19 +121,53 @@ export class PostgresLaunchProjector {
   private async projectLaunch(
     chain: string,
     args: Record<string, string>,
-    row: { txHash: string; blockNumber: number; blockTime: Date },
+    row: {
+      txHash: string;
+      blockNumber: number;
+      blockTime: Date;
+      blockHash: string;
+      emitter: string;
+    },
     readMetadata: MetadataReader,
   ): Promise<void> {
     const address = args.token!.toLowerCase();
     const curve = args.curve!.toLowerCase();
     const metadata = await readMetadata(address, BigInt(row.blockNumber));
 
+    // Attribution requires a persisted grant for this factory and canonical confirmation.
+    const mapping = await this.pool.query<{ agentId: string }>(
+      `
+      SELECT k.agent_id AS "agentId"
+      FROM launch.agent_keys k JOIN launch.grants g ON g.agent_id=k.agent_id AND g.chain=k.chain
+      JOIN market.chain_blocks b ON b.chain=k.chain AND b.hash=$3
+      WHERE k.chain=$1 AND k.agent_key=$2 AND NOT b.orphaned
+        AND b.finality IN ('confirmed','finalized') AND g.factory=$4
+        AND lower(g.payload->'params'->>'creator')=$5
+        AND lower(g.payload->'params'->>'metadataHash')=$6
+        AND lower(g.payload->'params'->>'expectedConfigHash')=$7
+        AND date_trunc('second',g.created_at) <= b.block_time AND g.expires_at >= b.block_time
+        AND g.payload->'params'->>'name'=$8 AND g.payload->'params'->>'symbol'=$9
+        AND lower(g.payload->'params'->>'creatorFeeRecipient')=$10
+      LIMIT 1`,
+      [
+        chain,
+        args.agentKey?.toLowerCase(),
+        row.blockHash,
+        row.emitter.toLowerCase(),
+        args.creator?.toLowerCase(),
+        args.metadataHash?.toLowerCase(),
+        args.presetHash?.toLowerCase(),
+        metadata.name,
+        metadata.symbol,
+        args.creator?.toLowerCase(),
+      ],
+    );
+    const agentId = mapping.rows[0]?.agentId ?? null;
+
     const [token] = await this.database
       .insert(tokens)
       .values({
-        // Left null on purpose: the chain knows an agentKey, which nothing reverses into our
-        // agent's identifier. The product links it afterwards.
-        agentId: null,
+        agentId,
         ticker: `$${metadata.symbol.toUpperCase()}`.slice(0, 7),
         name: metadata.name,
         chain,
@@ -151,7 +185,7 @@ export class PostgresLaunchProjector {
         // tokens_address_key is a partial index, so Postgres only matches it as a conflict
         // target when the predicate is repeated here.
         targetWhere: sql`"address" is not null`,
-        set: { status: "pre_graduation", updatedAt: sql`now()` },
+        set: { agentId, status: "pre_graduation", updatedAt: sql`now()` },
       })
       .returning({ id: tokens.id });
 
