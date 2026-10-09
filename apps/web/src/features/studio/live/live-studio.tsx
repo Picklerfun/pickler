@@ -24,6 +24,9 @@ import type { LiveStaged } from "./fixture";
 import { Identity } from "./identity";
 import { Leaders } from "./leaders";
 import { Limits } from "./limits";
+import { TokenPanel } from "../../tokens/token-panel";
+import { tokenPreview } from "../../tokens/fixture";
+import { LiveSection } from "./live-section";
 import type { LiveSectionProps } from "./live-section";
 import { LiveStrip } from "./live-strip";
 import { Markets } from "./markets";
@@ -189,6 +192,17 @@ export function LiveStudio({
         return <Limits {...props} />;
       case "controls":
         return <Controls {...props} />;
+      case "token":
+        return (
+          <LiveSection section="token">
+            <TokenPanel
+              agent={agent}
+              preview={preview || !!staged}
+              initialState={staged?.tokenState ?? (preview ? tokenPreview() : null)}
+              canManage={canManage}
+            />
+          </LiveSection>
+        );
       case "identity":
         return <Identity {...props} />;
       case "agents":
