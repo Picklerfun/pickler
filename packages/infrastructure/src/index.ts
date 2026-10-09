@@ -169,6 +169,16 @@ export {
 export { ViemChainReader, type ViemChainReaderOptions } from "./chain/viem-chain-reader.js";
 
 export {
+  authorizationTypedData,
+  createAusdAuthorizationGateway,
+  transferMatches,
+  type AusdAuthorizationGatewayInput,
+  type PublicClientLike,
+  type TransferLog,
+  type WalletClientLike,
+} from "./chain/ausd-authorization.js";
+
+export {
   PostgresLaunchIndexStore,
   type ApplyBatchInput,
   type IndexBlockInput,
