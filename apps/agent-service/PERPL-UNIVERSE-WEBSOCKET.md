@@ -108,3 +108,34 @@ and identities not admitted after interruption; these are not thirty attempted f
 The [2026-10-08 one-shot record](PERPL-UNIVERSE-WEBSOCKET-ACCEPTANCE-20261008.md) failed after
 two valid cycles. Its artifacts are immutable; post-check diagnostic corrections are controlled
 validation only and do not authorize another qualification or economic run.
+
+## Explicitly authorized reader repair
+
+On 2026-10-08 the operator separately authorized repairing and checking WSS until the local
+eleven-market reader works. Each new capture is isolated; the original failed check remains
+immutable. No economic study, model call, signing, deployment or automatic repeat is enabled.
+
+`public-universe-stream-v2` removes the per-delta database round trip in the explicit universe
+composition: a bounded FIFO batch receives one live ownership/permission check and is then applied
+synchronously, without skipped updates or altered message/queue/book bounds. Every connection and
+consumer buffer delivery still performs fresh checks. Cancellation invalidates queued work and
+does not wait for a blocked ownership lookup to complete before closing the socket.
+
+Invalid joint acquisition may request the same public subscriptions for new provider snapshots,
+at most once every ten seconds on the same socket. This stays below Perpl's ten-request/minute cap.
+Only actually received snapshots can advance component dates. Repeated stale dates remain invalid;
+there is no heartbeat freshness substitution, old-component matching or REST price fallback.
+Reconnections remain limited to twice per minute and active acquisition. The twenty-second total
+deadline, thirty-second age and five-second skew/future thresholds remain frozen.
+
+`reader-check` now supports this stream selection for three diagnostic captures. It records
+`DIAGNOSTIC_ONLY_NOT_ACCEPTANCE` and never passes the economic runner's qualification gate.
+Complete availability acceptance still requires thirty scheduled cycles, at least 29 valid joint
+sets, no stream/ownership failure, and verified closure/release. New reports include processing
+mode, received/applied message counts, guard counts/durations, queue peak and snapshot request
+counts. These facts do not retroactively identify the missing original limit dimension.
+
+The controlled throughput regression compares thirty paired bursts under the same injected
+database latency and exact book updates. An optional test-only `PICKLER_STREAM_THROUGHPUT_FILE`
+writes its raw measurements to a new path. Wall times from this fixture are not Internet latency
+or evidence of profitability.
