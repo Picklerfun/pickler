@@ -50,6 +50,7 @@ export interface UniverseReaderAudit {
     acquisitionMs: { observations: number; median: number | null; p95: number | null };
   };
   sourceCommit: string;
+  sourceQualification?: "DIAGNOSTIC_ONLY_NOT_ACCEPTANCE";
   sourceConfigurationHash: string;
   acquisitionPolicy: string;
   startedAt: number;
@@ -207,19 +208,21 @@ export function auditUniverseCapture(input: unknown): UniverseReaderAudit {
   const diagnosticOnly = capture.protocol === "perpl-reader-check-v1";
   if (
     diagnosticOnly &&
-    (capture.version !== 2 ||
+    (!(
+      (capture.version === 2 && capture.acquisitionPolicy === "rest-universe-coherent-20s-v2") ||
+      (capture.version === 3 && capture.acquisitionPolicy === "stream-universe-20s-v1")
+    ) ||
       capture.qualification !== "DIAGNOSTIC_ONLY_NOT_ACCEPTANCE" ||
       capture.expectedCycles !== 3 ||
       capture.requiredValid !== null ||
       capture.passed !== false ||
-      cycles.length > 3 ||
-      capture.acquisitionPolicy !== "rest-universe-coherent-20s-v2")
+      cycles.length > 3)
   ) {
     throw new PilotError("INVALID_INPUT", "Reader diagnostics cannot establish qualification");
   }
   const acquisitionPolicy = capture.acquisitionPolicy ?? "rest-universe-20s-v1";
   const streaming = capture.version === 3;
-  if (streaming && (acquisitionPolicy !== "stream-universe-20s-v1" || diagnosticOnly)) {
+  if (streaming && acquisitionPolicy !== "stream-universe-20s-v1") {
     throw new PilotError("INVALID_INPUT", "Stream capture protocol mismatch");
   }
   if (
@@ -363,6 +366,7 @@ export function auditUniverseCapture(input: unknown): UniverseReaderAudit {
     version: streaming ? 3 : 2,
     protocol: streaming ? "perpl-reader-audit-v3" : "perpl-reader-audit-v2",
     ...(streaming ? { streamEvidence: streamEvidence(capture, cycles) } : {}),
+    ...(diagnosticOnly ? { sourceQualification: "DIAGNOSTIC_ONLY_NOT_ACCEPTANCE" as const } : {}),
     sourceCommit: hash(capture.commit, 40),
     sourceConfigurationHash: hash(capture.configurationHash, 64),
     acquisitionPolicy: acquisitionPolicy as string,
@@ -424,7 +428,12 @@ function streamEvidence(
 ): NonNullable<UniverseReaderAudit["streamEvidence"]> {
   const stream = object(capture.stream);
   if (
-    capture.adapterVersion !== "public-universe-stream-v1" ||
+    typeof capture.adapterVersion !== "string" ||
+    ![
+      "public-universe-stream-v1",
+      "public-universe-stream-v2",
+      "public-universe-stream-v3",
+    ].includes(capture.adapterVersion as string) ||
     typeof stream.truncated !== "boolean" ||
     typeof stream.socketClosed !== "boolean" ||
     typeof capture.leaseReleased !== "boolean"
