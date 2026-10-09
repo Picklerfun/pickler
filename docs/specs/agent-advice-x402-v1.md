@@ -167,7 +167,7 @@ The OpenAPI document (`/v1/openapi.json`) documents the 402 response and both he
 
 ## 5. Data
 
-Migration `0033_advice_x402` (the next number after `0032_bored_the_fallen`):
+Migration `0038_advice_x402` (the next number after `0037_token_agent_uniqueness`):
 
 - `agents.agents.advice_price_micro_ausd bigint NULL`, check `BETWEEN 100000 AND 100000000`.
 - `pickler.advice_payments`: `id uuid pk`, `job_id uuid NULL → advice_jobs`, `user_id`,
@@ -198,7 +198,7 @@ refund_owed`), `tx_hash text UNIQUE NULL`, `block_number bigint NULL`, `error te
 2. Relayer: a fresh EOA, `X402_RELAYER_PRIVATE_KEY` secret on the API Worker, ~5 MON.
 3. At least one **published** Perpl agent with a linked wallet and a price (the one already created
    in Studio has to go public).
-4. Migration 0033 runs through the existing staging migration workflow on merge to main.
+4. Migration 0038 runs through the existing staging migration workflow on merge to main.
 
 ## 8. Security
 

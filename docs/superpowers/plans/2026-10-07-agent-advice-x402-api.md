@@ -34,13 +34,13 @@ Phases after this plan (separate plans, not here): Phase 2 Studio price card (we
 
 ---
 
-### Task 1: Migration 0033 — price column and payments table
+### Task 1: Migration 0038 — price column and payments table
 
 **Files:**
 
 - Modify: `packages/infrastructure/src/persistence/product/agents.ts` (the `agents.agents` table definition)
 - Modify: `packages/infrastructure/src/persistence/product/advice.ts` (add `advicePayments`)
-- Create (generated): `packages/infrastructure/drizzle/0033_advice_x402.sql`, `drizzle/meta/0033_snapshot.json`, `_journal.json` entry
+- Create (generated): `packages/infrastructure/drizzle/0038_advice_x402.sql`, `drizzle/meta/0038_snapshot.json`, `_journal.json` entry
 - Test: `packages/infrastructure/test/advice-payments-schema.test.ts`
 
 **Interfaces:**
@@ -110,7 +110,7 @@ Use the imports already present in each file (`pickler`, `uuid`, `text`, `bigint
 - [ ] **Step 2: Generate and rename the migration**
 
 Run: `npm run db:generate -- --name advice_x402`
-Expected: `packages/infrastructure/drizzle/0033_advice_x402.sql` plus snapshot and journal entry. Open the SQL and confirm it contains only the `ALTER TABLE "agents"."agents" ADD COLUMN`, the check, `CREATE TABLE "pickler"."advice_payments"`, its three unique indexes, its check, FKs and `ENABLE ROW LEVEL SECURITY`. Nothing else may change.
+Expected: `packages/infrastructure/drizzle/0038_advice_x402.sql` plus snapshot and journal entry. Open the SQL and confirm it contains only the `ALTER TABLE "agents"."agents" ADD COLUMN`, the check, `CREATE TABLE "pickler"."advice_payments"`, its three unique indexes, its check, FKs and `ENABLE ROW LEVEL SECURITY`. Nothing else may change.
 
 - [ ] **Step 3: Write the failing schema test (real PostgreSQL)**
 
@@ -151,7 +151,7 @@ Expected: PASS. Then temporarily delete the `advice_payments_nonce_key` line fro
 - [ ] **Step 5: Commit**
 
 ```bash
-git add packages/infrastructure/src/persistence/product/agents.ts packages/infrastructure/src/persistence/product/advice.ts packages/infrastructure/drizzle/0033_advice_x402.sql packages/infrastructure/drizzle/meta/0033_snapshot.json packages/infrastructure/drizzle/meta/_journal.json packages/infrastructure/test/advice-payments-schema.test.ts
+git add packages/infrastructure/src/persistence/product/agents.ts packages/infrastructure/src/persistence/product/advice.ts packages/infrastructure/drizzle/0038_advice_x402.sql packages/infrastructure/drizzle/meta/0038_snapshot.json packages/infrastructure/drizzle/meta/_journal.json packages/infrastructure/test/advice-payments-schema.test.ts
 git commit -m "feat(infrastructure): advice price column and x402 payments table"
 ```
 
