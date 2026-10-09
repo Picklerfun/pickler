@@ -41,11 +41,11 @@ returns the existing result. Workspace/access/agent locks serialize concurrent s
 requests. An unexpired grant prevents editing or issuing a different authorization for that agent.
 Expired retries require a new request. A changed owner cannot retrieve the previous owner's grant.
 
-| Method | Route                                       | Result                                                                                |
-| ------ | ------------------------------------------- | ------------------------------------------------------------------------------------- |
-| GET    | `/api/v1/studio/agents/:id/token`           | Network, draft, blockers, confirmation state, confirmed token and preset availability |
-| PUT    | `/api/v1/studio/agents/:id/token/draft`     | Private name/ticker draft with optimistic version                                     |
-| POST   | `/api/v1/studio/agents/:id/token/authorize` | Controlled-only grant; requires `Idempotency-Key` and `expectedVersion`               |
+| Method | Route                                       | Result                                                                                   |
+| ------ | ------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| GET    | `/api/v1/studio/agents/:id/token`           | Network, registered master, draft, blockers, confirmation, token and preset availability |
+| PUT    | `/api/v1/studio/agents/:id/token/draft`     | Private name/ticker draft with optimistic version                                        |
+| POST   | `/api/v1/studio/agents/:id/token/authorize` | Controlled-only grant; requires `Idempotency-Key` and `expectedVersion`                  |
 
 Every response is private and `no-store`. There is no receipt-confirmation or broadcast endpoint.
 Ordinary composition always returns `LAUNCH_UNAVAILABLE` for authorization. The controlled signer
@@ -55,8 +55,12 @@ never imported by a host. Its public fixture key is not an operational credentia
 ## Local presentation
 
 Studio's existing `/studio/agents/:id/token` route is present in draft and live rails. Drafts show
-**Go public first**. Owners can keep a private name/ticker draft; hosted **Review launch** stays
-disabled. The current agent avatar is used in both cards; its portable accent/pattern accompany the confirmed public summary. The shared card shows name, ticker, explicit network, copyable
+**Go public first**. Owners can keep a private name/ticker draft. Details are always visible beneath
+the form and update locally while typing, without fetching, submitting, or simulating transactions.
+**Launch token** remains disabled in every composition. Total supply is exactly **21,000,000**
+18-decimal tokens, enforced by core, preset validation and token construction. All supply is minted
+once; there is no later minting, burning or token owner/admin. The registered master wallet is the
+creator and receives creator fees; it does not gain privileged control over the ERC-20. The current agent avatar is used in both cards; its portable accent/pattern accompany the confirmed public summary. The shared card shows name, ticker, explicit network, copyable
 address and available links. Public profiles place it below the header; absence has no launch CTA.
 Pending confirmation and failed reads are distinct from absence. No trading chart, purchase,
 holders or fee-claim control is introduced in this card.
@@ -68,12 +72,64 @@ With `npm run dev --workspace=@pickler/web -- --port 3005` (or the existing loca
 - [Public profile without token](http://localhost:3005/agents/halftime?stage=token-empty)
 - [Public profile with token](http://localhost:3005/agents/halftime?stage=token-launched)
 
-All fixtures are refused in production. Supply, allocations, fees and cost in review are labelled
-simulated demo economics, not an approved quote. Explicit buttons advance awaiting signature,
-confirming, failure, retry and cancellation; no timers, passkeys or provider calls do so. The explorer link uses the confirmed address and explicit network; it is disabled for fictitious
-preview addresses. Ticker-only token detail routes cannot distinguish duplicate symbols across
-agents/networks, so this card does not infer a detail link from the ticker. Forms remain mounted during reads, errors and review, with
-Skeletons for loading and in-memory Studio drafts across navigation.
+All fixtures are refused in production. Empty and launched previews are static states; there are no
+artificial launch phases, simulation controls, timers, passkeys or provider calls. Fictitious
+addresses never open an explorer. Forms remain mounted during reads and errors, with Skeletons,
+explicit retry and memory-only drafts across navigation. The full creator wallet is available in
+its address title. The owner edits only name/ticker; the current agent avatar is reused.
+
+## AUSD reference curve, precision policy 2
+
+These are the approved reference parameters. They are informational terms, not a deployed preset
+or executable quote. The API resolves chain and reviewed AUSD metadata from its configuration and
+returns optional versioned `economics` independently of signer availability. Missing economics
+remain unavailable; legacy state without the field stays readable. No endpoint or migration is
+introduced for the reference profile.
+
+| Parameter                                 | Reference                                 |
+| ----------------------------------------- | ----------------------------------------- |
+| Fixed supply, 18 decimals                 | 21,000,000 tokens                         |
+| Curve / liquidity                         | 16,800,000 / 4,200,000 tokens (80% / 20%) |
+| Creator / project reserve                 | 0 tokens                                  |
+| Quote / gas                               | AUSD (6 decimals) / MON                   |
+| Initial full-supply valuation             | Approximately 10,000 AUSD                 |
+| Full-supply valuation at curve completion | Approximately 160,000 AUSD                |
+| Net backing at curve completion           | 31,999.999998 AUSD                        |
+| Buy / sell fees                           | 1% / 1%                                   |
+| Trade fee split                           | 50% creator / 50% Pickler                 |
+| Launch fee                                | 0 AUSD                                    |
+| Post-migration venue and fees             | Pending DEX configuration                 |
+
+Initial valuation is price times the entire supply, not a required deposit or money raised. There is
+no oracle or USD conversion. The virtual reserves are **22,400,000 tokens** and
+**10,666.666666 AUSD**; they shape the curve and are not withdrawable funds. The net backing, virtual
+quote reserve and accrued fees remain separate. Normalized whole-token prices are scaled by
+`1e18`: initial `476190476160714`, final `7619047618571428`. Displayed values round to approximations.
+
+`PicklerPreset.validate` dispatches on `roundingPolicyVersion`. Version 1 retains its original
+price precision gate and directional trade rounding. Version 2 fixes the reference distribution,
+reserves and trade fees, requires launch fee zero, and checks a normalized precision floor.
+Factory admission and direct curve construction also require a deployed quote token reporting six
+decimals. Unknown precision versions, mismatched decimals or altered reference parameters fail.
+Preset hashes still commit to every field and both launch authorizations; published presets are
+immutable. Existing historical math vectors and persisted rows are unchanged.
+
+`PicklerCurveMath.marginalPriceWad` uses a full-precision `mulDiv` intermediate rather than scaling
+an already truncated legacy price. Solidity exports vectors for derivation, buys, sells, fees,
+exact-output remainder and normalized prices. Core's pure BigInt calculations must match all
+53 reference vectors, alongside the unchanged legacy vectors. The browser only formats prepared
+results. Its checked-in reference JSON is generated by `npm run tokens:fixtures`; the web test
+compares it with core and reviewed chain metadata.
+
+Exhausting curve inventory still closes both buys and sells. Controlled tests transfer precisely
+the real backing and reserved tokens to a test adapter while retaining fees. This does not approve
+or configure a DEX. The existing V4 adapter and old fork work remain historical technical evidence,
+not the operational venue selection for this profile.
+
+The live form groups supply/distribution, valuation/backing, creator wallet and fees into a compact
+summary. Gas is paid separately in MON without an invented estimate. The master wallet receives
+creator fees and has no token-admin privileges. After migration, the UI explicitly shows
+**Pending DEX configuration**. There is no **Simulate** or **Review launch** action.
 
 ## Reproducible acceptance
 
@@ -83,7 +139,8 @@ Use Node 22.22+ and npm 10.9.3, the committed lockfile and local PostgreSQL (`np
 
 ```sh
 npm run build:shared
-node --import tsx --test packages/core/test/token-launch.test.ts packages/infrastructure/test/token-launch.test.ts workers/api/test/studio-token-route.test.ts apps/web/test/token-preview.test.ts
+npm run tokens:fixtures -- --check
+node --import tsx --test packages/core/test/curve-math.test.ts packages/core/test/token-economics.test.ts packages/core/test/token-launch.test.ts packages/infrastructure/test/token-launch.test.ts workers/api/test/studio-token-route.test.ts apps/web/test/token-preview.test.ts
 npm run contracts:test
 npm run contracts:abi
 node scripts/design/token-preview.mjs http://localhost:3005
@@ -100,26 +157,19 @@ npm run build:workers
 npm run design:check
 ```
 
-| Scenario                                                                    | Acceptance boundary                             | Status                    |
-| --------------------------------------------------------------------------- | ----------------------------------------------- | ------------------------- |
-| Permissions, private agent, missing master, disabled issuer                 | Core and isolated PostgreSQL                    | Passed locally            |
-| Concurrent saves/grants, retries, expiry, private migration                 | Isolated PostgreSQL                             | Passed locally            |
-| Altered signed parameters, wallet/chain/factory, rotation, replay           | Offline Foundry unit/fuzz/invariant tests       | Passed locally            |
-| Canonical confirmation, wrong factory, orphaned evidence, public summary    | Simulated indexed events in isolated PostgreSQL | Passed locally            |
-| Both cards, review/cancel/error/confirmation, keyboard/mobile               | Local web fixtures and Design                   | Passed locally            |
-| Real metadata persistence, operational signing, passkey/broadcast           | Not composed                                    | Pending next delivery     |
-| Contract deployment, remote migrations, indexer activation, live acceptance | Not performed                                   | Pending explicit delivery |
+| Scenario                                                                                                | Evidence boundary                      | Status                          |
+| ------------------------------------------------------------------------------------------------------- | -------------------------------------- | ------------------------------- |
+| Legacy and normalized math, 53 reference vectors, full-precision intermediate                           | Offline Solidity and core              | Passed locally                  |
+| Buys, sells, exact remainder, fee separation, donations, no rounding cycle gain                         | Offline unit/fuzz/invariant suites     | Passed locally                  |
+| Inventory conservation, solvency and controlled adapter handover                                        | Offline contracts; no DEX              | Passed locally                  |
+| Ownership, concurrent saves/grants, version conflicts, historical persistence and canonical attribution | Isolated PostgreSQL and API            | Passed locally                  |
+| Altered grants, other wallet/chain/factory, expiry, replay and authority rotation                       | Offline contract suites                | Passed locally                  |
+| Optional economics without signer, old responses and unknown version rejection                          | Core/API/web contracts                 | Passed locally                  |
+| Four previews, desktop/mobile, keyboard, navigation, live edits and disabled launch                     | Local UI and Design                    | Passed locally                  |
+| Metadata storage, operational signer, passkey, broadcast and activated indexer                          | Not composed                           | Pending next delivery           |
+| DEX selection, post-migration fees, liquidity lock and migration acceptance                             | Not configured                         | Pending product and engineering |
+| Deployed readiness and remote acceptance                                                                | No deployment/provider calls performed | Pending explicit delivery       |
 
-Corrections verified during acceptance: migration indexes now precede composite foreign keys;
-ambiguous master accounts block grants; canonical attribution respects EVM timestamp precision;
-fixture manifests and the public profile's Design proof now target the shared token card; stale
-versions preserve inputs and prevent overwriting a newer draft. Full root tests passed (2,864 passed,
-8 external opt-in tests skipped, no failures); targeted PostgreSQL/API acceptance passed again after
-the timestamp correction. Foundry passed 118 offline tests. Rendered Design passed all 130 routes (surfaces, tokens, contrast and typography). Studio loading,
-routing, sidebar motion and the final token preview walkthrough passed. Compilation results are
-recorded in the PR with their commands.
-
-Controlled results do not establish deployed readiness. Before activation, implement durable public
-metadata storage, an operational signer and reviewed authority custody, passkey signing/submission,
-verified factory deployments and the indexer's configured activation and reorg lifecycle. Review
-actual presets, recipient policy and costs separately; this preview does not approve them.
+The current change introduces no remote migration, deployment, transaction or paid call. Controlled
+results do not establish deployed readiness. Complete and verify the operational pieces and the
+entire DEX migration before enabling launches.
