@@ -22,7 +22,8 @@ import {
   paperRisk,
   selectiveReduction,
   transientPerpsData,
-  validatePaperFrame,
+  validatePaperFrameSet,
+  COMPONENT_PAPER_POLICY,
   simulatePerpsFill,
   type PerpsPaperRepository,
   type PerpsPaperFrame,
@@ -125,8 +126,12 @@ export function createProfileStudyRunner(deps: {
       ) {
         throw new PilotError("PERPL_MARKET_IDENTITY", "Catalog identity mismatch");
       }
-      validatePaperFrame(frame, r.config.network, frame.snapshot.market.symbol, now());
     }
+    const policy =
+      r.config.version === 7 && r.config.acquisitionPolicy === COMPONENT_PAPER_POLICY
+        ? COMPONENT_PAPER_POLICY
+        : undefined;
+    validatePaperFrameSet(e.frames, r.config.network, now(), policy);
   }
   async function cycle(scope: PerpsStudyScope, lease: PerpsStudyLease, signal: AbortSignal) {
     const guard = async () => {
