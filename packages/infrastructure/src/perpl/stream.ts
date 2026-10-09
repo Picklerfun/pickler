@@ -44,6 +44,11 @@ export interface PerplStreamEvent {
   receivedAt: number;
   generation?: number;
   code?: string;
+  limit?: {
+    component: "message-type" | "message-bytes" | "message-queue";
+    observed?: number;
+    maximum?: number;
+  };
   publicMessage?: unknown;
 }
 function fail(code: string): never {
@@ -395,7 +400,7 @@ export class PerplPublicStream {
       throw this.fatal ?? new PilotError("PERPL_STREAM_CLOSED", "Reader closed");
     }
   }
-  private stopError(error: unknown) {
+  private stopError(error: unknown, limit?: PerplStreamEvent["limit"]) {
     if (this.stopped) {
       return;
     }
@@ -421,6 +426,7 @@ export class PerplPublicStream {
       kind: "error",
       receivedAt: this.now(),
       code: this.fatal instanceof PilotError ? this.fatal.code : "PERPL_STREAM_MESSAGE",
+      ...(limit ? { limit } : {}),
     });
     void this.close().catch(() => {});
   }
@@ -465,16 +471,29 @@ export class PerplPublicStream {
       if (generation !== this.generation || this.stopped) {
         return;
       }
-      if (
-        typeof event.data !== "string" ||
-        new TextEncoder().encode(event.data).length > 2 * 1024 * 1024 ||
-        ++this.queued > 32
-      ) {
+      if (typeof event.data !== "string") {
         this.stopError(
           new PilotError("PERPL_STREAM_MESSAGE_LIMIT", "Public message or queue limit exceeded"),
+          { component: "message-type" },
         );
         return;
       }
+      const bytes = new TextEncoder().encode(event.data).length;
+      if (bytes > 2 * 1024 * 1024) {
+        this.stopError(
+          new PilotError("PERPL_STREAM_MESSAGE_LIMIT", "Public message or queue limit exceeded"),
+          { component: "message-bytes", observed: bytes, maximum: 2 * 1024 * 1024 },
+        );
+        return;
+      }
+      if (this.queued >= 32) {
+        this.stopError(
+          new PilotError("PERPL_STREAM_MESSAGE_LIMIT", "Public message or queue limit exceeded"),
+          { component: "message-queue", observed: this.queued + 1, maximum: 32 },
+        );
+        return;
+      }
+      this.queued++;
       const receivedAt = this.now();
       this.tail = this.tail
         .then(async () => {
