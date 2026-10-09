@@ -163,7 +163,7 @@ test("only a canonical confirmed event from the granted factory attributes a tok
       name: draft.name,
       symbol: draft.ticker,
       decimals: 18,
-      totalSupply: 1000n * 10n ** 18n,
+      totalSupply: 21_000_000n * 10n ** 18n,
     });
     await projector.project("eip155:10143", metadata);
     assert.equal((await f.service.state(f.scope)).confirmation, "pending");
