@@ -317,3 +317,10 @@ validation and transactional admission. `component-qualification.ts` explicitly 
 complete capture with offline replay and unchanged transport source; it never invents historical
 fills. New paper preflight is offline; financial-selector stability is rejected. Preserve capture
 artifacts, strategies, historical reservations, one-shot deadlines and zero models/signers.
+
+Component paper failures publish `financial-frame-validation-failed` with allowlisted reason,
+frame hash and distinct receipt/database clocks; runtime status retains the same safe details.
+The first execution stopped after four slots and remains interrupted with open positions.
+The clock regression is proven in controlled tests; its exact historical triggering values were
+not recorded. Preserve that distinction and the first run's evidence when continuing authorized
+repair work. Never silently resume a started session or overwrite its history.
