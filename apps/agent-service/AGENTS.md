@@ -324,3 +324,8 @@ The first execution stopped after four slots and remains interrupted with open p
 The clock regression is proven in controlled tests; its exact historical triggering values were
 not recorded. Preserve that distinction and the first run's evidence when continuing authorized
 repair work. Never silently resume a started session or overwrite its history.
+
+Component-paper controlled PostgreSQL tests include captured-frame atomic rollback, racing
+closes, idempotency, hash/owner rejection and paired thirty-sample query-delay benchmarks.
+Simulated clock delays are reported separately from monotonic measured durations. An interrupted
+comparison with a partial account fill remains incomplete; never present it as a common round.
