@@ -288,10 +288,17 @@ qualification. Stream v2 records processing/guard/queue counters and bounded sna
 Only a complete passing thirty-minute stability record establishes capture acceptance. This repair
 authorization enables no trading, models, automation, merge, deployment, or economic comparison.
 
-The current universe stream v3 reconstructs messages synchronously and requires fresh guards
+The universe stream v3 reconstructs messages synchronously and requires fresh guards
 for buffer delivery. Its public repair qualification must preserve any failed earlier check.
 Offline reader audit supports v2/v3 adapter captures and three-read stream diagnostics without
 converting them to acceptance. No repeated subscription is considered evidence of fresh data.
 Read [the v3 repair result](PERPL-UNIVERSE-WEBSOCKET-REPAIR-20261009.md): thirty slots completed
 without transport or ownership errors, but only 17/30 joint captures were valid. Preserve that
 failed availability gate and do not infer economic readiness from technical continuity.
+
+Read [the component-policy record](PERPL-UNIVERSE-COMPONENT-POLICY-20261009.md) for the separately
+authorized 2026-10-09 capture experiment `stream-universe-component-20s-v2`. Stability/audit v4
+records its independent native freshness rule, heartbeat continuity, strict-rule counts and
+`financialExecutable: false`. Financial host commands reject it before environment loading;
+account initialization rejects it before writes. Preserve old captures and their failed gates.
+Offline candidates never count as prospective acceptance or upgrade historical outcomes.
