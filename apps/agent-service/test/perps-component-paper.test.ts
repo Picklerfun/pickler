@@ -17,6 +17,7 @@ import {
   PostgresPerpsStudyStore,
   PostgresPerpsPaperStore,
   exportPerpsAudit,
+  timeEvaluationPool,
 } from "@pickler/infrastructure";
 import { createTestStore } from "@pickler/infrastructure/testing";
 import { config, at, evidence } from "./perps-reentry-fixtures.js";
@@ -43,16 +44,37 @@ async function setup(
   sessionId: string,
   side: "long" | "short" = "long",
   receiptOffset = 0,
+  queryAdvanceMs = 0,
+  capturedExecution = true,
+  sharedDb?: Awaited<ReturnType<typeof createTestStore>>,
 ) {
   let time = at;
-  const db = await createTestStore(t, () => time);
+  const db = sharedDb ?? (await createTestStore(t, () => time));
   const c = paperConfig(sessionId);
   const study = new PostgresPerpsStudyStore(db.pool, () => time);
   const view = await study.initialize(c, { acquisitionPolicy: COMPONENT_PAPER_POLICY });
   const lease = await study.claim(c);
   const signal = new AbortController().signal;
-  const paper = new PostgresPerpsPaperStore(
+  let measuredQueries = 0;
+  let finalCopiedAt = 0;
+  let lastExecutionEndAt = 0;
+  let measuring = false;
+  let queryHook: ((statement: string) => void) | undefined;
+  const pool = timeEvaluationPool(
     db.pool,
+    (event) => {
+      if (measuring && event.operation === "database-query") {
+        measuredQueries++;
+        time += queryAdvanceMs;
+      }
+      if (event.operation === "database-query") {
+        queryHook?.(event.statement);
+      }
+    },
+    () => sessionId,
+  );
+  const paper = new PostgresPerpsPaperStore(
+    pool,
     () => time,
     {
       ...c,
@@ -62,6 +84,9 @@ async function setup(
     undefined,
     () => time + receiptOffset,
   );
+  if (!capturedExecution) {
+    Object.defineProperty(paper, "executeFrame", { value: undefined });
+  }
   const advance = async (to: number) => {
     while (time < to) {
       time = Math.min(to, time + 20000);
@@ -101,11 +126,25 @@ async function setup(
     observe: async () => ({ frames: fresh().frames, funding: [], marksOnly: true }),
     evidence: async (_record, observation) => ({ ...fresh(), frames: observation.frames }),
     prepareEvidence: async () => fresh(),
-    finalEvidence: async () => fresh(),
+    finalEvidence: async () => {
+      const value = fresh();
+      finalCopiedAt = time;
+      return value;
+    },
     execution: async () => fresh().frames,
     reconcile: async () => ({ frames: [], funding: [] }),
   };
-  const runner = createProfileStudyRunner({ study, paper, data, now: () => time + receiptOffset });
+  const runner = createProfileStudyRunner({
+    study,
+    paper,
+    data,
+    now: () => time + receiptOffset,
+    timing: (event) => {
+      if (event.operation === "simulation-and-transaction") {
+        lastExecutionEndAt = time;
+      }
+    },
+  });
   const scope = (variant: SmaReentryVariant = "sma-reference") => ({
     ...c,
     agentId: view.record.agentIds[variant]!,
@@ -122,6 +161,18 @@ async function setup(
     scope,
     fresh,
     advance,
+    startMeasuring: () => {
+      measuring = true;
+      measuredQueries = 0;
+    },
+    queries: () => measuredQueries,
+    finalExecutionMs: () => lastExecutionEndAt - finalCopiedAt,
+    onQuery: (hook?: (statement: string) => void) => {
+      queryHook = hook;
+    },
+    elapse: (ms: number) => {
+      time += ms;
+    },
     time: () => time,
     expire: () => {
       time += 90001;
@@ -316,4 +367,231 @@ test("owned PostgreSQL financial writes keep receipt and database clocks distinc
       closed.accounts[variant]!.movements.some((movement) => movement.kind === "realized-pnl"),
     );
   }
+});
+
+test("captured completion is idempotent after its heartbeat expires and racing closes settle once", async (t) => {
+  const s = await setup(t, "component-atomic-idempotence");
+  await s.runner.cycle(s.c, s.lease, s.signal);
+  const original = await s.paper.view(s.scope("sma-once-bar"));
+  const opened = original.attempts.find((a) => a.status === "filled")!;
+  const frame = s.fresh().frames.find((f) => f.snapshot.market.symbol === opened.intent.symbol)!;
+  s.elapse(5001);
+  const repeated = await s.paper.executeFrame(
+    s.scope("sma-once-bar"),
+    opened.key,
+    opened.intent,
+    frame,
+  );
+  assert.deepEqual(repeated, original);
+  await assert.rejects(
+    s.paper.executeFrame(
+      s.scope("sma-once-bar"),
+      opened.key,
+      { ...opened.intent, side: "short" },
+      frame,
+    ),
+    { code: "CONFLICT" },
+  );
+
+  const position = original.account.positions.find((p) => p.id === opened.key)!;
+  const fresh = s.fresh().frames.find((f) => f.snapshot.market.symbol === position.symbol)!;
+  const intent = {
+    kind: "close",
+    symbol: position.symbol,
+    side: position.side,
+    notional: "0",
+    feeReserve: "1",
+  } as const;
+  const [first, second] = await Promise.all([
+    s.paper.executeFrame(s.scope("sma-once-bar"), "atomic-close", intent, fresh),
+    s.paper.executeFrame(s.scope("sma-once-bar"), "atomic-close", intent, fresh),
+  ]);
+  assert.deepEqual(first, second);
+  assert.equal(first.attempts.filter((a) => a.key === "atomic-close").length, 1);
+  assert.equal(
+    first.movements.filter((m) => m.key === "atomic-close:fee" && m.kind === "fee").length,
+    1,
+  );
+  assert.deepEqual(first.account.consumedEntryKeys, original.account.consumedEntryKeys);
+});
+
+for (const failure of ["heartbeat", "ownership"] as const) {
+  test(`captured transaction rolls back its writes when ${failure} expires before commit`, async (t) => {
+    const s = await setup(t, `component-atomic-rollback-${failure}`);
+    await s.runner.cycle(s.c, s.lease, s.signal);
+    const before = await s.paper.view(s.scope("sma-once-bar"));
+    const p = before.account.positions[0]!;
+    const frame = s.fresh().frames.find((f) => f.snapshot.market.symbol === p.symbol)!;
+    let inserts = 0;
+    s.onQuery((statement) => {
+      if (statement === "INSERT" && ++inserts === 3) {
+        s.elapse(failure === "heartbeat" ? 5001 : 90001);
+        s.onQuery();
+      }
+    });
+    await assert.rejects(
+      s.paper.executeFrame(
+        s.scope("sma-once-bar"),
+        "rollback-close",
+        {
+          kind: "close",
+          symbol: p.symbol,
+          side: p.side,
+          notional: "0",
+          feeReserve: "1",
+        },
+        frame,
+      ),
+      { code: failure === "heartbeat" ? "STALE_MARKET_DATA" : "LEASE_LOST" },
+    );
+    assert.equal(inserts, 3);
+    const after = await exportPerpsAudit(s.db.pool, s.c);
+    assert.deepEqual(after.accounts["sma-once-bar"], before);
+  });
+}
+
+test("captured failed opening rolls back both the fill and the consumed hourly key", async (t) => {
+  const s = await setup(t, "component-atomic-open-rollback");
+  const original = s.paper.executeFrame.bind(s.paper);
+  s.paper.executeFrame = async (...args) => {
+    if (args[0].agentId !== s.scope("sma-once-bar").agentId) {
+      return original(...args);
+    }
+    let inserts = 0;
+    s.onQuery((statement) => {
+      if (statement === "INSERT" && ++inserts === 3) {
+        s.elapse(5001);
+        s.onQuery();
+      }
+    });
+    return original(...args);
+  };
+  await assert.rejects(s.runner.cycle(s.c, s.lease, s.signal), { code: "STALE_MARKET_DATA" });
+  const saved = await exportPerpsAudit(s.db.pool, s.c);
+  assert.equal(saved.accounts["sma-reference"]!.account.positions.length, 4);
+  const rejected = saved.accounts["sma-once-bar"]!;
+  assert.equal(rejected.account.positions.length, 0);
+  assert.equal(rejected.attempts.length, 0);
+  assert.equal(rejected.account.consumedEntryKeys?.length, 0);
+});
+
+test("captured execution rejects tampered hashes and unbound owners without financial writes", async (t) => {
+  const s = await setup(t, "component-atomic-validation");
+  await s.runner.cycle(s.c, s.lease, s.signal);
+  const before = await s.paper.view(s.scope());
+  const p = before.account.positions[0]!;
+  const frame = s.fresh().frames.find((f) => f.snapshot.market.symbol === p.symbol)!;
+  const intent = {
+    kind: "close",
+    symbol: p.symbol,
+    side: p.side,
+    notional: "0",
+    feeReserve: "1",
+  } as const;
+  await assert.rejects(
+    s.paper.executeFrame(s.scope(), "bad-hash", intent, { ...frame, hash: "f".repeat(64) }),
+    { code: "INVALID_MARKET_DATA" },
+  );
+  const unowned = new PostgresPerpsPaperStore(s.db.pool, () => s.time());
+  await assert.rejects(unowned.executeFrame(s.scope(), "unbound", intent, frame), {
+    code: "LEASE_LOST",
+  });
+  assert.deepEqual(await s.paper.view(s.scope()), before);
+});
+
+test("paired controlled query delay compares unchanged financial results and expiry margin", async (t) => {
+  const db = await createTestStore(t);
+  const measurements: {
+    sample: number;
+    captured: boolean;
+    queryDelayMs: number;
+    queries: number;
+    simulatedElapsedMs: number;
+    simulatedFinalExecutionMs: number;
+    measuredElapsedMs: number;
+    complete: boolean;
+    code: string | null;
+    fills: number;
+  }[] = [];
+  const financial = (view: Awaited<ReturnType<typeof exportPerpsAudit>>) =>
+    SMA_REENTRY_VARIANTS.map((v) => {
+      const a = view.accounts[v]!.account;
+      return {
+        cash: a.cash,
+        movements: view.accounts[v]!.movements.map((m) => ({ kind: m.kind, delta: m.delta })).sort(
+          (a, b) => `${a.kind}:${a.delta}`.localeCompare(`${b.kind}:${b.delta}`),
+        ),
+        positions: a.positions.map((p) => ({
+          symbol: p.symbol,
+          side: p.side,
+          quantity: p.quantity,
+          entryPrice: p.entryPrice,
+        })),
+      };
+    });
+  let parity: ReturnType<typeof financial> | undefined;
+  for (const queryDelayMs of [0, 10]) {
+    for (let sample = 0; sample < 30; sample++) {
+      for (const captured of [false, true]) {
+        const s = await setup(
+          t,
+          `benchmark-${queryDelayMs}-${sample}-${captured}`,
+          "long",
+          0,
+          queryDelayMs,
+          captured,
+          db,
+        );
+        s.startMeasuring();
+        const initial = s.time();
+        const started = performance.now();
+        let code: string | null = null;
+        try {
+          await s.runner.cycle(s.c, s.lease, s.signal);
+        } catch (error) {
+          code = (error as { code?: string }).code ?? "UNEXPECTED_FAILURE";
+        }
+        const measuredElapsedMs = performance.now() - started;
+        const simulatedElapsedMs = s.time() - initial;
+        const queries = s.queries();
+        const saved = await exportPerpsAudit(db.pool, s.c);
+        const complete = saved.study.rounds[0]?.executionStatus === "complete";
+        const fills = SMA_REENTRY_VARIANTS.reduce(
+          (n, v) => n + saved.accounts[v]!.attempts.filter((a) => a.status === "filled").length,
+          0,
+        );
+        measurements.push({
+          sample,
+          captured,
+          queryDelayMs,
+          queries,
+          simulatedElapsedMs,
+          simulatedFinalExecutionMs: s.finalExecutionMs(),
+          measuredElapsedMs,
+          complete,
+          code,
+          fills,
+        });
+        if (sample === 0) {
+          t.diagnostic(`COMPONENT_ATOMIC_SAMPLE=${JSON.stringify(measurements.at(-1))}`);
+        }
+        if (queryDelayMs === 0) {
+          assert.equal(code, null);
+          assert.equal(complete, true);
+          assert.equal(fills, 8);
+          parity ??= financial(saved);
+          assert.deepEqual(financial(saved), parity);
+        } else if (captured) {
+          assert.equal(code, null);
+          assert.equal(complete, true);
+          assert.equal(fills, 8);
+          assert.ok(s.finalExecutionMs() < 5000);
+        } else {
+          assert.equal(code, "STALE_MARKET_DATA");
+          assert.equal(complete, false);
+        }
+      }
+    }
+  }
+  t.diagnostic(`COMPONENT_ATOMIC_BENCHMARK=${JSON.stringify(measurements)}`);
 });
