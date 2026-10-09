@@ -1609,3 +1609,84 @@
     height: 14px;
   }
 }
+
+/* ---------- The tape above the bar ---------- */
+
+/* A dark block restates ink as well as ground: `color` inherits as a resolved value, so a dark
+   subtree that never sets it paints the light surface's near-black on night blue. */
+.tape {
+  position: relative;
+  z-index: 21;
+  overflow: hidden;
+  background: var(--pk-bg);
+  color: var(--pk-ink);
+  border-bottom: 1px solid var(--pk-rule);
+}
+
+.tapeTrack {
+  display: flex;
+  width: max-content;
+  animation: tapeFlow 44s linear infinite;
+}
+
+.tapeList {
+  display: flex;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tapeItem {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 10px 18px;
+  white-space: nowrap;
+}
+
+.tapeTicker {
+  font: 600 12px/1 var(--pk-font);
+  letter-spacing: 0.04em;
+  color: var(--pk-ink-muted);
+}
+
+.tapeCall {
+  font: 600 14px/1 var(--pk-font);
+  color: var(--pk-ink);
+}
+
+.tapeResult {
+  font: 600 11px/1 var(--pk-font);
+  letter-spacing: 0.06em;
+}
+
+.tapeResult[data-tone="win"] {
+  color: var(--pk-win);
+}
+
+.tapeResult[data-tone="caution"] {
+  color: var(--pk-amber-ink);
+}
+
+.tapeResult[data-tone="loss"] {
+  color: var(--pk-loss);
+}
+
+.tapeResult[data-tone="neutral"] {
+  color: var(--pk-ink-muted);
+}
+
+@keyframes tapeFlow {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tapeTrack {
+    animation: none;
+  }
+}
