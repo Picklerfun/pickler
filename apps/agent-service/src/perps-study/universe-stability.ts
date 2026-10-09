@@ -18,9 +18,15 @@ import { createHash } from "node:crypto";
 import { keepAwake } from "../paper-study/comparison-host.js";
 import { closeProfileResources } from "./profiles-resources.js";
 
-/** Fixed, capture-only qualification. No accounts, simulator, model or signing client. */
+/** Capture only: fixed qualification or three diagnostic reads, never accounts or models. */
 export async function runUniverseStability(
-  input: { configPath: string; envFile?: string; output?: string; allowPaid?: boolean },
+  input: {
+    configPath: string;
+    envFile?: string;
+    output?: string;
+    allowPaid?: boolean;
+    diagnosticOnly?: boolean;
+  },
   parent: AbortSignal,
 ) {
   if (input.allowPaid || !input.envFile || !input.output) {
@@ -36,6 +42,15 @@ export async function runUniverseStability(
   if (config.version !== 7) {
     throw new PilotError("INVALID_INPUT", "Eleven-market v7 required");
   }
+  const diagnosticOnly = input.diagnosticOnly === true;
+  if (diagnosticOnly && config.acquisitionPolicy !== "rest-universe-coherent-20s-v2") {
+    throw new PilotError(
+      "INVALID_INPUT",
+      "Reader check requires the explicitly selected v2 reader",
+    );
+  }
+  const expectedCycles = diagnosticOnly ? 3 : 30;
+  const intervalMs = diagnosticOnly ? 25000 : 60000;
   const url = await localStudyDatabase(resolve(input.envFile));
   const commit = execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim();
   if (execFileSync("git", ["status", "--porcelain"], { encoding: "utf8" }).trim()) {
@@ -50,11 +65,14 @@ export async function runUniverseStability(
   const renewals: LeaseDiagnostic[] = [];
   const requests: unknown[] = [];
   const acquisition: unknown[] = [];
+  const tickerReads: unknown[] = [];
   const data = createPriorityPerplStudyData(research, {
+    acquisitionPolicy: config.acquisitionPolicy ?? "rest-universe-20s-v1",
     onDiagnostic: (value) => requests.push(value),
     onAcquisition: (value) => acquisition.push(value),
+    onTickerRead: (value) => tickerReads.push(value),
   });
-  const id = `stability7-${new Date().toISOString().replace(/[-:.]/g, "").slice(0, 18)}`;
+  const id = `${diagnosticOnly ? "readercheck7" : "stability7"}-${new Date().toISOString().replace(/[-:.]/g, "").slice(0, 18)}`;
   let releaseAwake = () => {};
   let lease: Awaited<ReturnType<typeof study.claim>> | undefined;
   let scope: Awaited<ReturnType<typeof study.initializeDiagnostic>> | undefined;
@@ -74,9 +92,10 @@ export async function runUniverseStability(
     frames: unknown[];
     requests: unknown[];
     acquisition: unknown[];
+    tickerReads: unknown[];
   }[] = [];
   const startedAt = Math.floor(Date.now() / 60000) * 60000 + 60000;
-  const end = startedAt + 1800000;
+  const end = startedAt + expectedCycles * intervalMs;
   const render = async () => {
     const valid = cycles.filter((c) => c.valid).length;
     const failedOwnership =
@@ -86,16 +105,17 @@ export async function runUniverseStability(
         ? 1
         : 0);
     const result = {
-      version: 1,
-      protocol: "perps-universe-stability-v1",
-      qualification: "CAPTURE_ONLY",
+      version: 2,
+      protocol: diagnosticOnly ? "perpl-reader-check-v1" : "perps-universe-stability-v1",
+      qualification: diagnosticOnly ? "DIAGNOSTIC_ONLY_NOT_ACCEPTANCE" : "CAPTURE_ONLY",
       commit,
       configurationHash: createHash("sha256").update(canonicalAudit(config)).digest("hex"),
+      acquisitionPolicy: config.acquisitionPolicy ?? "rest-universe-20s-v1",
       config,
       startedAt,
       endsAt: end,
-      expectedCycles: 30,
-      requiredValid: 29,
+      expectedCycles,
+      requiredValid: diagnosticOnly ? null : 29,
       validCycles: valid,
       ownershipFailures: failedOwnership,
       leaseReleased: released,
@@ -103,7 +123,12 @@ export async function runUniverseStability(
       modelCalls: 0,
       modelCostUSD: "0",
       passed:
-        cycles.length === 30 && valid >= 29 && failedOwnership === 0 && released && error === null,
+        !diagnosticOnly &&
+        cycles.length === 30 &&
+        valid >= 29 &&
+        failedOwnership === 0 &&
+        released &&
+        error === null,
       limitation:
         "Flat public capture validates acquisition, not mandatory exits or profitability.",
       cycles,
@@ -139,7 +164,7 @@ export async function runUniverseStability(
     for (const [name, content] of Object.entries({
       "report.json": JSON.stringify(result, null, 2) + "\n",
       "report.csv": csv,
-      "report.html": `<!doctype html><html lang="en"><meta charset="utf-8"><title>Eleven-market capture qualification</title><body><h1>Public acquisition qualification</h1><p>${valid}/30 joint valid cycles; lease released: ${released}; accepted: ${result.passed}. No trading or models.</p><pre>${JSON.stringify(result, null, 2).replaceAll("&", "&amp;").replaceAll("<", "&lt;")}</pre></body></html>`,
+      "report.html": `<!doctype html><html lang="en"><meta charset="utf-8"><title>Eleven-market reader evidence</title><body><h1>${diagnosticOnly ? "Three public reader checks; not qualification" : "Public acquisition qualification"}</h1><p>${valid}/${expectedCycles} joint valid cycles; lease released: ${released}; accepted: ${result.passed}. No trading or models.</p><pre>${JSON.stringify(result, null, 2).replaceAll("&", "&amp;").replaceAll("<", "&lt;")}</pre></body></html>`,
     })) {
       await writeFile(join(output, name + ".tmp"), content, { mode: 0o600 });
       await rename(join(output, name + ".tmp"), join(output, name));
@@ -148,11 +173,16 @@ export async function runUniverseStability(
   };
   try {
     releaseAwake = process.platform === "darwin" ? await keepAwake() : () => {};
-    scope = await study.initializeDiagnostic(config, id, {
-      commit,
-      acquisitionPolicy: "rest-universe-20s-v1",
-      qualification: "CAPTURE_ONLY",
-    });
+    scope = await study.initializeDiagnostic(
+      config,
+      id,
+      {
+        commit,
+        acquisitionPolicy: config.acquisitionPolicy ?? "rest-universe-20s-v1",
+        qualification: diagnosticOnly ? "DIAGNOSTIC_ONLY_NOT_ACCEPTANCE" : "CAPTURE_ONLY",
+      },
+      diagnosticOnly ? config : undefined,
+    );
     lease = await study.claim(scope);
     heartbeat = startLeaseHeartbeat({
       lease,
@@ -168,15 +198,16 @@ export async function runUniverseStability(
       await study.guard(scope!, lease!);
     };
     const record = (await study.view(scope)).record;
-    for (let slot = 0; slot < 30; slot++) {
-      const scheduledAt = startedAt + slot * 60000;
+    for (let slot = 0; slot < expectedCycles; slot++) {
+      const scheduledAt = startedAt + slot * intervalMs;
       await wait(Math.max(1, scheduledAt - Date.now()), undefined, { signal });
       await guard();
       requests.length = 0;
       acquisition.length = 0;
+      tickerReads.length = 0;
       const at = Date.now(),
         mono = performance.now();
-      const missed = at - scheduledAt > 30000;
+      const missed = at - scheduledAt > (diagnosticOnly ? 5000 : 30000);
       let code: string | null = missed ? "WINDOW_MISSED" : null;
       let validatedAt = Date.now();
       let fatal: unknown;
@@ -190,10 +221,12 @@ export async function runUniverseStability(
             validatePaperFrame(f, config.network, f.snapshot.market.symbol, reference);
           }
         } catch (failure) {
-          signal.throwIfAborted();
-          code = failure instanceof PilotError ? failure.code : "PUBLIC_CAPTURE_FAILED";
-          if (!transientPerpsData(failure)) {
-            fatal = failure;
+          const cause = signal.aborted ? signal.reason : failure;
+          code = cause instanceof PilotError ? cause.code : "PUBLIC_CAPTURE_FAILED";
+          if (signal.aborted || !transientPerpsData(failure)) {
+            // Keep interrupted request traces locally before leaving; never write this cycle
+            // to PostgreSQL after cancellation or loss of ownership.
+            fatal = cause;
           }
         }
       }
@@ -240,6 +273,7 @@ export async function runUniverseStability(
           requestId,
         })),
         acquisition: [...acquisition],
+        tickerReads: [...tickerReads],
       };
       cycles.push(cycle);
       if (fatal) {
@@ -281,11 +315,11 @@ export async function runUniverseStability(
     if (failures.length) {
       error ??= "RESOURCE_CLEANUP_FAILED";
     }
-    while (cycles.length < 30) {
+    while (cycles.length < expectedCycles) {
       const slot = cycles.length;
       cycles.push({
         slot,
-        scheduledAt: startedAt + slot * 60000,
+        scheduledAt: startedAt + slot * intervalMs,
         at: Date.now(),
         validatedAt: Date.now(),
         valid: false,
@@ -296,6 +330,7 @@ export async function runUniverseStability(
         frames: [],
         requests: [],
         acquisition: [],
+        tickerReads: [],
       });
     }
     const result = await render();
@@ -308,7 +343,13 @@ export async function runUniverseStability(
         error,
       }),
     );
-    if (!result.passed) {
+    if (diagnosticOnly && (error || !released || result.ownershipFailures > 0)) {
+      throw new PilotError(
+        error ?? "READER_CHECK_FAILED",
+        "Reader diagnostic did not close safely",
+      );
+    }
+    if (!diagnosticOnly && !result.passed) {
       throw new PilotError(
         "STABILITY_NOT_ACCEPTED",
         "One qualification completed without meeting acceptance; no automatic repeat",
