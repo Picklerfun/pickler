@@ -13,12 +13,24 @@ import {
   pausePerplRead,
   type PerplDataOptions,
 } from "@pickler/infrastructure";
-import { acquireUniverse, type AcquisitionDiagnostic } from "@pickler/trading/perps";
+import {
+  acquireUniverse,
+  acquireUniverseV2,
+  type AcquisitionDiagnostic,
+} from "@pickler/trading/perps";
+export type UniverseAcquisitionPolicy = "rest-universe-20s-v1" | "rest-universe-coherent-20s-v2";
 /** Private v2 plugin composition: no Mastra tools, model or signer is constructed. */
 export function createUniversePerplReader(
   agents: { agent(scope: Scope): Promise<AgentRecord> },
-  options: PerplDataOptions & { onAcquisition?: (value: AcquisitionDiagnostic) => void } = {},
+  options: PerplDataOptions & {
+    onAcquisition?: (value: AcquisitionDiagnostic) => void;
+    acquisitionPolicy?: UniverseAcquisitionPolicy;
+  } = {},
 ) {
+  const acquisitionPolicy = options.acquisitionPolicy ?? "rest-universe-20s-v1";
+  if (!["rest-universe-20s-v1", "rest-universe-coherent-20s-v2"].includes(acquisitionPolicy)) {
+    throw new PilotError("INVALID_INPUT", "Unknown universe acquisition policy");
+  }
   const schedule = options.schedule ?? new PerplRequestSchedule();
   let frozen: AgentRecord | undefined;
   let closed = false;
@@ -51,19 +63,21 @@ export function createUniversePerplReader(
     frozen ??= structuredClone(agent);
     return agent;
   }
-  async function session(scope: Scope, signal: AbortSignal, guard?: () => Promise<void>) {
+  async function sessionData(scope: Scope, signal: AbortSignal, guard?: () => Promise<void>) {
     await check(scope, signal, guard);
-    return createPerpReadService({
-      repository: agents,
-      data: new PerplMarketData({
-        ...options,
-        schedule,
-        retryTransient: true,
-        universe: true,
-        sessionLimit: 24,
-        guard: () => check(scope, signal, guard).then(() => {}),
-      }),
-    })(scope, signal);
+    const data = new PerplMarketData({
+      ...options,
+      schedule,
+      retryTransient: true,
+      universe: true,
+      sessionLimit: 24,
+      guard: () => check(scope, signal, guard).then(() => {}),
+    });
+    const service = await createPerpReadService({ repository: agents, data })(scope, signal);
+    return { data, service };
+  }
+  async function session(scope: Scope, signal: AbortSignal, guard?: () => Promise<void>) {
+    return (await sessionData(scope, signal, guard)).service;
   }
   return {
     session,
@@ -73,10 +87,11 @@ export function createUniversePerplReader(
       parent: AbortSignal,
       guard?: () => Promise<void>,
     ) {
+      const deadlineAt = now() + 20000;
       const timeout = AbortSignal.timeout(20000);
       const signal = AbortSignal.any([parent, lifetime.signal, timeout]);
       const active = await check(scope, signal, guard);
-      const service = await session(scope, signal, guard);
+      const { service, data } = await sessionData(scope, signal, guard);
       const listed = await service.listPerpMarkets();
       if (
         markets.some(
@@ -91,18 +106,49 @@ export function createUniversePerplReader(
       ) {
         throw new PilotError("PERPL_MARKET_IDENTITY", "Frozen universe catalog changed");
       }
-      const result = await acquireUniverse({
+      const input = {
         network: active.config.perpl!.network,
         symbols: markets.map((m) => m.symbol),
         now,
         signal,
         guard: () => check(scope, signal, guard).then(() => {}),
-        snapshot: (symbol) => service.getPerpSnapshot({ symbol }),
-        book: (symbol) => service.getPerpOrderBook({ symbol }),
+        book: (symbol: PerpSymbol) => service.getPerpOrderBook({ symbol }),
         hash,
-        wait: (s) => pausePerplRead(2000, s),
         ...(options.onAcquisition ? { diagnostic: options.onAcquisition } : {}),
-      });
+      };
+      async function snapshots(symbols: readonly PerpSymbol[]) {
+        async function batchGuard() {
+          const current = await check(scope, signal, guard);
+          for (const symbol of symbols) {
+            requireTool(current.config, "getPerpSnapshot");
+            if (!current.config.perpl!.markets.includes(symbol)) {
+              throw new PilotError("MARKET_NOT_ALLOWED", "Batch market is not enabled");
+            }
+          }
+          signal.throwIfAborted();
+        }
+        await batchGuard();
+        const result = await data.snapshotBatch(active.config.perpl!.network, symbols, {
+          signal,
+          guard: batchGuard,
+        });
+        await batchGuard();
+        return result;
+      }
+      const result =
+        acquisitionPolicy === "rest-universe-coherent-20s-v2"
+          ? await acquireUniverseV2({
+              ...input,
+              guard: () => check(scope, parent, guard).then(() => {}),
+              deadlineAt,
+              snapshots,
+              waitUntil: (at: number, s: AbortSignal) => pausePerplRead(Math.max(0, at - now()), s),
+            })
+          : await acquireUniverse({
+              ...input,
+              snapshot: (symbol: PerpSymbol) => service.getPerpSnapshot({ symbol }),
+              wait: (s) => pausePerplRead(2000, s),
+            });
       await check(scope, parent, guard);
       return result;
     },
