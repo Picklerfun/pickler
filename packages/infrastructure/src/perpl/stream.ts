@@ -12,7 +12,7 @@ import { abortable } from "./transport.js";
 import type { UniverseStreamBuffer } from "@pickler/trading/perps";
 
 export const PERPL_STREAM_VERSION = "public-stream-v1";
-export const PERPL_UNIVERSE_STREAM_VERSION = "public-universe-stream-v3";
+export const PERPL_UNIVERSE_STREAM_VERSION = "public-universe-stream-v4";
 const level = z.object({ p: uint.positive(), s: uint, o: uint });
 const bookMessage = z.object({
   mt: z.union([z.literal(15), z.literal(16)]),
@@ -82,7 +82,7 @@ export class PerplStreamState {
   private subscriptions = new Map<number, string>();
   private books = new Map<number, { book: Book; receivedAt: number }>();
   private states = new Map<number, { state: State; receivedAt: number }>();
-  private lastHeartbeat: { sn: number; h: number } | undefined;
+  private lastHeartbeat: { sn: number; h: number; receivedAt: number } | undefined;
   private ready = false;
   private lastSubscription: string | undefined;
   private lastBookMessages = new Map<number, string>();
@@ -165,7 +165,7 @@ export class PerplStreamState {
       ) {
         fail("PERPL_STREAM_DISCONTINUITY");
       }
-      this.lastHeartbeat = { sn: msg.sn, h: msg.h };
+      this.lastHeartbeat = { sn: msg.sn, h: msg.h, receivedAt };
       return msg;
     }
     if (mt === 9) {
@@ -267,6 +267,16 @@ export class PerplStreamState {
     return msg;
   }
   /** Synchronous copy: no await can mix markets from different connection generations. */
+  continuity(): UniverseStreamBuffer["continuity"] {
+    if (!this.ready || !this.lastHeartbeat) {
+      return undefined;
+    }
+    return {
+      heartbeatSequence: this.lastHeartbeat.sn,
+      headBlock: this.lastHeartbeat.h,
+      heartbeatReceivedAt: this.lastHeartbeat.receivedAt,
+    };
+  }
   components(symbols: readonly PerpSymbol[], now: number): UniverseStreamBuffer["components"] {
     return symbols.map((symbol) => {
       const source = this.markets.find((m) => m.symbol === symbol);
@@ -705,12 +715,13 @@ export class PerplPublicStream {
     const generation = this.generation;
     const observedAt = this.now();
     const components = this.#state.components(symbols, observedAt);
+    const continuity = this.#state.continuity();
     await this.guard();
     signal.throwIfAborted();
     if (generation !== this.generation || this.socket?.readyState !== 1) {
       fail("DATA_UNAVAILABLE");
     }
-    return { generation, observedAt, components };
+    return { generation, observedAt, components, ...(continuity ? { continuity } : {}) };
   }
   close(): Promise<void> {
     if (this.closing) {
