@@ -115,6 +115,8 @@ export interface PerpsSmaProfileConfig extends PerpsStudyScope {
 export interface PerpsSmaReentryConfig extends Omit<PerpsSmaProfileConfig, "version" | "protocol"> {
   version: 7;
   protocol: "perps-sma-reentry-latency-v1";
+  /** Absence preserves the acquisition used by historical v7 studies. */
+  acquisitionPolicy?: "rest-universe-20s-v1" | "rest-universe-coherent-20s-v2";
 }
 export type PerpsStudyConfig =
   | PerpsPaidStudyConfig
