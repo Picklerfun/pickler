@@ -1,0 +1,131 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PTS course reference rules",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "bundleId",
+    "knowledgeVersion",
+    "language",
+    "kind",
+    "status",
+    "executionEnabled",
+    "registryEntry",
+    "sourceManifest",
+    "openQuestions",
+    "parameterSemantics",
+    "rules"
+  ],
+  "properties": {
+    "$schema": {
+      "const": "./schemas/rules.schema.json"
+    },
+    "bundleId": {
+      "const": "pts-course"
+    },
+    "knowledgeVersion": {
+      "const": "1.0.0"
+    },
+    "language": {
+      "const": "en"
+    },
+    "kind": {
+      "const": "course-reference"
+    },
+    "status": {
+      "const": "reference-only"
+    },
+    "executionEnabled": {
+      "const": false
+    },
+    "registryEntry": {
+      "type": "null"
+    },
+    "sourceManifest": {
+      "const": "source-manifest.json"
+    },
+    "openQuestions": {
+      "const": "open-questions.json"
+    },
+    "parameterSemantics": {
+      "type": "string",
+      "minLength": 1
+    },
+    "rules": {
+      "type": "array",
+      "minItems": 22,
+      "maxItems": 22,
+      "items": {
+        "title": "PTS course concept",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "title",
+          "finding",
+          "origin",
+          "status",
+          "courseParameters",
+          "references",
+          "unresolvedQuestionIds"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "finding": {
+            "type": "string",
+            "minLength": 1
+          },
+          "origin": {
+            "const": "course-interpretation"
+          },
+          "status": {
+            "const": "requires-operational-definition"
+          },
+          "courseParameters": {
+            "type": "object"
+          },
+          "references": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["sourceId", "lineStart", "lineEnd"],
+              "properties": {
+                "sourceId": {
+                  "type": "string",
+                  "pattern": "^M[1-4]C[1-9][0-9]*$"
+                },
+                "lineStart": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "lineEnd": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "unresolvedQuestionIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "uniqueItems": true,
+            "minItems": 1
+          }
+        }
+      }
+    }
+  }
+}
