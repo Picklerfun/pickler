@@ -86,7 +86,7 @@ contract PicklerFeeEscrow is ReentrancyGuard {
     /// @dev Deployment order is escrow, adapter (which creates the locker), curve deployer,
     ///      factory, then this. Every one of those needs the address of something deployed
     ///      before it, and this closes the loop without leaving anything mutable afterwards.
-    function initialize(PicklerLaunchFactory factory_, address locker_) external {
+    function initialize(PicklerLaunchFactory factory_, address locker_) external virtual {
         if (msg.sender != deployer) {
             revert NotDeployer();
         }
@@ -100,7 +100,7 @@ contract PicklerFeeEscrow is ReentrancyGuard {
 
     /// @notice Attributes trading fees a curve has just transferred here.
     /// @dev Callable only by the launch's own curve, which is what identifies the launch.
-    function syncCurveFees(address launchToken, address asset) external nonReentrant {
+    function syncCurveFees(address launchToken, address asset) external virtual nonReentrant {
         PicklerLaunchFactory.LaunchRecord memory record = _requireLaunch(launchToken);
         if (msg.sender != record.curve) {
             revert NotTheLaunchCurve();
@@ -112,7 +112,7 @@ contract PicklerFeeEscrow is ReentrancyGuard {
     }
 
     /// @notice Attributes pool fees the locker has just collected here.
-    function syncPoolFees(address launchToken, address asset) external nonReentrant {
+    function syncPoolFees(address launchToken, address asset) external virtual nonReentrant {
         if (msg.sender != locker) {
             revert NotTheLocker();
         }
@@ -146,7 +146,7 @@ contract PicklerFeeEscrow is ReentrancyGuard {
     }
 
     function _requireLaunch(address launchToken)
-        private
+        internal
         view
         returns (PicklerLaunchFactory.LaunchRecord memory record)
     {
@@ -175,8 +175,19 @@ contract PicklerFeeEscrow is ReentrancyGuard {
             return;
         }
 
-        accounted[asset] = balance;
+        _credit(launchToken, asset, creatorRecipient, protocolShareBps, source, received);
+    }
 
+    /// @dev Exact receipts use this path without assigning unrelated balance increases.
+    function _credit(
+        address launchToken,
+        address asset,
+        address creatorRecipient,
+        uint256 protocolShareBps,
+        FeeSource source,
+        uint256 received
+    ) internal {
+        accounted[asset] += received;
         uint256 protocolAmount = (received * protocolShareBps) / PicklerPreset.BPS_SCALE;
         uint256 creatorAmount = received - protocolAmount;
 
