@@ -30,3 +30,13 @@ The generated curve ABI includes `marginalPriceWad` for precision policy 2, and 
 include unknown-policy, invalid-reference and quote-decimal errors. The struct shape and config
 hash commitment are unchanged. Generation is compiler-owned; existing external deployments are
 not evidence that a Pickler factory or DEX configuration has been deployed.
+
+## Controlled Kuru artifacts
+
+Compiler output now exports the independent Kuru passive interfaces, adapter, curve deployer,
+per-launch position vault, liquidity locker, policy and exact-receipt escrow. Factory venue
+commitments apply only to new preset versions. No passive Kuru deployment entry is verified;
+see [readiness](../../docs/market/kuru-passive-readiness.json) and
+[integration](../../docs/market/kuru-passive-integration.md). Runtime hashes cannot establish
+unchanged proxy implementations. Never install the pinned UNLICENSED SDK or mark a controlled
+account/market model as operational acceptance.
