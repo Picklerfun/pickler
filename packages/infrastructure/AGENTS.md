@@ -691,3 +691,12 @@ transaction. Original hashes, generation and native/heartbeat freshness are rech
 Only confirmed rollback before a commit attempt can return `data_unavailable` for demonstrated
 aging. Failed rollback, uncertain commit, lost owner, identity/schema and one-account historical
 observations fail closed; duplicate complete keys add no valuation or funding. No history is repaired.
+
+Evaluation-only database timing translates an actual PostgreSQL statement deadline (`57014`
+with the recognized statement-timeout message) to `PERSISTENCE_QUERY_TIMEOUT`; other `57014`
+cancellations become `PERSISTENCE_QUERY_CANCELLED`. The demonstrated driver connection deadline
+becomes `PERSISTENCE_CONNECTION_TIMEOUT`; unrelated failures keep their original semantics.
+Driver text, SQL, parameters and causes are
+not retained in those failures. Timing diagnostics retain the original safe SQLSTATE. Neither
+failure is market-data unavailability or permission to retry financial writes; existing rollback,
+uncertain-commit and ownership fences remain authoritative. Production pool deadlines are unchanged.
