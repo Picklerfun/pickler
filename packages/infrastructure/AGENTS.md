@@ -683,3 +683,11 @@ admission and completion helpers and checks original-frame freshness again immed
 commit. Expiry or ownership failure rolls back all writes, including the attempt and entry key.
 Confirmed duplicate keys remain idempotent without a new fill; conflicting intents are rejected.
 No live heartbeat can extend the captured proof and no legacy/product lifecycle changes.
+
+Component-paper `observeCommon` locks both frozen study accounts in deterministic identity order,
+checks membership/immutable policies/permissions and applies the existing observation function at
+one database and receipt clock. Account/position/funding writes and observation records share one
+transaction. Original hashes, generation and native/heartbeat freshness are rechecked before commit.
+Only confirmed rollback before a commit attempt can return `data_unavailable` for demonstrated
+aging. Failed rollback, uncertain commit, lost owner, identity/schema and one-account historical
+observations fail closed; duplicate complete keys add no valuation or funding. No history is repaired.
