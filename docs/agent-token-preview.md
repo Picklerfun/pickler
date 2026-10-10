@@ -3,7 +3,8 @@
 Launch admission and presentation now include the opt-in operational testnet composition described
 in [Token operations](market/token-launch-operations.md). Its dedicated grant signer, immutable R2
 metadata, existing Studio passkey, durable transactions and bounded indexer remain disabled until
-the passive Kuru readiness gate is verified. No contract deployment or remote acceptance is claimed.
+the complete reviewed venue gate is configured. A separate Uniswap V4 contract acceptance has
+completed; hosted product acceptance remains pending. See [the evidence](market/uniswap-v4-testnet-integration.md).
 Funding wallets, publishing agents and editing token names cannot activate launch execution.
 
 ## Boundaries
@@ -22,7 +23,8 @@ creator call). The domain is `Pickler`, version `2`, with the actual chain ID an
 creator nonce and creator deadline. The grant additionally binds agent key, creator, fee recipient,
 its own unique nonce and expiry. Grants last at most five minutes. Operator-only authority rotation
 invalidates signatures from the old authority. The original creator replay checks remain. There is
-no legacy grant-free overload. No factory has been deployed by this delivery.
+no legacy grant-free overload. The isolated testnet factory in the public acceptance record is deployed with general launches
+disabled; it is not a configured hosted product deployment.
 
 Agent keys are `keccak256(abi.encode("pickler.agent.v1", uint256(chainId), bytes16(agentUuid)))`.
 The UUID has its hyphens removed before encoding. The private mapping and recorded grant must match
@@ -53,7 +55,7 @@ Expired retries require a new request. A changed owner cannot retrieve the previ
 Every response is private and `no-store`. The [operation endpoints](market/token-launch-operations.md#owner-api-and-recovery)
 prepare strictly enumerated transactions, accept the exact existing-passkey activity and reconcile
 that same activity/transaction explicitly. Ordinary composition returns `LAUNCH_UNAVAILABLE` until
-the policy, dedicated authority, R2 and verified passive venue are configured. The controlled signer
+the policy, dedicated authority, R2 and verified versioned venue are configured. The controlled signer
 is exported only through `@pickler/infrastructure/testing/token`, refuses remote PostgreSQL and is
 never imported by a host. Its public fixture key is not an operational credential.
 
@@ -105,7 +107,7 @@ introduced for the reference profile.
 | Buy / sell fees                           | 1% / 1%                                   |
 | Trade fee split                           | 50% creator / 50% Pickler                 |
 | Launch fee                                | 0 AUSD                                    |
-| Post-migration venue and fees             | Passive Kuru; actual LP fees split 50/50  |
+| Post-migration venue and fees             | Uniswap V4; actual LP fees split 50/50    |
 
 Initial valuation is price times the entire supply, not a required deposit or money raised. There is
 no oracle or USD conversion. The virtual reserves are **22,400,000 tokens** and
@@ -131,13 +133,13 @@ compares it with core and reviewed chain metadata.
 Exhausting curve inventory still closes both buys and sells. Controlled tests transfer precisely
 the real backing and reserved tokens to a test adapter while retaining fees. This alone does not establish remote DEX readiness.
 [Passive Kuru integration](market/kuru-passive-integration.md) adds controlled atomic graduation
-and permanently locked principal with separate collection of actual LP fees. The existing V4 adapter and old fork work remain historical technical evidence,
-not the operational venue selection for this profile.
+and permanently locked principal with separate collection of actual LP fees. The old V4 generation remains historical. The separate
+[Uniswap V4 V2 implementation](market/uniswap-v4-testnet-integration.md) is the current testnet venue.
 
 The live form groups supply/distribution, valuation/backing, creator wallet and fees into a compact
 summary. Gas is paid separately in MON without an invented estimate. The master wallet receives
-creator fees and has no token-admin privileges. After graduation, the UI shows the indexed Kuru venue, permanent liquidity lock and available
-fees. The economic summary explains the 50/50 split of actual Kuru LP fees without another
+creator fees and has no token-admin privileges. After graduation, the UI shows the indexed Uniswap or historical Kuru venue, permanent liquidity lock and available
+fees. The economic summary explains the 50/50 split of actual collected LP fees without another
 Pickler trading tax. There is no **Simulate** or **Review launch** action.
 
 ## Reproducible acceptance
@@ -166,19 +168,19 @@ npm run build:workers
 npm run design:check
 ```
 
-| Scenario                                                                                                | Evidence boundary                      | Status                       |
-| ------------------------------------------------------------------------------------------------------- | -------------------------------------- | ---------------------------- |
-| Legacy and normalized math, 53 reference vectors, full-precision intermediate                           | Offline Solidity and core              | Passed locally               |
-| Buys, sells, exact remainder, fee separation, donations, no rounding cycle gain                         | Offline unit/fuzz/invariant suites     | Passed locally               |
-| Inventory conservation, solvency and controlled adapter handover                                        | Offline contracts; no DEX              | Passed locally               |
-| Ownership, concurrent saves/grants, version conflicts, historical persistence and canonical attribution | Isolated PostgreSQL and API            | Passed locally               |
-| Altered grants, other wallet/chain/factory, expiry, replay and authority rotation                       | Offline contract suites                | Passed locally               |
-| Optional economics without signer, old responses and unknown version rejection                          | Core/API/web contracts                 | Passed locally               |
-| Four previews, desktop/mobile, keyboard, navigation, live edits and disabled launch                     | Local UI and Design                    | Passed locally               |
-| R2, dedicated signer, exact passkey/broadcast and bounded indexer                                       | Controlled ports and local database    | Implemented; remote gate off |
-| Passive Kuru, separate LP fees and permanent principal custody                                          | Controlled offline contracts           | Implemented; remote pending  |
-| Deployed readiness and remote acceptance                                                                | No deployment/provider calls performed | Pending explicit delivery    |
+| Scenario                                                                                                | Evidence boundary                                | Status                            |
+| ------------------------------------------------------------------------------------------------------- | ------------------------------------------------ | --------------------------------- |
+| Legacy and normalized math, 53 reference vectors, full-precision intermediate                           | Offline Solidity and core                        | Passed locally                    |
+| Buys, sells, exact remainder, fee separation, donations, no rounding cycle gain                         | Offline unit/fuzz/invariant suites               | Passed locally                    |
+| Inventory conservation, solvency and controlled adapter handover                                        | Offline contracts; no DEX                        | Passed locally                    |
+| Ownership, concurrent saves/grants, version conflicts, historical persistence and canonical attribution | Isolated PostgreSQL and API                      | Passed locally                    |
+| Altered grants, other wallet/chain/factory, expiry, replay and authority rotation                       | Offline contract suites                          | Passed locally                    |
+| Optional economics without signer, old responses and unknown version rejection                          | Core/API/web contracts                           | Passed locally                    |
+| Four previews, desktop/mobile, keyboard, navigation, live edits and disabled launch                     | Local UI and Design                              | Passed locally                    |
+| R2, dedicated signer, exact passkey/broadcast and bounded indexer                                       | Controlled ports and local database              | Implemented; remote gate off      |
+| Uniswap V4, separate LP fees and permanent principal custody                                            | Controlled contracts and real testnet            | Passed; hosted activation pending |
+| Real Uniswap contract flow                                                                              | 34 independently reconciled testnet transactions | Passed; hosted product pending    |
 
-The current change introduces no remote migration, deployment, transaction or paid call. Controlled
-results do not establish deployed readiness. Complete and verify the operational pieces and the
-entire DEX migration before enabling launches.
+The isolated contract acceptance used faucet assets and explicit gas limits; no hosted migration,
+app deployment, product activation or mainnet changes occurred. Complete the hosted operational
+acceptance before enabling allowlisted launches.
