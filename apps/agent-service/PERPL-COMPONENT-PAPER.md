@@ -145,3 +145,31 @@ trial and verifying a demonstrated correction before a distinct frozen continuat
 Never resume the failed session, recover old slots, extend its deadline, repeat the passed capture
 qualification, or count later prices as closure of its pending positions. Controlled full-duration
 regressions remain distinct from the eventual six-hour prospective comparison.
+
+## Database failure visibility and local isolation
+
+An evaluation pool reports a recognized PostgreSQL statement deadline as
+`PERSISTENCE_QUERY_TIMEOUT`, preserving safe SQLSTATE `57014` in timing evidence. Other
+cancellations are `PERSISTENCE_QUERY_CANCELLED`; the recognized driver connection deadline is
+`PERSISTENCE_CONNECTION_TIMEOUT`. Unknown failures are not guessed to be timeouts.
+No driver message, SQL, parameter or cause enters
+the normalized failure. A confirmed rollback on a database error remains a technical interruption;
+it is not a market-data omission or an automatic retry. Uncertain commits remain fatal.
+The ten-second database statement limit and all market freshness/heartbeat limits are unchanged.
+
+A physical server shared with database-creation/migration tests can experience competing work.
+Recorded overlap is evidence of contention risk, not proof of the exact contribution of each task.
+A dedicated local server separates PostgreSQL checkpoint and lock activity; it still shares host
+hardware and does not guarantee availability or profitability. Do not change other sessions'
+servers or stop their work. [PostgreSQL's creation documentation](https://www.postgresql.org/docs/17/sql-createdatabase.html)
+explains the checkpoint cost of file-copy database creation; do not infer that strategy for a
+historical statement when its bytes were not retained.
+
+Before an authorized zero-model continuation on an isolated physical server, preserve the source,
+create a consistent private dump, verify every existing application/migration table by sorted
+row SHA-256 hashes, and retain source/dump/target provenance. Carry all campaign reservations and
+unknown usage unchanged. The isolated copy cannot become another paid allowance or be combined
+with the source as a second historical sample. Freeze the dedicated database-only environment,
+clean code/configuration and capture adoption after controlled tests finish. An interrupted
+session stays interrupted with its own pending positions and original end; only a distinct
+session can use the demonstrated correction under explicit repair-and-completion authorization.
