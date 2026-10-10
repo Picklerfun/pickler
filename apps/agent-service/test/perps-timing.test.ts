@@ -1,3 +1,4 @@
+import { PilotError } from "@pickler/core";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { mkdtemp, writeFile, readFile, rm } from "node:fs/promises";
@@ -131,4 +132,63 @@ test("connection failure retains the safe PostgreSQL code without private error 
   await assert.rejects(timed.connect(), { code: "3D000" });
   assert.equal((rows[0] as { code: string }).code, "3D000");
   assert.ok(!JSON.stringify(rows).includes("PRIVATE_CONNECTION_DETAIL"));
+});
+
+for (const [message, expected] of [
+  ["canceling statement due to statement timeout", "PERSISTENCE_QUERY_TIMEOUT"],
+  ["PRIVATE_CANCEL_REASON", "PERSISTENCE_QUERY_CANCELLED"],
+] as const) {
+  test(`query cancellation reports ${expected} without retaining driver details`, async () => {
+    const failure = Object.assign(new Error(message), {
+      code: "57014",
+      query: "PRIVATE_SQL",
+      parameters: ["PRIVATE_PARAMETER"],
+    });
+    const pool = {
+      query: async () => {
+        throw failure;
+      },
+    } as unknown as Parameters<typeof timeEvaluationPool>[0];
+    const rows: unknown[] = [];
+    const timed = timeEvaluationPool(
+      pool,
+      (e) => rows.push(e),
+      () => "controlled-query",
+    );
+    await assert.rejects(timed.query("SELECT 1"), (error: unknown) => {
+      assert.ok(error instanceof PilotError);
+      assert.equal(error.code, expected);
+      assert.equal(Reflect.get(error, "query"), undefined);
+      assert.equal(Reflect.get(error, "parameters"), undefined);
+      assert.equal(error.cause, undefined);
+      return true;
+    });
+    assert.equal((rows[0] as { code: string }).code, "57014");
+    assert.ok(!JSON.stringify(rows).includes("PRIVATE"));
+  });
+}
+
+test("connection deadline retains its specific safe code without driver causes", async () => {
+  const failure = new Error("Connection terminated due to connection timeout", {
+    cause: new Error("PRIVATE_CONNECTION_CAUSE"),
+  });
+  const pool = {
+    connect: async () => {
+      throw failure;
+    },
+  } as unknown as Parameters<typeof timeEvaluationPool>[0];
+  const rows: unknown[] = [];
+  const timed = timeEvaluationPool(
+    pool,
+    (event) => rows.push(event),
+    () => "controlled-connect-timeout",
+  );
+  await assert.rejects(timed.connect(), (error: unknown) => {
+    assert.ok(error instanceof PilotError);
+    assert.equal(error.code, "PERSISTENCE_CONNECTION_TIMEOUT");
+    assert.equal(error.cause, undefined);
+    return true;
+  });
+  assert.equal((rows[0] as { code: string }).code, "PERSISTENCE_CONNECTION_TIMEOUT");
+  assert.ok(!JSON.stringify(rows).includes("PRIVATE"));
 });
