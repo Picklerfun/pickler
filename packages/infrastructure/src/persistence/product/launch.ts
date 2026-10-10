@@ -308,3 +308,69 @@ export const tokenGrants = launch
     ],
   )
   .enableRLS();
+
+/** Durable private operations; payload includes immutable unsigned activity and signed recovery bytes. */
+export const tokenOperations = launch
+  .table(
+    "operations",
+    {
+      id: uuid("id").primaryKey().defaultRandom(),
+      agentId: uuid("agent_id")
+        .notNull()
+        .references(() => agents.id, { onDelete: "restrict" }),
+      ownerId: uuid("owner_id")
+        .notNull()
+        .references(() => profiles.userId, { onDelete: "restrict" }),
+      chain: text("chain").notNull(),
+      sender: text("sender"),
+      transactionNonce: integer("transaction_nonce"),
+      rpcCalls: integer("rpc_calls").notNull().default(0),
+      requestKey: text("request_key").notNull(),
+      action: text("action").notNull(),
+      status: text("status").notNull(),
+      version: integer("version").notNull().default(1),
+      nonce: baseUnits("nonce").notNull(),
+      payload: jsonb("payload").notNull(),
+      expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+      transactionId: uuid("transaction_id").references(() => transactionRequests.id),
+      createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+      updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    },
+    (t) => [
+      uniqueIndex("operations_request_key").on(t.agentId, t.chain, t.requestKey),
+      uniqueIndex("operations_nonce_key").on(t.chain, t.nonce),
+      uniqueIndex("operations_master_nonce")
+        .on(t.chain, t.sender, t.transactionNonce)
+        .where(
+          sql`${t.status} IN ('awaiting_signature','signing','signed','submitting','confirming','included','unknown')`,
+        ),
+      index("operations_agent_status").on(t.agentId, t.chain, t.status),
+      check("operations_chain", sql`${t.chain} = 'eip155:10143'`),
+      check(
+        "operations_action",
+        sql`${t.action} IN ('launch','graduate','collect_curve_fees','collect_lp_fees','claim_fees')`,
+      ),
+      check(
+        "operations_status",
+        sql`${t.status} IN ('preparing','awaiting_signature','signing','signed','submitting','confirming','included','finalized','failed','cancelled','unknown')`,
+      ),
+      check("operations_version", sql`${t.version} > 0`),
+      check("operations_nonce", sql`${t.nonce} >= 0 AND ${t.nonce} < power(2::numeric,256)`),
+    ],
+  )
+  .enableRLS();
+
+/** Renewable single-run lease and UTC daily RPC admission, shared by all streams on a chain. */
+export const indexerAdmission = launch
+  .table(
+    "indexer_admission",
+    {
+      chain: text("chain").primaryKey(),
+      owner: uuid("owner"),
+      expiresAt: timestamp("expires_at", { withTimezone: true }),
+      day: text("day").notNull(),
+      requests: integer("requests").notNull().default(0),
+    },
+    (t) => [check("indexer_admission_requests", sql`${t.requests}>=0`)],
+  )
+  .enableRLS();
