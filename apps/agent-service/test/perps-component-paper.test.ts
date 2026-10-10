@@ -967,3 +967,73 @@ test(
     );
   },
 );
+
+test("PostgreSQL statement timeout rolls back common valuation and stays a technical failure", async (t) => {
+  const s = await setup(t, "component-observation-query-timeout");
+  await s.runner.cycle(s.c, s.lease, s.signal);
+  const before = await exportPerpsAudit(s.db.pool, s.c);
+  const captured = agingObservation(s);
+  let injected = false;
+  let rolledBack = false;
+  const pool = new Proxy(s.db.pool, {
+    get(target, property) {
+      if (property === "connect") {
+        return async () => {
+          const client = await s.db.pool.connect();
+          return new Proxy(client, {
+            get(connection, field) {
+              if (field === "query") {
+                return async (...args: unknown[]) => {
+                  const sql = typeof args[0] === "string" ? args[0] : "";
+                  if (
+                    !injected &&
+                    sql.includes("SELECT id,document FROM pickler.perps_paper_accounts")
+                  ) {
+                    injected = true;
+                    await connection.query("SET LOCAL statement_timeout='30ms'");
+                    return connection.query("SELECT pg_sleep(0.1)");
+                  }
+                  if (sql === "ROLLBACK") {
+                    rolledBack = true;
+                  }
+                  return Reflect.apply(connection.query, connection, args);
+                };
+              }
+              const value = Reflect.get(connection, field, connection);
+              return typeof value === "function" ? value.bind(connection) : value;
+            },
+          });
+        };
+      }
+      const value = Reflect.get(target, property, target);
+      return typeof value === "function" ? value.bind(target) : value;
+    },
+  });
+  const timed = timeEvaluationPool(
+    pool,
+    () => {},
+    () => "controlled-timeout",
+  );
+  const paper = new PostgresPerpsPaperStore(timed, () => s.time(), {
+    ...s.c,
+    owner: s.lease.owner,
+    signal: s.signal,
+  });
+  await assert.rejects(paper.observeCommon(commonScopes(s), "common-query-timeout", captured), {
+    code: "PERSISTENCE_QUERY_TIMEOUT",
+  });
+  assert.equal(injected, true);
+  assert.equal(rolledBack, true);
+  const after = await exportPerpsAudit(s.db.pool, s.c);
+  assert.deepEqual(after.accounts, before.accounts);
+  const saved = await s.db.pool.query(
+    "SELECT count(*)::int n FROM pickler.perps_paper_observations WHERE key=$1",
+    ["common-query-timeout"],
+  );
+  assert.equal(saved.rows[0].n, 0);
+  assert.equal(after.study.rounds.length, 1);
+  assert.equal(
+    after.study.events.some((e) => e.kind === "valuation-data-unavailable"),
+    false,
+  );
+});
