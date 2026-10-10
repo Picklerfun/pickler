@@ -15,6 +15,7 @@
   },
   "services": [{ "binding": "TRADING_EXECUTOR", "service": "pickler-trading-staging" }],
   "hyperdrive": [{ "binding": "DATABASE", "id": "05150d06f7164d26a991288a88044710" }],
+  "r2_buckets": [{ "binding": "TOKEN_METADATA", "bucket_name": "pickler-token-metadata-testnet" }],
   "observability": { "enabled": true },
   "vars": {
     "ADVICE_ENABLED": "false",
