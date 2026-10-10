@@ -37,7 +37,9 @@ export interface TokenContext {
   token: AgentToken | null;
   confirmationPending: boolean;
   venue?: {
-    status: "curve" | "kuru";
+    status: "curve" | "kuru" | "uniswap_v4";
+    poolId?: string | null;
+    lpFeeBps?: number;
     readyToGraduate?: boolean;
     market: string | null;
     vault: string | null;
@@ -120,6 +122,7 @@ export interface TokenGrantIssuer {
   allowedScope?(scope: TokenScope): boolean;
   readonly factory: string;
   readonly preset: TokenPreset;
+  readonly launchVenue?: { name: "kuru_passive" | "uniswap_v4"; lpFeeBps: number | null };
   issue(input: {
     scope: TokenScope;
     context: TokenContext;
@@ -221,6 +224,7 @@ export function createTokenLaunchService(deps: {
         return {
           chainId: deps.chainId,
           available: available(scope),
+          launchVenue: deps.issuer?.launchVenue ?? null,
           operation: tx.latestOperation
             ? await tx.latestOperation().then((i) => (i ? tokenOperationView(i) : null))
             : null,
