@@ -30,6 +30,9 @@ import {
   utcDayStart,
   simulatePerpsFill,
   validatePaperFrame,
+  validatePaperFrameSet,
+  isComponentFrameExpiry,
+  type PerpsCommonObservationResult,
   COMPONENT_PAPER_POLICY,
   type PerpsDuePosition,
   type PerpsPaperCloseReason,
@@ -82,8 +85,11 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
   private async transaction<T>(
     action: (client: PoolClient) => Promise<T>,
     beforeCommit?: (client: PoolClient) => Promise<void>,
+    afterRollback?: (error: unknown) => T,
   ) {
     const client = await this.pool.connect();
+    let commitStarted = false;
+    let discardConnection = false;
     try {
       await client.query("BEGIN");
       await this.guardStudy(client);
@@ -92,13 +98,30 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
       await this.guardStudy(client);
       await this.guardProduct(client);
       await beforeCommit?.(client);
+      commitStarted = true;
       await client.query("COMMIT");
       return result;
     } catch (error) {
-      await client.query("ROLLBACK").catch(() => {});
+      if (afterRollback) {
+        discardConnection = commitStarted;
+        try {
+          await client.query("ROLLBACK");
+        } catch {
+          discardConnection = true;
+          throw new PilotError(
+            "PERSISTENCE_FAILED",
+            "Common observation rollback was not confirmed",
+          );
+        }
+        if (!commitStarted) {
+          return afterRollback(error);
+        }
+      } else {
+        await client.query("ROLLBACK").catch(() => {});
+      }
       throw error;
     } finally {
-      client.release();
+      client.release(discardConnection);
     }
   }
   private async guardStudy(client: PoolClient) {
@@ -350,6 +373,188 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
       );
       return view;
     });
+  }
+  async observeCommon(
+    scopes: readonly PerpsPaperScope[],
+    key: string,
+    observation: PerpsPaperObservation,
+  ): Promise<PerpsCommonObservationResult> {
+    if (!/^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,127}$/.test(key) || scopes.length !== 2) {
+      throw new PilotError(
+        "INVALID_INPUT",
+        "Two component-paper accounts and one valid key required",
+      );
+    }
+    const captured = structuredClone(observation);
+    let validateBeforeCommit = false;
+    const first = scopes[0]!;
+    return this.transaction<PerpsCommonObservationResult>(
+      async (client) => {
+        const source = await client.query<{
+          document: import("@pickler/trading/evaluation").PerpsStudyRecord;
+        }>(
+          `SELECT document
+           FROM pickler.perps_studies
+           WHERE tenant_id=$1 AND session_id=$2 AND network=$3`,
+          [first.tenantId, first.sessionId, first.network],
+        );
+        const record = source.rows[0]?.document;
+        const ids = record && Object.values(record.agentIds);
+        if (
+          record?.config.version !== 7 ||
+          record.config.acquisitionPolicy !== COMPONENT_PAPER_POLICY ||
+          ids?.length !== 2 ||
+          new Set(scopes.map((s) => s.agentId)).size !== 2 ||
+          scopes.some(
+            (s) =>
+              s.tenantId !== first.tenantId ||
+              s.sessionId !== first.sessionId ||
+              s.network !== first.network ||
+              !ids.includes(s.agentId),
+          )
+        ) {
+          throw new PilotError(
+            "CONFIG_CHANGED",
+            "Common observation must match both frozen study accounts",
+          );
+        }
+        const locked = new Map<string, Locked>();
+        const old = new Set<string>();
+        for (const scope of [...scopes].sort((a, b) => a.agentId.localeCompare(b.agentId))) {
+          const item = await this.lock(client, scope);
+          await this.checkDataPolicy(client, scope, item.view.account, true);
+          assertPerpsPaperAgent(item.agent, scope, item.view.account.agentVersion);
+          const variant = Object.keys(record.agentIds).find(
+            (v) => record.agentIds[v as SmaReentryVariant] === scope.agentId,
+          ) as SmaReentryVariant;
+          if (
+            item.view.account.marketDataPolicy !== COMPONENT_PAPER_POLICY ||
+            item.view.account.entryPolicy !== SMA_ENTRY_POLICIES[variant] ||
+            item.view.account.riskManagement !== "buffered-selective-1x-v1"
+          ) {
+            throw new PilotError("CONFIG_CHANGED", "Common observation account policies changed");
+          }
+          for (const frame of captured.frames) {
+            if (!item.agent.config.perpl!.markets.includes(frame.snapshot.market.symbol)) {
+              throw new PilotError("MARKET_NOT_ALLOWED", "Observation market is not permitted");
+            }
+            if (
+              !record.config.markets.some(
+                (m) =>
+                  m.symbol === frame.snapshot.market.symbol &&
+                  m.marketId === frame.snapshot.market.marketId,
+              )
+            ) {
+              throw new PilotError(
+                "PERPL_MARKET_IDENTITY",
+                "Common observation catalog identity differs",
+              );
+            }
+          }
+          locked.set(scope.agentId, item);
+          const saved = await client.query(
+            `SELECT 1
+             FROM pickler.perps_paper_observations
+             WHERE account_id=$1 AND key=$2`,
+            [item.id, key],
+          );
+          if (saved.rowCount) {
+            old.add(scope.agentId);
+          }
+        }
+        if (old.size === 1) {
+          throw new PilotError(
+            "INCOMPLETE_EXECUTION",
+            "Common observation has only one persisted account",
+          );
+        }
+        const financialAt = await this.now(client);
+        const receiptAt = this.receiptNow();
+        if (old.size === 2) {
+          return {
+            status: "complete",
+            replayed: true,
+            financialAt,
+            receiptAt,
+            accounts: scopes.map((scope) => ({
+              scope,
+              before: locked.get(scope.agentId)!.view,
+              view: locked.get(scope.agentId)!.view,
+            })),
+          };
+        }
+        for (const frame of captured.frames) {
+          const digest = createHash("sha256")
+            .update(
+              JSON.stringify({
+                snapshot: frame.snapshot,
+                book: frame.book,
+                streamEvidence: frame.streamEvidence,
+              }),
+            )
+            .digest("hex");
+          if (frame.hash !== digest) {
+            throw new PilotError("INVALID_MARKET_DATA", "Common observation frame hash differs");
+          }
+        }
+        validatePaperFrameSet(
+          captured.frames,
+          first.network,
+          financialAt,
+          COMPONENT_PAPER_POLICY,
+          receiptAt,
+        );
+        const accounts: Extract<PerpsCommonObservationResult, { status: "complete" }>["accounts"] =
+          [];
+        for (const scope of scopes) {
+          const item = locked.get(scope.agentId)!;
+          const result = applyPaperObservation(
+            item.view.account,
+            item.view.movements,
+            captured,
+            key,
+            financialAt,
+            receiptAt,
+          );
+          await this.persist(client, item.id, result.account, result.movements);
+          const view = {
+            account: result.account,
+            attempts: item.view.attempts,
+            movements: [...item.view.movements, ...result.movements],
+          };
+          await client.query(
+            `INSERT INTO pickler.perps_paper_observations(account_id,key,document,result)
+           VALUES($1,$2,$3,$4)`,
+            [item.id, key, captured, { account: view.account, attempts: [], movements: [] }],
+          );
+          accounts.push({ scope, before: item.view, view });
+        }
+        validateBeforeCommit = true;
+        return { status: "complete", replayed: false, financialAt, receiptAt, accounts };
+      },
+      async (client) => {
+        if (validateBeforeCommit) {
+          validatePaperFrameSet(
+            captured.frames,
+            first.network,
+            await this.now(client),
+            COMPONENT_PAPER_POLICY,
+            this.receiptNow(),
+          );
+        }
+      },
+      (error) => {
+        if (isComponentFrameExpiry(error)) {
+          return {
+            status: "data_unavailable",
+            rolledBack: true,
+            code: "STALE_MARKET_DATA",
+            validation: error.details,
+          };
+        }
+        throw error;
+      },
+    );
   }
   async initialize(scope: PerpsPaperScope, expectedVersion: number, startingCash?: string) {
     const product = isProductPaperSession(scope);
