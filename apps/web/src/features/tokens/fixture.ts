@@ -15,13 +15,16 @@ export function tokenPreview(launched = false, privateAgent = false): TokenState
     masterAddress: "0x5555555555555555555555555555555555555555",
     confirmation: launched ? "confirmed" : "absent",
     available: false,
+    launchVenue: { name: "uniswap_v4", lpFeeBps: 100 },
     venue: launched
       ? {
-          status: "kuru",
+          status: "uniswap_v4",
           market: "0x3333333333333333333333333333333333333333",
           vault: "0x4444444444444444444444444444444444444444",
-          accountId: "1",
-          positions: ["1", "2"],
+          accountId: null,
+          poolId: "0x" + "a".repeat(64),
+          lpFeeBps: 100,
+          positions: ["1"],
           liquidityLocked: true,
         }
       : null,
