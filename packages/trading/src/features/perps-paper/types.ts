@@ -136,6 +136,21 @@ export interface PerpsPaperFill {
   timestamp: number;
   evidence: unknown;
 }
+/** A rolled-back common valuation never authorizes maintenance or financial execution. */
+export type PerpsCommonObservationResult =
+  | {
+      status: "complete";
+      replayed: boolean;
+      financialAt: number;
+      receiptAt: number;
+      accounts: { scope: PerpsPaperScope; before: PerpsPaperView; view: PerpsPaperView }[];
+    }
+  | {
+      status: "data_unavailable";
+      rolledBack: true;
+      code: "STALE_MARKET_DATA";
+      validation: import("./simulation.js").PerpsFrameValidationFailure["details"];
+    };
 export interface PerpsPaperRepository {
   closeAdmissions(scope: PerpsPaperScope): Promise<void>;
   observed(scope: PerpsPaperScope, key: string): Promise<boolean>;
@@ -144,6 +159,12 @@ export interface PerpsPaperRepository {
     key: string,
     observation: import("./simulation.js").PerpsPaperObservation,
   ): Promise<PerpsPaperView>;
+  /** Component-paper accounts share one observation, clock and rollback boundary. */
+  observeCommon?(
+    scopes: readonly PerpsPaperScope[],
+    key: string,
+    observation: import("./simulation.js").PerpsPaperObservation,
+  ): Promise<PerpsCommonObservationResult>;
   /** `startingCash` is required for a product session and refused for an operator session. */
   initialize(
     scope: PerpsPaperScope,
