@@ -1,0 +1,191 @@
+En esta clase vamos a hablar de algo muy interesante y es el concepto de liquidez.
+Vamos a aprender algunas cosas con relación a las estructuras de mercado que nos permitirán
+comprender qué es lo que está pasando en el gráfico y a partir de allí cuáles son los
+escenarios de mayor probabilidad. Algo interesante con relación a la liquidez es que básicamente es
+un concepto que nos permite tener una pizca de sal extra a la hora de condimentar nuestras
+estrategias y nos permite tener varias cosas con relación a la estructura del mercado bastante
+claras y es que el concepto de liquidez nace de dos cosas importantes. La primera es que el mercado
+usualmente antes de poder seguir con su tendencia, sea una tendencia alcista o bajista, necesita poder
+barrer a los participantes, es decir entiéndase el concepto de barrer con sacudir en estoplos a la
+mayoría de traders posibles antes de poder ejecutar un movimiento determinado. También no
+solamente ejecutando estoploces sino que el mercado también necesita poder atrapar a los traders en
+el movimiento contrario, es decir, inducir a los traders a que puedan hacer la apuesta contraria al
+movimiento real antes de ya seguir con su curso, es decir, inducir a los traders a hacer exactamente
+lo opuesto que el mercado está a punto de hacer. ¿Y esto por qué se necesita? Porque se necesita
+liquidez para desarrollar los movimientos del mercado, no solamente para que los market makers
+puedan tomar sus posiciones sino que también los estoploces de los traders generan en masa muchos
+de los movimientos que los mercados generan, es decir, los grandes participantes del mercado
+básicamente mueven las estructuras, mueven los precios a partir en muchos casos de las pérdidas
+de otros traders y eso lo vamos a entender. ¿A qué me refiero con eso? Ya vamos a ver ejemplos,
+pero eso me refiero a que, por ejemplo, en una tendencia bajista se necesita que el mercado
+cree un movimiento alcista abrupto a corto plazo justo antes de que se generen las caídas para
+provocar que los que se encuentran operando a la baja se les active su stop loss y al mismo tiempo
+para también que los traders que están viendo esta ruptura busquen entrar en posiciones alcistas
+para que luego estén en pérdida cuando el mercado empiece a caer, porque cuando estén en pérdida al
+ejecutar sus estoploces van a provocar más caídas y mayores movimientos bajistas. Lo mismo pasa en el
+escenario contrario, cuando el mercado está a punto de tener una importante subida, tiene que
+haber algún tipo de barrida, algún tipo de caída importante que provoque un efecto de stop loss
+en la mayoría de los traders para que así puedan ser barridos de sus operaciones alcistas así como
+también la mayoría de traders pueda pensar que se está generando una nueva caída, un nuevo movimiento
+bajista cuando en realidad lo que va a continuar o lo que va a seguir a continuación son movimientos
+alcistas, porque los stops de la gente va a ser en parte el combustible para el resto de movimiento
+de mercado. Esto es muy importante comprenderlo porque si sabemos que el mercado necesita barrer
+e inducir, si sabemos que el mercado necesita barrer e inducir antes de efectuar el verdadero
+movimiento vamos a estar muy preparados, sobre todo en esos momentos de giro que son tan delicados
+y que son cruciales para poder tener operaciones con muy amplio rango de movimiento en ganancias y al
+referirme con barrer e inducir, barrer entiéndase básicamente que sería sacudir, vamos a ponerlo
+aquí sería sacudir el stop loss de los traders que tienen posiciones correctas, es decir si el
+movimiento de mercado está a punto de tener movimientos alcistas, antes de tener ese movimiento
+alcista el mercado necesita barrer para ya finalmente subir, dejando a los traders con un stop loss
+justo antes de que el movimiento alcista ocurra, eso es barrer, lo mismo pasa a la baja, es decir
+antes de que se genere una simple caída, el mercado necesita sacudir antes de dicha caída
+para así eliminar con stop losses a los traders que estaban posicionados correctamente, por eso
+muchas veces quizás si has operado antes puedes sentir que el mercado te saca el stop loss justo
+antes de tal vez desarrollar el movimiento que querías, si tal vez por ejemplo proyectabas que
+un gráfico iba a subir y viene el mercado y te saca el stop loss y ya finalmente sube o proyectas
+que el mercado iba a tener una importante caída y entras a la baja, entras en short y el mercado viene
+y te saca el stop loss antes de caer exactamente acabarías o estarías viviendo lo que se conoce
+como una barrida, de hecho que si se dan cuenta es muy similar a la figura fí, es más la figura
+fí es una barrida en sí misma, esto con sólo verlo ya al ojo, si lo hace practicado, si lo has
+entrenado te das cuenta que eso literalmente es una figura fí y ahorita vamos a hablar de ello
+y el otro concepto que necesita hacer el mercado es inducir, que es inducir básicamente incitar a
+los traders a que tomen posiciones en el sentido incorrecto del mercado y a que me refiero con el
+sentido incorrecto, a que inducir significa que el mercado te haga sentir que está a punto de caer
+mucho más antes de un movimiento al cista importante para que entres en la dirección equivocada que
+en este caso si vamos a tener un movimiento al cista para que entres en short, ¿por qué? porque
+después el mercado de las pérdidas de los traders va a alimentar sus huidas o inducir también
+significa que antes de que haya una caída muy importante o muy significativa va a inducir
+a los traders a tomar posiciones al cistas para que una vez posicionados al alza el mercado caiga
+y apunta de estoblos, liquidaciones y pérdidas pueda el mercado tener movimientos bajistas en ese
+sentido, ¿ok? Entonces viendo o entendiendo este concepto de liquidez esto nos va a permitir algo
+muy importante y lo que básicamente nos va a permitir es comprender que por ejemplo si tenemos
+una tendencia al cista, vamos a ver, tenemos aquí una tendencia al cista, tenemos una tendencia
+bajista, se aplica en ambas, cuando tenemos una tendencia al cista al momento clave en el que
+de una corrección viene una gran oportunidad para entrar al alza y poder aprovechar una subida y
+ganar con el mercado vamos a esperar que aquí hayan múltiples barridas, hayan múltiples
+estructuras que lo que busquen sea sacudir a los traders, sacarlos en pérdida y no solamente
+sacarlos en pérdida, inducirlos a que el mercado va a caer más y así provocar entradas bajistas
+cuando en realidad esto es una falsa ruptura y el mercado va a seguir subiendo. Lo mismo ocurre
+por ejemplo en escenarios bajistas donde pudiéramos pensar que tenemos tal vez un mercado que está
+a punto de iniciar una nueva caída, sería una oportunidad de short muy interesante pues el
+concepto de liquidez indica que muy posiblemente sobre este nivel vamos a ver múltiples intentos
+de falsas rupturas alcistas y vamos a ver múltiples intentos que saquen en Stoblos a aquellos traders
+que operan a la baja y que al mismo tiempo induzcan a otros a entrar a la alza cuando el mercado en
+realidad lo que va a hacer es generar movimientos de caída y algo muy interesante con esto es que
+normalmente cuando ya el mercado hace dicha trampa porque esto literalmente es una trampa,
+es una trampa para los traders una vez que el mercado hace la trampa casi siempre,
+casi siempre tiene ya un movimiento limpio, es decir tiene usualmente un movimiento alcista
+limpio o un movimiento bajista limpio, el concepto de barrer e inducir es muy importante para entender
+esto y sobre todo porque cuando estemos haciendo operaciones tenemos que entender cuando un movimiento
+por ejemplo de caída repentina es simplemente una barrida o es un movimiento real eso ya más
+adelante lo vamos a comprender ahora yéndonos a buscar estos conceptos en el mercado en diferentes
+estructuras del mercado vamos a ver algunas cosas importantes vamos a irnos es más vayámonos
+directamente a bitcoin y nos vamos a ir también luego a las acciones a las alco en fin a un
+montón de activos financieros bastante interesantes y es que vamos a notar varias cosas aquí pongamos
+pongamos gráfico diario y vamos a por ejemplo ver estos movimientos vamos a poner aquí ok
+listo aquí sobre este sobre este nivel bueno sobre este movimiento que bitcoin ha traído desde
+los albores de los 15 mil dólares por allá enero 2023 que fue el fondo del último mercado bajista
+que tuvimos donde podemos identificar barridas vamos a ver tanto en tendencia alcista como
+en tendencia bajista vamos a ver los diferentes diferentes conceptos de barridas que el mercado
+en su momento tuvo bien en el año 2022 antes de pasar al a la época más reciente en el año 2022
+cuando tuvimos por ejemplo esta tendencia alcista de bitcoin esta tendencia bajista perdón de
+bitcoin en el cual pasó desde los 69 mil hasta el nivel de 15 mil dólares vamos a ver algunas
+cosas interesantes una cosa muy interesante fue por ejemplo la barrida que se formó o el movimiento
+que se formó sobre el nivel la trampa que se formó en abril del 2022 esa fue una trampa muy
+interesante fue una trampa muy sugerente en qué sentido en el sentido de que si nosotros observamos
+este movimiento veremos que la tendencia era bajista en bitcoin era bajista en el s 500 la
+fe de ahorita hablaremos después de contexto pero la fe prácticamente había sellado un año
+bajista para los mercados y miren cómo en estos rebotes bitcoin estaba haciendo un máximo más
+alto que el anterior induciendo a muchísimos traders a nivel mundial para tomar posiciones pues
+en este caso alcistas también aquellos que tal vez tomaron aquí una posición bajista que
+eventualmente terminó estando en lo correcto pues muy posiblemente aquí fueron barridos y
+de hecho les voy a decir una cosa como anécdota recuerdo que muchísimos pero vamos muchísimos
+chicos del programa y en redes sociales querían tomar posiciones alcistas en este nivel y pues bueno
+en aquel momento advertíamos que no era lo correcto y que había que esperar si quisiéramos de verdad
+haber mayores subidas había que esperar porque más bien era un escenario muy propicio para
+movimientos bajistas y de hecho que cuáles fueron algunos de los motivos por los que pensamos en esto
+bueno entre otras cosas por ejemplo desde el máximo anterior como habíamos hablado a este nivel noten
+que esto estaba exactamente sobre la zona de reversión ven que interesante o sea del máximo
+anterior estábamos justo en la zona de reversión no solamente la zona de reversión sino que ven
+interesante este concepto de fi bajista que también lo teníamos aquí desde este nivel teníamos un
+fi bajista bastante bastante interesante pero el punto que quiero destacar aquí es que noten cómo
+el mercado no solamente fue que de aquí rechazó la resistencia y empezó a caer sino que tiene que
+haber un concepto un concepto de barrida o de inducción en este caso tuvimos un concepto de
+inducción es decir que el mercado haciendo un máximo más alto que el anterior sobre este nivel
+el mercado inducía a que se buscara algún tipo de operación alcista al ojo de muchos traders
+y que es lo que ocurre que el verdadero movimiento real era movimiento de caída ahora si nos vamos
+por ejemplo al suelo del 2023 ya vamos a empezar a ver incluso lo contrario vamos a ver casos
+bastante interesantes vamos a ver cómo por ejemplo aquí se rompiste mínimo y aquí cómo se generó
+otra barrida interesante vamos a hablar de ello bueno obviamente si ya entrenamos el ojo nos
+daremos cuenta que aquí había un fi al cista muy interesante un fi al cista que iba acompañado
+también de movimientos alcistas en lsp 500 ya hablaremos de eso más adelante y incluso aquí
+se formaron algunas hondas madre pero no solamente hay que tener en cuenta eso sino que vean que
+interesante cómo al formarse este fi al cista luego de haber vulnerado un mínimo previo este
+mínimo del mes de junio del 2022 se creaba el concepto de que el mercado pues podía caer mucho
+más de hecho que en aquel entonces en enero del 2023 mucha gente hablaba de los 12 mil dólares
+mucha gente hablaba de los 11 mil dólares mucha gente hablaba de no yo espero a bitcon en los 7
+mil yo no voy a comprar ahorita lo espero en los 12 mil en los 7 mil lo espero en los 13 mil dólares
+en los 6 mil dólares cuando en realidad este fue el fondo del mercado y con estaba en los 15 mil
+aproximadamente ahora obviamente con la estrategia de proteger skill solo que vamos aprendiendo pues
+ya decimos no hay había un fi al cista con onda madre sí pero comprendamos que el concepto de
+barrida es muy normal incluso bueno aquí fue una leve barrida también es muy normal es muy valioso y
+por ejemplo aquí donde se formó este fi al cista sobre el nivel de los 19 mil dólares también
+pues bueno se inducía a barrera muchos traders es muy posible que muchos traders aquí fueron
+barridos aquí más bien hubo una inducción aquí hubo una inducción a entrar a la baja a operar
+en short y aquí hubo del todo una barrida por lo tanto si usted espera del mercado que durante sus
+movimientos hayan barridas e inducciones como proceso normal usted está mejor preparado porque
+ya usted sabe lo que se viene es decir que para generar un movimiento al cista o bajista
+antes de que se genere por ejemplo antes de este movimiento al cista hubo un inducción a la baja
+antes de todo este movimiento al cista hubo una barrida a la baja y esto muy frecuentemente se
+genera mediante fis o mediante incluso ondas madre vámonos por ejemplo a ver parte de las
+estructuras sobre sobre este nivel vamos a vernos algunas cosas interesantes vean que aquí hubo una
+importante una muy importante barrida y de hecho que en esta barrida que tenemos de por medio tenemos
+de por medio un fi al cista aquí está lo ven tenemos aquí un fi al cista sobre este nivel hay
+un fi al cista bastante bastante interesante y vean cómo esta fue una barrida para muchísimos
+traders ahora después de ello ustedes ya podrán ver en su ojo entrenado que cada vez va a estar más
+entrenado como aquí se nos formó una onda madre aquí la pueden ver esta onda madre que hizo inducir
+esta onda madre es una inducción ok esta fue una inducción barrida barrida e inducción y vean
+que luego de esa barrida luego de inducción el mercado empezó a tener movimientos al cista
+incluso aquí podríamos decir que también hubo otra barrida y me parece ser el el pobre que aquí
+bitcon lo barrió le barrió los toblos antes de este movimiento e incluso ven que bonito aquí hubo
+una onda madre también aquí una onda madre también sobre este nivel justo antes de tener otro
+movimiento ya bastante bastante explosivo bien vamos a ver otros ejemplos quiero mostrarles
+otros ejemplos interesantes en el sp 500 esto pasa todo el tiempo el sp 500 es amante de las
+barridas es absolutamente fan de sacudir a los traders no solamente vamos a ponerlo en
+futuros para que lo puedan ver sin gaps y pueden pueden verlo a plenitud durante gráficos de cfd
+y gráficos de todo tipo vean que el sp 500 aquí vamos a ponerlo sobre este nivel ven que
+interesante cómo sobre este nivel el sp 500 y antes de tener el movimiento al cista tan violento
+que tuvo generó aquí una onda madre otra onda madre y aquí casi otra onda madre si se dan cuenta
+este tipo de movimientos pues básicamente lo que buscaban eran inducir a más operaciones bajistas
+era inducir a más movimientos a la baja y porque en ese momento no pensábamos que van a haber
+movimientos bajistas por el canal inmenso al que les había mostrado etcétera etcétera y porque
+aquí había un fí gigantesco aquí había un fí del tamaño de júpiter este un fí absolutamente
+gigantesco y miren que por debajo el sp 500 estuvo ligeramente por debajo de este fí
+ligeramente un poquito por debajo un poquito por debajo de este fí pero miren cómo sobre este
+nivel lo que en realidad buscó hacer fue no sólo barrer a todos aquellos que quisieran buscar
+operaciones al cista sino también inducir a los movimientos bajistas inducir a los movimientos
+que en este caso iban a ser contrarios del mercado y de hecho eso también lo podemos ver sobre este
+nivel cuando se formó esta esta onda madre vean cómo por ejemplo si trazamos
+una línea nos damos cuenta que el sp 500 estuvo justo por debajo pero justo por debajo de este
+mínimo anterior del 10 de abril cuando estuvimos el 21 de abril 11 días después justo por debajo
+trabajó este mínimo lo cual posiblemente barrió a muchos traders y aquí si nos vamos a esta zona
+que aquí formó un fí precioso que estuvimos operando vean cómo este fí precioso también
+barrió a muchos operadores ok aquí también hubo una barrida para inducir a los operadores a estar
+del lado incorrecto o como mínimo si estaban en posiciones correctas que en este caso eran
+posiciones alcistas como mínimo sacarlos de la operación entonces para qué nos sirve entender
+esto esto nos sirve para estar preparados que el mercado puede tener eventuales barridas que
+si hay un nivel de soporte el mercado puede romperlo pero la clave está en que lo recupere
+a muy corto plazo por ejemplo si estamos en gráfico de dos horas durante ese mismo día lo
+debe recuperar o sea en gráfico diario lo debe recuperar y si es un nivel en gráfico diario
+como mucho en 48 72 horas como máximo lo debe recuperar si al cabo de si llegando a la hora
+número 72 no lo recuperado ya estaríamos hablando de un escenario de ruptura real la ventaja con
+todo esto es si estamos por fuera si estamos por fuera la idea es entrar en el mercado justo después
+de que se provocó la barrida o la inducción a la baja lo puesto en casos de tendencia bajista y
+ponemos el stop justo por debajo y tenemos una operación con un margen riesgo beneficio perfecto
+y si estamos adentro durante la barrida comprender que si el mercado se recupera casi
+inmediatamente es una simple barrida y sobre todo si está en formación de fis es decir si está por
+ejemplo generando una figura fi darle tiempo al mercado a ver si esa figura fi logra permitir
+que el mercado siga subiendo muchas veces pasa que ocurre una barrida este tipo algunos chicos
+usan sustano un poco será que es una barrida tras en el fi es exactamente eso y esto nos permite
+estar preparados ante estas barridas y estas digamos manipulaciones que el mercado puede
+hacer exactamente para capturar a los traders en el lado contrario de lo que el mercado realmente va a ser
