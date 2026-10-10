@@ -210,11 +210,10 @@ See [agent-selected Perpl markets](docs/studio-perpl-markets.md).
 
 The owner-only token launch foundation is documented in [Agent token previews](docs/agent-token-preview.md).
 Core owns admission and the grant-issuer port; infrastructure owns private agent/network keys,
-versioned launch drafts, recorded grants and canonical confirmation. The API host does not compose
-a signer. Both Studio rails expose the persistent Token route, and public profiles share its
-confirmed identity card. Development fixtures show static empty/confirmed token states; they never
-request passkeys, send transactions or open fictitious explorer addresses. No remote launch,
-metadata storage or indexer activation is introduced. The factory now requires a Pickler EIP-712
+versioned launch drafts, recorded grants and canonical confirmation. The original admission foundation omitted a signer; operational composition below is gated. Both Studio rails expose the persistent Token route, and public profiles share its
+confirmed identity card. Development fixtures show empty/confirmed token states with explicit local phase controls; they never
+request passkeys, send transactions or open fictitious explorer addresses. The original foundation did not introduce metadata storage or indexer activation; current
+operational gates and isolated contract acceptance are described below. The factory now requires a Pickler EIP-712
 grant in addition to creator authorization, including for direct creator calls.
 
 ## Agent token reference fixtures
@@ -225,9 +224,12 @@ JSON from core's pure curve calculations and reviewed chain AUSD metadata. Use
 The reference profile is independent of signer/preset availability and never enables real launch.
 See [agent token admission and previews](docs/agent-token-preview.md).
 
-## Testnet token launcher and Kuru
+## Versioned testnet token launcher
 
-The operational launcher is implemented behind disabled testnet-only gates; passive Kuru remote
-readiness is still blocked. Read [Token operations](docs/market/token-launch-operations.md) before
-composing grants, R2, passkey submission or the indexer. Controlled tests never establish remote
-readiness, and the legacy testnet probe must not be used as a passive-generation fallback.
+The operational launcher remains behind disabled testnet-only gates. Separate Uniswap V4 policy
+version 2 and its permanent V2 locker have real faucet-funded contract acceptance; hosted
+Studio/passkey/R2/indexer acceptance is pending. Historical Kuru policy 1 is retained, but its
+published testnet generation was verified incompatible and stays blocked. Read
+[Token operations](docs/market/token-launch-operations.md) and
+[the Uniswap evidence](docs/market/uniswap-v4-testnet-integration.md). No general/mainnet activation
+is implied. Explicit acceptance scripts in `scripts/contracts` never run during ordinary tests.
