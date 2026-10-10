@@ -1,0 +1,102 @@
+{
+  "observedAt": "2026-10-10T14:12:58.758Z",
+  "market": "0xa241896A7Dbe8a550D2E5fF7A914bB1989ceD2D9",
+  "block": {
+    "number": 69845383,
+    "hash": "0x0d63c4c8bd1ee8b09bd4adbe1d02cdb8f5d29c7c15e20c4e9144b61562e9e9d1",
+    "timestamp": 1791641385
+  },
+  "rpcUrl": "https://rpc.ankr.com/monad_testnet",
+  "readOnly": true,
+  "transactionsSent": 0,
+  "calls": [
+    {
+      "functionName": "accountCore",
+      "success": false,
+      "error": {
+        "code": 3,
+        "message": "execution reverted",
+        "data": "0x"
+      }
+    },
+    {
+      "functionName": "getPassivePosition",
+      "success": false,
+      "error": {
+        "code": 3,
+        "message": "execution reverted",
+        "data": "0x"
+      }
+    },
+    {
+      "functionName": "claimPassiveFees",
+      "success": false,
+      "error": {
+        "code": 3,
+        "message": "execution reverted",
+        "data": "0x"
+      }
+    },
+    {
+      "functionName": "getMarketParams",
+      "success": true,
+      "raw": "0x0000000000000000000000000000000000000000000000000000000005f5e10000000000000000000000000000000000000000000000000000000002540be400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000120000000000000000000000003ba3d39afcf8bb994f7964b3e0171ea2ba36157000000000000000000000000000000000000000000000000000000000000000060000000000000000000000000000000000000000000000000000000000000064000000000000000000000000000000000000000000000000000001d1a94a20000000000000000000000000000000000000000000000000001bc16d674ec8000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+      "value": [
+        100000000,
+        "10000000000",
+        "0x0000000000000000000000000000000000000000",
+        "18",
+        "0x3bA3d39AFcf8bb994f7964B3e0171Ea2Ba361570",
+        "6",
+        100,
+        "2000000000000",
+        "2000000000000000000",
+        "0",
+        "0"
+      ]
+    }
+  ],
+  "codeBytes": 141,
+  "runtimeHash": "0xae572ec3ca9b5f49c0364ca34edc5880b6b2837e47802e64e6b681bf2e74aa5c",
+  "implementation": "0x72cae0a99c19b574e8a6de558f43fc1d019c9374",
+  "implementationHash": "0x24c5974f233021f00d607bfa191d430f79565663fb90805ebcfca52de7333500",
+  "selectorPresenceHeuristic": [
+    {
+      "signature": "accountCore()",
+      "selector": "0x15b5b207",
+      "present": false
+    },
+    {
+      "signature": "getPassivePosition(uint64)",
+      "selector": "0xb03aee0d",
+      "present": false
+    },
+    {
+      "signature": "claimPassiveFees(uint40,uint64)",
+      "selector": "0xd9f7df36",
+      "present": false
+    }
+  ],
+  "rpcCalls": 7,
+  "independentRpcComparison": {
+    "blockHashMatches": true,
+    "implementationHashes": [
+      {
+        "address": "0xaaa0f0c4d49d09ef33ae758d88afab810ecbe1ed",
+        "matches": true
+      },
+      {
+        "address": "0xf10af40f060b7ae54a2d5da682becc981dfb52c3",
+        "matches": true
+      },
+      {
+        "address": "0x72cae0a99c19b574e8a6de558f43fc1d019c9374",
+        "matches": true
+      },
+      {
+        "address": "0x4d54e0d60cab0cec0100cda8e00897bc933c5bb6",
+        "matches": true
+      }
+    ]
+  }
+}
