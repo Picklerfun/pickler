@@ -6,6 +6,7 @@ import { envelopeErrorSchema } from "@pickler/api-schema";
 export type Security = "public" | "user" | "workspace" | "agent" | "apply";
 export interface OperationOptions {
   response: z.ZodType;
+  responseContent?: Record<string, z.ZodType>;
   body?: z.ZodType;
   optionalBody?: boolean;
   status?: number;
@@ -47,7 +48,13 @@ export function operation(id: string, options: OperationOptions) {
     description: "Successful response",
     ...(options.redirect
       ? {}
-      : { content: { "application/json": { schema: resolver(options.response) } } }),
+      : {
+          content: Object.fromEntries(
+            Object.entries(options.responseContent ?? { "application/json": options.response }).map(
+              ([type, schema]) => [type, { schema: resolver(schema) }],
+            ),
+          ),
+        }),
     ...(options.redirect || options.responseHeaders
       ? {
           headers: {
