@@ -662,3 +662,41 @@ advancing heartbeat's sequence, head block and original local receipt. Exact dup
 refresh receipt; reset discards continuity. This proof does not alter native price/book dates.
 Study diagnostics may explicitly select `stream-universe-component-20s-v2` in v7 without changing
 source accounts. Financial initialization rejects this capture-only policy before writes.
+
+The explicit v7 `stream-universe-component-paper-20s-v1` selector initializes only new laboratory
+accounts with immutable `marketDataPolicy`. Every financial mutation rechecks the trusted study
+policy, membership and bound live study owner. Completion recomputes both open and close fills
+from hashed component/heartbeat evidence under the account lock. Unbound reads cannot recover
+expired attempts in these accounts. Existing entry-gate/once-bar atomicity remains unchanged;
+product accounts and historical missing fields retain strict data rules. No migration, provider
+key or new monetary reservation is introduced. See [paper policy](../../apps/agent-service/PERPL-COMPONENT-PAPER.md).
+
+Component paper persistence injects a trusted local receipt clock separately from PostgreSQL's
+financial clock. Only local heartbeat/copy checks use it; leases, native freshness, funding and
+ledger dates remain database-owned. Existing injected test clocks retain their default semantics.
+No intent, account edit or provider can supply that clock. Keep both clocks in safe validation
+diagnostics; a proven controlled offset regression does not establish missing historical values.
+
+Component-paper captured-frame completion performs admission, simulation, persisted gate checks,
+ledger/fill and hourly-key writes in one account/study-fenced transaction. It reuses the existing
+admission and completion helpers and checks original-frame freshness again immediately before
+commit. Expiry or ownership failure rolls back all writes, including the attempt and entry key.
+Confirmed duplicate keys remain idempotent without a new fill; conflicting intents are rejected.
+No live heartbeat can extend the captured proof and no legacy/product lifecycle changes.
+
+Component-paper `observeCommon` locks both frozen study accounts in deterministic identity order,
+checks membership/immutable policies/permissions and applies the existing observation function at
+one database and receipt clock. Account/position/funding writes and observation records share one
+transaction. Original hashes, generation and native/heartbeat freshness are rechecked before commit.
+Only confirmed rollback before a commit attempt can return `data_unavailable` for demonstrated
+aging. Failed rollback, uncertain commit, lost owner, identity/schema and one-account historical
+observations fail closed; duplicate complete keys add no valuation or funding. No history is repaired.
+
+Evaluation-only database timing translates an actual PostgreSQL statement deadline (`57014`
+with the recognized statement-timeout message) to `PERSISTENCE_QUERY_TIMEOUT`; other `57014`
+cancellations become `PERSISTENCE_QUERY_CANCELLED`. The demonstrated driver connection deadline
+becomes `PERSISTENCE_CONNECTION_TIMEOUT`; unrelated failures keep their original semantics.
+Driver text, SQL, parameters and causes are
+not retained in those failures. Timing diagnostics retain the original safe SQLSTATE. Neither
+failure is market-data unavailability or permission to retry financial writes; existing rollback,
+uncertain-commit and ownership fences remain authoritative. Production pool deadlines are unchanged.

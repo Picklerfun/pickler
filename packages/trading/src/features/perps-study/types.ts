@@ -120,7 +120,10 @@ export interface PerpsSmaReentryConfig extends Omit<PerpsSmaProfileConfig, "vers
     | "rest-universe-20s-v1"
     | "rest-universe-coherent-20s-v2"
     | "stream-universe-20s-v1"
-    | "stream-universe-component-20s-v2";
+    | "stream-universe-component-20s-v2"
+    | "stream-universe-component-paper-20s-v1";
+  /** Explicit adoption pins the immutable nonfinancial capture, not hypothetical fills. */
+  captureQualification?: { commit: string; reportSha256: string };
 }
 export type PerpsStudyConfig =
   | PerpsPaidStudyConfig

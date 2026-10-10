@@ -5,14 +5,21 @@ import {
   type PerpsPaperFrame,
 } from "./simulation.js";
 import type { AcquisitionDiagnostic } from "./acquisition.js";
+import { COMPONENT_PAPER_POLICY } from "./types.js";
 
 export const UNIVERSE_STREAM_POLICY = "stream-universe-20s-v1" as const;
 /** Capture-only experiment: independently fresh components plus a continuous live stream. */
 export const UNIVERSE_COMPONENT_STREAM_POLICY = "stream-universe-component-20s-v2" as const;
 export type UniverseStreamPolicy =
-  typeof UNIVERSE_STREAM_POLICY | typeof UNIVERSE_COMPONENT_STREAM_POLICY;
+  | typeof UNIVERSE_STREAM_POLICY
+  | typeof UNIVERSE_COMPONENT_STREAM_POLICY
+  | typeof COMPONENT_PAPER_POLICY;
 export function universeStreamValidation(policy: UniverseStreamPolicy) {
-  if (![UNIVERSE_STREAM_POLICY, UNIVERSE_COMPONENT_STREAM_POLICY].includes(policy)) {
+  if (
+    ![UNIVERSE_STREAM_POLICY, UNIVERSE_COMPONENT_STREAM_POLICY, COMPONENT_PAPER_POLICY].includes(
+      policy,
+    )
+  ) {
     throw new PilotError("INVALID_INPUT", "Unknown stream validation policy");
   }
   return {
@@ -20,8 +27,8 @@ export function universeStreamValidation(policy: UniverseStreamPolicy) {
     componentMaximumAgeMs: 30000,
     maximumFutureMs: 5000,
     tickerBookSkewGateMs: policy === UNIVERSE_STREAM_POLICY ? 5000 : null,
-    streamHeartbeatMaximumAgeMs: policy === UNIVERSE_COMPONENT_STREAM_POLICY ? 5000 : null,
-    financialAdmission: false,
+    streamHeartbeatMaximumAgeMs: policy !== UNIVERSE_STREAM_POLICY ? 5000 : null,
+    financialAdmission: policy === COMPONENT_PAPER_POLICY,
   } as const;
 }
 export interface UniverseStreamBuffer {
@@ -63,7 +70,7 @@ export function validateUniverseStream(input: {
   const policy = input.policy ?? UNIVERSE_STREAM_POLICY;
   universeStreamValidation(policy);
   let continuityCode: string | null = null;
-  if (policy === UNIVERSE_COMPONENT_STREAM_POLICY) {
+  if (policy !== UNIVERSE_STREAM_POLICY) {
     const continuity = input.buffer.continuity;
     if (!continuity) {
       continuityCode = "DATA_UNAVAILABLE";
@@ -95,13 +102,27 @@ export function validateUniverseStream(input: {
       ) {
         throw new PilotError("INVALID_MARKET_DATA", "Frozen stream market identity changed");
       }
-      const frame = {
+      const streamEvidence =
+        policy === COMPONENT_PAPER_POLICY && input.buffer.continuity
+          ? {
+              policy,
+              generation: input.buffer.generation,
+              copiedAt: input.buffer.observedAt,
+              ...input.buffer.continuity,
+            }
+          : undefined;
+      const payload = {
         snapshot: pair.snapshot,
         book: pair.book,
-        hash: input.hash({ snapshot: pair.snapshot, book: pair.book }),
+        ...(streamEvidence ? { streamEvidence } : {}),
       };
+      const frame = { ...payload, hash: input.hash(payload) };
       try {
         if (policy === UNIVERSE_COMPONENT_STREAM_POLICY) {
+          validatePaperFrameComponents(frame, input.network, market.symbol, input.now);
+        } else if (policy === COMPONENT_PAPER_POLICY && !continuityCode) {
+          validatePaperFrame(frame, input.network, market.symbol, input.now, policy);
+        } else if (policy === COMPONENT_PAPER_POLICY) {
           validatePaperFrameComponents(frame, input.network, market.symbol, input.now);
         } else {
           validatePaperFrame(frame, input.network, market.symbol, input.now);

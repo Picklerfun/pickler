@@ -247,7 +247,7 @@ retains the same canonical digest without hashing a full snapshot again for each
 
 ## SMA reentry/latency comparison
 
-[PERPS-SMA-REENTRY.md](PERPS-SMA-REENTRY.md) documents configuration v7 and the public-only two-portfolio protocol. `evaluate timing-check --state EXPORT --output NEW_DIRECTORY` runs offline before environment/provider composition and rejects environment/paid flags. `stability` performs one independent 30-minute eleven-market capture; `run` requires its passing proof matching commit/configuration. `reentry-host.ts` composes only local PostgreSQL and public Perpl, emits compact per-observation status and coalesces full reports through `reentry-report-worker.mjs`. All file publication is atomic. Do not call models, restart, repeat qualification, extend deadlines, create monitors, merge or deploy automatically. Old monitors remain paused. New model calls/tokens/reservations are zero; historical budgets and records are unchanged. Tests include PostgreSQL atomic key consumption, common final evidence, mandatory price-exit priority and historical v6 parity.
+[PERPS-SMA-REENTRY.md](PERPS-SMA-REENTRY.md) documents configuration v7 and the public-only two-portfolio protocol. `evaluate timing-check --state EXPORT --output NEW_DIRECTORY` runs offline before environment/provider composition and rejects environment/paid flags. `stability` performs one independent 30-minute eleven-market capture; `run` requires its passing proof matching commit/configuration, or the explicit pinned adoption for the separately authorized component paper policy below. `reentry-host.ts` composes only local PostgreSQL and public Perpl, emits compact per-observation status and coalesces full reports through `reentry-report-worker.mjs`. All file publication is atomic. Do not call models, restart, repeat qualification, extend deadlines, create monitors, merge or deploy automatically. Old monitors remain paused. New model calls/tokens/reservations are zero; historical budgets and records are unchanged. Tests include PostgreSQL atomic key consumption, common final evidence, mandatory price-exit priority and historical v6 parity.
 
 The unified evaluation npm entry includes Node’s option separator before the script. Preserve it
 so laboratory `--env-file` is handled by the application rather than preloaded by Node. V7 requires
@@ -307,5 +307,43 @@ The component-policy public measurement at frozen commit `46bcca8c36d91edd0508ff
 passed 30/30 joint cycles and 330/330 market observations; the unchanged strict rule accepts
 11/30 of the same snapshots. Independent offline/PostgreSQL proof confirmed hashes, closure,
 release and zero diagnostic accounts/decision rounds. This is capture acceptance only.
-Do not reuse it to authorize financial execution, upgrade the old 17/30 failure, or start an
-economic run. Read the component-policy record for immutable artifact paths and limitations.
+That capture alone does not authorize financial execution or upgrade the old 17/30 failure.
+Read the component-policy record for immutable artifact paths and limitations.
+
+The operator separately authorized `stream-universe-component-paper-20s-v1` and one six-hour
+v7 economic experiment on 2026-10-09. Read [the paper policy](PERPL-COMPONENT-PAPER.md).
+It requires immutable account policy, native freshness and copied heartbeat proof through financial
+validation and transactional admission. `component-qualification.ts` explicitly adopts a pinned,
+complete capture with offline replay and unchanged transport source; it never invents historical
+fills. New paper preflight is offline; financial-selector stability is rejected. Preserve capture
+artifacts, strategies, historical reservations, one-shot deadlines and zero models/signers.
+
+Component paper failures publish `financial-frame-validation-failed` with allowlisted reason,
+frame hash and distinct receipt/database clocks; runtime status retains the same safe details.
+The first execution stopped after four slots and remains interrupted with open positions.
+The clock regression is proven in controlled tests; its exact historical triggering values were
+not recorded. Preserve that distinction and the first run's evidence when continuing authorized
+repair work. Never silently resume a started session or overwrite its history.
+
+Component-paper controlled PostgreSQL tests include captured-frame atomic rollback, racing
+closes, idempotency, hash/owner rejection and paired thirty-sample query-delay benchmarks.
+Simulated clock delays are reported separately from monotonic measured durations. An interrupted
+comparison with a partial account fill remains incomplete; never present it as a common round.
+
+The third component-paper session at `b1bb7fb0226ba0f33b072f03f23e253684ceab42` remains
+interrupted before its six-hour end with 68 complete slots. Recorded BTC ticker age advanced from
+29,694ms at copy to 30,189ms at validation while sequential account valuation was in progress.
+The corrected component-only runner uses a common transaction and records confirmed expiry
+rollback separately from partial/uncertain writes. Preserve this session, its pending positions
+and failure export. The controlled regression reproduces the dates with synthetic frame bodies;
+it never claims to recover the rejected historical bytes or completes the interrupted trial.
+
+A component-paper database timeout remains a fatal persistence interruption, with the specific
+`PERSISTENCE_QUERY_TIMEOUT` code on corrected executions; a recognized connection deadline is
+`PERSISTENCE_CONNECTION_TIMEOUT`. Never reinterpret an interrupted
+historical generic code or pending positions as completed/closed. Keep database-load attribution
+bounded by recorded evidence; a coincident checkpoint alone cannot identify every causal workload.
+An explicitly authorized zero-model continuation may use a separate local physical server only
+after restoring and verifying the complete existing campaign history, reservations and table
+hashes. Keep the original server and failed sessions intact; never use duplicate copies as fresh
+monetary budget authority. Controlled database tests must finish before freezing that runner.

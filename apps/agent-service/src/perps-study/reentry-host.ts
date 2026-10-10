@@ -7,6 +7,7 @@ import { Worker } from "node:worker_threads";
 import { createPriorityPerplStudyData } from "@pickler/agent-runtime/plugins/perps-paper";
 import { timingReport } from "./timing-report.js";
 import { createReportQueue } from "./report-queue.js";
+import { adoptComponentQualification } from "./component-qualification.js";
 import { PilotError } from "@pickler/core";
 import {
   PostgresResearchStore,
@@ -26,7 +27,12 @@ import {
   SMA_ENTRY_POLICIES,
   type EvaluationCommand,
 } from "@pickler/trading/evaluation";
-import { validatePaperFrame } from "@pickler/trading/perps";
+import {
+  COMPONENT_PAPER_POLICY,
+  PerpsFrameValidationFailure,
+  universeStreamValidation,
+  validatePaperFrameSet,
+} from "@pickler/trading/perps";
 import { keepAwake } from "../paper-study/comparison-host.js";
 
 import { perpsStudyReport } from "./report.js";
@@ -64,8 +70,8 @@ export async function runSmaReentry(
       "Experimental component stream permits capture and offline audit only",
     );
   }
-  const url = await localStudyDatabase(resolve(input.envFile));
   const commit = execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim();
+  const componentPaper = config.acquisitionPolicy === COMPONENT_PAPER_POLICY;
   const metadata = {
     commit,
     originalCommit: "a06826a78af44aacdcac695f8254c52d65f83342",
@@ -84,45 +90,64 @@ export async function runSmaReentry(
     selectiveRisk: SELECTIVE_RISK,
     catalogHash: createHash("sha256").update(canonicalAudit(config.markets)).digest("hex"),
     configurationHash: createHash("sha256").update(canonicalAudit(config)).digest("hex"),
+    ...(componentPaper
+      ? {
+          captureQualification: config.captureQualification,
+          dataValidation: universeStreamValidation(COMPONENT_PAPER_POLICY),
+        }
+      : {}),
     modelCalls: 0,
     modelReservationsUSD: "0",
   };
-  if (input.command === "run") {
+  if (input.command === "run" || (componentPaper && input.command === "preflight")) {
     if (!input.qualification) {
       throw new PilotError(
         "QUALIFICATION_REQUIRED",
         "A successful eleven-market public qualification is required",
       );
     }
-    const proof = JSON.parse(await readFile(resolve(input.qualification), "utf8")) as {
-      protocol: string;
-      passed: boolean;
-      commit: string;
-      configurationHash: string;
-      validCycles: number;
-      ownershipFailures: number;
-      leaseReleased: boolean;
-      cycles: unknown[];
-    };
-    if (
-      proof.protocol !== "perps-universe-stability-v1" ||
-      !proof.passed ||
-      proof.commit !== commit ||
-      proof.configurationHash !== metadata.configurationHash ||
-      proof.validCycles < 29 ||
-      proof.cycles.length !== 30 ||
-      proof.ownershipFailures !== 0 ||
-      !proof.leaseReleased
-    ) {
-      throw new PilotError(
-        "QUALIFICATION_REQUIRED",
-        "Qualification must match frozen code and configuration and meet capture acceptance",
-      );
-    }
     if (execFileSync("git", ["status", "--porcelain"], { encoding: "utf8" }).trim()) {
       throw new PilotError("DIRTY_CHECKOUT", "Freeze tested clean code before running");
     }
+    if (componentPaper) {
+      const qualificationOutput = join(resolve(input.output), `qualification-${input.command}`);
+      await mkdir(qualificationOutput, { recursive: true, mode: 0o700 });
+      await adoptComponentQualification(
+        input.qualification,
+        config,
+        commit,
+        qualificationOutput,
+        signal,
+      );
+    } else {
+      const proof = JSON.parse(await readFile(resolve(input.qualification), "utf8")) as {
+        protocol: string;
+        passed: boolean;
+        commit: string;
+        configurationHash: string;
+        validCycles: number;
+        ownershipFailures: number;
+        leaseReleased: boolean;
+        cycles: unknown[];
+      };
+      if (
+        proof.protocol !== "perps-universe-stability-v1" ||
+        !proof.passed ||
+        proof.commit !== commit ||
+        proof.configurationHash !== metadata.configurationHash ||
+        proof.validCycles < 29 ||
+        proof.cycles.length !== 30 ||
+        proof.ownershipFailures !== 0 ||
+        !proof.leaseReleased
+      ) {
+        throw new PilotError(
+          "QUALIFICATION_REQUIRED",
+          "Qualification must match frozen code and configuration and meet capture acceptance",
+        );
+      }
+    }
   }
+  const url = await localStudyDatabase(resolve(input.envFile));
   const research = new PostgresResearchStore(url);
 
   const output = resolve(input.output);
@@ -231,7 +256,12 @@ export async function runSmaReentry(
       at: Date.now(),
       durationMs: performance.now() - started,
     });
-    const coverageHtml = `<section><h2>Operational qualification</h2><pre>${JSON.stringify(coverage, null, 2).replaceAll("<", "&lt;")}</pre><p>Both portfolios use the improved execution. P&amp;L differences describe the reopening rule, not latency. Six hours are exploratory; a smaller negative result is a reduction in losses.</p></section>`;
+    const policyHtml = componentPaper
+      ? `<section><h2>Experimental financial data policy</h2><p>${COMPONENT_PAPER_POLICY}: native ticker and book ages at most 30 seconds, future at most 5 seconds; ticker/book skew recorded without a gate. Copied live heartbeat at most 5 seconds old is required through financial completion. This assumption does not establish profitability or joint economic accuracy.</p><a href="qualification-run/qualification-adoption.json">Pinned capture adoption and unchanged transport proof</a></section>`
+      : "";
+    const coverageHtml =
+      policyHtml +
+      `<section><h2>Operational qualification</h2><pre>${JSON.stringify(coverage, null, 2).replaceAll("<", "&lt;")}</pre><p>Both portfolios use the improved execution. P&amp;L differences describe the reopening rule, not latency. Six hours are exploratory; a smaller negative result is a reduction in losses.</p></section>`;
     for (const [name, content] of Object.entries({
       "report.json": JSON.stringify(result, null, 2) + "\n",
       "report.html": rendered.html.replace(
@@ -306,10 +336,19 @@ export async function runSmaReentry(
     }
     const view = await study.initialize(config, metadata);
     if (input.command === "preflight") {
-      const evidence = await data.prepareEvidence!(view.record, combined, async () => {});
-      for (const frame of evidence.frames) {
-        validatePaperFrame(frame, config.network, frame.snapshot.market.symbol, Date.now());
+      if (componentPaper) {
+        console.log(
+          JSON.stringify({
+            status: "pinned-capture-revalidated",
+            modelCalls: 0,
+            financialTests: "controlled-regressions-required",
+            publicRequests: 0,
+          }),
+        );
+        return;
       }
+      const evidence = await data.prepareEvidence!(view.record, combined, async () => {});
+      validatePaperFrameSet(evidence.frames, config.network, Date.now());
       console.log(
         JSON.stringify({
           status: "public-data-verified",
@@ -380,6 +419,14 @@ export async function runSmaReentry(
     await compact({ state: "completed" });
   } catch (error) {
     primaryFailure = true;
+    if (error instanceof PerpsFrameValidationFailure) {
+      diagnostic({
+        operation: "financial-frame-validation-failed",
+        at: Date.now(),
+        code: error.code,
+        ...error.details,
+      });
+    }
     processState = "interrupted";
     reports.request();
     await reports.flush().catch(() => {});
@@ -390,6 +437,9 @@ export async function runSmaReentry(
           processState,
           at: Date.now(),
           error: error instanceof PilotError ? error.code : "STUDY_OPERATION_FAILED",
+          ...(error instanceof PerpsFrameValidationFailure
+            ? { frameValidation: error.details }
+            : {}),
           modelCalls: 0,
         },
         null,

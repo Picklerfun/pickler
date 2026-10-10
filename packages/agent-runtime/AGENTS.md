@@ -264,3 +264,9 @@ passes trading's policy through both acquisition and latest-buffer validation. I
 original native dates plus separately copied heartbeat continuity; no local freshness substitution
 is allowed. Financial hosts and account initialization reject this selector. Observation/final
 reader sharing remains available for controlled integration tests, not authorized financial use.
+
+The separate explicit `stream-universe-component-paper-20s-v1` selector uses that same guarded
+public transport for the authorized local v7 financial experiment. Trading derives copied
+generation/heartbeat evidence and validates it again at delivery and financial admission.
+Observation, initial evidence and final refresh share one reader; no provider fallback, timestamp
+rewriting, models or signers are introduced. See [paper policy](../../apps/agent-service/PERPL-COMPONENT-PAPER.md).

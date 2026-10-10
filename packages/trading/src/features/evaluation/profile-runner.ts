@@ -22,11 +22,14 @@ import {
   paperRisk,
   selectiveReduction,
   transientPerpsData,
-  validatePaperFrame,
+  validatePaperFrameSet,
+  COMPONENT_PAPER_POLICY,
   simulatePerpsFill,
   type PerpsPaperRepository,
   type PerpsPaperFrame,
   type PerpsPaperView,
+  type PerpsPaperObservation,
+  type PerpsCommonObservationResult,
 } from "../../perps.js";
 import type { StudyData } from "./perps-runner.js";
 export interface ProfileStudyData extends StudyData {
@@ -46,6 +49,13 @@ export interface ProfileStudyData extends StudyData {
     signal: AbortSignal,
     guard: () => Promise<void>,
   ): Promise<PerpsEvidence>;
+}
+class RolledBackObservationUnavailable extends PilotError {
+  constructor(
+    readonly result: Extract<PerpsCommonObservationResult, { status: "data_unavailable" }>,
+  ) {
+    super(result.code, "Common valuation expired and was completely rolled back");
+  }
 }
 const code = (e: unknown) => (e instanceof PilotError ? e.code : "STUDY_OPERATION_FAILED");
 export function createProfileStudyRunner(deps: {
@@ -125,8 +135,12 @@ export function createProfileStudyRunner(deps: {
       ) {
         throw new PilotError("PERPL_MARKET_IDENTITY", "Catalog identity mismatch");
       }
-      validatePaperFrame(frame, r.config.network, frame.snapshot.market.symbol, now());
     }
+    const policy =
+      r.config.version === 7 && r.config.acquisitionPolicy === COMPONENT_PAPER_POLICY
+        ? COMPONENT_PAPER_POLICY
+        : undefined;
+    validatePaperFrameSet(e.frames, r.config.network, now(), policy);
   }
   async function cycle(scope: PerpsStudyScope, lease: PerpsStudyLease, signal: AbortSignal) {
     const guard = async () => {
@@ -358,8 +372,9 @@ export function createProfileStudyRunner(deps: {
         });
       }
       let failure: string | null = null;
+      let completed: PerpsPaperView | undefined;
       try {
-        await measured(attemptKey, "simulation-and-transaction", () =>
+        completed = await measured(attemptKey, "simulation-and-transaction", () =>
           simulator.trade(
             target(r, v),
             attemptKey,
@@ -408,7 +423,10 @@ export function createProfileStudyRunner(deps: {
         }
         failure = e.code;
       }
-      const after = await paper.view(target(r, v));
+      const after =
+        config.version === 7 && config.acquisitionPolicy === COMPONENT_PAPER_POLICY && completed
+          ? completed
+          : await paper.view(target(r, v));
       const attempt = after.attempts.find((a) => a.key === attemptKey);
       if (attempt?.status === "pending" || attempt?.status === "interrupted") {
         throw new PilotError("INCOMPLETE_EXECUTION", "Uncertain execution requires reconciliation");
@@ -510,27 +528,109 @@ export function createProfileStudyRunner(deps: {
         );
       }
     }
+    const useCommonObservation =
+      config.version === 7 &&
+      config.acquisitionPolicy === COMPONENT_PAPER_POLICY &&
+      !!paper.observeCommon;
+    async function commonObservation(value: PerpsPaperObservation, phaseKey: string) {
+      await guard();
+      const result = await measured(phaseKey, "valuation:common", () =>
+        paper.observeCommon!(
+          variants.map((v) => target(r, v)),
+          phaseKey,
+          value,
+        ),
+      );
+      if (result.status === "data_unavailable") {
+        await guard();
+        await study.event(
+          scope,
+          lease,
+          `${phaseKey}:valuation-unavailable`,
+          "valuation-data-unavailable",
+          {
+            phase: phaseKey,
+            cause: result.code,
+            rolledBack: result.rolledBack,
+            frameValidation: result.validation,
+          },
+        );
+        throw new RolledBackObservationUnavailable(result);
+      }
+      return result;
+    }
     const views: PerpsStudyMap<PerpsPaperView> = {};
     const beforeMaintenance: PerpsStudyMap<unknown> = {};
-    for (const v of variants) {
-      await guard();
-      const before = await paper.view(target(r, v));
-      views[v] = await measured(key, `valuation:${v}`, () =>
-        paper.observe(target(r, v), key, observation),
-      );
-      beforeMaintenance[v] = {
-        positions: before.account.positions.filter((p) => p.closedAt === null),
-        risk: paperRisk(views[v]!.account, views[v]!.attempts, now()),
-        evidence: observation.frames.map((f) => ({
-          symbol: f.snapshot.market.symbol,
-          hash: f.hash,
-          tickerAt: f.snapshot.ticker.provenance.providerTimestamp,
-          bookAt: f.book.provenance.providerTimestamp,
-        })),
-        observedAt: now(),
-      };
-      await maintain(v, evidence, key);
-      views[v] = await paper.view(target(r, v));
+    if (useCommonObservation) {
+      let result: Extract<PerpsCommonObservationResult, { status: "complete" }>;
+      try {
+        result = await commonObservation(observation, key);
+      } catch (e) {
+        if (!(e instanceof RolledBackObservationUnavailable)) {
+          throw e;
+        }
+        await study.event(scope, lease, `${key}:failed`, "observation-failed", {
+          slot,
+          phase: "price-valuation",
+          code: e.code,
+          rolledBack: true,
+          frameValidation: e.result.validation,
+        });
+        if (admitted) {
+          await study.event(scope, lease, `slot-${slot}:data-unavailable`, "data-unavailable", {
+            slot,
+            phase: "initial-evidence",
+            component: "common-valuation",
+            cause: e.code,
+            rolledBack: true,
+          });
+        }
+        return true;
+      }
+      // Both pre-maintenance states and valuations are committed before either portfolio closes.
+      for (const v of variants) {
+        const item = result.accounts.find((a) => a.scope.agentId === r.agentIds[v])!;
+        views[v] = item.view;
+        beforeMaintenance[v] = {
+          positions: item.before.account.positions.filter((p) => p.closedAt === null),
+          risk: paperRisk(item.view.account, item.view.attempts, result.financialAt),
+          evidence: observation.frames.map((f) => ({
+            symbol: f.snapshot.market.symbol,
+            hash: f.hash,
+            tickerAt: f.snapshot.ticker.provenance.providerTimestamp,
+            bookAt: f.book.provenance.providerTimestamp,
+          })),
+          observedAt: result.financialAt,
+          receiptAt: result.receiptAt,
+          commonValuationVersion: 1,
+          replayed: result.replayed,
+        };
+      }
+      for (const v of variants) {
+        await maintain(v, evidence, key);
+        views[v] = await paper.view(target(r, v));
+      }
+    } else {
+      for (const v of variants) {
+        await guard();
+        const before = await paper.view(target(r, v));
+        views[v] = await measured(key, `valuation:${v}`, () =>
+          paper.observe(target(r, v), key, observation),
+        );
+        beforeMaintenance[v] = {
+          positions: before.account.positions.filter((p) => p.closedAt === null),
+          risk: paperRisk(views[v]!.account, views[v]!.attempts, now()),
+          evidence: observation.frames.map((f) => ({
+            symbol: f.snapshot.market.symbol,
+            hash: f.hash,
+            tickerAt: f.snapshot.ticker.provenance.providerTimestamp,
+            bookAt: f.book.provenance.providerTimestamp,
+          })),
+          observedAt: now(),
+        };
+        await maintain(v, evidence, key);
+        views[v] = await paper.view(target(r, v));
+      }
     }
     await study.event(scope, lease, key, "observation", {
       slot,
@@ -551,8 +651,15 @@ export function createProfileStudyRunner(deps: {
       const funding = await measured(key, "funding", () =>
         data.reconcile!(r, views, signal, guard),
       );
-      for (const v of variants) {
-        views[v] = await paper.observe(target(r, v), `${key}:funding`, funding);
+      if (useCommonObservation) {
+        const result = await commonObservation(funding, `${key}:funding`);
+        for (const v of variants) {
+          views[v] = result.accounts.find((a) => a.scope.agentId === r.agentIds[v])!.view;
+        }
+      } else {
+        for (const v of variants) {
+          views[v] = await paper.observe(target(r, v), `${key}:funding`, funding);
+        }
       }
     }
     if (closing) {
@@ -579,14 +686,24 @@ export function createProfileStudyRunner(deps: {
           data.prepareEvidence!(r, signal, guard),
         );
         await measured(key, "frame-validation", async () => valid(evidence, r));
-        for (const v of variants) {
-          await paper.observe(target(r, v), `${key}:initial-marks`, {
-            frames: evidence.frames,
-            funding: [],
-            marksOnly: true,
-          });
-          await maintain(v, evidence, `${key}:initial`);
-          views[v] = await paper.view(target(r, v));
+        if (useCommonObservation) {
+          const result = await commonObservation(
+            { frames: evidence.frames, funding: [], marksOnly: true },
+            `${key}:initial-marks`,
+          );
+          for (const v of variants) {
+            views[v] = result.accounts.find((a) => a.scope.agentId === r.agentIds[v])!.view;
+          }
+        } else {
+          for (const v of variants) {
+            await paper.observe(target(r, v), `${key}:initial-marks`, {
+              frames: evidence.frames,
+              funding: [],
+              marksOnly: true,
+            });
+            await maintain(v, evidence, `${key}:initial`);
+            views[v] = await paper.view(target(r, v));
+          }
         }
       } catch (e) {
         signal.throwIfAborted();
@@ -599,6 +716,13 @@ export function createProfileStudyRunner(deps: {
           cause: code(e),
         });
         return true;
+      }
+    }
+    if (useCommonObservation && data.prepareEvidence) {
+      // Financial maintenance failures after a committed valuation are never converted to omissions.
+      for (const v of variants) {
+        await maintain(v, evidence, `${key}:initial`);
+        views[v] = await paper.view(target(r, v));
       }
     }
     const accounts = Object.fromEntries(variants.map((v) => [v, views[v]!.account]));
@@ -658,14 +782,22 @@ export function createProfileStudyRunner(deps: {
         evidence: final,
       });
       // Validate the entire common input before touching any portfolio.
-      financialWrites = true;
-      for (const v of variants) {
-        await guard();
-        await paper.observe(target(r, v), `${round.key}:final-marks`, {
-          frames: final.frames,
-          funding: [],
-          marksOnly: true,
-        });
+      if (useCommonObservation) {
+        await commonObservation(
+          { frames: final.frames, funding: [], marksOnly: true },
+          `${round.key}:final-marks`,
+        );
+        financialWrites = true;
+      } else {
+        financialWrites = true;
+        for (const v of variants) {
+          await guard();
+          await paper.observe(target(r, v), `${round.key}:final-marks`, {
+            frames: final.frames,
+            funding: [],
+            marksOnly: true,
+          });
+        }
       }
       for (const v of variants) {
         await maintain(v, final, `${round.key}:final`);

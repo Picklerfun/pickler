@@ -9,7 +9,7 @@ import type {
   PerpsPaperIntent,
 } from "./types.js";
 import { paperRisk, productFeeReserve } from "./policy.js";
-import { isProductPaperSession } from "./types.js";
+import { COMPONENT_PAPER_POLICY, isProductPaperSession } from "./types.js";
 import {
   simulatePerpsFill,
   type PerpsPaperFrame,
@@ -54,7 +54,6 @@ export function createPerpsPaperService(
     options: PerpsPaperTradeOptions = {},
   ) {
     signal.throwIfAborted();
-    let view = await repository.view(scope);
     const notional = kind === "open" ? (options.notional ?? "100") : "0";
     // Operator opens keep the fixed 1 AUSD; a product open reserves notional × taker fee × 1.5.
     const feeReserve =
@@ -71,6 +70,15 @@ export function createPerpsPaperService(
     if (options.entryEvidence !== undefined) {
       intent.entryEvidence = options.entryEvidence;
     }
+    if (
+      frame?.streamEvidence?.policy === COMPONENT_PAPER_POLICY &&
+      !isProductPaperSession(scope) &&
+      repository.executeFrame &&
+      options.exits === undefined
+    ) {
+      return repository.executeFrame(scope, key, intent, frame, options.onSimulation);
+    }
+    let view = await repository.view(scope);
     // Durable admission precedes fetching execution evidence; repeat keys make no provider call.
     const admitted = await repository.begin(scope, view.account.agentVersion, key, intent);
     if (!admitted.lease) {
