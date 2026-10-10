@@ -33,6 +33,15 @@ const CONTRACTS = [
   "PicklerGraduationAdapterV4",
   "PicklerLiquidityLocker",
   "PicklerFeeEscrow",
+  "PicklerFeeEscrowV2",
+  "PicklerCurveDeployerKuru",
+  "PicklerGraduationAdapterKuru",
+  "PicklerKuruLiquidityLocker",
+  "PicklerKuruPositionVault",
+  "PicklerKuruPolicy",
+  "IKuruAccountCore",
+  "IKuruSpotRouter",
+  "IKuruOrderBook",
 ];
 
 rmSync(outputDirectory, { recursive: true, force: true });
@@ -41,7 +50,8 @@ mkdirSync(outputDirectory, { recursive: true });
 const exports = [];
 
 for (const name of CONTRACTS) {
-  const artifactPath = join(root, "contracts/out", `${name}.sol`, `${name}.json`);
+  const sourceName = name.startsWith("IKuru") ? "IKuruPassive" : name;
+  const artifactPath = join(root, "contracts/out", `${sourceName}.sol`, `${name}.json`);
 
   let artifact;
   try {
