@@ -1,15 +1,18 @@
 # Agent token launch admission and previews
 
-This delivery prepares launch admission and presentation. It does not deploy contracts, compose
-an operational signer, request a passkey, send transactions or enable an indexer. Funding wallets,
-publishing agents and editing token names cannot activate launch execution.
+Launch admission and presentation now include the opt-in operational testnet composition described
+in [Token operations](market/token-launch-operations.md). Its dedicated grant signer, immutable R2
+metadata, existing Studio passkey, durable transactions and bounded indexer remain disabled until
+the passive Kuru readiness gate is verified. No contract deployment or remote acceptance is claimed.
+Funding wallets, publishing agents and editing token names cannot activate launch execution.
 
 ## Boundaries
 
 Core's `createTokenLaunchService` owns creator access, workspace ownership, publication, master
 registration, absence of a confirmed/pending token and versioned intent. Infrastructure implements
 short PostgreSQL transactions and confirmed projection reads. The API composes these ports and
-exposes owner-only user-JWT routes; it deliberately omits `TokenGrantIssuer`. The browser only edits
+exposes owner-only user-JWT routes. It composes `TokenGrantIssuer` only behind the complete
+reviewed testnet policy and restricted agent allowlist. The browser only edits
 name and ticker. Network, agent key, creator/fee recipient, avatar snapshot, factory, preset, nonces
 and deadlines come from the server. API keys and HMAC cannot use these routes.
 
@@ -45,10 +48,12 @@ Expired retries require a new request. A changed owner cannot retrieve the previ
 | ------ | ------------------------------------------- | ---------------------------------------------------------------------------------------- |
 | GET    | `/api/v1/studio/agents/:id/token`           | Network, registered master, draft, blockers, confirmation, token and preset availability |
 | PUT    | `/api/v1/studio/agents/:id/token/draft`     | Private name/ticker draft with optimistic version                                        |
-| POST   | `/api/v1/studio/agents/:id/token/authorize` | Controlled-only grant; requires `Idempotency-Key` and `expectedVersion`                  |
+| POST   | `/api/v1/studio/agents/:id/token/authorize` | Gated grant; requires `Idempotency-Key` and `expectedVersion`                            |
 
-Every response is private and `no-store`. There is no receipt-confirmation or broadcast endpoint.
-Ordinary composition always returns `LAUNCH_UNAVAILABLE` for authorization. The controlled signer
+Every response is private and `no-store`. The [operation endpoints](market/token-launch-operations.md#owner-api-and-recovery)
+prepare strictly enumerated transactions, accept the exact existing-passkey activity and reconcile
+that same activity/transaction explicitly. Ordinary composition returns `LAUNCH_UNAVAILABLE` until
+the policy, dedicated authority, R2 and verified passive venue are configured. The controlled signer
 is exported only through `@pickler/infrastructure/testing/token`, refuses remote PostgreSQL and is
 never imported by a host. Its public fixture key is not an operational credential.
 
@@ -57,10 +62,12 @@ never imported by a host. Its public fixture key is not an operational credentia
 Studio's existing `/studio/agents/:id/token` route is present in draft and live rails. Drafts show
 **Go public first**. Owners can keep a private name/ticker draft. Details are always visible beneath
 the form and update locally while typing, without fetching, submitting, or simulating transactions.
-**Launch token** remains disabled in every composition. Total supply is exactly **21,000,000**
+**Launch token** remains disabled in ordinary composition; non-production fixtures can exercise
+controlled signature, cancellation, failure and confirmation states without providers. Total supply is exactly **21,000,000**
 18-decimal tokens, enforced by core, preset validation and token construction. All supply is minted
 once; there is no later minting, burning or token owner/admin. The registered master wallet is the
-creator and receives creator fees; it does not gain privileged control over the ERC-20. The current agent avatar is used in both cards; its portable accent/pattern accompany the confirmed public summary. The shared card shows name, ticker, explicit network, copyable
+creator and receives creator fees; it does not gain privileged control over the ERC-20. A prepared launch freezes its avatar and content-addressed image; confirmed cards use that
+snapshot even after the agent changes. Its portable accent/pattern accompany the public summary. The shared card shows name, ticker, explicit network, copyable
 address and available links. Public profiles place it below the header; absence has no launch CTA.
 Pending confirmation and failed reads are distinct from absence. No trading chart, purchase,
 holders or fee-claim control is introduced in this card.
@@ -72,8 +79,8 @@ With `npm run dev --workspace=@pickler/web -- --port 3005` (or the existing loca
 - [Public profile without token](http://localhost:3005/agents/halftime?stage=token-empty)
 - [Public profile with token](http://localhost:3005/agents/halftime?stage=token-launched)
 
-All fixtures are refused in production. Empty and launched previews are static states; there are no
-artificial launch phases, simulation controls, timers, passkeys or provider calls. Fictitious
+All fixtures are refused in production. Explicit local preview controls represent launch phases,
+cancellation, failure and confirmation. They do not request passkeys, start timers or call providers. Fictitious
 addresses never open an explorer. Forms remain mounted during reads and errors, with Skeletons,
 explicit retry and memory-only drafts across navigation. The full creator wallet is available in
 its address title. The owner edits only name/ticker; the current agent avatar is reused.
@@ -98,7 +105,7 @@ introduced for the reference profile.
 | Buy / sell fees                           | 1% / 1%                                   |
 | Trade fee split                           | 50% creator / 50% Pickler                 |
 | Launch fee                                | 0 AUSD                                    |
-| Post-migration venue and fees             | Pending DEX configuration                 |
+| Post-migration venue and fees             | Passive Kuru; actual LP fees split 50/50  |
 
 Initial valuation is price times the entire supply, not a required deposit or money raised. There is
 no oracle or USD conversion. The virtual reserves are **22,400,000 tokens** and
@@ -122,14 +129,16 @@ results. Its checked-in reference JSON is generated by `npm run tokens:fixtures`
 compares it with core and reviewed chain metadata.
 
 Exhausting curve inventory still closes both buys and sells. Controlled tests transfer precisely
-the real backing and reserved tokens to a test adapter while retaining fees. This does not approve
-or configure a DEX. The existing V4 adapter and old fork work remain historical technical evidence,
+the real backing and reserved tokens to a test adapter while retaining fees. This alone does not establish remote DEX readiness.
+[Passive Kuru integration](market/kuru-passive-integration.md) adds controlled atomic graduation
+and permanently locked principal with separate collection of actual LP fees. The existing V4 adapter and old fork work remain historical technical evidence,
 not the operational venue selection for this profile.
 
 The live form groups supply/distribution, valuation/backing, creator wallet and fees into a compact
 summary. Gas is paid separately in MON without an invented estimate. The master wallet receives
-creator fees and has no token-admin privileges. After migration, the UI explicitly shows
-**Pending DEX configuration**. There is no **Simulate** or **Review launch** action.
+creator fees and has no token-admin privileges. After graduation, the UI shows the indexed Kuru venue, permanent liquidity lock and available
+fees. The economic summary explains the 50/50 split of actual Kuru LP fees without another
+Pickler trading tax. There is no **Simulate** or **Review launch** action.
 
 ## Reproducible acceptance
 
@@ -157,18 +166,18 @@ npm run build:workers
 npm run design:check
 ```
 
-| Scenario                                                                                                | Evidence boundary                      | Status                          |
-| ------------------------------------------------------------------------------------------------------- | -------------------------------------- | ------------------------------- |
-| Legacy and normalized math, 53 reference vectors, full-precision intermediate                           | Offline Solidity and core              | Passed locally                  |
-| Buys, sells, exact remainder, fee separation, donations, no rounding cycle gain                         | Offline unit/fuzz/invariant suites     | Passed locally                  |
-| Inventory conservation, solvency and controlled adapter handover                                        | Offline contracts; no DEX              | Passed locally                  |
-| Ownership, concurrent saves/grants, version conflicts, historical persistence and canonical attribution | Isolated PostgreSQL and API            | Passed locally                  |
-| Altered grants, other wallet/chain/factory, expiry, replay and authority rotation                       | Offline contract suites                | Passed locally                  |
-| Optional economics without signer, old responses and unknown version rejection                          | Core/API/web contracts                 | Passed locally                  |
-| Four previews, desktop/mobile, keyboard, navigation, live edits and disabled launch                     | Local UI and Design                    | Passed locally                  |
-| Metadata storage, operational signer, passkey, broadcast and activated indexer                          | Not composed                           | Pending next delivery           |
-| DEX selection, post-migration fees, liquidity lock and migration acceptance                             | Not configured                         | Pending product and engineering |
-| Deployed readiness and remote acceptance                                                                | No deployment/provider calls performed | Pending explicit delivery       |
+| Scenario                                                                                                | Evidence boundary                      | Status                       |
+| ------------------------------------------------------------------------------------------------------- | -------------------------------------- | ---------------------------- |
+| Legacy and normalized math, 53 reference vectors, full-precision intermediate                           | Offline Solidity and core              | Passed locally               |
+| Buys, sells, exact remainder, fee separation, donations, no rounding cycle gain                         | Offline unit/fuzz/invariant suites     | Passed locally               |
+| Inventory conservation, solvency and controlled adapter handover                                        | Offline contracts; no DEX              | Passed locally               |
+| Ownership, concurrent saves/grants, version conflicts, historical persistence and canonical attribution | Isolated PostgreSQL and API            | Passed locally               |
+| Altered grants, other wallet/chain/factory, expiry, replay and authority rotation                       | Offline contract suites                | Passed locally               |
+| Optional economics without signer, old responses and unknown version rejection                          | Core/API/web contracts                 | Passed locally               |
+| Four previews, desktop/mobile, keyboard, navigation, live edits and disabled launch                     | Local UI and Design                    | Passed locally               |
+| R2, dedicated signer, exact passkey/broadcast and bounded indexer                                       | Controlled ports and local database    | Implemented; remote gate off |
+| Passive Kuru, separate LP fees and permanent principal custody                                          | Controlled offline contracts           | Implemented; remote pending  |
+| Deployed readiness and remote acceptance                                                                | No deployment/provider calls performed | Pending explicit delivery    |
 
 The current change introduces no remote migration, deployment, transaction or paid call. Controlled
 results do not establish deployed readiness. Complete and verify the operational pieces and the
