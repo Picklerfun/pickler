@@ -108,3 +108,40 @@ Paired controlled PostgreSQL benchmarks use identical portfolios and evidence wi
 per execution path/scenario. Report actual monotonic durations separately from injected query
 clock delays, complete/partial outcomes, query counts and denominator. Controlled financial
 parity and expiry rollback do not prove future capture availability or profitability.
+
+## Common observation lifetime regression
+
+The third session `sma-component-atomic-20261009`, frozen at
+`b1bb7fb0226ba0f33b072f03f23e253684ceab42`, stopped before the fixed end after 68 complete
+slots, one omitted slot and three unevaluated slots. Its lease was released. Each portfolio retains
+three open virtual positions; neither six-hour completion nor realized profit is established.
+The immutable read-only export has canonical payload SHA-256
+`8f7375bae488ce57dd6c5d9df58a707331fe5bb2b263ec90ea330d63d638897f`.
+
+Safe recorded dates demonstrate a BTC native ticker age of 29,694ms at buffer copy and 30,189ms
+at PostgreSQL validation, 495ms later. Book age was 1,189ms and heartbeat age 582ms at their
+respective checks. The first portfolio observation had already committed when the second rejected
+the native ticker. This is a local observation lifetime/atomicity defect, not the removed
+five-second native skew gate. Rejected historical book bytes were not retained; the controlled
+regression uses synthetic frame bodies with the demonstrated clock values.
+
+For the explicit component-paper policy, both accounts now share an `observeCommon` transaction
+with deterministic locks, immutable study membership/policies, one financial/receipt clock and
+the existing `applyPaperObservation` function. Initial, final and funding observations use that
+port. Original frame hashes and freshness are checked before commit. Maintenance begins only
+after the common valuation commits. No native date or heartbeat proof is refreshed locally.
+
+A demonstrably expired native component or heartbeat returns unavailable only after confirmed
+rollback before any commit attempt. Both accounts, position projections, funding postings and
+observation records roll back together. The admitted slot is recorded and never recovered; the
+next minute can continue with a new observation. One-account prior history, invalid identities
+or hashes, ownership loss, failed rollback and uncertain commit remain fatal. A failure after
+financial maintenance begins is not an omission. Historical and product observation paths retain
+their behavior. The native 30-second, future five-second and heartbeat five-second limits remain
+unchanged.
+
+The operator's active repair-and-completion authorization requires preserving each interrupted
+trial and verifying a demonstrated correction before a distinct frozen continuation experiment.
+Never resume the failed session, recover old slots, extend its deadline, repeat the passed capture
+qualification, or count later prices as closure of its pending positions. Controlled full-duration
+regressions remain distinct from the eventual six-hour prospective comparison.
