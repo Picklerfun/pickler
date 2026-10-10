@@ -306,3 +306,27 @@ test("an event we do not recognise is counted as skipped, never as projected", a
   assert.equal(result.skipped, 1);
   assert.equal(result.launches + result.trades + result.graduations, 0);
 });
+
+test("a projector with an expired lease cannot write even during empty cleanup", async (t) => {
+  const { store, projector } = await createPair(t),
+    owner = randomUUID();
+  await store.pool.query(
+    "INSERT INTO launch.indexer_admission(chain,owner,expires_at,day,requests) VALUES($1,$2,now()-interval '1 second','2026-10-09',0)",
+    [CHAIN, owner],
+  );
+  projector.admissionFence = { chain: CHAIN, owner };
+  await assert.rejects(projector.project(CHAIN, readMetadata), /INDEX_LEASE_LOST/);
+  assert.equal((await store.pool.query("SELECT 1 FROM market.tokens")).rowCount, 0);
+});
+test("reorg cleanup removes orphaned trades without a manual projection reset", async (t) => {
+  const { store, projector } = await createPair(t);
+  await indexed(
+    store,
+    [block(10n, "a", "9"), block(11n, "b", "a")],
+    [launchEvent(10n, "a"), buyEvent(11n, "b")],
+  );
+  await projector.project(CHAIN, readMetadata);
+  await store.rollbackFrom(CHAIN, FACTORY, "launches", 10n);
+  await projector.project(CHAIN, readMetadata);
+  assert.equal((await store.pool.query("SELECT 1 FROM market.trades")).rowCount, 0);
+});

@@ -81,7 +81,9 @@ try {
     assert.equal(await details.getByText("50% / 50%", { exact: true }).count(), 1);
     assert.equal(
       await details
-        .getByText("After migration: Pending DEX configuration.", { exact: true })
+        .getByText("After graduation: 50% creator / 50% Pickler of actual Kuru LP fees.", {
+          exact: true,
+        })
         .count(),
       1,
     );
@@ -100,7 +102,31 @@ try {
     await page.keyboard.press("Enter");
     await page.getByText("Draft saved", { exact: true }).waitFor();
     assert.equal(await name.inputValue(), "My preview token");
+    const operations = page.getByRole("region", { name: "Token operations", exact: true });
+    await operations.getByRole("button", { name: "Launch token", exact: true }).click();
+    await operations.getByText("Awaiting signature", { exact: true }).waitFor();
+    assert.equal(await name.inputValue(), "My preview token");
+    const cancel = operations.getByRole("button", { name: "Cancel", exact: true });
+    await cancel.focus();
+    await page.keyboard.press("Enter");
+    await operations.getByText("Cancelled", { exact: true }).waitFor();
+    await operations.getByRole("button", { name: "Launch token", exact: true }).click();
+    await operations.getByRole("button", { name: "Preview failure", exact: true }).click();
+    await operations.getByText("Could not complete", { exact: true }).waitFor();
+    await operations.getByRole("button", { name: "Launch token", exact: true }).click();
+    await operations.getByRole("button", { name: "Continue preview", exact: true }).click();
+    await operations.getByText("Confirming", { exact: true }).waitFor();
+    await operations.getByRole("button", { name: "Check status", exact: true }).click();
+    await page.locator('[data-token-state="launched"]:visible').waitFor();
+    assert.equal(
+      await page.getByRole("heading", { name: "My preview token", exact: true }).count(),
+      1,
+    );
+    // Start a fresh empty fixture after confirming the controlled operation.
+    await page.goto(`${base}/studio/agents/preview-live/token?stage=perpl-token-empty`);
+    await name.waitFor();
     await name.fill("Another name");
+    await page.getByRole("textbox", { name: "Ticker", exact: true }).fill("DEMO");
     await details.getByText("Another name · $DEMO", { exact: true }).waitFor();
     assert.equal(await details.getByText("21,000,000", { exact: true }).count(), 1);
     assert.equal(await page.getByText("Draft saved", { exact: true }).count(), 0);
@@ -144,7 +170,7 @@ try {
   assert.deepEqual(errors, [], "No client exceptions");
   assert.deepEqual(forbidden, [], "Token previews never consult APIs or external providers");
   console.log(
-    "Token previews passed: both Studio/public states, fixed 21-million supply, live details, no simulated launch, saved drafts, keyboard, stable layout and mobile.",
+    "Token previews passed: both Studio/public states, fixed 21-million supply, live details, controlled launch/cancel/failure, saved drafts, keyboard, stable layout and mobile.",
   );
 } catch (error) {
   writeFileSync(

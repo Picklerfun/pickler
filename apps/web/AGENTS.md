@@ -1173,3 +1173,14 @@ Fixtures cannot use passkeys, providers or fake explorer links
 and are refused in production. `scripts/design/token-preview.mjs` checks both states at desktop/mobile
 sizes, keyboard and persistent navigation; Design CI runs it. The controlled loading regression
 covers private token reads and preserved edits. See [the guide](../../docs/agent-token-preview.md).
+
+## Token operation controls
+
+`features/tokens/token-operation-controls.tsx` presents server-resolved testnet actions. It lazily
+loads the existing Studio passkey only after an explicit signature request; it never uses the
+marketplace wallet signer. Status, collection and claims are manual, with no provider polling.
+Unsigned drafts and operation identities survive persistent Studio navigation in owner-scoped
+memory; signed bytes remain backend-only. AUSD claims are labeled as master-wallet aggregates.
+Frozen token images take priority over the agent's editable avatar. Local token fixtures remain
+non-production and never sign, send or query remote providers. See
+[Token operations](../../docs/market/token-launch-operations.md).

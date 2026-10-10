@@ -10,6 +10,7 @@ import {
 import { studioApi, type Agent } from "../studio/api";
 import { AgentAvatar } from "../studio/shell/agent-avatar";
 import { useStudioForm, useStudioMemory } from "../studio/routing/memory";
+import { TokenOperationControls } from "./token-operation-controls";
 import { AgentTokenCard } from "./agent-token-card";
 import styles from "./token.module.css";
 
@@ -28,7 +29,7 @@ const amount = (units: string, decimals: number, places: number) => {
   return (rounded / scale).toLocaleString("en-US") + (places ? "." + fraction : "");
 };
 
-/** Draft details update locally. No signer or transaction sender is composed here. */
+/** Financial terms come from the server; the existing passkey is loaded only for an explicit action. */
 export function TokenPanel({
   agent,
   initialState,
@@ -98,7 +99,9 @@ export function TokenPanel({
   const saveBlocked =
     state?.chainId === null ||
     (state?.blockers.some((b) => b !== "GO_PUBLIC_FIRST" && b !== "LAUNCH_UNAVAILABLE") ?? false);
-  let availabilityMessage = "Token launch is not available yet. You can save your draft.";
+  let availabilityMessage = state?.available
+    ? "Testnet launch is available for this agent."
+    : "Token launch is not available yet. You can save your draft.";
   if (state?.confirmation === "pending") {
     availabilityMessage = "Waiting for token confirmation.";
   } else if (state?.blockers.includes("CREATOR_ACCESS_REQUIRED")) {
@@ -108,7 +111,6 @@ export function TokenPanel({
   } else if (saveBlocked || !canManage) {
     availabilityMessage = "Token draft editing is currently unavailable.";
   }
-  const avatar = <AgentAvatar accent={agent.accent} pattern={agent.avatarPattern} size="head" />;
   const launched = state?.token;
   async function save() {
     if (!canManage || saving || loading || readError || stale || saveBlocked) {
@@ -160,7 +162,7 @@ export function TokenPanel({
   return (
     <div className={styles.panel}>
       {launched ? (
-        <AgentTokenCard token={launched} avatar={avatar} preview={preview} />
+        <AgentTokenCard token={launched} preview={preview} />
       ) : (
         <>
           <section className={styles.card} aria-label="Token launch">
@@ -379,11 +381,11 @@ export function TokenPanel({
                   )}
                   {economics && (
                     <p className={styles.exampleNote}>
-                      After migration: Pending DEX configuration.
+                      After graduation: 50% creator / 50% Pickler of actual Kuru LP fees.
                     </p>
                   )}
                   <p className={styles.exampleNote}>
-                    {preview ? "Local preview" : "Reference terms"} · Launch disabled.
+                    {preview ? "Local preview · no transactions" : "Reference terms"}
                   </p>
                 </>
               )}
@@ -394,7 +396,7 @@ export function TokenPanel({
                   Go public first
                 </Button>
               ) : (
-                <Button disabled>Launch token</Button>
+                <span className={styles.quiet}>Launch below</span>
               )}
               <Button
                 size="sm"
@@ -413,9 +415,31 @@ export function TokenPanel({
               </p>
             )}
             {state?.confirmation === "pending" && <p role="status">Token confirmation pending</p>}
-            {!loading && !readError && <p className={styles.quiet}>{availabilityMessage}</p>}
+            {!preview && !loading && !readError && (
+              <p className={styles.quiet}>{availabilityMessage}</p>
+            )}
           </section>
         </>
+      )}
+      {state && !privateAgent && (
+        <TokenOperationControls
+          agentId={agent.productId ?? agent.id}
+          state={state}
+          preview={preview}
+          enabled={canManage && !loading && !readError}
+          draftSaved={
+            !!state.draft &&
+            state.draft.name === form.name &&
+            state.draft.ticker === form.ticker &&
+            !stale
+          }
+          onChange={(next) => {
+            setState(next);
+            if (preview) {
+              memory.setOutcome(scope + ":saved", next);
+            }
+          }}
+        />
       )}
     </div>
   );

@@ -301,3 +301,62 @@ test("a batch that cannot be written moves no cursor", async (t) => {
   assert.equal(cursor?.lastBlock, 10n, "the cursor advanced past a batch that failed");
   assert.equal((await store.readCanonicalEvents(CHAIN)).length, 0);
 });
+
+test("a chain reorg rewinds every advanced stream and preserves streams behind the fork", async (t) => {
+  const store = await createStore(t);
+  const adapter = "0x" + "7".repeat(40),
+    escrow = "0x" + "8".repeat(40);
+  for (const [contract, height] of [
+    [FACTORY, 12n],
+    [adapter, 13n],
+    [escrow, 9n],
+  ] as const) {
+    await store.applyBatch({
+      chain: CHAIN,
+      contract,
+      stream: "token-launch-v1",
+      blocks: [block(height, "h" + height, "h" + (height - 1n))],
+      events: [],
+    });
+  }
+  await store.applyBatch({
+    chain: CHAIN,
+    contract: FACTORY,
+    stream: STREAM,
+    blocks: [block(10n, "common", "9")],
+    events: [],
+  });
+  await store.rollbackFrom(CHAIN, FACTORY, "token-launch-v1", 10n);
+  assert.equal((await store.readCursor(CHAIN, FACTORY, "token-launch-v1"))?.lastBlock, 10n);
+  assert.equal((await store.readCursor(CHAIN, adapter, "token-launch-v1"))?.lastBlock, 10n);
+  assert.equal((await store.readCursor(CHAIN, escrow, "token-launch-v1"))?.lastBlock, 9n);
+  await store.applyBatch({
+    chain: CHAIN,
+    contract: adapter,
+    stream: "token-launch-v1",
+    blocks: [block(11n, "replacement", "common")],
+    events: [{ ...event(11n, "replacement", 0, "replacement-adapter"), emitter: adapter }],
+  });
+  assert.equal((await store.readCanonicalEvents(CHAIN))[0]?.eventName, "replacement-adapter");
+});
+test("expired index admission fences writes and rollback", async (t) => {
+  const store = await createStore(t),
+    owner = randomUUID();
+  await store.pool.query(
+    "INSERT INTO launch.indexer_admission(chain,owner,expires_at,day,requests) VALUES($1,$2,now()-interval '1 second','2026-10-09',0)",
+    [CHAIN, owner],
+  );
+  store.admissionFence = { chain: CHAIN, owner };
+  await assert.rejects(
+    store.applyBatch({
+      chain: CHAIN,
+      contract: FACTORY,
+      stream: STREAM,
+      blocks: [block(10n, "a", "9")],
+      events: [],
+    }),
+    /INDEX_LEASE_LOST/,
+  );
+  await assert.rejects(store.rollbackFrom(CHAIN, FACTORY, STREAM, 0n), /INDEX_LEASE_LOST/);
+  assert.equal(await store.readCursor(CHAIN, FACTORY, STREAM), null);
+});

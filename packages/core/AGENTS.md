@@ -471,3 +471,11 @@ package root. Legacy buy vectors and new buy/sell/exact-output/fee/price vectors
 Owner state may include this reference independently of `TokenGrantIssuer`; it never grants launch
 availability or supplies an operational preset. No SDK, HTTP object or signer key belongs in core.
 Ordinary composition omits the issuer and refuses authorization. See [the token guide](../../docs/agent-token-preview.md) and `test/token-launch.test.ts`.
+
+## Durable token operations
+
+`features/launch/token-operations.ts` owns owner-only enumerated actions, short intent reservation,
+one-time signing/submission claims, exact signed-byte recovery and explicit canonical receipt
+reconciliation. Its injected driver is infrastructure-owned; providers never execute under a
+repository transaction. A finalized transaction is distinct from an attributed token. See
+[Token operations](../../docs/market/token-launch-operations.md).

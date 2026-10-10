@@ -1,6 +1,6 @@
 /** Controlled local acceptance only; the API host never imports this signer. */
 import assert from "node:assert/strict";
-import { randomBytes, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import type { TestContext } from "node:test";
 import { encodeAbiParameters, keccak256, stringToHex, type Hex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
@@ -36,7 +36,7 @@ export function controlledIssuer() {
       lpCreatorShareBps: 5000,
       launchFee: "0",
     },
-    async issue({ scope, context, draft, chainId, deadline }) {
+    async issue({ scope, context, draft, chainId, deadline, nonce }) {
       calls++;
       const metadata = JSON.stringify({
         name: draft.name,
@@ -54,10 +54,10 @@ export function controlledIssuer() {
         presetId: issuer.preset.id,
         presetVersion: issuer.preset.version,
         expectedConfigHash: issuer.preset.configHash,
-        nonce: BigInt(`0x${randomBytes(32).toString("hex")}`).toString(),
+        nonce,
         deadline,
       };
-      const grantNonce = BigInt(`0x${randomBytes(32).toString("hex")}`).toString();
+      const grantNonce = nonce;
       const paramsHash = keccak256(
         encodeAbiParameters(
           [

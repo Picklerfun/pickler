@@ -1,4 +1,5 @@
 "use client";
+import Image from "next/image";
 import { useState, type ReactNode } from "react";
 import { Button, ButtonLink, Icon, Tag } from "@pickler/ui";
 import type { AgentTokenDto } from "@pickler/api-schema";
@@ -8,7 +9,6 @@ import { AgentAvatar } from "../studio/shell/agent-avatar";
 /** Compact token identity shared by the owner and public profile. Never reads a provider. */
 export function AgentTokenCard({
   token,
-  avatar,
   preview = false,
   confirmationPending = false,
 }: {
@@ -38,7 +38,18 @@ export function AgentTokenCard({
   return (
     <section className={styles.card} data-token-state="launched" aria-label="Agent token">
       <div className={styles.head}>
-        {avatar ?? (
+        {token.imageUri &&
+        /^https:\/\/app\.pickler\.fun\/api\/v1\/token-assets\/[0-9a-f]{64}\.svg$/.test(
+          token.imageUri,
+        ) ? (
+          <Image
+            src={token.imageUri}
+            alt={`${token.name} token`}
+            width={48}
+            height={48}
+            unoptimized
+          />
+        ) : (
           <AgentAvatar accent={token.avatar.accent} pattern={token.avatar.pattern} size="head" />
         )}
         <div className={styles.identity}>

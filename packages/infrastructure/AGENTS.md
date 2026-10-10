@@ -641,8 +641,8 @@ an agent only when its key, recorded grant, factory, creator and committed param
 The explicit `@pickler/infrastructure/testing/token` subpath exports the loopback-only PostgreSQL
 fixture and public controlled signer used by API acceptance. No host imports it. It makes no RPC or
 provider calls. `test/token-launch.test.ts` covers concurrent admission, upgrade preservation,
-isolation and confirmed attribution. Operational signing, durable metadata and indexer activation
-remain absent.
+isolation and confirmed attribution. The operational modules described below add signing and durable metadata; remote indexer
+activation remains pending.
 
 ## Creator application review
 
@@ -658,3 +658,12 @@ The adapter converts PostgreSQL bigint application IDs into checked safe integer
 boundary. The PostgreSQL API acceptance covers numeric IDs through both inbox reads and decisions.
 Security-definer review, claim and status functions revoke execution from PUBLIC, anon and
 authenticated; only the trusted backend may execute them.
+
+## Testnet token launcher
+
+`src/launch` implements the strict passive Kuru readiness policy, dedicated EIP-712 grant signer,
+immutable hash-addressed R2 JSON/SVG, exact Turnkey transaction driver, bounded indexer and Kuru
+position projection. Migrations 0041–0044 add private durable operations, master nonce uniqueness,
+RPC admission and Kuru snapshots without rewriting historical V4 records. Never compose legacy
+Kuru as a fallback. Operational acceptance remains blocked by the external readiness record.
+See [Token operations](../../docs/market/token-launch-operations.md) for configuration and tests.

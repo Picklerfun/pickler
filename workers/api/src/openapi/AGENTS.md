@@ -19,3 +19,7 @@ Redirect operations use `redirect: true` to document Location without inventing 
 bodies. Studio's X callback is the sole X operation without bearer JWT; its description must
 state the single-use state, PKCE and HttpOnly cookie protections. All other X routes remain
 owner JWT-only and private/no-store. See [Studio X OAuth](../../../../docs/studio-x-oauth.md).
+
+`operation.ts` supports explicit response media schemas for immutable token JSON/SVG assets.
+JSON remains the default for ordinary operations; asset reads do not inherit private Studio
+authentication or permit public writes.

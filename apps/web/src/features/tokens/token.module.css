@@ -67,6 +67,10 @@
   overflow-wrap: anywhere;
   font-variant-numeric: tabular-nums;
 }
+.detail abbr {
+  text-decoration: none;
+  white-space: nowrap;
+}
 .summary {
   display: grid;
   gap: 16px;

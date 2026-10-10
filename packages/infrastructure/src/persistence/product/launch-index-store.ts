@@ -53,10 +53,12 @@ export interface ApplyBatchInput {
   blocks: readonly IndexBlockInput[];
   events: readonly IndexEventInput[];
   outbox?: readonly OutboxInput[];
+  confirmed?: boolean;
 }
 
 export class PostgresLaunchIndexStore {
   readonly pool: Pool;
+  admissionFence?: { chain: string; owner: string };
   private readonly database: NodePgDatabase;
 
   constructor(connectionString: string, options?: DatabaseConnectionOptions) {
@@ -110,6 +112,15 @@ export class PostgresLaunchIndexStore {
     )[0]!;
 
     await this.database.transaction(async (tx) => {
+      if (this.admissionFence) {
+        const f = this.admissionFence;
+        const result = await tx.execute(
+          sql`SELECT 1 FROM launch.indexer_admission WHERE chain=${f.chain} AND owner=${f.owner}::uuid AND expires_at>clock_timestamp() FOR UPDATE`,
+        );
+        if (!result.rowCount) {
+          throw new Error("INDEX_LEASE_LOST");
+        }
+      }
       for (const block of input.blocks) {
         await tx
           .insert(chainBlocks)
@@ -120,12 +131,16 @@ export class PostgresLaunchIndexStore {
             parentHash: block.parentHash,
             blockTime: block.blockTime,
             orphaned: false,
+            ...(input.confirmed ? { finality: "confirmed" as const } : {}),
           })
           .onConflictDoUpdate({
             target: [chainBlocks.chain, chainBlocks.hash],
             // Re-reading a block that a previous pass marked orphaned means the chain came
             // back to it; it is canonical again.
-            set: { orphaned: false },
+            set: {
+              orphaned: false,
+              ...(input.confirmed ? { finality: "confirmed" as const } : {}),
+            },
           });
       }
 
@@ -207,11 +222,20 @@ export class PostgresLaunchIndexStore {
    */
   async rollbackFrom(
     chain: string,
-    contract: string,
-    stream: string,
+    _contract: string,
+    _stream: string,
     rollbackToBlock: bigint,
   ): Promise<{ orphanedBlocks: number; orphanedEvents: number }> {
     return this.database.transaction(async (tx) => {
+      if (this.admissionFence) {
+        const f = this.admissionFence;
+        const result = await tx.execute(
+          sql`SELECT 1 FROM launch.indexer_admission WHERE chain=${f.chain} AND owner=${f.owner}::uuid AND expires_at>clock_timestamp() FOR UPDATE`,
+        );
+        if (!result.rowCount) {
+          throw new Error("INDEX_LEASE_LOST");
+        }
+      }
       const blocks = await tx
         .update(chainBlocks)
         .set({ orphaned: true })
@@ -250,8 +274,7 @@ export class PostgresLaunchIndexStore {
           .where(
             and(
               eq(indexerCursors.chain, chain),
-              eq(indexerCursors.contract, contract),
-              eq(indexerCursors.stream, stream),
+              gt(indexerCursors.lastBlock, Number(rollbackToBlock)),
             ),
           );
       } else {
@@ -260,8 +283,7 @@ export class PostgresLaunchIndexStore {
           .where(
             and(
               eq(indexerCursors.chain, chain),
-              eq(indexerCursors.contract, contract),
-              eq(indexerCursors.stream, stream),
+              gt(indexerCursors.lastBlock, Number(rollbackToBlock)),
             ),
           );
       }

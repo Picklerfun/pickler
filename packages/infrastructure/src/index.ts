@@ -242,3 +242,15 @@ export { PostgresStudioAccessRequests } from "./studio/access-requests.js";
 export { createXOAuthProvider, parseXApiPolicy, xSecrets } from "./x/oauth-provider.js";
 export { PostgresXOAuthStore } from "./studio/x-oauth-store.js";
 export { PostgresTokenLaunchStore, tokenAgentKey } from "./studio/token-launch-store.js";
+
+export * from "./launch/policy.js";
+export * from "./launch/metadata.js";
+export * from "./launch/grant-issuer.js";
+
+export * from "./launch/driver.js";
+
+export type { Pool as TokenLaunchDatabase } from "pg";
+
+export * from "./launch/kuru-projector.js";
+
+export { runTokenIndexer, tokenChainReader, tokenIndexerPolicySchema } from "./launch/indexer.js";
