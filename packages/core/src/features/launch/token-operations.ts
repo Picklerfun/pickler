@@ -34,6 +34,8 @@ export type TokenOperationStatus =
   | "unknown";
 export interface TokenPreparedTransaction {
   operationId: string;
+  /** Private commitment to the reviewed venue, deployment, economics and gas policy. */
+  configurationHash?: string;
   activity: UnsignedActivity;
   chainId: number;
   sender: string;
@@ -89,7 +91,7 @@ export interface TokenIntentTransaction {
   ): Promise<TokenIntent>;
 }
 export interface TokenOperationDriver {
-  /** An independently verified passive-generation configuration, never the legacy probe. */
+  /** An independently verified venue configuration, never inferred from an ABI or a legacy probe. */
   ready: boolean;
   checkReadiness?(operationId: string): Promise<void>;
   prepare(scope: TokenScope, intent: TokenIntent): Promise<TokenPreparedTransaction>;
