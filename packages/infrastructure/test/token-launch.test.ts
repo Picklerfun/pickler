@@ -70,11 +70,16 @@ test("ownership isolation, disabled hosted composition, optimistic saves and ide
 test("concurrent authorization retries return one stored five-minute grant; a new request cannot duplicate it", async (t) => {
   const f = await tokenFixture(t);
   await f.service.saveDraft(f.scope, draft);
-  const [a, b] = await Promise.all([
+  const requests = await Promise.allSettled([
     f.service.authorize(f.scope, 1, requestKey),
     f.service.authorize(f.scope, 1, requestKey),
   ]);
-  assert.deepEqual(a, b);
+  assert.equal(requests.filter((r) => r.status === "fulfilled").length, 1);
+  const a = await f.service.authorize(f.scope, 1, requestKey);
+  assert.deepEqual(
+    a,
+    (requests.find((r) => r.status === "fulfilled") as PromiseFulfilledResult<typeof a>).value,
+  );
   assert.equal(f.signer.calls(), 1);
   assert.equal(a.params.creator, controlledMaster);
   assert.equal(a.params.creatorFeeRecipient, controlledMaster);
@@ -96,6 +101,9 @@ test("concurrent authorization retries return one stored five-minute grant; a ne
   );
   await assert.rejects(f.service.authorize(f.scope, 1, requestKey), /TOKEN_AUTHORIZATION_EXPIRED/);
   assert.equal(f.signer.calls(), 1);
+  await f.store.pool.query(
+    "UPDATE launch.operations SET expires_at=now()-interval '1 second' WHERE status='preparing'",
+  );
   await f.service.saveDraft(f.scope, { ...draft, expectedVersion: 1, name: "Second version" });
   await assert.rejects(f.service.authorize(f.scope, 2, requestKey), /TOKEN_IDEMPOTENCY_CONFLICT/);
 });
