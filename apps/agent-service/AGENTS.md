@@ -337,3 +337,13 @@ The corrected component-only runner uses a common transaction and records confir
 rollback separately from partial/uncertain writes. Preserve this session, its pending positions
 and failure export. The controlled regression reproduces the dates with synthetic frame bodies;
 it never claims to recover the rejected historical bytes or completes the interrupted trial.
+
+A component-paper database timeout remains a fatal persistence interruption, with the specific
+`PERSISTENCE_QUERY_TIMEOUT` code on corrected executions; a recognized connection deadline is
+`PERSISTENCE_CONNECTION_TIMEOUT`. Never reinterpret an interrupted
+historical generic code or pending positions as completed/closed. Keep database-load attribution
+bounded by recorded evidence; a coincident checkpoint alone cannot identify every causal workload.
+An explicitly authorized zero-model continuation may use a separate local physical server only
+after restoring and verifying the complete existing campaign history, reservations and table
+hashes. Keep the original server and failed sessions intact; never use duplicate copies as fresh
+monetary budget authority. Controlled database tests must finish before freezing that runner.
