@@ -1,7 +1,7 @@
 import { privateKeyToAccount } from "viem/accounts";
 import { keccak256, type Hex } from "viem";
 import { AUSD } from "@pickler/chain";
-import { tokenLaunchPolicySchema } from "../src/launch/policy.js";
+import { type KuruTokenLaunchPolicy, tokenLaunchPolicySchema } from "../src/launch/policy.js";
 export const launchKey = ("0x" + "0".repeat(63) + "1") as Hex;
 export const masterKey = ("0x" + "0".repeat(63) + "2") as Hex;
 export const launcherMaster = privateKeyToAccount(masterKey);
@@ -61,7 +61,34 @@ export function launchPolicy() {
     maxGasCost: "200000000000000000",
     rpcRequestsPerOperation: 500,
     confirmations: 2,
-  });
+  }) as KuruTokenLaunchPolicy;
+}
+export function uniswapLaunchPolicy() {
+  const p = launchPolicy();
+  const { router, accountCore, evidence, ...common } = p;
+  const contract = (address: string) => ({ ...router, address });
+  const { passiveBands, ...proof } = evidence;
+  void passiveBands;
+  return tokenLaunchPolicySchema.parse({
+    ...common,
+    version: 2,
+    venue: "uniswap_v4",
+    evidence: proof,
+    preset: { ...p.preset, version: 4 },
+    poolManager: router,
+    positionManager: accountCore,
+    stateView: contract("0x" + "9".repeat(40)),
+    permit2: contract("0x" + "a".repeat(40)),
+    quote: {
+      ...contract(p.preset.quoteAddress),
+      implementation: {
+        address: "0x" + "c".repeat(40),
+        codeHash: keccak256(deploymentCode),
+        slot: "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc",
+      },
+    },
+    liquidity: { feeTier: 10000, tickSpacing: 200, sqrtPriceToleranceBps: 5, range: "full_range" },
+  }) as Extract<ReturnType<typeof tokenLaunchPolicySchema.parse>, { venue: "uniswap_v4" }>;
 }
 export function metadataBucket() {
   const objects = new Map<string, string>();

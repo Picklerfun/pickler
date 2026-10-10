@@ -2,6 +2,8 @@ import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { decodeFunctionResult, encodeFunctionData, keccak256, type Abi, type Hex } from "viem";
 import {
+  IUniswapV4ReadAbi,
+  PicklerLiquidityLockerV2Abi,
   IKuruAccountCoreAbi,
   IKuruOrderBookAbi,
   PicklerKuruPositionVaultAbi,
@@ -13,6 +15,8 @@ import { decodeLaunchLog } from "../chain/launch-log-decoder.js";
 import { runIndexerPass } from "../chain/launch-indexer.js";
 import { PostgresLaunchIndexStore } from "../persistence/product/launch-index-store.js";
 import { PostgresLaunchProjector } from "../persistence/product/launch-projector.js";
+import { encodeAbiParameters } from "viem";
+import { PostgresUniswapProjector } from "./uniswap-projector.js";
 import { PostgresKuruProjector } from "./kuru-projector.js";
 import { parseTokenLaunchPolicy } from "./policy.js";
 export const tokenIndexerPolicySchema = z
@@ -218,8 +222,15 @@ export async function runTokenIndexer(input: {
       policy.adapter,
       policy.escrow,
       policy.locker,
-      policy.router,
-      policy.accountCore,
+      ...(policy.venue === "uniswap_v4"
+        ? [
+            policy.poolManager,
+            policy.positionManager,
+            policy.stateView,
+            policy.permit2,
+            policy.quote,
+          ]
+        : [policy.router, policy.accountCore]),
     ]) {
       const code = await rpc.call("eth_getCode", [d.address, "latest"]);
       if (typeof code !== "string" || keccak256(code as Hex) !== d.codeHash) {
@@ -340,73 +351,147 @@ export async function runTokenIndexer(input: {
       }
       return { name, symbol, decimals, totalSupply };
     });
-    const kuru = new PostgresKuruProjector(pool, policy, { chain, owner });
-    await kuru.project(async (vault, market, at, hash) => {
-      if ((await uncachedReader.getBlock(BigInt(at))).hash !== hash) {
-        throw new Error("POSITION_REORG");
-      }
-      const config = (await read(
-        policy.adapter.address,
-        PicklerGraduationAdapterKuruAbi,
-        "config",
-        [],
-        BigInt(at),
-      )) as { bands: unknown[] };
-      const [ownerId, accountId, baseToken, quoteToken, baseReserved, quoteReserved] =
-        await Promise.all([
-          read(vault, PicklerKuruPositionVaultAbi, "accountId", [], BigInt(at)).then((id) =>
-            read(
-              policy.accountCore.address,
-              IKuruAccountCoreAbi,
-              "getAccountOwner",
-              [id],
-              BigInt(at),
-            ),
+    if (policy.venue === "uniswap_v4") {
+      const uniswap = new PostgresUniswapProjector(pool, policy, { chain, owner });
+      await uniswap.project(async (token, at, hash) => {
+        if ((await uncachedReader.getBlock(BigInt(at))).hash !== hash) {
+          throw new Error("POSITION_REORG");
+        }
+        const locked = (await read(
+          policy.locker.address,
+          PicklerLiquidityLockerV2Abi,
+          "getLockedPosition",
+          [token],
+          BigInt(at),
+        )) as {
+          tokenId: bigint;
+          liquidity: bigint;
+          tokenRemainder: bigint;
+          quoteRemainder: bigint;
+          poolKey: { currency0: Hex; currency1: Hex; fee: number; tickSpacing: number; hooks: Hex };
+        };
+        const [ownerId, liquidity, position] = await Promise.all([
+          read(
+            policy.positionManager.address,
+            IUniswapV4ReadAbi,
+            "ownerOf",
+            [locked.tokenId],
+            BigInt(at),
           ),
-          read(vault, PicklerKuruPositionVaultAbi, "accountId", [], BigInt(at)),
-          read(market, IKuruOrderBookAbi, "baseToken", [], BigInt(at)),
-          read(market, IKuruOrderBookAbi, "quoteToken", [], BigInt(at)),
-          read(vault, PicklerKuruPositionVaultAbi, "baseReserved", [], BigInt(at)),
-          read(vault, PicklerKuruPositionVaultAbi, "quoteReserved", [], BigInt(at)),
+          read(
+            policy.positionManager.address,
+            IUniswapV4ReadAbi,
+            "getPositionLiquidity",
+            [locked.tokenId],
+            BigInt(at),
+          ),
+          read(
+            policy.positionManager.address,
+            IUniswapV4ReadAbi,
+            "getPoolAndPositionInfo",
+            [locked.tokenId],
+            BigInt(at),
+          ),
         ]);
-      const positions = [];
-      for (let i = 0; i < config.bands.length; i++) {
-        const id = await read(
-          vault,
-          PicklerKuruPositionVaultAbi,
-          "positionIds",
-          [BigInt(i)],
-          BigInt(at),
+        const [key] = position as [typeof locked.poolKey, bigint];
+        if (JSON.stringify(key) !== JSON.stringify(locked.poolKey)) {
+          throw new Error("POSITION_KEY_CHANGED");
+        }
+        const poolId = keccak256(
+          encodeAbiParameters(
+            [
+              { type: "address" },
+              { type: "address" },
+              { type: "uint24" },
+              { type: "int24" },
+              { type: "address" },
+            ],
+            [key.currency0, key.currency1, key.fee, key.tickSpacing, key.hooks],
+          ),
         );
-        const p = (await read(
-          market,
-          IKuruOrderBookAbi,
-          "getPassivePosition",
-          [id],
+        if ((await uncachedReader.getBlock(BigInt(at))).hash !== hash) {
+          throw new Error("POSITION_REORG");
+        }
+        return {
+          owner: String(ownerId),
+          poolId,
+          positionId: String(locked.tokenId),
+          liquidity: String(liquidity),
+          lockedLiquidity: String(locked.liquidity),
+          tokenRemainder: String(locked.tokenRemainder),
+          quoteRemainder: String(locked.quoteRemainder),
+          poolKey: key,
+        };
+      });
+    } else {
+      const kuru = new PostgresKuruProjector(pool, policy, { chain, owner });
+      await kuru.project(async (vault, market, at, hash) => {
+        if ((await uncachedReader.getBlock(BigInt(at))).hash !== hash) {
+          throw new Error("POSITION_REORG");
+        }
+        const config = (await read(
+          policy.adapter.address,
+          PicklerGraduationAdapterKuruAbi,
+          "config",
+          [],
           BigInt(at),
-        )) as { ownerId: bigint; lowPrice: bigint; highPrice: bigint; shares: bigint };
-        positions.push({
-          id: String(id),
-          owner: String(p.ownerId),
-          low: Number(p.lowPrice),
-          high: Number(p.highPrice),
-          shares: String(p.shares),
-        });
-      }
-      if ((await uncachedReader.getBlock(BigInt(at))).hash !== hash) {
-        throw new Error("POSITION_REORG");
-      }
-      return {
-        owner: String(ownerId).toLowerCase(),
-        market,
-        baseToken: String(baseToken).toLowerCase(),
-        quoteToken: String(quoteToken).toLowerCase(),
-        accountId: String(accountId),
-        positions,
-        tokenReserved: String(baseReserved),
-        quoteReserved: String(quoteReserved),
-      };
-    });
+        )) as { bands: unknown[] };
+        const [ownerId, accountId, baseToken, quoteToken, baseReserved, quoteReserved] =
+          await Promise.all([
+            read(vault, PicklerKuruPositionVaultAbi, "accountId", [], BigInt(at)).then((id) =>
+              read(
+                policy.accountCore.address,
+                IKuruAccountCoreAbi,
+                "getAccountOwner",
+                [id],
+                BigInt(at),
+              ),
+            ),
+            read(vault, PicklerKuruPositionVaultAbi, "accountId", [], BigInt(at)),
+            read(market, IKuruOrderBookAbi, "baseToken", [], BigInt(at)),
+            read(market, IKuruOrderBookAbi, "quoteToken", [], BigInt(at)),
+            read(vault, PicklerKuruPositionVaultAbi, "baseReserved", [], BigInt(at)),
+            read(vault, PicklerKuruPositionVaultAbi, "quoteReserved", [], BigInt(at)),
+          ]);
+        const positions = [];
+        for (let i = 0; i < config.bands.length; i++) {
+          const id = await read(
+            vault,
+            PicklerKuruPositionVaultAbi,
+            "positionIds",
+            [BigInt(i)],
+            BigInt(at),
+          );
+          const p = (await read(
+            market,
+            IKuruOrderBookAbi,
+            "getPassivePosition",
+            [id],
+            BigInt(at),
+          )) as { ownerId: bigint; lowPrice: bigint; highPrice: bigint; shares: bigint };
+          positions.push({
+            id: String(id),
+            owner: String(p.ownerId),
+            low: Number(p.lowPrice),
+            high: Number(p.highPrice),
+            shares: String(p.shares),
+          });
+        }
+        if ((await uncachedReader.getBlock(BigInt(at))).hash !== hash) {
+          throw new Error("POSITION_REORG");
+        }
+        return {
+          owner: String(ownerId).toLowerCase(),
+          market,
+          baseToken: String(baseToken).toLowerCase(),
+          quoteToken: String(quoteToken).toLowerCase(),
+          accountId: String(accountId),
+          positions,
+          tokenReserved: String(baseReserved),
+          quoteReserved: String(quoteReserved),
+        };
+      });
+    }
     return { kind: "completed", calls, outcomes };
   } finally {
     stopped = true;

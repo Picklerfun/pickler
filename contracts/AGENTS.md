@@ -18,7 +18,8 @@ Implemented, in the order the launchpad specification builds them:
 - `src/PicklerFeeEscrow.sol` — splits each launch's fees between its creator and the protocol and pays them out. Attribution is atomic with the transfer that funds it, and a claim debits only the caller.
 - `test/fork/` — the Uniswap V4 spike (LP-02) and graduation end to end (A5, A6). These fork Monad testnet at a pinned block and run only when `MONAD_TESTNET_RPC_URL` is set, so `npm run contracts:test` stays offline; run them with `npm run contracts:test:fork`. Read [the spike findings](../docs/market/uniswap-v4-spike.md) before touching graduation: there is no official Uniswap V4 on Monad testnet, and the Monad-maintained one is a different build from mainnet's.
 
-Not implemented: networks and deployment scripts.
+General/mainnet network activation is not implemented. The explicit isolated testnet acceptance
+tool is described below.
 
 Deployment order is fixed by what each contract needs: fee escrow, graduation adapter (which creates the locker), curve deployer, launch factory, then `escrow.initialize(factory, locker)`. Every binding after construction is one-time and restricted to the deployer. See [the launchpad development specification](../docs/specs/launchpad-monad-v1.md) for what each one owes and in what order.
 
@@ -62,7 +63,8 @@ agent key, chain, factory, unique grant nonce and at most five minutes of validi
 permission and its replay protection remain required. Only the operator can rotate the authority;
 rotation invalidates old grants. There is no grant-free overload. `test/LaunchGrantTest.sol` supplies
 only a public controlled test key; unit/fuzz tests cover parameter tampering, network/factory/wallet,
-expiry, reuse and rotation. No deployment script or remote transaction is added. See
+expiry, reuse and rotation. For the original grant foundation no deployment was claimed. Current explicit contract
+acceptance is documented below. See
 [the token guide](../docs/agent-token-preview.md).
 
 ## Fixed issuance policy
@@ -75,8 +77,8 @@ zero launch fee). It requires six-decimal quote metadata at factory admission an
 Unknown policies fail. The normalized `marginalPriceWad` uses full-precision mulDiv; old quotes are
 unchanged. `test/CurveVectors.t.sol` emits legacy and reference core vectors. Offline unit/fuzz and
 both invariant profiles cover real reserve/fees/inventory/donations; `PicklerReferenceProfile.t.sol`
-tests controlled handover only. No DEX is selected or configured for the new reference profile;
-existing V4/fork results are historical evidence. See [the token guide](../docs/agent-token-preview.md).
+tests controlled handover only. The original reference math is independent of DEX availability; the separate V4 V2 generation
+below commits the current testnet venue without changing old V4/Kuru records. See [the token guide](../docs/agent-token-preview.md).
 
 ## Legacy Kuru testnet compatibility evidence
 
@@ -104,3 +106,17 @@ Pickler deployment is approved. Do not enable launches, substitute legacy, or tr
 proxy runtime hashes as unchanged implementations. Offline tests use controlled account/market
 contracts only; the external generation, units, band semantics, admission and administration
 remain explicit activation gates.
+
+## Separate V4 V2 testnet generation
+
+`PicklerGraduationAdapterV4V2`, `PicklerLiquidityLockerV2`, `PicklerCurveDeployerV4V2` and minimal
+`IUniswapV4Read`/`IUniswapV4Router` interfaces add the precision-2 AUSD profile, preset version 4,
+hookless full-range native 1% LP fees and permanent NFT/dust custody. Historical contracts are
+unchanged. New unit/fuzz tests use controlled adversarial dependencies. New V4Reference fork
+checks pin block 69,853,802 and use the deployed Universal Router, never an UNLICENSED helper.
+
+Explicit guarded operator acceptance lives in `scripts/contracts` and has offline refusal tests.
+The [34 real testnet receipts](../docs/market/uniswap-v4-testnet-integration.md) establish contract
+acceptance only; no hosted passkey/R2/indexer activation is implied. The test factory is disabled
+again. Third-party source pins/licenses remain unchanged. No general or mainnet deployment script
+is provided.

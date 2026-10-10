@@ -1,0 +1,31 @@
+[
+  {
+    "url": "https://testnet.kuru.io/",
+    "error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
+  },
+  {
+    "url": "https://relay.testnet.kuru.io/",
+    "status": 404,
+    "body": "404 page not found\n"
+  },
+  {
+    "url": "https://kuru.io/",
+    "status": 200,
+    "finalUrl": "https://www.kuru.io/",
+    "contentType": "text/html; charset=utf-8",
+    "bytes": 78489,
+    "file": "kuru-io.html"
+  },
+  {
+    "url": "https://www.kuru.io/",
+    "status": 200,
+    "finalUrl": "https://www.kuru.io/",
+    "contentType": "text/html; charset=utf-8",
+    "bytes": 78489,
+    "file": "www-kuru-io.html"
+  },
+  {
+    "url": "https://app.kuru.io/",
+    "error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>"
+  }
+]

@@ -1158,7 +1158,8 @@ absence and pending confirmation without a visitor launch action.
 
 Development-only `perpl-token-empty`/`perpl-token-launched` and public
 `/agents/halftime?stage=token-empty|token-launched` fixtures show static empty/confirmed states and live draft details beneath the form.
-Supply is fixed at 21 million; no review/simulation button or artificial transaction phases remain.
+Supply is fixed at 21 million; there is no review/simulation button. Explicit fixture phase
+controls are provided separately by token-operation-controls.
 The compact launcher reuses Meter for the allocation track, with textual percentages/amounts,
 creator wallet and admin roles, and an inline fee grid. The full wallet address remains available
 in its abbreviation title. Edits update identity locally without additional API requests.
@@ -1167,7 +1168,8 @@ availability. The browser formats prepared amounts only; it must not duplicate c
 `reference-economics.json` is generated from core and chain metadata with `npm run tokens:fixtures`,
 and the web test rejects drift. Summary values include AUSD FDVs/net backing, 80/20 allocation,
 1% buy/sell fees, a 50/50 split and zero AUSD launch fee; gas is separately MON without an estimate.
-Missing economics do not receive a fake fallback. Post-migration fees show Pending DEX configuration.
+Missing economics do not receive a fake fallback. Post-migration fees remain pending without a reviewed venue; optional planned V4 terms are
+server-resolved and do not enable signing.
 Creator/master details come from private state; never infer token admin privileges from that wallet.
 Fixtures cannot use passkeys, providers or fake explorer links
 and are refused in production. `scripts/design/token-preview.mjs` checks both states at desktop/mobile
@@ -1184,3 +1186,12 @@ memory; signed bytes remain backend-only. AUSD claims are labeled as master-wall
 Frozen token images take priority over the agent's editable avatar. Local token fixtures remain
 non-production and never sign, send or query remote providers. See
 [Token operations](../../docs/market/token-launch-operations.md).
+
+## Versioned Token venue presentation
+
+Token controls render server-resolved Uniswap V4 or historical Kuru context. The current local
+confirmed fixture shows permanent V4 NFT liquidity custody, pool ID, native 1% LP fees and actual
+50/50 fee receipts without an extra Pickler swap tax. Planned venue data can appear below the live
+form independently of signing availability. No financial formulas, policy construction or provider
+calls belong in presentation. Controlled fixture phase/cancel/failure actions remain non-production,
+manual and provider-free; real signature requests lazily reuse the existing Studio passkey.

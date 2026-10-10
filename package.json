@@ -15,7 +15,7 @@
     "build": "turbo run build",
     "typecheck": "turbo run typecheck",
     "lint": "eslint .",
-    "test": "npm run check:architecture && npm run build:shared && node --import tsx --test packages/core/test/*.test.ts packages/trading/test/*.test.ts packages/infrastructure/test/*.test.ts packages/chain/test/*.test.ts packages/mera-account/test/*.test.ts packages/perpl-context/test/*.test.ts packages/agent-runtime/test/*.test.ts workers/api/test/*.test.ts apps/agent-service/test/*.test.ts workers/research/test/*.test.ts workers/trading/test/*.test.ts workers/indexer/test/*.test.ts apps/web/test/*.test.ts scripts/design/*.test.mjs scripts/cloudflare/*.test.mjs",
+    "test": "npm run check:architecture && npm run build:shared && node --import tsx --test packages/core/test/*.test.ts packages/trading/test/*.test.ts packages/infrastructure/test/*.test.ts packages/chain/test/*.test.ts packages/mera-account/test/*.test.ts packages/perpl-context/test/*.test.ts packages/agent-runtime/test/*.test.ts workers/api/test/*.test.ts apps/agent-service/test/*.test.ts workers/research/test/*.test.ts workers/trading/test/*.test.ts workers/indexer/test/*.test.ts apps/web/test/*.test.ts scripts/design/*.test.mjs scripts/cloudflare/*.test.mjs scripts/contracts/*.test.mjs",
     "contracts:build": "forge build --root contracts",
     "contracts:test": "forge test --root contracts --no-match-path 'test/fork/*'",
     "dev:agent": "npm run build:shared && npm run dev --workspace=@pickler/agent-service",

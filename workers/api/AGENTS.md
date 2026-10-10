@@ -632,10 +632,10 @@ provider call is introduced. The original 24h trail remains compatible with publ
 `routes/studio-token.ts`, mounted under JWT-only Studio middleware, documents state, versioned
 name/ticker draft saves and idempotent launch authorization. Every response is private/no-store;
 API keys and HMAC are refused. Scope comes from membership and persisted ownership; client-supplied
-chain, wallet, agent key, preset and receipt are rejected. `container.ts` composes the PostgreSQL
-repository with the configured supported custody chain and deliberately omits `TokenGrantIssuer`.
-No environment flag enables signing. Controlled API acceptance injects a public test signer through
-`@pickler/infrastructure/testing/token`; real signing and broadcast are not implemented. Public
+chain, wallet, agent key, preset and receipt are rejected. Ordinary `container.ts` composition uses the configured custody chain without an issuer; the
+separately gated operational composition below can provide it. Controlled API acceptance injects a public test signer through
+`@pickler/infrastructure/testing/token`; the original foundation did not implement operational signing/broadcast; current gated
+composition is documented below. Public
 persona DTOs include explicit confirmed token identity and confirmation state. See
 [the token guide](../../docs/agent-token-preview.md) and `test/studio-token-route.test.ts`.
 
@@ -651,3 +651,12 @@ explicit testnet gate and complete reviewed passive policy. Default composition 
 `studio-token.ts` owns private versioned preparation, confirmation, reconciliation and cancellation;
 `/v1/token-assets/:file` is public immutable read-only access. The callback exception for X does
 not apply to these routes. See [Token operations](../../docs/market/token-launch-operations.md).
+
+## Versioned token launch composition
+
+Operational testnet composition accepts the strict reviewed Uniswap V4 policy 2 separately from
+historical Kuru policy 1. Default gates remain disabled. State exposes planned/confirmed venue and
+LP fee through portable DTOs; the backend resolves contracts, preset and account. Dedicated grant
+keys, metadata writes and provider checks remain infrastructure-only. Actual contract acceptance
+does not establish hosted JWT/passkey/R2/indexer readiness. See
+[the V4 evidence and activation checklist](../../docs/market/uniswap-v4-testnet-integration.md).

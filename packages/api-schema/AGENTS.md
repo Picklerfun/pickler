@@ -251,3 +251,11 @@ OpenAPI is generated from API route metadata; see [the token guide](../../docs/a
 private operation state and indexed Kuru/fee summaries. An unsigned activity is returned only
 while awaiting signature. No raw signed transaction, signing key, arbitrary calldata or provider
 configuration is a browser contract. Metadata asset reads are documented separately by API media type.
+
+## Versioned token venue summaries
+
+Token state includes optional server-resolved launch venue/native LP fee. Confirmed liquidity
+supports `uniswap_v4` with optional pool ID and LP fee alongside historical `kuru_passive` data.
+Fields are additive for historical producers. Network, contracts, account and NFT are never
+browser-selected inputs. Regenerate OpenAPI through the API host; do not publish private
+configuration hashes, signer material or raw transactions in DTOs.

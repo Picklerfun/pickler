@@ -1,5 +1,5 @@
 import type { Pool } from "pg";
-import type { TokenLaunchPolicy } from "./policy.js";
+import type { KuruTokenLaunchPolicy } from "./policy.js";
 export interface KuruPositionSnapshot {
   owner: string;
   market: string;
@@ -14,7 +14,7 @@ export interface KuruPositionSnapshot {
 export class PostgresKuruProjector {
   constructor(
     private readonly pool: Pool,
-    private readonly policy: TokenLaunchPolicy,
+    private readonly policy: KuruTokenLaunchPolicy,
     private readonly lease?: { chain: string; owner: string },
   ) {}
   async project(

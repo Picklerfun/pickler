@@ -1,0 +1,436 @@
+{
+  "version": 1,
+  "observedAt": "2026-10-10T14:09:45.114Z",
+  "rpcUrl": "https://rpc.ankr.com/monad_testnet",
+  "readOnly": true,
+  "transactionsSent": 0,
+  "maxRpcCalls": 100,
+  "contracts": [
+    {
+      "role": "router",
+      "address": "0x7EFbE105Ca7415dE98F96622173458ac1c054630",
+      "codeBytes": 141,
+      "runtimeHash": "0xae572ec3ca9b5f49c0364ca34edc5880b6b2837e47802e64e6b681bf2e74aa5c",
+      "implementation": "0xaaa0f0c4d49d09ef33ae758d88afab810ecbe1ed",
+      "implementationCodeBytes": 10389,
+      "implementationHash": "0xadf3e1f5d9bc07f55d68556f5cca8b9c68381716f932f9b49169e152690583b9",
+      "selectorPresenceHeuristic": [
+        {
+          "signature": "spotBalanceAccountAddress()",
+          "selector": "0x23681a9a",
+          "present": false
+        },
+        {
+          "signature": "getSpotTokenDecimals(address)",
+          "selector": "0xa9f9e592",
+          "present": false
+        },
+        {
+          "signature": "spotTokenEnabled(address)",
+          "selector": "0x7c1d9d7c",
+          "present": false
+        },
+        {
+          "signature": "getPassivePosition(uint64)",
+          "selector": "0xb03aee0d",
+          "present": false
+        },
+        {
+          "signature": "mintPassiveLiquidity(uint40,uint32,uint128,uint128,uint128,uint64)",
+          "selector": "0xcd31da8f",
+          "present": false
+        },
+        {
+          "signature": "claimPassiveFees(uint40,uint64)",
+          "selector": "0xd9f7df36",
+          "present": false
+        }
+      ]
+    },
+    {
+      "role": "margin",
+      "address": "0xd029C2D98ff85D8F64799017fE00a59B1159CE02",
+      "codeBytes": 141,
+      "runtimeHash": "0xae572ec3ca9b5f49c0364ca34edc5880b6b2837e47802e64e6b681bf2e74aa5c",
+      "implementation": "0xf10af40f060b7ae54a2d5da682becc981dfb52c3",
+      "implementationCodeBytes": 4989,
+      "implementationHash": "0xc7fe37d8820177aadb71ffaf4d8616da30140609b79c1eafd189c9ae8cca55fd",
+      "selectorPresenceHeuristic": [
+        {
+          "signature": "spotBalanceAccountAddress()",
+          "selector": "0x23681a9a",
+          "present": false
+        },
+        {
+          "signature": "getSpotTokenDecimals(address)",
+          "selector": "0xa9f9e592",
+          "present": false
+        },
+        {
+          "signature": "spotTokenEnabled(address)",
+          "selector": "0x7c1d9d7c",
+          "present": false
+        },
+        {
+          "signature": "getPassivePosition(uint64)",
+          "selector": "0xb03aee0d",
+          "present": false
+        },
+        {
+          "signature": "mintPassiveLiquidity(uint40,uint32,uint128,uint128,uint128,uint64)",
+          "selector": "0xcd31da8f",
+          "present": false
+        },
+        {
+          "signature": "claimPassiveFees(uint40,uint64)",
+          "selector": "0xd9f7df36",
+          "present": false
+        }
+      ]
+    },
+    {
+      "role": "market",
+      "address": "0xa5d691EEd28D8623721221ECC54B74424435D702",
+      "codeBytes": 141,
+      "runtimeHash": "0xae572ec3ca9b5f49c0364ca34edc5880b6b2837e47802e64e6b681bf2e74aa5c",
+      "implementation": "0x72cae0a99c19b574e8a6de558f43fc1d019c9374",
+      "implementationCodeBytes": 35548,
+      "implementationHash": "0x24c5974f233021f00d607bfa191d430f79565663fb90805ebcfca52de7333500",
+      "selectorPresenceHeuristic": [
+        {
+          "signature": "spotBalanceAccountAddress()",
+          "selector": "0x23681a9a",
+          "present": false
+        },
+        {
+          "signature": "getSpotTokenDecimals(address)",
+          "selector": "0xa9f9e592",
+          "present": false
+        },
+        {
+          "signature": "spotTokenEnabled(address)",
+          "selector": "0x7c1d9d7c",
+          "present": false
+        },
+        {
+          "signature": "getPassivePosition(uint64)",
+          "selector": "0xb03aee0d",
+          "present": false
+        },
+        {
+          "signature": "mintPassiveLiquidity(uint40,uint32,uint128,uint128,uint128,uint64)",
+          "selector": "0xcd31da8f",
+          "present": false
+        },
+        {
+          "signature": "claimPassiveFees(uint40,uint64)",
+          "selector": "0xd9f7df36",
+          "present": false
+        }
+      ]
+    },
+    {
+      "role": "vault",
+      "address": "0x38d61895B5Cecc6689A58fC181A23CF40Ea7ae93",
+      "codeBytes": 141,
+      "runtimeHash": "0xae572ec3ca9b5f49c0364ca34edc5880b6b2837e47802e64e6b681bf2e74aa5c",
+      "implementation": "0x4d54e0d60cab0cec0100cda8e00897bc933c5bb6",
+      "implementationCodeBytes": 11672,
+      "implementationHash": "0xde0b16a79cf8f711403e89093c1e82ce0e7813949dd0f5041b41da324fdd3dc3",
+      "selectorPresenceHeuristic": [
+        {
+          "signature": "spotBalanceAccountAddress()",
+          "selector": "0x23681a9a",
+          "present": false
+        },
+        {
+          "signature": "getSpotTokenDecimals(address)",
+          "selector": "0xa9f9e592",
+          "present": false
+        },
+        {
+          "signature": "spotTokenEnabled(address)",
+          "selector": "0x7c1d9d7c",
+          "present": false
+        },
+        {
+          "signature": "getPassivePosition(uint64)",
+          "selector": "0xb03aee0d",
+          "present": false
+        },
+        {
+          "signature": "mintPassiveLiquidity(uint40,uint32,uint128,uint128,uint128,uint64)",
+          "selector": "0xcd31da8f",
+          "present": false
+        },
+        {
+          "signature": "claimPassiveFees(uint40,uint64)",
+          "selector": "0xd9f7df36",
+          "present": false
+        }
+      ]
+    },
+    {
+      "role": "orderBookTemplate",
+      "address": "0x72caE0a99C19B574e8a6De558F43fc1D019c9374",
+      "codeBytes": 35548,
+      "runtimeHash": "0x24c5974f233021f00d607bfa191d430f79565663fb90805ebcfca52de7333500",
+      "implementation": null,
+      "implementationCodeBytes": null,
+      "implementationHash": null,
+      "selectorPresenceHeuristic": [
+        {
+          "signature": "spotBalanceAccountAddress()",
+          "selector": "0x23681a9a",
+          "present": false
+        },
+        {
+          "signature": "getSpotTokenDecimals(address)",
+          "selector": "0xa9f9e592",
+          "present": false
+        },
+        {
+          "signature": "spotTokenEnabled(address)",
+          "selector": "0x7c1d9d7c",
+          "present": false
+        },
+        {
+          "signature": "getPassivePosition(uint64)",
+          "selector": "0xb03aee0d",
+          "present": false
+        },
+        {
+          "signature": "mintPassiveLiquidity(uint40,uint32,uint128,uint128,uint128,uint64)",
+          "selector": "0xcd31da8f",
+          "present": false
+        },
+        {
+          "signature": "claimPassiveFees(uint40,uint64)",
+          "selector": "0xd9f7df36",
+          "present": false
+        }
+      ]
+    },
+    {
+      "role": "vaultTemplate",
+      "address": "0x4d54e0d60CaB0cec0100cdA8e00897bC933C5Bb6",
+      "codeBytes": 11672,
+      "runtimeHash": "0xde0b16a79cf8f711403e89093c1e82ce0e7813949dd0f5041b41da324fdd3dc3",
+      "implementation": null,
+      "implementationCodeBytes": null,
+      "implementationHash": null,
+      "selectorPresenceHeuristic": [
+        {
+          "signature": "spotBalanceAccountAddress()",
+          "selector": "0x23681a9a",
+          "present": false
+        },
+        {
+          "signature": "getSpotTokenDecimals(address)",
+          "selector": "0xa9f9e592",
+          "present": false
+        },
+        {
+          "signature": "spotTokenEnabled(address)",
+          "selector": "0x7c1d9d7c",
+          "present": false
+        },
+        {
+          "signature": "getPassivePosition(uint64)",
+          "selector": "0xb03aee0d",
+          "present": false
+        },
+        {
+          "signature": "mintPassiveLiquidity(uint40,uint32,uint128,uint128,uint128,uint64)",
+          "selector": "0xcd31da8f",
+          "present": false
+        },
+        {
+          "signature": "claimPassiveFees(uint40,uint64)",
+          "selector": "0xd9f7df36",
+          "present": false
+        }
+      ]
+    }
+  ],
+  "calls": [
+    {
+      "role": "router",
+      "address": "0x7EFbE105Ca7415dE98F96622173458ac1c054630",
+      "signature": "function orderBookImplementation() view returns (address)",
+      "args": [],
+      "raw": "0x00000000000000000000000072cae0a99c19b574e8a6de558f43fc1d019c9374",
+      "value": "0x72caE0a99C19B574e8a6De558F43fc1D019c9374",
+      "success": true
+    },
+    {
+      "role": "router",
+      "address": "0x7EFbE105Ca7415dE98F96622173458ac1c054630",
+      "signature": "function kuruAmmVaultImplementation() view returns (address)",
+      "args": [],
+      "raw": "0x0000000000000000000000004d54e0d60cab0cec0100cda8e00897bc933c5bb6",
+      "value": "0x4d54e0d60CaB0cec0100cdA8e00897bC933C5Bb6",
+      "success": true
+    },
+    {
+      "role": "router",
+      "address": "0x7EFbE105Ca7415dE98F96622173458ac1c054630",
+      "signature": "function marginAccountAddress() view returns (address)",
+      "args": [],
+      "raw": "0x000000000000000000000000d029c2d98ff85d8f64799017fe00a59b1159ce02",
+      "value": "0xd029C2D98ff85D8F64799017fE00a59B1159CE02",
+      "success": true
+    },
+    {
+      "role": "router",
+      "address": "0x7EFbE105Ca7415dE98F96622173458ac1c054630",
+      "signature": "function owner() view returns (address)",
+      "args": [],
+      "raw": "0x00000000000000000000000007bbbf2e9911705a7b258e0a05a34620058fc1d1",
+      "value": "0x07bBBf2e9911705a7b258e0A05A34620058fC1D1",
+      "success": true
+    },
+    {
+      "role": "router",
+      "address": "0x7EFbE105Ca7415dE98F96622173458ac1c054630",
+      "signature": "function spotBalanceAccountAddress() view returns (address)",
+      "args": [],
+      "success": false,
+      "error": {
+        "code": 3,
+        "message": "execution reverted",
+        "data": "0x"
+      }
+    },
+    {
+      "role": "margin",
+      "address": "0xd029C2D98ff85D8F64799017fE00a59B1159CE02",
+      "signature": "function getSpotTokenDecimals(address) view returns (uint8)",
+      "args": ["0xa9012a055bd4e0eDfF8Ce09f960291C09D5322dC"],
+      "success": false,
+      "error": {
+        "code": 3,
+        "message": "execution reverted",
+        "data": "0x"
+      }
+    },
+    {
+      "role": "margin",
+      "address": "0xd029C2D98ff85D8F64799017fE00a59B1159CE02",
+      "signature": "function spotTokenEnabled(address) view returns (bool)",
+      "args": ["0x609879264a37427f56bc18985b9ec27f86f17ce0"],
+      "success": false,
+      "error": {
+        "code": 3,
+        "message": "execution reverted",
+        "data": "0x"
+      }
+    },
+    {
+      "role": "market",
+      "address": "0xa5d691EEd28D8623721221ECC54B74424435D702",
+      "signature": "function accountCore() view returns (address)",
+      "args": [],
+      "success": false,
+      "error": {
+        "code": 3,
+        "message": "execution reverted",
+        "data": "0x"
+      }
+    },
+    {
+      "role": "market",
+      "address": "0xa5d691EEd28D8623721221ECC54B74424435D702",
+      "signature": "function getPassivePosition(uint64) view returns (uint40,uint32,uint32,uint128,uint256,uint256)",
+      "args": ["1"],
+      "success": false,
+      "error": {
+        "code": 3,
+        "message": "execution reverted",
+        "data": "0x"
+      }
+    },
+    {
+      "role": "market",
+      "address": "0xa5d691EEd28D8623721221ECC54B74424435D702",
+      "signature": "function claimPassiveFees(uint40,uint64) returns (uint128,uint128)",
+      "args": ["0", "1"],
+      "success": false,
+      "error": {
+        "code": 3,
+        "message": "execution reverted",
+        "data": "0x"
+      }
+    },
+    {
+      "role": "vault",
+      "address": "0x38d61895B5Cecc6689A58fC181A23CF40Ea7ae93",
+      "signature": "function totalSupply() view returns (uint256)",
+      "args": [],
+      "raw": "0x00000000000000000000000000000000000000000000000000000000000003e8",
+      "value": "1000",
+      "success": true
+    },
+    {
+      "role": "vault",
+      "address": "0x38d61895B5Cecc6689A58fC181A23CF40Ea7ae93",
+      "signature": "function totalAssets() view returns (uint256,uint256)",
+      "args": [],
+      "raw": "0x00000000000000000000000000000000000000000000000000000002aadb9d640000000000000000000000000000000000000000000000000000000000000001",
+      "value": ["11456453988", "1"],
+      "success": true
+    },
+    {
+      "role": "vault",
+      "address": "0x38d61895B5Cecc6689A58fC181A23CF40Ea7ae93",
+      "signature": "function owner() view returns (address)",
+      "args": [],
+      "raw": "0x0000000000000000000000007efbe105ca7415de98f96622173458ac1c054630",
+      "value": "0x7EFbE105Ca7415dE98F96622173458ac1c054630",
+      "success": true
+    },
+    {
+      "role": "margin",
+      "address": "0xd029C2D98ff85D8F64799017fE00a59B1159CE02",
+      "signature": "function owner() view returns (address)",
+      "args": [],
+      "raw": "0x00000000000000000000000007bbbf2e9911705a7b258e0a05a34620058fc1d1",
+      "value": "0x07bBBf2e9911705a7b258e0A05A34620058fC1D1",
+      "success": true
+    },
+    {
+      "role": "ausd",
+      "address": "0xa9012a055bd4e0eDfF8Ce09f960291C09D5322dC",
+      "signature": "function decimals() view returns (uint8)",
+      "args": [],
+      "raw": "0x0000000000000000000000000000000000000000000000000000000000000006",
+      "value": 6,
+      "success": true
+    },
+    {
+      "role": "token",
+      "address": "0x609879264a37427f56bc18985b9ec27f86f17ce0",
+      "signature": "function decimals() view returns (uint8)",
+      "args": [],
+      "raw": "0x0000000000000000000000000000000000000000000000000000000000000012",
+      "value": 18,
+      "success": true
+    },
+    {
+      "role": "token",
+      "address": "0x609879264a37427f56bc18985b9ec27f86f17ce0",
+      "signature": "function totalSupply() view returns (uint256)",
+      "args": [],
+      "raw": "0x000000000000000000000000000000000000000000115eec47f6cf7e35000000",
+      "value": "21000000000000000000000000",
+      "success": true
+    }
+  ],
+  "chainId": 10143,
+  "block": {
+    "number": 69845383,
+    "hash": "0x0d63c4c8bd1ee8b09bd4adbe1d02cdb8f5d29c7c15e20c4e9144b61562e9e9d1",
+    "timestamp": 1791641385
+  },
+  "rpcCalls": 36
+}

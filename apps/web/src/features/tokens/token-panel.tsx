@@ -381,7 +381,16 @@ export function TokenPanel({
                   )}
                   {economics && (
                     <p className={styles.exampleNote}>
-                      After graduation: 50% creator / 50% Pickler of actual Kuru LP fees.
+                      After graduation: 50% creator / 50% Pickler of LP fees actually collected.
+                    </p>
+                  )}
+                  {state?.launchVenue?.name === "uniswap_v4" && (
+                    <p className={styles.exampleNote}>
+                      Uniswap V4 ·{" "}
+                      {state.launchVenue.lpFeeBps == null
+                        ? "Fee configuration unavailable"
+                        : `${state.launchVenue.lpFeeBps / 100}% swap fee`}{" "}
+                      · no additional Pickler swap fee. LP principal is permanently locked.
                     </p>
                   )}
                   <p className={styles.exampleNote}>

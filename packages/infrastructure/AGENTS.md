@@ -661,9 +661,24 @@ authenticated; only the trusted backend may execute them.
 
 ## Testnet token launcher
 
-`src/launch` implements the strict passive Kuru readiness policy, dedicated EIP-712 grant signer,
+`src/launch` implements versioned readiness policies, a dedicated EIP-712 grant signer,
 immutable hash-addressed R2 JSON/SVG, exact Turnkey transaction driver, bounded indexer and Kuru
 position projection. Migrations 0041–0044 add private durable operations, master nonce uniqueness,
 RPC admission and Kuru snapshots without rewriting historical V4 records. Never compose legacy
-Kuru as a fallback. Operational acceptance remains blocked by the external readiness record.
+Kuru as a fallback. Kuru remains blocked by its external readiness record; the V4 acceptance below is separate.
 See [Token operations](../../docs/market/token-launch-operations.md) for configuration and tests.
+
+## V4 launcher policy and canonical position history
+
+`src/launch/policy.ts` discriminates strict V4 version 2 from historical Kuru version 1. The V4
+driver verifies proxy implementations, exact deployed bindings, full preset/venue, master identity
+and a private preparation configuration hash before signing/submission. No Kuru-to-V4 fallback
+exists. V4 collection requires its canonical locker context; browser contracts remain enumerated.
+
+`PostgresUniswapProjector` and migration 0045 append private canonical event-block position history.
+NFT owner/key/liquidity/remnants and event accounting are validated outside SQL, then finality and
+lease are rechecked transactionally. Replay/reorg restoration retains old snapshots without
+repeating provider calls or reinterpreting historical Kuru. RLS/revoked API roles remain mandatory.
+The controlled V4 indexer test spans registered grant → logs → RPC snapshot → PostgreSQL → owner
+state with RPC admission before transport. [Actual contract acceptance](../../docs/market/uniswap-v4-testnet-integration.md)
+is separate from pending hosted passkey/R2/migration/indexer acceptance.

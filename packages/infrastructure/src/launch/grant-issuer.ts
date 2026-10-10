@@ -21,8 +21,15 @@ export function createPlatformTokenIssuer(
       policy.escrow.address,
       policy.locker.address,
       policy.deployer.address,
-      policy.router.address,
-      policy.accountCore.address,
+      ...(policy.venue === "uniswap_v4"
+        ? [
+            policy.poolManager.address,
+            policy.positionManager.address,
+            policy.stateView.address,
+            policy.permit2.address,
+            policy.quote.address,
+          ]
+        : [policy.router.address, policy.accountCore.address]),
     ].includes(policy.authority)
   ) {
     throw new Error("INVALID_LAUNCH_AUTHORITY");
@@ -31,6 +38,10 @@ export function createPlatformTokenIssuer(
     allowedScope: (scope) => policy.allowedAgents.includes(scope.agentId),
     factory: policy.factory.address,
     preset: policy.preset,
+    launchVenue: {
+      name: policy.venue,
+      lpFeeBps: policy.venue === "uniswap_v4" ? policy.liquidity.feeTier / 100 : null,
+    },
     async issue({ scope, context, draft, chainId, deadline, nonce, operationId }) {
       if (
         !policy.allowedAgents.includes(scope.agentId) ||

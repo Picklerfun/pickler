@@ -20,7 +20,7 @@ const deployment = z
   })
   .strict();
 /** Operator-reviewed configuration. Every field is explicit; no legacy defaults or commercial guesses. */
-export const tokenLaunchPolicySchema = z
+const historicalKuruPolicySchema = z
   .object({
     version: z.literal(1),
     chainId: z.literal(10143),
@@ -86,7 +86,69 @@ export const tokenLaunchPolicySchema = z
     confirmations: z.number().int().min(1).max(100),
   })
   .strict();
+/** V4 is a separate reviewed policy; historical Kuru records retain their original meaning. */
+const uniswapPolicySchema = historicalKuruPolicySchema
+  .omit({
+    version: true,
+    venue: true,
+    router: true,
+    accountCore: true,
+    evidence: true,
+  })
+  .extend({
+    version: z.literal(2),
+    venue: z.literal("uniswap_v4"),
+    poolManager: deployment,
+    positionManager: deployment,
+    stateView: deployment,
+    permit2: deployment,
+    quote: deployment,
+    liquidity: z
+      .object({
+        feeTier: z.literal(10000),
+        tickSpacing: z.literal(200),
+        sqrtPriceToleranceBps: z.literal(5),
+        range: z.literal("full_range"),
+      })
+      .strict(),
+    evidence: z
+      .object({
+        reproducibleSources: z.literal(true),
+        implementationVerified: z.literal(true),
+        testnetDeployment: z.literal(true),
+        tokenAdmission: z.literal(true),
+        atomicUnits: z.literal(true),
+        feeOnlyClaim: z.literal(true),
+        administrationReviewed: z.literal(true),
+        economicsApproved: z.literal(true),
+      })
+      .strict(),
+  })
+  .strict()
+  .superRefine((policy, ctx) => {
+    if (
+      !policy.quote.implementation ||
+      policy.quote.implementation.slot !==
+        "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc"
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["quote", "implementation"],
+        message: "AUSD proxy implementation and code hash must be reviewed",
+      });
+    }
+    if (policy.quote.address !== policy.preset.quoteAddress) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["quote", "address"],
+        message: "Quote deployment must match the preset",
+      });
+    }
+  });
+export const tokenLaunchPolicySchema = z.union([historicalKuruPolicySchema, uniswapPolicySchema]);
 export type TokenLaunchPolicy = z.infer<typeof tokenLaunchPolicySchema>;
+export type KuruTokenLaunchPolicy = Extract<TokenLaunchPolicy, { venue: "kuru_passive" }>;
+export type UniswapTokenLaunchPolicy = Extract<TokenLaunchPolicy, { venue: "uniswap_v4" }>;
 export function parseTokenLaunchPolicy(json: string): TokenLaunchPolicy {
   return tokenLaunchPolicySchema.parse(JSON.parse(json));
 }

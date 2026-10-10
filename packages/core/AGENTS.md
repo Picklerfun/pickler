@@ -479,3 +479,11 @@ one-time signing/submission claims, exact signed-byte recovery and explicit cano
 reconciliation. Its injected driver is infrastructure-owned; providers never execute under a
 repository transaction. A finalized transaction is distinct from an attributed token. See
 [Token operations](../../docs/market/token-launch-operations.md).
+
+## Versioned token venue data
+
+Token state may include a server-resolved planned venue/native LP fee and confirmed V4 pool ID,
+PositionManager/NFT identity. Historical Kuru data remains distinct. Prepared private operations
+may carry a configuration hash that the infrastructure driver fences again before signing and
+submission. These additive contracts carry no provider objects or credentials; business admission
+and financial math remain unchanged. See [the V4 guide](../../docs/market/uniswap-v4-testnet-integration.md).

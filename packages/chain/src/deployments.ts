@@ -87,7 +87,7 @@ export const UNISWAP_V4_MONAD_TESTNET = {
       "0x1b7bFCd2870329B987191910D85c22C7287f3c22",
       62279958n,
       "0x82fe297858b607b6f6b5599928724441acd046e3dbd19971ec3d6be6587997c6",
-      19499,
+      24546,
     ),
     // Same address as mainnet, different bytecode: this one was deployed by Monad rather
     // than being the canonical Permit2. Equal addresses across networks prove nothing.
@@ -170,3 +170,16 @@ export const UNISWAP_V4_MONAD_MAINNET = {
     "Official Uniswap deployment, verified on chain at the block above. Nothing has been " +
     "executed against it: the spike ran on testnet, whose PoolManager is a different build.",
 } as const satisfies VenueDeployment;
+
+/** Fresh public read, separate from the historical fork and without asserting a Pickler deployment. */
+export const UNISWAP_V4_TESTNET_REVERIFICATION = {
+  chainId: 10143,
+  block: 69853802n,
+  blockHash: "0xf9c9fe2b9a6794f002a8a99cac318c5945580b619426603cd6422cd2fa49e914",
+  verifiedOn: "2026-10-10",
+  maintainer: "monad",
+  official: false,
+  manifestCommit: "c3cc78a88f10e5ba141cd6fb632f31db83c0daf8",
+  poolManagerOwner: "0x0000000000000000000000000000000000000000",
+  protocolFeeController: "0x0000000000000000000000000000000000000000",
+} as const;

@@ -1,0 +1,148 @@
+{
+  "observedAt": "2026-10-10T14:52:08.287Z",
+  "manifestCommit": "c3cc78a88f10e5ba141cd6fb632f31db83c0daf8",
+  "block": 69853802,
+  "readOnly": true,
+  "providers": [
+    {
+      "url": "https://rpc.ankr.com/monad_testnet",
+      "chainId": 10143,
+      "block": {
+        "number": 69853802,
+        "hash": "0xf9c9fe2b9a6794f002a8a99cac318c5945580b619426603cd6422cd2fa49e914"
+      },
+      "contracts": [
+        {
+          "name": "poolManager",
+          "address": "0x451D64ab3b650040d2aE1886602b97ed6eDc643d",
+          "codeBytes": 34582,
+          "codeHash": "0x61199025286997b715457c68f86dbc42c847753f01e0773668394a405d53d579",
+          "expectedHash": "0x61199025286997b715457c68f86dbc42c847753f01e0773668394a405d53d579",
+          "matchesManifest": true
+        },
+        {
+          "name": "positionManager",
+          "address": "0x3Bb14E3D0Cd50aBe3EdACa06d06c29C78676C31A",
+          "codeBytes": 23877,
+          "codeHash": "0x3452caf821d383d2b18ae48cc0d1467b179b07a1198b8d72153181fcbc556ed5",
+          "expectedHash": "0x3452caf821d383d2b18ae48cc0d1467b179b07a1198b8d72153181fcbc556ed5",
+          "matchesManifest": true
+        },
+        {
+          "name": "stateView",
+          "address": "0xB639209539c61BaF67AC04876315786F8D0b153c",
+          "codeBytes": 3531,
+          "codeHash": "0xeedadde80f69c3b89437996025759b839a65e12db6c8379a7327a34aa269fa5e",
+          "expectedHash": "0xeedadde80f69c3b89437996025759b839a65e12db6c8379a7327a34aa269fa5e",
+          "matchesManifest": true
+        },
+        {
+          "name": "quoter",
+          "address": "0x869834d127b230283fe63E0d0A9bEB67216a94C7",
+          "codeBytes": 6118,
+          "codeHash": "0xdc1a524cd6108e0d1d90c5de1b594b2f953feaf9dc6c2387ecd1b4232ea0e521",
+          "expectedHash": "0xdc1a524cd6108e0d1d90c5de1b594b2f953feaf9dc6c2387ecd1b4232ea0e521",
+          "matchesManifest": true
+        },
+        {
+          "name": "universalRouter",
+          "address": "0x1b7bFCd2870329B987191910D85c22C7287f3c22",
+          "codeBytes": 24546,
+          "codeHash": "0x82fe297858b607b6f6b5599928724441acd046e3dbd19971ec3d6be6587997c6",
+          "expectedHash": "0x82fe297858b607b6f6b5599928724441acd046e3dbd19971ec3d6be6587997c6",
+          "matchesManifest": true
+        },
+        {
+          "name": "permit2",
+          "address": "0x000000000022D473030F116dDEE9F6B43aC78BA3",
+          "codeBytes": 9152,
+          "codeHash": "0xe8ca368abb6fa7f5d31b388b14e16d3654281140695486df9a22d7d9b75df310",
+          "matchesManifest": null
+        }
+      ],
+      "bindings": {
+        "positionManagerPool": "0x000000000000000000000000451d64ab3b650040d2ae1886602b97ed6edc643d",
+        "positionManagerPermit2": "0x000000000000000000000000000000000022d473030f116ddee9f6b43ac78ba3",
+        "stateViewPool": "0x000000000000000000000000451d64ab3b650040d2ae1886602b97ed6edc643d",
+        "poolOwner": "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "protocolFeeController": "0x0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "ausd": {
+        "address": "0xa9012a055bd4e0eDfF8Ce09f960291C09D5322dC",
+        "decimals": 6,
+        "codeHash": "0xa3bda7298d1c5f8585852ee04439f9cc493e5c291c9cac74fa54a0bc67024a7b"
+      }
+    },
+    {
+      "url": "https://testnet-rpc.monad.xyz",
+      "chainId": 10143,
+      "block": {
+        "number": 69853802,
+        "hash": "0xf9c9fe2b9a6794f002a8a99cac318c5945580b619426603cd6422cd2fa49e914"
+      },
+      "contracts": [
+        {
+          "name": "poolManager",
+          "address": "0x451D64ab3b650040d2aE1886602b97ed6eDc643d",
+          "codeBytes": 34582,
+          "codeHash": "0x61199025286997b715457c68f86dbc42c847753f01e0773668394a405d53d579",
+          "expectedHash": "0x61199025286997b715457c68f86dbc42c847753f01e0773668394a405d53d579",
+          "matchesManifest": true
+        },
+        {
+          "name": "positionManager",
+          "address": "0x3Bb14E3D0Cd50aBe3EdACa06d06c29C78676C31A",
+          "codeBytes": 23877,
+          "codeHash": "0x3452caf821d383d2b18ae48cc0d1467b179b07a1198b8d72153181fcbc556ed5",
+          "expectedHash": "0x3452caf821d383d2b18ae48cc0d1467b179b07a1198b8d72153181fcbc556ed5",
+          "matchesManifest": true
+        },
+        {
+          "name": "stateView",
+          "address": "0xB639209539c61BaF67AC04876315786F8D0b153c",
+          "codeBytes": 3531,
+          "codeHash": "0xeedadde80f69c3b89437996025759b839a65e12db6c8379a7327a34aa269fa5e",
+          "expectedHash": "0xeedadde80f69c3b89437996025759b839a65e12db6c8379a7327a34aa269fa5e",
+          "matchesManifest": true
+        },
+        {
+          "name": "quoter",
+          "address": "0x869834d127b230283fe63E0d0A9bEB67216a94C7",
+          "codeBytes": 6118,
+          "codeHash": "0xdc1a524cd6108e0d1d90c5de1b594b2f953feaf9dc6c2387ecd1b4232ea0e521",
+          "expectedHash": "0xdc1a524cd6108e0d1d90c5de1b594b2f953feaf9dc6c2387ecd1b4232ea0e521",
+          "matchesManifest": true
+        },
+        {
+          "name": "universalRouter",
+          "address": "0x1b7bFCd2870329B987191910D85c22C7287f3c22",
+          "codeBytes": 24546,
+          "codeHash": "0x82fe297858b607b6f6b5599928724441acd046e3dbd19971ec3d6be6587997c6",
+          "expectedHash": "0x82fe297858b607b6f6b5599928724441acd046e3dbd19971ec3d6be6587997c6",
+          "matchesManifest": true
+        },
+        {
+          "name": "permit2",
+          "address": "0x000000000022D473030F116dDEE9F6B43aC78BA3",
+          "codeBytes": 9152,
+          "codeHash": "0xe8ca368abb6fa7f5d31b388b14e16d3654281140695486df9a22d7d9b75df310",
+          "matchesManifest": null
+        }
+      ],
+      "bindings": {
+        "positionManagerPool": "0x000000000000000000000000451d64ab3b650040d2ae1886602b97ed6edc643d",
+        "positionManagerPermit2": "0x000000000000000000000000000000000022d473030f116ddee9f6b43ac78ba3",
+        "stateViewPool": "0x000000000000000000000000451d64ab3b650040d2ae1886602b97ed6edc643d",
+        "poolOwner": "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "protocolFeeController": "0x0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "ausd": {
+        "address": "0xa9012a055bd4e0eDfF8Ce09f960291C09D5322dC",
+        "decimals": 6,
+        "codeHash": "0xa3bda7298d1c5f8585852ee04439f9cc493e5c291c9cac74fa54a0bc67024a7b"
+      }
+    }
+  ],
+  "requests": 31,
+  "sameContracts": true
+}

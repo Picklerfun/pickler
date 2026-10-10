@@ -93,3 +93,12 @@ remain enabled. No fork, provider call, real signature, paid request or remote t
 The later testnet run must first record an explicit gas ceiling from a preflight, then capture
 balances, positions and canonical receipts before/after launch, curve trades, graduation and fee
 claims. No fiat budget, mainnet activation or general launch admission is implicit.
+
+## Live verification, October 10, 2026
+
+[The completed verification](kuru-verification-20261010/verification.md) found the published
+testnet contracts use legacy implementations without the required passive fee-only interface.
+This is a confirmed incompatibility of the examined deployments, not an unperformed check and
+not proof that no unlisted deployment exists. The readiness gate stays blocked. The current
+launcher uses a separate [Uniswap V4 implementation](uniswap-v4-testnet-integration.md); old Kuru
+contracts, records and controlled tests retain their original meaning.
