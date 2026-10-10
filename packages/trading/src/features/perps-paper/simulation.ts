@@ -83,6 +83,29 @@ export class PerpsFrameValidationFailure extends PilotError {
     };
   }
 }
+/** Only demonstrated aging can be a recoverable observation after confirmed rollback. */
+export function isComponentFrameExpiry(error: unknown): error is PerpsFrameValidationFailure {
+  if (!(error instanceof PerpsFrameValidationFailure) || error.code !== "STALE_MARKET_DATA") {
+    return false;
+  }
+  const d = error.details;
+  if (d.reason === "heartbeat-expired-at-receipt-clock") {
+    return (
+      d.receiptAt !== null &&
+      d.heartbeatReceivedAt !== null &&
+      d.receiptAt - d.heartbeatReceivedAt > 5000
+    );
+  }
+  return (
+    d.reason === "native-freshness-or-identity" &&
+    d.financialAt !== null &&
+    d.tickerAt !== null &&
+    d.bookAt !== null &&
+    d.tickerAt <= d.financialAt + 5000 &&
+    d.bookAt <= d.financialAt + 5000 &&
+    (d.financialAt - d.tickerAt > 30000 || d.financialAt - d.bookAt > 30000)
+  );
+}
 const failure = (code: string): never => {
   throw new PilotError(code, "Perpetual paper data is not admissible");
 };
