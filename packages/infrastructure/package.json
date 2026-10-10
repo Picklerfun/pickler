@@ -26,6 +26,10 @@
       "types": "./src/persistence/migrate-database.ts",
       "import": "./dist/persistence/migrate-database.js"
     },
+    "./trading-baseline": {
+      "types": "./src/trading-baseline/database.ts",
+      "import": "./dist/trading-baseline/database.js"
+    },
     "./testing/token": "./test/token-fixture.ts"
   },
   "scripts": {
