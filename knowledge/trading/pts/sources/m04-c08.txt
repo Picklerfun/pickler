@@ -1,0 +1,99 @@
+En esta clase vamos a adicionar otro indicador o otro elemento de correlación que es bastante
+interesante y es llamado el ratio put call. El ratio put call básicamente nos indica la
+relación de elementos alcistas o bajistas que hay en el mercado, en el mercado de options
+que es uno de los instrumentos que más operamos aquí en Protein Skills. Entendemos las obscenes
+put como las operaciones que son bajistas y las call cuando son alcistas. Si usted revisa en
+el radio put call se puede ver en trading view pero a mí me gusta mucho verlo en la website de
+macro micro es completamente gratis simplemente pones en google macro micro espacio put call
+ratio y les va a parecer ratio put call a mí me gusta ponerle zoom de los últimos dos años es
+decir de todo ratio put call me gusta por ejemplo tomarlo desde 2021-2022 a la fecha actual y les
+explico cómo funciona esto. El sp500 es la línea roja, el ratio put call es la línea azul. Cuando el
+ratio put call tiene un extremo al alza y empieza a caer significa que el sp500 estaría formando un
+suelo y el sp500 empieza a subir. Cuando el ratio put call cae a un soporte cae con fuerza y empieza
+a subir nuevamente significa que el sp500 ya ha subido con mucha fuerza y está próximo para
+una corrección eso lo pueden ver por ejemplo aquí llamense aquí cuando empezó a caer el ratio
+put call el sp500 hizo este suelo, cuando el ratio put call empezó a caer aquí el sp500
+hizo este suelo, cuando el ratio put call empezó a caer en esta zona el sp500 hizo este suelo,
+cuando el ratio put call por ejemplo empezó a caer en esta zona el sp500 hizo este suelo,
+suelo. Cuando empezó a caer en esta zona, el SCP-500 también hizo este suelo.
+Y también lo podemos ver por el otro lado. Piensen ustedes que cuando el
+ratiput col empezó a tener este movimiento alcista, el SCP-500 tuvo esta
+corrección. Cuando tuvo este movimiento alcista, el SCP-500 tuvo esta corrección.
+Cuando el ratiput col empezó a tener este movimiento alcista, el SCP-500 tuvo
+esta corrección. Y esta última corrección que tuvo el SCP-500 vino
+acompañada por este movimiento alcista del ratiput col. O sea, el ratiput col
+está correlacionado inversamente al SCP-500. Así que es un elemento
+estadístico que también termina de favorecer el porcentaje de nuestros
+escenarios y de nuestras operaciones. Algo interesante que también les quiero
+mostrar es que se acuerdan cuando, en un par de vídeos atrás, que los hemos grabado
+todos el mismo día, en estos últimos vídeos llevamos varios días de grabación
+fuerte trabajo para ustedes, con todo el cariño del mundo, toda la dedicación, pero
+se acuerdan que dos, tres vídeos atrás, que en marco temporal de referencia
+nuestro hace como una hora aproximadamente en tiempo real, yo les
+hablé de cómo el SCP-500 estaba subiendo a corto plazo, formando una
+bandera reventada alcista y cómo bitcón había estado cayendo y por
+corrección bitcón debería haber subido y cómo en estructuras a corto plazo
+bitcón estaba formando este fiel cista, luego está onda madre, luego este rebote
+a zona de reversión con otra onda madre y les dije que se podía poner estos
+targets y este análisis tomando en cuenta entrar en el 23 o entrar en el 38
+breakeven a la mitad entre el 38 y el 61, target en el 61 bla bla bla bla bla bla
+pues déjenme decirles que si ustedes hubieran hecho esa operación estamos
+tocando en vivo el primer target, el primer target lo tenemos ahí, de hecho que
+cuando se grabó hace como una hora y media aproximadamente y que yo les, ese
+vídeo anterior que yo les mostré esta situación les dije bueno uno puede entrar
+aquí si lo quiere más agresivo en los 102.200 o en los 102.738 pues
+estamos sobre los 103.665 ya sobrepasó la zona de breakeven por lo tanto si
+usted hubiera hecho esa operación si lo hubiéramos mandado como señal o usted
+lo hubiera hecho aplicando las estrategias que vean que es lo mismo
+el FII son la reversión onda madre junto a correlación con el SP500 y
+correlación con el VIX se dará cuenta que ya llegó a la zona del 61 que sería
+el primer target, vamos a ver si llega al 78 que sería el segundo target y si
+rompe el 78 se explota la operación pero vean que este sería un ejemplo en vivo
+que durante el proceso de grabación de este material para ustedes
+hemos hecho el primer target en vivo con ustedes aplicándolo en tiempo real
+sumamente interesante. Ahora bien quiero decirles una cosa si ustedes aprenden a
+estudiar y aplicar las estrategias de este programa van a tener grandes
+resultados a lo largo de toda su vida y quiero también decirles una cosa el
+programa senior es un aprendizaje constante es un estudio constante es una es
+un trabajo de perfeccionar la aplicación de las estrategias constante por
+lo tanto quiero invitarte a que además de aplicar las estrategias y aprender
+utilices todos los recursos que Proterin Skills pone a tu disposición por
+ejemplo nuestras actualizaciones van ligadas a todo este análisis donde te
+damos nuestras operaciones te damos toda nuestra información que pues tal vez
+según que pase en el momento van cambiando por ejemplo en el 2020
+teníamos la pandemia luego el QE luego el movimiento el SISTA luego en 2022 nos
+pasamos a bajista con la formación de aquella leyenda yagonal que se formó en
+Bitcoin allá en 2022 perdiendo los 53 mil luego por ejemplo en enero del 2023
+vimos como el Russell estaba formando un máximo más alto un mínimo más alto
+mientras Bitcoin estaba formando un mínimo en ese pequeñito perdón estaba
+formando un mínimo más bajo y eso nos daba a entender que el mercado podía
+nuevamente empezar a subir se había formado un fiel SISTA en ese pequeñito
+sobre la base del canal y en enero del 2023 cambiamos el switch al SISTA y
+empezamos a operar todos estos movimientos a Bitcoin desde los 17 mil
+etcétera etcétera etcétera entonces en actualizaciones siempre vas a tener
+nuestro trabajo disponible para ti es por ello que tenemos chicos que son
+senior a día de hoy desde el año 2019 de 2018 2020 y a día de hoy siguen
+estando aquí en el programa senior porque entienden el valor no sólo de ir
+perfeccionando las estrategias que es un trabajo constante y constante de que
+cada vez las apliques lo mejor posible sino también de recibir nuestros
+reportes recibir nuestra guía recibir nuestro análisis del mercado así como
+también nuestras sesiones en vivo de los miércoles así como también nuestros
+vídeos privados de los lunes y los viernes nuestros tutoriales que cada
+vez vamos a ir agregando más y más tutoriales y por supuesto nuestros
+talleres como el taller de options como el taller de psicología de trading y
+constantemente estamos agregando más material incluso las sesiones especiales
+de hecho que sin importar cuando veas esto quiero decirte que si entras a la
+sección de grabaciones las sesiones especiales que cada año va a haber
+sesiones especiales de 2025 27 28 de ahí en adelante no siempre van a
+haber clases muy muy buenas en la sección de sesiones especiales por
+ejemplo esta maximiza tus ganancias está increíble como operar mezcados
+bajistas y movimientos volátiles está increíble también en fin el material
+el aprendizaje nunca termina las operaciones de trading nunca terminan
+los mercados financieros nunca terminan y todo lo que protreid en skills tiene
+para ofrecerte nunca termina así que espero que haya disfrutado muchísimo
+este viaje este proceso porque no ha llegado al final han llegado al
+principio si estás aquí este no es el final este es el comienzo porque el
+trading no es llegar a un destino el trading es el camino en sí y queremos
+que tu carrera de trader tu camino con nosotros se mantenga por siempre y
+siempre puedas contar con nosotros así como también contamos contigo para que
+trabajemos juntos y como siempre decimos en los reportes vamos con todo
