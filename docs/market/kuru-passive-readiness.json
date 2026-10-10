@@ -2,7 +2,7 @@
   "version": 1,
   "chainId": 10143,
   "venue": "kuru_passive",
-  "reviewedAt": "2026-10-09",
+  "reviewedAt": "2026-10-10",
   "status": "blocked",
   "sdk": {
     "commit": "8588784c4d54183a04029cb1b513910c806905a9",
@@ -29,5 +29,7 @@
     "https://docs.kuru.io/contracts/Contract-addresses",
     "https://github.com/Kuru-Labs/ts-sdk/blob/8588784c4d54183a04029cb1b513910c806905a9/src/generated/abis.ts",
     "https://github.com/Kuru-Labs/ts-sdk/blob/8588784c4d54183a04029cb1b513910c806905a9/package.json"
-  ]
+  ],
+  "verificationResult": "published_testnet_deployments_are_legacy_incompatible",
+  "verification": "kuru-verification-20261010/verification.md"
 }
