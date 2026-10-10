@@ -1,4 +1,10 @@
 /** Agent-token intent and admission. Chain existence is always a confirmed projection. */
+import {
+  sameTokenContext,
+  tokenOperationView,
+  type TokenIntent,
+  type TokenIntentTransaction,
+} from "./token-operations.js";
 import type { TokenReferenceEconomics } from "./domain/token-economics.js";
 import type { Accent } from "../landing/domain/landing.js";
 /** Fixed initial supply in 18-decimal token units; no later issuance is permitted. */
@@ -17,6 +23,7 @@ export interface TokenScope {
   agentId: string;
 }
 export interface TokenContext {
+  workspaceId?: string;
   ownerUserId: string;
   enabled: boolean;
   visibility: "private" | "public";
@@ -29,6 +36,16 @@ export interface TokenContext {
   masterAddress: string | null;
   token: AgentToken | null;
   confirmationPending: boolean;
+  venue?: {
+    status: "curve" | "kuru";
+    readyToGraduate?: boolean;
+    market: string | null;
+    vault: string | null;
+    accountId: string | null;
+    positions: string[];
+    liquidityLocked: boolean;
+  };
+  fees?: { ausd: string; agent: string; block: number; scope: "master_wallet" } | null;
 }
 export interface TokenDraft {
   id: string;
@@ -66,6 +83,8 @@ export interface TokenLaunchParams {
   deadline: string;
 }
 export interface TokenAuthorization {
+  imageUri?: string;
+  avatar?: { accent: TokenContext["accent"]; pattern: number };
   chainId: number;
   factory: string;
   params: TokenLaunchParams;
@@ -77,6 +96,8 @@ export interface TokenAuthorization {
 export interface TokenTransaction {
   context: TokenContext;
   now: Date;
+  intents?: TokenIntentTransaction;
+  latestOperation?(): Promise<TokenIntent | null>;
   draft(): Promise<TokenDraft | null>;
   saveDraft(input: { expectedVersion: number; name: string; ticker: string }): Promise<TokenDraft>;
   activeAuthorization(): Promise<boolean>;
@@ -94,8 +115,9 @@ export interface TokenLaunchRepository {
     work: (tx: TokenTransaction) => Promise<T>,
   ): Promise<T>;
 }
-/** Only controlled tests compose this port in this delivery. No operational signer exists. */
+/** Backend-only platform permission; never a creator or funds signer. */
 export interface TokenGrantIssuer {
+  allowedScope?(scope: TokenScope): boolean;
   readonly factory: string;
   readonly preset: TokenPreset;
   issue(input: {
@@ -104,6 +126,8 @@ export interface TokenGrantIssuer {
     draft: TokenDraft;
     chainId: number;
     deadline: string;
+    nonce: string;
+    operationId: string;
   }): Promise<Omit<TokenAuthorization, "draftVersion">>;
 }
 export const TOKEN_LAUNCH_BLOCKERS = [
@@ -165,7 +189,10 @@ export function createTokenLaunchService(deps: {
   issuer?: TokenGrantIssuer;
   referenceEconomics?: TokenReferenceEconomics;
 }) {
-  function available() {
+  function available(scope: TokenScope) {
+    if (deps.issuer?.allowedScope && !deps.issuer.allowedScope(scope)) {
+      return false;
+    }
     const preset = deps.issuer?.preset;
     if (deps.chainId === null || !preset || preset.totalSupply !== AGENT_TOKEN_TOTAL_SUPPLY) {
       return false;
@@ -193,8 +220,13 @@ export function createTokenLaunchService(deps: {
         owner(scope, tx);
         return {
           chainId: deps.chainId,
-          available: available(),
-          blockers: tokenLaunchBlockers(tx.context, available()),
+          available: available(scope),
+          operation: tx.latestOperation
+            ? await tx.latestOperation().then((i) => (i ? tokenOperationView(i) : null))
+            : null,
+          venue: tx.context.venue ?? null,
+          fees: tx.context.fees ?? null,
+          blockers: tokenLaunchBlockers(tx.context, available(scope)),
           masterAddress: tx.context.masterAddress,
           draft: await tx.draft(),
           token: tx.context.token,
@@ -245,59 +277,103 @@ export function createTokenLaunchService(deps: {
       ) {
         throw new TokenLaunchError("TOKEN_DRAFT_INVALID");
       }
-      return deps.repository.transaction(scope, deps.chainId, async (tx) => {
-        owner(scope, tx);
-        const blockers = tokenLaunchBlockers(tx.context, available());
-        if (blockers.length) {
-          throw new TokenLaunchError("TOKEN_LAUNCH_BLOCKED", blockers);
-        }
-        const draft = await tx.draft();
-        if (!draft || draft.version !== expectedVersion) {
-          throw new TokenLaunchError("TOKEN_DRAFT_CONFLICT");
-        }
-        const previous = await tx.authorization(key);
-        if (previous) {
-          if (previous.draftVersion !== expectedVersion) {
-            throw new TokenLaunchError("TOKEN_IDEMPOTENCY_CONFLICT");
+      return (async () => {
+        const reserved = await deps.repository.transaction(scope, deps.chainId, async (tx) => {
+          owner(scope, tx);
+          const blockers = tokenLaunchBlockers(tx.context, available(scope));
+          if (blockers.length || !tx.intents) {
+            throw new TokenLaunchError(
+              "TOKEN_LAUNCH_BLOCKED",
+              blockers.length ? blockers : ["LAUNCH_UNAVAILABLE"],
+            );
           }
-          if (BigInt(previous.grantDeadline) <= BigInt(Math.floor(tx.now.getTime() / 1000))) {
-            throw new TokenLaunchError("TOKEN_AUTHORIZATION_EXPIRED");
+          const draft = await tx.draft();
+          if (!draft || draft.version !== expectedVersion) {
+            throw new TokenLaunchError("TOKEN_DRAFT_CONFLICT");
           }
-          return previous;
+          const previous = await tx.authorization(key);
+          if (previous) {
+            if (previous.draftVersion !== expectedVersion) {
+              throw new TokenLaunchError("TOKEN_IDEMPOTENCY_CONFLICT");
+            }
+            if (BigInt(previous.grantDeadline) <= BigInt(Math.floor(tx.now.getTime() / 1000))) {
+              throw new TokenLaunchError("TOKEN_AUTHORIZATION_EXPIRED");
+            }
+            return { previous };
+          }
+          // Never repeat an uncertain metadata/signing attempt under the same key.
+          if (
+            (await tx.intents.read(key)) ||
+            (await tx.activeAuthorization()) ||
+            (await tx.intents.active())
+          ) {
+            throw new TokenLaunchError("TOKEN_DRAFT_CONFLICT");
+          }
+          const intent = await tx.intents.reserve({
+            key,
+            action: "launch",
+            asset: "ausd",
+            draftVersion: draft.version,
+            context: tx.context,
+            draft,
+            deadline: String(Math.floor(tx.now.getTime() / 1000) + 300),
+            status: "preparing",
+            authorization: null,
+            prepared: null,
+            activityId: null,
+            rawTransaction: null,
+            txHash: null,
+            blockHash: null,
+            error: null,
+          });
+          return { intent };
+        });
+        if (reserved.previous) {
+          return reserved.previous;
         }
-        if (await tx.activeAuthorization()) {
-          throw new TokenLaunchError("TOKEN_DRAFT_CONFLICT");
-        }
-        const deadline = String(Math.floor(tx.now.getTime() / 1000) + 300);
+        const intent = reserved.intent!;
         const result = await deps.issuer!.issue({
           scope,
-          context: tx.context,
-          draft,
+          context: intent.context,
+          draft: intent.draft!,
           chainId: deps.chainId!,
-          deadline,
+          deadline: intent.deadline,
+          nonce: intent.nonce,
+          operationId: intent.id,
         });
-        const p = result.params;
-        // An injected adapter cannot widen the business-owned permission.
-        if (
-          !available() ||
-          result.chainId !== deps.chainId ||
-          result.factory !== deps.issuer!.factory ||
-          result.grantDeadline !== deadline ||
-          p.deadline !== deadline ||
-          p.creator.toLowerCase() !== tx.context.masterAddress!.toLowerCase() ||
-          p.creatorFeeRecipient.toLowerCase() !== p.creator.toLowerCase() ||
-          p.name !== draft.name ||
-          p.symbol !== draft.ticker ||
-          p.presetId !== deps.issuer!.preset.id ||
-          p.presetVersion !== deps.issuer!.preset.version ||
-          p.expectedConfigHash !== deps.issuer!.preset.configHash
-        ) {
-          throw new TokenLaunchError("TOKEN_LAUNCH_BLOCKED", ["LAUNCH_UNAVAILABLE"]);
-        }
-        const authorization = { ...result, draftVersion: draft.version };
-        await tx.recordAuthorization(key, draft, authorization);
-        return authorization;
-      });
+        return deps.repository.transaction(scope, deps.chainId, async (tx) => {
+          owner(scope, tx);
+          const p = result.params;
+          const blockers = tokenLaunchBlockers(tx.context, available(scope));
+          const draft = await tx.draft();
+          if (
+            blockers.length ||
+            !draft ||
+            draft.version !== intent.draftVersion ||
+            !sameTokenContext(tx.context, intent.context) ||
+            result.chainId !== deps.chainId ||
+            result.factory !== deps.issuer!.factory ||
+            result.grantDeadline !== intent.deadline ||
+            p.deadline !== intent.deadline ||
+            result.grantNonce !== intent.nonce ||
+            p.nonce !== intent.nonce ||
+            p.creator.toLowerCase() !== tx.context.masterAddress!.toLowerCase() ||
+            p.creatorFeeRecipient.toLowerCase() !== p.creator.toLowerCase() ||
+            p.name !== draft.name ||
+            p.symbol !== draft.ticker ||
+            p.presetId !== deps.issuer!.preset.id ||
+            p.presetVersion !== deps.issuer!.preset.version ||
+            p.expectedConfigHash !== deps.issuer!.preset.configHash ||
+            BigInt(intent.deadline) <= BigInt(Math.floor(tx.now.getTime() / 1000))
+          ) {
+            throw new TokenLaunchError("TOKEN_LAUNCH_BLOCKED", ["LAUNCH_UNAVAILABLE"]);
+          }
+          const authorization = { ...result, draftVersion: draft.version };
+          await tx.recordAuthorization(key, draft, authorization);
+          await tx.intents!.update(intent, { authorization });
+          return authorization;
+        });
+      })();
     },
   };
 }
