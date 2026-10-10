@@ -1,0 +1,111 @@
+Vamos a entrar directamente a una de las herramientas más interesantes y más útiles que existen
+actualmente y estoy hablando del retroceso Fibonacci. En pocas palabras vamos a aprender
+cómo utilizar esta herramienta para determinar múltiples zonas valiosas y múltiples zonas
+de las cuales podemos ir obteniendo información del mercado hacia dónde puede ser su dirección
+más importante y cómo a partir de allí plantear operaciones en conjunto con todo lo
+demás que seguiremos trabajando. Iniciando directamente vamos a concentrarnos primero en
+retroceso Fibonacci en tendencia elcista para luego continuar retroceso Fibonacci en tendencia
+bajista. Entiéndase la palabra retroceso cuando un mercado llamé mole elcista tiene una tendencia
+principal pero empieza a tener una corrección o sea empieza a tener un movimiento contrario al
+impulso principal eso es lo que conocemos como un retroceso. Cuando termina ese retroceso lo normal
+es que haya una reversión del retroceso e inicie nuevamente el impulso principal y por qué digo
+el impulso principal porque si estamos en tendencia alcista pues exactamente eso es lo que esperaríamos
+que un retroceso sea terreno al impulso principal que era previo y que ahora va a continuar después
+y para ello utilizamos el retroceso en tendencia alcista. ¿Cómo se trabaja el retroceso? Bueno
+supongamos que tenemos un impulso al alza en cualquier marco temporal la ventaja de Fibonacci
+es que es un fractal es decir puede ser utilizado en cualquier marco pero para iniciar podemos
+en este caso mencionar ahorita lo aplicaremos en gráfico diario pero no todos gráficos temporales
+pero iniciamos de lleno en la parte esquemática inicial. Cuando tenemos un retroceso vamos a
+hacer lo siguiente determinamos que el precio tiene este impulso principal que es alcista y está teniendo
+una corrección está teniendo un retroceso lo queremos es lo siguiente nos vamos a esta pestaña
+que está entre idimbo en la parte izquierda donde están estas rayitas estos simbolitos así como
+una rayita no con el con el con el círculo y hacemos clic aquí donde dice retroceso Fibonacci
+donde hacemos clic y hacemos un clic en la parte inicial donde empieza el movimiento
+alcista más reciente y luego un clic en la parte en la que termina dicho movimiento alcista eso va a
+determinar varios valores importantes el valor de cero que es donde inicia el retroceso el valor
+de 0.23 el valor de 0.38 el valor de 0.61 0.78 y el valor de 1 que significa pues ya regresarse
+completamente entonces la forma en la que esto se estudia es de la siguiente forma si este retroceso
+no rompe el 23 pues no se consideran ni siquiera retroceso se considera simplemente que el precio
+descansa un poco y ya sigue directo a la luz si rompe el 23 se activa el retroceso o sea el retroceso
+Fibonacci se activa se enciende como si fuera una computadora se prende como si fuera el motor
+de un auto arranca al momento de perforar el 0.23 y si perfora el 0.23 se mueve hacia la zona del
+0.38 en algunas ocasiones este si es un simple rango lateral breve del 0.38 reino a movimiento pero
+aquí viene la parte más importante del retroceso y en la siguiente la parte más importante del
+retroceso es que si del 38 empieza a romperse el mercado cae hacia la zona del 0.61 y del 0.78
+esta zona es representada por la línea donde está el 0.61 y representada por la línea donde está el
+0.78 es la franja de precio donde vamos a esperar que dicho impulso alcista se revierta
+pero dicha corrección se revierta y reinicie el impulso alcista o sea aquí tenemos el impulso
+alcista aquí tenemos el retroceso y aquí tenemos nuevamente el impulso alcista
+por lo tanto es en esta zona donde esperamos que el mercado entre el 0.61 y el 0.78 es la zona
+en la que esperamos que el mercado termine la corrección y por ello es que esta zona la vamos
+a denominar y ustedes se la van a aprender así como zona de reversión zona de reversión así se
+llama esto se llama la zona de reversión cuando ustedes escuchen que estamos hablando la zona
+de reversión la zona de reversión la zona de reversión lo que significa en pocas palabras
+es la zona comprendida entre el 0.61 y el 0.78 y en la zona a la que el mercado si viene con este
+retroceso hasta este nivel aquí tiene que frenarse si esta zona se rompe ya podemos poner en tela de
+juicio que ya la tendencia no sea alcista sobre todo estoy hablando de marcos de un día marcos de
+una semana marcos mensuales está bien de hecho una técnica que se utiliza mucho que podemos
+utilizar claramente es si estamos en una posición alcista y rompe el 23 tener aquí un stop de ganancia
+que si rompe el 23 salimos en ganancia o si rompe el 38 salimos en ganancia ya por último y se busca
+que aquí se formen figuras de reversión o sea figuras que indiquen que nuevamente iba al alza y
+aquí recomprar entonces por ejemplo aquí se vende se vende y aquí se busca recomprar eso es una
+forma incluso hay tres más agresivos que pueden utilizar esto y podemos hacerlo es que si un retroceso
+estos rompe el 23 y rompe el 38 podemos tomar una operación de short se puede hacer una operación
+bajista una operación de short en la ruptura del 23 o para mayor confirmación en la en la ruptura
+del 38 y se puede poner zona de stop de ganancia en el 061 y el 078 y ya aquí más bien se venden
+ganancia y se busca reentrar pero esta vez hacia el lado alcista vamos a ver algunos ejemplos de eso
+vamos a irnos algunos ejemplos vamos en el caso de bitcóin de cuando nació este último impulso
+alcista noten que interesante de este último impulso alcista que nació aquí cuando ya
+finalmente el precio hizo este mínimo más alto y por ahí de septiembre de 2024 hasta este movimiento
+en el que ya inició una corrección vean que justo justo tocó la zona de reversión en el 061 o sea
+se considera zona de reversión la línea el 61 la zona adentro entre 61 y 78 y el último nivel
+78 el nivel del 078 es el último nivel de la zona de reversión en la última frontera
+la última frontera el último nivel así que es sería partir de aquí como último nivel que
+tendría el mercado que rebotar bien vamos a ver otros ejemplos evidentemente hablamos del
+ejemplo de la acción de reddit ven el caso de reddit aquí hubo una falsa ruptura por los pelos
+de cuando nació este impulso alcista este impulso alcista de la acción cuando valía 50 y algo de
+dólares a cuando valía 200 y algo ven esta enorme corrección que entró a la zona de reversión y
+ya se formó el suelo aquí hubo una pequeña ruptura pero esta pequeña ruptura duró muy poco fue
+simplemente una barrida que hubo en todo el sp 500 que provocó que reddit momentáneamente
+perdiera la zona de reversión le recuperó inmediatamente digamos que una zona de reversión
+no puede permanecer más de 24 horas rota o si no habrá sido una ruptura real la zona de reversión
+casi que inmediatamente si hace romper el 78 casi que como si fuera un resorte pum tiene que rebotar
+inmediatamente si no se pone el riesgo todo a la tendencia vean que rebotó inmediatamente y
+ya está rompiendo la alza muy posiblemente reddit vaya a continuar con una tendencia alcista más
+adelante de hecho si nos vamos también para ver el caso de envidia de envidia es brutal señores
+y señoras esto es absolutamente increíble del mínimo posterior crash del covid al máximo de enero
+2022 noten que la zona de reversión fue una zona absolutamente perfecta para buscar posiciones
+a la alza o sea de todo este movimiento vean que la zona incluso por un día se acercó aquí al 78 a
+querer vulnerarlo inmediatamente lo recuperó y ven el movimiento alcista que tuvo envidia para aquellos
+que digan que las acciones son lentas vean el movimiento que tuvo envidia desde los mínimos
+de 10 dólares hasta los máximos de 157 dólares 1300 por ciento a la alza señores y señoras 1300
+por ciento a la alza entonces haber entrado a comprar allí en la zona de reversión hubiera
+provocado gigantescas ganancias a todos aquellos que hayan empleado dicho parámetro vamos a irnos
+a perdón ahora sí vamos a irnos con el ejemplo de cardano recientemente cardano tuvo este impulso
+alcista de noviembre de 2024 y a dónde fue la corrección a la zona de reversión miren que
+interesante a la zona de reversión aquí vean que justo trabajó perfecto la zona entre 69 78 y
+a partir de aquí es posible que cardano pueda tener otro movimiento de rebote esto sería su
+momento interesante piensen ustedes que todos los que buscaron hacer un long una compra en las
+inmediaciones de 053 están a día de hoy en buenas zonas muy buenas zonas también el mismo tesla
+vean que interesante tesla como sobre este nivel tuvo también un trabajo perfecto a la zona de
+reversión si nos vamos si nos vamos a todo el impulso del año de 2024 de mínimos a máximos se
+darán cuenta que tela trabajo perfecta la zona de reversión esta es una aparición que estamos
+haciendo actualmente a lo momento de grabar este material y prepararlo para ustedes con todo el
+cariño todo el amor y toda la dedicación y noten que interesante como de esta zona de la zona de
+reversión hubo un perfecto movimiento de reversión de este retroceso entonces todo esto es el impulso
+principal este es el retroceso y entre 061 a 078 hubo una reversión para arriba muy muy interesante
+muy interesante ahora si nos vamos incluso a tendencias bajistas y vean que la acción de
+nike que es una acción que tiene una tendencia bajista muy potente ven como el mercado tuvo
+este importante caída y vean que este rebote a donde llegó a la zona de reversión y de
+esa zona de reversión empezó nuevamente a caer ya vamos a hablar de de zonas de reversión de
+movimientos bajistas pero vean que poderosa herramienta en la cual usted por ejemplo cuando
+ve el impulso al cista que empieza a generar un retroceso agarro a la herramienta de fibonashi
+la pone del mínimo clic 1 a clic 2 al máximo y cuando llegue el bueno si rompe el 23 activa el
+fibonashi va para el 38 y si rompe el 38 confirma movimiento hacia la zona entre 61 y 78 que sería
+esta zona y en la llamada zona de reversión hacia la cual uno un mercado que todavía tiene impulso
+al cista a partir de allí necesita subir y necesita tener movimientos al cista por lo tanto
+como puede usar es usted esta herramienta pues simplemente si usted está operando el mercado y
+rompe el 0 23 puede poner puede ser una primera venta de ganancias si rompe el 38 toma ganancias
+absolutamente o si quiere ser short a sin short pero en la zona de reversión en la zona del 0
+61 y el 0 78 es donde existe la verdadera oportunidad para buscar nuevamente posiciones
+al cista en el activo que estaremos trabajando
