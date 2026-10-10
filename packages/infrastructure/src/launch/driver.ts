@@ -4,12 +4,17 @@ import {
   keccak256,
   parseTransaction,
   serializeTransaction,
+  toHex,
   type Abi,
   type Hex,
 } from "viem";
 import {
   PicklerLaunchFactoryAbi,
   PicklerCurveDeployerKuruAbi,
+  PicklerCurveDeployerV4V2Abi,
+  PicklerGraduationAdapterV4V2Abi,
+  PicklerLiquidityLockerV2Abi,
+  IUniswapV4ReadAbi,
   PicklerGraduationAdapterKuruAbi,
   PicklerBondingCurveAbi,
   PicklerFeeEscrowV2Abi,
@@ -66,6 +71,7 @@ export function createTokenOperationDriver(deps: {
   reserveRpc(operationId: string, limit: number): Promise<void>;
 }): TokenOperationDriver {
   const { policy } = deps;
+  const configurationHash = keccak256(toHex(JSON.stringify(policy)));
   const rpcFor = (id: string, recovery = false): Rpc => ({
     async call(method, params) {
       await deps.reserveRpc(
@@ -89,6 +95,14 @@ export function createTokenOperationDriver(deps: {
     }
     return decodeFunctionResult({ abi: abi as Abi, functionName, data: result as Hex });
   }
+  const adapterAbi =
+    policy.venue === "uniswap_v4"
+      ? PicklerGraduationAdapterV4V2Abi
+      : PicklerGraduationAdapterKuruAbi;
+  const deployerAbi =
+    policy.venue === "uniswap_v4" ? PicklerCurveDeployerV4V2Abi : PicklerCurveDeployerKuruAbi;
+  const lockerAbi =
+    policy.venue === "uniswap_v4" ? PicklerLiquidityLockerV2Abi : PicklerKuruLiquidityLockerAbi;
   async function verifyDeployment(rpc: Rpc) {
     if (BigInt(String(await rpc.call("eth_chainId", []))) !== 10143n) {
       throw new Error("WRONG_CHAIN");
@@ -99,8 +113,15 @@ export function createTokenOperationDriver(deps: {
       policy.adapter,
       policy.escrow,
       policy.locker,
-      policy.router,
-      policy.accountCore,
+      ...(policy.venue === "uniswap_v4"
+        ? [
+            policy.poolManager,
+            policy.positionManager,
+            policy.stateView,
+            policy.permit2,
+            policy.quote,
+          ]
+        : [policy.router, policy.accountCore]),
     ]) {
       const code = await rpc.call("eth_getCode", [contract.address, "latest"]);
       if (
@@ -134,89 +155,85 @@ export function createTokenOperationDriver(deps: {
         }
       }
     }
-    const [
-      authority,
-      operator,
-      venue,
-      preset,
-      enabled,
-      deployer,
-      deployerAdapter,
-      deployerEscrow,
-      factoryVenue,
-      adapterRouter,
-      adapterCore,
-      adapterEscrow,
-      adapterLocker,
-      lockerAdapter,
-      lockerCore,
-      lockerEscrow,
-      escrowFactory,
-      escrowLocker,
-      escrowTreasury,
-      presetTerms,
-    ] = await Promise.all([
-      read(rpc, policy.factory.address, PicklerLaunchFactoryAbi, "launchAuthority"),
-      read(rpc, policy.factory.address, PicklerLaunchFactoryAbi, "operator"),
-      read(rpc, policy.adapter.address, PicklerGraduationAdapterKuruAbi, "venueConfigHash"),
-      read(rpc, policy.factory.address, PicklerLaunchFactoryAbi, "getPresetConfigHash", [
-        policy.preset.id,
-        policy.preset.version,
-      ]),
-      read(rpc, policy.factory.address, PicklerLaunchFactoryAbi, "launchesEnabled"),
-      read(rpc, policy.factory.address, PicklerLaunchFactoryAbi, "curveDeployer"),
-      read(rpc, policy.deployer.address, PicklerCurveDeployerKuruAbi, "graduationAdapter"),
-      read(rpc, policy.deployer.address, PicklerCurveDeployerKuruAbi, "feeEscrow"),
-      read(rpc, policy.factory.address, PicklerLaunchFactoryAbi, "presetVenueHash", [
-        policy.preset.id,
-        policy.preset.version,
-      ]),
-      ...["router", "accountCore", "escrow", "locker"].map((name) =>
-        read(rpc, policy.adapter.address, PicklerGraduationAdapterKuruAbi, name),
-      ),
-      ...["adapter", "accountCore", "escrow"].map((name) =>
-        read(rpc, policy.locker.address, PicklerKuruLiquidityLockerAbi, name),
-      ),
-      ...["factory", "locker", "treasury"].map((name) =>
-        read(rpc, policy.escrow.address, PicklerFeeEscrowV2Abi, name),
-      ),
-      read(rpc, policy.factory.address, PicklerLaunchFactoryAbi, "getPreset", [
-        policy.preset.id,
-        policy.preset.version,
-      ]),
-    ]);
-    const bindings = [
-      deployer,
-      deployerAdapter,
-      deployerEscrow,
-      adapterRouter,
-      adapterCore,
-      adapterEscrow,
-      adapterLocker,
-      lockerAdapter,
-      lockerCore,
-      lockerEscrow,
-      escrowFactory,
-      escrowLocker,
-      escrowTreasury,
+    const [authority, operator, venue, preset, enabled, factoryVenue, presetTerms] =
+      await Promise.all([
+        read(rpc, policy.factory.address, PicklerLaunchFactoryAbi, "launchAuthority"),
+        read(rpc, policy.factory.address, PicklerLaunchFactoryAbi, "operator"),
+        read(rpc, policy.adapter.address, adapterAbi, "venueConfigHash"),
+        read(rpc, policy.factory.address, PicklerLaunchFactoryAbi, "getPresetConfigHash", [
+          policy.preset.id,
+          policy.preset.version,
+        ]),
+        read(rpc, policy.factory.address, PicklerLaunchFactoryAbi, "launchesEnabled"),
+        read(rpc, policy.factory.address, PicklerLaunchFactoryAbi, "presetVenueHash", [
+          policy.preset.id,
+          policy.preset.version,
+        ]),
+        read(rpc, policy.factory.address, PicklerLaunchFactoryAbi, "getPreset", [
+          policy.preset.id,
+          policy.preset.version,
+        ]),
+      ]);
+    const bindings: Array<[string, readonly unknown[], string, string]> = [
+      [policy.factory.address, PicklerLaunchFactoryAbi, "curveDeployer", policy.deployer.address],
+      [policy.deployer.address, deployerAbi, "graduationAdapter", policy.adapter.address],
+      [policy.deployer.address, deployerAbi, "feeEscrow", policy.escrow.address],
+      [policy.adapter.address, adapterAbi, "escrow", policy.escrow.address],
+      [policy.adapter.address, adapterAbi, "locker", policy.locker.address],
+      [policy.locker.address, lockerAbi, "adapter", policy.adapter.address],
+      [policy.locker.address, lockerAbi, "escrow", policy.escrow.address],
+      [policy.escrow.address, PicklerFeeEscrowV2Abi, "factory", policy.factory.address],
+      [policy.escrow.address, PicklerFeeEscrowV2Abi, "locker", policy.locker.address],
+      [policy.escrow.address, PicklerFeeEscrowV2Abi, "treasury", policy.treasury],
     ];
-    const expected = [
-      policy.deployer.address,
-      policy.adapter.address,
-      policy.escrow.address,
-      policy.router.address,
-      policy.accountCore.address,
-      policy.escrow.address,
-      policy.locker.address,
-      policy.adapter.address,
-      policy.accountCore.address,
-      policy.escrow.address,
-      policy.factory.address,
-      policy.locker.address,
-      policy.treasury,
-    ];
+    if (policy.venue === "uniswap_v4") {
+      bindings.push(
+        [policy.adapter.address, adapterAbi, "poolManager", policy.poolManager.address],
+        [policy.adapter.address, adapterAbi, "positionManager", policy.positionManager.address],
+        [policy.adapter.address, adapterAbi, "stateView", policy.stateView.address],
+        [policy.adapter.address, adapterAbi, "permit2", policy.permit2.address],
+        [policy.locker.address, lockerAbi, "positionManager", policy.positionManager.address],
+        [
+          policy.positionManager.address,
+          IUniswapV4ReadAbi,
+          "poolManager",
+          policy.poolManager.address,
+        ],
+        [policy.positionManager.address, IUniswapV4ReadAbi, "permit2", policy.permit2.address],
+        [policy.stateView.address, IUniswapV4ReadAbi, "poolManager", policy.poolManager.address],
+      );
+      const config = (await read(rpc, policy.adapter.address, adapterAbi, "config")) as Record<
+        string,
+        unknown
+      >;
+      const expectedConfig = {
+        version: 1,
+        quoteToken: policy.preset.quoteAddress,
+        ...policy.liquidity,
+      };
+      for (const key of [
+        "version",
+        "quoteToken",
+        "feeTier",
+        "tickSpacing",
+        "sqrtPriceToleranceBps",
+      ] as const) {
+        if (String(config[key]).toLowerCase() !== String(expectedConfig[key])) {
+          throw new Error("VENUE_CONFIGURATION_CHANGED");
+        }
+      }
+    } else {
+      bindings.push(
+        [policy.adapter.address, adapterAbi, "router", policy.router.address],
+        [policy.adapter.address, adapterAbi, "accountCore", policy.accountCore.address],
+        [policy.locker.address, lockerAbi, "accountCore", policy.accountCore.address],
+      );
+    }
+    const actualBindings = await Promise.all(
+      bindings.map(([target, abi, name]) => read(rpc, target, abi, name)),
+    );
     if (
-      bindings.some((v, i) => String(v).toLowerCase() !== expected[i]) ||
+      actualBindings.some((v, i) => String(v).toLowerCase() !== bindings[i]![3]) ||
       factoryVenue !== policy.approvedVenueConfigHash
     ) {
       throw new Error("BINDING_CHANGED");
@@ -233,8 +250,8 @@ export function createTokenOperationDriver(deps: {
       sellFeeBps: 100,
       protocolShareBps: 5000,
       lpCreatorShareBps: 5000,
-      lpFeeTier: 0,
-      lpTickSpacing: 0,
+      lpFeeTier: policy.venue === "uniswap_v4" ? policy.liquidity.feeTier : 0,
+      lpTickSpacing: policy.venue === "uniswap_v4" ? policy.liquidity.tickSpacing : 0,
       launchFee: 0,
       roundingPolicyVersion: 2,
     };
@@ -254,6 +271,9 @@ export function createTokenOperationDriver(deps: {
     }
   }
   function inspect(prepared: TokenPreparedTransaction) {
+    if (policy.venue === "uniswap_v4" && prepared.configurationHash !== configurationHash) {
+      throw new Error("POLICY_CHANGED");
+    }
     const tx = parseTransaction(prepared.unsignedTransaction as Hex);
     if (
       tx.type !== "eip1559" ||
@@ -308,7 +328,11 @@ export function createTokenOperationDriver(deps: {
           !g ||
           g.factory !== to ||
           g.chainId !== 10143 ||
-          g.params.expectedConfigHash !== policy.preset.configHash
+          g.params.expectedConfigHash !== policy.preset.configHash ||
+          g.params.creator.toLowerCase() !== intent.context.masterAddress?.toLowerCase() ||
+          g.params.creatorFeeRecipient.toLowerCase() !== g.params.creator.toLowerCase() ||
+          g.params.presetId !== policy.preset.id ||
+          g.params.presetVersion !== policy.preset.version
         ) {
           throw new Error("INVALID_GRANT");
         }
@@ -342,6 +366,9 @@ export function createTokenOperationDriver(deps: {
           curve: Hex;
           creatorFeeRecipient: string;
           agentKey: string;
+          token: string;
+          quoteToken: string;
+          presetHash: string;
         };
         if (
           launch.creator.toLowerCase() !== intent.context.masterAddress?.toLowerCase() ||
@@ -349,13 +376,22 @@ export function createTokenOperationDriver(deps: {
         ) {
           throw new Error("FEE_RECIPIENT_CHANGED");
         }
+        if (
+          policy.venue === "uniswap_v4" &&
+          (intent.context.token?.chainId !== 10143 ||
+            launch.token.toLowerCase() !== token.toLowerCase() ||
+            launch.quoteToken.toLowerCase() !== policy.preset.quoteAddress ||
+            launch.presetHash !== policy.preset.configHash)
+        ) {
+          throw new Error("TOKEN_VENUE_MISMATCH");
+        }
         if (intent.action === "graduate") {
           if (!intent.context.venue?.readyToGraduate || intent.context.venue.status !== "curve") {
             throw new Error("CURVE_NOT_READY");
           }
           to = policy.adapter.address;
           data = encodeFunctionData({
-            abi: PicklerGraduationAdapterKuruAbi,
+            abi: adapterAbi,
             functionName: "finalizeGraduation",
             args: [launch.curve],
           });
@@ -363,9 +399,18 @@ export function createTokenOperationDriver(deps: {
           to = launch.curve;
           data = encodeFunctionData({ abi: PicklerBondingCurveAbi, functionName: "remitFees" });
         } else if (intent.action === "collect_lp_fees") {
+          if (
+            policy.venue === "uniswap_v4" &&
+            (intent.context.venue?.status !== "uniswap_v4" ||
+              intent.context.venue.vault !== policy.locker.address ||
+              intent.context.venue.market !== policy.poolManager.address ||
+              !intent.context.venue.liquidityLocked)
+          ) {
+            throw new Error("TOKEN_VENUE_MISMATCH");
+          }
           to = policy.locker.address;
           data = encodeFunctionData({
-            abi: PicklerKuruLiquidityLockerAbi,
+            abi: lockerAbi,
             functionName: "collectFees",
             args: [token],
           });
@@ -402,6 +447,7 @@ export function createTokenOperationDriver(deps: {
       });
       const prepared = {
         operationId: intent.id,
+        configurationHash,
         chainId: 10143,
         sender: from,
         destination: to,
