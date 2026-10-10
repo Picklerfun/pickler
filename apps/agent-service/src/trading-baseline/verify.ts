@@ -35,8 +35,11 @@ export async function readBaseline(
   if (actual.sha256 !== seal.manifest.sha256 || actual.bytes !== seal.manifest.bytes) {
     throw new BaselineError("BASELINE_MANIFEST_HASH_MISMATCH");
   }
-  const manifest = manifestSchema.parse(JSON.parse(await readFile(state, "utf8")));
-  return { backup, manifest };
+  const manifest: unknown = JSON.parse(await readFile(state, "utf8"));
+  // Validate without normalizing field order: the database digest covers its saved JSON inventory.
+  // Zod's parsed output reorders nested keys and would falsely reject unchanged PostgreSQL data.
+  manifestSchema.parse(manifest);
+  return { backup, manifest: manifest as BaselineManifest };
 }
 
 /** Imports files/crypto/Git/schema validation only. No PostgreSQL, environment or network. */
