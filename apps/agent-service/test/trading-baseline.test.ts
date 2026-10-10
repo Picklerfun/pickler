@@ -23,6 +23,7 @@ import {
   inventorySchema,
   manifestSchema,
   type BaselineInventory,
+  type BaselineManifest,
 } from "../src/trading-baseline/contracts.js";
 import { exportBaseline, baselineDatabaseUrl } from "../src/trading-baseline/export.js";
 import {
@@ -307,6 +308,89 @@ test("complete local export, network-free verification, deterministic replay and
     exportBaseline({ inventoryPath: f.inventoryPath, output: f.output, signal }),
     /NEW_DIRECTORY_REQUIRED/,
   );
+});
+
+test("offline verification preserves database inventory field order for empty and financial snapshots", async (t) => {
+  for (const empty of [true, false]) {
+    const f = await fixture(t);
+    const manifest = await exportBaseline({
+      inventoryPath: f.inventoryPath,
+      output: f.output,
+      signal,
+    });
+    const snapshot: NonNullable<BaselineManifest["databases"][number]["snapshot"]> = {
+      version: 1,
+      identity: {
+        host: "127.0.0.1",
+        port: 55432,
+        database: "controlled",
+        systemIdentifier: "7686061876344971300",
+        serverVersion: "17.6",
+      },
+      capturedAt: "2026-10-10T00:00:00.000Z",
+      snapshot: "00000003-00000001-1",
+      tables: empty
+        ? []
+        : [
+            {
+              schema: "pickler",
+              name: "financial_rows",
+              columns: [
+                { name: "document", type: "jsonb", not_null: true, generated: "", identity: "" },
+              ],
+              rows: 3,
+              rowsSha256: sha256("unknown reservation / pending funding / realized loss"),
+            },
+          ],
+      sequences: [],
+      studies: [],
+      roles: [],
+      inventorySha256: "",
+      consistency: "per-database-repeatable-read-shared-with-pg-dump",
+    };
+    snapshot.inventorySha256 = sha256(
+      JSON.stringify({
+        tables: snapshot.tables,
+        sequences: snapshot.sequences,
+        studies: snapshot.studies,
+      }),
+    );
+    await mkdir(join(f.output, "databases"), { mode: 0o700 });
+    const inventoryPath = "databases/controlled.json";
+    const dumpPath = "databases/controlled.dump";
+    await writeJson(join(f.output, inventoryPath), snapshot);
+    await writeFile(join(f.output, dumpPath), "controlled opaque dump", { mode: 0o600 });
+    const reference = async (path: string) => {
+      const fingerprint = await fileFingerprint(join(f.output, path));
+      return { path, bytes: fingerprint.bytes, sha256: fingerprint.sha256 };
+    };
+    manifest.databases.push({
+      id: "controlled",
+      configurationFiles: [],
+      origin: { kind: "direct-local" },
+      status: "captured",
+      code: null,
+      snapshot,
+      dump: await reference(dumpPath),
+      inventory: await reference(inventoryPath),
+    });
+    await writeFile(join(f.output, "manifest.json"), JSON.stringify(manifest, null, 2) + "\n");
+    await writeFile(
+      join(f.output, "seal.json"),
+      JSON.stringify({
+        protocol: "trading-baseline-seal-v1",
+        manifest: await reference("manifest.json"),
+      }),
+    );
+    const result = await verifyBaseline({
+      state: join(f.output, "manifest.json"),
+      output: join(f.root, "verify"),
+      verifierRepository: repository,
+      signal,
+    });
+    assert.equal(result.status, "verified", JSON.stringify(result.failures));
+    assert.equal(result.databasesChecked, 1);
+  }
 });
 
 test("truncation, changed inventory and absent source produce a partial baseline", async (t) => {
