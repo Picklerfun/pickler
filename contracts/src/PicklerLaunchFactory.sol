@@ -71,6 +71,7 @@ contract PicklerLaunchFactory is EIP712 {
     error SupplyTransferFailed();
     error NotFeeRecipient();
     error NotPendingFeeRecipient();
+    error InvalidVenueConfiguration();
 
     event LaunchAuthorityChanged(address indexed authority);
     event PresetPublished(uint32 indexed presetId, uint32 indexed version, bytes32 configHash);
@@ -109,6 +110,7 @@ contract PicklerLaunchFactory is EIP712 {
 
     mapping(uint32 presetId => mapping(uint32 version => PicklerPreset.LaunchPreset)) private _presets;
     mapping(uint32 presetId => mapping(uint32 version => bool)) public presetPublished;
+    mapping(uint32 presetId => mapping(uint32 version => bytes32)) public presetVenueHash;
 
     mapping(address token => LaunchRecord) private _launches;
     mapping(bytes32 agentKey => address token) public tokenForAgent;
@@ -136,17 +138,38 @@ contract PicklerLaunchFactory is EIP712 {
     /// @dev A published version is immutable. Changing economics means a new version, which
     ///      leaves every launch already pointing at the old one exactly as it was.
     function publishPreset(PicklerPreset.LaunchPreset calldata preset) external onlyOperator {
-        if (presetPublished[preset.presetId][preset.version]) {
-            revert PresetAlreadyPublished();
-        }
+        _publishPreset(preset, bytes32(0));
+    }
 
+    /// @notice Commits a new version to its deployer's immutable venue configuration.
+    /// @dev Historical preset hashes remain exactly keccak256(abi.encode(preset)).
+    function publishPresetWithVenue(PicklerPreset.LaunchPreset calldata preset, bytes32 venueHash)
+        external
+        onlyOperator
+    {
+        if (venueHash == bytes32(0)) revert InvalidVenueConfiguration();
+        (bool ok, bytes memory result) = address(curveDeployer).staticcall(abi.encodeWithSignature("venueConfigHash()"));
+        if (!ok || result.length != 32 || abi.decode(result, (bytes32)) != venueHash) {
+            revert InvalidVenueConfiguration();
+        }
+        _publishPreset(preset, venueHash);
+    }
+
+    function _publishPreset(PicklerPreset.LaunchPreset calldata preset, bytes32 venueHash) private {
+        if (presetPublished[preset.presetId][preset.version]) revert PresetAlreadyPublished();
         preset.validate();
         preset.validateQuoteDecimals();
-
         _presets[preset.presetId][preset.version] = preset;
+        presetVenueHash[preset.presetId][preset.version] = venueHash;
         presetPublished[preset.presetId][preset.version] = true;
+        emit PresetPublished(preset.presetId, preset.version, getPresetConfigHash(preset.presetId, preset.version));
+    }
 
-        emit PresetPublished(preset.presetId, preset.version, preset.configHash());
+    function getPresetConfigHash(uint32 presetId, uint32 version) public view returns (bytes32) {
+        PicklerPreset.LaunchPreset memory preset = getPreset(presetId, version);
+        bytes32 venueHash = presetVenueHash[presetId][version];
+        if (venueHash == bytes32(0)) return preset.configHash();
+        return keccak256(abi.encode("PicklerVenuePresetV1", preset, venueHash));
     }
 
     /// @notice Stops new launches. Existing launches are untouched and keep trading.
@@ -192,7 +215,7 @@ contract PicklerLaunchFactory is EIP712 {
     function _create(LaunchParams calldata params) private returns (address token, address curve) {
         PicklerPreset.LaunchPreset memory preset = getPreset(params.presetId, params.presetVersion);
 
-        bytes32 presetHash = preset.configHash();
+        bytes32 presetHash = getPresetConfigHash(params.presetId, params.presetVersion);
         if (presetHash != params.expectedConfigHash) {
             revert ConfigChanged();
         }

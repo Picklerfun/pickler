@@ -327,6 +327,9 @@ contract PicklerBondingCurve is ReentrancyGuard {
 
     /// @notice Sends accrued fees to the escrow. Permissionless: the destination is fixed at
     ///         construction, so there is nothing for a caller to redirect.
+    /// @notice Monotonic remittance evidence for exact-accounting escrows.
+    uint256 public totalFeesRemitted;
+
     function remitFees() external nonReentrant {
         uint256 amount = accruedFees;
         if (amount == 0) {
@@ -334,6 +337,7 @@ contract PicklerBondingCurve is ReentrancyGuard {
         }
 
         accruedFees = 0;
+        totalFeesRemitted += amount;
         quoteToken.safeTransfer(feeEscrow, amount);
 
         // Attributing in the same call is what keeps the escrow's accounting unambiguous:

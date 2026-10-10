@@ -483,6 +483,30 @@ export const PicklerLaunchFactoryAbi = [
   },
   {
     "type": "function",
+    "name": "getPresetConfigHash",
+    "inputs": [
+      {
+        "name": "presetId",
+        "type": "uint32",
+        "internalType": "uint32"
+      },
+      {
+        "name": "version",
+        "type": "uint32",
+        "internalType": "uint32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "grantDigest",
     "inputs": [
       {
@@ -675,6 +699,30 @@ export const PicklerLaunchFactoryAbi = [
   },
   {
     "type": "function",
+    "name": "presetVenueHash",
+    "inputs": [
+      {
+        "name": "presetId",
+        "type": "uint32",
+        "internalType": "uint32"
+      },
+      {
+        "name": "version",
+        "type": "uint32",
+        "internalType": "uint32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "publishPreset",
     "inputs": [
       {
@@ -763,6 +811,106 @@ export const PicklerLaunchFactoryAbi = [
             "internalType": "uint32"
           }
         ]
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "publishPresetWithVenue",
+    "inputs": [
+      {
+        "name": "preset",
+        "type": "tuple",
+        "internalType": "struct PicklerPreset.LaunchPreset",
+        "components": [
+          {
+            "name": "presetId",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "version",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "quoteToken",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "totalSupply",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "saleAllocation",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "lpAllocation",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "virtualTokenReserve",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "virtualQuoteReserve",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "buyFeeBps",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "sellFeeBps",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "protocolShareBps",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "lpCreatorShareBps",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "lpFeeTier",
+            "type": "uint24",
+            "internalType": "uint24"
+          },
+          {
+            "name": "lpTickSpacing",
+            "type": "int24",
+            "internalType": "int24"
+          },
+          {
+            "name": "launchFee",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "roundingPolicyVersion",
+            "type": "uint32",
+            "internalType": "uint32"
+          }
+        ]
+      },
+      {
+        "name": "venueHash",
+        "type": "bytes32",
+        "internalType": "bytes32"
       }
     ],
     "outputs": [],
@@ -1089,6 +1237,11 @@ export const PicklerLaunchFactoryAbi = [
   },
   {
     "type": "error",
+    "name": "InvalidVenueConfiguration",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "LaunchesSuspended",
     "inputs": []
   },
@@ -1145,4 +1298,4 @@ export const PicklerLaunchFactoryAbi = [
   }
 ] as const;
 
-export const PicklerLaunchFactoryAbiHash = "eae13d37440fab33ba3d343f2f76c9d5233e767460eb66a2fdc2d81cdcc06844";
+export const PicklerLaunchFactoryAbiHash = "42c54cab0fb3267bde1259b8bfbb8b56a6b277bfd8458b6e6ee900ebe08dcffd";
