@@ -224,3 +224,10 @@ JSON from core's pure curve calculations and reviewed chain AUSD metadata. Use
 `npm run tokens:fixtures -- --check` to verify drift; the web test also compares it to core.
 The reference profile is independent of signer/preset availability and never enables real launch.
 See [agent token admission and previews](docs/agent-token-preview.md).
+
+## Testnet token launcher and Kuru
+
+The operational launcher is implemented behind disabled testnet-only gates; passive Kuru remote
+readiness is still blocked. Read [Token operations](docs/market/token-launch-operations.md) before
+composing grants, R2, passkey submission or the indexer. Controlled tests never establish remote
+readiness, and the legacy testnet probe must not be used as a passive-generation fallback.
