@@ -131,7 +131,10 @@ export const pools = market
     },
     (t) => [
       uniqueIndex("pools_token_phase_key").on(t.tokenId, t.phase),
-      check("pools_venue", sql`${t.venue} in ('pickler_curve', 'pons', 'uniswap_v4')`),
+      check(
+        "pools_venue",
+        sql`${t.venue} in ('pickler_curve', 'pons', 'uniswap_v4', 'kuru_passive')`,
+      ),
       check("pools_address_format", sql`${t.address} ~ '^0x[0-9a-f]{40}$'`),
       check("pools_pool_key_format", sql`${t.poolKey} ~ '^0x[0-9a-f]{64}$'`),
       check("pools_opened_tx_format", sql`${t.openedTxHash} ~ '^0x[0-9a-f]{64}$'`),
@@ -379,6 +382,46 @@ export const chainEvents = market
       check("chain_events_log_index_positive", sql`${t.logIndex} >= 0`),
       check("chain_events_block_number_positive", sql`${t.blockNumber} >= 0`),
       check("chain_events_abi_hash_format", sql`${t.abiHash} ~ '^[0-9a-f]{64}$'`),
+    ],
+  )
+  .enableRLS();
+
+/** Immutable Kuru account/position snapshot; visibility always joins its canonical source block. */
+export const kuruGraduations = market
+  .table(
+    "kuru_graduations",
+    {
+      chain: text("chain").notNull(),
+      token: text("token").notNull(),
+      market: text("market").notNull(),
+      vault: text("vault").notNull(),
+      accountId: baseUnits("account_id").notNull(),
+      venueHash: text("venue_hash").notNull(),
+      adapter: text("adapter").notNull(),
+      blockHash: text("block_hash").notNull(),
+      blockNumber: bigint("block_number", { mode: "number" }).notNull(),
+      txHash: text("tx_hash").notNull(),
+      positions: jsonb("positions").notNull(),
+      tokenReserved: baseUnits("token_reserved").notNull(),
+      quoteReserved: baseUnits("quote_reserved").notNull(),
+      tokenRemainder: baseUnits("token_remainder").notNull(),
+      quoteRemainder: baseUnits("quote_remainder").notNull(),
+    },
+    (t) => [
+      primaryKey({ columns: [t.chain, t.token, t.blockHash] }),
+      check("kuru_graduations_network", sql`${t.chain}='eip155:10143'`),
+      check(
+        "kuru_graduations_addresses",
+        sql`${t.token} ~ '^0x[0-9a-f]{40}$' AND ${t.market} ~ '^0x[0-9a-f]{40}$' AND ${t.vault} ~ '^0x[0-9a-f]{40}$' AND ${t.adapter} ~ '^0x[0-9a-f]{40}$'`,
+      ),
+      check(
+        "kuru_graduations_hashes",
+        sql`${t.blockHash} ~ '^0x[0-9a-f]{64}$' AND ${t.txHash} ~ '^0x[0-9a-f]{64}$' AND ${t.venueHash} ~ '^0x[0-9a-f]{64}$'`,
+      ),
+      check(
+        "kuru_graduations_reserves",
+        sql`${t.tokenReserved}>0 AND ${t.quoteReserved}>0 AND ${t.tokenRemainder}>=0 AND ${t.quoteRemainder}>=0`,
+      ),
     ],
   )
   .enableRLS();
