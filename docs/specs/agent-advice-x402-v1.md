@@ -56,11 +56,13 @@ The owner decided (2026-10-06): the app keeps its own reads **and** adds Studio 
 
 ### 3.1 The creator sets a price (Studio, web)
 
-In **Limits & funding** (`apps/web/src/features/studio/draft/limits.tsx`, and the live studio
-that imports it), a new card "Analyses in the app": a toggle (off = not for sale) and a price in
+In the live studio's **Limits** only (`apps/web/src/features/studio/live/limits.tsx`; a draft is
+private and cannot be bought, so the creator prices the agent after Go Public), a new card
+"Analyses in the app": a toggle (off = not for sale) and a price in
 AUSD. Saving calls `PUT /v1/studio/agents/:id/advice-price`. The card says where the money goes
 (the agent's wallet, shortened address) and that a failed analysis is not refunded automatically.
-Without a linked agent wallet the card is disabled and says why.
+Without a linked agent wallet the card is disabled and says why; a price saved before the wallet
+was unlinked can still be cleared, and the card tags it "PRICED · NO WALLET" (D4).
 
 ### 3.2 A buyer asks for an analysis (app)
 

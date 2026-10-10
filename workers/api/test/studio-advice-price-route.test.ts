@@ -1,11 +1,17 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildUserPrincipal, PilotError, type StudioDirectory } from "@pickler/core";
+import {
+  buildUserPrincipal,
+  DEFAULT_CONFIG,
+  PilotError,
+  type StudioDirectory,
+} from "@pickler/core";
 import { studioRoutes } from "../src/routes/studio.js";
 
 const AGENT = "11111111-1111-4111-8111-111111111111";
 
 function fixture(over: { userId?: string; fail?: PilotError } = {}) {
+  let stored: bigint | null = null;
   const calls: { userId: string; agentId: string; micro: bigint | null }[] = [];
   const directory = {
     onboard: async () => {},
@@ -21,13 +27,48 @@ function fixture(over: { userId?: string; fail?: PilotError } = {}) {
         throw over.fail;
       }
       calls.push({ userId, agentId, micro });
+      stored = micro;
       return micro;
     },
+    agentScope: async () => ({ tenantId: "trusted", agentId: "runtime" }),
+    list: async () => [
+      {
+        id: AGENT,
+        name: "Halftime",
+        handle: "halftime",
+        accent: "lime" as const,
+        avatarPattern: 0,
+        draft: false,
+        visibility: "public" as const,
+        publishedAt: new Date("2026-09-01T00:00:00Z"),
+        xHandle: null,
+        advicePriceMicro: stored,
+        scope: { tenantId: "trusted", agentId: "runtime" },
+      },
+    ],
   } as unknown as StudioDirectory;
   const app = studioRoutes({
     directory,
-    repository: {} as never,
+    repository: {
+      agent: async () => ({
+        id: "runtime",
+        tenantId: "trusted",
+        version: 1,
+        config: DEFAULT_CONFIG,
+        paused: false,
+        scheduleEnabled: false,
+        nextDueAt: null,
+      }),
+      readiness: async () => ({ connectionsChecked: false, manualSucceeded: false }),
+    } as never,
     notifyQueued: async () => {},
+    wallets: {
+      findAgentWallet: async () => ({
+        walletId: "wallet-1",
+        address: "0x1111111111111111111111111111111111111111",
+      }),
+    },
+    balances: { read: async () => 12 },
     authenticate: async () => ({
       principal: buildUserPrincipal({
         user: { id: over.userId ?? "owner" },
@@ -91,4 +132,29 @@ test("an agent without a wallet answers 409 AGENT_WALLET_REQUIRED", async () => 
 test("an agent that is not the caller's answers 404", async () => {
   const { app } = fixture({ fail: new PilotError("NOT_FOUND", "Agent not found") });
   assert.equal((await app.request(url, put({ priceAusd: "1.5" }))).status, 404);
+});
+
+test("the agent listing carries the price the owner set, and null once cleared", async () => {
+  const { app } = fixture();
+  const listed = async () => (await (await app.request("/agents")).json()).agents[0].advicePrice;
+
+  assert.equal(await listed(), null);
+
+  await app.request(url, put({ priceAusd: "1.5" }));
+
+  assert.deepEqual(await listed(), { amount: "1.5", asset: "AUSD", decimals: 6 });
+
+  await app.request(url, put({ priceAusd: null }));
+
+  assert.equal(await listed(), null);
+});
+
+test("one agent's page carries the same price", async () => {
+  const { app } = fixture();
+
+  await app.request(url, put({ priceAusd: "1.5" }));
+  const body = await (await app.request(`/agents/${AGENT}`)).json();
+
+  assert.deepEqual(body.advicePrice, { amount: "1.5", asset: "AUSD", decimals: 6 });
+  assert.equal("advicePriceMicro" in body, false);
 });

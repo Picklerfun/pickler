@@ -10,6 +10,8 @@ import type {
   paperOrderSchema,
   studioAgentSchema,
   ActivityDto,
+  AdvicePriceResponseDto,
+  AdvicePriceUpdateDto,
   DirectoryAgentDto,
   DraftCreateDto,
   IdentityUpdateDto,
@@ -164,6 +166,13 @@ export const saveDraftSetup = (agentId: string, body: SetupUpdateDto) =>
 /** `PUT /agents/:id/identity`: name and avatar; the handle is fixed. 400 INVALID_INPUT. */
 export const saveIdentity = (agentId: string, body: IdentityUpdateDto) =>
   studioApi<Agent>(`/agents/${agentId}/identity`, { method: "PUT", body: JSON.stringify(body) });
+
+/** `PUT /agents/:id/advice-price`: one analysis's AUSD price, or null. 400, 403, 404, 409. */
+export const saveAdvicePrice = (agentId: string, body: AdvicePriceUpdateDto) =>
+  studioApi<AdvicePriceResponseDto>(`/agents/${agentId}/advice-price`, {
+    method: "PUT",
+    body: JSON.stringify(body),
+  });
 
 /** `GET /agents/:id/activity`: created, its wallet, each transfer; newest first, at most 50. */
 export const agentActivity = (agentId: string, signal?: AbortSignal) =>

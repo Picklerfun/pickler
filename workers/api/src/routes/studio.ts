@@ -634,14 +634,17 @@ export function studioRoutes(services: StudioServices) {
       visibility: "private" | "public";
       publishedAt: Date | null;
       xHandle: string | null;
+      advicePriceMicro: bigint | null;
     },
   ): Promise<StudioAgentDto> {
     const record = await repo.agent(scope);
     const ready = isReadyToSchedule(record, await repo.readiness(scope));
+    const { advicePriceMicro, ...shown } = identity;
     return studioAgentSchema.parse({
       ...agentResponseSchema.parse(record),
-      ...identity,
+      ...shown,
       publishedAt: identity.publishedAt?.toISOString() ?? null,
+      advicePrice: advicePrice(advicePriceMicro),
       wallet: wallet && {
         walletId: wallet.walletId,
         address: wallet.address,
@@ -680,6 +683,7 @@ export function studioRoutes(services: StudioServices) {
               visibility: agent.visibility,
               publishedAt: agent.publishedAt,
               xHandle: agent.xHandle,
+              advicePriceMicro: agent.advicePriceMicro,
             }),
           ),
         ),
@@ -841,6 +845,7 @@ export function studioRoutes(services: StudioServices) {
           visibility: listedAgent.visibility,
           publishedAt: listedAgent.publishedAt,
           xHandle: listedAgent.xHandle,
+          advicePriceMicro: listedAgent.advicePriceMicro,
         }
       : {
           accent: "lime" as const,
@@ -849,6 +854,7 @@ export function studioRoutes(services: StudioServices) {
           visibility: "private" as const,
           publishedAt: null,
           xHandle: null,
+          advicePriceMicro: null,
         };
     return studioAgent(scope, wallet, another, identity);
   }

@@ -49,7 +49,7 @@ return it, null if unavailable; omission remains accepted for legacy responses. 
 not label missing metadata as testnet or confuse it with a Perpl market network. No network
 selection parameter is added to wallet or transfer requests.
 
-`src/studio.ts` validates agent identity and idempotency keys. Studio research responses reuse runtime schemas and preserve 202 plus runId. Product, growth and research response families remain distinct; see ../../docs/cloudflare-unification.md.
+`src/studio.ts` validates agent identity and idempotency keys. It also exports `AdvicePriceUpdateDto` and `AdvicePriceResponseDto`, the body and answer of `PUT /v1/studio/agents/:id/advice-price`. Studio research responses reuse runtime schemas and preserve 202 plus runId. Product, growth and research response families remain distinct; see ../../docs/cloudflare-unification.md.
 
 An agent is created one way: `draftCreateSchema`, the strict body of `POST /v1/studio/drafts` (name,
 handle, voice, avatar, sources, brief, caps and the `walletId` of the agent wallet already made,
@@ -73,6 +73,9 @@ that a day's limit is not below one call's. `limitsUpdateSchema` is the strict b
 limits keeps the configuration version.
 `advicePriceUpdateSchema` (`{ priceAusd: string | null }`) and `advicePriceResponseSchema` are the
 body and answer of `PUT /v1/studio/agents/:id/advice-price`.
+`studioAgentSchema` also carries `advicePrice` (the same nullable `{ amount, asset, decimals }`), so the
+live Studio can show the agent's current price; this supersedes phase 1's Ruling 4, which kept it
+out of the Studio agent DTO.
 
 Setup and versions (docs/specs/studio-live-v1.md L10–L13): `src/research.ts` has `RISK_BOUNDS`, a
 mirror of core's pinned by `workers/api/test/accent-venue-mirror.test.ts`, and `riskLimitsSchema`

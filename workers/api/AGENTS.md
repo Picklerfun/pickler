@@ -392,6 +392,9 @@ per-call and daily ledger period or a Turnkey value cap. The monthly budget ledg
 price of one fresh advice analysis (0.10 to 100, at most 6 decimals, parsed by core's
 `parseAusdToMicro`) through `directory.setAdvicePrice`. `:id` is the product agent id. It answers
 `{ advicePrice }`; a price needs the agent's wallet (409 `AGENT_WALLET_REQUIRED`), clearing does not.
+The Studio agent DTO (`GET /agents`, `GET /agents/:id`) carries `advicePrice`, serialised by core's
+`advicePrice()` from the directory's `advicePriceMicro`, which never reaches the wire; this supersedes
+phase 1's Ruling 4 (the DTO did not carry it).
 
 `PUT /agents/:id/interval { hours }` accepts only 3, 6, 12 or 24 (the home's "every 3h / 6h / 12h /
 daily") and writes only `config.intervalHours` through `repository.updateInterval`, with manage

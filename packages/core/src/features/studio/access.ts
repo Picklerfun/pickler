@@ -99,6 +99,8 @@ export interface StudioDirectory {
       visibility: "private" | "public";
       publishedAt: Date | null;
       xHandle: string | null;
+      /** The AUSD price of one fresh advice analysis in micro-AUSD, null when not for sale. */
+      advicePriceMicro: bigint | null;
       scope: Scope;
     }[]
   >;

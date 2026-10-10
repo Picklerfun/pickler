@@ -72,6 +72,9 @@ advice service and store, `PostgresAdvicePayments` on the invocation's pool and
 `createAusdAuthorizationGateway` (AUSD on Monad testnet, EIP-3009). The `GET` routes are unchanged
 and free.
 
+Creators set the price of one analysis, or take the agent off sale, in the live Studio → Limits
+(ANALYSES IN THE APP), which calls `PUT /v1/studio/agents/:id/advice-price`.
+
 The order of a paid request is fixed in core:
 
 1. **Replay.** A job already made for the same user, agent and `Idempotency-Key` is returned (202)

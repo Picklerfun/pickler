@@ -71,7 +71,7 @@ appends them to the edge as numbered rules at run time.
 
 ## Unified studio access
 
-`features/studio/access.ts` owns user-session-only research authorization and the studio directory port. Operator enablement is independent from registration. Only workspace owners administer research; permitted members read. New configurations require marketScope.
+`features/studio/access.ts` owns user-session-only research authorization and the studio directory port. Operator enablement is independent from registration. Only workspace owners administer research; permitted members read. New configurations require marketScope. `StudioDirectory.list` entries carry `advicePriceMicro` (the agent's analysis price in micro-AUSD, or null when not for sale).
 
 There is one way to create an agent: `StudioDirectory.createDraft`, a private draft created with
 the agent wallet its owner already made, funded and approved the policies of (`walletId` only — the

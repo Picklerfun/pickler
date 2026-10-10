@@ -1,10 +1,11 @@
 "use client";
 import { useStudioMemory } from "../routing/memory";
 import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from "react";
-import type { IdentityUpdateDto, SetupUpdateDto } from "@pickler/api-schema";
+import type { AdvicePriceUpdateDto, IdentityUpdateDto, SetupUpdateDto } from "@pickler/api-schema";
 import {
   StudioError,
   saveDraftSetup,
+  saveAdvicePrice as putAdvicePrice,
   saveIdentity as putIdentity,
   studioWallets,
   walletLedger,
@@ -59,6 +60,8 @@ export interface UseAgentStudio extends AgentStudioData {
   saveSetup(patch: Omit<SetupUpdateDto, "expectedVersion">): Promise<Agent>;
   /** `PUT /identity`: name and/or avatar; reloads the agent. */
   saveIdentity(body: IdentityUpdateDto): Promise<Agent>;
+  /** `PUT /advice-price`: the AUSD price of one analysis, or null for not for sale; reloads. */
+  saveAdvicePrice(body: AdvicePriceUpdateDto): Promise<void>;
   /** `POST /x/authorize`: opens consent without unmounting the current form. */
   connectX(section?: "overview" | "identity"): Promise<void>;
   readPosts(cursor?: string): ReturnType<typeof xPosts>;
@@ -271,6 +274,15 @@ export function useAgentStudio({
     [guard, agentId, reloadAfterWrite],
   );
 
+  const saveAdvicePrice = useCallback(
+    async (body: AdvicePriceUpdateDto) => {
+      guard();
+      await putAdvicePrice(agentId, body);
+      await reloadAfterWrite();
+    },
+    [guard, agentId, reloadAfterWrite],
+  );
+
   const connectionPopup = useRef<Window | null>(null);
   const connectionChannel = useRef<BroadcastChannel | null>(null);
   const connectionFlow = useRef<string | null>(null);
@@ -407,6 +419,7 @@ export function useAgentStudio({
       refreshAgent: reloadAgent,
       saveSetup,
       saveIdentity,
+      saveAdvicePrice,
       connectX,
       readPosts,
       disconnectX,

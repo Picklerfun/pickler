@@ -191,6 +191,7 @@ function agent(paused: boolean, balanceAusd: number): Agent {
     paused,
     scheduleEnabled: false,
     nextDueAt: null,
+    advicePrice: { amount: "1.5", asset: "AUSD", decimals: 6 },
     wallet: { walletId: WALLET_ID, address: ADDRESS, balanceAusd },
     canSchedule: { ok: false, reason: "first_run" },
     canCreateAnother: { ok: true, reason: null },
