@@ -1,0 +1,348 @@
+{
+  "$schema": "./schemas/source-manifest.schema.json",
+  "bundleId": "pts-course",
+  "knowledgeVersion": "1.0.0",
+  "sourceLanguage": "es",
+  "lineConvention": "one-based-inclusive",
+  "textFileCount": 29,
+  "totalWords": 66637,
+  "mediaIncluded": false,
+  "sources": [
+    {
+      "id": "M1C1",
+      "module": 1,
+      "lesson": 1,
+      "originalFilename": "Modulo1 Clase1.txt",
+      "path": "sources/m01-c01.txt",
+      "language": "es",
+      "sha256": "f50d3da8341a4d4082dfc23d73cbe29ae6345a21f8558992f6029f357f3cbe9b",
+      "words": 3639,
+      "lines": 215
+    },
+    {
+      "id": "M1C2",
+      "module": 1,
+      "lesson": 2,
+      "originalFilename": "Módulo1 Clase2.txt",
+      "path": "sources/m01-c02.txt",
+      "language": "es",
+      "sha256": "f7e7987d7ceaaf30226eaf4eb0e87b39048bb867c9da8be68587299a0d9db3d3",
+      "words": 2696,
+      "lines": 156
+    },
+    {
+      "id": "M1C3",
+      "module": 1,
+      "lesson": 3,
+      "originalFilename": "Módulo1 Clase3.txt",
+      "path": "sources/m01-c03.txt",
+      "language": "es",
+      "sha256": "d2f7b1a1528c64feb15134113d4d2f8cb9f04be83b2132dbad69342ef60c3d20",
+      "words": 2460,
+      "lines": 154
+    },
+    {
+      "id": "M1C4",
+      "module": 1,
+      "lesson": 4,
+      "originalFilename": "Módulo1 Clase4.txt",
+      "path": "sources/m01-c04.txt",
+      "language": "es",
+      "sha256": "62bec97d5bedbaa3e64fe63f128ead1ba875c3018e65c4e128811c5818fee866",
+      "words": 2908,
+      "lines": 171
+    },
+    {
+      "id": "M1C5",
+      "module": 1,
+      "lesson": 5,
+      "originalFilename": "Módulo1 Clase5.txt",
+      "path": "sources/m01-c05.txt",
+      "language": "es",
+      "sha256": "c6f42102681b0849f077b22d5441606dcf721ca9f30f9e909d5d469ce66c2e39",
+      "words": 3530,
+      "lines": 212
+    },
+    {
+      "id": "M2C1",
+      "module": 2,
+      "lesson": 1,
+      "originalFilename": "Módulo2 Clase1 - Retroceso Fibonacci Tendencia Alcista.txt",
+      "path": "sources/m02-c01.txt",
+      "language": "es",
+      "sha256": "f73fecf3150649306cc020958a2be5cb614343880ce1d43a72f224db7772f9d0",
+      "words": 1914,
+      "lines": 111
+    },
+    {
+      "id": "M2C2",
+      "module": 2,
+      "lesson": 2,
+      "originalFilename": "Módulo2 Clase2 - Retroceso Fibonacci Tendencia Bajista.txt",
+      "path": "sources/m02-c02.txt",
+      "language": "es",
+      "sha256": "3b0716487aebb4a707674847ca43329938703ae082a159448e7afb5b950f7f0d",
+      "words": 949,
+      "lines": 55
+    },
+    {
+      "id": "M2C3",
+      "module": 2,
+      "lesson": 3,
+      "originalFilename": "Módulo2 Clase3 - Ejemplo de retroceso.txt",
+      "path": "sources/m02-c03.txt",
+      "language": "es",
+      "sha256": "5826562bd57ff1c4a7af0f72932c89142ef6442297d1cd73e88733a195aaca95",
+      "words": 3285,
+      "lines": 189
+    },
+    {
+      "id": "M2C4",
+      "module": 2,
+      "lesson": 4,
+      "originalFilename": "Módulo2 Clase4 - Ejemplo de retroceso con lectura de canales.txt",
+      "path": "sources/m02-c04.txt",
+      "language": "es",
+      "sha256": "0a61eccad2709e26a92f0542df0f54a6fa607286eb96d3a46c54efeeda602548",
+      "words": 1957,
+      "lines": 112
+    },
+    {
+      "id": "M2C5",
+      "module": 2,
+      "lesson": 5,
+      "originalFilename": "Módulo2 Clase5 - Expansión de Fibonacci.txt",
+      "path": "sources/m02-c05.txt",
+      "language": "es",
+      "sha256": "3d11f45813b303ba2d1cea1d189f1c9f2d64d4b475651e9c623807a79c345be7",
+      "words": 959,
+      "lines": 59
+    },
+    {
+      "id": "M2C6",
+      "module": 2,
+      "lesson": 6,
+      "originalFilename": "Módulo2 Clase6 - Ondas Madre.txt",
+      "path": "sources/m02-c06.txt",
+      "language": "es",
+      "sha256": "456fc10390fdb10dd3a1a657f0567197e0585ea5c3a5508b5b1310a83cbc238b",
+      "words": 1977,
+      "lines": 113
+    },
+    {
+      "id": "M2C7",
+      "module": 2,
+      "lesson": 7,
+      "originalFilename": "Módulo2 Clase7 - Figuras Phy.txt",
+      "path": "sources/m02-c07.txt",
+      "language": "es",
+      "sha256": "91a94d4b8a0ecfaa1d0a0494426209401c96264083b94d7b9f72f4af39859509",
+      "words": 3693,
+      "lines": 208
+    },
+    {
+      "id": "M2C8",
+      "module": 2,
+      "lesson": 8,
+      "originalFilename": "Módulo2 Clase8 - Ejemplos Figuras Phy.txt",
+      "path": "sources/m02-c08.txt",
+      "language": "es",
+      "sha256": "59889d6eb12f280150c3f7667ae05a0bd059a947ffac7a9a9d2ddcd43a90114e",
+      "words": 3710,
+      "lines": 215
+    },
+    {
+      "id": "M3C1",
+      "module": 3,
+      "lesson": 1,
+      "originalFilename": "Módulo3 Clase1 - Ejercicio Práctico.txt",
+      "path": "sources/m03-c01.txt",
+      "language": "es",
+      "sha256": "84d590cecab922dfd6b8024a62a1ff7a4c8831283c8f1989a3d20a16643c83c0",
+      "words": 3479,
+      "lines": 201
+    },
+    {
+      "id": "M3C2",
+      "module": 3,
+      "lesson": 2,
+      "originalFilename": "Módulo3 Clase2 - Concepto de liquidez.txt",
+      "path": "sources/m03-c02.txt",
+      "language": "es",
+      "sha256": "05fa599d778e25bca3509d85b5ac96b1cd1bb2c5c407ac2fe24e72daf89fcab9",
+      "words": 3269,
+      "lines": 191
+    },
+    {
+      "id": "M3C3",
+      "module": 3,
+      "lesson": 3,
+      "originalFilename": "Módulo3 Clase3 - Rangos Intermedios en el Mercado.txt",
+      "path": "sources/m03-c03.txt",
+      "language": "es",
+      "sha256": "a878668a1a081bf8d48fe94ad95ad0f1388baddb1332d58ba02696c56950d546",
+      "words": 2707,
+      "lines": 164
+    },
+    {
+      "id": "M3C4",
+      "module": 3,
+      "lesson": 4,
+      "originalFilename": "Módulo3 Clase4 - Triangulo Reventado.txt",
+      "path": "sources/m03-c04.txt",
+      "language": "es",
+      "sha256": "fcfc747fcf0482e530c05d6f39818b10a5834fe60270f4b7d794bd0f68669ce8",
+      "words": 2472,
+      "lines": 146
+    },
+    {
+      "id": "M3C5",
+      "module": 3,
+      "lesson": 5,
+      "originalFilename": "Módulo3 Clase5 - Cuña Phy.txt",
+      "path": "sources/m03-c05.txt",
+      "language": "es",
+      "sha256": "1a9f3613a2614ccde5747b78216be48ab41ce62b65610f0d2a6a0b09ef82d178",
+      "words": 1253,
+      "lines": 73
+    },
+    {
+      "id": "M3C7",
+      "module": 3,
+      "lesson": 7,
+      "originalFilename": "Módulo3 Clase7 - Leading Diagonal.txt",
+      "path": "sources/m03-c07.txt",
+      "language": "es",
+      "sha256": "5a7af756a7788d574a3cc9f255bac6a78d1d28ff67cdeeab0fc82eaac12fa731",
+      "words": 2222,
+      "lines": 131
+    },
+    {
+      "id": "M3C8",
+      "module": 3,
+      "lesson": 8,
+      "originalFilename": "Módulo3 Clase8 - Cobertura de Vendedores.txt",
+      "path": "sources/m03-c08.txt",
+      "language": "es",
+      "sha256": "105bd37abf910c821c6375a7cf6b3118e018a9a07519c81d2adee970029ca9c6",
+      "words": 962,
+      "lines": 67
+    },
+    {
+      "id": "M3C9",
+      "module": 3,
+      "lesson": 9,
+      "originalFilename": "Módulo3 Clase9 - Figuras Técnicas por Tipo de Zona.txt",
+      "path": "sources/m03-c09.txt",
+      "language": "es",
+      "sha256": "3b2dce1ff7df36df1cc963a879559fefba26a7f543f104342efbad58c6375afe",
+      "words": 980,
+      "lines": 60
+    },
+    {
+      "id": "M4C1",
+      "module": 4,
+      "lesson": 1,
+      "originalFilename": "Módulo4 Clase1 - Aplicación del Método PTS.txt",
+      "path": "sources/m04-c01.txt",
+      "language": "es",
+      "sha256": "bb86b12a8ad9c83425cb7f9649223f2c9aff766eaa221af47b21d57da827f2d9",
+      "words": 1010,
+      "lines": 60
+    },
+    {
+      "id": "M4C2",
+      "module": 4,
+      "lesson": 2,
+      "originalFilename": "Módulo4 Clase2 - Correlaciones.txt",
+      "path": "sources/m04-c02.txt",
+      "language": "es",
+      "sha256": "09dec7df641b3a304d500cca9718ba57feba0ad8fd5f59cc4e2a6a21266a6f4d",
+      "words": 699,
+      "lines": 44
+    },
+    {
+      "id": "M4C3",
+      "module": 4,
+      "lesson": 3,
+      "originalFilename": "Módulo4 Clase3 - Correlación Positiva.txt",
+      "path": "sources/m04-c03.txt",
+      "language": "es",
+      "sha256": "e65f3e5d32d72b33fa0b5f9f78344ba69212f983ba6cc8e0630007855ccdf333",
+      "words": 3122,
+      "lines": 183
+    },
+    {
+      "id": "M4C4",
+      "module": 4,
+      "lesson": 4,
+      "originalFilename": "Módulo4 Clase4 - Correlación Negativa.txt",
+      "path": "sources/m04-c04.txt",
+      "language": "es",
+      "sha256": "9a072fa26d1c57fcf130b07ce2040e2bf28042aa6993477e07bd90b0f46ced66",
+      "words": 1679,
+      "lines": 98
+    },
+    {
+      "id": "M4C5",
+      "module": 4,
+      "lesson": 5,
+      "originalFilename": "Módulo4 Clase5 - Índices alternos.txt",
+      "path": "sources/m04-c05.txt",
+      "language": "es",
+      "sha256": "bf9bcd5de88f08cb014c2c0c372c4a60056a5a10fd1fbf73675a780648218f08",
+      "words": 2604,
+      "lines": 147
+    },
+    {
+      "id": "M4C6",
+      "module": 4,
+      "lesson": 6,
+      "originalFilename": "Módulo4 Clase6 - Ejemplos de Correlaciones Basadas en Bitcoin.txt",
+      "path": "sources/m04-c06.txt",
+      "language": "es",
+      "sha256": "fe11e84038f77e704a7603fb02b1df81315498498088f372549d4ef5cbd0e875",
+      "words": 1678,
+      "lines": 103
+    },
+    {
+      "id": "M4C7",
+      "module": 4,
+      "lesson": 7,
+      "originalFilename": "Módulo4 Clase7 - Factores Clave para Identificar Tendencias.txt",
+      "path": "sources/m04-c07.txt",
+      "language": "es",
+      "sha256": "145c625b437b452dd9210363dd209bde6291c4bd375a70a8c41e3a383d8ea93e",
+      "words": 3448,
+      "lines": 198
+    },
+    {
+      "id": "M4C8",
+      "module": 4,
+      "lesson": 8,
+      "originalFilename": "Módulo4 Clase8 - Ratio Put Call.txt",
+      "path": "sources/m04-c08.txt",
+      "language": "es",
+      "sha256": "0766efba429a891664efec8fdb78284e0098e5beb58ee20d8a7fdaf34f50f0e7",
+      "words": 1376,
+      "lines": 99
+    }
+  ],
+  "coverageIssues": [
+    {
+      "id": "missing-M3C6",
+      "sourceId": null,
+      "description": "Module 3 lesson 6 was not supplied."
+    },
+    {
+      "id": "truncated-M3C7",
+      "sourceId": "M3C7",
+      "description": "The transcript ends mid-sentence on line 131."
+    },
+    {
+      "id": "missing-visual-coordinates",
+      "sourceId": null,
+      "description": "Illustrated anchors and chart coordinates are not available in the supplied text."
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "$schema": "../schemas/analysis-request.schema.json",
+  "bundleId": "pts-course",
+  "knowledgeVersion": "1.0.0",
+  "example": true,
+  "candidateId": "pts-trend-reversal",
+  "mode": "analysis-only",
+  "instrument": "BTC",
+  "analysisTime": "2026-10-10T00:00:00Z",
+  "marketEvidence": [],
+  "resolvedDefinitions": [],
+  "note": "Synthetic format example. No market observations or resolved policy definitions are supplied."
+}

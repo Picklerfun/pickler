@@ -1,0 +1,201 @@
+Vamos a iniciar el módulo 3 y esta será la primer clase en la cual iremos implementando
+no solamente lo que hemos ido aprendiendo, sino que todavía hay muchos elementos que
+necesitamos aprender, pero la idea es que en esta clase empecemos a ir aplicando en operaciones
+las estrategias aprendidas hasta ahora, de hecho puedes hacerlo en una cuenta demo o incluso puedes
+hacerlo en una cuenta real solamente utilizando una gestión de riesgo muy muy ajustada, idealmente
+incluso menos 1% o menos 0.5% de ser el caso en cuenta real y en demo dale todo lo que tú quieras
+opera y opera y opera utilizando ya las estrategias empleadas hasta ahora y para ello entonces vamos
+a cifrar las condiciones que necesitamos tanto para movimientos elsistas como para movimientos
+bajistas porque en las demás clases ya empezaremos con las partes más avanzadas de las estrategias
+y todo el resto de componentes que necesitas para poder ser un trader muy bien capacitado y muy bien
+preparado para navegar los mercados en estas eras evidentemente listo arrancando entonces con esto
+tenemos el esquema de la estrategia versión básica en este caso para un mercado alcista y ya lo
+haremos para un mercado bajista ok lo primero que necesitamos es que la tendencia del mercado sea
+alcista en marco semanal ok esa es la primer condición y de hecho quiero decir una cosa muy
+importante una de las de los mayores errores de los traders es querer forzar las operaciones quizás
+te ha pasado que quieres forzar una operación forzar un mercado forzar una tendencia eso no debe
+ocurrir más bien el mercado tiene que convencerte a ti demostrándote que hay una tendencia alcista en
+vez de ser usted el que quiere por ejemplo operar mercados que no tienen una tendencia clara y eso
+le pasa mucho por ejemplo a los que son traders de cripto porque las altcoins y ahora vemos de eso
+más adelante durante ciertos momentos son alcistas la mayoría pero hay muchos rangos en los que están
+bajistas o están laterales son pocas las altcoins que permanentemente están alcistas en realidad
+son pocas entonces muchas veces los traders se quedan forzando y forzando y forzando o incluso
+hay acciones que suelen tener comportamientos débiles y hay traders que tal vez son fans de
+dichas acciones o si tienen un apego por dichas acciones y se quedan forzando la tendencia eso
+no debe ocurrir hay un universo de oportunidades en los mercados entre el cripto de la bolsa el
+mismo forex hay un universo de oportunidades así que siempre debes irte a operar si es el caso
+para la estrategia alcista por un mercado que verdaderamente tenga una estructura alcista en
+semanal si no la tiene déjalo no lo peres y nos vamos a ir a trabajar otro tipo de activos y
+ya está entonces lo primero que decimos es ok tendencia alcista en marco semanal vale
+cuando tenemos una tendencia alcista en marco semanal tenemos que ser capaces de
+identificar algún tipo de canal alcista tiene que haber un canal alcista si es posible que haya
+una tendencia alcista en semanal cuando ocurra eso lo ideal sería buscar una corrección a la
+parte baja del canal es decir a la parte de soportes en estos niveles es ideal poder encontrar el
+mercado que tenga un tipo de corrección sobre este nivel cuando eso ocurre tomemos por el caso
+este ejemplo lo que vamos a hacer es trazar un fibonacci del mínimo anterior hacia esta zona
+de reversión entonces cómo lo hacemos nos vamos aquí a la casilla de fibonacci hacemos clic y
+nos vamos del mínimo anterior al máximo y ahí encontramos la zona de reversión ok primer
+punto clave sobre este nivel tenemos el canal alcista y tenemos la zona de reversión ahora
+dicho esto nos vamos a ir entonces a trazar un fibonacci desde el máximo anterior donde inició
+el retroceso entonces nos vamos desde este máximo anterior y nos vamos a la parte del mínimo ok
+durante la zona de reversión que está dentro del canal alcista ojo que esto puede tener alguna
+falsa ruptura no hay problema no hay problema si tiene falsa ruptura siempre y cuando entre
+24 72 horas esté reinsertándose o esté demostrando figuras alcistas ya vamos a hablar de ello
+entonces trazamos el retroceso y fibonacci que sería en este caso desde este máximo hasta este
+mínimo y la entrada a la que podemos buscar sería ya a partir del 23 ya aquí sobre el 0 23 podemos
+buscar y la entrada de hecho vamos a ponerlo aquí bien sobre el nivel del 0 23 podemos tener la
+entrada pero también podemos tener una entrada incluso en la zona del 38 si es tal vez un mercado
+en el que quisiéramos una capa extra de confirmación ok ahora si tenemos sobre este nivel formación
+ok si tenemos de este nivel formación de fiel cista o de onda madre todavía mejor y de hecho
+sería muy apetecible que si sobre este nivel tenemos por ejemplo una falsa ruptura y vamos a
+ponerlo aquí en un color celeste puede ser si tenemos una falsa ruptura o un fiel cista y sobre
+este fiel cista tenemos una onda madre eso sería magnífico literalmente sería magnífico porque
+la mayoría traders asumiría que ya rompió el canal bajista y con esta formación estaríamos muy
+prestos a operar una tendencia una tendencia alcista decir que se haya generado una falsa
+ruptura del canal que en realidad el mercado se devuelva al canal al cista y sobre este nivel una
+formación de fí con onda madre sería absolutamente magnífica por eso pues bueno
+buscando la zona en el 0 23 o incluso en el 38 si se quiere un poco más de confirmación esto
+vendría súper bien incluso si nos vamos a favor de la tendencia pues bueno donde podemos colocar
+el estop el estop lo podemos colocar ya sea por debajo de la zona de reversión por debajo del 0
+78 o si se llega a formar un fiel cista por debajo de el mínimo del fío por debajo del mínimo de
+la onda madre sobre este nivel se puede colocar y la entrada sería en el nivel del 0 23 si la
+pones en el 0 23 puedes usar el punto del 0 38 como una zona de break even o sea como una zona stop
+en punto de ganancia pero si eliges usar el 0 38 como punto de entrada para mayor confirmación
+lo que puedes hacer es que a la mitad de recorrido entre el 38 y el 61 el 0 50 o simplemente en la
+mitad del recorrido puedes poner ahí tu nivel de break even y el primer target puede ser el 0
+61 este generalmente es un buen target inicial muy apto para alcanzarse en términos de probabilidades
+el segundo target el 0 78 y el tercer target ya si rompe el 0 78 puede ser todos los niveles
+adicionales que sería el punto 1 el 1 27 y el 1 61 y por qué porque la clave está en que estaríamos
+agarrando una corrección a favor de una tendencia al cista de hecho sin algún momento la tendencia se
+llega a romper por lo menos la zona de reversión sería valida ves entonces un esquema de este
+tipo sería extremadamente extremadamente atractivo un esquema de este tipo sería literalmente una gran
+oportunidad para atradiar y eso es lo que muchas veces hacemos literalmente eso es gran parte de
+nuestro trabajo es buscar entradas o buscar operaciones en canales alcistas donde hay falsas
+rupturas pero que están respetando zonas de reversión de el impulso anterior y que están
+formando fiel cista y que están formando ondas madres etcétera etcétera etcétera ahora más
+adelante podemos verlo porque también si nos perdimos esta entrada durante el camino se puede ir
+operando ya lo vemos viendo pero idealmente en este momento en esa zona correctiva es una zona
+muy muy buena en términos de oportunidad ahora hablemos de la versión básica igualmente pero
+en estilo bajista que sería prácticamente lo mismo se identificar un mercado que se encuentre en
+una plena tendencia bajista en marco semanal o sea un mercado que ya ha hecho techo que está en un
+camino bajista en un derrotero bajista y aquí sería simplemente pues bueno lo mismo tenemos un gráfico
+que está en tendencia bajista tiene un canal bajista en semanal buscamos entonces si el mercado
+genera un rebote hacia esta zona ok buscamos entonces la zona de reversión del máximo anterior si
+efectivamente es una tendencia bajista debería respetar la zona de reversión del máximo anterior
+el nivel 061 078 y adicionalmente desde donde nace el rebote hacia el máximo anterior podemos trazar
+ese retroceso de fibonashi podemos trazar la zona de retroceso y adicionalmente pues bueno podríamos
+ver si sobre este nivel en las inmediaciones de la zona de reversión de la parte alta del canal
+tenemos algún tipo de formación de fi bajista ok y algún tipo de formación de onda madre
+bajista decir en este caso a la baja ahora para ser claro idealmente idealmente en tendencias
+bajistas si se debería respetar la zona de reversión del máximo anterior pero bueno igualmente veremos
+algunos ejemplos si veremos determinados casos pero si tenemos formación de fi bajista con onda
+madre esto usualmente le da mucho potencial para poder operar un movimiento bajista y en el caso
+operar un movimiento bajista las reglas son las mismas que en el movimiento alcista se puede buscar
+entrada en el 023 o se puede buscar entrar el 038 si se agarra en el 23 el 38 se convierte en zona de
+breakeven si si se usa todavía el 38 como entrada aquí a mitad de camino entre el 61 y el 38 podemos
+poner allí el breakeven y en el 061 podemos poner una ganancia un target de ganancia en el 078
+también y si se genera el quiebre bajista podemos ir a los targets complementarios como el del 1 1
+027 y 1 061 claro porque es que esa es digamos la belleza de operar a favor de la tendencia que la
+zona de reversión que está que estaríamos a la que estaríamos alcanzando con el precio puede
+ser perforada y puede eventualmente llegar a romperse y generar targets adicionales ok bien
+vamos a irnos a diversos ejemplos que esto en diversos marcos temporales puede ser muy
+útiles y pueden ser muy interesantes en el caso de bitcón vamos a ver algunos interesantes veamos
+por ejemplo el semanal ok el semanal tenemos si nos vamos con bitcón y sobre el nivel semanal
+tenemos este canal alcista que que ha venido acompañando a bitcón desde el 2023 vamos a
+trazarlo en semanal muy bien ahí está vale ahí va el canal alcista cierto si nos vamos ya
+ahora si el gráfico diario por ejemplo podemos notar que desde que bitcón arrancó con estos
+movimientos alcistas tenemos una zona de reversión muy bien delimitada vamos a poner 061 078 apenas
+aquí sobre esta zona alcanzó el 061 excelente adicionalmente vean que si trazamos el retroceso
+del máximo anterior a la zona del mínimo vamos a poner el retroceso fibonacci ahí está ok tenemos
+entonces que el 023 se encontraría en 83 mil dólares el 038 en 88000 061 96 078 en 102 mil
+dólares y vean lo que justamente decíamos que si existe formación y vamos a irnos al gráfico de
+cuatro horas si existe formación de fi alcista sobre el nivel mucho pero que mucho mejor de hecho
+que a corto plazo aquí tenemos este fi e alcista y adicionalmente vean cómo aquí se formó una
+onda madre entonces prácticamente tuvimos todos los escenarios en intradiario así también como
+en diario absolutamente ideales ideales para un escenario que nos decía que bitcón podía entonces
+iniciar todo un proceso o todo un movimiento alcista y que ocurre que pues bueno bajo estas
+condiciones y de hecho que así fue como se planteó el stop podía rondar aquí sobre el nivel de
+74 mil dólares de hecho que esta fue una operación real la entrada 83 mil de hecho que incluso en la
+entrada real que hicimos con nuestros miembros con todo el equipo fue en 82 o ligeramente por
+debajo de 83 y un punto de break y ven pueden ser los 88 una zona de ganancia pueden ser los 96 102
+de target también adicional y como está rompiendo los 102 gracias a que estamos trabajando el canal
+alcista pues bueno targets adicionales eventualmente podrían ser el 1 27 o el 1 61 digamos que la
+ventaja de esto es que desde el momento en el que usted tiene el stop en punto de entrada pues ya
+usted trabaja tranquilo o sea desde el momento en el que usted ya va en ganancias y pues bueno
+deja de tener riesgo a perder dinero sino que simplemente lo que lleva de excedente de ganancias
+pone el stop un punto de entrada ya usted va completamente tranquilo completamente tranquila
+y así que simplemente dejar que el mercado navegue nosotros la forma en la que marcamos las
+ganancias es muy simple tomamos ganancias parciales es decir que se yo en cada target se puede tomar
+un 15 por ciento de la posición y se deja jodiendo el resto y así sucesivamente ok o incluso si se
+quiere ser más conservador se puede tomar un 20 por ciento en cada target y así sucesivamente
+es decir se puede ir tomando ganancias parciales es decir dejas una parte corriendo porque el mercado
+todavía tiene posibilidad especialmente cuando se trabaja a favor de la tendencia pero también
+vas amarrando algo de ganancias sobre el camino ahora si nos vamos por ejemplo
+con otros mercados veamos veamos un caso bajista veamos cuando tuvimos la tendencia bajista del
+2022 en el caso de la tendencia bajista del 2022 en marco semanal hubo todo un año bajista claro
+eso estaba dentro de un megacana está dentro de un megacana la alcista al system en mensual pero
+digamos que pues un año entero no se puede ignorar cierto y este año entero fue en su momento
+bajista ok tuvimos un año entero bajista en el ese pequeñito también lo tuvimos en bitcón cuando
+cayó de 69 mil a 15 mil dólares entonces por ejemplo vean que de este máximo anterior a este
+mínimo el rebote al que llegó el ese pequeñito sobre este nivel fue justo la zona de reversión
+justo aquí estuvo en la zona de reversión por lo tanto si trazamos un retroceso de este
+mínimo al máximo del rebote vamos a poner aquí el retroceso una entrada en short pudo haber sido
+aquí sobre los 4171 break even en los cuatro mil 74 una zona de target entre mil novecientos y
+aquí hizo que era bajista tres mil setecientos noventa y siete tres mil seiscientos cincuenta y
+uno y pues bueno casi llega casi llega el uno sesenta y uno llegó mira que casi lo llega por
+si acaso 25 puntos hubiera llegado y ahí la tendencia bajista se terminó ahí la tendencia
+bajista se cerró pero por lo menos hubiese sido una operación muy interesante en la cual hubiese
+generado cuantiosas ganancias hubieran sido ganancias bastante bastante llamativas es decir una operación
+de trading y bastante bastante buena vamos a ir hacia estos niveles para que se habrían sido
+targets sumamente interesantes ahora hay algo que les quiero mostrar y vamos a ver si ustedes
+han tenido ojo para verlo si tomamos en cuenta de este impulso hacia la zona donde hizo este
+techo ok que está en la parte alta del canal bajista ven que interesante esto aquí
+vamos a trazarlo aquí nos forma un fi absolutamente perfecto ahí está ven que
+interesante si trazamos este fi aquí trazamos este fi bien bonito y nos genera exactamente
+la resistencia sobre el 1 27 lo cual nos indicaba que ya sobre estos niveles podían haber problemas
+podían haber todos los indicios de una potencial vuelta a la tendencia bajista o sea que esto
+habría sido un simple rebote y a partir de allí vendría dicho dicho movimiento ok muy bien
+y ahora vamos a ver otro ejemplo vamos a ver otro ejemplo sobre estos activos financieros vamos
+a irnos con apple en el caso de apple ok podemos trazar muy claramente un canal al cista bueno
+el apple dejara de ser al cista cuando ya la gente no le guste los celulares iphone ni las
+tablets ni ni nada los ipads a todo el mundo le encanta eso no bien bueno casi todo el mundo
+evidentemente entonces si nos vamos sobre este nivel ven que interesante esta última corrección que
+tuvo si trazamos desde los mínimos de noviembre de 2022 a este nivel actual tenemos una zona de
+reversión no sólo eso sino que noten que aquí prácticamente estaría formando onda madre con
+estos niveles de mínimo no sólo eso sino que también internamente vienen que desde este mínimo
+hacia este nivel se hace confluencia ya en este caso con un fi a ponerlo el rojo para que para
+que se destaque y porque digo que son fi porque si trazamos el retroceso fi bonacci bien que
+interesante justo allí se formó el fi esta confluencia de estonda madre gigantesca con este
+fi con la zona de reversión etcétera lo que quería decir era que estera un punto caliente
+este era un punto muy muy muy provechoso para que el canal al cista tuviese posibilidad de
+sostenerse por lo tanto vamos para acá incluso vean que aquí se formó una onda madre muy bonita
+formación de onda madre tracemos el retroceso completo yéndonos al retroceso vamos a ponerlo
+aquí está vean como el apple en este caso logró llegar al 23 un stop por debajo del mínimo
+habría sido 165 se puede poner stop en punto de entrada a partir de la zona de 203 un target
+que ven totalmente podría alcanzar sería 255 y luego el nivel de 240 y es allí donde entramos
+después a la especulación de que como estamos operando a favor de un mega canal al cista si rompe
+el 61 y rompe el 78 puede llegar a trabajar estos targets adicionales que serían los niveles del
+1 del 161 y del 1 27 ven yéndonos aquí sobre este nivel estaríamos diciendo que sería los 258
+los 283 y los 313 muy bien aquí estos serían los niveles a los que podríamos trabajar apple
+en este sentido muy bien ahora yéndonos por ejemplo a interactive brokers bueno en caso de
+interactive brokers ya si ven a ojo aquí hay un fí gigantesco o sea esto es un fí el tamaño de
+marte y noten bueno noten que estos estaban 130 dólares ya se fue a los 203 gráficos
+semanal vámonos al semanal que el semanal pues bueno es extremadamente útil para sacar canales
+al cistas aquí se ve claramente la formación de un canal al cista y venimos trazamos nuestro canal
+al cista hay un fí gigantesco este fí gigantesco que está aquí no solamente está allí sino que
+piensen ustedes que si nos vamos desde este mínimo hacia la zona donde se formó este fí también
+tenemos una zona de reversión que la respetó perfecta y venense que sigo en el gráfico
+semanal o sea qué movimiento más limpio el de interactive brokers si trazamos la zona de
+retroceso le volvamos al gráfico diario si trazamos la zona de retroceso miren qué hermoso
+la armonía con la que tenemos este trabajo tenemos 23 38 6 1 78 y si rompe el 78 se nos
+vuela interactive brokers hacia el 1 27 hacia el 1 61 y noten que esto es perfectamente válido
+porque habíamos dicho que si un mercado rompe un canal al cista al alza pues bueno tiene potencial
+para ir hacia niveles más y más altos aquí está el 61 aquí estaría el 78 y aquí estarían estos
+targets adicionales ahora algo que les quiero comentar es que miren que sobre el camino también
+formó una hondita madre aquí sobre este nivel así que pues bueno bastante armonía en sus movimientos
+bastante armonía en ese trabajo hacia este nivel de corrección esta es una forma de implementar
+esa estrategia básica vamos a ir trabajando más cosas a lo largo del camino pero quiero que dediques
+un tiempo a buscar esto en gráficos no solamente cosas que estén pasando ya y que esté dispuesto
+a operarlo sino también en el pasado para que vayas entendiendo la estructura del mercado trate
+de identificar incluso movimientos pasados este tipo de estructuras para que vayas acostumbrando a
+tener ese ojo de águila que vas a desarrollar en protreading skills

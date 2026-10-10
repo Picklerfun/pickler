@@ -215,3 +215,12 @@ See the canonical selection/version, preservation and controlled acceptance boun
 runtime activation is implied.
 
 See [agent-selected Perpl markets](../../docs/studio-perpl-markets.md).
+
+## Private trading baseline
+
+Read [TRADING-BASELINE.md](TRADING-BASELINE.md) for `evaluate baseline-export`, `baseline-verify`
+and `baseline-restore-check`. Their dispatch precedes provider composition. Export consumes an
+explicit inventory and loopback database configuration only; verify is offline; recovery uses
+fresh directories and a separate PostgreSQL cluster. Never overwrite originals, omit changing
+files silently, resume restored sessions, reset budgets or register the disabled PTS candidate.
+Private artifacts stay outside Git. Source PTS bytes and prior strategy versions remain unchanged.
