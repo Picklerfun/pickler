@@ -86,3 +86,21 @@ Pickler factory or graduation deployment. The deployed token uses MIT sources; u
 retain their licenses. No operational Kuru adapter, liquidity custodian, fee-only claim path or
 new-generation integration is introduced. Keep this evidence separate from controlled tests and
 from the historical V4 fork results.
+
+## Controlled Kuru passive integration
+
+`PicklerGraduationAdapterKuru`, `PicklerCurveDeployerKuru`, `PicklerKuruLiquidityLocker`,
+`PicklerKuruPositionVault`, `PicklerFeeEscrowV2` and `libraries/PicklerKuruPolicy.sol` add a
+separate testnet-only passive venue. Factory venue hashes bind new preset versions without
+changing historical preset hashes. Each launch has isolated permanent principal custody; only
+verified fee receipts leave, in their received asset. The V2 escrow initializes only with matching
+factory/deployer/adapter/locker bindings and ignores donations. Old V4 escrows retain their behavior.
+Compiler-generated minimal `IKuruPassive.sol` interfaces do not include SDK implementation code.
+
+The [integration guide](../docs/market/kuru-passive-integration.md) and
+[readiness record](../docs/market/kuru-passive-readiness.json) distinguish controlled atomic-unit
+models from unavailable remote passive-generation verification. No commercial Kuru profile or
+Pickler deployment is approved. Do not enable launches, substitute legacy, or treat unchanged
+proxy runtime hashes as unchanged implementations. Offline tests use controlled account/market
+contracts only; the external generation, units, band semantics, admission and administration
+remain explicit activation gates.
