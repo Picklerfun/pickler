@@ -25,7 +25,7 @@ export function studioTokenRoutes(services: StudioServices) {
       errors: dto.studioErrorSchema,
       errorStatuses: errors,
       description:
-        "Owner-only stored token intent, confirmed identity and optional reference economics. Reference terms are not a published preset or executable quote. No chain or signer call. Launch authorization is unavailable in ordinary composition.",
+        "Owner-only stored token intent, confirmed identity and optional reference economics. Reference terms are not a published preset or executable quote. No chain or signer call. Launch remains unavailable without the independently verified testnet configuration.",
     }),
     async (c) => {
       const target = await scope(c);
@@ -64,7 +64,7 @@ export function studioTokenRoutes(services: StudioServices) {
       errors: dto.studioErrorSchema,
       errorStatuses: errors,
       description:
-        "Issues an idempotent five-minute platform launch grant only with an injected controlled issuer. Ordinary composition always refuses. This is not a creator signature, transaction submission or proof of deployment.",
+        "Issues an idempotent five-minute platform launch grant only with a verified testnet configuration and dedicated backend issuer. This is not a creator signature, transaction submission or proof of deployment.",
       idempotent: true,
     }),
     async (c) => {
@@ -83,6 +83,115 @@ export function studioTokenRoutes(services: StudioServices) {
       return c.json(
         dto.tokenAuthorizationSchema.parse(
           await services.tokens.authorize(target, body.expectedVersion, key),
+        ),
+      );
+    },
+  );
+
+  api.post(
+    "/agents/:id/token/operations",
+    operation("studioTokenPrepareOperation", {
+      security: "user",
+      body: dto.tokenOperationInputSchema,
+      response: dto.tokenOperationPreparedSchema,
+      errors: dto.studioErrorSchema,
+      errorStatuses: errors,
+      idempotent: true,
+      description:
+        "Owner-only testnet preparation of an enumerated launch or fee action. The backend resolves all wallets/contracts/calldata and freezes a durable intent before external work. Requires verified Kuru policy; no transaction is sent.",
+    }),
+    async (c) => {
+      const target = await scope(c);
+      const body = dto.tokenOperationInputSchema.parse(await c.req.json());
+      const key = z
+        .string()
+        .regex(/^[A-Za-z0-9_-]{16,120}$/)
+        .parse(c.req.header("Idempotency-Key"));
+      if (!services.tokenOperations) {
+        return c.json({ error: "TOKEN_UNAVAILABLE", message: "Token operations unavailable" }, 503);
+      }
+      return c.json(
+        dto.tokenOperationPreparedSchema.parse(
+          await services.tokenOperations.prepare(
+            target,
+            {
+              action: body.action,
+              expectedVersion: body.expectedVersion,
+              ...(body.asset ? { asset: body.asset } : {}),
+            },
+            key,
+          ),
+        ),
+      );
+    },
+  );
+  api.post(
+    "/agents/:id/token/operations/:operationId/confirm",
+    operation("studioTokenConfirmOperation", {
+      security: "user",
+      body: dto.tokenOperationConfirmSchema,
+      response: dto.tokenOperationSchema,
+      errors: dto.studioErrorSchema,
+      errorStatuses: errors,
+      description:
+        "Byte-exact existing passkey activity confirmation. Persists signing admission and signed transaction before one broadcast. Uncertain responses require reconciliation, never another grant or replacement.",
+    }),
+    async (c) => {
+      const target = await scope(c);
+      const body = dto.tokenOperationConfirmSchema.parse(await c.req.json());
+      const id = z.string().uuid().parse(c.req.param("operationId"));
+      if (!services.tokenOperations) {
+        return c.json({ error: "TOKEN_UNAVAILABLE", message: "Token operations unavailable" }, 503);
+      }
+      return c.json(
+        dto.tokenOperationSchema.parse(
+          await services.tokenOperations.confirm(target, id, body.expectedVersion, body.signed),
+        ),
+      );
+    },
+  );
+  api.get(
+    "/agents/:id/token/operations/:operationId",
+    operation("studioTokenOperationStatus", {
+      security: "user",
+      response: dto.tokenOperationSchema,
+      errors: dto.studioErrorSchema,
+      errorStatuses: errors,
+      description:
+        "Explicit bounded reconciliation of the same activity/hash. No signing, replacement or automatic broadcast. Inclusion alone never confirms token identity; canonical indexer attribution is required.",
+    }),
+    async (c) => {
+      const target = await scope(c);
+      const id = z.string().uuid().parse(c.req.param("operationId"));
+      if (!services.tokenOperations) {
+        return c.json({ error: "TOKEN_UNAVAILABLE", message: "Token operations unavailable" }, 503);
+      }
+      return c.json(
+        dto.tokenOperationSchema.parse(await services.tokenOperations.status(target, id)),
+      );
+    },
+  );
+  api.post(
+    "/agents/:id/token/operations/:operationId/cancel",
+    operation("studioTokenCancelOperation", {
+      security: "user",
+      body: dto.tokenOperationCancelSchema,
+      response: dto.tokenOperationSchema,
+      errors: dto.studioErrorSchema,
+      errorStatuses: errors,
+      description:
+        "Cancels only before signing admission. Does not erase the grant/nonce or make an uncertain signed operation retryable.",
+    }),
+    async (c) => {
+      const target = await scope(c);
+      const body = dto.tokenOperationCancelSchema.parse(await c.req.json());
+      const id = z.string().uuid().parse(c.req.param("operationId"));
+      if (!services.tokenOperations) {
+        return c.json({ error: "TOKEN_UNAVAILABLE", message: "Token operations unavailable" }, 503);
+      }
+      return c.json(
+        dto.tokenOperationSchema.parse(
+          await services.tokenOperations.cancel(target, id, body.expectedVersion),
         ),
       );
     },
