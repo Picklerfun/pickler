@@ -12,7 +12,7 @@ import {
 const scope = { userId: "owner", workspaceId: "workspace", agentId: "agent" };
 const address = `0x${"1".repeat(40)}`;
 const hash = `0x${"a".repeat(64)}`;
-function fixture() {
+export function fixture() {
   const context: TokenContext = {
     ownerUserId: "owner",
     enabled: true,
@@ -52,12 +52,12 @@ function fixture() {
       lpCreatorShareBps: 5000,
       launchFee: "0",
     },
-    async issue({ draft, chainId, deadline }) {
+    async issue({ draft, chainId, deadline, nonce }) {
       calls++;
       return {
         chainId,
         factory: address,
-        grantNonce: "1",
+        grantNonce: nonce,
         grantDeadline: deadline,
         signature: "0x1234",
         params: {
@@ -71,13 +71,48 @@ function fixture() {
           presetId: 1,
           presetVersion: 1,
           expectedConfigHash: hash,
-          nonce: "1",
+          nonce,
           deadline,
         },
       };
     },
   };
+  const intents = new Map<
+    string,
+    import("../src/features/launch/token-operations.js").TokenIntent
+  >();
   const tx: TokenTransaction = {
+    intents: {
+      async read(key) {
+        return structuredClone(
+          [...intents.values()].find((i) => i.id === key || i.key === key) ?? null,
+        );
+      },
+      async active() {
+        return [...intents.values()].some(
+          (i) => !["failed", "cancelled", "finalized"].includes(i.status),
+        );
+      },
+      async reserve(input) {
+        const value = {
+          ...structuredClone(input),
+          id: "11111111-1111-4111-8111-111111111111",
+          version: 1,
+          nonce: "1",
+        };
+        intents.set(value.id, value);
+        return structuredClone(value);
+      },
+      async update(intent, patch) {
+        const current = intents.get(intent.id)!;
+        if (current.version !== intent.version) {
+          throw new Error("TOKEN_DRAFT_CONFLICT");
+        }
+        const value = { ...current, ...structuredClone(patch), version: current.version + 1 };
+        intents.set(value.id, value);
+        return structuredClone(value);
+      },
+    },
     context,
     now: new Date("2026-10-08T00:00:00Z"),
     async draft() {
@@ -111,7 +146,7 @@ function fixture() {
     ) => work(tx),
   };
   const service = createTokenLaunchService({ repository, chainId: 10143, issuer });
-  return { context, issuer, tx, service, repository, calls: () => calls, grants };
+  return { context, issuer, tx, service, repository, calls: () => calls, grants, intents };
 }
 test("every business admission is checked before calling the injected signer", async () => {
   for (const patch of [
