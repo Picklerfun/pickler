@@ -281,3 +281,11 @@ Component-paper services may use the optional captured-frame execution port to a
 and confirm one shared frame in a single fenced transaction. The runner reuses its committed
 view only for this explicit policy; historical and product paths retain their prior lifecycle.
 The port does not acquire fresh data, alter proof timestamps, change prices or financial rules.
+
+Component-paper common observations use the optional `observeCommon` port for both v7 accounts.
+One copied input and financial/receipt clock precede all maintenance; a confirmed transaction
+rollback on demonstrated native/heartbeat aging records an unavailable observation or slot.
+`isComponentFrameExpiry` classifies aging only, never identity/schema, future-date or ownership
+failures. Initial/final marks and funding reuse the common port. A partially committed observation,
+financial maintenance failure or uncertain commit cannot become an omission. Legacy paths remain
+unchanged. Controlled six-hour tests use synthetic evidence and do not establish live availability.
