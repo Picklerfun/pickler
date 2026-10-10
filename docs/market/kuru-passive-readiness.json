@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "chainId": 10143,
+  "venue": "kuru_passive",
+  "reviewedAt": "2026-10-09",
+  "status": "blocked",
+  "sdk": {
+    "commit": "8588784c4d54183a04029cb1b513910c806905a9",
+    "contractsRevision": "cdac5ae1311ce4793f80d604d25f9713fcfed57d",
+    "license": "UNLICENSED",
+    "installed": false
+  },
+  "approvedVenueConfigHash": null,
+  "deployments": [],
+  "evidence": {
+    "reproducibleSources": false,
+    "implementationIdentity": false,
+    "testnetDeployment": false,
+    "tokenAdmission": false,
+    "atomicUnits6And18": false,
+    "bandPriceAndNotional": false,
+    "feeOnlyClaimPreservesPrincipal": false,
+    "administrationAndUpgradePolicy": false,
+    "commercialFeeConfiguration": false
+  },
+  "legacyProbe": "kuru-testnet-probe.json",
+  "legacyFallbackAllowed": false,
+  "sources": [
+    "https://docs.kuru.io/contracts/Contract-addresses",
+    "https://github.com/Kuru-Labs/ts-sdk/blob/8588784c4d54183a04029cb1b513910c806905a9/src/generated/abis.ts",
+    "https://github.com/Kuru-Labs/ts-sdk/blob/8588784c4d54183a04029cb1b513910c806905a9/package.json"
+  ]
+}
