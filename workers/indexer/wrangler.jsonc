@@ -9,8 +9,8 @@
   "triggers": { "crons": ["* * * * *"] },
   "limits": { "cpu_ms": 300000 },
   "observability": { "enabled": true },
-  // No Hyperdrive id and no contract address yet: nothing is deployed, so the worker refuses
-  // to run rather than indexing a guessed address. Both are set when the contracts land.
+  // Isolated testnet contracts exist, but reviewed hosted configuration is still pending.
+  // No trusted Hyperdrive binding or active factory policy is guessed from those receipts.
   "vars": {
     "APP_ENV": "staging",
     "CHAIN_ID": "10143",
