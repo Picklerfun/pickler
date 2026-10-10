@@ -1,4 +1,4 @@
-# Testnet launcher and passive Kuru operations
+# Testnet launcher and versioned venue operations
 
 ## Current boundary
 
@@ -6,28 +6,30 @@ The launcher composes a dedicated backend EIP-712 grant authority, immutable R2 
 Studio's existing Turnkey passkey, a direct master-wallet factory transaction, private durable
 operations and a bounded indexer. Ordinary composition remains disabled. Mainnet is rejected.
 
-[Passive readiness](kuru-passive-readiness.json) is **blocked**. The legacy transaction record
-is compatibility evidence only. No passive deployment, admission for arbitrary Pickler tokens,
-fee-only collection or end-to-end Pickler graduation has been accepted remotely. Do not turn on
-any gate by copying legacy addresses or a controlled policy fixture.
+The current launcher supports the separate reviewed Uniswap V4 policy version 2. Its
+[real contract acceptance](uniswap-v4-testnet-integration.md) completed, but hosted Studio/passkey,
+R2 and indexer acceptance is still pending. [Passive Kuru readiness](kuru-passive-readiness.json)
+remains blocked after [live verification](kuru-verification-20261010/verification.md). Historical
+Kuru policy version 1 stays readable; never substitute legacy addresses or a fixture policy.
 
 ## Configuration and preflight
 
 API Worker runtime only:
 
-| Binding                      | Meaning                                                                                                                                                                                                                                      |
-| ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `TOKEN_LAUNCH_ENABLED`       | Explicit `true` after readiness and operator approval; absent means disabled                                                                                                                                                                 |
-| `TOKEN_LAUNCH_POLICY_JSON`   | Strict version 1, chain 10143, complete deployment/source/implementation records and evidence, approved venue/preset hashes, authority/treasury, restricted agent UUIDs, metadata origin, gas ceilings, RPC allowance and confirmation depth |
-| `TOKEN_LAUNCH_AUTHORITY_KEY` | Dedicated grant-only secret; never the operator, treasury or master-wallet key                                                                                                                                                               |
-| `TOKEN_METADATA`             | R2 bucket binding; no public write endpoint                                                                                                                                                                                                  |
+| Binding                      | Meaning                                                                                                                                                                                                                                                                                             |
+| ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `TOKEN_LAUNCH_ENABLED`       | Explicit `true` after readiness and operator approval; absent means disabled                                                                                                                                                                                                                        |
+| `TOKEN_LAUNCH_POLICY_JSON`   | Strict venue-discriminated version 2 for V4 (historical Kuru version 1), chain 10143, complete deployment/source/implementation records and evidence, approved venue/preset hashes, authority/treasury, restricted agent UUIDs, metadata origin, gas ceilings, RPC allowance and confirmation depth |
+| `TOKEN_LAUNCH_AUTHORITY_KEY` | Dedicated grant-only secret; never the operator, treasury or master-wallet key                                                                                                                                                                                                                      |
+| `TOKEN_METADATA`             | R2 bucket binding; no public write endpoint                                                                                                                                                                                                                                                         |
 
 Existing `MONAD_RPC_URL`, Turnkey parent reader credentials and the registered Studio relying
 party are reused. There is no relayer, marketplace/Mera signer or new passkey registration.
 No secret belongs in Next.js, `chain`, OpenAPI, Git or a transaction URL.
 
-The policy must enumerate the factory, Kuru curve deployer, adapter, escrow, locker, passive
-router and account core. Each record includes deployment block, runtime hash, source reference,
+The V4 policy enumerates factory, curve deployer, adapter, escrow, locker, PoolManager,
+PositionManager, StateView, Permit2 and AUSD. Historical Kuru policy keeps its own router/account
+fields. AUSD requires its reviewed proxy implementation slot and runtime hash. Each record includes deployment block, runtime hash, source reference,
 implementation slot/hash where applicable and an administration review. All readiness evidence
 must be true. `allowedAgents` lists at most ten approved testnet agent UUIDs; every other agent
 remains unable to launch even when the host gate is enabled. Before a grant and again during preparation/submission, live reads check that
@@ -97,9 +99,9 @@ under their content hashes with conditional creation and then verified. `/v1/tok
 is public, immutable, hash-verified read access only (web path `/api/v1/token-assets/:file`).
 Confirmed token cards read the frozen image, independent of subsequent agent edits.
 
-The new Kuru adapter/vault/locker path uses actual curve backing, deterministic committed bands,
-and permanent principal custody. No rescue, principal withdrawal, generic call or upgrade is
-exposed. Remainders and donations cannot be counted as fee receipts. Kuru fees are divided 50/50
+The new V4 adapter/locker uses actual curve backing, committed hookless full-range liquidity
+and permanent principal custody. Historical Kuru uses independent committed bands. No rescue, principal withdrawal, generic call or upgrade is
+exposed. Remainders and donations cannot be counted as fee receipts. Actual collected LP fees are divided 50/50
 in the received asset without an additional Pickler trading tax or conversion.
 
 `claim(AUSD,master)` is the escrow's aggregate beneficiary/asset claim across that master's
@@ -109,68 +111,19 @@ Graduation is an explicit enumerated master-wallet action to the fixed adapter; 
 only after canonical `CurveCompleted` evidence and on-chain preflight. No automatic call is made.
 Token fee claims refer to that token asset. Historical V4 escrows retain their interpretation.
 
-## Controlled acceptance and remote checklist
+## Validation, previews and remote activation
 
-Run from the repository root with Node 22.22+ and npm 10.9.3:
+See [the current integration guide](uniswap-v4-testnet-integration.md#acceptance-matrix-and-remaining-activation-work)
+for the scenario matrix, four previews, reproducible commands, pinned sources and 34 independently
+reconciled real testnet receipts. Offline/controlled checks and actual contract acceptance are
+separate from the still-pending hosted JWT/passkey/R2/indexer walkthrough.
 
-```sh
-npm run db:up
-npm run build:shared
-node --import tsx --test packages/core/test/token-*.test.ts packages/infrastructure/test/token-*.test.ts workers/api/test/studio-token-route.test.ts
-FOUNDRY_OFFLINE=true npm run contracts:test
-FOUNDRY_OFFLINE=true npm run contracts:abi
-npm run api:openapi -- --output /tmp/pickler-token-openapi.json
-npm run typecheck
-npm run lint
-npm run format:check
-npm run check:architecture
-npm run build:workers
-npm run design:check
-node scripts/design/token-preview.mjs
-node scripts/design/studio-routing.mjs
-node scripts/design/sidebar-motion.mjs
-node --import tsx scripts/design/studio-loading.mjs
-```
+Use disposable local PostgreSQL with CREATEDB permission. Never target a deployed database in the
+controlled acceptance suites. Run Next.js builds/type generation and rendered harnesses sequentially
+in one checkout. `studio-loading.mjs` owns its servers. `DESIGN_BASE_URL` can reuse one fixture
+server for token-preview, routing and sidebar checks; install Playwright globally, not in package.json.
 
-The four non-production fixtures remain:
-
-1. `/studio/agents/preview-live/token?stage=perpl-token-empty`
-2. `/studio/agents/preview-live/token?stage=perpl-token-launched`
-3. `/agents/halftime?stage=token-empty`
-4. `/agents/halftime?stage=token-launched`
-
-Fixtures can cancel, fail, continue and confirm a simulated operation. They never stamp a real
-passkey, fetch a provider or open an explorer with a fictional address.
-
-| Scenario                                                                                            | Status              | Evidence boundary                                                                        |
-| --------------------------------------------------------------------------------------------------- | ------------------- | ---------------------------------------------------------------------------------------- |
-| Fixed economics, curve rounding/solvency, grants, Kuru atomic rollback and fee/principal separation | Passed              | 151 offline Solidity tests across 17 suites; no remote fork                              |
-| Owner isolation, drafts, master admission, signing/send recovery and immutable R2 objects           | Passed              | Controlled ports and isolated PostgreSQL                                                 |
-| Canonical Kuru attribution, reorg recovery, RPC admission and four-stream catch-up                  | Passed              | Controlled logs/receipts and isolated PostgreSQL; bounded concurrency and budgets        |
-| Keyboard, preserved form, mobile/desktop, launch/cancel/failure/confirmation and four token states  | Passed              | Local browser fixtures at 320, 380 and 1280 pixels; all API/provider requests prohibited |
-| Studio loading/errors, market retry and wallet regressions                                          | Passed              | Synthetic Auth/API responses; no provider calls                                          |
-| Surfaces, tokens, contrast and typography                                                           | Passed              | Design checks over all 126 local fixture routes                                          |
-| Driver's escrow beneficiary address assertion                                                       | Corrected           | Case-insensitive address comparison; all five driver tests passed after correction       |
-| Prior Kuru legacy buy/sell/redeem                                                                   | Historical evidence | Real testnet transactions already recorded; no Pickler graduation claim                  |
-| Passive generation, token admission, units, administration and separate fee claim                   | External pending    | Readiness remains blocked                                                                |
-| Full faucet launch, fill, graduation, Kuru buy/sell and claims; remote indexer throughput           | External pending    | Requires a verified passive deployment and approved RPC/gas budget                       |
-
-Use a disposable PostgreSQL database with `CREATEDB` permission. Override `TEST_DATABASE_URL`
-when the default port is occupied; this acceptance used a task-owned container on loopback port
-55433 and did not reset any existing database. The broad local suite encountered intermittent
-PostgreSQL connection timeouts under host resource pressure; do not interpret it as a fully
-passing broad run. The corrected driver suite and affected database scenarios are checked
-separately, and PR checks provide the final repository-wide result.
-
-Run rendered harnesses and Next.js type generation/builds sequentially in one checkout.
-`studio-loading.mjs` owns its servers and must not run alongside another Next.js development
-server in that checkout. A shared fixture server can be passed through `DESIGN_BASE_URL` to
-`token-preview.mjs`, `studio-routing.mjs` and `sidebar-motion.mjs`. Install Playwright globally
-as required by the repository instructions; do not add it to application dependencies.
-
-Before remote acceptance, approve a reproducible passive deployment and full venue economics,
-apply migrations through the operator connection, configure R2/secret/bindings and verify the
-indexer from the actual factory deployment. Preflight sets an explicit gas ceiling. Record
-transaction receipts, canonical blocks, balances and positions before/after every step. Use
-faucet assets only; no fiat or implicit paid transport. Do not merge, enable general launches
-or deploy mainnet as part of controlled acceptance.
+No hosted migration, admission flag, app deployment or mainnet launch is introduced. Product
+activation requires approved economics, dedicated keys, immutable R2 metadata, reviewed policy,
+restricted allowlist and verified indexer capacity. The test factory was explicitly disabled after
+its faucet-funded contract acceptance.
