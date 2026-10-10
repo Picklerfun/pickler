@@ -425,3 +425,45 @@ export const kuruGraduations = market
     ],
   )
   .enableRLS();
+
+/** Versioned V4 custody snapshot. Orphaned records remain historical, never active balances. */
+export const uniswapGraduations = market
+  .table(
+    "uniswap_graduations",
+    {
+      chain: text("chain").notNull(),
+      token: text("token").notNull(),
+      poolManager: text("pool_manager").notNull(),
+      locker: text("locker").notNull(),
+      poolId: text("pool_id").notNull(),
+      positionId: baseUnits("position_id").notNull(),
+      liquidity: baseUnits("liquidity").notNull(),
+      poolKey: jsonb("pool_key").notNull(),
+      venueHash: text("venue_hash").notNull(),
+      adapter: text("adapter").notNull(),
+      blockHash: text("block_hash").notNull(),
+      blockNumber: bigint("block_number", { mode: "number" }).notNull(),
+      txHash: text("tx_hash").notNull(),
+      tokenUsed: baseUnits("token_used").notNull(),
+      quoteUsed: baseUnits("quote_used").notNull(),
+      tokenRemainder: baseUnits("token_remainder").notNull(),
+      quoteRemainder: baseUnits("quote_remainder").notNull(),
+    },
+    (t) => [
+      primaryKey({ columns: [t.chain, t.token, t.blockHash] }),
+      check("uniswap_graduations_network", sql`${t.chain}='eip155:10143'`),
+      check(
+        "uniswap_graduations_addresses",
+        sql`${t.token} ~ '^0x[0-9a-f]{40}$' AND ${t.poolManager} ~ '^0x[0-9a-f]{40}$' AND ${t.locker} ~ '^0x[0-9a-f]{40}$' AND ${t.adapter} ~ '^0x[0-9a-f]{40}$'`,
+      ),
+      check(
+        "uniswap_graduations_hashes",
+        sql`${t.poolId} ~ '^0x[0-9a-f]{64}$' AND ${t.blockHash} ~ '^0x[0-9a-f]{64}$' AND ${t.txHash} ~ '^0x[0-9a-f]{64}$' AND ${t.venueHash} ~ '^0x[0-9a-f]{64}$'`,
+      ),
+      check(
+        "uniswap_graduations_amounts",
+        sql`${t.positionId}>0 AND ${t.liquidity}>0 AND ${t.tokenUsed}>0 AND ${t.quoteUsed}>0 AND ${t.tokenRemainder}>=0 AND ${t.quoteRemainder}>=0`,
+      ),
+    ],
+  )
+  .enableRLS();
