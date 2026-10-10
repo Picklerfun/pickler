@@ -26,3 +26,12 @@ npm test                 # includes workers/indexer/test
 npm run typecheck
 npm run build:workers    # dry-run build, no deploy
 ```
+
+## Passive Kuru indexing
+
+The separate `TOKEN_INDEXER_ENABLED` path composes `runTokenIndexer` with the complete reviewed
+launch policy, one RPC transport and explicit per-pass/daily budgets. It indexes factory, adapter,
+locker, escrow and registered curves in ranges of 100 blocks under one renewable private lease,
+then projects canonical launch identity and Kuru position snapshots. No legacy fallback is
+allowed on this path. The deployment manifest remains blocked; no remote activation is configured.
+See [Token operations](../../docs/market/token-launch-operations.md).
