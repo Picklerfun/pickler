@@ -329,3 +329,11 @@ Component-paper controlled PostgreSQL tests include captured-frame atomic rollba
 closes, idempotency, hash/owner rejection and paired thirty-sample query-delay benchmarks.
 Simulated clock delays are reported separately from monotonic measured durations. An interrupted
 comparison with a partial account fill remains incomplete; never present it as a common round.
+
+The third component-paper session at `b1bb7fb0226ba0f33b072f03f23e253684ceab42` remains
+interrupted before its six-hour end with 68 complete slots. Recorded BTC ticker age advanced from
+29,694ms at copy to 30,189ms at validation while sequential account valuation was in progress.
+The corrected component-only runner uses a common transaction and records confirmed expiry
+rollback separately from partial/uncertain writes. Preserve this session, its pending positions
+and failure export. The controlled regression reproduces the dates with synthetic frame bodies;
+it never claims to recover the rejected historical bytes or completes the interrupted trial.
