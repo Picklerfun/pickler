@@ -3,7 +3,7 @@ import { operation as describeOperation } from "../openapi/operation";
 import type { TradingRepository } from "@pickler/trading/polymarket";
 import { XFailure, type XOAuthService } from "@pickler/core";
 import { studioTokenRoutes } from "./studio-token";
-import type { TokenLaunchService } from "@pickler/core";
+import type { TokenOperationService, TokenLaunchService } from "@pickler/core";
 import { studioXRoutes } from "./studio-x";
 import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
@@ -104,6 +104,7 @@ import { studioPerpsRoutes, type StudioPerpsServices } from "./studio-perps";
 
 export interface StudioServices {
   tokens?: TokenLaunchService;
+  tokenOperations?: TokenOperationService;
   perplMarkets?: {
     catalog(network: PerpNetwork, signal: AbortSignal): Promise<PerplMarketCatalog>;
   };
