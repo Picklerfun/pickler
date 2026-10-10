@@ -81,7 +81,7 @@ try {
     assert.equal(await details.getByText("50% / 50%", { exact: true }).count(), 1);
     assert.equal(
       await details
-        .getByText("After graduation: 50% creator / 50% Pickler of actual Kuru LP fees.", {
+        .getByText("After graduation: 50% creator / 50% Pickler of LP fees actually collected.", {
           exact: true,
         })
         .count(),
