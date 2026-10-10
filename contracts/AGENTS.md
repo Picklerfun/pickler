@@ -24,7 +24,7 @@ Deployment order is fixed by what each contract needs: fee escrow, graduation ad
 
 Dependencies are git submodules pinned by commit in `foundry.lock`: forge-std `v1.11.0`, and v4-periphery `3231810e` with v4-core, permit2 and solmate nested under it, at the commits the Monad testnet deployment was built from. Remappings live in `remappings.txt`. A fresh clone needs `git submodule update --init --recursive` before `forge build`.
 
-Contracts currently carry `SPDX-License-Identifier: UNLICENSED` as an explicit placeholder. Choose a real license before anything is deployed.
+Pickler-authored Solidity sources in `src/` and `test/` are licensed under MIT; see [LICENSE](LICENSE). The license permits reuse, modification and commercial distribution while retaining its notices. This license is scoped to those Pickler-authored files, not the rest of the monorepo. Third-party dependencies in `lib/` retain their original licenses and notices; do not relicense or edit them. Combined distributions must also respect the licenses of the dependencies they include.
 
 ## Organization and rules
 
@@ -77,3 +77,12 @@ unchanged. `test/CurveVectors.t.sol` emits legacy and reference core vectors. Of
 both invariant profiles cover real reserve/fees/inventory/donations; `PicklerReferenceProfile.t.sol`
 tests controlled handover only. No DEX is selected or configured for the new reference profile;
 existing V4/fork results are historical evidence. See [the token guide](../docs/agent-token-preview.md).
+
+## Legacy Kuru testnet compatibility evidence
+
+[The Kuru testnet probe](../docs/market/kuru-testnet-probe.md) records actual standalone token,
+market, liquidity, buy, sell and redemption transactions on Monad testnet 10143. It is not a
+Pickler factory or graduation deployment. The deployed token uses MIT sources; upstream contracts
+retain their licenses. No operational Kuru adapter, liquidity custodian, fee-only claim path or
+new-generation integration is introduced. Keep this evidence separate from controlled tests and
+from the historical V4 fork results.
