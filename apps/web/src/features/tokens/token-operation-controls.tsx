@@ -207,11 +207,13 @@ export function TokenOperationControls({
         onChange({
           ...state,
           venue: {
-            status: "kuru",
+            status: "uniswap_v4",
             readyToGraduate: false,
             market: "0x3333333333333333333333333333333333333333",
             vault: "0x4444444444444444444444444444444444444444",
-            accountId: "1",
+            accountId: null,
+            poolId: "0x" + "a".repeat(64),
+            lpFeeBps: 100,
             positions: ["1"],
             liquidityLocked: true,
           },
@@ -245,6 +247,10 @@ export function TokenOperationControls({
     );
     memory.setOutcome(scope + ":request", null);
   }
+  const graduated = state.venue?.status === "kuru" || state.venue?.status === "uniswap_v4";
+  const targetVenue = state.launchVenue
+    ? { kuru_passive: "Kuru", uniswap_v4: "Uniswap" }[state.launchVenue.name]
+    : "DEX";
   const usable = enabled && (preview || state.available);
   return (
     <section className={styles.card} aria-label="Token operations" aria-busy={busy}>
@@ -292,8 +298,8 @@ export function TokenOperationControls({
           <div className={styles.detail}>
             <dt>Graduation</dt>
             <dd>
-              {state.venue?.status === "kuru"
-                ? "Kuru · liquidity permanently locked"
+              {graduated
+                ? `${state.venue?.status === "kuru" ? "Kuru" : "Uniswap V4"} · liquidity permanently locked`
                 : state.venue?.status === "curve"
                   ? "On the curve"
                   : "Graduation not attributed"}
@@ -301,7 +307,7 @@ export function TokenOperationControls({
           </div>
           {state.venue?.market && (
             <div className={styles.detail}>
-              <dt>Kuru market</dt>
+              <dt>{state.venue?.status === "uniswap_v4" ? "Pool manager" : "Kuru market"}</dt>
               <dd>
                 <abbr title={state.venue.market}>
                   {state.venue.market.slice(0, 8)}…{state.venue.market.slice(-6)}
@@ -319,7 +325,29 @@ export function TokenOperationControls({
               </dd>
             </div>
           )}
-          {state.venue?.status === "kuru" && (
+          {state.venue?.poolId && (
+            <div className={styles.detail}>
+              <dt>Pool ID</dt>
+              <dd>
+                <abbr title={state.venue.poolId}>
+                  {state.venue.poolId.slice(0, 10)}…{state.venue.poolId.slice(-6)}
+                </abbr>
+              </dd>
+            </div>
+          )}
+          {state.venue?.status === "uniswap_v4" && (
+            <div className={styles.detail}>
+              <dt>Position NFT</dt>
+              <dd>#{state.venue.positions.join(", #")}</dd>
+            </div>
+          )}
+          {state.venue?.lpFeeBps != null && (
+            <div className={styles.detail}>
+              <dt>Uniswap swap fee</dt>
+              <dd>{state.venue.lpFeeBps / 100}% · no additional Pickler swap fee</dd>
+            </div>
+          )}
+          {graduated && (
             <div className={styles.detail}>
               <dt>LP fees</dt>
               <dd>Actual receipts · 50% creator / 50% Pickler</dd>
@@ -383,14 +411,14 @@ export function TokenOperationControls({
         )}
         {state.token && !active && (
           <>
-            {state.venue?.status !== "kuru" && (
+            {state.venue?.status === "curve" && (
               <Button
                 size="sm"
                 variant="secondary"
                 disabled={!usable || busy || !state.venue?.readyToGraduate}
                 onClick={() => void action(() => prepare("graduate"))}
               >
-                Graduate to Kuru
+                Graduate to {targetVenue}
               </Button>
             )}
             <Button
@@ -404,7 +432,7 @@ export function TokenOperationControls({
             <Button
               size="sm"
               variant="secondary"
-              disabled={!usable || busy || state.venue?.status !== "kuru"}
+              disabled={!usable || busy || !graduated}
               onClick={() => void action(() => prepare("collect_lp_fees"))}
             >
               Collect LP fees
@@ -433,7 +461,7 @@ export function TokenOperationControls({
       )}
       {!usable && (
         <p className={styles.quiet}>
-          Testnet launch is disabled until Kuru verification is complete.
+          Testnet operations are unavailable until the deployment and launch policy are verified.
         </p>
       )}
       {state.token && (
