@@ -92,30 +92,56 @@ export class PostgresTokenLaunchStore implements TokenLaunchRepository {
           JOIN market.chain_blocks b ON b.chain=g.chain AND b.hash=g.block_hash WHERE g.chain=$1 AND g.token=$2 AND NOT b.orphaned AND b.finality IN ('confirmed','finalized') ORDER BY g.block_number DESC LIMIT 1`,
           [`eip155:${chainId}`, token.token.address],
         );
+        const v4 = await client.query<{
+          market: string;
+          vault: string;
+          poolId: string;
+          positionId: string;
+        }>(
+          `SELECT g.pool_manager AS market,g.locker AS vault,g.pool_id AS "poolId",g.position_id::text AS "positionId" FROM market.uniswap_graduations g
+          JOIN market.chain_blocks b ON b.chain=g.chain AND b.hash=g.block_hash WHERE g.chain=$1 AND g.token=$2 AND NOT b.orphaned AND b.finality IN ('confirmed','finalized') ORDER BY g.block_number DESC LIMIT 2`,
+          [`eip155:${chainId}`, token.token.address],
+        );
+        if (v4.rows.length > 1 || (v4.rows.length && graduation.rows.length)) {
+          throw new Error("AMBIGUOUS_TOKEN_VENUE");
+        }
         const completed = await client.query(
           `SELECT 1 FROM market.chain_events e JOIN market.chain_blocks b ON b.chain=e.chain AND b.hash=e.block_hash JOIN market.pools p ON p.address=e.emitter JOIN market.tokens t ON t.id=p.token_id AND t.chain=e.chain WHERE e.chain=$1 AND t.address=$2 AND p.phase='pre_graduation' AND e.event_name='CurveCompleted' AND lower(e.decoded->>'token')=t.address AND NOT e.orphaned AND NOT b.orphaned AND b.finality IN ('confirmed','finalized') LIMIT 1`,
           [`eip155:${chainId}`, token.token.address],
         );
         const g = graduation.rows[0];
-        venue = g
+        const u = v4.rows[0];
+        venue = u
           ? {
-              status: "kuru",
+              status: "uniswap_v4",
               readyToGraduate: false,
-              market: g.market,
-              vault: g.vault,
-              accountId: g.accountId,
-              positions: g.positions.map((p) => p.id),
-              liquidityLocked: true,
-            }
-          : {
-              status: "curve",
-              readyToGraduate: !!completed.rowCount,
-              market: null,
-              vault: null,
+              market: u.market,
+              vault: u.vault,
+              poolId: u.poolId,
               accountId: null,
-              positions: [],
-              liquidityLocked: false,
-            };
+              positions: [u.positionId],
+              liquidityLocked: true,
+              lpFeeBps: 100,
+            }
+          : g
+            ? {
+                status: "kuru",
+                readyToGraduate: false,
+                market: g.market,
+                vault: g.vault,
+                accountId: g.accountId,
+                positions: g.positions.map((p) => p.id),
+                liquidityLocked: true,
+              }
+            : {
+                status: "curve",
+                readyToGraduate: !!completed.rowCount,
+                market: null,
+                vault: null,
+                accountId: null,
+                positions: [],
+                liquidityLocked: false,
+              };
         if (this.escrow && contextMaster(master.rows)) {
           const cursor = await client.query<{ block: number }>(
             `SELECT last_block AS block FROM market.indexer_cursors WHERE chain=$1 AND contract=$2 AND stream='token-launch-v1'`,
