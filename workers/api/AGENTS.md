@@ -643,3 +643,11 @@ Owner token state now optionally includes version-2 reference economics. Contain
 AUSD metadata from `@pickler/chain` for the configured custody chain and invokes core's pure builder.
 This performs no RPC, does not publish a preset and does not compose an issuer. The existing GET
 operation documents the additive optional schema; save/authorize requests remain unchanged.
+
+## Operational token composition
+
+`src/token-launch.ts` composes grants, R2 and the existing Turnkey master passkey only under the
+explicit testnet gate and complete reviewed passive policy. Default composition has no signer.
+`studio-token.ts` owns private versioned preparation, confirmation, reconciliation and cancellation;
+`/v1/token-assets/:file` is public immutable read-only access. The callback exception for X does
+not apply to these routes. See [Token operations](../../docs/market/token-launch-operations.md).
