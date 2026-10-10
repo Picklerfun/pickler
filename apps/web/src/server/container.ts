@@ -1,8 +1,8 @@
 import type { ReadDto, LaunchSummaryDto } from "@pickler/api-schema";
 import "server-only";
 import type {
-  LandingResponse,
   ApplicantResponse,
+  AgentActionDto,
   AgentSummaryDto,
   AgentProfileDto,
   PickDetailDto,
@@ -10,18 +10,17 @@ import type {
   DirectoryAgentDto,
   AgentReadDto,
   PlatformAnalyticsDto,
-  LeaderboardDto,
   PerpMarketDto,
   MarketDetailDto,
 } from "@pickler/api-schema";
-import { apiJson, apiFetch, apiRead, apiReadOne, apiReadVenueItem } from "./api-client";
-import { EMPTY_LEADERBOARD, emptyAnalytics } from "./api-read";
+import { apiFetch, apiRead, apiReadOne, apiReadVenueItem } from "./api-client";
+import { emptyAnalytics } from "./api-read";
 
 // Presentation facade over the sole business API; no database or provider adapters.
 export const services = {
   clock: { now: () => new Date() },
-  getLanding: () => apiJson<LandingResponse>("/landing"),
   listAgents: () => apiRead<AgentSummaryDto[]>("/marketplace/agents", []),
+  listAgentActions: () => apiRead<AgentActionDto[]>("/marketplace/activity", []),
   listLaunches: async (): Promise<ReadDto<LaunchSummaryDto[]> | null> => {
     const response = await apiFetch(new Request("https://pickler.internal/v1/launches"));
 
@@ -54,7 +53,6 @@ export const services = {
       `/marketplace/analytics?range=${encodeURIComponent(range ?? "30d")}`,
       emptyAnalytics(range),
     ),
-  getLeaderboard: () => apiRead<LeaderboardDto>("/marketplace/leaderboard", EMPTY_LEADERBOARD),
   async getApplicant(token: string | null): Promise<ApplicantResponse | null> {
     if (!token) {
       return null;

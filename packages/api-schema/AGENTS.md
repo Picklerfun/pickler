@@ -185,6 +185,14 @@ See [Studio perpetual execution](../../docs/studio-perps-execution.md).
 Creator-access status and inbox schemas are exported from `studio.ts`. User status exposes only
 its own request time/status and whether the authenticated operator may review the inbox. Inbox
 profile identifiers are operator-only. Requests do not include caller-supplied user/workspace IDs.
+User status also includes the application under the account's verified email, or null.
+`studioApplicationsSchema` and `studioApplicationReviewRequestSchema` describe the operator-only
+application inbox and invited/rejected decisions with optional notes. Application IDs are positive
+integer numbers, and audit timestamps are ISO UTC. Inviting enables access by email; no email is sent.
+
+`AgentActionDto` in `agents.ts` describes the public marketplace activity feed.
+The retired landing response is no longer exported; `landing.ts` retains only shared public agent
+presentation types. The API generates OpenAPI from route metadata and these wire schemas.
 
 ## Dynamic Studio markets
 

@@ -92,7 +92,7 @@ export class PostgresStudioDirectory implements StudioDirectory {
       client.release();
     }
   }
-  async onboard(userId: string): Promise<void> {
+  async onboard(userId: string, email?: string | undefined): Promise<void> {
     await this.transaction(async (client) => {
       const profile = await client.query(
         "SELECT display_name FROM identity.profiles WHERE user_id=$1",
@@ -115,6 +115,10 @@ export class PostgresStudioDirectory implements StudioDirectory {
         "INSERT INTO pickler.research_access (user_id) VALUES ($1) ON CONFLICT DO NOTHING",
         [userId],
       );
+      // An application invited under this email is claimed here, once, and turns access on.
+      if (email) {
+        await client.query("SELECT growth.claim_invite($1, $2)", [userId, email]);
+      }
     });
   }
   async access(userId: string, workspaceId: string | null): Promise<StudioAccess | null> {

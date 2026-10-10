@@ -10,7 +10,8 @@ import { authenticated, type Authenticate } from "../middleware/auth";
 export interface ProfileRouteServices {
   authenticate: Authenticate;
   profiles: ReturnType<typeof createProfileService>;
-  onboard?(userId: string): Promise<void>;
+  /** With the account's email, an invited application is claimed and access enabled at once. */
+  onboard?(userId: string, email?: string | undefined): Promise<void>;
 }
 
 const profileDto = (profile: Profile) => ({
@@ -85,7 +86,10 @@ export function profileRoutes(services: ProfileRouteServices) {
           { displayName: body.display_name, handle: body.handle },
           account,
         );
-        await services.onboard?.(c.get("principal").id);
+        await services.onboard?.(
+          principal.id,
+          principal.kind === "user" ? principal.email : undefined,
+        );
         return c.json(successEnvelope(profileDto(profile), c.req.path, "Profile created"), 201);
       },
     );

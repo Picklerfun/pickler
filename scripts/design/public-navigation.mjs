@@ -96,16 +96,16 @@ async function openMenu() {
   const create = menu.getByRole("menuitem", { name: "Create agent", exact: true });
   assert.equal(await create.count(), viewport <= 640 ? 1 : 0, "No duplicated Create agent");
   if (viewport <= 640) {
-    assert.equal(await create.getAttribute("href"), "/studio");
+    assert.equal(await create.getAttribute("href"), "/create");
   }
   const groups = menu.getByRole("group");
   assert.equal(await groups.getByRole("menuitem", { name: "Agents", exact: true }).count(), 1);
   for (const label of ["Explore", "Build", "Resources"]) {
     await menu.getByRole("group", { name: label, exact: true }).waitFor();
   }
-  assert.ok(box.height < 420, "Groups stay compact rather than becoming one long list");
+  assert.ok(box.height < 420, `Groups stay compact at ${viewport}px (${box.height}px high)`);
   const visibleCreates = await page
-    .locator('a[href="/studio"]')
+    .locator('a[href="/create"]')
     .evaluateAll((nodes) => nodes.filter((node) => node.getClientRects().length).length);
   assert.equal(visibleCreates, 1, "Create agent is available exactly once while the menu is open");
   await page.keyboard.press("ArrowDown");

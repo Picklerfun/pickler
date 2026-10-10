@@ -1,12 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { Hono } from "hono";
-import {
-  AccessDeniedError,
-  AuthenticationRequiredError,
-  type Principal,
-  type StudioDirectory,
-} from "@pickler/core";
+import { AccessDeniedError, AuthenticationRequiredError, type Principal } from "@pickler/core";
 import {
   studioAccessRequestStatusSchema,
   studioAccessRequestsInboxSchema,
@@ -16,31 +11,21 @@ import { studioAccessRequestRoutes } from "../src/routes/studio-access-requests.
 import type { AppEnv } from "../src/env.js";
 
 const userId = "11111111-1111-4111-8111-111111111111";
-const workspaceId = "22222222-2222-4222-8222-222222222222";
-function setup({ kind = "user", admin = false, owner = true } = {}) {
-  const principal = { kind, id: userId, tenantId: null, isSuperAdmin: admin } as Principal;
-  let writes = 0;
+function setup({ kind = "user", admin = false, pending = false } = {}) {
+  const principal = {
+    kind,
+    id: userId,
+    tenantId: null,
+    email: "creator@example.com",
+    isSuperAdmin: admin,
+  } as Principal;
   const at = new Date("2026-10-05T00:00:00Z");
-  const directory = {
-    access: async () => ({
-      workspaceId,
-      tenantId: workspaceId,
-      ownerUserId: owner ? userId : "someone-else",
-      role: "admin",
-      enabled: false,
-    }),
-  } as unknown as StudioDirectory;
   const repository = {
-    read: async () => ({
-      status: writes ? ("pending" as const) : ("not_requested" as const),
-      requestedAt: writes ? at : null,
+    read: async (_userId: string, email?: string) => ({
+      status: pending ? ("pending" as const) : ("not_requested" as const),
+      requestedAt: pending ? at : null,
+      application: email ? ("submitted" as const) : null,
     }),
-    request: async (user: string, workspace: string) => {
-      assert.equal(user, userId);
-      assert.equal(workspace, workspaceId);
-      writes = 1;
-      return { status: "pending" as const, requestedAt: at };
-    },
     pending: async () => [{ userId, handle: "creator", displayName: "Creator", requestedAt: at }],
   };
   const app = new Hono<AppEnv>();
@@ -65,7 +50,7 @@ function setup({ kind = "user", admin = false, owner = true } = {}) {
       error instanceof AccessDeniedError ? 403 : 400,
     );
   });
-  app.route("/", studioAccessRequestRoutes(directory, repository));
+  app.route("/", studioAccessRequestRoutes(repository));
   const call = app.request.bind(app);
   app.request = ((path, init = {}) =>
     call(path, {
@@ -75,66 +60,49 @@ function setup({ kind = "user", admin = false, owner = true } = {}) {
         ...Object.fromEntries(new Headers(init.headers)),
       },
     })) as typeof app.request;
-  return { app, anonymous: call, writes: () => writes };
+  return { app, anonymous: call };
 }
 
-test("owner requests use server identity, survive repeats and match documented schemas", async () => {
-  const f = setup();
-  const request = () =>
-    f.app.request("/access-request", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: "{}",
-    });
-  assert.equal((await request()).status, 200);
-  assert.equal((await request()).status, 200);
-  assert.equal(f.writes(), 1);
-  const status = await f.app.request("/access-request");
+test("a person reads their own status in the documented shape, and nothing else", async () => {
+  const status = await setup().app.request("/access-request");
+  assert.equal(status.status, 200);
   assert.equal(status.headers.get("cache-control"), "private, no-store");
-  assert.equal(studioAccessRequestStatusSchema.parse(await status.json()).status, "pending");
-  const spoofed = await f.app.request("/access-request", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ userId: workspaceId }),
-  });
-  assert.equal(spoofed.status, 400);
+  const parsed = studioAccessRequestStatusSchema.parse(await status.json());
+  assert.equal(parsed.status, "not_requested");
+  assert.equal(parsed.application, "submitted");
+  assert.equal(parsed.canReviewRequests, false);
+  const recorded = studioAccessRequestStatusSchema.parse(
+    await (await setup({ pending: true }).app.request("/access-request")).json(),
+  );
+  assert.equal(recorded.status, "pending");
+  assert.equal(recorded.requestedAt, "2026-10-05T00:00:00.000Z");
 });
 
-test("only verified operators can see the inbox; non-users and non-owners cannot request", async () => {
+test("requesting access was retired: the studio no longer takes a POST", async () => {
+  const response = await setup().app.request("/access-request", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: "{}",
+  });
+  assert.equal(response.status, 404);
+});
+
+test("only verified operators can see the inbox", async () => {
   assert.equal((await setup().app.request("/access-requests")).status, 403);
+  assert.equal((await setup({ kind: "apikey" }).app.request("/access-request")).status, 403);
   const response = await setup({ admin: true }).app.request("/access-requests");
   assert.equal(response.status, 200);
   assert.equal(studioAccessRequestsInboxSchema.parse(await response.json()).requests.length, 1);
-  for (const options of [{ kind: "apikey" }, { kind: "agent" }, { owner: false }]) {
-    const f = setup(options);
-    assert.equal(
-      (
-        await f.app.request("/access-request", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: "{}",
-        })
-      ).status,
-      403,
-    );
-    assert.equal(f.writes(), 0);
-  }
 });
 
-test("missing JWT and API keys do not admit a request", async () => {
+test("missing JWT and API keys do not read a status", async () => {
   const f = setup();
   for (const headers of [{}, { "x-api-key": "not-a-user" }]) {
-    const response = await f.anonymous("/access-request", {
-      method: "POST",
-      headers: { ...headers, "Content-Type": "application/json" },
-      body: "{}",
-    });
-    assert.equal(response.status, 401);
+    assert.equal((await f.anonymous("/access-request", { headers })).status, 401);
   }
-  assert.equal(f.writes(), 0);
 });
 
-test("JWT-only Studio API persists requests through real PostgreSQL without granting access", async (t) => {
+test("JWT-only Studio API reads access through real PostgreSQL without granting it", async (t) => {
   const { createTestStore } = await import("@pickler/infrastructure/testing");
   const { PostgresStudioDirectory, PostgresStudioAccessRequests } =
     await import("@pickler/infrastructure");
@@ -156,7 +124,7 @@ test("JWT-only Studio API persists requests through real PostgreSQL without gran
     repository: store,
     accessRequests: new PostgresStudioAccessRequests(store.pool),
     notifyQueued: async () => {
-      throw new Error("Access requests must not enqueue research");
+      throw new Error("Reading access must not enqueue research");
     },
     authenticate: async (credentials) => {
       if (credentials.bearerToken !== "controlled-jwt") {
@@ -168,22 +136,11 @@ test("JWT-only Studio API persists requests through real PostgreSQL without gran
       };
     },
   });
-  const request = () =>
-    app.request("/access-request", {
-      method: "POST",
-      headers: { Authorization: "Bearer controlled-jwt", "Content-Type": "application/json" },
-      body: "{}",
-    });
-  const responses = await Promise.all([request(), request()]);
-  assert.ok(responses.every((response) => response.status === 200));
-  const rows = await store.pool.query("SELECT * FROM pickler.studio_access_requests");
-  assert.equal(rows.rows.length, 1);
-  assert.equal(rows.rows[0].user_id, ownerId);
-  assert.equal((await directory.access(ownerId, null))!.enabled, false);
   const state = await app.request("/access-request", {
     headers: { Authorization: "Bearer controlled-jwt" },
   });
-  assert.equal(studioAccessRequestStatusSchema.parse(await state.json()).status, "pending");
+  assert.equal(studioAccessRequestStatusSchema.parse(await state.json()).status, "not_requested");
+  assert.equal((await directory.access(ownerId, null))!.enabled, false);
   assert.equal((await app.request("/access-request")).status, 401);
   assert.equal(
     (await app.request("/access-requests", { headers: { Authorization: "Bearer controlled-jwt" } }))

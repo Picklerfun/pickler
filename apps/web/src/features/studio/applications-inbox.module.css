@@ -1,0 +1,138 @@
+/* The operators' inbox under the creator-access notice: a filter row, then one card per
+   application with its six answers and the decision. Tokens only; the surface is the dark one. */
+
+.inbox {
+  width: 100%;
+  padding-top: 16px;
+  border-top: 1px solid var(--pk-rule);
+  color: var(--pk-ink);
+}
+
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.title {
+  margin: 0;
+  font: 600 15px/1.3 var(--pk-font);
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.note,
+.empty,
+.error {
+  margin: 10px 0 0;
+  font: 400 13.5px/1.5 var(--pk-font);
+  color: var(--pk-ink-muted);
+}
+
+.error {
+  color: var(--pk-loss);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row {
+  composes: pk-panel from global;
+  padding: 16px;
+}
+
+.rowHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.agent {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font: 600 15px/1.3 var(--pk-font);
+}
+
+.ticker {
+  font: 600 12px/1 var(--pk-font);
+  letter-spacing: 0.04em;
+  color: var(--pk-ink-muted);
+}
+
+.when {
+  margin-left: auto;
+  font: 500 12px/1.4 var(--pk-font);
+  color: var(--pk-ink-faint);
+}
+
+.answers {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 16px;
+  margin: 14px 0 0;
+}
+
+.answers dt {
+  font: 600 10.5px/1 var(--pk-font);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--pk-ink-faint);
+}
+
+.answers dd {
+  margin: 4px 0 0;
+  font: 400 14px/1.5 var(--pk-font);
+  color: var(--pk-ink);
+  overflow-wrap: anywhere;
+}
+
+.wide {
+  grid-column: span 2;
+}
+
+.decision {
+  margin: 14px 0 0;
+  font: 400 13.5px/1.5 var(--pk-font);
+  color: var(--pk-ink-muted);
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.noteField {
+  width: 100%;
+}
+
+.buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+@media (max-width: 600px) {
+  .answers {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .wide {
+    grid-column: auto;
+  }
+}

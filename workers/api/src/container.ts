@@ -2,7 +2,7 @@ import { AUSD } from "@pickler/chain";
 import { tokenReferenceEconomics, createTokenLaunchService } from "@pickler/core";
 import { PostgresTokenLaunchStore } from "@pickler/infrastructure";
 import { createXOAuthService } from "@pickler/core";
-import { PostgresStudioAccessRequests } from "@pickler/infrastructure";
+import { PostgresApplicationReview, PostgresStudioAccessRequests } from "@pickler/infrastructure";
 import {
   createAdviceService,
   createPaidAdvice,
@@ -581,7 +581,7 @@ export function createServices(env: Env): Services & { close(): Promise<void> } 
     }),
     launches: new PostgresLaunchReadModel(repository.pool),
     close: () => repository.close(),
-    onboard: (userId) => directory.onboard(userId),
+    onboard: (userId, email) => directory.onboard(userId, email),
     studio: {
       // Deliberately no issuer: this delivery cannot grant or broadcast a real launch.
       tokens: createTokenLaunchService({
@@ -599,6 +599,7 @@ export function createServices(env: Env): Services & { close(): Promise<void> } 
           }),
       },
       accessRequests: new PostgresStudioAccessRequests(repository.pool),
+      applicationReview: new PostgresApplicationReview(repository.pool),
       admissionsEnabled: env.ADMISSIONS_ENABLED === "true",
       trading: {
         repository: new PostgresTradingStore(repository.pool),

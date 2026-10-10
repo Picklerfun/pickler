@@ -412,10 +412,13 @@ Advice pricing v2 pins the reviewed OpenAI-compatible forecast base URL and mode
 
 `features/ai-credits/index.ts` exports exact integer unit validation, immutable pricing contracts, account/purchase/operation/ledger ports and the injected trusted payment service. One credit is 1,000,000 units. No provider SDK, database or checkout belongs here. See [AI credits](../../docs/ai-credits.md).
 
-Studio creator-access requests use the shared authenticated user identity, require the workspace
-owner for submission, and require server-verified super-admin status for the team inbox. They never
-enable research, grant custody permissions or create wallets. Ports and policy live in
-`features/studio/access-requests.ts`; persistence and HTTP are adapters.
+Studio creator-access status uses the shared authenticated user identity. Submission now belongs
+to the public `/create` application; the old Studio submission operation is retired.
+`features/applications/application/review-applications.ts` requires server-verified super-admin
+status to list or decide applications. The repository records audit fields and enables research
+access by email on invitation; it sends no email and grants no custody permissions.
+`features/studio/access-requests.ts` retains private status and the historical request inbox.
+Persistence and HTTP remain adapters.
 
 ## Dynamic Studio markets
 

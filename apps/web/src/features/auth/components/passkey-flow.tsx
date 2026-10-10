@@ -5,7 +5,6 @@ import { useRouter } from "nextjs-toploader/app";
 import { WebauthnStamper } from "@turnkey/webauthn-stamper";
 import styles from "../auth.module.css";
 import { ensureProfile } from "../lib/account";
-import type { AuthBoardData } from "../lib/board-data";
 import { arrivalFor, type SignupPreview } from "../lib/signup-entry";
 import { PREVIEW_PASSKEYS, type PasskeyPreview } from "../lib/passkey-entry";
 import {
@@ -38,7 +37,6 @@ import { AuthHeader } from "./auth-header";
 import { PasskeySheet } from "./passkey-sheet";
 import { SecondPasskey } from "./second-passkey";
 import type { PasskeysKnown } from "../lib/second-passkey";
-import { SpawnBoard } from "./spawn-board";
 import { AccountStep } from "./steps/account-step";
 import { AddPasskeyStep, type PasskeysRead } from "./steps/add-passkey-step";
 import { CodeStep } from "./steps/code-step";
@@ -128,7 +126,7 @@ function absent<T>(error: unknown): T | null {
 }
 
 /**
- * The form column and the board, on whichever of the two flows the route asked for.
+ * The form column, on whichever of the two flows the route asked for.
  *
  * `up` and `in` — /signup and /signin — run `lib/flow.ts`'s machine, whose sign-up rail puts the
  * mandatory passkey step straight after the code and the handle after it, and whose sign-in rail
@@ -140,13 +138,11 @@ function absent<T>(error: unknown): T | null {
  * device to a sub-organization that exists.
  */
 export function PasskeyFlow({
-  board,
   mode,
   destination,
   preview,
   passkeyPreview,
 }: {
-  board: AuthBoardData;
   /** Which screen the route opens: `up` for /signup, `in` for /signin, `add` for /passkey. */
   mode: "up" | "in" | "add";
   /**
@@ -162,15 +158,10 @@ export function PasskeyFlow({
   passkeyPreview?: PasskeyPreview | undefined;
 }) {
   if (mode === "add") {
-    return <PasskeyAddFlow board={board} destination={destination} preview={passkeyPreview} />;
+    return <PasskeyAddFlow destination={destination} preview={passkeyPreview} />;
   }
   return (
-    <SignFlow
-      board={board}
-      mode={mode}
-      destination={destination}
-      preview={mode === "up" ? preview : undefined}
-    />
+    <SignFlow mode={mode} destination={destination} preview={mode === "up" ? preview : undefined} />
   );
 }
 
@@ -199,12 +190,10 @@ interface SheetState {
  * whose failure halfway through matters to a screen other than the one that started it.
  */
 function SignFlow({
-  board,
   mode,
   destination,
   preview,
 }: {
-  board: AuthBoardData;
   mode: "up" | "in";
   destination?: string | undefined;
   preview: SignupPreview | undefined;
@@ -592,8 +581,6 @@ function SignFlow({
           )}
           {state.step === "recovered" && <RecoveredStep onFinish={() => router.push(target)} />}
         </div>
-
-        <SpawnBoard board={board} />
       </main>
 
       <PasskeySheet
@@ -642,11 +629,9 @@ interface AddSheetState {
  * wallet and no profile (GET /profile, a 404) is sent to the signup's handle step the same way.
  */
 function PasskeyAddFlow({
-  board,
   destination,
   preview,
 }: {
-  board: AuthBoardData;
   destination?: string | undefined;
   preview: PasskeyPreview | undefined;
 }) {
@@ -774,8 +759,6 @@ function PasskeyAddFlow({
             />
           )}
         </div>
-
-        <SpawnBoard board={board} />
       </main>
 
       <PasskeySheet

@@ -18,7 +18,7 @@ const OUT: AuthState = { configured: true, session: false };
 const OFF: AuthState = { configured: false, session: false };
 
 const PROTECTED = ["/studio", "/account", "/passkey"];
-const PUBLIC = ["/signin", "/signup", "/auth/callback", "/apply"];
+const PUBLIC = ["/signin", "/signup", "/auth/callback"];
 
 /**
  * Where a sign-in redirect points, with the errand stripped off.
@@ -63,7 +63,7 @@ test("each host 404s what it does not own, in both directions", () => {
 test("no decision is a redirect any more, on either host", () => {
   // The only redirect left in this function is the sign-in guard, which is not about an address.
   for (const host of ["pickler.fun", "app.pickler.fun"]) {
-    for (const path of ["/", "/studio", "/account", "/passkey", "/leaderboard", "/apply"]) {
+    for (const path of ["/", "/studio", "/account", "/passkey", "/leaderboard", "/create"]) {
       const kind = decide(host, path, HOSTS, OFF).kind;
       assert.ok(["serve", "notFound", "rewrite"].includes(kind), `${host}${path} gave ${kind}`);
     }
@@ -129,13 +129,14 @@ test("a protected path with a session is served", () => {
 });
 
 test("the paths sign-in needs stay open without one", () => {
-  // You cannot sign in if signing in requires a session, and /apply is for someone with no account.
+  // You cannot sign in if signing in requires a session.
   for (const path of PUBLIC) {
     assert.deepEqual(decide("app.pickler.fun", path, HOSTS, OUT), { kind: "serve" }, path);
   }
 });
 
 test("the marketplace is not behind the guard", () => {
+  assert.deepEqual(decide("pickler.fun", "/create", HOSTS, OUT), { kind: "serve" });
   assert.deepEqual(decide("pickler.fun", "/leaderboard", HOSTS, OUT), { kind: "serve" });
   assert.deepEqual(decide("pickler.fun", "/", HOSTS, OUT), { kind: "serve" });
 });

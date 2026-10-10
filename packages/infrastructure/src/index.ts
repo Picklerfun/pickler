@@ -6,16 +6,11 @@ export const systemClock: Clock = {
   now: () => new Date(),
 };
 
-export { createSampleMarketBoard } from "./markets/sample-market-board.js";
 export {
   createPerplMarketBoard,
   PerplBoardMemory,
   type PerplMarketBoardOptions,
 } from "./markets/perpl-market-board.js";
-export {
-  createSampleLandingReadModel,
-  SAMPLE_AGENT_TICKERS,
-} from "./landing/sample-landing-read-model.js";
 export {
   createInMemoryApplicantStore,
   type InMemoryApplicantStoreOptions,
@@ -80,6 +75,7 @@ export {
   PostgresBudgetSource,
 } from "./persistence/agent-registry.js";
 export { PostgresApplicants, PostgresWaitlist } from "./persistence/growth-store.js";
+export { PostgresApplicationReview } from "./applicants/postgres-application-review.js";
 export { PostgresBudgetLedger } from "./studio/budget.js";
 
 export { databasePoolConfig, type DatabaseConnectionOptions } from "./persistence/connection.js";
@@ -116,6 +112,7 @@ export {
 export { PostgresCustodyStore } from "./persistence/custody-store.js";
 export { PostgresWalletIdentityStore } from "./persistence/wallet-identity-store.js";
 export { PostgresAgentDirectory } from "./persistence/agent-directory.js";
+export { PostgresAgentActionFeed } from "./persistence/agent-actions.js";
 
 export { createBalanceReader, type Balance, type Balances } from "./chain/balances.js";
 export {

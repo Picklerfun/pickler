@@ -2,50 +2,106 @@
 
 import { useEffect, useState } from "react";
 import { Button, Icon, Tag } from "@pickler/ui";
-import type {
-  StudioAccessRequestStatusDto,
-  StudioAccessRequestsInboxDto,
-} from "@pickler/api-schema";
+import type { StudioAccessRequestStatusDto } from "@pickler/api-schema";
+import { useMarketplaceHref } from "../site/studio-href";
 import { studioApi } from "./api";
 import { StudioSkeleton } from "./skeleton";
+import { ApplicationsInbox } from "./applications-inbox";
 import styles from "./access-request.module.css";
 
-/** Creator requests and a server-authorized team inbox; never a grant or a passkey ceremony. */
+type Application = StudioAccessRequestStatusDto["application"];
+
+/** What the notice says for an account without access, by where its application stands. */
+export function accessNotice(application: Application): {
+  title: string;
+  body: string;
+  tag: string | null;
+  tint: "amber" | "lime" | "magenta" | null;
+  apply: boolean;
+} {
+  switch (application) {
+    case "submitted":
+      return {
+        title: "Not approved yet",
+        body: "Your application is with the Pickler team. Creators come in a few at a time. Check here for the team's decision.",
+        tag: "In review",
+        tint: "amber",
+        apply: false,
+      };
+    case "invited":
+      return {
+        title: "You are in",
+        body: "Your application was accepted. Access turns on with your account; if this still shows, check again in a moment.",
+        tag: "Invited",
+        tint: "lime",
+        apply: false,
+      };
+    case "rejected":
+      return {
+        title: "Not this time",
+        body: "Your application was not accepted for this batch. You can apply again with another agent.",
+        tag: "Not accepted",
+        tint: "magenta",
+        apply: true,
+      };
+    default:
+      return {
+        title: "Not approved yet",
+        body: "There is no application under this account's email. Creators come in a few at a time. Apply first, then check here for access.",
+        tag: null,
+        tint: null,
+        apply: true,
+      };
+  }
+}
+
+/**
+ * Creator access, as the studio tells it. Since docs/specs/landing-trade-v1.md §7 the way in is the
+ * application at /create, read by the team: a signed-in person without access is told where their
+ * application stands (in review, invited, not accepted, or none under this email) rather than
+ * offered a request button, and a super admin gets the applications inbox under this notice.
+ * Never a grant or a passkey ceremony.
+ */
 export function StudioAccessRequest({
   preview = false,
   placement = "account",
   previewStatus = "not_requested",
+  previewApplication = "submitted",
   previewLoading = false,
+  previewReviewer = false,
 }: {
   preview?: boolean;
   placement?: "account" | "wallet";
   previewStatus?: StudioAccessRequestStatusDto["status"];
+  previewApplication?: Application;
   /** Inert, non-production fixture only; never changes real access. */
   previewLoading?: boolean;
+  /** Draws the operators' inbox from fixture rows in the design preview. */
+  previewReviewer?: boolean;
 }) {
   const [state, setState] = useState<StudioAccessRequestStatusDto | null>(
-    preview ? { status: previewStatus, requestedAt: null, canReviewRequests: false } : null,
+    preview
+      ? {
+          status: previewStatus,
+          requestedAt: null,
+          application: previewApplication,
+          canReviewRequests: previewReviewer,
+        }
+      : null,
   );
   const [loading, setLoading] = useState(!preview || previewLoading);
-  const [inbox, setInbox] = useState<StudioAccessRequestsInboxDto | null>(null);
-  const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const applyHref = useMarketplaceHref("/create");
+
   useEffect(() => {
     if (preview) {
       return;
     }
     let active = true;
     void studioApi<StudioAccessRequestStatusDto>("/access-request")
-      .then(async (result) => {
-        if (!active) {
-          return;
-        }
-        setState(result);
-        if (result.canReviewRequests && placement === "account") {
-          const entries = await studioApi<StudioAccessRequestsInboxDto>("/access-requests");
-          if (active) {
-            setInbox(entries);
-          }
+      .then((result) => {
+        if (active) {
+          setState(result);
         }
       })
       .catch(() => {
@@ -61,30 +117,10 @@ export function StudioAccessRequest({
     return () => {
       active = false;
     };
-  }, [preview, placement]);
+  }, [preview]);
 
-  async function request() {
-    if (preview || busy || state?.status === "pending" || state?.status === "enabled") {
-      return;
-    }
-    setBusy(true);
-    setError("");
-    try {
-      const result = await studioApi<StudioAccessRequestStatusDto>("/access-request", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: "{}",
-      });
-      setState({ ...result, canReviewRequests: state?.canReviewRequests ?? false });
-    } catch {
-      setError("Your request could not be saved. Please try again.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  const pending = state?.status === "pending";
   const enabled = state?.status === "enabled";
+  const notice = accessNotice(state?.application ?? null);
   return (
     <section
       className={styles.notice}
@@ -92,7 +128,7 @@ export function StudioAccessRequest({
       aria-label="Creator access"
       id="creator-access-panel"
     >
-      {loading || busy ? (
+      {loading ? (
         <StudioSkeleton variant="access" />
       ) : !state ? (
         <>
@@ -104,51 +140,25 @@ export function StudioAccessRequest({
       ) : (
         <>
           <div className={styles.heading}>
-            <Icon name={enabled ? "check" : "alert"} size={18} />
-            <h2>
-              {enabled
-                ? "Creator access enabled"
-                : pending
-                  ? "Access request pending"
-                  : "Creator access required"}
-            </h2>
+            <Icon name={enabled ? "check" : "clock"} size={18} />
+            <h2>{enabled ? "Creator access enabled" : notice.title}</h2>
           </div>
           <p>
             {enabled
               ? "You can create agents in your own workspace. Wallet and funding requirements still apply."
-              : pending
-                ? "Your request is saved for the Pickler team. You can create its wallet after approval."
-                : "Request creator access before creating its wallet. You can keep setting up your agent while you wait."}
+              : notice.body}
           </p>
-          {pending ? (
-            <Tag data-tint="amber">Request sent</Tag>
-          ) : !enabled ? (
-            <Button variant="primary" onClick={() => void request()} disabled={preview}>
-              Request access
-            </Button>
-          ) : null}
-          {(pending || enabled) && (
-            <Button variant="secondary" disabled={preview} onClick={() => window.location.reload()}>
-              Check access
-            </Button>
+          {!enabled && notice.tag && <Tag data-tint={notice.tint ?? undefined}>{notice.tag}</Tag>}
+          {!enabled && notice.apply && (
+            <a href={applyHref} className={styles.applyLink}>
+              Create an agent · the application
+            </a>
           )}
-          {error && <p role="alert">{error}</p>}
-          {inbox && (
-            <div className={styles.inbox}>
-              <h3>Team inbox · {inbox.requests.length} pending shown</h3>
-              {inbox.requests.length === 0 && <p>No pending access requests.</p>}
-              <ul>
-                {inbox.requests.map((entry) => (
-                  <li key={entry.userId}>
-                    <strong>
-                      {entry.displayName} · @{entry.handle}
-                    </strong>
-                    <span>{new Date(entry.requestedAt).toLocaleString()}</span>
-                  </li>
-                ))}
-              </ul>
-              <p>Review these requests using the existing operator approval process.</p>
-            </div>
+          <Button variant="secondary" disabled={preview} onClick={() => window.location.reload()}>
+            Check access
+          </Button>
+          {state.canReviewRequests && placement === "account" && (
+            <ApplicationsInbox preview={preview} />
           )}
         </>
       )}

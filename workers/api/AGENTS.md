@@ -27,7 +27,7 @@ src/
   middleware/agent-auth.ts  # agentOnly() (HMAC) and agentScoped() (HMAC or JWT/API key, optional self-access)
   routes/auth.ts            # GET /v1/auth/me
   routes/agents.ts          # Agent read endpoints
-  routes/marketplace.ts     # Public marketplace reads: agents from the database, markets from the sample board
+  routes/marketplace.ts     # Public marketplace reads: agents and their actions from the database, markets from Perpl
   routes/signing.ts         # Passkey custody: challenge, register, add device, wallet read
   growth/market-responses.ts# Perpetual market read models mapped to their DTOs
   budget/agent-ledger.ts    # AgentLedger Durable Object: budget authority per agent
@@ -222,7 +222,12 @@ behind that route's credentials. The invented agents that used to answer here no
 `/v1/marketplace/markets` and `/v1/marketplace/markets/:symbol` answer from the board
 `marketBoardFor(PERPL_BOARD_NETWORK)` composes in `growth/services.ts`: Perpl on `testnet` or
 `mainnet` (`createPerplMarketBoard`, one request to the venue's public context, cached ten
-seconds), or the sample board for any other value and for none. What the board remembers lives in
+seconds), or, for any other value and for none, a board that answers every read with
+MarketDataUnavailableError (503): no sample board ships in the product since
+docs/specs/marketplace-real-only-v1.md N3, and `/v1/landing` is gone with its sample read model (N4).
+`GET /v1/marketplace/activity` (`?limit=`, 1 to 50, default 12) is the agents' latest actions:
+`PostgresAgentActionFeed` reads finished `pickler.perps_checks` of public, living agents and
+answers the call and the outcome only, never the rationale, the steps or the cost (N8). What the board remembers lives in
 a module-level `PerplBoardMemory` per network, because services are composed per request. A venue
 that cannot be read and has nothing recent held raises `MarketDataUnavailableError`, which the
 error handler answers as 503 with `error: "MARKET_DATA_UNAVAILABLE"`; an empty list is never the
@@ -574,11 +579,25 @@ retains workspace authorization and generated OpenAPI. The web displays the stra
 agent studios and explicitly confirms clearing unsupported authored conditions for rules.
 See [Studio perpetual execution](../../docs/studio-perps-execution.md).
 
-Studio access-request routes inherit JWT-only authentication. GET/POST `access-request` provide
-own status and owner-only idempotent submission; GET `access-requests` requires the verified
-super-admin allowlist. All use private/no-store and generated OpenAPI schemas. Infrastructure
-records the internal team inbox notification; no external message transport or automatic grant is
-composed. Both Studio and its Console alias mount these operations.
+Studio access routes inherit JWT-only authentication and are read only. GET `access-request` is a
+person's own status (`not_requested`, `pending`, `enabled`) with `canReviewRequests`; GET
+`access-requests` lists the requests recorded before 2026-10-08 and requires the verified
+super-admin allowlist. `POST access-request` was retired with the public application
+(docs/specs/landing-trade-v1.md §7): nothing writes `pickler.studio_access_requests` any more. Both
+use private/no-store and generated OpenAPI schemas; no automatic grant is composed.
+
+Creator applications are reviewed through `routes/studio-applications.ts`, mounted beside them:
+GET `applications` (newest first, at most 500, `?status=submitted|invited|rejected`) and PUT
+`applications/:id` (`{ status: "invited" | "rejected", note? }`, note at most 500 characters).
+Both require the verified super-admin allowlist through core's `createApplicationReview`; a 403
+never reveals another person's answers. The one write is `growth.review_application` (migrations
+0039 and 0040), which records the status, the reviewer's email and the note, and on `invited`
+enables `pickler.research_access` for any `auth.users` account carrying that email. An account
+created afterwards claims its invite as it onboards: `POST studio/onboard` passes the principal's
+email to `directory.onboard`, which calls `growth.claim_invite`. `GET access-request` carries
+`application` (the status under the account's email, from `growth.application_status_for`, or
+null), so the studio can say where a person stands. No email is sent from any of this. Without
+`applicationReview` in `StudioServices` the review routes answer 503.
 
 ## Dynamic Studio markets
 

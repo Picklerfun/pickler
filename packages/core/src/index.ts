@@ -36,10 +36,9 @@ export {
   type LogQuery,
 } from "./features/launch/ports/chain-reader.js";
 
+// Shared public-view types (accents, agent refs, pick outcomes); the landing read model they were
+// written for is gone (docs/specs/marketplace-real-only-v1.md N4).
 export * from "./features/landing/domain/landing.js";
-export type { LandingReadModel } from "./features/landing/ports/landing-read-model.js";
-export { createGetLanding, LANDING_LIMITS } from "./features/landing/application/get-landing.js";
-
 export { InvalidEmailError, normalizeEmail } from "./features/waitlist/domain/email.js";
 export type {
   WaitlistPlacement,
@@ -82,6 +81,21 @@ export {
   createGetApplicant,
   createSubmitApplication,
 } from "./features/applications/application/applications.js";
+export type {
+  ApplicationDecision,
+  ApplicationReviewEntry,
+  ApplicationReviewFilter,
+  ApplicationReviewRepository,
+  ApplicationStatus,
+} from "./features/applications/ports/application-review-repository.js";
+export {
+  APPLICATION_DECISIONS,
+  APPLICATION_STATUSES,
+  ApplicationNotFoundError,
+  createApplicationReview,
+  DECISION_NOTE_MAX,
+  ReviewValidationError,
+} from "./features/applications/application/review-applications.js";
 
 export * from "./features/agents/domain/agents.js";
 export type { AgentDirectory } from "./features/agents/ports/agent-directory.js";
@@ -97,6 +111,17 @@ export {
   createListDirectory,
   createListReads,
 } from "./features/agents/application/agents.js";
+export {
+  AGENT_ACTION_CALLS,
+  AGENT_ACTION_OUTCOMES,
+  AGENT_ACTIONS_DEFAULT,
+  AGENT_ACTIONS_MAX,
+  createListAgentActions,
+  type AgentAction,
+  type AgentActionCall,
+  type AgentActionFeed,
+  type AgentActionOutcome,
+} from "./features/agents/domain/agent-actions.js";
 
 export * from "./features/markets/domain/markets.js";
 export type { MarketBoard } from "./features/markets/ports/market-board.js";

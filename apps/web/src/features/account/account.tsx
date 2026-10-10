@@ -217,7 +217,12 @@ export function Account({
           ) : (
             <>
               {section === "wallet" && <WalletSection state={wallet} />}
-              {section === "access" && <StudioAccessRequest preview={Boolean(preview)} />}
+              {section === "access" && (
+                <StudioAccessRequest
+                  preview={Boolean(preview)}
+                  previewReviewer={Boolean(preview)}
+                />
+              )}
               {section === "security" && (
                 <SecuritySection
                   state={passkeys}

@@ -139,6 +139,7 @@ try {
   for (const scenario of [
     "studio",
     "account",
+    "account-access",
     "passkey",
     "studio-error",
     "studio-missing-wallet",
@@ -155,6 +156,25 @@ try {
       },
     ]);
     const counts = new Map();
+    let accessEnabled = false;
+    let reviewAllowed = true;
+    let applicationRows = [7, 8].map((id) => ({
+      id,
+      email: `creator${id}@example.test`,
+      agentName: `Creator ${id}`,
+      ticker: `$CRE${id}`,
+      xHandle: `@creator_${id}`,
+      category: "Sports",
+      personality: "Analyst",
+      edge: "Public evidence.",
+      whyYou: "Controlled browser acceptance.",
+      status: "submitted",
+      submittedAt: "2026-01-01T00:00:00.000Z",
+      reviewedAt: null,
+      reviewedBy: null,
+      decisionNote: null,
+      invitedAt: null,
+    }));
     let walletPhase = "initial";
     let cataloguePhase = "ready";
     let clientClockOffset = 0;
@@ -239,7 +259,46 @@ try {
         status = 503;
         json = { error: "UNAVAILABLE", message: "Controlled load failure" };
       } else if (url.pathname === "/api/v1/studio/access-request") {
-        json = { status: "enabled", canReview: false };
+        json = {
+          status: "enabled",
+          requestedAt: null,
+          application: null,
+          canReviewRequests: false,
+        };
+      }
+      if (scenario === "account-access") {
+        if (url.pathname === "/api/v1/studio/access-request") {
+          assert.equal(route.request().method(), "GET");
+          json = {
+            status: accessEnabled ? "enabled" : "not_requested",
+            requestedAt: null,
+            application: accessEnabled ? "invited" : "submitted",
+            canReviewRequests: reviewAllowed,
+          };
+        } else if (url.pathname === "/api/v1/studio/applications") {
+          assert.equal(route.request().method(), "GET");
+          const filter = url.searchParams.get("status");
+          json = {
+            applications: applicationRows.filter((row) => !filter || row.status === filter),
+          };
+        } else if (/^\/api\/v1\/studio\/applications\/\d+$/.test(url.pathname)) {
+          assert.equal(route.request().method(), "PUT");
+          const id = Number(url.pathname.split("/").at(-1));
+          const decision = route.request().postDataJSON();
+          const row = applicationRows.find((entry) => entry.id === id);
+          assert.ok(row);
+          assert.ok(["invited", "rejected"].includes(decision.status));
+          json = {
+            ...row,
+            status: decision.status,
+            reviewedAt: "2026-01-02T12:00:00.000Z",
+            reviewedBy: "ops@example.test",
+            decisionNote: decision.note ?? null,
+            invitedAt: decision.status === "invited" ? "2026-01-02T12:00:00.000Z" : null,
+          };
+          applicationRows = applicationRows.map((entry) => (entry.id === id ? json : entry));
+          accessEnabled ||= decision.status === "invited";
+        }
       }
       if (url.pathname === "/api/v1/studio/wallets" && scenario === "studio-wallets") {
         assert.equal(route.request().method(), "GET");
@@ -291,9 +350,11 @@ try {
     const route =
       scenario === "studio-token"
         ? `/studio/agents/${tokenAgentId}/token`
-        : scenario.startsWith("studio")
-          ? "/studio"
-          : `/${scenario}`;
+        : scenario === "account-access"
+          ? "/account?section=access"
+          : scenario.startsWith("studio")
+            ? "/studio"
+            : `/${scenario}`;
     await page.goto(`${base}${route}`);
     if (scenario === "studio-token") {
       const name = page.getByRole("textbox", { name: "Token name", exact: true });
@@ -445,6 +506,42 @@ try {
     } else if (scenario === "studio") {
       await page.getByRole("button", { name: /Create its wallet/ }).waitFor();
       assert.equal(await page.locator("#studio-pending").count(), 0);
+    } else if (scenario === "account-access") {
+      const inbox = page.locator("#applications-inbox");
+      const first = inbox
+        .locator("li[data-status=submitted]")
+        .filter({ hasText: "creator7@example.test" });
+      await first.getByRole("textbox", { name: "Note for Creator 7" }).fill("Clear edge.");
+      await first.getByRole("button", { name: "Invite", exact: true }).click();
+      await first.waitFor({ state: "hidden" });
+      const second = inbox
+        .locator("li[data-status=submitted]")
+        .filter({ hasText: "creator8@example.test" });
+      await second.getByRole("button", { name: "Reject", exact: true }).click();
+      await second.waitFor({ state: "hidden" });
+      await inbox.getByRole("button", { name: "Invited", exact: true }).click();
+      await inbox
+        .locator("li[data-status=invited]")
+        .getByText(/Clear edge/)
+        .waitFor();
+      assert.equal(await inbox.locator("li").count(), 1);
+      await inbox.getByRole("button", { name: "Rejected", exact: true }).click();
+      await inbox
+        .locator("li[data-status=rejected]")
+        .getByText(/ops@example.test/)
+        .waitFor();
+      assert.equal(await inbox.locator("li").count(), 1);
+      await inbox.getByRole("button", { name: "All", exact: true }).click();
+      await page.waitForFunction(
+        () => document.querySelectorAll("#applications-inbox li").length === 2,
+      );
+      await page.getByRole("button", { name: "Check access", exact: true }).click();
+      await page.getByRole("heading", { name: "Creator access enabled", exact: true }).waitFor();
+      reviewAllowed = false;
+      // A fresh account read receives the new server-controlled operator flag.
+      await page.reload();
+      await page.getByRole("heading", { name: "Creator access enabled", exact: true }).waitFor();
+      assert.equal(await inbox.count(), 0);
     } else if (scenario === "account") {
       await page
         .locator("#account-wallet-card")
@@ -461,7 +558,13 @@ try {
         endpoint,
       );
       let maximum = 2;
-      if (endpoint === "/api/v1/studio/perpl/markets" && scenario === "studio-markets") {
+      if (scenario === "account-access") {
+        // Initial load, Check access and explicit reload each exercise Strict Mode reads.
+        maximum = endpoint === "/api/v1/studio/access-request" ? 6 : 3;
+        if (endpoint === "/api/v1/studio/applications") {
+          maximum = 7;
+        }
+      } else if (endpoint === "/api/v1/studio/perpl/markets" && scenario === "studio-markets") {
         maximum = 3;
       } else if (scenario === "studio-token") {
         maximum = 3;

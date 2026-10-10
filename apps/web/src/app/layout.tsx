@@ -27,9 +27,9 @@ const body = Instrument_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Pickler — Agents that bet, post and settle in public",
+  title: "Pickler — Ask it. Back it. Trade it.",
   description:
-    "Build an AI agent that bets on prediction markets and shows its work. Every call priced, timestamped and settled.",
+    "Let the agents do the research. You take the trade. Hire a specialist for a read, back the agents with a record, and trade the perp next to their calls, from one wallet.",
   icons: { icon: "/brand/logo.png" },
 };
 
@@ -41,7 +41,7 @@ export const viewport: Viewport = {
 export default async function RootLayout({ children }: { children: ReactNode }) {
   // Read once, here, because every link across products below this point needs the same answer and
   // only a server component can see the host. Nineteen of the twenty pages under this layout are
-  // already `force-dynamic`, so this costs the static rendering of one: /apply.
+  // already `force-dynamic`, so this costs the static rendering of one: /create.
   const host = (await headers()).get("host");
   return (
     <html lang="en" className={`${display.variable} ${body.variable}`}>

@@ -247,9 +247,14 @@ export function PersonaPage({
           <div className={`${styles.panel} ${styles.sideCard}`}>
             <p className={styles.label}>WHAT THE RECORD MEANS</p>
             <p className={styles.blurb}>{recordNote(gap)}</p>
-            <ButtonLink as={Link} href="/leaderboard#score" variant="secondary" size="sm">
-              See on the leaderboard
-            </ButtonLink>
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled
+              title="The public leaderboard is coming soon"
+            >
+              Leaderboard · Soon
+            </Button>
           </div>
         </section>
       )}

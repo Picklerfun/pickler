@@ -26,8 +26,8 @@ src/app/
   (workspace)/account/      # Account pages and sanitized return to Studio
   (workspace)/studio/       # Persistent Studio layout, entry/new and explicit agent section pages
   (auth)/                  # Existing signup/signin design
-  apply/                   # Creator application using API-backed cookie access
-  agents/, tokens/, reads/  # Existing public demonstrations
+  create/                  # Public email-first creator application; the seat cookie is taken on send
+  agents/, reads/          # Public marketplace; old token/leaderboard routes are unmounted
   markets/                  # The perpetuals board and one market's level × time surface
 src/features/studio/       # Studio sections, history, research result and API client
 src/features/studio/new-agent # Creating an agent: one screen, wallet first, then funding, then Create
@@ -40,13 +40,16 @@ src/server/
   api-client.ts            # API Service Binding; explicit loopback-only next-dev fallback
   container.ts             # Typed presentation facade over HTTP DTOs
   http/apply-cookie.ts     # Read the incoming cookie for the application page
-  http/auth-board.ts       # Presentation formatting only
 ```
 
-Landing, signup, applications, token pages, paid reads, wallet and ranking designs are retained.
-The marketplace reads `/api/v1/marketplace/*`: agents come from the database, the perpetuals board
-is read from Perpl (or is the sample board, labelled, where the API has no network configured), and research results never appear there automatically. `/api/v1/landing` keeps its polling behavior. Hono sets the HttpOnly,
-Secure `pk_apply` cookie; the web only transports it. Never put that bearer token in URLs or JSON.
+Signup, private token launch previews, paid reads and wallet designs are retained; the landing and the
+application are the "Pickler Landing Trade v2" and "Pickler Create Agent" canvases (see "The landing
+and the application" below). The marketplace reads `/api/v1/marketplace/*`: agents come from the
+database, the perpetuals board is read from Perpl (without `PERPL_BOARD_NETWORK` the API answers 503 and the board shows its
+catching-up state; the sample board lives only with the design harness), and research results never appear there automatically.
+The landing reads only public agent activity (docs/specs/marketplace-real-only-v1.md N8). Hono sets
+the HttpOnly, Secure `pk_apply` cookie; the web only transports it. Never put that bearer token in
+URLs or JSON.
 
 ## Three-layer implementation example
 
@@ -141,9 +144,47 @@ What is real today: the address, the chain and the native balance. What is not: 
 
 ## One navigation bar
 
-`features/site/site-nav.tsx` is the navigation for every public route, landing included: the same brand, the same Explore / Build / Resources menus, the same height. Only two things change. The landing hangs the price tape above it, and nowhere else does. The explore routes — everything inside `PublicShell` — also carry the wallet: CONNECT WALLET beside JOIN TESTNET, and once connected the address, its balance, and the three pages that only exist for it.
+`features/site/site-nav.tsx` is the navigation for every public route, the landing and the
+application included: the same brand, the same Explore / Build / Resources menus, the same height.
+It ends in a secondary "Get the app" link (`/#app`) and one primary "Create agent" action
+(`/create`). The action appears once, in the header or the compact menu footer; Build does not
+repeat it. Tokens, Leaderboard and Reputation remain Soon without links. `/create` changes only
+the secondary link to "Trade with AI" (`/`). The landing
+and the explore routes (everything inside `PublicShell`) also carry the wallet with `connect`: Connect
+wallet beside the pills, and once connected the address, its balance, and the three pages that only
+exist for it. The auth screens keep their own bar — a flow that is asking for something should not
+offer six ways out of it. Lime stays for what the product does — a filled action, a win, a
+graduated token — not for who made it.
 
-The apply flow and the auth screens keep their own bar on purpose — a flow that is asking for something should not offer six ways out of it — but the bar is the same height as the navigation and carries the same brand, so only the right-hand side differs. The brand mark is lit in cyan on every surface, the flows included. Lime stays for what the product does — a filled action, a win, a graduated token — not for who made it.
+## The landing and the application
+
+Both are specified in `docs/specs/landing-trade-v1.md`. `/` (`features/landing/`) is the "Pickler
+Landing Trade v2" canvas: a light page with four dark blocks, each a subtree taking
+`data-surface="dark"` — the hero phone (`#hero-phone`), the three ways in (`#how`, cards
+`#how-hire`, `#how-back`, `#how-trade`, to `/agents`, `/tokens` and `/markets`), the FOUR STEPS
+phone (`#steps-phone`, under `#app`) and the closing block (`#download`). The one thing the page reads from an API is the agents' latest actions, `/api/v1/marketplace/activity`, which the tape above the bar runs through — ticker or handle, the call, what came of it, ON PAPER (`lib/actions.ts`, pure and pinned in `apps/web/test/landing-actions.test.ts`; with nothing on record the tape is not drawn; marketplace-real-only-v1.md N8). The hero's dialogue beside the phone is the canvas's worked example of the kinds of action, not a read. Every other figure is the canvas's worked example inside the card that explains it (`lib/demo.ts`, pure
+and pinned in `apps/web/test/landing-demo.test.ts`: the six question/answer pairs over the phone,
+the candle game, the token curve, the padlock, the steps, the questions), drawn `aria-hidden` where
+it is decoration and still under `prefers-reduced-motion` (`lib/use-ticker.ts` is the one clock,
+and it also stops in a hidden tab). Nothing on the landing counts up on its own as if measured.
+The four phone screens under `components/phone/` are static mockups of the mobile app's canvases at
+the phone's own size, scaled into their panels; they are never interactive. "Download on the App
+Store" is a link only when `NEXT_PUBLIC_APP_STORE_URL` is set (`components/app-store-link.tsx`);
+otherwise it is drawn `aria-disabled` with the reason in its title. `scripts/design/routes.mjs`
+proves `#how-title`, and `surfaces.mjs` names the four dark blocks.
+
+`/create` (`features/apply/`) is the "Pickler Create Agent" canvas and is public: the email is the
+form's first field. Sending runs the two existing requests in order — `POST /api/v1/waitlist`
+(which seats the browser with the `pk_apply` cookie), then `POST /api/v1/applications` with the six
+answers — and the page shows SUBMITTED in place. A seat is still bound to a browser: an email
+already in line, typed in a browser that does not hold its seat, is refused by core and the form
+says so and keeps the answers; a browser that already holds a seat with an application sees
+SUBMITTED on load, read server-side. The limits are `APPLICATION_LIMITS_DTO` (why-you is 200). The
+pure rules are `lib/form-model.ts`, pinned in `apps/web/test/apply-form.test.ts`; `lib/options.ts`
+keeps the swatches, the batch copy and the ticker and handle helpers. The page is the light
+surface with the hero card (`#apply-hero`), the arena (`#arena`) and YOUR PIECE (`#apply-piece`)
+nested dark; `routes.mjs` proves `#apply-form`. Applications land in `growth.applications` as `submitted`; authorized operators review them
+through Account’s Creator access inbox below.
 
 ## Responsive public navigation
 
@@ -152,7 +193,8 @@ never wraps: above 1100px the three desktop groups are inline; at 1100px and bel
 navigation icon opens the same three named groups, separated into columns. On small screens,
 Explore spans a two-column row above Build and Resources. Group labels are visually distinct from
 links and unavailable destinations retain their disabled state. Create agent appears exactly once:
-in the header above 640px, or in a separated menu footer at 640px and below. The small header
+in the header above 640px, or in a separated menu footer at 640px and below. The secondary
+Get the app action shares that footer on small screens. The small header
 keeps the brand, a labelled 44px wallet icon, and a labelled 44px navigation icon. The wallet label contracts at 860px to leave room for pending
 wallet states. CSS handles layout without client resize state; crossing the 1100px breakpoint
 dismisses the disclosure whose trigger becomes hidden. At 360px and below the brand keeps only
@@ -172,7 +214,7 @@ local fixture servers for responsive geometry, keyboard, touch, menu navigation 
 API reads them from the venue through the parser the mobile app trades on
 (`docs/specs/perps-board-live-v1.md`), and every market carries its `source`: the line over the
 title names the venue, the network and the time of the read, adds `STALE` when the venue has not
-answered since, and says `SAMPLE DATA` for the sample board (`sourceEyebrow` and `sourceFootnote`
+answered since, and says `SAMPLE DATA` for the harness's sample board (`sourceEyebrow` and `sourceFootnote`
 in `lib/format.ts`). A count nobody has measured — agents reading, open calls — is `null` on the
 wire and a dash on the page, never a zero; a `null` reach refuses no square. When the venue cannot be
 read the API answers 503: the list shows its empty state with the catching-up line, and a market
@@ -218,7 +260,7 @@ Nothing charges yet: the pay button carries the note rather than pretending. A r
 
 ## Dashboard and the public site
 
-The private creator studio lives at `/studio` and calls the Hono API. The studio lived at `/console` until 2026-09-25; no redirect is kept because nobody had launched. The public surface retains landing, `/apply`, auth screens, `/tokens`, `/agents`, `/reads` and `/leaderboard`. Keep private research and public demonstration data separate; share visual components without automatically publishing results.
+The private creator studio lives at `/studio` and calls the Hono API. The studio lived at `/console` until 2026-09-25; no redirect is kept because nobody had launched. The public surface is the landing, `/create`, the auth screens, `/agents`, `/markets` and `/reads`; `/tokens` and `/leaderboard` answer 404 while their products are soon, and the navigation announces them as such (docs/specs/marketplace-real-only-v1.md N1, N2). Keep private research and public demonstration data separate; share visual components without automatically publishing results.
 
 <!-- BEGIN:nextjs-agent-rules -->
 
@@ -726,7 +768,7 @@ needs a session with no wallet and the design harness has none;
 
 The studio Limits & funding section includes `sections/trading.tsx`: public account, preparation/explicit confirmation, mode and order history. Use private studio API DTOs and visibility-aware polling. Never import signer or infrastructure code.
 
-`/tokens` renders the real launch catalogue through the API, with explicit unavailable/empty states; it does not restore the removed sample token board.
+`/tokens` is not mounted while the launchpad is soon (marketplace-real-only-v1.md N2); `features/agents` keeps the launch board, the token page and the leaderboard for when it is.
 
 ## Design checks
 
@@ -766,18 +808,35 @@ See [Studio perpetual execution](../../docs/studio-perps-execution.md).
 
 ## Creator access requests
 
-The New agent access warning offers an authenticated request, never a passkey prompt or implicit
-approval. `features/studio/access-request.tsx` is also Account's Creator access section. It reads
-and posts `/v1/studio/access-request`; repeated requests keep the first timestamp. Preview controls
-never send requests. Server-authorized operators see a pending inbox in that section, using
-`SUPER_ADMIN_EMAILS`; ordinary users never receive another user's request. These are internal inbox
-notifications, not email/Slack/Telegram delivery. Approval remains the existing operator command.
+The way into the studio is the public application at `/create` (docs/specs/landing-trade-v1.md §7),
+so the New agent access warning and Account's Creator access section
+(`features/studio/access-request.tsx`) no longer offer a request button: a signed-in person
+without access reads where their application stands (`accessNotice`, by the DTO's `application`:
+"In review", "Invited", "Not accepted", or none under this email), with a link to the application
+(`useMarketplaceHref("/create")`) where applying makes sense and "Check access". Inviting turns
+access on by email (spec R5), so "Invited" without access is a moment, not a state. The component
+reads only `GET /v1/studio/access-request` for `status`, `application` and `canReviewRequests`; the
+POST was retired from the API. A server-authorized operator
+(`SUPER_ADMIN_EMAILS`) gets `features/studio/applications-inbox.tsx` under the notice in Account:
+the applications from `GET /v1/studio/applications`, filtered by status (To review, Invited,
+Rejected, All), each with its six answers, and Invite / Reject with an optional note through
+`PUT /v1/studio/applications/:id`. Inviting enables studio access by email for existing and future accounts. No acceptance email
+is sent; the operator command remains available for exceptions. The preview
+(`?section=access`, outside production) draws the inbox from `PREVIEW_APPLICATIONS` and sends
+nothing; `scripts/design/routes.mjs` proves `#creator-access-panel:has(#applications-inbox)`.
+After a decision, the inbox removes rows that no longer match the selected filter.
+`node --import tsx scripts/design/studio-loading.mjs` verifies invitation, rejection, filters,
+audit details, refreshed access and operator-only presentation with controlled API responses.
+`node scripts/design/creator-application.mjs` submits the public form through the local fixture's
+actual growth routes at desktop/mobile widths, verifies the HttpOnly seat and submitted reload,
+and checks that retired public routes return 404. Neither acceptance runner sends email.
 
 ## Creator access layout and loading
 
-The creation screen places the sole creator-access request panel inside Its wallet, step 0,
-rather than above the identity form. Pending requests show a status tag and one secondary refresh
-action; wallet creation stays blocked. On narrow screens this access card precedes the form.
+The creation screen places the sole creator-access notice inside Its wallet, step 0, rather than
+above the identity form. Without access it shows the "In review" tag, the link to the application
+and one secondary refresh action; wallet creation stays blocked. On narrow screens this access card
+precedes the form.
 The second-passkey reminder follows the setup fields. Account retains its own access section and
 server-authorized team inbox. Request submission and permission checks remain unchanged.
 

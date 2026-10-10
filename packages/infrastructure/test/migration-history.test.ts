@@ -18,6 +18,7 @@ for (const history of [
   "launch-branch",
   "main-before-custody",
   "custody-branch",
+  "main-before-applications",
 ] as const) {
   test(`merged migration history upgrades ${history} without losing data`, async (t) => {
     const url = new URL(
@@ -30,6 +31,8 @@ for (const history of [
     url.pathname = `/${name}`;
     const pool = new Pool({ connectionString: url.toString(), max: 2 });
     const folder = await mkdtemp(join(tmpdir(), "pickler-migration-"));
+    let preservedToken: unknown;
+    let preservedPreset: unknown;
     t.after(async () => {
       await pool.end();
       await admin.query(`DROP DATABASE "${name}"`);
@@ -41,21 +44,23 @@ for (const history of [
         await readFile(join(migrationsFolder, "meta/_journal.json"), "utf8"),
       );
       journal.entries = journal.entries.filter((entry: { idx: number }) =>
-        history === "main-before-custody"
-          ? entry.idx <= 16
-          : history === "custody-branch"
-            ? // The custody branch published 0017–0021 on top of 0011; later migrations (0027
-              // alters a 0012 table) were never part of it.
-              entry.idx <= 11 || (entry.idx >= 17 && entry.idx <= 21)
-            : history === "main-before-launch"
-              ? entry.idx <= 14
-              : history === "launch-branch"
-                ? entry.idx <= 9 || (entry.idx >= 15 && entry.idx <= 16)
-                : history === "pre-settlement"
-                  ? entry.idx <= 10
-                  : history === "research"
-                    ? entry.idx <= 4
-                    : [0, 5, 6].includes(entry.idx),
+        history === "main-before-applications"
+          ? entry.idx <= 38
+          : history === "main-before-custody"
+            ? entry.idx <= 16
+            : history === "custody-branch"
+              ? // The custody branch published 0017–0021 on top of 0011; later migrations (0027
+                // alters a 0012 table) were never part of it.
+                entry.idx <= 11 || (entry.idx >= 17 && entry.idx <= 21)
+              : history === "main-before-launch"
+                ? entry.idx <= 14
+                : history === "launch-branch"
+                  ? entry.idx <= 9 || (entry.idx >= 15 && entry.idx <= 16)
+                  : history === "pre-settlement"
+                    ? entry.idx <= 10
+                    : history === "research"
+                      ? entry.idx <= 4
+                      : [0, 5, 6].includes(entry.idx),
       );
       await mkdir(join(folder, "meta"));
       await writeFile(join(folder, "meta/_journal.json"), JSON.stringify(journal));
@@ -71,6 +76,28 @@ for (const history of [
         migrationsSchema: "pickler_migrations",
       });
       await pool.query(`INSERT INTO pickler.metadata (key, value) VALUES ('preserved', 'Keep me')`);
+      if (history === "main-before-applications") {
+        await pool.query(`
+          INSERT INTO market.tokens
+            (ticker, name, chain, address, total_supply, quote_symbol, quote_decimals, status, launched_at)
+          VALUES
+            ('$KEEP', 'Preserved token', 'eip155:10143', '0x1111111111111111111111111111111111111111',
+             21000000000000000000000000, 'AUSD', 6, 'pre_graduation', now())
+        `);
+        await pool.query(`
+          INSERT INTO launch.presets
+            (chain, preset_id, version, config_hash, params, quote_address,
+             total_supply, sale_allocation, lp_allocation, published_block)
+          VALUES
+            ('eip155:10143', 1, 2, '0x${"a".repeat(64)}', '{"version":2}',
+             '0x2222222222222222222222222222222222222222',
+             21000000000000000000000000, 16800000000000000000000000, 4200000000000000000000000, 1)
+        `);
+        preservedToken = (await pool.query("SELECT * FROM market.tokens WHERE ticker = '$KEEP'"))
+          .rows[0];
+        preservedPreset = (await pool.query("SELECT * FROM launch.presets WHERE preset_id = 1"))
+          .rows[0];
+      }
     }
     await Promise.all([migrateDatabase(pool), migrateDatabase(pool)]);
     await migrateDatabase(pool);
@@ -98,6 +125,20 @@ for (const history of [
         (await pool.query("SELECT value FROM pickler.metadata WHERE key = 'preserved'")).rows[0]
           .value,
         "Keep me",
+      );
+    }
+    if (history === "main-before-applications") {
+      assert.deepEqual(
+        (await pool.query("SELECT * FROM market.tokens WHERE ticker = '$KEEP'")).rows[0],
+        preservedToken,
+      );
+      assert.deepEqual(
+        (await pool.query("SELECT * FROM launch.presets WHERE preset_id = 1")).rows[0],
+        preservedPreset,
+      );
+      assert.ok(
+        (await pool.query("SELECT to_regprocedure('growth.claim_invite(uuid,text)') AS name"))
+          .rows[0].name,
       );
     }
     await pool.query(

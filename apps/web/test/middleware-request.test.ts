@@ -97,7 +97,7 @@ test("the marketplace refuses studio paths rather than forwarding them", () => {
 });
 
 test("the paths sign-in needs are reachable with no cookies at all", () => {
-  for (const path of ["/signin", "/signup", "/auth/callback", "/apply"]) {
+  for (const path of ["/signin", "/signup", "/auth/callback"]) {
     assert.equal(sentTo(middleware(request(path))), null, path);
   }
 });

@@ -63,6 +63,12 @@
   --pk-glow-lime: rgba(200, 240, 58, 0.32);
   --pk-glow-lime-strong: rgba(200, 240, 58, 0.5);
 
+  /* Violet as light: the radial halo behind the phones on the landing and behind the mascot on the
+   * application page. The palette's light violet (`--pk-agent-violet-fill`) at a fraction, on both
+   * surfaces, because it is the agents' colour cast on a dark panel and not a colour the surface
+   * owns. The canvases paint it at 0.35 and 0.42; one weight. */
+  --pk-glow-violet: rgba(155, 123, 255, 0.4);
+
   /* What a dialog dims the page with. The dark ground at a fraction, on both surfaces: a scrim
    * darkens whatever is behind it, and a light one would wash a light page out instead. */
   --pk-scrim: rgba(11, 13, 26, 0.72);

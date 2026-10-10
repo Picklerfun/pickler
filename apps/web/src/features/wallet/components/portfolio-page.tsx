@@ -227,8 +227,8 @@ export function PortfolioPage({
             have graduated theirs. It does not know anyone&rsquo;s holding, so nothing is listed
             here rather than a row that looks like a balance.
           </p>
-          <ButtonLink as={Link} href="/tokens" variant="secondary" size="sm">
-            See the board <Icon name="arrow" size={14} />
+          <ButtonLink as={Link} href="/agents" variant="secondary" size="sm">
+            Explore agents <Icon name="arrow" size={14} />
           </ButtonLink>
         </section>
       )}

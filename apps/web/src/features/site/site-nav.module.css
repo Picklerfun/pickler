@@ -110,6 +110,11 @@
   margin-left: auto;
 }
 
+.nav .secondary {
+  min-height: 44px;
+  white-space: nowrap;
+}
+
 .nav .cta {
   min-height: 44px;
   white-space: nowrap;
@@ -213,7 +218,8 @@
     gap: 8px;
   }
 
-  .nav .cta {
+  .nav .cta,
+  .nav .secondary {
     display: none;
   }
 
@@ -240,11 +246,18 @@
   }
 
   .mobileLaunch {
-    display: block;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .mobileLaunch > [role="separator"] {
+    grid-column: 1 / -1;
   }
 
   .navigationDropdown .launchItem {
-    margin-top: 8px;
+    margin-top: 0;
   }
 }
 

@@ -13,13 +13,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@pickler/ui/dropdown-menu";
-import { useStudioHref } from "./studio-href";
 import { AccountMenu } from "@/features/wallet/components/account-menu";
 import { useEffect, useState } from "react";
 import styles from "./site-nav.module.css";
 
 /**
- * The public navigation, the same on every route. The landing hangs the price tape above it and
+ * The public navigation, the same on every route. The landing hangs the agents’ activity tape above it and
  * nothing else differs, so the brand and the menus never move as you go from the landing to the
  * board to an agent.
  *
@@ -30,12 +29,11 @@ const MENUS = [
     key: "explore",
     label: "Explore",
     items: [
-      { title: "Tokens", href: "/tokens", sub: "Every agent token, ranked by record" },
+      { title: "Tokens", sub: "Every agent token, ranked by record" },
       { title: "Agents", href: "/agents", sub: "Who takes a paid read, on what, for how much" },
       { title: "Markets", href: "/markets", sub: "Every perp, the board, your ticket" },
       {
         title: "Leaderboard",
-        href: "/leaderboard",
         sub: "Who said the truth, and the platform in numbers",
       },
     ],
@@ -44,11 +42,9 @@ const MENUS = [
     key: "build",
     label: "Build",
     items: [
-      { title: "Deploy Agent", sub: "Launch one with its rules and its budget" },
       { title: "MCP & Skills", sub: "Give it tools, feeds and a way to act" },
       {
         title: "Reputation",
-        href: "/leaderboard#score",
         sub: "How the score is computed, weight by weight",
       },
     ],
@@ -64,6 +60,12 @@ const MENUS = [
   },
 ] as const;
 
+export interface NavAction {
+  label: string;
+  href: string;
+}
+
+const SECONDARY: NavAction = { label: "Get the app", href: "/#app" };
 type Menu = (typeof MENUS)[number];
 
 function MenuItems({
@@ -110,12 +112,13 @@ function MenuItems({
 export function SiteNav({
   connect = false,
   surface = "light",
+  secondary = SECONDARY,
 }: {
   connect?: boolean;
   surface?: "light" | "dark";
+  secondary?: NavAction;
 }) {
   const pathname = usePathname();
-  const studio = useStudioHref();
   const [open, setOpen] = useState<string | null>(null);
 
   // Layout stays in CSS. Only dismiss a disclosure whose trigger disappears at the breakpoint.
@@ -188,7 +191,16 @@ export function SiteNav({
           {connect && <AccountMenu surface={surface} />}
           <ButtonLink
             as={Link}
-            href={studio}
+            href={secondary.href}
+            variant="secondary"
+            className={styles.secondary}
+          >
+            {secondary.href.endsWith("#app") && <Icon name="phone" size={15} />}
+            {secondary.label}
+          </ButtonLink>
+          <ButtonLink
+            as={Link}
+            href="/create"
             variant="ghost"
             className={styles.cta}
             data-surface={surface === "dark" ? "light" : "dark"}
@@ -231,10 +243,13 @@ export function SiteNav({
                 </div>
                 <DropdownMenuGroup className={styles.mobileLaunch}>
                   <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild className={styles.item}>
+                    <Link href={secondary.href}>{secondary.label}</Link>
+                  </DropdownMenuItem>
                   <DropdownMenuItem asChild className={styles.launchItem}>
                     <ButtonLink
                       as={Link}
-                      href={studio}
+                      href="/create"
                       variant="ghost"
                       data-surface={surface === "dark" ? "light" : "dark"}
                       arrow

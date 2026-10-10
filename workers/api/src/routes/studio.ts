@@ -97,7 +97,8 @@ import {
 import type { AppEnv } from "../env";
 import { authenticated, type Authenticate } from "../middleware/auth";
 import { studioAccessRequestRoutes } from "./studio-access-requests";
-import type { StudioAccessRequestRepository } from "@pickler/core";
+import type { ApplicationReviewRepository, StudioAccessRequestRepository } from "@pickler/core";
+import { studioApplicationRoutes } from "./studio-applications";
 import { studioWalletRoutes, WalletRefusal, walletWork } from "./studio-wallets";
 import { studioPerpsRoutes, type StudioPerpsServices } from "./studio-perps";
 
@@ -107,6 +108,8 @@ export interface StudioServices {
     catalog(network: PerpNetwork, signal: AbortSignal): Promise<PerplMarketCatalog>;
   };
   accessRequests?: StudioAccessRequestRepository;
+  /** The operators' inbox over growth.applications; absent, its routes answer 503. */
+  applicationReview?: ApplicationReviewRepository;
   trading?: {
     repository: TradingRepository;
     admissionsEnabled: boolean;
@@ -307,7 +310,8 @@ export function studioRoutes(services: StudioServices) {
     await next();
   });
   api.use("*", authenticated(services.authenticate, { userOnly: true }));
-  api.route("/", studioAccessRequestRoutes(services.directory, services.accessRequests));
+  api.route("/", studioAccessRequestRoutes(services.accessRequests));
+  api.route("/", studioApplicationRoutes(services.applicationReview));
   api.onError((error, c) => {
     if (error instanceof z.ZodError || error instanceof SyntaxError) {
       return c.json({ error: "INVALID_INPUT", message: "The request is not valid" }, 400);
@@ -417,7 +421,11 @@ export function studioRoutes(services: StudioServices) {
       response: dto.okSchema,
     }),
     async (c) => {
-      await services.directory.onboard(c.get("principal").id);
+      const principal = c.get("principal");
+      await services.directory.onboard(
+        principal.id,
+        principal.kind === "user" ? principal.email : undefined,
+      );
       return c.json({ ok: true });
     },
   );

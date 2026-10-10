@@ -1,98 +1,1619 @@
-/* The waitlist landing, from the `Pickler Landing Waitlist` canvas.
+/* The marketplace landing, from the `Pickler Landing Trade v2` canvas (docs/specs/landing-trade-v1.md).
  *
- * A white page with three dark blocks in it: the ticker tape above the nav, the mascot card in the
- * hero row, and the FOUR MOVES section. None of them is a rule of its own — each is a subtree that
- * takes `data-surface="dark"`, which is the one mechanism §2 of the spec rests on. The page that
- * preceded this one painted an opaque gradient and a starfield over everything and had to be pinned
- * to the dark surface to stay honest; that composition, its pin and its starfield are all gone.
+ * A white page with four dark blocks in it: the hero phone, the three ways in, the steps' phone and
+ * the last ask. None of them is a rule of its own — each is a subtree that takes `data-surface="dark"`,
+ * which is the one mechanism §2 of design-system-v2 rests on, and each restates `color` as well as
+ * its ground because `color` inherits as a resolved value.
  *
- * Every colour here is a --pk-* token. Not "a token where convenient": an alpha of a token is a
- * literal too, so a 35% lime is as much a stray as a hex nobody can name, and the places that
- * wanted one use the token whose *role* matches instead — a hairline is --pk-rule, a hover ground
- * is --pk-rule-strong.
+ * Every colour here is a --pk-* token read by name. The custom properties of this sheet's own are
+ * geometry (`--from`, a bubble's entrance offset), never a colour.
  */
 
 .page {
   min-height: 100vh;
   background: var(--pk-bg);
   color: var(--pk-ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+.page a {
+  color: var(--pk-ink);
+  text-decoration: none;
 }
 
 /* One measure for the whole page, matching the nav's own row so the brand and the hero line up. */
 .shell {
+  position: relative;
+  z-index: 10;
   max-width: 1400px;
   margin: 0 auto;
   padding: 0 18px;
 }
 
-.srOnly {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-  border: 0;
+.top {
+  text-align: center;
+}
+
+.section {
+  margin-top: 120px;
 }
 
 /* The small wide-tracked label that replaced the monospace everywhere in the canvases. */
-.label {
-  margin: 0;
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 14px;
   font: 600 11px/1 var(--pk-font);
   letter-spacing: 0.12em;
   color: var(--pk-ink-muted);
-  text-transform: uppercase;
 }
 
-/* ---------- Mark: the coloured square the whole page is built from ---------- */
-
-/* The seven agent accents, each read from the palette's own hue token.
- *
- * These are hues rather than surface variants because a mark is not text: a 12px square exists to be
- * told from the six beside it, so an agent is one colour wherever it sits. The seventh, violet, is
- * the reason the tokens exist — #9B7BFF is the violet the dark surface holds, and until it had a
- * name of its own the only way to reach it was to nest data-surface="dark" on the square and read
- * --pk-violet there. That inverted a whole surface to fetch one colour, on a one-element subtree
- * with nothing in it to invert, and it put five false positives in front of anything asserting on
- * nesting. */
-.mark {
-  display: block;
+/* Blinking status dot. */
+.liveDot {
   flex: none;
-  border-radius: var(--pk-radius-mark);
+  width: 7px;
+  height: 7px;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-lime);
+  animation: blink 1.4s steps(1, end) infinite;
 }
 
-.mark[data-hue="lime"] {
+/* ---------- Hue: one table from a palette name to its token ----------
+ *
+ * Anything filled by hue reads it here — the marks, a bubble's tag, a way's call to action — so the
+ * name-to-token mapping is written once. Every hue reads a `--pk-agent-*-fill`, the palette's member
+ * for anything filled rather than written, held once rather than per surface because a swatch does
+ * not change identity when the page around it changes. */
+
+.hue[data-hue="lime"] {
   background: var(--pk-agent-lime-fill);
 }
-.mark[data-hue="indigo"] {
+.hue[data-hue="indigo"] {
   background: var(--pk-agent-indigo-fill);
 }
-.mark[data-hue="amber"] {
+.hue[data-hue="amber"] {
   background: var(--pk-agent-amber-fill);
 }
-.mark[data-hue="orange"] {
+.hue[data-hue="orange"] {
   background: var(--pk-agent-orange-fill);
 }
-.mark[data-hue="magenta"] {
+.hue[data-hue="magenta"] {
   background: var(--pk-agent-magenta-fill);
 }
-.mark[data-hue="blue"] {
+.hue[data-hue="blue"] {
   background: var(--pk-agent-blue-fill);
 }
-.mark[data-hue="violet"] {
+.hue[data-hue="violet"] {
   background: var(--pk-agent-violet-fill);
 }
 
-/* ---------- Ticker tape ---------- */
+.mark {
+  display: block;
+  flex: none;
+  width: 12px;
+  height: 12px;
+  border-radius: var(--pk-radius-mark);
+}
 
-/* Each of the three dark blocks restates ink as well as ground. Nesting the opposite surface
-   redefines the tokens for the subtree, but `color` was already resolved to a concrete value
-   further up and inherits as that value — so a heading inside a dark block that never sets its own
-   colour paints the light surface's near-black on night blue, which measures 1.00:1 and looks from
-   the source exactly like a page that works. */
+/* ---------- Headline ---------- */
 
+.headline {
+  margin: 64px 0 0;
+  font: 700 clamp(36px, 9vw, 150px) / 0.88 var(--pk-font-display);
+  font-variation-settings: var(--pk-display-wdth);
+  letter-spacing: -0.045em;
+  color: var(--pk-ink);
+  text-wrap: balance;
+}
+
+.nowrap {
+  white-space: nowrap;
+}
+
+/* The full stop that closes a title, in the colour of what the title names. Drawn, not typed: a
+   lime or amber glyph on white measures 1.3:1 as text, which it is not — it is a mark the size of
+   a period, sitting where one would. */
+.stop {
+  display: inline-block;
+  width: 0.15em;
+  height: 0.15em;
+  margin-left: 0.04em;
+  border-radius: var(--pk-radius-mark);
+  vertical-align: baseline;
+}
+
+.stop[data-hue="violet"] {
+  background: var(--pk-agent-violet-fill);
+}
+.stop[data-hue="amber"] {
+  background: var(--pk-amber);
+}
+.stop[data-hue="lime"] {
+  background: var(--pk-lime);
+}
+
+.lead {
+  max-width: 720px;
+  margin: 26px auto 0;
+  font: 600 clamp(20px, 2.2vw, 30px) / 1.25 var(--pk-font);
+  letter-spacing: -0.03em;
+  color: var(--pk-ink);
+  text-wrap: balance;
+}
+
+.heroActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  margin-top: 36px;
+}
+
+/* ---------- Pills: the canvas's lit actions, with a round badge for the arrow ---------- */
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 19px 20px 19px 28px;
+  border-radius: var(--pk-radius-pill);
+  font: 600 18px/1 var(--pk-font);
+  letter-spacing: -0.02em;
+  text-decoration: none;
+  transition:
+    background var(--pk-duration),
+    transform 240ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.pill:hover {
+  transform: translateY(-2px);
+}
+
+.pillLime {
+  background: var(--pk-lime);
+  color: var(--pk-on-lime);
+}
+
+.page a.pillLime,
+.page a.pillLime:hover {
+  color: var(--pk-on-lime);
+}
+
+.pillLime:hover {
+  background: var(--pk-lime-hover);
+}
+
+/* The inverted pill: it takes the surface opposite its ground, so a dark pill on the white page
+   and a white pill in the dark closing block are one rule. */
+.pillInk {
+  background: var(--pk-bg);
+  color: var(--pk-ink);
+}
+
+.page a.pillInk,
+.page a.pillInk:hover,
+.page a.pillPanel,
+.page a.pillPanel:hover {
+  color: var(--pk-ink);
+}
+
+.pillInk:hover {
+  background: var(--pk-panel-3);
+}
+
+.pillPanel {
+  background: var(--pk-panel);
+  color: var(--pk-ink);
+}
+
+.pillPanel:hover {
+  background: var(--pk-panel-3);
+}
+
+.pillWide {
+  gap: 11px;
+  padding: 17px 26px;
+}
+
+.pillIcon {
+  display: grid;
+  place-items: center;
+}
+
+/* No App Store page to send anyone to yet: drawn, named, and not a link. Quieter through the
+   inverted surface's own panel ground rather than through opacity, which fades the ink past the
+   contrast floor. */
+.pill[aria-disabled="true"] {
+  background: var(--pk-panel-3);
+  color: var(--pk-ink-soft);
+  cursor: not-allowed;
+}
+
+.pill[aria-disabled="true"] .pillBadgeLime {
+  background: var(--pk-panel-2);
+  color: var(--pk-ink-muted);
+}
+
+.pill[aria-disabled="true"]:hover {
+  transform: none;
+}
+
+.pillBadge {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--pk-radius-pill);
+}
+
+.pillBadgeInk {
+  background: var(--pk-ink);
+  color: var(--pk-lime);
+}
+
+.pillBadgeLime {
+  background: var(--pk-lime);
+  color: var(--pk-on-lime);
+}
+
+/* ---------- Hero phone ---------- */
+
+.heroPhoneShell {
+  margin-top: 64px;
+}
+
+.heroPhone {
+  position: relative;
+  min-height: 720px;
+  overflow: hidden;
+  border-radius: var(--pk-radius-3xl);
+  background: var(--pk-bg);
+  color: var(--pk-ink);
+}
+
+.cornerTag {
+  position: absolute;
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font: 600 11px/1 var(--pk-font);
+  letter-spacing: 0.12em;
+  color: var(--pk-ink-muted);
+}
+
+.cornerLeft {
+  left: 24px;
+  top: 24px;
+}
+
+.cornerPill {
+  position: absolute;
+  z-index: 3;
+  padding: 7px 11px;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-panel);
+  font: 600 10.5px/1 var(--pk-font);
+  letter-spacing: 0.1em;
+  color: var(--pk-ink-soft);
+}
+
+.cornerRight {
+  right: 24px;
+  top: 22px;
+}
+
+/* The agents' colour cast on the dark panel, behind the phone. */
+.glow {
+  position: absolute;
+  left: 50%;
+  top: 45%;
+  width: 70%;
+  height: 90%;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(50% 50% at 50% 50%, var(--pk-glow-violet) 0%, transparent 70%);
+}
+
+.glowHigh {
+  top: 40%;
+  width: 90%;
+}
+
+/* The screen is drawn at the phone's own size and scaled into the panel, so its type and spacing
+   stay the app's. */
+.heroPhoneInner {
+  position: absolute;
+  left: 50%;
+  top: 64px;
+  width: 393px;
+  transform: translateX(-50%) scale(0.9);
+  transform-origin: top center;
+}
+
+.float {
+  animation: float 6s ease-in-out infinite;
+}
+
+.bubbles {
+  position: absolute;
+  top: 120px;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: min(320px, 27%);
+}
+
+.bubblesLeft {
+  left: 4%;
+  align-items: flex-start;
+}
+
+.bubblesRight {
+  right: 4%;
+  align-items: flex-end;
+}
+
+.bubbleKicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 11px;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-panel);
+  font: 600 10.5px/1 var(--pk-font);
+  letter-spacing: 0.12em;
+  color: var(--pk-ink-muted);
+}
+
+.kickerDot {
+  width: 7px;
+  height: 7px;
+  border-radius: var(--pk-radius-pill);
+}
+
+.bubble {
+  width: 100%;
+  padding: 18px 20px;
+  background: var(--pk-panel);
+  color: var(--pk-ink);
+  box-shadow: var(--pk-popover-shadow);
+  /* An entrance only. The canvas also fades a bubble out over the length of its turn, which kept a
+     finite animation running on the page at every instant; here the next pair simply replaces it,
+     and the page is still between arrivals, which is what the rendered checks wait for. */
+  animation: bubbleIn 700ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.bubble[data-side="left"] {
+  --from: -28px;
+  border-radius: var(--pk-radius-2xl) var(--pk-radius-2xl) var(--pk-radius-2xl)
+    var(--pk-radius-mark);
+}
+
+.bubble[data-side="right"] {
+  --from: 28px;
+  border-radius: var(--pk-radius-2xl) var(--pk-radius-2xl) var(--pk-radius-mark)
+    var(--pk-radius-2xl);
+}
+
+.bubbleHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.bubbleDot {
+  width: 10px;
+  height: 10px;
+}
+
+.bubbleWho {
+  font: 600 11px/1 var(--pk-font);
+  letter-spacing: 0.08em;
+  color: var(--pk-ink-muted);
+}
+
+.bubbleText {
+  margin: 0 0 12px;
+  font: 600 clamp(15px, 1.3vw, 18px) / 1.3 var(--pk-font);
+  letter-spacing: -0.02em;
+  text-wrap: pretty;
+}
+
+.bubbleTag {
+  display: inline-block;
+  padding: 6px 10px;
+  border-radius: var(--pk-radius-pill);
+  font: 700 10px/1 var(--pk-font-display);
+  font-variation-settings: var(--pk-display-wdth);
+  letter-spacing: 0.08em;
+  color: var(--pk-on-lime);
+}
+
+.fade {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 2;
+  height: 200px;
+  background: linear-gradient(180deg, transparent 0%, var(--pk-bg) 100%);
+}
+
+.fadeShort {
+  height: 110px;
+}
+
+.heroPhoneLine {
+  position: absolute;
+  left: 24px;
+  right: 24px;
+  bottom: 28px;
+  z-index: 3;
+  margin: 0;
+  font: 600 clamp(18px, 2vw, 26px) / 1.25 var(--pk-font);
+  letter-spacing: -0.02em;
+  color: var(--pk-ink);
+  text-align: center;
+  text-wrap: balance;
+}
+
+/* ---------- Section heads ---------- */
+
+.sectionHead {
+  margin-bottom: 40px;
+  text-align: center;
+}
+
+.title {
+  margin: 0 0 16px;
+  font: 700 clamp(40px, 6vw, 88px) / 0.92 var(--pk-font-display);
+  font-variation-settings: var(--pk-display-wdth);
+  letter-spacing: -0.045em;
+  color: var(--pk-ink);
+}
+
+.sectionLead {
+  max-width: 640px;
+  margin: 0 auto;
+  font: 400 clamp(17px, 1.6vw, 22px) / 1.45 var(--pk-font);
+  color: var(--pk-ink-muted);
+  text-wrap: balance;
+}
+
+/* ---------- INVEST IN WHAT COMES NEXT ---------- */
+
+.ways {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+}
+
+.way {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-width: 0;
+  min-height: 440px;
+  padding: 34px;
+  border-radius: var(--pk-radius-3xl);
+  background: var(--pk-bg);
+  color: var(--pk-ink);
+}
+
+.wayHead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.wayDot {
+  width: 17px;
+  height: 17px;
+}
+
+.wayKicker {
+  font: 600 12px/1 var(--pk-font);
+  letter-spacing: 0.12em;
+  color: var(--pk-ink-muted);
+}
+
+.wayVenue {
+  margin-left: auto;
+  padding: 7px 11px;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-panel);
+  font: 600 10.5px/1 var(--pk-font);
+  letter-spacing: 0.1em;
+  color: var(--pk-ink-soft);
+}
+
+.wayTitle {
+  margin: 0;
+  font: 700 clamp(34px, 3.4vw, 50px) / 0.95 var(--pk-font-display);
+  font-variation-settings: var(--pk-display-wdth);
+  letter-spacing: -0.045em;
+  color: var(--pk-ink);
+}
+
+.wayNote {
+  max-width: 520px;
+  margin: 0;
+  font: 400 clamp(16px, 1.4vw, 19px) / 1.5 var(--pk-font);
+  color: var(--pk-ink-soft);
+  text-wrap: pretty;
+}
+
+/* Filled with the way's hue; every hue carries the dark ink lime was measured against. */
+.wayCta {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  align-self: flex-start;
+  margin-top: auto;
+  padding: 15px 22px;
+  border-radius: var(--pk-radius-pill);
+  font: 600 15px/1 var(--pk-font);
+  letter-spacing: -0.02em;
+  transition: transform 240ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.page a.wayCta,
+.page a.wayCta:hover {
+  color: var(--pk-on-lime);
+}
+
+.wayCta:hover {
+  transform: translateY(-2px);
+}
+
+/* The launchpad is not open: the call to action's place, quiet, and the badge the bar uses. */
+.waySoon {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  align-self: flex-start;
+  margin-top: auto;
+  padding: 15px 22px;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-panel);
+  font: 600 15px/1 var(--pk-font);
+  letter-spacing: -0.02em;
+  color: var(--pk-ink-muted);
+}
+
+.soonTag {
+  padding: 3px 7px;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-panel-3);
+  font: 600 9px/1 var(--pk-font);
+  letter-spacing: 0.08em;
+  color: var(--pk-ink-soft);
+}
+
+/* ---------- FOUR STEPS ---------- */
+
+.steps {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 12px;
+}
+
+.stepsList {
+  display: flex;
+  flex: 1 1 380px;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.step {
+  display: flex;
+  align-items: flex-start;
+  gap: 18px;
+  width: 100%;
+  padding: 30px;
+  border: none;
+  border-radius: var(--pk-radius-2xl);
+  background: var(--pk-panel);
+  color: var(--pk-ink);
+  text-align: left;
+  cursor: pointer;
+  transition: background 200ms;
+}
+
+.step:hover,
+.stepOn {
+  background: var(--pk-panel-2);
+}
+
+.stepNum {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--pk-radius-sm);
+  background: var(--pk-bg);
+  font: 700 13px/1 var(--pk-font-display);
+  font-variation-settings: var(--pk-display-wdth);
+  color: var(--pk-ink);
+  transition: background 200ms;
+}
+
+.stepOn .stepNum {
+  background: var(--pk-ink);
+  color: var(--pk-lime);
+}
+
+.stepBody {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.stepTitle {
+  font: 600 clamp(22px, 2.1vw, 30px) / 1.15 var(--pk-font);
+  letter-spacing: -0.03em;
+  color: var(--pk-ink);
+}
+
+.stepNote {
+  font: 400 clamp(15.5px, 1.3vw, 18px) / 1.45 var(--pk-font);
+  color: var(--pk-ink-muted);
+  text-wrap: pretty;
+}
+
+.stepsList .pill {
+  align-self: flex-start;
+  margin-top: auto;
+  padding: 17px 18px 17px 26px;
+  font-size: 17px;
+}
+
+.stepsPhone {
+  position: relative;
+  flex: 1 1 380px;
+  min-width: 0;
+  min-height: 640px;
+  overflow: hidden;
+  border-radius: var(--pk-radius-3xl);
+  background: var(--pk-bg);
+  color: var(--pk-ink);
+}
+
+.stepsPhoneInner {
+  position: absolute;
+  left: 50%;
+  top: 60px;
+  width: 393px;
+  transform: translateX(-50%) scale(0.81);
+  transform-origin: top center;
+}
+
+/* ---------- NOTHING HIDDEN ---------- */
+
+.bento {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+}
+
+.bentoCard {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+  padding: 34px;
+  border-radius: var(--pk-radius-3xl);
+  background: var(--pk-panel);
+}
+
+.bentoRecord {
+  padding-bottom: 0;
+  overflow: hidden;
+}
+
+.bentoChat,
+.bentoKeys,
+.bentoCurve {
+  min-width: 0;
+}
+
+.cardTitle {
+  margin: 0;
+  font: 600 clamp(24px, 2.3vw, 34px) / 1.1 var(--pk-font);
+  letter-spacing: -0.03em;
+  color: var(--pk-ink);
+}
+
+.cardNote {
+  max-width: 520px;
+  margin: 0;
+  font: 400 clamp(15.5px, 1.3vw, 18px) / 1.5 var(--pk-font);
+  color: var(--pk-ink-muted);
+  text-wrap: pretty;
+}
+
+/* The record: a white chart on a grid, the line across the middle, calls landing above and below. */
+.chart {
+  position: relative;
+  display: flex;
+  flex: 1;
+  align-items: stretch;
+  gap: 8px;
+  min-height: 320px;
+  margin-top: 14px;
+  padding: 16px;
+  overflow: hidden;
+  border-radius: var(--pk-radius-xl) var(--pk-radius-xl) 0 0;
+  background-color: var(--pk-bg);
+  background-image:
+    linear-gradient(var(--pk-rule) 1px, transparent 1px),
+    linear-gradient(90deg, var(--pk-rule) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+
+.chartLine {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  z-index: 1;
+  height: 2px;
+  background: repeating-linear-gradient(90deg, var(--pk-ink) 0 8px, transparent 8px 14px);
+  opacity: 0.55;
+}
+
+.chartPrice {
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  z-index: 2;
+  padding: 6px 10px;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-ink);
+  font: 700 10px/1 var(--pk-font-display);
+  font-variation-settings: var(--pk-display-wdth);
+  letter-spacing: 0.08em;
+  color: var(--pk-bg);
+  white-space: nowrap;
+  transform: translateY(-50%);
+}
+
+.chartSpacer {
+  flex: none;
+  width: 92px;
+}
+
+.chartFlash {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  background: var(--pk-lime);
+}
+
+.chartFlashText {
+  font: 700 clamp(24px, 3vw, 40px) / 1 var(--pk-font-display);
+  font-variation-settings: var(--pk-display-wdth);
+  letter-spacing: -0.03em;
+  color: var(--pk-on-lime);
+}
+
+.col {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  min-width: 0;
+  max-width: 72px;
+  animation: pop 620ms cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+
+.colHalf {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+
+.colTop {
+  justify-content: flex-end;
+  padding-bottom: 11px;
+}
+
+.colBottom {
+  justify-content: flex-start;
+  padding-top: 11px;
+}
+
+.stem {
+  width: 3px;
+  height: 14px;
+  border-radius: var(--pk-radius-mark);
+}
+
+.cell {
+  width: 22px;
+  height: 22px;
+  border-radius: var(--pk-radius-mark);
+}
+
+.cell[data-tone="up"],
+.stem[data-tone="up"] {
+  background: var(--pk-lime);
+}
+
+.cell[data-tone="down"],
+.stem[data-tone="down"] {
+  background: var(--pk-magenta);
+}
+
+.cell[data-tone="open"],
+.stem[data-tone="open"] {
+  background: var(--pk-amber);
+}
+
+.colTicker {
+  font: 600 9.5px/1 var(--pk-font);
+  letter-spacing: 0.08em;
+  color: var(--pk-ink-faint);
+  white-space: nowrap;
+}
+
+.colMeta {
+  font: 700 13px/1 var(--pk-font);
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+
+.colMeta[data-outcome="win"] {
+  color: var(--pk-win);
+}
+
+.colMeta[data-outcome="loss"] {
+  color: var(--pk-loss);
+}
+
+.colMeta[data-outcome="open"] {
+  color: var(--pk-amber-ink);
+}
+
+/* The ask: one conversation. */
+.chat {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.chatYou {
+  align-self: flex-end;
+  max-width: 85%;
+  padding: 12px 16px;
+  border-radius: var(--pk-radius-xl) var(--pk-radius-xl) var(--pk-radius-mark) var(--pk-radius-xl);
+  background: var(--pk-bg);
+  color: var(--pk-ink);
+  font: 600 15px/1.3 var(--pk-font);
+  letter-spacing: -0.01em;
+}
+
+.chatPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 11px;
+  border-radius: var(--pk-radius-pill);
+  font: 700 10px/1 var(--pk-font-display);
+  font-variation-settings: var(--pk-display-wdth);
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+
+.chatPill[data-tone="violet"] {
+  align-self: flex-end;
+  background: var(--pk-state-info-bg);
+  color: var(--pk-state-info-ink);
+}
+
+.chatPill[data-tone="lime"] {
+  align-self: flex-start;
+  background: var(--pk-state-good-bg);
+  color: var(--pk-state-good-ink);
+}
+
+.chatCard {
+  margin-top: 6px;
+  padding: 18px;
+  border-radius: var(--pk-radius-xl) var(--pk-radius-xl) var(--pk-radius-xl) var(--pk-radius-mark);
+  background: var(--pk-bg);
+}
+
+.chatHead {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 12px;
+}
+
+.chatAvatar {
+  display: flex;
+  flex: none;
+  gap: 3px;
+}
+
+.chatAvatarCell {
+  width: 14px;
+  height: 14px;
+}
+
+.chatName {
+  min-width: 0;
+  overflow: hidden;
+  font: 600 14px/1 var(--pk-font);
+  letter-spacing: -0.01em;
+  color: var(--pk-ink);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.chatTime {
+  flex: none;
+  margin-left: auto;
+  font: 600 10.5px/1 var(--pk-font);
+  letter-spacing: 0.08em;
+  color: var(--pk-ink-faint);
+  white-space: nowrap;
+}
+
+.chatProb {
+  margin: 0 0 4px;
+  font: 700 clamp(40px, 4vw, 56px) / 0.9 var(--pk-font-display);
+  font-variation-settings: var(--pk-display-wdth);
+  letter-spacing: -0.04em;
+  color: var(--pk-violet);
+}
+
+.chatProbLabel {
+  margin: 0 0 14px;
+  font: 600 11px/1 var(--pk-font);
+  letter-spacing: 0.1em;
+  color: var(--pk-ink-muted);
+}
+
+.chatBody {
+  margin: 0 0 6px;
+  font: 400 14.5px/1.45 var(--pk-font);
+  color: var(--pk-ink);
+}
+
+.chatFoot {
+  margin: 0;
+  font: 600 11px/1.4 var(--pk-font);
+  letter-spacing: 0.06em;
+  color: var(--pk-ink-faint);
+}
+
+/* The passkey sheet that signs the trade. */
+.sheet {
+  composes: pk-panel from global;
+  margin-top: 10px;
+  padding: 16px 18px;
+  background: var(--pk-bg);
+  box-shadow: var(--pk-popover-shadow);
+  animation: pop 620ms cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+
+.sheetHead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.sheetQr {
+  display: grid;
+  flex: none;
+  grid-template-columns: repeat(3, 5px);
+  gap: 2px;
+  padding: 6px;
+  border-radius: var(--pk-radius-sm);
+  background: var(--pk-bg);
+}
+
+.qrDot {
+  width: 5px;
+  height: 5px;
+  border-radius: var(--pk-radius-mark);
+  background: transparent;
+}
+
+.qrDot[data-lit="true"] {
+  background: var(--pk-lime);
+}
+
+.sheetTitles {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.sheetTitle {
+  font: 600 14px/1.2 var(--pk-font);
+  letter-spacing: -0.02em;
+  color: var(--pk-ink);
+}
+
+.sheetSub {
+  font: 600 10px/1 var(--pk-font);
+  letter-spacing: 0.08em;
+  color: var(--pk-ink-faint);
+}
+
+.sheetRows {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+  border-radius: var(--pk-radius-md);
+  background: var(--pk-panel);
+  font: 600 13px/1.3 var(--pk-font);
+  letter-spacing: -0.01em;
+  color: var(--pk-ink);
+}
+
+.sheetRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.sheetRow > span:first-child {
+  color: var(--pk-ink-muted);
+}
+
+.sheetConfirm {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  margin-top: 10px;
+  padding: 13px;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-bg);
+  color: var(--pk-ink);
+  font: 600 14px/1 var(--pk-font);
+  letter-spacing: -0.02em;
+}
+
+/* The keys: a padlock in cells. */
+.lockWell {
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  min-height: 220px;
+  margin-top: 14px;
+  padding: 26px 18px;
+  overflow: hidden;
+  border-radius: var(--pk-radius-xl);
+  background-color: var(--pk-bg);
+  background-image:
+    linear-gradient(var(--pk-rule) 1px, transparent 1px),
+    linear-gradient(90deg, var(--pk-rule) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+
+.lockGrid {
+  display: grid;
+  grid-template-columns: repeat(9, 20px);
+  gap: 4px;
+}
+
+.lockCell {
+  width: 20px;
+  height: 20px;
+  border-radius: var(--pk-radius-mark);
+}
+
+.lockCell[data-cell="ink"] {
+  background: var(--pk-ink);
+}
+
+.lockCell[data-cell="lime"] {
+  background: var(--pk-lime);
+}
+
+.lockTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 14px;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-bg);
+  font: 700 10.5px/1 var(--pk-font-display);
+  font-variation-settings: var(--pk-display-wdth);
+  letter-spacing: 0.1em;
+  color: var(--pk-ink);
+}
+
+/* The curve: a token filling to its goal on the dark ground. Its stage paints the coin, the badge,
+   the figure and the lit bars: violet while backing, lime once graduated. */
+.curveWell {
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 220px;
+  margin-top: 14px;
+  padding: 22px;
+  overflow: hidden;
+  border-radius: var(--pk-radius-xl);
+  background: var(--pk-bg);
+  color: var(--pk-ink);
+}
+
+.curveHead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.coin {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-agent-violet-fill);
+  box-shadow: inset 0 0 0 3px var(--pk-rule-strong);
+  font: 700 9px/1 var(--pk-font-display);
+  letter-spacing: -0.02em;
+  color: var(--pk-on-lime);
+  transition: background 400ms;
+}
+
+.coinBadge {
+  flex: none;
+  padding: 6px 9px;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-panel-3);
+  font: 700 9.5px/1 var(--pk-font-display);
+  font-variation-settings: var(--pk-display-wdth);
+  letter-spacing: 0.08em;
+  color: var(--pk-ink-soft);
+  white-space: nowrap;
+  transition:
+    background 400ms,
+    color 400ms;
+}
+
+.coinBacked {
+  margin-left: auto;
+  font: 700 20px/1 var(--pk-font);
+  letter-spacing: -0.02em;
+  color: var(--pk-agent-violet-fill);
+  white-space: nowrap;
+  transition: color 400ms;
+}
+
+.curveWell[data-stage="graduated"] .coin,
+.curveWell[data-stage="graduated"] .coinBadge {
+  background: var(--pk-lime);
+  color: var(--pk-on-lime);
+}
+
+.curveWell[data-stage="graduated"] .coinBacked,
+.curveWell[data-stage="graduated"] .curveGoal {
+  color: var(--pk-lime);
+}
+
+.curveWell[data-stage="graduated"] .liveDot {
+  background: var(--pk-lime);
+}
+
+.curveWell[data-stage="pre"] .liveDot {
+  background: var(--pk-agent-violet-fill);
+}
+
+.curveBars {
+  display: flex;
+  align-items: flex-end;
+  gap: 5px;
+  height: 90px;
+}
+
+.curveBar {
+  flex: 1;
+  border-radius: var(--pk-radius-mark) var(--pk-radius-mark) 0 0;
+  background: var(--pk-panel-3);
+  transition:
+    height 700ms cubic-bezier(0.22, 1, 0.36, 1),
+    background 400ms;
+}
+
+.curveBar[data-lit="true"] {
+  background: var(--pk-agent-violet-fill);
+}
+
+.curveWell[data-stage="graduated"] .curveBar[data-lit="true"] {
+  background: var(--pk-lime);
+}
+
+.curveFoot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  font: 600 10.5px/1.3 var(--pk-font);
+  letter-spacing: 0.08em;
+  color: var(--pk-ink-muted);
+}
+
+.curveGoal {
+  white-space: nowrap;
+}
+
+.curveTarget {
+  margin-left: auto;
+}
+
+/* ---------- QUESTIONS ---------- */
+
+.faq {
+  max-width: 900px;
+  margin-top: 120px;
+}
+
+.faqTitle {
+  margin-bottom: 32px;
+  letter-spacing: -0.04em;
+  text-align: center;
+}
+
+.faqList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.faqItem {
+  border-radius: var(--pk-radius-xl);
+  background: var(--pk-panel);
+  transition: background 200ms;
+}
+
+.faqItem[data-open="true"] {
+  background: var(--pk-panel-2);
+}
+
+.faqQ {
+  margin: 0;
+}
+
+.faqButton {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 24px 26px;
+  border: none;
+  background: transparent;
+  color: var(--pk-ink);
+  text-align: left;
+  cursor: pointer;
+}
+
+.faqQuestion {
+  flex: 1;
+  font: 600 clamp(17px, 1.5vw, 21px) / 1.3 var(--pk-font);
+  letter-spacing: -0.02em;
+}
+
+.faqChevron {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-bg);
+  color: var(--pk-ink);
+  transition: transform 200ms;
+}
+
+.faqItem[data-open="true"] .faqChevron {
+  transform: rotate(180deg);
+}
+
+.faqA {
+  max-width: 720px;
+  margin: 0;
+  padding: 0 26px 22px;
+  font: 400 16px/1.5 var(--pk-font);
+  color: var(--pk-ink-muted);
+  text-wrap: pretty;
+}
+
+/* ---------- BEAT THE MARKET ---------- */
+
+.download {
+  position: relative;
+  margin-top: 120px;
+  padding: 96px 22px 100px;
+  overflow: hidden;
+  border-radius: var(--pk-radius-3xl);
+  background: var(--pk-bg);
+  color: var(--pk-ink);
+  text-align: center;
+}
+
+.downloadGlow {
+  top: 50%;
+  width: 60%;
+  height: 120%;
+}
+
+.downloadTitle {
+  position: relative;
+  margin-bottom: 18px;
+  font-size: clamp(44px, 8vw, 120px);
+  line-height: 0.9;
+}
+
+.downloadLead {
+  position: relative;
+  max-width: 520px;
+  margin: 0 auto 30px;
+  font: 400 clamp(17px, 1.5vw, 21px) / 1.4 var(--pk-font);
+  color: var(--pk-ink-soft);
+  text-wrap: pretty;
+}
+
+.downloadActions {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+}
+
+.downloadActions .pill {
+  padding: 17px 18px 17px 26px;
+  font-size: 17px;
+}
+
+.downloadNote {
+  position: relative;
+  margin: 22px 0 0;
+  font: 600 12px/1 var(--pk-font);
+  letter-spacing: 0.08em;
+  color: var(--pk-ink-muted);
+}
+
+/* ---------- Footer ---------- */
+
+.footer {
+  padding-top: 40px;
+  padding-bottom: 48px;
+}
+
+.footerRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+}
+
+.swatches {
+  display: flex;
+  gap: 4px;
+}
+
+.swatch {
+  width: 12px;
+  height: 12px;
+}
+
+.footerSpacer {
+  flex: 1 1 20px;
+}
+
+.footerLink {
+  font: 600 12px/1 var(--pk-font);
+  letter-spacing: 0.06em;
+  color: var(--pk-ink-muted);
+}
+
+.page a.footerLink {
+  color: var(--pk-ink-muted);
+}
+
+.page a.footerLink:hover {
+  color: var(--pk-ink);
+}
+
+.footerNote {
+  font: 600 12px/1 var(--pk-font);
+  letter-spacing: 0.08em;
+  color: var(--pk-ink-faint);
+}
+
+/* ---------- Motion ---------- */
+
+@keyframes blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.2;
+  }
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes pop {
+  0% {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.18);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* A bubble slides in from its side. */
+@keyframes bubbleIn {
+  0% {
+    opacity: 0;
+    transform: translateX(var(--from, 0)) scale(0.94);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .liveDot,
+  .float,
+  .bubble,
+  .col,
+  .sheet {
+    animation: none;
+  }
+
+  .pill,
+  .wayCta,
+  .curveBar,
+  .faqChevron {
+    transition: none;
+  }
+}
+
+/* ---------- Breakpoints ---------- */
+
+@media (min-width: 820px) {
+  .ways {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .bento {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .bentoRecord {
+    grid-column: span 2;
+  }
+
+  .bentoChat {
+    grid-row: span 2;
+  }
+}
+
+@media (min-width: 820px) and (max-width: 1099px) {
+  .bento {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .bentoChat {
+    grid-row: span 1;
+    grid-column: span 2;
+  }
+}
+
+@media (min-width: 1000px) {
+  .steps {
+    flex-wrap: nowrap;
+  }
+}
+
+@media (max-width: 900px) {
+  .bubbles {
+    display: none;
+  }
+}
+
+/* The phone keeps its proportions as the panel narrows: a smaller scale, and a panel tall enough
+   that the fade still lands between the screen and the closing line. */
+@media (max-width: 820px) {
+  .heroPhone {
+    min-height: 720px;
+  }
+
+  .heroPhoneInner {
+    transform: translateX(-50%) scale(0.7);
+  }
+}
+
+@media (max-width: 560px) {
+  .heroPhone {
+    min-height: 600px;
+  }
+
+  .heroPhoneInner {
+    top: 44px;
+    transform: translateX(-50%) scale(0.5);
+  }
+
+  .cornerRight {
+    display: none;
+  }
+
+  .stepsPhone {
+    min-height: 480px;
+  }
+
+  .stepsPhoneInner {
+    transform: translateX(-50%) scale(0.63);
+  }
+
+  .chartSpacer {
+    display: none;
+  }
+
+  .chartPrice {
+    top: 12px;
+    transform: none;
+  }
+
+  .cell {
+    width: 14px;
+    height: 14px;
+  }
+}
+
+/* ---------- The tape above the bar ---------- */
+
+/* A dark block restates ink as well as ground: `color` inherits as a resolved value, so a dark
+   subtree that never sets it paints the light surface's near-black on night blue. */
 .tape {
   position: relative;
   z-index: 21;
@@ -115,8 +1636,6 @@
   list-style: none;
 }
 
-/* Not a link, and so no hover ground: a tape entry carries a ticker, a call and a result and no
-   identifier, and the section the canvas pointed these at is one of the ones this page drops. */
 .tapeItem {
   display: flex;
   align-items: center;
@@ -127,6 +1646,7 @@
 
 .tapeTicker {
   font: 600 12px/1 var(--pk-font);
+  letter-spacing: 0.04em;
   color: var(--pk-ink-muted);
 }
 
@@ -136,801 +1656,26 @@
 }
 
 .tapeResult {
-  font: 600 12px/1 var(--pk-font);
+  font: 600 11px/1 var(--pk-font);
+  letter-spacing: 0.06em;
 }
 
-.tapeResult[data-outcome="won"] {
+.tapeResult[data-tone="win"] {
   color: var(--pk-win);
 }
 
-.tapeResult[data-outcome="lost"] {
-  color: var(--pk-loss);
-}
-
-.tapeResult[data-outcome="open"] {
-  color: var(--pk-ink-muted);
-}
-
-/* ---------- Nav ---------- */
-
-.nav {
-  position: sticky;
-  top: 0;
-  z-index: 20;
-  background: var(--pk-nav-bg);
-  backdrop-filter: blur(16px);
-  border-bottom: 1px solid var(--pk-rule);
-}
-
-.navRow {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px;
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 13px 18px;
-}
-
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 11px;
-  color: var(--pk-ink);
-  text-decoration: none;
-}
-
-.logo {
-  display: block;
-  width: 26px;
-  height: auto;
-}
-
-.brandName {
-  font: 700 21px/1 var(--pk-font-display);
-  font-variation-settings: var(--pk-display-wdth);
-  letter-spacing: -0.02em;
-}
-
-.navLink {
-  padding: 9px 14px;
-  border-radius: var(--pk-radius-pill);
-  font: 600 13px/1 var(--pk-font);
-  letter-spacing: 0.04em;
-  color: var(--pk-ink-muted);
-  text-decoration: none;
-  transition:
-    background var(--pk-duration),
-    color var(--pk-duration);
-}
-
-.navLink:hover {
-  background: var(--pk-panel-2);
-  color: var(--pk-ink);
-}
-
-/* The one inverted control on the bar. It is told the bar's surface and renders the opposite, so it
-   stays a dark pill on a white bar and would become a white pill if the bar ever turned dark —
-   rather than painting #0B0D1A on #0B0D1A and disappearing. */
-.invert {
-  display: inline-flex;
-  align-items: center;
-  gap: 11px;
-  height: 45px;
-  padding: 0 13px 0 19px;
-  border: none;
-  border-radius: var(--pk-radius-pill);
-  background: var(--pk-bg);
-  font: 600 15px/1 var(--pk-font);
-  letter-spacing: -0.02em;
-  color: var(--pk-ink);
-  text-decoration: none;
-  cursor: pointer;
-  transition:
-    background var(--pk-duration),
-    transform var(--pk-duration);
-}
-
-.invert:hover:not(:disabled) {
-  background: var(--pk-panel-3);
-}
-
-/* Dimmed with tokens rather than with opacity, and not for tidiness. Opacity dims the label and the
-   ground together and leaves neither in any token — and contrast.mjs reads colours and never reads
-   opacity, so it would have scored a dimmed control on the two values underneath it while the eye
-   saw something far darker. A state no check can reach is the one that should least be guessed at,
-   so this is the inverted ramp's own panel and muted ink, which measure against each other. */
-.invert:disabled {
-  background: var(--pk-panel);
-  color: var(--pk-ink-muted);
-  cursor: not-allowed;
-  transform: none;
-}
-
-.navCta {
-  margin-left: auto;
-}
-
-/* A lime badge is lime on either surface, so it carries the ink lime was measured against rather
-   than whichever ink the subtree happens to be using. */
-.arrowBadge {
-  display: grid;
-  place-items: center;
-  width: 21px;
-  height: 21px;
-  border-radius: var(--pk-radius-pill);
-  background: var(--pk-lime);
-  color: var(--pk-on-lime);
-}
-
-/* ---------- News pill ---------- */
-
-.top {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 26px;
-  padding: 26px 0 8px;
-}
-
-.news {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  max-width: 100%;
-  padding: 9px 10px 9px 16px;
-  border-radius: var(--pk-radius-pill);
-  background: var(--pk-panel);
-}
-
-.newsTag {
-  flex: none;
-  font: 600 12px/1 var(--pk-font);
-  letter-spacing: 0.1em;
-  color: var(--pk-violet);
-}
-
-.newsTitle {
-  overflow: hidden;
-  font: 600 15px/1.3 var(--pk-font);
-  color: var(--pk-ink);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.newsCta {
-  display: inline-flex;
-  flex: none;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 6px 6px 14px;
-  border-radius: var(--pk-radius-pill);
-  background: var(--pk-bg);
-  font: 600 12.5px/1 var(--pk-font);
-  color: var(--pk-ink);
-  text-decoration: none;
-}
-
-.newsClose {
-  display: grid;
-  flex: none;
-  place-items: center;
-  width: 26px;
-  height: 26px;
-  padding: 0;
-  border: none;
-  border-radius: var(--pk-radius-pill);
-  background: var(--pk-bg);
-  color: var(--pk-ink-muted);
-  cursor: pointer;
-  transition: color var(--pk-duration);
-}
-
-.newsClose:hover {
-  color: var(--pk-ink);
-}
-
-/* ---------- Hero ---------- */
-
-.headline {
-  margin: 0;
-  font: 700 clamp(56px, 13vw, 190px) / 0.86 var(--pk-font-display);
-  font-variation-settings: var(--pk-display-wdth);
-  letter-spacing: -0.045em;
-  white-space: nowrap;
-  text-align: center;
-}
-
-/* The full stop, drawn rather than typed. Lime as ink on white is 1.31:1 — §4 says so, and says
-   what to do instead — and this mark carries no meaning to read. So it is a lime fill, which is the
-   one thing lime is on this surface, and the heading reads "PREDICT" to anything listening. */
-.headlineStop {
-  display: inline-block;
-  width: 0.155em;
-  height: 0.155em;
-  margin-left: 0.05em;
-  vertical-align: baseline;
-  border-radius: var(--pk-radius-pill);
-  background: var(--pk-lime);
-}
-
-.tagline {
-  margin: 14px 0 0;
-  font: 500 clamp(15px, 1.4vw, 19px) / 1.3 var(--pk-font);
-  letter-spacing: 0.06em;
-  color: var(--pk-ink-muted);
-  text-align: center;
-}
-
-/* ---------- Hero row ---------- */
-
-.heroRow {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: stretch;
-  gap: 12px;
-  margin-top: 30px;
-}
-
-.claim {
-  display: flex;
-  flex: 1 1 320px;
-  flex-direction: column;
-  padding: 30px;
-  border-radius: var(--pk-radius-3xl);
-  background: var(--pk-panel);
-}
-
-.claimTitle {
-  margin: 0 0 20px;
-  font: 600 clamp(28px, 2.6vw, 38px) / 1.15 var(--pk-font);
-  letter-spacing: -0.03em;
-  text-wrap: pretty;
-}
-
-.perks {
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.perk {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 14px 16px;
-  border-radius: var(--pk-radius-lg);
-  background: var(--pk-bg);
-}
-
-.perkMark {
-  width: 12px;
-  height: 12px;
-}
-
-.perkTitle {
-  font: 600 15.5px/1.25 var(--pk-font);
-}
-
-.perkTag {
-  margin-left: auto;
-  font: 600 10.5px/1 var(--pk-font);
-  letter-spacing: 0.08em;
-  color: var(--pk-ink-muted);
-  text-align: right;
-}
-
-/* Pushed to the bottom of the column, whatever the panels beside it do to its height. */
-.claimCta {
-  display: inline-flex;
-  align-items: center;
-  gap: 12px;
-  align-self: flex-start;
-  margin-top: auto;
-  padding: 14px 14px 14px 22px;
-  border-radius: var(--pk-radius-pill);
-  background: var(--pk-lime);
-  font: 600 17px/1 var(--pk-font);
-  color: var(--pk-on-lime);
-  text-decoration: none;
-  transition:
-    background var(--pk-duration),
-    transform var(--pk-duration);
-}
-
-.claimCta:hover {
-  background: var(--pk-lime-hover);
-  transform: translateY(-2px);
-}
-
-.claimCtaBadge {
-  display: grid;
-  place-items: center;
-  width: 30px;
-  height: 30px;
-  border-radius: var(--pk-radius-pill);
-  background: var(--pk-ink);
-  color: var(--pk-lime);
-}
-
-/* The mascot card: the studio's own ground and panel, appearing inline in a white page. */
-.mascotCard {
-  position: relative;
-  flex: 1 1 340px;
-  min-height: 460px;
-  overflow: hidden;
-  border-radius: var(--pk-radius-3xl);
-  background: var(--pk-bg);
-  color: var(--pk-ink);
-}
-
-.mascotLabel {
-  position: absolute;
-  top: 22px;
-  left: 22px;
-  z-index: 2;
-}
-
-.mascotCorner {
-  position: absolute;
-  right: 22px;
-  bottom: 22px;
-  z-index: 2;
-  width: 10px;
-  height: 10px;
-}
-
-/* A gradient, so the token is the whole colour and the fade is the element's own opacity — an
-   accent at 35% written into the colour would be a value no token holds. */
-.mascotGlow {
-  position: absolute;
-  inset: 12% 8%;
-  opacity: 0.35;
-  background: radial-gradient(circle at 50% 50%, var(--pk-violet) 0%, transparent 70%);
-}
-
-.mascot {
-  position: relative;
-  z-index: 1;
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  animation: float 6s ease-in-out infinite;
-}
-
-.heroLive {
-  display: flex;
-  flex: 1 1 300px;
-  flex-direction: column;
-  gap: 12px;
-}
-
-/* ---------- Agents created ---------- */
-
-.created {
-  display: flex;
-  flex: 1 1 auto;
-  flex-direction: column;
-  gap: 14px;
-  padding: 24px;
-  border-radius: var(--pk-radius-3xl);
-  background: var(--pk-panel);
-}
-
-.labelRow {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-}
-
-.liveDot {
-  width: 8px;
-  height: 8px;
-  border-radius: var(--pk-radius-pill);
-  background: var(--pk-violet);
-  animation: blink 1.8s ease-in-out infinite;
-}
-
-.bigCount {
-  margin: 0;
-  font: 700 clamp(56px, 6.4vw, 84px) / 0.88 var(--pk-font-display);
-  font-variation-settings: var(--pk-display-wdth);
-  letter-spacing: -0.05em;
-}
-
-.cellGrid {
-  display: grid;
-  grid-template-columns: repeat(7, 17px);
-  gap: 6px;
-}
-
-/* Size only: a lit cell takes .mark beside this and gets its ground from the hue, an unlit one
-   takes .cellOff. Neither paints a background here, so nothing has to out-specify anything. */
-.cell {
-  width: 17px;
-  height: 17px;
-  border-radius: var(--pk-radius-mark);
-}
-
-.cellOff {
-  background: var(--pk-panel-3);
-}
-
-.cellFresh {
-  animation: pop 620ms cubic-bezier(0.22, 1.4, 0.4, 1) both;
-}
-
-.spawn {
-  display: flex;
-  align-items: center;
-  gap: 11px;
-  padding: 13px 15px;
-  border-radius: var(--pk-radius-lg);
-  background: var(--pk-bg);
-}
-
-.spawnMark {
-  width: 12px;
-  height: 12px;
-}
-
-.spawnName {
-  font: 600 14.5px/1 var(--pk-font);
-}
-
-.spawnNote {
-  margin-left: auto;
-  font: 600 10.5px/1 var(--pk-font);
-  letter-spacing: 0.08em;
-  color: var(--pk-ink-muted);
-}
-
-/* ---------- Backed ---------- */
-
-.backed {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 24px;
-  border-radius: var(--pk-radius-3xl);
-  background: var(--pk-panel);
-}
-
-.backedHead {
-  display: flex;
-  align-items: baseline;
-  gap: 12px;
-}
-
-.backedFigure {
-  margin: 0 0 0 auto;
-  font: 700 15px/1 var(--pk-font-display);
-  font-variation-settings: var(--pk-display-wdth);
-}
-
-/* The well the deposits stack in. The grid is two hairlines repeated, and a hairline is --pk-rule:
-   the role the token names is exactly the role it is doing here. */
-.board {
-  display: flex;
-  flex-direction: column-reverse;
-  gap: 3px;
-  height: 228px;
-  padding: 6px;
-  margin: 0;
-  overflow: hidden;
-  list-style: none;
-  border-radius: var(--pk-radius-lg);
-  background-color: var(--pk-bg);
-  background-image:
-    linear-gradient(to right, var(--pk-rule) 1px, transparent 1px),
-    linear-gradient(to bottom, var(--pk-rule) 1px, transparent 1px);
-  background-size: 19px 19px;
-}
-
-.boardRow {
-  display: flex;
-  gap: 3px;
-  animation: drop 640ms cubic-bezier(0.22, 1.4, 0.4, 1) backwards;
-  animation-delay: calc(var(--i) * 90ms);
-}
-
-.block {
-  width: 19px;
-  height: 19px;
-}
-
-.boardEmpty {
-  margin: auto;
-  font: 600 11px/1 var(--pk-font);
-  letter-spacing: 0.12em;
-  color: var(--pk-ink-muted);
-}
-
-/* ---------- Runs on ---------- */
-
-.runsOn {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 12px 32px;
-  margin: 12px 0 0;
-  padding: 20px 26px;
-  list-style: none;
-  border-radius: var(--pk-radius-xl);
-  background: var(--pk-panel);
-}
-
-.runsOnLabel {
-  letter-spacing: 0.14em;
-}
-
-.runsOnItem {
-  font: 700 20px/1 var(--pk-font-display);
-  font-variation-settings: "wdth" 108;
-}
-
-/* ---------- Four moves ---------- */
-
-.moves {
-  margin-top: 12px;
-  padding: 44px 30px 30px;
-  border-radius: var(--pk-radius-3xl);
-  background: var(--pk-bg);
-  color: var(--pk-ink);
-}
-
-.movesTitle {
-  margin: 0 0 26px;
-  font: 700 clamp(38px, 4.6vw, 60px) / 1 var(--pk-font-display);
-  font-variation-settings: var(--pk-display-wdth);
-  letter-spacing: -0.04em;
-}
-
-.movesGrid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 12px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.move {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 24px;
-  border-radius: var(--pk-radius-xl);
-  background: var(--pk-panel);
-}
-
-.moveMark {
-  width: 17px;
-  height: 17px;
-}
-
-.moveTitle {
-  margin: 0;
-  font: 600 clamp(24px, 2.1vw, 30px) / 1.1 var(--pk-font);
-  letter-spacing: -0.02em;
-}
-
-.moveNote {
-  margin: 0;
-  font: 400 16.5px/1.45 var(--pk-font);
-  color: var(--pk-ink-soft);
-  text-wrap: pretty;
-}
-
-/* The cost line is the card's accent *as ink*, which on this surface is the accent itself — the
-   split exists so the same line has somewhere to go when the surface is white. */
-.moveCost {
-  margin: auto 0 0;
-  font: 600 11.5px/1.4 var(--pk-font);
-  letter-spacing: 0.06em;
-}
-
-.move[data-hue="lime"] .moveCost {
-  color: var(--pk-lime-ink);
-}
-.move[data-hue="violet"] .moveCost {
-  color: var(--pk-violet-ink);
-}
-.move[data-hue="amber"] .moveCost {
+.tapeResult[data-tone="caution"] {
   color: var(--pk-amber-ink);
 }
-.move[data-hue="magenta"] .moveCost {
-  color: var(--pk-magenta-ink);
-}
 
-/* ---------- Waitlist ---------- */
-
-.waitlist {
-  margin-top: 12px;
-  padding: 68px 22px 72px;
-  border-radius: var(--pk-radius-3xl);
-  background: var(--pk-panel);
-  text-align: center;
-}
-
-.waitlistTitle {
-  margin: 0;
-  font: 700 clamp(40px, 6.4vw, 84px) / 0.95 var(--pk-font-display);
-  font-variation-settings: var(--pk-display-wdth);
-  letter-spacing: -0.045em;
-}
-
-.waitlistLead {
-  margin: 16px 0 0;
-  font: 400 clamp(17px, 1.5vw, 21px) / 1.4 var(--pk-font);
-  color: var(--pk-ink-muted);
-}
-
-.waitlistForm {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 10px;
-  max-width: 540px;
-  margin: 30px auto 0;
-}
-
-.emailInput {
-  flex: 1 1 250px;
-  min-width: 0;
-  padding: 18px 22px;
-  border: 1px solid var(--pk-rule);
-  border-radius: var(--pk-radius-pill);
-  background: var(--pk-bg);
-  color: var(--pk-ink);
-  font: 400 16px/1 var(--pk-font);
-  outline: none;
-  transition: border-color var(--pk-duration);
-}
-
-.emailInput::placeholder {
-  color: var(--pk-ink-muted);
-}
-
-.emailInput:focus {
-  border-color: var(--pk-focus);
-}
-
-.emailInput[aria-invalid="true"] {
-  border-color: var(--pk-loss);
-}
-
-.submit {
-  height: auto;
-  padding: 18px 28px;
-  font: 600 16px/1 var(--pk-font);
-}
-
-.submit:hover:not(:disabled) {
-  transform: translateY(-2px);
-}
-
-.formError {
-  margin: 14px 0 0;
-  font: 500 13px/1.4 var(--pk-font);
+.tapeResult[data-tone="loss"] {
   color: var(--pk-loss);
 }
 
-.lineLabel {
-  margin: 18px 0 0;
-  font: 600 12px/1.5 var(--pk-font);
-  letter-spacing: 0.08em;
+.tapeResult[data-tone="neutral"] {
   color: var(--pk-ink-muted);
 }
 
-/* ---------- Footer ---------- */
-
-.footer {
-  padding: 26px 18px 44px;
-}
-
-.footerRow {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 12px;
-  max-width: 1400px;
-  margin: 0 auto;
-}
-
-.swatches {
-  display: flex;
-  gap: 5px;
-}
-
-.swatch {
-  width: 12px;
-  height: 12px;
-}
-
-.footerSpacer {
-  flex: 1 1 auto;
-}
-
-.footerLink {
-  font: 600 12px/1 var(--pk-font);
-  letter-spacing: 0.08em;
-  color: var(--pk-ink-muted);
-  text-decoration: none;
-}
-
-.footerLink:hover {
-  color: var(--pk-ink);
-}
-
-.footerNote {
-  font: 600 12px/1 var(--pk-font);
-  letter-spacing: 0.08em;
-  color: var(--pk-ink-muted);
-}
-
-/* Every figure on this page is a snapshot of something real. When the snapshot is the sample read
-   model rather than a live one, the page says so rather than letting the numbers imply otherwise. */
-.sampleTag {
-  padding: 5px 10px;
-  border-radius: var(--pk-radius-pill);
-  background: var(--pk-state-caution-bg);
-  font: 600 10px/1 var(--pk-font);
-  letter-spacing: 0.1em;
-  color: var(--pk-state-caution-ink);
-}
-
-/* ---------- Widths ---------- */
-
-@media (min-width: 820px) {
-  .movesGrid {
-    grid-template-columns: repeat(4, 1fr);
-  }
-}
-
-/* The mascot goes last and goes short: at this width the three columns have become a stack, and a
-   460px picture between the claim and the live panels pushes the numbers off the screen. */
-@media (max-width: 1100px) {
-  .mascotCard {
-    order: 3;
-    min-height: 280px;
-  }
-
-  .mascot {
-    height: 280px;
-  }
-}
-
-/* ---------- Motion ---------- */
-
-/* Four of the animations here never stop, which is exactly what this asks not to happen. The whole
-   page is stilled rather than each animation individually: the entrances (the newest cell, the
-   deposits dropping in) already end on the state they animate to, so removing them shows the same
-   page with nothing moving.
- *
- * The tape is the one that needs more than that. Stopped, it sits at translateX(0) and everything
- * past the fold is unreachable — so it becomes a strip you can scroll by hand. */
-@media (prefers-reduced-motion: reduce) {
-  .page *,
-  .page *::before,
-  .page *::after {
-    animation: none !important;
-    transition: none !important;
-  }
-
-  .tape {
-    overflow-x: auto;
-  }
-}
-
-/* ---------- Keyframes ---------- */
-
-/* The list is rendered twice, so a translate of exactly half the track lands on the same frame the
-   loop started from and there is no seam. */
 @keyframes tapeFlow {
   from {
     transform: translateX(0);
@@ -940,44 +1685,8 @@
   }
 }
 
-@keyframes float {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-12px);
-  }
-}
-
-@keyframes blink {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.25;
-  }
-}
-
-@keyframes pop {
-  from {
-    transform: scale(0.2);
-    opacity: 0;
-  }
-  to {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
-
-@keyframes drop {
-  from {
-    transform: translateY(-24px);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
+@media (prefers-reduced-motion: reduce) {
+  .tapeTrack {
+    animation: none;
   }
 }

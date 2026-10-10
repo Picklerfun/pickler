@@ -1,10 +1,15 @@
 import { LandingPage } from "@/features/landing/components/landing-page";
 import { services } from "@/server/container";
 
-// Data changes continuously; the client also refreshes it through /api/v1/landing.
+// The agents' latest actions change as they run, so the tape is read on every request.
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
-  const snapshot = await services.getLanding();
-  return <LandingPage initial={snapshot} />;
+  const actions = await services.listAgentActions();
+  return (
+    <LandingPage
+      actions={actions.data}
+      appStoreUrl={process.env.NEXT_PUBLIC_APP_STORE_URL || null}
+    />
+  );
 }

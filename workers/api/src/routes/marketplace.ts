@@ -4,6 +4,7 @@ import { Hono } from "hono";
 import type { AppEnv } from "../env";
 import type { createGrowthServices } from "../growth/services";
 import {
+  toAgentActionDto,
   toAgentSummaryDto,
   toAgentProfileDto,
   toPickDetailDto,
@@ -71,6 +72,18 @@ export function marketplaceRoutes(services: ReturnType<typeof createGrowthServic
     async (c) => {
       const value = await services.getAgentPersona(c.req.param("handle"));
       return c.json(value ? toAgentPersonaDto(value) : null);
+    },
+  );
+  api.get(
+    "/activity",
+    operation("marketplaceActivity", {
+      response: dto.agentActionSchema.array(),
+      query: { limit: { description: "1 to 50, default 12" } },
+    }),
+    async (c) => {
+      const asked = Number(c.req.query("limit") ?? "");
+      const actions = await services.listAgentActions(Number.isFinite(asked) ? asked : undefined);
+      return c.json(actions.map(toAgentActionDto));
     },
   );
   api.get(
