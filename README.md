@@ -58,14 +58,34 @@ See [architecture decisions](docs/architecture.md) and [repository agent instruc
 
 ## Solidity
 
-Foundry configuration and directories are included. Contracts remain undefined until their business rules, permissions, and target network are established. These commands require Foundry:
+The independent Foundry project implements the fixed-supply agent token, authorized launch factory, AUSD bonding curve, permanent Uniswap V4 liquidity custody and fee escrow. Read [the Solidity instructions](contracts/AGENTS.md) for responsibilities, pinned dependencies and validation commands. These commands require Foundry:
 
 ```sh
 npm run contracts:build
 npm run contracts:test
 ```
 
-On-chain deployments run explicitly, never as a side effect of `build`. Solidity has its own toolchain; contract commands are independent of web tasks. The current source and test directories are empty.
+On-chain deployments run explicitly, never as a side effect of `build`. Solidity has its own toolchain; contract commands are independent of web tasks. Ordinary contract tests remain offline; explicit fork and testnet acceptance commands are documented separately.
+
+### Verified Monad testnet contracts
+
+The following Pickler contracts were deployed for isolated, faucet-funded acceptance on **Monad testnet (chain ID 10143)**. On **October 10, 2026**, all seven received **exact creation and runtime bytecode matches** in Sourcify. Their live runtime hashes also match the [public acceptance record](docs/market/uniswap-v4-testnet-acceptance.json).
+
+| Contract                       | Deployed address                             | Verified source and ABI                                                                |
+| ------------------------------ | -------------------------------------------- | -------------------------------------------------------------------------------------- |
+| `PicklerLaunchFactory`         | `0xD9FFd2Aa682283e3521c7629dBEA24273676559D` | [Sourcify](https://repo.sourcify.dev/10143/0xD9FFd2Aa682283e3521c7629dBEA24273676559D) |
+| `PicklerGraduationAdapterV4V2` | `0xB2407b6F624EAdf1B58d0D246727aFCE22147BBE` | [Sourcify](https://repo.sourcify.dev/10143/0xB2407b6F624EAdf1B58d0D246727aFCE22147BBE) |
+| `PicklerLiquidityLockerV2`     | `0x94184bE43584d6106E4eeEd20f1BD53784d365FF` | [Sourcify](https://repo.sourcify.dev/10143/0x94184bE43584d6106E4eeEd20f1BD53784d365FF) |
+| `PicklerCurveDeployerV4V2`     | `0xE58Ffb0df26F8490E302798B0EDcfB51fc1EE5C0` | [Sourcify](https://repo.sourcify.dev/10143/0xE58Ffb0df26F8490E302798B0EDcfB51fc1EE5C0) |
+| `PicklerFeeEscrowV2`           | `0x6a7111eD6F39F0CEBa4ea49A475cb34feDFdB23f` | [Sourcify](https://repo.sourcify.dev/10143/0x6a7111eD6F39F0CEBa4ea49A475cb34feDFdB23f) |
+| `PicklerAgentToken`            | `0x066C47CdE99397869809E0DA2d0d4FE40b14B375` | [Sourcify](https://repo.sourcify.dev/10143/0x066C47CdE99397869809E0DA2d0d4FE40b14B375) |
+| `PicklerBondingCurve`          | `0xe5E5bb8f99D78c8a290De17C3A0a3c964251c034` | [Sourcify](https://repo.sourcify.dev/10143/0xe5E5bb8f99D78c8a290De17C3A0a3c964251c034) |
+
+Verification reproduced Solidity **0.8.30+commit.73712a01**, optimizer **200 runs**, EVM **Osaka**, the original source paths and IPFS metadata. The token and curve above belong to the acceptance launch; they are not shared addresses for every agent. These are Pickler deployments; the Monad-maintained Uniswap contracts and AUSD are separate external dependencies recorded in [the integration evidence](docs/market/uniswap-v4-testnet-integration.md#verified-external-generation).
+
+The MonadVision Sourcify service also accepted all seven contracts, with runtime-only confirmation for the internally created locker. Public Sourcify confirmed both creation and runtime for that locker. Additional Etherscan/Monadscan forwarding was not confirmed because the upstream service reported its daily submission limit.
+
+The [34 real testnet receipts and remaining activation work](docs/market/uniswap-v4-testnet-integration.md#acceptance-matrix-and-remaining-activation-work) cover launch, curve trades, graduation, Uniswap swaps and fee claims. The test factory was disabled again after acceptance. Hosted Studio/passkey, immutable R2 metadata and indexer acceptance remain pending; mainnet and general launches remain disabled. See [token launch operations](docs/market/token-launch-operations.md) for the configuration and recovery boundaries.
 
 ## Formatting
 
