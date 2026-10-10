@@ -19,11 +19,14 @@ export async function readAgentToken(
     ticker: string;
     address: string;
     confirmed: boolean;
+    imageUri: string | null;
     accent: Accent | null;
     pattern: number | null;
   }>(
     `
-    SELECT t.name,t.ticker,t.address,p.accent,p.avatar_pattern AS pattern,EXISTS (
+    SELECT t.name,t.ticker,t.address,t.image_uri AS "imageUri",
+      COALESCE(frozen.payload->'avatar'->>'accent',frozen.params->'avatar'->>'accent','lime') AS accent,
+      COALESCE((frozen.payload->'avatar'->>'pattern')::int,(frozen.params->'avatar'->>'pattern')::int,0) AS pattern,EXISTS (
       SELECT 1 FROM market.chain_events e JOIN market.chain_blocks b ON b.chain=e.chain AND b.hash=e.block_hash
       JOIN launch.agent_keys k ON k.agent_id=t.agent_id AND k.chain=e.chain AND k.agent_key=lower(e.decoded->>'agentKey')
       JOIN launch.grants g ON g.agent_id=k.agent_id AND g.chain=k.chain AND g.factory=lower(e.emitter)
@@ -35,7 +38,14 @@ export async function readAgentToken(
         AND lower(g.payload->'params'->>'expectedConfigHash')=lower(e.decoded->>'presetHash')
         AND date_trunc('second',g.created_at) <= b.block_time AND g.expires_at >= b.block_time
     ) AS confirmed
-    FROM market.tokens t LEFT JOIN agents.agent_profiles p ON p.agent_id=t.agent_id WHERE t.agent_id=$1 AND t.chain=$2
+    FROM market.tokens t LEFT JOIN LATERAL (
+      SELECT g.payload,d.params FROM launch.grants g JOIN launch.drafts d ON d.id=g.draft_id
+      JOIN market.chain_events e ON e.chain=g.chain AND e.emitter=g.factory AND e.tx_hash=t.launch_tx_hash AND e.event_name='LaunchCreated'
+      WHERE g.agent_id=t.agent_id AND g.chain=t.chain AND lower(g.payload->'params'->>'metadataHash')=lower(e.decoded->>'metadataHash')
+        AND lower(g.payload->'params'->>'creator')=lower(e.decoded->>'creator')
+        AND lower(g.payload->'params'->>'expectedConfigHash')=lower(e.decoded->>'presetHash')
+      ORDER BY g.created_at LIMIT 1
+    ) frozen ON true WHERE t.agent_id=$1 AND t.chain=$2
       AND t.status IN ('pre_graduation','graduated') AND t.address IS NOT NULL
     ORDER BY t.launched_at DESC,t.id LIMIT 2`,
     [agentId, chain],
@@ -51,7 +61,7 @@ export async function readAgentToken(
         ticker: row.ticker,
         address: row.address,
         chainId,
-        imageUri: null,
+        imageUri: row.imageUri,
         avatar: { accent: row.accent ?? "lime", pattern: row.pattern ?? 0 },
       },
       pending: false,
