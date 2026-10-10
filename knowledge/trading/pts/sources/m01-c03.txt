@@ -1,0 +1,154 @@
+En esta clase vamos a navegar por conceptos que son básicos y que vamos a ir aprendiendo
+y profundizando en las siguientes lecciones y por supuesto en esta también.
+Iniciando con todo, a la hora de hacer una lectura gráfica de los precios de los activos
+financieros utilizamos un concepto llamado velas japonesas. El concepto de velas
+japonesas básicamente es un concepto en el cual la cotización de precios de un
+activo se ve representado por rectángulos, en este caso le llamamos velas,
+velitas, en la que básicamente cada vela es la fluctuación de su precio en un
+determinado marco temporal determinado. Básicamente los dos tipos básicos de
+vela japonesa es la vela alcista y la vela bajista. Las velas alcistas son velas
+usualmente representadas de color verde, básicamente significa que en el marco
+temporal que esta vela representa, que puede representar desde cada vela un
+mes hasta un segundo, a la hora de abrir la vela, en el caso de las verdes, el
+valor inferior del rectángulo es el valor de apertura. Si el precio de ese activo
+sube de valor durante el marco de cotización que dicha vela representa,
+pues bueno cuando cierra, cierve en un valor superior y la vela se tiñe de color
+verde, lo cual significa que subió de precio durante ese momento. Cuando ustedes ven
+unas mechas que se encuentran aquí arriba o abajo, que básicamente se ve
+representado por unas líneas verticales ya sea hacia arriba o hacia abajo,
+significa el valor más alto o el valor más bajo que tuvieron, que tuvo esa vela
+japonesa para el precio o para la cotización. Por ejemplo digamos que
+una acción abrió esta vela japonesa valiendo 100 dólares, si cierra por
+ejemplo en 120 o sea si esta vela llega hasta 120 significa que cerró dicha vela
+japonesa en 120 dólares y tal vez este valor inferior puede ser que llegó a
+caer hasta 95, su momento más bajo durante el marco de tiempo que representa
+dicha vela o la parte más alta si tiene una mecha al alza, puede ser que llegó a
+valer 127 dólares por darles un ejemplo y fue tal vez el valor más alto que
+llegó a cotizar en ese momento. Cuando tenemos una vela de color rojo significa
+que es una vela bajista, o sea una vela que en el marco temporal que dicha vela
+está ejecutando, hubo una caída o un descenso en el precio de dicho activo, es
+decir que tal vez por ejemplo la acción abrió valiendo 100 dólares en esta
+vela japonesa y cuando cerró y tal vez llegó a caer a 88 dólares, cerró en 88
+dólares. Esta mecha alta significa que en este marco temporal quizás estuvo valiendo
+110 dólares, fue su valor más alto y esta otra significa que quizás llegó a caer
+por ejemplo a 76, llegó a caer a 76 pero finalmente terminó cerrando en 88 por
+darles un ejemplo. Ahora evidentemente la variable de tiempo es muy importante para
+entender las velas japonesas y eso se le llama marco temporal, marco temporal se
+considera la magnitud temporal de cada gráfico y de cada vela individual. Por
+ejemplo gráfico mensual significa que cada vela japonesa vale un mes,
+dura un mes en completarse. Usualmente el marco mensual o el gráfico mensual es
+el que determina o define la tendencia principal de un activo y ahorita lo vamos
+a ver si son activos alcistas o bajistas. El marco semanal significa que cada vela
+japonesa vale una semana entera y básicamente define la situación de dicha tendencia. La
+tendencia principal mostrada en mensual se define en el mensual, así está por ejemplo en un
+momento de impulso, alcista, bajista, un rango, una corrección y el gráfico diario básicamente es
+donde cada vela japonesa es una vela de un día y es prácticamente el el momentum que
+inmediatamente tiene el mercado, el gráfico diario se utiliza mucho para nuestras operaciones y
+para nuestras entradas, ya vamos a ver ejemplos. Ahora si nos vamos incluso a gráficos de
+intradía gráficos de cuatro horas de una hora o de 15 minutos significa que cada vela japonesa
+representa cuatro horas de tiempo o una hora o 15 minutos y usualmente este tipo de marcos
+temporales son mucho más volátiles, son mucho más agresivos, tienen mucha variación a corto
+plazo pero se utiliza mucho también para ver confirmaciones adicionales a corto plazo en
+análisis que tal vez vamos a plantear y eso pues obviamente lo vamos a ir profundizando
+próximamente, vamos a mostrarles varios ejemplos de vela japonesa, veremos por ejemplo aquí
+tenemos un gráfico del sp500, ustedes lo ven sencillo porque en la parte superior aquí
+en esta sección está el ticker en trading view y aquí dice también el título sp500 o índice
+sp500 y van a notar que aquí se encuentra franja de tiempo, en este caso tiene la derresaltada
+porque este es el gráfico diario, significa que cada vela que se encuentra aquí es un día de
+precio, las velas verdes son velas alcistas por ejemplo hablemos de la vela de ayer, la vela de
+ayer el sp500 por ejemplo abrió, vamos a ponerlo para que lo entiendan, abrió valiendo 5.669 y
+cuando cerró, lo cerró en esta sección, lo cerró valiendo próximamente 5.855, ok,
+cuando tenemos velas rojas es que tal vez aquí el sp500 abrió el día o abrió la sesión valiendo
+5.837 y aquí cerró la sesión teniendo un valor de próximamente 5.064, ok, y estas mechas como
+las pueden ver por ejemplo significa que tal vez el sp500 aquí abrió en 5.336 y cerró en 5.223
+pero durante el día llegó a caer incluso a este nivel inferior, simplemente que durante el día
+llegó a caer el precio a ese valor y antes de que cierre la vela diaria se recogió, eso es
+aplicable, estos fractales, es decir se puede aplicar a todos los marcos temporales y nos vamos
+a marco temporal de una hora, por ejemplo esto significa que aquí hace unas horas el sp500
+abrió en 5.750 y en esta hora y vamos a poner útese menos 4 horas a Nueva York a las 3 de la
+mañana a Nueva York y cerró aquí en 5.800 sobre este gráfico, ok, o por ejemplo tenemos esta
+vela roja de una hora cerró y abrió perdón en 5.702 cerró en 5.667, vale, bien, ahora si nos vamos
+por ejemplo, si nos vamos por ejemplo a los gráficos mensuales, ya después hablaremos de ello pero
+gráfico mensual es donde se muestra cuál es la tendencia principal, como se puede dar cuenta la
+tendencia principal del sp500 es una tendencia alcista, ahora dentro de dicha tendencia verán
+ustedes que hay periodos que claro son muy correctivos y eso se puede ver claramente en el
+semanal, noten por ejemplo que en el semanal hubieron periodos muy correctivos como el crash del
+covid como la caída en 2018 como gran parte del año 2022 y otros periodos de impulso alcista en el
+cual el mercado tuvo mucho impulso al alza, vean que aquí hubo una corrección el semanal y ven
+que recientemente hubo un importante caída en semanal y ha habido una importante recuperación y
+en el gráfico diario, en el gráfico diario es básicamente ya el gráfico inmediato para
+buscar entradas, para buscar operaciones de trading y por supuesto ya gráfico de intradía como
+las cuatro horas o como una hora son gráficos que tal vez se pueden utilizar para buscar zonas de
+compra o venta a muy corto plazo y tener confirmaciones adicionales, ya pronto vamos a ver cómo se
+utiliza todo ello, bien, el otro punto importante o básico es donde hacemos el análisis de gráficos,
+bueno hay múltiples softwares y múltiples plataformas en internet para utilizar, lo que
+nosotros usamos de toda la vida es trading view, trading view es la herramienta más utilizada
+a nivel mundial para hacer análisis gráfico, es muy fácil de usar, es completamente gratis para
+cuentas básicas o sea tiene una sección, obviamente pues el que yo utilizo es pago puesto que
+necesito ciertas cosas que la gran mayoría de personas no necesita pero en tu caso personal
+te digo no necesitas pagar trading view, puedes analizar los mercados financieros con la versión
+básica de trading view, con la versión gratuita de trading view y el 99% de todos los traders con
+la versión gratuita de trading view, simplemente labres con tu correo, con tu nombre y se acaba
+el problema, es gratis, no tienes que pagar nada, la puedes utilizar por mucho tiempo, no existe
+nada ultra hiper mega especial que sea obligatorio pagar trading view, hay gente que piensa que necesita
+pagar trading view y eso en realidad no es digamos que necesario, la realidad es que no lo necesitas,
+miramos abrir una ventana aquí, vamos a decir si se puede abrir en lo siguiente,
+bueno vamos a irnos a tradingview, vamos a irnos a tradingview.com y hacemos click,
+¿cómo se utiliza trading view? esto es muy sencillo, básicamente lo que tú haces es que
+te abres tu cuenta de trading view completamente gratis, incluso sin abrir cuenta puedes empezar a
+utilizarlo de forma sencilla y lo único que usas es que te vas a productos y aquí le das click en
+super chats y ya te lleva a lo que es digamos una gráfica en sí, una parrilla te abre cualquier
+gráfico y cómo se utiliza trading view muy sencillo, en la parte izquierda superior aquí pones el
+símbolo del activo que vayas a operar o que quieras analizar ese pequeñientos, puedes poner
+bitcoin, btc, usd, te sale bitcoin, puedes poner una criptomoneda, cardano, ada, usd, puedes poner
+una acción, que soy Johnson & Johnson, o puedes poner Coinbase que sería coin, entonces ya con
+esto te vas directamente a su gráfico y aquí tienes todas las herramientas de graficación,
+aquí en las herramientas de graficación puedes poner una línea, puedes poner una flecha,
+puedes utilizar esta para retroceso Fibonacci, para un montón de herramientas que vamos a ver,
+aquí hay más cosas de graficación, más cosas de graficación, aquí es toda la parte de dibujo,
+toda la parte que quieres utilizar para dibujo, para rectángulos, para lo que tú quieras,
+aquí toda la parte de escritura de texto, aquí pones todo el texto que tú quieras, que tú
+necesites, acá le pones corazones y le quieres poner corazones, el símbolo de dólar, lo que
+tú necesites aquí para medir porcentajes, mira por ejemplo hoy como ha subido, como ha subido
+desde el 8 de abril, aquí está la parte de tiempo, mira ha subido Coinbase un 75% impresionante,
+vale, entonces y aquí con el basurero borres todos los dibujos, trading view es muy sencillo
+utilizar, es completamente gratis, yo utilizo una versión paga, pero como repito digamos que la
+necesidad es que yo tengo la mayoría, persona no las tiene, y tú toda tu operativa, el programa
+signo la puedes hacer con una versión gratuita perfectamente y sin ningún problema, así que
+te invito a que habras tu cuenta de trading view, es gratis y muy posiblemente vas a poder hacer
+todo lo que quieras en esta vida con esto completamente gratis. Ahora volviendo al tema de
+las velas japonesas, en realidad solamente hay dos tipos de patrones de velas que nos interesan,
+hay mucha gente que habla de doji y un montón de cosas, para hacerte lo simple hay dos tipos de
+vela importantes, los llamados martillos que es una velita verde con una gran mecha larga o a veces
+está pintado de rojo pero tiene una gran mecha larga hacia abajo o una velita roja que tiene una
+gran mecha por el lado de arriba, especialmente estas son útiles y ahorita lo vamos a ver,
+cuando el mercado viene de muchos días de caer y aparece una vela de estas con una gran mecha
+abajo, es usualmente sinónimo de cambio de tendencia o cuando un mercado viene subiendo por
+largo tiempo y deja una vela especialmente diaria o semanal con una gran mecha arriba es usualmente
+sinónimo de cambio de tendencia. El otro tipo de vela es la vela envolvente, se llama vela
+envolvente cuando por ejemplo si venimos de caída hay una enorme vela verde que envuelve
+esta vela anterior o sea que es más fuerte, se come completamente la vela anterior, lo mismo
+pasa si es a la baja que si yo tenemos varias velas subiendo y hay una enorme vela roja que
+se come a la vela anterior, es usualmente determina fortaleza alcista o en su defecto determina
+fortaleza bajista. Vamos a poner por ejemplo el caso del S. P. 500 para mostrarte algún tipo de
+vela interesante en ese sentido. Por ejemplo si vemos esta vela que se encuentra sobre esta zona,
+te das cuenta que es enorme, es mucho más grande que esta vela roja anterior,
+esto es una vela envolvente alcista y es sinónimo de fuerza, de hecho que mira que después de esta
+vela alcista que ha pasado que el mercado ha subido, o sea esta vela era por ahí de los 5.500
+aproximadamente, ya estamos en los 5.892, es sinónimo de mucha fuerza alcista o por ejemplo si
+tú ves aquí tenemos una vela en esta sección, mira que esta vela roja es una vela envolvente
+bajista, o sea esta vela cubre completamente esta velita anterior y mira cómo esto terminó
+derivando en muchas mayores calles, de hecho que aquí hay otra vela envolvente bajista,
+ok? Las velas envolventes bajistas son esos sinónimos de debilidad. También lo que te hablaba de
+las velas martillo, mira que por ejemplo aquí el mercado venía cayendo y aquí hay una velita
+martillo, o sea hay una velita con una larga mecha por el lado de abajo y después hubieron varios
+movimientos alcistas, eso ocurre cuando la tendencia si viene cayendo a corto plazo se debilita y
+puede empezar a subir, lo mismo pasa en caso contrario, mira por ejemplo aquí sobre esta vela
+y tienes esta larga mecha en la parte alta, veníamos de subidas y eso derivó en diversas
+correcciones, ok? Esos son los dos tipos de vela más importantes, obviamente vamos a profundizar
+muchísimo esto, apenas estamos iniciando, ve poco a poco, vamos a ir despacio, vamos a ir
+aprendiendo mucho, tomate tu tiempo para entender, tomate tu tiempo para practicar, abre tu cuenta
+en trading view y empieza a analizar dónde hay velas envolventes alcistas, dónde hay velas
+envolventes bajistas y empieza a analizar cómo estas velas martillo tanto en la parte
+alcista como en la parte bajista juegan un papel interesante, obviamente tenemos mucho más recursos
+de análisis pero este es un primer aperitivo, muchos éxitos vamos con todo.
