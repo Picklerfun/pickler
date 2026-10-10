@@ -1,0 +1,55 @@
+Vamos a iniciar ahora con el retroceso Fibonacci pero para tendencia bajista. Básicamente las
+leyes son las mismas. Vamos a suponer que tenemos un impulso bajista en el caso de un
+mercado que se encuentre en tendencia bajista que llegado a cierto punto hay un desgaste en
+dicho impulso e inicia un retroceso. Cuando la tendencia bajista un retroceso se traduce en un
+rebote ¿ok? El famoso rebote ¿qué significa un rebote? Un rebote significa que la tendencia
+principal es bajista, el impulso principal es bajista pero a partir de allí tenemos un rebote.
+Cuando termine dicho rebote el impulso bajista principal va a nuevamente reanudarse. ¿Por qué
+es interesante esto? Por varios puntos. Vamos a ir al primero. Cuando tenemos el retroceso o el
+rebote en este caso vamos a delimitar lo mismo. Tomamos la herramienta de Fibonacci, trazamos de
+la parte alta a la parte inferior cuando ya inicia el rebote. Si rompe el 023 activa el Fibonacci,
+es decir el rebote nace al momento de romper el 023 y a partir de allí se mueve hacia el 038 y
+si rompe el 38 se viene la parte más importante del retroceso que es un rebote hasta la zona de
+reversión que si lo recordamos se llama zona de reversión el nivel comprendido entre 061 y 078.
+Allí es donde el rebote debe terminar y empezar a hacerle paso a los movimientos bajistas, a los
+nuevos impulsos bajistas. De hecho es tanto así el nivel de importancia que la ruptura del 078
+ya eliminaría el concepto de que estamos en un rebote o en un retroceso, sino más bien ya esto
+por nivel gráfico rompería la tendencia bajista. Por lo tanto si verdaderamente un activo financiero
+se encuentra en tendencia bajista al momento de testear la zona de reversión es allí donde
+genera un rechazo a este nivel y empieza nuevamente a tener movimientos de caída. Hablando en ese
+sentido vamos entonces igual a mencionar algunos ejemplos interesantes de todo esto si hablamos como
+les decía en el caso de Nike noten ustedes que esta acción que tiene una enorme tendencia
+bajista pasa por ejemplo de estos máximos a estos mínimos inicia el retroceso rompe el 23 rompe el
+38 y llega y justo alcanza la zona del 061 y es interesante porque en la zona del 061
+la alcanza alcanza la zona de reversión y el mercado se exploma de hecho que prácticamente
+eso sería como desde los 83 dólares hasta los 53 aproximadamente lo cual sería un gigantesco
+rango de movimientos bajistas ser un movimiento bajista bastante interesante eso para operarlo
+a la baja se llaman operaciones bajistas short or by put and options sería algo extremadamente
+interesante también el otro punto y que se puede utilizar el retroceso a nuestro favor es que si
+estamos interesados en operar el rebote pues bueno tomando una entrada en el 023 podríamos poner un
+target al 38 y si rompe el 38 podríamos poner un target a la zona de reversión más adelante veremos
+eso donde colocaremos el stop por debajo de inicia el retroceso exactamente por debajo y de hecho que
+ya más adelante lo aplicaremos también si entra en short si queremos perdón entrar en short aquí
+en el rechazo para el nuevo impulso bajista se pone el stop por encima del 78 lo mismo pasa en
+retroceso en tendencia el sista cuando tenemos esta zona de reversión podemos colocar el stop si ya
+el mercado confirma que van nuevamente al alza podemos colocar el stop por debajo del 078 es decir
+utilizamos el nivel de 078 como una herramienta y a nuestro favor ahora si nos vamos por ejemplo
+con otros factores incluso hablemos hablemos incluso del mismísimo oro que el oro en este
+momento está en tendencia el sista pero hace poco en gráfico de una hora está delimitando
+diversos retrocesos interesantes y parte de estos retrocesos interesantes son los siguientes noten
+que ya tuvo una primer corrección desde los 3500 hasta los 3200 si hacemos clic de este máximo
+a este mínimo y colocamos la herramienta de retroceso vamos a colocarla que un momento ponemos
+los niveles ahí está bien van a ver una cosa sumamente interesante y es que el oro justo llegando
+al 78 dentro de la zona de reversión entre el 61 y el 78 ha rechazado este nivel y al rechazar
+este nivel ven que importante como procede a tener una nueva corrección por lo tanto el retroceso
+fibonacci en impulsos bajistas o en movimientos bajistas lo que permite es en este caso dejar
+que el mercado avance bueno si se activa cuando rompe el 23 y el 38 avanza hasta la zona de reversión
+aquí termina el rebote y a partir de ese rebote inicia nuevamente movimientos de mayores caídas
+entonces en resumen tenemos retroceso fibonacci para tendencia el sista el mercado retrocede
+hasta la zona de reversión entre el 61 y 78 y a partir de ahí debe continuar al alza y en
+tendencias bajistas el mercado rebota hasta la zona del 61 y 78 y a partir de allí inicia nuevamente
+el impulso a la baja entonces nosotros lo que hacemos como traders es identificar esto y buscar
+operar la zona de reversión nuevamente a favor de la tendencia y operar nuevamente la zona de
+reversión también a favor de la tendencia en ambos casos eso es lo que buscamos hacer con la
+zona de reversión que nace a partir del retroceso fibonacci que a su vez se activa en el 23 y nos
+lleva ruptura al 38 y de ahí ya nos lleva a la zona de reversión entre el 061 y el 078
