@@ -8,7 +8,8 @@ operations and a bounded indexer. Ordinary composition remains disabled. Mainnet
 
 The current launcher supports the separate reviewed Uniswap V4 policy version 2. Its
 [real contract acceptance](uniswap-v4-testnet-integration.md) completed, but hosted Studio/passkey,
-R2 and indexer acceptance is still pending. [Passive Kuru readiness](kuru-passive-readiness.json)
+metadata freeze and indexer acceptance are still pending. The private R2 binding/public
+reads and hosted migrations have since [passed separately](token-launch-readiness-20261010.md). [Passive Kuru readiness](kuru-passive-readiness.json)
 remains blocked after [live verification](kuru-verification-20261010/verification.md). Historical
 Kuru policy version 1 stays readable; never substitute legacy addresses or a fixture policy.
 
@@ -24,7 +25,9 @@ API Worker runtime only:
 | `TOKEN_METADATA`             | R2 bucket binding; no public write endpoint                                                                                                                                                                                                                                                         |
 
 Existing `MONAD_RPC_URL`, Turnkey parent reader credentials and the registered Studio relying
-party are reused. There is no relayer, marketplace/Mera signer or new passkey registration.
+party are reused. Each owner’s registered master wallet calls the factory directly. The dedicated
+backend grant key and protocol fee treasury are separate roles, not deployment wallets. There is
+no relayer, marketplace/Mera signer or new passkey registration.
 No secret belongs in Next.js, `chain`, OpenAPI, Git or a transaction URL.
 
 The V4 policy enumerates factory, curve deployer, adapter, escrow, locker, PoolManager,
@@ -46,8 +49,10 @@ Indexer Worker runtime only:
 
 - `TOKEN_INDEXER_ENABLED=true`, otherwise retain the existing unconfigured legacy path.
 - The same `TOKEN_LAUNCH_POLICY_JSON` and a single reviewed `RPC_URLS` endpoint.
-- `TOKEN_INDEXER_POLICY_JSON`: strict version 1, `maxBlocks:100`, explicit
-  `rpcRequestsPerPass`, `rpcRequestsPerDay`, `leaseSeconds` and `maxCurvesPerPass`.
+- `TOKEN_INDEXER_POLICY_JSON`: strict version 1 preserves one pass per tick. Strict version 2
+  adds `maxPassesPerTick` (1–6). Both require `maxBlocks:100`, explicit
+  `rpcRequestsPerPass`, `rpcRequestsPerDay`, `leaseSeconds` and `maxCurvesPerPass`. Version 2
+  can catch up in bounded passes; it never increases the daily RPC budget automatically.
 - Trusted `DATABASE` Hyperdrive binding, or an explicit loopback database in local mode.
 
 The chain-wide renewable lease and UTC daily RPC reserve are private PostgreSQL records.
@@ -55,7 +60,9 @@ Every call is reserved before transport. At most four RPC calls run concurrently
 stop after a failure and admitted calls drain before releasing the lease. Ranges remain at most 100 blocks; deployment blocks
 are mandatory. Concurrent passes refuse admission. Lease loss prevents batch commit.
 Older curves are rotated by cursor progress rather than permanently selecting the first agents.
-A controlled catch-up test does not establish that a remote RPC can keep up with testnet.
+Scheduling stops when every selected source reaches the pass snapshot, or on busy/gap/reorg/error.
+A single 100-block pass per minute cannot keep up with the [measured testnet rate](token-launch-readiness-20261010.md#indexer-correction-and-capacity-boundary).
+A controlled catch-up test or one public RPC sample does not establish sustained hosted capacity.
 
 ## Owner API and recovery
 
@@ -116,14 +123,17 @@ Token fee claims refer to that token asset. Historical V4 escrows retain their i
 See [the current integration guide](uniswap-v4-testnet-integration.md#acceptance-matrix-and-remaining-activation-work)
 for the scenario matrix, four previews, reproducible commands, pinned sources and 34 independently
 reconciled real testnet receipts. Offline/controlled checks and actual contract acceptance are
-separate from the still-pending hosted JWT/passkey/R2/indexer walkthrough.
+separate from the still-pending hosted JWT/passkey/metadata-freeze/indexer walkthrough.
+[The readiness follow-up](token-launch-readiness-20261010.md) records hosted R2 reads, applied
+migrations and ten additional buy/sell receipts without reinterpreting the earlier acceptance.
 
 Use disposable local PostgreSQL with CREATEDB permission. Never target a deployed database in the
 controlled acceptance suites. Run Next.js builds/type generation and rendered harnesses sequentially
 in one checkout. `studio-loading.mjs` owns its servers. `DESIGN_BASE_URL` can reuse one fixture
 server for token-preview, routing and sidebar checks; install Playwright globally, not in package.json.
 
-No hosted migration, admission flag, app deployment or mainnet launch is introduced. Product
-activation requires approved economics, dedicated keys, immutable R2 metadata, reviewed policy,
+The original implementation introduced no hosted activation. The readiness follow-up attached
+R2 to the existing API without uploading source or enabling launch. Hosted migrations ran through
+the separate main workflow. Product activation still requires approved economics, dedicated keys, immutable R2 metadata, reviewed policy,
 restricted allowlist and verified indexer capacity. The test factory was explicitly disabled after
 its faucet-funded contract acceptance.
