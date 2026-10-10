@@ -15,6 +15,19 @@ export function tokenPreview(launched = false, privateAgent = false): TokenState
     masterAddress: "0x5555555555555555555555555555555555555555",
     confirmation: launched ? "confirmed" : "absent",
     available: false,
+    venue: launched
+      ? {
+          status: "kuru",
+          market: "0x3333333333333333333333333333333333333333",
+          vault: "0x4444444444444444444444444444444444444444",
+          accountId: "1",
+          positions: ["1", "2"],
+          liquidityLocked: true,
+        }
+      : null,
+    fees: launched
+      ? { ausd: "1250000", agent: "2000000000000000000", block: 100, scope: "master_wallet" }
+      : null,
     blockers: privateAgent
       ? ["GO_PUBLIC_FIRST", "LAUNCH_UNAVAILABLE"]
       : launched
