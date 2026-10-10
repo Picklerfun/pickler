@@ -74,7 +74,9 @@ export const tokenReferenceEconomicsSchema = z.object({
   dexStatus: z.literal("pending"),
 });
 export const tokenVenueSchema = z.object({
-  status: z.enum(["curve", "kuru"]),
+  status: z.enum(["curve", "kuru", "uniswap_v4"]),
+  poolId: hash.nullable().optional(),
+  lpFeeBps: z.number().int().min(0).max(10000).optional(),
   readyToGraduate: z.boolean().optional(),
   market: address.nullable(),
   vault: address.nullable(),
@@ -97,6 +99,13 @@ export const tokenStateSchema = z.object({
   fees: tokenFeesSchema.nullable().optional(),
   chainId: z.union([z.literal(143), z.literal(10143)]).nullable(),
   available: z.boolean(),
+  launchVenue: z
+    .object({
+      name: z.enum(["kuru_passive", "uniswap_v4"]),
+      lpFeeBps: z.number().int().min(0).max(10000).nullable(),
+    })
+    .nullable()
+    .optional(),
   masterAddress: address.nullable().optional(),
   confirmation: z.enum(["absent", "pending", "confirmed"]),
   blockers: z.array(
