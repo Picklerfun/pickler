@@ -1,6 +1,4 @@
-import { AUSD } from "@pickler/chain";
-import { tokenReferenceEconomics, createTokenLaunchService } from "@pickler/core";
-import { PostgresTokenLaunchStore } from "@pickler/infrastructure";
+import { composeTokenLauncher } from "./token-launch";
 import { createXOAuthService } from "@pickler/core";
 import { PostgresApplicationReview, PostgresStudioAccessRequests } from "@pickler/infrastructure";
 import {
@@ -48,6 +46,7 @@ import {
   PostgresProfileRepository,
   PostgresWorkspaceDirectory,
   PostgresCustodyStore,
+  createTokenMetadata,
   createActivityBuilders,
   createAddPasskeyActivityBuilder,
   createBalanceReader,
@@ -580,17 +579,13 @@ export function createServices(env: Env): Services & { close(): Promise<void> } 
       ...(env.PERPL_BOARD_NETWORK ? { perplBoardNetwork: env.PERPL_BOARD_NETWORK } : {}),
     }),
     launches: new PostgresLaunchReadModel(repository.pool),
+    ...(env.TOKEN_METADATA
+      ? { tokenAssets: createTokenMetadata(env.TOKEN_METADATA, "https://app.pickler.fun") }
+      : {}),
     close: () => repository.close(),
     onboard: (userId, email) => directory.onboard(userId, email),
     studio: {
-      // Deliberately no issuer: this delivery cannot grant or broadcast a real launch.
-      tokens: createTokenLaunchService({
-        repository: new PostgresTokenLaunchStore(repository.pool),
-        chainId,
-        ...(chainId === 143 || chainId === 10143
-          ? { referenceEconomics: tokenReferenceEconomics(AUSD[chainId]) }
-          : {}),
-      }),
+      ...composeTokenLauncher(repository.pool, env, chainId),
       perplMarkets: {
         catalog: (network, signal) =>
           new PerplMarketData().catalog(network, {
