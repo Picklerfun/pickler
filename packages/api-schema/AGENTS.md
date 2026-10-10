@@ -244,3 +244,10 @@ Public persona DTOs add optional nullable `launchedToken`
 and `tokenConfirmation` for historical consumers. Absence, confirmation pending and failed reads
 are different outcomes. No signer, credentials, provider trace or metadata persistence belongs here.
 OpenAPI is generated from API route metadata; see [the token guide](../../docs/agent-token-preview.md).
+
+## Token operations
+
+`token-launch.ts` adds strict enumerated operation inputs, optional exact passkey confirmation,
+private operation state and indexed Kuru/fee summaries. An unsigned activity is returned only
+while awaiting signature. No raw signed transaction, signing key, arbitrary calldata or provider
+configuration is a browser contract. Metadata asset reads are documented separately by API media type.
