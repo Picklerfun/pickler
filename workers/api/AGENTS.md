@@ -660,3 +660,12 @@ LP fee through portable DTOs; the backend resolves contracts, preset and account
 keys, metadata writes and provider checks remain infrastructure-only. Actual contract acceptance
 does not establish hosted JWT/passkey/R2/indexer readiness. See
 [the V4 evidence and activation checklist](../../docs/market/uniswap-v4-testnet-integration.md).
+
+## Testnet metadata bucket
+
+`wrangler.staging.jsonc` binds the private Standard bucket `pickler-token-metadata-testnet` as
+`TOKEN_METADATA`. Public hash-verified reads remain available through the existing asset route
+without enabling launch. The hosted settings-only attachment preserved all existing bindings;
+no bucket public-write endpoint or general launch gate is enabled. Do not treat the operator
+write/read smoke test as hosted owner metadata-freeze/passkey acceptance. See
+[the readiness record](../../docs/market/token-launch-readiness-20261010.md).
