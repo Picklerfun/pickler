@@ -582,6 +582,19 @@ export const PicklerBondingCurveAbi = [
     "stateMutability": "view"
   },
   {
+    "type": "function",
+    "name": "totalFeesRemitted",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
     "type": "event",
     "name": "CurveBought",
     "inputs": [
@@ -899,4 +912,4 @@ export const PicklerBondingCurveAbi = [
   }
 ] as const;
 
-export const PicklerBondingCurveAbiHash = "21add13b827418f3bb541250a83b88a8aab2239b6417bdf056850241756bf83d";
+export const PicklerBondingCurveAbiHash = "eff070c68caa992fc1be12dfd5c893f6b535e8ee3dbfa33e7b3991e929dd7ae9";
