@@ -1,0 +1,928 @@
+{
+  "kind": "Isolated legacy Kuru compatibility probe; not a Pickler product deployment",
+  "chainId": 10143,
+  "sourceBaseCommit": "ee3652f968586fa6c6581c1b5c6e00eccbec3bf3",
+  "sourceOverlay": "MIT SPDX headers and contracts/LICENSE; no contract behavior changes",
+  "wallet": "0xD8F3EdB29A5c9B00747e58431C005cff5F6f4eaD",
+  "token": "0x609879264a37427f56bc18985b9ec27f86f17ce0",
+  "market": "0xa5d691EEd28D8623721221ECC54B74424435D702",
+  "vault": "0x38d61895B5Cecc6689A58fC181A23CF40Ea7ae93",
+  "ausd": "0xa9012a055bd4e0eDfF8Ce09f960291C09D5322dC",
+  "implementationSnapshot": {
+    "chainId": 10143,
+    "blockNumber": "69682790",
+    "addresses": {
+      "router": "0x7EFbE105Ca7415dE98F96622173458ac1c054630",
+      "orderBookImplementation": "0x72caE0a99C19B574e8a6De558F43fc1D019c9374",
+      "vaultImplementation": "0x4d54e0d60CaB0cec0100cdA8e00897bC933C5Bb6",
+      "margin": "0xd029C2D98ff85D8F64799017fE00a59B1159CE02",
+      "ausd": "0xa9012a055bd4e0eDfF8Ce09f960291C09D5322dC"
+    },
+    "codeHashes": {
+      "router": "0xae572ec3ca9b5f49c0364ca34edc5880b6b2837e47802e64e6b681bf2e74aa5c",
+      "orderBookImplementation": "0x24c5974f233021f00d607bfa191d430f79565663fb90805ebcfca52de7333500",
+      "vaultImplementation": "0xde0b16a79cf8f711403e89093c1e82ce0e7813949dd0f5041b41da324fdd3dc3",
+      "margin": "0xae572ec3ca9b5f49c0364ca34edc5880b6b2837e47802e64e6b681bf2e74aa5c",
+      "ausd": "0xa3bda7298d1c5f8585852ee04439f9cc493e5c291c9cac74fa54a0bc67024a7b"
+    },
+    "routerOwner": "0x07bBBf2e9911705a7b258e0A05A34620058fC1D1",
+    "sourceRevision": "2060bb2736080c175d80d568bfdb6226bb5abd04",
+    "verification": "Deployed bytecode hashes and advertised implementation addresses captured; source-to-bytecode reproducibility remains unverified."
+  },
+  "historicalAccounting": {
+    "chainId": 10143,
+    "verifiedAt": "2026-10-10T00:46:40.419Z",
+    "source": {
+      "repository": "https://github.com/Kuru-Labs/Kuru-contracts-dex-public",
+      "commit": "2060bb2736080c175d80d568bfdb6226bb5abd04",
+      "kind": "Temporary ABI subset transcribed from pinned official source; not a compiler artifact and not a deployed-bytecode verification.",
+      "chainId": 10143,
+      "router": "0x7EFbE105Ca7415dE98F96622173458ac1c054630",
+      "marginAccount": "0xd029C2D98ff85D8F64799017fE00a59B1159CE02",
+      "quoteAUSD": "0xa9012a055bd4e0eDfF8Ce09f960291C09D5322dC",
+      "files": [
+        "contracts/Router.sol",
+        "contracts/interfaces/IRouter.sol",
+        "contracts/KuruAMMVault.sol",
+        "contracts/interfaces/IKuruAMMVault.sol",
+        "contracts/OrderBook.sol",
+        "contracts/AbstractAMM.sol",
+        "contracts/interfaces/IOrderBook.sol",
+        "contracts/MarginAccount.sol",
+        "contracts/interfaces/IMarginAccount.sol"
+      ]
+    },
+    "checks": [
+      {
+        "name": "public RPC is Monad testnet",
+        "passed": true
+      },
+      {
+        "name": "documented router and margin",
+        "passed": true
+      },
+      {
+        "name": "reviewed quote address",
+        "passed": true
+      },
+      {
+        "name": "create-market: one recorded transaction",
+        "passed": true
+      },
+      {
+        "name": "create-market: successful canonical receipt",
+        "passed": true
+      },
+      {
+        "name": "create-market: probe sender and zero native value",
+        "passed": true
+      },
+      {
+        "name": "create-market: intended recipient",
+        "passed": true
+      },
+      {
+        "name": "create-market: intended function",
+        "passed": true
+      },
+      {
+        "name": "one MarketRegistered emitted by intended router",
+        "passed": true
+      },
+      {
+        "name": "recorded market and vault come from receipt",
+        "passed": true
+      },
+      {
+        "name": "registration assets",
+        "passed": true
+      },
+      {
+        "name": "registration precision, limits, fees and spread",
+        "passed": true
+      },
+      {
+        "name": "market creation inputs",
+        "passed": true
+      },
+      {
+        "name": "market parameters and 18/6 decimals",
+        "passed": true,
+        "details": [
+          100000000,
+          "100000000",
+          "0x609879264A37427F56Bc18985b9eC27F86f17Ce0",
+          "18",
+          "0xa9012a055bd4e0eDfF8Ce09f960291C09D5322dC",
+          "6",
+          1,
+          "100000000",
+          "10000000000000000",
+          "30",
+          "10"
+        ]
+      },
+      {
+        "name": "router registration matches market",
+        "passed": true
+      },
+      {
+        "name": "margin authorizes created market",
+        "passed": true
+      },
+      {
+        "name": "vault owner is upstream router",
+        "passed": true
+      },
+      {
+        "name": "vault configured tokens and margin",
+        "passed": true
+      },
+      {
+        "name": "deposit-liquidity: one recorded transaction",
+        "passed": true
+      },
+      {
+        "name": "deposit-liquidity: successful canonical receipt",
+        "passed": true
+      },
+      {
+        "name": "deposit-liquidity: probe sender and zero native value",
+        "passed": true
+      },
+      {
+        "name": "deposit-liquidity: intended recipient",
+        "passed": true
+      },
+      {
+        "name": "deposit-liquidity: intended function",
+        "passed": true
+      },
+      {
+        "name": "deposit amounts and recipient",
+        "passed": true
+      },
+      {
+        "name": "one deposit event from intended vault",
+        "passed": true
+      },
+      {
+        "name": "first-deposit amounts and share mint",
+        "passed": true
+      },
+      {
+        "name": "block 69685070: tracked vault assets agree with margin account",
+        "passed": true
+      },
+      {
+        "name": "block 69685070: fixed token supply",
+        "passed": true
+      },
+      {
+        "name": "block 69685071: tracked vault assets agree with margin account",
+        "passed": true
+      },
+      {
+        "name": "block 69685071: fixed token supply",
+        "passed": true
+      },
+      {
+        "name": "vault was empty before first deposit",
+        "passed": true
+      },
+      {
+        "name": "deposit wallet debits match event",
+        "passed": true
+      },
+      {
+        "name": "deposit assets and LP ownership",
+        "passed": true
+      },
+      {
+        "name": "initial AMM price and size",
+        "passed": true,
+        "details": [
+          "0x38d61895B5Cecc6689A58fC181A23CF40Ea7ae93",
+          "7543611881188119",
+          "0",
+          "7619048000000000",
+          "0",
+          "500000000",
+          "497512437",
+          "100"
+        ]
+      },
+      {
+        "name": "buy: one recorded transaction",
+        "passed": true
+      },
+      {
+        "name": "buy: successful canonical receipt",
+        "passed": true
+      },
+      {
+        "name": "buy: probe sender and zero native value",
+        "passed": true
+      },
+      {
+        "name": "buy: intended recipient",
+        "passed": true
+      },
+      {
+        "name": "buy: intended function",
+        "passed": true
+      },
+      {
+        "name": "buy quote units, external settlement, FOK",
+        "passed": true
+      },
+      {
+        "name": "buy trades belong to probe and AMM",
+        "passed": true
+      },
+      {
+        "name": "block 69685165: tracked vault assets agree with margin account",
+        "passed": true
+      },
+      {
+        "name": "block 69685165: fixed token supply",
+        "passed": true
+      },
+      {
+        "name": "block 69685166: tracked vault assets agree with margin account",
+        "passed": true
+      },
+      {
+        "name": "block 69685166: fixed token supply",
+        "passed": true
+      },
+      {
+        "name": "buy output and minOut",
+        "passed": true
+      },
+      {
+        "name": "buy debits exactly 0.01 AUSD",
+        "passed": true
+      },
+      {
+        "name": "buy vault inventory and maker rebate",
+        "passed": true
+      },
+      {
+        "name": "buy: no LP shares minted or burned",
+        "passed": true
+      },
+      {
+        "name": "sell: one recorded transaction",
+        "passed": true
+      },
+      {
+        "name": "sell: successful canonical receipt",
+        "passed": true
+      },
+      {
+        "name": "sell: probe sender and zero native value",
+        "passed": true
+      },
+      {
+        "name": "sell: intended recipient",
+        "passed": true
+      },
+      {
+        "name": "sell: intended function",
+        "passed": true
+      },
+      {
+        "name": "sell size units, external settlement, FOK",
+        "passed": true
+      },
+      {
+        "name": "sell trades belong to probe and AMM",
+        "passed": true
+      },
+      {
+        "name": "block 69685215: tracked vault assets agree with margin account",
+        "passed": true
+      },
+      {
+        "name": "block 69685215: fixed token supply",
+        "passed": true
+      },
+      {
+        "name": "block 69685216: tracked vault assets agree with margin account",
+        "passed": true
+      },
+      {
+        "name": "block 69685216: fixed token supply",
+        "passed": true
+      },
+      {
+        "name": "sell fills exactly one token",
+        "passed": true
+      },
+      {
+        "name": "sell output and minOut",
+        "passed": true
+      },
+      {
+        "name": "sell vault inventory and maker rebate",
+        "passed": true
+      },
+      {
+        "name": "sell: no LP shares minted or burned",
+        "passed": true
+      },
+      {
+        "name": "withdraw-liquidity: one recorded transaction",
+        "passed": true
+      },
+      {
+        "name": "withdraw-liquidity: successful canonical receipt",
+        "passed": true
+      },
+      {
+        "name": "withdraw-liquidity: probe sender and zero native value",
+        "passed": true
+      },
+      {
+        "name": "withdraw-liquidity: intended recipient",
+        "passed": true
+      },
+      {
+        "name": "withdraw-liquidity: intended function",
+        "passed": true
+      },
+      {
+        "name": "one withdrawal event from intended vault",
+        "passed": true
+      },
+      {
+        "name": "block 69685275: tracked vault assets agree with margin account",
+        "passed": true
+      },
+      {
+        "name": "block 69685275: fixed token supply",
+        "passed": true
+      },
+      {
+        "name": "block 69685276: tracked vault assets agree with margin account",
+        "passed": true
+      },
+      {
+        "name": "block 69685276: fixed token supply",
+        "passed": true
+      },
+      {
+        "name": "withdrawal burns full probe-owned shares",
+        "passed": true
+      },
+      {
+        "name": "withdrawal matches partial-fill-aware preview",
+        "passed": true
+      },
+      {
+        "name": "withdrawal transfers equal event",
+        "passed": true
+      },
+      {
+        "name": "withdrawal vault debits equal event",
+        "passed": true
+      },
+      {
+        "name": "withdrawal leaves minimum shares only",
+        "passed": true
+      },
+      {
+        "name": "redemption contains substantial liquidity principal",
+        "passed": true
+      },
+      {
+        "name": "token: deployed code present",
+        "passed": true
+      },
+      {
+        "name": "market: deployed code present",
+        "passed": true
+      },
+      {
+        "name": "vault: deployed code present",
+        "passed": true
+      },
+      {
+        "name": "router: deployed code present",
+        "passed": true
+      },
+      {
+        "name": "margin: deployed code present",
+        "passed": true
+      },
+      {
+        "name": "ausd: deployed code present",
+        "passed": true
+      }
+    ],
+    "transactions": {
+      "create-market": {
+        "hash": "0x68b90131895c73a7623358ff14fa6e088955fd937e6e0228798043ffdd9e1fc2",
+        "blockNumber": "69684880",
+        "blockHash": "0x4137a207ddc2ca69c4e831e90b3ce5a7acaa34aa856562eecf555222f93e4a2e",
+        "gasUsed": "1672098",
+        "feeWei": "170553996000000000",
+        "call": {
+          "functionName": "deployProxy",
+          "args": [
+            0,
+            "0x609879264A37427F56Bc18985b9eC27F86f17Ce0",
+            "0xa9012a055bd4e0eDfF8Ce09f960291C09D5322dC",
+            "100000000",
+            100000000,
+            1,
+            "100000000",
+            "10000000000000000",
+            "30",
+            "10",
+            "100"
+          ]
+        },
+        "receiptEvents": [
+          {
+            "args": {
+              "baseAsset": "0x609879264A37427F56Bc18985b9eC27F86f17Ce0",
+              "quoteAsset": "0xa9012a055bd4e0eDfF8Ce09f960291C09D5322dC",
+              "market": "0xa5d691EEd28D8623721221ECC54B74424435D702",
+              "vaultAddress": "0x38d61895B5Cecc6689A58fC181A23CF40Ea7ae93",
+              "pricePrecision": 100000000,
+              "sizePrecision": "100000000",
+              "tickSize": 1,
+              "minSize": "100000000",
+              "maxSize": "10000000000000000",
+              "takerFeeBps": "30",
+              "makerFeeBps": "10",
+              "kuruAmmSpread": "100"
+            },
+            "logIndex": 9
+          }
+        ]
+      },
+      "deposit-liquidity": {
+        "hash": "0x1f810d7347ac53c7b1b6f602f6a6cf795326e1a973ba7259df04fcb5a61d73a7",
+        "blockNumber": "69685071",
+        "blockHash": "0xd30dfc322b7ce828ec853486471fec2f9c431749783185e6f422e97c8b4bb6f1",
+        "gasUsed": "739236",
+        "feeWei": "75402072000000000",
+        "call": {
+          "functionName": "deposit",
+          "args": [
+            "1000000000000000000000",
+            "7619048",
+            "7619048",
+            "0xD8F3EdB29A5c9B00747e58431C005cff5F6f4eaD"
+          ]
+        },
+        "receiptEvents": [
+          {
+            "args": {
+              "amount1": "1000000000000000000000",
+              "amount2": "7619048",
+              "shares": "87287158275575",
+              "userAddress": "0xD8F3EdB29A5c9B00747e58431C005cff5F6f4eaD"
+            },
+            "logIndex": 14
+          }
+        ],
+        "before": {
+          "blockNumber": "69685070",
+          "base": "21000000000000000000000000",
+          "quote": "10000000000",
+          "tokenSupply": "21000000000000000000000000",
+          "shares": "0",
+          "lpSupply": "0",
+          "minimumShares": "0",
+          "assets": ["0", "0"],
+          "vaultParams": [
+            "0x38d61895B5Cecc6689A58fC181A23CF40Ea7ae93",
+            "0",
+            "0",
+            "115792089237316195423570985008687907853269984665640564039457584007913129639935",
+            "0",
+            "0",
+            "0",
+            "100"
+          ]
+        },
+        "after": {
+          "blockNumber": "69685071",
+          "base": "20999000000000000000000000",
+          "quote": "9992380952",
+          "tokenSupply": "21000000000000000000000000",
+          "shares": "87287158275575",
+          "lpSupply": "87287158276575",
+          "minimumShares": "1000",
+          "assets": ["1000000000000000000000", "7619048"],
+          "vaultParams": [
+            "0x38d61895B5Cecc6689A58fC181A23CF40Ea7ae93",
+            "7543611881188119",
+            "0",
+            "7619048000000000",
+            "0",
+            "500000000",
+            "497512437",
+            "100"
+          ]
+        }
+      },
+      "buy": {
+        "hash": "0xe6a1145d11f0f4387161a9f4cac9bca50ac1dcf749825ed17995e5dbf01899f9",
+        "blockNumber": "69685166",
+        "blockHash": "0x9362314ab07d67a2638ef8ec44acdc7a55363dc28fbddd481e2f0f3921aa04dd",
+        "gasUsed": "356282",
+        "feeWei": "36340764000000000",
+        "call": {
+          "functionName": "placeAndExecuteMarketBuy",
+          "args": ["1000000", "1295476805907900000", false, true]
+        },
+        "receiptEvents": [
+          {
+            "args": {
+              "orderId": 0,
+              "makerAddress": "0x38d61895B5Cecc6689A58fC181A23CF40Ea7ae93",
+              "isBuy": true,
+              "price": "7619048000000000",
+              "updatedSize": "366262444",
+              "takerAddress": "0xD8F3EdB29A5c9B00747e58431C005cff5F6f4eaD",
+              "txOrigin": "0xD8F3EdB29A5c9B00747e58431C005cff5F6f4eaD",
+              "filledSize": "131249993"
+            },
+            "logIndex": 2
+          }
+        ],
+        "before": {
+          "blockNumber": "69685165",
+          "base": "20999000000000000000000000",
+          "quote": "9992380952",
+          "tokenSupply": "21000000000000000000000000",
+          "shares": "87287158275575",
+          "lpSupply": "87287158276575",
+          "minimumShares": "1000",
+          "assets": ["1000000000000000000000", "7619048"],
+          "vaultParams": [
+            "0x38d61895B5Cecc6689A58fC181A23CF40Ea7ae93",
+            "7543611881188119",
+            "0",
+            "7619048000000000",
+            "0",
+            "500000000",
+            "497512437",
+            "100"
+          ]
+        },
+        "after": {
+          "blockNumber": "69685166",
+          "base": "20999001308562430210000000",
+          "quote": "9992370952",
+          "tokenSupply": "21000000000000000000000000",
+          "shares": "87287158275575",
+          "lpSupply": "87287158276575",
+          "minimumShares": "1000",
+          "assets": ["998688812569930000000", "7629048"],
+          "vaultParams": [
+            "0x38d61895B5Cecc6689A58fC181A23CF40Ea7ae93",
+            "7543611881188119",
+            "0",
+            "7619048000000000",
+            "131249993",
+            "500000000",
+            "497512437",
+            "100"
+          ]
+        },
+        "accounting": {
+          "boughtSize": "131249993",
+          "grossBase": "1312499930000000000",
+          "output": "1308562430210000000",
+          "takerFeeBase": "3937499790000000",
+          "embeddedMakerRebateBase": "1312499930000000",
+          "calculatedProtocolFeeBase": "2624999860000000"
+        }
+      },
+      "sell": {
+        "hash": "0x6431f6771b56a6de3942c65f42273a99ecdb5d827f85afc10cc483ec544fa61a",
+        "blockNumber": "69685216",
+        "blockHash": "0x6e4b6bbdba57bf080460a42e1cbed9f04510dec24a0eff4df297e11c68f0c388",
+        "gasUsed": "356755",
+        "feeWei": "36389010000000000",
+        "call": {
+          "functionName": "placeAndExecuteMarketSell",
+          "args": ["100000000", "7444", false, true]
+        },
+        "receiptEvents": [
+          {
+            "args": {
+              "orderId": 0,
+              "makerAddress": "0x38d61895B5Cecc6689A58fC181A23CF40Ea7ae93",
+              "isBuy": false,
+              "price": "7543611881188119",
+              "updatedSize": "400000000",
+              "takerAddress": "0xD8F3EdB29A5c9B00747e58431C005cff5F6f4eaD",
+              "txOrigin": "0xD8F3EdB29A5c9B00747e58431C005cff5F6f4eaD",
+              "filledSize": "100000000"
+            },
+            "logIndex": 52
+          }
+        ],
+        "before": {
+          "blockNumber": "69685215",
+          "base": "20999001308562430210000000",
+          "quote": "9992370952",
+          "tokenSupply": "21000000000000000000000000",
+          "shares": "87287158275575",
+          "lpSupply": "87287158276575",
+          "minimumShares": "1000",
+          "assets": ["998688812569930000000", "7629048"],
+          "vaultParams": [
+            "0x38d61895B5Cecc6689A58fC181A23CF40Ea7ae93",
+            "7543611881188119",
+            "0",
+            "7619048000000000",
+            "131249993",
+            "500000000",
+            "497512437",
+            "100"
+          ]
+        },
+        "after": {
+          "blockNumber": "69685216",
+          "base": "20999000308562430210000000",
+          "quote": "9992378472",
+          "tokenSupply": "21000000000000000000000000",
+          "shares": "87287158275575",
+          "lpSupply": "87287158276575",
+          "minimumShares": "1000",
+          "assets": ["999688812569930000000", "7621512"],
+          "vaultParams": [
+            "0x38d61895B5Cecc6689A58fC181A23CF40Ea7ae93",
+            "7543611881188119",
+            "100000000",
+            "7619048000000000",
+            "131249993",
+            "500000000",
+            "497512437",
+            "100"
+          ]
+        },
+        "accounting": {
+          "soldSize": "100000000",
+          "grossQuote": "7543",
+          "output": "7520",
+          "takerFeeQuote": "23",
+          "embeddedMakerRebateQuote": "7",
+          "calculatedProtocolFeeQuote": "15",
+          "feeRoundingResidualQuote": "1"
+        }
+      },
+      "withdraw-liquidity": {
+        "hash": "0x7110aa5cd97f57e6fe974ea7f86ff54742c386d1e9b646b6f1635a2d3569385a",
+        "blockNumber": "69685276",
+        "blockHash": "0x271e66af185002f2b7794de5aa4f370b423a0befe65a009992de7dbd6ca42062",
+        "gasUsed": "446463",
+        "feeWei": "45539226000000000",
+        "call": {
+          "functionName": "withdraw",
+          "args": [
+            "87287158275575",
+            "0xD8F3EdB29A5c9B00747e58431C005cff5F6f4eaD",
+            "0xD8F3EdB29A5c9B00747e58431C005cff5F6f4eaD"
+          ]
+        },
+        "receiptEvents": [
+          {
+            "args": {
+              "amount1": "999688812558473546012",
+              "amount2": "7621511",
+              "shares": "87287158275575",
+              "userAddress": "0xD8F3EdB29A5c9B00747e58431C005cff5F6f4eaD"
+            },
+            "logIndex": 10
+          }
+        ],
+        "before": {
+          "blockNumber": "69685275",
+          "base": "20999000308562430210000000",
+          "quote": "9992378472",
+          "tokenSupply": "21000000000000000000000000",
+          "shares": "87287158275575",
+          "lpSupply": "87287158276575",
+          "minimumShares": "1000",
+          "assets": ["999688812569930000000", "7621512"],
+          "vaultParams": [
+            "0x38d61895B5Cecc6689A58fC181A23CF40Ea7ae93",
+            "7543611881188119",
+            "100000000",
+            "7619048000000000",
+            "131249993",
+            "500000000",
+            "497512437",
+            "100"
+          ]
+        },
+        "after": {
+          "blockNumber": "69685276",
+          "base": "20999999997374988683546012",
+          "quote": "9999999983",
+          "tokenSupply": "21000000000000000000000000",
+          "shares": "0",
+          "lpSupply": "1000",
+          "minimumShares": "1000",
+          "assets": ["11456453988", "1"],
+          "vaultParams": [
+            "0x38d61895B5Cecc6689A58fC181A23CF40Ea7ae93",
+            "7543611881188119",
+            "0",
+            "7619048000000000",
+            "0",
+            "0",
+            "0",
+            "100"
+          ]
+        },
+        "previewAtPreviousBlock": ["999688812558473546012", "7621511"],
+        "remainingAssets": ["11456453988", "1"]
+      }
+    },
+    "codeHashesAtFinalBlock": {
+      "token": "0xe2faa0b753d4fe77966602659b666dad378882276495398d346aacbf5b1c2bb1",
+      "market": "0xae572ec3ca9b5f49c0364ca34edc5880b6b2837e47802e64e6b681bf2e74aa5c",
+      "vault": "0xae572ec3ca9b5f49c0364ca34edc5880b6b2837e47802e64e6b681bf2e74aa5c",
+      "router": "0xae572ec3ca9b5f49c0364ca34edc5880b6b2837e47802e64e6b681bf2e74aa5c",
+      "margin": "0xae572ec3ca9b5f49c0364ca34edc5880b6b2837e47802e64e6b681bf2e74aa5c",
+      "ausd": "0xa3bda7298d1c5f8585852ee04439f9cc493e5c291c9cac74fa54a0bc67024a7b"
+    },
+    "limitations": [
+      "Official legacy source was not independently reproduced against deployed implementation bytecode.",
+      "Snapshots use end-of-block boundaries. Other same-block transfers/trades can make delta or preview checks fail; inspect receipts and transaction ordering if so.",
+      "This probe does not test Pickler factory/grants/curve/graduation/locker/escrow or new-generation passive positions.",
+      "Maker rebates remain inside vault assets. Full LP burn redeems inventory/principal and embedded earnings together; no fee-only withdrawal was demonstrated.",
+      "Calculated protocol fees are source-derived, not a proof of credited fee-collector balances. Shared AUSD MarginAccount balances cannot be treated as this market's assets."
+    ],
+    "passed": true,
+    "rpc": "https://rpc.ankr.com/monad_testnet"
+  },
+  "receiptArtifactAndAllowanceVerification": {
+    "rpc": "https://rpc.ankr.com/monad_testnet",
+    "chainId": 10143,
+    "verifiedAt": "2026-10-10T00:47:41.318Z",
+    "receipts": [
+      {
+        "label": "claim-ausd",
+        "hash": "0xd91c94ef8468fea879bb95110db9d01cfdae988230810a1835606b8e1e367743",
+        "blockNumber": "69682695",
+        "blockHash": "0xdf9c072a781999c7d2d6021e863dfdc32a7300f27d7add36beabaab634961693",
+        "gasUsed": "168220",
+        "feeWei": "17158440000000000",
+        "status": "success",
+        "contractAddress": null
+      },
+      {
+        "label": "deploy-token",
+        "hash": "0xc704c949239f9a402c8d8ef97a1d68d5f6c2fc83941590c34b30b8966b698839",
+        "blockNumber": "69684693",
+        "blockHash": "0x7255a9fe77684d393e7f0b16b321226a43b6a8fed78e2f35b6984445fedf36ad",
+        "gasUsed": "734135",
+        "feeWei": "74881770000000000",
+        "status": "success",
+        "contractAddress": "0x609879264a37427f56bc18985b9ec27f86f17ce0"
+      },
+      {
+        "label": "create-market",
+        "hash": "0x68b90131895c73a7623358ff14fa6e088955fd937e6e0228798043ffdd9e1fc2",
+        "blockNumber": "69684880",
+        "blockHash": "0x4137a207ddc2ca69c4e831e90b3ce5a7acaa34aa856562eecf555222f93e4a2e",
+        "gasUsed": "1672098",
+        "feeWei": "170553996000000000",
+        "status": "success",
+        "contractAddress": null
+      },
+      {
+        "label": "approve-base-lp",
+        "hash": "0x16ed6d4106fd63db1238001733c6cb9c47f48602a085a116e365114e057fd3c3",
+        "blockNumber": "69685023",
+        "blockHash": "0x68f16fc5c916592aa63d2a0bbd759df7d05dffb6425d49b21c319021cae044eb",
+        "gasUsed": "71193",
+        "feeWei": "7261686000000000",
+        "status": "success",
+        "contractAddress": null
+      },
+      {
+        "label": "approve-quote-lp",
+        "hash": "0x01d74e0b34c798da2a47622eafb11fce5b2be33323620da936766f5fded4a3dc",
+        "blockNumber": "69685047",
+        "blockHash": "0xce7ac7ce3df25b2d0753584fb73c072e9a6ba83a4e74bfad9fbd0a21d808d587",
+        "gasUsed": "93873",
+        "feeWei": "9575046000000000",
+        "status": "success",
+        "contractAddress": null
+      },
+      {
+        "label": "deposit-liquidity",
+        "hash": "0x1f810d7347ac53c7b1b6f602f6a6cf795326e1a973ba7259df04fcb5a61d73a7",
+        "blockNumber": "69685071",
+        "blockHash": "0xd30dfc322b7ce828ec853486471fec2f9c431749783185e6f422e97c8b4bb6f1",
+        "gasUsed": "739236",
+        "feeWei": "75402072000000000",
+        "status": "success",
+        "contractAddress": null
+      },
+      {
+        "label": "approve-buy",
+        "hash": "0x563505bd07bf67ac41afb12bf21cbcdd06924ef592f8ccad8119444dddc0d1c4",
+        "blockNumber": "69685142",
+        "blockHash": "0xf4db5abb9b61634a8de2f48fe1534b673488e848f244c465f1429afb942b33d7",
+        "gasUsed": "93858",
+        "feeWei": "9573516000000000",
+        "status": "success",
+        "contractAddress": null
+      },
+      {
+        "label": "buy",
+        "hash": "0xe6a1145d11f0f4387161a9f4cac9bca50ac1dcf749825ed17995e5dbf01899f9",
+        "blockNumber": "69685166",
+        "blockHash": "0x9362314ab07d67a2638ef8ec44acdc7a55363dc28fbddd481e2f0f3921aa04dd",
+        "gasUsed": "356282",
+        "feeWei": "36340764000000000",
+        "status": "success",
+        "contractAddress": null
+      },
+      {
+        "label": "approve-sell",
+        "hash": "0x355d5deb3bb2f8fe654eadb238f4c320d2892d954854e62392935fde21d31879",
+        "blockNumber": "69685191",
+        "blockHash": "0x67c7d58a159e928f0abdf861f83d34d346ce0b0a756f5f39be6120bd87ace8db",
+        "gasUsed": "71178",
+        "feeWei": "7260156000000000",
+        "status": "success",
+        "contractAddress": null
+      },
+      {
+        "label": "sell",
+        "hash": "0x6431f6771b56a6de3942c65f42273a99ecdb5d827f85afc10cc483ec544fa61a",
+        "blockNumber": "69685216",
+        "blockHash": "0x6e4b6bbdba57bf080460a42e1cbed9f04510dec24a0eff4df297e11c68f0c388",
+        "gasUsed": "356755",
+        "feeWei": "36389010000000000",
+        "status": "success",
+        "contractAddress": null
+      },
+      {
+        "label": "withdraw-liquidity",
+        "hash": "0x7110aa5cd97f57e6fe974ea7f86ff54742c386d1e9b646b6f1635a2d3569385a",
+        "blockNumber": "69685276",
+        "blockHash": "0x271e66af185002f2b7794de5aa4f370b423a0befe65a009992de7dbd6ca42062",
+        "gasUsed": "446463",
+        "feeWei": "45539226000000000",
+        "status": "success",
+        "contractAddress": null
+      }
+    ],
+    "allowances": [
+      {
+        "asset": "0x609879264a37427f56bc18985b9ec27f86f17ce0",
+        "spender": "0x38d61895B5Cecc6689A58fC181A23CF40Ea7ae93",
+        "amount": "0"
+      },
+      {
+        "asset": "0xa9012a055bd4e0eDfF8Ce09f960291C09D5322dC",
+        "spender": "0x38d61895B5Cecc6689A58fC181A23CF40Ea7ae93",
+        "amount": "0"
+      },
+      {
+        "asset": "0x609879264a37427f56bc18985b9ec27f86f17ce0",
+        "spender": "0xa5d691EEd28D8623721221ECC54B74424435D702",
+        "amount": "0"
+      },
+      {
+        "asset": "0xa9012a055bd4e0eDfF8Ce09f960291C09D5322dC",
+        "spender": "0xa5d691EEd28D8623721221ECC54B74424435D702",
+        "amount": "0"
+      }
+    ],
+    "passed": true,
+    "tokenRuntimeHash": "0xe2faa0b753d4fe77966602659b666dad378882276495398d346aacbf5b1c2bb1",
+    "compiledRuntimeHash": "0xe2faa0b753d4fe77966602659b666dad378882276495398d346aacbf5b1c2bb1",
+    "tokenLicense": "MIT",
+    "sourceHashes": {
+      "lib/openzeppelin-contracts/contracts/interfaces/draft-IERC6093.sol": "0x19fdfb0f3b89a230e7dbd1cf416f1a6b531a3ee5db4da483f946320fc74afc0e",
+      "lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.sol": "0x86b7b71a6aedefdad89b607378eeab1dcc5389b9ea7d17346d08af01d7190994",
+      "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol": "0x74ed01eb66b923d0d0cfe3be84604ac04b76482a55f9dd655e1ef4d367f95bc2",
+      "lib/openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol": "0xd6fa4088198f04eef10c5bce8a2f4d60554b7ec4b987f684393c01bf79b94d9f",
+      "lib/openzeppelin-contracts/contracts/utils/Context.sol": "0x493033a8d1b176a037b2cc6a04dad01a5c157722049bbecf632ca876224dd4b2",
+      "lib/openzeppelin-contracts/contracts/utils/Panic.sol": "0xf7fe324703a64fc51702311dc51562d5cb1497734f074e4f483bfb6717572d7a",
+      "lib/openzeppelin-contracts/contracts/utils/math/Math.sol": "0x1225214420c83ebcca88f2ae2b50f053aaa7df7bd684c3e878d334627f2edfc6",
+      "lib/openzeppelin-contracts/contracts/utils/math/SafeCast.sol": "0x195533c86d0ef72bcc06456a4f66a9b941f38eb403739b00f21fd7c1abd1ae54",
+      "src/PicklerAgentToken.sol": "0x56c97e1c280a64d29b0329a05b46527bff3f93796ee83a40cda9a2833460e2df",
+      "src/libraries/PicklerCurveMath.sol": "0xe289238d2592d8e2ec9f09ca2269523999d15474bb986fdceaa8294d6ab03613",
+      "src/libraries/PicklerPreset.sol": "0x28ea37994e586c2cd54b2e0234b865acc17010f142d2b94513693161634e3560"
+    },
+    "gasCostMON": "0.489935682",
+    "nativeBalanceAtFinalBlockMON": "4.510064318"
+  }
+}
