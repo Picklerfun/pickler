@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { signedActivitySchema } from "./studio.js";
+import { unsignedActivitySchema } from "./http.js";
 import { ACCENTS } from "./landing.js";
 /** Fixed supply for new agent-token launches, in 18-decimal units. */
 export const AGENT_TOKEN_TOTAL_SUPPLY = "21000000000000000000000000";
@@ -71,7 +73,28 @@ export const tokenReferenceEconomicsSchema = z.object({
   launchFee: integer,
   dexStatus: z.literal("pending"),
 });
+export const tokenVenueSchema = z.object({
+  status: z.enum(["curve", "kuru"]),
+  readyToGraduate: z.boolean().optional(),
+  market: address.nullable(),
+  vault: address.nullable(),
+  accountId: integer.nullable(),
+  positions: z.array(integer),
+  liquidityLocked: z.boolean(),
+});
+export const tokenFeesSchema = z.object({
+  ausd: integer,
+  agent: integer,
+  block: z.number().int().nonnegative(),
+  scope: z.literal("master_wallet"),
+});
 export const tokenStateSchema = z.object({
+  operation: z
+    .lazy(() => tokenOperationSchema)
+    .nullable()
+    .optional(),
+  venue: tokenVenueSchema.nullable().optional(),
+  fees: tokenFeesSchema.nullable().optional(),
   chainId: z.union([z.literal(143), z.literal(10143)]).nullable(),
   available: z.boolean(),
   masterAddress: address.nullable().optional(),
@@ -116,3 +139,61 @@ export const tokenAuthorizationSchema = z.object({
 });
 export type TokenStateDto = z.infer<typeof tokenStateSchema>;
 export type TokenDraftDto = z.infer<typeof tokenDraftSchema>;
+
+export const tokenActionSchema = z.enum([
+  "launch",
+  "graduate",
+  "collect_curve_fees",
+  "collect_lp_fees",
+  "claim_fees",
+]);
+export const tokenOperationInputSchema = z
+  .object({
+    action: tokenActionSchema,
+    expectedVersion: z.number().int().nonnegative(),
+    asset: z.enum(["ausd", "agent"]).optional(),
+  })
+  .strict();
+export const tokenOperationConfirmSchema = z
+  .object({ expectedVersion: z.number().int().positive(), signed: signedActivitySchema.optional() })
+  .strict();
+export const tokenOperationCancelSchema = z
+  .object({ expectedVersion: z.number().int().positive() })
+  .strict();
+export const tokenOperationSchema = z.object({
+  activity: unsignedActivitySchema.nullable().optional(),
+  id: z.string().uuid(),
+  action: tokenActionSchema,
+  version: z.number().int().positive(),
+  status: z.enum([
+    "preparing",
+    "awaiting_signature",
+    "signing",
+    "signed",
+    "submitting",
+    "confirming",
+    "included",
+    "finalized",
+    "failed",
+    "cancelled",
+    "unknown",
+  ]),
+  activityId: z.string().nullable(),
+  txHash: hash.nullable(),
+  blockHash: hash.nullable(),
+  error: z.string().nullable(),
+  deadline: integer,
+  transaction: z
+    .object({
+      chainId: z.literal(10143),
+      sender: address,
+      destination: address,
+      maximumGasCost: integer,
+    })
+    .nullable(),
+});
+export const tokenOperationPreparedSchema = z.object({
+  operation: tokenOperationSchema,
+  activity: unsignedActivitySchema.nullable(),
+});
+export type TokenOperationDto = z.infer<typeof tokenOperationSchema>;
