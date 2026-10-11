@@ -767,3 +767,11 @@ Historical read-only recovery does not require a newer preparation configuration
 An accepted Turnkey identity survives incomplete signed results. Signing failures log only the
 operation ID, broken phase and reviewed reason, never provider prose, calldata or stamps.
 Run the controlled `expired-token-launch`, driver and isolated PostgreSQL operations suites.
+
+## Turnkey token signing address
+
+The token operation driver formats the master wallet as an EIP-55 checksum address only when
+building Turnkey's `signWith`. Turnkey's resource lookup is case-sensitive; the lowercased domain
+identity remains valid for ownership and on-chain comparisons. Prepared transaction bytes and
+historical stamped activities are never rewritten. The driver regression requires the exact
+checksummed resource address and verifies the returned signed bytes against the original sender.
