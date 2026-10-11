@@ -1,5 +1,6 @@
+import { jsonDocument } from "./serialization.js";
 import { PTS_POLICY, PTS_INTRADAY_POLICY } from "@pickler/trading/pts";
-import { publish, digest, bytesHash } from "./files.js";
+import { publish, digest } from "./files.js";
 export const escapeHtml = (v: unknown) =>
   String(v ?? "")
     .replaceAll("&", "&amp;")
@@ -82,6 +83,7 @@ export async function ptsReport(
   const intraday =
     report.policy === "pts-intraday@0.1.0" ||
     report.sourceStudyProtocol === "perps-pts-intraday-sma-v1" ||
+    report.studyProtocol === "perps-pts-intraday-sma-v1" ||
     report.protocol === "perps-pts-intraday-sma-v1" ||
     !!(report.strategyVersions as Record<string, unknown> | undefined)?.["pts-intraday"];
   const policy = intraday ? PTS_INTRADAY_POLICY : PTS_POLICY;
@@ -107,6 +109,9 @@ export async function ptsReport(
     "verification",
     "analysisHash",
     "projectionHash",
+    "initialEvidenceHash",
+    "finalEvidenceHash",
+    "exclusions",
     "setupId",
     "initialStop",
     "triggerAt",
@@ -130,7 +135,7 @@ export async function ptsReport(
     report.processState === "closing"
       ? "Decisions stopped; only deterministic virtual exits remain."
       : report.processState === "active"
-        ? "Authorized local paper comparison active."
+        ? "Recorded comparison active at publication; this static report does not verify current process health."
         : report.processState === "finished"
           ? "Local comparison finished."
           : report.processState === "interrupted"
@@ -154,22 +159,38 @@ export async function ptsReport(
       filters: trace?.checks ?? null,
     };
   });
-  const csv =
-    [
-      keys.join(","),
-      ...csvRows.map((row) =>
-        keys.map((k) => csvCell((row as Record<string, unknown>)[k])).join(","),
-      ),
-    ].join("\n") + "\n";
+  function* csv() {
+    yield keys.join(",") + "\n";
+    for (const row of csvRows) {
+      yield keys.map((key) => csvCell((row as Record<string, unknown>)[key])).join(",") + "\n";
+    }
+  }
   const visibleSummary = Object.fromEntries(
     Object.entries(report).filter(
-      ([key]) => !["analyses", "accounts", "events", "study", "rows", "financial"].includes(key),
+      ([key]) =>
+        ![
+          "analyses",
+          "accounts",
+          "events",
+          "study",
+          "rows",
+          "financial",
+          "audit",
+          "roundDetails",
+          "executionDetails",
+          "observations",
+        ].includes(key),
     ),
   );
   visibleSummary.detailCounts = {
     rows: rows.length,
     analyses: allAnalyses.length,
     setups: setups.length,
+    recordedRounds: Array.isArray(report.roundDetails) ? report.roundDetails.length : undefined,
+    executionDetails: Array.isArray(report.executionDetails)
+      ? report.executionDetails.length
+      : undefined,
+    observations: Array.isArray(report.observations) ? report.observations.length : undefined,
   };
   if (report.financial) {
     const financial = report.financial as {
@@ -186,7 +207,15 @@ export async function ptsReport(
       reason: financial.reason,
       interpretation: financial.interpretation,
       modelCalls: financial.modelCalls,
-      metrics: Array.isArray(report.financial) ? report.financial : financial.metrics,
+      metrics: (Array.isArray(report.financial) ? report.financial : financial.metrics)?.map(
+        (metric) => {
+          return Object.fromEntries(
+            Object.entries(metric as Record<string, unknown>).filter(
+              ([key]) => key !== "positions",
+            ),
+          );
+        },
+      ),
     };
   }
   const compact = rows.map((r, i) => ({
@@ -244,28 +273,21 @@ export async function ptsReport(
         ].join("\n") + "\n";
     }
   }
-  await publish(dir, {
+  const files = await publish(dir, {
     ...financialFiles,
-    "report.json": JSON.stringify(full, null, 2) + "\n",
+    "report.json": jsonDocument(full),
     "report.html": html,
-    "report.csv": csv,
-    "manifest.json":
-      JSON.stringify(
-        {
-          format: "pts-report-manifest-v1",
-          reportHash: digest(full),
-          policyHash: digest(policy),
-          files: {
-            ...Object.fromEntries(
-              Object.entries(financialFiles).map(([name, body]) => [name, bytesHash(body)]),
-            ),
-            "report.html": bytesHash(html),
-            "report.csv": bytesHash(csv),
-            "report.json": bytesHash(JSON.stringify(full, null, 2) + "\n"),
-          },
-        },
-        null,
-        2,
-      ) + "\n",
+    "report.csv": csv(),
+  });
+  await publish(dir, {
+    "manifest.json": jsonDocument({
+      format: "pts-report-manifest-v2",
+      reportHash: digest(full),
+      policyHash: digest(policy),
+      files: Object.fromEntries(Object.entries(files).map(([name, file]) => [name, file.sha256])),
+      fileBytes: Object.fromEntries(
+        Object.entries(files).map(([name, file]) => [name, file.bytes]),
+      ),
+    }),
   });
 }
