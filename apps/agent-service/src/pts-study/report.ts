@@ -165,6 +165,7 @@ export async function ptsReport(
       reason?: string;
       interpretation?: string;
       modelCalls?: number;
+      metrics?: unknown[];
     };
     visibleSummary.financial = {
       protocol: financial.protocol,
@@ -172,6 +173,7 @@ export async function ptsReport(
       reason: financial.reason,
       interpretation: financial.interpretation,
       modelCalls: financial.modelCalls,
+      metrics: Array.isArray(report.financial) ? report.financial : financial.metrics,
     };
   }
   const compact = rows.map((r, i) => ({
@@ -197,6 +199,7 @@ export async function ptsReport(
   <section><h2>Frozen anchors and drawings</h2>${graphs || "<p>No eligible setup in these inputs. No drawing was invented.</p>"}<p>Up to 24 distinct setups illustrated; all exact anchors and formulas remain in JSON.</p></section>
   <section><h2>Decision evidence</h2><input id="filter" placeholder="Market, action or reason" aria-label="Filter decisions"><button id="prev">Previous</button><button id="next">Next</button><span id="count"></span>
   <table><thead><tr><th>UTC / slot</th><th>Market</th><th>Variant</th><th>Action</th><th>Reason / status</th><th>Reference</th></tr></thead><tbody id="rows"></tbody></table></section>
+  <p>When financial evidence exists, separate fills.csv, movements.csv and positions.csv retain virtual partials, fees and funding; all values are also in JSON.</p>
   <p><a href="report.json">Full JSON, anchors and traces</a> · <a href="report.csv">CSV</a> · <a href="manifest.json">Hashes and provenance</a></p>
   <script type="application/json" id="data">${json}</script><script>
   const data=JSON.parse(document.getElementById("data").textContent);let page=0;const size=50;
@@ -206,7 +209,30 @@ export async function ptsReport(
   document.getElementById("filter").oninput=()=>{page=0;render();};document.getElementById("prev").onclick=()=>{page--;render();};document.getElementById("next").onclick=()=>{page++;render();};render();
   </script></html>`;
   const full = { ...report, rows };
+  const accounts = (report.accounts ??
+    (report.financial as { accounts?: unknown } | undefined)?.accounts) as
+    Record<string, import("@pickler/trading/perps").PerpsPaperView> | undefined;
+  const financialFiles: Record<string, string> = {};
+  if (accounts) {
+    for (const kind of ["fills", "movements", "positions"] as const) {
+      const detail = Object.entries(accounts).flatMap(([variant, view]) => {
+        const values =
+          kind === "fills"
+            ? view.attempts.filter((a) => a.status === "filled")
+            : kind === "movements"
+              ? view.movements
+              : view.account.positions;
+        return values.map((evidence) => ({ variant, evidence }));
+      });
+      financialFiles[kind + ".csv"] =
+        [
+          "variant,evidence",
+          ...detail.map((v) => csvCell(v.variant) + "," + csvCell(v.evidence)),
+        ].join("\n") + "\n";
+    }
+  }
   await publish(dir, {
+    ...financialFiles,
     "report.json": JSON.stringify(full, null, 2) + "\n",
     "report.html": html,
     "report.csv": csv,
@@ -217,6 +243,9 @@ export async function ptsReport(
           reportHash: digest(full),
           policyHash: digest(PTS_POLICY),
           files: {
+            ...Object.fromEntries(
+              Object.entries(financialFiles).map(([name, body]) => [name, bytesHash(body)]),
+            ),
             "report.html": bytesHash(html),
             "report.csv": bytesHash(csv),
             "report.json": bytesHash(JSON.stringify(full, null, 2) + "\n"),
