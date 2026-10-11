@@ -363,3 +363,15 @@ An explicitly authorized zero-model continuation may use a separate local physic
 after restoring and verifying the complete existing campaign history, reservations and table
 hashes. Keep the original server and failed sessions intact; never use duplicate copies as fresh
 monetary budget authority. Controlled database tests must finish before freezing that runner.
+
+## Experimental PTS local commands
+
+`src/pts-study/` owns local v8 composition, safe artifacts and restricted commands. Read its
+AGENTS.md and [PTS guide](PTS-BASIC-PAPER.md). Offline replay/audit dispatch before any environment
+or public transport composition. Preparation writes a new directory, saves original public
+responses/hashes, and optionally initializes an inactive study using a dedicated loopback
+DATABASE_URL-only file. No model/trading keys are read and no paid clients are built.
+
+The explicit future run uses the existing profile runner and shared public reader; it cannot resume.
+Coalesced full reports run in a separate thread; compact observation status stays on the host.
+Do not call run as implementation acceptance, reactivate monitors, or add PTS to Studio selectors.
