@@ -240,3 +240,10 @@ sixty daily bars. The interrupted repair study remains frozen at e506bc78; this 
 rewrite its DATA_UNAVAILABLE omission or restart its process. No signal thresholds change.
 
 Explicit fast intraday 0.2.0-fast.1 preparation uses trading-owned native minima/roles, with no daily requirement. Preserve v8 and intraday 0.1.0 capture semantics and the 96-request/ten-minute bounds. No new transport, model, signer or deployed selector is introduced.
+
+Priority capture uses the same candidate-derived resolution list for preparation, cache windows and
+initial/final boundary validation. Fast 0.2.0-fast.1 must not acquire or require 1d. Its nonshared 4h
+refresh uses the declared 24-bar native minimum; shared 1h/15m/5m eligibility still requires 60 closed
+bars and full saved native warmup is retained. Legacy v7/v8 and intraday 0.1.0 behavior is unchanged.
+Controlled tests cover all eleven common frames, the exact 24/23-bar boundary, absence of daily
+requests, immutable input and rejection when an actually required 5m window changes.
