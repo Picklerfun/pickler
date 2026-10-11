@@ -714,3 +714,16 @@ still commit atomically; no RPC work runs inside that transaction. Never replace
 ancestry validation with sparse sampling or advance a cursor to avoid backfill. The hosted
 capacity measurement and explicit closed launcher gate are recorded in
 [the dated readiness guide](../../docs/market/token-indexer-hosted-20261011.md).
+
+## Local PTS persistence and restricted composition
+
+`@pickler/infrastructure/perpl-public` exposes only public Perpl transport; `/perps-lab` exposes
+local research/paper/study persistence and the consistent read-only audit exporter. Neither subpath
+loads model or signing adapters. PTS uses existing tables/JSONB, not migrations.
+
+Configuration v8 initializes independent PTS/SMA accounts with immutable account policies and zero
+model calls/reservations. Under account and study ownership locks, reproduce the PTS final signal,
+verify the saved common evidence, native quantity and account policy, then confirm fill, proportional
+basis, reduction/target sequence, stop and consumed setup in one transaction. No intent may switch
+policy; legacy accounts cannot acquire PTS exceptions. Unknown funding and historic monetary
+reservations remain unchanged. Tests use disposable local PostgreSQL databases only.
