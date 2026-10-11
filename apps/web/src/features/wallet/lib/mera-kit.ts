@@ -32,6 +32,18 @@ export async function loadMeraKit(): Promise<MeraKit> {
       return {
         address: mera.getEvmAddress(session.publicKey),
         signMessage: (message) => viemAccount.signMessage({ message }),
+        signTransaction: (tx) =>
+          viemAccount.signTransaction({
+            type: "eip1559",
+            chainId: tx.chainId,
+            nonce: tx.nonce,
+            to: tx.to as `0x${string}`,
+            data: tx.data as `0x${string}`,
+            value: 0n,
+            gas: BigInt(tx.gas),
+            maxFeePerGas: BigInt(tx.maxFeePerGas),
+            maxPriorityFeePerGas: BigInt(tx.maxPriorityFeePerGas),
+          }),
         end: () => session.end(),
       };
     },
