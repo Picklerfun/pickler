@@ -226,8 +226,11 @@ See [agent token admission and previews](docs/agent-token-preview.md).
 
 ## Versioned testnet token launcher
 
-The operational launcher remains behind disabled testnet-only gates. Separate Uniswap V4 policy
-version 2 and its permanent V2 locker have real faucet-funded contract acceptance; hosted
+The operational launcher remains behind explicit testnet-only gates. The approved API staging
+configuration preserves `TOKEN_LAUNCH_ENABLED=true` for eligible creators; other compositions
+remain disabled without explicit configuration. Owner checks, reviewed policy and the user
+master passkey remain mandatory. Separate Uniswap V4 policy version 2 and its permanent V2 locker
+have real faucet-funded contract acceptance; hosted
 Studio/passkey/R2/indexer acceptance is pending. Historical Kuru policy 1 is retained, but its
 published testnet generation was verified incompatible and stays blocked. Read
 [Token operations](docs/market/token-launch-operations.md) and
