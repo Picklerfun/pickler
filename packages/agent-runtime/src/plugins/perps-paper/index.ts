@@ -400,3 +400,5 @@ export function createPerplAcquisitionReader(
 export * from "./universe.js";
 
 export * from "./priority-study.js";
+
+export { preparePtsHistory } from "./pts-history.js";
