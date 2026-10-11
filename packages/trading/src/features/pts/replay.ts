@@ -7,12 +7,7 @@ import { inspectPtsHistory } from "./inspection.js";
 import { PTS_CATALOG, type PerpsPtsConfig } from "./policy.js";
 import { PTS_VERSION, PTS_INTRADAY_VERSION, PTS_VARIANTS, type PtsReplayInput } from "./types.js";
 
-import {
-  ptsVariants,
-  ptsVariant,
-  ptsConfigVersion,
-  ptsTemporalProfile,
-} from "./temporal-profile.js";
+import { ptsVariants, ptsVariant, ptsTemporalProfile } from "./temporal-profile.js";
 import { createProfileStudyRunner } from "../evaluation/profile-runner.js";
 import type {
   PerpsStudyView,
@@ -425,10 +420,10 @@ export function ptsFinancialAudit(accounts: Record<string, PerpsPaperView | unde
   });
 }
 
-export function auditPtsStudy(
+export function auditPtsDecisionRows(
   study: PerpsStudyView,
-  accounts: Record<string, PerpsPaperView | undefined>,
   digest: (v: unknown) => string,
+  slots?: readonly number[],
 ) {
   if (
     (study?.record?.config?.version !== 8 && study?.record?.config?.version !== 9) ||
@@ -470,9 +465,20 @@ export function auditPtsStudy(
       executions.set(key, [...(executions.get(key) ?? []), e]);
     }
   }
-  const financial = ptsFinancialAudit(accounts);
   if (study.record.startedAt !== null) {
-    for (let slot = 0; slot < config.hours * 12; slot++) {
+    const selectedSlots = slots ?? Array.from({ length: config.hours * 12 }, (_, index) => index);
+    if (
+      new Set(selectedSlots).size !== selectedSlots.length ||
+      selectedSlots.some(
+        (slot) => !Number.isSafeInteger(slot) || slot < 0 || slot >= config.hours * 12,
+      )
+    ) {
+      throw new PilotError(
+        "INVALID_INPUT",
+        "PTS audit slots must be unique and within the frozen window",
+      );
+    }
+    for (const slot of selectedSlots) {
       const round = rounds.get(slot),
         evidence = round?.evidence,
         final = finals.get(slot);
@@ -498,6 +504,8 @@ export function auditPtsStudy(
           }
         }
       }
+      const initialEvidenceHash = evidence ? digest(evidence) : null;
+      const finalEvidenceHash = final ? digest(final) : null;
       for (const m of config.markets) {
         for (const variant of ptsVariants(config)) {
           const original = round?.proposals[variant]?.find((p) => p.symbol === m.symbol);
@@ -537,10 +545,10 @@ export function auditPtsStudy(
             status: round?.executionStatus ?? "NOT_RECORDED",
             action: original?.action ?? null,
             reason: original?.reason ?? "NOT_VERIFIABLE",
-            initialEvidenceHash: evidence ? digest(evidence) : null,
+            initialEvidenceHash,
             original: original ?? null,
             reproduction: recalculated ?? null,
-            finalEvidenceHash: final ? digest(final) : null,
+            finalEvidenceHash,
             finalDecision: finalDecision ?? null,
             executions: perAsset,
             exclusions,
@@ -556,6 +564,17 @@ export function auditPtsStudy(
       }
     }
   }
+  return rows;
+}
+
+export function auditPtsStudy(
+  study: PerpsStudyView,
+  accounts: Record<string, PerpsPaperView | undefined>,
+  digest: (v: unknown) => string,
+) {
+  const rows = auditPtsDecisionRows(study, digest);
+  const config = study.record.config;
+  const financial = ptsFinancialAudit(accounts);
   return {
     protocol: "perps-pts-audit-v1",
     studyMetadata: study.record.metadata,
