@@ -9,7 +9,11 @@ Read [the root instructions](../../AGENTS.md) and [infrastructure instructions](
 `src/config.ts` defaults nothing. Without a factory address, a deployment block, a chain id and at least one RPC endpoint, the pass does not run and the worker says so. An address or a start block guessed wrong produces an index that looks populated and is not, which is harder to notice than an indexer that plainly never started. The isolated acceptance factory is recorded separately; without reviewed hosted deployment
 configuration this path deliberately refuses rather than guessing an address.
 
-`wrangler.jsonc` carries no Hyperdrive id or active contract configuration. Isolated testnet contracts now exist, but a reviewed hosted allowlist/policy and capacity acceptance remain pending. Configure the trusted binding and complete chosen path together; never infer hosted activation from an isolated deployment receipt.
+`wrangler.jsonc` now binds the existing trusted staging Hyperdrive and the single free testnet RPC.
+The normal deploy keeps `TOKEN_INDEXER_ENABLED=false`; the reviewed public launch/indexer policies
+are provisioned separately as runtime bindings. Explicit operator activation and its capacity record
+are documented in [the hosted readiness guide](../../docs/market/token-indexer-hosted-20261011.md).
+Never infer launch activation from the indexer or isolated deployment receipts.
 
 ## Rules
 
@@ -34,7 +38,7 @@ The separate `TOKEN_INDEXER_ENABLED` path composes `runTokenIndexer` with the co
 launch policy, one RPC transport and explicit per-pass/daily budgets. It indexes factory, adapter,
 locker, escrow and registered curves in ranges of 100 blocks under one renewable private lease,
 then projects canonical launch identity and Kuru position snapshots. No legacy fallback is
-allowed on this path. The deployment manifest remains blocked; no remote activation is configured.
+allowed on this path. The Kuru deployment manifest remains blocked; this does not activate Kuru.
 See [Token operations](../../docs/market/token-launch-operations.md).
 
 ## Separate V4 indexing
@@ -43,8 +47,8 @@ Reviewed V4 policy 2 routes canonical V4 V2 graduation logs through the infrastr
 Uniswap projector. It reads exact event-block locker/NFT/pool/liquidity state outside SQL, rechecks
 canonicality and fences the private lease before commit. Historical Kuru and old V4 streams retain
 their existing identity. A controlled PostgreSQL catch-up pass is not proof of hosted throughput.
-The isolated testnet acceptance factory is not automatically configured in this Worker; gates and
-bindings remain disabled until a reviewed allowlisted product deployment.
+The dated public V4 policy pins the actual isolated factory deployment block and one product agent.
+Its runtime binding does not enable the API launcher or the on-chain factory.
 
 ## Versioned bounded schedule
 
