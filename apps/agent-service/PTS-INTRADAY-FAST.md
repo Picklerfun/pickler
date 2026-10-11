@@ -170,3 +170,19 @@ The original frozen host is not hot-patched or restarted to apply this correctio
 Read [connection-failure containment](PTS-INTRADAY-PAPER.md#connection-failure-containment) before
 preparing the next candidate. The corrected local scope handles asynchronous PostgreSQL client
 errors, aborts admissions and preserves uncertain/pending results instead of resuming the scope.
+
+## Candidate-derived capture validation
+
+Preparation and the detector select four native fast roles, but the prior runtime's boundary check
+still inspected the five-role basic/intraday list, including 1d. A controlled capture with valid
+4h/1h/15m/5m history and eleven coherent price pairs was therefore returned with zero frames and
+eleven `CANDLE_WINDOW_CHANGED` exclusions. A separate minimum-history fixture exposed an extra
+60-bar requirement on 4h despite the fast profile's declared minimum of 24.
+
+The corrected composition derives one required-resolution list for preparation, cache windows and
+both captures. It refreshes the nonshared 4h role using its existing 24-bar minimum, merges the full
+saved prefix and preserves the shared 60-bar 1h/15m/5m requirement. It requests no daily data solely
+for fast PTS. Controlled initial/final captures now retain all eleven eligible frames; 23 native 4h
+bars and a genuine 5m boundary change remain unavailable. Candidate policy, geometry, risk, pricing,
+old versions and financial accounting are unchanged. These are data-integration regressions, not
+observed profitable trades or a reconstruction of an unrecorded historical failure frame.

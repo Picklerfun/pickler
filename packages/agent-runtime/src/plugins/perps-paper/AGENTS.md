@@ -73,3 +73,10 @@ sixty daily bars. The interrupted repair study remains frozen at e506bc78; this 
 rewrite its DATA_UNAVAILABLE omission or restart its process. No signal thresholds change.
 
 The explicit v9 fast candidate 0.2.0-fast.1 uses native 4h/1h/15m/5m warmup from trading. Preparation preserves old candidates; shared refresh retains 1h/15m/5m eligibility and adds only selected native roles. Do not require or refresh 1d solely for the fast candidate.
+
+Use one candidate-derived resolution list for preparation, cache-window pruning and capture boundary
+validation. The fast 4h refresh honors its declared 24-bar minimum rather than imposing the shared
+SMA 60-bar window; retain all saved warmup and require 60 bars for shared 1h/15m/5m. The earlier
+daily-minimum correction for intraday 0.1.0 remains intact. Missing native bars and real boundary
+changes still exclude the asset for every portfolio; never fabricate missing history or promote an
+initially blocked proposal during the final refresh.

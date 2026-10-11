@@ -103,6 +103,36 @@ export function createPriorityPerplStudyData(
     }
     return r.config;
   };
+  function requiredResolutions(settings: ReturnType<typeof config>) {
+    const resolutions =
+      settings.version === 8 || settings.version === 9
+        ? ([3600, 900, 300, 14400, 86400] as const)
+        : ([3600, 900, 300] as const);
+    if (settings.version !== 9) {
+      return resolutions;
+    }
+    const profile = ptsTemporalProfile(ptsConfigVersion(settings));
+    return resolutions.filter(
+      (resolution) =>
+        resolution === 3600 ||
+        resolution === 900 ||
+        resolution === 300 ||
+        profile.native.includes(resolution),
+    );
+  }
+  function refreshCount(settings: ReturnType<typeof config>, resolution: number) {
+    if (settings.version !== 9) {
+      return 60;
+    }
+    const profile = ptsTemporalProfile(ptsConfigVersion(settings));
+    if (resolution === 86400) {
+      return Math.min(60, profile.minimum["1d"] ?? 60);
+    }
+    if (resolution === 14400) {
+      return Math.min(60, profile.minimum["4h"] ?? 60);
+    }
+    return 60;
+  }
   async function prepare(r: PerpsStudyRecord, parent: AbortSignal, guard?: () => Promise<void>) {
     const started = (options.monotonic ?? (() => performance.now()))();
     const signal = AbortSignal.any([parent, AbortSignal.timeout(60000)]);
@@ -123,28 +153,11 @@ export function createPriorityPerplStudyData(
           phase: "pts-history",
         }));
     try {
-      const resolutions =
-        r.config.version === 8 || r.config.version === 9
-          ? ([3600, 900, 300, 14400, 86400] as const)
-          : ([3600, 900, 300] as const);
-      const requiredResolutions =
-        settings.version === 9
-          ? resolutions.filter(
-              (resolution) =>
-                resolution === 3600 ||
-                resolution === 900 ||
-                resolution === 300 ||
-                ptsTemporalProfile(ptsConfigVersion(settings)).native.includes(resolution),
-            )
-          : resolutions;
-      for (const resolution of requiredResolutions) {
+      for (const resolution of requiredResolutions(settings)) {
         // At most eleven candle requests in each independently bounded public session.
         const service = await reader.session(identity(r), signal, guard);
         const end = Math.floor(now() / (resolution * 1000)) * resolution * 1000;
-        const tailCount =
-          settings.version === 9 && resolution === 86400
-            ? Math.min(60, ptsTemporalProfile(ptsConfigVersion(settings)).minimum["1d"] ?? 60)
-            : 60;
+        const tailCount = refreshCount(settings, resolution);
         for (const market of settings.markets) {
           if (omitted.has(market.symbol)) {
             continue;
@@ -205,7 +218,9 @@ export function createPriorityPerplStudyData(
                   "DATA_UNAVAILABLE",
                   tailCount === 60
                     ? "Sixty original consecutive closed candles required"
-                    : "Frozen intraday daily minimum of consecutive closed candles required",
+                    : resolution === 86400
+                      ? "Frozen intraday daily minimum of consecutive closed candles required"
+                      : "Frozen intraday native minimum of consecutive closed candles required",
                 );
               }
               cache.set(key, s);
@@ -272,10 +287,9 @@ export function createPriorityPerplStudyData(
       }
       // Bound the cache to the current three windows; no stale-window reuse.
       const ends = new Set(
-        (r.config.version === 8 || r.config.version === 9
-          ? [3600, 900, 300, 14400, 86400]
-          : [3600, 900, 300]
-        ).map((resolution) => Math.floor(now() / (resolution * 1000)) * resolution * 1000),
+        requiredResolutions(settings).map(
+          (resolution) => Math.floor(now() / (resolution * 1000)) * resolution * 1000,
+        ),
       );
       for (const key of cache.keys()) {
         if (!ends.has((JSON.parse(key) as unknown[])[4] as number)) {
@@ -314,10 +328,7 @@ export function createPriorityPerplStudyData(
         continue;
       }
       if (
-        (r.config.version === 8 || r.config.version === 9
-          ? [3600, 900, 300, 14400, 86400]
-          : [3600, 900, 300]
-        ).some(
+        requiredResolutions(config(r)).some(
           (res) =>
             !saved.candles.some(
               (s) =>
