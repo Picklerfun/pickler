@@ -129,6 +129,10 @@ export function createPriorityPerplStudyData(
         // At most eleven candle requests in each independently bounded public session.
         const service = await reader.session(identity(r), signal, guard);
         const end = Math.floor(now() / (resolution * 1000)) * resolution * 1000;
+        const tailCount =
+          settings.version === 9 && resolution === 86400
+            ? Math.min(60, ptsTemporalProfile(ptsConfigVersion(settings)).minimum["1d"] ?? 60)
+            : 60;
         for (const market of settings.markets) {
           if (omitted.has(market.symbol)) {
             continue;
@@ -142,6 +146,7 @@ export function createPriorityPerplStudyData(
             market.marketId,
             resolution,
             end,
+            ...(settings.version === 9 ? [settings.protocol, tailCount] : []),
           ]);
           try {
             let s = cache.get(key);
@@ -155,20 +160,22 @@ export function createPriorityPerplStudyData(
                 original.to === end &&
                 original.market.marketId === market.marketId &&
                 original.candles
-                  .slice(-60)
-                  .every((c, i) => c.closed && c.openTime === end - (60 - i) * resolution * 1000)
+                  .slice(-tailCount)
+                  .every(
+                    (c, i) => c.closed && c.openTime === end - (tailCount - i) * resolution * 1000,
+                  )
               ) {
                 s = {
                   ...original,
-                  from: end - 60 * resolution * 1000,
-                  candles: original.candles.slice(-60),
+                  from: end - tailCount * resolution * 1000,
+                  candles: original.candles.slice(-tailCount),
                   missingOpenTimes: [],
                 };
               } else {
                 s = await service.getPerpCandles({
                   symbol: market.symbol,
                   resolution,
-                  from: end - 60 * resolution * 1000,
+                  from: end - tailCount * resolution * 1000,
                   to: end,
                 });
               }
@@ -176,15 +183,17 @@ export function createPriorityPerplStudyData(
                 s.market.marketId !== market.marketId ||
                 s.market.symbol !== market.symbol ||
                 s.resolution !== resolution ||
-                s.candles.length !== 60 ||
+                s.candles.length !== tailCount ||
                 s.missingOpenTimes.length ||
                 s.candles.some(
-                  (c, i) => !c.closed || c.openTime !== end - (60 - i) * resolution * 1000,
+                  (c, i) => !c.closed || c.openTime !== end - (tailCount - i) * resolution * 1000,
                 )
               ) {
                 throw new PilotError(
                   "DATA_UNAVAILABLE",
-                  "Sixty original consecutive closed candles required",
+                  tailCount === 60
+                    ? "Sixty original consecutive closed candles required"
+                    : "Frozen intraday daily minimum of consecutive closed candles required",
                 );
               }
               cache.set(key, s);
