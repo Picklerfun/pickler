@@ -73,3 +73,15 @@ age, five-second future allowance and copied live heartbeat proof. Its recorded 
 has no gate under this existing experimental policy. No REST fallback is added.
 Candle/funding sessions remain public REST outside priority price/close work.
 No new table, migration, API endpoint, model, signer, scheduler, automation or deployment is added.
+
+## Inspecting a preserved preparation
+
+`prepare --config TEMPLATE --state ORIGINAL_PREPARATION/history.json --output NEW_DIRECTORY`
+rebuilds preparation artifacts offline, verifying the original history, policy and response-byte
+hashes before copying them. Optional DATABASE_URL-only initialization remains inactive. This mode
+never constructs public transport or makes another capture. Both original capture and exporter
+commits remain explicit; the source is not rewritten.
+
+Invalid original OHLC bars remain recorded. Offline inspection counts valid original bars and
+labels affected signal projections NOT_VERIFIABLE, never a valid hold. Runtime strategy admission
+still rejects invalid data; inspection does not repair bars or relax the frozen minima.
