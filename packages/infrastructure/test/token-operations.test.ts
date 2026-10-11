@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 import {
   createTokenOperationService,
   type TokenOperationDriver,
+  type TokenLaunchRepository,
   prepareDraft,
   DEFAULT_BRIEF,
   STARTER_CAPS,
@@ -310,4 +311,88 @@ test("operational migrations preserve historical records and revoke permissive p
     `SELECT acl.grantee FROM pg_class c,LATERAL aclexplode(coalesce(c.relacl,acldefault('r',c.relowner))) acl WHERE c.oid IN ('launch.operations'::regclass,'launch.indexer_admission'::regclass,'market.kuru_graduations'::regclass) AND acl.grantee=0`,
   );
   assert.equal(grants.rowCount, 0);
+});
+
+test("trade intents persist exact parameters, isolate owners and survive concurrent confirmation", async (t) => {
+  const f = await tokenFixture(t);
+  // This test controls the confirmed projection; canonical event attribution is covered separately.
+  const repository: TokenLaunchRepository = {
+    transaction: (scope, chain, work) =>
+      f.repository.transaction(scope, chain, (tx) =>
+        work({
+          ...tx,
+          context: {
+            ...tx.context,
+            token: {
+              name: "Controlled",
+              ticker: "CTRL",
+              address: "0x" + "2".repeat(40),
+              chainId: 10143,
+              imageUri: null,
+              avatar: { accent: "lime", pattern: 1 },
+            },
+          },
+        }),
+      ),
+  };
+  const d = driver();
+  const service = () =>
+    createTokenOperationService({
+      repository,
+      tokens: f.service,
+      chainId: 10143,
+      driver: d.result,
+    });
+  for (const action of ["approve_buy", "buy", "approve_sell", "sell"] as const) {
+    const trade = {
+      amount: action.endsWith("sell") ? "1000000000000000000000" : "1000000",
+      slippageBps: 50,
+    };
+    const input = { action, trade, expectedVersion: 0 };
+    const key = "controlled_trade_" + action;
+    const p = await service().prepare(f.scope, input, key);
+    assert.equal((await service().prepare(f.scope, input, key)).operation.id, p.operation.id);
+    await assert.rejects(
+      service().prepare(f.scope, { ...input, trade: { ...trade, amount: "1" } }, key),
+      /TOKEN_IDEMPOTENCY_CONFLICT/,
+    );
+    const payload = (
+      await f.store.pool.query("SELECT payload FROM launch.operations WHERE id=$1", [
+        p.operation.id,
+      ])
+    ).rows[0].payload;
+    assert.deepEqual(payload.trade, trade);
+    await assert.rejects(
+      service().confirm(
+        { ...f.scope, userId: randomUUID() },
+        p.operation.id,
+        p.operation.version,
+        signed,
+      ),
+      /TOKEN_OWNER_REQUIRED/,
+    );
+    const confirmations = await Promise.allSettled([
+      service().confirm(f.scope, p.operation.id, p.operation.version, signed),
+      service().confirm(f.scope, p.operation.id, p.operation.version, signed),
+    ]);
+    assert.equal(confirmations.filter((r) => r.status === "fulfilled").length, 1);
+    assert.equal((await service().status(f.scope, p.operation.id)).status, "finalized");
+  }
+  assert.deepEqual(d.counts(), { signs: 4, sends: 4 });
+  assert.equal(
+    (await f.store.pool.query("SELECT count(*) FROM launch.operations")).rows[0].count,
+    "4",
+  );
+  await assert.rejects(
+    f.store.pool.query("UPDATE launch.operations SET action='arbitrary'"),
+    (e: unknown) => (e as { code: string }).code === "23514",
+  );
+  assert.equal(
+    (
+      await f.store.pool.query(
+        "SELECT relrowsecurity FROM pg_class WHERE oid='launch.operations'::regclass",
+      )
+    ).rows[0].relrowsecurity,
+    true,
+  );
 });
