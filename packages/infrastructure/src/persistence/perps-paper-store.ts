@@ -1,6 +1,8 @@
 import {
-  PTS_ACCOUNT_POLICY,
-  PTS_VERSION,
+  ptsAccountVersion,
+  ptsConfigVersion,
+  ptsVariant,
+  ptsTemporalProfile,
   historyFromEvidence,
   analyzePts,
   type PtsProposal,
@@ -278,22 +280,27 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
     );
     const record = result.rows[0]?.document;
     const expected =
-      (record?.config.version === 7 || record?.config.version === 8) &&
+      (record?.config.version === 7 ||
+        record?.config.version === 8 ||
+        record?.config.version === 9) &&
       record.config.acquisitionPolicy === COMPONENT_PAPER_POLICY
         ? COMPONENT_PAPER_POLICY
         : undefined;
-    if (record?.config.version === 8) {
+    if (record?.config.version === 8 || record?.config.version === 9) {
       const variant = Object.entries(record.agentIds).find(([, id]) => id === scope.agentId)?.[0];
       if (
         !variant ||
-        account.positionPolicy !== (variant === "pts-basic" ? PTS_ACCOUNT_POLICY : undefined) ||
+        account.positionPolicy !==
+          (variant === ptsVariant(record.config)
+            ? ptsTemporalProfile(ptsConfigVersion(record.config)).accountPolicy
+            : undefined) ||
         account.riskManagement !== "buffered-selective-1x-v1" ||
         account.entryPolicy !== (variant === "sma-reference" ? "unrestricted-hourly-v1" : undefined)
       ) {
-        throw new PilotError("CONFIG_CHANGED", "Frozen v8 account policy changed");
+        throw new PilotError("CONFIG_CHANGED", "Frozen PTS account policy changed");
       }
     } else if (account.positionPolicy !== undefined || account.consumedPtsSetups !== undefined) {
-      throw new PilotError("CONFIG_CHANGED", "PTS state is restricted to the v8 laboratory");
+      throw new PilotError("CONFIG_CHANGED", "PTS state is restricted to the local PTS laboratory");
     }
     if (
       account.marketDataPolicy !== expected ||
@@ -429,7 +436,9 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
         const record = source.rows[0]?.document;
         const ids = record && Object.values(record.agentIds);
         if (
-          (record?.config.version !== 7 && record?.config.version !== 8) ||
+          (record?.config.version !== 7 &&
+            record?.config.version !== 8 &&
+            record?.config.version !== 9) ||
           record.config.acquisitionPolicy !== COMPONENT_PAPER_POLICY ||
           ids?.length !== 2 ||
           new Set(scopes.map((s) => s.agentId)).size !== 2 ||
@@ -617,7 +626,8 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
       if (
         record?.config.version === 6 ||
         record?.config.version === 7 ||
-        record?.config.version === 8
+        record?.config.version === 8 ||
+        record?.config.version === 9
       ) {
         const variant = Object.entries(record.agentIds).find(([, id]) => id === scope.agentId)?.[0];
         if (!variant) {
@@ -626,6 +636,7 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
         account.riskManagement =
           record.config.version === 7 ||
           record.config.version === 8 ||
+          record.config.version === 9 ||
           variant.endsWith("-selective")
             ? "buffered-selective-1x-v1"
             : "legacy-1x-v1";
@@ -640,11 +651,13 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
           account.marketDataPolicy = COMPONENT_PAPER_POLICY;
         }
       }
-      if (record?.config.version === 8) {
+      if (record?.config.version === 8 || record?.config.version === 9) {
         const variant = Object.entries(record.agentIds).find(([, id]) => id === scope.agentId)?.[0];
         account.marketDataPolicy = COMPONENT_PAPER_POLICY;
-        if (variant === "pts-basic") {
-          account.positionPolicy = PTS_ACCOUNT_POLICY;
+        if (variant === ptsVariant(record.config)) {
+          account.positionPolicy = ptsTemporalProfile(
+            ptsConfigVersion(record.config),
+          ).accountPolicy;
           account.consumedPtsSetups = [];
         } else {
           account.entryPolicy = "unrestricted-hourly-v1";
@@ -702,12 +715,14 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
     if (
       record?.config.version === 6 ||
       record?.config.version === 7 ||
-      record?.config.version === 8
+      record?.config.version === 8 ||
+      record?.config.version === 9
     ) {
       const variant = Object.entries(record.agentIds).find(([, id]) => id === scope.agentId)?.[0];
       const expected =
         record.config.version === 7 ||
         record.config.version === 8 ||
+        record.config.version === 9 ||
         variant?.endsWith("-selective")
           ? "buffered-selective-1x-v1"
           : "legacy-1x-v1";
@@ -737,8 +752,11 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
     } else if (intent.entryEvidence !== undefined) {
       throw new PilotError("INVALID_INPUT", "Entry evidence is restricted to the v7 laboratory");
     }
-    if (record?.config.version === 8 && locked.view.account.positionPolicy === PTS_ACCOUNT_POLICY) {
-      if (intent.pts?.version !== PTS_VERSION) {
+    if (
+      (record?.config.version === 8 || record?.config.version === 9) &&
+      ptsAccountVersion(locked.view.account) === ptsConfigVersion(record.config)
+    ) {
+      if (intent.pts?.version !== ptsConfigVersion(record.config)) {
         throw new PilotError("INVALID_INPUT", "PTS intent evidence required");
       }
       if (intent.kind === "open") {
@@ -843,7 +861,12 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
     const gate = await client.query(
       `SELECT e.data FROM pickler.perps_study_events e JOIN pickler.perps_studies s ON s.id=e.study_id
        WHERE s.tenant_id=$1 AND s.session_id=$2 AND s.network=$3 AND e.key=$4`,
-      [scope.tenantId, scope.sessionId, scope.network, `${ref.roundKey}:pts-basic:final-gate`],
+      [
+        scope.tenantId,
+        scope.sessionId,
+        scope.network,
+        `${ref.roundKey}:${ptsAccountVersion(locked.view.account) === "0.1.0" ? "pts-intraday" : "pts-basic"}:final-gate`,
+      ],
     );
     const decision = gate.rows[0]?.data as
       { initial?: PtsProposal[]; final?: PtsProposal[] } | undefined;
@@ -864,8 +887,12 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
         "PTS opening differs from original/final persisted selection",
       );
     }
-    const history = historyFromEvidence({ evidence, account: locked.view.account }, intent.symbol);
-    const reproduced = history && analyzePts(history, evidence.observedAt);
+    const history = historyFromEvidence(
+      { evidence, account: locked.view.account },
+      intent.symbol,
+      ref.version,
+    );
+    const reproduced = history && analyzePts(history, evidence.observedAt, ref.version);
     if (
       !reproduced?.setup ||
       reproduced.action !== action ||
