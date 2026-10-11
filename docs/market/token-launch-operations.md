@@ -94,15 +94,15 @@ A controlled catch-up test or one public RPC sample does not establish sustained
 All Studio operations require a user JWT and ownership. API keys, HMAC, arbitrary wallets,
 contracts, network changes and browser calldata are rejected.
 
-| Method and suffix under `/v1/studio/agents/:id/token` | Action                                                                          |
-| ----------------------------------------------------- | ------------------------------------------------------------------------------- |
-| `GET /`                                               | Private draft, confirmed token, indexed venue/fees and most recent operation    |
-| `PUT /draft`                                          | Existing versioned name/ticker save                                             |
-| `POST /authorize`                                     | Existing idempotent platform grant                                              |
-| `POST /operations`                                    | Enumerated action, expected version and idempotency key                         |
-| `POST /operations/:operationId/confirm`               | Exact passkey activity, or explicit submission of already retained signed bytes |
-| `GET /operations/:operationId`                        | Explicit reconciliation of the same activity/transaction                        |
-| `POST /operations/:operationId/cancel`                | Cancellation before signing admission                                           |
+| Method and suffix under `/v1/studio/agents/:id/token` | Action                                                                                                   |
+| ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `GET /`                                               | Private draft, confirmed token, indexed venue/fees and most recent operation                             |
+| `PUT /draft`                                          | Existing versioned name/ticker save                                                                      |
+| `POST /authorize`                                     | Existing idempotent platform grant                                                                       |
+| `POST /operations`                                    | Enumerated action, expected version and idempotency key                                                  |
+| `POST /operations/:operationId/confirm`               | Exact passkey activity, or explicit submission of already retained signed bytes                          |
+| `GET /operations/:operationId`                        | Reconciliation of the same activity/transaction; bounded automatic receipt reads after a known broadcast |
+| `POST /operations/:operationId/cancel`                | Cancellation before signing admission                                                                    |
 
 Actions are `launch`, `graduate`, `collect_curve_fees`, `collect_lp_fees`, and `claim_fees` with the
 server-resolved AUSD or agent token. A master-scoped short transaction reserves intent before
@@ -144,8 +144,15 @@ The pressed button alone displays loading, and operation details stay mounted wi
 reduced-motion-aware transition. Each explicit status read reports its result and check time even
 without progress. Signed bytes are Ready to send, separately from Waiting for confirmation after
 broadcast. Hashes and addresses have copy feedback and chain-specific explorer links; fixtures
-disable those links. Confirmed transactions awaiting canonical attribution expose Refresh token
-details. These presentation/recovery regressions are controlled by
+disable those links. Known broadcasts automatically wait for their canonical receipt and configured confirmation depth
+through this private API. The observer permits at most ten receipt reads at three-second intervals
+and stops after sixty seconds, a failed read or a terminal result. Existing per-operation RPC
+admission remains unchanged. Finalized launches then perform at most six database-only attribution
+reads at five-second intervals, also bounded to sixty seconds. Navigation/owner changes cancel
+reads, hidden pages pause them, and owner-scoped counters survive section navigation. Unknown
+signing or submission outcomes remain explicitly reconciled; no signing or broadcast is retried.
+If a bounded wait ends, the operation/hash remain available with Check status or Refresh token
+details. A timeout never means the transaction failed. Local previews retain manual phases. These presentation/recovery regressions are controlled by
 `node scripts/design/studio-loading.mjs` and `node scripts/design/token-preview.mjs`; they do not
 establish remote signing acceptance.
 
