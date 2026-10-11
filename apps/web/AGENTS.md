@@ -1176,12 +1176,20 @@ and are refused in production. `scripts/design/token-preview.mjs` checks both st
 sizes, keyboard and persistent navigation; Design CI runs it. The controlled loading regression
 covers private token reads and preserved edits. See [the guide](../../docs/agent-token-preview.md).
 
-Token operation actions show a labelled spinner for preparation, signing, status reads and cancellation,
-with reduced-motion support and synchronous duplicate-click admission. Failed preparation renders
-one reviewed message, never provider prose or both an operation error and a generic request error.
-Database-only recovery retains the idempotency key when the response/status is uncertain. Explicit
-Refresh status does not sign or send. The controlled loading harness covers delayed preparation,
-gas refusal, legacy failure recovery and lost responses without provider calls.
+Token operation actions communicate loading only inside the pressed button; details stay mounted
+and new operation details expand briefly with reduced-motion support. Synchronous duplicate-click
+admission remains mandatory. Failed preparation renders one reviewed message, never provider prose.
+Database-only recovery retains the idempotency key when the response/status is uncertain.
+`token-operation-status.ts` distinguishes missing signing identity, pending signature, signed but
+unsent bytes, broadcast uncertainty, inclusion and finality. Explicit checks produce a timestamped
+result even without progress. A missing activity/hash requires review and offers only Refresh saved
+status; it must never offer another signature or describe the launch as confirming.
+`chain-reference.tsx` provides copy feedback and network-specific explorer links for addresses,
+transaction hashes and blocks. It uses public chain metadata, and previews disable explorer links.
+The shared token card uses it too. Status reads never sign or send; signed recovery needs an explicit
+Send transaction. Confirmed transactions awaiting attribution offer Refresh token details.
+The controlled loading harness covers delays, refusals, lost responses, identity recovery, unchanged
+checks, copy/explorer references, indexing lag, keyboard, mobile and reduced motion without providers.
 
 ## Token operation controls
 
