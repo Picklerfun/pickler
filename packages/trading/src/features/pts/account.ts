@@ -8,6 +8,8 @@ import type {
 import type { PerpsPaperFrame } from "../perps-paper/simulation.js";
 import {
   PTS_ACCOUNT_POLICY,
+  PTS_INTRADAY_ACCOUNT_POLICY,
+  PTS_INTRADAY_VERSION,
   PTS_VERSION,
   type PtsSetup,
   type PtsManagement,
@@ -22,11 +24,24 @@ import {
   floorQuantity,
   recoveryRatioCompare,
 } from "./math.js";
+import { ptsTemporalProfile } from "./temporal-profile.js";
 import { ptsFillAdmissible, ptsSetupKey } from "./signals.js";
 import { ptsSeries, DAY, periodStart as importPeriodStart } from "./calendar.js";
 import { ptsPivots, ptsTrend, outsideChannel } from "./pivots.js";
 export function isPtsAccount(a: PerpsPaperAccount) {
-  return a.positionPolicy === PTS_ACCOUNT_POLICY && a.scope.sessionId !== "product";
+  return ptsAccountVersion(a) !== null;
+}
+export function ptsAccountVersion(a: PerpsPaperAccount) {
+  if (a.scope.sessionId === "product") {
+    return null;
+  }
+  if (a.positionPolicy === PTS_ACCOUNT_POLICY) {
+    return PTS_VERSION;
+  }
+  if (a.positionPolicy === PTS_INTRADAY_ACCOUNT_POLICY) {
+    return PTS_INTRADAY_VERSION;
+  }
+  return null;
 }
 export function ptsPartialSchedule(quantity: string, decimals: number) {
   const q = u(quantity),
@@ -100,12 +115,14 @@ export function assertPtsOpening(
   now: number,
 ) {
   const setup = intent.pts?.setup;
+  const version = ptsAccountVersion(a);
   if (
     !isPtsAccount(a) ||
     !setup ||
-    intent.pts?.version !== PTS_VERSION ||
-    setup.version !== PTS_VERSION ||
-    setup.id !== ptsSetupKey(setup.marketId, setup.direction, setup.a, setup.b, setup.c) ||
+    intent.pts?.version !== version ||
+    setup.version !== version ||
+    setup.id !==
+      ptsSetupKey(setup.marketId, setup.direction, setup.a, setup.b, setup.c, setup.version) ||
     setup.symbol !== intent.symbol ||
     setup.direction !== intent.side ||
     fill.market?.marketId !== setup.marketId ||
@@ -148,7 +165,7 @@ export function attachPtsOpening(
   }
   p.market = structuredClone(fill.market);
   p.pts = {
-    version: PTS_VERSION,
+    version: intent.pts.setup.version,
     setup: structuredClone(intent.pts.setup),
     initialQuantity: fill.quantity,
     initialNotional: fill.notional,
@@ -206,12 +223,16 @@ export function ptsManagement(
   if (mark !== null && (u(mark) - u(p.pts.stop)) * (p.side === "long" ? 1n : -1n) <= 0n) {
     return close("PTS_STOP");
   }
-  if (now - p.openedAt >= 7 * DAY) {
+  const profile = ptsTemporalProfile(p.pts.version);
+  if (profile.closeAtUtcDayEnd && now >= importPeriodStart(p.openedAt, "1d") + DAY) {
+    return close("PTS_UTC_DAY_END");
+  }
+  if (now - p.openedAt >= profile.maximumHoldingMs) {
     return close("PTS_MAX_DURATION");
   }
   if (history) {
-    const s = ptsSeries(history, now);
-    for (const period of ["1M", "1w"] as const) {
+    const s = ptsSeries(history, now, p.pts.version);
+    for (const period of [profile.primary, profile.channel]) {
       const trend = ptsTrend(ptsPivots(s[period], now).pivots);
       // A stale or absent macro series is not a verifiable invalidation.
       if (
@@ -222,10 +243,10 @@ export function ptsManagement(
         return close("PTS_TREND_INVALIDATION");
       }
     }
-    const days = s["1d"].slice(-2);
+    const days = s[profile.impulse].slice(-2);
     if (
       days.length === 2 &&
-      days[1]!.closeTime === importPeriodStart(now, "1d") &&
+      days[1]!.closeTime === importPeriodStart(now, profile.impulse) &&
       days[0]!.closeTime === days[1]!.openTime &&
       days.every(
         (c) =>
@@ -270,7 +291,7 @@ export function assertPtsReduction(
   const evidence = intent.pts;
   if (
     !p.pts ||
-    evidence?.version !== PTS_VERSION ||
+    evidence?.version !== p.pts.version ||
     u(fill.quantity) > u(p.quantity) ||
     (evidence.quantity !== undefined && u(evidence.quantity) !== u(fill.quantity)) ||
     fill.block < (p.pts.reductions.at(-1)?.block ?? p.entryBlock)

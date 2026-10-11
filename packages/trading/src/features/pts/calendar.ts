@@ -1,5 +1,7 @@
 import { PilotError, type PerpCandles } from "@pickler/core";
-import type { PtsBar, PtsPeriod, PtsCoverage, PtsHistory } from "./types.js";
+import { PTS_VERSION } from "./types.js";
+import { ptsTemporalProfile } from "./temporal-profile.js";
+import type { PtsBar, PtsPeriod, PtsCoverage, PtsHistory, PtsVersion } from "./types.js";
 import { units, decimal } from "./math.js";
 export const PTS_MINIMUM = { "1M": 24, "1w": 104, "1d": 240, "4h": 180, "1h": 168 } as const;
 export const DAY = 86400000;
@@ -15,7 +17,16 @@ export function periodStart(at: number, period: PtsPeriod): number {
   if (period === "1w") {
     return day - ((new Date(day).getUTCDay() + 6) % 7) * DAY;
   }
-  const interval = period === "1d" ? DAY : period === "4h" ? 4 * 3600000 : 3600000;
+  const interval =
+    period === "1d"
+      ? DAY
+      : period === "4h"
+        ? 4 * 3600000
+        : period === "15m"
+          ? 900000
+          : period === "5m"
+            ? 300000
+            : 3600000;
   return Math.floor(at / interval) * interval;
 }
 export function nextPeriod(at: number, period: PtsPeriod, delta = 1): number {
@@ -24,7 +35,17 @@ export function nextPeriod(at: number, period: PtsPeriod, delta = 1): number {
     return Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + delta, 1);
   }
   const interval =
-    period === "1w" ? 7 * DAY : period === "1d" ? DAY : period === "4h" ? 14400000 : 3600000;
+    period === "1w"
+      ? 7 * DAY
+      : period === "1d"
+        ? DAY
+        : period === "4h"
+          ? 14400000
+          : period === "15m"
+            ? 900000
+            : period === "5m"
+              ? 300000
+              : 3600000;
   return at + delta * interval;
 }
 export function closedSeries(series: PerpCandles, now: number): PtsBar[] {
@@ -82,9 +103,13 @@ export function aggregateDays(days: readonly PtsBar[], period: "1M" | "1w", now:
   }
   return result;
 }
-export function ptsSeries(history: PtsHistory, now: number): Record<PtsPeriod, PtsBar[]> {
+export function ptsSeries(
+  history: PtsHistory,
+  now: number,
+  version: PtsVersion = PTS_VERSION,
+): Record<PtsPeriod, PtsBar[]> {
   const mapped = new Map<number, PtsBar[]>();
-  for (const resolution of [86400, 14400, 3600]) {
+  for (const resolution of ptsTemporalProfile(version).native) {
     const matches = history.series.filter((s) => s.resolution === resolution);
     if (matches.length > 1) {
       throw new PilotError("INVALID_MARKET_DATA", "Ambiguous PTS series revision");
@@ -109,17 +134,31 @@ export function ptsSeries(history: PtsHistory, now: number): Record<PtsPeriod, P
     mapped.set(resolution, s ? closedSeries(s, now) : []);
   }
   const days = mapped.get(86400)!;
+  if (version !== PTS_VERSION) {
+    return {
+      "1d": days,
+      "4h": mapped.get(14400)!,
+      "1h": mapped.get(3600)!,
+      "15m": mapped.get(900)!,
+      "5m": mapped.get(300)!,
+    } as Record<PtsPeriod, PtsBar[]>;
+  }
   return {
     "1d": days,
     "4h": mapped.get(14400)!,
     "1h": mapped.get(3600)!,
     "1M": aggregateDays(days, "1M", now),
     "1w": aggregateDays(days, "1w", now),
-  };
+  } as Record<PtsPeriod, PtsBar[]>;
 }
-export function ptsCoverage(series: Record<PtsPeriod, PtsBar[]>, now: number): PtsCoverage[] {
-  return (Object.keys(PTS_MINIMUM) as PtsPeriod[]).map((period) => {
-    const required = PTS_MINIMUM[period],
+export function ptsCoverage(
+  series: Record<PtsPeriod, PtsBar[]>,
+  now: number,
+  version: PtsVersion = PTS_VERSION,
+): PtsCoverage[] {
+  const minimum = ptsTemporalProfile(version).minimum;
+  return (Object.keys(minimum) as PtsPeriod[]).map((period) => {
+    const required = minimum[period]!,
       bars = series[period].slice(-required);
     const consecutive = bars.every(
       (b, i) => i === 0 || b.openTime === nextPeriod(bars[i - 1]!.openTime, period),

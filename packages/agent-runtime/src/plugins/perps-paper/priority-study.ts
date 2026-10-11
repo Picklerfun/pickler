@@ -13,7 +13,13 @@ import {
   type PerpCandles,
   type PerpSymbol,
 } from "@pickler/core";
-import { analyzePts, type PtsHistory } from "@pickler/trading/pts";
+import {
+  analyzePts,
+  ptsConfigVersion,
+  ptsTemporalProfile,
+  type PerpsPtsConfig,
+  type PtsHistory,
+} from "@pickler/trading/pts";
 import { transientPerpsData, type AcquisitionDiagnostic } from "@pickler/trading/perps";
 import type {
   ProfileStudyData,
@@ -25,6 +31,7 @@ export function createPriorityPerplStudyData(
   agents: { agent(scope: Scope): Promise<AgentRecord> },
   options: PerplDataOptions & {
     initialHistory?: PtsHistory[];
+    preparedPtsSymbols?: readonly PerpSymbol[];
     onHistoryRevision?: (event: {
       symbol: string;
       resolution: number;
@@ -53,11 +60,15 @@ export function createPriorityPerplStudyData(
   const now = options.now ?? Date.now;
   const cache = new Map<string, PerpCandles>();
   const histories = new Map(
-    (options.initialHistory ?? []).flatMap((h) =>
-      h.series.map(
-        (s) => [JSON.stringify([h.market.symbol, s.resolution]), structuredClone(s)] as const,
+    (options.initialHistory ?? [])
+      .filter(
+        (h) => !options.preparedPtsSymbols || options.preparedPtsSymbols.includes(h.market.symbol),
+      )
+      .flatMap((h) =>
+        h.series.map(
+          (s) => [JSON.stringify([h.market.symbol, s.resolution]), structuredClone(s)] as const,
+        ),
       ),
-    ),
   );
   const fundingCache = new Map<PerpSymbol, import("@pickler/core").PerpFundingHistory>();
   let prepared:
@@ -68,7 +79,7 @@ export function createPriorityPerplStudyData(
     agentId: r.agentIds["sma-reference"]!,
   });
   const config = (r: PerpsStudyRecord) => {
-    if (r.config.version !== 7 && r.config.version !== 8) {
+    if (r.config.version !== 7 && r.config.version !== 8 && r.config.version !== 9) {
       throw new PilotError("INVALID_INPUT", "Profile configuration required");
     }
     if (
@@ -77,21 +88,55 @@ export function createPriorityPerplStudyData(
     ) {
       throw new PilotError("CONFIG_CHANGED", "Reader policy differs from the frozen study");
     }
+    const markets = r.config.markets;
+
+    if (
+      options.preparedPtsSymbols !== undefined &&
+      (r.config.version !== 9 ||
+        new Set(options.preparedPtsSymbols).size !== options.preparedPtsSymbols.length ||
+        options.preparedPtsSymbols.some((symbol) => !markets.some((m) => m.symbol === symbol)))
+    ) {
+      throw new PilotError(
+        "CONFIG_CHANGED",
+        "Prepared PTS cohort differs from the frozen universe",
+      );
+    }
     return r.config;
   };
   async function prepare(r: PerpsStudyRecord, parent: AbortSignal, guard?: () => Promise<void>) {
     const started = (options.monotonic ?? (() => performance.now()))();
     const signal = AbortSignal.any([parent, AbortSignal.timeout(60000)]);
+    const settings = config(r);
+    const omitted = new Set(
+      options.preparedPtsSymbols === undefined
+        ? []
+        : settings.markets
+            .filter((m) => !options.preparedPtsSymbols!.includes(m.symbol))
+            .map((m) => m.symbol),
+    );
     const candles: PerpCandles[] = [],
-      excluded: NonNullable<typeof prepared>["excluded"] = [];
+      excluded: NonNullable<typeof prepared>["excluded"] = settings.markets
+        .filter((m) => omitted.has(m.symbol))
+        .map((m) => ({
+          symbol: m.symbol,
+          code: "PTS_PREPARATION_NOT_ELIGIBLE",
+          phase: "pts-history",
+        }));
     try {
-      for (const resolution of r.config.version === 8
+      for (const resolution of r.config.version === 8 || r.config.version === 9
         ? ([3600, 900, 300, 14400, 86400] as const)
         : ([3600, 900, 300] as const)) {
         // At most eleven candle requests in each independently bounded public session.
         const service = await reader.session(identity(r), signal, guard);
         const end = Math.floor(now() / (resolution * 1000)) * resolution * 1000;
-        for (const market of config(r).markets) {
+        const tailCount =
+          settings.version === 9 && resolution === 86400
+            ? Math.min(60, ptsTemporalProfile(ptsConfigVersion(settings)).minimum["1d"] ?? 60)
+            : 60;
+        for (const market of settings.markets) {
+          if (omitted.has(market.symbol)) {
+            continue;
+          }
           await guard?.();
           const agent = await agents.agent(identity(r));
           requireTool(agent.config, "getPerpCandles");
@@ -101,12 +146,13 @@ export function createPriorityPerplStudyData(
             market.marketId,
             resolution,
             end,
+            ...(settings.version === 9 ? [settings.protocol, tailCount] : []),
           ]);
           try {
             let s = cache.get(key);
             if (!s) {
               const original =
-                r.config.version === 8
+                r.config.version === 8 || r.config.version === 9
                   ? histories.get(JSON.stringify([market.symbol, resolution]))
                   : undefined;
               if (
@@ -114,20 +160,22 @@ export function createPriorityPerplStudyData(
                 original.to === end &&
                 original.market.marketId === market.marketId &&
                 original.candles
-                  .slice(-60)
-                  .every((c, i) => c.closed && c.openTime === end - (60 - i) * resolution * 1000)
+                  .slice(-tailCount)
+                  .every(
+                    (c, i) => c.closed && c.openTime === end - (tailCount - i) * resolution * 1000,
+                  )
               ) {
                 s = {
                   ...original,
-                  from: end - 60 * resolution * 1000,
-                  candles: original.candles.slice(-60),
+                  from: end - tailCount * resolution * 1000,
+                  candles: original.candles.slice(-tailCount),
                   missingOpenTimes: [],
                 };
               } else {
                 s = await service.getPerpCandles({
                   symbol: market.symbol,
                   resolution,
-                  from: end - 60 * resolution * 1000,
+                  from: end - tailCount * resolution * 1000,
                   to: end,
                 });
               }
@@ -135,22 +183,29 @@ export function createPriorityPerplStudyData(
                 s.market.marketId !== market.marketId ||
                 s.market.symbol !== market.symbol ||
                 s.resolution !== resolution ||
-                s.candles.length !== 60 ||
+                s.candles.length !== tailCount ||
                 s.missingOpenTimes.length ||
                 s.candles.some(
-                  (c, i) => !c.closed || c.openTime !== end - (60 - i) * resolution * 1000,
+                  (c, i) => !c.closed || c.openTime !== end - (tailCount - i) * resolution * 1000,
                 )
               ) {
                 throw new PilotError(
                   "DATA_UNAVAILABLE",
-                  "Sixty original consecutive closed candles required",
+                  tailCount === 60
+                    ? "Sixty original consecutive closed candles required"
+                    : "Frozen intraday daily minimum of consecutive closed candles required",
                 );
               }
               cache.set(key, s);
             }
             await guard?.();
             signal.throwIfAborted();
-            if (r.config.version === 8 && [3600, 14400, 86400].includes(resolution)) {
+            if (
+              (r.config.version === 8 || r.config.version === 9) &&
+              ptsTemporalProfile(ptsConfigVersion(r.config as PerpsPtsConfig)).native.includes(
+                resolution,
+              )
+            ) {
               const historyKey = JSON.stringify([market.symbol, resolution]);
               const original = histories.get(historyKey);
               if (!original || original.market.marketId !== s.market.marketId) {
@@ -205,9 +260,10 @@ export function createPriorityPerplStudyData(
       }
       // Bound the cache to the current three windows; no stale-window reuse.
       const ends = new Set(
-        (r.config.version === 8 ? [3600, 900, 300, 14400, 86400] : [3600, 900, 300]).map(
-          (resolution) => Math.floor(now() / (resolution * 1000)) * resolution * 1000,
-        ),
+        (r.config.version === 8 || r.config.version === 9
+          ? [3600, 900, 300, 14400, 86400]
+          : [3600, 900, 300]
+        ).map((resolution) => Math.floor(now() / (resolution * 1000)) * resolution * 1000),
       );
       for (const key of cache.keys()) {
         if (!ends.has((JSON.parse(key) as unknown[])[4] as number)) {
@@ -242,8 +298,14 @@ export function createPriorityPerplStudyData(
     const excluded = [...saved.excluded, ...price.excluded];
     // If a boundary crossed during acquisition, do not silently use the previous closed window.
     for (const m of config(r).markets) {
+      if (r.config.version === 9 && excluded.some((e) => e.symbol === m.symbol)) {
+        continue;
+      }
       if (
-        (r.config.version === 8 ? [3600, 900, 300, 14400, 86400] : [3600, 900, 300]).some(
+        (r.config.version === 8 || r.config.version === 9
+          ? [3600, 900, 300, 14400, 86400]
+          : [3600, 900, 300]
+        ).some(
           (res) =>
             !saved.candles.some(
               (s) =>
@@ -261,15 +323,20 @@ export function createPriorityPerplStudyData(
         });
       }
     }
-    if (r.config.version === 8) {
+    if (r.config.version === 8 || r.config.version === 9) {
       for (const market of config(r).markets) {
+        if (r.config.version === 9 && excluded.some((e) => e.symbol === market.symbol)) {
+          continue;
+        }
         const own = saved.candles.filter((c) => c.market.symbol === market.symbol);
         const info = own[0]?.market;
         if (
           !info ||
-          analyzePts({ market: info, series: own, capturedAt: now() }, now()).coverage.some(
-            (c) => !c.eligible,
-          )
+          analyzePts(
+            { market: info, series: own, capturedAt: now() },
+            now(),
+            ptsConfigVersion(r.config as PerpsPtsConfig),
+          ).coverage.some((c) => !c.eligible)
         ) {
           excluded.push({
             symbol: market.symbol,
@@ -322,7 +389,9 @@ export function createPriorityPerplStudyData(
       const price = await prices(r, signal, guard);
       // Hourly invalidation can use a still-current cached window. Missing candles never
       // prevent stop/expiry exits; preparation happens only after price maintenance.
-      const candles = [...(r.config.version === 8 ? histories.values() : cache.values())].filter(
+      const candles = [
+        ...(r.config.version === 8 || r.config.version === 9 ? histories.values() : cache.values()),
+      ].filter(
         (s) =>
           s.candles.at(-1)!.openTime + s.resolution * 1000 ===
           Math.floor(now() / (s.resolution * 1000)) * s.resolution * 1000,

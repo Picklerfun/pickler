@@ -320,3 +320,16 @@ The pure inspectPtsHistory is evidence inspection only: retain invalid original 
 projections NOT_VERIFIABLE. Its diagnostic counts cannot admit a strategy or repair an OHLC bar.
 
 PTS financial audit distinguishes posted ledger components from final net results; pending or disputed funding keeps final funding and net P&L null.
+
+Intraday PTS has independent identity 0.1.0 and configuration v9 (`perps-pts-intraday-sma-v1`),
+with `sma-reference`/`pts-intraday` maps. `temporal-profile.ts` binds trusted native roles/minima/
+expiry, six-hour holding and UTC day-end close; default PTS functions retain basic 0.2.0 semantics.
+`@pickler/trading/testing/pts-intraday` exposes controlled native fixtures only. Setup, position and
+intent versions must match immutable account policy; no relabeling or user-supplied role overrides.
+Offline intraday replay evaluates each closed 5m window and never computes candle-only profit.
+
+canonicalAuditChunks yields exactly the historical canonicalAudit bytes without joining a whole
+snapshot; hashing/files remain host responsibilities. auditPtsDecisionRows reuses the PTS policy
+for an explicit original slot subset. auditPtsStudy preserves its original full-window rows and
+financial audit; evidence hashes are computed once per original initial/final object. No action,
+reason, signal, financial policy or historical hash interpretation changes with segmented export.

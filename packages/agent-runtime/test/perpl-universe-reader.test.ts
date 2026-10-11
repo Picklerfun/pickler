@@ -14,6 +14,7 @@ import { writeFile } from "node:fs/promises";
 import { createUniversePerplReader } from "../src/plugins/perps-paper/universe.js";
 import { createPriorityPerplStudyData } from "../src/plugins/perps-paper/priority-study.js";
 import type { PerpsStudyRecord } from "@pickler/trading/evaluation";
+import { intradayFixture } from "@pickler/trading/testing/pts-intraday";
 
 const NOW = 1_800_000_000_000;
 const ids = [1, 10, 20, 31, 40, 50, 60, 70, 90, 100, 110];
@@ -957,4 +958,202 @@ test("thirty controlled cold and warm measurements compare identical REST/stream
     );
   }
   assert.equal(measurements.length, 120);
+});
+
+test("intraday preserves cohort exclusions and accepts the frozen twenty-four-bar daily minimum", async (t) => {
+  clocks(t);
+  const eligible = markets
+    .filter((m) => !["LIT", "VVV", "NEAR", "UNI"].includes(m.symbol))
+    .map((m) => m.symbol);
+  const initialHistory = markets.map((m) => {
+    const history = intradayFixture(m.symbol, false, NOW);
+    const address = "0x" + "1".repeat(40);
+    history.market.exchangeAddress = address;
+    history.market.collateral.address = address;
+    if (m.symbol === "BTC" || m.symbol === "PUMP") {
+      const daily = history.series.find((s) => s.resolution === 86400)!;
+      if (m.symbol === "BTC") {
+        daily.candles = daily.candles.slice(-24);
+      } else {
+        const first = daily.candles[0]!;
+        const additional = 52 - daily.candles.length;
+        daily.candles = [
+          ...Array.from({ length: additional }, (_, i) => ({
+            ...first,
+            openTime: first.openTime - (additional - i) * 86400000,
+            closeTime: first.closeTime - (additional - i) * 86400000,
+          })),
+          ...daily.candles,
+        ];
+      }
+      daily.from = daily.candles[0]!.openTime;
+    }
+    if (!eligible.includes(m.symbol)) {
+      history.series[4]!.candles[0]!.low = "0";
+    }
+    return history;
+  });
+  const original = JSON.stringify(initialHistory);
+  const urls: string[] = [];
+  let revoked = false;
+  let malformed = false;
+  const data = createPriorityPerplStudyData(
+    {
+      agent: async () => {
+        const current = agent();
+        if (revoked) {
+          current.config.tools = current.config.tools.filter((v) => v !== "getPerpCandles");
+        }
+        return current;
+      },
+    },
+    {
+      initialHistory,
+      preparedPtsSymbols: eligible,
+      acquisitionPolicy: "stream-universe-20s-v1",
+      transport: async (url) => {
+        const path = String(url);
+        urls.push(path);
+        if (path.endsWith("/context")) {
+          const context = metadata();
+          context.markets.forEach((m) => {
+            m.config.size_decimals = 4;
+          });
+          return Response.json(context);
+        }
+        if (malformed) {
+          return Response.json({});
+        }
+        const match = /\/market-data\/(\d+)\/candles\/(\d+)\//.exec(path);
+        assert.ok(match, path);
+        const resolution = Number(match[2]);
+        const marketId = Number(match[1]);
+        assert.ok(
+          markets.filter((m) => eligible.includes(m.symbol)).some((m) => m.marketId === marketId),
+        );
+        const end = Math.floor(Date.now() / (resolution * 1000)) * resolution * 1000;
+        const available = initialHistory
+          .find((h) => h.market.marketId === marketId)!
+          .series.find((s) => s.resolution === resolution)!.candles.length;
+        const bounds = new URL(path).pathname.split("/").filter(Boolean).slice(-2).map(Number);
+        const unit = bounds[0]! > 100000000000 ? 1000 : 1;
+        const requested = (bounds[1]! - bounds[0]!) / (resolution * unit);
+        const count = Math.min(requested, available);
+        assert.ok(Number.isInteger(count) && count > 0 && count <= 60);
+        return Response.json({
+          at: { t: Date.now(), b: 1 },
+          r: resolution,
+          d: Array.from({ length: count }, (_, i) => ({
+            t: end - (count - i) * resolution * 1000,
+            o: 100000,
+            c: 100000,
+            h: 100000,
+            l: 100000,
+            v: "1000",
+            n: 1,
+          })),
+        });
+      },
+      socket: () => {
+        const socket = new UniverseSocket();
+        socket.publicationAt = Date.now();
+        return socket;
+      },
+    },
+  );
+  t.after(() => data.close());
+  const record = {
+    config: {
+      version: 9,
+      protocol: "perps-pts-intraday-sma-v1",
+      tenantId: scope.tenantId,
+      sessionId: "controlled-intraday-cohort",
+      network: "mainnet",
+      hours: 24,
+      budgetUsd: "5",
+      candidate: "pts-intraday@0.1.0",
+      markets,
+      acquisitionPolicy: "stream-universe-20s-v1",
+    },
+    agentIds: { "sma-reference": scope.agentId },
+  } as unknown as PerpsStudyRecord;
+  const signal = new AbortController().signal;
+
+  const initial = await settle(
+    t,
+    data.prepareEvidence!(record, signal, async () => {}),
+    70000,
+  );
+  const final = await settle(
+    t,
+    data.finalEvidence!(record, signal, async () => {}),
+    70000,
+  );
+
+  for (const evidence of [initial, final]) {
+    assert.deepEqual(
+      evidence.frames.map((f) => f.snapshot.market.symbol),
+      eligible,
+      JSON.stringify(evidence.excluded),
+    );
+    assert.deepEqual(
+      evidence.excluded!.map((e) => e.symbol),
+      markets.filter((m) => !eligible.includes(m.symbol)).map((m) => m.symbol),
+    );
+    assert.ok(evidence.excluded!.every((e) => e.code === "PTS_PREPARATION_NOT_ELIGIBLE"));
+    assert.ok(evidence.candles.every((c) => eligible.includes(c.market.symbol)));
+  }
+  assert.equal(JSON.stringify(initialHistory), original);
+
+  revoked = true;
+  const before = urls.length;
+  await assert.rejects(
+    data.finalEvidence!(record, signal, async () => {}),
+    { code: "TOOL_DISABLED" },
+  );
+  assert.equal(urls.length, before);
+
+  revoked = false;
+  malformed = true;
+  t.mock.timers.tick(300000);
+  await assert.rejects(
+    settle(
+      t,
+      data.finalEvidence!(record, signal, async () => {}),
+      70000,
+    ),
+    { code: "PERPL_INVALID_RESPONSE" },
+  );
+});
+
+test("prepared intraday cohort rejects duplicates, unknown symbols and historical protocol use before transport", async () => {
+  for (const [version, cohort] of [
+    [9, ["BTC", "BTC"]],
+    [9, ["UNKNOWN"]],
+    [7, ["BTC"]],
+  ] as const) {
+    let requests = 0;
+    const data = createPriorityPerplStudyData(
+      { agent: async () => agent() },
+      {
+        preparedPtsSymbols: cohort as unknown as PerpSymbol[],
+        transport: async () => {
+          requests++;
+          throw new Error("Forbidden controlled transport");
+        },
+      },
+    );
+    try {
+      const record = {
+        config: { version, markets, acquisitionPolicy: "rest-universe-20s-v1" },
+        agentIds: { "sma-reference": scope.agentId },
+      } as unknown as PerpsStudyRecord;
+      await assert.rejects(data.observe(record, new AbortController().signal), {
+        code: "CONFIG_CHANGED",
+      });
+      assert.equal(requests, 0);
+    } finally {
+      await data.close();
+    }
+  }
 });

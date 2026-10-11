@@ -86,149 +86,164 @@ test("actual coordinator financial replay opens both independent arms and closes
     assert.equal(result.modelCalls, 0);
   }
 });
-test("fourteen-day calendar records 4032 slots and fixed closure, renews ownership, releases without recovering missed windows", async () => {
-  assertPtsConfig(config);
-  let now = ptsTime,
-    renewals = 0,
-    releases = 0,
-    claimed = 0,
-    missing = 0,
-    observations = 0,
-    closed = 0;
-  const start = Math.floor(now / 300000) * 300000 + 60000,
-    ends = start + 336 * 3600000;
-  const view: PerpsStudyView = {
-    record: {
-      config,
-      metadata: { controlled: true },
-      agentIds: { "sma-reference": "sma", "pts-basic": "pts" },
-      agentVersions: { "sma-reference": 1, "pts-basic": 1 },
-      createdAt: now,
-      startedAt: start,
-      endsAt: ends,
-      graceUntil: ends + 900000,
-      status: "running",
-      decisionStopReason: null,
-      stopRequested: false,
-      lastObservationAt: null,
-      lastRoundSlot: -1,
+test("basic fourteen-day and intraday twenty-four-hour calendars preserve fixed slots, renewals and closure without missed-window recovery", async () => {
+  const configurations: PerpsPtsConfig[] = [
+    config,
+    {
+      ...config,
+      version: 9,
+      protocol: "perps-pts-intraday-sma-v1",
+      candidate: "pts-intraday@0.1.0",
+      hours: 24,
     },
-    rounds: [],
-    events: [],
-  };
-  const lease = { owner: "controlled", expiresAt: now + 90000 };
-  const unexpected = async (): Promise<never> => {
-    throw new Error("unexpected financial/model port");
-  };
-  const study: PerpsStudyRepository = {
-    initialize: async () => view,
-    view: async () => view,
-    cycleView: async () => view,
-    claim: async () => lease,
-    renew: async () => {
-      renewals++;
-      lease.expiresAt = now + 90000;
-    },
-    guard: async () => {
-      if (now >= lease.expiresAt) {
-        throw new PilotError("LEASE_LOST", "controlled expiry");
-      }
-    },
-    release: async () => {
-      releases++;
-    },
-    claimSlot: async (_s, _l, slot) => {
-      if (
-        slot < 0 ||
-        slot >= 4032 ||
-        slot <= (view.record.lastAttemptedSlot ?? -1) ||
-        now >= ends ||
-        now - start - slot * 300000 > 30000
-      ) {
-        return false;
-      }
-      claimed++;
-      view.record.lastAttemptedSlot = slot;
-      return true;
-    },
-    event: async (_s, _l, key, kind, data) => {
-      if (kind === "slot-missed") {
-        missing++;
-        view.record.lastAttemptedSlot = (data as { slot: number }).slot;
-      }
-      if (kind === "observation-failed") {
-        observations++;
-        view.events = [{ key, kind, at: now, data }];
-      }
-    },
-    complete: async () => {
-      view.record.status = "completed";
-    },
-    stop: unexpected,
-    stopDecisions: async (_s, _l, reason) => {
-      view.record.status = "closing";
-      view.record.decisionStopReason = reason;
-    },
-    reserve: unexpected,
-    finishRound: unexpected,
-    finishExecution: unexpected,
-    startCall: unexpected,
-    usage: unexpected,
-    finishCall: unexpected,
-  };
-  const paper = {
-    closeAdmissions: async () => {
-      closed++;
-    },
-  } as unknown as PerpsPaperRepository;
-  const runner = createProfileStudyRunner({
-    study,
-    paper,
-    now: () => now,
-    data: {
-      observe: async () => {
-        throw new PilotError("DATA_UNAVAILABLE", "controlled unavailable");
-      },
-      evidence: unexpected,
-      execution: unexpected,
-      finalEvidence: unexpected,
-    },
-  });
-  const heartbeat = startLeaseHeartbeat({
-    lease,
-    now: () => now,
-    renew: () => study.renew(config, lease),
-  });
-  try {
-    // Reuse the real cycle under one controlled ownership lifetime. Skip one admission window.
-    for (now = start; now <= ends + 900000; now += 60000) {
-      await study.renew(config, lease);
-      heartbeat.tick();
-      await new Promise<void>((resolve) => setImmediate(resolve));
-      if (now === start + 300000) {
-        continue;
-      }
-      const keep = await runner.cycle(
+  ];
+  for (const config of configurations) {
+    const slots = config.hours * 12;
+    const observationMinutes = config.hours * 60;
+    const variant = config.version === 9 ? "pts-intraday" : "pts-basic";
+    assertPtsConfig(config);
+    let now = ptsTime,
+      renewals = 0,
+      releases = 0,
+      claimed = 0,
+      missing = 0,
+      observations = 0,
+      closed = 0;
+    const start = Math.floor(now / 300000) * 300000 + 60000,
+      ends = start + config.hours * 3600000;
+    const view: PerpsStudyView = {
+      record: {
         config,
-        { ...lease, assertActive: heartbeat.assertActive },
-        new AbortController().signal,
-      );
-      if (!keep) {
-        break;
+        metadata: { controlled: true },
+        agentIds: { "sma-reference": "sma", [variant]: "pts" },
+        agentVersions: { "sma-reference": 1, [variant]: 1 },
+        createdAt: now,
+        startedAt: start,
+        endsAt: ends,
+        graceUntil: ends + 900000,
+        status: "running",
+        decisionStopReason: null,
+        stopRequested: false,
+        lastObservationAt: null,
+        lastRoundSlot: -1,
+      },
+      rounds: [],
+      events: [],
+    };
+    const lease = { owner: "controlled", expiresAt: now + 90000 };
+    const unexpected = async (): Promise<never> => {
+      throw new Error("unexpected financial/model port");
+    };
+    const study: PerpsStudyRepository = {
+      initialize: async () => view,
+      view: async () => view,
+      cycleView: async () => view,
+      claim: async () => lease,
+      renew: async () => {
+        renewals++;
+        lease.expiresAt = now + 90000;
+      },
+      guard: async () => {
+        if (now >= lease.expiresAt) {
+          throw new PilotError("LEASE_LOST", "controlled expiry");
+        }
+      },
+      release: async () => {
+        releases++;
+      },
+      claimSlot: async (_s, _l, slot) => {
+        if (
+          slot < 0 ||
+          slot >= slots ||
+          slot <= (view.record.lastAttemptedSlot ?? -1) ||
+          now >= ends ||
+          now - start - slot * 300000 > 30000
+        ) {
+          return false;
+        }
+        claimed++;
+        view.record.lastAttemptedSlot = slot;
+        return true;
+      },
+      event: async (_s, _l, key, kind, data) => {
+        if (kind === "slot-missed") {
+          missing++;
+          view.record.lastAttemptedSlot = (data as { slot: number }).slot;
+        }
+        if (kind === "observation-failed") {
+          observations++;
+          view.events = [{ key, kind, at: now, data }];
+        }
+      },
+      complete: async () => {
+        view.record.status = "completed";
+      },
+      stop: unexpected,
+      stopDecisions: async (_s, _l, reason) => {
+        view.record.status = "closing";
+        view.record.decisionStopReason = reason;
+      },
+      reserve: unexpected,
+      finishRound: unexpected,
+      finishExecution: unexpected,
+      startCall: unexpected,
+      usage: unexpected,
+      finishCall: unexpected,
+    };
+    const paper = {
+      closeAdmissions: async () => {
+        closed++;
+      },
+    } as unknown as PerpsPaperRepository;
+    const runner = createProfileStudyRunner({
+      study,
+      paper,
+      now: () => now,
+      data: {
+        observe: async () => {
+          throw new PilotError("DATA_UNAVAILABLE", "controlled unavailable");
+        },
+        evidence: unexpected,
+        execution: unexpected,
+        finalEvidence: unexpected,
+      },
+    });
+    const heartbeat = startLeaseHeartbeat({
+      lease,
+      now: () => now,
+      renew: () => study.renew(config, lease),
+    });
+    try {
+      // Reuse the real cycle under one controlled ownership lifetime. Skip one admission window.
+      for (now = start; now <= ends + 900000; now += 60000) {
+        await study.renew(config, lease);
+        heartbeat.tick();
+        await new Promise<void>((resolve) => setImmediate(resolve));
+        if (now === start + 300000) {
+          continue;
+        }
+        const keep = await runner.cycle(
+          config,
+          { ...lease, assertActive: heartbeat.assertActive },
+          new AbortController().signal,
+        );
+        if (!keep) {
+          break;
+        }
       }
+    } finally {
+      await heartbeat.stop();
+      await study.release(config, lease);
     }
-  } finally {
-    await heartbeat.stop();
-    await study.release(config, lease);
+    assert.equal(claimed + missing, slots);
+    assert.equal(missing, 1);
+    assert.equal(claimed, slots - 1);
+    assert.equal(view.record.status, "completed");
+    assert.equal(now, ends + 900000);
+    assert.ok(renewals > observationMinutes);
+    assert.equal(releases, 1);
+    assert.ok(observations >= observationMinutes);
+    assert.ok(closed > 0);
+    assert.equal(view.record.lastAttemptedSlot, slots - 1);
   }
-  assert.equal(claimed + missing, 4032);
-  assert.equal(missing, 1);
-  assert.equal(claimed, 4031);
-  assert.equal(view.record.status, "completed");
-  assert.equal(now, ends + 900000);
-  assert.ok(renewals > 20160);
-  assert.equal(releases, 1);
-  assert.ok(observations >= 20160);
-  assert.ok(closed > 0);
-  assert.equal(view.record.lastAttemptedSlot, 4031);
 });

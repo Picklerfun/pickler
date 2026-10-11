@@ -10,6 +10,10 @@ import {
   periodStart,
   nextPeriod,
   PTS_CATALOG,
+  PTS_VERSION,
+  PTS_INTRADAY_VERSION,
+  ptsTemporalProfile,
+  type PtsVersion,
   type PtsReplayInput,
   type PtsHistory,
 } from "@pickler/trading/pts";
@@ -20,13 +24,17 @@ export async function preparePtsHistory(
   parent: AbortSignal,
   options: PerplDataOptions & {
     commit: string;
+    candidateVersion?: PtsVersion;
     capture: (response: PerplPublicResponse) => Promise<void>;
   },
 ) {
+  const version = options.candidateVersion ?? PTS_VERSION;
+  const intraday = version === PTS_INTRADAY_VERSION;
+  const profile = ptsTemporalProfile(version);
   const now = options.now ?? Date.now,
     capturedAt = now(),
-    to = periodStart(capturedAt, "1d"),
-    from = to - 30 * DAY;
+    to = periodStart(capturedAt, intraday ? "5m" : "1d"),
+    from = to - (intraday ? 7 : 30) * DAY;
   const deadline = new AbortController();
   const signal = AbortSignal.any([parent, deadline.signal, AbortSignal.timeout(600000)]);
   const guard = async () => {
@@ -82,9 +90,18 @@ export async function preparePtsHistory(
     for (const market of selected) {
       const series: PerpCandles[] = [];
       markets.push({ market, series, capturedAt });
-      for (const resolution of [86400, 14400, 3600] as const) {
-        const start =
-          resolution === 86400
+      for (const resolution of profile.native) {
+        const start = intraday
+          ? Math.floor(from / (resolution * 1000)) * resolution * 1000 -
+            Math.max(
+              60,
+              ({ 86400: 24, 14400: 104, 3600: 240, 900: 180, 300: 168 } as Record<number, number>)[
+                resolution
+              ]!,
+            ) *
+              resolution *
+              1000
+          : resolution === 86400
             ? Math.min(
                 nextPeriod(periodStart(from, "1M"), "1M", -24),
                 nextPeriod(periodStart(from, "1w"), "1w", -104),
@@ -97,19 +114,47 @@ export async function preparePtsHistory(
             session = await reader.session(scope, signal, guard);
           }
           signal.throwIfAborted();
-          const s = await session.getPerpCandles({
-            symbol: market.symbol,
-            resolution,
-            from: start,
-            to,
-          });
-          if (
-            s.market.marketId !== market.marketId ||
-            s.market.perpetualId !== market.perpetualId
-          ) {
-            throw new PilotError("PERPL_MARKET_IDENTITY", "History identity differs from metadata");
+          const end = intraday ? Math.floor(to / (resolution * 1000)) * resolution * 1000 : to;
+          // Intraday 5m evidence needs multiple native pages. No page exceeds 1,024 bars.
+          const pages: PerpCandles[] = [];
+          const pageSpan =
+            (intraday ? 1024 : Math.ceil((end - start) / (resolution * 1000))) * resolution * 1000;
+          for (let pageFrom = start; pageFrom < end; pageFrom += pageSpan) {
+            if (sessionRequests >= 20) {
+              sessionRequests = 0;
+              session = await reader.session(scope, signal, guard);
+            }
+            const page = await session.getPerpCandles({
+              symbol: market.symbol,
+              resolution,
+              from: pageFrom,
+              to: Math.min(end, pageFrom + pageSpan),
+            });
+            if (
+              page.market.marketId !== market.marketId ||
+              page.market.perpetualId !== market.perpetualId
+            ) {
+              throw new PilotError(
+                "PERPL_MARKET_IDENTITY",
+                "History identity differs from metadata",
+              );
+            }
+            pages.push(page);
           }
-          series.push(s);
+          if (!pages.length) {
+            throw new PilotError("DATA_UNAVAILABLE", "No native history pages returned");
+          }
+          const candles = pages.flatMap((page) => page.candles);
+          if (new Set(candles.map((c) => c.openTime)).size !== candles.length) {
+            throw new PilotError("INVALID_MARKET_DATA", "Native history pages overlap");
+          }
+          series.push({
+            ...pages.at(-1)!,
+            from: start,
+            to: end,
+            candles,
+            missingOpenTimes: pages.flatMap((p) => p.missingOpenTimes),
+          });
         } catch (error) {
           parent.throwIfAborted();
           const code =
@@ -153,6 +198,7 @@ export async function preparePtsHistory(
   }
   const history: PtsReplayInput = {
     format: "perps-pts-history-v1",
+    ...(intraday ? { candidate: "pts-intraday@0.1.0" as const } : {}),
     capturedAt,
     from,
     to,

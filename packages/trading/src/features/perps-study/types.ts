@@ -19,22 +19,28 @@ export type PerpsStudyStrategy =
   | "sma-exa-jev"
   | SmaProfileVariant
   | SmaReentryVariant
-  | "pts-basic";
+  | "pts-basic"
+  | "pts-intraday";
 export const SMA_REVIEW_VARIANTS = ["rules", "sma-jev", "sma-exa-jev"] as const;
 export type PerpsStudyMap<T> = Partial<Record<PerpsStudyStrategy, T>>;
 export type SmaProfileMap<T> = Record<SmaProfileVariant, T>;
 /** Protocol-discriminated maps never require fictitious model/rules arms in v6. */
-export type PerpsVariantMap<C extends { version: number }, T> = C extends { version: 8 }
-  ? Record<"sma-reference" | "pts-basic", T>
-  : C extends { version: 6 }
-    ? SmaProfileMap<T>
-    : C extends { version: 7 }
-      ? Record<SmaReentryVariant, T>
-      : PerpsStudyMap<T>;
+export type PerpsVariantMap<C extends { version: number }, T> = C extends { version: 9 }
+  ? Record<"sma-reference" | "pts-intraday", T>
+  : C extends { version: 8 }
+    ? Record<"sma-reference" | "pts-basic", T>
+    : C extends { version: 6 }
+      ? SmaProfileMap<T>
+      : C extends { version: 7 }
+        ? Record<SmaReentryVariant, T>
+        : PerpsStudyMap<T>;
 export const PERPS_FOUR_WAY_STRATEGIES = ["rules", "jev", "deepseek", "combined"] as const;
 export function perpsStrategies(
   config: Pick<PerpsStudyConfig, "version">,
 ): readonly PerpsStudyStrategy[] {
+  if (config.version === 9) {
+    return ["sma-reference", "pts-intraday"];
+  }
   if (config.version === 8) {
     return ["sma-reference", "pts-basic"];
   }

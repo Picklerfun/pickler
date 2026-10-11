@@ -247,3 +247,10 @@ Read [PTS basic paper](apps/agent-service/PTS-BASIC-PAPER.md) and the affected p
 The original course and disabled 0.1.0 candidate remain immutable. Public history preparation is
 bounded; replay/audit are offline. A prepared configuration does not authorize or start the
 fourteen-day comparison. Missing Perpl history remains ineligible; do not invent candles.
+
+## Independent intraday PTS
+
+`pts-intraday@0.1.0` adds local evaluation v9 with native 1d/4h/1h/15m/5m roles and a fixed
+24-hour paper pilot. Read [the intraday guide](apps/agent-service/PTS-INTRADAY-PAPER.md). It never
+relabels basic history, modifies the immutable course/basic versions or registers a Studio strategy.
+Controlled profitable fixtures are not evidence of market profitability.

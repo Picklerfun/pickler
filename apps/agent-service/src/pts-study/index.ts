@@ -4,6 +4,9 @@ import { PilotError } from "@pickler/core";
 import {
   assertPtsConfig,
   PTS_POLICY,
+  PTS_INTRADAY_POLICY,
+  ptsConfigVersion,
+  ptsVariant,
   inspectPtsHistory,
   replayPtsSignals,
   replayPtsFinance,
@@ -13,6 +16,8 @@ import {
 } from "@pickler/trading/pts";
 import { digest, bytesHash, commit, readJson, newDirectory } from "./files.js";
 import { ptsReport } from "./report.js";
+import { readPtsExportManifest } from "./parts.js";
+import { ptsPartReport } from "./part-report.js";
 export interface PtsCommandInput {
   command: string;
   configPath?: string | undefined;
@@ -49,37 +54,67 @@ export async function runPtsCommand(input: PtsCommandInput) {
           ...result,
           rows: undefined,
           analyzerCommit: commit(),
-          policyHash: digest(PTS_POLICY),
+          policyHash: digest(history.candidate ? PTS_INTRADAY_POLICY : PTS_POLICY),
           financial,
           publicTrialStarted: false,
         },
         result.rows,
       );
     } else {
-      const payload = packet.payload as Parameters<typeof auditPtsStudy> extends [
-        infer S,
-        ...unknown[],
-      ]
-        ? { study: S; accounts: Parameters<typeof auditPtsStudy>[1] }
-        : never;
-      if (
-        packet.protocol !== "perps-decision-audit-export-v1" ||
-        packet.payloadHash !== digest(payload)
-      ) {
-        throw new PilotError("AUDIT_HASH_MISMATCH", "Consistent study export hash differs");
+      if (packet.protocol === "perps-decision-audit-export-v2") {
+        const manifest = await readPtsExportManifest(input.state);
+        const { report, rows, record } = await ptsPartReport(
+          dirname(resolve(input.state)),
+          manifest,
+        );
+        await ptsReport(
+          output,
+          {
+            ...report,
+            analyzerCommit: commit(),
+            sourceExport: resolve(input.state),
+            processState:
+              record.status === "interrupted"
+                ? "interrupted"
+                : record.status === "completed"
+                  ? "finished"
+                  : "process-unverified",
+          },
+          rows,
+        );
+      } else {
+        const payload = packet.payload as Parameters<typeof auditPtsStudy> extends [
+          infer S,
+          ...unknown[],
+        ]
+          ? { study: S; accounts: Parameters<typeof auditPtsStudy>[1] }
+          : never;
+        if (
+          packet.protocol !== "perps-decision-audit-export-v1" ||
+          packet.payloadHash !== digest(payload)
+        ) {
+          throw new PilotError("AUDIT_HASH_MISMATCH", "Consistent study export hash differs");
+        }
+        const report = auditPtsStudy(payload.study, payload.accounts, digest);
+        await ptsReport(
+          output,
+          {
+            ...report,
+            rows: undefined,
+            analyzerCommit: commit(),
+            exporterCommit: packet.exportCommit ?? "NOT_VERIFIABLE",
+            accounts: payload.accounts,
+            sourceStudyProtocol: payload.study.record.config.protocol,
+            processState:
+              payload.study.record.status === "interrupted"
+                ? "interrupted"
+                : payload.study.record.status === "completed"
+                  ? "finished"
+                  : "process-unverified",
+          },
+          report.rows,
+        );
       }
-      const report = auditPtsStudy(payload.study, payload.accounts, digest);
-      await ptsReport(
-        output,
-        {
-          ...report,
-          rows: undefined,
-          analyzerCommit: commit(),
-          exporterCommit: packet.exportCommit ?? "NOT_VERIFIABLE",
-          accounts: payload.accounts,
-        },
-        report.rows,
-      );
     }
     console.log(JSON.stringify({ status: "offline-complete", output, modelCalls: 0 }));
     return;
@@ -90,6 +125,11 @@ export async function runPtsCommand(input: PtsCommandInput) {
   const text = await readFile(resolve(input.configPath), "utf8");
   const config = JSON.parse(text) as PerpsPtsConfig;
   assertPtsConfig(config);
+  const policy = config.version === 9 ? PTS_INTRADAY_POLICY : PTS_POLICY;
+  const strategyVersions = {
+    "sma-reference": "1.0.0",
+    [ptsVariant(config)]: ptsConfigVersion(config),
+  };
   if (input.command === "prepare") {
     const output = await newDirectory(input.output);
     const responses: {
@@ -115,7 +155,8 @@ export async function runPtsCommand(input: PtsCommandInput) {
       if (
         saved.format !== "pts-preparation-v1" ||
         saved.historyHash !== digest(saved.history) ||
-        saved.policyHash !== digest(PTS_POLICY)
+        saved.policyHash !== digest(policy) ||
+        (saved.history.candidate ?? "pts-trend-reversal@0.2.0") !== config.candidate
       ) {
         throw new PilotError("AUDIT_HASH_MISMATCH", "Saved preparation identity or hash differs");
       }
@@ -167,6 +208,7 @@ export async function runPtsCommand(input: PtsCommandInput) {
         input.signal,
         {
           commit: commit(),
+          candidateVersion: ptsConfigVersion(config),
           guard: async () => {
             if ((await readFile(resolve(input.configPath!), "utf8")) !== text) {
               throw new PilotError("CONFIG_CHANGED", "Preparation configuration changed");
@@ -199,7 +241,7 @@ export async function runPtsCommand(input: PtsCommandInput) {
       exporterCommit: commit(),
       sourceCapture: input.state ? resolve(input.state) : null,
       historyHash: digest(captured.history),
-      policyHash: digest(PTS_POLICY),
+      policyHash: digest(policy),
       responses,
       trialStarted: false,
     };
@@ -213,7 +255,9 @@ export async function runPtsCommand(input: PtsCommandInput) {
     const { PTS_CATALOG } = await import("@pickler/trading/pts");
     const coverage = PTS_CATALOG.map((m) => {
       const h = captured.history.markets.find((h) => h.market.symbol === m.symbol);
-      const analysis = h ? inspectPtsHistory(h, captured.history.to) : null;
+      const analysis = h
+        ? inspectPtsHistory(h, captured.history.to, ptsConfigVersion(config))
+        : null;
       return {
         symbol: m.symbol,
         marketId: m.marketId,
@@ -237,8 +281,8 @@ export async function runPtsCommand(input: PtsCommandInput) {
         captureCommit: captured.history.commit,
         commit: commit(),
         configurationHash: digest(frozen),
-        policyHash: digest(PTS_POLICY),
-        strategyVersions: { "sma-reference": "1.0.0", "pts-basic": "0.2.0" },
+        policyHash: digest(policy),
+        strategyVersions,
         baselineCommit: "0bf07d70037878da1edb93cc8325c7d9d1670b32",
         catalog: captured.catalog,
         historyHash: digest(captured.history),
@@ -262,10 +306,10 @@ export async function runPtsCommand(input: PtsCommandInput) {
       await prepareDatabase(frozen, input.envFile, {
         commit: commit(),
         configurationHash: digest(frozen),
-        policyHash: digest(PTS_POLICY),
+        policyHash: digest(policy),
         historyHash: digest(captured.history),
         acquisitionPolicy: frozen.acquisitionPolicy,
-        strategyVersions: { "sma-reference": "1.0.0", "pts-basic": "0.2.0" },
+        strategyVersions,
         baselineCommit: "0bf07d70037878da1edb93cc8325c7d9d1670b32",
         catalog: captured.catalog,
         coverage,
@@ -290,7 +334,8 @@ export async function runPtsCommand(input: PtsCommandInput) {
       await readFile(join(dirname(resolve(input.configPath)), config.history.file), "utf8"),
     ) !== config.history.sha256 ||
     packet.historyHash !== digest(packet.history) ||
-    packet.policyHash !== digest(PTS_POLICY)
+    packet.policyHash !== digest(policy) ||
+    (packet.history.candidate ?? "pts-trend-reversal@0.2.0") !== config.candidate
   ) {
     throw new PilotError("AUDIT_HASH_MISMATCH", "Frozen history/policy/configuration differs");
   }

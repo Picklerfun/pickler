@@ -375,3 +375,22 @@ DATABASE_URL-only file. No model/trading keys are read and no paid clients are b
 The explicit future run uses the existing profile runner and shared public reader; it cannot resume.
 Coalesced full reports run in a separate thread; compact observation status stays on the host.
 Do not call run as implementation acceptance, reactivate monitors, or add PTS to Studio selectors.
+
+`src/pts-study` also dispatches local v9 `perps-pts-intraday-sma-v1` independently from basic v8.
+Read [intraday PTS](PTS-INTRADAY-PAPER.md). The committed inactive template is preparation only;
+one explicit authorized run has 24 fixed hours/288 slots. Offline replay/audit precede provider
+composition. Reports pin the correct independent policy and preserve pending funding/null metrics.
+
+Intraday run composition passes the verified preparation eligibility cohort to the shared reader.
+Known unavailable original histories remain preserved and omitted for both portfolios, never
+re-evaluated as executable signals. Retain interrupted attempts and their unchanged policies.
+
+## Bounded local PTS reports
+
+Local PTS v8/v9 exports use the additive segmented audit v2 manifest and consistent paged
+read-only PostgreSQL capture. V1 audit packets remain readable. Offline dispatch validates the
+stored protocol/version before loading providers. Full native evidence stays in private hashed
+parts; report workers replay one original round at a time and receive no giant snapshot clone.
+JSON/CSV publication streams containers; HTML excludes raw histories. Specific report failures
+stop admission, and interrupted studies retain positions/funding and their original error codes.
+Read [PTS intraday](PTS-INTRADAY-PAPER.md) for the reproduced serialization interruption.

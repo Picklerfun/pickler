@@ -1,5 +1,6 @@
-import { PTS_POLICY } from "@pickler/trading/pts";
-import { publish, digest, bytesHash } from "./files.js";
+import { jsonDocument } from "./serialization.js";
+import { PTS_POLICY, PTS_INTRADAY_POLICY } from "@pickler/trading/pts";
+import { publish, digest } from "./files.js";
 export const escapeHtml = (v: unknown) =>
   String(v ?? "")
     .replaceAll("&", "&amp;")
@@ -79,6 +80,17 @@ export async function ptsReport(
   report: Record<string, unknown>,
   rows: Record<string, unknown>[],
 ) {
+  const intraday =
+    report.policy === "pts-intraday@0.1.0" ||
+    report.sourceStudyProtocol === "perps-pts-intraday-sma-v1" ||
+    report.studyProtocol === "perps-pts-intraday-sma-v1" ||
+    report.protocol === "perps-pts-intraday-sma-v1" ||
+    !!(report.strategyVersions as Record<string, unknown> | undefined)?.["pts-intraday"];
+  const policy = intraday ? PTS_INTRADAY_POLICY : PTS_POLICY;
+  const heading = intraday ? "PTS intraday 0.1.0" : "PTS basic 0.2.0";
+  const preparation = intraday
+    ? "Preparation or offline replay. The twenty-four-hour public comparison has not started."
+    : "Preparation or offline replay. The fourteen-day public comparison has not started.";
   const keys = [
     "at",
     "slot",
@@ -97,6 +109,9 @@ export async function ptsReport(
     "verification",
     "analysisHash",
     "projectionHash",
+    "initialEvidenceHash",
+    "finalEvidenceHash",
+    "exclusions",
     "setupId",
     "initialStop",
     "triggerAt",
@@ -120,14 +135,14 @@ export async function ptsReport(
     report.processState === "closing"
       ? "Decisions stopped; only deterministic virtual exits remain."
       : report.processState === "active"
-        ? "Authorized local paper comparison active."
+        ? "Recorded comparison active at publication; this static report does not verify current process health."
         : report.processState === "finished"
           ? "Local comparison finished."
           : report.processState === "interrupted"
             ? "Comparison interrupted; review pending positions and funding."
             : report.processState === "process-unverified"
               ? "The recorded study started; current process health is not verified. No restart is authorized."
-              : "Preparation or offline replay. The fourteen-day public comparison has not started.";
+              : preparation;
   const csvRows = rows.map((row) => {
     const analysis =
       row.analysis ??
@@ -144,22 +159,38 @@ export async function ptsReport(
       filters: trace?.checks ?? null,
     };
   });
-  const csv =
-    [
-      keys.join(","),
-      ...csvRows.map((row) =>
-        keys.map((k) => csvCell((row as Record<string, unknown>)[k])).join(","),
-      ),
-    ].join("\n") + "\n";
+  function* csv() {
+    yield keys.join(",") + "\n";
+    for (const row of csvRows) {
+      yield keys.map((key) => csvCell((row as Record<string, unknown>)[key])).join(",") + "\n";
+    }
+  }
   const visibleSummary = Object.fromEntries(
     Object.entries(report).filter(
-      ([key]) => !["analyses", "accounts", "events", "study", "rows", "financial"].includes(key),
+      ([key]) =>
+        ![
+          "analyses",
+          "accounts",
+          "events",
+          "study",
+          "rows",
+          "financial",
+          "audit",
+          "roundDetails",
+          "executionDetails",
+          "observations",
+        ].includes(key),
     ),
   );
   visibleSummary.detailCounts = {
     rows: rows.length,
     analyses: allAnalyses.length,
     setups: setups.length,
+    recordedRounds: Array.isArray(report.roundDetails) ? report.roundDetails.length : undefined,
+    executionDetails: Array.isArray(report.executionDetails)
+      ? report.executionDetails.length
+      : undefined,
+    observations: Array.isArray(report.observations) ? report.observations.length : undefined,
   };
   if (report.financial) {
     const financial = report.financial as {
@@ -176,7 +207,15 @@ export async function ptsReport(
       reason: financial.reason,
       interpretation: financial.interpretation,
       modelCalls: financial.modelCalls,
-      metrics: Array.isArray(report.financial) ? report.financial : financial.metrics,
+      metrics: (Array.isArray(report.financial) ? report.financial : financial.metrics)?.map(
+        (metric) => {
+          return Object.fromEntries(
+            Object.entries(metric as Record<string, unknown>).filter(
+              ([key]) => key !== "positions",
+            ),
+          );
+        },
+      ),
     };
   }
   const compact = rows.map((r, i) => ({
@@ -194,11 +233,11 @@ export async function ptsReport(
     .replaceAll("<", "\\u003c")
     .replaceAll("\u2028", "\\u2028")
     .replaceAll("\u2029", "\\u2029");
-  const html = `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>PTS basic 0.2.0 — preparation and replay</title><style>
+  const html = `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>${escapeHtml(heading)} — preparation and replay</title><style>
   body{background:#101820;color:#e5ecf3;font:15px system-ui;max-width:1500px;margin:32px auto;padding:20px}h1{font-size:30px}h2{font-size:22px;color:#8ee2bc}a{color:#8fd2ff}section{padding:18px;border:1px solid #344654;border-radius:8px;margin:20px 0}table{width:100%;border-collapse:collapse}th,td{padding:10px;text-align:left;border-bottom:1px solid #344654}button,select,input{background:#233442;color:#fff;border:1px solid #617687;padding:8px;margin:4px}pre{white-space:pre-wrap;overflow-wrap:anywhere}small{color:#bccad5}svg{max-width:600px;background:#182a35}
-  </style><h1>PTS basic 0.2.0</h1><p>${escapeHtml(stage)} No models or real orders.</p>
+  </style><h1>${escapeHtml(heading)}</h1><p>${escapeHtml(stage)} No models or real orders.</p>
   <section><h2>Evidence and limits</h2><pre>${escapeHtml(JSON.stringify(visibleSummary, null, 2))}</pre></section>
-  <section><h2>Frozen policy</h2><pre>${escapeHtml(JSON.stringify(PTS_POLICY, null, 2))}</pre><p>Numeric choices are experimental. More signals do not establish profitability. Missing books/funding do not establish hypothetical P&amp;L.</p></section>
+  <section><h2>Frozen policy</h2><pre>${escapeHtml(JSON.stringify(policy, null, 2))}</pre><p>Numeric choices are experimental. More signals do not establish profitability. Missing books/funding do not establish hypothetical P&amp;L.</p></section>
   <section><h2>Frozen anchors and drawings</h2>${graphs || "<p>No eligible setup in these inputs. No drawing was invented.</p>"}<p>Up to 24 distinct setups illustrated; all exact anchors and formulas remain in JSON.</p></section>
   <section><h2>Decision evidence</h2><input id="filter" placeholder="Market, action or reason" aria-label="Filter decisions"><button id="prev">Previous</button><button id="next">Next</button><span id="count"></span>
   <table><thead><tr><th>UTC / slot</th><th>Market</th><th>Variant</th><th>Action</th><th>Reason / status</th><th>Reference</th></tr></thead><tbody id="rows"></tbody></table></section>
@@ -234,28 +273,21 @@ export async function ptsReport(
         ].join("\n") + "\n";
     }
   }
-  await publish(dir, {
+  const files = await publish(dir, {
     ...financialFiles,
-    "report.json": JSON.stringify(full, null, 2) + "\n",
+    "report.json": jsonDocument(full),
     "report.html": html,
-    "report.csv": csv,
-    "manifest.json":
-      JSON.stringify(
-        {
-          format: "pts-report-manifest-v1",
-          reportHash: digest(full),
-          policyHash: digest(PTS_POLICY),
-          files: {
-            ...Object.fromEntries(
-              Object.entries(financialFiles).map(([name, body]) => [name, bytesHash(body)]),
-            ),
-            "report.html": bytesHash(html),
-            "report.csv": bytesHash(csv),
-            "report.json": bytesHash(JSON.stringify(full, null, 2) + "\n"),
-          },
-        },
-        null,
-        2,
-      ) + "\n",
+    "report.csv": csv(),
+  });
+  await publish(dir, {
+    "manifest.json": jsonDocument({
+      format: "pts-report-manifest-v2",
+      reportHash: digest(full),
+      policyHash: digest(policy),
+      files: Object.fromEntries(Object.entries(files).map(([name, file]) => [name, file.sha256])),
+      fileBytes: Object.fromEntries(
+        Object.entries(files).map(([name, file]) => [name, file.bytes]),
+      ),
+    }),
   });
 }

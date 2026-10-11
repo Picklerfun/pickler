@@ -220,3 +220,21 @@ Never lower the 24-month/104-week minima. Fatal identity/schema/permission failu
 `priority-study.ts` accepts saved history, merges guarded native windows and reports revisions.
 The common existing component stream remains explicit, with no REST fallback. Valuation/stops
 precede candle and funding preparation; missing required evidence blocks openings.
+
+The same public-study composition also accepts PTS v9 with five genuine native intraday frames.
+`pts-history.ts` takes a trusted candidate version; default basic capture remains unchanged.
+Intraday captures seven rolling days plus native warmup, paging 5m at 1,024 bars while preserving
+96-request/ten-minute global bounds and the shared request schedule. Priority history merges 15m/
+5m as well as 1d/4h/1h; permission/ownership checks precede cache reuse. No model/signing imports.
+
+Intraday hosts pass the frozen eligible symbol cohort from verified preparation. The priority
+reader keeps excluded original histories out of its working cache, candle requests and signal
+evaluation, recording common PTS_PREPARATION_NOT_ELIGIBLE omissions. Existing public identity,
+schema and ownership failures remain fatal; this is not data repair or a new signal policy.
+
+For v9 only, native daily refresh uses trading's frozen 24-bar minimum, not the generic sixty-bar
+SMA window. Keep sixty bars for shared 1h/15m/5m eligibility and unchanged v7/v8 behavior. Native
+working history still retains the full saved warmup and strict continuity; cache keys include
+the intraday protocol and refresh count. Original 52-day PUMP coverage is not a reason to require
+sixty daily bars. The interrupted repair study remains frozen at e506bc78; this correction does not
+rewrite its DATA_UNAVAILABLE omission or restart its process. No signal thresholds change.

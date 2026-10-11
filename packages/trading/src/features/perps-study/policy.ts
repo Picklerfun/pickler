@@ -5,7 +5,7 @@ import type { PerpsStudyConfig, PerpsRound, PerpsCallLane, PerpsStudyRecord } fr
 export const PERPS_INPUT_LIMIT = 65536;
 export const PERPS_OUTPUT_LIMIT = 4096;
 export function assertPerpsStudyConfig(c: PerpsStudyConfig) {
-  if (c.version === 8) {
+  if (c.version === 8 || c.version === 9) {
     return assertPtsConfig(c);
   }
   if (c.version === 6 || c.version === 7) {
@@ -230,7 +230,8 @@ export function perpsCallCost(
     config.version === 3 ||
     config.version === 6 ||
     config.version === 7 ||
-    config.version === 8
+    config.version === 8 ||
+    config.version === 9
   ) {
     throw new PilotError("MODELS_DISABLED", "Original SMA cannot reserve model calls");
   }

@@ -2,11 +2,14 @@ import type { PerpCandles, PerpMarketInfo } from "@pickler/core";
 import type { PerpsPaperFrame } from "../perps-paper/simulation.js";
 import type { PerpsProposal } from "../perps-strategies/types.js";
 export const PTS_VERSION = "0.2.0" as const;
+export const PTS_INTRADAY_VERSION = "0.1.0" as const;
+export const PTS_INTRADAY_ACCOUNT_POLICY = "pts-intraday-1x-0.1.0" as const;
+export type PtsVersion = typeof PTS_VERSION | typeof PTS_INTRADAY_VERSION;
 export const PTS_ACCOUNT_POLICY = "pts-basic-1x-0.2.0" as const;
 export const PTS_VARIANTS = ["sma-reference", "pts-basic"] as const;
-export type PtsVariant = (typeof PTS_VARIANTS)[number];
+export type PtsVariant = (typeof PTS_VARIANTS)[number] | "pts-intraday";
 export type PtsDirection = "long" | "short";
-export type PtsPeriod = "1M" | "1w" | "1d" | "4h" | "1h";
+export type PtsPeriod = "1M" | "1w" | "1d" | "4h" | "1h" | "15m" | "5m";
 export type PtsBar = PerpCandles["candles"][number] & { closeTime: number };
 export interface PtsPivot {
   kind: "high" | "low";
@@ -32,7 +35,7 @@ export interface PtsChannel {
   widthDenominator: string;
 }
 export interface PtsSetup {
-  version: typeof PTS_VERSION;
+  version: PtsVersion;
   id: string;
   marketId: number;
   symbol: string;
@@ -67,7 +70,7 @@ export interface PtsCoverage {
   reason: string | null;
 }
 export interface PtsAnalysis {
-  version: typeof PTS_VERSION;
+  version: PtsVersion;
   at: number;
   symbol: string;
   action: "hold" | "open-long" | "open-short";
@@ -82,7 +85,7 @@ export interface PtsHistory {
   capturedAt: number;
 }
 export interface PtsPositionState {
-  version: typeof PTS_VERSION;
+  version: PtsVersion;
   setup: PtsSetup;
   initialQuantity: string;
   initialNotional: string;
@@ -103,7 +106,7 @@ export interface PtsPositionState {
   stopChanges: { at: number; stop: string; frameHash: string }[];
 }
 export interface PtsIntentEvidence {
-  version: typeof PTS_VERSION;
+  version: PtsVersion;
   roundKey?: string;
   setup?: PtsSetup;
   quantity?: string;
@@ -124,6 +127,8 @@ export interface PtsManagement {
 }
 export interface PtsReplayInput {
   format: "perps-pts-history-v1";
+  /** Absent preserves the original monthly/weekly candidate. */
+  candidate?: "pts-intraday@0.1.0";
   capturedAt: number;
   from: number;
   to: number;

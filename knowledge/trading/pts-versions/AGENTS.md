@@ -9,3 +9,7 @@ corrections require their own version and description. Never add mandatory field
 PTS contracts, fill unresolved parameters or rewrite source hashes. Validate the pinned bundle,
 policy, schema and examples with the local baseline verifier. Documents here are in English;
 original Spanish transcripts remain byte-identical in the course bundle.
+
+Independent `pts-intraday@0.1.0` uses its own v3 descriptor/schema and native temporal decision
+record. It is experimental local evaluation only; prior draft/basic/catalog schemas remain readable.
+It never activates Studio or changes a published candidate in place.

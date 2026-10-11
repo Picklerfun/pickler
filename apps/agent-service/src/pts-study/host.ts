@@ -9,19 +9,25 @@ import {
   PostgresPerpsPaperStore,
   PostgresPerpsStudyStore,
   exportPerpsAudit,
+  exportPerpsAuditParts,
 } from "@pickler/infrastructure/perps-lab";
 import { createPriorityPerplStudyData } from "@pickler/agent-runtime/plugins/perps-paper/public-study";
 import { createProfileStudyRunner } from "@pickler/trading/evaluation";
 import {
   inspectPtsHistory,
   PTS_POLICY,
-  PTS_VARIANTS,
+  PTS_INTRADAY_POLICY,
+  ptsVariants,
+  ptsVariant,
+  ptsConfigVersion,
+  ptsTemporalProfile,
   type PerpsPtsConfig,
   type PtsReplayInput,
 } from "@pickler/trading/pts";
 import { keepAwake } from "../paper-study/comparison-host.js";
 import { createReportQueue } from "../perps-study/report-queue.js";
-import { digest, commit, newDirectory, publish, refuseSecrets } from "./files.js";
+import { digest, commit, newDirectory, publish } from "./files.js";
+import { createPtsPartsExport } from "./parts.js";
 import type { PtsCommandInput } from "./index.js";
 export async function prepareDatabase(config: PerpsPtsConfig, envFile: string, metadata: unknown) {
   const research = new PostgresResearchStore(await localStudyDatabase(resolve(envFile)));
@@ -35,7 +41,7 @@ export async function prepareDatabase(config: PerpsPtsConfig, envFile: string, m
         "Preparation cannot replace a started PTS study",
       );
     }
-    for (const v of PTS_VARIANTS) {
+    for (const v of ptsVariants(config)) {
       await paper.initialize(
         { ...config, agentId: view.record.agentIds[v]! },
         view.record.agentVersions[v]!,
@@ -64,7 +70,7 @@ export async function runPtsHost(
     output = resolve(input.output);
   const coverage = input.packet.history.markets.map((h) => ({
     symbol: h.market.symbol,
-    analysis: inspectPtsHistory(h, input.packet.history.to),
+    analysis: inspectPtsHistory(h, input.packet.history.to, ptsConfigVersion(configuration)),
   }));
   const eligible = coverage
     .filter(
@@ -101,20 +107,13 @@ export async function runPtsHost(
     reports: ReturnType<typeof createReportQueue> | undefined;
   try {
     if (input.command === "audit-export") {
-      const dir = await newDirectory(input.output),
-        payload = await exportPerpsAudit(research.pool, configuration);
-      refuseSecrets(payload);
-      const packet = {
-        version: 1,
-        protocol: "perps-decision-audit-export-v1",
-        exportCommit: commit(),
-        payload,
-        payloadHash: digest(payload),
-      };
-      await publish(dir, { "export.json": JSON.stringify(packet, null, 2) + "\n" });
+      const dir = await newDirectory(input.output);
+      const exporter = await createPtsPartsExport(dir, commit());
+      await exportPerpsAuditParts(research.pool, configuration, exporter.emit);
+      await exporter.finish();
       return;
     }
-    const view = await study.view(configuration);
+    const view = await study.cycleView(configuration);
     if (digest(view.record.config) !== digest(configuration)) {
       throw new PilotError("CONFIG_CHANGED", "Database study configuration differs");
     }
@@ -122,7 +121,7 @@ export async function runPtsHost(
       if (view.record.startedAt !== null) {
         throw new PilotError("STUDY_ALREADY_STARTED", "Preflight cannot authorize a restart");
       }
-      for (const variant of PTS_VARIANTS) {
+      for (const variant of ptsVariants(configuration)) {
         const agent = await research.agent({
           tenantId: configuration.tenantId,
           agentId: view.record.agentIds[variant]!,
@@ -137,7 +136,8 @@ export async function runPtsHost(
       }
       const saved = await exportPerpsAudit(research.pool, configuration);
       if (
-        saved.accounts["pts-basic"]?.account.positionPolicy !== "pts-basic-1x-0.2.0" ||
+        saved.accounts[ptsVariant(configuration)]?.account.positionPolicy !==
+          ptsTemporalProfile(ptsConfigVersion(configuration)).accountPolicy ||
         saved.accounts["sma-reference"]?.account.positionPolicy !== undefined
       ) {
         throw new PilotError("CONFIG_CHANGED", "Independent account policies differ");
@@ -154,7 +154,7 @@ export async function runPtsHost(
               coverage,
               publicRequests: 0,
               modelCalls: 0,
-              policyHash: digest(PTS_POLICY),
+              policyHash: digest(configuration.version === 9 ? PTS_INTRADAY_POLICY : PTS_POLICY),
             },
             null,
             2,
@@ -182,31 +182,55 @@ export async function runPtsHost(
                 ? "closing"
                 : "process-unverified";
     const report = async () => {
-      const snapshot = await exportPerpsAudit(research.pool, configuration);
+      const sourceDirectory = resolve(output, "evidence");
+      await mkdir(sourceDirectory, { recursive: true, mode: 0o700 });
+      const exporter = await createPtsPartsExport(sourceDirectory, commit());
+      await exportPerpsAuditParts(research.pool, configuration, exporter.emit);
+      await exporter.finish();
       await new Promise<void>((resolveWorker, rejectWorker) => {
         const worker = new Worker(new URL("./report-worker.mjs", import.meta.url), {
           workerData: {
-            snapshot,
+            manifestPath: resolve(sourceDirectory, "export.json"),
             configuration,
             coverage,
             state,
             output,
             commit: commit(),
-            policyHash: digest(PTS_POLICY),
+            policyHash: digest(configuration.version === 9 ? PTS_INTRADAY_POLICY : PTS_POLICY),
           },
         });
-        let done = false;
-        worker.once("message", () => {
-          done = true;
-          resolveWorker();
-        });
-        worker.once("error", rejectWorker);
+        let published = false;
+        worker.once(
+          "message",
+          (message: { published?: boolean; code?: string; phase?: string }) => {
+            if (message.published === true) {
+              published = true;
+            } else {
+              const codes = [
+                "PTS_REPORT_SERIALIZATION_FAILED",
+                "PTS_REPORT_SOURCE_INVALID",
+                "PTS_REPORT_FAILED",
+              ];
+              const failureCode = codes.includes(message.code ?? "")
+                ? message.code!
+                : "PTS_REPORT_FAILED";
+              rejectWorker(
+                new PilotError(failureCode, "Report worker did not publish its verified artifacts"),
+              );
+            }
+          },
+        );
+        worker.once("error", () =>
+          rejectWorker(new PilotError("PTS_REPORT_FAILED", "Report worker failed")),
+        );
         worker.once("exit", (code) => {
-          if (!done) {
+          if (published && code === 0) {
+            resolveWorker();
+          } else {
             rejectWorker(
               new PilotError(
                 "PTS_REPORT_FAILED",
-                "Report worker exited without publication: " + code,
+                "Report worker exited without successful publication",
               ),
             );
           }
@@ -230,6 +254,7 @@ export async function runPtsHost(
     data = createPriorityPerplStudyData(research, {
       acquisitionPolicy: configuration.acquisitionPolicy,
       initialHistory: input.packet.history.markets,
+      ...(configuration.version === 9 ? { preparedPtsSymbols: eligible } : {}),
       onHistoryRevision: (event) => {
         void appendFile(
           resolve(output, "history-revisions.jsonl"),
@@ -250,12 +275,13 @@ export async function runPtsHost(
           signal: ownedSignal,
           ...(lease.assertActive ? { assertActive: lease.assertActive } : {}),
         }),
-      afterObservation: async (observation) =>
-        publish(output, {
+      afterObservation: async (observation) => {
+        await publish(output, {
           "runtime-status.json":
             JSON.stringify({ processState: state, at: Date.now(), modelCalls: 0, observation }) +
             "\n",
-        }),
+        });
+      },
       afterCycle: async () => {
         if ((await readFile(resolve(input.configPath!), "utf8")) !== input.configText) {
           throw new PilotError("CONFIG_CHANGED", "Frozen configuration changed");
@@ -276,6 +302,10 @@ export async function runPtsHost(
     state = "finished";
     reports.request();
     await reports.flush();
+    await publish(output, {
+      "runtime-status.json":
+        JSON.stringify({ processState: "finished", at: Date.now(), modelCalls: 0 }) + "\n",
+    });
   } catch (error) {
     primaryError = error;
     if (input.command === "run") {

@@ -35,7 +35,9 @@ function acquisitionPolicy(
       : {};
   const metadataPolicy = value.acquisition?.policy ?? value.acquisitionPolicy;
   const configured =
-    config.version === 7 || config.version === 8 ? config.acquisitionPolicy : undefined;
+    config.version === 7 || config.version === 8 || config.version === 9
+      ? config.acquisitionPolicy
+      : undefined;
   if (configured !== undefined && metadataPolicy !== undefined && configured !== metadataPolicy) {
     throw new PilotError("INVALID_INPUT", "Acquisition metadata differs from frozen configuration");
   }
@@ -265,7 +267,8 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
                   config.version === 5 ||
                   config.version === 6 ||
                   config.version === 7 ||
-                  config.version === 8
+                  config.version === 8 ||
+                  config.version === 9
                     ? 2
                     : 1,
                 network: config.network,
@@ -273,7 +276,8 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
                   config.version === 5 ||
                   config.version === 6 ||
                   config.version === 7 ||
-                  config.version === 8
+                  config.version === 8 ||
+                  config.version === 9
                     ? config.markets.map((m) => m.symbol)
                     : ["BTC", "ETH"],
               },
@@ -336,7 +340,7 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
   async cycleView(scope: PerpsStudyScope): Promise<PerpsStudyView> {
     return this.tx(async (c) => {
       const x = await this.lock(c, scope);
-      if (x.record.config.version !== 8) {
+      if (x.record.config.version !== 8 && x.record.config.version !== 9) {
         const events = await c.query(
           "SELECT key,at::double precision AS at,kind,data FROM pickler.perps_study_events WHERE study_id=$1 ORDER BY at,key",
           [x.id],
@@ -450,7 +454,8 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
         x.record.startedAt =
           x.record.config.version === 6 ||
           x.record.config.version === 7 ||
-          x.record.config.version === 8
+          x.record.config.version === 8 ||
+          x.record.config.version === 9
             ? Math.floor(x.now / 300000) * 300000 + 360000
             : x.record.config.version === 5 &&
                 (x.record.metadata as { purpose?: string })?.purpose !== "contracts-universe-v1"
@@ -570,7 +575,8 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
           (x.record.config.version === 5 ||
           x.record.config.version === 6 ||
           x.record.config.version === 7 ||
-          x.record.config.version === 8
+          x.record.config.version === 8 ||
+          x.record.config.version === 9
             ? 30000
             : 60000) ||
         slot < 0 ||
@@ -578,7 +584,8 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
           x.record.config.hours *
             (x.record.config.version === 6 ||
             x.record.config.version === 7 ||
-            x.record.config.version === 8
+            x.record.config.version === 8 ||
+            x.record.config.version === 9
               ? 12
               : 4) ||
         slot <= Math.max(x.record.lastAttemptedSlot ?? -1, x.record.lastRoundSlot)
@@ -612,7 +619,8 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
       if (
         (x.record.config.version === 6 ||
           x.record.config.version === 7 ||
-          x.record.config.version === 8) &&
+          x.record.config.version === 8 ||
+          x.record.config.version === 9) &&
         Number(x.expires_at) <= x.now
       ) {
         return;
@@ -625,7 +633,8 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
             x.record.config.version === 5 ||
             x.record.config.version === 6 ||
             x.record.config.version === 7 ||
-            x.record.config.version === 8)
+            x.record.config.version === 8 ||
+            x.record.config.version === 9)
         ) {
           x.record.status = "interrupted";
           x.record.decisionStopReason ??= interruption;
@@ -651,7 +660,8 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
         (x.record.config.version === 3 ||
           x.record.config.version === 6 ||
           x.record.config.version === 7 ||
-          x.record.config.version === 8)
+          x.record.config.version === 8 ||
+          x.record.config.version === 9)
       ) {
         throw new PilotError("MODELS_DISABLED", "Original SMA cannot access paid admissions");
       }
@@ -701,7 +711,10 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
         "INSERT INTO pickler.perps_study_events(study_id,key,at,kind,data) VALUES($1,$2,$3,$4,$5) ON CONFLICT DO NOTHING",
         [x.id, key, x.now, kind, data],
       );
-      if (kind === "slot-missed" && x.record.config.version === 8) {
+      if (
+        kind === "slot-missed" &&
+        (x.record.config.version === 8 || x.record.config.version === 9)
+      ) {
         x.record.lastAttemptedSlot = Math.max(
           x.record.lastAttemptedSlot ?? -1,
           (data as { slot: number }).slot,
@@ -741,7 +754,8 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
           x.record.config.hours *
             (x.record.config.version === 6 ||
             x.record.config.version === 7 ||
-            x.record.config.version === 8
+            x.record.config.version === 8 ||
+            x.record.config.version === 9
               ? 12
               : 4) ||
         slot <= x.record.lastRoundSlot
@@ -751,7 +765,8 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
       if (
         x.record.config.version === 6 ||
         x.record.config.version === 7 ||
-        x.record.config.version === 8
+        x.record.config.version === 8 ||
+        x.record.config.version === 9
       ) {
         const key = `round-${String(slot).padStart(3, "0")}`;
         const round: PerpsRound = {
@@ -1242,7 +1257,8 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
         x.record.config.version === 5 ||
         x.record.config.version === 6 ||
         x.record.config.version === 7 ||
-        x.record.config.version === 8
+        x.record.config.version === 8 ||
+        x.record.config.version === 9
           ? perpsStrategies(x.record.config).every((s) => !!proposals[s]) &&
             definedCalls(r.calls).every(
               (c) => !c || c.status === "completed" || c.status === "skipped",

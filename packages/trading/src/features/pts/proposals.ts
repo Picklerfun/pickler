@@ -5,12 +5,14 @@ import { simulatePerpsFill } from "../perps-paper/simulation.js";
 import { assertProfileOpening } from "../perps-study/profiles.js";
 import { analyzePts, ptsFillAdmissible } from "./signals.js";
 import { ptsManagement, ptsSize, isPtsAccount } from "./account.js";
-import { PTS_VERSION, type PtsHistory, type PtsProposal } from "./types.js";
+import { type PtsHistory, type PtsProposal, type PtsVersion, PTS_VERSION } from "./types.js";
+import { ptsTemporalProfile, ptsConfigVersion } from "./temporal-profile.js";
 import type { PerpsPtsConfig } from "./policy.js";
 import { units as u, decimal as d, min } from "./math.js";
 export function historyFromEvidence(
   context: PerpsDecisionContext,
   symbol: string,
+  version: PtsVersion = PTS_VERSION,
 ): PtsHistory | null {
   const market =
     context.evidence.frames.find((f) => f.snapshot.market.symbol === symbol)?.snapshot.market ??
@@ -20,7 +22,8 @@ export function historyFromEvidence(
         market,
         capturedAt: context.evidence.observedAt,
         series: context.evidence.candles.filter(
-          (s) => s.market.symbol === symbol && [86400, 14400, 3600].includes(s.resolution),
+          (s) =>
+            s.market.symbol === symbol && ptsTemporalProfile(version).native.includes(s.resolution),
         ),
       }
     : null;
@@ -31,11 +34,15 @@ export function ptsProposals(
   blockOpenings = false,
   eligibleOpenings?: ReadonlySet<string>,
 ): PtsProposal[] {
-  if (!isPtsAccount(context.account)) {
+  const version = ptsConfigVersion(config);
+  if (
+    !isPtsAccount(context.account) ||
+    context.account.positionPolicy !== ptsTemporalProfile(version).accountPolicy
+  ) {
     throw new PilotError("CONFIG_CHANGED", "PTS account policy required");
   }
   const proposals = config.markets.map((market): PtsProposal => {
-    const history = historyFromEvidence(context, market.symbol),
+    const history = historyFromEvidence(context, market.symbol, version),
       position = context.account.positions.find(
         (p) => p.symbol === market.symbol && p.closedAt === null,
       );
@@ -52,7 +59,7 @@ export function ptsProposals(
         reason: exit.reason,
         sourceIds: context.evidence.sourceIds,
         pts: {
-          version: PTS_VERSION,
+          version,
           ...(exit.quantity ? { quantity: exit.quantity } : {}),
           targets: exit.targets,
           reason: exit.reason,
@@ -62,14 +69,14 @@ export function ptsProposals(
     if (!history || context.evidence.excluded?.some((e) => e.symbol === market.symbol)) {
       return { symbol: market.symbol, action: "hold", reason: "DATA_UNAVAILABLE", sourceIds: [] };
     }
-    const trace = analyzePts(history, context.evidence.observedAt);
+    const trace = analyzePts(history, context.evidence.observedAt, version);
     return {
       symbol: market.symbol,
       action: trace.action,
       reason: trace.reason,
       sourceIds: context.evidence.sourceIds,
       trace,
-      ...(trace.setup ? { pts: { version: PTS_VERSION, setup: trace.setup } } : {}),
+      ...(trace.setup ? { pts: { version, setup: trace.setup } } : {}),
     };
   });
   for (const p of proposals) {
@@ -131,7 +138,7 @@ export function ptsProposals(
       side: setup.direction,
       notional: "100",
       feeReserve: "1",
-      pts: { version: PTS_VERSION, setup, quantity: size.quantity },
+      pts: { version, setup, quantity: size.quantity },
     };
     try {
       let fill = simulatePerpsFill(projected, intent, frame, context.evidence.observedAt);

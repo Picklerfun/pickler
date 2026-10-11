@@ -53,3 +53,21 @@ Mastra tools, models or signing adapters. Keep full native 1d/4h/1h histories an
 1h/15m/5m eligibility. Cache reuse checks configuration, permissions and ownership first. Notify
 native history revisions without silently replacing their original capture. A revision is not
 proof of what the provider served historically. Public preparation never starts a paper runner.
+
+## Independent intraday v9
+
+Use `ptsTemporalProfile` from trading for native history roles. Intraday keeps 1d/4h/1h/15m/5m
+series without timestamp relabeling, shares original priority reader/guards and bounds preparation
+at 96 actual requests/ten minutes. Basic v8 capture and its historical interpretation remain fixed.
+
+The v9 preparedPtsSymbols option is a trusted frozen cohort, checked for unique universe members.
+Omitted original histories remain in the captured packet but never enter the working signal
+cache or candle requests. Already excluded v9 assets are not re-evaluated for coverage. Keep
+common omissions distinct from holds and preserve fatal new schema/identity/ownership failures.
+
+For v9 only, native daily refresh uses trading's frozen 24-bar minimum, not the generic sixty-bar
+SMA window. Keep sixty bars for shared 1h/15m/5m eligibility and unchanged v7/v8 behavior. Native
+working history still retains the full saved warmup and strict continuity; cache keys include
+the intraday protocol and refresh count. Original 52-day PUMP coverage is not a reason to require
+sixty daily bars. The interrupted repair study remains frozen at e506bc78; this correction does not
+rewrite its DATA_UNAVAILABLE omission or restart its process. No signal thresholds change.

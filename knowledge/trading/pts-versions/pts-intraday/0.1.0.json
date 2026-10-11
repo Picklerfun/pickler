@@ -1,0 +1,25 @@
+{
+  "$schema": "../schemas/candidate-v3.schema.json",
+  "protocol": "pts-candidate-catalog-v3",
+  "formatVersion": 3,
+  "id": "pts-intraday",
+  "candidateVersion": "0.1.0",
+  "status": "experimental-local-paper",
+  "executionScope": "local-evaluation-only",
+  "publicTrialStarted": false,
+  "studioSelectable": false,
+  "reference": {
+    "bundleId": "pts-course",
+    "knowledgeVersion": "1.0.0",
+    "path": "../../pts/bundle.json",
+    "sha256": "e860f1912b2b09fcb97202fd3354fc594b42e573dd82a91f7271532d84c1ca30"
+  },
+  "policy": {
+    "path": "0.1.0/policy.json",
+    "sha256": "e827bbbf5c408ef7cdd9a14dbdfcc045ebd84ae504ab48803f0cdfe4118b4285"
+  },
+  "decisions": {
+    "path": "0.1.0/DECISIONS.md",
+    "version": "1.0.0"
+  }
+}
