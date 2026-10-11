@@ -315,3 +315,6 @@ The pure ptsFinancialAudit reads confirmed ledger postings and quantity/funding 
 No candle-only financial return or hypothetical evolving portfolio belongs in signal replay.
 Keep decisions and revisions bounded by information time and the original missing-evidence labels.
 See [the local guide](../../apps/agent-service/PTS-BASIC-PAPER.md).
+
+The pure inspectPtsHistory is evidence inspection only: retain invalid original bars and mark
+projections NOT_VERIFIABLE. Its diagnostic counts cannot admit a strategy or repair an OHLC bar.
