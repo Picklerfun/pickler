@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 import { fixture } from "./token-launch.test.js";
 import {
   createTokenOperationService,
+  TokenTradeError,
+  tokenTradeMinimumOutput,
   type TokenOperationDriver,
 } from "../src/features/launch/token-operations.js";
 const scope = { userId: "owner", workspaceId: "workspace", agentId: "agent" };
@@ -218,4 +220,118 @@ test("status expires only preparations that were never forwarded", async () => {
   assert.equal(expired.status, "failed");
   assert.equal(expired.error, "AUTHORIZATION_EXPIRED");
   assert.equal(f.counts().signs, 0);
+});
+
+function tradingFixture() {
+  const f = controlled();
+  f.context.token = {
+    name: "Agent",
+    ticker: "AGENT",
+    address: "0x" + "9".repeat(40),
+    chainId: 10143,
+    imageUri: null,
+    avatar: { accent: "lime", pattern: 1 },
+  };
+  return f;
+}
+test("trade inputs, tolerance and idempotency bind the exact intent before provider work", async () => {
+  const f = tradingFixture();
+  const trade = { amount: "1000000", slippageBps: 50 };
+  const p = await f.ops.prepare(
+    scope,
+    { action: "buy", trade, expectedVersion: 1 },
+    "controlled_trade_001",
+  );
+  const again = await f.ops.prepare(
+    scope,
+    { action: "buy", trade, expectedVersion: 1 },
+    "controlled_trade_001",
+  );
+  assert.equal(again.operation.id, p.operation.id);
+  for (const input of [
+    { action: "buy" as const, expectedVersion: 1 },
+    { action: "launch" as const, trade, expectedVersion: 1 },
+    { action: "buy" as const, asset: "agent" as const, trade, expectedVersion: 1 },
+    ...["0", "01", "-1", "1.2", (2n ** 256n).toString()].map((amount) => ({
+      action: "buy" as const,
+      trade: { ...trade, amount },
+      expectedVersion: 1,
+    })),
+    ...[0, 101, 1.5].map((slippageBps) => ({
+      action: "sell" as const,
+      trade: { ...trade, slippageBps },
+      expectedVersion: 1,
+    })),
+  ]) {
+    await assert.rejects(
+      f.ops.prepare(scope, input, "controlled_invalid_001"),
+      /TOKEN_DRAFT_INVALID/,
+    );
+  }
+  for (const altered of [
+    { ...trade, amount: "2000000" },
+    { ...trade, slippageBps: 100 },
+  ]) {
+    await assert.rejects(
+      f.ops.prepare(
+        scope,
+        { action: "buy", trade: altered, expectedVersion: 1 },
+        "controlled_trade_001",
+      ),
+      /TOKEN_IDEMPOTENCY_CONFLICT/,
+    );
+  }
+  assert.deepEqual(f.counts(), { signs: 0, sends: 0, preflights: 0 });
+  assert.equal(
+    tokenTradeMinimumOutput(101n, 50),
+    101n,
+    "round up the minimum; never widen tolerance",
+  );
+  assert.equal(tokenTradeMinimumOutput(10000n, 100), 9900n);
+});
+test("missing approval is explicit, releases the unsent intent and never signs", async () => {
+  const f = tradingFixture();
+  f.driver.prepare = async () => {
+    throw new TokenTradeError("APPROVAL_REQUIRED");
+  };
+  const p = await f.ops.prepare(
+    scope,
+    { action: "buy", expectedVersion: 1, trade: { amount: "1000000", slippageBps: 50 } },
+    "controlled_trade_001",
+  );
+  assert.equal(p.operation.status, "failed");
+  assert.equal(p.operation.error, "APPROVAL_REQUIRED");
+  assert.equal(p.activity, null);
+  assert.equal(await f.tx.intents!.active(), false);
+  assert.deepEqual(f.counts(), { signs: 0, sends: 0, preflights: 0 });
+});
+test("a changed confirmed token during preparation or signing cannot receive a trade", async () => {
+  for (const stage of ["prepare", "sign"]) {
+    const f = tradingFixture();
+    const original = f.driver.prepare;
+    if (stage === "prepare") {
+      f.driver.prepare = async (...args) => {
+        const p = await original(...args);
+        f.context.token = { ...f.context.token!, address: "0x" + "8".repeat(40) };
+        return p;
+      };
+      await assert.rejects(
+        f.ops.prepare(
+          scope,
+          { action: "buy", expectedVersion: 1, trade: { amount: "1000000", slippageBps: 50 } },
+          "controlled_trade_001",
+        ),
+      );
+    } else {
+      const p = await f.ops.prepare(
+        scope,
+        { action: "sell", expectedVersion: 1, trade: { amount: "1000", slippageBps: 50 } },
+        "controlled_trade_001",
+      );
+      f.context.token = { ...f.context.token!, chainId: 143 };
+      await assert.rejects(f.ops.confirm(scope, p.operation.id, p.operation.version, signed));
+    }
+    assert.equal(f.counts().signs, 0);
+    assert.equal(f.counts().sends, 0);
+  }
 });
