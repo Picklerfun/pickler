@@ -259,3 +259,11 @@ supports `uniswap_v4` with optional pool ID and LP fee alongside historical `kur
 Fields are additive for historical producers. Network, contracts, account and NFT are never
 browser-selected inputs. Regenerate OpenAPI through the API host; do not publish private
 configuration hashes, signer material or raw transactions in DTOs.
+
+## Owner curve trade DTOs
+
+Token operation inputs add `buy`, `sell`, `approve_buy` and `approve_sell` with required strict
+`trade` (positive uint256 atomic amount and explicit 1–100 bps slippage). Other actions reject
+trade fields. Clients cannot select contracts, wallets, recipients or calldata. Additive operation
+`quote` exposes only prepared amounts, balance, allowance, fee and approval purpose; historical
+operations without it remain readable. State reads remain database-only.
