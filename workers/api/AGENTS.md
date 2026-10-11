@@ -660,7 +660,9 @@ version rejection. Responses remain private/no-store; no raw provider trace ente
 
 Operational testnet composition accepts strict reviewed Uniswap V4 policies 2/3 separately from
 historical Kuru policy 1. Version 3 admits all agents that pass the existing creator/owner/publication/master checks;
-versions 1/2 keep their UUID allowlists. Default gates remain disabled. State exposes planned/confirmed venue and
+versions 1/2 keep their UUID allowlists. The approved staging configuration preserves the enabled
+testnet launch gate; other compositions stay disabled without explicit configuration. State
+exposes planned/confirmed venue and
 LP fee through portable DTOs; the backend resolves contracts, preset and account. Dedicated grant
 keys, metadata writes and provider checks remain infrastructure-only. Actual contract acceptance
 does not establish hosted JWT/passkey/R2/indexer readiness. See
@@ -678,9 +680,12 @@ write/read smoke test as hosted owner metadata-freeze/passkey acceptance. See
 ## Allowlisted launcher readiness configuration
 
 `wrangler.staging.jsonc` pins Monad testnet and the free reviewed RPC and explicitly keeps
-`TOKEN_LAUNCH_ENABLED=false`. The dedicated grant key and dated public policy are provisioned
-only as backend runtime bindings. This configuration does not compose an issuer, call Turnkey,
-freeze owner metadata or authorize a launch while the gate is closed. The original one-agent acceptance
+`TOKEN_LAUNCH_ENABLED=true` to preserve the explicitly approved eligible-creator operating state
+across deployments. The dedicated grant key and reviewed policy remain backend-only runtime
+bindings. Missing/invalid configuration still closes launch availability; every launch still
+requires current creator/owner/publication/master checks and the owner passkey. Emergency closure
+requires an explicit false override and a matching source update before the next deployment.
+The original one-agent acceptance
 and independent indexer evidence are recorded in
 [the hosted readiness guide](../../docs/market/token-indexer-hosted-20261011.md).
 
@@ -705,4 +710,6 @@ Default composition remains disabled without RPC calls. See
 The eligible-creator policy expansion is documented in
 [the dated activation record](../../docs/market/token-launch-eligible-creators-20261011.md).
 It changes no JWT, creator access, Turnkey, gas/RPC ceilings, contracts or indexer settings.
-Activation is an explicit backend runtime change; the committed default remains disabled.
+The initial activation was an explicit backend runtime change. Following owner approval, the
+staging config also preserves the enabled testnet gate; mainnet and public buyer activation
+remain separate and unchanged.

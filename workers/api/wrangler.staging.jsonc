@@ -26,8 +26,8 @@
     "CHAIN_ID": "10143",
     "MONAD_RPC_URL": "https://rpc.ankr.com/monad_testnet",
     // The dedicated authority and reviewed policy are backend-only runtime bindings.
-    // Keep user launch closed until hosted indexing and the owner walkthrough pass.
-    "TOKEN_LAUNCH_ENABLED": "false",
+    // Preserve the explicitly approved eligible-creator launcher on Monad testnet deployments.
+    "TOKEN_LAUNCH_ENABLED": "true",
     "TRADING_ADMISSIONS_ENABLED": "false",
     "ADMISSIONS_ENABLED": "true",
     "JWT_AUDIENCE": "authenticated",
