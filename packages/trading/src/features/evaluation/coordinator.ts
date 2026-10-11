@@ -2,6 +2,26 @@ import { BENCHMARK_VARIANTS } from "../paper-study/benchmark.js";
 import { PERPS_FOUR_WAY_STRATEGIES, PERPS_STUDY_STRATEGIES } from "../perps-study/types.js";
 import { PilotError } from "@pickler/core";
 export const EVALUATION_PROTOCOLS = {
+  "perps-pts-sma-v1": {
+    version: 8,
+    instrument: "perpetual",
+    strategySetVersion: 1,
+    strategies: ["sma-reference", "pts-basic"],
+    commands: [
+      "prepare",
+      "preflight",
+      "replay",
+      "audit",
+      "audit-export",
+      "run",
+      "stop",
+      "status",
+      "report",
+    ],
+    paidCommands: [],
+    riskPolicy: "pts-sma-account-policies-v1",
+    accounting: "zero-model-calls-v1",
+  },
   "perps-sma-reentry-latency-v1": {
     version: 7,
     instrument: "perpetual",
