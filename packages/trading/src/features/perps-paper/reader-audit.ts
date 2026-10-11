@@ -160,7 +160,7 @@ const safeCode = (value: unknown): string | null => {
   return "NOT_VERIFIABLE";
 };
 const symbol = (value: unknown): PerpSymbol => {
-  if (!PERPL_LAB_SYMBOLS.includes(value as PerpSymbol)) {
+  if (!(PERPL_LAB_SYMBOLS as readonly string[]).includes(value as PerpSymbol)) {
     throw new PilotError("INVALID_INPUT", "Unknown capture market");
   }
   return value as PerpSymbol;
