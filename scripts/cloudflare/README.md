@@ -40,6 +40,45 @@ npm install --global npm@10.9.3 && npm ci && npm run build:shared
 Disable non-production branch deployments for these backends. Preserve existing runtime
 secrets; do not copy them into Build Variables and Secrets or GitHub repository secrets.
 
+## Indexer
+
+Prepare `pickler-indexer-staging` as the fifth independent publisher. It reads canonical testnet events;
+it has no signing key, transaction submission, metadata writes or paid provider capability.
+Use the same locked install/shared build command as API, research and trading, then:
+
+```sh
+npx wrangler deploy --config workers/indexer/wrangler.jsonc
+```
+
+Use `Picklerfun/pickler`, production branch `main`, root `/`, and disable non-production branch
+builds. Include each watch path as a separate chip:
+
+```text
+workers/indexer/*, packages/*, scripts/*, docs/market/*, package.json, package-lock.json, turbo.json, .npmrc
+```
+
+The existing runtime has two separately provisioned public policies, `TOKEN_LAUNCH_POLICY_JSON`
+and `TOKEN_INDEXER_POLICY_JSON`. The indexer configuration uses `keep_vars=true` to retain them
+on publication ([Wrangler variable preservation](https://developers.cloudflare.com/workers/wrangler/configuration/#environment-variables)).
+Variables explicitly declared in the Wrangler file still take precedence. Verify
+the reviewed policy contents/hashes and trusted `DATABASE` Hyperdrive binding before connecting;
+never copy backend secrets, local env files or the launch grant key into Builds.
+
+On 11 October 2026 the hosted indexer had no Git connection and still served manually published
+version `7a59bf87`, despite newer indexer code on main. The owner launch was confirmed at block
+70,237,021; the factory cursor at 23:45 UTC was 70,167,887. The public profile consequently returned
+no confirmed token. A recent cursor timestamp and `stale=false` do not mean caught up.
+
+Merge the configuration fix before connecting the existing Worker so its initial automatic
+build retains the reviewed runtime policies. Connecting grants persistent deployment access;
+review the repository and deploy credential scope explicitly. Saving a connection does not prove
+publication: inspect the actual main commit, successful build and active version, then measure
+cursor progress without moving it, skipping history or increasing the existing RPC limits.
+Once canonical launch/grant attribution is present, the existing landing token cards link to the
+public agent profile and its visitor-wallet Buy/Sell form. Complete an explicit human-confirmed
+faucet purchase/sale before reporting remote trading acceptance. See
+[public token trading](../../docs/market/public-token-trading.md).
+
 ## Web
 
 For `pickler-web-staging`, use:
@@ -93,8 +132,8 @@ For coordinated changes, follow the staging guide: migrations first when require
 consumers, API, and web. Keep advice and trading admissions closed until their separate
 acceptance requirements are met. A successful build is not proof of remote readiness.
 
-This guide lives under `scripts/*`, which is intentionally included in all four watch filters.
-Merging a change here can trigger all four production-branch builds without modifying
+This guide lives under `scripts/*`, which is intentionally included in the watch filters.
+Merging a change here can trigger the production-branch builds without modifying
 business behavior. Inspect each deployment result afterward.
 
 After correcting a repository connection, merge a documentation-only change under `scripts/*`
