@@ -384,3 +384,13 @@ composition. Reports pin the correct independent policy and preserve pending fun
 Intraday run composition passes the verified preparation eligibility cohort to the shared reader.
 Known unavailable original histories remain preserved and omitted for both portfolios, never
 re-evaluated as executable signals. Retain interrupted attempts and their unchanged policies.
+
+## Bounded local PTS reports
+
+Local PTS v8/v9 exports use the additive segmented audit v2 manifest and consistent paged
+read-only PostgreSQL capture. V1 audit packets remain readable. Offline dispatch validates the
+stored protocol/version before loading providers. Full native evidence stays in private hashed
+parts; report workers replay one original round at a time and receive no giant snapshot clone.
+JSON/CSV publication streams containers; HTML excludes raw histories. Specific report failures
+stop admission, and interrupted studies retain positions/funding and their original error codes.
+Read [PTS intraday](PTS-INTRADAY-PAPER.md) for the reproduced serialization interruption.
