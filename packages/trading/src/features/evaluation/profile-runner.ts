@@ -1,3 +1,6 @@
+import { ptsProposals, ptsFinal, historyFromEvidence } from "../pts/proposals.js";
+import { ptsManagement } from "../pts/account.js";
+import { PTS_ACCOUNT_POLICY, PTS_VERSION, PTS_VARIANTS } from "../pts/types.js";
 import { nextPriceCycleDelay } from "./sma-timing.js";
 import { PilotError } from "@pickler/core";
 import { perpsSlotClock } from "../perps-study/policy.js";
@@ -111,12 +114,12 @@ export function createProfileStudyRunner(deps: {
       }));
   const { study, data } = deps;
   let paper = deps.paper;
-  const target = (r: PerpsStudyRecord, v: SmaProfileVariant | SmaReentryVariant) => ({
+  const target = (r: PerpsStudyRecord, v: SmaProfileVariant | SmaReentryVariant | "pts-basic") => ({
     ...r.config,
     agentId: r.agentIds[v]!,
   });
   function valid(e: PerpsEvidence, r: PerpsStudyRecord) {
-    if (r.config.version !== 6 && r.config.version !== 7) {
+    if (r.config.version !== 6 && r.config.version !== 7 && r.config.version !== 8) {
       throw new PilotError("INVALID_INPUT", "Profile protocol required");
     }
     if (!e.frames.length) {
@@ -137,7 +140,8 @@ export function createProfileStudyRunner(deps: {
       }
     }
     const policy =
-      r.config.version === 7 && r.config.acquisitionPolicy === COMPONENT_PAPER_POLICY
+      (r.config.version === 7 || r.config.version === 8) &&
+      r.config.acquisitionPolicy === COMPONENT_PAPER_POLICY
         ? COMPONENT_PAPER_POLICY
         : undefined;
     validatePaperFrameSet(e.frames, r.config.network, now(), policy);
@@ -150,13 +154,18 @@ export function createProfileStudyRunner(deps: {
       signal.throwIfAborted();
     };
     await guard();
-    const saved = await study.view(scope),
+    const saved = await (study.cycleView?.(scope) ?? study.view(scope)),
       r = saved.record;
-    if (r.config.version !== 6 && r.config.version !== 7) {
+    if (r.config.version !== 6 && r.config.version !== 7 && r.config.version !== 8) {
       throw new PilotError("INVALID_INPUT", "Profile protocol required");
     }
     const config = r.config;
-    const variants = config.version === 7 ? SMA_REENTRY_VARIANTS : SMA_PROFILE_VARIANTS;
+    const variants =
+      config.version === 8
+        ? PTS_VARIANTS
+        : config.version === 7
+          ? SMA_REENTRY_VARIANTS
+          : SMA_PROFILE_VARIANTS;
     if (
       Object.keys(r.agentIds).length !== variants.length ||
       variants.some((v) => !r.agentIds[v] || r.agentVersions[v] !== 1)
@@ -170,14 +179,20 @@ export function createProfileStudyRunner(deps: {
     const slot = perpsSlotClock(r, now()).slot;
     const closing = now() >= r.endsAt! || r.stopRequested || !!r.decisionStopReason;
     if (closing) {
+      if (config.version === 8 && r.status !== "closing") {
+        await study.stopDecisions(scope, lease, r.decisionStopReason ?? "SESSION_END");
+      }
       for (const v of variants) {
         await paper.closeAdmissions(target(r, v));
       }
     }
-    for (let missed = 0; missed < Math.min(72, slot); missed++) {
-      if (
-        !saved.events.some((e) => e.key === `slot-${missed}` || e.key === `slot-${missed}:missed`)
-      ) {
+    const recordedSlots = new Set(saved.events.map((e) => e.key));
+    for (
+      let missed = config.version === 8 ? Math.max(0, (r.lastAttemptedSlot ?? -1) + 1) : 0;
+      missed < Math.min(config.version === 8 ? 4032 : 72, slot);
+      missed++
+    ) {
+      if (!recordedSlots.has(`slot-${missed}`) && !recordedSlots.has(`slot-${missed}:missed`)) {
         await study.event(scope, lease, `slot-${missed}:missed`, "slot-missed", {
           slot: missed,
           code: "WINDOW_MISSED",
@@ -253,7 +268,7 @@ export function createProfileStudyRunner(deps: {
     );
     const processedCloses = new Set<string>();
     async function trade(
-      v: SmaProfileVariant | SmaReentryVariant,
+      v: SmaProfileVariant | SmaReentryVariant | "pts-basic",
       p: PerpsProposal,
       frames: PerpsPaperFrame[],
       attemptKey: string,
@@ -311,6 +326,16 @@ export function createProfileStudyRunner(deps: {
           side: position!.side,
           notional: "0",
           feeReserve: "1",
+          ...(v === "pts-basic"
+            ? {
+                pts: p.pts ?? {
+                  version: PTS_VERSION,
+                  quantity: position!.quantity,
+                  targets: [],
+                  reason: p.reason,
+                },
+              }
+            : {}),
         };
         const admission = paperRisk(current.account, current.attempts, now(), exitIntent);
         let executable = admission.allowed;
@@ -324,6 +349,16 @@ export function createProfileStudyRunner(deps: {
               side: position!.side,
               notional: "0",
               feeReserve: "1",
+              ...(v === "pts-basic"
+                ? {
+                    pts: p.pts ?? {
+                      version: PTS_VERSION,
+                      quantity: position!.quantity,
+                      targets: [],
+                      reason: p.reason,
+                    },
+                  }
+                : {}),
             },
             frame,
             now(),
@@ -384,6 +419,20 @@ export function createProfileStudyRunner(deps: {
             signal,
             frame,
             {
+              ...(v === "pts-basic"
+                ? {
+                    pts: {
+                      ...(p.pts ?? {
+                        version: PTS_VERSION,
+                        quantity: position!.quantity,
+                        targets: [],
+                        reason: p.reason,
+                      }),
+                      ...(!isClose ? { roundKey: attemptKey.split(":")[0]! } : {}),
+                    },
+                    ...(p.notional ? { notional: p.notional } : {}),
+                  }
+                : {}),
               ...(config.version === 7 && !isClose
                 ? {
                     entryEvidence: {
@@ -417,6 +466,10 @@ export function createProfileStudyRunner(deps: {
             "OPEN_NOTIONAL_LIMIT",
             "DATA_UNAVAILABLE",
             "HOURLY_ENTRY_ALREADY_CONSUMED",
+            "PTS_ENTRY_REJECTED",
+            "PTS_RISK_REJECTED",
+            "PTS_PARTIAL_NOT_EXECUTABLE",
+            "PTS_SETUP_CONSUMED",
           ].includes(e.code)
         ) {
           throw e;
@@ -424,7 +477,9 @@ export function createProfileStudyRunner(deps: {
         failure = e.code;
       }
       const after =
-        config.version === 7 && config.acquisitionPolicy === COMPONENT_PAPER_POLICY && completed
+        (config.version === 7 || config.version === 8) &&
+        config.acquisitionPolicy === COMPONENT_PAPER_POLICY &&
+        completed
           ? completed
           : await paper.view(target(r, v));
       const attempt = after.attempts.find((a) => a.key === attemptKey);
@@ -455,29 +510,66 @@ export function createProfileStudyRunner(deps: {
       });
     }
     async function maintain(
-      v: SmaProfileVariant | SmaReentryVariant,
+      v: SmaProfileVariant | SmaReentryVariant | "pts-basic",
       captured: PerpsEvidence,
       phaseKey: string,
     ) {
       const currentView = await paper.view(target(r, v));
       const risk = paperRisk(currentView.account, currentView.attempts, now());
-      const signals = profileSignal(
-        { evidence: captured, account: currentView.account },
-        v,
-        config.markets.map((m) => m.symbol),
-      );
+      const signals =
+        v === "pts-basic"
+          ? []
+          : profileSignal(
+              { evidence: captured, account: currentView.account },
+              v,
+              config.markets.map((m) => m.symbol),
+            );
       for (const position of currentView.account.positions.filter((p) => p.closedAt === null)) {
+        const history =
+          v === "pts-basic"
+            ? historyFromEvidence(
+                { evidence: captured, account: currentView.account },
+                position.symbol,
+              )
+            : null;
+        const ptsExit =
+          v === "pts-basic"
+            ? ptsManagement(position, position.mark, now(), history ?? undefined)
+            : null;
         const reason = closing
           ? "SESSION_END"
           : risk.closeSymbols.includes(position.symbol)
             ? "RISK_EXIT"
-            : signals.find((p) => p.symbol === position.symbol)?.action === "close"
-              ? "PROFILE_INVALIDATION"
-              : null;
+            : ptsExit?.action === "close"
+              ? ptsExit.reason
+              : signals.find((p) => p.symbol === position.symbol)?.action === "close"
+                ? "PROFILE_INVALIDATION"
+                : null;
         if (reason) {
           await trade(
             v,
-            { symbol: position.symbol, action: "close", reason, sourceIds: [] },
+            {
+              symbol: position.symbol,
+              action: "close",
+              reason,
+              sourceIds: [],
+              ...(v === "pts-basic"
+                ? {
+                    pts: {
+                      version: PTS_VERSION,
+                      quantity:
+                        !closing && !risk.closeSymbols.includes(position.symbol)
+                          ? (ptsExit?.quantity ?? position.quantity)
+                          : position.quantity,
+                      targets:
+                        !closing && !risk.closeSymbols.includes(position.symbol)
+                          ? (ptsExit?.targets ?? [])
+                          : [],
+                      reason,
+                    },
+                  }
+                : {}),
+            },
             captured.frames,
             `${phaseKey}:mandatory:${position.symbol}`,
           );
@@ -529,7 +621,7 @@ export function createProfileStudyRunner(deps: {
       }
     }
     const useCommonObservation =
-      config.version === 7 &&
+      (config.version === 7 || config.version === 8) &&
       config.acquisitionPolicy === COMPONENT_PAPER_POLICY &&
       !!paper.observeCommon;
     async function commonObservation(value: PerpsPaperObservation, phaseKey: string) {
@@ -647,7 +739,7 @@ export function createProfileStudyRunner(deps: {
     });
     await deps.afterObservation?.({ key, at: now(), slot, beforeMaintenance });
     // Price valuation and mandatory closes always precede slower funding/candle preparation.
-    if (config.version === 7 && data.reconcile) {
+    if ((config.version === 7 || config.version === 8) && data.reconcile) {
       const funding = await measured(key, "funding", () =>
         data.reconcile!(r, views, signal, guard),
       );
@@ -680,7 +772,7 @@ export function createProfileStudyRunner(deps: {
     if (!admitted) {
       return true;
     }
-    if (config.version === 7 && data.prepareEvidence) {
+    if ((config.version === 7 || config.version === 8) && data.prepareEvidence) {
       try {
         evidence = await measured(key, "initial-evidence", () =>
           data.prepareEvidence!(r, signal, guard),
@@ -728,7 +820,7 @@ export function createProfileStudyRunner(deps: {
     const accounts = Object.fromEntries(variants.map((v) => [v, views[v]!.account]));
     for (const v of variants) {
       const expected =
-        config.version === 7 || v.endsWith("-selective")
+        config.version === 7 || config.version === 8 || v.endsWith("-selective")
           ? "buffered-selective-1x-v1"
           : "legacy-1x-v1";
       if (
@@ -736,6 +828,12 @@ export function createProfileStudyRunner(deps: {
         accounts[v]!.entryPolicy !== SMA_ENTRY_POLICIES[v as SmaReentryVariant]
       ) {
         throw new PilotError("CONFIG_CHANGED", "Account entry policy differs from frozen variant");
+      }
+      if (
+        config.version === 8 &&
+        accounts[v]!.positionPolicy !== (v === "pts-basic" ? PTS_ACCOUNT_POLICY : undefined)
+      ) {
+        throw new PilotError("CONFIG_CHANGED", "PTS position policy is immutable");
       }
       if (accounts[v]!.riskManagement !== expected) {
         throw new PilotError("CONFIG_CHANGED", "Account risk policy differs from frozen variant");
@@ -751,14 +849,26 @@ export function createProfileStudyRunner(deps: {
     const proposals = Object.fromEntries(
       variants.map((v) => [
         v,
-        (config.version === 7
-          ? reentryGate(
-              profileProposals({ evidence, account: accounts[v]! }, config, v, block),
-              accounts[v]!,
-              evidence,
-              v as SmaReentryVariant,
-            )
-          : profileProposals({ evidence, account: accounts[v]! }, config, v, block)
+        (config.version === 8 && v === "pts-basic"
+          ? ptsProposals({ evidence, account: accounts[v]! }, config, block)
+          : config.version === 7
+            ? reentryGate(
+                profileProposals(
+                  { evidence, account: accounts[v]! },
+                  config,
+                  v as SmaProfileVariant | SmaReentryVariant,
+                  block,
+                ),
+                accounts[v]!,
+                evidence,
+                v as SmaReentryVariant,
+              )
+            : profileProposals(
+                { evidence, account: accounts[v]! },
+                config,
+                v as SmaProfileVariant | SmaReentryVariant,
+                block,
+              )
         ).map((p) =>
           closed.has(`${v}:${p.symbol}`) && p.action.startsWith("open-")
             ? { ...p, action: "hold" as const, reason: "CLOSED_THIS_SLOT" }
@@ -806,12 +916,21 @@ export function createProfileStudyRunner(deps: {
           (p) =>
             p.closedAt === null && !final.frames.some((f) => f.snapshot.market.symbol === p.symbol),
         );
-        const refreshed = profileFinal(
-          proposals[v]!,
-          { evidence: final, account: current.account },
-          config,
-          v,
-          missing,
+        const refreshed = (
+          config.version === 8 && v === "pts-basic"
+            ? ptsFinal(
+                proposals[v]!,
+                { evidence: final, account: current.account },
+                config,
+                missing,
+              )
+            : profileFinal(
+                proposals[v]!,
+                { evidence: final, account: current.account },
+                config,
+                v as SmaProfileVariant | SmaReentryVariant,
+                missing,
+              )
         ).map((p) =>
           closed.has(`${v}:${p.symbol}`) && p.action.startsWith("open-")
             ? { ...p, action: "hold" as const, reason: "CLOSED_THIS_SLOT" }
