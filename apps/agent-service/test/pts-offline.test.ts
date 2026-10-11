@@ -142,3 +142,80 @@ test("public PTS composition remains importable when every model SDK and signing
   });
   assert.equal(result.status, 0, result.stderr);
 });
+
+test("offline preparation rebuild verifies saved bytes and emits non-verifiable zero bars without transport", async (t) => {
+  let network = 0;
+  t.mock.method(globalThis, "fetch", async () => {
+    network++;
+    throw Error("forbidden");
+  });
+  const root = await mkdtemp(join(tmpdir(), "pts-rebuild-"));
+  const market = ptsFixture();
+  const day = market.series.find((s) => s.resolution === 86400)!.candles[0]!;
+  day.open = "0";
+  day.high = "0";
+  day.low = "0";
+  day.close = "0";
+  const history = {
+    format: "perps-pts-history-v1",
+    capturedAt: ptsTime,
+    from: ptsTime - 86400000,
+    to: ptsTime,
+    commit: "controlled-saved",
+    markets: [market],
+  };
+  const response = "{}\n";
+  await writeFile(join(root, "response-000.json"), response);
+  const packet = {
+    format: "pts-preparation-v1",
+    history,
+    historyHash: digest(history),
+    policyHash: digest(PTS_POLICY),
+    catalog: [market.market],
+    requests: 1,
+    diagnostics: [],
+    fatalCode: null,
+    exhausted: false,
+    preparationEndedAt: ptsTime,
+    responses: [
+      {
+        file: "response-000.json",
+        sha256: bytesHash(response),
+        bytes: Buffer.byteLength(response),
+        url: "https://api.perpl.xyz/test-controlled",
+        receivedAt: ptsTime,
+      },
+    ],
+  };
+  const state = join(root, "history.json");
+  await writeFile(state, JSON.stringify(packet));
+  const configPath = new URL("../src/pts-study/pts-basic-template.json", import.meta.url).pathname;
+  const output = join(root, "rebuilt");
+  await runPtsCommand({
+    command: "prepare",
+    configPath,
+    state,
+    output,
+    signal: new AbortController().signal,
+  });
+  const report = JSON.parse(await readFile(join(output, "report.json"), "utf8"));
+  assert.equal(network, 0);
+  assert.equal(report.newPublicRequests, 0);
+  assert.equal(report.publicTrialEnabled, false);
+  assert.equal(
+    report.coverage.find((c: { symbol: string }) => c.symbol === "BTC").validation,
+    "NOT_VERIFIABLE",
+  );
+  assert.equal(await readFile(join(output, "response-000.json"), "utf8"), response);
+  await writeFile(join(root, "response-000.json"), "changed");
+  await assert.rejects(
+    runPtsCommand({
+      command: "prepare",
+      configPath,
+      state,
+      output: join(root, "tampered"),
+      signal: new AbortController().signal,
+    }),
+    { code: "AUDIT_HASH_MISMATCH" },
+  );
+});
