@@ -62,7 +62,7 @@ acceptance. New prospective runs require frozen configuration and the remaining 
 Run from the agent-service workspace using the unified CLI:
 
 ```sh
-node --import tsx src/evaluate.ts stability --config /absolute/path/study.json --env-file /absolute/path/study.env --acquisition-choice /absolute/path/new-diagnostic/choice.json --output /absolute/path/new-stability-report
+node --import tsx -- src/evaluate.ts stability --config /absolute/path/study.json --env-file /absolute/path/study.env --acquisition-choice /absolute/path/new-diagnostic/choice.json --output /absolute/path/new-stability-report
 ```
 
 The configuration identifies an existing study whose three agents still have matching, enabled Perpl permissions. The command creates only a separate diagnostic record/lease, references the existing agents, and performs no account mutation, model request or purchase. Do not supply `--allow-paid`. Its provider operations share the same coherent reader used for new comparison studies. Keep the laptop open; the command prevents idle sleep, not lid-close sleep. Closing the lid may invalidate the lease; it must never resume paid work automatically.
@@ -95,3 +95,17 @@ See [the 2026-10-01 public results](PERPL-STREAM-VALIDATION.md): both transports
 The perpetual protocols support audit-export. The separate audit command reads a versioned export
 without a study config, environment file, database or provider clients. See
 [the audit guide](PERPS-DECISION-AUDIT.md) for exact commands, provenance and acceptance boundaries.
+
+## Eleven-market SMA comparison
+
+Local configuration v5 selects `perps-sma-jev-exa-all-markets-v1`: prepare, preflight, validate, run, status, stop and report. Read [SMA-ALL-MARKETS.md](SMA-ALL-MARKETS.md) for its one-shot paid gate, retained budget, eleven-asset catalog and limitations. No resume or automatic repeat is allowed.
+
+## Eleven-market public-only reentry comparison
+
+Configuration v7 (`perps-sma-reentry-latency-v1`) supports prepare, preflight, run, stop, status, report,
+stability, timing-check and audit-export. Its two variants have no model clients or new model
+reservations. The BTC/ETH stability and transport-choice rules above describe the older protocols;
+v7 instead freezes `rest-universe-20s-v1` and qualifies all eleven markets in one separate thirty-minute
+capture. Read [PERPS-SMA-REENTRY.md](PERPS-SMA-REENTRY.md) for its passing-proof gate, offline timing
+command, atomic hourly keys and coverage requirements. No monitor, restart or automatic repeat is
+created. A failed capture defers the six-hour comparison.
