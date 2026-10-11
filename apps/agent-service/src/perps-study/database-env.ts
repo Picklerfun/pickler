@@ -10,8 +10,15 @@ export async function localStudyDatabase(path: string) {
     throw new PilotError("INVALID_INPUT", "Provide a dedicated DATABASE_URL-only environment file");
   }
   const url = parse(lines[0]!).DATABASE_URL;
-  if (!url || !["localhost", "127.0.0.1", "[::1]"].includes(new URL(url).hostname)) {
+  const parsed = url ? new URL(url) : null;
+  if (
+    !parsed ||
+    !["postgres:", "postgresql:"].includes(parsed.protocol) ||
+    !["localhost", "127.0.0.1", "[::1]"].includes(parsed.hostname) ||
+    parsed.search ||
+    parsed.hash
+  ) {
     throw new PilotError("INVALID_INPUT", "Explicit loopback PostgreSQL required");
   }
-  return url;
+  return url!;
 }
