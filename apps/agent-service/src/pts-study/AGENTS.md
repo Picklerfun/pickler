@@ -22,3 +22,5 @@ using trading-owned ledger metrics. Controlled financial values are never live s
 
 Prepare with an explicit --state rebuilds preserved preparation evidence offline in a new directory.
 Verify history/policy/response byte hashes before copying; never repeat public transport implicitly.
+
+Keep per-portfolio summary metrics separate from decision rows when publishing worker reports.
