@@ -371,3 +371,93 @@ for (const seeded of [false, true]) {
     assert.equal((await store.readCanonicalEvents(CHAIN)).length, 2);
   });
 }
+
+test("a full header batch preserves replay, first evidence and returning-branch finality", async (t) => {
+  const store = await createStore(t);
+  const blocks = Array.from({ length: 100 }, (_, index) => ({
+    number: BigInt(index + 10),
+    hash: hash(`batch-${index + 10}`),
+    parentHash: hash(`batch-${index + 9}`),
+    blockTime: new Date(1_700_000_000_000 + index * 1000),
+  }));
+  const first = blocks[0]!;
+  const batch = {
+    chain: CHAIN,
+    contract: FACTORY,
+    stream: SOURCE.stream,
+    blocks: [...blocks, { ...first, blockTime: new Date(1_800_000_000_000) }],
+    events: [],
+    confirmed: true,
+  };
+
+  await store.applyBatch(batch);
+  await store.applyBatch({ ...batch, confirmed: false });
+
+  const rows = await store.pool.query(
+    "SELECT number,block_time,finality FROM market.chain_blocks WHERE chain=$1 AND NOT orphaned ORDER BY number",
+    [CHAIN],
+  );
+  assert.equal(rows.rowCount, 100);
+  assert.equal(rows.rows[0].block_time.toISOString(), first.blockTime.toISOString());
+  assert.ok(rows.rows.every((row) => row.finality === "confirmed"));
+  assert.equal((await store.readCursor(CHAIN, FACTORY, SOURCE.stream))?.lastBlock, 109n);
+
+  await store.rollbackFrom(CHAIN, FACTORY, SOURCE.stream, 108n);
+  await store.applyBatch({ ...batch, blocks: [blocks[99]!] });
+
+  const restored = await store.pool.query(
+    "SELECT orphaned,finality FROM market.chain_blocks WHERE chain=$1 AND hash=$2",
+    [CHAIN, blocks[99]!.hash],
+  );
+  assert.deepEqual(restored.rows, [{ orphaned: false, finality: "confirmed" }]);
+  assert.equal((await store.readCursor(CHAIN, FACTORY, SOURCE.stream))?.lastBlock, 109n);
+});
+
+for (const failure of ["header", "event"] as const) {
+  test(`an invalid ${failure} rolls back the complete header batch, cursor and outbox`, async (t) => {
+    const store = await createStore(t);
+    const blocks = Array.from({ length: 100 }, (_, index) => ({
+      number: BigInt(index + 10),
+      hash: failure === "header" && index === 70 ? "invalid" : hash(`atomic-${index + 10}`),
+      parentHash: hash(`atomic-${index + 9}`),
+      blockTime: new Date(1_700_000_000_000 + index * 1000),
+    }));
+    const events =
+      failure === "event"
+        ? [
+            {
+              blockHash: blocks[0]!.hash,
+              blockNumber: blocks[0]!.number,
+              txHash: hash("invalid-event-tx"),
+              logIndex: -1,
+              emitter: FACTORY,
+              eventName: "TestEvent",
+              abiHash: ABI_HASH,
+              topics: [],
+              data: "0x00",
+            },
+          ]
+        : [];
+
+    await assert.rejects(
+      store.applyBatch({
+        chain: CHAIN,
+        contract: FACTORY,
+        stream: SOURCE.stream,
+        blocks,
+        events,
+        outbox: [{ topic: "batch.applied", payload: { count: 100 } }],
+        confirmed: true,
+      }),
+    );
+
+    const rows = await store.pool.query("SELECT count(*)::int AS count FROM market.chain_blocks");
+    const announcements = await store.pool.query(
+      "SELECT count(*)::int AS count FROM launch.outbox",
+    );
+    assert.equal(rows.rows[0].count, 0);
+    assert.equal(announcements.rows[0].count, 0);
+    assert.equal(await store.readCursor(CHAIN, FACTORY, SOURCE.stream), null);
+    assert.equal((await store.readCanonicalEvents(CHAIN)).length, 0);
+  });
+}
