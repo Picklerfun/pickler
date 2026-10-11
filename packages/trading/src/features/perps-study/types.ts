@@ -1,3 +1,4 @@
+import type { PerpsPtsConfig } from "../pts/policy.js";
 import type { PerpNetwork } from "@pickler/core";
 import type { PerpsPaperAccount } from "../perps-paper/types.js";
 export const PERPS_STUDY_STRATEGIES = ["rules", "deepseek", "jev"] as const;
@@ -12,20 +13,31 @@ export type SmaProfileVariant = (typeof SMA_PROFILE_VARIANTS)[number];
 export const SMA_REENTRY_VARIANTS = ["sma-reference", "sma-once-bar"] as const;
 export type SmaReentryVariant = (typeof SMA_REENTRY_VARIANTS)[number];
 export type PerpsStudyStrategy =
-  PerpsStrategy | "combined" | "sma-jev" | "sma-exa-jev" | SmaProfileVariant | SmaReentryVariant;
+  | PerpsStrategy
+  | "combined"
+  | "sma-jev"
+  | "sma-exa-jev"
+  | SmaProfileVariant
+  | SmaReentryVariant
+  | "pts-basic";
 export const SMA_REVIEW_VARIANTS = ["rules", "sma-jev", "sma-exa-jev"] as const;
 export type PerpsStudyMap<T> = Partial<Record<PerpsStudyStrategy, T>>;
 export type SmaProfileMap<T> = Record<SmaProfileVariant, T>;
 /** Protocol-discriminated maps never require fictitious model/rules arms in v6. */
-export type PerpsVariantMap<C extends { version: number }, T> = C extends { version: 6 }
-  ? SmaProfileMap<T>
-  : C extends { version: 7 }
-    ? Record<SmaReentryVariant, T>
-    : PerpsStudyMap<T>;
+export type PerpsVariantMap<C extends { version: number }, T> = C extends { version: 8 }
+  ? Record<"sma-reference" | "pts-basic", T>
+  : C extends { version: 6 }
+    ? SmaProfileMap<T>
+    : C extends { version: 7 }
+      ? Record<SmaReentryVariant, T>
+      : PerpsStudyMap<T>;
 export const PERPS_FOUR_WAY_STRATEGIES = ["rules", "jev", "deepseek", "combined"] as const;
 export function perpsStrategies(
   config: Pick<PerpsStudyConfig, "version">,
 ): readonly PerpsStudyStrategy[] {
+  if (config.version === 8) {
+    return ["sma-reference", "pts-basic"];
+  }
   if (config.version === 7) {
     return SMA_REENTRY_VARIANTS;
   }
@@ -131,7 +143,8 @@ export type PerpsStudyConfig =
   | PerpsSmaReviewConfig
   | PerpsSmaUniverseConfig
   | PerpsSmaProfileConfig
-  | PerpsSmaReentryConfig;
+  | PerpsSmaReentryConfig
+  | PerpsPtsConfig;
 export interface PerpsCall {
   requestHash?: string;
   inputBytes?: number;
@@ -199,6 +212,8 @@ export interface PerpsStudyLease {
 export interface PerpsStudyRepository {
   initialize(config: PerpsStudyConfig, metadata: unknown): Promise<PerpsStudyView>;
   view(scope: PerpsStudyScope): Promise<PerpsStudyView>;
+  /** Bounded v8 execution projection; complete view remains available for reports/audits. */
+  cycleView?(scope: PerpsStudyScope): Promise<PerpsStudyView>;
   claim(scope: PerpsStudyScope): Promise<PerpsStudyLease>;
   claimSlot(scope: PerpsStudyScope, lease: PerpsStudyLease, slot: number): Promise<boolean>;
   renew(scope: PerpsStudyScope, lease: PerpsStudyLease): Promise<void>;
