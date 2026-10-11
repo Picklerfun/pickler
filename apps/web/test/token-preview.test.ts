@@ -109,3 +109,23 @@ test("trade DTOs refuse arbitrary contracts, zero/overflow amounts and implicit 
     "--check",
   ]);
 });
+
+test("token error copy is specific, safe and separates unsent failures from reverts", async () => {
+  const { tokenOperationErrorMessage, tokenRequestErrorMessage } =
+    await import("../src/features/tokens/token-operation-feedback");
+  assert.match(tokenOperationErrorMessage("GAS_LIMIT_EXCEEDED", false), /estimated gas exceeds/);
+  assert.match(tokenOperationErrorMessage("RPC_UNAVAILABLE", false), /testnet connection/);
+  assert.match(
+    tokenOperationErrorMessage("METADATA_UNAVAILABLE", false),
+    /metadata could not be saved/,
+  );
+  assert.match(
+    tokenOperationErrorMessage("TRANSACTION_REVERTED", true),
+    /gas may have been charged/,
+  );
+  const unknown = "private provider trace with credentials";
+  assert.equal(tokenOperationErrorMessage(unknown, false).includes(unknown), false);
+  assert.equal(tokenRequestErrorMessage(unknown).includes(unknown), false);
+  assert.match(tokenOperationErrorMessage(unknown, false), /No transaction was signed or sent/);
+  assert.doesNotMatch(tokenOperationErrorMessage(unknown, true), /No transaction/);
+});

@@ -146,6 +146,7 @@ try {
     "studio-wallets",
     "studio-markets",
     "studio-token",
+    "studio-token-launch",
   ]) {
     const context = await browser.newContext();
     await context.addCookies([
@@ -178,6 +179,19 @@ try {
     let walletPhase = "initial";
     let cataloguePhase = "ready";
     let clientClockOffset = 0;
+    let launchPhase = "gas";
+    let launchOperation = null;
+    const launchKeys = [];
+    const launchState = {
+      ...tokenState,
+      available: true,
+      blockers: [],
+      draft: { ...tokenState.draft, version: 1, name: "Saved token" },
+    };
+    let releaseLaunch;
+    const launchGate = new Promise((resolve) => {
+      releaseLaunch = resolve;
+    });
     let tokenPhase = "loading";
     let releaseToken;
     const tokenGate = new Promise((resolve) => {
@@ -197,12 +211,25 @@ try {
       await delay(250);
       let status = 200;
       let json = responses[url.pathname];
-      if (scenario === "studio-token") {
+      if (scenario.startsWith("studio-token")) {
         const prefix = `/api/v1/studio/agents/${tokenAgentId}`;
         const specific = {
-          "/api/v1/studio/agents": { agents: [tokenAgent] },
+          "/api/v1/studio/agents": {
+            agents: [
+              scenario === "studio-token-launch"
+                ? {
+                    ...tokenAgent,
+                    draft: false,
+                    visibility: "public",
+                    publishedAt: "2026-01-01T00:00:00Z",
+                  }
+                : tokenAgent,
+            ],
+          },
           [prefix]: tokenAgent,
           [prefix + "/x"]: tokenFixture.x,
+          [prefix + "/versions"]: { versions: [] },
+          "/api/v1/marketplace/markets": [],
           [prefix + "/activity"]: { events: [] },
           [prefix + "/runs"]: { runs: [] },
           [prefix + "/perps/record"]: tokenFixture.runtime.record,
@@ -212,14 +239,76 @@ try {
         json = specific[url.pathname] ?? json;
         if (url.pathname === prefix + "/token") {
           assert.equal(route.request().method(), "GET");
-          if (tokenPhase === "loading") {
-            await tokenGate;
+          if (scenario === "studio-token-launch") {
+            if (launchPhase === "offline") {
+              return route.abort();
+            }
+            json = { ...launchState, operation: launchOperation };
+          } else {
+            if (tokenPhase === "loading") {
+              await tokenGate;
+            }
+            status = tokenPhase === "failed" ? 503 : 200;
+            json =
+              tokenPhase === "failed"
+                ? { error: "UNAVAILABLE", message: "Controlled token read failure" }
+                : tokenState;
           }
-          status = tokenPhase === "failed" ? 503 : 200;
-          json =
-            tokenPhase === "failed"
-              ? { error: "UNAVAILABLE", message: "Controlled token read failure" }
-              : tokenState;
+        } else if (
+          url.pathname === prefix + "/token/operations" &&
+          scenario === "studio-token-launch"
+        ) {
+          assert.equal(route.request().method(), "POST");
+          assert.deepEqual(route.request().postDataJSON(), {
+            action: "launch",
+            asset: "ausd",
+            expectedVersion: 1,
+          });
+          launchKeys.push(route.request().headers()["idempotency-key"]);
+          if (launchPhase === "offline") {
+            return route.abort();
+          }
+          if (launchPhase === "gas") {
+            await launchGate;
+          }
+          launchOperation = {
+            id:
+              launchPhase === "gas"
+                ? "30000000-0000-4000-8000-000000000001"
+                : "30000000-0000-4000-8000-000000000002",
+            action: "launch",
+            version: 4,
+            status: "failed",
+            activityId: null,
+            txHash: null,
+            blockHash: null,
+            error: launchPhase === "gas" ? "GAS_LIMIT_EXCEEDED" : "PREPARATION_FAILED",
+            deadline: "9999999999",
+            transaction: null,
+          };
+          if (launchPhase === "legacy") {
+            status = 503;
+            json = {
+              error: "TOKEN_LAUNCH_BLOCKED",
+              message: "secret provider payload must not be displayed",
+            };
+          } else {
+            if (launchPhase === "ready") {
+              launchOperation = {
+                ...launchOperation,
+                id: "30000000-0000-4000-8000-000000000003",
+                status: "awaiting_signature",
+                error: null,
+                transaction: {
+                  chainId: 10143,
+                  sender: wallet.address,
+                  destination: "0x1111111111111111111111111111111111111111",
+                  maximumGasCost: "1000000000000000",
+                },
+              };
+            }
+            json = { operation: launchOperation, activity: null };
+          }
         } else if (url.pathname === prefix + "/token/draft") {
           assert.equal(route.request().method(), "PUT");
           status = 409;
@@ -347,16 +436,85 @@ try {
       await page.clock.install();
     }
     page.on("pageerror", (error) => errors.push(error.message));
-    const route =
-      scenario === "studio-token"
-        ? `/studio/agents/${tokenAgentId}/token`
-        : scenario === "account-access"
-          ? "/account?section=access"
-          : scenario.startsWith("studio")
-            ? "/studio"
-            : `/${scenario}`;
+    const route = scenario.startsWith("studio-token")
+      ? `/studio/agents/${tokenAgentId}/token`
+      : scenario === "account-access"
+        ? "/account?section=access"
+        : scenario.startsWith("studio")
+          ? "/studio"
+          : `/${scenario}`;
     await page.goto(`${base}${route}`);
-    if (scenario === "studio-token") {
+    if (scenario === "studio-token-launch") {
+      const name = page.getByRole("textbox", { name: "Token name", exact: true });
+      const operations = page.getByRole("region", { name: "Token operations", exact: true });
+      const launchButton = operations.getByRole("button", { name: "Launch token", exact: true });
+      await launchButton.waitFor();
+      const field = await name.elementHandle();
+      await launchButton.click();
+      await operations.getByRole("status", { name: "Preparing launch…", exact: true }).waitFor();
+      assert.equal(await operations.getAttribute("aria-busy"), "true");
+      assert.equal(
+        await operations.getByRole("button", { name: "Preparing…", exact: true }).isDisabled(),
+        true,
+      );
+      assert.equal(await operations.getByRole("alert").count(), 0);
+      await operations.screenshot({ path: path.join(output, "launch-preparing.png") });
+      releaseLaunch();
+      await operations
+        .getByRole("alert")
+        .getByText(/estimated gas exceeds the launch limit/)
+        .waitFor();
+      assert.equal(await operations.getByRole("alert").count(), 1);
+      assert.equal(await operations.getAttribute("aria-busy"), "false");
+      assert.equal(counts.get(`/api/v1/studio/agents/${tokenAgentId}/token/operations`), 1);
+      assert.equal(await field.evaluate((node) => node.isConnected), true);
+      assert.equal(await name.inputValue(), "Saved token");
+      await page.setViewportSize({ width: 380, height: 1000 });
+      await operations.screenshot({ path: path.join(output, "launch-gas-error-mobile.png") });
+      launchPhase = "legacy";
+      await launchButton.click();
+      await operations
+        .getByRole("alert")
+        .getByText(/No transaction was signed or sent/)
+        .waitFor();
+      assert.equal(await operations.getByRole("alert").count(), 1);
+      assert.equal(await page.getByText(/secret provider payload/).count(), 0);
+      assert.equal(await page.getByText(/The request could not be confirmed/).count(), 0);
+      launchPhase = "offline";
+      await launchButton.click();
+      await operations
+        .getByRole("alert")
+        .getByText(/Refresh status before trying again/)
+        .waitFor();
+      assert.equal(await operations.getByRole("alert").count(), 1);
+      assert.equal(counts.get(`/api/v1/studio/agents/${tokenAgentId}/token/operations`), 3);
+      launchPhase = "recover";
+      await operations.getByRole("button", { name: "Refresh status", exact: true }).click();
+      await operations
+        .getByRole("alert")
+        .getByText(/No transaction was signed or sent/)
+        .waitFor();
+      launchPhase = "ready";
+      await launchButton.click();
+      await operations.getByText("Awaiting signature", { exact: true }).waitFor();
+      assert.equal(await operations.getByRole("alert").count(), 0);
+      assert.equal(await name.inputValue(), "Saved token");
+      assert.equal(
+        launchKeys[2],
+        launchKeys[3],
+        "Uncertain preparation changed its idempotency key",
+      );
+      assert.notEqual(
+        launchKeys[0],
+        launchKeys[1],
+        "Explicit retry of a confirmed failure reused the failed key",
+      );
+      assert.equal(counts.get(`/api/v1/studio/agents/${tokenAgentId}/token/operations`), 4);
+      assert.equal(
+        await operations.getByRole("button", { name: "Sign with passkey", exact: true }).count(),
+        1,
+      );
+    } else if (scenario === "studio-token") {
       const name = page.getByRole("textbox", { name: "Token name", exact: true });
       await page.getByRole("status", { name: "Loading token" }).waitFor();
       const field = await name.elementHandle();
@@ -566,6 +724,8 @@ try {
         }
       } else if (endpoint === "/api/v1/studio/perpl/markets" && scenario === "studio-markets") {
         maximum = 3;
+      } else if (scenario === "studio-token-launch") {
+        maximum = endpoint.endsWith("/token/operations") ? 4 : endpoint.endsWith("/token") ? 6 : 3;
       } else if (scenario === "studio-token") {
         maximum = 3;
       } else if (scenario === "studio-wallets" && walletRead) {

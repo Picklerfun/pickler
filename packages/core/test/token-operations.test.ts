@@ -4,6 +4,7 @@ import { fixture } from "./token-launch.test.js";
 import {
   createTokenOperationService,
   TokenTradeError,
+  TokenPreparationError,
   tokenTradeMinimumOutput,
   type TokenOperationDriver,
 } from "../src/features/launch/token-operations.js";
@@ -334,4 +335,68 @@ test("a changed confirmed token during preparation or signing cannot receive a t
     assert.equal(f.counts().signs, 0);
     assert.equal(f.counts().sends, 0);
   }
+});
+
+test("preparation failures return one safe unsent outcome and never repeat provider work", async () => {
+  for (const reason of [
+    "RPC_UNAVAILABLE",
+    "GAS_LIMIT_EXCEEDED",
+    "METADATA_UNAVAILABLE",
+    "unreviewed provider payload",
+  ]) {
+    const f = controlled();
+    let prepares = 0;
+    f.driver.prepare = async () => {
+      prepares++;
+      if (reason === "unreviewed provider payload") {
+        throw new Error(reason);
+      }
+      throw new TokenPreparationError(
+        reason as "RPC_UNAVAILABLE" | "GAS_LIMIT_EXCEEDED" | "METADATA_UNAVAILABLE",
+      );
+    };
+    const result = await f.ops.prepare(
+      scope,
+      { action: "launch", expectedVersion: 1 },
+      "failed_preparation_001",
+    );
+    assert.equal(result.operation.status, "failed");
+    assert.equal(
+      result.operation.error,
+      reason === "unreviewed provider payload" ? "PREPARATION_FAILED" : reason,
+    );
+    assert.equal(result.operation.activityId, null);
+    assert.equal(result.operation.txHash, null);
+    assert.equal(result.activity, null);
+    await assert.rejects(
+      f.ops.prepare(scope, { action: "launch", expectedVersion: 1 }, "failed_preparation_001"),
+    );
+    assert.equal(prepares, 1);
+    assert.deepEqual(f.counts(), { signs: 0, sends: 0, preflights: 0 });
+  }
+});
+
+test("typed metadata failure is retained before transaction preparation", async () => {
+  const f = controlled();
+  f.issuer.issue = async () => {
+    throw new TokenPreparationError("METADATA_UNAVAILABLE");
+  };
+  let prepares = 0;
+  f.driver.prepare = async () => {
+    prepares++;
+    throw new Error("must not prepare");
+  };
+  const result = await f.ops.prepare(
+    scope,
+    { action: "launch", expectedVersion: 1 },
+    "failed_metadata_001",
+  );
+  assert.equal(result.operation.status, "failed");
+  assert.equal(result.operation.error, "METADATA_UNAVAILABLE");
+  assert.equal(prepares, 0);
+  assert.equal(f.grants.size, 0);
+  await assert.rejects(
+    f.ops.prepare(scope, { action: "launch", expectedVersion: 1 }, "failed_metadata_001"),
+  );
+  assert.deepEqual(f.counts(), { signs: 0, sends: 0, preflights: 0 });
 });

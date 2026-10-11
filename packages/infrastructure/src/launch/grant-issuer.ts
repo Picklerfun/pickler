@@ -2,7 +2,7 @@ import { encodeAbiParameters, keccak256, stringToHex, type Hex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import type { TokenGrantIssuer } from "@pickler/core";
 import { tokenAgentKey } from "../studio/token-launch-store.js";
-import type { TokenLaunchPolicy } from "./policy.js";
+import { tokenLaunchAllowsAgent, type TokenLaunchPolicy } from "./policy.js";
 import type { createTokenMetadata } from "./metadata.js";
 /** Dedicated grant key: no provider root credential, fund transfer or administrative signing. */
 export function createPlatformTokenIssuer(
@@ -35,7 +35,7 @@ export function createPlatformTokenIssuer(
     throw new Error("INVALID_LAUNCH_AUTHORITY");
   }
   return {
-    allowedScope: (scope) => policy.allowedAgents.includes(scope.agentId),
+    allowedScope: (scope) => tokenLaunchAllowsAgent(policy, scope.agentId),
     factory: policy.factory.address,
     preset: policy.preset,
     launchVenue: {
@@ -44,7 +44,7 @@ export function createPlatformTokenIssuer(
     },
     async issue({ scope, context, draft, chainId, deadline, nonce, operationId }) {
       if (
-        !policy.allowedAgents.includes(scope.agentId) ||
+        !tokenLaunchAllowsAgent(policy, scope.agentId) ||
         chainId !== policy.chainId ||
         context.masterAddress?.toLowerCase() === policy.authority
       ) {

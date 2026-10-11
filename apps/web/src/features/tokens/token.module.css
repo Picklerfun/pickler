@@ -306,3 +306,29 @@
   justify-content: space-between;
   flex-wrap: wrap;
 }
+
+.progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+}
+.spinner {
+  flex-shrink: 0;
+  animation: token-progress 1s linear infinite;
+}
+.feedback {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+}
+@keyframes token-progress {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation: none;
+  }
+}

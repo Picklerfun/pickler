@@ -17,6 +17,7 @@ import {
   PicklerFeeEscrowV2Abi,
   IUniswapV4ReadAbi,
 } from "@pickler/chain";
+import { JsonRpcError } from "../src/chain/erc20.js";
 import { createActivityBuilders } from "../src/turnkey/turnkey-activities.js";
 import { createTokenOperationDriver } from "../src/launch/driver.js";
 import { createPlatformTokenIssuer } from "../src/launch/grant-issuer.js";
@@ -29,7 +30,14 @@ import {
   metadataBucket,
 } from "./launch-policy-fixture.js";
 import { tokenAgentKey } from "../src/studio/token-launch-store.js";
-import type { TokenIntent } from "@pickler/core";
+import {
+  createTokenLaunchService,
+  TokenPreparationError,
+  type TokenIntent,
+  type TokenTransaction,
+  type TokenContext,
+} from "@pickler/core";
+import { tokenLaunchAllowsAgent, type UniswapTokenLaunchPolicy } from "../src/launch/policy.js";
 const context = {
   ownerUserId: "owner",
   enabled: true,
@@ -49,13 +57,14 @@ const scope = {
   workspaceId: "workspace",
   agentId: "11111111-1111-4111-8111-111111111111",
 };
-function controlled() {
-  const p = launchPolicy();
+function controlled(p: UniswapTokenLaunchPolicy = launchPolicy()) {
   let wrong = false,
     nonce = "0x0",
     reservations = 0,
     reads = 0;
   let simulationFails = false;
+  let rpcFailure: { method: string; error: Error } | null = null;
+  let gasEstimate = "0x10000";
   const simulations: unknown[] = [];
   const abis: Record<string, Abi> = {
     [p.factory.address]: PicklerLaunchFactoryAbi,
@@ -127,6 +136,9 @@ function controlled() {
     async call(method: string, params: unknown[]) {
       reads++;
       assert.ok(reservations >= reads);
+      if (method === rpcFailure?.method) {
+        throw rpcFailure.error;
+      }
       if (method === "eth_chainId") {
         return wrong ? "0x8f" : "0x279f";
       }
@@ -146,7 +158,7 @@ function controlled() {
         return { baseFeePerGas: "0x1", timestamp: "0x1", hash: "0x" + "c".repeat(64) };
       }
       if (method === "eth_estimateGas") {
-        return "0x10000";
+        return gasEstimate;
       }
       if (method === "eth_getBalance") {
         return "0xffffffffffffffff";
@@ -156,7 +168,7 @@ function controlled() {
         if ((q as { from?: string }).from) {
           simulations.push(q);
           if (simulationFails) {
-            throw new Error("SLIPPAGE_EXCEEDED");
+            throw new JsonRpcError("execution reverted: SLIPPAGE_EXCEEDED", 3);
           }
           return "0x";
         }
@@ -194,6 +206,12 @@ function controlled() {
   return {
     p,
     driver,
+    failRpc: (method: string, error: Error) => {
+      rpcFailure = { method, error };
+    },
+    estimate: (value: string) => {
+      gasEstimate = value;
+    },
     bindings,
     abis,
     simulations,
@@ -534,7 +552,7 @@ test("exact approvals and swaps use only the registered curve, input asset and m
     );
     assert.match(await f.driver.verify(p, raw), /^0x[0-9a-f]{64}$/);
     f.failSimulation();
-    await assert.rejects(f.driver.preflight(p), /SLIPPAGE_EXCEEDED/);
+    await assert.rejects(f.driver.preflight(p), /SIMULATION_REJECTED/);
     assert.equal(p.quote!.minimumOutput, buying ? "1990000000000000000000" : "497500");
   }
 });
@@ -584,4 +602,207 @@ test("trades refuse missing allowance, funds, closed inventory and conflicting c
       new RegExp(expected),
     );
   }
+});
+
+function eligibleCreatorsPolicy() {
+  const { allowedAgents, ...base } = launchPolicy();
+  void allowedAgents;
+  return importPolicy(JSON.stringify({ ...base, version: 3, admission: "eligible_creators" }));
+}
+
+test("eligible-creator policy is explicit and preserves historical allowlists and testnet limits", () => {
+  const p = eligibleCreatorsPolicy();
+  const other = "22222222-2222-4222-8222-222222222222";
+  assert.equal(tokenLaunchAllowsAgent(p, other), true);
+  assert.equal(tokenLaunchAllowsAgent(launchPolicy(), other), false);
+
+  for (const patch of [
+    { admission: "everyone" },
+    { admission: undefined },
+    { allowedAgents: [] },
+    { allowedAgents: [scope.agentId] },
+    { version: 2 },
+    { version: 4 },
+    { chainId: 143 },
+    { venue: "kuru_passive" },
+    { evidence: {} },
+    { quote: { ...launchPolicy().quote, implementation: null } },
+    { maxGasCost: "0" },
+    { rpcRequestsPerOperation: 20 },
+  ]) {
+    assert.throws(() => importPolicy(JSON.stringify({ ...p, ...patch })));
+  }
+  assert.throws(() =>
+    importPolicy(JSON.stringify({ ...launchPolicy(), admission: "eligible_creators" })),
+  );
+});
+
+test("different eligible agents use their own master and agent key without a UUID allowlist", async () => {
+  const policy = eligibleCreatorsPolicy();
+  assert.equal(policy.venue, "uniswap_v4");
+  if (policy.venue !== "uniswap_v4") {
+    throw new Error("Unexpected venue");
+  }
+  const f = controlled(policy);
+  const issuer = createPlatformTokenIssuer(
+    policy,
+    launchKey,
+    createTokenMetadata(metadataBucket(), policy.metadataOrigin),
+    f.driver.checkReadiness!,
+  );
+  for (const agent of [
+    scope,
+    { ...scope, userId: "another-owner", agentId: "22222222-2222-4222-8222-222222222222" },
+  ]) {
+    const master = agent.userId === scope.userId ? context.masterAddress : "0x" + "d".repeat(40);
+    const owned = { ...context, ownerUserId: agent.userId, masterAddress: master };
+    assert.equal(issuer.allowedScope!(agent), true);
+    const authorization = await issuer.issue({
+      scope: agent,
+      context: owned,
+      draft: { id: "draft", version: 1, name: "Agent", ticker: "AGENT", status: "draft" },
+      chainId: 10143,
+      deadline: "9999999999",
+      nonce: "1",
+      operationId: "controlled",
+    });
+    assert.equal(authorization.params.agentKey, tokenAgentKey(10143, agent.agentId));
+    assert.equal(authorization.params.creator, master);
+    assert.equal(authorization.params.creatorFeeRecipient, master);
+    const prepared = await f.driver.prepare(agent, {
+      id: "controlled",
+      action: "launch",
+      context: owned,
+      deadline: "9999999999",
+      authorization,
+    } as TokenIntent);
+    assert.equal(prepared.sender, master);
+    await f.driver.preflight(prepared);
+  }
+});
+
+test("eligible-creator policy cannot bypass core ownership, creator access or publication", async () => {
+  let externalCalls = 0;
+  const policy = eligibleCreatorsPolicy();
+  const issuer = createPlatformTokenIssuer(
+    policy,
+    launchKey,
+    createTokenMetadata(metadataBucket(), policy.metadataOrigin),
+    async () => {
+      externalCalls++;
+      throw new Error("No external work expected");
+    },
+  );
+  const other = { ...scope, agentId: "22222222-2222-4222-8222-222222222222" };
+  for (const patch of [
+    { enabled: false },
+    { published: false },
+    { visibility: "private" as const },
+    { killed: true },
+    { masterAddress: null },
+    { ownerUserId: "not-the-owner" },
+    { confirmationPending: true },
+    {
+      token: {
+        name: "Existing",
+        ticker: "EXIST",
+        chainId: 10143 as const,
+        address: "0x" + "b".repeat(40),
+        imageUri: null,
+        avatar: { accent: "lime", pattern: 1 },
+      },
+    },
+  ] satisfies Partial<TokenContext>[]) {
+    const owned: TokenContext = { ...context, ...patch };
+    const service = createTokenLaunchService({
+      chainId: 10143,
+      issuer,
+      repository: {
+        async transaction(_scope, _chain, work) {
+          return work({
+            context: owned,
+            now: new Date(),
+            draft: async () => null,
+          } as TokenTransaction);
+        },
+      },
+    });
+    await assert.rejects(
+      service.authorize(other, 1, "controlled_denied_001"),
+      /TOKEN_OWNER_REQUIRED|TOKEN_LAUNCH_BLOCKED/,
+    );
+  }
+  assert.equal(externalCalls, 0);
+});
+
+test("preparation classifies transport, simulation and gas caps without widening limits", async () => {
+  for (const reason of [
+    "RPC_UNAVAILABLE",
+    "INSUFFICIENT_GAS_BALANCE",
+    "SIMULATION_REJECTED",
+    "GAS_LIMIT_EXCEEDED",
+  ]) {
+    const f = controlled();
+    const issuer = createPlatformTokenIssuer(
+      f.p,
+      launchKey,
+      createTokenMetadata(metadataBucket(), f.p.metadataOrigin),
+      f.driver.checkReadiness!,
+    );
+    const auth = await issuer.issue({
+      scope,
+      context,
+      draft: { id: "draft", version: 1, name: "Agent", ticker: "AGENT", status: "draft" },
+      chainId: 10143,
+      deadline: "9999999999",
+      nonce: "1",
+      operationId: "controlled",
+    });
+    if (reason === "RPC_UNAVAILABLE") {
+      f.failRpc("eth_chainId", new Error("provider secret in transport failure"));
+    } else if (reason === "GAS_LIMIT_EXCEEDED") {
+      f.estimate("0xffffffffff");
+    } else {
+      f.failRpc(
+        "eth_estimateGas",
+        new JsonRpcError(
+          reason === "INSUFFICIENT_GAS_BALANCE"
+            ? "insufficient funds with private details"
+            : "execution reverted with private details",
+          -32000,
+        ),
+      );
+    }
+    await assert.rejects(
+      f.driver.prepare(scope, {
+        id: "controlled",
+        action: "launch",
+        context,
+        deadline: "9999999999",
+        authorization: auth,
+      } as TokenIntent),
+      (error: unknown) =>
+        error instanceof TokenPreparationError &&
+        error.code === reason &&
+        !error.message.includes("private"),
+    );
+  }
+});
+
+test("metadata storage failure returns a safe reason", async () => {
+  const bucket = metadataBucket();
+  bucket.put = async () => {
+    throw new Error("storage credentials and private provider trace");
+  };
+  await assert.rejects(
+    createTokenMetadata(bucket, "https://app.pickler.fun").freeze(context, {
+      id: "draft",
+      version: 1,
+      name: "Agent",
+      ticker: "AGENT",
+      status: "draft",
+    }),
+    (error: unknown) =>
+      error instanceof TokenPreparationError && error.code === "METADATA_UNAVAILABLE",
+  );
 });

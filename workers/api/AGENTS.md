@@ -652,10 +652,15 @@ explicit testnet gate and complete reviewed passive policy. Default composition 
 `/v1/token-assets/:file` is public immutable read-only access. The callback exception for X does
 not apply to these routes. See [Token operations](../../docs/market/token-launch-operations.md).
 
+Preparation can return a validated `failed` operation with a reviewed reason and null activity
+in its existing 200 response. This is a recorded unsent outcome, distinct from an HTTP access or
+version rejection. Responses remain private/no-store; no raw provider trace enters the DTO.
+
 ## Versioned token launch composition
 
-Operational testnet composition accepts the strict reviewed Uniswap V4 policy 2 separately from
-historical Kuru policy 1. Default gates remain disabled. State exposes planned/confirmed venue and
+Operational testnet composition accepts strict reviewed Uniswap V4 policies 2/3 separately from
+historical Kuru policy 1. Version 3 admits all agents that pass the existing creator/owner/publication/master checks;
+versions 1/2 keep their UUID allowlists. Default gates remain disabled. State exposes planned/confirmed venue and
 LP fee through portable DTOs; the backend resolves contracts, preset and account. Dedicated grant
 keys, metadata writes and provider checks remain infrastructure-only. Actual contract acceptance
 does not establish hosted JWT/passkey/R2/indexer readiness. See
@@ -675,8 +680,8 @@ write/read smoke test as hosted owner metadata-freeze/passkey acceptance. See
 `wrangler.staging.jsonc` pins Monad testnet and the free reviewed RPC and explicitly keeps
 `TOKEN_LAUNCH_ENABLED=false`. The dedicated grant key and dated public policy are provisioned
 only as backend runtime bindings. This configuration does not compose an issuer, call Turnkey,
-freeze owner metadata or authorize a launch while the gate is closed. The one-agent allowlist
-and independent indexer acceptance are recorded in
+freeze owner metadata or authorize a launch while the gate is closed. The original one-agent acceptance
+and independent indexer evidence are recorded in
 [the hosted readiness guide](../../docs/market/token-indexer-hosted-20261011.md).
 
 ## Owner token trading transport
@@ -696,3 +701,8 @@ strict and private/no-store. It returns unsigned data and documents errors/OpenA
 `/v1/demo` alias has the same public behavior. It does not relax any JWT-only Studio endpoint.
 Default composition remains disabled without RPC calls. See
 [Public token trading](../../docs/market/public-token-trading.md).
+
+The eligible-creator policy expansion is documented in
+[the dated activation record](../../docs/market/token-launch-eligible-creators-20261011.md).
+It changes no JWT, creator access, Turnkey, gas/RPC ceilings, contracts or indexer settings.
+Activation is an explicit backend runtime change; the committed default remains disabled.

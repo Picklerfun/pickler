@@ -112,7 +112,7 @@ try {
     await operations.getByText("Cancelled", { exact: true }).waitFor();
     await operations.getByRole("button", { name: "Launch token", exact: true }).click();
     await operations.getByRole("button", { name: "Preview failure", exact: true }).click();
-    await operations.getByText("Could not complete", { exact: true }).waitFor();
+    await operations.getByText("Preparation failed", { exact: true }).waitFor();
     await operations.getByRole("button", { name: "Launch token", exact: true }).click();
     await operations.getByRole("button", { name: "Continue preview", exact: true }).click();
     await operations.getByText("Confirming", { exact: true }).waitFor();

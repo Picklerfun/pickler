@@ -668,9 +668,17 @@ RPC admission and Kuru snapshots without rewriting historical V4 records. Never 
 Kuru as a fallback. Kuru remains blocked by its external readiness record; the V4 acceptance below is separate.
 See [Token operations](../../docs/market/token-launch-operations.md) for configuration and tests.
 
+Launcher adapters translate transport, RPC admission, transaction simulation, gas ceilings and
+metadata storage failures into core-owned preparation reasons. They never return provider prose,
+credentials or calldata in those errors. The existing gas ceilings and unsupported-fee-method
+fallback remain unchanged; tests distinguish contract rejection from transport failure.
+
 ## V4 launcher policy and canonical position history
 
-`src/launch/policy.ts` discriminates strict V4 version 2 from historical Kuru version 1. The V4
+`src/launch/policy.ts` discriminates strict V4 versions 2/3 from historical Kuru version 1.
+Version 3 explicitly admits all eligible creators instead of an agent UUID allowlist; core still
+checks creator access, workspace ownership, publication, master identity and token uniqueness.
+Versions 1/2 retain their non-empty UUID allowlists. Default runtime activation stays disabled. The V4
 driver verifies proxy implementations, exact deployed bindings, full preset/venue, master identity
 and a private preparation configuration hash before signing/submission. No Kuru-to-V4 fallback
 exists. V4 collection requires its canonical locker context; browser contracts remain enumerated.

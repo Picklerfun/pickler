@@ -480,6 +480,12 @@ reconciliation. Its injected driver is infrastructure-owned; providers never exe
 repository transaction. A finalized transaction is distinct from an attributed token. See
 [Token operations](../../docs/market/token-launch-operations.md).
 
+`TokenPreparationError` carries reviewed unsent failure codes across injected adapters. Known
+metadata/admission transport failures and driver preparation failures retain a failed intent and
+return one operation result. Unknown provider details become `PREPARATION_FAILED`; permission,
+context and optimistic-version errors still reject. A failed preparation never signs or sends,
+and reusing its key never repeats external work.
+
 ## Versioned token venue data
 
 Token state may include a server-resolved planned venue/native LP fee and confirmed V4 pool ID,
