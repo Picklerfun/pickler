@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "PTS intraday candidate descriptor v3",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "protocol",
+    "formatVersion",
+    "id",
+    "candidateVersion",
+    "status",
+    "executionScope",
+    "publicTrialStarted",
+    "studioSelectable",
+    "reference",
+    "policy",
+    "decisions"
+  ],
+  "properties": {
+    "$schema": {
+      "const": "../schemas/candidate-v3.schema.json"
+    },
+    "protocol": {
+      "const": "pts-candidate-catalog-v3"
+    },
+    "formatVersion": {
+      "const": 3
+    },
+    "id": {
+      "const": "pts-intraday"
+    },
+    "candidateVersion": {
+      "const": "0.1.0"
+    },
+    "status": {
+      "const": "experimental-local-paper"
+    },
+    "executionScope": {
+      "const": "local-evaluation-only"
+    },
+    "publicTrialStarted": {
+      "const": false
+    },
+    "studioSelectable": {
+      "const": false
+    },
+    "reference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["bundleId", "knowledgeVersion", "path", "sha256"],
+      "properties": {
+        "bundleId": {
+          "const": "pts-course"
+        },
+        "knowledgeVersion": {
+          "const": "1.0.0"
+        },
+        "path": {
+          "const": "../../pts/bundle.json"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      }
+    },
+    "policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256"],
+      "properties": {
+        "path": {
+          "const": "0.1.0/policy.json"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      }
+    },
+    "decisions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "version"],
+      "properties": {
+        "path": {
+          "const": "0.1.0/DECISIONS.md"
+        },
+        "version": {
+          "const": "1.0.0"
+        }
+      }
+    }
+  }
+}
