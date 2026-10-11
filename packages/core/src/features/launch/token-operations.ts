@@ -128,7 +128,12 @@ export interface TokenIntent {
   txHash: string | null;
   blockHash: string | null;
   error: string | null;
+  /** Private canonical evidence; never a transaction receipt or public token attribution. */
+  resolution?: { kind: "expired_launch"; blockNumber: string; blockHash: string };
 }
+export type TokenLaunchRecovery =
+  | { status: "expired"; blockNumber: string; blockHash: string }
+  | { status: "found"; txHash: string };
 export interface TokenIntentTransaction {
   read(keyOrId: string): Promise<TokenIntent | null>;
   active(): Promise<boolean>;
@@ -165,6 +170,11 @@ export interface TokenOperationDriver {
     status: "pending" | "completed" | "rejected";
     rawTransaction?: string;
   }>;
+  /** Explicit read-only proof for an expired launch with no saved signing identity or bytes. */
+  recoverExpiredLaunch?(
+    scope: TokenScope,
+    intent: TokenIntent,
+  ): Promise<TokenLaunchRecovery | null>;
   activity(
     prepared: TokenPreparedTransaction,
     activityId: string,
@@ -263,9 +273,15 @@ export function createTokenOperationService(deps: {
         !intent.txHash &&
         BigInt(intent.deadline) <= BigInt(Math.floor(now.getTime() / 1000))
       ) {
-        return intents.update(intent, { status: "failed", error: "AUTHORIZATION_EXPIRED" });
+        return {
+          intent: await intents.update(intent, {
+            status: "failed",
+            error: "AUTHORIZATION_EXPIRED",
+          }),
+          now,
+        };
       }
-      return intent;
+      return { intent, now };
     });
   }
   async function patch(
@@ -565,7 +581,8 @@ export function createTokenOperationService(deps: {
       }
     },
     async status(scope: TokenScope, id: string) {
-      let intent = await read(scope, id);
+      const readResult = await read(scope, id);
+      let intent = readResult.intent;
       if (
         !ready() ||
         !intent.prepared ||
@@ -573,8 +590,52 @@ export function createTokenOperationService(deps: {
       ) {
         return tokenOperationView(intent);
       }
+      if (
+        intent.status === "unknown" &&
+        intent.action === "launch" &&
+        !intent.activityId &&
+        !intent.rawTransaction &&
+        !intent.txHash &&
+        BigInt(intent.deadline) < BigInt(Math.floor(readResult.now.getTime() / 1000)) &&
+        intent.authorization?.grantDeadline === intent.deadline &&
+        intent.authorization.params.deadline === intent.deadline &&
+        intent.prepared.deadline === intent.deadline &&
+        deps.driver!.recoverExpiredLaunch
+      ) {
+        const evidence = await deps.driver!.recoverExpiredLaunch(scope, intent);
+        if (evidence) {
+          intent = await transaction(scope, async (intents) => {
+            const latest = await intents.read(id);
+            if (!latest) {
+              throw new TokenLaunchError("TOKEN_NOT_FOUND");
+            }
+            // A delayed signing response or another reconciliation owns any newer version.
+            if (
+              latest.version !== intent.version ||
+              latest.status !== "unknown" ||
+              latest.activityId ||
+              latest.rawTransaction ||
+              latest.txHash
+            ) {
+              return latest;
+            }
+            if (evidence.status === "found") {
+              return intents.update(latest, { txHash: evidence.txHash, error: null });
+            }
+            return intents.update(latest, {
+              status: "failed",
+              error: "EXPIRED_LAUNCH_NOT_CREATED",
+              resolution: {
+                kind: "expired_launch",
+                blockNumber: evidence.blockNumber,
+                blockHash: evidence.blockHash,
+              },
+            });
+          });
+        }
+      }
       if (intent.status === "unknown" && intent.activityId && !intent.rawTransaction) {
-        const result = await deps.driver!.activity(intent.prepared, intent.activityId);
+        const result = await deps.driver!.activity(intent.prepared!, intent.activityId);
         if (result.status === "rejected") {
           intent = await patch(scope, intent, { status: "failed", error: "SIGNATURE_REJECTED" });
         } else if (result.status === "completed" && result.rawTransaction) {
