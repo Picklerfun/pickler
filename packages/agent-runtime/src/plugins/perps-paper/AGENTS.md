@@ -59,3 +59,8 @@ proof of what the provider served historically. Public preparation never starts 
 Use `ptsTemporalProfile` from trading for native history roles. Intraday keeps 1d/4h/1h/15m/5m
 series without timestamp relabeling, shares original priority reader/guards and bounds preparation
 at 96 actual requests/ten minutes. Basic v8 capture and its historical interpretation remain fixed.
+
+The v9 preparedPtsSymbols option is a trusted frozen cohort, checked for unique universe members.
+Omitted original histories remain in the captured packet but never enter the working signal
+cache or candle requests. Already excluded v9 assets are not re-evaluated for coverage. Keep
+common omissions distinct from holds and preserve fatal new schema/identity/ownership failures.
