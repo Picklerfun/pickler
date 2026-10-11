@@ -19,7 +19,8 @@ const operationMessages: Record<string, string> = {
   PREFLIGHT_REJECTED:
     "The transaction no longer passes its checks. No transaction was signed. Prepare it again.",
   AUTHORIZATION_EXPIRED: "This preparation expired. Prepare again for a new passkey request.",
-  SIGNATURE_REJECTED: "The signature was rejected. Your form is kept.",
+  SIGNATURE_REJECTED:
+    "The signing service rejected this request. No transaction was sent. Your draft is kept; prepare again.",
   TRANSACTION_REVERTED:
     "The transaction was included but reverted. The token was not launched; gas may have been charged.",
   CONTROLLED_FAILURE: "Preview preparation failed. No transaction was sent. Your draft is kept.",
@@ -32,7 +33,7 @@ export function tokenOperationErrorMessage(code: string | null, sent: boolean): 
       : "The operation could not be prepared. No transaction was signed or sent. Your draft is kept.")
   );
 }
-export function tokenRequestErrorMessage(code: string): string {
+export function tokenRequestErrorMessage(code: string, phase?: string): string {
   const messages: Record<string, string> = {
     UNAUTHORIZED: "Your session expired. Sign in again; your draft is kept.",
     TOKEN_OWNER_REQUIRED: "Only this agent’s owner can manage its token.",
@@ -45,8 +46,14 @@ export function tokenRequestErrorMessage(code: string): string {
       "Launch preparation is currently blocked. Refresh status to check the requirements.",
     TOKEN_UNAVAILABLE: "Launch preparation is temporarily unavailable. Your draft is kept.",
   };
-  return (
-    messages[code] ??
-    "The request could not be confirmed. Refresh status before trying again; your draft is kept."
-  );
+  if (messages[code]) {
+    return messages[code];
+  }
+  if (phase === "check") {
+    return "Could not check transaction status. The saved state is shown. Try Check status again.";
+  }
+  if (phase === "refresh") {
+    return "Could not refresh the saved status. Your draft is kept. Try again when the connection recovers.";
+  }
+  return "The request could not be confirmed. Refresh status before trying again; your draft is kept.";
 }
