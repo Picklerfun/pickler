@@ -47,6 +47,8 @@ if (values.help) {
       selected?.protocol === "perps-pts-intraday-sma-v1" ||
       offline?.format === "perps-pts-history-v1" ||
       offline?.format === "pts-preparation-v1" ||
+      (offline?.protocol === "perps-decision-audit-export-v2" &&
+        [8, 9].includes(offline?.studyVersion)) ||
       offline?.payload?.study?.record?.config?.version === 8 ||
       offline?.payload?.study?.record?.config?.version === 9;
     if (pts) {
