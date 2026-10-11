@@ -121,10 +121,19 @@ export class PostgresLaunchIndexStore {
           throw new Error("INDEX_LEASE_LOST");
         }
       }
+      // Keep the first occurrence, as the former per-row conflict updates did. Core validates
+      // range ancestry before this write; overlapping sources may replay the same stored hashes.
+      const uniqueBlocks = new Map<string, IndexBlockInput>();
       for (const block of input.blocks) {
-        await tx
-          .insert(chainBlocks)
-          .values({
+        if (!uniqueBlocks.has(block.hash)) {
+          uniqueBlocks.set(block.hash, block);
+        }
+      }
+
+      await tx
+        .insert(chainBlocks)
+        .values(
+          [...uniqueBlocks.values()].map((block) => ({
             chain: input.chain,
             hash: block.hash,
             number: Number(block.number),
@@ -132,17 +141,16 @@ export class PostgresLaunchIndexStore {
             blockTime: block.blockTime,
             orphaned: false,
             ...(input.confirmed ? { finality: "confirmed" as const } : {}),
-          })
-          .onConflictDoUpdate({
-            target: [chainBlocks.chain, chainBlocks.hash],
-            // Re-reading a block that a previous pass marked orphaned means the chain came
-            // back to it; it is canonical again.
-            set: {
-              orphaned: false,
-              ...(input.confirmed ? { finality: "confirmed" as const } : {}),
-            },
-          });
-      }
+          })),
+        )
+        .onConflictDoUpdate({
+          target: [chainBlocks.chain, chainBlocks.hash],
+          // A branch that returns becomes canonical again, without rewriting its evidence.
+          set: {
+            orphaned: false,
+            ...(input.confirmed ? { finality: "confirmed" as const } : {}),
+          },
+        });
 
       for (const event of input.events) {
         await tx
