@@ -1,4 +1,10 @@
-import { LEVERAGE_BOUNDS, PilotError, type AgentRecord } from "@pickler/core";
+import {
+  LEVERAGE_BOUNDS,
+  PilotError,
+  type AgentRecord,
+  PERPL_LAB_SYMBOLS,
+  type PerpSymbol,
+} from "@pickler/core";
 import { pluginEnabled } from "@pickler/core";
 import {
   PAPER_SCALE,
@@ -102,6 +108,7 @@ export function paperRisk(
   // Product accounts take their caps, stops and day-loss from the runtime (R6, R10, R11): the
   // store only keeps the ledger whole (margin, reservations, one position per market).
   const product = isProductPaperSession(account.scope);
+  const selective = !product && account.riskManagement === "buffered-selective-1x-v1";
   const open = account.positions.filter((p) => p.closedAt === null);
   const unknown = open.some(
     (p) => p.mark === null || p.markAt === null || now - p.markAt > 30_000 || p.markAt > now + 5000,
@@ -183,7 +190,8 @@ export function paperRisk(
       daily ||
       drawdown ||
       account.blocked ||
-      (equity !== null && (equity <= 0n || (exposure !== null && exposure * 2n > equity)))
+      (equity !== null &&
+        (equity <= 0n || (!selective && exposure !== null && exposure * 2n > equity)))
     ) {
       closeSymbols.add(p.symbol);
     }
@@ -214,6 +222,9 @@ export function paperRisk(
     if (!product && (intent.leverage ?? 1) !== 1) {
       reasons.push("LEVERAGE_NOT_ALLOWED");
     }
+    if (selective && open.length >= 5) {
+      reasons.push("PORTFOLIO_CAPACITY");
+    }
     if (open.some((p) => p.symbol === intent.symbol)) {
       reasons.push("POSITION_EXISTS");
     }
@@ -227,7 +238,9 @@ export function paperRisk(
       !product &&
       exposure !== null &&
       equity !== null &&
-      (exposure + u(intent.notional)) * 2n > equity
+      (selective
+        ? (exposure + u(intent.notional)) * 5n > equity * 2n
+        : (exposure + u(intent.notional)) * 2n > equity)
     ) {
       reasons.push("EXPOSURE_LIMIT");
     }
