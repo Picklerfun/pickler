@@ -1,0 +1,147 @@
+{
+  "$schema": "../schemas/analysis.schema.json",
+  "bundleId": "pts-course",
+  "knowledgeVersion": "1.0.0",
+  "example": true,
+  "candidateId": "pts-trend-reversal",
+  "mode": "analysis-only",
+  "instrument": "BTC",
+  "analysisTime": "2026-10-10T00:00:00Z",
+  "status": "insufficient-data",
+  "direction": "undetermined",
+  "executionAuthorized": false,
+  "summary": "No market evidence was supplied. Course references describe the method but cannot establish current conditions. The candidate definitions also remain unresolved.",
+  "findings": [
+    {
+      "conditionId": "market-data-complete",
+      "state": "unknown",
+      "reason": "Required market observations and reviewed criteria are absent.",
+      "marketEvidenceRefs": [],
+      "resolvedDefinitionIds": [],
+      "courseReferences": [
+        {
+          "sourceId": "M1C3",
+          "lineStart": 35,
+          "lineEnd": 56
+        }
+      ]
+    },
+    {
+      "conditionId": "primary-trend-defined",
+      "state": "unknown",
+      "reason": "Required market observations and reviewed criteria are absent.",
+      "marketEvidenceRefs": [],
+      "resolvedDefinitionIds": [],
+      "courseReferences": [
+        {
+          "sourceId": "M1C3",
+          "lineStart": 35,
+          "lineEnd": 56
+        }
+      ]
+    },
+    {
+      "conditionId": "weekly-channel-aligned",
+      "state": "unknown",
+      "reason": "Required market observations and reviewed criteria are absent.",
+      "marketEvidenceRefs": [],
+      "resolvedDefinitionIds": [],
+      "courseReferences": [
+        {
+          "sourceId": "M1C4",
+          "lineStart": 9,
+          "lineEnd": 35
+        },
+        {
+          "sourceId": "M1C5",
+          "lineStart": 195,
+          "lineEnd": 208
+        }
+      ]
+    },
+    {
+      "conditionId": "correction-at-channel-boundary",
+      "state": "unknown",
+      "reason": "Required market observations and reviewed criteria are absent.",
+      "marketEvidenceRefs": [],
+      "resolvedDefinitionIds": [],
+      "courseReferences": [
+        {
+          "sourceId": "M3C1",
+          "lineStart": 16,
+          "lineEnd": 59
+        }
+      ]
+    },
+    {
+      "conditionId": "retracement-in-reversal-zone",
+      "state": "unknown",
+      "reason": "Required market observations and reviewed criteria are absent.",
+      "marketEvidenceRefs": [],
+      "resolvedDefinitionIds": [],
+      "courseReferences": [
+        {
+          "sourceId": "M2C1",
+          "lineStart": 20,
+          "lineEnd": 46
+        },
+        {
+          "sourceId": "M2C2",
+          "lineStart": 8,
+          "lineEnd": 23
+        }
+      ]
+    },
+    {
+      "conditionId": "entry-trigger-confirmed",
+      "state": "unknown",
+      "reason": "Required market observations and reviewed criteria are absent.",
+      "marketEvidenceRefs": [],
+      "resolvedDefinitionIds": [],
+      "courseReferences": [
+        {
+          "sourceId": "M3C1",
+          "lineStart": 45,
+          "lineEnd": 64
+        },
+        {
+          "sourceId": "M4C1",
+          "lineStart": 18,
+          "lineEnd": 29
+        }
+      ]
+    },
+    {
+      "conditionId": "structural-invalidation-defined",
+      "state": "unknown",
+      "reason": "Required market observations and reviewed criteria are absent.",
+      "marketEvidenceRefs": [],
+      "resolvedDefinitionIds": [],
+      "courseReferences": [
+        {
+          "sourceId": "M3C1",
+          "lineStart": 57,
+          "lineEnd": 65
+        },
+        {
+          "sourceId": "M3C4",
+          "lineStart": 24,
+          "lineEnd": 29
+        }
+      ]
+    }
+  ],
+  "unresolvedQuestionIds": [
+    "Q-timeframes",
+    "Q-trend-direction",
+    "Q-risk-account",
+    "Q-leverage-exposure",
+    "Q-retracement",
+    "Q-basic-setup",
+    "Q-entry-trigger",
+    "Q-structural-stop",
+    "Q-breakeven",
+    "Q-targets",
+    "Q-rupture-confirmation"
+  ]
+}
