@@ -4,13 +4,14 @@ import { decodeFunctionData, encodeFunctionResult, erc20Abi, type Abi, type Hex 
 import { PicklerLaunchFactoryAbi, PicklerBondingCurveAbi } from "@pickler/chain";
 import { createPublicTokenTradeDriver } from "../src/launch/public-trading.js";
 import { tokenAgentKey } from "../src/studio/token-launch-store.js";
+import { PublicTokenTradeError } from "@pickler/core";
 import { deploymentCode, uniswapLaunchPolicy } from "./launch-policy-fixture.js";
 const token = "0x" + "a".repeat(40),
   curve = "0x" + "b".repeat(40),
   wallet = "0x" + "c".repeat(40),
   agentId = "11111111-1111-4111-8111-111111111111";
 function fixture(change: Record<string, unknown> = {}) {
-  const policy = uniswapLaunchPolicy();
+  const policy = { ...uniswapLaunchPolicy(), ...(change.policy as object) };
   let calls = 0,
     reserved = false;
   const abis: Record<string, Abi> = {
@@ -58,10 +59,10 @@ function fixture(change: Record<string, unknown> = {}) {
           return "0x7";
         }
         if (method === "eth_maxPriorityFeePerGas") {
-          return "0x1";
+          return change.priorityFee ?? "0x1";
         }
         if (method === "eth_getBlockByNumber") {
-          return { baseFeePerGas: "0x1" };
+          return { baseFeePerGas: change.baseFee ?? "0x1" };
         }
         if (method === "eth_getBalance") {
           return change.native ?? "0xffffffffffffffff";
@@ -145,3 +146,37 @@ for (const [name, change] of Object.entries({
     await assert.rejects(() => fixture(change).driver.prepare(context, input));
   });
 }
+
+for (const side of ["buy", "sell"] as const) {
+  test(
+    "public " + side + " and its approval respect the reviewed cap at observed Monad fees",
+    async () => {
+      for (const allowance of [0n, 2n ** 255n]) {
+        const f = fixture({
+          allowance,
+          baseFee: "0x174876e800",
+          priorityFee: "0x77359400",
+          policy: { maxFeePerGas: "120000000000" },
+        });
+
+        const prepared = await f.driver.prepare(context, { ...input, side });
+
+        assert.equal(BigInt(prepared.transaction.maxFeePerGas), 120_000_000_000n);
+        assert.equal(BigInt(prepared.transaction.maxPriorityFeePerGas), 2_000_000_000n);
+        assert.equal(prepared.quote.approval, allowance === 0n);
+        assert.ok(f.calls() <= 40);
+      }
+    },
+  );
+}
+
+test("public preparation refuses an inadequate current-fee ceiling without transport retries", async () => {
+  const f = fixture({ baseFee: "0x174876e800", priorityFee: "0x77359400" });
+
+  await assert.rejects(
+    f.driver.prepare(context, input),
+    (error: unknown) =>
+      error instanceof PublicTokenTradeError && error.code === "TRADING_UNAVAILABLE",
+  );
+  assert.ok(f.calls() <= 40);
+});
