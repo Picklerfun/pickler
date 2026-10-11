@@ -70,15 +70,17 @@ export function universeReport(
             const missed = events.find(
               (e) => e.kind === "slot-missed" && object(e.data)?.slot === slot,
             );
-            const calls = Object.values(round?.calls ?? {}).filter(
-              (c) =>
-                c.lane.endsWith(`:${m.symbol}`) &&
-                (variant === "sma-jev"
-                  ? c.lane.startsWith("sma-review:")
-                  : variant === "sma-exa-jev"
-                    ? !c.lane.startsWith("sma-review:")
-                    : false),
-            );
+            const calls = Object.values(round?.calls ?? {})
+              .filter((c): c is NonNullable<typeof c> => c !== undefined)
+              .filter(
+                (c) =>
+                  c.lane.endsWith(`:${m.symbol}`) &&
+                  (variant === "sma-jev"
+                    ? c.lane.startsWith("sma-review:")
+                    : variant === "sma-exa-jev"
+                      ? !c.lane.startsWith("sma-review:")
+                      : false),
+              );
             return {
               slot,
               symbol: m.symbol,
@@ -132,7 +134,9 @@ export function universeReport(
   ).flat();
   const reservationsUSD = paperDecimal(
     rounds
-      .flatMap((r) => Object.values(r.calls))
+      .flatMap((r) =>
+        Object.values(r.calls).filter((c): c is NonNullable<typeof c> => c !== undefined),
+      )
       .reduce((sum, c) => sum + paperUnits(c.reservationUsd), 0n),
   );
   const assetResults = record.config.markets.flatMap(({ symbol }) =>
