@@ -106,7 +106,7 @@ export function profileSmaTrace(
 /** Pure selection on the account's initial portfolio. Rejected candidates never replace vetoed entries. */
 export function profileProposals(
   context: PerpsDecisionContext,
-  config: PerpsSmaProfileConfig | PerpsSmaReentryConfig,
+  config: PerpsSmaProfileConfig | PerpsSmaReentryConfig | import("../pts/policy.js").PerpsPtsConfig,
   variant: SmaProfileVariant | SmaReentryVariant,
   blockOpenings = false,
   eligibleOpenings?: ReadonlySet<PerpSymbol>,
@@ -260,7 +260,7 @@ export function profileProposals(
 export function profileFinal(
   initial: PerpsProposal[],
   context: PerpsDecisionContext,
-  config: PerpsSmaProfileConfig | PerpsSmaReentryConfig,
+  config: PerpsSmaProfileConfig | PerpsSmaReentryConfig | import("../pts/policy.js").PerpsPtsConfig,
   variant: SmaProfileVariant | SmaReentryVariant,
   blockOpenings = false,
 ) {
