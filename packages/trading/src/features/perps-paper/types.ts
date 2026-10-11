@@ -49,6 +49,7 @@ export interface PerpsPaperPosition {
   closeReason?: PerpsPaperCloseReason | null;
   /** Margin added to the position after it opened (size-ups, R8), each with its time. */
   sizeUps?: { at: number; margin: string }[];
+  pts?: import("../pts/types.js").PtsPositionState;
 }
 export interface PerpsPaperAccount {
   scope: PerpsPaperScope;
@@ -61,6 +62,9 @@ export interface PerpsPaperAccount {
   /** Trusted local study policy. Absence preserves historical entry behavior. */
   entryPolicy?: "unrestricted-hourly-v1" | "once-hourly-bar-v1";
   consumedEntryKeys?: string[];
+  /** Trusted local v8 policy; never selected by an order intent. */
+  positionPolicy?: "pts-basic-1x-0.2.0";
+  consumedPtsSetups?: string[];
   createdAt: number;
   cash: string;
   peakEquity: string;
@@ -87,6 +91,7 @@ export interface PerpsPaperIntent {
   /** Product opens only; operator sessions refuse anything but 1x. */
   leverage?: number;
   checkId?: string;
+  pts?: import("../pts/types.js").PtsIntentEvidence;
 }
 export interface PerpsPaperAttempt {
   key: string;
