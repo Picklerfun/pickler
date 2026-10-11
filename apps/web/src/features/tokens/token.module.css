@@ -291,3 +291,18 @@
     grid-template-columns: 1fr;
   }
 }
+
+.trade {
+  display: grid;
+  gap: 12px;
+  padding-block: 16px;
+  border-block: 1px solid var(--pk-rule);
+}
+.trade h4 {
+  margin: 0;
+  font-size: 14px;
+}
+.trade .head {
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
