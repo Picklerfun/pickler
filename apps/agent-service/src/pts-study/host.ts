@@ -15,8 +15,7 @@ import { createPriorityPerplStudyData } from "@pickler/agent-runtime/plugins/per
 import { createProfileStudyRunner } from "@pickler/trading/evaluation";
 import {
   inspectPtsHistory,
-  PTS_POLICY,
-  PTS_INTRADAY_POLICY,
+  ptsPolicy,
   ptsVariants,
   ptsVariant,
   ptsConfigVersion,
@@ -154,7 +153,7 @@ export async function runPtsHost(
               coverage,
               publicRequests: 0,
               modelCalls: 0,
-              policyHash: digest(configuration.version === 9 ? PTS_INTRADAY_POLICY : PTS_POLICY),
+              policyHash: digest(ptsPolicy(ptsConfigVersion(configuration))),
             },
             null,
             2,
@@ -196,7 +195,7 @@ export async function runPtsHost(
             state,
             output,
             commit: commit(),
-            policyHash: digest(configuration.version === 9 ? PTS_INTRADAY_POLICY : PTS_POLICY),
+            policyHash: digest(ptsPolicy(ptsConfigVersion(configuration))),
           },
         });
         let published = false;
