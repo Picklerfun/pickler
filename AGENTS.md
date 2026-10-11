@@ -239,3 +239,11 @@ published testnet generation was verified incompatible and stays blocked. Read
 [Token operations](docs/market/token-launch-operations.md) and
 [the Uniswap evidence](docs/market/uniswap-v4-testnet-integration.md). No general/mainnet activation
 is implied. Explicit acceptance scripts in `scripts/contracts` never run during ordinary tests.
+
+## Local experimental PTS
+
+PTS 0.2.0 is an independently versioned, local-only evaluation policy, not a fifth Studio strategy.
+Read [PTS basic paper](apps/agent-service/PTS-BASIC-PAPER.md) and the affected package instructions.
+The original course and disabled 0.1.0 candidate remain immutable. Public history preparation is
+bounded; replay/audit are offline. A prepared configuration does not authorize or start the
+fourteen-day comparison. Missing Perpl history remains ineligible; do not invent candles.
