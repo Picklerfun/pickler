@@ -669,3 +669,12 @@ without enabling launch. The hosted settings-only attachment preserved all exist
 no bucket public-write endpoint or general launch gate is enabled. Do not treat the operator
 write/read smoke test as hosted owner metadata-freeze/passkey acceptance. See
 [the readiness record](../../docs/market/token-launch-readiness-20261010.md).
+
+## Allowlisted launcher readiness configuration
+
+`wrangler.staging.jsonc` pins Monad testnet and the free reviewed RPC and explicitly keeps
+`TOKEN_LAUNCH_ENABLED=false`. The dedicated grant key and dated public policy are provisioned
+only as backend runtime bindings. This configuration does not compose an issuer, call Turnkey,
+freeze owner metadata or authorize a launch while the gate is closed. The one-agent allowlist
+and independent indexer acceptance are recorded in
+[the hosted readiness guide](../../docs/market/token-indexer-hosted-20261011.md).
