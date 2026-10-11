@@ -19,3 +19,6 @@ Cleanup preserves the primary technical/ownership failure. No report or diagnost
 
 Financial replay/audit retains separate fills, positions and movements CSV files with manifest hashes,
 using trading-owned ledger metrics. Controlled financial values are never live strategy returns.
+
+Prepare with an explicit --state rebuilds preserved preparation evidence offline in a new directory.
+Verify history/policy/response byte hashes before copying; never repeat public transport implicitly.
