@@ -29,7 +29,13 @@ import {
   metadataBucket,
 } from "./launch-policy-fixture.js";
 import { tokenAgentKey } from "../src/studio/token-launch-store.js";
-import type { TokenIntent } from "@pickler/core";
+import {
+  createTokenLaunchService,
+  type TokenIntent,
+  type TokenTransaction,
+  type TokenContext,
+} from "@pickler/core";
+import { tokenLaunchAllowsAgent, type UniswapTokenLaunchPolicy } from "../src/launch/policy.js";
 const context = {
   ownerUserId: "owner",
   enabled: true,
@@ -49,8 +55,7 @@ const scope = {
   workspaceId: "workspace",
   agentId: "11111111-1111-4111-8111-111111111111",
 };
-function controlled() {
-  const p = launchPolicy();
+function controlled(p: UniswapTokenLaunchPolicy = launchPolicy()) {
   let wrong = false,
     nonce = "0x0",
     reservations = 0,
@@ -584,4 +589,135 @@ test("trades refuse missing allowance, funds, closed inventory and conflicting c
       new RegExp(expected),
     );
   }
+});
+
+function eligibleCreatorsPolicy() {
+  const { allowedAgents, ...base } = launchPolicy();
+  void allowedAgents;
+  return importPolicy(JSON.stringify({ ...base, version: 3, admission: "eligible_creators" }));
+}
+
+test("eligible-creator policy is explicit and preserves historical allowlists and testnet limits", () => {
+  const p = eligibleCreatorsPolicy();
+  const other = "22222222-2222-4222-8222-222222222222";
+  assert.equal(tokenLaunchAllowsAgent(p, other), true);
+  assert.equal(tokenLaunchAllowsAgent(launchPolicy(), other), false);
+
+  for (const patch of [
+    { admission: "everyone" },
+    { admission: undefined },
+    { allowedAgents: [] },
+    { allowedAgents: [scope.agentId] },
+    { version: 2 },
+    { version: 4 },
+    { chainId: 143 },
+    { venue: "kuru_passive" },
+    { evidence: {} },
+    { quote: { ...launchPolicy().quote, implementation: null } },
+    { maxGasCost: "0" },
+    { rpcRequestsPerOperation: 20 },
+  ]) {
+    assert.throws(() => importPolicy(JSON.stringify({ ...p, ...patch })));
+  }
+  assert.throws(() =>
+    importPolicy(JSON.stringify({ ...launchPolicy(), admission: "eligible_creators" })),
+  );
+});
+
+test("different eligible agents use their own master and agent key without a UUID allowlist", async () => {
+  const policy = eligibleCreatorsPolicy();
+  assert.equal(policy.venue, "uniswap_v4");
+  if (policy.venue !== "uniswap_v4") {
+    throw new Error("Unexpected venue");
+  }
+  const f = controlled(policy);
+  const issuer = createPlatformTokenIssuer(
+    policy,
+    launchKey,
+    createTokenMetadata(metadataBucket(), policy.metadataOrigin),
+    f.driver.checkReadiness!,
+  );
+  for (const agent of [
+    scope,
+    { ...scope, userId: "another-owner", agentId: "22222222-2222-4222-8222-222222222222" },
+  ]) {
+    const master = agent.userId === scope.userId ? context.masterAddress : "0x" + "d".repeat(40);
+    const owned = { ...context, ownerUserId: agent.userId, masterAddress: master };
+    assert.equal(issuer.allowedScope!(agent), true);
+    const authorization = await issuer.issue({
+      scope: agent,
+      context: owned,
+      draft: { id: "draft", version: 1, name: "Agent", ticker: "AGENT", status: "draft" },
+      chainId: 10143,
+      deadline: "9999999999",
+      nonce: "1",
+      operationId: "controlled",
+    });
+    assert.equal(authorization.params.agentKey, tokenAgentKey(10143, agent.agentId));
+    assert.equal(authorization.params.creator, master);
+    assert.equal(authorization.params.creatorFeeRecipient, master);
+    const prepared = await f.driver.prepare(agent, {
+      id: "controlled",
+      action: "launch",
+      context: owned,
+      deadline: "9999999999",
+      authorization,
+    } as TokenIntent);
+    assert.equal(prepared.sender, master);
+    await f.driver.preflight(prepared);
+  }
+});
+
+test("eligible-creator policy cannot bypass core ownership, creator access or publication", async () => {
+  let externalCalls = 0;
+  const policy = eligibleCreatorsPolicy();
+  const issuer = createPlatformTokenIssuer(
+    policy,
+    launchKey,
+    createTokenMetadata(metadataBucket(), policy.metadataOrigin),
+    async () => {
+      externalCalls++;
+      throw new Error("No external work expected");
+    },
+  );
+  const other = { ...scope, agentId: "22222222-2222-4222-8222-222222222222" };
+  for (const patch of [
+    { enabled: false },
+    { published: false },
+    { visibility: "private" as const },
+    { killed: true },
+    { masterAddress: null },
+    { ownerUserId: "not-the-owner" },
+    { confirmationPending: true },
+    {
+      token: {
+        name: "Existing",
+        ticker: "EXIST",
+        chainId: 10143 as const,
+        address: "0x" + "b".repeat(40),
+        imageUri: null,
+        avatar: { accent: "lime", pattern: 1 },
+      },
+    },
+  ] satisfies Partial<TokenContext>[]) {
+    const owned: TokenContext = { ...context, ...patch };
+    const service = createTokenLaunchService({
+      chainId: 10143,
+      issuer,
+      repository: {
+        async transaction(_scope, _chain, work) {
+          return work({
+            context: owned,
+            now: new Date(),
+            draft: async () => null,
+          } as TokenTransaction);
+        },
+      },
+    });
+    await assert.rejects(
+      service.authorize(other, 1, "controlled_denied_001"),
+      /TOKEN_OWNER_REQUIRED|TOKEN_LAUNCH_BLOCKED/,
+    );
+  }
+  assert.equal(externalCalls, 0);
 });
