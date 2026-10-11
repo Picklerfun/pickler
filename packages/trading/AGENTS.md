@@ -178,3 +178,123 @@ persist market identity; selected markets authorize exposure, recorded positions
 and closeable. No financial formula, threshold or lab protocol changes.
 
 See [agent-selected Perpl markets](../../docs/studio-perpl-markets.md).
+
+## Original SMA laboratory
+
+`perps-original-sma-v1` selects one rules 1.0.0 arm and configuration v3. Reuse the original hourly inputs and conservative four-hour operator risk; no multiframe exits. The common runner accepts no models for this protocol, uses an empty call map and reports each cycle through an injected callback. Paid and historical protocols retain their interpretations.
+
+## Local SMA review comparison
+
+Configuration v4 perps-sma-jev-exa-v1 owns three explicit SMA review arms, entry-only material veto and common final gates in features/perps-study/sma-review.ts. Reuse original SMA/risk versions. The fixed eight slots, 27-call limit and USD 0.50 new reservation ceiling include contract checks; no retries.
+
+## Explicit SMA continuation
+
+perpsSlotClock uses recorded operator continuation segments; the original start and completed slots remain unchanged. Runner release carries safe interruption codes for administrative terminal reporting.
+
+## Local universe comparison
+
+Evaluation v5 `perps-sma-jev-exa-all-markets-v1` owns exact SMA separation ranking, at most five positions, common invalid-asset exclusions and asset-specific review lanes in `perps-study/universe.ts`. `perps-paper/universe-acquisition.ts` validates the bounded partial universe. Original risk, sizing and hourly policy remain unchanged. No replacement after veto, resume or paid repeat.
+
+## SMA profiles and selective exposure laboratory
+
+Local `perps-sma-profile-risk-v1` configuration v6 has four independent variants:
+`hourly-legacy`, `hourly-selective`, `fast-legacy`, and `fast-selective`. It composes no
+model, news, signer, or real order capability. Preserve v1–v5 records and monetary reservations.
+The new optional account `riskManagement` is assigned from the trusted study at initialization;
+absence retains historical collective exposure exits. No intent can change it.
+
+Trading exports versioned profiles through `strategies`/`evaluation`, and the bounded selective
+planner through `perps`. The profile runner serializes public observations, full ledger closes,
+common final refreshes, and four portfolio executions; no host may duplicate these policies.
+Selective accounts admit projected post-fill exposure at most 40% of marked equity and reduce
+strictly above 50% using full closes. Global emergency exits and historical risk stay intact.
+
+Read [the local guide](../../apps/agent-service/SMA-PROFILES-RISK.md) for frozen parameters,
+commands, one-shot execution, and report limitations. Tests never make paid provider calls.
+All registered perpetual protocols permit a read-only audit export. Export support does not
+authorize running an older model-decision analyzer against a new profile protocol.
+The profile runner accepts an injected sleep port for controlled scheduling tests. If a cycle
+finishes in a newer minute, it immediately checks that minute instead of sleeping past an
+unexpired admission. Durable slot fencing still rejects duplicates, late slots and recovery.
+Confirmed exits fence reopening by both the originating cycle slot and the confirmation's
+decision slot, including observations that cross an admission boundary.
+
+`acquireUniverseV2` is the opt-in `rest-universe-coherent-20s-v2` acquisition policy. The injected
+absolute deadline includes metadata work before acquisition. Every batch snapshot operation must
+perform a fresh guarded bulk ticker request; returned states update all pairs, and a missing state
+discards that asset's prior snapshot. One recovery operation can precede an unread book, followed by
+that book's turn. Repeated timestamps postpone only their component by two seconds; ready work
+continues instead of a global sleep. Timestamp regressions permanently exclude the affected asset.
+Revalidate the latest components at one final clock and keep all historical v1 behavior unchanged.
+Transport still owns one-second serialized starts and the twenty-four-request cap. Controlled
+counterexamples demonstrate scheduling corrections, not live availability or economic improvement.
+Transient request failures are recorded with their operation code. Previously received components
+may remain eligible only with their original provenance and the final freshness/coherence checks;
+a failed request never advances their dates. A successfully received batch missing a symbol is
+different: it discards that symbol's previous snapshot instead of substituting it.
+
+`auditUniverseCapture`, exported through `evaluation`, owns the pure `perpl-reader-audit-v2`
+analysis of versioned public captures. It emits allowlisted facts and never invokes data ports.
+Recovery intervals require both original ticker and book dates; ticker-only initialization is
+excluded. Optional per-request market IDs remain absent for historical captures. Missing request
+bytes, cache attribution or transport targets are unverifiable, not reconstructed evidence.
+
+## SMA reopening and timing protocol
+
+Configuration v7 (`perps-sma-reentry-latency-v1`) adds `sma-reference` and `sma-once-bar`, both hourly/selective. `features/perps-study/reentry.ts` owns immutable entry policies and the final hourly key; apply its gate after selection, never rerank replacements. `reentry-metrics.ts` checks common slots, pre-maintenance valuation and detected exits. The shared profile runner prioritizes price maintenance before funding/candle preparation and uses `nextPriceCycleDelay` after overruns. Preserve v6 actions and risk semantics. Infrastructure must atomically persist confirmed fills and consumed keys; hosts must not manufacture either. See [local protocol guide](../../apps/agent-service/PERPS-SMA-REENTRY.md).
+
+`reentryEconomics` matches blocked keys only to confirmed reference openings in the same common
+valid slot, direction and final hourly bar. It reads the existing fee, realized-P&L and funding
+postings; missing/duplicate postings or pending funding cannot establish a net result. These are
+actual reference positions, not hypothetical P&L for a blocked proposal or causal fee savings.
+
+## Explicit universe stream acquisition
+
+`perps-paper/stream-universe.ts` owns transport-neutral joint validation and the explicit
+`stream-universe-20s-v1` policy. All components come from a copied generation and one clock;
+no matching historical component is selected. The reader audit accepts stream capture v3 and
+emits `perpl-reader-audit-v3` while preserving older interpretations. No strategy, risk or
+financial calculation changes are part of this selector. See the local WebSocket guide in
+`apps/agent-service/PERPL-UNIVERSE-WEBSOCKET.md`.
+Stream acquisition accepts an injected bounded snapshot-refresh port after invalid evidence.
+The transport owns subscription rate limits; trading revalidates the new components under the
+same clock/deadline and never treats a refresh request as proof that a price timestamp advanced.
+
+The offline reader auditor accepts recorded universe adapter versions 1, 2 and 3. Three-read
+stream diagnostics remain explicitly `DIAGNOSTIC_ONLY_NOT_ACCEPTANCE`; admitting their offline
+analysis never makes them qualification or upgrades a recorded outcome.
+
+The separate capture-only `stream-universe-component-20s-v2` policy checks native component age
+and future bounds independently and requires advancing heartbeat continuity within five seconds.
+It records ticker/book skew without applying that gate. Historical financial `validatePaperFrame`
+and fill simulation retain their original skew rule. Stream report/audit v4 preserves the descriptor,
+strict-rule market/cycle counts and nonfinancial admission; reject contradictory metadata.
+Capture success never admits financial execution or changes a historical outcome.
+
+The separately authorized `stream-universe-component-paper-20s-v1` financial laboratory policy
+is selected by the account's immutable `marketDataPolicy`, never an intent. `simulation.ts`
+validates independently fresh native components plus a copied live heartbeat proof, and hashes
+that proof with the frame. `validatePaperFrameSet` rejects mixed generations/reference clocks;
+historical accounts and product sessions retain strict behavior. Financial math, risk, signals,
+funding and exits are unchanged. `perps-study/component-qualification.ts` revalidates an explicitly
+pinned complete capture at its original clocks; it reconstructs no historical trades and performs
+no I/O. See [paper policy](../../apps/agent-service/PERPL-COMPONENT-PAPER.md).
+
+Component paper validation accepts a separate trusted receipt clock for local heartbeat/copy
+proof. Native component freshness and financial dates retain the financial clock. Equal clocks
+remain the pure-function default; legacy/product formulas and codes are unchanged.
+`PerpsFrameValidationFailure` exports safe allowlisted clock provenance and a bounded reason
+union, never raw provider content. Do not infer missing historical failure clocks.
+
+Component-paper services may use the optional captured-frame execution port to admit, simulate
+and confirm one shared frame in a single fenced transaction. The runner reuses its committed
+view only for this explicit policy; historical and product paths retain their prior lifecycle.
+The port does not acquire fresh data, alter proof timestamps, change prices or financial rules.
+
+Component-paper common observations use the optional `observeCommon` port for both v7 accounts.
+One copied input and financial/receipt clock precede all maintenance; a confirmed transaction
+rollback on demonstrated native/heartbeat aging records an unavailable observation or slot.
+`isComponentFrameExpiry` classifies aging only, never identity/schema, future-date or ownership
+failures. Initial/final marks and funding reuse the common port. A partially committed observation,
+financial maintenance failure or uncertain commit cannot become an omission. Legacy paths remain
+unchanged. Controlled six-hour tests use synthetic evidence and do not establish live availability.
