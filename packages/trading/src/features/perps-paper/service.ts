@@ -31,6 +31,7 @@ export const PRODUCT_FALLBACK_TAKER_FEE = "0.001";
 /** How an open is sized and what it records; the operator default is 100 at 1x, no exits. */
 export interface PerpsPaperTradeOptions {
   entryEvidence?: PerpsPaperIntent["entryEvidence"];
+  pts?: PerpsPaperIntent["pts"];
   onSimulation?: (durationMs: number) => void;
   notional?: string | undefined;
   leverage?: number | undefined;
@@ -66,6 +67,9 @@ export function createPerpsPaperService(
     }
     if (options.checkId !== undefined) {
       intent.checkId = options.checkId;
+    }
+    if (options.pts !== undefined) {
+      intent.pts = options.pts;
     }
     if (options.entryEvidence !== undefined) {
       intent.entryEvidence = options.entryEvidence;
