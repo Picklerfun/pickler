@@ -165,7 +165,11 @@ because node-postgres returns unknown array types as a literal. `test/postgres-p
 covers them against the Docker PostgreSQL, including `onboard` right after `createProfile`.
 
 `src/persistence/agent-directory.ts` exports `PostgresAgentDirectory`, the `AgentDirectory` adapter
-behind the marketplace. It reads one join: `agents.agents` left-joined to `agents.agent_profiles`
+behind the marketplace. Its directory also exposes `launchedToken` using one batched
+`readConfirmedAgentTokens` query with the same canonical event, grant, finality and network
+checks as the persona/Studio token read. Private and killed agents are excluded before this
+query; pending, orphaned and unattributed records are never public token cards. No provider
+transport runs on directory reads. Identity reads one join: `agents.agents` left-joined to `agents.agent_profiles`
 (an agent created before profiles existed is still an agent, and gets the profile's defaults), to
 `identity.profiles` for the creator's handle, and to `market.tokens` restricted to `pre_graduation`
 and `graduated`. Every summary, persona and directory entry carries the agent `id` and its
