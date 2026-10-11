@@ -1,3 +1,4 @@
+import type { PublicTokenTransaction } from "./signer";
 import type { ConnectResult } from "./connect";
 
 /**
@@ -77,6 +78,7 @@ export type PrfSource = () => Promise<PrfResult | null>;
 export interface OpenedKey {
   address: string;
   signMessage(message: string): Promise<string>;
+  signTransaction?(transaction: PublicTokenTransaction): Promise<`0x${string}`>;
   /** Wipes the key inside the signing session. */
   end(): void;
 }
