@@ -27,6 +27,7 @@ import { keepAwake } from "../paper-study/comparison-host.js";
 import { createReportQueue } from "../perps-study/report-queue.js";
 import { digest, commit, newDirectory, publish } from "./files.js";
 import { createPtsPartsExport } from "./parts.js";
+import { createPtsReportTrigger } from "./report-trigger.js";
 import type { PtsCommandInput } from "./index.js";
 export async function prepareDatabase(config: PerpsPtsConfig, envFile: string, metadata: unknown) {
   const research = new PostgresResearchStore(await localStudyDatabase(resolve(envFile)));
@@ -263,6 +264,14 @@ export async function runPtsHost(
       },
     });
     reports = createReportQueue(report, (error) => controller.abort(error));
+    const reportTrigger = createPtsReportTrigger(
+      {
+        lastRoundSlot: view.record.lastRoundSlot,
+        lastAttemptedSlot: view.record.lastAttemptedSlot,
+        processState: state,
+      },
+      () => reports!.request(),
+    );
     await createProfileStudyRunner({
       study,
       paper: new PostgresPerpsPaperStore(research.pool),
@@ -292,10 +301,14 @@ export async function runPtsHost(
             : current.decisionStopReason || current.stopRequested || Date.now() >= current.endsAt!
               ? "closing"
               : "active";
-        if (Date.now() >= current.endsAt! || current.lastRoundSlot !== view.record.lastRoundSlot) {
-          view.record.lastRoundSlot = current.lastRoundSlot;
-          reports!.request();
-        }
+        reportTrigger.update(
+          {
+            lastRoundSlot: current.lastRoundSlot,
+            lastAttemptedSlot: current.lastAttemptedSlot,
+            processState: state,
+          },
+          Date.now() >= current.endsAt!,
+        );
       },
     }).run(configuration, signal);
     state = "finished";
