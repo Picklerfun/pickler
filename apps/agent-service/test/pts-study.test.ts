@@ -1,3 +1,9 @@
+import { exportPerpsAuditParts } from "@pickler/infrastructure/perps-lab";
+import { createPtsPartsExport, ptsPartsPayloadHash } from "../src/pts-study/parts.js";
+import { digest } from "../src/pts-study/files.js";
+import { mkdtemp } from "node:fs/promises";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
@@ -331,3 +337,40 @@ for (const version of [8, 9] as const) {
     await x.study.release(x.view.record.config, x.lease);
   });
 }
+
+test("paged PTS export keeps one read-only snapshot across concurrent fixture writes and sink failures", async (t) => {
+  const x = await setup(t, false, false, 9);
+  const scope = x.view.record.config;
+  await x.runner.cycle(scope, x.lease, new AbortController().signal);
+  const before = await exportPerpsAudit(x.db.pool, scope);
+  const directory = await mkdtemp(join(tmpdir(), "pts-consistent-parts-"));
+  const exporter = await createPtsPartsExport(directory, "controlled-paged-export");
+  let inserted = false;
+  await exportPerpsAuditParts(x.db.pool, scope, async (part) => {
+    if (part.kind === "record" && !inserted) {
+      inserted = true;
+      await x.study.event(
+        scope,
+        x.lease,
+        "controlled-during-export",
+        "controlled-export-marker",
+        {},
+      );
+    }
+    await exporter.emit(part);
+  });
+  const manifest = await exporter.finish();
+  assert.equal(manifest.payloadHash, digest(before));
+  assert.equal(await ptsPartsPayloadHash(directory, manifest), digest(before));
+  const after = await exportPerpsAudit(x.db.pool, scope);
+  assert.equal(after.study.events.length, before.study.events.length + 1);
+  assert.deepEqual(after.accounts, before.accounts);
+  await assert.rejects(
+    exportPerpsAuditParts(x.db.pool, scope, async () => {
+      throw Error("controlled sink failure");
+    }),
+    /controlled sink failure/,
+  );
+  assert.deepEqual(await exportPerpsAudit(x.db.pool, scope), after);
+  await x.study.release(scope, x.lease, "controlled-export-complete");
+});
