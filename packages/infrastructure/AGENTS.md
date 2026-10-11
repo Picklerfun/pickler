@@ -727,3 +727,8 @@ verify the saved common evidence, native quantity and account policy, then confi
 basis, reduction/target sequence, stop and consumed setup in one transaction. No intent may switch
 policy; legacy accounts cannot acquire PTS exceptions. Unknown funding and historic monetary
 reservations remain unchanged. Tests use disposable local PostgreSQL databases only.
+
+Independent PTS v9 accounts use `pts-intraday-1x-0.1.0`; v8 remains basic. Configuration, account,
+intent/setup versions and final gated evidence must agree under the same transactional fence.
+Version-qualified setup consumption and partial/funding postings remain atomic with fills. The
+24-hour intraday clock uses the shared five-minute calendar, zero calls and no budget reset.
