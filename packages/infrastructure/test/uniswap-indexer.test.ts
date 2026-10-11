@@ -350,3 +350,94 @@ test("bounded V4 catch-up advances and replays PostgreSQL cursors without wideni
     await store.close();
   }
 });
+
+for (const refusal of ["daily quota", "lost lease"] as const) {
+  test(`group admission blocks ${refusal} before another range or canonical write`, async (t) => {
+    const f = await tokenFixture(t);
+    const policy = uniswapLaunchPolicy();
+    const store = new PostgresLaunchIndexStore(f.store.pool.options.connectionString!);
+    let transported = 0;
+    let headerReads = 0;
+    const newOwner = "02e522c3-833c-4b1e-a92e-3bb71c2d00ca";
+    if (refusal === "daily quota") {
+      await store.pool.query(
+        "INSERT INTO launch.indexer_admission(chain,day,requests) VALUES('eip155:10143','2000-01-01',1000)",
+      );
+    }
+    const rpc = {
+      async call(method: string, params: unknown[]) {
+        transported++;
+        const quota = (await store.pool.query("SELECT requests FROM launch.indexer_admission"))
+          .rows[0];
+        assert.ok(quota.requests >= transported);
+        if (method === "eth_chainId") {
+          return "0x279f";
+        }
+        if (method === "eth_getCode") {
+          return deploymentCode;
+        }
+        if (method === "eth_getStorageAt") {
+          return "0x" + "0".repeat(24) + policy.quote.implementation!.address.slice(2);
+        }
+        if (method === "eth_getBlockByNumber") {
+          const number = params[0] === "latest" ? 350n : BigInt(String(params[0]));
+          if (params[0] !== "latest") {
+            if (++headerReads === 1 && refusal === "lost lease") {
+              await store.pool.query(
+                "UPDATE launch.indexer_admission SET owner=$1,expires_at=clock_timestamp()+interval '60 seconds'",
+                [newOwner],
+              );
+            }
+          }
+          return {
+            number: "0x" + number.toString(16),
+            hash: hash(number),
+            parentHash: hash(number - 1n),
+            timestamp: "0x6acf42b5",
+          };
+        }
+        throw new Error("Unexpected admission RPC " + method);
+      },
+    };
+    const indexerPolicy = {
+      version: 2,
+      maxBlocks: 100,
+      maxPassesPerTick: 1,
+      rpcRequestsPerPass: 400,
+      rpcRequestsPerDay: refusal === "daily quota" ? 14 : 1000,
+      leaseSeconds: 60,
+      maxCurvesPerPass: 1,
+    };
+
+    try {
+      await assert.rejects(
+        runTokenIndexer({
+          store,
+          rpc,
+          launchPolicy: JSON.stringify(policy),
+          indexerPolicy: JSON.stringify(indexerPolicy),
+        }),
+        /INDEX_LEASE_OR_DAILY_BUDGET_UNAVAILABLE/,
+      );
+
+      assert.ok(headerReads <= 4, "Another group transported after admission was refused");
+      assert.equal(
+        (await store.pool.query("SELECT count(*) FROM market.chain_blocks")).rows[0].count,
+        "0",
+      );
+      assert.equal(
+        await store.readCursor("eip155:10143", policy.factory.address, "token-launch-v1"),
+        null,
+      );
+      const quota = (await store.pool.query("SELECT requests,owner FROM launch.indexer_admission"))
+        .rows[0];
+      assert.equal(quota.requests, transported);
+      assert.equal(quota.owner, refusal === "lost lease" ? newOwner : null);
+      if (refusal === "daily quota") {
+        assert.ok(quota.requests <= 14);
+      }
+    } finally {
+      await store.close();
+    }
+  });
+}
