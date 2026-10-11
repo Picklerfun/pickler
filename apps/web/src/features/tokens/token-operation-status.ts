@@ -38,7 +38,7 @@ export function tokenOperationStatus(operation: TokenOperationDto) {
     if (operation.error === "EXPIRED_LAUNCH_NOT_CREATED") {
       title = "Launch attempt expired";
     } else if (operation.error === "SIGNATURE_REJECTED") {
-      title = "Signature rejected";
+      title = "Signing request rejected";
     } else if (!operation.activityId && !operation.txHash) {
       title = "Preparation failed";
     }
