@@ -378,17 +378,23 @@ export function ptsFinancialAudit(accounts: Record<string, PerpsPaperView | unde
       decimal(
         view.movements.filter((m) => m.kind === kind).reduce((n, m) => n + units(m.delta), 0n),
       );
+    const recordedFundingAUSD = sum("funding");
+    const recordedNetRealizedAUSD = decimal(
+      units(sum("realized-pnl")) + units(sum("fee")) + units(recordedFundingAUSD),
+    );
+    const fundingKnown = !view.account.fundingPending && !view.account.fundingDisputed;
     return {
       variant,
       status: issues.length ? "DIVERGENCE" : "VERIFIED_RECORDED_LEDGER",
       issues,
       grossRealizedAUSD: sum("realized-pnl"),
       feesAUSD: sum("fee"),
-      fundingAUSD: sum("funding"),
-      netRealizedAUSD: decimal(
-        units(sum("realized-pnl")) + units(sum("fee")) + units(sum("funding")),
-      ),
+      recordedFundingAUSD,
+      recordedNetRealizedAUSD,
+      fundingAUSD: fundingKnown ? recordedFundingAUSD : null,
+      netRealizedAUSD: fundingKnown && !issues.length ? recordedNetRealizedAUSD : null,
       fundingPending: view.account.fundingPending,
+      fundingDisputed: !!view.account.fundingDisputed,
       positions: view.account.positions,
     };
   });
