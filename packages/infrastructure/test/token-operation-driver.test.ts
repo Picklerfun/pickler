@@ -255,9 +255,36 @@ test("driver checks the complete binding graph, prepares exact factory calldata 
     decodeFunctionData({ abi: PicklerLaunchFactoryAbi, data: tx.data! }).functionName,
     "createLaunch",
   );
+  const activityBody = JSON.parse(prepared.activity.body);
+  assert.notEqual(context.masterAddress, launcherMaster.address);
+  assert.equal(activityBody.parameters.signWith, launcherMaster.address);
+  assert.equal(activityBody.parameters.unsignedTransaction, prepared.unsignedTransaction);
+  assert.equal(prepared.sender, context.masterAddress);
+
   const raw = await launcherMaster.signTransaction(
     tx as Parameters<typeof launcherMaster.signTransaction>[0],
   );
+  f.forwarder.forward = async (request) => {
+    assert.equal(request.body, prepared.activity.body);
+    assert.equal(JSON.parse(request.body).parameters.signWith, launcherMaster.address);
+    return {
+      id: "controlled-signing-id",
+      fingerprint: "controlled",
+      organizationId: "org",
+      type: "ACTIVITY_TYPE_SIGN_TRANSACTION_V2",
+      status: "ACTIVITY_STATUS_COMPLETED",
+      result: { signTransactionResult: { signedTransaction: raw.slice(2) } },
+    };
+  };
+  const signed = await f.driver.sign(prepared, {
+    ...prepared.activity,
+    stamp: { stampHeaderName: "X-Stamp-Webauthn", stampHeaderValue: "controlled-stamp" },
+  });
+  assert.deepEqual(signed, {
+    activityId: "controlled-signing-id",
+    status: "completed",
+    rawTransaction: raw,
+  });
   assert.match(await f.driver.verify(prepared, raw), /^0x[0-9a-f]{64}$/);
   f.nonce();
   await assert.rejects(f.driver.preflight(prepared));
