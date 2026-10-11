@@ -1,3 +1,4 @@
+import { isPtsAccount, ptsQuantityAtBlock, updatePtsStop } from "../pts/account.js";
 import { PilotError } from "@pickler/core";
 import type { PerpSnapshot, PerpOrderBook, PerpFundingHistory, PerpSymbol } from "@pickler/core";
 import type {
@@ -167,10 +168,14 @@ export function validatePaperFrame(
   network: string,
   symbol: PerpSymbol,
   now: number,
-  policy?: PerpsPaperDataPolicy,
+  policy?: PerpsPaperDataPolicy | boolean,
   receiptNow = now,
   reducing = false,
 ) {
+  if (typeof policy === "boolean") {
+    reducing = policy;
+    policy = undefined;
+  }
   if (policy !== undefined) {
     if (policy !== COMPONENT_PAPER_POLICY) {
       failure("INVALID_INPUT");
@@ -314,7 +319,16 @@ export function simulatePerpsFill(
   let quantity: bigint;
   if (intent.kind === "open") {
     // Upper price bound keeps the fill within the intent's notional for either side.
-    quantity = ((u(intent.notional) * S) / ((best * 10050n) / 10000n) / step) * step;
+    if (intent.pts?.quantity !== undefined && !isPtsAccount(account)) {
+      failure("INVALID_INPUT");
+    }
+    quantity =
+      isPtsAccount(account) && intent.pts?.quantity !== undefined
+        ? u(intent.pts.quantity)
+        : ((u(intent.notional) * S) / ((best * 10050n) / 10000n) / step) * step;
+    if (quantity % step !== 0n) {
+      failure("INVALID_INPUT");
+    }
   } else {
     const position = account.positions.find(
       (p) => p.closedAt === null && p.symbol === intent.symbol && p.side === intent.side,
@@ -322,7 +336,15 @@ export function simulatePerpsFill(
     if (!position) {
       failure("NO_POSITION");
     }
-    quantity = u(position!.quantity);
+    if (intent.pts?.quantity !== undefined && !isPtsAccount(account)) {
+      failure("INVALID_INPUT");
+    }
+    quantity = u(
+      isPtsAccount(account) ? (intent.pts?.quantity ?? position!.quantity) : position!.quantity,
+    );
+    if (quantity > u(position!.quantity) || quantity % step !== 0n) {
+      failure("INVALID_INPUT");
+    }
   }
   if (quantity <= 0n) {
     failure("QUANTITY_TOO_SMALL");
@@ -357,7 +379,7 @@ export function simulatePerpsFill(
   const fee = d(-u(paperCash(d((-notional * u(feeRate)) / S))));
   const average = (notional * S) / quantity;
   return {
-    ...(account.scope.sessionId === "product"
+    ...(account.scope.sessionId === "product" || isPtsAccount(account)
       ? { market: structuredClone(frame.snapshot.market) }
       : {}),
     quantity: d(quantity),
@@ -400,7 +422,15 @@ export function applyPaperObservation(
     validatePaperFrameSet(observation.frames, a.scope.network, now, a.marketDataPolicy, receiptNow);
   }
   for (const frame of observation.frames) {
-    validatePaperFrame(frame, a.scope.network, frame.snapshot.market.symbol, now, a.marketDataPolicy, receiptNow, a.positions.some((p) => p.symbol === frame.snapshot.market.symbol));
+    validatePaperFrame(
+      frame,
+      a.scope.network,
+      frame.snapshot.market.symbol,
+      now,
+      a.marketDataPolicy,
+      receiptNow,
+      a.positions.some((p) => p.symbol === frame.snapshot.market.symbol),
+    );
     for (const p of a.positions.filter(
       (p) => p.closedAt === null && p.symbol === frame.snapshot.market.symbol,
     )) {
@@ -417,6 +447,9 @@ export function applyPaperObservation(
       }
       p.mark = frame.snapshot.ticker.mark;
       p.markAt = frame.snapshot.ticker.provenance.providerTimestamp;
+      if (isPtsAccount(a)) {
+        updatePtsStop(p, frame, now);
+      }
     }
   }
   let pending = observation.marksOnly ? a.fundingPending : (a.fundingDisputed ?? false);
@@ -449,7 +482,8 @@ export function applyPaperObservation(
       }
       const movementKey = `funding:${p.id}:${event.eventBlock}`;
       const evidence = {
-        model: "quantity-index-rate-v1",
+        model: isPtsAccount(a) ? "quantity-timeline-index-rate-v2" : "quantity-index-rate-v1",
+        ...(isPtsAccount(a) ? { quantity: ptsQuantityAtBlock(p, event.eventBlock) } : {}),
         symbol: p.symbol,
         positionId: p.id,
         eventBlock: event.eventBlock,
@@ -463,7 +497,8 @@ export function applyPaperObservation(
         if (
           old.rate !== evidence.rate ||
           old.index !== evidence.index ||
-          old.appliesAt !== evidence.appliesAt
+          old.appliesAt !== evidence.appliesAt ||
+          (isPtsAccount(a) && old.quantity !== evidence.quantity)
         ) {
           a.fundingDisputed = true;
           pending = true;
@@ -472,7 +507,14 @@ export function applyPaperObservation(
       }
       const delta = paperCash(
         d(
-          ((u(paperProduct(p.quantity, event.index)) * u(event.rate)) / S) *
+          ((u(
+            paperProduct(
+              isPtsAccount(a) ? ptsQuantityAtBlock(p, event.eventBlock) : p.quantity,
+              event.index,
+            ),
+          ) *
+            u(event.rate)) /
+            S) *
             (p.side === "long" ? -1n : 1n),
         ),
       );
