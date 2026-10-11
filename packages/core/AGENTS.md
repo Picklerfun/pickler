@@ -487,3 +487,11 @@ PositionManager/NFT identity. Historical Kuru data remains distinct. Prepared pr
 may carry a configuration hash that the infrastructure driver fences again before signing and
 submission. These additive contracts carry no provider objects or credentials; business admission
 and financial math remain unchanged. See [the V4 guide](../../docs/market/uniswap-v4-testnet-integration.md).
+
+## Owner curve trading
+
+Token operations include buy/sell and separate exact-amount approvals. Core validates positive uint256
+atomic amounts and explicit 1–100 bps tolerance, freezes them in the private intent and binds them
+to idempotency. Minimum output rounds up so tolerance never widens. Known preparation refusals
+return an unsent failed operation; signing and sending still require fresh ownership/context checks.
+A changed confirmed token identity blocks submission. No automatic retries or new model actions.

@@ -122,6 +122,31 @@ try {
       await page.getByRole("heading", { name: "My preview token", exact: true }).count(),
       1,
     );
+    const trade = page.getByRole("region", { name: "Trade token", exact: true });
+    await trade.getByRole("button", { name: "Approve AUSD amount", exact: true }).click();
+    await operations.getByText("Exact amount approval · no trade", { exact: true }).waitFor();
+    await operations.getByRole("button", { name: "Continue preview", exact: true }).click();
+    await operations.getByRole("button", { name: "Check status", exact: true }).click();
+    await trade.getByRole("button", { name: "Review buy", exact: true }).click();
+    await operations.getByText("Minimum you receive", { exact: true }).waitFor();
+    await operations.screenshot({ path: path.join(output, `trade-review-${width}.png`) });
+    await operations.getByRole("button", { name: "Continue preview", exact: true }).click();
+    await operations.getByRole("button", { name: "Check status", exact: true }).click();
+    await trade.getByRole("button", { name: "Sell", exact: true }).click();
+    await trade.getByRole("button", { name: "Review sell", exact: true }).click();
+    await operations.getByText("Sell token", { exact: true }).waitFor();
+    const cancelTrade = operations.getByRole("button", { name: "Cancel", exact: true });
+    await cancelTrade.focus();
+    await page.keyboard.press("Enter");
+    assert.equal(
+      await trade.getByRole("textbox", { name: "Amount · DEMO", exact: true }).inputValue(),
+      "1000",
+    );
+    assert.equal(
+      await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+      true,
+      `Trade review fits ${width}`,
+    );
     // Start a fresh empty fixture after confirming the controlled operation.
     await page.goto(`${base}/studio/agents/preview-live/token?stage=perpl-token-empty`);
     await name.waitFor();
@@ -170,7 +195,7 @@ try {
   assert.deepEqual(errors, [], "No client exceptions");
   assert.deepEqual(forbidden, [], "Token previews never consult APIs or external providers");
   console.log(
-    "Token previews passed: both Studio/public states, fixed 21-million supply, live details, controlled launch/cancel/failure, saved drafts, keyboard, stable layout and mobile.",
+    "Token previews passed: both Studio/public states, fixed 21-million supply, live details, controlled launch/cancel/failure, exact approvals, buy/sell review, saved drafts, keyboard, stable layout and mobile.",
   );
 } catch (error) {
   writeFileSync(

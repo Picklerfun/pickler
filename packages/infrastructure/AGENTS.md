@@ -704,3 +704,13 @@ still commit atomically; no RPC work runs inside that transaction. Never replace
 ancestry validation with sparse sampling or advance a cursor to avoid backfill. The hosted
 capacity measurement and explicit closed launcher gate are recorded in
 [the dated readiness guide](../../docs/market/token-indexer-hosted-20261011.md).
+
+## Owner curve swap driver
+
+Migration 0046 extends the private operations action constraint; no historical payload is rewritten.
+The token driver resolves the confirmed factory launch and checks its agent key, creator/master,
+quote asset and preset before trading. Quotes, balance and allowance come from bounded RPC reads;
+only exact-input swaps and exact-amount ERC20 approvals are encoded. Minimum output and recipient
+are frozen before the passkey. The exact transaction is simulated again before signing and sending.
+Closed curves, inadequate allowance/balance and exhausted inventory fail without a signature.
+Uncertain signing/broadcast recovery retains the existing one-time claims. Indexer behavior is unchanged.

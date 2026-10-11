@@ -7,6 +7,8 @@ import {
   type TokenStateDto,
   type TokenOperationDto,
 } from "@pickler/api-schema";
+import { TokenTradeForm } from "./token-trade-form";
+import simulatedQuotes from "./trade-quotes.json";
 import { studioApi } from "../studio/api";
 import { useStudioMemory } from "../studio/routing/memory";
 import styles from "./token.module.css";
@@ -102,7 +104,11 @@ export function TokenOperationControls({
       setBusy(false);
     }
   }
-  async function prepare(kind: TokenOperationDto["action"], asset: "ausd" | "agent" = "ausd") {
+  async function prepare(
+    kind: TokenOperationDto["action"],
+    asset: "ausd" | "agent" = "ausd",
+    trade?: { amount: string; slippageBps: number },
+  ) {
     if (preview) {
       retain({
         id: "10000000-0000-4000-8000-000000000001",
@@ -114,6 +120,16 @@ export function TokenOperationControls({
         blockHash: null,
         error: null,
         deadline: "9999999999",
+        ...(trade
+          ? {
+              quote: {
+                ...simulatedQuotes[kind === "sell" || kind === "approve_sell" ? "sell" : "buy"],
+                side:
+                  kind === "sell" || kind === "approve_sell" ? ("sell" as const) : ("buy" as const),
+                approval: kind.startsWith("approve_"),
+              },
+            }
+          : {}),
         transaction: {
           chainId: 10143,
           sender: state.masterAddress!,
@@ -124,18 +140,19 @@ export function TokenOperationControls({
       return;
     }
     const keyScope = scope + ":request";
-    const existing = memory.outcome<{ key: string; kind: string; asset: string } | null>(
-      keyScope,
-      null,
-    );
-    const key =
-      existing?.kind === kind && existing.asset === asset ? existing.key : crypto.randomUUID();
-    memory.setOutcome(keyScope, { key, kind, asset });
+    const existing = memory.outcome<{ key: string; signature: string } | null>(keyScope, null);
+    const signature = JSON.stringify({ kind, asset, trade, version: state.draft?.version ?? 0 });
+    const key = existing?.signature === signature ? existing.key : crypto.randomUUID();
+    memory.setOutcome(keyScope, { key, signature });
     const result = tokenOperationPreparedSchema.parse(
       await studioApi(url, {
         method: "POST",
         headers: { "Idempotency-Key": key },
-        body: JSON.stringify({ action: kind, asset, expectedVersion: state.draft?.version ?? 0 }),
+        body: JSON.stringify({
+          action: kind,
+          ...(trade ? { trade } : { asset }),
+          expectedVersion: state.draft?.version ?? 0,
+        }),
       }),
     );
     retain(result.operation);
@@ -262,12 +279,66 @@ export function TokenOperationControls({
       {current && (
         <div role="status">
           <strong>{labels[current.status]}</strong>
+          {current.status === "finalized" && current.quote && (
+            <p className={styles.quiet}>
+              {current.quote.approval
+                ? "Amount approved. Review the trade to continue."
+                : current.quote.side === "buy"
+                  ? "Purchase confirmed."
+                  : "Sale confirmed."}
+            </p>
+          )}
           {current.txHash && (
             <p className={styles.quiet}>
               Transaction {current.txHash.slice(0, 10)}…{current.txHash.slice(-6)}
             </p>
           )}
         </div>
+      )}
+      {current?.quote && active && (
+        <dl className={styles.details} aria-label="Trade review">
+          <div className={styles.detail}>
+            <dt>Action</dt>
+            <dd>
+              {current.quote.approval
+                ? "Exact amount approval · no trade"
+                : current.quote.side === "buy"
+                  ? "Buy token"
+                  : "Sell token"}
+            </dd>
+          </div>
+          <div className={styles.detail}>
+            <dt>{current.quote.approval ? "Allowance" : "You pay"}</dt>
+            <dd>
+              {units(current.quote.amount, current.quote.side === "buy" ? 6 : 18)}{" "}
+              {current.quote.side === "buy" ? "AUSD" : state.token?.ticker}
+            </dd>
+          </div>
+          {!current.quote.approval && (
+            <>
+              <div className={styles.detail}>
+                <dt>Expected output · after fee</dt>
+                <dd>
+                  {units(current.quote.expectedOutput, current.quote.side === "buy" ? 18 : 6)}{" "}
+                  {current.quote.side === "buy" ? state.token?.ticker : "AUSD"}
+                </dd>
+              </div>
+              <div className={styles.detail}>
+                <dt>Minimum you receive</dt>
+                <dd>
+                  {units(current.quote.minimumOutput, current.quote.side === "buy" ? 18 : 6)}{" "}
+                  {current.quote.side === "buy" ? state.token?.ticker : "AUSD"}
+                </dd>
+              </div>
+              <div className={styles.detail}>
+                <dt>Slippage / curve fee</dt>
+                <dd>
+                  {current.quote.slippageBps / 100}% / {current.quote.feeBps / 100}%
+                </dd>
+              </div>
+            </>
+          )}
+        </dl>
       )}
       {current?.transaction && active && (
         <dl className={styles.details}>
@@ -288,6 +359,33 @@ export function TokenOperationControls({
             <dd>{units(current.transaction.maximumGasCost, 18)} MON</dd>
           </div>
         </dl>
+      )}
+      {state.token && (
+        <TokenTradeForm
+          agentId={agentId}
+          state={state}
+          preview={preview}
+          disabled={!usable || busy || !!active || !!state.venue?.readyToGraduate}
+          prepare={(kind, trade) => void action(() => prepare(kind, "ausd", trade))}
+        />
+      )}
+      {current?.status === "failed" && current.error && (
+        <p role="alert">
+          {(
+            {
+              APPROVAL_REQUIRED: "Approve the amount first, then review the trade.",
+              APPROVAL_NOT_REQUIRED: "This amount is already approved. Review the trade.",
+              INSUFFICIENT_TOKEN_BALANCE:
+                "The master wallet does not have enough of the input token.",
+              CURVE_CLOSED: "The curve is complete; no more curve trades are available.",
+              TRADE_TOO_SMALL: "This amount produces no output. Enter a larger amount.",
+              EXCEEDS_CURVE_INVENTORY:
+                "This purchase exceeds the remaining sale inventory. Enter a smaller amount.",
+              PREFLIGHT_REJECTED:
+                "The transaction no longer passes its checks. No transaction was signed; review a new trade.",
+            } as Record<string, string>
+          )[current.error] ?? "The operation could not be prepared. Your form is kept."}
+        </p>
       )}
       {state.token && (
         <dl className={styles.details}>

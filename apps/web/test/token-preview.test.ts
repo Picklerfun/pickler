@@ -73,3 +73,39 @@ test("unknown economics versions are refused instead of displaying unreviewed te
     false,
   );
 });
+
+test("trade DTOs refuse arbitrary contracts, zero/overflow amounts and implicit slippage", async () => {
+  const { tokenOperationInputSchema } = await import("@pickler/api-schema");
+  const valid = {
+    action: "buy",
+    expectedVersion: 0,
+    trade: { amount: "1000000", slippageBps: 50 },
+  };
+  assert.equal(tokenOperationInputSchema.safeParse(valid).success, true);
+  for (const input of [
+    { ...valid, recipient: "0x" + "8".repeat(40) },
+    { ...valid, asset: "ausd" },
+    { ...valid, trade: undefined },
+    { ...valid, action: "launch" },
+    ...["0", "01", "1e6", "-1", (2n ** 256n).toString()].map((amount) => ({
+      ...valid,
+      trade: { ...valid.trade, amount },
+    })),
+    ...[0, 101, 1.5].map((slippageBps) => ({ ...valid, trade: { ...valid.trade, slippageBps } })),
+  ]) {
+    assert.equal(tokenOperationInputSchema.safeParse(input).success, false);
+  }
+  const { readFileSync } = await import("node:fs");
+  const { execFileSync } = await import("node:child_process");
+  const quotes = JSON.parse(
+    readFileSync(new URL("../src/features/tokens/trade-quotes.json", import.meta.url), "utf8"),
+  );
+  assert.equal(quotes.buy.amount, "1000000");
+  assert.equal(quotes.sell.slippageBps, 50);
+  execFileSync(process.execPath, [
+    "--import",
+    "tsx",
+    "scripts/generate-token-economics.mjs",
+    "--check",
+  ]);
+});

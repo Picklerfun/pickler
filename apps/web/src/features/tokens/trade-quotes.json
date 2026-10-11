@@ -1,0 +1,24 @@
+{
+  "buy": {
+    "amount": "1000000",
+    "slippageBps": 50,
+    "side": "buy",
+    "approval": false,
+    "expectedOutput": "1897349086497216274510",
+    "minimumOutput": "1887862341064730193138",
+    "balance": "100000000",
+    "allowance": "0",
+    "feeBps": 100
+  },
+  "sell": {
+    "amount": "1000000000000000000000",
+    "slippageBps": 50,
+    "side": "sell",
+    "approval": false,
+    "expectedOutput": "516491",
+    "minimumOutput": "513909",
+    "balance": "10000000000000000000000",
+    "allowance": "0",
+    "feeBps": 100
+  }
+}
