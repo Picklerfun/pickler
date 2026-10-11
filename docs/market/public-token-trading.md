@@ -9,7 +9,11 @@ public trades never use Turnkey, the grant authority or a server-held signing ke
 Buy input is six-decimal AUSD, sell input is the eighteen-decimal agent token, and gas is MON.
 Only active curves on Monad testnet (10143) are supported. Curve completion refuses preparation;
 DEX swaps and exact-output final inventory purchases remain separate work. Mainnet is unavailable.
-No indexer configuration, migration, remote gate or real transaction is changed by this delivery.
+The staging source explicitly enables testnet public preparation with a 10,000-call
+daily RPC reserve ceiling. At 40 calls reserved per preparation, this admits at most 250 reviews
+per day. Wallet signatures remain explicit; this setting never enables mainnet.
+The indexer source retains its already-enabled testnet gate; its existing admission policy
+and cursors remain unchanged.
 
 ## Preparation and signing
 
@@ -67,6 +71,15 @@ Browser wallets use their own provider. These are explicit user actions and neve
 credentials or enable model/provider spending. Remote public activation and an actual visitor
 purchase/sale still require operator readiness and human wallet confirmation.
 
+## Landing discovery
+
+The landing reads `/api/v1/marketplace/directory` alongside public activity. Its Agent tokens
+section displays only the optional `launchedToken` summary, checked against canonical confirmed
+LaunchCreated events, stored grants and the configured network in one batched database query.
+Cards lead to `/agents/:handle`, where the existing public Buy/Sell form resolves the token again.
+Private, unconfirmed, orphaned and unattributed launches are excluded. A failed directory read
+shows unavailable rather than an empty token claim. No RPC request runs merely to view the landing.
+
 ## Username recovery
 
 The username field remains editable after a taken-name response. Choose another username clears
@@ -85,11 +98,19 @@ npm run build:shared
 node --import tsx --test packages/core/test/public-token-trading.test.ts packages/infrastructure/test/public-token-trading.test.ts apps/web/test/public-token-transaction.test.ts apps/web/test/public-trade-memory.test.ts apps/web/test/mera-token-transaction.test.ts apps/web/test/claim-handle.test.ts workers/api/test/public-token-trading-route.test.ts
 TEST_DATABASE_URL=postgresql://pickler:pickler_local_only@127.0.0.1:55440/pickler node --import tsx --test packages/infrastructure/test/public-token-rpc-quota.test.ts
 node --import tsx scripts/design/public-token-trading.mjs http://localhost:3005
+npm run build --workspace=@pickler/web
+node --import tsx scripts/design/token-discovery.mjs
 ```
 
 The PostgreSQL command requires a disposable loopback database with CREATEDB. The rendered harness
 requires the loopback fixture API and web server, and globally installed Playwright as documented
 by Design. Omitting the URL starts its own servers on 8799/3001; existing servers are not replaced.
+`token-discovery.mjs` starts its own production web on 3012 and a strict loopback fixture API
+on 8802. It checks empty, unavailable and confirmed listings, keyboard navigation to the public
+Buy/Sell panel, and overflow at 390/1280 pixels. It refuses occupied ports and external requests,
+stops only the processes it created and writes diagnostics under
+`scripts/design/.shots/diagnostics/token-discovery`. It needs the production web build above.
+
 All wallet requests, quote responses and receipt RPCs are controlled. Unknown/external requests
 are refused. The fixture-only `/agents/public_trade` exercises the actual unsigned wallet path;
 it is not a production token or a provider acceptance claim.
