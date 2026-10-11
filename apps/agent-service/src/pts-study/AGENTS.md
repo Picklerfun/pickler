@@ -24,3 +24,15 @@ Prepare with an explicit --state rebuilds preserved preparation evidence offline
 Verify history/policy/response byte hashes before copying; never repeat public transport implicitly.
 
 Keep per-portfolio summary metrics separate from decision rows when publishing worker reports.
+
+PTS audit-export now writes perps-decision-audit-export-v2: immutable content-addressed record,
+round, event and account parts plus a small manifest. Offline audit still reads v1 and selects
+v2 before any environment/provider composition. Verify part hashes, paths and index identities;
+never use later data to fill an absent original component. The v2 payload hash preserves the
+v1 canonical payload meaning.
+
+Report workers receive the manifest path, not the whole historical snapshot. The pure trading
+per-slot auditor supplies identical rows; raw native histories remain in the source parts.
+Stream JSON/CSV, bound the HTML summary, publish hashes last, and wait for worker exit after its
+publication message. Safe report/source/serialization failures interrupt admission explicitly;
+no generic success message or report diagnostic can restart a study or grant ownership.
