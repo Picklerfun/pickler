@@ -11,3 +11,20 @@ export * from "./features/perps-study/audit.js";
 
 // Historical public policies retain their names without a second implementation.
 export * from "./features/perps-strategies/policy.js";
+
+export * from "./features/perps-study/sma-review.js";
+
+export * from "./features/perps-study/universe.js";
+
+export * from "./features/perps-study/profiles.js";
+
+export * from "./features/evaluation/profile-runner.js";
+
+export * from "./features/perps-study/reentry.js";
+
+export * from "./features/perps-study/reentry-metrics.js";
+
+export { nextPriceCycleDelay } from "./features/evaluation/sma-timing.js";
+
+export * from "./features/perps-paper/reader-audit.js";
+export * from "./features/perps-study/component-qualification.js";
