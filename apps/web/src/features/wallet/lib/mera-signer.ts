@@ -1,4 +1,5 @@
 "use client";
+import { sendMeraTokenTransaction } from "./mera-token-transaction";
 
 import { PRODUCT_HOSTS } from "@/server/hosts";
 import { challenge, join, present, type ConnectResult } from "./connect";
@@ -270,6 +271,21 @@ export const meraSigner: SignerAdapter = {
     return opened && { address: opened.address, session: opened.answer };
   },
 
+  sendTokenTransaction: async (prepared, wallet, token) => {
+    const place = availability();
+    const known = recall();
+    if (!place.offered || !known || known.address.toLowerCase() !== wallet.toLowerCase()) {
+      throw new Error("Passkey wallet unavailable.");
+    }
+    return sendMeraTokenTransaction({
+      prepared,
+      wallet,
+      token,
+      kit: await loadMeraKit(),
+      prf: source(place.rpId, "existing", known.credentialId),
+      current: () => recall()?.address.toLowerCase() === wallet.toLowerCase(),
+    });
+  },
   disconnect: async () => {
     // No key was kept, so there is nothing to wipe: only which account this browser showed.
     remember(null);
