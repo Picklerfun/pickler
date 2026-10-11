@@ -80,7 +80,7 @@ export function tokenOperationStatus(operation: TokenOperationDto) {
     ],
     confirming: [
       "Waiting for confirmation",
-      "The transaction was sent. Check status to look for its receipt.",
+      "The transaction was sent. Waiting for its receipt and final confirmation.",
       "No confirmed receipt yet. Nothing was sent again.",
     ],
     included: [
