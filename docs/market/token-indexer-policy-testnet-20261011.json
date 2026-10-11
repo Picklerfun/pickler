@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "maxBlocks": 100,
+  "maxPassesPerTick": 6,
+  "rpcRequestsPerPass": 800,
+  "rpcRequestsPerDay": 750000,
+  "leaseSeconds": 180,
+  "maxCurvesPerPass": 1
+}

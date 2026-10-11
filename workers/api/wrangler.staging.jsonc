@@ -23,6 +23,11 @@
     // secret and MONAD_RPC_URL answers 503 (docs/agent-advice.md, "Payment (x402)").
     "ADVICE_X402_ENABLED": "false",
     "APP_ENV": "staging",
+    "CHAIN_ID": "10143",
+    "MONAD_RPC_URL": "https://rpc.ankr.com/monad_testnet",
+    // The dedicated authority and reviewed policy are backend-only runtime bindings.
+    // Keep user launch closed until hosted indexing and the owner walkthrough pass.
+    "TOKEN_LAUNCH_ENABLED": "false",
     "TRADING_ADMISSIONS_ENABLED": "false",
     "ADMISSIONS_ENABLED": "true",
     "JWT_AUDIENCE": "authenticated",

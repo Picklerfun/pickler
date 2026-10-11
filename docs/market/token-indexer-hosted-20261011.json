@@ -1,0 +1,346 @@
+{
+  "verifiedAt": "2026-10-11T02:05:39.780Z",
+  "chainPreflight": {
+    "chainId": 10143,
+    "checkedAt": "2026-10-11T01:37:21.774Z",
+    "observedBlock": 69982017,
+    "calls": 45,
+    "factory": "0xd9ffd2aa682283e3521c7629dbea24273676559d",
+    "authority": "0x875132a3FC20719DfC8bf4c98F49F8f568533DCC",
+    "operator": "0xD8F3EdB29A5c9B00747e58431C005cff5F6f4eaD",
+    "launchesEnabled": false,
+    "allRuntimeHashesImplementationsBindingsAndPresetChecked": true,
+    "productionDriverRefusesClosedGate": "POLICY_CHANGED"
+  },
+  "allowlistedAgent": "80c2e814-db8a-474b-85d2-6a86a4959c34",
+  "launchPolicySha256": "ac288c06e247a5a42592c6fe9f950250a2d7d6538c9137e23c931bbac9557078",
+  "indexerPolicySha256": "a0654d6a77f517249de9a34b869aadbfb87312e501b18e9ba7fab0c3abc71b46",
+  "indexerPolicyMatches": true,
+  "indexerHasSigningKey": false,
+  "indexerSchedule": "* * * * *",
+  "apiVersion": "368de971-af7c-4f22-9741-8d2730c9e339",
+  "apiLaunchGateUploaded": "false",
+  "gasLimit": "4000000",
+  "gasPriceLimit": "120000000000",
+  "gasCostLimit": "480000000000000000",
+  "dailyRpcCeiling": 750000,
+  "newBlockchainTransactions": 0,
+  "apiPriorBindingNamesAndTypesPreserved": true,
+  "apiBeforeBindingCount": 35,
+  "apiAfterBindingCount": 39,
+  "initialIndexerDeployment": {
+    "sourceCommit": "9c1753bb",
+    "version": "d135b20d-925e-4285-93fe-e42917c4999b",
+    "deployment": "d0fc9e92-0561-4110-8259-cd2d99b03374"
+  },
+  "indexerEnabled": "true",
+  "currentIndexerDeployment": {
+    "sourceCommit": "eec28a898f318407214afdeac0c5437381db08da",
+    "indexerVersion": "7a59bf87-ecfe-4baf-b241-63650dfd9021",
+    "indexerDeployment": "e6bf94bd-df47-4df2-99d2-8f9ed53d019f",
+    "createdAt": "2026-10-11T01:57:30.340208Z",
+    "apiVersion": "368de971-af7c-4f22-9741-8d2730c9e339",
+    "indexerEnabled": true,
+    "policyBindingsMatch": true,
+    "indexerHasSigningKey": false,
+    "launchPolicySha256": "ac288c06e247a5a42592c6fe9f950250a2d7d6538c9137e23c931bbac9557078",
+    "indexerPolicySha256": "a0654d6a77f517249de9a34b869aadbfb87312e501b18e9ba7fab0c3abc71b46"
+  },
+  "capacityEvidence": {
+    "chainGrowth": {
+      "from": "2026-10-11T01:37:21.774Z",
+      "fromBlock": 69982017,
+      "to": "2026-10-11T02:05:39.780Z",
+      "toBlock": 69987641,
+      "blocksPerMinute": 198.73
+    },
+    "runs": [
+      {
+        "version": "d135b20d-925e-4285-93fe-e42917c4999b",
+        "startedAt": "2026-10-11T01:44:48.796000+00:00",
+        "wallTimeMs": 287133,
+        "calls": 814,
+        "passes": 6,
+        "blocksPerSource": 600,
+        "lastOutcomes": [
+          {
+            "kind": "applied",
+            "fromBlock": "69861376",
+            "toBlock": "69861475",
+            "blocks": 100,
+            "events": 0
+          },
+          {
+            "kind": "applied",
+            "fromBlock": "69861380",
+            "toBlock": "69861479",
+            "blocks": 100,
+            "events": 0
+          },
+          {
+            "kind": "applied",
+            "fromBlock": "69861380",
+            "toBlock": "69861479",
+            "blocks": 100,
+            "events": 0
+          },
+          {
+            "kind": "applied",
+            "fromBlock": "69861388",
+            "toBlock": "69861487",
+            "blocks": 100,
+            "events": 0
+          }
+        ],
+        "stopReason": "pass_limit"
+      },
+      {
+        "version": "d135b20d-925e-4285-93fe-e42917c4999b",
+        "startedAt": "2026-10-11T01:49:48.774000+00:00",
+        "wallTimeMs": 290910,
+        "calls": 810,
+        "passes": 6,
+        "blocksPerSource": 600,
+        "lastOutcomes": [
+          {
+            "kind": "applied",
+            "fromBlock": "69861976",
+            "toBlock": "69862075",
+            "blocks": 100,
+            "events": 0
+          },
+          {
+            "kind": "applied",
+            "fromBlock": "69861980",
+            "toBlock": "69862079",
+            "blocks": 100,
+            "events": 0
+          },
+          {
+            "kind": "applied",
+            "fromBlock": "69861980",
+            "toBlock": "69862079",
+            "blocks": 100,
+            "events": 0
+          },
+          {
+            "kind": "applied",
+            "fromBlock": "69861988",
+            "toBlock": "69862087",
+            "blocks": 100,
+            "events": 0
+          }
+        ],
+        "stopReason": "pass_limit"
+      },
+      {
+        "version": "d135b20d-925e-4285-93fe-e42917c4999b",
+        "startedAt": "2026-10-11T01:54:48.774000+00:00",
+        "wallTimeMs": 298488,
+        "calls": 810,
+        "passes": 6,
+        "blocksPerSource": 600,
+        "lastOutcomes": [
+          {
+            "kind": "applied",
+            "fromBlock": "69862576",
+            "toBlock": "69862675",
+            "blocks": 100,
+            "events": 0
+          },
+          {
+            "kind": "applied",
+            "fromBlock": "69862580",
+            "toBlock": "69862679",
+            "blocks": 100,
+            "events": 0
+          },
+          {
+            "kind": "applied",
+            "fromBlock": "69862580",
+            "toBlock": "69862679",
+            "blocks": 100,
+            "events": 0
+          },
+          {
+            "kind": "applied",
+            "fromBlock": "69862588",
+            "toBlock": "69862687",
+            "blocks": 100,
+            "events": 0
+          }
+        ],
+        "stopReason": "pass_limit"
+      },
+      {
+        "version": "7a59bf87-ecfe-4baf-b241-63650dfd9021",
+        "startedAt": "2026-10-11T01:59:48.773000+00:00",
+        "wallTimeMs": 84857,
+        "calls": 810,
+        "passes": 6,
+        "blocksPerSource": 600,
+        "lastOutcomes": [
+          {
+            "kind": "applied",
+            "fromBlock": "69863176",
+            "toBlock": "69863275",
+            "blocks": 100,
+            "events": 0
+          },
+          {
+            "kind": "applied",
+            "fromBlock": "69863180",
+            "toBlock": "69863279",
+            "blocks": 100,
+            "events": 0
+          },
+          {
+            "kind": "applied",
+            "fromBlock": "69863180",
+            "toBlock": "69863279",
+            "blocks": 100,
+            "events": 0
+          },
+          {
+            "kind": "applied",
+            "fromBlock": "69863188",
+            "toBlock": "69863287",
+            "blocks": 100,
+            "events": 0
+          }
+        ],
+        "stopReason": "pass_limit"
+      },
+      {
+        "version": "7a59bf87-ecfe-4baf-b241-63650dfd9021",
+        "startedAt": "2026-10-11T02:01:48.774000+00:00",
+        "wallTimeMs": 83521,
+        "calls": 810,
+        "passes": 6,
+        "blocksPerSource": 600,
+        "lastOutcomes": [
+          {
+            "kind": "applied",
+            "fromBlock": "69863776",
+            "toBlock": "69863875",
+            "blocks": 100,
+            "events": 0
+          },
+          {
+            "kind": "applied",
+            "fromBlock": "69863780",
+            "toBlock": "69863879",
+            "blocks": 100,
+            "events": 0
+          },
+          {
+            "kind": "applied",
+            "fromBlock": "69863780",
+            "toBlock": "69863879",
+            "blocks": 100,
+            "events": 0
+          },
+          {
+            "kind": "applied",
+            "fromBlock": "69863788",
+            "toBlock": "69863887",
+            "blocks": 100,
+            "events": 0
+          }
+        ],
+        "stopReason": "pass_limit"
+      },
+      {
+        "version": "7a59bf87-ecfe-4baf-b241-63650dfd9021",
+        "startedAt": "2026-10-11T02:03:48.775000+00:00",
+        "wallTimeMs": 84708,
+        "calls": 810,
+        "passes": 6,
+        "blocksPerSource": 600,
+        "lastOutcomes": [
+          {
+            "kind": "applied",
+            "fromBlock": "69864376",
+            "toBlock": "69864475",
+            "blocks": 100,
+            "events": 0
+          },
+          {
+            "kind": "applied",
+            "fromBlock": "69864380",
+            "toBlock": "69864479",
+            "blocks": 100,
+            "events": 0
+          },
+          {
+            "kind": "applied",
+            "fromBlock": "69864380",
+            "toBlock": "69864479",
+            "blocks": 100,
+            "events": 0
+          },
+          {
+            "kind": "applied",
+            "fromBlock": "69864388",
+            "toBlock": "69864487",
+            "blocks": 100,
+            "events": 0
+          }
+        ],
+        "stopReason": "pass_limit"
+      }
+    ],
+    "correctedWindow": {
+      "completedRuns": 3,
+      "cursorAdvance": 1200,
+      "elapsedSeconds": 239.853,
+      "blocksPerMinuteIncludingCronGaps": 300.18,
+      "dailyRpcCeilingUnchanged": 750000,
+      "rpcCallsPerSixPassTick": 810,
+      "noObservedExceptions": true
+    },
+    "remainingBacklogBlocks": 123161,
+    "estimatedRecoveryHoursAtObservedNetRate": 20.23,
+    "estimateIsNotAnSLA": true
+  },
+  "publicCatalogueEvidence": {
+    "httpStatus": 200,
+    "observedAt": "2026-10-11T02:05:18.337Z",
+    "asOfBlock": "69864487",
+    "finality": "confirmed",
+    "historicalTokenAddress": "0x066c47cde99397869809e0da2d0d4fe40b14b375",
+    "agentId": null,
+    "readModelStaleFlag": false,
+    "staleFlagMeasuresCursorUpdateAgeNotFullCatchUp": true,
+    "doesNotProveOwnerGrantAttribution": true
+  },
+  "finalChainCheck": {
+    "observedAt": "2026-10-11T02:05:39.780Z",
+    "block": 69987641,
+    "factoryLaunchesEnabled": false,
+    "calls": 2
+  },
+  "localValidation": {
+    "testsPassed": 37,
+    "failed": 0,
+    "skipped": 0,
+    "postgresPort": 55440,
+    "disposableContainerRemoved": true,
+    "sharedBuild": "passed",
+    "infrastructureApiIndexerTypes": "passed",
+    "affectedLint": "passed",
+    "format": "passed",
+    "architecture": "passed",
+    "stagingTopology": "passed",
+    "apiIndexerDryRunBuilds": "passed",
+    "uiAndHttpContractsUnchanged": true
+  },
+  "remoteAcceptance": {
+    "workerAndCronProvisioned": true,
+    "historicalTokenReadThroughApiAndPostgres": "passed",
+    "boundedThreeRunCapacityWindow": "passed",
+    "fullHistoryRecovery": "in_progress",
+    "ownerJwtR2FreezePasskeyLaunchAndAttribution": "pending",
+    "generalAndMainnetLaunch": "disabled"
+  }
+}
