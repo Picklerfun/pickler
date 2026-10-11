@@ -16,7 +16,7 @@ import {
 } from "@pickler/core";
 import type { TokenLaunchPolicy } from "./policy.js";
 import type { Rpc } from "../chain/erc20.js";
-import { pendingNonce, quoteFees } from "../chain/deposit-tx.js";
+import { pendingNonce, quoteFees, FeeQuoteLimitExceededError } from "../chain/deposit-tx.js";
 import { tokenAgentKey } from "../studio/token-launch-store.js";
 import type { Pool } from "pg";
 
@@ -61,6 +61,16 @@ export function createPublicTokenTradeDriver(deps: {
   now?: () => number;
 }): PublicTokenTradeDriver {
   const policy = deps.policy;
+  async function policyFees(rpc: Rpc) {
+    try {
+      return await quoteFees(rpc, BigInt(policy.maxFeePerGas));
+    } catch (error) {
+      if (error instanceof FeeQuoteLimitExceededError) {
+        throw new PublicTokenTradeError("TRADING_UNAVAILABLE");
+      }
+      throw error;
+    }
+  }
   return {
     async prepare(context, input) {
       await deps.reserve(input.wallet);
@@ -195,7 +205,7 @@ export function createPublicTokenTradeDriver(deps: {
           });
       const to = approval ? asset : launch.curve;
       const base = { from: input.wallet, to, data, value: "0x0" as const };
-      const [nonce, fees] = await Promise.all([pendingNonce(rpc, input.wallet), quoteFees(rpc)]);
+      const [nonce, fees] = await Promise.all([pendingNonce(rpc, input.wallet), policyFees(rpc)]);
       const [estimated, native] = await Promise.all([
         rpc.call("eth_estimateGas", [base]),
         rpc.call("eth_getBalance", [input.wallet, "latest"]),
