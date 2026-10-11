@@ -704,7 +704,9 @@ only published confirmed persona tokens and uses the reviewed launch policy/RPC;
 creator allowlist is used for buyers. `POST /v1/marketplace/personas/:handle/token/prepare` is public,
 strict and private/no-store. It returns unsigned data and documents errors/OpenAPI; the existing
 `/v1/demo` alias has the same public behavior. It does not relax any JWT-only Studio endpoint.
-Default composition remains disabled without RPC calls. See
+Default composition remains disabled without RPC calls. The reviewed testnet staging configuration
+explicitly enables public preparation with a 10,000-call daily reserve ceiling (250 preparations
+at 40 calls each). It never enables mainnet or a server signer for visitors. See
 [Public token trading](../../docs/market/public-token-trading.md).
 
 The eligible-creator policy expansion is documented in
