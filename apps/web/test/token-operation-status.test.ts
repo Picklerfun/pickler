@@ -19,14 +19,14 @@ const operation: TokenOperationDto = {
   transaction: null,
 };
 
-test("missing signing identity is a review blocker, not a fake confirmation or repeatable status query", () => {
+test("missing launch signing identity offers bounded reconciliation, never a fake confirmation", () => {
   const view = tokenOperationStatus(operation);
   assert.equal(view.title, "Signature status unavailable");
-  assert.equal(view.canCheck, false);
-  assert.match(view.description, /No transaction hash is recorded/);
-  assert.match(view.description, /review this attempt/);
+  assert.equal(view.canCheck, true);
+  assert.match(view.description, /authorization expires/);
   assert.doesNotMatch(view.description, /not signed|not sent|confirmed on-chain/);
-  assert.match(tokenStatusCheckFeedback(operation), /still needs review/);
+  assert.match(tokenStatusCheckFeedback(operation), /remains blocked/);
+  assert.equal(tokenOperationStatus({ ...operation, action: "buy" }).canCheck, false);
 });
 
 test("a pending signature and uncertain broadcast explain different explicit checks", () => {
@@ -67,4 +67,10 @@ test("failed reads explain the failed action without replacing the saved chain s
   assert.match(tokenRequestErrorMessage(detail, "refresh"), /Could not refresh the saved status/);
   assert.doesNotMatch(tokenRequestErrorMessage(detail, "check"), /Private provider/);
   assert.match(tokenRequestErrorMessage("UNAUTHORIZED", "check"), /session expired/);
+});
+
+test("canonical expiration explains the safe new preparation without claiming a transaction receipt", () => {
+  const expired = { ...operation, status: "failed" as const, error: "EXPIRED_LAUNCH_NOT_CREATED" };
+  assert.equal(tokenOperationStatus(expired).title, "Launch attempt expired");
+  assert.match(tokenStatusCheckFeedback(expired), /No token was created by this attempt/);
 });
