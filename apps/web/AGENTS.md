@@ -1238,3 +1238,8 @@ protection. Preserve account-linking/Disconnect semantics and the fifteen-charac
 Public trading is testnet active-curve only; DEX swaps and indexer changes are separate. Run the
 loopback-only `node --import tsx scripts/design/public-token-trading.mjs` harness for both flows.
 See [Public token trading](../../docs/market/public-token-trading.md).
+
+A definitive token signing refusal reads `Signing request rejected` and the launch action becomes
+`Prepare again`. This is a new explicit preparation, not another signature or automatic retry.
+The original draft and the failed attempt remain visible; unknown attempts stay blocked for
+reconciliation. The controlled loading harness verifies the saved refusal without provider calls.
