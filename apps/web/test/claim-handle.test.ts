@@ -99,3 +99,13 @@ test("a refusal with nothing readable in it still says something", async () => {
     (caught: Error) => caught.message === "That handle could not be claimed",
   );
 });
+
+test("malformed availability is unknown and requests have finite timeouts", async () => {
+  const malformed = async (_url: unknown, init?: RequestInit) => {
+    assert.ok(init?.signal);
+    return new Response(JSON.stringify({ data: { available: "false" } }));
+  };
+  assert.deepEqual(await checkAvailability("nightowl", malformed as typeof fetch), {
+    known: false,
+  });
+});
