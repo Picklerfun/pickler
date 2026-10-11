@@ -380,3 +380,7 @@ Do not call run as implementation acceptance, reactivate monitors, or add PTS to
 Read [intraday PTS](PTS-INTRADAY-PAPER.md). The committed inactive template is preparation only;
 one explicit authorized run has 24 fixed hours/288 slots. Offline replay/audit precede provider
 composition. Reports pin the correct independent policy and preserve pending funding/null metrics.
+
+Intraday run composition passes the verified preparation eligibility cohort to the shared reader.
+Known unavailable original histories remain preserved and omitted for both portfolios, never
+re-evaluated as executable signals. Retain interrupted attempts and their unchanged policies.
