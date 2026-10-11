@@ -88,3 +88,32 @@ path, then checks common initial/final exclusions, source immutability and revoc
 failed live candle bytes were not recorded, so no specific new response is reconstructed.
 Preserve the first study and audit; any explicitly authorized repair test uses a new identity,
 never resumes or rewrites the interrupted attempt.
+
+## Report capacity repair and preserved interruption
+
+The separate repair1 study froze e506bc78c03d6fcbb7aecd3cd1381722b56ea35f. It interrupted at
+2026-10-11T05:57:40Z after 26 recorded slots. Its last published report still said active and
+contained only 25 slots; that stale file is preserved as evidence, not current process status.
+The runner exited with code 1 and PostgreSQL released its owner/expiry. Four SMA virtual positions
+remained open; PTS had no fills. No pending position or hypothetical profit is invented.
+
+The original primary stack was not saved: runtime recorded PTS_OPERATION_FAILED and the study
+recorded STUDY_OPERATION_FAILED. A read-only reproduction over the exact 26-slot snapshot proves
+RangeError / Invalid string length in the frozen ptsReport JSON.stringify path. The previous
+report JSON was 526,814,837 bytes; HTML was 347,272,981 bytes. A separate compact diagnostic export
+retained all 26 slots and 612 events in 219,812,380 bytes. This establishes a report capacity defect;
+it does not infer an unrecorded provider transport phase or change the original error codes.
+
+PTS audit-export now emits perps-decision-audit-export-v2 with a small export.json and immutable
+parts/<sha256>.json files. One consistent read-only transaction pages all records; every part is
+bounded at 64 MiB and validated without credentials. Its payloadHash is identical to the v1
+canonical payload digest. Offline audit accepts both formats and checks source/index hashes.
+Missing or oversized individual evidence stops export explicitly; it is never silently trimmed.
+
+Full JSON/CSV publication streams data. The HTML summary excludes raw histories and points to
+complete provenance in JSON/source parts. Runtime workers receive only a manifest path and
+reproduce one original round at a time with trading-owned functions, preserving exact signals,
+ledger results and missing-evidence labels. Report failures retain a specific safe code and stop
+admission; a successful message is accepted only with a clean worker exit. No failed study is
+resumed or amended by this repair. A later authorized repair test must freeze a new identity and
+commit; it is not a continuation of these pending SMA positions.
