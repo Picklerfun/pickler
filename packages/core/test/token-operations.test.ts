@@ -8,6 +8,11 @@ import {
   tokenTradeMinimumOutput,
   type TokenOperationDriver,
 } from "../src/features/launch/token-operations.js";
+import {
+  InvalidSignedActivityError,
+  SignedActivityRejectedError,
+  SigningServiceUnavailableError,
+} from "../src/features/signing/domain/turnkey-activity.js";
 const scope = { userId: "owner", workspaceId: "workspace", agentId: "agent" };
 const signed = {
   url: "https://api.turnkey.com/public/v1/submit/sign_transaction",
@@ -399,4 +404,37 @@ test("typed metadata failure is retained before transaction preparation", async 
     f.ops.prepare(scope, { action: "launch", expectedVersion: 1 }, "failed_metadata_001"),
   );
   assert.deepEqual(f.counts(), { signs: 0, sends: 0, preflights: 0 });
+});
+
+test("definitive signing refusals fail safely while a lost initial response remains uncertain", async () => {
+  for (const error of [
+    new InvalidSignedActivityError("Controlled refusal"),
+    new SignedActivityRejectedError("Private provider prose"),
+    new SigningServiceUnavailableError("Controlled uncertainty"),
+  ]) {
+    const f = controlled();
+    let requests = 0;
+    f.driver.sign = async () => {
+      requests++;
+      throw error;
+    };
+    const p = await f.ops.prepare(
+      scope,
+      { action: "launch", expectedVersion: 1 },
+      "controlled_operation_001",
+    );
+
+    const result = await f.ops.confirm(scope, p.operation.id, p.operation.version, signed);
+    const uncertain = error instanceof SigningServiceUnavailableError;
+
+    assert.equal(result.status, uncertain ? "unknown" : "failed");
+    assert.equal(result.error, uncertain ? "RECONCILIATION_REQUIRED" : "SIGNATURE_REJECTED");
+    assert.equal(result.activityId, null);
+    assert.equal(result.txHash, null);
+    assert.equal(f.counts().sends, 0);
+    await f.ops.status(scope, result.id);
+    await f.ops.confirm(scope, result.id, result.version, signed);
+    assert.equal(requests, 1);
+    assert.equal(await f.tx.intents!.active(), uncertain);
+  }
 });

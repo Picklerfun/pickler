@@ -87,10 +87,16 @@ export function createTurnkeyActivityForwarder(
         attempt++
       ) {
         await sleep(pollDelayMs);
-        activity = await config.reader.getActivity(
-          activity.organizationId ?? expectations.organizationId,
-          activity.id,
-        );
+        try {
+          activity = await config.reader.getActivity(
+            activity.organizationId ?? expectations.organizationId,
+            activity.id,
+          );
+        } catch {
+          // Submission already returned this activity. Preserve it for explicit recovery;
+          // a failed follow-up read must not discard its identity or repeat submission.
+          break;
+        }
       }
       return activity;
     },

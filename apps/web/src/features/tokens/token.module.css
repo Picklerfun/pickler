@@ -23,13 +23,6 @@
   margin: 0;
   line-height: 1.5;
 }
-.address {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  justify-content: space-between;
-  font-variant-numeric: tabular-nums;
-}
 .actions {
   display: flex;
   flex-wrap: wrap;
@@ -236,9 +229,6 @@
   .walletDetails {
     gap: 12px;
   }
-  .address {
-    flex-wrap: wrap;
-  }
 }
 
 .economics {
@@ -307,12 +297,82 @@
   flex-wrap: wrap;
 }
 
-.progress {
+.operationStage {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition:
+    grid-template-rows 220ms ease,
+    opacity 220ms ease;
+}
+.operationStage[data-open="true"] {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+.stageContent {
+  min-height: 0;
+  overflow: hidden;
+  display: grid;
+  gap: 14px;
+}
+.statusMessage {
+  display: grid;
+  gap: 6px;
+  animation: token-state 180ms ease;
+}
+.attempt {
+  margin: 0;
+  color: var(--pk-ink-muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.chainReference {
   display: flex;
   align-items: center;
-  gap: 10px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+}
+.chainValue {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.referenceActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+}
+.copyFallback {
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.operationCard .detail {
+  align-items: center;
   font-size: 14px;
 }
+@keyframes token-state {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@media (max-width: 480px) {
+  .operationCard .detail {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .operationCard .detail dd {
+    max-width: 100%;
+    text-align: left;
+  }
+  .operationCard .chainReference {
+    justify-content: flex-start;
+  }
+}
+
 .spinner {
   flex-shrink: 0;
   animation: token-progress 1s linear infinite;
@@ -328,7 +388,11 @@
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .spinner {
+  .spinner,
+  .statusMessage {
     animation: none;
+  }
+  .operationStage {
+    transition: none;
   }
 }

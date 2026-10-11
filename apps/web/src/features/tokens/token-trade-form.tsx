@@ -1,5 +1,5 @@
 "use client";
-import { Button, Field, Input, Segmented } from "@pickler/ui";
+import { Button, Field, Icon, Input, Segmented } from "@pickler/ui";
 import { toBaseUnits } from "@pickler/chain";
 import type { TokenOperationDto, TokenStateDto } from "@pickler/api-schema";
 import { useStudioForm } from "../studio/routing/memory";
@@ -10,12 +10,14 @@ export function TokenTradeForm({
   state,
   preview,
   disabled,
+  pendingAction,
   prepare,
 }: {
   agentId: string;
   state: TokenStateDto;
   preview: boolean;
   disabled: boolean;
+  pendingAction: TokenOperationDto["action"] | null;
   prepare: (
     action: TokenOperationDto["action"],
     trade: { amount: string; slippageBps: number },
@@ -48,6 +50,8 @@ export function TokenTradeForm({
     );
   }
   const asset = buying ? "AUSD" : state.token!.ticker;
+  const approvalPending = pendingAction === (buying ? "approve_buy" : "approve_sell");
+  const tradePending = pendingAction === form.side;
   function request(approval: boolean) {
     if (amount) {
       prepare(approval ? (buying ? "approve_buy" : "approve_sell") : form.side, {
@@ -106,10 +110,12 @@ export function TokenTradeForm({
           disabled={disabled || !amount}
           onClick={() => request(true)}
         >
-          Approve {asset} amount
+          {approvalPending && <Icon name="refresh" size={16} className={styles.spinner} />}
+          {approvalPending ? "Preparing approval…" : `Approve ${asset} amount`}
         </Button>
         <Button size="sm" disabled={disabled || !amount} onClick={() => request(false)}>
-          Review {form.side}
+          {tradePending && <Icon name="refresh" size={16} className={styles.spinner} />}
+          {tradePending ? "Preparing trade…" : `Review ${form.side}`}
         </Button>
       </div>
       <p className={styles.exampleNote}>

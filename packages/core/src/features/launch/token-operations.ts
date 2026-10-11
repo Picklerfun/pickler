@@ -9,7 +9,11 @@ import {
   type TokenLaunchService,
   type TokenScope,
 } from "./token-launch.js";
-import type { SignedActivityRequest } from "../signing/domain/turnkey-activity.js";
+import {
+  InvalidSignedActivityError,
+  SignedActivityRejectedError,
+  type SignedActivityRequest,
+} from "../signing/domain/turnkey-activity.js";
 import type { UnsignedActivity } from "../wallets/ports/custody.js";
 
 export const TOKEN_ACTIONS = [
@@ -539,7 +543,10 @@ export function createTokenOperationService(deps: {
         }
         const retained = await retainSigned(scope, recorded, result.rawTransaction);
         return submit(scope, retained);
-      } catch {
+      } catch (error) {
+        const refused =
+          error instanceof InvalidSignedActivityError ||
+          error instanceof SignedActivityRejectedError;
         return transaction(scope, async (intents) => {
           const latest = await intents.read(id);
           if (!latest) {
@@ -549,7 +556,10 @@ export function createTokenOperationService(deps: {
             return tokenOperationView(latest);
           }
           return tokenOperationView(
-            await intents.update(latest, { status: "unknown", error: "RECONCILIATION_REQUIRED" }),
+            await intents.update(latest, {
+              status: refused ? "failed" : "unknown",
+              error: refused ? "SIGNATURE_REJECTED" : "RECONCILIATION_REQUIRED",
+            }),
           );
         });
       }

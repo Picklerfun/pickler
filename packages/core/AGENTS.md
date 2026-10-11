@@ -477,7 +477,9 @@ Ordinary composition omits the issuer and refuses authorization. See [the token 
 `features/launch/token-operations.ts` owns owner-only enumerated actions, short intent reservation,
 one-time signing/submission claims, exact signed-byte recovery and explicit canonical receipt
 reconciliation. Its injected driver is infrastructure-owned; providers never execute under a
-repository transaction. A finalized transaction is distinct from an attributed token. See
+repository transaction. Definitive `InvalidSignedActivityError`/`SignedActivityRejectedError`
+refusals end the signing claim as `SIGNATURE_REJECTED`; transport uncertainty remains `unknown`
+and cannot issue a second signing request. A finalized transaction is distinct from an attributed token. See
 [Token operations](../../docs/market/token-launch-operations.md).
 
 `TokenPreparationError` carries reviewed unsent failure codes across injected adapters. Known

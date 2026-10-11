@@ -181,6 +181,14 @@ try {
     let clientClockOffset = 0;
     let launchPhase = "gas";
     let launchOperation = null;
+    let operationGate = Promise.resolve();
+    let failOperationRead = false;
+    let releaseOperation;
+    function pauseOperation() {
+      operationGate = new Promise((resolve) => {
+        releaseOperation = resolve;
+      });
+    }
     const launchKeys = [];
     const launchState = {
       ...tokenState,
@@ -309,6 +317,34 @@ try {
             }
             json = { operation: launchOperation, activity: null };
           }
+        } else if (
+          scenario === "studio-token-launch" &&
+          url.pathname === prefix + "/token/operations/" + launchOperation?.id
+        ) {
+          assert.equal(route.request().method(), "GET");
+          await operationGate;
+          if (failOperationRead) {
+            status = 503;
+            json = { error: "UNAVAILABLE", message: "secret provider payload" };
+          } else {
+            json = launchOperation;
+          }
+        } else if (
+          scenario === "studio-token-launch" &&
+          url.pathname === prefix + "/token/operations/" + launchOperation?.id + "/confirm"
+        ) {
+          assert.equal(route.request().method(), "POST");
+          assert.equal(launchOperation.status, "signed");
+          assert.deepEqual(route.request().postDataJSON(), {
+            expectedVersion: launchOperation.version,
+          });
+          await operationGate;
+          launchOperation = {
+            ...launchOperation,
+            status: "confirming",
+            version: launchOperation.version + 1,
+          };
+          json = launchOperation;
         } else if (url.pathname === prefix + "/token/draft") {
           assert.equal(route.request().method(), "PUT");
           status = 409;
@@ -431,6 +467,18 @@ try {
       }
       return route.fulfill({ status, json });
     });
+    if (scenario === "studio-token-launch") {
+      await context.addInitScript(() => {
+        Object.defineProperty(navigator, "clipboard", {
+          configurable: true,
+          value: {
+            writeText: async (value) => {
+              window.tokenCopied = value;
+            },
+          },
+        });
+      });
+    }
     const page = await context.newPage();
     if (scenario === "studio-markets") {
       await page.clock.install();
@@ -451,10 +499,18 @@ try {
       await launchButton.waitFor();
       const field = await name.elementHandle();
       await launchButton.click();
-      await operations.getByRole("status", { name: "Preparing launch…", exact: true }).waitFor();
+      await operations.getByRole("button", { name: "Preparing launch…", exact: true }).waitFor();
+      assert.equal(
+        await operations.getByRole("status", { name: "Preparing launch…", exact: true }).count(),
+        0,
+      );
+      assert.equal(await operations.locator('svg[class*="spinner"]').count(), 1);
+      assert.equal(await operations.locator('button svg[class*="spinner"]').count(), 1);
       assert.equal(await operations.getAttribute("aria-busy"), "true");
       assert.equal(
-        await operations.getByRole("button", { name: "Preparing…", exact: true }).isDisabled(),
+        await operations
+          .getByRole("button", { name: "Preparing launch…", exact: true })
+          .isDisabled(),
         true,
       );
       assert.equal(await operations.getByRole("alert").count(), 0);
@@ -489,7 +545,7 @@ try {
       assert.equal(await operations.getByRole("alert").count(), 1);
       assert.equal(counts.get(`/api/v1/studio/agents/${tokenAgentId}/token/operations`), 3);
       launchPhase = "recover";
-      await operations.getByRole("button", { name: "Refresh status", exact: true }).click();
+      await operations.getByRole("button", { name: "Refresh saved status", exact: true }).click();
       await operations
         .getByRole("alert")
         .getByText(/No transaction was signed or sent/)
@@ -514,6 +570,169 @@ try {
         await operations.getByRole("button", { name: "Sign with passkey", exact: true }).count(),
         1,
       );
+      assert.equal(
+        await operations.getByRole("button", { name: "Check status", exact: true }).count(),
+        0,
+      );
+      assert.equal(await operations.getByText("Transaction hash", { exact: true }).count(), 0);
+      const stage = operations.locator('[data-open="true"]');
+      assert.ok(await stage.evaluate((node) => getComputedStyle(node).transitionDuration !== "0s"));
+      const prefix = `/api/v1/studio/agents/${tokenAgentId}/token`;
+      const operationUrl = prefix + "/operations/" + launchOperation.id;
+
+      // A lost signing identity is explicit and cannot offer a new signing request.
+      launchOperation = {
+        ...launchOperation,
+        status: "unknown",
+        error: "RECONCILIATION_REQUIRED",
+        version: 5,
+      };
+      pauseOperation();
+      await operations.getByRole("button", { name: "Sign with passkey", exact: true }).click();
+      await operations.getByRole("button", { name: "Waiting for passkey…", exact: true }).waitFor();
+      assert.equal(await operations.locator('svg[class*="spinner"]').count(), 1);
+      assert.equal(await field.evaluate((node) => node.isConnected), true);
+      releaseOperation();
+      await operations.getByText("Signature status unavailable", { exact: true }).waitFor();
+      await operations.getByText(/Pickler needs to review this attempt/).waitFor();
+      assert.equal(
+        await operations.getByRole("button", { name: "Check status", exact: true }).count(),
+        0,
+      );
+      assert.equal(
+        await operations.getByRole("button", { name: "Launch token", exact: true }).count(),
+        0,
+      );
+      await operations.getByRole("button", { name: "Refresh saved status", exact: true }).click();
+      await operations.getByText(/Checked .*This attempt still needs review/).waitFor();
+      assert.equal(counts.get(operationUrl), 1);
+      await operations.screenshot({ path: path.join(output, "launch-signature-unavailable.png") });
+
+      // Reload a saved provider activity; status reads retain it and never send a transaction.
+      launchOperation = {
+        ...launchOperation,
+        activityId: "controlled-signature-activity",
+        version: 6,
+      };
+      await page.reload();
+      await operations.getByText("Waiting for signature result", { exact: true }).waitFor();
+      const detailsNode = await operations.getByRole("definition").first().elementHandle();
+      pauseOperation();
+      const check = operations.getByRole("button", { name: "Check status", exact: true });
+      await check.focus();
+      await page.keyboard.press("Enter");
+      await operations
+        .getByRole("button", { name: "Checking transaction status…", exact: true })
+        .waitFor();
+      assert.equal(await operations.locator('svg[class*="spinner"]').count(), 1);
+      assert.equal(await detailsNode.evaluate((node) => node.isConnected), true);
+      releaseOperation();
+      await operations.getByText(/Checked .*signature is still pending/).waitFor();
+      assert.equal(await check.isEnabled(), true);
+      failOperationRead = true;
+      await check.click();
+      await operations
+        .getByRole("alert")
+        .getByText(/Could not check transaction status/)
+        .waitFor();
+      await operations.getByText("Waiting for signature result", { exact: true }).waitFor();
+      assert.equal(await page.getByText(/secret provider payload/).count(), 0);
+      failOperationRead = false;
+
+      // Signed bytes have a hash, but only an explicit Send transaction can broadcast.
+      const txHash = "0x" + "a".repeat(64);
+      launchOperation = { ...launchOperation, status: "signed", error: null, txHash, version: 7 };
+      await check.click();
+      await operations.getByText("Ready to send", { exact: true }).waitFor();
+      await operations.getByText(/Checked .*transaction has not been sent by this flow/).waitFor();
+      const copyHash = operations.getByRole("button", {
+        name: "Copy transaction hash",
+        exact: true,
+      });
+      await copyHash.focus();
+      await page.keyboard.press("Enter");
+      await operations
+        .getByRole("button", { name: "Copied transaction hash", exact: true })
+        .waitFor();
+      assert.equal(await page.evaluate(() => window.tokenCopied), txHash);
+      assert.equal(
+        await operations
+          .getByRole("link", { name: "View transaction hash in explorer" })
+          .getAttribute("href"),
+        `https://testnet.monadscan.com/tx/${txHash}`,
+      );
+      assert.equal(
+        await operations
+          .getByRole("link", { name: "View master wallet address in explorer" })
+          .getAttribute("href"),
+        `https://testnet.monadscan.com/address/${wallet.address}`,
+      );
+      assert.equal(
+        await operations
+          .getByRole("link", { name: "View contract address in explorer" })
+          .getAttribute("target"),
+        "_blank",
+      );
+      assert.equal(counts.get(operationUrl + "/confirm") ?? 0, 0);
+      pauseOperation();
+      await operations.getByRole("button", { name: "Send transaction", exact: true }).click();
+      await operations
+        .getByRole("button", { name: "Submitting transaction…", exact: true })
+        .waitFor();
+      assert.equal(await operations.locator('svg[class*="spinner"]').count(), 1);
+      assert.equal(await operations.getByText("Transaction hash", { exact: true }).count(), 1);
+      releaseOperation();
+      await operations.getByText("Waiting for confirmation", { exact: true }).waitFor();
+      await check.click();
+      await operations.getByText(/Checked .*No confirmed receipt yet/).waitFor();
+      const blockHash = "0x" + "b".repeat(64);
+      launchOperation = { ...launchOperation, status: "included", blockHash, version: 9 };
+      await check.click();
+      await operations.getByText("Included on-chain", { exact: true }).waitFor();
+      await operations.getByText(/Checked .*final confirmation is still pending/).waitFor();
+      assert.equal(
+        await operations
+          .getByRole("link", { name: "View block hash in explorer" })
+          .getAttribute("href"),
+        `https://testnet.monadscan.com/block/${blockHash}`,
+      );
+      await operations.screenshot({ path: path.join(output, "launch-included-mobile.png") });
+      launchOperation = { ...launchOperation, status: "finalized", version: 10 };
+      await check.click();
+      await operations.getByText("Transaction confirmed", { exact: true }).waitFor();
+      await operations.getByText(/Token details are waiting for indexing/).waitFor();
+      assert.equal(
+        await operations.getByRole("button", { name: "Launch token", exact: true }).count(),
+        0,
+      );
+      await operations.getByRole("button", { name: "Refresh token details", exact: true }).click();
+      await operations.getByText(/Checked .*Confirmed on-chain/).waitFor();
+      assert.equal(counts.get(operationUrl + "/confirm"), 1);
+      const readCount = counts.get(operationUrl);
+      await delay(600);
+      assert.equal(counts.get(operationUrl), readCount, "Status must not poll");
+      await page.setViewportSize({ width: 1280, height: 1000 });
+      await operations.screenshot({ path: path.join(output, "launch-confirmed-desktop.png") });
+      await page.evaluate(() =>
+        Object.defineProperty(navigator, "clipboard", { value: undefined }),
+      );
+      await operations
+        .getByRole("button", { name: "Copied transaction hash", exact: true })
+        .click();
+      await operations
+        .getByRole("alert")
+        .getByText(`Could not copy. ${txHash}`, { exact: true })
+        .waitFor();
+      await page.setViewportSize({ width: 320, height: 1000 });
+      assert.equal(
+        await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+        true,
+      );
+      await page.emulateMedia({ reducedMotion: "reduce" });
+      assert.equal(await stage.evaluate((node) => getComputedStyle(node).transitionDuration), "0s");
+      assert.equal(await name.inputValue(), "Saved token");
+      assert.equal(counts.get(prefix + "/operations"), 4, "No repeated preparation");
+      await operations.screenshot({ path: path.join(output, "launch-confirmed-mobile.png") });
     } else if (scenario === "studio-token") {
       const name = page.getByRole("textbox", { name: "Token name", exact: true });
       await page.getByRole("status", { name: "Loading token" }).waitFor();
@@ -725,7 +944,17 @@ try {
       } else if (endpoint === "/api/v1/studio/perpl/markets" && scenario === "studio-markets") {
         maximum = 3;
       } else if (scenario === "studio-token-launch") {
-        maximum = endpoint.endsWith("/token/operations") ? 4 : endpoint.endsWith("/token") ? 6 : 3;
+        // One explicit page reload adds a second mount; all transaction reads are user-triggered.
+        maximum = 4;
+        if (endpoint.endsWith("/token")) {
+          maximum = 9;
+        } else if (endpoint.endsWith("/token/operations")) {
+          maximum = 4;
+        } else if (endpoint.endsWith("/confirm")) {
+          maximum = 1;
+        } else if (endpoint.includes("/token/operations/")) {
+          maximum = 7;
+        }
       } else if (scenario === "studio-token") {
         maximum = 3;
       } else if (scenario === "studio-wallets" && walletRead) {
