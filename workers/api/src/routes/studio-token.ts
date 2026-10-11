@@ -98,7 +98,7 @@ export function studioTokenRoutes(services: StudioServices) {
       errorStatuses: errors,
       idempotent: true,
       description:
-        "Owner-only testnet preparation of an enumerated launch or fee action. The backend resolves all wallets/contracts/calldata and freezes a durable intent before external work. Requires verified Kuru policy; no transaction is sent.",
+        "Owner-only testnet preparation of an enumerated launch or fee action. The backend resolves all wallets/contracts/calldata and freezes a durable intent before external work. Requires the reviewed venue policy. Buy/sell and exact approvals accept only atomic amounts and bounded slippage; no transaction is sent.",
     }),
     async (c) => {
       const target = await scope(c);
@@ -118,6 +118,7 @@ export function studioTokenRoutes(services: StudioServices) {
               action: body.action,
               expectedVersion: body.expectedVersion,
               ...(body.asset ? { asset: body.asset } : {}),
+              ...(body.trade ? { trade: body.trade } : {}),
             },
             key,
           ),
