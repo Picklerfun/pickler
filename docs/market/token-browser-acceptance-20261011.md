@@ -21,8 +21,9 @@ A read-only check at 18:41 UTC found:
   wallet is not a source of buyer funds. An owner purchase requires testnet AUSD in the master.
 
 At those observations, the open browser session was detected, but the Mac was locked and native
-interaction failed. The owner passkey approval remained pending. No passkey
-approval was bypassed and no owner launch or trade was signed or sent during this acceptance.
+interaction failed. At that time, owner passkey approval was pending. The later owner-approved
+refusal is recorded below. No passkey approval was bypassed; this acceptance has not confirmed
+an owner launch or trade.
 The separate operator faucet transaction below only supplied testnet buyer funds.
 
 A second read-only observation at 18:58 UTC found factory cursor 70,113,687 against head
@@ -88,6 +89,29 @@ head 70,222,469: 87,682 blocks behind. The grouped admission correction below ha
 published; sustained catch-up remains unproven. Public trading bindings were still absent and
 PR #148 remained open with CI startup failures. No manual deployment was performed.
 
+## Owner-approved signing refusal
+
+The owner approved the new passkey request. At 21:50:44 UTC, the API recorded a definitive
+Turnkey HTTP 404 refusal: `Could not find any resource to sign with. Addresses are case sensitive.`
+The saved operation subsequently became `SIGNATURE_REJECTED`, with no activity ID or transaction
+hash. This was a provider wallet lookup failure after approval, not an owner cancellation.
+
+A targeted read-only database check at 22:00 UTC confirmed that the requested address and the
+registered wallet identify the same Ethereum account. The registered provider address is EIP-55
+checksummed, while the launch context and prepared `signWith` were lowercased. Applying `getAddress`
+to that context reproduces the exact registered provider address.
+
+The correction checksums only Turnkey's `signWith` resource lookup. Business identity comparisons,
+the prepared sender and the unsigned transaction remain unchanged; already stamped requests are
+not rewritten. The controlled signing regression failed on the lowercase request before the
+correction and passed afterward, including raw transaction verification. The V4 launch and
+buy/sell preparation regressions also require the provider's exact checksummed address.
+
+Studio now calls this state `Signing request rejected` and offers `Prepare again`. It preserves
+the saved draft and does not automatically ask for another signature or submit a transaction.
+This correction requires automatic publication before a new owner attempt. No real launch or
+purchase is established by the controlled regression.
+
 ## Corrections
 
 The landing now reads the existing public directory alongside activity. A nullable canonical
@@ -121,7 +145,8 @@ remains pending until automatic publication and another real measurement.
 | Empty, failed and confirmed landing listings                       | Strict loopback API + production web, 390/1280 px                   | Passed  |
 | Keyboard landing → public profile → Buy/Sell panel                 | Controlled browser, no external requests                            | Passed  |
 | Grouped reserves, daily quota, lease loss and historical parity    | 56 controlled admission/PostgreSQL/scheduling regressions           | Passed  |
-| Owner passkey launch and Studio buy                                | Master funded; new launch prepared; requires owner passkey approval | Pending |
+| Owner passkey launch and Studio buy                                | Approval received; provider address-case refusal; fix needs release | Pending |
+| Provider signing resource and preserved transaction bytes          | Controlled refusal reproduction, V4 launch and buy/sell preparation | Passed  |
 | Master-wallet AUSD for the test purchase                           | Canonical faucet receipt, 10,000 AUSD received                      | Passed  |
 | New token canonical indexing and hosted landing appearance         | No new launch; indexer still recovering history                     | Pending |
 | GitHub CI                                                          | Startup failure before jobs, also present on preceding main         | Pending |
@@ -151,3 +176,22 @@ node --import tsx scripts/design/token-discovery.mjs
 Playwright must be installed globally as required by Design. Browser diagnostics and screenshots
 are local under `scripts/design/.shots/diagnostics/token-discovery`; none contain a real signature,
 credential or transaction. Only a later recorded canonical transaction can close hosted acceptance.
+
+For the signing address regression, run:
+
+```sh
+node --import tsx --test --test-concurrency=2 packages/infrastructure/test/token-operation-driver.test.ts packages/infrastructure/test/uniswap-operation-driver.test.ts packages/infrastructure/test/turnkey-activities.test.ts packages/infrastructure/test/turnkey.test.ts packages/core/test/token-operations.test.ts apps/web/test/token-operation-status.test.ts
+node --import tsx scripts/design/studio-loading.mjs
+```
+
+The targeted signing/status run passed all 66 tests. Shared builds, infrastructure types, affected
+lint, formatting, architecture and the Design source check also passed after the correction.
+
+The updated Studio loading suite passed all ten scenarios, including the saved provider refusal,
+button-only loading, explicit status reads, retained draft, missing signing identity, expiration,
+signed-but-unsent recovery and receipt/finality states. It used synthetic loopback responses and
+an isolated source snapshot with Webpack so the already-open local preview remained running.
+The snapshot's external dependency symlinks are not compatible with Turbopack's filesystem root;
+that initial runner startup failure was isolated from the application regression. The committed
+harness keeps its normal startup command. The additional explicit refusal reload is included in
+the six-read mount ceiling; preparation, status and confirmation request ceilings remain unchanged.
