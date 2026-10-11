@@ -216,3 +216,55 @@ test("controlled preparation clock exhaustion cancels remaining physical request
   assert.equal(requests, 1);
   assert.equal(r.history.markets.length, 0);
 });
+
+test("intraday captures genuine native five/fifteen-minute pages within one bounded preparation", async (t) => {
+  t.mock.timers.enable({ apis: ["Date", "setTimeout"], now: NOW });
+  const starts: number[] = [];
+  const urls: string[] = [];
+  const r = await settle(
+    t,
+    preparePtsHistory(
+      { agent: async () => agent() },
+      { tenantId: "controlled", agentId: "pts" },
+      new AbortController().signal,
+      {
+        commit: "controlled-intraday",
+        candidateVersion: "0.1.0",
+        transport: async (input) => {
+          starts.push(Date.now());
+          urls.push(String(input));
+          const resolution = Number(/\/candles\/(\d+)\//.exec(String(input))?.[1]);
+          return Response.json(
+            resolution ? { at: { t: Date.now(), b: 100 }, r: resolution, d: [] } : metadata(),
+          );
+        },
+        capture: async () => {},
+      },
+    ),
+  );
+  assert.equal(r.fatalCode, null);
+  assert.equal(r.history.candidate, "pts-intraday@0.1.0");
+  assert.equal(r.history.to - r.history.from, 7 * 86400000);
+  assert.ok(r.requests <= 96);
+  assert.ok(starts.slice(1).every((at, i) => at - starts[i]! >= 1000));
+  assert.equal(r.history.markets.length, 11);
+  for (const h of r.history.markets) {
+    assert.deepEqual(
+      h.series.map((s) => s.resolution),
+      [86400, 14400, 3600, 900, 300],
+    );
+    const five = h.series.find((s) => s.resolution === 300)!;
+    assert.ok((five.to - five.from) / 300000 > 2048);
+    assert.equal(five.missingOpenTimes.length, (five.to - five.from) / 300000);
+    assert.ok(analyzePts(h, r.history.to, "0.1.0").coverage.every((c) => !c.eligible));
+  }
+  const fiveRequests = urls.filter((u) => /\/candles\/300\//.test(u));
+  assert.equal(fiveRequests.length, 33);
+  for (const text of urls.filter((u) => u.includes("/candles/"))) {
+    const parts = new URL(text).pathname.split("/");
+    const i = parts.indexOf("candles");
+    const resolution = Number(parts[i + 1]);
+    const [from, to] = parts[i + 2]!.split("-").map(Number);
+    assert.ok((to! - from!) / (resolution * 1000) <= 1024, text);
+  }
+});
