@@ -25,6 +25,9 @@ import {
   AGENT_WALLET_ACTIVITY_TYPES,
   TokenTradeError,
   TokenPreparationError,
+  InvalidSignedActivityError,
+  SignedActivityRejectedError,
+  SigningServiceUnavailableError,
   isTokenTradeAction,
   tokenTradeMinimumOutput,
   type TokenTradeQuote,
@@ -45,6 +48,7 @@ import {
   broadcastTransaction,
 } from "../chain/deposit-tx.js";
 import { JsonRpcError, type Rpc } from "../chain/erc20.js";
+import { reconcileExpiredLaunch } from "./expired-launch.js";
 import { tokenAgentKey } from "../studio/token-launch-store.js";
 import { tokenLaunchAllowsAgent, type TokenLaunchPolicy } from "./policy.js";
 
@@ -60,7 +64,8 @@ function completed(activity: TurnkeyActivity) {
   }
   const raw = activity.result?.signTransactionResult?.signedTransaction;
   if (typeof raw !== "string" || !/^(0x)?[0-9a-f]+$/i.test(raw)) {
-    throw new Error("INVALID_SIGNED_RESULT");
+    // Keep an accepted provider identity even when its signed result is incomplete.
+    return { activityId: activity.id, status: "pending" as const };
   }
   return {
     activityId: activity.id,
@@ -631,17 +636,46 @@ export function createTokenOperationDriver(deps: {
       if (request.url !== prepared.activity.url || request.body !== prepared.activity.body) {
         throw new Error("ACTIVITY_MISMATCH");
       }
-      const result = await deps.forwarder.forward(request, {
-        organizationId: prepared.activity.organizationId,
-        allowedActivityTypes: [AGENT_WALLET_ACTIVITY_TYPES.signTransaction],
-      });
-      if (
-        result.organizationId !== prepared.activity.organizationId ||
-        result.type !== AGENT_WALLET_ACTIVITY_TYPES.signTransaction
-      ) {
-        throw new Error("ACTIVITY_MISMATCH");
+      let phase = "forward";
+      try {
+        const result = await deps.forwarder.forward(request, {
+          organizationId: prepared.activity.organizationId,
+          allowedActivityTypes: [AGENT_WALLET_ACTIVITY_TYPES.signTransaction],
+        });
+        phase = "validate_activity";
+        if (
+          result.organizationId !== prepared.activity.organizationId ||
+          result.type !== AGENT_WALLET_ACTIVITY_TYPES.signTransaction
+        ) {
+          throw new Error("ACTIVITY_MISMATCH");
+        }
+        return completed(result);
+      } catch (error) {
+        let reason = "invalid_response";
+        if (
+          error instanceof InvalidSignedActivityError ||
+          error instanceof SignedActivityRejectedError
+        ) {
+          reason = "request_rejected";
+        } else if (error instanceof SigningServiceUnavailableError) {
+          reason = "service_unavailable";
+        }
+        console.warn("Token signing failed", { operationId: prepared.operationId, phase, reason });
+        throw error;
       }
-      return completed(result);
+    },
+    async recoverExpiredLaunch(scope, intent) {
+      if (!intent.prepared) {
+        return null;
+      }
+      // Historical read-only recovery must not depend on a newer gas/configuration hash.
+      // Exact factory, creator, grant deadline and agent identity are checked by the proof.
+      return reconcileExpiredLaunch({
+        rpc: rpcFor(intent.id, true),
+        policy,
+        prepared: intent.prepared,
+        agentKey: tokenAgentKey(policy.chainId, scope.agentId),
+      });
     },
     async activity(prepared, id) {
       const result = await deps.reader.getActivity(prepared.activity.organizationId, id);
