@@ -44,7 +44,7 @@ import {
 } from "../chain/deposit-tx.js";
 import type { Rpc } from "../chain/erc20.js";
 import { tokenAgentKey } from "../studio/token-launch-store.js";
-import type { TokenLaunchPolicy } from "./policy.js";
+import { tokenLaunchAllowsAgent, type TokenLaunchPolicy } from "./policy.js";
 
 function completed(activity: TurnkeyActivity) {
   if (!activity.id) {
@@ -321,7 +321,7 @@ export function createTokenOperationDriver(deps: {
     ready: true,
     checkReadiness: (id) => verifyDeployment(rpcFor(id)),
     async prepare(scope, intent: TokenIntent) {
-      if (!policy.allowedAgents.includes(scope.agentId)) {
+      if (!tokenLaunchAllowsAgent(policy, scope.agentId)) {
         throw new Error("TESTNET_AGENT_NOT_ADMITTED");
       }
       const rpc = rpcFor(intent.id);
