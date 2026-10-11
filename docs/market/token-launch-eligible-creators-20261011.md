@@ -16,9 +16,11 @@ the dedicated backend key only issues the eligibility grant. Revocation/ownershi
 checked again before recording and sending. No creator access is granted by this change.
 
 Only Monad testnet (10143) is accepted. Mainnet, unknown admission modes, mixed UUID/all-creator
-policies and missing deployment evidence are rejected. The source configuration remains disabled
-by default; activating the reviewed policy is an explicit runtime operation. A later source
-deployment restores its committed closed default unless the operator reapplies the activation.
+policies and missing deployment evidence are rejected. The initial activation was an explicit
+runtime operation while the source configuration remained disabled. The owner subsequently
+authorized persisting `TOKEN_LAUNCH_ENABLED=true` in the API staging configuration, so ordinary
+deployments preserve the approved testnet operating state. Other compositions remain disabled
+without explicit configuration; this does not activate mainnet or public buyer operations.
 
 ## Validation and activation evidence
 
@@ -80,3 +82,32 @@ npm run build:worker --workspace=@pickler/api
 These tests use injected providers and public test keys; they do not query RPC, X or Turnkey, sign
 with real keys, send transactions, mutate hosted PostgreSQL or spend fiat. Runtime verification
 is a separate bounded read-only step; no real owner launch is performed by the operator.
+
+## Deployment persistence correction
+
+The API deployment at 14:37:48 UTC on 2026-10-11 reapplied the source's `false` value and closed
+launch availability. This was a deployment configuration overwrite, not a local `.env` value
+taking precedence inside the running Worker. The owner explicitly approved correcting the
+persisted staging value and restoring the previously approved runtime state.
+
+`workers/api/wrangler.staging.jsonc` now declares `TOKEN_LAUNCH_ENABLED=true`. The reviewed policy,
+creator/owner checks, dedicated authority, gas/RPC ceilings, custody bindings, indexer and public
+buyer gate are unchanged. Runtime restoration changes only this existing plain-text binding and
+retains the current deployed source. No grant, signature, provider preparation or transaction is
+issued as part of this correction.
+
+Until the persistence PR is merged, deploying older main still requires
+`--var TOKEN_LAUNCH_ENABLED:true`. Emergency closure uses a false override and must also be
+recorded in source to prevent a later ordinary deployment from reopening the launcher.
+
+Runtime restoration was verified at 16:01:09 UTC on 2026-10-11:
+
+- Existing API source version: `d52922de-5e9c-4a9b-982a-aa4a7a70fa09`.
+- Settings-only active version: `4ba70e58-6fc5-47b1-b973-338accc638ec` at 100%.
+- Deployment: `e9446d82-4c8f-4324-b40c-4aa6d17b08ca`.
+- Readback confirmed `TOKEN_LAUNCH_ENABLED=true`; all other 38 bindings were unchanged.
+- Staging topology/identifiers, architecture and the API dry-run passed with the persisted true.
+
+This does not prove a successful owner launch or resolve the earlier preparation failure.
+The persistence source change still requires its normal PR merge before it protects subsequent
+main deployments. No unrelated local environment or generated file is included.
