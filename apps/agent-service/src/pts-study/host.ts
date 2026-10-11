@@ -15,7 +15,11 @@ import { createProfileStudyRunner } from "@pickler/trading/evaluation";
 import {
   inspectPtsHistory,
   PTS_POLICY,
-  PTS_VARIANTS,
+  PTS_INTRADAY_POLICY,
+  ptsVariants,
+  ptsVariant,
+  ptsConfigVersion,
+  ptsTemporalProfile,
   type PerpsPtsConfig,
   type PtsReplayInput,
 } from "@pickler/trading/pts";
@@ -35,7 +39,7 @@ export async function prepareDatabase(config: PerpsPtsConfig, envFile: string, m
         "Preparation cannot replace a started PTS study",
       );
     }
-    for (const v of PTS_VARIANTS) {
+    for (const v of ptsVariants(config)) {
       await paper.initialize(
         { ...config, agentId: view.record.agentIds[v]! },
         view.record.agentVersions[v]!,
@@ -64,7 +68,7 @@ export async function runPtsHost(
     output = resolve(input.output);
   const coverage = input.packet.history.markets.map((h) => ({
     symbol: h.market.symbol,
-    analysis: inspectPtsHistory(h, input.packet.history.to),
+    analysis: inspectPtsHistory(h, input.packet.history.to, ptsConfigVersion(configuration)),
   }));
   const eligible = coverage
     .filter(
@@ -122,7 +126,7 @@ export async function runPtsHost(
       if (view.record.startedAt !== null) {
         throw new PilotError("STUDY_ALREADY_STARTED", "Preflight cannot authorize a restart");
       }
-      for (const variant of PTS_VARIANTS) {
+      for (const variant of ptsVariants(configuration)) {
         const agent = await research.agent({
           tenantId: configuration.tenantId,
           agentId: view.record.agentIds[variant]!,
@@ -137,7 +141,8 @@ export async function runPtsHost(
       }
       const saved = await exportPerpsAudit(research.pool, configuration);
       if (
-        saved.accounts["pts-basic"]?.account.positionPolicy !== "pts-basic-1x-0.2.0" ||
+        saved.accounts[ptsVariant(configuration)]?.account.positionPolicy !==
+          ptsTemporalProfile(ptsConfigVersion(configuration)).accountPolicy ||
         saved.accounts["sma-reference"]?.account.positionPolicy !== undefined
       ) {
         throw new PilotError("CONFIG_CHANGED", "Independent account policies differ");
@@ -154,7 +159,7 @@ export async function runPtsHost(
               coverage,
               publicRequests: 0,
               modelCalls: 0,
-              policyHash: digest(PTS_POLICY),
+              policyHash: digest(configuration.version === 9 ? PTS_INTRADAY_POLICY : PTS_POLICY),
             },
             null,
             2,
@@ -192,7 +197,7 @@ export async function runPtsHost(
             state,
             output,
             commit: commit(),
-            policyHash: digest(PTS_POLICY),
+            policyHash: digest(configuration.version === 9 ? PTS_INTRADAY_POLICY : PTS_POLICY),
           },
         });
         let done = false;
