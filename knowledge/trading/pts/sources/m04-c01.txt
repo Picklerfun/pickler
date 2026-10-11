@@ -1,0 +1,60 @@
+En esta clase vamos a iniciar con un pequeño repaso a los módulos anteriores y vamos a
+dejar ya trazado el plan de trading desde el punto de vista gráfico para después iniciar
+con toda la sección de análisis macroeconómico, correlativo y muchas cosas más que vas a necesitar
+para poder llevar tu análisis al nivel más profesional posible y al mismo tiempo al mayor
+nivel de probabilidad de éxito. Entonces haciendo un pequeño repaso a lo que es el esquema básico
+de la estrategia, cuando tenemos escenarios de tendencia alcista recordemos que eso significa
+que podemos ser capaces de trazar un macro canal alcista ya sea en gráfico semanal o diario y a
+partir de allí cuando tenemos correcciones importantes en la parte inferior podemos entender
+que existe una importante probabilidad de que haya una falsa ruptura de la tendencia ya que el
+mercado siempre busca crear la sensación de inducción de inducir hacia el movimiento contrario
+y posiblemente dentro de este nivel o dentro de estas zonas encontramos por ejemplo zonas de
+reversión y encontramos también figuras de reversión como lo puede ser un macrofí, un fí con una
+onda madre y zona de reversión, triángulo reventado, cuña fío, cobertura de vendedores, es decir todo
+el tipo de figuras que nos podrían y patrones que nos podrían dar a entender que la probabilidad más
+fuerte es que el mercado se mantenga dentro de la tendencia. Recordemos que en caso de que un
+canal alcista efectivamente se rompe o se rompa deben por lo menos pasar 72 horas confirmando que
+efectivamente se ha roto y también debe ir acompañado de algún evento importante del cual
+muy pronto vamos a estar hablando de ese tema en este módulo. Adicionalmente cuando ya el mercado
+arranca las zonas donde podemos buscar entradas al alza son las zonas del 023, la zona del 038,
+podemos colocar el stop por debajo del mínimo ya sea del 161 si se ha formado un fí o debajo
+de la zona de reversión del 078 o en resumidas cuentas por debajo del mínimo gráfico una vez
+que ya se ha formado las figuras de reversión y ya el mercado ha empezado a subir hacia niveles
+del 023 y el 038. Cuando entramos desde el 23 es un poco más agresivo y podemos utilizar la zona
+del 38 para poner el stop en break even y si estamos en medio de un mercado que está más volátil de
+la cuenta es decir hay mucha agresividad en cuanto a la magnitud de movimiento podemos buscar entrar
+en el 38 para tener una entrada más confirmada y buscamos colocar el break even en la zona
+intermedia entre el 38 y el 61 y a partir del 61 y 78 ya aparecen los dos primeros targets que
+son usualmente muy alcanzables y como estaríamos operando a favor de la tendencia si se logra
+hacer el quiebrel sista podremos ir a los targets superiores como el nivel de 1.0 1.27 1.61 de todo
+el retroceso anterior e incluso podemos llegar hasta la zona del 2.61 es muy normal encontrar en
+las zonas intermedia de rango del 38 al 61 y del 78 al 1.27 figuras más bien de continuación como
+banderas reventadas alcistas fis alcistas fis conondas madre o lindens diagonal recuerden que en
+esta sección tal vez el mercado no está induciendo aire hacia el lado contrario pero si está en modo
+barrida es decir el mercado está tomando barridas antes de poder continuar bien recordemos que también
+esto se puede aplicar desde gráficos en marcos semanales y diarios hasta incluso operaciones a
+corto plazo y especialmente para operaciones a corto plazo los rangos intermedios de todo el macro
+análisis del 38 al 61 suelen ser muy muy muy efectivos utilizándolos para operaciones rápidas
+es decir si ya el sp 500 bitcoin una una acción como tal vez puede ser envidia palantir o tal
+vez una alco y si ya están entre un rango y el otro y están ya en la zona de recorrido es muy
+normal que todos los días que pase entre un nivel y el otro tengamos el concepto de barrida de por
+medio utilizando en este caso las figuras de continuación y a partir de allí teniendo en
+cuenta la barrida podemos preparar escenarios de operativa rápida que incluso ustedes lo verán
+en los reportes cuando estemos trabajando dicho tipo de zonas que vendrán reportes con operaciones
+rápidas para justamente trabajar estos niveles si lo vemos desde el lado bajista es exactamente la
+misma situación y cuando la tendencia es bajista podemos ver por ejemplo figuras de reversión en
+la parte alta de los rebotes como fíjiz bajistas fíjiz bajistas con otras madre fíjiz bajistas que
+luego producen que la zona de reversión siguiente sea respetada triángulos reventados bajistas
+cuñas fíjiz bajistas y cuando ya se produce la caída pues es lo mismo tenemos el concepto en el
+cual el mercado tiene barridas hacia los operaciones bajistas y finalmente termina cayendo como
+anderas reventadas bajistas fíjiz bajistas fíjiz bajistas con otras madre o leading diagonal
+algo importante es que igualmente si entramos en short podemos entrarlo desde el 23 y el 38
+si lo queremos agresivo desde el 23 y lo queremos más conservador desde el 38 y pues bueno como es
+ahí a favor de la tendencia y la tendencia es bajista es posible que la zona de reversión del
+punto 78 se rompa y al romper se puede ir hacia niveles más bajos algo importante es que el recurso
+de cobertura de vendedores solamente aplica para rebotes es decir solamente aplica para que
+si en algún momento se forma una onda madre bajista sobre este camino al llegar al nivel de
+suelo ya estemos sobre el 2.61 este tipo de conceptos es importante para tenerlos en cuenta y poder
+así tener una operativa bastante seria desde el punto de vista gráfico y ahora vamos a ir
+trabajando todos los demás aspectos ligados no sólo el gráfico sino también a los aspectos
+correlativos y macroeconómicos
