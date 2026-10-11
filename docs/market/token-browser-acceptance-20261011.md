@@ -22,8 +22,8 @@ A read-only check at 18:41 UTC found:
 
 At those observations, the open browser session was detected, but the Mac was locked and native
 interaction failed. At that time, owner passkey approval was pending. The later owner-approved
-refusal is recorded below. No passkey approval was bypassed; this acceptance has not confirmed
-an owner launch or trade.
+refusal is recorded below. No passkey approval was bypassed; those earlier observations had not
+confirmed an owner launch or trade. The later successful launch receipt is recorded at the end.
 The separate operator faucet transaction below only supplied testnet buyer funds.
 
 A second read-only observation at 18:58 UTC found factory cursor 70,113,687 against head
@@ -136,21 +136,22 @@ remains pending until automatic publication and another real measurement.
 
 ## Validation
 
-| Scenario                                                           | Evidence                                                            | Result  |
-| ------------------------------------------------------------------ | ------------------------------------------------------------------- | ------- |
-| Confirmation, wrong network, private visibility and orphan removal | Real isolated PostgreSQL, `token-launch.test.ts`                    | Passed  |
-| Directory history, reads and failures                              | Real isolated PostgreSQL, `agent-directory.test.ts`                 | Passed  |
-| Public JWT-free preparation, strict bodies, disabled/quota errors  | Injected API route suite                                            | Passed  |
-| Concurrent public RPC reservation                                  | Real isolated PostgreSQL quota suite                                | Passed  |
-| Empty, failed and confirmed landing listings                       | Strict loopback API + production web, 390/1280 px                   | Passed  |
-| Keyboard landing → public profile → Buy/Sell panel                 | Controlled browser, no external requests                            | Passed  |
-| Grouped reserves, daily quota, lease loss and historical parity    | 56 controlled admission/PostgreSQL/scheduling regressions           | Passed  |
-| Owner passkey launch and Studio buy                                | Approval received; provider address-case refusal; fix needs release | Pending |
-| Provider signing resource and preserved transaction bytes          | Controlled refusal reproduction, V4 launch and buy/sell preparation | Passed  |
-| Master-wallet AUSD for the test purchase                           | Canonical faucet receipt, 10,000 AUSD received                      | Passed  |
-| New token canonical indexing and hosted landing appearance         | No new launch; indexer still recovering history                     | Pending |
-| GitHub CI                                                          | Startup failure before jobs, also present on preceding main         | Pending |
-| Ordinary visitor buy/sell                                          | Testnet gate needs automatic release and a confirmed token          | Pending |
+| Scenario                                                           | Evidence                                                            | Result          |
+| ------------------------------------------------------------------ | ------------------------------------------------------------------- | --------------- |
+| Confirmation, wrong network, private visibility and orphan removal | Real isolated PostgreSQL, `token-launch.test.ts`                    | Passed          |
+| Directory history, reads and failures                              | Real isolated PostgreSQL, `agent-directory.test.ts`                 | Passed          |
+| Public JWT-free preparation, strict bodies, disabled/quota errors  | Injected API route suite                                            | Passed          |
+| Concurrent public RPC reservation                                  | Real isolated PostgreSQL quota suite                                | Passed          |
+| Empty, failed and confirmed landing listings                       | Strict loopback API + production web, 390/1280 px                   | Passed          |
+| Keyboard landing → public profile → Buy/Sell panel                 | Controlled browser, no external requests                            | Passed          |
+| Grouped reserves, daily quota, lease loss and historical parity    | 56 controlled admission/PostgreSQL/scheduling regressions           | Passed          |
+| Owner master-passkey launch                                        | Hosted operation and successful canonical receipt below             | Passed remotely |
+| Owner Studio buy                                                   | Requires canonical indexed token attribution                        | Pending         |
+| Provider signing resource and preserved transaction bytes          | Controlled refusal reproduction, V4 launch and buy/sell preparation | Passed          |
+| Master-wallet AUSD for the test purchase                           | Canonical faucet receipt, 10,000 AUSD received                      | Passed          |
+| New token canonical indexing and hosted landing appearance         | Launch receipt confirmed; indexer still recovering history          | Pending         |
+| GitHub CI                                                          | Startup failure before jobs, also present on preceding main         | Pending         |
+| Ordinary visitor buy/sell                                          | Requires indexed public token and explicit wallet approval          | Pending         |
 
 The controlled API/directory PostgreSQL run passed 29 tests. The indexer admission, canonical
 PostgreSQL indexing, historical operation compatibility and host scheduling runs passed 56 tests,
@@ -195,3 +196,35 @@ The snapshot's external dependency symlinks are not compatible with Turbopack's 
 that initial runner startup failure was isolated from the application regression. The committed
 harness keeps its normal startup command. The additional explicit refusal reload is included in
 the six-read mount ceiling; preparation, status and confirmation request ceilings remain unchanged.
+
+## Owner master-wallet launch confirmed
+
+At 2026-10-11T23:26:44Z, the private operation read and the public Monad testnet receipt agreed:
+
+- Operation `87b5050b-d2a9-4ad6-8bab-5724f8dafca9` was `finalized`, version 10, without an error.
+- [Transaction](https://testnet.monadscan.com/tx/0x5821a20cf7a70319ab609411ab94725b68044fc2ab8350c787104db123bef16b)
+  succeeded with status `0x1` in block 70,237,021. The registered owner master wallet called the
+  recorded factory; the owner completed the passkey. The agent did not sign or send that transaction.
+- Studio displayed Transaction confirmed and retained the copy/explorer references. Token details
+  remained pending canonical indexing. Public persona still returned no attributed token.
+- The factory cursor was 70,162,187 while the public head was 70,242,190. The live indexer was
+  still version `7a59bf87`, manually published before PR #148; API/Web had published that merge.
+  No indexer cursor was skipped and no manual deployment was performed during this check.
+
+| Scenario                                                                    | Evidence                                         | Status                                            |
+| --------------------------------------------------------------------------- | ------------------------------------------------ | ------------------------------------------------- |
+| Owner launch, master passkey, successful factory receipt                    | Hosted Studio, private operation, public receipt | Passed remotely                                   |
+| Automatic receipt/finality wait and indexed-card update                     | Controlled clocks and local browser harness      | Passed locally: 23 tests and 10 browser scenarios |
+| Canonical agent attribution, Studio buy, landing discovery, public buy/sell | Indexer still behind the launch block            | Pending                                           |
+
+The receipt does not itself establish catalogue attribution, sustained indexer capacity or a
+completed trade. The remaining hosted blocker is indexing/publication, not a missing launch.
+
+Automatic confirmation validation used the existing global Playwright installation and an
+archived source copy under `/private/tmp`, without environment credentials. The copy selected
+Webpack because its dependency symlink lies outside Turbopack's filesystem root; committed
+startup configuration and browser assertions were unchanged. The controlled launch scenario
+performed six explicit recovery/signing reads and three automatic receipt/finality reads, one
+confirmation POST, and nine total state reads. An indexed token stopped the database-only observer.
+The original request-count ceilings were retained. Tests also covered read/elapsed limits,
+errors without retries, hidden tabs, navigation cancellation and retained observation budgets.
