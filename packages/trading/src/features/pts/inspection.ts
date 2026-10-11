@@ -1,12 +1,18 @@
 import { PilotError } from "@pickler/core";
+import { PTS_VERSION, type PtsVersion, type PtsPeriod } from "./types.js";
+import { ptsTemporalProfile } from "./temporal-profile.js";
 import { analyzePts } from "./signals.js";
 import { closedSeries, aggregateDays, ptsCoverage } from "./calendar.js";
 import type { PtsAnalysis, PtsBar, PtsHistory } from "./types.js";
 
 /** Evidence inspection only. Invalid original bars never become executable strategy inputs. */
-export function inspectPtsHistory(history: PtsHistory, at: number) {
+export function inspectPtsHistory(
+  history: PtsHistory,
+  at: number,
+  version: PtsVersion = PTS_VERSION,
+) {
   try {
-    return { ...analyzePts(history, at), validationStatus: "VALID" as const };
+    return { ...analyzePts(history, at, version), validationStatus: "VALID" as const };
   } catch (error) {
     if (
       !(error instanceof PilotError) ||
@@ -16,7 +22,7 @@ export function inspectPtsHistory(history: PtsHistory, at: number) {
     }
     const native = new Map<number, PtsBar[]>();
     const issues: { resolution: number; index: number; openTime: number; code: string }[] = [];
-    for (const resolution of [86400, 14400, 3600]) {
+    for (const resolution of ptsTemporalProfile(version).native) {
       const matches = history.series.filter((s) => s.resolution === resolution);
       const valid: PtsBar[] = [];
       for (const series of matches) {
@@ -51,11 +57,13 @@ export function inspectPtsHistory(history: PtsHistory, at: number) {
         "1h": native.get(3600)!,
         "1M": aggregateDays(days, "1M", at),
         "1w": aggregateDays(days, "1w", at),
-      },
+        ...(version !== PTS_VERSION ? { "15m": native.get(900)!, "5m": native.get(300)! } : {}),
+      } as Record<PtsPeriod, PtsBar[]>,
       at,
+      version,
     );
     const analysis: PtsAnalysis = {
-      version: "0.2.0",
+      version,
       at,
       symbol: history.market.symbol,
       action: "hold",
