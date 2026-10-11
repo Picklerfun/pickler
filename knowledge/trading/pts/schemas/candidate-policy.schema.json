@@ -1,0 +1,211 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PTS proposed analysis candidate",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "bundleId",
+    "knowledgeVersion",
+    "candidateId",
+    "status",
+    "mode",
+    "executionEnabled",
+    "description",
+    "findingStates",
+    "requiredConditions",
+    "optionalConfirmations",
+    "reviewedDefinitions",
+    "execution",
+    "analysisSchema",
+    "requestSchema"
+  ],
+  "properties": {
+    "$schema": {
+      "const": "./schemas/candidate-policy.schema.json"
+    },
+    "bundleId": {
+      "const": "pts-course"
+    },
+    "knowledgeVersion": {
+      "const": "1.0.0"
+    },
+    "candidateId": {
+      "const": "pts-trend-reversal"
+    },
+    "status": {
+      "const": "proposal-not-registered"
+    },
+    "mode": {
+      "const": "analysis-only"
+    },
+    "executionEnabled": {
+      "const": false
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1
+    },
+    "findingStates": {
+      "const": ["met", "not-met", "unknown"]
+    },
+    "requiredConditions": {
+      "type": "array",
+      "minItems": 7,
+      "maxItems": 7,
+      "items": {
+        "title": "PTS proposed condition",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "description",
+          "ruleIds",
+          "unresolvedQuestionIds",
+          "knownFindingRequires"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1
+          },
+          "ruleIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "uniqueItems": true,
+            "minItems": 1
+          },
+          "unresolvedQuestionIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "uniqueItems": true,
+            "minItems": 1
+          },
+          "knownFindingRequires": {
+            "const": ["resolved-criterion", "market-evidence"]
+          }
+        }
+      }
+    },
+    "optionalConfirmations": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    },
+    "reviewedDefinitions": {
+      "title": "Unresolved candidate definitions",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "timeframeHistoryAndCalendars",
+        "trendDetector",
+        "channelDetector",
+        "boundaryTolerance",
+        "fibonacciAnchorsAndRatios",
+        "entryModeAndConfirmation",
+        "invalidationAnchorAndBuffer"
+      ],
+      "properties": {
+        "timeframeHistoryAndCalendars": {
+          "type": "null"
+        },
+        "trendDetector": {
+          "type": "null"
+        },
+        "channelDetector": {
+          "type": "null"
+        },
+        "boundaryTolerance": {
+          "type": "null"
+        },
+        "fibonacciAnchorsAndRatios": {
+          "type": "null"
+        },
+        "entryModeAndConfirmation": {
+          "type": "null"
+        },
+        "invalidationAnchorAndBuffer": {
+          "type": "null"
+        }
+      }
+    },
+    "execution": {
+      "title": "Unresolved execution policy",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "readiness",
+        "reviewedAccountRiskBps",
+        "sizingPolicy",
+        "leveragePolicy",
+        "costPolicy",
+        "stopTransitionPolicy",
+        "partialExitSchedule",
+        "extendedTargetEligibility",
+        "holdingAndExpirationPolicy",
+        "sameCandleEventOrdering",
+        "blockingQuestionIds"
+      ],
+      "properties": {
+        "readiness": {
+          "const": "unresolved"
+        },
+        "reviewedAccountRiskBps": {
+          "type": "null"
+        },
+        "sizingPolicy": {
+          "type": "null"
+        },
+        "leveragePolicy": {
+          "type": "null"
+        },
+        "costPolicy": {
+          "type": "null"
+        },
+        "stopTransitionPolicy": {
+          "type": "null"
+        },
+        "partialExitSchedule": {
+          "type": "null"
+        },
+        "extendedTargetEligibility": {
+          "type": "null"
+        },
+        "holdingAndExpirationPolicy": {
+          "type": "null"
+        },
+        "sameCandleEventOrdering": {
+          "type": "null"
+        },
+        "blockingQuestionIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true,
+          "minItems": 1
+        }
+      }
+    },
+    "analysisSchema": {
+      "const": "schemas/analysis.schema.json"
+    },
+    "requestSchema": {
+      "const": "schemas/analysis-request.schema.json"
+    }
+  }
+}
