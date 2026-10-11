@@ -1184,8 +1184,10 @@ Database-only recovery retains the idempotency key when the response/status is u
 unsent bytes, broadcast uncertainty, inclusion and finality. Explicit checks produce a timestamped
 result even without progress. A missing activity/hash requires review and offers only Refresh saved
 status; it must never offer another signature or describe the launch as confirming.
-`chain-reference.tsx` provides copy feedback and network-specific explorer links for addresses,
-transaction hashes and blocks. It uses public chain metadata, and previews disable explorer links.
+`chain-reference.tsx` provides icon-only copy controls and makes each address/hash itself the
+network-specific explorer link, without a separate Explorer button. Copy feedback switches the
+icon and accessible name; clipboard failure reveals the full value. It uses public chain metadata,
+and simulated references remain plain text without fake explorer links.
 The shared token card uses it too. Status reads never sign or send; signed recovery needs an explicit
 Send transaction. Confirmed transactions awaiting attribution offer Refresh token details.
 The controlled loading harness covers delays, refusals, lost responses, identity recovery, unchanged

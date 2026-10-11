@@ -649,6 +649,12 @@ try {
         name: "Copy transaction hash",
         exact: true,
       });
+      assert.equal(await copyHash.innerText(), "", "Copy is an icon-only button");
+      const hashLink = operations.getByRole("link", { name: "View transaction hash in explorer" });
+      assert.equal(await hashLink.innerText(), "0xaaaaaaaa…aaaaaa");
+      await hashLink.focus();
+      assert.equal(await hashLink.evaluate((node) => document.activeElement === node), true);
+      assert.equal(await operations.getByText("Explorer", { exact: true }).count(), 0);
       await copyHash.focus();
       await page.keyboard.press("Enter");
       await operations
