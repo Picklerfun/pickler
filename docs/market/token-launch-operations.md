@@ -117,7 +117,22 @@ before a separate one-time submission claim. A delayed Turnkey activity is queri
 its same bytes can be submitted without another grant or passkey signature. An uncertain send
 is only reconciled: there is no replacement, automatic rebroadcast or automatic launch retry.
 If the signing response lost its activity identity entirely, operator investigation is required;
-repeating the signing request is deliberately unavailable.
+repeating the signing request is deliberately unavailable. The UI names this state Signature status
+unavailable, shows the attempt reference and offers only a saved-state refresh. Missing hashes never
+prove that signing was not requested.
+
+Definitive local validation/provider refusals end the claim as Signature rejected; transport
+uncertainty remains blocked. When submission returned an activity, a failed follow-up read preserves
+its identifier for explicit recovery instead of discarding it. Status checks do not sign or send.
+
+The pressed button alone displays loading, and operation details stay mounted with a short,
+reduced-motion-aware transition. Each explicit status read reports its result and check time even
+without progress. Signed bytes are Ready to send, separately from Waiting for confirmation after
+broadcast. Hashes and addresses have copy feedback and chain-specific explorer links; fixtures
+disable those links. Confirmed transactions awaiting canonical attribution expose Refresh token
+details. These presentation/recovery regressions are controlled by
+`node scripts/design/studio-loading.mjs` and `node scripts/design/token-preview.mjs`; they do not
+establish remote signing acceptance.
 
 A canonical receipt with configured depth finalizes the transaction, but **does not attribute a
 token**. Only a canonical confirmed factory event matching a registered grant does that. Until
@@ -242,3 +257,37 @@ runs in the preview.
 | Hosted owner passkey launch, buy/sell and fee actions                                | Human passkey and restricted runtime activation  | Pending                   |
 | Canonical indexer recovery and hybrid scheduling                                     | Existing worker; no changes in this delivery     | Deferred to the end       |
 | DEX swaps and exact-output final inventory                                           | No production implementation in this change      | Pending                   |
+
+## Status and signing recovery acceptance
+
+The 2026-10-11 status correction keeps loading inside the selected action, preserves transaction
+details, and exposes copy/explorer references using the configured chain. Explicit reads report
+pending, changed or failed outcomes without polling. A finalized launch waiting for indexing
+cannot offer another launch, even if a stale token read still says absent.
+
+```sh
+npm run build:shared
+node --import tsx --test packages/core/test/token-operations.test.ts packages/infrastructure/test/turnkey.test.ts apps/web/test/token-operation-status.test.ts apps/web/test/token-preview.test.ts
+TEST_DATABASE_URL=postgresql://pickler:pickler_local_only@127.0.0.1:55432/pickler node --import tsx --test packages/infrastructure/test/token-operations.test.ts workers/api/test/studio-token-route.test.ts
+node --import tsx scripts/design/studio-loading.mjs
+node scripts/design/token-preview.mjs http://localhost:3005
+```
+
+The loading harness starts its own synthetic-auth web/fixture servers and requires their ports
+and that checkout's Next development build to be free. Run it from a separate source snapshot
+when preserving an active preview. All acceptance transports above are injected or loopback;
+browser references are checked without opening fake explorer addresses.
+
+| Scenario                                                                                      | Evidence                                                   | Result                    |
+| --------------------------------------------------------------------------------------------- | ---------------------------------------------------------- | ------------------------- |
+| Delayed preparation/sign/status and one button spinner                                        | Controlled Studio browser harness                          | Passed locally            |
+| Missing signing identity, pending activity and unchanged status                               | Controlled browser and presentation tests                  | Passed locally            |
+| Read failure preserves state and shows a safe, specific error                                 | Controlled browser and presentation tests                  | Passed locally            |
+| Hash/address/block copy, clipboard denial, explorer URLs and indexing lag                     | Controlled browser harness                                 | Passed locally            |
+| Accepted activity survives a failed follow-up read; explicit refusal differs from uncertainty | Injected infrastructure/core tests                         | Passed locally            |
+| One signing/send claim, owner isolation and durable recovery                                  | Disposable PostgreSQL/API tests                            | Passed locally            |
+| Real owner passkey completion and recovery of an earlier unidentified signing attempt         | Requires provider identity or conclusive operator evidence | Pending remote acceptance |
+
+These checks do not repair an existing unknown operation or prove that its transaction was sent.
+An attempt with no saved activity identity or transaction hash remains blocked until reviewed;
+absence from one provider activity page is not proof that it can be signed again.
