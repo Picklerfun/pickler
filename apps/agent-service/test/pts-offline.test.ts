@@ -1,4 +1,5 @@
 import { spawnSync } from "node:child_process";
+import { Worker } from "node:worker_threads";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { mkdtemp, readFile, writeFile } from "node:fs/promises";
@@ -9,7 +10,9 @@ import { runPtsCommand } from "../src/pts-study/index.js";
 import { ptsReport, csvCell } from "../src/pts-study/report.js";
 import { digest, bytesHash, refuseSecrets } from "../src/pts-study/files.js";
 import { ptsFixture, ptsTime } from "@pickler/trading/testing/pts";
-import { PTS_POLICY } from "@pickler/trading/pts";
+import { PTS_POLICY, PTS_VARIANTS, PTS_ACCOUNT_POLICY } from "@pickler/trading/pts";
+import { initialPaperAccount, type PerpsPaperView } from "@pickler/trading/perps";
+import type { PerpsStudyView } from "@pickler/trading/evaluation";
 test("offline replay rejects env, secrets, changed hashes and existing output; deterministic safe artifacts without fetch", async (t) => {
   let network = 0;
   t.mock.method(globalThis, "fetch", async () => {
@@ -218,4 +221,93 @@ test("offline preparation rebuild verifies saved bytes and emits non-verifiable 
     }),
     { code: "AUDIT_HASH_MISMATCH" },
   );
+});
+
+test("report worker preserves both portfolio metrics separately from decision rows", async () => {
+  const output = await mkdtemp(join(tmpdir(), "pts-worker-report-"));
+  const config = JSON.parse(
+    await readFile(new URL("../src/pts-study/pts-basic-template.json", import.meta.url), "utf8"),
+  );
+  const accounts: Record<string, PerpsPaperView> = {};
+  for (const variant of PTS_VARIANTS) {
+    const account = initialPaperAccount(
+      {
+        tenantId: config.tenantId,
+        agentId: variant,
+        network: config.network,
+        sessionId: config.sessionId,
+      },
+      1,
+      ptsTime,
+    );
+    account.riskManagement = "buffered-selective-1x-v1";
+    if (variant === "pts-basic") {
+      account.positionPolicy = PTS_ACCOUNT_POLICY;
+      account.consumedPtsSetups = [];
+    }
+    accounts[variant] = { account, attempts: [], movements: [] };
+  }
+  const study: PerpsStudyView = {
+    record: {
+      config,
+      metadata: { commit: "controlled-report-test" },
+      agentIds: { "sma-reference": "sma-reference", "pts-basic": "pts-basic" },
+      agentVersions: { "sma-reference": 1, "pts-basic": 1 },
+      createdAt: ptsTime,
+      startedAt: null,
+      endsAt: null,
+      graceUntil: null,
+      status: "initialized",
+      decisionStopReason: null,
+      stopRequested: false,
+      lastObservationAt: null,
+      lastRoundSlot: -1,
+    },
+    rounds: [],
+    events: [],
+  };
+
+  const worker = new Worker(new URL("../src/pts-study/report-worker.mjs", import.meta.url), {
+    workerData: {
+      snapshot: { study, accounts },
+      coverage: [],
+      state: "prepared",
+      output,
+      commit: "controlled-report-test",
+      policyHash: digest(PTS_POLICY),
+    },
+  });
+  await new Promise<void>((resolveWorker, rejectWorker) => {
+    let published = false;
+    worker.once("message", () => {
+      published = true;
+    });
+    worker.once("error", rejectWorker);
+    worker.once("exit", (code) => {
+      if (code === 0 && published) {
+        resolveWorker();
+      } else {
+        rejectWorker(new Error("Report worker did not publish and release resources"));
+      }
+    });
+  });
+
+  const report = JSON.parse(await readFile(join(output, "report.json"), "utf8"));
+  assert.equal(report.rows.length, 0);
+  assert.deepEqual(
+    report.portfolioMetrics.map((row: { strategy: string }) => row.strategy),
+    PTS_VARIANTS,
+  );
+  assert.equal(report.financial.length, 2);
+  for (const row of report.portfolioMetrics) {
+    assert.equal(row.cashVirtualAUSD, "1000");
+    assert.equal(row.netRealizedPnlVirtualAUSD, "0");
+    assert.equal(row.modelCalls, 0);
+    assert.equal(row.inputTokens, 0);
+    assert.equal(row.outputTokens, 0);
+    assert.equal(row.providerReservedUSD, "0");
+  }
+  const html = await readFile(join(output, "report.html"), "utf8");
+  assert.ok(html.includes("portfolioMetrics"));
+  assert.ok(html.includes("grossRealizedAUSD"));
 });
