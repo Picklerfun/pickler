@@ -713,3 +713,8 @@ It changes no JWT, creator access, Turnkey, gas/RPC ceilings, contracts or index
 The initial activation was an explicit backend runtime change. Following owner approval, the
 staging config also preserves the enabled testnet gate; mainnet and public buyer activation
 remain separate and unchanged.
+
+The existing JWT-only token operation status route also performs explicit bounded recovery of an
+expired unidentified launch. It requires stable canonical factory evidence before returning
+`EXPIRED_LAUNCH_NOT_CREATED`; a found event restores the hash for ordinary receipt reconciliation.
+No endpoint, caller-supplied recovery proof, automatic signature or broadcast is added.
