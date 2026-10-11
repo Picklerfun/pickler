@@ -8,6 +8,7 @@ import { fileURLToPath } from "node:url";
 import { setTimeout as delay } from "node:timers/promises";
 import { openBrowser } from "./lib/browser.mjs";
 import { listening } from "./lib/servers.mjs";
+import { PREVIEW_TOKEN } from "../../apps/web/src/features/tokens/fixture.ts";
 import { liveStudioFixture } from "../../apps/web/src/features/studio/live/fixture.ts";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
@@ -183,6 +184,7 @@ try {
     let launchOperation = null;
     let operationGate = Promise.resolve();
     let failOperationRead = false;
+    let tokenIndexed = false;
     let releaseOperation;
     function pauseOperation() {
       operationGate = new Promise((resolve) => {
@@ -251,7 +253,28 @@ try {
             if (launchPhase === "offline") {
               return route.abort();
             }
-            json = { ...launchState, operation: launchOperation };
+            json = {
+              ...launchState,
+              operation: launchOperation,
+              token: tokenIndexed
+                ? { ...PREVIEW_TOKEN, name: "Saved token", ticker: "SAVE" }
+                : null,
+              confirmation: tokenIndexed
+                ? "confirmed"
+                : launchOperation?.status === "finalized"
+                  ? "pending"
+                  : "absent",
+              venue: tokenIndexed
+                ? {
+                    status: "curve",
+                    market: null,
+                    vault: null,
+                    accountId: null,
+                    positions: [],
+                    liquidityLocked: false,
+                  }
+                : null,
+            };
           } else {
             if (tokenPhase === "loading") {
               await tokenGate;
@@ -739,11 +762,16 @@ try {
       assert.equal(await operations.getByText("Transaction hash", { exact: true }).count(), 1);
       releaseOperation();
       await operations.getByText("Waiting for confirmation", { exact: true }).waitFor();
-      await check.click();
+      await operations
+        .getByRole("button", { name: "Waiting for confirmation…", exact: true })
+        .waitFor();
+      assert.equal(
+        await operations.getByRole("button", { name: "Check status", exact: true }).count(),
+        0,
+      );
       await operations.getByText(/Checked .*No confirmed receipt yet/).waitFor();
       const blockHash = "0x" + "b".repeat(64);
       launchOperation = { ...launchOperation, status: "included", blockHash, version: 9 };
-      await check.click();
       await operations.getByText("Included on-chain", { exact: true }).waitFor();
       await operations.getByText(/Checked .*final confirmation is still pending/).waitFor();
       assert.equal(
@@ -754,20 +782,31 @@ try {
       );
       await operations.screenshot({ path: path.join(output, "launch-included-mobile.png") });
       launchOperation = { ...launchOperation, status: "finalized", version: 10 };
-      await check.click();
       await operations.getByText("Transaction confirmed", { exact: true }).waitFor();
       await operations.getByText(/Token details are waiting for indexing/).waitFor();
       assert.equal(
         await operations.getByRole("button", { name: "Launch token", exact: true }).count(),
         0,
       );
-      await operations.getByRole("button", { name: "Refresh token details", exact: true }).click();
+      await operations
+        .getByRole("button", { name: "Updating token details…", exact: true })
+        .waitFor();
+      assert.equal(
+        await operations
+          .getByRole("button", { name: "Refresh token details", exact: true })
+          .count(),
+        0,
+      );
       await operations.getByText(/Checked .*Confirmed on-chain/).waitFor();
       assert.equal(counts.get(operationUrl + "/confirm"), 1);
       const readCount = counts.get(operationUrl);
-      assert.equal(readCount, 9, "Exactly nine explicit signing/status reads are expected");
+      assert.equal(
+        readCount,
+        9,
+        "Six explicit signing reads plus three automatic receipt reads are expected",
+      );
       await delay(600);
-      assert.equal(counts.get(operationUrl), readCount, "Status must not poll");
+      assert.equal(counts.get(operationUrl), readCount, "Final receipts must not be read again");
       await page.setViewportSize({ width: 1280, height: 1000 });
       await operations.screenshot({ path: path.join(output, "launch-confirmed-desktop.png") });
       await page.evaluate(() =>
@@ -790,6 +829,26 @@ try {
       assert.equal(await name.inputValue(), "Saved token");
       assert.equal(counts.get(prefix + "/operations"), 4, "No repeated preparation");
       await operations.screenshot({ path: path.join(output, "launch-confirmed-mobile.png") });
+      tokenIndexed = true;
+      await page
+        .getByRole("region", { name: "Agent token", exact: true })
+        .getByRole("heading", { name: "Saved token", exact: true })
+        .waitFor();
+      assert.equal(
+        await operations
+          .getByRole("button", { name: "Updating token details…", exact: true })
+          .count(),
+        0,
+      );
+      assert.equal(
+        counts.get(operationUrl + "/confirm"),
+        1,
+        "Automatic reads must never submit again",
+      );
+      const indexedReads = counts.get(prefix);
+      await delay(5500);
+      assert.equal(counts.get(prefix), indexedReads, "Confirmed token attribution must stop reads");
+      await operations.screenshot({ path: path.join(output, "launch-indexed-automatic.png") });
     } else if (scenario === "studio-token") {
       const name = page.getByRole("textbox", { name: "Token name", exact: true });
       await page.getByRole("status", { name: "Loading token" }).waitFor();
@@ -1004,13 +1063,14 @@ try {
         // Initial load plus explicit refusal/activity reloads each exercise two Strict Mode reads.
         maximum = 6;
         if (endpoint.endsWith("/token")) {
+          // Existing state reads plus two automatic, database-only attribution reads.
           maximum = 9;
         } else if (endpoint.endsWith("/token/operations")) {
           maximum = 4;
         } else if (endpoint.endsWith("/confirm")) {
           maximum = 1;
         } else if (endpoint.includes("/token/operations/")) {
-          // Seven existing explicit reads plus missing-identity and expired-window checks.
+          // Six explicit signing/recovery reads plus three automatic receipt/finality reads.
           maximum = 9;
         }
       } else if (scenario === "studio-token") {
