@@ -22,6 +22,17 @@ and the entry cross expires after five minutes. Projected fills must remain stri
 Positions last at most six hours and must close at UTC day end; verified daily/4h invalidation or
 two hourly closes outside the frozen channel also close them. Missing exit evidence is pending.
 
+### Independent fast candidate
+
+The explicitly selected `pts-intraday@0.2.0-fast.1` moves the native roles to 4h primary trend
+(24 bars), 1h aligned channel (104), 15m impulse/ATR14 (240), and 5m correction and entry (180).
+It preserves dated pivot confirmation, Fibonacci geometry, exact prices, sizing, financial
+accounting, partial targets, stops and the six-hour/UTC-day-end holding limits. Its invalidation
+uses its own 4h/1h trends and two 15m closes outside the frozen channel. The original 0.1.0 and
+basic/course material are not rewritten. `pts-intraday-fast-template.json` is inactive; it requires
+fresh native capture and matching independent account policy before one authorized prospective
+run. Saved-history signals and controlled fills do not establish prospective profitability.
+
 Opening planned loss is capped at 1% equity and total planned loss at 3%, with known fees and a
 50-bps exit provision. Keep 1x, 100 AUSD maximum, five positions, selective 40%/50% exposure and
 existing emergencies. Planned risk does not guarantee realized loss during gaps/funding.
@@ -141,3 +152,20 @@ No threshold, signal, sizing or strategy version changed to obtain these results
 The local real-source report took 56.73 seconds with 526,467,072 bytes peak resident memory;
 offline audit took 28.23 seconds with 301,645,824 bytes. These are actual measurements on this
 machine, not controlled paired latency benchmarks or evidence of financial performance.
+
+## Connection-failure containment
+
+The local host wraps study/paper/report connections with infrastructure's `guardPerpsLabPool`.
+An asynchronous error on a borrowed client or idle pool latches
+`PERSISTENCE_CONNECTION_FAILED`, aborts the host controller and rejects new database activity.
+The listener does not throw inside the driver's event callback, retry an uncertain write, or
+allow a new connection to resume the failed scope. Failed clients are discarded during cleanup.
+Compact interruption publication remains available when PostgreSQL cannot produce a full report.
+
+Controlled tests terminate a backend during a repeatable-read read-only audit sink, then verify
+that the process survives the event, the failure is specific, and stored history is unchanged.
+They also cover pending responses, duplicate error notifications and listener cleanup. An
+unhandled historical `Client` error proves a process defect, but without an original backend
+identity/transport trace its originating component and cause of disconnection remain unknown.
+Preserve a crashed study's stale running projection, expired lease and pending positions rather
+than relabeling it completed or inventing exits.
