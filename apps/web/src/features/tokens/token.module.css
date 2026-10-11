@@ -337,10 +337,23 @@
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
-.referenceActions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 2px;
+.chainReference a.chainValue {
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: var(--pk-border-strong);
+  text-underline-offset: 3px;
+}
+.chainReference a.chainValue:hover {
+  text-decoration-color: currentColor;
+}
+.chainReference a.chainValue:focus-visible {
+  outline: 2px solid var(--pk-focus);
+  outline-offset: 4px;
+}
+.chainReference .copyButton {
+  width: 32px;
+  height: 32px;
+  padding: 0;
 }
 .copyFallback {
   font-size: 12px;
