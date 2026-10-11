@@ -2,13 +2,42 @@ import type { PerpNetwork } from "@pickler/core";
 import type { PerpsPaperAccount } from "../perps-paper/types.js";
 export const PERPS_STUDY_STRATEGIES = ["rules", "deepseek", "jev"] as const;
 export type PerpsStrategy = (typeof PERPS_STUDY_STRATEGIES)[number];
-export type PerpsStudyStrategy = PerpsStrategy | "combined";
-export type PerpsStudyMap<T> = Record<PerpsStrategy, T> & Partial<Record<"combined", T>>;
+export const SMA_PROFILE_VARIANTS = [
+  "hourly-legacy",
+  "hourly-selective",
+  "fast-legacy",
+  "fast-selective",
+] as const;
+export type SmaProfileVariant = (typeof SMA_PROFILE_VARIANTS)[number];
+export const SMA_REENTRY_VARIANTS = ["sma-reference", "sma-once-bar"] as const;
+export type SmaReentryVariant = (typeof SMA_REENTRY_VARIANTS)[number];
+export type PerpsStudyStrategy =
+  PerpsStrategy | "combined" | "sma-jev" | "sma-exa-jev" | SmaProfileVariant | SmaReentryVariant;
+export const SMA_REVIEW_VARIANTS = ["rules", "sma-jev", "sma-exa-jev"] as const;
+export type PerpsStudyMap<T> = Partial<Record<PerpsStudyStrategy, T>>;
+export type SmaProfileMap<T> = Record<SmaProfileVariant, T>;
+/** Protocol-discriminated maps never require fictitious model/rules arms in v6. */
+export type PerpsVariantMap<C extends { version: number }, T> = C extends { version: 6 }
+  ? SmaProfileMap<T>
+  : C extends { version: 7 }
+    ? Record<SmaReentryVariant, T>
+    : PerpsStudyMap<T>;
 export const PERPS_FOUR_WAY_STRATEGIES = ["rules", "jev", "deepseek", "combined"] as const;
 export function perpsStrategies(
   config: Pick<PerpsStudyConfig, "version">,
 ): readonly PerpsStudyStrategy[] {
-  return config.version === 2 ? PERPS_FOUR_WAY_STRATEGIES : PERPS_STUDY_STRATEGIES;
+  if (config.version === 7) {
+    return SMA_REENTRY_VARIANTS;
+  }
+  return config.version === 6
+    ? SMA_PROFILE_VARIANTS
+    : config.version === 4 || config.version === 5
+      ? SMA_REVIEW_VARIANTS
+      : config.version === 3
+        ? ["rules"]
+        : config.version === 2
+          ? PERPS_FOUR_WAY_STRATEGIES
+          : PERPS_STUDY_STRATEGIES;
 }
 export type {
   PerpsCallLane,
@@ -22,7 +51,7 @@ export interface PerpsStudyScope {
   sessionId: string;
   network: PerpNetwork;
 }
-export interface PerpsStudyConfig extends PerpsStudyScope {
+export interface PerpsPaidStudyConfig extends PerpsStudyScope {
   version: 1 | 2;
   protocol: "perps-comparison-v1" | "perps-four-way-v2";
   hours: 24 | 2;
@@ -39,6 +68,70 @@ export interface PerpsStudyConfig extends PerpsStudyScope {
   pricingVerifiedAt: string;
   pricingSources: string[];
 }
+export interface PerpsOriginalSmaConfig extends PerpsStudyScope {
+  version: 3;
+  protocol: "perps-original-sma-v1";
+  hours: 24;
+  budgetUsd: "5";
+}
+export interface PerpsSmaReviewConfig extends PerpsStudyScope {
+  version: 4;
+  protocol: "perps-sma-jev-exa-v1";
+  hours: 2;
+  budgetUsd: "5";
+  providerBudgetUSD: "0.50";
+  authorization: { jevApproved: true; exaApproved: true; operatorRecordHash: string };
+  historicalAccountedOrReservedUSD: string | null;
+  historicalUnknownReservations: { requestHash: string; reservationUsd: string }[];
+  jev: { model: "jev-1.13.0"; inputPerMillion: string; outputPerMillion: "0" };
+  exa: { reservationPerSearchUSD: "0.05"; lookbackHours: 24; results: 5 };
+  pricingVerifiedAt: string;
+  pricingSources: string[];
+}
+export interface PerpsSmaUniverseConfig extends Omit<
+  PerpsSmaReviewConfig,
+  "version" | "protocol" | "providerBudgetUSD" | "historicalUnknownReservations"
+> {
+  version: 5;
+  historicalUnknownReservations: {
+    sessionId: string;
+    roundKey: string;
+    lane: PerpsCallLane;
+    requestHash: string;
+    reservationUsd: string;
+  }[];
+  protocol: "perps-sma-jev-exa-all-markets-v1";
+  providerBudgetUSD: "2.50";
+  markets: { symbol: import("@pickler/core").PerpSymbol; marketId: number }[];
+  historicalBudget: { upperBoundUSD: string; recordHash: string; databaseAccountedUSD: string };
+}
+export interface PerpsSmaProfileConfig extends PerpsStudyScope {
+  version: 6;
+  protocol: "perps-sma-profile-risk-v1";
+  hours: 6;
+  budgetUsd: "5";
+  markets: { symbol: import("@pickler/core").PerpSymbol; marketId: number }[];
+}
+export interface PerpsSmaReentryConfig extends Omit<PerpsSmaProfileConfig, "version" | "protocol"> {
+  version: 7;
+  protocol: "perps-sma-reentry-latency-v1";
+  /** Absence preserves the acquisition used by historical v7 studies. */
+  acquisitionPolicy?:
+    | "rest-universe-20s-v1"
+    | "rest-universe-coherent-20s-v2"
+    | "stream-universe-20s-v1"
+    | "stream-universe-component-20s-v2"
+    | "stream-universe-component-paper-20s-v1";
+  /** Explicit adoption pins the immutable nonfinancial capture, not hypothetical fills. */
+  captureQualification?: { commit: string; reportSha256: string };
+}
+export type PerpsStudyConfig =
+  | PerpsPaidStudyConfig
+  | PerpsOriginalSmaConfig
+  | PerpsSmaReviewConfig
+  | PerpsSmaUniverseConfig
+  | PerpsSmaProfileConfig
+  | PerpsSmaReentryConfig;
 export interface PerpsCall {
   requestHash?: string;
   inputBytes?: number;
@@ -65,7 +158,7 @@ export interface PerpsRound {
   evidence: PerpsEvidence;
   accounts: PerpsStudyMap<PerpsPaperAccount>;
   proposals: Partial<Record<PerpsStudyStrategy, PerpsProposal[]>>;
-  calls: Record<"direct" | "jev" | "fallback", PerpsCall> & Partial<Record<"review", PerpsCall>>;
+  calls: Partial<Record<PerpsCallLane, PerpsCall>>;
 }
 export interface PerpsStudyRecord {
   config: PerpsStudyConfig;
@@ -82,6 +175,14 @@ export interface PerpsStudyRecord {
   lastObservationAt: number | null;
   lastRoundSlot: number;
   lastAttemptedSlot?: number;
+  continuations?: {
+    fromSlot: number;
+    at: number;
+    previousEndsAt: number;
+    previousStatus: string;
+    authorizedBy: string;
+    commit: string;
+  }[];
   dataPolicy?: import("../perps-paper/acquisition.js").PerpsDataPolicy;
 }
 export interface PerpsStudyView {
@@ -101,7 +202,7 @@ export interface PerpsStudyRepository {
   claim(scope: PerpsStudyScope): Promise<PerpsStudyLease>;
   claimSlot(scope: PerpsStudyScope, lease: PerpsStudyLease, slot: number): Promise<boolean>;
   renew(scope: PerpsStudyScope, lease: PerpsStudyLease): Promise<void>;
-  release(scope: PerpsStudyScope, lease: PerpsStudyLease): Promise<void>;
+  release(scope: PerpsStudyScope, lease: PerpsStudyLease, interruption?: string): Promise<void>;
   guard(scope: PerpsStudyScope, lease: PerpsStudyLease, paid?: boolean): Promise<void>;
   stop(scope: PerpsStudyScope): Promise<void>;
   event(
@@ -133,6 +234,13 @@ export interface PerpsStudyRepository {
     lane: PerpsCallLane,
     input: number,
     output: number,
+  ): Promise<void>;
+  providerCost?(
+    scope: PerpsStudyScope,
+    lease: PerpsStudyLease,
+    key: string,
+    lane: PerpsCallLane,
+    costUSD: string,
   ): Promise<void>;
   finishCall(
     scope: PerpsStudyScope,
