@@ -10,6 +10,7 @@ import {
   PostgresPerpsStudyStore,
   exportPerpsAudit,
   exportPerpsAuditParts,
+  guardPerpsLabPool,
 } from "@pickler/infrastructure/perps-lab";
 import { createPriorityPerplStudyData } from "@pickler/agent-runtime/plugins/perps-paper/public-study";
 import { createProfileStudyRunner } from "@pickler/trading/evaluation";
@@ -31,9 +32,10 @@ import { createPtsReportTrigger } from "./report-trigger.js";
 import type { PtsCommandInput } from "./index.js";
 export async function prepareDatabase(config: PerpsPtsConfig, envFile: string, metadata: unknown) {
   const research = new PostgresResearchStore(await localStudyDatabase(resolve(envFile)));
+  const pool = guardPerpsLabPool(research.pool);
   try {
-    const study = new PostgresPerpsStudyStore(research.pool),
-      paper = new PostgresPerpsPaperStore(research.pool);
+    const study = new PostgresPerpsStudyStore(pool),
+      paper = new PostgresPerpsPaperStore(pool);
     const view = await study.initialize(config, metadata);
     if (view.record.startedAt !== null) {
       throw new PilotError(
@@ -48,7 +50,7 @@ export async function prepareDatabase(config: PerpsPtsConfig, envFile: string, m
       );
     }
   } finally {
-    await research.close();
+    await pool.end();
   }
 }
 export async function runPtsHost(
@@ -97,9 +99,10 @@ export async function runPtsHost(
     );
   }
   const research = new PostgresResearchStore(await localStudyDatabase(resolve(input.envFile)));
-  const study = new PostgresPerpsStudyStore(research.pool);
   const controller = new AbortController(),
     signal = AbortSignal.any([input.signal, controller.signal]);
+  const pool = guardPerpsLabPool(research.pool, (error) => controller.abort(error));
+  const study = new PostgresPerpsStudyStore(pool);
   let primaryError: unknown;
   let state = "process-unverified";
   let releaseAwake = () => {},
@@ -109,7 +112,7 @@ export async function runPtsHost(
     if (input.command === "audit-export") {
       const dir = await newDirectory(input.output);
       const exporter = await createPtsPartsExport(dir, commit());
-      await exportPerpsAuditParts(research.pool, configuration, exporter.emit);
+      await exportPerpsAuditParts(pool, configuration, exporter.emit);
       await exporter.finish();
       return;
     }
@@ -134,7 +137,7 @@ export async function runPtsHost(
           throw new PilotError("CONFIG_CHANGED", "Prepared public permission differs");
         }
       }
-      const saved = await exportPerpsAudit(research.pool, configuration);
+      const saved = await exportPerpsAudit(pool, configuration);
       if (
         saved.accounts[ptsVariant(configuration)]?.account.positionPolicy !==
           ptsTemporalProfile(ptsConfigVersion(configuration)).accountPolicy ||
@@ -185,7 +188,7 @@ export async function runPtsHost(
       const sourceDirectory = resolve(output, "evidence");
       await mkdir(sourceDirectory, { recursive: true, mode: 0o700 });
       const exporter = await createPtsPartsExport(sourceDirectory, commit());
-      await exportPerpsAuditParts(research.pool, configuration, exporter.emit);
+      await exportPerpsAuditParts(pool, configuration, exporter.emit);
       await exporter.finish();
       await new Promise<void>((resolveWorker, rejectWorker) => {
         const worker = new Worker(new URL("./report-worker.mjs", import.meta.url), {
@@ -274,10 +277,10 @@ export async function runPtsHost(
     );
     await createProfileStudyRunner({
       study,
-      paper: new PostgresPerpsPaperStore(research.pool),
+      paper: new PostgresPerpsPaperStore(pool),
       data,
       paperForLease: (scope, lease, ownedSignal) =>
-        new PostgresPerpsPaperStore(research.pool, undefined, {
+        new PostgresPerpsPaperStore(pool, undefined, {
           ...scope,
           owner: lease.owner,
           signal: ownedSignal,
@@ -337,7 +340,7 @@ export async function runPtsHost(
   } finally {
     releaseAwake();
     const cleanup = await Promise.allSettled([data?.close(), reports?.flush()]);
-    cleanup.push(...(await Promise.allSettled([research.close()])));
+    cleanup.push(...(await Promise.allSettled([pool.end()])));
     const failed = cleanup.find((r) => r.status === "rejected");
     if (failed?.status === "rejected" && !primaryError) {
       throw new PilotError(
