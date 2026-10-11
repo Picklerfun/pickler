@@ -15,6 +15,7 @@ import { createUniversePerplReader } from "../src/plugins/perps-paper/universe.j
 import { createPriorityPerplStudyData } from "../src/plugins/perps-paper/priority-study.js";
 import type { PerpsStudyRecord } from "@pickler/trading/evaluation";
 import { intradayFixture } from "@pickler/trading/testing/pts-intraday";
+import { fastFixture } from "@pickler/trading/testing/pts-intraday-fast";
 
 const NOW = 1_800_000_000_000;
 const ids = [1, 10, 20, 31, 40, 50, 60, 70, 90, 100, 110];
@@ -1123,6 +1124,185 @@ test("intraday preserves cohort exclusions and accepts the frozen twenty-four-ba
       70000,
     ),
     { code: "PERPL_INVALID_RESPONSE" },
+  );
+});
+
+function fastPriorityFixture(t: TestContext, fourHourCount: number, crossBoundary = false) {
+  clocks(t);
+  if (crossBoundary) {
+    t.mock.timers.tick(299500);
+  }
+  let reference = NOW;
+  const initialHistory = markets.map((market) => {
+    const history = fastFixture(market.symbol, false, NOW);
+    const address = "0x" + "1".repeat(40);
+    history.market.exchangeAddress = address;
+    history.market.collateral.address = address;
+    const series = history.series.find((value) => value.resolution === 14400)!;
+    if (fourHourCount < series.candles.length) {
+      series.candles = series.candles.slice(-fourHourCount);
+    } else {
+      const first = series.candles[0]!;
+      const additional = fourHourCount - series.candles.length;
+      series.candles = [
+        ...Array.from({ length: additional }, (_, index) => ({
+          ...first,
+          openTime: first.openTime - (additional - index) * 14400000,
+        })),
+        ...series.candles,
+      ];
+    }
+    series.from = series.candles[0]!.openTime;
+    return history;
+  });
+  const original = JSON.stringify(initialHistory);
+  const urls: string[] = [];
+  const data = createPriorityPerplStudyData(
+    { agent: async () => agent() },
+    {
+      initialHistory,
+      preparedPtsSymbols: markets.map((market) => market.symbol),
+      acquisitionPolicy: "stream-universe-20s-v1",
+      now: () => (crossBoundary ? Date.now() : reference),
+      transport: async (input) => {
+        const path = String(input);
+        urls.push(path);
+        if (path.endsWith("/context")) {
+          if (crossBoundary) {
+            t.mock.timers.tick(1000);
+            reference = Date.now();
+          }
+          const context = metadata();
+          context.markets.forEach((market) => {
+            market.config.size_decimals = 4;
+          });
+          return Response.json(context);
+        }
+        const match = /\/market-data\/(\d+)\/candles\/(\d+)\//.exec(path);
+        assert.ok(match, path);
+        const resolution = Number(match[2]);
+        assert.notEqual(resolution, 86400, "fast PTS has no daily transport requirement");
+        const history = initialHistory.find((h) => h.market.marketId === Number(match[1]))!;
+        const available = history.series.find((s) => s.resolution === resolution)!.candles;
+        const bounds = new URL(path).pathname.split("/").filter(Boolean).slice(-2).map(Number);
+        const unit = bounds[0]! > 100000000000 ? 1000 : 1;
+        const requested = (bounds[1]! - bounds[0]!) / (resolution * unit);
+        const bars = available.slice(-Math.min(requested, available.length));
+        return Response.json({
+          at: { t: reference, b: 1 },
+          r: resolution,
+          d: bars.map((bar) => ({
+            t: bar.openTime,
+            o: Number(bar.open) * 100,
+            c: Number(bar.close) * 100,
+            h: Number(bar.high) * 100,
+            l: Number(bar.low) * 100,
+            v: "1000",
+            n: 1,
+          })),
+        });
+      },
+      socket: () => {
+        const socket = new UniverseSocket();
+        socket.publicationAt = reference;
+        return socket;
+      },
+    },
+  );
+  t.after(() => data.close());
+  const record = {
+    config: {
+      version: 9,
+      protocol: "perps-pts-intraday-sma-v1",
+      tenantId: scope.tenantId,
+      sessionId: "controlled-fast-boundary",
+      network: "mainnet",
+      hours: 24,
+      budgetUsd: "5",
+      candidate: "pts-intraday@0.2.0-fast.1",
+      markets,
+      acquisitionPolicy: "stream-universe-20s-v1",
+    },
+    agentIds: { "sma-reference": scope.agentId },
+  } as unknown as PerpsStudyRecord;
+  return { data, record, initialHistory, original, urls };
+}
+
+test("fast capture validates only its required roles and delivers common initial/final evidence without daily bars", async (t) => {
+  const fixture = fastPriorityFixture(t, 60);
+  const signal = new AbortController().signal;
+
+  const initial = await settle(t, fixture.data.prepareEvidence!(fixture.record, signal), 70000);
+  const final = await settle(t, fixture.data.finalEvidence!(fixture.record, signal), 70000);
+
+  for (const evidence of [initial, final]) {
+    assert.equal(evidence.frames.length, 11, JSON.stringify(evidence.excluded));
+    assert.deepEqual(evidence.excluded, []);
+    assert.deepEqual(
+      [...new Set(evidence.candles.map((series) => series.resolution))],
+      [3600, 900, 300, 14400],
+    );
+  }
+  assert.equal(
+    fixture.urls.some((url) => url.includes("/candles/86400/")),
+    false,
+  );
+  assert.equal(JSON.stringify(fixture.initialHistory), fixture.original);
+});
+
+test("fast capture honors the declared twenty-four-bar 4h minimum while retaining deeper shared histories", async (t) => {
+  const fixture = fastPriorityFixture(t, 24);
+  const evidence = await settle(
+    t,
+    fixture.data.prepareEvidence!(fixture.record, new AbortController().signal),
+    70000,
+  );
+
+  assert.equal(evidence.frames.length, 11, JSON.stringify(evidence.excluded));
+  assert.deepEqual(evidence.excluded, []);
+  assert.ok(
+    evidence.candles.filter((s) => s.resolution === 14400).every((s) => s.candles.length === 24),
+  );
+  assert.equal(
+    fixture.urls.some((url) => url.includes("/candles/14400/")),
+    false,
+  );
+  assert.ok(
+    evidence.candles.filter((s) => s.resolution === 900).every((s) => s.candles.length >= 240),
+  );
+  assert.ok(
+    evidence.candles.filter((s) => s.resolution === 300).every((s) => s.candles.length >= 180),
+  );
+  assert.equal(JSON.stringify(fixture.initialHistory), fixture.original);
+});
+
+test("fast capture still excludes every market when a required 5m boundary changes during prices", async (t) => {
+  const fixture = fastPriorityFixture(t, 60, true);
+  const evidence = await settle(
+    t,
+    fixture.data.prepareEvidence!(fixture.record, new AbortController().signal),
+    70000,
+  );
+
+  assert.equal(evidence.frames.length, 0);
+  assert.equal(evidence.excluded!.length, 11);
+  assert.ok(evidence.excluded!.every((item) => item.code === "CANDLE_WINDOW_CHANGED"));
+});
+
+test("fast capture rejects twenty-three 4h bars rather than weakening the declared native minimum", async (t) => {
+  const fixture = fastPriorityFixture(t, 23);
+  const evidence = await settle(
+    t,
+    fixture.data.prepareEvidence!(fixture.record, new AbortController().signal),
+    70000,
+  );
+
+  assert.equal(evidence.frames.length, 0);
+  assert.equal(evidence.excluded!.length, 11);
+  assert.ok(
+    evidence.excluded!.every(
+      (item) => item.code === "DATA_UNAVAILABLE" && item.phase === "candles-14400",
+    ),
   );
 });
 
