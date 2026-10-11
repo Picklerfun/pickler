@@ -14,6 +14,7 @@ import {
   ptsSize,
   ptsManagement,
   ptsQuantityAtBlock,
+  ptsFinancialAudit,
   ptsPartialSchedule,
   PTS_ACCOUNT_POLICY,
   recoveryPrice,
@@ -187,6 +188,31 @@ test("funding quantity follows native block convention including late reconcilia
   assert.equal(duplicate.movements.length, 0);
   const missing = applyPaperObservation(a, movements, { frames: [], funding: [] }, "missing", end);
   assert.equal(missing.account.fundingPending, true);
+  const pendingMetric = ptsFinancialAudit({
+    "pts-basic": { account: missing.account, attempts: [], movements },
+  }).find((metric) => metric.variant === "pts-basic")!;
+  assert.equal(pendingMetric.fundingAUSD, null);
+  assert.equal(pendingMetric.netRealizedAUSD, null);
+  assert.equal(pendingMetric.recordedFundingAUSD, "0");
+  const reconciledMetric = ptsFinancialAudit({
+    "pts-basic": {
+      account: result.account,
+      attempts: [],
+      movements: [...movements, ...result.movements],
+    },
+  }).find((metric) => metric.variant === "pts-basic")!;
+  assert.notEqual(reconciledMetric.fundingAUSD, null);
+  assert.notEqual(reconciledMetric.netRealizedAUSD, null);
+  const disputed = structuredClone(result.account);
+  disputed.fundingDisputed = true;
+  const disputedMetric = ptsFinancialAudit({
+    "pts-basic": {
+      account: disputed,
+      attempts: [],
+      movements: [...movements, ...result.movements],
+    },
+  }).find((metric) => metric.variant === "pts-basic")!;
+  assert.equal(disputedMetric.netRealizedAUSD, null);
 });
 test("stops and expiry precede targets, target gaps combine quantities, rejected schedules do not open", () => {
   const setup = ptsSetup(),
