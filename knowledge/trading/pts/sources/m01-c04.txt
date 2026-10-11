@@ -1,0 +1,171 @@
+En esta clase vamos a aprender sobre la importancia de los canales, vamos a ir adentrándonos poco
+a poco en aspectos gráficos, en aspectos técnicos y evidentemente vamos construyendo desde lo más
+básico hasta lo más profundo, iniciando con la sección de canales. Vamos a hablar sobre la
+importancia de saber identificar canales en la cotización del precio, algo absolutamente
+infravalorado, déjame decirtelo, ya que ¿qué son canales? Bueno, los canales en un gráfico son
+tendencias de precio que tiene un activo financiero y por el cual podemos determinar si se encuentran
+en una tendencia o si se encuentran en un proceso lateral. Por ejemplo, cuando usualmente los mercados
+financieros tienen un comportamiento alcista, lo que conocemos como canales alcistas, se va
+generando una formación en el precio a través del tiempo de mínimos cada vez más altos y máximos
+cada vez más altos, lo que llamamos mínimos crecientes y máximos crecientes, es decir,
+que la cotización de ese activo financiero está aumentando paulatinamente. Gráficamente en la
+mayoría de los casos, es posible incluso determinar un canal que podemos realizarlo y ahorita lo
+vamos a ver con ejemplos, trazando o uniendo los puntos inferiores de la cotización del precio
+a través del tiempo y uniendo los puntos superiores a través de la cotización del precio. Cuando
+tenemos canales bajistas es cuando un activo se encuentra en tendencia bajista y esto lo vamos
+viendo porque en este caso los máximos cada vez son inferiores, lo que llamamos máximos
+de crecientes y los mínimos también van siendo cada vez inferiores, lo que llamamos mínimos
+de crecientes y es posible incluso trazar una línea que delimite los máximos, en este caso
+una línea compendiente negativa de creciente y los mínimos cada vez inferiores también
+compendiente negativa. La forma en la que inicialmente nosotros siempre operamos los canales la mayoría
+de las veces es operándolo a favor de la tendencia, lo cual significa que la amplia mayoría de las
+veces nosotros buscamos trabajar el canal alcista en operaciones alcistas cuando el precio se
+encuentra yendo en la zona inferior de dicho canal, es decir en estas zonas inferiores del
+precio. Ahora cuando nosotros trabajamos un canal bajista o trabajamos tendencias bajistas lo que
+buscamos es operar a la baja y ya hablaremos más adelante de eso este tipo de trazos del mercado
+cuando el mercado viene a acercarse a la parte superior del canal bajista. Tratamos de no buscar
+directamente rupturas del canal porque hay un concepto muy interesante que va a jugar a nuestro
+favor y es que hay algo que en los mercados financieros siempre ocurre especialmente cuando
+hablamos de canales mensuales o canales semanales. La amplia mayoría de las veces los mercados
+financieros van a permanecer dentro del canal que ya tienen determinado o sea cuando un activo
+está en tendencia alcista y va desarrollando un canal alcista la enorme mayoría de las veces
+va a seguir dentro del dicho canal lo mismo ocurre con los activos que son bajistas una amplia
+mayoría de las veces que vienen en un canal bajista van a seguir dentro de ese canal bajista e incluso
+vamos a ir aprendiendo poco a poco el concepto de falsa ruptura el concepto de falsa ruptura es
+un concepto muy interesante que después lo vamos a profundizar y básicamente lo que quiere decir
+es que en ocasiones el precio o el gráfico deliberadamente nos rompe el canal alcista para
+pretender que ya se va a desplomar y lo que en realidad hace es engañar a muchos operadores para
+reinsertarse nuevamente y empezar a moverse al alza también por el lado bajista este concepto
+existe en el cual un mercado hace el amague ok hace el engaño de ir y romper el canal
+por la parte alta y pretender que ya va a tener un derrotero alcista para justo después tiempo
+después reinsertarse dentro del canal bajista y provocar pérdidas a todos los operadores que se
+fueron en contra del canal dejándolos atrapados en una operación muy comprometida ok ahora hay
+varias cosas interesantes que vamos a ir trabajando lo largo de esto existen también los canales
+laterales ok y los canales laterales usualmente lo que preferimos trabajar evidentemente son canales
+alcistas o canales bajistas esto es lo que usualmente preferimos trabajar en lo más rentable en lo más
+fácil de trabajar ahora los canales laterales o los rangos laterales en realidad son más complejos
+porque dependen del contexto de mercado ya y después vamos a profundizarlo pero va a haber
+que analizar toda una serie de contexto analítico que termine que va a ocurrir con ese canal por
+ejemplo a veces un canal lateral o un rango lateral funciona para hacer un giro de mercado es decir
+una tendencia que viene de un canal bajista entra ahora a un canal lateral permanece lateral por
+un tiempo y cuando y ahí cuando se rompe al alza puede dar pie a una nueva tendencia depende
+mucho del contexto que ahorita vamos a hablar de ello que se yo diversas condiciones macroeconómicas
+o gráficas que hagan que exista un giro y lo mismo pasa a la baja que se yo cuando una tendencia
+el sista que tal vez viene de un canal al sista llega a un canal lateral ok y termina rompiéndolo
+a la baja y ahí si ya ocurre un giro ahora la nueva formación de un canal bajista esto usualmente
+requiere de más análisis ahorita vamos a entrar a trabajar en eso requiere de contexto de mercado
+condiciones específicas que hagan un cambio en dicha tendencia por eso los canales laterales
+usualmente tienen un mayor nivel de complejidad que los canales y alcistas o bajistas plenos vamos
+a ver algunos ejemplos vamos a ver algunos ejemplos de estos canales vamos a verlos si ustedes ven el
+sp 500 ahora que hablamos de que la tendencia mensual es la más importante noten que el sp
+500 tiene un profundo canal al sista actualmente vean que incluso dicho canal al sista se reforzó
+mucho durante el año 2022 y de hecho que fue su suelo vean que este canal al sista cuando
+una corrección a finales del 2023 fue un testeo y de ahí se disparó a la alza y noten cómo
+recientemente el sp 500 en mensual trabajó este canal en la parte inferior y si ustedes se dan
+cuenta incluso si nos vamos desde el crash del covid el que trabajó en la parte inferior este
+canal al alza ganó muchísimo ganó muchísimo ganó muchísimo e incluso actualmente ganaría
+muchísimo por darles un ejemplo sin importar cuando vean ustedes esto en este testeo de este
+canal nos hemos llenado a muchas operaciones alcistas que han salido muy bien y justamente es parte de
+esta estrategia de canal obviamente lo estamos simplificando al máximo pero después hay más
+elementos e incluso antes de este canal había otro canal al sista había otro canal al sista que
+se formaba también en el gráfico mensual del sp 500 desde prácticamente los mínimos de la
+crisis suprime del 2008 que terminó haciendo suelo en 2009 básicamente a partir de allí vean este
+canal al sista mensual quien operó esto al alza en el año 2011 ganó mucho dinero quien operó
+esto al alza por ahí del año 2015 16 ganó mucho dinero quien operó esto en 2018 eso fue inicio del
+19 la famosa crisis repo años bonitos en aquel entonces también lo pero y vean cómo justamente
+lo que les decíamos vean cómo el crash del covid rompió falsamente este canal justo antes de
+dispararse y no sólo dispararse sino formar ahora un canal mucho más vertical con una pendiente
+mucho más agresiva muchos operadores aquí pensaron que esto ya iba a seguir cayendo y lo que hizo
+el mercado fue que simplemente provocó una falsa ruptura y se disparó a la alza e incluso provocando
+un canal al sista más profundo más violento y más agresivo en los movimientos al sista ven
+interesante cómo en mensual es muy evidente poder notar que el mercado prefiere seguir especialmente
+mensual prefiere seguir dentro del derrotero de su canal ahora vean por ejemplo en canales laterales
+como lo pueden ver en el euro que es mucho más complicado obviamente ha sido mucho más rentable
+trabajar el sp 500 en términos de planta de operaciones más rentable y de paso más fácil que
+en el euro ya que en el euro hay pues una lateralidad bastante fuerte incluso el euro este canal de
+2022 lo intentó romper a la baja lo rechazó lo intentó romper al alza y ahora se encuentra aquí y
+aquí estamos otra vez siguiendo el juego de si lo romperá o no pues bueno ya habría que esperar
+básicamente que se vaya esta parte alta y rompe este máximo anterior ya y si se podría dar por
+valida la ruptura pero bien que les hablé que para los rangos laterales entran muchos otros
+conceptos aquí entran conceptos como el dólar políticas macroeconómicas que más adelante
+vamos a las de ellas con relación a la fe etcétera etcétera pero noten ustedes que gráficamente es
+muy difuso encontrar cuál va a ser el comportamiento del euro dentro de este canal desde el punto
+de vista gráfico hay que meternos a otras variables por ejemplo si la red del va federal recorta tasas
+próximamente eso muy posiblemente va a debilitar el dólar lo que va a provocar que el euro suba
+entonces tenemos que irnos a contexto macroeconómico para poder trabajar este canal lateral en cambio
+los canales alcistas es literalmente como decía decían varios grandes traders no me importa las
+noticias sólo dame el gráfico el sp 500 aquí no importa la noticia métete para arriba en el canal
+no importa la noticia metase para arriba metase para arriba metase para arriba metase para arriba
+metase para arriba metase para arriba y metase para arriba vean que en gráfico mensual en los últimos
+16 años se ha testiado una dos tres cuatro cinco seis siete ocho veces ocho veces en los últimos
+16 años ok el sp 500 ha trabajado esta parte inferior del canal bajista del canal de cista
+perdón y las ocho veces el mercado ha tenido enormes subidas lo cual ha tenido un 100 por ciento
+de efectividad las ocho veces que tocó la parte baja el canal las ocho veces terminó subiendo y
+subiendo mucho mucho fuertes movimientos alcistas fuertes es más una persona simplemente podría
+sentarse esperar a que el sp 500 trabaje los mensuales en estos canales y se va al alza y se va
+al alza y se va al alza y va a ser extremadamente rentable en toda su vida ahora si nos vamos a otros
+marcos temporales pues ya podemos empezar a meter a meter canal sobre canal etcétera en este caso
+podemos hablar por ejemplo de cómo vamos a presentar antes de ver eso vamos a ver esta
+sección aquí también vamos a hablar de otros conceptos interesantes y ya lo vamos a mencionar
+y es que como dentro de tanto canales alcistas como bajistas pues existen microcanales o mini
+canales por ejemplo muchas veces durante este proceso de subida aquí hay otro canal alcista que
+se va formando y también canales bajistas que se van formando lo mismo a la baja tal vez hay canales
+bajistas que se van formando y canales alcistas que se van formando obviamente aquí sobre esta zona
+es importante mencionar que entre más usted esté a favor de la tendencia mejor por ejemplo cuando
+son canales alcistas lo ideal es operar estos canales al alza ya que las correcciones son más
+riesgosas porque la tendencia es hacia arriba y cuando son canales bajistas lo ideal es operar
+estos canales a la baja ya que operar estos rebotes son más riesgosos ya que en cualquier momento
+el mercado viene y te pega te pega la corrección vamos a hablar de ejemplos de ello si nos vamos
+al gráfico diario que vean que el gráfico diario es muchísimo más dinámico que el gráfico
+semanal y mensual vean que en el gran gráfico mensual el mismo gran gráfico mensual que les
+acabo de mostrar que era solamente comprar el gráfico mensual y comprar el gráfico mensual y ya
+noten ustedes que ya en diario hay múltiples gráficos múltiples canales perdón dentro de
+la misma estructura por ejemplo si nos remontamos a esta parte inicial del canal que nació en la
+época covid en la época 2020 antes de esta importante caída vean que había todo un micro
+canal al cista muy bonito había este canal al cista vamos a poner en color blanco para que pueda
+hacer contraste y mira que toda esta operativa de canal al cista el mercado lo fue respetando aquí
+compra compra compra compra compra compra compra y el mercado tuvo importantes ganancias como este
+es un canal en diario los canales diarios y son más prestos a romperse los mensuales pueden pasar
+décadas los diarios que están dentro de mensuales siguen esa estructura por ejemplo una tendencia
+al cista en mensual tal vez en diario va teniendo periodo de subida periodo de corrección periodo
+de subida periodo de corrección subida corrección subida corrección subida ok entonces cada periodo
+de subida tiene un canal al cista corrección su canal bajista su subida canal al cista su
+retroceso canal bajista su subida canal al cista su retroceso canal bajista canal cista canal bajista
+y así sucesivamente de hecho que noten ustedes que aquí por ejemplo cuando este canal al cista ya
+se rompió fue el crash del covid el crash del covid fue un canal bajista en sí mismo un canal
+bajista muy vertiginoso claro eso fue una pandemia eso fue un tema muy traumático para la humanidad
+pero aún así vean que fue un canal bajista bien delimitado después de allí toda la recuperación
+hasta el año 2021 inicio del 22 fue todo un mega canal al cista hecho que esto incluso lo podemos
+graficar desde aquí todo este mega canal al cista fue todo un bullroom todo un mega movimiento
+al cista espectacular fue muy rentable y el sp 500 prácticamente una dos tres cuatro cinco
+seis siete ocho nueve veces nueve veces respetó el canal hasta que aquí finalmente lo rompió a la
+décima vez o sea nueve de diez yo prefiero irme por nueve de diez noten que todos los que operaron
+a que le iba a romper a la baja perdieron nueve veces ganaron una vez y todos los que operaron
+aquí va a seguir rompiendo la alza ganaron nueve operaciones perdieron una que fue esta y a esto
+más adelante le sumaremos el contexto macroeconómico que aquí el contexto macroeconómico fue que la
+fe cambió de política monetaria entonces como la fe cambió de política monetaria era el momento
+perfecto para que rompiera este canal a la baja este canal cuando fue bajista este canal cuando
+fue bajista y que lo rompió a la alza porque estamos dentro de un mega canal al cista en el
+sp 500 fue porque la fe inició todo un programa de liquidez al mercado financiero y este canal
+inicial este canal inicial que rompió a la baja fue porque se nos vino la pandemia ven ahora si
+nos vamos a este a este otro canal por ejemplo dentro de este gran canal al cista este fue un
+canal bajista de un año bueno no un año entero 10 meses aproximadamente muy bien delimitado ven
+sus máximos de crecientes y sus mínimos de crecientes todo el que le hiciera short aquí que es operación
+bajista short aquí que es operación bajista o short aquí que es operación bajista ganó dinero y
+después de ello se formó este canal al cista inicial todo el que le hiciera long long long
+long al canal al cista ganó dinero porque se rompió este canal bajista a la alza porque por dos
+motivos el primero porque ya se topó con la base del canal mensual ok y segundo porque otra vez
+hubieron factores macroeconómicos ligados que en este caso la fed cambió su enfoque aquí se formó
+un canal bajista correctivo y aquí luego se formó otro mega canal al cista bastante interesante que
+también se rompió en el mes de enero cuán mes de febrero cuando tuvimos en este caso los
+aranceles de trompe el contexto macroeconómico de los aranceles de trompe que erivo en este canal
+bajista que se formó que vino a trabajar la parte inferior del canal mensual y ahora se nos
+está formando un nuevo canal al cista por lo tanto ahorita estamos en plena subida pero en el momento
+en el que en alguna parte del mercado por ejemplo venga suba y haga algún tipo de corrección y se
+venga a esta parte del canal si las condiciones macroeconómicas y ahorita hablamos de eso y
+gráficamente vemos que hay una falsa ruptura y el mercado la respeta esto es para abrir a la alza y
+si por alguna condición macroeconómica tarde o temprano más adelante en el futuro por ejemplo
+el mercado viene aquí y más adelante visita la parte del mensual aquí tendremos grandes
+oportunidades para ir a la alza también por lo tanto en resumen el canal mensual hay una enorme
+probabilidad que siempre se respete y ahí vamos trabajando los canales internos dentro de la
+estructura de mercado
