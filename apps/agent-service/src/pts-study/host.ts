@@ -235,6 +235,7 @@ export async function runPtsHost(
     data = createPriorityPerplStudyData(research, {
       acquisitionPolicy: configuration.acquisitionPolicy,
       initialHistory: input.packet.history.markets,
+      ...(configuration.version === 9 ? { preparedPtsSymbols: eligible } : {}),
       onHistoryRevision: (event) => {
         void appendFile(
           resolve(output, "history-revisions.jsonl"),
