@@ -115,7 +115,7 @@ try {
     await operations.getByText("Preparation failed", { exact: true }).waitFor();
     await operations.getByRole("button", { name: "Launch token", exact: true }).click();
     await operations.getByRole("button", { name: "Continue preview", exact: true }).click();
-    await operations.getByText("Confirming", { exact: true }).waitFor();
+    await operations.getByText("Waiting for confirmation", { exact: true }).waitFor();
     await operations.getByRole("button", { name: "Check status", exact: true }).click();
     await page.locator('[data-token-state="launched"]:visible').waitFor();
     assert.equal(
@@ -169,7 +169,12 @@ try {
     ]) {
       await page.goto(base + suffix);
       await page.locator(`[data-token-state="${state}"]:visible`).waitFor();
-      assert.equal(await page.locator('a[href*="monadexplorer"]').count(), 0);
+      assert.equal(
+        await page
+          .locator('a[href*="monadexplorer"], a[href*="monadscan"], a[href*="monadvision"]')
+          .count(),
+        0,
+      );
       if (suffix.startsWith("/agents/")) {
         assert.equal(
           await page.getByRole("button", { name: "Review launch", exact: true }).count(),
