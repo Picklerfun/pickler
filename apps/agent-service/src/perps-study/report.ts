@@ -26,7 +26,9 @@ export function perpsStudyReport(
     .slice(1)
     .reduce((sum, t, i) => sum + Math.max(0, t - times[i]! - 90000), 0);
   const unknownCalls = rounds
-    .flatMap((r) => Object.values(r.calls))
+    .flatMap((r) =>
+      Object.values(r.calls).filter((c): c is NonNullable<typeof c> => c !== undefined),
+    )
     .filter((c) => ["started", "failed"].includes(c.status) && c.costUsd === null);
   const incompleteRounds = rounds.filter(
     (r) =>
@@ -38,7 +40,9 @@ export function perpsStudyReport(
     const view = accounts[strategy]!;
     const risk = paperRisk(view.account, view.attempts, now);
     const calls = rounds
-      .flatMap((r) => Object.values(r.calls))
+      .flatMap((r) =>
+        Object.values(r.calls).filter((c): c is NonNullable<typeof c> => c !== undefined),
+      )
       .filter((c) =>
         strategy === "sma-jev"
           ? c.lane.split(":")[0] === "sma-review"
@@ -61,7 +65,9 @@ export function perpsStudyReport(
       .map(
         (e) =>
           (
-            (record.config.version === 6 || record.config.version === 7
+            (record.config.version === 6 ||
+            record.config.version === 7 ||
+            record.config.version === 8
               ? (e.data as { variants: unknown }).variants
               : e.data) as Record<
               string,
@@ -145,7 +151,7 @@ export function perpsStudyReport(
       fills: filled.length,
       rejections: view.attempts.filter((a) => a.status !== "filled").length,
       riskExits:
-        record.config.version === 6 || record.config.version === 7
+        record.config.version === 6 || record.config.version === 7 || record.config.version === 8
           ? events.filter((e) => {
               const value = e.data as { variant?: string; status?: string; reason?: string };
               return (
@@ -193,7 +199,10 @@ export function perpsStudyReport(
     unknownCalls.length === 0 &&
     unobservedMs === 0 &&
     rounds.length ===
-      record.config.hours * (record.config.version === 6 || record.config.version === 7 ? 12 : 4) &&
+      record.config.hours *
+        (record.config.version === 6 || record.config.version === 7 || record.config.version === 8
+          ? 12
+          : 4) &&
     rows.every((r) => !r.fundingPending && !r.fundingDisputed && !r.openPositions);
   return {
     protocol: record.config.protocol,
