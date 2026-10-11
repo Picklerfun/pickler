@@ -30,6 +30,14 @@ and the chain advanced 3,386, so the backlog grew by 786. This interval does not
 sufficient catch-up capacity. Capacity investigation remains pending; resource ceilings and
 historical cursors were not increased or skipped.
 
+The final read at 19:17 UTC still returned `tokenConfirmation: absent` for `teterabob` and
+factory cursor 70,116,187 against head 70,192,635: 76,448 blocks behind. The correction below
+is local/PR code and was not deployed to obtain these observations.
+
+A bounded live log capture observed three overlapping Cron invocations returning `busy` without
+exceptions. It did not capture the lease-owning run's completion, so it cannot identify whether
+provider latency or persistence dominates that run. No remote throughput correction is claimed.
+
 GitHub recorded `startup_failure` before starting any jobs on this PR and on the preceding main
 commit. No CI check has passed for this head. Local validation is separate from the unavailable
 hosted CI execution.
@@ -47,6 +55,15 @@ per UTC day, at most 250 preparation requests. Existing per-wallet and per-prepa
 remain. The indexer source retains its already-enabled gate so a later automatic publication
 does not disable it. Its cursor and resource policy are unchanged; no historical range is skipped.
 
+The indexer's private admission scheduler now reserves up to four queued reads in one PostgreSQL
+update, for their actual call count, before transport. A 100-header controlled range uses 25
+reservation statements instead of 100, with the same 100 RPC calls and at most four in flight.
+Sequential identity/deployment reads reserve only their own count. A group that cannot fit the
+remaining budget is refused as a whole. No SQL lock spans RPC; failed reads stop later groups,
+and lease loss prevents canonical writes and cannot release a newer owner's claim. This reduces
+database work without increasing RPC budgets or skipping ancestry. Sustained hosted capacity
+remains pending until automatic publication and another real measurement.
+
 ## Validation
 
 | Scenario                                                           | Evidence                                                              | Result  |
@@ -57,14 +74,18 @@ does not disable it. Its cursor and resource policy are unchanged; no historical
 | Concurrent public RPC reservation                                  | Real isolated PostgreSQL quota suite                                  | Passed  |
 | Empty, failed and confirmed landing listings                       | Strict loopback API + production web, 390/1280 px                     | Passed  |
 | Keyboard landing → public profile → Buy/Sell panel                 | Controlled browser, no external requests                              | Passed  |
+| Grouped reserves, daily quota, lease loss and historical parity    | 56 controlled admission/PostgreSQL/scheduling regressions             | Passed  |
 | Owner passkey launch and Studio buy                                | Open hosted session; requires unlock, passkey approval and buyer AUSD | Pending |
 | New token canonical indexing and hosted landing appearance         | No new launch; indexer still recovering history                       | Pending |
 | GitHub CI                                                          | Startup failure before jobs, also present on preceding main           | Pending |
 | Ordinary visitor buy/sell                                          | Testnet gate needs automatic release and a confirmed token            | Pending |
 
-The controlled API/PostgreSQL run passed 29 tests. The browser run passed six scenarios with no
+The controlled API/directory PostgreSQL run passed 29 tests. The indexer admission, canonical
+PostgreSQL indexing, historical operation compatibility and host scheduling runs passed 56 tests,
+including UTC quota reset and loss of the lease while a read group is in flight. The browser run passed six scenarios with no
 page errors or external requests. Shared and web builds, types, lint, format, architecture,
-OpenAPI, design source, staging topology and API dry-run checks passed. API dry-run is not a deployment.
+OpenAPI, design source, staging topology and API/indexer dry-run checks passed. Dry-run packaging
+is not a deployment.
 
 ## Reproduce
 
@@ -74,6 +95,8 @@ the hosted database.
 ```sh
 npm run build:shared
 node --import tsx --test --test-concurrency=2 packages/infrastructure/test/token-launch.test.ts packages/infrastructure/test/agent-directory.test.ts workers/api/test/public-token-trading-route.test.ts packages/infrastructure/test/public-token-rpc-quota.test.ts
+node --import tsx --test --test-concurrency=2 packages/infrastructure/test/token-indexer-rpc-admission.test.ts packages/infrastructure/test/uniswap-indexer.test.ts packages/infrastructure/test/launch-indexer.test.ts workers/indexer/test/token-schedule.test.ts
+node --import tsx --test --test-concurrency=2 packages/infrastructure/test/token-operations.test.ts packages/infrastructure/test/launch-index-store.test.ts
 npm run build --workspace=@pickler/web
 node --import tsx scripts/design/token-discovery.mjs
 ```
