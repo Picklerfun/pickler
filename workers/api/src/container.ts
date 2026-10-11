@@ -1,3 +1,4 @@
+import { composePublicTokenTrading } from "./public-token-trading";
 import { composeTokenLauncher } from "./token-launch";
 import { createXOAuthService } from "@pickler/core";
 import { PostgresApplicationReview, PostgresStudioAccessRequests } from "@pickler/infrastructure";
@@ -559,6 +560,10 @@ export function createServices(env: Env): Services & { close(): Promise<void> } 
     repository: adviceStore,
     pool: repository.pool,
   });
+  const growth = createGrowthServices(repository.pool, {
+    tokenChainId: chainId,
+    ...(env.PERPL_BOARD_NETWORK ? { perplBoardNetwork: env.PERPL_BOARD_NETWORK } : {}),
+  });
   return {
     authenticate,
     advice: {
@@ -574,10 +579,8 @@ export function createServices(env: Env): Services & { close(): Promise<void> } 
     },
     ...(custody ? { custody } : {}),
     ...(walletAuth ? { walletAuth } : {}),
-    growth: createGrowthServices(repository.pool, {
-      tokenChainId: chainId,
-      ...(env.PERPL_BOARD_NETWORK ? { perplBoardNetwork: env.PERPL_BOARD_NETWORK } : {}),
-    }),
+    growth,
+    publicTokenTrading: composePublicTokenTrading(repository.pool, env, growth),
     launches: new PostgresLaunchReadModel(repository.pool),
     ...(env.TOKEN_METADATA
       ? { tokenAssets: createTokenMetadata(env.TOKEN_METADATA, "https://app.pickler.fun") }
