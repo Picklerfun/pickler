@@ -45,6 +45,36 @@ export function canonicalAudit(value: unknown): string {
   }
   return JSON.stringify(value) ?? "null";
 }
+/** The same canonical bytes, yielded without constructing one unbounded string. */
+export function* canonicalAuditChunks(value: unknown): Generator<string> {
+  if (Array.isArray(value)) {
+    yield "[";
+    for (let index = 0; index < value.length; index++) {
+      if (index) {
+        yield ",";
+      }
+      // Preserve legacy map/join semantics, including holes in controlled inputs.
+      if (index in value) {
+        yield* canonicalAuditChunks(value[index]);
+      }
+    }
+    yield "]";
+  } else if (value && typeof value === "object") {
+    yield "{";
+    const entries = Object.entries(value).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+    for (let index = 0; index < entries.length; index++) {
+      const [key, entry] = entries[index]!;
+      if (index) {
+        yield ",";
+      }
+      yield JSON.stringify(key) + ":";
+      yield* canonicalAuditChunks(entry);
+    }
+    yield "}";
+  } else {
+    yield JSON.stringify(value) ?? "null";
+  }
+}
 function resultObject(value: unknown): { answers?: PerpsJevAnswers; proposals?: PerpsProposal[] } {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     throw new PilotError("MODEL_OUTPUT_INVALID", "Missing structured result");
