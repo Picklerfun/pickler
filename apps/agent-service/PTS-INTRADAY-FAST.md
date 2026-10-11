@@ -126,3 +126,42 @@ verified historical fills or net financial returns in this replay. Historical re
 and revisions are not reconstructed. The sample informed candidate selection; it is not a holdout.
 The 0.1.0 prospective trial remains frozen and separate. Neither this report nor profitable
 controlled fixtures meet the goal of demonstrated prospective PTS profitability.
+
+## Preparation-range sensitivity, 2026-10-11
+
+A separate offline audit applied the frozen fast preparation query ranges to those same preserved
+native bars. It used the existing runtime recipe: the replay start rounded down per resolution,
+minus `max(60, native minimum)` bars, through the replay end rounded down. This changes the
+captured prefix, not the candidate's eligibility thresholds. Original bars outside the new query
+range were excluded from this explicit projection; missing bars were not created or repaired.
+
+Across 22,176 fast windows, the four signal windows and two setup identities remained identical.
+There were zero action or setup divergences. Candidate-valid eligible windows changed from 14,696
+to 16,533. The 2,016 changed reason labels were all VVV: its older invalid bars lie outside the
+already frozen fast query ranges. The resulting projection has 1,837 eligible VVV windows and
+179 unavailable warmup windows, with no signals. NEAR and UNI remain unverifiable. The original
+running 0.1.0 cohort remains unchanged; future eligibility requires an actual new public capture.
+
+The private `fast-preparation-range-audit-20261011` directory beside the original study contains
+HTML/CSV/JSON, source/recipe hashes, analysis and independent verification. Verification checked
+all 22,176 projection hashes, 44 native query ranges, 65 retained analyses and 87 independently
+recomputed samples, including every signal. Independent CSV parsing confirmed the denominators.
+The canonical report hash is
+`70a6ca7dfd0f5e1d537779395ee2412f08b209b4ec51fe3a26a2b71f00c0183e`.
+No public requests, financial executions or profit estimates were made by this audit.
+
+## Unavailable-attempt report regression
+
+The unchanged 0.1.0 trial recorded slot 38 at 2026-10-11 10:11 UTC as `DATA_UNAVAILABLE` during
+initial evidence. Its last completed round remained 37; slot 39 subsequently completed. The
+historical event has no component-specific failure details, so those details remain unverifiable.
+The foreground process and lease remained live; this was an omitted opportunity, not a hold.
+
+The old host requested a full report only when the last completed round changed or the fixed end
+was reached. That omitted attempt therefore remained absent from the full report until another
+round completed. The corrected future host additionally watches the last attempted slot and
+process state. It requests the same coalesced worker on an omission or closing-only transition,
+without moving financial work onto the reporting path or rewriting a historical record.
+Controlled tests cover the recorded 37/38 cursor sequence, historical missing cursors, state
+transitions, fixed-end publication, slow-report coalescing and failure without automatic retry.
+The currently running frozen host is not hot-patched or restarted to apply this correction.
