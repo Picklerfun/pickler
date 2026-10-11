@@ -196,3 +196,28 @@ test("Turnkey 4xx messages are shown; 5xx, network errors and empty responses ar
   });
   assert.equal((await stuck.forward(signed(), expectations)).status, "ACTIVITY_STATUS_PENDING");
 });
+
+test("a failed follow-up read preserves the accepted activity without resubmission", async () => {
+  let submits = 0;
+  let reads = 0;
+  const accepted = activity("ACTIVITY_STATUS_PENDING");
+  const forwarder = createTurnkeyActivityForwarder({
+    sleep: async () => {},
+    reader: {
+      getActivity: async () => {
+        reads++;
+        throw new SigningServiceUnavailableError("Controlled read failure");
+      },
+    },
+    fetch: (async () => {
+      submits++;
+      return Response.json({ activity: accepted });
+    }) as never,
+  });
+
+  const result = await forwarder.forward(signed(), expectations);
+
+  assert.deepEqual(result, accepted);
+  assert.equal(submits, 1);
+  assert.equal(reads, 1);
+});
