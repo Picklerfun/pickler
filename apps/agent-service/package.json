@@ -34,14 +34,16 @@
     "@ai-sdk/openai-compatible": "3.0.48",
     "@mastra/core": "1.67.0",
     "@mastra/pg": "1.25.0",
+    "@pickler/agent-runtime": "*",
     "@pickler/api-schema": "*",
     "@pickler/core": "*",
     "@pickler/infrastructure": "*",
+    "@pickler/trading": "*",
+    "ajv": "8.20.0",
+    "ajv-formats": "3.0.1",
     "dotenv": "17.4.2",
     "hono": "4.13.8",
-    "zod": "4.6.5",
-    "@pickler/agent-runtime": "*",
-    "@pickler/trading": "*"
+    "zod": "4.6.5"
   },
   "devDependencies": {
     "@pickler/typescript-config": "*",
