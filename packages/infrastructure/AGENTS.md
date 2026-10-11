@@ -670,7 +670,10 @@ See [Token operations](../../docs/market/token-launch-operations.md) for configu
 
 ## V4 launcher policy and canonical position history
 
-`src/launch/policy.ts` discriminates strict V4 version 2 from historical Kuru version 1. The V4
+`src/launch/policy.ts` discriminates strict V4 versions 2/3 from historical Kuru version 1.
+Version 3 explicitly admits all eligible creators instead of an agent UUID allowlist; core still
+checks creator access, workspace ownership, publication, master identity and token uniqueness.
+Versions 1/2 retain their non-empty UUID allowlists. Default runtime activation stays disabled. The V4
 driver verifies proxy implementations, exact deployed bindings, full preset/venue, master identity
 and a private preparation configuration hash before signing/submission. No Kuru-to-V4 fallback
 exists. V4 collection requires its canonical locker context; browser contracts remain enumerated.
