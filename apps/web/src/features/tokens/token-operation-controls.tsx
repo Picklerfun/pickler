@@ -1,5 +1,5 @@
 "use client";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { networkByChainId } from "@pickler/chain";
 import { Button, Icon, Tag } from "@pickler/ui";
 import {
@@ -15,6 +15,12 @@ import { tokenOperationErrorMessage, tokenRequestErrorMessage } from "./token-op
 import { useStudioMemory } from "../studio/routing/memory";
 import { ChainReference } from "./chain-reference";
 import { tokenOperationStatus, tokenStatusCheckFeedback } from "./token-operation-status";
+import {
+  startTokenConfirmation,
+  tokenConfirmationPhase,
+  type TokenConfirmationBudget,
+  type TokenConfirmationPhase,
+} from "./token-confirmation";
 import styles from "./token.module.css";
 const progress = {
   launch: "Preparing launch…",
@@ -66,6 +72,11 @@ export function TokenOperationControls({
   const [preparingAsset, setPreparingAsset] = useState<"ausd" | "agent">("ausd");
   const [checked, setChecked] = useState<{ id: string; message: string; at: number } | null>(null);
   const actionLock = useRef(false);
+  const [waitResult, setWaitResult] = useState<{
+    id: string;
+    phase: TokenConfirmationPhase;
+    reason: "complete" | "limit" | "error";
+  } | null>(null);
   const current =
     state.operation && state.operation !== operation.server
       ? newest(operation.value, state.operation)
@@ -74,6 +85,7 @@ export function TokenOperationControls({
     if (!owned()) {
       return;
     }
+    value = newest(memory.outcome<TokenOperationDto | null>(scope, null), value);
     setOperation({ value, server: state.operation });
     memory.setOutcome(scope, value);
     if (clearRequest && ["failed", "cancelled", "finalized"].includes(value.status)) {
@@ -108,6 +120,7 @@ export function TokenOperationControls({
     setBusy(phase);
     setError(null);
     setChecked(null);
+    setWaitResult(null);
     memory.begin(scope);
     try {
       await work();
@@ -320,6 +333,104 @@ export function TokenOperationControls({
       }
     }
   }
+  const confirmationPhase = tokenConfirmationPhase(current, !!state.token);
+  const confirmationId = current?.id;
+  const observer = useRef({ retain, onChange, owned, checkedStatus });
+  observer.current = { retain, onChange, owned, checkedStatus };
+  useEffect(() => {
+    if (preview || busy || !confirmationPhase || !confirmationId) {
+      return;
+    }
+    const budgetScope = `${scope}:wait:${confirmationId}:${confirmationPhase}`;
+    const remembered = memory.outcome<TokenConfirmationBudget | null>(budgetScope, null);
+    const budget = remembered ?? { startedAt: Date.now(), reads: 0, stopped: false };
+    if (!remembered) {
+      memory.setOutcome(budgetScope, budget);
+    }
+    if (budget.stopped) {
+      return;
+    }
+    let mounted = true;
+    const stop = startTokenConfirmation({
+      phase: confirmationPhase,
+      budget,
+      async read(signal) {
+        const requestSignal = AbortSignal.any([signal, AbortSignal.timeout(15_000)]);
+        if (confirmationPhase === "receipt") {
+          const value = tokenOperationSchema.parse(
+            await studioApi(`${url}/${confirmationId}`, { signal: requestSignal }),
+          );
+          if (signal.aborted || !mounted || !observer.current.owned()) {
+            return false;
+          }
+          if (value.id !== confirmationId) {
+            throw new Error("Unexpected token operation");
+          }
+          observer.current.retain(value);
+          observer.current.checkedStatus(value);
+          if (value.status === "finalized" && value.action !== "launch") {
+            const { tokenStateSchema } = await import("@pickler/api-schema");
+            const latest = tokenStateSchema.parse(
+              await studioApi(`/agents/${agentId}/token`, { signal: requestSignal }),
+            );
+            if (!signal.aborted && mounted && observer.current.owned()) {
+              observer.current.onChange(latest);
+            }
+          }
+          return tokenConfirmationPhase(value, false) === "receipt";
+        }
+        const { tokenStateSchema } = await import("@pickler/api-schema");
+        const latest = tokenStateSchema.parse(
+          await studioApi(`/agents/${agentId}/token`, { signal: requestSignal }),
+        );
+        if (signal.aborted || !mounted || !observer.current.owned()) {
+          return false;
+        }
+        if (latest.operation) {
+          observer.current.retain(latest.operation);
+          observer.current.checkedStatus(latest.operation);
+        }
+        observer.current.onChange(latest);
+        return !latest.token && latest.operation?.id === confirmationId;
+      },
+      onStop(reason) {
+        if (!mounted || !observer.current.owned()) {
+          return;
+        }
+        setWaitResult({ id: confirmationId, phase: confirmationPhase, reason });
+        if (reason === "error") {
+          setError(
+            tokenRequestErrorMessage(
+              "UNAVAILABLE",
+              confirmationPhase === "receipt" ? "check" : "refresh",
+            ),
+          );
+        }
+      },
+    });
+    return () => {
+      mounted = false;
+      stop();
+    };
+  }, [agentId, busy, confirmationId, confirmationPhase, memory, preview, scope, url]);
+  const storedBudget = confirmationPhase
+    ? memory.outcome<TokenConfirmationBudget | null>(
+        `${scope}:wait:${confirmationId}:${confirmationPhase}`,
+        null,
+      )
+    : null;
+  const automaticPhase =
+    !preview && !busy && confirmationPhase && !storedBudget?.stopped ? confirmationPhase : null;
+  const waitNotice =
+    waitResult !== null &&
+    waitResult.id === confirmationId &&
+    waitResult.phase === confirmationPhase &&
+    waitResult.reason === "limit"
+      ? confirmationPhase === "receipt"
+        ? "Confirmation is taking longer. Your transaction is saved; check its status when you are ready."
+        : "Your transaction is confirmed. Token details are still being indexed; refresh them later."
+      : null;
+
   async function cancel() {
     if (!current) {
       return;
@@ -516,6 +627,11 @@ export function TokenOperationControls({
           )}
         </div>
       </div>
+      {waitNotice && (
+        <p className={styles.quiet} role="status">
+          {waitNotice}
+        </p>
+      )}
       {checked && checked.id === current?.id && (
         <p className={styles.quiet} role="status">
           Checked{" "}
@@ -647,7 +763,13 @@ export function TokenOperationControls({
             {buttonContent(["submit"], "Send transaction")}
           </Button>
         )}
-        {active && status?.canCheck && (
+        {automaticPhase === "receipt" && (
+          <Button variant="secondary" disabled>
+            <Icon name="refresh" size={16} className={styles.spinner} />
+            Waiting for confirmation…
+          </Button>
+        )}
+        {active && status?.canCheck && !automaticPhase && (
           <Button variant="secondary" disabled={!!busy} onClick={() => void action("check", check)}>
             {buttonContent(["check"], "Check status")}
           </Button>
@@ -738,10 +860,17 @@ export function TokenOperationControls({
           withdrawn. Gas is paid in MON.
         </p>
       )}
+      {automaticPhase === "indexing" && (
+        <Button variant="secondary" disabled>
+          <Icon name="refresh" size={16} className={styles.spinner} />
+          Updating token details…
+        </Button>
+      )}
       {((error && !active) ||
         (current?.status === "unknown" && !status?.canCheck) ||
         (current?.status === "finalized" && current.action === "launch" && !state.token)) &&
-        !preview && (
+        !preview &&
+        !automaticPhase && (
           <Button
             variant="secondary"
             disabled={!!busy}
