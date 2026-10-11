@@ -230,8 +230,8 @@ The operational launcher remains behind explicit testnet-only gates. The approve
 configuration preserves `TOKEN_LAUNCH_ENABLED=true` for eligible creators; other compositions
 remain disabled without explicit configuration. Owner checks, reviewed policy and the user
 master passkey remain mandatory. Separate Uniswap V4 policy version 2 and its permanent V2 locker
-have real faucet-funded contract acceptance; hosted
-Studio/passkey/R2/indexer acceptance is pending. Historical Kuru policy 1 is retained, but its
+have real faucet-funded contract acceptance. The owner master-passkey launch also has a successful
+hosted receipt; canonical indexer attribution and trade/discovery acceptance remain pending. Historical Kuru policy 1 is retained, but its
 published testnet generation was verified incompatible and stays blocked. Read
 [Token operations](docs/market/token-launch-operations.md) and
 [the Uniswap evidence](docs/market/uniswap-v4-testnet-integration.md). No general/mainnet activation
