@@ -2,7 +2,6 @@ import { parsePerplMarketIdentity } from "@pickler/perpl-context";
 import {
   PilotError,
   PERPL_PLUGIN_VERSION,
-  PERPL_LAB_SYMBOLS,
   PERP_RESOLUTIONS,
   type PerplMarketCatalog,
   type PerpNetwork,
