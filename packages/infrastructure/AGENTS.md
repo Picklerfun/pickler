@@ -668,6 +668,16 @@ RPC admission and Kuru snapshots without rewriting historical V4 records. Never 
 Kuru as a fallback. Kuru remains blocked by its external readiness record; the V4 acceptance below is separate.
 See [Token operations](../../docs/market/token-launch-operations.md) for configuration and tests.
 
+## Node-only trading baseline
+
+`@pickler/infrastructure/trading-baseline` is an explicit local operator subpath, never the Worker
+barrel or provider composition. It shares a repeatable-read read-only snapshot between complete
+table fingerprints and pg_dump, then verifies restore in fresh databases on a different cluster.
+Keep URL/tool failures sanitized, credentials out of argv, child environments restricted, dumps
+private and sequence changes explicit. Restore copies default to read-only and never initialize
+budgets, sessions, applications or schedules. No migrations or financial policy changes belong
+here. Read [baseline recovery](../../apps/agent-service/TRADING-BASELINE.md).
+
 ## V4 launcher policy and canonical position history
 
 `src/launch/policy.ts` discriminates strict V4 version 2 from historical Kuru version 1. The V4
