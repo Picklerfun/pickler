@@ -55,6 +55,10 @@ Indexer Worker runtime only:
   can catch up in bounded passes; it never increases the daily RPC budget automatically.
 - Trusted `DATABASE` Hyperdrive binding, or an explicit loopback database in local mode.
 
+The [dated hosted configuration record](token-indexer-hosted-20261011.md) pins the restricted
+agent, policy hashes, deployment identities, gas ceilings and explicit indexer activation command.
+It distinguishes provisioning from completed historical recovery and owner acceptance.
+
 The chain-wide renewable lease and UTC daily RPC reserve are private PostgreSQL records.
 Every call is reserved before transport. At most four RPC calls run concurrently; queued calls
 stop after a failure and admitted calls drain before releasing the lease. Ranges remain at most 100 blocks; deployment blocks
