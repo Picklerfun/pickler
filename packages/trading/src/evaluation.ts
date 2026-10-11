@@ -28,3 +28,6 @@ export { nextPriceCycleDelay } from "./features/evaluation/sma-timing.js";
 
 export * from "./features/perps-paper/reader-audit.js";
 export * from "./features/perps-study/component-qualification.js";
+
+export { PTS_VARIANTS } from "./features/pts/types.js";
+export type { PerpsPtsConfig } from "./features/pts/policy.js";
