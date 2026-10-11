@@ -230,7 +230,9 @@ test("V4 indexer reads canonical deployed-position metadata at the event block a
     }),
   };
   try {
-    assert.equal((await runTokenIndexer(input)).kind, "completed");
+    const initialPass = await runTokenIndexer(input);
+    assert.equal(initialPass.kind, "completed");
+    assert.equal("caughtUp" in initialPass && initialPass.caughtUp, true);
     const state = await tokens.state(f.scope);
     assert.equal(state.token?.address, token);
     assert.equal(state.venue?.status, "uniswap_v4");
@@ -255,6 +257,95 @@ test("V4 indexer reads canonical deployed-position metadata at the event block a
         )
       ).rows[0].relrowsecurity,
     );
+  } finally {
+    await store.close();
+  }
+});
+
+test("bounded V4 catch-up advances and replays PostgreSQL cursors without widening ranges", async (t) => {
+  const f = await tokenFixture(t);
+  const policy = uniswapLaunchPolicy();
+  const store = new PostgresLaunchIndexStore(f.store.pool.options.connectionString!);
+  const ranges: { from: bigint; to: bigint }[] = [];
+  let calls = 0;
+  const tip = 350n;
+  const rpc = {
+    async call(method: string, params: unknown[]) {
+      calls++;
+      if (method === "eth_chainId") {
+        return "0x279f";
+      }
+      if (method === "eth_getCode") {
+        return deploymentCode;
+      }
+      if (method === "eth_getStorageAt") {
+        return "0x" + "0".repeat(24) + policy.quote.implementation!.address.slice(2);
+      }
+      if (method === "eth_getBlockByNumber") {
+        const number = params[0] === "latest" ? tip : BigInt(String(params[0]));
+        return {
+          number: "0x" + number.toString(16),
+          hash: hash(number),
+          parentHash: hash(number - 1n),
+          timestamp: "0x" + (1791674021n + number).toString(16),
+        };
+      }
+      if (method === "eth_getLogs") {
+        const range = params[0] as { fromBlock: string; toBlock: string };
+        const from = BigInt(range.fromBlock);
+        const to = BigInt(range.toBlock);
+        assert.ok(to - from < 100n);
+        ranges.push({ from, to });
+        return [];
+      }
+      throw new Error("Unexpected catch-up RPC " + method);
+    },
+  };
+  const input = {
+    store,
+    rpc,
+    launchPolicy: JSON.stringify(policy),
+    indexerPolicy: JSON.stringify({
+      version: 2,
+      maxBlocks: 100,
+      maxPassesPerTick: 4,
+      rpcRequestsPerPass: 400,
+      rpcRequestsPerDay: 2000,
+      leaseSeconds: 60,
+      maxCurvesPerPass: 10,
+    }),
+  };
+
+  try {
+    const first = await runTokenIndexer(input);
+    assert.equal("caughtUp" in first && first.caughtUp, false);
+    for (let pass = 0; pass < 3; pass++) {
+      await runTokenIndexer(input);
+    }
+    const cursor = await store.readCursor(
+      "eip155:10143",
+      policy.factory.address,
+      "token-launch-v1",
+    );
+    assert.equal(cursor?.lastBlock, tip - BigInt(policy.confirmations));
+    assert.equal(ranges.length, 16);
+    const callsBeforeReplay = calls;
+    const before = (await store.pool.query("SELECT count(*) FROM market.chain_blocks")).rows[0]
+      .count;
+
+    const replay = await runTokenIndexer(input);
+
+    assert.equal("caughtUp" in replay && replay.caughtUp, true);
+    assert.equal(ranges.length, 16, "Caught-up replay queried logs again");
+    assert.ok(calls - callsBeforeReplay < 30, "Caught-up pass re-read the full range");
+    assert.equal(
+      (await store.pool.query("SELECT count(*) FROM market.chain_blocks")).rows[0].count,
+      before,
+    );
+    const quota = (await store.pool.query("SELECT requests, owner FROM launch.indexer_admission"))
+      .rows[0];
+    assert.equal(quota.requests, calls);
+    assert.equal(quota.owner, null);
   } finally {
     await store.close();
   }

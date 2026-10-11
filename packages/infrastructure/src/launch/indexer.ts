@@ -19,7 +19,7 @@ import { encodeAbiParameters } from "viem";
 import { PostgresUniswapProjector } from "./uniswap-projector.js";
 import { PostgresKuruProjector } from "./kuru-projector.js";
 import { parseTokenLaunchPolicy } from "./policy.js";
-export const tokenIndexerPolicySchema = z
+const legacyTokenIndexerPolicySchema = z
   .object({
     version: z.literal(1),
     maxBlocks: z.literal(100),
@@ -29,6 +29,14 @@ export const tokenIndexerPolicySchema = z
     maxCurvesPerPass: z.number().int().min(1).max(100),
   })
   .strict();
+/** Version 1 retains one pass per Cron; version 2 explicitly budgets bounded catch-up. */
+export const tokenIndexerPolicySchema = z.discriminatedUnion("version", [
+  legacyTokenIndexerPolicySchema,
+  legacyTokenIndexerPolicySchema.extend({
+    version: z.literal(2),
+    maxPassesPerTick: z.number().int().min(1).max(6),
+  }),
+]);
 const blockTag = (n: bigint) => `0x${n.toString(16)}`;
 function block(v: unknown): BlockRef {
   const b = v as Record<string, string> | null;
@@ -492,7 +500,12 @@ export async function runTokenIndexer(input: {
         };
       });
     }
-    return { kind: "completed", calls, outcomes };
+    const confirmedTip = (await reader.getLatestBlock()).number - BigInt(policy.confirmations);
+    const caughtUp = outcomes.every(
+      (outcome) =>
+        outcome.kind === "idle" || (outcome.kind === "applied" && outcome.toBlock >= confirmedTip),
+    );
+    return { kind: "completed", calls, outcomes, caughtUp };
   } finally {
     stopped = true;
     await Promise.allSettled(lanes);

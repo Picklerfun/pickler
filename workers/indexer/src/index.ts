@@ -9,6 +9,7 @@ import {
 } from "@pickler/infrastructure";
 
 import { IndexerNotConfiguredError, readIndexerConfig } from "./config.js";
+import { runScheduledTokenIndexing } from "./token-schedule.js";
 
 export interface Env {
   APP_ENV: string;
@@ -61,16 +62,23 @@ const worker = {
       ) {
         throw new Error("Token indexer configuration incomplete");
       }
+      const launchPolicy = env.TOKEN_LAUNCH_POLICY_JSON;
+      const indexerPolicy = env.TOKEN_INDEXER_POLICY_JSON;
+      const rpc = createJsonRpc(env.RPC_URLS);
       const database = indexerDatabase(env);
       const store = new PostgresLaunchIndexStore(database.url, database.options);
       try {
         console.log(
           JSON.stringify(
-            await runTokenIndexer({
-              store,
-              rpc: createJsonRpc(env.RPC_URLS),
-              launchPolicy: env.TOKEN_LAUNCH_POLICY_JSON,
-              indexerPolicy: env.TOKEN_INDEXER_POLICY_JSON,
+            await runScheduledTokenIndexing({
+              policy: indexerPolicy,
+              runPass: () =>
+                runTokenIndexer({
+                  store,
+                  rpc,
+                  launchPolicy,
+                  indexerPolicy,
+                }),
             }),
             replaceBigints,
           ),

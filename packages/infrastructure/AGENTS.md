@@ -682,3 +682,15 @@ repeating provider calls or reinterpreting historical Kuru. RLS/revoked API role
 The controlled V4 indexer test spans registered grant → logs → RPC snapshot → PostgreSQL → owner
 state with RPC admission before transport. [Actual contract acceptance](../../docs/market/uniswap-v4-testnet-integration.md)
 is separate from pending hosted passkey/R2/migration/indexer acceptance.
+
+## Bounded token indexer catch-up
+
+`tokenIndexerPolicySchema` accepts historical version 1 and explicit version 2. Version 2 adds
+`maxPassesPerTick` (1–6) for the host schedule; infrastructure retains per-pass/daily RPC admission,
+renewable lease, four-call concurrency and canonical 100-block ranges. `runTokenIndexer` reports
+`caughtUp` against its cached confirmed tip for the selected sources. Busy, gap and reorg remain
+visible outcomes; quota/transport errors propagate. The PostgreSQL regression verifies multiple
+ranges and replay without duplicate canonical rows. No runtime budget increases implicitly.
+Hosted R2 reads/migrations and direct testnet buy/sell have separate evidence in
+[the readiness record](../../docs/market/token-launch-readiness-20261010.md); hosted master-passkey
+launch and sustained indexer throughput are still pending.
