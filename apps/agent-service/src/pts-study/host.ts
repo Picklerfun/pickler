@@ -9,6 +9,7 @@ import {
   PostgresPerpsPaperStore,
   PostgresPerpsStudyStore,
   exportPerpsAudit,
+  exportPerpsAuditParts,
 } from "@pickler/infrastructure/perps-lab";
 import { createPriorityPerplStudyData } from "@pickler/agent-runtime/plugins/perps-paper/public-study";
 import { createProfileStudyRunner } from "@pickler/trading/evaluation";
@@ -25,7 +26,8 @@ import {
 } from "@pickler/trading/pts";
 import { keepAwake } from "../paper-study/comparison-host.js";
 import { createReportQueue } from "../perps-study/report-queue.js";
-import { digest, commit, newDirectory, publish, refuseSecrets } from "./files.js";
+import { digest, commit, newDirectory, publish } from "./files.js";
+import { createPtsPartsExport } from "./parts.js";
 import type { PtsCommandInput } from "./index.js";
 export async function prepareDatabase(config: PerpsPtsConfig, envFile: string, metadata: unknown) {
   const research = new PostgresResearchStore(await localStudyDatabase(resolve(envFile)));
@@ -105,20 +107,13 @@ export async function runPtsHost(
     reports: ReturnType<typeof createReportQueue> | undefined;
   try {
     if (input.command === "audit-export") {
-      const dir = await newDirectory(input.output),
-        payload = await exportPerpsAudit(research.pool, configuration);
-      refuseSecrets(payload);
-      const packet = {
-        version: 1,
-        protocol: "perps-decision-audit-export-v1",
-        exportCommit: commit(),
-        payload,
-        payloadHash: digest(payload),
-      };
-      await publish(dir, { "export.json": JSON.stringify(packet, null, 2) + "\n" });
+      const dir = await newDirectory(input.output);
+      const exporter = await createPtsPartsExport(dir, commit());
+      await exportPerpsAuditParts(research.pool, configuration, exporter.emit);
+      await exporter.finish();
       return;
     }
-    const view = await study.view(configuration);
+    const view = await study.cycleView(configuration);
     if (digest(view.record.config) !== digest(configuration)) {
       throw new PilotError("CONFIG_CHANGED", "Database study configuration differs");
     }
@@ -187,11 +182,15 @@ export async function runPtsHost(
                 ? "closing"
                 : "process-unverified";
     const report = async () => {
-      const snapshot = await exportPerpsAudit(research.pool, configuration);
+      const sourceDirectory = resolve(output, "evidence");
+      await mkdir(sourceDirectory, { recursive: true, mode: 0o700 });
+      const exporter = await createPtsPartsExport(sourceDirectory, commit());
+      await exportPerpsAuditParts(research.pool, configuration, exporter.emit);
+      await exporter.finish();
       await new Promise<void>((resolveWorker, rejectWorker) => {
         const worker = new Worker(new URL("./report-worker.mjs", import.meta.url), {
           workerData: {
-            snapshot,
+            manifestPath: resolve(sourceDirectory, "export.json"),
             configuration,
             coverage,
             state,
@@ -200,18 +199,38 @@ export async function runPtsHost(
             policyHash: digest(configuration.version === 9 ? PTS_INTRADAY_POLICY : PTS_POLICY),
           },
         });
-        let done = false;
-        worker.once("message", () => {
-          done = true;
-          resolveWorker();
-        });
-        worker.once("error", rejectWorker);
+        let published = false;
+        worker.once(
+          "message",
+          (message: { published?: boolean; code?: string; phase?: string }) => {
+            if (message.published === true) {
+              published = true;
+            } else {
+              const codes = [
+                "PTS_REPORT_SERIALIZATION_FAILED",
+                "PTS_REPORT_SOURCE_INVALID",
+                "PTS_REPORT_FAILED",
+              ];
+              const failureCode = codes.includes(message.code ?? "")
+                ? message.code!
+                : "PTS_REPORT_FAILED";
+              rejectWorker(
+                new PilotError(failureCode, "Report worker did not publish its verified artifacts"),
+              );
+            }
+          },
+        );
+        worker.once("error", () =>
+          rejectWorker(new PilotError("PTS_REPORT_FAILED", "Report worker failed")),
+        );
         worker.once("exit", (code) => {
-          if (!done) {
+          if (published && code === 0) {
+            resolveWorker();
+          } else {
             rejectWorker(
               new PilotError(
                 "PTS_REPORT_FAILED",
-                "Report worker exited without publication: " + code,
+                "Report worker exited without successful publication",
               ),
             );
           }
@@ -256,12 +275,13 @@ export async function runPtsHost(
           signal: ownedSignal,
           ...(lease.assertActive ? { assertActive: lease.assertActive } : {}),
         }),
-      afterObservation: async (observation) =>
-        publish(output, {
+      afterObservation: async (observation) => {
+        await publish(output, {
           "runtime-status.json":
             JSON.stringify({ processState: state, at: Date.now(), modelCalls: 0, observation }) +
             "\n",
-        }),
+        });
+      },
       afterCycle: async () => {
         if ((await readFile(resolve(input.configPath!), "utf8")) !== input.configText) {
           throw new PilotError("CONFIG_CHANGED", "Frozen configuration changed");
@@ -282,6 +302,10 @@ export async function runPtsHost(
     state = "finished";
     reports.request();
     await reports.flush();
+    await publish(output, {
+      "runtime-status.json":
+        JSON.stringify({ processState: "finished", at: Date.now(), modelCalls: 0 }) + "\n",
+    });
   } catch (error) {
     primaryError = error;
     if (input.command === "run") {
