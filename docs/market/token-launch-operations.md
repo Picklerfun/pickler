@@ -129,8 +129,15 @@ signed bytes and uncertain broadcasts cannot use this release. Transport failure
 evidence, quota exhaustion or reorg preserves the blocker. This recovery uses at most 100 calls
 within the existing RPC budget, with no polling, repeat signature, send or automatic new launch.
 
-Definitive local validation/provider refusals end the claim as Signature rejected; transport
-uncertainty remains blocked. When submission returned an activity, a failed follow-up read preserves
+Turnkey's `signWith` lookup uses the registered Ethereum wallet's EIP-55 checksum representation.
+The token driver canonicalizes that provider resource with `getAddress` while retaining the
+lowercase business sender and the exact unsigned transaction. Historical stamped requests remain
+unchanged. The [owner-approved refusal diagnosis](token-browser-acceptance-20261011.md#owner-approved-signing-refusal)
+confirmed that lowercase lookup can produce a provider 404 even after the owner approves a passkey.
+
+Definitive local validation/provider refusals end the claim as Signing request rejected; transport
+uncertainty remains blocked. A definitive refusal offers Prepare again and preserves the draft.
+It does not claim that the owner rejected the passkey, nor automatically prepare or sign again. When submission returned an activity, a failed follow-up read preserves
 its identifier for explicit recovery instead of discarding it. Status checks do not sign or send.
 
 The pressed button alone displays loading, and operation details stay mounted with a short,
