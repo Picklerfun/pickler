@@ -212,7 +212,7 @@ export {
   PERPL_CHECK_SESSION_LIMIT,
   PERPL_SESSION_LIMIT,
 } from "./perpl/transport.js";
-export type { PerplRequestDiagnostic } from "./perpl/transport.js";
+export type { PerplRequestDiagnostic, PerplTickerReadDiagnostic } from "./perpl/transport.js";
 
 export { abortable as abortablePerplRead } from "./perpl/transport.js";
 
@@ -222,6 +222,7 @@ export {
   PerplPublicStream,
   PerplStreamState,
   PERPL_STREAM_VERSION,
+  PERPL_UNIVERSE_STREAM_VERSION,
   type PerplSocket,
   type PerplStreamEvent,
 } from "./perpl/stream.js";
@@ -254,3 +255,8 @@ export type { Pool as TokenLaunchDatabase } from "pg";
 export * from "./launch/kuru-projector.js";
 
 export { runTokenIndexer, tokenChainReader, tokenIndexerPolicySchema } from "./launch/indexer.js";
+
+export {
+  timeEvaluationPool,
+  type EvaluationDatabaseTiming,
+} from "./persistence/evaluation-timing.js";
