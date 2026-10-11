@@ -678,3 +678,10 @@ only as backend runtime bindings. This configuration does not compose an issuer,
 freeze owner metadata or authorize a launch while the gate is closed. The one-agent allowlist
 and independent indexer acceptance are recorded in
 [the hosted readiness guide](../../docs/market/token-indexer-hosted-20261011.md).
+
+## Owner token trading transport
+
+The existing JWT-only `/v1/studio/agents/:id/token/operations` route accepts strict enumerated curve
+buy/sell and exact approvals. It forwards validated atomic amount/tolerance to core; it never
+accepts a wallet, recipient, contract or calldata. No quote polling endpoint is introduced.
+The default closed testnet gate and independently reviewed allowlist remain required.
