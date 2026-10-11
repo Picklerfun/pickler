@@ -668,6 +668,10 @@ RPC admission and Kuru snapshots without rewriting historical V4 records. Never 
 Kuru as a fallback. Kuru remains blocked by its external readiness record; the V4 acceptance below is separate.
 See [Token operations](../../docs/market/token-launch-operations.md) for configuration and tests.
 
+The shared Turnkey activity forwarder preserves the last accepted activity when a follow-up
+reader query fails. It stops bounded polling and returns that identity for explicit reconciliation;
+it never resubmits the accepted request or treats a read failure as signature rejection.
+
 Launcher adapters translate transport, RPC admission, transaction simulation, gas ceilings and
 metadata storage failures into core-owned preparation reasons. They never return provider prose,
 credentials or calldata in those errors. The existing gas ceilings and unsupported-fee-method
