@@ -738,3 +738,7 @@ It pages rounds and events under the same REPEATABLE READ READ ONLY transaction,
 scoping and deterministic order while the host persists bounded parts. Sink failure rolls back
 and releases the client. exportPerpsAudit retains its historical in-memory shape by collecting
 those same parts. Neither path recovers attempts, writes records, exports owners or loads models.
+
+The independent v9 fast account policy pts-intraday-1x-0.2.0-fast.1 is derived only from its trusted candidate configuration. Existing account locks reproduce that version's final signal and reject cross-version intents; no intent can change policy. The controlled PostgreSQL suite covers both intraday identities, immutable setup/target consumption, unknown reservations and lease rejection. No table, migration or production selector is added.
+
+PTS entry admission resolves the persisted final-gate arm from the trusted basic/intraday account version. Fast intraday versions reuse the intraday arm; a literal comparison with 0.1.0 must not send new versions to pts-basic. Controlled PostgreSQL regressions cover actual admission and atomic partial reductions for all three policies.
