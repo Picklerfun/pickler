@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import { parseArgs } from "node:util";
 import { PilotError } from "@pickler/core";
 import { type EvaluationCommand } from "@pickler/trading/evaluation";
@@ -26,7 +27,38 @@ if (values.help) {
   process.once("SIGINT", abort);
   process.once("SIGTERM", abort);
   try {
-    if (positionals.length === 1 && positionals[0]!.startsWith("baseline-")) {
+    if (positionals.length !== 1) {
+      throw new PilotError("INVALID_INPUT", "One explicit evaluation operation required");
+    }
+    if (
+      ["audit", "replay"].includes(positionals[0]!) &&
+      (values.config || values["env-file"] || values["allow-paid"] || values.state?.length !== 1)
+    ) {
+      throw new PilotError(
+        "INVALID_INPUT",
+        "Offline analysis requires one state; config/env/paid forbidden",
+      );
+    }
+    const selected = values.config ? JSON.parse(await readFile(values.config, "utf8")) : undefined;
+    const offline =
+      values.state?.length === 1 ? JSON.parse(await readFile(values.state[0]!, "utf8")) : undefined;
+    const pts =
+      selected?.protocol === "perps-pts-sma-v1" ||
+      offline?.format === "perps-pts-history-v1" ||
+      offline?.format === "pts-preparation-v1" ||
+      offline?.payload?.study?.record?.config?.version === 8;
+    if (pts) {
+      const { runPtsCommand } = await import("./pts-study/index.js");
+      await runPtsCommand({
+        command: positionals[0]!,
+        configPath: values.config,
+        state: values.state?.[0],
+        envFile: values["env-file"],
+        output: values.output,
+        allowPaid: values["allow-paid"],
+        signal: controller.signal,
+      });
+    } else if (positionals.length === 1 && positionals[0]!.startsWith("baseline-")) {
       if (
         values.config ||
         values["env-file"] ||
