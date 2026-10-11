@@ -65,6 +65,8 @@ function controlled(p: UniswapTokenLaunchPolicy = launchPolicy()) {
   let simulationFails = false;
   let rpcFailure: { method: string; error: Error } | null = null;
   let gasEstimate = "0x10000";
+  let baseFee = "0x1";
+  let priorityFee = "0x1";
   const simulations: unknown[] = [];
   const abis: Record<string, Abi> = {
     [p.factory.address]: PicklerLaunchFactoryAbi,
@@ -152,10 +154,10 @@ function controlled(p: UniswapTokenLaunchPolicy = launchPolicy()) {
         return nonce;
       }
       if (method === "eth_maxPriorityFeePerGas") {
-        return "0x1";
+        return priorityFee;
       }
       if (method === "eth_getBlockByNumber") {
-        return { baseFeePerGas: "0x1", timestamp: "0x1", hash: "0x" + "c".repeat(64) };
+        return { baseFeePerGas: baseFee, timestamp: "0x1", hash: "0x" + "c".repeat(64) };
       }
       if (method === "eth_estimateGas") {
         return gasEstimate;
@@ -208,6 +210,10 @@ function controlled(p: UniswapTokenLaunchPolicy = launchPolicy()) {
     driver,
     failRpc: (method: string, error: Error) => {
       rpcFailure = { method, error };
+    },
+    fees: (base: bigint, tip: bigint) => {
+      baseFee = "0x" + base.toString(16);
+      priorityFee = "0x" + tip.toString(16);
     },
     estimate: (value: string) => {
       gasEstimate = value;
@@ -805,4 +811,90 @@ test("metadata storage failure returns a safe reason", async () => {
     (error: unknown) =>
       error instanceof TokenPreparationError && error.code === "METADATA_UNAVAILABLE",
   );
+});
+
+async function realisticLaunch(
+  overrides: Partial<Pick<UniswapTokenLaunchPolicy, "maxGas" | "maxFeePerGas" | "maxGasCost">> = {},
+) {
+  const policy = {
+    ...launchPolicy(),
+    maxGas: "4000000",
+    maxFeePerGas: "120000000000",
+    maxGasCost: "480000000000000000",
+    ...overrides,
+  };
+  const f = controlled(policy);
+  f.fees(100_000_000_000n, 2_000_000_000n);
+  f.estimate("0x" + 3_000_000n.toString(16));
+  const issuer = createPlatformTokenIssuer(
+    f.p,
+    launchKey,
+    createTokenMetadata(metadataBucket(), f.p.metadataOrigin),
+    f.driver.checkReadiness!,
+  );
+  const authorization = await issuer.issue({
+    scope,
+    context,
+    draft: { id: "draft", version: 1, name: "Agent", ticker: "AGENT", status: "draft" },
+    chainId: 10143,
+    deadline: "9999999999",
+    nonce: "1",
+    operationId: "controlled",
+  });
+  const intent = {
+    id: "controlled",
+    action: "launch",
+    context,
+    deadline: "9999999999",
+    authorization,
+  } as TokenIntent;
+  return { ...f, intent };
+}
+
+test("launch prepares at observed Monad fees inside unchanged reviewed ceilings", async () => {
+  const f = await realisticLaunch();
+
+  const prepared = await f.driver.prepare(scope, f.intent);
+  await f.driver.preflight(prepared);
+  const tx = parseTransaction(prepared.unsignedTransaction as Hex);
+
+  assert.equal(tx.maxFeePerGas, 120_000_000_000n);
+  assert.equal(tx.maxPriorityFeePerGas, 2_000_000_000n);
+  assert.equal(tx.gas, 3_600_000n);
+  assert.equal(prepared.maximumGasCost, "432000000000000000");
+  assert.ok(BigInt(prepared.maximumGasCost) <= BigInt(f.p.maxGasCost));
+  assert.equal(f.p.maxGas, "4000000");
+  assert.equal(f.p.maxFeePerGas, "120000000000");
+  assert.equal(f.p.maxGasCost, "480000000000000000");
+});
+
+test("current fee, gas units and total cost still refuse above their reviewed ceilings", async () => {
+  for (const kind of ["fee", "gas", "cost"] as const) {
+    const f = await realisticLaunch(kind === "cost" ? { maxGasCost: "431999999999999999" } : {});
+    if (kind === "fee") {
+      f.fees(119_000_000_000n, 2_000_000_000n);
+    }
+    if (kind === "gas") {
+      f.estimate("0x" + 3_333_334n.toString(16));
+    }
+
+    await assert.rejects(
+      f.driver.prepare(scope, f.intent),
+      (error: unknown) =>
+        error instanceof TokenPreparationError && error.code === "GAS_LIMIT_EXCEEDED",
+    );
+  }
+});
+
+test("preflight rejects a fee rise after preparation without rewriting signed parameters", async () => {
+  const f = await realisticLaunch();
+  const prepared = await f.driver.prepare(scope, f.intent);
+  const frozen = prepared.unsignedTransaction;
+
+  f.fees(118_000_000_000n, 2_000_000_000n);
+  await f.driver.preflight(prepared);
+  f.fees(119_000_000_000n, 2_000_000_000n);
+  await assert.rejects(f.driver.preflight(prepared), /TRANSACTION_NOT_SENDABLE/);
+
+  assert.equal(prepared.unsignedTransaction, frozen);
 });
