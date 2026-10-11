@@ -117,3 +117,27 @@ ledger results and missing-evidence labels. Report failures retain a specific sa
 admission; a successful message is accepted only with a clean worker exit. No failed study is
 resumed or amended by this repair. A later authorized repair test must freeze a new identity and
 commit; it is not a continuation of these pending SMA positions.
+
+## Verified original-state recovery
+
+The corrected clean report commit 94e880b5198eb45d9d18b4d0ee90bf428dc756b1 regenerated
+repair1 without providers or historical writes. Its source payload digest exactly matches the
+original preserved compact export: b1b08e5798abac02d772c42865e4d0e69b2923c0b1cab8ab432da953978acacb.
+All 26 round parts, 612 event parts and both original accounts are retained. The new JSON is
+16,567,250 bytes and HTML 1,693,921 bytes; full native histories remain in verified source parts.
+The 6,336 decision rows distinguish 572 recorded cells from unrecorded future slots.
+
+The real-source offline CLI, run with an empty environment and provider/network import guard,
+reproduced identical decisions, financial ledger and portfolio metrics. Every publication byte
+hash and size was verified. PostgreSQL still reports interrupted, no owner/expiry, four open SMA
+positions and zero PTS attempts. This is report recovery, not a resumed or completed comparison.
+
+There were 156 PTS asset/slot evaluations and 130 common data omissions. Verified entry blocks
+were four-hour alignment (78), primary trend (26), confirmed correction (26), retracement (20)
+and channel confluence (6). PTS recorded net is zero without fills. SMA posted fees/funding net
+is -0.123632 virtual AUSD with four pending positions; stale marks do not establish final profit.
+No threshold, signal, sizing or strategy version changed to obtain these results.
+
+The local real-source report took 56.73 seconds with 526,467,072 bytes peak resident memory;
+offline audit took 28.23 seconds with 301,645,824 bytes. These are actual measurements on this
+machine, not controlled paired latency benchmarks or evidence of financial performance.
