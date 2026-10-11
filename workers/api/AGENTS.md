@@ -685,3 +685,14 @@ The existing JWT-only `/v1/studio/agents/:id/token/operations` route accepts str
 buy/sell and exact approvals. It forwards validated atomic amount/tolerance to core; it never
 accepts a wallet, recipient, contract or calldata. No quote polling endpoint is introduced.
 The default closed testnet gate and independently reviewed allowlist remain required.
+
+## Public curve trading transport
+
+`public-token-trading.ts` composes the non-custodial preparation service behind independent
+`TOKEN_PUBLIC_TRADING_ENABLED` and explicit `TOKEN_PUBLIC_RPC_DAILY_LIMIT` bindings. It resolves
+only published confirmed persona tokens and uses the reviewed launch policy/RPC; no signer or
+creator allowlist is used for buyers. `POST /v1/marketplace/personas/:handle/token/prepare` is public,
+strict and private/no-store. It returns unsigned data and documents errors/OpenAPI; the existing
+`/v1/demo` alias has the same public behavior. It does not relax any JWT-only Studio endpoint.
+Default composition remains disabled without RPC calls. See
+[Public token trading](../../docs/market/public-token-trading.md).
