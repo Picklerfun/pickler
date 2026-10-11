@@ -17,6 +17,7 @@ import {
   PicklerFeeEscrowV2Abi,
   IUniswapV4ReadAbi,
 } from "@pickler/chain";
+import { JsonRpcError } from "../src/chain/erc20.js";
 import { createActivityBuilders } from "../src/turnkey/turnkey-activities.js";
 import { createTokenOperationDriver } from "../src/launch/driver.js";
 import { createPlatformTokenIssuer } from "../src/launch/grant-issuer.js";
@@ -31,6 +32,7 @@ import {
 import { tokenAgentKey } from "../src/studio/token-launch-store.js";
 import {
   createTokenLaunchService,
+  TokenPreparationError,
   type TokenIntent,
   type TokenTransaction,
   type TokenContext,
@@ -61,6 +63,8 @@ function controlled(p: UniswapTokenLaunchPolicy = launchPolicy()) {
     reservations = 0,
     reads = 0;
   let simulationFails = false;
+  let rpcFailure: { method: string; error: Error } | null = null;
+  let gasEstimate = "0x10000";
   const simulations: unknown[] = [];
   const abis: Record<string, Abi> = {
     [p.factory.address]: PicklerLaunchFactoryAbi,
@@ -132,6 +136,9 @@ function controlled(p: UniswapTokenLaunchPolicy = launchPolicy()) {
     async call(method: string, params: unknown[]) {
       reads++;
       assert.ok(reservations >= reads);
+      if (method === rpcFailure?.method) {
+        throw rpcFailure.error;
+      }
       if (method === "eth_chainId") {
         return wrong ? "0x8f" : "0x279f";
       }
@@ -151,7 +158,7 @@ function controlled(p: UniswapTokenLaunchPolicy = launchPolicy()) {
         return { baseFeePerGas: "0x1", timestamp: "0x1", hash: "0x" + "c".repeat(64) };
       }
       if (method === "eth_estimateGas") {
-        return "0x10000";
+        return gasEstimate;
       }
       if (method === "eth_getBalance") {
         return "0xffffffffffffffff";
@@ -161,7 +168,7 @@ function controlled(p: UniswapTokenLaunchPolicy = launchPolicy()) {
         if ((q as { from?: string }).from) {
           simulations.push(q);
           if (simulationFails) {
-            throw new Error("SLIPPAGE_EXCEEDED");
+            throw new JsonRpcError("execution reverted: SLIPPAGE_EXCEEDED", 3);
           }
           return "0x";
         }
@@ -199,6 +206,12 @@ function controlled(p: UniswapTokenLaunchPolicy = launchPolicy()) {
   return {
     p,
     driver,
+    failRpc: (method: string, error: Error) => {
+      rpcFailure = { method, error };
+    },
+    estimate: (value: string) => {
+      gasEstimate = value;
+    },
     bindings,
     abis,
     simulations,
@@ -539,7 +552,7 @@ test("exact approvals and swaps use only the registered curve, input asset and m
     );
     assert.match(await f.driver.verify(p, raw), /^0x[0-9a-f]{64}$/);
     f.failSimulation();
-    await assert.rejects(f.driver.preflight(p), /SLIPPAGE_EXCEEDED/);
+    await assert.rejects(f.driver.preflight(p), /SIMULATION_REJECTED/);
     assert.equal(p.quote!.minimumOutput, buying ? "1990000000000000000000" : "497500");
   }
 });
@@ -720,4 +733,76 @@ test("eligible-creator policy cannot bypass core ownership, creator access or pu
     );
   }
   assert.equal(externalCalls, 0);
+});
+
+test("preparation classifies transport, simulation and gas caps without widening limits", async () => {
+  for (const reason of [
+    "RPC_UNAVAILABLE",
+    "INSUFFICIENT_GAS_BALANCE",
+    "SIMULATION_REJECTED",
+    "GAS_LIMIT_EXCEEDED",
+  ]) {
+    const f = controlled();
+    const issuer = createPlatformTokenIssuer(
+      f.p,
+      launchKey,
+      createTokenMetadata(metadataBucket(), f.p.metadataOrigin),
+      f.driver.checkReadiness!,
+    );
+    const auth = await issuer.issue({
+      scope,
+      context,
+      draft: { id: "draft", version: 1, name: "Agent", ticker: "AGENT", status: "draft" },
+      chainId: 10143,
+      deadline: "9999999999",
+      nonce: "1",
+      operationId: "controlled",
+    });
+    if (reason === "RPC_UNAVAILABLE") {
+      f.failRpc("eth_chainId", new Error("provider secret in transport failure"));
+    } else if (reason === "GAS_LIMIT_EXCEEDED") {
+      f.estimate("0xffffffffff");
+    } else {
+      f.failRpc(
+        "eth_estimateGas",
+        new JsonRpcError(
+          reason === "INSUFFICIENT_GAS_BALANCE"
+            ? "insufficient funds with private details"
+            : "execution reverted with private details",
+          -32000,
+        ),
+      );
+    }
+    await assert.rejects(
+      f.driver.prepare(scope, {
+        id: "controlled",
+        action: "launch",
+        context,
+        deadline: "9999999999",
+        authorization: auth,
+      } as TokenIntent),
+      (error: unknown) =>
+        error instanceof TokenPreparationError &&
+        error.code === reason &&
+        !error.message.includes("private"),
+    );
+  }
+});
+
+test("metadata storage failure returns a safe reason", async () => {
+  const bucket = metadataBucket();
+  bucket.put = async () => {
+    throw new Error("storage credentials and private provider trace");
+  };
+  await assert.rejects(
+    createTokenMetadata(bucket, "https://app.pickler.fun").freeze(context, {
+      id: "draft",
+      version: 1,
+      name: "Agent",
+      ticker: "AGENT",
+      status: "draft",
+    }),
+    (error: unknown) =>
+      error instanceof TokenPreparationError && error.code === "METADATA_UNAVAILABLE",
+  );
 });
