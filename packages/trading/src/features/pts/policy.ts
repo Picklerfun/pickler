@@ -1,4 +1,5 @@
 import { PilotError } from "@pickler/core";
+import type { PtsIntradayCandidate } from "./types.js";
 import type { PerpsStudyScope } from "../perps-study/types.js";
 import { COMPONENT_PAPER_POLICY } from "../perps-paper/types.js";
 export const PTS_POLICY = {
@@ -55,7 +56,7 @@ export interface PerpsPtsIntradayConfig extends Omit<
   version: 9;
   protocol: "perps-pts-intraday-sma-v1";
   hours: 24;
-  candidate: "pts-intraday@0.1.0";
+  candidate: PtsIntradayCandidate;
 }
 export type PerpsPtsConfig = PerpsPtsBasicConfig | PerpsPtsIntradayConfig;
 export const PTS_CATALOG = [
@@ -81,7 +82,7 @@ export function assertPtsConfig(c: PerpsPtsConfig) {
       (c.version === 9 &&
         c.protocol === "perps-pts-intraday-sma-v1" &&
         c.hours === 24 &&
-        c.candidate === "pts-intraday@0.1.0")
+        (c.candidate === "pts-intraday@0.1.0" || c.candidate === "pts-intraday@0.2.0-fast.1"))
     ) ||
     c.budgetUsd !== "5" ||
     c.acquisitionPolicy !== COMPONENT_PAPER_POLICY ||
