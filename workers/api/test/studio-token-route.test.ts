@@ -7,6 +7,7 @@ import {
   buildUserPrincipal,
   createTokenLaunchService,
   createTokenOperationService,
+  TokenPreparationError,
   type TokenOperationDriver,
   type TokenLaunchRepository,
   tokenReferenceEconomics,
@@ -295,6 +296,27 @@ test("owner JWT -> private draft -> controlled grant -> stored state; no browser
   assert.equal(tradeConfirm.status, 200);
   assert.equal(tokenOperationSchema.parse(await tradeConfirm.json()).action, "buy");
   await request(`/operations/${tradePrepared.operation.id}`, { headers });
+  assert.deepEqual({ signs, sends }, { signs: 2, sends: 2 });
+  // A known unsent preparation failure has one persisted DTO, not an unrelated HTTP error.
+  driver.prepare = async () => {
+    throw new TokenPreparationError("GAS_LIMIT_EXCEEDED");
+  };
+  const refused = await request("/operations", {
+    method: "POST",
+    headers: { ...headers, "Idempotency-Key": "controlled_api_gas_001" },
+    body: JSON.stringify({ action: "collect_curve_fees", expectedVersion: 1 }),
+  });
+  assert.equal(refused.status, 200);
+  assert.match(refused.headers.get("cache-control")!, /private.*no-store/);
+  const failure = tokenOperationPreparedSchema.parse(await refused.json());
+  assert.equal(failure.operation.status, "failed");
+  assert.equal(failure.operation.error, "GAS_LIMIT_EXCEEDED");
+  assert.equal(failure.operation.txHash, null);
+  assert.equal(failure.activity, null);
+  const storedFailure = tokenOperationSchema.parse(
+    await (await request(`/operations/${failure.operation.id}`, { headers })).json(),
+  );
+  assert.equal(storedFailure.error, "GAS_LIMIT_EXCEEDED");
   assert.deepEqual({ signs, sends }, { signs: 2, sends: 2 });
   services.tokens = createTokenLaunchService({
     repository: f.repository,
