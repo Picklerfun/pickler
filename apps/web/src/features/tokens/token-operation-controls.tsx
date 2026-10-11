@@ -1,6 +1,6 @@
 "use client";
-import { useState } from "react";
-import { Button, Skeleton, Tag } from "@pickler/ui";
+import { useRef, useState } from "react";
+import { Button, Icon, Tag } from "@pickler/ui";
 import {
   tokenOperationSchema,
   tokenOperationPreparedSchema,
@@ -9,9 +9,19 @@ import {
 } from "@pickler/api-schema";
 import { TokenTradeForm } from "./token-trade-form";
 import simulatedQuotes from "./trade-quotes.json";
-import { studioApi } from "../studio/api";
+import { errorCode, studioApi } from "../studio/api";
+import { tokenOperationErrorMessage, tokenRequestErrorMessage } from "./token-operation-feedback";
 import { useStudioMemory } from "../studio/routing/memory";
 import styles from "./token.module.css";
+const progress = {
+  launch: "Preparing launch…",
+  prepare: "Preparing transaction…",
+  sign: "Waiting for passkey…",
+  submit: "Submitting transaction…",
+  check: "Checking transaction status…",
+  cancel: "Cancelling preparation…",
+  refresh: "Refreshing saved status…",
+} as const;
 const labels: Record<TokenOperationDto["status"], string> = {
   preparing: "Preparing",
   awaiting_signature: "Awaiting signature",
@@ -50,6 +60,8 @@ export function TokenOperationControls({
 }) {
   const memory = useStudioMemory(),
     scope = `${agentId}:token:operation`;
+  const generation = memory.generation();
+  const owned = () => memory.generation() === generation;
   const [operation, setOperation] = useState(() => {
     const remembered = memory.outcome<TokenOperationDto | null>(scope, null);
     const server = state.operation;
@@ -58,50 +70,79 @@ export function TokenOperationControls({
   const [activity, setActivity] = useState<
     ReturnType<typeof tokenOperationPreparedSchema.parse>["activity"]
   >(() => null);
-  const [busy, setBusy] = useState(false),
-    [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState<keyof typeof progress | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const actionLock = useRef(false);
   const current =
     state.operation && state.operation !== operation.server
       ? newest(operation.value, state.operation)
       : (operation.value ?? state.operation);
-  function retain(value: TokenOperationDto) {
+  function retain(value: TokenOperationDto, clearRequest = true) {
+    if (!owned()) {
+      return;
+    }
     setOperation({ value, server: state.operation });
     memory.setOutcome(scope, value);
-    if (["failed", "cancelled", "finalized"].includes(value.status)) {
+    if (clearRequest && ["failed", "cancelled", "finalized"].includes(value.status)) {
       memory.setOutcome(scope + ":request", null);
     }
   }
   const active = current && !["failed", "cancelled", "finalized"].includes(current.status);
   const url = `/agents/${agentId}/token/operations`;
-  async function action(work: () => Promise<void>) {
-    if (busy) {
+  async function refresh() {
+    const { tokenStateSchema } = await import("@pickler/api-schema");
+    const latest = tokenStateSchema.parse(
+      await studioApi(`/agents/${agentId}/token`, { signal: AbortSignal.timeout(15_000) }),
+    );
+    if (latest.operation) {
+      retain(latest.operation, latest.operation.id !== current?.id);
+    }
+    if (owned()) {
+      onChange(latest);
+    }
+  }
+  async function action(phase: keyof typeof progress, work: () => Promise<void>) {
+    if (actionLock.current || memory.busy(scope) || !owned()) {
       return;
     }
-    setBusy(true);
+    actionLock.current = true;
+    setBusy(phase);
     setError(null);
     memory.begin(scope);
     try {
       await work();
-    } catch {
+    } catch (caught) {
+      let recovered: TokenOperationDto | null = null;
       if (!preview) {
-        // This is a database-only read after an explicit action, not provider polling.
+        // Database-only recovery; no signing, provider polling or automatic resubmission.
         try {
           const { tokenStateSchema } = await import("@pickler/api-schema");
-          const latest = tokenStateSchema.parse(await studioApi(`/agents/${agentId}/token`));
-          if (latest.operation) {
-            retain(latest.operation);
+          const latest = tokenStateSchema.parse(
+            await studioApi(`/agents/${agentId}/token`, { signal: AbortSignal.timeout(15_000) }),
+          );
+          recovered = latest.operation ?? null;
+          if (recovered) {
+            retain(recovered, recovered.id !== current?.id);
           }
-          onChange(latest);
+          if (owned()) {
+            onChange(latest);
+          }
         } catch {
-          /* Keep uncertain request identity when even stored state is unavailable. */
+          // Retain the same idempotency key even when the saved status cannot be read.
         }
       }
-      setError(
-        "The request could not be confirmed. Your draft is kept. Check its status before trying again.",
-      );
+      const recoveredFailure =
+        recovered?.status === "failed" &&
+        (recovered.id !== current?.id || (phase !== "launch" && phase !== "prepare"));
+      if (owned()) {
+        setError(recoveredFailure ? null : tokenRequestErrorMessage(errorCode(caught)));
+      }
     } finally {
-      memory.end(scope);
-      setBusy(false);
+      if (owned()) {
+        memory.end(scope);
+      }
+      actionLock.current = false;
+      setBusy(null);
     }
   }
   async function prepare(
@@ -147,6 +188,7 @@ export function TokenOperationControls({
     const result = tokenOperationPreparedSchema.parse(
       await studioApi(url, {
         method: "POST",
+        signal: AbortSignal.timeout(90_000),
         headers: { "Idempotency-Key": key },
         body: JSON.stringify({
           action: kind,
@@ -156,7 +198,9 @@ export function TokenOperationControls({
       }),
     );
     retain(result.operation);
-    setActivity(result.activity);
+    if (owned()) {
+      setActivity(result.activity);
+    }
   }
   async function sign() {
     if (!current) {
@@ -178,16 +222,23 @@ export function TokenOperationControls({
         signed = await stampActivity(await relyingParty(), unsigned);
       } catch (e) {
         if (e instanceof DOMException && e.name === "NotAllowedError") {
-          setError("Signature cancelled. The draft is kept.");
+          if (owned()) {
+            setError("Signature cancelled. The draft is kept.");
+          }
           return;
         }
         throw e;
       }
     }
+    if (!owned()) {
+      return;
+    }
+    setBusy("submit");
     retain(
       tokenOperationSchema.parse(
         await studioApi(`${url}/${current.id}/confirm`, {
           method: "POST",
+          signal: AbortSignal.timeout(90_000),
           body: JSON.stringify({ expectedVersion: current.version, ...(signed ? { signed } : {}) }),
         }),
       ),
@@ -238,12 +289,19 @@ export function TokenOperationControls({
       }
       return;
     }
-    const updated = tokenOperationSchema.parse(await studioApi(`${url}/${current.id}`));
+    const updated = tokenOperationSchema.parse(
+      await studioApi(`${url}/${current.id}`, { signal: AbortSignal.timeout(90_000) }),
+    );
     retain(updated);
-    if (updated.status === "finalized") {
+    if (owned() && updated.status === "finalized") {
       memory.setOutcome(scope + ":request", null);
       const { tokenStateSchema } = await import("@pickler/api-schema");
-      onChange(tokenStateSchema.parse(await studioApi(`/agents/${agentId}/token`)));
+      const state = tokenStateSchema.parse(
+        await studioApi(`/agents/${agentId}/token`, { signal: AbortSignal.timeout(15_000) }),
+      );
+      if (owned()) {
+        onChange(state);
+      }
     }
   }
   async function cancel() {
@@ -258,11 +316,14 @@ export function TokenOperationControls({
       tokenOperationSchema.parse(
         await studioApi(`${url}/${current.id}/cancel`, {
           method: "POST",
+          signal: AbortSignal.timeout(15_000),
           body: JSON.stringify({ expectedVersion: current.version }),
         }),
       ),
     );
-    memory.setOutcome(scope + ":request", null);
+    if (owned()) {
+      memory.setOutcome(scope + ":request", null);
+    }
   }
   const graduated = state.venue?.status === "kuru" || state.venue?.status === "uniswap_v4";
   const targetVenue = state.launchVenue
@@ -270,15 +331,29 @@ export function TokenOperationControls({
     : "DEX";
   const usable = enabled && (preview || state.available);
   return (
-    <section className={styles.card} aria-label="Token operations" aria-busy={busy}>
+    <section className={styles.card} aria-label="Token operations" aria-busy={busy !== null}>
       <div className={styles.head}>
         <h3>{state.token ? "Launch & liquidity" : "Launch"}</h3>
         {preview && <Tag>PREVIEW</Tag>}
       </div>
-      {busy && <Skeleton shape="line" />}
-      {current && (
+      {busy && (
+        <div className={styles.progress} role="status" aria-label={progress[busy]}>
+          <Icon name="refresh" size={18} className={styles.spinner} />
+          <div>
+            <strong>{progress[busy]}</strong>
+            {busy === "launch" && (
+              <p className={styles.quiet}>Checking the launch before your passkey request.</p>
+            )}
+          </div>
+        </div>
+      )}
+      {current && busy !== "launch" && busy !== "prepare" && (
         <div role="status">
-          <strong>{labels[current.status]}</strong>
+          <strong>
+            {current.status === "failed" && !current.activityId && !current.txHash
+              ? "Preparation failed"
+              : labels[current.status]}
+          </strong>
           {current.status === "finalized" && current.quote && (
             <p className={styles.quiet}>
               {current.quote.approval
@@ -365,26 +440,17 @@ export function TokenOperationControls({
           agentId={agentId}
           state={state}
           preview={preview}
-          disabled={!usable || busy || !!active || !!state.venue?.readyToGraduate}
-          prepare={(kind, trade) => void action(() => prepare(kind, "ausd", trade))}
+          disabled={!usable || !!busy || !!active || !!state.venue?.readyToGraduate}
+          prepare={(kind, trade) => void action("prepare", () => prepare(kind, "ausd", trade))}
         />
       )}
-      {current?.status === "failed" && current.error && (
-        <p role="alert">
-          {(
-            {
-              APPROVAL_REQUIRED: "Approve the amount first, then review the trade.",
-              APPROVAL_NOT_REQUIRED: "This amount is already approved. Review the trade.",
-              INSUFFICIENT_TOKEN_BALANCE:
-                "The master wallet does not have enough of the input token.",
-              CURVE_CLOSED: "The curve is complete; no more curve trades are available.",
-              TRADE_TOO_SMALL: "This amount produces no output. Enter a larger amount.",
-              EXCEEDS_CURVE_INVENTORY:
-                "This purchase exceeds the remaining sale inventory. Enter a smaller amount.",
-              PREFLIGHT_REJECTED:
-                "The transaction no longer passes its checks. No transaction was signed; review a new trade.",
-            } as Record<string, string>
-          )[current.error] ?? "The operation could not be prepared. Your form is kept."}
+      {!busy && (error || current?.status === "failed") && (
+        <p className={styles.feedback} role="alert">
+          {error ??
+            tokenOperationErrorMessage(
+              current?.error ?? null,
+              !!(current?.activityId || current?.txHash),
+            )}
         </p>
       )}
       {state.token && (
@@ -465,36 +531,40 @@ export function TokenOperationControls({
       <div className={styles.actions}>
         {!state.token && !active && (
           <Button
-            disabled={!usable || !draftSaved || busy || state.confirmation === "pending"}
-            onClick={() => void action(() => prepare("launch"))}
+            disabled={!usable || !draftSaved || !!busy || state.confirmation === "pending"}
+            onClick={() => void action("launch", () => prepare("launch"))}
           >
-            Launch token
+            {busy === "launch" ? "Preparing…" : "Launch token"}
           </Button>
         )}
         {current?.status === "awaiting_signature" && (
-          <Button disabled={busy} onClick={() => void action(sign)}>
+          <Button disabled={!!busy} onClick={() => void action("sign", sign)}>
             {preview ? "Continue preview" : "Sign with passkey"}
           </Button>
         )}
         {current?.status === "signed" && (
-          <Button disabled={busy} onClick={() => void action(sign)}>
+          <Button disabled={!!busy} onClick={() => void action("submit", sign)}>
             Submit signed transaction
           </Button>
         )}
         {active && (
-          <Button variant="secondary" disabled={busy} onClick={() => void action(check)}>
+          <Button variant="secondary" disabled={!!busy} onClick={() => void action("check", check)}>
             Check status
           </Button>
         )}
         {current && ["awaiting_signature", "preparing"].includes(current.status) && (
-          <Button variant="secondary" disabled={busy} onClick={() => void action(cancel)}>
+          <Button
+            variant="secondary"
+            disabled={!!busy}
+            onClick={() => void action("cancel", cancel)}
+          >
             Cancel
           </Button>
         )}
         {preview && active && (
           <Button
             variant="secondary"
-            disabled={busy}
+            disabled={!!busy}
             onClick={() =>
               retain({
                 ...current,
@@ -513,8 +583,8 @@ export function TokenOperationControls({
               <Button
                 size="sm"
                 variant="secondary"
-                disabled={!usable || busy || !state.venue?.readyToGraduate}
-                onClick={() => void action(() => prepare("graduate"))}
+                disabled={!usable || !!busy || !state.venue?.readyToGraduate}
+                onClick={() => void action("prepare", () => prepare("graduate"))}
               >
                 Graduate to {targetVenue}
               </Button>
@@ -522,32 +592,32 @@ export function TokenOperationControls({
             <Button
               size="sm"
               variant="secondary"
-              disabled={!usable || busy}
-              onClick={() => void action(() => prepare("collect_curve_fees"))}
+              disabled={!usable || !!busy}
+              onClick={() => void action("prepare", () => prepare("collect_curve_fees"))}
             >
               Collect curve fees
             </Button>
             <Button
               size="sm"
               variant="secondary"
-              disabled={!usable || busy || !graduated}
-              onClick={() => void action(() => prepare("collect_lp_fees"))}
+              disabled={!usable || !!busy || !graduated}
+              onClick={() => void action("prepare", () => prepare("collect_lp_fees"))}
             >
               Collect LP fees
             </Button>
             <Button
               size="sm"
               variant="secondary"
-              disabled={!usable || busy}
-              onClick={() => void action(() => prepare("claim_fees"))}
+              disabled={!usable || !!busy}
+              onClick={() => void action("prepare", () => prepare("claim_fees"))}
             >
               Claim master AUSD fees
             </Button>
             <Button
               size="sm"
               variant="secondary"
-              disabled={!usable || busy}
-              onClick={() => void action(() => prepare("claim_fees", "agent"))}
+              disabled={!usable || !!busy}
+              onClick={() => void action("prepare", () => prepare("claim_fees", "agent"))}
             >
               Claim token fees
             </Button>
@@ -568,7 +638,15 @@ export function TokenOperationControls({
           withdrawn. Gas is paid in MON.
         </p>
       )}
-      {error && <p role="alert">{error}</p>}
+      {error && !active && !preview && (
+        <Button
+          variant="secondary"
+          disabled={!!busy}
+          onClick={() => void action("refresh", refresh)}
+        >
+          Refresh status
+        </Button>
+      )}
     </section>
   );
 }
