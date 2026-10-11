@@ -44,7 +44,24 @@ these contracts are bound to one another, the authority and treasury match, the 
 the approved venue hash, precision is version 2 and the fixed economics match.
 
 Gas is estimated for the exact factory/action calldata and padded by 20%, then checked against
-`maxGas`, `maxFeePerGas` and `maxGasCost`. No default commercial gas allowance is invented.
+`maxGas`, `maxFeePerGas` and `maxGasCost`. Fee quoting bounds the usual twice-base-fee headroom by
+that reviewed per-gas ceiling, while retaining the provider's full suggested priority fee. If the
+current base fee plus that tip exceeds the ceiling, preparation refuses rather than lowering the
+tip, raising the policy or retrying transport. Owner preflight rechecks the current base against
+the exact prepared maximum and tip before signing and submission. Public curve preparation uses
+the same bounded quote; deposit and wallet-transfer defaults remain unchanged. No default
+commercial gas allowance is invented.
+
+The 2026-10-11 read-only diagnosis confirmed `GAS_LIMIT_EXCEEDED` in an unsent owner operation:
+no prepared transaction, passkey activity or transaction hash existed. A three-call public testnet
+sample at block 70155537 returned a 100-gwei base and 2-gwei tip. The old reader proposed 202 gwei,
+which always exceeded the reviewed 120-gwei ceiling despite the current 102-gwei requirement.
+Controlled regressions now prepare a 3,000,000-gas estimate with 20% padding, a 120-gwei maximum
+and a 0.432-MON worst-case cost, inside the unchanged 4,000,000-gas/0.48-MON policy. They also
+refuse excessive current fees, gas units, total cost and fee rises after preparation. This proves
+the calculation correction, not a deployed owner launch; the user's exact failed gas estimate was
+not retained. No stored grant was sent to a provider for diagnosis and no real transaction or
+manual deployment was performed.
 The operation RPC allowance must be at least 250; execution uses the allowance minus 100,
 leaving 100 reserved calls for explicit canonical receipt recovery. Exhaustion is an explicit
 error, never a reason to retry transport or issue a new grant.
