@@ -39,6 +39,7 @@ import {
 import {
   pendingNonce,
   quoteFees,
+  FeeQuoteLimitExceededError,
   verifySignedTransfer,
   transactionHash,
   broadcastTransaction,
@@ -121,6 +122,16 @@ export function createTokenOperationDriver(deps: {
       }
     },
   });
+  async function policyFees(rpc: Rpc) {
+    try {
+      return await quoteFees(rpc, BigInt(policy.maxFeePerGas));
+    } catch (error) {
+      if (error instanceof FeeQuoteLimitExceededError) {
+        throw new TokenPreparationError("GAS_LIMIT_EXCEEDED");
+      }
+      throw error;
+    }
+  }
   async function read(
     rpc: Rpc,
     address: string,
@@ -329,6 +340,7 @@ export function createTokenOperationDriver(deps: {
       !tx.maxFeePerGas ||
       tx.gas > BigInt(policy.maxGas) ||
       tx.maxFeePerGas > BigInt(policy.maxFeePerGas) ||
+      (tx.maxPriorityFeePerGas ?? 0n) > tx.maxFeePerGas ||
       tx.gas * tx.maxFeePerGas > BigInt(policy.maxGasCost) ||
       (tx.gas * tx.maxFeePerGas).toString() !== prepared.maximumGasCost
     ) {
@@ -536,7 +548,7 @@ export function createTokenOperationDriver(deps: {
       const from = intent.context.masterAddress!;
       const [nonce, fees, estimate, organizationId] = await Promise.all([
         pendingNonce(rpc, from),
-        quoteFees(rpc),
+        policyFees(rpc),
         rpc.call("eth_estimateGas", [{ from, to, data, value: "0x0" }]),
         deps.organization(scope),
       ]);
@@ -592,8 +604,13 @@ export function createTokenOperationDriver(deps: {
         rpc.call("eth_getBalance", [prepared.sender, "latest"]),
         rpc.call("eth_getBlockByNumber", ["latest", false]),
       ]);
-      const timestamp = (block as { timestamp?: string } | null)?.timestamp;
+      const header = block as { timestamp?: string; baseFeePerGas?: string } | null;
+      const timestamp = header?.timestamp;
+      const baseFee = header?.baseFeePerGas;
       if (
+        !baseFee ||
+        !/^0x[0-9a-f]+$/i.test(baseFee) ||
+        BigInt(baseFee) + (tx.maxPriorityFeePerGas ?? 0n) > tx.maxFeePerGas! ||
         !timestamp ||
         BigInt(timestamp) >= BigInt(prepared.deadline) ||
         nonce !== tx.nonce ||
