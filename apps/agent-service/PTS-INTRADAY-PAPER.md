@@ -71,3 +71,20 @@ realized net virtual AUSD and marked equity when verifiable. Model API USD is ze
 from capital. Never deduct spread/slippage twice. Candle-only or controlled financial results do
 not establish market profitability. A 24-hour result is exploratory; more trades alone are not a
 successful strategy and positive results cannot justify automatic promotion.
+
+## Preparation cohort and first interruption
+
+The host freezes the symbol cohort that passed original preparation into the shared v9 reader.
+Known invalid or insufficient histories stay in the packet/reports; their symbols are omitted
+commonly before candle requests and signal evaluation. Do not repair those bars, lower minima,
+turn omissions into holds, or admit new schema/identity/ownership failures as availability errors.
+Basic v8 and the numerical intraday policy remain unchanged.
+
+The first authorized intraday process at `037a4def5623c5addb3fb7f0d8131297d150fe8e` interrupted
+at its first slot with `INVALID_MARKET_DATA`, before rounds or position attempts were persisted.
+The saved preparation excluded four symbols, but composition did not pass that cohort and the
+reader re-evaluated excluded histories. A controlled regression reproduces the same validation
+path, then checks common initial/final exclusions, source immutability and revocation. The exact
+failed live candle bytes were not recorded, so no specific new response is reconstructed.
+Preserve the first study and audit; any explicitly authorized repair test uses a new identity,
+never resumes or rewrites the interrupted attempt.
