@@ -3,6 +3,7 @@ import {
   PilotError,
   PERPL_PLUGIN_VERSION,
   PERP_RESOLUTIONS,
+  PERPL_LAB_SYMBOLS,
   type PerplMarketCatalog,
   type PerpNetwork,
   type PerpSymbol,
@@ -522,6 +523,12 @@ export class PerplMarketData implements PerpMarketData {
   ): Promise<PerpSnapshot[]> {
     if (!this.universe || symbols.length === 0 || new Set(symbols).size !== symbols.length) {
       throw new PilotError("INVALID_INPUT", "A batch requires distinct universe markets");
+    }
+    if (symbols.some((symbol) => !(PERPL_LAB_SYMBOLS as readonly string[]).includes(symbol))) {
+      throw new PilotError(
+        "MARKET_NOT_ALLOWED",
+        "Batch selection is outside the fixed local laboratory catalog",
+      );
     }
     const context = await this.context(network, ctx);
     const markets = symbols.map((symbol) => this.market(network, symbol, context));
