@@ -713,6 +713,13 @@ renewable lease, four-call concurrency and canonical 100-block ranges. `runToken
 `caughtUp` against its cached confirmed tip for the selected sources. Busy, gap and reorg remain
 visible outcomes; quota/transport errors propagate. The PostgreSQL regression verifies multiple
 ranges and replay without duplicate canonical rows. No runtime budget increases implicitly.
+The private `launch/indexer-rpc-admission.ts` groups up to four queued reads behind one atomic
+PostgreSQL reservation for their actual count, before any provider call. Groups drain before the
+next reservation; denial, lease loss or a provider failure stops queued work without retry.
+The per-pass/daily ceilings, UTC reset, renewals and transactional write fences remain authoritative.
+The scheduler's unit suite and real `uniswap-indexer` PostgreSQL tests cover reservation order,
+four-call concurrency, drain/stop, quota reset/refusal, lease loss and unchanged canonical writes.
+Reducing reservation statements does not establish hosted catch-up capacity.
 Hosted R2 reads/migrations and direct testnet buy/sell have separate evidence in
 [the readiness record](../../docs/market/token-launch-readiness-20261010.md); hosted master-passkey
 launch and sustained indexer throughput are still pending.
