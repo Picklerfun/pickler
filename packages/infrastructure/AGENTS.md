@@ -672,6 +672,12 @@ Launcher adapters translate transport, RPC admission, transaction simulation, ga
 metadata storage failures into core-owned preparation reasons. They never return provider prose,
 credentials or calldata in those errors. The existing gas ceilings and unsupported-fee-method
 fallback remain unchanged; tests distinguish contract rejection from transport failure.
+`quoteFees` accepts an optional reviewed per-gas ceiling for token operations and public curve
+preparation: only excess twice-base-fee headroom is capped, and the current base plus full tip
+must fit. `FeeQuoteLimitExceededError` is translated inside those adapters. Unbounded deposit and
+wallet-transfer callers retain their historical quote. Owner preflight rechecks the prepared
+maximum and tip against the fresh base without rewriting transaction parameters. Regressions use
+100-gwei base/2-gwei tip with the unchanged 120-gwei policy, plus gas/cost and stale-fee refusals.
 
 ## V4 launcher policy and canonical position history
 

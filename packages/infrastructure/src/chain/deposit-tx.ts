@@ -103,12 +103,18 @@ export interface FeeQuote {
   maxPriorityFeePerGas: bigint;
 }
 
+export class FeeQuoteLimitExceededError extends Error {
+  constructor() {
+    super("FEE_QUOTE_LIMIT_EXCEEDED");
+    this.name = "FeeQuoteLimitExceededError";
+  }
+}
+
 /**
- * The fees a deposit pays: the tip from `eth_maxPriorityFeePerGas` (1 gwei where the node does
- * not implement the method) and twice the latest base fee plus that tip. Prepare builds with this and confirm caps the
- * stamped fees against it, so both must go through this one function.
+ * Deposits retain twice the current base fee plus the suggested tip. A launch policy can bound
+ * that headroom only when its ceiling still covers the current base fee and the full tip.
  */
-export async function quoteFees(rpc: Rpc): Promise<FeeQuote> {
+export async function quoteFees(rpc: Rpc, maximumFeePerGas?: bigint): Promise<FeeQuote> {
   const [tip, block] = await Promise.all([
     priorityFee(rpc),
     rpc.call("eth_getBlockByNumber", ["latest", false]),
@@ -117,7 +123,18 @@ export async function quoteFees(rpc: Rpc): Promise<FeeQuote> {
   if (typeof baseFee !== "string" || !QUANTITY.test(baseFee)) {
     throw new Error("The latest block carries no base fee");
   }
-  return { maxFeePerGas: BigInt(baseFee) * 2n + tip, maxPriorityFeePerGas: tip };
+  const base = BigInt(baseFee);
+  const suggested = base * 2n + tip;
+  let maxFeePerGas = suggested;
+  if (maximumFeePerGas !== undefined) {
+    if (maximumFeePerGas <= 0n || base + tip > maximumFeePerGas) {
+      throw new FeeQuoteLimitExceededError();
+    }
+    if (suggested > maximumFeePerGas) {
+      maxFeePerGas = maximumFeePerGas;
+    }
+  }
+  return { maxFeePerGas, maxPriorityFeePerGas: tip };
 }
 
 /**
