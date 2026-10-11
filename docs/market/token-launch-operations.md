@@ -17,12 +17,12 @@ Kuru policy version 1 stays readable; never substitute legacy addresses or a fix
 
 API Worker runtime only:
 
-| Binding                      | Meaning                                                                                                                                                                                                                                                                                             |
-| ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `TOKEN_LAUNCH_ENABLED`       | Explicit `true` after readiness and operator approval; absent means disabled                                                                                                                                                                                                                        |
-| `TOKEN_LAUNCH_POLICY_JSON`   | Strict venue-discriminated version 2 for V4 (historical Kuru version 1), chain 10143, complete deployment/source/implementation records and evidence, approved venue/preset hashes, authority/treasury, restricted agent UUIDs, metadata origin, gas ceilings, RPC allowance and confirmation depth |
-| `TOKEN_LAUNCH_AUTHORITY_KEY` | Dedicated grant-only secret; never the operator, treasury or master-wallet key                                                                                                                                                                                                                      |
-| `TOKEN_METADATA`             | R2 bucket binding; no public write endpoint                                                                                                                                                                                                                                                         |
+| Binding                      | Meaning                                                                                                                                                                                                                                                                                                  |
+| ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `TOKEN_LAUNCH_ENABLED`       | Explicit `true` after readiness and operator approval; absent means disabled                                                                                                                                                                                                                             |
+| `TOKEN_LAUNCH_POLICY_JSON`   | Strict venue-discriminated versions 2/3 for V4 (historical Kuru version 1), chain 10143, complete deployment/source/implementation records and evidence, approved venue/preset hashes, authority/treasury, explicit agent admission, metadata origin, gas ceilings, RPC allowance and confirmation depth |
+| `TOKEN_LAUNCH_AUTHORITY_KEY` | Dedicated grant-only secret; never the operator, treasury or master-wallet key                                                                                                                                                                                                                           |
+| `TOKEN_METADATA`             | R2 bucket binding; no public write endpoint                                                                                                                                                                                                                                                              |
 
 Existing `MONAD_RPC_URL`, Turnkey parent reader credentials and the registered Studio relying
 party are reused. Each owner’s registered master wallet calls the factory directly. The dedicated
@@ -34,8 +34,12 @@ The V4 policy enumerates factory, curve deployer, adapter, escrow, locker, PoolM
 PositionManager, StateView, Permit2 and AUSD. Historical Kuru policy keeps its own router/account
 fields. AUSD requires its reviewed proxy implementation slot and runtime hash. Each record includes deployment block, runtime hash, source reference,
 implementation slot/hash where applicable and an administration review. All readiness evidence
-must be true. `allowedAgents` lists at most ten approved testnet agent UUIDs; every other agent
-remains unable to launch even when the host gate is enabled. Before a grant and again during preparation/submission, live reads check that
+must be true. Historical policies 1/2 require a non-empty `allowedAgents` list of at most ten
+approved testnet agent UUIDs. Policy 3 requires `admission: "eligible_creators"` and rejects
+`allowedAgents`: every agent may pass the host scope check, but core still requires current creator
+access, workspace ownership, actual publication, a registered master and no existing/pending token.
+Mainnet, unknown modes and implicit admission defaults remain rejected. See
+[the eligible-creator activation](token-launch-eligible-creators-20261011.md). Before a grant and again during preparation/submission, live reads check that
 these contracts are bound to one another, the authority and treasury match, the preset commits
 the approved venue hash, precision is version 2 and the fixed economics match.
 
