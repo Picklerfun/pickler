@@ -1,6 +1,7 @@
-import type { PtsAnalysis, PtsHistory, PtsPivot, PtsSetup, PtsBar } from "./types.js";
+import type { PtsAnalysis, PtsHistory, PtsPivot, PtsSetup, PtsBar, PtsVersion } from "./types.js";
 import { PTS_VERSION } from "./types.js";
-import { ptsSeries, ptsCoverage, DAY } from "./calendar.js";
+import { ptsTemporalProfile } from "./temporal-profile.js";
+import { ptsSeries, ptsCoverage } from "./calendar.js";
 import { ptsPivots, ptsTrend, ptsChannel, channelDistance } from "./pivots.js";
 import { units as u, decimal as d, abs, max, tick, recoveryRatioCompare } from "./math.js";
 /** Simple ATR14, retaining its rational numerator for exact threshold comparisons. */
@@ -28,14 +29,21 @@ export function ptsSetupKey(
   a: PtsPivot,
   b: PtsPivot,
   c: PtsPivot,
+  version: PtsVersion = PTS_VERSION,
 ) {
-  return [marketId, direction, ...[a, b, c].flatMap((p) => [p.openTime, p.price])].join(":");
+  const key = [marketId, direction, ...[a, b, c].flatMap((p) => [p.openTime, p.price])].join(":");
+  return version === PTS_VERSION ? key : `pts-intraday@${version}:${key}`;
 }
-export function analyzePts(history: PtsHistory, now: number): PtsAnalysis {
-  const series = ptsSeries(history, now),
-    coverage = ptsCoverage(series, now);
+export function analyzePts(
+  history: PtsHistory,
+  now: number,
+  version: PtsVersion = PTS_VERSION,
+): PtsAnalysis {
+  const profile = ptsTemporalProfile(version);
+  const series = ptsSeries(history, now, version),
+    coverage = ptsCoverage(series, now, version);
   const result: PtsAnalysis = {
-    version: PTS_VERSION,
+    version,
     at: now,
     symbol: history.market.symbol,
     action: "hold",
@@ -60,8 +68,8 @@ export function analyzePts(history: PtsHistory, now: number): PtsAnalysis {
   ) {
     return result;
   }
-  const monthly = ptsPivots(series["1M"], now),
-    weekly = ptsPivots(series["1w"], now);
+  const monthly = ptsPivots(series[profile.primary], now),
+    weekly = ptsPivots(series[profile.channel], now);
   const trend = ptsTrend(monthly.pivots),
     weekTrend = ptsTrend(weekly.pivots);
   if (
@@ -76,14 +84,18 @@ export function analyzePts(history: PtsHistory, now: number): PtsAnalysis {
     return result;
   }
   if (
-    !check("WEEKLY_ALIGNMENT", weekTrend === "unknown" ? null : weekTrend === trend, {
-      weekTrend,
-      pivots: weekly,
-    })
+    !check(
+      version === PTS_VERSION ? "WEEKLY_ALIGNMENT" : "FOUR_HOUR_ALIGNMENT",
+      weekTrend === "unknown" ? null : weekTrend === trend,
+      {
+        weekTrend,
+        pivots: weekly,
+      },
+    )
   ) {
     return result;
   }
-  const daily = ptsPivots(series["1d"], now).pivots;
+  const daily = ptsPivots(series[profile.impulse], now).pivots;
   let impulse: [PtsPivot, PtsPivot] | null = null;
   for (let i = 1; i < daily.length; i++) {
     const a = daily[i - 1]!,
@@ -96,21 +108,21 @@ export function analyzePts(history: PtsHistory, now: number): PtsAnalysis {
       impulse = [a, b];
     }
   }
-  if (!check("DAILY_IMPULSE", !!impulse, impulse)) {
+  if (!check(version === PTS_VERSION ? "DAILY_IMPULSE" : "HOURLY_IMPULSE", !!impulse, impulse)) {
     return result;
   }
   const [a, b] = impulse!;
-  const c = ptsPivots(series["4h"], now)
+  const c = ptsPivots(series[profile.correction], now)
     .pivots.filter((p) => p.kind === a.kind && p.openTime >= b.closeTime)
     .at(-1);
   if (!check("CONFIRMED_CORRECTION", !!c, c ?? null)) {
     return result;
   }
   if (
-    !check("FORMATION_WINDOW", c!.confirmedAt <= b.closeTime + 30 * DAY, {
+    !check("FORMATION_WINDOW", c!.confirmedAt <= b.closeTime + profile.formationMs, {
       bAt: b.closeTime,
       cKnownAt: c!.confirmedAt,
-      maximumMs: 30 * DAY,
+      maximumMs: profile.formationMs,
     })
   ) {
     return result;
@@ -129,17 +141,21 @@ export function analyzePts(history: PtsHistory, now: number): PtsAnalysis {
   ) {
     return result;
   }
-  const channel = ptsChannel(ptsPivots(series["1w"], c!.confirmedAt).pivots, trend, c!.confirmedAt);
+  const channel = ptsChannel(
+    ptsPivots(series[profile.channel], c!.confirmedAt).pivots,
+    trend,
+    c!.confirmedAt,
+  );
   if (
     !check(
-      "WEEKLY_CHANNEL",
-      !!channel && ptsTrend(ptsPivots(series["1w"], c!.confirmedAt).pivots) === trend,
+      version === PTS_VERSION ? "WEEKLY_CHANNEL" : "FOUR_HOUR_CHANNEL",
+      !!channel && ptsTrend(ptsPivots(series[profile.channel], c!.confirmedAt).pivots) === trend,
       { channel, contactsRequired: 3 },
     )
   ) {
     return result;
   }
-  const atr = ptsAtr(series["1d"].filter((p) => p.closeTime <= c!.confirmedAt));
+  const atr = ptsAtr(series[profile.impulse].filter((p) => p.closeTime <= c!.confirmedAt));
   if (
     !check("ATR14", atr !== null && atr > 0n, {
       numerator: atr?.toString() ?? null,
@@ -173,7 +189,7 @@ export function analyzePts(history: PtsHistory, now: number): PtsAnalysis {
     channel!.second.confirmedAt,
     channel!.opposite.confirmedAt,
   );
-  const hourly = series["1h"];
+  const hourly = series[profile.entry];
   let trigger: PtsBar | null = null;
   for (let i = 1; i < hourly.length; i++) {
     const current = hourly[i]!,
@@ -196,7 +212,10 @@ export function analyzePts(history: PtsHistory, now: number): PtsAnalysis {
   ) {
     return result;
   }
-  const expiresAt = Math.min(trigger!.closeTime + 900000, c!.confirmedAt + 72 * 3600000);
+  const expiresAt = Math.min(
+    trigger!.closeTime + profile.triggerMs,
+    c!.confirmedAt + profile.correctionMs,
+  );
   if (!check("SIGNAL_WINDOW", now < expiresAt, { now, expiresAt, triggerAt: trigger!.closeTime })) {
     return result;
   }
@@ -208,8 +227,8 @@ export function analyzePts(history: PtsHistory, now: number): PtsAnalysis {
     return result;
   }
   const setup: PtsSetup = {
-    version: PTS_VERSION,
-    id: ptsSetupKey(history.market.marketId, trend, a, b, c!),
+    version,
+    id: ptsSetupKey(history.market.marketId, trend, a, b, c!, version),
     marketId: history.market.marketId,
     symbol: history.market.symbol,
     direction: trend,
