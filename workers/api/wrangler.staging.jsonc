@@ -19,22 +19,16 @@
   "observability": { "enabled": true },
   "vars": {
     "ADVICE_ENABLED": "false",
-    // Sells each fresh advice analysis with x402; "true" without the X402_RELAYER_PRIVATE_KEY
-    // secret and MONAD_RPC_URL answers 503 (docs/agent-advice.md, "Payment (x402)").
     "ADVICE_X402_ENABLED": "false",
     "APP_ENV": "staging",
     "CHAIN_ID": "10143",
     "MONAD_RPC_URL": "https://rpc.ankr.com/monad_testnet",
-    // The dedicated authority and reviewed policy are backend-only runtime bindings.
-    // Preserve the explicitly approved eligible-creator launcher on Monad testnet deployments.
     "TOKEN_LAUNCH_ENABLED": "true",
     "TRADING_ADMISSIONS_ENABLED": "false",
     "ADMISSIONS_ENABLED": "true",
     "JWT_AUDIENCE": "authenticated",
-    // The public market board reads Perpl on this network (docs/specs/perps-board-live-v1.md).
     "PERPL_BOARD_NETWORK": "testnet",
-    // The Perpl paper runtime's manual checks and approvals (docs/specs/perpl-paper-runtime-v1.md
-    // R3). Keep it equal to the research worker's: npm run check:staging asserts it.
+    // Must match workers/research/wrangler.jsonc.
     "PERPL_RUNTIME_ENABLED": "false",
   },
 }
