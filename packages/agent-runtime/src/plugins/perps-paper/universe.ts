@@ -14,7 +14,7 @@ import {
   type PerplDataOptions,
   type PerplSocket,
   type PerplStreamEvent,
-} from "@pickler/infrastructure";
+} from "@pickler/infrastructure/perpl-public";
 import {
   acquireUniverse,
   acquireUniverseV2,
@@ -159,7 +159,7 @@ export function createUniversePerplReader(
           const current = await check(scope, signal, guard);
           for (const symbol of symbols) {
             requireTool(current.config, "getPerpSnapshot");
-            if (!current.config.perpl!.markets.includes(symbol)) {
+            if (!(current.config.perpl!.markets as readonly string[]).includes(symbol)) {
               throw new PilotError("MARKET_NOT_ALLOWED", "Batch market is not enabled");
             }
           }
