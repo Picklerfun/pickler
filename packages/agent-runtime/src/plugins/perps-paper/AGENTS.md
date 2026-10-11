@@ -71,3 +71,5 @@ working history still retains the full saved warmup and strict continuity; cache
 the intraday protocol and refresh count. Original 52-day PUMP coverage is not a reason to require
 sixty daily bars. The interrupted repair study remains frozen at e506bc78; this correction does not
 rewrite its DATA_UNAVAILABLE omission or restart its process. No signal thresholds change.
+
+The explicit v9 fast candidate 0.2.0-fast.1 uses native 4h/1h/15m/5m warmup from trading. Preparation preserves old candidates; shared refresh retains 1h/15m/5m eligibility and adds only selected native roles. Do not require or refresh 1d solely for the fast candidate.
