@@ -3,7 +3,7 @@ import { profileProposals } from "../perps-study/profiles.js";
 import { units, decimal } from "./math.js";
 import { ptsQuantityAtBlock } from "./account.js";
 import { PilotError } from "@pickler/core";
-import { analyzePts } from "./signals.js";
+import { inspectPtsHistory } from "./inspection.js";
 import { PTS_CATALOG, type PerpsPtsConfig } from "./policy.js";
 import { PTS_ACCOUNT_POLICY, PTS_VARIANTS, type PtsReplayInput } from "./types.js";
 
@@ -48,11 +48,11 @@ export function assertPtsReplay(input: PtsReplayInput) {
 export function replayPtsSignals(input: PtsReplayInput, digest: (v: unknown) => string) {
   assertPtsReplay(input);
   const rows: Record<string, unknown>[] = [];
-  const analyses: Record<string, ReturnType<typeof analyzePts>> = {};
+  const analyses: Record<string, ReturnType<typeof inspectPtsHistory>> = {};
   const first = Math.floor(input.from / 300000) * 300000 + 60000;
   for (const history of input.markets) {
     let hour = -1,
-      cached: ReturnType<typeof analyzePts> | undefined,
+      cached: ReturnType<typeof inspectPtsHistory> | undefined,
       analysisHash = "";
     for (let at = first; at < input.to; at += 300000) {
       if (at < input.from) {
@@ -60,7 +60,7 @@ export function replayPtsSignals(input: PtsReplayInput, digest: (v: unknown) => 
       }
       if (Math.floor(at / 3600000) !== hour) {
         hour = Math.floor(at / 3600000);
-        cached = analyzePts(history, at);
+        cached = inspectPtsHistory(history, at);
         analysisHash = digest(cached);
         analyses[analysisHash] = cached;
       }
@@ -72,6 +72,12 @@ export function replayPtsSignals(input: PtsReplayInput, digest: (v: unknown) => 
         symbol: history.market.symbol,
         action,
         reason,
+        status:
+          cached!.validationStatus !== "VALID"
+            ? "NOT_VERIFIABLE"
+            : cached!.coverage.every((c) => c.eligible)
+              ? "PROJECTED"
+              : "NOT_ELIGIBLE_HISTORY",
         analysisHash,
         signalExpired: expired,
         setupId: cached!.setup?.id ?? null,
