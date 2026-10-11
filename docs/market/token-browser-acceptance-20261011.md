@@ -24,6 +24,16 @@ The open browser session was detected, but the Mac was locked and native interac
 The owner must unlock it and complete the passkey approval for the real launch. No passkey
 approval was bypassed and no new signature or transaction was requested in this acceptance.
 
+A second read-only observation at 18:58 UTC found factory cursor 70,113,687 against head
+70,188,951: 75,264 blocks behind. Across the two observations the cursor advanced 2,600 blocks
+and the chain advanced 3,386, so the backlog grew by 786. This interval does not demonstrate
+sufficient catch-up capacity. Capacity investigation remains pending; resource ceilings and
+historical cursors were not increased or skipped.
+
+GitHub recorded `startup_failure` before starting any jobs on this PR and on the preceding main
+commit. No CI check has passed for this head. Local validation is separate from the unavailable
+hosted CI execution.
+
 ## Corrections
 
 The landing now reads the existing public directory alongside activity. A nullable canonical
@@ -49,6 +59,7 @@ does not disable it. Its cursor and resource policy are unchanged; no historical
 | Keyboard landing → public profile → Buy/Sell panel                 | Controlled browser, no external requests                              | Passed  |
 | Owner passkey launch and Studio buy                                | Open hosted session; requires unlock, passkey approval and buyer AUSD | Pending |
 | New token canonical indexing and hosted landing appearance         | No new launch; indexer still recovering history                       | Pending |
+| GitHub CI                                                          | Startup failure before jobs, also present on preceding main           | Pending |
 | Ordinary visitor buy/sell                                          | Testnet gate needs automatic release and a confirmed token            | Pending |
 
 The controlled API/PostgreSQL run passed 29 tests. The browser run passed six scenarios with no
