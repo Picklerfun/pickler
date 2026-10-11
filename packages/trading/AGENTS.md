@@ -318,3 +318,5 @@ See [the local guide](../../apps/agent-service/PTS-BASIC-PAPER.md).
 
 The pure inspectPtsHistory is evidence inspection only: retain invalid original bars and mark
 projections NOT_VERIFIABLE. Its diagnostic counts cannot admit a strategy or repair an OHLC bar.
+
+PTS financial audit distinguishes posted ledger components from final net results; pending or disputed funding keeps final funding and net P&L null.
