@@ -374,6 +374,8 @@ DATABASE_URL-only file. No model/trading keys are read and no paid clients are b
 
 The explicit future run uses the existing profile runner and shared public reader; it cannot resume.
 Coalesced full reports run in a separate thread; compact observation status stays on the host.
+Report progress includes attempted slots and process-state transitions, so an unavailable attempt
+or closing-only transition publishes without requiring another completed decision round.
 Do not call run as implementation acceptance, reactivate monitors, or add PTS to Studio selectors.
 
 `src/pts-study` also dispatches local v9 `perps-pts-intraday-sma-v1` independently from basic v8.
@@ -394,3 +396,5 @@ parts; report workers replay one original round at a time and receive no giant s
 JSON/CSV publication streams containers; HTML excludes raw histories. Specific report failures
 stop admission, and interrupted studies retain positions/funding and their original error codes.
 Read [PTS intraday](PTS-INTRADAY-PAPER.md) for the reproduced serialization interruption.
+
+Read [fast intraday PTS](PTS-INTRADAY-FAST.md) for explicit v9 candidate 0.2.0-fast.1. Its new inactive template, descriptor and policy stay separate from 0.1.0. Commands and reports pin the chosen candidate; saved preparation from another identity is rejected. The original active trial is not altered or restarted. Offline results and controlled fills do not establish profitability.

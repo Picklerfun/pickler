@@ -268,3 +268,49 @@ test("intraday captures genuine native five/fifteen-minute pages within one boun
     assert.ok((to! - from!) / (resolution * 1000) <= 1024, text);
   }
 });
+
+test("fast candidate preparation requests only actual 4h/1h/15m/5m roles and shared 5m warmup", async (t) => {
+  t.mock.timers.enable({ apis: ["Date", "setTimeout"], now: NOW });
+  const urls: string[] = [];
+  const result = await settle(
+    t,
+    preparePtsHistory(
+      { agent: async () => agent() },
+      { tenantId: "controlled", agentId: "pts" },
+      new AbortController().signal,
+      {
+        commit: "controlled-fast",
+        candidateVersion: "0.2.0-fast.1",
+        transport: async (input) => {
+          urls.push(String(input));
+          const resolution = Number(/\/candles\/(\d+)\//.exec(String(input))?.[1]);
+          return Response.json(
+            resolution ? { at: { t: Date.now(), b: 100 }, r: resolution, d: [] } : metadata(),
+          );
+        },
+        capture: async () => {},
+      },
+    ),
+  );
+  assert.equal(result.fatalCode, null);
+  assert.equal(result.history.candidate, "pts-intraday@0.2.0-fast.1");
+  assert.equal(result.history.to - result.history.from, 7 * 86400000);
+  assert.ok(result.requests <= 96);
+  assert.equal(
+    urls.some((url) => url.includes("/candles/86400/")),
+    false,
+  );
+  for (const history of result.history.markets) {
+    assert.deepEqual(
+      history.series.map((series) => series.resolution),
+      [14400, 3600, 900, 300],
+    );
+    const five = history.series.find((series) => series.resolution === 300)!;
+    assert.equal((five.to - five.from) / 300000, 2016 + 180);
+    assert.ok(
+      analyzePts(history, result.history.to, "0.2.0-fast.1").coverage.every(
+        (coverage) => !coverage.eligible,
+      ),
+    );
+  }
+});

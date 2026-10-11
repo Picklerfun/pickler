@@ -1,6 +1,12 @@
 import { PilotError } from "@pickler/core";
-import { PTS_VERSION, PTS_INTRADAY_VERSION, type PtsVersion, type PtsPeriod } from "./types.js";
-import type { PerpsPtsConfig } from "./policy.js";
+import {
+  PTS_VERSION,
+  PTS_INTRADAY_VERSION,
+  PTS_INTRADAY_FAST_VERSION,
+  type PtsVersion,
+  type PtsPeriod,
+} from "./types.js";
+import { PTS_POLICY, type PerpsPtsConfig } from "./policy.js";
 
 /** Trusted experimental temporal roles. A version never relabels native candle timestamps. */
 export function ptsTemporalProfile(version: PtsVersion = PTS_VERSION) {
@@ -46,10 +52,38 @@ export function ptsTemporalProfile(version: PtsVersion = PTS_VERSION) {
       closeAtUtcDayEnd: true,
     };
   }
+  if (version === PTS_INTRADAY_FAST_VERSION) {
+    return {
+      version,
+      identity: "pts-intraday@0.2.0-fast.1",
+      accountPolicy: "pts-intraday-1x-0.2.0-fast.1" as const,
+      primary: "4h" as PtsPeriod,
+      channel: "1h" as PtsPeriod,
+      impulse: "15m" as PtsPeriod,
+      correction: "5m" as PtsPeriod,
+      entry: "5m" as PtsPeriod,
+      native: [14400, 3600, 900, 300],
+      minimum: { "4h": 24, "1h": 104, "15m": 240, "5m": 180 } as Partial<Record<PtsPeriod, number>>,
+      formationMs: 72 * 3600000,
+      triggerMs: 300000,
+      correctionMs: 24 * 3600000,
+      maximumHoldingMs: 6 * 3600000,
+      closeAtUtcDayEnd: true,
+    };
+  }
   throw new PilotError("INVALID_INPUT", "Unknown experimental PTS temporal version");
 }
 export function ptsConfigVersion(config: PerpsPtsConfig): PtsVersion {
-  return config.version === 9 ? PTS_INTRADAY_VERSION : PTS_VERSION;
+  if (config.version === 8 && config.candidate === "pts-trend-reversal@0.2.0") {
+    return PTS_VERSION;
+  }
+  if (
+    config.version === 9 &&
+    (config.candidate === "pts-intraday@0.1.0" || config.candidate === "pts-intraday@0.2.0-fast.1")
+  ) {
+    return ptsCandidateVersion(config.candidate);
+  }
+  throw new PilotError("INVALID_INPUT", "PTS configuration and candidate identity disagree");
 }
 export function ptsVariant(config: PerpsPtsConfig) {
   return config.version === 9 ? ("pts-intraday" as const) : ("pts-basic" as const);
@@ -85,3 +119,50 @@ export const PTS_INTRADAY_POLICY = {
   dailyEmergencyPercent: 3,
   drawdownEmergencyPercent: 5,
 } as const;
+
+/** Candidate identities are explicit; absence retains the historical basic replay meaning. */
+export function ptsCandidateVersion(candidate?: string): PtsVersion {
+  if (candidate === undefined || candidate === "pts-trend-reversal@0.2.0") {
+    return PTS_VERSION;
+  }
+  if (candidate === "pts-intraday@0.1.0") {
+    return PTS_INTRADAY_VERSION;
+  }
+  if (candidate === "pts-intraday@0.2.0-fast.1") {
+    return PTS_INTRADAY_FAST_VERSION;
+  }
+  throw new PilotError("INVALID_INPUT", "Unknown experimental PTS candidate");
+}
+export const PTS_INTRADAY_FAST_POLICY = {
+  ...PTS_INTRADAY_POLICY,
+  format: "pts-intraday-fast-policy-v1",
+  ...ptsTemporalProfile(PTS_INTRADAY_FAST_VERSION),
+  reference: "pts-intraday@0.1.0",
+  change: "Native temporal roles only; correction and entry share one 5m series",
+} as const;
+export function ptsPolicy(version: PtsVersion = PTS_VERSION) {
+  ptsTemporalProfile(version);
+  if (version === PTS_VERSION) {
+    return PTS_POLICY;
+  }
+  return version === PTS_INTRADAY_VERSION ? PTS_INTRADAY_POLICY : PTS_INTRADAY_FAST_POLICY;
+}
+
+export function ptsNativeMinimum(version: PtsVersion, resolution: number) {
+  const periods: Record<number, PtsPeriod> = {
+    86400: "1d",
+    14400: "4h",
+    3600: "1h",
+    900: "15m",
+    300: "5m",
+  };
+  const profile = ptsTemporalProfile(version);
+  const period = periods[resolution];
+  if (!period || !profile.native.includes(resolution)) {
+    throw new PilotError(
+      "INVALID_INPUT",
+      "Native resolution does not belong to the selected PTS candidate",
+    );
+  }
+  return profile.minimum[period]!;
+}

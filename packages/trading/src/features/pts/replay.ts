@@ -5,9 +5,14 @@ import { ptsQuantityAtBlock } from "./account.js";
 import { PilotError } from "@pickler/core";
 import { inspectPtsHistory } from "./inspection.js";
 import { PTS_CATALOG, type PerpsPtsConfig } from "./policy.js";
-import { PTS_VERSION, PTS_INTRADAY_VERSION, PTS_VARIANTS, type PtsReplayInput } from "./types.js";
+import { PTS_VERSION, PTS_VARIANTS, type PtsReplayInput } from "./types.js";
 
-import { ptsVariants, ptsVariant, ptsTemporalProfile } from "./temporal-profile.js";
+import {
+  ptsVariants,
+  ptsVariant,
+  ptsTemporalProfile,
+  ptsCandidateVersion,
+} from "./temporal-profile.js";
 import { createProfileStudyRunner } from "../evaluation/profile-runner.js";
 import type {
   PerpsStudyView,
@@ -25,7 +30,9 @@ import type {
 export function assertPtsReplay(input: PtsReplayInput) {
   if (
     input.format !== "perps-pts-history-v1" ||
-    (input.candidate !== undefined && input.candidate !== "pts-intraday@0.1.0") ||
+    (input.candidate !== undefined &&
+      input.candidate !== "pts-intraday@0.1.0" &&
+      input.candidate !== "pts-intraday@0.2.0-fast.1") ||
     !Number.isSafeInteger(input.from) ||
     !Number.isSafeInteger(input.to) ||
     input.to <= input.from ||
@@ -49,7 +56,7 @@ export function assertPtsReplay(input: PtsReplayInput) {
 }
 export function replayPtsSignals(input: PtsReplayInput, digest: (v: unknown) => string) {
   assertPtsReplay(input);
-  const version = input.candidate ? PTS_INTRADAY_VERSION : PTS_VERSION;
+  const version = ptsCandidateVersion(input.candidate);
   const profile = ptsTemporalProfile(version);
   const entryMs = version === PTS_VERSION ? 3600000 : 300000;
   const rows: Record<string, unknown>[] = [];
@@ -104,7 +111,7 @@ export function replayPtsSignals(input: PtsReplayInput, digest: (v: unknown) => 
     analyses,
     financialResult: "NOT_VERIFIABLE",
     interpretation:
-      profile.version === "0.1.0"
+      profile.version !== PTS_VERSION
         ? "Recorded native closed candles, versioned as-of five-minute projection. Slot expiry is rechecked. Historical availability/revisions not reconstructed. No hypothetical portfolio or candle-only P&L."
         : "Recorded closed candles, versioned as-of projection. Each hourly analysis is referenced by hash; slot expiry is rechecked. Historical availability/revisions not reconstructed. No hypothetical portfolio or candle-only P&L.",
   };
@@ -127,7 +134,7 @@ export async function replayPtsFinance(input: PtsReplayInput, digest: (v: unknow
     );
   }
   let now = input.financial[0]!.at;
-  const version = input.candidate ? PTS_INTRADAY_VERSION : PTS_VERSION;
+  const version = ptsCandidateVersion(input.candidate);
   const profile = ptsTemporalProfile(version);
   const config: PerpsPtsConfig = {
     ...(input.candidate
@@ -135,7 +142,7 @@ export async function replayPtsFinance(input: PtsReplayInput, digest: (v: unknow
           version: 9 as const,
           protocol: "perps-pts-intraday-sma-v1" as const,
           hours: 24 as const,
-          candidate: "pts-intraday@0.1.0" as const,
+          candidate: input.candidate,
         }
       : {
           version: 8 as const,
@@ -573,10 +580,11 @@ export function auditPtsStudy(
   digest: (v: unknown) => string,
 ) {
   const rows = auditPtsDecisionRows(study, digest);
-  const config = study.record.config;
+  const config = study.record.config as PerpsPtsConfig;
   const financial = ptsFinancialAudit(accounts);
   return {
     protocol: "perps-pts-audit-v1",
+    candidate: config.candidate,
     studyMetadata: study.record.metadata,
     studyCommit: (study.record.metadata as { commit?: string }).commit ?? "NOT_VERIFIABLE",
     studyProtocol: config.protocol,

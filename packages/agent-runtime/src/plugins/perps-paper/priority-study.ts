@@ -123,9 +123,21 @@ export function createPriorityPerplStudyData(
           phase: "pts-history",
         }));
     try {
-      for (const resolution of r.config.version === 8 || r.config.version === 9
-        ? ([3600, 900, 300, 14400, 86400] as const)
-        : ([3600, 900, 300] as const)) {
+      const resolutions =
+        r.config.version === 8 || r.config.version === 9
+          ? ([3600, 900, 300, 14400, 86400] as const)
+          : ([3600, 900, 300] as const);
+      const requiredResolutions =
+        settings.version === 9
+          ? resolutions.filter(
+              (resolution) =>
+                resolution === 3600 ||
+                resolution === 900 ||
+                resolution === 300 ||
+                ptsTemporalProfile(ptsConfigVersion(settings)).native.includes(resolution),
+            )
+          : resolutions;
+      for (const resolution of requiredResolutions) {
         // At most eleven candle requests in each independently bounded public session.
         const service = await reader.session(identity(r), signal, guard);
         const end = Math.floor(now() / (resolution * 1000)) * resolution * 1000;

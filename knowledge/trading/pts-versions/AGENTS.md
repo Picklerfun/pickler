@@ -13,3 +13,5 @@ original Spanish transcripts remain byte-identical in the course bundle.
 Independent `pts-intraday@0.1.0` uses its own v3 descriptor/schema and native temporal decision
 record. It is experimental local evaluation only; prior draft/basic/catalog schemas remain readable.
 It never activates Studio or changes a published candidate in place.
+
+Independent pts-intraday@0.2.0-fast.1 has a new v4 descriptor/schema and native temporal record. Preserve v1–v3 descriptors/policies/course bytes. It is experimental local evaluation only, without Studio selection or automatic public execution.

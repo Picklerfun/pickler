@@ -333,3 +333,5 @@ snapshot; hashing/files remain host responsibilities. auditPtsDecisionRows reuse
 for an explicit original slot subset. auditPtsStudy preserves its original full-window rows and
 financial audit; evidence hashes are computed once per original initial/final object. No action,
 reason, signal, financial policy or historical hash interpretation changes with segmented export.
+
+Independent fast intraday prerelease 0.2.0-fast.1 is an explicit v9 candidate with native 4h/1h/15m/5m roles. Correction and entry share one 180-bar 5m series; existing geometry, expiry, six-hour/day-end and financial rules are reused. ptsCandidateVersion/ptsConfigVersion/ptsPolicy reject unknown identities and preserve old policy hashes. The test-only testing/pts-intraday-fast subpath provides synthetic data, never live evidence.

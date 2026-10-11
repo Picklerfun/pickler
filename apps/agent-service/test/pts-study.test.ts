@@ -23,6 +23,7 @@ import {
 } from "@pickler/trading/pts";
 import { ptsEvidence, ptsTime } from "@pickler/trading/testing/pts";
 import { intradayEvidence, intradayTime } from "@pickler/trading/testing/pts-intraday";
+import { fastEvidence, fastTime } from "@pickler/trading/testing/pts-intraday-fast";
 const hash = (v: unknown) => createHash("sha256").update(JSON.stringify(v)).digest("hex");
 const configuration: PerpsPtsConfig = {
   version: 8,
@@ -42,20 +43,20 @@ async function setup(
   t: Parameters<typeof createTestStore>[0],
   short = false,
   invalidFinal = false,
-  version: 8 | 9 = 8,
+  version: 8 | 9 | "fast" = 8,
 ) {
-  let time = version === 9 ? intradayTime - 120000 : ptsTime;
+  const intraday = version !== 8;
+  let time = intraday ? (version === "fast" ? fastTime : intradayTime) - 120000 : ptsTime;
   const initialTime = time;
-  const config: PerpsPtsConfig =
-    version === 9
-      ? {
-          ...configuration,
-          version: 9,
-          protocol: "perps-pts-intraday-sma-v1",
-          hours: 24,
-          candidate: "pts-intraday@0.1.0",
-        }
-      : configuration;
+  const config: PerpsPtsConfig = intraday
+    ? {
+        ...configuration,
+        version: 9,
+        protocol: "perps-pts-intraday-sma-v1",
+        hours: 24,
+        candidate: version === "fast" ? "pts-intraday@0.2.0-fast.1" : "pts-intraday@0.1.0",
+      }
+    : configuration;
   const db = await createTestStore(t, () => time),
     study = new PostgresPerpsStudyStore(db.pool, () => time);
   const view = await study.initialize(
@@ -74,7 +75,13 @@ async function setup(
   });
   let ratio = "0.40",
     finalCount = 0;
-  const evidence = () => (version === 9 ? intradayEvidence : ptsEvidence)(time, short, ratio, hash);
+  const evidence = () =>
+    (version === "fast" ? fastEvidence : intraday ? intradayEvidence : ptsEvidence)(
+      time,
+      short,
+      ratio,
+      hash,
+    );
   const runner = createProfileStudyRunner({
     study,
     paper: scoped,
@@ -106,7 +113,7 @@ async function setup(
     },
   });
   return {
-    variant: version === 9 ? ("pts-intraday" as const) : ("pts-basic" as const),
+    variant: intraday ? ("pts-intraday" as const) : ("pts-basic" as const),
     db,
     study,
     scoped,
@@ -127,7 +134,7 @@ async function setup(
     },
   };
 }
-for (const version of [8, 9] as const) {
+for (const version of [8, 9, "fast"] as const) {
   test(`v${version}: PTS PostgreSQL: shared real coordinator opens long and short, atomic partials, duplicate races and immutable setups`, async (t) => {
     for (const short of [false, true]) {
       const x = await setup(t, short, false, version),
@@ -139,13 +146,24 @@ for (const version of [8, 9] as const) {
         saved.account.positionPolicy,
         ptsTemporalProfile(ptsConfigVersion(x.view.record.config as PerpsPtsConfig)).accountPolicy,
       );
-      assert.ok(saved.account.positions.length > 0);
+      const paperBefore = await exportPerpsAudit(x.db.pool, x.view.record.config);
+      assert.ok(
+        saved.account.positions.length > 0,
+        JSON.stringify({
+          proposals: paperBefore.study.rounds[0]!.proposals[x.variant]?.map((p) => ({
+            action: p.action,
+            reason: p.reason,
+          })),
+          executions: paperBefore.study.events
+            .filter((e) => e.kind === "profile-execution")
+            .map((e) => e.data),
+        }),
+      );
       assert.ok(saved.account.positions.every((p) => p.side === (short ? "short" : "long")));
       assert.deepEqual(
         saved.account.consumedPtsSetups,
         saved.account.positions.map((p) => p.pts!.setup.id),
       );
-      const paperBefore = await exportPerpsAudit(x.db.pool, x.view.record.config);
       assert.equal(paperBefore.study.rounds[0]!.executionStatus, "complete");
       assert.deepEqual(paperBefore.study.rounds[0]!.calls, {});
       if (version === 8) {

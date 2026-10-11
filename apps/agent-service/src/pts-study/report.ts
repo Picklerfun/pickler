@@ -1,5 +1,5 @@
 import { jsonDocument } from "./serialization.js";
-import { PTS_POLICY, PTS_INTRADAY_POLICY } from "@pickler/trading/pts";
+import { ptsPolicy, ptsCandidateVersion } from "@pickler/trading/pts";
 import { publish, digest } from "./files.js";
 export const escapeHtml = (v: unknown) =>
   String(v ?? "")
@@ -81,13 +81,26 @@ export async function ptsReport(
   rows: Record<string, unknown>[],
 ) {
   const intraday =
-    report.policy === "pts-intraday@0.1.0" ||
+    (typeof report.candidate === "string" && report.candidate.startsWith("pts-intraday@")) ||
+    (typeof report.policy === "string" && report.policy.startsWith("pts-intraday@")) ||
     report.sourceStudyProtocol === "perps-pts-intraday-sma-v1" ||
     report.studyProtocol === "perps-pts-intraday-sma-v1" ||
     report.protocol === "perps-pts-intraday-sma-v1" ||
     !!(report.strategyVersions as Record<string, unknown> | undefined)?.["pts-intraday"];
-  const policy = intraday ? PTS_INTRADAY_POLICY : PTS_POLICY;
-  const heading = intraday ? "PTS intraday 0.1.0" : "PTS basic 0.2.0";
+  let candidate: string | undefined;
+  if (typeof report.candidate === "string") {
+    candidate = report.candidate;
+  } else if (typeof report.policy === "string") {
+    candidate = report.policy;
+  } else if (intraday) {
+    candidate = "pts-intraday@0.1.0";
+  }
+  const version = ptsCandidateVersion(candidate);
+  const policy = ptsPolicy(version);
+  const heading =
+    intraday || candidate?.startsWith("pts-intraday@")
+      ? "PTS intraday " + version
+      : "PTS basic 0.2.0";
   const preparation = intraday
     ? "Preparation or offline replay. The twenty-four-hour public comparison has not started."
     : "Preparation or offline replay. The fourteen-day public comparison has not started.";

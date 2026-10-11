@@ -10,6 +10,8 @@ import {
   PTS_ACCOUNT_POLICY,
   PTS_INTRADAY_ACCOUNT_POLICY,
   PTS_INTRADAY_VERSION,
+  PTS_INTRADAY_FAST_VERSION,
+  PTS_INTRADAY_FAST_ACCOUNT_POLICY,
   PTS_VERSION,
   type PtsSetup,
   type PtsManagement,
@@ -40,6 +42,9 @@ export function ptsAccountVersion(a: PerpsPaperAccount) {
   }
   if (a.positionPolicy === PTS_INTRADAY_ACCOUNT_POLICY) {
     return PTS_INTRADAY_VERSION;
+  }
+  if (a.positionPolicy === PTS_INTRADAY_FAST_ACCOUNT_POLICY) {
+    return PTS_INTRADAY_FAST_VERSION;
   }
   return null;
 }

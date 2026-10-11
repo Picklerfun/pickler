@@ -11,7 +11,7 @@ import {
   nextPeriod,
   PTS_CATALOG,
   PTS_VERSION,
-  PTS_INTRADAY_VERSION,
+  ptsNativeMinimum,
   ptsTemporalProfile,
   type PtsVersion,
   type PtsReplayInput,
@@ -29,7 +29,7 @@ export async function preparePtsHistory(
   },
 ) {
   const version = options.candidateVersion ?? PTS_VERSION;
-  const intraday = version === PTS_INTRADAY_VERSION;
+  const intraday = version !== PTS_VERSION;
   const profile = ptsTemporalProfile(version);
   const now = options.now ?? Date.now,
     capturedAt = now(),
@@ -93,14 +93,7 @@ export async function preparePtsHistory(
       for (const resolution of profile.native) {
         const start = intraday
           ? Math.floor(from / (resolution * 1000)) * resolution * 1000 -
-            Math.max(
-              60,
-              ({ 86400: 24, 14400: 104, 3600: 240, 900: 180, 300: 168 } as Record<number, number>)[
-                resolution
-              ]!,
-            ) *
-              resolution *
-              1000
+            Math.max(60, ptsNativeMinimum(version, resolution)) * resolution * 1000
           : resolution === 86400
             ? Math.min(
                 nextPeriod(periodStart(from, "1M"), "1M", -24),
@@ -198,7 +191,9 @@ export async function preparePtsHistory(
   }
   const history: PtsReplayInput = {
     format: "perps-pts-history-v1",
-    ...(intraday ? { candidate: "pts-intraday@0.1.0" as const } : {}),
+    ...(intraday
+      ? { candidate: profile.identity as NonNullable<PtsReplayInput["candidate"]> }
+      : {}),
     capturedAt,
     from,
     to,

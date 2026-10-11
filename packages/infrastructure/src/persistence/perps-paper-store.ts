@@ -1,5 +1,6 @@
 import {
   ptsAccountVersion,
+  PTS_VERSION,
   ptsConfigVersion,
   ptsVariant,
   ptsTemporalProfile,
@@ -865,7 +866,7 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
         scope.tenantId,
         scope.sessionId,
         scope.network,
-        `${ref.roundKey}:${ptsAccountVersion(locked.view.account) === "0.1.0" ? "pts-intraday" : "pts-basic"}:final-gate`,
+        `${ref.roundKey}:${ptsAccountVersion(locked.view.account) === PTS_VERSION ? "pts-basic" : "pts-intraday"}:final-gate`,
       ],
     );
     const decision = gate.rows[0]?.data as

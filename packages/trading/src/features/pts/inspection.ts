@@ -49,7 +49,7 @@ export function inspectPtsHistory(
         error.code === "PERPL_MARKET_IDENTITY" || matches.length > 1 ? [] : valid,
       );
     }
-    const days = native.get(86400)!;
+    const days = native.get(86400) ?? [];
     const coverage = ptsCoverage(
       {
         "1d": days,

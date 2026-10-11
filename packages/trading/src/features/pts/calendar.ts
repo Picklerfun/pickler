@@ -133,7 +133,7 @@ export function ptsSeries(
     }
     mapped.set(resolution, s ? closedSeries(s, now) : []);
   }
-  const days = mapped.get(86400)!;
+  const days = mapped.get(86400) ?? [];
   if (version !== PTS_VERSION) {
     return {
       "1d": days,
