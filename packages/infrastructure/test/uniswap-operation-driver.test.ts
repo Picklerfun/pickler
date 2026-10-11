@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  erc20Abi,
   decodeFunctionData,
   encodeFunctionResult,
   parseTransaction,
@@ -8,6 +9,7 @@ import {
   type Hex,
 } from "viem";
 import {
+  PicklerBondingCurveAbi,
   PicklerLaunchFactoryAbi,
   PicklerCurveDeployerV4V2Abi,
   PicklerGraduationAdapterV4V2Abi,
@@ -26,6 +28,7 @@ import {
   deploymentCode,
   metadataBucket,
 } from "./launch-policy-fixture.js";
+import { tokenAgentKey } from "../src/studio/token-launch-store.js";
 import type { TokenIntent } from "@pickler/core";
 const context = {
   ownerUserId: "owner",
@@ -52,6 +55,8 @@ function controlled() {
     nonce = "0x0",
     reservations = 0,
     reads = 0;
+  let simulationFails = false;
+  const simulations: unknown[] = [];
   const abis: Record<string, Abi> = {
     [p.factory.address]: PicklerLaunchFactoryAbi,
     [p.deployer.address]: PicklerCurveDeployerV4V2Abi,
@@ -148,12 +153,20 @@ function controlled() {
       }
       if (method === "eth_call") {
         const q = params[0] as { to: string; data: Hex };
-        const abi = abis[q.to]!;
+        if ((q as { from?: string }).from) {
+          simulations.push(q);
+          if (simulationFails) {
+            throw new Error("SLIPPAGE_EXCEEDED");
+          }
+          return "0x";
+        }
+        const target = q.to.toLowerCase();
+        const abi = abis[target]!;
         const decoded = decodeFunctionData({ abi, data: q.data });
         return encodeFunctionResult({
           abi,
           functionName: decoded.functionName,
-          result: bindings[q.to]![decoded.functionName],
+          result: bindings[target]![decoded.functionName],
         });
       }
       throw new Error("Unexpected controlled RPC: " + method);
@@ -182,6 +195,11 @@ function controlled() {
     p,
     driver,
     bindings,
+    abis,
+    simulations,
+    failSimulation: () => {
+      simulationFails = true;
+    },
     wrong: () => {
       wrong = true;
     },
@@ -413,5 +431,157 @@ test("V4 policy never admits missing quote evidence, a different LP fee, hooks o
     { chainId: 143 },
   ]) {
     assert.throws(() => importPolicy(JSON.stringify({ ...launchPolicy(), ...patch })));
+  }
+});
+
+function tradeFixture() {
+  const f = controlled();
+  const token = ("0x" + "d".repeat(40)) as Hex;
+  const curve = ("0x" + "e".repeat(40)) as Hex;
+  f.abis[token] = erc20Abi;
+  f.abis[f.p.preset.quoteAddress] = erc20Abi;
+  f.abis[curve] = PicklerBondingCurveAbi;
+  f.bindings[token] = { balanceOf: 10000n * 10n ** 18n, allowance: 0n };
+  f.bindings[f.p.preset.quoteAddress] = { balanceOf: 100000000n, allowance: 0n };
+  f.bindings[curve] = {
+    phase: 0,
+    quoteBuy: 2000n * 10n ** 18n,
+    quoteSell: 500000n,
+    remainingTokens: BigInt(f.p.preset.saleAllocation),
+  };
+  f.bindings[f.p.factory.address]!.getLaunch = {
+    token,
+    curve,
+    creator: context.masterAddress,
+    creatorFeeRecipient: context.masterAddress,
+    quoteToken: f.p.preset.quoteAddress,
+    agentKey: tokenAgentKey(10143, scope.agentId),
+    presetHash: f.p.preset.configHash,
+    creationBlock: 10n,
+  };
+  function intent(action: "buy" | "sell" | "approve_buy" | "approve_sell"): TokenIntent {
+    return {
+      id: "controlled",
+      key: "controlled",
+      version: 1,
+      draftVersion: 0,
+      nonce: "1",
+      draft: null,
+      status: "preparing",
+      authorization: null,
+      prepared: null,
+      activityId: null,
+      rawTransaction: null,
+      txHash: null,
+      blockHash: null,
+      error: null,
+      action,
+      asset: "ausd",
+      deadline: "9999999999",
+      trade: {
+        amount: action.endsWith("sell") ? (1000n * 10n ** 18n).toString() : "1000000",
+        slippageBps: 50,
+      },
+      context: {
+        ...context,
+        token: {
+          name: "Agent",
+          ticker: "AGENT",
+          chainId: 10143,
+          address: token,
+          imageUri: null,
+          avatar: { accent: "lime", pattern: 1 },
+        },
+      },
+    };
+  }
+  return { ...f, token, curve, intent };
+}
+test("exact approvals and swaps use only the registered curve, input asset and master recipient", async () => {
+  for (const action of ["approve_buy", "approve_sell", "buy", "sell"] as const) {
+    const f = tradeFixture();
+    const i = f.intent(action);
+    const buying = action.endsWith("buy");
+    const approval = action.startsWith("approve_");
+    const inputAsset = buying ? f.p.preset.quoteAddress : f.token;
+    if (!approval) {
+      f.bindings[inputAsset]!.allowance = BigInt(i.trade!.amount);
+    }
+    const p = await f.driver.prepare(scope, i);
+    const tx = parseTransaction(p.unsignedTransaction as Hex);
+    const decoded = decodeFunctionData({
+      abi: approval ? erc20Abi : PicklerBondingCurveAbi,
+      data: tx.data!,
+    });
+    assert.equal(tx.to?.toLowerCase(), approval ? inputAsset : f.curve);
+    assert.equal(
+      decoded.functionName,
+      approval ? "approve" : buying ? "buyExactInput" : "sellExactInput",
+    );
+    assert.deepEqual(
+      decoded.args!.map(String).map((v) => v.toLowerCase()),
+      approval
+        ? [f.curve, i.trade!.amount]
+        : [i.trade!.amount, p.quote!.minimumOutput, context.masterAddress, i.deadline],
+    );
+    assert.equal(p.quote!.feeBps, 100);
+    assert.equal(p.quote!.approval, approval);
+    assert.equal(p.quote!.balance, String(f.bindings[inputAsset]!.balanceOf));
+    await f.driver.preflight(p);
+    assert.equal(f.simulations.length, 1);
+    const raw = await launcherMaster.signTransaction(
+      tx as Parameters<typeof launcherMaster.signTransaction>[0],
+    );
+    assert.match(await f.driver.verify(p, raw), /^0x[0-9a-f]{64}$/);
+    f.failSimulation();
+    await assert.rejects(f.driver.preflight(p), /SLIPPAGE_EXCEEDED/);
+    assert.equal(p.quote!.minimumOutput, buying ? "1990000000000000000000" : "497500");
+  }
+});
+test("trades refuse missing allowance, funds, closed inventory and conflicting canonical identity", async () => {
+  for (const kind of [
+    "allowance",
+    "funds",
+    "closed",
+    "inventory",
+    "small",
+    "key",
+    "token",
+    "quote",
+    "preset",
+    "already-approved",
+  ]) {
+    const f = tradeFixture();
+    const asset = f.p.preset.quoteAddress;
+    f.bindings[asset]!.allowance = 1000000n;
+    const launch = f.bindings[f.p.factory.address]!.getLaunch as Record<string, unknown>;
+    let expected: string;
+    if (kind === "allowance") {
+      f.bindings[asset]!.allowance = 0n;
+      expected = "APPROVAL_REQUIRED";
+    } else if (kind === "funds") {
+      f.bindings[asset]!.balanceOf = 0n;
+      expected = "INSUFFICIENT_TOKEN_BALANCE";
+    } else if (kind === "closed") {
+      f.bindings[f.curve]!.phase = 1;
+      expected = "CURVE_CLOSED";
+    } else if (kind === "inventory") {
+      f.bindings[f.curve]!.remainingTokens = 1n;
+      expected = "EXCEEDS_CURVE_INVENTORY";
+    } else if (kind === "small") {
+      f.bindings[f.curve]!.quoteBuy = 0n;
+      expected = "TRADE_TOO_SMALL";
+    } else if (kind === "already-approved") {
+      expected = "APPROVAL_NOT_REQUIRED";
+    } else {
+      launch[
+        { key: "agentKey", token: "token", quote: "quoteToken", preset: "presetHash" }[kind]!
+      ] = "0x" + "8".repeat(kind === "key" || kind === "preset" ? 64 : 40);
+      expected = "TOKEN_VENUE_MISMATCH";
+    }
+    await assert.rejects(
+      f.driver.prepare(scope, f.intent(kind === "already-approved" ? "approve_buy" : "buy")),
+      new RegExp(expected),
+    );
   }
 });
