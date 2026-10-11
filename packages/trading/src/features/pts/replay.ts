@@ -5,8 +5,14 @@ import { ptsQuantityAtBlock } from "./account.js";
 import { PilotError } from "@pickler/core";
 import { inspectPtsHistory } from "./inspection.js";
 import { PTS_CATALOG, type PerpsPtsConfig } from "./policy.js";
-import { PTS_ACCOUNT_POLICY, PTS_VARIANTS, type PtsReplayInput } from "./types.js";
+import { PTS_VERSION, PTS_INTRADAY_VERSION, PTS_VARIANTS, type PtsReplayInput } from "./types.js";
 
+import {
+  ptsVariants,
+  ptsVariant,
+  ptsConfigVersion,
+  ptsTemporalProfile,
+} from "./temporal-profile.js";
 import { createProfileStudyRunner } from "../evaluation/profile-runner.js";
 import type {
   PerpsStudyView,
@@ -24,6 +30,7 @@ import type {
 export function assertPtsReplay(input: PtsReplayInput) {
   if (
     input.format !== "perps-pts-history-v1" ||
+    (input.candidate !== undefined && input.candidate !== "pts-intraday@0.1.0") ||
     !Number.isSafeInteger(input.from) ||
     !Number.isSafeInteger(input.to) ||
     input.to <= input.from ||
@@ -47,6 +54,9 @@ export function assertPtsReplay(input: PtsReplayInput) {
 }
 export function replayPtsSignals(input: PtsReplayInput, digest: (v: unknown) => string) {
   assertPtsReplay(input);
+  const version = input.candidate ? PTS_INTRADAY_VERSION : PTS_VERSION;
+  const profile = ptsTemporalProfile(version);
+  const entryMs = version === PTS_VERSION ? 3600000 : 300000;
   const rows: Record<string, unknown>[] = [];
   const analyses: Record<string, ReturnType<typeof inspectPtsHistory>> = {};
   const first = Math.floor(input.from / 300000) * 300000 + 60000;
@@ -58,9 +68,9 @@ export function replayPtsSignals(input: PtsReplayInput, digest: (v: unknown) => 
       if (at < input.from) {
         continue;
       }
-      if (Math.floor(at / 3600000) !== hour) {
-        hour = Math.floor(at / 3600000);
-        cached = inspectPtsHistory(history, at);
+      if (Math.floor(at / entryMs) !== hour) {
+        hour = Math.floor(at / entryMs);
+        cached = inspectPtsHistory(history, at, version);
         analysisHash = digest(cached);
         analyses[analysisHash] = cached;
       }
@@ -90,7 +100,7 @@ export function replayPtsSignals(input: PtsReplayInput, digest: (v: unknown) => 
   }
   return {
     protocol: "pts-signals-replay-v1",
-    policy: "pts-trend-reversal@0.2.0",
+    policy: profile.identity,
     sourceCommit: input.commit,
     from: input.from,
     to: input.to,
@@ -99,7 +109,9 @@ export function replayPtsSignals(input: PtsReplayInput, digest: (v: unknown) => 
     analyses,
     financialResult: "NOT_VERIFIABLE",
     interpretation:
-      "Recorded closed candles, versioned as-of projection. Each hourly analysis is referenced by hash; slot expiry is rechecked. Historical availability/revisions not reconstructed. No hypothetical portfolio or candle-only P&L.",
+      profile.version === "0.1.0"
+        ? "Recorded native closed candles, versioned as-of five-minute projection. Slot expiry is rechecked. Historical availability/revisions not reconstructed. No hypothetical portfolio or candle-only P&L."
+        : "Recorded closed candles, versioned as-of projection. Each hourly analysis is referenced by hash; slot expiry is rechecked. Historical availability/revisions not reconstructed. No hypothetical portfolio or candle-only P&L.",
   };
 }
 /** Offline ports only; execution, risk, accounting and ordering remain the actual shared runner. */
@@ -120,17 +132,28 @@ export async function replayPtsFinance(input: PtsReplayInput, digest: (v: unknow
     );
   }
   let now = input.financial[0]!.at;
+  const version = input.candidate ? PTS_INTRADAY_VERSION : PTS_VERSION;
+  const profile = ptsTemporalProfile(version);
   const config: PerpsPtsConfig = {
-    version: 8,
-    protocol: "perps-pts-sma-v1",
+    ...(input.candidate
+      ? {
+          version: 9 as const,
+          protocol: "perps-pts-intraday-sma-v1" as const,
+          hours: 24 as const,
+          candidate: "pts-intraday@0.1.0" as const,
+        }
+      : {
+          version: 8 as const,
+          protocol: "perps-pts-sma-v1" as const,
+          hours: 336 as const,
+          candidate: "pts-trend-reversal@0.2.0" as const,
+        }),
     tenantId: "offline",
     sessionId: "pts-replay",
     network: input.markets[0]!.market.provenance.network,
-    hours: 336,
     budgetUsd: "5",
     markets: PTS_CATALOG.map((m) => ({ ...m })),
     acquisitionPolicy: "stream-universe-component-paper-20s-v1",
-    candidate: "pts-trend-reversal@0.2.0",
     history: { file: "history.json", sha256: digest(input) },
     preparedFor: "local-paper-only",
   };
@@ -138,12 +161,12 @@ export async function replayPtsFinance(input: PtsReplayInput, digest: (v: unknow
     record: {
       config,
       metadata: { source: "supplied-original-financial-frames", sourceHash: digest(input) },
-      agentIds: { "sma-reference": "sma-reference", "pts-basic": "pts-basic" },
-      agentVersions: { "sma-reference": 1, "pts-basic": 1 },
+      agentIds: Object.fromEntries(ptsVariants(config).map((v) => [v, v])),
+      agentVersions: Object.fromEntries(ptsVariants(config).map((v) => [v, 1])),
       createdAt: now,
       startedAt: now,
-      endsAt: now + 336 * 3600000,
-      graceUntil: now + 336 * 3600000 + 900000,
+      endsAt: now + config.hours * 3600000,
+      graceUntil: now + config.hours * 3600000 + 900000,
       status: "running",
       decisionStopReason: null,
       stopRequested: false,
@@ -154,12 +177,12 @@ export async function replayPtsFinance(input: PtsReplayInput, digest: (v: unknow
     events: [],
   };
   const accounts: Record<string, PerpsPaperView> = {};
-  for (const variant of PTS_VARIANTS) {
+  for (const variant of ptsVariants(config)) {
     const account = initialPaperAccount({ ...config, agentId: variant }, 1, now);
     account.marketDataPolicy = config.acquisitionPolicy;
     account.riskManagement = "buffered-selective-1x-v1";
-    if (variant === "pts-basic") {
-      account.positionPolicy = PTS_ACCOUNT_POLICY;
+    if (variant === ptsVariant(config)) {
+      account.positionPolicy = profile.accountPolicy;
       account.consumedPtsSetups = [];
     } else {
       account.entryPolicy = "unrestricted-hourly-v1";
@@ -188,7 +211,7 @@ export async function replayPtsFinance(input: PtsReplayInput, digest: (v: unknow
     claimSlot: async (_s, _l, slot) => {
       if (
         slot < 0 ||
-        slot >= 4032 ||
+        slot >= config.hours * 12 ||
         slot <= (view.record.lastAttemptedSlot ?? -1) ||
         now >= view.record.endsAt! ||
         now - view.record.startedAt! - slot * 300000 > 30000
@@ -344,7 +367,9 @@ export async function replayPtsFinance(input: PtsReplayInput, digest: (v: unknow
   };
 }
 export function ptsFinancialAudit(accounts: Record<string, PerpsPaperView | undefined>) {
-  return PTS_VARIANTS.map((variant) => {
+  return (
+    accounts["pts-intraday"] ? (["sma-reference", "pts-intraday"] as const) : PTS_VARIANTS
+  ).map((variant) => {
     const view = accounts[variant];
     if (!view) {
       return { variant, status: "NOT_VERIFIABLE" };
@@ -406,11 +431,11 @@ export function auditPtsStudy(
   digest: (v: unknown) => string,
 ) {
   if (
-    study?.record?.config?.version !== 8 ||
+    (study?.record?.config?.version !== 8 && study?.record?.config?.version !== 9) ||
     !Array.isArray(study.rounds) ||
     !Array.isArray(study.events)
   ) {
-    throw new PilotError("INVALID_INPUT", "PTS v8 audit required");
+    throw new PilotError("INVALID_INPUT", "A versioned local PTS audit is required");
   }
   const config = study.record.config,
     rows: Record<string, unknown>[] = [];
@@ -447,7 +472,7 @@ export function auditPtsStudy(
   }
   const financial = ptsFinancialAudit(accounts);
   if (study.record.startedAt !== null) {
-    for (let slot = 0; slot < 4032; slot++) {
+    for (let slot = 0; slot < config.hours * 12; slot++) {
       const round = rounds.get(slot),
         evidence = round?.evidence,
         final = finals.get(slot);
@@ -463,18 +488,18 @@ export function auditPtsStudy(
         );
       const reproduced: Record<string, import("../perps-strategies/types.js").PerpsProposal[]> = {};
       if (evidence && originalAccounts) {
-        for (const variant of PTS_VARIANTS) {
+        for (const variant of ptsVariants(config)) {
           const account = originalAccounts[variant];
           if (account) {
             reproduced[variant] =
-              variant === "pts-basic"
+              variant === ptsVariant(config)
                 ? ptsProposals({ evidence, account }, config, block)
                 : profileProposals({ evidence, account }, config, "sma-reference", block);
           }
         }
       }
       for (const m of config.markets) {
-        for (const variant of PTS_VARIANTS) {
+        for (const variant of ptsVariants(config)) {
           const original = round?.proposals[variant]?.find((p) => p.symbol === m.symbol);
           const recalculated = reproduced[variant]?.find((p) => p.symbol === m.symbol);
           const gate = gates.get(round?.key + ":" + variant + ":final-gate");
