@@ -311,6 +311,7 @@ PTS account policy alone permits native explicit-quantity partials. Keep initial
 remaining amounts, block-ordered reductions, consumed setup/targets and non-widening stop state.
 Same-block funding uses the quantity before reduction; later blocks use the reduced quantity,
 including reconciliation after final close. Historic full closes and SMA/Studio rules are unchanged.
+The pure ptsFinancialAudit reads confirmed ledger postings and quantity/funding invariants for replay and audit.
 No candle-only financial return or hypothetical evolving portfolio belongs in signal replay.
 Keep decisions and revisions bounded by information time and the original missing-evidence labels.
 See [the local guide](../../apps/agent-service/PTS-BASIC-PAPER.md).
