@@ -16,6 +16,8 @@ import {
 } from "@pickler/trading/pts";
 import { digest, bytesHash, commit, readJson, newDirectory } from "./files.js";
 import { ptsReport } from "./report.js";
+import { readPtsExportManifest } from "./parts.js";
+import { ptsPartReport } from "./part-report.js";
 export interface PtsCommandInput {
   command: string;
   configPath?: string | undefined;
@@ -59,30 +61,60 @@ export async function runPtsCommand(input: PtsCommandInput) {
         result.rows,
       );
     } else {
-      const payload = packet.payload as Parameters<typeof auditPtsStudy> extends [
-        infer S,
-        ...unknown[],
-      ]
-        ? { study: S; accounts: Parameters<typeof auditPtsStudy>[1] }
-        : never;
-      if (
-        packet.protocol !== "perps-decision-audit-export-v1" ||
-        packet.payloadHash !== digest(payload)
-      ) {
-        throw new PilotError("AUDIT_HASH_MISMATCH", "Consistent study export hash differs");
+      if (packet.protocol === "perps-decision-audit-export-v2") {
+        const manifest = await readPtsExportManifest(input.state);
+        const { report, rows, record } = await ptsPartReport(
+          dirname(resolve(input.state)),
+          manifest,
+        );
+        await ptsReport(
+          output,
+          {
+            ...report,
+            analyzerCommit: commit(),
+            sourceExport: resolve(input.state),
+            processState:
+              record.status === "interrupted"
+                ? "interrupted"
+                : record.status === "completed"
+                  ? "finished"
+                  : "process-unverified",
+          },
+          rows,
+        );
+      } else {
+        const payload = packet.payload as Parameters<typeof auditPtsStudy> extends [
+          infer S,
+          ...unknown[],
+        ]
+          ? { study: S; accounts: Parameters<typeof auditPtsStudy>[1] }
+          : never;
+        if (
+          packet.protocol !== "perps-decision-audit-export-v1" ||
+          packet.payloadHash !== digest(payload)
+        ) {
+          throw new PilotError("AUDIT_HASH_MISMATCH", "Consistent study export hash differs");
+        }
+        const report = auditPtsStudy(payload.study, payload.accounts, digest);
+        await ptsReport(
+          output,
+          {
+            ...report,
+            rows: undefined,
+            analyzerCommit: commit(),
+            exporterCommit: packet.exportCommit ?? "NOT_VERIFIABLE",
+            accounts: payload.accounts,
+            sourceStudyProtocol: payload.study.record.config.protocol,
+            processState:
+              payload.study.record.status === "interrupted"
+                ? "interrupted"
+                : payload.study.record.status === "completed"
+                  ? "finished"
+                  : "process-unverified",
+          },
+          report.rows,
+        );
       }
-      const report = auditPtsStudy(payload.study, payload.accounts, digest);
-      await ptsReport(
-        output,
-        {
-          ...report,
-          rows: undefined,
-          analyzerCommit: commit(),
-          exporterCommit: packet.exportCommit ?? "NOT_VERIFIABLE",
-          accounts: payload.accounts,
-        },
-        report.rows,
-      );
     }
     console.log(JSON.stringify({ status: "offline-complete", output, modelCalls: 0 }));
     return;
