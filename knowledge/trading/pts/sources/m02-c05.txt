@@ -1,0 +1,59 @@
+Vamos a iniciar trabajando con la expansión de Fibonacci. Vamos a explicar qué es la expansión
+Fibonacci y para qué se utiliza. De plano digo, se utiliza en realidad en pocas ocasiones,
+la mayor parte del tiempo en lo que es la herramienta de Fibonacci se utiliza el retroceso
+simple. La expansión para lo que funciona es para determinar targets de activos financieros
+que están teniendo usualmente un movimiento muy explosivo a la alza. No todo el tiempo pasa eso
+evidentemente, pero en ocasiones hay activos financieros que rompen máximos, perforan máximos
+y se van hacia muchos niveles a la alza. La expansión de Fibonacci es una herramienta
+adicional que en este caso, a diferencia del retroceso, utiliza tres puntos. Los tres puntos
+que utilizas son, por ejemplo, del retroceso normal, el primer clic o el primer punto se usa en la base
+del movimiento, el segundo punto se usa en el máximo anterior, muy similar al retroceso Fibonacci
+convencional y el tercero en la zona, que usualmente es la zona de reversión, en la que el mercado
+dejó de corregir y a partir de allí se dispara. Lo que sirve o la principal función de la expansión
+de Fibonacci es que, por ejemplo, si se rebasan niveles como el 1.27 o el 1.61 hacia donde podemos
+llegar incluso a niveles más altos. Normalmente, las casillas de Fibonacci que marcamos después del
+1.61, que ya de por sí es un nivel muy importante, sería el 2.61, este es especialmente el más
+importante de ellos, el 2.61 y, adicionalmente, el 3.6 y el 4.6 como niveles máximos. En este
+caso, por ejemplo, si nos vamos a dibujar el esquema, vamos a suponer que tenemos un movimiento,
+tenemos un movimiento en un activo que tiene un comportamiento muy explosivo, tiene un comportamiento
+muy elcista, entonces, queremos trazar a qué targets puede llegar esto, ¿ok?, a qué targets
+podemos llegar, digamos, que un activo financiero nos rebotó en la zona de reversión y queremos
+proyectar hacia dónde va. Entonces, nos venimos aquí a esta casilla donde dice Fibonacci y le
+damos extensión de Fibonacci y hacemos clic. En la parte 1, en la parte 2, o sea, la parte 1 es la
+base, 2 es el pico más alto y 3 es la zona en la que rebotó y le damos clic. Eso nos va a aparecer
+entonces los diversos targets que pueden ser desde el 1.27, 1.61 y ya a partir de allí,
+los tres niveles más importantes serían 2.61, 3.61 y 4.61. Siendo 2.61, usualmente,
+el principal, usualmente, la mayoría activos llegan hasta aquí y ya a partir de aquí tienen
+correcciones y cosas y ya a partir de allí podemos hacer otras cosas, pero, usualmente,
+el 2.61 es uno de los niveles más representativos o más potentes para esto. Para ello, vamos a
+utilizar, entonces, extracción. Vamos a ver, de ejemplo, extracción. Extracción se llama
+Shake Shack, sus siglas o su ticker es SHAK y ven que interesante. Bueno, recientemente tuvo una
+corrección importante desde los mínimos en octubre del 23 a sus máximos en enero del 2025.
+Tuvo un retroceso perfecto a la zona de reversión, eso por ahí del nivel de 75, 73. Queremos
+proyectar a partir de aquí hasta donde podría llegar a largo plazo a subir esta acción.
+Entonces, simplemente para sacar el ejercicio es sencillo, nos vamos a extensión de Fibonacci,
+hacemos clic en la parte inferior de este primer impulso, clic en la parte superior donde llegó al
+máximo más reciente y aquí hacia su corrección, ven. Aquí nos vamos hacia su corrección y aquí
+tenemos los diversos niveles. Tenemos niveles como el 0.78, como el 1.27, como el 1.61, como el
+2.61, que generalmente es el más importante, como el 3.61 y como el 4.61, que usualmente los
+mercados, bueno, cuando si llegan a ese nivel ya usualmente sería una absoluta barbaridad. Piensen
+ustedes que sería más de un 300 por ciento llegar a un target así, no, sería obviamente un
+porcentaje gigantesco. Eso lo podemos ver, por ejemplo, acciones como Palantir, ven. Estas son
+las típicas acciones donde se han disparado, se han generado locuras de este tipo, ven. Como,
+por ejemplo, se podía proyectar esto con la extensión de Fibonacci e incluso en este caso
+está lo arrebasado del mínimo al máximo al mínimo. Ven interesante, hacemos clic aquí, ahí está.
+Ven, lo vamos a ponerlo de este mínimo a este máximo a este mínimo, o sea, un caso maravilloso
+de un escenario ultralcista donde aquí en el mínimo es el primer clic, segundo clic,
+tercer clic y ven aquí los targets proyectados. Vean que alcanzó el 1.61 que después fue soporte,
+alcanzó el 2.61 y vean cómo llegó a trabajar incluso. Bueno, casi la zona del 3.61, casi, casi,
+casi no sería nada sorprendente, nada raro que Palantir vaya a visitar este nivel del 3.61 y
+eventualmente incluso la zona del 4.61, ven. O sea, se utiliza para proyectar ya movimientos de
+algunos tipos de activos que son casi que muy exagerados porque han tenido tal vez movimientos
+alcistas muy, muy importantes. Digamos que MacroStraggie es uno de esos tipos de acciones. Sí,
+MacroStraggie, por ejemplo, rompe estos máximos, se podría utilizar la herramienta de extensión
+de Fibonacci para trabajarlo e incluso de estos mínimos, ven, de estos mínimos del 2020,
+el techo del 2022 y los mínimos del 2023, vean cómo MacroStraggie sí ha llegado a incluso
+la zona del 4.61 o estado sumamente cerca. Entonces, la extensión de Fibonacci no es
+una herramienta que se utiliza mucho, no es algo que lo tenemos diariamente en la operativa,
+pero en casos de mercados muy, muy, muy alcistas que se van con demasiada fuerza,
+nos permite sacar targets adicionales.
