@@ -9,3 +9,4 @@ export * from "./features/pts/policy.js";
 export * from "./features/pts/proposals.js";
 
 export * from "./features/pts/replay.js";
+export * from "./features/pts/inspection.js";
