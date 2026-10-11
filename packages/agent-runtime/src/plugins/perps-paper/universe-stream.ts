@@ -12,7 +12,7 @@ import {
   pausePerplRead,
   type PerplSocket,
   type PerplStreamEvent,
-} from "@pickler/infrastructure";
+} from "@pickler/infrastructure/perpl-public";
 import {
   acquireUniverseStream,
   validateUniverseStream,
