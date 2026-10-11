@@ -1,4 +1,4 @@
-import { readAgentToken } from "../studio/token-read.js";
+import { readAgentToken, readConfirmedAgentTokens } from "../studio/token-read.js";
 import type { Pool } from "pg";
 import { advicePrice } from "@pickler/core";
 import type {
@@ -277,6 +277,11 @@ export class PostgresAgentDirectory implements AgentDirectory {
   /** Every live agent; none publishes a read service yet, because paid reads have no persistence (spec §7). */
   async listDirectory(): Promise<DirectoryAgent[]> {
     const rows = await this.listRows();
+    const tokens = await readConfirmedAgentTokens(
+      this.pool,
+      rows.map((row) => row.id),
+      this.tokenChainId,
+    );
     return rows.map((row) => {
       const s = summary(row);
       return {
@@ -288,6 +293,7 @@ export class PostgresAgentDirectory implements AgentDirectory {
           ticker: s.ticker,
           accent: s.accent,
         },
+        launchedToken: tokens.get(row.id) ?? null,
         beat: s.beat,
         venue: s.venue,
         decides: row.decides ?? "",
