@@ -116,6 +116,7 @@ export const agentSummarySchema = z.object({
     .nullable(),
 }) satisfies z.ZodType<AgentSummaryDto>;
 export const directoryAgentSchema = z.object({
+  launchedToken: agentTokenSchema.nullable().optional(),
   agent: activityAgentSchema.extend({ id: z.string().uuid(), advicePrice: advicePriceSchema }),
   beat: text,
   venue,
