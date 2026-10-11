@@ -694,3 +694,13 @@ ranges and replay without duplicate canonical rows. No runtime budget increases 
 Hosted R2 reads/migrations and direct testnet buy/sell have separate evidence in
 [the readiness record](../../docs/market/token-launch-readiness-20261010.md); hosted master-passkey
 launch and sustained indexer throughput are still pending.
+
+## Hosted indexer batch persistence
+
+`PostgresLaunchIndexStore.applyBatch` inserts the bounded range's block headers with one
+PostgreSQL statement inside the existing fenced transaction. It preserves first-occurrence
+evidence, replay/upsert, finality and reorg restoration semantics. Events, outbox and cursor
+still commit atomically; no RPC work runs inside that transaction. Never replace complete
+ancestry validation with sparse sampling or advance a cursor to avoid backfill. The hosted
+capacity measurement and explicit closed launcher gate are recorded in
+[the dated readiness guide](../../docs/market/token-indexer-hosted-20261011.md).
