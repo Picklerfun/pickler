@@ -146,6 +146,33 @@ the separate main workflow. Product activation still requires approved economics
 restricted allowlist and verified indexer capacity. The test factory was explicitly disabled after
 its faucet-funded contract acceptance.
 
+## Preparation feedback and recovery
+
+Studio shows **Preparing launch…** with a spinner and disables repeat clicks while the request is
+in progress. The form remains mounted. Stored failures display one reviewed reason for RPC
+availability/admission, gas ceilings, simulation refusal or immutable metadata storage; unknown
+provider errors stay generic. Provider prose, signed bytes and private payloads are never rendered.
+
+A known unsent preparation failure returns one durable `failed` operation and a null activity.
+It does not sign, submit or widen gas/RPC budgets. Core admission/context/version errors still
+reject. A lost response triggers only a database state read; an uncertain attempt retains its
+idempotency key. **Refresh status** is explicit and does not sign or send. No automatic retry or
+replacement launch is introduced.
+
+Controlled checks cover delayed responses, one error announcement, preserved form DOM, legacy
+HTTP failure recovery and reuse of the same request key after a lost response. Run:
+
+```sh
+node --import tsx scripts/design/studio-loading.mjs
+node --import tsx scripts/design/token-preview.mjs http://localhost:3005
+```
+
+The hosted failed attempt inspected on 2026-10-11 had `PREPARATION_FAILED`, no prepared transaction,
+no master-wallet activity and no transaction hash. Its original provider cause was not retained;
+these controlled regressions do not establish that a real hosted launch succeeds. A historical
+simulation was blocked by automatic approval review because it would send the stored signed grant
+to the RPC provider; it was not executed.
+
 ## Owner curve trading (controlled acceptance)
 
 The Token route now includes owner-only `buy`, `sell`, `approve_buy` and `approve_sell` through the
