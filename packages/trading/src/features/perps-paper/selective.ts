@@ -69,6 +69,16 @@ export function selectiveReduction(
         side: position.side,
         notional: "0",
         feeReserve: "0",
+        ...(account.positionPolicy
+          ? {
+              pts: {
+                version: "0.2.0" as const,
+                quantity: position.quantity,
+                targets: [],
+                reason: "SELECTIVE_EXPOSURE",
+              },
+            }
+          : {}),
       };
       const attempt: PerpsPaperAttempt = {
         key: `projection:${position.id}`,
