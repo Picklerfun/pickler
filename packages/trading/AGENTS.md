@@ -327,3 +327,9 @@ expiry, six-hour holding and UTC day-end close; default PTS functions retain bas
 `@pickler/trading/testing/pts-intraday` exposes controlled native fixtures only. Setup, position and
 intent versions must match immutable account policy; no relabeling or user-supplied role overrides.
 Offline intraday replay evaluates each closed 5m window and never computes candle-only profit.
+
+canonicalAuditChunks yields exactly the historical canonicalAudit bytes without joining a whole
+snapshot; hashing/files remain host responsibilities. auditPtsDecisionRows reuses the PTS policy
+for an explicit original slot subset. auditPtsStudy preserves its original full-window rows and
+financial audit; evidence hashes are computed once per original initial/final object. No action,
+reason, signal, financial policy or historical hash interpretation changes with segmented export.
