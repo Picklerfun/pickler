@@ -1,6 +1,7 @@
 import {
   decodeFunctionResult,
   encodeFunctionData,
+  getAddress,
   keccak256,
   parseTransaction,
   serializeTransaction,
@@ -593,7 +594,8 @@ export function createTokenOperationDriver(deps: {
         ...(quote ? { quote } : {}),
         activity: deps.activities.signTransaction({
           subOrganizationId: organizationId,
-          signWith: from,
+          // Turnkey resolves Ethereum signing resources by their exact checksum address.
+          signWith: getAddress(from as Hex),
           unsignedTransaction,
         }),
       };
