@@ -1,3 +1,4 @@
+import type { PublicTokenTradePreparedDto } from "@pickler/api-schema";
 import type { ConnectResult } from "./connect";
 
 /**
@@ -74,9 +75,16 @@ export interface SignerAdapter {
     token: string,
     joining: string,
   ) => Promise<{ address: string; session: ConnectResult } | null>;
+  sendTokenTransaction?: (
+    prepared: PublicTokenTradePreparedDto,
+    wallet: string,
+    token: string,
+  ) => Promise<string>;
   disconnect: () => Promise<void>;
   /** Follow changes made outside the page. Only an injected wallet has them. */
   subscribe?: (onChange: (account: SignerAccount | null) => void) => () => void;
   /** Only where the signer can be pointed at the wrong chain. */
   switchChain?: () => Promise<SignerAccount | null>;
 }
+
+export type PublicTokenTransaction = PublicTokenTradePreparedDto["transaction"];
