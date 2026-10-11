@@ -215,3 +215,151 @@ See the canonical selection/version, preservation and controlled acceptance boun
 runtime activation is implied.
 
 See [agent-selected Perpl markets](../../docs/studio-perpl-markets.md).
+
+## Private trading baseline
+
+Read [TRADING-BASELINE.md](TRADING-BASELINE.md) for `evaluate baseline-export`, `baseline-verify`
+and `baseline-restore-check`. Their dispatch precedes provider composition. Export consumes an
+explicit inventory and loopback database configuration only; verify is offline; recovery uses
+fresh directories and a separate PostgreSQL cluster. Never overwrite originals, omit changing
+files silently, resume restored sessions, reset budgets or register the disabled PTS candidate.
+Private artifacts stay outside Git. Source PTS bytes and prior strategy versions remain unchanged.
+
+## Original SMA rules-only study
+
+Read [SMA-ORIGINAL.md](SMA-ORIGINAL.md). Configuration v3 `perps-original-sma-v1` loads only loopback PostgreSQL and public Perpl data. Preserve hourly rules 1.0.0 and four-hour operator risk; no model clients, keys, reserves, fake arms or resume. The process writes reports each cycle; no automation is created.
+
+## Local SMA review comparison
+
+Read SMA-JEV-EXA.md for local v4 perps-sma-jev-exa-v1. One-shot synthetic validate uses an exclusive marker and run requires matching passed checks. Only PostgreSQL, public Perpl and explicitly authorized Jev/Exa are composed. Report/status call no providers. No automation, resume or real trading.
+
+## Explicit SMA continuation
+
+SMA v4 resume requires --allow-paid and a local operator-resume.json. It retains original checks, metadata, calls and portfolios and schedules only untouched slots with a new recorded clock segment. No automatic paid retry.
+
+## Local universe comparison
+
+Read [SMA-ALL-MARKETS.md](SMA-ALL-MARKETS.md) for configuration v5 and the one-shot eleven-market SMA/Jev/Exa comparison. `universe-data.ts` composes public data; `universe-report.ts` renders 264 identities offline. Synthetic contracts use their own record, renew ownership and exclude live news from controlled facts. USD 2.50 new retained reserves include checks, within the same USD 5 historical campaign. No resume, automation, merge or deployment.
+
+## SMA profiles and selective exposure
+
+Read [SMA-PROFILES-RISK.md](SMA-PROFILES-RISK.md). Configuration v6 exposes the four
+profile/risk variants through the unified evaluator. `profiles-host.ts` parses only local
+DATABASE_URL; `profiles-data.ts` composes the runtime public reader, and `profiles-report.ts`
+renders 3,168 decision identities. No model/news/signing clients, paid validation, restart,
+resume, automation, or deployment. The runner regenerates reports after observations and at
+completion. Freeze commit, catalog, and configuration before the single six-hour run.
+`profiles-resources.ts` attempts every cleanup and preserves the primary failure. Reports retain
+the study commit separately from the report commit and export all execution/observation events,
+including exits after admission slot 71. Read-only reporting never infers process liveness from
+a persisted running state.
+Risk summaries count the full confirmed mandatory-exit batch when an exposure breach initiated
+it; they do not count only the first close whose pre-exit snapshot still exceeds the limit.
+Individual exit conditions can coincide with that batch and are not independent causes.
+Report hashes are memoized per immutable evidence object within one rendering; every decision
+retains the same canonical digest without hashing a full snapshot again for each market/variant.
+`audit-export` accepts the registered perpetual protocols; the historical model-decision
+`audit` analyzer explicitly rejects unsupported profile protocols rather than fabricating arms.
+
+## SMA reentry/latency comparison
+
+[PERPS-SMA-REENTRY.md](PERPS-SMA-REENTRY.md) documents configuration v7 and the public-only two-portfolio protocol. `evaluate timing-check --state EXPORT --output NEW_DIRECTORY` runs offline before environment/provider composition and rejects environment/paid flags. `stability` performs one independent 30-minute eleven-market capture; `run` requires its passing proof matching commit/configuration, or the explicit pinned adoption for the separately authorized component paper policy below. `reentry-host.ts` composes only local PostgreSQL and public Perpl, emits compact per-observation status and coalesces full reports through `reentry-report-worker.mjs`. All file publication is atomic. Do not call models, restart, repeat qualification, extend deadlines, create monitors, merge or deploy automatically. Old monitors remain paused. New model calls/tokens/reservations are zero; historical budgets and records are unchanged. Tests include PostgreSQL atomic key consumption, common final evidence, mandatory price-exit priority and historical v6 parity.
+
+The unified evaluation npm entry includes Node’s option separator before the script. Preserve it
+so laboratory `--env-file` is handled by the application rather than preloaded by Node. V7 requires
+a dedicated database-only file; offline timing and audit never load an environment.
+
+V7 reports include `reentry-economics.json`/`.csv`, matching blocked keys to actual reference
+positions and ledger postings. Pending funding and incomplete inputs remain unverifiable. Read
+[the 2026-10-08 acceptance record](PERPS-SMA-REENTRY-ACCEPTANCE-20261008.md) before further public
+work: the single qualification failed, so no six-hour comparison was started or authorized to
+repeat automatically. Its artifacts and frozen qualification commit must remain intact.
+
+Read [Perpl reader evidence](PERPL-READER-EVIDENCE.md) for the explicitly selected v7 acquisition
+correction. `reader-audit` is offline and emits only allowlisted recorded facts in a new directory;
+`reader-check` makes three public diagnostic captures with an independent local lease, never
+qualification, trading or models. Its protocol cannot pass the six-hour run's qualification gate.
+Preserve the failed acceptance and default v1 reader. The v2 selector, genuinely fresh bulk reads,
+cache/network diagnostics and policy persistence are covered by controlled regressions. No
+automatic acceptance repeat or strategy change is authorized by the correction.
+
+## Local universe WebSocket qualification
+
+Read [PERPL-UNIVERSE-WEBSOCKET.md](PERPL-UNIVERSE-WEBSOCKET.md) before public work with the
+explicit v7 `stream-universe-20s-v1` selector. Stability v3 uses one continuous public reader,
+independent diagnostic ownership, 30 slots, and 330 market rows. `stream-capture.ts` retains
+at most a 32 MiB contiguous validated prefix with hashes and explicit truncation. Offline
+reader-audit v3 verifies hashes and replays retained messages through pure reconstruction,
+without environment, credentials or connections. Partial evidence cannot upgrade joint validity.
+No economic run, paid call, restart, repeat, automation, merge or deployment is implicit.
+Read [the one-shot result](PERPL-UNIVERSE-WEBSOCKET-ACCEPTANCE-20261008.md): it failed after two
+valid cycles. Preserve the original generic summary and specific stream error. Post-check safe
+limit counters and cancellation fixes have controlled validation only; missing historical limit
+dimensions remain unverifiable and never authorize another public check.
+
+The operator explicitly authorized further WSS repair and verification on 2026-10-08. Keep each
+diagnostic and qualification in a new directory; preserve previous failed captures. `reader-check`
+also accepts the explicit universe stream for three diagnostic reads and cannot pass economic
+qualification. Stream v2 records processing/guard/queue counters and bounded snapshot requests.
+Only a complete passing thirty-minute stability record establishes capture acceptance. This repair
+authorization enables no trading, models, automation, merge, deployment, or economic comparison.
+
+The universe stream v3 reconstructs messages synchronously and requires fresh guards
+for buffer delivery. Its public repair qualification must preserve any failed earlier check.
+Offline reader audit supports v2/v3 adapter captures and three-read stream diagnostics without
+converting them to acceptance. No repeated subscription is considered evidence of fresh data.
+Read [the v3 repair result](PERPL-UNIVERSE-WEBSOCKET-REPAIR-20261009.md): thirty slots completed
+without transport or ownership errors, but only 17/30 joint captures were valid. Preserve that
+failed availability gate and do not infer economic readiness from technical continuity.
+
+Read [the component-policy record](PERPL-UNIVERSE-COMPONENT-POLICY-20261009.md) for the separately
+authorized 2026-10-09 capture experiment `stream-universe-component-20s-v2`. Stability/audit v4
+records its independent native freshness rule, heartbeat continuity, strict-rule counts and
+`financialExecutable: false`. Financial host commands reject it before environment loading;
+account initialization rejects it before writes. Preserve old captures and their failed gates.
+Offline candidates never count as prospective acceptance or upgrade historical outcomes.
+
+The component-policy public measurement at frozen commit `46bcca8c36d91edd0508ff05e3f6b6aedab304df`
+passed 30/30 joint cycles and 330/330 market observations; the unchanged strict rule accepts
+11/30 of the same snapshots. Independent offline/PostgreSQL proof confirmed hashes, closure,
+release and zero diagnostic accounts/decision rounds. This is capture acceptance only.
+That capture alone does not authorize financial execution or upgrade the old 17/30 failure.
+Read the component-policy record for immutable artifact paths and limitations.
+
+The operator separately authorized `stream-universe-component-paper-20s-v1` and one six-hour
+v7 economic experiment on 2026-10-09. Read [the paper policy](PERPL-COMPONENT-PAPER.md).
+It requires immutable account policy, native freshness and copied heartbeat proof through financial
+validation and transactional admission. `component-qualification.ts` explicitly adopts a pinned,
+complete capture with offline replay and unchanged transport source; it never invents historical
+fills. New paper preflight is offline; financial-selector stability is rejected. Preserve capture
+artifacts, strategies, historical reservations, one-shot deadlines and zero models/signers.
+
+Component paper failures publish `financial-frame-validation-failed` with allowlisted reason,
+frame hash and distinct receipt/database clocks; runtime status retains the same safe details.
+The first execution stopped after four slots and remains interrupted with open positions.
+The clock regression is proven in controlled tests; its exact historical triggering values were
+not recorded. Preserve that distinction and the first run's evidence when continuing authorized
+repair work. Never silently resume a started session or overwrite its history.
+
+Component-paper controlled PostgreSQL tests include captured-frame atomic rollback, racing
+closes, idempotency, hash/owner rejection and paired thirty-sample query-delay benchmarks.
+Simulated clock delays are reported separately from monotonic measured durations. An interrupted
+comparison with a partial account fill remains incomplete; never present it as a common round.
+
+The third component-paper session at `b1bb7fb0226ba0f33b072f03f23e253684ceab42` remains
+interrupted before its six-hour end with 68 complete slots. Recorded BTC ticker age advanced from
+29,694ms at copy to 30,189ms at validation while sequential account valuation was in progress.
+The corrected component-only runner uses a common transaction and records confirmed expiry
+rollback separately from partial/uncertain writes. Preserve this session, its pending positions
+and failure export. The controlled regression reproduces the dates with synthetic frame bodies;
+it never claims to recover the rejected historical bytes or completes the interrupted trial.
+
+A component-paper database timeout remains a fatal persistence interruption, with the specific
+`PERSISTENCE_QUERY_TIMEOUT` code on corrected executions; a recognized connection deadline is
+`PERSISTENCE_CONNECTION_TIMEOUT`. Never reinterpret an interrupted
+historical generic code or pending positions as completed/closed. Keep database-load attribution
+bounded by recorded evidence; a coincident checkpoint alone cannot identify every causal workload.
+An explicitly authorized zero-model continuation may use a separate local physical server only
+after restoring and verifying the complete existing campaign history, reservations and table
+hashes. Keep the original server and failed sessions intact; never use duplicate copies as fresh
+monetary budget authority. Controlled database tests must finish before freezing that runner.
