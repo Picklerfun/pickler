@@ -107,3 +107,21 @@ test("neutral direction and missing mandatory history reject PTS for every froze
     }
   }
 });
+
+test("original zero-price bars remain invalid and offline inspection never turns them into executable holds", async () => {
+  const { inspectPtsHistory } = await import("../src/pts.js");
+  const history = ptsFixture();
+  const day = history.series.find((s) => s.resolution === 86400)!.candles[0]!;
+  day.open = "0";
+  day.high = "0";
+  day.low = "0";
+  day.close = "0";
+  const original = JSON.stringify(history);
+  assert.throws(() => analyzePts(history, ptsTime), { code: "INVALID_MARKET_DATA" });
+  const inspected = inspectPtsHistory(history, ptsTime);
+  assert.equal(inspected.validationStatus, "NOT_VERIFIABLE");
+  assert.equal(inspected.reason, "NOT_VERIFIABLE");
+  assert.equal(inspected.setup, null);
+  assert.ok(inspected.checks.some((c) => c.code === "RECORDED_HISTORY_INVALID"));
+  assert.equal(JSON.stringify(history), original);
+});
