@@ -20,6 +20,8 @@ import {
   type Rpc,
 } from "../src/index.js";
 
+import { FeeQuoteLimitExceededError } from "../src/chain/deposit-tx.js";
+
 const TOKEN = AUSD[10143].address;
 const FROM = "0x1111111111111111111111111111111111111111";
 const TO = "0x2222222222222222222222222222222222222222";
@@ -661,4 +663,67 @@ test("an unsigned or unparseable answer is refused", async () => {
       SignedTransactionMismatchError,
     );
   }
+});
+
+test("a reviewed ceiling bounds fee headroom without changing deposit defaults or the tip", async () => {
+  const { rpc, calls } = fakeRpc({
+    ...healthy,
+    eth_getBlockByNumber: { baseFeePerGas: "0x174876e800" },
+  });
+
+  assert.deepEqual(await quoteFees(rpc), {
+    maxFeePerGas: 202n * GWEI,
+    maxPriorityFeePerGas: 2n * GWEI,
+  });
+  for (const limit of [120n, 102n]) {
+    assert.deepEqual(await quoteFees(rpc, limit * GWEI), {
+      maxFeePerGas: limit * GWEI,
+      maxPriorityFeePerGas: 2n * GWEI,
+    });
+  }
+  assert.equal(calls.length, 6);
+  assert.ok(
+    calls.every(({ method }) =>
+      ["eth_getBlockByNumber", "eth_maxPriorityFeePerGas"].includes(method),
+    ),
+  );
+
+  const lower = fakeRpc(healthy);
+  assert.equal((await quoteFees(lower.rpc, 120n * GWEI)).maxFeePerGas, 102n * GWEI);
+});
+
+test("fee ceilings below current base plus tip reject instead of lowering the tip", async () => {
+  const { rpc } = fakeRpc({
+    ...healthy,
+    eth_getBlockByNumber: { baseFeePerGas: "0x174876e800" },
+  });
+
+  for (const limit of [101n * GWEI, 0n, -1n]) {
+    await assert.rejects(quoteFees(rpc, limit), FeeQuoteLimitExceededError);
+  }
+});
+
+test("bounded quotes preserve unsupported-method fallback and do not conceal transport errors", async () => {
+  const fallback = fakeRpc({
+    ...healthy,
+    eth_getBlockByNumber: { baseFeePerGas: "0x174876e800" },
+    eth_maxPriorityFeePerGas: () => {
+      throw new JsonRpcError("Method not found", -32601);
+    },
+  });
+
+  assert.deepEqual(await quoteFees(fallback.rpc, 120n * GWEI), {
+    maxFeePerGas: 120n * GWEI,
+    maxPriorityFeePerGas: GWEI,
+  });
+  await assert.rejects(quoteFees(fallback.rpc, 100n * GWEI), FeeQuoteLimitExceededError);
+
+  const failure = new Error("Transport unavailable");
+  const failing = fakeRpc({
+    ...healthy,
+    eth_maxPriorityFeePerGas: () => {
+      throw failure;
+    },
+  });
+  await assert.rejects(quoteFees(failing.rpc, 120n * GWEI), failure);
 });
