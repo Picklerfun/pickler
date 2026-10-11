@@ -301,6 +301,8 @@ test("driver checks the complete binding graph, prepares exact factory calldata 
     authorization: auth,
   } as TokenIntent;
   const prepared = await f.driver.prepare(scope, intent);
+  assert.equal(prepared.sender, context.masterAddress);
+  assert.equal(JSON.parse(prepared.activity.body).parameters.signWith, launcherMaster.address);
   await f.driver.preflight(prepared);
   await assert.rejects(
     f.driver.preflight({ ...prepared, configurationHash: "0x" + "0".repeat(64) }),
@@ -532,6 +534,8 @@ test("exact approvals and swaps use only the registered curve, input asset and m
       f.bindings[inputAsset]!.allowance = BigInt(i.trade!.amount);
     }
     const p = await f.driver.prepare(scope, i);
+    assert.equal(p.sender, context.masterAddress);
+    assert.equal(JSON.parse(p.activity.body).parameters.signWith, launcherMaster.address);
     const tx = parseTransaction(p.unsignedTransaction as Hex);
     const decoded = decodeFunctionData({
       abi: approval ? erc20Abi : PicklerBondingCurveAbi,
