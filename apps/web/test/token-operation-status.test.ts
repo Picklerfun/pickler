@@ -57,7 +57,7 @@ test("signature, receipt and finality progress remain distinct, including unchan
   }
   assert.equal(
     tokenOperationStatus({ ...operation, status: "failed", error: "SIGNATURE_REJECTED" }).title,
-    "Signature rejected",
+    "Signing request rejected",
   );
 });
 
