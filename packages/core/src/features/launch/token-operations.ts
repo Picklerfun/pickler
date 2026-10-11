@@ -52,6 +52,20 @@ export class TokenTradeError extends Error {
     super(code);
   }
 }
+/** Safe preparation reasons; adapters must never expose provider messages or payloads. */
+export class TokenPreparationError extends Error {
+  constructor(
+    public readonly code:
+      | "RPC_UNAVAILABLE"
+      | "RPC_BUDGET_EXHAUSTED"
+      | "GAS_LIMIT_EXCEEDED"
+      | "INSUFFICIENT_GAS_BALANCE"
+      | "SIMULATION_REJECTED"
+      | "METADATA_UNAVAILABLE",
+  ) {
+    super(code);
+  }
+}
 export function isTokenTradeAction(action: TokenAction) {
   return ["approve_buy", "approve_sell", "buy", "sell"].includes(action);
 }
@@ -346,7 +360,21 @@ export function createTokenOperationService(deps: {
         if (!ready()) {
           throw new TokenLaunchError("TOKEN_LAUNCH_BLOCKED", ["LAUNCH_UNAVAILABLE"]);
         }
-        await deps.tokens.authorize(scope, input.expectedVersion, key);
+        try {
+          await deps.tokens.authorize(scope, input.expectedVersion, key);
+        } catch (error) {
+          if (!(error instanceof TokenPreparationError)) {
+            throw error;
+          }
+          return transaction(scope, async (intents) => {
+            const intent = await intents.read(key);
+            if (!intent || intent.status !== "preparing" || intent.prepared || intent.activityId) {
+              throw error;
+            }
+            const failed = await intents.update(intent, { status: "failed", error: error.code });
+            return { operation: tokenOperationView(failed), activity: null };
+          });
+        }
       }
       const intent = await transaction(scope, async (intents, context, now) => {
         admission(context, input.action);
@@ -419,12 +447,15 @@ export function createTokenOperationService(deps: {
       } catch (error) {
         const failed = await patch(scope, claimed, {
           status: "failed",
-          error: error instanceof TokenTradeError ? error.code : "PREPARATION_FAILED",
+          error:
+            error instanceof TokenTradeError || error instanceof TokenPreparationError
+              ? error.code
+              : "PREPARATION_FAILED",
         });
-        if (error instanceof TokenTradeError) {
-          return { operation: tokenOperationView(failed), activity: null };
+        if (error instanceof TokenLaunchError) {
+          throw error;
         }
-        throw new TokenLaunchError("TOKEN_LAUNCH_BLOCKED", ["LAUNCH_UNAVAILABLE"]);
+        return { operation: tokenOperationView(failed), activity: null };
       }
     },
     async confirm(
