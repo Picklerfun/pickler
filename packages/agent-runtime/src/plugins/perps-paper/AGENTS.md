@@ -45,3 +45,11 @@ selector. Forward it unchanged to trading and use the same continuous reader in 
 Trading attaches copied heartbeat/generation evidence; infrastructure rechecks the immutable
 account policy and financial frame under ownership. Preserve old selectors and public transport.
 The new selector does not authorize product/deployed execution or construct credentials/clients.
+
+## PTS experimental v8
+
+The public-study subpath exports only priority data and bounded PTS history preparation, without
+Mastra tools, models or signing adapters. Keep full native 1d/4h/1h histories and the existing
+1h/15m/5m eligibility. Cache reuse checks configuration, permissions and ownership first. Notify
+native history revisions without silently replacing their original capture. A revision is not
+proof of what the provider served historically. Public preparation never starts a paper runner.
