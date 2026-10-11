@@ -331,57 +331,14 @@ export async function replayPtsFinance(input: PtsReplayInput, digest: (v: unknow
     sourceHash: digest(input),
     study: view,
     accounts,
+    metrics: ptsFinancialAudit(accounts),
     modelCalls: 0,
     interpretation:
       "Shared coordinator and simulator over supplied original frames/funding. Missing components remain pending; controlled captures are not observed market returns.",
   };
 }
-export function auditPtsStudy(
-  study: PerpsStudyView,
-  accounts: Record<string, PerpsPaperView | undefined>,
-  digest: (v: unknown) => string,
-) {
-  if (
-    study?.record?.config?.version !== 8 ||
-    !Array.isArray(study.rounds) ||
-    !Array.isArray(study.events)
-  ) {
-    throw new PilotError("INVALID_INPUT", "PTS v8 audit required");
-  }
-  const config = study.record.config,
-    rows: Record<string, unknown>[] = [];
-  const rounds = new Map(study.rounds.map((r) => [r.slot, r]));
-  const executions = new Map<string, typeof study.events>(),
-    finals = new Map<number, PerpsEvidence>();
-  const gates = new Map<
-    string,
-    {
-      initial: import("../perps-strategies/types.js").PerpsProposal[];
-      final: import("../perps-strategies/types.js").PerpsProposal[];
-    }
-  >();
-  for (const e of study.events) {
-    const d = e.data as {
-      slot?: number;
-      variant?: string;
-      symbol?: string;
-      evidence?: PerpsEvidence;
-      initial?: import("../perps-strategies/types.js").PerpsProposal[];
-      final?: import("../perps-strategies/types.js").PerpsProposal[];
-    };
-    const slot = Number(/^round-(\d+)/.exec(e.key)?.[1]);
-    if (e.kind === "execution-input" && d.evidence && Number.isSafeInteger(slot)) {
-      finals.set(slot, d.evidence);
-    }
-    if (e.kind === "final-gate" && d.initial && d.final) {
-      gates.set(e.key, { initial: d.initial, final: d.final });
-    }
-    if (e.kind === "profile-execution") {
-      const key = [d.slot, d.variant, d.symbol].join(":");
-      executions.set(key, [...(executions.get(key) ?? []), e]);
-    }
-  }
-  const financial = PTS_VARIANTS.map((variant) => {
+export function ptsFinancialAudit(accounts: Record<string, PerpsPaperView | undefined>) {
+  return PTS_VARIANTS.map((variant) => {
     const view = accounts[variant];
     if (!view) {
       return { variant, status: "NOT_VERIFIABLE" };
@@ -429,6 +386,54 @@ export function auditPtsStudy(
       positions: view.account.positions,
     };
   });
+}
+
+export function auditPtsStudy(
+  study: PerpsStudyView,
+  accounts: Record<string, PerpsPaperView | undefined>,
+  digest: (v: unknown) => string,
+) {
+  if (
+    study?.record?.config?.version !== 8 ||
+    !Array.isArray(study.rounds) ||
+    !Array.isArray(study.events)
+  ) {
+    throw new PilotError("INVALID_INPUT", "PTS v8 audit required");
+  }
+  const config = study.record.config,
+    rows: Record<string, unknown>[] = [];
+  const rounds = new Map(study.rounds.map((r) => [r.slot, r]));
+  const executions = new Map<string, typeof study.events>(),
+    finals = new Map<number, PerpsEvidence>();
+  const gates = new Map<
+    string,
+    {
+      initial: import("../perps-strategies/types.js").PerpsProposal[];
+      final: import("../perps-strategies/types.js").PerpsProposal[];
+    }
+  >();
+  for (const e of study.events) {
+    const d = e.data as {
+      slot?: number;
+      variant?: string;
+      symbol?: string;
+      evidence?: PerpsEvidence;
+      initial?: import("../perps-strategies/types.js").PerpsProposal[];
+      final?: import("../perps-strategies/types.js").PerpsProposal[];
+    };
+    const slot = Number(/^round-(\d+)/.exec(e.key)?.[1]);
+    if (e.kind === "execution-input" && d.evidence && Number.isSafeInteger(slot)) {
+      finals.set(slot, d.evidence);
+    }
+    if (e.kind === "final-gate" && d.initial && d.final) {
+      gates.set(e.key, { initial: d.initial, final: d.final });
+    }
+    if (e.kind === "profile-execution") {
+      const key = [d.slot, d.variant, d.symbol].join(":");
+      executions.set(key, [...(executions.get(key) ?? []), e]);
+    }
+  }
+  const financial = ptsFinancialAudit(accounts);
   if (study.record.startedAt !== null) {
     for (let slot = 0; slot < 4032; slot++) {
       const round = rounds.get(slot),
