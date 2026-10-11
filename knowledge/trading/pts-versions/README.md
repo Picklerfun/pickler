@@ -29,3 +29,9 @@ the local v8 laboratory. Studio selection and deployed execution remain disabled
 See [preparation and offline reproduction](../../../apps/agent-service/PTS-BASIC-PAPER.md).
 The fourteen-day run is a separate explicit action, and no market is eligible without sufficient
 original Perpl history. Versions 0.1.0 and pts-course@1.0.0 are not rewritten or completed in place.
+
+## Independent intraday candidate
+
+[pts-intraday@0.1.0](pts-intraday/0.1.0.json) and its [decision record](pts-intraday/0.1.0/DECISIONS.md)
+freeze native shorter temporal roles for local paper evaluation. The v3 schema is independent;
+original v1/v2 descriptors, course and basic PTS remain unchanged. No Studio activation is implied.
