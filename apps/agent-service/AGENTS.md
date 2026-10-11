@@ -394,3 +394,5 @@ parts; report workers replay one original round at a time and receive no giant s
 JSON/CSV publication streams containers; HTML excludes raw histories. Specific report failures
 stop admission, and interrupted studies retain positions/funding and their original error codes.
 Read [PTS intraday](PTS-INTRADAY-PAPER.md) for the reproduced serialization interruption.
+
+Read [fast intraday PTS](PTS-INTRADAY-FAST.md) for explicit v9 candidate 0.2.0-fast.1. Its new inactive template, descriptor and policy stay separate from 0.1.0. Commands and reports pin the chosen candidate; saved preparation from another identity is rejected. The original active trial is not altered or restarted. Offline results and controlled fills do not establish profitability.
