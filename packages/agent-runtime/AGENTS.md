@@ -226,3 +226,8 @@ The same public-study composition also accepts PTS v9 with five genuine native i
 Intraday captures seven rolling days plus native warmup, paging 5m at 1,024 bars while preserving
 96-request/ten-minute global bounds and the shared request schedule. Priority history merges 15m/
 5m as well as 1d/4h/1h; permission/ownership checks precede cache reuse. No model/signing imports.
+
+Intraday hosts pass the frozen eligible symbol cohort from verified preparation. The priority
+reader keeps excluded original histories out of its working cache, candle requests and signal
+evaluation, recording common PTS_PREPARATION_NOT_ELIGIBLE omissions. Existing public identity,
+schema and ownership failures remain fatal; this is not data repair or a new signal policy.
