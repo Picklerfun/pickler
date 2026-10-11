@@ -5,6 +5,8 @@ import type { PerpsQueueMessage } from "./routes/studio-perps";
 /** Worker bindings. Secrets come from `wrangler secret put` / `.dev.vars`. */
 export interface Env {
   TOKEN_LAUNCH_ENABLED?: string;
+  TOKEN_PUBLIC_TRADING_ENABLED?: string;
+  TOKEN_PUBLIC_RPC_DAILY_LIMIT?: string;
   TOKEN_LAUNCH_POLICY_JSON?: string;
   TOKEN_LAUNCH_AUTHORITY_KEY?: string;
   TOKEN_METADATA?: R2Bucket;

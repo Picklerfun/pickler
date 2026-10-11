@@ -714,3 +714,14 @@ only exact-input swaps and exact-amount ERC20 approvals are encoded. Minimum out
 are frozen before the passkey. The exact transaction is simulated again before signing and sending.
 Closed curves, inadequate allowance/balance and exhausted inventory fail without a signature.
 Uncertain signing/broadcast recovery retains the existing one-time claims. Indexer behavior is unchanged.
+
+## Public curve preparation
+
+`launch/public-trading.ts` exports the unsigned visitor driver and short transactional RPC reserve.
+It validates the canonical factory/agent/preset and pinned deployment identities, reads curve state
+at one block, and encodes only exact-input swaps or exact-amount approvals to the visitor. Gas uses
+the reviewed existing policy. It never signs, broadcasts or writes financial attribution.
+The existing private `pickler.provider_quotas` admits a shared daily 40-call reservation and six
+preparations per wallet/minute before transport; no new migration or indexer change is required.
+Run the controlled driver and isolated quota tests. See
+[Public token trading](../../docs/market/public-token-trading.md).

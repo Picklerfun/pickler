@@ -1,4 +1,5 @@
 "use client";
+import { PublicTokenTrade } from "@/features/tokens/public-token-trade";
 import { AgentTokenCard } from "@/features/tokens/agent-token-card";
 
 import type { AgentPersonaDto } from "@pickler/api-schema";
@@ -165,6 +166,15 @@ export function PersonaPage({
           preview={preview}
         />
       </div>
+
+      {persona.launchedToken && (
+        <PublicTokenTrade
+          key={persona.handle}
+          handle={persona.handle}
+          token={persona.launchedToken}
+          preview={preview}
+        />
+      )}
 
       <div className={styles.tabs} role="tablist" aria-label="Agent sections">
         {TABS.map((key) => (

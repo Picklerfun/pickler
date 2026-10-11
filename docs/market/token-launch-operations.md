@@ -163,8 +163,9 @@ master wallet; the agent's trading wallet is not used. A signed swap's recipient
 be changed when its status is checked. Exact simulation runs again before signing and submission;
 transport uncertainty still requires reconciliation of the same activity/transaction.
 
-Curve completion blocks curve swaps. Exact-output remainder purchase and public/DEX wallet swaps
-remain pending. No launcher/indexer activation, remote migration or real transaction is performed by
+Curve completion blocks curve swaps. Exact-output remainder purchase and DEX wallet swaps
+remain pending. Public visitor curve trading is now a separate non-custodial surface documented in
+[Public token trading](public-token-trading.md). No launcher/indexer activation, remote migration or real transaction is performed by
 this change; the existing indexer is unchanged and its redesign is deferred.
 
 Controlled validation commands, from the repository root:
@@ -192,4 +193,4 @@ runs in the preview.
 | Full Design surfaces, tokens, contrast and type                                      | 434 source files and 126 rendered routes         | Passed locally            |
 | Hosted owner passkey launch, buy/sell and fee actions                                | Human passkey and restricted runtime activation  | Pending                   |
 | Canonical indexer recovery and hybrid scheduling                                     | Existing worker; no changes in this delivery     | Deferred to the end       |
-| Public/DEX swaps and exact-output final inventory                                    | No production implementation in this change      | Pending                   |
+| DEX swaps and exact-output final inventory                                           | No production implementation in this change      | Pending                   |

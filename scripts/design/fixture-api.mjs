@@ -123,7 +123,24 @@ const routes = [
   ],
   [
     /^\/v1\/marketplace\/personas\/([^/]+)$/,
-    async (handle) => one(await services.getAgentPersona(handle), toAgentPersonaDto),
+    async (handle) => {
+      if (handle === "public_trade") {
+        const persona = toAgentPersonaDto(await services.getAgentPersona("halftime"));
+        return {
+          ...persona,
+          handle,
+          launchedToken: {
+            name: "Halftime",
+            ticker: "HALF",
+            address: "0x1111111111111111111111111111111111111111",
+            chainId: 10143,
+            imageUri: null,
+            avatar: { accent: "lime", pattern: 0 },
+          },
+        };
+      }
+      return one(await services.getAgentPersona(handle), toAgentPersonaDto);
+    },
   ],
   [/^\/v1\/marketplace\/markets$/, async () => (await services.listMarkets()).map(toPerpMarketDto)],
   [

@@ -267,3 +267,10 @@ Token operation inputs add `buy`, `sell`, `approve_buy` and `approve_sell` with 
 trade fields. Clients cannot select contracts, wallets, recipients or calldata. Additive operation
 `quote` exposes only prepared amounts, balance, allowance, fee and approval purpose; historical
 operations without it remain readable. State reads remain database-only.
+
+## Public curve trading contracts
+
+`public-token-trading.ts` exports strict visitor wallet/side/atomic amount/tolerance input and
+version-1 unsigned preparation DTOs through the package root. Targets, curve, asset, gas, nonce
+and minimum output are server-resolved outputs, never client input. Chain is explicitly testnet 10143. Owner Studio DTOs and authentication remain separate. See
+[Public token trading](../../docs/market/public-token-trading.md).

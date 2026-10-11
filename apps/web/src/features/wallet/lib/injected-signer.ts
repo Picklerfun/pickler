@@ -1,4 +1,5 @@
 "use client";
+import { sendInjectedTokenTransaction } from "./public-token-transaction";
 
 import {
   getProvider,
@@ -75,6 +76,13 @@ export const injectedSigner: SignerAdapter = {
     return { address, session: await join(message, signature, token) };
   },
 
+  sendTokenTransaction: async (prepared, wallet, token) => {
+    const provider = getProvider();
+    if (!provider) {
+      throw new Error("Browser wallet unavailable.");
+    }
+    return sendInjectedTokenTransaction(provider, prepared, wallet, token);
+  },
   disconnect: async () => {
     const provider = getProvider();
     if (provider) {

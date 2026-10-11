@@ -1,4 +1,5 @@
 "use client";
+import type { PublicTokenTradePreparedDto } from "@pickler/api-schema";
 
 import {
   createContext,
@@ -193,7 +194,7 @@ interface WalletState {
    * an answer rather than a failure. A caller shows the error from this result: `sessionError` is
    * for whoever renders later, and is not yet set in the render the caller awaited from.
    */
-  signInWithWallet: () => Promise<SignInResult>;
+  signInWithWallet: (wanted?: () => boolean) => Promise<SignInResult>;
   /**
    * Opens the chooser. `holding` is what the person was about to do, shown while they pick so the
    * action they came for is not lost behind the wallet.
@@ -201,6 +202,7 @@ interface WalletState {
   connect: (holding?: string) => void;
   disconnect: () => Promise<void>;
   switchChain: () => Promise<void>;
+  sendTokenTransaction: (prepared: PublicTokenTradePreparedDto, token: string) => Promise<string>;
 }
 
 const WalletContext = createContext<WalletState | null>(null);
@@ -414,6 +416,9 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         },
         now: new Date(),
       });
+      if (!wanted()) {
+        return { result: { error: null }, profile: null, handle: null };
+      }
       setSessionError("error" in result ? result.error : null);
       if (!session) {
         // Refused, or the token already held was handed back: nothing new is known.
@@ -582,8 +587,17 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   );
 
   const signInWithWallet = useCallback(
-    async (): Promise<SignInResult> => (await signInKeeping()).result,
-    [signInKeeping],
+    async (stillWanted: () => boolean = () => true): Promise<SignInResult> => {
+      const mine = generation.current;
+      const address = account?.address.toLowerCase();
+      const wanted = () =>
+        stillWanted() &&
+        mine === generation.current &&
+        accountRef.current?.address.toLowerCase() === address;
+      const answer = await signInKeeping(wanted);
+      return wanted() ? answer.result : { error: null };
+    },
+    [account, signInKeeping],
   );
 
   /** The chooser's sign-in step: one signature, then on to the username or out. */
@@ -822,6 +836,30 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     }
   }, [adapter]);
 
+  const sendTokenTransaction = useCallback(
+    async (prepared: PublicTokenTradePreparedDto, token: string) => {
+      if (!account || !adapter?.sendTokenTransaction) {
+        throw new Error("Connect a wallet first.");
+      }
+      const passkey = adapter.kind === "mera";
+      if (passkey && meraFlight.current) {
+        throw new Error("Finish the open passkey prompt first.");
+      }
+      const mine = generation.current;
+      if (passkey) {
+        passkeyRunning(mine, true);
+      }
+      try {
+        return await adapter.sendTokenTransaction(prepared, account.address, token);
+      } finally {
+        if (passkey) {
+          passkeyRunning(mine, false);
+        }
+      }
+    },
+    [account, adapter, passkeyRunning],
+  );
+
   const choices = useMemo<WalletChoice[]>(() => {
     const last = mounted ? remembered() : null;
     return SIGNERS.flatMap((signer): WalletChoice[] => {
@@ -916,6 +954,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       connect,
       disconnect,
       switchChain,
+      sendTokenTransaction,
     };
   }, [
     account,
@@ -932,6 +971,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     signInWithWallet,
     signing,
     switchChain,
+    sendTokenTransaction,
   ]);
 
   return (

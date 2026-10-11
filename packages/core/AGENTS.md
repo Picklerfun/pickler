@@ -495,3 +495,12 @@ atomic amounts and explicit 1–100 bps tolerance, freezes them in the private i
 to idempotency. Minimum output rounds up so tolerance never widens. Known preparation refusals
 return an unsent failed operation; signing and sending still require fresh ownership/context checks.
 A changed confirmed token identity blocks submission. No automatic retries or new model actions.
+
+## Public curve trading
+
+`features/launch/public-token-trading.ts` exports portable visitor input, unsigned transaction,
+preparation and driver contracts through the package root. Admission requires the independent
+host gate and a confirmed published testnet token; buyers need no creator privileges. Exact
+amount/tolerance validation reuses the owner curve minimum policy. No SDK, HTTP request, wallet
+key, RPC or custody operation belongs in this use case. See
+[Public token trading](../../docs/market/public-token-trading.md).

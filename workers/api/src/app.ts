@@ -1,3 +1,4 @@
+import type { createPublicTokenTrading } from "@pickler/core";
 import { studioXCallbackRoutes } from "./routes/studio-x";
 import { operation } from "./openapi/operation";
 import { apiDocument } from "./openapi/document";
@@ -39,6 +40,7 @@ export interface Services extends AgentRouteServices, ProfileRouteServices {
 
   /** Absent until a database binding exists; the routes are not mounted without one. */
   launches?: PostgresLaunchReadModel;
+  publicTokenTrading?: ReturnType<typeof createPublicTokenTrading>;
   tokenAssets?: { read(file: string): Promise<{ body: string; contentType: string } | null> };
 }
 
@@ -120,8 +122,8 @@ export function createApp(services: Services) {
   if (services.growth) {
     app.route("/v1", growthRoutes(services.growth));
     // Under its own prefix: /v1/agents is the authenticated workspace list ported from Relayer.
-    app.route("/v1/marketplace", marketplaceRoutes(services.growth));
-    app.route("/v1/demo", marketplaceRoutes(services.growth));
+    app.route("/v1/marketplace", marketplaceRoutes(services.growth, services.publicTokenTrading));
+    app.route("/v1/demo", marketplaceRoutes(services.growth, services.publicTokenTrading));
   }
   app.get(
     "/v1/openapi.json",

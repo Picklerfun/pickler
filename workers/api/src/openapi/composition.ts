@@ -30,6 +30,7 @@ export function documentationServices(
     budgets: blocked,
     profiles: blocked,
     tokenAssets: blocked,
+    publicTokenTrading: blocked,
     ...(features.advice ? { advice: blocked } : {}),
     ...(features.studio ? { studio: blocked } : {}),
     ...(features.growth ? { growth: blocked } : {}),
