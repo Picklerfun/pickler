@@ -4,7 +4,7 @@ import { PilotError } from "@pickler/core";
 import {
   assertPtsConfig,
   PTS_POLICY,
-  analyzePts,
+  inspectPtsHistory,
   replayPtsSignals,
   replayPtsFinance,
   auditPtsStudy,
@@ -92,35 +92,6 @@ export async function runPtsCommand(input: PtsCommandInput) {
   assertPtsConfig(config);
   if (input.command === "prepare") {
     const output = await newDirectory(input.output);
-    const { preparePtsHistory } =
-      await import("@pickler/agent-runtime/plugins/perps-paper/public-study");
-    const { DEFAULT_CONFIG } = await import("@pickler/core");
-    const agent = {
-      id: "pts-prepare-public",
-      tenantId: config.tenantId,
-      version: 1,
-      paused: false,
-      scheduleEnabled: false,
-      nextDueAt: null,
-      config: {
-        ...structuredClone(DEFAULT_CONFIG),
-        tools: [
-          "listPerpMarkets",
-          "getPerpSnapshot",
-          "getPerpOrderBook",
-          "getPerpCandles",
-          "getPerpFundingHistory",
-        ],
-        plugins: { version: 1, enabled: ["perpl", "perps-paper"] },
-        perpl: {
-          version: 2,
-          network: config.network,
-          markets: config.markets.map((m) => m.symbol),
-        },
-        perpsPaper: { version: 1, policy: "conservative-1x-v1" },
-      },
-    };
-    const scope = { tenantId: config.tenantId, agentId: agent.id };
     const responses: {
       file: string;
       sha256: string;
@@ -129,40 +100,104 @@ export async function runPtsCommand(input: PtsCommandInput) {
       bytes: number;
     }[] = [];
     let capturedBytes = 0;
-    const captured = await preparePtsHistory(
-      { agent: async () => agent as import("@pickler/core").AgentRecord },
-      scope,
-      input.signal,
-      {
-        commit: commit(),
-        guard: async () => {
-          if ((await readFile(resolve(input.configPath!), "utf8")) !== text) {
-            throw new PilotError("CONFIG_CHANGED", "Preparation configuration changed");
-          }
+    let captured: Awaited<
+      ReturnType<
+        typeof import("@pickler/agent-runtime/plugins/perps-paper/public-study").preparePtsHistory
+      >
+    >;
+    if (input.state) {
+      const saved = (await readJson(input.state)) as typeof captured & {
+        format: string;
+        historyHash: string;
+        policyHash: string;
+        responses: typeof responses;
+      };
+      if (
+        saved.format !== "pts-preparation-v1" ||
+        saved.historyHash !== digest(saved.history) ||
+        saved.policyHash !== digest(PTS_POLICY)
+      ) {
+        throw new PilotError("AUDIT_HASH_MISMATCH", "Saved preparation identity or hash differs");
+      }
+      for (const response of saved.responses) {
+        if (!/^response-[0-9]{3}\.json$/.test(response.file)) {
+          throw new PilotError("INVALID_INPUT", "Saved public response path is not bounded");
+        }
+        const body = await readFile(join(dirname(resolve(input.state)), response.file), "utf8");
+        if (bytesHash(body) !== response.sha256 || Buffer.byteLength(body) !== response.bytes) {
+          throw new PilotError("AUDIT_HASH_MISMATCH", "Original public response bytes differ");
+        }
+        await writeFile(join(output, response.file), body, { mode: 0o600, flag: "wx" });
+        responses.push(response);
+      }
+      captured = saved;
+    } else {
+      const { preparePtsHistory } =
+        await import("@pickler/agent-runtime/plugins/perps-paper/public-study");
+      const { DEFAULT_CONFIG } = await import("@pickler/core");
+      const agent = {
+        id: "pts-prepare-public",
+        tenantId: config.tenantId,
+        version: 1,
+        paused: false,
+        scheduleEnabled: false,
+        nextDueAt: null,
+        config: {
+          ...structuredClone(DEFAULT_CONFIG),
+          tools: [
+            "listPerpMarkets",
+            "getPerpSnapshot",
+            "getPerpOrderBook",
+            "getPerpCandles",
+            "getPerpFundingHistory",
+          ],
+          plugins: { version: 1, enabled: ["perpl", "perps-paper"] },
+          perpl: {
+            version: 2,
+            network: config.network,
+            markets: config.markets.map((m) => m.symbol),
+          },
+          perpsPaper: { version: 1, policy: "conservative-1x-v1" },
         },
-        capture: async (response) => {
-          capturedBytes += Buffer.byteLength(response.body);
-          if (capturedBytes > 64 * 1024 * 1024) {
-            throw new PilotError(
-              "PTS_CAPTURE_LIMIT",
-              "Original public response capture exceeds 64 MiB; preparation stopped",
-            );
-          }
-          const file = "response-" + String(responses.length).padStart(3, "0") + ".json";
-          await writeFile(join(output, file), response.body, { mode: 0o600, flag: "wx" });
-          responses.push({
-            file,
-            sha256: bytesHash(response.body),
-            url: response.url,
-            receivedAt: response.receivedAt,
-            bytes: Buffer.byteLength(response.body),
-          });
+      };
+      const scope = { tenantId: config.tenantId, agentId: agent.id };
+      captured = await preparePtsHistory(
+        { agent: async () => agent as import("@pickler/core").AgentRecord },
+        scope,
+        input.signal,
+        {
+          commit: commit(),
+          guard: async () => {
+            if ((await readFile(resolve(input.configPath!), "utf8")) !== text) {
+              throw new PilotError("CONFIG_CHANGED", "Preparation configuration changed");
+            }
+          },
+          capture: async (response) => {
+            capturedBytes += Buffer.byteLength(response.body);
+            if (capturedBytes > 64 * 1024 * 1024) {
+              throw new PilotError(
+                "PTS_CAPTURE_LIMIT",
+                "Original public response capture exceeds 64 MiB; preparation stopped",
+              );
+            }
+            const file = "response-" + String(responses.length).padStart(3, "0") + ".json";
+            await writeFile(join(output, file), response.body, { mode: 0o600, flag: "wx" });
+            responses.push({
+              file,
+              sha256: bytesHash(response.body),
+              url: response.url,
+              receivedAt: response.receivedAt,
+              bytes: Buffer.byteLength(response.body),
+            });
+          },
         },
-      },
-    );
+      );
+    }
     const historyPacket = {
-      format: "pts-preparation-v1",
       ...captured,
+      format: "pts-preparation-v1",
+      exporterCommit: commit(),
+      sourceCapture: input.state ? resolve(input.state) : null,
       historyHash: digest(captured.history),
       policyHash: digest(PTS_POLICY),
       responses,
@@ -178,11 +213,17 @@ export async function runPtsCommand(input: PtsCommandInput) {
     const { PTS_CATALOG } = await import("@pickler/trading/pts");
     const coverage = PTS_CATALOG.map((m) => {
       const h = captured.history.markets.find((h) => h.market.symbol === m.symbol);
-      const analysis = h ? analyzePts(h, captured.history.to) : null;
+      const analysis = h ? inspectPtsHistory(h, captured.history.to) : null;
       return {
         symbol: m.symbol,
         marketId: m.marketId,
-        eligible: !captured.fatalCode && !!analysis && analysis.coverage.every((c) => c.eligible),
+        eligible:
+          !captured.fatalCode &&
+          !!analysis &&
+          analysis.validationStatus === "VALID" &&
+          analysis.coverage.every((c) => c.eligible),
+        validation: analysis?.validationStatus ?? "NOT_VERIFIABLE",
+        checks: analysis?.checks ?? [],
         coverage: analysis?.coverage ?? "NOT_VERIFIABLE",
         reason: analysis?.reason ?? "NOT_VERIFIABLE",
       };
@@ -191,6 +232,9 @@ export async function runPtsCommand(input: PtsCommandInput) {
       output,
       {
         protocol: "pts-preparation-v1",
+        mode: input.state ? "OFFLINE_REBUILD_OF_SAVED_CAPTURE" : "SINGLE_PUBLIC_CAPTURE",
+        newPublicRequests: input.state ? 0 : captured.requests,
+        captureCommit: captured.history.commit,
         commit: commit(),
         configurationHash: digest(frozen),
         policyHash: digest(PTS_POLICY),
