@@ -36,7 +36,7 @@ export const PTS_POLICY = {
   dailyEmergencyPercent: 3,
   drawdownEmergencyPercent: 5,
 } as const;
-export interface PerpsPtsConfig extends PerpsStudyScope {
+export interface PerpsPtsBasicConfig extends PerpsStudyScope {
   version: 8;
   protocol: "perps-pts-sma-v1";
   hours: 336;
@@ -48,6 +48,16 @@ export interface PerpsPtsConfig extends PerpsStudyScope {
   /** Descriptive preparation status. Only an explicit future run can start admission. */
   preparedFor: "local-paper-only";
 }
+export interface PerpsPtsIntradayConfig extends Omit<
+  PerpsPtsBasicConfig,
+  "version" | "protocol" | "hours" | "candidate"
+> {
+  version: 9;
+  protocol: "perps-pts-intraday-sma-v1";
+  hours: 24;
+  candidate: "pts-intraday@0.1.0";
+}
+export type PerpsPtsConfig = PerpsPtsBasicConfig | PerpsPtsIntradayConfig;
 export const PTS_CATALOG = [
   { symbol: "BTC", marketId: 1 },
   { symbol: "MON", marketId: 10 },
@@ -63,12 +73,18 @@ export const PTS_CATALOG = [
 ] as const;
 export function assertPtsConfig(c: PerpsPtsConfig) {
   if (
-    c.version !== 8 ||
-    c.protocol !== "perps-pts-sma-v1" ||
-    c.hours !== 336 ||
+    !(
+      (c.version === 8 &&
+        c.protocol === "perps-pts-sma-v1" &&
+        c.hours === 336 &&
+        c.candidate === "pts-trend-reversal@0.2.0") ||
+      (c.version === 9 &&
+        c.protocol === "perps-pts-intraday-sma-v1" &&
+        c.hours === 24 &&
+        c.candidate === "pts-intraday@0.1.0")
+    ) ||
     c.budgetUsd !== "5" ||
     c.acquisitionPolicy !== COMPONENT_PAPER_POLICY ||
-    c.candidate !== "pts-trend-reversal@0.2.0" ||
     c.preparedFor !== "local-paper-only" ||
     c.network !== "mainnet" ||
     !c.tenantId ||
@@ -100,6 +116,9 @@ export function assertPtsConfig(c: PerpsPtsConfig) {
         ].includes(k),
     )
   ) {
-    throw new PilotError("INVALID_INPUT", "Frozen experimental PTS/SMA v8 configuration required");
+    throw new PilotError(
+      "INVALID_INPUT",
+      "Frozen experimental PTS/SMA v8 or intraday v9 configuration required",
+    );
   }
 }
