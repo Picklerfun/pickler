@@ -43,8 +43,9 @@ coordinator and simulator. They establish circuit behavior, never market profita
 signal replay has no evolving hypothetical portfolio and no candle-only P&L. Missing books,
 funding or historical availability cannot be replaced with later observations.
 
-The currently running 0.1.0 study stays frozen at its original commit, configuration and fixed
-end. This implementation does not modify it, restart it or start the fast candidate automatically.
+The original 0.1.0 study retains its frozen commit, configuration and fixed end. Its actual process
+state must be verified separately; saved running projections do not establish liveness. This
+implementation does not modify or restart it, or start the fast candidate automatically.
 No model, Exa, signer, monetary reservation, automation, migration, endpoint, merge or deployment
 is added. More aligned windows or more trades cannot establish profitability.
 
@@ -164,4 +165,8 @@ process state. It requests the same coalesced worker on an omission or closing-o
 without moving financial work onto the reporting path or rewriting a historical record.
 Controlled tests cover the recorded 37/38 cursor sequence, historical missing cursors, state
 transitions, fixed-end publication, slow-report coalescing and failure without automatic retry.
-The currently running frozen host is not hot-patched or restarted to apply this correction.
+The original frozen host is not hot-patched or restarted to apply this correction.
+
+Read [connection-failure containment](PTS-INTRADAY-PAPER.md#connection-failure-containment) before
+preparing the next candidate. The corrected local scope handles asynchronous PostgreSQL client
+errors, aborts admissions and preserves uncertain/pending results instead of resuming the scope.
