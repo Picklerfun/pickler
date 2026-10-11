@@ -3,9 +3,9 @@ import { resolve, dirname, join } from "node:path";
 import { PilotError } from "@pickler/core";
 import {
   assertPtsConfig,
-  PTS_POLICY,
-  PTS_INTRADAY_POLICY,
+  ptsPolicy,
   ptsConfigVersion,
+  ptsCandidateVersion,
   ptsVariant,
   inspectPtsHistory,
   replayPtsSignals,
@@ -54,7 +54,7 @@ export async function runPtsCommand(input: PtsCommandInput) {
           ...result,
           rows: undefined,
           analyzerCommit: commit(),
-          policyHash: digest(history.candidate ? PTS_INTRADAY_POLICY : PTS_POLICY),
+          policyHash: digest(ptsPolicy(ptsCandidateVersion(history.candidate))),
           financial,
           publicTrialStarted: false,
         },
@@ -125,7 +125,7 @@ export async function runPtsCommand(input: PtsCommandInput) {
   const text = await readFile(resolve(input.configPath), "utf8");
   const config = JSON.parse(text) as PerpsPtsConfig;
   assertPtsConfig(config);
-  const policy = config.version === 9 ? PTS_INTRADAY_POLICY : PTS_POLICY;
+  const policy = ptsPolicy(ptsConfigVersion(config));
   const strategyVersions = {
     "sma-reference": "1.0.0",
     [ptsVariant(config)]: ptsConfigVersion(config),
@@ -276,6 +276,7 @@ export async function runPtsCommand(input: PtsCommandInput) {
       output,
       {
         protocol: "pts-preparation-v1",
+        candidate: config.candidate,
         mode: input.state ? "OFFLINE_REBUILD_OF_SAVED_CAPTURE" : "SINGLE_PUBLIC_CAPTURE",
         newPublicRequests: input.state ? 0 : captured.requests,
         captureCommit: captured.history.commit,
