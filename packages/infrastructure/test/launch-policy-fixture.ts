@@ -88,7 +88,7 @@ export function uniswapLaunchPolicy() {
       },
     },
     liquidity: { feeTier: 10000, tickSpacing: 200, sqrtPriceToleranceBps: 5, range: "full_range" },
-  }) as Extract<ReturnType<typeof tokenLaunchPolicySchema.parse>, { venue: "uniswap_v4" }>;
+  }) as Extract<ReturnType<typeof tokenLaunchPolicySchema.parse>, { version: 2 }>;
 }
 export function metadataBucket() {
   const objects = new Map<string, string>();
