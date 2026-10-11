@@ -652,6 +652,10 @@ explicit testnet gate and complete reviewed passive policy. Default composition 
 `/v1/token-assets/:file` is public immutable read-only access. The callback exception for X does
 not apply to these routes. See [Token operations](../../docs/market/token-launch-operations.md).
 
+Preparation can return a validated `failed` operation with a reviewed reason and null activity
+in its existing 200 response. This is a recorded unsent outcome, distinct from an HTTP access or
+version rejection. Responses remain private/no-store; no raw provider trace enters the DTO.
+
 ## Versioned token launch composition
 
 Operational testnet composition accepts strict reviewed Uniswap V4 policies 2/3 separately from
