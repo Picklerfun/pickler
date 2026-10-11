@@ -220,3 +220,9 @@ Never lower the 24-month/104-week minima. Fatal identity/schema/permission failu
 `priority-study.ts` accepts saved history, merges guarded native windows and reports revisions.
 The common existing component stream remains explicit, with no REST fallback. Valuation/stops
 precede candle and funding preparation; missing required evidence blocks openings.
+
+The same public-study composition also accepts PTS v9 with five genuine native intraday frames.
+`pts-history.ts` takes a trusted candidate version; default basic capture remains unchanged.
+Intraday captures seven rolling days plus native warmup, paging 5m at 1,024 bars while preserving
+96-request/ten-minute global bounds and the shared request schedule. Priority history merges 15m/
+5m as well as 1d/4h/1h; permission/ownership checks precede cache reuse. No model/signing imports.
