@@ -18,6 +18,8 @@ const operationMessages: Record<string, string> = {
     "This purchase exceeds the remaining sale inventory. Enter a smaller amount.",
   PREFLIGHT_REJECTED:
     "The transaction no longer passes its checks. No transaction was signed. Prepare it again.",
+  EXPIRED_LAUNCH_NOT_CREATED:
+    "This authorization expired and no token was created by this attempt. Your draft is kept; prepare a new launch.",
   AUTHORIZATION_EXPIRED: "This preparation expired. Prepare again for a new passkey request.",
   SIGNATURE_REJECTED:
     "The signing service rejected this request. No transaction was sent. Your draft is kept; prepare again.",

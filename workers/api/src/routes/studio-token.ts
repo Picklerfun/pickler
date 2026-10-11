@@ -159,7 +159,7 @@ export function studioTokenRoutes(services: StudioServices) {
       errors: dto.studioErrorSchema,
       errorStatuses: errors,
       description:
-        "Explicit bounded reconciliation of the same activity/hash. No signing, replacement or automatic broadcast. Inclusion alone never confirms token identity; canonical indexer attribution is required.",
+        "Explicit bounded reconciliation of the same activity/hash. An expired launch without saved signing identity, bytes or hash may resolve only through the verified factory's complete public event window and stable confirmed block. No signing, replacement or automatic broadcast. Inclusion alone never confirms token identity; canonical indexer attribution is required.",
     }),
     async (c) => {
       const target = await scope(c);

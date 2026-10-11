@@ -512,3 +512,13 @@ host gate and a confirmed published testnet token; buyers need no creator privil
 amount/tolerance validation reuses the owner curve minimum policy. No SDK, HTTP request, wallet
 key, RPC or custody operation belongs in this use case. See
 [Public token trading](../../docs/market/public-token-trading.md).
+
+## Expired unidentified launch recovery
+
+Explicit operation status may resolve an expired launch with no activity, signed bytes or hash
+through the injected read-only driver. The immutable factory's complete five-minute grant event
+window and a stable confirmed block prove absence; a matching event recovers its transaction hash.
+Recovery uses a fresh owner transaction and operation version fence. Private resolution evidence
+is retained in the intent, never exposed as a receipt or token attribution. Other actions and
+uncertain broadcasts cannot use this release. Failed/incomplete evidence keeps the original state.
+No recovery signs, sends or automatically prepares another launch.

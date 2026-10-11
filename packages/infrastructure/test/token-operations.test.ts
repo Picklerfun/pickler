@@ -396,3 +396,75 @@ test("trade intents persist exact parameters, isolate owners and survive concurr
     true,
   );
 });
+
+test("expired lost signing response releases only its fenced intent and keeps history before a fresh grant", async (t) => {
+  const f = await tokenFixture(t);
+  await f.service.saveDraft(f.scope, { expectedVersion: 0, name: "Controlled", ticker: "CTRL" });
+  const d = driver();
+  let signs = 0;
+  d.result.sign = async () => {
+    signs++;
+    throw new Error("Controlled lost response");
+  };
+  d.result.recoverExpiredLaunch = async () => ({
+    status: "expired",
+    blockNumber: "10",
+    blockHash: "0x" + "b".repeat(64),
+  });
+  const service = () =>
+    createTokenOperationService({
+      repository: f.repository,
+      tokens: f.service,
+      chainId: 10143,
+      driver: d.result,
+    });
+  const prepared = await service().prepare(
+    f.scope,
+    { action: "launch", expectedVersion: 1 },
+    "controlled_lost_signing_001",
+  );
+  const unknown = await service().confirm(
+    f.scope,
+    prepared.operation.id,
+    prepared.operation.version,
+    signed,
+  );
+  assert.equal(unknown.status, "unknown");
+  await f.store.pool.query(
+    `UPDATE launch.operations SET expires_at=clock_timestamp()-interval '1 second',
+    payload=jsonb_set(jsonb_set(jsonb_set(jsonb_set(payload,'{deadline}',to_jsonb('1'::text)),
+      '{prepared,deadline}',to_jsonb('1'::text)), '{authorization,grantDeadline}',to_jsonb('1'::text)),
+      '{authorization,params,deadline}',to_jsonb('1'::text)) WHERE id=$1`,
+    [unknown.id],
+  );
+  await f.store.pool.query(
+    "UPDATE launch.grants SET created_at=to_timestamp(900),expires_at=to_timestamp(1000) WHERE agent_id=$1",
+    [f.scope.agentId],
+  );
+  const results = await Promise.all([
+    service().status(f.scope, unknown.id),
+    service().status(f.scope, unknown.id),
+  ]);
+  assert.ok(
+    results.every((r) => r.status === "failed" && r.error === "EXPIRED_LAUNCH_NOT_CREATED"),
+  );
+  const state = await f.service.state(f.scope);
+  assert.equal(state.confirmation, "absent");
+  assert.equal(state.draft?.name, "Controlled");
+  assert.ok(!JSON.stringify(state).includes("expired_launch"));
+  const history = await f.store.pool.query(
+    "SELECT payload->'resolution' AS resolution FROM launch.operations WHERE id=$1",
+    [unknown.id],
+  );
+  assert.equal(history.rows[0].resolution.kind, "expired_launch");
+  const next = await service().prepare(
+    f.scope,
+    { action: "launch", expectedVersion: 1 },
+    "controlled_lost_signing_002",
+  );
+  assert.equal(next.operation.status, "awaiting_signature");
+  assert.notEqual(next.operation.id, unknown.id);
+  await service().confirm(f.scope, unknown.id, results[0]!.version, signed);
+  assert.equal(signs, 1);
+  assert.equal(d.counts().sends, 0);
+});

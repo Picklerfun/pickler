@@ -580,7 +580,7 @@ try {
       const prefix = `/api/v1/studio/agents/${tokenAgentId}/token`;
       const operationUrl = prefix + "/operations/" + launchOperation.id;
 
-      // A lost signing identity is explicit and cannot offer a new signing request.
+      // A lost signing identity can only reconcile; it cannot request another signature.
       launchOperation = {
         ...launchOperation,
         status: "unknown",
@@ -594,23 +594,44 @@ try {
       assert.equal(await field.evaluate((node) => node.isConnected), true);
       releaseOperation();
       await operations.getByText("Signature status unavailable", { exact: true }).waitFor();
-      await operations.getByText(/Pickler needs to review this attempt/).waitFor();
+      await operations.getByText(/once its authorization expires/).waitFor();
       assert.equal(
         await operations.getByRole("button", { name: "Check status", exact: true }).count(),
-        0,
+        1,
       );
       assert.equal(
         await operations.getByRole("button", { name: "Launch token", exact: true }).count(),
         0,
       );
-      await operations.getByRole("button", { name: "Refresh saved status", exact: true }).click();
-      await operations.getByText(/Checked .*This attempt still needs review/).waitFor();
-      assert.equal(counts.get(operationUrl), 1);
+      await operations.getByRole("button", { name: "Check status", exact: true }).click();
+      await operations.getByText(/Checked .*This attempt remains blocked/).waitFor();
+      assert.equal(counts.get(operationUrl), 2);
       await operations.screenshot({ path: path.join(output, "launch-signature-unavailable.png") });
+
+      // Only canonical expired-launch resolution can offer a fresh preparation; fields stay mounted.
+      launchOperation = {
+        ...launchOperation,
+        status: "failed",
+        error: "EXPIRED_LAUNCH_NOT_CREATED",
+        version: 6,
+      };
+      await operations.getByRole("button", { name: "Check status", exact: true }).click();
+      await operations.getByText("Launch attempt expired", { exact: true }).waitFor();
+      await operations
+        .getByRole("alert")
+        .getByText(/no token was created by this attempt/)
+        .waitFor();
+      assert.equal(await launchButton.isEnabled(), true);
+      assert.equal(await field.evaluate((node) => node.isConnected), true);
+      assert.equal(await name.inputValue(), "Saved token");
+      assert.equal(counts.get(operationUrl + "/confirm") ?? 0, 0);
+      await operations.screenshot({ path: path.join(output, "launch-expired-recovered.png") });
 
       // Reload a saved provider activity; status reads retain it and never send a transaction.
       launchOperation = {
         ...launchOperation,
+        status: "unknown",
+        error: null,
         activityId: "controlled-signature-activity",
         version: 6,
       };
@@ -715,6 +736,7 @@ try {
       await operations.getByText(/Checked .*Confirmed on-chain/).waitFor();
       assert.equal(counts.get(operationUrl + "/confirm"), 1);
       const readCount = counts.get(operationUrl);
+      assert.equal(readCount, 9, "Exactly nine explicit signing/status reads are expected");
       await delay(600);
       assert.equal(counts.get(operationUrl), readCount, "Status must not poll");
       await page.setViewportSize({ width: 1280, height: 1000 });
@@ -959,7 +981,8 @@ try {
         } else if (endpoint.endsWith("/confirm")) {
           maximum = 1;
         } else if (endpoint.includes("/token/operations/")) {
-          maximum = 7;
+          // Seven existing explicit reads plus missing-identity and expired-window checks.
+          maximum = 9;
         }
       } else if (scenario === "studio-token") {
         maximum = 3;

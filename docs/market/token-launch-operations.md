@@ -116,10 +116,18 @@ Signing has a durable one-time claim. Exact raw bytes and their verified sender/
 before a separate one-time submission claim. A delayed Turnkey activity is queried explicitly;
 its same bytes can be submitted without another grant or passkey signature. An uncertain send
 is only reconciled: there is no replacement, automatic rebroadcast or automatic launch retry.
-If the signing response lost its activity identity entirely, operator investigation is required;
-repeating the signing request is deliberately unavailable. The UI names this state Signature status
-unavailable, shows the attempt reference and offers only a saved-state refresh. Missing hashes never
-prove that signing was not requested.
+If the signing response lost its activity identity entirely, repeating the signing request is
+unavailable. Signature status unavailable retains the attempt reference and offers explicit
+Check status for a launch. Once its factory grant expires, bounded read-only recovery verifies
+the immutable factory's chain/code hash and locally decoded grant/creator/agent. It searches every
+public LaunchCreated event in the complete inclusive five-minute validity window using 100-block
+ranges and a stable confirmed anchor. Private agent keys, grant signatures and transaction bytes
+are never sent in these RPC reads. A matching event recovers the transaction hash; proven absence
+records private canonical evidence and closes the attempt as EXPIRED_LAUNCH_NOT_CREATED.
+Missing hashes, provider absence or indexer lag alone never prove no launch. Other actions, known
+signed bytes and uncertain broadcasts cannot use this release. Transport failure, ambiguous
+evidence, quota exhaustion or reorg preserves the blocker. This recovery uses at most 100 calls
+within the existing RPC budget, with no polling, repeat signature, send or automatic new launch.
 
 Definitive local validation/provider refusals end the claim as Signature rejected; transport
 uncertainty remains blocked. When submission returned an activity, a failed follow-up read preserves
@@ -288,6 +296,38 @@ browser references are checked without opening fake explorer addresses.
 | One signing/send claim, owner isolation and durable recovery                                  | Disposable PostgreSQL/API tests                            | Passed locally            |
 | Real owner passkey completion and recovery of an earlier unidentified signing attempt         | Requires provider identity or conclusive operator evidence | Pending remote acceptance |
 
-These checks do not repair an existing unknown operation or prove that its transaction was sent.
-An attempt with no saved activity identity or transaction hash remains blocked until reviewed;
-absence from one provider activity page is not proof that it can be signed again.
+The earlier checks above did not repair existing unidentified operations or prove submission.
+The expiry proof below adds narrowly scoped recovery; absence from one provider activity page
+remains insufficient evidence to release an attempt.
+
+## Expired signing response regression
+
+Run from the repository root with Node 22 and the disposable local PostgreSQL database:
+
+```sh
+npm run build:shared
+node --import tsx --test packages/core/test/token-operations.test.ts packages/infrastructure/test/expired-token-launch.test.ts packages/infrastructure/test/token-operation-driver.test.ts packages/infrastructure/test/token-operations.test.ts workers/api/test/studio-token-route.test.ts apps/web/test/token-operation-status.test.ts
+node --import tsx scripts/design/studio-loading.mjs
+```
+
+| Scenario                                                                           | Evidence                                          | Status          |
+| ---------------------------------------------------------------------------------- | ------------------------------------------------- | --------------- |
+| Complete expired grant window, no matching creation                                | Controlled RPC/immutable factory proof            | Passed locally  |
+| Matching event at expiry boundary                                                  | Hash recovered without signature or send          | Passed locally  |
+| Unconfirmed expiry, changed factory/network, failed reads, ambiguous events, reorg | Original blocker retained                         | Passed locally  |
+| Concurrent status/signing result and owner change                                  | Compare-and-set and owner fences                  | Passed locally  |
+| Existing signed bytes/hash or non-launch action                                    | No expiry release                                 | Passed locally  |
+| Private evidence, retained form/history and fresh separate intent                  | Isolated PostgreSQL and rendered Studio           | Passed locally  |
+| Existing hosted unidentified launch, expired with no creation                      | Public factory proof; original attempt closed     | Passed remotely |
+| Real owner passkey launch after recovery                                           | Requires the owner's next explicit passkey action | Pending         |
+
+The historical unidentified signing request's exact failure cannot be reconstructed from the
+operation's generic error alone. New signing diagnostics contain only a reviewed phase/reason and
+operation reference. They do not include signed bodies, stamps, provider text or private keys.
+
+On 2026-10-11 at 17:49 UTC, a targeted application of the same core service and PostgreSQL
+store resolved one existing hosted unidentified launch. The proof used 42 public read-only RPC
+calls, confirmed no matching creation within the expired grant window, and retained the draft
+and original attempt with `EXPIRED_LAUNCH_NOT_CREATED`. No signing, submission, deployment or
+new authorization ran. This establishes recovery of that expired attempt, not successful
+launching by the owner or rollout of this implementation to the hosted API.

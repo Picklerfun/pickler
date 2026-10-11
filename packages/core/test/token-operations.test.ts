@@ -438,3 +438,141 @@ test("definitive signing refusals fail safely while a lost initial response rema
     assert.equal(await f.tx.intents!.active(), uncertain);
   }
 });
+
+async function unidentifiedLaunch() {
+  const f = controlled();
+  f.driver.sign = async () => {
+    throw new SigningServiceUnavailableError();
+  };
+  const prepared = await f.ops.prepare(
+    scope,
+    { action: "launch", expectedVersion: 1 },
+    "controlled_operation_001",
+  );
+  const unknown = await f.ops.confirm(
+    scope,
+    prepared.operation.id,
+    prepared.operation.version,
+    signed,
+  );
+  return {
+    ...f,
+    unknown,
+    expire() {
+      f.tx.now = new Date((Number(unknown.deadline) + 1) * 1000);
+    },
+  };
+}
+test("expired unidentified launch resolves canonically, preserves evidence and cannot repeat the old signature", async () => {
+  const f = await unidentifiedLaunch();
+  let reads = 0;
+  f.driver.recoverExpiredLaunch = async () => {
+    reads++;
+    return { status: "expired", blockNumber: "10", blockHash: "0x" + "b".repeat(64) };
+  };
+  await f.ops.status(scope, f.unknown.id);
+  assert.equal(reads, 0);
+  f.expire();
+  const resolved = await f.ops.status(scope, f.unknown.id);
+  assert.equal(resolved.status, "failed");
+  assert.equal(resolved.error, "EXPIRED_LAUNCH_NOT_CREATED");
+  assert.equal(resolved.txHash, null);
+  assert.equal(resolved.blockHash, null);
+  assert.equal(await f.tx.intents!.active(), false);
+  assert.equal(f.intents.get(resolved.id)!.resolution?.kind, "expired_launch");
+  await f.ops.confirm(scope, resolved.id, resolved.version, signed);
+  await f.ops.status(scope, resolved.id);
+  assert.equal(reads, 1);
+  assert.equal(f.counts().sends, 0);
+});
+test("missing, failed or non-final expiry evidence never releases an unknown signing attempt", async () => {
+  for (const fail of [false, true]) {
+    const f = await unidentifiedLaunch();
+    f.expire();
+    f.driver.recoverExpiredLaunch = async () => {
+      if (fail) {
+        throw new Error("RPC_UNAVAILABLE");
+      }
+      return null;
+    };
+    if (fail) {
+      await assert.rejects(f.ops.status(scope, f.unknown.id));
+    } else {
+      assert.equal((await f.ops.status(scope, f.unknown.id)).status, "unknown");
+    }
+    assert.equal(await f.tx.intents!.active(), true);
+    assert.equal(f.counts().sends, 0);
+  }
+});
+test("canonical launch discovery recovers the hash and receipt without signing, sending or attributing a token", async () => {
+  const f = await unidentifiedLaunch();
+  f.expire();
+  f.driver.recoverExpiredLaunch = async () => ({ status: "found", txHash: "0x" + "a".repeat(64) });
+  f.receipt({ status: "finalized", blockHash: "0x" + "b".repeat(64) });
+  const result = await f.ops.status(scope, f.unknown.id);
+  assert.equal(result.status, "finalized");
+  assert.equal(result.txHash, "0x" + "a".repeat(64));
+  assert.equal(f.context.token, null);
+  assert.equal(f.counts().sends, 0);
+});
+test("expiry recovery fences concurrent signature results and checks ownership before external reads", async () => {
+  const f = await unidentifiedLaunch();
+  f.expire();
+  let reads = 0;
+  f.driver.recoverExpiredLaunch = async () => {
+    reads++;
+    const current = f.intents.get(f.unknown.id)!;
+    await f.tx.intents!.update(current, { activityId: "late-signature" });
+    return { status: "expired", blockNumber: "10", blockHash: "0x" + "b".repeat(64) };
+  };
+  f.context.ownerUserId = "other";
+  await assert.rejects(f.ops.status(scope, f.unknown.id));
+  assert.equal(reads, 0);
+  f.context.ownerUserId = scope.userId;
+  f.driver.activity = async () => ({ activityId: "late-signature", status: "pending" });
+  const latest = await f.ops.status(scope, f.unknown.id);
+  assert.equal(latest.status, "unknown");
+  assert.equal(latest.activityId, "late-signature");
+  assert.equal(await f.tx.intents!.active(), true);
+});
+test("known hashes, signed bytes, other actions and mismatched grant deadlines cannot use expiry release", async () => {
+  for (const patch of [
+    { activityId: "existing" },
+    { rawTransaction: "0x02aa" },
+    { txHash: "0x" + "a".repeat(64) },
+    { action: "buy" as const },
+    { authorization: null },
+  ]) {
+    const f = await unidentifiedLaunch();
+    f.expire();
+    Object.assign(f.intents.get(f.unknown.id)!, patch);
+    f.driver.activity = async () => ({ activityId: "existing", status: "pending" });
+    f.driver.recoverExpiredLaunch = async () => {
+      throw new Error("Must not be called");
+    };
+    await f.ops.status(scope, f.unknown.id);
+    assert.equal(await f.tx.intents!.active(), true);
+  }
+});
+
+test("different stored grant, parameter or preparation deadlines cannot release an expired attempt", async () => {
+  for (const kind of ["grant", "params", "prepared"]) {
+    const f = await unidentifiedLaunch();
+    f.expire();
+    const intent = f.intents.get(f.unknown.id)!;
+    const wrong = (BigInt(intent.deadline) - 1n).toString();
+    if (kind === "grant") {
+      intent.authorization!.grantDeadline = wrong;
+    } else if (kind === "params") {
+      intent.authorization!.params.deadline = wrong;
+    } else {
+      intent.prepared!.deadline = wrong;
+    }
+    f.driver.recoverExpiredLaunch = async () => {
+      throw new Error("Must not be called");
+    };
+    assert.equal((await f.ops.status(scope, intent.id)).status, "unknown");
+    assert.equal(await f.tx.intents!.active(), true);
+    assert.equal(f.counts().sends, 0);
+  }
+});

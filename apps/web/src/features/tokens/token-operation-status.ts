@@ -25,14 +25,19 @@ export function tokenOperationStatus(operation: TokenOperationDto) {
     return {
       title: "Signature status unavailable",
       description:
-        "The signing response could not be recovered. No transaction hash is recorded. Pickler needs to review this attempt before another launch.",
-      canCheck: false,
-      checked: "This attempt still needs review. No new signature or transaction was requested.",
+        operation.action === "launch"
+          ? "The signing response is missing. Check status can recover a completed launch or close this attempt once its authorization expires."
+          : "The signing response could not be recovered. No transaction hash is recorded. Pickler needs to review this attempt.",
+      canCheck: operation.action === "launch",
+      checked:
+        "No result was recovered. This attempt remains blocked; nothing was signed or sent again.",
     };
   }
   if (status === "failed") {
     let title = "Could not complete";
-    if (operation.error === "SIGNATURE_REJECTED") {
+    if (operation.error === "EXPIRED_LAUNCH_NOT_CREATED") {
+      title = "Launch attempt expired";
+    } else if (operation.error === "SIGNATURE_REJECTED") {
       title = "Signature rejected";
     } else if (!operation.activityId && !operation.txHash) {
       title = "Preparation failed";
@@ -40,7 +45,10 @@ export function tokenOperationStatus(operation: TokenOperationDto) {
     return {
       title,
       description: "",
-      checked: "The attempt failed. Review the message below.",
+      checked:
+        operation.error === "EXPIRED_LAUNCH_NOT_CREATED"
+          ? "No token was created by this attempt. You can prepare a new launch."
+          : "The attempt failed. Review the message below.",
       canCheck: false,
     };
   }

@@ -25,7 +25,11 @@ import {
   deploymentCode,
   metadataBucket,
 } from "./launch-policy-fixture.js";
-import type { TokenIntent } from "@pickler/core";
+import {
+  SigningServiceUnavailableError,
+  type SignedActivityForwarder,
+  type TokenIntent,
+} from "@pickler/core";
 const context = {
   ownerUserId: "owner",
   enabled: true,
@@ -142,6 +146,11 @@ function controlled() {
       throw new Error("Unexpected controlled RPC: " + method);
     },
   };
+  const forwarder: SignedActivityForwarder = {
+    async forward() {
+      throw new Error("No real signing");
+    },
+  };
   const driver = createTokenOperationDriver({
     policy: p,
     rpc,
@@ -150,11 +159,7 @@ function controlled() {
     reserveRpc: async () => {
       reservations++;
     },
-    forwarder: {
-      async forward() {
-        throw new Error("No real signing");
-      },
-    },
+    forwarder,
     reader: {
       async getActivity() {
         throw new Error("No provider");
@@ -164,6 +169,7 @@ function controlled() {
   return {
     p,
     driver,
+    forwarder,
     bindings,
     wrong: () => {
       wrong = true;
@@ -374,4 +380,63 @@ test("fee and graduation transactions resolve only registered contracts, assets 
     } as TokenIntent),
     /TESTNET_AGENT_NOT_ADMITTED/,
   );
+});
+
+test("accepted signing identity survives a missing or malformed transaction result", async () => {
+  for (const raw of [undefined, "malformed"]) {
+    const f = controlled();
+    f.forwarder.forward = async () => ({
+      id: "controlled-signing-id",
+      fingerprint: "controlled",
+      organizationId: "org",
+      type: "ACTIVITY_TYPE_SIGN_TRANSACTION_V2",
+      status: "ACTIVITY_STATUS_COMPLETED",
+      result: { signTransactionResult: { signedTransaction: raw } },
+    });
+    const activity = {
+      url: "https://api.turnkey.com/public/v1/submit/sign_transaction",
+      body: "controlled",
+      organizationId: "org",
+      timestampMs: "1",
+    };
+    const result = await f.driver.sign({ activity } as Parameters<typeof f.driver.sign>[0], {
+      ...activity,
+      stamp: { stampHeaderName: "X-Stamp-Webauthn", stampHeaderValue: "private-stamp" },
+    });
+    assert.deepEqual(result, { activityId: "controlled-signing-id", status: "pending" });
+  }
+});
+test("signing diagnostics identify the broken phase without provider payloads or credentials", async () => {
+  const f = controlled();
+  const messages: unknown[][] = [];
+  const warn = console.warn;
+  console.warn = (...args) => {
+    messages.push(args);
+  };
+  try {
+    f.forwarder.forward = async () => {
+      throw new SigningServiceUnavailableError("private-provider-response");
+    };
+    const activity = {
+      url: "https://api.turnkey.com/public/v1/submit/sign_transaction",
+      body: "private-transaction",
+      organizationId: "org",
+      timestampMs: "1",
+    };
+    await assert.rejects(
+      f.driver.sign({ operationId: "attempt", activity } as Parameters<typeof f.driver.sign>[0], {
+        ...activity,
+        stamp: { stampHeaderName: "X-Stamp-Webauthn", stampHeaderValue: "private-stamp" },
+      }),
+    );
+    assert.deepEqual(messages, [
+      [
+        "Token signing failed",
+        { operationId: "attempt", phase: "forward", reason: "service_unavailable" },
+      ],
+    ]);
+    assert.ok(!JSON.stringify(messages).includes("private-"));
+  } finally {
+    console.warn = warn;
+  }
 });

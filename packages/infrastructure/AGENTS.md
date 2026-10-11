@@ -743,3 +743,16 @@ The existing private `pickler.provider_quotas` admits a shared daily 40-call res
 preparations per wallet/minute before transport; no new migration or indexer change is required.
 Run the controlled driver and isolated quota tests. See
 [Public token trading](../../docs/market/public-token-trading.md).
+
+## Unidentified expired launch proof
+
+`launch/expired-launch.ts` verifies the immutable factory's chain/code hash and locally decoded
+creator, agent and grant deadlines. It searches public `LaunchCreated` events in canonical
+100-block ranges across the complete inclusive five-minute validity window, with a maximum of
+100 reads inside the existing RPC reservation. Private agent keys, grant signatures and transaction
+bytes are never RPC parameters. A stable confirmed anchor and matching event headers are required;
+transport, incomplete ranges, ambiguous events, quota failures and reorgs cannot prove absence.
+Historical read-only recovery does not require a newer preparation configuration hash.
+An accepted Turnkey identity survives incomplete signed results. Signing failures log only the
+operation ID, broken phase and reviewed reason, never provider prose, calldata or stamps.
+Run the controlled `expired-token-launch`, driver and isolated PostgreSQL operations suites.
