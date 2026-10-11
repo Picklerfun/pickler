@@ -33,6 +33,10 @@ NFL coverage `sourceIds` may identify retrieved sources or section-scoped execut
 
 ## Public agents
 
+`DirectoryAgentDto.launchedToken` is an optional nullable confirmed token summary, using
+`agentTokenSchema`, for the configured network. Older consumers and controlled fixtures may omit
+it; absence never grants public trading.
+
 `src/agents.ts` carries the public agent board, persona, directory, reads, analytics and
 leaderboard. On every one of these DTOs `null` means absent: a figure that has no source yet — no
 token launched, so no `ticker`, `slug`, `marketCap` or `stage`; nothing settled, so no
