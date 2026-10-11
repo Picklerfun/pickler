@@ -5,6 +5,7 @@ import {
   parseTransaction,
   serializeTransaction,
   toHex,
+  erc20Abi,
   type Abi,
   type Hex,
 } from "viem";
@@ -22,6 +23,10 @@ import {
 } from "@pickler/chain";
 import {
   AGENT_WALLET_ACTIVITY_TYPES,
+  TokenTradeError,
+  isTokenTradeAction,
+  tokenTradeMinimumOutput,
+  type TokenTradeQuote,
   type AgentWalletActivityBuilders,
   type SignedActivityForwarder,
   type TurnkeyActivity,
@@ -38,6 +43,7 @@ import {
   broadcastTransaction,
 } from "../chain/deposit-tx.js";
 import type { Rpc } from "../chain/erc20.js";
+import { tokenAgentKey } from "../studio/token-launch-store.js";
 import type { TokenLaunchPolicy } from "./policy.js";
 
 function completed(activity: TurnkeyActivity) {
@@ -322,6 +328,7 @@ export function createTokenOperationDriver(deps: {
       await verifyDeployment(rpc);
       let to = policy.factory.address;
       let data: Hex;
+      let quote: TokenTradeQuote | undefined;
       if (intent.action === "launch") {
         const g = intent.authorization;
         if (
@@ -385,7 +392,73 @@ export function createTokenOperationDriver(deps: {
         ) {
           throw new Error("TOKEN_VENUE_MISMATCH");
         }
-        if (intent.action === "graduate") {
+        if (isTokenTradeAction(intent.action)) {
+          if (
+            !intent.trade ||
+            launch.agentKey !== tokenAgentKey(10143, scope.agentId) ||
+            launch.token.toLowerCase() !== token.toLowerCase() ||
+            launch.quoteToken.toLowerCase() !== policy.preset.quoteAddress ||
+            launch.presetHash !== policy.preset.configHash ||
+            intent.context.token?.chainId !== 10143
+          ) {
+            throw new Error("TOKEN_VENUE_MISMATCH");
+          }
+          const buying = intent.action === "buy" || intent.action === "approve_buy";
+          const approval = intent.action === "approve_buy" || intent.action === "approve_sell";
+          const amount = BigInt(intent.trade.amount);
+          const inputAsset = buying ? (policy.preset.quoteAddress as Hex) : token;
+          const owner = intent.context.masterAddress as Hex;
+          const phase = await read(rpc, launch.curve, PicklerBondingCurveAbi, "phase");
+          if (phase !== 0) {
+            throw new TokenTradeError("CURVE_CLOSED");
+          }
+          const [balance, allowance, expectedOutput, remaining] = (await Promise.all([
+            read(rpc, inputAsset, erc20Abi, "balanceOf", [owner]),
+            read(rpc, inputAsset, erc20Abi, "allowance", [owner, launch.curve]),
+            read(rpc, launch.curve, PicklerBondingCurveAbi, buying ? "quoteBuy" : "quoteSell", [
+              amount,
+            ]),
+            read(rpc, launch.curve, PicklerBondingCurveAbi, "remainingTokens"),
+          ])) as bigint[];
+          if (balance! < amount) {
+            throw new TokenTradeError("INSUFFICIENT_TOKEN_BALANCE");
+          }
+          if (expectedOutput! <= 0n) {
+            throw new TokenTradeError("TRADE_TOO_SMALL");
+          }
+          if (buying && expectedOutput! > remaining!) {
+            throw new TokenTradeError("EXCEEDS_CURVE_INVENTORY");
+          }
+          if (approval && allowance! >= amount) {
+            throw new TokenTradeError("APPROVAL_NOT_REQUIRED");
+          }
+          if (!approval && allowance! < amount) {
+            throw new TokenTradeError("APPROVAL_REQUIRED");
+          }
+          const minimumOutput = tokenTradeMinimumOutput(expectedOutput!, intent.trade.slippageBps);
+          quote = {
+            ...intent.trade,
+            side: buying ? "buy" : "sell",
+            approval,
+            expectedOutput: expectedOutput!.toString(),
+            minimumOutput: minimumOutput.toString(),
+            balance: balance!.toString(),
+            allowance: allowance!.toString(),
+            feeBps: buying ? policy.preset.buyFeeBps : policy.preset.sellFeeBps,
+          };
+          to = approval ? inputAsset : launch.curve;
+          data = approval
+            ? encodeFunctionData({
+                abi: erc20Abi,
+                functionName: "approve",
+                args: [launch.curve, amount],
+              })
+            : encodeFunctionData({
+                abi: PicklerBondingCurveAbi,
+                functionName: buying ? "buyExactInput" : "sellExactInput",
+                args: [amount, minimumOutput, owner, BigInt(intent.deadline)],
+              });
+        } else if (intent.action === "graduate") {
           if (!intent.context.venue?.readyToGraduate || intent.context.venue.status !== "curve") {
             throw new Error("CURVE_NOT_READY");
           }
@@ -414,7 +487,7 @@ export function createTokenOperationDriver(deps: {
             functionName: "collectFees",
             args: [token],
           });
-        } else {
+        } else if (intent.action === "claim_fees") {
           to = policy.escrow.address;
           const asset = intent.asset === "agent" ? token : policy.preset.quoteAddress;
           data = encodeFunctionData({
@@ -422,6 +495,8 @@ export function createTokenOperationDriver(deps: {
             functionName: "claim",
             args: [asset as Hex, intent.context.masterAddress as Hex],
           });
+        } else {
+          throw new Error("UNSUPPORTED_TOKEN_ACTION");
         }
       }
       const from = intent.context.masterAddress!;
@@ -457,6 +532,7 @@ export function createTokenOperationDriver(deps: {
         maxFeePerGas: fees.maxFeePerGas.toString(),
         maximumGasCost: (gas * fees.maxFeePerGas).toString(),
         deadline: intent.deadline,
+        ...(quote ? { quote } : {}),
         activity: deps.activities.signTransaction({
           subOrganizationId: organizationId,
           signWith: from,
@@ -483,6 +559,14 @@ export function createTokenOperationDriver(deps: {
         BigInt(String(balance)) < BigInt(prepared.maximumGasCost)
       ) {
         throw new Error("TRANSACTION_NOT_SENDABLE");
+      }
+      // Re-simulate the exact swap/approval after the passkey delay; slippage, balances,
+      // allowance and curve phase remain on-chain constraints, never a fresh rewritten quote.
+      if (prepared.quote) {
+        await rpc.call("eth_call", [
+          { from: prepared.sender, to: tx.to, data: tx.data, value: "0x0" },
+          "latest",
+        ]);
       }
     },
     async sign(prepared, request) {
