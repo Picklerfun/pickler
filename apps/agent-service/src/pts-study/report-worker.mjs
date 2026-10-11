@@ -12,6 +12,17 @@ await ptsReport(
   output,
   {
     ...summary,
+    portfolioMetrics: summary.rows.map((row) => {
+      const financial = audit.financial.find((metric) => metric.variant === row.strategy);
+      return {
+        ...row,
+        recordedFundingVirtualAUSD: row.fundingVirtualAUSD,
+        recordedNetRealizedPnlVirtualAUSD: row.netRealizedPnlVirtualAUSD,
+        fundingVirtualAUSD: financial?.fundingAUSD ?? null,
+        netRealizedPnlVirtualAUSD: financial?.netRealizedAUSD ?? null,
+      };
+    }),
+    financial: audit.financial,
     audit: auditSummary,
     processState: state,
     commit,
