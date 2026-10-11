@@ -1,4 +1,4 @@
-import { PTS_POLICY } from "@pickler/trading/pts";
+import { PTS_POLICY, PTS_INTRADAY_POLICY } from "@pickler/trading/pts";
 import { publish, digest, bytesHash } from "./files.js";
 export const escapeHtml = (v: unknown) =>
   String(v ?? "")
@@ -79,6 +79,16 @@ export async function ptsReport(
   report: Record<string, unknown>,
   rows: Record<string, unknown>[],
 ) {
+  const intraday =
+    report.policy === "pts-intraday@0.1.0" ||
+    report.sourceStudyProtocol === "perps-pts-intraday-sma-v1" ||
+    report.protocol === "perps-pts-intraday-sma-v1" ||
+    !!(report.strategyVersions as Record<string, unknown> | undefined)?.["pts-intraday"];
+  const policy = intraday ? PTS_INTRADAY_POLICY : PTS_POLICY;
+  const heading = intraday ? "PTS intraday 0.1.0" : "PTS basic 0.2.0";
+  const preparation = intraday
+    ? "Preparation or offline replay. The twenty-four-hour public comparison has not started."
+    : "Preparation or offline replay. The fourteen-day public comparison has not started.";
   const keys = [
     "at",
     "slot",
@@ -127,7 +137,7 @@ export async function ptsReport(
             ? "Comparison interrupted; review pending positions and funding."
             : report.processState === "process-unverified"
               ? "The recorded study started; current process health is not verified. No restart is authorized."
-              : "Preparation or offline replay. The fourteen-day public comparison has not started.";
+              : preparation;
   const csvRows = rows.map((row) => {
     const analysis =
       row.analysis ??
@@ -194,11 +204,11 @@ export async function ptsReport(
     .replaceAll("<", "\\u003c")
     .replaceAll("\u2028", "\\u2028")
     .replaceAll("\u2029", "\\u2029");
-  const html = `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>PTS basic 0.2.0 — preparation and replay</title><style>
+  const html = `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>${escapeHtml(heading)} — preparation and replay</title><style>
   body{background:#101820;color:#e5ecf3;font:15px system-ui;max-width:1500px;margin:32px auto;padding:20px}h1{font-size:30px}h2{font-size:22px;color:#8ee2bc}a{color:#8fd2ff}section{padding:18px;border:1px solid #344654;border-radius:8px;margin:20px 0}table{width:100%;border-collapse:collapse}th,td{padding:10px;text-align:left;border-bottom:1px solid #344654}button,select,input{background:#233442;color:#fff;border:1px solid #617687;padding:8px;margin:4px}pre{white-space:pre-wrap;overflow-wrap:anywhere}small{color:#bccad5}svg{max-width:600px;background:#182a35}
-  </style><h1>PTS basic 0.2.0</h1><p>${escapeHtml(stage)} No models or real orders.</p>
+  </style><h1>${escapeHtml(heading)}</h1><p>${escapeHtml(stage)} No models or real orders.</p>
   <section><h2>Evidence and limits</h2><pre>${escapeHtml(JSON.stringify(visibleSummary, null, 2))}</pre></section>
-  <section><h2>Frozen policy</h2><pre>${escapeHtml(JSON.stringify(PTS_POLICY, null, 2))}</pre><p>Numeric choices are experimental. More signals do not establish profitability. Missing books/funding do not establish hypothetical P&amp;L.</p></section>
+  <section><h2>Frozen policy</h2><pre>${escapeHtml(JSON.stringify(policy, null, 2))}</pre><p>Numeric choices are experimental. More signals do not establish profitability. Missing books/funding do not establish hypothetical P&amp;L.</p></section>
   <section><h2>Frozen anchors and drawings</h2>${graphs || "<p>No eligible setup in these inputs. No drawing was invented.</p>"}<p>Up to 24 distinct setups illustrated; all exact anchors and formulas remain in JSON.</p></section>
   <section><h2>Decision evidence</h2><input id="filter" placeholder="Market, action or reason" aria-label="Filter decisions"><button id="prev">Previous</button><button id="next">Next</button><span id="count"></span>
   <table><thead><tr><th>UTC / slot</th><th>Market</th><th>Variant</th><th>Action</th><th>Reason / status</th><th>Reference</th></tr></thead><tbody id="rows"></tbody></table></section>
@@ -244,7 +254,7 @@ export async function ptsReport(
         {
           format: "pts-report-manifest-v1",
           reportHash: digest(full),
-          policyHash: digest(PTS_POLICY),
+          policyHash: digest(policy),
           files: {
             ...Object.fromEntries(
               Object.entries(financialFiles).map(([name, body]) => [name, bytesHash(body)]),
