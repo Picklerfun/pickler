@@ -960,7 +960,7 @@ test("thirty controlled cold and warm measurements compare identical REST/stream
   assert.equal(measurements.length, 120);
 });
 
-test("intraday excludes the frozen preparation cohort before re-evaluating invalid saved histories", async (t) => {
+test("intraday preserves cohort exclusions and accepts the frozen twenty-four-bar daily minimum", async (t) => {
   clocks(t);
   const eligible = markets
     .filter((m) => !["LIT", "VVV", "NEAR", "UNI"].includes(m.symbol))
@@ -970,6 +970,24 @@ test("intraday excludes the frozen preparation cohort before re-evaluating inval
     const address = "0x" + "1".repeat(40);
     history.market.exchangeAddress = address;
     history.market.collateral.address = address;
+    if (m.symbol === "BTC" || m.symbol === "PUMP") {
+      const daily = history.series.find((s) => s.resolution === 86400)!;
+      if (m.symbol === "BTC") {
+        daily.candles = daily.candles.slice(-24);
+      } else {
+        const first = daily.candles[0]!;
+        const additional = 52 - daily.candles.length;
+        daily.candles = [
+          ...Array.from({ length: additional }, (_, i) => ({
+            ...first,
+            openTime: first.openTime - (additional - i) * 86400000,
+            closeTime: first.closeTime - (additional - i) * 86400000,
+          })),
+          ...daily.candles,
+        ];
+      }
+      daily.from = daily.candles[0]!.openTime;
+    }
     if (!eligible.includes(m.symbol)) {
       history.series[4]!.candles[0]!.low = "0";
     }
@@ -1014,11 +1032,19 @@ test("intraday excludes the frozen preparation cohort before re-evaluating inval
           markets.filter((m) => eligible.includes(m.symbol)).some((m) => m.marketId === marketId),
         );
         const end = Math.floor(Date.now() / (resolution * 1000)) * resolution * 1000;
+        const available = initialHistory
+          .find((h) => h.market.marketId === marketId)!
+          .series.find((s) => s.resolution === resolution)!.candles.length;
+        const bounds = new URL(path).pathname.split("/").filter(Boolean).slice(-2).map(Number);
+        const unit = bounds[0]! > 100000000000 ? 1000 : 1;
+        const requested = (bounds[1]! - bounds[0]!) / (resolution * unit);
+        const count = Math.min(requested, available);
+        assert.ok(Number.isInteger(count) && count > 0 && count <= 60);
         return Response.json({
           at: { t: Date.now(), b: 1 },
           r: resolution,
-          d: Array.from({ length: 60 }, (_, i) => ({
-            t: end - (60 - i) * resolution * 1000,
+          d: Array.from({ length: count }, (_, i) => ({
+            t: end - (count - i) * resolution * 1000,
             o: 100000,
             c: 100000,
             h: 100000,
