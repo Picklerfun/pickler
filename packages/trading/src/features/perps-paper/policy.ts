@@ -1,10 +1,11 @@
 import {
-  LEVERAGE_BOUNDS,
-  PilotError,
-  type AgentRecord,
-  PERPL_LAB_SYMBOLS,
-  type PerpSymbol,
-} from "@pickler/core";
+  isPtsAccount,
+  ptsManagement,
+  assertPtsOpening,
+  attachPtsOpening,
+  assertPtsReduction,
+} from "../pts/account.js";
+import { LEVERAGE_BOUNDS, PilotError, type AgentRecord } from "@pickler/core";
 import { pluginEnabled } from "@pickler/core";
 import {
   PAPER_SCALE,
@@ -185,8 +186,10 @@ export function paperRisk(
         ? u(p.mark) * 100n <= u(p.entryPrice) * 98n
         : u(p.mark) * 100n >= u(p.entryPrice) * 102n);
     if (
-      stop ||
-      now - p.openedAt >= 4 * 3600000 ||
+      (isPtsAccount(account)
+        ? ptsManagement(p, p.markAt !== null && now - p.markAt <= 30000 ? p.mark : null, now)
+            .action === "close" && !ptsManagement(p, p.mark, now).targets.length
+        : stop || now - p.openedAt >= 4 * 3600000) ||
       daily ||
       drawdown ||
       account.blocked ||
@@ -329,6 +332,11 @@ export function applyPaperFill(
     ) {
       throw new PilotError("INVALID_FILL", "Opening exceeds intent");
     }
+    if (isPtsAccount(a)) {
+      assertPtsOpening(a, attempt.intent, fill, paperRisk(a, [], now).equity, now);
+    } else if (attempt.intent.pts !== undefined) {
+      throw new PilotError("INVALID_INPUT", "PTS evidence is restricted to PTS accounts");
+    }
     const position: PerpsPaperAccount["positions"][number] = {
       id: attempt.key,
       symbol: attempt.intent.symbol,
@@ -353,16 +361,33 @@ export function applyPaperFill(
       position.margin = d(u(fill.notional) / BigInt(leverage));
       position.checkId = attempt.intent.checkId ?? null;
     }
+    if (isPtsAccount(a)) {
+      attachPtsOpening(a, position, attempt.intent, fill);
+    }
     a.positions.push(position);
   } else {
     const p = a.positions.find(
       (p) =>
         p.symbol === attempt.intent.symbol && p.closedAt === null && p.side === attempt.intent.side,
     );
-    if (!p || u(p.quantity) !== u(fill.quantity) || fill.block < p.entryBlock) {
+    if (
+      !p ||
+      (!isPtsAccount(a) && u(p.quantity) !== u(fill.quantity)) ||
+      fill.block < p.entryBlock
+    ) {
       throw new PilotError("INVALID_FILL", "Close must match the full position");
     }
-    let realized = (u(fill.notional) - u(p.entryNotional)) * (p.side === "long" ? 1n : -1n);
+    const pts = isPtsAccount(a);
+    if (pts) {
+      assertPtsReduction(p, attempt.intent, fill);
+    } else if (attempt.intent.pts !== undefined) {
+      throw new PilotError("INVALID_INPUT", "Partial exits are restricted to PTS");
+    }
+    const costBasis =
+      pts && u(fill.quantity) < u(p.quantity)
+        ? (u(p.entryNotional) * u(fill.quantity)) / u(p.quantity)
+        : u(p.entryNotional);
+    let realized = (u(fill.notional) - costBasis) * (p.side === "long" ? 1n : -1n);
     if (isProductPaperSession(a.scope)) {
       // Isolated margin: a product close loses at most the position's margin, its fee included.
       // A fill past the liquidation estimate (a gap, a stale board) is a liquidation, so cash
@@ -381,9 +406,27 @@ export function applyPaperFill(
       at: now,
       evidence: fill.evidence,
     });
-    p.closedAt = now;
-    p.exitPrice = fill.price;
-    p.exitBlock = fill.block;
+    if (pts) {
+      const targets = attempt.intent.pts?.targets ?? [];
+      p.pts!.reductions.push({
+        key: attempt.key,
+        at: now,
+        block: fill.block,
+        quantity: fill.quantity,
+        costBasis: d(costBasis),
+        price: fill.price,
+        fee: fill.fee,
+        targets,
+      });
+      p.pts!.consumedTargets.push(...targets);
+      p.quantity = d(u(p.quantity) - u(fill.quantity));
+      p.entryNotional = d(u(p.entryNotional) - costBasis);
+    }
+    if (!pts || u(p.quantity) === 0n) {
+      p.closedAt = now;
+      p.exitPrice = fill.price;
+      p.exitBlock = fill.block;
+    }
   }
   a.cash = d(u(a.cash) + movements.reduce((sum, m) => sum + u(m.delta), 0n));
   if (u(a.cash) <= 0n) {
