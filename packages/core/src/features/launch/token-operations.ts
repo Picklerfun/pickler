@@ -18,8 +18,49 @@ export const TOKEN_ACTIONS = [
   "collect_curve_fees",
   "collect_lp_fees",
   "claim_fees",
+  "approve_buy",
+  "approve_sell",
+  "buy",
+  "sell",
 ] as const;
 export type TokenAction = (typeof TOKEN_ACTIONS)[number];
+export interface TokenTradeInput {
+  /** Positive exact-input amount in the input asset's atomic units. */
+  amount: string;
+  /** Explicit tolerance, bounded to one percent. */
+  slippageBps: number;
+}
+export interface TokenTradeQuote extends TokenTradeInput {
+  side: "buy" | "sell";
+  approval: boolean;
+  expectedOutput: string;
+  minimumOutput: string;
+  balance: string;
+  allowance: string;
+  feeBps: number;
+}
+export class TokenTradeError extends Error {
+  constructor(
+    public readonly code:
+      | "APPROVAL_REQUIRED"
+      | "INSUFFICIENT_TOKEN_BALANCE"
+      | "CURVE_CLOSED"
+      | "TRADE_TOO_SMALL"
+      | "EXCEEDS_CURVE_INVENTORY"
+      | "APPROVAL_NOT_REQUIRED",
+  ) {
+    super(code);
+  }
+}
+export function isTokenTradeAction(action: TokenAction) {
+  return ["approve_buy", "approve_sell", "buy", "sell"].includes(action);
+}
+export function tokenTradeMinimumOutput(output: bigint, slippageBps: number): bigint {
+  if (output <= 0n || !Number.isInteger(slippageBps) || slippageBps < 1 || slippageBps > 100) {
+    throw new TokenLaunchError("TOKEN_DRAFT_INVALID");
+  }
+  return (output * BigInt(10000 - slippageBps) + 9999n) / 10000n;
+}
 export type TokenOperationStatus =
   | "preparing"
   | "awaiting_signature"
@@ -36,6 +77,7 @@ export interface TokenPreparedTransaction {
   operationId: string;
   /** Private commitment to the reviewed venue, deployment, economics and gas policy. */
   configurationHash?: string;
+  quote?: TokenTradeQuote;
   activity: UnsignedActivity;
   chainId: number;
   sender: string;
@@ -53,6 +95,7 @@ export interface TokenIntent {
   key: string;
   action: TokenAction;
   asset: "ausd" | "agent";
+  trade?: TokenTradeInput;
   version: number;
   draftVersion: number;
   nonce: string;
@@ -81,6 +124,7 @@ export interface TokenIntentTransaction {
         | "key"
         | "action"
         | "asset"
+        | "trade"
         | "nonce"
         | "context"
         | "draft"
@@ -127,7 +171,9 @@ export function sameTokenContext(a: TokenContext, b: TokenContext): boolean {
     a.accent === b.accent &&
     a.avatarPattern === b.avatarPattern &&
     a.name === b.name &&
-    a.handle === b.handle
+    a.handle === b.handle &&
+    a.token?.address === b.token?.address &&
+    a.token?.chainId === b.token?.chainId
   );
 }
 export function tokenOperationView(intent: TokenIntent) {
@@ -141,6 +187,7 @@ export function tokenOperationView(intent: TokenIntent) {
     blockHash: intent.blockHash,
     error: intent.error,
     deadline: intent.deadline,
+    quote: intent.prepared?.quote ?? null,
     activity: intent.status === "awaiting_signature" ? (intent.prepared?.activity ?? null) : null,
     transaction: intent.prepared
       ? {
@@ -269,10 +316,30 @@ export function createTokenOperationService(deps: {
   return {
     async prepare(
       scope: TokenScope,
-      input: { action: TokenAction; expectedVersion: number; asset?: "ausd" | "agent" },
+      input: {
+        action: TokenAction;
+        expectedVersion: number;
+        asset?: "ausd" | "agent";
+        trade?: TokenTradeInput;
+      },
       key: string,
     ) {
       if (!TOKEN_ACTIONS.includes(input.action) || !/^[A-Za-z0-9_-]{16,120}$/.test(key)) {
+        throw new TokenLaunchError("TOKEN_DRAFT_INVALID");
+      }
+      if (isTokenTradeAction(input.action)) {
+        if (
+          !input.trade ||
+          !/^[1-9][0-9]{0,77}$/.test(input.trade.amount) ||
+          BigInt(input.trade.amount) >= 2n ** 256n ||
+          !Number.isInteger(input.trade.slippageBps) ||
+          input.trade.slippageBps < 1 ||
+          input.trade.slippageBps > 100 ||
+          input.asset !== undefined
+        ) {
+          throw new TokenLaunchError("TOKEN_DRAFT_INVALID");
+        }
+      } else if (input.trade) {
         throw new TokenLaunchError("TOKEN_DRAFT_INVALID");
       }
       if (input.action === "launch") {
@@ -288,7 +355,9 @@ export function createTokenOperationService(deps: {
           if (
             previous.action !== input.action ||
             previous.asset !== (input.asset ?? "ausd") ||
-            previous.draftVersion !== input.expectedVersion
+            previous.draftVersion !== input.expectedVersion ||
+            previous.trade?.amount !== input.trade?.amount ||
+            previous.trade?.slippageBps !== input.trade?.slippageBps
           ) {
             throw new TokenLaunchError("TOKEN_IDEMPOTENCY_CONFLICT");
           }
@@ -301,6 +370,7 @@ export function createTokenOperationService(deps: {
           key,
           action: input.action,
           asset: input.asset ?? "ausd",
+          ...(input.trade ? { trade: { ...input.trade } } : {}),
           draftVersion: input.expectedVersion,
           deadline: String(Math.floor(now.getTime() / 1000) + 300),
           context,
@@ -346,8 +416,14 @@ export function createTokenOperationService(deps: {
           return intents.update(claimed, { prepared, status: "awaiting_signature", error: null });
         });
         return { operation: tokenOperationView(final), activity: prepared.activity };
-      } catch {
-        await patch(scope, claimed, { status: "failed", error: "PREPARATION_FAILED" });
+      } catch (error) {
+        const failed = await patch(scope, claimed, {
+          status: "failed",
+          error: error instanceof TokenTradeError ? error.code : "PREPARATION_FAILED",
+        });
+        if (error instanceof TokenTradeError) {
+          return { operation: tokenOperationView(failed), activity: null };
+        }
         throw new TokenLaunchError("TOKEN_LAUNCH_BLOCKED", ["LAUNCH_UNAVAILABLE"]);
       }
     },
