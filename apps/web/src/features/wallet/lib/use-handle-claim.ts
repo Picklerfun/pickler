@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { FieldTone } from "@pickler/ui";
 import { HANDLE_RULES, RESERVED_HANDLES } from "@pickler/api-schema";
 import { useWallet } from "./wallet-context";
@@ -65,7 +65,19 @@ export function useHandleClaim(onClaimed?: () => void) {
    */
   const [answer, setAnswer] = useState<{ asked: string; value: Availability } | null>(null);
   const [busy, setBusy] = useState(false);
-  const [failed, setFailed] = useState<string | null>(null);
+  const [failure, setFailed] = useState<{ handle: string; message: string } | null>(null);
+  const claiming = useRef(false);
+  const mounted = useRef(true);
+  const currentAddress = useRef(wallet.address);
+  useEffect(() => {
+    currentAddress.current = wallet.address;
+  }, [wallet.address]);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
 
   const trimmed = handle.trim().toLowerCase();
   const problem = handle.trim() ? localProblem(handle, HANDLE_RULES, RESERVED_HANDLES) : null;
@@ -76,14 +88,26 @@ export function useHandleClaim(onClaimed?: () => void) {
     if (!askable) {
       return;
     }
+    let live = true;
     const timer = setTimeout(() => {
       void checkAvailability(trimmed).then(
-        (value) => setAnswer({ asked: trimmed, value }),
+        (value) => {
+          if (live) {
+            setAnswer({ asked: trimmed, value });
+          }
+        },
         // A thrown lookup is the same fact as a refused one: nobody looked.
-        () => setAnswer({ asked: trimmed, value: { known: false } }),
+        () => {
+          if (live) {
+            setAnswer({ asked: trimmed, value: { known: false } });
+          }
+        },
       );
     }, SETTLE_MS);
-    return () => clearTimeout(timer);
+    return () => {
+      live = false;
+      clearTimeout(timer);
+    };
   }, [trimmed, askable]);
 
   /**
@@ -93,22 +117,40 @@ export function useHandleClaim(onClaimed?: () => void) {
    * `signInWithWallet` answers with no error to show and the form simply stays as it was.
    */
   async function claim() {
+    if (claiming.current || !askable || (availability?.known && !availability.available)) {
+      return;
+    }
+    claiming.current = true;
     setBusy(true);
     setFailed(null);
     try {
-      const signedIn = await wallet.signInWithWallet();
+      const address = wallet.address;
+      const wanted = () => mounted.current && currentAddress.current === address;
+      const signedIn = await wallet.signInWithWallet(wanted);
+      if (!wanted()) {
+        return;
+      }
       if ("error" in signedIn) {
         // From the result, not from `wallet.sessionError`: that is the value of the render this
         // function was made in, from before the sign-in was even asked for.
-        setFailed(signedIn.error);
+        if (signedIn.error) {
+          setFailed({ handle: trimmed, message: signedIn.error });
+        }
         return;
       }
       await claimHandle({ handle: trimmed, displayName: handle.trim() }, signedIn.token);
+      if (!wanted()) {
+        return;
+      }
       wallet.profileClaimed();
       onClaimed?.();
     } catch (caught) {
-      setFailed(caught instanceof Error ? caught.message : "That handle could not be claimed");
+      setFailed({
+        handle: trimmed,
+        message: caught instanceof Error ? caught.message : "That handle could not be claimed",
+      });
     } finally {
+      claiming.current = false;
       setBusy(false);
     }
   }
@@ -130,7 +172,7 @@ export function useHandleClaim(onClaimed?: () => void) {
     problem,
     askable,
     busy,
-    failed,
+    failed: failure?.handle === trimmed ? failure.message : null,
     claim,
     /** What to say under the field, or null while it is empty. */
     shown: handle.trim() ? note(problem, availability) : null,
