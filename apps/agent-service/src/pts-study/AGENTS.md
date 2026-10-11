@@ -1,13 +1,13 @@
 # Local PTS experimental laboratory
 
 Read the root, agent-service, trading, infrastructure and runtime instructions before changes.
-This host selects only configuration v8, `perps-pts-sma-v1`. PTS is local and absent from Studio.
+This host selects basic v8 `perps-pts-sma-v1` and independent intraday v9 `perps-pts-intraday-sma-v1`. PTS is local and absent from Studio.
 Offline replay/audit dispatch before environment or provider imports. Only prepare reads public
 Perpl history; never invent bars or relax eligibility. Preflight uses a dedicated loopback
-DATABASE_URL-only file. Run is explicit, one-shot and never part of implementation acceptance.
+DATABASE_URL-only file. Run is explicit and one-shot. Basic acceptance does not start its fourteen-day trial; the separately authorized intraday pilot is bounded at 24 hours.
 
 Reuse the shared profile runner, guarded public reader, simulator, accounting and consistent audit
-export. Do not implement financial formulas in this host. Keep fourteen-day fixed clocks,
+export. Do not implement financial formulas in this host. Keep version-specific fourteen-day/basic or twenty-four-hour/intraday fixed clocks,
 unknown funding and original monetary campaign reservations. Models, Exa and signing are unreachable.
 Write preparation/replay/export into new directories; publish runtime reports atomically.
 Reports distinguish controlled fixtures, recorded candle signals, real history coverage and
