@@ -298,3 +298,19 @@ rollback on demonstrated native/heartbeat aging records an unavailable observati
 failures. Initial/final marks and funding reuse the common port. A partially committed observation,
 financial maintenance failure or uncertain commit cannot become an omission. Legacy paths remain
 unchanged. Controlled six-hour tests use synthetic evidence and do not establish live availability.
+
+## Experimental PTS public contract
+
+`@pickler/trading/pts` exports deterministic PTS 0.2.0 detectors, UTC aggregation, dated strict
+pivots, exact ratio/channel/ATR comparisons, sizing, management and offline reproduction.
+`src/features/pts/` owns these rules; `@pickler/trading/testing/pts` is controlled test data only.
+Evaluation config v8 (`perps-pts-sma-v1`) uses explicit `sma-reference`/`pts-basic` maps and the
+existing profile coordinator. It has no model arms or monetary reservations.
+
+PTS account policy alone permits native explicit-quantity partials. Keep initial basis/quantity,
+remaining amounts, block-ordered reductions, consumed setup/targets and non-widening stop state.
+Same-block funding uses the quantity before reduction; later blocks use the reduced quantity,
+including reconciliation after final close. Historic full closes and SMA/Studio rules are unchanged.
+No candle-only financial return or hypothetical evolving portfolio belongs in signal replay.
+Keep decisions and revisions bounded by information time and the original missing-evidence labels.
+See [the local guide](../../apps/agent-service/PTS-BASIC-PAPER.md).
