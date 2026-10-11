@@ -1,0 +1,2483 @@
+{
+  "format": "pts-sma-frozen-compatibility-v1",
+  "sourceCommit": "0bf07d70037878da1edb93cc8325c7d9d1670b32",
+  "controlled": true,
+  "cases": [
+    {
+      "inputHash": "815050749f67fdea96c55ba258650abc6d86abcdc4ef74da0113f37fc558a9bc",
+      "expected": {
+        "proposals": [
+          {
+            "symbol": "BTC",
+            "action": "open-long",
+            "reason": "SMA20_50_long",
+            "sourceIds": ["BTC:candles"],
+            "rank": 1,
+            "trace": {
+              "profile": {
+                "id": "sma-hourly-v1",
+                "version": "1.0.0",
+                "requiredResolutions": [3600],
+                "trendResolution": 3600,
+                "fastPeriod": 20,
+                "slowPeriod": 50,
+                "separationBps": 10,
+                "decisionsSeconds": 300,
+                "maxHoldingSeconds": 14400
+              },
+              "sma20": "125.75",
+              "sma50": "125.3",
+              "separationBps": "35.913806863527533918",
+              "confirmation": null
+            }
+          },
+          {
+            "symbol": "MON",
+            "action": "open-long",
+            "reason": "SMA20_50_long",
+            "sourceIds": ["MON:candles"],
+            "rank": 2,
+            "trace": {
+              "profile": {
+                "id": "sma-hourly-v1",
+                "version": "1.0.0",
+                "requiredResolutions": [3600],
+                "trendResolution": 3600,
+                "fastPeriod": 20,
+                "slowPeriod": 50,
+                "separationBps": 10,
+                "decisionsSeconds": 300,
+                "maxHoldingSeconds": 14400
+              },
+              "sma20": "125.75",
+              "sma50": "125.3",
+              "separationBps": "35.913806863527533918",
+              "confirmation": null
+            }
+          },
+          {
+            "symbol": "ETH",
+            "action": "open-long",
+            "reason": "SMA20_50_long",
+            "sourceIds": ["ETH:candles"],
+            "rank": 3,
+            "trace": {
+              "profile": {
+                "id": "sma-hourly-v1",
+                "version": "1.0.0",
+                "requiredResolutions": [3600],
+                "trendResolution": 3600,
+                "fastPeriod": 20,
+                "slowPeriod": 50,
+                "separationBps": 10,
+                "decisionsSeconds": 300,
+                "maxHoldingSeconds": 14400
+              },
+              "sma20": "125.75",
+              "sma50": "125.3",
+              "separationBps": "35.913806863527533918",
+              "confirmation": null
+            }
+          },
+          {
+            "symbol": "SOL",
+            "action": "open-long",
+            "reason": "SMA20_50_long",
+            "sourceIds": ["SOL:candles"],
+            "rank": 4,
+            "trace": {
+              "profile": {
+                "id": "sma-hourly-v1",
+                "version": "1.0.0",
+                "requiredResolutions": [3600],
+                "trendResolution": 3600,
+                "fastPeriod": 20,
+                "slowPeriod": 50,
+                "separationBps": 10,
+                "decisionsSeconds": 300,
+                "maxHoldingSeconds": 14400
+              },
+              "sma20": "125.75",
+              "sma50": "125.3",
+              "separationBps": "35.913806863527533918",
+              "confirmation": null
+            }
+          },
+          {
+            "symbol": "HYPE",
+            "action": "hold",
+            "reason": "EXPOSURE_LIMIT",
+            "sourceIds": ["HYPE:candles"],
+            "rank": 5,
+            "trace": {
+              "profile": {
+                "id": "sma-hourly-v1",
+                "version": "1.0.0",
+                "requiredResolutions": [3600],
+                "trendResolution": 3600,
+                "fastPeriod": 20,
+                "slowPeriod": 50,
+                "separationBps": 10,
+                "decisionsSeconds": 300,
+                "maxHoldingSeconds": 14400
+              },
+              "sma20": "125.75",
+              "sma50": "125.3",
+              "separationBps": "35.913806863527533918",
+              "confirmation": null
+            }
+          },
+          {
+            "symbol": "ZEC",
+            "action": "hold",
+            "reason": "EXPOSURE_LIMIT",
+            "sourceIds": ["ZEC:candles"],
+            "rank": 6,
+            "trace": {
+              "profile": {
+                "id": "sma-hourly-v1",
+                "version": "1.0.0",
+                "requiredResolutions": [3600],
+                "trendResolution": 3600,
+                "fastPeriod": 20,
+                "slowPeriod": 50,
+                "separationBps": 10,
+                "decisionsSeconds": 300,
+                "maxHoldingSeconds": 14400
+              },
+              "sma20": "125.75",
+              "sma50": "125.3",
+              "separationBps": "35.913806863527533918",
+              "confirmation": null
+            }
+          },
+          {
+            "symbol": "LIT",
+            "action": "hold",
+            "reason": "EXPOSURE_LIMIT",
+            "sourceIds": ["LIT:candles"],
+            "rank": 7,
+            "trace": {
+              "profile": {
+                "id": "sma-hourly-v1",
+                "version": "1.0.0",
+                "requiredResolutions": [3600],
+                "trendResolution": 3600,
+                "fastPeriod": 20,
+                "slowPeriod": 50,
+                "separationBps": 10,
+                "decisionsSeconds": 300,
+                "maxHoldingSeconds": 14400
+              },
+              "sma20": "125.75",
+              "sma50": "125.3",
+              "separationBps": "35.913806863527533918",
+              "confirmation": null
+            }
+          },
+          {
+            "symbol": "VVV",
+            "action": "hold",
+            "reason": "EXPOSURE_LIMIT",
+            "sourceIds": ["VVV:candles"],
+            "rank": 8,
+            "trace": {
+              "profile": {
+                "id": "sma-hourly-v1",
+                "version": "1.0.0",
+                "requiredResolutions": [3600],
+                "trendResolution": 3600,
+                "fastPeriod": 20,
+                "slowPeriod": 50,
+                "separationBps": 10,
+                "decisionsSeconds": 300,
+                "maxHoldingSeconds": 14400
+              },
+              "sma20": "125.75",
+              "sma50": "125.3",
+              "separationBps": "35.913806863527533918",
+              "confirmation": null
+            }
+          },
+          {
+            "symbol": "PUMP",
+            "action": "hold",
+            "reason": "EXPOSURE_LIMIT",
+            "sourceIds": ["PUMP:candles"],
+            "rank": 9,
+            "trace": {
+              "profile": {
+                "id": "sma-hourly-v1",
+                "version": "1.0.0",
+                "requiredResolutions": [3600],
+                "trendResolution": 3600,
+                "fastPeriod": 20,
+                "slowPeriod": 50,
+                "separationBps": 10,
+                "decisionsSeconds": 300,
+                "maxHoldingSeconds": 14400
+              },
+              "sma20": "125.75",
+              "sma50": "125.3",
+              "separationBps": "35.913806863527533918",
+              "confirmation": null
+            }
+          },
+          {
+            "symbol": "NEAR",
+            "action": "hold",
+            "reason": "EXPOSURE_LIMIT",
+            "sourceIds": ["NEAR:candles"],
+            "rank": 10,
+            "trace": {
+              "profile": {
+                "id": "sma-hourly-v1",
+                "version": "1.0.0",
+                "requiredResolutions": [3600],
+                "trendResolution": 3600,
+                "fastPeriod": 20,
+                "slowPeriod": 50,
+                "separationBps": 10,
+                "decisionsSeconds": 300,
+                "maxHoldingSeconds": 14400
+              },
+              "sma20": "125.75",
+              "sma50": "125.3",
+              "separationBps": "35.913806863527533918",
+              "confirmation": null
+            }
+          },
+          {
+            "symbol": "UNI",
+            "action": "hold",
+            "reason": "EXPOSURE_LIMIT",
+            "sourceIds": ["UNI:candles"],
+            "rank": 11,
+            "trace": {
+              "profile": {
+                "id": "sma-hourly-v1",
+                "version": "1.0.0",
+                "requiredResolutions": [3600],
+                "trendResolution": 3600,
+                "fastPeriod": 20,
+                "slowPeriod": 50,
+                "separationBps": 10,
+                "decisionsSeconds": 300,
+                "maxHoldingSeconds": 14400
+              },
+              "sma20": "125.75",
+              "sma50": "125.3",
+              "separationBps": "35.913806863527533918",
+              "confirmation": null
+            }
+          }
+        ],
+        "fill": {
+          "quantity": "0.7474",
+          "price": "133.12",
+          "notional": "99.493888",
+          "fee": "0.019899",
+          "block": 100,
+          "timestamp": 1791590700000,
+          "mark": {
+            "price": "133.12",
+            "timestamp": 1791590700000
+          },
+          "evidence": {
+            "model": "l2-full-fill-v1",
+            "frame": {
+              "snapshot": {
+                "market": {
+                  "symbol": "BTC",
+                  "marketId": 1,
+                  "perpetualId": 1,
+                  "instanceId": 1,
+                  "exchangeAddress": "0xexchange",
+                  "collateral": {
+                    "tokenId": 1,
+                    "address": "0xcollateral",
+                    "symbol": "AUSD",
+                    "decimals": 6
+                  },
+                  "configVersion": 1,
+                  "priceDecimals": 2,
+                  "sizeDecimals": 4,
+                  "open": true,
+                  "fundingIntervalSeconds": 3600,
+                  "fundingIntervalBlocks": 100,
+                  "initialMarginRaw": 100,
+                  "maintenanceMarginRaw": 50,
+                  "fees": {
+                    "basis": "public-base-tier",
+                    "maker": "0",
+                    "taker": "0.0002"
+                  },
+                  "provenance": {
+                    "provider": "perpl",
+                    "pluginVersion": "1.1.0",
+                    "network": "mainnet",
+                    "chainId": 143,
+                    "url": "https://perpl.test/data",
+                    "receivedAt": 1791590700000,
+                    "providerTimestamp": 1791590700000,
+                    "block": 100
+                  }
+                },
+                "ticker": {
+                  "mark": "133.12",
+                  "index": "133.12",
+                  "last": "133.12",
+                  "bid": "133.12",
+                  "ask": "133.12",
+                  "openInterestBase": "20",
+                  "freshness": "fresh",
+                  "provenance": {
+                    "provider": "perpl",
+                    "pluginVersion": "1.1.0",
+                    "network": "mainnet",
+                    "chainId": 143,
+                    "url": "https://perpl.test/data",
+                    "receivedAt": 1791590700000,
+                    "providerTimestamp": 1791590700000,
+                    "block": 100
+                  }
+                },
+                "funding": null
+              },
+              "book": {
+                "market": {
+                  "symbol": "BTC",
+                  "marketId": 1,
+                  "perpetualId": 1,
+                  "instanceId": 1,
+                  "exchangeAddress": "0xexchange",
+                  "collateral": {
+                    "tokenId": 1,
+                    "address": "0xcollateral",
+                    "symbol": "AUSD",
+                    "decimals": 6
+                  },
+                  "configVersion": 1,
+                  "priceDecimals": 2,
+                  "sizeDecimals": 4,
+                  "open": true,
+                  "fundingIntervalSeconds": 3600,
+                  "fundingIntervalBlocks": 100,
+                  "initialMarginRaw": 100,
+                  "maintenanceMarginRaw": 50,
+                  "fees": {
+                    "basis": "public-base-tier",
+                    "maker": "0",
+                    "taker": "0.0002"
+                  },
+                  "provenance": {
+                    "provider": "perpl",
+                    "pluginVersion": "1.1.0",
+                    "network": "mainnet",
+                    "chainId": 143,
+                    "url": "https://perpl.test/data",
+                    "receivedAt": 1791590700000,
+                    "providerTimestamp": 1791590700000,
+                    "block": 100
+                  }
+                },
+                "requestedLevels": 20,
+                "depthLimited": true,
+                "bids": [
+                  {
+                    "price": "133.12",
+                    "size": "100",
+                    "orders": 1
+                  }
+                ],
+                "asks": [
+                  {
+                    "price": "133.12",
+                    "size": "100",
+                    "orders": 1
+                  }
+                ],
+                "freshness": "fresh",
+                "provenance": {
+                  "provider": "perpl",
+                  "pluginVersion": "1.1.0",
+                  "network": "mainnet",
+                  "chainId": 143,
+                  "url": "https://perpl.test/data",
+                  "receivedAt": 1791590700000,
+                  "providerTimestamp": 1791590700000,
+                  "block": 100
+                }
+              },
+              "streamEvidence": {
+                "policy": "stream-universe-component-paper-20s-v1",
+                "generation": 1,
+                "copiedAt": 1791590700000,
+                "heartbeatSequence": 1791590700,
+                "headBlock": 100,
+                "heartbeatReceivedAt": 1791590700000
+              },
+              "hash": "9bcaaa2c7080dab3ab5d8ae68bb7562fc14eae90ec3db7ec5875fe15f4bdee04"
+            },
+            "consumed": [
+              {
+                "price": "133.12",
+                "quantity": "0.7474"
+              }
+            ],
+            "bestPrice": "133.12",
+            "slippageQuote": "0",
+            "spread": "0"
+          }
+        },
+        "opened": {
+          "account": {
+            "scope": {
+              "version": 7,
+              "protocol": "perps-sma-reentry-latency-v1",
+              "tenantId": "compatibility",
+              "sessionId": "frozen-compatibility",
+              "network": "mainnet",
+              "hours": 6,
+              "budgetUsd": "5",
+              "markets": [
+                {
+                  "symbol": "BTC",
+                  "marketId": 1
+                },
+                {
+                  "symbol": "MON",
+                  "marketId": 10
+                },
+                {
+                  "symbol": "ETH",
+                  "marketId": 20
+                },
+                {
+                  "symbol": "SOL",
+                  "marketId": 31
+                },
+                {
+                  "symbol": "HYPE",
+                  "marketId": 40
+                },
+                {
+                  "symbol": "ZEC",
+                  "marketId": 50
+                },
+                {
+                  "symbol": "LIT",
+                  "marketId": 60
+                },
+                {
+                  "symbol": "VVV",
+                  "marketId": 70
+                },
+                {
+                  "symbol": "PUMP",
+                  "marketId": 90
+                },
+                {
+                  "symbol": "NEAR",
+                  "marketId": 100
+                },
+                {
+                  "symbol": "UNI",
+                  "marketId": 110
+                }
+              ],
+              "acquisitionPolicy": "stream-universe-component-paper-20s-v1",
+              "agentId": "sma-reference"
+            },
+            "agentVersion": 1,
+            "policy": "conservative-1x-v1",
+            "createdAt": 1791590700000,
+            "cash": "999.980101",
+            "peakEquity": "1000",
+            "day": "2026-10-10",
+            "dayEquity": "1000",
+            "dailyBlocked": false,
+            "blocked": false,
+            "fundingPending": false,
+            "positions": [
+              {
+                "id": "frozen-open",
+                "symbol": "BTC",
+                "side": "long",
+                "quantity": "0.7474",
+                "entryPrice": "133.12",
+                "entryNotional": "99.493888",
+                "openedAt": 1791590700000,
+                "entryBlock": 100,
+                "mark": "133.12",
+                "markAt": 1791590700000,
+                "closedAt": null,
+                "exitPrice": null,
+                "exitBlock": null
+              }
+            ],
+            "riskManagement": "buffered-selective-1x-v1"
+          },
+          "movements": [
+            {
+              "key": "frozen-open:fee",
+              "kind": "fee",
+              "delta": "-0.019899",
+              "at": 1791590700000,
+              "evidence": {
+                "model": "l2-full-fill-v1",
+                "frame": {
+                  "snapshot": {
+                    "market": {
+                      "symbol": "BTC",
+                      "marketId": 1,
+                      "perpetualId": 1,
+                      "instanceId": 1,
+                      "exchangeAddress": "0xexchange",
+                      "collateral": {
+                        "tokenId": 1,
+                        "address": "0xcollateral",
+                        "symbol": "AUSD",
+                        "decimals": 6
+                      },
+                      "configVersion": 1,
+                      "priceDecimals": 2,
+                      "sizeDecimals": 4,
+                      "open": true,
+                      "fundingIntervalSeconds": 3600,
+                      "fundingIntervalBlocks": 100,
+                      "initialMarginRaw": 100,
+                      "maintenanceMarginRaw": 50,
+                      "fees": {
+                        "basis": "public-base-tier",
+                        "maker": "0",
+                        "taker": "0.0002"
+                      },
+                      "provenance": {
+                        "provider": "perpl",
+                        "pluginVersion": "1.1.0",
+                        "network": "mainnet",
+                        "chainId": 143,
+                        "url": "https://perpl.test/data",
+                        "receivedAt": 1791590700000,
+                        "providerTimestamp": 1791590700000,
+                        "block": 100
+                      }
+                    },
+                    "ticker": {
+                      "mark": "133.12",
+                      "index": "133.12",
+                      "last": "133.12",
+                      "bid": "133.12",
+                      "ask": "133.12",
+                      "openInterestBase": "20",
+                      "freshness": "fresh",
+                      "provenance": {
+                        "provider": "perpl",
+                        "pluginVersion": "1.1.0",
+                        "network": "mainnet",
+                        "chainId": 143,
+                        "url": "https://perpl.test/data",
+                        "receivedAt": 1791590700000,
+                        "providerTimestamp": 1791590700000,
+                        "block": 100
+                      }
+                    },
+                    "funding": null
+                  },
+                  "book": {
+                    "market": {
+                      "symbol": "BTC",
+                      "marketId": 1,
+                      "perpetualId": 1,
+                      "instanceId": 1,
+                      "exchangeAddress": "0xexchange",
+                      "collateral": {
+                        "tokenId": 1,
+                        "address": "0xcollateral",
+                        "symbol": "AUSD",
+                        "decimals": 6
+                      },
+                      "configVersion": 1,
+                      "priceDecimals": 2,
+                      "sizeDecimals": 4,
+                      "open": true,
+                      "fundingIntervalSeconds": 3600,
+                      "fundingIntervalBlocks": 100,
+                      "initialMarginRaw": 100,
+                      "maintenanceMarginRaw": 50,
+                      "fees": {
+                        "basis": "public-base-tier",
+                        "maker": "0",
+                        "taker": "0.0002"
+                      },
+                      "provenance": {
+                        "provider": "perpl",
+                        "pluginVersion": "1.1.0",
+                        "network": "mainnet",
+                        "chainId": 143,
+                        "url": "https://perpl.test/data",
+                        "receivedAt": 1791590700000,
+                        "providerTimestamp": 1791590700000,
+                        "block": 100
+                      }
+                    },
+                    "requestedLevels": 20,
+                    "depthLimited": true,
+                    "bids": [
+                      {
+                        "price": "133.12",
+                        "size": "100",
+                        "orders": 1
+                      }
+                    ],
+                    "asks": [
+                      {
+                        "price": "133.12",
+                        "size": "100",
+                        "orders": 1
+                      }
+                    ],
+                    "freshness": "fresh",
+                    "provenance": {
+                      "provider": "perpl",
+                      "pluginVersion": "1.1.0",
+                      "network": "mainnet",
+                      "chainId": 143,
+                      "url": "https://perpl.test/data",
+                      "receivedAt": 1791590700000,
+                      "providerTimestamp": 1791590700000,
+                      "block": 100
+                    }
+                  },
+                  "streamEvidence": {
+                    "policy": "stream-universe-component-paper-20s-v1",
+                    "generation": 1,
+                    "copiedAt": 1791590700000,
+                    "heartbeatSequence": 1791590700,
+                    "headBlock": 100,
+                    "heartbeatReceivedAt": 1791590700000
+                  },
+                  "hash": "9bcaaa2c7080dab3ab5d8ae68bb7562fc14eae90ec3db7ec5875fe15f4bdee04"
+                },
+                "consumed": [
+                  {
+                    "price": "133.12",
+                    "quantity": "0.7474"
+                  }
+                ],
+                "bestPrice": "133.12",
+                "slippageQuote": "0",
+                "spread": "0"
+              }
+            }
+          ]
+        },
+        "risk": {
+          "allowed": true,
+          "reasons": [],
+          "closeSymbols": [],
+          "cash": "999.980101",
+          "equity": "999.980101",
+          "unrealized": "0",
+          "margin": "99.493888",
+          "reserved": "0",
+          "available": "900.486213",
+          "exposure": "99.493888"
+        },
+        "closeFill": {
+          "quantity": "0.7474",
+          "price": "139.063",
+          "notional": "103.9356862",
+          "fee": "0.020788",
+          "block": 101,
+          "timestamp": 1791590760000,
+          "mark": {
+            "price": "139.063",
+            "timestamp": 1791590760000
+          },
+          "evidence": {
+            "model": "l2-full-fill-v1",
+            "frame": {
+              "snapshot": {
+                "market": {
+                  "symbol": "BTC",
+                  "marketId": 1,
+                  "perpetualId": 1,
+                  "instanceId": 1,
+                  "exchangeAddress": "0xexchange",
+                  "collateral": {
+                    "tokenId": 1,
+                    "address": "0xcollateral",
+                    "symbol": "AUSD",
+                    "decimals": 6
+                  },
+                  "configVersion": 1,
+                  "priceDecimals": 2,
+                  "sizeDecimals": 4,
+                  "open": true,
+                  "fundingIntervalSeconds": 3600,
+                  "fundingIntervalBlocks": 100,
+                  "initialMarginRaw": 100,
+                  "maintenanceMarginRaw": 50,
+                  "fees": {
+                    "basis": "public-base-tier",
+                    "maker": "0",
+                    "taker": "0.0002"
+                  },
+                  "provenance": {
+                    "provider": "perpl",
+                    "pluginVersion": "1.1.0",
+                    "network": "mainnet",
+                    "chainId": 143,
+                    "url": "https://perpl.test/data",
+                    "receivedAt": 1791590760000,
+                    "providerTimestamp": 1791590760000,
+                    "block": 101
+                  }
+                },
+                "ticker": {
+                  "mark": "139.063",
+                  "index": "139.063",
+                  "last": "139.063",
+                  "bid": "139.063",
+                  "ask": "139.063",
+                  "openInterestBase": "20",
+                  "freshness": "fresh",
+                  "provenance": {
+                    "provider": "perpl",
+                    "pluginVersion": "1.1.0",
+                    "network": "mainnet",
+                    "chainId": 143,
+                    "url": "https://perpl.test/data",
+                    "receivedAt": 1791590760000,
+                    "providerTimestamp": 1791590760000,
+                    "block": 101
+                  }
+                },
+                "funding": null
+              },
+              "book": {
+                "market": {
+                  "symbol": "BTC",
+                  "marketId": 1,
+                  "perpetualId": 1,
+                  "instanceId": 1,
+                  "exchangeAddress": "0xexchange",
+                  "collateral": {
+                    "tokenId": 1,
+                    "address": "0xcollateral",
+                    "symbol": "AUSD",
+                    "decimals": 6
+                  },
+                  "configVersion": 1,
+                  "priceDecimals": 2,
+                  "sizeDecimals": 4,
+                  "open": true,
+                  "fundingIntervalSeconds": 3600,
+                  "fundingIntervalBlocks": 100,
+                  "initialMarginRaw": 100,
+                  "maintenanceMarginRaw": 50,
+                  "fees": {
+                    "basis": "public-base-tier",
+                    "maker": "0",
+                    "taker": "0.0002"
+                  },
+                  "provenance": {
+                    "provider": "perpl",
+                    "pluginVersion": "1.1.0",
+                    "network": "mainnet",
+                    "chainId": 143,
+                    "url": "https://perpl.test/data",
+                    "receivedAt": 1791590760000,
+                    "providerTimestamp": 1791590760000,
+                    "block": 101
+                  }
+                },
+                "requestedLevels": 20,
+                "depthLimited": true,
+                "bids": [
+                  {
+                    "price": "139.063",
+                    "size": "100",
+                    "orders": 1
+                  }
+                ],
+                "asks": [
+                  {
+                    "price": "139.063",
+                    "size": "100",
+                    "orders": 1
+                  }
+                ],
+                "freshness": "fresh",
+                "provenance": {
+                  "provider": "perpl",
+                  "pluginVersion": "1.1.0",
+                  "network": "mainnet",
+                  "chainId": 143,
+                  "url": "https://perpl.test/data",
+                  "receivedAt": 1791590760000,
+                  "providerTimestamp": 1791590760000,
+                  "block": 101
+                }
+              },
+              "streamEvidence": {
+                "policy": "stream-universe-component-paper-20s-v1",
+                "generation": 1,
+                "copiedAt": 1791590760000,
+                "heartbeatSequence": 1791590760,
+                "headBlock": 101,
+                "heartbeatReceivedAt": 1791590760000
+              },
+              "hash": "46e4732cb06e999ad0a41f97c254de0b7144cbbe8eae72a5f3b2fb3ac99e5cf3"
+            },
+            "consumed": [
+              {
+                "price": "139.063",
+                "quantity": "0.7474"
+              }
+            ],
+            "bestPrice": "139.063",
+            "slippageQuote": "0",
+            "spread": "0"
+          }
+        },
+        "closed": {
+          "account": {
+            "scope": {
+              "version": 7,
+              "protocol": "perps-sma-reentry-latency-v1",
+              "tenantId": "compatibility",
+              "sessionId": "frozen-compatibility",
+              "network": "mainnet",
+              "hours": 6,
+              "budgetUsd": "5",
+              "markets": [
+                {
+                  "symbol": "BTC",
+                  "marketId": 1
+                },
+                {
+                  "symbol": "MON",
+                  "marketId": 10
+                },
+                {
+                  "symbol": "ETH",
+                  "marketId": 20
+                },
+                {
+                  "symbol": "SOL",
+                  "marketId": 31
+                },
+                {
+                  "symbol": "HYPE",
+                  "marketId": 40
+                },
+                {
+                  "symbol": "ZEC",
+                  "marketId": 50
+                },
+                {
+                  "symbol": "LIT",
+                  "marketId": 60
+                },
+                {
+                  "symbol": "VVV",
+                  "marketId": 70
+                },
+                {
+                  "symbol": "PUMP",
+                  "marketId": 90
+                },
+                {
+                  "symbol": "NEAR",
+                  "marketId": 100
+                },
+                {
+                  "symbol": "UNI",
+                  "marketId": 110
+                }
+              ],
+              "acquisitionPolicy": "stream-universe-component-paper-20s-v1",
+              "agentId": "sma-reference"
+            },
+            "agentVersion": 1,
+            "policy": "conservative-1x-v1",
+            "createdAt": 1791590700000,
+            "cash": "1004.401111",
+            "peakEquity": "1000",
+            "day": "2026-10-10",
+            "dayEquity": "1000",
+            "dailyBlocked": false,
+            "blocked": false,
+            "fundingPending": false,
+            "positions": [
+              {
+                "id": "frozen-open",
+                "symbol": "BTC",
+                "side": "long",
+                "quantity": "0.7474",
+                "entryPrice": "133.12",
+                "entryNotional": "99.493888",
+                "openedAt": 1791590700000,
+                "entryBlock": 100,
+                "mark": "133.12",
+                "markAt": 1791590700000,
+                "closedAt": 1791590760000,
+                "exitPrice": "139.063",
+                "exitBlock": 101
+              }
+            ],
+            "riskManagement": "buffered-selective-1x-v1"
+          },
+          "movements": [
+            {
+              "key": "frozen-close:fee",
+              "kind": "fee",
+              "delta": "-0.020788",
+              "at": 1791590760000,
+              "evidence": {
+                "model": "l2-full-fill-v1",
+                "frame": {
+                  "snapshot": {
+                    "market": {
+                      "symbol": "BTC",
+                      "marketId": 1,
+                      "perpetualId": 1,
+                      "instanceId": 1,
+                      "exchangeAddress": "0xexchange",
+                      "collateral": {
+                        "tokenId": 1,
+                        "address": "0xcollateral",
+                        "symbol": "AUSD",
+                        "decimals": 6
+                      },
+                      "configVersion": 1,
+                      "priceDecimals": 2,
+                      "sizeDecimals": 4,
+                      "open": true,
+                      "fundingIntervalSeconds": 3600,
+                      "fundingIntervalBlocks": 100,
+                      "initialMarginRaw": 100,
+                      "maintenanceMarginRaw": 50,
+                      "fees": {
+                        "basis": "public-base-tier",
+                        "maker": "0",
+                        "taker": "0.0002"
+                      },
+                      "provenance": {
+                        "provider": "perpl",
+                        "pluginVersion": "1.1.0",
+                        "network": "mainnet",
+                        "chainId": 143,
+                        "url": "https://perpl.test/data",
+                        "receivedAt": 1791590760000,
+                        "providerTimestamp": 1791590760000,
+                        "block": 101
+                      }
+                    },
+                    "ticker": {
+                      "mark": "139.063",
+                      "index": "139.063",
+                      "last": "139.063",
+                      "bid": "139.063",
+                      "ask": "139.063",
+                      "openInterestBase": "20",
+                      "freshness": "fresh",
+                      "provenance": {
+                        "provider": "perpl",
+                        "pluginVersion": "1.1.0",
+                        "network": "mainnet",
+                        "chainId": 143,
+                        "url": "https://perpl.test/data",
+                        "receivedAt": 1791590760000,
+                        "providerTimestamp": 1791590760000,
+                        "block": 101
+                      }
+                    },
+                    "funding": null
+                  },
+                  "book": {
+                    "market": {
+                      "symbol": "BTC",
+                      "marketId": 1,
+                      "perpetualId": 1,
+                      "instanceId": 1,
+                      "exchangeAddress": "0xexchange",
+                      "collateral": {
+                        "tokenId": 1,
+                        "address": "0xcollateral",
+                        "symbol": "AUSD",
+                        "decimals": 6
+                      },
+                      "configVersion": 1,
+                      "priceDecimals": 2,
+                      "sizeDecimals": 4,
+                      "open": true,
+                      "fundingIntervalSeconds": 3600,
+                      "fundingIntervalBlocks": 100,
+                      "initialMarginRaw": 100,
+                      "maintenanceMarginRaw": 50,
+                      "fees": {
+                        "basis": "public-base-tier",
+                        "maker": "0",
+                        "taker": "0.0002"
+                      },
+                      "provenance": {
+                        "provider": "perpl",
+                        "pluginVersion": "1.1.0",
+                        "network": "mainnet",
+                        "chainId": 143,
+                        "url": "https://perpl.test/data",
+                        "receivedAt": 1791590760000,
+                        "providerTimestamp": 1791590760000,
+                        "block": 101
+                      }
+                    },
+                    "requestedLevels": 20,
+                    "depthLimited": true,
+                    "bids": [
+                      {
+                        "price": "139.063",
+                        "size": "100",
+                        "orders": 1
+                      }
+                    ],
+                    "asks": [
+                      {
+                        "price": "139.063",
+                        "size": "100",
+                        "orders": 1
+                      }
+                    ],
+                    "freshness": "fresh",
+                    "provenance": {
+                      "provider": "perpl",
+                      "pluginVersion": "1.1.0",
+                      "network": "mainnet",
+                      "chainId": 143,
+                      "url": "https://perpl.test/data",
+                      "receivedAt": 1791590760000,
+                      "providerTimestamp": 1791590760000,
+                      "block": 101
+                    }
+                  },
+                  "streamEvidence": {
+                    "policy": "stream-universe-component-paper-20s-v1",
+                    "generation": 1,
+                    "copiedAt": 1791590760000,
+                    "heartbeatSequence": 1791590760,
+                    "headBlock": 101,
+                    "heartbeatReceivedAt": 1791590760000
+                  },
+                  "hash": "46e4732cb06e999ad0a41f97c254de0b7144cbbe8eae72a5f3b2fb3ac99e5cf3"
+                },
+                "consumed": [
+                  {
+                    "price": "139.063",
+                    "quantity": "0.7474"
+                  }
+                ],
+                "bestPrice": "139.063",
+                "slippageQuote": "0",
+                "spread": "0"
+              }
+            },
+            {
+              "key": "frozen-close:pnl",
+              "kind": "realized-pnl",
+              "delta": "4.441798",
+              "at": 1791590760000,
+              "evidence": {
+                "model": "l2-full-fill-v1",
+                "frame": {
+                  "snapshot": {
+                    "market": {
+                      "symbol": "BTC",
+                      "marketId": 1,
+                      "perpetualId": 1,
+                      "instanceId": 1,
+                      "exchangeAddress": "0xexchange",
+                      "collateral": {
+                        "tokenId": 1,
+                        "address": "0xcollateral",
+                        "symbol": "AUSD",
+                        "decimals": 6
+                      },
+                      "configVersion": 1,
+                      "priceDecimals": 2,
+                      "sizeDecimals": 4,
+                      "open": true,
+                      "fundingIntervalSeconds": 3600,
+                      "fundingIntervalBlocks": 100,
+                      "initialMarginRaw": 100,
+                      "maintenanceMarginRaw": 50,
+                      "fees": {
+                        "basis": "public-base-tier",
+                        "maker": "0",
+                        "taker": "0.0002"
+                      },
+                      "provenance": {
+                        "provider": "perpl",
+                        "pluginVersion": "1.1.0",
+                        "network": "mainnet",
+                        "chainId": 143,
+                        "url": "https://perpl.test/data",
+                        "receivedAt": 1791590760000,
+                        "providerTimestamp": 1791590760000,
+                        "block": 101
+                      }
+                    },
+                    "ticker": {
+                      "mark": "139.063",
+                      "index": "139.063",
+                      "last": "139.063",
+                      "bid": "139.063",
+                      "ask": "139.063",
+                      "openInterestBase": "20",
+                      "freshness": "fresh",
+                      "provenance": {
+                        "provider": "perpl",
+                        "pluginVersion": "1.1.0",
+                        "network": "mainnet",
+                        "chainId": 143,
+                        "url": "https://perpl.test/data",
+                        "receivedAt": 1791590760000,
+                        "providerTimestamp": 1791590760000,
+                        "block": 101
+                      }
+                    },
+                    "funding": null
+                  },
+                  "book": {
+                    "market": {
+                      "symbol": "BTC",
+                      "marketId": 1,
+                      "perpetualId": 1,
+                      "instanceId": 1,
+                      "exchangeAddress": "0xexchange",
+                      "collateral": {
+                        "tokenId": 1,
+                        "address": "0xcollateral",
+                        "symbol": "AUSD",
+                        "decimals": 6
+                      },
+                      "configVersion": 1,
+                      "priceDecimals": 2,
+                      "sizeDecimals": 4,
+                      "open": true,
+                      "fundingIntervalSeconds": 3600,
+                      "fundingIntervalBlocks": 100,
+                      "initialMarginRaw": 100,
+                      "maintenanceMarginRaw": 50,
+                      "fees": {
+                        "basis": "public-base-tier",
+                        "maker": "0",
+                        "taker": "0.0002"
+                      },
+                      "provenance": {
+                        "provider": "perpl",
+                        "pluginVersion": "1.1.0",
+                        "network": "mainnet",
+                        "chainId": 143,
+                        "url": "https://perpl.test/data",
+                        "receivedAt": 1791590760000,
+                        "providerTimestamp": 1791590760000,
+                        "block": 101
+                      }
+                    },
+                    "requestedLevels": 20,
+                    "depthLimited": true,
+                    "bids": [
+                      {
+                        "price": "139.063",
+                        "size": "100",
+                        "orders": 1
+                      }
+                    ],
+                    "asks": [
+                      {
+                        "price": "139.063",
+                        "size": "100",
+                        "orders": 1
+                      }
+                    ],
+                    "freshness": "fresh",
+                    "provenance": {
+                      "provider": "perpl",
+                      "pluginVersion": "1.1.0",
+                      "network": "mainnet",
+                      "chainId": 143,
+                      "url": "https://perpl.test/data",
+                      "receivedAt": 1791590760000,
+                      "providerTimestamp": 1791590760000,
+                      "block": 101
+                    }
+                  },
+                  "streamEvidence": {
+                    "policy": "stream-universe-component-paper-20s-v1",
+                    "generation": 1,
+                    "copiedAt": 1791590760000,
+                    "heartbeatSequence": 1791590760,
+                    "headBlock": 101,
+                    "heartbeatReceivedAt": 1791590760000
+                  },
+                  "hash": "46e4732cb06e999ad0a41f97c254de0b7144cbbe8eae72a5f3b2fb3ac99e5cf3"
+                },
+                "consumed": [
+                  {
+                    "price": "139.063",
+                    "quantity": "0.7474"
+                  }
+                ],
+                "bestPrice": "139.063",
+                "slippageQuote": "0",
+                "spread": "0"
+              }
+            }
+          ]
+        }
+      },
+      "short": false
+    },
+    {
+      "inputHash": "6ac0bb1df20b1514157202d80a845fe955d10112e74ddffc16c4b7563b1091cc",
+      "expected": {
+        "proposals": [
+          {
+            "symbol": "BTC",
+            "action": "open-short",
+            "reason": "SMA20_50_short",
+            "sourceIds": ["BTC:candles"],
+            "rank": 1,
+            "trace": {
+              "profile": {
+                "id": "sma-hourly-v1",
+                "version": "1.0.0",
+                "requiredResolutions": [3600],
+                "trendResolution": 3600,
+                "fastPeriod": 20,
+                "slowPeriod": 50,
+                "separationBps": 10,
+                "decisionsSeconds": 300,
+                "maxHoldingSeconds": 14400
+              },
+              "sma20": "274.25",
+              "sma50": "274.7",
+              "separationBps": "-16.381507098653076082",
+              "confirmation": null
+            }
+          },
+          {
+            "symbol": "MON",
+            "action": "open-short",
+            "reason": "SMA20_50_short",
+            "sourceIds": ["MON:candles"],
+            "rank": 2,
+            "trace": {
+              "profile": {
+                "id": "sma-hourly-v1",
+                "version": "1.0.0",
+                "requiredResolutions": [3600],
+                "trendResolution": 3600,
+                "fastPeriod": 20,
+                "slowPeriod": 50,
+                "separationBps": 10,
+                "decisionsSeconds": 300,
+                "maxHoldingSeconds": 14400
+              },
+              "sma20": "274.25",
+              "sma50": "274.7",
+              "separationBps": "-16.381507098653076082",
+              "confirmation": null
+            }
+          },
+          {
+            "symbol": "ETH",
+            "action": "open-short",
+            "reason": "SMA20_50_short",
+            "sourceIds": ["ETH:candles"],
+            "rank": 3,
+            "trace": {
+              "profile": {
+                "id": "sma-hourly-v1",
+                "version": "1.0.0",
+                "requiredResolutions": [3600],
+                "trendResolution": 3600,
+                "fastPeriod": 20,
+                "slowPeriod": 50,
+                "separationBps": 10,
+                "decisionsSeconds": 300,
+                "maxHoldingSeconds": 14400
+              },
+              "sma20": "274.25",
+              "sma50": "274.7",
+              "separationBps": "-16.381507098653076082",
+              "confirmation": null
+            }
+          },
+          {
+            "symbol": "SOL",
+            "action": "open-short",
+            "reason": "SMA20_50_short",
+            "sourceIds": ["SOL:candles"],
+            "rank": 4,
+            "trace": {
+              "profile": {
+                "id": "sma-hourly-v1",
+                "version": "1.0.0",
+                "requiredResolutions": [3600],
+                "trendResolution": 3600,
+                "fastPeriod": 20,
+                "slowPeriod": 50,
+                "separationBps": 10,
+                "decisionsSeconds": 300,
+                "maxHoldingSeconds": 14400
+              },
+              "sma20": "274.25",
+              "sma50": "274.7",
+              "separationBps": "-16.381507098653076082",
+              "confirmation": null
+            }
+          },
+          {
+            "symbol": "HYPE",
+            "action": "hold",
+            "reason": "EXPOSURE_LIMIT",
+            "sourceIds": ["HYPE:candles"],
+            "rank": 5,
+            "trace": {
+              "profile": {
+                "id": "sma-hourly-v1",
+                "version": "1.0.0",
+                "requiredResolutions": [3600],
+                "trendResolution": 3600,
+                "fastPeriod": 20,
+                "slowPeriod": 50,
+                "separationBps": 10,
+                "decisionsSeconds": 300,
+                "maxHoldingSeconds": 14400
+              },
+              "sma20": "274.25",
+              "sma50": "274.7",
+              "separationBps": "-16.381507098653076082",
+              "confirmation": null
+            }
+          },
+          {
+            "symbol": "ZEC",
+            "action": "hold",
+            "reason": "EXPOSURE_LIMIT",
+            "sourceIds": ["ZEC:candles"],
+            "rank": 6,
+            "trace": {
+              "profile": {
+                "id": "sma-hourly-v1",
+                "version": "1.0.0",
+                "requiredResolutions": [3600],
+                "trendResolution": 3600,
+                "fastPeriod": 20,
+                "slowPeriod": 50,
+                "separationBps": 10,
+                "decisionsSeconds": 300,
+                "maxHoldingSeconds": 14400
+              },
+              "sma20": "274.25",
+              "sma50": "274.7",
+              "separationBps": "-16.381507098653076082",
+              "confirmation": null
+            }
+          },
+          {
+            "symbol": "LIT",
+            "action": "hold",
+            "reason": "EXPOSURE_LIMIT",
+            "sourceIds": ["LIT:candles"],
+            "rank": 7,
+            "trace": {
+              "profile": {
+                "id": "sma-hourly-v1",
+                "version": "1.0.0",
+                "requiredResolutions": [3600],
+                "trendResolution": 3600,
+                "fastPeriod": 20,
+                "slowPeriod": 50,
+                "separationBps": 10,
+                "decisionsSeconds": 300,
+                "maxHoldingSeconds": 14400
+              },
+              "sma20": "274.25",
+              "sma50": "274.7",
+              "separationBps": "-16.381507098653076082",
+              "confirmation": null
+            }
+          },
+          {
+            "symbol": "VVV",
+            "action": "hold",
+            "reason": "EXPOSURE_LIMIT",
+            "sourceIds": ["VVV:candles"],
+            "rank": 8,
+            "trace": {
+              "profile": {
+                "id": "sma-hourly-v1",
+                "version": "1.0.0",
+                "requiredResolutions": [3600],
+                "trendResolution": 3600,
+                "fastPeriod": 20,
+                "slowPeriod": 50,
+                "separationBps": 10,
+                "decisionsSeconds": 300,
+                "maxHoldingSeconds": 14400
+              },
+              "sma20": "274.25",
+              "sma50": "274.7",
+              "separationBps": "-16.381507098653076082",
+              "confirmation": null
+            }
+          },
+          {
+            "symbol": "PUMP",
+            "action": "hold",
+            "reason": "EXPOSURE_LIMIT",
+            "sourceIds": ["PUMP:candles"],
+            "rank": 9,
+            "trace": {
+              "profile": {
+                "id": "sma-hourly-v1",
+                "version": "1.0.0",
+                "requiredResolutions": [3600],
+                "trendResolution": 3600,
+                "fastPeriod": 20,
+                "slowPeriod": 50,
+                "separationBps": 10,
+                "decisionsSeconds": 300,
+                "maxHoldingSeconds": 14400
+              },
+              "sma20": "274.25",
+              "sma50": "274.7",
+              "separationBps": "-16.381507098653076082",
+              "confirmation": null
+            }
+          },
+          {
+            "symbol": "NEAR",
+            "action": "hold",
+            "reason": "EXPOSURE_LIMIT",
+            "sourceIds": ["NEAR:candles"],
+            "rank": 10,
+            "trace": {
+              "profile": {
+                "id": "sma-hourly-v1",
+                "version": "1.0.0",
+                "requiredResolutions": [3600],
+                "trendResolution": 3600,
+                "fastPeriod": 20,
+                "slowPeriod": 50,
+                "separationBps": 10,
+                "decisionsSeconds": 300,
+                "maxHoldingSeconds": 14400
+              },
+              "sma20": "274.25",
+              "sma50": "274.7",
+              "separationBps": "-16.381507098653076082",
+              "confirmation": null
+            }
+          },
+          {
+            "symbol": "UNI",
+            "action": "hold",
+            "reason": "EXPOSURE_LIMIT",
+            "sourceIds": ["UNI:candles"],
+            "rank": 11,
+            "trace": {
+              "profile": {
+                "id": "sma-hourly-v1",
+                "version": "1.0.0",
+                "requiredResolutions": [3600],
+                "trendResolution": 3600,
+                "fastPeriod": 20,
+                "slowPeriod": 50,
+                "separationBps": 10,
+                "decisionsSeconds": 300,
+                "maxHoldingSeconds": 14400
+              },
+              "sma20": "274.25",
+              "sma50": "274.7",
+              "separationBps": "-16.381507098653076082",
+              "confirmation": null
+            }
+          }
+        ],
+        "fill": {
+          "quantity": "0.3728",
+          "price": "266.88",
+          "notional": "99.492864",
+          "fee": "0.019899",
+          "block": 100,
+          "timestamp": 1791590700000,
+          "mark": {
+            "price": "266.88",
+            "timestamp": 1791590700000
+          },
+          "evidence": {
+            "model": "l2-full-fill-v1",
+            "frame": {
+              "snapshot": {
+                "market": {
+                  "symbol": "BTC",
+                  "marketId": 1,
+                  "perpetualId": 1,
+                  "instanceId": 1,
+                  "exchangeAddress": "0xexchange",
+                  "collateral": {
+                    "tokenId": 1,
+                    "address": "0xcollateral",
+                    "symbol": "AUSD",
+                    "decimals": 6
+                  },
+                  "configVersion": 1,
+                  "priceDecimals": 2,
+                  "sizeDecimals": 4,
+                  "open": true,
+                  "fundingIntervalSeconds": 3600,
+                  "fundingIntervalBlocks": 100,
+                  "initialMarginRaw": 100,
+                  "maintenanceMarginRaw": 50,
+                  "fees": {
+                    "basis": "public-base-tier",
+                    "maker": "0",
+                    "taker": "0.0002"
+                  },
+                  "provenance": {
+                    "provider": "perpl",
+                    "pluginVersion": "1.1.0",
+                    "network": "mainnet",
+                    "chainId": 143,
+                    "url": "https://perpl.test/data",
+                    "receivedAt": 1791590700000,
+                    "providerTimestamp": 1791590700000,
+                    "block": 100
+                  }
+                },
+                "ticker": {
+                  "mark": "266.88",
+                  "index": "266.88",
+                  "last": "266.88",
+                  "bid": "266.88",
+                  "ask": "266.88",
+                  "openInterestBase": "20",
+                  "freshness": "fresh",
+                  "provenance": {
+                    "provider": "perpl",
+                    "pluginVersion": "1.1.0",
+                    "network": "mainnet",
+                    "chainId": 143,
+                    "url": "https://perpl.test/data",
+                    "receivedAt": 1791590700000,
+                    "providerTimestamp": 1791590700000,
+                    "block": 100
+                  }
+                },
+                "funding": null
+              },
+              "book": {
+                "market": {
+                  "symbol": "BTC",
+                  "marketId": 1,
+                  "perpetualId": 1,
+                  "instanceId": 1,
+                  "exchangeAddress": "0xexchange",
+                  "collateral": {
+                    "tokenId": 1,
+                    "address": "0xcollateral",
+                    "symbol": "AUSD",
+                    "decimals": 6
+                  },
+                  "configVersion": 1,
+                  "priceDecimals": 2,
+                  "sizeDecimals": 4,
+                  "open": true,
+                  "fundingIntervalSeconds": 3600,
+                  "fundingIntervalBlocks": 100,
+                  "initialMarginRaw": 100,
+                  "maintenanceMarginRaw": 50,
+                  "fees": {
+                    "basis": "public-base-tier",
+                    "maker": "0",
+                    "taker": "0.0002"
+                  },
+                  "provenance": {
+                    "provider": "perpl",
+                    "pluginVersion": "1.1.0",
+                    "network": "mainnet",
+                    "chainId": 143,
+                    "url": "https://perpl.test/data",
+                    "receivedAt": 1791590700000,
+                    "providerTimestamp": 1791590700000,
+                    "block": 100
+                  }
+                },
+                "requestedLevels": 20,
+                "depthLimited": true,
+                "bids": [
+                  {
+                    "price": "266.88",
+                    "size": "100",
+                    "orders": 1
+                  }
+                ],
+                "asks": [
+                  {
+                    "price": "266.88",
+                    "size": "100",
+                    "orders": 1
+                  }
+                ],
+                "freshness": "fresh",
+                "provenance": {
+                  "provider": "perpl",
+                  "pluginVersion": "1.1.0",
+                  "network": "mainnet",
+                  "chainId": 143,
+                  "url": "https://perpl.test/data",
+                  "receivedAt": 1791590700000,
+                  "providerTimestamp": 1791590700000,
+                  "block": 100
+                }
+              },
+              "streamEvidence": {
+                "policy": "stream-universe-component-paper-20s-v1",
+                "generation": 1,
+                "copiedAt": 1791590700000,
+                "heartbeatSequence": 1791590700,
+                "headBlock": 100,
+                "heartbeatReceivedAt": 1791590700000
+              },
+              "hash": "58ac53baf0c8a615da3389545edde8d488d02ab6abbd6a3b2da1282f286f1107"
+            },
+            "consumed": [
+              {
+                "price": "266.88",
+                "quantity": "0.3728"
+              }
+            ],
+            "bestPrice": "266.88",
+            "slippageQuote": "0",
+            "spread": "0"
+          }
+        },
+        "opened": {
+          "account": {
+            "scope": {
+              "version": 7,
+              "protocol": "perps-sma-reentry-latency-v1",
+              "tenantId": "compatibility",
+              "sessionId": "frozen-compatibility",
+              "network": "mainnet",
+              "hours": 6,
+              "budgetUsd": "5",
+              "markets": [
+                {
+                  "symbol": "BTC",
+                  "marketId": 1
+                },
+                {
+                  "symbol": "MON",
+                  "marketId": 10
+                },
+                {
+                  "symbol": "ETH",
+                  "marketId": 20
+                },
+                {
+                  "symbol": "SOL",
+                  "marketId": 31
+                },
+                {
+                  "symbol": "HYPE",
+                  "marketId": 40
+                },
+                {
+                  "symbol": "ZEC",
+                  "marketId": 50
+                },
+                {
+                  "symbol": "LIT",
+                  "marketId": 60
+                },
+                {
+                  "symbol": "VVV",
+                  "marketId": 70
+                },
+                {
+                  "symbol": "PUMP",
+                  "marketId": 90
+                },
+                {
+                  "symbol": "NEAR",
+                  "marketId": 100
+                },
+                {
+                  "symbol": "UNI",
+                  "marketId": 110
+                }
+              ],
+              "acquisitionPolicy": "stream-universe-component-paper-20s-v1",
+              "agentId": "sma-reference"
+            },
+            "agentVersion": 1,
+            "policy": "conservative-1x-v1",
+            "createdAt": 1791590700000,
+            "cash": "999.980101",
+            "peakEquity": "1000",
+            "day": "2026-10-10",
+            "dayEquity": "1000",
+            "dailyBlocked": false,
+            "blocked": false,
+            "fundingPending": false,
+            "positions": [
+              {
+                "id": "frozen-open",
+                "symbol": "BTC",
+                "side": "short",
+                "quantity": "0.3728",
+                "entryPrice": "266.88",
+                "entryNotional": "99.492864",
+                "openedAt": 1791590700000,
+                "entryBlock": 100,
+                "mark": "266.88",
+                "markAt": 1791590700000,
+                "closedAt": null,
+                "exitPrice": null,
+                "exitBlock": null
+              }
+            ],
+            "riskManagement": "buffered-selective-1x-v1"
+          },
+          "movements": [
+            {
+              "key": "frozen-open:fee",
+              "kind": "fee",
+              "delta": "-0.019899",
+              "at": 1791590700000,
+              "evidence": {
+                "model": "l2-full-fill-v1",
+                "frame": {
+                  "snapshot": {
+                    "market": {
+                      "symbol": "BTC",
+                      "marketId": 1,
+                      "perpetualId": 1,
+                      "instanceId": 1,
+                      "exchangeAddress": "0xexchange",
+                      "collateral": {
+                        "tokenId": 1,
+                        "address": "0xcollateral",
+                        "symbol": "AUSD",
+                        "decimals": 6
+                      },
+                      "configVersion": 1,
+                      "priceDecimals": 2,
+                      "sizeDecimals": 4,
+                      "open": true,
+                      "fundingIntervalSeconds": 3600,
+                      "fundingIntervalBlocks": 100,
+                      "initialMarginRaw": 100,
+                      "maintenanceMarginRaw": 50,
+                      "fees": {
+                        "basis": "public-base-tier",
+                        "maker": "0",
+                        "taker": "0.0002"
+                      },
+                      "provenance": {
+                        "provider": "perpl",
+                        "pluginVersion": "1.1.0",
+                        "network": "mainnet",
+                        "chainId": 143,
+                        "url": "https://perpl.test/data",
+                        "receivedAt": 1791590700000,
+                        "providerTimestamp": 1791590700000,
+                        "block": 100
+                      }
+                    },
+                    "ticker": {
+                      "mark": "266.88",
+                      "index": "266.88",
+                      "last": "266.88",
+                      "bid": "266.88",
+                      "ask": "266.88",
+                      "openInterestBase": "20",
+                      "freshness": "fresh",
+                      "provenance": {
+                        "provider": "perpl",
+                        "pluginVersion": "1.1.0",
+                        "network": "mainnet",
+                        "chainId": 143,
+                        "url": "https://perpl.test/data",
+                        "receivedAt": 1791590700000,
+                        "providerTimestamp": 1791590700000,
+                        "block": 100
+                      }
+                    },
+                    "funding": null
+                  },
+                  "book": {
+                    "market": {
+                      "symbol": "BTC",
+                      "marketId": 1,
+                      "perpetualId": 1,
+                      "instanceId": 1,
+                      "exchangeAddress": "0xexchange",
+                      "collateral": {
+                        "tokenId": 1,
+                        "address": "0xcollateral",
+                        "symbol": "AUSD",
+                        "decimals": 6
+                      },
+                      "configVersion": 1,
+                      "priceDecimals": 2,
+                      "sizeDecimals": 4,
+                      "open": true,
+                      "fundingIntervalSeconds": 3600,
+                      "fundingIntervalBlocks": 100,
+                      "initialMarginRaw": 100,
+                      "maintenanceMarginRaw": 50,
+                      "fees": {
+                        "basis": "public-base-tier",
+                        "maker": "0",
+                        "taker": "0.0002"
+                      },
+                      "provenance": {
+                        "provider": "perpl",
+                        "pluginVersion": "1.1.0",
+                        "network": "mainnet",
+                        "chainId": 143,
+                        "url": "https://perpl.test/data",
+                        "receivedAt": 1791590700000,
+                        "providerTimestamp": 1791590700000,
+                        "block": 100
+                      }
+                    },
+                    "requestedLevels": 20,
+                    "depthLimited": true,
+                    "bids": [
+                      {
+                        "price": "266.88",
+                        "size": "100",
+                        "orders": 1
+                      }
+                    ],
+                    "asks": [
+                      {
+                        "price": "266.88",
+                        "size": "100",
+                        "orders": 1
+                      }
+                    ],
+                    "freshness": "fresh",
+                    "provenance": {
+                      "provider": "perpl",
+                      "pluginVersion": "1.1.0",
+                      "network": "mainnet",
+                      "chainId": 143,
+                      "url": "https://perpl.test/data",
+                      "receivedAt": 1791590700000,
+                      "providerTimestamp": 1791590700000,
+                      "block": 100
+                    }
+                  },
+                  "streamEvidence": {
+                    "policy": "stream-universe-component-paper-20s-v1",
+                    "generation": 1,
+                    "copiedAt": 1791590700000,
+                    "heartbeatSequence": 1791590700,
+                    "headBlock": 100,
+                    "heartbeatReceivedAt": 1791590700000
+                  },
+                  "hash": "58ac53baf0c8a615da3389545edde8d488d02ab6abbd6a3b2da1282f286f1107"
+                },
+                "consumed": [
+                  {
+                    "price": "266.88",
+                    "quantity": "0.3728"
+                  }
+                ],
+                "bestPrice": "266.88",
+                "slippageQuote": "0",
+                "spread": "0"
+              }
+            }
+          ]
+        },
+        "risk": {
+          "allowed": true,
+          "reasons": [],
+          "closeSymbols": [],
+          "cash": "999.980101",
+          "equity": "999.980101",
+          "unrealized": "0",
+          "margin": "99.492864",
+          "reserved": "0",
+          "available": "900.487237",
+          "exposure": "99.492864"
+        },
+        "closeFill": {
+          "quantity": "0.3728",
+          "price": "260.937",
+          "notional": "97.2773136",
+          "fee": "0.019456",
+          "block": 101,
+          "timestamp": 1791590760000,
+          "mark": {
+            "price": "260.937",
+            "timestamp": 1791590760000
+          },
+          "evidence": {
+            "model": "l2-full-fill-v1",
+            "frame": {
+              "snapshot": {
+                "market": {
+                  "symbol": "BTC",
+                  "marketId": 1,
+                  "perpetualId": 1,
+                  "instanceId": 1,
+                  "exchangeAddress": "0xexchange",
+                  "collateral": {
+                    "tokenId": 1,
+                    "address": "0xcollateral",
+                    "symbol": "AUSD",
+                    "decimals": 6
+                  },
+                  "configVersion": 1,
+                  "priceDecimals": 2,
+                  "sizeDecimals": 4,
+                  "open": true,
+                  "fundingIntervalSeconds": 3600,
+                  "fundingIntervalBlocks": 100,
+                  "initialMarginRaw": 100,
+                  "maintenanceMarginRaw": 50,
+                  "fees": {
+                    "basis": "public-base-tier",
+                    "maker": "0",
+                    "taker": "0.0002"
+                  },
+                  "provenance": {
+                    "provider": "perpl",
+                    "pluginVersion": "1.1.0",
+                    "network": "mainnet",
+                    "chainId": 143,
+                    "url": "https://perpl.test/data",
+                    "receivedAt": 1791590760000,
+                    "providerTimestamp": 1791590760000,
+                    "block": 101
+                  }
+                },
+                "ticker": {
+                  "mark": "260.937",
+                  "index": "260.937",
+                  "last": "260.937",
+                  "bid": "260.937",
+                  "ask": "260.937",
+                  "openInterestBase": "20",
+                  "freshness": "fresh",
+                  "provenance": {
+                    "provider": "perpl",
+                    "pluginVersion": "1.1.0",
+                    "network": "mainnet",
+                    "chainId": 143,
+                    "url": "https://perpl.test/data",
+                    "receivedAt": 1791590760000,
+                    "providerTimestamp": 1791590760000,
+                    "block": 101
+                  }
+                },
+                "funding": null
+              },
+              "book": {
+                "market": {
+                  "symbol": "BTC",
+                  "marketId": 1,
+                  "perpetualId": 1,
+                  "instanceId": 1,
+                  "exchangeAddress": "0xexchange",
+                  "collateral": {
+                    "tokenId": 1,
+                    "address": "0xcollateral",
+                    "symbol": "AUSD",
+                    "decimals": 6
+                  },
+                  "configVersion": 1,
+                  "priceDecimals": 2,
+                  "sizeDecimals": 4,
+                  "open": true,
+                  "fundingIntervalSeconds": 3600,
+                  "fundingIntervalBlocks": 100,
+                  "initialMarginRaw": 100,
+                  "maintenanceMarginRaw": 50,
+                  "fees": {
+                    "basis": "public-base-tier",
+                    "maker": "0",
+                    "taker": "0.0002"
+                  },
+                  "provenance": {
+                    "provider": "perpl",
+                    "pluginVersion": "1.1.0",
+                    "network": "mainnet",
+                    "chainId": 143,
+                    "url": "https://perpl.test/data",
+                    "receivedAt": 1791590760000,
+                    "providerTimestamp": 1791590760000,
+                    "block": 101
+                  }
+                },
+                "requestedLevels": 20,
+                "depthLimited": true,
+                "bids": [
+                  {
+                    "price": "260.937",
+                    "size": "100",
+                    "orders": 1
+                  }
+                ],
+                "asks": [
+                  {
+                    "price": "260.937",
+                    "size": "100",
+                    "orders": 1
+                  }
+                ],
+                "freshness": "fresh",
+                "provenance": {
+                  "provider": "perpl",
+                  "pluginVersion": "1.1.0",
+                  "network": "mainnet",
+                  "chainId": 143,
+                  "url": "https://perpl.test/data",
+                  "receivedAt": 1791590760000,
+                  "providerTimestamp": 1791590760000,
+                  "block": 101
+                }
+              },
+              "streamEvidence": {
+                "policy": "stream-universe-component-paper-20s-v1",
+                "generation": 1,
+                "copiedAt": 1791590760000,
+                "heartbeatSequence": 1791590760,
+                "headBlock": 101,
+                "heartbeatReceivedAt": 1791590760000
+              },
+              "hash": "fec940eace8e6160cf175be5d872adce86a00e8669e4027c9cf2fb5769945bc0"
+            },
+            "consumed": [
+              {
+                "price": "260.937",
+                "quantity": "0.3728"
+              }
+            ],
+            "bestPrice": "260.937",
+            "slippageQuote": "0",
+            "spread": "0"
+          }
+        },
+        "closed": {
+          "account": {
+            "scope": {
+              "version": 7,
+              "protocol": "perps-sma-reentry-latency-v1",
+              "tenantId": "compatibility",
+              "sessionId": "frozen-compatibility",
+              "network": "mainnet",
+              "hours": 6,
+              "budgetUsd": "5",
+              "markets": [
+                {
+                  "symbol": "BTC",
+                  "marketId": 1
+                },
+                {
+                  "symbol": "MON",
+                  "marketId": 10
+                },
+                {
+                  "symbol": "ETH",
+                  "marketId": 20
+                },
+                {
+                  "symbol": "SOL",
+                  "marketId": 31
+                },
+                {
+                  "symbol": "HYPE",
+                  "marketId": 40
+                },
+                {
+                  "symbol": "ZEC",
+                  "marketId": 50
+                },
+                {
+                  "symbol": "LIT",
+                  "marketId": 60
+                },
+                {
+                  "symbol": "VVV",
+                  "marketId": 70
+                },
+                {
+                  "symbol": "PUMP",
+                  "marketId": 90
+                },
+                {
+                  "symbol": "NEAR",
+                  "marketId": 100
+                },
+                {
+                  "symbol": "UNI",
+                  "marketId": 110
+                }
+              ],
+              "acquisitionPolicy": "stream-universe-component-paper-20s-v1",
+              "agentId": "sma-reference"
+            },
+            "agentVersion": 1,
+            "policy": "conservative-1x-v1",
+            "createdAt": 1791590700000,
+            "cash": "1002.176195",
+            "peakEquity": "1000",
+            "day": "2026-10-10",
+            "dayEquity": "1000",
+            "dailyBlocked": false,
+            "blocked": false,
+            "fundingPending": false,
+            "positions": [
+              {
+                "id": "frozen-open",
+                "symbol": "BTC",
+                "side": "short",
+                "quantity": "0.3728",
+                "entryPrice": "266.88",
+                "entryNotional": "99.492864",
+                "openedAt": 1791590700000,
+                "entryBlock": 100,
+                "mark": "266.88",
+                "markAt": 1791590700000,
+                "closedAt": 1791590760000,
+                "exitPrice": "260.937",
+                "exitBlock": 101
+              }
+            ],
+            "riskManagement": "buffered-selective-1x-v1"
+          },
+          "movements": [
+            {
+              "key": "frozen-close:fee",
+              "kind": "fee",
+              "delta": "-0.019456",
+              "at": 1791590760000,
+              "evidence": {
+                "model": "l2-full-fill-v1",
+                "frame": {
+                  "snapshot": {
+                    "market": {
+                      "symbol": "BTC",
+                      "marketId": 1,
+                      "perpetualId": 1,
+                      "instanceId": 1,
+                      "exchangeAddress": "0xexchange",
+                      "collateral": {
+                        "tokenId": 1,
+                        "address": "0xcollateral",
+                        "symbol": "AUSD",
+                        "decimals": 6
+                      },
+                      "configVersion": 1,
+                      "priceDecimals": 2,
+                      "sizeDecimals": 4,
+                      "open": true,
+                      "fundingIntervalSeconds": 3600,
+                      "fundingIntervalBlocks": 100,
+                      "initialMarginRaw": 100,
+                      "maintenanceMarginRaw": 50,
+                      "fees": {
+                        "basis": "public-base-tier",
+                        "maker": "0",
+                        "taker": "0.0002"
+                      },
+                      "provenance": {
+                        "provider": "perpl",
+                        "pluginVersion": "1.1.0",
+                        "network": "mainnet",
+                        "chainId": 143,
+                        "url": "https://perpl.test/data",
+                        "receivedAt": 1791590760000,
+                        "providerTimestamp": 1791590760000,
+                        "block": 101
+                      }
+                    },
+                    "ticker": {
+                      "mark": "260.937",
+                      "index": "260.937",
+                      "last": "260.937",
+                      "bid": "260.937",
+                      "ask": "260.937",
+                      "openInterestBase": "20",
+                      "freshness": "fresh",
+                      "provenance": {
+                        "provider": "perpl",
+                        "pluginVersion": "1.1.0",
+                        "network": "mainnet",
+                        "chainId": 143,
+                        "url": "https://perpl.test/data",
+                        "receivedAt": 1791590760000,
+                        "providerTimestamp": 1791590760000,
+                        "block": 101
+                      }
+                    },
+                    "funding": null
+                  },
+                  "book": {
+                    "market": {
+                      "symbol": "BTC",
+                      "marketId": 1,
+                      "perpetualId": 1,
+                      "instanceId": 1,
+                      "exchangeAddress": "0xexchange",
+                      "collateral": {
+                        "tokenId": 1,
+                        "address": "0xcollateral",
+                        "symbol": "AUSD",
+                        "decimals": 6
+                      },
+                      "configVersion": 1,
+                      "priceDecimals": 2,
+                      "sizeDecimals": 4,
+                      "open": true,
+                      "fundingIntervalSeconds": 3600,
+                      "fundingIntervalBlocks": 100,
+                      "initialMarginRaw": 100,
+                      "maintenanceMarginRaw": 50,
+                      "fees": {
+                        "basis": "public-base-tier",
+                        "maker": "0",
+                        "taker": "0.0002"
+                      },
+                      "provenance": {
+                        "provider": "perpl",
+                        "pluginVersion": "1.1.0",
+                        "network": "mainnet",
+                        "chainId": 143,
+                        "url": "https://perpl.test/data",
+                        "receivedAt": 1791590760000,
+                        "providerTimestamp": 1791590760000,
+                        "block": 101
+                      }
+                    },
+                    "requestedLevels": 20,
+                    "depthLimited": true,
+                    "bids": [
+                      {
+                        "price": "260.937",
+                        "size": "100",
+                        "orders": 1
+                      }
+                    ],
+                    "asks": [
+                      {
+                        "price": "260.937",
+                        "size": "100",
+                        "orders": 1
+                      }
+                    ],
+                    "freshness": "fresh",
+                    "provenance": {
+                      "provider": "perpl",
+                      "pluginVersion": "1.1.0",
+                      "network": "mainnet",
+                      "chainId": 143,
+                      "url": "https://perpl.test/data",
+                      "receivedAt": 1791590760000,
+                      "providerTimestamp": 1791590760000,
+                      "block": 101
+                    }
+                  },
+                  "streamEvidence": {
+                    "policy": "stream-universe-component-paper-20s-v1",
+                    "generation": 1,
+                    "copiedAt": 1791590760000,
+                    "heartbeatSequence": 1791590760,
+                    "headBlock": 101,
+                    "heartbeatReceivedAt": 1791590760000
+                  },
+                  "hash": "fec940eace8e6160cf175be5d872adce86a00e8669e4027c9cf2fb5769945bc0"
+                },
+                "consumed": [
+                  {
+                    "price": "260.937",
+                    "quantity": "0.3728"
+                  }
+                ],
+                "bestPrice": "260.937",
+                "slippageQuote": "0",
+                "spread": "0"
+              }
+            },
+            {
+              "key": "frozen-close:pnl",
+              "kind": "realized-pnl",
+              "delta": "2.21555",
+              "at": 1791590760000,
+              "evidence": {
+                "model": "l2-full-fill-v1",
+                "frame": {
+                  "snapshot": {
+                    "market": {
+                      "symbol": "BTC",
+                      "marketId": 1,
+                      "perpetualId": 1,
+                      "instanceId": 1,
+                      "exchangeAddress": "0xexchange",
+                      "collateral": {
+                        "tokenId": 1,
+                        "address": "0xcollateral",
+                        "symbol": "AUSD",
+                        "decimals": 6
+                      },
+                      "configVersion": 1,
+                      "priceDecimals": 2,
+                      "sizeDecimals": 4,
+                      "open": true,
+                      "fundingIntervalSeconds": 3600,
+                      "fundingIntervalBlocks": 100,
+                      "initialMarginRaw": 100,
+                      "maintenanceMarginRaw": 50,
+                      "fees": {
+                        "basis": "public-base-tier",
+                        "maker": "0",
+                        "taker": "0.0002"
+                      },
+                      "provenance": {
+                        "provider": "perpl",
+                        "pluginVersion": "1.1.0",
+                        "network": "mainnet",
+                        "chainId": 143,
+                        "url": "https://perpl.test/data",
+                        "receivedAt": 1791590760000,
+                        "providerTimestamp": 1791590760000,
+                        "block": 101
+                      }
+                    },
+                    "ticker": {
+                      "mark": "260.937",
+                      "index": "260.937",
+                      "last": "260.937",
+                      "bid": "260.937",
+                      "ask": "260.937",
+                      "openInterestBase": "20",
+                      "freshness": "fresh",
+                      "provenance": {
+                        "provider": "perpl",
+                        "pluginVersion": "1.1.0",
+                        "network": "mainnet",
+                        "chainId": 143,
+                        "url": "https://perpl.test/data",
+                        "receivedAt": 1791590760000,
+                        "providerTimestamp": 1791590760000,
+                        "block": 101
+                      }
+                    },
+                    "funding": null
+                  },
+                  "book": {
+                    "market": {
+                      "symbol": "BTC",
+                      "marketId": 1,
+                      "perpetualId": 1,
+                      "instanceId": 1,
+                      "exchangeAddress": "0xexchange",
+                      "collateral": {
+                        "tokenId": 1,
+                        "address": "0xcollateral",
+                        "symbol": "AUSD",
+                        "decimals": 6
+                      },
+                      "configVersion": 1,
+                      "priceDecimals": 2,
+                      "sizeDecimals": 4,
+                      "open": true,
+                      "fundingIntervalSeconds": 3600,
+                      "fundingIntervalBlocks": 100,
+                      "initialMarginRaw": 100,
+                      "maintenanceMarginRaw": 50,
+                      "fees": {
+                        "basis": "public-base-tier",
+                        "maker": "0",
+                        "taker": "0.0002"
+                      },
+                      "provenance": {
+                        "provider": "perpl",
+                        "pluginVersion": "1.1.0",
+                        "network": "mainnet",
+                        "chainId": 143,
+                        "url": "https://perpl.test/data",
+                        "receivedAt": 1791590760000,
+                        "providerTimestamp": 1791590760000,
+                        "block": 101
+                      }
+                    },
+                    "requestedLevels": 20,
+                    "depthLimited": true,
+                    "bids": [
+                      {
+                        "price": "260.937",
+                        "size": "100",
+                        "orders": 1
+                      }
+                    ],
+                    "asks": [
+                      {
+                        "price": "260.937",
+                        "size": "100",
+                        "orders": 1
+                      }
+                    ],
+                    "freshness": "fresh",
+                    "provenance": {
+                      "provider": "perpl",
+                      "pluginVersion": "1.1.0",
+                      "network": "mainnet",
+                      "chainId": 143,
+                      "url": "https://perpl.test/data",
+                      "receivedAt": 1791590760000,
+                      "providerTimestamp": 1791590760000,
+                      "block": 101
+                    }
+                  },
+                  "streamEvidence": {
+                    "policy": "stream-universe-component-paper-20s-v1",
+                    "generation": 1,
+                    "copiedAt": 1791590760000,
+                    "heartbeatSequence": 1791590760,
+                    "headBlock": 101,
+                    "heartbeatReceivedAt": 1791590760000
+                  },
+                  "hash": "fec940eace8e6160cf175be5d872adce86a00e8669e4027c9cf2fb5769945bc0"
+                },
+                "consumed": [
+                  {
+                    "price": "260.937",
+                    "quantity": "0.3728"
+                  }
+                ],
+                "bestPrice": "260.937",
+                "slippageQuote": "0",
+                "spread": "0"
+              }
+            }
+          ]
+        }
+      },
+      "short": true
+    }
+  ]
+}
