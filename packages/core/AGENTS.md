@@ -522,3 +522,9 @@ Recovery uses a fresh owner transaction and operation version fence. Private res
 is retained in the intent, never exposed as a receipt or token attribution. Other actions and
 uncertain broadcasts cannot use this release. Failed/incomplete evidence keeps the original state.
 No recovery signs, sends or automatically prepares another launch.
+
+## Public token discovery
+
+The agent directory may carry a nullable `launchedToken` summary on the configured network.
+The adapter admits only canonical confirmed launches of published agents. This is discovery
+data, not a trading permission; public preparation revalidates the token and on-chain state.
