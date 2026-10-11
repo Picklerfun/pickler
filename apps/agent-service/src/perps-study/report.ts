@@ -67,7 +67,8 @@ export function perpsStudyReport(
           (
             (record.config.version === 6 ||
             record.config.version === 7 ||
-            record.config.version === 8
+            record.config.version === 8 ||
+            record.config.version === 9
               ? (e.data as { variants: unknown }).variants
               : e.data) as Record<
               string,
@@ -151,7 +152,10 @@ export function perpsStudyReport(
       fills: filled.length,
       rejections: view.attempts.filter((a) => a.status !== "filled").length,
       riskExits:
-        record.config.version === 6 || record.config.version === 7 || record.config.version === 8
+        record.config.version === 6 ||
+        record.config.version === 7 ||
+        record.config.version === 8 ||
+        record.config.version === 9
           ? events.filter((e) => {
               const value = e.data as { variant?: string; status?: string; reason?: string };
               return (
@@ -200,7 +204,10 @@ export function perpsStudyReport(
     unobservedMs === 0 &&
     rounds.length ===
       record.config.hours *
-        (record.config.version === 6 || record.config.version === 7 || record.config.version === 8
+        (record.config.version === 6 ||
+        record.config.version === 7 ||
+        record.config.version === 8 ||
+        record.config.version === 9
           ? 12
           : 4) &&
     rows.every((r) => !r.fundingPending && !r.fundingDisputed && !r.openPositions);
