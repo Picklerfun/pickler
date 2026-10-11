@@ -1,0 +1,70 @@
+.panel {
+  composes: pk-panel from global;
+  display: grid;
+  gap: 16px;
+  padding: 20px;
+  margin-top: 16px;
+  min-width: 0;
+}
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.head h2 {
+  margin: 0;
+  font-size: 20px;
+}
+.quiet {
+  margin: 0;
+  color: var(--pk-ink-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.quote {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  font-size: 13px;
+}
+.quote > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+.quote dt {
+  color: var(--pk-ink-muted);
+}
+.quote dd {
+  margin: 0;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.status {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.hash {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-size: 12px;
+  color: var(--pk-ink-muted);
+}
+.error {
+  color: var(--pk-magenta-ink);
+  margin: 0;
+  font-size: 14px;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.actions > :first-child {
+  flex: 1;
+}
