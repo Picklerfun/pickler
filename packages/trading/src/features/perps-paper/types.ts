@@ -63,7 +63,7 @@ export interface PerpsPaperAccount {
   entryPolicy?: "unrestricted-hourly-v1" | "once-hourly-bar-v1";
   consumedEntryKeys?: string[];
   /** Trusted local v8 policy; never selected by an order intent. */
-  positionPolicy?: "pts-basic-1x-0.2.0";
+  positionPolicy?: "pts-basic-1x-0.2.0" | "pts-intraday-1x-0.1.0";
   consumedPtsSetups?: string[];
   createdAt: number;
   cash: string;
