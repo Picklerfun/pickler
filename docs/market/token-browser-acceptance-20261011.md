@@ -20,8 +20,8 @@ A read-only check at 18:41 UTC found:
 - The open owner browser had 0 AUSD in the master wallet and 9.4974 MON. The separate agent
   wallet is not a source of buyer funds. An owner purchase requires testnet AUSD in the master.
 
-The open browser session was detected, but the Mac was locked and native interaction failed.
-The owner must unlock it and complete the passkey approval for the real launch. No passkey
+At those observations, the open browser session was detected, but the Mac was locked and native
+interaction failed. The owner passkey approval remained pending. No passkey
 approval was bypassed and no owner launch or trade was signed or sent during this acceptance.
 The separate operator faucet transaction below only supplied testnet buyer funds.
 
@@ -65,8 +65,28 @@ The signed transaction was persisted before the single broadcast. The initial re
 could not complete its mint-only assertion because this faucet transfers existing AUSD.
 Read-only reconciliation of the same hash confirmed the transfer and balance; neither signing
 nor broadcast was repeated. No owner passkey approval, launch, curve purchase or visitor
-purchase is implied by this funding receipt. The locked browser still displayed its earlier
-balance snapshot; it was not reloaded over preserved form edits.
+purchase is implied by this funding receipt. At that observation, the locked browser still
+displayed its earlier balance snapshot; it was not reloaded over preserved form edits.
+
+## Resumed owner browser preparation
+
+At 21:44–21:47 UTC, the Mac was unlocked and the existing authenticated Studio tab was usable
+through native browser controls. Refreshing the saved status showed the previous attempt as
+failed; after saving the current name/ticker and reloading, the current UI explained
+`EXPIRED_LAUNCH_NOT_CREATED` as an expired authorization with no token created. Copy actions use
+icons, and addresses themselves link to the explorer. The master balance now displayed the
+confirmed 10,000 testnet AUSD.
+
+A new preparation for `teterabOb` / `TETERA` completed through the owner UI. The hosted repository
+recorded `awaiting_signature`, with no activity ID, transaction hash or preparation error. Studio
+showed Monad testnet, the registered master and factory, and a maximum gas cost of
+0.35651088 MON. The owner was handed the `Sign with passkey` step; no approval, signature or
+launch broadcast was performed by the browser agent. This preparation is not launch acceptance.
+
+The read at 21:47 UTC still returned no launched token. The factory cursor was 70,134,787 against
+head 70,222,469: 87,682 blocks behind. The grouped admission correction below had not been
+published; sustained catch-up remains unproven. Public trading bindings were still absent and
+PR #148 remained open with CI startup failures. No manual deployment was performed.
 
 ## Corrections
 
@@ -92,20 +112,20 @@ remains pending until automatic publication and another real measurement.
 
 ## Validation
 
-| Scenario                                                           | Evidence                                                                   | Result  |
-| ------------------------------------------------------------------ | -------------------------------------------------------------------------- | ------- |
-| Confirmation, wrong network, private visibility and orphan removal | Real isolated PostgreSQL, `token-launch.test.ts`                           | Passed  |
-| Directory history, reads and failures                              | Real isolated PostgreSQL, `agent-directory.test.ts`                        | Passed  |
-| Public JWT-free preparation, strict bodies, disabled/quota errors  | Injected API route suite                                                   | Passed  |
-| Concurrent public RPC reservation                                  | Real isolated PostgreSQL quota suite                                       | Passed  |
-| Empty, failed and confirmed landing listings                       | Strict loopback API + production web, 390/1280 px                          | Passed  |
-| Keyboard landing → public profile → Buy/Sell panel                 | Controlled browser, no external requests                                   | Passed  |
-| Grouped reserves, daily quota, lease loss and historical parity    | 56 controlled admission/PostgreSQL/scheduling regressions                  | Passed  |
-| Owner passkey launch and Studio buy                                | Master has faucet AUSD; requires browser unlock and owner passkey approval | Pending |
-| Master-wallet AUSD for the test purchase                           | Canonical faucet receipt, 10,000 AUSD received                             | Passed  |
-| New token canonical indexing and hosted landing appearance         | No new launch; indexer still recovering history                            | Pending |
-| GitHub CI                                                          | Startup failure before jobs, also present on preceding main                | Pending |
-| Ordinary visitor buy/sell                                          | Testnet gate needs automatic release and a confirmed token                 | Pending |
+| Scenario                                                           | Evidence                                                            | Result  |
+| ------------------------------------------------------------------ | ------------------------------------------------------------------- | ------- |
+| Confirmation, wrong network, private visibility and orphan removal | Real isolated PostgreSQL, `token-launch.test.ts`                    | Passed  |
+| Directory history, reads and failures                              | Real isolated PostgreSQL, `agent-directory.test.ts`                 | Passed  |
+| Public JWT-free preparation, strict bodies, disabled/quota errors  | Injected API route suite                                            | Passed  |
+| Concurrent public RPC reservation                                  | Real isolated PostgreSQL quota suite                                | Passed  |
+| Empty, failed and confirmed landing listings                       | Strict loopback API + production web, 390/1280 px                   | Passed  |
+| Keyboard landing → public profile → Buy/Sell panel                 | Controlled browser, no external requests                            | Passed  |
+| Grouped reserves, daily quota, lease loss and historical parity    | 56 controlled admission/PostgreSQL/scheduling regressions           | Passed  |
+| Owner passkey launch and Studio buy                                | Master funded; new launch prepared; requires owner passkey approval | Pending |
+| Master-wallet AUSD for the test purchase                           | Canonical faucet receipt, 10,000 AUSD received                      | Passed  |
+| New token canonical indexing and hosted landing appearance         | No new launch; indexer still recovering history                     | Pending |
+| GitHub CI                                                          | Startup failure before jobs, also present on preceding main         | Pending |
+| Ordinary visitor buy/sell                                          | Testnet gate needs automatic release and a confirmed token          | Pending |
 
 The controlled API/directory PostgreSQL run passed 29 tests. The indexer admission, canonical
 PostgreSQL indexing, historical operation compatibility and host scheduling runs passed 56 tests,
