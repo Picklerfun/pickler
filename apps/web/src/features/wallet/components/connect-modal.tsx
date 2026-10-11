@@ -405,7 +405,7 @@ function handleNote(state: HandleState, handle: string, min: number, max: number
     case "reserved":
       return "THAT ONE IS SPOKEN FOR";
     case "taken":
-      return `@${handle.trim().toUpperCase()} IS TAKEN`;
+      return `@${handle.trim().toUpperCase()} IS TAKEN · CHOOSE ANOTHER`;
     case "checking":
       return "CHECKING…";
     case "unknown":
@@ -456,6 +456,7 @@ function Username({ flow, address, kind, onJoin }: ConnectModalProps) {
             maxLength={form.maxLength}
             invalid={refused && form.state !== "too_short"}
             placeholder="username"
+            disabled={form.busy}
             onChange={(event) => form.setHandle(event.target.value.replace(/^@/, ""))}
           />
           {form.state === "ok" && <span className={styles.handleOk} aria-hidden="true" />}
@@ -472,6 +473,17 @@ function Username({ flow, address, kind, onJoin }: ConnectModalProps) {
         </p>
       </div>
 
+      {form.state === "taken" && (
+        <Button
+          variant="secondary"
+          onClick={() => {
+            form.setHandle("");
+            document.getElementById("connect-username")?.focus();
+          }}
+        >
+          Choose another username
+        </Button>
+      )}
       <Button
         variant="primary"
         block
