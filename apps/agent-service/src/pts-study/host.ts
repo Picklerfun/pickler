@@ -13,7 +13,7 @@ import {
 import { createPriorityPerplStudyData } from "@pickler/agent-runtime/plugins/perps-paper/public-study";
 import { createProfileStudyRunner } from "@pickler/trading/evaluation";
 import {
-  analyzePts,
+  inspectPtsHistory,
   PTS_POLICY,
   PTS_VARIANTS,
   type PerpsPtsConfig,
@@ -64,10 +64,13 @@ export async function runPtsHost(
     output = resolve(input.output);
   const coverage = input.packet.history.markets.map((h) => ({
     symbol: h.market.symbol,
-    analysis: analyzePts(h, input.packet.history.to),
+    analysis: inspectPtsHistory(h, input.packet.history.to),
   }));
   const eligible = coverage
-    .filter((c) => c.analysis.coverage.every((v) => v.eligible))
+    .filter(
+      (c) =>
+        c.analysis.validationStatus === "VALID" && c.analysis.coverage.every((v) => v.eligible),
+    )
     .map((c) => c.symbol);
   if (
     ["preflight", "run"].includes(input.command) &&
