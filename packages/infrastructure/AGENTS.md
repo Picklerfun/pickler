@@ -668,6 +668,16 @@ RPC admission and Kuru snapshots without rewriting historical V4 records. Never 
 Kuru as a fallback. Kuru remains blocked by its external readiness record; the V4 acceptance below is separate.
 See [Token operations](../../docs/market/token-launch-operations.md) for configuration and tests.
 
+## Node-only trading baseline
+
+`@pickler/infrastructure/trading-baseline` is an explicit local operator subpath, never the Worker
+barrel or provider composition. It shares a repeatable-read read-only snapshot between complete
+table fingerprints and pg_dump, then verifies restore in fresh databases on a different cluster.
+Keep URL/tool failures sanitized, credentials out of argv, child environments restricted, dumps
+private and sequence changes explicit. Restore copies default to read-only and never initialize
+budgets, sessions, applications or schedules. No migrations or financial policy changes belong
+here. Read [baseline recovery](../../apps/agent-service/TRADING-BASELINE.md).
+
 ## V4 launcher policy and canonical position history
 
 `src/launch/policy.ts` discriminates strict V4 version 2 from historical Kuru version 1. The V4
@@ -704,3 +714,16 @@ still commit atomically; no RPC work runs inside that transaction. Never replace
 ancestry validation with sparse sampling or advance a cursor to avoid backfill. The hosted
 capacity measurement and explicit closed launcher gate are recorded in
 [the dated readiness guide](../../docs/market/token-indexer-hosted-20261011.md).
+
+## Local PTS persistence and restricted composition
+
+`@pickler/infrastructure/perpl-public` exposes only public Perpl transport; `/perps-lab` exposes
+local research/paper/study persistence and the consistent read-only audit exporter. Neither subpath
+loads model or signing adapters. PTS uses existing tables/JSONB, not migrations.
+
+Configuration v8 initializes independent PTS/SMA accounts with immutable account policies and zero
+model calls/reservations. Under account and study ownership locks, reproduce the PTS final signal,
+verify the saved common evidence, native quantity and account policy, then confirm fill, proportional
+basis, reduction/target sequence, stop and consumed setup in one transaction. No intent may switch
+policy; legacy accounts cannot acquire PTS exceptions. Unknown funding and historic monetary
+reservations remain unchanged. Tests use disposable local PostgreSQL databases only.

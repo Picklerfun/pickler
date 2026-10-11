@@ -39,6 +39,14 @@ export async function executeEvaluation(input: EvaluationHostRequest) {
     protocol: EvaluationProtocol;
     version: number;
   };
+  if (raw.protocol === "perps-pts-sma-v1") {
+    const { runPtsCommand } = await import("../pts-study/index.js");
+    return runPtsCommand({
+      ...input,
+      state: input.states?.[0],
+      signal: input.signal ?? new AbortController().signal,
+    });
+  }
   const originalConfiguration = JSON.stringify(raw);
   if (raw.version === 1 && !raw.protocol) {
     raw.protocol = "paper-study-v1";

@@ -1,0 +1,126 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PTS source manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "bundleId",
+    "knowledgeVersion",
+    "sourceLanguage",
+    "lineConvention",
+    "textFileCount",
+    "totalWords",
+    "mediaIncluded",
+    "sources",
+    "coverageIssues"
+  ],
+  "properties": {
+    "$schema": {
+      "const": "./schemas/source-manifest.schema.json"
+    },
+    "bundleId": {
+      "const": "pts-course"
+    },
+    "knowledgeVersion": {
+      "const": "1.0.0"
+    },
+    "sourceLanguage": {
+      "const": "es"
+    },
+    "lineConvention": {
+      "const": "one-based-inclusive"
+    },
+    "textFileCount": {
+      "const": 29
+    },
+    "totalWords": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "mediaIncluded": {
+      "const": false
+    },
+    "sources": {
+      "type": "array",
+      "minItems": 29,
+      "maxItems": 29,
+      "items": {
+        "title": "Imported PTS source",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "module",
+          "lesson",
+          "originalFilename",
+          "path",
+          "language",
+          "sha256",
+          "words",
+          "lines"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "module": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4
+          },
+          "lesson": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "originalFilename": {
+            "type": "string",
+            "minLength": 1
+          },
+          "path": {
+            "type": "string",
+            "pattern": "^sources/m[0-9]{2}-c[0-9]{2}\\.txt$"
+          },
+          "language": {
+            "const": "es"
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "words": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "lines": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      }
+    },
+    "coverageIssues": {
+      "type": "array",
+      "items": {
+        "title": "Course coverage issue",
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "sourceId", "description"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "sourceId": {
+            "type": ["string", "null"]
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,513 @@
+{
+  "$schema": "./schemas/rules.schema.json",
+  "bundleId": "pts-course",
+  "knowledgeVersion": "1.0.0",
+  "language": "en",
+  "kind": "course-reference",
+  "status": "reference-only",
+  "executionEnabled": false,
+  "registryEntry": null,
+  "sourceManifest": "source-manifest.json",
+  "openQuestions": "open-questions.json",
+  "parameterSemantics": "Course values are descriptive. Decimal ratios are strings to preserve spoken precision; bps denote course percentage examples. Neither category is an approved execution setting.",
+  "rules": [
+    {
+      "id": "timeframes",
+      "title": "Timeframe hierarchy",
+      "finding": "Monthly describes the primary trend, weekly its state, daily the immediate structure, and intraday charts additional confirmation.",
+      "origin": "course-interpretation",
+      "status": "requires-operational-definition",
+      "courseParameters": {
+        "hierarchy": ["monthly", "weekly", "daily", "intraday"],
+        "intradayExamples": ["4h", "1h", "15m"]
+      },
+      "references": [
+        {
+          "sourceId": "M1C3",
+          "lineStart": 35,
+          "lineEnd": 56
+        }
+      ],
+      "unresolvedQuestionIds": ["Q-timeframes"]
+    },
+    {
+      "id": "trend-direction",
+      "title": "Trade with the primary trend",
+      "finding": "Prefer longs near the lower boundary of an upward channel and shorts near the upper boundary of a downward channel. The larger channel takes priority over internal channels.",
+      "origin": "course-interpretation",
+      "status": "requires-operational-definition",
+      "courseParameters": {},
+      "references": [
+        {
+          "sourceId": "M1C4",
+          "lineStart": 9,
+          "lineEnd": 35
+        },
+        {
+          "sourceId": "M1C5",
+          "lineStart": 195,
+          "lineEnd": 208
+        }
+      ],
+      "unresolvedQuestionIds": ["Q-trend-direction"]
+    },
+    {
+      "id": "risk-account",
+      "title": "Risk on total account equity",
+      "finding": "The course describes roughly 1% planned account loss for short operations, 2% for swing and up to 4% as an infrequent exception. These are course statements, not approved agent limits.",
+      "origin": "course-interpretation",
+      "status": "requires-operational-definition",
+      "courseParameters": {
+        "courseRiskBps": {
+          "shortOperation": 100,
+          "swing": 200,
+          "rareException": 400
+        },
+        "approvedForExecution": false
+      },
+      "references": [
+        {
+          "sourceId": "M1C2",
+          "lineStart": 49,
+          "lineEnd": 62
+        }
+      ],
+      "unresolvedQuestionIds": ["Q-risk-account"]
+    },
+    {
+      "id": "leverage-exposure",
+      "title": "Leverage and economic exposure",
+      "finding": "The example increases leverage while preserving planned economic exposure and reducing margin used.",
+      "origin": "course-interpretation",
+      "status": "requires-operational-definition",
+      "courseParameters": {},
+      "references": [
+        {
+          "sourceId": "M1C2",
+          "lineStart": 107,
+          "lineEnd": 128
+        }
+      ],
+      "unresolvedQuestionIds": ["Q-leverage-exposure"]
+    },
+    {
+      "id": "retracement",
+      "title": "Retracement and reversal zone",
+      "finding": "The course uses 0.23 for early activation, 0.38 for additional confirmation and 0.61–0.78 as a reversal zone. Each drawing depends on its selected impulse and direction.",
+      "origin": "course-interpretation",
+      "status": "requires-operational-definition",
+      "courseParameters": {
+        "spokenRatios": ["0.23", "0.38", "0.61", "0.78"],
+        "spokenReversalZone": ["0.61", "0.78"],
+        "exactRatiosReviewed": false
+      },
+      "references": [
+        {
+          "sourceId": "M2C1",
+          "lineStart": 20,
+          "lineEnd": 46
+        },
+        {
+          "sourceId": "M2C2",
+          "lineStart": 8,
+          "lineEnd": 23
+        }
+      ],
+      "unresolvedQuestionIds": ["Q-retracement"]
+    },
+    {
+      "id": "basic-setup",
+      "title": "Reversal with the primary trend",
+      "finding": "The practical setup combines weekly trend and channel, correction or rebound toward the relevant boundary, and the previous impulse reversal zone. Phi and mother wave can reinforce the scenario.",
+      "origin": "course-interpretation",
+      "status": "requires-operational-definition",
+      "courseParameters": {
+        "phiMandatoryInCourseBasicSetup": false,
+        "motherWaveMandatoryInCourseBasicSetup": false
+      },
+      "references": [
+        {
+          "sourceId": "M3C1",
+          "lineStart": 16,
+          "lineEnd": 59
+        }
+      ],
+      "unresolvedQuestionIds": ["Q-basic-setup"]
+    },
+    {
+      "id": "entry-trigger",
+      "title": "Earlier or more confirmed entry",
+      "finding": "The course describes entry through 0.23 and an alternative with additional confirmation through 0.38.",
+      "origin": "course-interpretation",
+      "status": "requires-operational-definition",
+      "courseParameters": {
+        "spokenEntryAlternatives": ["0.23", "0.38"],
+        "selectedEntryRatio": null
+      },
+      "references": [
+        {
+          "sourceId": "M3C1",
+          "lineStart": 45,
+          "lineEnd": 64
+        },
+        {
+          "sourceId": "M4C1",
+          "lineStart": 18,
+          "lineEnd": 29
+        }
+      ],
+      "unresolvedQuestionIds": ["Q-entry-trigger"]
+    },
+    {
+      "id": "structural-stop",
+      "title": "Structural stop",
+      "finding": "Stop placement follows the selected pattern extreme or reversal-zone invalidation. The course does not supply one universal fixed percentage distance.",
+      "origin": "course-interpretation",
+      "status": "requires-operational-definition",
+      "courseParameters": {
+        "fixedUniversalStopBps": null
+      },
+      "references": [
+        {
+          "sourceId": "M3C1",
+          "lineStart": 57,
+          "lineEnd": 65
+        },
+        {
+          "sourceId": "M3C4",
+          "lineStart": 24,
+          "lineEnd": 29
+        }
+      ],
+      "unresolvedQuestionIds": ["Q-structural-stop"]
+    },
+    {
+      "id": "breakeven",
+      "title": "Move the stop toward entry",
+      "finding": "After entry at 0.23, move toward break even when 0.38 is reached. After entry at 0.38, do so halfway toward 0.61.",
+      "origin": "course-interpretation",
+      "status": "requires-operational-definition",
+      "courseParameters": {
+        "spokenTransitions": [
+          {
+            "entryRatio": "0.23",
+            "triggerRatio": "0.38"
+          },
+          {
+            "entryRatio": "0.38",
+            "triggerDescription": "Halfway toward 0.61"
+          }
+        ],
+        "reviewedCostTreatment": null
+      },
+      "references": [
+        {
+          "sourceId": "M3C1",
+          "lineStart": 61,
+          "lineEnd": 68
+        }
+      ],
+      "unresolvedQuestionIds": ["Q-breakeven"]
+    },
+    {
+      "id": "targets",
+      "title": "Staged targets and partial exits",
+      "finding": "Initial targets are 0.61 and 0.78, followed by 1.00, 1.27 and 1.61 in confirmed extensions, with 2.61 in more extended scenarios. A lesson offers partial exits of 15% or 20%.",
+      "origin": "course-interpretation",
+      "status": "requires-operational-definition",
+      "courseParameters": {
+        "spokenInitialTargets": ["0.61", "0.78"],
+        "spokenExtendedTargets": ["1.00", "1.27", "1.61", "2.61"],
+        "spokenPartialAlternativesBps": [1500, 2000],
+        "threeAnchorExtensionTargets": ["2.61", "3.61", "4.61"],
+        "selectedPartialSchedule": null
+      },
+      "references": [
+        {
+          "sourceId": "M3C1",
+          "lineStart": 65,
+          "lineEnd": 70
+        },
+        {
+          "sourceId": "M3C1",
+          "lineStart": 126,
+          "lineEnd": 133
+        },
+        {
+          "sourceId": "M4C1",
+          "lineStart": 27,
+          "lineEnd": 33
+        },
+        {
+          "sourceId": "M2C5",
+          "lineStart": 1,
+          "lineEnd": 25
+        }
+      ],
+      "unresolvedQuestionIds": ["Q-targets"]
+    },
+    {
+      "id": "rupture-confirmation",
+      "title": "Breakout and sweep confirmation",
+      "finding": "Different lessons discuss quick recovery and 24–72 hour windows for different structures. The text does not establish one timer for all timeframes.",
+      "origin": "course-interpretation",
+      "status": "requires-operational-definition",
+      "courseParameters": {
+        "mentionedHours": [24, 48, 72],
+        "selectedUniversalHours": null
+      },
+      "references": [
+        {
+          "sourceId": "M2C1",
+          "lineStart": 70,
+          "lineEnd": 77
+        },
+        {
+          "sourceId": "M1C5",
+          "lineStart": 88,
+          "lineEnd": 100
+        },
+        {
+          "sourceId": "M4C1",
+          "lineStart": 14,
+          "lineEnd": 18
+        }
+      ],
+      "unresolvedQuestionIds": ["Q-rupture-confirmation"]
+    },
+    {
+      "id": "mother-wave",
+      "title": "Mother wave",
+      "finding": "An approximately complete retracement to 1.00 occurs within a larger valid trend. A subsequent movement through 0.23 or 0.38 supplies confirmation.",
+      "origin": "course-interpretation",
+      "status": "requires-operational-definition",
+      "courseParameters": {
+        "spokenOriginRetracementRatio": "1.00",
+        "spokenEntryAlternatives": ["0.23", "0.38"]
+      },
+      "references": [
+        {
+          "sourceId": "M2C6",
+          "lineStart": 6,
+          "lineEnd": 38
+        }
+      ],
+      "unresolvedQuestionIds": ["Q-mother-wave"]
+    },
+    {
+      "id": "phi",
+      "title": "Phi pattern",
+      "finding": "The course describes an extension into 1.27–1.61 and subsequent reversal confirmation through 0.23 or 0.38, preferably aligned with the larger trend.",
+      "origin": "course-interpretation",
+      "status": "requires-operational-definition",
+      "courseParameters": {
+        "spokenExtensionZone": ["1.27", "1.61"],
+        "spokenEntryAlternatives": ["0.23", "0.38"]
+      },
+      "references": [
+        {
+          "sourceId": "M2C7",
+          "lineStart": 22,
+          "lineEnd": 41
+        }
+      ],
+      "unresolvedQuestionIds": ["Q-phi"]
+    },
+    {
+      "id": "phi-mother",
+      "title": "Phi followed by a mother wave",
+      "finding": "A mother wave after Phi reinforces the scenario. Examples include multiple waves and alternative stop anchors.",
+      "origin": "course-interpretation",
+      "status": "requires-operational-definition",
+      "courseParameters": {},
+      "references": [
+        {
+          "sourceId": "M2C8",
+          "lineStart": 13,
+          "lineEnd": 35
+        }
+      ],
+      "unresolvedQuestionIds": ["Q-phi-mother"]
+    },
+    {
+      "id": "failed-triangle",
+      "title": "Failed triangle",
+      "finding": "After a break in the prior trend direction, price returns toward the vertex and confirms in the opposite direction. The course calls this triángulo reventado.",
+      "origin": "course-interpretation",
+      "status": "requires-operational-definition",
+      "courseParameters": {},
+      "references": [
+        {
+          "sourceId": "M3C4",
+          "lineStart": 6,
+          "lineEnd": 29
+        }
+      ],
+      "unresolvedQuestionIds": ["Q-failed-triangle"]
+    },
+    {
+      "id": "phi-wedge",
+      "title": "Phi wedge",
+      "finding": "A wedge combines with Phi, sometimes also a mother wave, and confirms through 0.23 or 0.38.",
+      "origin": "course-interpretation",
+      "status": "requires-operational-definition",
+      "courseParameters": {
+        "spokenEntryAlternatives": ["0.23", "0.38"]
+      },
+      "references": [
+        {
+          "sourceId": "M3C5",
+          "lineStart": 7,
+          "lineEnd": 23
+        }
+      ],
+      "unresolvedQuestionIds": ["Q-phi-wedge"]
+    },
+    {
+      "id": "leading-diagonal",
+      "title": "Leading diagonal as defined by PTS",
+      "finding": "An initially opposing wedge reverses with Phi or a mother wave. The upward variant breaks the previous high; the downward variant breaks the previous low.",
+      "origin": "course-interpretation",
+      "status": "requires-operational-definition",
+      "courseParameters": {
+        "definitionNamespace": "pts-course"
+      },
+      "references": [
+        {
+          "sourceId": "M3C7",
+          "lineStart": 23,
+          "lineEnd": 44
+        }
+      ],
+      "unresolvedQuestionIds": ["Q-leading-diagonal"]
+    },
+    {
+      "id": "seller-covering",
+      "title": "Seller covering",
+      "finding": "The 2.61 extension of a bearish mother wave is described as a potential bounce or turn area, not a universal immediate entry.",
+      "origin": "course-interpretation",
+      "status": "requires-operational-definition",
+      "courseParameters": {
+        "spokenPotentialZoneRatio": "2.61"
+      },
+      "references": [
+        {
+          "sourceId": "M3C8",
+          "lineStart": 10,
+          "lineEnd": 28
+        }
+      ],
+      "unresolvedQuestionIds": ["Q-seller-covering"]
+    },
+    {
+      "id": "intermediate-ranges",
+      "title": "Continuation in intermediate ranges",
+      "finding": "The course seeks intraday opportunities in macro impulse ranges 0.38–0.61 and above 0.78, treating 0.61–0.78 as less favorable for these continuation entries.",
+      "origin": "course-interpretation",
+      "status": "requires-operational-definition",
+      "courseParameters": {
+        "spokenContinuationRange": ["0.38", "0.61"],
+        "spokenExtendedThreshold": "0.78"
+      },
+      "references": [
+        {
+          "sourceId": "M3C3",
+          "lineStart": 11,
+          "lineEnd": 45
+        }
+      ],
+      "unresolvedQuestionIds": ["Q-intermediate-ranges"]
+    },
+    {
+      "id": "context-equities",
+      "title": "Context across equity markets",
+      "finding": "The course uses S&P 500, Nasdaq, VIX and alternative indices or instruments for direction, relative strength and divergences. These relationships are method hypotheses, not guarantees.",
+      "origin": "course-interpretation",
+      "status": "requires-operational-definition",
+      "courseParameters": {
+        "courseInstrumentLabels": ["S&P 500", "Nasdaq", "VIX", "IWM", "DIA", "HIG", "DJT"],
+        "instrumentIdentitiesReviewed": false
+      },
+      "references": [
+        {
+          "sourceId": "M4C2",
+          "lineStart": 12,
+          "lineEnd": 35
+        },
+        {
+          "sourceId": "M4C5",
+          "lineStart": 1,
+          "lineEnd": 23
+        },
+        {
+          "sourceId": "M4C3",
+          "lineStart": 1,
+          "lineEnd": 18
+        },
+        {
+          "sourceId": "M4C4",
+          "lineStart": 1,
+          "lineEnd": 18
+        }
+      ],
+      "unresolvedQuestionIds": ["Q-context-equities"]
+    },
+    {
+      "id": "context-crypto",
+      "title": "Bitcoin and altcoin context",
+      "finding": "The course consults USDT.D, the equity referred to as Microstrategy, BTC.D and TOTAL2 to contextualize movements and relative strength.",
+      "origin": "course-interpretation",
+      "status": "requires-operational-definition",
+      "courseParameters": {
+        "courseInstrumentLabels": ["USDT.D", "Microstrategy", "BTC.D", "TOTAL2"],
+        "instrumentIdentitiesReviewed": false
+      },
+      "references": [
+        {
+          "sourceId": "M4C6",
+          "lineStart": 18,
+          "lineEnd": 37
+        },
+        {
+          "sourceId": "M4C6",
+          "lineStart": 42,
+          "lineEnd": 64
+        },
+        {
+          "sourceId": "M4C6",
+          "lineStart": 70,
+          "lineEnd": 103
+        }
+      ],
+      "unresolvedQuestionIds": ["Q-context-crypto"]
+    },
+    {
+      "id": "context-macro",
+      "title": "Macro and sentiment context",
+      "finding": "The course offers interpretations of QE and QT, the Fed, Treasury, inflation, unemployment and put/call. Current analysis requires dated observations and verified definitions.",
+      "origin": "course-interpretation",
+      "status": "requires-operational-definition",
+      "courseParameters": {
+        "courseTopics": ["QE", "QT", "Fed", "Treasury", "inflation", "unemployment", "put/call"]
+      },
+      "references": [
+        {
+          "sourceId": "M4C7",
+          "lineStart": 1,
+          "lineEnd": 21
+        },
+        {
+          "sourceId": "M4C8",
+          "lineStart": 1,
+          "lineEnd": 20
+        },
+        {
+          "sourceId": "M4C7",
+          "lineStart": 183,
+          "lineEnd": 198
+        }
+      ],
+      "unresolvedQuestionIds": ["Q-context-macro"]
+    }
+  ]
+}

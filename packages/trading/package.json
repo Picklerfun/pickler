@@ -19,7 +19,12 @@
     "./evaluation": {
       "types": "./src/evaluation.ts",
       "import": "./dist/evaluation.js"
-    }
+    },
+    "./pts": {
+      "types": "./src/pts.ts",
+      "import": "./dist/pts.js"
+    },
+    "./testing/pts": "./test/pts-fixture.ts"
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",

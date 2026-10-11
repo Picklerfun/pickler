@@ -26,7 +26,19 @@
       "types": "./src/persistence/migrate-database.ts",
       "import": "./dist/persistence/migrate-database.js"
     },
-    "./testing/token": "./test/token-fixture.ts"
+    "./trading-baseline": {
+      "types": "./src/trading-baseline/database.ts",
+      "import": "./dist/trading-baseline/database.js"
+    },
+    "./testing/token": "./test/token-fixture.ts",
+    "./perpl-public": {
+      "types": "./src/perpl-public.ts",
+      "import": "./dist/perpl-public.js"
+    },
+    "./perps-lab": {
+      "types": "./src/perps-lab.ts",
+      "import": "./dist/perps-lab.js"
+    }
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

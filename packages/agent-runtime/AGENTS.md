@@ -208,3 +208,15 @@ rates/reservations and pre-transport recording. One Perpl session budget covers 
 persisted position reads. No new plugin identity or alternative decision executor.
 
 See [agent-selected Perpl markets](../../docs/studio-perpl-markets.md).
+
+## Public-only PTS composition
+
+`@pickler/agent-runtime/plugins/perps-paper/public-study` is the restricted public-reader entry
+point for evaluation v8; it bypasses the Mastra/model plugin barrel. `pts-history.ts` performs
+one bounded native Perpl capture (96 physical requests, ten minutes, shared one-second pacing,
+24 per session). Verify all eleven metadata identities; preserve native responses/holes/revisions.
+Never lower the 24-month/104-week minima. Fatal identity/schema/permission failures stop capture.
+
+`priority-study.ts` accepts saved history, merges guarded native windows and reports revisions.
+The common existing component stream remains explicit, with no REST fallback. Valuation/stops
+precede candle and funding preparation; missing required evidence blocks openings.

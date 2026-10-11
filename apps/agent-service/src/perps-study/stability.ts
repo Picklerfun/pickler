@@ -295,7 +295,7 @@ export async function runPerpsStability(
     };
     const source = await study.view(config);
     const schedule = new PerplRequestSchedule();
-    const agentScope = { tenantId: config.tenantId, agentId: source.record.agentIds.rules };
+    const agentScope = { tenantId: config.tenantId, agentId: source.record.agentIds.rules! };
     let currentDiagnostics: AcquisitionDiagnostic[] = [],
       currentRequests: PerplRequestDiagnostic[] = [];
     const streamEvent = (event: import("@pickler/infrastructure").PerplStreamEvent) => {
