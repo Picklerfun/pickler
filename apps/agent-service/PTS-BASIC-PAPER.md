@@ -85,3 +85,6 @@ commits remain explicit; the source is not rewritten.
 Invalid original OHLC bars remain recorded. Offline inspection counts valid original bars and
 labels affected signal projections NOT_VERIFIABLE, never a valid hold. Runtime strategy admission
 still rejects invalid data; inspection does not repair bars or relax the frozen minima.
+
+Portfolio metrics and decision rows remain separate. Posted funding and posted net ledger components
+are retained explicitly; final funding/net values are null while funding is pending or disputed.
