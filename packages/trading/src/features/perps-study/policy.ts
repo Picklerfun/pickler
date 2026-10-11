@@ -1,9 +1,13 @@
+import { assertPtsConfig } from "../pts/policy.js";
 import { PilotError, PERPL_LAB_SYMBOLS } from "@pickler/core";
 import { paperUnits as u, paperDecimal as d } from "../perps-paper/decimal.js";
 import type { PerpsStudyConfig, PerpsRound, PerpsCallLane, PerpsStudyRecord } from "./types.js";
 export const PERPS_INPUT_LIMIT = 65536;
 export const PERPS_OUTPUT_LIMIT = 4096;
 export function assertPerpsStudyConfig(c: PerpsStudyConfig) {
+  if (c.version === 8) {
+    return assertPtsConfig(c);
+  }
   if (c.version === 6 || c.version === 7) {
     const catalog = [
       ["BTC", 1],
@@ -83,7 +87,7 @@ export function assertPerpsStudyConfig(c: PerpsStudyConfig) {
       new Set(c.markets.map((m) => m.marketId)).size !== 11 ||
       c.markets.some(
         (m) =>
-          !PERPL_LAB_SYMBOLS.includes(m.symbol) ||
+          !(PERPL_LAB_SYMBOLS as readonly string[]).includes(m.symbol) ||
           !Number.isSafeInteger(m.marketId) ||
           m.marketId <= 0,
       ) ||
@@ -222,7 +226,12 @@ export function perpsCallCost(
   input: number,
   output: number,
 ) {
-  if (config.version === 3 || config.version === 6 || config.version === 7) {
+  if (
+    config.version === 3 ||
+    config.version === 6 ||
+    config.version === 7 ||
+    config.version === 8
+  ) {
     throw new PilotError("MODELS_DISABLED", "Original SMA cannot reserve model calls");
   }
   if (config.version === 5) {
@@ -269,7 +278,7 @@ export function perpsAccountedUsd(rounds: PerpsRound[]): string {
       (total, r) =>
         total +
         Object.values(r.calls).reduce(
-          (sum, c) => sum + (c.status === "skipped" ? 0n : u(c.costUsd ?? c.reservationUsd)),
+          (sum, c) => sum + (!c || c.status === "skipped" ? 0n : u(c.costUsd ?? c.reservationUsd)),
           0n,
         ),
       0n,
