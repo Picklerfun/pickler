@@ -1,7 +1,8 @@
 "use client";
 import Image from "next/image";
-import { useState, type ReactNode } from "react";
-import { Button, ButtonLink, Icon, Tag } from "@pickler/ui";
+import type { ReactNode } from "react";
+import { Icon, Tag } from "@pickler/ui";
+import { ChainReference } from "./chain-reference";
 import type { AgentTokenDto } from "@pickler/api-schema";
 import styles from "./token.module.css";
 import { AgentAvatar } from "../studio/shell/agent-avatar";
@@ -17,8 +18,6 @@ export function AgentTokenCard({
   preview?: boolean;
   confirmationPending?: boolean;
 }) {
-  const [copied, setCopied] = useState(false);
-  const [copyError, setCopyError] = useState(false);
   if (!token) {
     return (
       <section className={styles.card} data-token-state="empty" aria-label="Agent token">
@@ -33,8 +32,6 @@ export function AgentTokenCard({
       </section>
     );
   }
-  const explorer =
-    token.chainId === 10143 ? "https://testnet.monadexplorer.com" : "https://monadexplorer.com";
   return (
     <section className={styles.card} data-token-state="launched" aria-label="Agent token">
       <div className={styles.head}>
@@ -58,51 +55,13 @@ export function AgentTokenCard({
         </div>
         <Tag>{token.chainId === 10143 ? "TESTNET" : "MAINNET"}</Tag>
       </div>
-      <div className={styles.address}>
-        <span title={token.address}>
-          {token.address.slice(0, 8)}…{token.address.slice(-6)}
-        </span>
-        <Button
-          size="sm"
-          variant="secondary"
-          onClick={() => {
-            void navigator.clipboard.writeText(token.address).then(
-              () => {
-                setCopied(true);
-                setCopyError(false);
-              },
-              () => setCopyError(true),
-            );
-          }}
-        >
-          <Icon name="copy" />
-          {copied ? "Copied" : "Copy address"}
-        </Button>
-      </div>
-      <div className={styles.actions}>
-        {preview ? (
-          <Button size="sm" variant="secondary" disabled>
-            Explorer
-          </Button>
-        ) : (
-          <ButtonLink
-            size="sm"
-            variant="secondary"
-            href={`${explorer}/address/${token.address}`}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Explorer
-            <Icon name="external" />
-          </ButtonLink>
-        )}
-      </div>
+      <ChainReference
+        value={token.address}
+        chainId={token.chainId}
+        label="token address"
+        preview={preview}
+      />
       {preview && <p className={styles.quiet}>Preview · simulated token, no transaction sent</p>}
-      {copyError && (
-        <p role="alert" className={styles.quiet}>
-          Could not copy. Address: {token.address}
-        </p>
-      )}
     </section>
   );
 }
