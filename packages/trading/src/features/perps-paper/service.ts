@@ -9,7 +9,7 @@ import type {
   PerpsPaperIntent,
 } from "./types.js";
 import { paperRisk, productFeeReserve } from "./policy.js";
-import { isProductPaperSession } from "./types.js";
+import { COMPONENT_PAPER_POLICY, isProductPaperSession } from "./types.js";
 import {
   simulatePerpsFill,
   type PerpsPaperFrame,
@@ -30,6 +30,8 @@ export interface PerpsPaperData {
 export const PRODUCT_FALLBACK_TAKER_FEE = "0.001";
 /** How an open is sized and what it records; the operator default is 100 at 1x, no exits. */
 export interface PerpsPaperTradeOptions {
+  entryEvidence?: PerpsPaperIntent["entryEvidence"];
+  onSimulation?: (durationMs: number) => void;
   notional?: string | undefined;
   leverage?: number | undefined;
   checkId?: string | undefined;
@@ -52,7 +54,6 @@ export function createPerpsPaperService(
     options: PerpsPaperTradeOptions = {},
   ) {
     signal.throwIfAborted();
-    let view = await repository.view(scope);
     const notional = kind === "open" ? (options.notional ?? "100") : "0";
     // Operator opens keep the fixed 1 AUSD; a product open reserves notional × taker fee × 1.5.
     const feeReserve =
@@ -66,6 +67,18 @@ export function createPerpsPaperService(
     if (options.checkId !== undefined) {
       intent.checkId = options.checkId;
     }
+    if (options.entryEvidence !== undefined) {
+      intent.entryEvidence = options.entryEvidence;
+    }
+    if (
+      frame?.streamEvidence?.policy === COMPONENT_PAPER_POLICY &&
+      !isProductPaperSession(scope) &&
+      repository.executeFrame &&
+      options.exits === undefined
+    ) {
+      return repository.executeFrame(scope, key, intent, frame, options.onSimulation);
+    }
+    let view = await repository.view(scope);
     // Durable admission precedes fetching execution evidence; repeat keys make no provider call.
     const admitted = await repository.begin(scope, view.account.agentVersion, key, intent);
     if (!admitted.lease) {
@@ -81,7 +94,9 @@ export function createPerpsPaperService(
       deadline.throwIfAborted();
       await repository.assertLease(scope, lease);
       view = await repository.view(scope);
+      const simulationStart = performance.now();
       const fill = simulatePerpsFill(view.account, intent, current, clock());
+      options.onSimulation?.(performance.now() - simulationStart);
       deadline.throwIfAborted();
       const exits = kind === "open" ? options.exits?.(fill) : undefined;
       return await repository.complete(scope, lease, fill, exits);
