@@ -122,6 +122,7 @@ export async function ptsPartReport(directory: string, manifest: PtsExportManife
   return {
     report: {
       ...summary,
+      candidate: config.candidate,
       portfolioMetrics: summary.rows.map((row) => {
         const metric = financial.find((item) => item.variant === row.strategy);
         return {
