@@ -24,6 +24,7 @@ import {
 import {
   AGENT_WALLET_ACTIVITY_TYPES,
   TokenTradeError,
+  TokenPreparationError,
   isTokenTradeAction,
   tokenTradeMinimumOutput,
   type TokenTradeQuote,
@@ -42,7 +43,7 @@ import {
   transactionHash,
   broadcastTransaction,
 } from "../chain/deposit-tx.js";
-import type { Rpc } from "../chain/erc20.js";
+import { JsonRpcError, type Rpc } from "../chain/erc20.js";
 import { tokenAgentKey } from "../studio/token-launch-store.js";
 import { tokenLaunchAllowsAgent, type TokenLaunchPolicy } from "./policy.js";
 
@@ -80,11 +81,44 @@ export function createTokenOperationDriver(deps: {
   const configurationHash = keccak256(toHex(JSON.stringify(policy)));
   const rpcFor = (id: string, recovery = false): Rpc => ({
     async call(method, params) {
-      await deps.reserveRpc(
-        id,
-        recovery ? policy.rpcRequestsPerOperation : policy.rpcRequestsPerOperation - 100,
-      );
-      return deps.rpc.call(method, params);
+      try {
+        await deps.reserveRpc(
+          id,
+          recovery ? policy.rpcRequestsPerOperation : policy.rpcRequestsPerOperation - 100,
+        );
+      } catch (error) {
+        if (error instanceof Error && error.message === "TOKEN_RPC_BUDGET_EXHAUSTED") {
+          throw new TokenPreparationError("RPC_BUDGET_EXHAUSTED");
+        }
+        throw error;
+      }
+      try {
+        return await deps.rpc.call(method, params);
+      } catch (error) {
+        // Preserve the shared fee reader's explicit unsupported-method fallback.
+        if (
+          method === "eth_maxPriorityFeePerGas" &&
+          error instanceof JsonRpcError &&
+          (error.code === -32601 || /method not found/i.test(error.message))
+        ) {
+          throw error;
+        }
+        const simulating =
+          method === "eth_estimateGas" ||
+          (method === "eth_call" &&
+            typeof params[0] === "object" &&
+            params[0] !== null &&
+            "from" in params[0]);
+        if (simulating && error instanceof JsonRpcError) {
+          if (/insufficient funds/i.test(error.message)) {
+            throw new TokenPreparationError("INSUFFICIENT_GAS_BALANCE");
+          }
+          if (error.code === 3 || error.code === -32000 || error.code === -32015) {
+            throw new TokenPreparationError("SIMULATION_REJECTED");
+          }
+        }
+        throw new TokenPreparationError("RPC_UNAVAILABLE");
+      }
     },
   });
   async function read(
@@ -510,6 +544,13 @@ export function createTokenOperationDriver(deps: {
         throw new Error("INVALID_GAS_ESTIMATE");
       }
       const gas = (BigInt(estimate) * 12n + 9n) / 10n;
+      if (
+        gas > BigInt(policy.maxGas) ||
+        fees.maxFeePerGas > BigInt(policy.maxFeePerGas) ||
+        gas * fees.maxFeePerGas > BigInt(policy.maxGasCost)
+      ) {
+        throw new TokenPreparationError("GAS_LIMIT_EXCEEDED");
+      }
       const unsignedTransaction = serializeTransaction({
         type: "eip1559",
         chainId: 10143,
