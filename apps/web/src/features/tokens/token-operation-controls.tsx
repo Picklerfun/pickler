@@ -629,7 +629,12 @@ export function TokenOperationControls({
             disabled={!usable || !draftSaved || !!busy || state.confirmation === "pending"}
             onClick={() => void action("launch", () => prepare("launch"))}
           >
-            {buttonContent(["launch"], "Launch token")}
+            {buttonContent(
+              ["launch"],
+              current?.status === "failed" && current.error === "SIGNATURE_REJECTED"
+                ? "Prepare again"
+                : "Launch token",
+            )}
           </Button>
         )}
         {current?.status === "awaiting_signature" && (

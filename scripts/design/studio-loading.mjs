@@ -627,6 +627,35 @@ try {
       assert.equal(counts.get(operationUrl + "/confirm") ?? 0, 0);
       await operations.screenshot({ path: path.join(output, "launch-expired-recovered.png") });
 
+      // A provider refusal is distinct from the owner's passkey approval and cannot claim a send.
+      launchOperation = {
+        ...launchOperation,
+        error: "SIGNATURE_REJECTED",
+        version: 7,
+      };
+      await page.reload();
+      await operations.getByText("Signing request rejected", { exact: true }).waitFor();
+      await operations
+        .getByRole("alert")
+        .getByText(/signing service rejected/)
+        .waitFor();
+      assert.equal(
+        await operations.getByRole("button", { name: "Prepare again", exact: true }).isEnabled(),
+        true,
+      );
+      assert.equal(
+        await operations.getByRole("button", { name: "Launch token", exact: true }).count(),
+        0,
+      );
+      assert.equal(
+        await operations.getByRole("button", { name: "Sign with passkey", exact: true }).count(),
+        0,
+      );
+      assert.equal(await operations.getByText("Transaction hash", { exact: true }).count(), 0);
+      assert.equal(await name.inputValue(), "Saved token");
+      assert.equal(counts.get(operationUrl + "/confirm") ?? 0, 0);
+      await operations.screenshot({ path: path.join(output, "launch-signing-rejected.png") });
+
       // Reload a saved provider activity; status reads retain it and never send a transaction.
       launchOperation = {
         ...launchOperation,
@@ -972,8 +1001,8 @@ try {
       } else if (endpoint === "/api/v1/studio/perpl/markets" && scenario === "studio-markets") {
         maximum = 3;
       } else if (scenario === "studio-token-launch") {
-        // One explicit page reload adds a second mount; all transaction reads are user-triggered.
-        maximum = 4;
+        // Initial load plus explicit refusal/activity reloads each exercise two Strict Mode reads.
+        maximum = 6;
         if (endpoint.endsWith("/token")) {
           maximum = 9;
         } else if (endpoint.endsWith("/token/operations")) {

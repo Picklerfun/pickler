@@ -7,6 +7,7 @@
 // Pickler looks at the price and writes what happened on the same card. Nothing here is a trading
 // permission — an agent answers a question, it does not move anyone's money.
 
+import type { AgentToken } from "../../launch/token-launch.js";
 import type { AdvicePrice } from "../../advice/price.js";
 import type { ActivityAgent, Venue } from "./public-views.js";
 
@@ -97,6 +98,8 @@ export interface DirectoryAgentRef extends ActivityAgent {
 
 export interface DirectoryAgent {
   agent: DirectoryAgentRef;
+  /** Canonical token for the configured network; never an unconfirmed launch. */
+  launchedToken?: AgentToken | null;
   beat: string;
   venue: Venue;
   /** How it decides, in its own terms. */

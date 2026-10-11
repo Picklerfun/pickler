@@ -47,7 +47,7 @@ application are the "Pickler Landing Trade v2" and "Pickler Create Agent" canvas
 and the application" below). The marketplace reads `/api/v1/marketplace/*`: agents come from the
 database, the perpetuals board is read from Perpl (without `PERPL_BOARD_NETWORK` the API answers 503 and the board shows its
 catching-up state; the sample board lives only with the design harness), and research results never appear there automatically.
-The landing reads only public agent activity (docs/specs/marketplace-real-only-v1.md N8). Hono sets
+The landing reads public agent activity and canonical tokens of published agents from the marketplace directory. Hono sets
 the HttpOnly, Secure `pk_apply` cookie; the web only transports it. Never put that bearer token in
 URLs or JSON.
 
@@ -162,7 +162,7 @@ Both are specified in `docs/specs/landing-trade-v1.md`. `/` (`features/landing/`
 Landing Trade v2" canvas: a light page with four dark blocks, each a subtree taking
 `data-surface="dark"` — the hero phone (`#hero-phone`), the three ways in (`#how`, cards
 `#how-hire`, `#how-back`, `#how-trade`, to `/agents`, `/tokens` and `/markets`), the FOUR STEPS
-phone (`#steps-phone`, under `#app`) and the closing block (`#download`). The one thing the page reads from an API is the agents' latest actions, `/api/v1/marketplace/activity`, which the tape above the bar runs through — ticker or handle, the call, what came of it, ON PAPER (`lib/actions.ts`, pure and pinned in `apps/web/test/landing-actions.test.ts`; with nothing on record the tape is not drawn; marketplace-real-only-v1.md N8). The hero's dialogue beside the phone is the canvas's worked example of the kinds of action, not a read. Every other figure is the canvas's worked example inside the card that explains it (`lib/demo.ts`, pure
+phone (`#steps-phone`, under `#app`) and the closing block (`#download`). The page reads public agent tokens from `/api/v1/marketplace/directory` into `components/token-market.tsx`, below the hero. Only `launchedToken` entries appear; cards link to the existing public agent profile and its Buy/Sell form. Missing tokens and failed reads have distinct messages. This read never queries RPC or asks for a wallet signature. The agents' latest actions are read from `/api/v1/marketplace/activity`, which the tape above the bar runs through — ticker or handle, the call, what came of it, ON PAPER (`lib/actions.ts`, pure and pinned in `apps/web/test/landing-actions.test.ts`; with nothing on record the tape is not drawn; marketplace-real-only-v1.md N8). The hero's dialogue beside the phone is the canvas's worked example of the kinds of action, not a read. Every other figure is the canvas's worked example inside the card that explains it (`lib/demo.ts`, pure
 and pinned in `apps/web/test/landing-demo.test.ts`: the six question/answer pairs over the phone,
 the candle game, the token curve, the padlock, the steps, the questions), drawn `aria-hidden` where
 it is decoration and still under `prefers-reduced-motion` (`lib/use-ticker.ts` is the one clock,
@@ -1238,3 +1238,8 @@ protection. Preserve account-linking/Disconnect semantics and the fifteen-charac
 Public trading is testnet active-curve only; DEX swaps and indexer changes are separate. Run the
 loopback-only `node --import tsx scripts/design/public-token-trading.mjs` harness for both flows.
 See [Public token trading](../../docs/market/public-token-trading.md).
+
+A definitive token signing refusal reads `Signing request rejected` and the launch action becomes
+`Prepare again`. This is a new explicit preparation, not another signature or automatic retry.
+The original draft and the failed attempt remain visible; unknown attempts stay blocked for
+reconciliation. The controlled loading harness verifies the saved refusal without provider calls.

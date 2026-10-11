@@ -24,6 +24,8 @@
     "CHAIN_ID": "10143",
     "MONAD_RPC_URL": "https://rpc.ankr.com/monad_testnet",
     "TOKEN_LAUNCH_ENABLED": "true",
+    "TOKEN_PUBLIC_TRADING_ENABLED": "true",
+    "TOKEN_PUBLIC_RPC_DAILY_LIMIT": "10000",
     "TRADING_ADMISSIONS_ENABLED": "false",
     "ADMISSIONS_ENABLED": "true",
     "JWT_AUDIENCE": "authenticated",
