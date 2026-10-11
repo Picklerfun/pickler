@@ -238,3 +238,5 @@ working history still retains the full saved warmup and strict continuity; cache
 the intraday protocol and refresh count. Original 52-day PUMP coverage is not a reason to require
 sixty daily bars. The interrupted repair study remains frozen at e506bc78; this correction does not
 rewrite its DATA_UNAVAILABLE omission or restart its process. No signal thresholds change.
+
+Explicit fast intraday 0.2.0-fast.1 preparation uses trading-owned native minima/roles, with no daily requirement. Preserve v8 and intraday 0.1.0 capture semantics and the 96-request/ten-minute bounds. No new transport, model, signer or deployed selector is introduced.
