@@ -44,9 +44,11 @@ if (values.help) {
       values.state?.length === 1 ? JSON.parse(await readFile(values.state[0]!, "utf8")) : undefined;
     const pts =
       selected?.protocol === "perps-pts-sma-v1" ||
+      selected?.protocol === "perps-pts-intraday-sma-v1" ||
       offline?.format === "perps-pts-history-v1" ||
       offline?.format === "pts-preparation-v1" ||
-      offline?.payload?.study?.record?.config?.version === 8;
+      offline?.payload?.study?.record?.config?.version === 8 ||
+      offline?.payload?.study?.record?.config?.version === 9;
     if (pts) {
       const { runPtsCommand } = await import("./pts-study/index.js");
       await runPtsCommand({
