@@ -1,9 +1,26 @@
 import type { PtsAnalysis, PtsHistory, PtsPivot, PtsSetup, PtsBar, PtsVersion } from "./types.js";
-import { PTS_VERSION } from "./types.js";
+import { PTS_VERSION, PTS_INTRADAY_FAST_VERSION } from "./types.js";
 import { ptsTemporalProfile } from "./temporal-profile.js";
 import { ptsSeries, ptsCoverage } from "./calendar.js";
 import { ptsPivots, ptsTrend, ptsChannel, channelDistance } from "./pivots.js";
 import { units as u, decimal as d, abs, max, tick, recoveryRatioCompare } from "./math.js";
+function ptsCheckCodes(version: PtsVersion) {
+  if (version === PTS_INTRADAY_FAST_VERSION) {
+    return {
+      alignment: "HOURLY_ALIGNMENT",
+      impulse: "FIFTEEN_MINUTE_IMPULSE",
+      channel: "HOURLY_CHANNEL",
+    };
+  }
+  if (version === PTS_VERSION) {
+    return { alignment: "WEEKLY_ALIGNMENT", impulse: "DAILY_IMPULSE", channel: "WEEKLY_CHANNEL" };
+  }
+  return {
+    alignment: "FOUR_HOUR_ALIGNMENT",
+    impulse: "HOURLY_IMPULSE",
+    channel: "FOUR_HOUR_CHANNEL",
+  };
+}
 /** Simple ATR14, retaining its rational numerator for exact threshold comparisons. */
 export function ptsAtr(bars: readonly PtsBar[]) {
   const last = bars.slice(-15);
@@ -40,6 +57,7 @@ export function analyzePts(
   version: PtsVersion = PTS_VERSION,
 ): PtsAnalysis {
   const profile = ptsTemporalProfile(version);
+  const codes = ptsCheckCodes(version);
   const series = ptsSeries(history, now, version),
     coverage = ptsCoverage(series, now, version);
   const result: PtsAnalysis = {
@@ -84,14 +102,10 @@ export function analyzePts(
     return result;
   }
   if (
-    !check(
-      version === PTS_VERSION ? "WEEKLY_ALIGNMENT" : "FOUR_HOUR_ALIGNMENT",
-      weekTrend === "unknown" ? null : weekTrend === trend,
-      {
-        weekTrend,
-        pivots: weekly,
-      },
-    )
+    !check(codes.alignment, weekTrend === "unknown" ? null : weekTrend === trend, {
+      weekTrend,
+      pivots: weekly,
+    })
   ) {
     return result;
   }
@@ -108,7 +122,7 @@ export function analyzePts(
       impulse = [a, b];
     }
   }
-  if (!check(version === PTS_VERSION ? "DAILY_IMPULSE" : "HOURLY_IMPULSE", !!impulse, impulse)) {
+  if (!check(codes.impulse, !!impulse, impulse)) {
     return result;
   }
   const [a, b] = impulse!;
@@ -148,7 +162,7 @@ export function analyzePts(
   );
   if (
     !check(
-      version === PTS_VERSION ? "WEEKLY_CHANNEL" : "FOUR_HOUR_CHANNEL",
+      codes.channel,
       !!channel && ptsTrend(ptsPivots(series[profile.channel], c!.confirmedAt).pivots) === trend,
       { channel, contactsRequired: 3 },
     )
