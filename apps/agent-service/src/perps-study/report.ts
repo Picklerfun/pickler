@@ -40,15 +40,19 @@ export function perpsStudyReport(
     const calls = rounds
       .flatMap((r) => Object.values(r.calls))
       .filter((c) =>
-        strategy === "deepseek"
-          ? c.lane === "direct"
-          : strategy === "jev"
-            ? record.config.version === 2
-              ? c.lane === "jev"
-              : c.lane !== "direct"
-            : strategy === "combined"
-              ? c.lane === "fallback" || c.lane === "review"
-              : false,
+        strategy === "sma-jev"
+          ? c.lane.split(":")[0] === "sma-review"
+          : strategy === "sma-exa-jev"
+            ? c.lane.split(":")[0] === "news-review" || c.lane.split(":")[0] === "exa"
+            : strategy === "deepseek"
+              ? c.lane === "direct"
+              : strategy === "jev"
+                ? record.config.version === 2
+                  ? c.lane === "jev"
+                  : c.lane !== "direct"
+                : strategy === "combined"
+                  ? c.lane === "fallback" || c.lane === "review"
+                  : false,
       );
     const sum = (kind: string) =>
       d(view.movements.filter((m) => m.kind === kind).reduce((v, m) => v + u(m.delta), 0n));
@@ -56,9 +60,14 @@ export function perpsStudyReport(
       .filter((e) => e.kind === "observation")
       .map(
         (e) =>
-          (e.data as Record<string, { risk: { equity: string | null; exposure: string | null } }>)[
-            strategy
-          ]?.risk,
+          (
+            (record.config.version === 6 || record.config.version === 7
+              ? (e.data as { variants: unknown }).variants
+              : e.data) as Record<
+              string,
+              { risk: { equity: string | null; exposure: string | null } }
+            >
+          )[strategy]?.risk,
       )
       .filter(Boolean);
     metrics.push(risk);
@@ -97,7 +106,9 @@ export function perpsStudyReport(
           : 0n),
       0n,
     );
-    const costs = calls.reduce((v, c) => v + u(c.costUsd ?? "0"), 0n);
+    const costs = calls
+      .filter((c) => c.lane.split(":")[0] !== "exa")
+      .reduce((v, c) => v + u(c.costUsd ?? "0"), 0n);
     const latency = calls
       .filter((c) => c.startedAt !== null && c.finishedAt !== null)
       .map((c) => c.finishedAt! - c.startedAt!);
@@ -109,7 +120,7 @@ export function perpsStudyReport(
               jev: "jev-only",
               deepseek: "deepseek-only",
               combined: "deepseek-jev",
-            }[strategy]
+            }[strategy as "rules" | "jev" | "deepseek" | "combined"]
           : strategy,
       initialVirtualAUSD: "1000",
       cashVirtualAUSD: risk.cash,
@@ -133,20 +144,47 @@ export function perpsStudyReport(
       openPositions: view.account.positions.filter((p) => p.closedAt === null).length,
       fills: filled.length,
       rejections: view.attempts.filter((a) => a.status !== "filled").length,
-      riskExits: filled.filter((a) => a.key.includes(":risk:")).length,
-      modelCalls: calls.filter((c) => c.startedAt !== null).length,
+      riskExits:
+        record.config.version === 6 || record.config.version === 7
+          ? events.filter((e) => {
+              const value = e.data as { variant?: string; status?: string; reason?: string };
+              return (
+                e.kind === "profile-execution" &&
+                value.variant === strategy &&
+                value.status === "filled" &&
+                ["RISK_EXIT", "SELECTIVE_EXPOSURE"].includes(value.reason ?? "")
+              );
+            }).length
+          : filled.filter((a) => a.key.includes(":risk:")).length,
+      modelCalls: calls.filter((c) => c.startedAt !== null && c.lane.split(":")[0] !== "exa")
+        .length,
+      exaCalls: calls.filter((c) => c.startedAt !== null && c.lane.split(":")[0] === "exa").length,
+      exaReportedCostUSD: d(
+        calls
+          .filter((c) => c.lane.split(":")[0] === "exa")
+          .reduce((v, c) => v + u(c.costUsd ?? "0"), 0n),
+      ),
+      unknownProviderCosts: calls.filter((c) => c.startedAt !== null && c.costUsd === null).length,
+      providerReservedUSD: d(
+        calls
+          .filter((c) => record.config.version === 5 || c.status !== "skipped")
+          .reduce((v, c) => v + u(c.reservationUsd), 0n),
+      ),
       modelCostEstimateUSD: d(costs),
       inputTokens: calls.reduce((sum, c) => sum + (c.inputTokens ?? 0), 0),
       outputTokens: calls.reduce((sum, c) => sum + (c.outputTokens ?? 0), 0),
-      unknownModelCosts: calls.filter((c) => c.startedAt !== null && c.costUsd === null).length,
+      unknownModelCosts: calls.filter(
+        (c) => c.lane.split(":")[0] !== "exa" && c.startedAt !== null && c.costUsd === null,
+      ).length,
       meanModelLatencyMs: latency.length
         ? Math.round(latency.reduce((a, b) => a + b, 0) / latency.length)
         : null,
     };
   });
-  const direct = u(rows[1]!.modelCostEstimateUSD),
-    routed = u(rows[2]!.modelCostEstimateUSD);
+  const direct = u(rows[1]?.modelCostEstimateUSD ?? "0"),
+    routed = u(rows[2]?.modelCostEstimateUSD ?? "0");
   const comparable =
+    !record.continuations?.length &&
     record.status === "completed" &&
     !record.stopRequested &&
     !record.decisionStopReason?.match(/FAIL|INTERRUPT|INCOMPLETE|UNVERIFIED/) &&
@@ -154,7 +192,8 @@ export function perpsStudyReport(
     omitted.length === 0 &&
     unknownCalls.length === 0 &&
     unobservedMs === 0 &&
-    rounds.length === record.config.hours * 4 &&
+    rounds.length ===
+      record.config.hours * (record.config.version === 6 || record.config.version === 7 ? 12 : 4) &&
     rows.every((r) => !r.fundingPending && !r.fundingDisputed && !r.openPositions);
   return {
     protocol: record.config.protocol,
@@ -165,6 +204,7 @@ export function perpsStudyReport(
     startedAt: record.startedAt,
     endsAt: record.endsAt,
     stopReason: record.decisionStopReason,
+    continuations: record.continuations ?? [],
     rounds: rounds.length,
     roundDetails: rounds.map((r) => ({
       slot: r.slot,
@@ -173,15 +213,25 @@ export function perpsStudyReport(
       calls: r.calls,
     })),
     modelDiagnostics: events.filter((e) => e.kind === "model-diagnostic"),
-    executionDetails: events.filter((e) => e.kind === "execution" || e.kind === "execution-input"),
+    executionDetails: events.filter((e) =>
+      ["execution", "execution-input", "final-gate", "strategy-proposal"].includes(e.kind),
+    ),
     incompleteRounds,
     omittedRounds: omitted.length,
     omittedSlots: omitted.map((e) => e.data),
     unknownCalls: unknownCalls.length,
     unobservedMs,
     accountedOrReservedUSD: perpsAccountedUsd(rounds),
+    historicalAccountedOrReservedUSD:
+      record.config.version === 4 || record.config.version === 5
+        ? record.config.historicalAccountedOrReservedUSD
+        : undefined,
+    newProviderBudgetUSD:
+      record.config.version === 4 || record.config.version === 5
+        ? record.config.providerBudgetUSD
+        : undefined,
     observedModelSavingPct:
-      record.config.version === 2 || unknownCalls.length || direct === 0n
+      record.config.version !== 1 || unknownCalls.length || direct === 0n
         ? null
         : d(((direct - routed) * 100n * u("1")) / direct),
     comparable,
@@ -192,6 +242,11 @@ export function perpsStudyReport(
       "Funding uses the laboratory formula; liquidity is independent for each agent.",
       "No liquidation, signing, real orders, or on-chain activity.",
       "This short experimental sample cannot establish profitability.",
+      ...(record.continuations?.length
+        ? [
+            "Operator-authorized continuation after interruption: discontinuous market sample; untouched slots only, no historical replay.",
+          ]
+        : []),
       ...(!comparable ? ["Incomplete comparison: no profitability ranking."] : []),
     ],
     rows,
@@ -202,7 +257,10 @@ const escape = (v: unknown) =>
     /[&<>"']/g,
     (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!,
   );
-export function renderPerpsReport(report: ReturnType<typeof perpsStudyReport>) {
+export function renderPerpsReport(
+  report: ReturnType<typeof perpsStudyReport>,
+  processState?: string,
+) {
   const fields = Object.keys(report.rows[0]!);
   const csvCell = (value: unknown) => {
     let s = String(value ?? "");
@@ -216,7 +274,7 @@ export function renderPerpsReport(report: ReturnType<typeof perpsStudyReport>) {
       fields.map(csvCell).join(","),
       ...report.rows.map((row) => fields.map((f) => csvCell(row[f as keyof typeof row])).join(",")),
     ].join("\n") + "\n";
-  const html = `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Perpetual virtual comparison</title><style>body{font:16px system-ui;margin:32px;color:#142332;background:#f5f7fa}table{border-collapse:collapse;background:white}td,th{border:1px solid #ccc;padding:8px;text-align:left}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><h1>Perpetual virtual comparison</h1><p>Status: ${escape(report.status)}. Comparable: ${report.comparable}. Rounds: ${report.rounds}. Incomplete: ${report.incompleteRounds}. Data-unavailable: ${report.omittedRounds}. Unobserved milliseconds: ${report.unobservedMs}.</p><table><tr><th>Metric</th>${report.rows.map((r) => `<th>${escape(r.strategy)}</th>`).join("")}</tr>${fields.map((f) => `<tr><th>${escape(f)}</th>${report.rows.map((r) => `<td>${escape(r[f as keyof typeof r])}</td>`).join("")}</tr>`).join("")}</table><ul>${report.limitations.map((l) => `<li>${escape(l)}</li>`).join("")}</ul><details><summary>Configuration and protocol</summary><pre>${escape(JSON.stringify({ config: report.config, metadata: report.metadata }, null, 2))}</pre></details><details><summary>Round decisions and reviews</summary><pre>${escape(JSON.stringify(report.roundDetails, null, 2))}</pre></details></html>`;
+  const html = `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Perpetual virtual comparison</title><style>body{font:16px system-ui;margin:32px;color:#142332;background:#f5f7fa}table{border-collapse:collapse;background:white}td,th{border:1px solid #ccc;padding:8px;text-align:left}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><h1>Perpetual virtual comparison</h1><p>Process: ${escape(processState ?? "not measured")}. Generated: ${escape(new Date().toISOString())}.</p><p>Status: ${escape(report.status)}. Comparable: ${report.comparable}. Rounds: ${report.rounds}. Incomplete: ${report.incompleteRounds}. Data-unavailable: ${report.omittedRounds}. Unobserved milliseconds: ${report.unobservedMs}.</p><table><tr><th>Metric</th>${report.rows.map((r) => `<th>${escape(r.strategy)}</th>`).join("")}</tr>${fields.map((f) => `<tr><th>${escape(f)}</th>${report.rows.map((r) => `<td>${escape(r[f as keyof typeof r])}</td>`).join("")}</tr>`).join("")}</table><ul>${report.limitations.map((l) => `<li>${escape(l)}</li>`).join("")}</ul><details><summary>Configuration and protocol</summary><pre>${escape(JSON.stringify({ config: report.config, metadata: report.metadata }, null, 2))}</pre></details><details><summary>Round decisions and reviews</summary><pre>${escape(JSON.stringify(report.roundDetails, null, 2))}</pre></details></html>`;
   const roundsCsv =
     [
       ["slot", "executionStatus", "proposals", "calls"].map(csvCell).join(","),
