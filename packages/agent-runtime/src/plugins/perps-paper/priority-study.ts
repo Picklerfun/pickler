@@ -4,7 +4,7 @@ import {
   type PerplDataOptions,
   type PerplSocket,
   type PerplStreamEvent,
-} from "@pickler/infrastructure";
+} from "@pickler/infrastructure/perpl-public";
 import {
   PilotError,
   requireTool,
@@ -13,6 +13,7 @@ import {
   type PerpCandles,
   type PerpSymbol,
 } from "@pickler/core";
+import { analyzePts, type PtsHistory } from "@pickler/trading/pts";
 import { transientPerpsData, type AcquisitionDiagnostic } from "@pickler/trading/perps";
 import type {
   ProfileStudyData,
@@ -23,6 +24,14 @@ import type {
 export function createPriorityPerplStudyData(
   agents: { agent(scope: Scope): Promise<AgentRecord> },
   options: PerplDataOptions & {
+    initialHistory?: PtsHistory[];
+    onHistoryRevision?: (event: {
+      symbol: string;
+      resolution: number;
+      openTime: number;
+      previous: unknown;
+      current: unknown;
+    }) => void;
     onAcquisition?: (e: AcquisitionDiagnostic) => void;
     acquisitionPolicy?: UniverseAcquisitionPolicy;
     socket?: (url: string) => PerplSocket;
@@ -43,6 +52,13 @@ export function createPriorityPerplStudyData(
   });
   const now = options.now ?? Date.now;
   const cache = new Map<string, PerpCandles>();
+  const histories = new Map(
+    (options.initialHistory ?? []).flatMap((h) =>
+      h.series.map(
+        (s) => [JSON.stringify([h.market.symbol, s.resolution]), structuredClone(s)] as const,
+      ),
+    ),
+  );
   const fundingCache = new Map<PerpSymbol, import("@pickler/core").PerpFundingHistory>();
   let prepared:
     | { candles: PerpCandles[]; excluded: { symbol: PerpSymbol; code: string; phase: string }[] }
@@ -52,7 +68,7 @@ export function createPriorityPerplStudyData(
     agentId: r.agentIds["sma-reference"]!,
   });
   const config = (r: PerpsStudyRecord) => {
-    if (r.config.version !== 7) {
+    if (r.config.version !== 7 && r.config.version !== 8) {
       throw new PilotError("INVALID_INPUT", "Profile configuration required");
     }
     if (
@@ -69,7 +85,9 @@ export function createPriorityPerplStudyData(
     const candles: PerpCandles[] = [],
       excluded: NonNullable<typeof prepared>["excluded"] = [];
     try {
-      for (const resolution of [3600, 900, 300] as const) {
+      for (const resolution of r.config.version === 8
+        ? ([3600, 900, 300, 14400, 86400] as const)
+        : ([3600, 900, 300] as const)) {
         // At most eleven candle requests in each independently bounded public session.
         const service = await reader.session(identity(r), signal, guard);
         const end = Math.floor(now() / (resolution * 1000)) * resolution * 1000;
@@ -87,12 +105,32 @@ export function createPriorityPerplStudyData(
           try {
             let s = cache.get(key);
             if (!s) {
-              s = await service.getPerpCandles({
-                symbol: market.symbol,
-                resolution,
-                from: end - 60 * resolution * 1000,
-                to: end,
-              });
+              const original =
+                r.config.version === 8
+                  ? histories.get(JSON.stringify([market.symbol, resolution]))
+                  : undefined;
+              if (
+                original &&
+                original.to === end &&
+                original.market.marketId === market.marketId &&
+                original.candles
+                  .slice(-60)
+                  .every((c, i) => c.closed && c.openTime === end - (60 - i) * resolution * 1000)
+              ) {
+                s = {
+                  ...original,
+                  from: end - 60 * resolution * 1000,
+                  candles: original.candles.slice(-60),
+                  missingOpenTimes: [],
+                };
+              } else {
+                s = await service.getPerpCandles({
+                  symbol: market.symbol,
+                  resolution,
+                  from: end - 60 * resolution * 1000,
+                  to: end,
+                });
+              }
               if (
                 s.market.marketId !== market.marketId ||
                 s.market.symbol !== market.symbol ||
@@ -112,6 +150,46 @@ export function createPriorityPerplStudyData(
             }
             await guard?.();
             signal.throwIfAborted();
+            if (r.config.version === 8 && [3600, 14400, 86400].includes(resolution)) {
+              const historyKey = JSON.stringify([market.symbol, resolution]);
+              const original = histories.get(historyKey);
+              if (!original || original.market.marketId !== s.market.marketId) {
+                excluded.push({
+                  symbol: market.symbol,
+                  code: "INSUFFICIENT_HISTORY",
+                  phase: "pts-history",
+                });
+              } else {
+                const bars = new Map(original.candles.map((c) => [c.openTime, c]));
+                for (const current of s.candles) {
+                  const previous = bars.get(current.openTime);
+                  if (previous && JSON.stringify(previous) !== JSON.stringify(current)) {
+                    options.onHistoryRevision?.({
+                      symbol: market.symbol,
+                      resolution,
+                      openTime: current.openTime,
+                      previous,
+                      current,
+                    });
+                  }
+                  bars.set(current.openTime, current);
+                }
+                const combined = {
+                  ...s,
+                  from: original.from,
+                  candles: [...bars.values()].sort((a, b) => a.openTime - b.openTime),
+                };
+                combined.missingOpenTimes = [];
+                const times = new Set(combined.candles.map((c) => c.openTime));
+                for (let t = combined.from; t < combined.to; t += resolution * 1000) {
+                  if (!times.has(t)) {
+                    combined.missingOpenTimes.push(t);
+                  }
+                }
+                histories.set(historyKey, combined);
+                s = combined;
+              }
+            }
             candles.push(s);
           } catch (e) {
             parent.throwIfAborted();
@@ -127,7 +205,7 @@ export function createPriorityPerplStudyData(
       }
       // Bound the cache to the current three windows; no stale-window reuse.
       const ends = new Set(
-        [3600, 900, 300].map(
+        (r.config.version === 8 ? [3600, 900, 300, 14400, 86400] : [3600, 900, 300]).map(
           (resolution) => Math.floor(now() / (resolution * 1000)) * resolution * 1000,
         ),
       );
@@ -165,7 +243,7 @@ export function createPriorityPerplStudyData(
     // If a boundary crossed during acquisition, do not silently use the previous closed window.
     for (const m of config(r).markets) {
       if (
-        [3600, 900, 300].some(
+        (r.config.version === 8 ? [3600, 900, 300, 14400, 86400] : [3600, 900, 300]).some(
           (res) =>
             !saved.candles.some(
               (s) =>
@@ -181,6 +259,24 @@ export function createPriorityPerplStudyData(
           code: "CANDLE_WINDOW_CHANGED",
           phase: "boundary-validation",
         });
+      }
+    }
+    if (r.config.version === 8) {
+      for (const market of config(r).markets) {
+        const own = saved.candles.filter((c) => c.market.symbol === market.symbol);
+        const info = own[0]?.market;
+        if (
+          !info ||
+          analyzePts({ market: info, series: own, capturedAt: now() }, now()).coverage.some(
+            (c) => !c.eligible,
+          )
+        ) {
+          excluded.push({
+            symbol: market.symbol,
+            code: "INSUFFICIENT_HISTORY",
+            phase: "pts-coverage",
+          });
+        }
       }
     }
     const bad = new Set(excluded.map((e) => e.symbol));
@@ -226,7 +322,7 @@ export function createPriorityPerplStudyData(
       const price = await prices(r, signal, guard);
       // Hourly invalidation can use a still-current cached window. Missing candles never
       // prevent stop/expiry exits; preparation happens only after price maintenance.
-      const candles = [...cache.values()].filter(
+      const candles = [...(r.config.version === 8 ? histories.values() : cache.values())].filter(
         (s) =>
           s.candles.at(-1)!.openTime + s.resolution * 1000 ===
           Math.floor(now() / (s.resolution * 1000)) * s.resolution * 1000,
