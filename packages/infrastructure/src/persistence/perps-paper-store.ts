@@ -1,4 +1,11 @@
 import {
+  PTS_ACCOUNT_POLICY,
+  PTS_VERSION,
+  historyFromEvidence,
+  analyzePts,
+  type PtsProposal,
+} from "@pickler/trading/pts";
+import {
   assertEntryEvidence,
   canonicalAudit,
   SMA_ENTRY_POLICIES,
@@ -271,9 +278,23 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
     );
     const record = result.rows[0]?.document;
     const expected =
-      record?.config.version === 7 && record.config.acquisitionPolicy === COMPONENT_PAPER_POLICY
+      (record?.config.version === 7 || record?.config.version === 8) &&
+      record.config.acquisitionPolicy === COMPONENT_PAPER_POLICY
         ? COMPONENT_PAPER_POLICY
         : undefined;
+    if (record?.config.version === 8) {
+      const variant = Object.entries(record.agentIds).find(([, id]) => id === scope.agentId)?.[0];
+      if (
+        !variant ||
+        account.positionPolicy !== (variant === "pts-basic" ? PTS_ACCOUNT_POLICY : undefined) ||
+        account.riskManagement !== "buffered-selective-1x-v1" ||
+        account.entryPolicy !== (variant === "sma-reference" ? "unrestricted-hourly-v1" : undefined)
+      ) {
+        throw new PilotError("CONFIG_CHANGED", "Frozen v8 account policy changed");
+      }
+    } else if (account.positionPolicy !== undefined || account.consumedPtsSetups !== undefined) {
+      throw new PilotError("CONFIG_CHANGED", "PTS state is restricted to the v8 laboratory");
+    }
     if (
       account.marketDataPolicy !== expected ||
       (expected &&
@@ -408,7 +429,7 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
         const record = source.rows[0]?.document;
         const ids = record && Object.values(record.agentIds);
         if (
-          record?.config.version !== 7 ||
+          (record?.config.version !== 7 && record?.config.version !== 8) ||
           record.config.acquisitionPolicy !== COMPONENT_PAPER_POLICY ||
           ids?.length !== 2 ||
           new Set(scopes.map((s) => s.agentId)).size !== 2 ||
@@ -436,13 +457,18 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
           ) as SmaReentryVariant;
           if (
             item.view.account.marketDataPolicy !== COMPONENT_PAPER_POLICY ||
-            item.view.account.entryPolicy !== SMA_ENTRY_POLICIES[variant] ||
+            (record.config.version === 7 &&
+              item.view.account.entryPolicy !== SMA_ENTRY_POLICIES[variant]) ||
             item.view.account.riskManagement !== "buffered-selective-1x-v1"
           ) {
             throw new PilotError("CONFIG_CHANGED", "Common observation account policies changed");
           }
           for (const frame of captured.frames) {
-            if (!item.agent.config.perpl!.markets.includes(frame.snapshot.market.symbol)) {
+            if (
+              !(item.agent.config.perpl!.markets as readonly string[]).includes(
+                frame.snapshot.market.symbol,
+              )
+            ) {
               throw new PilotError("MARKET_NOT_ALLOWED", "Observation market is not permitted");
             }
             if (
@@ -588,13 +614,19 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
         [scope.tenantId, scope.sessionId, scope.network],
       );
       const record = study.rows[0]?.document;
-      if (record?.config.version === 6 || record?.config.version === 7) {
+      if (
+        record?.config.version === 6 ||
+        record?.config.version === 7 ||
+        record?.config.version === 8
+      ) {
         const variant = Object.entries(record.agentIds).find(([, id]) => id === scope.agentId)?.[0];
         if (!variant) {
           throw new PilotError("FORBIDDEN", "Account is not a profile study member");
         }
         account.riskManagement =
-          record.config.version === 7 || variant.endsWith("-selective")
+          record.config.version === 7 ||
+          record.config.version === 8 ||
+          variant.endsWith("-selective")
             ? "buffered-selective-1x-v1"
             : "legacy-1x-v1";
       }
@@ -606,6 +638,16 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
         account.consumedEntryKeys = [];
         if (record.config.acquisitionPolicy === COMPONENT_PAPER_POLICY) {
           account.marketDataPolicy = COMPONENT_PAPER_POLICY;
+        }
+      }
+      if (record?.config.version === 8) {
+        const variant = Object.entries(record.agentIds).find(([, id]) => id === scope.agentId)?.[0];
+        account.marketDataPolicy = COMPONENT_PAPER_POLICY;
+        if (variant === "pts-basic") {
+          account.positionPolicy = PTS_ACCOUNT_POLICY;
+          account.consumedPtsSetups = [];
+        } else {
+          account.entryPolicy = "unrestricted-hourly-v1";
         }
       }
       const id = randomUUID();
@@ -657,10 +699,16 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
       [scope.tenantId, scope.sessionId, scope.network],
     );
     const record = study.rows[0]?.document;
-    if (record?.config.version === 6 || record?.config.version === 7) {
+    if (
+      record?.config.version === 6 ||
+      record?.config.version === 7 ||
+      record?.config.version === 8
+    ) {
       const variant = Object.entries(record.agentIds).find(([, id]) => id === scope.agentId)?.[0];
       const expected =
-        record.config.version === 7 || variant?.endsWith("-selective")
+        record.config.version === 7 ||
+        record.config.version === 8 ||
+        variant?.endsWith("-selective")
           ? "buffered-selective-1x-v1"
           : "legacy-1x-v1";
       if (!variant || locked.view.account.riskManagement !== expected) {
@@ -688,6 +736,16 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
       }
     } else if (intent.entryEvidence !== undefined) {
       throw new PilotError("INVALID_INPUT", "Entry evidence is restricted to the v7 laboratory");
+    }
+    if (record?.config.version === 8 && locked.view.account.positionPolicy === PTS_ACCOUNT_POLICY) {
+      if (intent.pts?.version !== PTS_VERSION) {
+        throw new PilotError("INVALID_INPUT", "PTS intent evidence required");
+      }
+      if (intent.kind === "open") {
+        await this.ptsEntry(client, locked, scope, intent);
+      }
+    } else if (intent.pts !== undefined) {
+      throw new PilotError("INVALID_INPUT", "PTS intent cannot change account policy");
     }
     if (intent.kind === "close") {
       assertPerpsPaperScope(locked.agent, scope);
@@ -762,6 +820,71 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
     if (locked.agent.paused && intent.kind === "open") {
       throw new PilotError("PAUSED", "Agent is paused");
     }
+  }
+  private async ptsEntry(
+    client: PoolClient,
+    locked: Locked,
+    scope: PerpsPaperScope,
+    intent: PerpsPaperIntent,
+  ) {
+    const ref = intent.pts;
+    if (!ref?.roundKey || !/^round-[0-9]{3,5}$/.test(ref.roundKey) || !ref.setup || !ref.quantity) {
+      throw new PilotError(
+        "DATA_UNAVAILABLE",
+        "PTS requires a persisted final decision and quantity",
+      );
+    }
+    const saved = await client.query(
+      `SELECT e.data FROM pickler.perps_study_events e JOIN pickler.perps_studies s ON s.id=e.study_id
+       WHERE s.tenant_id=$1 AND s.session_id=$2 AND s.network=$3 AND e.key=$4`,
+      [scope.tenantId, scope.sessionId, scope.network, `${ref.roundKey}:final-evidence`],
+    );
+    const evidence = saved.rows[0]?.data?.evidence as PerpsEvidence | undefined;
+    const gate = await client.query(
+      `SELECT e.data FROM pickler.perps_study_events e JOIN pickler.perps_studies s ON s.id=e.study_id
+       WHERE s.tenant_id=$1 AND s.session_id=$2 AND s.network=$3 AND e.key=$4`,
+      [scope.tenantId, scope.sessionId, scope.network, `${ref.roundKey}:pts-basic:final-gate`],
+    );
+    const decision = gate.rows[0]?.data as
+      { initial?: PtsProposal[]; final?: PtsProposal[] } | undefined;
+    const original = decision?.initial?.find((p) => p.symbol === intent.symbol);
+    const final = decision?.final?.find((p) => p.symbol === intent.symbol);
+    const action = intent.side === "long" ? "open-long" : "open-short";
+    if (
+      !evidence ||
+      original?.action !== action ||
+      final?.action !== action ||
+      canonicalAudit(original.pts?.setup) !== canonicalAudit(ref.setup) ||
+      canonicalAudit(final.pts?.setup) !== canonicalAudit(ref.setup) ||
+      final.pts?.quantity !== ref.quantity ||
+      final.notional !== intent.notional
+    ) {
+      throw new PilotError(
+        "PTS_ENTRY_REJECTED",
+        "PTS opening differs from original/final persisted selection",
+      );
+    }
+    const history = historyFromEvidence({ evidence, account: locked.view.account }, intent.symbol);
+    const reproduced = history && analyzePts(history, evidence.observedAt);
+    if (
+      !reproduced?.setup ||
+      reproduced.action !== action ||
+      canonicalAudit(reproduced.setup) !== canonicalAudit(ref.setup) ||
+      locked.now >= ref.setup.expiresAt ||
+      locked.view.account.consumedPtsSetups?.includes(ref.setup.id)
+    ) {
+      throw new PilotError(
+        "PTS_ENTRY_REJECTED",
+        "PTS evidence no longer supports this unconsumed setup",
+      );
+    }
+    validatePaperFrameSet(
+      evidence.frames,
+      scope.network,
+      locked.now,
+      COMPONENT_PAPER_POLICY,
+      this.receiptNow(),
+    );
   }
   private async entryKey(
     client: PoolClient,
@@ -1124,7 +1247,7 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
       opened.takeProfitPrice = exits?.takeProfitPrice ?? null;
       opened.exitDueAt = exits?.exitDueAt ?? null;
     }
-    if (locked.attempt.intent.kind === "open" && result.account.entryPolicy) {
+    if (locked.attempt.intent.kind === "open" && locked.attempt.intent.entryEvidence) {
       const entryKey = await this.entryKey(client, locked, scope, locked.attempt.intent, fill);
       if (result.account.entryPolicy === "once-hourly-bar-v1" && entryKey) {
         result.account.consumedEntryKeys = [...(result.account.consumedEntryKeys ?? []), entryKey];
