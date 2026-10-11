@@ -36,3 +36,5 @@ per-slot auditor supplies identical rows; raw native histories remain in the sou
 Stream JSON/CSV, bound the HTML summary, publish hashes last, and wait for worker exit after its
 publication message. Safe report/source/serialization failures interrupt admission explicitly;
 no generic success message or report diagnostic can restart a study or grant ownership.
+
+V9 also accepts the independent fast candidate 0.2.0-fast.1 explicitly. Use ptsConfigVersion/ptsPolicy for preparation, preflight and report hashes; never default a new identity to 0.1.0. Preserve the original inactive template, policies and started studies. The new fast template starts no public session.
