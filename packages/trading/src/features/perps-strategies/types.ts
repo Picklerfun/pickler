@@ -18,6 +18,10 @@ export interface PerpsEvidence {
   excluded?: { symbol: PerpSymbol; code: string; phase: string }[];
 }
 export interface PerpsProposal {
+  pts?: import("../pts/types.js").PtsIntentEvidence;
+  notional?: string;
+  rank?: number | null;
+  trace?: unknown;
   symbol: PerpSymbol;
   action: "hold" | "open-long" | "open-short" | "close";
   reason: string;
