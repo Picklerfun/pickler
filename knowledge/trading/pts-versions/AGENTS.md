@@ -1,7 +1,8 @@
 # PTS candidate catalog
 
 This catalog is separate from the immutable `../pts` course bundle and from executable strategies.
-Descriptors are drafts: no registry entry, activation, selector, provider or execution path.
+Descriptor 0.1.0 remains a disabled draft. Independent 0.2.0 is experimental local paper only,
+with its own v2 schema, policy and decision record. Neither appears in Studio/deployed registries.
 Keep knowledge, candidate, documentation and implementation versions distinct. Published files
 are immutable; changed criteria or parameters require a new candidate version. Documentation
 corrections require their own version and description. Never add mandatory fields to the original
