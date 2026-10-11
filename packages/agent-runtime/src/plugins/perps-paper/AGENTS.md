@@ -53,3 +53,9 @@ Mastra tools, models or signing adapters. Keep full native 1d/4h/1h histories an
 1h/15m/5m eligibility. Cache reuse checks configuration, permissions and ownership first. Notify
 native history revisions without silently replacing their original capture. A revision is not
 proof of what the provider served historically. Public preparation never starts a paper runner.
+
+## Independent intraday v9
+
+Use `ptsTemporalProfile` from trading for native history roles. Intraday keeps 1d/4h/1h/15m/5m
+series without timestamp relabeling, shares original priority reader/guards and bounds preparation
+at 96 actual requests/ten minutes. Basic v8 capture and its historical interpretation remain fixed.
