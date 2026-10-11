@@ -668,6 +668,11 @@ RPC admission and Kuru snapshots without rewriting historical V4 records. Never 
 Kuru as a fallback. Kuru remains blocked by its external readiness record; the V4 acceptance below is separate.
 See [Token operations](../../docs/market/token-launch-operations.md) for configuration and tests.
 
+Launcher adapters translate transport, RPC admission, transaction simulation, gas ceilings and
+metadata storage failures into core-owned preparation reasons. They never return provider prose,
+credentials or calldata in those errors. The existing gas ceilings and unsupported-fee-method
+fallback remain unchanged; tests distinguish contract rejection from transport failure.
+
 ## V4 launcher policy and canonical position history
 
 `src/launch/policy.ts` discriminates strict V4 versions 2/3 from historical Kuru version 1.
