@@ -1,5 +1,6 @@
 {
   "$schema": "../../node_modules/wrangler/config-schema.json",
+  "account_id": "bc8d4adf4860284fda426b24e7377bc2",
   "name": "pickler-indexer-staging",
   "main": "src/index.ts",
   "compatibility_date": "2026-09-01",
@@ -9,12 +10,14 @@
   "triggers": { "crons": ["* * * * *"] },
   "limits": { "cpu_ms": 300000 },
   "observability": { "enabled": true },
-  // Isolated testnet contracts exist, but reviewed hosted configuration is still pending.
-  // No trusted Hyperdrive binding or active factory policy is guessed from those receipts.
+  "hyperdrive": [{ "binding": "DATABASE", "id": "05150d06f7164d26a991288a88044710" }],
+  // Public reviewed policies are provisioned as runtime bindings before operator activation.
+  // A normal deploy stays closed; the readiness guide records the explicit indexer override.
   "vars": {
     "APP_ENV": "staging",
+    "TOKEN_INDEXER_ENABLED": "false",
     "CHAIN_ID": "10143",
-    "RPC_URLS": "https://testnet-rpc.monad.xyz",
+    "RPC_URLS": "https://rpc.ankr.com/monad_testnet",
     "CONFIRMATIONS": "5",
     "MAX_BLOCKS_PER_PASS": "100",
   },
