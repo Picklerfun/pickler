@@ -1182,8 +1182,10 @@ admission remains mandatory. Failed preparation renders one reviewed message, ne
 Database-only recovery retains the idempotency key when the response/status is uncertain.
 `token-operation-status.ts` distinguishes missing signing identity, pending signature, signed but
 unsent bytes, broadcast uncertainty, inclusion and finality. Explicit checks produce a timestamped
-result even without progress. A missing activity/hash requires review and offers only Refresh saved
-status; it must never offer another signature or describe the launch as confirming.
+result even without progress. An unidentified launch offers explicit Check status for bounded
+backend recovery after expiry; other unidentified actions require review. Neither state may offer
+another signature or describe the operation as confirming. Canonical expiry resolution shows
+Launch attempt expired, preserves the form and permits a separate new preparation.
 `chain-reference.tsx` provides icon-only copy controls and makes each address/hash itself the
 network-specific explorer link, without a separate Explorer button. Copy feedback switches the
 icon and accessible name; clipboard failure reveals the full value. It uses public chain metadata,
