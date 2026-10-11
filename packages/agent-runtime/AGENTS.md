@@ -236,5 +236,5 @@ For v9 only, native daily refresh uses trading's frozen 24-bar minimum, not the 
 SMA window. Keep sixty bars for shared 1h/15m/5m eligibility and unchanged v7/v8 behavior. Native
 working history still retains the full saved warmup and strict continuity; cache keys include
 the intraday protocol and refresh count. Original 52-day PUMP coverage is not a reason to require
-sixty daily bars. The active repair pilot remains frozen at e506bc78; this correction does not
-rewrite its DATA_UNAVAILABLE omission or change the running process. No signal thresholds change.
+sixty daily bars. The interrupted repair study remains frozen at e506bc78; this correction does not
+rewrite its DATA_UNAVAILABLE omission or restart its process. No signal thresholds change.
