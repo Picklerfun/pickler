@@ -1152,7 +1152,7 @@ only on labelled local stages. Chart geometry is memoized during point inspectio
 `features/tokens` owns presentation and transport for the existing `/studio/agents/:id/token` route
 in both draft and live Studio. It reuses the persistent shell and memory-only form store. Reads keep
 fields mounted with Skeletons; errors require explicit retry, and newer versions cannot silently
-overwrite preserved edits. The Launch token control stays disabled in every composition, including fixtures. A private agent shows
+overwrite preserved edits. Real launch availability comes from the independently gated backend; local fixtures expose only controlled operation phases. A private agent shows
 Go public first. The shared `AgentTokenCard` appears below public persona headers and distinguishes
 absence and pending confirmation without a visitor launch action.
 
@@ -1175,6 +1175,13 @@ Fixtures cannot use passkeys, providers or fake explorer links
 and are refused in production. `scripts/design/token-preview.mjs` checks both states at desktop/mobile
 sizes, keyboard and persistent navigation; Design CI runs it. The controlled loading regression
 covers private token reads and preserved edits. See [the guide](../../docs/agent-token-preview.md).
+
+Token operation actions show a labelled spinner for preparation, signing, status reads and cancellation,
+with reduced-motion support and synchronous duplicate-click admission. Failed preparation renders
+one reviewed message, never provider prose or both an operation error and a generic request error.
+Database-only recovery retains the idempotency key when the response/status is uncertain. Explicit
+Refresh status does not sign or send. The controlled loading harness covers delayed preparation,
+gas refusal, legacy failure recovery and lost responses without provider calls.
 
 ## Token operation controls
 
