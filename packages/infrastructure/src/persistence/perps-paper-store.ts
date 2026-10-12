@@ -85,6 +85,7 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
       owner: string;
       assertActive?: () => void;
       signal?: AbortSignal;
+      readPolicy?: "pts-snapshot-v1";
     },
     private readonly productOwner?: () => PerpsProductPaperFence,
     private readonly receiptClock?: () => number,
@@ -134,17 +135,17 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
       client.release(discardConnection);
     }
   }
-  private async guardStudy(client: PoolClient) {
+  private async guardStudy(client: PoolClient, exclusive = true) {
     if (!this.studyOwner) {
       return;
     }
     this.studyOwner.assertActive?.();
     this.studyOwner.signal?.throwIfAborted();
     const scope = this.studyOwner;
-    const result = await client.query(
-      "SELECT owner,expires_at FROM pickler.perps_studies WHERE tenant_id=$1 AND session_id=$2 AND network=$3 FOR UPDATE",
-      [scope.tenantId, scope.sessionId, scope.network],
-    );
+    const statement = exclusive
+      ? "SELECT owner,expires_at FROM pickler.perps_studies WHERE tenant_id=$1 AND session_id=$2 AND network=$3 FOR UPDATE"
+      : "SELECT owner,expires_at FROM pickler.perps_studies WHERE tenant_id=$1 AND session_id=$2 AND network=$3";
+    const result = await client.query(statement, [scope.tenantId, scope.sessionId, scope.network]);
     if (
       result.rows[0]?.owner !== scope.owner ||
       Number(result.rows[0]?.expires_at) <= (await this.now(client))
@@ -194,7 +195,7 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
     }
     owner.signal?.throwIfAborted();
   }
-  private async agent(client: PoolClient, scope: PerpsPaperScope) {
+  private async agent(client: PoolClient, scope: PerpsPaperScope, exclusive = true) {
     if (this.productOwner) {
       const expected = this.productOwner().scope;
       if (
@@ -212,10 +213,10 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
     ) {
       throw new PilotError("INVALID_INPUT", "Invalid paper scope");
     }
-    const result = await client.query<AgentRecord>(
-      `SELECT id, tenant_id AS "tenantId", version, config, paused, schedule_enabled AS "scheduleEnabled", next_due AS "nextDueAt" FROM pickler.agents WHERE tenant_id=$1 AND id=$2 FOR UPDATE`,
-      [scope.tenantId, scope.agentId],
-    );
+    const statement = exclusive
+      ? `SELECT id, tenant_id AS "tenantId", version, config, paused, schedule_enabled AS "scheduleEnabled", next_due AS "nextDueAt" FROM pickler.agents WHERE tenant_id=$1 AND id=$2 FOR UPDATE`
+      : `SELECT id, tenant_id AS "tenantId", version, config, paused, schedule_enabled AS "scheduleEnabled", next_due AS "nextDueAt" FROM pickler.agents WHERE tenant_id=$1 AND id=$2`;
+    const result = await client.query<AgentRecord>(statement, [scope.tenantId, scope.agentId]);
     if (!result.rows[0]) {
       throw new PilotError("NOT_FOUND", "Agent not found");
     }
@@ -325,6 +326,7 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
         "Component-policy financial writes require their study owner",
       );
     }
+    return record;
   }
   async closeAdmissions(scope: PerpsPaperScope) {
     await this.transaction(async (client) => {
@@ -692,6 +694,9 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
     });
   }
   async view(scope: PerpsPaperScope) {
+    if (this.studyOwner?.readPolicy === "pts-snapshot-v1") {
+      return this.snapshot(scope);
+    }
     return this.transaction(async (client) => (await this.lock(client, scope)).view);
   }
   /**
@@ -1597,10 +1602,38 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
     }
     return marginOpenedSince((await this.snapshot(scope)).account.positions, since);
   }
+  private async guardSnapshot(client: PoolClient, scope: PerpsPaperScope) {
+    const owner = this.studyOwner;
+    if (
+      !owner ||
+      this.productOwner ||
+      scope.tenantId !== owner.tenantId ||
+      scope.sessionId !== owner.sessionId ||
+      scope.network !== owner.network
+    ) {
+      throw new PilotError("FORBIDDEN", "Paper read crossed its bound study identity");
+    }
+    await this.guardStudy(client, false);
+    await this.agent(client, scope, false);
+    const result = await client.query<{ document: PerpsPaperAccount }>(
+      "SELECT document FROM pickler.perps_paper_accounts WHERE tenant_id=$1 AND agent_id=$2 AND session_id=$3 AND network=$4",
+      [scope.tenantId, scope.agentId, scope.sessionId, scope.network],
+    );
+    if (!result.rows[0]) {
+      throw new PilotError("NOT_FOUND", "Paper account not found");
+    }
+    const record = await this.checkDataPolicy(client, scope, result.rows[0].document, true);
+    if (record?.config.version !== 8 && record?.config.version !== 9) {
+      throw new PilotError("CONFIG_CHANGED", "Snapshot reads require a local PTS study");
+    }
+    await this.guardStudy(client, false);
+  }
   /**
    * The account as `view` answers it, in one read-only repeatable-read transaction with no row
    * locks and no writes: attempts whose lease lapsed are projected `interrupted` (as `lock` would
-   * rewrite them) but stay as stored. For reads; every action goes through `view`'s locks.
+   * rewrite them) but stay as stored. Financial mutations retain their exclusive locks.
+   * Explicit PTS execution reads check current ownership/policy outside the consistent snapshot,
+   * so the final check cannot reuse an old repeatable-read ownership row.
    */
   async snapshot(scope: PerpsPaperScope): Promise<PerpsPaperView> {
     if (
@@ -1609,8 +1642,14 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
     ) {
       throw new PilotError("INVALID_INPUT", "Invalid paper scope");
     }
+    const guarded = this.studyOwner?.readPolicy === "pts-snapshot-v1";
     const client = await this.pool.connect();
     try {
+      if (guarded) {
+        await client.query("BEGIN ISOLATION LEVEL READ COMMITTED READ ONLY");
+        await this.guardSnapshot(client, scope);
+        await client.query("COMMIT");
+      }
       await client.query("BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY");
       const result = await client.query<{ id: string; document: PerpsPaperAccount }>(
         "SELECT id,document FROM pickler.perps_paper_accounts WHERE tenant_id=$1 AND agent_id=$2 AND session_id=$3 AND network=$4",
@@ -1633,6 +1672,13 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
         [row.id],
       );
       await client.query("COMMIT");
+      if (guarded) {
+        await client.query("BEGIN ISOLATION LEVEL READ COMMITTED READ ONLY");
+        await this.guardSnapshot(client, scope);
+        await client.query("COMMIT");
+        this.studyOwner?.assertActive?.();
+        this.studyOwner?.signal?.throwIfAborted();
+      }
       return {
         account: row.document,
         attempts: attempts.rows.map((r) =>

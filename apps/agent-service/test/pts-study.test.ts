@@ -72,6 +72,7 @@ async function setup(
   const scoped = new PostgresPerpsPaperStore(db.pool, () => time, {
     ...view.record.config,
     owner: lease.owner,
+    readPolicy: "pts-snapshot-v1",
   });
   let ratio = "0.40",
     finalCount = 0;

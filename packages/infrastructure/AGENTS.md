@@ -760,7 +760,7 @@ isolated PostgreSQL test instance, never the physical server running a prospecti
 
 Local PTS v8/v9 cycleView projects only observation, observation-failed, observation-missed,
 profile-execution and exit-detected payloads. Other recent events retain keys/dates/kinds with
-empty data, avoiding repeated full-history transfer under the study row lock. Cutoff, latest
+empty data, avoiding repeated full-history transfer in the execution cycle. Cutoff, latest
 observation, ordering and ownership semantics are unchanged. Full view and both read-only audit
 formats still contain the original payloads; no stored evidence is rewritten.
 
@@ -789,3 +789,16 @@ causal explanation. Both reviewed deadlines remain `PERSISTENCE_CONNECTION_TIMEO
 timeouts and explicit cancellation remain distinct. Never store SQL text, values, messages,
 credentials or ownership tokens. Tests shorten only a fixture queue wait, never production limits.
 See [PTS report persistence](../../apps/agent-service/PTS-REPORT-PERSISTENCE.md).
+
+## Local PTS nonlocking reads
+
+Study view/cycleView use read-only repeatable-read snapshots without an exclusive row lock.
+The permission guard uses explicit read-committed read-only isolation and retains its final
+current ownership/liveness check. All study mutations retain the exclusive lock and commit fence.
+Local PTS v8/v9 paper composition explicitly selects studyOwner.readPolicy=pts-snapshot-v1:
+account reads check current ownership/policies before and after the consistent read-only snapshot.
+Expired attempts are projected without recovery writes; financial mutations and callers without
+the opt-in keep their existing locks/recovery. Never check final ownership only inside repeatable
+read or apply this option to Studio/historical protocols. Controlled contention tests use the
+isolated disposable PostgreSQL server; historical blocker identities remain unverifiable unless
+original evidence identifies them. See [PTS read isolation](../../apps/agent-service/PTS-STUDY-READ-ISOLATION.md).

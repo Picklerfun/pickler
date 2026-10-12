@@ -77,3 +77,9 @@ blocked reads retain their original ten-second statement deadline.
 Forward report failures with a bounded origin-qualified diagnostic. Do not reinterpret a previous
 connection timeout as pool saturation or a network failure without original evidence. Controlled
 source-export timings are distinct from rendering, public acquisition and profitability.
+
+The lease-bound paper repository explicitly selects pts-snapshot-v1 for v8/v9 execution reads.
+Infrastructure owns its fresh before/after ownership/policy checks and read-only account snapshot;
+the host must not duplicate them or use an unguarded product snapshot as an execution view.
+Financial mutations keep their existing exclusive fences. Delayed reads must not block renewal;
+see [PTS read isolation](../../PTS-STUDY-READ-ISOLATION.md).
