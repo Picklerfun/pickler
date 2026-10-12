@@ -77,10 +77,14 @@ export async function exportPerpsAuditParts(
         sha256?: string;
       }> = await client.query(
         options.reuse
-          ? `SELECT key,encode(sha256(convert_to(document::text,'UTF8')),'hex') AS sha256
-             FROM pickler.perps_study_rounds
-             WHERE study_id=$1 AND ($2::text IS NULL OR key>$2)
-             ORDER BY key LIMIT 1`
+          ? `WITH page AS MATERIALIZED (
+               SELECT key FROM pickler.perps_study_rounds
+               WHERE study_id=$1 AND ($2::text IS NULL OR key>$2)
+               ORDER BY key LIMIT 1
+             )
+             SELECT r.key,encode(sha256(convert_to(r.document::text,'UTF8')),'hex') AS sha256
+             FROM page JOIN pickler.perps_study_rounds r ON r.study_id=$1 AND r.key=page.key
+             ORDER BY r.key`
           : `SELECT key,document FROM pickler.perps_study_rounds
              WHERE study_id=$1 AND ($2::text IS NULL OR key>$2)
              ORDER BY key LIMIT 1`,
@@ -123,13 +127,17 @@ export async function exportPerpsAuditParts(
         sha256?: string;
       }> = await client.query(
         options.reuse
-          ? `SELECT key,at::double precision AS at,
+          ? `WITH page AS MATERIALIZED (
+               SELECT key FROM pickler.perps_study_events
+               WHERE study_id=$1 AND ($2::bigint IS NULL OR (at,key)>($2,$3))
+               ORDER BY at::double precision,key LIMIT 16
+             )
+             SELECT e.key,e.at::double precision AS at,
                encode(sha256(convert_to(jsonb_build_object(
-                 'key',key,'at',at::double precision,'kind',kind,'data',data
+                 'key',e.key,'at',e.at::double precision,'kind',e.kind,'data',e.data
                )::text,'UTF8')),'hex') AS sha256
-             FROM pickler.perps_study_events
-             WHERE study_id=$1 AND ($2::bigint IS NULL OR (at,key)>($2,$3))
-             ORDER BY at,key LIMIT 16`
+             FROM page JOIN pickler.perps_study_events e ON e.study_id=$1 AND e.key=page.key
+             ORDER BY at,e.key`
           : `SELECT key,at::double precision AS at,kind,data
              FROM pickler.perps_study_events
              WHERE study_id=$1 AND ($2::bigint IS NULL OR (at,key)>($2,$3))
