@@ -270,7 +270,7 @@ Token operation inputs add `buy`, `sell`, `approve_buy` and `approve_sell` with 
 `trade` (positive uint256 atomic amount and explicit 1–100 bps slippage). Other actions reject
 trade fields. Clients cannot select contracts, wallets, recipients or calldata. Additive operation
 `quote` exposes only prepared amounts, balance, allowance, fee and approval purpose; historical
-operations without it remain readable. State reads remain database-only.
+operations without it remain readable. Ordinary state reads remain database-only. The API can repair a finalized app launch with missing canonical attribution through its existing operation service; the wire schema is unchanged.
 
 ## Public curve trading contracts
 
