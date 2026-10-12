@@ -83,3 +83,10 @@ Infrastructure owns its fresh before/after ownership/policy checks and read-only
 the host must not duplicate them or use an unguarded product snapshot as an execution view.
 Financial mutations keep their existing exclusive fences. Delayed reads must not block renewal;
 see [PTS read isolation](../../PTS-STUDY-READ-ISOLATION.md).
+
+report-source.ts opts into verified source reuse for repeated runtime publication. parts.ts checks
+the previous configuration, source revision index and every reused part's bytes; current scoped
+row fingerprints come from infrastructure inside the new snapshot. Keep canonical payload hashes
+separate from native revision hashes. Legacy manifests capture afresh; missing/corrupt evidence
+must never become fabricated rows. Full hash/replay work remains; see
+[PTS incremental capture](../../PTS-REPORT-INCREMENTAL.md).
