@@ -1258,8 +1258,14 @@ wallets send once and Mera signs locally via `mera-token-transaction.ts`, with P
 before broadcast. `features/wallet/lib/public-trade-flow.ts` continues a user-initiated approval
 through a freshly prepared swap only after canonical approval confirmation. Each action still
 requires its own wallet confirmation. A worse refreshed minimum requires an explicit review;
-changed identities/amounts are rejected. Loading belongs to the primary button, with concise
-terminal messages and the shared linked/copyable hash.
+changed identities/amounts are rejected. `public-trade-action.tsx` keeps preparation, wallet confirmation, approval, swap, pending,
+success and sanitized errors inside one fixed-height primary button. Progress uses an indeterminate
+ring and sweep; wallet confirmation pulses the wallet icon; success draws a check for 2.2 seconds
+before restoring the explicit Buy/Sell action. This visual timer never performs a transaction.
+Form edits dismiss success and clear errors. Keep screen-reader announcements, keyboard focus and
+reduced-motion support. No visible status/error paragraphs or manual Check transaction action belong
+to this form. The shared linked/copyable hash sits below the button; quotes reserve their space and
+are shown only while matching the entered side, amount and slippage.
 Known hashes are observed automatically with at most thirty serial reads, three seconds apart,
 and a two-minute deadline. Hidden pages pause observation; unmount/account/network changes cancel
 it. Session-scoped unsigned attempts resume receipt reads on reload, never signing or broadcasting
