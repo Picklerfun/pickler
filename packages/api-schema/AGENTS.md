@@ -290,3 +290,8 @@ market or terms is unknown, never a zero price or implicit reference preset.
 Public trade confirmation uses strict `publicTokenTradeConfirmationInputSchema` (visitor wallet
 and transaction hash only) and `publicTokenTradeConfirmationSchema` (`pending`, `confirmed` or
 `reverted`). Clients cannot supply token/curve addresses, calldata, prices or reserve values.
+
+`TokenMarketDto.priceMovement` is an optional nullable prepared latest-observation change:
+`direction`, signed decimal-string `changeBps`, and the compared `fromAt`/`toAt` timestamps.
+Older producers without the field remain valid. Direction survives rounded zero basis points;
+inconsistent signs are invalid. It must not be labelled as a 24-hour return.
