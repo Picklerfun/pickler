@@ -1269,10 +1269,13 @@ The original draft and the failed attempt remain visible; unknown attempts stay 
 reconciliation. The controlled loading harness verifies the saved refusal without provider calls.
 
 The public trade side and slippage use the shared lime `Segmented` selection. Their track reads
-`--pk-bg` from the enclosing surface so the selection stays visible. Display the ticker with
-exactly one leading dollar sign. The persona section tabs have their own spaced pill row, a
-contrasting selected state, and roving keyboard focus (Left/Right/Home/End); keep the panel IDs
-linked to them.
+`--pk-bg` from the enclosing surface so the selection stays visible. The shared token card
+owns the token identity, ticker and network; the adjacent trading panel uses `Trade token` and
+only adds an unsupported-network warning when necessary. The persona header groups agent identity
+and metadata above an equal-column statistics grid (two columns on small phones). Availability
+and actions follow separately; omit an empty description. The persona section tabs have their
+own spaced pill row, a contrasting selected state, and roving keyboard focus
+(Left/Right/Home/End); keep the panel IDs linked to them.
 
 ## Automatic token confirmation
 
