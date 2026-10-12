@@ -6,6 +6,10 @@
   margin-top: 16px;
   min-width: 0;
 }
+.panel .choices {
+  background: var(--pk-bg);
+  border: 1px solid var(--pk-rule-strong);
+}
 .head {
   display: flex;
   align-items: center;
