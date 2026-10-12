@@ -103,10 +103,19 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
     readonly pool: Pool,
     private readonly clock?: () => number,
   ) {}
-  private async tx<T>(fn: (c: PoolClient) => Promise<T>) {
+  private async tx<T>(
+    fn: (c: PoolClient) => Promise<T>,
+    mode: "write" | "snapshot" | "check" = "write",
+  ) {
     const c = await this.pool.connect();
     try {
-      await c.query("BEGIN");
+      if (mode === "snapshot") {
+        await c.query("BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY");
+      } else if (mode === "check") {
+        await c.query("BEGIN ISOLATION LEVEL READ COMMITTED READ ONLY");
+      } else {
+        await c.query("BEGIN");
+      }
       const r = await fn(c);
       const fence = this.fences.get(c);
       if (fence) {
@@ -143,11 +152,11 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
       )
     ).rows[0]!.now;
   }
-  private async lock(c: PoolClient, scope: PerpsStudyScope): Promise<Locked> {
-    const r = await c.query(
-      "SELECT id,document,owner,expires_at FROM pickler.perps_studies WHERE tenant_id=$1 AND session_id=$2 AND network=$3 FOR UPDATE",
-      [scope.tenantId, scope.sessionId, scope.network],
-    );
+  private async read(c: PoolClient, scope: PerpsStudyScope, exclusive = false): Promise<Locked> {
+    const statement = exclusive
+      ? "SELECT id,document,owner,expires_at FROM pickler.perps_studies WHERE tenant_id=$1 AND session_id=$2 AND network=$3 FOR UPDATE"
+      : "SELECT id,document,owner,expires_at FROM pickler.perps_studies WHERE tenant_id=$1 AND session_id=$2 AND network=$3";
+    const r = await c.query(statement, [scope.tenantId, scope.sessionId, scope.network]);
     if (!r.rows[0]) {
       throw new PilotError("NOT_FOUND", "Study not found");
     }
@@ -158,6 +167,9 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
       expires_at: r.rows[0].expires_at,
       now: await this.now(c),
     };
+  }
+  private async lock(c: PoolClient, scope: PerpsStudyScope): Promise<Locked> {
+    return this.read(c, scope, true);
   }
   private owned(c: PoolClient, x: Locked, lease: PerpsStudyLease) {
     lease.assertActive?.();
@@ -329,17 +341,17 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
   }
   async view(scope: PerpsStudyScope): Promise<PerpsStudyView> {
     return this.tx(async (c) => {
-      const x = await this.lock(c, scope);
+      const x = await this.read(c, scope);
       const events = await c.query(
         "SELECT key,at::double precision AS at,kind,data FROM pickler.perps_study_events WHERE study_id=$1 ORDER BY at,key",
         [x.id],
       );
       return { record: x.record, rounds: await this.rounds(c, x.id), events: events.rows };
-    });
+    }, "snapshot");
   }
   async cycleView(scope: PerpsStudyScope): Promise<PerpsStudyView> {
     return this.tx(async (c) => {
-      const x = await this.lock(c, scope);
+      const x = await this.read(c, scope);
       if (x.record.config.version !== 8 && x.record.config.version !== 9) {
         const events = await c.query(
           "SELECT key,at::double precision AS at,kind,data FROM pickler.perps_study_events WHERE study_id=$1 ORDER BY at,key",
@@ -364,7 +376,7 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
         [x.id, since],
       );
       return { record: x.record, rounds: [], events: events.rows };
-    });
+    }, "snapshot");
   }
   async initializeDiagnostic(
     source: PerpsStudyScope,
@@ -657,7 +669,7 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
   }
   async guard(scope: PerpsStudyScope, lease: PerpsStudyLease, paid = false) {
     await this.tx(async (c) => {
-      const x = await this.lock(c, scope);
+      const x = await this.read(c, scope);
       this.owned(c, x, lease);
       await this.permissions(c, x);
       if (
@@ -676,7 +688,7 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
       ) {
         throw new PilotError("DECISIONS_STOPPED", "Study has stopped new decisions");
       }
-    });
+    }, "check");
   }
   async stop(scope: PerpsStudyScope) {
     await this.tx(async (c) => {
