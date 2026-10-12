@@ -796,3 +796,11 @@ rows as failed with `CHAIN_EVENT_ORPHANED`; a returning branch can restore them 
 retain full log identity and cannot duplicate token/pool rows. Historical traversal, finality,
 ancestry checks, external events, trade recovery and reorg handling remain the indexer's responsibility.
 Tests: `confirmed-launch.test.ts`, `launch-index-store.test.ts` and the existing launch suites.
+
+## Owner token fee cursor transport
+
+`PostgresTokenLaunchStore` reads the escrow cursor as decimal text, then checks and converts it to
+an exact nonnegative safe integer before returning `fees.block`. Native PostgreSQL bigint rows
+are strings; a TypeScript query annotation does not convert them. Amounts remain atomic strings.
+The confirmed-launch regression composes the operational escrow and tests numeric wire output,
+heights above signed int32 and refusal outside JavaScript's exact integer range, without RPC.

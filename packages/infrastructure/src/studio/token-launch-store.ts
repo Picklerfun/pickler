@@ -143,11 +143,15 @@ export class PostgresTokenLaunchStore implements TokenLaunchRepository {
                 liquidityLocked: false,
               };
         if (this.escrow && contextMaster(master.rows)) {
-          const cursor = await client.query<{ block: number }>(
-            `SELECT last_block AS block FROM market.indexer_cursors WHERE chain=$1 AND contract=$2 AND stream='token-launch-v1'`,
+          const cursor = await client.query<{ block: string }>(
+            `SELECT last_block::text AS block FROM market.indexer_cursors WHERE chain=$1 AND contract=$2 AND stream='token-launch-v1'`,
             [`eip155:${chainId}`, this.escrow],
           );
           if (cursor.rows[0]) {
+            const block = Number(cursor.rows[0].block);
+            if (!Number.isSafeInteger(block) || block < 0) {
+              throw new Error("INVALID_TOKEN_FEE_BLOCK");
+            }
             const balances = await client.query<{ asset: string; amount: string }>(
               `SELECT lower(e.decoded->>'asset') AS asset,sum(CASE WHEN e.event_name='FeeAccrued' THEN (e.decoded->>'amount')::numeric ELSE -(e.decoded->>'amount')::numeric END)::text AS amount
               FROM market.chain_events e JOIN market.chain_blocks b ON b.chain=e.chain AND b.hash=e.block_hash
@@ -163,7 +167,7 @@ export class PostgresTokenLaunchStore implements TokenLaunchRepository {
             fees = {
               ausd: ausd.toString(),
               agent,
-              block: cursor.rows[0].block,
+              block,
               scope: "master_wallet",
             };
           }
