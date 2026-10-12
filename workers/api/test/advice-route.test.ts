@@ -21,8 +21,14 @@ import {
 import {
   adviceRecommendationSchema,
   adviceHistorySchema,
+  paymentPayloadSchema,
   paymentRequiredSchema,
+  paymentRequirementsSchema,
 } from "@pickler/api-schema";
+import type {
+  AusdAuthorizationGateway,
+  AusdAuthorizationGatewayInput,
+} from "@pickler/infrastructure";
 import { createApp } from "../src/app.js";
 import { paidAdviceFrom } from "../src/container.js";
 import { documentationServices } from "../src/openapi/composition.js";
@@ -404,11 +410,16 @@ test("x402 on: a request without X-PAYMENT answers 402 with the terms and enqueu
 
   assert.equal(response.status, 402);
   assert.equal(response.headers.get("cache-control"), "private, no-store");
-  assert.deepEqual(await response.json(), {
+  const body = await response.json();
+  assert.deepEqual(body, {
     x402Version: 1,
     error: "X-PAYMENT header is required",
     accepts: [requirements],
   });
+  const terms = paymentRequirementsSchema.parse(body.accepts[0]);
+  assert.equal(terms.payTo, SPLITTER, "the buyer pays the splitter");
+  assert.equal(terms.extra.payee, PAYEE, "the agent wallet is the payee");
+  assert.equal(terms.maxAmountRequired, "1500000", "the full price, not a share");
   assert.equal(f.created(), 0);
   assert.equal(f.notified(), 0);
 });
@@ -500,6 +511,51 @@ test("x402 on but misconfigured: the request answers 503 and never runs a free a
   assert.equal(f.notified(), 0);
 });
 
+test("x402 on with a splitter deployed for another treasury: 503 before any 402 or analysis", async () => {
+  const logged: string[] = [];
+  const reads: string[] = [];
+  const gatewayFor = (input: AusdAuthorizationGatewayInput) => {
+    reads.push(input.splitter);
+    return {
+      splitterTreasury: async () => "0x6666666666666666666666666666666666666666",
+    } as unknown as AusdAuthorizationGateway;
+  };
+  const mismatched: PaidFactory = (advice, repository) =>
+    paidAdviceFrom(
+      {
+        ADVICE_X402_ENABLED: "true",
+        X402_RELAYER_PRIVATE_KEY: `0x${"7a".repeat(32)}`,
+        MONAD_RPC_URL: "https://rpc.example.test",
+        ADVICE_SPLITTER_ADDRESS: SPLITTER,
+        ADVICE_SPLITTER_TREASURY: "0x5555555555555555555555555555555555555555",
+      },
+      {
+        advice,
+        repository,
+        pool: {} as Parameters<typeof paidAdviceFrom>[1]["pool"],
+        gatewayFor,
+        confirmedTreasuries: new Set(),
+      },
+      (message) => logged.push(message),
+    );
+  const f = fixture(true, undefined, mismatched);
+
+  for (const extra of [{}, { "x-payment": payment() }]) {
+    const response = await ask(f, extra);
+
+    assert.equal(response.status, 503);
+    assert.equal((await response.json()).error, "ADVICE_UNAVAILABLE");
+    assert.equal(response.headers.get("x-payment-response"), null);
+  }
+  assert.deepEqual(reads, [SPLITTER]);
+  assert.equal(f.created(), 0);
+  assert.equal(f.notified(), 0);
+  assert.equal(logged.length, 2);
+  for (const line of logged) {
+    assert.doesNotMatch(line, /0x[0-9a-fA-F]{8}/, "the log names variables, never addresses");
+  }
+});
+
 test("x402 flag off through the container: the request stays free and answers 202", async () => {
   const off: PaidFactory = (advice, repository) =>
     paidAdviceFrom(
@@ -559,3 +615,73 @@ test("OpenAPI documents the 402, X-PAYMENT and X-PAYMENT-RESPONSE on adviceReque
   assert.ok(names.includes("X-PAYMENT"));
   assert.ok(names.includes("Idempotency-Key"));
 });
+
+test("OpenAPI shows the splitter terms in the 402 and the salt in X-PAYMENT", async () => {
+  const f = fixture(true, paidState());
+
+  const document = await apiDocument(f.app);
+  const post = document.paths["/v1/agent-advice/agents/{agentId}/recommendations"]!.post!;
+  const required = post.responses["402"] as {
+    content: { "application/json": { schema: Record<string, unknown> } };
+  };
+  const header = (post.parameters ?? []).find(
+    (parameter) => "name" in parameter && parameter.name === "X-PAYMENT",
+  ) as { schema: Record<string, unknown> } | undefined;
+
+  const resolved = resolveRefs(required.content["application/json"].schema, document);
+  const extra = resolved.properties.accepts.items.properties.extra;
+  assert.deepEqual(Object.keys(extra.properties).sort(), [
+    "chainId",
+    "creatorBps",
+    "name",
+    "nonceDerivation",
+    "payee",
+    "primaryType",
+    "protocolBps",
+    "version",
+  ]);
+  assert.equal(extra.properties.primaryType.const, "ReceiveWithAuthorization");
+  assert.equal(extra.properties.creatorBps.const, 6500);
+  assert.equal(extra.properties.protocolBps.const, 3500);
+  assert.equal(extra.properties.nonceDerivation.const, "keccak256(abi.encode(payee,salt))");
+  assert.ok(extra.required.includes("payee"));
+  assert.ok(header, "X-PAYMENT is documented");
+  assert.equal(header.schema.contentEncoding, "base64");
+  assert.equal(header.schema.contentMediaType, "application/json");
+  const content = header.schema.contentSchema as {
+    properties: {
+      payload: {
+        properties: {
+          authorization: { properties: Record<string, unknown>; required: string[] };
+        };
+      };
+    };
+  };
+  const authorization = content.properties.payload.properties.authorization;
+  assert.ok("salt" in authorization.properties, "the authorization documents salt");
+  assert.ok(authorization.required.includes("salt"));
+  assert.doesNotMatch(String(post.description) + JSON.stringify(header), /TransferWithAuth/);
+  paymentPayloadSchema.parse(JSON.parse(Buffer.from(payment(), "base64").toString("utf8")));
+});
+
+/** Follows local `#/components/schemas/...` references so a test can read the shape. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function resolveRefs(schema: unknown, document: unknown): any {
+  if (Array.isArray(schema)) {
+    return schema.map((item) => resolveRefs(item, document));
+  }
+  if (schema === null || typeof schema !== "object") {
+    return schema;
+  }
+  const ref = (schema as { $ref?: unknown }).$ref;
+  if (typeof ref === "string" && ref.startsWith("#/")) {
+    let target: unknown = document;
+    for (const part of ref.slice(2).split("/")) {
+      target = (target as Record<string, unknown>)[part];
+    }
+    return resolveRefs(target, document);
+  }
+  return Object.fromEntries(
+    Object.entries(schema).map(([name, value]) => [name, resolveRefs(value, document)]),
+  );
+}
