@@ -48,10 +48,14 @@
   font-variant-numeric: tabular-nums;
   overflow-wrap: anywhere;
 }
-.status {
+.transactions {
+  display: grid;
+  gap: 4px;
+  margin: -8px 0 0;
+}
+.transaction dd {
   margin: 0;
-  font-size: 14px;
-  line-height: 1.5;
+  min-width: 0;
 }
 .transaction {
   display: flex;
@@ -59,27 +63,9 @@
   align-items: center;
   flex-wrap: wrap;
   gap: 8px;
+  min-height: 32px;
   font-size: 12px;
   color: var(--pk-ink-muted);
-}
-.spinner {
-  flex: none;
-  animation: public-trade-spin 900ms linear infinite;
-}
-@keyframes public-trade-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .spinner {
-    animation: none;
-  }
-}
-.error {
-  color: var(--pk-magenta-ink);
-  margin: 0;
-  font-size: 14px;
 }
 .actions {
   display: flex;

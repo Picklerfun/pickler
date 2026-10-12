@@ -94,6 +94,7 @@ export async function waitForPublicTradeReceipt({
 /** One user-initiated approval/trade flow; restoration uses receipt reads only. */
 export async function runPublicTokenTrade({
   prepared,
+  approvalHash,
   prepareNext,
   send,
   receipt,
@@ -101,6 +102,7 @@ export async function runPublicTokenTrade({
   signal,
 }: {
   prepared: PublicTokenTradePreparedDto;
+  approvalHash?: string | undefined;
   prepareNext: () => Promise<PublicTokenTradePreparedDto>;
   send: (prepared: PublicTokenTradePreparedDto) => Promise<string>;
   receipt: (hash: string) => Promise<PublicReceiptResult>;
@@ -110,7 +112,12 @@ export async function runPublicTokenTrade({
   let next = prepared;
   for (let step = 0; step < 2; step += 1) {
     signal.throwIfAborted();
-    const attempt: PublicTradeAttempt = { prepared: next, status: "review", hash: null };
+    const attempt: PublicTradeAttempt = {
+      prepared: next,
+      status: "review",
+      hash: null,
+      ...(approvalHash ? { approvalHash } : {}),
+    };
     keep(attempt);
     keep({ ...attempt, status: "submitting" });
     let hash: string;
@@ -129,14 +136,18 @@ export async function runPublicTokenTrade({
       }
     }
     // Preserve the returned hash even if navigation/account change aborted this flow meanwhile.
-    keep({ ...attempt, status: "confirming", hash });
+    if (next.quote.approval) {
+      approvalHash = hash;
+    }
+    const submitted = { ...attempt, ...(approvalHash ? { approvalHash } : {}) };
+    keep({ ...submitted, status: "confirming", hash });
     signal.throwIfAborted();
     const result = await receipt(hash);
     signal.throwIfAborted();
     if (result === "pending") {
       return result;
     }
-    keep({ ...attempt, status: result, hash });
+    keep({ ...submitted, status: result, hash });
     if (result === "reverted" || !next.quote.approval) {
       return result;
     }
@@ -154,7 +165,7 @@ export async function runPublicTokenTrade({
     ) {
       throw new Error("Approval confirmed. The trade could not be prepared.");
     }
-    keep({ prepared: refreshed, status: "review", hash: null });
+    keep({ prepared: refreshed, status: "review", hash: null, approvalHash: hash });
     if (BigInt(refreshed.quote.minimumOutput) < BigInt(next.quote.minimumOutput)) {
       return "review";
     }

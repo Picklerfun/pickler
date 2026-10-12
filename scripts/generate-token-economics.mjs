@@ -26,7 +26,7 @@ const config = {
   virtualQuoteReserve: BigInt(reference.virtualQuoteReserve),
   saleAllocation: BigInt(reference.saleAllocation),
 };
-const sold = 1000000n * 10n ** 18n;
+const sold = 4500000n * 10n ** 18n;
 const inputs = { buy: 1000000n, sell: 1000n * 10n ** 18n };
 const quotes = Object.fromEntries(
   Object.entries(inputs).map(([side, amount]) => {
@@ -58,4 +58,20 @@ if (process.argv.includes("--check")) {
   }
 } else {
   writeFileSync(tradeOutput, tradeText);
+}
+
+// Fixed controlled observations keep the interactive public preview hydration deterministic.
+const { sampleTokenMarket } = await import("./design/fixtures/sample-token-market.mts");
+const marketOutput = new URL(
+  "../apps/web/src/features/tokens/market-preview.json",
+  import.meta.url,
+);
+const marketText =
+  JSON.stringify(sampleTokenMarket(Date.parse("2026-01-01T12:00:00Z")), null, 2) + "\n";
+if (process.argv.includes("--check")) {
+  if (readFileSync(marketOutput, "utf8") !== marketText) {
+    throw new Error("Token market fixture drift; run npm run tokens:fixtures");
+  }
+} else {
+  writeFileSync(marketOutput, marketText);
 }

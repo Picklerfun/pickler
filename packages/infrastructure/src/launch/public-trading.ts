@@ -19,6 +19,7 @@ import type { Rpc } from "../chain/erc20.js";
 import { pendingNonce, quoteFees, FeeQuoteLimitExceededError } from "../chain/deposit-tx.js";
 import { tokenAgentKey } from "../studio/token-launch-store.js";
 import type { Pool } from "pg";
+import { createPublicTradeConfirmation } from "./public-trade-confirmation.js";
 
 /** Global RPC ceiling, reserved before transport; failed preparations consume their reservation. */
 export async function reservePublicTokenRpc(pool: Pool, wallet: string, dailyLimit: number) {
@@ -59,6 +60,7 @@ export function createPublicTokenTradeDriver(deps: {
   rpc: Rpc;
   reserve(wallet: string): Promise<void>;
   now?: () => number;
+  pool?: Pool;
 }): PublicTokenTradeDriver {
   const policy = deps.policy;
   async function policyFees(rpc: Rpc) {
@@ -72,6 +74,7 @@ export function createPublicTokenTradeDriver(deps: {
     }
   }
   return {
+    ...(deps.pool ? { confirm: createPublicTradeConfirmation({ ...deps, pool: deps.pool }) } : {}),
     async prepare(context, input) {
       await deps.reserve(input.wallet);
       let calls = 0;

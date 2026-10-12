@@ -1,8 +1,10 @@
 import type { PublicTokenTradePreparedDto } from "@pickler/api-schema";
 export interface PublicTradeAttempt {
   prepared: PublicTokenTradePreparedDto;
-  status: "review" | "submitting" | "confirming" | "unknown" | "confirmed" | "reverted";
+  status:
+    "review" | "submitting" | "confirming" | "unknown" | "confirmed" | "reverted" | "cancelled";
   hash: string | null;
+  approvalHash?: string;
 }
 const attempts = new Map<string, PublicTradeAttempt | null>();
 const listeners = new Set<() => void>();
@@ -28,11 +30,25 @@ export function readPublicTrade(
         prepared &&
         (stored.hash === null ||
           (typeof stored.hash === "string" && /^0x[0-9a-f]{64}$/i.test(stored.hash))) &&
-        ["review", "submitting", "confirming", "unknown", "confirmed", "reverted"].includes(
-          stored.status,
-        )
+        (stored.approvalHash === undefined ||
+          (typeof stored.approvalHash === "string" &&
+            /^0x[0-9a-f]{64}$/i.test(stored.approvalHash))) &&
+        [
+          "review",
+          "submitting",
+          "confirming",
+          "unknown",
+          "confirmed",
+          "reverted",
+          "cancelled",
+        ].includes(stored.status)
       ) {
-        value = { prepared, status: stored.status, hash: stored.hash };
+        value = {
+          prepared,
+          status: stored.status,
+          hash: stored.hash,
+          ...(stored.approvalHash ? { approvalHash: stored.approvalHash } : {}),
+        };
         if (value?.status === "submitting") {
           value = { ...value, status: "unknown" };
         }

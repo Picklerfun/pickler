@@ -1258,8 +1258,17 @@ wallets send once and Mera signs locally via `mera-token-transaction.ts`, with P
 before broadcast. `features/wallet/lib/public-trade-flow.ts` continues a user-initiated approval
 through a freshly prepared swap only after canonical approval confirmation. Each action still
 requires its own wallet confirmation. A worse refreshed minimum requires an explicit review;
-changed identities/amounts are rejected. Loading belongs to the primary button, with concise
-terminal messages and the shared linked/copyable hash.
+changed identities/amounts are rejected. `public-trade-action.tsx` keeps preparation, wallet confirmation, approval, swap, pending,
+success and sanitized errors inside one compact, fixed-height (48px) primary button. Progress uses an indeterminate
+ring and sweep; wallet confirmation pulses the wallet icon; success draws a check for 2.2 seconds
+before restoring the explicit Buy/Sell action. This visual timer never performs a transaction.
+Form edits dismiss success and clear errors. Keep screen-reader announcements, keyboard focus and
+reduced-motion support. No visible status/error paragraphs or manual Check transaction action belong
+to this form. Approval and Buy/Sell references remain separately labelled below the button, with linked hashes
+and icon-only copy actions. The approval hash survives swap preparation, cancellation and reload;
+ending an unsigned review preserves recorded receipts without initiating a transaction. Historical
+single-hash attempts remain readable; quotes reserve their space and
+are shown only while matching the entered side, amount and slippage.
 Known hashes are observed automatically with at most thirty serial reads, three seconds apart,
 and a two-minute deadline. Hidden pages pause observation; unmount/account/network changes cancel
 it. Session-scoped unsigned attempts resume receipt reads on reload, never signing or broadcasting
@@ -1348,7 +1357,7 @@ allocations and recent transaction references. Unavailable figures stay unknown.
 actual timestamped observations, filtered relative to the server's read window; same-second
 observations collapse for the chart library. Recent trades retain individual transaction/log identity.
 Post-graduation figures remain labelled curve history, never a DEX price. Preview addresses and
-transaction links remain inert. The production design contains no illustrative fixture import.
+transaction links remain inert. Illustrative fixtures render only in the server-gated development preview; ordinary public tokens use API observations.
 
 Controlled release acceptance targets a running loopback production build against the Design fixture API:
 
@@ -1359,3 +1368,17 @@ node --import tsx scripts/design/public-token-market.mjs http://localhost:3007
 It checks the normal profile route, responsive layout, actual-data rendering, transaction links,
 keyboard controls, pending/malformed/failed reads and preservation of the trade form. All market
 responses are controlled and provider requests are rejected; it does not establish remote acceptance.
+
+## Interactive public trade preview and immediate refresh
+
+The development-only `stage=token-launched` persona preview renders the actual market and trade
+components with generated, explicitly illustrative market data. Its outcome controls exercise
+success, wallet cancellation, revert and slow confirmation using abortable controlled delays;
+they never request a wallet, provider or real explorer. Mobile controls wrap without overflow.
+`tokens:fixtures` generates `market-preview.json` from Design’s core-backed fixture calculations.
+
+After a live swap receipt passes wallet confirmation, the form calls the strict public `token/confirm`
+API and waits for canonical publication before success and market refresh. Pending/transient reads
+share the bounded button observer; no manual check, new send or replacement occurs. Restoring a
+saved confirmed swap can reconcile its receipt without reopening the wallet. Approvals do not
+publish market activity.

@@ -286,3 +286,7 @@ WAD prices/FDV, quote-atomic 24-hour curve volume, server window end, observed b
 canonical net sold/reserve, optional committed allocations and bounded history/recent trades.
 `tokenMarketSchema` validates this extension in the existing launch read contract. A missing
 market or terms is unknown, never a zero price or implicit reference preset.
+
+Public trade confirmation uses strict `publicTokenTradeConfirmationInputSchema` (visitor wallet
+and transaction hash only) and `publicTokenTradeConfirmationSchema` (`pending`, `confirmed` or
+`reverted`). Clients cannot supply token/curve addresses, calldata, prices or reserve values.

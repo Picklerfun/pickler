@@ -8,6 +8,7 @@ import { AreaChart, Button, Icon, Meter, Segmented, Skeleton, Tag } from "@pickl
 import { AgentTokenIdentity } from "./agent-token-card";
 import { ChainReference } from "./chain-reference";
 import { PublicTokenTrade } from "./public-token-trade";
+import previewMarket from "./market-preview.json";
 import styles from "./public-token-market.module.css";
 
 const marketRead = freshnessReadSchema(launchDetailSchema);
@@ -37,7 +38,16 @@ export function PublicTokenMarket({
   handle: string;
   preview?: boolean;
 }) {
-  const [state, setState] = useState<State>({ status: preview ? "ready" : "loading", read: null });
+  const [state, setState] = useState<State>(() => {
+    if (!preview) {
+      return { status: "loading", read: null };
+    }
+    const read = marketRead.parse(previewMarket);
+    return { status: "ready", read };
+  });
+  const [previewOutcome, setPreviewOutcome] = useState<
+    "success" | "cancel" | "failure" | "pending"
+  >("success");
   const [range, setRange] = useState<Range>("24H");
   const [explained, setExplained] = useState(false);
   const [request, setRequest] = useState(0);
@@ -123,6 +133,23 @@ export function PublicTokenMarket({
 
   return (
     <div className={styles.marketView} data-token-market="live">
+      {preview && (
+        <aside className={styles.previewControls} aria-label="Local trade flow preview">
+          <Tag>LOCAL PREVIEW · NO TRANSACTIONS</Tag>
+          <Segmented
+            label="Preview outcome"
+            value={previewOutcome}
+            onChange={setPreviewOutcome}
+            tone="lime"
+            options={[
+              { value: "success", label: "Success" },
+              { value: "cancel", label: "Cancel" },
+              { value: "failure", label: "Failure" },
+              { value: "pending", label: "Slow network" },
+            ]}
+          />
+        </aside>
+      )}
       <section className={styles.market} data-token-state="launched" aria-label="Token market">
         <header className={styles.header}>
           <div className={styles.identity}>
@@ -229,7 +256,7 @@ export function PublicTokenMarket({
                     ? "Loading market data…"
                     : !market
                       ? "Market data is being indexed. Trading remains available."
-                      : `${state.read?.stale ? "Index catching up · " : "Indexed · "}Block ${market.observedBlock}${market.historyTruncated ? " · hourly snapshots" : ""}`}
+                      : `${preview ? "Illustrative data · " : state.read?.stale ? "Index catching up · " : "Indexed · "}Block ${market.observedBlock}${market.historyTruncated ? " · hourly snapshots" : ""}`}
               </span>
               <Button
                 variant="ghost"
@@ -250,6 +277,7 @@ export function PublicTokenMarket({
               token={token}
               handle={handle}
               preview={preview}
+              previewOutcome={previewOutcome}
               embedded
               onConfirmed={refresh}
             />

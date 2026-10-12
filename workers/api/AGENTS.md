@@ -738,3 +738,9 @@ an optional version-1 market read. `composeTokenLauncher` exposes the configured
 reference terms to the database read model; it performs no new provider calls or signature.
 Preset/hash/factory matching remains in the read model. Public reads never enable launching
 or prepare visitor transactions. OpenAPI uses the extended portable launch-detail schema.
+
+`POST /v1/marketplace/personas/:handle/token/confirm` shares the public trading gate and resolves
+the published token again. Its strict wallet/hash body is public/no-store; OpenAPI documents
+validation, quota and unavailable errors. It verifies canonical receipt evidence and appends
+activity for immediate market reads. It never signs, sends, advances an index cursor or accepts
+client financial values. Studio authentication remains unchanged.

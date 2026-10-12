@@ -10,10 +10,9 @@ import {
   tokenTradePriceWad,
 } from "@pickler/core";
 
-export function sampleTokenMarket(): ReadDto<LaunchDetailDto> {
+export function sampleTokenMarket(now = Date.now()): ReadDto<LaunchDetailDto> {
   const quoteAddress = `0x${"4".repeat(40)}`;
   const economics = tokenReferenceEconomics({ address: quoteAddress, decimals: 6 });
-  const now = Date.now();
   const observations = [0, 2_000_000, 5_000_000, 4_500_000].map((sold, index) => ({
     at: new Date(now - (3 - index) * 3_600_000 - 30_000).toISOString(),
     priceWad: tokenCurveMarket(economics, (BigInt(sold) * 10n ** 18n).toString()).priceWad,

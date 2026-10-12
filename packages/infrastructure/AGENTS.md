@@ -816,3 +816,15 @@ chain, factory, committed config hash, quote asset, decimals and total supply ma
 Unknown historical presets retain null allocations and use labelled execution prices.
 `PostgresLaunchReadModel.getLaunch` also resolves a validated chain/address key; UUID IDs remain
 compatible. Missing canonical launch proof yields no market. No migration or backfill is needed.
+
+## Immediate public trade observations
+
+`launch/public-trade-confirmation.ts` verifies chain, pinned immutable factory, agent/preset/curve
+bindings, exact swap calldata, sender/recipient, receipt events and stable policy-confirmed block.
+The driver shares the existing 40-call admission/cap with preparation. Canonical recorded receipts
+are idempotent without provider reads. RPC preparation finishes before a short chain advisory-lock
+transaction. It appends only new confirmed headers and raw events, rechecks canonical launch
+attribution and refuses conflicting or orphaned evidence without changing historical rows.
+Reorg reconciliation, projection replay, outbox and cursors remain the indexer’s responsibility.
+Market reads merge hourly samples, recent receipt observations and the genuine launch-price anchor
+so multiple trades within an hour remain visible. No database migration is required.

@@ -47,7 +47,15 @@ export class PublicTokenTradeError extends Error {
     super(code);
   }
 }
+export interface PublicTokenTradeConfirmation {
+  wallet: string;
+  txHash: string;
+}
 export interface PublicTokenTradeDriver {
+  confirm?(
+    context: PublicTokenTradeContext,
+    input: PublicTokenTradeConfirmation,
+  ): Promise<{ status: "pending" | "confirmed" | "reverted" }>;
   prepare(
     context: PublicTokenTradeContext,
     input: PublicTokenTradeInput,
@@ -59,6 +67,24 @@ export function createPublicTokenTrading(deps: {
   driver?: PublicTokenTradeDriver;
 }) {
   return {
+    async confirm(handle: string, input: PublicTokenTradeConfirmation) {
+      if (!deps.enabled || !deps.driver?.confirm) {
+        throw new PublicTokenTradeError("TRADING_UNAVAILABLE");
+      }
+      if (
+        !/^[a-z0-9_]{3,15}$/.test(handle) ||
+        !/^0x[0-9a-f]{40}$/i.test(input.wallet) ||
+        /^0x0+$/.test(input.wallet) ||
+        !/^0x[0-9a-f]{64}$/i.test(input.txHash)
+      ) {
+        throw new PublicTokenTradeError("INVALID_TRADE");
+      }
+      const context = await deps.token(handle);
+      if (!context || context.chainId !== 10143) {
+        throw new PublicTokenTradeError("TOKEN_NOT_FOUND");
+      }
+      return deps.driver.confirm(context, input);
+    },
     async prepare(handle: string, input: PublicTokenTradeInput) {
       if (!deps.enabled || !deps.driver) {
         throw new PublicTokenTradeError("TRADING_UNAVAILABLE");
