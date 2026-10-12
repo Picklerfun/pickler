@@ -257,14 +257,8 @@ export function PublicTokenTrade({
   return (
     <section className={styles.panel} aria-label="Trade token publicly">
       <div className={styles.head}>
-        <h2>Trade ${token.ticker.replace(/^\$+/, "")}</h2>
-        <Tag>
-          {preview
-            ? "SIMULATED · TESTNET"
-            : token.chainId === 10143
-              ? "MONAD TESTNET"
-              : "UNSUPPORTED NETWORK"}
-        </Tag>
+        <h2>Trade token</h2>
+        {token.chainId !== 10143 && <Tag>UNSUPPORTED NETWORK</Tag>}
       </div>
       <Segmented
         label="Public trade side"
