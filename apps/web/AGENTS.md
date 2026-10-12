@@ -1382,3 +1382,33 @@ API and waits for canonical publication before success and market refresh. Pendi
 share the bounded button observer; no manual check, new send or replacement occurs. Restoring a
 saved confirmed swap can reconcile its receipt without reopening the wallet. Approvals do not
 publish market activity.
+
+## Token market board and chart interaction
+
+The landing token section is a responsive comparison table, with canonical token identities and
+prepared price/FDV/volume/progress from the existing launch-detail read. Each of its at most eight
+rows performs one bounded, abortable HTTP read; no RPC, signing or financial formulas belong here.
+`features/tokens/market-data.ts` shares identity validation, exact amount formatting and chart-only
+number conversion with the public market view. Failed, missing and stale metrics retain the token
+link and remain distinct from a zero balance or price. The local-only `/?tokens=preview#tokens`
+example reuses the generated core-backed Halftime snapshot, makes no requests and never mounts in
+production. The landing footer credits TradingView when rendering market sparklines.
+
+The public detail uses shared AreaChart's market variant with a full-width plot, curved visual
+interpolation, observed-point tooltip and keyboard inspection. Range/data transitions retain one
+chart instance and never animate fabricated prices. Page entry, row hover and curve progress use
+short transitions; reduced motion disables them. Existing trading and receipt behavior is preserved.
+
+The landing board uses compact aligned table rows on desktop. At 900px and below, the same row
+becomes a two-line grid with identity, price and profile action above the remaining metrics.
+At 540px and below, identity/action, the full-width price group and the three secondary metrics
+occupy separate rows to preserve readable text. Price, sparkline and movement badge appear in
+that order on one line at every width. Every metric and the action fit without horizontal
+scrolling; preserve the table's accessible headers and mobile metric labels. Keep rows within
+one comparison board rather than separate cards. The heading carries the network/quote unit
+badge once. Keep the same component and data policy in local previews and public reads.
+
+Landing price cells show the server-prepared latest observed movement as an arrow/percentage
+badge and tint the sparkline green/red/neutral. The badge's accessible label and timestamp
+tooltip identify the compared observations, not a 24-hour return. Missing movement renders no
+percentage; sub-basis-point moves show less than 0.01% without a misleading signed zero.
