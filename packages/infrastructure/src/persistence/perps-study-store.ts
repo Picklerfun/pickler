@@ -350,7 +350,12 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
       const since = Math.floor(x.now / 300000) * 300000 - 60000;
       const events = await c.query(
         `
-        SELECT key,at::double precision AS at,kind,data FROM pickler.perps_study_events
+        SELECT key,at::double precision AS at,kind,
+          CASE WHEN kind IN (
+            'observation','observation-failed','observation-missed',
+            'profile-execution','exit-detected'
+          ) THEN data ELSE '{}'::jsonb END AS data
+        FROM pickler.perps_study_events
         WHERE study_id=$1 AND (at >= $2 OR key = (
           SELECT key FROM pickler.perps_study_events WHERE study_id=$1
           AND kind IN ('observation','observation-failed','observation-missed')
