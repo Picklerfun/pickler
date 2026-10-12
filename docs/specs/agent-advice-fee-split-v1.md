@@ -73,10 +73,12 @@ The contracts move from the `UNLICENSED` placeholder to MIT before this deployme
 
 ## 4. API changes (on top of phase 1)
 
-- **Config:** `ADVICE_SPLITTER_ADDRESS` (Worker var) and the treasury it was deployed with, read back from the contract at composition and logged without values on mismatch. A missing splitter fails closed like a missing relayer (phase 1 Ruling 24).
+- **Config:** `ADVICE_SPLITTER_ADDRESS` and `ADVICE_SPLITTER_TREASURY` (Worker vars: the splitter and the treasury it was deployed with). A missing or malformed address fails closed like a missing relayer (phase 1 Ruling 24). Before the first paid request is served, the API reads the splitter's `treasury()` and compares it with `ADVICE_SPLITTER_TREASURY`, ignoring case. A mismatch or a failed read answers 503 `ADVICE_UNAVAILABLE` for that request and logs variable names only. A match is cached for the isolate's life.
 - **Requirements (402):**
   - `payTo` = the splitter;
-  - `extra = { name: "Agora Dollar", version: "1", primaryType: "ReceiveWithAuthorization", payee: <agent wallet>, creatorBps: 6500, protocolBps: 3500, nonce: "keccak256(abi.encode(payee, salt))" }`.
+  - `maxAmountRequired` = the full price;
+  - `extra = { name: "Agora Dollar", version: "1", chainId: 10143, primaryType: "ReceiveWithAuthorization", payee: <agent wallet>, creatorBps: 6500, protocolBps: 3500, nonceDerivation: "keccak256(abi.encode(payee,salt))" }`. `chainId` is kept from phase 1, and `nonceDerivation` is a fixed string that names the rule (it is not a nonce);
+  - the `X-PAYMENT` payload's `authorization` adds `salt` (32 random bytes, not signed).
 - **Verification**, before any gas is spent, adds to phase 1's checks:
   - `to` equals the splitter;
   - the payload's `salt` is 32-byte hex;
@@ -90,9 +92,11 @@ The contracts move from the `UNLICENSED` placeholder to MIT before this deployme
   - `splitter → payee` for the creator share;
   - `splitter → treasury` for the rest.
 
+  The receipt must also carry the splitter's own `AdviceSettled` for the same payer, payee, nonce, value and shares; the event alone is never trusted. The treasury in the third log is the one the splitter's `treasury()` returns.
+
   Phase 1's classification is unchanged. `SettlementRejected` applies only to a pre-broadcast failure or a reverted receipt whose nonce is unused. Everything else is `SettlementUnknown`.
 
-- **Data:** migration `0039` adds `payee text`, `creator_amount_micro_ausd bigint` and `protocol_amount_micro_ausd bigint` to `pickler.advice_payments`. `pay_to` becomes the splitter. Settled rows record both amounts from the receipt.
+- **Data:** migration `0047_advice_split` adds `payee text`, `creator_amount_micro_ausd bigint` and `protocol_amount_micro_ausd bigint` to `pickler.advice_payments`. `pay_to` becomes the splitter. Settled rows record both amounts from the receipt.
 - **A third party may relay the same signed authorization** (S2 makes `settle` permissionless). The money still goes to the right payee and treasury. Our row then sees a used nonce, stays `pending`, and is reconciled by its tx. This is the same path as phase 1's unknown outcome.
 
 ## 5. Studio and app
@@ -113,7 +117,7 @@ The contracts move from the `UNLICENSED` placeholder to MIT before this deployme
 ## 6. Order of work
 
 1. **Contract:** source, tests, fork test, deploy script. Deployment waits for the owner (§8).
-2. **API:** the phase 1 path switched to the splitter, behind the same `ADVICE_X402_ENABLED` (still off), plus migration 0039.
+2. **API:** the phase 1 path switched to the splitter, behind the same `ADVICE_X402_ENABLED` (still off), plus migration 0047.
 3. **Studio copy:** in PR #127, then merge.
 4. **Phase 3 (app):** planned against this wire.
 

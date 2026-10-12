@@ -60,17 +60,54 @@ paused agents or unresolved provider costs. Private/unpublished agents return 40
 
 ## Payment (x402)
 
-The wire contract is [the x402 specification](specs/agent-advice-x402-v1.md) §4.3; its failure
-paths are §3.3. `POST /agents/:agentId/recommendations` is paid only when the API Worker has
-`ADVICE_X402_ENABLED=true`, the `X402_RELAYER_PRIVATE_KEY` secret and `MONAD_RPC_URL`. With the
-flag off the request is free exactly as above, and no 402 or payment header is ever produced. With
-the flag on but the key or RPC missing, or a key that is not 32-byte hex, the request fails closed:
-every `POST` answers 503 `ADVICE_UNAVAILABLE`, nothing is enqueued and no analysis is ever free,
-and the Worker logs one line per composition naming the variable, never a value. The composition is
-`paidAdviceFrom` in `workers/api/src/container.ts`: core's `createPaidAdvice` over the request's
-advice service and store, `PostgresAdvicePayments` on the invocation's pool and
-`createAusdAuthorizationGateway` (AUSD on Monad testnet, EIP-3009). The `GET` routes are unchanged
-and free.
+The wire contract is [the x402 specification](specs/agent-advice-x402-v1.md) §4.3, amended by
+[the fee split](specs/agent-advice-fee-split-v1.md) §4; its failure paths are §3.3 of the first.
+`POST /agents/:agentId/recommendations` is paid only when the API Worker has
+`ADVICE_X402_ENABLED=true`, the `X402_RELAYER_PRIVATE_KEY` secret, `MONAD_RPC_URL`,
+`ADVICE_SPLITTER_ADDRESS` (the deployed `PicklerAdviceSplitter`) and `ADVICE_SPLITTER_TREASURY`
+(the treasury that splitter was deployed with). With the flag off the request is free exactly as
+above, and no 402 or payment header is ever produced. With the flag on but any of the four
+missing, a key that is not 32-byte hex, or an address that is not a nonzero 20-byte hex address,
+the request fails closed: every `POST` answers 503 `ADVICE_UNAVAILABLE`, nothing is enqueued and no
+analysis is ever free, and the Worker logs one line per composition naming the variable, never a
+value. Both splitter variables stay empty in the committed Wrangler files until the deployment is
+recorded.
+
+Before a paid request is served, the API reads the splitter's immutable `treasury()` and compares
+it with `ADVICE_SPLITTER_TREASURY`, ignoring case. A mismatch (a splitter deployed with another
+treasury) or a failed read answers 503 `ADVICE_UNAVAILABLE` for that request and logs a line that
+names `ADVICE_SPLITTER_ADDRESS` and `ADVICE_SPLITTER_TREASURY` but no address; neither outcome is
+cached, so the next request reads again. A match is cached for the isolate's life. The composition
+is `paidAdviceFrom` in `workers/api/src/container.ts`: core's `createPaidAdvice` over the
+request's advice service and store, `PostgresAdvicePayments` on the invocation's pool and
+`createAusdAuthorizationGateway` with the splitter (AUSD on Monad testnet, EIP-3009). The `GET`
+routes are unchanged and free.
+
+### The splitter and the shares
+
+Each payment goes to the splitter, never straight to the agent. `payTo` is the splitter and
+`maxAmountRequired` is the full price. `extra` carries the AUSD EIP-712 domain
+(`name: "Agora Dollar"`, `version: "1"`, `chainId: 10143`) and adds
+`primaryType: "ReceiveWithAuthorization"`, `payee` (the agent wallet), `creatorBps: 6500`,
+`protocolBps: 3500` and `nonceDerivation: "keccak256(abi.encode(payee,salt))"`.
+
+The buyer signs an EIP-3009 `ReceiveWithAuthorization` for AUSD with `to` = the splitter and
+`value` = the full price. Its `nonce` is not random: the buyer picks 32 random bytes as `salt` and
+sets `nonce = keccak256(abi.encode(payee, salt))`, with `payee` the address in `extra.payee`. The
+`X-PAYMENT` payload's `authorization` carries `salt` beside the six signed fields
+(`paymentPayloadSchema` in `@pickler/api-schema`). The API refuses a nonce that does not derive
+from the agent's current wallet as `invalid_payment`, before any signature or chain call. A phase 1
+authorization is refused before anything settles: one addressed to the agent wallet is
+`wrong_recipient`, and a `TransferWithAuthorization` signature does not verify
+(`invalid_signature`).
+
+The relayer calls the splitter's permissionless `settle(from, value, validAfter, validBefore, salt,
+payee, v, r, s)`. The splitter recomputes the nonce from `payee` and `salt`, redeems the
+authorization with AUSD's `receiveWithAuthorization` (which only `to` may call) and, in the same
+transaction, pays `floor(value × 6500 / 10000)` to the agent wallet and the rest to the treasury.
+It keeps no balance and has no owner. A relayer that changes `payee` changes the nonce, so the
+signature fails and nothing moves. Settled rows record `payee`, `creator_amount_micro_ausd` and
+`protocol_amount_micro_ausd` (migration 0047).
 
 Creators set the price of one analysis, or take the agent off sale, in the live Studio → Limits
 (ANALYSES IN THE APP), which calls `PUT /v1/studio/agents/:id/advice-price`.
@@ -92,8 +129,8 @@ The order of a paid request is fixed in core:
    `invalid_signature`, `wrong_amount`, `wrong_recipient`, `expired`, `nonce_used`,
    `insufficient_funds`, `payer_not_linked` or `settlement_failed`. Every response keeps
    `Cache-Control: private, no-store`.
-6. **Settlement, then enqueue.** A pending row is inserted, the relayer submits
-   `transferWithAuthorization`, and only a confirmed transfer enqueues the job. The 202 carries
+6. **Settlement, then enqueue.** A pending row is inserted, the relayer calls the splitter's
+   `settle`, and only a confirmed settlement enqueues the job. The 202 carries
    `X-PAYMENT-RESPONSE`, a base64 JSON object with `success: true`, `transaction`, `network`
    (`"monad-testnet"`) and `payer`.
 
@@ -102,21 +139,23 @@ Settlement outcomes:
 - **Proven non-execution** — the simulation reverts before broadcast, or the mined receipt is
   reverted while the authorization nonce is still unused: 402 `settlement_failed`, the row becomes
   `failed`, nothing was charged and the same key may pay again.
-- **Unknown outcome** — a timeout, an RPC error, a success receipt without the matching AUSD
-  `Transfer` log, or a revert whose nonce was already consumed: 402 `settlement_failed`, the row
+- **Unknown outcome** — a timeout, an RPC error, a success receipt without all three matching
+  AUSD `Transfer` logs (payer to splitter for the price, splitter to the agent wallet for the
+  creator share, splitter to the treasury for the rest) and the splitter's matching
+  `AdviceSettled`, or a revert whose nonce was already consumed: 402 `settlement_failed`, the row
   stays `pending` and that key is never settled again while it is. Once the authorization's
   `validBefore` plus a 120-second grace has passed (server clock), the next request on the key
   reads the nonce on chain: unused, the row becomes `failed` and a new payment is allowed; used, it
   stays `pending` for manual reconciliation. Before that, the key answers `invalid_payment` without
   reading the chain. The grace keeps a server clock ahead of block time, or an RPC some blocks
-  behind, from reading a still-landing transfer's nonce as unused.
+  behind, from reading a still-landing settlement's nonce as unused.
 - **Busy or budget at enqueue** — decided in the enqueue transaction, so after settlement: 429,
   the payment stays `settled` with no job, and the same `Idempotency-Key` reuses it to enqueue
   without a second charge.
 - **Two attempts on one key at once** — the second `insertPending` is refused and answers 409
   `CONFLICT`; nothing is settled for it.
 
-Every unknown outcome, and a confirmed transfer whose `settled` write fails (that request answers
+Every unknown outcome, and a confirmed settlement whose `settled` write fails (that request answers
 500 and the row stays `pending`), is logged by the Worker as an `unrecorded advice settlement` line
 with the payment id, user, agent, `Idempotency-Key`, payer, nonce and the transaction hash when
 one exists, never the signature or a key. That line is where manual reconciliation starts.
@@ -208,8 +247,9 @@ fail queued jobs without calling providers; this delivery leaves production advi
 ## OpenAPI and validation
 
 `GET /v1/openapi.json` documents mounted advice routes even when admission is off. The request
-operation (`adviceRequest`) documents the 402 body, the `X-PAYMENT` request header and the
-`X-PAYMENT-RESPONSE` header of the 202 whether or not x402 is on in that deployment. The complete
+operation (`adviceRequest`) documents the 402 body (with the splitter terms in `extra`), the
+`X-PAYMENT` request header (a base64 string whose `contentSchema` is the decoded payload, `salt`
+included) and the `X-PAYMENT-RESPONSE` header of the 202 whether or not x402 is on in that deployment. The complete
 controlled export includes the group: `npm run api:openapi -- --output /tmp/pickler-openapi.json`.
 OpenAPI 3.1 uses server `/api`; generated schemas document JWT, idempotency, cursor pagination,
 states and envelopes. Read [API contract](api-contract.md) when adding an endpoint.
