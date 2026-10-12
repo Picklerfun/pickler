@@ -1255,8 +1255,17 @@ financial formulas. Graduation closes curve trading; marketplace/DEX swaps remai
 Preparation is explicit, uses portable API DTOs, and never imports core/infrastructure or Turnkey.
 `features/wallet/lib/public-token-transaction.ts` validates exact non-custodial actions; injected
 wallets send once and Mera signs locally via `mera-token-transaction.ts`, with PRF/key cleanup
-before broadcast. Session-scoped unsigned attempts restore uncertain submissions without retry.
-The storage module receives DTO decoding from the caller; it owns no HTTP validation rules.
+before broadcast. `features/wallet/lib/public-trade-flow.ts` continues a user-initiated approval
+through a freshly prepared swap only after canonical approval confirmation. Each action still
+requires its own wallet confirmation. A worse refreshed minimum requires an explicit review;
+changed identities/amounts are rejected. Loading belongs to the primary button, with concise
+terminal messages and the shared linked/copyable hash.
+Known hashes are observed automatically with at most thirty serial reads, three seconds apart,
+and a two-minute deadline. Hidden pages pause observation; unmount/account/network changes cancel
+it. Session-scoped unsigned attempts resume receipt reads on reload, never signing or broadcasting
+from an effect. Restored approvals prepare a review for explicit confirmation. Missing-hash
+submissions stay blocked. The storage module receives DTO decoding from the caller; it owns no
+HTTP validation rules. The market refreshes its database-backed read after a confirmed swap.
 The username chooser offers Choose another username, finite lookup/claim timeouts and stale-reply
 protection. Preserve account-linking/Disconnect semantics and the fifteen-character contract.
 Public trading is testnet active-curve only; DEX swaps and indexer changes are separate. Run the
