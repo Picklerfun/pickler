@@ -147,3 +147,16 @@ hit area and reduced-motion support. Its colors and geometry belong in `src/styl
 
 `SelectTrigger` also accepts `shape="pill"` for compact filters, using the shared white surface
 and pill radius. Its default remains `shape="box"`; existing form selects retain their appearance.
+
+AreaChart also accepts `variant="market" | "sparkline" | "default"` and optional `currency`.
+Default preserves straight observed lines. Market/sparkline use the library's curved visual
+interpolation without introducing data points; monetary tooltips use only actual observations.
+Market adds a bounded tooltip, left/right-arrow inspection, last-price label and an update-only
+pulse. Sparkline omits axes, tooltips and focus. Series updates retain the chart instance, fit the
+observed logical range across sparse series, and reveal changes without interpolating monetary
+values. Reduced-motion changes disable reveal/pulse dynamically. All chart styling remains here;
+consumers retain actual timestamps, precision, captions and TradingView attribution.
+
+AreaChart's optional `trend="up" | "down" | "flat"` selects surface win/loss/neutral line and
+fill tokens. Default remains up. Trend updates recolor the persistent series even when the
+observations have not changed; the component does not calculate price movement.
