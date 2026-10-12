@@ -1473,6 +1473,11 @@
   min-width: 0;
 }
 
+.filterCard .directorySearch,
+.filterCard .sortButton[aria-pressed="false"] {
+  background: var(--pk-bg);
+}
+
 @media (min-width: 900px) {
   .directorySearch {
     flex: 0 1 260px;
