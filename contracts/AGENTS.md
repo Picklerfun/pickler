@@ -16,7 +16,7 @@ Implemented, in the order the launchpad specification builds them:
 - `src/PicklerCurveDeployer.sol` — deploys a curve and binds it to its token in one call, which is the only window in which binding is possible.
 - `src/PicklerGraduationAdapterV4.sol` and `src/PicklerLiquidityLocker.sol` — permissionless, atomic graduation into a Uniswap V4 pool, and a locker that holds the position forever while letting only its fees out. The adapter deploys its own locker, so neither needs the other's address first.
 - `src/PicklerFeeEscrow.sol` — splits each launch's fees between its creator and the protocol and pays them out. Attribution is atomic with the transfer that funds it, and a claim debits only the caller.
-- `src/PicklerAdviceSplitter.sol` — receives one EIP-3009 `ReceiveWithAuthorization` payment in AUSD for a paid advice analysis and splits it in the same call: `floor(value × 6500 / 10000)` to the agent wallet (`payee`) and the rest to the immutable treasury. The buyer signs `nonce = keccak256(abi.encode(payee, salt))`, so a caller who changes `payee` breaks the signature and `settle` can stay permissionless. No owner, admin, upgrade or retained balance; a zero, self or treasury `payee` reverts. `test/mocks/MockEip3009Token.sol` checks the real EIP-712 digest (domain "Agora Dollar", version "1"), and `test/fork/AdviceSplitterFork.t.sol` settles a real AUSD authorization on a Monad testnet fork (funded by a pranked holder transfer, since `deal` cannot write AUSD's balance slot). Not deployed. See [the fee split specification](../docs/specs/agent-advice-fee-split-v1.md).
+- `src/PicklerAdviceSplitter.sol` — receives one EIP-3009 `ReceiveWithAuthorization` payment in AUSD for a paid advice analysis and splits it in the same call: `floor(value × 6500 / 10000)` to the agent wallet (`payee`) and the rest to the immutable treasury. The buyer signs `nonce = keccak256(abi.encode(payee, salt))`, so a caller who changes `payee` breaks the signature and `settle` can stay permissionless. No owner, admin, upgrade or retained balance; a zero, self or treasury `payee` reverts. `test/mocks/MockEip3009Token.sol` checks the real EIP-712 digest (domain "Agora Dollar", version "1"), and `test/fork/AdviceSplitterFork.t.sol` settles a real AUSD authorization on a Monad testnet fork (funded by a pranked holder transfer, since `deal` cannot write AUSD's balance slot). Deployed only by the explicit script below; no deployment is claimed here. See [the fee split specification](../docs/specs/agent-advice-fee-split-v1.md).
 - `test/fork/` — the Uniswap V4 spike (LP-02) and graduation end to end (A5, A6). These fork Monad testnet at a pinned block and run only when `MONAD_TESTNET_RPC_URL` is set, so `npm run contracts:test` stays offline; run them with `npm run contracts:test:fork`. Read [the spike findings](../docs/market/uniswap-v4-spike.md) before touching graduation: there is no official Uniswap V4 on Monad testnet, and the Monad-maintained one is a different build from mainnet's.
 
 General/mainnet network activation is not implemented. The explicit isolated testnet acceptance
@@ -54,6 +54,21 @@ npm run contracts:abi       # Regenerate public ABIs into packages/chain
 If a test suite disappears from a run rather than failing, suspect a stale build cache and re-run with `forge build --root contracts --force`. A vanished suite reports as a pass, so check the suite count, not just the colour.
 
 For formatting, use `forge fmt --root contracts --check`, and for static analysis `forge lint --root contracts`. Both run in `.github/workflows/contracts.yml` alongside the test suite and the two generated-artifact drift checks. Empty directories do not provide contract validation coverage. When introducing tests, ensure they run rather than treating an empty test result as success. Update this file alongside any change to the contract layout, dependencies, commands, or deployment process.
+
+## Advice splitter deployment
+
+`script/DeployAdviceSplitter.s.sol` deploys `PicklerAdviceSplitter` and nothing else. It requires `block.chainid == 10143` (it reverts `WrongChain` elsewhere), reads `ADVICE_SPLITTER_TREASURY` (required) and `AUSD_ADDRESS` (default: testnet AUSD), and logs the address, block, asset and treasury. No key or treasury address lives in code; the key comes only from forge's `--private-key` or `--account`. Without `--broadcast` it only simulates.
+
+Operator command (from `contracts/`), reading the deployer key and treasury from the owner's local env file without echoing them. Run the dry run first by omitting `--broadcast`:
+
+```sh
+set -a; . "$OWNER_ENV_FILE"; set +a   # defines ADVICE_SPLITTER_TREASURY and DEPLOYER_PRIVATE_KEY
+forge script script/DeployAdviceSplitter.s.sol --root . \
+  --rpc-url https://testnet-rpc.monad.xyz \
+  --private-key "$DEPLOYER_PRIVATE_KEY" --broadcast
+```
+
+After broadcasting, record the chain ID, address, deployment block, treasury and commit in the deployment record, and set the API's splitter address and treasury config. `broadcast/` is untracked; never commit keys. Keep `ADVICE_X402_ENABLED` false until the deployment is recorded and verified.
 
 ## Mandatory launch grants
 
