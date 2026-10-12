@@ -1,5 +1,5 @@
 "use client";
-import { PublicTokenTrade } from "@/features/tokens/public-token-trade";
+
 import { AgentTokenCard } from "@/features/tokens/agent-token-card";
 
 import type { AgentPersonaDto } from "@pickler/api-schema";
@@ -16,6 +16,11 @@ import { useWallet } from "@/features/wallet/lib/wallet-context";
 import { ActivityRow } from "./activity-row";
 import { AgentAvatar } from "./agent-parts";
 import { ReadRow } from "./read-parts";
+
+const PublicTokenMarket = dynamic(
+  () => import("@/features/tokens/public-token-market").then((module) => module.PublicTokenMarket),
+  { loading: () => <Skeleton shape="panel" /> },
+);
 
 const PublicTokenMarketPreview = dynamic(
   () =>
@@ -95,9 +100,7 @@ export function PersonaPage({
     <main
       className={`${styles.main} ${styles.mainNarrow} ${styles.personaPage}`}
       style={accentVars(persona.accent)}
-      data-token-market-preview={
-        marketPreview && preview && Boolean(persona.launchedToken) ? "true" : undefined
-      }
+      data-token-market={persona.launchedToken ? "true" : undefined}
     >
       <Link href="/agents" className={styles.backLink}>
         <Icon name="arrowLeft" size={14} /> AGENTS
@@ -187,25 +190,21 @@ export function PersonaPage({
 
       {marketPreview && preview && persona.launchedToken ? (
         <PublicTokenMarketPreview token={persona.launchedToken} />
+      ) : persona.launchedToken ? (
+        <PublicTokenMarket
+          key={`${persona.launchedToken.chainId}:${persona.launchedToken.address}`}
+          handle={persona.handle}
+          token={persona.launchedToken}
+          preview={preview}
+        />
       ) : (
-        <>
-          <div className={styles.personaToken}>
-            <AgentTokenCard
-              token={persona.launchedToken ?? null}
-              confirmationPending={persona.tokenConfirmation === "pending"}
-              preview={preview}
-            />
-          </div>
-
-          {persona.launchedToken && (
-            <PublicTokenTrade
-              key={persona.handle}
-              handle={persona.handle}
-              token={persona.launchedToken}
-              preview={preview}
-            />
-          )}
-        </>
+        <div className={styles.personaToken}>
+          <AgentTokenCard
+            token={null}
+            confirmationPending={persona.tokenConfirmation === "pending"}
+            preview={preview}
+          />
+        </div>
       )}
 
       <div className={styles.tabs} role="tablist" aria-label="Agent sections">

@@ -41,6 +41,14 @@ import { only } from "./lib/only.mjs";
 
 const ALL = [
   {
+    path: "/agents/public_trade",
+    name: "public-agent-token-market-live",
+    product: "marketplace",
+    surface: "light",
+    task: "Production public token market",
+    proves: "[data-token-market=live] canvas",
+  },
+  {
     path: "/studio?stage=perpl-token-empty",
     name: "studio-token-empty",
     product: "studio",
@@ -91,7 +99,7 @@ const ALL = [
     product: "marketplace",
     surface: "light",
     task: "Public token market mockup",
-    proves: 'main[data-token-market-preview=true] [aria-label="Token market preview"]',
+    proves: 'main[data-token-market=true] [aria-label="Token market preview"]',
   },
 
   ...["brief", "skills", "console", "identity"].map((section) => ({

@@ -730,3 +730,11 @@ reconciles a stored finalized launch whose identity remains pending, then re-rea
 ordinary state and public marketplace reads remain database-only. Recovery never signs, submits,
 issues another grant or advances cursors. JWT/owner authorization and private/no-store remain
 mandatory. Route OpenAPI describes this bounded recovery exception; DTOs and endpoints are unchanged.
+
+## Public token market composition
+
+The existing `GET /v1/launches/:id` additionally accepts a chain/address catalogue key and returns
+an optional version-1 market read. `composeTokenLauncher` exposes the configured committed
+reference terms to the database read model; it performs no new provider calls or signature.
+Preset/hash/factory matching remains in the read model. Public reads never enable launching
+or prepare visitor transactions. OpenAPI uses the extended portable launch-detail schema.

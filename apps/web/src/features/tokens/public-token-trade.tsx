@@ -61,10 +61,12 @@ export function PublicTokenTrade({
   handle,
   token,
   preview = false,
+  embedded = false,
 }: {
   handle: string;
   token: AgentTokenDto;
   preview?: boolean;
+  embedded?: boolean;
 }) {
   const wallet = useWallet();
   const [draft, setDraft] = useState<TradeDraft | null>(null);
@@ -255,7 +257,10 @@ export function PublicTokenTrade({
   const outputAsset = quote?.side === "buy" ? token.ticker : "AUSD";
   const outputDecimals = quote?.side === "buy" ? 18 : 6;
   return (
-    <section className={styles.panel} aria-label="Trade token publicly">
+    <section
+      className={`${styles.panel} ${embedded ? styles.embedded : ""}`}
+      aria-label="Trade token publicly"
+    >
       <div className={styles.head}>
         <h2>Trade token</h2>
         {token.chainId !== 10143 && <Tag>UNSUPPORTED NETWORK</Tag>}

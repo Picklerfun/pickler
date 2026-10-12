@@ -37,7 +37,7 @@ export default async function AgentPage(props: Props) {
     notFound();
   }
   return (
-    <PublicShell charts={marketPreview}>
+    <PublicShell charts={Boolean(persona.launchedToken)}>
       <PersonaPage
         persona={persona}
         nowMs={services.clock.now().getTime()}

@@ -54,11 +54,17 @@ export function launchRoutes(readModel: PostgresLaunchReadModel) {
   api.get(
     "/:id",
     operation("launchesGet", {
+      description:
+        "Read an indexed launch by UUID or eip155:CHAIN:ADDRESS key. Market observations include only canonical confirmed/finalized curve events and remain informational, never executable quotes.",
+      responseHeaders: {
+        "Cache-Control": { description: "Market reads are not cached", schema: { type: "string" } },
+      },
       errors: z.union([dto.launchErrorSchema, dto.envelopeErrorSchema]),
       errorStatuses: [400, 404, 500, 503],
       response: dto.freshnessReadSchema(dto.launchDetailSchema),
     }),
     async (c) => {
+      c.header("Cache-Control", "no-store");
       const result = await readModel.getLaunch(c.req.param("id"));
 
       if (result === null) {
@@ -72,6 +78,7 @@ export function launchRoutes(readModel: PostgresLaunchReadModel) {
   api.get(
     "/:id/trades",
     operation("launchesTrades", {
+      description: "Read indexed trades by launch UUID or eip155:CHAIN:ADDRESS key.",
       errors: z.union([dto.launchErrorSchema, dto.envelopeErrorSchema]),
       errorStatuses: [400, 404, 500, 503],
       response: dto.freshnessReadSchema(dto.launchTradeSchema.array()),
