@@ -14,8 +14,9 @@ For each Worker, open **Settings → Build** and use:
 - Production branch: `main`.
 - Root directory: `/`.
 - Excluded build watch paths: empty.
-- Enter each included watch path as its own chip. A single space-separated entry does not
-  represent multiple filters and can prevent builds from starting.
+- Paste included watch paths as a comma-separated list, using the values below. The dashboard
+  converts each path into its own chip; verify the saved entries before starting a build. A single
+  space-separated entry does not represent multiple filters and can prevent builds from starting.
 - Build Variables and Secrets: `NODE_VERSION=24.19.0` and
   `SKIP_DEPENDENCY_INSTALL=true`.
 
