@@ -1,5 +1,5 @@
 import { acceptedFrom, AdviceApiError, fetchStudioAgents, getRecommendation, history, requestAdvice } from "../src/advice/api";
-import type { AuthedFetch } from "../src/identity/api";
+import { IdentityError, WalletLockedError, type AuthedFetch } from "../src/identity/api";
 
 // The advice client against a fake fetch: statuses are data, the deadline covers the body.
 
@@ -83,4 +83,12 @@ test("getRecommendation and history read the envelope", async () => {
 test("an error status throws with the server's code; a body without the envelope is bad_response", async () => {
   await expect(getRecommendation(async () => json(404, { error: "not_found" }), "x")).rejects.toMatchObject({ status: 404, code: "not_found" });
   await expect(getRecommendation(async () => json(200, rec), "x")).rejects.toMatchObject({ code: "bad_response" });
+});
+
+test("a locked wallet surfaces as WalletLockedError, a failed sign-in keeps its code, a TypeError is network", async () => {
+  await expect(requestAdvice(async () => { throw new WalletLockedError(); }, "a1", "BTC", "k")).rejects.toBeInstanceOf(WalletLockedError);
+  await expect(getRecommendation(async () => { throw new WalletLockedError(); }, "r")).rejects.toBeInstanceOf(WalletLockedError);
+  const signin = requestAdvice(async () => { throw new IdentityError(0, "unexpected_message"); }, "a1", "BTC", "k");
+  await expect(signin).rejects.toMatchObject({ name: "AdviceApiError", code: "signin_unexpected_message" });
+  await expect(requestAdvice(async () => { throw new TypeError("offline"); }, "a1", "BTC", "k")).rejects.toMatchObject({ code: "network" });
 });

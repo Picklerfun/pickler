@@ -2,7 +2,7 @@
 // setTimeout (AbortSignal.timeout does not exist in RN), and the deadline covers the body: headers followed by a body that
 // never arrives are a `timeout`. The marketplace list is public (a bare array); the advice routes go through `authed`
 // (bearer, `{ data }` envelope); a 402 is x402's own shape and is returned, never thrown.
-import type { AuthedFetch, DoFetch } from "../identity/api";
+import { type AuthedFetch, type DoFetch, IdentityError, WalletLockedError } from "../identity/api";
 import { parseAccepted, parseData, parseHistory, parseRecommendation, parseStudioAgents } from "./parse";
 import type { AdviceAccepted, AdviceHistory, AdviceSymbol, Recommendation, StudioAgent } from "./types";
 
@@ -28,7 +28,9 @@ async function run(send: (signal: AbortSignal) => Promise<Response>): Promise<An
     if (controller.signal.aborted) throw new AdviceApiError(0, "timeout");
     return { status: res.status, ok: res.ok, json, settlementHeader: res.headers.get("X-PAYMENT-RESPONSE") };
   } catch (e) {
-    if (e instanceof AdviceApiError) throw e;
+    // WalletLockedError passes through unchanged ("unlock and retry", not "offline"); a failed sign-in keeps its code.
+    if (e instanceof AdviceApiError || e instanceof WalletLockedError) throw e;
+    if (e instanceof IdentityError) throw new AdviceApiError(e.status, `signin_${e.code}`);
     throw new AdviceApiError(0, controller.signal.aborted || (e instanceof Error && e.name === "AbortError") ? "timeout" : "network");
   } finally {
     clearTimeout(timer);

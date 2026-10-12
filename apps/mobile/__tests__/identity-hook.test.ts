@@ -325,6 +325,24 @@ describe("authedFetch", () => {
     expect(unlockStoredWallet).not.toHaveBeenCalled();
   });
 
+  test("the path must start with a slash", async () => {
+    api.fetchProfile.mockResolvedValue({ handle: "owl" });
+    respond(200);
+    await mount(unlocked(A));
+    await expect(latest.authedFetch("x")).rejects.toThrow(/start with "\/"/);
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+  });
+
+  test("a Headers instance keeps its entries", async () => {
+    api.fetchProfile.mockResolvedValue({ handle: "owl" });
+    const seen: Record<string, string>[] = [];
+    globalThis.fetch = jest.fn(async (_u: string, init: RequestInit) => { seen.push(init.headers as Record<string, string>); return new Response("{}"); }) as never;
+    await mount(unlocked(A));
+    await latest.authedFetch("/x", { headers: new Headers({ "Idempotency-Key": "k1" }) });
+    expect(seen[0]).toMatchObject({ "idempotency-key": "k1" });
+    expect(seen[0]!.Authorization).toMatch(/^Bearer /);
+  });
+
   test("the token is never persisted", async () => {
     api.fetchProfile.mockResolvedValue({ handle: "owl" });
     respond(200);
