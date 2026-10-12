@@ -12,6 +12,7 @@ import {
   PilotError,
   SettlementRejected,
   SettlementUnknown,
+  adviceShares,
   type AdviceAgent,
   type AdviceJob,
   type AdvicePaymentGateway,
@@ -46,9 +47,21 @@ const config = {
   plugins: { version: 1 as const, enabled: ["perpl"] as const },
   perpl: { version: 1 as const, network: "testnet" as const, markets: ["BTC"] as const },
 };
-const PAY_TO = "0x1111111111111111111111111111111111111111";
+const SPLITTER = "0x4444444444444444444444444444444444444444";
+const PAYEE = "0x1111111111111111111111111111111111111111";
 const PAYER = "0x2222222222222222222222222222222222222222";
 const NONCE = `0x${"ab".repeat(32)}`;
+
+/**
+ * The fake gateway's nonce derivation: the salt's hex reversed, for the agent wallet only. It is
+ * its own inverse, so each authorization below carries the salt that derives its nonce.
+ */
+function fakeDerivation(value: string): string {
+  return `0x${[...value.slice(2)].reverse().join("")}`;
+}
+
+const SALT = fakeDerivation(NONCE);
+const FOREIGN_NONCE = `0x${"00".repeat(32)}`;
 const SIGNATURE = `0x${"cd".repeat(65)}`;
 const TX = `0x${"ef".repeat(32)}`;
 const NOW_MS = 1_800_000_000_000;
@@ -100,7 +113,7 @@ function fixture(options: { enabled?: boolean } = {}) {
   const state = {
     replay: null as AdviceJob | null,
     enqueueError: null as Error | null,
-    terms: { priceMicro: 1_500_000n, payTo: PAY_TO, handle: "trader" } as SaleTerms | null,
+    terms: { priceMicro: 1_500_000n, payee: PAYEE, handle: "trader" } as SaleTerms | null,
     linked: true,
     record: null as AdvicePaymentRecord | null,
     signatureValid: true,
@@ -108,6 +121,10 @@ function fixture(options: { enabled?: boolean } = {}) {
     balance: 10_000_000n,
     settleError: null as Error | null,
     settledError: null as Error | null,
+    derivedNonce: null as string | null,
+    pendingPayee: null as string | null,
+    settledPayee: null as string | null,
+    settledAmounts: null as [bigint, bigint] | null,
   };
   const reported: UnrecordedSettlement[] = [];
   const repository: AdviceRepository = {
@@ -147,6 +164,7 @@ function fixture(options: { enabled?: boolean } = {}) {
     },
     insertPending: async (input) => {
       calls.push("insertPending");
+      state.pendingPayee = input.payee;
       state.record = paymentRow({
         id: "payment-1",
         payer: input.authorization.from,
@@ -155,8 +173,9 @@ function fixture(options: { enabled?: boolean } = {}) {
       });
       return state.record;
     },
-    settled: async (paymentId, txHash, blockNumber) => {
+    settled: async (paymentId, txHash, blockNumber, creatorAmount, protocolAmount) => {
       calls.push(`settled:${paymentId}:${txHash}:${blockNumber}`);
+      state.settledAmounts = [creatorAmount, protocolAmount];
       if (state.settledError) {
         throw state.settledError;
       }
@@ -174,6 +193,13 @@ function fixture(options: { enabled?: boolean } = {}) {
     },
   };
   const gateway: AdvicePaymentGateway = {
+    nonceFor: (payee, salt) => {
+      calls.push(`nonceFor:${payee}:${salt}`);
+      if (state.derivedNonce !== null) {
+        return state.derivedNonce;
+      }
+      return payee === PAYEE ? fakeDerivation(salt) : FOREIGN_NONCE;
+    },
     signatureValid: async () => {
       calls.push("signatureValid");
       return state.signatureValid;
@@ -186,12 +212,13 @@ function fixture(options: { enabled?: boolean } = {}) {
       calls.push("balance");
       return state.balance;
     },
-    settle: async () => {
+    settle: async (_authorization, _signature, payee) => {
       calls.push("settle");
+      state.settledPayee = payee;
       if (state.settleError) {
         throw state.settleError;
       }
-      return { txHash: TX, blockNumber: 42n };
+      return { txHash: TX, blockNumber: 42n, creatorAmount: 975_000n, protocolAmount: 525_000n };
     },
   };
   const advice = createAdviceService(repository, { enabled: options.enabled ?? true, policy });
@@ -202,6 +229,7 @@ function fixture(options: { enabled?: boolean } = {}) {
     gateway,
     now: () => NOW_MS,
     resourceBase: RESOURCE_BASE,
+    splitter: SPLITTER,
     reportUnrecordedSettlement: (settlement) => {
       reported.push(settlement);
     },
@@ -210,13 +238,16 @@ function fixture(options: { enabled?: boolean } = {}) {
 }
 
 function authorization(overrides: Partial<Authorization> = {}): Authorization {
+  const nonce = overrides.nonce ?? NONCE;
+
   return {
     from: PAYER,
-    to: PAY_TO,
+    to: SPLITTER,
     value: "1500000",
     validAfter: String(NOW_S - 10),
     validBefore: String(NOW_S + 240),
-    nonce: NONCE,
+    nonce,
+    salt: fakeDerivation(nonce),
     ...overrides,
   };
 }
@@ -249,7 +280,7 @@ test("1. without X-PAYMENT the buyer gets the payment requirements and nothing i
   }
   assert.equal(result.error, null);
   assert.equal(result.requirements.maxAmountRequired, "1500000");
-  assert.equal(result.requirements.payTo, PAY_TO);
+  assert.equal(result.requirements.payTo, SPLITTER);
   assert.equal(result.requirements.asset, AUSD_TESTNET);
   assert.equal(result.requirements.network, "monad-testnet");
   assert.equal(result.requirements.scheme, "exact");
@@ -258,6 +289,11 @@ test("1. without X-PAYMENT the buyer gets the payment requirements and nothing i
     name: "Agora Dollar",
     version: "1",
     chainId: 10143,
+    primaryType: "ReceiveWithAuthorization",
+    payee: PAYEE,
+    creatorBps: 6500,
+    protocolBps: 3500,
+    nonceDerivation: "keccak256(abi.encode(payee,salt))",
   });
   assert.equal(
     result.requirements.resource,
@@ -327,13 +363,33 @@ test("5. every refused payment answers 402 with its reason and never settles", a
       name: "price changed after the 402",
       error: "wrong_amount",
       setup: (f) => {
-        f.state.terms = { priceMicro: 2_000_000n, payTo: PAY_TO, handle: "trader" };
+        f.state.terms = { priceMicro: 2_000_000n, payee: PAYEE, handle: "trader" };
       },
     },
     {
       name: "other recipient",
       error: "wrong_recipient",
       header: () => header({ to: "0x3333333333333333333333333333333333333333" }),
+    },
+    {
+      name: "the agent wallet as recipient (a phase 1 TransferWithAuthorization)",
+      error: "wrong_recipient",
+      header: () => header({ to: PAYEE }),
+    },
+    {
+      name: "missing salt",
+      error: "invalid_payment",
+      header: () => header({ salt: undefined }),
+    },
+    {
+      name: "salt shorter than 32 bytes",
+      error: "invalid_payment",
+      header: () => header({ salt: `0x${"5a".repeat(31)}` }),
+    },
+    {
+      name: "salt that is not hex",
+      error: "invalid_payment",
+      header: () => header({ salt: `0x${"zz".repeat(32)}` }),
     },
     {
       name: "already expired",
@@ -420,7 +476,7 @@ test("5b. recipient comparison ignores address case", async () => {
     id,
     "BTC",
     "key-1",
-    header({ to: PAY_TO.toUpperCase().replace("0X", "0x") }),
+    header({ to: SPLITTER.toUpperCase().replace("0X", "0x") }),
   );
   assert.equal(result.kind, "accepted");
 });
@@ -691,4 +747,63 @@ test("12d. a settled transfer that cannot be recorded is reported with its hash 
   assert.deepEqual(f.reported, [{ ...TRAIL, reason: "settled_not_recorded", txHash: TX }]);
   assertNoSignature(f.reported);
   assert.ok(!f.calls.includes("enqueue"));
+});
+
+test("13. a nonce not derived from the agent wallet and the salt is refused before anything else", async () => {
+  const f = fixture();
+  f.state.derivedNonce = `0x${"99".repeat(32)}`;
+
+  const result = await f.paid.request(principal, id, "BTC", "key-1", header());
+
+  refused(result, "invalid_payment");
+  assert.ok(f.calls.includes(`nonceFor:${PAYEE}:${SALT}`));
+  assert.ok(!f.calls.includes("payerLinked"));
+  assert.ok(!f.calls.includes("signatureValid"));
+  assert.ok(!f.calls.includes("insertPending"));
+  assert.ok(!f.calls.includes("settle"));
+});
+
+test("13b. the derived nonce comparison ignores hex case", async () => {
+  const f = fixture();
+  f.state.derivedNonce = NONCE.toUpperCase().replace("0X", "0x");
+
+  const result = await f.paid.request(principal, id, "BTC", "key-1", header());
+
+  assert.equal(result.kind, "accepted");
+});
+
+test("13c. a nonce derived for another wallet than the agent's current one is refused", async () => {
+  const f = fixture();
+  const other = "0x5555555555555555555555555555555555555555";
+  f.state.terms = { priceMicro: 1_500_000n, payee: other, handle: "trader" };
+
+  const result = await f.paid.request(principal, id, "BTC", "key-1", header());
+
+  refused(result, "invalid_payment");
+  assert.ok(f.calls.includes(`nonceFor:${other}:${SALT}`));
+  assert.ok(!f.calls.includes("signatureValid"));
+  assert.ok(!f.calls.includes("settle"));
+});
+
+test("14. settle receives the payee and the row records both shares from the receipt", async () => {
+  const f = fixture();
+
+  const result = await f.paid.request(principal, id, "BTC", "key-1", header());
+
+  assert.equal(result.kind, "accepted");
+  assert.equal(f.state.pendingPayee, PAYEE);
+  assert.equal(f.state.settledPayee, PAYEE);
+  assert.deepEqual(f.state.settledAmounts, [975_000n, 525_000n]);
+});
+
+test("15. adviceShares floors the creator share and always sums to the value", () => {
+  assert.deepEqual(adviceShares(1_500_000n), { creator: 975_000n, protocol: 525_000n });
+  assert.deepEqual(adviceShares(1n), { creator: 0n, protocol: 1n });
+
+  for (let value = 0n; value <= 10_000n; value++) {
+    const shares = adviceShares(value);
+
+    assert.equal(shares.creator + shares.protocol, value);
+    assert.equal(shares.creator, (value * 6500n) / 10_000n);
+  }
 });

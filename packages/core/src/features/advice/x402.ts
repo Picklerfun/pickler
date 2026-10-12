@@ -11,6 +11,11 @@ const MAX_TIMEOUT_SECONDS = 300;
  * which could read a nonce as unused while the broadcast transfer is still landing.
  */
 export const PENDING_ABANDON_GRACE_SECONDS = 120;
+/** The agent creator's share of each paid analysis, in basis points (spec fee split S3). */
+export const CREATOR_BPS = 6500n;
+const BPS_DENOMINATOR = 10_000n;
+/** How the authorization nonce binds the agent wallet, as the splitter recomputes it (S2). */
+export const NONCE_DERIVATION = "keccak256(abi.encode(payee,salt))";
 
 export interface Authorization {
   from: string;
@@ -19,6 +24,8 @@ export interface Authorization {
   validAfter: string;
   validBefore: string;
   nonce: string;
+  /** 32 random bytes chosen by the buyer's app; `nonce` is derived from it and the payee. */
+  salt: string;
 }
 export interface PaymentPayload {
   x402Version: 1;
@@ -36,7 +43,17 @@ export interface PaymentRequirements {
   payTo: string;
   maxTimeoutSeconds: 300;
   asset: string;
-  extra: { name: "Agora Dollar"; version: "1"; chainId: 10143 };
+  extra: {
+    name: "Agora Dollar";
+    version: "1";
+    chainId: 10143;
+    primaryType: "ReceiveWithAuthorization";
+    /** The agent wallet that receives the creator share. */
+    payee: string;
+    creatorBps: 6500;
+    protocolBps: 3500;
+    nonceDerivation: typeof NONCE_DERIVATION;
+  };
 }
 export type PaymentError =
   | "invalid_payment"
@@ -50,7 +67,8 @@ export type PaymentError =
   | "settlement_failed";
 export interface SaleTerms {
   priceMicro: bigint;
-  payTo: string;
+  /** The agent wallet, paid the creator share by the splitter. */
+  payee: string;
   handle: string;
 }
 export interface AdvicePaymentRecord {
@@ -72,18 +90,35 @@ export interface AdvicePaymentStore {
     publicAgentId: string;
     key: string;
     authorization: Authorization;
+    payee: string;
   }): Promise<AdvicePaymentRecord>;
-  settled(id: string, txHash: string, blockNumber: bigint): Promise<void>;
+  settled(
+    id: string,
+    txHash: string,
+    blockNumber: bigint,
+    creatorAmount: bigint,
+    protocolAmount: bigint,
+  ): Promise<void>;
   failed(id: string, error: string): Promise<void>;
   attachJob(id: string, jobId: string): Promise<void>;
   refundOwed(id: string, error: string): Promise<void>;
 }
+export interface AdvicePaymentSettlement {
+  txHash: string;
+  blockNumber: bigint;
+  /** The creator share the receipt shows paid to the payee. */
+  creatorAmount: bigint;
+  /** The rest, paid to the treasury. */
+  protocolAmount: bigint;
+}
 export interface AdvicePaymentGateway {
+  /** `keccak256(abi.encode(payee, salt))`: the nonce an authorization for `payee` must carry. */
+  nonceFor(payee: string, salt: string): string;
   signatureValid(authorization: Authorization, signature: string): Promise<boolean>;
   nonceUsed(from: string, nonce: string): Promise<boolean>;
   balance(address: string): Promise<bigint>;
   /**
-   * Submits `transferWithAuthorization` and waits for the receipt. Throws `SettlementRejected`
+   * Submits the splitter's `settle` for `payee` and waits for the receipt. Throws `SettlementRejected`
    * ONLY when the authorization provably never executed (simulation reverted before broadcast, or
    * a mined receipt with status reverted). Any other throw means the outcome is unknown: the
    * transaction may still mine until `validBefore`. A `SettlementUnknown` carries the hash when
@@ -92,7 +127,15 @@ export interface AdvicePaymentGateway {
   settle(
     authorization: Authorization,
     signature: string,
-  ): Promise<{ txHash: string; blockNumber: bigint }>;
+    payee: string,
+  ): Promise<AdvicePaymentSettlement>;
+}
+
+/** The split of `value`: the creator's floor of 65%, and the rest to the protocol treasury. */
+export function adviceShares(value: bigint): { creator: bigint; protocol: bigint } {
+  const creator = (value * CREATOR_BPS) / BPS_DENOMINATOR;
+
+  return { creator, protocol: value - creator };
 }
 
 /** The settlement provably never executed; a new attempt for the same key is safe. */
@@ -147,7 +190,7 @@ export type PaidAdviceResult =
   | { kind: "accepted"; job: AdviceJob; settlement: string | null };
 
 const ADDRESS = /^0x[0-9a-fA-F]{40}$/;
-const NONCE = /^0x[0-9a-fA-F]{64}$/;
+const BYTES32 = /^0x[0-9a-fA-F]{64}$/;
 const SIGNATURE = /^0x[0-9a-fA-F]{130}$/;
 const UINT = /^\d{1,78}$/;
 
@@ -199,7 +242,8 @@ export function decodePaymentHeader(header: string): PaymentPayload {
     !matches(authorization.value, UINT) ||
     !matches(authorization.validAfter, UINT) ||
     !matches(authorization.validBefore, UINT) ||
-    !matches(authorization.nonce, NONCE)
+    !matches(authorization.nonce, BYTES32) ||
+    !matches(authorization.salt, BYTES32)
   ) {
     throw new X402Refusal("invalid_payment", null);
   }
@@ -216,6 +260,7 @@ export function decodePaymentHeader(header: string): PaymentPayload {
         validAfter: authorization.validAfter,
         validBefore: authorization.validBefore,
         nonce: authorization.nonce,
+        salt: authorization.salt,
       },
     },
   };
@@ -235,9 +280,10 @@ export function encodeSettlement(input: { transaction: string; payer: string }):
 function staticRefusal(
   authorization: Authorization,
   terms: SaleTerms,
+  splitter: string,
   nowSeconds: bigint,
 ): PaymentError | null {
-  if (authorization.to.toLowerCase() !== terms.payTo.toLowerCase()) {
+  if (authorization.to.toLowerCase() !== splitter.toLowerCase()) {
     return "wrong_recipient";
   }
   if (authorization.value !== terms.priceMicro.toString()) {
@@ -264,6 +310,8 @@ export function createPaidAdvice(deps: {
   gateway: AdvicePaymentGateway;
   now: () => number;
   resourceBase: string;
+  /** The `PicklerAdviceSplitter` address: the authorization's `to` and the 402's `payTo`. */
+  splitter: string;
   /** Called when a settlement's outcome is unknown or its success could not be recorded. */
   reportUnrecordedSettlement?(settlement: UnrecordedSettlement): void;
 }) {
@@ -278,11 +326,26 @@ export function createPaidAdvice(deps: {
     resource: `${deps.resourceBase}/v1/agent-advice/agents/${publicAgentId}/recommendations`,
     description: `Fresh 24-hour ${symbol} analysis by @${terms.handle}`,
     mimeType: "application/json",
-    payTo: terms.payTo,
+    payTo: deps.splitter,
     maxTimeoutSeconds: MAX_TIMEOUT_SECONDS,
     asset: AUSD_TESTNET,
-    extra: { name: "Agora Dollar", version: "1", chainId: 10143 },
+    extra: {
+      name: "Agora Dollar",
+      version: "1",
+      chainId: 10143,
+      primaryType: "ReceiveWithAuthorization",
+      payee: terms.payee,
+      creatorBps: 6500,
+      protocolBps: 3500,
+      nonceDerivation: NONCE_DERIVATION,
+    },
   });
+  // The nonce binds the agent wallet: a nonce derived from another payee or salt cannot settle.
+  const nonceBindsPayee = (authorization: Authorization, payee: string): boolean => {
+    const derived = deps.gateway.nonceFor(payee, authorization.salt);
+
+    return derived.toLowerCase() === authorization.nonce.toLowerCase();
+  };
   const enqueue = async (
     principal: Principal,
     publicAgentId: string,
@@ -361,9 +424,12 @@ export function createPaidAdvice(deps: {
       }
       const { authorization, signature } = payment.payload;
       const nowSeconds = BigInt(Math.floor(deps.now() / 1000));
-      const refusal = staticRefusal(authorization, terms, nowSeconds);
+      const refusal = staticRefusal(authorization, terms, deps.splitter, nowSeconds);
       if (refusal) {
         return { kind: "payment_required", requirements, error: refusal };
+      }
+      if (!nonceBindsPayee(authorization, terms.payee)) {
+        return { kind: "payment_required", requirements, error: "invalid_payment" };
       }
       if (!(await deps.store.payerLinked(userId, authorization.from.toLowerCase()))) {
         return { kind: "payment_required", requirements, error: "payer_not_linked" };
@@ -382,6 +448,7 @@ export function createPaidAdvice(deps: {
         publicAgentId,
         key,
         authorization,
+        payee: terms.payee,
       });
       const trail = {
         paymentId: pending.id,
@@ -391,9 +458,9 @@ export function createPaidAdvice(deps: {
         payer: authorization.from,
         nonce: authorization.nonce,
       };
-      let receipt: { txHash: string; blockNumber: bigint };
+      let receipt: AdvicePaymentSettlement;
       try {
-        receipt = await deps.gateway.settle(authorization, signature);
+        receipt = await deps.gateway.settle(authorization, signature, terms.payee);
       } catch (error) {
         // Only a proven rejection frees the key; an unknown outcome stays pending (may still mine).
         if (error instanceof SettlementRejected) {
@@ -405,7 +472,13 @@ export function createPaidAdvice(deps: {
         return { kind: "payment_required", requirements, error: "settlement_failed" };
       }
       try {
-        await deps.store.settled(pending.id, receipt.txHash, receipt.blockNumber);
+        await deps.store.settled(
+          pending.id,
+          receipt.txHash,
+          receipt.blockNumber,
+          receipt.creatorAmount,
+          receipt.protocolAmount,
+        );
       } catch (error) {
         // The transfer landed but the row stays pending: this report is its only record.
         deps.reportUnrecordedSettlement?.({

@@ -197,6 +197,11 @@ export function createAusdAuthorizationGateway(
     }) as unknown as WalletClientLike);
 
   const gateway: AdvicePaymentGateway = {
+    nonceFor() {
+      // Phase 1 transfers carry a buyer-chosen nonce; the splitter's derivation replaces this.
+      throw new Error("The payee nonce derivation needs the advice splitter gateway");
+    },
+
     async signatureValid(authorization, signature) {
       try {
         return await verifyTypedData({
@@ -315,7 +320,13 @@ export function createAusdAuthorizationGateway(
         throw new SettlementUnknown(`Settlement ${hash} mined without the expected transfer`, hash);
       }
 
-      return { txHash: hash, blockNumber: receipt.blockNumber };
+      // A phase 1 transfer pays the whole value to `to`: there is no protocol share.
+      return {
+        txHash: hash,
+        blockNumber: receipt.blockNumber,
+        creatorAmount: BigInt(authorization.value),
+        protocolAmount: 0n,
+      };
     },
   };
   return gateway;

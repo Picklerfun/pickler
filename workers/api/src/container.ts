@@ -8,11 +8,7 @@ import {
   type AdviceRepository,
   type UnrecordedSettlement,
 } from "@pickler/core";
-import {
-  createAusdAuthorizationGateway,
-  PostgresAdvicePayments,
-  PostgresAdviceStore,
-} from "@pickler/infrastructure";
+import { PostgresAdviceStore } from "@pickler/infrastructure";
 import { parseAdvicePolicy } from "@pickler/trading/perps";
 import {
   VENUE_CONTRACTS,
@@ -202,9 +198,9 @@ function unavailablePaidAdvice(): ReturnType<typeof createPaidAdvice> {
 /**
  * The paid advice request (x402), or undefined when it is off. It is off unless
  * `ADVICE_X402_ENABLED` is "true"; off, `POST /v1/agent-advice/.../recommendations` is free exactly
- * as before. On, it sells only with both the relayer key and `MONAD_RPC_URL`: the flag without
- * them, or with a key viem refuses, fails closed (every request answers 503) and says so by
- * variable name, never by value.
+ * as before. On, it fails closed (every request answers 503) and says so by variable name, never
+ * by value: without the relayer key and `MONAD_RPC_URL`, with a malformed key, and, until the
+ * advice splitter's address is configured, always, since payments settle only through it.
  */
 export function paidAdviceFrom(
   env: Pick<Env, "ADVICE_X402_ENABLED" | "X402_RELAYER_PRIVATE_KEY" | "MONAD_RPC_URL">,
@@ -228,26 +224,10 @@ export function paidAdviceFrom(
     log("X402_RELAYER_PRIVATE_KEY is not a 32-byte hex private key; advice requests are refused");
     return unavailablePaidAdvice();
   }
-  let gateway: ReturnType<typeof createAusdAuthorizationGateway>;
-  try {
-    gateway = createAusdAuthorizationGateway({
-      rpcUrl,
-      relayerPrivateKey: relayerPrivateKey as `0x${string}`,
-    });
-  } catch {
-    // The error is dropped unread: it may quote the key.
-    log("X402_RELAYER_PRIVATE_KEY or MONAD_RPC_URL was refused; advice requests are refused");
-    return unavailablePaidAdvice();
-  }
-  return createPaidAdvice({
-    advice: deps.advice,
-    repository: deps.repository,
-    store: new PostgresAdvicePayments(deps.pool),
-    gateway,
-    now: () => Date.now(),
-    resourceBase: "https://pickler.fun/api",
-    reportUnrecordedSettlement: reportUnrecordedSettlement(log),
-  });
+  // Payments settle through the advice splitter, whose address is not configured yet: until it
+  // is, a flag that is on sells nothing and never runs a free analysis.
+  log("x402 is on but ADVICE_SPLITTER_ADDRESS is not configured; advice requests are refused");
+  return unavailablePaidAdvice();
 }
 
 /**

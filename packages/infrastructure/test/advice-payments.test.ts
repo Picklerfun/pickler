@@ -76,6 +76,7 @@ async function setup(t: TestContext) {
     validAfter: "0",
     validBefore: "1900000000",
     nonce,
+    salt: `0x${hex(32)}`,
   });
   const store = new PostgresAdvicePayments(pool);
   const insert = (key: string, authorization: Authorization, userId = buyer) =>
@@ -113,7 +114,7 @@ test("saleTerms returns price, wallet and handle, and null when not for sale", a
   await f.link();
   assert.deepEqual(await f.store.saleTerms(f.agentId), {
     priceMicro: 1500000n,
-    payTo: f.payTo,
+    payee: f.payTo,
     handle: "analyst",
   });
   await f.price(null);

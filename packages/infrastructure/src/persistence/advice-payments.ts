@@ -42,7 +42,7 @@ export class PostgresAdvicePayments implements AdvicePaymentStore {
       return null;
     }
 
-    return { priceMicro: BigInt(row.price), payTo: row.payTo, handle: row.handle };
+    return { priceMicro: BigInt(row.price), payee: row.payTo, handle: row.handle };
   }
 
   async payerLinked(userId: string, address: string): Promise<boolean> {

@@ -28,6 +28,7 @@ function authorization(overrides: Partial<Authorization> = {}): Authorization {
     validAfter: "0",
     validBefore: "4102444800",
     nonce: NONCE,
+    salt: `0x${"5a".repeat(32)}`,
     ...overrides,
   };
 }
@@ -201,10 +202,15 @@ test("settle simulates before it broadcasts and returns the hash and block", asy
   const { gateway: subject, calls } = gateway({});
   const signed = authorization();
 
-  const result = await subject.settle(signed, await sign(signed));
+  const result = await subject.settle(signed, await sign(signed), PAY_TO);
 
   assert.deepEqual(calls, ["simulate", "write"]);
-  assert.deepEqual(result, { txHash: HASH, blockNumber: 77n });
+  assert.deepEqual(result, {
+    txHash: HASH,
+    blockNumber: 77n,
+    creatorAmount: 250000n,
+    protocolAmount: 0n,
+  });
 });
 
 test("a simulation revert before broadcast is a SettlementRejected and never writes", async () => {
@@ -216,7 +222,7 @@ test("a simulation revert before broadcast is a SettlementRejected and never wri
   const signed = authorization();
 
   await assert.rejects(
-    subject.settle(signed, await sign(signed)),
+    subject.settle(signed, await sign(signed), PAY_TO),
     (error) => error instanceof SettlementRejected,
   );
   assert.deepEqual(calls, []);
@@ -230,7 +236,7 @@ test("an error from writeContract is ambiguous, a SettlementUnknown without a ha
   });
   const signed = authorization();
 
-  await assert.rejects(subject.settle(signed, await sign(signed)), unknownOutcome(null));
+  await assert.rejects(subject.settle(signed, await sign(signed), PAY_TO), unknownOutcome(null));
 });
 
 test("a reverted receipt is a SettlementRejected", async () => {
@@ -240,7 +246,7 @@ test("a reverted receipt is a SettlementRejected", async () => {
   const signed = authorization();
 
   await assert.rejects(
-    subject.settle(signed, await sign(signed)),
+    subject.settle(signed, await sign(signed), PAY_TO),
     (error) => error instanceof SettlementRejected,
   );
 });
@@ -255,7 +261,7 @@ test("a receipt-wait timeout is a SettlementUnknown with the hash and asks for 3
   });
   const signed = authorization();
 
-  await assert.rejects(subject.settle(signed, await sign(signed)), unknownOutcome(HASH));
+  await assert.rejects(subject.settle(signed, await sign(signed), PAY_TO), unknownOutcome(HASH));
   assert.deepEqual(timeouts, [30_000]);
 });
 
@@ -267,7 +273,7 @@ test("an RPC error after the hash exists is a SettlementUnknown with the hash", 
   });
   const signed = authorization();
 
-  await assert.rejects(subject.settle(signed, await sign(signed)), unknownOutcome(HASH));
+  await assert.rejects(subject.settle(signed, await sign(signed), PAY_TO), unknownOutcome(HASH));
 });
 
 test("a success receipt without the matching AUSD transfer is a SettlementUnknown with the hash", async () => {
@@ -280,7 +286,7 @@ test("a success receipt without the matching AUSD transfer is a SettlementUnknow
   });
   const signed = authorization();
 
-  await assert.rejects(subject.settle(signed, await sign(signed)), unknownOutcome(HASH));
+  await assert.rejects(subject.settle(signed, await sign(signed), PAY_TO), unknownOutcome(HASH));
 });
 
 const ALREADY_USED = { read: async () => true };
@@ -299,7 +305,7 @@ test("a simulation revert with a consumed nonce is a SettlementUnknown without a
   });
   const signed = authorization();
 
-  await assert.rejects(subject.settle(signed, await sign(signed)), unknownOutcome(null));
+  await assert.rejects(subject.settle(signed, await sign(signed), PAY_TO), unknownOutcome(null));
 });
 
 test("a reverted receipt with a consumed nonce is a SettlementUnknown with the hash", async () => {
@@ -309,7 +315,7 @@ test("a reverted receipt with a consumed nonce is a SettlementUnknown with the h
   });
   const signed = authorization();
 
-  await assert.rejects(subject.settle(signed, await sign(signed)), unknownOutcome(HASH));
+  await assert.rejects(subject.settle(signed, await sign(signed), PAY_TO), unknownOutcome(HASH));
 });
 
 test("a reverted receipt whose nonce state cannot be read is a SettlementUnknown with the hash", async () => {
@@ -319,14 +325,14 @@ test("a reverted receipt whose nonce state cannot be read is a SettlementUnknown
   });
   const signed = authorization();
 
-  await assert.rejects(subject.settle(signed, await sign(signed)), unknownOutcome(HASH));
+  await assert.rejects(subject.settle(signed, await sign(signed), PAY_TO), unknownOutcome(HASH));
 });
 
 test("a signature that cannot be parsed is rejected before anything is sent", async () => {
   const { gateway: subject, calls } = gateway({});
 
   await assert.rejects(
-    subject.settle(authorization(), "0xzz"),
+    subject.settle(authorization(), "0xzz", PAY_TO),
     (error) => error instanceof SettlementRejected,
   );
   assert.deepEqual(calls, []);
@@ -363,7 +369,7 @@ test("no settle error carries the relayer key, the signature or a cause", async 
   for (const overrides of failing) {
     const { gateway: subject } = gateway(overrides);
 
-    await assert.rejects(subject.settle(signed, signature), (error) => {
+    await assert.rejects(subject.settle(signed, signature, PAY_TO), (error) => {
       return (
         error instanceof Error &&
         !error.message.includes(RELAYER.slice(2)) &&

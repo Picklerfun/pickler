@@ -77,6 +77,11 @@ export const paymentRequirementsSchema = z
         name: z.literal("Agora Dollar"),
         version: z.literal("1"),
         chainId: z.literal(10143),
+        primaryType: z.literal("ReceiveWithAuthorization"),
+        payee: z.string().regex(/^0x[0-9a-fA-F]{40}$/),
+        creatorBps: z.literal(6500),
+        protocolBps: z.literal(3500),
+        nonceDerivation: z.literal("keccak256(abi.encode(payee,salt))"),
       })
       .strict(),
   })

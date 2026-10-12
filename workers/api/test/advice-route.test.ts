@@ -49,7 +49,10 @@ const config = {
   plugins: { version: 1 as const, enabled: ["perpl"] as const },
   perpl: { version: 1 as const, network: "testnet" as const, markets: ["BTC"] as const },
 };
-const PAY_TO = "0x1111111111111111111111111111111111111111";
+const PAYEE = "0x1111111111111111111111111111111111111111";
+const SPLITTER = "0x4444444444444444444444444444444444444444";
+const NONCE = `0x${"ab".repeat(32)}`;
+const SALT = `0x${"ba".repeat(32)}`;
 const PAYER = "0x2222222222222222222222222222222222222222";
 const TX = `0x${"ef".repeat(32)}`;
 const NOW_MS = Date.now();
@@ -64,7 +67,7 @@ interface PaidState {
 }
 function paidState(): PaidState {
   return {
-    terms: { priceMicro: 1_500_000n, payTo: PAY_TO, handle: "trader" },
+    terms: { priceMicro: 1_500_000n, payee: PAYEE, handle: "trader" },
     replay: null,
     record: null,
     inFlight: false,
@@ -176,10 +179,16 @@ function paidAdvice(
     refundOwed: async () => {},
   };
   const gateway: AdvicePaymentGateway = {
+    nonceFor: () => NONCE,
     signatureValid: async () => true,
     nonceUsed: async () => false,
     balance: async () => 10_000_000n,
-    settle: async () => ({ txHash: TX, blockNumber: 42n }),
+    settle: async () => ({
+      txHash: TX,
+      blockNumber: 42n,
+      creatorAmount: 975_000n,
+      protocolAmount: 525_000n,
+    }),
   };
   return createPaidAdvice({
     advice,
@@ -188,6 +197,7 @@ function paidAdvice(
     gateway,
     now: () => NOW_MS,
     resourceBase: "https://pickler.fun/api",
+    splitter: SPLITTER,
   });
 }
 function payment(value = "1500000") {
@@ -199,11 +209,12 @@ function payment(value = "1500000") {
       signature: `0x${"cd".repeat(65)}`,
       authorization: {
         from: PAYER,
-        to: PAY_TO,
+        to: SPLITTER,
         value,
         validAfter: String(NOW_S - 10),
         validBefore: String(NOW_S + 240),
-        nonce: `0x${"ab".repeat(32)}`,
+        nonce: NONCE,
+        salt: SALT,
       },
     },
   };
@@ -371,10 +382,19 @@ const requirements = {
   resource: `https://pickler.fun/api/v1/agent-advice/agents/${id}/recommendations`,
   description: "Fresh 24-hour BTC analysis by @trader",
   mimeType: "application/json",
-  payTo: PAY_TO,
+  payTo: SPLITTER,
   maxTimeoutSeconds: 300,
   asset: "0xa9012a055bd4e0eDfF8Ce09f960291C09D5322dC",
-  extra: { name: "Agora Dollar", version: "1", chainId: 10143 },
+  extra: {
+    name: "Agora Dollar",
+    version: "1",
+    chainId: 10143,
+    primaryType: "ReceiveWithAuthorization",
+    payee: PAYEE,
+    creatorBps: 6500,
+    protocolBps: 3500,
+    nonceDerivation: "keccak256(abi.encode(payee,salt))",
+  },
 };
 
 test("x402 on: a request without X-PAYMENT answers 402 with the terms and enqueues nothing", async () => {

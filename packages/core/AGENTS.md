@@ -374,16 +374,28 @@ provider calculations out of core. See [Agent advice](../../docs/agent-advice.md
 of an agent's analysis price (micro-AUSD bigint to a decimal string). `parseAusdToMicro` is the
 inverse (INVALID_INPUT beyond 6 decimals or outside `ADVICE_PRICE_MIN_MICRO`..`MAX_MICRO`, 0.10 to 100). `AgentSummary`, `AgentPersona`
 and `DirectoryAgent.agent` carry the agent `id` and its nullable `advicePrice`.
-`features/advice/x402.ts` owns the paid request of docs/specs/agent-advice-x402-v1.md §4.3:
-`X402_NETWORK`, `AUSD_TESTNET`, the x402 v1 wire types (`Authorization`, `PaymentPayload`,
-`PaymentRequirements`, `PaymentError`), `decodePaymentHeader` (throws `X402Refusal`),
-`encodeSettlement`, the ports `AdvicePaymentStore` (sale terms, payer links, payment rows) and
-`AdvicePaymentGateway` (signature, nonce, balance, settlement), `SettlementRejected`,
+`features/advice/x402.ts` owns the paid request of docs/specs/agent-advice-x402-v1.md §4.3 as
+amended by docs/specs/agent-advice-fee-split-v1.md (§2, §4):
+`X402_NETWORK`, `AUSD_TESTNET`, `CREATOR_BPS` (6500n), `NONCE_DERIVATION`, `adviceShares(value)`
+(the creator's floor of 65% and the rest to the protocol, always summing to `value`), the x402 v1
+wire types (`Authorization` with its 32-byte `salt`, `PaymentPayload`, `PaymentRequirements`,
+`PaymentError`), `decodePaymentHeader` (throws `X402Refusal`; a missing or malformed `salt` is
+`invalid_payment`), `encodeSettlement`, the ports `AdvicePaymentStore` (sale terms with the agent
+wallet as `payee`, payer links, payment rows; `insertPending` takes the `payee` and `settled` both
+shares) and `AdvicePaymentGateway` (`nonceFor(payee, salt)`, hashed in infrastructure; signature,
+nonce, balance, and `settle(authorization, signature, payee)` returning the hash, block and both
+shares from the receipt), `AdvicePaymentSettlement`, `SettlementRejected`,
 `SettlementUnknown` (an unknown outcome, with `txHash` once broadcast), `UnrecordedSettlement`,
-`PENDING_ABANDON_GRACE_SECONDS` and `createPaidAdvice`. Its order is fixed: user principal → replay (returned even while advice is
+`PENDING_ABANDON_GRACE_SECONDS` and `createPaidAdvice`. Its deps include `splitter`, the
+`PicklerAdviceSplitter` address: the 402's `payTo` is the splitter, `maxAmountRequired` the full
+price, and `extra` adds `primaryType: "ReceiveWithAuthorization"`, `payee` (the agent wallet),
+`creatorBps: 6500`, `protocolBps: 3500` and `nonceDerivation`. Its order is fixed: user principal → replay (returned even while advice is
 disabled, as in the service; another symbol is `CONFLICT`) → `admit` (the service's admission
 checks without enqueueing) → the key's payment row → sale terms
-(`NOT_FOUND`/`ADVICE_NOT_FOR_SALE`) → 402 → static checks (signature exactly 65 bytes) → payer
+(`NOT_FOUND`/`ADVICE_NOT_FOR_SALE`) → 402 → static checks (signature exactly 65 bytes; `to` must
+be the splitter, so an authorization to the agent wallet is `wrong_recipient`) → payee binding
+(`gateway.nonceFor(payee, salt)` must equal the authorization's nonce, ignoring hex case; otherwise
+`invalid_payment` before the payer link, the signature or any settlement) → payer
 link → signature → nonce → balance → pending row → settle → enqueue. A replay or a settled row
 never settles again; a `refund_owed` row refuses with `invalid_payment`. `settle` throws
 `SettlementRejected` only when the authorization provably never executed (simulation revert,

@@ -496,13 +496,16 @@ ADVICE_ENABLED, valid reviewed USD policy and research Queue; reads remain mount
 Never accept internal tenant/runtime IDs or models from consumers. Completed history is shared;
 other statuses are requester-only. See [Agent advice](../../docs/agent-advice.md).
 
-The POST request is sold with x402 when `paidAdviceFrom` (`src/container.ts`) composes
-`AdviceRouteServices.paid`: `ADVICE_X402_ENABLED === "true"` plus the `X402_RELAYER_PRIVATE_KEY`
-secret (32-byte hex) and `MONAD_RPC_URL`. It shares the invocation's advice store and service
-with the free path and builds `PostgresAdvicePayments` on the invocation's pool and
-`createAusdAuthorizationGateway`. The flag with a missing or refused key/RPC logs one line naming
-no value and fails closed: `paid` is a request that throws `PilotError("ADVICE_UNAVAILABLE")`, so
-every POST answers 503 and nothing is enqueued. A composed `paid` logs every settlement
+The POST request is sold with x402 through the advice splitter
+(docs/specs/agent-advice-fee-split-v1.md), whose address is not configured yet: today
+`paidAdviceFrom` (`src/container.ts`) composes `AdviceRouteServices.paid` only when
+`ADVICE_X402_ENABLED === "true"`, and then always fails closed. It checks the
+`X402_RELAYER_PRIVATE_KEY` secret (32-byte hex) and `MONAD_RPC_URL` first, then logs that
+`ADVICE_SPLITTER_ADDRESS` is not configured. Each case logs one line naming no value and fails
+closed: `paid` is a request that throws `PilotError("ADVICE_UNAVAILABLE")`, so
+every POST answers 503 and nothing is enqueued. Once the splitter is configured, a composed `paid`
+shares the invocation's advice store and service with the free path, builds
+`PostgresAdvicePayments` on the invocation's pool and `createAusdAuthorizationGateway`, and logs every settlement
 whose AUSD may have moved without a `settled` row (`reportUnrecordedSettlement`: reason, ids, key,
 payer, nonce and hash, never the signature). Only the flag off leaves `paid` absent; absent, the
 route is free and unchanged. With `paid`, the handler
