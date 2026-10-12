@@ -1,4 +1,3 @@
-import { Worker } from "node:worker_threads";
 import { readFile, mkdir, appendFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { execFileSync } from "node:child_process";
@@ -6,12 +5,12 @@ import { PilotError } from "@pickler/core";
 import { localStudyDatabase } from "../perps-study/database-env.js";
 import {
   PostgresResearchStore,
+  createLocalPerpsLabStore,
   PostgresPerpsPaperStore,
   PostgresPerpsStudyStore,
   exportPerpsAudit,
   exportPerpsAuditParts,
   guardPerpsLabPool,
-  observePerpsLabPool,
   type PerpsLabFailureDiagnostic,
 } from "@pickler/infrastructure/perps-lab";
 import { createPriorityPerplStudyData } from "@pickler/agent-runtime/plugins/perps-paper/public-study";
@@ -33,6 +32,7 @@ import { createPtsPersistenceDiagnostic } from "./persistence-diagnostic.js";
 import { digest, commit, newDirectory, publish } from "./files.js";
 import { createPtsPartsExport } from "./parts.js";
 import { createPtsReportTrigger } from "./report-trigger.js";
+import { runPtsReportWorker, type PtsReportPersistenceDiagnostic } from "./report-worker-client.js";
 import type { PtsCommandInput } from "./index.js";
 export async function prepareDatabase(config: PerpsPtsConfig, envFile: string, metadata: unknown) {
   const research = new PostgresResearchStore(await localStudyDatabase(resolve(envFile)));
@@ -102,18 +102,23 @@ export async function runPtsHost(
       "Freeze a clean tested commit before the explicit future run",
     );
   }
-  const research = new PostgresResearchStore(await localStudyDatabase(resolve(input.envFile)));
   const controller = new AbortController(),
     signal = AbortSignal.any([input.signal, controller.signal]);
   let persistenceFailure: PerpsLabFailureDiagnostic | undefined;
+  let reportPersistenceDiagnostic: PtsReportPersistenceDiagnostic | undefined;
   const queries = createPtsPersistenceDiagnostic();
-  const pool = guardPerpsLabPool(
-    observePerpsLabPool(research.pool, queries.observe),
-    (error, diagnostic) => {
-      persistenceFailure = diagnostic;
-      controller.abort(error);
+  const research = createLocalPerpsLabStore(
+    await localStudyDatabase(resolve(input.envFile)),
+    input.command === "audit-export" ? "report" : "execution",
+    {
+      query: queries.observe,
+      failed: (error, diagnostic) => {
+        persistenceFailure = diagnostic;
+        controller.abort(error);
+      },
     },
   );
+  const pool = research.pool;
   const study = new PostgresPerpsStudyStore(pool);
   let primaryError: unknown;
   let state = "process-unverified";
@@ -196,62 +201,28 @@ export async function runPtsHost(
                   Date.now() >= view.record.endsAt!
                 ? "closing"
                 : "process-unverified";
-    const report = async () => {
-      const sourceDirectory = resolve(output, "evidence");
-      await mkdir(sourceDirectory, { recursive: true, mode: 0o700 });
-      const exporter = await createPtsPartsExport(sourceDirectory, commit());
-      await exportPerpsAuditParts(pool, configuration, exporter.emit);
-      await exporter.finish();
-      await new Promise<void>((resolveWorker, rejectWorker) => {
-        const worker = new Worker(new URL("./report-worker.mjs", import.meta.url), {
-          workerData: {
-            manifestPath: resolve(sourceDirectory, "export.json"),
+    const report = () =>
+      runPtsReportWorker(
+        {
+          source: {
+            envFile: resolve(input.envFile!),
             configuration,
-            coverage,
-            state,
-            output,
-            commit: commit(),
-            policyHash: digest(ptsPolicy(ptsConfigVersion(configuration))),
+            directory: resolve(output, "evidence"),
           },
-        });
-        let published = false;
-        worker.once(
-          "message",
-          (message: { published?: boolean; code?: string; phase?: string }) => {
-            if (message.published === true) {
-              published = true;
-            } else {
-              const codes = [
-                "PTS_REPORT_SERIALIZATION_FAILED",
-                "PTS_REPORT_SOURCE_INVALID",
-                "PTS_REPORT_FAILED",
-              ];
-              const failureCode = codes.includes(message.code ?? "")
-                ? message.code!
-                : "PTS_REPORT_FAILED";
-              rejectWorker(
-                new PilotError(failureCode, "Report worker did not publish its verified artifacts"),
-              );
-            }
+          coverage,
+          state,
+          output,
+          commit: commit(),
+          policyHash: digest(ptsPolicy(ptsConfigVersion(configuration))),
+        },
+        {
+          signal,
+          onPersistenceFailure: (error, diagnostic) => {
+            reportPersistenceDiagnostic = diagnostic;
+            controller.abort(error);
           },
-        );
-        worker.once("error", () =>
-          rejectWorker(new PilotError("PTS_REPORT_FAILED", "Report worker failed")),
-        );
-        worker.once("exit", (code) => {
-          if (published && code === 0) {
-            resolveWorker();
-          } else {
-            rejectWorker(
-              new PilotError(
-                "PTS_REPORT_FAILED",
-                "Report worker exited without successful publication",
-              ),
-            );
-          }
-        });
-      });
-    };
+        },
+      );
     if (["status", "report"].includes(input.command)) {
       await report();
       return;
@@ -348,8 +319,20 @@ export async function runPtsHost(
             modelCalls: 0,
             ...(persistenceFailure ? { persistenceFailure } : {}),
             ...(queries.failure() ? { persistenceQueryFailure: queries.failure() } : {}),
+            ...(reportPersistenceDiagnostic
+              ? {
+                  reportPersistenceFailure: reportPersistenceDiagnostic.failure,
+                  reportPersistenceQueryFailure: reportPersistenceDiagnostic.queries.firstFailure,
+                }
+              : {}),
           }) + "\n",
         "persistence-query-diagnostic.json": JSON.stringify(queries.snapshot()) + "\n",
+        ...(reportPersistenceDiagnostic
+          ? {
+              "report-persistence-query-diagnostic.json":
+                JSON.stringify(reportPersistenceDiagnostic) + "\n",
+            }
+          : {}),
       }).catch(() => {});
     }
     throw failure;
