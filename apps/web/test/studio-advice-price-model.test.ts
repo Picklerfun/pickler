@@ -9,6 +9,7 @@ import {
   advicePriceLocks,
   advicePriceOutcome,
   advicePriceView,
+  adviceShares,
   parsePriceText,
   priceFormDirty,
   savedPriceForm,
@@ -106,7 +107,7 @@ test("an empty price on a fresh toggle is not yet an error", () => {
 test("the view says where the money goes and that failures are not refunded", () => {
   const view = advicePriceView(agent(true), savedPriceForm(agent(true)), true);
 
-  assert.equal(view.walletLine, "Paid to this agent's wallet, 0x1234…abcd.");
+  assert.equal(view.walletLine, "65% to this agent's wallet, 0x1234…abcd · 35% to Pickler.");
   assert.ok(view.note.includes("A failed analysis is not refunded automatically."));
 });
 
@@ -187,4 +188,24 @@ test("a priced agent without a wallet is not for sale, and its tag says so", () 
 
   assert.equal(view.tag, "PRICED · NO WALLET");
   assert.equal(view.tone, "caution");
+});
+
+test("adviceShares gives the creator the floor of 65% and Pickler the rest", () => {
+  assert.deepEqual(adviceShares("1.5"), { creator: "0.975", pickler: "0.525" });
+  assert.deepEqual(adviceShares("0.100001"), { creator: "0.065", pickler: "0.035001" });
+  assert.deepEqual(adviceShares("100"), { creator: "65", pickler: "35" });
+  assert.deepEqual(adviceShares("0.10"), { creator: "0.065", pickler: "0.035" });
+});
+
+test("the earn line states the creator's share, only for a valid price in the form", () => {
+  const priced = agent(true);
+  const line = (form: { forSale: boolean; text: string }) =>
+    advicePriceView(priced, form, true).earnLine;
+
+  assert.equal(line({ forSale: true, text: "1.5" }), "You receive 0.975 AUSD per analysis.");
+  assert.equal(line({ forSale: true, text: " 0.100001 " }), "You receive 0.065 AUSD per analysis.");
+  assert.equal(line({ forSale: true, text: "" }), null);
+  assert.equal(line({ forSale: true, text: "0.01" }), null);
+  assert.equal(line({ forSale: true, text: "1,5" }), null);
+  assert.equal(line({ forSale: false, text: "1.5" }), null);
 });

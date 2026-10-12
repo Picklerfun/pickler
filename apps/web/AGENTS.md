@@ -685,7 +685,10 @@ bought, so the creator prices it after Go Public. A "For sale" toggle and a pric
 analysis (0.10–100, up to 6 decimals) are saved with `PUT /agents/:id/advice-price`
 (`saveAdvicePrice` on `use-agent-studio.ts`, `{ priceAusd }`, `null` to stop selling), which carries
 no version, so the card keeps its own outcome rather than `useSetupSave`'s. The card says the money
-goes to the agent's wallet and that a failed analysis is not refunded automatically. Without a
+is split 65% to the agent's wallet and 35% to Pickler (the creator's share is the floor of
+`value * 6500 / 10000` in micro-AUSD, mirrored in `adviceShares`; the web never imports core), shows
+"You receive X AUSD per analysis." (`earnLine`, `#live-advice-earn`) under the price field while the
+form holds a valid price, and says that a failed analysis is not refunded automatically. Without a
 wallet the price cannot be set, only cleared, the card says why and a saved price is tagged PRICED ·
 NO WALLET; a view-only member has every control shut. An equal price written differently ("1.50" for
 1.5) is not an edit, and the studio memory is told so, so leaving does not warn. The rules are

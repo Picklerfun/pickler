@@ -11,6 +11,7 @@ export type AdvicePriceView = {
   tone: "good" | "quiet" | "caution";
   note: string;
   walletLine: string | null;
+  earnLine: string | null;
   disabledReason: string | null;
   inputError: string | null;
   dirty: boolean;
@@ -23,6 +24,9 @@ export type AdvicePriceView = {
 const PRICE = /^\d{1,3}(\.\d{1,6})?$/;
 const MIN_MICRO = 100_000n;
 const MAX_MICRO = 100_000_000n;
+/* Mirrors core's share rule: the creator gets the floor of 65%, Pickler the rest. */
+const CREATOR_BPS = 6500n;
+const BPS = 10_000n;
 
 export const PRICE_BOUNDS = "Between 0.10 and 100 AUSD, up to 6 decimals.";
 export const NO_WALLET = "This agent needs its own wallet before it can sell analyses.";
@@ -35,6 +39,19 @@ const NOTE =
 function toMicro(text: string): bigint {
   const [whole = "0", fraction = ""] = text.split(".");
   return BigInt(whole) * 1_000_000n + BigInt(fraction.padEnd(6, "0"));
+}
+
+function formatMicro(micro: bigint): string {
+  const whole = micro / 1_000_000n;
+  const fraction = (micro % 1_000_000n).toString().padStart(6, "0").replace(/0+$/, "");
+  return fraction === "" ? whole.toString() : `${whole}.${fraction}`;
+}
+
+/** The split of a valid price: the creator's floor of 65% and the rest to Pickler, in AUSD. */
+export function adviceShares(priceAusd: string): { creator: string; pickler: string } {
+  const value = toMicro(priceAusd);
+  const creator = (value * CREATOR_BPS) / BPS;
+  return { creator: formatMicro(creator), pickler: formatMicro(value - creator) };
 }
 
 export function parsePriceText(
@@ -127,11 +144,19 @@ export function advicePriceView(
   const walletOk = wallet !== null || clearing;
   const canSave = canManage && walletOk && dirty && body !== null;
 
+  const earnLine =
+    parsed !== null && parsed.ok
+      ? `You receive ${adviceShares(parsed.priceAusd).creator} AUSD per analysis.`
+      : null;
+
   return {
     ...savedTag(agent),
     note: NOTE,
     walletLine:
-      wallet === null ? null : `Paid to this agent's wallet, ${shortAddress(wallet.address)}.`,
+      wallet === null
+        ? null
+        : `65% to this agent's wallet, ${shortAddress(wallet.address)} · 35% to Pickler.`,
+    earnLine,
     disabledReason,
     inputError,
     dirty,
