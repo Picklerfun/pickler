@@ -22,6 +22,20 @@ export function isHandleRefusal(e: unknown): boolean {
   return e instanceof IdentityError && (e.code === "handle_taken" || e.code === "invalid_profile");
 }
 
+/**
+ * `authedFetch` found the wallet locked. It never unlocks by itself (that prompts Face ID): the caller unlocks first and
+ * asks again.
+ */
+export class WalletLockedError extends Error {
+  constructor() {
+    super("The wallet is locked.");
+    this.name = "WalletLockedError";
+  }
+}
+
+/** A fetch to the product API: `path` is relative to the API base (e.g. `/agent-advice/...`); adds the bearer token. */
+export type AuthedFetch = (path: string, init?: RequestInit) => Promise<Response>;
+
 const COPY: Record<string, string> = {
   nonce_invalid: "That sign-in took too long to come back. Try again.",
   wrong_domain: "That signature was for a different site.",

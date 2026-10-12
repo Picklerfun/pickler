@@ -57,7 +57,8 @@ code. Do not rely on what earlier SDKs did.
   those unlocks the wallet, and unlocking is what triggers the check. An onboarding stopped on an
   error runs nothing and does not count. The identity client's deadline (`src/identity/api.ts`) covers the body
   as well as the headers. The access token stays in
-  memory and is never stored; what is stored is `{ address, handle, api }` (`pickler.identity.v1`). Linking to an account under a browser wallet happens
+  memory and is never stored (`authedFetch` on the hook adds it to calls to the product API, signs in again once on a 401,
+  and throws `WalletLockedError` instead of unlocking; the advice client `src/advice/api.ts` puts a 15 s deadline over headers and body); what is stored is `{ address, handle, api }` (`pickler.identity.v1`). Linking to an account under a browser wallet happens
   on the web, where that wallet can sign; the gate says so and checks again. The feature is **off
   unless `PICKLER_API_URL` is set** (`src/config/api.ts`), e.g. `https://pickler.fun/api/v1`, and
   the API needs `SIWE_DOMAIN` and `WALLET_EMAIL_DOMAIN` for the routes to exist. The handle rules in

@@ -24,6 +24,8 @@ function mount(over: Partial<IdentityApi> = {}) {
     check: async (handle) => { calls.check.push(handle); return true; },
     claim: async (handle) => { calls.claim.push(handle); },
     recheck: async () => { calls.recheck += 1; },
+    authedFetch: async () => { throw new Error("not used by the gate"); },
+    studioAgents: false,
     ...over,
   };
   let tree!: ReactTestRenderer;
