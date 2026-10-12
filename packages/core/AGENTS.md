@@ -394,8 +394,9 @@ disabled, as in the service; another symbol is `CONFLICT`) → `admit` (the serv
 checks without enqueueing) → the key's payment row → sale terms
 (`NOT_FOUND`/`ADVICE_NOT_FOR_SALE`) → 402 → static checks (signature exactly 65 bytes; `to` must
 be the splitter, so an authorization to the agent wallet is `wrong_recipient`) → payee binding
-(`gateway.nonceFor(payee, salt)` must equal the authorization's nonce, ignoring hex case; otherwise
-`invalid_payment` before the payer link, the signature or any settlement) → payer
+(`gateway.nonceFor(payee, salt)` must equal the authorization's nonce, ignoring hex case; otherwise,
+or when `nonceFor` throws on a malformed stored payee, `invalid_payment` before the payer link, the
+signature or any settlement) → payer
 link → signature → nonce → balance → pending row → settle → enqueue. A replay or a settled row
 never settles again; a `refund_owed` row refuses with `invalid_payment`. `settle` throws
 `SettlementRejected` only when the authorization provably never executed (simulation revert,

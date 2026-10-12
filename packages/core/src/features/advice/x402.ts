@@ -341,8 +341,14 @@ export function createPaidAdvice(deps: {
     },
   });
   // The nonce binds the agent wallet: a nonce derived from another payee or salt cannot settle.
+  // A stored payee the gateway cannot encode never binds, so it refuses instead of failing.
   const nonceBindsPayee = (authorization: Authorization, payee: string): boolean => {
-    const derived = deps.gateway.nonceFor(payee, authorization.salt);
+    let derived: string;
+    try {
+      derived = deps.gateway.nonceFor(payee, authorization.salt);
+    } catch {
+      return false;
+    }
 
     return derived.toLowerCase() === authorization.nonce.toLowerCase();
   };

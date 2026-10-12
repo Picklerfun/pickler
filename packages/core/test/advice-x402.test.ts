@@ -122,6 +122,7 @@ function fixture(options: { enabled?: boolean } = {}) {
     settleError: null as Error | null,
     settledError: null as Error | null,
     derivedNonce: null as string | null,
+    nonceForError: null as Error | null,
     pendingPayee: null as string | null,
     settledPayee: null as string | null,
     settledAmounts: null as [bigint, bigint] | null,
@@ -195,6 +196,9 @@ function fixture(options: { enabled?: boolean } = {}) {
   const gateway: AdvicePaymentGateway = {
     nonceFor: (payee, salt) => {
       calls.push(`nonceFor:${payee}:${salt}`);
+      if (state.nonceForError) {
+        throw state.nonceForError;
+      }
       if (state.derivedNonce !== null) {
         return state.derivedNonce;
       }
@@ -787,6 +791,22 @@ test("13c. a nonce derived for another wallet than the agent's current one is re
   refused(result, "invalid_payment");
   assert.ok(f.calls.includes(`nonceFor:${other}:${SALT}`));
   assert.ok(!f.calls.includes("signatureValid"));
+  assert.ok(!f.calls.includes("settle"));
+});
+
+test("13d. a stored payee the gateway cannot encode is an invalid payment, not a 500", async () => {
+  const f = fixture();
+  const malformed = "0x1234";
+  f.state.terms = { priceMicro: 1_500_000n, payee: malformed, handle: "trader" };
+  f.state.nonceForError = new Error(`Address "${malformed}" is invalid.`);
+
+  const result = await f.paid.request(principal, id, "BTC", "key-1", header());
+
+  refused(result, "invalid_payment");
+  assert.ok(f.calls.includes(`nonceFor:${malformed}:${SALT}`));
+  assert.ok(!f.calls.includes("payerLinked"));
+  assert.ok(!f.calls.includes("signatureValid"));
+  assert.ok(!f.calls.includes("insertPending"));
   assert.ok(!f.calls.includes("settle"));
 });
 
