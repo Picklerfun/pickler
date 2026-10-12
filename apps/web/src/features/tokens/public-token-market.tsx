@@ -114,6 +114,9 @@ export function PublicTokenMarket({
   const points = [...bySecond].map(([at, value]) => ({ at, value })).sort((a, b) => a.at - b.at);
   const loading = state.status === "loading" && !state.read;
   function refresh() {
+    if (preview) {
+      return;
+    }
     setState((previous) => ({ ...previous, status: "loading" }));
     setRequest((value) => value + 1);
   }
@@ -243,7 +246,13 @@ export function PublicTokenMarket({
             </div>
           </section>
           <div className={styles.ticket}>
-            <PublicTokenTrade token={token} handle={handle} preview={preview} embedded />
+            <PublicTokenTrade
+              token={token}
+              handle={handle}
+              preview={preview}
+              embedded
+              onConfirmed={refresh}
+            />
           </div>
         </div>
       </section>
