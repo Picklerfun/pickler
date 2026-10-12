@@ -52,10 +52,12 @@ export class PostgresResearchStore implements ResearchRepository {
     connectionString: string,
     private readonly leaseClock?: () => number,
     connectionOptions?: DatabaseConnectionOptions,
+    instrumentPool?: (pool: Pool) => Pool,
   ) {
-    this.pool = new Pool(databasePoolConfig(connectionString, connectionOptions));
+    const configuredPool = new Pool(databasePoolConfig(connectionString, connectionOptions));
+    this.pool = instrumentPool ? instrumentPool(configuredPool) : configuredPool;
     this.pool.on("error", () => {
-      console.error("PostgreSQL closed an idle pool connection; it will be replaced.");
+      console.error("PostgreSQL closed an idle pool connection.");
     });
     this.db = drizzle(this.pool, { schema });
   }
