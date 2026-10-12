@@ -528,3 +528,11 @@ No recovery signs, sends or automatically prepares another launch.
 The agent directory may carry a nullable `launchedToken` summary on the configured network.
 The adapter admits only canonical confirmed launches of published agents. This is discovery
 data, not a trading permission; public preparation revalidates the token and on-chain state.
+
+## App launch publication
+
+`TokenOperationDriver.publishLaunch` is an injected canonical-evidence port. For a launch,
+`createTokenOperationService.status` invokes it before returning a newly finalized operation;
+publication failure preserves the recoverable operation and never signs or sends again. A stored
+finalized launch can invoke the same idempotent port to repair earlier missing attribution. Other
+actions do not publish tokens. Provider, decoding and database implementation remain infrastructure-owned.

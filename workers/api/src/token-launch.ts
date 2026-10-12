@@ -10,6 +10,7 @@ import {
   createPlatformTokenIssuer,
   createTokenMetadata,
   createTokenOperationDriver,
+  createConfirmedLaunchPublisher,
   createActivityBuilders,
   createTurnkeyActivityForwarder,
   createTurnkeyReader,
@@ -48,6 +49,7 @@ export function composeTokenLauncher(pool: TokenLaunchDatabase, env: Env, chainI
     driver = createTokenOperationDriver({
       policy,
       rpc: createJsonRpc(env.MONAD_RPC_URL),
+      publishLaunch: createConfirmedLaunchPublisher(pool, policy),
       reader,
       forwarder: createTurnkeyActivityForwarder({ reader, pollAttempts: 0 }),
       activities: createActivityBuilders(),

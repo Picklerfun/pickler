@@ -248,6 +248,7 @@ export * from "./launch/metadata.js";
 export * from "./launch/grant-issuer.js";
 
 export * from "./launch/driver.js";
+export { createConfirmedLaunchPublisher } from "./launch/confirmed-launch.js";
 
 export type { Pool as TokenLaunchDatabase } from "pg";
 

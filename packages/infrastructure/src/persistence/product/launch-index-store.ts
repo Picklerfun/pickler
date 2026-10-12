@@ -61,8 +61,11 @@ export class PostgresLaunchIndexStore {
   admissionFence?: { chain: string; owner: string };
   private readonly database: NodePgDatabase;
 
-  constructor(connectionString: string, options?: DatabaseConnectionOptions) {
-    this.pool = new Pool(databasePoolConfig(connectionString, options));
+  constructor(connectionString: string | Pool, options?: DatabaseConnectionOptions) {
+    this.pool =
+      typeof connectionString === "string"
+        ? new Pool(databasePoolConfig(connectionString, options))
+        : connectionString;
     this.database = drizzle(this.pool);
   }
 
@@ -112,6 +115,9 @@ export class PostgresLaunchIndexStore {
     )[0]!;
 
     await this.database.transaction(async (tx) => {
+      await tx.execute(
+        sql`SELECT pg_advisory_xact_lock(hashtextextended(${`market:${input.chain}`},0))`,
+      );
       if (this.admissionFence) {
         const f = this.admissionFence;
         const result = await tx.execute(
@@ -129,6 +135,33 @@ export class PostgresLaunchIndexStore {
           uniqueBlocks.set(block.hash, block);
         }
       }
+
+      // Sparse receipt proofs may precede this stream. Reconcile competing hashes in bulk
+      // so preserving immediate publication does not add one query per historical block.
+      const canonicalBatch = JSON.stringify(
+        [...uniqueBlocks.values()].map((block) => ({
+          number: block.number.toString(),
+          hash: block.hash,
+        })),
+      );
+      await tx.execute(sql`
+        UPDATE market.chain_blocks b SET orphaned=true
+        FROM jsonb_to_recordset(${canonicalBatch}::jsonb) AS incoming(number bigint,hash text)
+        WHERE b.chain=${input.chain} AND b.number=incoming.number AND b.hash<>incoming.hash
+      `);
+      await tx.execute(sql`
+        UPDATE market.chain_events e SET orphaned=true
+        FROM jsonb_to_recordset(${canonicalBatch}::jsonb) AS incoming(number bigint,hash text)
+        WHERE e.chain=${input.chain} AND e.block_number=incoming.number AND e.block_hash<>incoming.hash
+      `);
+      await tx.execute(sql`
+        UPDATE launch.outbox o SET status='failed',last_error='CHAIN_EVENT_ORPHANED'
+        FROM market.chain_blocks b,
+          jsonb_to_recordset(${canonicalBatch}::jsonb) AS incoming(number bigint,hash text)
+        WHERE o.event_chain=${input.chain} AND o.status='pending'
+          AND b.chain=o.event_chain AND b.hash=o.event_block_hash
+          AND b.number=incoming.number AND b.orphaned
+      `);
 
       await tx
         .insert(chainBlocks)
@@ -183,6 +216,13 @@ export class PostgresLaunchIndexStore {
           });
       }
 
+      await tx.execute(sql`
+        UPDATE launch.outbox o SET status='pending',last_error=NULL
+        FROM market.chain_blocks b WHERE o.event_chain=${input.chain} AND b.chain=o.event_chain
+          AND b.hash=o.event_block_hash AND NOT b.orphaned
+          AND o.status='failed' AND o.last_error='CHAIN_EVENT_ORPHANED'
+      `);
+
       for (const message of input.outbox ?? []) {
         await tx
           .insert(outbox)
@@ -235,6 +275,7 @@ export class PostgresLaunchIndexStore {
     rollbackToBlock: bigint,
   ): Promise<{ orphanedBlocks: number; orphanedEvents: number }> {
     return this.database.transaction(async (tx) => {
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${`market:${chain}`},0))`);
       if (this.admissionFence) {
         const f = this.admissionFence;
         const result = await tx.execute(

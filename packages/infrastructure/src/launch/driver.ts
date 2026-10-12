@@ -37,6 +37,7 @@ import {
   type TurnkeyActivity,
   type TurnkeyReader,
   type TokenIntent,
+  type TokenScope,
   type TokenOperationDriver,
   type TokenPreparedTransaction,
 } from "@pickler/core";
@@ -83,6 +84,7 @@ export function createTokenOperationDriver(deps: {
   forwarder: SignedActivityForwarder;
   reader: TurnkeyReader;
   reserveRpc(operationId: string, limit: number): Promise<void>;
+  publishLaunch?(scope: TokenScope, intent: TokenIntent, rpc: Rpc): Promise<void>;
 }): TokenOperationDriver {
   const { policy } = deps;
   const configurationHash = keccak256(toHex(JSON.stringify(policy)));
@@ -700,6 +702,12 @@ export function createTokenOperationDriver(deps: {
       return transactionHash(raw);
     },
     broadcast: async (raw, prepared) => broadcastTransaction(rpcFor(prepared.operationId), raw),
+    ...(deps.publishLaunch
+      ? {
+          publishLaunch: (scope: TokenScope, intent: TokenIntent) =>
+            deps.publishLaunch!(scope, intent, rpcFor(intent.id, true)),
+        }
+      : {}),
     async receipt(hash, prepared) {
       const rpc = rpcFor(prepared.operationId, true);
       const receipt = (await rpc.call("eth_getTransactionReceipt", [hash])) as {

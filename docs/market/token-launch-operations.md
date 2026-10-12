@@ -147,8 +147,10 @@ broadcast. Hashes and addresses have copy feedback and chain-specific explorer l
 disable those links. Known broadcasts automatically wait for their canonical receipt and configured confirmation depth
 through this private API. The observer permits at most ten receipt reads at three-second intervals
 and stops after sixty seconds, a failed read or a terminal result. Existing per-operation RPC
-admission remains unchanged. Finalized launches then perform at most six database-only attribution
-reads at five-second intervals, also bounded to sixty seconds. Navigation/owner changes cancel
+admission remains unchanged. Finalized launch status now publishes the verified factory event before returning. The existing
+attribution observer still permits at most six state reads at five-second intervals, bounded to
+sixty seconds, for interrupted publication or older operations. Ordinary reads are database-only;
+a stored finalized launch with missing identity can perform the bounded receipt repair below. Navigation/owner changes cancel
 reads, hidden pages pause them, and owner-scoped counters survive section navigation. Unknown
 signing or submission outcomes remain explicitly reconciled; no signing or broadcast is retried.
 If a bounded wait ends, the operation/hash remain available with Check status or Refresh token
@@ -156,10 +158,25 @@ details. A timeout never means the transaction failed. Local previews retain man
 `node scripts/design/studio-loading.mjs` and `node scripts/design/token-preview.mjs`; they do not
 establish remote signing acceptance.
 
-A canonical receipt with configured depth finalizes the transaction, but **does not attribute a
-token**. Only a canonical confirmed factory event matching a registered grant does that. Until
-indexing confirms it, a successful launch transaction remains token-confirmation pending.
-Reorgs preserve history and remove orphaned active interpretations.
+A confirmed app launch publishes its canonical factory event before status returns finalized.
+The server verifies the immutable factory/network, exact transaction calldata and creator against
+the registered grant, receipt/log identities, confirmation depth, token metadata and a stable
+block hash. It stores the block and raw event, then uses the same canonical projector and public
+read checks as the indexer. A browser hash or successful receipt without the matching event never
+confirms token identity. Failed reads leave the original operation recoverable without another
+signature or submission.
+
+This targeted publication does not move a historical cursor or wait for backfill. A token becomes
+available to both its public profile and the landing directory when app confirmation completes;
+visitors still fetch the public database-backed view normally. The indexer continues to capture
+external launches and all market activity, recover missed events and handle reorgs. Later replay
+cannot duplicate this receipt. Competing block hashes orphan the old evidence and hide its token.
+
+Opening or refreshing owner token state repairs an earlier finalized app launch with missing
+identity through the same read-only proof, then re-reads stored state. Controlled proof requires
+eleven additional RPC reads once, within the existing operation budget. Once publication exists,
+subsequent status/state reads perform no additional proof RPC. Public views never trigger chain
+reads. No new endpoint, migration, signature, broadcast, cursor jump or indexer budget is added.
 
 ## Metadata, principal and fees
 
@@ -345,3 +362,24 @@ calls, confirmed no matching creation within the expired grant window, and retai
 and original attempt with `EXPIRED_LAUNCH_NOT_CREATED`. No signing, submission, deployment or
 new authorization ran. This establishes recovery of that expired attempt, not successful
 launching by the owner or rollout of this implementation to the hosted API.
+
+## Immediate publication regression
+
+From the repository root, with Node 22 and isolated loopback PostgreSQL:
+
+```sh
+npm run build:shared
+node --import tsx --test --test-concurrency=1 packages/core/test/token-operations.test.ts packages/infrastructure/test/confirmed-launch.test.ts packages/infrastructure/test/launch-index-store.test.ts packages/infrastructure/test/launch-projector.test.ts packages/infrastructure/test/token-launch.test.ts packages/infrastructure/test/token-operations.test.ts workers/api/test/studio-token-route.test.ts
+npm run api:openapi -- --output /tmp/pickler-openapi.json
+```
+
+| Scenario                                                                                  | Controlled evidence                                     | Remote boundary                                |
+| ----------------------------------------------------------------------------------------- | ------------------------------------------------------- | ---------------------------------------------- |
+| App confirmation publishes profile and directory while cursor remains behind              | Simulated RPC and isolated PostgreSQL                   | Requires automatic API release                 |
+| Earlier finalized launch repairs on owner state/status read                               | Same saved grant/transaction; no new signing or sending | Requires release and owner state read          |
+| Replay and concurrent publication preserve one token, pool and event                      | Real PostgreSQL uniqueness and canonical projector      | No cursor shortcut                             |
+| Wrong chain/factory, altered calldata/grant, unconfirmed/reverted receipt or foreign logs | Publication refused; original operation retained        | No production provider used                    |
+| Metadata mismatch, transport failure, ownership/grant change during proof                 | No public token; no PostgreSQL locks during RPC         | Original attempt remains recoverable           |
+| Sparse receipt loses its branch during backfill                                           | Orphan evidence hidden; notification history retained   | Indexer remains responsible for reorg recovery |
+
+No remote database mutation, deployment or transaction is part of these controlled tests.

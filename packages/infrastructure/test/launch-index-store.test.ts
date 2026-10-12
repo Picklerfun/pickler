@@ -360,3 +360,33 @@ test("expired index admission fences writes and rollback", async (t) => {
   await assert.rejects(store.rollbackFrom(CHAIN, FACTORY, STREAM, 0n), /INDEX_LEASE_LOST/);
   assert.equal(await store.readCursor(CHAIN, FACTORY, STREAM), null);
 });
+
+test("a sparse block replaced during catch-up keeps orphaned notification history and restores returning branches", async (t) => {
+  const store = await createStore(t);
+  const original = {
+    chain: CHAIN,
+    contract: FACTORY,
+    stream: STREAM,
+    confirmed: true,
+    blocks: [block(10n, "a", "9")],
+    events: [event(10n, "a", 0, "LaunchCreated")],
+    outbox: [
+      {
+        topic: "launch.created",
+        payload: { retained: true },
+        event: { blockHash: hash("a"), txHash: hash("a-tx-0"), logIndex: 0 },
+      },
+    ],
+  };
+  await store.applyBatch(original);
+  await store.applyBatch({ ...original, blocks: [block(10n, "b", "9")], events: [], outbox: [] });
+  assert.equal(await store.countPendingOutbox(CHAIN), 0);
+  const retained = (await store.pool.query("SELECT status,last_error,payload FROM launch.outbox"))
+    .rows[0];
+  assert.equal(retained.status, "failed");
+  assert.equal(retained.last_error, "CHAIN_EVENT_ORPHANED");
+  assert.deepEqual(retained.payload, { retained: true });
+  await store.applyBatch(original);
+  assert.equal(await store.countPendingOutbox(CHAIN), 1);
+  assert.equal((await store.pool.query("SELECT count(*) FROM launch.outbox")).rows[0].count, "1");
+});
