@@ -154,6 +154,15 @@ export interface TokenMarketDto {
   tokenDecimals: number;
   priceKind: "curve" | "last_trade" | "unavailable";
   priceWad: string | null;
+  priceMovement?:
+    | {
+        direction: "up" | "down" | "flat";
+        changeBps: string;
+        fromAt: string;
+        toAt: string;
+      }
+    | null
+    | undefined;
   fdvWad: string | null;
   volume24h: string;
   windowEnd: string;
