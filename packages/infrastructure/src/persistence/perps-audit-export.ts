@@ -4,18 +4,57 @@ import type { PerpsStudyScope, PerpsStudyView, PerpsStudyMap } from "@pickler/tr
 import { perpsStrategies } from "@pickler/trading/evaluation";
 import type { PerpsPaperView } from "@pickler/trading/perps";
 
+/** Native JSONB fingerprint, distinct from the historical canonical audit payload digest. */
+export interface PerpsAuditSourceRevision {
+  version: 1;
+  policy: "postgres-jsonb-sha256-v1";
+  kind: "round" | "event";
+  key: string;
+  sha256: string;
+}
+
+export interface PerpsAuditCaptureStats {
+  version: 1;
+  policy: "full" | "postgres-jsonb-sha256-v1";
+  roundsChecked: number;
+  roundsFetched: number;
+  roundsReused: number;
+  eventsChecked: number;
+  eventsFetched: number;
+  eventsReused: number;
+}
+
 export type PerpsAuditPart =
   | { kind: "record"; value: PerpsStudyView["record"] }
-  | { kind: "round"; value: PerpsStudyView["rounds"][number] }
-  | { kind: "event"; value: PerpsStudyView["events"][number] }
+  | {
+      kind: "round";
+      value: PerpsStudyView["rounds"][number];
+      sourceRevision?: PerpsAuditSourceRevision;
+    }
+  | {
+      kind: "event";
+      value: PerpsStudyView["events"][number];
+      sourceRevision?: PerpsAuditSourceRevision;
+    }
   | { kind: "account"; variant: string; value: PerpsPaperView };
 
-/** Paged, consistent, read-only export. The sink may persist parts without retaining old evidence. */
+/** Paged, consistent, read-only export. Optional reuse checks every row in the same snapshot. */
 export async function exportPerpsAuditParts(
   pool: Pool,
   scope: PerpsStudyScope,
   emit: (part: PerpsAuditPart) => Promise<void>,
-) {
+  options: { reuse?: (revision: PerpsAuditSourceRevision) => Promise<boolean> } = {},
+): Promise<PerpsAuditCaptureStats> {
+  const stats: PerpsAuditCaptureStats = {
+    version: 1,
+    policy: options.reuse ? "postgres-jsonb-sha256-v1" : "full",
+    roundsChecked: 0,
+    roundsFetched: 0,
+    roundsReused: 0,
+    eventsChecked: 0,
+    eventsFetched: 0,
+    eventsReused: 0,
+  };
   const client = await pool.connect();
   try {
     await client.query("BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY");
@@ -29,41 +68,107 @@ export async function exportPerpsAuditParts(
     }
     const { id, document: record } = study.rows[0];
     await emit({ kind: "record", value: record });
+
     let roundKey: string | null = null;
     for (;;) {
-      const page: QueryResult<{ key: string; document: PerpsStudyView["rounds"][number] }> =
-        await client.query(
-          `SELECT key,document FROM pickler.perps_study_rounds
-         WHERE study_id=$1 AND ($2::text IS NULL OR key>$2)
-         ORDER BY key LIMIT 1`,
-          [id, roundKey],
-        );
+      const page: QueryResult<{
+        key: string;
+        document?: PerpsStudyView["rounds"][number];
+        sha256?: string;
+      }> = await client.query(
+        options.reuse
+          ? `SELECT key,encode(sha256(convert_to(document::text,'UTF8')),'hex') AS sha256
+             FROM pickler.perps_study_rounds
+             WHERE study_id=$1 AND ($2::text IS NULL OR key>$2)
+             ORDER BY key LIMIT 1`
+          : `SELECT key,document FROM pickler.perps_study_rounds
+             WHERE study_id=$1 AND ($2::text IS NULL OR key>$2)
+             ORDER BY key LIMIT 1`,
+        [id, roundKey],
+      );
       if (!page.rows.length) {
         break;
       }
       const row = page.rows[0]!;
-      await emit({ kind: "round", value: row.document });
+      stats.roundsChecked++;
+      const revision = row.sha256 ? sourceRevision("round", row.key, row.sha256) : undefined;
+      if (revision && (await options.reuse!(revision))) {
+        stats.roundsReused++;
+      } else {
+        const value =
+          row.document ??
+          (
+            await client.query(
+              "SELECT document FROM pickler.perps_study_rounds WHERE study_id=$1 AND key=$2",
+              [id, row.key],
+            )
+          ).rows[0]?.document;
+        if (!value) {
+          throw new PilotError("AUDIT_SOURCE_INVALID", "Round absent from consistent snapshot");
+        }
+        await emit({ kind: "round", value, ...(revision ? { sourceRevision: revision } : {}) });
+        stats.roundsFetched++;
+      }
       roundKey = row.key;
     }
+
     let eventAt: number | null = null;
     let eventKey: string | null = null;
     for (;;) {
-      const page: QueryResult<PerpsStudyView["events"][number]> = await client.query(
-        `SELECT key,at::double precision AS at,kind,data
-         FROM pickler.perps_study_events
-         WHERE study_id=$1 AND ($2::bigint IS NULL OR (at,key)>($2,$3))
-         ORDER BY at,key LIMIT 16`,
+      const page: QueryResult<{
+        key: string;
+        at: number;
+        kind?: string;
+        data?: PerpsStudyView["events"][number]["data"];
+        sha256?: string;
+      }> = await client.query(
+        options.reuse
+          ? `SELECT key,at::double precision AS at,
+               encode(sha256(convert_to(jsonb_build_object(
+                 'key',key,'at',at::double precision,'kind',kind,'data',data
+               )::text,'UTF8')),'hex') AS sha256
+             FROM pickler.perps_study_events
+             WHERE study_id=$1 AND ($2::bigint IS NULL OR (at,key)>($2,$3))
+             ORDER BY at,key LIMIT 16`
+          : `SELECT key,at::double precision AS at,kind,data
+             FROM pickler.perps_study_events
+             WHERE study_id=$1 AND ($2::bigint IS NULL OR (at,key)>($2,$3))
+             ORDER BY at,key LIMIT 16`,
         [id, eventAt, eventKey],
       );
       if (!page.rows.length) {
         break;
       }
       for (const row of page.rows) {
-        await emit({ kind: "event", value: row });
+        stats.eventsChecked++;
+        const revision = row.sha256 ? sourceRevision("event", row.key, row.sha256) : undefined;
+        if (revision && (await options.reuse!(revision))) {
+          stats.eventsReused++;
+        } else {
+          const value = revision
+            ? (
+                await client.query(
+                  `SELECT key,at::double precision AS at,kind,data
+               FROM pickler.perps_study_events WHERE study_id=$1 AND key=$2`,
+                  [id, row.key],
+                )
+              ).rows[0]
+            : row;
+          if (!value) {
+            throw new PilotError("AUDIT_SOURCE_INVALID", "Event absent from consistent snapshot");
+          }
+          await emit({
+            kind: "event",
+            value: { key: value.key, at: value.at, kind: value.kind!, data: value.data! },
+            ...(revision ? { sourceRevision: revision } : {}),
+          });
+          stats.eventsFetched++;
+        }
         eventAt = row.at;
         eventKey = row.key;
       }
     }
+
     for (const strategy of perpsStrategies(record.config)) {
       const result = await client.query(
         `SELECT id,document FROM pickler.perps_paper_accounts
@@ -93,12 +198,24 @@ export async function exportPerpsAuditParts(
       });
     }
     await client.query("COMMIT");
+    return stats;
   } catch (error) {
     await client.query("ROLLBACK").catch(() => {});
     throw error;
   } finally {
     client.release();
   }
+}
+
+function sourceRevision(
+  kind: PerpsAuditSourceRevision["kind"],
+  key: string,
+  sha256: string,
+): PerpsAuditSourceRevision {
+  if (!/^[0-9a-f]{64}$/.test(sha256)) {
+    throw new PilotError("AUDIT_SOURCE_INVALID", "Invalid native audit fingerprint");
+  }
+  return { version: 1, policy: "postgres-jsonb-sha256-v1", kind, key, sha256 };
 }
 
 /** Historical v1 projection. Unlike paper.view(), this never recovers expired attempts. */
