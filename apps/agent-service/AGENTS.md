@@ -427,3 +427,10 @@ Local PTS v8/v9 lease-bound account reads explicitly select infrastructure's pts
 without changing mutations, financial rules or deadlines. Consistent inspection uses no exclusive
 study lock; final ownership checks use fresh read-committed state outside the snapshot.
 See [PTS read isolation](PTS-STUDY-READ-ISOLATION.md) for controlled proof and original incident limits.
+
+Local PTS report source capture reuses verified unchanged round/event parts using infrastructure's
+native SHA-256 revisions and a hashed source index. Fresh record/accounts and full current row
+inventories remain in one consistent read-only snapshot. Missing parts refetch; corruption fails
+publication. Canonical payload hashes and old v1/v2 packets keep their interpretation. Server
+fingerprinting, aggregate file verification and full replay/rendering still do work; do not claim
+this is a constant-time report or proof of profitable signals. Read [PTS incremental capture](PTS-REPORT-INCREMENTAL.md).

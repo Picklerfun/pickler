@@ -5,7 +5,11 @@ import { join, resolve } from "node:path";
 import { PilotError } from "@pickler/core";
 import { canonicalAuditChunks, type PerpsStudyView } from "@pickler/trading/evaluation";
 import type { PerpsPaperView } from "@pickler/trading/perps";
-import type { PerpsAuditPart } from "@pickler/infrastructure/perps-lab";
+import type {
+  PerpsAuditPart,
+  PerpsAuditSourceRevision,
+  PerpsAuditCaptureStats,
+} from "@pickler/infrastructure/perps-lab";
 import { digest, readJson, publish, refuseSecrets } from "./files.js";
 import { bufferedChunks, jsonDocument } from "./serialization.js";
 
@@ -13,6 +17,7 @@ export interface PartReference {
   file: string;
   sha256: string;
   bytes: number;
+  sourceRevision?: PerpsAuditSourceRevision;
 }
 export interface PtsExportManifest {
   version: 2;
@@ -27,6 +32,8 @@ export interface PtsExportManifest {
   rounds: (PartReference & { slot: number; key: string })[];
   events: (PartReference & { key: string; kind: string; at: number; slot: number | null })[];
   accounts: Record<string, PartReference>;
+  sourceCapture?: PerpsAuditCaptureStats;
+  sourceIndexHash?: string;
 }
 
 const PART_LIMIT = 64 * 1024 * 1024;
@@ -76,9 +83,14 @@ export async function readPtsPart<T>(directory: string, reference: PartReference
 export async function ptsPartsPayloadHash(directory: string, manifest: PtsExportManifest) {
   const hash = createHash("sha256");
   async function part(reference: PartReference) {
-    const path = await verifyPtsPart(directory, reference);
+    const path = await checkedPath(directory, reference);
+    const partHash = createHash("sha256");
     for await (const chunk of createReadStream(path)) {
+      partHash.update(chunk);
       hash.update(chunk);
+    }
+    if (partHash.digest("hex") !== reference.sha256) {
+      throw new PilotError("AUDIT_HASH_MISMATCH", "Audit part bytes differ");
     }
   }
   hash.update('{"accounts":{');
@@ -108,8 +120,43 @@ export async function ptsPartsPayloadHash(directory: string, manifest: PtsExport
   return hash.digest("hex");
 }
 
-export async function createPtsPartsExport(directory: string, exportCommit: string) {
+function sourceIndexHash(manifest: PtsExportManifest) {
+  return digest({
+    version: 1,
+    record: manifest.record,
+    rounds: manifest.rounds,
+    events: manifest.events,
+  });
+}
+
+export async function createPtsPartsExport(
+  directory: string,
+  exportCommit: string,
+  options: { reuseSource?: boolean } = {},
+) {
   await mkdir(join(directory, "parts"), { recursive: true, mode: 0o700 });
+  let previous: PtsExportManifest | undefined;
+  let previousConfig: PerpsStudyView["record"]["config"] | undefined;
+  if (options.reuseSource) {
+    try {
+      const candidate = await readPtsExportManifest(join(directory, "export.json"));
+      if (candidate.sourceIndexHash) {
+        if (candidate.sourceIndexHash !== sourceIndexHash(candidate)) {
+          throw new PilotError("AUDIT_HASH_MISMATCH", "Source revision index differs");
+        }
+        previous = candidate;
+        previousConfig = (await readPtsPart<PerpsStudyView["record"]>(directory, candidate.record))
+          .config;
+      }
+    } catch (error) {
+      if ((error as { code?: string }).code !== "ENOENT") {
+        throw error;
+      }
+    }
+  }
+  const previousRounds = new Map(previous?.rounds.map((part) => [part.key, part]));
+  const previousEvents = new Map(previous?.events.map((part) => [part.key, part]));
+  let sameScope = false;
   const captureStartedAt = Date.now();
   let record: PartReference | undefined;
   let studyProtocol: PtsExportManifest["studyProtocol"] | undefined;
@@ -142,7 +189,14 @@ export async function createPtsPartsExport(directory: string, exportCommit: stri
       }
       bytes = (await publish(join(directory, "parts"), { [name]: bounded() }))[name]!.bytes;
     }
-    const reference = { file: "parts/" + name, sha256, bytes };
+    const reference: PartReference = {
+      file: "parts/" + name,
+      sha256,
+      bytes,
+      ...("sourceRevision" in part && part.sourceRevision
+        ? { sourceRevision: part.sourceRevision }
+        : {}),
+    };
     if (part.kind === "record") {
       if (record) {
         throw new PilotError("INVALID_INPUT", "Duplicate audit record");
@@ -150,6 +204,7 @@ export async function createPtsPartsExport(directory: string, exportCommit: stri
       if (part.value.config.version !== 8 && part.value.config.version !== 9) {
         throw new PilotError("INVALID_INPUT", "Segmented PTS export requires v8 or v9");
       }
+      sameScope = !!previousConfig && digest(previousConfig) === digest(part.value.config);
       record = reference;
       studyProtocol = part.value.config.protocol;
       studyVersion = part.value.config.version;
@@ -170,7 +225,33 @@ export async function createPtsPartsExport(directory: string, exportCommit: stri
       accounts[part.variant] = reference;
     }
   }
-  async function finish() {
+  async function reuse(revision: PerpsAuditSourceRevision) {
+    if (!sameScope || revision.version !== 1 || revision.policy !== "postgres-jsonb-sha256-v1") {
+      return false;
+    }
+    const reference =
+      revision.kind === "round"
+        ? previousRounds.get(revision.key)
+        : previousEvents.get(revision.key);
+    if (!reference?.sourceRevision || digest(reference.sourceRevision) !== digest(revision)) {
+      return false;
+    }
+    try {
+      await verifyPtsPart(directory, reference);
+    } catch (error) {
+      if ((error as { code?: string }).code === "ENOENT") {
+        return false;
+      }
+      throw error;
+    }
+    if (revision.kind === "round") {
+      rounds.push({ ...reference } as PtsExportManifest["rounds"][number]);
+    } else {
+      events.push({ ...reference } as PtsExportManifest["events"][number]);
+    }
+    return true;
+  }
+  async function finish(sourceCapture?: PerpsAuditCaptureStats) {
     if (!record || !studyProtocol || !studyVersion) {
       throw new PilotError("INVALID_INPUT", "Audit record absent");
     }
@@ -187,12 +268,16 @@ export async function createPtsPartsExport(directory: string, exportCommit: stri
       rounds,
       events,
       accounts,
+      ...(sourceCapture ? { sourceCapture } : {}),
     };
+    if (sourceCapture?.policy === "postgres-jsonb-sha256-v1") {
+      manifest.sourceIndexHash = sourceIndexHash(manifest);
+    }
     manifest.payloadHash = await ptsPartsPayloadHash(directory, manifest);
     await publish(directory, { "export.json": jsonDocument(manifest) });
     return manifest;
   }
-  return { emit, finish };
+  return { emit, reuse, finish };
 }
 
 export async function readPtsExportManifest(path: string) {
