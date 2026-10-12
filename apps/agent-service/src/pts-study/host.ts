@@ -11,6 +11,7 @@ import {
   exportPerpsAudit,
   exportPerpsAuditParts,
   guardPerpsLabPool,
+  type PerpsLabFailureDiagnostic,
 } from "@pickler/infrastructure/perps-lab";
 import { createPriorityPerplStudyData } from "@pickler/agent-runtime/plugins/perps-paper/public-study";
 import { createProfileStudyRunner } from "@pickler/trading/evaluation";
@@ -26,6 +27,7 @@ import {
 } from "@pickler/trading/pts";
 import { keepAwake } from "../paper-study/comparison-host.js";
 import { createReportQueue } from "../perps-study/report-queue.js";
+import { ptsRunFailure } from "./run-failure.js";
 import { digest, commit, newDirectory, publish } from "./files.js";
 import { createPtsPartsExport } from "./parts.js";
 import { createPtsReportTrigger } from "./report-trigger.js";
@@ -101,7 +103,11 @@ export async function runPtsHost(
   const research = new PostgresResearchStore(await localStudyDatabase(resolve(input.envFile)));
   const controller = new AbortController(),
     signal = AbortSignal.any([input.signal, controller.signal]);
-  const pool = guardPerpsLabPool(research.pool, (error) => controller.abort(error));
+  let persistenceFailure: PerpsLabFailureDiagnostic | undefined;
+  const pool = guardPerpsLabPool(research.pool, (error, diagnostic) => {
+    persistenceFailure = diagnostic;
+    controller.abort(error);
+  });
   const study = new PostgresPerpsStudyStore(pool);
   let primaryError: unknown;
   let state = "process-unverified";
@@ -322,7 +328,8 @@ export async function runPtsHost(
         JSON.stringify({ processState: "finished", at: Date.now(), modelCalls: 0 }) + "\n",
     });
   } catch (error) {
-    primaryError = error;
+    const failure = ptsRunFailure(error, signal);
+    primaryError = failure;
     if (input.command === "run") {
       state = "interrupted";
       reports?.request();
@@ -330,13 +337,14 @@ export async function runPtsHost(
         "runtime-status.json":
           JSON.stringify({
             processState: "interrupted",
-            code: error instanceof PilotError ? error.code : "PTS_OPERATION_FAILED",
+            code: failure instanceof PilotError ? failure.code : "PTS_OPERATION_FAILED",
             at: Date.now(),
             modelCalls: 0,
+            ...(persistenceFailure ? { persistenceFailure } : {}),
           }) + "\n",
       }).catch(() => {});
     }
-    throw error;
+    throw failure;
   } finally {
     releaseAwake();
     const cleanup = await Promise.allSettled([data?.close(), reports?.flush()]);
