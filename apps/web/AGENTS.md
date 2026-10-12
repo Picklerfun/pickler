@@ -1259,12 +1259,15 @@ before broadcast. `features/wallet/lib/public-trade-flow.ts` continues a user-in
 through a freshly prepared swap only after canonical approval confirmation. Each action still
 requires its own wallet confirmation. A worse refreshed minimum requires an explicit review;
 changed identities/amounts are rejected. `public-trade-action.tsx` keeps preparation, wallet confirmation, approval, swap, pending,
-success and sanitized errors inside one fixed-height primary button. Progress uses an indeterminate
+success and sanitized errors inside one compact, fixed-height (48px) primary button. Progress uses an indeterminate
 ring and sweep; wallet confirmation pulses the wallet icon; success draws a check for 2.2 seconds
 before restoring the explicit Buy/Sell action. This visual timer never performs a transaction.
 Form edits dismiss success and clear errors. Keep screen-reader announcements, keyboard focus and
 reduced-motion support. No visible status/error paragraphs or manual Check transaction action belong
-to this form. The shared linked/copyable hash sits below the button; quotes reserve their space and
+to this form. Approval and Buy/Sell references remain separately labelled below the button, with linked hashes
+and icon-only copy actions. The approval hash survives swap preparation, cancellation and reload;
+ending an unsigned review preserves recorded receipts without initiating a transaction. Historical
+single-hash attempts remain readable; quotes reserve their space and
 are shown only while matching the entered side, amount and slippage.
 Known hashes are observed automatically with at most thirty serial reads, three seconds apart,
 and a two-minute deadline. Hidden pages pause observation; unmount/account/network changes cancel
