@@ -182,6 +182,8 @@ export interface TokenOperationDriver {
   verify(prepared: TokenPreparedTransaction, raw: string): Promise<string>;
   preflight(prepared: TokenPreparedTransaction): Promise<void>;
   broadcast(raw: string, prepared: TokenPreparedTransaction): Promise<string>;
+  /** Publish only verified canonical factory evidence; never submit or sign during recovery. */
+  publishLaunch?(scope: TokenScope, intent: TokenIntent): Promise<void>;
   receipt(
     hash: string,
     prepared: TokenPreparedTransaction,
@@ -583,11 +585,14 @@ export function createTokenOperationService(deps: {
     async status(scope: TokenScope, id: string) {
       const readResult = await read(scope, id);
       let intent = readResult.intent;
-      if (
-        !ready() ||
-        !intent.prepared ||
-        ["finalized", "failed", "cancelled"].includes(intent.status)
-      ) {
+      if (!ready() || !intent.prepared || ["failed", "cancelled"].includes(intent.status)) {
+        return tokenOperationView(intent);
+      }
+      if (intent.status === "finalized") {
+        // Repair earlier app launches whose receipt finalized before catalogue publication existed.
+        if (intent.action === "launch") {
+          await deps.driver!.publishLaunch?.(scope, intent);
+        }
         return tokenOperationView(intent);
       }
       if (
@@ -646,6 +651,9 @@ export function createTokenOperationService(deps: {
       if (intent.txHash) {
         const receipt = await deps.driver!.receipt(intent.txHash, intent.prepared!);
         if (receipt) {
+          if (receipt.status === "finalized" && intent.action === "launch") {
+            await deps.driver!.publishLaunch?.(scope, intent);
+          }
           intent = await patch(scope, intent, {
             status: receipt.status === "reverted" ? "failed" : receipt.status,
             blockHash: receipt.blockHash,
