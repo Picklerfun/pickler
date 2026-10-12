@@ -54,9 +54,15 @@ wallet prompt from an effect. A lost browser-wallet response without a hash rema
 directs the user to wallet activity; it cannot safely be rebroadcast. At the observation ceiling,
 the original hash remains visible as pending. No broadcast retry or replacement is added.
 
-The primary button communicates preparation, wallet confirmation and chain confirmation with one
-spinner. There is no routine Check transaction button or additional loading block. Final messages
-are concise; the hash links to the explorer and has an icon-only copy action. A confirmed swap
+One fixed-height primary button communicates the complete flow visually. Its wallet icon pulses
+while the wallet is open; an indeterminate ring and subtle sweep show preparation, approval and
+swap progress. A confirmed buy or sell draws a check inside the same button for 2.2 seconds, then
+restores Buy/Sell without sending anything. Editing the form dismisses this feedback immediately.
+Failures and actionable hints also appear inside that button; full sanitized descriptions remain
+accessible to screen readers. Missing-hash submissions stay blocked. There are no separate visible
+confirmation/error paragraphs, loading blocks or Check transaction controls. Reduced motion removes
+all button animations. Expected/minimum rows reserve their space; stale quotes are hidden after an
+edit. The hash below the button links to the explorer and has an icon-only copy action. A confirmed swap
 refreshes the existing database-backed market read; indexing remains a separate canonical projection.
 Receipt display itself does not attribute the token or update portfolio/accounting records.
 
@@ -143,6 +149,7 @@ Public preview links on the development server:
 | Global and per-wallet concurrent limits                                                   | Isolated PostgreSQL                                  | Passed locally (controlled) |
 | Exact browser/Mera action, cancellation, lost response and key cleanup                    | Wallet tests                                         | Passed locally (controlled) |
 | Continuous approvals/buy/sell, receipt recovery, reload, cancellation and preserved forms | Loopback browser harness at 1280/380/320 px          | Passed locally (controlled) |
+| Button transitions, stable geometry, reduced motion and no separate status paragraphs     | Loopback browser harness                             | Passed locally (controlled) |
 | Hosted acceptance of the continuous approval/trade flow                                   | Not run; real wallet and confirmed live token needed | Pending                     |
 | DEX swaps after graduation                                                                | Separate integration                                 | Pending                     |
 | Indexer changes                                                                           | Existing implementation unchanged                    | Deferred                    |
