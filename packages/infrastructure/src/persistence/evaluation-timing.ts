@@ -25,15 +25,26 @@ export function queryFailure(error: unknown): unknown {
   return error;
 }
 
-/** Normalize only the driver deadline demonstrated by the local connection failures. */
+/** Exact deadline branches of the installed pg-pool driver; no network cause is inferred. */
+export function connectionDeadlineStage(error: unknown): "pool-queue" | "new-client" | null {
+  if (!(error instanceof Error)) {
+    return null;
+  }
+  if (error.message === "timeout exceeded when trying to connect") {
+    return "pool-queue";
+  }
+  if (error.message === "Connection terminated due to connection timeout") {
+    return "new-client";
+  }
+  return null;
+}
+
+/** Normalize only exact, reviewed driver deadlines. */
 export function connectionFailure(error: unknown): unknown {
   if (error instanceof PilotError) {
     return error;
   }
-  if (
-    error instanceof Error &&
-    error.message === "Connection terminated due to connection timeout"
-  ) {
+  if (connectionDeadlineStage(error) !== null) {
     return new PilotError(
       "PERSISTENCE_CONNECTION_TIMEOUT",
       "PostgreSQL connection deadline exhausted",
