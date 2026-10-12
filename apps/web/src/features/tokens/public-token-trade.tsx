@@ -257,7 +257,7 @@ export function PublicTokenTrade({
   return (
     <section className={styles.panel} aria-label="Trade token publicly">
       <div className={styles.head}>
-        <h2>Trade ${token.ticker}</h2>
+        <h2>Trade ${token.ticker.replace(/^\$+/, "")}</h2>
         <Tag>
           {preview
             ? "SIMULATED · TESTNET"
@@ -268,6 +268,8 @@ export function PublicTokenTrade({
       </div>
       <Segmented
         label="Public trade side"
+        tone="lime"
+        className={styles.choices}
         value={side}
         disabled={busy || active}
         options={[
@@ -293,6 +295,8 @@ export function PublicTokenTrade({
         <span className={styles.quiet}>Slippage limit</span>
         <Segmented
           label="Public slippage limit"
+          tone="lime"
+          className={styles.choices}
           value={slippage}
           disabled={busy || active || preview}
           options={[
