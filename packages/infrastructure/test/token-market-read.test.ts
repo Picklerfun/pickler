@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { randomUUID } from "node:crypto";
 import { tokenCurveMarket, tokenReferenceEconomics } from "@pickler/core";
-import { freshnessReadSchema, launchDetailSchema } from "@pickler/api-schema";
+import { freshnessReadSchema, launchDetailSchema, tokenMarketSchema } from "@pickler/api-schema";
 import { createTestStore } from "./database.js";
 import { PostgresLaunchReadModel } from "../src/persistence/product/launch-read-model.js";
 
@@ -98,6 +98,7 @@ test("chain/address and UUID reads expose the committed initial state without in
   assert.equal(read.data.market?.realQuoteReserve, "0");
   assert.deepEqual(read.data.market?.recentTrades, []);
   assert.equal(read.data.market?.history.length, 1);
+  assert.equal(read.data.market?.priceMovement, null);
   assert.equal((await model.getLaunch(id))?.data.id, id);
   assert.equal(await model.getLaunch(`eip155:143:${token}`), null);
   assert.equal(await model.getLaunch("garbage"), null);
@@ -195,4 +196,27 @@ test("two trades within one hour retain the real launch anchor and both price ch
   assert.equal(market.history[1]?.priceWad, tokenCurveMarket(terms, buy.netSoldAfter).priceWad);
   assert.equal(market.history[2]?.priceWad, tokenCurveMarket(terms, sell.netSoldAfter).priceWad);
   assert.equal(market.historyTruncated, false);
+  assert.equal(market.priceMovement?.direction, "down");
+  assert.equal(market.priceMovement?.fromAt, market.history[1]?.at);
+  assert.equal(market.priceMovement?.toAt, market.history[2]?.at);
+  assert.ok(BigInt(market.priceMovement!.changeBps) <= 0n);
+
+  const legacy = { ...market };
+  delete legacy.priceMovement;
+  assert.equal(tokenMarketSchema.safeParse(legacy).success, true);
+  assert.equal(tokenMarketSchema.safeParse({ ...market, priceMovement: null }).success, true);
+  assert.equal(
+    tokenMarketSchema.safeParse({
+      ...market,
+      priceMovement: { ...market.priceMovement, direction: "up", changeBps: "-1" },
+    }).success,
+    false,
+  );
+  assert.equal(
+    tokenMarketSchema.safeParse({
+      ...market,
+      priceMovement: { ...market.priceMovement, changeBps: "invalid" },
+    }).success,
+    false,
+  );
 });
