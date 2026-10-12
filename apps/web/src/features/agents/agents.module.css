@@ -67,7 +67,9 @@
 }
 
 .backLink {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   margin-bottom: 14px;
   padding: 9px 13px;
   border: 1px solid var(--pk-rule-strong);
