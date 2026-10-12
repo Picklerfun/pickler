@@ -9,13 +9,21 @@ try {
   const { coverage, state, output, commit, policyHash } = workerData;
   let report;
   let rows;
+  let manifestPath = workerData.manifestPath;
+  if (workerData.source) {
+    phase = "source-export";
+    const { exportPtsReportSource } = await tsImport("./report-source.ts", import.meta.url);
+    manifestPath = await exportPtsReportSource(workerData.source, commit, (code, diagnostic) => {
+      parentPort.postMessage({ kind: "persistence-failure", code, diagnostic });
+    });
+  }
   phase = "source-validation";
-  if (workerData.manifestPath) {
+  if (manifestPath) {
     const { readPtsExportManifest } = await tsImport("./parts.ts", import.meta.url);
     const { ptsPartReport } = await tsImport("./part-report.ts", import.meta.url);
-    const manifest = await readPtsExportManifest(workerData.manifestPath);
+    const manifest = await readPtsExportManifest(manifestPath);
     phase = "audit";
-    ({ report, rows } = await ptsPartReport(dirname(workerData.manifestPath), manifest));
+    ({ report, rows } = await ptsPartReport(dirname(manifestPath), manifest));
   } else {
     // Controlled historical callers may still supply the original v1 snapshot.
     const { perpsStudyReport } = await tsImport("../perps-study/report.ts", import.meta.url);
@@ -45,12 +53,13 @@ try {
   await ptsReport(output, { ...report, processState: state, commit, policyHash, coverage }, rows);
   parentPort.postMessage({ published: true });
 } catch (error) {
+  const { ptsReportWorkerCode } = await tsImport("./report-worker-client.ts", import.meta.url);
   const code =
     error instanceof RangeError
       ? "PTS_REPORT_SERIALIZATION_FAILED"
       : /^(AUDIT_|INVALID_INPUT|PTS_EXPORT_)/.test(String(error?.code ?? ""))
         ? "PTS_REPORT_SOURCE_INVALID"
-        : "PTS_REPORT_FAILED";
+        : ptsReportWorkerCode(error);
   parentPort.postMessage({ published: false, code, phase });
   process.exitCode = 1;
 } finally {

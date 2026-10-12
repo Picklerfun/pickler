@@ -122,7 +122,8 @@ canonical payload digest. Offline audit accepts both formats and checks source/i
 Missing or oversized individual evidence stops export explicitly; it is never silently trimmed.
 
 Full JSON/CSV publication streams data. The HTML summary excludes raw histories and points to
-complete provenance in JSON/source parts. Runtime workers receive only a manifest path and
+complete provenance in JSON/source parts. Runtime report workers receive bounded configuration and the dedicated database file path, export
+consistent source parts in their own read-only thread and then
 reproduce one original round at a time with trading-owned functions, preserving exact signals,
 ledger results and missing-evidence labels. Report failures retain a specific safe code and stop
 admission; a successful message is accepted only with a clean worker exit. No failed study is

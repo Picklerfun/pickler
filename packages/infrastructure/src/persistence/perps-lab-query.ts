@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import type { Pool, PoolClient } from "pg";
 import { PilotError } from "@pickler/core";
-import { connectionFailure, queryFailure } from "./evaluation-timing.js";
+import { connectionDeadlineStage, connectionFailure, queryFailure } from "./evaluation-timing.js";
 
 export interface PerpsLabQueryDiagnostic {
   version: 1;
@@ -15,6 +15,13 @@ export interface PerpsLabQueryDiagnostic {
   durationMs: number | null;
   code: string | null;
   driverCode: string | null;
+  /** Additive driver counters; absent in historical or unsupported pool observations. */
+  poolTotal?: number;
+  poolIdle?: number;
+  poolWaiting?: number;
+  poolLimit?: number;
+  checkoutAtStart?: "queued" | "idle" | "new";
+  connectionDeadlineStage?: "pool-queue" | "new-client";
 }
 const failureCodes = new Set([
   "PERSISTENCE_QUERY_TIMEOUT",
@@ -84,6 +91,25 @@ export function observePerpsLabPool(
   },
 ): Pool {
   let sequence = 0;
+  const poolState = (): Pick<
+    PerpsLabQueryDiagnostic,
+    "poolTotal" | "poolIdle" | "poolWaiting" | "poolLimit"
+  > => {
+    try {
+      const counts = [pool.totalCount, pool.idleCount, pool.waitingCount, pool.options?.max];
+      if (counts.some((count) => !Number.isSafeInteger(count) || (count ?? -1) < 0)) {
+        return {};
+      }
+      return {
+        poolTotal: counts[0]!,
+        poolIdle: counts[1]!,
+        poolWaiting: counts[2]!,
+        poolLimit: counts[3]!,
+      };
+    } catch {
+      return {};
+    }
+  };
   const notify = (value: PerpsLabQueryDiagnostic) => {
     try {
       diagnostic({ ...value });
@@ -99,6 +125,20 @@ export function observePerpsLabPool(
     connected = false,
   ): Promise<T> {
     const started = clocks.monotonic();
+    const initialPool = poolState();
+    let checkoutAtStart: PerpsLabQueryDiagnostic["checkoutAtStart"];
+    if (operation === "connect" && initialPool.poolLimit !== undefined) {
+      const queued =
+        initialPool.poolWaiting! > 0 ||
+        (initialPool.poolIdle === 0 && initialPool.poolTotal! >= initialPool.poolLimit);
+      if (queued) {
+        checkoutAtStart = "queued";
+      } else if (initialPool.poolIdle! > 0) {
+        checkoutAtStart = "idle";
+      } else {
+        checkoutAtStart = "new";
+      }
+    }
     const base: PerpsLabQueryDiagnostic = {
       version: 1,
       queryId: ++sequence,
@@ -110,10 +150,13 @@ export function observePerpsLabPool(
       durationMs: null,
       code: null,
       driverCode: null,
+      ...initialPool,
+      ...(checkoutAtStart ? { checkoutAtStart } : {}),
     };
     notify(base);
     let code: string | null = null;
     let supplied: string | null = null;
+    let deadlineStage: ReturnType<typeof connectionDeadlineStage> = null;
     let resultClient = client;
     try {
       const result = await execute();
@@ -123,6 +166,7 @@ export function observePerpsLabPool(
       return result;
     } catch (error) {
       supplied = driverCode(error);
+      deadlineStage = connectionDeadlineStage(error);
       const failure = connectionFailure(queryFailure(error));
       code =
         failure instanceof PilotError && failureCodes.has(failure.code)
@@ -138,6 +182,8 @@ export function observePerpsLabPool(
         durationMs: Math.max(0, clocks.monotonic() - started),
         code,
         driverCode: supplied,
+        ...poolState(),
+        ...(deadlineStage ? { connectionDeadlineStage: deadlineStage } : {}),
       });
     }
   }

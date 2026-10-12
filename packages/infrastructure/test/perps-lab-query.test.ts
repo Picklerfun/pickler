@@ -201,3 +201,45 @@ test("an observer cannot mutate the identity of the completion or leak a failing
   assert.equal(JSON.stringify(notices).includes("private connection detail"), false);
   client.release();
 });
+
+test("exact queue and new-client deadlines retain separate safe diagnostics and initial pool state", async () => {
+  for (const [message, stage] of [
+    ["timeout exceeded when trying to connect", "pool-queue"],
+    ["Connection terminated due to connection timeout", "new-client"],
+  ] as const) {
+    const original = new ControlledPool();
+    Object.assign(original, { totalCount: 4, idleCount: 0, waitingCount: 1, options: { max: 4 } });
+    original.failure = new Error(message);
+    const notices: PerpsLabQueryDiagnostic[] = [];
+    const pool = observed(original, notices);
+    await assert.rejects(pool.connect(), { code: "PERSISTENCE_CONNECTION_TIMEOUT" });
+    assert.equal(notices[0]!.checkoutAtStart, "queued");
+    assert.equal(notices[1]!.connectionDeadlineStage, stage);
+    assert.equal(notices[1]!.poolTotal, 4);
+    assert.equal(JSON.stringify(notices).includes(message), false);
+  }
+});
+
+test("pool counters are optional, resistant to observer mutation and never break successful queries", async () => {
+  const original = new ControlledPool();
+  Object.assign(original, { totalCount: 1, idleCount: 1, waitingCount: 0, options: { max: 4 } });
+  const notices: PerpsLabQueryDiagnostic[] = [];
+  const pool = observePerpsLabPool(original as unknown as Pool, (notice) => {
+    notices.push({ ...notice });
+    notice.poolTotal = 999;
+    notice.checkoutAtStart = "queued";
+  });
+  const client = await pool.connect();
+  assert.equal(notices[0]!.checkoutAtStart, "idle");
+  assert.equal(notices[1]!.checkoutAtStart, "idle");
+  assert.equal(notices[1]!.poolTotal, 1);
+  client.release();
+  Object.defineProperty(original, "totalCount", {
+    get() {
+      throw new Error("private getter");
+    },
+  });
+  assert.deepEqual((await pool.query("SELECT 1")).rows, [{ result: "private result" }]);
+  assert.equal(notices.at(-1)!.poolTotal, undefined);
+  assert.equal(JSON.stringify(notices).includes("private getter"), false);
+});

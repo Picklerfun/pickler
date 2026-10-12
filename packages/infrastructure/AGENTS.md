@@ -772,3 +772,20 @@ cannot replace results or failures, raise deadlines, retry statements or undo th
 failure latch. A statement timeout remains distinct from explicit cancellation; rollback and
 resource release retain the original guard semantics. The controlled PostgreSQL lock regression
 uses a disposable isolated server, never a prospective or historical study database.
+
+## Local PTS execution and report isolation
+
+`createLocalPerpsLabStore` on the restricted `/perps-lab` subpath validates an explicit loopback
+connection and partitions the existing five-connection local runtime capacity: four for execution,
+one for report capture. Report sessions start with `default_transaction_read_only=on`. Neither
+role initializes migrations, budgets, studies or applications. Hosted consumers retain their
+existing transport and two-connection limits; historical three-argument store construction is
+unchanged. Apply observation and the connection-failure guard before creating Drizzle so permission
+reads share the same failure latch as financial operations.
+
+Query diagnostics add optional safe pool counters, initial checkout disposition and exact
+`pool-queue`/`new-client` driver deadline branches. The initial disposition is not a retrospective
+causal explanation. Both reviewed deadlines remain `PERSISTENCE_CONNECTION_TIMEOUT`; query
+timeouts and explicit cancellation remain distinct. Never store SQL text, values, messages,
+credentials or ownership tokens. Tests shorten only a fixture queue wait, never production limits.
+See [PTS report persistence](../../apps/agent-service/PTS-REPORT-PERSISTENCE.md).

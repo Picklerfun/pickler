@@ -8,3 +8,4 @@ export { guardPerpsLabPool } from "./persistence/perps-lab-pool.js";
 export type { PerpsLabFailureDiagnostic } from "./persistence/perps-lab-pool.js";
 export { observePerpsLabPool } from "./persistence/perps-lab-query.js";
 export type { PerpsLabQueryDiagnostic } from "./persistence/perps-lab-query.js";
+export { createLocalPerpsLabStore } from "./persistence/perps-lab-local.js";

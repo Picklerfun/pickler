@@ -35,8 +35,10 @@ v2 before any environment/provider composition. Verify part hashes, paths and in
 never use later data to fill an absent original component. The v2 payload hash preserves the
 v1 canonical payload meaning.
 
-Report workers receive the manifest path, not the whole historical snapshot. The pure trading
-per-slot auditor supplies identical rows; raw native histories remain in the source parts.
+Financial report workers receive the configuration and dedicated database file path, then export
+source parts in their own thread. Offline controlled callers can still supply a manifest path; no
+whole historical snapshot is cloned. The pure trading per-slot auditor supplies identical rows;
+raw native histories remain in the source parts.
 Stream JSON/CSV, bound the HTML summary, publish hashes last, and wait for worker exit after its
 publication message. Safe report/source/serialization failures interrupt admission explicitly;
 no generic success message or report diagnostic can restart a study or grant ownership.
@@ -63,3 +65,15 @@ credentials or owner tokens are stored. Interruption publishes persistence-query
 atomically and includes the first query failure in compact status. A diagnostic cannot replace the
 primary error, extend a deadline, undo connection failure containment or authorize a new session.
 Use full audit parts for market/financial evidence, never the bounded execution cycle projection.
+
+Report source export is now performed inside the report worker, through report-source.ts, rather
+than on the financial host thread. report-worker-client.ts supplies no inherited environment,
+accepts only safe failure codes and waits for worker exit. The worker has its own one-connection
+read-only PostgreSQL scope; execution has four guarded connections. This partitions local capacity
+without increasing the existing total. Capture, decode, hashing and part publication belong to the
+worker. On cancellation, verify backend disappearance separately from thread exit; server-side
+blocked reads retain their original ten-second statement deadline.
+
+Forward report failures with a bounded origin-qualified diagnostic. Do not reinterpret a previous
+connection timeout as pool saturation or a network failure without original evidence. Controlled
+source-export timings are distinct from rendering, public acquisition and profitability.
