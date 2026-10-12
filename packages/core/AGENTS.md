@@ -536,3 +536,10 @@ data, not a trading permission; public preparation revalidates the token and on-
 publication failure preserves the recoverable operation and never signs or sends again. A stored
 finalized launch can invoke the same idempotent port to repair earlier missing attribution. Other
 actions do not publish tokens. Provider, decoding and database implementation remain infrastructure-owned.
+
+## Public token market arithmetic
+
+`features/launch/domain/token-market.ts` exports informational WAD trade prices with buy/sell
+fees removed, exact FDV and committed-reference curve snapshots. These are presentation reads,
+never executable quotes. Core retains integer arithmetic and rounding; the web formats prepared
+values only. Unknown presets must not be reinterpreted as the current reference profile.
