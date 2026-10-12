@@ -405,3 +405,20 @@ The in-memory collector bounds completed queries to 128 and active identities to
 first failure independently and declares truncation. Compact status exposes only that safe first
 query failure. This evidence does not grant ownership, authorize recovery, change query deadlines
 or amend historical missing query phases. Reports and financial policy remain unchanged.
+
+## PTS report source isolation
+
+`pts-study/report-worker-client.ts` starts workers without inherited environment and waits for
+exit after verified publication. The report worker now performs the consistent PostgreSQL source
+export as well as audit/render/publication. `report-source.ts` reads only the dedicated local
+DATABASE_URL file and uses infrastructure's one-connection read-only report role. Execution uses
+the separate four-connection guarded role, including Drizzle permission reads. Coalescing still
+allows one report generation at a time.
+
+Forward the first bounded report persistence diagnostic to the controller; preserve its specific
+code and publish compact interruption state even if a full report cannot be generated. Abort
+terminates the report worker without retrying uncertain work. Verify database backend release
+separately; a blocked server read can persist until its unchanged ten-second statement deadline.
+The thirty-pair source-only benchmark uses synthetic JSON, verifies identical hashes and includes
+worker startup. It does not measure provider latency or strategy returns. Read
+[PTS report persistence](PTS-REPORT-PERSISTENCE.md) for checks and evidence limits.
