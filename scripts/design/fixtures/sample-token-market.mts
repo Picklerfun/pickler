@@ -6,6 +6,7 @@ import {
   quoteOutForTokensIn,
   splitCurveFee,
   tokenCurveMarket,
+  tokenPriceMovement,
   tokenReferenceEconomics,
   tokenTradePriceWad,
 } from "@pickler/core";
@@ -80,6 +81,7 @@ export function sampleTokenMarket(now = Date.now()): ReadDto<LaunchDetailDto> {
         tokenDecimals: 18,
         priceKind: "curve",
         ...state,
+        priceMovement: tokenPriceMovement(observations),
         volume24h: (
           curveGrossFromNet(firstReserve, economics.buyFeeBps) +
           buyGross +
