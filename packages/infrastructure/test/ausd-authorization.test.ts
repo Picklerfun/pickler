@@ -113,11 +113,11 @@ function unknownOutcome(hash: string | null) {
 
 type Read = PublicClientLike["readContract"];
 
-/** Answers `treasury()` with TREASURY and the AUSD reads with `authorizationState`. */
+/** Answers the AUSD reads with `authorizationState`; settle never reads the splitter. */
 function reads(authorizationState: () => Promise<unknown>): Read {
   return async (request) => {
-    if (request.functionName === "treasury") {
-      return TREASURY;
+    if (request.functionName === "treasury" || request.functionName === "asset") {
+      throw new Error(`settle read the splitter's ${request.functionName}()`);
     }
     return authorizationState();
   };
@@ -128,6 +128,7 @@ function gateway(overrides: {
   write?: WalletClientLike["writeContract"];
   wait?: PublicClientLike["waitForTransactionReceipt"];
   read?: Read;
+  treasury?: string;
 }) {
   const calls: string[] = [];
   const requests: SplitterSettleRequest[] = [];
@@ -158,6 +159,7 @@ function gateway(overrides: {
       rpcUrl: "http://127.0.0.1:1",
       relayerPrivateKey: RELAYER,
       splitter: SPLITTER,
+      treasury: overrides.treasury ?? TREASURY,
       client,
       wallet,
     }),
@@ -352,6 +354,26 @@ test("a failed treasury read is not cached", async () => {
   assert.equal(attempts, 2);
 });
 
+test("splitterAsset reads asset() from the splitter once, and a failed read is not cached", async () => {
+  const requests: Record<string, unknown>[] = [];
+  const { gateway: subject } = gateway({
+    read: async (request) => {
+      requests.push(request as unknown as Record<string, unknown>);
+      if (requests.length === 1) {
+        throw new Error("rpc down");
+      }
+      return AUSD;
+    },
+  });
+
+  await assert.rejects(subject.splitterAsset());
+  assert.equal(await subject.splitterAsset(), AUSD);
+  assert.equal(await subject.splitterAsset(), AUSD);
+  assert.equal(requests.length, 2);
+  assert.equal(requests[1]!.address, SPLITTER);
+  assert.equal(requests[1]!.functionName, "asset");
+});
+
 test("settle simulates and writes splitter.settle, then returns the hash, block and shares", async () => {
   const { gateway: subject, calls, requests } = gateway({});
   const signed = authorization();
@@ -439,12 +461,28 @@ test("a success receipt without the splitter's matching AdviceSettled is a Settl
   }
 });
 
-test("a treasury read that fails after a success receipt is a SettlementUnknown with the hash", async () => {
-  const { gateway: subject } = gateway({
-    read: async () => {
-      throw new Error("rpc down");
+test("a success receipt settles without reading the splitter after the broadcast", async () => {
+  const splitterReads: string[] = [];
+  const { gateway: subject, calls } = gateway({
+    read: async (request) => {
+      if (request.functionName === "treasury" || request.functionName === "asset") {
+        splitterReads.push(request.functionName);
+        throw new Error("rpc down");
+      }
+      return false;
     },
   });
+  const signed = authorization();
+
+  const result = await subject.settle(signed, await sign(signed), PAYEE);
+
+  assert.deepEqual(calls, ["simulate", "write"]);
+  assert.equal(result.txHash, HASH);
+  assert.deepEqual(splitterReads, [], "the expected treasury comes from the input, not the chain");
+});
+
+test("the third transfer is matched against the treasury given to the gateway", async () => {
+  const { gateway: subject } = gateway({ treasury: OTHER });
   const signed = authorization();
 
   await assert.rejects(subject.settle(signed, await sign(signed), PAYEE), unknownOutcome(HASH));
@@ -605,9 +643,7 @@ test("no settle error carries the relayer key, the signature or a cause", async 
       },
     },
     {
-      read: async () => {
-        throw leak();
-      },
+      wait: success([SETTLED]),
     },
   ];
   const signed = authorization();

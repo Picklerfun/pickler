@@ -108,7 +108,7 @@ export interface PublicClientLike {
   readContract(request: {
     address: `0x${string}`;
     abi: typeof AUSD_ABI | typeof PicklerAdviceSplitterAbi;
-    functionName: "authorizationState" | "balanceOf" | "treasury";
+    functionName: "authorizationState" | "balanceOf" | "treasury" | "asset";
     args: readonly unknown[];
   }): Promise<unknown>;
   simulateContract(request: SplitterSettleRequest): Promise<unknown>;
@@ -128,6 +128,11 @@ export interface AusdAuthorizationGatewayInput {
   relayerPrivateKey: `0x${string}`;
   /** The `PicklerAdviceSplitter`: the authorization's `to` and the contract the relayer calls. */
   splitter: string;
+  /**
+   * The treasury the splitter pays, already verified against its `treasury()` by the host. The
+   * third transfer of a settlement is matched against it, so nothing is read after a broadcast.
+   */
+  treasury: string;
   asset?: string;
   chainId?: number;
   receiptTimeoutMs?: number;
@@ -251,13 +256,34 @@ function adviceSettledMatches(
 export type AusdAuthorizationGateway = AdvicePaymentGateway & {
   /** The splitter's immutable `treasury()`, read once and cached; a failed read is retried. */
   splitterTreasury(): Promise<string>;
+  /** The splitter's immutable `asset()`, read once and cached; a failed read is retried. */
+  splitterAsset(): Promise<string>;
 };
+
+/** One read of an immutable splitter getter, cached once it succeeds and retried after a failure. */
+function cachedRead(read: () => Promise<unknown>): () => Promise<string> {
+  let cached: Promise<string> | null = null;
+
+  return () => {
+    if (cached === null) {
+      cached = read().then(
+        (value) => value as string,
+        (error: unknown) => {
+          cached = null;
+          throw error;
+        },
+      );
+    }
+    return cached;
+  };
+}
 
 export function createAusdAuthorizationGateway(
   input: AusdAuthorizationGatewayInput,
 ): AusdAuthorizationGateway {
   const asset = (input.asset ?? AUSD_ADDRESS) as `0x${string}`;
   const splitter = input.splitter as `0x${string}`;
+  const treasury = input.treasury;
   const chainId = input.chainId ?? MONAD_TESTNET_ID;
   const receiptTimeoutMs = input.receiptTimeoutMs ?? DEFAULT_RECEIPT_TIMEOUT_MS;
   const account = privateKeyToAccount(input.relayerPrivateKey);
@@ -278,25 +304,22 @@ export function createAusdAuthorizationGateway(
       transport: http(input.rpcUrl),
     }) as unknown as WalletClientLike);
 
-  let treasury: Promise<string> | null = null;
-  const splitterTreasury = (): Promise<string> => {
-    if (treasury === null) {
-      const read = client.readContract({
-        address: splitter,
-        abi: PicklerAdviceSplitterAbi,
-        functionName: "treasury",
-        args: [],
-      });
-      treasury = read.then(
-        (address) => address as string,
-        (error: unknown) => {
-          treasury = null;
-          throw error;
-        },
-      );
-    }
-    return treasury;
-  };
+  const splitterTreasury = cachedRead(() =>
+    client.readContract({
+      address: splitter,
+      abi: PicklerAdviceSplitterAbi,
+      functionName: "treasury",
+      args: [],
+    }),
+  );
+  const splitterAsset = cachedRead(() =>
+    client.readContract({
+      address: splitter,
+      abi: PicklerAdviceSplitterAbi,
+      functionName: "asset",
+      args: [],
+    }),
+  );
 
   const gateway: AusdAuthorizationGateway = {
     nonceFor(payee, salt) {
@@ -304,6 +327,8 @@ export function createAusdAuthorizationGateway(
     },
 
     splitterTreasury,
+
+    splitterAsset,
 
     async signatureValid(authorization, signature) {
       try {
@@ -420,13 +445,6 @@ export function createAusdAuthorizationGateway(
         return rejectIfUnused("Settlement transaction reverted", hash);
       }
 
-      let treasuryAddress: string;
-      try {
-        treasuryAddress = await splitterTreasury();
-      } catch {
-        throw new SettlementUnknown(`Settlement ${hash} mined; the treasury is unknown`, hash);
-      }
-
       // Each AUSD movement is checked against this payment, never the splitter's event alone.
       const value = BigInt(authorization.value);
       const shares = adviceShares(value);
@@ -434,7 +452,7 @@ export function createAusdAuthorizationGateway(
         from: authorization.from,
         splitter,
         payee,
-        treasury: treasuryAddress,
+        treasury,
         value,
         creator: shares.creator,
         protocol: shares.protocol,

@@ -74,14 +74,17 @@ value. Both splitter variables stay empty in the committed Wrangler files until 
 recorded.
 
 Before a paid request is served, the API reads the splitter's immutable `treasury()` and compares
-it with `ADVICE_SPLITTER_TREASURY`, ignoring case. A mismatch (a splitter deployed with another
-treasury) or a failed read answers 503 `ADVICE_UNAVAILABLE` for that request and logs a line that
-names `ADVICE_SPLITTER_ADDRESS` and `ADVICE_SPLITTER_TREASURY` but no address; neither outcome is
-cached, so the next request reads again. Until it passes the check blocks every paid-path
+it with `ADVICE_SPLITTER_TREASURY`, ignoring case, then reads its immutable `asset()` and requires
+AUSD. A mismatch (a splitter deployed with another treasury or over another token) or a failed read
+answers 503 `ADVICE_UNAVAILABLE` for that request and logs a line that names
+`ADVICE_SPLITTER_ADDRESS` (and `ADVICE_SPLITTER_TREASURY` for the treasury) but no address; no such
+outcome is cached, so the next request reads again. Until it passes the check blocks every paid-path
 request, replays of already-paid keys included, with 503. A match is cached for the isolate's life. The composition
 is `paidAdviceFrom` in `workers/api/src/container.ts`: core's `createPaidAdvice` over the
 request's advice service and store, `PostgresAdvicePayments` on the invocation's pool and
-`createAusdAuthorizationGateway` with the splitter (AUSD on Monad testnet, EIP-3009). The `GET`
+`createAusdAuthorizationGateway` with the splitter and the verified treasury (AUSD on Monad
+testnet, EIP-3009). Settlement matches the treasury transfer against that verified address, so
+nothing is read from the chain after a broadcast. The `GET`
 routes are unchanged and free.
 
 ### The splitter and the shares
@@ -143,7 +146,7 @@ Settlement outcomes:
   `failed`, nothing was charged and the same key may pay again.
 - **Unknown outcome** — a timeout, an RPC error, a success receipt without all three matching
   AUSD `Transfer` logs (payer to splitter for the price, splitter to the agent wallet for the
-  creator share, splitter to the treasury for the rest) and the splitter's matching
+  creator share, splitter to the configured treasury for the rest) and the splitter's matching
   `AdviceSettled`, or a revert whose nonce was already consumed: 402 `settlement_failed`, the row
   stays `pending` and that key is never settled again while it is. Once the authorization's
   `validBefore` plus a 120-second grace has passed (server clock), the next request on the key

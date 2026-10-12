@@ -28,6 +28,7 @@ function compose(env: Parameters<typeof paidAdviceFrom>[0]) {
 }
 
 const SPLITTER = "0x4444444444444444444444444444444444444444";
+const AUSD = "0xa9012a055bd4e0eDfF8Ce09f960291C09D5322dC";
 const TREASURY = "0x55555555555555555555555555555555555abcde";
 const ON = {
   ADVICE_X402_ENABLED: "true",
@@ -40,9 +41,9 @@ const user = { kind: "user", id: "user-1" } as Parameters<
   NonNullable<ReturnType<typeof paidAdviceFrom>>["request"]
 >[0];
 
-/** A gateway whose only live call is `treasury()`; every other call fails the test. */
-function chain(treasury: () => Promise<string>) {
-  const calls = { treasury: 0, inputs: [] as AusdAuthorizationGatewayInput[] };
+/** A gateway whose only live calls are `treasury()` and `asset()`; any other call fails the test. */
+function chain(treasury: () => Promise<string>, asset: () => Promise<string>) {
+  const calls = { treasury: 0, asset: 0, inputs: [] as AusdAuthorizationGatewayInput[] };
   const unexpected = async (): Promise<never> => {
     throw new Error("the gateway is not used before the treasury is confirmed");
   };
@@ -60,6 +61,10 @@ function chain(treasury: () => Promise<string>) {
         calls.treasury++;
         return treasury();
       },
+      splitterAsset: async () => {
+        calls.asset++;
+        return asset();
+      },
     };
   };
   return { calls, gatewayFor };
@@ -75,9 +80,10 @@ function composeOnChain(
   env: Parameters<typeof paidAdviceFrom>[0],
   treasury: () => Promise<string>,
   confirmedTreasuries = new Set<string>(),
+  asset: () => Promise<string> = async () => AUSD,
 ) {
   const logged: string[] = [];
-  const fake = chain(treasury);
+  const fake = chain(treasury, asset);
   const replaying = { requestReplay: async () => REPLAY } as unknown as AdviceRepository;
   const paid = paidAdviceFrom(
     env,
@@ -121,8 +127,14 @@ test("the flag with a relayer, RPC and a splitter whose treasury matches compose
   assert.equal(on.calls.inputs.length, 1);
   assert.equal(on.calls.inputs[0]!.splitter, SPLITTER, "the gateway settles through the splitter");
   assert.equal(on.calls.inputs[0]!.rpcUrl, RPC);
+  assert.equal(
+    on.calls.inputs[0]!.treasury,
+    TREASURY.toUpperCase().replace("0X", "0x"),
+    "settle matches the third transfer against the configured treasury",
+  );
   await served(on.paid);
   assert.equal(on.calls.treasury, 1, "the treasury is read before the request is served");
+  assert.equal(on.calls.asset, 1, "the asset is read before the request is served");
   assert.deepEqual(on.logged, []);
 
   for (const flag of [undefined, "false", "TRUE", "1"]) {
@@ -187,6 +199,45 @@ test("a failed treasury read refuses that request only, and a match is cached pe
   const next = composeOnChain(ON, async () => TREASURY, confirmed);
   await served(next.paid);
   assert.equal(next.calls.treasury, 0, "a later invocation in the same isolate reads nothing");
+});
+
+test("a splitter over another token, or an unreadable asset, refuses that request only", async () => {
+  const other = "0x7777777777777777777777777777777777777777";
+  const reads: Array<() => Promise<string>> = [
+    async () => other,
+    async () => {
+      throw new Error(`rpc ${RPC} refused`);
+    },
+    async () => 42 as unknown as string,
+  ];
+  for (const asset of reads) {
+    const confirmed = new Set<string>();
+    const on = composeOnChain(ON, async () => TREASURY, confirmed, asset);
+
+    assert.ok(on.paid);
+    for (let attempt = 0; attempt < 2; attempt++) {
+      await assert.rejects(
+        on.paid.request(user, "agent-1", "BTC", "key-1", undefined),
+        isUnavailable,
+      );
+    }
+
+    assert.equal(on.calls.asset, 2, "a refused asset is never cached as confirmed");
+    assert.equal(confirmed.size, 0);
+    assert.equal(on.logged.length, 2);
+    assert.match(on.logged[0]!, /asset of ADVICE_SPLITTER_ADDRESS/);
+    assertNoValue(on.logged);
+    assert.equal(on.logged[0]!.includes("7777"), false, "the on-chain asset is not logged");
+  }
+
+  const lowercase = composeOnChain(
+    ON,
+    async () => TREASURY,
+    new Set(),
+    async () => AUSD.toLowerCase(),
+  );
+  await served(lowercase.paid);
+  assert.deepEqual(lowercase.logged, [], "the asset comparison ignores case");
 });
 
 test("a treasury read that is not a string fails closed with 503, not 500", async () => {

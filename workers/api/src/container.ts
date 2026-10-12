@@ -3,6 +3,7 @@ import { composeTokenLauncher } from "./token-launch";
 import { createXOAuthService } from "@pickler/core";
 import { PostgresApplicationReview, PostgresStudioAccessRequests } from "@pickler/infrastructure";
 import {
+  AUSD_TESTNET,
   createAdviceService,
   createPaidAdvice,
   type AdviceRepository,
@@ -215,9 +216,10 @@ function sameAddress(left: string, right: string): boolean {
 }
 
 /**
- * Splitter and treasury pairs whose on-chain `treasury()` already matched the configured one in
- * this isolate. The treasury is immutable, so one successful comparison stands for the isolate's
- * life; a mismatch or a failed read is never cached and is retried on the next request.
+ * Splitter and treasury pairs whose on-chain `treasury()` already matched the configured one, and
+ * whose `asset()` is AUSD, in this isolate. Both are immutable, so one successful comparison
+ * stands for the isolate's life; a mismatch or a failed read is never cached and is retried on the
+ * next request.
  */
 const confirmedSplitterTreasuries = new Set<string>();
 
@@ -227,8 +229,10 @@ const confirmedSplitterTreasuries = new Set<string>();
  * as before. On, it sells only with the relayer key, `MONAD_RPC_URL`, `ADVICE_SPLITTER_ADDRESS` and
  * `ADVICE_SPLITTER_TREASURY`: the flag without them, with a malformed key or address, or with a key
  * viem refuses, fails closed (every request answers 503). Before a request is served, the
- * splitter's on-chain `treasury()` must equal `ADVICE_SPLITTER_TREASURY`; a mismatch or a failed
- * read refuses that request with 503. Every refusal is logged by variable name, never by value.
+ * splitter's on-chain `treasury()` must equal `ADVICE_SPLITTER_TREASURY` and its `asset()` must be
+ * AUSD; a mismatch or a failed read refuses that request with 503. The gateway matches each
+ * settlement's treasury transfer against that verified address, so it reads nothing after a
+ * broadcast. Every refusal is logged by variable name, never by value.
  */
 export function paidAdviceFrom(
   env: Pick<
@@ -284,6 +288,7 @@ export function paidAdviceFrom(
       rpcUrl,
       relayerPrivateKey: relayerPrivateKey as `0x${string}`,
       splitter,
+      treasury,
     });
   } catch {
     // The error is dropped unread: it may quote the key.
@@ -321,6 +326,21 @@ export function paidAdviceFrom(
       log(
         "the treasury of ADVICE_SPLITTER_ADDRESS differs from ADVICE_SPLITTER_TREASURY; advice requests are refused",
       );
+      throw new PilotError("ADVICE_UNAVAILABLE", "Paid analyses are not configured");
+    }
+    let assetMatches: boolean;
+    try {
+      // Compared inside the try: a read that is not a string fails closed like a failed read.
+      assetMatches = sameAddress(await gateway.splitterAsset(), AUSD_TESTNET);
+    } catch {
+      // The error is dropped unread: it may quote the RPC URL.
+      log(
+        "the asset of ADVICE_SPLITTER_ADDRESS could not be read through MONAD_RPC_URL; this advice request is refused",
+      );
+      throw new PilotError("ADVICE_UNAVAILABLE", "Paid analyses are not configured");
+    }
+    if (!assetMatches) {
+      log("the asset of ADVICE_SPLITTER_ADDRESS is not AUSD; advice requests are refused");
       throw new PilotError("ADVICE_UNAVAILABLE", "Paid analyses are not configured");
     }
     confirmed.add(pair);

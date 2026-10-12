@@ -505,15 +505,16 @@ key viem refuses, logs one line naming the variable and no value and fails close
 request that throws `PilotError("ADVICE_UNAVAILABLE")`, so every POST answers 503 and nothing is
 enqueued. A composed `paid` shares the invocation's advice store and service with the free path,
 builds `PostgresAdvicePayments` on the invocation's pool and `createAusdAuthorizationGateway` with
-the splitter, passes the splitter to core as `splitter` (the 402's `payTo`), and logs every
+the splitter and `ADVICE_SPLITTER_TREASURY` as `treasury` (the gateway matches each settlement's
+third transfer against it and reads nothing after a broadcast), passes the splitter to core as `splitter` (the 402's `payTo`), and logs every
 settlement whose AUSD may have moved without a `settled` row (`reportUnrecordedSettlement`: reason,
 ids, key, payer, nonce and hash, never the signature).
 
 Before each request is handed to core, the composed `paid` compares the gateway's
-`splitterTreasury()` with `ADVICE_SPLITTER_TREASURY`, ignoring case. A mismatch or a failed read
-throws `ADVICE_UNAVAILABLE` (503) for that request and logs a line naming
-`ADVICE_SPLITTER_ADDRESS` and `ADVICE_SPLITTER_TREASURY`, never an address or the RPC URL; neither
-is cached. A match is cached per isolate in a module-level set keyed by RPC URL, splitter and
+`splitterTreasury()` with `ADVICE_SPLITTER_TREASURY`, then its `splitterAsset()` with core's
+`AUSD_TESTNET`, both ignoring case. A mismatch or a failed read throws `ADVICE_UNAVAILABLE` (503)
+for that request and logs a line naming `ADVICE_SPLITTER_ADDRESS` (and `ADVICE_SPLITTER_TREASURY`
+for the treasury), never an address or the RPC URL; none is cached. A match of both is cached per isolate in a module-level set keyed by RPC URL, splitter and
 treasury, so later invocations skip the read. The check also gates replays: with a wrong treasury
 the paid path is down as a whole. `deps.gatewayFor` and `deps.confirmedTreasuries` exist for tests
 only.
