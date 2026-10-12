@@ -11,6 +11,17 @@ interface IAusd {
     function authorizationState(address authorizer, bytes32 nonce) external view returns (bool);
     function balanceOf(address account) external view returns (uint256);
     function transfer(address to, uint256 value) external returns (bool);
+    function receiveWithAuthorization(
+        address from,
+        address to,
+        uint256 value,
+        uint256 validAfter,
+        uint256 validBefore,
+        bytes32 nonce,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) external;
 }
 
 /// A real AUSD `ReceiveWithAuthorization`, signed by a test key, settled through the splitter on a
@@ -103,5 +114,35 @@ contract AdviceSplitterForkTest is Test {
         assertEq(AUSD.balanceOf(treasury), 525_000);
         assertEq(AUSD.balanceOf(address(splitter)), 0);
         assertTrue(AUSD.authorizationState(buyer, nonce));
+    }
+
+    /// AUSD itself enforces that only the payee (`to`) may execute a ReceiveWithAuthorization. A
+    /// third party holding a valid buyer signature cannot pull the funds, and the authorization is
+    /// not consumed. AUSD reverts with selector 0xfea94442 (caller, payee) for caller != to.
+    function test_thirdPartyCannotExecuteReceiveWithAuthorization() public {
+        if (!forked) vm.skip(true);
+
+        uint256 value = 1_500_000;
+        vm.prank(AUSD_HOLDER);
+        assertTrue(AUSD.transfer(buyer, value));
+
+        uint256 validAfter = block.timestamp - 1;
+        uint256 validBefore = block.timestamp + 300;
+        bytes32 nonce = splitter.nonceFor(agent, keccak256("third-party"));
+        bytes32 structHash = keccak256(
+            abi.encode(
+                RECEIVE_WITH_AUTHORIZATION_TYPEHASH, buyer, address(splitter), value, validAfter, validBefore, nonce
+            )
+        );
+        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", AUSD.DOMAIN_SEPARATOR(), structHash));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(buyerKey, digest);
+
+        vm.prank(makeAddr("thirdParty"));
+        vm.expectPartialRevert(bytes4(0xfea94442));
+        AUSD.receiveWithAuthorization(buyer, address(splitter), value, validAfter, validBefore, nonce, v, r, s);
+
+        assertFalse(AUSD.authorizationState(buyer, nonce));
+        assertEq(AUSD.balanceOf(buyer), value);
+        assertEq(AUSD.balanceOf(address(splitter)), 0);
     }
 }

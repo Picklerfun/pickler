@@ -177,15 +177,30 @@ contract PicklerAdviceSplitterTest is Test {
         new PicklerAdviceSplitter(address(token), address(0));
     }
 
-    function test_transferFalseReverts() public {
+    function test_payeeTransferFalseReverts() public {
         token.mint(buyer, 1_500_000);
         Authorization memory a = _sign(1_500_000, bytes32(uint256(30)), agent);
-        token.setTransferReturnsFalse(true);
+        token.setTransferFailsTo(agent);
 
         vm.expectRevert(PicklerAdviceSplitter.TransferFailed.selector);
         _settle(a, agent);
 
         assertEq(token.balanceOf(buyer), 1_500_000);
+        assertEq(token.balanceOf(address(splitter)), 0);
+        assertFalse(token.authorizationState(buyer, keccak256(abi.encode(agent, a.salt))));
+    }
+
+    function test_treasuryTransferFalseReverts() public {
+        token.mint(buyer, 1_500_000);
+        Authorization memory a = _sign(1_500_000, bytes32(uint256(31)), agent);
+        token.setTransferFailsTo(treasury);
+
+        vm.expectRevert(PicklerAdviceSplitter.TransferFailed.selector);
+        _settle(a, agent);
+
+        assertEq(token.balanceOf(buyer), 1_500_000);
+        assertEq(token.balanceOf(agent), 0);
+        assertEq(token.balanceOf(treasury), 0);
         assertEq(token.balanceOf(address(splitter)), 0);
         assertFalse(token.authorizationState(buyer, keccak256(abi.encode(agent, a.salt))));
     }

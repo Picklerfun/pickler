@@ -19,7 +19,8 @@ contract MockEip3009Token {
     mapping(address account => uint256 balance) public balanceOf;
     mapping(address authorizer => mapping(bytes32 nonce => bool used)) public authorizationState;
 
-    bool public transferReturnsFalse;
+    /// A transfer to this recipient returns false instead of moving funds; others behave normally.
+    address public transferFailsTo;
 
     error CallerMustBePayee();
     error AuthorizationNotYetValid();
@@ -32,8 +33,8 @@ contract MockEip3009Token {
         balanceOf[to] += value;
     }
 
-    function setTransferReturnsFalse(bool value) external {
-        transferReturnsFalse = value;
+    function setTransferFailsTo(address recipient) external {
+        transferFailsTo = recipient;
     }
 
     // The EIP-2612/EIP-3009 getter name AUSD exposes.
@@ -46,7 +47,7 @@ contract MockEip3009Token {
     }
 
     function transfer(address to, uint256 value) external returns (bool) {
-        if (transferReturnsFalse) {
+        if (to == transferFailsTo) {
             return false;
         }
 
