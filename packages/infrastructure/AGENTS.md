@@ -810,3 +810,9 @@ from the current inventory. Default full exports retain their existing projectio
 xmin-only cache, account recovery, mutation or owner/credential export is introduced. Read
 [PTS incremental capture](../../apps/agent-service/PTS-REPORT-INCREMENTAL.md) for host verification
 and benchmark limits.
+
+Incremental audit fingerprints materialize the ordered page of keys before joining original
+round/event bodies. LIMIT alone does not bound JSONB work before a sort. Preserve the native hash
+input, scoped repeatable-read read-only snapshot and full inventory; this is not a watermark or
+constant-time export. Controlled PostgreSQL tests reject body hashing outside the selected page
+and verify original payload/fingerprint parity. See [PTS report page bounds](../../apps/agent-service/PTS-REPORT-PAGE-BOUNDS.md).
