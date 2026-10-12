@@ -802,3 +802,11 @@ the opt-in keep their existing locks/recovery. Never check final ownership only 
 read or apply this option to Studio/historical protocols. Controlled contention tests use the
 isolated disposable PostgreSQL server; historical blocker identities remain unverifiable unless
 original evidence identifies them. See [PTS read isolation](../../apps/agent-service/PTS-STUDY-READ-ISOLATION.md).
+
+Local audit parts additionally expose PerpsAuditSourceRevision/PerpsAuditCaptureStats and an
+optional trusted reuse callback. Native SHA-256 fingerprints of every current round/event are
+checked in the same read-only snapshot; misses fetch original payloads, and deletions disappear
+from the current inventory. Default full exports retain their existing projection. No watermark,
+xmin-only cache, account recovery, mutation or owner/credential export is introduced. Read
+[PTS incremental capture](../../apps/agent-service/PTS-REPORT-INCREMENTAL.md) for host verification
+and benchmark limits.
