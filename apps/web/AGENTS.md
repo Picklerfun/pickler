@@ -1268,6 +1268,12 @@ A definitive token signing refusal reads `Signing request rejected` and the laun
 The original draft and the failed attempt remain visible; unknown attempts stay blocked for
 reconciliation. The controlled loading harness verifies the saved refusal without provider calls.
 
+The public trade side and slippage use the shared lime `Segmented` selection. Their track reads
+`--pk-bg` from the enclosing surface so the selection stays visible. Display the ticker with
+exactly one leading dollar sign. The persona section tabs have their own spaced pill row, a
+contrasting selected state, and roving keyboard focus (Left/Right/Home/End); keep the panel IDs
+linked to them.
+
 ## Automatic token confirmation
 
 `features/tokens/token-confirmation.ts` bounds observation of known broadcasts to ten receipt reads,
