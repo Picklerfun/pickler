@@ -12,6 +12,7 @@ import {
 } from "viem";
 import { PicklerLaunchFactoryAbi } from "@pickler/chain";
 import {
+  createTokenLaunchService,
   createTokenOperationService,
   type TokenIntent,
   type TokenOperationDriver,
@@ -22,6 +23,7 @@ import { createActivityBuilders } from "../src/turnkey/turnkey-activities.js";
 import { PostgresLaunchIndexStore } from "../src/persistence/product/launch-index-store.js";
 import { PostgresLaunchProjector } from "../src/persistence/product/launch-projector.js";
 import { PostgresAgentDirectory } from "../src/persistence/agent-directory.js";
+import { PostgresTokenLaunchStore } from "../src/studio/token-launch-store.js";
 import { tokenFixture } from "./token-fixture.js";
 import { launchPolicy, deploymentCode } from "./launch-policy-fixture.js";
 
@@ -510,4 +512,43 @@ test("publication cannot exceed the existing operation RPC budget", async (t) =>
   assert.equal(f.counts().reads, 0);
   assert.equal((await f.savedIntent()).status, "confirming");
   assert.equal((await f.directory.listDirectory())[0]?.launchedToken, null);
+});
+
+test("published owner state preserves the fee cursor as a wire-safe number with the operational escrow configured", async (t) => {
+  const f = await fixture(t);
+  await f.ops.status(f.scope, f.id);
+  await f.store.applyBatch({
+    chain: "eip155:10143",
+    contract: f.policy.escrow.address,
+    stream: "token-launch-v1",
+    confirmed: true,
+    blocks: [{ number: 10n, hash: hash(10), parentHash: hash(9), blockTime: new Date() }],
+    events: [],
+  });
+  const repository = new PostgresTokenLaunchStore(
+    f.store.pool,
+    f.policy.escrow.address,
+    f.policy.preset.quoteAddress,
+  );
+  const service = createTokenLaunchService({ repository, chainId: 10143 });
+
+  const state = await service.state(f.scope);
+
+  assert.equal(state.confirmation, "confirmed");
+  assert.equal(state.token?.address, TOKEN);
+  assert.deepEqual(state.fees, { ausd: "0", agent: "0", block: 10, scope: "master_wallet" });
+  assert.equal(f.counts().reads, 11, "owner state is database-only after publication");
+
+  await f.store.pool.query(
+    "UPDATE market.indexer_cursors SET last_block=$1 WHERE chain=$2 AND contract=$3",
+    ["3000000000", "eip155:10143", f.policy.escrow.address],
+  );
+  assert.equal((await service.state(f.scope)).fees?.block, 3000000000);
+
+  await f.store.pool.query(
+    "UPDATE market.indexer_cursors SET last_block=$1 WHERE chain=$2 AND contract=$3",
+    ["9007199254740992", "eip155:10143", f.policy.escrow.address],
+  );
+  await assert.rejects(service.state(f.scope), /INVALID_TOKEN_FEE_BLOCK/);
+  assert.equal(f.counts().reads, 11, "unsafe database heights do not trigger provider work");
 });
