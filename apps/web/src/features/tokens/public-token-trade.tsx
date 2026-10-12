@@ -1,5 +1,5 @@
 "use client";
-import { useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useEffectEvent, useRef, useState, useSyncExternalStore } from "react";
 import {
   publicTokenTradePreparedSchema,
   type AgentTokenDto,
@@ -7,7 +7,7 @@ import {
 } from "@pickler/api-schema";
 import { AUSD, toBaseUnits } from "@pickler/chain";
 import { formatUnits } from "viem";
-import { Button, Field, Input, Segmented, Skeleton, Tag } from "@pickler/ui";
+import { Button, Field, Icon, Input, Segmented, Tag } from "@pickler/ui";
 import { useWallet } from "@/features/wallet/lib/wallet-context";
 import {
   publicTokenReceipt,
@@ -19,6 +19,11 @@ import {
   subscribePublicTrade,
   type PublicTradeAttempt,
 } from "@/features/wallet/lib/public-trade-memory";
+import {
+  runPublicTokenTrade,
+  waitForPublicTradeReceipt,
+} from "@/features/wallet/lib/public-trade-flow";
+import { ChainReference } from "./chain-reference";
 import quotes from "./trade-quotes.json";
 import styles from "./public-token-trade.module.css";
 const WORDS: Record<string, string> = {
@@ -31,7 +36,7 @@ const WORDS: Record<string, string> = {
   TRADE_TOO_SMALL: "This amount is too small.",
   EXCEEDS_CURVE_INVENTORY: "This purchase exceeds the remaining curve supply.",
   DEPLOYMENT_CHANGED: "Contract verification failed. Trading is unavailable.",
-  PROVIDER_UNAVAILABLE: "Could not read the network. No transaction was sent.",
+  PROVIDER_UNAVAILABLE: "Could not read the network. No swap was sent.",
 };
 function quotedAmount(value: string, decimals: number, asset: string) {
   const exact = formatUnits(BigInt(value), decimals);
@@ -57,23 +62,26 @@ function decodePrepared(value: unknown) {
   const parsed = publicTokenTradePreparedSchema.safeParse(value);
   return parsed.success ? parsed.data : null;
 }
-export function PublicTokenTrade({
-  handle,
-  token,
-  preview = false,
-  embedded = false,
-}: {
+interface Props {
   handle: string;
   token: AgentTokenDto;
   preview?: boolean;
   embedded?: boolean;
-}) {
+  onConfirmed?: (hash: string) => void;
+}
+export function PublicTokenTrade(props: Props) {
+  const wallet = useWallet();
+  const scope = `${props.token.chainId}.${props.token.address}.${wallet.kind}.${wallet.address}.${wallet.onTargetChain}`;
+  return <PublicTradeForm key={scope} {...props} />;
+}
+function PublicTradeForm({ handle, token, preview = false, embedded = false, onConfirmed }: Props) {
   const wallet = useWallet();
   const [draft, setDraft] = useState<TradeDraft | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [phase, setPhase] = useState<"preparing" | "wallet" | "approval" | "trade" | null>(null);
+  const [settledHash, setSettledHash] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const gate = useRef(false);
-  const [approved, setApproved] = useState({ buy: false, sell: false });
+  const run = useRef<AbortController | null>(null);
+  const approved = useRef({ buy: false, sell: false });
   const [simulated, setSimulated] = useState<PublicTradeAttempt | null>(null);
   const key = `pk.token.trade.${token.chainId}.${token.address.toLowerCase()}.${wallet.address?.toLowerCase() ?? "disconnected"}`;
   const persisted = useSyncExternalStore(
@@ -82,6 +90,14 @@ export function PublicTokenTrade({
     serverSnapshot,
   );
   const attempt = preview ? simulated : persisted;
+  const observing = Boolean(
+    attempt?.hash &&
+    ["confirming", "unknown"].includes(attempt.status) &&
+    settledHash !== attempt.hash,
+  );
+  const displayPhase =
+    phase ?? (observing ? (attempt?.prepared.quote.approval ? "approval" : "trade") : null);
+  const busy = displayPhase !== null;
   const active = attempt !== null && !["confirmed", "reverted"].includes(attempt.status);
   const restored: TradeDraft = {
     side: attempt?.prepared.quote.side ?? "buy",
@@ -109,150 +125,221 @@ export function PublicTokenTrade({
   }
   function keep(value: PublicTradeAttempt | null) {
     if (preview) {
+      if (value?.status === "confirmed" && value.prepared.quote.approval) {
+        approved.current[value.prepared.quote.side] = true;
+      }
       setSimulated(value);
     } else {
       writePublicTrade(key, value);
     }
   }
-  async function prepare() {
-    if (gate.current || !amount) {
-      return;
+  async function requestPrepared(signal: AbortSignal, previous?: PublicTokenTradePreparedDto) {
+    const wantedSide = previous?.quote.side ?? side;
+    const wantedAmount = previous?.quote.amount ?? amount;
+    const wantedSlippage = previous?.quote.slippageBps ?? Number(slippage);
+    if (!wantedAmount) {
+      throw new Error("Enter a valid amount.");
     }
-    gate.current = true;
-    setBusy(true);
-    setError(null);
-    try {
-      let prepared: PublicTokenTradePreparedDto;
-      if (preview) {
-        const quote = quotes[side];
-        prepared = {
-          version: 1,
-          token: token.address,
-          curve: "0x3333333333333333333333333333333333333333",
-          quoteToken: AUSD[10143].address,
-          expiresAt: new Date(Date.now() + 300_000).toISOString(),
-          quote: { ...quote, side, approval: !approved[side] },
-          transaction: {
-            from: "0x5555555555555555555555555555555555555555",
-            to: AUSD[10143].address,
-            data: "0x01",
-            value: "0x0",
-            chainId: 10143,
-            nonce: 0,
-            gas: "0x186a0",
-            maxFeePerGas: "0x3b9aca00",
-            maxPriorityFeePerGas: "0x3b9aca00",
-          },
-        };
-      } else {
-        if (!wallet.address || !wallet.onTargetChain) {
-          throw new Error("Connect your wallet on Monad testnet.");
-        }
-        const response = await fetch(
-          `/api/v1/marketplace/personas/${encodeURIComponent(handle)}/token/prepare`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              wallet: wallet.address,
-              side,
-              amount,
-              slippageBps: Number(slippage),
-            }),
-            signal: AbortSignal.timeout(20_000),
-            cache: "no-store",
-          },
-        );
-        const body = await response.json();
-        if (!response.ok) {
-          throw new Error(
-            WORDS[body.error] ?? "Could not prepare the trade. No transaction was sent.",
-          );
-        }
-        prepared = publicTokenTradePreparedSchema.parse(body.data ?? body);
-        if (
-          prepared.token.toLowerCase() !== token.address.toLowerCase() ||
-          prepared.transaction.from.toLowerCase() !== wallet.address.toLowerCase() ||
-          prepared.quote.amount !== amount ||
-          prepared.quote.side !== side ||
-          prepared.quote.slippageBps !== Number(slippage)
-        ) {
-          throw new Error("The quote does not match this trade.");
-        }
+    setPhase("preparing");
+    let prepared: PublicTokenTradePreparedDto;
+    if (preview) {
+      const quote = quotes[wantedSide];
+      prepared = {
+        version: 1,
+        token: token.address,
+        curve: "0x3333333333333333333333333333333333333333",
+        quoteToken: AUSD[10143].address,
+        expiresAt: new Date(Date.now() + 300_000).toISOString(),
+        quote: { ...quote, side: wantedSide, approval: !approved.current[wantedSide] },
+        transaction: {
+          from: "0x5555555555555555555555555555555555555555",
+          to: AUSD[10143].address,
+          data: "0x01",
+          value: "0x0",
+          chainId: 10143,
+          nonce: 0,
+          gas: "0x186a0",
+          maxFeePerGas: "0x3b9aca00",
+          maxPriorityFeePerGas: "0x3b9aca00",
+        },
+      };
+    } else {
+      if (!wallet.address || !wallet.onTargetChain) {
+        throw new Error("Connect your wallet on Monad testnet.");
       }
-      keep({ prepared, status: "review", hash: null });
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Could not prepare the trade.");
-    } finally {
-      gate.current = false;
-      setBusy(false);
-    }
-  }
-  async function sign() {
-    if (!attempt || attempt.status !== "review" || gate.current) {
-      return;
-    }
-    gate.current = true;
-    setBusy(true);
-    setError(null);
-    try {
-      keep({ ...attempt, status: "submitting" });
-      if (preview) {
-        keep({ ...attempt, status: "confirming", hash: null });
-      } else {
-        const hash = await wallet.sendTokenTransaction(attempt.prepared, token.address);
-        keep({ ...attempt, status: "confirming", hash });
-      }
-    } catch (caught) {
-      if (caught instanceof WalletSubmissionUnknown) {
-        keep({ ...attempt, status: "unknown", hash: caught.hash });
-        setError(caught.message);
-      } else {
-        try {
-          keep(attempt);
-        } catch {
-          setError("Local transaction storage is unavailable. No transaction was sent.");
-          return;
-        }
-        setError(
-          (caught as { code?: number }).code === 4001
-            ? "Signature cancelled. Your amount is preserved."
-            : caught instanceof Error
-              ? caught.message
-              : "Signature failed.",
-        );
-      }
-    } finally {
-      gate.current = false;
-      setBusy(false);
-    }
-  }
-  async function status() {
-    if (!attempt || gate.current) {
-      return;
-    }
-    gate.current = true;
-    setBusy(true);
-    setError(null);
-    try {
-      const result = preview
-        ? "confirmed"
-        : attempt.hash
-          ? await publicTokenReceipt(attempt.hash)
-          : "pending";
-      if (preview && result === "confirmed" && attempt.prepared.quote.approval) {
-        setApproved((value) => ({ ...value, [attempt.prepared.quote.side]: true }));
-      }
-      keep({ ...attempt, status: result === "pending" ? "confirming" : result });
-    } catch {
-      setError(
-        "Could not check the transaction. Check again explicitly; it will not be sent again.",
+      const response = await fetch(
+        `/api/v1/marketplace/personas/${encodeURIComponent(handle)}/token/prepare`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            wallet: wallet.address,
+            side: wantedSide,
+            amount: wantedAmount,
+            slippageBps: wantedSlippage,
+          }),
+          signal: AbortSignal.any([signal, AbortSignal.timeout(20_000)]),
+          cache: "no-store",
+        },
       );
+      const body = await response.json();
+      if (!response.ok) {
+        throw new Error(WORDS[body.error] ?? "Could not prepare the trade. No swap was sent.");
+      }
+      prepared = publicTokenTradePreparedSchema.parse(body.data ?? body);
+      if (
+        prepared.token.toLowerCase() !== token.address.toLowerCase() ||
+        prepared.transaction.from.toLowerCase() !== wallet.address.toLowerCase() ||
+        prepared.quote.amount !== wantedAmount ||
+        prepared.quote.side !== wantedSide ||
+        prepared.quote.slippageBps !== wantedSlippage
+      ) {
+        throw new Error("The quote does not match this trade.");
+      }
+    }
+    signal.throwIfAborted();
+    return prepared;
+  }
+  function observe(prepared: PublicTokenTradePreparedDto, hash: string, signal: AbortSignal) {
+    setPhase(prepared.quote.approval ? "approval" : "trade");
+    if (preview) {
+      return new Promise<"confirmed">((resolve, reject) => {
+        const timer = setTimeout(() => {
+          signal.removeEventListener("abort", abort);
+          resolve("confirmed");
+        }, 900);
+        function abort() {
+          clearTimeout(timer);
+          reject(signal.reason);
+        }
+        signal.addEventListener("abort", abort, { once: true });
+      });
+    }
+    return waitForPublicTradeReceipt({
+      signal,
+      read: (signal) => publicTokenReceipt(hash, signal),
+    });
+  }
+  async function trade() {
+    if (run.current || !amount) {
+      return;
+    }
+    const controller = new AbortController();
+    run.current = controller;
+    setError(null);
+    let latest = attempt;
+    try {
+      const first =
+        attempt?.status === "review" ? attempt.prepared : await requestPrepared(controller.signal);
+      const result = await runPublicTokenTrade({
+        prepared: first,
+        signal: controller.signal,
+        prepareNext: () => requestPrepared(controller.signal, first),
+        send: async (prepared) => {
+          setPhase("wallet");
+          return preview
+            ? "0x" + "a".repeat(64)
+            : wallet.sendTokenTransaction(prepared, token.address);
+        },
+        receipt: (hash) => observe(latest!.prepared, hash, controller.signal),
+        keep: (value) => {
+          latest = value;
+          keep(value);
+        },
+      });
+      if (result === "confirmed" && latest?.hash && !latest.prepared.quote.approval) {
+        onConfirmed?.(latest.hash);
+      }
+      if (result === "review") {
+        setError("Price changed. Check the updated minimum before confirming.");
+      }
+    } catch (caught) {
+      if (!controller.signal.aborted) {
+        setError(
+          caught instanceof WalletSubmissionUnknown
+            ? "Wallet response lost. Check your wallet activity before another trade."
+            : (caught as { code?: number }).code === 4001
+              ? "Signature cancelled. Your amount is kept."
+              : caught instanceof Error &&
+                  (Object.values(WORDS).includes(caught.message) ||
+                    /^(Could not prepare|Approval confirmed|The quote|Enter a valid)/.test(
+                      caught.message,
+                    ))
+                ? caught.message
+                : "Could not complete the wallet request. Your amount is kept.",
+        );
+      }
     } finally {
-      gate.current = false;
-      setBusy(false);
+      if (run.current === controller) {
+        run.current = null;
+      }
+      if (!controller.signal.aborted) {
+        setSettledHash(latest?.hash ?? null);
+        setPhase(null);
+      }
     }
   }
+  const restore = useEffectEvent(
+    async (
+      saved: PublicTradeAttempt,
+      result: "pending" | "confirmed" | "reverted",
+      controller: AbortController,
+    ) => {
+      try {
+        controller.signal.throwIfAborted();
+        keep({ ...saved, status: result === "pending" ? "confirming" : result });
+        if (result === "confirmed" && saved.prepared.quote.approval) {
+          const prepared = await requestPrepared(controller.signal, saved.prepared);
+          keep({ prepared, status: "review", hash: null });
+        } else if (result === "confirmed") {
+          onConfirmed?.(saved.hash!);
+        }
+      } catch {
+        if (!controller.signal.aborted) {
+          setError("Could not finish checking this transaction. Its hash is kept.");
+        }
+      } finally {
+        if (run.current === controller) {
+          run.current = null;
+        }
+        if (!controller.signal.aborted) {
+          setSettledHash(saved.hash);
+          setPhase(null);
+        }
+      }
+    },
+  );
+  const observedHash = attempt?.hash;
+  useEffect(() => {
+    if (preview || !observedHash || run.current) {
+      return;
+    }
+    const saved = readPublicTrade(key, decodePrepared);
+    if (!saved || !["confirming", "unknown"].includes(saved.status)) {
+      return;
+    }
+    const controller = new AbortController();
+    run.current = controller;
+    void waitForPublicTradeReceipt({
+      signal: controller.signal,
+      read: (signal) => publicTokenReceipt(saved.hash!, signal),
+    }).then(
+      (result) => restore(saved, result, controller),
+      () => {
+        if (run.current === controller) {
+          run.current = null;
+        }
+      },
+    );
+    return () => {
+      controller.abort();
+      if (run.current === controller) {
+        run.current = null;
+      }
+    };
+  }, [key, observedHash, preview]);
+  useEffect(() => () => run.current?.abort(), []);
+
   const quote = attempt?.prepared.quote;
   const outputAsset = quote?.side === "buy" ? token.ticker : "AUSD";
   const outputDecimals = quote?.side === "buy" ? 18 : 6;
@@ -310,7 +397,6 @@ export function PublicTokenTrade({
           Your wallet · {wallet.address.slice(0, 6)}…{wallet.address.slice(-4)}
         </p>
       )}
-      {busy && <Skeleton shape="line" />}
       {quote && active && (
         <dl className={styles.quote}>
           <div>
@@ -321,85 +407,90 @@ export function PublicTokenTrade({
             <dt>Minimum</dt>
             <dd>{quotedAmount(quote.minimumOutput, outputDecimals, outputAsset)}</dd>
           </div>
-          <div>
-            <dt>Curve fee</dt>
-            <dd>1% · included</dd>
-          </div>
         </dl>
       )}
-      {attempt && (
+      {!busy && attempt?.status === "confirmed" && (
         <p className={styles.status} role="status">
-          {attempt.status === "review"
-            ? quote?.approval
-              ? `Approve exactly ${formatUnits(BigInt(quote.amount), quote.side === "buy" ? 6 : 18)} ${quote.side === "buy" ? "AUSD" : token.ticker}. Then review the trade separately.`
-              : "Review this trade before signing."
-            : attempt.status === "submitting"
-              ? "Awaiting wallet confirmation…"
-              : attempt.status === "confirming"
-                ? "Confirming · check status explicitly"
-                : attempt.status === "confirmed"
-                  ? quote?.approval
-                    ? "Approval confirmed. Review the trade again."
-                    : "Trade confirmed."
-                  : attempt.status === "reverted"
-                    ? "Transaction reverted. No swap completed."
-                    : "Submission uncertain. Check your wallet activity before starting another trade."}
+          {quote?.approval
+            ? "Approval confirmed."
+            : quote?.side === "buy"
+              ? "Purchase confirmed."
+              : "Sale confirmed."}
         </p>
       )}
-      {attempt?.hash && <p className={styles.hash}>Transaction · {attempt.hash}</p>}
+      {attempt?.status === "reverted" && (
+        <p role="alert" className={styles.error}>
+          Transaction failed. No swap completed.
+        </p>
+      )}
+      {attempt?.hash && (
+        <div className={styles.transaction}>
+          <span>{quote?.approval ? "Approval" : "Transaction"}</span>
+          <ChainReference
+            value={attempt.hash}
+            chainId={token.chainId}
+            kind="tx"
+            label="trade transaction"
+            preview={preview}
+          />
+        </div>
+      )}
+      {!busy && attempt?.status === "confirming" && (
+        <p className={styles.quiet} role="status">
+          Still pending on Monad. Follow the transaction above.
+        </p>
+      )}
       {error && (
         <p role="alert" className={styles.error}>
           {error}
         </p>
       )}
       <div className={styles.actions}>
-        {attempt?.status === "review" ? (
-          <>
-            <Button
-              disabled={busy || (!preview && !wallet.onTargetChain)}
-              onClick={() => void sign()}
-            >
-              {preview
-                ? "Simulate confirmation"
-                : quote?.approval
-                  ? "Approve in wallet"
-                  : `Confirm ${quote?.side} in wallet`}
-            </Button>
-            <Button
-              variant="secondary"
-              disabled={busy}
-              onClick={() => {
-                setDraft(form);
-                keep(null);
-                setError(null);
-              }}
-            >
-              Cancel
-            </Button>
-          </>
-        ) : attempt && ["confirming", "unknown"].includes(attempt.status) ? (
-          <Button disabled={busy || (!preview && !attempt.hash)} onClick={() => void status()}>
-            Check transaction
-          </Button>
-        ) : attempt?.status === "submitting" ? null : !preview && wallet.status !== "connected" ? (
+        {!preview && wallet.status !== "connected" ? (
           <Button onClick={() => wallet.connect(`Trade ${token.ticker}`)}>Connect wallet</Button>
         ) : !preview && !wallet.onTargetChain ? (
           <Button onClick={() => void wallet.switchChain()}>Switch to Monad testnet</Button>
         ) : (
           <Button
-            disabled={busy || !amount || token.chainId !== 10143}
-            onClick={() => void prepare()}
+            disabled={
+              busy || !amount || token.chainId !== 10143 || (active && attempt?.status !== "review")
+            }
+            aria-busy={busy}
+            aria-live="polite"
+            onClick={() => void trade()}
           >
-            Review {side}
+            {busy && <Icon name="refresh" size={16} className={styles.spinner} />}
+            {displayPhase === "preparing"
+              ? "Preparing…"
+              : displayPhase === "wallet"
+                ? "Confirm in wallet…"
+                : displayPhase === "approval"
+                  ? "Confirming approval…"
+                  : displayPhase === "trade"
+                    ? "Confirming trade…"
+                    : active && attempt?.status !== "review"
+                      ? attempt?.hash
+                        ? "Pending on Monad"
+                        : "Wallet response unavailable"
+                      : attempt?.status === "review"
+                        ? `Confirm ${side}`
+                        : `${side === "buy" ? "Buy" : "Sell"} token`}
+          </Button>
+        )}
+        {attempt?.status === "review" && !busy && (
+          <Button
+            variant="secondary"
+            onClick={() => {
+              setDraft(form);
+              keep(null);
+              setError(null);
+            }}
+          >
+            Cancel
           </Button>
         )}
       </div>
-      <p className={styles.quiet}>
-        Buy with AUSD. Sell for AUSD. Gas in MON. Your wallet signs each approval and trade.
-      </p>
-      <p className={styles.quiet}>
-        Curve trading only · DEX swaps become available in a separate integration.
-      </p>
+      <p className={styles.quiet}>1% curve fee · gas in MON</p>
     </section>
   );
 }
