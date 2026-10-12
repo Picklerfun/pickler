@@ -353,3 +353,47 @@
     border-radius: var(--pk-radius-xl);
   }
 }
+
+.metrics > div:first-child dd {
+  font-family: var(--pk-font-display);
+  font-variation-settings: var(--pk-display-wdth);
+}
+.market,
+.curve,
+.distribution,
+.recent {
+  animation: marketEnter 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.curve {
+  animation-delay: 60ms;
+}
+.distribution {
+  animation-delay: 90ms;
+}
+.recent {
+  animation-delay: 120ms;
+}
+.marketView .progress :global(.pk-meter-fill) {
+  transition: width 480ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+@keyframes marketEnter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .market,
+  .curve,
+  .distribution,
+  .recent {
+    animation: none;
+  }
+  .marketView .progress :global(.pk-meter-fill) {
+    transition: none;
+  }
+}
