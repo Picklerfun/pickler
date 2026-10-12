@@ -1,34 +1,52 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { SettlementRejected, SettlementUnknown, type Authorization } from "@pickler/core";
-import { encodeAbiParameters, encodeEventTopics, getAddress, parseAbi, type Hex } from "viem";
+import {
+  encodeAbiParameters,
+  encodeEventTopics,
+  getAddress,
+  keccak256,
+  parseAbi,
+  type Hex,
+} from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import {
   authorizationTypedData,
   createAusdAuthorizationGateway,
-  transferMatches,
+  settlementTransfersMatch,
   type PublicClientLike,
+  type SplitterSettleRequest,
   type WalletClientLike,
 } from "../src/index.js";
 
 const AUSD = "0xa9012a055bd4e0eDfF8Ce09f960291C09D5322dC";
+const SPLITTER = "0x4444444444444444444444444444444444444444";
+const TREASURY = "0x5555555555555555555555555555555555555555";
+const PAYEE = "0x3333333333333333333333333333333333333333";
 const OTHER = "0x2222222222222222222222222222222222222222";
 const KEY = "0x0000000000000000000000000000000000000000000000000000000000000001";
 const RELAYER = "0x0000000000000000000000000000000000000000000000000000000000000002";
-const PAY_TO = "0x3333333333333333333333333333333333333333";
-const NONCE = `0x${"ab".repeat(32)}` as Hex;
+const SALT = `0x${"5a".repeat(32)}` as Hex;
+const NONCE = keccak256(
+  encodeAbiParameters([{ type: "address" }, { type: "bytes32" }], [PAYEE, SALT]),
+);
 const HASH = `0x${"cd".repeat(32)}` as Hex;
+const VALUE = 250000n;
+const CREATOR = 162500n;
+const PROTOCOL = 87500n;
+/** From `forge test -vv` of PicklerAdviceSplitter: nonceFor(0x…dEaD, bytes32(uint256(1))). */
+const CONTRACT_NONCE_VECTOR = "0xb34209a263f6c38fe55f099e9e70f9d67e93982480ff3234a5e0108028ad164d";
 const payer = privateKeyToAccount(KEY);
 
 function authorization(overrides: Partial<Authorization> = {}): Authorization {
   return {
     from: payer.address,
-    to: PAY_TO,
-    value: "250000",
+    to: SPLITTER,
+    value: VALUE.toString(),
     validAfter: "0",
     validBefore: "4102444800",
     nonce: NONCE,
-    salt: `0x${"5a".repeat(32)}`,
+    salt: SALT,
     ...overrides,
   };
 }
@@ -37,13 +55,14 @@ async function sign(value: Authorization): Promise<Hex> {
   return payer.signTypedData(authorizationTypedData(value));
 }
 
-const TRANSFER = parseAbi([
+const EVENTS = parseAbi([
   "event Transfer(address indexed from, address indexed to, uint256 value)",
+  "event AdviceSettled(address indexed from, address indexed payee, bytes32 indexed nonce, uint256 value, uint256 creatorAmount, uint256 protocolAmount)",
 ]);
 
 function rawTransferLog(address: string, from: string, to: string, value: bigint) {
   const topics = encodeEventTopics({
-    abi: TRANSFER,
+    abi: EVENTS,
     eventName: "Transfer",
     args: { from: from as `0x${string}`, to: to as `0x${string}` },
   });
@@ -51,8 +70,38 @@ function rawTransferLog(address: string, from: string, to: string, value: bigint
   return { address, topics: topics as Hex[], data };
 }
 
-function decodedLog(address: string, from: string, to: string, value: bigint) {
-  return { address, args: { from, to, value } };
+function rawSettledLog(
+  overrides: {
+    address?: string;
+    from?: string;
+    payee?: string;
+    nonce?: Hex;
+    amounts?: [bigint, bigint, bigint];
+  } = {},
+) {
+  const topics = encodeEventTopics({
+    abi: EVENTS,
+    eventName: "AdviceSettled",
+    args: {
+      from: (overrides.from ?? payer.address) as `0x${string}`,
+      payee: (overrides.payee ?? PAYEE) as `0x${string}`,
+      nonce: overrides.nonce ?? NONCE,
+    },
+  });
+  const data = encodeAbiParameters(
+    [{ type: "uint256" }, { type: "uint256" }, { type: "uint256" }],
+    overrides.amounts ?? [VALUE, CREATOR, PROTOCOL],
+  );
+  return { address: overrides.address ?? SPLITTER, topics: topics as Hex[], data };
+}
+
+const PAID = rawTransferLog(AUSD, payer.address, SPLITTER, VALUE);
+const TO_PAYEE = rawTransferLog(AUSD, SPLITTER, PAYEE, CREATOR);
+const TO_TREASURY = rawTransferLog(AUSD, SPLITTER, TREASURY, PROTOCOL);
+const SETTLED = rawSettledLog();
+
+function success(logs: ReturnType<typeof rawTransferLog>[]) {
+  return async () => ({ status: "success" as const, blockNumber: 77n, logs });
 }
 
 const revertError = new Error("execution reverted");
@@ -62,49 +111,60 @@ function unknownOutcome(hash: string | null) {
   return (error: unknown) => error instanceof SettlementUnknown && error.txHash === hash;
 }
 
+type Read = PublicClientLike["readContract"];
+
+/** Answers `treasury()` with TREASURY and the AUSD reads with `authorizationState`. */
+function reads(authorizationState: () => Promise<unknown>): Read {
+  return async (request) => {
+    if (request.functionName === "treasury") {
+      return TREASURY;
+    }
+    return authorizationState();
+  };
+}
+
 function gateway(overrides: {
   simulate?: PublicClientLike["simulateContract"];
   write?: WalletClientLike["writeContract"];
   wait?: PublicClientLike["waitForTransactionReceipt"];
-  read?: PublicClientLike["readContract"];
+  read?: Read;
 }) {
   const calls: string[] = [];
+  const requests: SplitterSettleRequest[] = [];
   const client: PublicClientLike = {
-    readContract: overrides.read ?? (async () => false),
+    readContract: overrides.read ?? reads(async () => false),
     simulateContract:
       overrides.simulate ??
-      (async () => {
+      (async (request) => {
         calls.push("simulate");
+        requests.push(request);
         return {};
       }),
-    waitForTransactionReceipt:
-      overrides.wait ??
-      (async () => ({
-        status: "success",
-        blockNumber: 77n,
-        logs: [rawTransferLog(AUSD, payer.address, PAY_TO, 250000n)],
-      })),
+    waitForTransactionReceipt: overrides.wait ?? success([PAID, TO_PAYEE, TO_TREASURY, SETTLED]),
   };
   const wallet: WalletClientLike = {
     writeContract:
       overrides.write ??
-      (async () => {
+      (async (request) => {
         calls.push("write");
+        requests.push(request);
         return HASH;
       }),
   };
   return {
     calls,
+    requests,
     gateway: createAusdAuthorizationGateway({
       rpcUrl: "http://127.0.0.1:1",
       relayerPrivateKey: RELAYER,
+      splitter: SPLITTER,
       client,
       wallet,
     }),
   };
 }
 
-test("authorizationTypedData uses the AUSD domain and the six standard fields", () => {
+test("authorizationTypedData is a ReceiveWithAuthorization in the AUSD domain with six fields", () => {
   const data = authorizationTypedData(authorization());
 
   assert.deepEqual(data.domain, {
@@ -113,20 +173,43 @@ test("authorizationTypedData uses the AUSD domain and the six standard fields", 
     chainId: 10143,
     verifyingContract: AUSD,
   });
-  assert.equal(data.primaryType, "TransferWithAuthorization");
+  assert.equal(data.primaryType, "ReceiveWithAuthorization");
+  assert.deepEqual(Object.keys(data.types), ["ReceiveWithAuthorization"]);
   assert.deepEqual(
-    data.types.TransferWithAuthorization.map((field) => field.name),
-    ["from", "to", "value", "validAfter", "validBefore", "nonce"],
+    data.types.ReceiveWithAuthorization.map((field) => [field.name, field.type]),
+    [
+      ["from", "address"],
+      ["to", "address"],
+      ["value", "uint256"],
+      ["validAfter", "uint256"],
+      ["validBefore", "uint256"],
+      ["nonce", "bytes32"],
+    ],
   );
 });
 
-test("signatureValid accepts the payer signature and rejects a tampered value", async () => {
+test("signatureValid accepts the payer signature and rejects a changed recipient or value", async () => {
   const { gateway: subject } = gateway({});
   const signed = authorization();
   const signature = await sign(signed);
 
   assert.equal(await subject.signatureValid(signed, signature), true);
+  assert.equal(await subject.signatureValid({ ...signed, to: PAYEE }, signature), false);
   assert.equal(await subject.signatureValid({ ...signed, value: "250001" }, signature), false);
+});
+
+test("a phase 1 TransferWithAuthorization signature does not verify", async () => {
+  const { gateway: subject } = gateway({});
+  const signed = authorization();
+  const typed = authorizationTypedData(signed);
+  const signature = await payer.signTypedData({
+    domain: typed.domain,
+    types: { TransferWithAuthorization: typed.types.ReceiveWithAuthorization },
+    primaryType: "TransferWithAuthorization",
+    message: typed.message,
+  });
+
+  assert.equal(await subject.signatureValid(signed, signature), false);
 });
 
 test("signatureValid never throws on malformed input", async () => {
@@ -140,43 +223,81 @@ test("signatureValid never throws on malformed input", async () => {
 
 test("a lowercase-addressed authorization validates against checksummed typed data", async () => {
   const { gateway: subject } = gateway({});
-  const checksummed = authorization({ from: getAddress(payer.address), to: getAddress(PAY_TO) });
+  const checksummed = authorization({ from: getAddress(payer.address), to: getAddress(SPLITTER) });
   const lowercase = authorization({
     from: payer.address.toLowerCase(),
-    to: PAY_TO.toLowerCase(),
+    to: SPLITTER.toLowerCase(),
   });
   const signature = await sign(checksummed);
 
   assert.equal(await subject.signatureValid(lowercase, signature), true);
 });
 
-test("transferMatches requires the AUSD address, parties and value, ignoring case", () => {
-  const value = authorization();
-  const good = decodedLog(AUSD, payer.address, PAY_TO, 250000n);
+test("nonceFor is keccak256(abi.encode(payee, salt)) and matches the contract's vector", () => {
+  const { gateway: subject } = gateway({});
+  const dead = "0x000000000000000000000000000000000000dEaD";
+  const one = `0x${"00".repeat(31)}01`;
+  const payee = "0xAbCdEf0123456789aBcDeF0123456789AbCdEf01";
+  const salt = `0x${"9c".repeat(32)}`;
+  const expected = keccak256(
+    encodeAbiParameters(
+      [{ type: "address" }, { type: "bytes32" }],
+      [payee.toLowerCase() as `0x${string}`, salt as Hex],
+    ),
+  );
 
-  assert.equal(transferMatches([good], value, AUSD), true);
+  assert.equal(subject.nonceFor(dead, one), CONTRACT_NONCE_VECTOR);
+  assert.equal(subject.nonceFor(dead.toLowerCase(), one), CONTRACT_NONCE_VECTOR);
+  assert.equal(subject.nonceFor(payee, salt), expected);
+  assert.equal(subject.nonceFor(payee.toLowerCase(), salt), expected);
+  assert.notEqual(subject.nonceFor(OTHER, salt), expected);
+});
+
+test("settlementTransfersMatch requires all three AUSD transfers with their amounts", () => {
+  const decode = (log: ReturnType<typeof rawTransferLog>, address = log.address) => {
+    const from = `0x${log.topics[1]!.slice(26)}`;
+    const to = `0x${log.topics[2]!.slice(26)}`;
+    return { address, args: { from, to, value: BigInt(log.data) } };
+  };
+  const expected = {
+    from: payer.address,
+    splitter: SPLITTER,
+    payee: PAYEE,
+    treasury: TREASURY,
+    value: VALUE,
+    creator: CREATOR,
+    protocol: PROTOCOL,
+  };
+  const all = [decode(PAID), decode(TO_PAYEE), decode(TO_TREASURY)];
+
+  assert.equal(settlementTransfersMatch(all, expected, AUSD), true);
   assert.equal(
-    transferMatches(
-      [decodedLog(AUSD.toLowerCase(), payer.address.toLowerCase(), PAY_TO.toLowerCase(), 250000n)],
-      value,
-      AUSD,
+    settlementTransfersMatch(
+      all,
+      { ...expected, from: payer.address.toLowerCase(), splitter: getAddress(SPLITTER) },
+      AUSD.toLowerCase(),
     ),
     true,
+    "addresses compare ignoring case",
+  );
+  for (const missing of [0, 1, 2]) {
+    const logs = all.filter((_, index) => index !== missing);
+
+    assert.equal(settlementTransfersMatch(logs, expected, AUSD), false, `without log ${missing}`);
+  }
+  assert.equal(
+    settlementTransfersMatch(
+      [decode(PAID), decode(TO_PAYEE), decode(TO_TREASURY, OTHER)],
+      expected,
+      AUSD,
+    ),
+    false,
+    "a treasury transfer of another token",
   );
   assert.equal(
-    transferMatches([decodedLog(OTHER, payer.address, PAY_TO, 250000n)], value, AUSD),
+    settlementTransfersMatch(all, { ...expected, protocol: PROTOCOL + 1n }, AUSD),
     false,
   );
-  assert.equal(
-    transferMatches([decodedLog(AUSD, payer.address, PAY_TO, 249999n)], value, AUSD),
-    false,
-  );
-  assert.equal(transferMatches([decodedLog(AUSD, OTHER, PAY_TO, 250000n)], value, AUSD), false);
-  assert.equal(
-    transferMatches([decodedLog(AUSD, payer.address, OTHER, 250000n)], value, AUSD),
-    false,
-  );
-  assert.equal(transferMatches([], value, AUSD), false);
 });
 
 test("nonceUsed and balance read the latest block with the AUSD ABI", async () => {
@@ -198,19 +319,135 @@ test("nonceUsed and balance read the latest block with the AUSD ABI", async () =
   }
 });
 
-test("settle simulates before it broadcasts and returns the hash and block", async () => {
-  const { gateway: subject, calls } = gateway({});
-  const signed = authorization();
+test("splitterTreasury reads treasury() from the splitter once", async () => {
+  const requests: Record<string, unknown>[] = [];
+  const { gateway: subject } = gateway({
+    read: async (request) => {
+      requests.push(request as unknown as Record<string, unknown>);
+      return TREASURY;
+    },
+  });
 
-  const result = await subject.settle(signed, await sign(signed), PAY_TO);
+  assert.equal(await subject.splitterTreasury(), TREASURY);
+  assert.equal(await subject.splitterTreasury(), TREASURY);
+  assert.equal(requests.length, 1);
+  assert.equal(requests[0]!.address, SPLITTER);
+  assert.equal(requests[0]!.functionName, "treasury");
+});
+
+test("a failed treasury read is not cached", async () => {
+  let attempts = 0;
+  const { gateway: subject } = gateway({
+    read: async () => {
+      attempts++;
+      if (attempts === 1) {
+        throw new Error("rpc down");
+      }
+      return TREASURY;
+    },
+  });
+
+  await assert.rejects(subject.splitterTreasury());
+  assert.equal(await subject.splitterTreasury(), TREASURY);
+  assert.equal(attempts, 2);
+});
+
+test("settle simulates and writes splitter.settle, then returns the hash, block and shares", async () => {
+  const { gateway: subject, calls, requests } = gateway({});
+  const signed = authorization();
+  const signature = await sign(signed);
+
+  const result = await subject.settle(signed, signature, PAYEE);
 
   assert.deepEqual(calls, ["simulate", "write"]);
   assert.deepEqual(result, {
     txHash: HASH,
     blockNumber: 77n,
-    creatorAmount: 250000n,
-    protocolAmount: 0n,
+    creatorAmount: CREATOR,
+    protocolAmount: PROTOCOL,
   });
+  for (const request of requests) {
+    assert.equal(request.address, SPLITTER);
+    assert.equal(request.functionName, "settle");
+    assert.equal(request.args[0], payer.address);
+    assert.deepEqual(request.args.slice(1, 6), [VALUE, 0n, 4102444800n, SALT, PAYEE]);
+    assert.equal(request.args[6] === 27 || request.args[6] === 28, true);
+    assert.equal(request.args.length, 9);
+  }
+});
+
+test("a payee whose derived nonce is not the authorization's is rejected before anything is sent", async () => {
+  const { gateway: subject, calls } = gateway({});
+  const signed = authorization();
+
+  await assert.rejects(
+    subject.settle(signed, await sign(signed), OTHER),
+    (error) => error instanceof SettlementRejected,
+  );
+  assert.deepEqual(calls, []);
+});
+
+test("a success receipt missing any of the three transfers is a SettlementUnknown with the hash", async () => {
+  const cases = {
+    "the treasury transfer": [PAID, TO_PAYEE, SETTLED],
+    "the payee transfer": [PAID, TO_TREASURY, SETTLED],
+    "the payer's transfer to the splitter": [TO_PAYEE, TO_TREASURY, SETTLED],
+    "a treasury transfer to another address": [
+      PAID,
+      TO_PAYEE,
+      rawTransferLog(AUSD, SPLITTER, OTHER, PROTOCOL),
+      SETTLED,
+    ],
+    "a payee transfer short by one": [
+      PAID,
+      rawTransferLog(AUSD, SPLITTER, PAYEE, CREATOR - 1n),
+      TO_TREASURY,
+      SETTLED,
+    ],
+    "transfers of another token": [
+      rawTransferLog(OTHER, payer.address, SPLITTER, VALUE),
+      rawTransferLog(OTHER, SPLITTER, PAYEE, CREATOR),
+      rawTransferLog(OTHER, SPLITTER, TREASURY, PROTOCOL),
+      SETTLED,
+    ],
+  };
+  const signed = authorization();
+  const signature = await sign(signed);
+
+  for (const [name, logs] of Object.entries(cases)) {
+    const { gateway: subject } = gateway({ wait: success(logs) });
+
+    await assert.rejects(subject.settle(signed, signature, PAYEE), unknownOutcome(HASH), name);
+  }
+});
+
+test("a success receipt without the splitter's matching AdviceSettled is a SettlementUnknown", async () => {
+  const cases = {
+    "no AdviceSettled": [PAID, TO_PAYEE, TO_TREASURY],
+    "another nonce": [PAID, TO_PAYEE, TO_TREASURY, rawSettledLog({ nonce: HASH })],
+    "another payee": [PAID, TO_PAYEE, TO_TREASURY, rawSettledLog({ payee: OTHER })],
+    "another emitter": [PAID, TO_PAYEE, TO_TREASURY, rawSettledLog({ address: OTHER })],
+    "AdviceSettled alone": [SETTLED],
+  };
+  const signed = authorization();
+  const signature = await sign(signed);
+
+  for (const [name, logs] of Object.entries(cases)) {
+    const { gateway: subject } = gateway({ wait: success(logs) });
+
+    await assert.rejects(subject.settle(signed, signature, PAYEE), unknownOutcome(HASH), name);
+  }
+});
+
+test("a treasury read that fails after a success receipt is a SettlementUnknown with the hash", async () => {
+  const { gateway: subject } = gateway({
+    read: async () => {
+      throw new Error("rpc down");
+    },
+  });
+  const signed = authorization();
+
+  await assert.rejects(subject.settle(signed, await sign(signed), PAYEE), unknownOutcome(HASH));
 });
 
 test("a simulation revert before broadcast is a SettlementRejected and never writes", async () => {
@@ -222,7 +459,7 @@ test("a simulation revert before broadcast is a SettlementRejected and never wri
   const signed = authorization();
 
   await assert.rejects(
-    subject.settle(signed, await sign(signed), PAY_TO),
+    subject.settle(signed, await sign(signed), PAYEE),
     (error) => error instanceof SettlementRejected,
   );
   assert.deepEqual(calls, []);
@@ -236,7 +473,7 @@ test("an error from writeContract is ambiguous, a SettlementUnknown without a ha
   });
   const signed = authorization();
 
-  await assert.rejects(subject.settle(signed, await sign(signed), PAY_TO), unknownOutcome(null));
+  await assert.rejects(subject.settle(signed, await sign(signed), PAYEE), unknownOutcome(null));
 });
 
 test("a reverted receipt is a SettlementRejected", async () => {
@@ -246,7 +483,7 @@ test("a reverted receipt is a SettlementRejected", async () => {
   const signed = authorization();
 
   await assert.rejects(
-    subject.settle(signed, await sign(signed), PAY_TO),
+    subject.settle(signed, await sign(signed), PAYEE),
     (error) => error instanceof SettlementRejected,
   );
 });
@@ -261,7 +498,7 @@ test("a receipt-wait timeout is a SettlementUnknown with the hash and asks for 3
   });
   const signed = authorization();
 
-  await assert.rejects(subject.settle(signed, await sign(signed), PAY_TO), unknownOutcome(HASH));
+  await assert.rejects(subject.settle(signed, await sign(signed), PAYEE), unknownOutcome(HASH));
   assert.deepEqual(timeouts, [30_000]);
 });
 
@@ -273,27 +510,14 @@ test("an RPC error after the hash exists is a SettlementUnknown with the hash", 
   });
   const signed = authorization();
 
-  await assert.rejects(subject.settle(signed, await sign(signed), PAY_TO), unknownOutcome(HASH));
+  await assert.rejects(subject.settle(signed, await sign(signed), PAYEE), unknownOutcome(HASH));
 });
 
-test("a success receipt without the matching AUSD transfer is a SettlementUnknown with the hash", async () => {
-  const { gateway: subject } = gateway({
-    wait: async () => ({
-      status: "success",
-      blockNumber: 9n,
-      logs: [rawTransferLog(OTHER, payer.address, PAY_TO, 250000n)],
-    }),
-  });
-  const signed = authorization();
-
-  await assert.rejects(subject.settle(signed, await sign(signed), PAY_TO), unknownOutcome(HASH));
-});
-
-const ALREADY_USED = { read: async () => true };
+const ALREADY_USED = { read: reads(async () => true) };
 const STATE_READ_FAILS = {
-  read: async () => {
+  read: reads(async () => {
     throw new Error("rpc down");
-  },
+  }),
 };
 
 test("a simulation revert with a consumed nonce is a SettlementUnknown without a hash", async () => {
@@ -305,7 +529,7 @@ test("a simulation revert with a consumed nonce is a SettlementUnknown without a
   });
   const signed = authorization();
 
-  await assert.rejects(subject.settle(signed, await sign(signed), PAY_TO), unknownOutcome(null));
+  await assert.rejects(subject.settle(signed, await sign(signed), PAYEE), unknownOutcome(null));
 });
 
 test("a reverted receipt with a consumed nonce is a SettlementUnknown with the hash", async () => {
@@ -315,7 +539,7 @@ test("a reverted receipt with a consumed nonce is a SettlementUnknown with the h
   });
   const signed = authorization();
 
-  await assert.rejects(subject.settle(signed, await sign(signed), PAY_TO), unknownOutcome(HASH));
+  await assert.rejects(subject.settle(signed, await sign(signed), PAYEE), unknownOutcome(HASH));
 });
 
 test("a reverted receipt whose nonce state cannot be read is a SettlementUnknown with the hash", async () => {
@@ -325,14 +549,32 @@ test("a reverted receipt whose nonce state cannot be read is a SettlementUnknown
   });
   const signed = authorization();
 
-  await assert.rejects(subject.settle(signed, await sign(signed), PAY_TO), unknownOutcome(HASH));
+  await assert.rejects(subject.settle(signed, await sign(signed), PAYEE), unknownOutcome(HASH));
+});
+
+test("the reverted-receipt state read asks AUSD for the payer's nonce", async () => {
+  const requests: Record<string, unknown>[] = [];
+  const { gateway: subject } = gateway({
+    read: async (request) => {
+      requests.push(request as unknown as Record<string, unknown>);
+      return false;
+    },
+    wait: async () => ({ status: "reverted", blockNumber: 9n, logs: [] }),
+  });
+  const signed = authorization();
+
+  await assert.rejects(subject.settle(signed, await sign(signed), PAYEE));
+  assert.equal(requests.length, 1);
+  assert.equal(requests[0]!.address, AUSD);
+  assert.equal(requests[0]!.functionName, "authorizationState");
+  assert.deepEqual(requests[0]!.args, [payer.address, NONCE]);
 });
 
 test("a signature that cannot be parsed is rejected before anything is sent", async () => {
   const { gateway: subject, calls } = gateway({});
 
   await assert.rejects(
-    subject.settle(authorization(), "0xzz", PAY_TO),
+    subject.settle(authorization(), "0xzz", PAYEE),
     (error) => error instanceof SettlementRejected,
   );
   assert.deepEqual(calls, []);
@@ -362,6 +604,11 @@ test("no settle error carries the relayer key, the signature or a cause", async 
         throw leak();
       },
     },
+    {
+      read: async () => {
+        throw leak();
+      },
+    },
   ];
   const signed = authorization();
   const signature = await sign(signed);
@@ -369,7 +616,7 @@ test("no settle error carries the relayer key, the signature or a cause", async 
   for (const overrides of failing) {
     const { gateway: subject } = gateway(overrides);
 
-    await assert.rejects(subject.settle(signed, signature, PAY_TO), (error) => {
+    await assert.rejects(subject.settle(signed, signature, PAYEE), (error) => {
       return (
         error instanceof Error &&
         !error.message.includes(RELAYER.slice(2)) &&

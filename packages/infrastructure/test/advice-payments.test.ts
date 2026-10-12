@@ -8,6 +8,7 @@ import { createTestStore } from "./database.js";
 
 const hex = (bytes: number) => randomBytes(bytes).toString("hex");
 const CHECKSUMMED = "0xAbCdEf0123456789aBcDeF0123456789AbCdEf01";
+const SPLITTER = "0xAA44444444444444444444444444444444444444";
 
 async function setup(t: TestContext) {
   const db = await createTestStore(t);
@@ -50,7 +51,7 @@ async function setup(t: TestContext) {
     [buyer, CHECKSUMMED.toLowerCase()],
   );
   const walletId = `wallet-${hex(12)}`;
-  const payTo = `0x${hex(20)}`;
+  const payee = `0x${hex(20)}`;
   const link = async () => {
     await pool.query(
       `INSERT INTO wallets.wallets (user_id, wallet_id, sub_organization_id, kind, name, approved_policy_ids)
@@ -60,7 +61,7 @@ async function setup(t: TestContext) {
     await pool.query(
       `INSERT INTO wallets.wallet_accounts (wallet_id, chain, address, address_format, path)
        VALUES ($1,'monad',$2,'ADDRESS_FORMAT_ETHEREUM','m/44')`,
-      [walletId, payTo],
+      [walletId, payee],
     );
     await pool.query(
       "INSERT INTO wallets.agent_wallets (agent_id, wallet_id, policy_ids) VALUES ($1,$2,ARRAY['p1','p2','p3'])",
@@ -71,7 +72,7 @@ async function setup(t: TestContext) {
     pool.query("UPDATE agents.agents SET advice_price_micro_ausd=$2 WHERE id=$1", [agentId, micro]);
   const auth = (nonce = `0x${hex(32)}`, from = CHECKSUMMED): Authorization => ({
     from,
-    to: payTo,
+    to: SPLITTER,
     value: "1500000",
     validAfter: "0",
     validBefore: "1900000000",
@@ -79,8 +80,12 @@ async function setup(t: TestContext) {
     salt: `0x${hex(32)}`,
   });
   const store = new PostgresAdvicePayments(pool);
-  const insert = (key: string, authorization: Authorization, userId = buyer) =>
-    store.insertPending({ userId, publicAgentId: agentId, key, authorization });
+  const insert = (
+    key: string,
+    authorization: Authorization,
+    userId = buyer,
+    paidTo = payee.toUpperCase().replace("0X", "0x"),
+  ) => store.insertPending({ userId, publicAgentId: agentId, key, authorization, payee: paidTo });
   const row = async (key: string) =>
     (
       await pool.query(
@@ -95,7 +100,7 @@ async function setup(t: TestContext) {
     agentId,
     owner,
     buyer,
-    payTo,
+    payee,
     link,
     price,
     auth,
@@ -106,7 +111,7 @@ async function setup(t: TestContext) {
 
 const conflict = (error: unknown) => error instanceof PilotError && error.code === "CONFLICT";
 
-test("saleTerms returns price, wallet and handle, and null when not for sale", async (t) => {
+test("saleTerms returns price, the agent wallet as payee and handle, and null when not for sale", async (t) => {
   const f = await setup(t);
   assert.equal(await f.store.saleTerms(f.agentId), null, "no price, no wallet");
   await f.price("1500000");
@@ -114,7 +119,7 @@ test("saleTerms returns price, wallet and handle, and null when not for sale", a
   await f.link();
   assert.deepEqual(await f.store.saleTerms(f.agentId), {
     priceMicro: 1500000n,
-    payee: f.payTo,
+    payee: f.payee,
     handle: "analyst",
   });
   await f.price(null);
@@ -147,8 +152,11 @@ test("insertPending stores lowercase and byKey returns payer, nonce and validBef
   assert.equal(created.nonce, nonce.toLowerCase());
   assert.equal(created.validBefore, "1900000000");
   const stored = await f.row("k1");
-  assert.equal(stored.pay_to, f.payTo.toLowerCase());
+  assert.equal(stored.pay_to, SPLITTER.toLowerCase(), "pay_to is the authorization's to");
+  assert.equal(stored.payee, f.payee.toLowerCase());
   assert.equal(stored.amount_micro_ausd, "1500000");
+  assert.equal(stored.creator_amount_micro_ausd, null);
+  assert.equal(stored.protocol_amount_micro_ausd, null);
   assert.deepEqual(await f.store.byKey(f.buyer, f.agentId, "k1"), created);
   assert.equal(await f.store.byKey(f.buyer, f.agentId, "other"), null);
   assert.equal(await f.store.byKey(f.owner, f.agentId, "k1"), null);
@@ -165,13 +173,22 @@ test("settled, attachJob and refundOwed update the row", async (t) => {
   const f = await setup(t);
   const { id } = await f.insert("k1", f.auth());
   const txHash = `0x${hex(32)}`;
-  await f.store.settled(id, txHash, 42n);
+  await f.store.settled(id, txHash, 42n, 975000n, 525000n);
   let stored = await f.row("k1");
   assert.equal(stored.status, "settled");
   assert.equal(stored.block_number, "42");
+  assert.equal(stored.creator_amount_micro_ausd, "975000");
+  assert.equal(stored.protocol_amount_micro_ausd, "525000");
   const read = await f.store.byKey(f.buyer, f.agentId, "k1");
-  assert.equal(read?.status, "settled");
-  assert.equal(read?.txHash, txHash);
+  assert.deepEqual(read, {
+    id,
+    jobId: null,
+    status: "settled",
+    txHash,
+    payer: CHECKSUMMED.toLowerCase(),
+    nonce: read?.nonce,
+    validBefore: "1900000000",
+  });
 
   const jobId = randomUUID();
   await f.pool.query(
@@ -198,7 +215,7 @@ test("insertPending over a pending or settled row is CONFLICT and leaves it unch
   assert.equal((await f.row("pending")).status, "pending");
 
   const { id } = await f.insert("done", f.auth());
-  await f.store.settled(id, `0x${hex(32)}`, 7n);
+  await f.store.settled(id, `0x${hex(32)}`, 7n, 1n, 1n);
   await assert.rejects(f.insert("done", f.auth()), conflict);
   const stored = await f.row("done");
   assert.equal(stored.status, "settled");
@@ -210,15 +227,25 @@ test("insertPending over a failed row reuses it with the new nonce", async (t) =
   const { id } = await f.insert("k1", f.auth());
   await f.store.failed(id, "rejected");
   assert.equal((await f.row("k1")).status, "failed");
+  await f.pool.query(
+    `UPDATE pickler.advice_payments
+        SET creator_amount_micro_ausd = 1, protocol_amount_micro_ausd = 1
+      WHERE id = $1`,
+    [id],
+  );
 
   const next = f.auth();
-  const again = await f.insert("k1", next);
+  const newPayee = `0x${hex(20)}`;
+  const again = await f.insert("k1", next, f.buyer, newPayee);
   assert.notEqual(again.id, id);
   assert.equal(again.status, "pending");
   assert.equal(again.nonce, next.nonce.toLowerCase());
   const stored = await f.row("k1");
   assert.equal(stored.error, null);
   assert.equal(stored.tx_hash, null);
+  assert.equal(stored.payee, newPayee);
+  assert.equal(stored.creator_amount_micro_ausd, null);
+  assert.equal(stored.protocol_amount_micro_ausd, null);
 });
 
 async function settle(promises: Promise<unknown>[]) {
@@ -269,13 +296,15 @@ test("settled, failed and refundOwed are no-ops outside their expected status", 
   assert.equal((await f.row("k1")).status, "pending");
 
   const txHash = `0x${hex(32)}`;
-  await f.store.settled(id, txHash, 1n);
-  await f.store.settled(id, `0x${hex(32)}`, 2n);
+  await f.store.settled(id, txHash, 1n, 975000n, 525000n);
+  await f.store.settled(id, `0x${hex(32)}`, 2n, 1n, 1n);
   await f.store.failed(id, "late");
   const stored = await f.row("k1");
   assert.equal(stored.status, "settled");
   assert.equal(stored.tx_hash, txHash);
   assert.equal(stored.block_number, "1");
+  assert.equal(stored.creator_amount_micro_ausd, "975000");
+  assert.equal(stored.protocol_amount_micro_ausd, "525000");
   assert.equal(stored.error, null);
 });
 
@@ -295,7 +324,7 @@ test("attachJob is a no-op on a row that already has a job or is not settled", a
   await f.store.attachJob(id, jobs[0]!);
   assert.equal((await f.row("k1")).job_id, null);
 
-  await f.store.settled(id, `0x${hex(32)}`, 1n);
+  await f.store.settled(id, `0x${hex(32)}`, 1n, 975000n, 525000n);
   await f.store.attachJob(id, jobs[0]!);
   await f.store.attachJob(id, jobs[1]!);
   assert.equal((await f.row("k1")).job_id, jobs[0]);

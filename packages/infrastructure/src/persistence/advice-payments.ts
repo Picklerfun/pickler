@@ -18,7 +18,7 @@ export class PostgresAdvicePayments implements AdvicePaymentStore {
   constructor(private readonly pool: Pool) {}
 
   async saleTerms(publicAgentId: string): Promise<SaleTerms | null> {
-    const { rows } = await this.pool.query<{ price: string; handle: string; payTo: string | null }>(
+    const { rows } = await this.pool.query<{ price: string; handle: string; payee: string | null }>(
       `
       SELECT a.advice_price_micro_ausd::text AS price, a.handle,
         (
@@ -26,7 +26,7 @@ export class PostgresAdvicePayments implements AdvicePaymentStore {
            WHERE wallet_id = l.wallet_id
            ORDER BY created_at
            LIMIT 1
-        ) AS "payTo"
+        ) AS payee
         FROM agents.agents a
         JOIN wallets.agent_wallets l ON l.agent_id = a.id
        WHERE a.id = $1
@@ -38,11 +38,11 @@ export class PostgresAdvicePayments implements AdvicePaymentStore {
     );
     const row = rows[0];
 
-    if (!row || !row.payTo) {
+    if (!row || !row.payee) {
       return null;
     }
 
-    return { priceMicro: BigInt(row.price), payee: row.payTo, handle: row.handle };
+    return { priceMicro: BigInt(row.price), payee: row.payee, handle: row.handle };
   }
 
   async payerLinked(userId: string, address: string): Promise<boolean> {
@@ -81,6 +81,7 @@ export class PostgresAdvicePayments implements AdvicePaymentStore {
     publicAgentId: string;
     key: string;
     authorization: Authorization;
+    payee: string;
   }): Promise<AdvicePaymentRecord> {
     const { authorization } = input;
 
@@ -89,13 +90,19 @@ export class PostgresAdvicePayments implements AdvicePaymentStore {
         `
         INSERT INTO pickler.advice_payments
           (user_id, public_agent_id, request_key, payer, pay_to, amount_micro_ausd, nonce,
-           valid_before, status)
-        VALUES ($1, $2, $3, lower($4), lower($5), $6, lower($7), to_timestamp($8::bigint), 'pending')
+           valid_before, status, payee)
+        VALUES (
+          $1, $2, $3, lower($4), lower($5), $6, lower($7), to_timestamp($8::bigint), 'pending',
+          lower($9)
+        )
         ON CONFLICT (user_id, public_agent_id, request_key) DO UPDATE SET
           id = gen_random_uuid(),
           payer = EXCLUDED.payer,
           pay_to = EXCLUDED.pay_to,
+          payee = EXCLUDED.payee,
           amount_micro_ausd = EXCLUDED.amount_micro_ausd,
+          creator_amount_micro_ausd = NULL,
+          protocol_amount_micro_ausd = NULL,
           nonce = EXCLUDED.nonce,
           valid_before = EXCLUDED.valid_before,
           status = 'pending',
@@ -116,6 +123,7 @@ export class PostgresAdvicePayments implements AdvicePaymentStore {
           authorization.value,
           authorization.nonce,
           authorization.validBefore,
+          input.payee,
         ],
       );
 
@@ -133,14 +141,22 @@ export class PostgresAdvicePayments implements AdvicePaymentStore {
     }
   }
 
-  async settled(id: string, txHash: string, blockNumber: bigint): Promise<void> {
+  async settled(
+    id: string,
+    txHash: string,
+    blockNumber: bigint,
+    creatorAmount: bigint,
+    protocolAmount: bigint,
+  ): Promise<void> {
     await this.pool.query(
       `
       UPDATE pickler.advice_payments
-         SET status = 'settled', tx_hash = $2, block_number = $3, updated_at = clock_timestamp()
+         SET status = 'settled', tx_hash = $2, block_number = $3,
+             creator_amount_micro_ausd = $4, protocol_amount_micro_ausd = $5,
+             updated_at = clock_timestamp()
        WHERE id = $1 AND status = 'pending'
       `,
-      [id, txHash, blockNumber.toString()],
+      [id, txHash, blockNumber.toString(), creatorAmount.toString(), protocolAmount.toString()],
     );
   }
 
