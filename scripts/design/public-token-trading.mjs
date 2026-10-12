@@ -82,6 +82,10 @@ try {
   await context.route("**/*", async (route) => {
     const request = route.request(),
       url = new URL(request.url());
+    if (url.pathname === `/api/v1/launches/${encodeURIComponent(`eip155:10143:${token}`)}`) {
+      assert.equal(request.method(), "GET");
+      return route.continue();
+    }
     if (url.pathname === "/api/v1/marketplace/personas/public_trade/token/prepare") {
       reads++;
       assert.equal(request.method(), "POST");
