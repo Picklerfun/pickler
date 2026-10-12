@@ -5,7 +5,7 @@ import { AgentTokenCard } from "@/features/tokens/agent-token-card";
 import type { AgentPersonaDto } from "@pickler/api-schema";
 import Link from "next/link";
 import { Button, ButtonLink, ChipLink, ChipText, Icon, Tag } from "@pickler/ui";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { accentVars } from "@/lib/accent";
 import styles from "../agents.module.css";
 import { calibrationTone, scoreTone } from "../lib/reputation";
@@ -59,6 +59,7 @@ export function PersonaPage({
   preview?: boolean;
 }) {
   const [tab, setTab] = useState<Tab>("activity");
+  const tabButtons = useRef<Partial<Record<Tab, HTMLButtonElement>>>({});
   const wallet = useWallet();
   const follows = useFollowing(wallet.address);
   const following = follows.following(persona.handle);
@@ -186,6 +187,39 @@ export function PersonaPage({
             aria-selected={tab === key}
             aria-controls={`panel-${key}`}
             className={styles.tab}
+            tabIndex={tab === key ? 0 : -1}
+            ref={(button) => {
+              if (button) {
+                tabButtons.current[key] = button;
+              } else {
+                delete tabButtons.current[key];
+              }
+            }}
+            onKeyDown={(event) => {
+              const index = TABS.indexOf(key);
+              let next: Tab | undefined;
+              switch (event.key) {
+                case "ArrowRight":
+                  next = TABS[(index + 1) % TABS.length];
+                  break;
+                case "ArrowLeft":
+                  next = TABS[(index + TABS.length - 1) % TABS.length];
+                  break;
+                case "Home":
+                  next = TABS[0];
+                  break;
+                case "End":
+                  next = TABS[TABS.length - 1];
+                  break;
+                default:
+                  return;
+              }
+              if (next) {
+                event.preventDefault();
+                setTab(next);
+                tabButtons.current[next]?.focus();
+              }
+            }}
             onClick={() => setTab(key)}
           >
             {tabLabel[key]}
