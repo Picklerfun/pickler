@@ -775,3 +775,24 @@ building Turnkey's `signWith`. Turnkey's resource lookup is case-sensitive; the 
 identity remains valid for ownership and on-chain comparisons. Prepared transaction bytes and
 historical stamped activities are never rewritten. The driver regression requires the exact
 checksummed resource address and verifies the returned signed bytes against the original sender.
+
+## Confirmed app launches
+
+`src/launch/confirmed-launch.ts` exports `createConfirmedLaunchPublisher`. The operation driver
+passes its existing budgeted RPC to this callback after canonical receipt confirmation. It verifies
+the configured immutable factory/network, exact recorded grant/calldata and creator, receipt/log
+identity, confirmation depth, ERC-20 metadata and a stable source block. RPC work precedes a short
+owner/operation/grant-fenced transaction. Only the verified factory event and block are persisted;
+`PostgresLaunchProjector.projectReceipt` projects that one receipt using already verified metadata.
+This never advances any historical indexer cursor or synthesizes a token from a browser hash.
+Public directory/profile reads retain their shared canonical-event/grant checks and perform no RPC.
+Already published operations use database-only checks; incomplete publication can be repaired by the
+same explicit status path, including earlier finalized operations. The additional proof costs eleven
+RPC reads once in the controlled case, reserved under the existing per-operation ceiling.
+
+Receipt evidence can precede contiguous indexer history. Batch application and receipt persistence
+serialize chain mutations, orphan competing hashes at the same height and preserve notification
+rows as failed with `CHAIN_EVENT_ORPHANED`; a returning branch can restore them to pending. Replays
+retain full log identity and cannot duplicate token/pool rows. Historical traversal, finality,
+ancestry checks, external events, trade recovery and reorg handling remain the indexer's responsibility.
+Tests: `confirmed-launch.test.ts`, `launch-index-store.test.ts` and the existing launch suites.
