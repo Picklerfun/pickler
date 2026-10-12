@@ -7,7 +7,7 @@ import {
 } from "@pickler/api-schema";
 import { AUSD, toBaseUnits } from "@pickler/chain";
 import { formatUnits } from "viem";
-import { Button, Field, Icon, Input, Segmented, Tag } from "@pickler/ui";
+import { Button, Field, Input, Segmented, Tag } from "@pickler/ui";
 import { useWallet } from "@/features/wallet/lib/wallet-context";
 import {
   publicTokenReceipt,
@@ -24,6 +24,7 @@ import {
   waitForPublicTradeReceipt,
 } from "@/features/wallet/lib/public-trade-flow";
 import { ChainReference } from "./chain-reference";
+import { PublicTradeAction, type TradeActionState } from "./public-trade-action";
 import quotes from "./trade-quotes.json";
 import styles from "./public-token-trade.module.css";
 const WORDS: Record<string, string> = {
@@ -90,6 +91,16 @@ function PublicTradeForm({ handle, token, preview = false, embedded = false, onC
     serverSnapshot,
   );
   const attempt = preview ? simulated : persisted;
+  const [acknowledged, setAcknowledged] = useState<PublicTradeAttempt | null>(null);
+  const success = attempt?.status === "confirmed" && !attempt.prepared.quote.approval;
+  const celebrating = success && acknowledged !== attempt;
+  useEffect(() => {
+    if (!success || acknowledged === attempt) {
+      return;
+    }
+    const timer = setTimeout(() => setAcknowledged(attempt), 2200);
+    return () => clearTimeout(timer);
+  }, [success, attempt, acknowledged]);
   const observing = Boolean(
     attempt?.hash &&
     ["confirming", "unknown"].includes(attempt.status) &&
@@ -122,6 +133,11 @@ function PublicTradeForm({ handle, token, preview = false, embedded = false, onC
     }
   } catch {
     /* Keep the entered amount visible. */
+  }
+  function edit(next: TradeDraft) {
+    setDraft(next);
+    setAcknowledged(attempt);
+    setError(null);
   }
   function keep(value: PublicTradeAttempt | null) {
     if (preview) {
@@ -340,9 +356,52 @@ function PublicTradeForm({ handle, token, preview = false, embedded = false, onC
   }, [key, observedHash, preview]);
   useEffect(() => () => run.current?.abort(), []);
 
-  const quote = attempt?.prepared.quote;
+  const savedQuote = attempt?.prepared.quote;
+  const quote =
+    savedQuote?.side === side &&
+    savedQuote.amount === amount &&
+    savedQuote.slippageBps === Number(slippage)
+      ? savedQuote
+      : undefined;
   const outputAsset = quote?.side === "buy" ? token.ticker : "AUSD";
   const outputDecimals = quote?.side === "buy" ? 18 : 6;
+  const ticker = token.ticker.replace(/^\$+/, "");
+  let actionState: TradeActionState = "ready";
+  let actionLabel = `${side === "buy" ? "Buy" : "Sell"} ${ticker}`;
+  let actionHint: string | undefined;
+  if (displayPhase) {
+    actionState = displayPhase;
+    if (displayPhase === "preparing") {
+      actionLabel = "Getting your quote";
+    } else if (displayPhase === "wallet") {
+      actionLabel = "Confirm in wallet";
+    } else if (displayPhase === "approval") {
+      actionLabel = `Approving ${side === "buy" ? "AUSD" : ticker}`;
+    } else {
+      actionLabel = `${side === "buy" ? "Buying" : "Selling"} ${ticker}`;
+    }
+  } else if (active && attempt?.status !== "review") {
+    actionState = attempt?.hash ? "pending" : "unknown";
+    actionLabel = attempt?.hash ? "Still pending" : "Wallet response lost";
+    actionHint = attempt?.hash ? "Your transaction is saved" : "Check your wallet before retrying";
+  } else if (error || attempt?.status === "reverted") {
+    actionState = "error";
+    actionLabel = error?.startsWith("Signature cancelled")
+      ? "Cancelled · try again"
+      : `Retry ${side}`;
+    actionHint = error ?? "Transaction failed. No swap completed.";
+    if (error?.startsWith("Price changed")) {
+      actionState = "review";
+      actionLabel = `Confirm ${side}`;
+      actionHint = "Price changed · review the minimum";
+    }
+  } else if (celebrating) {
+    actionState = "success";
+    actionLabel = `${side === "buy" ? "Bought" : "Sold"} ${ticker}`;
+  } else if (attempt?.status === "review") {
+    actionState = "review";
+    actionLabel = `Confirm ${side}`;
+  }
   return (
     <section
       className={`${styles.panel} ${embedded ? styles.embedded : ""}`}
@@ -362,7 +421,7 @@ function PublicTradeForm({ handle, token, preview = false, embedded = false, onC
           { value: "buy", label: "Buy" },
           { value: "sell", label: "Sell" },
         ]}
-        onChange={(v) => setDraft({ ...form, side: v as "buy" | "sell" })}
+        onChange={(v) => edit({ ...form, side: v as "buy" | "sell" })}
       />
       <Field label={`You pay · ${asset}`}>
         <Input
@@ -373,7 +432,7 @@ function PublicTradeForm({ handle, token, preview = false, embedded = false, onC
           disabled={busy || active}
           readOnly={preview}
           onChange={(e) =>
-            setDraft({ ...form, [side === "buy" ? "buyAmount" : "sellAmount"]: e.target.value })
+            edit({ ...form, [side === "buy" ? "buyAmount" : "sellAmount"]: e.target.value })
           }
         />
       </Field>
@@ -389,7 +448,7 @@ function PublicTradeForm({ handle, token, preview = false, embedded = false, onC
             { value: "50", label: "0.5%" },
             { value: "100", label: "1%" },
           ]}
-          onChange={(slippage) => setDraft({ ...form, slippage })}
+          onChange={(slippage) => edit({ ...form, slippage })}
         />
       </div>
       {!preview && wallet.address && (
@@ -397,35 +456,52 @@ function PublicTradeForm({ handle, token, preview = false, embedded = false, onC
           Your wallet · {wallet.address.slice(0, 6)}…{wallet.address.slice(-4)}
         </p>
       )}
-      {quote && active && (
-        <dl className={styles.quote}>
-          <div>
-            <dt>Expected</dt>
-            <dd>{quotedAmount(quote.expectedOutput, outputDecimals, outputAsset)}</dd>
-          </div>
-          <div>
-            <dt>Minimum</dt>
-            <dd>{quotedAmount(quote.minimumOutput, outputDecimals, outputAsset)}</dd>
-          </div>
-        </dl>
-      )}
-      {!busy && attempt?.status === "confirmed" && (
-        <p className={styles.status} role="status">
-          {quote?.approval
-            ? "Approval confirmed."
-            : quote?.side === "buy"
-              ? "Purchase confirmed."
-              : "Sale confirmed."}
-        </p>
-      )}
-      {attempt?.status === "reverted" && (
-        <p role="alert" className={styles.error}>
-          Transaction failed. No swap completed.
-        </p>
-      )}
-      {attempt?.hash && (
-        <div className={styles.transaction}>
-          <span>{quote?.approval ? "Approval" : "Transaction"}</span>
+      <dl className={styles.quote}>
+        <div>
+          <dt>Expected</dt>
+          <dd>{quote ? quotedAmount(quote.expectedOutput, outputDecimals, outputAsset) : "—"}</dd>
+        </div>
+        <div>
+          <dt>Minimum</dt>
+          <dd>{quote ? quotedAmount(quote.minimumOutput, outputDecimals, outputAsset) : "—"}</dd>
+        </div>
+      </dl>
+      <div className={styles.actions}>
+        {!preview && wallet.status !== "connected" ? (
+          <Button onClick={() => wallet.connect(`Trade ${token.ticker}`)}>Connect wallet</Button>
+        ) : !preview && !wallet.onTargetChain ? (
+          <Button onClick={() => void wallet.switchChain()}>Switch to Monad testnet</Button>
+        ) : (
+          <PublicTradeAction
+            state={actionState}
+            label={actionLabel}
+            hint={actionHint}
+            disabled={
+              busy ||
+              celebrating ||
+              !amount ||
+              token.chainId !== 10143 ||
+              (active && attempt?.status !== "review")
+            }
+            busy={busy}
+            onClick={() => void trade()}
+          />
+        )}
+        {attempt?.status === "review" && !busy && (
+          <Button
+            variant="secondary"
+            onClick={() => {
+              edit(form);
+              keep(null);
+            }}
+          >
+            Cancel
+          </Button>
+        )}
+      </div>
+      <div className={styles.transaction}>
+        <span>1% curve fee · gas in MON</span>
+        {attempt?.hash && (
           <ChainReference
             value={attempt.hash}
             chainId={token.chainId}
@@ -433,64 +509,8 @@ function PublicTradeForm({ handle, token, preview = false, embedded = false, onC
             label="trade transaction"
             preview={preview}
           />
-        </div>
-      )}
-      {!busy && attempt?.status === "confirming" && (
-        <p className={styles.quiet} role="status">
-          Still pending on Monad. Follow the transaction above.
-        </p>
-      )}
-      {error && (
-        <p role="alert" className={styles.error}>
-          {error}
-        </p>
-      )}
-      <div className={styles.actions}>
-        {!preview && wallet.status !== "connected" ? (
-          <Button onClick={() => wallet.connect(`Trade ${token.ticker}`)}>Connect wallet</Button>
-        ) : !preview && !wallet.onTargetChain ? (
-          <Button onClick={() => void wallet.switchChain()}>Switch to Monad testnet</Button>
-        ) : (
-          <Button
-            disabled={
-              busy || !amount || token.chainId !== 10143 || (active && attempt?.status !== "review")
-            }
-            aria-busy={busy}
-            aria-live="polite"
-            onClick={() => void trade()}
-          >
-            {busy && <Icon name="refresh" size={16} className={styles.spinner} />}
-            {displayPhase === "preparing"
-              ? "Preparing…"
-              : displayPhase === "wallet"
-                ? "Confirm in wallet…"
-                : displayPhase === "approval"
-                  ? "Confirming approval…"
-                  : displayPhase === "trade"
-                    ? "Confirming trade…"
-                    : active && attempt?.status !== "review"
-                      ? attempt?.hash
-                        ? "Pending on Monad"
-                        : "Wallet response unavailable"
-                      : attempt?.status === "review"
-                        ? `Confirm ${side}`
-                        : `${side === "buy" ? "Buy" : "Sell"} token`}
-          </Button>
-        )}
-        {attempt?.status === "review" && !busy && (
-          <Button
-            variant="secondary"
-            onClick={() => {
-              setDraft(form);
-              keep(null);
-              setError(null);
-            }}
-          >
-            Cancel
-          </Button>
         )}
       </div>
-      <p className={styles.quiet}>1% curve fee · gas in MON</p>
     </section>
   );
 }
