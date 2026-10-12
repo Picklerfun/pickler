@@ -31,7 +31,12 @@ The UUID has its hyphens removed before encoding. The private mapping and record
 before a confirmed canonical `LaunchCreated` event can attribute a token. A browser transaction hash
 cannot confirm launch. Orphaned, observed or incomplete evidence never shows a confirmed token.
 Public profile token reads use the API's configured custody chain, not a browser-selected network.
-Read errors remain errors; they are never converted to absence. Confirmation windows compare the
+Read errors remain errors; they are never converted to absence. App launch confirmation now verifies and stores the exact factory receipt for immediate
+publication through the same projector, independently of historical indexer progress. Earlier
+finalized app operations can repair missing identity through an owner state/status read without
+signing or sending again. The indexer still handles external activity, missed history and reorgs.
+See [the publication regression](market/token-launch-operations.md#immediate-publication-regression).
+Confirmation windows compare the
 issued time at whole-second precision, matching EVM block timestamps, including a transaction mined
 in the grant's own second.
 
