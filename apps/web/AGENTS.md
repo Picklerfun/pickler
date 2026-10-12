@@ -1301,8 +1301,8 @@ AreaChart with 1H/24H/7D controls, a local-only ticket, curve progress, distribu
 trades. Demo data is labelled once at the section header, and the ticket uses an explicit Preview action. Its input, side, slippage and review change local state only. Non-example
 amounts remain unquoted; there are no financial formulas, wallet ceremonies, provider calls,
 API requests or broadcasts. Chart samples and table entries are static illustrations, not
-measurements or executable quotes. The four existing token previews and production keep their existing compact card and trade
-flow. The route opts into PublicShell's chart attribution only for this launched preview.
+measurements or executable quotes. The standalone illustrative mockup remains non-production. Confirmed public profiles now use the
+production market surface below; PublicShell includes chart attribution for confirmed tokens.
 `AgentTokenIdentity` reuses frozen image/name/ticker rendering across both presentations.
 The rendered Design registry includes `public-agent-token-market-preview`, proving the expanded
 market card separately from the existing compact-token previews.
@@ -1324,3 +1324,29 @@ without an Ask link or a promised reply time. Do not add token data to this dire
 Search retains the existing `?q=` history behavior. Topics come from directory data through the
 shared Select, and Taking questions uses the shared labelled Switch. The result count is derived
 from filtered rows. Preserve API order, null metrics, degraded reads and existing empty states.
+
+## Production public token market
+
+`features/tokens/public-token-market.tsx` renders the approved chart/trade layout for every
+confirmed public persona, without a preview query or production guard. It reads the existing
+`GET /v1/launches/:id` through the same-origin proxy using the chain/address catalogue key.
+The response schema and token identity are checked before rendering. A bounded read, explicit
+refresh/retry, skeletons, pending index state and preserved stale observations keep the trade
+form available during read failures. No RPC, signing or automatic quote is performed by this read.
+`PublicTokenTrade` accepts `embedded` for layout only; its wallet/prepare/send behavior is unchanged.
+The market renders prepared WAD prices/FDV, quote-unit volume, canonical curve state, committed
+allocations and recent transaction references. Unavailable figures stay unknown. The chart uses
+actual timestamped observations, filtered relative to the server's read window; same-second
+observations collapse for the chart library. Recent trades retain individual transaction/log identity.
+Post-graduation figures remain labelled curve history, never a DEX price. Preview addresses and
+transaction links remain inert. The production design contains no illustrative fixture import.
+
+Controlled release acceptance targets a running loopback production build against the Design fixture API:
+
+```sh
+node --import tsx scripts/design/public-token-market.mjs http://localhost:3007
+```
+
+It checks the normal profile route, responsive layout, actual-data rendering, transaction links,
+keyboard controls, pending/malformed/failed reads and preservation of the trade form. All market
+responses are controlled and provider requests are rejected; it does not establish remote acceptance.
