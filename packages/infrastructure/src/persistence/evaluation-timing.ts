@@ -12,7 +12,7 @@ export interface EvaluationDatabaseTiming {
   code: string | null;
 }
 /** Preserve known database cancellation codes without exposing driver messages or causes. */
-function queryFailure(error: unknown): unknown {
+export function queryFailure(error: unknown): unknown {
   if (error instanceof PilotError) {
     return error;
   }
@@ -26,7 +26,7 @@ function queryFailure(error: unknown): unknown {
 }
 
 /** Normalize only the driver deadline demonstrated by the local connection failures. */
-function connectionFailure(error: unknown): unknown {
+export function connectionFailure(error: unknown): unknown {
   if (error instanceof PilotError) {
     return error;
   }
