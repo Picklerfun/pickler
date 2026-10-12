@@ -278,3 +278,11 @@ operations without it remain readable. Ordinary state reads remain database-only
 version-1 unsigned preparation DTOs through the package root. Targets, curve, asset, gas, nonce
 and minimum output are server-resolved outputs, never client input. Chain is explicitly testnet 10143. Owner Studio DTOs and authentication remain separate. See
 [Public token trading](../../docs/market/public-token-trading.md).
+
+## Public token market observations
+
+`LaunchDetailDto.market` is optional/nullable for historical producers. Version 1 carries prepared
+WAD prices/FDV, quote-atomic 24-hour curve volume, server window end, observed block/time,
+canonical net sold/reserve, optional committed allocations and bounded history/recent trades.
+`tokenMarketSchema` validates this extension in the existing launch read contract. A missing
+market or terms is unknown, never a zero price or implicit reference preset.
