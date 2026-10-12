@@ -1354,7 +1354,7 @@ allocations and recent transaction references. Unavailable figures stay unknown.
 actual timestamped observations, filtered relative to the server's read window; same-second
 observations collapse for the chart library. Recent trades retain individual transaction/log identity.
 Post-graduation figures remain labelled curve history, never a DEX price. Preview addresses and
-transaction links remain inert. The production design contains no illustrative fixture import.
+transaction links remain inert. Illustrative fixtures render only in the server-gated development preview; ordinary public tokens use API observations.
 
 Controlled release acceptance targets a running loopback production build against the Design fixture API:
 
@@ -1365,3 +1365,17 @@ node --import tsx scripts/design/public-token-market.mjs http://localhost:3007
 It checks the normal profile route, responsive layout, actual-data rendering, transaction links,
 keyboard controls, pending/malformed/failed reads and preservation of the trade form. All market
 responses are controlled and provider requests are rejected; it does not establish remote acceptance.
+
+## Interactive public trade preview and immediate refresh
+
+The development-only `stage=token-launched` persona preview renders the actual market and trade
+components with generated, explicitly illustrative market data. Its outcome controls exercise
+success, wallet cancellation, revert and slow confirmation using abortable controlled delays;
+they never request a wallet, provider or real explorer. Mobile controls wrap without overflow.
+`tokens:fixtures` generates `market-preview.json` from Design’s core-backed fixture calculations.
+
+After a live swap receipt passes wallet confirmation, the form calls the strict public `token/confirm`
+API and waits for canonical publication before success and market refresh. Pending/transient reads
+share the bounded button observer; no manual check, new send or replacement occurs. Restoring a
+saved confirmed swap can reconcile its receipt without reopening the wallet. Approvals do not
+publish market activity.
