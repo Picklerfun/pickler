@@ -72,3 +72,12 @@
 .actions > :first-child {
   flex: 1;
 }
+
+.panel.embedded {
+  border: 0;
+  background: var(--pk-bg);
+  border-radius: 0;
+  padding: 0;
+  margin: 0;
+  align-content: start;
+}
