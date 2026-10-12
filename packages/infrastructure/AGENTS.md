@@ -828,3 +828,7 @@ attribution and refuses conflicting or orphaned evidence without changing histor
 Reorg reconciliation, projection replay, outbox and cursors remain the indexer’s responsibility.
 Market reads merge hourly samples, recent receipt observations and the genuine launch-price anchor
 so multiple trades within an hour remain visible. No database migration is required.
+
+The market read prepares `priceMovement` with core's integer helper from the last two canonical
+price observations in chain order. It shares the existing snapshot and orphan filtering; sparse
+launch-only history has no movement. No provider call or migration is added.

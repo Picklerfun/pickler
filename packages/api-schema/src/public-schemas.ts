@@ -389,6 +389,25 @@ export const tokenMarketSchema = z.object({
     .string()
     .regex(/^[0-9]+$/)
     .nullable(),
+  priceMovement: z
+    .object({
+      direction: z.enum(["up", "down", "flat"]),
+      changeBps: z.string().regex(/^-?[0-9]+$/),
+      fromAt: z.iso.datetime({ offset: true }),
+      toAt: z.iso.datetime({ offset: true }),
+    })
+    .refine((move) => {
+      if (!/^-?[0-9]+$/.test(move.changeBps)) {
+        return false;
+      }
+      const bps = BigInt(move.changeBps);
+      if (move.direction === "flat") {
+        return bps === 0n;
+      }
+      return move.direction === "down" ? bps <= 0n : bps >= 0n;
+    }, "Price movement direction mismatch")
+    .nullable()
+    .optional(),
   fdvWad: z
     .string()
     .regex(/^[0-9]+$/)

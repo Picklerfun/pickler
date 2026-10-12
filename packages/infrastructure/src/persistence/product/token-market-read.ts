@@ -3,6 +3,7 @@ import type { TokenMarketDto, TradeDto } from "@pickler/api-schema";
 import {
   tokenCurveMarket,
   tokenFdvWad,
+  tokenPriceMovement,
   tokenTradePriceWad,
   type TokenReferenceEconomics,
 } from "@pickler/core";
@@ -155,6 +156,7 @@ export async function readTokenMarket(
     tokenDecimals: token.decimals,
     priceKind: curve ? "curve" : lastTrade ? "last_trade" : "unavailable",
     priceWad,
+    priceMovement: tokenPriceMovement(history),
     fdvWad:
       priceWad !== null && token.totalSupply !== null
         ? tokenFdvWad(priceWad, token.totalSupply, token.decimals)

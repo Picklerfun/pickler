@@ -57,3 +57,32 @@ export function tokenCurveMarket(terms: TokenReferenceEconomics, netSold: string
     progressBps: Number((sold * 10_000n) / sale),
   };
 }
+
+/** Latest two canonical observations, not a 24-hour return or executable quote. */
+export function tokenPriceMovement(history: readonly { at: string; priceWad: string }[]) {
+  const previous = history.at(-2);
+  const current = history.at(-1);
+  if (!previous || !current) {
+    return null;
+  }
+  const before = BigInt(previous.priceWad);
+  const after = BigInt(current.priceWad);
+  if (before <= 0n || after <= 0n) {
+    return null;
+  }
+  const delta = after - before;
+  const magnitude = delta < 0n ? -delta : delta;
+  const rounded = (magnitude * 10_000n + before / 2n) / before;
+  let direction: "up" | "down" | "flat" = "flat";
+  if (delta < 0n) {
+    direction = "down";
+  } else if (delta > 0n) {
+    direction = "up";
+  }
+  return {
+    direction,
+    changeBps: (delta < 0n ? -rounded : rounded).toString(),
+    fromAt: previous.at,
+    toAt: current.at,
+  } as const;
+}

@@ -88,6 +88,25 @@ try {
   release();
   await price.locator("canvas").first().waitFor();
   assert.equal(await input.inputValue(), "2", "Read completion must preserve the trade form.");
+  const observedChart = price.getByRole("img", { name: /24h observed token prices/ });
+  await observedChart.focus();
+  await observedChart.press("ArrowLeft");
+  const tooltip = price.getByRole("tooltip");
+  await tooltip.waitFor({ state: "visible" });
+  assert.match(await tooltip.innerText(), /AUSD/);
+  assert.match(await tooltip.innerText(), /UTC/);
+  await observedChart.press("Escape");
+  await tooltip.waitFor({ state: "hidden" });
+  const chartBox = await observedChart.boundingBox();
+  assert.ok(chartBox);
+  await page.mouse.move(chartBox.x + chartBox.width / 2, chartBox.y + chartBox.height / 2);
+  await tooltip.waitFor({ state: "visible" });
+  const tooltipBox = await tooltip.boundingBox();
+  assert.ok(tooltipBox);
+  assert.ok(
+    tooltipBox.x >= chartBox.x && tooltipBox.x + tooltipBox.width <= chartBox.x + chartBox.width,
+  );
+  await page.mouse.move(0, 0);
   const table = page.getByRole("region", { name: "Recent curve trades" });
   assert.equal(await table.locator("tbody tr").count(), 2);
   const tx = table.getByRole("link", { name: "View sell transaction in explorer" });
@@ -105,11 +124,24 @@ try {
       `Page overflow at ${width}px`,
     );
   }
+  await page.emulateMedia({ reducedMotion: "reduce" });
   await price.getByRole("button", { name: "1H", exact: true }).click();
   await price.getByText("More trades will build the chart").waitFor();
   await price.getByRole("button", { name: "7D", exact: true }).focus();
   await page.keyboard.press("Enter");
   await price.locator("canvas").first().waitFor();
+  assert.equal(
+    await price.locator(".pk-price-plot").evaluate((element) => element.getAnimations().length),
+    0,
+    "Reduced motion must disable the plot reveal.",
+  );
+  assert.equal(
+    await panel.evaluate(
+      (element) => getComputedStyle(element.querySelector("section")).animationName,
+    ),
+    "none",
+    "Reduced motion must disable panel entrances.",
+  );
   await page.getByRole("button", { name: "How the curve works" }).click();
   await page
     .getByText("Buying raises the curve price; selling lowers it.", { exact: false })

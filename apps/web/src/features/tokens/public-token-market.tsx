@@ -2,8 +2,6 @@
 
 import { useEffect, useState } from "react";
 import type { AgentTokenDto } from "@pickler/api-schema";
-import { freshnessReadSchema, launchDetailSchema } from "@pickler/api-schema";
-import { formatUnits } from "viem";
 import { AreaChart, Button, Icon, Meter, Segmented, Skeleton, Tag } from "@pickler/ui";
 import { AgentTokenIdentity } from "./agent-token-card";
 import { ChainReference } from "./chain-reference";
@@ -11,22 +9,18 @@ import { PublicTokenTrade } from "./public-token-trade";
 import previewMarket from "./market-preview.json";
 import styles from "./public-token-market.module.css";
 
-const marketRead = freshnessReadSchema(launchDetailSchema);
+import {
+  marketAmount as amount,
+  readTokenMarket,
+  tokenMarketRead as marketRead,
+  tokenPricePoints,
+} from "./market-data";
 const ranges = { "1H": 3_600_000, "24H": 86_400_000, "7D": 604_800_000 };
 type Range = keyof typeof ranges;
 type State = {
   status: "loading" | "ready" | "error";
   read: ReturnType<typeof marketRead.parse> | null;
 };
-
-function amount(value: string | null | undefined, decimals: number, precision = 6) {
-  if (value === null || value === undefined) {
-    return "—";
-  }
-  const [whole, fraction = ""] = formatUnits(BigInt(value), decimals).split(".");
-  const tail = fraction.slice(0, precision).replace(/0+$/, "");
-  return BigInt(whole!).toLocaleString("en-US") + (tail ? `.${tail}` : "");
-}
 
 /** The production market surface reads the existing catalogue; trading stays explicit. */
 export function PublicTokenMarket({
@@ -61,28 +55,10 @@ export function PublicTokenMarket({
     const timeout = window.setTimeout(() => controller.abort(), 20_000);
     async function load() {
       try {
-        const id = `eip155:${token.chainId}:${token.address.toLowerCase()}`;
-        const response = await fetch(`/api/v1/launches/${encodeURIComponent(id)}`, {
-          cache: "no-store",
-          signal: controller.signal,
-        });
-        if (response.status === 404) {
-          if (active) {
-            setState({ status: "ready", read: null });
-          }
-          return;
-        }
-        if (!response.ok) {
-          throw new Error("Market read unavailable");
-        }
-        const read = marketRead.parse(await response.json());
-        if (
-          read.data.address.toLowerCase() !== token.address.toLowerCase() ||
-          read.data.chainId !== `eip155:${token.chainId}` ||
-          !["pre_graduation", "graduated"].includes(read.data.phase)
-        ) {
-          throw new Error("Market identity mismatch");
-        }
+        const read = await readTokenMarket(
+          { address: token.address, chainId: token.chainId },
+          controller.signal,
+        );
         if (active) {
           setState({ status: "ready", read });
         }
@@ -112,16 +88,7 @@ export function PublicTokenMarket({
   const end = market ? Date.parse(market.windowEnd) : 0;
   const history =
     market?.history.filter((point) => Date.parse(point.at) >= end - ranges[range]) ?? [];
-  // Number conversion is solely for chart coordinates; all financial values arrive prepared.
-  const bySecond = new Map<number, number>();
-  for (const point of history) {
-    const at = Math.floor(Date.parse(point.at) / 1000) * 1000;
-    const value = Number(formatUnits(BigInt(point.priceWad), 18));
-    if (Number.isFinite(at) && Number.isFinite(value) && value > 0) {
-      bySecond.set(at, value);
-    }
-  }
-  const points = [...bySecond].map(([at, value]) => ({ at, value })).sort((a, b) => a.at - b.at);
+  const points = tokenPricePoints(history);
   const loading = state.status === "loading" && !state.read;
   function refresh() {
     if (preview) {
@@ -228,8 +195,10 @@ export function PublicTokenMarket({
               ) : points.length > 1 ? (
                 <AreaChart
                   points={points}
-                  height={240}
+                  height={300}
                   precision={8}
+                  variant="market"
+                  currency={symbol}
                   label={`${range.toLowerCase()} observed token prices in ${symbol}`}
                 />
               ) : (

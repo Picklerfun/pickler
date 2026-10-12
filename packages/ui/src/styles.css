@@ -1139,3 +1139,58 @@ h2 {
     transition: none;
   }
 }
+
+/* Observed-price charts: motion never changes the underlying series values. */
+.pk-price-chart {
+  position: relative;
+  min-width: 0;
+  width: 100%;
+}
+.pk-price-plot {
+  width: 100%;
+}
+.pk-price-plot:focus-visible {
+  outline: 2px solid var(--pk-focus);
+  outline-offset: 3px;
+  border-radius: var(--pk-radius-sm);
+}
+.pk-price-tooltip {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 2;
+  pointer-events: none;
+  display: grid;
+  gap: 4px;
+  width: 180px;
+  max-width: calc(100% - 8px);
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border: 1px solid var(--pk-rule-strong);
+  border-radius: var(--pk-radius-sm);
+  background: var(--pk-bg);
+  color: var(--pk-ink);
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 160ms ease,
+    transform 80ms ease;
+  font: 12px/1.4 var(--pk-font);
+  font-variant-numeric: tabular-nums;
+}
+.pk-price-tooltip[data-visible="true"] {
+  opacity: 1;
+  visibility: visible;
+}
+.pk-price-tooltip strong {
+  font-size: 13px;
+  font-weight: 700;
+}
+.pk-price-tooltip span {
+  color: var(--pk-ink-muted);
+}
+@media (prefers-reduced-motion: reduce) {
+  .pk-price-tooltip {
+    transition: none;
+  }
+}

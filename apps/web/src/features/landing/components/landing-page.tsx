@@ -24,8 +24,10 @@ export function LandingPage({
   actions,
   directory,
   appStoreUrl,
+  tokenPreview = false,
 }: {
   actions: AgentActionDto[];
+  tokenPreview?: boolean;
   directory: { data: DirectoryAgentDto[]; degraded: boolean };
   /** `NEXT_PUBLIC_APP_STORE_URL`, read by the page; null draws the download controls disabled. */
   appStoreUrl: string | null;
@@ -39,14 +41,14 @@ export function LandingPage({
           <Headline />
         </div>
         <HeroPhone />
-        <TokenMarket directory={directory} />
+        <TokenMarket directory={directory} preview={tokenPreview} />
         <Ways />
         <Steps appStoreUrl={appStoreUrl} />
         <Bento />
         <Faq />
         <Download appStoreUrl={appStoreUrl} />
       </main>
-      <Footer />
+      <Footer charts={tokenPreview || directory.data.some((entry) => entry.launchedToken)} />
     </div>
   );
 }

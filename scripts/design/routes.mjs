@@ -41,6 +41,14 @@ import { only } from "./lib/only.mjs";
 
 const ALL = [
   {
+    path: "/?tokens=preview#tokens",
+    name: "landing-token-market-board-preview",
+    product: "marketplace",
+    surface: "light",
+    task: "Token market board",
+    proves: "[data-market-row] canvas",
+  },
+  {
     path: "/agents/public_trade",
     name: "public-agent-token-market-live",
     product: "marketplace",
@@ -92,6 +100,15 @@ const ALL = [
     task: "Agent token preview",
     proves: `[data-token-state=${state}]`,
   })),
+
+  {
+    path: "/agents/halftime?stage=token-launched",
+    name: "public-agent-token-market-flow-preview",
+    product: "marketplace",
+    surface: "light",
+    task: "Public token market controlled flow",
+    proves: "[data-token-market=live] canvas",
+  },
 
   {
     path: "/agents/halftime?stage=token-launched&market=preview",

@@ -6,6 +6,7 @@ import {
   tokenFdvWad,
   tokenCurveMarket,
   tokenReferenceEconomics,
+  tokenPriceMovement,
 } from "../src/index.js";
 
 const terms = tokenReferenceEconomics({ address: `0x${"1".repeat(40)}`, decimals: 6 });
@@ -44,4 +45,48 @@ test("buy and sell execution prices exclude fees and normalize 18/6 decimals", (
   assert.throws(() =>
     tokenTradePriceWad({ ...common, side: "buy", quoteAmount: "1010000", tokenAmount: "0" }),
   );
+});
+
+test("observed movement distinguishes rises, falls, flat prices and missing baselines", () => {
+  const fromAt = "2026-01-01T11:00:00Z";
+  const toAt = "2026-01-01T12:00:00Z";
+  const observation = (at: string, priceWad: string) => ({ at, priceWad });
+  const previous = observation(fromAt, "1000");
+
+  for (const [price, direction, changeBps] of [
+    ["1250", "up", "2500"],
+    ["750", "down", "-2500"],
+    ["1000", "flat", "0"],
+  ]) {
+    assert.deepEqual(tokenPriceMovement([previous, observation(toAt, price!)]), {
+      direction,
+      changeBps,
+      fromAt,
+      toAt,
+    });
+  }
+  assert.equal(tokenPriceMovement([]), null);
+  assert.equal(tokenPriceMovement([previous]), null);
+  assert.equal(tokenPriceMovement([observation(fromAt, "0"), previous]), null);
+  assert.equal(tokenPriceMovement([previous, observation(toAt, "0")]), null);
+});
+
+test("movement preserves integer precision, symmetric rounding and sub-basis-point direction", () => {
+  const at = "2026-01-01T12:00:00Z";
+  const move = (before: string, after: string) =>
+    tokenPriceMovement([
+      { at, priceWad: before },
+      { at, priceWad: after },
+    ]);
+  const large = 10n ** 70n;
+
+  assert.equal(move(large.toString(), (large + large / 8n).toString())?.changeBps, "1250");
+  assert.equal(move("20000", "20001")?.changeBps, "1");
+  assert.equal(move("20000", "19999")?.changeBps, "-1");
+  assert.deepEqual(move("100000", "99999"), {
+    direction: "down",
+    changeBps: "0",
+    fromAt: at,
+    toAt: at,
+  });
 });
