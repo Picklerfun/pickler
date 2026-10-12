@@ -207,3 +207,41 @@ read-only audit disconnection, cancellation and denied follow-up work. These che
 containment, not prevention of a PostgreSQL server failure, recovery of uncertain writes or PTS
 profitability. Missing historical driver types, transport phases, backend identities and triggering
 queries remain unverifiable. Never resume a failed scope or rewrite its pending positions.
+
+## Bounded cycle projection and query evidence
+
+The execution cycle was retrieving full execution-input and final-gate market histories even
+though its consumers use only event identities and observation/close/exit lifecycle payloads.
+The PTS v8/v9 projection now preserves those identities, the same time window, the latest old
+observation and all consumed lifecycle data while omitting unused payloads. Full historical views
+and consistent audit exports retain original evidence. Candidate policies, financial results,
+original timestamps, fees, funding, deadlines and the lease fence are unchanged.
+
+The controlled benchmark uses the actual transactional adapter, identical synthetic events and
+alternating before/after order, with thirty measurements per path and scenario. The reference
+removes only the new SQL projection. Durations use the monotonic clock on an isolated local
+PostgreSQL 17 test server; these are measured test durations, not simulated times or historic
+query timings. Source audit hashes and consumed lifecycle results remain identical.
+
+| Controlled scenario     | Before median / p95 | After median / p95 | Returned bytes before / after | Measurements per path |
+| ----------------------- | ------------------- | ------------------ | ----------------------------- | --------------------- |
+| Small control           | 1.88 / 2.76 ms      | 1.96 / 2.77 ms     | 2,025 / 1,916                 | 30                    |
+| Large synthetic history | 75.18 / 158.06 ms   | 3.17 / 5.84 ms     | 5,979,405 / 1,916             | 30                    |
+
+The small-control median regressed by about 4.2%; its p95 changed by about 0.6%. The large-payload
+benefit does not establish the cause of an earlier statement timeout: absent query/backend/wait
+phase evidence remains NOT_VERIFIABLE. The benchmark does not measure provider latency, prevent
+all PostgreSQL failures or establish prospective strategy profitability.
+
+The local host now records bounded query/connect started/finished evidence with SQL fingerprint,
+backend PID when supplied, exact timeout/cancellation code and monotonic duration. It keeps the
+first failure, the latest 128 completions and up to 16 active identities, declaring any truncation.
+On interruption, persistence-query-diagnostic.json is published atomically; compact status includes
+the first safe query failure. No SQL text, parameters, results, driver messages, credentials or
+ownership tokens are retained. Observer failures cannot mask query outcomes. Connection containment,
+rollback, cleanup and all production database settings keep their existing semantics.
+
+A real controlled row-lock test verifies blocking with pg_blocking_pids, then observes PostgreSQL
+57014 as PERSISTENCE_QUERY_TIMEOUT, correlating query ID/hash/backend and preserving the original
+record after rollback. It does not claim that an earlier uninstrumented timeout was a lock wait.
+These changes provide evidence for future failures; they do not restart or repair a failed study.
