@@ -1,7 +1,9 @@
 # Agent advice x402 fee split v1
 
-Status: proposed 2026-10-09. Amends [agent advice with x402](agent-advice-x402-v1.md) D4 ("`payTo`
-is the agent's own wallet … no Pickler fee in v1"), which this document replaces.
+Status: implemented on branch `codex/advice-fee-split` (contract, API and Studio copy), not yet
+deployed; the splitter deployment and its record are pending (§6, step 1). Proposed 2026-10-09.
+Amends [agent advice with x402](agent-advice-x402-v1.md) D4 ("`payTo` is the agent's own wallet …
+no Pickler fee in v1"), which this document replaces.
 
 ## 1. Problem
 
@@ -19,7 +21,7 @@ signs once, and either both parties are paid or nothing moves.
 | S3  | **Shares: the creator receives `floor(value × 6500 / 10000)`, Pickler (the treasury) receives the rest.** Pickler's share is never more than 1 micro-AUSD above 35%. The basis points and the treasury are `immutable`. Changing either means deploying a new splitter and pointing the API at it.                                                                                                                                                                                           | per deployment                    |
 | S4  | **No owner, no admin, no upgrade, no balance.** Each call pays out everything it received. The contract never holds AUSD between calls. Tokens sent to it by plain transfer are not credited to anyone, as in `PicklerFeeEscrow`.                                                                                                                                                                                                                                                            | —                                 |
 | S5  | **The x402 wire stays v1 `exact`.** `payTo` is the splitter address, and `maxAmountRequired` is the full price. `extra` gains `primaryType: "ReceiveWithAuthorization"`, `payee` (the agent wallet), `salt` derivation and the shares. The payload's `authorization` gains `salt`. We are our own facilitator (x402 spec D5), so the only client that must understand this is the Pickler app.                                                                                               | yes, until the first client ships |
-| S6  | **The price the creator sets stays the price the buyer pays.** Studio shows both shares ("You receive 0.975 AUSD · Pickler 0.525 AUSD" for 1.5). The app's confirmation shows the total, plus "65% to the agent, 35% to Pickler".                                                                                                                                                                                                                                                            | yes                               |
+| S6  | **The price the creator sets stays the price the buyer pays.** Studio shows both shares ("65% to this agent's wallet, 0x… · 35% to Pickler." and, for 1.5, "You receive 0.975 AUSD per analysis."). The app's confirmation shows the total, plus "65% to the agent, 35% to Pickler".                                                                                                                                                                                                         | yes                               |
 
 ## 3. Contract
 
@@ -59,7 +61,7 @@ function nonceFor(address payee, bytes32 salt) external pure returns (bytes32);
 - a replayed nonce reverts;
 - a zero or self `payee` reverts;
 - a token whose `transfer` returns false reverts the whole call;
-- the contract balance is 0 after every call (invariant).
+- the contract balance is 0 after every call (invariant, `contracts/test/PicklerAdviceSplitterInvariant.t.sol`).
 
 A fork test on Monad testnet, gated by `MONAD_TESTNET_RPC_URL` like the existing ones, settles a real AUSD `ReceiveWithAuthorization` signed by a test key.
 
@@ -69,7 +71,7 @@ A fork test on Monad testnet, gated by `MONAD_TESTNET_RPC_URL` like the existing
 - an entry in `packages/chain` (address, block, code hash), recorded the way `deployments.ts` records verified contracts;
 - the generated ABI.
 
-The contracts move from the `UNLICENSED` placeholder to MIT before this deployment (§8).
+The contracts are licensed MIT, replacing the `UNLICENSED` placeholder (§8); the relicensing is already on main.
 
 ## 4. API changes (on top of phase 1)
 
@@ -101,8 +103,8 @@ The contracts move from the `UNLICENSED` placeholder to MIT before this deployme
 
 ## 5. Studio and app
 
-- **Studio card (PR #127, held for this):**
-  - "65% to this agent's wallet (0x…), 35% to Pickler."
+- **Studio card (PR #127, merged; its copy is updated on this branch):**
+  - "65% to this agent's wallet, 0x… · 35% to Pickler."
   - The tag stays "FOR SALE · 1.5 AUSD".
   - A line under the price: "You receive 0.975 AUSD per analysis."
   - The web computes the creator share with the same floor rule (display only).
@@ -118,7 +120,7 @@ The contracts move from the `UNLICENSED` placeholder to MIT before this deployme
 
 1. **Contract:** source, tests, fork test, deploy script. Deployment waits for the owner (§8).
 2. **API:** the phase 1 path switched to the splitter, behind the same `ADVICE_X402_ENABLED` (still off), plus migration 0047.
-3. **Studio copy:** in PR #127, then merge.
+3. **Studio copy:** PR #127 is merged; the split copy ships on this branch.
 4. **Phase 3 (app):** planned against this wire.
 
 Steps 1 and 2 can be one PR. Acceptance (x402 spec §9) gains:

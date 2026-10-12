@@ -181,8 +181,9 @@ local-only; ordinary databases, remote providers and deployed activation are out
 The separate JWT-only `/v1/agent-advice` API returns asynchronous BTC/ETH 24-hour analysis, not
 orders. Read [Agent advice](docs/agent-advice.md) before changes. Core owns authorization/admission
 ports; trading owns analysis policy; runtime owns providers/prompts; infrastructure owns private
-jobs/events/call reserves (migration 0025) and the x402 payment rows (migration 0038). Research
-Queue advice wakeups never notify trading. Keep admissions and x402 payments
+jobs/events/call reserves (migration 0025) and the x402 payment rows (migrations 0038 and 0047).
+x402 payments settle through `PicklerAdviceSplitter` (65% to the agent wallet, 35% to Pickler's
+treasury, in one transaction). Research Queue advice wakeups never notify trading. Keep admissions and x402 payments
 (`ADVICE_X402_ENABLED`) disabled by default; no paid retries or implicit AUSD-to-USD conversion.
 See [Agent advice](docs/agent-advice.md) for the x402 payment.
 
