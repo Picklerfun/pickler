@@ -4,7 +4,7 @@ import { AgentTokenCard } from "@/features/tokens/agent-token-card";
 
 import type { AgentPersonaDto } from "@pickler/api-schema";
 import Link from "next/link";
-import { Button, ButtonLink, ChipLink, ChipText, Icon, Tag } from "@pickler/ui";
+import { Button, ButtonLink, ChipLink, ChipText, Icon } from "@pickler/ui";
 import { useRef, useState } from "react";
 import { accentVars } from "@/lib/accent";
 import styles from "../agents.module.css";
@@ -75,89 +75,94 @@ export function PersonaPage({
   };
 
   return (
-    <main className={`${styles.main} ${styles.mainNarrow}`} style={accentVars(persona.accent)}>
+    <main
+      className={`${styles.main} ${styles.mainNarrow} ${styles.personaPage}`}
+      style={accentVars(persona.accent)}
+    >
       <Link href="/agents" className={styles.backLink}>
         <Icon name="arrowLeft" size={14} /> AGENTS
       </Link>
 
       <header className={styles.personaHead}>
-        <AgentAvatar name={persona.name} accent={persona.accent} large />
-        <div className={styles.heroBody}>
-          <div className={styles.heroTitleRow}>
-            <h1 className={styles.heroTitle}>{persona.name}</h1>
-            <ChipText className={`${styles.chip} ${styles.beatChip}`}>
-              {persona.beat.toUpperCase()}
-            </ChipText>
-            <span className={styles.quiet}>{venueLabel(persona.venue)}</span>
-            {persona.xHandle && (
-              <ChipLink
-                href={xUrl(persona.xHandle)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={styles.chip}
-              >
-                {persona.xHandle} <Icon name="external" size={13} />
-              </ChipLink>
-            )}
+        <div className={styles.personaIdentity}>
+          <AgentAvatar name={persona.name} accent={persona.accent} large />
+          <div className={styles.personaInfo}>
+            <h1 className={`${styles.heroTitle} ${styles.personaTitle}`}>{persona.name}</h1>
+            <div className={styles.personaMeta}>
+              <ChipText className={`${styles.chip} ${styles.beatChip}`}>
+                {persona.beat.toUpperCase()}
+              </ChipText>
+              <span className={styles.personaVenue}>{venueLabel(persona.venue)}</span>
+              {persona.xHandle && (
+                <ChipLink
+                  href={xUrl(persona.xHandle)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={styles.chip}
+                >
+                  {persona.xHandle} <Icon name="external" size={13} />
+                </ChipLink>
+              )}
+            </div>
           </div>
-
-          <p className={styles.personaDecides}>{persona.decides}</p>
-
-          <dl className={styles.keyStats}>
-            <KeyStat
-              label="SCORE"
-              value={score === null ? "—" : String(score)}
-              className={score === null ? undefined : styles[scoreTone(score)]}
-            />
-            <KeyStat
-              label="HIT RATE"
-              value={formatPercent(persona.hitRate)}
-              className={styles.toneOpen}
-            />
-            <KeyStat label="PREDICTIONS" value={formatInteger(persona.resolved)} />
-            <KeyStat
-              label="P&L"
-              value={`${formatSigned(persona.net)} MON`}
-              className={persona.net < 0 ? styles.toneLoss : styles.toneWin}
-            />
-          </dl>
-
-          <div className={styles.personaActions}>
-            {takingQuestions ? (
-              <ButtonLink
-                as={Link}
-                href={`/agents/${persona.handle}/ask`}
-                className={styles.askButton}
-              >
-                Ask · ${service.price}
-              </ButtonLink>
-            ) : (
-              <Tag className={styles.closedTag}>NOT TAKING QUESTIONS</Tag>
-            )}
-            <Button
-              variant="secondary"
-              className={following ? styles.followingButton : undefined}
-              disabled={preview}
-              aria-pressed={following}
-              onClick={() =>
-                wallet.status === "connected"
-                  ? follows.toggle(persona.handle)
-                  : wallet.connect(`Ask ${persona.name} for a read`)
-              }
-              title={
-                wallet.status === "connected"
-                  ? undefined
-                  : "Connect a wallet to keep a list of who you follow"
-              }
-            >
-              {following ? "Following" : "Follow"}
-            </Button>
-          </div>
-
-          {service !== null && !service.open && service.closedNote && (
-            <p className={styles.quiet}>{service.closedNote}</p>
-          )}
         </div>
+
+        {persona.decides.trim() && <p className={styles.personaDecides}>{persona.decides}</p>}
+
+        <dl className={styles.keyStats}>
+          <KeyStat
+            label="SCORE"
+            value={score === null ? "—" : String(score)}
+            className={score === null ? undefined : styles[scoreTone(score)]}
+          />
+          <KeyStat
+            label="HIT RATE"
+            value={formatPercent(persona.hitRate)}
+            className={styles.toneOpen}
+          />
+          <KeyStat label="PREDICTIONS" value={formatInteger(persona.resolved)} />
+          <KeyStat
+            label="P&L"
+            value={`${formatSigned(persona.net)} MON`}
+            className={persona.net < 0 ? styles.toneLoss : styles.toneWin}
+          />
+        </dl>
+
+        <div className={styles.personaActions}>
+          {takingQuestions ? (
+            <ButtonLink
+              as={Link}
+              href={`/agents/${persona.handle}/ask`}
+              className={styles.askButton}
+            >
+              Ask · ${service.price}
+            </ButtonLink>
+          ) : (
+            <span className={styles.personaAvailability}>Not taking questions</span>
+          )}
+          <Button
+            variant="secondary"
+            className={following ? styles.followingButton : undefined}
+            disabled={preview}
+            aria-pressed={following}
+            onClick={() =>
+              wallet.status === "connected"
+                ? follows.toggle(persona.handle)
+                : wallet.connect(`Ask ${persona.name} for a read`)
+            }
+            title={
+              wallet.status === "connected"
+                ? undefined
+                : "Connect a wallet to keep a list of who you follow"
+            }
+          >
+            {following ? "Following" : "Follow"}
+          </Button>
+        </div>
+
+        {service !== null && !service.open && service.closedNote && (
+          <p className={styles.personaAvailability}>{service.closedNote}</p>
+        )}
       </header>
 
       <div className={styles.personaToken}>
