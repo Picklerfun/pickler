@@ -52,3 +52,43 @@ test("persistence failure before signing blocks sending; after sending it retain
     }
   }
 });
+
+test("restoring receipts preserves both references, reads historical attempts and rejects malformed approvals", () => {
+  const originalWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
+  const originalStorage = Object.getOwnPropertyDescriptor(globalThis, "sessionStorage");
+  const hash = "0x" + "a".repeat(64);
+  const approvalHash = "0x" + "b".repeat(64);
+  const stored = new Map<string, string>();
+  const review = { prepared: {}, status: "confirming", hash };
+  stored.set("receipts", JSON.stringify({ ...review, approvalHash }));
+  stored.set("historical", JSON.stringify(review));
+  stored.set("malformed", JSON.stringify({ ...review, approvalHash: "not-a-hash" }));
+  stored.set(
+    "cancelled",
+    JSON.stringify({ ...review, status: "cancelled", hash: null, approvalHash }),
+  );
+  Object.defineProperty(globalThis, "window", { configurable: true, value: {} });
+  Object.defineProperty(globalThis, "sessionStorage", {
+    configurable: true,
+    value: { getItem: (key: string) => stored.get(key) ?? null },
+  });
+  try {
+    const decode = (value: unknown) => value as PublicTokenTradePreparedDto;
+    assert.deepEqual(readPublicTrade("receipts", decode), { ...review, approvalHash });
+    assert.deepEqual(readPublicTrade("historical", decode), review);
+    assert.equal(readPublicTrade("malformed", decode), null);
+    assert.equal(readPublicTrade("cancelled", decode)?.approvalHash, approvalHash);
+    assert.equal(readPublicTrade("cancelled", decode)?.status, "cancelled");
+  } finally {
+    if (originalWindow) {
+      Object.defineProperty(globalThis, "window", originalWindow);
+    } else {
+      Reflect.deleteProperty(globalThis, "window");
+    }
+    if (originalStorage) {
+      Object.defineProperty(globalThis, "sessionStorage", originalStorage);
+    } else {
+      Reflect.deleteProperty(globalThis, "sessionStorage");
+    }
+  }
+});
