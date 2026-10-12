@@ -434,3 +434,10 @@ inventories remain in one consistent read-only snapshot. Missing parts refetch; 
 publication. Canonical payload hashes and old v1/v2 packets keep their interpretation. Server
 fingerprinting, aggregate file verification and full replay/rendering still do work; do not claim
 this is a constant-time report or proof of profitable signals. Read [PTS incremental capture](PTS-REPORT-INCREMENTAL.md).
+
+Local incremental source capture selects a materialized page of keys before fingerprinting its
+round/event JSONB bodies. Keep the same consistent snapshot, native revision policy and canonical
+payload meaning. The PostgreSQL regression forces unordered scan/sort and rejects hashing outside
+the selected page. Read [PTS report page bounds](PTS-REPORT-PAGE-BOUNDS.md) for the 36-round
+interruption, controlled measurements and limits of the historical diagnosis. Preserve the frozen
+failed study and pending positions; a repaired report cannot resume financial execution.
