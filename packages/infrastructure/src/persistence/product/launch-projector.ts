@@ -157,6 +157,30 @@ export class PostgresLaunchProjector {
     return result;
   }
 
+  /** Project one verified receipt without replaying unrelated history or moving any cursor. */
+  async projectReceipt(chain: string, txHash: string, readMetadata: MetadataReader): Promise<void> {
+    const result = await this.pool.query<{
+      txHash: string;
+      blockNumber: number;
+      blockTime: Date;
+      blockHash: string;
+      emitter: string;
+      decoded: Record<string, string>;
+    }>(
+      `SELECT e.tx_hash AS "txHash",e.block_number AS "blockNumber",b.block_time AS "blockTime",
+         e.block_hash AS "blockHash",e.emitter,e.decoded
+       FROM market.chain_events e JOIN market.chain_blocks b ON b.chain=e.chain AND b.hash=e.block_hash
+       WHERE e.chain=$1 AND e.tx_hash=$2 AND e.event_name='LaunchCreated'
+         AND NOT e.orphaned AND NOT b.orphaned AND b.finality IN ('confirmed','finalized')`,
+      [chain, txHash],
+    );
+    if (result.rows.length !== 1) {
+      throw new Error("AMBIGUOUS_CONFIRMED_LAUNCH");
+    }
+    const row = result.rows[0]!;
+    await this.projectLaunch(chain, row.decoded, row, readMetadata);
+  }
+
   private async projectLaunch(
     chain: string,
     args: Record<string, string>,
