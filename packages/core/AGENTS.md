@@ -543,3 +543,10 @@ actions do not publish tokens. Provider, decoding and database implementation re
 fees removed, exact FDV and committed-reference curve snapshots. These are presentation reads,
 never executable quotes. Core retains integer arithmetic and rounding; the web formats prepared
 values only. Unknown presets must not be reinterpreted as the current reference profile.
+
+## Public trade receipt confirmation
+
+The public trading use case exposes `confirm(handle, { wallet, txHash })` through the optional
+injected driver port. It requires the independent trading gate, validates the wallet/hash and
+resolves the published confirmed testnet token before delegation. Confirmation never prepares,
+signs or broadcasts a transaction. Provider evidence and persistence stay in infrastructure.
