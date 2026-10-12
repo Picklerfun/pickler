@@ -32,6 +32,12 @@
       "fdvWad": "15659935706396163000000",
       "remainingTokens": "12300000000000000000000000",
       "progressBps": 2678,
+      "priceMovement": {
+        "direction": "down",
+        "changeBps": "-551",
+        "fromAt": "2026-01-01T10:59:30.000Z",
+        "toAt": "2026-01-01T11:59:30.000Z"
+      },
       "volume24h": "3479664905",
       "windowEnd": "2026-01-01T12:00:00.000Z",
       "observedAt": "2026-01-01T11:59:30.000Z",
