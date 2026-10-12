@@ -1680,19 +1680,61 @@
 
 /* ---------- Persona head ---------- */
 
+.personaPage {
+  width: 100%;
+  min-width: 0;
+}
+
 .personaToken {
   margin-bottom: 24px;
 }
 
 .personaHead {
+  display: grid;
+  gap: 20px;
+  margin-bottom: 28px;
+  min-width: 0;
+}
+
+.personaIdentity {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 16px;
+}
+
+.personaInfo {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.personaTitle {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.personaMeta {
   display: flex;
   flex-wrap: wrap;
-  gap: 22px;
-  margin-bottom: 28px;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.personaMeta a {
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.personaVenue {
+  font: 500 12px/1.4 var(--pk-font);
+  color: var(--pk-ink-muted);
 }
 
 .personaDecides {
-  margin: 0 0 16px;
+  margin: 0;
   max-width: 560px;
   font: 400 15px/1.5 var(--pk-font);
   color: var(--pk-ink-soft);
@@ -1700,16 +1742,24 @@
 }
 
 .keyStats {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 26px;
-  margin: 0 0 18px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  padding: 16px 0;
+  margin: 0;
+  border-top: 1px solid var(--pk-rule);
+  border-bottom: 1px solid var(--pk-rule);
+}
+
+.keyStat {
+  min-width: 0;
 }
 
 .keyStat dd {
   margin: 0;
-  font: 700 20px/1 var(--pk-font);
+  font: 700 20px/1.2 var(--pk-font);
   font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
 }
 
 .keyStat dt {
@@ -1719,8 +1769,38 @@
 .personaActions {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  justify-content: space-between;
+  gap: 12px;
   align-items: center;
+}
+
+.personaAvailability {
+  margin: 0;
+  font: 400 13px/1.5 var(--pk-font);
+  color: var(--pk-ink-muted);
+}
+
+@media (max-width: 480px) {
+  .personaIdentity {
+    gap: 12px;
+  }
+
+  .personaInfo {
+    display: contents;
+  }
+
+  .personaTitle {
+    grid-column: 2;
+  }
+
+  .personaMeta {
+    grid-column: 1 / -1;
+  }
+
+  .keyStats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 20px 16px;
+  }
 }
 
 /* The beat, in the agent's own colour: its ink, because the accent itself is a fill and cannot be
