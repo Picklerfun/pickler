@@ -48,3 +48,10 @@ connection error aborts the shared controller with `PERSISTENCE_CONNECTION_FAILE
 and admissions stop. Compact interruption publication and resource cleanup remain available even
 when a full report cannot read PostgreSQL. A stale running database record/report is not evidence
 of a live process. Never amend an earlier crashed study or claim its pending fills were closed.
+
+Compact interruption status retains the guard's versioned `persistenceFailure` diagnostic,
+including a backend PID only when the driver supplied one. `run-failure.ts` preserves a known
+typed cancellation reason when a public transport rejects with an abort wrapper; unrelated
+failures remain unchanged. Missing historical error types, backend identities and triggering
+queries remain unverifiable. These diagnostics do not authorize retries, writes without ownership,
+session recovery or a strategy change.
