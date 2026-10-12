@@ -967,6 +967,10 @@ h2 {
   font-family: var(--pk-font);
   cursor: pointer;
 }
+[data-slot="select-trigger"][data-shape="pill"] {
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-bg);
+}
 [data-slot="select-trigger"]:focus-visible {
   outline: 2px solid var(--pk-focus);
   outline-offset: 2px;
@@ -1068,6 +1072,70 @@ h2 {
 @media (prefers-reduced-motion: reduce) {
   [data-sidebar-label],
   [data-sidebar="menu-button"] > svg:not(:first-child) {
+    transition: none;
+  }
+}
+
+/* Labelled switch: Radix owns checked state and native keyboard activation. */
+.pk-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--pk-ink);
+  font: 500 14px/1.3 var(--pk-font);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.pk-switch:focus-visible {
+  outline: 2px solid var(--pk-focus);
+  outline-offset: 3px;
+  border-radius: var(--pk-radius-sm);
+}
+
+.pk-switch:disabled {
+  color: var(--pk-ink-muted);
+  cursor: not-allowed;
+}
+
+.pk-switch-track {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  width: 46px;
+  height: 26px;
+  padding: 3px;
+  border: 1px solid var(--pk-border-strong);
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-panel-3);
+  transition: background var(--pk-duration);
+}
+
+.pk-switch[data-state="checked"] .pk-switch-track {
+  background: var(--pk-lime-ink);
+  border-color: var(--pk-lime-ink);
+}
+
+.pk-switch-thumb {
+  display: block;
+  width: 18px;
+  height: 18px;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-bg);
+  transition: transform var(--pk-duration);
+}
+
+.pk-switch-thumb[data-state="checked"] {
+  transform: translateX(20px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pk-switch-track,
+  .pk-switch-thumb {
     transition: none;
   }
 }

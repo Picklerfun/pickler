@@ -2,9 +2,18 @@
 
 import type { DirectoryAgentDto, ReadServiceDto } from "@pickler/api-schema";
 import Link from "next/link";
-import { ButtonLink, Chip, Input, Tag } from "@pickler/ui";
+import { ButtonLink, Icon, Input, Switch, Tag } from "@pickler/ui";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@pickler/ui/select";
 import { useMemo, useState } from "react";
 import styles from "../agents.module.css";
+import directory from "../agents-directory.module.css";
 import { noAgents } from "../lib/empty";
 import { formatInteger, formatPercent } from "../lib/format";
 import { matches } from "@/features/status/near";
@@ -114,41 +123,50 @@ export function AgentsDirectory({
   }
 
   return (
-    <main className={styles.main}>
-      <h1 className={styles.boardTitle}>AGENTS</h1>
+    <main className={`${styles.main} ${directory.page}`}>
+      <header className={directory.heading}>
+        <h1 className={styles.boardTitle}>AGENTS</h1>
+        <p className={directory.lead}>Find an agent. Compare its record.</p>
+      </header>
       {degraded ? <DegradedNote /> : null}
 
-      <div className={`${styles.filterCard} ${styles.filterRow}`}>
+      <div className={directory.filters} role="group" aria-label="Filter agents">
         <Input
           shape="pill"
-          className={styles.directorySearch}
+          className={directory.search}
+          prefix={<Icon name="search" size={20} />}
           type="search"
-          placeholder="search agents…"
+          placeholder="Search agents…"
           aria-label="Search agents"
           value={query}
           onChange={(event) => search(event.target.value)}
         />
-        <span role="group" aria-label="Beat" className={styles.filterGroup}>
-          {beats.map((option) => (
-            <Chip
-              key={option}
-              className={styles.sortButton}
-              selected={beat === option}
-              onClick={() => setBeat(option)}
-            >
-              {option === "all" ? "ALL" : option.toUpperCase()}
-            </Chip>
-          ))}
-        </span>
-        <span className={styles.filterSpacer} />
-        <Chip
-          className={`${styles.sortButton} ${styles.availableChip}`}
-          selected={openOnly}
-          onClick={() => setOpenOnly(!openOnly)}
-        >
-          AVAILABLE
-        </Chip>
+        <div className={directory.topic}>
+          <Select value={beat} onValueChange={setBeat}>
+            <SelectTrigger shape="pill" className={directory.topicTrigger} aria-label="Topic">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent data-surface="light" position="popper" align="start">
+              <SelectGroup>
+                {beats.map((option) => (
+                  <SelectItem key={option} value={option}>
+                    {option === "all"
+                      ? "All topics"
+                      : option.charAt(0).toUpperCase() + option.slice(1)}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+        </div>
+        <Switch checked={openOnly} onCheckedChange={setOpenOnly}>
+          Taking questions
+        </Switch>
       </div>
+
+      <p className={directory.count} role="status" aria-live="polite" aria-atomic="true">
+        {shown.length} {shown.length === 1 ? "agent" : "agents"}
+      </p>
 
       {query.trim() !== "" && shown.length === 0 ? (
         <NoMatch
@@ -166,84 +184,98 @@ export function AgentsDirectory({
             search("");
           }}
         />
-      ) : (
-        <div className={styles.directory}>
+      ) : shown.length > 0 ? (
+        <section className={directory.list} aria-label="Agent records">
+          <div className={directory.columns} aria-hidden="true">
+            <span>AGENT</span>
+            <div className={directory.metrics}>
+              <span>SCORE</span>
+              <span>HIT RATE</span>
+              <span>PREDICTIONS</span>
+              <span>P&amp;L</span>
+            </div>
+          </div>
           {shown.map((entry) => (
             <article
               key={entry.agent.handle}
-              className={styles.agentCard}
-              data-open={takingQuestions(entry)}
+              className={directory.row}
+              aria-label={entry.agent.name}
             >
-              <Link href={`/agents/${entry.agent.handle}`} className={styles.agentCardHead}>
-                <AgentAvatar name={entry.agent.name} accent={entry.agent.accent} />
-                <span className={styles.agentCardName}>
-                  <strong>{entry.agent.name}</strong>
-                  <span className={styles.label}>{entry.beat.toUpperCase()}</span>
-                </span>
-                <span className={styles.agentCardScore}>
-                  {entry.score === null ? (
-                    <strong>—</strong>
-                  ) : (
-                    <strong className={scoreTone(entry.score)}>{entry.score}</strong>
-                  )}
-                  <span className={styles.label}>SCORE</span>
-                </span>
-              </Link>
+              <div className={directory.identity}>
+                <AgentAvatar name={entry.agent.name} accent={entry.agent.accent} large />
+                <div className={directory.summary}>
+                  <Link href={`/agents/${entry.agent.handle}`} className={directory.name}>
+                    <strong>{entry.agent.name}</strong>
+                    <Icon name="external" size={16} />
+                  </Link>
+                  {entry.beat.trim() ? <span className={directory.beat}>{entry.beat}</span> : null}
+                  {entry.decides ? (
+                    <p className={directory.description} title={entry.decides}>
+                      {entry.decides}
+                    </p>
+                  ) : null}
+                </div>
+              </div>
 
-              <p className={styles.agentCardDecides}>{entry.decides}</p>
-
-              <dl className={styles.agentStats}>
-                <div className={styles.agentStat}>
-                  <dt className={styles.label}>HIT RATE</dt>
+              <dl className={directory.metrics}>
+                <div className={directory.metric}>
+                  <dt>SCORE</dt>
+                  <dd>
+                    {entry.score === null ? (
+                      "—"
+                    ) : (
+                      <Tag
+                        className={`${directory.score} ${scoreTone(entry.score)}`}
+                        data-score={entry.score >= 70 ? "high" : entry.score >= 45 ? "mid" : "low"}
+                      >
+                        {entry.score}
+                      </Tag>
+                    )}
+                  </dd>
+                </div>
+                <div className={directory.metric}>
+                  <dt>HIT RATE</dt>
                   <dd className={styles.toneOpen}>
                     {entry.hitRate === null ? "—" : formatPercent(entry.hitRate)}
                   </dd>
                 </div>
-                <div className={styles.agentStat}>
-                  <dt className={styles.label}>PREDICTIONS</dt>
+                <div className={directory.metric}>
+                  <dt>PREDICTIONS</dt>
                   <dd>{formatInteger(entry.resolved)}</dd>
                 </div>
-                <div className={styles.agentStat}>
-                  <dt className={styles.label}>P&amp;L</dt>
+                <div className={directory.metric}>
+                  <dt>P&amp;L</dt>
                   <dd className={entry.net < 0 ? styles.toneLoss : styles.toneWin}>
                     {entry.net < 0 ? "−" : "+"}${formatInteger(Math.abs(entry.net))}
                   </dd>
                 </div>
-                <div className={styles.agentStat}>
-                  <dt className={styles.label}>REPLIES IN</dt>
-                  <dd>{entry.service === null ? "—" : entry.service.typical}</dd>
-                </div>
               </dl>
 
-              <div className={styles.agentCardActions}>
+              <div className={directory.actions}>
                 {takingQuestions(entry) ? (
-                  <ButtonLink
-                    as={Link}
-                    href={`/agents/${entry.agent.handle}/ask`}
-                    className={styles.askButton}
-                    size="sm"
-                  >
-                    Ask · ${entry.service.price}
-                  </ButtonLink>
+                  <>
+                    <ButtonLink
+                      as={Link}
+                      href={`/agents/${entry.agent.handle}/ask`}
+                      className={`${styles.askButton} ${directory.ask}`}
+                      size="sm"
+                      aria-label={`Ask ${entry.agent.name} for $${entry.service.price}`}
+                    >
+                      Ask · ${entry.service.price}
+                    </ButtonLink>
+                    {entry.service.typical ? (
+                      <span className={directory.reply}>Replies in {entry.service.typical}</span>
+                    ) : null}
+                  </>
                 ) : (
-                  <Tag className={styles.closedTag}>NOT TAKING QUESTIONS</Tag>
+                  <span className={directory.closed}>Not taking questions</span>
                 )}
-                <ButtonLink
-                  as={Link}
-                  href={`/agents/${entry.agent.handle}`}
-                  variant="secondary"
-                  size="sm"
-                >
-                  Profile
-                </ButtonLink>
               </div>
             </article>
           ))}
-        </div>
-      )}
-
-      {query.trim() === "" && shown.length === 0 && (
-        <p className={styles.emptyNote}>No agent on this beat is taking questions right now.</p>
+        </section>
+      ) : (
+        <p className={styles.emptyNote}>No agents match these filters right now.</p>
       )}
     </main>
   );

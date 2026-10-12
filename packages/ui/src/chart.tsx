@@ -1,12 +1,14 @@
 "use client";
 
 import {
+  AreaSeries,
   CandlestickSeries,
   createChart,
   HistogramSeries,
   type CandlestickData,
   type HistogramData,
   type IChartApi,
+  type SingleValueData,
   type Time,
   type UTCTimestamp,
 } from "lightweight-charts";
@@ -18,7 +20,7 @@ import { TOKEN_MIRROR } from "./tokens";
  * the look — colours, type, grid, crosshair — is decided here so a chart on the dashboard and a
  * chart on the public site cannot drift apart.
  *
- * Both charts read their colours from the surrounding surface, so they follow `data-surface`.
+ * All charts read their colours from the surrounding surface, so they follow `data-surface`.
  */
 
 export interface Candle {
@@ -51,6 +53,8 @@ const readTheme = (element: HTMLElement) => {
     grid: colour("--pk-rule-strong"),
     up: colour("--pk-win"),
     down: colour("--pk-loss"),
+    background: colour("--pk-bg"),
+    fill: style.getPropertyValue("--pk-state-good-bg").trim() || colour("--pk-rule-strong"),
     font: style.getPropertyValue("--pk-font").trim() || "sans-serif",
   };
 };
@@ -164,4 +168,47 @@ export function BarChart({
   );
 
   return <div ref={holder} style={{ height }} role="img" aria-label={label ?? "Activity"} />;
+}
+
+/** A price line with a fading area. Values are supplied by the consumer, never calculated here. */
+export interface PricePoint {
+  /** Sample timestamp in milliseconds. */
+  at: number;
+  value: number;
+}
+
+export function AreaChart({
+  points,
+  height = 280,
+  precision = 6,
+  label = "Price history",
+}: {
+  points: readonly PricePoint[];
+  height?: number;
+  precision?: number;
+  label?: string;
+}) {
+  const holder = useChart(
+    (chart, theme) => {
+      chart.applyOptions({ timeScale: { lockVisibleTimeRangeOnResize: true } });
+      const series = chart.addSeries(AreaSeries, {
+        lineColor: theme.up,
+        topColor: theme.fill,
+        bottomColor: theme.background,
+        lineWidth: 2,
+        priceLineVisible: false,
+        lastValueVisible: false,
+        priceFormat: { type: "price", precision, minMove: Number(`1e-${precision}`) },
+      });
+      series.setData(
+        points.map((point): SingleValueData<Time> => ({
+          time: seconds(point.at),
+          value: point.value,
+        })),
+      );
+    },
+    [points, precision],
+  );
+
+  return <div ref={holder} style={{ height }} role="img" aria-label={label} />;
 }

@@ -12,11 +12,15 @@ export const dynamic = "force-dynamic";
 const loadPersona = cache((handle: string) => services.getAgentPersona(handle));
 
 type Params = Promise<{ handle: string }>;
-type Props = { params: Params; searchParams: Promise<{ stage?: string }> };
+type Props = { params: Params; searchParams: Promise<{ stage?: string; market?: string }> };
 async function profile(props: Props) {
-  const [{ handle }, { stage }] = await Promise.all([props.params, props.searchParams]);
+  const [{ handle }, { stage, market }] = await Promise.all([props.params, props.searchParams]);
   const fixture = tokenProfilePreview(process.env.NODE_ENV, handle, stage);
-  return { persona: fixture ?? (await loadPersona(handle)), preview: fixture !== null };
+  return {
+    persona: fixture ?? (await loadPersona(handle)),
+    preview: fixture !== null,
+    marketPreview: fixture !== null && stage === "token-launched" && market === "preview",
+  };
 }
 
 export async function generateMetadata(props: Props): Promise<Metadata> {
@@ -28,13 +32,18 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
 }
 
 export default async function AgentPage(props: Props) {
-  const { persona, preview } = await profile(props);
+  const { persona, preview, marketPreview } = await profile(props);
   if (!persona) {
     notFound();
   }
   return (
-    <PublicShell>
-      <PersonaPage persona={persona} nowMs={services.clock.now().getTime()} preview={preview} />
+    <PublicShell charts={marketPreview}>
+      <PersonaPage
+        persona={persona}
+        nowMs={services.clock.now().getTime()}
+        preview={preview}
+        marketPreview={marketPreview}
+      />
     </PublicShell>
   );
 }

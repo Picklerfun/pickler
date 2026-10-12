@@ -1268,6 +1268,15 @@ A definitive token signing refusal reads `Signing request rejected` and the laun
 The original draft and the failed attempt remain visible; unknown attempts stay blocked for
 reconciliation. The controlled loading harness verifies the saved refusal without provider calls.
 
+The public trade side and slippage use the shared lime `Segmented` selection. Their track reads
+`--pk-bg` from the enclosing surface so the selection stays visible. The shared token card
+owns the token identity, ticker and network; the adjacent trading panel uses `Trade token` and
+only adds an unsupported-network warning when necessary. The persona header groups agent identity
+and metadata above an equal-column statistics grid (two columns on small phones). Availability
+and actions follow separately; omit an empty description. The persona section tabs have their
+own spaced pill row, a contrasting selected state, and roving keyboard focus
+(Left/Right/Home/End); keep the panel IDs linked to them.
+
 ## Automatic token confirmation
 
 `features/tokens/token-confirmation.ts` bounds observation of known broadcasts to ten receipt reads,
@@ -1282,3 +1291,36 @@ increase or attribution is produced by the observer. Timeouts preserve the opera
 show an explicit fallback. Preview phase controls remain manual and provider-free. Run the
 controlled-clock token-confirmation suite and Studio loading harness for automatic inclusion,
 finality and indexed-card rendering without an extra click.
+
+## Local public token-market mockup
+
+The existing non-production `/agents/halftime?stage=token-launched&market=preview` preview mounts
+`features/tokens/public-token-market-preview.tsx` in place of the compact token card and real
+public trade form. It combines the frozen token identity, illustrative price/FDV/volume, shared
+AreaChart with 1H/24H/7D controls, a local-only ticket, curve progress, distribution and recent
+trades. Demo data is labelled once at the section header, and the ticket uses an explicit Preview action. Its input, side, slippage and review change local state only. Non-example
+amounts remain unquoted; there are no financial formulas, wallet ceremonies, provider calls,
+API requests or broadcasts. Chart samples and table entries are static illustrations, not
+measurements or executable quotes. The four existing token previews and production keep their existing compact card and trade
+flow. The route opts into PublicShell's chart attribution only for this launched preview.
+`AgentTokenIdentity` reuses frozen image/name/ticker rendering across both presentations.
+The rendered Design registry includes `public-agent-token-market-preview`, proving the expanded
+market card separately from the existing compact-token previews.
+
+Recent demo trades use the shared read-only Tag with win/loss state tints and ChainReference for
+icon-only copy and hash-as-explorer-link. Receipt examples are real Monad testnet hashes from the
+recorded V4 acceptance, explicitly labelled as samples; they are not Halftime's trade history.
+Illustrative prices, amounts and timestamps remain separate from those receipt examples.
+
+## Compact agent comparison directory
+
+`features/agents/components/agents-directory.tsx` renders `/agents` as a comparison list, styled
+by `agents-directory.module.css`. Desktop rows align identity, score, hit rate, predictions and
+P&L against one header. Mobile rows repeat metric labels and stack actions without page overflow.
+The agent name is the profile link; descriptions use one-line ellipsis without changing API copy.
+Ask remains violet with the service's response time beneath it; closed services show their state
+without an Ask link or a promised reply time. Do not add token data to this directory.
+
+Search retains the existing `?q=` history behavior. Topics come from directory data through the
+shared Select, and Taking questions uses the shared labelled Switch. The result count is derived
+from filtered rows. Preserve API order, null metrics, degraded reads and existing empty states.

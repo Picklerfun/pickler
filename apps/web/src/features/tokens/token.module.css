@@ -9,6 +9,15 @@
   align-items: center;
   gap: 12px;
 }
+.card[data-token-state="launched"] .head {
+  flex-wrap: wrap;
+}
+.card[data-token-state="launched"] .identity {
+  flex-basis: 100px;
+}
+.network {
+  margin-left: auto;
+}
 .head h3 {
   margin: 0;
   font-size: 18px;
@@ -16,6 +25,7 @@
 .identity {
   flex: 1;
   min-width: 0;
+  overflow-wrap: anywhere;
 }
 .quiet {
   color: var(--pk-ink-muted);
