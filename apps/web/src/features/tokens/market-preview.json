@@ -1,0 +1,95 @@
+{
+  "asOfBlock": "1234",
+  "asOfBlockHash": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "indexedAt": "2026-01-01T12:00:00.000Z",
+  "finality": "confirmed",
+  "stale": false,
+  "data": {
+    "id": "eip155:10143:0x1111111111111111111111111111111111111111",
+    "chainId": "eip155:10143",
+    "address": "0x1111111111111111111111111111111111111111",
+    "ticker": "$HALF",
+    "name": "Halftime",
+    "imageUri": null,
+    "phase": "pre_graduation",
+    "agentId": "halftime",
+    "quote": {
+      "chainId": "eip155:10143",
+      "address": "0x4444444444444444444444444444444444444444",
+      "symbol": "AUSD",
+      "decimals": 6
+    },
+    "totalSupply": "21000000000000000000000000",
+    "launchedAt": "2026-01-01T08:59:30.000Z",
+    "graduatedAt": null,
+    "curve": null,
+    "pool": null,
+    "market": {
+      "version": 1,
+      "tokenDecimals": 18,
+      "priceKind": "curve",
+      "priceWad": "745711224114103",
+      "fdvWad": "15659935706396163000000",
+      "remainingTokens": "12300000000000000000000000",
+      "progressBps": 2678,
+      "volume24h": "3479664905",
+      "windowEnd": "2026-01-01T12:00:00.000Z",
+      "observedAt": "2026-01-01T11:59:30.000Z",
+      "observedBlock": "1234",
+      "netSold": "4500000000000000000000000",
+      "realQuoteReserve": "2681564248",
+      "terms": {
+        "totalSupply": "21000000000000000000000000",
+        "saleAllocation": "16800000000000000000000000",
+        "lpAllocation": "4200000000000000000000000",
+        "buyFeeBps": 100,
+        "sellFeeBps": 100
+      },
+      "history": [
+        {
+          "at": "2026-01-01T08:59:30.000Z",
+          "priceWad": "476190476160714"
+        },
+        {
+          "at": "2026-01-01T09:59:30.000Z",
+          "priceWad": "574138151956939"
+        },
+        {
+          "at": "2026-01-01T10:59:30.000Z",
+          "priceWad": "789183952035936"
+        },
+        {
+          "at": "2026-01-01T11:59:30.000Z",
+          "priceWad": "745711224114103"
+        }
+      ],
+      "historyTruncated": false,
+      "recentTrades": [
+        {
+          "side": "sell",
+          "tokenAmount": "500000000000000000000000",
+          "quoteAmount": "379734154",
+          "feeAmount": "3835699",
+          "trader": "0x5555555555555555555555555555555555555555",
+          "blockNumber": "1234",
+          "txHash": "0x1111111111111111111111111111111111111111111111111111111111111111",
+          "logIndex": 0,
+          "blockTime": "2026-01-01T11:59:30.000Z",
+          "priceWad": "767139706000000"
+        },
+        {
+          "side": "buy",
+          "tokenAmount": "3000000000000000000000000",
+          "quoteAmount": "2039780270",
+          "feeAmount": "20397803",
+          "trader": "0x5555555555555555555555555555555555555555",
+          "blockNumber": "1233",
+          "txHash": "0x2222222222222222222222222222222222222222222222222222222222222222",
+          "logIndex": 0,
+          "blockTime": "2026-01-01T10:59:30.000Z",
+          "priceWad": "673127489000000"
+        }
+      ]
+    }
+  }
+}
