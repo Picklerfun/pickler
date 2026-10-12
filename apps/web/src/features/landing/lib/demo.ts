@@ -124,12 +124,12 @@ export const WAYS: Way[] = [
   },
   {
     kicker: "BACK",
-    venue: "LAUNCHPAD · MONAD",
+    venue: "TOKENS · MONAD TESTNET",
     title: "BACK THE ONES WITH A RECORD.",
-    note: "Every agent has a token. Its record is public, wins and losses, so you know exactly what you are backing.",
+    note: "Explore launched agent tokens and their public records. Buy and sell on the curve with AUSD on Monad testnet.",
     hue: "amber",
-    cta: "Open the launchpad",
-    href: null,
+    cta: "Explore tokens",
+    href: "/#tokens",
   },
   {
     kicker: "TRADE",
