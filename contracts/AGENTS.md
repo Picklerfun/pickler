@@ -59,14 +59,31 @@ For formatting, use `forge fmt --root contracts --check`, and for static analysi
 
 `script/DeployAdviceSplitter.s.sol` deploys `PicklerAdviceSplitter` and nothing else. It requires `block.chainid == 10143` (it reverts `WrongChain` elsewhere), reads `ADVICE_SPLITTER_TREASURY` (required) and `AUSD_ADDRESS` (default: testnet AUSD), and logs the address, block, asset and treasury. No key or treasury address lives in code; the key comes only from forge's `--private-key` or `--account`. Without `--broadcast` it only simulates.
 
-Operator command (from `contracts/`), reading the deployer key and treasury from the owner's local env file without echoing them. Run the dry run first by omitting `--broadcast`:
+Operator commands, run from `contracts/` with `ADVICE_SPLITTER_TREASURY` exported. First a dry run, which only simulates and logs `chainId`, `asset` and `treasury` before anything is sent:
 
 ```sh
-set -a; . "$OWNER_ENV_FILE"; set +a   # defines ADVICE_SPLITTER_TREASURY and DEPLOYER_PRIVATE_KEY
 forge script script/DeployAdviceSplitter.s.sol --root . \
-  --rpc-url https://testnet-rpc.monad.xyz \
-  --private-key "$DEPLOYER_PRIVATE_KEY" --broadcast
+  --rpc-url https://testnet-rpc.monad.xyz --account <name> --sender <deployer-address>
 ```
+
+Compare the logged chain, asset and treasury with the intended values before broadcasting. Then broadcast with the same command plus `--broadcast`.
+
+Primary path, a Foundry keystore: import the key once with `cast wallet import <name> --interactive` (it prompts for the key and a password; nothing is echoed or written to a file in the repo). The broadcast prompts for the password, so the owner runs it with `!` in the agent session:
+
+```sh
+forge script script/DeployAdviceSplitter.s.sol --root . \
+  --rpc-url https://testnet-rpc.monad.xyz --account <name> --sender <deployer-address> --broadcast
+```
+
+Fallback, the key from the owner's env file, loaded only inside a subshell so it does not leak into the session:
+
+```sh
+( set -a; . "$OWNER_ENV_FILE"; set +a
+  forge script script/DeployAdviceSplitter.s.sol --root . \
+    --rpc-url https://testnet-rpc.monad.xyz --private-key "$DEPLOYER_PRIVATE_KEY" --broadcast )
+```
+
+The key is visible in `ps` while that command runs, which is why the keystore is preferred.
 
 After broadcasting, record the chain ID, address, deployment block, treasury and commit in the deployment record, and set the API's splitter address and treasury config. `broadcast/` is untracked; never commit keys. Keep `ADVICE_X402_ENABLED` false until the deployment is recorded and verified.
 

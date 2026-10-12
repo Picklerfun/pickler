@@ -15,6 +15,7 @@ contract DeployAdviceSplitter is Script {
     address internal constant DEFAULT_AUSD = 0xa9012a055bd4e0eDfF8Ce09f960291C09D5322dC;
 
     error WrongChain(uint256 chainId);
+    error AssetHasNoCode(address asset);
 
     function run() external returns (PicklerAdviceSplitter splitter) {
         if (block.chainid != MONAD_TESTNET_CHAIN_ID) revert WrongChain(block.chainid);
@@ -22,14 +23,18 @@ contract DeployAdviceSplitter is Script {
         address treasury = vm.envAddress("ADVICE_SPLITTER_TREASURY");
         address ausd = vm.envOr("AUSD_ADDRESS", DEFAULT_AUSD);
 
+        if (ausd.code.length == 0) revert AssetHasNoCode(ausd);
+
+        // Logged before broadcasting so a dry run shows exactly what a broadcast would deploy.
+        console2.log("chainId", block.chainid);
+        console2.log("asset", ausd);
+        console2.log("treasury", treasury);
+
         vm.startBroadcast();
         splitter = new PicklerAdviceSplitter(ausd, treasury);
         vm.stopBroadcast();
 
         console2.log("PicklerAdviceSplitter", address(splitter));
-        console2.log("chainId", block.chainid);
         console2.log("block", block.number);
-        console2.log("asset", address(splitter.asset()));
-        console2.log("treasury", splitter.treasury());
     }
 }
