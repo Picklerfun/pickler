@@ -804,3 +804,15 @@ an exact nonnegative safe integer before returning `fees.block`. Native PostgreS
 are strings; a TypeScript query annotation does not convert them. Amounts remain atomic strings.
 The confirmed-launch regression composes the operational escrow and tests numeric wire output,
 heights above signed int32 and refusal outside JavaScript's exact integer range, without RPC.
+
+## Public token market read
+
+`persistence/product/token-market-read.ts` reads canonical confirmed/finalized launch and curve
+events in one PostgreSQL snapshot, with no RPC or cursor changes. It excludes orphaned blocks
+and events, orders by block/log position, samples each hour's last recorded trade for seven days
+and returns twenty recent trades with transaction/log identity. Volume includes gross traded
+quote amounts; trade prices exclude fees. The configured reference economics apply only when
+chain, factory, committed config hash, quote asset, decimals and total supply match the launch.
+Unknown historical presets retain null allocations and use labelled execution prices.
+`PostgresLaunchReadModel.getLaunch` also resolves a validated chain/address key; UUID IDs remain
+compatible. Missing canonical launch proof yields no market. No migration or backfill is needed.
