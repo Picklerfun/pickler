@@ -254,6 +254,28 @@ try {
         0,
       );
       assert.equal(await page.getByText("Loading market data…", { exact: true }).count(), 0);
+      assert.equal(
+        await trade.getByRole("button", { name: "Copy approval transaction", exact: true }).count(),
+        1,
+      );
+      assert.equal(
+        await trade.getByRole("button", { name: `Copy ${side} transaction`, exact: true }).count(),
+        1,
+      );
+      assert.equal(
+        await trade.getByRole("link").count(),
+        0,
+        "simulated receipts never open an explorer",
+      );
+      const action = trade.getByRole("button", {
+        name: side === "buy" ? "Bought HALF" : "Sold HALF",
+        exact: true,
+      });
+      assert.equal(
+        (await action.boundingBox()).height,
+        48,
+        "compact primary action on every viewport",
+      );
     }
     assert.equal(
       await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
@@ -337,7 +359,10 @@ try {
     0,
   );
   const approvalHash = [...broadcasts.keys()][0];
-  const reference = trade.getByRole("link");
+  const reference = trade.getByRole("link", {
+    name: "View approval transaction in explorer",
+    exact: true,
+  });
   await reference.waitFor();
   assert.ok((await reference.getAttribute("href")).endsWith(`/tx/${approvalHash}`));
   await trade.screenshot({ path: path.join(output, "visitor-confirming-approval.png") });
@@ -347,12 +372,34 @@ try {
   assert.ok(confirmations > 0, "server verifies the receipt before swap success");
   assert.equal(broadcasts.size, 2, "one click completes approval then purchase");
   assert.equal([...broadcasts.values()][1].to.toLowerCase(), curve.toLowerCase());
+  const purchaseHash = [...broadcasts.keys()][1];
+  const purchaseReference = trade.getByRole("link", {
+    name: "View buy transaction in explorer",
+    exact: true,
+  });
+  assert.ok((await reference.getAttribute("href")).endsWith(`/tx/${approvalHash}`));
+  assert.ok((await purchaseReference.getAttribute("href")).endsWith(`/tx/${purchaseHash}`));
+  assert.equal(await trade.getByRole("link").count(), 2);
+  const copyApproval = trade.getByRole("button", {
+    name: "Copy approval transaction",
+    exact: true,
+  });
+  const copyPurchase = trade.getByRole("button", { name: "Copy buy transaction", exact: true });
+  assert.equal(await copyApproval.innerText(), "", "copy remains icon-only");
+  assert.equal(await copyPurchase.innerText(), "");
   await trade.screenshot({ path: path.join(output, "visitor-purchase-confirmed.png") });
   assert.equal(
     await trade.getByRole("button", { name: "Bought HALF", exact: true }).isDisabled(),
     true,
     "success cannot accidentally send another trade",
   );
+
+  await page.reload();
+  await purchaseReference.waitFor();
+  assert.ok((await reference.getAttribute("href")).endsWith(`/tx/${approvalHash}`));
+  assert.ok((await purchaseReference.getAttribute("href")).endsWith(`/tx/${purchaseHash}`));
+  await trade.getByRole("button", { name: "Buy HALF", exact: true }).waitFor();
+  assert.equal(broadcasts.size, 2, "completed receipts survive reload without another send");
 
   await trade.getByRole("button", { name: "Sell", exact: true }).click();
   await trade.getByRole("button", { name: "Sell HALF", exact: true }).click();
@@ -386,6 +433,23 @@ try {
   await trade.getByRole("button", { name: "Confirm sell", exact: true }).click();
   await trade.getByRole("button", { name: "Sold HALF", exact: true }).waitFor();
   assert.equal(broadcasts.size, beforeRestore + 1);
+  assert.equal(
+    await trade.getByRole("link").count(),
+    2,
+    "resumed trade keeps the original approval",
+  );
+  assert.ok(
+    (await reference.getAttribute("href")).endsWith(
+      `/tx/${[...broadcasts.keys()][beforeRestore - 1]}`,
+    ),
+  );
+  assert.ok(
+    (
+      await trade
+        .getByRole("link", { name: "View sell transaction in explorer", exact: true })
+        .getAttribute("href")
+    ).endsWith(`/tx/${[...broadcasts.keys()][beforeRestore]}`),
+  );
 
   await page.evaluate(() => {
     window.__cancel = true;
