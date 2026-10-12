@@ -370,10 +370,6 @@ const curve = z.object({
   openedAt: text,
   closedAt: nullableText,
 });
-export const launchDetailSchema = launchSummary.extend({
-  curve: curve.nullable(),
-  pool: curve.nullable(),
-}) satisfies z.ZodType<LaunchDetailDto>;
 export const launchTradeSchema = z.object({
   side: z.enum(["buy", "sell"]),
   trader: text,
@@ -385,6 +381,68 @@ export const launchTradeSchema = z.object({
   logIndex: number,
   blockTime: text,
 }) satisfies z.ZodType<TradeDto>;
+export const tokenMarketSchema = z.object({
+  version: z.literal(1),
+  tokenDecimals: z.number().int().min(0).max(18),
+  priceKind: z.enum(["curve", "last_trade", "unavailable"]),
+  priceWad: z
+    .string()
+    .regex(/^[0-9]+$/)
+    .nullable(),
+  fdvWad: z
+    .string()
+    .regex(/^[0-9]+$/)
+    .nullable(),
+  volume24h: z.string().regex(/^[0-9]+$/),
+  windowEnd: z.iso.datetime({ offset: true }),
+  observedAt: z.iso.datetime({ offset: true }),
+  observedBlock: z.string().regex(/^[0-9]+$/),
+  netSold: z
+    .string()
+    .regex(/^[0-9]+$/)
+    .nullable(),
+  realQuoteReserve: z
+    .string()
+    .regex(/^[0-9]+$/)
+    .nullable(),
+  remainingTokens: z
+    .string()
+    .regex(/^[0-9]+$/)
+    .nullable(),
+  progressBps: z.number().int().min(0).max(10000).nullable(),
+  terms: z
+    .object({
+      totalSupply: z.string().regex(/^[0-9]+$/),
+      saleAllocation: z.string().regex(/^[0-9]+$/),
+      lpAllocation: z.string().regex(/^[0-9]+$/),
+      buyFeeBps: z.number().int().min(0).max(10000),
+      sellFeeBps: z.number().int().min(0).max(10000),
+    })
+    .nullable(),
+  history: z
+    .array(
+      z.object({ at: z.iso.datetime({ offset: true }), priceWad: z.string().regex(/^[0-9]+$/) }),
+    )
+    .max(721),
+  historyTruncated: z.boolean(),
+  recentTrades: z
+    .array(
+      launchTradeSchema.extend({
+        priceWad: z.string().regex(/^[0-9]+$/),
+        tokenAmount: z.string().regex(/^[0-9]+$/),
+        quoteAmount: z.string().regex(/^[0-9]+$/),
+        feeAmount: z.string().regex(/^[0-9]+$/),
+        blockTime: z.iso.datetime({ offset: true }),
+        txHash: z.string().regex(/^0x[0-9a-fA-F]{64}$/),
+      }),
+    )
+    .max(20),
+});
+export const launchDetailSchema = launchSummary.extend({
+  curve: curve.nullable(),
+  pool: curve.nullable(),
+  market: tokenMarketSchema.nullable().optional(),
+}) satisfies z.ZodType<LaunchDetailDto>;
 export function freshnessReadSchema<T extends z.ZodType>(data: T) {
   return z.object({
     data,
