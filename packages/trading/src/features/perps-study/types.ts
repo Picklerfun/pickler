@@ -218,7 +218,10 @@ export interface PerpsStudyLease {
 export interface PerpsStudyRepository {
   initialize(config: PerpsStudyConfig, metadata: unknown): Promise<PerpsStudyView>;
   view(scope: PerpsStudyScope): Promise<PerpsStudyView>;
-  /** Bounded v8 execution projection; complete view remains available for reports/audits. */
+  /**
+   * Bounded v8/v9 execution projection: preserves lifecycle payloads and recent event identities.
+   * Other payloads may be empty; complete evidence remains in view and read-only audit exports.
+   */
   cycleView?(scope: PerpsStudyScope): Promise<PerpsStudyView>;
   claim(scope: PerpsStudyScope): Promise<PerpsStudyLease>;
   claimSlot(scope: PerpsStudyScope, lease: PerpsStudyLease, slot: number): Promise<boolean>;

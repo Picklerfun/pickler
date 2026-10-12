@@ -757,3 +757,18 @@ safe driver code, receipt time and backend PID when known. Never include SQL, va
 URLs, credentials or ownership tokens; an absent backend PID stays null. Diagnostic callbacks
 cannot undo the latch or throw from a driver event. Controlled disconnect tests must use an
 isolated PostgreSQL test instance, never the physical server running a prospective study.
+
+Local PTS v8/v9 cycleView projects only observation, observation-failed, observation-missed,
+profile-execution and exit-detected payloads. Other recent events retain keys/dates/kinds with
+empty data, avoiding repeated full-history transfer under the study row lock. Cutoff, latest
+observation, ordering and ownership semantics are unchanged. Full view and both read-only audit
+formats still contain the original payloads; no stored evidence is rewritten.
+
+The restricted /perps-lab export includes observePerpsLabPool and PerpsLabQueryDiagnostic v1.
+Promise-based query/connect observations record started/finished phases, a static SQL SHA-256,
+allowlisted verb/code, receipt time, monotonic duration and driver backend PID only when known.
+Never retain SQL, parameters, results, error messages, URLs, credentials or owner tokens. Observers
+cannot replace results or failures, raise deadlines, retry statements or undo the connection
+failure latch. A statement timeout remains distinct from explicit cancellation; rollback and
+resource release retain the original guard semantics. The controlled PostgreSQL lock regression
+uses a disposable isolated server, never a prospective or historical study database.

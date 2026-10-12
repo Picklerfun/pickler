@@ -6,3 +6,5 @@ export { exportPerpsAudit, exportPerpsAuditParts } from "./persistence/perps-aud
 export type { PerpsAuditPart } from "./persistence/perps-audit-export.js";
 export { guardPerpsLabPool } from "./persistence/perps-lab-pool.js";
 export type { PerpsLabFailureDiagnostic } from "./persistence/perps-lab-pool.js";
+export { observePerpsLabPool } from "./persistence/perps-lab-query.js";
+export type { PerpsLabQueryDiagnostic } from "./persistence/perps-lab-query.js";

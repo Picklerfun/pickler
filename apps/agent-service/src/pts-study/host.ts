@@ -11,6 +11,7 @@ import {
   exportPerpsAudit,
   exportPerpsAuditParts,
   guardPerpsLabPool,
+  observePerpsLabPool,
   type PerpsLabFailureDiagnostic,
 } from "@pickler/infrastructure/perps-lab";
 import { createPriorityPerplStudyData } from "@pickler/agent-runtime/plugins/perps-paper/public-study";
@@ -28,6 +29,7 @@ import {
 import { keepAwake } from "../paper-study/comparison-host.js";
 import { createReportQueue } from "../perps-study/report-queue.js";
 import { ptsRunFailure } from "./run-failure.js";
+import { createPtsPersistenceDiagnostic } from "./persistence-diagnostic.js";
 import { digest, commit, newDirectory, publish } from "./files.js";
 import { createPtsPartsExport } from "./parts.js";
 import { createPtsReportTrigger } from "./report-trigger.js";
@@ -104,10 +106,14 @@ export async function runPtsHost(
   const controller = new AbortController(),
     signal = AbortSignal.any([input.signal, controller.signal]);
   let persistenceFailure: PerpsLabFailureDiagnostic | undefined;
-  const pool = guardPerpsLabPool(research.pool, (error, diagnostic) => {
-    persistenceFailure = diagnostic;
-    controller.abort(error);
-  });
+  const queries = createPtsPersistenceDiagnostic();
+  const pool = guardPerpsLabPool(
+    observePerpsLabPool(research.pool, queries.observe),
+    (error, diagnostic) => {
+      persistenceFailure = diagnostic;
+      controller.abort(error);
+    },
+  );
   const study = new PostgresPerpsStudyStore(pool);
   let primaryError: unknown;
   let state = "process-unverified";
@@ -341,7 +347,9 @@ export async function runPtsHost(
             at: Date.now(),
             modelCalls: 0,
             ...(persistenceFailure ? { persistenceFailure } : {}),
+            ...(queries.failure() ? { persistenceQueryFailure: queries.failure() } : {}),
           }) + "\n",
+        "persistence-query-diagnostic.json": JSON.stringify(queries.snapshot()) + "\n",
       }).catch(() => {});
     }
     throw failure;

@@ -55,3 +55,11 @@ typed cancellation reason when a public transport rejects with an abort wrapper;
 failures remain unchanged. Missing historical error types, backend identities and triggering
 queries remain unverifiable. These diagnostics do not authorize retries, writes without ownership,
 session recovery or a strategy change.
+
+persistence-diagnostic.ts keeps bounded process-local query evidence: the latest 128 completions,
+at most 16 active identities and the first failure independently. Truncation counts are explicit.
+The infrastructure observer supplies safe versioned fields only; no query text/values/results,
+credentials or owner tokens are stored. Interruption publishes persistence-query-diagnostic.json
+atomically and includes the first query failure in compact status. A diagnostic cannot replace the
+primary error, extend a deadline, undo connection failure containment or authorize a new session.
+Use full audit parts for market/financial evidence, never the bounded execution cycle projection.
