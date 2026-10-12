@@ -29,8 +29,12 @@ quote and inventory at one block. Existing core policy computes the minimum rece
 up, without browser financial formulas. Gas estimates receive the existing 20% padding and the
 reviewed gas/fee/cost ceilings; insufficient MON refuses preparation.
 
-The form requests preparation only on Review buy/sell. Approval grants exactly the entered amount,
-not an unlimited allowance. Approval and swap require separate explicit wallet confirmations.
+Buy token / Sell token starts one continuous user-initiated flow. Preparation happens on that
+click, never while typing. Approval grants exactly the entered amount, not an unlimited allowance.
+After canonical approval confirmation, the app prepares the same trade with a fresh nonce and quote
+and opens the second wallet request automatically. Approval and swap still require separate wallet
+confirmations. If the refreshed minimum is worse, the app shows the updated quote for explicit
+confirmation. Changed token, curve, wallet, amount, side or tolerance cannot continue the flow.
 Signing checks sender, network, nonce, token, AUSD, recipient, target, calldata, minimum output and
 five-minute expiration, then simulates the exact action. There is no public relayer or broadcast API.
 
@@ -41,10 +45,20 @@ bytes are persisted. JavaScript cannot guarantee erasure of strings, bigints or 
 Public unsigned attempts and hashes are stored in sessionStorage before opening the wallet.
 Reloading a submitting attempt restores an uncertain state, never resends it. Failure to persist
 before signing prevents submission; storage failure after sending preserves the hash in memory.
-A known hash can be checked explicitly, with canonical block and two-confirmation checks. A lost
-browser-wallet response without a hash remains blocked and directs the user to wallet activity;
-it cannot safely be retried automatically. No polling, automatic retry or replacement is added.
-This manual receipt display is not indexer attribution or a portfolio/accounting projection.
+Known hashes are observed automatically using the existing canonical-block and two-confirmation
+checks. Observation is serial, with at most thirty reads three seconds apart and a two-minute
+deadline per transaction. Transient RPC failures retry reads only. Hidden pages pause reads;
+navigation or wallet/network changes abort them. Reloading a pending hash resumes observation
+without another send. A restored approval prepares the swap for explicit confirmation, never a
+wallet prompt from an effect. A lost browser-wallet response without a hash remains blocked and
+directs the user to wallet activity; it cannot safely be rebroadcast. At the observation ceiling,
+the original hash remains visible as pending. No broadcast retry or replacement is added.
+
+The primary button communicates preparation, wallet confirmation and chain confirmation with one
+spinner. There is no routine Check transaction button or additional loading block. Final messages
+are concise; the hash links to the explorer and has an icon-only copy action. A confirmed swap
+refreshes the existing database-backed market read; indexing remains a separate canonical projection.
+Receipt display itself does not attribute the token or update portfolio/accounting records.
 
 ## Runtime configuration
 
@@ -66,9 +80,10 @@ The driver independently caps each preparation at 40 calls. Denials return 429 w
 Changing wallet addresses cannot increase the global allowance. These controls limit resources;
 a public address is not proof of identity and this is not an anti-Sybil admission mechanism.
 
-Manual receipt checks and Mera preflight use the public wallet RPC defined in `@pickler/chain`.
-Browser wallets use their own provider. These are explicit user actions and never share backend
-credentials or enable model/provider spending. Remote public activation and an actual visitor
+Automatic receipt observation and Mera preflight use the public wallet RPC defined in
+`@pickler/chain`. One observation read can make up to three RPC calls, so its thirty-read ceiling
+allows at most ninety calls per transaction. Browser wallets use their own provider. These
+user-initiated flows never share backend credentials or enable model/provider spending. Remote public activation and an actual visitor
 purchase/sale still require operator readiness and human wallet confirmation.
 
 ## Landing discovery
@@ -95,7 +110,7 @@ From the repository root, using Node 22.22+:
 
 ```sh
 npm run build:shared
-node --import tsx --test packages/core/test/public-token-trading.test.ts packages/infrastructure/test/public-token-trading.test.ts apps/web/test/public-token-transaction.test.ts apps/web/test/public-trade-memory.test.ts apps/web/test/mera-token-transaction.test.ts apps/web/test/claim-handle.test.ts workers/api/test/public-token-trading-route.test.ts
+node --import tsx --test packages/core/test/public-token-trading.test.ts packages/infrastructure/test/public-token-trading.test.ts apps/web/test/public-token-transaction.test.ts apps/web/test/public-trade-flow.test.ts apps/web/test/public-trade-memory.test.ts apps/web/test/mera-token-transaction.test.ts apps/web/test/claim-handle.test.ts workers/api/test/public-token-trading-route.test.ts
 TEST_DATABASE_URL=postgresql://pickler:pickler_local_only@127.0.0.1:55440/pickler node --import tsx --test packages/infrastructure/test/public-token-rpc-quota.test.ts
 node --import tsx scripts/design/public-token-trading.mjs http://localhost:3005
 npm run build --workspace=@pickler/web
@@ -121,13 +136,13 @@ Public preview links on the development server:
 - `/agents/halftime?stage=token-launched`: simulated approvals, buy, sell and confirmation.
 - `/agents/halftime?stage=token-empty&wallet=username`: username recovery UI.
 
-| Scenario                                                                           | Evidence                                             | Acceptance                  |
-| ---------------------------------------------------------------------------------- | ---------------------------------------------------- | --------------------------- |
-| Canonical identities, balances, allowance, decimals, inventory, gas and minima     | Injected core/RPC tests                              | Passed locally (controlled) |
-| Public contract, strict inputs, disabled gate, quota errors and sanitized failures | API tests                                            | Passed locally (controlled) |
-| Global and per-wallet concurrent limits                                            | Isolated PostgreSQL                                  | Passed locally (controlled) |
-| Exact browser/Mera action, cancellation, lost response and key cleanup             | Wallet tests                                         | Passed locally (controlled) |
-| Username recovery, public approvals/buy/sell, reload and preserved forms           | Loopback browser harness at 1280/380/320 px          | Passed locally (controlled) |
-| Hosted public activation and an actual visitor purchase/sale                       | Not run; real wallet and confirmed live token needed | Pending                     |
-| DEX swaps after graduation                                                         | Separate integration                                 | Pending                     |
-| Indexer changes                                                                    | Existing implementation unchanged                    | Deferred                    |
+| Scenario                                                                                  | Evidence                                             | Acceptance                  |
+| ----------------------------------------------------------------------------------------- | ---------------------------------------------------- | --------------------------- |
+| Canonical identities, balances, allowance, decimals, inventory, gas and minima            | Injected core/RPC tests                              | Passed locally (controlled) |
+| Public contract, strict inputs, disabled gate, quota errors and sanitized failures        | API tests                                            | Passed locally (controlled) |
+| Global and per-wallet concurrent limits                                                   | Isolated PostgreSQL                                  | Passed locally (controlled) |
+| Exact browser/Mera action, cancellation, lost response and key cleanup                    | Wallet tests                                         | Passed locally (controlled) |
+| Continuous approvals/buy/sell, receipt recovery, reload, cancellation and preserved forms | Loopback browser harness at 1280/380/320 px          | Passed locally (controlled) |
+| Hosted acceptance of the continuous approval/trade flow                                   | Not run; real wallet and confirmed live token needed | Pending                     |
+| DEX swaps after graduation                                                                | Separate integration                                 | Pending                     |
+| Indexer changes                                                                           | Existing implementation unchanged                    | Deferred                    |

@@ -141,14 +141,16 @@ export async function verifySignedPublicTokenTransaction(
     throw new Error("The signed transaction does not match the prepared trade.");
   }
 }
-/** One explicit wallet RPC read/send, never polling or retrying. */
-export async function publicWalletRpc(method: string, params: unknown[]) {
+/** One wallet RPC request. Read observation may repeat it; broadcasts are never retried. */
+export async function publicWalletRpc(method: string, params: unknown[], signal?: AbortSignal) {
   const { MONAD_TESTNET } = await import("@pickler/chain");
   const response = await fetch(MONAD_TESTNET.publicRpcUrls[1], {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
-    signal: AbortSignal.timeout(10_000),
+    signal: signal
+      ? AbortSignal.any([signal, AbortSignal.timeout(10_000)])
+      : AbortSignal.timeout(10_000),
     redirect: "manual",
   });
   const body = await response.json();
@@ -169,11 +171,11 @@ export async function submitSignedPublicTokenTransaction(raw: Hex) {
   }
   return hash;
 }
-export async function publicTokenReceipt(hash: string) {
+export async function publicTokenReceipt(hash: string, signal?: AbortSignal) {
   if (!/^0x[0-9a-f]{64}$/i.test(hash)) {
     throw new Error("Invalid transaction hash.");
   }
-  const receipt = (await publicWalletRpc("eth_getTransactionReceipt", [hash])) as {
+  const receipt = (await publicWalletRpc("eth_getTransactionReceipt", [hash], signal)) as {
     status?: string;
     transactionHash?: string;
     blockNumber?: string;
@@ -190,10 +192,14 @@ export async function publicTokenReceipt(hash: string) {
   ) {
     throw new Error("Transaction receipt unavailable.");
   }
-  const block = (await publicWalletRpc("eth_getBlockByNumber", [receipt.blockNumber, false])) as {
+  const block = (await publicWalletRpc(
+    "eth_getBlockByNumber",
+    [receipt.blockNumber, false],
+    signal,
+  )) as {
     hash?: string;
   } | null;
-  const head = BigInt(String(await publicWalletRpc("eth_blockNumber", [])));
+  const head = BigInt(String(await publicWalletRpc("eth_blockNumber", [], signal)));
   if (
     block?.hash?.toLowerCase() !== receipt.blockHash.toLowerCase() ||
     head < BigInt(receipt.blockNumber) + 2n
