@@ -40,6 +40,7 @@ try {
   }
   browser = await openBrowser();
   const context = await browser.newContext();
+  let confirmations = 0;
   let reads = 0,
     nonce = 0,
     holdReceipts = false,
@@ -108,6 +109,16 @@ try {
     if (url.pathname === `/api/v1/launches/${encodeURIComponent(`eip155:10143:${token}`)}`) {
       assert.equal(request.method(), "GET");
       return route.continue();
+    }
+    if (url.pathname === "/api/v1/marketplace/personas/public_trade/token/confirm") {
+      assert.equal(request.method(), "POST");
+      const input = request.postDataJSON();
+      assert.deepEqual(Object.keys(input).sort(), ["txHash", "wallet"]);
+      assert.equal(input.wallet, wallet);
+      const tx = broadcasts.get(input.txHash);
+      assert.ok(tx && tx.to.toLowerCase() === curve.toLowerCase());
+      confirmations++;
+      return route.fulfill({ json: { status: "confirmed" } });
     }
     if (url.pathname === "/api/v1/marketplace/personas/public_trade/token/prepare") {
       reads++;
@@ -250,6 +261,18 @@ try {
     );
     await trade.screenshot({ path: path.join(output, `public-${width}.png`) });
   }
+  const previewTrade = page.getByRole("region", { name: "Trade token publicly" });
+  for (const [scenario, result] of [
+    ["Cancel", "Cancelled · try again"],
+    ["Failure", "Retry buy"],
+    ["Slow network", "Buying HALF"],
+  ]) {
+    await page.getByRole("button", { name: scenario, exact: true }).click();
+    await previewTrade.getByRole("button", { name: "Buy", exact: true }).click();
+    await previewTrade.getByRole("button", { name: "Buy HALF", exact: true }).click();
+    await previewTrade.getByRole("button", { name: result, exact: true }).waitFor();
+  }
+  await page.getByRole("button", { name: "Success", exact: true }).click();
   await page.goto(`${base}/agents/public_trade`);
   const trade = page.getByRole("region", { name: "Trade token publicly" });
   await trade.getByRole("button", { name: "Buy HALF", exact: true }).waitFor();
@@ -321,6 +344,7 @@ try {
   transientReceiptFailure = true;
   holdReceipts = false;
   await trade.getByRole("button", { name: "Bought HALF", exact: true }).waitFor();
+  assert.ok(confirmations > 0, "server verifies the receipt before swap success");
   assert.equal(broadcasts.size, 2, "one click completes approval then purchase");
   assert.equal([...broadcasts.values()][1].to.toLowerCase(), curve.toLowerCase());
   await trade.screenshot({ path: path.join(output, "visitor-purchase-confirmed.png") });
