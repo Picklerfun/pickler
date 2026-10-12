@@ -97,8 +97,10 @@ function MarketPreview({ token }: { token: AgentTokenDto }) {
             <div className={styles.chart}>
               <AreaChart
                 points={PREVIEW_HISTORY[range]}
-                height={240}
-                precision={6}
+                height={300}
+                precision={8}
+                variant="market"
+                currency="AUSD"
                 label={`Simulated ${range.toLowerCase()} price history in AUSD; current price 0.00198333`}
               />
             </div>
