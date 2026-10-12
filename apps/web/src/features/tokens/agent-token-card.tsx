@@ -35,24 +35,7 @@ export function AgentTokenCard({
   return (
     <section className={styles.card} data-token-state="launched" aria-label="Agent token">
       <div className={styles.head}>
-        {token.imageUri &&
-        /^https:\/\/app\.pickler\.fun\/api\/v1\/token-assets\/[0-9a-f]{64}\.svg$/.test(
-          token.imageUri,
-        ) ? (
-          <Image
-            src={token.imageUri}
-            alt={`${token.name} token`}
-            width={48}
-            height={48}
-            unoptimized
-          />
-        ) : (
-          <AgentAvatar accent={token.avatar.accent} pattern={token.avatar.pattern} size="head" />
-        )}
-        <div className={styles.identity}>
-          <h3>{token.name}</h3>
-          <span className={styles.quiet}>${token.ticker.replace(/^\$+/, "")}</span>
-        </div>
+        <AgentTokenIdentity token={token} />
         <Tag className={styles.network}>
           {token.chainId === 10143 ? "MONAD TESTNET" : "MAINNET"}
         </Tag>
@@ -65,5 +48,31 @@ export function AgentTokenCard({
       />
       {preview && <p className={styles.quiet}>Preview · simulated token, no transaction sent</p>}
     </section>
+  );
+}
+
+/** The frozen token identity is reused by its compact card and local market preview. */
+export function AgentTokenIdentity({ token }: { token: AgentTokenDto }) {
+  return (
+    <>
+      {token.imageUri &&
+      /^https:\/\/app\.pickler\.fun\/api\/v1\/token-assets\/[0-9a-f]{64}\.svg$/.test(
+        token.imageUri,
+      ) ? (
+        <Image
+          src={token.imageUri}
+          alt={`${token.name} token`}
+          width={48}
+          height={48}
+          unoptimized
+        />
+      ) : (
+        <AgentAvatar accent={token.avatar.accent} pattern={token.avatar.pattern} size="head" />
+      )}
+      <div className={styles.identity}>
+        <h3>{token.name}</h3>
+        <span className={styles.quiet}>${token.ticker.replace(/^\$+/, "")}</span>
+      </div>
+    </>
   );
 }
