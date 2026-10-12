@@ -11,7 +11,11 @@ configuration this path deliberately refuses rather than guessing an address.
 
 `wrangler.jsonc` now binds the existing trusted staging Hyperdrive and the single free testnet RPC.
 The staging source retains the already-enabled testnet `TOKEN_INDEXER_ENABLED=true` gate; the reviewed public launch/indexer policies
-are provisioned separately as runtime bindings. Explicit operator activation and its capacity record
+are provisioned separately as runtime bindings. `keep_vars=true` preserves those reviewed public
+policy bindings on normal Wrangler/Cloudflare Builds publication; declared source variables still
+take precedence. Never put the grant signer or database credentials in this Worker. The main-only
+automatic publisher is documented in [the build guide](../../scripts/cloudflare/README.md); its
+repository connection and active version require separate hosted evidence. Explicit operator activation and its capacity record
 are documented in [the hosted readiness guide](../../docs/market/token-indexer-hosted-20261011.md).
 Never infer launch activation from the indexer or isolated deployment receipts.
 
