@@ -51,9 +51,11 @@ export function AgentTokenCard({
         )}
         <div className={styles.identity}>
           <h3>{token.name}</h3>
-          <span className={styles.quiet}>${token.ticker.replace(/^\$/, "")}</span>
+          <span className={styles.quiet}>${token.ticker.replace(/^\$+/, "")}</span>
         </div>
-        <Tag>{token.chainId === 10143 ? "TESTNET" : "MAINNET"}</Tag>
+        <Tag className={styles.network}>
+          {token.chainId === 10143 ? "MONAD TESTNET" : "MAINNET"}
+        </Tag>
       </div>
       <ChainReference
         value={token.address}
