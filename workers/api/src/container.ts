@@ -306,9 +306,10 @@ export function paidAdviceFrom(
     if (confirmed.has(pair)) {
       return;
     }
-    let onChain: string;
+    let matches: boolean;
     try {
-      onChain = await gateway.splitterTreasury();
+      // Compared inside the try: a read that is not a string fails closed like a failed read.
+      matches = sameAddress(await gateway.splitterTreasury(), treasury);
     } catch {
       // The error is dropped unread: it may quote the RPC URL.
       log(
@@ -316,7 +317,7 @@ export function paidAdviceFrom(
       );
       throw new PilotError("ADVICE_UNAVAILABLE", "Paid analyses are not configured");
     }
-    if (!sameAddress(onChain, treasury)) {
+    if (!matches) {
       log(
         "the treasury of ADVICE_SPLITTER_ADDRESS differs from ADVICE_SPLITTER_TREASURY; advice requests are refused",
       );

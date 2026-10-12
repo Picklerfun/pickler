@@ -189,6 +189,23 @@ test("a failed treasury read refuses that request only, and a match is cached pe
   assert.equal(next.calls.treasury, 0, "a later invocation in the same isolate reads nothing");
 });
 
+test("a treasury read that is not a string fails closed with 503, not 500", async () => {
+  for (const read of [undefined, null, 42, { address: TREASURY }]) {
+    const confirmed = new Set<string>();
+    const on = composeOnChain(ON, async () => read as unknown as string, confirmed);
+
+    assert.ok(on.paid);
+    await assert.rejects(
+      on.paid.request(user, "agent-1", "BTC", "key-1", undefined),
+      isUnavailable,
+    );
+    assert.equal(confirmed.size, 0);
+    assert.equal(on.logged.length, 1);
+    assert.match(on.logged[0]!, /could not be read/);
+    assertNoValue(on.logged);
+  }
+});
+
 test("the flag without a usable relayer, RPC or splitter fails closed with 503 and logs no value", async () => {
   const cases: Array<{ env: Parameters<typeof paidAdviceFrom>[0]; names: RegExp }> = [
     { env: { ...ON, X402_RELAYER_PRIVATE_KEY: undefined }, names: /relayer or RPC/ },

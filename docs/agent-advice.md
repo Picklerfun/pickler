@@ -77,7 +77,8 @@ Before a paid request is served, the API reads the splitter's immutable `treasur
 it with `ADVICE_SPLITTER_TREASURY`, ignoring case. A mismatch (a splitter deployed with another
 treasury) or a failed read answers 503 `ADVICE_UNAVAILABLE` for that request and logs a line that
 names `ADVICE_SPLITTER_ADDRESS` and `ADVICE_SPLITTER_TREASURY` but no address; neither outcome is
-cached, so the next request reads again. A match is cached for the isolate's life. The composition
+cached, so the next request reads again. Until it passes the check blocks every paid-path
+request, replays of already-paid keys included, with 503. A match is cached for the isolate's life. The composition
 is `paidAdviceFrom` in `workers/api/src/container.ts`: core's `createPaidAdvice` over the
 request's advice service and store, `PostgresAdvicePayments` on the invocation's pool and
 `createAusdAuthorizationGateway` with the splitter (AUSD on Monad testnet, EIP-3009). The `GET`
@@ -95,10 +96,11 @@ The buyer signs an EIP-3009 `ReceiveWithAuthorization` for AUSD with `to` = the 
 `value` = the full price. Its `nonce` is not random: the buyer picks 32 random bytes as `salt` and
 sets `nonce = keccak256(abi.encode(payee, salt))`, with `payee` the address in `extra.payee`. The
 `X-PAYMENT` payload's `authorization` carries `salt` beside the six signed fields
-(`paymentPayloadSchema` in `@pickler/api-schema`). The API refuses a nonce that does not derive
-from the agent's current wallet as `invalid_payment`, before any signature or chain call. A phase 1
-authorization is refused before anything settles: one addressed to the agent wallet is
-`wrong_recipient`, and a `TransferWithAuthorization` signature does not verify
+(`paymentPayloadSchema` in `@pickler/api-schema`). A payload without `salt`, which includes every
+phase 1 payload, is `invalid_payment` before any other payment check. With a salt, the API refuses a nonce
+that does not derive from the agent's current wallet as `invalid_payment`, before any signature or
+chain call; `to` = the agent wallet (the phase 1 recipient) is `wrong_recipient`; and a
+`TransferWithAuthorization` signature over a correctly derived nonce does not verify
 (`invalid_signature`).
 
 The relayer calls the splitter's permissionless `settle(from, value, validAfter, validBefore, salt,

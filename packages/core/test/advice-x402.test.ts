@@ -372,7 +372,12 @@ test("5. every refused payment answers 402 with its reason and never settles", a
       header: () => header({ to: "0x3333333333333333333333333333333333333333" }),
     },
     {
-      name: "the agent wallet as recipient (a phase 1 TransferWithAuthorization)",
+      name: "a phase 1 payload: the agent wallet as recipient and no salt",
+      error: "invalid_payment",
+      header: () => header({ to: PAYEE, salt: undefined }),
+    },
+    {
+      name: "the agent wallet as recipient with a salt",
       error: "wrong_recipient",
       header: () => header({ to: PAYEE }),
     },

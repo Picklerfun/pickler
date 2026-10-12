@@ -73,7 +73,7 @@ The contracts move from the `UNLICENSED` placeholder to MIT before this deployme
 
 ## 4. API changes (on top of phase 1)
 
-- **Config:** `ADVICE_SPLITTER_ADDRESS` and `ADVICE_SPLITTER_TREASURY` (Worker vars: the splitter and the treasury it was deployed with). A missing or malformed address fails closed like a missing relayer (phase 1 Ruling 24). Before the first paid request is served, the API reads the splitter's `treasury()` and compares it with `ADVICE_SPLITTER_TREASURY`, ignoring case. A mismatch or a failed read answers 503 `ADVICE_UNAVAILABLE` for that request and logs variable names only. A match is cached for the isolate's life.
+- **Config:** `ADVICE_SPLITTER_ADDRESS` and `ADVICE_SPLITTER_TREASURY` (Worker vars: the splitter and the treasury it was deployed with). A missing or malformed address fails closed like a missing relayer (phase 1 Ruling 24). Before every paid request (replays included) until a match is cached, the API reads the splitter's `treasury()` and compares it with `ADVICE_SPLITTER_TREASURY`, ignoring case. A mismatch, a failed read or a read that is not an address answers 503 `ADVICE_UNAVAILABLE` for that request, is not cached, and logs variable names only. A match is cached for the isolate's life, and later requests skip the read.
 - **Requirements (402):**
   - `payTo` = the splitter;
   - `maxAmountRequired` = the full price;
