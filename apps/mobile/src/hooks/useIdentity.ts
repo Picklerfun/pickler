@@ -209,6 +209,8 @@ export function useIdentity(account: AccountState, onUnlock: (w: Wallet) => void
       // Plain object, Headers instance or pair list: none loses an entry.
       const headers: Record<string, string> = {};
       new Headers(init.headers).forEach((value, key) => { headers[key] = value; });
+      // Headers lowercases every name: a caller's own authorization would travel beside ours. Ours is the only one.
+      delete headers.authorization;
       headers.Authorization = `Bearer ${token}`;
       return fetch(`${API_URL!}${path}`, { ...init, headers });
     };

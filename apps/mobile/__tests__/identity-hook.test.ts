@@ -343,6 +343,21 @@ describe("authedFetch", () => {
     expect(seen[0]!.Authorization).toMatch(/^Bearer /);
   });
 
+  test("a caller's own Authorization never travels beside the bearer", async () => {
+    api.fetchProfile.mockResolvedValue({ handle: "owl" });
+    const seen: Record<string, string>[] = [];
+    globalThis.fetch = jest.fn(async (_u: string, init: RequestInit) => { seen.push(init.headers as Record<string, string>); return new Response("{}"); }) as never;
+    await mount(unlocked(A));
+
+    await latest.authedFetch("/x", { headers: { authorization: "Bearer someone-else", "Idempotency-Key": "k1" } });
+
+    const sent = new Headers(seen[0]);
+    expect(Object.keys(seen[0]!).filter((k) => k.toLowerCase() === "authorization")).toHaveLength(1);
+    expect(sent.get("Authorization")).toMatch(/^Bearer /);
+    expect(sent.get("Authorization")).not.toContain("someone-else");
+    expect(sent.get("Idempotency-Key")).toBe("k1");
+  });
+
   test("the token is never persisted", async () => {
     api.fetchProfile.mockResolvedValue({ handle: "owl" });
     respond(200);
