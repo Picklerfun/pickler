@@ -69,3 +69,32 @@ test("missing/mainnet tokens and invalid trades never reach the driver", async (
   }
   assert.equal(calls, 0);
 });
+
+test("confirmation resolves the published token and validates identity before its driver", async () => {
+  const context = { agentId: "agent-id", token: "0x" + "1".repeat(40), chainId: 10143 };
+  let calls = 0;
+  const driver = {
+    prepare: async () => ({}) as never,
+    confirm: async (c: unknown, i: unknown) => {
+      calls++;
+      assert.deepEqual(c, context);
+      assert.deepEqual(i, confirmation);
+      return { status: "confirmed" as const };
+    },
+  };
+  const confirmation = { wallet: input.wallet, txHash: "0x" + "2".repeat(64) };
+  const service = createPublicTokenTrading({ enabled: true, token: async () => context, driver });
+  assert.deepEqual(await service.confirm("agent", confirmation), { status: "confirmed" });
+  for (const patch of [{ wallet: "0x" + "0".repeat(40) }, { txHash: "bad" }]) {
+    await assert.rejects(service.confirm("agent", { ...confirmation, ...patch }));
+  }
+  for (const enabled of [false, true]) {
+    await assert.rejects(
+      createPublicTokenTrading({ enabled, token: async () => null, driver }).confirm(
+        "agent",
+        confirmation,
+      ),
+    );
+  }
+  assert.equal(calls, 1);
+});
