@@ -78,7 +78,66 @@ test("one click advances through approval and swap, waiting for each receipt bef
   assert.equal(result, "confirmed");
   assert.deepEqual(events, ["approve", "approval receipt", "prepare swap", "buy", "swap receipt"]);
   assert.equal(saved.at(-1)?.hash, swapHash);
+  assert.equal(saved.at(-1)?.approvalHash, hash);
   assert.equal(saved.at(-1)?.status, "confirmed");
+});
+
+test("approval references survive cancelled, pending and reverted swaps", async () => {
+  for (const outcome of ["cancel", "pending", "reverted"] as const) {
+    let latest: PublicTradeAttempt | undefined;
+    let sends = 0;
+    const result = runPublicTokenTrade({
+      prepared: prepared(true),
+      signal: new AbortController().signal,
+      prepareNext: async () => prepared(false),
+      send: async (next) => {
+        sends += 1;
+        if (!next.quote.approval && outcome === "cancel") {
+          throw Object.assign(new Error("cancelled"), { code: 4001 });
+        }
+        return next.quote.approval ? hash : swapHash;
+      },
+      receipt: async (current) =>
+        current === hash ? "confirmed" : outcome === "reverted" ? "reverted" : "pending",
+      keep: (value) => {
+        latest = value;
+      },
+    });
+    if (outcome === "cancel") {
+      await assert.rejects(result);
+      assert.equal(latest?.hash, null);
+    } else {
+      assert.equal(await result, outcome);
+      assert.equal(latest?.hash, swapHash);
+    }
+    assert.equal(latest?.approvalHash, hash);
+    assert.equal(sends, 2);
+  }
+});
+
+test("an explicitly resumed swap retains its earlier approval without sending another approval", async () => {
+  let latest: PublicTradeAttempt | undefined;
+  let sends = 0;
+  await runPublicTokenTrade({
+    prepared: prepared(false),
+    approvalHash: hash,
+    signal: new AbortController().signal,
+    prepareNext: async () => {
+      throw new Error("unexpected preparation");
+    },
+    send: async (next) => {
+      assert.equal(next.quote.approval, false);
+      sends += 1;
+      return swapHash;
+    },
+    receipt: async () => "confirmed",
+    keep: (value) => {
+      latest = value;
+    },
+  });
+  assert.equal(sends, 1);
+  assert.equal(latest?.hash, swapHash);
+  assert.equal(latest?.approvalHash, hash);
 });
 
 test("unknown sends with a hash reconcile that same transaction without rebroadcast", async () => {
