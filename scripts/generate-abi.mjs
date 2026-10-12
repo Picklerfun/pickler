@@ -39,6 +39,7 @@ const CONTRACTS = [
   "PicklerLiquidityLocker",
   "PicklerFeeEscrow",
   "PicklerFeeEscrowV2",
+  "PicklerAdviceSplitter",
   "PicklerCurveDeployerKuru",
   "PicklerGraduationAdapterKuru",
   "PicklerKuruLiquidityLocker",
