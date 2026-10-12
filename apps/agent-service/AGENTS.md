@@ -398,3 +398,10 @@ stop admission, and interrupted studies retain positions/funding and their origi
 Read [PTS intraday](PTS-INTRADAY-PAPER.md) for the reproduced serialization interruption.
 
 Read [fast intraday PTS](PTS-INTRADAY-FAST.md) for explicit v9 candidate 0.2.0-fast.1. Its new inactive template, descriptor and policy stay separate from 0.1.0. Commands and reports pin the chosen candidate; saved preparation from another identity is rejected. The original active trial is not altered or restarted. Offline results and controlled fills do not establish profitability.
+
+The local PTS host also observes queries through the restricted persistence composition. On
+interruption it publishes persistence-query-diagnostic.json atomically alongside compact status.
+The in-memory collector bounds completed queries to 128 and active identities to 16, retains the
+first failure independently and declares truncation. Compact status exposes only that safe first
+query failure. This evidence does not grant ownership, authorize recovery, change query deadlines
+or amend historical missing query phases. Reports and financial policy remain unchanged.
