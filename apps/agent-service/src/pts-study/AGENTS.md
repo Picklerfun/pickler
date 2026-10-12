@@ -35,8 +35,10 @@ v2 before any environment/provider composition. Verify part hashes, paths and in
 never use later data to fill an absent original component. The v2 payload hash preserves the
 v1 canonical payload meaning.
 
-Report workers receive the manifest path, not the whole historical snapshot. The pure trading
-per-slot auditor supplies identical rows; raw native histories remain in the source parts.
+Financial report workers receive the configuration and dedicated database file path, then export
+source parts in their own thread. Offline controlled callers can still supply a manifest path; no
+whole historical snapshot is cloned. The pure trading per-slot auditor supplies identical rows;
+raw native histories remain in the source parts.
 Stream JSON/CSV, bound the HTML summary, publish hashes last, and wait for worker exit after its
 publication message. Safe report/source/serialization failures interrupt admission explicitly;
 no generic success message or report diagnostic can restart a study or grant ownership.
