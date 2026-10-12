@@ -832,3 +832,9 @@ so multiple trades within an hour remain visible. No database migration is requi
 The market read prepares `priceMovement` with core's integer helper from the last two canonical
 price observations in chain order. It shares the existing snapshot and orphan filtering; sparse
 launch-only history has no movement. No provider call or migration is added.
+
+The public driver's read-only quote branch reuses canonical identity, curve and decimal checks,
+quote and inventory reads, and business minimum rounding. It returns before balance admission,
+nonce/fee reads, gas estimation and calldata preparation. Quotes reserve the same 40-call daily
+ceiling, with a separate six-per-wallet/minute bucket so typing cannot consume preparation slots.
+They never write financial attribution or change indexer state.

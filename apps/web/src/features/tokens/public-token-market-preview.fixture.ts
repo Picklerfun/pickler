@@ -48,10 +48,11 @@ export const PREVIEW_CHANGE: Record<PreviewRange, string> = {
 };
 
 // Receipt examples from docs/market/uniswap-v4-testnet-acceptance.json.
-// Their real testnet hashes are navigable; the displayed quantities and times remain illustrative.
+// Their real testnet hashes are navigable; quantities, times and wallet addresses are illustrative.
 export const PREVIEW_TRADES = [
   {
     time: "12:00",
+    trader: "0x3333333333333333333333333333333333333333",
     side: "Buy",
     price: "0.001983",
     amount: "2,500",
@@ -60,6 +61,7 @@ export const PREVIEW_TRADES = [
   },
   {
     time: "11:42",
+    trader: "0x4444444444444444444444444444444444444444",
     side: "Sell",
     price: "0.001961",
     amount: "10,000",
@@ -68,6 +70,7 @@ export const PREVIEW_TRADES = [
   },
   {
     time: "11:18",
+    trader: "0x5555555555555555555555555555555555555555",
     side: "Buy",
     price: "0.001967",
     amount: "25,000",
@@ -76,6 +79,7 @@ export const PREVIEW_TRADES = [
   },
   {
     time: "10:56",
+    trader: "0x6666666666666666666666666666666666666666",
     side: "Buy",
     price: "0.001942",
     amount: "5,000",

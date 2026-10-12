@@ -98,3 +98,30 @@ test("confirmation resolves the published token and validates identity before it
   }
   assert.equal(calls, 1);
 });
+
+test("quotes revalidate published testnet tokens and input without preparing a transaction", async () => {
+  const context = { agentId: "id", token: "0x" + "1".repeat(40), chainId: 10143 };
+  let quotes = 0;
+  const driver: PublicTokenTradeDriver = {
+    prepare: async () => {
+      throw new Error("Must not prepare");
+    },
+    quote: async (selected, requested) => {
+      assert.deepEqual(selected, context);
+      assert.deepEqual(requested, input);
+      quotes++;
+      return {} as never;
+    },
+  };
+  const service = createPublicTokenTrading({ enabled: true, token: async () => context, driver });
+  await service.quote("agent", input);
+  for (const patch of [{ amount: "0" }, { slippageBps: 101 }, { wallet: "0x" + "0".repeat(40) }]) {
+    await assert.rejects(service.quote("agent", { ...input, ...patch }));
+  }
+  for (const enabled of [false, true]) {
+    await assert.rejects(
+      createPublicTokenTrading({ enabled, token: async () => null, driver }).quote("agent", input),
+    );
+  }
+  assert.equal(quotes, 1);
+});

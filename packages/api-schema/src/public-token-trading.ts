@@ -31,6 +31,10 @@ export const publicTokenTradePreparedSchema = z
       .strict(),
   })
   .strict();
+export const publicTokenTradeQuotedSchema = publicTokenTradePreparedSchema.omit({
+  transaction: true,
+});
+export type PublicTokenTradeQuotedDto = z.infer<typeof publicTokenTradeQuotedSchema>;
 export type PublicTokenTradeInputDto = z.infer<typeof publicTokenTradeInputSchema>;
 export type PublicTokenTradePreparedDto = z.infer<typeof publicTokenTradePreparedSchema>;
 

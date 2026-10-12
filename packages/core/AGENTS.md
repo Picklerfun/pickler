@@ -554,3 +554,7 @@ signs or broadcasts a transaction. Provider evidence and persistence stay in inf
 `tokenPriceMovement` compares the latest two ordered canonical observations with integer-only
 basis-point rounding. It returns direction separately so sub-basis-point moves never become flat.
 Missing or nonpositive observations return null; this metric is not a 24-hour return or quote.
+
+Public trading also exposes a read-only `quote` operation through its injected driver. It applies
+the same published-testnet/input admission as preparation and returns quantities and canonical
+identity without a transaction. An estimate does not admit or execute a later swap.

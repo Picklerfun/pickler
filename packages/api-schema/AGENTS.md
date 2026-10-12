@@ -295,3 +295,7 @@ and transaction hash only) and `publicTokenTradeConfirmationSchema` (`pending`, 
 `direction`, signed decimal-string `changeBps`, and the compared `fromAt`/`toAt` timestamps.
 Older producers without the field remain valid. Direction survives rounded zero basis points;
 inconsistent signs are invalid. It must not be labelled as a 24-hour return.
+
+`publicTokenTradeQuotedSchema`/DTO omits the transaction from the prepared response. The public
+quote route shares the strict trade input and exposes only canonical identities, expiration and
+exact server-calculated quantities; it does not supply an executable transaction.

@@ -26,6 +26,7 @@ import {
 } from "@/features/wallet/lib/public-trade-flow";
 import { ChainReference } from "./chain-reference";
 import { PublicTradeAction, type TradeActionState } from "./public-trade-action";
+import { usePublicTradeQuote } from "./use-public-trade-quote";
 import quotes from "./trade-quotes.json";
 import styles from "./public-token-trade.module.css";
 const WORDS: Record<string, string> = {
@@ -170,6 +171,16 @@ function PublicTradeForm({
   } catch {
     /* Keep the entered amount visible. */
   }
+  const estimate = usePublicTradeQuote({
+    handle,
+    token: token.address,
+    wallet: wallet.address,
+    side,
+    amount,
+    slippageBps: Number(slippage),
+    enabled: !preview && !busy && !active && token.chainId === 10143,
+    refreshKey: success ? attempt.hash : null,
+  });
   function edit(next: TradeDraft) {
     setDraft(next);
     setAcknowledged(attempt);
@@ -429,13 +440,14 @@ function PublicTradeForm({
   const savedQuote = attempt?.prepared.quote;
   const quote = preview
     ? quotes[side]
-    : savedQuote?.side === side &&
+    : (busy || active) &&
+        savedQuote?.side === side &&
         savedQuote.amount === amount &&
         savedQuote.slippageBps === Number(slippage)
       ? savedQuote
-      : undefined;
-  const outputAsset = quote?.side === "buy" ? token.ticker : "AUSD";
-  const outputDecimals = quote?.side === "buy" ? 18 : 6;
+      : estimate.quoted?.quote;
+  const outputAsset = side === "buy" ? token.ticker.replace(/^\$+/, "") : "AUSD";
+  const outputDecimals = side === "buy" ? 18 : 6;
   const ticker = token.ticker.replace(/^\$+/, "");
   const approvalHash =
     attempt?.approvalHash ?? (attempt?.prepared.quote.approval ? attempt.hash : null);
@@ -510,6 +522,28 @@ function PublicTradeForm({
           }
         />
       </Field>
+      <dl className={styles.quote} aria-label="Trade estimate" aria-busy={estimate.loading}>
+        <div className={styles.receive}>
+          <dt>You receive · {outputAsset}</dt>
+          <dd key={quote?.expectedOutput ?? "empty"}>
+            {quote ? (
+              quotedAmount(quote.expectedOutput, outputDecimals, outputAsset)
+            ) : estimate.loading ? (
+              <span className={styles.quoteLoading} aria-label="Loading quote">
+                …
+              </span>
+            ) : estimate.unavailable ? (
+              <span className={styles.quiet}>Quote unavailable</span>
+            ) : (
+              "—"
+            )}
+          </dd>
+        </div>
+        <div>
+          <dt>Minimum received</dt>
+          <dd>{quote ? quotedAmount(quote.minimumOutput, outputDecimals, outputAsset) : "—"}</dd>
+        </div>
+      </dl>
       <div className={styles.head}>
         <span className={styles.quiet}>Slippage limit</span>
         <Segmented
@@ -530,19 +564,15 @@ function PublicTradeForm({
           Your wallet · {wallet.address.slice(0, 6)}…{wallet.address.slice(-4)}
         </p>
       )}
-      <dl className={styles.quote}>
-        <div>
-          <dt>Expected</dt>
-          <dd>{quote ? quotedAmount(quote.expectedOutput, outputDecimals, outputAsset) : "—"}</dd>
-        </div>
-        <div>
-          <dt>Minimum</dt>
-          <dd>{quote ? quotedAmount(quote.minimumOutput, outputDecimals, outputAsset) : "—"}</dd>
-        </div>
-      </dl>
+
       <div className={styles.actions}>
         {!preview && wallet.status !== "connected" ? (
-          <Button onClick={() => wallet.connect(`Trade ${token.ticker}`)}>Connect wallet</Button>
+          <Button
+            disabled={wallet.status === "connecting"}
+            onClick={() => wallet.connect(`Trade ${token.ticker}`)}
+          >
+            {wallet.restoring ? "Reconnecting…" : "Connect wallet"}
+          </Button>
         ) : !preview && !wallet.onTargetChain ? (
           <Button onClick={() => void wallet.switchChain()}>Switch to Monad testnet</Button>
         ) : (

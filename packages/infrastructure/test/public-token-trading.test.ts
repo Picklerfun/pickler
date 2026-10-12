@@ -43,6 +43,16 @@ function fixture(change: Record<string, unknown> = {}) {
       async call(method, params) {
         assert.ok(reserved);
         calls++;
+        if (change.quoteOnly) {
+          assert.ok(
+            ![
+              "eth_estimateGas",
+              "eth_getTransactionCount",
+              "eth_maxPriorityFeePerGas",
+              "eth_getBalance",
+            ].includes(method),
+          );
+        }
         if (method === "eth_chainId") {
           return change.chain ?? "0x279f";
         }
@@ -180,3 +190,28 @@ test("public preparation refuses an inadequate current-fee ceiling without trans
   );
   assert.ok(f.calls() <= 40);
 });
+
+for (const side of ["buy", "sell"] as const) {
+  test(
+    "read-only " + side + " quote needs no balance, gas, nonce or transaction preparation",
+    async () => {
+      const f = fixture({
+        quoteOnly: true,
+        balanceOf: 0n,
+        native: "0x0",
+        baseFee: "0xffffffffffffffff",
+      });
+
+      const quoted = await f.driver.quote!(context, { ...input, side });
+
+      assert.equal(
+        quoted.quote.expectedOutput,
+        side === "buy" ? "1900000000000000000000" : "500000",
+      );
+      assert.equal(quoted.quote.amount, input.amount);
+      assert.equal(quoted.quote.side, side);
+      assert.equal("transaction" in quoted, false);
+      assert.ok(f.calls() <= 40);
+    },
+  );
+}

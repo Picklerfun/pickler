@@ -186,3 +186,36 @@ These tests use isolated loopback PostgreSQL and controlled RPC/wallet responses
 buy/sell publication, replay, concurrency, unchanged cursors and historical conflict preservation.
 Local acceptance does not establish deployed API availability. Both API and Web must publish
 through the existing automatic release process; no manual deployment is part of this change.
+
+## Receive estimates and browser reconnection
+
+With a connected browser wallet, the form reads
+`POST /api/v1/marketplace/personas/:handle/token/quote` after a 600 ms pause in valid input.
+The receive field shows tokens when buying and AUSD when selling, alongside the server-calculated
+minimum. Edits abort stale requests; failure shows an unavailable estimate instead of retaining
+an unrelated amount. A confirmed swap refreshes the estimate. The endpoint shares preparation's
+canonical verification and global RPC ceiling, but has its own six-per-wallet/minute bucket.
+It returns before balance admission, nonce, gas/fee estimation or transaction encoding. No wallet
+prompt or transaction is initiated by typing. Preview amounts remain labelled controlled fixtures.
+
+Reload restores a remembered browser wallet from its extension permission independently of a
+Pickler login. Delayed extension injection and native-balance reads are bounded; explicit
+Disconnect, revoked access and superseded connections cannot be undone by a late response.
+This does not authenticate account actions or prompt for a signature. Mera's existing restoration
+and private account sign-in behavior stay separate.
+
+Controlled regression checks include `apps/web/test/injected-resume.test.ts`, the public core,
+driver/API tests, `scripts/design/public-token-trading.mjs` and `scripts/design/wallet-reload.mjs`.
+The trading harness verifies receive amounts,
+debounced/stale replies, buy/sell, receipt preservation and wallet reload; remote acceptance still
+requires the automatically published API and Web. No manual deployment is part of this change.
+
+```sh
+node --import tsx scripts/design/wallet-reload.mjs http://localhost:3005
+```
+
+The wallet harness also runs against a loopback compiled web server. To reproduce the missing-auth
+session case, build that local web with the fixture-only public values
+`NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:8799` and
+`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_controlled`, start it with the loopback API
+transport, and pass its URL to the same harness. No real Supabase account or extension is used.

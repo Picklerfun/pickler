@@ -41,6 +41,7 @@ export function composePublicTokenTrading(
             policy: parseTokenLaunchPolicy(env.TOKEN_LAUNCH_POLICY_JSON!),
             rpc: createJsonRpc(env.MONAD_RPC_URL!),
             reserve: (wallet) => reservePublicTokenRpc(pool, wallet, limit),
+            reserveQuote: (wallet) => reservePublicTokenRpc(pool, wallet, limit, "quote"),
           }),
         }
       : {}),

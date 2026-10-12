@@ -55,7 +55,7 @@ export interface SignerAdapter {
    * Pick up a connection that already exists, without prompting. Null when there is nothing to
    * pick up, which includes a signer that cannot resume silently at all.
    */
-  resume: () => Promise<SignerAccount | null>;
+  resume: (signal?: AbortSignal) => Promise<SignerAccount | null>;
   /** The one call allowed to prompt. Null when the person closed the prompt. */
   connect: (mode?: ConnectMode) => Promise<SignerAccount | null>;
   /**

@@ -744,3 +744,8 @@ the published token again. Its strict wallet/hash body is public/no-store; OpenA
 validation, quota and unavailable errors. It verifies canonical receipt evidence and appends
 activity for immediate market reads. It never signs, sends, advances an index cursor or accepts
 client financial values. Studio authentication remains unchanged.
+
+`POST /v1/marketplace/personas/:handle/token/quote` is a strict public, private/no-store read under
+the existing public trading gate and global RPC ceiling. It accepts the same exact trade input,
+returns portable quantities without transaction data, and never signs, prepares or broadcasts.
+Its generated OpenAPI describes validation, curve, unavailable and quota errors.
