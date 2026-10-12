@@ -1486,155 +1486,6 @@
 
 /* ---------- Agents directory ---------- */
 
-.filterGroup {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 9px;
-  align-items: center;
-}
-
-/* The directory's search: a row of its own on a phone, the widest thing in the bar on a desk. */
-.directorySearch {
-  flex: 1 1 100%;
-  min-width: 0;
-}
-
-.filterCard .directorySearch,
-.filterCard .sortButton[aria-pressed="false"] {
-  background: var(--pk-bg);
-}
-
-@media (min-width: 900px) {
-  .directorySearch {
-    flex: 0 1 260px;
-  }
-}
-
-.filterSpacer {
-  flex: 1 1 20px;
-}
-
-/* Availability is not a filter like the others: it is the violet of a paid read. */
-.availableChip[aria-pressed="true"] {
-  background: var(--pk-state-info-bg);
-  border-color: var(--pk-violet-edge);
-  color: var(--pk-violet-ink);
-}
-
-.directory {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 14px;
-}
-
-@media (min-width: 900px) {
-  .directory {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-.agentCard {
-  composes: pk-panel from global;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  padding: 20px;
-  border-color: var(--pk-rule);
-  background: var(--pk-panel);
-}
-
-/* An agent that is not taking questions steps back rather than disappearing. */
-.agentCard[data-open="false"] {
-  border-color: var(--pk-rule);
-}
-
-.page a.agentCardHead {
-  display: flex;
-  align-items: center;
-  gap: 11px;
-  color: var(--pk-ink);
-}
-
-.page a.agentCardHead:hover strong {
-  color: var(--pk-lime-ink);
-}
-
-.agentCardName {
-  flex: 1 1 auto;
-  min-width: 0;
-}
-
-.agentCardName strong {
-  display: block;
-  font: 700 17px/1.2 var(--pk-font);
-}
-
-.agentCardName .label {
-  display: block;
-  margin-top: 4px;
-}
-
-.agentCardScore {
-  flex: none;
-  text-align: right;
-}
-
-.agentCardScore strong {
-  display: block;
-  font: 700 18px/1 var(--pk-font);
-  font-variant-numeric: tabular-nums;
-}
-
-.agentCardScore .label {
-  display: block;
-  margin-top: 4px;
-}
-
-.agentCardDecides {
-  flex: 1 1 auto;
-  margin: 0;
-  font: 400 14px/1.5 var(--pk-font);
-  color: var(--pk-ink-muted);
-  text-wrap: pretty;
-}
-
-.agentStats {
-  display: grid;
-  /* Four figures need the room; on a phone they read as two rows rather than four columns. */
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-  margin: 0;
-  padding: 12px 0;
-  border-top: 1px solid var(--pk-rule);
-  border-bottom: 1px solid var(--pk-rule);
-}
-
-.agentStat {
-  min-width: 0;
-}
-
-.agentStat dd {
-  margin: 0;
-  font: 600 13.5px/1.2 var(--pk-font);
-  font-variant-numeric: tabular-nums;
-}
-
-.agentStat dt {
-  margin-top: 4px;
-}
-
-@media (min-width: 560px) {
-  .agentStats {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-}
-
-.agentCardActions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
 /* A paid read is violet everywhere it appears: asking is not backing.
  *
  * The attribute and the two :not()s are what make that true rather than merely stated. Every
@@ -1659,15 +1510,6 @@
   color: var(--pk-on-violet);
 }
 
-.closedTag {
-  padding: 11px 16px;
-  border-style: dashed;
-  font: 600 12.5px/1 var(--pk-font);
-  letter-spacing: 0;
-  text-transform: none;
-  color: var(--pk-ink-faint);
-}
-
 .emptyNote {
   margin: 0;
   padding: 22px;
@@ -1683,6 +1525,10 @@
 .personaPage {
   width: 100%;
   min-width: 0;
+}
+
+.personaPage[data-token-market-preview="true"] {
+  max-width: 1120px;
 }
 
 .personaToken {
