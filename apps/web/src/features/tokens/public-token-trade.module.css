@@ -53,11 +53,28 @@
   font-size: 14px;
   line-height: 1.5;
 }
-.hash {
-  margin: 0;
-  overflow-wrap: anywhere;
+.transaction {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
   font-size: 12px;
   color: var(--pk-ink-muted);
+}
+.spinner {
+  flex: none;
+  animation: public-trade-spin 900ms linear infinite;
+}
+@keyframes public-trade-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation: none;
+  }
 }
 .error {
   color: var(--pk-magenta-ink);
