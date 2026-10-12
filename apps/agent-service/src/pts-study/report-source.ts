@@ -50,9 +50,11 @@ export async function exportPtsReportSource(
   const pool = store.pool;
   try {
     await mkdir(source.directory, { recursive: true, mode: 0o700 });
-    const exporter = await createPtsPartsExport(source.directory, commit);
-    await exportPerpsAuditParts(pool, source.configuration, exporter.emit);
-    await exporter.finish();
+    const exporter = await createPtsPartsExport(source.directory, commit, { reuseSource: true });
+    const capture = await exportPerpsAuditParts(pool, source.configuration, exporter.emit, {
+      reuse: exporter.reuse,
+    });
+    await exporter.finish(capture);
     return resolve(source.directory, "export.json");
   } catch (error) {
     primaryError = error;
