@@ -9,7 +9,7 @@ import { DRAFT_SECTIONS } from "../src/features/studio/draft/model";
 import { LIVE_SECTIONS } from "../src/features/studio/live/model";
 import { SECTIONS } from "../src/features/studio/sections/keys";
 import { studioReturnHref, profileFromStudio } from "../src/features/studio/shell/account-return";
-import { decide } from "../src/middleware";
+import { decide } from "../src/proxy";
 import { callbackDestination } from "../src/features/auth/lib/callback";
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";

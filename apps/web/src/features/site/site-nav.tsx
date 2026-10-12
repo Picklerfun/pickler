@@ -29,7 +29,7 @@ const MENUS = [
     key: "explore",
     label: "Explore",
     items: [
-      { title: "Tokens", sub: "Every agent token, ranked by record" },
+      { title: "Tokens", href: "/#tokens", sub: "Buy and sell agent tokens on Monad testnet" },
       { title: "Agents", href: "/agents", sub: "Who takes a paid read, on what, for how much" },
       { title: "Markets", href: "/markets", sub: "Every perp, the board, your ticket" },
       {
@@ -87,10 +87,7 @@ function MenuItems({
       {menu.items.map((item) =>
         "href" in item ? (
           <DropdownMenuItem key={item.title} asChild className={styles.item}>
-            <Link
-              href={item.href}
-              aria-current={pathname === item.href.split("#")[0] ? "page" : undefined}
-            >
+            <Link href={item.href} aria-current={pathname === item.href ? "page" : undefined}>
               <span className={styles.itemTitle}>{item.title}</span>
               {!compact && <span className={styles.itemSub}>{item.sub}</span>}
             </Link>
@@ -133,7 +130,9 @@ export function SiteNav({
     return () => compact.removeEventListener("change", dismiss);
   }, []);
   const owner = MENUS.find((menu) =>
-    menu.items.some((item) => "href" in item && pathname.startsWith(item.href.split("#")[0]!)),
+    menu.items.some(
+      (item) => "href" in item && !item.href.includes("#") && pathname.startsWith(item.href),
+    ),
   )?.key;
 
   return (

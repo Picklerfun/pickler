@@ -148,7 +148,8 @@ What is real today: the address, the chain and the native balance. What is not: 
 application included: the same brand, the same Explore / Build / Resources menus, the same height.
 It ends in a secondary "Get the app" link (`/#app`) and one primary "Create agent" action
 (`/create`). The action appears once, in the header or the compact menu footer; Build does not
-repeat it. Tokens, Leaderboard and Reputation remain Soon without links. `/create` changes only
+repeat it. Tokens links to the existing public launch section at `/#tokens`; Leaderboard and Reputation
+remain Soon without links. `/create` changes only
 the secondary link to "Trade with AI" (`/`). The landing
 and the explore routes (everything inside `PublicShell`) also carry the wallet with `connect`: Connect
 wallet beside the pills, and once connected the address, its balance, and the three pages that only
@@ -161,7 +162,7 @@ graduated token — not for who made it.
 Both are specified in `docs/specs/landing-trade-v1.md`. `/` (`features/landing/`) is the "Pickler
 Landing Trade v2" canvas: a light page with four dark blocks, each a subtree taking
 `data-surface="dark"` — the hero phone (`#hero-phone`), the three ways in (`#how`, cards
-`#how-hire`, `#how-back`, `#how-trade`, to `/agents`, `/tokens` and `/markets`), the FOUR STEPS
+`#how-hire`, `#how-back`, `#how-trade`, to `/agents`, `/#tokens` and `/markets`), the FOUR STEPS
 phone (`#steps-phone`, under `#app`) and the closing block (`#download`). The page reads public agent tokens from `/api/v1/marketplace/directory` into `components/token-market.tsx`, below the hero. Only `launchedToken` entries appear; cards link to the existing public agent profile and its Buy/Sell form. Missing tokens and failed reads have distinct messages. This read never queries RPC or asks for a wallet signature. The agents' latest actions are read from `/api/v1/marketplace/activity`, which the tape above the bar runs through — ticker or handle, the call, what came of it, ON PAPER (`lib/actions.ts`, pure and pinned in `apps/web/test/landing-actions.test.ts`; with nothing on record the tape is not drawn; marketplace-real-only-v1.md N8). The hero's dialogue beside the phone is the canvas's worked example of the kinds of action, not a read. Every other figure is the canvas's worked example inside the card that explains it (`lib/demo.ts`, pure
 and pinned in `apps/web/test/landing-demo.test.ts`: the six question/answer pairs over the phone,
 the candle game, the token curve, the padlock, the steps, the questions), drawn `aria-hidden` where
@@ -260,7 +261,9 @@ Nothing charges yet: the pay button carries the note rather than pretending. A r
 
 ## Dashboard and the public site
 
-The private creator studio lives at `/studio` and calls the Hono API. The studio lived at `/console` until 2026-09-25; no redirect is kept because nobody had launched. The public surface is the landing, `/create`, the auth screens, `/agents`, `/markets` and `/reads`; `/tokens` and `/leaderboard` answer 404 while their products are soon, and the navigation announces them as such (docs/specs/marketplace-real-only-v1.md N1, N2). Keep private research and public demonstration data separate; share visual components without automatically publishing results.
+The private creator studio lives at `/studio` and calls the Hono API. The studio lived at `/console` until 2026-09-25; no redirect is kept because nobody had launched. The public surface is the landing, `/create`, the auth screens, `/agents`, `/markets` and `/reads`; `/tokens` and `/leaderboard` remain unmounted; the Tokens navigation entry and landing Back action
+link to the existing `/#tokens` section, whose confirmed cards open `/agents/<handle>` for Buy/Sell.
+Leaderboard remains Soon (docs/specs/marketplace-real-only-v1.md N1, N2). Keep private research and public demonstration data separate; share visual components without automatically publishing results.
 
 <!-- BEGIN:nextjs-agent-rules -->
 
@@ -295,6 +298,21 @@ holds (`callbackDestination` in `features/auth/lib/callback.ts`): no master wall
 provisions a workspace. Provider access
 remains operator-enabled, separate from authentication. The completed signup screen links to
 ^the studio; public wallet/token/read demonstrations retain their existing design and limits.
+
+## Request proxy
+
+`src/proxy.ts` exports the Next.js 16 `proxy` request handler and the unchanged host/session
+decision rules. Keep the matcher, temporary uncached redirects, callback query and Studio rewrite
+intact. API JWT authorization remains independent. The request and routing regressions retain
+their historical middleware test filenames. OpenNext 1.20.6 can bundle this Node.js proxy for
+workerd, but labels that support experimental; a Next build alone is insufficient validation.
+Run the Worker build and controlled workerd routing checks before accepting the migration.
+For that controlled build, set `NEXT_PUBLIC_SUPABASE_URL=https://abcdefgh.supabase.co` and
+`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_test`. Start the generated Worker through
+`wrangler dev --local` using a temporary config without live service bindings, then run
+`PROXY_BASE_URL=http://127.0.0.1:8833 node scripts/design/proxy-routing.mjs` from the root.
+The suite refuses remote targets and verifies 12 host, cookie, redirect and rewrite scenarios.
+These synthetic build values are not user preview or deployment configuration.
 
 ## Worker build
 
@@ -409,7 +427,7 @@ No link in the studio, account or auth screens names a cross-product path as a l
 studio host the studio is `/` and `/studio`, `/agents`, `/agents/<handle>` and `/leaderboard` are
 404s, so the studio's home comes from `useStudioHref()` and a marketplace path from `useMarketplaceHref(path)`
 (`features/site/studio-href.tsx`, over `marketplaceUrl` in `server/hosts.ts`): relative on a host
-serving both products, `https://<marketplace host>/path` from the studio host. The middleware's
+serving both products, `https://<marketplace host>/path` from the studio host. The request proxy's
 rewrite of the studio root keeps the query, so `/?agent=<id>&section=<key>` is
 `/studio?agent=<id>&section=<key>` there.
 
@@ -784,7 +802,8 @@ needs a session with no wallet and the design harness has none;
 
 The studio Limits & funding section includes `sections/trading.tsx`: public account, preparation/explicit confirmation, mode and order history. Use private studio API DTOs and visibility-aware polling. Never import signer or infrastructure code.
 
-`/tokens` is not mounted while the launchpad is soon (marketplace-real-only-v1.md N2); `features/agents` keeps the launch board, the token page and the leaderboard for when it is.
+`/tokens` is not mounted (marketplace-real-only-v1.md N2); public discovery uses `/#tokens` and
+agent profiles. `features/agents` retains the historical unmounted launch board, token page and leaderboard.
 
 ## Design checks
 

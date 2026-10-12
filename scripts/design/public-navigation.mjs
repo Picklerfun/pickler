@@ -92,6 +92,9 @@ async function openMenu() {
       .getAttribute("data-disabled"),
     "",
   );
+  const tokens = menu.getByRole("menuitem", { name: "Tokens", exact: true });
+  assert.equal(await tokens.getAttribute("href"), "/#tokens");
+  assert.equal(await tokens.isEnabled(), true);
   const viewport = await page.evaluate(() => innerWidth);
   const create = menu.getByRole("menuitem", { name: "Create agent", exact: true });
   assert.equal(await create.count(), viewport <= 640 ? 1 : 0, "No duplicated Create agent");
@@ -136,13 +139,22 @@ try {
     } else {
       const explore = page.getByRole("button", { name: "Explore", exact: true });
       await explore.click();
-      await page.getByRole("menuitem", { name: /^Tokens/ }).waitFor();
+      const tokens = page.getByRole("menuitem", { name: /^Tokens/ });
+      await tokens.waitFor();
+      assert.equal(await tokens.getAttribute("href"), "/#tokens");
+      assert.equal(await tokens.isEnabled(), true);
       await page.keyboard.press("Escape");
       await page.getByRole("menu").waitFor({ state: "hidden" });
     }
   }
 
   await page.setViewportSize({ width: 797, height: 900 });
+  await page.getByRole("button", { name: "Navigation menu", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Tokens", exact: true }).click();
+  await page.waitForURL(base + "/#tokens");
+  await page.getByRole("heading", { name: "Agent tokens", exact: true }).waitFor();
+  await page.getByRole("menu").waitFor({ state: "hidden" });
+
   await page.getByRole("button", { name: "Navigation menu", exact: true }).click();
   await page.getByRole("menuitem", { name: "Agents", exact: true }).click();
   await page.waitForURL(base + "/agents");

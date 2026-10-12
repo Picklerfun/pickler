@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { AUTH_CALLBACK, decide, type AuthState, type Decision } from "../src/middleware";
+import { AUTH_CALLBACK, decide, type AuthState, type Decision } from "../src/proxy";
 import { AUTH_CALLBACK_PATH } from "../src/features/auth/lib/account";
 import { authConfigured, hasSessionCookie, returnTo } from "../src/server/guard";
 
