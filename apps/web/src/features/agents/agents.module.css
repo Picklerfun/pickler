@@ -1529,7 +1529,7 @@
   min-width: 0;
 }
 
-.personaPage[data-token-market-preview="true"] {
+.personaPage[data-token-market="true"] {
   max-width: 1120px;
 }
 
