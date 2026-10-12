@@ -1,21 +1,107 @@
 import type { Pool, PoolClient } from "pg";
 import { PilotError } from "@pickler/core";
+import { connectionFailure, queryFailure } from "./evaluation-timing.js";
+
+export interface PerpsLabFailureDiagnostic {
+  version: 1;
+  code: string;
+  operation: "pool-idle" | "borrowed-client" | "pool-query" | "client-query" | "connect";
+  at: number;
+  driverCode: string | null;
+  backendPid: number | null;
+}
+
+const connectionCodes = new Set([
+  "57P01",
+  "57P02",
+  "57P03",
+  "ECONNRESET",
+  "ECONNREFUSED",
+  "ECONNABORTED",
+  "EPIPE",
+  "ETIMEDOUT",
+  "ENOTFOUND",
+  "EAI_AGAIN",
+  "EHOSTUNREACH",
+  "ERR_STREAM_PREMATURE_CLOSE",
+]);
+
+// Exact messages emitted by the installed pg client when its connection is unusable.
+const connectionMessages = new Set([
+  "Connection terminated",
+  "Connection terminated unexpectedly",
+  "Client has encountered a connection error and is not queryable",
+  "Client was closed and is not queryable",
+]);
+
+function driverCode(error: unknown): string | null {
+  if (!error || typeof error !== "object") {
+    return null;
+  }
+  try {
+    const code = Reflect.get(error, "code");
+    return typeof code === "string" && (/^[A-Z0-9]{5}$/.test(code) || connectionCodes.has(code))
+      ? code
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function isConnectionFailure(error: unknown): boolean {
+  if (error instanceof PilotError) {
+    return ["PERSISTENCE_CONNECTION_FAILED", "PERSISTENCE_CONNECTION_TIMEOUT"].includes(error.code);
+  }
+  if (error instanceof Error && connectionMessages.has(error.message)) {
+    return true;
+  }
+  const code = driverCode(error);
+  return code !== null && (code.startsWith("08") || connectionCodes.has(code));
+}
+
+function backendPid(client?: PoolClient): number | null {
+  if (!client) {
+    return null;
+  }
+  const pid: unknown = Reflect.get(client, "processID");
+  return typeof pid === "number" && Number.isSafeInteger(pid) && pid > 0 ? pid : null;
+}
 
 /** A connection failure ends this local financial scope; it never retries a write. */
 export function guardPerpsLabPool(
   pool: Pool,
-  failed: (error: PilotError) => void = () => {},
+  failed: (error: PilotError, diagnostic: PerpsLabFailureDiagnostic) => void = () => {},
 ): Pool {
   let failure: PilotError | undefined;
   const clients = new Map<PoolClient, () => void>();
 
-  const fail = () => {
+  const fail = (
+    operation: PerpsLabFailureDiagnostic["operation"],
+    original?: unknown,
+    client?: PoolClient,
+  ) => {
     if (!failure) {
-      failure = new PilotError(
-        "PERSISTENCE_CONNECTION_FAILED",
-        "PostgreSQL connection closed unexpectedly; the local study must stop",
-      );
-      failed(failure);
+      const normalized = connectionFailure(original);
+      failure =
+        normalized instanceof PilotError && normalized.code === "PERSISTENCE_CONNECTION_TIMEOUT"
+          ? normalized
+          : new PilotError(
+              "PERSISTENCE_CONNECTION_FAILED",
+              "PostgreSQL connection closed unexpectedly; the local study must stop",
+            );
+      const diagnostic: PerpsLabFailureDiagnostic = {
+        version: 1,
+        code: failure.code,
+        operation,
+        at: Date.now(),
+        driverCode: driverCode(original),
+        backendPid: backendPid(client),
+      };
+      try {
+        failed(failure, diagnostic);
+      } catch {
+        // An observer cannot undo the latch or throw from a driver's error event.
+      }
     }
     return failure;
   };
@@ -24,11 +110,32 @@ export function guardPerpsLabPool(
       throw failure;
     }
   };
-  pool.on("error", fail);
+  const poolError = (error: unknown, client?: PoolClient) => {
+    fail("pool-idle", error, client);
+  };
+  pool.on("error", poolError);
+
+  const normalize = (
+    error: unknown,
+    operation: "connect" | "client-query" | "pool-query",
+    client?: PoolClient,
+  ): unknown => {
+    if (failure) {
+      return failure;
+    }
+    const normalized = connectionFailure(queryFailure(error));
+    if (normalized instanceof PilotError && !isConnectionFailure(normalized)) {
+      return normalized;
+    }
+    if (operation === "connect" || isConnectionFailure(normalized)) {
+      return fail(operation, error, client);
+    }
+    return normalized;
+  };
 
   function wrapClient(client: PoolClient): PoolClient {
-    const onError = () => {
-      fail();
+    const onError = (error: unknown) => {
+      fail("borrowed-client", error, client);
     };
     client.on("error", onError);
     const detach = () => {
@@ -57,7 +164,7 @@ export function guardPerpsLabPool(
               assertConnected();
               return result;
             } catch (error) {
-              throw failure ?? error;
+              throw normalize(error, "client-query", client);
             }
           };
         }
@@ -72,7 +179,12 @@ export function guardPerpsLabPool(
       if (property === "connect") {
         return async () => {
           assertConnected();
-          const client = await object.connect();
+          let client: PoolClient;
+          try {
+            client = await object.connect();
+          } catch (error) {
+            throw normalize(error, "connect");
+          }
           const guarded = wrapClient(client);
           if (failure) {
             guarded.release(true);
@@ -89,7 +201,7 @@ export function guardPerpsLabPool(
             assertConnected();
             return result;
           } catch (error) {
-            throw failure ?? error;
+            throw normalize(error, "pool-query");
           }
         };
       }
@@ -98,7 +210,7 @@ export function guardPerpsLabPool(
           try {
             await object.end();
           } finally {
-            pool.removeListener("error", fail);
+            pool.removeListener("error", poolError);
             for (const detach of clients.values()) {
               detach();
             }

@@ -186,3 +186,24 @@ for fast PTS. Controlled initial/final captures now retain all eleven eligible f
 bars and a genuine 5m boundary change remain unavailable. Candidate policy, geometry, risk, pricing,
 old versions and financial accounting are unchanged. These are data-integration regressions, not
 observed profitable trades or a reconstruction of an unrecorded historical failure frame.
+
+## Promise failures and interruption provenance
+
+The local financial pool guard also handles recognized connection failures returned directly by
+query/connect promises before a client or idle-pool error event arrives. Exact unusable-connection
+messages from the installed PostgreSQL driver are recognized when no driver code exists. Known
+connection deadlines, statement deadlines and explicit statement cancellation retain their distinct
+codes. An unrelated error is not evidence of a connection failure.
+
+The first connection failure latches the scope, cancels pending public acquisition and rejects new
+queries, connections and success acknowledgements. Its versioned compact diagnostic contains only
+the operation, safe driver code, receipt time and backend PID when supplied. An absent PID/code
+remains null; SQL, parameters, driver messages, credentials and owner tokens are never published.
+An abort wrapper preserves its known typed cancellation reason rather than a generic PTS error.
+Diagnostic observers cannot undo the latch or escape a driver's error event.
+
+Controlled tests cover promise-only failures, socket loss during a real isolated PostgreSQL query,
+read-only audit disconnection, cancellation and denied follow-up work. These checks validate error
+containment, not prevention of a PostgreSQL server failure, recovery of uncertain writes or PTS
+profitability. Missing historical driver types, transport phases, backend identities and triggering
+queries remain unverifiable. Never resume a failed scope or rewrite its pending positions.

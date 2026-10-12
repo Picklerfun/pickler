@@ -749,3 +749,11 @@ queries and success acknowledgements in that scope. Failed clients are discarded
 available. Never retry uncertain writes or infer their rollback from the guard. Read-only audit
 sink disconnect tests terminate only a backend in a disposable test database and verify unchanged
 history. Other product/Worker pool composition remains unchanged.
+
+The guard also latches recognized fatal connection responses from query/connect promises before
+an error event arrives. It preserves the existing connection deadline and query timeout/cancellation
+codes. Its optional notification payload is `PerpsLabFailureDiagnostic` version 1: fixed operation,
+safe driver code, receipt time and backend PID when known. Never include SQL, values, messages,
+URLs, credentials or ownership tokens; an absent backend PID stays null. Diagnostic callbacks
+cannot undo the latch or throw from a driver event. Controlled disconnect tests must use an
+isolated PostgreSQL test instance, never the physical server running a prospective study.
