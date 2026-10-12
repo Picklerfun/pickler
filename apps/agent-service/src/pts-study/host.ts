@@ -267,6 +267,7 @@ export async function runPtsHost(
           ...scope,
           owner: lease.owner,
           signal: ownedSignal,
+          readPolicy: "pts-snapshot-v1",
           ...(lease.assertActive ? { assertActive: lease.assertActive } : {}),
         }),
       afterObservation: async (observation) => {
