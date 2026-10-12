@@ -720,3 +720,13 @@ The existing JWT-only token operation status route also performs explicit bounde
 expired unidentified launch. It requires stable canonical factory evidence before returning
 `EXPIRED_LAUNCH_NOT_CREATED`; a found event restores the hash for ordinary receipt reconciliation.
 No endpoint, caller-supplied recovery proof, automatic signature or broadcast is added.
+
+## Immediate app launch attribution
+
+`token-launch.ts` composes the confirmed-launch publisher with the operational driver and existing
+RPC reservation. A successful launch status returns finalized only after its canonical factory
+receipt has been attributed, independently of historical indexer progress. GET token state also
+reconciles a stored finalized launch whose identity remains pending, then re-reads stored state;
+ordinary state and public marketplace reads remain database-only. Recovery never signs, submits,
+issues another grant or advances cursors. JWT/owner authorization and private/no-store remain
+mandatory. Route OpenAPI describes this bounded recovery exception; DTOs and endpoints are unchanged.
