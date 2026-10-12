@@ -550,3 +550,7 @@ The public trading use case exposes `confirm(handle, { wallet, txHash })` throug
 injected driver port. It requires the independent trading gate, validates the wallet/hash and
 resolves the published confirmed testnet token before delegation. Confirmation never prepares,
 signs or broadcasts a transaction. Provider evidence and persistence stay in infrastructure.
+
+`tokenPriceMovement` compares the latest two ordered canonical observations with integer-only
+basis-point rounding. It returns direction separately so sub-basis-point moves never become flat.
+Missing or nonpositive observations return null; this metric is not a 24-hour return or quote.
