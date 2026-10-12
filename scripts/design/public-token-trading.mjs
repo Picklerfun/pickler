@@ -233,10 +233,10 @@ try {
         .getByRole("button", { name: side === "buy" ? "Buy" : "Sell", exact: true })
         .click();
       await trade
-        .getByRole("button", { name: `${side === "buy" ? "Buy" : "Sell"} token`, exact: true })
+        .getByRole("button", { name: `${side === "buy" ? "Buy" : "Sell"} HALF`, exact: true })
         .click();
       await trade
-        .getByText(side === "buy" ? "Purchase confirmed." : "Sale confirmed.", { exact: true })
+        .getByRole("button", { name: side === "buy" ? "Bought HALF" : "Sold HALF", exact: true })
         .waitFor();
       assert.equal(
         await trade.getByRole("button", { name: "Check transaction", exact: true }).count(),
@@ -252,11 +252,19 @@ try {
   }
   await page.goto(`${base}/agents/public_trade`);
   const trade = page.getByRole("region", { name: "Trade token publicly" });
-  await trade.getByRole("button", { name: "Buy token", exact: true }).waitFor();
+  await trade.getByRole("button", { name: "Buy HALF", exact: true }).waitFor();
   assert.equal(reads, 0, "no background quote requests");
+  const readyBounds = await trade
+    .getByRole("button", { name: "Buy HALF", exact: true })
+    .boundingBox();
+  const readyOffset = await trade
+    .getByRole("button", { name: "Buy HALF", exact: true })
+    .evaluate(
+      (el) => el.getBoundingClientRect().top - el.closest("section").getBoundingClientRect().top,
+    );
   refusal = true;
-  await trade.getByRole("button", { name: "Buy token", exact: true }).click();
-  await trade.getByRole("alert").waitFor();
+  await trade.getByRole("button", { name: "Buy HALF", exact: true }).click();
+  await trade.getByRole("button", { name: "Retry buy", exact: true }).waitFor();
   assert.equal(
     await trade.getByRole("textbox", { name: "Public amount · AUSD", exact: true }).inputValue(),
     "1",
@@ -264,10 +272,37 @@ try {
   assert.equal(broadcasts.size, 0);
   refusal = false;
   holdReceipts = true;
-  await trade.getByRole("button", { name: "Buy token", exact: true }).click();
-  const approvalButton = trade.getByRole("button", { name: "Confirming approval…", exact: true });
+  await trade.getByRole("button", { name: "Retry buy", exact: true }).click();
+  const approvalButton = trade.getByRole("button", { name: "Approving AUSD", exact: true });
   await approvalButton.waitFor();
   assert.equal(await approvalButton.isDisabled(), true);
+  const approvalBounds = await approvalButton.boundingBox();
+  assert.equal(approvalBounds.height, readyBounds.height, "button height stays fixed");
+  assert.equal(
+    await approvalButton.evaluate(
+      (el) => el.getBoundingClientRect().top - el.closest("section").getBoundingClientRect().top,
+    ),
+    readyOffset,
+    "confirmation does not push the button down",
+  );
+  assert.ok(
+    await approvalButton.evaluate((el) =>
+      el.getAnimations({ subtree: true }).some((animation) => animation.playState === "running"),
+    ),
+    "progress animates inside the button",
+  );
+  assert.equal(
+    await trade.locator("p[role=status], p[role=alert]").count(),
+    0,
+    "no separate status or error paragraphs",
+  );
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  assert.equal(
+    await approvalButton.evaluate((el) => el.getAnimations({ subtree: true }).length),
+    0,
+    "reduced motion disables button animation",
+  );
+  await page.emulateMedia({ reducedMotion: "no-preference" });
   assert.equal(await approvalButton.getAttribute("aria-busy"), "true");
   assert.equal(
     await trade.locator('[aria-busy="true"]').count(),
@@ -285,49 +320,54 @@ try {
   await trade.screenshot({ path: path.join(output, "visitor-confirming-approval.png") });
   transientReceiptFailure = true;
   holdReceipts = false;
-  await trade.getByText("Purchase confirmed.", { exact: true }).waitFor();
+  await trade.getByRole("button", { name: "Bought HALF", exact: true }).waitFor();
   assert.equal(broadcasts.size, 2, "one click completes approval then purchase");
   assert.equal([...broadcasts.values()][1].to.toLowerCase(), curve.toLowerCase());
   await trade.screenshot({ path: path.join(output, "visitor-purchase-confirmed.png") });
+  assert.equal(
+    await trade.getByRole("button", { name: "Bought HALF", exact: true }).isDisabled(),
+    true,
+    "success cannot accidentally send another trade",
+  );
 
   await trade.getByRole("button", { name: "Sell", exact: true }).click();
-  await trade.getByRole("button", { name: "Sell token", exact: true }).click();
-  await trade.getByText("Sale confirmed.", { exact: true }).waitFor();
+  await trade.getByRole("button", { name: "Sell HALF", exact: true }).click();
+  await trade.getByRole("button", { name: "Sold HALF", exact: true }).waitFor();
   assert.equal(broadcasts.size, 4, "sale also continues approval then swap");
 
   await trade.getByRole("button", { name: "Buy", exact: true }).click();
   holdReceipts = true;
-  await trade.getByRole("button", { name: "Buy token", exact: true }).click();
-  await trade.getByRole("button", { name: "Confirming trade…", exact: true }).waitFor();
+  await trade.getByRole("button", { name: "Buy HALF", exact: true }).click();
+  await trade.getByRole("button", { name: "Buying HALF", exact: true }).waitFor();
   const pendingCount = broadcasts.size;
   await page.reload();
-  await trade.getByRole("button", { name: "Confirming trade…", exact: true }).waitFor();
+  await trade.getByRole("button", { name: "Buying HALF", exact: true }).waitFor();
   assert.equal(broadcasts.size, pendingCount, "reload reads the existing hash without sending");
   holdReceipts = false;
-  await trade.getByText("Purchase confirmed.", { exact: true }).waitFor();
+  await trade.getByRole("button", { name: "Bought HALF", exact: true }).waitFor();
   assert.equal(broadcasts.size, pendingCount);
 
   // Restoring an approval never opens a new wallet request from an effect.
   approved.sell = false;
   await trade.getByRole("button", { name: "Sell", exact: true }).click();
   holdReceipts = true;
-  await trade.getByRole("button", { name: "Sell token", exact: true }).click();
-  await trade.getByRole("button", { name: "Confirming approval…", exact: true }).waitFor();
+  await trade.getByRole("button", { name: "Sell HALF", exact: true }).click();
+  await trade.getByRole("button", { name: "Approving HALF", exact: true }).waitFor();
   const beforeRestore = broadcasts.size;
   await page.reload();
-  await trade.getByRole("button", { name: "Confirming approval…", exact: true }).waitFor();
+  await trade.getByRole("button", { name: "Approving HALF", exact: true }).waitFor();
   holdReceipts = false;
   await trade.getByRole("button", { name: "Confirm sell", exact: true }).waitFor();
   assert.equal(broadcasts.size, beforeRestore);
   await trade.getByRole("button", { name: "Confirm sell", exact: true }).click();
-  await trade.getByText("Sale confirmed.", { exact: true }).waitFor();
+  await trade.getByRole("button", { name: "Sold HALF", exact: true }).waitFor();
   assert.equal(broadcasts.size, beforeRestore + 1);
 
   await page.evaluate(() => {
     window.__cancel = true;
   });
-  await trade.getByRole("button", { name: "Sell token", exact: true }).click();
-  await trade.getByText("Signature cancelled. Your amount is kept.", { exact: true }).waitFor();
+  await trade.getByRole("button", { name: "Sell HALF", exact: true }).click();
+  await trade.getByRole("button", { name: "Cancelled · try again", exact: true }).waitFor();
   const beforeCancel = broadcasts.size;
   await trade.getByRole("button", { name: "Cancel", exact: true }).click();
   assert.equal(broadcasts.size, beforeCancel);
@@ -340,17 +380,15 @@ try {
     window.__cancel = false;
     window.__uncertain = true;
   });
-  await trade.getByRole("button", { name: "Sell token", exact: true }).click();
-  await trade.getByRole("alert").waitFor();
+  await trade.getByRole("button", { name: "Sell HALF", exact: true }).click();
+  await trade.getByRole("button", { name: "Wallet response lost", exact: true }).waitFor();
   assert.equal(
-    await trade
-      .getByRole("button", { name: "Wallet response unavailable", exact: true })
-      .isDisabled(),
+    await trade.getByRole("button", { name: "Wallet response lost", exact: true }).isDisabled(),
     true,
   );
   const uncertainCount = broadcasts.size;
   await page.reload();
-  await trade.getByRole("button", { name: "Wallet response unavailable", exact: true }).waitFor();
+  await trade.getByRole("button", { name: "Wallet response lost", exact: true }).waitFor();
   assert.equal(broadcasts.size, uncertainCount, "uncertain submission is not retried");
   assert.equal(
     await trade.getByRole("textbox", { name: "Public amount · HALF", exact: true }).inputValue(),
