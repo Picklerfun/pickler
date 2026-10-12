@@ -144,7 +144,8 @@ function PublicTradeForm({
   const displayPhase =
     phase ?? (observing ? (attempt?.prepared.quote.approval ? "approval" : "trade") : null);
   const busy = displayPhase !== null;
-  const active = attempt !== null && !["confirmed", "reverted"].includes(attempt.status);
+  const active =
+    attempt !== null && !["confirmed", "reverted", "cancelled"].includes(attempt.status);
   const restored: TradeDraft = {
     side: attempt?.prepared.quote.side ?? "buy",
     buyAmount:
@@ -298,6 +299,7 @@ function PublicTradeForm({
         attempt?.status === "review" ? attempt.prepared : await requestPrepared(controller.signal);
       const result = await runPublicTokenTrade({
         prepared: first,
+        approvalHash: attempt?.status === "review" ? attempt.approvalHash : undefined,
         signal: controller.signal,
         prepareNext: () => requestPrepared(controller.signal, first),
         send: async (prepared) => {
@@ -360,7 +362,7 @@ function PublicTradeForm({
         keep({ ...saved, status: result === "pending" ? "confirming" : result });
         if (result === "confirmed" && saved.prepared.quote.approval) {
           const prepared = await requestPrepared(controller.signal, saved.prepared);
-          keep({ prepared, status: "review", hash: null });
+          keep({ prepared, status: "review", hash: null, approvalHash: saved.hash! });
         } else if (result === "confirmed") {
           onConfirmed?.(saved.hash!);
         }
@@ -435,6 +437,9 @@ function PublicTradeForm({
   const outputAsset = quote?.side === "buy" ? token.ticker : "AUSD";
   const outputDecimals = quote?.side === "buy" ? 18 : 6;
   const ticker = token.ticker.replace(/^\$+/, "");
+  const approvalHash =
+    attempt?.approvalHash ?? (attempt?.prepared.quote.approval ? attempt.hash : null);
+  const tradeHash = attempt && !attempt.prepared.quote.approval ? attempt.hash : null;
   let actionState: TradeActionState = "ready";
   let actionLabel = `${side === "buy" ? "Buy" : "Sell"} ${ticker}`;
   let actionHint: string | undefined;
@@ -561,25 +566,46 @@ function PublicTradeForm({
             variant="secondary"
             onClick={() => {
               edit(form);
-              keep(null);
+              keep({ ...attempt, status: "cancelled" });
             }}
           >
             Cancel
           </Button>
         )}
       </div>
-      <div className={styles.transaction}>
-        <span>1% curve fee · gas in MON</span>
-        {attempt?.hash && (
-          <ChainReference
-            value={attempt.hash}
-            chainId={token.chainId}
-            kind="tx"
-            label="trade transaction"
-            preview={preview}
-          />
-        )}
-      </div>
+      <p className={styles.quiet}>1% curve fee · gas in MON</p>
+      {(approvalHash || tradeHash) && (
+        <dl className={styles.transactions} aria-label="Transaction receipts">
+          {approvalHash && (
+            <div className={styles.transaction}>
+              <dt>Approval</dt>
+              <dd>
+                <ChainReference
+                  value={approvalHash}
+                  chainId={token.chainId}
+                  kind="tx"
+                  label="approval transaction"
+                  preview={preview}
+                />
+              </dd>
+            </div>
+          )}
+          {tradeHash && tradeHash !== approvalHash && (
+            <div className={styles.transaction}>
+              <dt>{attempt?.prepared.quote.side === "buy" ? "Buy" : "Sell"}</dt>
+              <dd>
+                <ChainReference
+                  value={tradeHash}
+                  chainId={token.chainId}
+                  kind="tx"
+                  label={`${attempt?.prepared.quote.side} transaction`}
+                  preview={preview}
+                />
+              </dd>
+            </div>
+          )}
+        </dl>
+      )}
     </section>
   );
 }
