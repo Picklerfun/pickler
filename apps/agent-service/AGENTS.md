@@ -422,3 +422,8 @@ separately; a blocked server read can persist until its unchanged ten-second sta
 The thirty-pair source-only benchmark uses synthetic JSON, verifies identical hashes and includes
 worker startup. It does not measure provider latency or strategy returns. Read
 [PTS report persistence](PTS-REPORT-PERSISTENCE.md) for checks and evidence limits.
+
+Local PTS v8/v9 lease-bound account reads explicitly select infrastructure's pts-snapshot-v1
+without changing mutations, financial rules or deadlines. Consistent inspection uses no exclusive
+study lock; final ownership checks use fresh read-committed state outside the snapshot.
+See [PTS read isolation](PTS-STUDY-READ-ISOLATION.md) for controlled proof and original incident limits.
