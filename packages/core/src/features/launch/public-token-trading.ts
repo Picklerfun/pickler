@@ -33,6 +33,8 @@ export interface PublicTokenTradePrepared {
   quote: TokenTradeQuote;
   transaction: PublicTokenTransaction;
 }
+export type PublicTokenTradeQuoted = Omit<PublicTokenTradePrepared, "transaction">;
+
 export class PublicTokenTradeError extends Error {
   constructor(
     public readonly code:
@@ -52,6 +54,10 @@ export interface PublicTokenTradeConfirmation {
   txHash: string;
 }
 export interface PublicTokenTradeDriver {
+  quote?(
+    context: PublicTokenTradeContext,
+    input: PublicTokenTradeInput,
+  ): Promise<PublicTokenTradeQuoted>;
   confirm?(
     context: PublicTokenTradeContext,
     input: PublicTokenTradeConfirmation,
@@ -66,7 +72,31 @@ export function createPublicTokenTrading(deps: {
   token(handle: string): Promise<PublicTokenTradeContext | null>;
   driver?: PublicTokenTradeDriver;
 }) {
+  async function tradeContext(handle: string, input: PublicTokenTradeInput) {
+    if (
+      !/^[a-z0-9_]{3,15}$/.test(handle) ||
+      !/^0x[0-9a-f]{40}$/i.test(input.wallet) ||
+      /^0x0+$/.test(input.wallet) ||
+      !/^[1-9][0-9]{0,77}$/.test(input.amount) ||
+      BigInt(input.amount) >= 2n ** 256n ||
+      !["buy", "sell"].includes(input.side)
+    ) {
+      throw new PublicTokenTradeError("INVALID_TRADE");
+    }
+    tokenTradeMinimumOutput(1n, input.slippageBps);
+    const context = await deps.token(handle);
+    if (!context || context.chainId !== 10143) {
+      throw new PublicTokenTradeError("TOKEN_NOT_FOUND");
+    }
+    return context;
+  }
   return {
+    async quote(handle: string, input: PublicTokenTradeInput) {
+      if (!deps.enabled || !deps.driver?.quote) {
+        throw new PublicTokenTradeError("TRADING_UNAVAILABLE");
+      }
+      return deps.driver.quote(await tradeContext(handle, input), input);
+    },
     async confirm(handle: string, input: PublicTokenTradeConfirmation) {
       if (!deps.enabled || !deps.driver?.confirm) {
         throw new PublicTokenTradeError("TRADING_UNAVAILABLE");
@@ -89,21 +119,7 @@ export function createPublicTokenTrading(deps: {
       if (!deps.enabled || !deps.driver) {
         throw new PublicTokenTradeError("TRADING_UNAVAILABLE");
       }
-      if (
-        !/^[a-z0-9_]{3,15}$/.test(handle) ||
-        !/^0x[0-9a-f]{40}$/i.test(input.wallet) ||
-        /^0x0+$/.test(input.wallet) ||
-        !/^[1-9][0-9]{0,77}$/.test(input.amount) ||
-        BigInt(input.amount) >= 2n ** 256n ||
-        !["buy", "sell"].includes(input.side)
-      ) {
-        throw new PublicTokenTradeError("INVALID_TRADE");
-      }
-      tokenTradeMinimumOutput(1n, input.slippageBps);
-      const context = await deps.token(handle);
-      if (!context || context.chainId !== 10143) {
-        throw new PublicTokenTradeError("TOKEN_NOT_FOUND");
-      }
+      const context = await tradeContext(handle, input);
       return deps.driver.prepare(context, input);
     },
   };

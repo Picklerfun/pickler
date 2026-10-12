@@ -26,6 +26,58 @@ declare global {
 export const getProvider = (): Eip1193Provider | null =>
   typeof window === "undefined" ? null : (window.ethereum ?? null);
 
+/** Extensions can inject after hydration. Wait briefly without asking for account permission. */
+export function waitForProvider(signal?: AbortSignal): Promise<Eip1193Provider | null> {
+  const available = getProvider();
+  if (available || typeof window === "undefined" || signal?.aborted) {
+    return Promise.resolve(signal?.aborted ? null : available);
+  }
+  return new Promise((resolve) => {
+    const finish = (provider: Eip1193Provider | null) => {
+      clearInterval(poll);
+      clearTimeout(deadline);
+      window.removeEventListener("ethereum#initialized", check);
+      signal?.removeEventListener("abort", cancelled);
+      resolve(provider);
+    };
+    const check = () => {
+      const provider = getProvider();
+      if (provider) {
+        finish(provider);
+      }
+    };
+    const cancelled = () => finish(null);
+    const poll = setInterval(check, 100);
+    const deadline = setTimeout(cancelled, 3_000);
+    window.addEventListener("ethereum#initialized", check);
+    signal?.addEventListener("abort", cancelled, { once: true });
+    check();
+  });
+}
+
+/** A silent wallet read must not leave reconnection waiting on an unreachable RPC. */
+export function boundedWalletRead<T>(
+  read: Promise<T>,
+  fallback: T,
+  signal?: AbortSignal,
+  timeout = 3_000,
+): Promise<T> {
+  if (signal?.aborted) {
+    return Promise.resolve(fallback);
+  }
+  return new Promise((resolve) => {
+    const finish = (value: T) => {
+      clearTimeout(timer);
+      signal?.removeEventListener("abort", cancelled);
+      resolve(value);
+    };
+    const cancelled = () => finish(fallback);
+    const timer = setTimeout(cancelled, timeout);
+    signal?.addEventListener("abort", cancelled, { once: true });
+    void read.then(finish, cancelled);
+  });
+}
+
 /** The chain the testnet runs on. Anything else is a wallet pointed somewhere we do not read. */
 export const TARGET_CHAIN = MONAD_TESTNET;
 
@@ -34,7 +86,12 @@ const hexChainId = `0x${TARGET_CHAIN.chainId.toString(16)}`;
 /** Addresses the wallet already shares with this site. Never prompts. */
 export async function readAccounts(provider: Eip1193Provider): Promise<string[]> {
   const accounts = await provider.request({ method: "eth_accounts" });
-  return Array.isArray(accounts) ? (accounts as string[]) : [];
+  return Array.isArray(accounts)
+    ? accounts.filter(
+        (account): account is string =>
+          typeof account === "string" && /^0x[0-9a-f]{40}$/i.test(account),
+      )
+    : [];
 }
 
 /** Asks for access. This is the only call that opens the wallet. */

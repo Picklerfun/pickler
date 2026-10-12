@@ -41,6 +41,8 @@ try {
   browser = await openBrowser();
   const context = await browser.newContext();
   let confirmations = 0;
+  let quoteReads = 0;
+  let delayedQuote = false;
   let reads = 0,
     nonce = 0,
     holdReceipts = false,
@@ -49,7 +51,11 @@ try {
   const approved = { buy: false, sell: false };
   await context.addInitScript(
     ({ wallet }) => {
-      localStorage.setItem("pk.wallet.kind", "injected");
+      if (!sessionStorage.getItem("pk.controlled.visited")) {
+        localStorage.setItem("pk.wallet.kind", "injected");
+        sessionStorage.setItem("pk.controlled.visited", "yes");
+      }
+      window.__walletRequests = [];
       window.__sent = [];
       window.__uncertain = false;
       window.__cancel = false;
@@ -58,6 +64,7 @@ try {
         on() {},
         removeListener() {},
         async request({ method, params }) {
+          window.__walletRequests.push(method);
           if (method === "eth_accounts" || method === "eth_requestAccounts") {
             return [wallet];
           }
@@ -119,6 +126,34 @@ try {
       assert.ok(tx && tx.to.toLowerCase() === curve.toLowerCase());
       confirmations++;
       return route.fulfill({ json: { status: "confirmed" } });
+    }
+    if (url.pathname === "/api/v1/marketplace/personas/public_trade/token/quote") {
+      quoteReads++;
+      const input = request.postDataJSON();
+      assert.equal(input.wallet, wallet);
+      assert.equal(request.headers().authorization, undefined);
+      const quote = { ...quotes[input.side], amount: input.amount, slippageBps: input.slippageBps };
+      if (input.side === "buy" && input.amount === "2000000") {
+        quote.expectedOutput = "3800000000000000000000";
+        quote.minimumOutput = "3781000000000000000000";
+        if (delayedQuote) {
+          await new Promise((resolve) => setTimeout(resolve, 1400));
+        }
+      }
+      if (input.side === "buy" && input.amount === "3000000") {
+        quote.expectedOutput = "5700000000000000000000";
+        quote.minimumOutput = "5671500000000000000000";
+      }
+      return route.fulfill({
+        json: {
+          version: 1,
+          token,
+          curve,
+          quoteToken: AUSD[10143].address,
+          expiresAt: new Date(Date.now() + 300_000).toISOString(),
+          quote,
+        },
+      });
     }
     if (url.pathname === "/api/v1/marketplace/personas/public_trade/token/prepare") {
       reads++;
@@ -213,6 +248,7 @@ try {
     return route.continue();
   });
   page = await context.newPage();
+  page.setDefaultTimeout(15_000);
   page.on("pageerror", (e) => errors.push(e.message));
   for (const width of [1280, 380, 320]) {
     await page.setViewportSize({ width, height: 1000 });
@@ -298,7 +334,35 @@ try {
   await page.goto(`${base}/agents/public_trade`);
   const trade = page.getByRole("region", { name: "Trade token publicly" });
   await trade.getByRole("button", { name: "Buy HALF", exact: true }).waitFor();
-  assert.equal(reads, 0, "no background quote requests");
+  const estimate = trade.getByRole("definition").first();
+  await estimate.getByText(/1,327\.492339/).waitFor();
+  assert.equal(reads, 0, "background quotes never prepare transactions");
+  assert.equal(broadcasts.size, 0, "showing a quote never broadcasts");
+  const amountField = trade.getByRole("textbox", { name: "Public amount · AUSD", exact: true });
+  const quotedBefore = quoteReads;
+  await amountField.fill("2");
+  await amountField.fill("3");
+  await estimate.getByText(/5,700/).waitFor();
+  assert.equal(quoteReads, quotedBefore + 1, "rapid edits are debounced");
+  delayedQuote = true;
+  await amountField.fill("2");
+  await page.waitForRequest(
+    (request) =>
+      request.url().endsWith("/token/quote") && request.postDataJSON().amount === "2000000",
+  );
+  await amountField.fill("3");
+  assert.equal(await estimate.getByText(/3,800/).count(), 0, "old amount clears immediately");
+  await estimate.getByText(/5,700/).waitFor();
+  await page.waitForTimeout(1500);
+  assert.equal(
+    await estimate.getByText(/3,800/).count(),
+    0,
+    "late quote cannot replace the current amount",
+  );
+  delayedQuote = false;
+  await amountField.fill("1");
+  await estimate.getByText(/1,327\.492339/).waitFor();
+  await trade.screenshot({ path: path.join(output, "visitor-live-estimate.png") });
   const readyBounds = await trade
     .getByRole("button", { name: "Buy HALF", exact: true })
     .boundingBox();

@@ -84,6 +84,64 @@ export function marketplaceRoutes(
     },
   );
   api.post(
+    "/personas/:handle/token/quote",
+    operation("marketplaceTokenQuote", {
+      security: "public",
+      body: dto.publicTokenTradeInputSchema,
+      response: dto.publicTokenTradeQuotedSchema,
+      errors: dto.studioErrorSchema,
+      errorStatuses: [400, 404, 409, 429, 503],
+      description:
+        "Read the expected and minimum output of an exact-input Monad testnet curve trade. Resolves the published canonical token and current curve state under the existing global RPC ceiling. No nonce, gas estimate, transaction, signature or broadcast; a quote does not authorize a swap. Private no-store response.",
+    }),
+    async (c) => {
+      c.header("Cache-Control", "private, no-store");
+      const parsed = dto.publicTokenTradeInputSchema.safeParse(
+        await c.req.json().catch(() => null),
+      );
+      if (!parsed.success) {
+        return c.json({ error: "INVALID_TRADE", message: "Invalid trade parameters." }, 400);
+      }
+      const body = parsed.data;
+      if (!trading) {
+        return c.json(
+          { error: "TRADING_UNAVAILABLE", message: "Public trading is unavailable." },
+          503,
+        );
+      }
+      try {
+        return c.json(
+          dto.publicTokenTradeQuotedSchema.parse(await trading.quote(c.req.param("handle"), body)),
+        );
+      } catch (error) {
+        if (error instanceof TokenTradeError) {
+          return c.json({ error: error.code, message: error.code }, 409);
+        }
+        if (error instanceof PublicTokenTradeError) {
+          const status =
+            error.code === "RPC_LIMIT"
+              ? 429
+              : error.code === "TOKEN_NOT_FOUND"
+                ? 404
+                : error.code === "INVALID_TRADE"
+                  ? 400
+                  : 503;
+          if (status === 429) {
+            c.header("Retry-After", "60");
+          }
+          return c.json({ error: error.code, message: error.code }, status);
+        }
+        return c.json(
+          {
+            error: "PROVIDER_UNAVAILABLE",
+            message: "Could not read the quote. No transaction was prepared.",
+          },
+          503,
+        );
+      }
+    },
+  );
+  api.post(
     "/personas/:handle/token/prepare",
     operation("marketplaceTokenPrepare", {
       security: "public",

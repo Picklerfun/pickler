@@ -10,7 +10,21 @@ const input = { wallet, side: "buy", amount: "1000000", slippageBps: 50 };
 function app(prepare: (handle: string, input: unknown) => Promise<PublicTokenTradePrepared>) {
   return createApp({
     ...documentationServices({ growth: true }),
-    publicTokenTrading: { prepare, confirm: async () => ({ status: "confirmed" }) },
+    publicTokenTrading: {
+      prepare,
+      quote: async (handle, input) => {
+        const prepared = await prepare(handle, input);
+        return {
+          version: prepared.version,
+          token: prepared.token,
+          curve: prepared.curve,
+          quoteToken: prepared.quoteToken,
+          expiresAt: prepared.expiresAt,
+          quote: prepared.quote,
+        };
+      },
+      confirm: async () => ({ status: "confirmed" }),
+    },
   });
 }
 function request(instance: ReturnType<typeof app>, body: unknown = input) {
@@ -127,4 +141,58 @@ test("public confirmation is strict, no-store and does not accept contracts or f
     assert.equal(response.status, body === confirmation ? 200 : 400);
     assert.equal(response.headers.get("cache-control"), "private, no-store");
   }
+});
+
+test("quote is public and no-store, returns quantities without a transaction, and validates strict input", async () => {
+  let calls = 0;
+  const instance = createApp({
+    ...documentationServices({ growth: true }),
+    publicTokenTrading: {
+      prepare: async () => {
+        throw new Error("Must not prepare");
+      },
+      confirm: async () => ({ status: "pending" }),
+      quote: async (handle, requested) => {
+        calls++;
+        assert.equal(handle, "agent");
+        assert.deepEqual(requested, input);
+        return {
+          version: 1,
+          token,
+          curve,
+          quoteToken: wallet,
+          expiresAt: new Date(Date.now() + 300_000).toISOString(),
+          quote: {
+            amount: input.amount,
+            slippageBps: input.slippageBps,
+            side: "buy",
+            approval: true,
+            expectedOutput: "1900000000000000000000",
+            minimumOutput: "1890500000000000000000",
+            balance: "0",
+            allowance: "0",
+            feeBps: 100,
+          },
+        };
+      },
+    },
+  });
+  for (const body of [input, { ...input, to: curve }, { ...input, amount: "0" }]) {
+    const response = await instance.request(
+      "/v1/marketplace/personas/agent/token/quote",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      },
+      { APP_ENV: "local" } as never,
+    );
+    assert.equal(response.status, body === input ? 200 : 400);
+    assert.equal(response.headers.get("cache-control"), "private, no-store");
+    if (body === input) {
+      const quoted = (await response.json()) as Record<string, unknown>;
+      assert.equal("transaction" in quoted, false);
+    }
+  }
+  assert.equal(calls, 1);
 });

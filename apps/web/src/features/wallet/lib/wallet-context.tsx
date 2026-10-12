@@ -166,6 +166,8 @@ export interface WalletChoice {
 
 interface WalletState {
   status: WalletStatus;
+  /** Silent restoration of the remembered connection, without account or signing prompts. */
+  restoring: boolean;
   /** What is connected, or null when nothing is. */
   kind: SignerKind | null;
   address: string | null;
@@ -211,6 +213,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const [kind, setKind] = useState<SignerKind | null>(null);
   const [account, setAccount] = useState<SignerAccount | null>(null);
   const [connecting, setConnecting] = useState(false);
+  const [resumePending, setRestoring] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [holding, setHolding] = useState<string | null>(null);
   const [flow, dispatch] = useReducer(connectFlow, CLOSED);
@@ -253,45 +256,45 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   // Which signers exist is a question only the browser can answer. Read through an external store
   // rather than an effect: the server renders "not yet" and the browser answers on the first paint.
   const mounted = useSyncExternalStore(subscribeToBrowser, inBrowser, onServer);
+  const restoring = mounted && resumePending && remembered() !== null;
 
   const adapter = useMemo(() => SIGNERS.find((signer) => signer.kind === kind) ?? null, [kind]);
 
-  // Pick up a connection that is already there, without prompting anyone.
+  // The extension's permission survives independently of Pickler authentication.
   useEffect(() => {
-    let live = true;
+    const controller = new AbortController();
+    const mine = generation.current;
     const wanted = remembered();
     const signer = SIGNERS.find((candidate) => candidate.kind === wanted);
     if (!signer) {
-      // Nothing remembered — or something this build no longer knows how to connect, which would
-      // otherwise sit in storage for ever claiming to be the last one used. Either way nothing is
-      // picked up: a browser wallet goes on listing its accounts to a site it could not be made to
-      // forget, and resuming from that alone would undo a disconnect.
       remember(null);
       return;
     }
     void (async () => {
-      const supabase = getSupabase();
-      if (supabase) {
-        // A connected wallet has an account (M6). If this browser holds no session at all, the
-        // wallet is not picked up either: the person connects again, and connecting signs in. A
-        // session that could not be read is not "none".
-        const session = await supabase.auth.getSession().then(
-          ({ data }) => data.session,
-          () => undefined,
-        );
-        if (session === null) {
-          return;
+      try {
+        if (signer.kind === "mera") {
+          const supabase = getSupabase();
+          if (supabase) {
+            const { data } = await supabase.auth.getSession();
+            if (!data.session) {
+              return;
+            }
+          }
+        }
+        const resumed = await signer.resume(controller.signal);
+        if (!controller.signal.aborted && generation.current === mine && resumed) {
+          setKind(signer.kind);
+          setAccount(resumed);
+        }
+      } catch {
+        // Locked/unavailable wallets stay disconnected; restoration never opens a prompt.
+      } finally {
+        if (!controller.signal.aborted && generation.current === mine) {
+          setRestoring(false);
         }
       }
-      const resumed = await signer.resume();
-      if (live && resumed) {
-        setKind(signer.kind);
-        setAccount(resumed);
-      }
     })();
-    return () => {
-      live = false;
-    };
+    return () => controller.abort();
   }, []);
 
   const hold = useCallback((next: HeldSession | null) => {
@@ -313,6 +316,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   // account's, hold it again, so that switching or disconnecting still signs the browser out.
   useEffect(() => {
     let live = true;
+    const mine = generation.current;
     const supabase = getSupabase();
     if (!supabase) {
       return;
@@ -320,7 +324,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     void supabase.auth.getSession().then(
       ({ data }) => {
         // A sign-in that finished first is the better answer: it knows its address.
-        if (!live || heldRef.current) {
+        if (!live || generation.current !== mine || heldRef.current) {
           return;
         }
         const adopted = adoptSession(data.session);
@@ -454,6 +458,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       // A browser wallet may never answer: its window was closed, or ignored. So a later pick
       // takes over rather than waiting, and whatever the earlier one says afterwards is dropped.
       const mine = ++generation.current;
+      setRestoring(false);
       const current = () => mine === generation.current;
       passkeyRunning(mine, picked === "mera");
       setPicking(picked);
@@ -808,6 +813,9 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const disconnect = useCallback(async () => {
+    generation.current += 1;
+    setRestoring(false);
+    setConnecting(false);
     // First, and whatever the wallet then answers: a disconnect that failed half-way must not
     // leave the last address's session behind, nor the page still showing the wallet.
     void release(null);
@@ -927,7 +935,11 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       : flow;
 
   const value = useMemo<WalletState>(() => {
-    const status: WalletStatus = account ? "connected" : connecting ? "connecting" : "disconnected";
+    const status: WalletStatus = account
+      ? "connected"
+      : connecting || restoring
+        ? "connecting"
+        : "disconnected";
     // Derived from whose session is held, so it cannot say "active" for a wallet it was not
     // issued to.
     const session: SessionStatus = signing
@@ -938,6 +950,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 
     return {
       status,
+      restoring,
       kind,
       address: account?.address ?? null,
       chainId: account?.chainId ?? null,
@@ -958,6 +971,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     };
   }, [
     account,
+    restoring,
     adapter,
     connect,
     connecting,

@@ -3,6 +3,8 @@ import { sendInjectedTokenTransaction } from "./public-token-transaction";
 
 import {
   getProvider,
+  waitForProvider,
+  boundedWalletRead,
   readAccounts,
   readBalance,
   readChainId,
@@ -24,16 +26,23 @@ import type { SignerAccount, SignerAdapter } from "./signer";
  * so it is the only one that implements `switchChain` and `subscribe`.
  */
 
-async function read(provider: Eip1193Provider, accounts: string[]): Promise<SignerAccount | null> {
+async function read(
+  provider: Eip1193Provider,
+  accounts: string[],
+  signal?: AbortSignal,
+): Promise<SignerAccount | null> {
   const address = accounts[0];
   if (!address) {
     return null;
   }
-  return {
-    address,
-    chainId: await readChainId(provider),
-    balance: await readBalance(provider, address),
-  };
+  const [chainId, balance] = await Promise.all([
+    boundedWalletRead(readChainId(provider), null, signal),
+    boundedWalletRead(readBalance(provider, address), null, signal, 1_500),
+  ]);
+  if (signal?.aborted || chainId === null || !Number.isSafeInteger(chainId)) {
+    return null;
+  }
+  return { address, chainId, balance };
 }
 
 export const injectedSigner: SignerAdapter = {
@@ -42,11 +51,13 @@ export const injectedSigner: SignerAdapter = {
   unavailableReason: () =>
     getProvider() === null ? "No browser wallet is installed on this device." : null,
 
-  resume: async () => {
-    const provider = getProvider();
-    // `eth_accounts` never prompts: someone who connected yesterday is picked back up, and someone
-    // who never did is left alone.
-    return provider ? read(provider, await readAccounts(provider)) : null;
+  resume: async (signal) => {
+    const provider = await waitForProvider(signal);
+    if (!provider || signal?.aborted) {
+      return null;
+    }
+    const accounts = await boundedWalletRead(readAccounts(provider), [], signal);
+    return read(provider, accounts, signal);
   },
 
   connect: async () => {
@@ -95,13 +106,23 @@ export const injectedSigner: SignerAdapter = {
     if (!provider) {
       return () => {};
     }
-    const settle = (accounts: string[]) => void read(provider, accounts).then(onChange);
-    const onAccounts = (...args: never[]) => settle((args[0] ?? []) as string[]);
-    const onChain = () => void readAccounts(provider).then(settle);
+    let revision = 0;
+    let live = true;
+    const settle = async (accounts?: string[]) => {
+      const mine = ++revision;
+      const selected = accounts ?? (await boundedWalletRead(readAccounts(provider), []));
+      const account = await read(provider, selected);
+      if (live && mine === revision) {
+        onChange(account);
+      }
+    };
+    const onAccounts = (...args: never[]) => void settle((args[0] ?? []) as string[]);
+    const onChain = () => void settle();
 
     provider.on?.("accountsChanged", onAccounts);
     provider.on?.("chainChanged", onChain);
     return () => {
+      live = false;
       provider.removeListener?.("accountsChanged", onAccounts);
       provider.removeListener?.("chainChanged", onChain);
     };

@@ -24,3 +24,18 @@ test("wallet minute throttle is shared across callers without resetting the dail
   );
   assert.equal(rows.rows[0].used, 240);
 });
+
+test("quotes cannot exhaust the preparation minute slots, but both consume the same daily ceiling", async (t) => {
+  const store = await createTestStore(t);
+  await Promise.all(
+    Array.from({ length: 6 }, () => reservePublicTokenRpc(store.pool, "visitor", 320, "quote")),
+  );
+  await assert.rejects(reservePublicTokenRpc(store.pool, "visitor", 320, "quote"));
+  await reservePublicTokenRpc(store.pool, "visitor", 320);
+  await reservePublicTokenRpc(store.pool, "visitor", 320);
+  await assert.rejects(reservePublicTokenRpc(store.pool, "other", 320));
+  const rows = await store.pool.query(
+    "SELECT used FROM pickler.provider_quotas WHERE key='public-token-rpc'",
+  );
+  assert.equal(rows.rows[0].used, 320);
+});
