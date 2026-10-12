@@ -63,3 +63,15 @@ credentials or owner tokens are stored. Interruption publishes persistence-query
 atomically and includes the first query failure in compact status. A diagnostic cannot replace the
 primary error, extend a deadline, undo connection failure containment or authorize a new session.
 Use full audit parts for market/financial evidence, never the bounded execution cycle projection.
+
+Report source export is now performed inside the report worker, through report-source.ts, rather
+than on the financial host thread. report-worker-client.ts supplies no inherited environment,
+accepts only safe failure codes and waits for worker exit. The worker has its own one-connection
+read-only PostgreSQL scope; execution has four guarded connections. This partitions local capacity
+without increasing the existing total. Capture, decode, hashing and part publication belong to the
+worker. On cancellation, verify backend disappearance separately from thread exit; server-side
+blocked reads retain their original ten-second statement deadline.
+
+Forward report failures with a bounded origin-qualified diagnostic. Do not reinterpret a previous
+connection timeout as pool saturation or a network failure without original evidence. Controlled
+source-export timings are distinct from rendering, public acquisition and profitability.
