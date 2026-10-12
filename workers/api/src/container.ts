@@ -549,6 +549,7 @@ export function createServices(env: Env): Services & { close(): Promise<void> } 
   const chainId = supportedChainId(env);
   const custody = custodyServices(env, repository.pool, authenticate, profiles, chainId);
   const walletAuth = walletAuthServices(env, repository.pool, authenticate);
+  const launcher = composeTokenLauncher(repository.pool, env, chainId);
   // One advice store and service per invocation, shared by the free and the paid request.
   const adviceStore = new PostgresAdviceStore(repository.pool);
   const adviceService = createAdviceService(adviceStore, {
@@ -581,14 +582,15 @@ export function createServices(env: Env): Services & { close(): Promise<void> } 
     ...(walletAuth ? { walletAuth } : {}),
     growth,
     publicTokenTrading: composePublicTokenTrading(repository.pool, env, growth),
-    launches: new PostgresLaunchReadModel(repository.pool),
+    launches: new PostgresLaunchReadModel(repository.pool, undefined, launcher.marketProfile),
     ...(env.TOKEN_METADATA
       ? { tokenAssets: createTokenMetadata(env.TOKEN_METADATA, "https://app.pickler.fun") }
       : {}),
     close: () => repository.close(),
     onboard: (userId, email) => directory.onboard(userId, email),
     studio: {
-      ...composeTokenLauncher(repository.pool, env, chainId),
+      tokens: launcher.tokens,
+      tokenOperations: launcher.tokenOperations,
       perplMarkets: {
         catalog: (network, signal) =>
           new PerplMarketData().catalog(network, {
