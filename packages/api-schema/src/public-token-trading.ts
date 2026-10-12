@@ -33,3 +33,15 @@ export const publicTokenTradePreparedSchema = z
   .strict();
 export type PublicTokenTradeInputDto = z.infer<typeof publicTokenTradeInputSchema>;
 export type PublicTokenTradePreparedDto = z.infer<typeof publicTokenTradePreparedSchema>;
+
+export const publicTokenTradeConfirmationInputSchema = z
+  .object({
+    wallet: address,
+    txHash: z.string().regex(/^0x[0-9a-fA-F]{64}$/),
+  })
+  .strict();
+export const publicTokenTradeConfirmationSchema = z
+  .object({
+    status: z.enum(["pending", "confirmed", "reverted"]),
+  })
+  .strict();
