@@ -31,6 +31,7 @@ const SOLD_VENUES = ["perps", "both"] as const;
 /**
  * Decimal AUSD to micro-AUSD under the server's rule (`parseAusdToMicro` in core): 1 to 3 whole
  * digits and at most 6 decimals, nothing else. Null for any other text and for zero.
+ * It deliberately does not enforce core's 0.10–100 range: the API is authoritative on prices.
  */
 export function parseAusdAmount(text: string): bigint | null {
   const m = /^(\d{1,3})(?:\.(\d{1,6}))?$/.exec(text);

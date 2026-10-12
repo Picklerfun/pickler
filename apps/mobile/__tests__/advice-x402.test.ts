@@ -70,12 +70,12 @@ describe("parsePaymentRequired", () => {
 
 describe("checkTerms", () => {
   test("a good 402 for the price the list showed is ok", () => {
-    expect(checkTerms(termsOf(required()), 1_500_000n)).toBe("ok");
+    expect(checkTerms(termsOf(required()), 1_500_000n, SPLITTER)).toBe("ok");
   });
 
   test("a different amount is price_changed", () => {
-    expect(checkTerms(termsOf(required({ maxAmountRequired: "2000000" })), 1_500_000n)).toBe("price_changed");
-    expect(checkTerms(termsOf(required({ maxAmountRequired: "1000000" })), 1_500_000n)).toBe("price_changed");
+    expect(checkTerms(termsOf(required({ maxAmountRequired: "2000000" })), 1_500_000n, SPLITTER)).toBe("price_changed");
+    expect(checkTerms(termsOf(required({ maxAmountRequired: "1000000" })), 1_500_000n, SPLITTER)).toBe("price_changed");
   });
 
   test.each([
@@ -95,11 +95,21 @@ describe("checkTerms", () => {
     ["a payee that is not an address", required({}, { payee: "agent.eth" })],
     ["the payee equal to payTo", required({}, { payee: SPLITTER.toLowerCase() })],
   ])("%s is untrusted", (_, body) => {
-    expect(checkTerms(termsOf(body), 1_500_000n)).toBe("untrusted");
+    expect(checkTerms(termsOf(body), 1_500_000n, SPLITTER)).toBe("untrusted");
+  });
+
+  test("the pinned splitter in another case is ok", () => {
+    expect(checkTerms(termsOf(required({ payTo: SPLITTER.toLowerCase() })), 1_500_000n, SPLITTER)).toBe("ok");
+    expect(checkTerms(termsOf(required()), 1_500_000n, SPLITTER.toLowerCase() as `0x${string}`)).toBe("ok");
+  });
+
+  test("a payTo that is a valid address but not the app's splitter is untrusted", () => {
+    expect(checkTerms(termsOf(required({ payTo: BUYER.address })), 1_500_000n, SPLITTER)).toBe("untrusted");
+    expect(checkTerms(termsOf(required({ payTo: "0x0000000000000000000000000000000000000Bad" })), 1_500_000n, SPLITTER)).toBe("untrusted");
   });
 
   test("untrusted wins over a changed price", () => {
-    expect(checkTerms(termsOf(required({ maxAmountRequired: "2000000", asset: "0x0000000000000000000000000000000000000001" })), 1_500_000n)).toBe("untrusted");
+    expect(checkTerms(termsOf(required({ maxAmountRequired: "2000000", asset: "0x0000000000000000000000000000000000000001" })), 1_500_000n, SPLITTER)).toBe("untrusted");
   });
 });
 

@@ -69,11 +69,14 @@ const sameAddress = (a: string, b: string) => a.toLowerCase() === b.toLowerCase(
 
 /**
  * Whether the 402 may be signed. "untrusted" when anything but the price differs from the app's
- * constants (asset, chain, token domain, primary type, shares, network, scheme, window, addresses);
- * "price_changed" when only the amount differs from what the agent row showed. Untrusted wins.
+ * constants (asset, chain, token domain, primary type, shares, network, scheme, window, addresses)
+ * or `payTo` is not `splitter`, the app's own pinned splitter (src/config/advice.ts): the `to` of a
+ * ReceiveWithAuthorization can redeem it, so the 402 never chooses it. "price_changed" when only
+ * the amount differs from what the agent row showed. Untrusted wins.
  */
-export function checkTerms(terms: Terms, expectedMicro: bigint): "ok" | "price_changed" | "untrusted" {
+export function checkTerms(terms: Terms, expectedMicro: bigint, splitter: Hex): "ok" | "price_changed" | "untrusted" {
   const trusted =
+    sameAddress(terms.payTo, splitter) &&
     terms.x402Version === 1 &&
     terms.scheme === "exact" &&
     terms.network === X402_NETWORK &&
