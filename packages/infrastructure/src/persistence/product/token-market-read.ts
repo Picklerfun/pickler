@@ -29,7 +29,7 @@ interface MarketRow {
   recent: Observation[];
   volume: string;
   windowEnd: Date;
-  sampled: boolean;
+  activityCount: string;
 }
 
 /** One database snapshot. No provider, cursor movement, trade preparation or balance inference. */
@@ -72,8 +72,7 @@ export async function readTokenMarket(
       coalesce((SELECT sum(CASE WHEN event_name='CurveBought' THEN (decoded->>'grossQuoteIn')::numeric
         ELSE (decoded->>'netQuoteOut')::numeric+(decoded->>'totalFee')::numeric END)::text
         FROM activity WHERE block_time>=now()-interval '24 hours' AND block_time<=now()),'0') AS volume,
-      (SELECT count(*) FROM activity WHERE block_time>=now()-interval '7 days')>
-        (SELECT count(*) FROM hourly) AS sampled
+      (SELECT count(*)::text FROM activity WHERE block_time>=now()-interval '7 days') AS "activityCount"
     FROM launch l
   `,
     [token.chain, token.launchTxHash, token.address],
@@ -128,19 +127,29 @@ export async function readTokenMarket(
   const curve = terms && netSold !== null ? tokenCurveMarket(terms, netSold) : null;
   const lastTrade = snapshot ? trade(snapshot) : null;
   const priceWad = curve?.priceWad ?? lastTrade?.priceWad ?? null;
-  const history = row.history.map((observation) => ({
+  // Hourly samples keep long windows bounded; recent receipts retain intrahour movement.
+  const observations = new Map<string, Observation>();
+  for (const observation of [...row.history, ...row.recent, ...(snapshot ? [snapshot] : [])]) {
+    observations.set(`${observation.txHash}:${observation.logIndex}`, observation);
+  }
+  const ordered = [...observations.values()].sort((a, b) => {
+    const delta = BigInt(a.block) - BigInt(b.block);
+    return delta < 0n ? -1 : delta > 0n ? 1 : a.logIndex - b.logIndex;
+  });
+  const history = ordered.map((observation) => ({
     at: observation.at,
     priceWad: terms
       ? tokenCurveMarket(terms, observation.decoded.netSoldAfter!).priceWad
       : trade(observation).priceWad,
   }));
-  if (terms && history.length === 0) {
-    // A recorded launch is a real initial observation, never a fabricated series of trades.
-    history.push({ at: row.launch.at, priceWad: tokenCurveMarket(terms, "0").priceWad });
+  if (terms) {
+    // Keep the real launch price after the first trade instead of dropping its chart anchor.
+    history.unshift({ at: row.launch.at, priceWad: tokenCurveMarket(terms, "0").priceWad });
   }
-  if (snapshot && !history.some((point) => point.at === snapshot.at)) {
-    history.push({ at: snapshot.at, priceWad: priceWad! });
-  }
+  const recentWindow = ordered.filter(
+    (point) => Date.parse(point.at) >= row.windowEnd.getTime() - 604_800_000,
+  ).length;
+
   return {
     version: 1,
     tokenDecimals: token.decimals,
@@ -168,7 +177,7 @@ export async function readTokenMarket(
         }
       : null,
     history: history.sort((a, b) => Date.parse(a.at) - Date.parse(b.at)).slice(-721),
-    historyTruncated: row.sampled,
+    historyTruncated: BigInt(row.activityCount) > BigInt(recentWindow),
     recentTrades: row.recent.map(trade),
   };
 }
