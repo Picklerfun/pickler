@@ -48,6 +48,7 @@ import { growthRoutes } from "../../workers/api/src/routes/growth.ts";
 import { createSampleMarketBoard } from "./fixtures/sample-market-board.mts";
 import { createSampleAgentDirectory } from "./fixtures/sample-agent-directory.mts";
 import { createSampleActionFeed } from "./fixtures/sample-actions.mts";
+import { sampleTokenMarket } from "./fixtures/sample-token-market.mts";
 import { sampleLaunches } from "./fixtures/sample-launches.mts";
 import {
   toAgentActionDto,
@@ -99,6 +100,10 @@ const growth = growthRoutes({
 const routes = [
   // The worker reads launches from its index; the harness has none, so the board gets two rows.
   [/^\/v1\/launches$/, async () => sampleLaunches()],
+  [
+    /^\/v1\/launches\/eip155:10143:0x1111111111111111111111111111111111111111$/,
+    async () => sampleTokenMarket(),
+  ],
   [/^\/v1\/marketplace\/agents$/, async () => (await services.listAgents()).map(toAgentSummaryDto)],
   [
     /^\/v1\/marketplace\/activity$/,
@@ -191,7 +196,7 @@ const server = createServer(async (request, response) => {
     return send(200, toPlatformAnalyticsDto(value));
   }
   for (const [pattern, handler] of routes) {
-    const match = pattern.exec(url.pathname);
+    const match = pattern.exec(decodeURIComponent(url.pathname));
     if (match) {
       try {
         return send(200, await handler(...match.slice(1).map(decodeURIComponent)));
