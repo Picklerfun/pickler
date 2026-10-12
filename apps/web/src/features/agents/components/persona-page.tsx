@@ -4,7 +4,8 @@ import { AgentTokenCard } from "@/features/tokens/agent-token-card";
 
 import type { AgentPersonaDto } from "@pickler/api-schema";
 import Link from "next/link";
-import { Button, ButtonLink, ChipLink, ChipText, Icon } from "@pickler/ui";
+import dynamic from "next/dynamic";
+import { Button, ButtonLink, ChipLink, ChipText, Icon, Skeleton } from "@pickler/ui";
 import { useRef, useState } from "react";
 import { accentVars } from "@/lib/accent";
 import styles from "../agents.module.css";
@@ -15,6 +16,20 @@ import { useWallet } from "@/features/wallet/lib/wallet-context";
 import { ActivityRow } from "./activity-row";
 import { AgentAvatar } from "./agent-parts";
 import { ReadRow } from "./read-parts";
+
+const PublicTokenMarketPreview = dynamic(
+  () =>
+    import("@/features/tokens/public-token-market-preview").then(
+      (module) => module.PublicTokenMarketPreview,
+    ),
+  {
+    loading: () => (
+      <div role="status" aria-label="Loading token market preview">
+        <Skeleton shape="panel" />
+      </div>
+    ),
+  },
+);
 
 const TABS = ["activity", "answers", "record"] as const;
 type Tab = (typeof TABS)[number];
@@ -53,10 +68,12 @@ export function PersonaPage({
   persona,
   nowMs,
   preview = false,
+  marketPreview = false,
 }: {
   persona: AgentPersonaDto;
   nowMs: number;
   preview?: boolean;
+  marketPreview?: boolean;
 }) {
   const [tab, setTab] = useState<Tab>("activity");
   const tabButtons = useRef<Partial<Record<Tab, HTMLButtonElement>>>({});
@@ -78,6 +95,9 @@ export function PersonaPage({
     <main
       className={`${styles.main} ${styles.mainNarrow} ${styles.personaPage}`}
       style={accentVars(persona.accent)}
+      data-token-market-preview={
+        marketPreview && preview && Boolean(persona.launchedToken) ? "true" : undefined
+      }
     >
       <Link href="/agents" className={styles.backLink}>
         <Icon name="arrowLeft" size={14} /> AGENTS
@@ -165,21 +185,27 @@ export function PersonaPage({
         )}
       </header>
 
-      <div className={styles.personaToken}>
-        <AgentTokenCard
-          token={persona.launchedToken ?? null}
-          confirmationPending={persona.tokenConfirmation === "pending"}
-          preview={preview}
-        />
-      </div>
+      {marketPreview && preview && persona.launchedToken ? (
+        <PublicTokenMarketPreview token={persona.launchedToken} />
+      ) : (
+        <>
+          <div className={styles.personaToken}>
+            <AgentTokenCard
+              token={persona.launchedToken ?? null}
+              confirmationPending={persona.tokenConfirmation === "pending"}
+              preview={preview}
+            />
+          </div>
 
-      {persona.launchedToken && (
-        <PublicTokenTrade
-          key={persona.handle}
-          handle={persona.handle}
-          token={persona.launchedToken}
-          preview={preview}
-        />
+          {persona.launchedToken && (
+            <PublicTokenTrade
+              key={persona.handle}
+              handle={persona.handle}
+              token={persona.launchedToken}
+              preview={preview}
+            />
+          )}
+        </>
       )}
 
       <div className={styles.tabs} role="tablist" aria-label="Agent sections">
