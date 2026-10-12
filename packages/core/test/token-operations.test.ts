@@ -576,3 +576,47 @@ test("different stored grant, parameter or preparation deadlines cannot release 
     assert.equal(f.counts().sends, 0);
   }
 });
+
+test("final launch status waits for canonical publication; earlier finalized launches can repair it", async () => {
+  const f = controlled();
+  const p = await f.ops.prepare(
+    scope,
+    { action: "launch", expectedVersion: 1 },
+    "controlled_publication_01",
+  );
+  await f.ops.confirm(scope, p.operation.id, p.operation.version, signed);
+  let publications = 0;
+  f.driver.publishLaunch = async (target, intent) => {
+    assert.deepEqual(target, scope);
+    assert.equal(intent.txHash, "0x" + "a".repeat(64));
+    publications++;
+  };
+  f.receipt({ status: "included", blockHash: "0x" + "b".repeat(64) });
+  assert.equal((await f.ops.status(scope, p.operation.id)).status, "included");
+  assert.equal(publications, 0);
+  f.receipt({ status: "finalized", blockHash: "0x" + "b".repeat(64) });
+  assert.equal((await f.ops.status(scope, p.operation.id)).status, "finalized");
+  assert.equal(publications, 1);
+  await f.ops.status(scope, p.operation.id);
+  assert.equal(publications, 2);
+  assert.deepEqual(f.counts(), { signs: 1, sends: 1, preflights: 2 });
+});
+
+test("publication failure leaves confirmation recoverable without repeating signing or sending", async () => {
+  const f = controlled();
+  const p = await f.ops.prepare(
+    scope,
+    { action: "launch", expectedVersion: 1 },
+    "controlled_publication_02",
+  );
+  await f.ops.confirm(scope, p.operation.id, p.operation.version, signed);
+  f.receipt({ status: "finalized", blockHash: "0x" + "b".repeat(64) });
+  f.driver.publishLaunch = async () => {
+    throw new Error("Controlled publication failure");
+  };
+  await assert.rejects(f.ops.status(scope, p.operation.id), /publication failure/);
+  assert.equal((await f.tx.intents!.read(p.operation.id))?.status, "confirming");
+  f.driver.publishLaunch = async () => {};
+  assert.equal((await f.ops.status(scope, p.operation.id)).status, "finalized");
+  assert.deepEqual(f.counts(), { signs: 1, sends: 1, preflights: 2 });
+});
