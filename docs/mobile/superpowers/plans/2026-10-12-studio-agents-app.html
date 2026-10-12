@@ -1,0 +1,455 @@
+<!doctype html>
+<!--
+  AUTOGENERADO desde 2026-10-12-studio-agents-app.md por scripts/mobile/docs-md-to-html.mjs
+
+  ⚠️  NO EDITES ESTE ARCHIVO. Edita el .md y re-genera.
+  El próximo Write al .md (con el hook activo) sobrescribirá este HTML.
+
+  Reglas en docs/mobile/AGENTS.md sección "MD → HTML autogenerado".
+-->
+<html lang="es-MX">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Studio agents in the app (phase 3) Implementation Plan · Plan · Pickler</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../overview/_styles.css">
+<script defer src="../../overview/_syntax.js"></script>
+<style>
+  /* Overrides locales del MD-view */
+  .wrap { max-width: 820px; }
+  header.hero { padding: 24px 0 28px; }
+  main { padding: 32px 0 64px; overflow-wrap: anywhere; }
+  @media (max-width: 600px) { nav.toc { position: static; } }
+  main h1 { display: none; } /* el h1 ya está en el hero */
+  main h2 {
+    font-size: 22px; font-weight: 800;
+    margin: 36px 0 12px;
+    letter-spacing: -0.015em;
+    padding-bottom: 6px;
+    border-bottom: 2px solid var(--brand-soft);
+    scroll-margin-top: 72px;
+  }
+  main h3 {
+    font-size: 17px; font-weight: 700;
+    margin: 24px 0 8px;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+    scroll-margin-top: 72px;
+  }
+  main h4 {
+    font-size: 13px; font-weight: 700;
+    margin: 20px 0 6px;
+    text-transform: uppercase; letter-spacing: .06em;
+    color: var(--ink-3);
+  }
+  main p { margin: 0 0 12px; font-size: 14.5px; line-height: 1.65; color: var(--ink); }
+  main blockquote {
+    margin: 14px 0;
+    padding: 12px 18px;
+    background: var(--brand-soft);
+    border-left: 4px solid var(--brand);
+    border-radius: var(--radius-s);
+    color: var(--ink);
+    font-size: 14px; line-height: 1.6;
+  }
+  main blockquote p { margin: 0; }
+  main ul, main ol { margin: 8px 0 14px; padding-left: 26px; font-size: 14.5px; }
+  main ul li, main ol li { margin: 4px 0; line-height: 1.55; }
+  main ul.task-list { list-style: none; padding-left: 4px; }
+  main ul.task-list li {
+    display: flex; align-items: flex-start; gap: 8px;
+    padding: 4px 0;
+  }
+  main ul.task-list li input[type="checkbox"] {
+    margin-top: 4px; accent-color: var(--brand); cursor: pointer;
+    flex-shrink: 0;
+  }
+  main ul.task-list li label { flex: 1; cursor: pointer; }
+  main ul.task-list li.done label { color: var(--ink-3); text-decoration: line-through; text-decoration-color: var(--ink-3); }
+
+  main hr {
+    border: none; border-top: 1px solid var(--line);
+    margin: 32px 0;
+  }
+  main table {
+    width: 100%; border-collapse: collapse;
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: var(--radius); overflow: hidden;
+    margin: 14px 0;
+    font-size: 13.5px;
+  }
+  main table th, main table td {
+    text-align: left; padding: 10px 14px;
+    border-bottom: 1px solid var(--line);
+  }
+  main table th {
+    background: var(--surface-2); font-weight: 700;
+    font-size: 11.5px; color: var(--ink-3);
+    text-transform: uppercase; letter-spacing: .06em;
+  }
+  main table tr:last-child td { border-bottom: none; }
+  main img {
+    max-width: 100%; height: auto;
+    border-radius: var(--radius-s);
+    border: 1px solid var(--line);
+    margin: 10px 0;
+  }
+
+  .md-actions {
+    display: flex; gap: 10px; flex-wrap: wrap;
+    margin: 8px 0 28px;
+    position: sticky; top: 60px;
+    background: color-mix(in srgb, var(--bg) 92%, transparent);
+    backdrop-filter: blur(8px);
+    padding: 10px 0; z-index: 25;
+    border-bottom: 1px solid var(--line);
+  }
+  .md-actions .btn { text-decoration: none; }
+</style>
+</head>
+<body data-slug="2026-10-12-studio-agents-app">
+
+<div class="wrap">
+  <nav class="crumb">
+    <a href="../../overview/index.html">← Catálogo</a>
+    <span class="sep">/</span>
+    <a href="../">superpowers/plans</a>
+    <span class="sep">/</span>
+    <span class="mono">2026-10-12-studio-agents-app.md</span>
+  </nav>
+</div>
+
+<header class="hero">
+  <div class="wrap">
+    <span class="eyebrow"><span class="dot"></span>Plan · markdown source</span>
+    <h1>Studio agents in the app (phase 3) Implementation Plan</h1>
+    <p class="lede" style="margin:0;font-size:13.5px;color:var(--ink-3);font-family:var(--mono)">
+      Autogenerado · source: <code>plans/2026-10-12-studio-agents-app.md</code>
+    </p>
+  </div>
+</header>
+
+<nav class="toc"><div class="wrap">
+       <ul><li><a href="#global-constraints">Global Constraints</a></li><li><a href="#review-focus">Review Focus</a></li><li><a href="#task-1-pure-x402-and-dto-modules">Task 1: Pure x402 and DTO modules</a></li><li><a href="#task-2-authenticated-advice-client">Task 2: Authenticated advice client</a></li><li><a href="#task-3-the-ask-flow-as-a-hook">Task 3: The Ask flow as a hook</a></li><li><a href="#task-4-screens-and-navigation">Task 4: Screens and navigation</a></li><li><a href="#task-5-project-docs">Task 5: Project docs</a></li><li><a href="#task-6-review-pr-and-build-13-gated">Task 6: Review, PR, and build 13 (gated)</a></li></ul>
+     </div></nav>
+
+<main>
+  <div class="wrap">
+
+<div class="md-actions">
+  <button type="button" class="btn primary" id="btn-copy-progress">📋 Copy progress as MD</button>
+  <a href="2026-10-12-studio-agents-app.md" class="btn">📝 Ver source MD</a>
+</div>
+    <h1 id="studio-agents-in-the-app-phase-3-implementation-plan">Studio agents in the app (phase 3) Implementation Plan</h1>
+<blockquote>
+<strong>For agentic workers:</strong> REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (<code>- [ ]</code>) syntax for tracking.
+</blockquote>
+<p><strong>Goal:</strong> A person in the iOS app lists the Studio agents that sell analyses, picks BTC or ETH, pays one fresh 24-hour analysis in AUSD with Face ID (x402, split 65/35 by the splitter), waits for it, and reads the result. The free history stays visible.</p>
+<p><strong>Architecture:</strong></p>
+<ul>
+<li><strong>Pure modules in <code>apps/mobile/src/advice/</code></strong>, each with Jest tests:</li>
+<ul>
+<li>DTO parsers;</li>
+<li>the 402 parser, checked against the app&#39;s own constants;</li>
+<li>the <code>ReceiveWithAuthorization</code> typed-data builder and the nonce derivation;</li>
+<li>the <code>X-PAYMENT</code> encoder and <code>X-PAYMENT-RESPONSE</code> decoder;</li>
+<li>the job polling state machine.</li>
+</ul>
+<li><strong>One authenticated client</strong> reuses <code>useIdentity</code>&#39;s <code>ensureSession</code>.</li>
+<li><strong>Screens:</strong> a &quot;Studio agents&quot; section in the Agents tab, an advice screen with an in-screen confirmation step (the withdraw pattern), a waiting state and a result.</li>
+<li><strong>Not touched:</strong> the existing reads screens and <code>services/reads</code>.</li>
+</ul>
+<p><strong>Tech Stack:</strong> Expo SDK 57 (React Native), viem 2.55.13 (already a dependency), Jest (jest-expo), react-navigation.</p>
+<p><strong>Spec:</strong></p>
+<ul>
+<li><code>docs/specs/agent-advice-x402-v1.md</code> §3.2 and §6 (flow, screens, polling);</li>
+<li><code>docs/specs/agent-advice-fee-split-v1.md</code> §2 S2/S5/S6, §4 and §5, which override the phase 1 spec for the wire: <code>ReceiveWithAuthorization</code>, <code>payTo</code> = splitter, <code>salt</code>, 65/35 copy.</li>
+</ul>
+<p><strong>Base:</strong> branch <code>codex/mobile-studio-agents</code>, stacked on <code>codex/advice-fee-split</code> (PR #161, open). Its PR targets <code>codex/advice-fee-split</code> until #161 merges, then <code>main</code>.</p>
+<h2 id="global-constraints">Global Constraints</h2>
+<ul>
+<li><strong>Network and asset:</strong> chain 10143 (<code>CHAIN.id</code>). AUSD is <code>0xa9012a055bd4e0eDfF8Ce09f960291C09D5322dC</code> (<code>AUSD_ADDRESS</code>), 6 decimals.</li>
+<li><strong>EIP-712 domain:</strong> <code>{ name: &quot;Agora Dollar&quot;, version: &quot;1&quot;, chainId: 10143, verifyingContract: AUSD }</code>.</li>
+<li><strong>Typed data:</strong> primary type <code>ReceiveWithAuthorization(address from,address to,uint256 value,uint256 validAfter,uint256 validBefore,bytes32 nonce)</code>.</li>
+<li><strong>Nonce:</strong> <code>nonce = keccak256(encodeAbiParameters([address, bytes32], [payee, salt]))</code>, where <code>salt</code> is 32 bytes from <code>crypto.getRandomValues</code> (polyfilled by <code>expo-crypto</code> in <code>src/polyfills.ts</code>). The contract&#39;s vector: payee <code>0x000000000000000000000000000000000000dEaD</code> with salt <code>0x00…01</code> gives <code>0xb34209a263f6c38fe55f099e9e70f9d67e93982480ff3234a5e0108028ad164d</code>.</li>
+<li><strong>Shares:</strong> creator <code>floor(value * 6500 / 10000)</code>, Pickler the rest.</li>
+<li><strong>The 402 must match the app&#39;s constants before anything is signed:</strong></li>
+<ul>
+<li><code>x402Version 1</code>, scheme <code>exact</code>, network <code>monad-testnet</code>;</li>
+<li><code>asset</code> = AUSD, <code>extra.chainId</code> 10143;</li>
+<li><code>extra.primaryType</code> <code>ReceiveWithAuthorization</code>, <code>extra.creatorBps</code> 6500, <code>extra.protocolBps</code> 3500;</li>
+<li><code>maxAmountRequired</code> equal to the price the agent row showed;</li>
+<li><code>maxTimeoutSeconds</code> ≤ 300.</li>
+</ul>
+</ul>
+<p>Anything else is refused with no signature.</p>
+<ul>
+<li><strong>Validity window:</strong> <code>validAfter = 0</code> and <code>validBefore = now + 240 s</code>, which stays under the server&#39;s 300 s.</li>
+<li><strong><code>X-PAYMENT</code> header:</strong> base64 JSON <code>{ x402Version: 1, scheme: &quot;exact&quot;, network: &quot;monad-testnet&quot;, payload: { signature, authorization: { from, to, value, validAfter, validBefore, nonce, salt } } }</code>. All numbers are decimal strings and the hex values lowercase.</li>
+<li><strong>API:</strong></li>
+<ul>
+<li><code>GET /v1/marketplace/agents</code> returns a bare JSON array, no envelope;</li>
+<li>the advice routes under <code>/v1/agent-advice</code> use the <code>{ data }</code> envelope;</li>
+<li>the 402 body is x402&#39;s own shape, not an envelope;</li>
+<li><code>X-PAYMENT-RESPONSE</code> is a header on the 202.</li>
+</ul>
+<li><strong>Polling:</strong> every 3 s, for at most 4 min.</li>
+<li><strong><code>Idempotency-Key</code>:</strong> one per Ask, reused across the 402 and the paid retry.</li>
+<li><strong>No new dependency:</strong> <code>npm run app:tree --prefix scripts/mobile</code> must not change.</li>
+<li><strong>Networking style:</strong> no <code>AbortSignal.timeout</code> (it does not exist in RN). Use <code>AbortController</code> plus <code>setTimeout</code>, and inject <code>doFetch</code> for tests.</li>
+<li><strong>Identity:</strong> the access token stays in memory. The feature is off when <code>PICKLER_API_URL</code> is unset.</li>
+<li><strong>Release gate:</strong> no TestFlight archive or upload, and no <code>ios.buildNumber</code> change, without the owner&#39;s explicit authorization (<code>apps/mobile/AGENTS.md</code>).</li>
+<li><strong>Mobile repo rules:</strong></li>
+<ul>
+<li>hooks stay above early returns (<code>__tests__/app-hooks.test.ts</code>);</li>
+<li>commit by path;</li>
+<li>documentation in English for new files;</li>
+<li><code>docs/mobile</code> contract: one live overview, a plan with its generated HTML, and an audit per executed phase.</li>
+</ul>
+<li><strong>Owner&#39;s rule:</strong> every new test is seen failing against its defect before it is trusted. Never say a screen looks right without looking at it rendered (simulator screenshot).</li>
+</ul>
+<h2 id="review-focus">Review Focus</h2>
+<ol>
+<li><strong>A 402 that names another recipient, asset, chain, amount or primary type.</strong> For example, a compromised API or a stale price. The app refuses before Face ID and shows &quot;Payment terms changed — nothing was signed&quot;. Test in Task 1.</li>
+<li><strong>The agent&#39;s price changed between the list and Ask.</strong> The 402&#39;s amount differs from what the screen showed. The app shows the new price and asks again; it never signs the higher amount silently. Test in Task 1 (parser) and Task 4 (screen state).</li>
+<li><strong>Face ID cancelled, or the app backgrounded mid-flow.</strong> Nothing is sent. Coming back shows the advice screen idle, and a retry reuses the same <code>Idempotency-Key</code> only while the first 402 is still pending. Test in Task 3.</li>
+<li><strong>A 402 <code>settlement_failed</code> or <code>invalid_payment</code> after signing.</strong> The app shows the reason and &quot;nothing was charged&quot; only when the server says so. On <code>settlement_failed</code> it says the payment is being checked and does not offer an immediate re-pay with the same key (phase 1 Ruling 9). Test in Task 3.</li>
+<li><strong>The job fails, or polling hits 4 min.</strong> Failed shows the error and the &quot;not refunded automatically&quot; note. A timeout shows &quot;still running — check back&quot; with a refresh, and it never pays again. Test in Task 3.</li>
+</ol>
+<hr>
+<h3 id="task-1-pure-x402-and-dto-modules">Task 1: Pure x402 and DTO modules</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Create:</li>
+<ul>
+<li><code>apps/mobile/src/advice/types.ts</code></li>
+<li><code>apps/mobile/src/advice/parse.ts</code> (marketplace row, recommendation, history, accepted)</li>
+<li><code>apps/mobile/src/advice/x402.ts</code> (<code>parsePaymentRequired</code>, <code>checkTerms</code>, <code>buildAuthorization</code>, <code>typedData</code>, <code>nonceFor</code>, <code>encodePayment</code>, <code>decodeSettlement</code>, <code>shares</code>)</li>
+<li><code>apps/mobile/src/advice/poll.ts</code> (state machine)</li>
+</ul>
+<li>Tests:</li>
+<ul>
+<li><code>apps/mobile/__tests__/advice-parse.test.ts</code></li>
+<li><code>apps/mobile/__tests__/advice-x402.test.ts</code></li>
+<li><code>apps/mobile/__tests__/advice-poll.test.ts</code></li>
+</ul>
+</ul>
+<p><strong>Interfaces (produced):</strong></p>
+<ul>
+<li><code>type StudioAgent = { id: string; name: string; handle: string; accent: string; venue: &quot;perps&quot; | &quot;both&quot;; price: { micro: bigint; text: string } }</code></li>
+<li><code>parseStudioAgents(json: unknown): StudioAgent[]</code> keeps rows with a non-null <code>advicePrice</code> and venue <code>perps</code> or <code>both</code>, and drops malformed rows without throwing.</li>
+<li><code>type Terms = { payTo: </code>0x${string}<code>; payee: </code>0x${string}<code>; value: bigint; maxTimeoutSeconds: number; resource: string }</code></li>
+<li><code>parsePaymentRequired(json: unknown): { terms: Terms | null; error: PaymentError | null }</code></li>
+<li><code>checkTerms(terms: Terms, expectedMicro: bigint): &quot;ok&quot; | &quot;price_changed&quot; | &quot;untrusted&quot;</code></li>
+<li><code>nonceFor(payee, salt): </code>0x${string}``</li>
+<li><code>buildAuthorization({ from, terms, now, salt }): Authorization</code> (the seven fields)</li>
+<li><code>typedData(authorization)</code>, ready for <code>wallet.account.signTypedData</code></li>
+<li><code>encodePayment(authorization, signature): string</code> (base64)</li>
+<li><code>decodeSettlement(header: string | null): { transaction: string; payer: string } | null</code></li>
+<li><code>shares(micro): { creator: bigint; protocol: bigint }</code></li>
+<li><code>type PollState = { kind: &quot;waiting&quot;; since: number } | { kind: &quot;done&quot;; recommendation } | { kind: &quot;failed&quot;; error } | { kind: &quot;timeout&quot; }</code>, with <code>nextPoll(state, response, now)</code></li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Failing tests:</strong></label></li>
+<ul>
+<li><strong>Parsers:</strong> a recorded <code>GET /v1/marketplace/agents</code> array (a fixture in <code>__tests__/fixtures/</code>) gives only the priced perps and both-venue rows. A recommendation with a result parses every field the result screen needs.</li>
+<li><strong><code>checkTerms</code>:</strong></li>
+<ul>
+<li>a good 402 is <code>ok</code>;</li>
+<li>a wrong asset, chain, <code>primaryType</code>, <code>creatorBps</code>, network or scheme, or <code>maxTimeoutSeconds</code> 301, is <code>untrusted</code>;</li>
+<li>a different amount is <code>price_changed</code> (Review Focus 1 and 2).</li>
+</ul>
+<li><strong>Signing helpers:</strong></li>
+<ul>
+<li><code>nonceFor</code> matches the contract vector;</li>
+<li><code>typedData</code> signed with a test key recovers <code>from</code> through viem <code>recoverTypedDataAddress</code>;</li>
+<li>changing <code>to</code> breaks the recovery;</li>
+<li>the <code>encodePayment</code> round trip equals the server&#39;s expected shape, matching <code>paymentPayloadSchema</code>&#39;s field names, <code>salt</code> included;</li>
+<li><code>shares(1_500_000n)</code> is 975<em>000/525</em>000.</li>
+</ul>
+<li><strong>Polling:</strong> queued then running then completed gives <code>done</code>; failed gives <code>failed</code>; 4 min elapsed gives <code>timeout</code>; a fetch error stays <code>waiting</code> until the deadline.</li>
+</ul>
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2: Run, expect failure:</strong> <code>npm test --workspace=@pickler/mobile -- advice</code>.</label></li>
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Implement</strong> with viem (<code>keccak256</code>, <code>encodeAbiParameters</code>, <code>getAddress</code>) and hand-written guards in the style of <code>src/reads/types.ts</code>.</label></li>
+<li class="task-item"><label><input type="checkbox"> <strong>Step 4: Run.</strong> The tests pass. Against the defect, drop the <code>primaryType</code> check: the <code>untrusted</code> test fails. Restore. Run <code>npm run typecheck --workspace=@pickler/mobile</code> and <code>npm run app:tree --prefix scripts/mobile</code>, which must show no change.</label></li>
+<li class="task-item"><label><input type="checkbox"> <strong>Step 5: Commit:</strong> <code>feat(mobile): x402 advice parsers, typed data and polling</code>.</label></li>
+</ul>
+<hr>
+<h3 id="task-2-authenticated-advice-client">Task 2: Authenticated advice client</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Modify: <code>apps/mobile/src/hooks/useIdentity.ts</code> to expose <code>authedFetch(path, init)</code>. It calls <code>ensureSession(wallet)</code> and adds <code>Authorization: Bearer</code>. The token is never stored. A 401 signs in again once.</li>
+<li>Create: <code>apps/mobile/src/advice/api.ts</code>:</li>
+<ul>
+<li><code>fetchStudioAgents(base, doFetch)</code>;</li>
+<li><code>requestAdvice(authed, agentId, symbol, key, payment?)</code>, which returns <code>{ status, json, settlementHeader }</code>;</li>
+<li><code>getRecommendation(authed, id)</code>;</li>
+<li><code>history(authed, agentId, symbol)</code>.</li>
+</ul>
+</ul>
+<p>Each call has a 15 s deadline through <code>AbortController</code>, and the deadline also covers the body.</p>
+<ul>
+<li>Tests: <code>apps/mobile/__tests__/advice-api.test.ts</code> (fake fetch), and extend <code>apps/mobile/__tests__/identity-hook.test.ts</code>.</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Failing tests:</strong></label></li>
+<ul>
+<li>a 402 returns <code>{ status: 402, json }</code> and is not thrown;</li>
+<li>a 202 exposes <code>X-PAYMENT-RESPONSE</code>;</li>
+<li><code>Idempotency-Key</code> and <code>X-PAYMENT</code> are sent as given;</li>
+<li>the deadline aborts a hanging body;</li>
+<li><code>authedFetch</code> reuses a fresh session, signs in once on 401, and never persists the token;</li>
+<li>with <code>PICKLER_API_URL</code> unset, the Studio section is hidden.</li>
+</ul>
+<li class="task-item"><label><input type="checkbox"> <strong>Step 2:</strong> Run and expect failure. <strong>Step 3:</strong> Implement. <strong>Step 4:</strong> Run, and do a defect check: drop the body deadline and the hang test fails. <strong>Step 5:</strong> Commit <code>feat(mobile): authenticated advice client</code>.</label></li>
+</ul>
+<hr>
+<h3 id="task-3-the-ask-flow-as-a-hook">Task 3: The Ask flow as a hook</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Create: <code>apps/mobile/src/hooks/useAdviceAsk.ts</code>, built on the modules from Tasks 1–2.</li>
+<li>Test: <code>apps/mobile/__tests__/advice-ask.test.ts</code> (react-test-renderer in a <code>.ts</code> file, like <code>identity-gate.test.ts</code>).</li>
+</ul>
+<p><strong>Flow:</strong> <code>idle → quoting</code> (POST without payment, then 402) <code>→ confirming</code> (terms checked, sheet data ready: agent, symbol, total, 65/35 shares, recipient = the agent wallet, &quot;not refunded if the analysis fails&quot;) <code>→ signing</code> (<code>useUnlock</code> opens the wallet with Face ID, then <code>signTypedData</code>) <code>→ paying</code> (POST with <code>X-PAYMENT</code>, same key) <code>→ waiting</code> (polling) <code>→ done | failed | timeout</code>. Error states: <code>untrusted</code>, <code>price_changed</code>, <code>refused(error)</code>, <code>settlement_pending</code>.</p>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1: Failing tests</strong> cover each Review Focus item 3–5:</label></li>
+<ul>
+<li>Face ID cancelled (an empty <code>describeError</code>) returns to <code>idle</code> with nothing sent;</li>
+<li><code>settlement_failed</code> gives <code>settlement_pending</code> and no automatic re-pay;</li>
+<li><code>invalid_payment</code> or <code>insufficient_funds</code> gives <code>refused</code> with its reason and a &quot;Get test AUSD&quot; link for insufficient funds;</li>
+<li>a job that failed gives <code>failed</code> with the <code>refund_owed</code> note;</li>
+<li>the timeout gives <code>timeout</code> with a refresh that polls the same job.</li>
+</ul>
+<li class="task-item"><label><input type="checkbox"> <strong>Steps 2–5:</strong> run, implement, run with a defect check (re-pay on <code>settlement_failed</code> must fail a test), then commit <code>feat(mobile): pay and wait for a Studio agent analysis</code>.</label></li>
+</ul>
+<hr>
+<h3 id="task-4-screens-and-navigation">Task 4: Screens and navigation</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li>Modify:</li>
+<ul>
+<li><code>apps/mobile/src/screens/agents.tsx</code> (a &quot;Studio agents&quot; <code>Reveal</code> section with its own loading, error and empty states; the credit list stays untouched);</li>
+<li><code>src/navigation/screens.ts</code>, <code>routes.ts</code> and <code>Navigator.tsx</code> (new <code>advice</code> screen in the Agents stack, gated like <code>agent</code>);</li>
+<li><code>src/store.ts</code> (<code>S.adviceAgentId</code>).</li>
+</ul>
+<li>Create: <code>apps/mobile/src/screens/advice.tsx</code>. It shows:</li>
+<ul>
+<li>the price and BTC/ETH <code>Segmented</code>;</li>
+<li>the free history;</li>
+<li>&quot;Ask · {price} AUSD&quot;;</li>
+<li>the in-screen confirmation step, in the <code>WithdrawScreen</code> review pattern: <code>Card</code>, <code>KV</code> rows for total, &quot;65% to @handle · 35% to Pickler&quot; and recipient, the not-refunded note, and <code>Btn lime</code> &quot;Pay with Face ID&quot;;</li>
+<li>the waiting state with elapsed time;</li>
+<li>the result: orientation, summary, reasons, risks, limitations, sources, data time, and the payment tx with a MonadScan link via <code>EXPLORER_TX_URL</code>.</li>
+</ul>
+<li>Tests: extend <code>navigation.test.ts</code> and <code>routes.test.ts</code>. <code>app-hooks.test.ts</code> must stay green.</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> <strong>Step 1:</strong> Failing navigation tests for the new route and its gating. <strong>Step 2:</strong> Implement.</label></li>
+<li class="task-item"><label><input type="checkbox"> <strong>Step 3: Look at it rendered.</strong> Start the dev client on the simulator with <code>PICKLER_API_URL</code> pointed at a local fixture or the staging API. Capture screenshots of the list, the advice screen, the confirmation, the waiting state, the result, and a refusal. Use light theme and Dynamic Type default, and also XXXL. Read each screenshot.</label></li>
+<li class="task-item"><label><input type="checkbox"> <strong>Step 4:</strong> Run the full mobile Jest suite and typecheck. <strong>Step 5:</strong> Commit <code>feat(mobile): Studio agents section and advice screens</code>.</label></li>
+</ul>
+<hr>
+<h3 id="task-5-project-docs">Task 5: Project docs</h3>
+<p><strong>Files:</strong></p>
+<ul>
+<li><code>docs/mobile/overview/&lt;date&gt;-studio-agents.html</code>, plus its manifest entry, through the <code>pickler-overview-new</code> skill;</li>
+<li>this plan&#39;s generated HTML (<code>node scripts/mobile/docs-md-to-html.mjs &lt;plan&gt;</code>);</li>
+<li>an audit for the executed phase;</li>
+<li><code>apps/mobile/AGENTS.md</code> (the advice module, <code>authedFetch</code>, the x402 rules);</li>
+<li><code>docs/mobile/04-roadmap-bounty.md</code> if the product state line changes.</li>
+</ul>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> Run <code>npm run docs:check --prefix scripts/mobile</code> and <code>npm run agents:check --prefix scripts/mobile</code>. Look at the overview rendered (desktop and mobile width). Commit <code>docs(mobile): Studio agents project overview and audit</code>.</label></li>
+</ul>
+<hr>
+<h3 id="task-6-review-pr-and-build-13-gated">Task 6: Review, PR, and build 13 (gated)</h3>
+<ul class="task-list">
+<li class="task-item"><label><input type="checkbox"> Final whole-branch review on the most capable model. Then the full mobile suite, typecheck, <code>app:tree</code>, and the root checks the branch touches.</label></li>
+<li class="task-item"><label><input type="checkbox"> Push and open the PR in English against <code>codex/advice-fee-split</code> (stacked on #161). Do not merge without the owner.</label></li>
+<li class="task-item"><label><input type="checkbox"> <strong>Acceptance needs the operations of x402 spec §7 and fee-split spec §8:</strong></label></li>
+<ul>
+<li>the splitter deployed;</li>
+<li>the API with <code>ADVICE_X402_ENABLED=true</code>, the relayer, the splitter vars and the advice keys;</li>
+<li>the agent priced.</li>
+</ul>
+<li class="task-item"><label><input type="checkbox"> <strong>Build 13</strong> (<code>PICKLER_API_URL=https://pickler.fun/api/v1</code>, <code>buildNumber</code> 13, <code>ios:archive</code>, <code>ios:upload</code>) happens only with the owner&#39;s explicit authorization, then the <code>pickler-dev-new</code> tracker.</label></li>
+</ul>
+  </div>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <p>HTML autogenerado · NO edites este archivo. Modifica el <code>.md</code> y re-genera con:</p>
+    <pre><code class="language-sql">node scripts/mobile/docs-md-to-html.mjs docs/mobile/superpowers/plans/2026-10-12-studio-agents-app.md</code></pre>
+    <p>Reglas en <code>docs/mobile/AGENTS.md</code> sección "MD → HTML autogenerado".</p>
+  </div>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // Persistencia de los checkboxes de task lists (pickler-md:<slug>:tasks)
+  const SLUG = '2026-10-12-studio-agents-app';
+  const KEY = `pickler-md:${SLUG}:tasks`;
+  const checks = [...document.querySelectorAll('ul.task-list input[type=checkbox]')];
+  function load() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(KEY) || '[]');
+      checks.forEach((c, i) => {
+        if (typeof saved[i] === 'boolean') {
+          c.checked = saved[i];
+          c.closest('li').classList.toggle('done', c.checked);
+        }
+      });
+    } catch {}
+  }
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(checks.map(c => c.checked))); } catch {}
+  }
+  checks.forEach(c => {
+    c.closest('li').classList.toggle('done', c.checked);
+    c.addEventListener('change', () => {
+      c.closest('li').classList.toggle('done', c.checked);
+      save();
+    });
+  });
+  load();
+
+  // Botón "Copy progress as MD"
+  const $copy = document.getElementById('btn-copy-progress');
+  const $toast = document.getElementById('toast');
+  function showToast(msg) {
+    $toast.textContent = msg;
+    $toast.dataset.show = 'true';
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(() => { $toast.dataset.show = 'false'; }, 2200);
+  }
+  if ($copy) {
+    $copy.addEventListener('click', async (e) => {
+      const lines = ['# ' + document.title.split(' · ')[0] + ' — task progress', ''];
+      lines.push('_Capturado en ' + new Date().toISOString() + '_', '');
+      checks.forEach(c => {
+        const text = c.closest('label').textContent.trim();
+        lines.push('- [' + (c.checked ? 'x' : ' ') + '] ' + text);
+      });
+      try {
+        await navigator.clipboard.writeText(lines.join('\n'));
+        e.currentTarget.dataset.copied = 'true';
+        const prev = e.currentTarget.textContent;
+        e.currentTarget.textContent = '✓ Copiado';
+        showToast('Progress copiado — pégalo en el plan MD');
+        setTimeout(() => {
+          e.currentTarget.dataset.copied = 'false';
+          e.currentTarget.textContent = prev;
+        }, 1800);
+      } catch {
+        showToast('Clipboard no disponible');
+      }
+    });
+  }
+</script>
+</body>
+</html>
