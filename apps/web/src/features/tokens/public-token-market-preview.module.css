@@ -280,7 +280,7 @@
 }
 .recent table {
   width: 100%;
-  min-width: 660px;
+  min-width: 840px;
   border-collapse: collapse;
   font-size: 13px;
   font-variant-numeric: tabular-nums;
@@ -302,6 +302,12 @@
 .recent th:nth-child(2),
 .recent td:nth-child(2) {
   text-align: left;
+}
+.recent .walletCell {
+  text-align: left;
+}
+.walletCell > div {
+  justify-content: flex-start;
 }
 .recent tr:last-child td {
   border-bottom: 0;

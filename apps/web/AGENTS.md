@@ -1332,7 +1332,7 @@ market card separately from the existing compact-token previews.
 Recent demo trades use the shared read-only Tag with win/loss state tints and ChainReference for
 icon-only copy and hash-as-explorer-link. Receipt examples are real Monad testnet hashes from the
 recorded V4 acceptance, explicitly labelled as samples; they are not Halftime's trade history.
-Illustrative prices, amounts and timestamps remain separate from those receipt examples.
+Illustrative prices, amounts, timestamps and wallet addresses remain separate from those receipt examples. Sample wallets are inert and do not receive explorer links.
 
 ## Compact agent comparison directory
 
@@ -1359,7 +1359,7 @@ form available during read failures. No RPC, signing or automatic quote is perfo
 The market renders prepared WAD prices/FDV, quote-unit volume, canonical curve state, committed
 allocations and recent transaction references. Unavailable figures stay unknown. The chart uses
 actual timestamped observations, filtered relative to the server's read window; same-second
-observations collapse for the chart library. Recent trades retain individual transaction/log identity.
+observations collapse for the chart library. Recent trades retain individual transaction/log identity and display the canonical `trader` wallet next to Buy/Sell, with an address-as-explorer link and icon-only copy. Keep wallet and transaction references separate; local preview wallets remain inert.
 Post-graduation figures remain labelled curve history, never a DEX price. Preview addresses and
 transaction links remain inert. Illustrative fixtures render only in the server-gated development preview; ordinary public tokens use API observations.
 

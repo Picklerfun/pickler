@@ -167,7 +167,7 @@ function MarketPreview({ token }: { token: AgentTokenDto }) {
         </div>
       </dl>
 
-      <section className={styles.recent} aria-label="Simulated recent trades">
+      <section id="recent-trades" className={styles.recent} aria-label="Simulated recent trades">
         <div className={styles.recentHead}>
           <h2>Recent trades</h2>
           <span className={styles.caption}>Illustrative activity · UTC · sample receipts</span>
@@ -182,6 +182,9 @@ function MarketPreview({ token }: { token: AgentTokenDto }) {
               <tr>
                 <th>Time</th>
                 <th>Side</th>
+                <th className={styles.walletCell} scope="col">
+                  Wallet · sample
+                </th>
                 <th>Price · AUSD</th>
                 <th>Amount</th>
                 <th>Value · AUSD</th>
@@ -196,6 +199,14 @@ function MarketPreview({ token }: { token: AgentTokenDto }) {
                     <Tag className={trade.side === "Buy" ? styles.buyTag : styles.sellTag}>
                       {trade.side}
                     </Tag>
+                  </td>
+                  <td className={styles.walletCell}>
+                    <ChainReference
+                      value={trade.trader}
+                      chainId={token.chainId}
+                      label={`sample ${trade.side === "Buy" ? "buyer" : "seller"} wallet`}
+                      preview
+                    />
                   </td>
                   <td>{trade.price}</td>
                   <td>{trade.amount}</td>

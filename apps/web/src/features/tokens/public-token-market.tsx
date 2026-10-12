@@ -346,7 +346,7 @@ export function PublicTokenMarket({
           </dd>
         </div>
       </dl>
-      <section className={styles.recent} aria-label="Recent curve trades">
+      <section id="recent-trades" className={styles.recent} aria-label="Recent curve trades">
         <div className={styles.recentHead}>
           <h2>Recent trades</h2>
           <span className={styles.caption}>Curve activity · UTC · price excludes fees</span>
@@ -362,6 +362,9 @@ export function PublicTokenMarket({
                 <tr>
                   <th>Time</th>
                   <th>Side</th>
+                  <th className={styles.walletCell} scope="col">
+                    Wallet
+                  </th>
                   <th>Price · {symbol}</th>
                   <th>Amount</th>
                   <th>Paid / received · {symbol}</th>
@@ -380,6 +383,14 @@ export function PublicTokenMarket({
                       <Tag className={trade.side === "buy" ? styles.buyTag : styles.sellTag}>
                         {trade.side === "buy" ? "Buy" : "Sell"}
                       </Tag>
+                    </td>
+                    <td className={styles.walletCell}>
+                      <ChainReference
+                        value={trade.trader}
+                        chainId={token.chainId}
+                        label={`${trade.side === "buy" ? "buyer" : "seller"} wallet`}
+                        preview={preview}
+                      />
                     </td>
                     <td>{amount(trade.priceWad, 18, 8)}</td>
                     <td>{amount(trade.tokenAmount, tokenDecimals, 2)}</td>

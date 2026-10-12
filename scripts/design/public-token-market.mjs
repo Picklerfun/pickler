@@ -29,6 +29,15 @@ let reads = 0;
 const browser = await openBrowser();
 try {
   const context = await browser.newContext();
+  await context.addInitScript(() => {
+    Object.defineProperty(navigator, "clipboard", {
+      value: {
+        writeText: async (value) => {
+          window.__copiedTradeAddress = value;
+        },
+      },
+    });
+  });
   await context.route("**/*", async (route) => {
     const url = new URL(route.request().url());
     if (url.origin !== origin.origin) {
@@ -109,6 +118,22 @@ try {
   await page.mouse.move(0, 0);
   const table = page.getByRole("region", { name: "Recent curve trades" });
   assert.equal(await table.locator("tbody tr").count(), 2);
+  await table.getByRole("columnheader", { name: "Wallet", exact: true }).waitFor();
+  for (const [index, trade] of market.data.market.recentTrades.entries()) {
+    const row = table.locator("tbody tr").nth(index);
+    const role = trade.side === "buy" ? "buyer" : "seller";
+    const wallet = row.getByRole("link", { name: `View ${role} wallet in explorer` });
+    assert.equal(
+      await wallet.getAttribute("href"),
+      `${networkByChainId(10143).explorers[0]}/address/${trade.trader}`,
+    );
+    assert.equal(await wallet.getAttribute("title"), trade.trader);
+    const copyWallet = row.getByRole("button", { name: `Copy ${role} wallet` });
+    assert.equal(await copyWallet.innerText(), "");
+    await copyWallet.click();
+    await row.getByRole("button", { name: `Copied ${role} wallet` }).waitFor();
+    assert.equal(await page.evaluate(() => window.__copiedTradeAddress), trade.trader);
+  }
   const tx = table.getByRole("link", { name: "View sell transaction in explorer" });
   assert.equal(
     await tx.getAttribute("href"),
@@ -175,7 +200,7 @@ try {
   assert.deepEqual(forbidden, []);
   assert.deepEqual(errors, []);
   process.stdout.write(
-    "PASS: normal production route, canonical data, hashes, keyboard, 320–1280px, pending/error/retry and trade-form preservation; no providers or transactions.\n",
+    "PASS: normal production route, canonical data, buyer/seller wallet links and copy, hashes, keyboard, 320–1280px, pending/error/retry and trade-form preservation; no providers or transactions.\n",
   );
 } finally {
   release?.();
