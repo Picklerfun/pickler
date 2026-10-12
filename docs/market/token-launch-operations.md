@@ -383,3 +383,16 @@ npm run api:openapi -- --output /tmp/pickler-openapi.json
 | Sparse receipt loses its branch during backfill                                           | Orphan evidence hidden; notification history retained   | Indexer remains responsible for reorg recovery |
 
 No remote database mutation, deployment or transaction is part of these controlled tests.
+
+## Owner state after publication
+
+The owner state includes an escrow cursor when fee indexing exists. PostgreSQL returns its bigint
+height as decimal text; the adapter explicitly validates and converts that height to the numeric
+`fees.block` wire contract. Fee amounts remain atomic strings. The controlled confirmed-launch
+suite includes the configured escrow and a real cursor, so successful public publication cannot
+mask an invalid owner state response.
+
+Hosted verification on 2026-10-12 established the recorded grant, canonical factory event and
+public attribution of `$TETERA` at `0x6262fb354c7e02e7f1e95d12abe422a5136801e8`.
+The public persona and directory return the confirmed identity; Studio's numeric fee-cursor
+correction still requires an automatic API release. No second launch or transaction is needed.
