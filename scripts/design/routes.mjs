@@ -85,6 +85,15 @@ const ALL = [
     proves: `[data-token-state=${state}]`,
   })),
 
+  {
+    path: "/agents/halftime?stage=token-launched&market=preview",
+    name: "public-agent-token-market-preview",
+    product: "marketplace",
+    surface: "light",
+    task: "Public token market mockup",
+    proves: 'main[data-token-market-preview=true] [aria-label="Token market preview"]',
+  },
+
   ...["brief", "skills", "console", "identity"].map((section) => ({
     path: `/studio/agents/preview-draft/${section}?stage=draft`,
     name: `studio-route-draft-${section}`,
@@ -180,11 +189,12 @@ const ALL = [
     surface: "light",
     task: "Marketplace",
     // Two screens, one of which must be present. #agents-empty is the launch-day screen: no agent
-    // exists yet, so the directory draws that instead of a beat filter with nothing under it. The
-    // other selector is the populated directory — the beat filter is authored there and nowhere
-    // else, and the row proves it has agents in it. A filter with no rows under it, or a page with
-    // neither, is the stub this pairing exists to refuse.
-    proves: '#agents-empty, main:has([role="group"][aria-label="Beat"]) a[href="/agents/halftime"]',
+    // exists yet, so the directory draws that instead of filters with nothing under them. The
+    // other selector is the populated directory — its filter group is authored there and nowhere
+    // else, and the profile link proves it has agents. An empty list, or a page with neither
+    // screen, is the stub this pairing exists to refuse.
+    proves:
+      '#agents-empty, main:has([role="group"][aria-label="Filter agents"]) a[href="/agents/halftime"]',
   },
   {
     path: "/agents/halftime",
