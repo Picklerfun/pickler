@@ -4,9 +4,10 @@
 .action .button {
   position: relative;
   overflow: hidden;
-  height: 64px;
+  height: 48px;
   width: 100%;
   padding: 6px 14px;
+  font-size: 16px;
   white-space: normal;
   transition:
     background 240ms ease,
@@ -38,20 +39,20 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  gap: 8px;
   max-width: 100%;
   animation: trade-action-enter 240ms ease both;
 }
 .mark {
   display: grid;
   place-items: center;
-  width: 30px;
-  height: 30px;
+  width: 24px;
+  height: 24px;
   flex: none;
 }
 .words {
   display: grid;
-  gap: 3px;
+  gap: 2px;
   min-width: 0;
   line-height: 1.15;
   overflow-wrap: anywhere;
@@ -59,7 +60,7 @@
 .hint {
   display: -webkit-box;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 1;
   overflow: hidden;
   font-size: 12px;
   font-weight: 500;

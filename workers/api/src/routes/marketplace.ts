@@ -36,6 +36,54 @@ export function marketplaceRoutes(
 ) {
   const api = new Hono<AppEnv>();
   api.post(
+    "/personas/:handle/token/confirm",
+    operation("marketplaceTokenConfirm", {
+      security: "public",
+      body: dto.publicTokenTradeConfirmationInputSchema,
+      response: dto.publicTokenTradeConfirmationSchema,
+      errors: dto.studioErrorSchema,
+      errorStatuses: [400, 404, 429, 503],
+      description:
+        "Verify and idempotently record one canonical Monad testnet curve trade receipt for a published confirmed persona token. Server resolves factory/curve and checks transaction, event identity, sender and confirmation depth under the existing RPC ceiling. No signing, broadcast, browser-supplied financial values or historical cursor movement. Private no-store response.",
+    }),
+    async (c) => {
+      c.header("Cache-Control", "private, no-store");
+      const parsed = dto.publicTokenTradeConfirmationInputSchema.safeParse(
+        await c.req.json().catch(() => null),
+      );
+      if (!parsed.success) {
+        return c.json({ error: "INVALID_TRADE", message: "Invalid transaction identity." }, 400);
+      }
+      if (!trading) {
+        return c.json(
+          { error: "TRADING_UNAVAILABLE", message: "Public trading is unavailable." },
+          503,
+        );
+      }
+      try {
+        return c.json(
+          dto.publicTokenTradeConfirmationSchema.parse(
+            await trading.confirm(c.req.param("handle"), parsed.data),
+          ),
+        );
+      } catch (error) {
+        const code = error instanceof PublicTokenTradeError ? error.code : "PROVIDER_UNAVAILABLE";
+        const status =
+          code === "RPC_LIMIT"
+            ? 429
+            : code === "TOKEN_NOT_FOUND"
+              ? 404
+              : code === "INVALID_TRADE"
+                ? 400
+                : 503;
+        if (status === 429) {
+          c.header("Retry-After", "60");
+        }
+        return c.json({ error: code, message: "Could not confirm market publication." }, status);
+      }
+    },
+  );
+  api.post(
     "/personas/:handle/token/prepare",
     operation("marketplaceTokenPrepare", {
       security: "public",

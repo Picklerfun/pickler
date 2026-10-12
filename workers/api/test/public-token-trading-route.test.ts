@@ -8,7 +8,10 @@ const wallet = "0x" + "c".repeat(40),
   curve = "0x" + "b".repeat(40);
 const input = { wallet, side: "buy", amount: "1000000", slippageBps: 50 };
 function app(prepare: (handle: string, input: unknown) => Promise<PublicTokenTradePrepared>) {
-  return createApp({ ...documentationServices({ growth: true }), publicTokenTrading: { prepare } });
+  return createApp({
+    ...documentationServices({ growth: true }),
+    publicTokenTrading: { prepare, confirm: async () => ({ status: "confirmed" }) },
+  });
 }
 function request(instance: ReturnType<typeof app>, body: unknown = input) {
   return instance.request(
@@ -98,4 +101,30 @@ test("quota and disabled composition remain explicit without provider details", 
   );
   assert.equal(response.status, 503);
   assert.doesNotMatch(await response.text(), /private RPC endpoint/);
+});
+
+test("public confirmation is strict, no-store and does not accept contracts or financial values", async () => {
+  const instance = app(async () => {
+    throw new Error("Preparation must not run");
+  });
+  const url = "/v1/marketplace/personas/agent/token/confirm";
+  const confirmation = { wallet, txHash: "0x" + "a".repeat(64) };
+  for (const body of [
+    confirmation,
+    { ...confirmation, token },
+    { ...confirmation, priceWad: "1" },
+    { ...confirmation, wallet: "invalid" },
+  ]) {
+    const response = await instance.request(
+      url,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      },
+      { APP_ENV: "local" } as never,
+    );
+    assert.equal(response.status, body === confirmation ? 200 : 400);
+    assert.equal(response.headers.get("cache-control"), "private, no-store");
+  }
 });

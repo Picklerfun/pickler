@@ -4,8 +4,8 @@
     "slippageBps": 50,
     "side": "buy",
     "approval": false,
-    "expectedOutput": "1897349086497216274510",
-    "minimumOutput": "1887862341064730193138",
+    "expectedOutput": "1327492339676361506877",
+    "minimumOutput": "1320854877977979699343",
     "balance": "100000000",
     "allowance": "0",
     "feeBps": 100
@@ -15,8 +15,8 @@
     "slippageBps": 50,
     "side": "sell",
     "approval": false,
-    "expectedOutput": "516491",
-    "minimumOutput": "513909",
+    "expectedOutput": "738211",
+    "minimumOutput": "734520",
     "balance": "10000000000000000000000",
     "allowance": "0",
     "feeBps": 100

@@ -48,6 +48,15 @@
   font-variant-numeric: tabular-nums;
   overflow-wrap: anywhere;
 }
+.transactions {
+  display: grid;
+  gap: 4px;
+  margin: -8px 0 0;
+}
+.transaction dd {
+  margin: 0;
+  min-width: 0;
+}
 .transaction {
   display: flex;
   justify-content: space-between;

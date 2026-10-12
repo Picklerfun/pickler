@@ -124,7 +124,8 @@ test("canonical buy/sell state, actual fee separation, history and transaction i
     ],
   );
   assert.equal(market.recentTrades[0]?.priceWad, "500000000000000");
-  assert.equal(market.history.length, 2);
+  assert.equal(market.history.length, 3);
+  assert.equal(market.history[0]?.priceWad, terms.initialPriceWad);
   assert.equal(market.observedBlock, "3");
   freshnessReadSchema(launchDetailSchema).parse(read);
 });
@@ -180,4 +181,18 @@ test("history sampling and recent rows are bounded and ordered by chain position
   assert.equal(market.recentTrades[0]?.txHash, hash(25));
   assert.equal(market.historyTruncated, true);
   assert.equal(market.observedBlock, "25");
+});
+
+test("two trades within one hour retain the real launch anchor and both price changes", async (t) => {
+  const { model, event } = await setup(t);
+  await event(2, "CurveBought", buy);
+  await event(3, "CurveSold", sell);
+
+  const market = (await model.getLaunch(`${chain}:${token}`))!.data.market!;
+
+  assert.equal(market.history.length, 3);
+  assert.equal(market.history[0]?.priceWad, terms.initialPriceWad);
+  assert.equal(market.history[1]?.priceWad, tokenCurveMarket(terms, buy.netSoldAfter).priceWad);
+  assert.equal(market.history[2]?.priceWad, tokenCurveMarket(terms, sell.netSoldAfter).priceWad);
+  assert.equal(market.historyTruncated, false);
 });

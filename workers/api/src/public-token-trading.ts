@@ -37,6 +37,7 @@ export function composePublicTokenTrading(
     ...(enabled
       ? {
           driver: createPublicTokenTradeDriver({
+            pool,
             policy: parseTokenLaunchPolicy(env.TOKEN_LAUNCH_POLICY_JSON!),
             rpc: createJsonRpc(env.MONAD_RPC_URL!),
             reserve: (wallet) => reservePublicTokenRpc(pool, wallet, limit),

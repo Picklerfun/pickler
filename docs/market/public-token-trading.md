@@ -54,7 +54,7 @@ wallet prompt from an effect. A lost browser-wallet response without a hash rema
 directs the user to wallet activity; it cannot safely be rebroadcast. At the observation ceiling,
 the original hash remains visible as pending. No broadcast retry or replacement is added.
 
-One fixed-height primary button communicates the complete flow visually. Its wallet icon pulses
+One compact, fixed-height (48px) primary button communicates the complete flow visually. Its wallet icon pulses
 while the wallet is open; an indeterminate ring and subtle sweep show preparation, approval and
 swap progress. A confirmed buy or sell draws a check inside the same button for 2.2 seconds, then
 restores Buy/Sell without sending anything. Editing the form dismisses this feedback immediately.
@@ -62,9 +62,14 @@ Failures and actionable hints also appear inside that button; full sanitized des
 accessible to screen readers. Missing-hash submissions stay blocked. There are no separate visible
 confirmation/error paragraphs, loading blocks or Check transaction controls. Reduced motion removes
 all button animations. Expected/minimum rows reserve their space; stale quotes are hidden after an
-edit. The hash below the button links to the explorer and has an icon-only copy action. A confirmed swap
-refreshes the existing database-backed market read; indexing remains a separate canonical projection.
-Receipt display itself does not attribute the token or update portfolio/accounting records.
+edit. Approval and Buy/Sell hashes appear in separate compact rows below the button. Each real hash
+links directly to the explorer and has an icon-only copy action. Both receipts survive completion,
+swap preparation, cancellation and reload; historical single-hash attempts remain readable.
+Preview hashes never link to an explorer. A swap first verifies its receipt through the public confirmation API, then refreshes the existing
+database-backed market read. The browser supplies only wallet/hash; it never supplies prices or
+reserve values. Confirmation appends canonical raw evidence without advancing cursors or rewriting
+history. The indexer retains external activity, projection replay and reorg reconciliation. This
+does not attribute a new token or update portfolio/accounting records.
 
 ## Runtime configuration
 
@@ -73,16 +78,16 @@ Configure the API Worker, never the frontend build:
 | Binding                        | Meaning                                                                                                |
 | ------------------------------ | ------------------------------------------------------------------------------------------------------ |
 | `TOKEN_PUBLIC_TRADING_ENABLED` | Explicit `true`; absent/false leaves public preparation closed                                         |
-| `TOKEN_PUBLIC_RPC_DAILY_LIMIT` | Explicit integer 40–100,000, maximum reserved preparation RPC calls per day                            |
+| `TOKEN_PUBLIC_RPC_DAILY_LIMIT` | Explicit integer 40–100,000, maximum reserved preparation/confirmation RPC calls per day               |
 | `TOKEN_LAUNCH_POLICY_JSON`     | Existing reviewed testnet deployment/preset and gas limits; a fixture is invalid for remote activation |
 | `MONAD_RPC_URL`                | Operator-selected RPC for bounded backend preparation                                                  |
 
 Public trading has its own gate and does not enable issuance. The policy's creator launch allowlist
 is not a buyer allowlist; any visitor may trade a confirmed published token of the reviewed preset.
-Each preparation reserves 40 calls against a shared daily ceiling before transport, regardless of
-wallet, and allows at most six preparations per wallet per minute. Reservations are transactional
+Each preparation or unrecorded receipt confirmation reserves 40 calls against a shared daily ceiling before transport, regardless of
+wallet, and allows at most six preparation/confirmation admissions per wallet per minute. Reservations are transactional
 in the existing private `pickler.provider_quotas`; failures consume admitted daily reservations.
-The driver independently caps each preparation at 40 calls. Denials return 429 with Retry-After.
+The driver independently caps each admitted operation at 40 calls. Recorded canonical receipts are idempotent and require no RPC admission. Denials return 429 with Retry-After.
 Changing wallet addresses cannot increase the global allowance. These controls limit resources;
 a public address is not proof of identity and this is not an anti-Sybil admission mechanism.
 
@@ -139,7 +144,7 @@ it is not a production token or a provider acceptance claim.
 Public preview links on the development server:
 
 - `/agents/halftime?stage=token-empty`: no token and no trade action.
-- `/agents/halftime?stage=token-launched`: simulated approvals, buy, sell and confirmation.
+- `/agents/halftime?stage=token-launched`: simulated approvals, buy, sell and confirmation; choose Success, Cancel, Failure or Slow network above the market.
 - `/agents/halftime?stage=token-empty&wallet=username`: username recovery UI.
 
 | Scenario                                                                                  | Evidence                                             | Acceptance                  |
@@ -153,3 +158,31 @@ Public preview links on the development server:
 | Hosted acceptance of the continuous approval/trade flow                                   | Not run; real wallet and confirmed live token needed | Pending                     |
 | DEX swaps after graduation                                                                | Separate integration                                 | Pending                     |
 | Indexer changes                                                                           | Existing implementation unchanged                    | Deferred                    |
+
+## Canonical trade publication
+
+`POST /v1/marketplace/personas/:handle/token/confirm` accepts only `{ wallet, txHash }` and
+returns `pending`, `confirmed` or `reverted`. It shares public trading admission and the reviewed
+testnet policy. Before publication, the backend verifies the pinned factory, registered launch,
+agent key, preset, quote/deployer bindings, sender, exact-input calldata and matching decoded
+curve event at a stable policy-confirmed block. Provider preparation holds no PostgreSQL locks.
+The short publication transaction rechecks canonical attribution and serializes with the indexer.
+It only inserts absent headers/events. Conflicting branches, orphaned evidence or inconsistent
+stored event contents remain pending for indexer reconciliation; public requests never rewrite
+those records. Replays return the recorded result without signing, sending or advancing cursors.
+
+The market merges recent receipt observations with bounded hourly history and the original
+launch-price anchor. Two buys in the same hour are distinct graph observations. Price/FDV and curve
+progress reuse core integer calculations; volume and actual reserve come from canonical events.
+
+Controlled regression commands:
+
+```sh
+node --import tsx --test packages/infrastructure/test/public-trade-confirmation.test.ts packages/infrastructure/test/token-market-read.test.ts
+node --import tsx scripts/design/public-token-trading.mjs http://localhost:3005
+```
+
+These tests use isolated loopback PostgreSQL and controlled RPC/wallet responses. They verify
+buy/sell publication, replay, concurrency, unchanged cursors and historical conflict preservation.
+Local acceptance does not establish deployed API availability. Both API and Web must publish
+through the existing automatic release process; no manual deployment is part of this change.
