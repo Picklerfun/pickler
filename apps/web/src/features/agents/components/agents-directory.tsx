@@ -53,14 +53,19 @@ export function AgentsDirectory({
 
   // The beats are whatever the agents actually work, so a new one never needs a code change here.
   const beats = useMemo(
-    () => ["all", ...[...new Set(agents.map((entry) => entry.beat))].sort()],
+    () => [
+      "all",
+      ...[
+        ...new Set(agents.map((entry) => entry.beat.trim()).filter((label) => label !== "")),
+      ].sort(),
+    ],
     [agents],
   );
 
   const shown = useMemo(
     () =>
       agents
-        .filter((entry) => beat === "all" || entry.beat === beat)
+        .filter((entry) => beat === "all" || entry.beat.trim() === beat)
         .filter((entry) => !openOnly || takingQuestions(entry))
         .filter((entry) =>
           matches(query, [
@@ -78,7 +83,10 @@ export function AgentsDirectory({
   const busiest = useMemo(() => {
     const counts = new Map<string, number>();
     for (const entry of agents) {
-      counts.set(entry.beat, (counts.get(entry.beat) ?? 0) + 1);
+      const label = entry.beat.trim();
+      if (label !== "") {
+        counts.set(label, (counts.get(label) ?? 0) + 1);
+      }
     }
     return [...counts]
       .map(([label, count]) => ({ label, count }))
