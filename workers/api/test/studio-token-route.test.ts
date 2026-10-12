@@ -240,6 +240,52 @@ test("owner JWT -> private draft -> controlled grant -> stored state; no browser
     tokenStateSchema.parse(await (await request("", { headers })).json()).confirmation,
     "pending",
   );
+  // The HTTP state read repairs an older finalized app operation, then serves stored state.
+  const storedTokens = services.tokens!;
+  const storedOperations = services.tokenOperations!;
+  let repaired = false;
+  let repairCalls = 0;
+  services.tokens = {
+    ...storedTokens,
+    state: async (target) => {
+      const state = await storedTokens.state(target);
+      return repaired
+        ? {
+            ...state,
+            confirmation: "confirmed" as const,
+            token: {
+              name: "Controlled",
+              ticker: "$CTRL",
+              address: "0x" + "2".repeat(40),
+              chainId: 10143 as const,
+              imageUri: null,
+              avatar: { accent: "lime" as const, pattern: 1 },
+            },
+          }
+        : state;
+    },
+  };
+  services.tokenOperations = {
+    ...storedOperations,
+    status: async (target, id) => {
+      assert.deepEqual(target, f.scope);
+      assert.equal(id, sent.id);
+      repairCalls++;
+      const result = await storedOperations.status(target, id);
+      repaired = true;
+      return result;
+    },
+  };
+  assert.equal(
+    tokenStateSchema.parse(await (await request("", { headers })).json()).confirmation,
+    "confirmed",
+  );
+  await request("", { headers });
+  assert.equal(repairCalls, 1, "confirmed state must remain database-only");
+  assert.deepEqual({ signs, sends }, { signs: 1, sends: 1 });
+  services.tokens = storedTokens;
+  services.tokenOperations = storedOperations;
+
   const baseRepository = f.repository;
   const tradeRepository: TokenLaunchRepository = {
     transaction: (scope, chain, work) =>
