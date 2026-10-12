@@ -199,7 +199,8 @@ test("a blocked report keeps permission, valuation reads and lease renewal avail
     const failed = notices[0]!.queries.firstFailure!;
     assert.equal(failed.code, "PERSISTENCE_QUERY_TIMEOUT");
     assert.equal(failed.driverCode, "57014");
-    assert.equal(failed.statement, "SELECT");
+    // The read-only fingerprint now starts with its materialized key-page CTE.
+    assert.equal(failed.statement, "WITH");
     assert.ok(failed.backendPid);
     assert.ok(failed.durationMs! >= 9000);
     assert.equal(notices[0]!.origin, "report-worker");
