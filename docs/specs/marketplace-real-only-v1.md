@@ -4,6 +4,14 @@ Status: requested by the owner on 2026-10-08 ("ya no quiero nada hardcodeado"); 
 taken by the implementing agent and listed for the owner to confirm or reverse. Branch
 `codex/landing-trade-create-agent`, after `docs/specs/landing-trade-v1.md`.
 
+## Current token discovery
+
+The historical decisions below describe the original cleanup. Public agent tokens now render from
+canonical marketplace directory data at `/#tokens`; Explore → Tokens and the landing Back action
+link there. Confirmed cards open `/agents/<handle>` with the existing testnet Buy/Sell controls.
+No standalone `/tokens` route or record ranking is enabled. An empty canonical directory is shown
+explicitly; deployed receipts are not browser-supplied evidence of public attribution.
+
 ## 1. Problem
 
 The marketplace's navigation offers six destinations, and the product behind them is uneven:
