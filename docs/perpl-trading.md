@@ -124,7 +124,8 @@ Origin approval or activation.
 
 Hosted persistence uses the existing trusted DATABASE Hyperdrive binding. Local composition
 requires explicit `APP_ENV=local` and a loopback DATABASE_URL. Invocation pools are closed on every
-outcome. This change copies no deployed secrets and publishes no Worker.
+outcome. The source change copies no deployed secrets. Publication is an explicit operator step,
+recorded separately in the dated readiness record.
 
 Drizzle appends `0048_perpl_live_execution` and `0049_perpl_live_grants`, with fresh generated
 snapshots. They create private `pickler.perpl_live_accounts`, enable RLS and grant only backend
@@ -145,7 +146,9 @@ Local visual routes: `/studio?stage=perpl-trading-ready`, `perpl-trading-active`
 `perpl-trading-closed`. These are explicitly marked fixtures and disabled in ordinary production
 hosts by the existing preview host policy. Start trading is inert in these fixtures.
 
-Real acceptance is still pending: exact owner agent and AUSD ceiling, sufficient wallet AUSD/MON,
-reviewed live policy/code hash, Origin whitelist, matching JWT configuration, deployment/migrations,
-owner passkey setup and one real opening/closing with matched receipts. No deployment, shared
-migration, real funding, order or paid model call is established by this implementation.
+Hosted self-service acceptance is still pending: complete execution configuration, verified
+enrollment Origin, the owner's saved caps and sufficient wallet AUSD/MON, owner passkey setup,
+and one real opening/closing with matched receipts. The owner selects the agent and amount in
+Studio; no operator-selected agent is required for the general configuration. The dated record
+documents the applied migrations and closed code publication. No real funding, order or paid
+model call has been established by the controlled suites or public probes.

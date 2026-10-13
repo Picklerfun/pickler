@@ -24,6 +24,20 @@ The first execution mode remains one bounded open/hold/close sequence, at 1x and
 
 ## Configuration awaiting explicit approval
 
+The tested code from `0f9565d3` was subsequently published with both Perpl gates still false,
+preserving the existing plaintext runtime variables and uploading no new secrets:
+
+| Worker  | Verified active version                |
+| ------- | -------------------------------------- |
+| Trading | `91ce935d-cb34-43f4-9a0b-1dbf38b667a4` |
+| API     | `88244fc3-5fae-4c10-8d39-9447ce8e9649` |
+| Web     | `7085b5d8-77d5-461e-ab77-897d4a63f62b` |
+
+All three active versions carry tag `perpl-readiness-0f9565d3`. The app serves OpenAPI with
+226 operations and the owner Perpl route. A request without a JWT returns 401 with
+`Cache-Control: private, no-store`. Trading's issuer and execution secrets still await the
+explicitly requested approval; code publication does not configure them.
+
 The proposed destination is the existing `pickler-trading-staging` Worker in Cloudflare account
 `bc8d4adf4860284fda426b24e7377bc2`. Its source issuer matches the staging Supabase project.
 Configure JWT issuer, the API's existing read-only parent Turnkey credentials, a new 32-byte AES
