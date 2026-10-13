@@ -7,6 +7,11 @@ import { parseAccepted, parseData, parseHistory, parseRecommendation, parseStudi
 import type { AdviceAccepted, AdviceHistory, AdviceSymbol, Recommendation, StudioAgent } from "./types";
 
 export const ADVICE_TIMEOUT_MS = 15_000;
+/**
+ * The paid POST (X-PAYMENT attached): the server simulates, settles and waits for the receipt before it answers, so a
+ * normal settlement can take longer than 15 s (Ruling A3).
+ */
+export const PAID_TIMEOUT_MS = 60_000;
 
 /** `status` HTTP (0 if there was no answer) and `code` = `{ error }` of the server, the status, or `timeout` | `network`. */
 export class AdviceApiError extends Error {
@@ -19,9 +24,9 @@ export class AdviceApiError extends Error {
 type Answer = { status: number; ok: boolean; json: unknown; settlementHeader: string | null };
 
 /** One request under the deadline; the deadline also covers reading the body. Network and deadline failures throw. */
-async function run(send: (signal: AbortSignal) => Promise<Response>): Promise<Answer> {
+async function run(send: (signal: AbortSignal) => Promise<Response>, deadline = ADVICE_TIMEOUT_MS): Promise<Answer> {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), ADVICE_TIMEOUT_MS);
+  const timer = setTimeout(() => controller.abort(), deadline);
   try {
     const res = await send(controller.signal);
     const json: unknown = await res.json().catch(() => undefined);
@@ -71,12 +76,14 @@ export type AdviceAnswer = { status: number; json: unknown; settlementHeader: st
 /**
  * POST a recommendation. Returns the answer whatever its status (the 402 with its terms, the 202 with its settlement
  * header, an error body); only a network failure or the deadline throw. `key` is the Idempotency-Key, one per Ask;
- * `payment` is the base64 X-PAYMENT of the paid retry.
+ * `payment` is the base64 X-PAYMENT of the paid retry, which runs under PAID_TIMEOUT_MS instead of 15 s.
  */
 export async function requestAdvice(authed: AuthedFetch, agentId: string, symbol: AdviceSymbol, key: string, payment?: string): Promise<AdviceAnswer> {
   const headers: Record<string, string> = { "Content-Type": "application/json", "Idempotency-Key": key };
   if (payment !== undefined) headers["X-PAYMENT"] = payment;
-  const a = await run((signal) => authed(`/agent-advice/agents/${encodeURIComponent(agentId)}/recommendations`, { method: "POST", headers, body: JSON.stringify({ symbol }), signal }));
+  const path = `/agent-advice/agents/${encodeURIComponent(agentId)}/recommendations`;
+  const deadline = payment === undefined ? ADVICE_TIMEOUT_MS : PAID_TIMEOUT_MS;
+  const a = await run((signal) => authed(path, { method: "POST", headers, body: JSON.stringify({ symbol }), signal }), deadline);
   return { status: a.status, json: a.json, settlementHeader: a.settlementHeader };
 }
 

@@ -1,5 +1,5 @@
 // The paid Ask of a Studio agent (docs/specs/agent-advice-x402-v1.md §3.2–§3.3, fee split §4): quote (402), check the
-// terms against the app's own constants, confirm, open the wallet with Face ID, sign the ReceiveWithAuthorization, pay
+// terms against the app's own constants, confirm, open the wallet (Face ID only if locked), sign the ReceiveWithAuthorization, pay
 // with X-PAYMENT and poll the job. One Idempotency-Key per Ask from idle (Ruling A1), reused only by the paid retry of
 // that Ask and by the replays that check on it. After a payment may have moved, nothing here ever signs again.
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -58,11 +58,15 @@ export type AdviceAskState =
 
 export type AdviceAsk = {
   state: AdviceAskState;
-  /** Start an Ask from any settled state: a new Idempotency-Key, a 402, the confirmation. */
+  /**
+   * Start an Ask: a new Idempotency-Key, a 402, the confirmation. Ignored while this Ask's payment is out and
+   * unresolved (anything but done, failed or refused): the job id is kept and nothing is signed again. From
+   * `settlement_pending` the person leaves with `abandon` first.
+   */
   ask: (agent: StudioAgent, symbol: AdviceSymbol) => Promise<void>;
   /** From `price_changed`: ask again expecting the new price (nothing has been signed). */
   acceptPrice: () => Promise<void>;
-  /** From `confirming`: Face ID, sign, pay, wait. */
+  /** From `confirming`: open the wallet (prompting only if it is locked), sign, pay, wait. */
   confirm: () => Promise<void>;
   /** From `offline` or `busy`: the same step again, with the same key and never a new signature. */
   retry: () => Promise<void>;
@@ -70,8 +74,10 @@ export type AdviceAsk = {
   checkAgain: () => Promise<void>;
   /** From `timeout`: read the same job again, and keep waiting. */
   refresh: () => Promise<void>;
-  /** Back to idle. Ignored while a payment is on its way. */
+  /** Back to idle. Ignored, like `ask`, while this Ask's payment is out and unresolved. */
   reset: () => void;
+  /** From `settlement_pending` only: leave the payment being checked (server-side) and go idle. Never signs. */
+  abandon: () => Promise<void>;
 };
 
 type Flow = {
@@ -103,6 +109,8 @@ const PENDING: AdviceAskState = { kind: "settlement_pending", checking: false };
 const CHECKING: AdviceAskState = { kind: "settlement_pending", checking: true };
 const SIGNATURE = /^0x[0-9a-fA-F]{130}$/;
 const OFFLINE_CODES = new Set(["network", "timeout", "signin_network", "signin_timeout"]);
+/** Where a paid Ask is resolved: the job's answer, or a refusal that charged nothing. */
+const RESOLVED = new Set<AdviceAskState["kind"]>(["done", "failed", "refused"]);
 
 class Cancelled extends Error {}
 class UnlockFailed extends Error {}
@@ -178,9 +186,19 @@ export function useAdviceAsk(account: AccountState, onUnlock: (w: Wallet) => voi
       if (cancelled.kind === "idle" && live(f)) flowRef.current = null;
       return;
     }
+    const offline = e instanceof AdviceApiError && OFFLINE_CODES.has(e.code);
+    if (offline) {
+      put(f, { kind: "offline", paid: f.payment !== null });
+      return;
+    }
+    if (f.payment !== null) {
+      // After a payment went out no failure is a dead end: it is being checked, with checkAgain (no header).
+      f.pending = true;
+      put(f, PENDING);
+      return;
+    }
     if (e instanceof AdviceApiError) {
-      if (OFFLINE_CODES.has(e.code)) put(f, { kind: "offline", paid: f.payment !== null });
-      else if (e.code.startsWith("signin_")) put(f, { kind: "signin_error", code: e.code.slice("signin_".length) });
+      if (e.code.startsWith("signin_")) put(f, { kind: "signin_error", code: e.code.slice("signin_".length) });
       else put(f, { kind: "error", code: e.code, message: null });
       return;
     }
@@ -213,7 +231,9 @@ export function useAdviceAsk(account: AccountState, onUnlock: (w: Wallet) => voi
       void (async () => {
         let response: { ok: true; recommendation: Recommendation } | { ok: false };
         try {
-          // Polling never prompts: a locked wallet is a poll that failed, and the deadline decides.
+          // Polling never prompts. It uses the wallet this Ask opened and the session's token in memory, so locking
+          // the wallet does not stop it; a poll that fails (a 401 cannot sign in again on an ended session) only
+          // counts toward the deadline.
           response = { ok: true, recommendation: await getRecommendation((path, init) => fetchRef.current(path, init, f.wallet), f.jobId!) };
         } catch {
           response = { ok: false };
@@ -234,7 +254,13 @@ export function useAdviceAsk(account: AccountState, onUnlock: (w: Wallet) => voi
     try {
       job = acceptedFrom(answer.json);
     } catch {
-      put(f, { kind: "error", code: "bad_response", message: null });
+      if (f.payment !== null) {
+        // A paid job the app could not read is not lost: checking again replays the key and returns it.
+        f.pending = true;
+        put(f, PENDING);
+      } else {
+        put(f, { kind: "error", code: "bad_response", message: null });
+      }
       return;
     }
     f.jobId = job.id;
@@ -260,7 +286,8 @@ export function useAdviceAsk(account: AccountState, onUnlock: (w: Wallet) => voi
       const { error } = parsePaymentRequired(answer.json);
       // Only a refusal of the header itself says nothing was charged. A pending settlement, or a replay whose first
       // answer was lost (the server says invalid_payment over a pending row), is being checked.
-      const checking = f.pending || error === "settlement_failed" || error === null || (f.uncertain && (error === "invalid_payment" || error === "nonce_used"));
+      const overPendingRow = f.uncertain && (error === "invalid_payment" || error === "nonce_used");
+      const checking = f.pending || error === "settlement_failed" || error === null || overPendingRow;
       if (checking) {
         f.pending = true;
         put(f, PENDING);
@@ -269,13 +296,10 @@ export function useAdviceAsk(account: AccountState, onUnlock: (w: Wallet) => voi
       put(f, { kind: "refused", error: error!, nothingCharged: true, faucet: error === "insufficient_funds" });
       return;
     }
-    if (answer.status === 409 || answer.status >= 500) {
-      // Another attempt in flight for this key, or a server failure after the payment went out: being checked.
-      f.pending = true;
-      put(f, PENDING);
-      return;
-    }
-    put(f, { kind: "error", code: errorCode(answer), message: null });
+    // Anything else after the payment went out — another attempt in flight (409), a server failure, a status the app
+    // has no state for — is being checked: never a dead end that only a new signature leaves.
+    f.pending = true;
+    put(f, PENDING);
   }, [accepted, put]);
 
   /**
@@ -370,20 +394,37 @@ export function useAdviceAsk(account: AccountState, onUnlock: (w: Wallet) => voi
     put(f, { kind: "confirming", quote: f.quote });
   }, [accepted, authed, fail, live, put, step]);
 
-  const reset = useCallback(() => {
-    const f = flowRef.current;
-    if (f?.sending) return;
+  /** This Ask's payment is out and not resolved: nothing may replace the flow or drop its job id. */
+  const committed = useCallback((f: Flow | null) => {
+    if (f === null) return false;
+    if (f.sending) return true;
+    return f.payment !== null && !RESOLVED.has(stateRef.current.kind);
+  }, []);
+
+  /** Forget the flow, whatever it holds. Only for leaving it deliberately (abandon) or for another account. */
+  const drop = useCallback(() => {
     stopPolling();
     flowRef.current = null;
     put(null, studioAgentsEnabled() ? IDLE : OFF);
   }, [put, stopPolling]);
+
+  const reset = useCallback(() => {
+    if (committed(flowRef.current)) return;
+    drop();
+  }, [committed, drop]);
+
+  const abandon = useCallback(async () => {
+    const f = flowRef.current;
+    if (!f || f.running || f.sending || stateRef.current.kind !== "settlement_pending") return;
+    drop();
+  }, [drop]);
 
   const ask = useCallback(async (agent: StudioAgent, symbol: AdviceSymbol) => {
     if (!studioAgentsEnabled() || ADVICE_SPLITTER === null) {
       put(null, OFF);
       return;
     }
-    if (flowRef.current?.running || flowRef.current?.sending) return;
+    if (flowRef.current?.running || committed(flowRef.current)) return;
     stopPolling();
     const f: Flow = {
       key: newIdempotencyKey(), agent, symbol, expected: agent.price.micro, terms: null, quote: null, payment: null,
@@ -391,13 +432,13 @@ export function useAdviceAsk(account: AccountState, onUnlock: (w: Wallet) => voi
     };
     flowRef.current = f;
     await step(f, () => quote(f));
-  }, [put, quote, step, stopPolling]);
+  }, [committed, put, quote, step, stopPolling]);
 
   const acceptPrice = useCallback(async () => {
     const f = flowRef.current;
     const s = stateRef.current;
     if (!f || s.kind !== "price_changed") return;
-    // Nothing was signed: the same key asks again, and the confirmation shows the new price before Face ID.
+    // Nothing was signed: the same key asks again, and the confirmation shows the new price before anything is signed.
     f.expected = s.price;
     await step(f, () => quote(f));
   }, [quote, step]);
@@ -480,10 +521,15 @@ export function useAdviceAsk(account: AccountState, onUnlock: (w: Wallet) => voi
     return () => sub.remove();
   }, [reset]);
 
-  // Another account (or none): nothing of this Ask carries over.
+  // Another account (or none): this Ask is dropped from view, paid or not. Its continuations are discarded (`live`),
+  // polling stops, and nothing is ever signed for it by the new account; a paid analysis stays in the old account's
+  // history.
+  const seenAddress = useRef(address);
   useEffect(() => {
-    reset();
-  }, [address, reset]);
+    if (seenAddress.current === address) return;
+    seenAddress.current = address;
+    drop();
+  }, [address, drop]);
 
   useEffect(() => {
     mounted.current = true;
@@ -493,5 +539,5 @@ export function useAdviceAsk(account: AccountState, onUnlock: (w: Wallet) => voi
     };
   }, []);
 
-  return { state, ask, acceptPrice, confirm, retry, checkAgain, refresh, reset };
+  return { state, ask, acceptPrice, confirm, retry, checkAgain, refresh, reset, abandon };
 }

@@ -48,13 +48,19 @@ type TestWallet = ReturnType<typeof makeWallet>;
 
 // ── The API ──────────────────────────────────────────────────────────────────────────────────────────────────────────
 type Sent = { method: string; path: string; key: string | null; payment: string | null; opened: unknown };
-type Reply = { status: number; body?: unknown; headers?: Record<string, string> } | Error;
+type Answer = { status: number; body?: unknown; headers?: Record<string, string> } | Error;
+/** An answer, or one that arrives `after` ms later (fake timers). */
+type Reply = Answer | { after: number; reply: Answer };
 let sent: Sent[] = [];
 let posts: Reply[] = [];
 let gets: Reply[] = [];
 let lockedUntilOpened = false;
 
-const reply = (r: Reply) => {
+const reply = async (r: Reply): Promise<Response> => {
+  if (!(r instanceof Error) && "after" in r) {
+    await new Promise((resolve) => setTimeout(resolve, r.after));
+    return reply(r.reply);
+  }
   if (r instanceof Error) throw r;
   return { status: r.status, ok: r.status >= 200 && r.status < 300, headers: new Headers(r.headers ?? {}), json: async () => r.body } as unknown as Response;
 };
@@ -76,9 +82,9 @@ const accepts = {
     creatorBps: 6500, protocolBps: 3500, nonceDerivation: "keccak256(abi.encode(payee,salt))",
   },
 };
-const r402 = (error = "X-PAYMENT header is required", over: Record<string, unknown> = {}): Reply => ({ status: 402, body: { x402Version: 1, error, accepts: [{ ...accepts, ...over }] } });
+const r402 = (error = "X-PAYMENT header is required", over: Record<string, unknown> = {}): Answer => ({ status: 402, body: { x402Version: 1, error, accepts: [{ ...accepts, ...over }] } });
 const settlementHeader = btoa(JSON.stringify({ success: true, transaction: TX, network: "monad-testnet", payer: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266" }));
-const r202 = (withSettlement = true): Reply => ({
+const r202 = (withSettlement = true): Answer => ({
   status: 202,
   body: { data: { id: "job-1", status: "queued", statusUrl: "/v1/agent-advice/recommendations/job-1" } },
   headers: withSettlement ? { "X-PAYMENT-RESPONSE": settlementHeader } : {},
@@ -94,7 +100,7 @@ function job(status: "queued" | "running" | "completed" | "failed", error: strin
     result: status === "completed" ? RESULT : null, error,
   };
 }
-const rGet = (status: "queued" | "running" | "completed" | "failed", error: string | null = null): Reply => ({ status: 200, body: { data: job(status, error) } });
+const rGet = (status: "queued" | "running" | "completed" | "failed", error: string | null = null): Answer => ({ status: 200, body: { data: job(status, error) } });
 
 // ── The hook ─────────────────────────────────────────────────────────────────────────────────────────────────────────
 let latest!: AdviceAsk;
@@ -108,6 +114,16 @@ let tree: ReactTestRenderer | undefined;
 async function mount(account: AccountState) {
   act(() => { tree = create(createElement(Probe, { account })); });
   await settle();
+}
+async function switchTo(account: AccountState) {
+  act(() => { tree!.update(createElement(Probe, { account })); });
+  await settle();
+}
+/** Starts a step without waiting for it: its answer arrives on a later tick. */
+function start(fn: () => Promise<void>): Promise<void> {
+  let p!: Promise<void>;
+  act(() => { p = fn(); });
+  return p;
 }
 const unlocked = (w: TestWallet): AccountState => ({ status: "unlocked", wallet: w as never });
 const locked = (w: TestWallet): AccountState => ({ status: "locked", address: w.address as never, credentialId: "cred" });
@@ -441,5 +457,160 @@ describe("the Mera account signs as an EOA", () => {
     expect([27, 28]).toContain(parseInt(signature.slice(-2), 16));
     expect(await recoverTypedDataAddress({ ...typedData(authorization), signature })).toBe(account.address);
     expect(JSON.parse(atob(encodePayment(authorization, signature))).payload.signature).toMatch(SIG65);
+  });
+});
+
+describe("after a payment went out (fix round 1)", () => {
+  const otherWallet = () => {
+    const account = privateKeyToAccount("0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d");
+    jest.spyOn(account, "signTypedData");
+    return { address: account.address, credentialId: "cred2", session: { end() {} }, account };
+  };
+
+  test("the paid POST has 60 s: an answer at 20 s is the job, not offline (Ruling A3)", async () => {
+    await toConfirming();
+    posts.push({ after: 20_000, reply: r202() });
+    const paying = start(() => latest.confirm());
+    await settle();
+    expect(latest.state.kind).toBe("paying");
+
+    await tick(20_000);
+    await act(async () => { await paying; });
+
+    expect(latest.state).toMatchObject({ kind: "waiting", jobId: "job-1" });
+    expect(paid()).toHaveLength(1);
+  });
+
+  test("the paid POST still gives up at 60 s, as offline with a payment", async () => {
+    await toConfirming();
+    posts.push({ after: 61_000, reply: r202() });
+    const paying = start(() => latest.confirm());
+    await settle();
+    await tick(61_000);
+    await act(async () => { await paying; });
+    expect(latest.state).toEqual({ kind: "offline", paid: true });
+  });
+
+  test("a new Ask from offline with a payment sends nothing and signs nothing", async () => {
+    await toConfirming();
+    posts.push(new TypeError("Network request failed"));
+    await run(() => latest.confirm());
+    expect(latest.state).toEqual({ kind: "offline", paid: true });
+    const before = sent.length;
+
+    posts.push(r402());
+    await run(() => latest.ask(AGENT, "BTC"));
+    await run(() => latest.confirm());
+    act(() => { latest.reset(); });
+    await run(() => latest.abandon());
+
+    expect(latest.state).toEqual({ kind: "offline", paid: true });
+    expect(sent).toHaveLength(before);
+    expect(wallet.account.signTypedData).toHaveBeenCalledTimes(1);
+  });
+
+  test("reset or a new Ask while a paid job is waiting keeps the job", async () => {
+    await toConfirming();
+    posts.push(r202());
+    await run(() => latest.confirm());
+    expect(latest.state.kind).toBe("waiting");
+
+    act(() => { latest.reset(); });
+    await run(() => latest.ask(AGENT, "ETH"));
+    expect(latest.state).toMatchObject({ kind: "waiting", jobId: "job-1" });
+    expect(postsSent()).toHaveLength(2);
+
+    gets.push(rGet("completed"));
+    await tick(3_000);
+    expect(latest.state.kind).toBe("done");
+
+    // Done: a new Ask is free to start.
+    posts.push(r402());
+    await run(() => latest.ask(AGENT, "ETH"));
+    expect(latest.state.kind).toBe("confirming");
+  });
+
+  test("reset while the paid POST is in flight keeps the flow", async () => {
+    await toConfirming();
+    posts.push({ after: 5_000, reply: r202() });
+    const paying = start(() => latest.confirm());
+    await settle();
+    act(() => { latest.reset(); });
+    await tick(5_000);
+    await act(async () => { await paying; });
+    expect(latest.state).toMatchObject({ kind: "waiting", jobId: "job-1" });
+  });
+
+  test.each([
+    ["a paid 202 whose body is not the job", { status: 202, body: { nope: true } }],
+    ["a paid answer the app has no state for", { status: 403, body: { error: "FORBIDDEN" } }],
+    ["another attempt in flight", { status: 409, body: { error: "CONFLICT" } }],
+    ["a server failure", { status: 503, body: { error: "ADVICE_UNAVAILABLE" } }],
+  ])("%s is being checked, with checkAgain and no new signature", async (_name, answer) => {
+    await toConfirming();
+    posts.push(answer);
+    await run(() => latest.confirm());
+    expect(latest.state).toEqual({ kind: "settlement_pending", checking: false });
+
+    posts.push(r202(false));
+    await run(() => latest.checkAgain());
+    expect(latest.state.kind).toBe("waiting");
+    expect(paid()).toHaveLength(1);
+    expect(wallet.account.signTypedData).toHaveBeenCalledTimes(1);
+  });
+
+  test("a sign-in that fails on the paid POST is being checked, not a dead end", async () => {
+    const { IdentityError } = jest.requireActual("../src/identity/api") as typeof import("../src/identity/api");
+    await toConfirming();
+    posts.push(new IdentityError(401, "nonce_invalid"));
+    await run(() => latest.confirm());
+    expect(latest.state).toEqual({ kind: "settlement_pending", checking: false });
+  });
+
+  test("abandon leaves only a settlement being checked, and the next Ask has a new key", async () => {
+    await toConfirming();
+    posts.push(r402("settlement_failed"));
+    await run(() => latest.confirm());
+    expect(latest.state.kind).toBe("settlement_pending");
+
+    await run(() => latest.abandon());
+    expect(latest.state).toEqual({ kind: "idle" });
+    posts.push(r402());
+    await run(() => latest.ask(AGENT, "BTC"));
+    expect(latest.state.kind).toBe("confirming");
+    const keys = postsSent().map((x) => x.key);
+    expect(keys.at(-1)).not.toBe(keys[0]);
+    expect(wallet.account.signTypedData).toHaveBeenCalledTimes(1);
+  });
+
+  test.each(["insufficient_funds", "expired"])("a resend after a lost answer refused with %s charged nothing", async (error) => {
+    await toConfirming();
+    posts.push(new TypeError("Network request failed"));
+    await run(() => latest.confirm());
+    posts.push(r402(error));
+    await run(() => latest.retry());
+    expect(latest.state).toEqual({ kind: "refused", error, nothingCharged: true, faucet: error === "insufficient_funds" });
+  });
+
+  test("another account: an unpaid Ask goes back to idle", async () => {
+    await toConfirming();
+    await switchTo(unlocked(otherWallet()));
+    expect(latest.state).toEqual({ kind: "idle" });
+  });
+
+  test("another account: a paid job is dropped from view, polled no more, and nothing is signed for the new one", async () => {
+    await toConfirming();
+    posts.push(r202());
+    await run(() => latest.confirm());
+    expect(latest.state.kind).toBe("waiting");
+    const other = otherWallet();
+
+    await switchTo(unlocked(other));
+    expect(latest.state).toEqual({ kind: "idle" });
+    const before = sent.length;
+    await tick(30_000);
+    expect(sent).toHaveLength(before);
+    expect(other.account.signTypedData).not.toHaveBeenCalled();
+    expect(wallet.account.signTypedData).toHaveBeenCalledTimes(1);
   });
 });
