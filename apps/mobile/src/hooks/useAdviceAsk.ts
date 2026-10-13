@@ -58,6 +58,8 @@ export type AdviceAskState =
 
 export type AdviceAsk = {
   state: AdviceAskState;
+  /** The agent and symbol of the Ask this state belongs to; null when there is none (idle, off). */
+  flow: { agent: StudioAgent; symbol: AdviceSymbol } | null;
   /**
    * Start an Ask: a new Idempotency-Key, a 402, the confirmation. Ignored while this Ask's payment is out and
    * unresolved (anything but done, failed or refused): the job id is kept and nothing is signed again. From
@@ -543,5 +545,9 @@ export function useAdviceAsk(account: AccountState, onUnlock: (w: Wallet) => voi
     };
   }, []);
 
-  return { state, ask, acceptPrice, confirm, retry, checkAgain, refresh, reset, abandon };
+  // Every change of flow comes with a change of state (put), so reading the ref here follows it.
+  const current = flowRef.current;
+  const flow = current === null ? null : { agent: current.agent, symbol: current.symbol };
+
+  return { state, flow, ask, acceptPrice, confirm, retry, checkAgain, refresh, reset, abandon };
 }

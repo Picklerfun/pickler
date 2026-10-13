@@ -16,6 +16,7 @@ import { useNotifications } from "./src/hooks/useNotifications";
 import { usePerpl } from "./src/hooks/usePerpl";
 import { useReads } from "./src/hooks/useReads";
 import { useRefreshSeal } from "./src/hooks/useRefreshSeal";
+import { useStudio } from "./src/hooks/useStudio";
 import { useTreasury } from "./src/hooks/useTreasury";
 import { AppCtxProvider } from "./src/navigation/context";
 import { Navigator } from "./src/navigation/Navigator";
@@ -69,6 +70,8 @@ export default function App() {
   const reads = useReads(account ?? NONE, onWallet, notifications, store.S.perpsMarketId);
   // La cuenta en la API del producto: la misma que en la web. Sin PICKLER_API_URL no hace nada.
   const identity = useIdentity(account ?? NONE, onWallet);
+  // Studio agents: the paid Ask lives here, above the per-tab stacks, so leaving the advice screen keeps it.
+  const studio = useStudio(account ?? NONE, onWallet, identity.authedFetch, scr === "agents" || scr === "advice");
   const ready = fontsLoaded && account !== null;
   useEffect(() => {
     if (ready) { void SplashScreen.hideAsync(); return; }
@@ -100,7 +103,7 @@ export default function App() {
 
   if (!ready || initial.current === null) return null; // el splash nativo sigue en pantalla (P9)
 
-  const ctx: AppCtx = { ...store, account, treasury, perpl, marketData, reads, identity, notifications, onWallet, lock, signOut, seal, setControls };
+  const ctx: AppCtx = { ...store, account, treasury, perpl, marketData, reads, identity, studio, notifications, onWallet, lock, signOut, seal, setControls };
   // La pantalla del username no cae encima de una operación en curso: quien desbloqueó para retirar, pedir una read o
   // habilitar trading en Perpl ve primero cómo termina (src/identity/state.ts). Una vez abierta se queda.
   const quiet = appQuiet({ treasuryBusy: treasury.busy, readPending: reads.request.step === "pending", perplOnboarding: perplOnboardingActive(perpl.state) });

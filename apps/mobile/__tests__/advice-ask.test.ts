@@ -196,6 +196,16 @@ describe("the happy path", () => {
     expect(recovered).toBe(wallet.address);
   });
 
+  test("the flow names its agent and symbol while it lives, and nothing once it is left", async () => {
+    await mount(unlocked(wallet));
+    expect(latest.flow).toBeNull();
+    posts.push(r402());
+    await run(() => latest.ask(AGENT, "ETH"));
+    expect(latest.flow).toEqual({ agent: AGENT, symbol: "ETH" });
+    await run(async () => latest.reset());
+    expect(latest.flow).toBeNull();
+  });
+
   test("each Ask from idle gets a new Idempotency-Key", async () => {
     await toConfirming();
     // From the confirmation straight to a new Ask, and again after a reset: each one its own key.

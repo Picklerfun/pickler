@@ -14,10 +14,11 @@ import { C } from "./theme";
 export function Page({ screen, children, headerRight, bare }: { screen: Screen; children: ReactNode; headerRight?: ReactNode; bare?: boolean }) {
   const ctx = useAppCtx();
   const navigation = useNavigation();
-  const { S, perpl, reads, back, setControls } = ctx;
+  const { S, perpl, reads, studio, back, setControls } = ctx;
   const openMarket = (perpl.context?.markets ?? []).find((m) => m.id === S.perpsMarketId);
   const perpsSymbol = openMarket?.symbol;
-  const agent = screen === "agent" ? reads.agents?.find((a) => a.id === S.agentId) : undefined;
+  const studioAgent = screen === "advice" ? studio.agents?.find((a) => a.id === S.adviceAgentId) : undefined;
+  const agent = screen === "agent" ? reads.agents?.find((a) => a.id === S.agentId) : studioAgent ? { name: studioAgent.name, owner: studioAgent.handle } : undefined;
   const [title, baseSub] = headerFor(screen, perpsSymbol, agent);
   // Market: subtítulo dinámico (agentes y apalancamiento máximo del mercado abierto); sin mercado, el de headerFor.
   const sub = screen === "market" && openMarket ? `${reads.agents?.length ?? "—"} AGENTS · MAX ${openMarket.maxLeverage}×` : baseSub;
@@ -37,7 +38,7 @@ export function Page({ screen, children, headerRight, bare }: { screen: Screen; 
           {isRoot ? <Image source={require("../../assets/pickler-mark.png")} style={{ width: 26, height: 26 }} resizeMode="contain" /> : null}
           {/* item 9 de la ola final (spec D16): antes del título, junto al ícono de raíz y el back — Page ya
               resuelve `agent` para headerFor, así que no hace falta un `headerRight` que repita la búsqueda. */}
-          {screen === "agent" && agent ? <Avatar initials={initials(agent.name)} size={38} s={12} /> : null}
+          {(screen === "agent" || screen === "advice") && agent ? <Avatar initials={initials(agent.name)} size={38} s={12} /> : null}
           <View style={{ flex: 1, minWidth: 0 }}>
             {isRoot
               ? <T w={700} s={30} lh={1} ls={-0.045} display numberOfLines={1}>{title.toUpperCase()}</T>
