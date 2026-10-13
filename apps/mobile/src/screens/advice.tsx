@@ -169,7 +169,7 @@ function FlowBody({ state, nav }: { state: AdviceAskState; nav: AppCtx["nav"] })
         <StatusCard
           tag={state.checking ? "CHECKING AGAIN…" : "PAYMENT BEING CHECKED"}
           title="Your payment is being checked"
-          body="Pickler is confirming whether it landed. Nothing is paid again from here; check again in a minute."
+          body="It may still be landing, or it landed and the analysis is not queued yet. Nothing is paid again from here; check again in a minute."
           tone={TONES.pending}
         />
       );
@@ -343,7 +343,7 @@ type FooterProps = {
   setLeaving: (v: boolean) => void; symbol: AdviceSymbol; advice: AppCtx["studio"]["advice"];
 };
 
-/** The sticky action, by state. Leaving a payment being checked or a job still running asks once more. */
+/** The sticky action, by state. Leaving a payment being checked, a job still running or an unanswered payment asks once more. */
 function Footer({ agent, state, elsewhere, price, locked, leaving, setLeaving, symbol, advice }: FooterProps) {
   const leave = (
     <Btn label="Leave and ask again" onPress={() => setLeaving(true)} variant="ghost" py={10} s={13} accessibilityLabel="advice-leave" />
@@ -406,7 +406,10 @@ function Footer({ agent, state, elsewhere, price, locked, leaving, setLeaving, s
       return <Btn label={state.retrying ? "Trying…" : "Try again"} onPress={() => { void advice.retry(); }} variant="lime" busy={state.retrying} py={14} accessibilityLabel="advice-retry" />;
     case "offline":
       return state.paid ? (
-        <Btn label="Try again" onPress={() => { void advice.retry(); }} variant="lime" py={14} accessibilityLabel="advice-retry" />
+        <>
+          <Btn label="Try again" onPress={() => { void advice.retry(); }} variant="lime" py={14} accessibilityLabel="advice-retry" />
+          {leave}
+        </>
       ) : (
         <View style={{ flexDirection: "row", gap: 8 }}>
           <Btn label="Cancel" onPress={advice.reset} variant="outline2" style={{ minWidth: 104 }} py={14} accessibilityLabel="advice-cancel" />

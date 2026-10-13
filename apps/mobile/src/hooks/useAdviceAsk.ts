@@ -64,7 +64,7 @@ export type AdviceAsk = {
   /**
    * Start an Ask: a new Idempotency-Key, a 402, the confirmation. Ignored while this Ask's payment is out and
    * unresolved (anything but done, failed or refused): the job id is kept and nothing is signed again. From
-   * `settlement_pending` the person leaves with `abandon` first.
+   * `settlement_pending`, `timeout` or a paid `offline` the person leaves with `abandon` first.
    */
   ask: (agent: StudioAgent, symbol: AdviceSymbol) => Promise<void>;
   /** From `price_changed`: ask again expecting the new price (nothing has been signed). */
@@ -80,8 +80,9 @@ export type AdviceAsk = {
   /** Back to idle. Ignored, like `ask`, while this Ask's payment is out and unresolved. */
   reset: () => void;
   /**
-   * From `settlement_pending` or `timeout` only (Ruling A5): leave the payment being checked, or the job still running,
-   * server-side and go idle. Never signs; a later Ask is a deliberate new purchase.
+   * From `settlement_pending`, `timeout` or `offline` with a payment out only (Ruling A5, final review M1): leave the
+   * payment being checked, the job still running, or the unanswered payment, server-side and go idle. Never signs; a
+   * later Ask is a deliberate new purchase.
    */
   abandon: () => Promise<void>;
 };
@@ -116,6 +117,7 @@ const IDLE: AdviceAskState = { kind: "idle" };
 const PENDING: AdviceAskState = { kind: "settlement_pending", checking: false };
 const CHECKING: AdviceAskState = { kind: "settlement_pending", checking: true };
 const SIGNATURE = /^0x[0-9a-fA-F]{130}$/;
+const UNAVAILABLE = "This agent can't answer right now";
 const OFFLINE_CODES = new Set(["network", "timeout", "signin_network", "signin_timeout"]);
 /** Where a paid Ask is resolved: the job's answer, or a refusal that charged nothing. */
 const RESOLVED = new Set<AdviceAskState["kind"]>(["done", "failed", "refused"]);
@@ -174,13 +176,17 @@ export function useAdviceAsk(account: AccountState, onUnlock: (w: Wallet) => voi
     }
   }, []);
 
-  /** An authed call for this Ask. With the wallet locked: open it, and send once more with the wallet in hand. */
+  /**
+   * An authed call for this Ask. With the wallet locked — or the one this Ask opened locked since, its session ended —
+   * open it again (Face ID if locked), and send once more with the wallet in hand.
+   */
   const authed = useCallback(async <T,>(f: Flow, run: (fetch: AuthedFetch) => Promise<T>): Promise<T> => {
     const fetch: AuthedFetch = (path, init) => fetchRef.current(path, init, f.wallet);
     try {
       return await run(fetch);
     } catch (e) {
       if (!(e instanceof WalletLockedError)) throw e;
+      f.wallet = undefined;
       f.wallet = await open();
       if (!live(f)) throw new Cancelled();
       return run(fetch);
@@ -240,10 +246,12 @@ export function useAdviceAsk(account: AccountState, onUnlock: (w: Wallet) => voi
         let response: { ok: true; recommendation: Recommendation } | { ok: false };
         try {
           // Polling never prompts. It uses the wallet this Ask opened and the session's token in memory, so locking
-          // the wallet does not stop it; a poll that fails (a 401 cannot sign in again on an ended session) only
-          // counts toward the deadline.
+          // the wallet does not stop it while the token lasts. A poll that fails only counts toward the deadline; one
+          // that needed the locked wallet drops it, so the next polls use the account's (unlocked elsewhere, or
+          // locked until a tap on "Check again" opens it).
           response = { ok: true, recommendation: await getRecommendation((path, init) => fetchRef.current(path, init, f.wallet), f.jobId!) };
-        } catch {
+        } catch (e) {
+          if (e instanceof WalletLockedError) f.wallet = undefined;
           response = { ok: false };
         }
         if (!live(f)) return;
@@ -374,7 +382,8 @@ export function useAdviceAsk(account: AccountState, onUnlock: (w: Wallet) => voi
       return;
     }
     if (answer.status !== 402) {
-      put(f, { kind: "error", code: errorCode(answer), message: null });
+      // A 503 before any payment (ADVICE_UNAVAILABLE, ADVICE_COST_UNKNOWN): the agent can't answer now (spec §3.3).
+      put(f, { kind: "error", code: errorCode(answer), message: answer.status === 503 ? UNAVAILABLE : null });
       return;
     }
     const { terms, error } = parsePaymentRequired(answer.json);
@@ -424,8 +433,9 @@ export function useAdviceAsk(account: AccountState, onUnlock: (w: Wallet) => voi
 
   const abandon = useCallback(async () => {
     const f = flowRef.current;
-    const kind = stateRef.current.kind;
-    if (!f || f.running || f.sending || !(kind === "settlement_pending" || kind === "timeout")) return;
+    const s = stateRef.current;
+    const leavable = s.kind === "settlement_pending" || s.kind === "timeout" || (s.kind === "offline" && s.paid);
+    if (!f || f.running || f.sending || !leavable) return;
     drop();
   }, [drop]);
 

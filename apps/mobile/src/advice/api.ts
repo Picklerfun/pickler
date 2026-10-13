@@ -2,6 +2,7 @@
 // setTimeout (AbortSignal.timeout does not exist in RN), and the deadline covers the body: headers followed by a body that
 // never arrives are a `timeout`. The marketplace list is public (a bare array); the advice routes go through `authed`
 // (bearer, `{ data }` envelope); a 402 is x402's own shape and is returned, never thrown.
+import { isMeraError } from "@category-labs/mera";
 import { type AuthedFetch, type DoFetch, IdentityError, WalletLockedError } from "../identity/api";
 import { parseAccepted, parseData, parseHistory, parseRecommendation, parseStudioAgents } from "./parse";
 import type { AdviceAccepted, AdviceHistory, AdviceSymbol, Recommendation, StudioAgent } from "./types";
@@ -35,6 +36,8 @@ async function run(send: (signal: AbortSignal) => Promise<Response>, deadline = 
   } catch (e) {
     // WalletLockedError passes through unchanged ("unlock and retry", not "offline"); a failed sign-in keeps its code.
     if (e instanceof AdviceApiError || e instanceof WalletLockedError) throw e;
+    // The wallet in hand was locked (Lock ends its Mera session) and the sign-in needed it: locked, not offline.
+    if (isMeraError(e) && e.code === "SESSION_ENDED") throw new WalletLockedError();
     if (e instanceof IdentityError) throw new AdviceApiError(e.status, `signin_${e.code}`);
     throw new AdviceApiError(0, controller.signal.aborted || (e instanceof Error && e.name === "AbortError") ? "timeout" : "network");
   } finally {

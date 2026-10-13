@@ -36,7 +36,8 @@ const ROW = { id: "mira", name: "Mira", handle: "mira", accent: "#c6f432", venue
 type Reply = { status: number; body?: unknown; headers?: Record<string, string> };
 type Sent = { method: string; path: string; payment: string | null };
 let sent: Sent[] = [];
-let posts: Reply[] = [];
+/** An Error is a request that never got an answer (no network). */
+let posts: (Reply | Error)[] = [];
 let jobs: Reply[] = [];
 
 const respond = (r: Reply): Response =>
@@ -45,7 +46,11 @@ const respond = (r: Reply): Response =>
 const authedFetch = jest.fn(async (path: string, init: RequestInit = {}) => {
   const method = init.method ?? "GET";
   sent.push({ method, path, payment: new Headers(init.headers).get("X-PAYMENT") });
-  if (method === "POST") return respond(posts.shift() ?? { status: 500 });
+  if (method === "POST") {
+    const next = posts.shift() ?? { status: 500 };
+    if (next instanceof Error) throw next;
+    return respond(next);
+  }
   if (path.includes("?symbol=")) return respond({ status: 200, body: { data: { items: [], nextCursor: null } } });
   return respond(jobs.shift() ?? { status: 200, body: { data: job("running") } });
 });
@@ -195,5 +200,47 @@ test("another agent's screen asks to finish or leave the paid Ask, and offers no
   expect(text()).toContain("Finish or leave the analysis in progress");
   expect(text()).toContain("Open Mira");
   expect(button("advice-ask").props.disabled).toBe(true);
+  act(() => { tree.unmount(); });
+});
+
+test("a paid Ask with no answer can be left, with the same warning as a payment being checked (final review M1)", async () => {
+  act(() => { tree = create(createElement(Host, { show: true })); });
+  await settle();
+  posts.push(r402());
+  await press("advice-ask");
+  posts.push(new TypeError("Network request failed"));
+  await press("advice-pay");
+  expect(text()).toContain("NO ANSWER · PAYMENT SENT");
+  const before = sent.length;
+
+  await press("advice-leave");
+  expect(text()).toContain("The first payment may still land and be charged.");
+  await press("advice-leave-confirm");
+
+  expect(text()).toContain("Ask · 1.50 AUSD");
+  expect(sent).toHaveLength(before);
+  act(() => { tree.unmount(); });
+});
+
+test("a 503 before the quote says the agent can't answer right now, and that nothing was paid (final review M2)", async () => {
+  act(() => { tree = create(createElement(Host, { show: true })); });
+  await settle();
+  posts.push({ status: 503, body: { error: "ADVICE_UNAVAILABLE" } });
+  await press("advice-ask");
+  expect(text()).toContain("This agent can't answer right now");
+  expect(text()).toContain("Nothing was paid. (ADVICE_UNAVAILABLE)");
+  act(() => { tree.unmount(); });
+});
+
+test("a payment being checked covers one that landed but is not queued yet, and never says nothing was charged (M2)", async () => {
+  act(() => { tree = create(createElement(Host, { show: true })); });
+  await settle();
+  posts.push(r402());
+  await press("advice-ask");
+  posts.push({ status: 503, body: { error: "ADVICE_COST_UNKNOWN" } });
+  await press("advice-pay");
+  expect(text()).toContain("PAYMENT BEING CHECKED");
+  expect(text()).toContain("not queued yet");
+  expect(text()).not.toMatch(/[Nn]othing (was|is) (charged|paid)\b(?! again)/);
   act(() => { tree.unmount(); });
 });

@@ -55,6 +55,20 @@ let sent: Sent[] = [];
 let posts: Reply[] = [];
 let gets: Reply[] = [];
 let lockedUntilOpened = false;
+/** Wallets whose Mera signing session has ended (Lock in Wallet): signing in with one throws SESSION_ENDED. */
+let ended = new Set<unknown>();
+
+/** What an ended Mera session really throws when asked to sign (the sign-in of authedFetch, once the token expired). */
+async function sessionEndedError(): Promise<unknown> {
+  const session = createSecp256k1SigningSession({ privateKey: hexToBytes(KEY) });
+  session.end();
+  try {
+    await toViemAccount(session).signMessage({ message: "sign in" });
+  } catch (e) {
+    return e;
+  }
+  throw new Error("an ended session signed");
+}
 
 const reply = async (r: Reply): Promise<Response> => {
   if (!(r instanceof Error) && "after" in r) {
@@ -66,6 +80,7 @@ const reply = async (r: Reply): Promise<Response> => {
 };
 const authedFetch = jest.fn(async (path: string, init: RequestInit = {}, opened?: unknown) => {
   if (lockedUntilOpened && opened === undefined) throw new WalletLockedError();
+  if (ended.has(opened)) throw await sessionEndedError();
   const h = new Headers(init.headers);
   sent.push({ method: init.method ?? "GET", path, key: h.get("Idempotency-Key"), payment: h.get("X-PAYMENT"), opened });
   return reply(((init.method ?? "GET") === "POST" ? posts.shift() : gets.shift()) ?? { status: 200, body: { data: job("running") } });
@@ -135,6 +150,7 @@ beforeEach(() => {
   posts = [];
   gets = [];
   lockedUntilOpened = false;
+  ended = new Set();
   g.__studio = true;
   g.__splitter = SPLITTER;
   jest.clearAllMocks();
@@ -514,7 +530,6 @@ describe("after a payment went out (fix round 1)", () => {
     await run(() => latest.ask(AGENT, "BTC"));
     await run(() => latest.confirm());
     act(() => { latest.reset(); });
-    await run(() => latest.abandon());
 
     expect(latest.state).toEqual({ kind: "offline", paid: true });
     expect(sent).toHaveLength(before);
@@ -614,6 +629,106 @@ describe("after a payment went out (fix round 1)", () => {
     const keys = postsSent().map((x) => x.key);
     expect(keys.at(-1)).not.toBe(keys[0]);
     expect(wallet.account.signTypedData).toHaveBeenCalledTimes(1);
+  });
+
+  test("abandon leaves offline with a payment out, signs nothing, and the next Ask has a new key (final review M1)", async () => {
+    await toConfirming();
+    posts.push(new TypeError("Network request failed"));
+    await run(() => latest.confirm());
+    expect(latest.state).toEqual({ kind: "offline", paid: true });
+    const before = sent.length;
+
+    await run(() => latest.abandon());
+
+    expect(latest.state).toEqual({ kind: "idle" });
+    expect(sent).toHaveLength(before);
+    posts.push(r402());
+    await run(() => latest.ask(AGENT, "BTC"));
+    expect(latest.state.kind).toBe("confirming");
+    const keys = postsSent().map((x) => x.key);
+    expect(keys.at(-1)).not.toBe(keys[0]);
+    expect(wallet.account.signTypedData).toHaveBeenCalledTimes(1);
+  });
+
+  test("abandon from offline without a payment is ignored: Cancel is its way out", async () => {
+    await mount(unlocked(wallet));
+    posts.push(new TypeError("Network request failed"));
+    await run(() => latest.ask(AGENT, "BTC"));
+    await run(() => latest.abandon());
+    expect(latest.state).toEqual({ kind: "offline", paid: false });
+  });
+
+  test("a wallet locked after paying (session ended) reopens with Face ID on Try again and resends the same payment (M1)", async () => {
+    await toConfirming();
+    posts.push(new TypeError("Network request failed"));
+    await run(() => latest.confirm());
+    expect(latest.state).toEqual({ kind: "offline", paid: true });
+    const header = paid()[0]!.payment;
+
+    // Lock in Wallet ends the session this Ask opened; the token in memory has expired, so the retry must sign in again.
+    ended.add(wallet);
+    await switchTo(locked(wallet));
+    const reopened = makeWallet();
+    unlockStoredWallet.mockResolvedValueOnce(reopened);
+    posts.push(r202());
+    await run(() => latest.retry());
+
+    expect(unlockStoredWallet).toHaveBeenCalledTimes(1);
+    expect(latest.state).toMatchObject({ kind: "waiting", jobId: "job-1" });
+    expect(paid()).toHaveLength(2);
+    expect(paid()[1]).toMatchObject({ payment: header, opened: reopened });
+    expect(wallet.account.signTypedData).toHaveBeenCalledTimes(1);
+    expect(reopened.account.signTypedData).not.toHaveBeenCalled();
+  });
+
+  test("Face ID cancelled on that reopen stays offline with the payment out", async () => {
+    await toConfirming();
+    posts.push(new TypeError("Network request failed"));
+    await run(() => latest.confirm());
+    ended.add(wallet);
+    await switchTo(locked(wallet));
+    unlockStoredWallet.mockRejectedValueOnce(new Error("User canceled the operation."));
+    const before = sent.length;
+
+    await run(() => latest.retry());
+
+    expect(latest.state).toEqual({ kind: "offline", paid: true });
+    expect(sent).toHaveLength(before);
+  });
+
+  test("checking a settlement again after the session ended reopens the wallet, with no payment (M1)", async () => {
+    await toConfirming();
+    posts.push(r402("settlement_failed"));
+    await run(() => latest.confirm());
+    expect(latest.state.kind).toBe("settlement_pending");
+    ended.add(wallet);
+    await switchTo(locked(wallet));
+    const reopened = makeWallet();
+    unlockStoredWallet.mockResolvedValueOnce(reopened);
+    posts.push(r202(false));
+
+    await run(() => latest.checkAgain());
+
+    expect(unlockStoredWallet).toHaveBeenCalledTimes(1);
+    expect(latest.state.kind).toBe("waiting");
+    expect(postsSent().at(-1)).toMatchObject({ payment: null, opened: reopened });
+    expect(paid()).toHaveLength(1);
+  });
+
+  test("a poll whose session ended drops that wallet, never prompts, and keeps waiting (M1)", async () => {
+    await toConfirming();
+    posts.push(r202());
+    await run(() => latest.confirm());
+    ended.add(wallet);
+    await switchTo(locked(wallet));
+
+    await tick(3_000);
+    await tick(3_000);
+
+    const polls = authedFetch.mock.calls.filter(([, init]) => (init?.method ?? "GET") === "GET").map(([, , opened]) => opened);
+    expect(polls).toEqual([wallet, undefined]);
+    expect(unlockStoredWallet).not.toHaveBeenCalled();
+    expect(latest.state.kind).toBe("waiting");
   });
 
   test("abandon is ignored while the job is still being waited for", async () => {
