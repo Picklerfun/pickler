@@ -448,3 +448,10 @@ lease checks; the host must keep using those fences. A terminal read-only report
 directory and preserves pending positions. Reduced query payloads are not proof of historical
 timeout causality, successful prospective continuity or PTS profitability; never resume the failed
 study or alter its frozen configuration.
+
+Read [PTS captured final execution](PTS-CAPTURED-FINAL-EXECUTION.md) for the preserved heartbeat-aging
+interruption and the local v8/v9 common final transaction. The host keeps its existing runner,
+financial functions and fixed admission window. A confirmed final-phase rollback is an omission,
+not a hold or completed round; partial/uncertain writes remain interruptions. Controlled fills
+prove long/short and partial execution only. Preserve the failed trial and its pending positions;
+this repair does not resume it or establish profitable PTS decisions.
