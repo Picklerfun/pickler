@@ -1,4 +1,4 @@
-import { exportPerpsAuditParts } from "@pickler/infrastructure/perps-lab";
+import { exportPerpsAuditParts, observePerpsLabPool } from "@pickler/infrastructure/perps-lab";
 import { PilotError } from "@pickler/core";
 import { createPtsPartsExport, ptsPartsPayloadHash } from "../src/pts-study/parts.js";
 import { digest } from "../src/pts-study/files.js";
@@ -753,4 +753,51 @@ test("captured batches reject prior serial gates, cross-account reads and frame 
   });
   assert.equal(result.status, "complete");
   assert.equal((await x.scoped.view(scopes[0]!)).attempts.length, 0);
+});
+
+test("captured final execution reads its already locked study record once and preserves both account policies", async (t) => {
+  const x = await setup(t, false, false, "fast");
+  const scopes = (["sma-reference", "pts-intraday"] as const).map((variant) => ({
+    ...x.view.record.config,
+    agentId: x.view.record.agentIds[variant]!,
+  }));
+  let sourceReads = 0;
+  const sourceHashes = new Set(
+    [
+      "SELECT id,document FROM pickler.perps_studies WHERE tenant_id=$1 AND session_id=$2 AND network=$3",
+      "SELECT document FROM pickler.perps_studies WHERE tenant_id=$1 AND session_id=$2 AND network=$3",
+    ].map((sql) => createHash("sha256").update(sql).digest("hex")),
+  );
+  const pool = observePerpsLabPool(x.db.pool, (event) => {
+    if (
+      event.phase === "finished" &&
+      event.operation === "client-query" &&
+      event.sqlHash !== null &&
+      sourceHashes.has(event.sqlHash)
+    ) {
+      sourceReads++;
+    }
+  });
+  const paper = new PostgresPerpsPaperStore(pool, () => x.time, {
+    ...x.view.record.config,
+    owner: x.lease.owner,
+  });
+  const frames = x.evidence().frames;
+  const result = await paper.withCapturedFrames(scopes, "round-001", frames, async (context) => {
+    await context.paper.observeCommon!(scopes, "round-001:final-marks", {
+      frames,
+      funding: [],
+      marksOnly: true,
+    });
+    for (const scope of scopes) {
+      const view = await context.paper.view(scope);
+      assert.equal(view.account.riskManagement, "buffered-selective-1x-v1");
+    }
+  });
+  assert.equal(result.status, "complete");
+  assert.equal(sourceReads, 1);
+  assert.equal(
+    (await x.scoped.view(scopes[1]!)).account.positionPolicy,
+    "pts-intraday-1x-0.2.0-fast.1",
+  );
 });
