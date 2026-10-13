@@ -25,15 +25,16 @@ export interface DashboardPositionInput {
   side: "long" | "short";
   size: number;
   entry: number;
+  entryResidue?: number;
   collateral: string;
-  leverage: number;
+  leverage: number | null;
 }
 export interface DashboardPositionView {
   id: number;
   accountId: number;
   marketId: number;
   side: "long" | "short";
-  leverage: number;
+  leverage: number | null;
   symbol: string;
   quantity: string | null;
   entryPrice: string | null;
@@ -139,7 +140,20 @@ export function dashboardPortfolio(input: {
     collateral += c;
     const market = input.markets.find((item) => item.id === position.marketId);
     const size = scaled(position.size);
-    const entry = scaled(position.entry);
+    const residue = position.entryResidue ?? 0;
+    if (!Number.isInteger(residue) || residue < 0 || residue > 65535) {
+      throw new Error("Invalid Perpl entry residue");
+    }
+    let entry = scaled(position.entry) * 65536n;
+    if (residue > 0) {
+      if (position.side === "long") {
+        entry -= 65536n;
+      }
+      entry += BigInt(residue);
+    }
+    if (entry < 0n) {
+      throw new Error("Invalid Perpl entry price");
+    }
     if (!market || market.mark <= 0) {
       complete = false;
       return {
@@ -158,7 +172,7 @@ export function dashboardPortfolio(input: {
     const mark = scaled(market.mark);
     const direction = position.side === "long" ? 1n : -1n;
     const notional = quote(mark, size, market);
-    const pricePnl = direction * quote(mark - entry, size, market);
+    const pricePnl = (direction * quote(mark * 65536n - entry, size, market)) / 65536n;
     pnl += pricePnl;
     grossExposure += notional;
     netExposure += direction * notional;
@@ -166,22 +180,28 @@ export function dashboardPortfolio(input: {
     // Uses CURRENT collateral/remaining size; never infer it from the original leverage.
     const lossPrice =
       size > 0n
-        ? (c * 10n ** BigInt(market.priceDecimals + market.sizeDecimals)) / (size * 1_000_000n)
+        ? (c * 65536n * 10n ** BigInt(market.priceDecimals + market.sizeDecimals)) /
+          (size * 1_000_000n)
         : null;
     const threshold = lossPrice === null ? null : entry - direction * lossPrice;
     const liquidation = threshold === null ? null : threshold < 0n ? 0n : threshold;
-    const distance = liquidation === null ? null : ratioBps(direction * (mark - liquidation), mark);
+    const distance =
+      liquidation === null
+        ? null
+        : ratioBps(direction * (mark * 65536n - liquidation), mark * 65536n);
     return {
       ...identity,
       symbol: market.symbol,
       quantity: dashboardDecimal(size, market.sizeDecimals),
-      entryPrice: dashboardDecimal(entry, market.priceDecimals),
+      entryPrice: dashboardDecimal(entry * 5n ** 16n, market.priceDecimals + 16),
       markPrice: dashboardDecimal(mark, market.priceDecimals),
       collateralAusd: dashboardDecimal(c),
       notionalAusd: dashboardDecimal(notional),
       pricePnlAusd: dashboardDecimal(pricePnl),
       collateralExhaustionPrice:
-        liquidation === null ? null : dashboardDecimal(liquidation, market.priceDecimals),
+        liquidation === null
+          ? null
+          : dashboardDecimal(liquidation * 5n ** 16n, market.priceDecimals + 16),
       priceBufferBps: distance,
     };
   });
@@ -233,6 +253,7 @@ export type DashboardMarketSnapshot = ReturnType<typeof dashboardMarkets> & {
 };
 export type DashboardPortfolioSnapshot = ReturnType<typeof dashboardPortfolio> & {
   wallet: string;
+  source?: "onchain" | undefined;
   chainId: 10143;
   observedAt: string;
   marketObservedAt: string;
@@ -241,5 +262,6 @@ export type DashboardPortfolioSnapshot = ReturnType<typeof dashboardPortfolio> &
 };
 export interface PerplDashboardData {
   markets(signal: AbortSignal): Promise<DashboardMarketSnapshot>;
+  publicPortfolio(wallet: string, signal: AbortSignal): Promise<DashboardPortfolioSnapshot>;
   portfolio(input: DashboardWalletRead, signal: AbortSignal): Promise<DashboardPortfolioSnapshot>;
 }

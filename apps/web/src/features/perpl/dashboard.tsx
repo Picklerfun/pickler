@@ -48,57 +48,15 @@ function clock(at: string) {
 export function PerplDashboard() {
   const view = usePerplDashboard();
   const { wallet, portfolio } = view;
-  const busy = view.stage !== "idle";
-  const labels = {
-    idle: "Authorize read-only access",
-    preparing: "Preparing read access…",
-    signing: "Confirm read access in wallet",
-    authorizing: "Connecting to Perpl…",
-  };
   return (
     <PerplDashboardSurface snapshot={view} walletAddress={wallet.address}>
       {!wallet.address ? (
         <div className={styles.connect}>
           <Icon name="wallet" size={26} />
           <h3>See your positions alongside the market.</h3>
-          <p>Connect your Perpl testnet wallet, then authorize read-only access.</p>
+          <p>Connect your Perpl testnet wallet to load its public positions automatically.</p>
           <Button onClick={() => wallet.connect("View your Perpl portfolio")} size="md">
             Connect wallet
-          </Button>
-        </div>
-      ) : !wallet.onTargetChain ? (
-        <div className={styles.connect}>
-          <p>Switch networks to authorize testnet read access.</p>
-          <Button
-            onClick={() => {
-              void wallet.switchChain();
-            }}
-            disabled={wallet.switching}
-          >
-            {wallet.switching ? "Confirm network in wallet" : "Switch to Monad testnet"}
-          </Button>
-          {wallet.switchFailure ? <p role="alert">{wallet.switchFailure.hint}</p> : null}
-        </div>
-      ) : !view.authorized ? (
-        <div className={styles.authorization}>
-          <div>
-            <h3>Allow account reads.</h3>
-            <p>Allow reads for one hour. No permission to place orders or move funds.</p>
-          </div>
-          <Button
-            aria-busy={busy}
-            disabled={busy}
-            onClick={() => {
-              void view.authorize();
-            }}
-            className={styles.authorize}
-          >
-            {busy ? (
-              <span className={styles.spinner} aria-hidden="true" />
-            ) : (
-              <Icon name="wallet" size={18} />
-            )}
-            {labels[view.stage]}
           </Button>
         </div>
       ) : !portfolio && !view.error ? (
@@ -221,7 +179,7 @@ export function PerplDashboardSurface({
         <p className={styles.footnote}>
           {preview
             ? "Sample data only. No wallet authorization or Perpl requests."
-            : "Updates every 5 seconds while visible. Estimates exclude accrued funding and closing fees. Refreshing requires read authorization again."}
+            : "Public on-chain positions update every 5 seconds while visible. Estimates exclude accrued funding and closing fees. No signature needed."}
         </p>
       </section>
     </main>
@@ -318,7 +276,16 @@ function Portfolio({
   const figures = [
     { label: "Available", value: data.availableAusd, icon: "wallet" },
     { label: "Price P&L · open", value: data.pricePnlAusd, icon: "chart", color: true },
-    { label: "Realized P&L · all time", value: data.realizedPnlAusd, icon: "check", color: true },
+    ...(data.source === "onchain"
+      ? []
+      : [
+          {
+            label: "Realized P&L · all time",
+            value: data.realizedPnlAusd,
+            icon: "check" as const,
+            color: true,
+          },
+        ]),
   ] satisfies { label: string; value: string | null; icon: IconName; color?: boolean }[];
   const exposures = [
     { label: "Gross exposure", value: data.grossExposureAusd, icon: "target" },
@@ -330,7 +297,13 @@ function Portfolio({
     <div id="perpl-portfolio" className={styles.portfolio} data-stale={stale}>
       <div className={styles.portfolioMeta}>
         <Tag data-tone={stale ? "caution" : "good"}>
-          {preview ? "Sample snapshot" : stale ? "Last snapshot" : "Live snapshots"}
+          {preview
+            ? "Sample snapshot"
+            : stale
+              ? "Last snapshot"
+              : data.source === "onchain"
+                ? "On-chain snapshot"
+                : "Live snapshots"}
         </Tag>
         <span className={styles.updatedAt}>
           <Icon name="clock" size={13} />
@@ -354,7 +327,7 @@ function Portfolio({
             Read-only portfolio
           </p>
         </div>
-        <dl className={styles.figures}>
+        <dl className={styles.figures} data-onchain={data.source === "onchain"}>
           {figures.map((item) => (
             <div key={item.label}>
               <dt>
@@ -433,7 +406,8 @@ function Position({ position: p }: { position: PerplPortfolioDto["positions"][nu
             <h4>{marketIdentity(p.symbol).ticker}</h4>
             <Tag className={styles.positionSide} data-tone={p.side === "long" ? "good" : "loss"}>
               <Icon name={p.side === "long" ? "arrowUp" : "arrowDown"} size={11} />
-              {p.side === "long" ? "Long" : "Short"} · {p.leverage}×
+              {p.side === "long" ? "Long" : "Short"}
+              {p.leverage === null ? "" : ` · ${p.leverage}×`}
             </Tag>
           </div>
         </div>

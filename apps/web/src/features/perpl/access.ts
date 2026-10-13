@@ -1,6 +1,7 @@
 import {
   checkPerplReadPayload,
   perplReadKeyPayloadSchema,
+  perplDashboardMarketsSchema,
   perplReadKeyResultSchema,
   type PerplReadKeyInputDto,
   type PerplReadKeyPayloadDto,
@@ -8,6 +9,7 @@ import {
 } from "@pickler/api-schema";
 import { hashTypedData, hexToBytes, type TypedDataDefinition } from "viem";
 import { perplRequest, PerplReadError } from "./client";
+import { apiClock } from "../../lib/server-clock";
 function base64(bytes: Uint8Array) {
   return btoa(String.fromCharCode(...bytes))
     .replaceAll("+", "-")
@@ -27,7 +29,7 @@ export interface ReadAccess {
 }
 let held: ReadAccess | null = null;
 export function readAccess(scope: string) {
-  if (held && held.expiresAt <= Date.now()) {
+  if (held && held.expiresAt <= apiClock.now()) {
     held = null;
   }
   return held?.scope === scope ? held : null;
@@ -42,8 +44,11 @@ export async function authorizeReadAccess(input: {
   signal: AbortSignal;
   sign: (payload: PerplReadKeyPayloadDto, input: PerplReadKeyInputDto) => Promise<string>;
   onStage: (stage: "signing" | "authorizing") => void;
-  now: number;
 }) {
+  if (!apiClock.synchronized) {
+    await perplRequest("markets", perplDashboardMarketsSchema, input.signal);
+  }
+  input.signal.throwIfAborted();
   // Native non-extractable Ed25519 key: never stored, exported, sent to a server or put in React state.
   let keys: CryptoKeyPair;
   try {
@@ -61,7 +66,7 @@ export async function authorizeReadAccess(input: {
   const wanted = {
     wallet: input.wallet,
     publicKey: hex(publicBytes),
-    expiresAt: input.now + 3_570_000,
+    expiresAt: apiClock.now() + 3_570_000,
   };
   const payload = await perplRequest(
     "read-key/payload",
@@ -71,7 +76,7 @@ export async function authorizeReadAccess(input: {
     wanted,
   );
   input.signal.throwIfAborted();
-  checkPerplReadPayload(payload, wanted, base64(publicBytes));
+  checkPerplReadPayload(payload, wanted, base64(publicBytes), apiClock.now());
   input.onStage("signing");
   const signature = await input.sign(payload, wanted);
   input.signal.throwIfAborted();
@@ -121,7 +126,7 @@ export async function authorizeReadAccess(input: {
     wallet,
     token: input.token,
     expiresAt: result.expiresAt,
-    async proofs(now = Date.now()) {
+    async proofs(now = apiClock.now()) {
       const [walletProof, positionsProof] = await Promise.all([
         proof("/v1/trading/wallet", now),
         proof("/v1/trading/positions", now),

@@ -100,3 +100,17 @@ test("unowned position and impossible account balances fail closed", () => {
     /balance/,
   );
 });
+
+test("on-chain Q16 entry residues preserve long ceil and short floor precision", () => {
+  const project = (side: "long" | "short") =>
+    dashboardPortfolio({
+      accounts: [account],
+      positions: [{ ...long, side, entryResidue: 32768, leverage: null }],
+      markets: [market],
+      stats: [],
+    }).positions[0]!;
+  assert.equal(project("long").entryPrice, "99999.95");
+  assert.equal(project("short").entryPrice, "100000.05");
+  assert.equal(project("long").pricePnlAusd, "100.0005");
+  assert.equal(project("short").pricePnlAusd, "-99.9995");
+});

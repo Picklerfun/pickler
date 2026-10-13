@@ -1448,51 +1448,30 @@ invent explorer hashes. See [Perpl trading](../../docs/perpl-trading.md).
 
 ## Real Perpl testnet dashboard
 
-`/perpl` is the public read-only dashboard, linked from Explore’s Perpl dashboard entry, the landing hero and footer, and Portfolio.
-`features/perpl/` reads `/api/v1/perpl/markets` every ten seconds and, after explicit authorization,
-`/portfolio` every five seconds. Both loops are serial, abort on navigation/identity changes, pause
-in hidden tabs and back off after failures. Last verified snapshots stay visibly stale; an unknown
-amount is never zero. The wallet/provider scope hides prior-account data immediately.
+`/perpl` is the public read-only dashboard, linked from Explore, the landing hero/footer and
+Portfolio. `features/perpl/use-dashboard.ts` reads markets every ten seconds and the connected
+address's `GET /api/v1/perpl/portfolio/:wallet` every five seconds while visible. This public
+contract source requires no JWT, Perpl key, signature or wallet chain switch. Reload resumes
+when the existing wallet restores. Loops are serial, abort on identity/navigation changes, pause
+when hidden and back off on failure. Preserve stale snapshots; immediately hide prior-address
+data on disconnect/change. An unread account is not an empty one.
 
-A connected marketplace wallet explicitly signs only the reviewed `PerplRegisterApiKey` scope-1
-payload. Browser providers remain pinned; Mera signs during one ceremony and wipes its derived
-key before enrollment. Wallet context owns this narrow signing verb; no Turnkey import is allowed.
-The dashboard generates a native, non-extractable WebCrypto Ed25519 key, supplies its public key
-and proof of possession, then signs fixed GET read targets. The read key stays in memory for at
-most one hour; refresh needs new explicit authorization, and polling never prompts. No private
-key, Perpl credential or wallet snapshot is stored in browser storage. Browsers without Ed25519
-WebCrypto cannot authorize; they still see public markets. No order, approval, deposit, withdrawal,
-agent activation or financial transaction is reachable from this feature.
+Financial projection and precision belong to Trading/infrastructure. `source: "onchain"` keeps
+original leverage and historical stats unknown; omit unavailable all-time P&L and leverage badges.
+Equity/price P&L exclude funding and closing fees. Price buffer is current-collateral exhaustion,
+never Perpl's maintenance-aware liquidation price. No order, approval, deposit, withdrawal or
+agent activation is reachable here. The old scope-1 signing helpers remain for compatibility
+endpoints only; the default dashboard never calls them. Their non-extractable key is memory-only.
 
-The server prepares monetary projections. UI numbers are presentation only. Equity/price P&L
-exclude accrued funding and closing fees. The price-buffer meter shows the current collateral
-exhaustion threshold, explicitly not Perpl's maintenance-aware liquidation price. Controlled
-`node --import tsx scripts/design/perpl-dashboard.mjs http://localhost:3005` verifies the full
-browser/Hono/adapter flow with fake authentication and Perpl responses, including cryptographic
-proof, automatic refresh, cancellation, failed identity, disconnect and responsive widths.
-It needs a local build with explicitly controlled public Supabase configuration; it rejects
-external browser requests. This is separate from real wallet/provider acceptance.
+The local-only `/perpl?preview=wallet` mounts static labelled examples without live hooks or
+explorer links. Production ignores the parameter. Regenerate its normalized fixture with
+`node --import tsx scripts/design/perpl-preview.mts`; it uses controlled transport, not real keys.
+Market identities reuse fixed local `market-asset.tsx` SVGs with text fallback and provenance in
+`public/brand/markets/README.md`. Preserve surface tokens, unknown values, responsive layout and
+reduced motion. The sole dark balance block is `#perpl-equity`.
 
-The development-only `/perpl?preview=wallet` uses the same market, portfolio and risk components
-with explicitly labelled controlled snapshots. Its live hook never mounts, authorization is
-absent and sample addresses have no explorer links. Production ignores the preview parameter.
-Regenerate the normalized fixture with `node --import tsx scripts/design/perpl-preview.mts`;
-this runs the existing controlled transport through the gateway and business projections without
-network access or signatures.
-
-The dashboard's market and position identities reuse `market-asset.tsx`, a fixed local map of
-reviewed Perpl market SVG marks with textual fallback for unknown markets. Asset provenance lives under
-`public/brand/markets/README.md`; no provider image URLs or runtime third-party image requests are
-accepted. The equity estimate is the sole dark balance block; the remaining amounts, movement
-badges, exposure icons and position risk meters use semantic surface tokens. Keep financial
-projections server-owned, missing values unknown, table semantics and reduced-motion behavior.
-
-The rendered Design registry includes `perpl-dashboard-preview`, with the portfolio risk meter as
-its readiness proof and `#perpl-equity` as the required dark surface. Keep market images locally
-served, loaded with fixed dimensions, and decorative beside their text identity. Unknown assets
-must remain legible without a fabricated mark or a broken external image.
-
-The public `/perpl` entry has no creator-seat or Studio-session gate. Anonymous visitors see
-protocol markets; a marketplace wallet explicitly authorizes private scope-1 reads. Connecting
-alone never enrolls a Perpl key or signs from an effect. The landing hero, footer and both public
-navigation layouts point to the normal `/perpl` route, never the demonstration parameter.
+`node --import tsx scripts/design/perpl-dashboard.mjs http://localhost:3005` exercises browser →
+Hono → bounded RPC adapter → Trading using controlled public chain responses. It proves no
+signing/enrollment, automatic refresh, full reload, wallet changes, wrong wallet network, stale
+state and responsive widths. It blocks browser external requests. This remains separate from
+real public contract acceptance and deployed verification; see [dashboard](../../docs/perpl-dashboard.md).

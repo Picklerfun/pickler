@@ -103,3 +103,12 @@ test("a rejected signature still wipes all ceremony material", async () => {
   assert.ok(x.prf.every((b) => b === 0));
   assert.ok(x.privateBytes.every((b) => b === 0));
 });
+
+test("an expired signing request is distinct from a rejected wallet signature", async () => {
+  const x = await setup();
+  x.deps.payload.typedData.message.time = String(Date.now() - 31_000);
+
+  await assert.rejects(signMeraPerplRead(x.deps), { name: "PerplReadAuthorizationExpired" });
+
+  assert.equal(x.prompted(), 0);
+});

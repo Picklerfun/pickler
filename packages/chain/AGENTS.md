@@ -57,3 +57,8 @@ not an enabled hosted deployment configuration. Never import keys or operational
 forwarding and collateral calls. It carries no address, signer or activation policy. Generate
 with `npm run contracts:abi`; infrastructure owns reviewed runtime bindings. See
 [Perpl trading](../../docs/perpl-trading.md).
+
+`IPerplReadAbi` is separately compiler-generated from `contracts/src/interfaces/IPerplRead.sol`.
+It includes only `getAccountByAddr`, `getPositionV2`, their exact tuple layouts and the typed
+missing-account error. It is not a signer, deployment or new trading authority. The pinned
+upstream source and bitmap semantics are recorded in [dashboard](../../docs/perpl-dashboard.md).

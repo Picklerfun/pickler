@@ -1,5 +1,12 @@
 import type { PerplReadKeyInputDto, PerplReadKeyPayloadDto } from "@pickler/api-schema";
 import { recoverTypedDataAddress, type TypedDataDefinition } from "viem";
+import { apiClock } from "../../../lib/server-clock";
+export class PerplReadAuthorizationExpired extends Error {
+  constructor() {
+    super("The signing request timed out. Prepare a new read-access request.");
+    this.name = "PerplReadAuthorizationExpired";
+  }
+}
 export async function perplReadTypedData(
   payload: PerplReadKeyPayloadDto,
   input: PerplReadKeyInputDto,
@@ -12,7 +19,11 @@ export async function perplReadTypedData(
     .replaceAll("+", "-")
     .replaceAll("/", "_")
     .replace(/=+$/, "");
-  const checked = checkPerplReadPayload(payload, input, key);
+  const now = apiClock.now();
+  if (Math.abs(Number(BigInt(payload.typedData.message.time)) - now) > 30_000) {
+    throw new PerplReadAuthorizationExpired();
+  }
+  const checked = checkPerplReadPayload(payload, input, key, now);
   const types = { PerplRegisterApiKey: checked.typedData.types.PerplRegisterApiKey };
   return {
     ...checked.typedData,
