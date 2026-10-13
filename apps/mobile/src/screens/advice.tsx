@@ -105,7 +105,7 @@ function Confirmation({ quote }: { quote: AskQuote }) {
         <KV k="RECIPIENT" v={shortHash(quote.recipient)} vFg={C.dim} />
         <KV k="TOTAL" v={`${adviceAmount(quote.total)} AUSD`} vFg={C.limeInk} />
       </View>
-      <T w={600} s={12} lh={1.4} color={C.down}>Not refunded if the analysis fails.</T>
+      <T w={600} s={12} lh={1.4} color={C.down}>Not refunded automatically if the analysis fails.</T>
     </Card>
   );
 }
@@ -121,8 +121,14 @@ function FlowBody({ state, nav }: { state: AdviceAskState; nav: AppCtx["nav"] })
       return <Confirmation quote={state.quote} />;
     case "waiting":
       return (
-        <StatusCard tag="ANALYZING · PAID" title="The agent is working on it" body="You can leave this screen. The analysis keeps going and shows here when it's done." tone={TONES.pending} big>
-          <Elapsed since={state.since} prefix="ELAPSED" />
+        <StatusCard
+          tag={state.rechecking ? "CHECKING AGAIN · PAID" : "ANALYZING · PAID"}
+          title={state.rechecking ? "Checking on your analysis" : "The agent is working on it"}
+          body={state.rechecking ? "Still waiting on the same paid analysis. Nothing is paid again." : "You can leave this screen. The analysis keeps going and shows here when it's done."}
+          tone={TONES.pending}
+          big
+        >
+          <Elapsed since={state.since} prefix={state.rechecking ? "SINCE YOU PAID" : "ELAPSED"} />
           <TxLink settlement={state.settlement} />
         </StatusCard>
       );
@@ -142,7 +148,7 @@ function FlowBody({ state, nav }: { state: AdviceAskState; nav: AppCtx["nav"] })
       );
     case "timeout":
       return (
-        <StatusCard tag="STILL RUNNING" title="Still running — check back" body="No answer after 4 minutes. The analysis is still Pickler's; checking again never pays again." tone={TONES.pending}>
+        <StatusCard tag="STILL RUNNING" title="Still running — check back" body="No answer after 4 minutes. Pickler is still running it; checking again never pays again." tone={TONES.pending}>
           <TxLink settlement={state.settlement} />
         </StatusCard>
       );
@@ -185,8 +191,9 @@ function FlowBody({ state, nav }: { state: AdviceAskState; nav: AppCtx["nav"] })
 /** Advice screen. Gated like the profile; hidden with the whole section unless identity.studioAgents. */
 export function AdviceScreen({ S, studio, account, nav }: AppCtx) {
   const { advice } = studio;
-  const agent = studio.agents?.find((a) => a.id === S.adviceAgentId);
   const flowAgent = advice.flow?.agent ?? null;
+  // An agent that left the list keeps its own Ask on view: the flow carries the agent it was asked of.
+  const agent = studio.agents?.find((a) => a.id === S.adviceAgentId) ?? (flowAgent?.id === S.adviceAgentId ? flowAgent : undefined);
   const mine = flowAgent !== null && flowAgent.id === S.adviceAgentId;
   const [picked, setPicked] = useState<AdviceSymbol>(mine ? advice.flow!.symbol : "BTC");
   const symbol: AdviceSymbol = mine ? advice.flow!.symbol : picked;
@@ -229,7 +236,7 @@ export function AdviceScreen({ S, studio, account, nav }: AppCtx) {
   // "Leave and ask again" asks twice; any change of state takes the question back.
   useEffect(() => { setLeaving(false); }, [advice.state.kind]);
 
-  if (studio.agents === null && !studio.agentsError) {
+  if (!agent && studio.agents === null && !studio.agentsError) {
     return (
       <PageScroll screen="advice">
         <Page gap={12}>

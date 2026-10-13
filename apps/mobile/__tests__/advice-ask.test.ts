@@ -441,15 +441,17 @@ describe("waiting for the job", () => {
     expect(wallet.account.signTypedData).toHaveBeenCalledTimes(1);
   });
 
-  test("refresh of a job still running keeps waiting", async () => {
+  test("refresh of a job still running keeps waiting, as a re-check that keeps the original start", async () => {
     await toConfirming();
     posts.push(r202());
     await run(() => latest.confirm());
+    expect(latest.state).toMatchObject({ kind: "waiting", rechecking: false });
+    const started = (latest.state as { since: number }).since;
     for (let i = 0; i < 80; i += 1) await tick(3_000);
     expect(latest.state.kind).toBe("timeout");
     gets.push(rGet("running"), rGet("completed"));
     await run(() => latest.refresh());
-    expect(latest.state.kind).toBe("waiting");
+    expect(latest.state).toMatchObject({ kind: "waiting", rechecking: true, since: started });
     await tick(3_000);
     expect(latest.state.kind).toBe("done");
   });

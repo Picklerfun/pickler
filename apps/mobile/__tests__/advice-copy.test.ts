@@ -1,4 +1,4 @@
-import { adviceAmount, analysisTime, elapsedLabel, holdsFlow, splitLine } from "../src/advice/copy";
+import { adviceAmount, analysisTime, elapsedLabel, holdsFlow, keepsGateOff, splitLine } from "../src/advice/copy";
 
 test("a price keeps every decimal it has and at least two", () => {
   expect(adviceAmount(1_500_000n)).toBe("1.50");
@@ -24,7 +24,7 @@ test("an analysis time reads like a movement's", () => {
 test("only an Ask in flight, or paid and unresolved, holds the screen of another agent", () => {
   const quote = { agent: { id: "a" }, symbol: "BTC", total: 1n, creator: 0n, protocol: 1n, recipient: "0x0" } as never;
   for (const s of [
-    { kind: "quoting" }, { kind: "signing", quote }, { kind: "paying", quote }, { kind: "waiting", jobId: "j", since: 0, settlement: null },
+    { kind: "quoting" }, { kind: "signing", quote }, { kind: "paying", quote }, { kind: "waiting", jobId: "j", since: 0, settlement: null, rechecking: false },
     { kind: "timeout", jobId: "j", settlement: null }, { kind: "settlement_pending", checking: false }, { kind: "busy", retrying: false },
     { kind: "offline", paid: true },
   ] as const) expect(holdsFlow(s)).toBe(true);
@@ -32,4 +32,16 @@ test("only an Ask in flight, or paid and unresolved, holds the screen of another
     { kind: "idle" }, { kind: "off" }, { kind: "confirming", quote }, { kind: "offline", paid: false }, { kind: "untrusted" },
     { kind: "refused", error: "expired", nothingCharged: true, faucet: false }, { kind: "price_changed", shown: 1n, price: 2n },
   ] as const) expect(holdsFlow(s)).toBe(false);
+});
+
+test("the username gate stays off an Ask from its confirmation until it is resolved or left", () => {
+  const quote = { agent: { id: "a" }, symbol: "BTC", total: 1n, creator: 0n, protocol: 1n, recipient: "0x0" } as never;
+  for (const s of [
+    { kind: "confirming", quote }, { kind: "signing", quote }, { kind: "paying", quote }, { kind: "waiting", jobId: "j", since: 0, settlement: null, rechecking: false },
+    { kind: "timeout", jobId: "j", settlement: null }, { kind: "settlement_pending", checking: false }, { kind: "busy", retrying: false },
+    { kind: "offline", paid: true },
+  ] as const) expect(keepsGateOff(s)).toBe(true);
+  for (const s of [
+    { kind: "idle" }, { kind: "off" }, { kind: "untrusted" }, { kind: "refused", error: "expired", nothingCharged: true, faucet: false },
+  ] as const) expect(keepsGateOff(s)).toBe(false);
 });

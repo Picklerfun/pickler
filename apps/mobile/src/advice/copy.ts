@@ -63,3 +63,9 @@ export function holdsFlow(state: AdviceAskState): boolean {
 export function analysisTime(iso: string): string {
   return new Date(iso).toLocaleString("en-US", { month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).toUpperCase();
 }
+
+/**
+ * The username gate stays off this Ask (src/identity/state.ts, appQuiet): from its confirmation, which may open the wallet
+ * with Face ID, until it is resolved or left. Unlocking is what triggers the identity check.
+ */
+export const keepsGateOff = (state: AdviceAskState): boolean => state.kind === "confirming" || holdsFlow(state);

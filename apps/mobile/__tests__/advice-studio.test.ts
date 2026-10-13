@@ -81,9 +81,9 @@ jest.spyOn(account, "signTypedData");
 const unlocked: AccountState = { status: "unlocked", wallet: { address: account.address, credentialId: "cred", session: { end() {} }, account } as never };
 
 let studio!: Studio;
-function Host({ show }: { show: boolean }) {
+function Host({ show, agentId = "mira" }: { show: boolean; agentId?: string }) {
   studio = useStudio(unlocked, () => {}, authedFetch as never, true);
-  const ctx = { S: { marketTab: "trade", adviceAgentId: "mira" }, studio, account: unlocked, nav: jest.fn(), identity: { authedFetch } };
+  const ctx = { S: { marketTab: "trade", adviceAgentId: agentId }, studio, account: unlocked, nav: jest.fn(), identity: { authedFetch } };
   return show ? createElement(AdviceScreen, ctx as never) : null;
 }
 
@@ -93,7 +93,18 @@ let tree: ReactTestRenderer;
 const text = () => JSON.stringify(tree.toJSON());
 const button = (label: string): ReactTestInstance => tree.root.findAll((n) => n.props.accessibilityLabel === label && typeof n.props.onPress === "function")[0]!;
 const press = async (label: string) => { await act(async () => { button(label).props.onPress(); }); await settle(); };
-const show = async (on: boolean) => { act(() => { tree.update(createElement(Host, { show: on })); }); await settle(); };
+const show = async (on: boolean, agentId = "mira") => { act(() => { tree.update(createElement(Host, { show: on, agentId })); }); await settle(); };
+const OTHER = { ...ROW, id: "nope", name: "Basis Hunter", handle: "basis" };
+
+async function paidAndWaiting() {
+  act(() => { tree = create(createElement(Host, { show: true })); });
+  await settle();
+  posts.push(r402());
+  await press("advice-ask");
+  posts.push(r202());
+  await press("advice-pay");
+  expect(text()).toContain("ANALYZING · PAID");
+}
 
 beforeEach(() => {
   sent = [];
@@ -164,4 +175,25 @@ describe("the Studio agents section of the Agents tab", () => {
     expect(on.json).toContain("Ask · 1.50 AUSD");
     expect(on.requireAccount).toHaveBeenCalledWith("advice", { adviceAgentId: "mira" });
   });
+});
+
+test("an agent that leaves the list keeps its paid Ask on view, with the wait and the payment", async () => {
+  await paidAndWaiting();
+  (globalThis as { fetch: unknown }).fetch = jest.fn(async () => respond({ status: 200, body: [] }));
+  await act(async () => { await studio.refresh(); });
+  await settle();
+  expect(studio.agents).toEqual([]);
+  expect(text()).toContain("ANALYZING · PAID");
+  expect(text()).not.toContain("isn't listed anymore");
+  act(() => { tree.unmount(); });
+});
+
+test("another agent's screen asks to finish or leave the paid Ask, and offers no Ask of its own", async () => {
+  (globalThis as { fetch: unknown }).fetch = jest.fn(async () => respond({ status: 200, body: [ROW, OTHER] }));
+  await paidAndWaiting();
+  await show(true, "nope");
+  expect(text()).toContain("Finish or leave the analysis in progress");
+  expect(text()).toContain("Open Mira");
+  expect(button("advice-ask").props.disabled).toBe(true);
+  act(() => { tree.unmount(); });
 });

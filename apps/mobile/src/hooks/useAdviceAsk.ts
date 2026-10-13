@@ -35,7 +35,8 @@ export type AdviceAskState =
   | { kind: "confirming"; quote: AskQuote }
   | { kind: "signing"; quote: AskQuote }
   | { kind: "paying"; quote: AskQuote }
-  | { kind: "waiting"; jobId: string; since: number; settlement: Settlement | null }
+  /** `since`: when this paid job's wait began. `rechecking`: the person asked to check again after a timeout. */
+  | { kind: "waiting"; jobId: string; since: number; settlement: Settlement | null; rechecking: boolean }
   | { kind: "done"; recommendation: Recommendation; settlement: Settlement | null }
   /** The analysis failed after it was paid: the payment is marked refund_owed, not refunded automatically. */
   | { kind: "failed"; error: AdviceJobError; refundOwed: true; settlement: Settlement | null }
@@ -100,6 +101,8 @@ type Flow = {
   pending: boolean;
   wallet: Wallet | undefined;
   jobId: string | null;
+  /** When the wait for this job began: a re-check after a timeout keeps it. */
+  since: number | null;
   settlement: Settlement | null;
   retry: (() => Promise<void>) | null;
   /** One step at a time: a double tap does not send twice. */
@@ -272,7 +275,8 @@ export function useAdviceAsk(account: AccountState, onUnlock: (w: Wallet) => voi
     f.settlement = decodeSettlement(answer.settlementHeader) ?? f.settlement;
     f.retry = null;
     const since = Date.now();
-    put(f, { kind: "waiting", jobId: job.id, since, settlement: f.settlement });
+    f.since = since;
+    put(f, { kind: "waiting", jobId: job.id, since, settlement: f.settlement, rechecking: false });
     poll(f, startPoll(since), POLL_INTERVAL_MS);
   }, [poll, put]);
 
@@ -434,7 +438,7 @@ export function useAdviceAsk(account: AccountState, onUnlock: (w: Wallet) => voi
     stopPolling();
     const f: Flow = {
       key: newIdempotencyKey(), agent, symbol, expected: agent.price.micro, terms: null, quote: null, payment: null,
-      uncertain: false, pending: false, wallet: undefined, jobId: null, settlement: null, retry: null, running: false, sending: false,
+      uncertain: false, pending: false, wallet: undefined, jobId: null, since: null, settlement: null, retry: null, running: false, sending: false,
     };
     flowRef.current = f;
     await step(f, () => quote(f));
@@ -499,7 +503,7 @@ export function useAdviceAsk(account: AccountState, onUnlock: (w: Wallet) => voi
     if (!f || s.kind !== "timeout" || f.jobId === null) return;
     await step(f, async () => {
       const since = Date.now();
-      put(f, { kind: "waiting", jobId: f.jobId!, since, settlement: f.settlement });
+      put(f, { kind: "waiting", jobId: f.jobId!, since: f.since ?? since, settlement: f.settlement, rechecking: true });
       let response: { ok: true; recommendation: Recommendation } | { ok: false };
       try {
         // A tap: this read may open the wallet. It is a GET of the same job, never a payment.

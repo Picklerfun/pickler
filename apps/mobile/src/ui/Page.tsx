@@ -17,7 +17,10 @@ export function Page({ screen, children, headerRight, bare }: { screen: Screen; 
   const { S, perpl, reads, studio, back, setControls } = ctx;
   const openMarket = (perpl.context?.markets ?? []).find((m) => m.id === S.perpsMarketId);
   const perpsSymbol = openMarket?.symbol;
-  const studioAgent = screen === "advice" ? studio.agents?.find((a) => a.id === S.adviceAgentId) : undefined;
+  const flowAgent = studio.advice.flow?.agent;
+  const studioAgent = screen === "advice"
+    ? studio.agents?.find((a) => a.id === S.adviceAgentId) ?? (flowAgent?.id === S.adviceAgentId ? flowAgent : undefined)
+    : undefined;
   const agent = screen === "agent" ? reads.agents?.find((a) => a.id === S.agentId) : studioAgent ? { name: studioAgent.name, owner: studioAgent.handle } : undefined;
   const [title, baseSub] = headerFor(screen, perpsSymbol, agent);
   // Market: subtítulo dinámico (agentes y apalancamiento máximo del mercado abierto); sin mercado, el de headerFor.
