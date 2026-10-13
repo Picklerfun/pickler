@@ -6,6 +6,7 @@ import { localStudyDatabase } from "../perps-study/database-env.js";
 import {
   PostgresResearchStore,
   createLocalPerpsLabStore,
+  warmLocalPerpsLabStore,
   PostgresPerpsPaperStore,
   PostgresPerpsStudyStore,
   exportPerpsAudit,
@@ -29,6 +30,7 @@ import { keepAwake } from "../paper-study/comparison-host.js";
 import { createReportQueue } from "../perps-study/report-queue.js";
 import { ptsRunFailure } from "./run-failure.js";
 import { createPtsPersistenceDiagnostic } from "./persistence-diagnostic.js";
+import { startPtsLoopDiagnostic } from "./event-loop-diagnostic.js";
 import { digest, commit, newDirectory, publish } from "./files.js";
 import { createPtsPartsExport } from "./parts.js";
 import { createPtsReportTrigger } from "./report-trigger.js";
@@ -112,6 +114,7 @@ export async function runPtsHost(
     input.command === "audit-export" ? "report" : "execution",
     {
       query: queries.observe,
+      connection: queries.connection,
       failed: (error, diagnostic) => {
         persistenceFailure = diagnostic;
         controller.abort(error);
@@ -120,6 +123,7 @@ export async function runPtsHost(
   );
   const pool = research.pool;
   const study = new PostgresPerpsStudyStore(pool);
+  const loopDiagnostic = input.command === "run" ? startPtsLoopDiagnostic() : undefined;
   let primaryError: unknown;
   let state = "process-unverified";
   let releaseAwake = () => {},
@@ -137,6 +141,10 @@ export async function runPtsHost(
     if (digest(view.record.config) !== digest(configuration)) {
       throw new PilotError("CONFIG_CHANGED", "Database study configuration differs");
     }
+    const connectionReadiness =
+      ["preflight", "run"].includes(input.command) && view.record.startedAt === null
+        ? await warmLocalPerpsLabStore(research, signal)
+        : undefined;
     if (input.command === "preflight") {
       if (view.record.startedAt !== null) {
         throw new PilotError("STUDY_ALREADY_STARTED", "Preflight cannot authorize a restart");
@@ -168,6 +176,7 @@ export async function runPtsHost(
           JSON.stringify(
             {
               status: "prepared-not-started",
+              connectionReadiness,
               commit: commit(),
               configHash: digest(configuration),
               eligible,
@@ -304,6 +313,10 @@ export async function runPtsHost(
     await publish(output, {
       "runtime-status.json":
         JSON.stringify({ processState: "finished", at: Date.now(), modelCalls: 0 }) + "\n",
+      "persistence-query-diagnostic.json": JSON.stringify(queries.snapshot()) + "\n",
+      ...(loopDiagnostic
+        ? { "event-loop-diagnostic.json": JSON.stringify(loopDiagnostic.snapshot()) + "\n" }
+        : {}),
     });
   } catch (error) {
     const failure = ptsRunFailure(error, signal);
@@ -320,6 +333,7 @@ export async function runPtsHost(
             modelCalls: 0,
             ...(persistenceFailure ? { persistenceFailure } : {}),
             ...(queries.failure() ? { persistenceQueryFailure: queries.failure() } : {}),
+            ...(loopDiagnostic ? { eventLoop: loopDiagnostic.snapshot().current } : {}),
             ...(reportPersistenceDiagnostic
               ? {
                   reportPersistenceFailure: reportPersistenceDiagnostic.failure,
@@ -328,6 +342,9 @@ export async function runPtsHost(
               : {}),
           }) + "\n",
         "persistence-query-diagnostic.json": JSON.stringify(queries.snapshot()) + "\n",
+        ...(loopDiagnostic
+          ? { "event-loop-diagnostic.json": JSON.stringify(loopDiagnostic.snapshot()) + "\n" }
+          : {}),
         ...(reportPersistenceDiagnostic
           ? {
               "report-persistence-query-diagnostic.json":
@@ -338,6 +355,7 @@ export async function runPtsHost(
     }
     throw failure;
   } finally {
+    loopDiagnostic?.stop();
     releaseAwake();
     const cleanup = await Promise.allSettled([data?.close(), reports?.flush()]);
     cleanup.push(...(await Promise.allSettled([pool.end()])));
