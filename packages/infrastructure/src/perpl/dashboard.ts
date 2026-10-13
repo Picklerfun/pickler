@@ -84,7 +84,8 @@ export class PerplDashboardGateway implements PerplDashboardData {
     signal: AbortSignal,
     init: RequestInit = {},
   ): Promise<unknown> {
-    const response = await this.fetcher(BASE + path, {
+    const fetcher = this.fetcher;
+    const response = await fetcher(BASE + path, {
       ...init,
       redirect: "manual",
       signal: AbortSignal.any([signal, AbortSignal.timeout(10_000)]),
