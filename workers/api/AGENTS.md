@@ -793,3 +793,10 @@ Dashboard failure diagnostics log only reviewed code, fixed route step, upstream
 request ID. Never log credentials, wallet/signed payloads or provider prose. Enrollment rejection,
 expired signing terms and account-signature refusal are distinct response codes; error status
 sets and access requirements remain unchanged.
+
+`GET /v1/perpl/portfolio/:wallet` is a public, private/no-store projection of already-public
+contract state. Validate the address, then call the business-owned `publicPortfolio` port; never
+accept RPC URLs, calldata, methods or signing keys. It is independent of the JWT-only legacy
+POST routes. Diagnostics use the route template, never the actual wallet-containing URL. The
+default dashboard no longer enrolls Perpl keys. See the dashboard guide for canonical-block reads,
+unknown historical stats and real-contract versus controlled acceptance.

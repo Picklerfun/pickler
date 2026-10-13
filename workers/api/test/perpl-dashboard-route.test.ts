@@ -4,6 +4,8 @@ import { AuthenticationRequiredError } from "@pickler/core";
 import { PerplDashboardGateway, PerplDashboardError } from "@pickler/infrastructure";
 import { createApp } from "../src/app.js";
 import { documentationServices } from "../src/openapi/composition.js";
+import { controlledPerplChain } from "../../../packages/infrastructure/test/perpl-dashboard-chain-fixture.js";
+import { DASHBOARD_WALLET } from "../../../packages/infrastructure/test/perpl-dashboard-fixture.js";
 import { controlledPerpl } from "../../../packages/infrastructure/test/perpl-dashboard-fixture.js";
 function setup(authenticated = false) {
   const fake = controlledPerpl();
@@ -90,4 +92,28 @@ test("enrollment diagnostics retain only reviewed phase/status and never claim k
   ]);
   assert.equal((logs[0]![1] as { upstreamStatus: number }).upstreamStatus, 400);
   assert.doesNotMatch(JSON.stringify(logs), /0x111111|0x222222|signature|apiKey/);
+});
+
+test("public on-chain reads do not enroll or authenticate; invalid addresses and arbitrary targets fail", async () => {
+  const fake = controlledPerplChain();
+  const app = createApp({
+    ...documentationServices({}),
+    perplDashboard: {
+      gateway: new PerplDashboardGateway(fake.fetcher),
+      authenticate: async () => {
+        throw new Error("Public contract read must not authenticate");
+      },
+    },
+  });
+  const response = await app.request(`/v1/perpl/portfolio/${DASHBOARD_WALLET}`);
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get("Cache-Control"), "private, no-store");
+  const data = await response.json();
+  assert.equal(data.source, "onchain");
+  assert.equal(data.positions.length, 2);
+  assert.equal((await app.request("/v1/perpl/portfolio/not-a-wallet")).status, 400);
+  assert.equal(
+    (await app.request(`/v1/perpl/portfolio/${DASHBOARD_WALLET}`, { method: "POST" })).status,
+    404,
+  );
 });

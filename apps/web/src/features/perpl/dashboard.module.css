@@ -273,36 +273,6 @@
 .connect p {
   color: var(--pk-ink-dim);
 }
-.authorization {
-  display: flex;
-  gap: 24px;
-  align-items: center;
-  justify-content: space-between;
-  padding: 24px 0;
-}
-.authorization h3 {
-  margin: 0 0 8px;
-  font-size: 20px;
-}
-.authorization p {
-  max-width: 430px;
-  font-size: 14px;
-  color: var(--pk-ink-dim);
-  margin: 0;
-  line-height: 1.5;
-}
-.authorize {
-  flex-shrink: 0;
-  min-width: 230px;
-}
-.spinner {
-  width: 16px;
-  height: 16px;
-  border: 2px solid currentColor;
-  border-right-color: transparent;
-  border-radius: var(--pk-radius-pill);
-  animation: spin 800ms linear infinite;
-}
 .notice {
   font-size: 14px;
   line-height: 1.5;
@@ -618,11 +588,6 @@
   outline: 2px solid var(--pk-violet);
   outline-offset: 4px;
 }
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
 @keyframes arrive {
   from {
     opacity: 0;
@@ -672,10 +637,6 @@
   }
   .marketArrow {
     display: none;
-  }
-  .authorization {
-    flex-direction: column;
-    align-items: flex-start;
   }
   .exposure {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -848,14 +809,9 @@
   .positionsHead {
     flex-wrap: wrap;
   }
-  .authorize {
-    width: 100%;
-    min-width: 0;
-  }
 }
 @media (prefers-reduced-motion: reduce) {
-  .main,
-  .spinner {
+  .main {
     animation: none;
   }
   .marketTable tbody tr,
@@ -865,4 +821,12 @@
   .explanation summary svg:last-child {
     transition: none;
   }
+}
+
+.figures[data-onchain="true"] {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.figures[data-onchain="true"] > div:last-child {
+  grid-column: auto;
 }

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { readPerplChain } from "./dashboard-chain.js";
 import { parseContext, type Context } from "@pickler/perpl-context";
 import {
   dashboardMarkets,
@@ -237,6 +238,44 @@ export class PerplDashboardGateway implements PerplDashboardData {
       stale: this.now() - result.at >= 10_000,
       ...dashboardMarkets(result.context.markets),
     });
+  }
+  async publicPortfolio(wallet: string, signal: AbortSignal) {
+    if (!/^0x[\da-f]{40}$/i.test(wallet)) {
+      throw new PerplDashboardError("INVALID_AUTHORIZATION");
+    }
+    try {
+      const [snapshot, market] = await Promise.all([
+        readPerplChain(this.fetcher, wallet, signal),
+        this.context(signal),
+      ]);
+      if (snapshot.timestamp > this.now() + 5000 || this.now() - snapshot.timestamp > 60_000) {
+        throw new PerplDashboardError("UNAVAILABLE");
+      }
+      const markets = market.context.markets.map((item) => {
+        const position = snapshot.positions.find((p) => p.marketId === item.id);
+        return position ? { ...item, mark: position.mark } : item;
+      });
+      return perplPortfolioSchema.parse({
+        wallet,
+        source: "onchain",
+        chainId: 10143,
+        observedAt: new Date(snapshot.timestamp).toISOString(),
+        marketObservedAt: new Date(snapshot.timestamp).toISOString(),
+        block: snapshot.block,
+        stale: this.now() - snapshot.timestamp > 20_000 || this.now() - market.at > 10_000,
+        ...dashboardPortfolio({
+          accounts: snapshot.accounts,
+          positions: snapshot.positions,
+          markets,
+          stats: [],
+        }),
+      });
+    } catch (error) {
+      if (error instanceof PerplDashboardError) {
+        throw error;
+      }
+      throw new PerplDashboardError("UNAVAILABLE");
+    }
   }
   async payload(input: PerplReadKeyInputDto, signal: AbortSignal) {
     if (input.expiresAt > this.now() + 3_600_000 || input.expiresAt < this.now() + 60_000) {

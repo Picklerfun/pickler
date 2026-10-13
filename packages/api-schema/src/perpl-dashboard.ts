@@ -145,8 +145,10 @@ export const perplDashboardMarketsSchema = z.strictObject({
     )
     .max(100),
 });
+export const perplPublicWalletSchema = z.strictObject({ wallet: address });
 export const perplPortfolioSchema = z.strictObject({
   wallet: address,
+  source: z.literal("onchain").optional(),
   chainId: z.literal(10143),
   observedAt: iso,
   marketObservedAt: iso,
@@ -172,7 +174,7 @@ export const perplPortfolioSchema = z.strictObject({
         marketId: id,
         side: z.enum(["long", "short"]),
         symbol: z.string().max(30),
-        leverage: z.number().positive(),
+        leverage: z.number().positive().nullable(),
         quantity: decimal.nullable(),
         entryPrice: decimal.nullable(),
         markPrice: decimal.nullable(),

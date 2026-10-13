@@ -70,7 +70,7 @@ export function perplDashboardRoutes(services: PerplDashboardServices) {
     const status = STATUSES[code];
     console.warn("perpl_dashboard_failure", {
       code,
-      step: c.req.path.split("/perpl/")[1] ?? "unknown",
+      step: c.req.routePath.replace(/^.*\/perpl\//, ""),
       upstreamStatus: error instanceof PerplDashboardError ? error.upstreamStatus : null,
       requestId: c.get("requestId"),
     });
@@ -90,6 +90,24 @@ export function perplDashboardRoutes(services: PerplDashboardServices) {
         "Read Perpl Monad testnet markets and prepared open-interest/funding metrics. Fixed venue, bounded context cache, explicit unknowns and freshness. No paper data or wallet access.",
     }),
     (c) => services.gateway.markets(c.req.raw.signal).then((result) => c.json(result)),
+  );
+  api.get(
+    "/portfolio/:wallet",
+    operation("perplDashboardPublicPortfolio", {
+      response: dto.perplPortfolioSchema,
+      security: "public",
+      errors: dto.studioErrorSchema,
+      errorStatuses: [400, 429, 503],
+      description:
+        "Read public Perpl testnet account balances and bitmap-enumerated positions from the fixed exchange contract at one canonical block. No API key, JWT, wallet signature or enrollment. Bounded RPC reads only; unavailable history and original leverage remain unknown. Estimates exclude funding and closing fees.",
+    }),
+    async (c) => {
+      const parsed = dto.perplPublicWalletSchema.safeParse(c.req.param());
+      if (!parsed.success) {
+        return c.json({ error: "INVALID_AUTHORIZATION", message: "Invalid wallet address." }, 400);
+      }
+      return c.json(await services.gateway.publicPortfolio(parsed.data.wallet, c.req.raw.signal));
+    },
   );
   api.use("/read-key/*", authenticated(services.authenticate, { userOnly: true }));
   api.use("/portfolio", authenticated(services.authenticate, { userOnly: true }));

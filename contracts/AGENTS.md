@@ -162,3 +162,8 @@ is provided.
 consumed by off-chain onboarding. It is a minimal external interface, not a deployed Pickler
 contract or a new custody rule. Its ABI is compiler-generated into chain. No deployment or real
 transaction is part of build/test. See [Perpl trading](../docs/perpl-trading.md).
+
+`src/interfaces/IPerplRead.sol` is the independent minimal public read interface for the dashboard:
+account/position tuples and the typed missing-account error. Its compiler-generated chain ABI
+follows the pinned Perpl SDK ABI recorded in [dashboard](../docs/perpl-dashboard.md). It adds no
+contract implementation, state mutation, signer or deployment.

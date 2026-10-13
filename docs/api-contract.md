@@ -74,6 +74,7 @@ Merge does not establish remote availability. Deploy the API Worker through the 
 process, then check the JSON through the web proxy and an authenticated read. This implementation
 performs local controlled checks only and makes no provider calls or deployments.
 
-The read-only `/v1/perpl` dashboard group documents public market snapshots, explicit scope-1
-key enrollment and JWT-protected signed wallet reads. See [Perpl dashboard](perpl-dashboard.md)
+The read-only `/v1/perpl` dashboard group documents public market snapshots and public on-chain
+`GET /portfolio/:wallet` snapshots. Legacy explicit scope-1 key enrollment and signed portfolio
+POST reads remain JWT-protected. See [Perpl dashboard](perpl-dashboard.md)
 for credential handling, periodic refresh, estimation limits and outstanding live acceptance.

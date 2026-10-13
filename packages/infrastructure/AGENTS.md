@@ -876,3 +876,15 @@ expired signing terms and rejected account proofs. HTTP 401 alone does not prove
 Only the upstream numeric status accompanies the reviewed error; provider bodies remain discarded.
 Public-context failures never become private authorization errors. Server freshness checks stay
 at thirty seconds and read grants remain scope 1 with a one-hour maximum.
+
+The dashboard additionally implements `publicPortfolio(wallet, signal)` using
+`perpl/dashboard-chain.ts`, fixed Monad testnet RPC and the compiler-generated `IPerplReadAbi`.
+Only public chain/block/account/position reads are possible; no signer, arbitrary RPC, caller
+calldata or credential is accepted. Pin every eth_call to one canonical block hash. Enumerate
+held markets from the contract bitmap, skip reserved first-bank flags and retain unknown-market
+positions. Validate ownership, response IDs, scaled bounds and block freshness. Only the typed
+missing-account revert for the requested wallet establishes an empty account. Bound one snapshot
+to ten seconds, 64 positions, ten calls per batch and two MiB per response. Never cache/log wallet
+snapshots. Public context alone remains cached. Q16 entry residue goes to Trading; original
+leverage and historical stats stay unknown. This public source is the default web flow and does
+not depend on Perpl's third-party key enrollment or a user's wallet network.
