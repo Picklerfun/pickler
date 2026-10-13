@@ -890,3 +890,70 @@ describe("Face ID at Pay, always (Ruling A8)", () => {
     expect(latest.state).toMatchObject({ kind: "waiting", jobId: "job-1" });
   });
 });
+
+describe("Face ID at Pay: the account as it is when the prompt returns (Ruling A8, final review)", () => {
+  /** An unlock that resolves when the test says so: the Face ID prompt still open. */
+  const pendingUnlock = () => {
+    let resolve!: (w: unknown) => void;
+    unlockStoredWallet.mockImplementationOnce(() => new Promise((r) => { resolve = r; }));
+    return (w: unknown) => act(async () => { resolve(w); });
+  };
+
+  test("unlocked elsewhere during the prompt: the wallet just installed is not replaced, and the fresh one is ended", async () => {
+    await toConfirming(locked(wallet));
+    const finish = pendingUnlock();
+    const p = start(() => latest.confirm());
+    await settle();
+
+    // Another hook unlocks the account while the Pay prompt is still open.
+    const installed = reread(wallet);
+    await switchTo(unlocked(installed));
+    const fresh = makeWallet();
+    posts.push(r202());
+    await finish(fresh);
+    await act(async () => { await p; });
+    await settle();
+
+    expect(onUnlock).not.toHaveBeenCalled();
+    expect(fresh.account.signTypedData).toHaveBeenCalledTimes(1);
+    expect(fresh.session.end).toHaveBeenCalledTimes(1);
+    expect(installed.session.end).not.toHaveBeenCalled();
+    expect(paid()[0]!.opened).toBe(installed);
+  });
+
+  test("locked elsewhere during the prompt: the fresh wallet becomes the account's and carries the paid POST", async () => {
+    await toConfirming();
+    const finish = pendingUnlock();
+    const p = start(() => latest.confirm());
+    await settle();
+
+    // Lock in Wallet ends the open wallet's session while the Pay prompt is still open.
+    ended.add(wallet);
+    await switchTo(locked(wallet));
+    const fresh = makeWallet();
+    posts.push(r202());
+    await finish(fresh);
+    await act(async () => { await p; });
+    await settle();
+
+    expect(onUnlock).toHaveBeenCalledWith(fresh);
+    expect(fresh.session.end).not.toHaveBeenCalled();
+    expect(paid()[0]!.opened).toBe(fresh);
+    expect(latest.state).toMatchObject({ kind: "waiting", jobId: "job-1" });
+  });
+
+  test("an address that differs only in letter case is the same account", async () => {
+    const lower: AccountState = { status: "locked", address: wallet.address.toLowerCase() as never, credentialId: "cred" };
+    await toConfirming(lower);
+    const fresh = makeWallet();
+    unlockStoredWallet.mockResolvedValueOnce(fresh);
+    posts.push(r202());
+
+    await run(() => latest.confirm());
+
+    expect(fresh.address).not.toBe(wallet.address.toLowerCase());
+    expect(fresh.account.signTypedData).toHaveBeenCalledTimes(1);
+    expect(paid()).toHaveLength(1);
+    expect(latest.state).toMatchObject({ kind: "waiting", jobId: "job-1" });
+  });
+});

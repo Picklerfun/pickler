@@ -190,7 +190,6 @@ export function useAdviceAsk(account: AccountState, onUnlock: (w: Wallet) => voi
    * keeps its own wallet (other hooks hold it): `signer` is only for this signature and the caller ends its session.
    */
   const openToPay = useCallback(async (): Promise<{ signer: Wallet; kept: Wallet }> => {
-    const current = accountRef.current;
     let fresh: Wallet | undefined;
     try {
       fresh = await unlockStoredWallet();
@@ -199,6 +198,8 @@ export function useAdviceAsk(account: AccountState, onUnlock: (w: Wallet) => voi
       throw words === "" ? new Cancelled() : new UnlockFailed(words);
     }
     if (!fresh) throw new UnlockFailed(NO_STORED_ACCOUNT);
+    // The account as it is now, after the prompt: it may have been unlocked, locked or signed out meanwhile.
+    const current = accountRef.current;
     const expected = accountAddress(current);
     if (expected === null || fresh.address.toLowerCase() !== expected.toLowerCase()) {
       fresh.session.end();
