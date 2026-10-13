@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import type { PerpsLabQueryDiagnostic } from "@pickler/infrastructure/perps-lab";
+import type {
+  PerpsLabQueryDiagnostic,
+  PerpsLabConnectionDiagnostic,
+} from "@pickler/infrastructure/perps-lab";
 import { createPtsPersistenceDiagnostic } from "../src/pts-study/persistence-diagnostic.js";
 
 function query(
@@ -62,4 +65,32 @@ test("successful completion clears pending evidence without manufacturing a pers
   assert.equal(collector.failure(), null);
   assert.deepEqual(collector.snapshot().active, []);
   assert.equal(collector.snapshot().truncated, false);
+});
+
+test("connection phases are bounded and cloned separately from the first query failure", () => {
+  const collector = createPtsPersistenceDiagnostic();
+  for (let i = 0; i < 100; i++) {
+    const value: PerpsLabConnectionDiagnostic = {
+      version: 1,
+      connectionId: i,
+      workload: "execution",
+      phase: "protocol-ready",
+      at: i,
+      elapsedMs: i,
+      backendPid: 123,
+      driverCode: null,
+    };
+    collector.connection(value);
+    value.backendPid = 999;
+  }
+  collector.observe(query(1, "finished", "PERSISTENCE_CONNECTION_TIMEOUT"));
+  const snapshot = collector.snapshot();
+  assert.equal(snapshot.limits.connections, 64);
+  assert.equal(snapshot.connections.length, 64);
+  assert.equal(snapshot.discardedConnections, 36);
+  assert.equal(snapshot.truncated, true);
+  assert.equal(snapshot.connections[0]!.backendPid, 123);
+  snapshot.connections[0]!.backendPid = 998;
+  assert.equal(collector.snapshot().connections[0]!.backendPid, 123);
+  assert.equal(collector.failure()!.code, "PERSISTENCE_CONNECTION_TIMEOUT");
 });

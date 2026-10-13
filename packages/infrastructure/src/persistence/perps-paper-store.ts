@@ -340,7 +340,11 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
     );
     return result.rows[0]!.now;
   }
-  private async lock(client: PoolClient, scope: PerpsPaperScope): Promise<Locked> {
+  private async lock(
+    client: PoolClient,
+    scope: PerpsPaperScope,
+    capturedStudyRecord?: PerpsStudyRecord,
+  ): Promise<Locked> {
     if (this.capturedTransaction) {
       const item = this.capturedLocked(scope);
       item.now = await this.now(client);
@@ -355,7 +359,7 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
     if (!row) {
       throw new PilotError("NOT_FOUND", "Paper account not found");
     }
-    await this.checkDataPolicy(client, scope, row.document);
+    await this.checkDataPolicy(client, scope, row.document, false, capturedStudyRecord);
     const now = await this.now(client);
     if (row.document.marketDataPolicy !== COMPONENT_PAPER_POLICY || this.studyOwner) {
       await client.query(
@@ -387,8 +391,9 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
     scope: PerpsPaperScope,
     account: PerpsPaperAccount,
     requireOwner = false,
+    capturedStudyRecord?: PerpsStudyRecord,
   ) {
-    const record = await this.studyRecord(client, scope);
+    const record = capturedStudyRecord ?? (await this.studyRecord(client, scope));
     const expected =
       (record?.config.version === 7 ||
         record?.config.version === 8 ||
@@ -770,8 +775,8 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
         }
         const locked = new Map<string, Locked>();
         for (const scope of [...scopes].sort((a, b) => a.agentId.localeCompare(b.agentId))) {
-          const item = await this.lock(client, scope);
-          await this.checkDataPolicy(client, scope, item.view.account, true);
+          const item = await this.lock(client, scope, record);
+          await this.checkDataPolicy(client, scope, item.view.account, true, record);
           assertPerpsPaperAgent(item.agent, scope, item.view.account.agentVersion);
           for (const frame of captured) {
             if (

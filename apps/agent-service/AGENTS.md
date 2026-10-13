@@ -455,3 +455,15 @@ financial functions and fixed admission window. A confirmed final-phase rollback
 not a hold or completed round; partial/uncertain writes remain interruptions. Controlled fills
 prove long/short and partial execution only. Preserve the failed trial and its pending positions;
 this repair does not resume it or establish profitable PTS decisions.
+
+Read [local PTS connection readiness](PTS-LOCAL-CONNECTION-READINESS.md) for the preserved new-client
+timeout and pre-admission local check. Preflight/run verify the fixed execution capacity before
+claim; no model, provider, signing or financial work belongs in readiness. Preserve the failed
+study, stale database projection and separate terminal-process proof. Readiness is a mitigation,
+not a retrospective socket diagnosis or evidence of profitable decisions.
+
+The PTS host publishes bounded connection phases and run-only event-loop evidence with its query
+diagnostic at completion/interruption. Keep the one-second passive timer separate from financial
+clocks, freeze it at cleanup, and declare truncation. Process-wide CPU and timer lateness do not
+identify a historical timeout cause; no credentials, driver messages or authentication bytes belong
+in these artifacts. See the local readiness guide for the versioned fields and controlled tests.
