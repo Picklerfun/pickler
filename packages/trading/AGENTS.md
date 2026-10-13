@@ -200,3 +200,10 @@ and current-collateral exhaustion estimates. These are real-wallet projections, 
 paper accounts, order admission and strategy execution. Missing marks/statistics keep aggregates
 unknown. Realized P&L comes from the venue's reported all-time statistics. Never call the
 collateral-exhaustion threshold a venue liquidation price or subtract estimated fees twice.
+
+The dashboard read port also exposes public contract snapshots. Position inputs accept the
+contract's optional Q16 entry residue and nullable original leverage. Exact entry/risk arithmetic
+preserves long-ceil/short-floor semantics. Missing context/marks retain the position with unknown
+price-dependent aggregates. Original leverage and historical statistics must not be invented
+from current collateral. The infrastructure-provided optional `source: "onchain"` is provenance,
+not permission to trade.

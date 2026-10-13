@@ -99,3 +99,45 @@ test("another collateral asset cannot be labelled AUSD", async () => {
   });
   await assert.rejects(gateway.markets(signal), /INVALID_RESPONSE/);
 });
+
+test("enrollment refusal is distinct from stale signing terms and failed account proofs", async () => {
+  let now = Date.now();
+  const fake = controlledPerpl(() => now);
+  let refused = "";
+  let status = 400;
+  const gateway = new PerplDashboardGateway(
+    async (url, init) => {
+      if (refused && String(url).endsWith(refused)) {
+        return new Response("private provider detail", { status });
+      }
+      return fake.fetcher(url, init);
+    },
+    () => now,
+  );
+  const input = {
+    wallet: DASHBOARD_WALLET,
+    publicKey: "0x" + "6".repeat(64),
+    expiresAt: now + 3_500_000,
+  };
+  const payload = await gateway.payload(input, signal);
+  const enrollment = {
+    wallet: input.wallet,
+    ...payload,
+    signature: "0x" + "1".repeat(130),
+    popSignature: "0x" + "2".repeat(128),
+  };
+  refused = "/api-key/enroll";
+
+  await assert.rejects(gateway.enroll(enrollment, signal), /AUTHORIZATION_REJECTED/);
+  now += 31_000;
+  await assert.rejects(gateway.enroll(enrollment, signal), /AUTHORIZATION_STALE/);
+  refused = "/trading/wallet";
+  status = 401;
+  await assert.rejects(gateway.portfolio(proofs(now), signal), /READ_SIGNATURE_REJECTED/);
+  refused = "/api-key/payload";
+  status = 422;
+  await assert.rejects(
+    gateway.payload({ ...input, expiresAt: now + 3_500_000 }, signal),
+    /INTEGRATION_NOT_ALLOWED/,
+  );
+});

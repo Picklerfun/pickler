@@ -25,6 +25,7 @@ const outputDirectory = join(root, "packages/chain/src/abi");
  */
 const CONTRACTS = [
   "IPerplExchange",
+  "IPerplRead",
   "PicklerCurveMath",
   "PicklerPreset",
   "PicklerAgentToken",

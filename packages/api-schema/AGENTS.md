@@ -328,3 +328,10 @@ every signing boundary. Enrollment intentionally returns the opaque read-access 
 to its signing browser; no private key is accepted or returned. Monetary projections are decimal
 strings. Collateral-exhaustion/price-buffer values are estimates, not venue liquidation prices.
 See [Perpl dashboard](../../docs/perpl-dashboard.md).
+
+The dashboard's public `GET /v1/perpl/portfolio/:wallet` validates the path with
+`perplPublicWalletSchema`. Portfolio responses may carry `source: "onchain"`; older signed REST
+responses omit it. Original position leverage is nullable because the public account getter does
+not supply that setting. Historical statistics remain nullable, never zero-filled. Other monetary
+and risk fields preserve their existing units and meaning. Legacy key enrollment and signed-read
+DTOs retain their strict scope-1 contract.

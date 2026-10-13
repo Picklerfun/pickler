@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { apiClock } from "../../lib/server-clock";
 export class PerplReadError extends Error {
   constructor(
     readonly code: string,
@@ -15,7 +16,17 @@ const words: Record<string, string> = {
   READ_ACCESS_DENIED: "Perpl denied read access. Check permissions at Perpl.",
   NO_PERPL_PROFILE: "Connect this wallet at Perpl testnet first, then return here.",
   KEY_LIMIT: "Remove unused keys at Perpl before authorizing another read session.",
-  INVALID_AUTHORIZATION: "Read authorization changed or expired. Start again.",
+  INVALID_AUTHORIZATION:
+    "The read-access request is invalid. Pickler needs to review this request.",
+  AUTHORIZATION_STALE: "The signing request timed out. Prepare a new read-access request.",
+  AUTHORIZATION_REJECTED: "Perpl rejected read-access registration. No read session was created.",
+  INTEGRATION_NOT_ALLOWED:
+    "Perpl has not allowed this integration. Pickler needs to review its registration.",
+  READ_SIGNATURE_REJECTED:
+    "Perpl could not verify this account read. Retrying with a fresh signature.",
+  READ_REQUEST_REJECTED: "Perpl rejected the account read. Your read session is kept.",
+  PICKLER_SESSION_EXPIRED:
+    "Your Pickler sign-in expired. Reconnect your wallet to resume account reads.",
   RATE_LIMITED: "Perpl is limiting reads. Updates will resume shortly.",
 };
 export async function perplRequest<T>(
@@ -25,6 +36,7 @@ export async function perplRequest<T>(
   token?: string,
   input?: unknown,
 ): Promise<T> {
+  const started = performance.now();
   const response = await fetch(`/api/v1/perpl/${path}`, {
     method: input === undefined ? "GET" : "POST",
     cache: "no-store",
@@ -41,13 +53,19 @@ export async function perplRequest<T>(
       typeof body?.error === "string" && body.error in words
         ? body.error
         : response.status === 401
-          ? "READ_ACCESS_EXPIRED"
+          ? "PICKLER_SESSION_EXPIRED"
           : "UNAVAILABLE";
     throw new PerplReadError(code, words[code] ?? words.UNAVAILABLE!);
   }
   const parsed = schema.safeParse(await response.json());
   if (!parsed.success) {
     throw new PerplReadError("INVALID_RESPONSE", words.INVALID_RESPONSE!);
+  }
+  if (path === "markets") {
+    const data = parsed.data as { serverTimeMs?: unknown };
+    if (typeof data.serverTimeMs === "number") {
+      apiClock.observe(data.serverTimeMs, started);
+    }
   }
   return parsed.data;
 }
