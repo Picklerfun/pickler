@@ -836,3 +836,21 @@ reuse. Drain pending work before rollback/release. Only confirmed full rollback 
 may become unavailable; unknown commit/rollback and lease loss remain fatal. Preserve original
 history and all financial/model reservations. See
 [the final execution guide](../../apps/agent-service/PTS-CAPTURED-FINAL-EXECUTION.md).
+
+## Local PTS connection readiness
+
+The restricted `/perps-lab` export adds `warmLocalPerpsLabStore` and its versioned readiness
+contract. Only registered local execution stores can verify four distinct clients in read-only
+transactions before admission. Retain those clients across idle gaps without raising the existing
+four-plus-one capacity or either ten-second deadline. Failed/cancelled readiness discards partial
+acquisition; no financial recovery, retry, owner grant or hosted/report behavior change is allowed.
+Captured final transactions reuse the study record only under their already-held study lock;
+account/agent locks and fresh ownership fences remain. See
+[local readiness](../../apps/agent-service/PTS-LOCAL-CONNECTION-READINESS.md).
+
+Local connection observation adds PerpsLabConnectionDiagnostic v1 on the restricted subpath.
+Observe the original pg constructor/events without replacing connect/query/auth behavior. Retain
+safe client/workload identity, socket/auth/protocol phases, monotonic duration, known backend PID
+and allowlisted codes only. Exclude addresses, authentication payloads, backend secrets, SQL and
+driver messages. Observer or metadata-access failure cannot affect the driver or failure latch;
+missing historical phases remain unverifiable. Tests use isolated databases and synthetic sockets.
