@@ -80,6 +80,45 @@ export async function ptsReport(
   report: Record<string, unknown>,
   rows: Record<string, unknown>[],
 ) {
+  const omissions = new Map<number, { phase: string | null; cause: string | null }>();
+  if (Array.isArray(report.omittedSlots)) {
+    for (const value of report.omittedSlots) {
+      if (!value || typeof value !== "object") {
+        continue;
+      }
+      const omission = value as Record<string, unknown>;
+      if (
+        typeof omission.slot !== "number" ||
+        !Number.isInteger(omission.slot) ||
+        omission.slot < 0
+      ) {
+        continue;
+      }
+      omissions.set(omission.slot, {
+        phase: typeof omission.phase === "string" ? omission.phase : null,
+        cause: typeof omission.cause === "string" ? omission.cause : null,
+      });
+    }
+  }
+  const presentedRows = rows.map<Record<string, unknown>>((row) => {
+    const omission = omissions.get(row.slot as number);
+    if (!omission || row.status !== "NOT_RECORDED" || row.action != null) {
+      return row;
+    }
+    return {
+      ...row,
+      sourceStatus: row.status,
+      sourceReason: row.reason,
+      status: "DATA_UNAVAILABLE",
+      reason: "DATA_UNAVAILABLE",
+      omission,
+    };
+  });
+  const rowPresentation = {
+    protocol: "pts-omitted-row-presentation-v1",
+    interpretation:
+      "Only explicit stored omissions label missing decision rows; source statuses and reasons remain available. Future, incomplete and completed decisions retain their meaning.",
+  };
   const intraday =
     (typeof report.candidate === "string" && report.candidate.startsWith("pts-intraday@")) ||
     (typeof report.policy === "string" && report.policy.startsWith("pts-intraday@")) ||
@@ -112,6 +151,9 @@ export async function ptsReport(
     "action",
     "reason",
     "status",
+    "sourceStatus",
+    "sourceReason",
+    "omission",
     "eligible",
     "coverage",
     "validation",
@@ -156,7 +198,7 @@ export async function ptsReport(
             : report.processState === "process-unverified"
               ? "The recorded study started; current process health is not verified. No restart is authorized."
               : preparation;
-  const csvRows = rows.map((row) => {
+  const csvRows = presentedRows.map((row) => {
     const analysis =
       row.analysis ??
       (report.analyses as Record<string, unknown> | undefined)?.[String(row.analysisHash)] ??
@@ -195,6 +237,7 @@ export async function ptsReport(
         ].includes(key),
     ),
   );
+  visibleSummary.rowPresentation = rowPresentation;
   visibleSummary.detailCounts = {
     rows: rows.length,
     analyses: allAnalyses.length,
@@ -231,7 +274,7 @@ export async function ptsReport(
       ),
     };
   }
-  const compact = rows.map((r, i) => ({
+  const compact = presentedRows.map((r, i) => ({
     i,
     at: r.at,
     slot: r.slot,
@@ -240,6 +283,7 @@ export async function ptsReport(
     action: r.action,
     reason: r.reason,
     status: r.status,
+    omission: r.omission,
     analysisHash: r.analysisHash,
   }));
   const json = JSON.stringify(compact)
@@ -259,11 +303,11 @@ export async function ptsReport(
   <script type="application/json" id="data">${json}</script><script>
   const data=JSON.parse(document.getElementById("data").textContent);let page=0;const size=50;
   function render(){const q=document.getElementById("filter").value.toLowerCase(),list=data.filter(r=>JSON.stringify(r).toLowerCase().includes(q));page=Math.max(0,Math.min(page,Math.max(0,Math.ceil(list.length/size)-1)));document.getElementById("rows").replaceChildren();
-  for(const r of list.slice(page*size,(page+1)*size)){const tr=document.createElement("tr");for(const v of [r.at?new Date(r.at).toISOString():r.slot,r.symbol,r.variant||"signal-only",r.action||"",r.reason||r.status,r.analysisHash||r.i]){const td=document.createElement("td");td.textContent=String(v??"");tr.append(td);}document.getElementById("rows").append(tr);}
+  for(const r of list.slice(page*size,(page+1)*size)){const tr=document.createElement("tr");for(const v of [r.at?new Date(r.at).toISOString():r.slot,r.symbol,r.variant||"signal-only",r.action||"",r.omission ? r.status+": "+(r.omission.phase??"NOT_VERIFIABLE")+" / "+(r.omission.cause??"NOT_VERIFIABLE") : r.reason||r.status,r.analysisHash||r.i]){const td=document.createElement("td");td.textContent=String(v??"");tr.append(td);}document.getElementById("rows").append(tr);}
   document.getElementById("count").textContent=list.length+" rows, page "+(page+1);}
   document.getElementById("filter").oninput=()=>{page=0;render();};document.getElementById("prev").onclick=()=>{page--;render();};document.getElementById("next").onclick=()=>{page++;render();};render();
   </script></html>`;
-  const full = { ...report, rows };
+  const full = { ...report, rowPresentation, rows: presentedRows };
   const accounts = (report.accounts ??
     (report.financial as { accounts?: unknown } | undefined)?.accounts) as
     Record<string, import("@pickler/trading/perps").PerpsPaperView> | undefined;

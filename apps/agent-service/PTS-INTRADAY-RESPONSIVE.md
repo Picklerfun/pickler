@@ -19,3 +19,7 @@ The 48-round replay produced no responsive entries. Seven-day native candle repl
 The candidate retains the fixed 24-hour pilot, five-minute decisions, minute observations, 90-second lease and 20-second renewal. Public data remains the explicit unchanged component-paper WebSocket policy; requests and cache reuse keep current permission/ownership checks. No models, Exa, signing, budget reset, fallback, deployment or automatic promotion is added.
 
 Implementation remains in development until controlled PostgreSQL/command/consumer checks and a clean one-file-per-commit delivery pass. This guide does not start a public trial. Keep failed reports and unverified timeout causes separate from the candidate's signal evidence.
+
+## Omission presentation
+
+The versioned pts-omitted-row-presentation-v1 presentation joins explicit stored omittedSlots to rows with no recorded decision. Such rows display DATA_UNAVAILABLE with their original phase/cause, sourceStatus and sourceReason. Future or absent evidence remains NOT_RECORDED; completed holds and partial decisions remain distinct. Unknown phase/cause stays null, and no market observation is reconstructed. This is report presentation only: signals, financial values, policy hashes, original exports and frozen executions remain unchanged. Use offline audit into a new directory to inspect an existing study with the corrected renderer; never hot-patch or restart an active runner for a report change.

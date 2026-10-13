@@ -105,3 +105,5 @@ before a delayed callback, freeze it on stop, and publish both diagnostics at co
 These measurements cannot reconstruct missing historical transport phases or authorize a restart.
 
 V9 also explicitly accepts responsive 0.2.0-fast.2. Pin ptsConfigVersion/ptsPolicy and immutable account policy; never relabel a prepared fast.1 session. Offline development projections preserve source byte hashes and distinguish changed temporal roles from historical request identity. Read [the responsive guide](../../PTS-INTRADAY-RESPONSIVE.md); candle signals and controlled favorable fills never prove public profitability.
+
+Report presentation pts-omitted-row-presentation-v1 labels a missing decision row as DATA_UNAVAILABLE only from an explicit stored omittedSlots entry. Preserve sourceStatus/sourceReason and the recorded phase/cause; absent provenance stays null. Never relabel valid holds, partial proposals or future missing rows, infer transport phases, modify financial results or amend frozen runtime files.
