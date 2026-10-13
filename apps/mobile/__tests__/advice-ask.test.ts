@@ -583,6 +583,36 @@ describe("after a payment went out (fix round 1)", () => {
     expect(wallet.account.signTypedData).toHaveBeenCalledTimes(1);
   });
 
+  test("abandon from a timeout goes idle, polls no more, and the next Ask has a new key (Ruling A5)", async () => {
+    await toConfirming();
+    posts.push(r202());
+    await run(() => latest.confirm());
+    for (let i = 0; i < 80; i += 1) await tick(3_000);
+    expect(latest.state.kind).toBe("timeout");
+
+    await run(() => latest.abandon());
+    expect(latest.state).toEqual({ kind: "idle" });
+    const before = sent.length;
+    await tick(30_000);
+    expect(sent).toHaveLength(before);
+
+    posts.push(r402());
+    await run(() => latest.ask(AGENT, "BTC"));
+    expect(latest.state.kind).toBe("confirming");
+    const keys = postsSent().map((x) => x.key);
+    expect(keys.at(-1)).not.toBe(keys[0]);
+    expect(wallet.account.signTypedData).toHaveBeenCalledTimes(1);
+  });
+
+  test("abandon is ignored while the job is still being waited for", async () => {
+    await toConfirming();
+    posts.push(r202());
+    await run(() => latest.confirm());
+    expect(latest.state.kind).toBe("waiting");
+    await run(() => latest.abandon());
+    expect(latest.state.kind).toBe("waiting");
+  });
+
   test.each(["insufficient_funds", "expired"])("a resend after a lost answer refused with %s charged nothing", async (error) => {
     await toConfirming();
     posts.push(new TypeError("Network request failed"));

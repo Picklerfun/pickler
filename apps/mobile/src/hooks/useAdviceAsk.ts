@@ -76,7 +76,10 @@ export type AdviceAsk = {
   refresh: () => Promise<void>;
   /** Back to idle. Ignored, like `ask`, while this Ask's payment is out and unresolved. */
   reset: () => void;
-  /** From `settlement_pending` only: leave the payment being checked (server-side) and go idle. Never signs. */
+  /**
+   * From `settlement_pending` or `timeout` only (Ruling A5): leave the payment being checked, or the job still running,
+   * server-side and go idle. Never signs; a later Ask is a deliberate new purchase.
+   */
   abandon: () => Promise<void>;
 };
 
@@ -415,7 +418,8 @@ export function useAdviceAsk(account: AccountState, onUnlock: (w: Wallet) => voi
 
   const abandon = useCallback(async () => {
     const f = flowRef.current;
-    if (!f || f.running || f.sending || stateRef.current.kind !== "settlement_pending") return;
+    const kind = stateRef.current.kind;
+    if (!f || f.running || f.sending || !(kind === "settlement_pending" || kind === "timeout")) return;
     drop();
   }, [drop]);
 
