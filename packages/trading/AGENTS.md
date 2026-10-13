@@ -342,3 +342,13 @@ payloads used by scheduling, same-slot close fences and first-executable exit tr
 payloads may be empty. Read full view or consistent audit exports for original evidence; never
 infer missing financial evidence from the compact projection. Historical protocols retain their
 complete view semantics.
+
+## Local PTS captured final boundary
+
+The optional paper `withCapturedFrames` port coordinates the PTS v8/v9 final phase with the same
+common frames, simulator and financial functions. Final valuation, maintenance, gates and both
+portfolios' fills share one transaction. Only a confirmed whole-phase rollback on demonstrated
+aging becomes an omitted execution; ownership and persistence uncertainty remain fatal.
+Earlier committed observations/exits remain recorded. Do not replace the common input, update
+proof dates, change policies or resume a partial historical round. See
+[the final execution guide](../../apps/agent-service/PTS-CAPTURED-FINAL-EXECUTION.md).

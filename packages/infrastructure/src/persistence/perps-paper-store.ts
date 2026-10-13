@@ -14,6 +14,7 @@ import {
   SMA_ENTRY_POLICIES,
   type SmaReentryVariant,
   type PerpsEvidence,
+  type PerpsStudyRecord,
 } from "@pickler/trading/evaluation";
 import { randomUUID, createHash } from "node:crypto";
 import type { Pool, PoolClient } from "pg";
@@ -43,6 +44,8 @@ import {
   validatePaperFrameSet,
   isComponentFrameExpiry,
   type PerpsCommonObservationResult,
+  type PerpsCommonExecutionResult,
+  type PerpsPaperRepository,
   COMPONENT_PAPER_POLICY,
   type PerpsDuePosition,
   type PerpsPaperCloseReason,
@@ -70,11 +73,25 @@ interface Locked {
   agent: AgentRecord;
   now: number;
 }
+interface CapturedTransaction {
+  client: PoolClient;
+  workClient: PoolClient;
+  record: PerpsStudyRecord;
+  scopes: Map<string, PerpsPaperScope>;
+  locked: Map<string, Locked>;
+  frames: PerpsPaperFrame[];
+  active: boolean;
+  busy: boolean;
+  savepoint: number;
+  operationFinished?: Promise<void>;
+  failure?: PilotError;
+}
 /**
  * Scoped paper repository for operator sessions and the product session of studio agents. All
  * mutations serialize on the agent and account rows.
  */
 export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
+  private capturedTransaction?: CapturedTransaction;
   constructor(
     readonly pool: Pool,
     private readonly clock?: () => number,
@@ -98,6 +115,9 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
     beforeCommit?: (client: PoolClient) => Promise<void>,
     afterRollback?: (error: unknown) => T,
   ) {
+    if (this.capturedTransaction) {
+      return this.capturedOperation(action, beforeCommit);
+    }
     const client = await this.pool.connect();
     let commitStarted = false;
     let discardConnection = false;
@@ -134,6 +154,95 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
     } finally {
       client.release(discardConnection);
     }
+  }
+  private assertCapturedActive() {
+    if (!this.capturedTransaction?.active) {
+      throw new PilotError("LEASE_LOST", "Captured execution context is no longer active");
+    }
+    if (this.capturedTransaction.failure) {
+      throw this.capturedTransaction.failure;
+    }
+    this.studyOwner?.assertActive?.();
+    this.studyOwner?.signal?.throwIfAborted();
+  }
+  private capturedLocked(scope: PerpsPaperScope) {
+    this.assertCapturedActive();
+    const context = this.capturedTransaction!;
+    const expected = context.scopes.get(scope.agentId);
+    if (
+      !expected ||
+      expected.tenantId !== scope.tenantId ||
+      expected.sessionId !== scope.sessionId ||
+      expected.network !== scope.network
+    ) {
+      throw new PilotError("FORBIDDEN", "Captured execution crossed its frozen account scopes");
+    }
+    return context.locked.get(scope.agentId)!;
+  }
+  private async capturedOperation<T>(
+    action: (client: PoolClient) => Promise<T>,
+    beforeCommit?: (client: PoolClient) => Promise<void>,
+  ): Promise<T> {
+    this.assertCapturedActive();
+    const context = this.capturedTransaction!;
+    if (context.busy) {
+      context.failure = new PilotError(
+        "INCOMPLETE_EXECUTION",
+        "Captured financial operations must be serial",
+      );
+      throw context.failure;
+    }
+    context.busy = true;
+    let finishOperation!: () => void;
+    context.operationFinished = new Promise<void>((resolve) => {
+      finishOperation = resolve;
+    });
+    const saved = new Map(
+      [...context.locked].map(([id, value]) => [id, structuredClone(value.view)]),
+    );
+    const savepoint = `captured_${++context.savepoint}`;
+    try {
+      await context.client.query(`SAVEPOINT ${savepoint}`);
+      try {
+        await this.guardStudy(context.workClient);
+        const result = await action(context.workClient);
+        this.assertCapturedActive();
+        await this.guardStudy(context.workClient);
+        await beforeCommit?.(context.workClient);
+        await context.client.query(`RELEASE SAVEPOINT ${savepoint}`);
+        return result;
+      } catch (error) {
+        try {
+          await context.client.query(`ROLLBACK TO SAVEPOINT ${savepoint}`);
+          await context.client.query(`RELEASE SAVEPOINT ${savepoint}`);
+        } catch {
+          throw new PilotError(
+            "PERSISTENCE_FAILED",
+            "Captured operation rollback was not confirmed",
+          );
+        }
+        for (const [id, view] of saved) {
+          context.locked.get(id)!.view = view;
+        }
+        // Only the outer, confirmed full rollback may classify aging as data unavailable.
+        throw error;
+      }
+    } finally {
+      context.busy = false;
+      finishOperation();
+      delete context.operationFinished;
+    }
+  }
+  private async studyRecord(client: PoolClient, scope: PerpsPaperScope) {
+    if (this.capturedTransaction) {
+      this.capturedLocked(scope);
+      return this.capturedTransaction.record;
+    }
+    const result = await client.query<{ document: PerpsStudyRecord }>(
+      "SELECT document FROM pickler.perps_studies WHERE tenant_id=$1 AND session_id=$2 AND network=$3",
+      [scope.tenantId, scope.sessionId, scope.network],
+    );
+    return result.rows[0]?.document;
   }
   private async guardStudy(client: PoolClient, exclusive = true) {
     if (!this.studyOwner) {
@@ -232,6 +341,11 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
     return result.rows[0]!.now;
   }
   private async lock(client: PoolClient, scope: PerpsPaperScope): Promise<Locked> {
+    if (this.capturedTransaction) {
+      const item = this.capturedLocked(scope);
+      item.now = await this.now(client);
+      return item;
+    }
     const agent = await this.agent(client, scope);
     const result = await client.query<{ id: string; document: PerpsPaperAccount }>(
       "SELECT id,document FROM pickler.perps_paper_accounts WHERE tenant_id=$1 AND agent_id=$2 AND session_id=$3 AND network=$4 FOR UPDATE",
@@ -274,13 +388,7 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
     account: PerpsPaperAccount,
     requireOwner = false,
   ) {
-    const result = await client.query<{
-      document: import("@pickler/trading/evaluation").PerpsStudyRecord;
-    }>(
-      "SELECT document FROM pickler.perps_studies WHERE tenant_id=$1 AND session_id=$2 AND network=$3",
-      [scope.tenantId, scope.sessionId, scope.network],
-    );
-    const record = result.rows[0]?.document;
+    const record = await this.studyRecord(client, scope);
     const expected =
       (record?.config.version === 7 ||
         record?.config.version === 8 ||
@@ -424,19 +532,22 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
       );
     }
     const captured = structuredClone(observation);
+    if (this.capturedTransaction) {
+      this.assertCapturedActive();
+    }
+    if (
+      this.capturedTransaction &&
+      (canonicalAudit(captured.frames) !== canonicalAudit(this.capturedTransaction.frames) ||
+        new Set(captured.frames.map((f) => f.snapshot.market.symbol)).size !==
+          captured.frames.length)
+    ) {
+      throw new PilotError("INVALID_MARKET_DATA", "Captured execution valuation changed its input");
+    }
     let validateBeforeCommit = false;
     const first = scopes[0]!;
-    return this.transaction<PerpsCommonObservationResult>(
+    const commonResult = await this.transaction<PerpsCommonObservationResult>(
       async (client) => {
-        const source = await client.query<{
-          document: import("@pickler/trading/evaluation").PerpsStudyRecord;
-        }>(
-          `SELECT document
-           FROM pickler.perps_studies
-           WHERE tenant_id=$1 AND session_id=$2 AND network=$3`,
-          [first.tenantId, first.sessionId, first.network],
-        );
-        const record = source.rows[0]?.document;
+        const record = await this.studyRecord(client, first);
         const ids = record && Object.values(record.agentIds);
         if (
           (record?.config.version !== 7 &&
@@ -573,6 +684,9 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
             [item.id, key, captured, { account: view.account, attempts: [], movements: [] }],
           );
           accounts.push({ scope, before: item.view, view });
+          if (this.capturedTransaction) {
+            item.view = view;
+          }
         }
         validateBeforeCommit = true;
         return { status: "complete", replayed: false, financialAt, receiptAt, accounts };
@@ -581,6 +695,249 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
         if (validateBeforeCommit) {
           validatePaperFrameSet(
             captured.frames,
+            first.network,
+            await this.now(client),
+            COMPONENT_PAPER_POLICY,
+            this.receiptNow(),
+          );
+        }
+      },
+      (error) => {
+        if (isComponentFrameExpiry(error)) {
+          return {
+            status: "data_unavailable",
+            rolledBack: true,
+            code: "STALE_MARKET_DATA",
+            validation: error.details,
+          };
+        }
+        throw error;
+      },
+    );
+    return this.capturedTransaction ? structuredClone(commonResult) : commonResult;
+  }
+  async withCapturedFrames(
+    scopes: readonly PerpsPaperScope[],
+    key: string,
+    frames: readonly PerpsPaperFrame[],
+    execute: (
+      context: import("@pickler/trading/perps").PerpsCapturedExecutionContext,
+    ) => Promise<void>,
+  ): Promise<PerpsCommonExecutionResult> {
+    if (this.capturedTransaction || this.productOwner || !this.studyOwner) {
+      throw new PilotError("INVALID_INPUT", "Captured batches require a bound local study owner");
+    }
+    if (
+      !/^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,100}$/.test(key) ||
+      scopes.length !== 2 ||
+      !frames.length ||
+      new Set(frames.map((f) => f.snapshot.market.symbol)).size !== frames.length
+    ) {
+      throw new PilotError("INVALID_INPUT", "Two captured accounts and a valid batch key required");
+    }
+    const captured = structuredClone([...frames]);
+    const first = scopes[0]!;
+    const markerKey = `${key}:captured-complete`;
+    const framesHash = createHash("sha256").update(canonicalAudit(captured)).digest("hex");
+    let validateBeforeCommit = false;
+    return this.transaction<PerpsCommonExecutionResult>(
+      async (client) => {
+        const source = await client.query<{ id: string; document: PerpsStudyRecord }>(
+          "SELECT id,document FROM pickler.perps_studies WHERE tenant_id=$1 AND session_id=$2 AND network=$3",
+          [first.tenantId, first.sessionId, first.network],
+        );
+        const record = source.rows[0]?.document;
+        const ids = record && Object.values(record.agentIds).sort();
+        if (
+          (record?.config.version !== 8 && record?.config.version !== 9) ||
+          record.config.acquisitionPolicy !== COMPONENT_PAPER_POLICY ||
+          record.dataPolicy !== COMPONENT_PAPER_POLICY ||
+          ids?.length !== 2 ||
+          new Set(scopes.map((s) => s.agentId)).size !== 2 ||
+          scopes.some(
+            (s) =>
+              s.tenantId !== this.studyOwner!.tenantId ||
+              s.sessionId !== this.studyOwner!.sessionId ||
+              s.network !== this.studyOwner!.network ||
+              !ids.includes(s.agentId) ||
+              isProductPaperSession(s),
+          )
+        ) {
+          throw new PilotError(
+            "CONFIG_CHANGED",
+            "Captured batch must match both frozen PTS study accounts",
+          );
+        }
+        const locked = new Map<string, Locked>();
+        for (const scope of [...scopes].sort((a, b) => a.agentId.localeCompare(b.agentId))) {
+          const item = await this.lock(client, scope);
+          await this.checkDataPolicy(client, scope, item.view.account, true);
+          assertPerpsPaperAgent(item.agent, scope, item.view.account.agentVersion);
+          for (const frame of captured) {
+            if (
+              !(item.agent.config.perpl!.markets as readonly string[]).includes(
+                frame.snapshot.market.symbol,
+              )
+            ) {
+              throw new PilotError("MARKET_NOT_ALLOWED", "Captured market is not permitted");
+            }
+            if (
+              !record.config.markets.some(
+                (m) =>
+                  m.symbol === frame.snapshot.market.symbol &&
+                  m.marketId === frame.snapshot.market.marketId,
+              )
+            ) {
+              throw new PilotError("PERPL_MARKET_IDENTITY", "Captured catalog identity differs");
+            }
+            const digest = createHash("sha256")
+              .update(
+                JSON.stringify({
+                  snapshot: frame.snapshot,
+                  book: frame.book,
+                  streamEvidence: frame.streamEvidence,
+                }),
+              )
+              .digest("hex");
+            if (frame.hash !== digest) {
+              throw new PilotError("INVALID_MARKET_DATA", "Captured frame hash differs");
+            }
+          }
+          locked.set(scope.agentId, item);
+        }
+        const marker = { format: "perps-captured-execution-v1", framesHash, agentIds: ids };
+        const old = await client.query<{ data: unknown }>(
+          "SELECT data FROM pickler.perps_study_events WHERE study_id=$1 AND key=$2",
+          [source.rows[0]!.id, markerKey],
+        );
+        if (old.rows[0]) {
+          if (canonicalAudit(old.rows[0].data) !== canonicalAudit(marker)) {
+            throw new PilotError(
+              "INVALID_INPUT",
+              "Captured batch key was reused with different evidence",
+            );
+          }
+          return {
+            status: "complete",
+            replayed: true,
+            accounts: scopes.map((scope) => ({
+              scope,
+              view: structuredClone(locked.get(scope.agentId)!.view),
+            })),
+          };
+        }
+        const prior = await client.query(
+          "SELECT 1 FROM pickler.perps_study_events WHERE study_id=$1 AND kind='final-gate' AND starts_with(key,$2) LIMIT 1",
+          [source.rows[0]!.id, `${key}:`],
+        );
+        if (prior.rowCount) {
+          throw new PilotError(
+            "INCOMPLETE_EXECUTION",
+            "A prior serial execution cannot resume as a captured batch",
+          );
+        }
+        validatePaperFrameSet(
+          captured,
+          first.network,
+          await this.now(client),
+          COMPONENT_PAPER_POLICY,
+          this.receiptNow(),
+        );
+        const child = new PostgresPerpsPaperStore(
+          this.pool,
+          this.clock,
+          this.studyOwner,
+          undefined,
+          this.receiptClock,
+        );
+        const workClient = new Proxy(client, {
+          get(target, property) {
+            const value = Reflect.get(target, property);
+            if (property === "query") {
+              return (...arguments_: unknown[]) => {
+                child.assertCapturedActive();
+                return Reflect.apply(value, target, arguments_);
+              };
+            }
+            return typeof value === "function" ? value.bind(target) : value;
+          },
+        });
+        const context: CapturedTransaction = {
+          client,
+          workClient,
+          record,
+          scopes: new Map(scopes.map((s) => [s.agentId, structuredClone(s)])),
+          locked,
+          frames: captured,
+          active: true,
+          busy: false,
+          savepoint: 0,
+        };
+        child.capturedTransaction = context;
+        const permitted = new Set(["view", "observeCommon", "executeFrame"]);
+        const paper = new Proxy(child, {
+          get(target, property) {
+            if (typeof property === "string" && permitted.has(property)) {
+              const method = Reflect.get(target, property);
+              return method.bind(target);
+            }
+            return () => {
+              throw new PilotError("INVALID_INPUT", "Unsupported captured execution operation");
+            };
+          },
+        }) as PerpsPaperRepository;
+        try {
+          await execute({
+            paper,
+            assertActive: () => child.assertCapturedActive(),
+            event: async (eventKey, kind, data) => {
+              child.assertCapturedActive();
+              if (
+                !/^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,127}$/.test(eventKey) ||
+                ![
+                  "final-gate",
+                  "profile-execution",
+                  "exit-detected",
+                  "exit-impediment",
+                  "selective-reduction",
+                ].includes(kind)
+              ) {
+                throw new PilotError("INVALID_INPUT", "Unsupported captured execution event");
+              }
+              await child.capturedOperation(async (eventClient) =>
+                eventClient.query(
+                  "INSERT INTO pickler.perps_study_events(study_id,key,at,kind,data) VALUES($1,$2,$3,$4,$5)",
+                  [source.rows[0]!.id, eventKey, await this.now(eventClient), kind, data],
+                ),
+              );
+            },
+          });
+          child.assertCapturedActive();
+          if (context.busy) {
+            throw new PilotError("INCOMPLETE_EXECUTION", "Captured operation was left pending");
+          }
+          await client.query(
+            "INSERT INTO pickler.perps_study_events(study_id,key,at,kind,data) VALUES($1,$2,$3,'captured-execution',$4)",
+            [source.rows[0]!.id, markerKey, await this.now(client), marker],
+          );
+          validateBeforeCommit = true;
+          return {
+            status: "complete",
+            replayed: false,
+            accounts: scopes.map((scope) => ({
+              scope,
+              view: structuredClone(locked.get(scope.agentId)!.view),
+            })),
+          };
+        } finally {
+          context.active = false;
+          await context.operationFinished;
+        }
+      },
+      async (client) => {
+        if (validateBeforeCommit) {
+          validatePaperFrameSet(
+            captured,
             first.network,
             await this.now(client),
             COMPONENT_PAPER_POLICY,
@@ -694,6 +1051,10 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
     });
   }
   async view(scope: PerpsPaperScope) {
+    if (this.capturedTransaction) {
+      await this.guardStudy(this.capturedTransaction.workClient);
+      return structuredClone(this.capturedLocked(scope).view);
+    }
     if (this.studyOwner?.readPolicy === "pts-snapshot-v1") {
       return this.snapshot(scope);
     }
@@ -711,13 +1072,7 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
     intent: PerpsPaperIntent,
   ) {
     await this.checkDataPolicy(client, scope, locked.view.account, true);
-    const study = await client.query<{
-      document: import("@pickler/trading/evaluation").PerpsStudyRecord;
-    }>(
-      "SELECT document FROM pickler.perps_studies WHERE tenant_id=$1 AND session_id=$2 AND network=$3",
-      [scope.tenantId, scope.sessionId, scope.network],
-    );
-    const record = study.rows[0]?.document;
+    const record = await this.studyRecord(client, scope);
     if (
       record?.config.version === 6 ||
       record?.config.version === 7 ||
@@ -1055,7 +1410,22 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
       throw new PilotError("INVALID_INPUT", "Invalid request key");
     }
     assertPaperIntent(intent);
+    if (this.capturedTransaction) {
+      this.assertCapturedActive();
+    }
     const captured = structuredClone(frame);
+    if (
+      this.capturedTransaction &&
+      canonicalAudit(captured) !==
+        canonicalAudit(
+          this.capturedTransaction.frames.find((f) => f.snapshot.market.symbol === intent.symbol),
+        )
+    ) {
+      throw new PilotError(
+        "INVALID_MARKET_DATA",
+        "Captured execution cannot replace its common frame",
+      );
+    }
     let attemptExpiresAt: number | null = null;
     return this.transaction(
       async (client) => {
@@ -1079,7 +1449,7 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
           locked.view.attempts.push(admitted.attempt);
         }
         if (!admitted.lease) {
-          return locked.view;
+          return this.capturedTransaction ? structuredClone(locked.view) : locked.view;
         }
         attemptExpiresAt = admitted.lease.expiresAt;
         locked.now = await this.now(client);
@@ -1095,7 +1465,7 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
           this.receiptNow(),
         );
         onSimulation?.(performance.now() - started);
-        return this.completeLocked(
+        const view = await this.completeLocked(
           client,
           { ...locked, attempt: admitted.attempt },
           scope,
@@ -1104,6 +1474,10 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
           undefined,
           true,
         );
+        if (this.capturedTransaction) {
+          locked.view = view;
+        }
+        return structuredClone(view);
       },
       async (client) => {
         if (attemptExpiresAt === null) {

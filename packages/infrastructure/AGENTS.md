@@ -824,3 +824,15 @@ mutations retain their original document reads. Never use a metadata-free guard 
 historical evidence or a writable study document. The measured transfer reduction does not establish
 the cause of the preserved simultaneous query timeouts. See
 [study control reads](../../apps/agent-service/PTS-STUDY-CONTROL-READS.md).
+
+## Local PTS captured final transaction
+
+`PostgresPerpsPaperStore.withCapturedFrames` is opt-in to bound PTS v8/v9 component-paper accounts.
+It locks both portfolios and the study, retains cloned views/trusted policy only within those
+locks, and runs the existing financial functions on one client. Final gates, fills, targets,
+setups and the versioned completion marker commit together. Nested operations use savepoints,
+fresh ownership checks and a scoped context that rejects overlap, cross-scope access and later
+reuse. Drain pending work before rollback/release. Only confirmed full rollback on frame aging
+may become unavailable; unknown commit/rollback and lease loss remain fatal. Preserve original
+history and all financial/model reservations. See
+[the final execution guide](../../apps/agent-service/PTS-CAPTURED-FINAL-EXECUTION.md).
