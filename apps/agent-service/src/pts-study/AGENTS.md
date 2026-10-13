@@ -103,3 +103,5 @@ truncation. event-loop-diagnostic.ts records passive run-only one-second timer l
 and memory without changing financial clocks, deadlines or admission. Preserve a pending sample
 before a delayed callback, freeze it on stop, and publish both diagnostics at completion or failure.
 These measurements cannot reconstruct missing historical transport phases or authorize a restart.
+
+V9 also explicitly accepts responsive 0.2.0-fast.2. Pin ptsConfigVersion/ptsPolicy and immutable account policy; never relabel a prepared fast.1 session. Offline development projections preserve source byte hashes and distinguish changed temporal roles from historical request identity. Read [the responsive guide](../../PTS-INTRADAY-RESPONSIVE.md); candle signals and controlled favorable fills never prove public profitability.

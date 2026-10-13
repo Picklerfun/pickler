@@ -352,3 +352,7 @@ aging becomes an omitted execution; ownership and persistence uncertainty remain
 Earlier committed observations/exits remain recorded. Do not replace the common input, update
 proof dates, change policies or resume a partial historical round. See
 [the final execution guide](../../apps/agent-service/PTS-CAPTURED-FINAL-EXECUTION.md).
+
+Independent responsive prerelease 0.2.0-fast.2 changes only primary/channel roles to 1h/15m, sharing the native 15m series with impulse/ATR and keeping 5m correction/entry. The v9 config and immutable account mapping pin its own identity; old versions retain hashes/actions. Reuse the same financial functions and setup fences. Controlled profitable fixtures and candle signal replay do not establish market returns. See [responsive intraday](../../apps/agent-service/PTS-INTRADAY-RESPONSIVE.md).
+
+The testing/pts-intraday-responsive public subpath supplies controlled synthetic native fixtures only. It is absent from production barrels and must never be selected as captured data or a provider fallback.

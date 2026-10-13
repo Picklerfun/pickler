@@ -26,7 +26,8 @@
     },
     "./testing/pts": "./test/pts-fixture.ts",
     "./testing/pts-intraday": "./test/pts-intraday-fixture.ts",
-    "./testing/pts-intraday-fast": "./test/pts-intraday-fast-fixture.ts"
+    "./testing/pts-intraday-fast": "./test/pts-intraday-fast-fixture.ts",
+    "./testing/pts-intraday-responsive": "./test/pts-intraday-responsive-fixture.ts"
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",

@@ -3,6 +3,7 @@ import {
   PTS_VERSION,
   PTS_INTRADAY_VERSION,
   PTS_INTRADAY_FAST_VERSION,
+  PTS_INTRADAY_RESPONSIVE_VERSION,
   type PtsVersion,
   type PtsPeriod,
 } from "./types.js";
@@ -71,6 +72,25 @@ export function ptsTemporalProfile(version: PtsVersion = PTS_VERSION) {
       closeAtUtcDayEnd: true,
     };
   }
+  if (version === PTS_INTRADAY_RESPONSIVE_VERSION) {
+    return {
+      version,
+      identity: "pts-intraday@0.2.0-fast.2",
+      accountPolicy: "pts-intraday-1x-0.2.0-fast.2" as const,
+      primary: "1h" as PtsPeriod,
+      channel: "15m" as PtsPeriod,
+      impulse: "15m" as PtsPeriod,
+      correction: "5m" as PtsPeriod,
+      entry: "5m" as PtsPeriod,
+      native: [3600, 900, 300],
+      minimum: { "1h": 24, "15m": 240, "5m": 180 } as Partial<Record<PtsPeriod, number>>,
+      formationMs: 72 * 3600000,
+      triggerMs: 300000,
+      correctionMs: 24 * 3600000,
+      maximumHoldingMs: 6 * 3600000,
+      closeAtUtcDayEnd: true,
+    };
+  }
   throw new PilotError("INVALID_INPUT", "Unknown experimental PTS temporal version");
 }
 export function ptsConfigVersion(config: PerpsPtsConfig): PtsVersion {
@@ -79,7 +99,9 @@ export function ptsConfigVersion(config: PerpsPtsConfig): PtsVersion {
   }
   if (
     config.version === 9 &&
-    (config.candidate === "pts-intraday@0.1.0" || config.candidate === "pts-intraday@0.2.0-fast.1")
+    (config.candidate === "pts-intraday@0.1.0" ||
+      config.candidate === "pts-intraday@0.2.0-fast.1" ||
+      config.candidate === "pts-intraday@0.2.0-fast.2")
   ) {
     return ptsCandidateVersion(config.candidate);
   }
@@ -131,6 +153,9 @@ export function ptsCandidateVersion(candidate?: string): PtsVersion {
   if (candidate === "pts-intraday@0.2.0-fast.1") {
     return PTS_INTRADAY_FAST_VERSION;
   }
+  if (candidate === "pts-intraday@0.2.0-fast.2") {
+    return PTS_INTRADAY_RESPONSIVE_VERSION;
+  }
   throw new PilotError("INVALID_INPUT", "Unknown experimental PTS candidate");
 }
 export const PTS_INTRADAY_FAST_POLICY = {
@@ -140,12 +165,26 @@ export const PTS_INTRADAY_FAST_POLICY = {
   reference: "pts-intraday@0.1.0",
   change: "Native temporal roles only; correction and entry share one 5m series",
 } as const;
+export const PTS_INTRADAY_RESPONSIVE_POLICY = {
+  ...PTS_INTRADAY_FAST_POLICY,
+  format: "pts-intraday-responsive-policy-v1",
+  ...ptsTemporalProfile(PTS_INTRADAY_RESPONSIVE_VERSION),
+  reference: "pts-intraday@0.2.0-fast.1",
+  change:
+    "Primary 1h and channel 15m; preserve 15m impulse and ATR, 5m correction/entry and financial rules",
+} as const;
 export function ptsPolicy(version: PtsVersion = PTS_VERSION) {
   ptsTemporalProfile(version);
   if (version === PTS_VERSION) {
     return PTS_POLICY;
   }
-  return version === PTS_INTRADAY_VERSION ? PTS_INTRADAY_POLICY : PTS_INTRADAY_FAST_POLICY;
+  if (version === PTS_INTRADAY_VERSION) {
+    return PTS_INTRADAY_POLICY;
+  }
+  if (version === PTS_INTRADAY_FAST_VERSION) {
+    return PTS_INTRADAY_FAST_POLICY;
+  }
+  return PTS_INTRADAY_RESPONSIVE_POLICY;
 }
 
 export function ptsNativeMinimum(version: PtsVersion, resolution: number) {

@@ -16,6 +16,7 @@ import { createPriorityPerplStudyData } from "../src/plugins/perps-paper/priorit
 import type { PerpsStudyRecord } from "@pickler/trading/evaluation";
 import { intradayFixture } from "@pickler/trading/testing/pts-intraday";
 import { fastFixture } from "@pickler/trading/testing/pts-intraday-fast";
+import { responsiveFixture } from "@pickler/trading/testing/pts-intraday-responsive";
 
 const NOW = 1_800_000_000_000;
 const ids = [1, 10, 20, 31, 40, 50, 60, 70, 90, 100, 110];
@@ -1127,32 +1128,41 @@ test("intraday preserves cohort exclusions and accepts the frozen twenty-four-ba
   );
 });
 
-function fastPriorityFixture(t: TestContext, fourHourCount: number, crossBoundary = false) {
+function fastPriorityFixture(
+  t: TestContext,
+  fourHourCount: number,
+  crossBoundary = false,
+  candidate:
+    "pts-intraday@0.2.0-fast.1" | "pts-intraday@0.2.0-fast.2" = "pts-intraday@0.2.0-fast.1",
+) {
   clocks(t);
   if (crossBoundary) {
     t.mock.timers.tick(299500);
   }
   let reference = NOW;
   const initialHistory = markets.map((market) => {
-    const history = fastFixture(market.symbol, false, NOW);
+    const factory = candidate === "pts-intraday@0.2.0-fast.2" ? responsiveFixture : fastFixture;
+    const history = factory(market.symbol, false, NOW);
     const address = "0x" + "1".repeat(40);
     history.market.exchangeAddress = address;
     history.market.collateral.address = address;
-    const series = history.series.find((value) => value.resolution === 14400)!;
-    if (fourHourCount < series.candles.length) {
-      series.candles = series.candles.slice(-fourHourCount);
-    } else {
-      const first = series.candles[0]!;
-      const additional = fourHourCount - series.candles.length;
-      series.candles = [
-        ...Array.from({ length: additional }, (_, index) => ({
-          ...first,
-          openTime: first.openTime - (additional - index) * 14400000,
-        })),
-        ...series.candles,
-      ];
+    const series = history.series.find((value) => value.resolution === 14400);
+    if (series) {
+      if (fourHourCount < series.candles.length) {
+        series.candles = series.candles.slice(-fourHourCount);
+      } else {
+        const first = series.candles[0]!;
+        const additional = fourHourCount - series.candles.length;
+        series.candles = [
+          ...Array.from({ length: additional }, (_, index) => ({
+            ...first,
+            openTime: first.openTime - (additional - index) * 14400000,
+          })),
+          ...series.candles,
+        ];
+      }
+      series.from = series.candles[0]!.openTime;
     }
-    series.from = series.candles[0]!.openTime;
     return history;
   });
   const original = JSON.stringify(initialHistory);
@@ -1219,7 +1229,7 @@ function fastPriorityFixture(t: TestContext, fourHourCount: number, crossBoundar
       network: "mainnet",
       hours: 24,
       budgetUsd: "5",
-      candidate: "pts-intraday@0.2.0-fast.1",
+      candidate,
       markets,
       acquisitionPolicy: "stream-universe-20s-v1",
     },
@@ -1336,4 +1346,43 @@ test("prepared intraday cohort rejects duplicates, unknown symbols and historica
       await data.close();
     }
   }
+});
+
+test("responsive capture shares initial/final evidence using only 1h/15m/5m and retains one native 15m history", async (t) => {
+  const fixture = fastPriorityFixture(t, 0, false, "pts-intraday@0.2.0-fast.2");
+  const signal = new AbortController().signal;
+  const initial = await settle(t, fixture.data.prepareEvidence!(fixture.record, signal), 70000);
+  const final = await settle(t, fixture.data.finalEvidence!(fixture.record, signal), 70000);
+  for (const evidence of [initial, final]) {
+    assert.equal(evidence.frames.length, 11, JSON.stringify(evidence.excluded));
+    assert.deepEqual(evidence.excluded, []);
+    assert.deepEqual(
+      [...new Set(evidence.candles.map((series) => series.resolution))],
+      [3600, 900, 300],
+    );
+    for (const market of markets) {
+      assert.equal(
+        evidence.candles.filter(
+          (series) => series.market.symbol === market.symbol && series.resolution === 900,
+        ).length,
+        1,
+      );
+    }
+  }
+  assert.equal(
+    fixture.urls.some((url) => /\/candles\/(86400|14400)\//.test(url)),
+    false,
+  );
+  assert.equal(JSON.stringify(fixture.initialHistory), fixture.original);
+});
+test("responsive required 5m boundary change remains a common exclusion", async (t) => {
+  const fixture = fastPriorityFixture(t, 0, true, "pts-intraday@0.2.0-fast.2");
+  const evidence = await settle(
+    t,
+    fixture.data.prepareEvidence!(fixture.record, new AbortController().signal),
+    70000,
+  );
+  assert.equal(evidence.frames.length, 0);
+  assert.equal(evidence.excluded!.length, 11);
+  assert.ok(evidence.excluded!.every((item) => item.code === "CANDLE_WINDOW_CHANGED"));
 });

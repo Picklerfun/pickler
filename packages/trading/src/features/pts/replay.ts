@@ -32,7 +32,8 @@ export function assertPtsReplay(input: PtsReplayInput) {
     input.format !== "perps-pts-history-v1" ||
     (input.candidate !== undefined &&
       input.candidate !== "pts-intraday@0.1.0" &&
-      input.candidate !== "pts-intraday@0.2.0-fast.1") ||
+      input.candidate !== "pts-intraday@0.2.0-fast.1" &&
+      input.candidate !== "pts-intraday@0.2.0-fast.2") ||
     !Number.isSafeInteger(input.from) ||
     !Number.isSafeInteger(input.to) ||
     input.to <= input.from ||

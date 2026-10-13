@@ -82,7 +82,9 @@ export function assertPtsConfig(c: PerpsPtsConfig) {
       (c.version === 9 &&
         c.protocol === "perps-pts-intraday-sma-v1" &&
         c.hours === 24 &&
-        (c.candidate === "pts-intraday@0.1.0" || c.candidate === "pts-intraday@0.2.0-fast.1"))
+        (c.candidate === "pts-intraday@0.1.0" ||
+          c.candidate === "pts-intraday@0.2.0-fast.1" ||
+          c.candidate === "pts-intraday@0.2.0-fast.2"))
     ) ||
     c.budgetUsd !== "5" ||
     c.acquisitionPolicy !== COMPONENT_PAPER_POLICY ||

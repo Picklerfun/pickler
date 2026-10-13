@@ -15,3 +15,5 @@ record. It is experimental local evaluation only; prior draft/basic/catalog sche
 It never activates Studio or changes a published candidate in place.
 
 Independent pts-intraday@0.2.0-fast.1 has a new v4 descriptor/schema and native temporal record. Preserve v1–v3 descriptors/policies/course bytes. It is experimental local evaluation only, without Studio selection or automatic public execution.
+
+Independent pts-intraday@0.2.0-fast.2 has its own immutable v5 descriptor/schema, policy and decision record. It changes primary/channel horizons only, preserves risk/geometry and is local evaluation only. Prior descriptors, source knowledge and policies stay byte-identical. Historical candle projections are development evidence, never reconstructed fills, independent holdout or profit.

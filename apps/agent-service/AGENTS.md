@@ -467,3 +467,5 @@ diagnostic at completion/interruption. Keep the one-second passive timer separat
 clocks, freeze it at cleanup, and declare truncation. Process-wide CPU and timer lateness do not
 identify a historical timeout cause; no credentials, driver messages or authentication bytes belong
 in these artifacts. See the local readiness guide for the versioned fields and controlled tests.
+
+Read [responsive intraday PTS](PTS-INTRADAY-RESPONSIVE.md) for the independent v9 0.2.0-fast.2 candidate. Preparation/commands reuse the public-only PTS host, with explicit policy/history hashes and no Studio selection. Keep original failed studies, native data, unknown reservations and signal-only financial limitations. No automatic restart or parameter adjustment to obtain positive results is implied.

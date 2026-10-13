@@ -80,3 +80,5 @@ SMA 60-bar window; retain all saved warmup and require 60 bars for shared 1h/15m
 daily-minimum correction for intraday 0.1.0 remains intact. Missing native bars and real boundary
 changes still exclude the asset for every portfolio; never fabricate missing history or promote an
 initially blocked proposal during the final refresh.
+
+The independent v9 responsive candidate 0.2.0-fast.2 uses native 1h/15m/5m through the existing candidate-derived preparation/cache/boundary selection. Preserve shared sixty-bar eligibility; do not acquire 4h/daily solely for this candidate or alter the fast.1 reader meaning. Its one native 15m series supplies channel and impulse/ATR. Public preparation and verified cohort selection never authorize a session restart or model/signing call.
