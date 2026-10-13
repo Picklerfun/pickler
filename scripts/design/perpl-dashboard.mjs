@@ -178,6 +178,53 @@ const page = await context.newPage();
 page.on("pageerror", (e) => errors.push(e.message));
 page.setDefaultTimeout(20000);
 try {
+  const previewContext = await browser.newContext();
+  const previewRequests = [];
+  const previewErrors = [];
+  try {
+    await previewContext.route("**/*", async (route) => {
+      const url = new URL(route.request().url());
+      if (
+        !["localhost", "127.0.0.1"].includes(url.hostname) ||
+        url.pathname.startsWith("/api/v1/perpl/")
+      ) {
+        previewRequests.push(url.origin + url.pathname);
+        return route.abort();
+      }
+      return route.continue();
+    });
+    const previewPage = await previewContext.newPage();
+    previewPage.on("pageerror", (e) => previewErrors.push(e.message));
+    await previewPage.goto(`${base}/perpl?preview=wallet`);
+    await previewPage.getByRole("heading", { name: "Open positions 2" }).waitFor();
+    assert.equal(await previewPage.getByText("Preview · demo data", { exact: true }).count(), 1);
+    assert.equal(
+      await previewPage
+        .locator("main")
+        .getByRole("button", { name: /Authorize|Connect wallet/ })
+        .count(),
+      0,
+      "sample portfolio cannot authorize a wallet",
+    );
+    assert.equal(await previewPage.locator('a[href*="/address/"]').count(), 0);
+    for (const width of [1280, 768, 380, 320]) {
+      await previewPage.setViewportSize({ width, height: 1100 });
+      assert.ok(
+        await previewPage.evaluate(
+          () => document.documentElement.scrollWidth <= window.innerWidth + 1,
+        ),
+        `preview overflow at ${width}`,
+      );
+      await previewPage.screenshot({
+        path: new URL(`preview-${width}.png`, output).pathname,
+        fullPage: true,
+      });
+    }
+    assert.deepEqual(previewRequests, [], "preview never mounts live reads");
+    assert.deepEqual(previewErrors, []);
+  } finally {
+    await previewContext.close();
+  }
   await page.goto(`${base}/perpl`);
   await page.getByRole("heading", { name: "The market", exact: true }).waitFor();
   await page.getByRole("link", { name: "BTC", exact: true }).waitFor();

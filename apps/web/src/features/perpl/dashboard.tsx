@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import type { ReactNode } from "react";
 import type { PerplDashboardMarketsDto, PerplPortfolioDto } from "@pickler/api-schema";
 import { Button, Icon, Meter, Skeleton, Tag } from "@pickler/ui";
 import { ChainReference } from "@/features/tokens/chain-reference";
@@ -35,7 +36,7 @@ function clock(at: string) {
 }
 export function PerplDashboard() {
   const view = usePerplDashboard();
-  const { wallet, market, portfolio } = view;
+  const { wallet, portfolio } = view;
   const busy = view.stage !== "idle";
   const labels = {
     idle: "Authorize read-only access",
@@ -44,13 +45,91 @@ export function PerplDashboard() {
     authorizing: "Connecting to Perpl…",
   };
   return (
+    <PerplDashboardSurface snapshot={view} walletAddress={wallet.address}>
+      {!wallet.address ? (
+        <div className={styles.connect}>
+          <Icon name="wallet" size={26} />
+          <h3>See your positions alongside the market.</h3>
+          <p>Connect the wallet you use on Perpl.</p>
+          <Button onClick={() => wallet.connect("View your Perpl portfolio")} size="md">
+            Connect wallet
+          </Button>
+        </div>
+      ) : !wallet.onTargetChain ? (
+        <div className={styles.connect}>
+          <p>Switch networks to authorize testnet read access.</p>
+          <Button
+            onClick={() => {
+              void wallet.switchChain();
+            }}
+            disabled={wallet.switching}
+          >
+            {wallet.switching ? "Confirm network in wallet" : "Switch to Monad testnet"}
+          </Button>
+          {wallet.switchFailure ? <p role="alert">{wallet.switchFailure.hint}</p> : null}
+        </div>
+      ) : !view.authorized ? (
+        <div className={styles.authorization}>
+          <div>
+            <h3>Allow account reads.</h3>
+            <p>Allow reads for one hour. No permission to place orders or move funds.</p>
+          </div>
+          <Button
+            aria-busy={busy}
+            disabled={busy}
+            onClick={() => {
+              void view.authorize();
+            }}
+            className={styles.authorize}
+          >
+            {busy ? (
+              <span className={styles.spinner} aria-hidden="true" />
+            ) : (
+              <Icon name="wallet" size={18} />
+            )}
+            {labels[view.stage]}
+          </Button>
+        </div>
+      ) : !portfolio && !view.error ? (
+        <div className={styles.loading} role="status" aria-label="Loading Perpl account">
+          <Skeleton />
+          <Skeleton />
+        </div>
+      ) : null}
+    </PerplDashboardSurface>
+  );
+}
+type DashboardSnapshot = Pick<
+  ReturnType<typeof usePerplDashboard>,
+  "market" | "marketError" | "portfolio" | "error" | "now"
+>;
+export function PerplDashboardSurface({
+  snapshot: view,
+  walletAddress,
+  preview = false,
+  children,
+}: {
+  snapshot: DashboardSnapshot;
+  walletAddress: string | null;
+  preview?: boolean;
+  children?: ReactNode;
+}) {
+  const { market, portfolio } = view;
+  let freshness = preview ? "Sample snapshot" : "Updating";
+  if (view.marketError || market?.stale) {
+    freshness = "Last snapshot";
+  }
+  return (
     <main className={styles.main}>
       <header className={styles.heading}>
         <div>
           <h1>Perpl overview.</h1>
           <p>Markets, your positions and the price risk you carry.</p>
         </div>
-        <Tag data-tone="caution">Monad testnet</Tag>
+        <div className={styles.headingTags}>
+          {preview ? <Tag data-tone="caution">Preview · demo data</Tag> : null}
+          <Tag>Monad testnet</Tag>
+        </div>
       </header>
       <section className={styles.section} aria-labelledby="perpl-protocol-title">
         <div className={styles.sectionHead}>
@@ -63,9 +142,7 @@ export function PerplDashboard() {
             data-stale={Boolean(view.marketError || market?.stale)}
             role="status"
           >
-            {market
-              ? `${view.marketError || market.stale ? "Last snapshot" : "Updating"} · ${clock(market.observedAt)} UTC`
-              : "Connecting to Perpl…"}
+            {market ? `${freshness} · ${clock(market.observedAt)} UTC` : "Connecting to Perpl…"}
           </span>
         </div>
         {view.marketError ? (
@@ -86,21 +163,23 @@ export function PerplDashboard() {
       <section className={styles.section} aria-labelledby="perpl-wallet-title">
         <div className={styles.sectionHead}>
           <div>
-            <h2 id="perpl-wallet-title">Your portfolio</h2>
-            <p>Real positions in your Perpl account</p>
+            <h2 id="perpl-wallet-title">{preview ? "Example portfolio" : "Your portfolio"}</h2>
+            <p>{preview ? "Illustrative Perpl account" : "Real positions in your Perpl account"}</p>
           </div>
-          {wallet.address ? (
+          {walletAddress ? (
             <ChainReference
-              value={wallet.address}
+              value={walletAddress}
               kind="address"
               label="Wallet address"
               chainId={10143}
+              preview={preview}
             />
           ) : null}
         </div>
         {portfolio ? (
           <Portfolio
             data={portfolio}
+            preview={preview}
             stale={Boolean(
               view.error || portfolio.stale || view.now - Date.parse(portfolio.observedAt) > 20_000,
             )}
@@ -111,59 +190,11 @@ export function PerplDashboard() {
             {view.error}
           </p>
         ) : null}
-        {!wallet.address ? (
-          <div className={styles.connect}>
-            <Icon name="wallet" size={26} />
-            <h3>See your positions alongside the market.</h3>
-            <p>Connect the wallet you use on Perpl.</p>
-            <Button onClick={() => wallet.connect("View your Perpl portfolio")} size="md">
-              Connect wallet
-            </Button>
-          </div>
-        ) : !wallet.onTargetChain ? (
-          <div className={styles.connect}>
-            <p>Switch networks to authorize testnet read access.</p>
-            <Button
-              onClick={() => {
-                void wallet.switchChain();
-              }}
-              disabled={wallet.switching}
-            >
-              {wallet.switching ? "Confirm network in wallet" : "Switch to Monad testnet"}
-            </Button>
-            {wallet.switchFailure ? <p role="alert">{wallet.switchFailure.hint}</p> : null}
-          </div>
-        ) : !view.authorized ? (
-          <div className={styles.authorization}>
-            <div>
-              <h3>Allow account reads.</h3>
-              <p>Allow reads for one hour. No permission to place orders or move funds.</p>
-            </div>
-            <Button
-              aria-busy={busy}
-              disabled={busy}
-              onClick={() => {
-                void view.authorize();
-              }}
-              className={styles.authorize}
-            >
-              {busy ? (
-                <span className={styles.spinner} aria-hidden="true" />
-              ) : (
-                <Icon name="wallet" size={18} />
-              )}
-              {labels[view.stage]}
-            </Button>
-          </div>
-        ) : !portfolio && !view.error ? (
-          <div className={styles.loading} role="status" aria-label="Loading Perpl account">
-            <Skeleton />
-            <Skeleton />
-          </div>
-        ) : null}
+        {children}
         <p className={styles.footnote}>
-          Updates every 5 seconds while visible. Estimates exclude accrued funding and closing fees.
-          Refreshing requires read authorization again.
+          {preview
+            ? "Sample data only. No wallet authorization or Perpl requests."
+            : "Updates every 5 seconds while visible. Estimates exclude accrued funding and closing fees. Refreshing requires read authorization again."}
         </p>
       </section>
     </main>
@@ -226,7 +257,15 @@ function Protocol({ market }: { market: PerplDashboardMarketsDto }) {
     </>
   );
 }
-function Portfolio({ data, stale }: { data: PerplPortfolioDto; stale: boolean }) {
+function Portfolio({
+  data,
+  stale,
+  preview,
+}: {
+  data: PerplPortfolioDto;
+  stale: boolean;
+  preview: boolean;
+}) {
   const figures = [
     { label: "Equity estimate", value: data.equityEstimateAusd },
     { label: "Available", value: data.availableAusd },
@@ -237,7 +276,7 @@ function Portfolio({ data, stale }: { data: PerplPortfolioDto; stale: boolean })
     <div className={styles.portfolio} data-stale={stale}>
       <div className={styles.portfolioMeta}>
         <Tag data-tone={stale ? "caution" : "good"}>
-          {stale ? "Last snapshot" : "Live snapshots"}
+          {preview ? "Sample snapshot" : stale ? "Last snapshot" : "Live snapshots"}
         </Tag>
         <span>
           {clock(data.observedAt)} UTC · Block {data.block.toLocaleString("en-US")}

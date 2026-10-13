@@ -1459,3 +1459,10 @@ browser/Hono/adapter flow with fake authentication and Perpl responses, includin
 proof, automatic refresh, cancellation, failed identity, disconnect and responsive widths.
 It needs a local build with explicitly controlled public Supabase configuration; it rejects
 external browser requests. This is separate from real wallet/provider acceptance.
+
+The development-only `/perpl?preview=wallet` uses the same market, portfolio and risk components
+with explicitly labelled controlled snapshots. Its live hook never mounts, authorization is
+absent and sample addresses have no explorer links. Production ignores the preview parameter.
+Regenerate the normalized fixture with `node --import tsx scripts/design/perpl-preview.mts`;
+this runs the existing controlled transport through the gateway and business projections without
+network access or signatures.
