@@ -852,3 +852,7 @@ failed refresh may serve up to sixty seconds with stale=true). No private key, a
 wallet snapshot is persisted, cached or logged. Fixed origin `https://pickler.fun` must be permitted
 by Perpl; never omit or spoof it to evade their origin policy. Provider keys and orders are outside
 this adapter. Trading owns monetary projection; API-schema owns response validation.
+
+Invoke the default/injected fetch transport as a plain function. Binding Cloudflare's native
+`fetch` to the gateway instance fails with `Illegal invocation`; the default-transport regression
+in `test/perpl-dashboard.test.ts` guards its receiver independently of injected arrow transports.

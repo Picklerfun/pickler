@@ -28,6 +28,22 @@ test("gateway reads fixed private GET paths, real-model projections and no signi
   assert.ok(fake.calls.every((call) => call.method === "GET" && call.body === null));
   assert.equal(JSON.stringify(result).includes("controlled-read-token"), false);
 });
+test("default fetch preserves the native runtime receiver", async (t) => {
+  const fake = controlledPerpl();
+  t.mock.method(
+    globalThis,
+    "fetch",
+    async function (this: unknown, ...args: Parameters<typeof fetch>) {
+      assert.ok(this === undefined || this === globalThis, "fetch received the gateway as this");
+      return fake.fetcher(...args);
+    },
+  );
+
+  const result = await new PerplDashboardGateway().markets(signal);
+
+  assert.equal(result.markets.length, 7);
+  assert.equal(fake.calls.length, 1);
+});
 test("wrong wallet and stale/replayed credential proofs are refused", async () => {
   const fake = controlledPerpl();
   const gateway = new PerplDashboardGateway(fake.fetcher);
