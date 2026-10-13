@@ -65,7 +65,13 @@ export class PerplDashboardError extends Error {
       | "NO_PERPL_PROFILE"
       | "KEY_LIMIT"
       | "INVALID_AUTHORIZATION"
+      | "AUTHORIZATION_STALE"
+      | "AUTHORIZATION_REJECTED"
+      | "INTEGRATION_NOT_ALLOWED"
+      | "READ_SIGNATURE_REJECTED"
+      | "READ_REQUEST_REJECTED"
       | "RATE_LIMITED",
+    readonly upstreamStatus: number | null = null,
   ) {
     super(code);
     this.name = "PerplDashboardError";
@@ -92,16 +98,22 @@ export class PerplDashboardGateway implements PerplDashboardData {
     });
     if (!response.ok) {
       await response.body?.cancel();
+      const enrolling = path.startsWith("/v1/api-key/");
       const codes: Record<number, PerplDashboardError["code"]> = {
-        401: "READ_ACCESS_EXPIRED",
-        403: "READ_ACCESS_DENIED",
+        401: enrolling ? "AUTHORIZATION_REJECTED" : "READ_SIGNATURE_REJECTED",
+        403: enrolling ? "INTEGRATION_NOT_ALLOWED" : "READ_ACCESS_DENIED",
         404: "NO_PERPL_PROFILE",
         423: "KEY_LIMIT",
         429: "RATE_LIMITED",
-        400: "INVALID_AUTHORIZATION",
-        422: "READ_ACCESS_DENIED",
+        400: enrolling ? "AUTHORIZATION_REJECTED" : "READ_REQUEST_REJECTED",
+        422: enrolling ? "INTEGRATION_NOT_ALLOWED" : "READ_ACCESS_DENIED",
       };
-      throw new PerplDashboardError(codes[response.status] ?? "UNAVAILABLE");
+      const accountRead = path.startsWith("/v1/trading/");
+      const code =
+        !enrolling && !accountRead && response.status !== 429
+          ? "UNAVAILABLE"
+          : (codes[response.status] ?? "UNAVAILABLE");
+      throw new PerplDashboardError(code, response.status);
     }
     if (Number(response.headers.get("content-length")) > 2 * 1024 * 1024) {
       await response.body?.cancel();
@@ -257,11 +269,15 @@ export class PerplDashboardGateway implements PerplDashboardData {
     const message = input.typedData.message;
     if (
       message.signer.toLowerCase() !== input.wallet.toLowerCase() ||
-      Number(message.expiresAt) <= this.now() ||
-      Number(message.expiresAt) > this.now() + 3_600_000 ||
-      Math.abs(Number(BigInt(message.time)) - this.now()) > 30_000
+      Number(message.expiresAt) > this.now() + 3_600_000
     ) {
       throw new PerplDashboardError("INVALID_AUTHORIZATION");
+    }
+    if (
+      Number(message.expiresAt) <= this.now() ||
+      Math.abs(Number(BigInt(message.time)) - this.now()) > 30_000
+    ) {
+      throw new PerplDashboardError("AUTHORIZATION_STALE");
     }
     const body = await this.request("/v1/api-key/enroll", signal, {
       method: "POST",

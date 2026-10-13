@@ -10,6 +10,8 @@ import { useWallet } from "@/features/wallet/lib/wallet-context";
 import { walletFailure } from "@/features/wallet/lib/wallet-request-error";
 import { authorizeReadAccess, clearReadAccess, readAccess } from "./access";
 import { PerplReadError, perplRequest } from "./client";
+import { apiClock } from "../../lib/server-clock";
+import { PerplReadAuthorizationExpired } from "../wallet/lib/perpl-read-authorization";
 type Stage = "idle" | "preparing" | "signing" | "authorizing";
 export function usePerplDashboard() {
   const wallet = useWallet();
@@ -17,6 +19,7 @@ export function usePerplDashboard() {
     ? `${wallet.kind}:${wallet.providerId ?? "mera"}:${wallet.address.toLowerCase()}`
     : "";
   const current = useRef(scope);
+  const previousScope = useRef(scope);
   const flight = useRef<AbortController | null>(null);
   const [market, setMarket] = useState<PerplDashboardMarketsDto | null>(null);
   const [marketError, setMarketError] = useState<string | null>(null);
@@ -26,7 +29,7 @@ export function usePerplDashboard() {
   const [error, setError] = useState<{ scope: string; message: string } | null>(null);
   const [stage, setStage] = useState<{ scope: string; value: Stage }>({ scope: "", value: "idle" });
   const [authorized, setAuthorized] = useState("");
-  const [now, setNow] = useState(() => Date.now());
+  const [now, setNow] = useState(() => apiClock.now());
   useEffect(() => {
     let disposed = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -41,7 +44,7 @@ export function usePerplDashboard() {
         if (!disposed) {
           setMarket(data);
           setMarketError(null);
-          setNow(Date.now());
+          setNow(apiClock.now());
         }
       } catch (e) {
         if (!disposed && !controller.signal.aborted) {
@@ -74,6 +77,8 @@ export function usePerplDashboard() {
     };
   }, []);
   useEffect(() => {
+    const previous = previousScope.current;
+    previousScope.current = scope;
     current.current = scope;
     flight.current?.abort();
     flight.current = null;
@@ -84,7 +89,7 @@ export function usePerplDashboard() {
           setAuthorized(scope);
         }
       });
-    } else {
+    } else if (scope || previous) {
       clearReadAccess();
     }
     return () => {
@@ -98,6 +103,7 @@ export function usePerplDashboard() {
     let disposed = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
     let controller: AbortController | null = null;
+    let signatureFailures = 0;
     const run = async () => {
       if (disposed || document.hidden) {
         return;
@@ -124,9 +130,10 @@ export function usePerplDashboard() {
           throw new PerplReadError("INVALID_RESPONSE", "The snapshot belongs to another wallet.");
         }
         if (!disposed && current.current === scope) {
+          signatureFailures = 0;
           setPortfolio({ scope, data });
           setError(null);
-          setNow(Date.now());
+          setNow(apiClock.now());
         }
       } catch (e) {
         if (!disposed && !controller.signal.aborted && current.current === scope) {
@@ -137,6 +144,17 @@ export function usePerplDashboard() {
                 ? e.message
                 : "The account could not be read. Updates will retry shortly.",
           });
+          if (e instanceof PerplReadError && e.code === "READ_SIGNATURE_REJECTED") {
+            signatureFailures++;
+            if (signatureFailures === 1) {
+              delay = 250;
+              return;
+            }
+            clearReadAccess();
+            setAuthorized("");
+            setError({ scope, message: "Perpl could not verify read access. Authorize it again." });
+            return;
+          }
           if (
             e instanceof PerplReadError &&
             ["READ_ACCESS_EXPIRED", "READ_ACCESS_DENIED", "NO_PERPL_PROFILE"].includes(e.code)
@@ -196,7 +214,6 @@ export function usePerplDashboard() {
             setStage({ scope, value });
           }
         },
-        now: Date.now(),
       });
       if (current.current === scope) {
         setAuthorized(scope);
@@ -206,7 +223,9 @@ export function usePerplDashboard() {
         setError({
           scope,
           message:
-            e instanceof PerplReadError ? e.message : walletFailure(e, "eth_signTypedData_v4").hint,
+            e instanceof PerplReadError || e instanceof PerplReadAuthorizationExpired
+              ? e.message
+              : walletFailure(e, "eth_signTypedData_v4").hint,
         });
       }
     } finally {

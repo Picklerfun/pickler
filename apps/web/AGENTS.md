@@ -1496,3 +1496,12 @@ The public `/perpl` entry has no creator-seat or Studio-session gate. Anonymous 
 protocol markets; a marketplace wallet explicitly authorizes private scope-1 reads. Connecting
 alone never enrolls a Perpl key or signs from an effect. The landing hero, footer and both public
 navigation layouts point to the normal `/perpl` route, never the demonstration parameter.
+
+Perpl read access uses the same-origin market response's `serverTimeMs`, anchored to monotonic
+browser time in `src/lib/server-clock.ts`, for payload expiry, signer freshness and read proofs.
+The API and Perpl retain their independent timestamp checks. Initial wallet restoration must not
+clear an in-memory read grant; a route round trip reuses it only for the same provider/address.
+Full-page reload still discards the non-extractable key and requires explicit authorization.
+A failed read signature receives one automatic retry with a fresh nonce; repeated failures stop
+the grant. Enrollment rejection, signing-request timeout, Pickler sign-in expiry and account-read
+refusal have distinct reviewed messages. Never enroll from a polling effect or render provider prose.

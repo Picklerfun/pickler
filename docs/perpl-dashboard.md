@@ -75,3 +75,19 @@ controlled tests do not establish that Perpl has whitelisted the integration ori
 Official contracts: [API enrollment](https://github.com/PerplFoundation/api-docs/blob/main/integrations.md),
 [authentication](https://github.com/PerplFoundation/api-docs/blob/main/authentication.md),
 [wallet/positions REST](https://github.com/PerplFoundation/api-docs/blob/main/rest-endpoints.md).
+
+## Read-session failure handling
+
+The browser calibrates its signing clock from the same-origin public market response and advances
+it with monotonic time. Local wall-clock skew no longer invalidates otherwise fresh requests.
+Server and Perpl validation remain authoritative and unchanged. A single failed account signature
+is retried once with a new timestamp/nonce; repeated rejection stops access. Navigating within the
+site reuses an in-memory grant for the same wallet/provider, including initial wallet restoration.
+Reloading the document still loses the non-extractable private key and needs explicit authorization.
+
+An enrollment HTTP 400 is reported as registration rejection, not an expired existing read key.
+Integration refusal, timed-out signing payloads, Pickler sign-in expiry and account-read rejection
+are separate reviewed reasons. Private API logs contain only code, route step, upstream status and
+request ID; they never contain addresses, payloads, signatures, keys or provider response text.
+The controlled browser suite includes a two-minute client clock error and a navigation round trip.
+These checks do not establish successful private authorization for a deployed user's wallet.

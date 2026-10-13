@@ -4,7 +4,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { webcrypto } from "node:crypto";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import { hashTypedData, hexToBytes } from "viem";
-import { PerplDashboardGateway } from "../../packages/infrastructure/src/perpl/dashboard.ts";
+import { PerplDashboardGateway } from "@pickler/infrastructure";
 import { controlledPerpl } from "../../packages/infrastructure/test/perpl-dashboard-fixture.ts";
 import { createApp } from "../../workers/api/src/app.ts";
 import { documentationServices } from "../../workers/api/src/openapi/composition.ts";
@@ -16,6 +16,7 @@ await mkdir(output, { recursive: true });
 const account = privateKeyToAccount(generatePrivateKey());
 assert.match(account.address, /^0x[0-9a-fA-F]{40}$/);
 const fixture = controlledPerpl(Date.now, account.address);
+let rejectedAccountReads = 0;
 const app = createApp({
   ...documentationServices({}),
   perplDashboard: {
@@ -49,6 +50,10 @@ const app = createApp({
           true,
           "each account read needs a valid fresh signature",
         );
+      }
+      if (url.pathname.endsWith("/trading/wallet") && rejectedAccountReads === 0) {
+        rejectedAccountReads++;
+        return new Response("controlled transient signature refusal", { status: 401 });
       }
       return fixture.fetcher(target, init);
     }),
@@ -112,6 +117,8 @@ await context.exposeFunction("controlledPerplWallet", async ({ method, params })
   throw new Error("Forbidden wallet method " + method);
 });
 await context.addInitScript(() => {
+  const originalNow = Date.now;
+  Date.now = () => originalNow() - 120_000;
   localStorage.setItem("pk.wallet.kind", "injected");
   window.ethereum = {
     on() {},
@@ -255,6 +262,12 @@ try {
   cancelled = false;
   await page.getByRole("button", { name: "Authorize read-only access", exact: true }).click();
   await page.getByRole("heading", { name: "Open positions 2" }).waitFor();
+  assert.equal(rejectedAccountReads, 1);
+  assert.equal(
+    fixture.calls.filter((c) => c.path.endsWith("/api-key/enroll")).length,
+    1,
+    "a failed read never creates another grant",
+  );
   const enrolled = fixture.enrollment;
   assert.ok(enrolled);
   const key = await webcrypto.subtle.importKey(
@@ -284,6 +297,11 @@ try {
     ),
     true,
   );
+  assert.equal(methods.filter((m) => m === "eth_signTypedData_v4").length, 2);
+  // A route round trip retains the in-memory read grant and never prompts again.
+  await page.getByRole("link", { name: "Pickler home", exact: true }).click();
+  await page.getByRole("link", { name: "Open Perpl dashboard", exact: true }).click();
+  await page.getByRole("heading", { name: "Open positions 2" }).waitFor();
   assert.equal(methods.filter((m) => m === "eth_signTypedData_v4").length, 2);
   const initialPrice = await page
     .getByRole("row")
@@ -330,6 +348,9 @@ try {
     localAssetImages: true,
     widths: [1280, 768, 380, 320],
     controlled: true,
+    browserClockSkewMs: -120_000,
+    inAppNavigationKeepsReadAccess: true,
+    transientSignatureRefusalRecovered: true,
     realTransactions: 0,
     externalRequests: 0,
     typedSignatures: methods.filter((m) => m === "eth_signTypedData_v4").length,

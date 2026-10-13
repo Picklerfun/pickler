@@ -870,3 +870,9 @@ this adapter. Trading owns monetary projection; API-schema owns response validat
 Invoke the default/injected fetch transport as a plain function. Binding Cloudflare's native
 `fetch` to the gateway instance fails with `Illegal invocation`; the default-transport regression
 in `test/perpl-dashboard.test.ts` guards its receiver independently of injected arrow transports.
+
+Dashboard transport failures distinguish enrollment rejection, integration-origin refusal,
+expired signing terms and rejected account proofs. HTTP 401 alone does not prove key expiry.
+Only the upstream numeric status accompanies the reviewed error; provider bodies remain discarded.
+Public-context failures never become private authorization errors. Server freshness checks stay
+at thirty seconds and read grants remain scope 1 with a one-hour maximum.

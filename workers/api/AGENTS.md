@@ -788,3 +788,8 @@ matching key, fresh timestamps and distinct nonces. Perpl verifies the signature
 then verifies the returned wallet and account ownership before projecting data. Errors expose
 reviewed reasons, never provider bodies or credential payloads. No database migration, new secret,
 research admission or live agent activation is needed. See [dashboard](../../docs/perpl-dashboard.md).
+
+Dashboard failure diagnostics log only reviewed code, fixed route step, upstream HTTP status and
+request ID. Never log credentials, wallet/signed payloads or provider prose. Enrollment rejection,
+expired signing terms and account-signature refusal are distinct response codes; error status
+sets and access requirements remain unchanged.

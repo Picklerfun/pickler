@@ -24,8 +24,31 @@ const MESSAGES: Record<PerplDashboardError["code"], string> = {
   READ_ACCESS_DENIED: "Perpl denied read access. Check the key permissions and integration origin.",
   NO_PERPL_PROFILE: "This wallet has no Perpl profile. Connect it at testnet.perpl.xyz first.",
   KEY_LIMIT: "Perpl's key limit was reached. Remove unused keys at testnet.perpl.xyz/apikeys.",
-  INVALID_AUTHORIZATION: "Read authorization changed or expired. Start again.",
+  INVALID_AUTHORIZATION:
+    "The read-access request is invalid. Pickler needs to review this request.",
+  AUTHORIZATION_STALE: "The signing request timed out. Prepare a new read-access request.",
+  AUTHORIZATION_REJECTED: "Perpl rejected read-access registration. No read session was created.",
+  INTEGRATION_NOT_ALLOWED:
+    "Perpl has not allowed this integration. Pickler needs to review its registration.",
+  READ_SIGNATURE_REJECTED:
+    "Perpl could not verify this account read. Retry with a fresh signature.",
+  READ_REQUEST_REJECTED: "Perpl rejected the account read. Your read session is kept.",
   RATE_LIMITED: "Perpl is limiting reads. Updates will resume shortly.",
+};
+const STATUSES: Record<PerplDashboardError["code"], 400 | 401 | 403 | 404 | 409 | 429 | 503> = {
+  UNAVAILABLE: 503,
+  INVALID_RESPONSE: 503,
+  READ_ACCESS_EXPIRED: 401,
+  READ_ACCESS_DENIED: 403,
+  NO_PERPL_PROFILE: 404,
+  KEY_LIMIT: 409,
+  INVALID_AUTHORIZATION: 400,
+  AUTHORIZATION_STALE: 400,
+  AUTHORIZATION_REJECTED: 400,
+  INTEGRATION_NOT_ALLOWED: 403,
+  READ_SIGNATURE_REJECTED: 401,
+  READ_REQUEST_REJECTED: 400,
+  RATE_LIMITED: 429,
 };
 export function perplDashboardRoutes(services: PerplDashboardServices) {
   const api = new Hono<AppEnv>();
@@ -44,20 +67,13 @@ export function perplDashboardRoutes(services: PerplDashboardServices) {
       return handleError(error, c);
     }
     const code = error instanceof PerplDashboardError ? error.code : "UNAVAILABLE";
-    const status =
-      code === "INVALID_AUTHORIZATION"
-        ? 400
-        : code === "READ_ACCESS_EXPIRED"
-          ? 401
-          : code === "READ_ACCESS_DENIED"
-            ? 403
-            : code === "NO_PERPL_PROFILE"
-              ? 404
-              : code === "KEY_LIMIT"
-                ? 409
-                : code === "RATE_LIMITED"
-                  ? 429
-                  : 503;
+    const status = STATUSES[code];
+    console.warn("perpl_dashboard_failure", {
+      code,
+      step: c.req.path.split("/perpl/")[1] ?? "unknown",
+      upstreamStatus: error instanceof PerplDashboardError ? error.upstreamStatus : null,
+      requestId: c.get("requestId"),
+    });
     if (status === 429) {
       c.header("Retry-After", "30");
     }
