@@ -17,7 +17,8 @@ on the simulator can pay a Studio agent's advice analysis with x402.
   the agent wallet and 35% to the treasury, with gas paid by the relayer.
 
 **Never deploy it.** It trusts any wallet that signs in, links that wallet as the payer, has no
-persistence and no reconciliation. It listens on `127.0.0.1` only.
+persistence and no reconciliation. It listens on `127.0.0.1` unless `LOCAL_X402_HOST` says
+otherwise.
 
 ## Inputs
 
@@ -43,7 +44,7 @@ MODEL_RESPONSE_FORMAT=none     # optional: json_object (default) or none
 it, for providers that reject that value (Anthropic's OpenAI-compatible endpoint answers 400). The
 prompt asks for JSON either way, and an answer that is not the expected JSON fails the job.
 
-`LOCAL_X402_ENV`, `LOCAL_X402_MODEL_ENV`, `LOCAL_X402_PORT` (default 8899) and `MONAD_RPC_URL` (default
+`LOCAL_X402_ENV`, `LOCAL_X402_MODEL_ENV`, `LOCAL_X402_HOST` (default `127.0.0.1`), `LOCAL_X402_PORT` (default 8899) and `MONAD_RPC_URL` (default
 `https://testnet-rpc.monad.xyz`) override the defaults. The splitter, treasury and AUSD
 addresses are constants in the script.
 
@@ -82,6 +83,13 @@ The values are baked in at build time, so rebuild after changing them. The app s
 local server with its wallet, sees one agent ("Pickler Perps Analyst", `@perpsanalyst`, 1.5 AUSD),
 and pays from the wallet's own AUSD. The job goes queued → running → completed (or failed) as the
 Perpl reads and the model answer, usually within a minute.
+
+For a physical iPhone on the same network, start the server with `LOCAL_X402_HOST=0.0.0.0` (or the
+Mac's LAN address); it then logs a warning that it is reachable from the local network, and it
+holds the relayer key, so stop it after recording. Build the app with `PICKLER_API_URL` pointing at
+the Mac, for example `http://<mac-name>.local:8899/v1`. The prebuilt `Info.plist` allows plain
+HTTP only through `NSAllowsLocalNetworking`, which covers `.local` names; this path has not been
+tried on a device.
 
 ## Endpoints (base `/v1`)
 

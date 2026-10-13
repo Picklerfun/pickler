@@ -47,7 +47,8 @@ import {
 // Configuration
 // ---------------------------------------------------------------------------------------------
 
-const HOST = "127.0.0.1";
+const HOST = process.env.LOCAL_X402_HOST ?? "127.0.0.1";
+const HOST_IS_LOOPBACK = HOST === "localhost" || HOST === "::1" || /^127\./.test(HOST);
 const PORT = Number(process.env.LOCAL_X402_PORT ?? 8899);
 const BASE = "/v1";
 const RPC_URL = process.env.MONAD_RPC_URL ?? "https://testnet-rpc.monad.xyz";
@@ -746,7 +747,8 @@ function send(res: ServerResponse, reply: Reply) {
 }
 
 const server = createServer((req, res) => {
-  const url = new URL(req.url ?? "/", `http://${HOST}`);
+  // Only the path and query are read, so the base is fixed whatever host the server binds.
+  const url = new URL(req.url ?? "/", "http://localhost");
   const started = Date.now();
   route(req, url)
     .catch((error: unknown): Reply => {
@@ -823,6 +825,11 @@ preflight()
   .then(() => {
     server.listen(PORT, HOST, () => {
       console.log(`  listening    http://${HOST}:${PORT}${BASE}  (agent ${AGENT_ID})`);
+      if (!HOST_IS_LOOPBACK) {
+        console.warn(
+          `  WARNING: bound to ${HOST}, so the server is reachable from the local network, and it holds the relayer key.`,
+        );
+      }
     });
   })
   .catch((error: unknown) => {
