@@ -1,4 +1,5 @@
 import { exportPerpsAuditParts } from "@pickler/infrastructure/perps-lab";
+import { PilotError } from "@pickler/core";
 import { createPtsPartsExport, ptsPartsPayloadHash } from "../src/pts-study/parts.js";
 import { digest } from "../src/pts-study/files.js";
 import { mkdtemp } from "node:fs/promises";
@@ -11,6 +12,7 @@ import {
   PostgresPerpsStudyStore,
   PostgresPerpsPaperStore,
   exportPerpsAudit,
+  timeEvaluationPool,
 } from "@pickler/infrastructure";
 import { createTestStore } from "@pickler/infrastructure/testing";
 import { createProfileStudyRunner, type PerpsStudyLease } from "@pickler/trading/evaluation";
@@ -132,6 +134,9 @@ async function setup(
       time = value;
       ratio = nextRatio;
       await study.renew(view.record.config, lease);
+    },
+    elapse: (milliseconds: number) => {
+      time += milliseconds;
     },
   };
 }
@@ -392,4 +397,360 @@ test("paged PTS export keeps one read-only snapshot across concurrent fixture wr
   );
   assert.deepEqual(await exportPerpsAudit(x.db.pool, scope), after);
   await x.study.release(scope, x.lease, "controlled-export-complete");
+});
+
+test("PTS captured final batch rolls back two provisional SMA shorts and both valuations at the observed 5805ms heartbeat age", async (t) => {
+  const x = await setup(t, true, false, "fast");
+  const scopes = (["sma-reference", "pts-intraday"] as const).map((variant) => ({
+    ...x.view.record.config,
+    agentId: x.view.record.agentIds[variant]!,
+  }));
+  const before = await Promise.all(scopes.map((scope) => x.scoped.view(scope)));
+  const frames = x.evidence().frames;
+  let provisional = 0;
+  const result = await x.scoped.withCapturedFrames(scopes, "round-001", frames, async (context) => {
+    await context.paper.observeCommon!(scopes, "round-001:final-marks", {
+      frames,
+      funding: [],
+      marksOnly: true,
+    });
+    for (const symbol of ["PUMP", "NEAR"] as const) {
+      const view = await context.paper.executeFrame!(
+        scopes[0]!,
+        `round-001:${symbol}`,
+        {
+          kind: "open",
+          symbol,
+          side: "short",
+          notional: "100",
+          feeReserve: "1",
+        },
+        frames.find((frame) => frame.snapshot.market.symbol === symbol)!,
+      );
+      provisional = view.account.positions.filter((position) => position.closedAt === null).length;
+    }
+    await context.event("sma-reference:round-001:PUMP", "profile-execution", { status: "filled" });
+    x.elapse(5805);
+  });
+  assert.equal(provisional, 2);
+  assert.equal(result.status, "data_unavailable");
+  if (result.status === "data_unavailable") {
+    assert.equal(result.rolledBack, true);
+    assert.equal(result.validation.reason, "heartbeat-expired-at-receipt-clock");
+  }
+  assert.deepEqual(await Promise.all(scopes.map((scope) => x.scoped.view(scope))), before);
+  const events = await x.db.pool.query(
+    "SELECT key FROM pickler.perps_study_events WHERE starts_with(key,'round-001') OR key='sma-reference:round-001:PUMP'",
+  );
+  assert.equal(events.rowCount, 0);
+});
+
+test("PTS captured batch commits once, preserves cloned views, and rejects retained contexts and changed evidence", async (t) => {
+  const x = await setup(t, false, false, "fast");
+  const scopes = (["sma-reference", "pts-intraday"] as const).map((variant) => ({
+    ...x.view.record.config,
+    agentId: x.view.record.agentIds[variant]!,
+  }));
+  const frames = x.evidence().frames;
+  let calls = 0;
+  let retained: import("@pickler/trading/perps").PerpsCapturedExecutionContext | undefined;
+  const work = async (context: import("@pickler/trading/perps").PerpsCapturedExecutionContext) => {
+    calls++;
+    retained = context;
+    const copy = await context.paper.view(scopes[0]!);
+    copy.account.cash = "0";
+    assert.equal((await context.paper.view(scopes[0]!)).account.cash, "1000");
+    await context.paper.observeCommon!(scopes, "round-001:final-marks", {
+      frames,
+      funding: [],
+      marksOnly: true,
+    });
+    await context.paper.executeFrame!(
+      scopes[0]!,
+      "round-001:NEAR",
+      {
+        kind: "open",
+        symbol: "NEAR",
+        side: "long",
+        notional: "100",
+        feeReserve: "1",
+      },
+      frames.find((frame) => frame.snapshot.market.symbol === "NEAR")!,
+    );
+    await context.event("sma-reference:round-001:NEAR", "profile-execution", { status: "filled" });
+  };
+  const results = await Promise.all([
+    x.scoped.withCapturedFrames(scopes, "round-001", frames, work),
+    x.scoped.withCapturedFrames([...scopes].reverse(), "round-001", frames, work),
+  ]);
+  assert.equal(calls, 1);
+  assert.deepEqual(
+    results.map((value) => value.status),
+    ["complete", "complete"],
+  );
+  assert.equal(results.filter((value) => value.status === "complete" && value.replayed).length, 1);
+  const saved = await x.scoped.view(scopes[0]!);
+  assert.equal(saved.account.positions.length, 1);
+  assert.equal(saved.attempts.filter((attempt) => attempt.status === "filled").length, 1);
+  await assert.rejects(retained!.paper.view(scopes[0]!), { code: "LEASE_LOST" });
+  assert.throws(() => retained!.assertActive(), { code: "LEASE_LOST" });
+  x.elapse(8000);
+  const replay = await x.scoped.withCapturedFrames(scopes, "round-001", frames, work);
+  assert.equal(replay.status === "complete" && replay.replayed, true);
+  assert.equal(calls, 1);
+  const changed = structuredClone(frames);
+  changed[0]!.book.bids[0]!.size = "90";
+  changed[0]!.hash = hash({
+    snapshot: changed[0]!.snapshot,
+    book: changed[0]!.book,
+    streamEvidence: changed[0]!.streamEvidence,
+  });
+  await assert.rejects(x.scoped.withCapturedFrames(scopes, "round-001", changed, work), {
+    code: "INVALID_INPUT",
+  });
+});
+
+test("PTS captured savepoints remove rejected provisional admissions while later valid trades retain ordinary accounting", async (t) => {
+  const x = await setup(t, false, false, "fast");
+  const scopes = (["sma-reference", "pts-intraday"] as const).map((variant) => ({
+    ...x.view.record.config,
+    agentId: x.view.record.agentIds[variant]!,
+  }));
+  const frames = x.evidence().frames;
+  const thin = frames.find((frame) => frame.snapshot.market.symbol === "BTC")!;
+  thin.book.asks[0]!.size = "0.000001";
+  thin.hash = hash({
+    snapshot: thin.snapshot,
+    book: thin.book,
+    streamEvidence: thin.streamEvidence,
+  });
+  const result = await x.scoped.withCapturedFrames(scopes, "round-001", frames, async (context) => {
+    await context.paper.observeCommon!(scopes, "round-001:final-marks", {
+      frames,
+      funding: [],
+      marksOnly: true,
+    });
+    await assert.rejects(
+      context.paper.executeFrame!(
+        scopes[0]!,
+        "round-001:BTC",
+        {
+          kind: "open",
+          symbol: "BTC",
+          side: "long",
+          notional: "100",
+          feeReserve: "1",
+        },
+        thin,
+      ),
+      { code: "INSUFFICIENT_DEPTH" },
+    );
+    const view = await context.paper.view(scopes[0]!);
+    assert.equal(view.attempts.length, 0);
+    assert.equal(view.account.positions.length, 0);
+    await context.paper.executeFrame!(
+      scopes[0]!,
+      "round-001:NEAR",
+      {
+        kind: "open",
+        symbol: "NEAR",
+        side: "short",
+        notional: "100",
+        feeReserve: "1",
+      },
+      frames.find((frame) => frame.snapshot.market.symbol === "NEAR")!,
+    );
+  });
+  assert.equal(result.status, "complete");
+  const saved = await x.scoped.view(scopes[0]!);
+  assert.deepEqual(
+    saved.attempts.map((attempt) => attempt.key),
+    ["round-001:NEAR"],
+  );
+  assert.equal(saved.account.positions[0]!.side, "short");
+  assert.equal(saved.movements.filter((movement) => movement.kind === "fee").length, 1);
+});
+
+test("PTS captured ownership expiry is fatal and cannot become an unavailable slot or preserve a provisional fill", async (t) => {
+  const x = await setup(t, false, false, "fast");
+  const scopes = (["sma-reference", "pts-intraday"] as const).map((variant) => ({
+    ...x.view.record.config,
+    agentId: x.view.record.agentIds[variant]!,
+  }));
+  const frames = x.evidence().frames;
+  await assert.rejects(
+    x.scoped.withCapturedFrames(scopes, "round-001", frames, async (context) => {
+      await context.paper.observeCommon!(scopes, "round-001:final-marks", {
+        frames,
+        funding: [],
+        marksOnly: true,
+      });
+      await context.paper.executeFrame!(
+        scopes[0]!,
+        "round-001:NEAR",
+        {
+          kind: "open",
+          symbol: "NEAR",
+          side: "long",
+          notional: "100",
+          feeReserve: "1",
+        },
+        frames.find((frame) => frame.snapshot.market.symbol === "NEAR")!,
+      );
+      x.elapse(90001);
+    }),
+    { code: "LEASE_LOST" },
+  );
+  const attempts = await x.db.pool.query("SELECT document FROM pickler.perps_paper_attempts");
+  const observations = await x.db.pool.query("SELECT key FROM pickler.perps_paper_observations");
+  assert.equal(attempts.rowCount, 0);
+  assert.equal(observations.rowCount, 0);
+});
+
+test("overlapping captured operations poison the batch even if their immediate error is caught", async (t) => {
+  const x = await setup(t, false, false, "fast");
+  const scopes = (["sma-reference", "pts-intraday"] as const).map((variant) => ({
+    ...x.view.record.config,
+    agentId: x.view.record.agentIds[variant]!,
+  }));
+  const frames = x.evidence().frames;
+  await assert.rejects(
+    x.scoped.withCapturedFrames(scopes, "round-001", frames, async (context) => {
+      const work = ["PUMP", "NEAR"].map((symbol) =>
+        context.paper.executeFrame!(
+          scopes[0]!,
+          `round-001:${symbol}`,
+          {
+            kind: "open",
+            symbol: symbol as "PUMP" | "NEAR",
+            side: "short",
+            notional: "100",
+            feeReserve: "1",
+          },
+          frames.find((frame) => frame.snapshot.market.symbol === symbol)!,
+        ),
+      );
+      await assert.rejects(Promise.all(work), { code: "INCOMPLETE_EXECUTION" });
+    }),
+    { code: "INCOMPLETE_EXECUTION" },
+  );
+  assert.equal((await x.scoped.view(scopes[0]!)).attempts.length, 0);
+  const value = await x.db.pool.query(
+    "SELECT 1 FROM pickler.perps_study_events WHERE kind='captured-execution'",
+  );
+  assert.equal(value.rowCount, 0);
+});
+
+for (const failure of ["rollback", "commit"] as const) {
+  test(`captured ${failure} acknowledgement uncertainty remains fatal rather than an omission`, async (t) => {
+    const x = await setup(t, false, false, "fast");
+    const scopes = (["sma-reference", "pts-intraday"] as const).map((variant) => ({
+      ...x.view.record.config,
+      agentId: x.view.record.agentIds[variant]!,
+    }));
+    const frames = x.evidence().frames;
+    let armed = false;
+    const pool = timeEvaluationPool(
+      x.db.pool,
+      (event) => {
+        if (
+          armed &&
+          event.operation === "database-query" &&
+          event.statement === failure.toUpperCase()
+        ) {
+          armed = false;
+          throw new PilotError(
+            `CONTROLLED_${failure.toUpperCase()}_FAILURE`,
+            "Controlled acknowledgement failure",
+          );
+        }
+      },
+      () => "captured-uncertainty",
+    );
+    const paper = new PostgresPerpsPaperStore(pool, () => x.time, {
+      ...x.view.record.config,
+      owner: x.lease.owner,
+    });
+    await assert.rejects(
+      paper.withCapturedFrames(scopes, "round-001", frames, async (context) => {
+        await context.paper.observeCommon!(scopes, "round-001:final-marks", {
+          frames,
+          funding: [],
+          marksOnly: true,
+        });
+        await context.paper.executeFrame!(
+          scopes[0]!,
+          "round-001:NEAR",
+          {
+            kind: "open",
+            symbol: "NEAR",
+            side: "short",
+            notional: "100",
+            feeReserve: "1",
+          },
+          frames.find((frame) => frame.snapshot.market.symbol === "NEAR")!,
+        );
+        if (failure === "rollback") {
+          x.elapse(5805);
+        }
+        armed = true;
+      }),
+      { code: failure === "rollback" ? "PERSISTENCE_FAILED" : "CONTROLLED_COMMIT_FAILURE" },
+    );
+    const saved = await x.scoped.view(scopes[0]!);
+    // Actual fixture server state is inspected separately; an unknown acknowledgement never
+    // licenses a retry or claims the financial outcome.
+    assert.equal(saved.attempts.length, failure === "commit" ? 1 : 0);
+  });
+}
+
+test("captured batches reject prior serial gates, cross-account reads and frame replacement", async (t) => {
+  const x = await setup(t, false, false, "fast");
+  const scopes = (["sma-reference", "pts-intraday"] as const).map((variant) => ({
+    ...x.view.record.config,
+    agentId: x.view.record.agentIds[variant]!,
+  }));
+  const frames = x.evidence().frames;
+  await x.study.event(
+    x.view.record.config,
+    x.lease,
+    "round-001:sma-reference:final-gate",
+    "final-gate",
+    { controlled: true },
+  );
+  await assert.rejects(
+    x.scoped.withCapturedFrames(scopes, "round-001", frames, async () => {
+      assert.fail("a historical partial phase must not resume");
+    }),
+    { code: "INCOMPLETE_EXECUTION" },
+  );
+  const result = await x.scoped.withCapturedFrames(scopes, "round-002", frames, async (context) => {
+    await assert.rejects(context.paper.view({ ...scopes[0]!, tenantId: "beta" }), {
+      code: "FORBIDDEN",
+    });
+    const changed = structuredClone(frames[0]!);
+    changed.book.bids[0]!.size = "95";
+    changed.hash = hash({
+      snapshot: changed.snapshot,
+      book: changed.book,
+      streamEvidence: changed.streamEvidence,
+    });
+    await assert.rejects(
+      context.paper.executeFrame!(
+        scopes[0]!,
+        "round-002:BTC",
+        {
+          kind: "open",
+          symbol: changed.snapshot.market.symbol,
+          side: "long",
+          notional: "100",
+          feeReserve: "1",
+        },
+        changed,
+      ),
+      { code: "INVALID_MARKET_DATA" },
+    );
+  });
+  assert.equal(result.status, "complete");
+  assert.equal((await x.scoped.view(scopes[0]!)).attempts.length, 0);
 });
