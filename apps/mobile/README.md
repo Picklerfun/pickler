@@ -155,7 +155,7 @@ comprar. Detalle: `docs/mobile/superpowers/audits/2026-10-12-studio-agents-f1-ru
 ## Tests
 
 ```bash
-npm test          # jest, 303/303 esperado (44 suites)
+npm test          # jest, 539/539 esperado (60 suites)
 npx tsc --noEmit   # debe salir limpio
 ```
 

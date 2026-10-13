@@ -48,7 +48,14 @@ code. Do not rely on what earlier SDKs did.
   from the 402; the confirmation shows it. `useAdviceAsk` (`src/hooks/`) is the flow:
   a new Idempotency-Key per Ask, reused only between the 402 and its paid retry; after a payment went
   out it never signs again for that Ask and never says "nothing charged" (`settlement_pending`,
-  `offline{paid:true}`); `abandon()` leaves a `settlement_pending` or `timeout` flow on purpose.
+  `offline{paid:true}`); `abandon()` leaves a `settlement_pending`, `timeout` or paid `offline` flow
+  on purpose. Where Face ID happens: the quote is an authenticated POST, so with a locked wallet the
+  unlock (Face ID) happens when the person taps Ask; the payment consent is the explicit
+  "Pay {price} AUSD" tap on the confirmation, which shows the total, the 65/35 split, the recipient
+  and the not-refunded line. There is no prompt at Pay unless the wallet was locked again after the
+  quote. Spec §3.2 step 4 placed Face ID at the sheet; moving it there is an open owner decision
+  (audit Rulings A4, A7). A locked wallet (an ended Mera session) is `WalletLockedError` in
+  `api.ts`, so a retry reopens it; polling never prompts.
   `useStudio` holds the one flow and the marketplace list at app level, above the per-tab stacks
   (`ctx.studio`, called in `App.tsx` above the early return), so remounts keep the key, the signed
   header and the job id. The advice screen (`src/screens/advice.tsx`) only reads it. The free history
