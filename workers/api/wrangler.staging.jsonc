@@ -20,10 +20,10 @@
   "vars": {
     "ADVICE_ENABLED": "false",
     "ADVICE_X402_ENABLED": "false",
-    // The advice splitter and its treasury: empty until the deployment is recorded; paid advice
+    // The advice splitter and its treasury: recorded in packages/chain (PICKLER_MONAD_TESTNET); paid advice
     // also needs the X402_RELAYER_PRIVATE_KEY secret (docs/agent-advice.md, "Payment (x402)").
-    "ADVICE_SPLITTER_ADDRESS": "",
-    "ADVICE_SPLITTER_TREASURY": "",
+    "ADVICE_SPLITTER_ADDRESS": "0x570A291Ac86d2F002Bc62E7d12ba43B7F4554d2a",
+    "ADVICE_SPLITTER_TREASURY": "0xE84B9045c4735241A71e5c6976695e59A5A7758c",
     "APP_ENV": "staging",
     "CHAIN_ID": "10143",
     "MONAD_RPC_URL": "https://rpc.ankr.com/monad_testnet",

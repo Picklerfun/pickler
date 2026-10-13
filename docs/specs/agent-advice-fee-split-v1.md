@@ -73,6 +73,10 @@ A fork test on Monad testnet, gated by `MONAD_TESTNET_RPC_URL` like the existing
 
 The contracts are licensed MIT, replacing the `UNLICENSED` placeholder (§8); the relicensing is already on main.
 
+### Deployment record
+
+Deployed on Monad testnet (chain 10143) on 2026-10-12 and read back from the chain: `PicklerAdviceSplitter` at `0x570A291Ac86d2F002Bc62E7d12ba43B7F4554d2a`, block 70562565, tx `0x716a5e1a4b8fc23fc750ea205987716d19cfe9604b464ae4f17ccc00e32b0b2a`, built from commit `47594f27`. `asset()` is AUSD (`0xa9012a055bd4e0eDfF8Ce09f960291C09D5322dC`), `CREATOR_BPS` is 6500, and the code is 1576 bytes with keccak256 `0x188e0eff98004d1ef3e1200ca4bd1d6de3a378be884db138c5a3cb32be3aa3fe`. The treasury is `0xE84B9045c4735241A71e5c6976695e59A5A7758c`, the owner's testnet EOA (also the deployer) for now; because the treasury is immutable, a multisig treasury later means a new splitter. The record lives in `packages/chain/src/deployments.ts` (`PICKLER_MONAD_TESTNET`). `ADVICE_X402_ENABLED` stays false.
+
 ## 4. API changes (on top of phase 1)
 
 - **Config:** `ADVICE_SPLITTER_ADDRESS` and `ADVICE_SPLITTER_TREASURY` (Worker vars: the splitter and the treasury it was deployed with). A missing or malformed address fails closed like a missing relayer (phase 1 Ruling 24). Before every paid request (replays included) until a match is cached, the API reads the splitter's `treasury()` and compares it with `ADVICE_SPLITTER_TREASURY`, then reads its `asset()` and requires AUSD, both ignoring case. A mismatch, a failed read or a read that is not an address answers 503 `ADVICE_UNAVAILABLE` for that request, is not cached, and logs variable names only. A match is cached for the isolate's life, and later requests skip the read.
