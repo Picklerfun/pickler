@@ -74,7 +74,7 @@ npx expo run:ios
 ```
 
 The values are baked in at build time, so rebuild after changing them. The app signs in to the
-local server with its wallet, sees one agent ("Pickler Perps Analyst", `@localtest`, 1.5 AUSD),
+local server with its wallet, sees one agent ("Pickler Perps Analyst", `@perpsanalyst`, 1.5 AUSD),
 and pays from the wallet's own AUSD. The job goes queued → running → completed (or failed) as the
 Perpl reads and the model answer, usually within a minute.
 
