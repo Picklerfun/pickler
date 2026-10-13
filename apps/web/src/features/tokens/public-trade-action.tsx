@@ -2,6 +2,7 @@
 
 import { useId } from "react";
 import { Button, Icon } from "@pickler/ui";
+import type { WalletFailure } from "@/features/wallet/lib/wallet-request-error";
 import styles from "./public-trade-action.module.css";
 
 export type TradeActionState =
@@ -20,6 +21,7 @@ interface Props {
   state: TradeActionState;
   label: string;
   hint?: string | undefined;
+  failure?: WalletFailure | null | undefined;
   disabled: boolean;
   busy: boolean;
   onClick: () => void;
@@ -46,7 +48,7 @@ const HINTS: Record<string, string> = {
   "The quote does not match this trade.": "Quote changed · prepare again",
 };
 
-export function PublicTradeAction({ state, label, hint, disabled, busy, onClick }: Props) {
+export function PublicTradeAction({ state, label, hint, failure, disabled, busy, onClick }: Props) {
   const description = useId();
   const failed = state === "error" || state === "unknown";
   const spinning = ["preparing", "approval", "trade"].includes(state);
@@ -85,6 +87,16 @@ export function PublicTradeAction({ state, label, hint, disabled, busy, onClick 
           </span>
         </span>
       </Button>
+      {failure && !busy && (
+        <details className={styles.failure}>
+          <summary>
+            {failure.title}
+            {failure.code !== null ? ` · ${failure.code}` : ""}
+          </summary>
+          <p>{failure.detail}</p>
+          <small>Wallet request · {failure.method}</small>
+        </details>
+      )}
       <span className={styles.announcement} role="status" aria-atomic="true">
         {failed ? "" : label}
       </span>

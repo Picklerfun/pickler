@@ -22,6 +22,14 @@ import { injectedSigner } from "./injected-signer";
 import { PrfUnavailableError } from "./mera-ceremony";
 import { meraSigner } from "./mera-signer";
 import { getProvider, TARGET_CHAIN } from "./provider";
+import {
+  injectedWalletSnapshot,
+  injectedWalletServerSnapshot,
+  subscribeInjectedWallets,
+  selectInjectedWallet,
+  rememberedInjectedWallet,
+} from "./injected-providers";
+import { walletFailure, WalletRequestError, type WalletFailure } from "./wallet-request-error";
 import { JoinUnsettledError, signIn, type ConnectResult, type Signer } from "./connect";
 import { joinWords, signInWords } from "./sign-in-words";
 import { fromInjectedProvider } from "./signer-adapters";
@@ -153,6 +161,8 @@ function previewStep(): ConnectStep | null {
 export interface WalletChoice {
   /** Unique among the choices: the passkey wallet appears twice, once per way in. */
   key: string;
+  providerId?: string | undefined;
+  name?: string | undefined;
   kind: SignerKind;
   /** How this choice connects, where a wallet has more than one way. */
   mode: ConnectMode | null;
@@ -168,6 +178,10 @@ interface WalletState {
   status: WalletStatus;
   /** Silent restoration of the remembered connection, without account or signing prompts. */
   restoring: boolean;
+  providerId: string | null;
+  providerName: string | null;
+  switching: boolean;
+  switchFailure: WalletFailure | null;
   /** What is connected, or null when nothing is. */
   kind: SignerKind | null;
   address: string | null;
@@ -214,6 +228,15 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const [account, setAccount] = useState<SignerAccount | null>(null);
   const [connecting, setConnecting] = useState(false);
   const [resumePending, setRestoring] = useState(true);
+  const [switching, setSwitching] = useState(false);
+  const [switchFailure, setSwitchFailure] = useState<WalletFailure | null>(null);
+  const switchRun = useRef<symbol | null>(null);
+  const wallets = useSyncExternalStore(
+    subscribeInjectedWallets,
+    injectedWalletSnapshot,
+    injectedWalletServerSnapshot,
+  );
+  const [pickingKey, setPickingKey] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [holding, setHolding] = useState<string | null>(null);
   const [flow, dispatch] = useReducer(connectFlow, CLOSED);
@@ -387,7 +410,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         setKind(null);
       }
     });
-  }, [adapter, release]);
+  }, [adapter, account?.providerId, release]);
 
   /**
    * Takes the session a sign-in issued: the browser's Supabase client holds it, and the page
@@ -442,7 +465,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   );
 
   const connectWith = useCallback(
-    async (picked: SignerKind, mode?: ConnectMode) => {
+    async (picked: SignerKind, mode?: ConnectMode, providerId?: string) => {
       const signer = SIGNERS.find((candidate) => candidate.kind === picked);
       // A passkey ceremony always ends — its prompt is modal and its requests time out — so a
       // second pick waits for it rather than starting another beside it.
@@ -462,10 +485,15 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       const current = () => mine === generation.current;
       passkeyRunning(mine, picked === "mera");
       setPicking(picked);
+      setPickingKey(providerId ? `injected:${providerId}` : null);
+      setSwitchFailure(null);
       setConnecting(true);
       setError(null);
       dispatch({ type: "working" });
       try {
+        if (picked === "injected" && providerId) {
+          selectInjectedWallet(providerId);
+        }
         const connected = await signer.connect(mode);
         if (!current()) {
           return;
@@ -816,6 +844,9 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     generation.current += 1;
     setRestoring(false);
     setConnecting(false);
+    setSwitching(false);
+    setSwitchFailure(null);
+    switchRun.current = null;
     // First, and whatever the wallet then answers: a disconnect that failed half-way must not
     // leave the last address's session behind, nor the page still showing the wallet.
     void release(null);
@@ -838,11 +869,39 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   }, [disconnect]);
 
   const switchChain = useCallback(async () => {
-    const switched = await adapter?.switchChain?.();
-    if (switched) {
-      setAccount(switched);
+    if (switchRun.current || !adapter?.switchChain || !account) {
+      return;
     }
-  }, [adapter]);
+    const flight = Symbol();
+    switchRun.current = flight;
+    const mine = generation.current;
+    const address = account.address;
+    setSwitching(true);
+    setSwitchFailure(null);
+    try {
+      const switched = await adapter.switchChain();
+      if (generation.current !== mine || accountRef.current?.address !== address) {
+        return;
+      }
+      if (!switched || switched.chainId !== TARGET_CHAIN.chainId) {
+        throw new WalletRequestError(
+          new Error("Network did not change"),
+          "wallet_switchEthereumChain",
+        );
+      }
+      void release(switched);
+      setAccount(switched);
+    } catch (error) {
+      if (generation.current === mine && accountRef.current?.address === address) {
+        setSwitchFailure(walletFailure(error, "wallet_switchEthereumChain"));
+      }
+    } finally {
+      if (switchRun.current === flight) {
+        switchRun.current = null;
+        setSwitching(false);
+      }
+    }
+  }, [adapter, account, release]);
 
   const sendTokenTransaction = useCallback(
     async (prepared: PublicTokenTradePreparedDto, token: string) => {
@@ -869,7 +928,8 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   );
 
   const choices = useMemo<WalletChoice[]>(() => {
-    const last = mounted ? remembered() : null;
+    const last = kind ?? (mounted ? remembered() : null);
+    const lastProvider = account?.providerId ?? (mounted ? rememberedInjectedWallet() : null);
     return SIGNERS.flatMap((signer): WalletChoice[] => {
       const shared = {
         kind: signer.kind,
@@ -877,6 +937,17 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         note: mounted ? (signer.note?.() ?? null) : null,
       };
       if (signer.kind !== "mera") {
+        if (wallets.length) {
+          return wallets.map((wallet) => ({
+            ...shared,
+            unavailable: null,
+            key: `injected:${wallet.id}`,
+            providerId: wallet.id,
+            name: wallet.name,
+            mode: null,
+            last: last === "injected" && wallet.id === lastProvider,
+          }));
+        }
         return [{ ...shared, key: signer.kind, mode: null, last: signer.kind === last }];
       }
       // Creating a passkey and opening one are different ceremonies, so they are two choices.
@@ -886,7 +957,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         { ...shared, note: null, key: "mera-existing", mode: "existing", last: last === "mera" },
       ];
     });
-  }, [mounted]);
+  }, [mounted, wallets, kind, account?.providerId]);
 
   /**
    * The wallets an account already had can be signed with from the join step. A second account of
@@ -951,6 +1022,10 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     return {
       status,
       restoring,
+      providerId: account?.providerId ?? null,
+      providerName: wallets.find((wallet) => wallet.id === account?.providerId)?.name ?? null,
+      switching,
+      switchFailure,
       kind,
       address: account?.address ?? null,
       chainId: account?.chainId ?? null,
@@ -972,6 +1047,9 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   }, [
     account,
     restoring,
+    switching,
+    switchFailure,
+    wallets,
     adapter,
     connect,
     connecting,
@@ -1000,7 +1078,10 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         address={account?.address ?? (preview ? PREVIEW_ADDRESS : null)}
         kind={kind}
         picking={picking}
-        onPick={(picked, mode) => void connectWith(picked, mode ?? undefined)}
+        pickingKey={pickingKey}
+        onPick={(picked, mode, providerId) =>
+          void connectWith(picked, mode ?? undefined, providerId)
+        }
         onSignIn={() => void signInFromChooser()}
         // The username step drawn for an account found without one is not a step the reducer is
         // on, so "I already have an account" opens the chooser there instead.

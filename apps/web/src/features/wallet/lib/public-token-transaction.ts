@@ -8,9 +8,18 @@ import {
   type Hex,
 } from "viem";
 import type { Eip1193Provider } from "./provider";
+import {
+  WalletRequestError,
+  walletFailure,
+  walletErrorCode,
+  type WalletFailure,
+} from "./wallet-request-error";
 
 export class WalletSubmissionUnknown extends Error {
-  constructor(public readonly hash: string | null) {
+  constructor(
+    public readonly hash: string | null,
+    public readonly failure?: WalletFailure,
+  ) {
     super(
       "The wallet may have submitted this transaction. Check its activity before trying again.",
     );
@@ -73,28 +82,36 @@ export async function sendInjectedTokenTransaction(
   wallet: string,
   token: string,
 ) {
-  await validatePublicTokenTransaction(prepared, wallet, token);
-  const accounts = await provider.request({ method: "eth_accounts" });
-  const chain = await provider.request({ method: "eth_chainId" });
+  try {
+    await validatePublicTokenTransaction(prepared, wallet, token);
+  } catch (error) {
+    throw new WalletRequestError(error, "validateTrade");
+  }
+  const request = async (method: string, params?: unknown[]) => {
+    try {
+      return await provider.request({ method, ...(params ? { params } : {}) });
+    } catch (error) {
+      throw new WalletRequestError(error, method);
+    }
+  };
+  const accounts = await request("eth_accounts");
+  const chain = await request("eth_chainId");
   if (
     !Array.isArray(accounts) ||
     String(accounts[0]).toLowerCase() !== wallet.toLowerCase() ||
     BigInt(String(chain)) !== 10143n
   ) {
-    throw new Error("Wallet account or network changed. Review the trade again.");
+    throw new WalletRequestError(new Error("Wallet account or network changed"), "eth_chainId");
   }
   const tx = prepared.transaction;
-  const nonce = await provider.request({
-    method: "eth_getTransactionCount",
-    params: [wallet, "pending"],
-  });
+  const nonce = await request("eth_getTransactionCount", [wallet, "pending"]);
   if (BigInt(String(nonce)) !== BigInt(tx.nonce)) {
-    throw new Error("Wallet activity changed. Review the trade again.");
+    throw new WalletRequestError(new Error("Wallet activity changed"), "eth_getTransactionCount");
   }
-  await provider.request({
-    method: "eth_call",
-    params: [{ from: tx.from, to: tx.to, data: tx.data, value: tx.value }, "latest"],
-  });
+  await request("eth_call", [
+    { from: tx.from, to: tx.to, data: tx.data, value: tx.value },
+    "latest",
+  ]);
   // A prompt may remain open. Its swap deadline is enforced by the curve; no retry follows an uncertain send.
   let hash: unknown;
   try {
@@ -103,10 +120,11 @@ export async function sendInjectedTokenTransaction(
       params: [{ ...tx, chainId: toHex(tx.chainId), nonce: toHex(tx.nonce), type: "0x2" }],
     });
   } catch (error) {
-    if ((error as { code?: number }).code === 4001) {
-      throw error;
+    const code = walletErrorCode(error);
+    if (code !== null && [4001, 4100, 4200, -32601, -32602].includes(code)) {
+      throw new WalletRequestError(error, "eth_sendTransaction");
     }
-    throw new WalletSubmissionUnknown(null);
+    throw new WalletSubmissionUnknown(null, walletFailure(error, "eth_sendTransaction"));
   }
   if (typeof hash !== "string" || !/^0x[0-9a-f]{64}$/i.test(hash)) {
     throw new WalletSubmissionUnknown(null);

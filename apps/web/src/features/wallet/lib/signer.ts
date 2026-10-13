@@ -23,6 +23,8 @@ export type ConnectMode = "create" | "existing";
 
 export interface SignerAccount {
   address: string;
+  /** Pinned browser provider identity; absent for the passkey wallet. */
+  providerId?: string | undefined;
   /** The chain the signer is pointed at, or null when it is not pointed at one. */
   chainId: number | null;
   /** Native balance in wei. Null when unknown or the chain is unreachable. */

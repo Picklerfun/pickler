@@ -1,6 +1,8 @@
 "use client";
 
 import { MONAD_TESTNET } from "@pickler/chain";
+import { selectedInjectedProvider } from "./injected-providers";
+import { WalletRequestError, walletErrorCode } from "./wallet-request-error";
 
 /**
  * The browser wallet, spoken to directly over EIP-1193. No connector library: the public site only
@@ -23,8 +25,7 @@ declare global {
   }
 }
 
-export const getProvider = (): Eip1193Provider | null =>
-  typeof window === "undefined" ? null : (window.ethereum ?? null);
+export const getProvider = (): Eip1193Provider | null => selectedInjectedProvider();
 
 /** Extensions can inject after hydration. Wait briefly without asking for account permission. */
 export function waitForProvider(signal?: AbortSignal): Promise<Eip1193Provider | null> {
@@ -118,21 +119,23 @@ export async function readBalance(
   }
 }
 
-/**
- * Moves the wallet to the testnet, adding the network first if it does not know it. Wallets answer
- * 4902 for an unknown chain and 4001 when the person says no; neither is an error worth throwing.
- */
+/** Adding a network is not switching it. Verify the actual chain before reporting success. */
 export async function switchToTarget(provider: Eip1193Provider): Promise<boolean> {
+  const change = async () => {
+    try {
+      await provider.request({
+        method: "wallet_switchEthereumChain",
+        params: [{ chainId: hexChainId }],
+      });
+    } catch (error) {
+      throw new WalletRequestError(error, "wallet_switchEthereumChain");
+    }
+  };
   try {
-    await provider.request({
-      method: "wallet_switchEthereumChain",
-      params: [{ chainId: hexChainId }],
-    });
-    return true;
+    await change();
   } catch (error) {
-    const code = (error as { code?: number }).code;
-    if (code !== 4902) {
-      return false;
+    if (walletErrorCode(error) !== 4902) {
+      throw error;
     }
     try {
       await provider.request({
@@ -141,17 +144,31 @@ export async function switchToTarget(provider: Eip1193Provider): Promise<boolean
           {
             chainId: hexChainId,
             chainName: TARGET_CHAIN.name,
-            nativeCurrency: { ...TARGET_CHAIN.nativeCurrency, name: TARGET_CHAIN.name },
+            nativeCurrency: { ...TARGET_CHAIN.nativeCurrency, name: "MON" },
             rpcUrls: [...TARGET_CHAIN.publicRpcUrls],
             blockExplorerUrls: [...TARGET_CHAIN.explorers],
           },
         ],
       });
-      return true;
-    } catch {
-      return false;
+    } catch (error) {
+      throw new WalletRequestError(error, "wallet_addEthereumChain");
     }
+    await change();
   }
+  for (let read = 0; read < 10; read += 1) {
+    try {
+      if (
+        (await boundedWalletRead(readChainId(provider), null, undefined, 1000)) ===
+        TARGET_CHAIN.chainId
+      ) {
+        return true;
+      }
+    } catch (error) {
+      throw new WalletRequestError(error, "eth_chainId");
+    }
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  throw new WalletRequestError(new Error("Network did not change"), "wallet_switchEthereumChain");
 }
 
 /**
