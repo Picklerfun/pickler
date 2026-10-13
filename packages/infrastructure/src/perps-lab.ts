@@ -12,4 +12,6 @@ export { guardPerpsLabPool } from "./persistence/perps-lab-pool.js";
 export type { PerpsLabFailureDiagnostic } from "./persistence/perps-lab-pool.js";
 export { observePerpsLabPool } from "./persistence/perps-lab-query.js";
 export type { PerpsLabQueryDiagnostic } from "./persistence/perps-lab-query.js";
-export { createLocalPerpsLabStore } from "./persistence/perps-lab-local.js";
+export { createLocalPerpsLabStore, warmLocalPerpsLabStore } from "./persistence/perps-lab-local.js";
+export type { PerpsLabConnectionReadiness } from "./persistence/perps-lab-local.js";
+export type { PerpsLabConnectionDiagnostic } from "./persistence/perps-lab-connection.js";
