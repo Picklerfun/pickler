@@ -409,7 +409,10 @@ export function createPerplLiveService(deps: {
           if (
             evidence.accountId !== order.request.acc ||
             evidence.marketId !== order.request.mkt ||
-            evidence.type !== order.request.t
+            evidence.type !== order.request.t ||
+            evidence.originalSize !== order.request.s ||
+            evidence.leverage !== order.request.lv ||
+            evidence.filledSize > order.request.s
           ) {
             throw new PilotError("PERPL_EVIDENCE_MISMATCH", "Order identity does not match");
           }
@@ -519,6 +522,11 @@ export function createPerplLiveService(deps: {
             return null;
           }
           assertLiveSettings(s.settings, authority);
+          if (snapshot.unmanagedOrders) {
+            s.status = "frozen";
+            s.error = "PERPL_UNEXPECTED_ORDER";
+            return null;
+          }
           const day = new Date(now).toISOString().slice(0, 10);
           const spent = d.orders
             .filter(
@@ -542,7 +550,7 @@ export function createPerplLiveService(deps: {
           }
           const margin = liveAmount(s.settings.marginMicros);
           const reserve = (margin * BigInt(market.takerFeeMicros) * 2n + 999_999n) / 1_000_000n;
-          if (BigInt(snapshot.balanceMicros) < margin + reserve) {
+          if (BigInt(snapshot.balanceMicros) - BigInt(snapshot.lockedMicros) < margin + reserve) {
             s.status = "frozen";
             s.error = "PERPL_INSUFFICIENT_COLLATERAL";
             return null;

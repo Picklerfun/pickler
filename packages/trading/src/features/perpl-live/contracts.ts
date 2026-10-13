@@ -53,6 +53,8 @@ export interface PerplLivePosition {
   closed: boolean;
 }
 export interface PerplLiveOrderEvidence {
+  originalSize: number;
+  leverage: number;
   requestId: number;
   accountId: number;
   marketId: number;
@@ -65,6 +67,9 @@ export interface PerplLiveOrderEvidence {
   txHashes: string[];
 }
 export interface PerplLiveSnapshot {
+  instanceId: number;
+  lockedMicros: string;
+  unmanagedOrders: boolean;
   accountId: number;
   forwarding: boolean;
   frozen: boolean;

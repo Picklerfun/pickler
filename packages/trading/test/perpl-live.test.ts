@@ -62,6 +62,9 @@ function fixture() {
     },
   };
   const snapshot: PerplLiveSnapshot = {
+    instanceId: 1,
+    lockedMicros: "0",
+    unmanagedOrders: false,
     accountId: 7,
     forwarding: true,
     frozen: false,
@@ -119,6 +122,8 @@ function fixture() {
   function fill(order = submissions.at(-1)!, size = order.s) {
     snapshot.lastRequestId = order.rq;
     snapshot.orders.push({
+      originalSize: order.s,
+      leverage: order.lv,
       requestId: order.rq,
       accountId: order.acc,
       marketId: order.mkt,
@@ -314,4 +319,32 @@ test("disabled admissions cannot prepare or start an account", async () => {
     code: "PERPL_ADMISSIONS_PAUSED",
   });
   assert.equal(f.submissions.length, 0);
+});
+test("locked collateral and outstanding foreign orders cannot fund a new opening", async () => {
+  const f = fixture();
+  const service = f.service();
+  await service.start(f.scope, f.terms, randomUUID());
+  f.snapshot.lockedMicros = "99000000";
+  await service.tick(f.scope);
+  assert.equal(f.submissions.length, 0);
+  assert.equal(f.document().sessions[0]!.error, "PERPL_INSUFFICIENT_COLLATERAL");
+  const other = fixture();
+  const otherService = other.service();
+  await otherService.start(other.scope, other.terms, randomUUID());
+  other.snapshot.unmanagedOrders = true;
+  await otherService.tick(other.scope);
+  assert.equal(other.submissions.length, 0);
+  assert.equal(other.document().sessions[0]!.status, "frozen");
+});
+test("a request ID collision with different venue quantity or leverage is refused", async () => {
+  const f = fixture();
+  const service = f.service();
+  await service.start(f.scope, f.terms, randomUUID());
+  await service.tick(f.scope);
+  f.fill();
+  f.snapshot.orders[0]!.originalSize++;
+  await service.tick(f.scope);
+  assert.equal(f.document().sessions[0]!.error, "PERPL_EVIDENCE_MISMATCH");
+  assert.equal(f.submissions.length, 1);
+  assert.equal(f.document().orders[0]!.status, "accepted");
 });

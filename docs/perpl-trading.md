@@ -57,7 +57,10 @@ than serialized JSON order. PostgreSQL serializes starts and short mutations; pr
 never run under row locks. Renewable 60-second leases fence concurrent consumers.
 
 HTTP acknowledgment is only Submitted. Fill transitions require matching account, market,
-request and order type in Perpl history. Partial fills close the actual remaining size. An order
+request, order type, original quantity and leverage in Perpl history. Available collateral
+subtracts locked balance; outstanding foreign orders block new entries. The final head refresh
+also verifies the exchange instance and that no other caller advanced the request sequence.
+Partial fills close the actual remaining size. An order
 fill that precedes its position snapshot cannot trigger another opening. Unexplained positions
 freeze the session. Pause blocks new entries while timed exits continue; Stop & close requests
 closure, without reporting a fill prematurely. Required exits survive disabled research access,

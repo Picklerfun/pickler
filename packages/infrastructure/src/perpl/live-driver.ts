@@ -70,6 +70,7 @@ const at = z.object({
   l: integer.optional(),
 });
 const venueOrder = z.object({
+  lv: integer,
   rq: integer,
   acc: integer,
   mkt: integer,
@@ -127,6 +128,8 @@ function order(o: z.infer<typeof venueOrder>): PerplLiveOrderEvidence {
     status = o.fs > 0 ? "partial" : o.st === 5 ? "cancelled" : o.st === 6 ? "expired" : "rejected";
   }
   return {
+    originalSize: o.os,
+    leverage: o.lv,
     requestId: o.rq,
     accountId: o.acc,
     marketId: o.mkt,
@@ -158,7 +161,9 @@ export function createPerplLiveDriver(config: {
     const wire = z
       .object({
         chain: z.object({ chain_id: z.literal(10143) }),
-        instances: z.array(z.object({ address: z.string(), collateral_token_id: integer })),
+        instances: z.array(
+          z.object({ id: integer, address: z.string(), collateral_token_id: integer }),
+        ),
         tokens: z.array(z.object({ id: integer, address: z.string(), decimals: integer })),
       })
       .parse(raw);
@@ -177,7 +182,7 @@ export function createPerplLiveDriver(config: {
         "Perpl exchange or collateral identity changed",
       );
     }
-    return parsed;
+    return { ...parsed, instance: { ...parsed.instance, id: instance.id } };
   }
   async function chainGuard() {
     if (BigInt(String(await rpc.call("eth_chainId", []))) !== 10143n) {
@@ -870,6 +875,7 @@ export function createPerplLiveDriver(config: {
           at,
           as: z.array(
             z.object({
+              in: integer,
               id: integer,
               fw: z.boolean(),
               fr: z.boolean(),
@@ -883,7 +889,9 @@ export function createPerplLiveDriver(config: {
       if (wallet.addr.toLowerCase() !== authority.address) {
         throw new PilotError("PERPL_EVIDENCE_MISMATCH", "Wallet snapshot owner changed");
       }
-      const account = wallet.as.find((a) => a.id === document.accountId);
+      const account = wallet.as.find(
+        (a) => a.in === ctx.instance.id && a.id === document.accountId,
+      );
       if (!account) {
         throw new PilotError("PERPL_ACCOUNT_CHANGED", "Exchange account identity changed");
       }
@@ -895,6 +903,13 @@ export function createPerplLiveDriver(config: {
         .object({ d: z.array(venueOrder).max(1000) })
         .parse(await http.request("/v1/trading/order-history?count=100", { document }));
       const owned = document.orders.map((o) => o.request.rq);
+      const outstanding = z
+        .object({ d: z.array(venueOrder).max(1000) })
+        .parse(await http.request("/v1/trading/orders", { document }));
+      const unmanagedOrders = outstanding.d.some(
+        (o) =>
+          o.acc === account.id && ctx.markets.some((m) => m.id === o.mkt) && !owned.includes(o.rq),
+      );
       const latest = new Map<number, PerplLiveOrderEvidence>();
       for (const o of orders.d.filter((o) => o.acc === account.id && owned.includes(o.rq))) {
         if (!latest.has(o.rq)) {
@@ -911,6 +926,9 @@ export function createPerplLiveDriver(config: {
         }
       }
       return {
+        instanceId: ctx.instance.id,
+        lockedMicros: account.lb,
+        unmanagedOrders,
         accountId: account.id,
         forwarding: account.fw,
         frozen: account.fr,
@@ -938,12 +956,21 @@ export function createPerplLiveDriver(config: {
         .object({
           addr: z.string(),
           sn: integer,
-          as: z.array(z.object({ id: integer, fw: z.boolean(), fr: z.boolean() })),
+          as: z.array(
+            z.object({ in: integer, id: integer, lfr: integer, fw: z.boolean(), fr: z.boolean() }),
+          ),
         })
         .parse(await http.request("/v1/trading/wallet", { document }));
       if (
         wallet.addr.toLowerCase() !== document.address ||
-        !wallet.as.some((a) => a.id === document.accountId && a.fw && !a.fr)
+        !wallet.as.some(
+          (a) =>
+            a.in === document.snapshot?.instanceId &&
+            a.id === document.accountId &&
+            a.fw &&
+            !a.fr &&
+            a.lfr < document.nextRequestId,
+        )
       ) {
         throw new PilotError("PERPL_ACCOUNT_CHANGED", "Account execution permission changed");
       }
