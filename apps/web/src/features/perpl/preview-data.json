@@ -1,0 +1,135 @@
+{
+  "market": {
+    "chainId": 10143,
+    "observedAt": "2026-10-13T12:00:00.000Z",
+    "serverTimeMs": 1791892800000,
+    "stale": false,
+    "totalOpenInterestAusd": "4564744.069407",
+    "markets": [
+      {
+        "id": 16,
+        "symbol": "BTC",
+        "price": "76255.5",
+        "change24hBps": "67.31",
+        "openInterestAusd": "1370006.313",
+        "fundingBps": "0.3",
+        "fundingIntervalSec": 2580,
+        "maxLeverage": 15
+      },
+      {
+        "id": 32,
+        "symbol": "ETH",
+        "price": "2415.73",
+        "change24hBps": "72.29",
+        "openInterestAusd": "997264.07433",
+        "fundingBps": "0.4",
+        "fundingIntervalSec": 2580,
+        "maxLeverage": 12
+      },
+      {
+        "id": 48,
+        "symbol": "SOL",
+        "price": "98.51",
+        "change24hBps": "156.71",
+        "openInterestAusd": "611758.52716",
+        "fundingBps": "0",
+        "fundingIntervalSec": 2580,
+        "maxLeverage": 10
+      },
+      {
+        "id": 64,
+        "symbol": "MON",
+        "price": "0.02221",
+        "change24hBps": "263.4",
+        "openInterestAusd": "62739.51872",
+        "fundingBps": "0.1",
+        "fundingIntervalSec": 2580,
+        "maxLeverage": 3
+      },
+      {
+        "id": 256,
+        "symbol": "ZEC",
+        "price": "1341.144",
+        "change24hBps": "1990.4",
+        "openInterestAusd": "1417086.279",
+        "fundingBps": "0.4",
+        "fundingIntervalSec": 2580,
+        "maxLeverage": 3
+      },
+      {
+        "id": 272,
+        "symbol": "LIT",
+        "price": "4.73306",
+        "change24hBps": "1743.25",
+        "openInterestAusd": "46395.82065",
+        "fundingBps": "0.3",
+        "fundingIntervalSec": 2580,
+        "maxLeverage": 3
+      },
+      {
+        "id": 320,
+        "symbol": "PUMP",
+        "price": "0.003671",
+        "change24hBps": "470.62",
+        "openInterestAusd": "59493.536547",
+        "fundingBps": "0",
+        "fundingIntervalSec": 2580,
+        "maxLeverage": 5
+      }
+    ]
+  },
+  "portfolio": {
+    "wallet": "0x7e5f4552091a69125d5dfcb7b8c2659029395bdf",
+    "chainId": 10143,
+    "observedAt": "2026-10-13T12:00:00.000Z",
+    "marketObservedAt": "2026-10-13T12:00:00.000Z",
+    "block": 100,
+    "stale": false,
+    "accountCount": 1,
+    "frozen": false,
+    "availableAusd": "480",
+    "lockedOrdersAusd": "20",
+    "collateralAusd": "300",
+    "equityEstimateAusd": "800.5",
+    "pricePnlAusd": "0.5",
+    "grossExposureAusd": "1004.128",
+    "netExposureAusd": "520.982",
+    "realizedPnlAusd": "32.5",
+    "feesAusd": "0.4",
+    "volumeAusd": "23450",
+    "positions": [
+      {
+        "id": 7,
+        "accountId": 619,
+        "marketId": 16,
+        "side": "long",
+        "symbol": "BTC",
+        "leverage": 5,
+        "quantity": "0.01",
+        "entryPrice": "76215.5",
+        "markPrice": "76255.5",
+        "collateralAusd": "200",
+        "notionalAusd": "762.555",
+        "pricePnlAusd": "0.4",
+        "collateralExhaustionPrice": "56215.5",
+        "priceBufferBps": "2628"
+      },
+      {
+        "id": 8,
+        "accountId": 619,
+        "marketId": 32,
+        "side": "short",
+        "symbol": "ETH",
+        "leverage": 3,
+        "quantity": "0.1",
+        "entryPrice": "2416.73",
+        "markPrice": "2415.73",
+        "collateralAusd": "100",
+        "notionalAusd": "241.573",
+        "pricePnlAusd": "0.1",
+        "collateralExhaustionPrice": "3416.73",
+        "priceBufferBps": "4143.67"
+      }
+    ]
+  }
+}

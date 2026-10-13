@@ -24,3 +24,7 @@ owner JWT-only and private/no-store. See [Studio X OAuth](../../../../docs/studi
 `operation.ts` supports explicit response media schemas for immutable token JSON/SVG assets.
 JSON remains the default for ordinary operations; asset reads do not inherit private Studio
 authentication or permit public writes.
+
+Documentation composition includes `perplDashboard` by default for the read-only market, scope-1
+enrollment and signed-wallet route group. An explicit feature selection can omit it. Like every
+other export service, this group is shape-only and throws if invoked while generating the document.

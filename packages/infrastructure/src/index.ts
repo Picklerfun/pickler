@@ -261,3 +261,5 @@ export * from "./launch/kuru-projector.js";
 export { runTokenIndexer, tokenChainReader, tokenIndexerPolicySchema } from "./launch/indexer.js";
 
 export * from "./launch/public-trading.js";
+
+export { PerplDashboardGateway, PerplDashboardError } from "./perpl/dashboard.js";

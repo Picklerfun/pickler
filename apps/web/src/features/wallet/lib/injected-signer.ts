@@ -1,4 +1,5 @@
 "use client";
+import { perplReadTypedData, verifyPerplReadSignature } from "./perpl-read-authorization";
 import { sendInjectedTokenTransaction } from "./public-token-transaction";
 import {
   pinInjectedProvider,
@@ -95,6 +96,38 @@ export const injectedSigner: SignerAdapter = {
     return { address, session: await join(message, signature, token) };
   },
 
+  signPerplReadKey: async (payload, input) => {
+    const provider = getProvider();
+    const typed = await perplReadTypedData(payload, input);
+    if (
+      !provider ||
+      (await readAccounts(provider))[0]?.toLowerCase() !== input.wallet.toLowerCase() ||
+      (await readChainId(provider)) !== 10143
+    ) {
+      throw new Error("Wallet or network changed. Switch to Monad testnet.");
+    }
+    let signature: unknown;
+    try {
+      signature = await provider.request({
+        method: "eth_signTypedData_v4",
+        params: [
+          input.wallet,
+          JSON.stringify({ ...typed, types: payload.typedData.types }, (_key, value: unknown) =>
+            typeof value === "bigint" ? value.toString() : value,
+          ),
+        ],
+      });
+    } catch (error) {
+      throw new WalletRequestError(error, "eth_signTypedData_v4");
+    }
+    if (
+      provider !== getProvider() ||
+      (await readAccounts(provider))[0]?.toLowerCase() !== input.wallet.toLowerCase()
+    ) {
+      throw new Error("Wallet changed. No read access was enrolled.");
+    }
+    return verifyPerplReadSignature(payload, input, String(signature));
+  },
   sendTokenTransaction: async (prepared, wallet, token) => {
     const provider = getProvider();
     if (!provider) {

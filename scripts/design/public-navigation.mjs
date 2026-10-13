@@ -95,6 +95,9 @@ async function openMenu() {
   const tokens = menu.getByRole("menuitem", { name: "Tokens", exact: true });
   assert.equal(await tokens.getAttribute("href"), "/#tokens");
   assert.equal(await tokens.isEnabled(), true);
+  const perpl = menu.getByRole("menuitem", { name: "Perpl dashboard", exact: true });
+  assert.equal(await perpl.getAttribute("href"), "/perpl");
+  assert.equal(await perpl.isEnabled(), true);
   const viewport = await page.evaluate(() => innerWidth);
   const create = menu.getByRole("menuitem", { name: "Create agent", exact: true });
   assert.equal(await create.count(), viewport <= 640 ? 1 : 0, "No duplicated Create agent");

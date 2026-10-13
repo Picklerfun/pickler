@@ -1,3 +1,4 @@
+import { PerplDashboardGateway } from "@pickler/infrastructure";
 import { composePublicTokenTrading } from "./public-token-trading";
 import { composeTokenLauncher } from "./token-launch";
 import { createXOAuthService } from "@pickler/core";
@@ -85,6 +86,8 @@ import type { WalletAuthServices } from "./routes/wallet-auth";
 import { apiDatabase } from "./database";
 
 import { createGrowthServices, marketBoardFor } from "./growth/services";
+
+const perplDashboardGateway = new PerplDashboardGateway();
 
 /**
  * Fresh BTC/ETH marks for the studio's paper positions, from the same per-isolate market board as
@@ -684,6 +687,7 @@ export function createServices(env: Env): Services & { close(): Promise<void> } 
     ...(custody ? { custody } : {}),
     ...(walletAuth ? { walletAuth } : {}),
     growth,
+    perplDashboard: { authenticate, gateway: perplDashboardGateway },
     publicTokenTrading: composePublicTokenTrading(repository.pool, env, growth),
     launches: new PostgresLaunchReadModel(repository.pool, undefined, launcher.marketProfile),
     ...(env.TOKEN_METADATA

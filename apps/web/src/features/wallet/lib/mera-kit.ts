@@ -32,6 +32,7 @@ export async function loadMeraKit(): Promise<MeraKit> {
       return {
         address: mera.getEvmAddress(session.publicKey),
         signMessage: (message) => viemAccount.signMessage({ message }),
+        signTypedData: (data) => viemAccount.signTypedData(data),
         signTransaction: (tx) =>
           viemAccount.signTransaction({
             type: "eip1559",

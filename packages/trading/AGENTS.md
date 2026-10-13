@@ -178,3 +178,12 @@ persist market identity; selected markets authorize exposure, recorded positions
 and closeable. No financial formula, threshold or lab protocol changes.
 
 See [agent-selected Perpl markets](../../docs/studio-perpl-markets.md).
+
+## Read-only Perpl portfolio projections
+
+`features/perpl-dashboard/model.ts`, exported from `@pickler/trading/perps`, owns the provider-independent `PerplDashboardData` read port and exact integer
+scaling for observed open interest, price-only P&L, available/locked collateral, gross/net exposure
+and current-collateral exhaustion estimates. These are real-wallet projections, independent of
+paper accounts, order admission and strategy execution. Missing marks/statistics keep aggregates
+unknown. Realized P&L comes from the venue's reported all-time statistics. Never call the
+collateral-exhaustion threshold a venue liquidation price or subtract estimated fees twice.
