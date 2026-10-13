@@ -173,7 +173,7 @@
               <li>A flow killed with the app after paying is not recovered.</li>
               <li>History shows only the first page.</li>
               <li>The Face ID prompt at Ask (locked wallet) and the username gate were not seen on a device.</li>
-              <li>Where Face ID gates the payment is an open owner decision: spec §3.2 step 4 puts it at the confirmation; the app unlocks at Ask (A4, A7).</li>
+              <li>Where Face ID gates the payment was decided by the owner on 2026-10-13: Face ID stays at Ask, so the confirmation can show the creator's wallet from the 402 (A4, A7).</li>
               <li>Details and costs in the audit.</li>
             </ul>
           </details>
@@ -200,7 +200,7 @@
         <li>A3: the paid POST has its own 60 s deadline (the server waits up to 30 s for the receipt).</li>
         <li>A4: consent is the explicit "Pay {price} AUSD" tap on the confirmation (total, 65/35 split, recipient, not-refunded line). With a locked wallet, Face ID happens when the person taps Ask, because the quote needs the account's JWT; there is no biometric at Pay unless the wallet was locked again after the quote.</li>
         <li>A5: <code>abandon()</code> is also allowed from <code>timeout</code> (and, after the final review, from <code>offline</code> with a payment out).</li>
-        <li>A7: the final review's I1 is closed in the docs; moving Face ID to the confirmation, as spec §3.2 step 4 placed it, is left to the owner.</li>
+        <li>A7: the final review's I1 is closed in the docs; the owner kept Face ID at Ask on 2026-10-13, so the confirmation shows the creator's wallet.</li>
       </ol>
       <p class="sec-sub">Costs if wrong are in the audit: <code>docs/mobile/superpowers/audits/2026-10-12-studio-agents-f1-rulings.md</code>.</p>
     </section>

@@ -53,7 +53,7 @@ code. Do not rely on what earlier SDKs did.
   unlock (Face ID) happens when the person taps Ask; the payment consent is the explicit
   "Pay {price} AUSD" tap on the confirmation, which shows the total, the 65/35 split, the recipient
   and the not-refunded line. There is no prompt at Pay unless the wallet was locked again after the
-  quote. Spec §3.2 step 4 placed Face ID at the sheet; moving it there is an open owner decision
+  quote. Spec §3.2 step 4 placed Face ID at the sheet; moving it there was declined by the owner on 2026-10-13: Face ID stays at Ask, so the confirmation can show the creator's wallet from the 402
   (audit Rulings A4, A7). A locked wallet (an ended Mera session) is `WalletLockedError` in
   `api.ts`, so a retry reopens it; polling never prompts.
   `useStudio` holds the one flow and the marketplace list at app level, above the per-tab stacks
