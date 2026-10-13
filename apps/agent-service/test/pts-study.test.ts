@@ -26,6 +26,10 @@ import {
 import { ptsEvidence, ptsTime } from "@pickler/trading/testing/pts";
 import { intradayEvidence, intradayTime } from "@pickler/trading/testing/pts-intraday";
 import { fastEvidence, fastTime } from "@pickler/trading/testing/pts-intraday-fast";
+import {
+  responsiveEvidence,
+  responsiveTime,
+} from "@pickler/trading/testing/pts-intraday-responsive";
 const hash = (v: unknown) => createHash("sha256").update(JSON.stringify(v)).digest("hex");
 const configuration: PerpsPtsConfig = {
   version: 8,
@@ -45,20 +49,27 @@ async function setup(
   t: Parameters<typeof createTestStore>[0],
   short = false,
   invalidFinal = false,
-  version: 8 | 9 | "fast" = 8,
+  version: 8 | 9 | "fast" | "responsive" = 8,
 ) {
   const intraday = version !== 8;
-  let time = intraday ? (version === "fast" ? fastTime : intradayTime) - 120000 : ptsTime;
+  const times = { 8: ptsTime, 9: intradayTime, fast: fastTime, responsive: responsiveTime };
+  const candidates = {
+    9: "pts-intraday@0.1.0",
+    fast: "pts-intraday@0.2.0-fast.1",
+    responsive: "pts-intraday@0.2.0-fast.2",
+  } as const;
+  let time = times[version] - (intraday ? 120000 : 0);
   const initialTime = time;
-  const config: PerpsPtsConfig = intraday
-    ? {
-        ...configuration,
-        version: 9,
-        protocol: "perps-pts-intraday-sma-v1",
-        hours: 24,
-        candidate: version === "fast" ? "pts-intraday@0.2.0-fast.1" : "pts-intraday@0.1.0",
-      }
-    : configuration;
+  const config: PerpsPtsConfig =
+    version !== 8
+      ? {
+          ...configuration,
+          version: 9,
+          protocol: "perps-pts-intraday-sma-v1",
+          hours: 24,
+          candidate: candidates[version],
+        }
+      : configuration;
   const db = await createTestStore(t, () => time),
     study = new PostgresPerpsStudyStore(db.pool, () => time);
   const view = await study.initialize(
@@ -78,13 +89,13 @@ async function setup(
   });
   let ratio = "0.40",
     finalCount = 0;
-  const evidence = () =>
-    (version === "fast" ? fastEvidence : intraday ? intradayEvidence : ptsEvidence)(
-      time,
-      short,
-      ratio,
-      hash,
-    );
+  const factories = {
+    8: ptsEvidence,
+    9: intradayEvidence,
+    fast: fastEvidence,
+    responsive: responsiveEvidence,
+  };
+  const evidence = () => factories[version](time, short, ratio, hash);
   const runner = createProfileStudyRunner({
     study,
     paper: scoped,
@@ -140,7 +151,7 @@ async function setup(
     },
   };
 }
-for (const version of [8, 9, "fast"] as const) {
+for (const version of [8, 9, "fast", "responsive"] as const) {
   test(`v${version}: PTS PostgreSQL: shared real coordinator opens long and short, atomic partials, duplicate races and immutable setups`, async (t) => {
     for (const short of [false, true]) {
       const x = await setup(t, short, false, version),
