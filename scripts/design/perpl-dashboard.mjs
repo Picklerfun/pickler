@@ -197,6 +197,18 @@ try {
     previewPage.on("pageerror", (e) => previewErrors.push(e.message));
     await previewPage.goto(`${base}/perpl?preview=wallet`);
     await previewPage.getByRole("heading", { name: "Open positions 2" }).waitFor();
+    await previewPage.waitForFunction(
+      () =>
+        [...document.querySelectorAll("main img")].every(
+          (image) => image.complete && image.naturalWidth > 0,
+        ),
+      null,
+      { timeout: 10_000 },
+    );
+    assert.equal(await previewPage.locator('main [data-surface="dark"]').count(), 1);
+    await previewPage.locator("main details summary").click();
+    assert.equal(await previewPage.locator("main details[open]").count(), 1);
+    await previewPage.locator("main details summary").click();
     assert.equal(await previewPage.getByText("Preview · demo data", { exact: true }).count(), 1);
     assert.equal(
       await previewPage
@@ -215,6 +227,7 @@ try {
         ),
         `preview overflow at ${width}`,
       );
+      await previewPage.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
       await previewPage.screenshot({
         path: new URL(`preview-${width}.png`, output).pathname,
         fullPage: true,
@@ -310,6 +323,7 @@ try {
   assert.deepEqual(errors, []);
   assert.ok(methods.every((m) => !m.includes("send") && m !== "eth_signTransaction"));
   const proof = {
+    localAssetImages: true,
     widths: [1280, 768, 380, 320],
     controlled: true,
     realTransactions: 0,

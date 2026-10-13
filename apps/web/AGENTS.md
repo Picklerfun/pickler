@@ -1466,3 +1466,15 @@ absent and sample addresses have no explorer links. Production ignores the previ
 Regenerate the normalized fixture with `node --import tsx scripts/design/perpl-preview.mts`;
 this runs the existing controlled transport through the gateway and business projections without
 network access or signatures.
+
+The dashboard's market and position identities reuse `market-asset.tsx`, a fixed local map of
+reviewed Perpl market SVG marks with textual fallback for unknown markets. Asset provenance lives under
+`public/brand/markets/README.md`; no provider image URLs or runtime third-party image requests are
+accepted. The equity estimate is the sole dark balance block; the remaining amounts, movement
+badges, exposure icons and position risk meters use semantic surface tokens. Keep financial
+projections server-owned, missing values unknown, table semantics and reduced-motion behavior.
+
+The rendered Design registry includes `perpl-dashboard-preview`, with the portfolio risk meter as
+its readiness proof and `#perpl-equity` as the required dark surface. Keep market images locally
+served, loaded with fixed dimensions, and decorative beside their text identity. Unknown assets
+must remain legible without a fabricated mark or a broken external image.

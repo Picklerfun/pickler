@@ -29,6 +29,7 @@ import { GROUND, ROUTES } from "./routes.mjs";
  * matching, so the block reports as missing and the sharper failure is dead code. Name the element,
  * then ask what surface it carries. */
 const MUST_NEST = {
+  "perpl-dashboard-preview": ["#perpl-equity"],
   landing: ["#tape", "#hero-phone", "#how-hire", "#steps-phone", "#download"],
   create: ["#apply-hero", "#arena", "#apply-piece"],
   "portfolio-connected": ["#portfolio-balance"],

@@ -1,10 +1,12 @@
 "use client";
 import Link from "next/link";
+import Image from "next/image";
 import type { ReactNode } from "react";
 import type { PerplDashboardMarketsDto, PerplPortfolioDto } from "@pickler/api-schema";
-import { Button, Icon, Meter, Skeleton, Tag } from "@pickler/ui";
+import { BrandMark, Button, Icon, Meter, Skeleton, Tag, type IconName } from "@pickler/ui";
 import { ChainReference } from "@/features/tokens/chain-reference";
 import { usePerplDashboard } from "./use-dashboard";
+import { MarketAsset, marketIdentity } from "./market-asset";
 import styles from "./dashboard.module.css";
 function number(value: string | null, digits = 2) {
   if (value === null) {
@@ -15,8 +17,17 @@ function number(value: string | null, digits = 2) {
     ? new Intl.NumberFormat("en-US", { maximumFractionDigits: digits }).format(n)
     : "—";
 }
-function money(value: string | null, digits = 2) {
-  return value === null ? "—" : number(value, digits);
+function money(value: string | null) {
+  if (value === null || !Number.isFinite(Number(value))) {
+    return "—";
+  }
+  return new Intl.NumberFormat("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(Number(value));
+}
+function signedMoney(value: string | null) {
+  return `${value !== null && Number(value) > 0 ? "+" : ""}${money(value)}`;
 }
 function tone(value: string | null) {
   return value === null || Number(value) === 0 ? "neutral" : Number(value) < 0 ? "loss" : "good";
@@ -128,20 +139,29 @@ export function PerplDashboardSurface({
         </div>
         <div className={styles.headingTags}>
           {preview ? <Tag data-tone="caution">Preview · demo data</Tag> : null}
-          <Tag>Monad testnet</Tag>
+          <Tag className={styles.network}>
+            <Image src="/brand/monad.png" alt="" width={16} height={16} unoptimized />
+            Monad testnet
+          </Tag>
         </div>
       </header>
       <section className={styles.section} aria-labelledby="perpl-protocol-title">
         <div className={styles.sectionHead}>
-          <div>
-            <h2 id="perpl-protocol-title">The market</h2>
-            <p>Perpl exchange data · AUSD</p>
+          <div className={styles.sectionIdentity}>
+            <span className={styles.sectionIcon}>
+              <Icon name="chart" size={22} />
+            </span>
+            <div>
+              <h2 id="perpl-protocol-title">The market</h2>
+              <p>Perpetual markets · AUSD</p>
+            </div>
           </div>
           <span
             className={styles.status}
             data-stale={Boolean(view.marketError || market?.stale)}
             role="status"
           >
+            <span className={styles.statusDot} aria-hidden="true" />
             {market ? `${freshness} · ${clock(market.observedAt)} UTC` : "Connecting to Perpl…"}
           </span>
         </div>
@@ -162,9 +182,16 @@ export function PerplDashboardSurface({
       </section>
       <section className={styles.section} aria-labelledby="perpl-wallet-title">
         <div className={styles.sectionHead}>
-          <div>
-            <h2 id="perpl-wallet-title">{preview ? "Example portfolio" : "Your portfolio"}</h2>
-            <p>{preview ? "Illustrative Perpl account" : "Real positions in your Perpl account"}</p>
+          <div className={styles.sectionIdentity}>
+            <span className={styles.sectionIcon}>
+              <Icon name="wallet" size={22} />
+            </span>
+            <div>
+              <h2 id="perpl-wallet-title">{preview ? "Example portfolio" : "Your portfolio"}</h2>
+              <p>
+                {preview ? "Illustrative Perpl account" : "Real positions in your Perpl account"}
+              </p>
+            </div>
           </div>
           {walletAddress ? (
             <ChainReference
@@ -204,11 +231,19 @@ function Protocol({ market }: { market: PerplDashboardMarketsDto }) {
   return (
     <>
       <div className={styles.protocolSummary}>
-        <strong>
-          {money(market.totalOpenInterestAusd)} <span>AUSD</span>
-        </strong>
-        <span>Protocol open interest</span>
-        <span>{market.markets.length} open markets</span>
+        <div className={styles.openInterest}>
+          <span>
+            <Icon name="activity" size={15} />
+            Protocol open interest
+          </span>
+          <strong>
+            {money(market.totalOpenInterestAusd)} <span>AUSD</span>
+          </strong>
+        </div>
+        <span className={styles.marketCount}>
+          <Icon name="grid" size={15} />
+          {market.markets.length} open markets
+        </span>
       </div>
       <div className={styles.tableWrap}>
         <table className={styles.marketTable}>
@@ -228,16 +263,30 @@ function Protocol({ market }: { market: PerplDashboardMarketsDto }) {
                 <th scope="row">
                   <Link
                     href={`/markets/${item.symbol.includes("-PERP") ? item.symbol : `${item.symbol}-PERP`}`}
+                    aria-label={marketIdentity(item.symbol).ticker}
+                    className={styles.marketIdentity}
                   >
-                    {item.symbol.replace(/-PERP$/, "")}
-                    <Icon name="arrow" size={14} />
+                    <MarketAsset symbol={item.symbol} />
+                    <span className={styles.assetName}>
+                      <strong>{marketIdentity(item.symbol).ticker}</strong>
+                      <small>{marketIdentity(item.symbol).asset?.name ?? "Perpetual"}</small>
+                    </span>
+                    <Icon name="arrow" size={14} className={styles.marketArrow} />
                   </Link>
                 </th>
                 <td data-label="Mark · AUSD">
                   {number(item.price, Math.abs(Number(item.price)) < 1 ? 8 : 2)}
                 </td>
                 <td data-label="24h change" data-tone={tone(item.change24hBps)}>
-                  {percent(item.change24hBps, true)}
+                  <Tag className={styles.movement} data-tone={tone(item.change24hBps)}>
+                    {item.change24hBps !== null && Number(item.change24hBps) !== 0 ? (
+                      <Icon
+                        name={Number(item.change24hBps) < 0 ? "arrowDown" : "arrowUp"}
+                        size={12}
+                      />
+                    ) : null}
+                    {percent(item.change24hBps, true)}
+                  </Tag>
                 </td>
                 <td data-label="Funding">
                   <span data-tone={tone(item.fundingBps)}>{percent(item.fundingBps, true, 4)}</span>
@@ -267,48 +316,72 @@ function Portfolio({
   preview: boolean;
 }) {
   const figures = [
-    { label: "Equity estimate", value: data.equityEstimateAusd },
-    { label: "Available", value: data.availableAusd },
-    { label: "Price P&L · open", value: data.pricePnlAusd, color: true },
-    { label: "Realized P&L · all time", value: data.realizedPnlAusd, color: true },
-  ];
+    { label: "Available", value: data.availableAusd, icon: "wallet" },
+    { label: "Price P&L · open", value: data.pricePnlAusd, icon: "chart", color: true },
+    { label: "Realized P&L · all time", value: data.realizedPnlAusd, icon: "check", color: true },
+  ] satisfies { label: string; value: string | null; icon: IconName; color?: boolean }[];
+  const exposures = [
+    { label: "Gross exposure", value: data.grossExposureAusd, icon: "target" },
+    { label: "Net exposure", value: data.netExposureAusd, icon: "bars" },
+    { label: "Position collateral", value: data.collateralAusd, icon: "shield" },
+    { label: "Locked in orders", value: data.lockedOrdersAusd, icon: "lock" },
+  ] satisfies { label: string; value: string | null; icon: IconName }[];
   return (
-    <div className={styles.portfolio} data-stale={stale}>
+    <div id="perpl-portfolio" className={styles.portfolio} data-stale={stale}>
       <div className={styles.portfolioMeta}>
         <Tag data-tone={stale ? "caution" : "good"}>
           {preview ? "Sample snapshot" : stale ? "Last snapshot" : "Live snapshots"}
         </Tag>
-        <span>
+        <span className={styles.updatedAt}>
+          <Icon name="clock" size={13} />
           {clock(data.observedAt)} UTC · Block {data.block.toLocaleString("en-US")}
         </span>
         {data.frozen ? <Tag data-tone="loss">Account frozen</Tag> : null}
       </div>
-      <dl className={styles.figures}>
-        {figures.map((item) => (
+      <div className={styles.balanceGrid}>
+        <div id="perpl-equity" className={styles.equity} data-surface="dark">
+          <dl>
+            <dt>
+              <BrandMark name="ausd" size={20} />
+              Equity estimate
+            </dt>
+            <dd>
+              {money(data.equityEstimateAusd)} <span>AUSD</span>
+            </dd>
+          </dl>
+          <p className={styles.equityNote}>
+            <Icon name="shield" size={13} />
+            Read-only portfolio
+          </p>
+        </div>
+        <dl className={styles.figures}>
+          {figures.map((item) => (
+            <div key={item.label}>
+              <dt>
+                <Icon name={item.icon} size={16} />
+                {item.label}
+              </dt>
+              <dd data-tone={item.color ? tone(item.value) : undefined}>
+                {item.color ? signedMoney(item.value) : money(item.value)}
+              </dd>
+              <span className={styles.metricUnit}>AUSD</span>
+            </div>
+          ))}
+        </dl>
+      </div>
+      <dl className={styles.exposure}>
+        {exposures.map((item) => (
           <div key={item.label}>
-            <dt>{item.label} · AUSD</dt>
-            <dd data-tone={item.color ? tone(item.value) : undefined}>{money(item.value)}</dd>
+            <dt>
+              <Icon name={item.icon} size={15} />
+              {item.label}
+            </dt>
+            <dd>
+              {money(item.value)} <span>AUSD</span>
+            </dd>
           </div>
         ))}
       </dl>
-      <div className={styles.exposure}>
-        <div>
-          <span>Gross exposure</span>
-          <strong>{money(data.grossExposureAusd)} AUSD</strong>
-        </div>
-        <div>
-          <span>Net exposure</span>
-          <strong>{money(data.netExposureAusd)} AUSD</strong>
-        </div>
-        <div>
-          <span>Position collateral</span>
-          <strong>{money(data.collateralAusd)} AUSD</strong>
-        </div>
-        <div>
-          <span>Locked in orders</span>
-          <strong>{money(data.lockedOrdersAusd)} AUSD</strong>
-        </div>
-      </div>
       <div className={styles.positionsHead}>
         <h3>
           Open positions <span>{data.positions.length}</span>
@@ -332,7 +405,11 @@ function Portfolio({
       )}
       {data.positions.length > 0 ? (
         <details className={styles.explanation}>
-          <summary>What does the price buffer mean?</summary>
+          <summary>
+            <Icon name="help" size={15} />
+            What does the price buffer mean?
+            <Icon name="chevronDown" size={14} />
+          </summary>
           <p>
             The distance from the current mark to the price where the remaining collateral would be
             exhausted by price loss alone. Perpl can liquidate earlier because of maintenance
@@ -350,15 +427,22 @@ function Position({ position: p }: { position: PerplPortfolioDto["positions"][nu
   return (
     <article className={styles.position}>
       <div className={styles.positionHead}>
-        <div>
-          <h4>{p.symbol.replace(/-PERP$/, "")}</h4>
-          <Tag data-tone={p.side === "long" ? "good" : "loss"}>
-            {p.side} · {p.leverage}×
-          </Tag>
+        <div className={styles.positionIdentity}>
+          <MarketAsset symbol={p.symbol} />
+          <div>
+            <h4>{marketIdentity(p.symbol).ticker}</h4>
+            <Tag className={styles.positionSide} data-tone={p.side === "long" ? "good" : "loss"}>
+              <Icon name={p.side === "long" ? "arrowUp" : "arrowDown"} size={11} />
+              {p.side === "long" ? "Long" : "Short"} · {p.leverage}×
+            </Tag>
+          </div>
         </div>
-        <strong data-tone={tone(p.pricePnlAusd)}>
-          {money(p.pricePnlAusd)} <span>AUSD</span>
-        </strong>
+        <div className={styles.positionPnl}>
+          <span>Open P&L</span>
+          <strong data-tone={tone(p.pricePnlAusd)}>
+            {signedMoney(p.pricePnlAusd)} <small>AUSD</small>
+          </strong>
+        </div>
       </div>
       <dl className={styles.positionFigures}>
         <div>
@@ -379,7 +463,10 @@ function Position({ position: p }: { position: PerplPortfolioDto["positions"][nu
         </div>
       </dl>
       <div className={styles.risk} data-tone={risk}>
-        <span>Price buffer estimate</span>
+        <span className={styles.riskLabel}>
+          <Icon name="shield" size={14} />
+          Price buffer estimate
+        </span>
         <strong>{percent(p.priceBufferBps)}</strong>
         {buffer !== null ? (
           <Meter
