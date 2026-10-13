@@ -56,6 +56,13 @@ version has the same script ETag as its issuer correction publication and is the
 commit is `0f9565d3`; configuration/deployment observations are separate from a merged release.
 The source correction is in PR #185 and must be preserved in later main deployments.
 
+Main advanced to `7bfc1a3a` with PR #184 during configuration. Its public, contract-backed
+portfolio dashboard is incorporated into the isolated readiness branch without replacing the
+active main publishers. The currently hosted contract has 227 operations and retains owner JWT
+protection (401 without a token; private/no-store), but it does not yet include this PR's optional
+collateral requirements. Those UI/contract improvements remain on PR #185 until its next
+reviewed release. Closed admissions prevent that producer/consumer gap from enabling setup.
+
 Turnkey's stamped read-only identity query returned HTTP 200. Supabase JWKS returned HTTP 200
 with one signing key. A temporary remote Cloudflare diagnostic, without wallet credentials,
 confirmed the trusted Hyperdrive-to-Supabase connection by reading the empty Perpl table in a
@@ -111,3 +118,9 @@ Shared compilation, Web/API/Trading types, architecture, staging topology, lint,
 generated OpenAPI (226 operations), backend dry-run builds, production Web Worker build, and
 rendered surfaces/tokens/contrast/type checks over the four Perpl stages pass. These are controlled
 validation and public configuration observations, not evidence of a real opening/closing cycle.
+
+After integrating current main, 59 combined live-execution, dashboard, JWT, DTO, API route,
+browser-client and clock tests pass with no failures or skips. Shared compilation, Web/API/Trading
+types, architecture and provisioned staging topology pass. The combined source exports 227
+OpenAPI operations, including the optional collateral requirements. These remain controlled
+checks; no financial acceptance is claimed.
