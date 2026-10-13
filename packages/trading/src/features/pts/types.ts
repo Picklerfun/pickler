@@ -6,9 +6,15 @@ export const PTS_INTRADAY_VERSION = "0.1.0" as const;
 export const PTS_INTRADAY_ACCOUNT_POLICY = "pts-intraday-1x-0.1.0" as const;
 export const PTS_INTRADAY_FAST_VERSION = "0.2.0-fast.1" as const;
 export const PTS_INTRADAY_FAST_ACCOUNT_POLICY = "pts-intraday-1x-0.2.0-fast.1" as const;
-export type PtsIntradayCandidate = "pts-intraday@0.1.0" | "pts-intraday@0.2.0-fast.1";
+export const PTS_INTRADAY_RESPONSIVE_VERSION = "0.2.0-fast.2" as const;
+export const PTS_INTRADAY_RESPONSIVE_ACCOUNT_POLICY = "pts-intraday-1x-0.2.0-fast.2" as const;
+export type PtsIntradayCandidate =
+  "pts-intraday@0.1.0" | "pts-intraday@0.2.0-fast.1" | "pts-intraday@0.2.0-fast.2";
 export type PtsVersion =
-  typeof PTS_VERSION | typeof PTS_INTRADAY_VERSION | typeof PTS_INTRADAY_FAST_VERSION;
+  | typeof PTS_VERSION
+  | typeof PTS_INTRADAY_VERSION
+  | typeof PTS_INTRADAY_FAST_VERSION
+  | typeof PTS_INTRADAY_RESPONSIVE_VERSION;
 export const PTS_ACCOUNT_POLICY = "pts-basic-1x-0.2.0" as const;
 export const PTS_VARIANTS = ["sma-reference", "pts-basic"] as const;
 export type PtsVariant = (typeof PTS_VARIANTS)[number] | "pts-intraday";
