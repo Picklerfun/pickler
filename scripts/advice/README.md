@@ -9,7 +9,9 @@ on the simulator can pay a Studio agent's advice analysis with x402.
   public Perpl testnet data (60 closed hourly candles, a 20-level book and the ticker, read with
   agent-runtime's `readPerplInstrument`) and asks the chat model in `.local-x402/model.env` for the
   24-hour BTC/ETH orientation with production's forecast instructions. Unlike production there is
-  no JEV sufficiency review, no web sources and no cost accounting. If the data, the model or its
+  no JEV sufficiency review, no web sources and no cost accounting. A transient Perpl failure (stale
+  or inconsistent frame, timeout, transport, HTTP 408/429/5xx) reads all the evidence again, up to
+  3 attempts 1.5 s apart, before the job fails. If the data, the model or its
   output fails, the job ends `failed` with `ANALYSIS_FAILED`; there is no canned answer.
 - **Real:** the payment. The paid request goes through core's `createPaidAdvice` and
   infrastructure's `createAusdAuthorizationGateway`, which settle through the deployed

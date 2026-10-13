@@ -6,6 +6,7 @@ import assert from "node:assert/strict";
 import * as dto from "@pickler/api-schema";
 import {
   DEFAULT_CONFIG,
+  PilotError,
   type AdviceAgent,
   type AdviceJob,
   type PerpMarketInfo,
@@ -371,4 +372,70 @@ test("the request asks for a JSON object by default and omits response_format wi
   assert.deepEqual(byDefault.body.response_format, { type: "json_object" });
   assert.equal("response_format" in omitted.body, false);
   assert.equal(omitted.job.status, "completed");
+});
+
+async function runWithData(data: (attempt: number) => Promise<AdviceEvidence>) {
+  const { agent, job } = fixture();
+  let attempts = 0;
+  let modelCalls = 0;
+  const lines: string[] = [];
+  const transport: typeof fetch = async () => {
+    modelCalls++;
+    return completion(JSON.stringify(VALID_ANSWER));
+  };
+
+  const analyze = createLocalAnalysis({
+    resolve: async () => agent,
+    data: async () => data(++attempts),
+    models: createLocalAdviceModels(SETTINGS, transport),
+    now: () => NOW,
+    log: (line) => lines.push(line),
+    retryDelayMs: 0,
+  });
+  await analyze(job);
+
+  return { job, attempts: () => attempts, modelCalls: () => modelCalls, lines };
+}
+
+function inconsistentEvidence(): AdviceEvidence {
+  const { evidence } = fixture();
+  const book = evidence.frame.book;
+  book.provenance = { ...book.provenance, providerTimestamp: NOW - 7000 };
+  return evidence;
+}
+
+test("an inconsistent Perpl frame is read again and the job completes on fresh data", async () => {
+  const run = await runWithData(async (attempt) =>
+    attempt === 1 ? inconsistentEvidence() : fixture().evidence,
+  );
+
+  assert.equal(run.job.status, "completed");
+  assert.equal(run.attempts(), 2);
+  assert.equal(run.modelCalls(), 1);
+  const retries = run.lines.filter((line) => line.includes("retry"));
+  assert.equal(retries.length, 1);
+  assert.match(retries[0]!, /INCONSISTENT_MARKET_DATA/);
+});
+
+test("three transient Perpl failures fail the job without calling the model", async () => {
+  const run = await runWithData(async () => {
+    throw new PilotError("PERPL_TIMEOUT", "Perpl timed out");
+  });
+
+  assert.equal(run.job.status, "failed");
+  assert.equal(run.job.error, "ANALYSIS_FAILED");
+  assert.equal(run.job.result, null);
+  assert.equal(run.attempts(), 3);
+  assert.equal(run.modelCalls(), 0);
+});
+
+test("a non-transient data error fails the job without a retry", async () => {
+  const run = await runWithData(async () => {
+    throw new PilotError("FORBIDDEN", "Agent scope does not match");
+  });
+
+  assert.equal(run.job.status, "failed");
+  assert.equal(run.job.result, null);
+  assert.equal(run.attempts(), 1);
+  assert.equal(run.modelCalls(), 0);
 });

@@ -20,6 +20,8 @@ import {
 import {
   ADVICE_OUTPUT_TOKENS,
   createAdviceRunner,
+  transientPerpsData,
+  validateAdviceEvidence,
   type AdviceAnswer,
   type AdviceEvidence,
   type AdviceModels,
@@ -43,6 +45,25 @@ const MODEL_TIMEOUT_MS = 60_000;
 const DATA_TIMEOUT_MS = 20_000;
 const JOB_TIMEOUT_MS = 120_000;
 const MODEL_RESPONSE_LIMIT = 1024 * 1024;
+const EVIDENCE_ATTEMPTS = 3;
+const EVIDENCE_RETRY_DELAY_MS = 1_500;
+
+/** Waits `ms`, or rejects as soon as `signal` aborts. */
+function pause(ms: number, signal: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    signal.throwIfAborted();
+    const done = () => {
+      signal.removeEventListener("abort", aborted);
+      resolve();
+    };
+    const timer = setTimeout(done, ms);
+    const aborted = () => {
+      clearTimeout(timer);
+      reject(signal.reason);
+    };
+    signal.addEventListener("abort", aborted, { once: true });
+  });
+}
 
 /**
  * The model settings from model.env's values. Errors name the variable and the file, never a
@@ -251,7 +272,35 @@ export function createLocalAnalysis(deps: {
   models: AdviceModels;
   now(): number;
   log(line: string): void;
+  /** The wait before a fresh evidence read; tests pass 0. */
+  retryDelayMs?: number;
 }) {
+  const retryDelayMs = deps.retryDelayMs ?? EVIDENCE_RETRY_DELAY_MS;
+
+  /**
+   * A fresh read, validated as the runner will validate it. A transient Perpl failure (trading's
+   * transientPerpsData: stale or inconsistent frame, timeout, transport, 408/429/5xx) reads again
+   * from scratch, up to EVIDENCE_ATTEMPTS in all, within the job's signal. Nothing is reused from a
+   * failed attempt, and the model is only called by the runner after a valid read.
+   */
+  const data = async (job: AdviceJob, signal: AbortSignal): Promise<AdviceEvidence> => {
+    for (let attempt = 1; ; attempt++) {
+      try {
+        const evidence = await deps.data(job, signal);
+        validateAdviceEvidence(job, evidence, deps.now());
+        return evidence;
+      } catch (error) {
+        if (attempt >= EVIDENCE_ATTEMPTS || !transientPerpsData(error)) {
+          throw error;
+        }
+        deps.log(
+          `  job ${job.id} evidence retry ${attempt}/${EVIDENCE_ATTEMPTS - 1} (${(error as PilotError).code})`,
+        );
+        await pause(retryDelayMs, signal);
+      }
+    }
+  };
+
   const fail = (job: AdviceJob, reason: string) => {
     job.status = "failed";
     job.result = null;
@@ -286,7 +335,7 @@ export function createLocalAnalysis(deps: {
 
   const runner = createAdviceRunner({
     repository,
-    data: deps.data,
+    data,
     models: deps.models,
     now: deps.now,
   });
