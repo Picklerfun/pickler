@@ -65,6 +65,16 @@ class RolledBackObservationUnavailable extends PilotError {
     super(result.code, "Common valuation expired and was completely rolled back");
   }
 }
+class RolledBackExecutionUnavailable extends PilotError {
+  constructor(
+    readonly result: Extract<
+      import("../../perps.js").PerpsCommonExecutionResult,
+      { status: "data_unavailable" }
+    >,
+  ) {
+    super(result.code, "Common final execution expired and was completely rolled back");
+  }
+}
 const code = (e: unknown) => (e instanceof PilotError ? e.code : "STUDY_OPERATION_FAILED");
 export function createProfileStudyRunner(deps: {
   study: PerpsStudyRepository;
@@ -160,10 +170,22 @@ export function createProfileStudyRunner(deps: {
     validatePaperFrameSet(e.frames, r.config.network, now(), policy);
   }
   async function cycle(scope: PerpsStudyScope, lease: PerpsStudyLease, signal: AbortSignal) {
+    let activePaper = paper;
+    let capturedContext: import("../../perps.js").PerpsCapturedExecutionContext | undefined;
+    const event = async (eventKey: string, kind: string, value: unknown) => {
+      if (capturedContext) {
+        return capturedContext.event(eventKey, kind, value);
+      }
+      return study.event(scope, lease, eventKey, kind, value);
+    };
     const guard = async () => {
       signal.throwIfAborted();
       lease.assertActive?.();
-      await study.guard(scope, lease);
+      if (capturedContext) {
+        capturedContext.assertActive();
+      } else {
+        await study.guard(scope, lease);
+      }
       signal.throwIfAborted();
     };
     await guard();
@@ -201,7 +223,7 @@ export function createProfileStudyRunner(deps: {
         await study.stopDecisions(scope, lease, r.decisionStopReason ?? "SESSION_END");
       }
       for (const v of variants) {
-        await paper.closeAdmissions(target(r, v));
+        await activePaper.closeAdmissions(target(r, v));
       }
     }
     const recordedSlots = new Set(saved.events.map((e) => e.key));
@@ -215,7 +237,7 @@ export function createProfileStudyRunner(deps: {
       missed++
     ) {
       if (!recordedSlots.has(`slot-${missed}`) && !recordedSlots.has(`slot-${missed}:missed`)) {
-        await study.event(scope, lease, `slot-${missed}:missed`, "slot-missed", {
+        await event(`slot-${missed}:missed`, "slot-missed", {
           slot: missed,
           code: "WINDOW_MISSED",
         });
@@ -231,24 +253,25 @@ export function createProfileStudyRunner(deps: {
         .map((e) => Number(/^observe-(\d+)/.exec(e.key)?.[1] ?? -1)),
     );
     for (let missed = lastMinute + 1; missed < minute; missed++) {
-      await study.event(scope, lease, `observe-${missed}:missed`, "observation-missed", {
+      await event(`observe-${missed}:missed`, "observation-missed", {
         minute: missed,
         code: "OBSERVATION_WINDOW_MISSED",
         phase: "serialized-public-acquisition",
       });
     }
-    const simulator = createPerpsPaperService(
-      paper,
-      {
-        frame: async () => {
-          throw new PilotError("MISSING_FRAME", "Shared captured frames required");
+    const simulator = () =>
+      createPerpsPaperService(
+        activePaper,
+        {
+          frame: async () => {
+            throw new PilotError("MISSING_FRAME", "Shared captured frames required");
+          },
+          observation: async () => {
+            throw new PilotError("MISSING_FRAME", "Shared observation required");
+          },
         },
-        observation: async () => {
-          throw new PilotError("MISSING_FRAME", "Shared observation required");
-        },
-      },
-      now,
-    );
+        now,
+      );
     let observation, evidence: PerpsEvidence;
     try {
       observation = await measured(key, "prices", () => data.observe(r, signal, guard));
@@ -259,12 +282,12 @@ export function createProfileStudyRunner(deps: {
       if (!transientPerpsData(e)) {
         throw e;
       }
-      await study.event(scope, lease, `${key}:failed`, "observation-failed", {
+      await event(`${key}:failed`, "observation-failed", {
         code: code(e),
         slot,
       });
       if (admitted) {
-        await study.event(scope, lease, `slot-${slot}:data-unavailable`, "data-unavailable", {
+        await event(`slot-${slot}:data-unavailable`, "data-unavailable", {
           slot,
           phase: "initial-evidence",
           cause: code(e),
@@ -299,7 +322,7 @@ export function createProfileStudyRunner(deps: {
         return;
       }
       await guard();
-      const current = await paper.view(target(r, v));
+      const current = await activePaper.view(target(r, v));
       const position = current.account.positions.find(
         (x) => x.symbol === p.symbol && x.closedAt === null,
       );
@@ -313,7 +336,7 @@ export function createProfileStudyRunner(deps: {
       const frame = frames.find((f) => f.snapshot.market.symbol === p.symbol);
       if (!frame) {
         if (isClose) {
-          await study.event(scope, lease, `${v}:${attemptKey}:exit-detected`, "exit-detected", {
+          await event(`${v}:${attemptKey}:exit-detected`, "exit-detected", {
             variant: v,
             symbol: p.symbol,
             positionId: position!.id,
@@ -324,7 +347,7 @@ export function createProfileStudyRunner(deps: {
             impediment: "DATA_UNAVAILABLE",
             positionBefore: position,
           });
-          await study.event(scope, lease, `${v}:${attemptKey}`, "exit-impediment", {
+          await event(`${v}:${attemptKey}`, "exit-impediment", {
             variant: v,
             symbol: p.symbol,
             error: "DATA_UNAVAILABLE",
@@ -391,7 +414,7 @@ export function createProfileStudyRunner(deps: {
           executable = false;
           impediment = code(e);
         }
-        await study.event(scope, lease, `${v}:${attemptKey}:exit-detected`, "exit-detected", {
+        await event(`${v}:${attemptKey}:exit-detected`, "exit-detected", {
           variant: v,
           symbol: p.symbol,
           positionId: position!.id,
@@ -434,7 +457,7 @@ export function createProfileStudyRunner(deps: {
       let completed: PerpsPaperView | undefined;
       try {
         completed = await measured(attemptKey, "simulation-and-transaction", () =>
-          simulator.trade(
+          simulator().trade(
             target(r, v),
             attemptKey,
             isClose ? "close" : "open",
@@ -507,7 +530,7 @@ export function createProfileStudyRunner(deps: {
         config.acquisitionPolicy === COMPONENT_PAPER_POLICY &&
         completed
           ? completed
-          : await paper.view(target(r, v));
+          : await activePaper.view(target(r, v));
       const attempt = after.attempts.find((a) => a.key === attemptKey);
       if (attempt?.status === "pending" || attempt?.status === "interrupted") {
         throw new PilotError("INCOMPLETE_EXECUTION", "Uncertain execution requires reconciliation");
@@ -515,7 +538,7 @@ export function createProfileStudyRunner(deps: {
       if (attempt?.status === "filled" && isClose) {
         closed.add(`${v}:${p.symbol}`);
       }
-      await study.event(scope, lease, `${v}:${attemptKey}`, "profile-execution", {
+      await event(`${v}:${attemptKey}`, "profile-execution", {
         variant: v,
         slot,
         decisionSlot: perpsSlotClock(r, now()).slot,
@@ -540,7 +563,7 @@ export function createProfileStudyRunner(deps: {
       captured: PerpsEvidence,
       phaseKey: string,
     ) {
-      const currentView = await paper.view(target(r, v));
+      const currentView = await activePaper.view(target(r, v));
       const risk = paperRisk(currentView.account, currentView.attempts, now());
       const signals =
         v === "pts-basic" || v === "pts-intraday"
@@ -607,32 +630,26 @@ export function createProfileStudyRunner(deps: {
       // Mandatory individual exits precede subset planning. Recompute after every confirmed exit.
       const considered = new Set<string>();
       for (;;) {
-        const current = await paper.view(target(r, v));
+        const current = await activePaper.view(target(r, v));
         const plan = selectiveReduction(
           current.account,
           captured.frames.filter((f) => !processedCloses.has(`${v}:${f.snapshot.market.symbol}`)),
           now(),
         );
-        await study.event(
-          scope,
-          lease,
-          `${phaseKey}:${v}:reduction-${considered.size}`,
-          "selective-reduction",
-          {
-            variant: v,
-            slot,
-            observationKey: phaseKey,
-            openSymbols: current.account.positions
-              .filter((p) => p.closedAt === null)
-              .map((p) => p.symbol),
-            legacyCloseRequestsOnSamePortfolio: paperRisk(
-              { ...current.account, riskManagement: "legacy-1x-v1" },
-              current.attempts,
-              now(),
-            ).closeSymbols,
-            plan,
-          },
-        );
+        await event(`${phaseKey}:${v}:reduction-${considered.size}`, "selective-reduction", {
+          variant: v,
+          slot,
+          observationKey: phaseKey,
+          openSymbols: current.account.positions
+            .filter((p) => p.closedAt === null)
+            .map((p) => p.symbol),
+          legacyCloseRequestsOnSamePortfolio: paperRisk(
+            { ...current.account, riskManagement: "legacy-1x-v1" },
+            current.attempts,
+            now(),
+          ).closeSymbols,
+          plan,
+        });
         if (plan.status !== "planned") {
           break;
         }
@@ -652,11 +669,11 @@ export function createProfileStudyRunner(deps: {
     const useCommonObservation =
       (config.version === 7 || config.version === 8 || config.version === 9) &&
       config.acquisitionPolicy === COMPONENT_PAPER_POLICY &&
-      !!paper.observeCommon;
+      !!activePaper.observeCommon;
     async function commonObservation(value: PerpsPaperObservation, phaseKey: string) {
       await guard();
       const result = await measured(phaseKey, "valuation:common", () =>
-        paper.observeCommon!(
+        activePaper.observeCommon!(
           variants.map((v) => target(r, v)),
           phaseKey,
           value,
@@ -664,18 +681,12 @@ export function createProfileStudyRunner(deps: {
       );
       if (result.status === "data_unavailable") {
         await guard();
-        await study.event(
-          scope,
-          lease,
-          `${phaseKey}:valuation-unavailable`,
-          "valuation-data-unavailable",
-          {
-            phase: phaseKey,
-            cause: result.code,
-            rolledBack: result.rolledBack,
-            frameValidation: result.validation,
-          },
-        );
+        await event(`${phaseKey}:valuation-unavailable`, "valuation-data-unavailable", {
+          phase: phaseKey,
+          cause: result.code,
+          rolledBack: result.rolledBack,
+          frameValidation: result.validation,
+        });
         throw new RolledBackObservationUnavailable(result);
       }
       return result;
@@ -690,7 +701,7 @@ export function createProfileStudyRunner(deps: {
         if (!(e instanceof RolledBackObservationUnavailable)) {
           throw e;
         }
-        await study.event(scope, lease, `${key}:failed`, "observation-failed", {
+        await event(`${key}:failed`, "observation-failed", {
           slot,
           phase: "price-valuation",
           code: e.code,
@@ -698,7 +709,7 @@ export function createProfileStudyRunner(deps: {
           frameValidation: e.result.validation,
         });
         if (admitted) {
-          await study.event(scope, lease, `slot-${slot}:data-unavailable`, "data-unavailable", {
+          await event(`slot-${slot}:data-unavailable`, "data-unavailable", {
             slot,
             phase: "initial-evidence",
             component: "common-valuation",
@@ -729,14 +740,14 @@ export function createProfileStudyRunner(deps: {
       }
       for (const v of variants) {
         await maintain(v, evidence, key);
-        views[v] = await paper.view(target(r, v));
+        views[v] = await activePaper.view(target(r, v));
       }
     } else {
       for (const v of variants) {
         await guard();
-        const before = await paper.view(target(r, v));
+        const before = await activePaper.view(target(r, v));
         views[v] = await measured(key, `valuation:${v}`, () =>
-          paper.observe(target(r, v), key, observation),
+          activePaper.observe(target(r, v), key, observation),
         );
         beforeMaintenance[v] = {
           positions: before.account.positions.filter((p) => p.closedAt === null),
@@ -750,10 +761,10 @@ export function createProfileStudyRunner(deps: {
           observedAt: now(),
         };
         await maintain(v, evidence, key);
-        views[v] = await paper.view(target(r, v));
+        views[v] = await activePaper.view(target(r, v));
       }
     }
-    await study.event(scope, lease, key, "observation", {
+    await event(key, "observation", {
       slot,
       beforeMaintenance,
       variants: Object.fromEntries(
@@ -779,7 +790,7 @@ export function createProfileStudyRunner(deps: {
         }
       } else {
         for (const v of variants) {
-          views[v] = await paper.observe(target(r, v), `${key}:funding`, funding);
+          views[v] = await activePaper.observe(target(r, v), `${key}:funding`, funding);
         }
       }
     }
@@ -820,13 +831,13 @@ export function createProfileStudyRunner(deps: {
           }
         } else {
           for (const v of variants) {
-            await paper.observe(target(r, v), `${key}:initial-marks`, {
+            await activePaper.observe(target(r, v), `${key}:initial-marks`, {
               frames: evidence.frames,
               funding: [],
               marksOnly: true,
             });
             await maintain(v, evidence, `${key}:initial`);
-            views[v] = await paper.view(target(r, v));
+            views[v] = await activePaper.view(target(r, v));
           }
         }
       } catch (e) {
@@ -834,7 +845,7 @@ export function createProfileStudyRunner(deps: {
         if (!transientPerpsData(e)) {
           throw e;
         }
-        await study.event(scope, lease, `slot-${slot}:data-unavailable`, "data-unavailable", {
+        await event(`slot-${slot}:data-unavailable`, "data-unavailable", {
           slot,
           phase: "initial-evidence",
           cause: code(e),
@@ -846,7 +857,7 @@ export function createProfileStudyRunner(deps: {
       // Financial maintenance failures after a committed valuation are never converted to omissions.
       for (const v of variants) {
         await maintain(v, evidence, `${key}:initial`);
-        views[v] = await paper.view(target(r, v));
+        views[v] = await activePaper.view(target(r, v));
       }
     }
     const accounts = Object.fromEntries(variants.map((v) => [v, views[v]!.account]));
@@ -929,81 +940,127 @@ export function createProfileStudyRunner(deps: {
       );
       await measured(round.key, "final-frame-validation", async () => valid(final, r));
       evidence = final;
-      await study.event(scope, lease, `${round.key}:final-evidence`, "execution-input", {
+      await event(`${round.key}:final-evidence`, "execution-input", {
         evidence: final,
       });
-      // Validate the entire common input before touching any portfolio.
-      if (useCommonObservation) {
-        await commonObservation(
-          { frames: final.frames, funding: [], marksOnly: true },
-          `${round.key}:final-marks`,
+      const executeFinal = async () => {
+        // Validate the entire common input before touching any portfolio.
+        if (useCommonObservation) {
+          await commonObservation(
+            { frames: final.frames, funding: [], marksOnly: true },
+            `${round.key}:final-marks`,
+          );
+          financialWrites = true;
+        } else {
+          financialWrites = true;
+          for (const v of variants) {
+            await guard();
+            await activePaper.observe(target(r, v), `${round.key}:final-marks`, {
+              frames: final.frames,
+              funding: [],
+              marksOnly: true,
+            });
+          }
+        }
+        for (const v of variants) {
+          await maintain(v, final, `${round.key}:final`);
+          const current = await activePaper.view(target(r, v));
+          const missing = current.account.positions.some(
+            (p) =>
+              p.closedAt === null &&
+              !final.frames.some((f) => f.snapshot.market.symbol === p.symbol),
+          );
+          const refreshed = (
+            (config.version === 8 || config.version === 9) &&
+            (v === "pts-basic" || v === "pts-intraday")
+              ? ptsFinal(
+                  proposals[v]!,
+                  { evidence: final, account: current.account },
+                  config,
+                  missing,
+                )
+              : profileFinal(
+                  proposals[v]!,
+                  { evidence: final, account: current.account },
+                  config,
+                  v as SmaProfileVariant | SmaReentryVariant,
+                  missing,
+                )
+          ).map((p) =>
+            closed.has(`${v}:${p.symbol}`) && p.action.startsWith("open-")
+              ? { ...p, action: "hold" as const, reason: "CLOSED_THIS_SLOT" }
+              : p,
+          );
+          const finalProposals =
+            config.version === 7
+              ? reentryGate(refreshed, current.account, final, v as SmaReentryVariant)
+              : refreshed;
+          await event(`${round.key}:${v}:final-gate`, "final-gate", {
+            strategy: v,
+            initial: proposals[v],
+            final: finalProposals,
+          });
+          for (const p of [
+            ...finalProposals.filter((p) => p.action === "close"),
+            ...finalProposals
+              .filter((p) => p.action.startsWith("open-"))
+              .sort((a, b) => (a as { rank?: number }).rank! - (b as { rank?: number }).rank!),
+          ]) {
+            await trade(v, p, final.frames, `${round.key}:${p.symbol}`);
+          }
+        }
+      };
+      if (
+        (config.version === 8 || config.version === 9) &&
+        config.acquisitionPolicy === COMPONENT_PAPER_POLICY &&
+        paper.withCapturedFrames
+      ) {
+        const savedClosed = [...closed];
+        const savedProcessed = [...processedCloses];
+        const result = await measured(round.key, "captured-final-transaction", () =>
+          paper.withCapturedFrames!(
+            variants.map((v) => target(r, v)),
+            round.key,
+            final.frames,
+            async (context) => {
+              activePaper = context.paper;
+              capturedContext = context;
+              try {
+                await executeFinal();
+              } finally {
+                capturedContext = undefined;
+                activePaper = paper;
+              }
+            },
+          ),
         );
+        if (result.status === "data_unavailable") {
+          closed.clear();
+          savedClosed.forEach((value) => closed.add(value));
+          processedCloses.clear();
+          savedProcessed.forEach((value) => processedCloses.add(value));
+          financialWrites = false;
+          throw new RolledBackExecutionUnavailable(result);
+        }
         financialWrites = true;
       } else {
-        financialWrites = true;
-        for (const v of variants) {
-          await guard();
-          await paper.observe(target(r, v), `${round.key}:final-marks`, {
-            frames: final.frames,
-            funding: [],
-            marksOnly: true,
-          });
-        }
-      }
-      for (const v of variants) {
-        await maintain(v, final, `${round.key}:final`);
-        const current = await paper.view(target(r, v));
-        const missing = current.account.positions.some(
-          (p) =>
-            p.closedAt === null && !final.frames.some((f) => f.snapshot.market.symbol === p.symbol),
-        );
-        const refreshed = (
-          (config.version === 8 || config.version === 9) &&
-          (v === "pts-basic" || v === "pts-intraday")
-            ? ptsFinal(
-                proposals[v]!,
-                { evidence: final, account: current.account },
-                config,
-                missing,
-              )
-            : profileFinal(
-                proposals[v]!,
-                { evidence: final, account: current.account },
-                config,
-                v as SmaProfileVariant | SmaReentryVariant,
-                missing,
-              )
-        ).map((p) =>
-          closed.has(`${v}:${p.symbol}`) && p.action.startsWith("open-")
-            ? { ...p, action: "hold" as const, reason: "CLOSED_THIS_SLOT" }
-            : p,
-        );
-        const finalProposals =
-          config.version === 7
-            ? reentryGate(refreshed, current.account, final, v as SmaReentryVariant)
-            : refreshed;
-        await study.event(scope, lease, `${round.key}:${v}:final-gate`, "final-gate", {
-          strategy: v,
-          initial: proposals[v],
-          final: finalProposals,
-        });
-        for (const p of [
-          ...finalProposals.filter((p) => p.action === "close"),
-          ...finalProposals
-            .filter((p) => p.action.startsWith("open-"))
-            .sort((a, b) => (a as { rank?: number }).rank! - (b as { rank?: number }).rank!),
-        ]) {
-          await trade(v, p, final.frames, `${round.key}:${p.symbol}`);
-        }
+        await executeFinal();
       }
       await study.finishExecution(scope, lease, round.key, "complete");
     } catch (e) {
       signal.throwIfAborted();
       if (!financialWrites && transientPerpsData(e)) {
-        await study.event(scope, lease, `slot-${slot}:data-unavailable`, "data-unavailable", {
+        await event(`slot-${slot}:data-unavailable`, "data-unavailable", {
           slot,
           phase: "final-refresh",
           cause: code(e),
+          ...(e instanceof RolledBackExecutionUnavailable
+            ? {
+                component: "captured-final-execution",
+                rolledBack: true,
+                frameValidation: e.result.validation,
+              }
+            : {}),
         });
         await study.finishExecution(scope, lease, round.key, "skipped_data_unavailable");
       } else {
