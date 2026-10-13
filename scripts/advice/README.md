@@ -3,9 +3,14 @@
 `local-x402-server.ts` is a **local test tool**. It stands in for the product API so the iOS app
 on the simulator can pay a Studio agent's advice analysis with x402.
 
-- **Fake:** identity (SIWE sign-in with in-memory bearer tokens and a fixed username), the
-  database (payments and jobs live in memory and vanish on restart) and the analysis (a canned
-  BTC/ETH answer labelled "LOCAL TEST — not a real analysis").
+- **Fake:** identity (SIWE sign-in with in-memory bearer tokens and a fixed username) and the
+  database (payments and jobs live in memory and vanish on restart).
+- **Real:** the analysis. `local-analysis.ts` runs trading's production `createAdviceRunner` over
+  public Perpl testnet data (60 closed hourly candles, a 20-level book and the ticker, read with
+  agent-runtime's `readPerplInstrument`) and asks the chat model in `.local-x402/model.env` for the
+  24-hour BTC/ETH orientation with production's forecast instructions. Unlike production there is
+  no JEV sufficiency review, no web sources and no cost accounting. If the data, the model or its
+  output fails, the job ends `failed` with `ANALYSIS_FAILED`; there is no canned answer.
 - **Real:** the payment. The paid request goes through core's `createPaidAdvice` and
   infrastructure's `createAusdAuthorizationGateway`, which settle through the deployed
   `PicklerAdviceSplitter` on Monad testnet. **Each paid analysis moves 1.5 AUSD for real**: 65% to
@@ -24,7 +29,16 @@ RELAYER_ADDRESS=0x…       # checked against the key
 AGENT_WALLET=0x…          # the payee: receives the creator share
 ```
 
-`LOCAL_X402_ENV`, `LOCAL_X402_PORT` (default 8899) and `MONAD_RPC_URL` (default
+`.local-x402/model.env` (git-ignored, mode 600), an OpenAI-compatible chat model. Without it, or
+with a malformed value, the server refuses to start:
+
+```sh
+MODEL_BASE_URL=https://…/v1   # https (http only on localhost); /chat/completions is appended
+MODEL_ID=…
+MODEL_API_KEY=…
+```
+
+`LOCAL_X402_ENV`, `LOCAL_X402_MODEL_ENV`, `LOCAL_X402_PORT` (default 8899) and `MONAD_RPC_URL` (default
 `https://testnet-rpc.monad.xyz`) override the defaults. The splitter, treasury and AUSD
 addresses are constants in the script.
 
@@ -38,9 +52,16 @@ node --import tsx scripts/advice/local-x402-server.ts
 
 On start it checks that the RPC is chain 10143 and that `splitter.treasury()` and
 `splitter.asset()` match the constants, and refuses to start otherwise. It prints the relayer
-address and MON balance, and warns when the balance is zero. Each request is logged with its
+address and MON balance and the model ID with its base URL host, and warns when the balance is
+zero. Each request is logged with its
 method, path and status; a settlement logs its transaction hash and both shares. The key and the
-`X-PAYMENT` signature are never logged.
+`X-PAYMENT` signature are never logged; the model key is neither logged nor echoed in errors.
+
+The analysis tests stub the model and the data, so they run without network:
+
+```sh
+node --import tsx --test scripts/advice/local-analysis.test.ts
+```
 
 ## Point the app at it
 
@@ -53,8 +74,9 @@ npx expo run:ios
 ```
 
 The values are baked in at build time, so rebuild after changing them. The app signs in to the
-local server with its wallet, sees one agent ("Local Test Agent", `@localtest`, 1.5 AUSD), and
-pays from the wallet's own AUSD. The job goes queued → running → completed in about 10 seconds.
+local server with its wallet, sees one agent ("Pickler Perps Analyst", `@localtest`, 1.5 AUSD),
+and pays from the wallet's own AUSD. The job goes queued → running → completed (or failed) as the
+Perpl reads and the model answer, usually within a minute.
 
 ## Endpoints (base `/v1`)
 

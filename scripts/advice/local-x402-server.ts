@@ -1,12 +1,14 @@
 // LOCAL TEST TOOL — never deploy. A stand-in for the product API that lets the iOS app on the
-// simulator pay a Studio agent's advice with x402. Identity, the database and the analysis are fakes
-// kept in memory; the payment is REAL: core's createPaidAdvice and infrastructure's AUSD gateway
-// settle through the deployed PicklerAdviceSplitter on Monad testnet. Read scripts/advice/README.md.
+// simulator pay a Studio agent's advice with x402. Identity and the database are fakes kept in
+// memory. The payment is REAL: core's createPaidAdvice and infrastructure's AUSD gateway settle
+// through the deployed PicklerAdviceSplitter on Monad testnet. The analysis is REAL too: the
+// production advice runner over public Perpl testnet data and the chat model in
+// .local-x402/model.env (scripts/advice/local-analysis.ts). Read scripts/advice/README.md.
 //
 // Run from the repository root: node --import tsx scripts/advice/local-x402-server.ts
 
 import { randomBytes, randomUUID } from "node:crypto";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { resolve } from "node:path";
 import { createPublicClient, defineChain, formatEther, getAddress, http, isAddress } from "viem";
@@ -27,7 +29,6 @@ import {
   type AdvicePaymentStore,
   type AdvicePolicy,
   type AdviceRepository,
-  type AdviceSymbol,
 } from "@pickler/core";
 import {
   buildSiweMessage,
@@ -35,6 +36,12 @@ import {
   createSignatureVerifier,
   parseSiweMessage,
 } from "@pickler/infrastructure";
+import {
+  createLocalAdviceModels,
+  createLocalAnalysis,
+  parseModelEnv,
+  readPerplEvidence,
+} from "./local-analysis.ts";
 
 // ---------------------------------------------------------------------------------------------
 // Configuration
@@ -56,14 +63,14 @@ const BODY_LIMIT = 8192;
 const PRICE_MICRO = 1_500_000n;
 const AGENT_ID = "6f1c2a3b-4d5e-4f60-8a71-b2c3d4e5f607";
 const AGENT_HANDLE = "localtest";
+const AGENT_NAME = "Pickler Perps Analyst";
+const AGENT_SLUG = "pickler-perps-analyst";
 const PROFILE_HANDLE = "localbuyer";
-/** queued → running after this many ms, running → completed after RUN_MS. */
-const QUEUED_MS = 3_000;
-const RUN_MS = 10_000;
-const LABEL = "LOCAL TEST — not a real analysis.";
 
-// Run from the repository root (the file is resolved against the working directory).
+// Run from the repository root (the files are resolved against the working directory).
 const ENV_FILE = process.env.LOCAL_X402_ENV ?? resolve(process.cwd(), ".local-x402/env");
+const MODEL_ENV_FILE =
+  process.env.LOCAL_X402_MODEL_ENV ?? resolve(process.cwd(), ".local-x402/model.env");
 
 function readEnvFile(path: string): Record<string, string> {
   const values: Record<string, string> = {};
@@ -75,6 +82,21 @@ function readEnvFile(path: string): Record<string, string> {
     values[match[1]!] = match[2]!.replace(/^["']|["']$/g, "");
   }
   return values;
+}
+
+// The model goes first: without it there is no analysis to sell, and nothing else is read.
+if (!existsSync(MODEL_ENV_FILE)) {
+  console.error(
+    `REFUSING TO START: ${MODEL_ENV_FILE} does not exist. Create it (mode 600) with MODEL_BASE_URL, MODEL_ID and MODEL_API_KEY of an OpenAI-compatible chat model; there is no canned analysis.`,
+  );
+  process.exit(1);
+}
+let modelSettings: ReturnType<typeof parseModelEnv>;
+try {
+  modelSettings = parseModelEnv(readEnvFile(MODEL_ENV_FILE), MODEL_ENV_FILE);
+} catch (error) {
+  console.error("REFUSING TO START:", error instanceof Error ? error.message : String(error));
+  process.exit(1);
 }
 
 const env = readEnvFile(ENV_FILE);
@@ -172,45 +194,13 @@ const jobs = new Map<string, AdviceJob>();
 const jobsByKey = new Map<string, string>();
 const keyOf = (userId: string, publicId: string, key: string) => `${userId}|${publicId}|${key}`;
 
-function cannedResult(symbol: AdviceSymbol, at: number) {
-  const iso = new Date(at).toISOString();
-  return dto.adviceResultSchema.parse({
-    version: 1,
-    symbol,
-    network: "testnet",
-    horizonHours: 24,
-    orientation: "wait",
-    summary: `${LABEL} Canned ${symbol} answer from the local x402 test server; the payment that unlocked it was real, the analysis is not.`,
-    reasons: [`${LABEL} No market data was read for ${symbol}.`],
-    risks: [`${LABEL} Do not trade on this text.`],
-    limitations: ["Served by scripts/advice/local-x402-server.ts, never by a model."],
-    sources: [
-      {
-        id: "local-test",
-        name: "Local test server",
-        url: "http://localhost:8899/",
-        observedAt: iso,
-      },
-    ],
-    generatedAt: iso,
-    dataAsOf: iso,
-  });
-}
-
-/** Moves a job along the clock: queued, then running, then completed with the canned result. */
-function advance(job: AdviceJob): AdviceJob {
-  const age = Date.now() - job.createdAt;
-  if (job.status === "queued" && age >= QUEUED_MS) {
-    job.status = "running";
-    job.startedAt = job.createdAt + QUEUED_MS;
-  }
-  if (job.status === "running" && age >= RUN_MS) {
-    job.status = "completed";
-    job.finishedAt = job.createdAt + RUN_MS;
-    job.result = cannedResult(job.symbol, job.finishedAt);
-  }
-  return job;
-}
+const analyze = createLocalAnalysis({
+  resolve: (publicId) => repository.resolve(publicId),
+  data: readPerplEvidence,
+  models: createLocalAdviceModels(modelSettings),
+  now: () => Date.now(),
+  log: (line) => console.log(line),
+});
 
 const repository: AdviceRepository = {
   async resolve(publicId) {
@@ -222,7 +212,7 @@ const repository: AdviceRepository = {
   async enqueue(userId, publicId, symbol, key) {
     const existing = jobsByKey.get(keyOf(userId, publicId, key));
     if (existing) {
-      const job = advance(jobs.get(existing)!);
+      const job = jobs.get(existing)!;
       if (job.symbol !== symbol) {
         throw new PilotError("CONFLICT", "Idempotency key belongs to another request");
       }
@@ -248,6 +238,10 @@ const repository: AdviceRepository = {
     jobs.set(job.id, job);
     jobsByKey.set(keyOf(userId, publicId, key), job.id);
     console.log(`  job ${job.id} queued (${symbol})`);
+    // After the reply: the analysis runs in the background and the app polls the job.
+    setImmediate(() => {
+      void analyze(job);
+    });
     return job;
   },
   async get(id) {
@@ -255,15 +249,14 @@ const repository: AdviceRepository = {
     if (!job) {
       throw new PilotError("NOT_FOUND", "Analysis not found");
     }
-    return advance(job);
+    return job;
   },
   async requestReplay(userId, publicId, key) {
     const id = jobsByKey.get(keyOf(userId, publicId, key));
-    return id ? advance(jobs.get(id)!) : null;
+    return id ? jobs.get(id)! : null;
   },
   async history(publicId, symbol) {
     const items = [...jobs.values()]
-      .map(advance)
       .filter((job) => job.publicAgentId === publicId && job.status === "completed")
       .filter((job) => symbol === undefined || job.symbol === symbol)
       .sort((left, right) => right.createdAt - left.createdAt)
@@ -435,11 +428,11 @@ const agentSummary = () =>
   dto.agentSummarySchema.parse({
     id: AGENT_ID,
     advicePrice: { amount: "1.5", asset: "AUSD", decimals: 6 },
-    slug: "local-test-agent",
-    name: "Local Test Agent",
+    slug: AGENT_SLUG,
+    name: AGENT_NAME,
     handle: AGENT_HANDLE,
     ticker: null,
-    beat: "BTC and ETH perps, 24-hour view (local test)",
+    beat: "BTC and ETH perps, 24-hour view",
     accent: "lime",
     venue: "perps",
     createdAt: agentCreatedAt,
@@ -817,6 +810,7 @@ async function preflight() {
   console.log(`  asset        ${asset}`);
   console.log(`  agent wallet ${agentWallet} (payee)`);
   console.log(`  relayer      ${relayerAddress}  ${formatEther(balance)} MON`);
+  console.log(`  model        ${modelSettings.model} at ${new URL(modelSettings.baseUrl).host}`);
   if (balance === 0n) {
     console.warn("  WARNING: the relayer has no MON; settlements will fail.");
   }
