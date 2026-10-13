@@ -22,37 +22,56 @@ The first execution mode remains one bounded open/hold/close sequence, at 1x and
 - The deployed app's entry is `https://app.pickler.fun/`. The inspected browser requires sign-in;
   no owner JWT/passkey has been used for remote account setup or financial acceptance.
 
-## Configuration awaiting explicit approval
+## Authorized configuration applied
 
-The tested code from `0f9565d3` was subsequently published with both Perpl gates still false,
-preserving the existing plaintext runtime variables and uploading no new secrets:
+The owner explicitly authorized the existing API parent Turnkey reader credentials to be copied
+only to the existing `pickler-trading-staging` Worker in Cloudflare account
+`bc8d4adf4860284fda426b24e7377bc2`, together with JWT issuer, AES encryption and the reviewed
+Perpl testnet policy. General eligible-agent activation is authorized only after the technical
+checks succeed. Agent selection, deposit amount, saved limits and passkey approval remain
+self-service owner actions.
 
-| Worker  | Verified active version                |
-| ------- | -------------------------------------- |
-| Trading | `91ce935d-cb34-43f4-9a0b-1dbf38b667a4` |
-| API     | `88244fc3-5fae-4c10-8d39-9447ce8e9649` |
-| Web     | `7085b5d8-77d5-461e-ab77-897d4a63f62b` |
+The five backend secrets are now bound: `JWT_ISSUER`, `TURNKEY_API_PUBLIC_KEY`,
+`TURNKEY_API_PRIVATE_KEY`, `PERPL_KEY_ENCRYPTION_KEY` and `PERPL_LIVE_POLICY_JSON`.
+The issuer matches staging Supabase. No backend credential was sent to Web or Research, printed,
+committed or saved in a new local file. No delegated signing key was copied.
 
-All three active versions carry tag `perpl-readiness-0f9565d3`. The app serves OpenAPI with
-226 operations and the owner Perpl route. A request without a JWT returns 401 with
-`Cache-Control: private, no-store`. Trading's issuer and execution secrets still await the
-explicitly requested approval; code publication does not configure them.
+The initial bulk request failed with Cloudflare error 10053 because the old empty plaintext
+`JWT_ISSUER` binding occupied the name. Secret inventory remained empty. The same tested Trading
+code was published after removing only that entry and preserving the other current plaintext
+variables. A fresh read-only audit found zero encrypted accounts before a new 32-byte AES key
+was generated and uploaded through stdin. An existing encryption key must never be rotated to
+make configuration succeed.
 
-The proposed destination is the existing `pickler-trading-staging` Worker in Cloudflare account
-`bc8d4adf4860284fda426b24e7377bc2`. Its source issuer matches the staging Supabase project.
-Configure JWT issuer, the API's existing read-only parent Turnkey credentials, a new 32-byte AES
-key, and the reviewed policy via secret stdin only. Never print their values, put them in source,
-send them to Web/Research, or rotate an existing encryption key with persisted accounts.
+| Worker  | Observed active version                | Perpl gate |
+| ------- | -------------------------------------- | ---------- |
+| Trading | `9da6a8a1-d42d-4dab-bb27-9efdf99ebba2` | false      |
+| API     | `43daacb5-6ffd-4324-b382-0ecefaffbb74` | false      |
+| Web     | `c9f083bf-5b25-4c5b-9198-bea4d22978ac` | n/a        |
+
+Each version was observed at 100% traffic. API and Web are observed active versions, not an
+assertion that their code hashes are unchanged from the earlier publication. Trading's final
+version has the same script ETag as its issuer correction publication and is the secret update of
+`9c76f4dd-e642-4d7e-8621-cd66c851f0bc`, the issuer correction publication. The tested code
+commit is `0f9565d3`; configuration/deployment observations are separate from a merged release.
+The source correction is in PR #185 and must be preserved in later main deployments.
+
+Turnkey's stamped read-only identity query returned HTTP 200. Supabase JWKS returned HTTP 200
+with one signing key. A temporary remote Cloudflare diagnostic, without wallet credentials,
+confirmed the trusted Hyperdrive-to-Supabase connection by reading the empty Perpl table in a
+read-only transaction and rolling it back. It also read JWKS, Perpl's public context and Monad
+at block `0x4388703`: chain 10143, proxy hash and implementation address/hash all matched the
+reviewed capture. The temporary preview was stopped after the probe. This verifies transport and
+public bindings; no owner JWT/passkey setup or financial acceptance is implied.
 
 The capture caps each deposit at 100 AUSD, gas at 500,000, fee at 120 gwei and slippage at 100 bps.
 The owner's current daily and trade caps remain additional enforced bounds. Each allowance,
 account creation/funding, forwarding grant and trading-key enrollment requires the owner passkey.
 New sessions require an explicit Start trading action. No action occurs during startup or a read.
 
-Automatic approval review rejected uploading these specific secrets to this destination and
-enabling Perpl for all eligible agents without more explicit authorization. No rejected upload
-or gate change was executed. A single explicit confirmation has been requested. Gates remain
-closed until authorization and technical checks both succeed.
+The earlier automatic approval refusals were resolved by the owner's explicit authorization.
+There is no remaining permission block on the described configuration. Both Perpl gates remain
+false because unsigned enrollment preparation still fails, not because approval is missing.
 
 ## Enrollment acceptance still unresolved
 
@@ -65,8 +84,20 @@ enrollment probe and does not identify the cause conclusively.
 Perpl's [integration documentation](https://github.com/PerplFoundation/api-docs/blob/main/integrations.md)
 requires a whitelisted Origin for backend enrollment as well as browser enrollment. Origin
 approval remains unverified. Do not omit Origin or impersonate Perpl's own Origin as a fallback.
-No key was enrolled and no wallet signature, deposit, approval or order was sent during the probes.
+The same request from the temporary Cloudflare preview returned HTTP 400 with
+`Content-Type: text/plain; charset=utf-8` and no `Access-Control-Allow-Origin`, while public context
+returned HTTP 200. This rules out a refusal limited to the local machine but still does not prove
+which remote validation failed. No key was enrolled and no wallet signature, deposit, approval or
+order was sent during the probes.
 Resolve the refusal before declaring self-service setup operational or enabling financial entry.
+
+The concrete provider prerequisite is confirmation that `https://pickler.fun` is accepted as the
+server enrollment Origin for Pickler on testnet and that `/api/v1/api-key/payload` is available to
+that integration. `https://app.pickler.fun` was also refused in the earlier probe. Ask Perpl to
+identify the failed validation if the Origin is already approved. Requests use chain 10143, a
+valid fresh 32-byte Ed25519 public key, scope 3, label `Pickler Studio` and a 90-day millisecond
+expiry. Share only this request shape and sanitized response metadata; never send private keys,
+Turnkey credentials or owner signatures. No external message has been sent by this work.
 
 ## Controlled validation
 

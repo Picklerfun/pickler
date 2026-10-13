@@ -146,9 +146,11 @@ Local visual routes: `/studio?stage=perpl-trading-ready`, `perpl-trading-active`
 `perpl-trading-closed`. These are explicitly marked fixtures and disabled in ordinary production
 hosts by the existing preview host policy. Start trading is inert in these fixtures.
 
-Hosted self-service acceptance is still pending: complete execution configuration, verified
-enrollment Origin, the owner's saved caps and sufficient wallet AUSD/MON, owner passkey setup,
-and one real opening/closing with matched receipts. The owner selects the agent and amount in
-Studio; no operator-selected agent is required for the general configuration. The dated record
-documents the applied migrations and closed code publication. No real funding, order or paid
-model call has been established by the controlled suites or public probes.
+Hosted execution secrets are configured and read-only Turnkey, JWT, Hyperdrive and reviewed
+contract checks pass. The enrollment payload endpoint still returns HTTP 400 for the owned
+Origin. Self-service financial acceptance requires resolving that refusal, the owner's saved caps,
+sufficient wallet AUSD/MON, owner passkey setup, and one real opening/closing with matched
+receipts. The owner selects the agent and amount in Studio; no operator-selected agent is required
+for the general configuration. The dated record documents the applied migrations, authorized
+secret configuration and closed admissions. No real funding, order or paid model call has been
+established by the controlled suites or public probes.
