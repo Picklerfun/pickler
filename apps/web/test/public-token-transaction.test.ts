@@ -6,6 +6,7 @@ import {
   validatePublicTokenTransaction,
   WalletSubmissionUnknown,
 } from "../src/features/wallet/lib/public-token-transaction";
+import { WalletRequestError } from "../src/features/wallet/lib/wallet-request-error";
 import type { PublicTokenTradePreparedDto } from "@pickler/api-schema";
 const wallet = "0x" + "c".repeat(40),
   token = "0x" + "a".repeat(40),
@@ -121,4 +122,56 @@ test("cancel remains retryable, lost response becomes uncertain and is never ret
     (e) => e instanceof WalletSubmissionUnknown && e.hash === null,
   );
   assert.equal(uncertain.calls.filter((x) => x === "eth_sendTransaction").length, 1);
+});
+
+test("nested simulation failures expose the failed method and never reach submission", async () => {
+  const p = provider();
+  const request = p.request;
+  p.request = async (args) => {
+    if (args.method === "eth_call") {
+      p.calls.push(args.method);
+      throw {
+        code: -32603,
+        data: { originalError: { code: -32000, message: "execution reverted" } },
+      };
+    }
+    return request(args);
+  };
+  const trade = await prepared();
+  await assert.rejects(
+    () => sendInjectedTokenTransaction(p, trade, wallet, token),
+    (error) =>
+      error instanceof WalletRequestError &&
+      error.failure.method === "eth_call" &&
+      error.failure.title === "Trade simulation failed",
+  );
+  assert.equal(p.calls.includes("eth_sendTransaction"), false);
+});
+
+test("nested cancellation and invalid parameters remain definitive while internal send errors stay uncertain", async () => {
+  const trade = await prepared();
+  for (const code of [4001, 4100, -32602]) {
+    const p = provider(() => {
+      throw { code: -32603, data: { originalError: { code } } };
+    });
+    await assert.rejects(
+      () => sendInjectedTokenTransaction(p, trade, wallet, token),
+      (error) =>
+        error instanceof WalletRequestError &&
+        error.code === code &&
+        error.failure.method === "eth_sendTransaction",
+    );
+    assert.equal(p.calls.filter((method) => method === "eth_sendTransaction").length, 1);
+  }
+  const p = provider(() => {
+    throw {
+      code: -32603,
+      data: { originalError: { code: -32000, message: "insufficient funds" } },
+    };
+  });
+  await assert.rejects(
+    () => sendInjectedTokenTransaction(p, trade, wallet, token),
+    (error) => error instanceof WalletSubmissionUnknown && error.failure?.code === -32000,
+  );
+  assert.equal(p.calls.filter((method) => method === "eth_sendTransaction").length, 1);
 });

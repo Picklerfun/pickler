@@ -219,3 +219,20 @@ session case, build that local web with the fixture-only public values
 `NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:8799` and
 `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_controlled`, start it with the loopback API
 transport, and pass its URL to the same harness. No real Supabase account or extension is used.
+
+## Browser wallet selection and actionable failures
+
+The chooser discovers extensions with EIP-6963 and keeps the selected provider pinned through
+sign-in, switching, approval and swap. Legacy injected wallets remain supported. Reload remembers
+the extension ID; a missing remembered provider never silently restores a different extension.
+The selected extension's name appears beside the trade wallet address.
+
+Switching to Monad testnet reads the actual wallet chain, including after adding the network and
+requesting a second switch. Refused, unsupported, pending and disconnected requests remain visible
+with a reviewed next step. Trade errors distinguish request cancellation, permission, nonce, gas,
+simulation and transaction-parameter failures. Expandable details expose the method and RPC code,
+never raw provider payloads. Known pre-send failures preserve the form and require fresh preparation
+on retry. Missing send responses remain uncertain and blocked, including after reload.
+
+These guarantees are covered with controlled EIP-1193/EIP-6963 wallets; they do not establish live
+extension acceptance or authorize real transactions or deployment.

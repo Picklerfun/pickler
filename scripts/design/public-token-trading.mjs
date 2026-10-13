@@ -53,6 +53,7 @@ try {
     ({ wallet }) => {
       if (!sessionStorage.getItem("pk.controlled.visited")) {
         localStorage.setItem("pk.wallet.kind", "injected");
+        localStorage.setItem("pk.wallet.provider", "io.rabby");
         sessionStorage.setItem("pk.controlled.visited", "yes");
       }
       window.__walletRequests = [];
@@ -60,7 +61,13 @@ try {
       window.__uncertain = false;
       window.__cancel = false;
       window.__nonce = Number(sessionStorage.getItem("pk.controlled.nonce") ?? "0");
-      window.ethereum = {
+      window.__otherWalletRequests = [];
+      window.__chain = sessionStorage.getItem("pk.controlled.chain") ?? "0x279f";
+      window.__networkKnown = false;
+      window.__switchError = null;
+      window.__preflightError = null;
+      const rabby = {
+        isRabby: true,
         on() {},
         removeListener() {},
         async request({ method, params }) {
@@ -69,7 +76,26 @@ try {
             return [wallet];
           }
           if (method === "eth_chainId") {
-            return "0x279f";
+            return window.__chain;
+          }
+          if (method === "wallet_switchEthereumChain") {
+            await new Promise((resolve) => setTimeout(resolve, 150));
+            if (window.__switchError) {
+              throw window.__switchError;
+            }
+            if (!window.__networkKnown) {
+              throw { code: -32603, data: { originalError: { code: 4902 } } };
+            }
+            window.__chain = params[0].chainId;
+            sessionStorage.setItem("pk.controlled.chain", window.__chain);
+            return null;
+          }
+          if (method === "wallet_addEthereumChain") {
+            window.__networkKnown = true;
+            return null;
+          }
+          if (method === "wallet_revokePermissions") {
+            return null;
           }
           if (method === "eth_getBalance") {
             return "0xde0b6b3a7640000";
@@ -78,6 +104,9 @@ try {
             return "0x" + window.__nonce.toString(16);
           }
           if (method === "eth_call") {
+            if (window.__preflightError) {
+              throw window.__preflightError;
+            }
             return "0x";
           }
           if (method === "eth_sendTransaction") {
@@ -100,6 +129,32 @@ try {
           throw new Error(`Unexpected wallet method ${method}`);
         },
       };
+      const metamask = {
+        isMetaMask: true,
+        async request({ method }) {
+          window.__otherWalletRequests.push(method);
+          throw new Error("The unselected extension must not be used");
+        },
+      };
+      window.ethereum = metamask;
+      window.addEventListener("eip6963:requestProvider", () => {
+        window.dispatchEvent(
+          new CustomEvent("eip6963:announceProvider", {
+            detail: {
+              info: { uuid: "controlled-rabby", rdns: "io.rabby", name: "Rabby" },
+              provider: rabby,
+            },
+          }),
+        );
+        window.dispatchEvent(
+          new CustomEvent("eip6963:announceProvider", {
+            detail: {
+              info: { uuid: "controlled-metamask", rdns: "io.metamask", name: "MetaMask" },
+              provider: metamask,
+            },
+          }),
+        );
+      });
     },
     { wallet },
   );
@@ -363,6 +418,67 @@ try {
   await amountField.fill("1");
   await estimate.getByText(/1,327\.492339/).waitFor();
   await trade.screenshot({ path: path.join(output, "visitor-live-estimate.png") });
+  await page.getByRole("button", { name: "Wallet, 0x5555…5555", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Disconnect", exact: true }).click();
+  await trade.getByRole("button", { name: "Connect wallet", exact: true }).click();
+  const chooser = page.getByRole("dialog");
+  await chooser.getByRole("button", { name: /MetaMask/ }).waitFor();
+  await chooser.screenshot({ path: path.join(output, "extension-chooser.png") });
+  await chooser.getByRole("button", { name: /Rabby/ }).click();
+  await trade.getByRole("button", { name: "Buy HALF", exact: true }).waitFor();
+  assert.match(await trade.innerText(), /Rabby/);
+  assert.deepEqual(await page.evaluate(() => window.__otherWalletRequests), []);
+
+  await page.evaluate(() => sessionStorage.setItem("pk.controlled.chain", "0x1"));
+  await page.reload();
+  const switchNetwork = trade.getByRole("button", { name: "Switch to Monad testnet", exact: true });
+  await switchNetwork.waitFor();
+  await page.evaluate(() => {
+    window.__switchError = { code: -32002, message: "pending" };
+  });
+  await switchNetwork.click();
+  await trade.getByText("Wallet request already open · -32002", { exact: true }).waitFor();
+  await page.evaluate(() => {
+    window.__switchError = { code: 4200, message: "unsupported" };
+  });
+  await switchNetwork.click();
+  await trade.getByText("Network switching unavailable · 4200", { exact: true }).waitFor();
+  await page.evaluate(() => {
+    window.__switchError = null;
+  });
+  await switchNetwork.click();
+  await trade.getByRole("button", { name: "Confirm network in wallet", exact: true }).waitFor();
+  await trade.getByRole("button", { name: "Buy HALF", exact: true }).waitFor();
+  assert.ok(
+    (await page.evaluate(() => window.__walletRequests)).includes("wallet_addEthereumChain"),
+  );
+  assert.equal(broadcasts.size, 0, "switching must not send a trade");
+
+  await page.evaluate(() => {
+    window.__preflightError = {
+      code: -32603,
+      data: { originalError: { code: -32000, message: "insufficient funds for gas" } },
+    };
+  });
+  await trade.getByRole("button", { name: "Buy HALF", exact: true }).click();
+  await trade.getByRole("button", { name: "Not enough MON for gas", exact: true }).waitFor();
+  await trade.getByText("Not enough MON for gas · -32000", { exact: true }).click();
+  await trade.getByText("Wallet request · eth_call", { exact: true }).waitFor();
+  assert.equal(await amountField.inputValue(), "1");
+  assert.equal(broadcasts.size, 0, "failed simulation never sends");
+  for (const width of [1280, 380, 320]) {
+    await page.setViewportSize({ width, height: 1000 });
+    assert.equal(
+      await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+      true,
+    );
+    await trade.screenshot({ path: path.join(output, `wallet-error-${width}.png`) });
+  }
+  await page.evaluate(() => {
+    window.__preflightError = null;
+  });
+  await amountField.fill("2");
+  await amountField.fill("1");
   const readyBounds = await trade
     .getByRole("button", { name: "Buy HALF", exact: true })
     .boundingBox();
@@ -521,7 +637,7 @@ try {
   await trade.getByRole("button", { name: "Sell HALF", exact: true }).click();
   await trade.getByRole("button", { name: "Cancelled · try again", exact: true }).waitFor();
   const beforeCancel = broadcasts.size;
-  await trade.getByRole("button", { name: "Cancel", exact: true }).click();
+  assert.equal(await trade.getByRole("button", { name: "Cancel", exact: true }).count(), 0);
   assert.equal(broadcasts.size, beforeCancel);
   assert.equal(
     await trade.getByRole("textbox", { name: "Public amount · HALF", exact: true }).inputValue(),
@@ -532,7 +648,7 @@ try {
     window.__cancel = false;
     window.__uncertain = true;
   });
-  await trade.getByRole("button", { name: "Sell HALF", exact: true }).click();
+  await trade.getByRole("button", { name: "Cancelled · try again", exact: true }).click();
   await trade.getByRole("button", { name: "Wallet response lost", exact: true }).waitFor();
   assert.equal(
     await trade.getByRole("button", { name: "Wallet response lost", exact: true }).isDisabled(),
@@ -546,6 +662,7 @@ try {
     await trade.getByRole("textbox", { name: "Public amount · HALF", exact: true }).inputValue(),
     "1000",
   );
+  assert.deepEqual(await page.evaluate(() => window.__otherWalletRequests), []);
   assert.deepEqual(errors, []);
   assert.deepEqual(forbidden, []);
   writeFileSync(
@@ -563,7 +680,7 @@ try {
     ),
   );
   console.log(
-    "PASS: username recovery, continuous approvals/buy/sell, automatic receipt recovery, reload and no duplicate sends",
+    "PASS: pinned Rabby/MetaMask discovery, add/switch/verified network, actionable nested wallet errors, username recovery, continuous approvals/buy/sell, automatic receipt recovery, reload and no duplicate sends",
   );
 } catch (error) {
   writeFileSync(

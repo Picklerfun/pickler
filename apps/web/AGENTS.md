@@ -89,6 +89,19 @@ Market data is drawn with `CandleChart` and `BarChart` from `@pickler/ui` — th
 
 ## The wallet
 
+Browser extensions are discovered through EIP-6963 in `injected-providers.ts`, with a legacy
+EIP-1193 fallback. The chooser names each discovered extension, pins the explicit selection for
+account reads, sign-in, network changes and trades, and remembers only its provider ID alongside
+the existing signer kind. Provider names are untrusted plain text; no supplied icons/HTML execute.
+Reload never falls through from a missing remembered extension to another installed wallet.
+Subscriptions follow provider identity even when two extensions expose the same account.
+Adding Monad testnet is followed by a switch and a bounded actual-chain check. The wallet context
+serializes switch requests, exposes progress and reviewed failures, and ignores superseded results.
+`wallet-request-error.ts` preserves nested RPC codes and reviewed actionable explanations without
+rendering provider payloads. Public trades expose compact expandable error details; progress stays
+in the primary button. Definitive pre-send failures keep the amount and require a fresh preparation;
+ambiguous sends remain blocked and never authorize another transaction.
+
 `features/wallet/` owns the connection. `lib/signer.ts` is the contract the rest of the site talks to — address, chain, balance, connect, disconnect — and two adapters implement it, the marketplace's two wallets and no others (`docs/specs/mera-web-v1.md`):
 
 - `injected-signer.ts` is the EIP-1193 conversation with the browser wallet the person brought, with no connector library: it asks for accounts, reads the chain and the native balance, follows `accountsChanged` and `chainChanged`, and offers to switch to Monad testnet using the metadata in `@pickler/chain`.
@@ -1266,8 +1279,8 @@ success and sanitized errors inside one compact, fixed-height (48px) primary but
 ring and sweep; wallet confirmation pulses the wallet icon; success draws a check for 2.2 seconds
 before restoring the explicit Buy/Sell action. This visual timer never performs a transaction.
 Form edits dismiss success and clear errors. Keep screen-reader announcements, keyboard focus and
-reduced-motion support. No visible status/error paragraphs or manual Check transaction action belong
-to this form. Approval and Buy/Sell references remain separately labelled below the button, with linked hashes
+reduced-motion support. No separate progress paragraphs or manual Check transaction action belong
+to this form. Reviewed wallet failures have an expandable explanation with the RPC method/code; never render raw provider payloads. Approval and Buy/Sell references remain separately labelled below the button, with linked hashes
 and icon-only copy actions. The approval hash survives swap preparation, cancellation and reload;
 ending an unsigned review preserves recorded receipts without initiating a transaction. Historical
 single-hash attempts remain readable. `use-public-trade-quote.ts` reads the public quote endpoint

@@ -10,6 +10,7 @@ import { AUSD, toBaseUnits } from "@pickler/chain";
 import { formatUnits } from "viem";
 import { Button, Field, Input, Segmented, Tag } from "@pickler/ui";
 import { useWallet } from "@/features/wallet/lib/wallet-context";
+import { WalletRequestError, type WalletFailure } from "@/features/wallet/lib/wallet-request-error";
 import {
   publicTokenReceipt,
   WalletSubmissionUnknown,
@@ -41,7 +42,7 @@ const WORDS: Record<string, string> = {
   DEPLOYMENT_CHANGED: "Contract verification failed. Trading is unavailable.",
   PROVIDER_UNAVAILABLE: "Could not read the network. No swap was sent.",
 };
-function quotedAmount(value: string, decimals: number, asset: string) {
+function quotedAmount(value: string, decimals: number, asset: string, showAsset = true) {
   const exact = formatUnits(BigInt(value), decimals);
   const [whole, fraction = ""] = exact.split(".");
   const short = fraction.slice(0, 6).replace(/0+$/, "");
@@ -50,7 +51,8 @@ function quotedAmount(value: string, decimals: number, asset: string) {
   return (
     <abbr title={`${exact} ${asset}`}>
       {approximate ? "≈" : ""}
-      {shown} {asset}
+      {shown}
+      {showAsset ? ` ${asset}` : ""}
     </abbr>
   );
 }
@@ -101,7 +103,7 @@ interface Props {
 }
 export function PublicTokenTrade(props: Props) {
   const wallet = useWallet();
-  const scope = `${props.token.chainId}.${props.token.address}.${wallet.kind}.${wallet.address}.${wallet.onTargetChain}.${props.preview ? props.previewOutcome : "live"}`;
+  const scope = `${props.token.chainId}.${props.token.address}.${wallet.kind}.${wallet.providerId}.${wallet.address}.${wallet.onTargetChain}.${props.preview ? props.previewOutcome : "live"}`;
   return <PublicTradeForm key={scope} {...props} />;
 }
 function PublicTradeForm({
@@ -117,6 +119,7 @@ function PublicTradeForm({
   const [phase, setPhase] = useState<"preparing" | "wallet" | "approval" | "trade" | null>(null);
   const [settledHash, setSettledHash] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [failure, setFailure] = useState<WalletFailure | null>(null);
   const run = useRef<AbortController | null>(null);
   const approved = useRef({ buy: false, sell: false });
   const [simulated, setSimulated] = useState<PublicTradeAttempt | null>(null);
@@ -185,6 +188,7 @@ function PublicTradeForm({
     setDraft(next);
     setAcknowledged(attempt);
     setError(null);
+    setFailure(null);
   }
   function keep(value: PublicTradeAttempt | null) {
     if (preview) {
@@ -304,6 +308,7 @@ function PublicTradeForm({
     const controller = new AbortController();
     run.current = controller;
     setError(null);
+    setFailure(null);
     let latest = attempt;
     try {
       const first =
@@ -338,18 +343,34 @@ function PublicTradeForm({
       }
     } catch (caught) {
       if (!controller.signal.aborted) {
+        if (caught instanceof WalletRequestError) {
+          setFailure(caught.failure);
+        } else if (caught instanceof WalletSubmissionUnknown && caught.failure) {
+          setFailure({
+            ...caught.failure,
+            title: "Wallet response lost",
+            hint: "Check your wallet activity",
+            detail: `${caught.failure.detail} The wallet returned no transaction hash. Submission is uncertain; check its activity before another trade.`,
+          });
+        }
+        if (!(caught instanceof WalletSubmissionUnknown) && latest?.status === "review") {
+          setDraft(form);
+          keep({ ...latest, status: "cancelled" });
+        }
         setError(
           caught instanceof WalletSubmissionUnknown
             ? "Wallet response lost. Check your wallet activity before another trade."
-            : (caught as { code?: number }).code === 4001
-              ? "Signature cancelled. Your amount is kept."
-              : caught instanceof Error &&
-                  (Object.values(WORDS).includes(caught.message) ||
-                    /^(Could not prepare|Approval confirmed|The quote|Enter a valid)/.test(
-                      caught.message,
-                    ))
-                ? caught.message
-                : "Could not complete the wallet request. Your amount is kept.",
+            : caught instanceof WalletRequestError
+              ? caught.failure.detail
+              : (caught as { code?: number }).code === 4001
+                ? "Signature cancelled. Your amount is kept."
+                : caught instanceof Error &&
+                    (Object.values(WORDS).includes(caught.message) ||
+                      /^(Could not prepare|Approval confirmed|The quote|Enter a valid)/.test(
+                        caught.message,
+                      ))
+                  ? caught.message
+                  : "Could not complete the wallet request. Your amount is kept.",
         );
       }
     } finally {
@@ -475,7 +496,10 @@ function PublicTradeForm({
     actionLabel = error?.startsWith("Signature cancelled")
       ? "Cancelled · try again"
       : `Retry ${side}`;
-    actionHint = error ?? "Transaction failed. No swap completed.";
+    actionHint = failure?.hint ?? error ?? "Transaction failed. No swap completed.";
+    if (failure) {
+      actionLabel = failure.code === 4001 ? "Cancelled · try again" : failure.title;
+    }
     if (error?.startsWith("Price changed")) {
       actionState = "review";
       actionLabel = `Confirm ${side}`;
@@ -527,7 +551,7 @@ function PublicTradeForm({
           <dt>You receive · {outputAsset}</dt>
           <dd key={quote?.expectedOutput ?? "empty"}>
             {quote ? (
-              quotedAmount(quote.expectedOutput, outputDecimals, outputAsset)
+              quotedAmount(quote.expectedOutput, outputDecimals, outputAsset, false)
             ) : estimate.loading ? (
               <span className={styles.quoteLoading} aria-label="Loading quote">
                 …
@@ -541,7 +565,9 @@ function PublicTradeForm({
         </div>
         <div>
           <dt>Minimum received</dt>
-          <dd>{quote ? quotedAmount(quote.minimumOutput, outputDecimals, outputAsset) : "—"}</dd>
+          <dd>
+            {quote ? quotedAmount(quote.minimumOutput, outputDecimals, outputAsset, false) : "—"}
+          </dd>
         </div>
       </dl>
       <div className={styles.head}>
@@ -561,7 +587,8 @@ function PublicTradeForm({
       </div>
       {!preview && wallet.address && (
         <p className={styles.quiet}>
-          Your wallet · {wallet.address.slice(0, 6)}…{wallet.address.slice(-4)}
+          {wallet.providerName ?? "Your wallet"} · {wallet.address.slice(0, 6)}…
+          {wallet.address.slice(-4)}
         </p>
       )}
 
@@ -574,12 +601,21 @@ function PublicTradeForm({
             {wallet.restoring ? "Reconnecting…" : "Connect wallet"}
           </Button>
         ) : !preview && !wallet.onTargetChain ? (
-          <Button onClick={() => void wallet.switchChain()}>Switch to Monad testnet</Button>
+          <PublicTradeAction
+            state={wallet.switching ? "wallet" : wallet.switchFailure ? "error" : "ready"}
+            label={wallet.switching ? "Confirm network in wallet" : "Switch to Monad testnet"}
+            hint={wallet.switchFailure?.hint}
+            failure={wallet.switchFailure}
+            disabled={wallet.switching}
+            busy={wallet.switching}
+            onClick={() => void wallet.switchChain()}
+          />
         ) : (
           <PublicTradeAction
             state={actionState}
             label={actionLabel}
             hint={actionHint}
+            failure={failure}
             disabled={
               busy ||
               celebrating ||

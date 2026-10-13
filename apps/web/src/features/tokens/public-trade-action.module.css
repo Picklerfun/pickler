@@ -57,6 +57,12 @@
   line-height: 1.15;
   overflow-wrap: anywhere;
 }
+.words > span:first-child {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+  overflow: hidden;
+}
 .hint {
   display: -webkit-box;
   -webkit-box-orient: vertical;
@@ -161,4 +167,30 @@
   .sweep {
     display: none;
   }
+}
+
+.failure {
+  margin-top: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--pk-magenta-edge);
+  border-radius: var(--pk-radius-lg);
+  background: var(--pk-state-loss-bg);
+  color: var(--pk-state-loss-ink);
+  font-size: 13px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.failure summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.failure summary:focus-visible {
+  outline: 2px solid var(--pk-focus);
+  outline-offset: 3px;
+}
+.failure p {
+  margin: 8px 0;
+}
+.failure small {
+  display: block;
 }

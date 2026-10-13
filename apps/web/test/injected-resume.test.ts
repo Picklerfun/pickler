@@ -34,7 +34,7 @@ test("reload resumes an authorized extension even when it injects after hydratio
   target.ethereum = provider(calls);
   target.dispatchEvent(new Event("ethereum#initialized"));
 
-  assert.deepEqual(await pending, { address, chainId: 10143, balance: 1n });
+  assert.deepEqual(await pending, { address, chainId: 10143, balance: 1n, providerId: "legacy" });
   assert.deepEqual(calls.sort(), ["eth_accounts", "eth_chainId", "eth_getBalance"].sort());
 });
 

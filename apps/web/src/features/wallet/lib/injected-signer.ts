@@ -1,5 +1,11 @@
 "use client";
 import { sendInjectedTokenTransaction } from "./public-token-transaction";
+import {
+  pinInjectedProvider,
+  injectedProviderId,
+  forgetInjectedWallet,
+} from "./injected-providers";
+import { WalletRequestError } from "./wallet-request-error";
 
 import {
   getProvider,
@@ -42,7 +48,7 @@ async function read(
   if (signal?.aborted || chainId === null || !Number.isSafeInteger(chainId)) {
     return null;
   }
-  return { address, chainId, balance };
+  return { address, chainId, balance, providerId: injectedProviderId(provider) };
 }
 
 export const injectedSigner: SignerAdapter = {
@@ -56,6 +62,7 @@ export const injectedSigner: SignerAdapter = {
     if (!provider || signal?.aborted) {
       return null;
     }
+    pinInjectedProvider(provider);
     const accounts = await boundedWalletRead(readAccounts(provider), [], signal);
     return read(provider, accounts, signal);
   },
@@ -65,6 +72,7 @@ export const injectedSigner: SignerAdapter = {
     if (!provider) {
       return null;
     }
+    pinInjectedProvider(provider);
     return read(provider, await requestAccounts(provider));
   },
 
@@ -96,6 +104,7 @@ export const injectedSigner: SignerAdapter = {
   },
   disconnect: async () => {
     const provider = getProvider();
+    forgetInjectedWallet();
     if (provider) {
       await revokeAccess(provider);
     }
@@ -130,9 +139,10 @@ export const injectedSigner: SignerAdapter = {
 
   switchChain: async () => {
     const provider = getProvider();
-    if (!provider || !(await switchToTarget(provider))) {
-      return null;
+    if (!provider) {
+      throw new WalletRequestError({ code: 4100 }, "wallet_switchEthereumChain");
     }
+    await switchToTarget(provider);
     return read(provider, await readAccounts(provider));
   },
 };
