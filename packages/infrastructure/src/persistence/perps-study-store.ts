@@ -82,12 +82,17 @@ function canonical(value: unknown): string {
   }
   return JSON.stringify(value);
 }
-interface Locked {
+interface StudyOwnership {
   id: string;
-  record: PerpsStudyRecord;
   owner: string | null;
   expires_at: string | null;
   now: number;
+}
+interface Locked extends StudyOwnership {
+  record: PerpsStudyRecord;
+}
+interface Guarded extends StudyOwnership {
+  record: Omit<PerpsStudyRecord, "metadata">;
 }
 function definedCalls(calls: PerpsRound["calls"]) {
   return Object.values(calls).filter(
@@ -171,7 +176,37 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
   private async lock(c: PoolClient, scope: PerpsStudyScope): Promise<Locked> {
     return this.read(c, scope, true);
   }
-  private owned(c: PoolClient, x: Locked, lease: PerpsStudyLease) {
+  private async readGuard(c: PoolClient, scope: PerpsStudyScope): Promise<Guarded> {
+    const r = await c.query(
+      `SELECT id,document - 'metadata' AS document,owner,expires_at
+       FROM pickler.perps_studies
+       WHERE tenant_id=$1 AND session_id=$2 AND network=$3`,
+      [scope.tenantId, scope.sessionId, scope.network],
+    );
+    if (!r.rows[0]) {
+      throw new PilotError("NOT_FOUND", "Study not found");
+    }
+    return {
+      id: r.rows[0].id,
+      record: r.rows[0].document,
+      owner: r.rows[0].owner,
+      expires_at: r.rows[0].expires_at,
+      now: await this.now(c),
+    };
+  }
+  private async lockOwnership(c: PoolClient, scope: PerpsStudyScope): Promise<StudyOwnership> {
+    const r = await c.query(
+      `SELECT id,owner,expires_at
+       FROM pickler.perps_studies
+       WHERE tenant_id=$1 AND session_id=$2 AND network=$3 FOR UPDATE`,
+      [scope.tenantId, scope.sessionId, scope.network],
+    );
+    if (!r.rows[0]) {
+      throw new PilotError("NOT_FOUND", "Study not found");
+    }
+    return { ...r.rows[0], now: await this.now(c) };
+  }
+  private owned(c: PoolClient, x: StudyOwnership, lease: PerpsStudyLease) {
     lease.assertActive?.();
     if (x.owner !== lease.owner || Number(x.expires_at) <= x.now) {
       throw new PilotError("LEASE_LOST", "Study ownership expired");
@@ -182,7 +217,7 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
       ...(lease.assertActive ? { assertActive: lease.assertActive } : {}),
     });
   }
-  private async permissions(c: PoolClient, x: Locked) {
+  private async permissions(c: PoolClient, x: Pick<Guarded, "record">) {
     for (const strategy of perpsStrategies(x.record.config)) {
       const agentId = x.record.agentIds[strategy];
       const result = await c.query<AgentRecord>(
@@ -620,7 +655,7 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
   }
   async renew(scope: PerpsStudyScope, lease: PerpsStudyLease) {
     const expiresAt = await this.tx(async (c) => {
-      const x = await this.lock(c, scope);
+      const x = await this.lockOwnership(c, scope);
       this.owned(c, x, lease);
       await c.query("UPDATE pickler.perps_studies SET expires_at=$2 WHERE id=$1", [
         x.id,
@@ -669,7 +704,7 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
   }
   async guard(scope: PerpsStudyScope, lease: PerpsStudyLease, paid = false) {
     await this.tx(async (c) => {
-      const x = await this.read(c, scope);
+      const x = await this.readGuard(c, scope);
       this.owned(c, x, lease);
       await this.permissions(c, x);
       if (

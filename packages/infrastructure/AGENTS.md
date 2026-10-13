@@ -816,3 +816,11 @@ round/event bodies. LIMIT alone does not bound JSONB work before a sort. Preserv
 input, scoped repeatable-read read-only snapshot and full inventory; this is not a watermark or
 constant-time export. Controlled PostgreSQL tests reject body hashing outside the selected page
 and verify original payload/fingerprint parity. See [PTS report page bounds](../../apps/agent-service/PTS-REPORT-PAGE-BOUNDS.md).
+
+Study permission guards project every original control field except unused metadata, without
+caching permission or ownership results. Lease renewal locks only the scoped identity/owner/expiry
+columns and keeps the final active-owner commit fence. Full views, audit exports and financial
+mutations retain their original document reads. Never use a metadata-free guard projection as
+historical evidence or a writable study document. The measured transfer reduction does not establish
+the cause of the preserved simultaneous query timeouts. See
+[study control reads](../../apps/agent-service/PTS-STUDY-CONTROL-READS.md).

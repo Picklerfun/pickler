@@ -41,7 +41,7 @@ function configuration(version: 8 | 9): PerpsStudyConfig {
       };
 }
 
-function suspendedRead(original: Pool, statementPrefix = "SELECT id,document,owner,expires_at ") {
+function suspendedRead(original: Pool, statementPrefix = "SELECT id,document") {
   let signalEntered!: () => void;
   let resume!: () => void;
   let suspended = false;
