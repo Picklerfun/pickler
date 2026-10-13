@@ -37,6 +37,7 @@ export interface Env {
   ADVICE_SPLITTER_TREASURY?: string;
   APP_ENV: string;
   TRADING_EXECUTOR?: Fetcher;
+  PERPL_STUDIO_ENABLED?: string;
   TRADING_QUEUE?: Queue<{ kind: "trading-wakeup" }>;
   TRADING_ADMISSIONS_ENABLED?: string;
   ADMISSIONS_ENABLED?: string;

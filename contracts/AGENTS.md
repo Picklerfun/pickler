@@ -155,3 +155,10 @@ The [34 real testnet receipts](../docs/market/uniswap-v4-testnet-integration.md)
 acceptance only; no hosted passkey/R2/indexer activation is implied. The test factory is disabled
 again. Third-party source pins/licenses remain unchanged. No general or mainnet deployment script
 is provided.
+
+## Perpl integration interface
+
+`src/interfaces/IPerplExchange.sol` describes only the owner account/forwarding/collateral calls
+consumed by off-chain onboarding. It is a minimal external interface, not a deployed Pickler
+contract or a new custody rule. Its ABI is compiler-generated into chain. No deployment or real
+transaction is part of build/test. See [Perpl trading](../docs/perpl-trading.md).

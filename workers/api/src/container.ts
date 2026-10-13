@@ -697,6 +697,20 @@ export function createServices(env: Env): Services & { close(): Promise<void> } 
     onboard: (userId, email) => directory.onboard(userId, email),
     studio: {
       tokens: launcher.tokens,
+      ...(env.PERPL_STUDIO_ENABLED === "true" && env.TRADING_EXECUTOR
+        ? {
+            perplLive: {
+              invoke: (path: string, input: unknown, authorization: string) =>
+                env.TRADING_EXECUTOR!.fetch(
+                  new Request(`https://trading.internal${path}`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json", Authorization: authorization },
+                    body: JSON.stringify(input),
+                  }),
+                ),
+            },
+          }
+        : {}),
       tokenOperations: launcher.tokenOperations,
       perplMarkets: {
         catalog: (network, signal) =>

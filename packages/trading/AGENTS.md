@@ -179,6 +179,15 @@ and closeable. No financial formula, threshold or lab protocol changes.
 
 See [agent-selected Perpl markets](../../docs/studio-perpl-markets.md).
 
+## Perpl real testnet sessions
+
+The public `perpl-live` subpath owns the separate bounded real-execution contracts and service.
+It admits testnet 1x, one position and controlled open/hold/close cycles; it has no model tool.
+Keep durable intent IDs, unknown submissions, partial reductions and lease fences. Increasing
+admissions require current owner settings/access; required exits survive configuration changes.
+Infrastructure owns credentials, provider I/O and transactional persistence. See
+[Perpl trading](../../docs/perpl-trading.md); controlled tests do not establish remote acceptance.
+
 ## Read-only Perpl portfolio projections
 
 `features/perpl-dashboard/model.ts`, exported from `@pickler/trading/perps`, owns the provider-independent `PerplDashboardData` read port and exact integer

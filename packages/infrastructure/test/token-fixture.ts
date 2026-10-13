@@ -118,7 +118,7 @@ export function controlledIssuer() {
   };
   return { issuer, calls: () => calls };
 }
-export async function tokenFixture(t: TestContext) {
+export async function tokenFixture(t: TestContext, migrationHistory?: string) {
   const url = new URL(
     process.env.TEST_DATABASE_URL ??
       "postgresql://pickler:pickler_local_only@127.0.0.1:55432/pickler",
@@ -127,7 +127,7 @@ export async function tokenFixture(t: TestContext) {
     ["127.0.0.1", "localhost", "[::1]"].includes(url.hostname),
     "controlled token suite requires loopback PostgreSQL",
   );
-  const store = await createTestStore(t);
+  const store = await createTestStore(t, undefined, migrationHistory);
   const directory = new PostgresStudioDirectory(store.pool);
   const userId = randomUUID();
   await store.pool.query("SELECT identity.create_profile($1,'Controlled',$2)", [

@@ -1,6 +1,7 @@
 import * as dto from "@pickler/api-schema";
 import { operation as describeOperation } from "../openapi/operation";
 import type { TradingRepository } from "@pickler/trading/polymarket";
+import { studioPerplLiveRoutes, type StudioPerplLiveServices } from "./studio-perpl-live";
 import { XFailure, type XOAuthService } from "@pickler/core";
 import { studioTokenRoutes } from "./studio-token";
 import type { TokenOperationService, TokenLaunchService } from "@pickler/core";
@@ -103,6 +104,7 @@ import { studioWalletRoutes, WalletRefusal, walletWork } from "./studio-wallets"
 import { studioPerpsRoutes, type StudioPerpsServices } from "./studio-perps";
 
 export interface StudioServices {
+  perplLive?: StudioPerplLiveServices;
   tokens?: TokenLaunchService;
   tokenOperations?: TokenOperationService;
   perplMarkets?: {
@@ -1263,6 +1265,14 @@ export function studioRoutes(services: StudioServices) {
       custody: deposits,
       chainId: services.walletChainId ?? null,
       ...(services.transfers ? { transfers: services.transfers } : {}),
+    }),
+  );
+  api.route(
+    "/",
+    studioPerplLiveRoutes({
+      directory: services.directory,
+      access,
+      ...(services.perplLive ? { service: services.perplLive } : {}),
     }),
   );
   api.get(

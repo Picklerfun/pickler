@@ -842,6 +842,20 @@ nonce/fee reads, gas estimation and calldata preparation. Quotes reserve the sam
 ceiling, with a separate six-per-wallet/minute bucket so typing cannot consume preparation slots.
 They never write financial attribution or change indexer state.
 
+## Private Perpl execution adapters
+
+The server-only `perpl-live` export implements Trading's real testnet ports. It owns the private
+RLS aggregate, AES-GCM per-agent credentials, Ed25519 HTTP signing, reviewed policy and exact
+owner WebAuthn onboarding. Resolve owner/wallet/runtime identities from PostgreSQL, never a
+client override. Provider requests stay outside locks; persist intents and signed transaction
+bytes before sends. Never reenroll an ambiguous key or replay an unknown order.
+
+Migrations 0048/0049 append the Perpl table/grants without rewriting earlier identities. Drizzle
+lists actual schema files explicitly and excludes product read models. The test database/token
+fixture helpers accept an optional migration folder only for controlled upgrade validation.
+See [Perpl trading](../../docs/perpl-trading.md). Its tests use disposable loopback databases and
+injected transports; no hosted credentials or automatic activation are authorized.
+
 ## Perpl read-only dashboard adapter
 
 `PerplDashboardGateway` in `src/perpl/dashboard.ts` uses only fixed Perpl testnet targets: public
