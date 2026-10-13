@@ -1,10 +1,21 @@
 import type { PtsAnalysis, PtsHistory, PtsPivot, PtsSetup, PtsBar, PtsVersion } from "./types.js";
-import { PTS_VERSION, PTS_INTRADAY_FAST_VERSION } from "./types.js";
+import {
+  PTS_VERSION,
+  PTS_INTRADAY_FAST_VERSION,
+  PTS_INTRADAY_RESPONSIVE_VERSION,
+} from "./types.js";
 import { ptsTemporalProfile } from "./temporal-profile.js";
 import { ptsSeries, ptsCoverage } from "./calendar.js";
 import { ptsPivots, ptsTrend, ptsChannel, channelDistance } from "./pivots.js";
 import { units as u, decimal as d, abs, max, tick, recoveryRatioCompare } from "./math.js";
 function ptsCheckCodes(version: PtsVersion) {
+  if (version === PTS_INTRADAY_RESPONSIVE_VERSION) {
+    return {
+      alignment: "FIFTEEN_MINUTE_ALIGNMENT",
+      impulse: "FIFTEEN_MINUTE_IMPULSE",
+      channel: "FIFTEEN_MINUTE_CHANNEL",
+    };
+  }
   if (version === PTS_INTRADAY_FAST_VERSION) {
     return {
       alignment: "HOURLY_ALIGNMENT",
