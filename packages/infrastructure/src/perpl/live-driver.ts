@@ -49,6 +49,13 @@ export const perplLivePolicySchema = z
     chainId: z.literal(10143),
     exchange: z.string().regex(/^0x[a-f\d]{40}$/i),
     exchangeCodeHash: z.string().regex(/^0x[a-f\d]{64}$/i),
+    exchangeImplementation: z
+      .object({
+        address: z.string().regex(/^0x[a-f\d]{40}$/i),
+        codeHash: z.string().regex(/^0x[a-f\d]{64}$/i),
+      })
+      .strict()
+      .optional(),
     enrollmentOrigin: z.string().url(),
     rpcUrl: z.string().url(),
     maxCollateralMicros: z.string().regex(/^[1-9]\d{0,23}$/),
@@ -188,13 +195,51 @@ export function createPerplLiveDriver(config: {
     if (BigInt(String(await rpc.call("eth_chainId", []))) !== 10143n) {
       throw new PilotError("PERPL_TESTNET_ONLY", "RPC network mismatch");
     }
-    const code = await rpc.call("eth_getCode", [policy.exchange, "latest"]);
+    const implementationSlot = "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc";
+    const block = policy.exchangeImplementation
+      ? String(await rpc.call("eth_blockNumber", []))
+      : "latest";
+    const code = await rpc.call("eth_getCode", [policy.exchange, block]);
     if (
       typeof code !== "string" ||
       !/^0x[\da-f]+$/i.test(code) ||
       keccak256(code as Hex).toLowerCase() !== policy.exchangeCodeHash.toLowerCase()
     ) {
       throw new PilotError("PERPL_BINDINGS_CHANGED", "Perpl exchange bytecode changed");
+    }
+    if (!policy.exchangeImplementation) {
+      if (code.toLowerCase().includes(implementationSlot.slice(2))) {
+        throw new PilotError(
+          "PERPL_BINDINGS_CHANGED",
+          "Perpl proxy implementation is not reviewed",
+        );
+      }
+      return;
+    }
+    const implementation = await rpc.call("eth_getStorageAt", [
+      policy.exchange,
+      implementationSlot,
+      block,
+    ]);
+    if (
+      typeof implementation !== "string" ||
+      !/^0x0{24}[\da-f]{40}$/i.test(implementation) ||
+      `0x${implementation.slice(-40)}`.toLowerCase() !==
+        policy.exchangeImplementation.address.toLowerCase()
+    ) {
+      throw new PilotError("PERPL_BINDINGS_CHANGED", "Perpl proxy implementation changed");
+    }
+    const implementationCode = await rpc.call("eth_getCode", [
+      policy.exchangeImplementation.address,
+      block,
+    ]);
+    if (
+      typeof implementationCode !== "string" ||
+      !/^0x[\da-f]+$/i.test(implementationCode) ||
+      keccak256(implementationCode as Hex).toLowerCase() !==
+        policy.exchangeImplementation.codeHash.toLowerCase()
+    ) {
+      throw new PilotError("PERPL_BINDINGS_CHANGED", "Perpl implementation bytecode changed");
     }
   }
   async function accountId(address: string) {
@@ -542,6 +587,14 @@ export function createPerplLiveDriver(config: {
     };
   }
   return {
+    async requirements() {
+      const ctx = await context();
+      return {
+        minimumAccountMicros: ctx.instance.minAccountOpen.toString(),
+        minimumDepositMicros: ctx.instance.minDeposit.toString(),
+        maximumCollateralMicros: policy.maxCollateralMicros,
+      };
+    },
     async prepareSetup(authority, document, amountMicros) {
       if (!config.forwarder || !config.reader) {
         throw new PilotError("PERPL_SIGNING_UNAVAILABLE", "Owner signing is not configured");
@@ -976,7 +1029,10 @@ export function createPerplLiveDriver(config: {
       }
       return wallet.sn;
     },
-    submit: http.submit,
+    async submit(document, request, guard) {
+      await chainGuard();
+      return http.submit(document, request, guard);
+    },
     async verifyTransaction(hash) {
       const receipt = (await rpc.call("eth_getTransactionReceipt", [hash])) as {
         status?: string;

@@ -181,6 +181,10 @@ See [agent-selected Perpl markets](../../docs/studio-perpl-markets.md).
 
 ## Perpl real testnet sessions
 
+The read-only state optionally obtains public account/deposit requirements from its injected
+driver. Provider failure retains account/session history with unknown requirements. It never
+changes owner limits or funds an account as a consequence of reading state.
+
 The public `perpl-live` subpath owns the separate bounded real-execution contracts and service.
 It admits testnet 1x, one position and controlled open/hold/close cycles; it has no model tool.
 Keep durable intent IDs, unknown submissions, partial reductions and lease fences. Increasing

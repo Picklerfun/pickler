@@ -107,6 +107,15 @@ export const perplLiveStateSchema = z
     address: z.string().nullable(),
     accountId: z.number().int().positive().nullable(),
     setupRequired: z.boolean(),
+    requirements: z
+      .object({
+        minimumAccountAusd: ausd,
+        minimumDepositAusd: ausd,
+        maximumCollateralAusd: ausd,
+      })
+      .strict()
+      .nullable()
+      .optional(),
     keyExpiresAt: z.string().datetime().nullable(),
     setup: z.array(perplLiveSetupSchema).max(100),
     session: perplLiveSessionSchema.nullable(),

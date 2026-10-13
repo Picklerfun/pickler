@@ -44,7 +44,8 @@ export function createPerplLiveService(deps: {
   const repo = deps.repository;
   async function state(scope: PerplLiveScope) {
     const value = await repo.read(scope);
-    return { ...value, available: true, admissionsEnabled: deps.admissions };
+    const requirements = (await deps.driver.requirements?.().catch(() => null)) ?? null;
+    return { ...value, available: true, admissionsEnabled: deps.admissions, requirements };
   }
   async function prepareSetup(scope: PerplLiveScope, amountMicros: string, key: string) {
     if (!deps.admissions) {

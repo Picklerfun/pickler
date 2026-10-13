@@ -769,6 +769,9 @@ Its generated OpenAPI describes validation, curve, unavailable and quota errors.
 
 ## Studio Perpl execution facade
 
+Owner state carries optional public account/deposit minimums and the reviewed per-deposit
+maximum from Trading. These do not change owner limits or grant execution permission.
+
 `routes/studio-perpl-live.ts` adds owner-only state, setup preparation/confirmation, start and
 control under Studio and its Console alias. `PERPL_STUDIO_ENABLED` defaults false. Composition
 uses the private `TRADING_EXECUTOR` binding and forwards the original user Authorization header;

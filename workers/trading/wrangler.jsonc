@@ -26,8 +26,7 @@
     "APP_ENV": "staging",
     "TRADING_ADMISSIONS_ENABLED": "false",
     "PERPL_ADMISSIONS_ENABLED": "false",
-    // Must match the API's verified Supabase issuer before owner operations are enabled.
-    "JWT_ISSUER": "",
+    // JWT_ISSUER is a Worker secret matching the API's verified Supabase issuer.
     "JWT_AUDIENCE": "authenticated",
   },
 }

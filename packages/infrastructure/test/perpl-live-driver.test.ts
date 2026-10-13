@@ -13,7 +13,10 @@ import { createPerplLiveDriver } from "../src/perpl/live-driver.js";
 
 // Public controlled test key. Every HTTP/RPC operation below uses the injected local transport.
 const owner = privateKeyToAccount(`0x${"0".repeat(62)}01`);
-async function fixture(maxFeePerGasWei = "100") {
+async function fixture(
+  maxFeePerGasWei = "100",
+  proxy: "none" | "reviewed" | "unreviewed" = "none",
+) {
   const context = JSON.parse(
     await readFile(
       new URL("../../perpl-context/test/fixtures/context.json", import.meta.url),
@@ -40,7 +43,11 @@ async function fixture(maxFeePerGasWei = "100") {
   let reads = 0;
   let sends = 0;
   let nonce = "0x0";
-  let code = "0x6000";
+  const implementationSlot = "360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc";
+  let code = proxy === "none" ? "0x6000" : `0x7f${implementationSlot}54`;
+  const implementationAddress = `0x${"2".repeat(40)}`;
+  let implementation = implementationAddress;
+  let implementationCode = "0x6001";
   let signed = "";
   let status = "ACTIVITY_STATUS_CREATED";
   const activity = () => ({
@@ -59,7 +66,9 @@ async function fixture(maxFeePerGasWei = "100") {
     const request = JSON.parse(String(init?.body));
     const methods: Record<string, unknown> = {
       eth_chainId: "0x279f",
-      eth_getCode: code,
+      eth_blockNumber: "0x10",
+      eth_getStorageAt: `0x${"0".repeat(24)}${implementation.slice(2)}`,
+      eth_getCode: request.params[0] === implementationAddress ? implementationCode : code,
       eth_getTransactionCount: nonce,
       eth_maxPriorityFeePerGas: "0x1",
       eth_getBlockByNumber: { baseFeePerGas: "0x1" },
@@ -83,6 +92,14 @@ async function fixture(maxFeePerGasWei = "100") {
       chainId: 10143,
       exchange: context.instances[0].address,
       exchangeCodeHash: keccak256(code as Hex),
+      ...(proxy === "reviewed"
+        ? {
+            exchangeImplementation: {
+              address: implementationAddress,
+              codeHash: keccak256(implementationCode as Hex),
+            },
+          }
+        : {}),
       enrollmentOrigin: "https://app.pickler.fun",
       rpcUrl: "http://127.0.0.1:1",
       maxCollateralMicros: "100000000",
@@ -117,6 +134,12 @@ async function fixture(maxFeePerGasWei = "100") {
     },
     changeCode: () => {
       code = "0x6001";
+    },
+    changeImplementation: () => {
+      implementation = `0x${"3".repeat(40)}`;
+    },
+    changeImplementationCode: () => {
+      implementationCode = "0x6002";
     },
     complete: (value: string) => {
       signed = value;
@@ -160,6 +183,61 @@ test("onboarding prepares an exact bounded allowance without signing or sending"
   });
   f.changeCode();
   await assert.rejects(prepared(f), { code: "PERPL_BINDINGS_CHANGED" });
+});
+test("public deposit requirements do not sign, fund or change owner limits", async () => {
+  const f = await fixture();
+  const requirements = await f.driver.requirements!();
+
+  assert.deepEqual(requirements, {
+    minimumAccountMicros: "100000000",
+    minimumDepositMicros: "10000000",
+    maximumCollateralMicros: "100000000",
+  });
+  assert.equal(f.authority.perDayMicros, "100000000");
+  assert.equal(f.forwards(), 0);
+  assert.equal(f.sends(), 0);
+});
+test("a proxy requires reviewed implementation identity before any owner signing", async () => {
+  const unreviewed = await fixture("100", "unreviewed");
+  await assert.rejects(prepared(unreviewed), { code: "PERPL_BINDINGS_CHANGED" });
+  assert.equal(unreviewed.forwards(), 0);
+  assert.equal(unreviewed.sends(), 0);
+
+  const reviewed = await fixture("100", "reviewed");
+  assert.equal((await prepared(reviewed)).kind, "approve");
+
+  reviewed.changeImplementation();
+  await assert.rejects(prepared(reviewed), { code: "PERPL_BINDINGS_CHANGED" });
+  assert.equal(reviewed.forwards(), 0);
+  assert.equal(reviewed.sends(), 0);
+});
+test("an implementation bytecode change is refused even when its address stays the same", async () => {
+  const reviewed = await fixture("100", "reviewed");
+  await prepared(reviewed);
+
+  reviewed.changeImplementationCode();
+  await assert.rejects(prepared(reviewed), { code: "PERPL_BINDINGS_CHANGED" });
+  assert.equal(reviewed.forwards(), 0);
+  assert.equal(reviewed.sends(), 0);
+});
+test("a changed implementation blocks an HTTP order before a credential or request is used", async () => {
+  const reviewed = await fixture("100", "reviewed");
+  reviewed.changeImplementationCode();
+  let guarded = false;
+
+  await assert.rejects(
+    reviewed.driver.submit(
+      reviewed.document,
+      { rq: 1, acc: 7, mkt: 16, t: 1, p: 0, s: 1, fl: 0, lv: 100, lb: 20, bf: 0 },
+      async () => {
+        guarded = true;
+      },
+    ),
+    { code: "PERPL_BINDINGS_CHANGED" },
+  );
+  assert.equal(guarded, false);
+  assert.equal(reviewed.forwards(), 0);
+  assert.equal(reviewed.sends(), 0);
 });
 test("tampered activity and stale nonce are refused before forwarding a passkey signature", async () => {
   const f = await fixture();

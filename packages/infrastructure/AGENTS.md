@@ -844,6 +844,11 @@ They never write financial attribution or change indexer state.
 
 ## Private Perpl execution adapters
 
+Perpl owner preparation verifies the reviewed ERC-1967 implementation address and runtime hash
+at one block as well as the proxy hash. Unreviewed proxies and changed implementations fail
+before owner signing or broadcast. The driver exposes public venue minimums and the reviewed
+per-deposit maximum; unavailable reads do not fabricate requirements.
+
 The server-only `perpl-live` export implements Trading's real testnet ports. It owns the private
 RLS aggregate, AES-GCM per-agent credentials, Ed25519 HTTP signing, reviewed policy and exact
 owner WebAuthn onboarding. Resolve owner/wallet/runtime identities from PostgreSQL, never a

@@ -33,6 +33,11 @@ export function perplStateDto(state: {
   document: PerplLiveDocument | null;
   available: boolean;
   admissionsEnabled: boolean;
+  requirements?: {
+    minimumAccountMicros: string;
+    minimumDepositMicros: string;
+    maximumCollateralMicros: string;
+  } | null;
 }) {
   const d = state.document;
   const snap = d?.snapshot;
@@ -53,6 +58,13 @@ export function perplStateDto(state: {
     address: state.authority.address,
     accountId: d?.accountId ?? null,
     setupRequired: !d?.encryptedToken || !d.keyExpiresAt || d.keyExpiresAt <= Date.now(),
+    requirements: state.requirements
+      ? {
+          minimumAccountAusd: perplDecimal(state.requirements.minimumAccountMicros),
+          minimumDepositAusd: perplDecimal(state.requirements.minimumDepositMicros),
+          maximumCollateralAusd: perplDecimal(state.requirements.maximumCollateralMicros),
+        }
+      : null,
     keyExpiresAt: d?.keyExpiresAt ? new Date(d.keyExpiresAt).toISOString() : null,
     setup: d?.setup.slice(-100).map(perplSetupDto) ?? [],
     session: session

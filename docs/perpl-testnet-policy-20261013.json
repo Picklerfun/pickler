@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "chainId": 10143,
+  "exchange": "0x1964c32f0be608e7d29302aff5e61268e72080cc",
+  "exchangeCodeHash": "0x63411cb4bdb3d2085146b23dca998134a387312f7ea092e05386066a85f9f7a1",
+  "exchangeImplementation": {
+    "address": "0xbcbd3701ed0bde8acbb727f0d92a8b85a169adbb",
+    "codeHash": "0x29ef64f8efca11ce9cd1f0ab39ef08cd7bd02955b52075db44be95a8b4dcf620"
+  },
+  "enrollmentOrigin": "https://pickler.fun",
+  "rpcUrl": "https://testnet-rpc.monad.xyz",
+  "maxCollateralMicros": "100000000",
+  "maxGas": 500000,
+  "maxFeePerGasWei": "120000000000",
+  "maxSlippageBps": 100
+}

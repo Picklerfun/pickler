@@ -13,6 +13,10 @@ Read the root and affected dependency AGENTS.md files before changes. Keep docum
 
 ## Responsibility and structure
 
+Perpl Controls obtains current collateral minimums from the owner state. Funding keeps the
+owner's exact entered amount; insufficient daily limits link to the existing Limits section
+and disable preparation. The UI never raises limits or funds a wallet automatically.
+
 Next.js owns presentation and authentication transport. Hono in `workers/api` is the only
 business API. All web API requests use the same origin and delegate through a Service Binding.
 The web has no database, provider-secret, Mastra or infrastructure dependency. Public Supabase

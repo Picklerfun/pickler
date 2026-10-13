@@ -16,6 +16,10 @@ runtime composes adapters and models. Hosts must not duplicate risk, fills or ac
 
 ## Perpl testnet executor
 
+`JWT_ISSUER` is an operator-managed Worker secret matching API. The Wrangler config has no
+empty plaintext override. DTOs expose only public deposit requirements, independently of the
+private policy, encrypted credentials and owner-stamped preparation.
+
 `src/perpl.ts` composes the separate private Perpl execution service. Every /perpl HTTP request
 requires the original independently verified Supabase user JWT; repository transactions recheck
 persisted agent ownership. Configure JWT issuer/audience equal to API. `PERPL_ADMISSIONS_ENABLED`

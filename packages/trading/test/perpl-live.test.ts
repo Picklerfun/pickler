@@ -201,6 +201,19 @@ test("one durable opening, confirmed position, closing and completed cycle", asy
   await service.tick(f.scope);
   assert.equal(f.submissions.length, 2);
 });
+test("unavailable public requirements preserve the owner's account and session state", async () => {
+  const f = fixture();
+  f.driver.requirements = async () => {
+    throw new Error("Controlled public transport failure");
+  };
+  const state = await f.service(false).state(f.scope);
+
+  assert.equal(state.requirements, null);
+  assert.equal(state.admissionsEnabled, false);
+  assert.equal(state.document?.accountId, 7);
+  assert.equal(state.authority.perDayMicros, "100000000");
+  assert.equal(f.submissions.length, 0);
+});
 test("a lost submission response is reconciled without sending another opening", async () => {
   const f = fixture();
   const base = f.driver.submit;

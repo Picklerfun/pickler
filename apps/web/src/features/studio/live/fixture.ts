@@ -97,6 +97,7 @@ const X_HANDLE = "HalftimeBot";
 /** Which section each stage opens on. */
 const SECTIONS: Record<LiveStage, LiveSectionKey> = {
   "perpl-trading-ready": "controls",
+  "perpl-trading-setup": "controls",
   "perpl-trading-active": "positions",
   "perpl-trading-closed": "record",
   "perpl-token-empty": "token",
@@ -987,18 +988,25 @@ const ACCOUNT_TABS: Partial<Record<LiveStage, AccountTab>> = {
 export function liveStudioFixture(stage: LiveStage): LiveStaged {
   const warned = stage === "perpl-warnings";
   const markets = board(stage === "perpl-markets" ? sampleSource : perplSource);
+  const stagedAgent = agent(stage === "perpl-paused", warned ? 18 : 75.8);
+  if (stage === "perpl-trading-setup") {
+    stagedAgent.config.spend = { perCallAusd: 5, perDayAusd: 20 };
+    stagedAgent.spend = { perCallAusd: 5, perDayAusd: 20 };
+  }
   return {
     execution:
-      stage === "perpl-trading-ready"
-        ? perplExecutionFixture("ready")
-        : stage === "perpl-trading-active"
-          ? perplExecutionFixture("active")
-          : stage === "perpl-trading-closed"
-            ? perplExecutionFixture("closed")
-            : null,
+      stage === "perpl-trading-setup"
+        ? perplExecutionFixture("setup")
+        : stage === "perpl-trading-ready"
+          ? perplExecutionFixture("ready")
+          : stage === "perpl-trading-active"
+            ? perplExecutionFixture("active")
+            : stage === "perpl-trading-closed"
+              ? perplExecutionFixture("closed")
+              : null,
     now: NOW,
     tokenState: tokenPreview(stage === "perpl-token-launched"),
-    agent: agent(stage === "perpl-paused", warned ? 18 : 75.8),
+    agent: stagedAgent,
     section: SECTIONS[stage],
     wallets: warned
       ? wallets("18000000", "120000000000000000")

@@ -176,6 +176,11 @@ export interface PerplLiveRepository {
   due(limit: number): Promise<PerplLiveScope[]>;
 }
 export interface PerplLiveDriver {
+  requirements?(): Promise<{
+    minimumAccountMicros: string;
+    minimumDepositMicros: string;
+    maximumCollateralMicros: string;
+  }>;
   prepareSetup(
     authority: PerplLiveAuthority,
     document: PerplLiveDocument,

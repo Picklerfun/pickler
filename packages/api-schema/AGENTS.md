@@ -47,6 +47,10 @@ configuration.
 
 ## Studio contracts
 
+Perpl live state optionally carries nullable `requirements`: minimum account/deposit AUSD and
+the reviewed maximum per deposit. These are public exact decimal strings; omission remains
+compatible with older fixtures/consumers and does not authorize funding.
+
 `walletsResponseSchema` carries optional nullable `chainId` for the deployment-selected custody
 balance/transfer network (10143: Monad Testnet; 143: Monad mainnet). Current producers always
 return it, null if unavailable; omission remains accepted for legacy responses. Consumers must

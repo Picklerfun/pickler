@@ -45,16 +45,24 @@ export function PerplTradingControls({
   execution,
   agent,
   canManage,
+  onLimits,
 }: {
   execution: PerplExecution;
   agent: Agent;
   canManage: boolean;
+  onLimits?: () => void;
 }) {
   const [margin, setMargin] = useState(String(agent.spend?.perCallAusd ?? 10));
-  const [collateral, setCollateral] = useState("100");
+  const [collateral, setCollateral] = useState<string | null>(null);
   const [holding, setHolding] = useState("60");
   const [funding, setFunding] = useState(false);
   const state = execution.state;
+  const minimumRequirement = state?.setupRequired
+    ? state.requirements?.minimumAccountAusd
+    : state?.requirements?.minimumDepositAusd;
+  const minimumCollateral = minimumRequirement?.replace(/(\.\d*?)0+$/, "$1").replace(/\.$/, "");
+  const selectedCollateral = collateral ?? minimumCollateral ?? "100";
+  const collateralExceedsDailyLimit = Number(selectedCollateral) > (agent.spend?.perDayAusd ?? 0);
   const setup = state?.setup.at(-1);
   const active =
     !!state?.session && ["active", "paused", "stopping", "frozen"].includes(state.session.status);
@@ -84,7 +92,7 @@ export function PerplTradingControls({
               <Field label="Collateral · AUSD">
                 <Input
                   inputMode="decimal"
-                  value={collateral}
+                  value={selectedCollateral}
                   onChange={(e) => setCollateral(e.target.value)}
                   disabled={disabled || preparePending}
                 />
@@ -93,6 +101,26 @@ export function PerplTradingControls({
                 Daily collateral limit: {agent.spend?.perDayAusd ?? 0} AUSD. A new account also
                 requires Perpl&apos;s minimum deposit.
               </p>
+              {minimumCollateral && (
+                <p className={styles.note}>
+                  Perpl minimum: {minimumCollateral} AUSD. Maximum per deposit:{" "}
+                  {state.requirements?.maximumCollateralAusd
+                    .replace(/(\.\d*?)0+$/, "$1")
+                    .replace(/\.$/, "")}{" "}
+                  AUSD.
+                </p>
+              )}
+              {collateralExceedsDailyLimit && (
+                <p className={styles.error} role="alert">
+                  Set this agent&apos;s daily limit to at least {selectedCollateral} AUSD before
+                  preparing this deposit.
+                </p>
+              )}
+              {onLimits && (
+                <Button disabled={disabled || preparePending} onClick={onLimits}>
+                  Edit agent limits
+                </Button>
+              )}
               {setup && setup.status !== "confirmed" && setup.status !== "failed" ? (
                 <div className={styles.copy}>
                   <strong>{setupLabels[setup.kind]}</strong>
@@ -127,8 +155,8 @@ export function PerplTradingControls({
               ) : (
                 <Button
                   variant="primary"
-                  disabled={disabled || !state.admissionsEnabled}
-                  onClick={() => void execution.prepare(collateral)}
+                  disabled={disabled || !state.admissionsEnabled || collateralExceedsDailyLimit}
+                  onClick={() => void execution.prepare(selectedCollateral)}
                 >
                   {execution.busy
                     ? "Preparing…"

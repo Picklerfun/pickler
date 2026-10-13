@@ -97,6 +97,9 @@ already-signed transaction. Remote acceptance must compare order/position identi
 
 ## Configuration and migrations
 
+See the separate [dated readiness record](perpl-operational-readiness-20261013.md) for actual
+migration observations, configuration authorization, enrollment refusal and remaining acceptance.
+
 Both product gates remain disabled by default:
 
 - API: `PERPL_STUDIO_ENABLED=false`; requires the existing `TRADING_EXECUTOR` binding.
@@ -107,7 +110,17 @@ Both product gates remain disabled by default:
 - Trading: `PERPL_LIVE_POLICY_JSON`, a strict version-1 policy with chainId 10143, reviewed
   exchange address/runtime code hash, RPC URL, whitelisted enrollment Origin,
   `maxCollateralMicros`, `maxGas`, `maxFeePerGasWei` and `maxSlippageBps` (1–1000).
+  ERC-1967 exchanges also require `exchangeImplementation` with reviewed address and code hash;
+  proxy and implementation are checked at one block before owner signing/submission.
   Missing/invalid policy leaves mutations unavailable. There is no default address or mainnet fallback.
+
+The public reviewed policy capture is [testnet policy](perpl-testnet-policy-20261013.json).
+It records the 2026-10-13 two-RPC exchange/implementation observations, with 100 AUSD per deposit,
+500,000 gas, 120 gwei maximum fee and 100 bps slippage. It contains no keys. The owner's saved
+daily/trade limits remain additional authoritative bounds; nothing raises them automatically.
+Controls reads the venue's current minimums and links directly to Limits when the selected
+deposit exceeds the saved daily cap. A published policy capture does not establish enrollment
+Origin approval or activation.
 
 Hosted persistence uses the existing trusted DATABASE Hyperdrive binding. Local composition
 requires explicit `APP_ENV=local` and a loopback DATABASE_URL. Invocation pools are closed on every
