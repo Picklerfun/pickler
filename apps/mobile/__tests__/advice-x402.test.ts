@@ -108,6 +108,13 @@ describe("checkTerms", () => {
     expect(checkTerms(termsOf(required({ payTo: "0x0000000000000000000000000000000000000Bad" })), 1_500_000n, SPLITTER)).toBe("untrusted");
   });
 
+  test("a payee or payTo in mixed case with a bad checksum is untrusted: it could never be signed (final review M4)", () => {
+    const badPayee = PAYEE.replace("C51812", "c51812");
+    expect(checkTerms(termsOf(required({}, { payee: badPayee })), 1_500_000n, SPLITTER)).toBe("untrusted");
+    expect(checkTerms(termsOf(required({ payTo: SPLITTER.replace("FbDB", "fbDB") })), 1_500_000n, SPLITTER)).toBe("untrusted");
+    expect(checkTerms(termsOf(required({}, { payee: PAYEE.toLowerCase() })), 1_500_000n, SPLITTER)).toBe("ok");
+  });
+
   test("untrusted wins over a changed price", () => {
     expect(checkTerms(termsOf(required({ maxAmountRequired: "2000000", asset: "0x0000000000000000000000000000000000000001" })), 1_500_000n, SPLITTER)).toBe("untrusted");
   });

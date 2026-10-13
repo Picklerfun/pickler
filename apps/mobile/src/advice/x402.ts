@@ -69,7 +69,8 @@ const sameAddress = (a: string, b: string) => a.toLowerCase() === b.toLowerCase(
 
 /**
  * Whether the 402 may be signed. "untrusted" when anything but the price differs from the app's
- * constants (asset, chain, token domain, primary type, shares, network, scheme, window, addresses)
+ * constants (asset, chain, token domain, primary type, shares, network, scheme, window, addresses —
+ * payTo and payee must be lowercase or correctly checksummed, as viem encodes them later)
  * or `payTo` is not `splitter`, the app's own pinned splitter (src/config/advice.ts): the `to` of a
  * ReceiveWithAuthorization can redeem it, so the 402 never chooses it. "price_changed" when only
  * the amount differs from what the agent row showed. Untrusted wins.
@@ -91,8 +92,8 @@ export function checkTerms(terms: Terms, expectedMicro: bigint, splitter: Hex): 
     Number.isInteger(terms.maxTimeoutSeconds) &&
     terms.maxTimeoutSeconds > 0 &&
     terms.maxTimeoutSeconds <= MAX_TIMEOUT_SECONDS &&
-    ADDRESS.test(terms.payTo) && isAddress(terms.payTo, { strict: false }) &&
-    ADDRESS.test(terms.payee) && isAddress(terms.payee, { strict: false }) &&
+    ADDRESS.test(terms.payTo) && isAddress(terms.payTo) &&
+    ADDRESS.test(terms.payee) && isAddress(terms.payee) &&
     !sameAddress(terms.payee, terms.payTo);
   if (!trusted) return "untrusted";
   return terms.value === expectedMicro ? "ok" : "price_changed";
