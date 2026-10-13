@@ -1435,7 +1435,7 @@ percentage; sub-basis-point moves show less than 0.01% without a misleading sign
 
 ## Real Perpl testnet dashboard
 
-`/perpl` is the public read-only dashboard, linked from Explore’s Markets entry and Portfolio.
+`/perpl` is the public read-only dashboard, linked from Explore’s Perpl dashboard entry, the landing hero and footer, and Portfolio.
 `features/perpl/` reads `/api/v1/perpl/markets` every ten seconds and, after explicit authorization,
 `/portfolio` every five seconds. Both loops are serial, abort on navigation/identity changes, pause
 in hidden tabs and back off after failures. Last verified snapshots stay visibly stale; an unknown
@@ -1478,3 +1478,8 @@ The rendered Design registry includes `perpl-dashboard-preview`, with the portfo
 its readiness proof and `#perpl-equity` as the required dark surface. Keep market images locally
 served, loaded with fixed dimensions, and decorative beside their text identity. Unknown assets
 must remain legible without a fabricated mark or a broken external image.
+
+The public `/perpl` entry has no creator-seat or Studio-session gate. Anonymous visitors see
+protocol markets; a marketplace wallet explicitly authorizes private scope-1 reads. Connecting
+alone never enrolls a Perpl key or signs from an effect. The landing hero, footer and both public
+navigation layouts point to the normal `/perpl` route, never the demonstration parameter.

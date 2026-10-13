@@ -238,7 +238,11 @@ try {
   } finally {
     await previewContext.close();
   }
-  await page.goto(`${base}/perpl`);
+  await page.goto(`${base}/`);
+  const dashboardEntry = page.getByRole("link", { name: "Open Perpl dashboard", exact: true });
+  assert.equal(await dashboardEntry.getAttribute("href"), "/perpl");
+  await dashboardEntry.click();
+  await page.waitForURL(`${base}/perpl`);
   await page.getByRole("heading", { name: "The market", exact: true }).waitFor();
   await page.getByRole("link", { name: "BTC", exact: true }).waitFor();
   await page.getByRole("button", { name: "Authorize read-only access", exact: true }).click();

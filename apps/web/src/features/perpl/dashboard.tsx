@@ -61,7 +61,7 @@ export function PerplDashboard() {
         <div className={styles.connect}>
           <Icon name="wallet" size={26} />
           <h3>See your positions alongside the market.</h3>
-          <p>Connect the wallet you use on Perpl.</p>
+          <p>Connect your Perpl testnet wallet, then authorize read-only access.</p>
           <Button onClick={() => wallet.connect("View your Perpl portfolio")} size="md">
             Connect wallet
           </Button>
@@ -135,7 +135,7 @@ export function PerplDashboardSurface({
       <header className={styles.heading}>
         <div>
           <h1>Perpl overview.</h1>
-          <p>Markets, your positions and the price risk you carry.</p>
+          <p>Explore Perpl markets. Connect your wallet to see your portfolio.</p>
         </div>
         <div className={styles.headingTags}>
           {preview ? <Tag data-tone="caution">Preview · demo data</Tag> : null}
