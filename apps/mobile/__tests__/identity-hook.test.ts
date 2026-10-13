@@ -325,6 +325,21 @@ describe("authedFetch", () => {
     expect(unlockStoredWallet).not.toHaveBeenCalled();
   });
 
+  test("a wallet the caller just unlocked is used before the render that carries it", async () => {
+    // useUnlock hands the wallet back before App re-renders with it: the retry after WalletLockedError passes it.
+    api.fetchProfile.mockResolvedValue({ handle: "owl" });
+    respond(200);
+    await mount(locked(A));
+    const opened = wallet(A);
+
+    const res = await latest.authedFetch("/x", { method: "GET" }, opened as never);
+
+    expect(res.status).toBe(200);
+    expect(opened.account.signMessage).toHaveBeenCalledTimes(1);
+    expect(sent[0]!.auth).toMatch(/^Bearer /);
+    expect(unlockStoredWallet).not.toHaveBeenCalled();
+  });
+
   test("the path must start with a slash", async () => {
     api.fetchProfile.mockResolvedValue({ handle: "owl" });
     respond(200);

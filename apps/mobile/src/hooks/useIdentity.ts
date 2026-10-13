@@ -202,7 +202,7 @@ export function useIdentity(account: AccountState, onUnlock: (w: Wallet) => void
     }
   }, [ensureSession, has, unlock]);
 
-  const authedFetch = useCallback<AuthedFetch>(async (path, init = {}) => {
+  const authedFetch = useCallback<AuthedFetch>(async (path, init = {}, opened) => {
     if (!path.startsWith("/")) throw new Error(`authedFetch path must start with "/": ${path}`);
     const send = async (w: Wallet) => {
       const token = (await ensureSession(w)).token;
@@ -214,7 +214,8 @@ export function useIdentity(account: AccountState, onUnlock: (w: Wallet) => void
       headers.Authorization = `Bearer ${token}`;
       return fetch(`${API_URL!}${path}`, { ...init, headers });
     };
-    const w = walletRef.current;
+    // A wallet the caller just unlocked arrives here before the render that carries it into walletRef.
+    const w = opened ?? walletRef.current;
     if (API_URL === null || !w) throw new WalletLockedError();
     const res = await send(w);
     if (res.status !== 401) return res;

@@ -2,6 +2,8 @@
 // entrar con la wallet (SIWE) y el username. fetch con AbortController + setTimeout: AbortSignal.timeout no existe en RN.
 // Mismo contrato que usa la web (apps/web/src/features/wallet/lib/connect.ts y handles.ts).
 
+import type { Wallet } from "../wallet/wallet";
+
 export type DoFetch = (url: string, init: RequestInit) => Promise<Response>;
 
 const TIMEOUT_MS = 15_000;
@@ -33,8 +35,11 @@ export class WalletLockedError extends Error {
   }
 }
 
-/** A fetch to the product API: `path` is relative to the API base (e.g. `/agent-advice/...`); adds the bearer token. */
-export type AuthedFetch = (path: string, init?: RequestInit) => Promise<Response>;
+/**
+ * A fetch to the product API: `path` is relative to the API base (e.g. `/agent-advice/...`); adds the bearer token.
+ * `opened` is a wallet the caller has just unlocked (useUnlock), used before the render that carries it arrives.
+ */
+export type AuthedFetch = (path: string, init?: RequestInit, opened?: Wallet) => Promise<Response>;
 
 const COPY: Record<string, string> = {
   nonce_invalid: "That sign-in took too long to come back. Try again.",
