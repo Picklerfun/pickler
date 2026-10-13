@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { Address, Hex } from "viem";
 import { accountAddress, type AccountState } from "../account";
+import { ADVICE_SPLITTER } from "../config/advice";
 import { MONADSCAN_KEY } from "../config/explorer";
 import { estimateAusdTransferFee, readBalances, requestAusdFromFaucet, sendAusd, waitForReceipt } from "../wallet/chain";
 import { fetchAusdTransfers, type Movement, type MovementKind, pendingMovement, toMovements } from "../wallet/explorer";
@@ -45,7 +46,7 @@ export function useTreasury(account: AccountState, onUnlock: (w: Wallet) => void
       return;
     }
     try {
-      setMovements(toMovements(await fetchAusdTransfers(address, MONADSCAN_KEY), address));
+      setMovements(toMovements(await fetchAusdTransfers(address, MONADSCAN_KEY), address, ADVICE_SPLITTER));
     } catch (e) {
       setMovementsError(describeError(e) || "Couldn't load movements.");
     }

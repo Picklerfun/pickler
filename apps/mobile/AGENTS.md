@@ -45,7 +45,7 @@ code. Do not rely on what earlier SDKs did.
   `PICKLER_API_URL` and the splitter are both set**. The wallet signs only to that splitter:
   `checkTerms` refuses a 402 whose `payTo`, asset, chain, split or domain is not the app's own, and
   the typed-data domain is the app's constants, never the 402's. The payee (the 65% share) is trusted
-  from the 402; the confirmation shows it. `useAdviceAsk` (`src/hooks/`) is the flow:
+  from the 402; the confirmation shows it. In Wallet → Activity, an AUSD transfer from the wallet to `ADVICE_SPLITTER` is labelled "Agent analysis" instead of "Withdrawal" (`toMovements` takes the splitter as a parameter, keeping `explorer.ts` free of config). `useAdviceAsk` (`src/hooks/`) is the flow:
   a new Idempotency-Key per Ask, reused only between the 402 and its paid retry; after a payment went
   out it never signs again for that Ask and never says "nothing charged" (`settlement_pending`,
   `offline{paid:true}`); `abandon()` leaves a `settlement_pending`, `timeout` or paid `offline` flow
