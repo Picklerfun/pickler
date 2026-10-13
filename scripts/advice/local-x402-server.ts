@@ -810,7 +810,9 @@ async function preflight() {
   console.log(`  asset        ${asset}`);
   console.log(`  agent wallet ${agentWallet} (payee)`);
   console.log(`  relayer      ${relayerAddress}  ${formatEther(balance)} MON`);
-  console.log(`  model        ${modelSettings.model} at ${new URL(modelSettings.baseUrl).host}`);
+  console.log(
+    `  model        ${modelSettings.model} at ${new URL(modelSettings.baseUrl).host} (response_format ${modelSettings.responseFormat})`,
+  );
   if (balance === 0n) {
     console.warn("  WARNING: the relayer has no MON; settlements will fail.");
   }

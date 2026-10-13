@@ -18,6 +18,7 @@ const SETTINGS = {
   baseUrl: "https://model.test/v1",
   model: "test-model",
   apiKey: "sk-test-secret",
+  responseFormat: "json_object" as const,
 };
 
 function fixture() {
@@ -302,6 +303,7 @@ test("model.env values are required and never echoed", () => {
     baseUrl: "https://api.example.com/v1",
     model: "some-model",
     apiKey: "sk-very-secret",
+    responseFormat: "json_object",
   });
 
   assert.throws(
@@ -325,4 +327,48 @@ test("model.env values are required and never echoed", () => {
       ),
     /MODEL_BASE_URL/,
   );
+});
+
+test("MODEL_RESPONSE_FORMAT is json_object by default, or none; anything else is refused", () => {
+  const base = { MODEL_BASE_URL: "https://api.example.com/v1", MODEL_ID: "m", MODEL_API_KEY: "k" };
+
+  const explicit = parseModelEnv({ ...base, MODEL_RESPONSE_FORMAT: "json_object" }, "f");
+  const none = parseModelEnv({ ...base, MODEL_RESPONSE_FORMAT: "none" }, "f");
+
+  assert.equal(explicit.responseFormat, "json_object");
+  assert.equal(none.responseFormat, "none");
+  assert.throws(
+    () => parseModelEnv({ ...base, MODEL_RESPONSE_FORMAT: "json_schema-secret" }, "f"),
+    (error: Error) =>
+      /MODEL_RESPONSE_FORMAT/.test(error.message) && !error.message.includes("json_schema-secret"),
+  );
+});
+
+async function requestBody(responseFormat: "json_object" | "none") {
+  const { agent, job, evidence } = fixture();
+  let body: Record<string, unknown> = {};
+  const transport: typeof fetch = async (_input, init) => {
+    body = JSON.parse(String(init?.body)) as Record<string, unknown>;
+    return completion(JSON.stringify(VALID_ANSWER));
+  };
+
+  const analyze = createLocalAnalysis({
+    resolve: async () => agent,
+    data: async () => evidence,
+    models: createLocalAdviceModels({ ...SETTINGS, responseFormat }, transport),
+    now: () => NOW,
+    log: () => {},
+  });
+  await analyze(job);
+
+  return { body, job };
+}
+
+test("the request asks for a JSON object by default and omits response_format with none", async () => {
+  const byDefault = await requestBody("json_object");
+  const omitted = await requestBody("none");
+
+  assert.deepEqual(byDefault.body.response_format, { type: "json_object" });
+  assert.equal("response_format" in omitted.body, false);
+  assert.equal(omitted.job.status, "completed");
 });

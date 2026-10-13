@@ -36,7 +36,12 @@ with a malformed value, the server refuses to start:
 MODEL_BASE_URL=https://…/v1   # https (http only on localhost); /chat/completions is appended
 MODEL_ID=…
 MODEL_API_KEY=…
+MODEL_RESPONSE_FORMAT=none     # optional: json_object (default) or none
 ```
+
+`MODEL_RESPONSE_FORMAT=json_object` sends `response_format: { type: "json_object" }`; `none` omits
+it, for providers that reject that value (Anthropic's OpenAI-compatible endpoint answers 400). The
+prompt asks for JSON either way, and an answer that is not the expected JSON fails the job.
 
 `LOCAL_X402_ENV`, `LOCAL_X402_MODEL_ENV`, `LOCAL_X402_PORT` (default 8899) and `MONAD_RPC_URL` (default
 `https://testnet-rpc.monad.xyz`) override the defaults. The splitter, treasury and AUSD

@@ -32,6 +32,11 @@ export interface ModelSettings {
   baseUrl: string;
   model: string;
   apiKey: string;
+  /**
+   * `json_object` sends `response_format: { type: "json_object" }`; `none` omits it, for providers
+   * that reject it (Anthropic's OpenAI-compatible endpoint). The prompt asks for JSON either way.
+   */
+  responseFormat: "json_object" | "none";
 }
 
 const MODEL_TIMEOUT_MS = 60_000;
@@ -70,7 +75,12 @@ export function parseModelEnv(values: Record<string, string>, file: string): Mod
     );
   }
 
-  return { baseUrl: url.toString().replace(/\/+$/, ""), model, apiKey };
+  const responseFormat = values.MODEL_RESPONSE_FORMAT?.trim() || "json_object";
+  if (responseFormat !== "json_object" && responseFormat !== "none") {
+    throw new Error(`MODEL_RESPONSE_FORMAT in ${file} must be json_object or none`);
+  }
+
+  return { baseUrl: url.toString().replace(/\/+$/, ""), model, apiKey, responseFormat };
 }
 
 /** Production's forecast instructions (perps-advice-forecast 1.0.0), verbatim. */
@@ -163,7 +173,9 @@ export function createLocalAdviceModels(
       const body = JSON.stringify({
         model: settings.model,
         max_tokens: ADVICE_OUTPUT_TOKENS,
-        response_format: { type: "json_object" },
+        ...(settings.responseFormat === "json_object"
+          ? { response_format: { type: "json_object" } }
+          : {}),
         messages: [
           { role: "system", content: FORECAST_INSTRUCTIONS },
           { role: "user", content: JSON.stringify(modelState(job, evidence)) },
