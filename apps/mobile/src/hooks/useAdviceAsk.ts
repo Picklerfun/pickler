@@ -1,7 +1,8 @@
 // The paid Ask of a Studio agent (docs/specs/agent-advice-x402-v1.md §3.2–§3.3, fee split §4): quote (402), check the
-// terms against the app's own constants, confirm, open the wallet (Face ID only if locked), sign the ReceiveWithAuthorization, pay
-// with X-PAYMENT and poll the job. One Idempotency-Key per Ask from idle (Ruling A1), reused only by the paid retry of
-// that Ask and by the replays that check on it. After a payment may have moved, nothing here ever signs again.
+// terms against the app's own constants, confirm, read the passkey again (Face ID, always: Ruling A8), sign the
+// ReceiveWithAuthorization, pay with X-PAYMENT and poll the job. One Idempotency-Key per Ask from idle (Ruling A1),
+// reused only by the paid retry of that Ask and by the replays that check on it. After a payment may have moved,
+// nothing here ever signs again.
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AppState } from "react-native";
 import { type AccountState, accountAddress } from "../account";
@@ -11,7 +12,7 @@ import type { AdviceJobError, AdviceSymbol, Hex, PaymentError, PollState, Recomm
 import { buildAuthorization, checkTerms, decodeSettlement, encodePayment, parsePaymentRequired, randomSalt, shares, typedData } from "../advice/x402";
 import { ADVICE_SPLITTER, studioAgentsEnabled } from "../config/advice";
 import { type AuthedFetch, WalletLockedError } from "../identity/api";
-import { describeError, type Wallet } from "../wallet/wallet";
+import { describeError, unlockStoredWallet, type Wallet } from "../wallet/wallet";
 import { useUnlock } from "./useUnlock";
 
 /** What the confirmation shows, drawn from checked terms: never from the 402's own words. */
@@ -69,7 +70,7 @@ export type AdviceAsk = {
   ask: (agent: StudioAgent, symbol: AdviceSymbol) => Promise<void>;
   /** From `price_changed`: ask again expecting the new price (nothing has been signed). */
   acceptPrice: () => Promise<void>;
-  /** From `confirming`: open the wallet (prompting only if it is locked), sign, pay, wait. */
+  /** From `confirming`: Face ID (always, Ruling A8), sign with that fresh read of the passkey, pay, wait. */
   confirm: () => Promise<void>;
   /** From `offline` or `busy`: the same step again, with the same key and never a new signature. */
   retry: () => Promise<void>;
@@ -119,6 +120,8 @@ const CHECKING: AdviceAskState = { kind: "settlement_pending", checking: true };
 const SIGNATURE = /^0x[0-9a-fA-F]{130}$/;
 const UNAVAILABLE = "This agent can't answer right now";
 const OFFLINE_CODES = new Set(["network", "timeout", "signin_network", "signin_timeout"]);
+const NO_STORED_ACCOUNT = "No stored account. Sign out and sign in again.";
+const ANOTHER_WALLET = "This passkey opens a different wallet than this account's. Nothing was signed.";
 /** Where a paid Ask is resolved: the job's answer, or a refusal that charged nothing. */
 const RESOLVED = new Set<AdviceAskState["kind"]>(["done", "failed", "refused"]);
 
@@ -145,6 +148,10 @@ export function useAdviceAsk(account: AccountState, onUnlock: (w: Wallet) => voi
   const address = accountAddress(account);
   const unlockRef = useRef(unlock);
   unlockRef.current = unlock;
+  const accountRef = useRef(account);
+  accountRef.current = account;
+  const onUnlockRef = useRef(onUnlock);
+  onUnlockRef.current = onUnlock;
   const fetchRef = useRef(authedFetch);
   fetchRef.current = authedFetch;
   const stateRef = useRef(state);
@@ -174,6 +181,32 @@ export function useAdviceAsk(account: AccountState, onUnlock: (w: Wallet) => voi
       const words = describeError(e);
       throw words === "" ? new Cancelled() : new UnlockFailed(words);
     }
+  }, []);
+
+  /**
+   * The wallet that signs a payment: always a fresh read of the stored passkey, so Face ID is asked for even with the
+   * wallet open (Ruling A8). It must open this account's address, or it is ended and nothing is signed. With the account
+   * locked it becomes the account's (onUnlock) and also serves the calls that follow. With the account open, the account
+   * keeps its own wallet (other hooks hold it): `signer` is only for this signature and the caller ends its session.
+   */
+  const openToPay = useCallback(async (): Promise<{ signer: Wallet; kept: Wallet }> => {
+    const current = accountRef.current;
+    let fresh: Wallet | undefined;
+    try {
+      fresh = await unlockStoredWallet();
+    } catch (e) {
+      const words = describeError(e);
+      throw words === "" ? new Cancelled() : new UnlockFailed(words);
+    }
+    if (!fresh) throw new UnlockFailed(NO_STORED_ACCOUNT);
+    const expected = accountAddress(current);
+    if (expected === null || fresh.address.toLowerCase() !== expected.toLowerCase()) {
+      fresh.session.end();
+      throw new UnlockFailed(ANOTHER_WALLET);
+    }
+    if (current.status === "unlocked") return { signer: fresh, kept: current.wallet };
+    onUnlockRef.current(fresh);
+    return { signer: fresh, kept: fresh };
   }, []);
 
   /**
@@ -469,10 +502,12 @@ export function useAdviceAsk(account: AccountState, onUnlock: (w: Wallet) => voi
     await step(f, async () => {
       put(f, { kind: "signing", quote: f.quote! });
       let payment: string;
+      let opened: { signer: Wallet; kept: Wallet } | null = null;
       try {
-        const w = await open();
+        opened = await openToPay();
         if (!live(f)) return;
-        f.wallet = w;
+        const w = opened.signer;
+        f.wallet = opened.kept;
         const authorization = buildAuthorization({ from: w.address as Hex, terms: f.terms!, now: Date.now(), salt: randomSalt() });
         const signature = await w.account.signTypedData(typedData(authorization));
         if (!SIGNATURE.test(signature)) throw new Error("The wallet returned a signature that is not 65 bytes. Nothing was sent.");
@@ -481,12 +516,15 @@ export function useAdviceAsk(account: AccountState, onUnlock: (w: Wallet) => voi
         // Nothing was sent: Face ID cancelled leaves the Ask, and the next one gets a new key.
         fail(f, e, IDLE);
         return;
+      } finally {
+        // A read made only for this signature ends with it, signed or not; the account's own wallet stays open.
+        if (opened !== null && opened.signer !== opened.kept) opened.signer.session.end();
       }
       if (!live(f)) return;
       f.payment = payment;
       await pay(f);
     });
-  }, [fail, live, open, pay, put, step]);
+  }, [fail, live, openToPay, pay, put, step]);
 
   const retry = useCallback(async () => {
     const f = flowRef.current;

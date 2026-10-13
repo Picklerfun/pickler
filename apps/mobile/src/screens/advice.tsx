@@ -189,7 +189,7 @@ function FlowBody({ state, nav }: { state: AdviceAskState; nav: AppCtx["nav"] })
 }
 
 /** Advice screen. Gated like the profile; hidden with the whole section unless identity.studioAgents. */
-export function AdviceScreen({ S, studio, account, nav }: AppCtx) {
+export function AdviceScreen({ S, studio, nav }: AppCtx) {
   const { advice } = studio;
   const flowAgent = advice.flow?.agent ?? null;
   // An agent that left the list keeps its own Ask on view: the flow carries the agent it was asked of.
@@ -266,7 +266,6 @@ export function AdviceScreen({ S, studio, account, nav }: AppCtx) {
   const elsewhere = flowAgent !== null && !mine && holdsFlow(state) ? flowAgent : null;
   const view: AdviceAskState = mine ? state : { kind: "idle" };
   const price = adviceAmount(agent.price.micro);
-  const locked = account?.status === "locked";
   const choose = (k: AdviceSymbol) => {
     if (mine && holdsFlow(state)) return;
     if (mine && state.kind !== "idle") advice.reset();
@@ -318,7 +317,7 @@ export function AdviceScreen({ S, studio, account, nav }: AppCtx) {
         </Page>
       </PageScroll>
       <FooterBar>
-        <Footer agent={agent} state={view} elsewhere={elsewhere !== null} price={price} locked={locked} leaving={leaving} setLeaving={setLeaving} symbol={symbol} advice={advice} />
+        <Footer agent={agent} state={view} elsewhere={elsewhere !== null} price={price} leaving={leaving} setLeaving={setLeaving} symbol={symbol} advice={advice} />
       </FooterBar>
     </>
   );
@@ -339,12 +338,12 @@ function HistoryRow({ r, open, onPress }: { r: Recommendation; open: boolean; on
 }
 
 type FooterProps = {
-  agent: StudioAgent; state: AdviceAskState; elsewhere: boolean; price: string; locked: boolean; leaving: boolean;
+  agent: StudioAgent; state: AdviceAskState; elsewhere: boolean; price: string; leaving: boolean;
   setLeaving: (v: boolean) => void; symbol: AdviceSymbol; advice: AppCtx["studio"]["advice"];
 };
 
 /** The sticky action, by state. Leaving a payment being checked, a job still running or an unanswered payment asks once more. */
-function Footer({ agent, state, elsewhere, price, locked, leaving, setLeaving, symbol, advice }: FooterProps) {
+function Footer({ agent, state, elsewhere, price, leaving, setLeaving, symbol, advice }: FooterProps) {
   const leave = (
     <Btn label="Leave and ask again" onPress={() => setLeaving(true)} variant="ghost" py={10} s={13} accessibilityLabel="advice-leave" />
   );
@@ -366,12 +365,12 @@ function Footer({ agent, state, elsewhere, price, locked, leaving, setLeaving, s
       const busy = state.kind !== "confirming";
       return (
         <>
-          {locked && !busy ? <T w={400} s={11.5} lh={1.4} color={C.faint}>Face ID unlocks the wallet to sign this payment.</T> : null}
+          {!busy ? <T w={400} s={11.5} lh={1.4} color={C.faint}>Face ID confirms this payment.</T> : null}
           <View style={{ flexDirection: "row", gap: 8 }}>
             <Btn label="Cancel" onPress={advice.reset} variant="outline2" disabled={busy} style={{ minWidth: 104 }} py={14} accessibilityLabel="advice-cancel" />
             <Btn
               label={state.kind === "signing" ? "Signing…" : state.kind === "paying" ? "Paying…" : `Pay ${adviceAmount(state.quote.total)} AUSD`}
-              icon={locked && !busy ? "faceId" : undefined}
+              icon={!busy ? "faceId" : undefined}
               onPress={() => { void advice.confirm(); }}
               variant="lime"
               flex={1}

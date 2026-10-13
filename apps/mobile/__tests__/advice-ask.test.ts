@@ -42,9 +42,11 @@ const AGENT: StudioAgent = { id: "agent-1", name: "Mira", handle: "mira", accent
 const makeWallet = () => {
   const account = privateKeyToAccount(KEY);
   jest.spyOn(account, "signTypedData");
-  return { address: account.address, credentialId: "cred", session: { end() {} }, account };
+  return { address: account.address, credentialId: "cred", session: { end: jest.fn() }, account };
 };
 type TestWallet = ReturnType<typeof makeWallet>;
+/** What Face ID at Pay returns by default: the same key read again, a new signing session over the same account. */
+const reread = (w: TestWallet): TestWallet => ({ ...w, session: { end: jest.fn() } });
 
 // ── The API ──────────────────────────────────────────────────────────────────────────────────────────────────────────
 type Sent = { method: string; path: string; key: string | null; payment: string | null; opened: unknown };
@@ -119,8 +121,9 @@ const rGet = (status: "queued" | "running" | "completed" | "failed", error: stri
 
 // ── The hook ─────────────────────────────────────────────────────────────────────────────────────────────────────────
 let latest!: AdviceAsk;
+const onUnlock = jest.fn();
 function Probe({ account }: { account: AccountState }) {
-  latest = useAdviceAsk(account, () => {}, authedFetch as never);
+  latest = useAdviceAsk(account, onUnlock, authedFetch as never);
   return null;
 }
 const settle = () => act(async () => { for (let i = 0; i < 30; i += 1) await Promise.resolve(); });
@@ -155,6 +158,9 @@ beforeEach(() => {
   g.__splitter = SPLITTER;
   jest.clearAllMocks();
   wallet = makeWallet();
+  // Pay always reads the passkey again (Ruling A8); by default it opens the same wallet. A test's unused Once is dropped.
+  unlockStoredWallet.mockReset();
+  unlockStoredWallet.mockImplementation(async () => reread(wallet));
 });
 afterEach(() => {
   act(() => { tree?.unmount(); });
@@ -492,7 +498,7 @@ describe("after a payment went out (fix round 1)", () => {
   const otherWallet = () => {
     const account = privateKeyToAccount("0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d");
     jest.spyOn(account, "signTypedData");
-    return { address: account.address, credentialId: "cred2", session: { end() {} }, account };
+    return { address: account.address, credentialId: "cred2", session: { end: jest.fn() }, account };
   };
 
   test("the paid POST has 60 s: an answer at 20 s is the job, not offline (Ruling A3)", async () => {
@@ -664,6 +670,8 @@ describe("after a payment went out (fix round 1)", () => {
     await run(() => latest.confirm());
     expect(latest.state).toEqual({ kind: "offline", paid: true });
     const header = paid()[0]!.payment;
+    // Face ID at Pay was the first read of the passkey (Ruling A8); count only what follows.
+    unlockStoredWallet.mockClear();
 
     // Lock in Wallet ends the session this Ask opened; the token in memory has expired, so the retry must sign in again.
     ended.add(wallet);
@@ -701,6 +709,8 @@ describe("after a payment went out (fix round 1)", () => {
     posts.push(r402("settlement_failed"));
     await run(() => latest.confirm());
     expect(latest.state.kind).toBe("settlement_pending");
+    // Face ID at Pay was the first read of the passkey (Ruling A8); count only what follows.
+    unlockStoredWallet.mockClear();
     ended.add(wallet);
     await switchTo(locked(wallet));
     const reopened = makeWallet();
@@ -719,6 +729,8 @@ describe("after a payment went out (fix round 1)", () => {
     await toConfirming();
     posts.push(r202());
     await run(() => latest.confirm());
+    // Face ID at Pay was the first read of the passkey (Ruling A8); count only what follows.
+    unlockStoredWallet.mockClear();
     ended.add(wallet);
     await switchTo(locked(wallet));
 
@@ -769,5 +781,112 @@ describe("after a payment went out (fix round 1)", () => {
     expect(sent).toHaveLength(before);
     expect(other.account.signTypedData).not.toHaveBeenCalled();
     expect(wallet.account.signTypedData).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("Face ID at Pay, always (Ruling A8)", () => {
+  const stranger = () => {
+    const account = privateKeyToAccount("0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d");
+    jest.spyOn(account, "signTypedData");
+    return { address: account.address, credentialId: "cred2", session: { end: jest.fn() }, account };
+  };
+
+  test("with the wallet already open, Pay reads the passkey again once, signs with that wallet and ends its session", async () => {
+    await toConfirming();
+    expect(unlockStoredWallet).not.toHaveBeenCalled();
+    const fresh = makeWallet();
+    unlockStoredWallet.mockResolvedValueOnce(fresh);
+    posts.push(r202());
+
+    await run(() => latest.confirm());
+
+    expect(unlockStoredWallet).toHaveBeenCalledTimes(1);
+    expect(fresh.account.signTypedData).toHaveBeenCalledTimes(1);
+    expect(wallet.account.signTypedData).not.toHaveBeenCalled();
+    expect(unlockStoredWallet.mock.invocationCallOrder[0]).toBeLessThan((fresh.account.signTypedData as jest.Mock).mock.invocationCallOrder[0]!);
+    // The fresh session ends once the signature is made, before the paid POST; the account's wallet is not replaced.
+    expect(fresh.session.end).toHaveBeenCalledTimes(1);
+    expect(fresh.session.end.mock.invocationCallOrder[0]).toBeLessThan(authedFetch.mock.invocationCallOrder.at(-1)!);
+    expect(wallet.session.end).not.toHaveBeenCalled();
+    expect(onUnlock).not.toHaveBeenCalled();
+    // Later calls of this Ask use the account's wallet, whose session is alive.
+    expect(paid()).toHaveLength(1);
+    expect(paid()[0]!.opened).toBe(wallet);
+    expect(latest.state).toMatchObject({ kind: "waiting", jobId: "job-1" });
+  });
+
+  test("a fresh wallet that fails to sign still has its session ended, and nothing is sent", async () => {
+    await toConfirming();
+    const fresh = makeWallet();
+    (fresh.account.signTypedData as jest.Mock).mockRejectedValueOnce(new Error("The wallet could not sign."));
+    unlockStoredWallet.mockResolvedValueOnce(fresh);
+
+    await run(() => latest.confirm());
+
+    expect(latest.state).toEqual({ kind: "error", code: "unexpected", message: "The wallet could not sign." });
+    expect(fresh.session.end).toHaveBeenCalledTimes(1);
+    expect(paid()).toHaveLength(0);
+    expect(postsSent()).toHaveLength(1);
+  });
+
+  test.each([
+    ["open", (w: TestWallet) => unlocked(w)],
+    ["locked", (w: TestWallet) => locked(w)],
+  ])("with the wallet %s, a passkey that opens another address signs nothing and pays nothing", async (_name, accountOf) => {
+    await toConfirming(accountOf(wallet));
+    const other = stranger();
+    unlockStoredWallet.mockResolvedValueOnce(other);
+
+    await run(() => latest.confirm());
+
+    expect(latest.state).toMatchObject({ kind: "error", code: "unlock" });
+    expect(other.account.signTypedData).not.toHaveBeenCalled();
+    expect(wallet.account.signTypedData).not.toHaveBeenCalled();
+    expect(other.session.end).toHaveBeenCalledTimes(1);
+    expect(onUnlock).not.toHaveBeenCalled();
+    expect(paid()).toHaveLength(0);
+    expect(postsSent()).toHaveLength(1);
+  });
+
+  test("no stored passkey at Pay is the unlock error: nothing signed, nothing sent", async () => {
+    await toConfirming();
+    unlockStoredWallet.mockResolvedValueOnce(undefined);
+
+    await run(() => latest.confirm());
+
+    expect(latest.state).toMatchObject({ kind: "error", code: "unlock" });
+    expect(wallet.account.signTypedData).not.toHaveBeenCalled();
+    expect(paid()).toHaveLength(0);
+  });
+
+  test("Face ID cancelled at Pay with the wallet open returns to idle, nothing signed, and the next Ask has a new key", async () => {
+    await toConfirming();
+    unlockStoredWallet.mockRejectedValueOnce(new Error("User canceled the operation."));
+
+    await run(() => latest.confirm());
+
+    expect(latest.state).toEqual({ kind: "idle" });
+    expect(wallet.account.signTypedData).not.toHaveBeenCalled();
+    expect(paid()).toHaveLength(0);
+    posts.push(r402());
+    await run(() => latest.ask(AGENT, "BTC"));
+    const [first, second] = postsSent();
+    expect(second!.key).not.toBe(first!.key);
+  });
+
+  test("with the wallet locked, the fresh wallet becomes the account's and its session stays open for the paid POST", async () => {
+    await toConfirming(locked(wallet));
+    const fresh = makeWallet();
+    unlockStoredWallet.mockResolvedValueOnce(fresh);
+    posts.push(r202());
+
+    await run(() => latest.confirm());
+
+    expect(unlockStoredWallet).toHaveBeenCalledTimes(1);
+    expect(onUnlock).toHaveBeenCalledWith(fresh);
+    expect(fresh.account.signTypedData).toHaveBeenCalledTimes(1);
+    expect(fresh.session.end).not.toHaveBeenCalled();
+    expect(paid()[0]!.opened).toBe(fresh);
+    expect(latest.state).toMatchObject({ kind: "waiting", jobId: "job-1" });
   });
 });
