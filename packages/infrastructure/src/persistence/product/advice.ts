@@ -82,8 +82,14 @@ export const advicePayments = pickler
         .references(() => productAgents.productAgentId),
       requestKey: text("request_key").notNull(),
       payer: text("payer").notNull(),
+      /** The authorization's `to`: the advice splitter (the agent wallet on phase 1 rows). */
       payTo: text("pay_to").notNull(),
+      /** The agent wallet paid the creator share; null on phase 1 rows. */
+      payee: text("payee"),
       amountMicroAusd: bigint("amount_micro_ausd", { mode: "bigint" }).notNull(),
+      /** The shares the receipt shows, set when settled; null on phase 1 rows. */
+      creatorAmountMicroAusd: bigint("creator_amount_micro_ausd", { mode: "bigint" }),
+      protocolAmountMicroAusd: bigint("protocol_amount_micro_ausd", { mode: "bigint" }),
       nonce: text("nonce").notNull(),
       validBefore: timestamp("valid_before", { withTimezone: true }).notNull(),
       status: text("status").notNull(),

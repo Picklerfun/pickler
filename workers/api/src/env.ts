@@ -13,16 +13,28 @@ export interface Env {
   ADVICE_ENABLED?: string;
   ADVICE_POLICY_JSON?: string;
   /**
-   * "true" sells each fresh advice analysis with x402 (docs/specs/agent-advice-x402-v1.md); it
-   * needs X402_RELAYER_PRIVATE_KEY and MONAD_RPC_URL too, and without them every request answers
-   * 503 (fails closed). Anything other than "true" keeps the request free, as before.
+   * "true" sells each fresh advice analysis with x402 (docs/specs/agent-advice-x402-v1.md and
+   * docs/specs/agent-advice-fee-split-v1.md); it needs X402_RELAYER_PRIVATE_KEY, MONAD_RPC_URL,
+   * ADVICE_SPLITTER_ADDRESS and ADVICE_SPLITTER_TREASURY too, and without them every request
+   * answers 503 (fails closed). Anything other than "true" keeps the request free, as before.
    */
   ADVICE_X402_ENABLED?: string;
   /**
-   * Secret. The testnet relayer EOA that submits `transferWithAuthorization` and pays its gas in
-   * MON; it holds no AUSD. Never logged, returned or placed in an error.
+   * Secret. The testnet relayer EOA that calls the advice splitter's `settle` (which redeems the
+   * buyer's `receiveWithAuthorization`) and pays its gas in MON; it holds no AUSD. Never logged,
+   * returned or placed in an error.
    */
   X402_RELAYER_PRIVATE_KEY?: string;
+  /**
+   * The deployed `PicklerAdviceSplitter`: the 402's `payTo`, the authorization's `to` and the
+   * contract the relayer calls. Empty until its deployment is recorded.
+   */
+  ADVICE_SPLITTER_ADDRESS?: string;
+  /**
+   * The treasury the splitter was deployed with. Paid advice is served only after the splitter's
+   * on-chain `treasury()` equals it (case-insensitive); otherwise every request answers 503.
+   */
+  ADVICE_SPLITTER_TREASURY?: string;
   APP_ENV: string;
   TRADING_EXECUTOR?: Fetcher;
   TRADING_QUEUE?: Queue<{ kind: "trading-wakeup" }>;

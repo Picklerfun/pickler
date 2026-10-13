@@ -166,11 +166,15 @@ export {
 export { ViemChainReader, type ViemChainReaderOptions } from "./chain/viem-chain-reader.js";
 
 export {
+  adviceNonce,
   authorizationTypedData,
   createAusdAuthorizationGateway,
-  transferMatches,
+  settlementTransfersMatch,
+  type AusdAuthorizationGateway,
   type AusdAuthorizationGatewayInput,
+  type ExpectedSettlement,
   type PublicClientLike,
+  type SplitterSettleRequest,
   type TransferLog,
   type WalletClientLike,
 } from "./chain/ausd-authorization.js";

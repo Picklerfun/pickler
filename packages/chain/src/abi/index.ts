@@ -14,6 +14,7 @@ export * from "./IUniswapV4Router";
 export * from "./PicklerLiquidityLocker";
 export * from "./PicklerFeeEscrow";
 export * from "./PicklerFeeEscrowV2";
+export * from "./PicklerAdviceSplitter";
 export * from "./PicklerCurveDeployerKuru";
 export * from "./PicklerGraduationAdapterKuru";
 export * from "./PicklerKuruLiquidityLocker";

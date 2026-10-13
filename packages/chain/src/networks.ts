@@ -51,7 +51,7 @@ export interface Erc20Token {
   address: `0x${string}`;
   symbol: string;
   decimals: number;
-  /** EIP-712 domain used by permit / transferWithAuthorization signatures. */
+  /** EIP-712 domain used by permit and EIP-3009 (receiveWithAuthorization) signatures. */
   eip712: { name: string; version: string };
   eip2612: boolean;
   eip3009: boolean;

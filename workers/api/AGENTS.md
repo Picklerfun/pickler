@@ -496,21 +496,38 @@ ADVICE_ENABLED, valid reviewed USD policy and research Queue; reads remain mount
 Never accept internal tenant/runtime IDs or models from consumers. Completed history is shared;
 other statuses are requester-only. See [Agent advice](../../docs/agent-advice.md).
 
-The POST request is sold with x402 when `paidAdviceFrom` (`src/container.ts`) composes
-`AdviceRouteServices.paid`: `ADVICE_X402_ENABLED === "true"` plus the `X402_RELAYER_PRIVATE_KEY`
-secret (32-byte hex) and `MONAD_RPC_URL`. It shares the invocation's advice store and service
-with the free path and builds `PostgresAdvicePayments` on the invocation's pool and
-`createAusdAuthorizationGateway`. The flag with a missing or refused key/RPC logs one line naming
-no value and fails closed: `paid` is a request that throws `PilotError("ADVICE_UNAVAILABLE")`, so
-every POST answers 503 and nothing is enqueued. A composed `paid` logs every settlement
-whose AUSD may have moved without a `settled` row (`reportUnrecordedSettlement`: reason, ids, key,
-payer, nonce and hash, never the signature). Only the flag off leaves `paid` absent; absent, the
-route is free and unchanged. With `paid`, the handler
-answers core's `payment_required` as 402 with x402 v1's own body (`paymentRequiredSchema`, not the
-envelope) and sets `X-PAYMENT-RESPONSE` on a 202 that settled. `PilotError("NOT_FOUND",
+The POST request is sold with x402 through the advice splitter
+(docs/specs/agent-advice-fee-split-v1.md). `paidAdviceFrom` (`src/container.ts`) composes
+`AdviceRouteServices.paid` only when `ADVICE_X402_ENABLED === "true"`. It then requires the
+`X402_RELAYER_PRIVATE_KEY` secret (32-byte hex), `MONAD_RPC_URL`, `ADVICE_SPLITTER_ADDRESS` and
+`ADVICE_SPLITTER_TREASURY` (each a nonzero 20-byte hex address). A missing or malformed one, or a
+key viem refuses, logs one line naming the variable and no value and fails closed: `paid` is a
+request that throws `PilotError("ADVICE_UNAVAILABLE")`, so every POST answers 503 and nothing is
+enqueued. A composed `paid` shares the invocation's advice store and service with the free path,
+builds `PostgresAdvicePayments` on the invocation's pool and `createAusdAuthorizationGateway` with
+the splitter and `ADVICE_SPLITTER_TREASURY` as `treasury` (the gateway matches each settlement's
+third transfer against it and reads nothing after a broadcast), passes the splitter to core as `splitter` (the 402's `payTo`), and logs every
+settlement whose AUSD may have moved without a `settled` row (`reportUnrecordedSettlement`: reason,
+ids, key, payer, nonce and hash, never the signature).
+
+Before each request is handed to core, the composed `paid` compares the gateway's
+`splitterTreasury()` with `ADVICE_SPLITTER_TREASURY`, then its `splitterAsset()` with core's
+`AUSD_TESTNET`, both ignoring case. A mismatch or a failed read throws `ADVICE_UNAVAILABLE` (503)
+for that request and logs a line naming `ADVICE_SPLITTER_ADDRESS` (and `ADVICE_SPLITTER_TREASURY`
+for the treasury), never an address or the RPC URL; none is cached. A match of both is cached per isolate in a module-level set keyed by RPC URL, splitter and
+treasury, so later invocations skip the read. The check also gates replays: with a wrong treasury
+the paid path is down as a whole. `deps.gatewayFor` and `deps.confirmedTreasuries` exist for tests
+only.
+
+Only the flag off leaves `paid` absent; absent, the route is free and unchanged. With `paid`, the
+handler answers core's `payment_required` as 402 with x402 v1's own body (`paymentRequiredSchema`,
+not the envelope) and sets `X-PAYMENT-RESPONSE` on a 202 that settled. `PilotError("NOT_FOUND",
 "ADVICE_NOT_FOR_SALE")` maps to 404 `{ error: "ADVICE_NOT_FOR_SALE" }` before the generic mapper;
-an in-flight attempt on the same key (`CONFLICT`) is 409. Both wrangler files carry
-`ADVICE_X402_ENABLED: "false"`. See [Payment (x402)](../../docs/agent-advice.md#payment-x402).
+an in-flight attempt on the same key (`CONFLICT`) is 409. The `X-PAYMENT` header is documented as a
+base64 string whose `contentSchema` is api-schema's `paymentPayloadSchema` (with `salt`). Both
+wrangler files carry `ADVICE_X402_ENABLED: "false"` and empty `ADVICE_SPLITTER_ADDRESS` and
+`ADVICE_SPLITTER_TREASURY` until the splitter deployment is recorded. See
+[Payment (x402)](../../docs/agent-advice.md#payment-x402).
 
 Advice admissions consume the same reviewed ADVICE_POLICY_JSON as Research. Policy v2 pins its forecast provider URL/model and limits; forecast credentials remain exclusively in Research. No new public DTO or database schema is introduced by the provider correction.
 

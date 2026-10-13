@@ -154,7 +154,14 @@ configuration, prices/rates, prompts or provider traces may cross these DTOs. Wa
 `kind` is `eoa | mera`. See [Agent advice](../../docs/agent-advice.md).
 `paymentRequirementsSchema`, `paymentErrorSchema` and `paymentRequiredSchema` are the x402 v1 402
 body of the paid advice request: x402's own shape, not the response envelope, with one `accepts`
-entry pinned to `exact`, `monad-testnet`, 300 s and the AUSD EIP-712 domain.
+entry pinned to `exact`, `monad-testnet`, 300 s and the AUSD EIP-712 domain. `payTo` is the advice
+splitter and `extra` also pins `primaryType: "ReceiveWithAuthorization"`, `creatorBps: 6500`,
+`protocolBps: 3500` and `nonceDerivation`, with the agent wallet as `payee`
+(docs/specs/agent-advice-fee-split-v1.md §4). `paymentPayloadSchema` and
+`paymentAuthorizationSchema` describe the decoded `X-PAYMENT` header: the six signed
+`ReceiveWithAuthorization` fields plus `salt` (32 bytes, `nonce = keccak256(abi.encode(payee,
+salt))`). The API Worker publishes it as the header's OpenAPI `contentSchema`; core decodes the
+header itself and stays authoritative.
 
 ## Perpl paper runtime
 
