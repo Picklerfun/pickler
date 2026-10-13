@@ -90,3 +90,16 @@ row fingerprints come from infrastructure inside the new snapshot. Keep canonica
 separate from native revision hashes. Legacy manifests capture afresh; missing/corrupt evidence
 must never become fabricated rows. Full hash/replay work remains; see
 [PTS incremental capture](../../PTS-REPORT-INCREMENTAL.md).
+
+Preflight and one-shot run call infrastructure's local connection readiness before study claim.
+Publish its versioned record in preflight; retain the fixed four execution clients across idle
+intervals without changing deadlines or the one-connection report role. Failures/cancellation stop
+before admission and clean up partial acquisition. Never implement this pool policy in trading,
+raise capacity, cache authorization or resume the preserved failed study. See
+[local readiness](../../PTS-LOCAL-CONNECTION-READINESS.md).
+
+The persistence collector additionally bounds connection lifecycle events to 64 with explicit
+truncation. event-loop-diagnostic.ts records passive run-only one-second timer lateness, process CPU
+and memory without changing financial clocks, deadlines or admission. Preserve a pending sample
+before a delayed callback, freeze it on stop, and publish both diagnostics at completion or failure.
+These measurements cannot reconstruct missing historical transport phases or authorize a restart.
