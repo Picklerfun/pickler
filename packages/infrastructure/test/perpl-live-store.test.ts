@@ -1,0 +1,141 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { randomUUID } from "node:crypto";
+import { mkdtemp, mkdir, readFile, writeFile, copyFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { migrateDatabase, migrationsFolder } from "../src/persistence/migrate-database.js";
+import { createPerplLiveService, type PerplLiveDriver } from "@pickler/trading/perpl-live";
+import { PostgresPerplLiveStore } from "../src/persistence/perpl-live-store.js";
+import { tokenFixture } from "./token-fixture.js";
+
+const unavailableDriver: PerplLiveDriver = {
+  async prepareSetup() {
+    throw new Error("No provider requests allowed");
+  },
+  async confirmSetup() {
+    throw new Error("No provider requests allowed");
+  },
+  async reconcileSetup() {
+    return { confirmed: false };
+  },
+  async snapshot() {
+    throw new Error("No provider requests allowed");
+  },
+  async submit() {
+    throw new Error("No orders allowed");
+  },
+  async verifyTransaction() {
+    return false;
+  },
+};
+test("real PostgreSQL ownership and concurrent starts admit one bounded session", async (t) => {
+  const f = await tokenFixture(t);
+  const scope = { userId: f.scope.userId, productAgentId: f.scope.agentId };
+  const repository = new PostgresPerplLiveStore(f.store.pool);
+  const peer = new PostgresPerplLiveStore(f.store.connectPeer().pool);
+  assert.equal((await repository.read(scope)).document, null);
+  await assert.rejects(repository.read({ ...scope, userId: randomUUID() }), { code: "NOT_FOUND" });
+  await repository.transact(scope, (d, a, now) => {
+    assert.equal(a.network, "testnet");
+    d.accountId = 7;
+    d.publicKey = "controlled-public";
+    d.encryptedKey = "controlled-encrypted";
+    d.encryptedToken = "controlled-encrypted";
+    d.keyExpiresAt = now + 60_000;
+  });
+  const terms = { symbol: "BTC", marginMicros: "5000000", leverage: 1, cycles: 1, holdSeconds: 60 };
+  const services = [repository, peer].map((repo) =>
+    createPerplLiveService({
+      repository: repo,
+      driver: unavailableDriver,
+      admissions: true,
+      randomId: randomUUID,
+    }),
+  );
+  const outcomes = await Promise.allSettled(
+    services.map((service) => service.start(scope, terms, randomUUID())),
+  );
+  assert.equal(outcomes.filter((r) => r.status === "fulfilled").length, 1);
+  assert.equal((await repository.read(scope)).document!.sessions.length, 1);
+  const key = (await repository.read(scope)).document!.sessions[0]!.key;
+  assert.equal(
+    (await services[0]!.start(scope, terms, key)).id,
+    (await repository.read(scope)).document!.sessions[0]!.id,
+  );
+
+  await f.store.pool.query("UPDATE pickler.research_access SET enabled=false WHERE user_id=$1", [
+    scope.userId,
+  ]);
+  await assert.rejects(services[0]!.control(scope, "resume"), { code: "PERPL_ENTRIES_PAUSED" });
+  assert.equal((await services[0]!.control(scope, "stop")).status, "stopping");
+});
+test("private state uses RLS and new migrations preserve existing token grants", async (t) => {
+  const f = await tokenFixture(t);
+  const saved = await f.service.saveDraft(f.scope, {
+    expectedVersion: 0,
+    name: "Preserved",
+    ticker: "PRSV",
+  });
+  assert.equal(saved.name, "Preserved");
+  const table = await f.store.pool.query<{ relrowsecurity: boolean }>(
+    "SELECT relrowsecurity FROM pg_class WHERE oid='pickler.perpl_live_accounts'::regclass",
+  );
+  assert.equal(table.rows[0]!.relrowsecurity, true);
+  const before = await f.store.pool.query("SELECT count(*)::int AS n FROM launch.drafts");
+  await new PostgresPerplLiveStore(f.store.pool).transact(
+    { userId: f.scope.userId, productAgentId: f.scope.agentId },
+    (d) => {
+      d.nextRequestId = 3;
+    },
+  );
+  assert.equal(
+    (await f.store.pool.query("SELECT count(*)::int AS n FROM launch.drafts")).rows[0]!.n,
+    before.rows[0]!.n,
+  );
+});
+test("upgrade from main's 0047 preserves token draft, grant and migration identities", async (t) => {
+  const baseline = await mkdtemp(join(tmpdir(), "pickler-perpl-migration-"));
+  t.after(() => rm(baseline, { recursive: true, force: true }));
+  const journal = JSON.parse(await readFile(join(migrationsFolder, "meta/_journal.json"), "utf8"));
+  journal.entries = journal.entries.filter((entry: { idx: number }) => entry.idx <= 47);
+  await mkdir(join(baseline, "meta"));
+  await writeFile(join(baseline, "meta/_journal.json"), JSON.stringify(journal));
+  await Promise.all(
+    journal.entries.map((entry: { tag: string }) =>
+      copyFile(join(migrationsFolder, `${entry.tag}.sql`), join(baseline, `${entry.tag}.sql`)),
+    ),
+  );
+  const f = await tokenFixture(t, baseline);
+  await f.service.saveDraft(f.scope, { expectedVersion: 0, name: "Keep token", ticker: "KEEP" });
+  await f.service.authorize(f.scope, 1, "preserved_grant_001");
+  const before = await f.store.pool.query(
+    "SELECT hash,created_at FROM pickler_migrations.__drizzle_migrations ORDER BY id",
+  );
+  const draft = await f.store.pool.query("SELECT * FROM launch.drafts");
+  const grant = await f.store.pool.query("SELECT * FROM launch.grants");
+  assert.equal(
+    (await f.store.pool.query("SELECT to_regclass('pickler.perpl_live_accounts') AS name")).rows[0]!
+      .name,
+    null,
+  );
+
+  await migrateDatabase(f.store.pool);
+  await migrateDatabase(f.store.pool);
+
+  assert.deepEqual((await f.store.pool.query("SELECT * FROM launch.drafts")).rows, draft.rows);
+  assert.deepEqual((await f.store.pool.query("SELECT * FROM launch.grants")).rows, grant.rows);
+  const after = await f.store.pool.query(
+    "SELECT hash,created_at FROM pickler_migrations.__drizzle_migrations ORDER BY id",
+  );
+  assert.deepEqual(after.rows.slice(0, before.rowCount!), before.rows);
+  assert.equal(after.rowCount, before.rowCount! + 2);
+  assert.equal(
+    (
+      await f.store.pool.query(
+        "SELECT relrowsecurity FROM pg_class WHERE oid='pickler.perpl_live_accounts'::regclass",
+      )
+    ).rows[0]!.relrowsecurity,
+    true,
+  );
+});

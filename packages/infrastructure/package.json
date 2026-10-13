@@ -4,6 +4,10 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./perpl-live": {
+      "types": "./src/perpl-live.ts",
+      "import": "./dist/perpl-live.js"
+    },
     ".": {
       "types": "./src/index.ts",
       "import": "./dist/index.js"

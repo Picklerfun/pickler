@@ -1432,3 +1432,16 @@ Landing price cells show the server-prepared latest observed movement as an arro
 badge and tint the sparkline green/red/neutral. The badge's accessible label and timestamp
 tooltip identify the compared observations, not a 24-hour return. Missing movement renders no
 percentage; sub-basis-point moves show less than 0.01% without a misleading signed zero.
+
+## Perpl testnet execution UI
+
+`features/studio/perpl-execution` is the HTTP-only controller and shared Controls/Positions/Record
+UI for draft and published agents. The action is **Start trading**; Monad TESTNET remains visible.
+Account steps use the existing owner passkey ceremony. Keep busy/idempotency guards and agent
+selection generation checks. Separate action errors from polling errors; never automatically
+retry a mutation or signature. No key or provider SDK belongs in this feature.
+
+Real account state has separate metrics/history and replaces the paper header/strip when ready.
+Legacy paper controls remain in an explicitly labelled disclosure. The three `perpl-trading-*`
+preview stages are inert labelled fixtures; they never authenticate, sign or write and never
+invent explorer hashes. See [Perpl trading](../../docs/perpl-trading.md).

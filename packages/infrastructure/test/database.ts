@@ -5,7 +5,11 @@ import { migrateDatabase } from "../src/persistence/migrate-database.js";
 import { PostgresResearchStore } from "../src/persistence/research-store.js";
 
 /** Real PostgreSQL, isolated database per test; never touches existing schemas. */
-export async function createTestStore(t: TestContext, leaseClock?: () => number) {
+export async function createTestStore(
+  t: TestContext,
+  leaseClock?: () => number,
+  migrationHistory?: string,
+) {
   const connectionString =
     process.env.TEST_DATABASE_URL ??
     "postgresql://pickler:pickler_local_only@127.0.0.1:55432/pickler";
@@ -38,7 +42,7 @@ export async function createTestStore(t: TestContext, leaseClock?: () => number)
       await admin.end();
     }
   });
-  await migrateDatabase(store.pool);
+  await migrateDatabase(store.pool, migrationHistory);
   await store.init();
   return Object.assign(store, { connectPeer });
 }

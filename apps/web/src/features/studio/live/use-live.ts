@@ -39,6 +39,7 @@ import {
   type SetupVersion,
 } from "../api";
 import { startPolling } from "../lib/polling";
+import { usePerplExecution, type PerplExecution } from "../perpl-execution/use-execution";
 import {
   useAgentStudio,
   type AgentStudioData,
@@ -175,6 +176,7 @@ function runtimeError(caught: unknown): Error {
  * in its own field (each section draws it with Retry), not in the shell's `error`.
  */
 export interface UseLive extends UseAgentStudio, LiveData {
+  execution: PerplExecution;
   /** The board and the watched markets' details again (Retry on "Couldn't read Perpl."). */
   readMarkets(): Promise<void>;
   readVersions(): Promise<void>;
@@ -235,6 +237,11 @@ export function useLive({
   section: LiveSectionKey;
   onRefreshAgent(): Promise<void>;
 }): UseLive {
+  const execution = usePerplExecution(
+    agent.productId ?? agent.id,
+    preview || !!staged,
+    staged?.execution ?? null,
+  );
   const [versions, setVersions] = useState<LiveRead<SetupVersion[]>>(staged?.versions ?? null);
   const [markets, setMarkets] = useState<MarketsRead>(staged?.markets ?? null);
   const [details, setDetails] = useState<Record<string, MarketDetailDto | null>>(
@@ -754,6 +761,7 @@ export function useLive({
 
   return {
     ...studio,
+    execution,
     saveSetup,
     versions,
     markets,

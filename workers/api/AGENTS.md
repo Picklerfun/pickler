@@ -766,3 +766,13 @@ client financial values. Studio authentication remains unchanged.
 the existing public trading gate and global RPC ceiling. It accepts the same exact trade input,
 returns portable quantities without transaction data, and never signs, prepares or broadcasts.
 Its generated OpenAPI describes validation, curve, unavailable and quota errors.
+
+## Studio Perpl execution facade
+
+`routes/studio-perpl-live.ts` adds owner-only state, setup preparation/confirmation, start and
+control under Studio and its Console alias. `PERPL_STUDIO_ENABLED` defaults false. Composition
+uses the private `TRADING_EXECUTOR` binding and forwards the original user Authorization header;
+Trading independently verifies it. Never add an API signer, key vault or provider executor here.
+Increasing actions require write-enabled access. Reducing controls remain owner-authorized when
+admissions close. Strict api-schema inputs, explicit response projections, no-store and generated
+OpenAPI apply to every operation. See [Perpl trading](../../docs/perpl-trading.md).

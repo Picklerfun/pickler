@@ -12,6 +12,7 @@ import type { Agent } from "../api";
 import { HeaderDot } from "../shell/header";
 import { railItemId } from "../shell/rail";
 import { StatusChip } from "../shell/status-chip";
+import { PerplHeaderControls } from "../perpl-execution/execution";
 import { StudioShell, useShellModals } from "../shell/studio-shell";
 import { Account } from "./account";
 import { Agents } from "./agents";
@@ -151,6 +152,21 @@ export function LiveStudio({
      honest "runs soon" copy (draft spec D19). */
   const record = paperShown(live.record) ? live.record : null;
   const status = record ? runtimeStatus(agent.paused, record.runtimeEnabled) : liveStatus(agent);
+  const real = live.execution.state;
+  const realReady = !!real?.available && !real.setupRequired;
+  const realLabel = real?.session
+    ? `${real.session.status.toUpperCase()} · TESTNET`
+    : "READY · TESTNET";
+  const realTiles = [
+    { label: "PERPL BALANCE · AUSD", value: real?.balanceAusd ?? "—", soon: false },
+    {
+      label: "OPEN · PERPL POSITIONS",
+      value: String(real?.positions.filter((p) => !p.closed).length ?? 0),
+      soon: false,
+    },
+    { label: "CYCLES CLOSED", value: String(real?.session?.completedCycles ?? 0), soon: false },
+    { label: "LEVERAGE", value: "1×", soon: false },
+  ];
   const { caps } = liveCaps(agent);
   const read = liveWalletRead(agent.wallet, live.wallets);
   const warnings = liveWarnings(read, caps.perTradeAusd);
@@ -240,7 +256,7 @@ export function LiveStudio({
         modals={modals}
         status={
           <StatusChip id="live-status" tone={status.tone}>
-            {status.label}
+            {realReady ? realLabel : status.label}
           </StatusChip>
         }
         /* Positions counts the open paper positions, Decisions the proposals waiting on the owner;
@@ -310,25 +326,33 @@ export function LiveStudio({
           </HeaderPart>
         ))}
         headerSide={
-          <HeaderControls
-            paused={agent.paused}
-            action={status.action}
-            canManage={canManage}
-            pause={pause}
-            stop={
-              record ? (
-                <StopAll
-                  live={live}
-                  canManage={canManage}
-                  id="live-stop"
-                  className={styles.stopButton}
-                />
-              ) : null
-            }
-          />
+          realReady ? (
+            <PerplHeaderControls execution={live.execution} canManage={canManage} />
+          ) : (
+            <HeaderControls
+              paused={agent.paused}
+              action={status.action}
+              canManage={canManage}
+              pause={pause}
+              stop={
+                record ? (
+                  <StopAll
+                    live={live}
+                    canManage={canManage}
+                    id="live-stop"
+                    className={styles.stopButton}
+                  />
+                ) : null
+              }
+            />
+          )
         }
         tiles={
-          record ? runtimeTiles(read, caps.perDayAusd, record) : liveTiles(read, caps.perDayAusd)
+          realReady
+            ? realTiles
+            : record
+              ? runtimeTiles(read, caps.perDayAusd, record)
+              : liveTiles(read, caps.perDayAusd)
         }
         tilesLabel="Its money"
         banner={
@@ -354,18 +378,30 @@ export function LiveStudio({
         strip={
           <LiveStrip
             view={
-              record
-                ? runtimeStrip({
-                    newest: Array.isArray(live.checks) ? (live.checks[0] ?? null) : null,
-                    detail: live.lastCheck,
-                    total: record.checks,
-                    paused: agent.paused,
-                    now,
-                    running: record.runtimeEnabled,
-                  })
-                : stripView()
+              realReady
+                ? {
+                    line: real.orders[0]
+                      ? `${real.orders[0].action.replaceAll("_", " ").toUpperCase()} ${real.orders[0].symbol} · ${real.orders[0].status.toUpperCase()} · TESTNET`
+                      : "Perpl account ready · start trading from Controls",
+                    count: `${real.orders.length} ORDERS`,
+                    log: real.orders.slice(0, 4).map((order) => ({
+                      at: new Date(order.createdAt).toISOString().slice(11, 19),
+                      text: `${order.symbol} · ${order.action.replaceAll("_", " ")} · ${order.status}`,
+                    })),
+                    more: "EVERY TRANSACTION →",
+                  }
+                : record
+                  ? runtimeStrip({
+                      newest: Array.isArray(live.checks) ? (live.checks[0] ?? null) : null,
+                      detail: live.lastCheck,
+                      total: record.checks,
+                      paused: agent.paused,
+                      now,
+                      running: record.runtimeEnabled,
+                    })
+                  : stripView()
             }
-            onDecisions={() => goFromOutside("decisions")}
+            onDecisions={() => goFromOutside(realReady ? "record" : "decisions")}
           />
         }
       >

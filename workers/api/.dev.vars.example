@@ -49,6 +49,7 @@ PERPL_BOARD_NETWORK=testnet
 # and proposal approvals, which the research worker runs; keep it equal to the research worker's.
 # Anything else answers 409 RUNTIME_DISABLED; reads, closes and stops stay on.
 PERPL_RUNTIME_ENABLED=false
+PERPL_STUDIO_ENABLED=false
 
 # Wallet sign-in. Both are required together: `walletAuthServices` returns undefined when either
 # is missing, so /v1/auth/wallet is simply not mounted rather than mounted and broken.

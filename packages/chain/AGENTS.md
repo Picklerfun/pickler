@@ -50,3 +50,10 @@ Monad-maintained manifest; it does not call this an official Uniswap testnet. Un
 runtime size is 24,546 bytes at that observation. Public isolated Pickler deployment addresses,
 blocks/hashes and receipts are in [the acceptance record](../../docs/market/uniswap-v4-testnet-acceptance.json),
 not an enabled hosted deployment configuration. Never import keys or operational journals here.
+
+## Minimal Perpl owner interface
+
+`IPerplExchangeAbi` is generated from the minimal Solidity owner interface, for account creation,
+forwarding and collateral calls. It carries no address, signer or activation policy. Generate
+with `npm run contracts:abi`; infrastructure owns reviewed runtime bindings. See
+[Perpl trading](../../docs/perpl-trading.md).

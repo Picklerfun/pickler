@@ -337,6 +337,20 @@
       "when": 1791776995335,
       "tag": "0047_advice_split",
       "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1791925617925,
+      "tag": "0048_perpl_live_execution",
+      "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1791925990254,
+      "tag": "0049_perpl_live_grants",
+      "breakpoints": true
     }
   ]
 }

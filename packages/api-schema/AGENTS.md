@@ -306,3 +306,11 @@ inconsistent signs are invalid. It must not be labelled as a 24-hour return.
 `publicTokenTradeQuotedSchema`/DTO omits the transaction from the prepared response. The public
 quote route shares the strict trade input and exposes only canonical identities, expiration and
 exact server-calculated quantities; it does not supply an executable transaction.
+
+## Perpl real execution DTOs
+
+`src/perpl-live.ts` exports strict portable owner setup, bounded session, control, position,
+order and state schemas. Amounts are decimal strings; missing economics/precision are nullable.
+No credential, private preparation, lease, organization/tenant selector or internal signal source
+belongs in these DTOs. Caller input cannot choose calldata, signing wallet or exchange address.
+See [Perpl trading](../../docs/perpl-trading.md).

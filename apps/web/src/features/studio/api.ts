@@ -71,6 +71,62 @@ export class StudioError extends Error {
 export const errorCode = (caught: unknown): string =>
   caught instanceof StudioError ? caught.code : "";
 
+export const perplTradingState = async (agentId: string, signal?: AbortSignal) => {
+  const { perplLiveStateSchema } = await import("@pickler/api-schema");
+  return perplLiveStateSchema.parse(
+    await studioApi(`/agents/${encodeURIComponent(agentId)}/perpl`, signal ? { signal } : {}),
+  );
+};
+export const preparePerplTrading = async (agentId: string, collateralAusd: string, key: string) => {
+  const { perplLiveSetupSchema } = await import("@pickler/api-schema");
+  return perplLiveSetupSchema.parse(
+    await studioApi(`/agents/${encodeURIComponent(agentId)}/perpl/setup/prepare`, {
+      method: "POST",
+      headers: { "Idempotency-Key": key },
+      body: JSON.stringify({ collateralAusd }),
+    }),
+  );
+};
+export const confirmPerplTrading = async (
+  agentId: string,
+  setupId: string,
+  signed: SignedActivityDto,
+) => {
+  const { perplLiveSetupSchema } = await import("@pickler/api-schema");
+  return perplLiveSetupSchema.parse(
+    await studioApi(`/agents/${encodeURIComponent(agentId)}/perpl/setup/confirm`, {
+      method: "POST",
+      body: JSON.stringify({ setupId, signed }),
+    }),
+  );
+};
+export const startPerplTrading = async (
+  agentId: string,
+  input: import("@pickler/api-schema").PerplLiveStartDto,
+  key: string,
+) => {
+  const { perplLiveStateSchema } = await import("@pickler/api-schema");
+  return perplLiveStateSchema.parse(
+    await studioApi(`/agents/${encodeURIComponent(agentId)}/perpl/start`, {
+      method: "POST",
+      headers: { "Idempotency-Key": key },
+      body: JSON.stringify(input),
+    }),
+  );
+};
+export const controlPerplTrading = async (
+  agentId: string,
+  action: "pause" | "resume" | "stop" | "close",
+) => {
+  const { perplLiveStateSchema } = await import("@pickler/api-schema");
+  return perplLiveStateSchema.parse(
+    await studioApi(`/agents/${encodeURIComponent(agentId)}/perpl/control`, {
+      method: "POST",
+      body: JSON.stringify({ action }),
+    }),
+  );
+};
+
 export async function studioApi<T>(path: string, init: RequestInit = {}): Promise<T> {
   const supabase = getSupabase();
   if (!supabase) {

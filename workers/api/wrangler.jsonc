@@ -49,5 +49,6 @@
     "PERPL_BOARD_NETWORK": "testnet",
     // The Perpl paper runtime's manual checks and approvals; keep it equal to the research worker's.
     "PERPL_RUNTIME_ENABLED": "false",
+    "PERPL_STUDIO_ENABLED": "false",
   },
 }

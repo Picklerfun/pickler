@@ -24,6 +24,7 @@ const outputDirectory = join(root, "packages/chain/src/abi");
  * consumers — the indexer, the API, a third-party integrator — need to decode or call it.
  */
 const CONTRACTS = [
+  "IPerplExchange",
   "PicklerCurveMath",
   "PicklerPreset",
   "PicklerAgentToken",
