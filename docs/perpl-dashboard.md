@@ -67,10 +67,20 @@ and controlled Supabase authentication. It checks signatures, automatic refresh 
 no external credential enrollment or transaction occurs.
 
 A public GET to Perpl testnet through the adapter succeeded on 2026-10-13 with eight markets.
-Real wallet enrollment and authenticated reads have **not** been validated: automatic approval
-review rejected initiating enrollment preparation with an unapproved test wallet. An operator/user
-must explicitly approve the reviewed read session in their wallet for live acceptance. Merge and
-controlled tests do not establish that Perpl has whitelisted the integration origin.
+After explicit user approval, an unsigned payload probe used that user's wallet, a freshly generated
+Ed25519 public key, scope 1, `Pickler dashboard`, a sub-hour expiry and the actual integration
+origin. Perpl returned HTTP 400 with only `Bad Request` at 23:04:33 UTC
+(Cloudflare request `a4a1fbe21fdc443a-MIA`). No key was enrolled, no wallet message was signed and
+no account-changing operation was sent. The request matches the documented enrollment fields;
+the response does not establish whether origin policy, request validation or another provider
+condition caused the rejection. Do not report this as confirmed origin refusal or key expiry.
+
+Separately, public `eth_call` reads of the pinned exchange using Perpl's official `Exchange.json`
+ABI confirmed six nonzero positions for the approved wallet at block 70807473. Thus the failed
+read authorization must not be presented as an empty portfolio. This diagnostic did not change
+the dashboard's authenticated REST data source or establish successful private REST acceptance.
+Real key enrollment and authenticated portfolio reads remain **unvalidated**; merge and controlled
+tests do not establish that Perpl has whitelisted the integration origin.
 
 Official contracts: [API enrollment](https://github.com/PerplFoundation/api-docs/blob/main/integrations.md),
 [authentication](https://github.com/PerplFoundation/api-docs/blob/main/authentication.md),
