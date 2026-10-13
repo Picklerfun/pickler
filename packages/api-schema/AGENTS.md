@@ -314,3 +314,13 @@ order and state schemas. Amounts are decimal strings; missing economics/precisio
 No credential, private preparation, lease, organization/tenant selector or internal signal source
 belongs in these DTOs. Caller input cannot choose calldata, signing wallet or exchange address.
 See [Perpl trading](../../docs/perpl-trading.md).
+
+## Perpl dashboard wire contract
+
+`perpl-dashboard.ts` exports concrete read-only market/portfolio DTOs and the narrow scope-1
+enrollment and signed-read envelopes. `PERPL_READ_KEY_TYPES`, fixed testnet domain/origin, no
+builder/delegation terms, matching wallet/public key/expiry and `checkPerplReadPayload` protect
+every signing boundary. Enrollment intentionally returns the opaque read-access token privately
+to its signing browser; no private key is accepted or returned. Monetary projections are decimal
+strings. Collateral-exhaustion/price-buffer values are estimates, not venue liquidation prices.
+See [Perpl dashboard](../../docs/perpl-dashboard.md).

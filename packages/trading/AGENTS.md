@@ -187,3 +187,12 @@ Keep durable intent IDs, unknown submissions, partial reductions and lease fence
 admissions require current owner settings/access; required exits survive configuration changes.
 Infrastructure owns credentials, provider I/O and transactional persistence. See
 [Perpl trading](../../docs/perpl-trading.md); controlled tests do not establish remote acceptance.
+
+## Read-only Perpl portfolio projections
+
+`features/perpl-dashboard/model.ts`, exported from `@pickler/trading/perps`, owns the provider-independent `PerplDashboardData` read port and exact integer
+scaling for observed open interest, price-only P&L, available/locked collateral, gross/net exposure
+and current-collateral exhaustion estimates. These are real-wallet projections, independent of
+paper accounts, order admission and strategy execution. Missing marks/statistics keep aggregates
+unknown. Realized P&L comes from the venue's reported all-time statistics. Never call the
+collateral-exhaustion threshold a venue liquidation price or subtract estimated fees twice.

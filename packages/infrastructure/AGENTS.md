@@ -855,3 +855,14 @@ lists actual schema files explicitly and excludes product read models. The test 
 fixture helpers accept an optional migration folder only for controlled upgrade validation.
 See [Perpl trading](../../docs/perpl-trading.md). Its tests use disposable loopback databases and
 injected transports; no hosted credentials or automatic activation are authorized.
+
+## Perpl read-only dashboard adapter
+
+`PerplDashboardGateway` in `src/perpl/dashboard.ts` uses only fixed Perpl testnet targets: public
+context, scope-1 enrollment and signed GET wallet/positions. It bounds requests to ten seconds
+and two MiB, rejects redirects, pins the chain/exchange and validates wallet/account identity,
+duplicates, scaled integers and snapshot block skew. Only public context is cached (ten seconds;
+failed refresh may serve up to sixty seconds with stale=true). No private key, access token or
+wallet snapshot is persisted, cached or logged. Fixed origin `https://pickler.fun` must be permitted
+by Perpl; never omit or spoof it to evade their origin policy. Provider keys and orders are outside
+this adapter. Trading owns monetary projection; API-schema owns response validation.

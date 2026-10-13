@@ -776,3 +776,15 @@ Trading independently verifies it. Never add an API signer, key vault or provide
 Increasing actions require write-enabled access. Reducing controls remain owner-authorized when
 admissions close. Strict api-schema inputs, explicit response projections, no-store and generated
 OpenAPI apply to every operation. See [Perpl trading](../../docs/perpl-trading.md).
+
+## Read-only Perpl dashboard
+
+`routes/perpl-dashboard.ts` is mounted at `/v1/perpl` when composed with `PerplDashboardGateway`.
+`GET /markets` is public; `POST /read-key/payload`, `/read-key/enroll` and `/portfolio` require a
+verified user JWT. All are described by OpenAPI, private/no-store and bounded to 24 KiB request
+bodies. Scope, chain, origin, TTL and signing types are fixed; callers supply no target URL,
+method, builder/delegation policy or order. Portfolio proofs authorize only two fixed GETs, with
+matching key, fresh timestamps and distinct nonces. Perpl verifies the signatures; the adapter
+then verifies the returned wallet and account ownership before projecting data. Errors expose
+reviewed reasons, never provider bodies or credential payloads. No database migration, new secret,
+research admission or live agent activation is needed. See [dashboard](../../docs/perpl-dashboard.md).

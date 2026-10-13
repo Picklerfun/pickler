@@ -1,4 +1,5 @@
 "use client";
+import { signMeraPerplRead } from "./mera-perpl-read";
 import { sendMeraTokenTransaction } from "./mera-token-transaction";
 
 import { PRODUCT_HOSTS } from "@/server/hosts";
@@ -271,6 +272,20 @@ export const meraSigner: SignerAdapter = {
     return opened && { address: opened.address, session: opened.answer };
   },
 
+  signPerplReadKey: async (payload, input) => {
+    const place = availability();
+    const known = recall();
+    if (!place.offered || !known || known.address.toLowerCase() !== input.wallet.toLowerCase()) {
+      throw new Error("Passkey wallet unavailable.");
+    }
+    return signMeraPerplRead({
+      payload,
+      input,
+      kit: await loadMeraKit(),
+      prf: source(place.rpId, "existing", known.credentialId),
+      current: () => recall()?.address.toLowerCase() === input.wallet.toLowerCase(),
+    });
+  },
   sendTokenTransaction: async (prepared, wallet, token) => {
     const place = availability();
     const known = recall();

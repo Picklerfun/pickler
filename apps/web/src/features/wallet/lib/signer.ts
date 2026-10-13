@@ -1,3 +1,4 @@
+import type { PerplReadKeyInputDto, PerplReadKeyPayloadDto } from "@pickler/api-schema";
 import type { PublicTokenTradePreparedDto } from "@pickler/api-schema";
 import type { ConnectResult } from "./connect";
 
@@ -77,6 +78,10 @@ export interface SignerAdapter {
     token: string,
     joining: string,
   ) => Promise<{ address: string; session: ConnectResult } | null>;
+  signPerplReadKey?: (
+    payload: PerplReadKeyPayloadDto,
+    input: PerplReadKeyInputDto,
+  ) => Promise<string>;
   sendTokenTransaction?: (
     prepared: PublicTokenTradePreparedDto,
     wallet: string,

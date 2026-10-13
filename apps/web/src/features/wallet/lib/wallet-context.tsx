@@ -1,4 +1,5 @@
 "use client";
+import type { PerplReadKeyInputDto, PerplReadKeyPayloadDto } from "@pickler/api-schema";
 import type { PublicTokenTradePreparedDto } from "@pickler/api-schema";
 
 import {
@@ -218,6 +219,10 @@ interface WalletState {
   connect: (holding?: string) => void;
   disconnect: () => Promise<void>;
   switchChain: () => Promise<void>;
+  signPerplReadKey: (
+    payload: PerplReadKeyPayloadDto,
+    input: PerplReadKeyInputDto,
+  ) => Promise<string>;
   sendTokenTransaction: (prepared: PublicTokenTradePreparedDto, token: string) => Promise<string>;
 }
 
@@ -903,6 +908,41 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     }
   }, [adapter, account, release]);
 
+  const signPerplReadKey = useCallback(
+    async (payload: PerplReadKeyPayloadDto, input: PerplReadKeyInputDto) => {
+      if (
+        !account ||
+        !adapter?.signPerplReadKey ||
+        input.wallet.toLowerCase() !== account.address.toLowerCase()
+      ) {
+        throw new Error("Connect this wallet first.");
+      }
+      const passkey = adapter.kind === "mera";
+      if (passkey && meraFlight.current) {
+        throw new Error("Finish the open passkey prompt first.");
+      }
+      const mine = generation.current;
+      if (passkey) {
+        passkeyRunning(mine, true);
+      }
+      try {
+        const signature = await adapter.signPerplReadKey(payload, input);
+        if (
+          generation.current !== mine ||
+          accountRef.current?.address.toLowerCase() !== input.wallet.toLowerCase()
+        ) {
+          throw new Error("Wallet changed. No read access was enrolled.");
+        }
+        return signature;
+      } finally {
+        if (passkey) {
+          passkeyRunning(mine, false);
+        }
+      }
+    },
+    [account, adapter, passkeyRunning],
+  );
+
   const sendTokenTransaction = useCallback(
     async (prepared: PublicTokenTradePreparedDto, token: string) => {
       if (!account || !adapter?.sendTokenTransaction) {
@@ -1042,6 +1082,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       connect,
       disconnect,
       switchChain,
+      signPerplReadKey,
       sendTokenTransaction,
     };
   }, [
@@ -1063,6 +1104,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     signInWithWallet,
     signing,
     switchChain,
+    signPerplReadKey,
     sendTokenTransaction,
   ]);
 

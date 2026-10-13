@@ -1,9 +1,9 @@
 import Link from "next/link";
-import { Icon } from "@pickler/ui";
+import { ButtonLink, Icon } from "@pickler/ui";
 import styles from "../landing.module.css";
 
 /**
- * The headline and the two ways in. Three sentences, each closed by a full stop in the colour of
+ * The headline and the product entry points. Three sentences, each closed by a full stop in the colour of
  * what it names: asking is violet, backing is amber, trading is lime, as they are everywhere else.
  */
 export function Headline() {
@@ -40,6 +40,13 @@ export function Headline() {
             <Icon name="arrow" size={13} />
           </span>
         </Link>
+      </div>
+      <div className={styles.dashboardEntry}>
+        <ButtonLink as={Link} href="/perpl" variant="secondary" size="md">
+          <Icon name="chart" size={18} />
+          Open Perpl dashboard
+          <Icon name="arrow" size={16} />
+        </ButtonLink>
       </div>
     </>
   );

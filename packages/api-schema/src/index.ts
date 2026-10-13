@@ -42,3 +42,5 @@ export * from "./token-launch.js";
 
 export * from "./public-token-trading.js";
 export * from "./perpl-live.js";
+
+export * from "./perpl-dashboard.js";

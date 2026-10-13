@@ -16,8 +16,8 @@ export function Footer({ charts = false }: { charts?: boolean }) {
         <Link href="/agents" className={styles.footerLink}>
           AGENTS
         </Link>
-        <Link href="/markets" className={styles.footerLink}>
-          MARKETS
+        <Link href="/perpl" className={styles.footerLink}>
+          PERPL DASHBOARD
         </Link>
         <a href="#app" className={styles.footerLink}>
           THE APP

@@ -41,6 +41,14 @@ import { only } from "./lib/only.mjs";
 
 const ALL = [
   {
+    path: "/perpl?preview=wallet",
+    name: "perpl-dashboard-preview",
+    product: "marketplace",
+    surface: "light",
+    task: "Perpl read-only dashboard",
+    proves: "#perpl-portfolio [role=progressbar]",
+  },
+  {
     path: "/?tokens=preview#tokens",
     name: "landing-token-market-board-preview",
     product: "marketplace",

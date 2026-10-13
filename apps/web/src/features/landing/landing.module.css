@@ -150,6 +150,12 @@
   margin-top: 36px;
 }
 
+.dashboardEntry {
+  display: flex;
+  justify-content: center;
+  margin-top: 18px;
+}
+
 /* ---------- Pills: the canvas's lit actions, with a round badge for the arrow ---------- */
 
 .pill {
