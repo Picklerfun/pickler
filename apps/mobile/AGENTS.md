@@ -45,17 +45,22 @@ code. Do not rely on what earlier SDKs did.
   `PICKLER_API_URL` and the splitter are both set**. The wallet signs only to that splitter:
   `checkTerms` refuses a 402 whose `payTo`, asset, chain, split or domain is not the app's own, and
   the typed-data domain is the app's constants, never the 402's. The payee (the 65% share) is trusted
-  from the 402; the confirmation shows it. In Wallet → Activity, an AUSD transfer from the wallet to `ADVICE_SPLITTER` is labelled "Agent analysis" instead of "Withdrawal" (`toMovements` takes the splitter as a parameter, keeping `explorer.ts` free of config). `useAdviceAsk` (`src/hooks/`) is the flow:
+  from the 402; the confirmation shows it. `useAdviceAsk` (`src/hooks/`) is the flow:
   a new Idempotency-Key per Ask, reused only between the 402 and its paid retry; after a payment went
   out it never signs again for that Ask and never says "nothing charged" (`settlement_pending`,
   `offline{paid:true}`); `abandon()` leaves a `settlement_pending`, `timeout` or paid `offline` flow
   on purpose. Where Face ID happens: the quote is an authenticated POST, so with a locked wallet the
-  unlock (Face ID) happens when the person taps Ask; the payment consent is the explicit
+  unlock (Face ID) happens when the person taps Ask. The payment consent is the explicit
   "Pay {price} AUSD" tap on the confirmation, which shows the total, the 65/35 split, the recipient
-  and the not-refunded line. There is no prompt at Pay unless the wallet was locked again after the
-  quote. Spec §3.2 step 4 placed Face ID at the sheet; moving it there was declined by the owner on 2026-10-13: Face ID stays at Ask, so the confirmation can show the creator's wallet from the 402
-  (audit Rulings A4, A7). A locked wallet (an ended Mera session) is `WalletLockedError` in
-  `api.ts`, so a retry reopens it; polling never prompts.
+  and the not-refunded line, and **Face ID confirms every Pay**, even with the wallet open (owner
+  decision 2026-10-13, audit Ruling A8; spec §3.2 step 4): `confirm` signs with a fresh
+  `unlockStoredWallet()` read that must open the account's address, or nothing is signed. With the
+  account open, that fresh wallet only signs and its session is ended (`useAccount.replace` would end
+  the wallet other hooks hold); with the account locked it becomes the account's through `onUnlock`.
+  A locked wallet (an ended Mera session) is `WalletLockedError` in `api.ts`, so a retry reopens it;
+  polling never prompts. In Wallet → Activity, an AUSD transfer from the wallet to `ADVICE_SPLITTER`
+  is labelled "Agent analysis" instead of "Withdrawal" (`toMovements` takes the splitter as a
+  parameter, keeping `explorer.ts` free of config).
   `useStudio` holds the one flow and the marketplace list at app level, above the per-tab stacks
   (`ctx.studio`, called in `App.tsx` above the early return), so remounts keep the key, the signed
   header and the job id. The advice screen (`src/screens/advice.tsx`) only reads it. The free history
