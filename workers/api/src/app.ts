@@ -1,3 +1,4 @@
+import { perplDashboardRoutes, type PerplDashboardServices } from "./routes/perpl-dashboard";
 import type { createPublicTokenTrading } from "@pickler/core";
 import { studioXCallbackRoutes } from "./routes/studio-x";
 import { operation } from "./openapi/operation";
@@ -30,6 +31,7 @@ import { adviceRoutes, type AdviceRouteServices } from "./routes/advice";
 
 export interface Services extends AgentRouteServices, ProfileRouteServices {
   authenticate: Authenticate;
+  perplDashboard?: PerplDashboardServices;
   advice?: AdviceRouteServices;
   studio?: StudioServices;
   growth?: ReturnType<typeof createGrowthServices>;
@@ -102,6 +104,9 @@ export function createApp(services: Services) {
   app.route("/v1/handles", handleRoutes(services));
   app.route("/v1/profile", profileRoutes(services));
 
+  if (services.perplDashboard) {
+    app.route("/v1/perpl", perplDashboardRoutes(services.perplDashboard));
+  }
   if (services.advice) {
     app.route("/v1/agent-advice", adviceRoutes(services.advice));
   }

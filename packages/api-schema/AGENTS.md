@@ -306,3 +306,13 @@ inconsistent signs are invalid. It must not be labelled as a 24-hour return.
 `publicTokenTradeQuotedSchema`/DTO omits the transaction from the prepared response. The public
 quote route shares the strict trade input and exposes only canonical identities, expiration and
 exact server-calculated quantities; it does not supply an executable transaction.
+
+## Perpl dashboard wire contract
+
+`perpl-dashboard.ts` exports concrete read-only market/portfolio DTOs and the narrow scope-1
+enrollment and signed-read envelopes. `PERPL_READ_KEY_TYPES`, fixed testnet domain/origin, no
+builder/delegation terms, matching wallet/public key/expiry and `checkPerplReadPayload` protect
+every signing boundary. Enrollment intentionally returns the opaque read-access token privately
+to its signing browser; no private key is accepted or returned. Monetary projections are decimal
+strings. Collateral-exhaustion/price-buffer values are estimates, not venue liquidation prices.
+See [Perpl dashboard](../../docs/perpl-dashboard.md).

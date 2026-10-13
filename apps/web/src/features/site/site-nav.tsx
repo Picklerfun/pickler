@@ -31,7 +31,7 @@ const MENUS = [
     items: [
       { title: "Tokens", href: "/#tokens", sub: "Buy and sell agent tokens on Monad testnet" },
       { title: "Agents", href: "/agents", sub: "Who takes a paid read, on what, for how much" },
-      { title: "Markets", href: "/markets", sub: "Every perp, the board, your ticket" },
+      { title: "Markets", href: "/perpl", sub: "Perpl markets, your portfolio and price risk" },
       {
         title: "Leaderboard",
         sub: "Who said the truth, and the platform in numbers",

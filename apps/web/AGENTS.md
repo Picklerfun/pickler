@@ -143,7 +143,7 @@ The chooser's card is drawn from the canvas "Pickler Connect Link Wallet" (Claud
 
 The account menu names which wallet you are looking at (`PASSKEY WALLET` or `BROWSER WALLET`), so a portfolio is never shown without saying whose it is. The passkey wallet has no chain of its own to be pointed at, so it is never "on the wrong network": `onTargetChain` is true for it and `canSwitchChain` is how a page asks whether the verb exists at all.
 
-Signing in is the only thing either wallet signs here. Nothing sends a transaction: paying for a read, trading and enabling Perpl from the web are a later specification, and the buttons that would do it stay disabled with the reason on them.
+The marketplace wallet signs in, submits canonical token trades through the public trade flow, and explicitly authorizes Perpl scope-1 reads through the dashboard. Perpl order sending and exchange-account funding from the web remain outside those operations.
 
 **A wallet account is not a creator account.** The account at `/signin` is for people building agents, with a Turnkey wallet under a passkey for `app.pickler.fun`; the wallet account is for people reading and backing them. Do not fold one into the other.
 
@@ -153,7 +153,7 @@ A wallet session belongs to one address. `lib/wallet-session.ts` keeps the token
 
 Three pages only mean something for a connected wallet — `/portfolio`, `/activity` and `/reads` — and they say so through `ConnectGate` rather than showing an empty table. Following an agent is kept in the browser against the address, so a different wallet in the same browser has a different list and nothing about it reaches a server.
 
-What is real today: the address, the chain and the native balance. What is not: agent tokens, because the launcher contracts are not deployed, which is what the portfolio says instead of showing a zero. Paying for a read needs those contracts too, so the ask flow connects a wallet and then stops at a disabled Pay with the reason on it. The trade panel reads the same way: Connect wallet is live and lime, a wallet on the wrong network is offered the switch, and only once both are right does the button become the trade that the missing contract disables.
+Native address, chain and balance are real. Canonical agent tokens trade on their public profiles. The legacy `/portfolio` does not read token holdings or Perpl positions: both counts stay unknown, and Positions links to `/perpl` for the real read-only portfolio. Paid legacy reads still stop at their disabled Pay action.
 
 ## One navigation bar
 
@@ -1432,3 +1432,30 @@ Landing price cells show the server-prepared latest observed movement as an arro
 badge and tint the sparkline green/red/neutral. The badge's accessible label and timestamp
 tooltip identify the compared observations, not a 24-hour return. Missing movement renders no
 percentage; sub-basis-point moves show less than 0.01% without a misleading signed zero.
+
+## Real Perpl testnet dashboard
+
+`/perpl` is the public read-only dashboard, linked from Explore’s Markets entry and Portfolio.
+`features/perpl/` reads `/api/v1/perpl/markets` every ten seconds and, after explicit authorization,
+`/portfolio` every five seconds. Both loops are serial, abort on navigation/identity changes, pause
+in hidden tabs and back off after failures. Last verified snapshots stay visibly stale; an unknown
+amount is never zero. The wallet/provider scope hides prior-account data immediately.
+
+A connected marketplace wallet explicitly signs only the reviewed `PerplRegisterApiKey` scope-1
+payload. Browser providers remain pinned; Mera signs during one ceremony and wipes its derived
+key before enrollment. Wallet context owns this narrow signing verb; no Turnkey import is allowed.
+The dashboard generates a native, non-extractable WebCrypto Ed25519 key, supplies its public key
+and proof of possession, then signs fixed GET read targets. The read key stays in memory for at
+most one hour; refresh needs new explicit authorization, and polling never prompts. No private
+key, Perpl credential or wallet snapshot is stored in browser storage. Browsers without Ed25519
+WebCrypto cannot authorize; they still see public markets. No order, approval, deposit, withdrawal,
+agent activation or financial transaction is reachable from this feature.
+
+The server prepares monetary projections. UI numbers are presentation only. Equity/price P&L
+exclude accrued funding and closing fees. The price-buffer meter shows the current collateral
+exhaustion threshold, explicitly not Perpl's maintenance-aware liquidation price. Controlled
+`node --import tsx scripts/design/perpl-dashboard.mjs http://localhost:3005` verifies the full
+browser/Hono/adapter flow with fake authentication and Perpl responses, including cryptographic
+proof, automatic refresh, cancellation, failed identity, disconnect and responsive widths.
+It needs a local build with explicitly controlled public Supabase configuration; it rejects
+external browser requests. This is separate from real wallet/provider acceptance.
