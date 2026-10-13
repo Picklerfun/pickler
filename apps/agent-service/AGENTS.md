@@ -441,3 +441,10 @@ payload meaning. The PostgreSQL regression forces unordered scan/sort and reject
 the selected page. Read [PTS report page bounds](PTS-REPORT-PAGE-BOUNDS.md) for the 36-round
 interruption, controlled measurements and limits of the historical diagnosis. Preserve the frozen
 failed study and pending positions; a repaired report cannot resume financial execution.
+
+Read [study control reads](PTS-STUDY-CONTROL-READS.md) for the preserved 100-round interruption and
+isolated metadata/ownership projection measurements. Infrastructure owns projected permission and
+lease checks; the host must keep using those fences. A terminal read-only report goes to a new
+directory and preserves pending positions. Reduced query payloads are not proof of historical
+timeout causality, successful prospective continuity or PTS profitability; never resume the failed
+study or alter its frozen configuration.
