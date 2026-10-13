@@ -10,7 +10,7 @@ export type TabName = "MarketsTab" | "AgentsTab" | "PortfolioTab" | "WalletTab" 
 export type SigninParams = { next?: Screen; patch?: Patch } | undefined;
 
 export type MarketsStackParamList = { markets: undefined; market: undefined };
-export type AgentsStackParamList = { agents: undefined; agent: undefined };
+export type AgentsStackParamList = { agents: undefined; agent: undefined; advice: undefined };
 export type PortfolioStackParamList = { portfolio: undefined; read: undefined };
 export type WalletStackParamList = { wallet: undefined; deposit: undefined; withdraw: undefined; perpsFunds: undefined };
 export type SoloStackParamList<K extends string> = Record<K, undefined>;
@@ -32,7 +32,7 @@ export const ALL_TABS: readonly TabName[] = [...TAB_ORDER, "LaunchpadTab", "Acti
 /** Pestaña dueña de cada pantalla (signin y onboarding viven en el RootStack). */
 export const TAB_OF: Record<Exclude<Screen, "signin" | "onboarding">, TabName> = {
   markets: "MarketsTab", market: "MarketsTab",
-  agents: "AgentsTab", agent: "AgentsTab",
+  agents: "AgentsTab", agent: "AgentsTab", advice: "AgentsTab",
   portfolio: "PortfolioTab", read: "PortfolioTab",
   wallet: "WalletTab", deposit: "WalletTab", withdraw: "WalletTab", perpsFunds: "WalletTab",
   launchpad: "LaunchpadTab", activity: "ActivityTab",
@@ -43,7 +43,7 @@ export const TAB_ROOT: Record<TabName, Screen> = {
 };
 
 export const SCREENS_ALL: readonly Screen[] = [
-  "markets", "market", "agents", "agent", "portfolio", "read", "wallet", "deposit", "withdraw", "perpsFunds", "launchpad", "activity", "signin", "onboarding",
+  "markets", "market", "agents", "agent", "advice", "portfolio", "read", "wallet", "deposit", "withdraw", "perpsFunds", "launchpad", "activity", "signin", "onboarding",
 ];
 
 /** Nombre de ruta enfocada → pantalla; null para navegadores (`Tabs`, `*Tab`) o sin estado. */

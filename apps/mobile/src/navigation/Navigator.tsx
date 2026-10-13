@@ -1,6 +1,7 @@
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator, type NativeStackNavigationOptions } from "@react-navigation/native-stack";
+import { AdviceScreen } from "../screens/advice";
 import { AgentScreen } from "../screens/agent";
 import { AgentsScreen } from "../screens/agents";
 import { ComingSoonScreen } from "../screens/comingSoon";
@@ -40,6 +41,7 @@ const Launchpad = withPage("launchpad", (ctx) => <ComingSoonScreen screen="launc
 const Activity = withPage("activity", (ctx) => <ComingSoonScreen screen="activity" requireAccount={ctx.requireAccount} />);
 const AgentsList = withPage("agents", AgentsScreen);
 const AgentProfile = withPage("agent", AgentScreen, { bare: true });
+const Advice = withPage("advice", AdviceScreen, { bare: true });
 const Portfolio = withPage("portfolio", PortfolioScreen);
 const ReadView = withPage("read", ReadScreen, { bare: true });
 const Signin = withPage("signin", SigninScreen);
@@ -57,6 +59,7 @@ function AgentsTabNav() {
     <AgentsStack.Navigator screenOptions={STACK}>
       <AgentsStack.Screen name="agents" component={AgentsList} />
       <AgentsStack.Screen name="agent" component={AgentProfile} />
+      <AgentsStack.Screen name="advice" component={Advice} />
     </AgentsStack.Navigator>
   );
 }

@@ -1,0 +1,31 @@
+{
+  "id": "0f6e5d4c-3b2a-4190-8877-665544332211",
+  "agentId": "6f1c2a8e-3b4d-4e5f-8a9b-0c1d2e3f4a5b",
+  "symbol": "BTC",
+  "status": "completed",
+  "createdAt": "2026-10-12T15:00:00.000Z",
+  "startedAt": "2026-10-12T15:00:04.000Z",
+  "finishedAt": "2026-10-12T15:01:31.000Z",
+  "result": {
+    "version": 1,
+    "symbol": "BTC",
+    "network": "testnet",
+    "horizonHours": 24,
+    "orientation": "long",
+    "summary": "Momentum stays positive while funding is flat.",
+    "reasons": ["Higher lows on the 4h chart", "Funding near zero"],
+    "risks": ["A macro print tomorrow morning"],
+    "limitations": ["Testnet prices follow mainnet loosely"],
+    "sources": [
+      {
+        "id": "perpl-btc",
+        "name": "Perpl BTC market",
+        "url": "https://perpl.xyz/markets/btc",
+        "observedAt": "2026-10-12T15:00:10.000Z"
+      }
+    ],
+    "generatedAt": "2026-10-12T15:01:30.000Z",
+    "dataAsOf": "2026-10-12T15:00:10.000Z"
+  },
+  "error": null
+}
