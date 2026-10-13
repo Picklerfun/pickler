@@ -158,6 +158,24 @@ export type PerpsCommonObservationResult =
       code: "STALE_MARKET_DATA";
       validation: import("./simulation.js").PerpsFrameValidationFailure["details"];
     };
+/** Trusted business coordination inside one bounded captured-frame transaction. */
+export interface PerpsCapturedExecutionContext {
+  paper: PerpsPaperRepository;
+  event(key: string, kind: string, data: unknown): Promise<void>;
+  assertActive(): void;
+}
+export type PerpsCommonExecutionResult =
+  | {
+      status: "complete";
+      replayed: boolean;
+      accounts: { scope: PerpsPaperScope; view: PerpsPaperView }[];
+    }
+  | {
+      status: "data_unavailable";
+      rolledBack: true;
+      code: "STALE_MARKET_DATA";
+      validation: import("./simulation.js").PerpsFrameValidationFailure["details"];
+    };
 export interface PerpsPaperRepository {
   closeAdmissions(scope: PerpsPaperScope): Promise<void>;
   observed(scope: PerpsPaperScope, key: string): Promise<boolean>;
@@ -193,6 +211,13 @@ export interface PerpsPaperRepository {
     frame: import("./simulation.js").PerpsPaperFrame,
     onSimulation?: (durationMs: number) => void,
   ): Promise<PerpsPaperView>;
+  /** Local PTS only: both portfolios, valuation, fills and events share a rollback boundary. */
+  withCapturedFrames?(
+    scopes: readonly PerpsPaperScope[],
+    key: string,
+    frames: readonly import("./simulation.js").PerpsPaperFrame[],
+    execute: (context: PerpsCapturedExecutionContext) => Promise<void>,
+  ): Promise<PerpsCommonExecutionResult>;
   assertLease(scope: PerpsPaperScope, lease: PerpsPaperLease): Promise<void>;
   complete(
     scope: PerpsPaperScope,
