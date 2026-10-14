@@ -72,7 +72,8 @@ const at = z.object({
   t: integer.optional(),
   txid: z
     .string()
-    .regex(/^0x[a-f\d]{64}$/i)
+    .regex(/^(?:0x)?[a-f\d]{64}$/i)
+    .transform((hash) => `0x${hash.replace(/^0x/i, "").toLowerCase()}`)
     .optional(),
   l: integer.optional(),
 });
@@ -648,6 +649,9 @@ export function createPerplLiveDriver(config: {
         if (error instanceof PilotError) {
           throw error;
         }
+        if (error instanceof z.ZodError) {
+          throw new PilotError("PERPL_RESPONSE_INVALID", "Perpl returned invalid account data");
+        }
         throw new PilotError("PERPL_CREDENTIAL_INVALID", "Could not validate the trading key");
       } finally {
         privateBytes.fill(0);
@@ -1027,9 +1031,30 @@ export function createPerplLiveDriver(config: {
           latest.set(o.rq, order(o));
         }
       }
+      const openingRequests = new Set(
+        document.orders.filter((item) => item.request.t <= 2).map((item) => item.request.rq),
+      );
       const positions = new Map<number, PerplLivePosition>();
       for (const p of live.d.filter((p) => p.acc === account.id)) {
-        positions.set(p.pid, position(p));
+        const observed = position(p);
+        // Current snapshots can omit event provenance (rq=0). Associate only this document's
+        // opening event for the exact position; retain current aggregate size/collateral.
+        if (p.rq === 0) {
+          const opening = history.d.find(
+            (event) =>
+              event.pid === p.pid &&
+              event.acc === p.acc &&
+              event.mkt === p.mkt &&
+              event.sd === p.sd &&
+              event.lv === p.lv &&
+              event.st === 1 &&
+              openingRequests.has(event.rq),
+          );
+          if (opening) {
+            observed.requestId = opening.rq;
+          }
+        }
+        positions.set(p.pid, observed);
       }
       for (const p of history.d.filter((p) => p.acc === account.id)) {
         if (!positions.has(p.pid)) {

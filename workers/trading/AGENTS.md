@@ -41,3 +41,9 @@ input is logged or returned. The source staging operating state must preserve ex
 The explicitly approved staging configuration enables bounded sessions only for connected keys;
 account setup/funding stays disabled with `PERPL_ACCOUNT_SETUP_ENABLED=false`. No session starts
 without the owner's action, persisted ownership, verified credential and saved limits.
+
+The explicitly uploaded `PERPL_API_KEY` and `PERPL_API_SECRET` bindings are private operator
+testnet acceptance credentials. They do not automatically replace per-agent encrypted keys,
+create product accounts or start sessions. The current owner connection route continues to require
+its write-only inputs and a persisted wallet match. Never expose these bindings to Web/Research
+or use them as a fallback for an unrelated agent.

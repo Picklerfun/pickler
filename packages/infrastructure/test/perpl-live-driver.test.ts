@@ -238,7 +238,7 @@ test("a changed implementation blocks an HTTP order before a credential or reque
   await assert.rejects(
     reviewed.driver.submit(
       reviewed.document,
-      { rq: 1, acc: 7, mkt: 16, t: 1, p: 0, s: 1, fl: 0, lv: 100, lb: 20, bf: 0 },
+      { rq: 1, acc: 7, mkt: 16, t: 1, p: 0, s: 1, fl: 4, ms: 10, lv: 100, lb: 20 },
       async () => {
         guarded = true;
       },
@@ -362,7 +362,11 @@ test("a preparation cannot survive a stricter reviewed fee ceiling", async () =>
 // Public controlled Ed25519 seed; no production credential is used.
 const importedSeed = "07".repeat(32);
 const importedToken = "controlled-existing-token";
-function existingVenue(f: Awaited<ReturnType<typeof fixture>>, wrongOwner = false) {
+function existingVenue(
+  f: Awaited<ReturnType<typeof fixture>>,
+  wrongOwner = false,
+  responses: Record<string, unknown> = {},
+) {
   const key = createPrivateKey({
     key: Buffer.from("302e020100300506032b657004220420" + importedSeed, "hex"),
     format: "der",
@@ -411,7 +415,7 @@ function existingVenue(f: Awaited<ReturnType<typeof fixture>>, wrongOwner = fals
         ],
       });
     }
-    return Response.json({ d: [] });
+    return Response.json(responses[path] ?? { d: [] });
   };
   return { fetcher, paths };
 }
@@ -479,4 +483,111 @@ test("existing key import rejects expired keys and unreviewed proxies before per
     { code: "PERPL_BINDINGS_CHANGED" },
   );
   assert.equal(calls, 0);
+});
+
+test("venue history normalizes bare transaction hashes before receipt verification", async () => {
+  const f = await fixture();
+  const rawHash = "AB".repeat(32);
+  const order = {
+    lv: 100,
+    rq: 9,
+    acc: 7,
+    mkt: 16,
+    oid: 11,
+    t: 1,
+    st: 4,
+    os: 1,
+    fs: 1,
+    fp: 1000000,
+    f: "345",
+    at: { b: 100, txid: rawHash },
+    c: {},
+  };
+  f.document.orders.push({
+    id: "controlled-order",
+    sessionId: "controlled-session",
+    market: {
+      id: 16,
+      symbol: "BTC",
+      mark: 1000000,
+      priceDecimals: 1,
+      sizeDecimals: 5,
+      maxLeverage: 15,
+      maxSlippageBps: 10,
+      ttlBlocks: 20,
+      takerFeeMicros: 345,
+    },
+    request: { rq: 9, acc: 7, mkt: 16, t: 1, p: 0, s: 1, fl: 4, ms: 10, lv: 100, lb: 120 },
+    status: "accepted",
+    createdAt: 1,
+    submittedAt: 1,
+    evidence: null,
+    verifiedTxHashes: [],
+    error: null,
+  });
+  const current = {
+    pid: 42,
+    rq: 0,
+    acc: 7,
+    mkt: 16,
+    sd: 1,
+    st: 1,
+    sr: 0,
+    s: 3,
+    ep: 1000000,
+    c: "3000000",
+    lv: 100,
+    fee: "345",
+    at: {},
+  };
+  const opening = { ...current, rq: 9, s: 1, c: "1000000", at: { txid: rawHash } };
+  const venue = existingVenue(f, false, {
+    "/v1/trading/order-history?count=100": { d: [order] },
+    "/v1/trading/positions": { d: [current] },
+    "/v1/trading/position-history?count=100": { d: [opening] },
+  });
+  f.useExistingAccount(venue.fetcher);
+  const connected = await f.driver.connectExistingKey!(
+    f.authority,
+    f.document,
+    { apiKey: importedToken, privateKeyHex: importedSeed },
+    Date.now() + 86400000,
+  );
+  assert.deepEqual(connected.snapshot.orders[0]!.txHashes, ["0x" + rawHash.toLowerCase()]);
+  assert.equal(connected.snapshot.positions[0]!.requestId, 9);
+  assert.equal(connected.snapshot.positions[0]!.size, 3);
+  assert.equal(connected.snapshot.positions[0]!.collateralMicros, "3000000");
+  assert.equal(f.sends(), 0);
+  assert.equal(f.forwards(), 0);
+});
+
+test("malformed venue transaction hashes remain invalid account data, not bad credentials", async () => {
+  const f = await fixture();
+  const order = {
+    lv: 100,
+    rq: 9,
+    acc: 7,
+    mkt: 16,
+    oid: 11,
+    t: 1,
+    st: 4,
+    os: 1,
+    fs: 1,
+    fp: 1000000,
+    f: "345",
+    at: { txid: "untrusted-not-a-hash" },
+  };
+  const venue = existingVenue(f, false, { "/v1/trading/order-history?count=100": { d: [order] } });
+  f.useExistingAccount(venue.fetcher);
+  await assert.rejects(
+    f.driver.connectExistingKey!(
+      f.authority,
+      f.document,
+      { apiKey: importedToken, privateKeyHex: importedSeed },
+      Date.now() + 86400000,
+    ),
+    { code: "PERPL_RESPONSE_INVALID" },
+  );
+  assert.equal(f.document.encryptedToken, null);
+  assert.equal(f.sends(), 0);
 });

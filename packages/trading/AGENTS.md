@@ -213,3 +213,7 @@ commit. It rechecks current owner/configuration and refuses pending setup, sessi
 leases; no provider I/O runs under locks. It preserves history/budgets and imposes a 24-hour
 Pickler deadline. `setupAdmissions` independently closes account funding/enrollment without
 closing existing-key sessions or required exits. See [Perpl trading](../../docs/perpl-trading.md).
+
+A live position must match the current session's verified net filled quantity and original
+leverage before any closing order. Foreign additions, reductions or leverage changes freeze the
+session rather than closing exposure that the session cannot attribute.

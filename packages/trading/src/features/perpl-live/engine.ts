@@ -525,9 +525,22 @@ export function createPerplLiveService(deps: {
         const position = positions[0];
         let request: PerplLiveOrderSpec;
         if (position) {
+          const opening = [...ownOrders]
+            .reverse()
+            .find((order) => order.request.t <= 2 && order.evidence?.filledSize);
+          const remainingOwnedSize = ownOrders.reduce((size, order) => {
+            const filled = order.evidence?.filledSize ?? 0;
+            return order.request.t <= 2 ? size + filled : size - filled;
+          }, 0);
           if (
-            !ownOrders.some((o) => o.request.t <= 2 && o.evidence?.filledSize) ||
-            !ownOrders.some((o) => o.request.rq === position.requestId)
+            !opening ||
+            !ownOrders.some(
+              (order) => order.request.rq === position.requestId && order.evidence?.filledSize,
+            ) ||
+            !Number.isSafeInteger(remainingOwnedSize) ||
+            remainingOwnedSize <= 0 ||
+            position.size !== remainingOwnedSize ||
+            position.leverage !== opening.request.lv
           ) {
             s.status = "frozen";
             s.error = "PERPL_UNEXPECTED_POSITION";

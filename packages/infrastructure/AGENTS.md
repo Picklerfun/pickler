@@ -899,3 +899,13 @@ its public key with WebCrypto, verifies the reviewed contract account and signed
 and returns only encrypted storage values to the business service. No enrollment, forwarding,
 approval, funding or order is sent. Read verification does not prove trade scope; Perpl enforces
 that independently on submission. Never reuse Polymarket credentials for Perpl.
+
+Perpl execution history accepts strict 32-byte transaction hashes with or without the provider's
+optional `0x` prefix and normalizes them before receipt verification or public projection. Invalid
+hashes still reject the response. Existing-key schema failures report `PERPL_RESPONSE_INVALID`,
+separately from credential or venue-authentication failures; no provider payload is included.
+
+Current Perpl position snapshots may use `rq=0`. The driver associates such a snapshot only with
+an opening event belonging to the document for the exact position/account/market/side/leverage;
+it keeps current aggregate quantities, not historical event deltas. Trading independently fences
+closure against verified owned quantity. Unattributed positions remain foreign.

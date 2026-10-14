@@ -192,3 +192,36 @@ The localhost `stage=perpl-trading-setup` tab is an inert preview, not a credent
 No real key connection or open/close cycle has been observed; no financial request, wallet
 signature or deposit was sent by this work. Publication is from PR #185, which is not merged;
 future main publications must preserve this change before replacing these versions.
+
+## Exact-key testnet acceptance checkpoint
+
+The owner supplied an exact downloaded Perpl testnet key export after screenshot transcription
+produced an ambiguous token. The token and all three secret encodings were reconciled locally,
+without committing credential values. Signed wallet, positions and history GETs now authenticate;
+public testnet chain, reviewed exchange/implementation and account identity checks pass. This is
+actual venue read acceptance, separate from controlled tests and product-owner JWT acceptance.
+
+The real history uses bare 32-byte transaction hashes. The adapter now normalizes that strict
+format to `0x` before receipt verification, rejects malformed hashes and distinguishes invalid
+account response data from bad credentials. Current position snapshots may carry `rq=0`; only an
+opening event owned by the execution document for the exact position/account/market/side/leverage
+can supply attribution, while current aggregate quantities remain intact. Trading verifies owned
+net fills and original leverage before closing; foreign additions/reductions cannot be closed by
+the session. Existing partial-close and required-exit tests remain passing.
+
+The explicit local cycle is bounded to testnet, 1x, one minimum BTC lot, at most 1 AUSD of margin,
+30 seconds, 10 bps slippage, no deposits and no automatic repeated opening. Its preflight found
+six pre-existing positions; the acceptance entry refused before any financial request or local
+session marker. No real open/close cycle is claimed. Those positions were not changed. Full
+operator observations remain in ignored local records, not this public change.
+
+The explicitly authorized `PERPL_API_KEY` and `PERPL_API_SECRET` were uploaded through stdin
+only to `pickler-trading-staging`. The five previous secret bindings remained present; Web and
+Research did not receive this pair. Secret-update version `4d47607f-26a0-4ee1-bb8f-bb709ff3a201`
+was observed at 100% traffic. These are operator acceptance bindings, not an automatic credential
+fallback for product agents; persisted owner/JWT/wallet checks remain mandatory. No backend
+encryption key was rotated and no owner account was created or funded.
+
+Current focused live-service/driver/HTTP/JWT/DTO/API tests: 44 pass, zero failures or skips.
+Affected types, lint, formatting, architecture and the private Trading Worker dry-run build pass.
+Financial acceptance still requires an eligible account state within the owner's approved scope.

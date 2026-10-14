@@ -498,3 +498,35 @@ test("closed account setup permits receipt reads but prevents funding redrive", 
   assert.equal(f.document().setup[0]!.status, "submitted");
   assert.equal(f.submissions.length, 0);
 });
+
+for (const foreignChange of ["size", "leverage"] as const) {
+  test(`a foreign position ${foreignChange} change cannot be closed by the session`, async () => {
+    const f = fixture();
+    const service = f.service();
+    await service.start(f.scope, f.terms, randomUUID());
+    await service.tick(f.scope);
+    f.fill();
+    f.snapshot.positions[0]![foreignChange]++;
+    await service.tick(f.scope);
+    assert.equal(f.document().sessions[0]!.status, "frozen");
+    assert.equal(f.document().sessions[0]!.error, "PERPL_UNEXPECTED_POSITION");
+    assert.equal(f.submissions.length, 1);
+  });
+}
+
+test("a stale zero-size active snapshot cannot cause a zero-size closing order", async () => {
+  const f = fixture();
+  const service = f.service();
+  await service.start(f.scope, f.terms, randomUUID());
+  await service.tick(f.scope);
+  f.fill();
+  await service.tick(f.scope);
+  f.advance(31000);
+  await service.tick(f.scope);
+  f.fill();
+  f.snapshot.positions[0]!.closed = false;
+  await service.tick(f.scope);
+  assert.equal(f.document().sessions[0]!.status, "frozen");
+  assert.equal(f.document().sessions[0]!.error, "PERPL_UNEXPECTED_POSITION");
+  assert.equal(f.submissions.length, 2);
+});
