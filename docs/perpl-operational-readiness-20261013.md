@@ -267,3 +267,19 @@ are verified separately from deployed acceptance.
 
 Hosted publication and the owner-triggered web opening/closing still require their own recorded
 versions and observations; the local operator run alone does not establish either.
+
+The reviewed source `7d1b1319` was explicitly published to all three affected hosts. Each version
+was observed at 100% traffic with existing service/Hyperdrive/Queue bindings retained:
+
+- Trading: `8391b691-df32-4250-855d-441f49e39947`.
+- API: `89b8ac62-9a96-4a68-88d6-b628e4da7bc5`.
+- Web: `cd6b4ed6-17aa-4cdc-a8b3-69290e842824`.
+
+Trading retains all seven private secret names, including the operator Perpl pair; Web has no
+backend secret binding. The hosted OpenAPI exposes 229 operations, the optional key-wallet flag
+and write-only credential fields. An unauthenticated connection attempt returned 401 with
+`private, no-store`. The actual deployed browser loaded the requested wallet's six positions,
+updated their canonical block/marks automatically and required no wallet signature or connection.
+Owner sign-in also succeeded. The selected agent's additional NEAR configuration is prepared in
+the browser but remains uncommitted pending the browser-required access confirmation. No hosted
+owner connection or financial session has been claimed as accepted at this checkpoint.
