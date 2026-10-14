@@ -225,3 +225,9 @@ encryption key was rotated and no owner account was created or funded.
 Current focused live-service/driver/HTTP/JWT/DTO/API tests: 44 pass, zero failures or skips.
 Affected types, lint, formatting, architecture and the private Trading Worker dry-run build pass.
 Financial acceptance still requires an eligible account state within the owner's approved scope.
+
+The adapter/closure correction from `6b2fbca8` is published as Trading version
+`a06f0626-c74b-41e7-b8bc-e47bed8bb466`, observed at 100% traffic. All seven secret names and
+all prior plaintext variables were verified unchanged from the secret-update publication. No
+Web/API/Research republication or financial request is part of this correction. PR #185 remains
+unmerged; the full product-owner authenticated financial acceptance is still pending.
