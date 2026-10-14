@@ -22,18 +22,21 @@ start sessions, change sizing or obtain a credential.
   Supabase JWT. SQL resolves the persisted owner, active workspace, mapped runtime agent,
   wallet and Turnkey organization; the caller cannot provide a signer or tenant override.
 - The API uses `TRADING_EXECUTOR`. The web uses its existing same-origin Studio HTTP client
-  and the owner's existing WebAuthn ceremony. No private credential reaches Next.js or the browser.
+  and the owner's existing WebAuthn ceremony. Backend-generated credentials are never returned
+  to Next.js or the browser; explicitly imported credentials pass only through the authenticated
+  write-only connection request described below.
 
 Owner-only operations below also have the existing `/v1/console` aliases. The web prefixes
 these with `/api`. Their authoritative contract is generated at `/api/v1/openapi.json`.
 
-| Method | Studio route                                 | Meaning                                                    |
-| ------ | -------------------------------------------- | ---------------------------------------------------------- |
-| GET    | `/v1/studio/agents/{id}/perpl`               | Persisted account, session, positions and history          |
-| POST   | `/v1/studio/agents/{id}/perpl/setup/prepare` | Prepare one exact owner activity; requires Idempotency-Key |
-| POST   | `/v1/studio/agents/{id}/perpl/setup/confirm` | Forward its exact passkey-stamped activity once            |
-| POST   | `/v1/studio/agents/{id}/perpl/start`         | Start a bounded session; requires Idempotency-Key          |
-| POST   | `/v1/studio/agents/{id}/perpl/control`       | Pause, resume, stop or close                               |
+| Method | Studio route                                       | Meaning                                                    |
+| ------ | -------------------------------------------------- | ---------------------------------------------------------- |
+| GET    | `/v1/studio/agents/{id}/perpl`                     | Persisted account, session, positions and history          |
+| POST   | `/v1/studio/agents/{id}/perpl/setup/prepare`       | Prepare one exact owner activity; requires Idempotency-Key |
+| POST   | `/v1/studio/agents/{id}/perpl/setup/confirm`       | Forward its exact passkey-stamped activity once            |
+| POST   | `/v1/studio/agents/{id}/perpl/credentials/connect` | Verify and encrypt an existing wallet-bound Perpl key      |
+| POST   | `/v1/studio/agents/{id}/perpl/start`               | Start a bounded session; requires Idempotency-Key          |
+| POST   | `/v1/studio/agents/{id}/perpl/control`             | Pause, resume, stop or close                               |
 
 Account setup has independent steps: exact AUSD allowance, account creation with collateral,
 forwarding permission, and API-key enrollment. Every step needs the owner's passkey. Existing
@@ -48,6 +51,33 @@ Perpl also requires a whitelisted enrollment Origin. This remote prerequisite is
 by the local tests. Source contracts: [HTTP endpoints](https://github.com/PerplFoundation/api-docs/blob/main/rest-endpoints.md),
 [authentication](https://github.com/PerplFoundation/api-docs/blob/main/authentication.md),
 [enrollment](https://github.com/PerplFoundation/api-docs/blob/main/integrations.md).
+
+## Existing trading keys
+
+Controls also offers **Use an existing Perpl key**. The owner submits the Perpl token and its
+32-byte Ed25519 seed for this agent's persisted wallet. No wallet private key or arbitrary
+wallet/RPC/contract selector is accepted. `POST /v1/studio/agents/{id}/perpl/credentials/connect`
+(and the Console alias) requires the original owner JWT and current creator access. It performs
+signed GETs only: the reviewed contract account, authenticated wallet, positions and order reads
+must agree. It never enrolls a key, changes forwarding, funds, starts or submits an order.
+
+The driver derives the public key and binds AES-GCM storage to agent, wallet, public key and
+credential purpose. The input is write-only and never returned, logged or passed to a model.
+The browser clears both transient password fields on submit and agent change and does not store
+them. Strings and browser/crypto copies cannot be guaranteed wiped; they remain subject to the
+runtime's memory lifecycle. Backend-generated keys are still never returned to the browser.
+
+Connection commits recheck owner authorization, configuration, existing encrypted credentials,
+pending setup, active sessions/orders and executor leases. Concurrent replacement or owner changes
+refuse persistence. Existing history and budgets remain intact. A connection has a conservative
+24-hour Pickler access deadline; Perpl can expire or revoke it earlier. Read validation does not
+prove trade scope: Perpl independently enforces trade permission on an explicitly started order.
+
+`PERPL_ACCOUNT_SETUP_ENABLED` independently controls owner-passkey preparation/confirmation and
+funding. Hosted composition defaults it closed; test fixtures retain the existing service default.
+This allows sessions using already-authorized keys while enrollment preparation is unavailable.
+The optional public `setupEnabled` flag disables unavailable setup controls. Closing account setup
+does not close sessions or required exits. Connecting credentials does not reopen trading admissions.
 
 ## Dispatch and recovery
 
@@ -100,10 +130,11 @@ already-signed transaction. Remote acceptance must compare order/position identi
 See the separate [dated readiness record](perpl-operational-readiness-20261013.md) for actual
 migration observations, configuration authorization, enrollment refusal and remaining acceptance.
 
-Both product gates remain disabled by default:
+Runtime composition defaults both product gates disabled; staging overrides must be explicitly authorized:
 
 - API: `PERPL_STUDIO_ENABLED=false`; requires the existing `TRADING_EXECUTOR` binding.
-- Trading: `PERPL_ADMISSIONS_ENABLED=false`; `JWT_ISSUER` must match the API/Supabase issuer;
+- Trading: `PERPL_ADMISSIONS_ENABLED=false`; independently set `PERPL_ACCOUNT_SETUP_ENABLED=false`
+  to retain closed enrollment/funding. `JWT_ISSUER` must match the API/Supabase issuer;
   `JWT_AUDIENCE=authenticated`.
 - Trading only: `PERPL_KEY_ENCRYPTION_KEY` (32-byte hex AES key), `TURNKEY_API_PUBLIC_KEY` and
   `TURNKEY_API_PRIVATE_KEY` (read-only parent credentials). Never copy these to web/research.

@@ -3,6 +3,20 @@ import { unsignedActivitySchema } from "./http.js";
 import { signedActivitySchema } from "./studio.js";
 
 const ausd = z.string().regex(/^-?\d+(?:\.\d{1,6})?$/);
+/** Owner-supplied import only. These values never appear in response DTOs. */
+export const perplLiveExistingKeySchema = z
+  .object({
+    apiKey: z
+      .string()
+      .regex(/^[\x21-\x7e]{1,2048}$/)
+      .meta({ writeOnly: true }),
+    privateKeyHex: z
+      .string()
+      .regex(/^(?:0x)?[a-f\d]{64}$/i)
+      .meta({ writeOnly: true }),
+  })
+  .strict();
+export type PerplLiveExistingKeyDto = z.infer<typeof perplLiveExistingKeySchema>;
 export const perplLiveStartSchema = z
   .object({
     symbol: z.string().min(1).max(32),
@@ -103,6 +117,7 @@ export const perplLiveStateSchema = z
   .object({
     available: z.boolean(),
     admissionsEnabled: z.boolean(),
+    setupEnabled: z.boolean().optional(),
     network: z.literal("testnet"),
     address: z.string().nullable(),
     accountId: z.number().int().positive().nullable(),

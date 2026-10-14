@@ -175,7 +175,23 @@ export interface PerplLiveRepository {
   ): Promise<T>;
   due(limit: number): Promise<PerplLiveScope[]>;
 }
+export interface PerplLiveExistingKey {
+  apiKey: string;
+  privateKeyHex: string;
+}
 export interface PerplLiveDriver {
+  connectExistingKey?(
+    authority: PerplLiveAuthority,
+    document: PerplLiveDocument,
+    input: PerplLiveExistingKey,
+    validUntil: number,
+  ): Promise<{
+    accountId: number;
+    publicKey: string;
+    encryptedKey: string;
+    encryptedToken: string;
+    snapshot: PerplLiveSnapshot;
+  }>;
   requirements?(): Promise<{
     minimumAccountMicros: string;
     minimumDepositMicros: string;

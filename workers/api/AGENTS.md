@@ -803,3 +803,11 @@ accept RPC URLs, calldata, methods or signing keys. It is independent of the JWT
 POST routes. Diagnostics use the route template, never the actual wallet-containing URL. The
 default dashboard no longer enrolls Perpl keys. See the dashboard guide for canonical-block reads,
 unknown historical stats and real-contract versus controlled acceptance.
+
+The JWT-only Studio/Console `POST /agents/:id/perpl/credentials/connect` forwards strict write-only
+Perpl token/Ed25519 input to Trading. It rechecks creator and agent ownership, returns only the
+public state DTO and remains private/no-store. No API signer, key vault or provider validation
+is introduced. Setup availability is separate from session admissions.
+
+The explicitly approved staging `PERPL_STUDIO_ENABLED=true` exposes owner state and key
+connection. Trading independently retains closed automatic account setup/funding.

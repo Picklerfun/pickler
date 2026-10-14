@@ -586,7 +586,7 @@ export function createPerplLiveDriver(config: {
       ),
     };
   }
-  return {
+  const driver: PerplLiveDriver = {
     async requirements() {
       const ctx = await context();
       return {
@@ -594,6 +594,64 @@ export function createPerplLiveDriver(config: {
         minimumDepositMicros: ctx.instance.minDeposit.toString(),
         maximumCollateralMicros: policy.maxCollateralMicros,
       };
+    },
+    async connectExistingKey(authority, document, input, validUntil) {
+      await chainGuard();
+      const id = await accountId(authority.address);
+      if (!id) {
+        throw new PilotError("PERPL_ACCOUNT_REQUIRED", "This agent's wallet has no Perpl account");
+      }
+      const seed = perplBytes(input.privateKeyHex.replace(/^0x/i, ""));
+      const prefix = perplBytes("302e020100300506032b657004220420");
+      const privateBytes = new Uint8Array(prefix.length + seed.length);
+      privateBytes.set(prefix);
+      privateBytes.set(seed, prefix.length);
+      seed.fill(0);
+      try {
+        const key = await crypto.subtle.importKey("pkcs8", privateBytes, "Ed25519", true, ["sign"]);
+        const jwk = await crypto.subtle.exportKey("jwk", key);
+        if (!jwk.x) {
+          throw new PilotError("PERPL_CREDENTIAL_INVALID", "Could not validate the trading key");
+        }
+        const rawPublic = Uint8Array.from(
+          atob(jwk.x.replaceAll("-", "+").replaceAll("_", "/")),
+          (value) => value.charCodeAt(0),
+        );
+        const publicKey = "0x" + perplHex(rawPublic);
+        const binding = {
+          productAgentId: document.productAgentId,
+          address: authority.address,
+          publicKey,
+        };
+        const encryptedKey = await vault.seal(
+          perplHex(privateBytes),
+          perplKeyBinding(binding, "private"),
+        );
+        const encryptedToken = await vault.seal(input.apiKey, perplKeyBinding(binding, "token"));
+        const candidate = {
+          ...document,
+          accountId: id,
+          publicKey,
+          encryptedKey,
+          encryptedToken,
+          keyExpiresAt: validUntil,
+        };
+        const snapshot = await driver.snapshot(authority, candidate);
+        if (snapshot.frozen || !snapshot.forwarding) {
+          throw new PilotError(
+            "PERPL_FORWARDING_REQUIRED",
+            "Enable trading for this wallet's Perpl account first",
+          );
+        }
+        return { accountId: id, publicKey, encryptedKey, encryptedToken, snapshot };
+      } catch (error) {
+        if (error instanceof PilotError) {
+          throw error;
+        }
+        throw new PilotError("PERPL_CREDENTIAL_INVALID", "Could not validate the trading key");
+      } finally {
+        privateBytes.fill(0);
+      }
     },
     async prepareSetup(authority, document, amountMicros) {
       if (!config.forwarder || !config.reader) {
@@ -1054,4 +1112,5 @@ export function createPerplLiveDriver(config: {
       return block?.hash === receipt.blockHash && head >= BigInt(receipt.blockNumber!) + 2n;
     },
   };
+  return driver;
 }

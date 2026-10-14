@@ -25,6 +25,7 @@ export function perplExecutionFixture(
   return {
     available: true,
     admissionsEnabled: true,
+    setupEnabled: false,
     network: "testnet",
     address: "0x91bE6f20A3c7D45e81B0F9a2C6d13E7b58Fd4a07",
     accountId: mode === "setup" ? null : 7,

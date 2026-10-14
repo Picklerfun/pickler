@@ -5,6 +5,7 @@ import type { Agent } from "../api";
 import type { PerplExecution } from "./use-execution";
 import { perplExecutionMessage } from "./use-execution";
 import styles from "./execution.module.css";
+import { ExistingPerplKey } from "./existing-key";
 
 const setupLabels = {
   approve: "Approve collateral for Perpl",
@@ -87,7 +88,20 @@ export function PerplTradingControls({
           <p className={styles.note}>
             Orders run from this agent&apos;s Perpl account. One position at a time, at 1× leverage.
           </p>
-          {state.setupRequired || funding || preparePending ? (
+          {state.setupRequired && !preparePending && (
+            <ExistingPerplKey
+              key={`${agent.productId ?? agent.id}:${state.address ?? ""}`}
+              address={state.address}
+              disabled={disabled || active}
+              connect={execution.connectKey}
+            />
+          )}
+          {state.setupEnabled === false && state.setupRequired && !preparePending ? (
+            <p className={styles.note}>
+              Automatic account setup is unavailable. Connect an existing Perpl key for this wallet
+              to continue.
+            </p>
+          ) : state.setupRequired || funding || preparePending ? (
             <>
               <Field label="Collateral · AUSD">
                 <Input
@@ -155,7 +169,12 @@ export function PerplTradingControls({
               ) : (
                 <Button
                   variant="primary"
-                  disabled={disabled || !state.admissionsEnabled || collateralExceedsDailyLimit}
+                  disabled={
+                    disabled ||
+                    !state.admissionsEnabled ||
+                    state.setupEnabled === false ||
+                    collateralExceedsDailyLimit
+                  }
                   onClick={() => void execution.prepare(selectedCollateral)}
                 >
                   {execution.busy
@@ -221,7 +240,7 @@ export function PerplTradingControls({
                 )}
                 {!active && (
                   <Button
-                    disabled={disabled || !state.admissionsEnabled}
+                    disabled={disabled || !state.admissionsEnabled || state.setupEnabled === false}
                     onClick={() => setFunding(true)}
                   >
                     Add collateral

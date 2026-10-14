@@ -893,3 +893,9 @@ to ten seconds, 64 positions, ten calls per batch and two MiB per response. Neve
 snapshots. Public context alone remains cached. Q16 entry residue goes to Trading; original
 leverage and historical stats stay unknown. This public source is the default web flow and does
 not depend on Perpl's third-party key enrollment or a user's wallet network.
+
+The Perpl driver's existing-key path imports only an owner-provided Ed25519 seed/token, derives
+its public key with WebCrypto, verifies the reviewed contract account and signed wallet reads,
+and returns only encrypted storage values to the business service. No enrollment, forwarding,
+approval, funding or order is sent. Read verification does not prove trade scope; Perpl enforces
+that independently on submission. Never reuse Polymarket credentials for Perpl.

@@ -36,6 +36,6 @@
     "PERPL_BOARD_NETWORK": "testnet",
     // Must match workers/research/wrangler.jsonc.
     "PERPL_RUNTIME_ENABLED": "false",
-    "PERPL_STUDIO_ENABLED": "false",
+    "PERPL_STUDIO_ENABLED": "true",
   },
 }

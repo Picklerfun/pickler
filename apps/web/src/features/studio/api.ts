@@ -77,6 +77,18 @@ export const perplTradingState = async (agentId: string, signal?: AbortSignal) =
     await studioApi(`/agents/${encodeURIComponent(agentId)}/perpl`, signal ? { signal } : {}),
   );
 };
+export const connectExistingPerplKey = async (
+  agentId: string,
+  input: import("@pickler/api-schema").PerplLiveExistingKeyDto,
+) => {
+  const { perplLiveStateSchema } = await import("@pickler/api-schema");
+  return perplLiveStateSchema.parse(
+    await studioApi(`/agents/${encodeURIComponent(agentId)}/perpl/credentials/connect`, {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  );
+};
 export const preparePerplTrading = async (agentId: string, collateralAusd: string, key: string) => {
   const { perplLiveSetupSchema } = await import("@pickler/api-schema");
   return perplLiveSetupSchema.parse(

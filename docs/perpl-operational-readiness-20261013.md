@@ -22,7 +22,7 @@ The first execution mode remains one bounded open/hold/close sequence, at 1x and
 - The deployed app's entry is `https://app.pickler.fun/`. The inspected browser requires sign-in;
   no owner JWT/passkey has been used for remote account setup or financial acceptance.
 
-## Authorized configuration applied
+## Authorized configuration applied — initial checkpoint
 
 The owner explicitly authorized the existing API parent Turnkey reader credentials to be copied
 only to the existing `pickler-trading-staging` Worker in Cloudflare account
@@ -80,7 +80,7 @@ The earlier automatic approval refusals were resolved by the owner's explicit au
 There is no remaining permission block on the described configuration. Both Perpl gates remain
 false because unsigned enrollment preparation still fails, not because approval is missing.
 
-## Enrollment acceptance still unresolved
+## Automatic enrollment acceptance still unresolved
 
 Unsigned `/api/v1/api-key/payload` requests from both owned origins (`https://pickler.fun` and
 `https://app.pickler.fun`) returned HTTP 400, plaintext `Bad Request`. Their shape matches the
@@ -96,7 +96,9 @@ The same request from the temporary Cloudflare preview returned HTTP 400 with
 returned HTTP 200. This rules out a refusal limited to the local machine but still does not prove
 which remote validation failed. No key was enrolled and no wallet signature, deposit, approval or
 order was sent during the probes.
-Resolve the refusal before declaring self-service setup operational or enabling financial entry.
+Resolve the refusal before declaring automatic enrollment/funding operational. Existing-key
+connection and bounded sessions use their independent authenticated path; they do not retry or
+bypass enrollment.
 
 The concrete provider prerequisite is confirmation that `https://pickler.fun` is accepted as the
 server enrollment Origin for Pickler on testnet and that `/api/v1/api-key/payload` is available to
@@ -124,3 +126,36 @@ browser-client and clock tests pass with no failures or skips. Shared compilatio
 types, architecture and provisioned staging topology pass. The combined source exports 227
 OpenAPI operations, including the optional collateral requirements. These remain controlled
 checks; no financial acceptance is claimed.
+
+## Existing-key connection release
+
+The owner requested that already-authorized trading credentials can be configured from any
+eligible agent's Controls. The local agent-service environment contains Polymarket CLOB/builder
+credentials, not a Perpl API token/Ed25519 seed. The user-identified full-stack chat contains Perpl
+documentation references but no saved Perpl credential configuration. This investigation does not
+establish that a usable Perpl key exists elsewhere. No credential value is included in this record.
+
+Controls now provides a write-only existing Perpl key form, bound to the persisted agent wallet.
+The private Trading Worker verifies the reviewed contract, on-chain account and five authenticated
+venue reads, derives the Ed25519 public key, and encrypts both credentials with agent/wallet AAD.
+Persistence rechecks owner authorization, unchanged authority/credentials and inactive execution.
+Existing history and budgets remain intact. The form clears its password inputs on submission
+and identity change. Connection neither funds nor starts a session and does not prove trade scope;
+Perpl enforces that permission when the owner explicitly starts an order. Pickler imposes a
+24-hour access deadline, subject to earlier venue expiry/revocation.
+
+The approved operating configuration enables `PERPL_STUDIO_ENABLED` and
+`PERPL_ADMISSIONS_ENABLED` for explicit owner-controlled sessions, while independently keeping
+`PERPL_ACCOUNT_SETUP_ENABLED=false`. This prevents the unresolved enrollment failure from
+exposing automatic setup/funding. Polymarket admissions and unrelated deployed variables are
+preserved. Source flags are configuration intent; publication must be recorded separately.
+
+Current controlled validation: 39 focused connection/execution/driver/JWT/DTO/API tests and
+67 Studio/store regressions pass with no failures or skips. Store regressions use disposable local
+PostgreSQL and verify migration histories and token grants. Shared compilation, Web/API/Trading
+types, lint, formatting, architecture, static design tokens, backend dry-run builds and the
+production Web Worker build pass. The source exports 229 OpenAPI operations. Rendered surfaces,
+tokens, contrast and typography pass across all four Perpl stages. A temporary Cloudflare preview
+using only public dummy keys verifies RFC8410 Ed25519 import/public derivation, signatures and
+AES vault round trips; it made zero financial requests and has been stopped. These checks do not
+replace real owner authentication, a usable venue credential, funding or open/close acceptance.

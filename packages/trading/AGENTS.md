@@ -207,3 +207,9 @@ preserves long-ceil/short-floor semantics. Missing context/marks retain the posi
 price-dependent aggregates. Original leverage and historical statistics must not be invented
 from current collateral. The infrastructure-provided optional `source: "onchain"` is provenance,
 not permission to trade.
+
+Existing Perpl key connection uses a two-phase read validation and fenced encrypted-credential
+commit. It rechecks current owner/configuration and refuses pending setup, sessions, orders or
+leases; no provider I/O runs under locks. It preserves history/budgets and imposes a 24-hour
+Pickler deadline. `setupAdmissions` independently closes account funding/enrollment without
+closing existing-key sessions or required exits. See [Perpl trading](../../docs/perpl-trading.md).

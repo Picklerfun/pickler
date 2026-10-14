@@ -1479,3 +1479,9 @@ Hono → bounded RPC adapter → Trading using controlled public chain responses
 signing/enrollment, automatic refresh, full reload, wallet changes, wrong wallet network, stale
 state and responsive widths. It blocks browser external requests. This remains separate from
 real public contract acceptance and deployed verification; see [dashboard](../../docs/perpl-dashboard.md).
+
+Perpl Controls offers an explicit existing-key form. Only owner-provided token/Ed25519 input
+passes transiently through the authenticated same-origin route; backend-created keys never
+return. Password fields are cleared on submit and agent change, never stored, and preview submits
+are disabled. The HTTP controller serializes mutations and ignores superseded agent responses.
+`setupEnabled=false` disables owner funding/enrollment while existing-key trading remains separate.

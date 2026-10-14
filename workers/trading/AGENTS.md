@@ -31,3 +31,13 @@ Queue/Cron reconcile setup and orders even when new admissions close. Active/sto
 request a generic 15-second wakeup; Cron is the recovery sweep. No wallet/account funding at
 startup, no model tool and no withdrawal route. Public DTO projection explicitly excludes keys,
 private preparation, leases and signal attribution. See [Perpl trading](../../docs/perpl-trading.md).
+
+`/perpl/credentials/connect` independently verifies the owner JWT and uses authenticated GETs
+to connect an existing key to the persisted agent wallet. It never starts or funds an account.
+`PERPL_ACCOUNT_SETUP_ENABLED` separately gates setup preparation/confirmation, defaulting false
+in hosted composition; it does not prevent existing-key sessions or required exits. No credential
+input is logged or returned. The source staging operating state must preserve explicit approval.
+
+The explicitly approved staging configuration enables bounded sessions only for connected keys;
+account setup/funding stays disabled with `PERPL_ACCOUNT_SETUP_ENABLED=false`. No session starts
+without the owner's action, persisted ownership, verified credential and saved limits.

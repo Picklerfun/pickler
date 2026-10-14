@@ -33,6 +33,7 @@ export function perplStateDto(state: {
   document: PerplLiveDocument | null;
   available: boolean;
   admissionsEnabled: boolean;
+  setupAdmissionsEnabled?: boolean;
   requirements?: {
     minimumAccountMicros: string;
     minimumDepositMicros: string;
@@ -54,6 +55,7 @@ export function perplStateDto(state: {
   return perplLiveStateSchema.parse({
     available: state.available,
     admissionsEnabled: state.admissionsEnabled,
+    setupEnabled: state.setupAdmissionsEnabled,
     network: "testnet",
     address: state.authority.address,
     accountId: d?.accountId ?? null,

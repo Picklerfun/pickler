@@ -6,6 +6,7 @@ import {
 } from "@pickler/core";
 import type {
   PerplLiveDocument,
+  PerplLiveExistingKey,
   PerplLiveDriver,
   PerplLiveRepository,
   PerplLiveScope,
@@ -39,16 +40,78 @@ export function createPerplLiveService(deps: {
   repository: PerplLiveRepository;
   driver: PerplLiveDriver;
   admissions: boolean;
+  setupAdmissions?: boolean;
   randomId: () => string;
 }) {
   const repo = deps.repository;
   async function state(scope: PerplLiveScope) {
     const value = await repo.read(scope);
     const requirements = (await deps.driver.requirements?.().catch(() => null)) ?? null;
-    return { ...value, available: true, admissionsEnabled: deps.admissions, requirements };
+    return {
+      ...value,
+      available: true,
+      admissionsEnabled: deps.admissions,
+      setupAdmissionsEnabled: deps.setupAdmissions ?? deps.admissions,
+      requirements,
+    };
+  }
+  function assertCredentialChange(document: PerplLiveDocument, now: number) {
+    if (
+      document.sessions.some((session) => activeStatuses.has(session.status)) ||
+      document.orders.some((order) => unresolved.has(order.status)) ||
+      document.setup.some((step) => !["confirmed", "failed"].includes(step.status)) ||
+      (document.lease && document.lease.expiresAt > now)
+    ) {
+      throw new PilotError(
+        "PERPL_SESSION_PENDING",
+        "Resolve existing account work before changing its key",
+      );
+    }
+  }
+  async function connectExistingKey(scope: PerplLiveScope, input: PerplLiveExistingKey) {
+    if (!deps.driver.connectExistingKey) {
+      throw new PilotError("PERPL_UNAVAILABLE", "Existing Perpl keys are not supported");
+    }
+    if (
+      !/^[\x21-\x7e]{1,2048}$/.test(input.apiKey) ||
+      !/^(?:0x)?[a-f\d]{64}$/i.test(input.privateKeyHex)
+    ) {
+      throw new PilotError(
+        "INVALID_INPUT",
+        "A Perpl API token and 32-byte Ed25519 key are required",
+      );
+    }
+    const original = await repo.transact(scope, (document, authority, now) => {
+      assertLiveAuthority(authority, true);
+      assertCredentialChange(document, now);
+      return { authority, document, validUntil: now + 24 * 60 * 60 * 1000 };
+    });
+    // Authentication uses reads only. No provider request runs under the repository lock.
+    const connected = await deps.driver.connectExistingKey(
+      original.authority,
+      original.document,
+      input,
+      original.validUntil,
+    );
+    await repo.transact(scope, (document, authority, now) => {
+      assertLiveAuthority(authority, true);
+      assertCredentialChange(document, now);
+      if (
+        authority.configVersion !== original.authority.configVersion ||
+        authority.address !== original.authority.address ||
+        document.encryptedKey !== original.document.encryptedKey ||
+        document.encryptedToken !== original.document.encryptedToken ||
+        original.validUntil <= now
+      ) {
+        throw new PilotError("CONFLICT", "Account configuration changed while validating the key");
+      }
+      Object.assign(document, connected, { keyExpiresAt: original.validUntil });
+      document.nextRequestId = Math.max(document.nextRequestId, connected.snapshot.lastRequestId);
+    });
+    return state(scope);
   }
   async function prepareSetup(scope: PerplLiveScope, amountMicros: string, key: string) {
-    if (!deps.admissions) {
+    if (!(deps.setupAdmissions ?? deps.admissions)) {
       throw new PilotError("PERPL_ADMISSIONS_PAUSED", "Perpl account preparation is disabled");
     }
     const reserved = await repo.transact(scope, (d, authority, now) => {
@@ -157,7 +220,7 @@ export function createPerplLiveService(deps: {
         return { fresh: false, setup, authority, document: structuredClone(d) };
       }
       assertLiveAuthority(authority, true);
-      if (!deps.admissions) {
+      if (!(deps.setupAdmissions ?? deps.admissions)) {
         throw new PilotError("PERPL_ADMISSIONS_PAUSED", "Preparation is disabled");
       }
       setup.status = "signing";
@@ -345,7 +408,7 @@ export function createPerplLiveService(deps: {
             await guard(false);
             const { authority } = await repo.read(scope);
             assertLiveAuthority(authority, true);
-            if (!deps.admissions) {
+            if (!(deps.setupAdmissions ?? deps.admissions)) {
               throw new PilotError("PERPL_ADMISSIONS_PAUSED", "Account changes are disabled");
             }
           },
@@ -650,6 +713,7 @@ export function createPerplLiveService(deps: {
   return {
     state,
     prepareSetup,
+    connectExistingKey,
     confirmSetup,
     start,
     control,

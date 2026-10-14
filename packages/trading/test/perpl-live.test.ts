@@ -361,3 +361,140 @@ test("a request ID collision with different venue quantity or leverage is refuse
   assert.equal(f.submissions.length, 1);
   assert.equal(f.document().orders[0]!.status, "accepted");
 });
+
+const existingCredentials = { apiKey: "controlled-existing-token", privateKeyHex: "07".repeat(32) };
+function enableExistingKeys(f: ReturnType<typeof fixture>) {
+  f.driver.connectExistingKey = async () => ({
+    accountId: 7,
+    publicKey: "controlled-public-key",
+    encryptedKey: "new-encrypted-key",
+    encryptedToken: "new-encrypted-token",
+    snapshot: structuredClone(f.snapshot),
+  });
+}
+test("connecting a verified existing key preserves admission closure and never starts or funds", async () => {
+  const f = fixture();
+  enableExistingKeys(f);
+  const state = await f.service(false).connectExistingKey(f.scope, existingCredentials);
+  assert.equal(state.admissionsEnabled, false);
+  assert.equal(f.document().encryptedKey, "new-encrypted-key");
+  assert.equal(f.document().encryptedToken, "new-encrypted-token");
+  assert.equal(f.document().sessions.length, 0);
+  assert.equal(f.document().setup.length, 0);
+  assert.equal(f.submissions.length, 0);
+  assert.ok(f.document().keyExpiresAt! <= Date.now() + 86401000);
+});
+test("ownership and active-session fences apply before existing-key validation", async () => {
+  const f = fixture();
+  let validations = 0;
+  f.driver.connectExistingKey = async () => {
+    validations++;
+    throw new Error("Must not validate");
+  };
+  await assert.rejects(
+    f.service().connectExistingKey({ ...f.scope, userId: randomUUID() }, existingCredentials),
+    { code: "NOT_FOUND" },
+  );
+  await f.service().start(f.scope, f.terms, randomUUID());
+  await assert.rejects(f.service().connectExistingKey(f.scope, existingCredentials), {
+    code: "PERPL_SESSION_PENDING",
+  });
+  assert.equal(validations, 0);
+});
+test("an owner change during key validation cannot persist credentials", async () => {
+  const f = fixture();
+  enableExistingKeys(f);
+  const validate = f.driver.connectExistingKey!;
+  f.driver.connectExistingKey = async (...args) => {
+    const connected = await validate(...args);
+    f.authority.paused = true;
+    return connected;
+  };
+  await assert.rejects(f.service().connectExistingKey(f.scope, existingCredentials), {
+    code: "PERPL_ENTRIES_PAUSED",
+  });
+  assert.equal(f.document().encryptedToken, "test-only");
+});
+test("concurrent key replacement cannot overwrite the winning credential", async () => {
+  const f = fixture();
+  enableExistingKeys(f);
+  const validate = f.driver.connectExistingKey!;
+  f.driver.connectExistingKey = async (...args) => {
+    const connected = await validate(...args);
+    await f.repository.transact(f.scope, (document) => {
+      document.encryptedToken = "other-connection";
+    });
+    return connected;
+  };
+  await assert.rejects(f.service().connectExistingKey(f.scope, existingCredentials), {
+    code: "CONFLICT",
+  });
+  assert.equal(f.document().encryptedToken, "other-connection");
+});
+
+test("existing-key sessions can run while automatic setup and funding remain closed", async () => {
+  const f = fixture();
+  const service = createPerplLiveService({
+    repository: f.repository,
+    driver: f.driver,
+    admissions: true,
+    setupAdmissions: false,
+    randomId: randomUUID,
+  });
+  const state = await service.state(f.scope);
+  assert.equal(state.admissionsEnabled, true);
+  assert.equal(state.setupAdmissionsEnabled, false);
+  await assert.rejects(service.prepareSetup(f.scope, "100000000", randomUUID()), {
+    code: "PERPL_ADMISSIONS_PAUSED",
+  });
+  await service.start(f.scope, f.terms, randomUUID());
+  assert.equal(f.document().sessions.length, 1);
+  assert.equal(f.document().setup.length, 0);
+  assert.equal(f.submissions.length, 0);
+});
+
+test("closed account setup permits receipt reads but prevents funding redrive", async () => {
+  const f = fixture();
+  await f.repository.transact(f.scope, (document) => {
+    document.setup.push({
+      id: randomUUID(),
+      key: randomUUID(),
+      kind: "deposit",
+      status: "submitted",
+      amountMicros: "10000000",
+      createdAt: Date.now(),
+      activity: null,
+      privatePreparation: null,
+      activityId: "completed-owner-activity",
+      txHash: "0x" + "22".repeat(32),
+      error: null,
+    });
+  });
+  let receiptReads = 0;
+  let fundingRedrives = 0;
+  let refusal = "";
+  f.driver.reconcileSetup = async (_authority, _document, _setup, guard) => {
+    receiptReads++;
+    try {
+      await guard();
+      fundingRedrives++;
+    } catch (error) {
+      refusal = error instanceof PilotError ? error.code : "unexpected";
+      throw error;
+    }
+    return { confirmed: false };
+  };
+  const service = createPerplLiveService({
+    repository: f.repository,
+    driver: f.driver,
+    admissions: true,
+    setupAdmissions: false,
+    randomId: randomUUID,
+  });
+  await service.tick(f.scope);
+  assert.equal(receiptReads, 1);
+  assert.equal(fundingRedrives, 0);
+  assert.equal(refusal, "PERPL_ADMISSIONS_PAUSED");
+  assert.equal(f.document().setup[0]!.status, "submitted");
+  assert.equal(f.submissions.length, 0);
+});

@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import { randomUUID } from "node:crypto";
+import { randomUUID, createPrivateKey, createPublicKey, verify, createHash } from "node:crypto";
 import { privateKeyToAccount } from "viem/accounts";
 import { decodeFunctionData, erc20Abi, keccak256, parseTransaction, type Hex } from "viem";
 import {
@@ -39,6 +39,8 @@ async function fixture(
     perDayMicros: "100000000",
   };
   const document = emptyPerplLiveDocument(authority.address, authority.scope.productAgentId);
+  let accountIdentifier = 0n;
+  let venueRead: typeof fetch | undefined;
   let forwards = 0;
   let reads = 0;
   let sends = 0;
@@ -62,6 +64,9 @@ async function fixture(
     if (String(url) === "https://testnet.perpl.xyz/api/v1/pub/context") {
       return Response.json(context);
     }
+    if (String(url).startsWith("https://testnet.perpl.xyz/api/v1/trading/") && venueRead) {
+      return venueRead(url, init);
+    }
     assert.equal(String(url), "http://127.0.0.1:1");
     const request = JSON.parse(String(init?.body));
     const methods: Record<string, unknown> = {
@@ -73,7 +78,7 @@ async function fixture(
       eth_maxPriorityFeePerGas: "0x1",
       eth_getBlockByNumber: { baseFeePerGas: "0x1" },
       eth_estimateGas: "0x5208",
-      eth_call: "0x" + "0".repeat(64),
+      eth_call: "0x" + accountIdentifier.toString(16).padStart(64, "0"),
     };
     if (request.method === "eth_sendRawTransaction") {
       sends++;
@@ -124,6 +129,11 @@ async function fixture(
   });
   return {
     driver,
+    context,
+    useExistingAccount: (read: typeof fetch) => {
+      accountIdentifier = 7n;
+      venueRead = read;
+    },
     authority,
     document,
     forwards: () => forwards,
@@ -347,4 +357,126 @@ test("a preparation cannot survive a stricter reviewed fee ceiling", async () =>
   );
   assert.equal(restricted.forwards(), 0);
   assert.equal(restricted.sends(), 0);
+});
+
+// Public controlled Ed25519 seed; no production credential is used.
+const importedSeed = "07".repeat(32);
+const importedToken = "controlled-existing-token";
+function existingVenue(f: Awaited<ReturnType<typeof fixture>>, wrongOwner = false) {
+  const key = createPrivateKey({
+    key: Buffer.from("302e020100300506032b657004220420" + importedSeed, "hex"),
+    format: "der",
+    type: "pkcs8",
+  });
+  const publicKey = createPublicKey(key);
+  const paths: string[] = [];
+  const fetcher: typeof fetch = async (url, init) => {
+    const path = String(url).slice("https://testnet.perpl.xyz/api".length);
+    paths.push(path);
+    assert.equal(init?.method, "GET");
+    const headers = new Headers(init?.headers);
+    assert.equal(headers.get("X-API-Key"), importedToken);
+    const canonical = [
+      "10143",
+      "GET",
+      path,
+      headers.get("X-API-Timestamp"),
+      headers.get("X-API-Nonce"),
+      createHash("sha256").update("").digest("hex"),
+    ].join("\n");
+    assert.equal(
+      verify(
+        null,
+        Buffer.from(canonical),
+        publicKey,
+        Buffer.from(headers.get("X-API-Signature")!, "base64url"),
+      ),
+      true,
+    );
+    if (path === "/v1/trading/wallet") {
+      return Response.json({
+        addr: wrongOwner ? "0x" + "22".repeat(20) : f.authority.address,
+        sn: 100,
+        at: { t: Date.now() },
+        as: [
+          {
+            in: f.context.instances[0].id,
+            id: 7,
+            fw: true,
+            fr: false,
+            lfr: 3,
+            b: "100000000",
+            lb: "0",
+          },
+        ],
+      });
+    }
+    return Response.json({ d: [] });
+  };
+  return { fetcher, paths };
+}
+test("existing keys prove possession and wallet identity using GETs without enrollment or transactions", async () => {
+  const f = await fixture("100", "reviewed");
+  const venue = existingVenue(f);
+  f.useExistingAccount(venue.fetcher);
+  const connected = await f.driver.connectExistingKey!(
+    f.authority,
+    f.document,
+    { apiKey: importedToken, privateKeyHex: importedSeed },
+    Date.now() + 86400000,
+  );
+  assert.equal(connected.accountId, 7);
+  assert.equal(connected.snapshot.lastRequestId, 3);
+  assert.equal(connected.snapshot.forwarding, true);
+  assert.equal(venue.paths.length, 5);
+  assert.equal(f.sends(), 0);
+  assert.equal(f.forwards(), 0);
+  assert.equal(JSON.stringify(connected).includes(importedToken), false);
+  assert.equal(JSON.stringify(connected).includes(importedSeed), false);
+  assert.equal(f.document.encryptedToken, null);
+});
+test("an existing key for another wallet cannot be connected", async () => {
+  const f = await fixture();
+  const venue = existingVenue(f, true);
+  f.useExistingAccount(venue.fetcher);
+  await assert.rejects(
+    f.driver.connectExistingKey!(
+      f.authority,
+      f.document,
+      { apiKey: importedToken, privateKeyHex: importedSeed },
+      Date.now() + 86400000,
+    ),
+    { code: "PERPL_EVIDENCE_MISMATCH" },
+  );
+  assert.equal(venue.paths.length, 1);
+  assert.equal(f.document.encryptedToken, null);
+});
+test("existing key import rejects expired keys and unreviewed proxies before persistence", async () => {
+  const refused = await fixture();
+  refused.useExistingAccount(async () => new Response(null, { status: 401 }));
+  await assert.rejects(
+    refused.driver.connectExistingKey!(
+      refused.authority,
+      refused.document,
+      { apiKey: importedToken, privateKeyHex: importedSeed },
+      Date.now() + 86400000,
+    ),
+    { code: "PERPL_HTTP_401" },
+  );
+  const proxy = await fixture("100", "unreviewed");
+  let calls = 0;
+  proxy.useExistingAccount(async () => {
+    calls++;
+    throw new Error("Must not authenticate");
+  });
+  await assert.rejects(
+    proxy.driver.connectExistingKey!(
+      proxy.authority,
+      proxy.document,
+      { apiKey: importedToken, privateKeyHex: importedSeed },
+      Date.now() + 86400000,
+    ),
+    { code: "PERPL_BINDINGS_CHANGED" },
+  );
+  assert.equal(calls, 0);
 });

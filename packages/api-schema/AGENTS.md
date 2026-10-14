@@ -335,3 +335,7 @@ responses omit it. Original position leverage is nullable because the public acc
 not supply that setting. Historical statistics remain nullable, never zero-filled. Other monetary
 and risk fields preserve their existing units and meaning. Legacy key enrollment and signed-read
 DTOs retain their strict scope-1 contract.
+
+`perplLiveExistingKeySchema` is the strict write-only owner import input (Perpl API token plus
+32-byte Ed25519 seed). These credentials are never response fields. Owner state adds optional
+`setupEnabled`, independently of session admissions. See [Perpl trading](../../docs/perpl-trading.md).
