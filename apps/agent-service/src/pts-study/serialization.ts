@@ -1,5 +1,9 @@
-/** Native JSON semantics, streamed at container boundaries instead of one giant string. */
-export function* jsonChunks(value: unknown): Generator<string> {
+export interface JsonChunkOptions {
+  canonicalKeys?: boolean;
+}
+
+/** Stream native JSON values; canonical key ordering is an explicit report-only option. */
+export function* jsonChunks(value: unknown, options: JsonChunkOptions = {}): Generator<string> {
   const ancestors = new Set<object>();
   function prepare(input: unknown, key: string): unknown {
     let item = input;
@@ -36,7 +40,11 @@ export function* jsonChunks(value: unknown): Generator<string> {
       } else {
         yield "{";
         let first = true;
-        for (const [name, input] of Object.entries(item)) {
+        const entries = Object.entries(item);
+        if (options.canonicalKeys) {
+          entries.sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0));
+        }
+        for (const [name, input] of entries) {
           const field = prepare(input, name);
           if (field === undefined || typeof field === "function" || typeof field === "symbol") {
             continue;
