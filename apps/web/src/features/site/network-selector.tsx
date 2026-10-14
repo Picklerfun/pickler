@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
-import { Button, Icon, Tag } from "@pickler/ui";
+import { Button, Icon } from "@pickler/ui";
 import { ACTIVE_PRODUCT_NETWORK, MAINNET_NOTE, PRODUCT_NETWORKS } from "./networks";
 import styles from "./network-selector.module.css";
 
@@ -92,7 +92,7 @@ export function NetworkSelector() {
   return (
     <div ref={root} className={styles.control} data-open={open || undefined} onKeyDown={keyboard}>
       <Button
-        variant="secondary"
+        variant="ghost"
         size="sm"
         className={styles.trigger}
         aria-label={`Network: ${ACTIVE_PRODUCT_NETWORK.name}`}
@@ -102,9 +102,9 @@ export function NetworkSelector() {
         aria-describedby={`${id}-note`}
         onClick={() => setOpen(!open)}
       >
-        <Image src="/brand/monad.png" width={18} height={18} alt="" />
-        <span>Monad</span>
-        <Tag className={styles.testnet}>Testnet</Tag>
+        <Icon name="network" size={16} className={styles.networkIcon} />
+        <Image src="/brand/monad.png" width={16} height={16} alt="" />
+        <span>Testnet</span>
         <span className={styles.chevron} aria-hidden="true">
           <Icon name="chevronDown" size={13} />
         </span>
@@ -114,10 +114,6 @@ export function NetworkSelector() {
       </span>
       {open && (
         <div className={styles.panel} style={{ left }}>
-          <div className={styles.heading}>
-            <span>Network</span>
-            <span className={styles.headingNote}>Monad ecosystem</span>
-          </div>
           <div ref={menu} id={`${id}-menu`} role="menu" aria-label="Network">
             {PRODUCT_NETWORKS.map(({ network, available }) => {
               const active = network.chainId === ACTIVE_PRODUCT_NETWORK.chainId;
@@ -133,15 +129,13 @@ export function NetworkSelector() {
                   onClick={() => close(true)}
                 >
                   <span className={styles.mark} data-muted={!available || undefined}>
-                    <Image src="/brand/monad.png" width={28} height={28} alt="" />
+                    <Image src="/brand/monad.png" width={18} height={18} alt="" />
                   </span>
                   <span className={styles.words}>
                     <span className={styles.optionName}>
-                      {network.testnet ? "Monad Testnet" : "Monad Mainnet"}
+                      {network.testnet ? "Testnet" : "Mainnet"}
                     </span>
-                    <span className={styles.optionNote}>
-                      {available ? "For building and testing" : "Coming soon"}
-                    </span>
+                    {!available && <span className={styles.optionNote}>Coming soon</span>}
                   </span>
                   {active ? (
                     <span className={styles.check} aria-hidden="true">
@@ -154,9 +148,6 @@ export function NetworkSelector() {
               );
             })}
           </div>
-          <p className={styles.footer}>
-            <Icon name="globe" size={12} /> You&apos;re building on Testnet.
-          </p>
         </div>
       )}
     </div>

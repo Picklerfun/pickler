@@ -6,6 +6,9 @@ Read [the root instructions](../../AGENTS.md) first. Read the web app's local in
 
 ## The control system
 
+The curated icon names include `network` (Lucide's connected-node glyph) for network controls;
+product chain logos remain assets in the consuming app.
+
 One set of shapes, two surfaces. The public site and the creator studio share radii, control sizes and button variants; what changes is tone.
 
 - **Shapes:** one scale, `mark` (4) · `sm` (12) · `md` (14) · `lg` (16) · `xl` (20) · `2xl` (24) · `3xl` (28) · `pill`. A step is a role, not a number: marks and dots take `mark`, chips and tiles `sm`, rail and menu rows `md`, stat tiles `lg`, cards `xl`, panels `2xl`, full-width sections `3xl`. Every action, chip and status is a pill. Nothing square. Feature stylesheets use these tokens rather than literal values.

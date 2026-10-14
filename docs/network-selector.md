@@ -7,9 +7,10 @@ product network control. `NetworkSelector` is present in the landing's own `Land
 marketplace's `SiteNav`, and the Studio home, creation and draft/live top bars. It is available
 without a connected wallet.
 
-The custom menu uses `Button`, `Tag` and `Icon` from `@pickler/ui` and follows the light/dark control tokens.
-Its trigger carries the Monad mark, network name and Testnet tag; the panel shows both networks,
-the active checkmark and the locked Mainnet state. The web's
+The custom menu uses `Button` and `Icon` from `@pickler/ui` and follows the light/dark control tokens.
+Its compact wallet-style trigger carries the `network` icon, Monad mark and plain Testnet text.
+The panel contains only two rows with Monad's mark, the active checkmark and Mainnet's disabled
+Coming soon state. There is no extra badge, heading, explanatory row copy or footer. The web's
 presentation catalogue uses the existing metadata from `@pickler/chain`: Monad Testnet (10143)
 is selected; Monad Mainnet (143) is shown as **Mainnet — Coming soon** and disabled. Its accessible
 description explains the restriction. Opening the selector never connects a wallet, asks for a
@@ -89,3 +90,7 @@ formatting, static design checks and architecture/link checks. The live preview 
 on light and dark surfaces at its normal viewport and 390px. Arrow-key opening, Home/End,
 Enter, Escape with focus restoration, Tab dismissal and outside-click dismissal were verified.
 Mainnet remained disabled, and the menu stayed inside the mobile viewport on both surfaces.
+
+The wallet-style revision also passed web production build, web/UI typechecks, scoped lint,
+formatting and static design/architecture checks. The 390px preview confirmed two menu rows,
+disabled Mainnet, viewport fit and keyboard opening/Escape focus restoration.

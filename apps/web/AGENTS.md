@@ -84,11 +84,13 @@ Market data is drawn with `CandleChart` and `BarChart` from `@pickler/ui` — th
 
 ## Product network selector
 
-`features/site/network-selector.tsx` renders a custom network menu using `Button`, `Tag` and `Icon` from `@pickler/ui` in
+`features/site/network-selector.tsx` renders a custom network menu using `Button` and `Icon` from `@pickler/ui` in
 `LandingNav`, `SiteNav` and all three Studio top bars (home, creation and draft/live shell). Its presentation
 catalogue in `features/site/networks.ts` uses `@pickler/chain` metadata: Testnet is active;
 Mainnet is visible as "Coming soon" and disabled. The accessible description explains why.
-The compact trigger carries Monad's mark and a Testnet tag. Opening focuses the active radio menu
+The wallet-style compact trigger carries the `network` icon, Monad's mark and plain Testnet text.
+The menu contains only the two network rows, with no decorative heading, descriptions or footer.
+Opening focuses the active radio menu
 item; arrow keys/Home/End navigate enabled items, Escape restores trigger focus, and outside clicks
 or focus leaving close the menu. Positioning keeps the panel within the mobile viewport. Motion
 respects reduced-motion preferences. `Select` remains a generic native UI export for other forms.
