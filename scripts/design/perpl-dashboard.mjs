@@ -257,10 +257,11 @@ try {
       listener([address]);
     }
   }, connectedAddress);
+  await page.getByRole("heading", { name: "Open positions 2" }).waitFor({ state: "hidden" });
   assert.equal(
     await page.getByRole("heading", { name: "Open positions 2" }).count(),
     0,
-    "old wallet data hides immediately",
+    "old wallet data hides after the wallet-change render",
   );
   await page.getByRole("heading", { name: "Open positions 0" }).waitFor();
   await page.getByRole("button", { name: /^Wallet,/ }).click();
@@ -269,6 +270,17 @@ try {
   await disconnect.click();
   await page.getByRole("heading", { name: "See your positions alongside the market." }).waitFor();
   assert.equal(await page.getByRole("heading", { name: "Open positions 2" }).count(), 0);
+  await page.goto(`${base}/perpl?wallet=${account.address}`);
+  await page.getByRole("heading", { name: "Open positions 2" }).waitFor();
+  await page.getByText("Viewing the public portfolio of the wallet in this link.").waitFor();
+  assert.equal(
+    await page.getByRole("heading", { name: "See your positions alongside the market." }).count(),
+    0,
+  );
+  await page.reload();
+  await page.getByRole("heading", { name: "Open positions 2" }).waitFor();
+  await page.goto(`${base}/perpl?wallet=invalid`);
+  await page.getByRole("heading", { name: "See your positions alongside the market." }).waitFor();
   assert.deepEqual(forbidden, []);
   assert.deepEqual(errors, []);
   assert.ok(methods.every((m) => !m.includes("send") && m !== "eth_signTransaction"));
@@ -282,6 +294,8 @@ try {
     walletChangeHidesPreviousData: true,
     wrongWalletNetworkDoesNotBlockPublicReads: true,
     publicContractReads: true,
+    explicitWalletLinkNeedsNoConnection: true,
+    invalidWalletLinkDoesNotFetch: true,
     enrollmentRequests: fixture.venue.calls.filter((c) => c.path.includes("api-key")).length,
     realTransactions: 0,
     externalRequests: 0,

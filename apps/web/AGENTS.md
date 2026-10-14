@@ -13,6 +13,10 @@ Read the root and affected dependency AGENTS.md files before changes. Keep docum
 
 ## Responsibility and structure
 
+Perpl Controls obtains current collateral minimums from the owner state. Funding keeps the
+owner's exact entered amount; insufficient daily limits link to the existing Limits section
+and disable preparation. The UI never raises limits or funds a wallet automatically.
+
 Next.js owns presentation and authentication transport. Hono in `workers/api` is the only
 business API. All web API requests use the same origin and delegate through a Service Binding.
 The web has no database, provider-secret, Mastra or infrastructure dependency. Public Supabase
@@ -1475,3 +1479,28 @@ Hono → bounded RPC adapter → Trading using controlled public chain responses
 signing/enrollment, automatic refresh, full reload, wallet changes, wrong wallet network, stale
 state and responsive widths. It blocks browser external requests. This remains separate from
 real public contract acceptance and deployed verification; see [dashboard](../../docs/perpl-dashboard.md).
+
+Perpl Controls offers an explicit existing-key form. Only owner-provided token/Ed25519 input
+passes transiently through the authenticated same-origin route; backend-created keys never
+return. Password fields are cleared on submit and agent change, never stored, and preview submits
+are disabled. The HTTP controller serializes mutations and ignores superseded agent responses.
+`setupEnabled=false` disables owner funding/enrollment while existing-key trading remains separate.
+
+The public dashboard also accepts a validated `/perpl?wallet=<address>` read-only link. Its explicit
+address takes precedence over the connected wallet for portfolio reads and is labelled in the
+view. It never changes wallet identity, authentication, signing or order permissions. Invalid
+addresses use the normal connected-wallet flow. Serial polling and snapshot identity checks
+remain unchanged. Studio session copy distinguishes one new position from unmanaged prior positions.
+
+Controls can explicitly connect the wallet of an owner-provided Perpl key, with a labelled
+shared Switch and no caller-supplied wallet address. It offers a keyboard-accessible shared
+Select over the agent's authorized markets, blocks occupied markets, and links across product
+hosts to the connected wallet dashboard. Positions show a Close action only for server-labelled
+`managedBySession` positions; prior positions remain visible and read-only. Backend rules are
+authoritative; there is no key persistence or financial policy in the browser.
+
+Perpl order history renders each server-provided transaction hash through the existing shared
+ChainReference: visible abbreviated hash, full-value copy and the Monad testnet explorer link.
+Positions reuse the same compact history; setup references use the same control. An absent hash
+remains explicitly unrecorded, independently of request/order identifiers and fill status.
+Inert previews never receive an explorer link. This is presentation only and adds no requests.

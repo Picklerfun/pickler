@@ -181,6 +181,10 @@ See [agent-selected Perpl markets](../../docs/studio-perpl-markets.md).
 
 ## Perpl real testnet sessions
 
+The read-only state optionally obtains public account/deposit requirements from its injected
+driver. Provider failure retains account/session history with unknown requirements. It never
+changes owner limits or funds an account as a consequence of reading state.
+
 The public `perpl-live` subpath owns the separate bounded real-execution contracts and service.
 It admits testnet 1x, one position and controlled open/hold/close cycles; it has no model tool.
 Keep durable intent IDs, unknown submissions, partial reductions and lease fences. Increasing
@@ -203,3 +207,25 @@ preserves long-ceil/short-floor semantics. Missing context/marks retain the posi
 price-dependent aggregates. Original leverage and historical statistics must not be invented
 from current collateral. The infrastructure-provided optional `source: "onchain"` is provenance,
 not permission to trade.
+
+Existing Perpl key connection uses a two-phase read validation and fenced encrypted-credential
+commit. It rechecks current owner/configuration and refuses pending setup, sessions, orders or
+leases; no provider I/O runs under locks. It preserves history/budgets and imposes a 24-hour
+Pickler deadline. `setupAdmissions` independently closes account funding/enrollment without
+closing existing-key sessions or required exits. See [Perpl trading](../../docs/perpl-trading.md).
+
+A live position must match the current session's verified net filled quantity and original
+leverage before any closing order. Foreign additions, reductions or leverage changes freeze the
+session rather than closing exposure that the session cannot attribute.
+
+New bounded sessions record pre-existing positions in other markets before their first opening.
+Those position identities remain unmanaged and visible; they can never become exit targets.
+An occupied selected market is refused before any order. New unexplained positions still freeze
+execution. Historical sessions with orders do not adopt a baseline retrospectively. The limit is
+one new session-owned position, with the same quantity/leverage provenance and daily budgets.
+
+An explicit key-wallet import can bind the authenticated venue wallet to its owned agent while
+retaining the custody identity fence. External connections disable every custody setup/funding
+operation. `isPerplSessionPosition` is the shared net-fill ownership predicate used by execution
+and the private host's `managedBySession` presentation projection. Existing histories cannot move
+to another wallet/account, and key reconnection never clears budgets or orders.

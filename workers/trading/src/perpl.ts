@@ -68,6 +68,7 @@ export function composePerplTrading(env: Env) {
           repository,
           driver,
           admissions: env.PERPL_ADMISSIONS_ENABLED === "true",
+          setupAdmissions: env.PERPL_ACCOUNT_SETUP_ENABLED === "true",
           randomId: () => crypto.randomUUID(),
         })
       : null,
@@ -123,6 +124,14 @@ export async function perplTradingRequest(
     }
     if (!instance.service) {
       throw new PilotError("PERPL_UNAVAILABLE", "Perpl execution has not been configured");
+    }
+    if (path === "/perpl/credentials/connect") {
+      const input = dto.perplLiveExistingKeySchema.parse(body.input);
+      const connected = await instance.service.connectExistingKey(body.scope, {
+        ...input,
+        useKeyWallet: input.useKeyWallet ?? false,
+      });
+      return Response.json(perplStateDto(connected));
     }
     if (path === "/perpl/setup/prepare") {
       const input = dto.perplLiveSetupRequestSchema.parse(body.input);

@@ -769,6 +769,9 @@ Its generated OpenAPI describes validation, curve, unavailable and quota errors.
 
 ## Studio Perpl execution facade
 
+Owner state carries optional public account/deposit minimums and the reviewed per-deposit
+maximum from Trading. These do not change owner limits or grant execution permission.
+
 `routes/studio-perpl-live.ts` adds owner-only state, setup preparation/confirmation, start and
 control under Studio and its Console alias. `PERPL_STUDIO_ENABLED` defaults false. Composition
 uses the private `TRADING_EXECUTOR` binding and forwards the original user Authorization header;
@@ -800,3 +803,16 @@ accept RPC URLs, calldata, methods or signing keys. It is independent of the JWT
 POST routes. Diagnostics use the route template, never the actual wallet-containing URL. The
 default dashboard no longer enrolls Perpl keys. See the dashboard guide for canonical-block reads,
 unknown historical stats and real-contract versus controlled acceptance.
+
+The JWT-only Studio/Console `POST /agents/:id/perpl/credentials/connect` forwards strict write-only
+Perpl token/Ed25519 input to Trading. It rechecks creator and agent ownership, returns only the
+public state DTO and remains private/no-store. No API signer, key vault or provider validation
+is introduced. Setup availability is separate from session admissions.
+
+The explicitly approved staging `PERPL_STUDIO_ENABLED=true` exposes owner state and key
+connection. Trading independently retains closed automatic account setup/funding.
+
+Existing-key connection accepts optional `useKeyWallet` only, not a caller-provided address.
+The private executor verifies and exclusively binds the key's wallet to the owned agent. Public
+state adds optional connection kind and managed-position labels. Original JWT/creator/owner checks,
+private/no-store, strict parsing and generated OpenAPI remain mandatory.

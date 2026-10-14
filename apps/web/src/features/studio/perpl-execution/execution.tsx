@@ -1,10 +1,21 @@
 "use client";
 import { useState } from "react";
-import { Button, Field, Input } from "@pickler/ui";
+import { Button, Field, Input, ButtonLink } from "@pickler/ui";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@pickler/ui/select";
 import type { Agent } from "../api";
 import type { PerplExecution } from "./use-execution";
 import { perplExecutionMessage } from "./use-execution";
 import styles from "./execution.module.css";
+import { ExistingPerplKey } from "./existing-key";
+import { useMarketplaceHref } from "@/features/site/studio-href";
+import { ChainReference } from "@/features/tokens/chain-reference";
 
 const setupLabels = {
   approve: "Approve collateral for Perpl",
@@ -24,41 +35,60 @@ const orderLabels = {
   cancelled: "Cancelled",
   expired: "Expired",
 };
-function TransactionLinks({ hashes }: { hashes: string[] }) {
+function TransactionLinks({ hashes, preview }: { hashes: string[]; preview: boolean }) {
+  if (hashes.length === 0) {
+    return <span className={styles.note}>No transaction hash recorded.</span>;
+  }
   return (
-    <span className={styles.links}>
+    <div className={styles.links} aria-label="Transaction hashes">
       {hashes.map((hash, index) => (
-        <a
-          className={styles.link}
-          key={hash}
-          href={`https://testnet.monadscan.com/tx/${hash}`}
-          target="_blank"
-          rel="noreferrer"
-        >
-          View transaction{hashes.length > 1 ? ` ${index + 1}` : ""}
-        </a>
+        <div className={styles.transaction} key={hash}>
+          <span className={styles.note}>Tx hash{hashes.length > 1 ? ` ${index + 1}` : ""}</span>
+          <ChainReference
+            value={hash}
+            chainId={10143}
+            kind="tx"
+            label={`Perpl transaction${hashes.length > 1 ? ` ${index + 1}` : ""}`}
+            preview={preview}
+          />
+        </div>
       ))}
-    </span>
+    </div>
   );
 }
 export function PerplTradingControls({
   execution,
   agent,
   canManage,
+  onLimits,
 }: {
   execution: PerplExecution;
   agent: Agent;
   canManage: boolean;
+  onLimits?: () => void;
 }) {
-  const [margin, setMargin] = useState(String(agent.spend?.perCallAusd ?? 10));
-  const [collateral, setCollateral] = useState("100");
-  const [holding, setHolding] = useState("60");
+  const [selectedSymbol, setSymbol] = useState(agent.config.perpl?.markets[0] ?? "");
+  const markets = agent.config.perpl?.markets ?? [];
+  const symbol = markets.includes(selectedSymbol) ? selectedSymbol : (markets[0] ?? "");
+  const walletHref = useMarketplaceHref(`/perpl?wallet=${execution.state?.address ?? ""}`);
+  const [margin, setMargin] = useState(String(Math.min(agent.spend?.perCallAusd ?? 1, 1)));
+  const [collateral, setCollateral] = useState<string | null>(null);
+  const [holding, setHolding] = useState("30");
   const [funding, setFunding] = useState(false);
   const state = execution.state;
+  const minimumRequirement = state?.setupRequired
+    ? state.requirements?.minimumAccountAusd
+    : state?.requirements?.minimumDepositAusd;
+  const minimumCollateral = minimumRequirement?.replace(/(\.\d*?)0+$/, "$1").replace(/\.$/, "");
+  const selectedCollateral = collateral ?? minimumCollateral ?? "100";
+  const collateralExceedsDailyLimit = Number(selectedCollateral) > (agent.spend?.perDayAusd ?? 0);
   const setup = state?.setup.at(-1);
   const active =
     !!state?.session && ["active", "paused", "stopping", "frozen"].includes(state.session.status);
   const disabled = execution.busy || execution.preview || !canManage;
+  const marketOccupied = !!state?.positions.some(
+    (p) => !p.closed && p.symbol === symbol && !p.managedBySession,
+  );
   const preparePending = !!setup && !["confirmed", "failed"].includes(setup.status);
   return (
     <section
@@ -77,14 +107,28 @@ export function PerplTradingControls({
       ) : (
         <>
           <p className={styles.note}>
-            Orders run from this agent&apos;s Perpl account. One position at a time, at 1× leverage.
+            Orders run from this agent&apos;s Perpl account. One new position at a time, at 1×
+            leverage. Existing positions in other markets stay outside this session.
           </p>
-          {state.setupRequired || funding || preparePending ? (
+          {state.setupRequired && !preparePending && (
+            <ExistingPerplKey
+              key={`${agent.productId ?? agent.id}:${state.address ?? ""}`}
+              address={state.address}
+              disabled={disabled || active}
+              connect={execution.connectKey}
+            />
+          )}
+          {state.setupEnabled === false && state.setupRequired && !preparePending ? (
+            <p className={styles.note}>
+              Automatic account setup is unavailable. Connect an existing Perpl key for this wallet
+              to continue.
+            </p>
+          ) : state.setupRequired || funding || preparePending ? (
             <>
               <Field label="Collateral · AUSD">
                 <Input
                   inputMode="decimal"
-                  value={collateral}
+                  value={selectedCollateral}
                   onChange={(e) => setCollateral(e.target.value)}
                   disabled={disabled || preparePending}
                 />
@@ -93,6 +137,26 @@ export function PerplTradingControls({
                 Daily collateral limit: {agent.spend?.perDayAusd ?? 0} AUSD. A new account also
                 requires Perpl&apos;s minimum deposit.
               </p>
+              {minimumCollateral && (
+                <p className={styles.note}>
+                  Perpl minimum: {minimumCollateral} AUSD. Maximum per deposit:{" "}
+                  {state.requirements?.maximumCollateralAusd
+                    .replace(/(\.\d*?)0+$/, "$1")
+                    .replace(/\.$/, "")}{" "}
+                  AUSD.
+                </p>
+              )}
+              {collateralExceedsDailyLimit && (
+                <p className={styles.error} role="alert">
+                  Set this agent&apos;s daily limit to at least {selectedCollateral} AUSD before
+                  preparing this deposit.
+                </p>
+              )}
+              {onLimits && (
+                <Button disabled={disabled || preparePending} onClick={onLimits}>
+                  Edit agent limits
+                </Button>
+              )}
               {setup && setup.status !== "confirmed" && setup.status !== "failed" ? (
                 <div className={styles.copy}>
                   <strong>{setupLabels[setup.kind]}</strong>
@@ -122,13 +186,20 @@ export function PerplTradingControls({
                       Checking this account step. Its authorization will not be repeated.
                     </p>
                   )}
-                  {setup.txHash && <TransactionLinks hashes={[setup.txHash]} />}
+                  {setup.txHash && (
+                    <TransactionLinks hashes={[setup.txHash]} preview={execution.preview} />
+                  )}
                 </div>
               ) : (
                 <Button
                   variant="primary"
-                  disabled={disabled || !state.admissionsEnabled}
-                  onClick={() => void execution.prepare(collateral)}
+                  disabled={
+                    disabled ||
+                    !state.admissionsEnabled ||
+                    state.setupEnabled === false ||
+                    collateralExceedsDailyLimit
+                  }
+                  onClick={() => void execution.prepare(selectedCollateral)}
                 >
                   {execution.busy
                     ? "Preparing…"
@@ -147,7 +218,20 @@ export function PerplTradingControls({
             <>
               <div className={styles.form}>
                 <Field label="Market">
-                  <Input value={agent.config.perpl?.markets[0] ?? ""} readOnly />
+                  <Select value={symbol} onValueChange={setSymbol} disabled={disabled || active}>
+                    <SelectTrigger aria-label="Trading market">
+                      <SelectValue placeholder="Select a market" />
+                    </SelectTrigger>
+                    <SelectContent data-surface="dark">
+                      <SelectGroup>
+                        {(agent.config.perpl?.markets ?? []).map((market) => (
+                          <SelectItem key={market} value={market}>
+                            {market}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
                 </Field>
                 <Field label="Margin · AUSD">
                   <Input
@@ -170,15 +254,24 @@ export function PerplTradingControls({
                 One opening and one closing. Confirmed executions and their transactions appear in
                 Positions and Record.
               </p>
+              {marketOccupied && !active ? (
+                <p className={styles.note}>
+                  This market has an existing position. Choose another market for a separate trading
+                  cycle.
+                </p>
+              ) : null}
+              {state.connection === "key_wallet" && state.address ? (
+                <ButtonLink href={walletHref}>View connected wallet</ButtonLink>
+              ) : null}
               <div className={styles.actions}>
                 {!active ? (
                   <Button
                     variant="primary"
                     id="perpl-start-trading"
-                    disabled={disabled || !state.admissionsEnabled}
+                    disabled={disabled || !state.admissionsEnabled || marketOccupied || !symbol}
                     onClick={() =>
                       void execution.start({
-                        symbol: agent.config.perpl?.markets[0] ?? "",
+                        symbol,
                         marginAusd: margin,
                         leverage: 1,
                         cycles: 1,
@@ -193,7 +286,7 @@ export function PerplTradingControls({
                 )}
                 {!active && (
                   <Button
-                    disabled={disabled || !state.admissionsEnabled}
+                    disabled={disabled || !state.admissionsEnabled || state.setupEnabled === false}
                     onClick={() => setFunding(true)}
                   >
                     Add collateral
@@ -298,18 +391,24 @@ export function PerplTradingPositions({
               <div className={styles.copy}>
                 <strong>{p.unrealizedPnlAusd ?? "—"} AUSD</strong>
                 <span className={styles.note}>Unrealized P&L</span>
-                <Button
-                  size="sm"
-                  disabled={
-                    !canManage ||
-                    execution.preview ||
-                    execution.busy ||
-                    state.session?.status === "stopping"
-                  }
-                  onClick={() => void execution.control("close")}
-                >
-                  {state.session?.status === "stopping" ? "Closing…" : "Close position"}
-                </Button>
+                {p.managedBySession ? (
+                  <Button
+                    size="sm"
+                    disabled={
+                      !canManage ||
+                      execution.preview ||
+                      execution.busy ||
+                      state.session?.status === "stopping"
+                    }
+                    onClick={() => void execution.control("close")}
+                  >
+                    {state.session?.status === "stopping" ? "Closing…" : "Close position"}
+                  </Button>
+                ) : (
+                  <span className={styles.note}>
+                    Existing position · not managed by this session
+                  </span>
+                )}
               </div>
             </li>
           ))}
@@ -373,7 +472,7 @@ export function PerplTradingRecord({
                   Filled {o.filledSize ?? "—"} · Price {o.fillPrice ?? "—"} · Fee {o.feeAusd ?? "—"}{" "}
                   AUSD
                 </span>
-                <TransactionLinks hashes={o.txHashes} />
+                <TransactionLinks hashes={o.txHashes} preview={execution.preview} />
               </div>
               <span className={styles.status}>{orderLabels[o.status]}</span>
             </li>

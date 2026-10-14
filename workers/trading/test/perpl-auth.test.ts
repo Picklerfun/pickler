@@ -53,6 +53,11 @@ test("wire state excludes encrypted credentials, lease owners and private signal
   const dto = perplStateDto({
     available: true,
     admissionsEnabled: false,
+    requirements: {
+      minimumAccountMicros: "100000000",
+      minimumDepositMicros: "10000000",
+      maximumCollateralMicros: "100000000",
+    },
     document,
     authority: {
       scope,
@@ -71,6 +76,11 @@ test("wire state excludes encrypted credentials, lease owners and private signal
     },
   });
   const json = JSON.stringify(dto);
+  assert.deepEqual(dto.requirements, {
+    minimumAccountAusd: "100.000000",
+    minimumDepositAusd: "10.000000",
+    maximumCollateralAusd: "100.000000",
+  });
   for (const privateValue of [
     "secret-encrypted-key",
     "secret-encrypted-token",

@@ -47,6 +47,10 @@ configuration.
 
 ## Studio contracts
 
+Perpl live state optionally carries nullable `requirements`: minimum account/deposit AUSD and
+the reviewed maximum per deposit. These are public exact decimal strings; omission remains
+compatible with older fixtures/consumers and does not authorize funding.
+
 `walletsResponseSchema` carries optional nullable `chainId` for the deployment-selected custody
 balance/transfer network (10143: Monad Testnet; 143: Monad mainnet). Current producers always
 return it, null if unavailable; omission remains accepted for legacy responses. Consumers must
@@ -331,3 +335,12 @@ responses omit it. Original position leverage is nullable because the public acc
 not supply that setting. Historical statistics remain nullable, never zero-filled. Other monetary
 and risk fields preserve their existing units and meaning. Legacy key enrollment and signed-read
 DTOs retain their strict scope-1 contract.
+
+`perplLiveExistingKeySchema` is the strict write-only owner import input (Perpl API token plus
+32-byte Ed25519 seed). These credentials are never response fields. Owner state adds optional
+`setupEnabled`, independently of session admissions. See [Perpl trading](../../docs/perpl-trading.md).
+
+Existing-key input adds optional `useKeyWallet` for explicitly connecting the wallet verified
+by its key. It accepts no address. State adds optional `connection` (`agent_wallet`/`key_wallet`)
+and positions add optional `managedBySession`; these are public status only. Older DTOs stay valid
+and the two credential fields remain write-only.

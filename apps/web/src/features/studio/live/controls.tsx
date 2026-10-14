@@ -57,7 +57,7 @@ const MEANWHILE: { value: LiveEntry["meanwhile"]; label: string }[] = [
  * today. With it off and a paper account (R3), the stops, meters and HEALTH are the same, saying
  * checks are paused; HOW IT RUNS keeps describing the setting.
  */
-export function Controls({ agent, live, canManage, pause }: LiveSectionProps) {
+export function Controls({ agent, live, canManage, pause, onSection }: LiveSectionProps) {
   const record = paperShown(live.record) ? live.record : null;
   const running = record?.runtimeEnabled ?? false;
   const { caps } = liveCaps(agent);
@@ -128,7 +128,12 @@ export function Controls({ agent, live, canManage, pause }: LiveSectionProps) {
   const realReady = !!live.execution.state?.available && !live.execution.state.setupRequired;
   return (
     <LiveSection section="controls">
-      <PerplTradingControls execution={live.execution} agent={agent} canManage={canManage} />
+      <PerplTradingControls
+        execution={live.execution}
+        agent={agent}
+        canManage={canManage}
+        onLimits={() => onSection("limits")}
+      />
       {realReady ? (
         <details className={styles.paperControls}>
           <summary>Paper trading controls</summary>

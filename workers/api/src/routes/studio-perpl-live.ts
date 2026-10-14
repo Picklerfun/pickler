@@ -79,6 +79,16 @@ export function studioPerplLiveRoutes(deps: {
   );
   const definitions = [
     {
+      path: "credentials/connect",
+      id: "studioPerplConnectExistingKey",
+      schema: dto.perplLiveExistingKeySchema,
+      response: dto.perplLiveStateSchema,
+      status: 200,
+      key: false,
+      description:
+        "Validate an owner-supplied Perpl token and Ed25519 key for the reviewed testnet account. With useKeyWallet=true, resolve its wallet from authenticated Perpl reads and bind it exclusively to this owned agent; otherwise require the current persisted wallet. The caller cannot supply a wallet address. External key-wallet connections never enable custody setup/funding. Stores encrypted credentials with a 24-hour Pickler connection limit. Sends authenticated GETs only; never registers a key, funds, approves, starts a session or submits an order. Provider trade scope is enforced by Perpl when an order is explicitly started. Response excludes all credential values.",
+    },
+    {
       path: "setup/prepare",
       id: "studioPerplSetupPrepare",
       schema: dto.perplLiveSetupRequestSchema,

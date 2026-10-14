@@ -69,13 +69,31 @@ export class PostgresPerplLiveStore implements PerplLiveRepository {
       perDayMicros: micros(row.config.spend?.perDayAusd),
     };
   }
+  private connectedAuthority(authority: PerplLiveAuthority, document: PerplLiveDocument | null) {
+    if (!document) {
+      return authority;
+    }
+    const external = document.connection?.kind === "key_wallet";
+    if (
+      document.version !== 1 ||
+      document.productAgentId !== authority.scope.productAgentId ||
+      !/^0x[a-f\d]{40}$/.test(document.address) ||
+      (external
+        ? document.connection!.custodyAddress !== authority.address
+        : document.address !== authority.address)
+    ) {
+      throw new PilotError("PERPL_ACCOUNT_CHANGED", "Agent wallet identity changed");
+    }
+    return { ...authority, custodyAddress: authority.address, address: document.address };
+  }
   async read(scope: PerplLiveScope) {
     const authority = await this.authority(this.pool, scope, false);
     const r = await this.pool.query<{ document: PerplLiveDocument }>(
       "SELECT document FROM pickler.perpl_live_accounts WHERE product_agent_id=$1",
       [scope.productAgentId],
     );
-    return { authority, document: r.rows[0]?.document ?? null };
+    const document = r.rows[0]?.document ?? null;
+    return { authority: this.connectedAuthority(authority, document), document };
   }
   async transact<T>(
     scope: PerplLiveScope,
@@ -94,14 +112,29 @@ export class PostgresPerplLiveStore implements PerplLiveRepository {
         [scope.productAgentId],
       );
       const document = row.rows[0]!.document;
-      if (
-        document.version !== 1 ||
-        document.address !== authority.address ||
-        document.productAgentId !== scope.productAgentId
-      ) {
-        throw new PilotError("PERPL_ACCOUNT_CHANGED", "Agent wallet identity changed");
+      const result = change(
+        document,
+        this.connectedAuthority(authority, document),
+        Number(row.rows[0]!.now),
+      );
+      this.connectedAuthority(authority, document);
+      if (document.encryptedToken && document.accountId) {
+        await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))", [
+          `perpl-account:10143:${document.address}:${document.accountId}`,
+        ]);
+        const used = await client.query(
+          `SELECT 1 FROM pickler.perpl_live_accounts
+           WHERE product_agent_id<>$1 AND document->>'address'=$2
+           AND document->>'accountId'=$3 AND document->>'encryptedToken' IS NOT NULL LIMIT 1`,
+          [scope.productAgentId, document.address, String(document.accountId)],
+        );
+        if (used.rowCount) {
+          throw new PilotError(
+            "PERPL_ACCOUNT_IN_USE",
+            "This Perpl account is already connected to an agent",
+          );
+        }
       }
-      const result = change(document, authority, Number(row.rows[0]!.now));
       if (result && typeof (result as { then?: unknown }).then === "function") {
         throw new Error("Perpl mutation callbacks must be synchronous");
       }

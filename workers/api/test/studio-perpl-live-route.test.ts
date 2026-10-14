@@ -75,17 +75,40 @@ test("owner-only Perpl routes preserve JWT, strict inputs and no-store", async (
   assert.equal(valid.status, 409);
   assert.match(valid.headers.get("Cache-Control")!, /private.*no-store/);
   assert.equal(calls, 1);
+  const connection = await app.request(`/agents/${agent}/perpl/credentials/connect`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({
+      apiKey: "controlled-existing-token",
+      privateKeyHex: "07".repeat(32),
+      useKeyWallet: true,
+    }),
+  });
+  assert.equal(connection.status, 409);
+  assert.equal(calls, 2);
+  assert.equal((await connection.text()).includes("controlled-existing-token"), false);
+  const extraConnection = await app.request(`/agents/${agent}/perpl/credentials/connect`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({
+      apiKey: "controlled-existing-token",
+      privateKeyHex: "07".repeat(32),
+      address: "0x" + "11".repeat(20),
+    }),
+  });
+  assert.equal(extraConnection.status, 400);
+  assert.equal(calls, 2);
   const extra = await app.request(path, {
     method: "POST",
     headers,
     body: JSON.stringify({ ...input, address: "0x" + "11".repeat(20) }),
   });
   assert.equal(extra.status, 400);
-  assert.equal(calls, 1);
+  assert.equal(calls, 2);
   await app.request(path, {
     method: "POST",
     headers: { ...headers, Authorization: "Bearer other" },
     body: JSON.stringify(input),
   });
-  assert.equal(calls, 1);
+  assert.equal(calls, 2);
 });

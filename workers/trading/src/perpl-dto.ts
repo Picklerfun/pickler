@@ -3,6 +3,7 @@ import {
   perplLiveStateSchema,
   type PerplLiveSetupDto,
 } from "@pickler/api-schema";
+import { isPerplSessionPosition } from "@pickler/trading/perpl-live";
 import type {
   PerplLiveAuthority,
   PerplLiveDocument,
@@ -33,6 +34,12 @@ export function perplStateDto(state: {
   document: PerplLiveDocument | null;
   available: boolean;
   admissionsEnabled: boolean;
+  setupAdmissionsEnabled?: boolean;
+  requirements?: {
+    minimumAccountMicros: string;
+    minimumDepositMicros: string;
+    maximumCollateralMicros: string;
+  } | null;
 }) {
   const d = state.document;
   const snap = d?.snapshot;
@@ -49,10 +56,19 @@ export function perplStateDto(state: {
   return perplLiveStateSchema.parse({
     available: state.available,
     admissionsEnabled: state.admissionsEnabled,
+    setupEnabled: state.setupAdmissionsEnabled,
+    connection: d?.connection?.kind ?? "agent_wallet",
     network: "testnet",
     address: state.authority.address,
     accountId: d?.accountId ?? null,
     setupRequired: !d?.encryptedToken || !d.keyExpiresAt || d.keyExpiresAt <= Date.now(),
+    requirements: state.requirements
+      ? {
+          minimumAccountAusd: perplDecimal(state.requirements.minimumAccountMicros),
+          minimumDepositAusd: perplDecimal(state.requirements.minimumDepositMicros),
+          maximumCollateralAusd: perplDecimal(state.requirements.maximumCollateralMicros),
+        }
+      : null,
     keyExpiresAt: d?.keyExpiresAt ? new Date(d.keyExpiresAt).toISOString() : null,
     setup: d?.setup.slice(-100).map(perplSetupDto) ?? [],
     session: session
@@ -81,6 +97,7 @@ export function perplStateDto(state: {
         }
         return {
           id: String(p.id),
+          managedBySession: !!(d && session && isPerplSessionPosition(d, session, p)),
           symbol: m?.symbol ?? `Market ${p.marketId}`,
           side: p.side,
           closed: p.closed,

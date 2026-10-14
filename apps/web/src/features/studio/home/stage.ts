@@ -83,6 +83,7 @@ export type DraftStage = (typeof DRAFT_STAGES)[number];
  */
 export const LIVE_STAGES = [
   "perpl-trading-ready",
+  "perpl-trading-setup",
   "perpl-trading-active",
   "perpl-trading-closed",
   "perpl-token-empty",

@@ -897,6 +897,14 @@ const ALL = [
     proves: "#perpl-start-trading",
   },
   {
+    path: "/studio?stage=perpl-trading-setup",
+    name: "studio-perpl-trading-setup",
+    product: "studio",
+    surface: "dark",
+    task: "Perpl trading",
+    proves: "#perpl-trading-controls",
+  },
+  {
     path: "/studio?stage=perpl-trading-active",
     name: "studio-perpl-trading-active",
     product: "studio",

@@ -49,6 +49,13 @@ export const perplLivePolicySchema = z
     chainId: z.literal(10143),
     exchange: z.string().regex(/^0x[a-f\d]{40}$/i),
     exchangeCodeHash: z.string().regex(/^0x[a-f\d]{64}$/i),
+    exchangeImplementation: z
+      .object({
+        address: z.string().regex(/^0x[a-f\d]{40}$/i),
+        codeHash: z.string().regex(/^0x[a-f\d]{64}$/i),
+      })
+      .strict()
+      .optional(),
     enrollmentOrigin: z.string().url(),
     rpcUrl: z.string().url(),
     maxCollateralMicros: z.string().regex(/^[1-9]\d{0,23}$/),
@@ -65,7 +72,8 @@ const at = z.object({
   t: integer.optional(),
   txid: z
     .string()
-    .regex(/^0x[a-f\d]{64}$/i)
+    .regex(/^(?:0x)?[a-f\d]{64}$/i)
+    .transform((hash) => `0x${hash.replace(/^0x/i, "").toLowerCase()}`)
     .optional(),
   l: integer.optional(),
 });
@@ -188,13 +196,51 @@ export function createPerplLiveDriver(config: {
     if (BigInt(String(await rpc.call("eth_chainId", []))) !== 10143n) {
       throw new PilotError("PERPL_TESTNET_ONLY", "RPC network mismatch");
     }
-    const code = await rpc.call("eth_getCode", [policy.exchange, "latest"]);
+    const implementationSlot = "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc";
+    const block = policy.exchangeImplementation
+      ? String(await rpc.call("eth_blockNumber", []))
+      : "latest";
+    const code = await rpc.call("eth_getCode", [policy.exchange, block]);
     if (
       typeof code !== "string" ||
       !/^0x[\da-f]+$/i.test(code) ||
       keccak256(code as Hex).toLowerCase() !== policy.exchangeCodeHash.toLowerCase()
     ) {
       throw new PilotError("PERPL_BINDINGS_CHANGED", "Perpl exchange bytecode changed");
+    }
+    if (!policy.exchangeImplementation) {
+      if (code.toLowerCase().includes(implementationSlot.slice(2))) {
+        throw new PilotError(
+          "PERPL_BINDINGS_CHANGED",
+          "Perpl proxy implementation is not reviewed",
+        );
+      }
+      return;
+    }
+    const implementation = await rpc.call("eth_getStorageAt", [
+      policy.exchange,
+      implementationSlot,
+      block,
+    ]);
+    if (
+      typeof implementation !== "string" ||
+      !/^0x0{24}[\da-f]{40}$/i.test(implementation) ||
+      `0x${implementation.slice(-40)}`.toLowerCase() !==
+        policy.exchangeImplementation.address.toLowerCase()
+    ) {
+      throw new PilotError("PERPL_BINDINGS_CHANGED", "Perpl proxy implementation changed");
+    }
+    const implementationCode = await rpc.call("eth_getCode", [
+      policy.exchangeImplementation.address,
+      block,
+    ]);
+    if (
+      typeof implementationCode !== "string" ||
+      !/^0x[\da-f]+$/i.test(implementationCode) ||
+      keccak256(implementationCode as Hex).toLowerCase() !==
+        policy.exchangeImplementation.codeHash.toLowerCase()
+    ) {
+      throw new PilotError("PERPL_BINDINGS_CHANGED", "Perpl implementation bytecode changed");
     }
   }
   async function accountId(address: string) {
@@ -541,7 +587,94 @@ export function createPerplLiveDriver(config: {
       ),
     };
   }
-  return {
+  const driver: PerplLiveDriver = {
+    async requirements() {
+      const ctx = await context();
+      return {
+        minimumAccountMicros: ctx.instance.minAccountOpen.toString(),
+        minimumDepositMicros: ctx.instance.minDeposit.toString(),
+        maximumCollateralMicros: policy.maxCollateralMicros,
+      };
+    },
+    async connectExistingKey(authority, document, input, validUntil) {
+      await chainGuard();
+      const seed = perplBytes(input.privateKeyHex.replace(/^0x/i, ""));
+      const prefix = perplBytes("302e020100300506032b657004220420");
+      const privateBytes = new Uint8Array(prefix.length + seed.length);
+      privateBytes.set(prefix);
+      privateBytes.set(seed, prefix.length);
+      seed.fill(0);
+      try {
+        const key = await crypto.subtle.importKey("pkcs8", privateBytes, "Ed25519", true, ["sign"]);
+        const jwk = await crypto.subtle.exportKey("jwk", key);
+        if (!jwk.x) {
+          throw new PilotError("PERPL_CREDENTIAL_INVALID", "Could not validate the trading key");
+        }
+        const rawPublic = Uint8Array.from(
+          atob(jwk.x.replaceAll("-", "+").replaceAll("_", "/")),
+          (value) => value.charCodeAt(0),
+        );
+        const publicKey = "0x" + perplHex(rawPublic);
+        let address = authority.address;
+        const binding = {
+          productAgentId: document.productAgentId,
+          address,
+          publicKey,
+        };
+        if (input.useKeyWallet) {
+          const discovery = {
+            ...document,
+            ...binding,
+            encryptedKey: await vault.seal(
+              perplHex(privateBytes),
+              perplKeyBinding(binding, "private"),
+            ),
+            encryptedToken: await vault.seal(input.apiKey, perplKeyBinding(binding, "token")),
+          };
+          const wallet = z
+            .object({ addr: z.string().regex(/^0x[a-f\d]{40}$/i) })
+            .parse(await http.request("/v1/trading/wallet", { document: discovery }));
+          address = wallet.addr.toLowerCase();
+          binding.address = address;
+        }
+        const id = await accountId(address);
+        if (!id) {
+          throw new PilotError("PERPL_ACCOUNT_REQUIRED", "This wallet has no Perpl account");
+        }
+        const encryptedKey = await vault.seal(
+          perplHex(privateBytes),
+          perplKeyBinding(binding, "private"),
+        );
+        const encryptedToken = await vault.seal(input.apiKey, perplKeyBinding(binding, "token"));
+        const candidate = {
+          ...document,
+          address,
+          accountId: id,
+          publicKey,
+          encryptedKey,
+          encryptedToken,
+          keyExpiresAt: validUntil,
+        };
+        const snapshot = await driver.snapshot({ ...authority, address }, candidate);
+        if (snapshot.frozen || !snapshot.forwarding) {
+          throw new PilotError(
+            "PERPL_FORWARDING_REQUIRED",
+            "Enable trading for this wallet's Perpl account first",
+          );
+        }
+        return { address, accountId: id, publicKey, encryptedKey, encryptedToken, snapshot };
+      } catch (error) {
+        if (error instanceof PilotError) {
+          throw error;
+        }
+        if (error instanceof z.ZodError) {
+          throw new PilotError("PERPL_RESPONSE_INVALID", "Perpl returned invalid account data");
+        }
+        throw new PilotError("PERPL_CREDENTIAL_INVALID", "Could not validate the trading key");
+      } finally {
+        privateBytes.fill(0);
+      }
+    },
     async prepareSetup(authority, document, amountMicros) {
       if (!config.forwarder || !config.reader) {
         throw new PilotError("PERPL_SIGNING_UNAVAILABLE", "Owner signing is not configured");
@@ -916,9 +1049,30 @@ export function createPerplLiveDriver(config: {
           latest.set(o.rq, order(o));
         }
       }
+      const openingRequests = new Set(
+        document.orders.filter((item) => item.request.t <= 2).map((item) => item.request.rq),
+      );
       const positions = new Map<number, PerplLivePosition>();
       for (const p of live.d.filter((p) => p.acc === account.id)) {
-        positions.set(p.pid, position(p));
+        const observed = position(p);
+        // Current snapshots can omit event provenance (rq=0). Associate only this document's
+        // opening event for the exact position; retain current aggregate size/collateral.
+        if (p.rq === 0) {
+          const opening = history.d.find(
+            (event) =>
+              event.pid === p.pid &&
+              event.acc === p.acc &&
+              event.mkt === p.mkt &&
+              event.sd === p.sd &&
+              event.lv === p.lv &&
+              event.st === 1 &&
+              openingRequests.has(event.rq),
+          );
+          if (opening) {
+            observed.requestId = opening.rq;
+          }
+        }
+        positions.set(p.pid, observed);
       }
       for (const p of history.d.filter((p) => p.acc === account.id)) {
         if (!positions.has(p.pid)) {
@@ -976,7 +1130,10 @@ export function createPerplLiveDriver(config: {
       }
       return wallet.sn;
     },
-    submit: http.submit,
+    async submit(document, request, guard) {
+      await chainGuard();
+      return http.submit(document, request, guard);
+    },
     async verifyTransaction(hash) {
       const receipt = (await rpc.call("eth_getTransactionReceipt", [hash])) as {
         status?: string;
@@ -998,4 +1155,5 @@ export function createPerplLiveDriver(config: {
       return block?.hash === receipt.blockHash && head >= BigInt(receipt.blockNumber!) + 2n;
     },
   };
+  return driver;
 }

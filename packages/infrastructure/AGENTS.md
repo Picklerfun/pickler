@@ -844,6 +844,11 @@ They never write financial attribution or change indexer state.
 
 ## Private Perpl execution adapters
 
+Perpl owner preparation verifies the reviewed ERC-1967 implementation address and runtime hash
+at one block as well as the proxy hash. Unreviewed proxies and changed implementations fail
+before owner signing or broadcast. The driver exposes public venue minimums and the reviewed
+per-deposit maximum; unavailable reads do not fabricate requirements.
+
 The server-only `perpl-live` export implements Trading's real testnet ports. It owns the private
 RLS aggregate, AES-GCM per-agent credentials, Ed25519 HTTP signing, reviewed policy and exact
 owner WebAuthn onboarding. Resolve owner/wallet/runtime identities from PostgreSQL, never a
@@ -888,3 +893,26 @@ to ten seconds, 64 positions, ten calls per batch and two MiB per response. Neve
 snapshots. Public context alone remains cached. Q16 entry residue goes to Trading; original
 leverage and historical stats stay unknown. This public source is the default web flow and does
 not depend on Perpl's third-party key enrollment or a user's wallet network.
+
+The Perpl driver's existing-key path imports only an owner-provided Ed25519 seed/token, derives
+its public key with WebCrypto, verifies the reviewed contract account and signed wallet reads,
+and returns only encrypted storage values to the business service. No enrollment, forwarding,
+approval, funding or order is sent. Read verification does not prove trade scope; Perpl enforces
+that independently on submission. Never reuse Polymarket credentials for Perpl.
+
+Perpl execution history accepts strict 32-byte transaction hashes with or without the provider's
+optional `0x` prefix and normalizes them before receipt verification or public projection. Invalid
+hashes still reject the response. Existing-key schema failures report `PERPL_RESPONSE_INVALID`,
+separately from credential or venue-authentication failures; no provider payload is included.
+
+Current Perpl position snapshots may use `rq=0`. The driver associates such a snapshot only with
+an opening event belonging to the document for the exact position/account/market/side/leverage;
+it keeps current aggregate quantities, not historical event deltas. Trading independently fences
+closure against verified owned quantity. Unattributed positions remain foreign.
+
+Explicit `useKeyWallet` imports discover the address through Ed25519-signed Perpl reads, verify
+its reviewed contract account and reseal credentials for that address. PostgreSQL retains the
+original agent custody address as an identity fence and still resolves owner/workspace/runtime
+from persisted rows. An account-scoped advisory lock and global duplicate check allow a connected
+Perpl account on only one agent, preventing request-ID collisions across aggregates. No wallet
+address comes from the caller; changing account identity cannot move existing history.
