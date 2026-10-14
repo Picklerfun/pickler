@@ -389,6 +389,10 @@ re-evaluated as executable signals. Retain interrupted attempts and their unchan
 
 ## Bounded local PTS reports
 
+New PTS report manifests use v3 and hash the actual canonical JSON projection while streaming it.
+Keep byte hashes separate from the semantic report hash and preserve historical v2 artifacts and
+source/policy digest meanings. Read [report JSON integrity](PTS-REPORT-JSON-INTEGRITY.md).
+
 Local PTS v8/v9 exports use the additive segmented audit v2 manifest and consistent paged
 read-only PostgreSQL capture. V1 audit packets remain readable. Offline dispatch validates the
 stored protocol/version before loading providers. Full native evidence stays in private hashed
