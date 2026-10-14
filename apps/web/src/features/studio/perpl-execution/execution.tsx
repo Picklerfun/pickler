@@ -15,6 +15,7 @@ import { perplExecutionMessage } from "./use-execution";
 import styles from "./execution.module.css";
 import { ExistingPerplKey } from "./existing-key";
 import { useMarketplaceHref } from "@/features/site/studio-href";
+import { ChainReference } from "@/features/tokens/chain-reference";
 
 const setupLabels = {
   approve: "Approve collateral for Perpl",
@@ -34,21 +35,25 @@ const orderLabels = {
   cancelled: "Cancelled",
   expired: "Expired",
 };
-function TransactionLinks({ hashes }: { hashes: string[] }) {
+function TransactionLinks({ hashes, preview }: { hashes: string[]; preview: boolean }) {
+  if (hashes.length === 0) {
+    return <span className={styles.note}>No transaction hash recorded.</span>;
+  }
   return (
-    <span className={styles.links}>
+    <div className={styles.links} aria-label="Transaction hashes">
       {hashes.map((hash, index) => (
-        <a
-          className={styles.link}
-          key={hash}
-          href={`https://testnet.monadscan.com/tx/${hash}`}
-          target="_blank"
-          rel="noreferrer"
-        >
-          View transaction{hashes.length > 1 ? ` ${index + 1}` : ""}
-        </a>
+        <div className={styles.transaction} key={hash}>
+          <span className={styles.note}>Tx hash{hashes.length > 1 ? ` ${index + 1}` : ""}</span>
+          <ChainReference
+            value={hash}
+            chainId={10143}
+            kind="tx"
+            label={`Perpl transaction${hashes.length > 1 ? ` ${index + 1}` : ""}`}
+            preview={preview}
+          />
+        </div>
       ))}
-    </span>
+    </div>
   );
 }
 export function PerplTradingControls({
@@ -181,7 +186,9 @@ export function PerplTradingControls({
                       Checking this account step. Its authorization will not be repeated.
                     </p>
                   )}
-                  {setup.txHash && <TransactionLinks hashes={[setup.txHash]} />}
+                  {setup.txHash && (
+                    <TransactionLinks hashes={[setup.txHash]} preview={execution.preview} />
+                  )}
                 </div>
               ) : (
                 <Button
@@ -465,7 +472,7 @@ export function PerplTradingRecord({
                   Filled {o.filledSize ?? "—"} · Price {o.fillPrice ?? "—"} · Fee {o.feeAusd ?? "—"}{" "}
                   AUSD
                 </span>
-                <TransactionLinks hashes={o.txHashes} />
+                <TransactionLinks hashes={o.txHashes} preview={execution.preview} />
               </div>
               <span className={styles.status}>{orderLabels[o.status]}</span>
             </li>

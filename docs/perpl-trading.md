@@ -135,6 +135,12 @@ exchange, have a canonical block and at least two subsequent blocks. This valida
 it is not an independent decoding of every economic fill event. Setup links may show a pending
 already-signed transaction. Remote acceptance must compare order/position identities and receipts.
 
+Positions (Recent orders) and Record (Transactions · Perpl) show each recorded transaction hash,
+abbreviated on screen with the full value available by copying or hovering. The hash itself links
+to Monad testnet's explorer. An order with no recorded hash says so; request and order IDs are not
+substituted for transaction hashes. Preview references remain unlinked. Setup references use the
+same display; their presence alone does not mean a receipt is confirmed.
+
 ## Configuration and migrations
 
 See the separate [dated readiness record](perpl-operational-readiness-20261013.md) for actual

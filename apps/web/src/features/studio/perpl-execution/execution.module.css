@@ -58,12 +58,14 @@
 }
 .links {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: 8px;
 }
-.link {
-  color: var(--pk-lime);
-  text-decoration: underline;
+.transaction {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 .error {
   color: var(--pk-loss);

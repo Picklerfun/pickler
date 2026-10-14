@@ -1498,3 +1498,9 @@ Select over the agent's authorized markets, blocks occupied markets, and links a
 hosts to the connected wallet dashboard. Positions show a Close action only for server-labelled
 `managedBySession` positions; prior positions remain visible and read-only. Backend rules are
 authoritative; there is no key persistence or financial policy in the browser.
+
+Perpl order history renders each server-provided transaction hash through the existing shared
+ChainReference: visible abbreviated hash, full-value copy and the Monad testnet explorer link.
+Positions reuse the same compact history; setup references use the same control. An absent hash
+remains explicitly unrecorded, independently of request/order identifiers and fill status.
+Inert previews never receive an explorer link. This is presentation only and adds no requests.
