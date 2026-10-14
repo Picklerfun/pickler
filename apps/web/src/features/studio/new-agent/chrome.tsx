@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { Button, Icon, Tag } from "@pickler/ui";
+import { NetworkSelector } from "@/features/site/network-selector";
 import { accentVars } from "@/lib/accent";
 import { HomeMenu } from "../home/menu";
 import { RAIL } from "../sections/rail";
@@ -91,9 +92,7 @@ export function Chrome({
           </span>
         )}
         <span className={home.spacer} />
-        <span className={home.pill} data-tint="grey">
-          TESTNET
-        </span>
+        <NetworkSelector />
         {master && (
           <button
             type="button"

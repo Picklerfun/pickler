@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Icon } from "@pickler/ui";
 import { useStudioHref } from "./studio-href";
+import { NetworkSelector } from "./network-selector";
 import { AccountMenu } from "@/features/wallet/components/account-menu";
 import { useState } from "react";
 import styles from "./site-nav.module.css";
@@ -131,6 +132,7 @@ export function SiteNav({
 
           {/* Two different people, side by side: connecting a wallet is for readers and backers,
               and the action beside it goes to the studio, which is where an agent is made. */}
+          <NetworkSelector />
           {connect && <AccountMenu />}
           {/* The one inverted thing in the bar. An inverted block has to be told what it inverts
               *from*: hard-coding dark here is right only while the bar is light, and on the dark

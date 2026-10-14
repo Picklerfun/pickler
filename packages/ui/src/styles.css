@@ -724,6 +724,51 @@ h2 {
   border-radius: var(--pk-radius-pill);
 }
 
+/* Native selection keeps the browser's arrow, options and keyboard behavior. */
+.pk-select {
+  max-width: 100%;
+  min-width: 0;
+  padding: var(--pk-control-md);
+  border: 1px solid var(--pk-rule-strong);
+  border-radius: var(--pk-radius-sm);
+  background-color: var(--pk-panel);
+  color: var(--pk-ink);
+  font: var(--pk-control-font-md) var(--pk-font);
+  cursor: pointer;
+  transition:
+    border-color var(--pk-duration),
+    background-color var(--pk-duration);
+}
+
+.pk-select:hover:not(:disabled) {
+  background-color: var(--pk-panel-2);
+}
+
+.pk-select:focus-visible {
+  outline: 2px solid var(--pk-focus);
+  outline-offset: 2px;
+}
+
+.pk-select:disabled,
+.pk-select option:disabled {
+  color: var(--pk-ink-muted);
+  cursor: not-allowed;
+}
+
+.pk-select[data-size="sm"] {
+  padding: var(--pk-control-sm);
+  font: var(--pk-control-font-sm) var(--pk-font);
+}
+
+.pk-select[data-size="lg"] {
+  padding: var(--pk-control-lg);
+  font: var(--pk-control-font-lg) var(--pk-font);
+}
+
+.pk-select[data-shape="pill"] {
+  border-radius: var(--pk-radius-pill);
+}
+
 .pk-textarea {
   line-height: 1.5;
   resize: vertical;

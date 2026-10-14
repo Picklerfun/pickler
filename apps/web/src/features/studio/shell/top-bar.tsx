@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
 import { Icon } from "@pickler/ui";
+import { NetworkSelector } from "@/features/site/network-selector";
 import type { Agent, StudioWallets } from "../api";
 import { menuAccess } from "../home/access";
 import { formatUnits, unitsOf } from "../new-agent/model";
@@ -172,7 +173,7 @@ export function StudioTopBar({
       </div>
       {status}
       <span className={home.spacer} />
-      <span className={styles.testnet}>TESTNET</span>
+      <NetworkSelector />
       <button
         type="button"
         className={topBar.topPill}

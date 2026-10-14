@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "@pickler/ui";
+import { NetworkSelector } from "@/features/site/network-selector";
 import { SecondPasskey } from "@/features/auth/components/second-passkey";
 import type { PasskeysKnown } from "@/features/auth/lib/second-passkey";
 import { accentVars } from "@/lib/accent";
@@ -252,7 +253,6 @@ export function Home({
         <Link href="/" className={styles.brand}>
           <Image src="/brand/logo.png" alt="" width={22} height={22} priority />
           <span>PICKLER</span>
-          <small>TESTNET</small>
         </Link>
         <span className={styles.agentChip}>
           <span className={styles.chipMark} style={accentVars(agent.accent)} aria-hidden="true">
@@ -266,6 +266,7 @@ export function Home({
           {status.pill}
         </span>
         <span className={styles.spacer} />
+        <NetworkSelector />
         <HomeMenu
           agent={agent}
           agents={agents}

@@ -82,6 +82,17 @@ Controls come from `@pickler/ui`: `Button`/`ButtonLink` for actions (`glow` is t
 
 Market data is drawn with `CandleChart` and `BarChart` from `@pickler/ui` — the price panel on a token page and every series under the leaderboard. Features hand them timestamped buckets and nothing else; colours and type come from the surface. The library's own logo is off, so `PublicShell` carries the TradingView credit its licence asks for; any new surface that shows a chart needs that credit too.
 
+## Product network selector
+
+`features/site/network-selector.tsx` renders the shared native `Select` from `@pickler/ui` in
+`LandingNav`, `SiteNav` and all three Studio top bars (home, creation and draft/live shell). Its presentation
+catalogue in `features/site/networks.ts` uses `@pickler/chain` metadata: Testnet is active;
+Mainnet is visible as "Coming soon" and disabled. The accessible description explains why.
+There is no persistence, wallet ceremony or API request on selection: both products remain on
+Testnet. This is not backend authorization or a mainnet launch switch. See
+[Network selector and mainnet readiness](../../docs/network-selector.md) before enabling a second
+network. Keep the selected product network distinct from the browser wallet's connected chain.
+
 ## The wallet
 
 `features/wallet/` owns the connection. `lib/signer.ts` is the contract the rest of the site talks to — address, chain, balance, connect, disconnect — and two adapters implement it, the marketplace's two wallets and no others (`docs/specs/mera-web-v1.md`):

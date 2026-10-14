@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Icon } from "@pickler/ui";
+import { NetworkSelector } from "@/features/site/network-selector";
 import styles from "../landing.module.css";
 
 /**
@@ -37,6 +38,8 @@ export function LandingNav({
         <a href="#how" className={styles.navLink}>
           HOW IT WORKS
         </a>
+
+        <NetworkSelector />
 
         <a
           href="#waitlist"

@@ -149,12 +149,6 @@
 .statusDot {
   composes: pillDot from "../home/home.module.css";
 }
-.testnet {
-  composes: pill from "../home/home.module.css";
-  background: var(--pk-panel);
-  color: var(--pk-ink-muted);
-  letter-spacing: 0.08em;
-}
 
 /* ---------- Body: rail and main ---------- */
 
