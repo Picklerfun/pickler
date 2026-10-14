@@ -21,7 +21,7 @@ const messages: Record<string, string> = {
     "This agent's wallet needs an existing Perpl account before connecting a key.",
   PERPL_FORWARDING_REQUIRED: "Enable order forwarding for this wallet's account in Perpl first.",
   PERPL_EVIDENCE_MISMATCH:
-    "This key belongs to a different wallet. Use a key for this agent's wallet.",
+    "Perpl account or order data does not match this agent. Review its wallet and venue history.",
   PERPL_HTTP_401: "Perpl refused this key. It may be invalid, expired or revoked.",
   PERPL_SETUP_REQUIRED: "Prepare the agent's Perpl account first.",
   PERPL_SETUP_PENDING: "Finish the pending account step before preparing another.",
