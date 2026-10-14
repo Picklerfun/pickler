@@ -283,3 +283,31 @@ updated their canonical block/marks automatically and required no wallet signatu
 Owner sign-in also succeeded. The selected agent's additional NEAR configuration is prepared in
 the browser but remains uncommitted pending the browser-required access confirmation. No hosted
 owner connection or financial session has been claimed as accepted at this checkpoint.
+
+## Visible hashes and hosted owner readiness on 2026-10-14 UTC
+
+After the owner's explicit browser confirmation, the additional NEAR market was saved as
+configuration v4 and the owner-provided testnet key wallet was connected to the selected owned
+agent. The actual hosted Controls and Positions surfaces reported READY, six pre-existing
+positions and zero new orders. NEAR, 0.06 AUSD, 1x and a 30-second target hold were prepared in
+Controls. This supersedes the preceding uncommitted-configuration checkpoint; it does not claim
+a completed hosted financial cycle.
+
+Source `2a581f8a` exposes each server-provided transaction hash in Positions' recent orders and
+Record, with an abbreviated explorer link, full-value copy and explicit missing-hash state.
+It reuses ChainReference and adds no provider requests, signing or financial mutations. Inert
+preview references remain unlinked. Setup references use the same display and retain their
+existing confirmation semantics.
+
+The production Web Worker build, affected web types, scoped lint/format, architecture, static
+Design check over 478 files and two Perpl client tests passed. A separate read-only local browser
+harness checked both history surfaces, exact full-hash clipboard contents, explorer destinations,
+multiple hashes, an absent hash and unlinked preview references. Its recorded local acceptance
+samples are not hosted agent orders and were never inserted into the application database.
+
+Only Web was republished for this presentation change, as version
+`38837a7c-590b-42a5-9cd4-0d7449a63394`, observed at 100% traffic. The hosted JavaScript asset matched
+the tested local build byte for byte, and the existing API OpenAPI transport returned 200.
+Bindings and runtime variables were retained; no migration, backend republication, deposit or
+additional local trade was performed. PR #185 remains unmerged, and the authenticated hosted
+open/close acceptance still awaits the owner's explicit Start trading action.
