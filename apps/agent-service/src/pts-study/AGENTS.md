@@ -107,3 +107,10 @@ These measurements cannot reconstruct missing historical transport phases or aut
 V9 also explicitly accepts responsive 0.2.0-fast.2. Pin ptsConfigVersion/ptsPolicy and immutable account policy; never relabel a prepared fast.1 session. Offline development projections preserve source byte hashes and distinguish changed temporal roles from historical request identity. Read [the responsive guide](../../PTS-INTRADAY-RESPONSIVE.md); candle signals and controlled favorable fills never prove public profitability.
 
 Report presentation pts-omitted-row-presentation-v1 labels a missing decision row as DATA_UNAVAILABLE only from an explicit stored omittedSlots entry. Preserve sourceStatus/sourceReason and the recorded phase/cause; absent provenance stays null. Never relabel valid holds, partial proposals or future missing rows, infer transport phases, modify financial results or amend frozen runtime files.
+
+Report manifest pts-report-manifest-v3 declares sha256-canonical-published-json-v1. Serialize native
+JSON values with canonical object-key ordering and hash those same emitted chunks, excluding the
+final newline. Optional undefined fields must not create an unreproducible report hash. Preserve
+legacy canonicalAudit/source/policy hashes and v2 artifacts; re-render saved evidence into a new
+directory only. Never clone a whole report through stringify/parse or evaluate toJSON twice for
+hashing. This presentation repair does not change financial policy or resume interrupted studies.
