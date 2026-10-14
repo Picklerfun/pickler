@@ -7,12 +7,20 @@ product network control. `NetworkSelector` is present in the landing's own `Land
 marketplace's `SiteNav`, and the Studio home, creation and draft/live top bars. It is available
 without a connected wallet.
 
-The native `Select` exported by `@pickler/ui` follows the light/dark control tokens. The web's
+The custom menu uses `Button`, `Tag` and `Icon` from `@pickler/ui` and follows the light/dark control tokens.
+Its trigger carries the Monad mark, network name and Testnet tag; the panel shows both networks,
+the active checkmark and the locked Mainnet state. The web's
 presentation catalogue uses the existing metadata from `@pickler/chain`: Monad Testnet (10143)
 is selected; Monad Mainnet (143) is shown as **Mainnet — Coming soon** and disabled. Its accessible
 description explains the restriction. Opening the selector never connects a wallet, asks for a
 signature, submits a transaction or changes backend configuration. The selection is rendered the
 same on the server and client. With only one available network, no preference storage is needed.
+
+Opening focuses the active menu item. Arrow keys, Home and End navigate enabled items; Enter or
+Space select the active item and close the menu. Escape restores trigger focus; outside clicks
+and focus leaving dismiss the menu. Mainnet is natively disabled. The panel stays within viewport
+edges on mobile, and its reveal animation respects reduced-motion preferences. The generic native
+`Select` remains available in the UI package but does not render this product control.
 
 This delivery does not enable mainnet, migrate agents or change funds. The catalogue is a
 presentation description, not authorization. This selector introduces no environment flag that
@@ -62,16 +70,22 @@ These are requirements for a future delivery, not implemented capabilities:
 
 ## Verification
 
-Check native keyboard navigation, disabled Mainnet, accessible name/description, mobile wrapping,
+Check menu keyboard navigation, disabled Mainnet, accessible name/description, mobile wrapping,
 light/dark styling and consistent Testnet selection across product navigation and reloads. Use
 controlled fixtures for visual checks; no provider calls or financial transactions are required.
 Run the relevant web/UI typechecks, lint, formatting, build and design checks. Local checks do
 not establish deployed mainnet readiness.
 
-Local validation on 2026-10-14 passed: web production build, web/UI typechecks, lint, scoped
+Initial native-control validation on 2026-10-14 passed: web production build, web/UI typechecks, lint, scoped
 Prettier, architecture/link checks and 62 host-routing, import-boundary and Studio landing tests.
 The design harness passed surfaces, tokens, contrast and typography on the landing, home, creation,
 draft and published Studio fixtures. Desktop/mobile screenshots were inspected. Browser checks
 at 1400px and 390px confirmed disabled Mainnet, accessible description, keyboard behavior,
 restoration of Testnet after a synthetic change, reload persistence and viewport fit. Navigation
 from the marketplace to Studio retained Testnet, with no API mutations or page/hydration errors.
+
+Custom-menu validation on 2026-10-14 passed web production build, typecheck, scoped lint,
+formatting, static design checks and architecture/link checks. The live preview was inspected
+on light and dark surfaces at its normal viewport and 390px. Arrow-key opening, Home/End,
+Enter, Escape with focus restoration, Tab dismissal and outside-click dismissal were verified.
+Mainnet remained disabled, and the menu stayed inside the mobile viewport on both surfaces.

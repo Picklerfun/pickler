@@ -84,10 +84,14 @@ Market data is drawn with `CandleChart` and `BarChart` from `@pickler/ui` — th
 
 ## Product network selector
 
-`features/site/network-selector.tsx` renders the shared native `Select` from `@pickler/ui` in
+`features/site/network-selector.tsx` renders a custom network menu using `Button`, `Tag` and `Icon` from `@pickler/ui` in
 `LandingNav`, `SiteNav` and all three Studio top bars (home, creation and draft/live shell). Its presentation
 catalogue in `features/site/networks.ts` uses `@pickler/chain` metadata: Testnet is active;
 Mainnet is visible as "Coming soon" and disabled. The accessible description explains why.
+The compact trigger carries Monad's mark and a Testnet tag. Opening focuses the active radio menu
+item; arrow keys/Home/End navigate enabled items, Escape restores trigger focus, and outside clicks
+or focus leaving close the menu. Positioning keeps the panel within the mobile viewport. Motion
+respects reduced-motion preferences. `Select` remains a generic native UI export for other forms.
 There is no persistence, wallet ceremony or API request on selection: both products remain on
 Testnet. This is not backend authorization or a mainnet launch switch. See
 [Network selector and mainnet readiness](../../docs/network-selector.md) before enabling a second
