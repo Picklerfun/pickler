@@ -9,6 +9,7 @@ export interface PerplLiveAuthority {
   tenantId: string;
   agentId: string;
   address: string;
+  custodyAddress?: string;
   organizationId: string;
   configVersion: number;
   enabled: boolean;
@@ -115,6 +116,8 @@ export interface PerplLiveOrder {
   error: string | null;
 }
 export interface PerplLiveSession {
+  /** Positions observed before the first opening; never managed by this session. */
+  preservedPositions?: { id: number; marketId: number }[];
   retryExitOrderId?: string;
   id: string;
   key: string;
@@ -149,6 +152,7 @@ export interface PerplLiveSetup {
   error: string | null;
 }
 export interface PerplLiveDocument {
+  connection?: { kind: "key_wallet"; custodyAddress: string };
   productAgentId: string;
   version: 1;
   address: string;
@@ -176,6 +180,7 @@ export interface PerplLiveRepository {
   due(limit: number): Promise<PerplLiveScope[]>;
 }
 export interface PerplLiveExistingKey {
+  useKeyWallet?: boolean;
   apiKey: string;
   privateKeyHex: string;
 }
@@ -186,6 +191,7 @@ export interface PerplLiveDriver {
     input: PerplLiveExistingKey,
     validUntil: number,
   ): Promise<{
+    address?: string;
     accountId: number;
     publicKey: string;
     encryptedKey: string;

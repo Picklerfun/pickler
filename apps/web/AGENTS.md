@@ -1485,3 +1485,16 @@ passes transiently through the authenticated same-origin route; backend-created 
 return. Password fields are cleared on submit and agent change, never stored, and preview submits
 are disabled. The HTTP controller serializes mutations and ignores superseded agent responses.
 `setupEnabled=false` disables owner funding/enrollment while existing-key trading remains separate.
+
+The public dashboard also accepts a validated `/perpl?wallet=<address>` read-only link. Its explicit
+address takes precedence over the connected wallet for portfolio reads and is labelled in the
+view. It never changes wallet identity, authentication, signing or order permissions. Invalid
+addresses use the normal connected-wallet flow. Serial polling and snapshot identity checks
+remain unchanged. Studio session copy distinguishes one new position from unmanaged prior positions.
+
+Controls can explicitly connect the wallet of an owner-provided Perpl key, with a labelled
+shared Switch and no caller-supplied wallet address. It offers a keyboard-accessible shared
+Select over the agent's authorized markets, blocks occupied markets, and links across product
+hosts to the connected wallet dashboard. Positions show a Close action only for server-labelled
+`managedBySession` positions; prior positions remain visible and read-only. Backend rules are
+authoritative; there is no key persistence or financial policy in the browser.

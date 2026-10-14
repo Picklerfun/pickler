@@ -1,11 +1,20 @@
 "use client";
 import { useState } from "react";
-import { Button, Field, Input } from "@pickler/ui";
+import { Button, Field, Input, ButtonLink } from "@pickler/ui";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@pickler/ui/select";
 import type { Agent } from "../api";
 import type { PerplExecution } from "./use-execution";
 import { perplExecutionMessage } from "./use-execution";
 import styles from "./execution.module.css";
 import { ExistingPerplKey } from "./existing-key";
+import { useMarketplaceHref } from "@/features/site/studio-href";
 
 const setupLabels = {
   approve: "Approve collateral for Perpl",
@@ -53,9 +62,13 @@ export function PerplTradingControls({
   canManage: boolean;
   onLimits?: () => void;
 }) {
-  const [margin, setMargin] = useState(String(agent.spend?.perCallAusd ?? 10));
+  const [selectedSymbol, setSymbol] = useState(agent.config.perpl?.markets[0] ?? "");
+  const markets = agent.config.perpl?.markets ?? [];
+  const symbol = markets.includes(selectedSymbol) ? selectedSymbol : (markets[0] ?? "");
+  const walletHref = useMarketplaceHref(`/perpl?wallet=${execution.state?.address ?? ""}`);
+  const [margin, setMargin] = useState(String(Math.min(agent.spend?.perCallAusd ?? 1, 1)));
   const [collateral, setCollateral] = useState<string | null>(null);
-  const [holding, setHolding] = useState("60");
+  const [holding, setHolding] = useState("30");
   const [funding, setFunding] = useState(false);
   const state = execution.state;
   const minimumRequirement = state?.setupRequired
@@ -68,6 +81,9 @@ export function PerplTradingControls({
   const active =
     !!state?.session && ["active", "paused", "stopping", "frozen"].includes(state.session.status);
   const disabled = execution.busy || execution.preview || !canManage;
+  const marketOccupied = !!state?.positions.some(
+    (p) => !p.closed && p.symbol === symbol && !p.managedBySession,
+  );
   const preparePending = !!setup && !["confirmed", "failed"].includes(setup.status);
   return (
     <section
@@ -86,7 +102,8 @@ export function PerplTradingControls({
       ) : (
         <>
           <p className={styles.note}>
-            Orders run from this agent&apos;s Perpl account. One position at a time, at 1× leverage.
+            Orders run from this agent&apos;s Perpl account. One new position at a time, at 1×
+            leverage. Existing positions in other markets stay outside this session.
           </p>
           {state.setupRequired && !preparePending && (
             <ExistingPerplKey
@@ -194,7 +211,20 @@ export function PerplTradingControls({
             <>
               <div className={styles.form}>
                 <Field label="Market">
-                  <Input value={agent.config.perpl?.markets[0] ?? ""} readOnly />
+                  <Select value={symbol} onValueChange={setSymbol} disabled={disabled || active}>
+                    <SelectTrigger aria-label="Trading market">
+                      <SelectValue placeholder="Select a market" />
+                    </SelectTrigger>
+                    <SelectContent data-surface="dark">
+                      <SelectGroup>
+                        {(agent.config.perpl?.markets ?? []).map((market) => (
+                          <SelectItem key={market} value={market}>
+                            {market}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
                 </Field>
                 <Field label="Margin · AUSD">
                   <Input
@@ -217,15 +247,24 @@ export function PerplTradingControls({
                 One opening and one closing. Confirmed executions and their transactions appear in
                 Positions and Record.
               </p>
+              {marketOccupied && !active ? (
+                <p className={styles.note}>
+                  This market has an existing position. Choose another market for a separate trading
+                  cycle.
+                </p>
+              ) : null}
+              {state.connection === "key_wallet" && state.address ? (
+                <ButtonLink href={walletHref}>View connected wallet</ButtonLink>
+              ) : null}
               <div className={styles.actions}>
                 {!active ? (
                   <Button
                     variant="primary"
                     id="perpl-start-trading"
-                    disabled={disabled || !state.admissionsEnabled}
+                    disabled={disabled || !state.admissionsEnabled || marketOccupied || !symbol}
                     onClick={() =>
                       void execution.start({
-                        symbol: agent.config.perpl?.markets[0] ?? "",
+                        symbol,
                         marginAusd: margin,
                         leverage: 1,
                         cycles: 1,
@@ -345,18 +384,24 @@ export function PerplTradingPositions({
               <div className={styles.copy}>
                 <strong>{p.unrealizedPnlAusd ?? "—"} AUSD</strong>
                 <span className={styles.note}>Unrealized P&L</span>
-                <Button
-                  size="sm"
-                  disabled={
-                    !canManage ||
-                    execution.preview ||
-                    execution.busy ||
-                    state.session?.status === "stopping"
-                  }
-                  onClick={() => void execution.control("close")}
-                >
-                  {state.session?.status === "stopping" ? "Closing…" : "Close position"}
-                </Button>
+                {p.managedBySession ? (
+                  <Button
+                    size="sm"
+                    disabled={
+                      !canManage ||
+                      execution.preview ||
+                      execution.busy ||
+                      state.session?.status === "stopping"
+                    }
+                    onClick={() => void execution.control("close")}
+                  >
+                    {state.session?.status === "stopping" ? "Closing…" : "Close position"}
+                  </Button>
+                ) : (
+                  <span className={styles.note}>
+                    Existing position · not managed by this session
+                  </span>
+                )}
               </div>
             </li>
           ))}

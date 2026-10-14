@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { Button, Field, Input } from "@pickler/ui";
+import { Button, Field, Input, Switch } from "@pickler/ui";
 import type { PerplLiveExistingKeyDto } from "@pickler/api-schema";
 import styles from "./execution.module.css";
 
@@ -13,10 +13,11 @@ export function ExistingPerplKey({
   disabled: boolean;
   connect: (input: PerplLiveExistingKeyDto) => Promise<void>;
 }) {
+  const [useKeyWallet, setUseKeyWallet] = useState(true);
   const [apiKey, setApiKey] = useState("");
   const [privateKeyHex, setPrivateKeyHex] = useState("");
   async function submit() {
-    const input = { apiKey: apiKey.trim(), privateKeyHex: privateKeyHex.trim() };
+    const input = { apiKey: apiKey.trim(), privateKeyHex: privateKeyHex.trim(), useKeyWallet };
     setApiKey("");
     setPrivateKeyHex("");
     await connect(input);
@@ -25,9 +26,15 @@ export function ExistingPerplKey({
     <details className={styles.copy}>
       <summary>Use an existing Perpl key</summary>
       <p className={styles.note}>
-        Connect a read + trade key for this agent&apos;s wallet{address ? ` (${address})` : ""}.
-        This does not deposit funds or start trading.
+        Connect your existing Perpl testnet account to this agent. Pickler verifies the wallet from
+        your key. This does not deposit funds or start trading.
       </p>
+      <Switch checked={useKeyWallet} onCheckedChange={setUseKeyWallet} disabled={disabled}>
+        Use this key’s wallet
+      </Switch>
+      {!useKeyWallet && address ? (
+        <p className={styles.note}>The key must match {address}.</p>
+      ) : null}
       <Field label="Perpl API key">
         <Input
           type="password"

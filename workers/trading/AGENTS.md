@@ -47,3 +47,9 @@ testnet acceptance credentials. They do not automatically replace per-agent encr
 create product accounts or start sessions. The current owner connection route continues to require
 its write-only inputs and a persisted wallet match. Never expose these bindings to Web/Research
 or use them as a fallback for an unrelated agent.
+
+The owner import supports explicit `useKeyWallet=true`: the adapter discovers the wallet from
+the signed key and persistence binds its account exclusively to that agent. Original custody
+ownership remains mandatory and external account setup/funding is disabled. Public state shows
+`connection` and positions' `managedBySession`; no credential or private baseline is returned.
+Operator environment keys remain acceptance-only and are never an automatic product fallback.

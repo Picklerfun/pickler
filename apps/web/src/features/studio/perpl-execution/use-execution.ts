@@ -17,6 +17,8 @@ const messages: Record<string, string> = {
   PERPL_ADMISSIONS_PAUSED: "New trading sessions are currently paused.",
   PERPL_CREDENTIAL_INVALID:
     "The Perpl key could not be verified. Check its token and Ed25519 secret.",
+  PERPL_ACCOUNT_IN_USE: "This Perpl account is already connected to another agent.",
+  PERPL_ACCOUNT_CHANGED: "The connected account has history and cannot move to a different wallet.",
   PERPL_ACCOUNT_REQUIRED:
     "This agent's wallet needs an existing Perpl account before connecting a key.",
   PERPL_FORWARDING_REQUIRED: "Enable order forwarding for this wallet's account in Perpl first.",
@@ -33,6 +35,8 @@ const messages: Record<string, string> = {
   PERPL_INSUFFICIENT_COLLATERAL: "There is not enough collateral in the Perpl account.",
   PERPL_ORDER_NOT_FILLED: "Perpl did not fill the order. Trading has stopped for review.",
   PERPL_SYNC_UNAVAILABLE: "Perpl has not answered. The last confirmed state is shown.",
+  PERPL_MARKET_OCCUPIED:
+    "This market already has a position. Select an unoccupied market for this session.",
   PERPL_UNEXPECTED_POSITION:
     "The account has a position outside this session. Review it before starting again.",
 };

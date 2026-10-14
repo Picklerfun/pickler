@@ -909,3 +909,10 @@ Current Perpl position snapshots may use `rq=0`. The driver associates such a sn
 an opening event belonging to the document for the exact position/account/market/side/leverage;
 it keeps current aggregate quantities, not historical event deltas. Trading independently fences
 closure against verified owned quantity. Unattributed positions remain foreign.
+
+Explicit `useKeyWallet` imports discover the address through Ed25519-signed Perpl reads, verify
+its reviewed contract account and reseal credentials for that address. PostgreSQL retains the
+original agent custody address as an identity fence and still resolves owner/workspace/runtime
+from persisted rows. An account-scoped advisory lock and global duplicate check allow a connected
+Perpl account on only one agent, preventing request-ID collisions across aggregates. No wallet
+address comes from the caller; changing account identity cannot move existing history.

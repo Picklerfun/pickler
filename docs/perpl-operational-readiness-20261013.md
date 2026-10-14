@@ -231,3 +231,39 @@ The adapter/closure correction from `6b2fbca8` is published as Trading version
 all prior plaintext variables were verified unchanged from the secret-update publication. No
 Web/API/Research republication or financial request is part of this correction. PR #185 remains
 unmerged; the full product-owner authenticated financial acceptance is still pending.
+
+## Isolated existing-wallet execution and owner web connection
+
+The owner identified the imported testnet wallet as their existing portfolio and explicitly
+requested preserving/displaying its positions while making additional small trades. A new bounded
+session now records pre-existing positions in other markets before its first order. It refuses an
+occupied selected market; its closure still requires exact verified net fills and leverage.
+Historical sessions never acquire unrelated position ownership retrospectively.
+
+An explicit local operator run on 2026-10-14 UTC opened and closed one minimum NEAR lot (0.01 NEAR)
+at 1x with a 0.06 AUSD margin ceiling, 10 bps slippage and a 30-second target hold. Perpl reported
+both orders filled; both transaction receipts passed the existing reviewed-exchange/canonical-block
+verification. The two reported fees total 36 micro-AUSD (0.000036 AUSD). Six pre-existing positions
+retained their exact position IDs, markets, quantities, entry prices and original leverage. The
+session completed one cycle with no remaining NEAR position, deposits or extra opening attempts.
+The private operator audit remains ignored; this is actual local provider execution, separate
+from hosted owner/JWT execution and controlled fixtures.
+
+Controls now accepts an explicit `useKeyWallet` import. Signed Perpl reads resolve the address;
+reviewed chain state verifies the account. The original agent custody address remains an ownership
+fence. Account-scoped PostgreSQL serialization prevents two agents from connecting the same venue
+account. External connections disable custody setup/funding and cannot move existing histories.
+No operator environment credential is an automatic agent fallback. Shared business-owned position
+attribution labels prior positions as unmanaged and limits Close actions to owned positions.
+
+The public `/perpl?wallet=<address>` link uses real public contract reads without connecting or
+impersonating a browser wallet. The hosted API returned the expected six positions. Controlled
+browser acceptance covers explicit links, reload, invalid addresses, connected-wallet changes and
+320/380/768/1280 widths. Five affected Design screens pass surfaces, tokens, contrast and type.
+The final focused suites pass 71 tests with no failures or skips, including real disposable
+PostgreSQL account exclusivity and original migration-history preservation. Affected types, lint,
+shared compilation, architecture, the 229-operation generated contract and affected Worker builds
+are verified separately from deployed acceptance.
+
+Hosted publication and the owner-triggered web opening/closing still require their own recorded
+versions and observations; the local operator run alone does not establish either.

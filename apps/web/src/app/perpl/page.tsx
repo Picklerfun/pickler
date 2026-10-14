@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { perplPublicWalletSchema } from "@pickler/api-schema";
 import { PublicShell } from "@/features/agents/components/public-shell";
 import { PerplDashboard } from "@/features/perpl/dashboard";
 export const metadata: Metadata = {
@@ -8,7 +9,7 @@ export const metadata: Metadata = {
 export default async function PerplPage({
   searchParams,
 }: {
-  searchParams: Promise<{ preview?: string }>;
+  searchParams: Promise<{ preview?: string; wallet?: string }>;
 }) {
   const params = await searchParams;
   if (process.env.NODE_ENV !== "production" && params.preview === "wallet") {
@@ -19,9 +20,10 @@ export default async function PerplPage({
       </PublicShell>
     );
   }
+  const wallet = perplPublicWalletSchema.safeParse({ wallet: params.wallet });
   return (
     <PublicShell>
-      <PerplDashboard />
+      <PerplDashboard observedWallet={wallet.success ? wallet.data.wallet : null} />
     </PublicShell>
   );
 }

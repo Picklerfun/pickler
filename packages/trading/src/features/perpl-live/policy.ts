@@ -1,5 +1,12 @@
 import { PilotError } from "@pickler/core";
-import type { PerplLiveAuthority, PerplLiveMarket, PerplLiveSettings } from "./contracts.js";
+import type {
+  PerplLiveAuthority,
+  PerplLiveMarket,
+  PerplLiveSettings,
+  PerplLiveDocument,
+  PerplLiveSession,
+  PerplLivePosition,
+} from "./contracts.js";
 
 export function liveAmount(value: string): bigint {
   if (!/^[1-9]\d{0,23}$/.test(value)) {
@@ -78,4 +85,31 @@ export function liveOrderSize(
     throw new PilotError("PERPL_INVALID_SIZE", "Order size is outside exact integer bounds");
   }
   return Number(size);
+}
+
+/** Verified net fills alone authorize a session position, including partial reductions. */
+export function isPerplSessionPosition(
+  document: PerplLiveDocument,
+  session: PerplLiveSession,
+  position: PerplLivePosition,
+) {
+  const ownOrders = document.orders.filter((order) => order.sessionId === session.id);
+  const opening = [...ownOrders]
+    .reverse()
+    .find((order) => order.request.t <= 2 && order.evidence?.filledSize);
+  const remaining = ownOrders.reduce((size, order) => {
+    const filled = order.evidence?.filledSize ?? 0;
+    return order.request.t <= 2 ? size + filled : size - filled;
+  }, 0);
+  return (
+    !position.closed &&
+    !!opening &&
+    Number.isSafeInteger(remaining) &&
+    remaining > 0 &&
+    position.size === remaining &&
+    position.leverage === opening.request.lv &&
+    ownOrders.some(
+      (order) => order.request.rq === position.requestId && !!order.evidence?.filledSize,
+    )
+  );
 }

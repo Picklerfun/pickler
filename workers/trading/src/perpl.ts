@@ -127,7 +127,10 @@ export async function perplTradingRequest(
     }
     if (path === "/perpl/credentials/connect") {
       const input = dto.perplLiveExistingKeySchema.parse(body.input);
-      const connected = await instance.service.connectExistingKey(body.scope, input);
+      const connected = await instance.service.connectExistingKey(body.scope, {
+        ...input,
+        useKeyWallet: input.useKeyWallet ?? false,
+      });
       return Response.json(perplStateDto(connected));
     }
     if (path === "/perpl/setup/prepare") {

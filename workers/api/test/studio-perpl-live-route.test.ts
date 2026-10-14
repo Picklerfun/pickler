@@ -78,7 +78,11 @@ test("owner-only Perpl routes preserve JWT, strict inputs and no-store", async (
   const connection = await app.request(`/agents/${agent}/perpl/credentials/connect`, {
     method: "POST",
     headers,
-    body: JSON.stringify({ apiKey: "controlled-existing-token", privateKeyHex: "07".repeat(32) }),
+    body: JSON.stringify({
+      apiKey: "controlled-existing-token",
+      privateKeyHex: "07".repeat(32),
+      useKeyWallet: true,
+    }),
   });
   assert.equal(connection.status, 409);
   assert.equal(calls, 2);

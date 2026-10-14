@@ -598,10 +598,6 @@ export function createPerplLiveDriver(config: {
     },
     async connectExistingKey(authority, document, input, validUntil) {
       await chainGuard();
-      const id = await accountId(authority.address);
-      if (!id) {
-        throw new PilotError("PERPL_ACCOUNT_REQUIRED", "This agent's wallet has no Perpl account");
-      }
       const seed = perplBytes(input.privateKeyHex.replace(/^0x/i, ""));
       const prefix = perplBytes("302e020100300506032b657004220420");
       const privateBytes = new Uint8Array(prefix.length + seed.length);
@@ -619,11 +615,32 @@ export function createPerplLiveDriver(config: {
           (value) => value.charCodeAt(0),
         );
         const publicKey = "0x" + perplHex(rawPublic);
+        let address = authority.address;
         const binding = {
           productAgentId: document.productAgentId,
-          address: authority.address,
+          address,
           publicKey,
         };
+        if (input.useKeyWallet) {
+          const discovery = {
+            ...document,
+            ...binding,
+            encryptedKey: await vault.seal(
+              perplHex(privateBytes),
+              perplKeyBinding(binding, "private"),
+            ),
+            encryptedToken: await vault.seal(input.apiKey, perplKeyBinding(binding, "token")),
+          };
+          const wallet = z
+            .object({ addr: z.string().regex(/^0x[a-f\d]{40}$/i) })
+            .parse(await http.request("/v1/trading/wallet", { document: discovery }));
+          address = wallet.addr.toLowerCase();
+          binding.address = address;
+        }
+        const id = await accountId(address);
+        if (!id) {
+          throw new PilotError("PERPL_ACCOUNT_REQUIRED", "This wallet has no Perpl account");
+        }
         const encryptedKey = await vault.seal(
           perplHex(privateBytes),
           perplKeyBinding(binding, "private"),
@@ -631,20 +648,21 @@ export function createPerplLiveDriver(config: {
         const encryptedToken = await vault.seal(input.apiKey, perplKeyBinding(binding, "token"));
         const candidate = {
           ...document,
+          address,
           accountId: id,
           publicKey,
           encryptedKey,
           encryptedToken,
           keyExpiresAt: validUntil,
         };
-        const snapshot = await driver.snapshot(authority, candidate);
+        const snapshot = await driver.snapshot({ ...authority, address }, candidate);
         if (snapshot.frozen || !snapshot.forwarding) {
           throw new PilotError(
             "PERPL_FORWARDING_REQUIRED",
             "Enable trading for this wallet's Perpl account first",
           );
         }
-        return { accountId: id, publicKey, encryptedKey, encryptedToken, snapshot };
+        return { address, accountId: id, publicKey, encryptedKey, encryptedToken, snapshot };
       } catch (error) {
         if (error instanceof PilotError) {
           throw error;

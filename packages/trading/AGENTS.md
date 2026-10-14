@@ -217,3 +217,15 @@ closing existing-key sessions or required exits. See [Perpl trading](../../docs/
 A live position must match the current session's verified net filled quantity and original
 leverage before any closing order. Foreign additions, reductions or leverage changes freeze the
 session rather than closing exposure that the session cannot attribute.
+
+New bounded sessions record pre-existing positions in other markets before their first opening.
+Those position identities remain unmanaged and visible; they can never become exit targets.
+An occupied selected market is refused before any order. New unexplained positions still freeze
+execution. Historical sessions with orders do not adopt a baseline retrospectively. The limit is
+one new session-owned position, with the same quantity/leverage provenance and daily budgets.
+
+An explicit key-wallet import can bind the authenticated venue wallet to its owned agent while
+retaining the custody identity fence. External connections disable every custody setup/funding
+operation. `isPerplSessionPosition` is the shared net-fill ownership predicate used by execution
+and the private host's `managedBySession` presentation projection. Existing histories cannot move
+to another wallet/account, and key reconnection never clears budgets or orders.

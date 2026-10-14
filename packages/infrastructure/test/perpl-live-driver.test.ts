@@ -591,3 +591,24 @@ test("malformed venue transaction hashes remain invalid account data, not bad cr
   assert.equal(f.document.encryptedToken, null);
   assert.equal(f.sends(), 0);
 });
+
+test("an explicit key-wallet connection discovers and binds its authenticated wallet without funding", async () => {
+  const f = await fixture();
+  const venue = existingVenue(f, true);
+  f.useExistingAccount(venue.fetcher);
+
+  const connected = await f.driver.connectExistingKey!(
+    f.authority,
+    f.document,
+    { apiKey: importedToken, privateKeyHex: importedSeed, useKeyWallet: true },
+    Date.now() + 86400000,
+  );
+
+  assert.equal(connected.address, "0x" + "22".repeat(20));
+  assert.equal(connected.accountId, 7);
+  assert.equal(venue.paths.length, 6);
+  assert.equal(f.document.address, f.authority.address);
+  assert.equal(f.sends(), 0);
+  assert.equal(f.forwards(), 0);
+  assert.equal(JSON.stringify(connected).includes(importedSeed), false);
+});

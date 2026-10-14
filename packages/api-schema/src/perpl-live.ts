@@ -6,6 +6,7 @@ const ausd = z.string().regex(/^-?\d+(?:\.\d{1,6})?$/);
 /** Owner-supplied import only. These values never appear in response DTOs. */
 export const perplLiveExistingKeySchema = z
   .object({
+    useKeyWallet: z.boolean().optional(),
     apiKey: z
       .string()
       .regex(/^[\x21-\x7e]{1,2048}$/)
@@ -70,6 +71,7 @@ export const perplLiveSessionSchema = z
   .strict();
 export const perplLivePositionSchema = z
   .object({
+    managedBySession: z.boolean().optional(),
     id: z.string(),
     symbol: z.string(),
     side: z.enum(["long", "short"]),
@@ -118,6 +120,7 @@ export const perplLiveStateSchema = z
     available: z.boolean(),
     admissionsEnabled: z.boolean(),
     setupEnabled: z.boolean().optional(),
+    connection: z.enum(["agent_wallet", "key_wallet"]).optional(),
     network: z.literal("testnet"),
     address: z.string().nullable(),
     accountId: z.number().int().positive().nullable(),

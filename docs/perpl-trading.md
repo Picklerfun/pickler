@@ -13,7 +13,7 @@ start sessions, change sizing or obtain a credential.
 ## Boundaries and authorization
 
 - `@pickler/trading/perpl-live` owns authority checks, settings, intent transitions, ownership
-  leases and the sequence. Only testnet, 1x leverage, one position, 1–3 cycles and a 30–3600 second
+  leases and the sequence. Only testnet, 1x leverage, one new session-owned position, 1–3 cycles and a 30–3600 second
   target hold are admitted. Opening size rounds down and accounts for the worst allowed slippage.
 - `@pickler/infrastructure/perpl-live` implements the locked PostgreSQL aggregate, exact
   Ed25519 HTTP authentication, AES-GCM credentials and owner-passkey onboarding. The key's AAD
@@ -55,14 +55,20 @@ by the local tests. Source contracts: [HTTP endpoints](https://github.com/PerplF
 ## Existing trading keys
 
 Controls also offers **Use an existing Perpl key**. The owner submits the Perpl token and its
-32-byte Ed25519 seed for this agent's persisted wallet. No wallet private key or arbitrary
-wallet/RPC/contract selector is accepted. `POST /v1/studio/agents/{id}/perpl/credentials/connect`
+32-byte Ed25519 seed. The explicit **Use this key’s wallet** switch sets `useKeyWallet=true`:
+the adapter resolves the wallet from signed Perpl reads and verifies its contract account.
+Without that flag, the key must match the current persisted wallet. No wallet private key or
+arbitrary wallet/RPC/contract selector is accepted. `POST /v1/studio/agents/{id}/perpl/credentials/connect`
 (and the Console alias) requires the original owner JWT and current creator access. It performs
 signed GETs only: the reviewed contract account, authenticated wallet, positions and order reads
 must agree. It never enrolls a key, changes forwarding, funds, starts or submits an order.
 
-The driver derives the public key and binds AES-GCM storage to agent, wallet, public key and
-credential purpose. The input is write-only and never returned, logged or passed to a model.
+The driver derives the public key and binds AES-GCM storage to agent, verified wallet, public key
+and credential purpose. Key-wallet connections retain the original custody address as an owner
+identity fence and cannot use custody preparation/funding. PostgreSQL serializes account binding
+and refuses a Perpl account already connected to another agent. Historical orders/sessions never
+move to another wallet or account. Controls selects among authorized agent markets; Positions
+marks existing positions as unmanaged and exposes Close only for its verified session position. The input is write-only and never returned, logged or passed to a model.
 The browser clears both transient password fields on submit and agent change and does not store
 them. Strings and browser/crypto copies cannot be guaranteed wiped; they remain subject to the
 runtime's memory lifecycle. Backend-generated keys are still never returned to the browser.
@@ -90,7 +96,11 @@ HTTP acknowledgment is only Submitted. Fill transitions require matching account
 request, order type, original quantity and leverage in Perpl history. Available collateral
 subtracts locked balance; outstanding foreign orders block new entries. The final head refresh
 also verifies the exchange instance and that no other caller advanced the request sequence.
-Partial fills close the actual remaining size. An order
+Before the first opening, a new session records existing position identities in other markets.
+Those positions remain unmanaged and visible, and are never closed by the session. The selected
+market must be unoccupied; otherwise `PERPL_MARKET_OCCUPIED` refuses every order. Historical
+sessions with recorded orders never adopt a baseline retrospectively. Unexplained later positions
+still freeze execution. Partial fills close the actual remaining session-owned size. An order
 fill that precedes its position snapshot cannot trigger another opening. Unexplained positions
 freeze the session. Pause blocks new entries while timed exits continue; Stop & close requests
 closure, without reporting a fill prematurely. Required exits survive disabled research access,
@@ -183,5 +193,6 @@ Origin. Self-service financial acceptance requires resolving that refusal, the o
 sufficient wallet AUSD/MON, owner passkey setup, and one real opening/closing with matched
 receipts. The owner selects the agent and amount in Studio; no operator-selected agent is required
 for the general configuration. The dated record documents the applied migrations, authorized
-secret configuration and closed admissions. No real funding, order or paid model call has been
-established by the controlled suites or public probes.
+secret configuration and independent admission gates. The controlled suites and public probes
+establish no real order or funding. The separate dated operator acceptance records a real minimum
+NEAR opening/closing; owner-triggered hosted execution remains a separate acceptance requirement.

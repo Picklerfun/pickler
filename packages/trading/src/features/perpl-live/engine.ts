@@ -14,7 +14,13 @@ import type {
   PerplLiveSetup,
   PerplLiveOrderSpec,
 } from "./contracts.js";
-import { assertLiveAuthority, assertLiveSettings, liveAmount, liveOrderSize } from "./policy.js";
+import {
+  assertLiveAuthority,
+  assertLiveSettings,
+  liveAmount,
+  liveOrderSize,
+  isPerplSessionPosition,
+} from "./policy.js";
 
 const activeStatuses = new Set(["active", "paused", "stopping", "frozen"]);
 const unresolved = new Set(["prepared", "dispatching", "unknown", "accepted"]);
@@ -51,7 +57,9 @@ export function createPerplLiveService(deps: {
       ...value,
       available: true,
       admissionsEnabled: deps.admissions,
-      setupAdmissionsEnabled: deps.setupAdmissions ?? deps.admissions,
+      setupAdmissionsEnabled:
+        (deps.setupAdmissions ?? deps.admissions) &&
+        value.document?.connection?.kind !== "key_wallet",
       requirements,
     };
   }
@@ -105,7 +113,32 @@ export function createPerplLiveService(deps: {
       ) {
         throw new PilotError("CONFLICT", "Account configuration changed while validating the key");
       }
-      Object.assign(document, connected, { keyExpiresAt: original.validUntil });
+      const address = connected.address ?? original.authority.address;
+      if (
+        !/^0x[a-f\d]{40}$/.test(address) ||
+        (!input.useKeyWallet && address !== authority.address)
+      ) {
+        throw new PilotError(
+          "PERPL_EVIDENCE_MISMATCH",
+          "Verified connection wallet does not match",
+        );
+      }
+      if (
+        (address !== document.address ||
+          (document.accountId !== null && connected.accountId !== document.accountId)) &&
+        (document.orders.length || document.sessions.length || document.setup.length)
+      ) {
+        throw new PilotError(
+          "PERPL_ACCOUNT_CHANGED",
+          "Existing account history cannot move to another wallet",
+        );
+      }
+      const custodyAddress = authority.custodyAddress ?? authority.address;
+      Object.assign(document, connected, { address, keyExpiresAt: original.validUntil });
+      if (input.useKeyWallet) {
+        document.connection = { kind: "key_wallet", custodyAddress };
+      }
+
       document.nextRequestId = Math.max(document.nextRequestId, connected.snapshot.lastRequestId);
     });
     return state(scope);
@@ -116,6 +149,9 @@ export function createPerplLiveService(deps: {
     }
     const reserved = await repo.transact(scope, (d, authority, now) => {
       assertLiveAuthority(authority, true);
+      if (d.connection?.kind === "key_wallet") {
+        throw new PilotError("PERPL_EXTERNAL_WALLET_SETUP", "Fund this connected wallet in Perpl");
+      }
       const amount = liveAmount(amountMicros);
       if (amount > BigInt(authority.perDayMicros)) {
         throw new PilotError("PERPL_MARGIN_LIMIT", "Collateral exceeds the agent's daily limit");
@@ -500,7 +536,29 @@ export function createPerplLiveService(deps: {
           s.error = "PERPL_STATE_UNAVAILABLE";
           return null;
         }
-        const positions = snapshot.positions.filter((p) => !p.closed);
+        const ownOrders = d.orders.filter((o) => o.sessionId === s.id);
+        if (s.status === "stopping" && ownOrders.length === 0) {
+          s.status = "stopped";
+          return null;
+        }
+        const observedPositions = snapshot.positions.filter((p) => !p.closed);
+        if (s.preservedPositions === undefined && ownOrders.length === 0) {
+          if (observedPositions.some((p) => p.marketId === market.id)) {
+            s.status = "frozen";
+            s.error = "PERPL_MARKET_OCCUPIED";
+            return null;
+          }
+          s.preservedPositions = observedPositions.map(({ id, marketId }) => ({ id, marketId }));
+        }
+        const positions = observedPositions.filter(
+          (p) =>
+            !s.preservedPositions?.some(
+              (preserved) =>
+                p.marketId !== market.id &&
+                preserved.id === p.id &&
+                preserved.marketId === p.marketId,
+            ),
+        );
         if (positions.some((p) => p.marketId !== market.id) || positions.length > 1) {
           s.status = "frozen";
           s.error = "PERPL_UNEXPECTED_POSITION";
@@ -509,7 +567,6 @@ export function createPerplLiveService(deps: {
         if (d.orders.some((o) => unresolved.has(o.status))) {
           return null;
         }
-        const ownOrders = d.orders.filter((o) => o.sessionId === s.id);
         const last = ownOrders.at(-1);
         if (last && ["rejected", "cancelled", "expired"].includes(last.status)) {
           if (positions.length === 0 && s.status === "stopping") {
@@ -525,23 +582,7 @@ export function createPerplLiveService(deps: {
         const position = positions[0];
         let request: PerplLiveOrderSpec;
         if (position) {
-          const opening = [...ownOrders]
-            .reverse()
-            .find((order) => order.request.t <= 2 && order.evidence?.filledSize);
-          const remainingOwnedSize = ownOrders.reduce((size, order) => {
-            const filled = order.evidence?.filledSize ?? 0;
-            return order.request.t <= 2 ? size + filled : size - filled;
-          }, 0);
-          if (
-            !opening ||
-            !ownOrders.some(
-              (order) => order.request.rq === position.requestId && order.evidence?.filledSize,
-            ) ||
-            !Number.isSafeInteger(remainingOwnedSize) ||
-            remainingOwnedSize <= 0 ||
-            position.size !== remainingOwnedSize ||
-            position.leverage !== opening.request.lv
-          ) {
+          if (!isPerplSessionPosition(d, s, position)) {
             s.status = "frozen";
             s.error = "PERPL_UNEXPECTED_POSITION";
             return null;

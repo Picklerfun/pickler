@@ -811,3 +811,8 @@ is introduced. Setup availability is separate from session admissions.
 
 The explicitly approved staging `PERPL_STUDIO_ENABLED=true` exposes owner state and key
 connection. Trading independently retains closed automatic account setup/funding.
+
+Existing-key connection accepts optional `useKeyWallet` only, not a caller-provided address.
+The private executor verifies and exclusively binds the key's wallet to the owned agent. Public
+state adds optional connection kind and managed-position labels. Original JWT/creator/owner checks,
+private/no-store, strict parsing and generated OpenAPI remain mandatory.

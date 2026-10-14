@@ -3,6 +3,7 @@ import {
   perplLiveStateSchema,
   type PerplLiveSetupDto,
 } from "@pickler/api-schema";
+import { isPerplSessionPosition } from "@pickler/trading/perpl-live";
 import type {
   PerplLiveAuthority,
   PerplLiveDocument,
@@ -56,6 +57,7 @@ export function perplStateDto(state: {
     available: state.available,
     admissionsEnabled: state.admissionsEnabled,
     setupEnabled: state.setupAdmissionsEnabled,
+    connection: d?.connection?.kind ?? "agent_wallet",
     network: "testnet",
     address: state.authority.address,
     accountId: d?.accountId ?? null,
@@ -95,6 +97,7 @@ export function perplStateDto(state: {
         }
         return {
           id: String(p.id),
+          managedBySession: !!(d && session && isPerplSessionPosition(d, session, p)),
           symbol: m?.symbol ?? `Market ${p.marketId}`,
           side: p.side,
           closed: p.closed,

@@ -10,9 +10,9 @@ import { useWallet } from "@/features/wallet/lib/wallet-context";
 import { PerplReadError, perplRequest } from "./client";
 import { apiClock } from "../../lib/server-clock";
 
-export function usePerplDashboard() {
+export function usePerplDashboard(observedWallet: string | null = null) {
   const wallet = useWallet();
-  const address = wallet.address?.toLowerCase() ?? "";
+  const address = (observedWallet ?? wallet.address)?.toLowerCase() ?? "";
   const [market, setMarket] = useState<PerplDashboardMarketsDto | null>(null);
   const [marketError, setMarketError] = useState<string | null>(null);
   const [portfolio, setPortfolio] = useState<{ address: string; data: PerplPortfolioDto } | null>(
@@ -130,6 +130,7 @@ export function usePerplDashboard() {
   }, [address]);
   return {
     wallet,
+    address,
     market,
     marketError,
     portfolio: address && portfolio?.address === address ? portfolio.data : null,

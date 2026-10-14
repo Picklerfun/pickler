@@ -61,6 +61,7 @@ export function perplExecutionFixture(
       : [
           {
             id: "8",
+            managedBySession: mode === "active",
             symbol: "BTC",
             side: "long",
             closed: mode === "closed",

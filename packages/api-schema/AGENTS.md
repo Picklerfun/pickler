@@ -339,3 +339,8 @@ DTOs retain their strict scope-1 contract.
 `perplLiveExistingKeySchema` is the strict write-only owner import input (Perpl API token plus
 32-byte Ed25519 seed). These credentials are never response fields. Owner state adds optional
 `setupEnabled`, independently of session admissions. See [Perpl trading](../../docs/perpl-trading.md).
+
+Existing-key input adds optional `useKeyWallet` for explicitly connecting the wallet verified
+by its key. It accepts no address. State adds optional `connection` (`agent_wallet`/`key_wallet`)
+and positions add optional `managedBySession`; these are public status only. Older DTOs stay valid
+and the two credential fields remain write-only.

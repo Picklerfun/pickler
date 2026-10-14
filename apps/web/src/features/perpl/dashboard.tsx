@@ -45,12 +45,15 @@ function percent(bps: string | null, signed = false, digits = 2) {
 function clock(at: string) {
   return new Date(at).toLocaleTimeString("en-GB", { timeZone: "UTC" });
 }
-export function PerplDashboard() {
-  const view = usePerplDashboard();
+export function PerplDashboard({ observedWallet = null }: { observedWallet?: string | null }) {
+  const view = usePerplDashboard(observedWallet);
   const { wallet, portfolio } = view;
   return (
-    <PerplDashboardSurface snapshot={view} walletAddress={wallet.address}>
-      {!wallet.address ? (
+    <PerplDashboardSurface snapshot={view} walletAddress={view.address || null}>
+      {observedWallet ? (
+        <p className={styles.footnote}>Viewing the public portfolio of the wallet in this link.</p>
+      ) : null}
+      {!view.address ? (
         <div className={styles.connect}>
           <Icon name="wallet" size={26} />
           <h3>See your positions alongside the market.</h3>

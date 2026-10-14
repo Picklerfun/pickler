@@ -530,3 +530,129 @@ test("a stale zero-size active snapshot cannot cause a zero-size closing order",
   assert.equal(f.document().sessions[0]!.error, "PERPL_UNEXPECTED_POSITION");
   assert.equal(f.submissions.length, 2);
 });
+
+function existingPosition(marketId = 32) {
+  return {
+    requestId: 0,
+    id: 900,
+    marketId,
+    side: "long" as const,
+    size: 200,
+    entryPrice: 2000,
+    collateralMicros: "10000000",
+    leverage: 1200,
+    feeMicros: "3000",
+    realizedPnlMicros: null,
+    fundingMicros: null,
+    exitPrice: null,
+    closed: false,
+  };
+}
+
+test("an isolated session preserves existing positions in other markets through its complete cycle", async () => {
+  const f = fixture();
+  const prior = existingPosition();
+  f.snapshot.positions.push(structuredClone(prior));
+  const service = f.service();
+
+  await service.start(f.scope, f.terms, randomUUID());
+  await service.tick(f.scope);
+  assert.deepEqual(f.document().sessions[0]!.preservedPositions, [{ id: prior.id, marketId: 32 }]);
+  f.fill();
+  f.snapshot.positions.push(structuredClone(prior));
+  await service.tick(f.scope);
+  f.advance(31_000);
+  await service.tick(f.scope);
+  f.fill();
+  await service.tick(f.scope);
+
+  assert.deepEqual(
+    f.submissions.map((order) => order.t),
+    [1, 3],
+  );
+  assert.ok(f.submissions.every((order) => order.mkt === 16));
+  assert.equal(f.document().sessions[0]!.status, "completed");
+  assert.equal(f.document().sessions[0]!.completedCycles, 1);
+  assert.deepEqual(
+    f.snapshot.positions.find((p) => p.id === prior.id),
+    prior,
+  );
+});
+
+test("an existing position in the selected market prevents any opening or closing", async () => {
+  const f = fixture();
+  f.snapshot.positions.push(existingPosition(16));
+  const service = f.service();
+
+  await service.start(f.scope, f.terms, randomUUID());
+  await service.tick(f.scope);
+  await service.control(f.scope, "stop");
+  await service.tick(f.scope);
+
+  assert.equal(f.submissions.length, 0);
+  assert.equal(f.document().sessions[0]!.error, "PERPL_MARKET_OCCUPIED");
+  assert.equal(f.document().sessions[0]!.status, "stopped");
+  await service.start(f.scope, f.terms, randomUUID());
+  assert.equal(f.document().sessions.length, 2);
+});
+
+test("positions added after the preserved baseline cannot be silently adopted", async () => {
+  const f = fixture();
+  const service = f.service();
+  await service.start(f.scope, f.terms, randomUUID());
+  await service.tick(f.scope);
+  f.fill();
+  f.snapshot.positions.push(existingPosition());
+  f.advance(31_000);
+
+  await service.tick(f.scope);
+
+  assert.equal(f.submissions.length, 1);
+  assert.equal(f.document().sessions[0]!.status, "frozen");
+  assert.equal(f.document().sessions[0]!.error, "PERPL_UNEXPECTED_POSITION");
+});
+
+test("explicit key-wallet connection records verified identity and closes custody setup", async () => {
+  const f = fixture();
+  enableExistingKeys(f);
+  const original = f.driver.connectExistingKey!;
+  const address = "0x" + "22".repeat(20);
+  f.driver.connectExistingKey = async (...args) => ({ ...(await original(...args)), address });
+  const service = f.service();
+
+  const state = await service.connectExistingKey(f.scope, {
+    ...existingCredentials,
+    useKeyWallet: true,
+  });
+
+  assert.equal(f.document().address, address);
+  assert.deepEqual(f.document().connection, {
+    kind: "key_wallet",
+    custodyAddress: f.authority.address,
+  });
+  assert.equal(state.setupAdmissionsEnabled, false);
+  await assert.rejects(service.prepareSetup(f.scope, "10000000", randomUUID()), {
+    code: "PERPL_EXTERNAL_WALLET_SETUP",
+  });
+  assert.equal(f.submissions.length, 0);
+});
+
+test("existing sessions and historical orders cannot move to another key wallet", async () => {
+  const f = fixture();
+  const service = f.service();
+  await service.start(f.scope, f.terms, randomUUID());
+  await service.control(f.scope, "stop");
+  await service.tick(f.scope);
+  enableExistingKeys(f);
+  const original = f.driver.connectExistingKey!;
+  f.driver.connectExistingKey = async (...args) => ({
+    ...(await original(...args)),
+    address: "0x" + "22".repeat(20),
+  });
+
+  await assert.rejects(
+    service.connectExistingKey(f.scope, { ...existingCredentials, useKeyWallet: true }),
+    { code: "PERPL_ACCOUNT_CHANGED" },
+  );
+  assert.equal(f.document().address, f.authority.address);
+});
