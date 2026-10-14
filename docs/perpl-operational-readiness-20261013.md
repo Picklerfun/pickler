@@ -2,10 +2,14 @@
 
 ## Scope
 
-Perpl setup belongs to each eligible agent owner in Studio. No operator-selected agent, automatic
-wallet funding, server-side parent-key signing, or automatic limit increase is introduced. Controls
-shows the venue minimums, the reviewed deposit maximum, and a direct path to the owner's Limits.
-The first execution mode remains one bounded open/hold/close sequence, at 1x and one position.
+The current hosted path lets each eligible Studio owner connect an existing Perpl API key for
+their agent's already-funded account and explicitly start a bounded open/hold/close sequence at
+1x with one position. Controls exposes the connection form and saved Limits. Automatic enrollment
+and funding remain disabled while Perpl enrollment preparation is unresolved. No operator-selected
+agent, automatic funding, parent-key signing, shared wallet credential or limit increase is introduced.
+
+The initial checkpoints below are historical. The existing-key release and current active versions
+are recorded at the end of this document.
 
 ## Verified hosted observations
 
@@ -58,9 +62,9 @@ The source correction is in PR #185 and must be preserved in later main deployme
 
 Main advanced to `7bfc1a3a` with PR #184 during configuration. Its public, contract-backed
 portfolio dashboard is incorporated into the isolated readiness branch without replacing the
-active main publishers. The currently hosted contract has 227 operations and retains owner JWT
+active main publishers. At that checkpoint the hosted contract had 227 operations and retains owner JWT
 protection (401 without a token; private/no-store), but it does not yet include this PR's optional
-collateral requirements. Those UI/contract improvements remain on PR #185 until its next
+collateral requirements. Those UI/contract improvements were on PR #185 pending the next
 reviewed release. Closed admissions prevent that producer/consumer gap from enabling setup.
 
 Turnkey's stamped read-only identity query returned HTTP 200. Supabase JWKS returned HTTP 200
@@ -77,8 +81,9 @@ account creation/funding, forwarding grant and trading-key enrollment requires t
 New sessions require an explicit Start trading action. No action occurs during startup or a read.
 
 The earlier automatic approval refusals were resolved by the owner's explicit authorization.
-There is no remaining permission block on the described configuration. Both Perpl gates remain
-false because unsigned enrollment preparation still fails, not because approval is missing.
+There is no remaining permission block on the described configuration. At this initial checkpoint, both Perpl gates remained
+false because unsigned enrollment preparation failed, not because approval was missing. The later
+existing-key release has separate account-setup and session gates.
 
 ## Automatic enrollment acceptance still unresolved
 
@@ -159,3 +164,31 @@ tokens, contrast and typography pass across all four Perpl stages. A temporary C
 using only public dummy keys verifies RFC8410 Ed25519 import/public derivation, signatures and
 AES vault round trips; it made zero financial requests and has been stopped. These checks do not
 replace real owner authentication, a usable venue credential, funding or open/close acceptance.
+
+### Current publication and remaining financial acceptance
+
+The reviewed backend code is commit `e0522fe4`; Web includes the precise identity-refusal copy
+from `87ace924`. All three publications were observed at 100% traffic after deployment:
+
+| Worker  | Active version                         | Current Perpl gates                |
+| ------- | -------------------------------------- | ---------------------------------- |
+| Trading | `f72ef974-0b9a-4b99-af95-d360dd771a0f` | Sessions true; account setup false |
+| API     | `37ae4288-3215-4451-bb33-aaeb51a4d1e9` | Studio true                        |
+| Web     | `1ca57505-0b79-4853-ba4d-b30d18c83780` | n/a                                |
+
+Deployment preserved all previous backend secret names and unrelated plaintext variables,
+including existing advice/token settings. The five Trading secrets remain bound, and Polymarket
+admissions remain false. No encryption key was replaced. The hosted contract now exports
+229 operations with strict write-only credential inputs. An unauthenticated connection attempt
+returns 401 with `Cache-Control: private, no-store`. The app host serves exactly the tested UI
+asset containing the connection fields, verified against its local SHA-256 hash.
+
+The owner states that they have a Perpl API key for the bounty. It has not been supplied to or
+connected by this work. The owner must sign in at `https://app.pickler.fun/`, select the agent,
+open Controls → Use an existing Perpl key, and provide its token plus Ed25519 seed. The verified
+account must be that agent's persisted wallet, funded with testnet AUSD and allowed to forward
+orders. The owner then chooses saved limits/session settings and explicitly starts trading.
+The localhost `stage=perpl-trading-setup` tab is an inert preview, not a credential entry surface.
+No real key connection or open/close cycle has been observed; no financial request, wallet
+signature or deposit was sent by this work. Publication is from PR #185, which is not merged;
+future main publications must preserve this change before replacing these versions.
