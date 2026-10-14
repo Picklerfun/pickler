@@ -1,4 +1,5 @@
-import { jsonDocument } from "./serialization.js";
+import { createHash } from "node:crypto";
+import { bufferedChunks, jsonChunks, jsonDocument } from "./serialization.js";
 import { ptsPolicy, ptsCandidateVersion } from "@pickler/trading/pts";
 import { publish, digest } from "./files.js";
 export const escapeHtml = (v: unknown) =>
@@ -330,16 +331,25 @@ export async function ptsReport(
         ].join("\n") + "\n";
     }
   }
+  const reportHash = createHash("sha256");
+  function* reportDocument(): Generator<string> {
+    for (const chunk of bufferedChunks(jsonChunks(full, { canonicalKeys: true }))) {
+      reportHash.update(chunk);
+      yield chunk;
+    }
+    yield "\n";
+  }
   const files = await publish(dir, {
     ...financialFiles,
-    "report.json": jsonDocument(full),
+    "report.json": reportDocument(),
     "report.html": html,
     "report.csv": csv(),
   });
   await publish(dir, {
     "manifest.json": jsonDocument({
-      format: "pts-report-manifest-v2",
-      reportHash: digest(full),
+      format: "pts-report-manifest-v3",
+      reportHashPolicy: "sha256-canonical-published-json-v1",
+      reportHash: reportHash.digest("hex"),
       policyHash: digest(policy),
       files: Object.fromEntries(Object.entries(files).map(([name, file]) => [name, file.sha256])),
       fileBytes: Object.fromEntries(
