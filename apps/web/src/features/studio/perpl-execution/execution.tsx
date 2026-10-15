@@ -98,7 +98,6 @@ export function PerplTradingControls({
     >
       <div className={styles.head}>
         <h3 className={styles.title}>Perpl trading</h3>
-        <span className={styles.status}>MONAD TESTNET</span>
       </div>
       {!state ? (
         <p className={styles.note}>Reading its trading account…</p>
@@ -369,7 +368,7 @@ export function PerplTradingPositions({
     <section className={styles.panel} id="perpl-trading-positions" aria-label="Perpl positions">
       <div className={styles.head}>
         <h3 className={styles.title}>Open positions · Perpl</h3>
-        <span className={styles.status}>{positions.length} OPEN · TESTNET</span>
+        <span className={styles.status}>{positions.length} OPEN</span>
       </div>
       {positions.length === 0 ? (
         <p className={styles.note}>No open positions confirmed by Perpl.</p>
@@ -451,7 +450,7 @@ export function PerplTradingRecord({
     >
       <div className={styles.head}>
         <h3 className={styles.title}>{compact ? "Recent orders" : "Transactions · Perpl"}</h3>
-        <span className={styles.note}>REAL EXECUTIONS · TESTNET</span>
+        <span className={styles.note}>REAL EXECUTIONS</span>
       </div>
       {orders.length === 0 ? (
         <p className={styles.note}>Its submitted orders will appear here.</p>

@@ -30,7 +30,7 @@ const MENUS = [
     key: "explore",
     label: "Explore",
     items: [
-      { title: "Tokens", href: "/#tokens", sub: "Buy and sell agent tokens on Monad testnet" },
+      { title: "Tokens", href: "/#tokens", sub: "Buy and sell agent tokens" },
       { title: "Agents", href: "/agents", sub: "Who takes a paid read, on what, for how much" },
       {
         title: "Perpl dashboard",

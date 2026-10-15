@@ -3,7 +3,7 @@ import Link from "next/link";
 import styles from "../auth.module.css";
 
 /**
- * The brand, the network it is on, and nothing else.
+ * The brand and nothing else.
  *
  * It used to carry a "Sign in" link beside a form whose first control is a sign-up / sign-in
  * toggle. Two ways to say the same thing is one way too many, and the link was the worse of them:
@@ -24,7 +24,6 @@ export function AuthHeader() {
         />
         <span className={styles.brandName}>PICKLER</span>
       </Link>
-      <span className={styles.pill}>TESTNET</span>
       <span className={styles.spacer} />
     </header>
   );

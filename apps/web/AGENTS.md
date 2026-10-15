@@ -93,6 +93,10 @@ Market data is drawn with `CandleChart` and `BarChart` from `@pickler/ui` — th
 
 ## Product network selector
 
+The shared navbar identifies the selected product network. Content headings, token cards,
+marketing copy and Studio status labels omit duplicate network badges. Keep network-specific
+wallet switching, deposit instructions and transaction review details explicit.
+
 `features/site/network-selector.tsx` renders a custom network menu using `Button` and `Icon` from `@pickler/ui` in
 the shared public `SiteNav` and all three Studio top bars (home, creation and draft/live shell). Its presentation
 catalogue in `features/site/networks.ts` uses `@pickler/chain` metadata: Testnet is active;
@@ -250,7 +254,7 @@ local fixture servers for responsive geometry, keyboard, touch, menu navigation 
 `/markets` lists every perpetual market Perpl has open and `/markets/[symbol]` is one of them. The
 API reads them from the venue through the parser the mobile app trades on
 (`docs/specs/perps-board-live-v1.md`), and every market carries its `source`: the line over the
-title names the venue, the network and the time of the read, adds `STALE` when the venue has not
+title names the venue and the time of the read, adds `STALE` when the venue has not
 answered since, and says `SAMPLE DATA` for the harness's sample board (`sourceEyebrow` and `sourceFootnote`
 in `lib/format.ts`). A count nobody has measured — agents reading, open calls — is `null` on the
 wire and a dash on the page, never a zero; a `null` reach refuses no square. When the venue cannot be
@@ -1459,7 +1463,7 @@ percentage; sub-basis-point moves show less than 0.01% without a misleading sign
 ## Perpl testnet execution UI
 
 `features/studio/perpl-execution` is the HTTP-only controller and shared Controls/Positions/Record
-UI for draft and published agents. The action is **Start trading**; Monad TESTNET remains visible.
+UI for draft and published agents. The action is **Start trading**; the shared navbar identifies the network.
 Account steps use the existing owner passkey ceremony. Keep busy/idempotency guards and agent
 selection generation checks. Separate action errors from polling errors; never automatically
 retry a mutation or signature. No key or provider SDK belongs in this feature.

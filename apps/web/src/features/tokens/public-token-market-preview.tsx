@@ -38,7 +38,6 @@ function MarketPreview({ token }: { token: AgentTokenDto }) {
             <AgentTokenIdentity token={token} />
           </div>
           <div className={styles.badges}>
-            <Tag>MONAD TESTNET</Tag>
             <Tag className={styles.demo}>PREVIEW · DEMO DATA</Tag>
           </div>
           <div className={styles.address}>
@@ -216,7 +215,7 @@ function MarketPreview({ token }: { token: AgentTokenDto }) {
                       value={trade.txHash}
                       chainId={10143}
                       kind="tx"
-                      label={`sample testnet ${trade.side.toLowerCase()} transaction at ${trade.time} UTC`}
+                      label={`sample ${trade.side.toLowerCase()} transaction at ${trade.time} UTC`}
                     />
                   </td>
                 </tr>

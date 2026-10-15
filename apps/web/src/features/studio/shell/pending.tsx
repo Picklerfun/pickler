@@ -42,9 +42,6 @@ export function StudioPending({
           </Link>
           <StudioSidebarToggle controls="pending-sidebar" />
           <span className={home.spacer} />
-          <span className={home.pill} data-tint="grey">
-            TESTNET
-          </span>
           <AccountMenu handle={accountHandle} preview={false} />
         </header>
         <div className={home.emptyBody}>

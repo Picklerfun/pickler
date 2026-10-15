@@ -62,10 +62,6 @@ export function LaunchBoard({ read }: { read: ReadDto<LaunchSummaryDto[]> | null
             {/* A launch with no agent linked is normal: the chain knows a key that nothing
                 reverses into our identifier, and saying so beats implying an agent exists. */}
             {launch.agentId === null ? <Chip>UNLINKED AGENT</Chip> : null}
-
-            <span title={`${launch.chainId} · ${launch.address}`}>
-              {launch.chainId.startsWith("eip155:10143") ? "TESTNET" : "MAINNET"}
-            </span>
           </li>
         ))}
       </ul>

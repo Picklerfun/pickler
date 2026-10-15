@@ -25,7 +25,7 @@ export function HeroPhone() {
       <div id="hero-phone" className={styles.heroPhone} data-surface="dark">
         <span className={`${styles.cornerTag} ${styles.cornerLeft}`}>
           <span className={styles.liveDot} aria-hidden="true" />
-          THE APP · MONAD TESTNET
+          THE APP
         </span>
         <span className={`${styles.cornerPill} ${styles.cornerRight}`}>iOS · TESTFLIGHT</span>
         <div className={styles.glow} aria-hidden="true" />

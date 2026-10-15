@@ -191,7 +191,7 @@ export function PortfolioPage({
         >
           <h2 className={styles.blankTitle}>Your Perpl positions</h2>
           <p className={styles.blankLead}>
-            View your real Perpl testnet account, positions and exposure in the read-only dashboard.
+            View your real Perpl account, positions and exposure in the read-only dashboard.
           </p>
           <ButtonLink as={Link} href="/perpl" variant="secondary" size="sm">
             View Perpl portfolio <Icon name="arrow" size={14} />
