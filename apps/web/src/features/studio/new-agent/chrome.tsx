@@ -17,8 +17,8 @@ import styles from "./new-agent.module.css";
 
 /**
  * The create screen's frame, as the empty home drew it: the top bar (the new agent's chip once it
- * has a name, or "Back to {agent}" for someone who opened it from "+ New agent", TESTNET, the
- * master wallet's AUSD | MON, which opens "Your wallets", the Menu below the rail's width, the
+ * has a name, or "Back to {agent}" for someone who opened it from "+ New agent", the network
+ * selector, the master wallet's AUSD | MON, which opens "Your wallets", the Menu below the rail's width, the
  * account) and the studio rail with every section disabled until an agent exists. The screen
  * itself is `children`; its sheets and modals are `overlays`, outside the main area's flow.
  *

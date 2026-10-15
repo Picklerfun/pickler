@@ -154,9 +154,7 @@ export function LiveStudio({
   const status = record ? runtimeStatus(agent.paused, record.runtimeEnabled) : liveStatus(agent);
   const real = live.execution.state;
   const realReady = !!real?.available && !real.setupRequired;
-  const realLabel = real?.session
-    ? `${real.session.status.toUpperCase()} · TESTNET`
-    : "READY · TESTNET";
+  const realLabel = real?.session ? real.session.status.toUpperCase() : "READY";
   const realTiles = [
     { label: "PERPL BALANCE · AUSD", value: real?.balanceAusd ?? "—", soon: false },
     {
@@ -381,7 +379,7 @@ export function LiveStudio({
               realReady
                 ? {
                     line: real.orders[0]
-                      ? `${real.orders[0].action.replaceAll("_", " ").toUpperCase()} ${real.orders[0].symbol} · ${real.orders[0].status.toUpperCase()} · TESTNET`
+                      ? `${real.orders[0].action.replaceAll("_", " ").toUpperCase()} ${real.orders[0].symbol} · ${real.orders[0].status.toUpperCase()}`
                       : "Perpl account ready · start trading from Controls",
                     count: `${real.orders.length} ORDERS`,
                     log: real.orders.slice(0, 4).map((order) => ({

@@ -662,7 +662,7 @@ export function TokenOperationControls({
         <dl className={styles.details}>
           <div className={styles.detail}>
             <dt>Token</dt>
-            <dd>Launched · Monad {state.token.chainId === 10143 ? "testnet" : "mainnet"}</dd>
+            <dd>Launched</dd>
           </div>
           <div className={styles.detail}>
             <dt>Graduation</dt>
@@ -851,7 +851,7 @@ export function TokenOperationControls({
       )}
       {!usable && (
         <p className={styles.quiet}>
-          Testnet operations are unavailable until the deployment and launch policy are verified.
+          Token operations are unavailable until the deployment and launch policy are verified.
         </p>
       )}
       {state.token && (

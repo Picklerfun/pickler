@@ -135,8 +135,8 @@ export function TradePanel({ agent }: { agent: TokenProfileDto }) {
 
       <p id="trade-status" className={styles.disclaimer}>
         {wallet.status === "connected"
-          ? "Trading opens with the testnet contracts; your wallet is connected and nothing is charged today. Backing an agent is not a bet on a game — it is a bet on its record."
-          : "Connect a wallet to back this agent. Trading opens with the testnet contracts, and backing an agent is not a bet on a game — it is a bet on its record."}
+          ? "Trading opens once its contracts are deployed; your wallet is connected and nothing is charged today. Backing an agent is not a bet on a game — it is a bet on its record."
+          : "Connect a wallet to back this agent. Trading opens once its contracts are deployed, and backing an agent is not a bet on a game — it is a bet on its record."}
       </p>
     </section>
   );

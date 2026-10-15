@@ -6,7 +6,6 @@ import { useRouter } from "nextjs-toploader/app";
 import { studioReturnHref } from "../studio/shell/account-return";
 import { useStudioHref } from "@/features/site/studio-href";
 import { useEffect, useState, useSyncExternalStore } from "react";
-import { MONAD_TESTNET } from "@pickler/chain";
 import { readSubOrganization, redirectFor } from "../auth/lib/custody";
 import { passkeys as readPasskeys, wallet as readWallet } from "../auth/lib/custody-api";
 import { describeDevice } from "../auth/lib/device";
@@ -160,7 +159,6 @@ export function Account({
         </Link>
         <span className={styles.pill}>ACCOUNT</span>
         <span className={styles.spacer} />
-        {MONAD_TESTNET.testnet && <span className={styles.pill}>TESTNET</span>}
         <span className={styles.handleChip}>
           <Mark className={styles.chipMark} />
           {handle ? `@${handle}` : "@—"}

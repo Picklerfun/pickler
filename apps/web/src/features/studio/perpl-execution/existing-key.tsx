@@ -26,8 +26,8 @@ export function ExistingPerplKey({
     <details className={styles.copy}>
       <summary>Use an existing Perpl key</summary>
       <p className={styles.note}>
-        Connect your existing Perpl testnet account to this agent. Pickler verifies the wallet from
-        your key. This does not deposit funds or start trading.
+        Connect your existing Perpl account to this agent. Pickler verifies the wallet from your
+        key. This does not deposit funds or start trading.
       </p>
       <Switch checked={useKeyWallet} onCheckedChange={setUseKeyWallet} disabled={disabled}>
         Use this key’s wallet

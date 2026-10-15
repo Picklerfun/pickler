@@ -16,18 +16,18 @@ const perpl = {
   stale: false,
 } as const;
 
-test("the eyebrow names the venue, the network and when it was read", () => {
-  assert.equal(sourceEyebrow("MARKETS", perpl), "MARKETS · PERPL · MONAD TESTNET · 14:03:11 UTC");
+test("the eyebrow names the venue and read time without duplicating the network selector", () => {
+  assert.equal(sourceEyebrow("MARKETS", perpl), "MARKETS · PERPL · 14:03:11 UTC");
   assert.equal(
     sourceEyebrow("MARKET", { ...perpl, network: "mainnet" }),
-    "MARKET · PERPL · MONAD · 14:03:11 UTC",
+    "MARKET · PERPL · 14:03:11 UTC",
   );
 });
 
 test("an answer the venue has not renewed says so, and a sample never passes for a venue", () => {
   assert.equal(
     sourceEyebrow("MARKETS", { ...perpl, stale: true }),
-    "MARKETS · PERPL · MONAD TESTNET · 14:03:11 UTC · STALE",
+    "MARKETS · PERPL · 14:03:11 UTC · STALE",
   );
   assert.equal(sourceEyebrow("MARKETS", { venue: "sample" }), "MARKETS · SAMPLE DATA");
   assert.match(sourceFootnote({ venue: "sample" }), /not read from a venue/);

@@ -79,7 +79,7 @@ export function WalletScreen() {
             <Icon name="globe" size={17} />
           </span>
           <span className={styles.networkText}>
-            <span className={styles.networkName}>Monad testnet</span>
+            <span className={styles.networkName}>Monad</span>
             <span className={styles.networkAddress}>0x7f3a…c21e</span>
           </span>
           <span className={styles.connectedChip}>

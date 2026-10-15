@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import type { ReactNode } from "react";
 import type { PerplDashboardMarketsDto, PerplPortfolioDto } from "@pickler/api-schema";
 import { BrandMark, Button, Icon, Skeleton, Tag, type IconName } from "@pickler/ui";
@@ -29,7 +28,7 @@ export function PerplDashboard({ observedWallet = null }: { observedWallet?: str
         <div className={styles.connect}>
           <Icon name="wallet" size={26} />
           <h2>Your portfolio, at a glance.</h2>
-          <p>Connect your Perpl testnet wallet. Your public positions load automatically.</p>
+          <p>Connect your Perpl wallet. Your public positions load automatically.</p>
           <Button onClick={() => wallet.connect("View your Perpl portfolio")} size="md">
             Connect wallet
           </Button>
@@ -88,10 +87,6 @@ export function PerplDashboardSurface({
           </div>
           <div className={styles.headingAside}>
             <div className={styles.headingTags}>
-              <Tag className={styles.network}>
-                <Image src="/brand/monad.png" alt="" width={16} height={16} unoptimized />
-                Monad testnet
-              </Tag>
               <Tag>
                 <Icon name="shield" size={13} /> Read-only
               </Tag>

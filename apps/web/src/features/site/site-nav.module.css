@@ -98,8 +98,10 @@
 }
 
 .soon {
-  font: 500 11px/1 var(--pk-font);
-  color: var(--pk-ink-muted);
+  flex-shrink: 0;
+  background: var(--pk-state-info-bg);
+  color: var(--pk-state-info-ink);
+  border-color: var(--pk-violet-edge);
 }
 
 .actions {
@@ -138,7 +140,7 @@
 }
 
 .navigationDropdown {
-  width: min(560px, calc(100vw - 24px));
+  width: min(600px, calc(100vw - 24px));
   padding: 12px;
 }
 

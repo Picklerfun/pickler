@@ -53,7 +53,7 @@ const headerWho = (you: boolean, handle: string | undefined, account: string | n
 
 /**
  * A private agent's studio (studio-draft-dashboard-v1 D1), the "Pickler Studio Draft" canvas's
- * created phase: the top bar (the agent and its switcher, DRAFT · PRIVATE, TESTNET, the master
+ * created phase: the top bar (the agent and its switcher, DRAFT · PRIVATE, the network selector, the master
  * wallet's AUSD | MON opening "Your wallets", AI credits, the account), the rail of RUN / BUILD /
  * GROW / YOU with the locked sections (D2), the header with the five tiles (D15), and the section.
  *
