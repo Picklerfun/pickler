@@ -231,8 +231,8 @@ export function PerplTradingControls({
             <h3 className={styles.title}>{setup ? "Connect your account" : "Trading controls"}</h3>
             <p className={styles.note}>
               {setup
-                ? "Use a Perpl testnet API key to connect the account used by this agent."
-                : "Start one testnet trading cycle on Perpl. One opening and one closing."}
+                ? "Use a Perpl API key to connect the account used by this agent."
+                : "Start one trading cycle on Perpl. One opening and one closing."}
             </p>
           </div>
           {setup ? (

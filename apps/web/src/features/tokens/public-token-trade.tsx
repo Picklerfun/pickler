@@ -247,7 +247,7 @@ function PublicTradeForm({
       };
     } else {
       if (!wallet.address || !wallet.onTargetChain) {
-        throw new Error("Connect your wallet on Monad testnet.");
+        throw new Error("Connect your wallet on the selected Monad network.");
       }
       const response = await fetch(
         `/api/v1/marketplace/personas/${encodeURIComponent(handle)}/token/prepare`,
@@ -603,7 +603,7 @@ function PublicTradeForm({
         ) : !preview && !wallet.onTargetChain ? (
           <PublicTradeAction
             state={wallet.switching ? "wallet" : wallet.switchFailure ? "error" : "ready"}
-            label={wallet.switching ? "Confirm network in wallet" : "Switch to Monad testnet"}
+            label={wallet.switching ? "Confirm network in wallet" : "Switch to Monad"}
             hint={wallet.switchFailure?.hint}
             failure={wallet.switchFailure}
             disabled={wallet.switching}

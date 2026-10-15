@@ -4,7 +4,6 @@ import type { PerpMarketDto } from "@pickler/api-schema";
 import Link from "next/link";
 import { Button, ButtonLink, Chip, Icon, Segmented } from "@pickler/ui";
 import { useWallet } from "@/features/wallet/lib/wallet-context";
-import { TARGET_CHAIN } from "@/features/wallet/lib/provider";
 import styles from "../markets.module.css";
 import { formatAmount, formatAusd, formatClose, formatPrice, formatShare } from "../lib/format";
 import { closesAt, leverageChoices, positionPhrase, quoteTicket, triggerRule } from "../lib/ticket";
@@ -369,9 +368,9 @@ function ReviewAction({
     return (
       <>
         <Button block onClick={() => void wallet.switchChain()}>
-          Switch to {TARGET_CHAIN.name}
+          Switch to Monad
         </Button>
-        <p className={styles.ticketFoot}>Perpl settles on {TARGET_CHAIN.name}.</p>
+        <p className={styles.ticketFoot}>Perpl settles on the selected Monad network.</p>
       </>
     );
   }
@@ -407,7 +406,7 @@ function SendAction({ label, onEdit }: { label: string; onEdit: () => void }) {
       </div>
       <p id="send-status" className={styles.ticketFoot}>
         Nothing is sent from this page yet: this site&rsquo;s wallet connection reads your account
-        on {TARGET_CHAIN.name} and never signs. Nothing is charged.
+        on the selected Monad network and never signs. Nothing is charged.
       </p>
     </>
   );

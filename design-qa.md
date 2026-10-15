@@ -178,3 +178,24 @@ web build including type checking. The local ready fixture still renders the rev
 `/private/tmp/perpl-ui-qa-20261015/reconciled-main.png` records the 1280px full-page check. A fresh
 browser tab reported no application console errors. This merge changes no trading permissions,
 leverage policy, API, migration or provider execution behavior.
+
+## Network copy follow-up — October 15, 2026
+
+The user requested that Testnet appear only in the top network selector. Removed remaining
+app-owned mentions from the Perpl connection/ticket, market catalogue badge, account and wallet
+views, token preparation feedback and reviewed wallet errors. Wallet funding and transaction
+review retain their actual chain IDs. Technical network metadata, RPC/explorer URLs, API values
+and transaction guards are unchanged. Native wallet prompts retain canonical network metadata.
+
+Browser verification covered ready Controls, connection setup, Sources & rules and the wallet
+modal using labelled local fixtures. Controls and setup contain no Testnet text in main content;
+the header selector and its accessible description retain the network context. Evidence:
+`/private/tmp/perpl-ui-qa-20261015/network-copy-ready.png` and `network-copy-setup.png`.
+
+Validation passed: 241 existing focused Studio/Perpl/token/wallet/status tests, web types, root
+lint and static design checks over 492 files. Updated existing rendered harness selectors for
+the new copy and retained the separate chain-10143/143 funding assertions. Those full rendered
+harnesses were not rerun for this copy-only follow-up; the prior production build result above
+predates this follow-up. React review found no new hooks, requests, effects or client boundaries.
+
+Root formatting and architecture checks also passed for this follow-up.

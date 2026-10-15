@@ -31,8 +31,8 @@ export function WrongNetwork() {
       tone="caution"
       eyebrow="WALLET · WRONG NETWORK"
       foot="YOUR WALLET WILL ASK ONCE · WE NEVER ASK FOR A SEED PHRASE"
-      title={`THAT'S NOT ${TARGET_CHAIN.name.split(" ")[0]?.toUpperCase() ?? "MONAD"}`}
-      body={`Your wallet is on ${current}. Pickler settles on ${TARGET_CHAIN.name}. Nothing here can sign until you switch. Connecting is not signing in.`}
+      title="THAT'S NOT THE SELECTED NETWORK"
+      body={`Your wallet is on ${current}. Pickler settles on the Monad network selected above. Nothing here can sign until you switch. Connecting is not signing in.`}
     >
       <div className={styles.row}>
         {wallet.chainId !== null && (
@@ -43,14 +43,14 @@ export function WrongNetwork() {
         <Icon name="arrow" size={15} />
         <span className={styles.target}>
           <Image src="/brand/monad.png" alt="" width={18} height={18} />
-          {TARGET_CHAIN.name.toUpperCase()} · {TARGET_CHAIN.chainId}
+          MONAD · {TARGET_CHAIN.chainId}
         </span>
       </div>
       <StatusActions>
         {wallet.canSwitchChain && (
           <Button variant="primary" onClick={() => void switchChain()} disabled={switching}>
             {switching && <span className={styles.pulse} aria-hidden="true" />}
-            {switching ? "Confirm in wallet" : `Switch to ${TARGET_CHAIN.name.split(" ")[0]}`}
+            {switching ? "Confirm in wallet" : "Switch to Monad"}
           </Button>
         )}
         <Button onClick={() => void wallet.disconnect()} variant="secondary">

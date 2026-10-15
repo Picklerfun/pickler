@@ -1,6 +1,5 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { networkByChainId } from "@pickler/chain";
 import { Button, Icon, Tag } from "@pickler/ui";
 import {
   tokenOperationSchema,
@@ -564,8 +563,8 @@ export function TokenOperationControls({
           {current?.transaction && (
             <dl className={styles.details} aria-label="Transaction details">
               <div className={styles.detail}>
-                <dt>Network</dt>
-                <dd>{networkByChainId(current.transaction.chainId)?.name ?? "Unknown network"}</dd>
+                <dt>Chain ID</dt>
+                <dd>{current.transaction.chainId}</dd>
               </div>
               <div className={styles.detail}>
                 <dt>Master wallet</dt>

@@ -264,7 +264,7 @@ try {
     await menu.waitFor({ state: "hidden" });
   }
   await wallet.click();
-  await page.getByRole("menuitem", { name: "Switch to Monad Testnet", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Switch to Monad", exact: true }).click();
   await page.getByText("BALANCE", { exact: true }).waitFor();
   await page.keyboard.press("Escape");
   await connected.close();

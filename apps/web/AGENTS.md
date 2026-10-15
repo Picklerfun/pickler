@@ -93,9 +93,10 @@ Market data is drawn with `CandleChart` and `BarChart` from `@pickler/ui` — th
 
 ## Product network selector
 
-The shared navbar identifies the selected product network. Content headings, token cards,
-marketing copy and Studio status labels omit duplicate network badges. Keep network-specific
-wallet switching, deposit instructions and transaction review details explicit.
+The shared navbar network selector is the only app-owned UI that says Testnet. Content headings,
+forms, status labels, wallet instructions and reviewed errors use network-neutral copy or refer
+back to the selected Monad network. Funding and transaction reviews retain the actual chain ID;
+network identity, RPC endpoints, wallet-switch metadata and execution guards remain unchanged.
 
 `features/site/network-selector.tsx` renders a custom network menu using `Button` and `Icon` from `@pickler/ui` in
 the shared public `SiteNav` and all three Studio top bars (home, creation and draft/live shell). Its presentation

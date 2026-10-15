@@ -114,7 +114,7 @@ test("token error copy is specific, safe and separates unsent failures from reve
   const { tokenOperationErrorMessage, tokenRequestErrorMessage } =
     await import("../src/features/tokens/token-operation-feedback");
   assert.match(tokenOperationErrorMessage("GAS_LIMIT_EXCEEDED", false), /estimated gas exceeds/);
-  assert.match(tokenOperationErrorMessage("RPC_UNAVAILABLE", false), /testnet connection/);
+  assert.match(tokenOperationErrorMessage("RPC_UNAVAILABLE", false), /network connection/);
   assert.match(
     tokenOperationErrorMessage("METADATA_UNAVAILABLE", false),
     /metadata could not be saved/,

@@ -925,7 +925,13 @@ try {
     } else if (scenario === "studio-wallets") {
       await page.getByTitle("Master wallet", { exact: true }).click();
       const modal = page.locator("#new-agent-wallets");
-      await modal.getByText("MONAD TESTNET", { exact: true }).waitFor();
+      await modal.getByText("MONAD", { exact: true }).waitFor();
+      await modal
+        .getByText(
+          "Balances and transfers on Monad (chain 10143). Fund these wallets on this network only.",
+          { exact: true },
+        )
+        .waitFor();
       await modal.getByRole("button", { name: "Add funds to agent" }).click();
       await modal.getByRole("button", { name: "All wallets" }).waitFor();
       assert.equal(await modal.locator('[data-master="true"]').count(), 0);
@@ -969,7 +975,12 @@ try {
 
       walletPhase = "mainnet";
       await refresh.click();
-      await modal.getByText("MONAD MAINNET", { exact: true }).waitFor();
+      await modal
+        .getByText(
+          "Balances and transfers on Monad (chain 143). Fund these wallets on this network only.",
+          { exact: true },
+        )
+        .waitFor();
       await page.waitForFunction(
         () =>
           document.querySelector(

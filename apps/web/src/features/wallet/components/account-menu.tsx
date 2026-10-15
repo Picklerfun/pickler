@@ -112,7 +112,7 @@ export function AccountMenu({ surface = "light" }: { surface?: "light" | "dark" 
                 }}
                 className={styles.link}
               >
-                Switch to {TARGET_CHAIN.name}
+                Switch to Monad
               </DropdownMenuItem>
             )}
             <DropdownMenuItem

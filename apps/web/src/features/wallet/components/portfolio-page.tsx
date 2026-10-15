@@ -96,7 +96,7 @@ export function PortfolioPage({
             that had to find it by [data-surface] could not tell "the panel is gone" from "the panel
             lost its surface" — the two failures it most needs to tell apart. */}
         <section id="portfolio-balance" className={styles.total} data-surface="dark">
-          <p className={styles.totalLabel}>BALANCE · {TARGET_CHAIN.name.toUpperCase()}</p>
+          <p className={styles.totalLabel}>BALANCE</p>
           <p className={styles.totalFigure} data-unknown={wallet.balance === null}>
             {wallet.balance === null ? "—" : formatBalance(wallet.balance)}{" "}
             <span>{TARGET_CHAIN.nativeCurrency.symbol}</span>

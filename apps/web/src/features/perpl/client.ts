@@ -14,7 +14,7 @@ const words: Record<string, string> = {
   INVALID_RESPONSE: "This snapshot could not be verified. Updates will retry shortly.",
   READ_ACCESS_EXPIRED: "Read access expired or was revoked. Authorize it again.",
   READ_ACCESS_DENIED: "Perpl denied read access. Check permissions at Perpl.",
-  NO_PERPL_PROFILE: "Connect this wallet at Perpl testnet first, then return here.",
+  NO_PERPL_PROFILE: "Connect this wallet at Perpl first, then return here.",
   KEY_LIMIT: "Remove unused keys at Perpl before authorizing another read session.",
   INVALID_AUTHORIZATION:
     "The read-access request is invalid. Pickler needs to review this request.",

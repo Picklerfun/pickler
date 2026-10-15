@@ -1,7 +1,7 @@
 "use client";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { PerplMarketCatalogDto } from "@pickler/api-schema";
-import { Button, Chip, Icon, Input, Skeleton, Tag } from "@pickler/ui";
+import { Button, Chip, Icon, Input, Skeleton } from "@pickler/ui";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -116,7 +116,6 @@ export function TradingMarkets({
     <section className={styles.panel} aria-label="Trading markets">
       <div className={styles.head}>
         <h3>Trading markets</h3>
-        <Tag>{network ? `Monad ${network}` : "Network unavailable"}</Tag>
       </div>
       {read.phase === "loading" ? (
         <div role="status" aria-label="Loading Perpl markets" aria-busy="true">
