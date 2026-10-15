@@ -13,7 +13,7 @@ export default async function NotFound() {
   const host = (await headers()).get("host") ?? "pickler.fun";
   if (productFor(host, PRODUCT_HOSTS) === "studio") {
     return (
-      <StatusFrame foot="PICKLER · 2026 · TESTNET">
+      <StatusFrame foot="PICKLER · 2026">
         <NotFoundScreen host={host} />
       </StatusFrame>
     );

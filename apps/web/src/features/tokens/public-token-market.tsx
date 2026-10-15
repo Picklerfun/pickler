@@ -122,7 +122,6 @@ export function PublicTokenMarket({
           <div className={styles.identity}>
             <AgentTokenIdentity token={token} />
           </div>
-          <Tag>{token.chainId === 10143 ? "MONAD TESTNET" : "MONAD"}</Tag>
           <div className={styles.address}>
             <ChainReference
               value={token.address}

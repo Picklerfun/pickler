@@ -399,7 +399,7 @@ export function LiveStudio({
                 showExecution
                   ? {
                       line: real?.orders[0]
-                        ? `${real.orders[0].action.replaceAll("_", " ").toUpperCase()} ${real.orders[0].symbol} · ${real.orders[0].status.toUpperCase()} · TESTNET`
+                        ? `${real.orders[0].action.replaceAll("_", " ").toUpperCase()} ${real.orders[0].symbol} · ${real.orders[0].status.toUpperCase()}`
                         : `${realLabel} · open Controls`,
                       count: `${real?.orders.length ?? 0} ORDERS`,
                       log: (real?.orders ?? []).slice(0, 4).map((order) => ({

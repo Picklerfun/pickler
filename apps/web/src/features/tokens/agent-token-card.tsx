@@ -36,9 +36,6 @@ export function AgentTokenCard({
     <section className={styles.card} data-token-state="launched" aria-label="Agent token">
       <div className={styles.head}>
         <AgentTokenIdentity token={token} />
-        <Tag className={styles.network}>
-          {token.chainId === 10143 ? "MONAD TESTNET" : "MAINNET"}
-        </Tag>
       </div>
       <ChainReference
         value={token.address}

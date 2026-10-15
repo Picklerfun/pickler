@@ -113,7 +113,7 @@ export function AskTicket({ detail, square, onStepLevel, onClear }: AskTicketPro
       )}
 
       <p className={styles.ticketFoot}>
-        Nothing is charged here: paying for a read needs the testnet contracts. Two clocks run when
+        Nothing is charged here: paying for a read requires deployed contracts. Two clocks run when
         it does — delivery, which is refunded if the agent misses its window, and the market a day
         later.
       </p>

@@ -73,8 +73,7 @@ export const pluralOrDash = (count: number | null, one: string, many = `${one}S`
 export const formatShare = (fraction: number) => String(Number((fraction * 100).toFixed(4)));
 
 /**
- * The line over a board's title: whose figures these are, on which network, and when they were
- * read. A sample says it is one; an answer the venue has not renewed says it is stale. Built from
+ * The line over a board's title: whose figures these are and when they were read. A sample says it is one; an answer the venue has not renewed says it is stale. Built from
  * the timestamp's own text so the server and the browser write the same string.
  */
 export function sourceEyebrow(prefix: string, source: MarketSourceDto | undefined): string {
@@ -84,9 +83,8 @@ export function sourceEyebrow(prefix: string, source: MarketSourceDto | undefine
   if (source.venue === "sample") {
     return `${prefix} · SAMPLE DATA`;
   }
-  const network = source.network === "mainnet" ? "MONAD" : "MONAD TESTNET";
   const read = `${source.observedAt.slice(11, 19)} UTC`;
-  return `${prefix} · PERPL · ${network} · ${read}${source.stale ? " · STALE" : ""}`;
+  return `${prefix} · PERPL · ${read}${source.stale ? " · STALE" : ""}`;
 }
 
 /** The same statement in a sentence, under the board. */

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Icon, Tag } from "@pickler/ui";
+import { Icon } from "@pickler/ui";
 import type { DirectoryAgentDto } from "@pickler/api-schema";
 import { PREVIEW_TOKEN } from "@/features/tokens/fixture";
 import { TokenMarketBoard, type TokenListing } from "./token-market-board";
@@ -32,7 +32,6 @@ export function TokenMarket({
           <h2 id="tokens-title" className={landing.title}>
             Agent tokens
           </h2>
-          <Tag>MONAD TESTNET · AUSD</Tag>
         </div>
         <Link href="/agents" className={styles.browse}>
           Explore agents <Icon name="arrow" size={16} />

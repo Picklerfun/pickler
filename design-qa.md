@@ -164,3 +164,17 @@ static design tokens (492 source files), scoped formatting and the production Cl
 build. The full automated rendered-design suite has not run locally. GitHub Actions could not
 start because GitHub reports an account billing lock; CI acceptance remains pending. No provider
 orders, credentials, migrations or deployment were involved in this follow-up.
+
+## Main reconciliation — October 15, 2026
+
+Merged main at `3675e1f7` (PR #191). Its redundant network-label removal overlapped the redesigned
+execution component and live Studio composition. Retained the observed-account status precedence,
+new ticket/receipts/controls and official catalogue gate, while applying the network-neutral
+activity strip and existing-key copy from main. The violet navigation Soon tags are preserved.
+
+Validation passed after reconciliation: 177 focused Studio/Perpl/token/market-format tests,
+root lint and formatting, architecture, design source (492 files), and the production Cloudflare
+web build including type checking. The local ready fixture still renders the reviewed composition;
+`/private/tmp/perpl-ui-qa-20261015/reconciled-main.png` records the 1280px full-page check. A fresh
+browser tab reported no application console errors. This merge changes no trading permissions,
+leverage policy, API, migration or provider execution behavior.

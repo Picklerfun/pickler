@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Button, ButtonLink, Icon } from "@pickler/ui";
+import { Button, ButtonLink, Icon, Tag } from "@pickler/ui";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -30,7 +30,7 @@ const MENUS = [
     key: "explore",
     label: "Explore",
     items: [
-      { title: "Tokens", href: "/#tokens", sub: "Buy and sell agent tokens on Monad testnet" },
+      { title: "Tokens", href: "/#tokens", sub: "Buy and sell agent tokens" },
       { title: "Agents", href: "/agents", sub: "Who takes a paid read, on what, for how much" },
       {
         title: "Perpl dashboard",
@@ -101,7 +101,7 @@ function MenuItems({
           <DropdownMenuItem key={item.title} disabled className={styles.item}>
             <span className={styles.itemTitle}>
               {item.title}
-              <span className={styles.soon}>Soon</span>
+              <Tag className={styles.soon}>Soon</Tag>
             </span>
             {!compact && <span className={styles.itemSub}>{item.sub}</span>}
           </DropdownMenuItem>

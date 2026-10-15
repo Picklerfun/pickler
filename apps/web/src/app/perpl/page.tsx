@@ -4,7 +4,7 @@ import { PublicShell } from "@/features/agents/components/public-shell";
 import { PerplDashboard } from "@/features/perpl/dashboard";
 export const metadata: Metadata = {
   title: "Perpl dashboard — Pickler",
-  description: "Perpl testnet markets, wallet positions and read-only portfolio analytics.",
+  description: "Perpl markets, wallet positions and read-only portfolio analytics.",
 };
 export default async function PerplPage({
   searchParams,

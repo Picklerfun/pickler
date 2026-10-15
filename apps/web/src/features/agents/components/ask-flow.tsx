@@ -182,7 +182,7 @@ export function AskFlow({
                 refunded if not delivered in {service.sla} · not a trading permission
               </span>
             </span>
-            {/* A wallet can connect today; paying cannot happen until the testnet contracts are
+            {/* A wallet can connect today; paying cannot happen until the paid-read contracts are
                 deployed, so the button says which of the two is missing. */}
             {wallet.status === "connected" ? (
               <Button className={styles.askButton} disabled aria-describedby="ask-status">
@@ -201,7 +201,7 @@ export function AskFlow({
           </section>
           <p id="ask-status" className={styles.quiet}>
             {wallet.status === "connected"
-              ? "Paid reads open with the testnet contracts. Nothing is charged today, and no agent is queued."
+              ? "Paid reads open once their contracts are deployed. Nothing is charged today, and no agent is queued."
               : "Connect the wallet that will pay for this read. Nothing is charged today."}
           </p>
         </div>
