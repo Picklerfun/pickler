@@ -64,3 +64,14 @@ its infrastructure lease and per-pass/daily RPC budget; no SQL lock spans provid
 `test/token-schedule.test.ts` covers bounded/historical behavior and failure stops. Ranges stay
 at 100 blocks. The [readiness record](../../docs/market/token-launch-readiness-20261010.md) distinguishes
 controlled PostgreSQL catch-up from the still-pending sustained hosted capacity acceptance.
+
+## CPU and memory recovery bounds
+
+The scheduler checks a 45-second elapsed budget between completed passes (`time_limit`); this is
+cooperative, not a hard cancellation deadline. One in-flight pass can exceed it. Existing policy
+pass/RPC limits and the minute Cron are unchanged. Scheduled launch projection selects at most
+101 pending events and applies 100; V4/Kuru snapshot selection is limited to 100. Projection
+counters and backlog are included in the pass result, and pending projection prevents `caughtUp`.
+Never fetch the entire canonical header history into the Worker for reconciliation locks. The
+infrastructure helper locks only stored graduation evidence and returns one scalar. See
+[the diagnosis and local validation](../../docs/market/indexer-cpu-memory-20261015.md).

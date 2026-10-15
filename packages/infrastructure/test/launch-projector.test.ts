@@ -330,3 +330,122 @@ test("reorg cleanup removes orphaned trades without a manual projection reset", 
   await projector.project(CHAIN, readMetadata);
   assert.equal((await store.pool.query("SELECT 1 FROM market.trades")).rowCount, 0);
 });
+
+test("pending projection is bounded and resumes durable effects after a failure", async (t) => {
+  const { store, projector } = await createPair(t);
+  await indexed(store, [block(10n, "a", "9")], [launchEvent(10n, "a")]);
+  const pending = { pendingOnly: true };
+  await assert.rejects(
+    projector.project(
+      CHAIN,
+      async () => {
+        throw new Error("metadata unavailable");
+      },
+      pending,
+    ),
+  );
+  assert.equal((await projector.project(CHAIN, readMetadata, pending)).launches, 1);
+  await indexed(
+    store,
+    [block(11n, "b", "a")],
+    Array.from({ length: 205 }, (_, i) => buyEvent(11n, "b", i)),
+  );
+  const first = await projector.project(
+    CHAIN,
+    async () => {
+      throw new Error("replayed metadata");
+    },
+    pending,
+  );
+  assert.equal(first.trades, 100);
+  assert.equal(first.hasMore, true);
+  // A fresh object simulates restart; progress is in PostgreSQL, never local memory.
+  const restarted = new PostgresLaunchProjector(store.pool);
+  const second = await restarted.project(CHAIN, readMetadata, pending);
+  assert.equal(second.trades, 100);
+  const last = await restarted.project(CHAIN, readMetadata, pending);
+  assert.equal(last.trades, 5);
+  assert.equal(last.hasMore, false);
+  assert.equal((await restarted.project(CHAIN, readMetadata, pending)).trades, 0);
+  assert.equal((await store.pool.query("SELECT count(*) FROM market.trades")).rows[0].count, "205");
+  await store.rollbackFrom(CHAIN, FACTORY, "launches", 10n);
+  await restarted.project(CHAIN, readMetadata, pending);
+  assert.equal((await store.pool.query("SELECT count(*) FROM market.trades")).rows[0].count, "0");
+  await indexed(store, [block(11n, "b", "a")], [buyEvent(11n, "b")]);
+  assert.equal((await restarted.project(CHAIN, readMetadata, pending)).trades, 1);
+});
+
+test("late earlier events remain eligible and missing dependencies do not block launches", async (t) => {
+  const { store, projector } = await createPair(t);
+  const pending = { pendingOnly: true };
+  await indexed(store, [block(11n, "b", "a")], [buyEvent(11n, "b")]);
+  assert.equal((await projector.project(CHAIN, readMetadata, pending)).trades, 0);
+  await indexed(store, [block(10n, "a", "9")], [launchEvent(10n, "a")]);
+  assert.equal((await projector.project(CHAIN, readMetadata, pending)).launches, 1);
+  assert.equal((await projector.project(CHAIN, readMetadata, pending)).trades, 1);
+  await store.rollbackFrom(CHAIN, FACTORY, "launches", 9n);
+  await projector.project(CHAIN, readMetadata, pending);
+  await indexed(store, [block(10n, "a", "9")], [launchEvent(10n, "a")]);
+  assert.equal((await projector.project(CHAIN, readMetadata, pending)).launches, 1);
+});
+
+test("an interrupted pending page retains committed trades and retries only its suffix", async (t) => {
+  const { store, projector } = await createPair(t);
+  const pending = { pendingOnly: true };
+  await indexed(store, [block(10n, "a", "9")], [launchEvent(10n, "a")]);
+  await projector.project(CHAIN, readMetadata, pending);
+  await indexed(
+    store,
+    [block(11n, "b", "a")],
+    Array.from({ length: 5 }, (_, i) => buyEvent(11n, "b", i)),
+  );
+  await store.pool
+    .query(`CREATE FUNCTION market.fail_projection() RETURNS trigger LANGUAGE plpgsql AS $$
+    BEGIN IF NEW.log_index=3 THEN RAISE EXCEPTION 'controlled interruption'; END IF; RETURN NEW; END $$`);
+  await store.pool.query(
+    `CREATE TRIGGER fail_projection BEFORE INSERT ON market.trades FOR EACH ROW EXECUTE FUNCTION market.fail_projection()`,
+  );
+  await assert.rejects(projector.project(CHAIN, readMetadata, pending), (error: unknown) => {
+    assert.ok(error instanceof Error && error.cause instanceof Error);
+    assert.match(error.cause.message, /controlled interruption/);
+    return true;
+  });
+  assert.equal((await store.pool.query("SELECT count(*) FROM market.trades")).rows[0].count, "3");
+  await store.pool.query("DROP TRIGGER fail_projection ON market.trades");
+  const recovered = await new PostgresLaunchProjector(store.pool).project(
+    CHAIN,
+    readMetadata,
+    pending,
+  );
+  assert.equal(recovered.trades, 2);
+  assert.equal((await store.pool.query("SELECT count(*) FROM market.trades")).rows[0].count, "5");
+});
+
+test("pending legacy graduation is undone and restored across a reorg", async (t) => {
+  const { store, projector } = await createPair(t);
+  const pending = { pendingOnly: true };
+  const graduation = event(12n, "c", 0, "LaunchGraduated", FACTORY, {
+    token: TOKEN,
+    poolId: hash("pool"),
+  });
+  await indexed(store, [block(10n, "a", "9")], [launchEvent(10n, "a")]);
+  await projector.project(CHAIN, readMetadata, pending);
+  await indexed(store, [block(12n, "c", "b")], [graduation]);
+  await projector.project(CHAIN, readMetadata, pending);
+  assert.equal(
+    (await store.pool.query("SELECT status FROM market.tokens")).rows[0].status,
+    "graduated",
+  );
+  await store.rollbackFrom(CHAIN, FACTORY, "launches", 10n);
+  await projector.project(CHAIN, readMetadata, pending);
+  assert.equal(
+    (await store.pool.query("SELECT status FROM market.tokens")).rows[0].status,
+    "pre_graduation",
+  );
+  assert.equal(
+    (await store.pool.query("SELECT closed_at FROM market.pools")).rows[0].closed_at,
+    null,
+  );
+  await indexed(store, [block(12n, "c", "b")], [graduation]);
+  assert.equal((await projector.project(CHAIN, readMetadata, pending)).graduations, 1);
+});

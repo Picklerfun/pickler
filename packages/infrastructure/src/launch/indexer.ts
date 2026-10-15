@@ -313,44 +313,49 @@ export async function runTokenIndexer(input: {
         outputs: [{ type: name === "decimals" ? "uint8" : "uint256" }],
       })),
     ];
-    await projector.project(chain, async (address, at) => {
-      const existing = await pool.query<{
-        name: string;
-        ticker: string;
-        decimals: number;
-        totalSupply: string;
-      }>(
-        `SELECT name,ticker,decimals,total_supply::text AS "totalSupply" FROM market.tokens WHERE chain=$1 AND address=$2`,
-        [chain, address],
-      );
-      if (existing.rows[0]) {
-        const t = existing.rows[0];
-        return {
-          name: t.name,
-          symbol: t.ticker.replace(/^\$/, ""),
-          decimals: t.decimals,
-          totalSupply: BigInt(t.totalSupply),
-        };
-      }
-      const [name, symbol, decimals, totalSupply] = await Promise.all([
-        read(address, erc20, "name", [], BigInt(at)),
-        read(address, erc20, "symbol", [], BigInt(at)),
-        read(address, erc20, "decimals", [], BigInt(at)),
-        read(address, erc20, "totalSupply", [], BigInt(at)),
-      ]);
-      if (
-        decimals !== 18 ||
-        totalSupply !== 21000000000000000000000000n ||
-        typeof name !== "string" ||
-        typeof symbol !== "string"
-      ) {
-        throw new Error("INVALID_LAUNCH_METADATA");
-      }
-      return { name, symbol, decimals, totalSupply };
-    });
+    const projection = await projector.project(
+      chain,
+      async (address, at) => {
+        const existing = await pool.query<{
+          name: string;
+          ticker: string;
+          decimals: number;
+          totalSupply: string;
+        }>(
+          `SELECT name,ticker,decimals,total_supply::text AS "totalSupply" FROM market.tokens WHERE chain=$1 AND address=$2`,
+          [chain, address],
+        );
+        if (existing.rows[0]) {
+          const t = existing.rows[0];
+          return {
+            name: t.name,
+            symbol: t.ticker.replace(/^\$/, ""),
+            decimals: t.decimals,
+            totalSupply: BigInt(t.totalSupply),
+          };
+        }
+        const [name, symbol, decimals, totalSupply] = await Promise.all([
+          read(address, erc20, "name", [], BigInt(at)),
+          read(address, erc20, "symbol", [], BigInt(at)),
+          read(address, erc20, "decimals", [], BigInt(at)),
+          read(address, erc20, "totalSupply", [], BigInt(at)),
+        ]);
+        if (
+          decimals !== 18 ||
+          totalSupply !== 21000000000000000000000000n ||
+          typeof name !== "string" ||
+          typeof symbol !== "string"
+        ) {
+          throw new Error("INVALID_LAUNCH_METADATA");
+        }
+        return { name, symbol, decimals, totalSupply };
+      },
+      { pendingOnly: true },
+    );
+    let positionsProjected = 0;
     if (policy.venue === "uniswap_v4") {
       const uniswap = new PostgresUniswapProjector(pool, policy, { chain, owner });
-      await uniswap.project(async (token, at, hash) => {
+      positionsProjected = await uniswap.project(async (token, at, hash) => {
         if ((await uncachedReader.getBlock(BigInt(at))).hash !== hash) {
           throw new Error("POSITION_REORG");
         }
@@ -422,7 +427,7 @@ export async function runTokenIndexer(input: {
       });
     } else {
       const kuru = new PostgresKuruProjector(pool, policy, { chain, owner });
-      await kuru.project(async (vault, market, at, hash) => {
+      positionsProjected = await kuru.project(async (vault, market, at, hash) => {
         if ((await uncachedReader.getBlock(BigInt(at))).hash !== hash) {
           throw new Error("POSITION_REORG");
         }
@@ -490,11 +495,22 @@ export async function runTokenIndexer(input: {
       });
     }
     const confirmedTip = (await reader.getLatestBlock()).number - BigInt(policy.confirmations);
-    const caughtUp = outcomes.every(
-      (outcome) =>
-        outcome.kind === "idle" || (outcome.kind === "applied" && outcome.toBlock >= confirmedTip),
-    );
-    return { kind: "completed", calls: admission.calls, outcomes, caughtUp };
+    const caughtUp =
+      !projection.hasMore &&
+      positionsProjected < 100 &&
+      outcomes.every(
+        (outcome) =>
+          outcome.kind === "idle" ||
+          (outcome.kind === "applied" && outcome.toBlock >= confirmedTip),
+      );
+    return {
+      kind: "completed",
+      calls: admission.calls,
+      outcomes,
+      projection,
+      positionsProjected,
+      caughtUp,
+    };
   } finally {
     await admission.stop();
     delete input.store.admissionFence;
