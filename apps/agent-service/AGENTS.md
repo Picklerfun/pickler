@@ -475,3 +475,8 @@ in these artifacts. See the local readiness guide for the versioned fields and c
 Read [responsive intraday PTS](PTS-INTRADAY-RESPONSIVE.md) for the independent v9 0.2.0-fast.2 candidate. Preparation/commands reuse the public-only PTS host, with explicit policy/history hashes and no Studio selection. Keep original failed studies, native data, unknown reservations and signal-only financial limitations. No automatic restart or parameter adjustment to obtain positive results is implied.
 
 PTS report rows explicitly distinguish stored DATA_UNAVAILABLE omissions from NOT_RECORDED evidence and valid holds. The versioned presentation retains original row status/reason and stored omission phase/cause in JSON/CSV/HTML; it changes no trading policy or ledger. Offline rendering into a new directory cannot establish process liveness or replace a frozen active runner.
+
+Read [PTS causal research](PTS-CAUSAL-RESEARCH.md) for the offline `pts-research-input-v1`
+audit extension. Its manifest pins saved sources and disabled research policies; dispatch precedes
+environment and provider composition. Reports separate original decisions, retrospective signal
+experiments and unavailable financial paths. Never start a public trial from its future protocol.
