@@ -1491,7 +1491,8 @@ explorer links. Production ignores the parameter. Regenerate its normalized fixt
 `node --import tsx scripts/design/perpl-preview.mts`; it uses controlled transport, not real keys.
 Market identities reuse fixed local `market-asset.tsx` SVGs with text fallback and provenance in
 `public/brand/markets/README.md`. Preserve surface tokens, unknown values, responsive layout and
-reduced motion. The sole dark balance block is `#perpl-equity`.
+reduced motion. The dark portfolio summary is `#perpl-equity`; the independent market ticker
+is a second dark surface outside `main`.
 
 `node --import tsx scripts/design/perpl-dashboard.mjs http://localhost:3005` exercises browser →
 Hono → bounded RPC adapter → Trading using controlled public chain responses. It proves no
@@ -1523,3 +1524,24 @@ ChainReference: visible abbreviated hash, full-value copy and the Monad testnet 
 Positions reuse the same compact history; setup references use the same control. An absent hash
 remains explicitly unrecorded, independently of request/order identifiers and fill status.
 Inert previews never receive an explorer link. This is presentation only and adds no requests.
+
+## Portfolio-first Perpl presentation
+
+`features/perpl/dashboard.tsx` renders the portfolio before the protocol catalogue. The dark
+summary groups estimated value, available AUSD, open price P&L and position collateral once.
+`positions.tsx` pairs a selectable position list with one detailed position pane. Selection uses
+account/position identity, survives refreshed snapshots and resets when the observed wallet changes.
+If the selected position disappears, the first remaining position becomes visible. On mobile the
+list becomes horizontally scrollable above the detail pane. Buttons retain native keyboard and
+pressed-state semantics; a stable live region announces selection. Price P&L appears once per list item;
+entry/mark prices, size and collateral live in the detail pane, with exhaustion estimates in the
+buffer disclosure. Unknown data and the existing 0–20% buffer scale remain explicit. Account/exposure metadata lives
+in the estimates disclosure. Public `?wallet=` observation, unknown values, stale reads and the
+existing serial polling remain unchanged. The protocol catalogue is an accessible disclosure.
+
+`market-ticker.tsx` reuses the same market snapshot, with no additional reads. Its full-width
+strip lives beneath the public navbar. The visual-only duplicate is inert and hidden from
+assistive technology. Motion pauses on hover, focus, explicit pause and stale data; keyboard
+focus and touch use the original, manually scrollable list. Reduced motion disables the loop
+and price flashes. Prices flash only for changed observations, using surrounding surface
+tokens, without interpolating money. `display.ts` contains presentation formatting only.

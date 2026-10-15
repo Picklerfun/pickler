@@ -441,3 +441,104 @@ Validation passed: Web types, scoped lint, formatting, static Design, rendered t
 and typography. Browser error logs were empty. The preview remains open at its normal viewport.
 No provider or financial transactions, push, merge or deployment occurred for this refinement.
 No actionable P0/P1/P2 findings remain.
+
+---
+
+# Perpl portfolio ticker — design QA
+
+- Source: `/Users/gilbertsahumada/.codex/generated_images/01a0b4a8-16eb-7520-b9a7-27ab962def15/exec-f9e36b1e-3705-48f0-9db1-a2b7d9216455.png`
+- Implementation: `/tmp/perpl-portfolio-desktop-v2.jpg`
+- Viewport: 1440 × 1024 CSS pixels, density 1.
+- Source: 1487 × 1058 pixels, normalized proportionally to the implementation's 1440 × 1024 frame.
+- State: local labelled example portfolio; ticker paused, disclosures collapsed.
+- Full comparison: `/tmp/perpl-ticker-qa/comparison-v2.png` (source left, implementation right).
+- Focused comparison: `/tmp/perpl-ticker-qa/ticker-comparison.png` (source above, implementation below).
+
+## Findings
+
+- [P2, resolved] Display and data typography was smaller than the selected visual target. The final title is 76px at desktop; the primary balance is 68px, secondary figures 40px, currency labels 14–20px, table values 16px and table headers 14px. The second normalized comparison verifies the stronger hierarchy.
+- [P2, resolved] Side header did not align with its data. Both are now left-aligned.
+- [P2, resolved] The pinned market caption consumed too much space at small widths. Hide that redundant visual caption below 480px; keep the region's accessible name.
+
+## Product constraints
+
+The example uses the existing controlled, normalized fixture rather than inventing a second set of financial numbers. Positive P&L and the displayed buffer therefore differ from the illustrative mock. The shared navbar retains its actual connection state; the example does not fabricate a connected wallet. Protocol details and collateral/account metadata remain available in disclosures rather than being discarded for visual fidelity.
+
+## Verification so far
+
+Desktop and 380/320px layouts have no page overflow. Pause/resume and keyboard access were checked in the in-app browser. The visual duplicate is inert and hidden from assistive technology. Position, estimate and catalogue disclosures work. Loaded logos are the existing reviewed Perpl market assets. Browser error/warning logs are empty. Title uses Archivo with width axis 112; body uses Instrument Sans. Sampled primary labels and monetary text exceed 5.84:1 contrast, with muted table labels at 6.28:1.
+
+## Comparison history
+
+1. Initial screenshot `/tmp/perpl-portfolio-desktop-v1.jpg`: side alignment and mobile-caption findings.
+2. `/tmp/perpl-portfolio-desktop-final.jpg`: initial fixes verified; normalized comparison identified the typography finding above.
+
+## Required fidelity surfaces
+
+Typography: display/data scale corrected and visually verified in the second full comparison and `/tmp/perpl-ticker-qa/balance-comparison-v2.png`. Spacing: primary groups match, with the shared navbar intentionally retained. Colors: existing surface tokens and sampled contrast verified. Assets: actual local market/brand marks, loaded and sharp. Copy: financial estimates and example state remain explicit.
+
+3. `/tmp/perpl-portfolio-desktop-v2.jpg`: display/data scale corrected. Comparison `/tmp/perpl-ticker-qa/comparison-v2.png` and focused balance comparison `/tmp/perpl-ticker-qa/balance-comparison-v2.png` confirm no remaining actionable P0/P1/P2 visual findings. Rechecked 768px and 320px after the change: no overflow; two intact position rows. Mobile viewport evidence: `/tmp/perpl-portfolio-mobile-v2.jpg`.
+
+## Final validation and boundaries
+
+Next production build and TypeScript passed. Scoped ESLint, formatting, design source and diff checks passed. Existing Perpl client tests passed (2); direct formatting checks passed for unknown values, negative amounts, zero, sub-basis-point moves and encoded market links. The public observed-wallet prop introduced on main is preserved, and explicitly observed addresses remain visible in the heading.
+
+Motion measurements show the ticker moving, explicit pause stopping it and keyboard focus switching to the original scrollable list. The last focused market was completely inside its viewport. Duplicate content has no focusable links, is inert and aria-hidden. The strip avoids looping when its content fits without overflow. Reduced-motion CSS and flash guards were source-checked; this browser API did not expose media emulation or a real touch device. Price-update flashes were not tested against a new live observation. No provider, wallet signature, private credential or production deployment was used for this redesign acceptance.
+
+## Follow-up polish
+
+- [P3] The shared navigation intentionally retains existing app controls and its real connection state instead of copying the mock's fictional connected wallet.
+- [P3] Example figures and semantic buffer colors differ from the conceptual mock because the controlled fixture is authoritative. Do not replace them with made-up financial observations.
+
+final result: passed
+
+## Market strip density refinement — 2026-10-14
+
+The requested strip is now 56px high on desktop and 52px at mobile widths, retaining 44px
+interactive targets. The loop duration is 65 seconds rather than 90 seconds, approximately
+38% faster for the same content distance. Pause, keyboard and reduced-motion behavior is
+unchanged.
+
+Browser measurements verified the 56/52px heights, 65-second duration, working pause/resume
+and no page overflow at 1440px and 380px. Evidence: `/tmp/perpl-ticker-thin-desktop.jpg` and
+`/tmp/perpl-ticker-thin-mobile.jpg`. Scoped formatting, strict design source and diff checks
+passed. Open-position alternatives are conceptual mockups pending selection; this refinement
+does not implement a new position layout.
+
+---
+
+# Perpl position spotlight — selected design QA, 2026-10-14
+
+## Evidence and normalization
+
+- Source visual truth: `/Users/gilbertsahumada/.codex/generated_images/01a0b4a8-16eb-7520-b9a7-27ab962def15/exec-ad3db911-4542-4722-a648-10b4eb993f1a.png` (third displayed result in the latest ideation set).
+- Implementation: `/tmp/perpl-positions-spotlight-desktop-clean.jpg`.
+- Browser viewport: 1440 × 1024 CSS pixels at density 1. Source pixels: 1681 × 936; implementation pixels: 1440 × 1024.
+- Comparison state: controlled example wallet, BTC selected, details collapsed, light public surface. The unchanged navbar, ticker, heading and portfolio summary are outside the position comparison crop.
+- Full section comparison: `/tmp/perpl-spotlight-qa/positions-comparison.png`. The source position region is cropped at y=260–850 and resized proportionally to 1440px width. The implementation is cropped at y=345–870. No screenshot typography is stretched.
+- Focused comparisons: `/tmp/perpl-spotlight-qa/selected-position-comparison.png` and `/tmp/perpl-spotlight-qa/prices-comparison.png`.
+- User-facing evidence: `/tmp/perpl-open-positions-preview.jpg`. Mobile evidence: `/tmp/perpl-positions-spotlight-mobile.jpg` and `/tmp/perpl-positions-spotlight-320-v1.jpg`.
+
+## Findings and comparison history
+
+1. Initial capture `/tmp/perpl-positions-spotlight-v1.jpg` identified three P2 findings: dark secondary text inside the active violet selector, its trailing chevron not reaching the right edge, and excessive detail-panel height.
+2. The selected P&L subtree now uses the appropriate surface ink for its labels and currency. The selector has an explicit full-width grid track. Smaller internal gaps and padding reduce the detail panel from 532px to 492px. `/tmp/perpl-positions-spotlight-v2.jpg` verifies those corrections.
+3. Final capture `/tmp/perpl-positions-spotlight-desktop-clean.jpg` and the normalized full/focused comparisons verify the final layout, including larger 16px desktop currency labels. No actionable P0/P1/P2 findings remain.
+
+## Required fidelity surfaces
+
+Typography: Archivo headings with the required width axis, Instrument Sans body, tabular monetary figures. Identity/P&L and entry/mark hierarchy match the reference; 14–16px labels remain readable. Spacing: the desktop list/detail proportions match, with aligned price and collateral groups. The mobile selectors scroll within their own list above one full-width detail pane. Colors: selected violet, independent Long/Short status colors and signed P&L colors use existing surface tokens. Browser sampling confirms white selected labels and lime gain figures on the violet background. Assets: actual reviewed BTC/ETH SVGs remain sharp and use the shared MarketAsset. Copy: the source's entry, mark, size, collateral and P&L figures are reproduced from the existing controlled fixture; unavailable values retain existing formatting.
+
+## Product constraints and interactions
+
+The established buffer meter keeps its explicit 0–20% scale. Both example buffers therefore fill the bar, instead of reproducing the mock's misleading partial fills. Exhaustion details remain available in a labelled disclosure and are not presented as liquidation prices. The source's gradients and subtle extra separators are replaced by existing flat surface tokens. No leverage, return percentage, new calculation, history chart or trading action was introduced.
+
+BTC/ETH selection was exercised with clicks, Enter and Space; the pane changes identity, direction, entry/mark, quantity, collateral and buffer together. Native pressed state and a stable selection live region identify the selection. The per-position exhaustion disclosure and portfolio-estimates disclosure work. Desktop 1440px, tablet 768px and mobile 380/320px measurements show no page overflow. Prices remain intact at 320px. Browser error/warning logs are empty. Reduced-motion rules were source-checked; browser media emulation and real-touch acceptance were not available.
+
+Selection is keyed by account/position identity, initialized from the first position and reset by wallet identity. Refresh/removal fallback and empty/unknown behavior were inspected in the component; this static preview does not exercise live polling or real account changes. The existing HTTP controller and public observed-wallet flow remain unchanged. No wallet signature, provider call, financial transaction, deployment or merge was used for this UI validation.
+
+## Validation and follow-up
+
+Production Next build and TypeScript passed. Scoped ESLint, Prettier, strict design-source and diff checks passed. Native definition lists retain price/size labels; the list buttons remain separate from the detail pane. The unchanged surrounding dashboard intentionally retains the previously approved design rather than reworking the mock's contextual summary band. A larger live account and a real touch device remain useful follow-up acceptance cases.
+
+final result: passed
