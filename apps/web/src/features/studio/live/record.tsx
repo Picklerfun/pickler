@@ -13,7 +13,11 @@ import runtime from "./runtime.module.css";
  * with nothing closed and the empty line. With it on, or a paper account (R13): the paper equity line, the five figures from the record, and
  * the closed positions, newest first; the empty line stays until the first close.
  */
-export const RecordSection: (props: LiveSectionProps) => ReactElement = ({ live, now }) => {
+export const RecordSection: (props: LiveSectionProps) => ReactElement = ({
+  live,
+  now,
+  onSection,
+}) => {
   const record = paperShown(live.record) ? live.record : null;
   const positions = live.positions && live.positions !== "failed" ? live.positions : null;
   const closed = positions?.closed ?? [];
@@ -22,67 +26,71 @@ export const RecordSection: (props: LiveSectionProps) => ReactElement = ({ live,
   return (
     <LiveSection section="record">
       <div className={styles.run}>
-        <PerplTradingRecord execution={live.execution} />
-        <div className={styles.list} id="live-record-list">
-          <div className={styles.listHead}>
-            <h3 className={styles.listTitle}>
-              {live.execution.state?.setupRequired === false ? "Paper record" : "Record"}
-            </h3>
-            <span className={styles.listMeta}>{view ? view.meta : RECORD_META}</span>
-          </div>
-          {view && (
-            <>
-              <div className={runtime.equity} id="live-record-equity">
-                <div className={runtime.equityHead}>
-                  <span className={runtime.equityLabel}>EQUITY · AUSD · PAPER</span>
-                  <span className={runtime.equityMeta}>{view.equityHead}</span>
+        {(!live.preview || !!live.execution.state?.available) && (
+          <PerplTradingRecord execution={live.execution} onControls={() => onSection("controls")} />
+        )}
+        {(record || (live.preview && !live.execution.state?.available)) && (
+          <div className={styles.list} id="live-record-list">
+            <div className={styles.listHead}>
+              <h3 className={styles.listTitle}>
+                {live.execution.state?.setupRequired === false ? "Paper record" : "Record"}
+              </h3>
+              <span className={styles.listMeta}>{view ? view.meta : RECORD_META}</span>
+            </div>
+            {view && (
+              <>
+                <div className={runtime.equity} id="live-record-equity">
+                  <div className={runtime.equityHead}>
+                    <span className={runtime.equityLabel}>EQUITY · AUSD · PAPER</span>
+                    <span className={runtime.equityMeta}>{view.equityHead}</span>
+                  </div>
+                  <div className={runtime.equityChart}>
+                    <Sparkline trail={view.trail} up={view.up} />
+                  </div>
+                  <span className={styles.srOnly}>{view.trailText}</span>
                 </div>
-                <div className={runtime.equityChart}>
-                  <Sparkline trail={view.trail} up={view.up} />
-                </div>
-                <span className={styles.srOnly}>{view.trailText}</span>
-              </div>
-              <ul className={runtime.stats} aria-label="Its record">
-                {view.stats.map((stat) => (
-                  <li key={stat.key} className={runtime.stat}>
-                    <span className={runtime.statValue} data-tone={stat.tone ?? undefined}>
-                      {stat.value}
-                    </span>
-                    <span className={runtime.statLabel}>{stat.label}</span>
-                  </li>
-                ))}
+                <ul className={runtime.stats} aria-label="Its record">
+                  {view.stats.map((stat) => (
+                    <li key={stat.key} className={runtime.stat}>
+                      <span className={runtime.statValue} data-tone={stat.tone ?? undefined}>
+                        {stat.value}
+                      </span>
+                      <span className={runtime.statLabel}>{stat.label}</span>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+            {closed.length === 0 ? (
+              <div className={styles.empty}>{RECORD_EMPTY}</div>
+            ) : (
+              <ul className={runtime.closed} id="live-record-closed">
+                {closed.map((position) => {
+                  const row = closedRow(position, now);
+                  return (
+                    <li key={row.id} className={runtime.closedRow}>
+                      <span
+                        className={runtime.closedDot}
+                        data-tone={row.tone ?? undefined}
+                        aria-hidden="true"
+                      />
+                      <span className={runtime.closedText}>
+                        <span className={runtime.closedTitle}>{row.title}</span>
+                        <span className={runtime.closedSub}>{row.sub}</span>
+                      </span>
+                      <span className={runtime.closedPnl} data-tone={row.tone ?? undefined}>
+                        {row.pnl}
+                      </span>
+                      <span className={runtime.closedAt} suppressHydrationWarning>
+                        {row.at}
+                      </span>
+                    </li>
+                  );
+                })}
               </ul>
-            </>
-          )}
-          {closed.length === 0 ? (
-            <div className={styles.empty}>{RECORD_EMPTY}</div>
-          ) : (
-            <ul className={runtime.closed} id="live-record-closed">
-              {closed.map((position) => {
-                const row = closedRow(position, now);
-                return (
-                  <li key={row.id} className={runtime.closedRow}>
-                    <span
-                      className={runtime.closedDot}
-                      data-tone={row.tone ?? undefined}
-                      aria-hidden="true"
-                    />
-                    <span className={runtime.closedText}>
-                      <span className={runtime.closedTitle}>{row.title}</span>
-                      <span className={runtime.closedSub}>{row.sub}</span>
-                    </span>
-                    <span className={runtime.closedPnl} data-tone={row.tone ?? undefined}>
-                      {row.pnl}
-                    </span>
-                    <span className={runtime.closedAt} suppressHydrationWarning>
-                      {row.at}
-                    </span>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </div>
+            )}
+          </div>
+        )}
       </div>
     </LiveSection>
   );

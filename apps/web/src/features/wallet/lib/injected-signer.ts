@@ -104,7 +104,7 @@ export const injectedSigner: SignerAdapter = {
       (await readAccounts(provider))[0]?.toLowerCase() !== input.wallet.toLowerCase() ||
       (await readChainId(provider)) !== 10143
     ) {
-      throw new Error("Wallet or network changed. Switch to Monad testnet.");
+      throw new Error("Wallet or network changed. Switch to the selected Monad network.");
     }
     let signature: unknown;
     try {

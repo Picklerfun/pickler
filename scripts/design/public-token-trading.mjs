@@ -431,7 +431,7 @@ try {
 
   await page.evaluate(() => sessionStorage.setItem("pk.controlled.chain", "0x1"));
   await page.reload();
-  const switchNetwork = trade.getByRole("button", { name: "Switch to Monad testnet", exact: true });
+  const switchNetwork = trade.getByRole("button", { name: "Switch to Monad", exact: true });
   await switchNetwork.waitFor();
   await page.evaluate(() => {
     window.__switchError = { code: -32002, message: "pending" };

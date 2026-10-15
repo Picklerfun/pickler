@@ -1,7 +1,6 @@
 "use client";
 
-import { useId } from "react";
-import { Button, Icon } from "@pickler/ui";
+import { ActionButton, type ActionButtonState } from "@pickler/ui";
 import type { WalletFailure } from "@/features/wallet/lib/wallet-request-error";
 import styles from "./public-trade-action.module.css";
 
@@ -49,44 +48,28 @@ const HINTS: Record<string, string> = {
 };
 
 export function PublicTradeAction({ state, label, hint, failure, disabled, busy, onClick }: Props) {
-  const description = useId();
-  const failed = state === "error" || state === "unknown";
-  const spinning = ["preparing", "approval", "trade"].includes(state);
-  let icon: "arrow" | "wallet" | "clock" | "check" | "alert" | "x" = "arrow";
-  if (state === "wallet") {
-    icon = "wallet";
-  } else if (state === "success") {
-    icon = "check";
-  } else if (state === "pending") {
-    icon = "clock";
-  } else if (failed) {
-    icon = label.startsWith("Cancelled") ? "x" : "alert";
-  }
+  const feedback: ActionButtonState =
+    state === "error" || state === "unknown" || state === "success" || state === "wallet"
+      ? state
+      : ["preparing", "approval", "trade"].includes(state)
+        ? "working"
+        : state === "pending"
+          ? "waiting"
+          : "ready";
   const visibleHint = hint?.startsWith("Signature cancelled")
     ? undefined
     : (HINTS[hint ?? ""] ?? hint);
   return (
     <div className={styles.action} data-state={state}>
-      <Button
-        block
-        className={styles.button}
+      <ActionButton
+        state={feedback}
+        label={label}
+        hint={visibleHint}
+        icon={label.startsWith("Cancelled") ? "x" : "arrow"}
         disabled={disabled}
-        aria-label={label}
-        aria-describedby={hint ? description : undefined}
-        aria-busy={busy}
+        busy={busy}
         onClick={onClick}
-      >
-        {busy && <span className={styles.sweep} aria-hidden="true" />}
-        <span key={`${state}.${label}`} className={styles.content} aria-hidden="true">
-          <span className={styles.mark}>
-            {spinning ? <span className={styles.ring} /> : <Icon name={icon} size={19} />}
-          </span>
-          <span className={styles.words}>
-            <span>{label}</span>
-            {visibleHint && <span className={styles.hint}>{visibleHint}</span>}
-          </span>
-        </span>
-      </Button>
+      />
       {failure && !busy && (
         <details className={styles.failure}>
           <summary>
@@ -97,12 +80,6 @@ export function PublicTradeAction({ state, label, hint, failure, disabled, busy,
           <small>Wallet request · {failure.method}</small>
         </details>
       )}
-      <span className={styles.announcement} role="status" aria-atomic="true">
-        {failed ? "" : label}
-      </span>
-      <span id={description} className={styles.announcement} role={failed ? "alert" : undefined}>
-        {failed ? `${label}. ${hint ?? ""}` : hint}
-      </span>
     </div>
   );
 }

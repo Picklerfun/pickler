@@ -69,14 +69,14 @@ export function TradePanel({ agent }: { agent: TokenProfileDto }) {
         {wallet.status !== "connected"
           ? "No wallet connected"
           : !wallet.onTargetChain
-            ? `Wrong network · switch to ${TARGET_CHAIN.name}`
+            ? "Wrong network · switch to Monad"
             : `${wallet.balance === null ? "—" : formatBalance(wallet.balance)} ${TARGET_CHAIN.nativeCurrency.symbol} · ${shortAddress(wallet.address!)}`}
       </p>
 
       {wallet.status === "connected" ? (
         !wallet.onTargetChain ? (
           <Button className={styles.ctaButton} block onClick={() => void wallet.switchChain()}>
-            Switch to {TARGET_CHAIN.name}
+            Switch to Monad
           </Button>
         ) : (
           // Connected and on the right chain; what is missing now is the launcher contract.

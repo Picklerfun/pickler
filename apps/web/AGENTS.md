@@ -93,9 +93,10 @@ Market data is drawn with `CandleChart` and `BarChart` from `@pickler/ui` — th
 
 ## Product network selector
 
-The shared navbar identifies the selected product network. Content headings, token cards,
-marketing copy and Studio status labels omit duplicate network badges. Keep network-specific
-wallet switching, deposit instructions and transaction review details explicit.
+The shared navbar network selector is the only app-owned UI that says Testnet. Content headings,
+forms, status labels, wallet instructions and reviewed errors use network-neutral copy or refer
+back to the selected Monad network. Funding and transaction reviews retain the actual chain ID;
+network identity, RPC endpoints, wallet-switch metadata and execution guards remain unchanged.
 
 `features/site/network-selector.tsx` renders a custom network menu using `Button` and `Icon` from `@pickler/ui` in
 the shared public `SiteNav` and all three Studio top bars (home, creation and draft/live shell). Its presentation
@@ -1549,3 +1550,39 @@ assistive technology. Motion pauses on hover, focus, explicit pause and stale da
 focus and touch use the original, manually scrollable list. Reduced motion disables the loop
 and price flashes. Prices flash only for changed observations, using surrounding surface
 tokens, without interpolating money. `display.ts` contains presentation formatting only.
+
+## Perpl trading workspace presentation
+
+The execution feature now composes the account strip, trading ticket and session summary in
+Controls, with a recent cycle beneath. Controls, Positions and Record use the same account
+status precedence: failed/unread observations and missing authorization cannot imply readiness
+or a flat account. Account state replaces paper chrome on hosted views; legacy paper-only
+fixtures retain their original proofs. Paper controls remain in the closed Advanced settings
+disclosure. The three trading sections omit the duplicate money tiles and activity strip.
+
+`presentation.ts` formats server values and groups chronological orders by session and market;
+it does not compute fills, risk, P&L or authority. A submitted/unknown order cannot render the
+confirmed check. `receipts.tsx` pairs openings and closings, retains incomplete orders and puts
+request/order IDs, size, price and fee in execution details. Actual hashes use ChainReference;
+missing hashes remain explicitly unrecorded. History is still rendered from received orders
+when trading permission is unavailable. Existing wallet positions are read only, separate
+from positions explicitly marked `managedBySession`.
+
+The shared `ActionButton` in @pickler/ui provides the same visual ring, sweep and check as token
+purchases. Perpl only uses server order/session state for those phases and has no wallet prompt
+on Start trading. The existing-key form uses its connection request's busy state. Mutation
+locking, server controls and idempotency are unchanged. In labelled development trading
+fixtures only, Start trading plays a local button-feedback sequence with no account changes,
+provider calls or fabricated receipts; its timer never reaches an execution API.
+
+Trading Controls reads the same official, network-scoped Perpl catalogue as Sources & rules.
+All catalogue rows are shown; unavailable, ambiguous and unconfigured markets cannot be selected.
+A stale/failed catalogue blocks new entries, preserves the chosen symbol and offers retry.
+Manage markets navigates to Sources & rules; the selector never expands the agent allowlist.
+Development trading fixtures use the captured catalogue only, never a live fallback.
+
+The account strip and controls use workspace container queries so an expanded sidebar cannot
+leave a narrow content area in desktop layout. Network context remains in the global header.
+Long/Short tags use shared semantic direction colors in receipts and open positions. The shared
+leverage slider is explicitly disabled at the existing 1× pilot limit; it does not advertise
+unsupported leverage or change execution settings.

@@ -4,7 +4,6 @@ import { StudioSkeleton } from "../../studio/skeleton";
 import { useState } from "react";
 import Link from "next/link";
 import { Button, ButtonLink, Icon } from "@pickler/ui";
-import { MONAD_TESTNET } from "@pickler/chain";
 import { addressButtonLabel, type CopyState } from "../../auth/lib/address";
 import { formatBalance } from "../../auth/lib/balance";
 import { SIGNUP_PASSKEY_STEP } from "../../auth/lib/custody";
@@ -121,10 +120,7 @@ export function WalletSection({ state }: { state: WalletState }) {
       {wallet && (
         <div className={styles.network}>
           <div className={styles.networkName}>
-            {/* The wallet DTO carries an address and balances and no chain, so the network is named
-                from the one this build targets rather than from the response. If a chain ever
-                travels on WalletDto, read it from there instead of from here. */}
-            <p className={styles.networkTitle}>{MONAD_TESTNET.name}</p>
+            <p className={styles.networkTitle}>Wallet address</p>
             <button
               type="button"
               className={styles.address}

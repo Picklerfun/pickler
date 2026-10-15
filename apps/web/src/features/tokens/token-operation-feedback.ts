@@ -1,10 +1,10 @@
 /** Only reviewed codes become user copy; provider text never reaches the launch card. */
 const operationMessages: Record<string, string> = {
-  RPC_UNAVAILABLE: "The testnet connection is unavailable. Try again when it recovers.",
+  RPC_UNAVAILABLE: "The network connection is unavailable. Try again when it recovers.",
   RPC_BUDGET_EXHAUSTED: "This attempt reached its network request limit. Start a new preparation.",
   GAS_LIMIT_EXCEEDED:
     "The estimated gas exceeds the launch limit. No transaction was signed. Pickler needs to review the limit before you retry.",
-  INSUFFICIENT_GAS_BALANCE: "Your master wallet needs more testnet MON to cover gas.",
+  INSUFFICIENT_GAS_BALANCE: "Your master wallet needs more MON to cover gas.",
   SIMULATION_REJECTED:
     "The contract rejected the transaction preview. No transaction was signed. Pickler needs to review this launch.",
   METADATA_UNAVAILABLE:
