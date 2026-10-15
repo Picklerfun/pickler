@@ -159,3 +159,6 @@ periods separate, with no retuning against the final period.
 
 Any future public capture or trial requires separate explicit authorization and a reviewed plan.
 This implementation writes only disabled protocol conditions and offline research artifacts.
+
+The [2026-10-15 findings](PTS-CAUSAL-RESEARCH-FINDINGS-20261015.md) record the verified original
+trace reproduction, distinct signal episodes, candidate sensitivities and financial evidence limits.
