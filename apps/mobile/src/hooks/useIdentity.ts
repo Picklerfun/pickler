@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { type AccountState, accountAddress } from "../account";
 import { API_URL } from "../config/api";
+import { studioAgentsEnabled } from "../config/advice";
 import { CHAIN } from "../config/chain";
-import { createProfile, describeIdentityError, fetchProfile, handleAvailable, isHandleRefusal } from "../identity/api";
+import { RP_ID } from "../config/rp";
+import { type AuthedFetch, createProfile, describeIdentityError, fetchProfile, handleAvailable, isHandleRefusal, WalletLockedError } from "../identity/api";
 import { normalizeHandle } from "../identity/handle";
 import { type IdentitySession, sessionFor, signInWithWallet } from "../identity/session";
 import { type Identity, identityFor } from "../identity/state";
@@ -26,6 +28,14 @@ export type IdentityApi = {
    * mensaje si sigue sin tenerlo (la comprobación que la app hace sola al volver del navegador).
    */
   recheck: (opts?: { quiet?: boolean }) => Promise<void>;
+  /**
+   * A fetch to the product API with the account's bearer token (path relative to the API base). Uses the session in
+   * memory, signs in again if it is stale, and once more after a 401. Never prompts: with the wallet locked it throws
+   * WalletLockedError, so the caller unlocks first. The token is never stored.
+   */
+  authedFetch: AuthedFetch;
+  /** Studio agents are offered only with the product API and the pinned splitter both configured. */
+  studioAgents: boolean;
 };
 
 const OFF: Identity = { status: "off" };
@@ -53,12 +63,14 @@ export function useIdentity(account: AccountState, onUnlock: (w: Wallet) => void
   // La dirección de la que habla `identity`: lo sabido de una cuenta no se arrastra a otra.
   const knownFor = useRef<string | null>(null);
   const wallet = account.status === "unlocked" ? account.wallet : null;
+  const walletRef = useRef(wallet);
+  walletRef.current = wallet;
 
   /** Sesión vigente de esta wallet, o una nueva. */
   const ensureSession = useCallback(async (w: Wallet): Promise<IdentitySession> => {
     const current = sessionFor(session.current, w.address);
     if (current) return current;
-    const fresh = await signInWithWallet({ base: API_URL!, address: w.address, chainId: CHAIN.id, sign: (message) => w.account.signMessage({ message }) });
+    const fresh = await signInWithWallet({ base: API_URL!, address: w.address, chainId: CHAIN.id, domain: RP_ID, sign: (message) => w.account.signMessage({ message }) });
     session.current = fresh;
     return fresh;
   }, []);
@@ -190,5 +202,27 @@ export function useIdentity(account: AccountState, onUnlock: (w: Wallet) => void
     }
   }, [ensureSession, has, unlock]);
 
-  return { identity, busy, error, clearError, check, claim, recheck };
+  const authedFetch = useCallback<AuthedFetch>(async (path, init = {}, opened) => {
+    if (!path.startsWith("/")) throw new Error(`authedFetch path must start with "/": ${path}`);
+    const send = async (w: Wallet) => {
+      const token = (await ensureSession(w)).token;
+      // Plain object, Headers instance or pair list: none loses an entry.
+      const headers: Record<string, string> = {};
+      new Headers(init.headers).forEach((value, key) => { headers[key] = value; });
+      // Headers lowercases every name: a caller's own authorization would travel beside ours. Ours is the only one.
+      delete headers.authorization;
+      headers.Authorization = `Bearer ${token}`;
+      return fetch(`${API_URL!}${path}`, { ...init, headers });
+    };
+    // A wallet the caller just unlocked arrives here before the render that carries it into walletRef.
+    const w = opened ?? walletRef.current;
+    if (API_URL === null || !w) throw new WalletLockedError();
+    const res = await send(w);
+    if (res.status !== 401) return res;
+    // The token was refused (revoked or expired in flight): sign in again, once.
+    session.current = undefined;
+    return send(w);
+  }, [ensureSession]);
+
+  return { identity, busy, error, clearError, check, claim, recheck, authedFetch, studioAgents: studioAgentsEnabled() };
 }

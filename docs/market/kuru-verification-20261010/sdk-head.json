@@ -1,0 +1,106 @@
+{
+  "observedAt": "2026-10-10T14:12:27.980229+00:00",
+  "endpoint": "repos/Kuru-Labs/ts-sdk/commits/main",
+  "success": true,
+  "result": {
+    "sha": "8588784c4d54183a04029cb1b513910c806905a9",
+    "node_id": "C_kwDOSrSYRdoAKDg1ODg3ODRjNGQ1NDE4M2EwNDAyOWNiMWI1MTM5MTBjODA2OTA1YTk",
+    "commit": {
+      "author": {
+        "name": "GitHub Actions Bot",
+        "email": "github-actions[bot]@users.noreply.github.com",
+        "date": "2026-10-01T17:06:01Z"
+      },
+      "committer": {
+        "name": "GitHub Actions Bot",
+        "email": "github-actions[bot]@users.noreply.github.com",
+        "date": "2026-10-01T17:06:01Z"
+      },
+      "message": "Bump version to 0.3.0",
+      "tree": {
+        "sha": "b9b3a69822bdaf153180d6f6a0b69b089f3fe003",
+        "url": "https://api.github.com/repos/Kuru-Labs/ts-sdk/git/trees/b9b3a69822bdaf153180d6f6a0b69b089f3fe003"
+      },
+      "url": "https://api.github.com/repos/Kuru-Labs/ts-sdk/git/commits/8588784c4d54183a04029cb1b513910c806905a9",
+      "comment_count": 0,
+      "verification": {
+        "verified": false,
+        "reason": "unsigned",
+        "signature": null,
+        "payload": null,
+        "verified_at": null
+      }
+    },
+    "url": "https://api.github.com/repos/Kuru-Labs/ts-sdk/commits/8588784c4d54183a04029cb1b513910c806905a9",
+    "html_url": "https://github.com/Kuru-Labs/ts-sdk/commit/8588784c4d54183a04029cb1b513910c806905a9",
+    "comments_url": "https://api.github.com/repos/Kuru-Labs/ts-sdk/commits/8588784c4d54183a04029cb1b513910c806905a9/comments",
+    "author": {
+      "login": "github-actions[bot]",
+      "id": 41898282,
+      "node_id": "MDM6Qm90NDE4OTgyODI=",
+      "avatar_url": "https://avatars.githubusercontent.com/in/15368?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/github-actions%5Bbot%5D",
+      "html_url": "https://github.com/apps/github-actions",
+      "followers_url": "https://api.github.com/users/github-actions%5Bbot%5D/followers",
+      "following_url": "https://api.github.com/users/github-actions%5Bbot%5D/following{/other_user}",
+      "gists_url": "https://api.github.com/users/github-actions%5Bbot%5D/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/github-actions%5Bbot%5D/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/github-actions%5Bbot%5D/subscriptions",
+      "organizations_url": "https://api.github.com/users/github-actions%5Bbot%5D/orgs",
+      "repos_url": "https://api.github.com/users/github-actions%5Bbot%5D/repos",
+      "events_url": "https://api.github.com/users/github-actions%5Bbot%5D/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/github-actions%5Bbot%5D/received_events",
+      "type": "Bot",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "committer": {
+      "login": "github-actions[bot]",
+      "id": 41898282,
+      "node_id": "MDM6Qm90NDE4OTgyODI=",
+      "avatar_url": "https://avatars.githubusercontent.com/in/15368?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/github-actions%5Bbot%5D",
+      "html_url": "https://github.com/apps/github-actions",
+      "followers_url": "https://api.github.com/users/github-actions%5Bbot%5D/followers",
+      "following_url": "https://api.github.com/users/github-actions%5Bbot%5D/following{/other_user}",
+      "gists_url": "https://api.github.com/users/github-actions%5Bbot%5D/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/github-actions%5Bbot%5D/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/github-actions%5Bbot%5D/subscriptions",
+      "organizations_url": "https://api.github.com/users/github-actions%5Bbot%5D/orgs",
+      "repos_url": "https://api.github.com/users/github-actions%5Bbot%5D/repos",
+      "events_url": "https://api.github.com/users/github-actions%5Bbot%5D/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/github-actions%5Bbot%5D/received_events",
+      "type": "Bot",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "parents": [
+      {
+        "sha": "feaf2e6be92cdf0644d1242f9751d5dd197d6cab",
+        "url": "https://api.github.com/repos/Kuru-Labs/ts-sdk/commits/feaf2e6be92cdf0644d1242f9751d5dd197d6cab",
+        "html_url": "https://github.com/Kuru-Labs/ts-sdk/commit/feaf2e6be92cdf0644d1242f9751d5dd197d6cab"
+      }
+    ],
+    "stats": {
+      "total": 2,
+      "additions": 1,
+      "deletions": 1
+    },
+    "files": [
+      {
+        "sha": "e7e87ecb770cda07eb1fb0204a499bd5cc83376b",
+        "filename": "package.json",
+        "status": "modified",
+        "additions": 1,
+        "deletions": 1,
+        "changes": 2,
+        "blob_url": "https://github.com/Kuru-Labs/ts-sdk/blob/8588784c4d54183a04029cb1b513910c806905a9/package.json",
+        "raw_url": "https://github.com/Kuru-Labs/ts-sdk/raw/8588784c4d54183a04029cb1b513910c806905a9/package.json",
+        "contents_url": "https://api.github.com/repos/Kuru-Labs/ts-sdk/contents/package.json?ref=8588784c4d54183a04029cb1b513910c806905a9",
+        "patch": "@@ -1,6 +1,6 @@\n {\n   \"name\": \"@toxicflow-labs/ts-sdk\",\n-  \"version\": \"0.2.0\",\n+  \"version\": \"0.3.0\",\n   \"description\": \"Viem-first TypeScript SDK for Kuru contracts.\",\n   \"repository\": {\n     \"type\": \"git\","
+      }
+    ]
+  }
+}

@@ -3,13 +3,22 @@ import type { Services } from "../app";
 /** Shape-only services: mounting routes is allowed, invoking a service is always a bug. */
 export function documentationServices(
   features: {
+    perplDashboard?: boolean;
     studio?: boolean;
     advice?: boolean;
     growth?: boolean;
     custody?: boolean;
     walletAuth?: boolean;
     launches?: boolean;
-  } = { advice: true, studio: true, growth: true, custody: true, walletAuth: true, launches: true },
+  } = {
+    perplDashboard: true,
+    advice: true,
+    studio: true,
+    growth: true,
+    custody: true,
+    walletAuth: true,
+    launches: true,
+  },
 ): Services {
   const blocked = new Proxy(
     () => {
@@ -24,11 +33,14 @@ export function documentationServices(
   );
   return {
     authenticate: blocked,
+    ...(features.perplDashboard ? { perplDashboard: blocked } : {}),
     authenticateAgent: blocked,
     findWorkspace: blocked,
     agentQueries: blocked,
     budgets: blocked,
     profiles: blocked,
+    tokenAssets: blocked,
+    publicTokenTrading: blocked,
     ...(features.advice ? { advice: blocked } : {}),
     ...(features.studio ? { studio: blocked } : {}),
     ...(features.growth ? { growth: blocked } : {}),

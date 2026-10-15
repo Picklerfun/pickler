@@ -3,6 +3,7 @@ import {
   agentSlug,
   readQuestion,
   type ActivityAgent,
+  type AgentAction,
   type ActivityEvent,
   type AgentCall,
   type AgentPersona,
@@ -18,6 +19,7 @@ import {
 } from "@pickler/core";
 import type {
   ActivityAgentDto,
+  AgentActionDto,
   ReadServiceDto,
   ActivityEventDto,
   AgentCallDto,
@@ -37,6 +39,8 @@ const slugOf = (ticker: string | null): string | null =>
 
 export function toAgentSummaryDto(agent: AgentSummary): AgentSummaryDto {
   return {
+    id: agent.id,
+    advicePrice: agent.advicePrice && { ...agent.advicePrice },
     slug: slugOf(agent.ticker),
     name: agent.name,
     handle: agent.handle,
@@ -134,7 +138,11 @@ const toReadServiceDto = (service: ReadService | null, venue: Venue): ReadServic
 export function toDirectoryAgentDto(entry: DirectoryAgent): DirectoryAgentDto {
   return {
     ...entry,
-    agent: toActivityAgentDto(entry.agent),
+    agent: {
+      ...toActivityAgentDto(entry.agent),
+      id: entry.agent.id,
+      advicePrice: entry.agent.advicePrice && { ...entry.agent.advicePrice },
+    },
     service: toReadServiceDto(entry.service, entry.venue),
   };
 }
@@ -193,5 +201,19 @@ export function toLeaderboardDto(board: Leaderboard): LeaderboardDto {
       agent: toActivityAgentDto(report.agent),
       points: report.points.map((point) => ({ ...point })),
     })),
+  };
+}
+
+export function toAgentActionDto(action: AgentAction): AgentActionDto {
+  return {
+    id: action.id,
+    at: action.at.toISOString(),
+    agent: toActivityAgentDto(action.agent),
+    outcome: action.outcome,
+    outcomeText: action.outcomeText,
+    instrument: action.instrument,
+    call: action.call,
+    probability: action.probability,
+    horizonHours: action.horizonHours,
   };
 }

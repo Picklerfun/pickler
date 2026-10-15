@@ -1,9 +1,15 @@
+import {
+  PublicTokenTradeError,
+  TokenTradeError,
+  type createPublicTokenTrading,
+} from "@pickler/core";
 import * as dto from "@pickler/api-schema";
 import { operation } from "../openapi/operation";
 import { Hono } from "hono";
 import type { AppEnv } from "../env";
 import type { createGrowthServices } from "../growth/services";
 import {
+  toAgentActionDto,
   toAgentSummaryDto,
   toAgentProfileDto,
   toPickDetailDto,
@@ -24,8 +30,177 @@ import { toMarketDetailDto, toPerpMarketDto } from "../growth/market-responses";
  * already owns /v1/agents behind credentials; on the same path the public list would answer 401
  * and this handler would never run.
  */
-export function marketplaceRoutes(services: ReturnType<typeof createGrowthServices>) {
+export function marketplaceRoutes(
+  services: ReturnType<typeof createGrowthServices>,
+  trading?: ReturnType<typeof createPublicTokenTrading>,
+) {
   const api = new Hono<AppEnv>();
+  api.post(
+    "/personas/:handle/token/confirm",
+    operation("marketplaceTokenConfirm", {
+      security: "public",
+      body: dto.publicTokenTradeConfirmationInputSchema,
+      response: dto.publicTokenTradeConfirmationSchema,
+      errors: dto.studioErrorSchema,
+      errorStatuses: [400, 404, 429, 503],
+      description:
+        "Verify and idempotently record one canonical Monad testnet curve trade receipt for a published confirmed persona token. Server resolves factory/curve and checks transaction, event identity, sender and confirmation depth under the existing RPC ceiling. No signing, broadcast, browser-supplied financial values or historical cursor movement. Private no-store response.",
+    }),
+    async (c) => {
+      c.header("Cache-Control", "private, no-store");
+      const parsed = dto.publicTokenTradeConfirmationInputSchema.safeParse(
+        await c.req.json().catch(() => null),
+      );
+      if (!parsed.success) {
+        return c.json({ error: "INVALID_TRADE", message: "Invalid transaction identity." }, 400);
+      }
+      if (!trading) {
+        return c.json(
+          { error: "TRADING_UNAVAILABLE", message: "Public trading is unavailable." },
+          503,
+        );
+      }
+      try {
+        return c.json(
+          dto.publicTokenTradeConfirmationSchema.parse(
+            await trading.confirm(c.req.param("handle"), parsed.data),
+          ),
+        );
+      } catch (error) {
+        const code = error instanceof PublicTokenTradeError ? error.code : "PROVIDER_UNAVAILABLE";
+        const status =
+          code === "RPC_LIMIT"
+            ? 429
+            : code === "TOKEN_NOT_FOUND"
+              ? 404
+              : code === "INVALID_TRADE"
+                ? 400
+                : 503;
+        if (status === 429) {
+          c.header("Retry-After", "60");
+        }
+        return c.json({ error: code, message: "Could not confirm market publication." }, status);
+      }
+    },
+  );
+  api.post(
+    "/personas/:handle/token/quote",
+    operation("marketplaceTokenQuote", {
+      security: "public",
+      body: dto.publicTokenTradeInputSchema,
+      response: dto.publicTokenTradeQuotedSchema,
+      errors: dto.studioErrorSchema,
+      errorStatuses: [400, 404, 409, 429, 503],
+      description:
+        "Read the expected and minimum output of an exact-input Monad testnet curve trade. Resolves the published canonical token and current curve state under the existing global RPC ceiling. No nonce, gas estimate, transaction, signature or broadcast; a quote does not authorize a swap. Private no-store response.",
+    }),
+    async (c) => {
+      c.header("Cache-Control", "private, no-store");
+      const parsed = dto.publicTokenTradeInputSchema.safeParse(
+        await c.req.json().catch(() => null),
+      );
+      if (!parsed.success) {
+        return c.json({ error: "INVALID_TRADE", message: "Invalid trade parameters." }, 400);
+      }
+      const body = parsed.data;
+      if (!trading) {
+        return c.json(
+          { error: "TRADING_UNAVAILABLE", message: "Public trading is unavailable." },
+          503,
+        );
+      }
+      try {
+        return c.json(
+          dto.publicTokenTradeQuotedSchema.parse(await trading.quote(c.req.param("handle"), body)),
+        );
+      } catch (error) {
+        if (error instanceof TokenTradeError) {
+          return c.json({ error: error.code, message: error.code }, 409);
+        }
+        if (error instanceof PublicTokenTradeError) {
+          const status =
+            error.code === "RPC_LIMIT"
+              ? 429
+              : error.code === "TOKEN_NOT_FOUND"
+                ? 404
+                : error.code === "INVALID_TRADE"
+                  ? 400
+                  : 503;
+          if (status === 429) {
+            c.header("Retry-After", "60");
+          }
+          return c.json({ error: error.code, message: error.code }, status);
+        }
+        return c.json(
+          {
+            error: "PROVIDER_UNAVAILABLE",
+            message: "Could not read the quote. No transaction was prepared.",
+          },
+          503,
+        );
+      }
+    },
+  );
+  api.post(
+    "/personas/:handle/token/prepare",
+    operation("marketplaceTokenPrepare", {
+      security: "public",
+      body: dto.publicTokenTradeInputSchema,
+      response: dto.publicTokenTradePreparedSchema,
+      errors: dto.studioErrorSchema,
+      errorStatuses: [400, 404, 409, 429, 503],
+      description:
+        "Prepare an unsigned Monad testnet curve approval or swap for the visitor wallet. Public published token only; wallet input grants no Pickler account permissions. Server resolves canonical contracts and limits. Does not sign, broadcast, attribute tokens or start an indexer. Explicit shared RPC ceiling; private no-store response.",
+    }),
+    async (c) => {
+      c.header("Cache-Control", "private, no-store");
+      const parsed = dto.publicTokenTradeInputSchema.safeParse(
+        await c.req.json().catch(() => null),
+      );
+      if (!parsed.success) {
+        return c.json({ error: "INVALID_TRADE", message: "Invalid trade parameters." }, 400);
+      }
+      const body = parsed.data;
+      if (!trading) {
+        return c.json(
+          { error: "TRADING_UNAVAILABLE", message: "Public trading is unavailable." },
+          503,
+        );
+      }
+      try {
+        return c.json(
+          dto.publicTokenTradePreparedSchema.parse(
+            await trading.prepare(c.req.param("handle"), body),
+          ),
+        );
+      } catch (error) {
+        if (error instanceof TokenTradeError) {
+          return c.json({ error: error.code, message: error.code }, 409);
+        }
+        if (error instanceof PublicTokenTradeError) {
+          const status =
+            error.code === "RPC_LIMIT"
+              ? 429
+              : error.code === "TOKEN_NOT_FOUND"
+                ? 404
+                : error.code === "INVALID_TRADE"
+                  ? 400
+                  : 503;
+          if (status === 429) {
+            c.header("Retry-After", "60");
+          }
+          return c.json({ error: error.code, message: error.code }, status);
+        }
+        return c.json(
+          {
+            error: "PROVIDER_UNAVAILABLE",
+            message: "Could not prepare the trade. No transaction was sent.",
+          },
+          503,
+        );
+      }
+    },
+  );
   api.get(
     "/agents",
     operation("marketplaceAgents", { response: dto.agentSummarySchema.array() }),
@@ -71,6 +246,18 @@ export function marketplaceRoutes(services: ReturnType<typeof createGrowthServic
     async (c) => {
       const value = await services.getAgentPersona(c.req.param("handle"));
       return c.json(value ? toAgentPersonaDto(value) : null);
+    },
+  );
+  api.get(
+    "/activity",
+    operation("marketplaceActivity", {
+      response: dto.agentActionSchema.array(),
+      query: { limit: { description: "1 to 50, default 12" } },
+    }),
+    async (c) => {
+      const asked = Number(c.req.query("limit") ?? "");
+      const actions = await services.listAgentActions(Number.isFinite(asked) ? asked : undefined);
+      return c.json(actions.map(toAgentActionDto));
     },
   );
   api.get(

@@ -18,7 +18,7 @@
 /* Limits: the wallet and the caps side by side, folding to one column. */
 .limits {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 18px;
   align-items: start;
 }
@@ -308,5 +308,11 @@
 @media (prefers-reduced-motion: reduce) {
   .iconButton[aria-busy="true"] svg {
     animation: none;
+  }
+}
+
+@media (max-width: 919px) {
+  .limits {
+    grid-template-columns: minmax(0, 1fr);
   }
 }

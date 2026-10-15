@@ -1,4 +1,6 @@
 import {
+  runTokenIndexer,
+  createJsonRpc,
   PostgresLaunchIndexStore,
   ViemChainReader,
   decodeLaunchLog,
@@ -7,9 +9,13 @@ import {
 } from "@pickler/infrastructure";
 
 import { IndexerNotConfiguredError, readIndexerConfig } from "./config.js";
+import { runScheduledTokenIndexing } from "./token-schedule.js";
 
 export interface Env {
   APP_ENV: string;
+  TOKEN_INDEXER_ENABLED?: string;
+  TOKEN_LAUNCH_POLICY_JSON?: string;
+  TOKEN_INDEXER_POLICY_JSON?: string;
   DATABASE?: Hyperdrive;
   DATABASE_URL: string;
   CHAIN_ID?: string;
@@ -47,6 +53,41 @@ function indexerDatabase(env: Env): { url: string; options: DatabaseConnectionOp
  */
 const worker = {
   async scheduled(_controller: ScheduledController, env: Env) {
+    if (env.TOKEN_INDEXER_ENABLED === "true") {
+      if (
+        !env.TOKEN_LAUNCH_POLICY_JSON ||
+        !env.TOKEN_INDEXER_POLICY_JSON ||
+        !env.RPC_URLS ||
+        env.RPC_URLS.includes(",")
+      ) {
+        throw new Error("Token indexer configuration incomplete");
+      }
+      const launchPolicy = env.TOKEN_LAUNCH_POLICY_JSON;
+      const indexerPolicy = env.TOKEN_INDEXER_POLICY_JSON;
+      const rpc = createJsonRpc(env.RPC_URLS);
+      const database = indexerDatabase(env);
+      const store = new PostgresLaunchIndexStore(database.url, database.options);
+      try {
+        console.log(
+          JSON.stringify(
+            await runScheduledTokenIndexing({
+              policy: indexerPolicy,
+              runPass: () =>
+                runTokenIndexer({
+                  store,
+                  rpc,
+                  launchPolicy,
+                  indexerPolicy,
+                }),
+            }),
+            replaceBigints,
+          ),
+        );
+      } finally {
+        await store.close();
+      }
+      return;
+    }
     let config;
     try {
       config = readIndexerConfig(env);

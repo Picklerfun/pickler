@@ -1,0 +1,37 @@
+{
+  "verifiedAt": "2026-10-13",
+  "markets": {
+    "BTC": {
+      "source": "https://testnet.perpl.xyz/trade/BTC",
+      "sha256": "f2749cf2c92a325cde3c0ea9955b3c3dd226ae93776c1d52386a24ac4b332154"
+    },
+    "ETH": {
+      "source": "https://testnet.perpl.xyz/trade/ETH",
+      "sha256": "19bb1b0f75694dd922af295cc621e0ea8d3867dc636ecfdb708dee7863b561d2"
+    },
+    "SOL": {
+      "source": "https://testnet.perpl.xyz/trade/SOL",
+      "sha256": "0575242b99d338e1823f1dbe321181cbd8b5feef8babedae1463e107fba05b0b"
+    },
+    "MON": {
+      "source": "https://testnet.perpl.xyz/trade/MON",
+      "sha256": "8edec5c319a292ae57b734bd20c03667ab597e9d73983e3a23dd19a0424ff0ea"
+    },
+    "ZEC": {
+      "source": "https://testnet.perpl.xyz/trade/ZEC",
+      "sha256": "f8f7ffe29e2f4f0001692bf4504b984bdd55fbe023d53b4e83e22921654631fb"
+    },
+    "LIT": {
+      "source": "https://testnet.perpl.xyz/trade/LIT",
+      "sha256": "8f88bc117f65d93dfe4a401859e9ec09fc870b0a6e18b17c78f48324fc440992"
+    },
+    "PUMP": {
+      "source": "https://testnet.perpl.xyz/trade/PUMP",
+      "sha256": "675fbf9afebb3ab162adbfb669c20ca5e5a83defbe8bb58035138624d67f1637"
+    },
+    "NEAR": {
+      "source": "https://testnet.perpl.xyz/trade/NEAR",
+      "sha256": "1c1aedb9d48aeec5c538178806b9f7f88e5b027a391e56b58a48389f8a8c3332"
+    }
+  }
+}

@@ -215,3 +215,20 @@ test("launch reads do not close the invocation-owned database pool", async () =>
   await model.close();
   assert.equal(closed, false);
 });
+
+test("public chain/address lookup is network-scoped and additive to UUID reads", async (t) => {
+  const { app, readModel } = await createApi(t);
+  const id = await seedLaunch(readModel);
+  const response = await app.request(`/v1/launches/${encodeURIComponent(`${CHAIN}:${TOKEN}`)}`);
+  assert.equal(response.status, 200);
+  const body = (await response.json()) as { data: { id: string; market: unknown } };
+  assert.equal(body.data.id, id);
+  assert.equal(response.headers.get("cache-control"), "no-store");
+  const trades = await app.request(
+    `/v1/launches/${encodeURIComponent(`${CHAIN}:${TOKEN}`)}/trades`,
+  );
+  assert.equal(trades.status, 200);
+  assert.equal(body.data.market, null, "no canonical proof must not become invented market data");
+  const other = await app.request(`/v1/launches/${encodeURIComponent(`eip155:143:${TOKEN}`)}`);
+  assert.equal(other.status, 404);
+});

@@ -1,12 +1,21 @@
 import * as dto from "@pickler/api-schema";
 import { operation as describeOperation } from "../openapi/operation";
 import type { TradingRepository } from "@pickler/trading/polymarket";
-import { XUnavailableError, type XClient } from "@pickler/infrastructure";
+import { studioPerplLiveRoutes, type StudioPerplLiveServices } from "./studio-perpl-live";
+import { XFailure, type XOAuthService } from "@pickler/core";
+import { studioTokenRoutes } from "./studio-token";
+import type { TokenOperationService, TokenLaunchService } from "@pickler/core";
+import { studioXRoutes } from "./studio-x";
 import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { z } from "zod";
 import {
   createStudioAccess,
+  assertPerplSelection,
+  type PerplMarketCatalog,
+  type PerpNetwork,
+  advicePrice,
+  parseAusdToMicro,
   MARKET_CATALOG,
   DEFAULT_CONFIG,
   PLUGINS,
@@ -21,6 +30,7 @@ import {
   BalancesUnreadableError,
   AccessDeniedError,
   AuthenticationRequiredError,
+  TokenLaunchError,
   canCreateAnother,
   MAX_DRAFTS_PER_WORKSPACE,
   canSchedule,
@@ -41,15 +51,9 @@ import {
   PublishBlockedError,
   XHandleTakenError,
   VOICES,
-  X_CHALLENGE_TTL_MS,
-  X_CHECK_INTERVAL_MS,
-  challengeCode,
-  findVerificationPost,
-  parseXHandle,
   publishBlockers,
   reviseSetup,
   setupChangeSummary,
-  verificationText,
   type createCustodyService,
   type Accent,
   type AgentWallet,
@@ -61,7 +65,6 @@ import {
   type ResearchRepository,
   type SetupPatch,
   type TransferLedgerEntry,
-  type XStore,
 } from "@pickler/core";
 import {
   studioOptionsSchema,
@@ -88,20 +91,28 @@ import {
   identityUpdateSchema,
   activityResponseSchema,
   versionsResponseSchema,
-  xChallengeRequestSchema,
-  xChallengeSchema,
-  xStateResponseSchema,
-  xVerifyResponseSchema,
   publishResponseSchema,
   type DraftCreateDto,
   type StudioAgentDto,
 } from "@pickler/api-schema";
 import type { AppEnv } from "../env";
 import { authenticated, type Authenticate } from "../middleware/auth";
+import { studioAccessRequestRoutes } from "./studio-access-requests";
+import type { ApplicationReviewRepository, StudioAccessRequestRepository } from "@pickler/core";
+import { studioApplicationRoutes } from "./studio-applications";
 import { studioWalletRoutes, WalletRefusal, walletWork } from "./studio-wallets";
 import { studioPerpsRoutes, type StudioPerpsServices } from "./studio-perps";
 
 export interface StudioServices {
+  perplLive?: StudioPerplLiveServices;
+  tokens?: TokenLaunchService;
+  tokenOperations?: TokenOperationService;
+  perplMarkets?: {
+    catalog(network: PerpNetwork, signal: AbortSignal): Promise<PerplMarketCatalog>;
+  };
+  accessRequests?: StudioAccessRequestRepository;
+  /** The operators' inbox over growth.applications; absent, its routes answer 503. */
+  applicationReview?: ApplicationReviewRepository;
   trading?: {
     repository: TradingRepository;
     admissionsEnabled: boolean;
@@ -126,6 +137,8 @@ export interface StudioServices {
   };
   /** The wallet linked to an agent at creation, by product agent id. */
   wallets: { findAgentWallet(agentId: string): Promise<AgentWallet | null> };
+  /** Deployment-owned custody and new-agent network; existing agents retain their saved network. */
+  walletChainId?: number | null;
   /**
    * The AUSD display balance of an address. A read that fails throws; it is never zero. Where the
    * chain is not composed it throws `PilotError` BALANCES_UNAVAILABLE (503).
@@ -157,7 +170,7 @@ export interface StudioServices {
    * is the caller's (`agentScope`) first. Absent, `GET /x` answers `available: false` and every
    * other X route 503 X_UNAVAILABLE.
    */
-  x?: { store: XStore; client: XClient };
+  x?: XOAuthService;
   /** The Master wallet's ledger (D17). Absent, `GET /wallets/ledger` answers 503. */
   transfers?: { list(userId: string): Promise<TransferLedgerEntry[]> };
   /**
@@ -182,15 +195,14 @@ const intervalUpdateSchema = z
 type FundedWallet = AgentWallet & { balanceAusd: number };
 
 function pilotStatus(code: string): 400 | 404 | 409 | 429 | 503 {
-  if (code === "NOT_FOUND" || code === "WALLET_NOT_FOUND" || code === "CHALLENGE_NOT_FOUND") {
+  if (code === "NOT_FOUND" || code === "WALLET_NOT_FOUND") {
     return 404;
   }
-  if (code === "QUOTA" || code === "TOO_MANY_CHECKS" || code === "MANUAL_LIMIT") {
+  if (code === "QUOTA" || code === "MANUAL_LIMIT") {
     return 429;
   }
   if (
     code === "INVALID_INPUT" ||
-    code === "INVALID_X_HANDLE" ||
     code === "RULES_BRIEF_UNSUPPORTED" ||
     code === "STRATEGY_UNAVAILABLE"
   ) {
@@ -202,7 +214,11 @@ function pilotStatus(code: string): 400 | 404 | 409 | 429 | 503 {
   if (code === "PREVIEW_UNAVAILABLE") {
     return 503;
   }
-  if (code === "BALANCES_UNAVAILABLE" || code === "RUNTIME_UNAVAILABLE") {
+  if (
+    code === "BALANCES_UNAVAILABLE" ||
+    code === "RUNTIME_UNAVAILABLE" ||
+    code === "PERPL_CATALOG_UNAVAILABLE"
+  ) {
     return 503;
   }
   return 409;
@@ -297,6 +313,8 @@ export function studioRoutes(services: StudioServices) {
     await next();
   });
   api.use("*", authenticated(services.authenticate, { userOnly: true }));
+  api.route("/", studioAccessRequestRoutes(services.accessRequests));
+  api.route("/", studioApplicationRoutes(services.applicationReview));
   api.onError((error, c) => {
     if (error instanceof z.ZodError || error instanceof SyntaxError) {
       return c.json({ error: "INVALID_INPUT", message: "The request is not valid" }, 400);
@@ -306,6 +324,24 @@ export function studioRoutes(services: StudioServices) {
     }
     if (error instanceof AccessDeniedError) {
       return c.json({ error: "RESEARCH_ACCESS_DENIED", message: error.message }, 403);
+    }
+    if (error instanceof TokenLaunchError) {
+      const status =
+        error.code === "TOKEN_OWNER_REQUIRED"
+          ? 403
+          : error.code === "TOKEN_NOT_FOUND"
+            ? 404
+            : error.code === "TOKEN_DRAFT_INVALID"
+              ? 400
+              : 409;
+      return c.json(
+        {
+          error: error.code,
+          message: "Token launch could not proceed",
+          detail: { blockers: error.blockers },
+        },
+        status,
+      );
     }
     if (error instanceof WalletRefusal) {
       return c.json(
@@ -336,12 +372,27 @@ export function studioRoutes(services: StudioServices) {
     if (error instanceof XHandleTakenError) {
       return c.json({ error: "X_HANDLE_TAKEN", message: error.message }, 409);
     }
-    if (error instanceof XUnavailableError) {
+    if (error instanceof XFailure) {
+      if (error.retryAfter !== null) {
+        c.header("Retry-After", String(error.retryAfter));
+      }
+      const status =
+        error.code === "X_RATE_LIMITED" ? 429 : error.code === "X_RECONNECT_REQUIRED" ? 409 : 503;
       // Never X's words: its body can echo the request, and the owner can do nothing with it.
-      return c.json({ error: "X_UNAVAILABLE", message: "X is not available right now" }, 503);
+      return c.json({ error: error.code, message: "X is not available right now" }, status);
     }
     if (error instanceof PreviewRateLimited) {
       return c.json({ error: error.code, message: error.message, retryAt: error.retryAt }, 429);
+    }
+    if (
+      error instanceof PilotError &&
+      error.code === "CONFLICT" &&
+      error.message === "AGENT_WALLET_REQUIRED"
+    ) {
+      return c.json(
+        { error: "AGENT_WALLET_REQUIRED", message: "Give the agent a wallet before pricing it" },
+        409,
+      );
     }
     if (error instanceof PilotError) {
       // Every PilotError message is server-authored, so it is safe to show (spec §4).
@@ -373,7 +424,11 @@ export function studioRoutes(services: StudioServices) {
       response: dto.okSchema,
     }),
     async (c) => {
-      await services.directory.onboard(c.get("principal").id);
+      const principal = c.get("principal");
+      await services.directory.onboard(
+        principal.id,
+        principal.kind === "user" ? principal.email : undefined,
+      );
       return c.json({ ok: true });
     },
   );
@@ -582,14 +637,17 @@ export function studioRoutes(services: StudioServices) {
       visibility: "private" | "public";
       publishedAt: Date | null;
       xHandle: string | null;
+      advicePriceMicro: bigint | null;
     },
   ): Promise<StudioAgentDto> {
     const record = await repo.agent(scope);
     const ready = isReadyToSchedule(record, await repo.readiness(scope));
+    const { advicePriceMicro, ...shown } = identity;
     return studioAgentSchema.parse({
       ...agentResponseSchema.parse(record),
-      ...identity,
+      ...shown,
       publishedAt: identity.publishedAt?.toISOString() ?? null,
+      advicePrice: advicePrice(advicePriceMicro),
       wallet: wallet && {
         walletId: wallet.walletId,
         address: wallet.address,
@@ -628,6 +686,7 @@ export function studioRoutes(services: StudioServices) {
               visibility: agent.visibility,
               publishedAt: agent.publishedAt,
               xHandle: agent.xHandle,
+              advicePriceMicro: agent.advicePriceMicro,
             }),
           ),
         ),
@@ -640,6 +699,47 @@ export function studioRoutes(services: StudioServices) {
   // directory then checks the handle and the wallet in its transaction, in that order, and runs
   // the admit callback below, which holds the lock and that reading to the minimums. A replay of
   // a create that committed never reaches it.
+  async function marketCatalog(
+    network: PerpNetwork,
+    signal: AbortSignal,
+  ): Promise<PerplMarketCatalog> {
+    if (!services.perplMarkets) {
+      throw new PilotError("PERPL_CATALOG_UNAVAILABLE", "Perpl catalogue is unavailable. Retry.");
+    }
+    try {
+      return dto.perplMarketCatalogSchema.parse(
+        await services.perplMarkets.catalog(network, signal),
+      );
+    } catch (error) {
+      if (error instanceof PilotError && error.code === "PERPL_CATALOG_UNAVAILABLE") {
+        throw error;
+      }
+      throw new PilotError(
+        "PERPL_CATALOG_UNAVAILABLE",
+        "Perpl catalogue could not be read. Retry.",
+      );
+    }
+  }
+  api.get(
+    "/perpl/markets",
+    describeOperation("studioPerplMarkets", {
+      security: "user",
+      errors: dto.studioErrorSchema,
+      errorStatuses: [400, 401, 403, 503],
+      query: {
+        network: { required: true, schema: { type: "string", enum: ["testnet", "mainnet"] } },
+      },
+      response: dto.perplMarketCatalogSchema,
+      description:
+        "Studio JWT access required. Public network catalogue with server-owned compatibility diagnostics; unavailable rows cannot be selected.",
+    }),
+    async (c) => {
+      await access.authorize(c.get("principal"));
+      const network = z.enum(["testnet", "mainnet"]).parse(c.req.query("network"));
+      c.header("Cache-Control", "private, no-store");
+      return c.json(await marketCatalog(network, c.req.raw.signal));
+    },
+  );
   api.post(
     "/drafts",
     describeOperation("studioDraftCreate", {
@@ -656,7 +756,20 @@ export function studioRoutes(services: StudioServices) {
       const principal = c.get("principal");
       const current = await access.authorize(principal, true);
       const body = draftCreateSchema.parse(await c.req.json());
-      const { config, profile } = prepareDraft({ ...body, sources: bareSites(body.sources) });
+      if (![10143, 143].includes(services.walletChainId ?? 0)) {
+        throw new PilotError("PERPL_CATALOG_UNAVAILABLE", "Creation network is not configured");
+      }
+      const network = services.walletChainId === 143 ? "mainnet" : "testnet";
+      assertPerplSelection(
+        await marketCatalog(network, c.req.raw.signal),
+        network,
+        body.markets,
+        Date.now(),
+      );
+      const { config, profile } = prepareDraft(
+        { ...body, sources: bareSites(body.sources) },
+        network,
+      );
       const requestId = c.get("requestId");
       const custody = await walletWork(requestId, async () => deposits(requestId));
       // A wallet that is not the caller's has no reading: the directory refuses it in its order.
@@ -735,6 +848,7 @@ export function studioRoutes(services: StudioServices) {
           visibility: listedAgent.visibility,
           publishedAt: listedAgent.publishedAt,
           xHandle: listedAgent.xHandle,
+          advicePriceMicro: listedAgent.advicePriceMicro,
         }
       : {
           accent: "lime" as const,
@@ -743,19 +857,9 @@ export function studioRoutes(services: StudioServices) {
           visibility: "private" as const,
           publishedAt: null,
           xHandle: null,
+          advicePriceMicro: null,
         };
     return studioAgent(scope, wallet, another, identity);
-  }
-
-  /** The caller's agent as `directory.list` has it; NOT_FOUND for anyone else's. */
-  async function ownAgent(current: StudioAccess, productId: string) {
-    const scope = await services.directory.agentScope(current, productId);
-    const listed = await services.directory.list(current);
-    const agent = listed.find((candidate) => candidate.id === productId);
-    if (!agent) {
-      throw new PilotError("NOT_FOUND", "Agent not found");
-    }
-    return { ...agent, scope };
   }
 
   api.get(
@@ -794,6 +898,7 @@ export function studioRoutes(services: StudioServices) {
       const scope = await services.directory.agentScope(current, productId);
       const body = setupUpdateSchema.parse(await c.req.json());
       const patch: SetupPatch = {
+        ...(body.markets !== undefined ? { markets: body.markets } : {}),
         ...(body.brief ? { brief: body.brief } : {}),
         ...(body.sources ? { sources: bareSites(body.sources) } : {}),
         ...(body.caps ? { caps: body.caps } : {}),
@@ -806,6 +911,14 @@ export function studioRoutes(services: StudioServices) {
       // `perpl` never reaches it. The write checks again under its own lock.
       if (!record.config.perpl) {
         throw new PilotError("NOT_A_PERPL_AGENT", "Only a Perpl agent's setup is edited here");
+      }
+      if (body.markets !== undefined) {
+        assertPerplSelection(
+          await marketCatalog(record.config.perpl.network, c.req.raw.signal),
+          record.config.perpl.network,
+          body.markets,
+          Date.now(),
+        );
       }
       // New caps write `spend` in the write's transaction, and so is the version recorded (L10):
       // its summary is core's, from the two stored configs, never the client's words.
@@ -882,184 +995,8 @@ export function studioRoutes(services: StudioServices) {
     },
   );
 
-  /** Connect X's store and client, or 503 X_UNAVAILABLE where they are not composed. */
-  function connectX() {
-    if (!services.x) {
-      throw new PilotError("X_UNAVAILABLE", "X verification is not composed here");
-    }
-    return services.x;
-  }
-
-  function challengeDto(
-    name: string,
-    challenge: { handle: string; code: string; expiresAt: Date },
-  ) {
-    return xChallengeSchema.parse({
-      handle: challenge.handle,
-      text: verificationText(name, challenge.code),
-      expiresAt: challenge.expiresAt.toISOString(),
-    });
-  }
-
-  // Connect X by verification post (D4). `available` is false until Pickler's X app has a token
-  // (D5), or where X is not composed at all (no state either, then); a lapsed challenge is not
-  // shown, so the card starts over. Owner-only: it answers the live challenge code.
-  api.get(
-    "/agents/:id/x",
-    describeOperation("studioX", {
-      security: "user",
-      errors: dto.studioErrorSchema,
-      errorStatuses: [400, 401, 403, 404, 409, 429, 500, 502, 503],
-      response: dto.xStateResponseSchema,
-    }),
-    async (c) => {
-      const current = await access.authorize(c.get("principal"), true);
-      const productId = c.req.param("id");
-      const agent = await ownAgent(current, productId);
-      if (!services.x) {
-        return c.json(
-          xStateResponseSchema.parse({ account: null, challenge: null, available: false }),
-        );
-      }
-      const { store, client } = services.x;
-      const [account, challenge] = await Promise.all([
-        store.account(productId),
-        store.challenge(productId),
-      ]);
-      const live = challenge && challenge.expiresAt.getTime() > Date.now() ? challenge : null;
-      return c.json(
-        xStateResponseSchema.parse({
-          account: account && {
-            handle: account.handle,
-            verifiedAt: account.verifiedAt.toISOString(),
-          },
-          challenge: live && challengeDto(agent.name, live),
-          available: client.available,
-        }),
-      );
-    },
-  );
-  // A new challenge replaces the old. X's availability is checked before anything is saved, so
-  // no challenge is issued that could never be checked.
-  api.post(
-    "/agents/:id/x/challenge",
-    describeOperation("studioXChallenge", {
-      security: "user",
-      errors: dto.studioErrorSchema,
-      errorStatuses: [400, 401, 403, 404, 409, 429, 500, 502, 503],
-      response: dto.xChallengeSchema,
-      body: dto.xChallengeRequestSchema,
-    }),
-    async (c) => {
-      const current = await access.authorize(c.get("principal"), true);
-      const productId = c.req.param("id");
-      const agent = await ownAgent(current, productId);
-      const { store, client } = connectX();
-      const body = xChallengeRequestSchema.parse(await c.req.json());
-      const handle = parseXHandle(body.handle);
-      if (!handle) {
-        throw new PilotError("INVALID_X_HANDLE", "1 to 15 letters, digits or _");
-      }
-      if (await store.account(productId)) {
-        throw new PilotError("X_ALREADY_CONNECTED", "This agent already has an X account");
-      }
-      if (await store.handleTaken(handle, productId)) {
-        throw new XHandleTakenError();
-      }
-      if (!client.available) {
-        throw new PilotError("X_UNAVAILABLE", "X verification is not open yet");
-      }
-      // At most one new challenge per 10 s, and the check clock carries over, so alternating
-      // challenge and verify cannot spend more X reads than verify alone (spec §8).
-      const saved = await store.saveChallenge(
-        productId,
-        {
-          handle,
-          code: challengeCode(crypto.getRandomValues(new Uint8Array(5))),
-          expiresAt: new Date(Date.now() + X_CHALLENGE_TTL_MS),
-        },
-        X_CHECK_INTERVAL_MS,
-      );
-      if (!saved) {
-        throw new PilotError("TOO_MANY_CHECKS", "Wait a few seconds before starting again");
-      }
-      return c.json(challengeDto(agent.name, saved));
-    },
-  );
-  // "Check again": one read of X per challenge per 10 s, claimed atomically before X is called,
-  // so concurrent checks cannot spend the app's X quota twice. Only a post by the looked-up user,
-  // made at or after the challenge, carrying the code, verifies (spec §8).
-  api.post(
-    "/agents/:id/x/verify",
-    describeOperation("studioXVerify", {
-      security: "user",
-      errors: dto.studioErrorSchema,
-      errorStatuses: [400, 401, 403, 404, 409, 429, 500, 502, 503],
-      response: dto.xVerifyResponseSchema,
-    }),
-    async (c) => {
-      const current = await access.authorize(c.get("principal"), true);
-      const productId = c.req.param("id");
-      await ownAgent(current, productId);
-      const { store, client } = connectX();
-      emptyBody(await c.req.text());
-      const challenge = await store.challenge(productId);
-      if (!challenge) {
-        throw new PilotError("CHALLENGE_NOT_FOUND", "Start with your handle");
-      }
-      const now = new Date();
-      if (challenge.expiresAt.getTime() <= now.getTime()) {
-        throw new PilotError("CHALLENGE_EXPIRED", "This line has lapsed; start again");
-      }
-      if (!client.available) {
-        throw new PilotError("X_UNAVAILABLE", "X verification is not open yet");
-      }
-      if (!(await store.claimCheck(productId, now, X_CHECK_INTERVAL_MS))) {
-        throw new PilotError("TOO_MANY_CHECKS", "Wait a few seconds before checking again");
-      }
-
-      const notFound = xVerifyResponseSchema.parse({ verified: false, reason: "NOT_FOUND" });
-      const user = await client.userByHandle(challenge.handle);
-      if (!user) {
-        return c.json(notFound);
-      }
-      const posts = await client.recentPosts(user.id, challenge.createdAt);
-      const post = findVerificationPost(posts, {
-        userId: user.id,
-        code: challenge.code,
-        since: challenge.createdAt,
-      });
-      if (!post) {
-        return c.json(notFound);
-      }
-
-      await store.connect(productId, {
-        xUserId: user.id,
-        handle: user.handle,
-        postId: post.id,
-        at: new Date(),
-      });
-      return c.json(xVerifyResponseSchema.parse({ verified: true, handle: user.handle }));
-    },
-  );
-  // Allowed while private; a public agent keeps its handle (D6), refused by the store under the
-  // agent row's lock.
-  api.delete(
-    "/agents/:id/x",
-    describeOperation("studioXDisconnect", {
-      security: "user",
-      errors: dto.studioErrorSchema,
-      errorStatuses: [400, 401, 403, 404, 409, 429, 500, 502, 503],
-      response: z.object({ disconnected: z.literal(true) }),
-    }),
-    async (c) => {
-      const current = await access.authorize(c.get("principal"), true);
-      const productId = c.req.param("id");
-      await ownAgent(current, productId);
-      await connectX().store.disconnect(productId);
-      return c.json({ disconnected: true });
-    },
-  );
+  api.route("/", studioXRoutes(services));
+  api.route("/", studioTokenRoutes(services));
   // Go Public (D8): the server re-checks. The directory reads killed and the linked wallet, runs
   // this check with no transaction open (it reads the chain), then publishes under the agent row's
   // lock only if neither changed. A balance the chain did not answer is 503, never FUNDS.
@@ -1074,6 +1011,31 @@ export function studioRoutes(services: StudioServices) {
     async (c) => {
       const current = await access.authorize(c.get("principal"), true);
       emptyBody(await c.req.text());
+      const productId = c.req.param("id");
+      const existing = (await services.directory.list(current)).find(
+        (agent) => agent.id === productId,
+      );
+      if (existing?.visibility !== "public") {
+        if (!services.x) {
+          throw new PublishBlockedError(["X_CONNECTION_REQUIRED"]);
+        }
+        const connection = await services.x.state(
+          current.ownerUserId,
+          current.workspaceId,
+          productId,
+        );
+        if (connection.status !== "connected") {
+          throw new PublishBlockedError(["X_CONNECTION_REQUIRED"]);
+        }
+        try {
+          await services.x.validateForPublish(current, productId);
+        } catch (error) {
+          if (error instanceof XFailure && error.code === "X_RECONNECT_REQUIRED") {
+            throw new PublishBlockedError(["X_CONNECTION_REQUIRED"]);
+          }
+          throw error;
+        }
+      }
       const published = await services.directory.publish(
         current,
         c.req.param("id"),
@@ -1114,6 +1076,23 @@ export function studioRoutes(services: StudioServices) {
       const current = await access.authorize(c.get("principal"), true);
       const scope = await services.directory.agentScope(current, c.req.param("id"));
       const body = configUpdateSchema.parse(await c.req.json());
+      const previous = await repo.agent(scope);
+      let config = body.config;
+      if (
+        body.config.perpl &&
+        JSON.stringify(body.config.perpl) !== JSON.stringify(previous.config.perpl)
+      ) {
+        if (previous.config.perpl && body.config.perpl.network !== previous.config.perpl.network) {
+          throw new PilotError("INVALID_INPUT", "Studio network cannot be changed");
+        }
+        assertPerplSelection(
+          await marketCatalog(body.config.perpl.network, c.req.raw.signal),
+          body.config.perpl.network,
+          body.config.perpl.markets,
+          Date.now(),
+        );
+        config = reviseSetup(config, { markets: body.config.perpl.markets });
+      }
       if (
         body.config.trading?.mode === "automatic" &&
         (await repo.agent(scope)).config.trading?.mode !== "automatic"
@@ -1130,9 +1109,7 @@ export function studioRoutes(services: StudioServices) {
         throw new PilotError("INVALID_INPUT", "Category selection required");
       }
       return c.json(
-        agentResponseSchema.parse(
-          await repo.updateConfig(scope, body.expectedVersion, body.config),
-        ),
+        agentResponseSchema.parse(await repo.updateConfig(scope, body.expectedVersion, config)),
       );
     },
   );
@@ -1155,6 +1132,25 @@ export function studioRoutes(services: StudioServices) {
       const body = limitsUpdateSchema.parse(await c.req.json());
       const spend = { perCallAusd: body.perCallAusd, perDayAusd: body.perDayAusd };
       return c.json(agentResponseSchema.parse(await repo.updateSpend(scope, spend)));
+    },
+  );
+  api.put(
+    "/agents/:id/advice-price",
+    describeOperation("studioAdvicePrice", {
+      security: "user",
+      errors: dto.studioErrorSchema,
+      errorStatuses: [400, 401, 403, 404, 409, 500],
+      description: "Owner only. Sets or clears the AUSD price of one fresh advice analysis.",
+      response: dto.advicePriceResponseSchema,
+      body: dto.advicePriceUpdateSchema,
+    }),
+    async (c) => {
+      const principal = c.get("principal");
+      await access.authorize(principal, true);
+      const body = dto.advicePriceUpdateSchema.parse(await c.req.json());
+      const micro = body.priceAusd === null ? null : parseAusdToMicro(body.priceAusd);
+      const saved = await services.directory.setAdvicePrice(principal.id, c.req.param("id"), micro);
+      return c.json(dto.advicePriceResponseSchema.parse({ advicePrice: advicePrice(saved) }));
     },
   );
   // The interval writes only `config.intervalHours`, like the limits and for the same reason: the
@@ -1267,7 +1263,16 @@ export function studioRoutes(services: StudioServices) {
     studioWalletRoutes({
       access,
       custody: deposits,
+      chainId: services.walletChainId ?? null,
       ...(services.transfers ? { transfers: services.transfers } : {}),
+    }),
+  );
+  api.route(
+    "/",
+    studioPerplLiveRoutes({
+      directory: services.directory,
+      access,
+      ...(services.perplLive ? { service: services.perplLive } : {}),
     }),
   );
   api.get(

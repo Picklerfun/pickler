@@ -84,6 +84,9 @@ export const tokens = market
         .on(t.chain, t.address)
         .where(sql`${t.address} is not null`),
       index("tokens_agent_idx").on(t.agentId),
+      uniqueIndex("tokens_agent_chain_launch_key")
+        .on(t.agentId, t.chain)
+        .where(sql`${t.agentId} is not null AND ${t.status} in ('pre_graduation', 'graduated')`),
       check("tokens_ticker_format", sql`${t.ticker} ~ '^\\$[A-Z][A-Z0-9]{1,5}$'`),
       check("tokens_name_length", sql`char_length(${t.name}) between 1 and 40`),
       check("tokens_image_uri", sql`${t.imageUri} ~ '^(https|ipfs)://'`),
@@ -128,7 +131,10 @@ export const pools = market
     },
     (t) => [
       uniqueIndex("pools_token_phase_key").on(t.tokenId, t.phase),
-      check("pools_venue", sql`${t.venue} in ('pickler_curve', 'pons', 'uniswap_v4')`),
+      check(
+        "pools_venue",
+        sql`${t.venue} in ('pickler_curve', 'pons', 'uniswap_v4', 'kuru_passive')`,
+      ),
       check("pools_address_format", sql`${t.address} ~ '^0x[0-9a-f]{40}$'`),
       check("pools_pool_key_format", sql`${t.poolKey} ~ '^0x[0-9a-f]{64}$'`),
       check("pools_opened_tx_format", sql`${t.openedTxHash} ~ '^0x[0-9a-f]{64}$'`),
@@ -376,6 +382,88 @@ export const chainEvents = market
       check("chain_events_log_index_positive", sql`${t.logIndex} >= 0`),
       check("chain_events_block_number_positive", sql`${t.blockNumber} >= 0`),
       check("chain_events_abi_hash_format", sql`${t.abiHash} ~ '^[0-9a-f]{64}$'`),
+    ],
+  )
+  .enableRLS();
+
+/** Immutable Kuru account/position snapshot; visibility always joins its canonical source block. */
+export const kuruGraduations = market
+  .table(
+    "kuru_graduations",
+    {
+      chain: text("chain").notNull(),
+      token: text("token").notNull(),
+      market: text("market").notNull(),
+      vault: text("vault").notNull(),
+      accountId: baseUnits("account_id").notNull(),
+      venueHash: text("venue_hash").notNull(),
+      adapter: text("adapter").notNull(),
+      blockHash: text("block_hash").notNull(),
+      blockNumber: bigint("block_number", { mode: "number" }).notNull(),
+      txHash: text("tx_hash").notNull(),
+      positions: jsonb("positions").notNull(),
+      tokenReserved: baseUnits("token_reserved").notNull(),
+      quoteReserved: baseUnits("quote_reserved").notNull(),
+      tokenRemainder: baseUnits("token_remainder").notNull(),
+      quoteRemainder: baseUnits("quote_remainder").notNull(),
+    },
+    (t) => [
+      primaryKey({ columns: [t.chain, t.token, t.blockHash] }),
+      check("kuru_graduations_network", sql`${t.chain}='eip155:10143'`),
+      check(
+        "kuru_graduations_addresses",
+        sql`${t.token} ~ '^0x[0-9a-f]{40}$' AND ${t.market} ~ '^0x[0-9a-f]{40}$' AND ${t.vault} ~ '^0x[0-9a-f]{40}$' AND ${t.adapter} ~ '^0x[0-9a-f]{40}$'`,
+      ),
+      check(
+        "kuru_graduations_hashes",
+        sql`${t.blockHash} ~ '^0x[0-9a-f]{64}$' AND ${t.txHash} ~ '^0x[0-9a-f]{64}$' AND ${t.venueHash} ~ '^0x[0-9a-f]{64}$'`,
+      ),
+      check(
+        "kuru_graduations_reserves",
+        sql`${t.tokenReserved}>0 AND ${t.quoteReserved}>0 AND ${t.tokenRemainder}>=0 AND ${t.quoteRemainder}>=0`,
+      ),
+    ],
+  )
+  .enableRLS();
+
+/** Versioned V4 custody snapshot. Orphaned records remain historical, never active balances. */
+export const uniswapGraduations = market
+  .table(
+    "uniswap_graduations",
+    {
+      chain: text("chain").notNull(),
+      token: text("token").notNull(),
+      poolManager: text("pool_manager").notNull(),
+      locker: text("locker").notNull(),
+      poolId: text("pool_id").notNull(),
+      positionId: baseUnits("position_id").notNull(),
+      liquidity: baseUnits("liquidity").notNull(),
+      poolKey: jsonb("pool_key").notNull(),
+      venueHash: text("venue_hash").notNull(),
+      adapter: text("adapter").notNull(),
+      blockHash: text("block_hash").notNull(),
+      blockNumber: bigint("block_number", { mode: "number" }).notNull(),
+      txHash: text("tx_hash").notNull(),
+      tokenUsed: baseUnits("token_used").notNull(),
+      quoteUsed: baseUnits("quote_used").notNull(),
+      tokenRemainder: baseUnits("token_remainder").notNull(),
+      quoteRemainder: baseUnits("quote_remainder").notNull(),
+    },
+    (t) => [
+      primaryKey({ columns: [t.chain, t.token, t.blockHash] }),
+      check("uniswap_graduations_network", sql`${t.chain}='eip155:10143'`),
+      check(
+        "uniswap_graduations_addresses",
+        sql`${t.token} ~ '^0x[0-9a-f]{40}$' AND ${t.poolManager} ~ '^0x[0-9a-f]{40}$' AND ${t.locker} ~ '^0x[0-9a-f]{40}$' AND ${t.adapter} ~ '^0x[0-9a-f]{40}$'`,
+      ),
+      check(
+        "uniswap_graduations_hashes",
+        sql`${t.poolId} ~ '^0x[0-9a-f]{64}$' AND ${t.blockHash} ~ '^0x[0-9a-f]{64}$' AND ${t.txHash} ~ '^0x[0-9a-f]{64}$' AND ${t.venueHash} ~ '^0x[0-9a-f]{64}$'`,
+      ),
+      check(
+        "uniswap_graduations_amounts",
+        sql`${t.positionId}>0 AND ${t.liquidity}>0 AND ${t.tokenUsed}>0 AND ${t.quoteUsed}>0 AND ${t.tokenRemainder}>=0 AND ${t.quoteRemainder}>=0`,
+      ),
     ],
   )
   .enableRLS();

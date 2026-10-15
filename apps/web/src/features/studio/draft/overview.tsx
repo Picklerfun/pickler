@@ -67,7 +67,7 @@ export function Overview({ goPublic, ...props }: OverviewProps) {
         <div className={styles.stack}>
           <div className={styles.card} id="draft-overview-wallet">
             <div className={styles.cardHead}>
-              <h3 className={styles.cardLabel}>ITS WALLET</h3>
+              <h3 className={styles.cardLabel}>AGENT WALLET</h3>
               {wallet && <span className={styles.readyTag}>READY</span>}
             </div>
             {wallet ? (
@@ -116,7 +116,7 @@ export function Overview({ goPublic, ...props }: OverviewProps) {
                     disabled={!canManage}
                     onClick={() => onWallets(true)}
                   >
-                    Fund from master
+                    Add funds to agent
                   </button>
                   <button
                     type="button"

@@ -124,11 +124,91 @@
   }
 }
 
+@media (max-width: 640px) {
+  .control .trigger {
+    min-width: 48px;
+    min-height: 44px;
+    border-width: 0;
+    gap: 4px;
+    padding: 6px;
+  }
+
+  .triggerLabel,
+  .chevron {
+    display: none;
+  }
+}
+
+/* Leave room for Studio's existing balance/account disclosures on compact headers. */
+@media (max-width: 640px) {
+  .control .trigger {
+    transition: min-width 360ms ease;
+  }
+
+  .networkIcon {
+    flex: none;
+    width: 16px;
+    transition:
+      width 360ms ease,
+      opacity 240ms ease;
+  }
+
+  [data-agent-navbar]:has(
+      [data-wallet-balance]:focus-visible,
+      [data-credits-control]:focus-visible,
+      [data-account-menu]:focus-within,
+      [data-account-menu][data-open="true"]
+    )
+    .control
+    .trigger {
+    min-width: 16px;
+    padding-inline: 0;
+    gap: 0;
+  }
+
+  [data-agent-navbar]:has(
+      [data-wallet-balance]:focus-visible,
+      [data-credits-control]:focus-visible,
+      [data-account-menu]:focus-within,
+      [data-account-menu][data-open="true"]
+    )
+    .networkIcon {
+    width: 0;
+    opacity: 0;
+  }
+}
+
+@media (max-width: 640px) and (hover: hover) and (pointer: fine) {
+  [data-agent-navbar]:has(
+      [data-wallet-balance]:hover,
+      [data-credits-control]:hover,
+      [data-account-menu]:hover
+    )
+    .control
+    .trigger {
+    min-width: 16px;
+    padding-inline: 0;
+    gap: 0;
+  }
+
+  [data-agent-navbar]:has(
+      [data-wallet-balance]:hover,
+      [data-credits-control]:hover,
+      [data-account-menu]:hover
+    )
+    .networkIcon {
+    width: 0;
+    opacity: 0;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .panel {
     animation: none;
   }
-  .chevron {
+  .chevron,
+  .control .trigger,
+  .networkIcon {
     transition: none;
   }
 }

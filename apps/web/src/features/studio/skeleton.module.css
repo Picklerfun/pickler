@@ -1,0 +1,32 @@
+.placeholder {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  min-width: 0;
+}
+.identity {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+.identity > :last-child {
+  width: auto;
+  flex: 1;
+  min-width: 0;
+}
+.short {
+  width: 65%;
+}
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.placeholder[data-variant="workspace"] {
+  max-width: 680px;
+  padding: 24px 0;
+}
+.placeholder[data-variant="rows"] {
+  padding: 16px 0;
+}

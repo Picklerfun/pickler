@@ -1,4 +1,5 @@
 import { base64urlnopad, utf8 } from "@scure/base";
+import { createSiweMessage } from "viem/siwe";
 import { createElement } from "react";
 import { act, create, type ReactTestRenderer } from "react-test-renderer";
 import type { AccountState } from "../src/account";
@@ -16,6 +17,10 @@ jest.mock("expo-secure-store", () => ({
 (globalThis as unknown as { __store: Map<string, string> }).__store = store;
 
 jest.mock("../src/config/api", () => ({ API_URL: "https://pickler.test/api/v1" }));
+jest.mock("../src/config/advice", () => ({ studioAgentsEnabled: () => (globalThis as unknown as { __studio: boolean }).__studio }));
+(globalThis as unknown as { __studio: boolean }).__studio = true;
+// `config/rp` lee app.config.ts vía expo-constants, que no existe bajo Jest.
+jest.mock("../src/config/rp", () => ({ RP_ID: "pickler.fun", RP_NAME: "Pickler" }));
 jest.mock("../src/wallet/wallet", () => ({ unlockStoredWallet: jest.fn(), describeError: (e: unknown) => ((e as { code?: string } | null)?.code === "ERR_AUTHENTICATION" ? "" : e instanceof Error ? e.message : String(e)) }));
 jest.mock("../src/identity/api", () => ({
   ...jest.requireActual("../src/identity/api"),
@@ -32,6 +37,10 @@ const { unlockStoredWallet } = jest.requireMock("../src/wallet/wallet") as { unl
 
 const A = "0x7E5F4552091A69125d5DfCb7b8C2659029395Bdf";
 const B = "0x2B5AD5c4795c026514f8317c7a215E218DcCD6cF";
+// Lo que la API contesta en /nonce: un SIWE de entrada para esa dirección. La sesión lo comprueba antes de firmar, así
+// que un texto cualquiera ya no vale como mensaje.
+const challenge = (address: string) =>
+  createSiweMessage({ version: "1", domain: "pickler.fun", uri: "https://pickler.fun", address: address as `0x${string}`, chainId: 10143, nonce: "a1b2c3d4e5f6a1b2c3d4e5f6", issuedAt: new Date(1_790_000_000_000), statement: "Sign in to Pickler" });
 const b64 = (o: unknown) => base64urlnopad.encode(utf8.decode(JSON.stringify(o)));
 const token = (sub: string) => `${b64({ alg: "HS256" })}.${b64({ sub, exp: Math.floor(Date.now() / 1000) + 3600 })}.sig`;
 const wallet = (address: string) => ({ address, credentialId: "cred", session: { end() {} }, account: { signMessage: jest.fn(async () => "0xsig") } });
@@ -54,7 +63,7 @@ async function mount(account: AccountState) {
 beforeEach(() => {
   store.clear();
   jest.clearAllMocks();
-  api.fetchChallenge.mockResolvedValue("the server's message");
+  api.fetchChallenge.mockImplementation(async (_base: string, address: string) => challenge(address));
   api.presentSignature.mockImplementation(async () => ({ userId: "user-1", token: token("user-1") }));
 });
 
@@ -70,7 +79,7 @@ test("an unlocked wallet signs in by itself and an account without a username is
   await mount({ status: "unlocked", wallet: opened as never });
   expect(api.fetchChallenge).toHaveBeenCalledWith("https://pickler.test/api/v1", A, 10143, expect.anything());
   // Firma el mensaje del servidor con la wallet abierta: sin prompt.
-  expect(opened.account.signMessage).toHaveBeenCalledWith({ message: "the server's message" });
+  expect(opened.account.signMessage).toHaveBeenCalledWith({ message: challenge(A) });
   expect(latest.identity).toEqual({ status: "none" });
 });
 
@@ -93,12 +102,24 @@ test("a locked wallet with nothing stored is not asked: that would be a Face ID 
   expect(unlockStoredWallet).not.toHaveBeenCalled();
 });
 
+test("a message that is not this wallet's sign-in is never signed, and holds nobody", async () => {
+  // La misma ruta de /nonce puede emitir el mensaje que deja entrar a otra wallet a la cuenta. Si llega, no se firma y
+  // la cuenta queda como no alcanzable: nadie se queda fuera de sus fondos por ello.
+  api.fetchChallenge.mockResolvedValue(createSiweMessage({ version: "1", domain: "pickler.fun", uri: "https://pickler.fun", address: A, chainId: 10143, nonce: "a1b2c3d4e5f6a1b2c3d4e5f6", issuedAt: new Date(1_790_000_000_000), statement: `Link wallet ${B} to this wallet's Pickler account` }));
+  api.fetchProfile.mockResolvedValue(null);
+  const opened = wallet(A);
+  await mount({ status: "unlocked", wallet: opened as never });
+  expect(opened.account.signMessage).not.toHaveBeenCalled();
+  expect(api.presentSignature).not.toHaveBeenCalled();
+  expect(latest.identity).toEqual({ status: "unreachable" });
+});
+
 test("an API that cannot be reached holds nobody", async () => {
   api.fetchChallenge.mockRejectedValue(new IdentityError(0, "network"));
   await mount(unlocked(A));
   expect(latest.identity).toEqual({ status: "unreachable" });
 
-  api.fetchChallenge.mockResolvedValue("the server's message");
+  api.fetchChallenge.mockResolvedValue(challenge(B));
   api.fetchProfile.mockRejectedValue(new IdentityError(500, "500"));
   await mount(unlocked(B));
   expect(latest.identity).toEqual({ status: "unreachable" });
@@ -258,4 +279,115 @@ test("availability is asked for the normalised handle", async () => {
   await mount(unlocked(A));
   expect(await latest.check(" @NightOwl")).toBe(true);
   expect(api.handleAvailable).toHaveBeenCalledWith("https://pickler.test/api/v1", "nightowl");
+});
+
+describe("authedFetch", () => {
+  const sent: { url: string; auth: string }[] = [];
+  const respond = (...statuses: number[]) => {
+    sent.length = 0;
+    const queue = [...statuses];
+    globalThis.fetch = jest.fn(async (url: string, init: RequestInit) => {
+      sent.push({ url, auth: (init.headers as Record<string, string>).Authorization! });
+      return new Response("{}", { status: queue.shift() ?? 200 });
+    }) as never;
+  };
+
+  test("reuses a fresh session: one sign-in for the account hook and the request, bearer attached", async () => {
+    api.fetchProfile.mockResolvedValue({ handle: "owl" });
+    respond(200);
+    await mount(unlocked(A));
+    expect(api.presentSignature).toHaveBeenCalledTimes(1);
+    const res = await latest.authedFetch("/agent-advice/recommendations/r1", { method: "GET" });
+    expect(res.status).toBe(200);
+    expect(api.presentSignature).toHaveBeenCalledTimes(1);
+    expect(sent[0]!.url).toBe("https://pickler.test/api/v1/agent-advice/recommendations/r1");
+    expect(sent[0]!.auth).toMatch(/^Bearer /);
+  });
+
+  test("a 401 signs in once more and retries once; a second 401 is returned", async () => {
+    api.fetchProfile.mockResolvedValue({ handle: "owl" });
+    respond(401, 200);
+    await mount(unlocked(A));
+    expect((await latest.authedFetch("/x")).status).toBe(200);
+    expect(api.presentSignature).toHaveBeenCalledTimes(2);
+    expect(sent).toHaveLength(2);
+    respond(401, 401, 200);
+    expect((await latest.authedFetch("/x")).status).toBe(401);
+    expect(sent).toHaveLength(2);
+  });
+
+  test("with the wallet locked it throws WalletLockedError and sends nothing", async () => {
+    api.fetchProfile.mockResolvedValue({ handle: "owl" });
+    respond(200);
+    await mount(locked(A));
+    await expect(latest.authedFetch("/x")).rejects.toMatchObject({ name: "WalletLockedError" });
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+    expect(unlockStoredWallet).not.toHaveBeenCalled();
+  });
+
+  test("a wallet the caller just unlocked is used before the render that carries it", async () => {
+    // useUnlock hands the wallet back before App re-renders with it: the retry after WalletLockedError passes it.
+    api.fetchProfile.mockResolvedValue({ handle: "owl" });
+    respond(200);
+    await mount(locked(A));
+    const opened = wallet(A);
+
+    const res = await latest.authedFetch("/x", { method: "GET" }, opened as never);
+
+    expect(res.status).toBe(200);
+    expect(opened.account.signMessage).toHaveBeenCalledTimes(1);
+    expect(sent[0]!.auth).toMatch(/^Bearer /);
+    expect(unlockStoredWallet).not.toHaveBeenCalled();
+  });
+
+  test("the path must start with a slash", async () => {
+    api.fetchProfile.mockResolvedValue({ handle: "owl" });
+    respond(200);
+    await mount(unlocked(A));
+    await expect(latest.authedFetch("x")).rejects.toThrow(/start with "\/"/);
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+  });
+
+  test("a Headers instance keeps its entries", async () => {
+    api.fetchProfile.mockResolvedValue({ handle: "owl" });
+    const seen: Record<string, string>[] = [];
+    globalThis.fetch = jest.fn(async (_u: string, init: RequestInit) => { seen.push(init.headers as Record<string, string>); return new Response("{}"); }) as never;
+    await mount(unlocked(A));
+    await latest.authedFetch("/x", { headers: new Headers({ "Idempotency-Key": "k1" }) });
+    expect(seen[0]).toMatchObject({ "idempotency-key": "k1" });
+    expect(seen[0]!.Authorization).toMatch(/^Bearer /);
+  });
+
+  test("a caller's own Authorization never travels beside the bearer", async () => {
+    api.fetchProfile.mockResolvedValue({ handle: "owl" });
+    const seen: Record<string, string>[] = [];
+    globalThis.fetch = jest.fn(async (_u: string, init: RequestInit) => { seen.push(init.headers as Record<string, string>); return new Response("{}"); }) as never;
+    await mount(unlocked(A));
+
+    await latest.authedFetch("/x", { headers: { authorization: "Bearer someone-else", "Idempotency-Key": "k1" } });
+
+    const sent = new Headers(seen[0]);
+    expect(Object.keys(seen[0]!).filter((k) => k.toLowerCase() === "authorization")).toHaveLength(1);
+    expect(sent.get("Authorization")).toMatch(/^Bearer /);
+    expect(sent.get("Authorization")).not.toContain("someone-else");
+    expect(sent.get("Idempotency-Key")).toBe("k1");
+  });
+
+  test("the token is never persisted", async () => {
+    api.fetchProfile.mockResolvedValue({ handle: "owl" });
+    respond(200);
+    await mount(unlocked(A));
+    await latest.authedFetch("/x");
+    const token = sent[0]!.auth.slice("Bearer ".length);
+    expect(JSON.stringify([...store.values()])).not.toContain(token);
+  });
+
+  test("studioAgents follows studioAgentsEnabled()", async () => {
+    await mount({ status: "none" });
+    expect(latest.studioAgents).toBe(true);
+    (globalThis as unknown as { __studio: boolean }).__studio = false;
+    await mount({ status: "none" });
+    expect(latest.studioAgents).toBe(false);
+    (globalThis as unknown as { __studio: boolean }).__studio = true;
+  });
 });

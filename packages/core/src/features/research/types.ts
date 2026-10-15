@@ -934,9 +934,16 @@ export function assertStudioStrategy(config: AgentConfig): void {
   const selection = config.perpsStrategy;
   if (
     selection &&
-    (!STUDIO_PERPS_STRATEGY_IDS.includes(selection.id) || selection.version !== "2.0.0")
+    (!STUDIO_PERPS_STRATEGY_IDS.includes(selection.id) ||
+      !["2.0.0", "2.1.0"].includes(selection.version))
   ) {
     throw new PilotError("STRATEGY_UNAVAILABLE", "Unsupported Studio strategy or version");
+  }
+  if (config.perpl?.version === 2 && (selection?.version ?? "2.0.0") !== "2.1.0") {
+    throw new PilotError(
+      "STRATEGY_UNAVAILABLE",
+      "Dynamic Perpl selection requires Studio strategy version 2.1.0",
+    );
   }
   if (selection?.id === "rules") {
     const brief = config.brief;

@@ -6,16 +6,11 @@ export const systemClock: Clock = {
   now: () => new Date(),
 };
 
-export { createSampleMarketBoard } from "./markets/sample-market-board.js";
 export {
   createPerplMarketBoard,
   PerplBoardMemory,
   type PerplMarketBoardOptions,
 } from "./markets/perpl-market-board.js";
-export {
-  createSampleLandingReadModel,
-  SAMPLE_AGENT_TICKERS,
-} from "./landing/sample-landing-read-model.js";
 export {
   createInMemoryApplicantStore,
   type InMemoryApplicantStoreOptions,
@@ -67,7 +62,6 @@ export {
   type PreviewExecutionRepository,
 } from "./persistence/preview-store.js";
 export { PostgresStudioDirectory } from "./studio/directory.js";
-export { PostgresXStore } from "./studio/x-store.js";
 export { listTransfers, tokenAmount } from "./studio/ledger.js";
 export { PostgresProfileRepository } from "./persistence/profile-repository.js";
 export {
@@ -81,6 +75,7 @@ export {
   PostgresBudgetSource,
 } from "./persistence/agent-registry.js";
 export { PostgresApplicants, PostgresWaitlist } from "./persistence/growth-store.js";
+export { PostgresApplicationReview } from "./applicants/postgres-application-review.js";
 export { PostgresBudgetLedger } from "./studio/budget.js";
 
 export { databasePoolConfig, type DatabaseConnectionOptions } from "./persistence/connection.js";
@@ -117,6 +112,7 @@ export {
 export { PostgresCustodyStore } from "./persistence/custody-store.js";
 export { PostgresWalletIdentityStore } from "./persistence/wallet-identity-store.js";
 export { PostgresAgentDirectory } from "./persistence/agent-directory.js";
+export { PostgresAgentActionFeed } from "./persistence/agent-actions.js";
 
 export { createBalanceReader, type Balance, type Balances } from "./chain/balances.js";
 export {
@@ -168,6 +164,20 @@ export {
 } from "./polymarket/comparison-transport.js";
 
 export { ViemChainReader, type ViemChainReaderOptions } from "./chain/viem-chain-reader.js";
+
+export {
+  adviceNonce,
+  authorizationTypedData,
+  createAusdAuthorizationGateway,
+  settlementTransfersMatch,
+  type AusdAuthorizationGateway,
+  type AusdAuthorizationGatewayInput,
+  type ExpectedSettlement,
+  type PublicClientLike,
+  type SplitterSettleRequest,
+  type TransferLog,
+  type WalletClientLike,
+} from "./chain/ausd-authorization.js";
 
 export {
   PostgresLaunchIndexStore,
@@ -223,9 +233,33 @@ export {
 export { pause as pausePerplRead } from "./perpl/transport.js";
 
 export { normalizePerplBook, normalizePerplTicker } from "./perpl/data.js";
-export { createXClient, XUnavailableError, type XClient, type XUser } from "./x/x-client.js";
 
 export { exportPerpsAudit } from "./persistence/perps-audit-export.js";
 export * from "./persistence/advice-store.js";
+export * from "./persistence/advice-payments.js";
 
 export * from "./persistence/perps-check-cost-store.js";
+
+export * from "./persistence/ai-credit-store.js";
+export { PostgresStudioAccessRequests } from "./studio/access-requests.js";
+
+export { createXOAuthProvider, parseXApiPolicy, xSecrets } from "./x/oauth-provider.js";
+export { PostgresXOAuthStore } from "./studio/x-oauth-store.js";
+export { PostgresTokenLaunchStore, tokenAgentKey } from "./studio/token-launch-store.js";
+
+export * from "./launch/policy.js";
+export * from "./launch/metadata.js";
+export * from "./launch/grant-issuer.js";
+
+export * from "./launch/driver.js";
+export { createConfirmedLaunchPublisher } from "./launch/confirmed-launch.js";
+
+export type { Pool as TokenLaunchDatabase } from "pg";
+
+export * from "./launch/kuru-projector.js";
+
+export { runTokenIndexer, tokenChainReader, tokenIndexerPolicySchema } from "./launch/indexer.js";
+
+export * from "./launch/public-trading.js";
+
+export { PerplDashboardGateway, PerplDashboardError } from "./perpl/dashboard.js";

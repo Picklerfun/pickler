@@ -4,10 +4,40 @@ import type { PerpsQueueMessage } from "./routes/studio-perps";
 
 /** Worker bindings. Secrets come from `wrangler secret put` / `.dev.vars`. */
 export interface Env {
+  TOKEN_LAUNCH_ENABLED?: string;
+  TOKEN_PUBLIC_TRADING_ENABLED?: string;
+  TOKEN_PUBLIC_RPC_DAILY_LIMIT?: string;
+  TOKEN_LAUNCH_POLICY_JSON?: string;
+  TOKEN_LAUNCH_AUTHORITY_KEY?: string;
+  TOKEN_METADATA?: R2Bucket;
   ADVICE_ENABLED?: string;
   ADVICE_POLICY_JSON?: string;
+  /**
+   * "true" sells each fresh advice analysis with x402 (docs/specs/agent-advice-x402-v1.md and
+   * docs/specs/agent-advice-fee-split-v1.md); it needs X402_RELAYER_PRIVATE_KEY, MONAD_RPC_URL,
+   * ADVICE_SPLITTER_ADDRESS and ADVICE_SPLITTER_TREASURY too, and without them every request
+   * answers 503 (fails closed). Anything other than "true" keeps the request free, as before.
+   */
+  ADVICE_X402_ENABLED?: string;
+  /**
+   * Secret. The testnet relayer EOA that calls the advice splitter's `settle` (which redeems the
+   * buyer's `receiveWithAuthorization`) and pays its gas in MON; it holds no AUSD. Never logged,
+   * returned or placed in an error.
+   */
+  X402_RELAYER_PRIVATE_KEY?: string;
+  /**
+   * The deployed `PicklerAdviceSplitter`: the 402's `payTo`, the authorization's `to` and the
+   * contract the relayer calls. Empty until its deployment is recorded.
+   */
+  ADVICE_SPLITTER_ADDRESS?: string;
+  /**
+   * The treasury the splitter was deployed with. Paid advice is served only after the splitter's
+   * on-chain `treasury()` equals it (case-insensitive); otherwise every request answers 503.
+   */
+  ADVICE_SPLITTER_TREASURY?: string;
   APP_ENV: string;
   TRADING_EXECUTOR?: Fetcher;
+  PERPL_STUDIO_ENABLED?: string;
   TRADING_QUEUE?: Queue<{ kind: "trading-wakeup" }>;
   TRADING_ADMISSIONS_ENABLED?: string;
   ADMISSIONS_ENABLED?: string;
@@ -69,12 +99,15 @@ export interface Env {
   SIWE_DOMAIN?: string;
   /** Non-deliverable domain for synthetic wallet addresses, e.g. "wallet.pickler.fun". */
   WALLET_EMAIL_DOMAIN?: string;
-  /**
-   * Pickler's X app bearer token (app-only, read access), for Connect X's verification reads. A
-   * secret: it never leaves the API. Absent or empty, Connect X says it is not open yet and its
-   * challenge and verify routes answer 503 X_UNAVAILABLE.
-   */
-  X_BEARER_TOKEN?: string;
+  /** Read-only OAuth application; credentials stay in API runtime, never Web or Research. */
+  X_CLIENT_ID?: string;
+  X_CLIENT_SECRET?: string;
+  X_REDIRECT_URI?: string;
+  X_TOKEN_ENCRYPTION_KEY?: string;
+  X_TOKEN_ENCRYPTION_KEY_VERSION?: string;
+  X_OAUTH_ENABLED?: string;
+  X_READS_ENABLED?: string;
+  X_API_POLICY_JSON?: string;
 }
 
 export interface Variables {

@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "verifiedAt": "2026-10-10T15:33:43.619Z",
+  "rpc": "https://rpc.ankr.com/monad_testnet",
+  "chainId": 10143,
+  "blockNumber": "69861150",
+  "blockHash": "0x07af99105d5e8cf6900a00096ee0e74a0bb8464864bcce6dc5d1d33236f24a86",
+  "canonicalSuccessfulReceipts": 34,
+  "deployedCodeHashesMatch": true,
+  "positionOwner": "0x94184bE43584d6106E4eeEd20f1BD53784d365FF",
+  "liquidity": "366606052182305575",
+  "launchesEnabled": false
+}

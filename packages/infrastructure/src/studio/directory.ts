@@ -92,7 +92,7 @@ export class PostgresStudioDirectory implements StudioDirectory {
       client.release();
     }
   }
-  async onboard(userId: string): Promise<void> {
+  async onboard(userId: string, email?: string | undefined): Promise<void> {
     await this.transaction(async (client) => {
       const profile = await client.query(
         "SELECT display_name FROM identity.profiles WHERE user_id=$1",
@@ -115,6 +115,10 @@ export class PostgresStudioDirectory implements StudioDirectory {
         "INSERT INTO pickler.research_access (user_id) VALUES ($1) ON CONFLICT DO NOTHING",
         [userId],
       );
+      // An application invited under this email is claimed here, once, and turns access on.
+      if (email) {
+        await client.query("SELECT growth.claim_invite($1, $2)", [userId, email]);
+      }
     });
   }
   async access(userId: string, workspaceId: string | null): Promise<StudioAccess | null> {
@@ -288,7 +292,8 @@ export class PostgresStudioDirectory implements StudioDirectory {
   async list(access: StudioAccess) {
     const result = await this.pool.query(
       `SELECT a.id,a.name,a.handle,a.status='draft' AS draft,a.visibility::text AS visibility,
-        a.published_at,xa.handle AS x_handle,pr.accent,pr.avatar_pattern,p.tenant_id,p.runtime_agent_id
+        a.published_at,xa.handle AS x_handle,pr.accent,pr.avatar_pattern,a.advice_price_micro_ausd::text AS advice_price_micro_ausd,
+        p.tenant_id,p.runtime_agent_id
       FROM agents.agents a
       JOIN pickler.product_agents p ON p.product_agent_id=a.id
       LEFT JOIN agents.agent_profiles pr ON pr.agent_id=a.id
@@ -309,6 +314,8 @@ export class PostgresStudioDirectory implements StudioDirectory {
       visibility: row.visibility === "public" ? ("public" as const) : ("private" as const),
       publishedAt: (row.published_at as Date | null) ?? null,
       xHandle: (row.x_handle as string | null) ?? null,
+      advicePriceMicro:
+        row.advice_price_micro_ausd === null ? null : BigInt(row.advice_price_micro_ausd as string),
       scope: { tenantId: row.tenant_id as string, agentId: row.runtime_agent_id as string },
     }));
   }
@@ -338,6 +345,16 @@ export class PostgresStudioDirectory implements StudioDirectory {
         throw new PublishBlockedError(blockers);
       }
       const published = await this.transaction(async (client) => {
+        const owner = await client.query(
+          `SELECT w.id FROM identity.workspaces w
+          JOIN pickler.research_access r ON r.user_id=w.owner_user_id
+          WHERE w.id=$1 AND w.owner_user_id=$2 AND w.is_active AND r.enabled
+          FOR SHARE OF w,r`,
+          [access.workspaceId, access.ownerUserId],
+        );
+        if (!owner.rowCount) {
+          throw new AccessDeniedError("Creator access changed");
+        }
         // A separate statement: Postgres refuses FOR SHARE on the nullable side of an outer join.
         await client.query(
           "SELECT 1 FROM wallets.agent_wallets WHERE agent_id::text = $1 FOR SHARE",
@@ -357,6 +374,24 @@ export class PostgresStudioDirectory implements StudioDirectory {
         if (now.killed) {
           throw new PublishBlockedError(["KILLED"]);
         }
+        // Same agent lock as OAuth writes: revocation cannot interleave this publication.
+        const connection = await client.query(
+          `SELECT 1 FROM agents.x_oauth_grants g
+          JOIN agents.x_accounts x ON x.agent_id=g.agent_id
+          JOIN identity.workspaces w ON w.id=g.workspace_id
+          JOIN pickler.research_access r ON r.user_id=w.owner_user_id
+          WHERE g.agent_id=$1 AND g.user_id=$2 AND g.workspace_id=$3 AND g.tenant_id=$4
+            AND w.owner_user_id=$2 AND w.is_active AND r.enabled
+            AND g.status='connected' AND g.refresh_claim IS NULL AND g.expires_at>now()
+            AND g.validated_at>now()-interval '30 seconds'
+            AND g.scopes @> '["users.read","tweet.read","offline.access"]'::jsonb
+            AND x.verification_method='oauth' FOR SHARE OF g,w,r`,
+          [productAgentId, access.ownerUserId, access.workspaceId, access.tenantId],
+        );
+        if (!connection.rowCount) {
+          throw new PublishBlockedError(["X_CONNECTION_REQUIRED"]);
+        }
+
         const { rows } = await client.query<{ publishedAt: Date }>(
           `UPDATE agents.agents SET visibility = 'public', published_at = now(),
              status = CASE WHEN status = 'draft' THEN 'active' ELSE status END
@@ -502,6 +537,31 @@ export class PostgresStudioDirectory implements StudioDirectory {
       .sort((a, b) => b.at.getTime() - a.at.getTime() || b.rank - a.rank)
       .slice(0, 50)
       .map(({ kind, text, at }) => ({ kind, text, at }));
+  }
+  async setAdvicePrice(
+    userId: string,
+    productAgentId: string,
+    micro: bigint | null,
+  ): Promise<bigint | null> {
+    const { rows } = await this.pool.query<{ wallet: string | null }>(
+      `SELECT l.wallet_id AS wallet
+         FROM pickler.product_agents p
+         JOIN identity.workspaces w ON w.id = p.workspace_id
+         LEFT JOIN wallets.agent_wallets l ON l.agent_id = p.product_agent_id
+        WHERE p.product_agent_id::text = $1 AND w.owner_user_id = $2`,
+      [productAgentId, userId],
+    );
+    if (!rows.length) {
+      throw notFound();
+    }
+    if (micro !== null && rows[0]!.wallet === null) {
+      throw new PilotError("CONFLICT", "AGENT_WALLET_REQUIRED");
+    }
+    await this.pool.query(
+      "UPDATE agents.agents SET advice_price_micro_ausd = $2 WHERE id::text = $1",
+      [productAgentId, micro === null ? null : micro.toString()],
+    );
+    return micro;
   }
   /** The agent's recorded setup versions (studio-live-v1 L10), newest first, at most 20. */
   async versions(access: StudioAccess, productAgentId: string): Promise<SetupVersion[]> {

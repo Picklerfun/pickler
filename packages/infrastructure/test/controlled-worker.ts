@@ -4,11 +4,13 @@ export function assertControlledDatabaseUrl(connectionString: string): void {
   if (
     !["postgres:", "postgresql:"].includes(url.protocol) ||
     url.hostname !== "127.0.0.1" ||
-    url.port !== "55522" ||
+    !["55522", "55532"].includes(url.port) ||
     url.pathname !== "/postgres" ||
     url.search !== ""
   ) {
-    throw new Error("Controlled tests require the dedicated Supabase database on 127.0.0.1:55522");
+    throw new Error(
+      "Controlled tests require the dedicated Supabase database on 127.0.0.1:55522 or 55532",
+    );
   }
 }
 
@@ -38,6 +40,7 @@ const providers = new Set([
   "https://api.typesafe.ai",
   "https://controlled.invalid",
   "https://api.exa.ai",
+  "https://api.x.com",
 ]);
 
 /** Production entry points never import or install this transport. No external request escapes. */
@@ -49,7 +52,10 @@ export function installControlledStudioTransport(
     const request = new Request(input, init);
     request.signal.throwIfAborted();
     const url = new URL(request.url);
-    if (url.origin === "http://127.0.0.1:55521" && url.pathname.startsWith("/auth/v1/")) {
+    if (
+      ["http://127.0.0.1:55521", "http://127.0.0.1:55531"].includes(url.origin) &&
+      url.pathname.startsWith("/auth/v1/")
+    ) {
       return noRedirect(await transport(new Request(request, { redirect: "manual" })));
     }
     if (url.origin === "http://127.0.0.1:8798" && url.pathname === "/rpc") {
@@ -64,6 +70,9 @@ export function installControlledStudioTransport(
         headers: { "Content-Type": "application/json", "X-Controlled-Identity": identity },
         body: JSON.stringify({
           url: request.url,
+          ...(url.origin === "https://api.x.com" && request.method === "GET"
+            ? { authorization: controlledXBearer(request.headers.get("authorization")) }
+            : {}),
           method: request.method,
           body: request.method === "GET" ? null : await request.text(),
         }),
@@ -80,4 +89,11 @@ function noRedirect(response: Response): Response {
     throw new Error("Controlled transport refuses redirects");
   }
   return response;
+}
+
+function controlledXBearer(value: string | null) {
+  if (!value?.startsWith("Bearer controlled-x-")) {
+    throw new Error("Controlled X transport requires synthetic credentials");
+  }
+  return value;
 }

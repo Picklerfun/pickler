@@ -28,8 +28,9 @@ export type SectionKey = (typeof SECTIONS)[number];
  * Which section a link asked the studio to open on, or undefined to open where it always has.
  *
  * Outside production only. Deep-linking a section is a verification affordance — every design check
- * opens on the overview, so without this they measure one section and report on the screen — and
- * not a feature: the studio keeps its section in state and has no routing story to rely on.
+ * opens on the overview, so without this they measure one section and report on the screen.
+ * Real navigation uses the closed App Router registry in routing/routes.ts; this legacy query
+ * remains a development fixture entry only.
  *
  * `nodeEnv` is an argument rather than a read so the guard can be pinned in both positions.
  */

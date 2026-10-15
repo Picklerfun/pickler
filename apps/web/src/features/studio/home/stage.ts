@@ -27,6 +27,9 @@ export type HomeStage = (typeof STAGES)[number];
  */
 export const CREATE_STAGES = [
   "create-empty",
+  "create-access",
+  "create-access-loading",
+  "create-access-pending",
   "create-wallet",
   "create-funded",
   "create-advanced",
@@ -79,6 +82,12 @@ export type DraftStage = (typeof DRAFT_STAGES)[number];
  * waiting for the running check. `live/fixture.ts` draws each.
  */
 export const LIVE_STAGES = [
+  "perpl-trading-ready",
+  "perpl-trading-setup",
+  "perpl-trading-active",
+  "perpl-trading-closed",
+  "perpl-token-empty",
+  "perpl-token-launched",
   "perpl-live",
   "perpl-paused",
   "perpl-warnings",

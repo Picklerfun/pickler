@@ -9,6 +9,12 @@ export { DataSourceUnavailableError } from "./shared/errors.js";
 export {
   remainingTokens,
   tokensOutForQuoteIn,
+  deriveCurveReserves,
+  curveMarginalPriceWad,
+  quoteOutForTokensIn,
+  quoteInForTokensOut,
+  splitCurveFee,
+  curveGrossFromNet,
   type CurveConfig,
 } from "./features/launch/domain/curve-math.js";
 
@@ -30,10 +36,9 @@ export {
   type LogQuery,
 } from "./features/launch/ports/chain-reader.js";
 
+// Shared public-view types (accents, agent refs, pick outcomes); the landing read model they were
+// written for is gone (docs/specs/marketplace-real-only-v1.md N4).
 export * from "./features/landing/domain/landing.js";
-export type { LandingReadModel } from "./features/landing/ports/landing-read-model.js";
-export { createGetLanding, LANDING_LIMITS } from "./features/landing/application/get-landing.js";
-
 export { InvalidEmailError, normalizeEmail } from "./features/waitlist/domain/email.js";
 export type {
   WaitlistPlacement,
@@ -76,6 +81,21 @@ export {
   createGetApplicant,
   createSubmitApplication,
 } from "./features/applications/application/applications.js";
+export type {
+  ApplicationDecision,
+  ApplicationReviewEntry,
+  ApplicationReviewFilter,
+  ApplicationReviewRepository,
+  ApplicationStatus,
+} from "./features/applications/ports/application-review-repository.js";
+export {
+  APPLICATION_DECISIONS,
+  APPLICATION_STATUSES,
+  ApplicationNotFoundError,
+  createApplicationReview,
+  DECISION_NOTE_MAX,
+  ReviewValidationError,
+} from "./features/applications/application/review-applications.js";
 
 export * from "./features/agents/domain/agents.js";
 export type { AgentDirectory } from "./features/agents/ports/agent-directory.js";
@@ -91,6 +111,17 @@ export {
   createListDirectory,
   createListReads,
 } from "./features/agents/application/agents.js";
+export {
+  AGENT_ACTION_CALLS,
+  AGENT_ACTION_OUTCOMES,
+  AGENT_ACTIONS_DEFAULT,
+  AGENT_ACTIONS_MAX,
+  createListAgentActions,
+  type AgentAction,
+  type AgentActionCall,
+  type AgentActionFeed,
+  type AgentActionOutcome,
+} from "./features/agents/domain/agent-actions.js";
 
 export * from "./features/markets/domain/markets.js";
 export type { MarketBoard } from "./features/markets/ports/market-board.js";
@@ -186,7 +217,6 @@ export * from "./features/studio/locks.js";
 export * from "./features/studio/create.js";
 export * from "./features/studio/revise.js";
 export * from "./features/studio/setup-summary.js";
-export * from "./features/studio/x-verify.js";
 export * from "./features/studio/publish.js";
 
 export {
@@ -304,3 +334,23 @@ export * from "./features/perps/service.js";
 export * from "./features/research/trading-config.js";
 
 export * from "./features/advice/index.js";
+export * from "./features/advice/price.js";
+export * from "./features/advice/x402.js";
+
+export * from "./features/ai-credits/index.js";
+export * from "./features/studio/access-requests.js";
+
+export { assertPerplSelection } from "./features/perps/service.js";
+export type { PerplMarketCatalog } from "./features/perps/types.js";
+
+export * from "./features/studio/x-oauth.js";
+
+export * from "./features/launch/token-launch.js";
+
+export * from "./features/launch/domain/token-economics.js";
+
+export * from "./features/launch/token-operations.js";
+
+export * from "./features/launch/public-token-trading.js";
+
+export * from "./features/launch/domain/token-market.js";

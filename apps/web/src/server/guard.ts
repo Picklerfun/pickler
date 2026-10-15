@@ -14,8 +14,8 @@ import { firstSegment } from "./hosts";
 
 /**
  * The screens that are nobody's but yours. Everything else the studio owns — `/signin`, `/signup`,
- * `/auth/callback`, `/apply` — has to stay open: you cannot sign in if signing in needs a session,
- * and applying for studio access is done by someone who has no account yet.
+ * `/auth/callback` — has to stay open: you cannot sign in if signing in needs a session. The
+ * creator application is the marketplace's (`/create`) and never comes near this.
  *
  * `studio` is here as the segment the studio root resolves to, not as a URL anyone can reach: on
  * the studio host `/studio` is a 404 and `/` is the studio. On localhost, where both products are

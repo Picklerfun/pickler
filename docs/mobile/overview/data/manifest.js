@@ -27,6 +27,27 @@
 
 window.DOCS = [
   {
+    date: '2026-10-12',
+    title: 'Studio agents in the app · paid analyses with x402',
+    summary: 'The Agents tab lists Studio agents; a person picks BTC or ETH, pays one 24-hour analysis in AUSD (x402, 65/35 through the splitter) and reads it. Code done on codex/mobile-studio-agents; not merged, not deployed, build 13 pending authorization.',
+    file: '2026-10-12-studio-agents.html',
+    types: ['plan'],
+    status: 'active',
+    tags: ['mobile', 'x402', 'advice', 'studio'],
+    phases: [
+      { num: 1, status: 'in_progress' },
+    ],
+  },
+  {
+    date: '2026-10-03',
+    title: 'TestFlight build 12 · primer build desde el monorepo',
+    summary: 'Build 0.1.0 (12) con el código del build 11 ya dentro de Picklerfun/pickler: derivación y parser de Perpl en paquetes compartidos, cuenta de la web apagada. Verifica el release desde el monorepo.',
+    file: 'dev/2026-10-03-testflight-build12.html',
+    types: ['feature'],
+    status: 'shipped',
+    tags: ['mobile', 'testflight', 'ios', 'monorepo'],
+  },
+  {
     date: '2026-10-02',
     title: 'La misma cuenta que en la web · username obligatorio',
     summary: 'Con la wallet desbloqueada la app entra sola a la API del producto y, si la cuenta no tiene username, lo pide sin dejar saltarlo. Apagado mientras no se configure PICKLER_API_URL.',

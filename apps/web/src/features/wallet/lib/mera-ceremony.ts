@@ -1,3 +1,5 @@
+import type { TypedDataDefinition } from "viem";
+import type { PublicTokenTransaction } from "./signer";
 import type { ConnectResult } from "./connect";
 
 /**
@@ -77,6 +79,8 @@ export type PrfSource = () => Promise<PrfResult | null>;
 export interface OpenedKey {
   address: string;
   signMessage(message: string): Promise<string>;
+  signTypedData?(data: TypedDataDefinition): Promise<`0x${string}`>;
+  signTransaction?(transaction: PublicTokenTransaction): Promise<`0x${string}`>;
   /** Wipes the key inside the signing session. */
   end(): void;
 }

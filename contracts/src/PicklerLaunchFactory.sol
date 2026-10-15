@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
 import {EIP712} from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
@@ -53,6 +53,11 @@ contract PicklerLaunchFactory is EIP712 {
         uint64 creationBlock;
     }
 
+    error InvalidLaunchAuthority();
+    error InvalidGrant();
+    error GrantExpired();
+    error GrantAlreadyUsed();
+    error GrantTooLong();
     error NotOperator();
     error LaunchesSuspended();
     error PresetAlreadyPublished();
@@ -66,7 +71,9 @@ contract PicklerLaunchFactory is EIP712 {
     error SupplyTransferFailed();
     error NotFeeRecipient();
     error NotPendingFeeRecipient();
+    error InvalidVenueConfiguration();
 
+    event LaunchAuthorityChanged(address indexed authority);
     event PresetPublished(uint32 indexed presetId, uint32 indexed version, bytes32 configHash);
     event LaunchesEnabledChanged(bool enabled);
     event CreatorFeeRecipientTransferStarted(address indexed token, address indexed from, address indexed to);
@@ -92,17 +99,27 @@ contract PicklerLaunchFactory is EIP712 {
     // forge-lint: disable-next-line(screaming-snake-case-immutable)
     ICurveDeployer public immutable curveDeployer;
 
+    address public launchAuthority;
+    uint256 public constant MAX_GRANT_LIFETIME = 5 minutes;
+    bytes32 private constant LAUNCH_GRANT_TYPEHASH = keccak256(
+        "LaunchGrant(bytes32 agentKey,address creator,address creatorFeeRecipient,bytes32 paramsHash,uint256 grantNonce,uint256 deadline)"
+    );
+    mapping(uint256 grantNonce => bool) public grantUsed;
+
     bool public launchesEnabled = true;
 
     mapping(uint32 presetId => mapping(uint32 version => PicklerPreset.LaunchPreset)) private _presets;
     mapping(uint32 presetId => mapping(uint32 version => bool)) public presetPublished;
+    mapping(uint32 presetId => mapping(uint32 version => bytes32)) public presetVenueHash;
 
     mapping(address token => LaunchRecord) private _launches;
     mapping(bytes32 agentKey => address token) public tokenForAgent;
     mapping(address creator => mapping(uint256 nonce => bool)) public authorizationUsed;
     mapping(address token => address) public pendingFeeRecipient;
 
-    constructor(address operator_, ICurveDeployer curveDeployer_) EIP712("Pickler", "1") {
+    constructor(address operator_, ICurveDeployer curveDeployer_, address launchAuthority_) EIP712("Pickler", "2") {
+        if (launchAuthority_ == address(0)) revert InvalidLaunchAuthority();
+        launchAuthority = launchAuthority_;
         operator = operator_;
         curveDeployer = curveDeployer_;
     }
@@ -121,16 +138,38 @@ contract PicklerLaunchFactory is EIP712 {
     /// @dev A published version is immutable. Changing economics means a new version, which
     ///      leaves every launch already pointing at the old one exactly as it was.
     function publishPreset(PicklerPreset.LaunchPreset calldata preset) external onlyOperator {
-        if (presetPublished[preset.presetId][preset.version]) {
-            revert PresetAlreadyPublished();
+        _publishPreset(preset, bytes32(0));
+    }
+
+    /// @notice Commits a new version to its deployer's immutable venue configuration.
+    /// @dev Historical preset hashes remain exactly keccak256(abi.encode(preset)).
+    function publishPresetWithVenue(PicklerPreset.LaunchPreset calldata preset, bytes32 venueHash)
+        external
+        onlyOperator
+    {
+        if (venueHash == bytes32(0)) revert InvalidVenueConfiguration();
+        (bool ok, bytes memory result) = address(curveDeployer).staticcall(abi.encodeWithSignature("venueConfigHash()"));
+        if (!ok || result.length != 32 || abi.decode(result, (bytes32)) != venueHash) {
+            revert InvalidVenueConfiguration();
         }
+        _publishPreset(preset, venueHash);
+    }
 
+    function _publishPreset(PicklerPreset.LaunchPreset calldata preset, bytes32 venueHash) private {
+        if (presetPublished[preset.presetId][preset.version]) revert PresetAlreadyPublished();
         preset.validate();
-
+        preset.validateQuoteDecimals();
         _presets[preset.presetId][preset.version] = preset;
+        presetVenueHash[preset.presetId][preset.version] = venueHash;
         presetPublished[preset.presetId][preset.version] = true;
+        emit PresetPublished(preset.presetId, preset.version, getPresetConfigHash(preset.presetId, preset.version));
+    }
 
-        emit PresetPublished(preset.presetId, preset.version, preset.configHash());
+    function getPresetConfigHash(uint32 presetId, uint32 version) public view returns (bytes32) {
+        PicklerPreset.LaunchPreset memory preset = getPreset(presetId, version);
+        bytes32 venueHash = presetVenueHash[presetId][version];
+        if (venueHash == bytes32(0)) return preset.configHash();
+        return keccak256(abi.encode("PicklerVenuePresetV1", preset, venueHash));
     }
 
     /// @notice Stops new launches. Existing launches are untouched and keep trading.
@@ -143,10 +182,13 @@ contract PicklerLaunchFactory is EIP712 {
     /// @notice Creates a launch.
     /// @param authorization Empty when the creator calls directly; otherwise an EIP-712
     ///        signature by the creator, which anyone may submit and pay for.
-    function createLaunch(LaunchParams calldata params, bytes calldata authorization)
-        external
-        returns (address token, address curve)
-    {
+    function createLaunch(
+        LaunchParams calldata params,
+        bytes calldata authorization,
+        uint256 grantNonce,
+        uint256 grantDeadline,
+        bytes calldata grant
+    ) external returns (address token, address curve) {
         if (!launchesEnabled) {
             revert LaunchesSuspended();
         }
@@ -157,11 +199,23 @@ contract PicklerLaunchFactory is EIP712 {
             revert AgentAlreadyLaunched();
         }
 
+        if (block.timestamp > grantDeadline) revert GrantExpired();
+        if (grantDeadline > block.timestamp + MAX_GRANT_LIFETIME) revert GrantTooLong();
+        if (grantUsed[grantNonce]) revert GrantAlreadyUsed();
+        if (!SignatureChecker.isValidSignatureNow(
+                launchAuthority, grantDigest(params, grantNonce, grantDeadline), grant
+            )) revert InvalidGrant();
+        grantUsed[grantNonce] = true;
+
         _authorize(params, authorization);
 
+        return _create(params);
+    }
+
+    function _create(LaunchParams calldata params) private returns (address token, address curve) {
         PicklerPreset.LaunchPreset memory preset = getPreset(params.presetId, params.presetVersion);
 
-        bytes32 presetHash = preset.configHash();
+        bytes32 presetHash = getPresetConfigHash(params.presetId, params.presetVersion);
         if (presetHash != params.expectedConfigHash) {
             revert ConfigChanged();
         }
@@ -255,7 +309,31 @@ contract PicklerLaunchFactory is EIP712 {
         );
     }
 
+    /// @notice Rotation invalidates outstanding grants signed by the previous authority.
+    function setLaunchAuthority(address next) external onlyOperator {
+        if (next == address(0)) revert InvalidLaunchAuthority();
+        launchAuthority = next;
+        emit LaunchAuthorityChanged(next);
+    }
+
+    function grantDigest(LaunchParams calldata params, uint256 nonce, uint256 deadline) public view returns (bytes32) {
+        return _hashTypedDataV4(
+            keccak256(
+                abi.encode(
+                    LAUNCH_GRANT_TYPEHASH,
+                    params.agentKey,
+                    params.creator,
+                    params.creatorFeeRecipient,
+                    _paramsHash(params),
+                    nonce,
+                    deadline
+                )
+            )
+        );
+    }
+
     function _authorize(LaunchParams calldata params, bytes calldata authorization) private {
+        if (block.timestamp > params.deadline) revert AuthorizationExpired();
         if (msg.sender == params.creator && authorization.length == 0) {
             // A creator acting directly still spends the nonce, so a signature they issued
             // earlier for the same nonce cannot be submitted afterwards.
@@ -296,7 +374,9 @@ contract PicklerLaunchFactory is EIP712 {
                 params.metadataHash,
                 params.presetId,
                 params.presetVersion,
-                params.expectedConfigHash
+                params.expectedConfigHash,
+                params.nonce,
+                params.deadline
             )
         );
     }

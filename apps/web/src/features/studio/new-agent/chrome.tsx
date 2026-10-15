@@ -1,5 +1,7 @@
 "use client";
+import { WalletBalanceButton } from "../shell/wallet-balance-button";
 import Image from "next/image";
+import { AccountMenu } from "../shell/account-menu";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { Button, Icon, Tag } from "@pickler/ui";
@@ -10,7 +12,7 @@ import { RAIL } from "../sections/rail";
 import shell from "../studio.module.css";
 import home from "../home/home.module.css";
 import { AvatarGrid } from "./identity";
-import { formatUnits, type NewAgentForm } from "./model";
+import { type NewAgentForm } from "./model";
 import styles from "./new-agent.module.css";
 
 /**
@@ -25,6 +27,8 @@ import styles from "./new-agent.module.css";
  */
 export function Chrome({
   form,
+  accountHandle,
+  preview,
   handle,
   hasAgents,
   canManage,
@@ -39,6 +43,8 @@ export function Chrome({
   overlays,
 }: {
   form: NewAgentForm;
+  accountHandle: string | null;
+  preview: boolean;
   handle: string;
   hasAgents: boolean;
   canManage: boolean;
@@ -94,36 +100,31 @@ export function Chrome({
         <span className={home.spacer} />
         <NetworkSelector />
         {master && (
-          <button
-            type="button"
-            className={styles.topPill}
-            title="Your wallets"
-            aria-haspopup="dialog"
+          <WalletBalanceButton
+            ausdMicro={master.ausdMicro}
+            monWei={master.monWei}
             onClick={onWallets}
-          >
-            <Image src="/brand/monad.png" alt="" width={16} height={16} />
-            <span>
-              {formatUnits(master.ausdMicro, "AUSD")}
-              <small> AUSD</small>
-            </span>
-            <i aria-hidden="true" />
-            <span>
-              {formatUnits(master.monWei, "MON")}
-              <small> MON</small>
-            </span>
-          </button>
+          />
         )}
         <button
           type="button"
           className={styles.topPill}
+          data-credits-control
           title="AI credits"
           aria-label="AI credits, soon"
           aria-haspopup="dialog"
           onClick={onCredits}
         >
-          <i className={styles.creditsDot} aria-hidden="true" />
-          <small className={styles.creditsLabel}>AI CREDITS</small>
-          <span>Soon</span>
+          <span className={styles.navReveal}>
+            <span className={styles.navDetails}>
+              <i className={styles.creditsDot} aria-hidden="true" />
+              <small className={styles.creditsLabel}>AI CREDITS</small>
+              <span className={styles.creditsStatus}>Soon</span>
+            </span>
+          </span>
+          <span className={styles.creditsIcon}>
+            <Icon name="coin" size={18} />
+          </span>
         </button>
         <span className={home.emptyMenu}>
           <HomeMenu
@@ -138,14 +139,7 @@ export function Chrome({
             onNew={noSection}
           />
         </span>
-        <Link href="/account" className={home.account} aria-label="Account">
-          <span className={shell.swatch} aria-hidden="true">
-            <i data-swatch="lime" />
-            <i data-swatch="violet" />
-            <i data-swatch="amber" />
-            <i data-swatch="blue" />
-          </span>
-        </Link>
+        <AccountMenu handle={accountHandle} preview={preview} returnContext={{ section: "new" }} />
       </header>
 
       <div className={home.emptyBody}>

@@ -1,0 +1,421 @@
+.card {
+  composes: pk-panel from global;
+  padding: 20px;
+  display: grid;
+  gap: 14px;
+}
+.head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.card[data-token-state="launched"] .head {
+  flex-wrap: wrap;
+}
+.card[data-token-state="launched"] .identity {
+  flex-basis: 100px;
+}
+.network {
+  margin-left: auto;
+}
+.head h3 {
+  margin: 0;
+  font-size: 18px;
+}
+.identity {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.quiet {
+  color: var(--pk-ink-muted);
+  font-size: 14px;
+  margin: 0;
+  line-height: 1.5;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.panel {
+  display: grid;
+  gap: 16px;
+  max-width: 660px;
+}
+.fields {
+  display: grid;
+  grid-template-columns: 1fr 160px;
+  gap: 12px;
+}
+.details {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+}
+.detail {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+.detail dt {
+  color: var(--pk-ink-muted);
+}
+.detail dd {
+  margin: 0;
+  text-align: right;
+  min-width: 0;
+  max-width: 65%;
+  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
+}
+.detail abbr {
+  text-decoration: none;
+  white-space: nowrap;
+}
+.summary {
+  display: grid;
+  gap: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--pk-rule);
+  font-size: 14px;
+}
+.supplyHero {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 24px;
+}
+.supply {
+  display: grid;
+  gap: 4px;
+}
+.supply strong {
+  font-family: var(--pk-font-display);
+  font-variation-settings: var(--pk-display-wdth);
+  font-size: 28px;
+  font-variant-numeric: tabular-nums;
+}
+.tokenPreview {
+  display: grid;
+  gap: 4px;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+.previewIdentity {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.tokenPreview strong {
+  font-size: 16px;
+}
+.distribution {
+  display: grid;
+  gap: 12px;
+}
+.distribution h4,
+.economics h4,
+.preset h4 {
+  margin: 0;
+  font-size: 14px;
+}
+.distributionTrack {
+  height: 12px;
+  background: var(--pk-blue);
+}
+.allocations {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+}
+.allocations > div {
+  display: grid;
+  gap: 4px;
+}
+.allocations dt {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--pk-ink-muted);
+}
+.allocations dd {
+  margin: 0;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.curveDot,
+.liquidityDot {
+  width: 7px;
+  height: 7px;
+  border-radius: var(--pk-radius-mark);
+}
+.curveDot {
+  background: var(--pk-lime);
+}
+.liquidityDot {
+  background: var(--pk-blue);
+}
+.walletDetails {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin: 0;
+  padding-block: 16px;
+  border-block: 1px solid var(--pk-rule);
+}
+.walletDetails > div {
+  display: grid;
+  gap: 5px;
+}
+.walletDetails dt {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--pk-ink-muted);
+}
+.walletDetails dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.walletDetails abbr {
+  text-decoration: none;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.preset {
+  display: grid;
+  gap: 12px;
+}
+.fees {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 24px;
+  margin: 0;
+}
+.fees .detail {
+  gap: 12px;
+}
+.fees dd {
+  flex-shrink: 0;
+  font-weight: 600;
+}
+.exampleNote {
+  color: var(--pk-ink-muted);
+  font-size: 12px;
+  line-height: 1.5;
+  margin: 0;
+}
+.launchActions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.launchActions > :first-child {
+  flex: 1;
+}
+@media (max-width: 480px) {
+  .fields,
+  .supplyHero,
+  .fees {
+    grid-template-columns: 1fr;
+  }
+  .supplyHero {
+    gap: 8px;
+  }
+  .tokenPreview {
+    text-align: left;
+  }
+  .previewIdentity {
+    justify-content: flex-start;
+  }
+  .allocations {
+    font-size: 12px;
+  }
+  .walletDetails {
+    gap: 12px;
+  }
+}
+
+.economics {
+  display: grid;
+  gap: 12px;
+}
+.economicFigures {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+}
+.economicFigures > div {
+  display: grid;
+  gap: 5px;
+}
+.economicFigures dt {
+  color: var(--pk-ink-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.economicFigures dd {
+  margin: 0;
+  font-weight: 600;
+  font-size: 18px;
+  font-variant-numeric: tabular-nums;
+}
+.economicFigures dd span {
+  font-size: 12px;
+  color: var(--pk-ink-muted);
+}
+.priceDetails {
+  margin: 0;
+  font-size: 12px;
+}
+@media (max-width: 480px) {
+  .economicFigures {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .economicFigures > div {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: baseline;
+    gap: 8px;
+  }
+  .economicFigures dd {
+    font-size: 16px;
+  }
+  .walletDetails {
+    grid-template-columns: 1fr;
+  }
+}
+
+.trade {
+  display: grid;
+  gap: 12px;
+  padding-block: 16px;
+  border-block: 1px solid var(--pk-rule);
+}
+.trade h4 {
+  margin: 0;
+  font-size: 14px;
+}
+.trade .head {
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.operationStage {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition:
+    grid-template-rows 220ms ease,
+    opacity 220ms ease;
+}
+.operationStage[data-open="true"] {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+.stageContent {
+  min-height: 0;
+  overflow: hidden;
+  display: grid;
+  gap: 14px;
+}
+.statusMessage {
+  display: grid;
+  gap: 6px;
+  animation: token-state 180ms ease;
+}
+.attempt {
+  margin: 0;
+  color: var(--pk-ink-muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.chainReference {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+}
+.chainValue {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.chainReference a.chainValue {
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: var(--pk-border-strong);
+  text-underline-offset: 3px;
+}
+.chainReference a.chainValue:hover {
+  text-decoration-color: currentColor;
+}
+.chainReference a.chainValue:focus-visible {
+  outline: 2px solid var(--pk-focus);
+  outline-offset: 4px;
+}
+.chainReference .copyButton {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+}
+.copyFallback {
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.operationCard .detail {
+  align-items: center;
+  font-size: 14px;
+}
+@keyframes token-state {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@media (max-width: 480px) {
+  .operationCard .detail {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .operationCard .detail dd {
+    max-width: 100%;
+    text-align: left;
+  }
+  .operationCard .chainReference {
+    justify-content: flex-start;
+  }
+}
+
+.spinner {
+  flex-shrink: 0;
+  animation: token-progress 1s linear infinite;
+}
+.feedback {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+}
+@keyframes token-progress {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .spinner,
+  .statusMessage {
+    animation: none;
+  }
+  .operationStage {
+    transition: none;
+  }
+}

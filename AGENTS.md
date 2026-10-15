@@ -69,7 +69,7 @@ npm run contracts:test
 
 The mobile app is a workspace but sits outside Turborepo's build and outside the root ESLint and Prettier: `npm run typecheck` covers it, and its Jest suite is `npm test --workspace=@pickler/mobile`. `services/reads` and `scripts/mobile` are not workspaces; each installs with `npm ci --prefix <path>` and has its own checks (`npm test --prefix services/reads`, `npm run agents:check --prefix scripts/mobile`). [The specification of the move](docs/specs/mobile-monorepo-v1.md) says why.
 
-Run checks relevant to the change. Documentation-only changes require checking links, paths, examples, and command accuracy; they do not require a full application build. `npm test` builds shared packages and discovers the core, infrastructure, chain, `mera-account`, `perpl-context`, `workers/api`, `workers/research`, web and agent-service package-root test files; extend discovery when adding other suites. Core, infrastructure and API schemas export compiled ESM from `dist`; run `npm run build:shared` before direct consumers. `npm run dev:agent` does this automatically. The normal `npm run dev` starts only the web app. Foundry commands are separate from the web build and currently have no contracts to compile or test.
+Run checks relevant to the change. Documentation-only changes require checking links, paths, examples, and command accuracy; they do not require a full application build. `npm test` builds shared packages and discovers the core, infrastructure, chain, `mera-account`, `perpl-context`, `workers/api`, `workers/research`, web and agent-service package-root test files; extend discovery when adding other suites. Core, infrastructure and API schemas export compiled ESM from `dist`; run `npm run build:shared` before direct consumers. `npm run dev:agent` does this automatically. The normal `npm run dev` starts only the web app. Foundry commands validate the separate Solidity project; they are not part of the web build.
 
 Never commit dependencies, build output, secrets, private keys, or local environment files. Keep changes scoped to the request and preserve unrelated work.
 
@@ -87,6 +87,12 @@ Run `npm run format` to format files and `npm run format:check` to verify them. 
 
 Colours, fonts, radii and shadows in `apps/web` and `packages/ui` come from `--pk-*` tokens in `packages/ui/src/styles.css`. `npm run design:source` is the static check over both source trees and exits 1 on any violation. `npm run design:check` runs it, then starts the fixture API and the web app on ports 8799 and 3001 and runs the rendered checks (surfaces, tokens, contrast, type) over every route in `scripts/design/routes.mjs`. The token check reads background colours and images, text, borders, box and text shadows, drop-shadow filters, drawn outlines and SVG fill and stroke, and compares each against the tokens of the element's own `[data-surface]`. It needs Playwright installed globally, never in `package.json`. The `Design` workflow (`.github/workflows/design.yml`) runs the static check and the harness unit tests on every pull request, and runs `npm run design:check` in a second job with Playwright installed on the runner.
 
+Rendered Design checks wait up to ten seconds for each route's exact proof selector before
+measuring it. Missing proofs and client exceptions still fail. Local controlled failures save
+URL/selector, browser errors and screenshots in `scripts/design/.shots/diagnostics/`, uploaded
+alongside server logs by CI; never capture deployed accounts. The rendered job also runs
+`node scripts/design/route-readiness.mjs` for cold/delayed avatar hydration and negative proofs.
+
 Write one statement per line and separate logical phases with blank lines. Expand schemas, transaction blocks and complex callbacks for readability. Prefer named predicates or explicit branches over nested ternaries. Write long SQL queries as multiline template literals without changing query semantics or parameter order. Separate test setup, action and assertions visually. Keep formatting-only changes distinguishable from behavior changes; do not add abstractions solely to satisfy a line-length target.
 
 PostgreSQL is hosted by Supabase in deployed environments. Drizzle and database clients belong only in infrastructure. Use direct or session-pooler connections. Research ownership uses renewable per-run leases; concurrency admission uses a short transaction. Never expose `pickler`, `pickler_migrations`, or `mastra` through the Supabase Data API. Local PostgreSQL runs through `compose.yaml`; credentials there are disposable local development values only.
@@ -102,6 +108,11 @@ It validates/builds before migrating, then publishes Research, Trading, API and 
 commit. Keep it disabled until the independent Cloudflare main publishers are disabled and its
 staging environment credentials are configured. `npm run deploy:staging` defaults to preflight;
 only the explicitly gated main Actions run may publish. Root tests include its controlled suite.
+The independent `staging-migrations.yml` workflow runs the canonical Supabase migrator on main
+while that coordinated gate is disabled. Existing Cloudflare Builds continue independently; the
+user accepts their running concurrently with migrations. This does not guarantee database-first
+publication. Operator secrets remain scoped to GitHub staging; no Cloudflare token is needed for
+this migration-only job.
 
 The unified implementation adds request-scoped Hono composition in `workers/api`, private console
 identity links, PostgreSQL monetary budgets and shared research runtime. Read `workers/api/AGENTS.md` before changes.
@@ -170,14 +181,59 @@ local-only; ordinary databases, remote providers and deployed activation are out
 The separate JWT-only `/v1/agent-advice` API returns asynchronous BTC/ETH 24-hour analysis, not
 orders. Read [Agent advice](docs/agent-advice.md) before changes. Core owns authorization/admission
 ports; trading owns analysis policy; runtime owns providers/prompts; infrastructure owns private
-jobs/events/call reserves and migration 0025. Research Queue advice wakeups never notify trading.
-Keep admissions disabled by default; no payments, paid retries or implicit AUSD-to-USD conversion.
+jobs/events/call reserves (migration 0025) and the x402 payment rows (migrations 0038 and 0047).
+x402 payments settle through `PicklerAdviceSplitter` (65% to the agent wallet, 35% to Pickler's
+treasury, in one transaction). Research Queue advice wakeups never notify trading. Keep admissions and x402 payments
+(`ADVICE_X402_ENABLED`) disabled by default; no paid retries or implicit AUSD-to-USD conversion.
+See [Agent advice](docs/agent-advice.md) for the x402 payment.
 
 Advice forecast configuration reuses the Research Worker’s MODEL_BASE_URL, MODEL_ID and MODEL_API_KEY. New advice policy v2 freezes the reviewed provider URL/model; v1 retains its historical direct-DeepSeek meaning. Never copy a provider key to a different endpoint or enable advice with unreviewed tariffs.
 
 ## Perpetual strategy registry
 
 `@pickler/trading/strategies` exports four versioned perpetual strategy descriptors and their
-injected execution contract. These are strategy modules, not new harness plugin IDs. Evaluation uses version 1.0.0; Studio uses distinct version 2.0.0 with fixed creator sizing and
+injected execution contract. These are strategy modules, not new harness plugin IDs. Evaluation uses version 1.0.0; Studio preserves version 2.0.0 and uses version 2.1.0 for dynamic markets, with fixed creator sizing and
 transaction-fenced execution. See [Studio perpetual execution](docs/studio-perps-execution.md).
 See [Trading architecture](docs/trading-architecture.md) before adding a strategy or consumer.
+
+## AI credit foundation
+
+Core owns user credit contracts and exact token pricing; infrastructure owns the private billing schema and transactional repository. API-schema carries portable credit DTOs, without endpoints. See [AI credits](docs/ai-credits.md). No commercial tariffs, checkout, runtime activation or USD/AUSD conversion are introduced. Keep user charges separate from provider cost reservations and historical budgets.
+
+## Dynamic Studio markets
+
+See the canonical selection/version, preservation and controlled acceptance boundaries below. No
+runtime activation is implied.
+
+See [agent-selected Perpl markets](docs/studio-perpl-markets.md).
+
+## Agent token admission and local previews
+
+The owner-only token launch foundation is documented in [Agent token previews](docs/agent-token-preview.md).
+Core owns admission and the grant-issuer port; infrastructure owns private agent/network keys,
+versioned launch drafts, recorded grants and canonical confirmation. The original admission foundation omitted a signer; operational composition below is gated. Both Studio rails expose the persistent Token route, and public profiles share its
+confirmed identity card. Development fixtures show empty/confirmed token states with explicit local phase controls; they never
+request passkeys, send transactions or open fictitious explorer addresses. The original foundation did not introduce metadata storage or indexer activation; current
+operational gates and isolated contract acceptance are described below. The factory now requires a Pickler EIP-712
+grant in addition to creator authorization, including for direct creator calls.
+
+## Agent token reference fixtures
+
+`npm run tokens:fixtures` builds shared packages and generates the web's public reference economics
+JSON from core's pure curve calculations and reviewed chain AUSD metadata. Use
+`npm run tokens:fixtures -- --check` to verify drift; the web test also compares it to core.
+The reference profile is independent of signer/preset availability and never enables real launch.
+See [agent token admission and previews](docs/agent-token-preview.md).
+
+## Versioned testnet token launcher
+
+The operational launcher remains behind explicit testnet-only gates. The approved API staging
+configuration preserves `TOKEN_LAUNCH_ENABLED=true` for eligible creators; other compositions
+remain disabled without explicit configuration. Owner checks, reviewed policy and the user
+master passkey remain mandatory. Separate Uniswap V4 policy version 2 and its permanent V2 locker
+have real faucet-funded contract acceptance. The owner master-passkey launch also has a successful
+hosted receipt; canonical indexer attribution and trade/discovery acceptance remain pending. Historical Kuru policy 1 is retained, but its
+published testnet generation was verified incompatible and stays blocked. Read
+[Token operations](docs/market/token-launch-operations.md) and
+[the Uniswap evidence](docs/market/uniswap-v4-testnet-integration.md). No general/mainnet activation
+is implied. Explicit acceptance scripts in `scripts/contracts` never run during ordinary tests.

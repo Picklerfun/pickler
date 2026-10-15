@@ -1,5 +1,10 @@
 # Studio: simplified agent creation (v1)
 
+Historical specification snapshot at main `29f4ba62ce4d554245070109c27ea33dbfbb8a07`.
+Its implicit BTC/ETH market defaults have been superseded by explicit dynamic selection;
+see [agent-selected Perpl markets](../studio-perpl-markets.md) for current contracts and operation.
+The wallet ceremony and other retained behavior remain covered by current acceptance tests.
+
 Status: approved in brainstorming on 2026-10-01. Canvas: Claude Design project
 `c03aadb4-7bb2-429e-aa49-98ae4218bc1f`, `Pickler Studio Empty v5.dc.html`, the "create" phase,
 the wallet panel, the Wallets and AI credits modals, the avatar picker and the passkey sheets.

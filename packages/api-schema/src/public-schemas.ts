@@ -1,4 +1,6 @@
+import { agentTokenSchema } from "./token-launch.js";
 import type {
+  AgentActionDto,
   ActivityAgentDto,
   ActivityEventDto,
   AgentReadDto,
@@ -12,7 +14,7 @@ import type {
   ReadServiceDto,
   AgentCallDto,
 } from "./agents.js";
-import type { LandingResponse, PickTrailStepDto } from "./landing.js";
+import type { PickTrailStepDto } from "./landing.js";
 import type { PerpMarketDto, MarketDetailDto } from "./markets.js";
 import type { LaunchDetailDto, TradeDto } from "./launches.js";
 import { z } from "zod";
@@ -82,7 +84,12 @@ export const agentReadSchema = z.object({
     .nullable(),
   outcome: z.object({ final: text, observedAt: text }).nullable(),
 }) satisfies z.ZodType<AgentReadDto>;
+const advicePriceSchema = z
+  .object({ amount: text, asset: z.literal("AUSD"), decimals: z.literal(6) })
+  .nullable();
 export const agentSummarySchema = z.object({
+  id: z.string().uuid(),
+  advicePrice: advicePriceSchema,
   slug: nullableText,
   name: text,
   handle: text,
@@ -109,7 +116,8 @@ export const agentSummarySchema = z.object({
     .nullable(),
 }) satisfies z.ZodType<AgentSummaryDto>;
 export const directoryAgentSchema = z.object({
-  agent: activityAgentSchema,
+  launchedToken: agentTokenSchema.nullable().optional(),
+  agent: activityAgentSchema.extend({ id: z.string().uuid(), advicePrice: advicePriceSchema }),
   beat: text,
   venue,
   decides: text,
@@ -180,6 +188,10 @@ export const pickDetailSchema = agentCallSchema.extend({
   }),
 }) satisfies z.ZodType<PickDetailDto>;
 export const agentPersonaSchema = z.object({
+  id: z.string().uuid(),
+  advicePrice: advicePriceSchema,
+  launchedToken: agentTokenSchema.nullable().optional(),
+  tokenConfirmation: z.enum(["absent", "pending", "confirmed"]).optional(),
   name: text,
   handle: text,
   ticker: nullableText,
@@ -311,40 +323,12 @@ export const marketDetailDtoSchema = z.object({
     z.object({ level: number, horizon: z.enum(["1H", "4H", "12H", "24H"]), agents: number }),
   ),
   trail: z.array(number),
+  trailTimestamps: z.array(z.iso.datetime().nullable()).optional(),
+  priceHistory: z
+    .array(z.object({ price: number, at: z.iso.datetime() }))
+    .max(721)
+    .optional(),
 }) satisfies z.ZodType<MarketDetailDto>;
-const agentRef = z.object({ name: text, ticker: text, beat: text, accent, markSize: number });
-export const landingSchema = z.object({
-  generatedAt: text,
-  source: z.enum(["sample", "live"]),
-  graduationTarget: number,
-  stats: z.object({
-    totalVolume: number,
-    totalMarketCap: number,
-    agentsFunded: number,
-    agentsCreated: number,
-    agentsCreatedToday: number,
-    picksToday: number,
-    waitlistCount: nullableNumber,
-  }),
-  tape: z.array(
-    z.object({ ticker: text, call: text, outcome, stake: number, pnl: nullableNumber }),
-  ),
-  spawns: z.array(z.object({ name: text, accent, createdAt: text })),
-  backing: z.object({
-    fundedTotal: number,
-    recent: z.array(z.object({ agent: agentRef, amount: number, depositedAt: text })),
-  }),
-  launches: z.array(
-    z.object({ agent: agentRef, summary: text, stage, marketCap: number, raised: number }),
-  ),
-  leaderboard: z.array(
-    z.object({ agent: agentRef, resolved: number, hitRate: number, net: number }),
-  ),
-  picks: z.array(
-    z.object({ agent: agentRef, outcome, updatedAt: text, steps: z.array(pickTrailSchema) }),
-  ),
-  announcements: z.array(z.object({ tag: text, title: text, body: text, cta: text, href: text })),
-}) satisfies z.ZodType<LandingResponse>;
 export const applicationRequestSchema = z.object({
   agentName: text,
   ticker: text,
@@ -386,10 +370,6 @@ const curve = z.object({
   openedAt: text,
   closedAt: nullableText,
 });
-export const launchDetailSchema = launchSummary.extend({
-  curve: curve.nullable(),
-  pool: curve.nullable(),
-}) satisfies z.ZodType<LaunchDetailDto>;
 export const launchTradeSchema = z.object({
   side: z.enum(["buy", "sell"]),
   trader: text,
@@ -401,6 +381,87 @@ export const launchTradeSchema = z.object({
   logIndex: number,
   blockTime: text,
 }) satisfies z.ZodType<TradeDto>;
+export const tokenMarketSchema = z.object({
+  version: z.literal(1),
+  tokenDecimals: z.number().int().min(0).max(18),
+  priceKind: z.enum(["curve", "last_trade", "unavailable"]),
+  priceWad: z
+    .string()
+    .regex(/^[0-9]+$/)
+    .nullable(),
+  priceMovement: z
+    .object({
+      direction: z.enum(["up", "down", "flat"]),
+      changeBps: z.string().regex(/^-?[0-9]+$/),
+      fromAt: z.iso.datetime({ offset: true }),
+      toAt: z.iso.datetime({ offset: true }),
+    })
+    .refine((move) => {
+      if (!/^-?[0-9]+$/.test(move.changeBps)) {
+        return false;
+      }
+      const bps = BigInt(move.changeBps);
+      if (move.direction === "flat") {
+        return bps === 0n;
+      }
+      return move.direction === "down" ? bps <= 0n : bps >= 0n;
+    }, "Price movement direction mismatch")
+    .nullable()
+    .optional(),
+  fdvWad: z
+    .string()
+    .regex(/^[0-9]+$/)
+    .nullable(),
+  volume24h: z.string().regex(/^[0-9]+$/),
+  windowEnd: z.iso.datetime({ offset: true }),
+  observedAt: z.iso.datetime({ offset: true }),
+  observedBlock: z.string().regex(/^[0-9]+$/),
+  netSold: z
+    .string()
+    .regex(/^[0-9]+$/)
+    .nullable(),
+  realQuoteReserve: z
+    .string()
+    .regex(/^[0-9]+$/)
+    .nullable(),
+  remainingTokens: z
+    .string()
+    .regex(/^[0-9]+$/)
+    .nullable(),
+  progressBps: z.number().int().min(0).max(10000).nullable(),
+  terms: z
+    .object({
+      totalSupply: z.string().regex(/^[0-9]+$/),
+      saleAllocation: z.string().regex(/^[0-9]+$/),
+      lpAllocation: z.string().regex(/^[0-9]+$/),
+      buyFeeBps: z.number().int().min(0).max(10000),
+      sellFeeBps: z.number().int().min(0).max(10000),
+    })
+    .nullable(),
+  history: z
+    .array(
+      z.object({ at: z.iso.datetime({ offset: true }), priceWad: z.string().regex(/^[0-9]+$/) }),
+    )
+    .max(721),
+  historyTruncated: z.boolean(),
+  recentTrades: z
+    .array(
+      launchTradeSchema.extend({
+        priceWad: z.string().regex(/^[0-9]+$/),
+        tokenAmount: z.string().regex(/^[0-9]+$/),
+        quoteAmount: z.string().regex(/^[0-9]+$/),
+        feeAmount: z.string().regex(/^[0-9]+$/),
+        blockTime: z.iso.datetime({ offset: true }),
+        txHash: z.string().regex(/^0x[0-9a-fA-F]{64}$/),
+      }),
+    )
+    .max(20),
+});
+export const launchDetailSchema = launchSummary.extend({
+  curve: curve.nullable(),
+  pool: curve.nullable(),
+  market: tokenMarketSchema.nullable().optional(),
+}) satisfies z.ZodType<LaunchDetailDto>;
 export function freshnessReadSchema<T extends z.ZodType>(data: T) {
   return z.object({
     data,
@@ -413,3 +474,15 @@ export function freshnessReadSchema<T extends z.ZodType>(data: T) {
   });
 }
 export const launchesReadSchema = freshnessReadSchema(z.array(launchSummary));
+
+export const agentActionSchema = z.object({
+  id: text,
+  at: text,
+  agent: activityAgentSchema,
+  outcome: z.enum(["entered", "exited", "held", "blocked", "proposed"]),
+  outcomeText: nullableText,
+  instrument: nullableText,
+  call: z.enum(["open-long", "open-short", "close", "hold"]).nullable(),
+  probability: nullableNumber,
+  horizonHours: nullableNumber,
+}) satisfies z.ZodType<AgentActionDto>;

@@ -23,7 +23,7 @@ export const waitlist = growth
     {
       id: bigint("id", { mode: "number" }).primaryKey().generatedAlwaysAsIdentity(),
       email: text("email").notNull(),
-      /** Bearer secret for /apply, delivered in an httpOnly cookie. */
+      /** Bearer secret for /create, delivered in an httpOnly cookie. */
       applyToken: uuid("apply_token").notNull().defaultRandom(),
       referralCode: text("referral_code")
         .notNull()
@@ -60,6 +60,13 @@ export const applications = growth
       edge: text("edge").notNull(),
       whyYou: text("why_you").notNull(),
       status: text("status").notNull().default("submitted"),
+      /** The operator's decision, written only by growth.review_application; null while submitted. */
+      reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+      /** The operator's email as the principal carried it. */
+      reviewedBy: text("reviewed_by"),
+      decisionNote: text("decision_note"),
+      /** When the status first became `invited`; the acceptance email is a later piece. */
+      invitedAt: timestamp("invited_at", { withTimezone: true }),
       agentId: uuid("agent_id").references(() => agents.id, { onDelete: "set null" }),
       submittedAt: timestamp("submitted_at", { withTimezone: true }).notNull().defaultNow(),
     },

@@ -1,4 +1,7 @@
 "use client";
+import { useStudioForm } from "../routing/memory";
+
+import { StudioAccessRequest } from "../access-request";
 import { useEffect, useRef, useState } from "react";
 import { Button, Icon } from "@pickler/ui";
 import { SecondPasskey } from "@/features/auth/components/second-passkey";
@@ -43,6 +46,7 @@ import {
   type NewAgentForm,
 } from "./model";
 import { PasskeySheet, type SheetPhase } from "./passkey-sheet";
+import { TradingMarkets, useTradingMarkets } from "../shell/trading-markets";
 import { Reads } from "./reads";
 import { useAgentWallet } from "./use-agent-wallet";
 import { Voice } from "./voice";
@@ -89,6 +93,7 @@ class StepTwoClosed extends Error {
  */
 export function NewAgent({
   passkeys,
+  accountHandle,
   canManage,
   preview: previewProp,
   locked,
@@ -101,6 +106,7 @@ export function NewAgent({
   onCreated,
 }: {
   passkeys: PasskeysKnown;
+  accountHandle: string | null;
   canManage: boolean;
   /** A staged or fixture studio, which says so. Nothing on it is sent. */
   preview: boolean;
@@ -133,7 +139,11 @@ export function NewAgent({
     draftLock,
   });
 
-  const [form, setForm] = useState<NewAgentForm>(staged?.form ?? emptyForm());
+  const [form, setForm] = useStudioForm<NewAgentForm>(
+    "create:form",
+    0,
+    staged?.form ?? emptyForm(),
+  );
   const [availability, setAvailability] = useState<{
     handle: string;
     available: boolean | "failed";
@@ -146,6 +156,13 @@ export function NewAgent({
   const [recheck, setRecheck] = useState(0);
   const [advancedOpen, setAdvancedOpen] = useState(staged?.advancedOpen ?? false);
   const reads = useAgentWallet(preview, staged);
+  const marketNetwork =
+    reads.wallets?.chainId === 143
+      ? "mainnet"
+      : reads.wallets?.chainId === 10143
+        ? "testnet"
+        : null;
+  const catalogue = useTradingMarkets(marketNetwork, preview);
   const [sheet, setSheet] = useState<Sheet | null>(staged?.sheet ?? null);
   const [modal, setModal] = useState<Modal>(staged?.modal ?? null);
   const [fundOn, setFundOn] = useState<string | null>(staged?.fundOn ?? null);
@@ -203,7 +220,10 @@ export function NewAgent({
   /* Whether the button reads as open. A preview draws it as the person would see it, and
      `creatable` still refuses the press there. */
   const drawnOpen =
-    access.create && created === null && canCreate(form, nameState, ready, draftLock);
+    access.create &&
+    catalogue.allows(form.markets) &&
+    created === null &&
+    canCreate(form, nameState, ready, draftLock);
   const creatable = !preview && drawnOpen;
   const disabled = busy || created !== null;
 
@@ -395,6 +415,8 @@ export function NewAgent({
 
   return (
     <Chrome
+      accountHandle={accountHandle}
+      preview={preview}
       form={form}
       handle={handle}
       hasAgents={hasAgents}
@@ -449,6 +471,7 @@ export function NewAgent({
               setFundOn(null);
               setModal("credits");
             }}
+            onRefresh={reads.refresh}
             onMoved={() => void reads.refresh()}
           />
           <CreditsModal
@@ -478,8 +501,6 @@ export function NewAgent({
             {error}
           </p>
         )}
-        <SecondPasskey passkeys={passkeys} id="home-second-passkey" />
-
         <p className={styles.kicker}>
           {hasAgents ? "A NEW AGENT" : "YOUR FIRST AGENT"} · SET UP ITS TRADING STRATEGY
         </p>
@@ -496,6 +517,13 @@ export function NewAgent({
         />
         <Voice form={form} disabled={disabled} onChange={edit} />
         <Reads form={form} disabled={disabled} onChange={edit} />
+        <TradingMarkets
+          read={catalogue}
+          network={marketNetwork}
+          value={form.markets}
+          disabled={disabled}
+          onChange={(markets) => edit({ ...form, markets })}
+        />
         <Advanced
           form={form}
           open={advancedOpen}
@@ -504,7 +532,9 @@ export function NewAgent({
           onChange={edit}
         />
 
-        {access.createNote && <p className={home.newAgentNote}>{access.createNote}</p>}
+        <SecondPasskey passkeys={passkeys} id="home-second-passkey" />
+
+        {!locked && access.createNote && <p className={home.newAgentNote}>{access.createNote}</p>}
         <div className={styles.create}>
           {/* aria-disabled, not disabled: a shut button stays focusable, so its label (the
               reason it is shut) is announced. press() refuses while shut. */}
@@ -534,6 +564,17 @@ export function NewAgent({
       </section>
 
       <WalletPanel
+        accessRequest={
+          locked || staged?.accessStatus ? (
+            <StudioAccessRequest
+              preview={preview}
+              placement="wallet"
+              previewStatus={staged?.accessStatus ?? "not_requested"}
+              previewLoading={staged?.accessLoading ?? false}
+            />
+          ) : undefined
+        }
+        loading={!preview && reads.seq === 0}
         wallet={ready}
         firstTime={firstTime}
         pendingDelegate={resumeStep === 2}

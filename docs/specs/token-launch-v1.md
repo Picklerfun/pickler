@@ -1,5 +1,13 @@
 # Token launch v1: an owner launches their agent's token from the studio
 
+Current delivery note (2026-10-09): [Agent token admission and previews](../agent-token-preview.md)
+is authoritative for the implemented offline reference curve and UI. Supply is fixed at 21 million,
+AUSD quote precision policy 2 uses the approved 80/20 distribution, initial valuation approximately
+10,000 AUSD, final valuation approximately 160,000 AUSD, net backing 31,999.999998 AUSD, 1% buy/sell
+fees split 50/50 and zero launch fee. Earlier fee-charging or DEX-selection proposals below are
+historical; no DEX is selected for this profile. Metadata, operational signing/passkey submission,
+indexer activation and full migration remain pending. No launch is enabled by the reference summary.
+
 Status: Draft — decided autonomously 2026-09-30. Follows `docs/product-map/conventions.md`
 (products and wallets rule; decision 5). Stands on `launchpad-deploy-v1.md` (the grant-gated
 factory, `launch.agent_keys`, `launch.grants`, the outbox consumer) and `go-public-v1.md` (the

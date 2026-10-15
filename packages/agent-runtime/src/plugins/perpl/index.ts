@@ -9,9 +9,7 @@ export async function createPerplSession(
   signal: AbortSignal,
   options: PerplDataOptions = {},
 ) {
-  const service = await createPerpReadService({ repository, data: new PerplMarketData(options) })(
-    scope,
-    signal,
-  );
-  return { service, tools: buildPerplTools(service) };
+  const data = new PerplMarketData(options);
+  const service = await createPerpReadService({ repository, data })(scope, signal);
+  return { data, service, tools: buildPerplTools(service) };
 }

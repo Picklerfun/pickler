@@ -58,7 +58,36 @@
 }
 .watchHead {
   composes: cardHead from "../shell/cards.module.css";
+  flex-wrap: wrap;
+  gap: 8px;
   margin-bottom: 4px;
+}
+.watchControls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+.watch .watchRanges {
+  padding: 2px;
+}
+.watch .watchRange {
+  padding: 5px 8px;
+  font-size: 11px;
+}
+.watchChart {
+  min-width: 0;
+}
+.historySince {
+  display: block;
+  margin-top: 4px;
+  font: 500 9px/1.3 var(--pk-font);
+  color: var(--pk-ink-muted);
+}
+@media (max-width: 640px) {
+  .watchControls .watchMeta {
+    display: none;
+  }
 }
 .watchLabel {
   composes: cardLabel from "../shell/cards.module.css";
@@ -89,7 +118,7 @@
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 12px;
-  padding: 8px 10px;
+  padding: 12px;
   border-radius: var(--pk-radius-md);
   background: var(--pk-bg);
 }
@@ -116,7 +145,7 @@
   gap: 4px;
 }
 .mark {
-  font: 700 13px/1 var(--pk-font);
+  font: 700 16px/1.2 var(--pk-font);
   font-variant-numeric: tabular-nums;
 }
 .change {
@@ -146,6 +175,140 @@
   margin-left: auto;
   padding: 9px 13px;
   font-size: 12px;
+}
+
+.priceUpdated {
+  font: 500 9px/1.3 var(--pk-font);
+  font-variant-numeric: tabular-nums;
+  color: var(--pk-ink-muted);
+  white-space: nowrap;
+}
+.changePeriod {
+  margin-left: 3px;
+  font-weight: 500;
+  color: var(--pk-ink-muted);
+}
+.watchSkeleton {
+  display: grid;
+  gap: 6px;
+}
+.watchSkeleton > span {
+  height: 108px;
+}
+.priceTrail {
+  min-width: 0;
+  color: var(--pk-win);
+}
+.priceTrail[data-up="false"] {
+  color: var(--pk-loss);
+}
+.priceTrail:not([data-up]) {
+  color: var(--pk-ink-muted);
+}
+.trailPlot {
+  position: relative;
+  height: 64px;
+}
+.trailDrawing {
+  fill: none;
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.trailGradientStop {
+  stop-color: currentColor;
+}
+.trailLine {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.trailDot {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: var(--pk-radius-pill);
+  background: currentColor;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+.trailGuide {
+  position: absolute;
+  inset-block: 0;
+  border-left: 1px dashed var(--pk-rule-strong);
+  pointer-events: none;
+}
+.trailTooltip {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  position: absolute;
+  top: 0;
+  z-index: 1;
+  padding: 4px 7px;
+  border: 1px solid var(--pk-rule-strong);
+  border-radius: var(--pk-radius-md);
+  background: var(--pk-panel);
+  color: var(--pk-ink);
+  font: 600 11px/1.2 var(--pk-font);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+.trailTooltip time {
+  font-weight: 500;
+  color: var(--pk-ink-muted);
+}
+.trailInput {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: crosshair;
+}
+.trailPlot:has(:focus-visible) {
+  outline: 2px solid var(--pk-lime);
+  outline-offset: 4px;
+}
+.trailRange {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  margin-top: 8px;
+  font: 500 10px/1.3 var(--pk-font);
+  font-variant-numeric: tabular-nums;
+  color: var(--pk-ink-muted);
+}
+.trailRange strong {
+  margin-left: 3px;
+  font-weight: 600;
+  color: var(--pk-ink-soft);
+}
+.trailEmpty {
+  font: 500 11px/1.4 var(--pk-font);
+  color: var(--pk-ink-muted);
+}
+
+@media (max-width: 640px) {
+  .watchRow {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 14px 12px;
+  }
+  .watchMark {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .watchChart {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
 }
 
 /* ---------- The sparkline ---------- */

@@ -1,5 +1,10 @@
 "use client";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useRouter } from "nextjs-toploader/app";
+import { useSearchParams } from "next/navigation";
+import { StudioContentContext } from "../routing/content";
+import { agentSectionHref } from "../routing/routes";
+import { SidebarMenu, SidebarMenuItem, SidebarMenuButton } from "@pickler/ui/sidebar";
+import { useEffect, useRef, type ReactNode } from "react";
 import { Icon } from "@pickler/ui";
 import { useMarketplaceHref } from "@/features/site/studio-href";
 import { useNow } from "@/lib/now";
@@ -7,6 +12,7 @@ import type { Agent } from "../api";
 import { HeaderDot } from "../shell/header";
 import { railItemId } from "../shell/rail";
 import { StatusChip } from "../shell/status-chip";
+import { PerplHeaderControls } from "../perpl-execution/execution";
 import { StudioShell, useShellModals } from "../shell/studio-shell";
 import { Account } from "./account";
 import { Agents } from "./agents";
@@ -19,6 +25,9 @@ import type { LiveStaged } from "./fixture";
 import { Identity } from "./identity";
 import { Leaders } from "./leaders";
 import { Limits } from "./limits";
+import { TokenPanel } from "../../tokens/token-panel";
+import { tokenPreview } from "../../tokens/fixture";
+import { LiveSection } from "./live-section";
 import type { LiveSectionProps } from "./live-section";
 import { LiveStrip } from "./live-strip";
 import { Markets } from "./markets";
@@ -74,11 +83,13 @@ export function LiveStudio({
   staged,
   preview,
   initialSection,
+  children,
   accountHandle,
   onRefreshAgent,
   onSwitch,
   onNew,
 }: {
+  children?: ReactNode;
   agent: Agent;
   agents: Agent[];
   canManage: boolean;
@@ -97,9 +108,12 @@ export function LiveStudio({
   /** "+ New agent": open the create screen. */
   onNew(): void;
 }) {
-  const [section, setSection] = useState<LiveSectionKey>(
-    staged?.section ?? initialSection ?? "overview",
-  );
+  const section: LiveSectionKey = initialSection ?? staged?.section ?? "overview";
+  const { push } = useRouter();
+  const search = useSearchParams();
+  const setSection = (next: LiveSectionKey, check?: string | null) => {
+    push(agentSectionHref(agent.productId ?? agent.id, next, search.toString(), check));
+  };
   const wallClock = useNow();
   const now = staged ? staged.now : wallClock;
   const live = useLive({ agent, staged, preview, section, onRefreshAgent });
@@ -110,7 +124,7 @@ export function LiveStudio({
      the section from outside the rail: the control pressed unmounts, so its rail item takes focus. */
   const focusRail = useRef(false);
   /* "Why this trade" opens Decisions on one check; any other way in shows the whole feed. */
-  const [focusCheck, setFocusCheck] = useState<string | null>(null);
+  const focusCheck = search.get("check");
 
   useEffect(() => {
     if (focusRail.current) {
@@ -121,18 +135,15 @@ export function LiveStudio({
 
   const goFromOutside = (key: LiveSectionKey) => {
     focusRail.current = true;
-    setFocusCheck(null);
     setSection(key);
   };
 
   const onWhy = (checkId: string | null) => {
     if (checkId === null) {
-      setFocusCheck(null);
       return;
     }
     focusRail.current = true;
-    setFocusCheck(checkId);
-    setSection("decisions");
+    setSection("decisions", checkId);
   };
 
   /* With the Perpl runtime on, the chip, the tiles, the strip and the rail's counts say what runs;
@@ -141,6 +152,21 @@ export function LiveStudio({
      honest "runs soon" copy (draft spec D19). */
   const record = paperShown(live.record) ? live.record : null;
   const status = record ? runtimeStatus(agent.paused, record.runtimeEnabled) : liveStatus(agent);
+  const real = live.execution.state;
+  const realReady = !!real?.available && !real.setupRequired;
+  const realLabel = real?.session
+    ? `${real.session.status.toUpperCase()} · TESTNET`
+    : "READY · TESTNET";
+  const realTiles = [
+    { label: "PERPL BALANCE · AUSD", value: real?.balanceAusd ?? "—", soon: false },
+    {
+      label: "OPEN · PERPL POSITIONS",
+      value: String(real?.positions.filter((p) => !p.closed).length ?? 0),
+      soon: false,
+    },
+    { label: "CYCLES CLOSED", value: String(real?.session?.completedCycles ?? 0), soon: false },
+    { label: "LEVERAGE", value: "1×", soon: false },
+  ];
   const { caps } = liveCaps(agent);
   const read = liveWalletRead(agent.wallet, live.wallets);
   const warnings = liveWarnings(read, caps.perTradeAusd);
@@ -182,6 +208,17 @@ export function LiveStudio({
         return <Limits {...props} />;
       case "controls":
         return <Controls {...props} />;
+      case "token":
+        return (
+          <LiveSection section="token">
+            <TokenPanel
+              agent={agent}
+              preview={preview || !!staged}
+              initialState={staged?.tokenState ?? (preview ? tokenPreview() : null)}
+              canManage={canManage}
+            />
+          </LiveSection>
+        );
       case "identity":
         return <Identity {...props} />;
       case "agents":
@@ -206,130 +243,171 @@ export function LiveStudio({
   }
 
   return (
-    <StudioShell<LiveSectionKey>
-      idPrefix="live"
-      agent={agent}
-      agents={agents}
-      canManage={canManage}
-      newAgentLock={newAgentLock}
-      newAgentLabel="Create another agent"
-      studio={live}
-      modals={modals}
-      status={
-        <StatusChip id="live-status" tone={status.tone}>
-          {status.label}
-        </StatusChip>
-      }
-      /* Positions counts the open paper positions, Decisions the proposals waiting on the owner;
+    <StudioContentContext.Provider value={{ section, content: body() }}>
+      <StudioShell<LiveSectionKey>
+        accountHandle={accountHandle}
+        idPrefix="live"
+        agent={agent}
+        agents={agents}
+        canManage={canManage}
+        newAgentLock={newAgentLock}
+        newAgentLabel="Create another agent"
+        studio={live}
+        modals={modals}
+        status={
+          <StatusChip id="live-status" tone={status.tone}>
+            {realReady ? realLabel : status.label}
+          </StatusChip>
+        }
+        /* Positions counts the open paper positions, Decisions the proposals waiting on the owner;
          both are 0 with the runtime off and no paper account. */
-      rail={liveRail(
-        section,
-        record ? runtimeCounts(live.positions, live.proposals) : { positions: 0, decisions: 0 },
-      )}
-      railFooter={
-        <>
-          <div className={styles.help}>
-            {HELP_LINKS.map((link) => (
-              <a
-                key={link.label}
-                href={link.href}
-                className={styles.helpLink}
-                {...(link.href.startsWith("http")
-                  ? { target: "_blank", rel: "noopener noreferrer" }
-                  : {})}
-              >
-                <Icon name={link.icon} size={15} />
-                {link.label}
-              </a>
-            ))}
-          </div>
-          {agent.handle && (
-            <a
-              href={profile}
-              className={styles.profileLink}
-              id="live-public-profile"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              ITS PUBLIC PROFILE
-              <Icon name="external" size={13} />
-            </a>
-          )}
-        </>
-      }
-      onSection={(key) => {
-        setFocusCheck(null);
-        setSection(key);
-      }}
-      headerSub={headerParts({
-        handle: agent.handle,
-        publishedAt: agent.publishedAt,
-        now,
-        section,
-      }).map((part, index) => (
-        <HeaderPart key={part} first={index === 0}>
-          {part}
-        </HeaderPart>
-      ))}
-      headerSide={
-        <HeaderControls
-          paused={agent.paused}
-          action={status.action}
-          canManage={canManage}
-          pause={pause}
-          stop={
-            record ? (
-              <StopAll
-                live={live}
-                canManage={canManage}
-                id="live-stop"
-                className={styles.stopButton}
-              />
-            ) : null
-          }
-        />
-      }
-      tiles={
-        record ? runtimeTiles(read, caps.perDayAusd, record) : liveTiles(read, caps.perDayAusd)
-      }
-      tilesLabel="Its money"
-      banner={
-        warnings.length > 0 && (
-          <div className={styles.banner} id="live-banner" role="status">
-            <Icon name="alert" size={14} />
-            <span className={styles.bannerText}>{warningLine(warnings)}</span>
-            {fix && (
-              <button type="button" className={styles.bannerFix} onClick={() => goFromOutside(fix)}>
-                Fix it
-              </button>
+        rail={liveRail(
+          section,
+          record ? runtimeCounts(live.positions, live.proposals) : { positions: 0, decisions: 0 },
+        )}
+        railFooter={
+          <>
+            <SidebarMenu className={styles.help}>
+              {HELP_LINKS.map((link) => (
+                <SidebarMenuItem key={link.label}>
+                  <SidebarMenuButton asChild tooltip={{ children: link.label, surface: "dark" }}>
+                    <a
+                      href={link.href}
+                      aria-label={link.label}
+                      title={link.label}
+                      className={styles.helpLink}
+                      {...(link.href.startsWith("http")
+                        ? { target: "_blank", rel: "noopener noreferrer" }
+                        : {})}
+                    >
+                      <Icon name={link.icon} size={15} />
+                      <span>{link.label}</span>
+                    </a>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+            {agent.handle && (
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    asChild
+                    tooltip={{ children: "Its public profile", surface: "dark" }}
+                  >
+                    <a
+                      href={profile}
+                      className={styles.profileLink}
+                      id="live-public-profile"
+                      aria-label="Its public profile"
+                      title="Its public profile"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <Icon name="external" size={13} />
+                      <span>ITS PUBLIC PROFILE</span>
+                    </a>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
             )}
-          </div>
-        )
-      }
-      onRefreshAgent={onRefreshAgent}
-      onSwitch={onSwitch}
-      onNew={onNew}
-      onAccount={() => setSection("account")}
-      strip={
-        <LiveStrip
-          view={
-            record
-              ? runtimeStrip({
-                  newest: Array.isArray(live.checks) ? (live.checks[0] ?? null) : null,
-                  detail: live.lastCheck,
-                  total: record.checks,
-                  paused: agent.paused,
-                  now,
-                  running: record.runtimeEnabled,
-                })
-              : stripView()
-          }
-          onDecisions={() => goFromOutside("decisions")}
-        />
-      }
-    >
-      {body()}
-    </StudioShell>
+          </>
+        }
+        onSection={(key) => {
+          setSection(key);
+        }}
+        headerSub={headerParts({
+          handle: agent.handle,
+          publishedAt: agent.publishedAt,
+          now,
+          section,
+        }).map((part, index) => (
+          <HeaderPart key={part} first={index === 0}>
+            {part}
+          </HeaderPart>
+        ))}
+        headerSide={
+          realReady ? (
+            <PerplHeaderControls execution={live.execution} canManage={canManage} />
+          ) : (
+            <HeaderControls
+              paused={agent.paused}
+              action={status.action}
+              canManage={canManage}
+              pause={pause}
+              stop={
+                record ? (
+                  <StopAll
+                    live={live}
+                    canManage={canManage}
+                    id="live-stop"
+                    className={styles.stopButton}
+                  />
+                ) : null
+              }
+            />
+          )
+        }
+        tiles={
+          realReady
+            ? realTiles
+            : record
+              ? runtimeTiles(read, caps.perDayAusd, record)
+              : liveTiles(read, caps.perDayAusd)
+        }
+        tilesLabel="Its money"
+        banner={
+          warnings.length > 0 && (
+            <div className={styles.banner} id="live-banner" role="status">
+              <Icon name="alert" size={14} />
+              <span className={styles.bannerText}>{warningLine(warnings)}</span>
+              {fix && (
+                <button
+                  type="button"
+                  className={styles.bannerFix}
+                  onClick={() => goFromOutside(fix)}
+                >
+                  Fix it
+                </button>
+              )}
+            </div>
+          )
+        }
+        onRefreshAgent={onRefreshAgent}
+        onSwitch={onSwitch}
+        onNew={onNew}
+        strip={
+          <LiveStrip
+            view={
+              realReady
+                ? {
+                    line: real.orders[0]
+                      ? `${real.orders[0].action.replaceAll("_", " ").toUpperCase()} ${real.orders[0].symbol} · ${real.orders[0].status.toUpperCase()} · TESTNET`
+                      : "Perpl account ready · start trading from Controls",
+                    count: `${real.orders.length} ORDERS`,
+                    log: real.orders.slice(0, 4).map((order) => ({
+                      at: new Date(order.createdAt).toISOString().slice(11, 19),
+                      text: `${order.symbol} · ${order.action.replaceAll("_", " ")} · ${order.status}`,
+                    })),
+                    more: "EVERY TRANSACTION →",
+                  }
+                : record
+                  ? runtimeStrip({
+                      newest: Array.isArray(live.checks) ? (live.checks[0] ?? null) : null,
+                      detail: live.lastCheck,
+                      total: record.checks,
+                      paused: agent.paused,
+                      now,
+                      running: record.runtimeEnabled,
+                    })
+                  : stripView()
+            }
+            onDecisions={() => goFromOutside(realReady ? "record" : "decisions")}
+          />
+        }
+      >
+        {children}
+      </StudioShell>
+    </StudioContentContext.Provider>
   );
 }
 

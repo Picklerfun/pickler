@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useStudioForm } from "../routing/memory";
 import { Button, Field, Input } from "@pickler/ui";
 import type { Agent, Config } from "../api";
 import styles from "../studio.module.css";
@@ -46,7 +46,11 @@ export function Limits({
   onSave(config: Config): void;
 }) {
   /* The parent remounts this on a new config version, so the draft starts from what was saved. */
-  const [draft, setDraft] = useState<Config>(agent.config);
+  const [draft, setDraft] = useStudioForm<Config>(
+    `${agent.productId ?? agent.id}:legacy-limits:form`,
+    agent.version,
+    agent.config,
+  );
   const dirty = JSON.stringify(draft) !== JSON.stringify(agent.config);
   const policy = draft.uncertaintyPolicy;
 

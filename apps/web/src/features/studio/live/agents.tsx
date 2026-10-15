@@ -1,6 +1,6 @@
 "use client";
 import { useState, type ReactElement } from "react";
-import { Chip } from "@pickler/ui";
+import { Button, Chip } from "@pickler/ui";
 import { accentVars } from "@/lib/accent";
 import { LiveSection, type LiveSectionProps } from "./live-section";
 import { READ_WORDS, SHUT, backLabel, backReason, readState } from "./market-model";
@@ -13,10 +13,10 @@ import styles from "./market.module.css";
  * section opens. Beat filters with their counts and the count tag ("· BY CALIBRATION" only when
  * every entry carries a score); one card per agent with its initials, name, ticker · beat, note,
  * NET and hit rate ("—" without a resolved record). The owner's own agent is tagged YOURS. "Ask"
- * and "Back it" / "Launch its token" are shut with Soon: paid reads and agent tokens are not
+ * and "Back it" / "Launch its token" are shut with Soon: paid reads are not
  * built. The directory has no token curve, so the canvas's curve line is left out.
  */
-export const Agents: (props: LiveSectionProps) => ReactElement = ({ agent, live }) => {
+export const Agents: (props: LiveSectionProps) => ReactElement = ({ agent, live, onSection }) => {
   const [beat, setBeat] = useState("All");
   const state = readState(live.directory, live.preview, (list) => list.length === 0);
   const view = Array.isArray(live.directory)
@@ -74,7 +74,13 @@ export const Agents: (props: LiveSectionProps) => ReactElement = ({ agent, live 
                   </div>
                   <div className={styles.actions}>
                     <Shut tone="ask" label={card.ask} reason={SHUT.ask} />
-                    <Shut label={backLabel(card.own)} reason={backReason(card.own)} />
+                    {card.own ? (
+                      <Button size="sm" variant="secondary" onClick={() => onSection("token")}>
+                        Token
+                      </Button>
+                    ) : (
+                      <Shut label={backLabel(false)} reason={backReason(false)} />
+                    )}
                   </div>
                 </li>
               ))}

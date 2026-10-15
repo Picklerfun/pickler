@@ -100,3 +100,27 @@ npm run validate:agent --workspace=@pickler/agent-service -- TENANT_UUID AGENT_U
 This command makes provider calls. Supply DATABASE_URL and model/provider environment variables
 for the intended isolated environment. It marks only the chosen agent/configuration as checked;
 a successful manual research is still required before enabling its schedule. Never run it in CI.
+
+## Creator access requests
+
+A blocked creator sees **Creator access required** and **Request access** in Studio, rather than
+an unexplained disabled wallet button. Submission records one request for the authenticated
+workspace owner; repeats retain the first request time and do not grant access. Account's
+**Creator access** section shows the request status after reload. Once an operator enables the
+user, status reads `enabled` and the request leaves the pending inbox.
+
+Users in the API runtime `SUPER_ADMIN_EMAILS` allowlist see the team inbox in the same Account
+section. The inbox is private, oldest first, at most 100 entries. Ordinary users cannot inspect
+others' requests. Operators can also run:
+
+```sh
+npm run research-access --workspace=@pickler/infrastructure -- requests
+```
+
+Use the same verified operator URL/CA environment as database migrations. Review a request and
+use the existing explicit `USER_UUID enable` command to approve it. No email, Slack or Telegram
+notification is sent: an external destination and delivery configuration have not been chosen.
+Requests never start providers, create wallets, spend credits or grant permission automatically.
+Apply the appended access-request migration before deploying these endpoints; the main migration
+workflow handles it independently of Cloudflare Builds. An incomplete deployment must report the
+failure rather than show a request as sent.

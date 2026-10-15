@@ -1,7 +1,9 @@
+import { parsePerplMarketIdentity } from "@pickler/perpl-context";
 import {
   PilotError,
   PERPL_PLUGIN_VERSION,
   PERP_RESOLUTIONS,
+  type PerplMarketCatalog,
   type PerpNetwork,
   type PerpSymbol,
   type PerpReadContext,
@@ -88,9 +90,14 @@ interface ContextSnapshot {
 }
 export class PerplMarketData implements PerpMarketData {
   private readonly transport: PerplTransport;
+  private readonly positionMarkets: readonly PerpMarketInfo[];
   private readonly contexts = new Map<PerpNetwork, ContextSnapshot>();
   constructor(options: PerplDataOptions = {}) {
     this.transport = new PerplTransport(options);
+    this.positionMarkets = structuredClone(options.positionMarkets ?? []);
+  }
+  get remainingRequests(): number {
+    return this.transport.remainingRequests;
   }
   private async context(network: PerpNetwork, ctx: PerpReadContext): Promise<ContextSnapshot> {
     if (!Object.hasOwn(PERPL_NETWORKS, network)) {
@@ -119,18 +126,34 @@ export class PerplMarketData implements PerpMarketData {
     network: PerpNetwork,
     symbol: PerpSymbol,
     context: ContextSnapshot,
-  ): { wire: WireMarket; info: PerpMarketInfo } {
-    if (symbol !== "BTC" && symbol !== "ETH") {
-      throw new PilotError("MARKET_NOT_ALLOWED", "Only BTC and ETH are supported");
-    }
-    // Empty provider symbols are resolved only when both name and size unit confirm the asset.
-    const candidates = context.data.markets.filter(
-      (m) =>
-        m.size_units === symbol &&
-        (m.symbol === symbol ||
-          m.symbol === `${symbol}-PERP` ||
-          (m.symbol === "" && (m.name === symbol || m.name === `${symbol} Perp`))),
+  ): { wire: WireMarket | null; info: PerpMarketInfo } {
+    const recorded = this.positionMarkets.filter(
+      (market) => market.symbol === symbol && market.provenance.network === network,
     );
+    const identities = new Set(
+      recorded.map((market) =>
+        JSON.stringify({
+          marketId: market.marketId,
+          perpetualId: market.perpetualId,
+          instanceId: market.instanceId,
+          exchangeAddress: market.exchangeAddress,
+          collateral: market.collateral,
+          priceDecimals: market.priceDecimals,
+          sizeDecimals: market.sizeDecimals,
+        }),
+      ),
+    );
+    if (identities.size > 1) {
+      throw new PilotError("PERPL_MARKET_IDENTITY", "Recorded position identities are ambiguous");
+    }
+    const pinned = recorded[0];
+    const candidates = context.data.markets.filter((market) =>
+      pinned ? market.id === pinned.marketId : parsePerplMarketIdentity(market) === symbol,
+    );
+    if (pinned && candidates.length === 0) {
+      // A delisted position can still read its recorded public endpoints for supervision/close.
+      return { info: { ...structuredClone(pinned), open: false }, wire: null };
+    }
     if (candidates.length !== 1) {
       throw new PilotError("PERPL_MARKET_IDENTITY", "Market identity is absent or ambiguous");
     }
@@ -145,6 +168,25 @@ export class PerplMarketData implements PerpMarketData {
       invalid();
     }
     const token = tokens[0]!;
+    if (
+      pinned &&
+      (wire.perpetual_id !== pinned.perpetualId ||
+        wire.instance_id !== pinned.instanceId ||
+        instance.address !== pinned.exchangeAddress ||
+        token.address !== pinned.collateral.address ||
+        token.decimals !== pinned.collateral.decimals ||
+        wire.config.price_decimals !== pinned.priceDecimals ||
+        wire.config.size_decimals !== pinned.sizeDecimals ||
+        parsePerplMarketIdentity(wire) !== pinned.symbol)
+    ) {
+      throw new PilotError("PERPL_MARKET_IDENTITY", "Recorded position identity changed");
+    }
+    if (token.symbol !== "AUSD" || token.decimals !== 6) {
+      throw new PilotError(
+        "PERPL_COLLATERAL_UNSUPPORTED",
+        "Pickler requires six-decimal AUSD collateral",
+      );
+    }
     return {
       wire,
       info: {
@@ -175,6 +217,85 @@ export class PerplMarketData implements PerpMarketData {
         provenance: perplStamp(network, context.response, wire.config.at),
       },
     };
+  }
+  /** Same public transport and strict execution metadata, with per-row diagnostic reporting. */
+  async catalog(network: PerpNetwork, ctx: PerpReadContext): Promise<PerplMarketCatalog> {
+    if (!Object.hasOwn(PERPL_NETWORKS, network)) {
+      throw new PilotError("INVALID_INPUT", "Unknown Perpl network");
+    }
+    const response = await this.transport.get(network, "/v1/pub/context", ctx);
+    const raw = parse(response, contextSchema.extend({ markets: z.array(z.unknown()).max(1000) }));
+    if (raw.chain.chain_id !== PERPL_NETWORKS[network].chainId) {
+      invalid();
+    }
+    const identities = raw.markets.map((row) =>
+      typeof row === "object" && row !== null ? parsePerplMarketIdentity(row) : null,
+    );
+    const ids = raw.markets.map((row) =>
+      typeof row === "object" && row !== null && "id" in row ? row.id : null,
+    );
+    const parsed = raw.markets.map((row) => contextSchema.shape.markets.element.safeParse(row));
+    const valid = parsed.flatMap((row) => (row.success ? [row.data] : []));
+    const context = { data: { ...raw, markets: valid }, response };
+    const markets: PerplMarketCatalog["markets"] = parsed.map((row) => {
+      if (!row.success) {
+        return {
+          marketId: null,
+          symbol: null,
+          name: "Invalid market metadata",
+          collateral: null,
+          status: "invalid",
+          available: false,
+          reasons: ["Required market metadata is invalid"],
+        };
+      }
+      const wire = row.data;
+      const symbol = parsePerplMarketIdentity(wire);
+      const reasons: string[] = [];
+      if (valid.length !== raw.markets.length || new Set(ids).size !== ids.length) {
+        reasons.push("The complete public context contains invalid or duplicate market metadata");
+      }
+      const instance = raw.instances.filter((item) => item.id === wire.instance_id);
+      const tokens =
+        instance.length === 1
+          ? raw.tokens.filter((item) => item.id === instance[0]!.collateral_token_id)
+          : [];
+      const token = tokens.length === 1 ? tokens[0]! : null;
+      if (
+        !symbol ||
+        identities.filter((identity) => identity === symbol).length !== 1 ||
+        ids.filter((id) => id === wire.id).length !== 1
+      ) {
+        reasons.push("Market identity is absent or ambiguous");
+      }
+      if (!token || token.symbol !== "AUSD" || token.decimals !== 6) {
+        reasons.push("Six-decimal AUSD collateral is required");
+      }
+      if (wire.config.taker_fee < 0) {
+        reasons.push("Negative taker fees are unsupported");
+      }
+      if (!wire.config.is_open) {
+        reasons.push("Market is closed");
+      }
+      if (symbol && reasons.length === 0) {
+        try {
+          this.market(network, symbol, context);
+        } catch {
+          reasons.push("Execution metadata is unavailable");
+        }
+      }
+      return {
+        marketId: wire.id,
+        symbol,
+        name: wire.name,
+        collateral: token ? { symbol: token.symbol, decimals: token.decimals } : null,
+        status: wire.config.is_open ? "open" : "closed",
+        available: reasons.length === 0,
+        reasons,
+      };
+    });
+    await ctx.guard();
+    return { network, observedAt: response.receivedAt, markets };
   }
   async funding(
     network: PerpNetwork,
@@ -275,7 +396,7 @@ export class PerplMarketData implements PerpMarketData {
       invalid();
     }
     const state = parsed.d[String(market.marketId)]!;
-    const funding = wire.funding;
+    const funding = wire?.funding;
     return {
       market,
       ticker: normalizePerplTicker(market, response, state, this.transport.now()),

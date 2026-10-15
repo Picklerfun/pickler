@@ -1,18 +1,54 @@
 import { z } from "zod";
 const integer = z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER);
 const decimal = z.string().regex(/^-?(0|[1-9]\d*)(\.\d+)?$/);
-export const perpSymbolSchema = z.enum(["BTC", "ETH"]);
-export const perplConfigSchema = z
+export const perpSymbolSchema = z.string().regex(/^[A-Z0-9][A-Z0-9._-]{0,31}(?![\s\S])/);
+export const perplSelectionSchema = z
+  .array(perpSymbolSchema)
+  .min(1)
+  .max(1000)
+  .refine((v) => new Set(v).size === v.length);
+export const perplConfigSchema = z.discriminatedUnion("version", [
+  z
+    .object({
+      version: z.literal(1),
+      network: z.enum(["mainnet", "testnet"]),
+      markets: z
+        .array(z.enum(["BTC", "ETH"]))
+        .min(1)
+        .max(2)
+        .refine((v) => new Set(v).size === v.length),
+    })
+    .strict(),
+  z
+    .object({
+      version: z.literal(2),
+      network: z.enum(["mainnet", "testnet"]),
+      markets: perplSelectionSchema,
+    })
+    .strict(),
+]);
+export const perplMarketCatalogSchema = z
   .object({
-    version: z.literal(1),
     network: z.enum(["mainnet", "testnet"]),
+    observedAt: integer,
     markets: z
-      .array(perpSymbolSchema)
-      .min(1)
-      .max(2)
-      .refine((v) => new Set(v).size === v.length),
+      .array(
+        z
+          .object({
+            marketId: integer.nullable(),
+            symbol: perpSymbolSchema.nullable(),
+            name: z.string(),
+            collateral: z.object({ symbol: z.string(), decimals: integer }).strict().nullable(),
+            status: z.enum(["open", "closed", "invalid"]),
+            available: z.boolean(),
+            reasons: z.array(z.string()),
+          })
+          .strict(),
+      )
+      .max(1000),
   })
   .strict();
+export type PerplMarketCatalogDto = z.infer<typeof perplMarketCatalogSchema>;
 export const perpProvenanceSchema = z
   .object({
     provider: z.literal("perpl"),
@@ -50,7 +86,7 @@ export const perpMarketInfoSchema = z
   })
   .strict();
 export const perpMarketsSchema = z
-  .object({ markets: z.array(perpMarketInfoSchema).max(2) })
+  .object({ markets: z.array(perpMarketInfoSchema).max(1000) })
   .strict();
 const freshness = z.enum(["fresh", "stale", "unknown"]);
 export const perpSnapshotSchema = z

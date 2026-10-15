@@ -208,3 +208,10 @@ Perpetual evaluation routes its four variants through the versioned
 never add a host-specific strategy switch or model route. Controlled boundary and PostgreSQL
 replay tests cover this preparation. No Studio selector, paid session, restart or activation is
 part of it; the v1 readiness protocol remains separately interpreted.
+
+## Dynamic Studio markets
+
+See the canonical selection/version, preservation and controlled acceptance boundaries below. No
+runtime activation is implied.
+
+See [agent-selected Perpl markets](../../docs/studio-perpl-markets.md).

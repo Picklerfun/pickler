@@ -1,3 +1,9 @@
+# Historical X verification
+
+The post-verification and Skip X sections of this specification are historical. Current behavior
+is defined by [Studio X OAuth](../studio-x-oauth.md); existing evidence is preserved, but new
+publication requires OAuth and authorization never grants posting permission.
+
 # Studio: the draft dashboard, Connect X and Go Public (v1)
 
 Status: decided autonomously on 2026-10-02 (the owner asked for no questions). Canvas: Claude

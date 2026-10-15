@@ -1,3 +1,4 @@
+import { perplSelectionSchema } from "./perps.js";
 import { z } from "zod";
 import { ACCENTS } from "./landing.js";
 import {
@@ -36,6 +37,12 @@ export const studioAgentWalletSchema = z.object({
   balanceAusd: z.number(),
 });
 
+export const advicePriceResponseSchema = z.object({
+  advicePrice: z
+    .object({ amount: z.string(), asset: z.literal("AUSD"), decimals: z.literal(6) })
+    .nullable(),
+});
+
 export const studioAgentSchema = agentResponseSchema.extend({
   productId: z.string().uuid().optional(),
   name: z.string().optional(),
@@ -50,6 +57,8 @@ export const studioAgentSchema = agentResponseSchema.extend({
    */
   draft: z.boolean(),
   wallet: studioAgentWalletSchema.nullable(),
+  /** The AUSD price of one fresh advice analysis, or null when not for sale (x402 spec D2). */
+  advicePrice: advicePriceResponseSchema.shape.advicePrice,
   /** Schedule: one successful manual run with the current config, then at least 10 AUSD. */
   canSchedule: lockSchema,
   /**
@@ -147,6 +156,7 @@ export type PreviewRunDto = z.infer<typeof previewRunResponseSchema>;
  */
 export const draftCreateSchema = z
   .object({
+    markets: perplSelectionSchema,
     name: z.string().trim().min(1).max(40),
     handle: z.string().regex(/^[a-z0-9_]{3,15}$/),
     voice: z.enum(VOICE_KEYS),
@@ -228,6 +238,11 @@ const baseUnitBalances = {
 
 /** `GET /v1/studio/wallets` (§4.2). */
 export const walletsResponseSchema = z.object({
+  /** Deployment-selected balance/transfer chain; absent in legacy responses, null if unavailable. */
+  chainId: z
+    .union([z.literal(143), z.literal(10143)])
+    .nullable()
+    .optional(),
   master: z.object({ address: z.string(), ...baseUnitBalances }),
   agents: z.array(
     z.object({
@@ -254,6 +269,7 @@ export type WalletsDto = z.infer<typeof walletsResponseSchema>;
  */
 export const setupUpdateSchema = z
   .object({
+    markets: perplSelectionSchema.optional(),
     expectedVersion: z.number().int().positive(),
     perpsStrategy: studioPerpsStrategySchema.optional(),
     brief: draftCreateSchema.shape.brief
@@ -324,32 +340,47 @@ export const versionsResponseSchema = z.object({
 });
 export type VersionsDto = z.infer<typeof versionsResponseSchema>;
 
-/** `POST /v1/studio/agents/:id/x/challenge`'s body: the handle, "@" optional. */
-export const xChallengeRequestSchema = z.object({ handle: z.string().max(64) }).strict();
-export type XChallengeRequestDto = z.infer<typeof xChallengeRequestSchema>;
-
-/** The live challenge: the handle it is for, the line to post, and when it lapses. */
-export const xChallengeSchema = z.object({
-  handle: z.string(),
-  text: z.string(),
-  expiresAt: z.string().datetime(),
-});
-export type XChallengeDto = z.infer<typeof xChallengeSchema>;
-
-/** `GET /v1/studio/agents/:id/x`: `available` is false until Pickler's X app is configured (D5). */
+/** Owner-only OAuth connection; no provider credentials cross this contract. */
+export const xConnectionStatusSchema = z.enum([
+  "disconnected",
+  "connected",
+  "reconnect_required",
+  "revocation_pending",
+]);
 export const xStateResponseSchema = z.object({
-  account: z.object({ handle: z.string(), verifiedAt: z.string().datetime() }).nullable(),
-  challenge: xChallengeSchema.nullable(),
+  status: xConnectionStatusSchema,
+  account: z
+    .object({
+      handle: z.string(),
+      displayName: z.string().max(100).nullable().optional(),
+      profileImageUrl: z.string().url().max(2048).nullable().optional(),
+      verifiedAt: z.string().datetime(),
+    })
+    .nullable(),
   available: z.boolean(),
+  readsAvailable: z.boolean(),
 });
 export type XStateDto = z.infer<typeof xStateResponseSchema>;
-
-/** `POST /v1/studio/agents/:id/x/verify`. */
-export const xVerifyResponseSchema = z.union([
-  z.object({ verified: z.literal(true), handle: z.string() }),
-  z.object({ verified: z.literal(false), reason: z.literal("NOT_FOUND") }),
-]);
-export type XVerifyDto = z.infer<typeof xVerifyResponseSchema>;
+export const xAuthorizeRequestSchema = z.object({ returnTo: z.string().min(1).max(512) }).strict();
+export const xAuthorizeResponseSchema = z.object({ authorizationUrl: z.string().url() });
+export const xDisconnectResponseSchema = z.object({
+  disconnected: z.literal(true),
+  status: z.enum(["disconnected", "revocation_pending"]),
+});
+export const xPostsResponseSchema = z.object({
+  posts: z
+    .array(
+      z.object({
+        id: z.string(),
+        text: z.string(),
+        createdAt: z.string().datetime(),
+        url: z.string().url(),
+      }),
+    )
+    .max(5),
+  nextCursor: z.null(),
+});
+export type XPostsDto = z.infer<typeof xPostsResponseSchema>;
 
 /** `POST /v1/studio/agents/:id/publish` (D8); idempotent on a public agent. */
 export const publishResponseSchema = z.object({
@@ -359,7 +390,7 @@ export const publishResponseSchema = z.object({
 export type PublishDto = z.infer<typeof publishResponseSchema>;
 
 /** Mirrors core's `PublishBlocker`: what a 409 PUBLISH_BLOCKED lists in `detail.blockers`. */
-export const PUBLISH_BLOCKERS = ["KILLED", "WALLET", "FUNDS"] as const;
+export const PUBLISH_BLOCKERS = ["KILLED", "WALLET", "FUNDS", "X_CONNECTION_REQUIRED"] as const;
 export type PublishBlockerDto = (typeof PUBLISH_BLOCKERS)[number];
 
 /** `GET /v1/studio/wallets/ledger` (D17): the person's transfers, newest first, at most 100. */
@@ -377,3 +408,70 @@ export const ledgerResponseSchema = z.object({
   ),
 });
 export type LedgerDto = z.infer<typeof ledgerResponseSchema>;
+
+export const studioAccessRequestSchema = z.object({
+  status: z.enum(["not_requested", "pending", "enabled"]),
+  requestedAt: z.string().datetime().nullable(),
+  /** The application sent under the account's email: in review, invited, rejected, or none. */
+  application: z.enum(["submitted", "invited", "rejected"]).nullable(),
+});
+export const studioAccessRequestStatusSchema = studioAccessRequestSchema.extend({
+  canReviewRequests: z.boolean(),
+});
+export const studioAccessRequestsInboxSchema = z.object({
+  requests: z.array(
+    z.object({
+      userId: z.string().uuid(),
+      handle: z.string(),
+      displayName: z.string(),
+      requestedAt: z.string().datetime(),
+    }),
+  ),
+});
+export type StudioAccessRequestStatusDto = z.infer<typeof studioAccessRequestStatusSchema>;
+export type StudioAccessRequestsInboxDto = z.infer<typeof studioAccessRequestsInboxSchema>;
+
+/* ---------- Creator applications, reviewed by operators (docs/specs/landing-trade-v1.md §7) ---------- */
+
+export const studioApplicationStatusSchema = z.enum(["submitted", "invited", "rejected"]);
+export const studioApplicationDecisionSchema = z.enum(["invited", "rejected"]);
+
+export const studioApplicationSchema = z.object({
+  id: z.number().int().positive(),
+  email: z.string(),
+  agentName: z.string(),
+  ticker: z.string(),
+  xHandle: z.string(),
+  category: z.string(),
+  personality: z.string(),
+  edge: z.string(),
+  whyYou: z.string(),
+  status: studioApplicationStatusSchema,
+  submittedAt: z.string().datetime(),
+  reviewedAt: z.string().datetime().nullable(),
+  reviewedBy: z.string().nullable(),
+  decisionNote: z.string().nullable(),
+  invitedAt: z.string().datetime().nullable(),
+});
+export const studioApplicationsSchema = z.object({
+  applications: z.array(studioApplicationSchema),
+});
+/** PUT /v1/studio/applications/:id — an operator's decision, with an optional note. */
+export const studioApplicationReviewRequestSchema = z
+  .object({
+    status: studioApplicationDecisionSchema,
+    note: z.string().max(500).optional(),
+  })
+  .strict();
+export type StudioApplicationDto = z.infer<typeof studioApplicationSchema>;
+export type StudioApplicationsDto = z.infer<typeof studioApplicationsSchema>;
+export type StudioApplicationReviewRequestDto = z.infer<
+  typeof studioApplicationReviewRequestSchema
+>;
+
+/** `PUT /v1/studio/agents/:id/advice-price`: AUSD with up to 6 decimals (0.10–100), or null to clear. */
+export const advicePriceUpdateSchema = z
+  .object({ priceAusd: z.string().max(12).nullable() })
+  .strict();
+export type AdvicePriceUpdateDto = z.infer<typeof advicePriceUpdateSchema>;
+export type AdvicePriceResponseDto = z.infer<typeof advicePriceResponseSchema>;

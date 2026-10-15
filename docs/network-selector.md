@@ -3,12 +3,14 @@
 ## First delivery
 
 The marketplace (`pickler.fun`) and Studio (`app.pickler.fun`) share one Next.js app and one
-product network control. `NetworkSelector` is present in the landing's own `LandingNav`, the
-marketplace's `SiteNav`, and the Studio home, creation and draft/live top bars. It is available
+product network control. `NetworkSelector` is present in the shared public `SiteNav` used by the landing and marketplace, and the Studio home, creation and draft/live top bars. It is available
 without a connected wallet.
 
 The custom menu uses `Button` and `Icon` from `@pickler/ui` and follows the light/dark control tokens.
 Its compact wallet-style trigger carries the `network` icon, Monad mark and plain Testnet text.
+At 640px and below, the labelled trigger keeps both marks in a 48px control and hides its visible
+text and chevron to preserve the single-row public navigation. Studio temporarily retains only
+the Monad mark while a neighboring balance/account disclosure expands, preserving readable details.
 The panel contains only two rows with Monad's mark, the active checkmark and Mainnet's disabled
 Coming soon state. There is no extra badge, heading, explanatory row copy or footer. The web's
 presentation catalogue uses the existing metadata from `@pickler/chain`: Monad Testnet (10143)
@@ -94,3 +96,11 @@ Mainnet remained disabled, and the menu stayed inside the mobile viewport on bot
 The wallet-style revision also passed web production build, web/UI typechecks, scoped lint,
 formatting and static design/architecture checks. The 390px preview confirmed two menu rows,
 disabled Mainnet, viewport fit and keyboard opening/Escape focus restoration.
+
+The merge with the updated public navigation and Studio sidebar preserves the shared SiteNav
+(including landing and application), account menus and wallet-balance disclosure. The retired
+LandingNav stays removed. The existing sidebar-motion acceptance targets the new accessible
+network trigger. Conflict-resolution checks passed web/UI types, scoped lint, static design,
+architecture checks, the production build and all 62 selected routing/import/Studio tests.
+Browser checks confirmed the public and draft Studio controls at 320px, disabled Mainnet,
+keyboard opening/dismissal and full balance disclosure without horizontal overflow.

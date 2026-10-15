@@ -665,7 +665,7 @@ export class PostgresPerpsRuntimeStore implements PerpsRuntimeRepository {
   createProposal(lease: PerpsCheckLease, input: PerpsProposalInput) {
     const positionId = input.positionId ?? null;
     if (
-      !["BTC", "ETH"].includes(input.instrument) ||
+      !/^[A-Z0-9][A-Z0-9._-]{0,31}(?![\s\S])/.test(input.instrument) ||
       !["long", "short"].includes(input.side) ||
       !["enter", "size_up"].includes(input.kind) ||
       !DECIMAL.test(input.margin) ||

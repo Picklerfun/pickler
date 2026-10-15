@@ -32,11 +32,3 @@ export function nameChange(
 /** The voice the config holds, or the first (Analyst) for a config without one. */
 export const voiceOf = (voice: string | undefined): VoiceKey =>
   VOICES.find((option) => option.key === voice)?.key ?? "analyst";
-
-/** The X ACCOUNT card's tag. */
-export const xAccountTag = (handle: string | null): "CONNECTED" | "NOT CONNECTED" =>
-  handle ? "CONNECTED" : "NOT CONNECTED";
-
-/** DISCONNECT refused, in words: a public agent keeps its account (D6); anything else as said. */
-export const disconnectProblem = (code: string, fallback: string): string =>
-  code === "X_ON_PUBLIC_AGENT" ? "A public agent keeps its X account." : fallback;

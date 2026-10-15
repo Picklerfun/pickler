@@ -44,9 +44,11 @@ export interface DraftData extends AgentStudioData {
   activityFailed: boolean;
   /**
    * `GET /perps/record`: `runtimeEnabled` and today's manual checks; null until read, or when the
-   * read failed (the Console keeps its Soon state). Its failures never reach the shell's error.
+   * read failed (Console presents an explicit retry state). Failures are never reported as disabled.
    */
   record: PerpsRecordDto | null;
+  runtimeState: "loading" | "ready" | "error";
+  readRuntime(): Promise<void>;
   /** `GET /perps/positions`: the paper positions Trades and Overview list; null until read. */
   positions: PerpsPositionsResponseDto | null;
   /** The newest check, polled every 1.5 s while it runs; null before the first. */
@@ -102,6 +104,9 @@ export function useDraft({
 }): UseDraft {
   const [activity, setActivity] = useState<ActivityEvent[] | null>(staged?.activity ?? null);
   const [activityFailed, setActivityFailed] = useState(false);
+  const [runtimeState, setRuntimeState] = useState<"loading" | "ready" | "error">(
+    staged ? "ready" : "loading",
+  );
   const [record, setRecord] = useState<PerpsRecordDto | null>(staged?.perps.record ?? null);
   const [positions, setPositions] = useState<PerpsPositionsResponseDto | null>(
     staged?.perps.positions ?? null,
@@ -111,17 +116,30 @@ export function useDraft({
   const [pollId, setPollId] = useState<string | null>(null);
   const [starting, setStarting] = useState(false);
 
-  /* The runtime's reads keep their failures to themselves: an agent the runtime does not know
-     (an older draft, 409 NOT_A_PERPL_AGENT) still opens, with the Console in its Soon state. */
+  const runtimeRead = useRef(0);
+  /* A failed runtime read remains an explicit error; only a successful record establishes availability. */
   const readRuntimeWith = useCallback(async (tools: StudioTools, latest: boolean) => {
     if (tools.offline) {
       return;
     }
     const id = tools.agentId;
+    const request = ++runtimeRead.current;
+    if (latest) {
+      setRuntimeState("loading");
+    }
     await Promise.all([
       perpsRecord(id).then(
-        (read) => tools.alive.current && setRecord(read),
-        () => undefined,
+        (read) => {
+          if (tools.alive.current && request === runtimeRead.current) {
+            setRecord(read);
+            setRuntimeState("ready");
+          }
+        },
+        () => {
+          if (tools.alive.current && request === runtimeRead.current) {
+            setRuntimeState("error");
+          }
+        },
       ),
       perpsPositions(id).then(
         (read) => tools.alive.current && setPositions(read),
@@ -280,6 +298,8 @@ export function useDraft({
     activity,
     activityFailed,
     record,
+    runtimeState,
+    readRuntime: () => readRuntimeWith(tools, true),
     positions,
     check,
     checking: starting || pollId !== null || checkRunning(check),

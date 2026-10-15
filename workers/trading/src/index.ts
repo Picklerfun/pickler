@@ -7,6 +7,7 @@ import {
 } from "@pickler/infrastructure";
 import { liveBuySchema, liveOrderSchema, idempotencyKeySchema } from "@pickler/api-schema";
 import { z } from "zod";
+import { perplTradingRequest, tickPerplTrading } from "./perpl";
 
 export interface Env {
   APP_ENV: string;
@@ -20,6 +21,14 @@ export interface Env {
   POLYMARKET_CLOB_API_KEY?: string;
   POLYMARKET_CLOB_API_SECRET?: string;
   POLYMARKET_CLOB_API_PASSPHRASE?: string;
+  PERPL_ADMISSIONS_ENABLED?: string;
+  PERPL_ACCOUNT_SETUP_ENABLED?: string;
+  PERPL_LIVE_POLICY_JSON?: string;
+  PERPL_KEY_ENCRYPTION_KEY?: string;
+  TURNKEY_API_PUBLIC_KEY?: string;
+  TURNKEY_API_PRIVATE_KEY?: string;
+  JWT_ISSUER?: string;
+  JWT_AUDIENCE?: string;
 }
 function compose(env: Env) {
   const credentials = {
@@ -76,6 +85,9 @@ export function createTradingWorker(
 ): ExportedHandler<Env, { kind: "trading-wakeup" }> {
   return {
     async fetch(request, env) {
+      if (new URL(request.url).pathname.startsWith("/perpl/")) {
+        return perplTradingRequest(request, env);
+      }
       if (request.method !== "POST") {
         return new Response(null, { status: 405 });
       }
@@ -139,6 +151,15 @@ export function createTradingWorker(
         }
         let instance: ReturnType<typeof compose> | undefined;
         try {
+          if (env.PERPL_LIVE_POLICY_JSON && env.PERPL_KEY_ENCRYPTION_KEY) {
+            if (await tickPerplTrading(env)) {
+              await env.TRADING_QUEUE.send({ kind: "trading-wakeup" }, { delaySeconds: 15 });
+            }
+          }
+          if (runtime === compose && !env.POLYMARKET_SIGNER_PRIVATE_KEY) {
+            message.ack();
+            continue;
+          }
           instance = runtime(env);
           await instance.service.tick(env.TRADING_ADMISSIONS_ENABLED === "true");
           message.ack();

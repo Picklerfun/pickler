@@ -27,7 +27,21 @@ test("full document validates, covers mounted routes and retains unique alias op
   assert.ok(document.paths["/v1/studio/wallets/ledger"]?.get);
   assert.ok(document.paths["/v1/studio/agents/{id}/setup"]?.put);
   assert.ok(document.paths["/v1/studio/agents/{id}/publish"]?.post);
-  assert.ok(document.paths["/v1/studio/agents/{id}/x/verify"]?.post);
+  assert.ok(document.paths["/v1/studio/agents/{id}/x/authorize"]?.post);
+  for (const [path, method] of [
+    ["/v1/studio/agents/{id}/x", "get"],
+    ["/v1/studio/agents/{id}/x", "delete"],
+    ["/v1/studio/agents/{id}/x/authorize", "post"],
+    ["/v1/studio/agents/{id}/x/posts", "get"],
+  ] as const) {
+    assert.deepEqual(document.paths[path]?.[method]?.security, [{ bearerAuth: [] }]);
+  }
+  const callback = document.paths["/v1/studio/x/callback"]?.get;
+  assert.deepEqual(callback?.security, []);
+  const redirect = callback?.responses?.["303"];
+  assert.ok(redirect && "headers" in redirect && redirect.headers?.Location);
+  assert.ok(!document.paths["/v1/studio/agents/{id}/x/challenge"]);
+  assert.ok(!document.paths["/v1/studio/agents/{id}/x/verify"]);
   for (const [path, method] of [
     ["/v1/studio/agents/{id}/perps/checks", "post"],
     ["/v1/studio/agents/{id}/perps/checks", "get"],
@@ -59,6 +73,19 @@ test("full document validates, covers mounted routes and retains unique alias op
   assert.deepEqual(document.paths["/v1/profile"]?.post?.security, [{ bearerAuth: [] }]);
   assert.deepEqual(document.paths["/v1/marketplace/reads"]?.get?.security, []);
   assert.deepEqual(document.paths["/v1/applications"]?.post?.security, [{ applyCookie: [] }]);
+  assert.ok(!document.paths["/v1/landing"]);
+  assert.ok(!document.paths["/v1/studio/access-request"]?.post);
+  assert.deepEqual(document.paths["/v1/marketplace/activity"]?.get?.security, []);
+  assert.deepEqual(document.paths["/v1/studio/applications"]?.get?.security, [{ bearerAuth: [] }]);
+  const applicationReview = document.paths["/v1/studio/applications/{id}"]?.put;
+  assert.deepEqual(applicationReview?.security, [{ bearerAuth: [] }]);
+  assert.match(applicationReview?.description ?? "", /Inviting enables studio access/);
+  assert.match(applicationReview?.description ?? "", /Sends no email/);
+  assert.ok(document.paths["/v1/studio/agents/{id}/token"]?.get);
+  assert.ok(document.paths["/v1/studio/agents/{id}/advice-price"]?.put);
+  assert.ok(
+    document.paths["/v1/agent-advice/agents/{agentId}/recommendations"]?.post?.responses?.["402"],
+  );
   const agentSecurity = document.paths["/v1/agents/{id}/status"]?.get?.security;
   assert.ok(
     agentSecurity?.some(

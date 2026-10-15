@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "tokens_agent_chain_launch_key" ON "market"."tokens" USING btree ("agent_id","chain") WHERE "market"."tokens"."agent_id" is not null AND "market"."tokens"."status" in ('pre_graduation', 'graduated');

@@ -1,6 +1,6 @@
 "use client";
 import { useId } from "react";
-import { Button, Icon, Segmented } from "@pickler/ui";
+import { Button, Icon, Segmented, Skeleton } from "@pickler/ui";
 import type { StudioWallets } from "../api";
 import { accentVars } from "@/lib/accent";
 import { AvatarGrid } from "./identity";
@@ -35,6 +35,9 @@ export interface AgentWalletBoxProps {
   error: string;
   copied: boolean;
   preview: boolean;
+  refreshing: boolean;
+  /** The API identified the network these balances and transfers use. */
+  networkKnown: boolean;
   onPick(toAgent: boolean): void;
   onToken(token: Token): void;
   onAmount(text: string): void;
@@ -46,7 +49,7 @@ export interface AgentWalletBoxProps {
 
 /**
  * One agent wallet in "Your wallets": its name, address, tag, balances and caps, "Fund from
- * master" and "Pull back to master", and the move form when one is open. The rules are
+ * master" and "Return to master wallet", and the move form when one is open. The rules are
  * `transfer-model.ts`'s; the state is the modal's.
  */
 export function AgentWalletBox({
@@ -61,6 +64,8 @@ export function AgentWalletBox({
   error,
   copied,
   preview,
+  refreshing,
+  networkKnown,
   onPick,
   onToken,
   onAmount,
@@ -78,6 +83,10 @@ export function AgentWalletBox({
   const label = transferLabel(input);
   const ok = canMove(input);
   const over = label.startsWith("More");
+  const sourceName = toAgent ? "Master wallet" : `${name}'s wallet`;
+  const targetName = toAgent ? `${name}'s wallet` : "Master wallet";
+  const sourceAddress = toAgent ? wallets.master.address : agent.address;
+  const targetAddress = toAgent ? agent.address : wallets.master.address;
 
   return (
     <div className={styles.walletBox}>
@@ -116,11 +125,23 @@ export function AgentWalletBox({
       </div>
       <div className={styles.tiles}>
         <span className={styles.tile}>
-          <b>{formatUnits(unitsOf(agent.ausdMicro), "AUSD")}</b>
+          <b>
+            {refreshing ? (
+              <Skeleton className={styles.balancePlaceholder} />
+            ) : (
+              formatUnits(unitsOf(agent.ausdMicro), "AUSD")
+            )}
+          </b>
           <small>AUSD · TRADES</small>
         </span>
         <span className={styles.tile}>
-          <b>{formatUnits(unitsOf(agent.monWei), "MON")}</b>
+          <b>
+            {refreshing ? (
+              <Skeleton className={styles.balancePlaceholder} />
+            ) : (
+              formatUnits(unitsOf(agent.monWei), "MON")
+            )}
+          </b>
           <small>MON · GAS</small>
         </span>
       </div>
@@ -137,29 +158,54 @@ export function AgentWalletBox({
           data-fund={agent.walletId}
           aria-expanded={moving !== null && toAgent}
           aria-controls={formId}
-          disabled={preview}
+          disabled={preview || refreshing || !networkKnown}
           onClick={() => onPick(true)}
         >
           <Icon name="arrowUp" size={12} />
-          Fund from master
+          Add funds to agent
         </button>
         <button
           type="button"
           className={styles.direction}
           aria-expanded={moving !== null && !toAgent}
           aria-controls={formId}
-          disabled={preview}
+          disabled={preview || refreshing || !networkKnown}
           onClick={() => onPick(false)}
         >
           <Icon name="arrowDown" size={12} />
-          Pull back to master
+          Return to master wallet
         </button>
       </div>
       {moving && (
         <div className={styles.move} id={formId}>
+          <div className={styles.transferRoute} aria-label="Transfer route">
+            <div className={styles.transferParty}>
+              <small>From</small>
+              <span>
+                <b>{sourceName}</b>
+                <address title={sourceAddress}>{sourceAddress}</address>
+              </span>
+            </div>
+            <div className={styles.transferParty}>
+              <small>To</small>
+              <span>
+                <b>{targetName}</b>
+                <address title={targetAddress}>{targetAddress}</address>
+              </span>
+            </div>
+            <span className={styles.transferAvailable}>
+              Available to send:{" "}
+              {refreshing ? (
+                <Skeleton className={styles.balancePlaceholder} />
+              ) : (
+                <b>{formatUnits(held, token)}</b>
+              )}{" "}
+              {token}
+            </span>
+          </div>
           <div className={styles.moveRow}>
             <Segmented
-              label="Token"
+              label="Asset"
               className={styles.tokenSwitch}
               options={TOKENS}
               value={token}
@@ -181,7 +227,7 @@ export function AgentWalletBox({
                 type="button"
                 className={styles.chipButton}
                 aria-label={`Fill the most ${token} the source can send`}
-                disabled={held === null}
+                disabled={held === null || refreshing}
                 onClick={() => onMax(held)}
               >
                 MAX
@@ -190,7 +236,11 @@ export function AgentWalletBox({
             </span>
           </div>
           <div className={styles.moveButtons}>
-            <Button block disabled={!ok || preview} onClick={() => onSend(move)}>
+            <Button
+              block
+              disabled={!ok || preview || refreshing || !networkKnown}
+              onClick={() => onSend(move)}
+            >
               {label}
             </Button>
             <Button variant="ghost" onClick={onCancel}>

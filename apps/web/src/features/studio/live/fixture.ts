@@ -12,12 +12,14 @@
  * the server and the browser would rehydrate into a different screen.
  */
 import type {
+  TokenStateDto,
   DirectoryAgentDto,
   LeaderboardDto,
   MarketDetailDto,
   MarketSourceDto,
   PerpMarketDto,
 } from "@pickler/api-schema";
+import { tokenPreview } from "../../tokens/fixture";
 import type { PasskeyDto } from "../../auth/lib/custody-api";
 import type {
   Agent,
@@ -32,6 +34,7 @@ import type {
   XState,
 } from "../api";
 import type { LiveStage } from "../home/stage";
+import { perplExecutionFixture } from "../perpl-execution/fixture";
 import { previewConfig } from "../preview";
 import type { BriefText } from "../shell/build-model";
 import type { AccountTab, LiveSectionKey } from "./model";
@@ -39,8 +42,10 @@ import type { OwnerAction } from "./use-live";
 
 /** The live studio filled in for the design harness, at one moment. */
 export interface LiveStaged {
+  execution?: import("@pickler/api-schema").PerplLiveStateDto | null;
   /** The fixed clock every time on the screen is read against. */
   now: number;
+  tokenState: TokenStateDto;
   agent: Agent;
   section: LiveSectionKey;
   wallets: StudioWallets;
@@ -91,6 +96,12 @@ const X_HANDLE = "HalftimeBot";
 
 /** Which section each stage opens on. */
 const SECTIONS: Record<LiveStage, LiveSectionKey> = {
+  "perpl-trading-ready": "controls",
+  "perpl-trading-setup": "controls",
+  "perpl-trading-active": "positions",
+  "perpl-trading-closed": "record",
+  "perpl-token-empty": "token",
+  "perpl-token-launched": "token",
   "perpl-live": "overview",
   "perpl-paused": "overview",
   "perpl-warnings": "overview",
@@ -186,6 +197,7 @@ function agent(paused: boolean, balanceAusd: number): Agent {
     paused,
     scheduleEnabled: false,
     nextDueAt: null,
+    advicePrice: { amount: "1.5", asset: "AUSD", decimals: 6 },
     wallet: { walletId: WALLET_ID, address: ADDRESS, balanceAusd },
     canSchedule: { ok: false, reason: "first_run" },
     canCreateAnother: { ok: true, reason: null },
@@ -200,6 +212,7 @@ function agent(paused: boolean, balanceAusd: number): Agent {
 /* `GET /wallets`. The warnings stage has 0.12 MON (under 0.2) and 18 AUSD (under one 25 trade). */
 function wallets(ausdMicro: string, monWei: string): StudioWallets {
   return {
+    chainId: 10143,
     master: { address: MASTER, ausdMicro: "177600000", monWei: "3700000000000000000" },
     agents: [
       {
@@ -372,6 +385,42 @@ function trail(market: Pick<PerpMarketDto, "mark" | "change24h">): number[] {
   });
 }
 
+/** Synthetic times for the labelled inert fixture only, never a live fallback. */
+function fixtureTrailTimes(market: PerpMarketDto): string[] | undefined {
+  if (market.source.venue !== "perpl") {
+    return undefined;
+  }
+  const end = Date.parse(market.source.observedAt);
+  const closedHour = Math.floor(end / 3_600_000) * 3_600_000;
+  return [
+    ...Array.from({ length: 24 }, (_, index) =>
+      new Date(closedHour - (23 - index) * 3_600_000).toISOString(),
+    ),
+    new Date(end).toISOString(),
+  ];
+}
+
+/** Thirty days of synthetic hourly prices, confined to the labelled local design fixture. */
+function fixturePriceHistory(market: PerpMarketDto): MarketDetailDto["priceHistory"] {
+  const times = fixtureTrailTimes(market);
+  if (!times) {
+    return undefined;
+  }
+  const prices = trail(market);
+  const start = prices[0]!;
+  const first = Date.parse(times[0]!);
+  const older = Array.from({ length: 696 }, (_, index) => {
+    const progress = index / 696;
+    return {
+      price: Number(
+        (start * (1 - 0.12 * (1 - progress) + 0.045 * Math.sin(progress * 7))).toFixed(2),
+      ),
+      at: new Date(first - (696 - index) * 3_600_000).toISOString(),
+    };
+  });
+  return [...older, ...times.map((at, index) => ({ price: prices[index]!, at }))];
+}
+
 function details(markets: readonly PerpMarketDto[]): Record<string, MarketDetailDto> {
   return Object.fromEntries(
     markets
@@ -383,6 +432,8 @@ function details(markets: readonly PerpMarketDto[]): Record<string, MarketDetail
           readQuestion: `Is ${market.symbol} above {level} 24 hours after delivery?`,
           calls: [],
           trail: trail(market),
+          trailTimestamps: fixtureTrailTimes(market),
+          priceHistory: fixturePriceHistory(market),
         },
       ]),
   );
@@ -393,7 +444,15 @@ const directoryAgent = (
   handle: string,
   ticker: string | null,
   accent: DirectoryAgentDto["agent"]["accent"],
-) => ({ name, handle, ticker, slug: ticker ? ticker.slice(1).toLowerCase() : null, accent });
+) => ({
+  id: `00000000-0000-0000-0000-${Buffer.from(handle).toString("hex").padStart(12, "0").slice(-12)}`,
+  advicePrice: null,
+  name,
+  handle,
+  ticker,
+  slug: ticker ? ticker.slice(1).toLowerCase() : null,
+  accent,
+});
 
 /* `GET /marketplace/directory`: the canvas's six agents (`MKT_AGENTS`). Paid reads are not built,
    so no agent carries a service. */
@@ -929,17 +988,34 @@ const ACCOUNT_TABS: Partial<Record<LiveStage, AccountTab>> = {
 export function liveStudioFixture(stage: LiveStage): LiveStaged {
   const warned = stage === "perpl-warnings";
   const markets = board(stage === "perpl-markets" ? sampleSource : perplSource);
+  const stagedAgent = agent(stage === "perpl-paused", warned ? 18 : 75.8);
+  if (stage === "perpl-trading-setup") {
+    stagedAgent.config.spend = { perCallAusd: 5, perDayAusd: 20 };
+    stagedAgent.spend = { perCallAusd: 5, perDayAusd: 20 };
+  }
   return {
+    execution:
+      stage === "perpl-trading-setup"
+        ? perplExecutionFixture("setup")
+        : stage === "perpl-trading-ready"
+          ? perplExecutionFixture("ready")
+          : stage === "perpl-trading-active"
+            ? perplExecutionFixture("active")
+            : stage === "perpl-trading-closed"
+              ? perplExecutionFixture("closed")
+              : null,
     now: NOW,
-    agent: agent(stage === "perpl-paused", warned ? 18 : 75.8),
+    tokenState: tokenPreview(stage === "perpl-token-launched"),
+    agent: stagedAgent,
     section: SECTIONS[stage],
     wallets: warned
       ? wallets("18000000", "120000000000000000")
       : wallets("75800000", "900000000000000000"),
     x: {
       account: { handle: X_HANDLE, verifiedAt: at(1760) },
-      challenge: null,
+      status: "connected",
       available: true,
+      readsAvailable: true,
     },
     ledger,
     versions,

@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
 import { PasskeyFlow } from "@/features/auth/components/passkey-flow";
 import { passkeyPreviewFromSearch } from "@/features/auth/lib/passkey-entry";
-import { services } from "@/server/container";
-import { toAuthBoardData } from "@/server/http/auth-board";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Passkey — Pickler" };
@@ -24,7 +22,6 @@ export default async function PasskeyPage({
   // `?state=add` is the design preview of this screen (see `lib/passkey-entry.ts`).
   return (
     <PasskeyFlow
-      board={toAuthBoardData(await services.getLanding())}
       mode="add"
       passkeyPreview={passkeyPreviewFromSearch(process.env.NODE_ENV, search.state)}
     />

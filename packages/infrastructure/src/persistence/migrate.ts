@@ -1,5 +1,6 @@
 import { Pool } from "pg";
 import { migrateDatabase } from "./migrate-database.js";
+import { migrationStatus } from "./migration-status.js";
 import { migrationPoolConfig } from "./migration-connection.js";
 
 const url = process.env.DATABASE_MIGRATION_URL;
@@ -8,7 +9,13 @@ if (!url) {
 }
 const pool = new Pool(migrationPoolConfig(url, process.env.DATABASE_MIGRATION_CA_CERT));
 try {
+  const before = await migrationStatus(pool);
   await migrateDatabase(pool);
+  const after = await migrationStatus(pool);
+  console.log(JSON.stringify({ event: "pickler_migration_status", before, after }));
+  if (after.pending.length || after.unknown) {
+    throw new Error("Migration verification failed");
+  }
   console.log("Pickler migrations applied.");
 } catch (error) {
   // Provider error text can contain connection details. Retain only a machine-readable code.

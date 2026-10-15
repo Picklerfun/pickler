@@ -83,4 +83,11 @@ export interface MarketDetailDto {
   calls: AgentSquareDto[];
   /** Marks over the last 24 hours, oldest first. */
   trail: number[];
+  /**
+   * Optional ISO UTC times aligned with trail: closed hourly candles use their closing time;
+   * the final mark uses the board's observedAt. Missing times are unknown, never inferred.
+   */
+  trailTimestamps?: (string | null)[] | undefined;
+  /** Up to 720 hourly closes plus the observed mark. Missing history is not reconstructed. */
+  priceHistory?: { price: number; at: string }[] | undefined;
 }

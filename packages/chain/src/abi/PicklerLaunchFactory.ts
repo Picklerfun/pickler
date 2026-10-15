@@ -12,9 +12,27 @@ export const PicklerLaunchFactoryAbi = [
         "name": "curveDeployer_",
         "type": "address",
         "internalType": "contract ICurveDeployer"
+      },
+      {
+        "name": "launchAuthority_",
+        "type": "address",
+        "internalType": "address"
       }
     ],
     "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "MAX_GRANT_LIFETIME",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
   },
   {
     "type": "function",
@@ -207,6 +225,21 @@ export const PicklerLaunchFactoryAbi = [
       },
       {
         "name": "authorization",
+        "type": "bytes",
+        "internalType": "bytes"
+      },
+      {
+        "name": "grantNonce",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "grantDeadline",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "grant",
         "type": "bytes",
         "internalType": "bytes"
       }
@@ -450,6 +483,153 @@ export const PicklerLaunchFactoryAbi = [
   },
   {
     "type": "function",
+    "name": "getPresetConfigHash",
+    "inputs": [
+      {
+        "name": "presetId",
+        "type": "uint32",
+        "internalType": "uint32"
+      },
+      {
+        "name": "version",
+        "type": "uint32",
+        "internalType": "uint32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "grantDigest",
+    "inputs": [
+      {
+        "name": "params",
+        "type": "tuple",
+        "internalType": "struct PicklerLaunchFactory.LaunchParams",
+        "components": [
+          {
+            "name": "agentKey",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "creator",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "creatorFeeRecipient",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "name",
+            "type": "string",
+            "internalType": "string"
+          },
+          {
+            "name": "symbol",
+            "type": "string",
+            "internalType": "string"
+          },
+          {
+            "name": "metadataURI",
+            "type": "string",
+            "internalType": "string"
+          },
+          {
+            "name": "metadataHash",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "presetId",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "presetVersion",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "expectedConfigHash",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "nonce",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "deadline",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ]
+      },
+      {
+        "name": "nonce",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "deadline",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "grantUsed",
+    "inputs": [
+      {
+        "name": "grantNonce",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "launchAuthority",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "launchesEnabled",
     "inputs": [],
     "outputs": [
@@ -513,6 +693,30 @@ export const PicklerLaunchFactoryAbi = [
         "name": "",
         "type": "bool",
         "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "presetVenueHash",
+    "inputs": [
+      {
+        "name": "presetId",
+        "type": "uint32",
+        "internalType": "uint32"
+      },
+      {
+        "name": "version",
+        "type": "uint32",
+        "internalType": "uint32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bytes32",
+        "internalType": "bytes32"
       }
     ],
     "stateMutability": "view"
@@ -607,6 +811,119 @@ export const PicklerLaunchFactoryAbi = [
             "internalType": "uint32"
           }
         ]
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "publishPresetWithVenue",
+    "inputs": [
+      {
+        "name": "preset",
+        "type": "tuple",
+        "internalType": "struct PicklerPreset.LaunchPreset",
+        "components": [
+          {
+            "name": "presetId",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "version",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "quoteToken",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "totalSupply",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "saleAllocation",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "lpAllocation",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "virtualTokenReserve",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "virtualQuoteReserve",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "buyFeeBps",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "sellFeeBps",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "protocolShareBps",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "lpCreatorShareBps",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "lpFeeTier",
+            "type": "uint24",
+            "internalType": "uint24"
+          },
+          {
+            "name": "lpTickSpacing",
+            "type": "int24",
+            "internalType": "int24"
+          },
+          {
+            "name": "launchFee",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "roundingPolicyVersion",
+            "type": "uint32",
+            "internalType": "uint32"
+          }
+        ]
+      },
+      {
+        "name": "venueHash",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "setLaunchAuthority",
+    "inputs": [
+      {
+        "name": "next",
+        "type": "address",
+        "internalType": "address"
       }
     ],
     "outputs": [],
@@ -716,6 +1033,19 @@ export const PicklerLaunchFactoryAbi = [
     "type": "event",
     "name": "EIP712DomainChanged",
     "inputs": [],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "LaunchAuthorityChanged",
+    "inputs": [
+      {
+        "name": "authority",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      }
+    ],
     "anonymous": false
   },
   {
@@ -842,6 +1172,21 @@ export const PicklerLaunchFactoryAbi = [
   },
   {
     "type": "error",
+    "name": "GrantAlreadyUsed",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "GrantExpired",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "GrantTooLong",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "InvalidAgentKey",
     "inputs": []
   },
@@ -857,12 +1202,42 @@ export const PicklerLaunchFactoryAbi = [
   },
   {
     "type": "error",
+    "name": "InvalidGrant",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidLaunchAuthority",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidQuoteDecimals",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "InvalidQuoteToken",
     "inputs": []
   },
   {
     "type": "error",
+    "name": "InvalidReferenceProfile",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "InvalidShortString",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidTotalSupply",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidVenueConfiguration",
     "inputs": []
   },
   {
@@ -915,7 +1290,12 @@ export const PicklerLaunchFactoryAbi = [
     "type": "error",
     "name": "SupplyTransferFailed",
     "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "UnsupportedPrecisionPolicy",
+    "inputs": []
   }
 ] as const;
 
-export const PicklerLaunchFactoryAbiHash = "b9db6d2d027caa256fa2fa7b06d87e0c0b49b6787f3201589b5f8c9dc1018c3c";
+export const PicklerLaunchFactoryAbiHash = "42c54cab0fb3267bde1259b8bfbb8b56a6b277bfd8458b6e6ee900ebe08dcffd";

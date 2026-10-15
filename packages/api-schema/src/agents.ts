@@ -1,3 +1,4 @@
+import type { AgentTokenDto } from "./token-launch.js";
 // Public agent board, profile and pick detail. Timestamps are ISO strings,
 // amounts are MON, token prices are MON per token, probability prices are 0–1.
 
@@ -10,7 +11,15 @@ export const VENUES = ["predictions", "perps", "both"] as const;
 export type VenueDto = (typeof VENUES)[number];
 export type ActivityKindDto = "call" | "position" | "settlement" | "pass" | "answer" | "perp";
 
+export interface AdvicePriceDto {
+  amount: string;
+  asset: "AUSD";
+  decimals: 6;
+}
+
 export interface AgentSummaryDto {
+  id: string;
+  advicePrice: AdvicePriceDto | null;
   /** Null until the agent launches a token; the slug names the token's page. */
   slug: string | null;
   name: string;
@@ -57,6 +66,11 @@ export interface ActivityEventDto {
 }
 
 export interface AgentPersonaDto {
+  id: string;
+  advicePrice: AdvicePriceDto | null;
+  /** Confirmed token on the configured network. Missing on historical clients. */
+  launchedToken?: AgentTokenDto | null | undefined;
+  tokenConfirmation?: "absent" | "pending" | "confirmed" | undefined;
   name: string;
   handle: string;
   ticker: string | null;
@@ -135,8 +149,15 @@ export interface AgentReadDto {
   outcome: { final: string; observedAt: string } | null;
 }
 
+export interface DirectoryAgentRefDto extends ActivityAgentDto {
+  id: string;
+  advicePrice: AdvicePriceDto | null;
+}
+
 export interface DirectoryAgentDto {
-  agent: ActivityAgentDto;
+  agent: DirectoryAgentRefDto;
+  /** Confirmed token of a published agent on the configured network. */
+  launchedToken?: AgentTokenDto | null | undefined;
   beat: string;
   venue: VenueDto;
   decides: string;
@@ -250,4 +271,17 @@ export interface PickDetailDto extends AgentCallDto {
   post: { text: string; url: string | null; views: number | null } | null;
   steps: PickTrailStepDto[];
   chain: { positionTx: string | null; settlementTx: string | null; agentWallet: string | null };
+}
+
+/** GET /api/v1/marketplace/activity: one finished paper check of a public agent, newest first. */
+export interface AgentActionDto {
+  id: string;
+  at: string;
+  agent: ActivityAgentDto;
+  outcome: "entered" | "exited" | "held" | "blocked" | "proposed";
+  outcomeText: string | null;
+  instrument: string | null;
+  call: "open-long" | "open-short" | "close" | "hold" | null;
+  probability: number | null;
+  horizonHours: number | null;
 }

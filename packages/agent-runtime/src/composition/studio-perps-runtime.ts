@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { PilotError } from "@pickler/core";
+import { PilotError, effectiveStudioStrategy } from "@pickler/core";
 import {
   ExaResearch,
   PERPL_CHECK_SESSION_LIMIT,
@@ -23,6 +23,7 @@ import {
   createStudioPerpsModels,
   studioPerpsForecastPrompt,
   studioPerpsJevPrompt,
+  studioPerpsPrompts,
 } from "./studio-perps-models.js";
 const micros = z.string().regex(/^\d{1,24}$/);
 const tariff = z
@@ -137,7 +138,27 @@ export function createStudioPerpsCheckDependencies(input: {
       perOperationMicros: "0",
       perDayMicros: "0",
     },
-    callPlans: plans,
+    requestLimit: PERPL_CHECK_SESSION_LIMIT,
+    callPlans: (agent) => {
+      const version = effectiveStudioStrategy(agent.config).version;
+      const prompts = studioPerpsPrompts(version);
+      const effectiveQuery =
+        version === "2.1.0"
+          ? `${agent.config.perpl!.markets.join(" ")} cryptocurrency market news`
+          : query;
+      return plans.map((plan) => {
+        if (plan.key.startsWith("search-")) {
+          return {
+            ...plan,
+            promptVersion: version === "2.1.0" ? "2.1.0" : plan.promptVersion,
+            promptSha256: createHash("sha256").update(effectiveQuery).digest("hex"),
+          };
+        }
+        const prompt =
+          plan.key === "direct" || plan.key === "fallback" ? prompts.forecast : prompts.jev;
+        return { ...plan, promptVersion: prompt.version, promptSha256: prompt.sha256 };
+      });
+    },
     models:
       input.models ??
       createStudioPerpsModels({
@@ -171,27 +192,59 @@ export function createStudioPerpsCheckDependencies(input: {
       }
       return balance.toFixed(6);
     },
-    async data(scope, signal) {
-      const { service } = await createPerplSession(research, scope, signal, {
+    async data(scope, signal, positions = []) {
+      const { service, data: held } = await createPerplSession(research, scope, signal, {
         schedule: input.schedule,
         sessionLimit: PERPL_CHECK_SESSION_LIMIT,
+        positionMarkets: positions.flatMap((position) =>
+          position.market ? [position.market] : [],
+        ),
       });
+
+      const config = (await research.agent(scope)).config.perpl!;
+      const ctx = {
+        signal,
+        guard: async () => {
+          signal.throwIfAborted();
+          const current = await research.agent(scope);
+          if (JSON.stringify(current.config.perpl) !== JSON.stringify(config)) {
+            throw new PilotError("CONFIG_CHANGED", "Position read configuration changed");
+          }
+        },
+      };
+      const frame = async (symbol: string) => {
+        if (
+          !config.markets.some((market) => market === symbol) &&
+          !positions.some((position) => position.symbol === symbol)
+        ) {
+          throw new PilotError("MARKET_NOT_ALLOWED", "Position is not recorded");
+        }
+        const book = config.markets.some((market) => market === symbol)
+          ? await service.getPerpOrderBook({ symbol, levels: 20 })
+          : await held.book(config.network, symbol, 20, ctx);
+        const snapshot = config.markets.some((market) => market === symbol)
+          ? await service.getPerpSnapshot({ symbol })
+          : await held.snapshot(config.network, symbol, ctx);
+        return perpsFrame(snapshot, book);
+      };
       return {
+        remainingRequests: () => held.remainingRequests,
         read: (symbol) =>
           readPerplInstrument(service, symbol, {
             candles: 60,
             guard: async () => signal.throwIfAborted(),
             prefix: `perpl-${symbol.toLowerCase()}`,
           }),
-        async frame(symbol) {
-          const book = await service.getPerpOrderBook({ symbol, levels: 20 });
-          const snapshot = await service.getPerpSnapshot({ symbol });
-          return perpsFrame(snapshot, book);
+        frame,
+        funding: (symbol, from, to) => {
+          if (!positions.some((position) => position.symbol === symbol)) {
+            throw new PilotError("MARKET_NOT_ALLOWED", "Funding requires a recorded position");
+          }
+          return held.funding(config.network, { symbol, from, to }, ctx);
         },
-        funding: (symbol, from, to) => service.getPerpFundingHistory({ symbol, from, to }),
       };
     },
-    async web(web, signal, hooks) {
+    async web(web, signal, hooks, markets) {
       if (!env.EXA_API_KEY) {
         throw new PilotError("WEB_UNAVAILABLE", "Configured sources lack an Exa credential");
       }
@@ -229,7 +282,12 @@ export function createStudioPerpsCheckDependencies(input: {
         web,
         async () => {},
       );
-      return (await scoped.search(query, signal)).sources;
+      return (
+        await scoped.search(
+          markets ? `${markets.join(" ")} cryptocurrency market news` : query,
+          signal,
+        )
+      ).sources;
     },
   };
 }

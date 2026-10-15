@@ -54,7 +54,11 @@ export interface SetupVersion {
 }
 
 export interface StudioDirectory {
-  onboard(userId: string): Promise<void>;
+  /**
+   * Creates the workspace and the access row. With the account's email, an application invited
+   * under it is claimed and access enabled at once (docs/specs/landing-trade-v1.md §7, R5).
+   */
+  onboard(userId: string, email?: string | undefined): Promise<void>;
   access(userId: string, workspaceId: string | null): Promise<StudioAccess | null>;
   /**
    * Creates the private draft with its wallet (studio-create-simplified-v1 §4.1), in one
@@ -95,6 +99,8 @@ export interface StudioDirectory {
       visibility: "private" | "public";
       publishedAt: Date | null;
       xHandle: string | null;
+      /** The AUSD price of one fresh advice analysis in micro-AUSD, null when not for sale. */
+      advicePriceMicro: bigint | null;
       scope: Scope;
     }[]
   >;
@@ -129,6 +135,16 @@ export interface StudioDirectory {
    * workspace.
    */
   versions(access: StudioAccess, productAgentId: string): Promise<SetupVersion[]>;
+  /**
+   * Sets (micro-AUSD) or clears (null) the price of one fresh advice analysis of an agent whose
+   * workspace the user owns. NOT_FOUND otherwise; setting a price needs the agent's wallet
+   * (CONFLICT, message AGENT_WALLET_REQUIRED), clearing does not. Answers the stored price.
+   */
+  setAdvicePrice(
+    userId: string,
+    productAgentId: string,
+    micro: bigint | null,
+  ): Promise<bigint | null>;
 }
 
 export function createStudioAccess(directory: StudioDirectory) {

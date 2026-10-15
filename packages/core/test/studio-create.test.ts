@@ -29,6 +29,7 @@ const input = (patch: Partial<CreateDraftInput> = {}): CreateDraftInput => ({
   sources: { web: null },
   brief: { ...DEFAULT_BRIEF },
   caps: { ...STARTER_CAPS },
+  markets: ["BTC", "ETH"],
   walletId: "wal-agent",
   ...patch,
 });
@@ -64,7 +65,7 @@ test("the minimums to start are 10 AUSD and 0.5 MON in base units", () => {
 test("a draft's config is a valid Perpl paper config with the brief, caps and voice", () => {
   const { config } = prepareDraft(input());
   assertConfig(config);
-  assert.deepEqual(config.perpl, { version: 1, network: "testnet", markets: ["BTC", "ETH"] });
+  assert.deepEqual(config.perpl, { version: 2, network: "testnet", markets: ["BTC", "ETH"] });
   assert.deepEqual(config.plugins, { version: 1, enabled: ["perpl", "perps-paper"] });
   assert.deepEqual(config.spend, { perCallAusd: 5, perDayAusd: 20 });
   assert.equal(config.maxLeverage, 1);
@@ -147,10 +148,7 @@ test("'only' with no sites is refused", () => {
 });
 
 test("a draft's profile is the Perpl one, not the prediction-market default", () => {
-  assert.equal(
-    prepareDraft(input()).config.profile,
-    "Paper trades BTC and ETH perpetuals on Perpl.",
-  );
+  assert.equal(prepareDraft(input()).config.profile, "Paper trades BTC, ETH perpetuals on Perpl.");
 });
 
 test("enough of both is no shortfall", () => {

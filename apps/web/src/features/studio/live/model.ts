@@ -62,6 +62,7 @@ export type LiveSectionKey =
   | "decisions"
   | "console"
   | "posts"
+  | "token"
   | "brief"
   | "skills"
   | "limits"
@@ -87,7 +88,8 @@ export type LiveIcon =
   | "user"
   | "users"
   | "bars"
-  | "trophy";
+  | "trophy"
+  | "coin";
 
 /** The canvas's `SECTION_LABELS`. */
 const SECTION_LABELS: Record<LiveSectionKey, string> = {
@@ -97,6 +99,7 @@ const SECTION_LABELS: Record<LiveSectionKey, string> = {
   decisions: "Decisions",
   console: "Console",
   posts: "Posts",
+  token: "Token",
   brief: "Brief",
   skills: "Sources & rules",
   limits: "Limits",
@@ -124,6 +127,7 @@ export const LIVE_SECTIONS: readonly LiveSectionKey[] = [
   "limits",
   "controls",
   "identity",
+  "token",
   "agents",
   "markets",
   "leaders",
@@ -157,6 +161,7 @@ const RAIL_DEFS: readonly {
       { key: "limits", icon: "wallet" },
       { key: "controls", icon: "shield" },
       { key: "identity", icon: "user" },
+      { key: "token", icon: "coin" },
     ],
   },
   {
@@ -783,6 +788,12 @@ export interface WatchCard {
   funding: string;
   /** The last 24 h of marks, oldest first, for the sparkline; null until read. */
   trail: number[] | null;
+  trailTimestamps: (string | null)[] | null;
+  /** Optional longer history from the same public detail read; never another request. */
+  priceHistory: MarketDetailDto["priceHistory"] | null;
+  /** The current board mark's observation, independent of history acquisition. */
+  observedAt: string | null;
+  stale: boolean;
   /** The board lists it: one it does not reads in dashes. */
   listed: boolean;
 }
@@ -825,6 +836,10 @@ export function marketsView(
         up: null,
         funding: "—",
         trail: null,
+        trailTimestamps: null,
+        priceHistory: null,
+        observedAt: null,
+        stale: false,
         listed: false,
       };
     }
@@ -836,6 +851,10 @@ export function marketsView(
       up: market.change24h >= 0,
       funding: formatFunding(market.funding1h),
       trail: details[market.symbol]?.trail ?? null,
+      trailTimestamps: details[market.symbol]?.trailTimestamps ?? null,
+      priceHistory: details[market.symbol]?.priceHistory ?? null,
+      observedAt: market.source.venue === "perpl" ? market.source.observedAt : null,
+      stale: market.source.venue === "perpl" && market.source.stale,
       listed: true,
     };
   });
@@ -982,18 +1001,17 @@ export interface PostsHeader {
   tag: string;
   /** Spec L7's empty line. */
   empty: string;
-  /** Without X: the canvas's line over "Connect X", or null with X. */
+  /** Connection management is separate from public product posts. */
   connect: string | null;
 }
 
-export function postsHeader(xHandle: string | null): PostsHeader {
+export function postsHeader(): PostsHeader {
   return {
     title: "Every call, in public",
-    tag: xHandle ? `PICKLER + X · @${xHandle.toUpperCase()}` : "PICKLER ONLY",
-    empty: `No posts yet. Entries and exits will post on Pickler${xHandle ? " and X" : ""} when it trades.`,
-    connect: xHandle
-      ? null
-      : "Posts will go out on Pickler only. Connect an X account and every call will mirror there.",
+    tag: "PICKLER ONLY",
+    empty: "No public posts yet.",
+    connect:
+      "Manage X in Identity & voice to read your recent posts. Connecting does not authorize publishing to X.",
   };
 }
 
@@ -1237,7 +1255,7 @@ export interface AgentWalletCard {
   mon: string;
   /** Spec L20: caps are saved, not signed. */
   note: string;
-  pull: "Pull free AUSD back";
+  pull: "Return funds to master wallet";
   limits: "Caps & limits";
 }
 
@@ -1257,7 +1275,7 @@ export function walletCards(
   const read = liveWalletRead(agent.wallet, wallets);
   return {
     master: {
-      title: account ? `YOURS · MASTER · @${account.toUpperCase()}` : "YOURS · MASTER",
+      title: account ? `MASTER WALLET · @${account.toUpperCase()}` : "MASTER WALLET",
       fund: `Fund ${name}`,
       deposit: "Deposit · copy address",
       copied: "Address copied",
@@ -1273,7 +1291,7 @@ export function walletCards(
             inPositions: "0",
             mon: formatUnits(read.monWei, "MON"),
             note: `Only ${name} will trade from here, inside the caps you set. Only you move money in or out.`,
-            pull: "Pull free AUSD back",
+            pull: "Return funds to master wallet",
             limits: "Caps & limits",
           }
         : null,

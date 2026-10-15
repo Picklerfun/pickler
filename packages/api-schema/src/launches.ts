@@ -84,6 +84,8 @@ export interface CurveStateDto {
 export interface LaunchDetailDto extends LaunchSummaryDto {
   curve: CurveStateDto | null;
   pool: CurveStateDto | null;
+  /** Canonical indexed market observations; omitted by historical producers. */
+  market?: TokenMarketDto | null | undefined;
 }
 
 export interface TradeDto {
@@ -145,3 +147,39 @@ export const LAUNCH_LIST_LIMITS = {
   defaultLimit: 25,
   maxLimit: 100,
 } as const;
+
+/** WAD values are whole-asset amounts scaled by 1e18; reserve/volume use quote base units. */
+export interface TokenMarketDto {
+  version: 1;
+  tokenDecimals: number;
+  priceKind: "curve" | "last_trade" | "unavailable";
+  priceWad: string | null;
+  priceMovement?:
+    | {
+        direction: "up" | "down" | "flat";
+        changeBps: string;
+        fromAt: string;
+        toAt: string;
+      }
+    | null
+    | undefined;
+  fdvWad: string | null;
+  volume24h: string;
+  windowEnd: string;
+  observedAt: string;
+  observedBlock: string;
+  netSold: string | null;
+  realQuoteReserve: string | null;
+  remainingTokens: string | null;
+  progressBps: number | null;
+  terms: {
+    totalSupply: string;
+    saleAllocation: string;
+    lpAllocation: string;
+    buyFeeBps: number;
+    sellFeeBps: number;
+  } | null;
+  history: { at: string; priceWad: string }[];
+  historyTruncated: boolean;
+  recentTrades: (TradeDto & { priceWad: string })[];
+}

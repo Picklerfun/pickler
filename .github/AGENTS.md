@@ -11,6 +11,25 @@ preflight/release steps, main-only environment branch restrictions and non-cance
 Never add pull-request deployment or automatic database reset/rollback. Do not cancel a running
 release when a new push arrives. Keep independent Worker Builds disabled before enabling it.
 
+Web builds receive the staging environment's public marketplace and Studio host variables.
+Their fallbacks match the web's canonical two-host defaults; they are build settings, not
+backend runtime secrets. Changing them requires a web rebuild and aligned DNS/auth callbacks.
+
 Read [the deployment guide](../docs/staging-deployment-pipeline.md) and run the controlled
 `scripts/cloudflare/deploy-staging.test.mjs` suite when changing gates, order or credentials.
 Root tests discover that suite. A local dry run is not remote deployment acceptance.
+
+`workflows/staging-migrations.yml` runs the canonical Supabase migrator on main pushes/dispatch
+while the coordinated release is disabled. It preserves independent Cloudflare Builds, requires
+no Cloudflare credential and scopes operator secrets to the hosted migration step. It tests against
+disposable PostgreSQL first and shares non-cancelling release concurrency. There is deliberately no
+migration-before-Cloudflare-build guarantee. The coordinated gate disables this standalone job.
+
+The Design rendered job also runs `scripts/design/sidebar-motion.mjs` against the same local-only
+fixture architecture, in a fresh server lifecycle after the surface checks. It checks both draft
+and published-agent Studio frames and responsive breakpoints. No deployed credentials are used.
+
+Design also runs `scripts/design/public-token-trading.mjs` with tsx in its own loopback server
+lifecycle. It verifies taken-username recovery and visitor approvals/buy/sell, including uncertain
+submission across reloads. Wallets, preparation and receipt responses are controlled; there are
+no hosted credentials or real transactions. Failure diagnostics use the existing artifact directory.

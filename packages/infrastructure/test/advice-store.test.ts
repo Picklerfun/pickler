@@ -37,6 +37,7 @@ async function setup(t: TestContext) {
   await db.pool.query("UPDATE pickler.research_access SET enabled=true WHERE user_id=$1", [owner]);
   const access = (await studio.access(owner, null))!;
   const { config } = prepareDraft({
+    markets: ["BTC", "ETH"],
     name: "Analyst",
     handle: "analyst",
     voice: "analyst",

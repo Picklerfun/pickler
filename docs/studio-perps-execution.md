@@ -1,14 +1,13 @@
 # Studio perpetual execution
 
-This guide describes the version 2.0.0 product consumer of the
+This guide describes the versioned Studio product consumer of the
 [common trading architecture](trading-architecture.md). It is virtual paper execution only.
 The historical [PR #87 specification](specs/perpl-paper-runtime-v1.md) documents an earlier
 implementation, not current operating instructions. Advice and laboratory protocols are separate.
 
 ## Strategy and setup
 
-Every agent selects `rules`, `deepseek`, `jev` or `combined` at `2.0.0`. Missing selection resolves
-`combined@2.0.0` without enabling execution. A setup save increments configuration version,
+New agents select `rules`, `deepseek`, `jev` or `combined` at `2.1.0` with explicit dynamic markets; the initial selection is `combined@2.1.0`. Untouched v1 configurations retain Studio `2.0.0`; their missing selection still resolves `combined@2.0.0`. No selection enables execution. A setup save increments configuration version,
 records its selection and disables scheduling until preparation succeeds for that version.
 
 Hourly checks require explicit scheduling, validated connections and a complete successful manual
@@ -122,3 +121,5 @@ and owner-action suites, root tests, types, lint, format, architecture, OpenAPI 
 Worker builds. Studio uses shared presentation tokens and the design harness. Controlled providers
 and disposable local databases establish compatibility and fencing, not live-provider reliability,
 profitability, deployed readiness or permission to execute real orders.
+
+See [agent-selected Perpl markets](studio-perpl-markets.md) for current catalogue, version, migration and exit-preservation rules.

@@ -17,6 +17,7 @@ const input: CreateDraftInput = {
   sources: { web: null },
   brief: DEFAULT_BRIEF,
   caps: STARTER_CAPS,
+  markets: ["BTC", "ETH"],
   walletId: "w",
 };
 const { config } = prepareDraft(input);

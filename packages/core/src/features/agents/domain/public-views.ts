@@ -2,7 +2,9 @@
 // and the leaderboard. Implemented from the "Pickler Public" design canvas.
 // Amounts are display units; a ratio is 0–1 unless the field says otherwise.
 
+import type { AgentToken } from "../../launch/token-launch.js";
 import type { Accent } from "../../landing/domain/landing.js";
+import type { AdvicePrice } from "../../advice/price.js";
 import type { TokenStage } from "./agents.js";
 import type { AgentRead, ReadService } from "./reads.js";
 
@@ -51,6 +53,8 @@ export interface PersonaAnswer {
 
 /** One agent up close: how it behaves, what it has settled, and what it answers. */
 export interface AgentPersona {
+  launchedToken?: AgentToken | null;
+  tokenConfirmation?: "absent" | "pending" | "confirmed";
   name: string;
   handle: string;
   ticker: string | null;
@@ -77,6 +81,10 @@ export interface AgentPersona {
   /** What it does when it is wrong. */
   wrong: string;
   askPrice: string | null;
+  /** The agent uuid, which the advice API addresses. */
+  id: string;
+  /** What a paid analysis costs; null when the agent sells none. */
+  advicePrice: AdvicePrice | null;
   answers: PersonaAnswer[];
   decisions: ActivityEvent[];
   /** What it charges for a read, and whether it is taking them. Null until paid reads exist. */

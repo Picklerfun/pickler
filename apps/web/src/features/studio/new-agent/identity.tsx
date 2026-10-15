@@ -1,5 +1,5 @@
 "use client";
-import { Icon } from "@pickler/ui";
+import { Icon, Skeleton } from "@pickler/ui";
 import { accentVars } from "@/lib/accent";
 import { deriveHandle, patternCells, type HandleState, type NewAgentForm } from "./model";
 import styles from "./new-agent.module.css";
@@ -85,7 +85,7 @@ export function Identity({
             />
           </span>
           <span className={styles.handleNote} data-tone={tone(handle)}>
-            {note}
+            {handle === "checking" ? <Skeleton className={styles.handleSkeleton} /> : note}
           </span>
           {/* Only the settled answers are announced, not every "checking" on the way. */}
           <span className={styles.srOnly} role="status" aria-live="polite">

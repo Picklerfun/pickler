@@ -48,11 +48,13 @@ export function useAgentWallet(preview: boolean, staged: NewAgentStaged | null) 
             }),
           );
         }
+        return true;
       },
       () => {
         if (mounted.current) {
           setReads((current) => failRead(current, { seq, message: READ_FAILED }));
         }
+        return false;
       },
     );
   }, []);
@@ -67,16 +69,17 @@ export function useAgentWallet(preview: boolean, staged: NewAgentStaged | null) 
 
   const refresh = useCallback(async () => {
     if (preview) {
-      return;
+      return false;
     }
     readSeq.current += 1;
     const seq = readSeq.current;
     setRefreshing(true);
-    await settle(seq, readWallets());
+    const succeeded = await settle(seq, readWallets());
     // A newer refresh is still in flight: it clears the flag when it lands.
     if (mounted.current && seq === readSeq.current) {
       setRefreshing(false);
     }
+    return succeeded;
   }, [preview, settle]);
 
   const approve = useCallback((walletId: string) => {

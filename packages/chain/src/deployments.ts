@@ -8,7 +8,8 @@ import type { ContractDeployment } from "./index";
  * an address — an address list carried between environments is how a launch ends up pointing
  * at nothing, and Uniswap's own deployment list covers Monad mainnet only.
  *
- * Pickler's own contracts are not here. None are deployed.
+ * Pickler's own deployments are recorded separately, below, and only once read back from the chain.
+ * The launchpad contracts are not deployed; the advice splitter is, on Monad testnet only.
  */
 export interface VerifiedDeployment extends ContractDeployment {
   /** keccak256 of the deployed bytecode at `verifiedAtBlock`. */
@@ -87,7 +88,7 @@ export const UNISWAP_V4_MONAD_TESTNET = {
       "0x1b7bFCd2870329B987191910D85c22C7287f3c22",
       62279958n,
       "0x82fe297858b607b6f6b5599928724441acd046e3dbd19971ec3d6be6587997c6",
-      19499,
+      24546,
     ),
     // Same address as mainnet, different bytecode: this one was deployed by Monad rather
     // than being the canonical Permit2. Equal addresses across networks prove nothing.
@@ -170,3 +171,68 @@ export const UNISWAP_V4_MONAD_MAINNET = {
     "Official Uniswap deployment, verified on chain at the block above. Nothing has been " +
     "executed against it: the spike ran on testnet, whose PoolManager is a different build.",
 } as const satisfies VenueDeployment;
+
+/** Fresh public read, separate from the historical fork and without asserting a Pickler deployment. */
+export const UNISWAP_V4_TESTNET_REVERIFICATION = {
+  chainId: 10143,
+  block: 69853802n,
+  blockHash: "0xf9c9fe2b9a6794f002a8a99cac318c5945580b619426603cd6422cd2fa49e914",
+  verifiedOn: "2026-10-10",
+  maintainer: "monad",
+  official: false,
+  manifestCommit: "c3cc78a88f10e5ba141cd6fb632f31db83c0daf8",
+  poolManagerOwner: "0x0000000000000000000000000000000000000000",
+  protocolFeeController: "0x0000000000000000000000000000000000000000",
+} as const;
+
+/** A Pickler-owned deployment: the shared record plus the constructor arguments read back. */
+export interface PicklerDeployment {
+  chainId: number;
+  maintainer: "pickler";
+  verifiedAtBlock: bigint;
+  verifiedOn: string;
+  deployer: `0x${string}`;
+  deploymentTx: `0x${string}`;
+  /** Commit of the branch head the bytecode was built from. */
+  sourceCommit: string;
+  contracts: Record<string, VerifiedDeployment>;
+  /** Constructor and constant values read from the chain with `cast call`. */
+  adviceSplitter: {
+    asset: `0x${string}`;
+    treasury: `0x${string}`;
+    creatorBps: number;
+  };
+  notes: string;
+}
+
+/**
+ * PicklerAdviceSplitter on Monad testnet, deployed by the owner and read back from the chain.
+ * The treasury is the owner's testnet EOA, not a multisig: moving to one means a new splitter,
+ * because the treasury is immutable.
+ */
+export const PICKLER_MONAD_TESTNET = {
+  chainId: 10143,
+  maintainer: "pickler",
+  verifiedAtBlock: 70562565n,
+  verifiedOn: "2026-10-12",
+  deployer: "0xE84B9045c4735241A71e5c6976695e59A5A7758c",
+  deploymentTx: "0x716a5e1a4b8fc23fc750ea205987716d19cfe9604b464ae4f17ccc00e32b0b2a",
+  sourceCommit: "47594f27",
+  contracts: {
+    adviceSplitter: contract(
+      10143,
+      "0x570A291Ac86d2F002Bc62E7d12ba43B7F4554d2a",
+      70562565n,
+      "0x188e0eff98004d1ef3e1200ca4bd1d6de3a378be884db138c5a3cb32be3aa3fe",
+      1576,
+    ),
+  },
+  adviceSplitter: {
+    asset: "0xa9012a055bd4e0eDfF8Ce09f960291C09D5322dC",
+    treasury: "0xE84B9045c4735241A71e5c6976695e59A5A7758c",
+    creatorBps: 6500,
+  },
+  notes:
+    "Testnet only. Treasury is the owner's testnet EOA. Paid advice stays disabled " +
+    "(ADVICE_X402_ENABLED false) until the relayer is configured.",
+} as const satisfies PicklerDeployment;

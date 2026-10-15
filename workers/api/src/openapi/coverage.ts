@@ -39,7 +39,24 @@ export function assertDocumentCoverage(
       if (!operation.summary || !operation.responses || !operation.security) {
         throw new Error(`Incomplete documentation: ${method} ${path}`);
       }
-      for (const response of Object.values(operation.responses)) {
+      for (const [status, response] of Object.entries(operation.responses)) {
+        if (
+          /^3\d\d$/.test(status) &&
+          "headers" in response &&
+          response.headers?.Location &&
+          !("content" in response)
+        ) {
+          const location = response.headers.Location;
+          if (
+            !("schema" in location) ||
+            !location.schema ||
+            !("type" in location.schema) ||
+            location.schema.type !== "string"
+          ) {
+            throw new Error(`Missing redirect Location schema: ${method} ${path}`);
+          }
+          continue;
+        }
         if (!("content" in response) || !response.content?.["application/json"]?.schema) {
           throw new Error(`Missing JSON response schema: ${method} ${path}`);
         }

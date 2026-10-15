@@ -161,7 +161,7 @@ export async function start(
       env: webEnv(process.env),
     });
     const fixtureUp = await answers(
-      `http://127.0.0.1:${FIXTURE_PORT}/v1/landing`,
+      `http://127.0.0.1:${FIXTURE_PORT}/v1/marketplace/activity`,
       timeouts.fixture,
     );
     const webUp = fixtureUp && (await answers(`${BASE_URL}/`, timeouts.web));

@@ -39,7 +39,11 @@ const UNSIGNED = {
   organizationId: "sub-ana",
 };
 
-function app({ fail, custody = true }: { fail?: Error; custody?: boolean } = {}) {
+function app({
+  fail,
+  custody = true,
+  chainId = 10143,
+}: { fail?: Error; custody?: boolean; chainId?: number | null } = {}) {
   const calls: { method: string; userId: string; request?: TransferRequest; signed?: unknown }[] =
     [];
   const directory = {
@@ -94,6 +98,7 @@ function app({ fail, custody = true }: { fail?: Error; custody?: boolean } = {})
     repository: {} as ResearchRepository,
     notifyQueued: async () => {},
     wallets: { findAgentWallet: async () => null },
+    walletChainId: chainId,
     balances: { read: async () => 0 },
     ...(custody ? { custody: () => fake as never } : {}),
     authenticate: async () => ({
@@ -126,6 +131,7 @@ test("GET /wallets answers master and agents with base units as strings", async 
   const response = await f.root.request("/wallets", { headers: { Authorization: "Bearer t" } });
   assert.equal(response.status, 200);
   assert.deepEqual(await response.json(), {
+    chainId: 10143,
     master: { address: MASTER, ausdMicro: "25000000", monWei: "2000000000000000000" },
     agents: [
       {
@@ -142,6 +148,18 @@ test("GET /wallets answers master and agents with base units as strings", async 
     readAt: 1_758_542_400_000,
   });
   assert.deepEqual(f.calls, [{ method: "listWallets", userId: "user" }]);
+});
+
+test("wallets report the custody chain without selecting it from request parameters", async () => {
+  for (const chainId of [10143, 143, null]) {
+    const f = app({ chainId });
+    const response = await f.root.request("/wallets?chainId=143&network=mainnet", {
+      headers: { Authorization: "Bearer t" },
+    });
+    assert.equal(response.status, 200);
+    assert.equal((await response.json()).chainId, chainId);
+    assert.deepEqual(f.calls, [{ method: "listWallets", userId: "user" }]);
+  }
 });
 
 test("a transfer prepare passes the amount in base units: 1.5 AUSD is 1500000", async () => {

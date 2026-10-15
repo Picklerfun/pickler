@@ -85,7 +85,8 @@ export function adviceMarkets(agent: AdviceAgent): AdviceSymbol[] {
   ) {
     return [];
   }
-  return agent.config.perpl.markets.filter((symbol) => symbol === "BTC" || symbol === "ETH");
+  const markets: readonly string[] = agent.config.perpl.markets;
+  return markets.filter((symbol): symbol is AdviceSymbol => symbol === "BTC" || symbol === "ETH");
 }
 export function assertAdviceAgent(agent: AdviceAgent, symbol?: AdviceSymbol): void {
   if (!agent.published) {
@@ -123,6 +124,14 @@ export function createAdviceService(
         horizonHours: 24 as const,
         available: options.enabled && options.policy !== null && markets.length > 0,
       };
+    },
+    async admit(principal: Principal, id: string, symbol: AdviceSymbol): Promise<void> {
+      user(principal);
+      if (!options.enabled || !options.policy) {
+        throw new PilotError("ADVICE_UNAVAILABLE", "New analyses are disabled");
+      }
+      const agent = await repository.resolve(id);
+      assertAdviceAgent(agent, symbol);
     },
     async request(principal: Principal, id: string, symbol: AdviceSymbol, key: string) {
       const userId = user(principal);

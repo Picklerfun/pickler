@@ -1,0 +1,196 @@
+.action {
+  min-width: 0;
+}
+.action .button {
+  position: relative;
+  overflow: hidden;
+  height: 48px;
+  width: 100%;
+  padding: 6px 14px;
+  font-size: 16px;
+  white-space: normal;
+  transition:
+    background 240ms ease,
+    border-color 240ms ease,
+    color 240ms ease,
+    transform var(--pk-duration);
+}
+.action[data-state="preparing"] .button,
+.action[data-state="wallet"] .button,
+.action[data-state="approval"] .button,
+.action[data-state="trade"] .button,
+.action[data-state="success"] .button {
+  background: var(--pk-lime);
+  border-color: var(--pk-lime);
+  color: var(--pk-on-lime);
+}
+.action[data-state="success"] .button {
+  background: var(--pk-lime-hover);
+}
+.action[data-state="error"] .button,
+.action[data-state="error"] .button:hover,
+.action[data-state="unknown"] .button {
+  background: var(--pk-state-loss-bg);
+  border-color: var(--pk-magenta-edge);
+  color: var(--pk-state-loss-ink);
+}
+.content {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  max-width: 100%;
+  animation: trade-action-enter 240ms ease both;
+}
+.mark {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  flex: none;
+}
+.words {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+.words > span:first-child {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+  overflow: hidden;
+}
+.hint {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+  overflow: hidden;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.25;
+}
+.ring {
+  width: 19px;
+  height: 19px;
+  border: 2px solid var(--pk-on-lime);
+  border-right-color: transparent;
+  border-radius: var(--pk-radius-pill);
+  animation: trade-action-spin 800ms linear infinite;
+}
+.sweep {
+  position: absolute;
+  inset: 0;
+  background: var(--pk-on-lime);
+  opacity: 0.055;
+  transform: translateX(-100%);
+  animation: trade-action-sweep 1800ms ease-in-out infinite;
+}
+.action[data-state="wallet"] .mark {
+  animation: trade-action-wallet 1400ms ease-in-out infinite;
+}
+.action[data-state="success"] .mark {
+  border: 1px solid var(--pk-on-lime);
+  border-radius: var(--pk-radius-pill);
+  animation: trade-action-land 360ms cubic-bezier(0.2, 1.5, 0.4, 1) both;
+}
+.action[data-state="success"] .mark svg path {
+  stroke-dasharray: 30;
+  stroke-dashoffset: 30;
+  animation: trade-action-check 280ms 80ms ease-out forwards;
+}
+.announcement {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+@keyframes trade-action-enter {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes trade-action-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes trade-action-sweep {
+  to {
+    transform: translateX(100%);
+  }
+}
+@keyframes trade-action-wallet {
+  50% {
+    transform: scale(1.12);
+  }
+}
+@keyframes trade-action-land {
+  from {
+    transform: scale(0.65);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+@keyframes trade-action-check {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .action .button {
+    transition: none;
+  }
+  .content,
+  .ring,
+  .sweep,
+  .action[data-state="wallet"] .mark,
+  .action[data-state="success"] .mark,
+  .action[data-state="success"] .mark svg path {
+    animation: none;
+  }
+  .action[data-state="success"] .mark svg path {
+    stroke-dashoffset: 0;
+  }
+  .sweep {
+    display: none;
+  }
+}
+
+.failure {
+  margin-top: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--pk-magenta-edge);
+  border-radius: var(--pk-radius-lg);
+  background: var(--pk-state-loss-bg);
+  color: var(--pk-state-loss-ink);
+  font-size: 13px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.failure summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.failure summary:focus-visible {
+  outline: 2px solid var(--pk-focus);
+  outline-offset: 3px;
+}
+.failure p {
+  margin: 8px 0;
+}
+.failure small {
+  display: block;
+}

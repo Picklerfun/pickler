@@ -1,6 +1,16 @@
 import { decodeEventLog, type Abi } from "viem";
 
 import {
+  PicklerGraduationAdapterV4V2Abi,
+  PicklerGraduationAdapterV4V2AbiHash,
+  PicklerLiquidityLockerV2Abi,
+  PicklerLiquidityLockerV2AbiHash,
+  PicklerGraduationAdapterKuruAbi,
+  PicklerGraduationAdapterKuruAbiHash,
+  PicklerKuruLiquidityLockerAbi,
+  PicklerKuruLiquidityLockerAbiHash,
+  PicklerFeeEscrowV2Abi,
+  PicklerFeeEscrowV2AbiHash,
   PicklerBondingCurveAbi,
   PicklerBondingCurveAbiHash,
   PicklerFeeEscrowAbi,
@@ -28,6 +38,20 @@ import type { LogDecoder } from "./launch-indexer.js";
  * it is how that gap stops being visible.
  */
 const SOURCES: readonly { abi: Abi; abiHash: string }[] = [
+  {
+    abi: PicklerGraduationAdapterV4V2Abi as unknown as Abi,
+    abiHash: PicklerGraduationAdapterV4V2AbiHash,
+  },
+  { abi: PicklerLiquidityLockerV2Abi as unknown as Abi, abiHash: PicklerLiquidityLockerV2AbiHash },
+  {
+    abi: PicklerGraduationAdapterKuruAbi as unknown as Abi,
+    abiHash: PicklerGraduationAdapterKuruAbiHash,
+  },
+  {
+    abi: PicklerKuruLiquidityLockerAbi as unknown as Abi,
+    abiHash: PicklerKuruLiquidityLockerAbiHash,
+  },
+  { abi: PicklerFeeEscrowV2Abi as unknown as Abi, abiHash: PicklerFeeEscrowV2AbiHash },
   { abi: PicklerLaunchFactoryAbi as unknown as Abi, abiHash: PicklerLaunchFactoryAbiHash },
   { abi: PicklerBondingCurveAbi as unknown as Abi, abiHash: PicklerBondingCurveAbiHash },
   {

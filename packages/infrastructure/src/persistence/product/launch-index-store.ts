@@ -53,14 +53,19 @@ export interface ApplyBatchInput {
   blocks: readonly IndexBlockInput[];
   events: readonly IndexEventInput[];
   outbox?: readonly OutboxInput[];
+  confirmed?: boolean;
 }
 
 export class PostgresLaunchIndexStore {
   readonly pool: Pool;
+  admissionFence?: { chain: string; owner: string };
   private readonly database: NodePgDatabase;
 
-  constructor(connectionString: string, options?: DatabaseConnectionOptions) {
-    this.pool = new Pool(databasePoolConfig(connectionString, options));
+  constructor(connectionString: string | Pool, options?: DatabaseConnectionOptions) {
+    this.pool =
+      typeof connectionString === "string"
+        ? new Pool(databasePoolConfig(connectionString, options))
+        : connectionString;
     this.database = drizzle(this.pool);
   }
 
@@ -110,24 +115,75 @@ export class PostgresLaunchIndexStore {
     )[0]!;
 
     await this.database.transaction(async (tx) => {
+      await tx.execute(
+        sql`SELECT pg_advisory_xact_lock(hashtextextended(${`market:${input.chain}`},0))`,
+      );
+      if (this.admissionFence) {
+        const f = this.admissionFence;
+        const result = await tx.execute(
+          sql`SELECT 1 FROM launch.indexer_admission WHERE chain=${f.chain} AND owner=${f.owner}::uuid AND expires_at>clock_timestamp() FOR UPDATE`,
+        );
+        if (!result.rowCount) {
+          throw new Error("INDEX_LEASE_LOST");
+        }
+      }
+      // Keep the first occurrence, as the former per-row conflict updates did. Core validates
+      // range ancestry before this write; overlapping sources may replay the same stored hashes.
+      const uniqueBlocks = new Map<string, IndexBlockInput>();
       for (const block of input.blocks) {
-        await tx
-          .insert(chainBlocks)
-          .values({
+        if (!uniqueBlocks.has(block.hash)) {
+          uniqueBlocks.set(block.hash, block);
+        }
+      }
+
+      // Sparse receipt proofs may precede this stream. Reconcile competing hashes in bulk
+      // so preserving immediate publication does not add one query per historical block.
+      const canonicalBatch = JSON.stringify(
+        [...uniqueBlocks.values()].map((block) => ({
+          number: block.number.toString(),
+          hash: block.hash,
+        })),
+      );
+      await tx.execute(sql`
+        UPDATE market.chain_blocks b SET orphaned=true
+        FROM jsonb_to_recordset(${canonicalBatch}::jsonb) AS incoming(number bigint,hash text)
+        WHERE b.chain=${input.chain} AND b.number=incoming.number AND b.hash<>incoming.hash
+      `);
+      await tx.execute(sql`
+        UPDATE market.chain_events e SET orphaned=true
+        FROM jsonb_to_recordset(${canonicalBatch}::jsonb) AS incoming(number bigint,hash text)
+        WHERE e.chain=${input.chain} AND e.block_number=incoming.number AND e.block_hash<>incoming.hash
+      `);
+      await tx.execute(sql`
+        UPDATE launch.outbox o SET status='failed',last_error='CHAIN_EVENT_ORPHANED'
+        FROM market.chain_blocks b,
+          jsonb_to_recordset(${canonicalBatch}::jsonb) AS incoming(number bigint,hash text)
+        WHERE o.event_chain=${input.chain} AND o.status='pending'
+          AND b.chain=o.event_chain AND b.hash=o.event_block_hash
+          AND b.number=incoming.number AND b.orphaned
+      `);
+
+      await tx
+        .insert(chainBlocks)
+        .values(
+          [...uniqueBlocks.values()].map((block) => ({
             chain: input.chain,
             hash: block.hash,
             number: Number(block.number),
             parentHash: block.parentHash,
             blockTime: block.blockTime,
             orphaned: false,
-          })
-          .onConflictDoUpdate({
-            target: [chainBlocks.chain, chainBlocks.hash],
-            // Re-reading a block that a previous pass marked orphaned means the chain came
-            // back to it; it is canonical again.
-            set: { orphaned: false },
-          });
-      }
+            ...(input.confirmed ? { finality: "confirmed" as const } : {}),
+          })),
+        )
+        .onConflictDoUpdate({
+          target: [chainBlocks.chain, chainBlocks.hash],
+          // A branch that returns becomes canonical again, without rewriting its evidence.
+          set: {
+            orphaned: false,
+            ...(input.confirmed ? { finality: "confirmed" as const } : {}),
+          },
+        });
 
       for (const event of input.events) {
         await tx
@@ -159,6 +215,13 @@ export class PostgresLaunchIndexStore {
             set: { orphaned: false },
           });
       }
+
+      await tx.execute(sql`
+        UPDATE launch.outbox o SET status='pending',last_error=NULL
+        FROM market.chain_blocks b WHERE o.event_chain=${input.chain} AND b.chain=o.event_chain
+          AND b.hash=o.event_block_hash AND NOT b.orphaned
+          AND o.status='failed' AND o.last_error='CHAIN_EVENT_ORPHANED'
+      `);
 
       for (const message of input.outbox ?? []) {
         await tx
@@ -207,11 +270,21 @@ export class PostgresLaunchIndexStore {
    */
   async rollbackFrom(
     chain: string,
-    contract: string,
-    stream: string,
+    _contract: string,
+    _stream: string,
     rollbackToBlock: bigint,
   ): Promise<{ orphanedBlocks: number; orphanedEvents: number }> {
     return this.database.transaction(async (tx) => {
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${`market:${chain}`},0))`);
+      if (this.admissionFence) {
+        const f = this.admissionFence;
+        const result = await tx.execute(
+          sql`SELECT 1 FROM launch.indexer_admission WHERE chain=${f.chain} AND owner=${f.owner}::uuid AND expires_at>clock_timestamp() FOR UPDATE`,
+        );
+        if (!result.rowCount) {
+          throw new Error("INDEX_LEASE_LOST");
+        }
+      }
       const blocks = await tx
         .update(chainBlocks)
         .set({ orphaned: true })
@@ -250,8 +323,7 @@ export class PostgresLaunchIndexStore {
           .where(
             and(
               eq(indexerCursors.chain, chain),
-              eq(indexerCursors.contract, contract),
-              eq(indexerCursors.stream, stream),
+              gt(indexerCursors.lastBlock, Number(rollbackToBlock)),
             ),
           );
       } else {
@@ -260,8 +332,7 @@ export class PostgresLaunchIndexStore {
           .where(
             and(
               eq(indexerCursors.chain, chain),
-              eq(indexerCursors.contract, contract),
-              eq(indexerCursors.stream, stream),
+              gt(indexerCursors.lastBlock, Number(rollbackToBlock)),
             ),
           );
       }

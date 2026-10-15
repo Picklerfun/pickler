@@ -71,7 +71,7 @@ appends them to the edge as numbered rules at run time.
 
 ## Unified studio access
 
-`features/studio/access.ts` owns user-session-only research authorization and the studio directory port. Operator enablement is independent from registration. Only workspace owners administer research; permitted members read. New configurations require marketScope.
+`features/studio/access.ts` owns user-session-only research authorization and the studio directory port. Operator enablement is independent from registration. Only workspace owners administer research; permitted members read. New configurations require marketScope. `StudioDirectory.list` entries carry `advicePriceMicro` (the agent's analysis price in micro-AUSD, or null when not for sale).
 
 There is one way to create an agent: `StudioDirectory.createDraft`, a private draft created with
 the agent wallet its owner already made, funded and approved the policies of (`walletId` only — the
@@ -370,9 +370,204 @@ finality, cursor concurrency safety or projection rollback.
 visibility and job/policy/repository ports. Pending/failed jobs are requester-only; completed
 results are authenticated shared history while the agent is public. Keep financial analysis and
 provider calculations out of core. See [Agent advice](../../docs/agent-advice.md).
+`features/advice/price.ts` exports `AdvicePrice`, `formatMicroAusd` and `advicePrice`: the wire shape
+of an agent's analysis price (micro-AUSD bigint to a decimal string). `parseAusdToMicro` is the
+inverse (INVALID_INPUT beyond 6 decimals or outside `ADVICE_PRICE_MIN_MICRO`..`MAX_MICRO`, 0.10 to 100). `AgentSummary`, `AgentPersona`
+and `DirectoryAgent.agent` carry the agent `id` and its nullable `advicePrice`.
+`features/advice/x402.ts` owns the paid request of docs/specs/agent-advice-x402-v1.md §4.3 as
+amended by docs/specs/agent-advice-fee-split-v1.md (§2, §4):
+`X402_NETWORK`, `AUSD_TESTNET`, `CREATOR_BPS` (6500n), `NONCE_DERIVATION`, `adviceShares(value)`
+(the creator's floor of 65% and the rest to the protocol, always summing to `value`), the x402 v1
+wire types (`Authorization` with its 32-byte `salt`, `PaymentPayload`, `PaymentRequirements`,
+`PaymentError`), `decodePaymentHeader` (throws `X402Refusal`; a missing or malformed `salt` is
+`invalid_payment`), `encodeSettlement`, the ports `AdvicePaymentStore` (sale terms with the agent
+wallet as `payee`, payer links, payment rows; `insertPending` takes the `payee` and `settled` both
+shares) and `AdvicePaymentGateway` (`nonceFor(payee, salt)`, hashed in infrastructure; signature,
+nonce, balance, and `settle(authorization, signature, payee)` returning the hash, block and both
+shares from the receipt), `AdvicePaymentSettlement`, `SettlementRejected`,
+`SettlementUnknown` (an unknown outcome, with `txHash` once broadcast), `UnrecordedSettlement`,
+`PENDING_ABANDON_GRACE_SECONDS` and `createPaidAdvice`. Its deps include `splitter`, the
+`PicklerAdviceSplitter` address: the 402's `payTo` is the splitter, `maxAmountRequired` the full
+price, and `extra` adds `primaryType: "ReceiveWithAuthorization"`, `payee` (the agent wallet),
+`creatorBps: 6500`, `protocolBps: 3500` and `nonceDerivation`. Its order is fixed: user principal → replay (returned even while advice is
+disabled, as in the service; another symbol is `CONFLICT`) → `admit` (the service's admission
+checks without enqueueing) → the key's payment row → sale terms
+(`NOT_FOUND`/`ADVICE_NOT_FOR_SALE`) → 402 → static checks (signature exactly 65 bytes; `to` must
+be the splitter, so an authorization to the agent wallet is `wrong_recipient`) → payee binding
+(`gateway.nonceFor(payee, salt)` must equal the authorization's nonce, ignoring hex case; otherwise,
+or when `nonceFor` throws on a malformed stored payee, `invalid_payment` before the payer link, the
+signature or any settlement) → payer
+link → signature → nonce → balance → pending row → settle → enqueue. A replay or a settled row
+never settles again; a `refund_owed` row refuses with `invalid_payment`. `settle` throws
+`SettlementRejected` only when the authorization provably never executed (simulation revert,
+reverted receipt): the row becomes `failed` and the key may pay again. Any other throw is an
+unknown outcome: the row stays `pending` and the answer is 402 `settlement_failed`. That outcome,
+and a `store.settled` that throws after a successful settlement (rethrown), call the optional
+`reportUnrecordedSettlement` dep with the reason, payment id, user, public agent, key, payer, nonce
+and the tx hash when known (from `SettlementUnknown.txHash` or the receipt), never the signature;
+the API logs it with `console.error` (`reportUnrecordedSettlement` in `workers/api/src/container.ts`). A `pending`
+row refuses with `invalid_payment` until `validBefore + PENDING_ABANDON_GRACE_SECONDS` (120 s, server
+clock) has passed and a single `nonceUsed(payer, nonce)` read is false; then it is marked `failed`
+(`expired_unsettled`) and the flow continues. The grace absorbs a server clock ahead of block time
+and a lagging RPC. An enqueue failure
+after settlement leaves the row `settled` without a job and rethrows, so the next request with the
+same key reuses that payment (D7); core does not call `refundOwed` in phase 1. Core stays pure:
+chain and database live behind the two ports. The API Worker composes it per request only behind
+`ADVICE_X402_ENABLED` (`paidAdviceFrom` in `workers/api/src/container.ts`).
 
 Advice pricing v2 pins the reviewed OpenAI-compatible forecast base URL and model in each job. Preserve v1 policies and their direct-DeepSeek meaning; provider changes require a new policy, never a historical rewrite.
 
 ## Studio strategy configuration
 
-`AgentConfig.perpsStrategy` and `SetupPatch.perpsStrategy` select rules, deepseek, jev or combined at product policy version 2.0.0. Missing selection resolves combined without enabling execution. Core owns selection validation and setup history, never strategy execution. Rules reject all free-text entry, exit and prohibition conditions; an empty rules brief is allowed. AI briefs still require entry conditions.
+`AgentConfig.perpsStrategy` and `SetupPatch.perpsStrategy` select rules, deepseek, jev or combined at product policy version 2.0.0 or 2.1.0. Missing selection resolves combined without enabling execution. Core owns selection validation and setup history, never strategy execution. Rules reject all free-text entry, exit and prohibition conditions; an empty rules brief is allowed. AI briefs still require entry conditions.
+
+## AI credits
+
+`features/ai-credits/index.ts` exports exact integer unit validation, immutable pricing contracts, account/purchase/operation/ledger ports and the injected trusted payment service. One credit is 1,000,000 units. No provider SDK, database or checkout belongs here. See [AI credits](../../docs/ai-credits.md).
+
+Studio creator-access status uses the shared authenticated user identity. Submission now belongs
+to the public `/create` application; the old Studio submission operation is retired.
+`features/applications/application/review-applications.ts` requires server-verified super-admin
+status to list or decide applications. The repository records audit fields and enables research
+access by email on invitation; it sends no email and grants no custody permissions.
+`features/studio/access-requests.ts` retains private status and the historical request inbox.
+Persistence and HTTP remain adapters.
+
+## Dynamic Studio markets
+
+Core owns portable catalogue/selection admission and configuration v1/v2. `prepareDraft` requires
+explicit markets and a trusted network; setup market edits preserve strategy id, upgrade to 2.1.0
+and reuse configuration transactions. Advice remains BTC/ETH. Core never fetches Perpl or executes
+strategies.
+
+See [agent-selected Perpl markets](../../docs/studio-perpl-markets.md).
+
+## Studio X OAuth
+
+`features/studio/x-oauth.ts` owns read-only PKCE linking, same-account reconnect, current owner
+rechecks, explicit timeline reads and renewal/disconnect policy through injected ports. No provider
+SDK or token encryption lives in core. Publication requires `X_CONNECTION_REQUIRED` to be resolved
+through current OAuth, never historical post evidence. See [Studio X OAuth](../../docs/studio-x-oauth.md).
+
+## X preview cost controls
+
+X post preview policy exports a five-resource page size and one attempt per agent per UTC day. Cursor requests are refused before any provider call. Quota is reserved before token renewal; exhausted or disabled reads cannot trigger transport. This is an X cost-control ceiling, separate from AI credits.
+
+## X profile presentation
+
+OAuth identities may carry optional displayName/profileImageUrl decoration from the existing identity verification. State reads return the stored snapshot; decoration never grants access or triggers provider reads.
+
+## Price history timestamps
+
+MarketDetail optionally carries trailTimestamps aligned with the existing numeric trail. Candle points identify their closing instant; the final mark identifies its board observation. Unknown timestamps remain absent/null and do not change any financial policy.
+
+`MarketDetail.priceHistory` optionally exposes up to thirty days of paired hourly prices and UTC
+closing times plus the observed mark. The existing `trail` retains its 24h meaning. This is public
+market history only; no strategy, horizon or financial policy changes with the chart's view.
+
+## Agent token admission
+
+`features/launch/token-launch.ts` exports `createTokenLaunchService`, business-owned launch scope,
+context, draft/preset/authorization contracts, `TokenLaunchRepository`, `TokenGrantIssuer` and
+`TokenLaunchError` through the package root. Admission requires enabled creator access, workspace
+ownership, actual publication, a registered master wallet and no confirmed or pending token on the
+server-selected chain. `AGENT_TOKEN_TOTAL_SUPPLY` fixes all new launches to exactly 21 million
+18-decimal tokens. The issuer preset must match this supply and fully allocate it before any
+signature; it is checked again before recording. Owner-only state includes the registered master
+address, which also receives creator fees. Historical projections remain readable.
+Drafts allow private agents, use optimistic versions and cannot change during
+an active grant. Five-minute authorizations are idempotent and bind server-owned parameters.
+`features/launch/domain/token-economics.ts` exports `tokenReferenceEconomics` and its version-2
+business contract. The host supplies reviewed six-decimal AUSD metadata; core derives reference
+reserves, normalized prices, FDVs and net backing using the pure curve functions exported at the
+package root. Legacy buy vectors and new buy/sell/exact-output/fee/price vectors match Solidity.
+Owner state may include this reference independently of `TokenGrantIssuer`; it never grants launch
+availability or supplies an operational preset. No SDK, HTTP object or signer key belongs in core.
+Ordinary composition omits the issuer and refuses authorization. See [the token guide](../../docs/agent-token-preview.md) and `test/token-launch.test.ts`.
+
+## Durable token operations
+
+`features/launch/token-operations.ts` owns owner-only enumerated actions, short intent reservation,
+one-time signing/submission claims, exact signed-byte recovery and explicit canonical receipt
+reconciliation. Its injected driver is infrastructure-owned; providers never execute under a
+repository transaction. Definitive `InvalidSignedActivityError`/`SignedActivityRejectedError`
+refusals end the signing claim as `SIGNATURE_REJECTED`; transport uncertainty remains `unknown`
+and cannot issue a second signing request. A finalized transaction is distinct from an attributed token. See
+[Token operations](../../docs/market/token-launch-operations.md).
+
+`TokenPreparationError` carries reviewed unsent failure codes across injected adapters. Known
+metadata/admission transport failures and driver preparation failures retain a failed intent and
+return one operation result. Unknown provider details become `PREPARATION_FAILED`; permission,
+context and optimistic-version errors still reject. A failed preparation never signs or sends,
+and reusing its key never repeats external work.
+
+## Versioned token venue data
+
+Token state may include a server-resolved planned venue/native LP fee and confirmed V4 pool ID,
+PositionManager/NFT identity. Historical Kuru data remains distinct. Prepared private operations
+may carry a configuration hash that the infrastructure driver fences again before signing and
+submission. These additive contracts carry no provider objects or credentials; business admission
+and financial math remain unchanged. See [the V4 guide](../../docs/market/uniswap-v4-testnet-integration.md).
+
+## Owner curve trading
+
+Token operations include buy/sell and separate exact-amount approvals. Core validates positive uint256
+atomic amounts and explicit 1–100 bps tolerance, freezes them in the private intent and binds them
+to idempotency. Minimum output rounds up so tolerance never widens. Known preparation refusals
+return an unsent failed operation; signing and sending still require fresh ownership/context checks.
+A changed confirmed token identity blocks submission. No automatic retries or new model actions.
+
+## Public curve trading
+
+`features/launch/public-token-trading.ts` exports portable visitor input, unsigned transaction,
+preparation and driver contracts through the package root. Admission requires the independent
+host gate and a confirmed published testnet token; buyers need no creator privileges. Exact
+amount/tolerance validation reuses the owner curve minimum policy. No SDK, HTTP request, wallet
+key, RPC or custody operation belongs in this use case. See
+[Public token trading](../../docs/market/public-token-trading.md).
+
+## Expired unidentified launch recovery
+
+Explicit operation status may resolve an expired launch with no activity, signed bytes or hash
+through the injected read-only driver. The immutable factory's complete five-minute grant event
+window and a stable confirmed block prove absence; a matching event recovers its transaction hash.
+Recovery uses a fresh owner transaction and operation version fence. Private resolution evidence
+is retained in the intent, never exposed as a receipt or token attribution. Other actions and
+uncertain broadcasts cannot use this release. Failed/incomplete evidence keeps the original state.
+No recovery signs, sends or automatically prepares another launch.
+
+## Public token discovery
+
+The agent directory may carry a nullable `launchedToken` summary on the configured network.
+The adapter admits only canonical confirmed launches of published agents. This is discovery
+data, not a trading permission; public preparation revalidates the token and on-chain state.
+
+## App launch publication
+
+`TokenOperationDriver.publishLaunch` is an injected canonical-evidence port. For a launch,
+`createTokenOperationService.status` invokes it before returning a newly finalized operation;
+publication failure preserves the recoverable operation and never signs or sends again. A stored
+finalized launch can invoke the same idempotent port to repair earlier missing attribution. Other
+actions do not publish tokens. Provider, decoding and database implementation remain infrastructure-owned.
+
+## Public token market arithmetic
+
+`features/launch/domain/token-market.ts` exports informational WAD trade prices with buy/sell
+fees removed, exact FDV and committed-reference curve snapshots. These are presentation reads,
+never executable quotes. Core retains integer arithmetic and rounding; the web formats prepared
+values only. Unknown presets must not be reinterpreted as the current reference profile.
+
+## Public trade receipt confirmation
+
+The public trading use case exposes `confirm(handle, { wallet, txHash })` through the optional
+injected driver port. It requires the independent trading gate, validates the wallet/hash and
+resolves the published confirmed testnet token before delegation. Confirmation never prepares,
+signs or broadcasts a transaction. Provider evidence and persistence stay in infrastructure.
+
+`tokenPriceMovement` compares the latest two ordered canonical observations with integer-only
+basis-point rounding. It returns direction separately so sub-basis-point moves never become flat.
+Missing or nonpositive observations return null; this metric is not a 24-hour return or quote.
+
+Public trading also exposes a read-only `quote` operation through its injected driver. It applies
+the same published-testnet/input admission as preparation and returns quantities and canonical
+identity without a transaction. An estimate does not admit or execute a later swap.

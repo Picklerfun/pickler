@@ -23,6 +23,7 @@ import { copyWeb, webDerived, type VoiceKey } from "./create.js";
 /** What the setup screens can change; an absent field is left as it is. */
 export interface SetupPatch {
   perpsStrategy?: AgentConfig["perpsStrategy"];
+  markets?: readonly string[];
   brief?: {
     thesis: string;
     entersWhen: readonly string[];
@@ -60,6 +61,13 @@ export function reviseSetup(config: AgentConfig, patch: SetupPatch): AgentConfig
   const next = structuredClone(config);
   if (patch.perpsStrategy) {
     next.perpsStrategy = { ...patch.perpsStrategy };
+  }
+  if (patch.markets !== undefined) {
+    if (!next.perpl) {
+      throw new PilotError("NOT_A_PERPL_AGENT", "Configure Perpl first");
+    }
+    next.perpl = { ...next.perpl, version: 2, markets: [...patch.markets] };
+    next.perpsStrategy = { id: next.perpsStrategy?.id ?? "combined", version: "2.1.0" };
   }
   if (patch.brief) {
     const brief = normalizeBrief({

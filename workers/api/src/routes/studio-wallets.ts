@@ -179,6 +179,7 @@ type WalletCustody = Pick<
 export function studioWalletRoutes(deps: {
   access: ReturnType<typeof createStudioAccess>;
   custody: (requestId: string) => WalletCustody;
+  chainId: number | null;
   transfers?: { list(userId: string): Promise<TransferLedgerEntry[]> };
 }) {
   const api = new Hono<AppEnv>();
@@ -191,7 +192,7 @@ export function studioWalletRoutes(deps: {
       errors: dto.studioErrorSchema,
       errorStatuses: [400, 401, 403, 404, 409, 500, 502, 503],
       description:
-        "Verified user and workspace ownership required. Transfers require manage rights and an approved passkey activity.",
+        "Verified user and workspace ownership required. chainId identifies the deployment-selected network for all wallet balances and transfers (10143: Monad Testnet; 143: Monad mainnet; null: unavailable). This endpoint does not select a network. Transfers require manage rights and an approved passkey activity.",
       response: dto.walletsResponseSchema,
     }),
     async (c) => {
@@ -203,6 +204,7 @@ export function studioWalletRoutes(deps: {
       );
       return c.json(
         walletsResponseSchema.parse({
+          chainId: deps.chainId,
           master: { address: listed.master.address, ...baseUnitStrings(listed.master) },
           agents: listed.agents.map((wallet) => ({
             walletId: wallet.walletId,

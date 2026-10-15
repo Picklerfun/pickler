@@ -1,7 +1,17 @@
 "use client";
+import { perplReadTypedData, verifyPerplReadSignature } from "./perpl-read-authorization";
+import { sendInjectedTokenTransaction } from "./public-token-transaction";
+import {
+  pinInjectedProvider,
+  injectedProviderId,
+  forgetInjectedWallet,
+} from "./injected-providers";
+import { WalletRequestError } from "./wallet-request-error";
 
 import {
   getProvider,
+  waitForProvider,
+  boundedWalletRead,
   readAccounts,
   readBalance,
   readChainId,
@@ -23,16 +33,23 @@ import type { SignerAccount, SignerAdapter } from "./signer";
  * so it is the only one that implements `switchChain` and `subscribe`.
  */
 
-async function read(provider: Eip1193Provider, accounts: string[]): Promise<SignerAccount | null> {
+async function read(
+  provider: Eip1193Provider,
+  accounts: string[],
+  signal?: AbortSignal,
+): Promise<SignerAccount | null> {
   const address = accounts[0];
   if (!address) {
     return null;
   }
-  return {
-    address,
-    chainId: await readChainId(provider),
-    balance: await readBalance(provider, address),
-  };
+  const [chainId, balance] = await Promise.all([
+    boundedWalletRead(readChainId(provider), null, signal),
+    boundedWalletRead(readBalance(provider, address), null, signal, 1_500),
+  ]);
+  if (signal?.aborted || chainId === null || !Number.isSafeInteger(chainId)) {
+    return null;
+  }
+  return { address, chainId, balance, providerId: injectedProviderId(provider) };
 }
 
 export const injectedSigner: SignerAdapter = {
@@ -41,11 +58,14 @@ export const injectedSigner: SignerAdapter = {
   unavailableReason: () =>
     getProvider() === null ? "No browser wallet is installed on this device." : null,
 
-  resume: async () => {
-    const provider = getProvider();
-    // `eth_accounts` never prompts: someone who connected yesterday is picked back up, and someone
-    // who never did is left alone.
-    return provider ? read(provider, await readAccounts(provider)) : null;
+  resume: async (signal) => {
+    const provider = await waitForProvider(signal);
+    if (!provider || signal?.aborted) {
+      return null;
+    }
+    pinInjectedProvider(provider);
+    const accounts = await boundedWalletRead(readAccounts(provider), [], signal);
+    return read(provider, accounts, signal);
   },
 
   connect: async () => {
@@ -53,6 +73,7 @@ export const injectedSigner: SignerAdapter = {
     if (!provider) {
       return null;
     }
+    pinInjectedProvider(provider);
     return read(provider, await requestAccounts(provider));
   },
 
@@ -75,8 +96,48 @@ export const injectedSigner: SignerAdapter = {
     return { address, session: await join(message, signature, token) };
   },
 
+  signPerplReadKey: async (payload, input) => {
+    const provider = getProvider();
+    const typed = await perplReadTypedData(payload, input);
+    if (
+      !provider ||
+      (await readAccounts(provider))[0]?.toLowerCase() !== input.wallet.toLowerCase() ||
+      (await readChainId(provider)) !== 10143
+    ) {
+      throw new Error("Wallet or network changed. Switch to Monad testnet.");
+    }
+    let signature: unknown;
+    try {
+      signature = await provider.request({
+        method: "eth_signTypedData_v4",
+        params: [
+          input.wallet,
+          JSON.stringify({ ...typed, types: payload.typedData.types }, (_key, value: unknown) =>
+            typeof value === "bigint" ? value.toString() : value,
+          ),
+        ],
+      });
+    } catch (error) {
+      throw new WalletRequestError(error, "eth_signTypedData_v4");
+    }
+    if (
+      provider !== getProvider() ||
+      (await readAccounts(provider))[0]?.toLowerCase() !== input.wallet.toLowerCase()
+    ) {
+      throw new Error("Wallet changed. No read access was enrolled.");
+    }
+    return verifyPerplReadSignature(payload, input, String(signature));
+  },
+  sendTokenTransaction: async (prepared, wallet, token) => {
+    const provider = getProvider();
+    if (!provider) {
+      throw new Error("Browser wallet unavailable.");
+    }
+    return sendInjectedTokenTransaction(provider, prepared, wallet, token);
+  },
   disconnect: async () => {
     const provider = getProvider();
+    forgetInjectedWallet();
     if (provider) {
       await revokeAccess(provider);
     }
@@ -87,13 +148,23 @@ export const injectedSigner: SignerAdapter = {
     if (!provider) {
       return () => {};
     }
-    const settle = (accounts: string[]) => void read(provider, accounts).then(onChange);
-    const onAccounts = (...args: never[]) => settle((args[0] ?? []) as string[]);
-    const onChain = () => void readAccounts(provider).then(settle);
+    let revision = 0;
+    let live = true;
+    const settle = async (accounts?: string[]) => {
+      const mine = ++revision;
+      const selected = accounts ?? (await boundedWalletRead(readAccounts(provider), []));
+      const account = await read(provider, selected);
+      if (live && mine === revision) {
+        onChange(account);
+      }
+    };
+    const onAccounts = (...args: never[]) => void settle((args[0] ?? []) as string[]);
+    const onChain = () => void settle();
 
     provider.on?.("accountsChanged", onAccounts);
     provider.on?.("chainChanged", onChain);
     return () => {
+      live = false;
       provider.removeListener?.("accountsChanged", onAccounts);
       provider.removeListener?.("chainChanged", onChain);
     };
@@ -101,9 +172,10 @@ export const injectedSigner: SignerAdapter = {
 
   switchChain: async () => {
     const provider = getProvider();
-    if (!provider || !(await switchToTarget(provider))) {
-      return null;
+    if (!provider) {
+      throw new WalletRequestError({ code: 4100 }, "wallet_switchEthereumChain");
     }
+    await switchToTarget(provider);
     return read(provider, await readAccounts(provider));
   },
 };

@@ -24,3 +24,19 @@ test("fresh controlled stacks start before application schemas exist", async () 
     await rm(directory, { recursive: true });
   }
 });
+
+test("alternate fixed port slot preserves an existing controlled stack", async () => {
+  const script = fileURLToPath(new URL("./prepare-controlled-stack.mjs", import.meta.url));
+  const directory = execFileSync(process.execPath, [script, "prepare", "alternate"], {
+    encoding: "utf8",
+  }).trim();
+  try {
+    const config = await readFile(join(directory, "supabase/config.toml"), "utf8");
+    const marker = JSON.parse(await readFile(join(directory, "controlled-stack.json"), "utf8"));
+    assert.equal(marker.portSlot, 3);
+    assert.match(config, /^port = 55532$/m);
+    assert.match(config, /^port = 55531$/m);
+  } finally {
+    await rm(directory, { recursive: true });
+  }
+});

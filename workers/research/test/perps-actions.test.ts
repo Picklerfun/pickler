@@ -128,6 +128,7 @@ async function setup(t: TestContext) {
   await studio.onboard(user);
   const access = (await studio.access(user, null))!;
   const base = prepareDraft({
+    markets: ["BTC", "ETH"],
     name: "Trader",
     handle: "trader",
     voice: "analyst",
@@ -149,6 +150,7 @@ async function setup(t: TestContext) {
     const full: AgentConfig = {
       ...base,
       perpsStrategy: { id: "deepseek", version: "2.0.0" },
+      perpl: { version: 1, network: "testnet", markets: ["BTC", "ETH"] },
       brief: {
         ...base.brief!,
         entersWhen: ["Trend up"],
@@ -783,3 +785,26 @@ function runtimeFor(f: Awaited<ReturnType<typeof setup>>) {
     check: async () => assert.fail("The Cron runs no check here"),
   };
 }
+
+test("a removed market cannot approve exposure; its held position remains closeable", async (t) => {
+  const f = await setup(t);
+  const agent = await f.agent(APPROVE_MODE);
+  await f.check(agent.id);
+  const [proposal] = await f.store.listProposals(agent.id);
+
+  await agent.update({ perpl: { version: 1, network: "testnet", markets: ["ETH"] } });
+  const refused = await f.act(agent.id, "approve", { proposalId: proposal!.id });
+  assert.equal(refused.after.lastError, "MARKET_NOT_ALLOWED");
+  assert.equal(open(await f.paper.view(agent.scope)).length, 0);
+
+  await agent.update({ perpl: { version: 1, network: "testnet", markets: ["BTC", "ETH"] } });
+  await f.act(agent.id, "approve", { proposalId: proposal!.id });
+  const [position] = open(await f.paper.view(agent.scope));
+  assert.ok(position);
+  await agent.update({ perpl: { version: 1, network: "testnet", markets: ["ETH"] } });
+
+  const closed = await f.act(agent.id, "close", { positionId: position.id }, OFF);
+  assert.equal(closed.after.status, "done");
+  assert.equal(open(await f.paper.view(agent.scope)).length, 0);
+  assert.equal((await f.paper.view(agent.scope)).account.positions[0].closedAt, f.now());
+});

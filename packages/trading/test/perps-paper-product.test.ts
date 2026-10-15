@@ -12,6 +12,7 @@ import {
   marginOpenedSince,
   paperOpenReserve,
   paperRisk,
+  simulatePerpsFill,
   productFeeReserve,
   type PerpsPaperAttempt,
   type PerpsPaperExits,
@@ -314,4 +315,41 @@ test("marginOpenedSince counts positions opened since, and each size-up on its o
   assert.equal(marginOpenedSince(positions, day), "14");
   assert.equal(marginOpenedSince(positions, day - 86_400_000), "24");
   assert.equal(marginOpenedSince(positions, day + 120_000), "0");
+});
+
+test("dynamic product fills retain identity, use unchanged exact math, and close closed markets", () => {
+  const frame = adviceFixture().evidence.frame;
+  frame.snapshot.market.symbol = "SOL";
+  frame.snapshot.market.marketId = 27;
+  frame.snapshot.market.perpetualId = 127;
+  const account = initialPaperAccount(product, 1, now, "100");
+  const intent = { ...open, symbol: "SOL", notional: "500" };
+  const actual = simulatePerpsFill(account, intent, frame, now);
+  // Five decimal places are not assumed: the fixture's four-place size step is authoritative.
+  assert.equal(actual.quantity, "0.0082");
+  assert.equal(actual.notional, "492.0082");
+  assert.equal(actual.fee, "0.098402");
+  assert.equal(actual.market!.marketId, 27);
+  const applied = applyPaperFill(account, pending(intent, "sol-open"), actual, now);
+  assert.equal(applied.account.positions[0]!.market!.perpetualId, 127);
+  frame.snapshot.market.open = false;
+  const close = {
+    kind: "close" as const,
+    symbol: "SOL",
+    side: "long" as const,
+    notional: "500",
+    feeReserve: "1",
+  };
+  const closing = simulatePerpsFill(applied.account, close, frame, now);
+  const closed = applyPaperFill(applied.account, pending(close, "sol-close"), closing, now);
+  assert.ok(closed.account.positions[0]!.closedAt !== null);
+  assert.throws(() => simulatePerpsFill(account, intent, frame, now), {
+    code: "INVALID_MARKET_DATA",
+  });
+  const wrong = structuredClone(frame);
+  wrong.snapshot.market.marketId = 999;
+  wrong.book.market.marketId = 999;
+  assert.throws(() => simulatePerpsFill(applied.account, close, wrong, now), {
+    code: "PERPL_MARKET_IDENTITY",
+  });
 });

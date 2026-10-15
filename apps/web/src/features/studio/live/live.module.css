@@ -235,20 +235,6 @@
   .stripLog {
     padding: 4px 16px 12px 33px;
   }
-  .help {
-    flex-direction: row;
-    padding-top: 0;
-    padding-left: 12px;
-    border-top: none;
-    border-left: 1px solid var(--pk-rule);
-  }
-  .helpLink,
-  .profileLink {
-    white-space: nowrap;
-  }
-  .profileLink {
-    margin-top: 0;
-  }
   .controls {
     align-items: flex-start;
   }

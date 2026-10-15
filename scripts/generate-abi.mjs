@@ -24,6 +24,8 @@ const outputDirectory = join(root, "packages/chain/src/abi");
  * consumers — the indexer, the API, a third-party integrator — need to decode or call it.
  */
 const CONTRACTS = [
+  "IPerplExchange",
+  "IPerplRead",
   "PicklerCurveMath",
   "PicklerPreset",
   "PicklerAgentToken",
@@ -31,8 +33,23 @@ const CONTRACTS = [
   "PicklerBondingCurve",
   "PicklerCurveDeployer",
   "PicklerGraduationAdapterV4",
+  "PicklerGraduationAdapterV4V2",
+  "PicklerCurveDeployerV4V2",
+  "PicklerLiquidityLockerV2",
+  "IUniswapV4Read",
+  "IUniswapV4Router",
   "PicklerLiquidityLocker",
   "PicklerFeeEscrow",
+  "PicklerFeeEscrowV2",
+  "PicklerAdviceSplitter",
+  "PicklerCurveDeployerKuru",
+  "PicklerGraduationAdapterKuru",
+  "PicklerKuruLiquidityLocker",
+  "PicklerKuruPositionVault",
+  "PicklerKuruPolicy",
+  "IKuruAccountCore",
+  "IKuruSpotRouter",
+  "IKuruOrderBook",
 ];
 
 rmSync(outputDirectory, { recursive: true, force: true });
@@ -41,7 +58,8 @@ mkdirSync(outputDirectory, { recursive: true });
 const exports = [];
 
 for (const name of CONTRACTS) {
-  const artifactPath = join(root, "contracts/out", `${name}.sol`, `${name}.json`);
+  const sourceName = name.startsWith("IKuru") ? "IKuruPassive" : name;
+  const artifactPath = join(root, "contracts/out", `${sourceName}.sol`, `${name}.json`);
 
   let artifact;
   try {

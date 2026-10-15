@@ -1,3 +1,6 @@
+import { perplDashboardRoutes, type PerplDashboardServices } from "./routes/perpl-dashboard";
+import type { createPublicTokenTrading } from "@pickler/core";
+import { studioXCallbackRoutes } from "./routes/studio-x";
 import { operation } from "./openapi/operation";
 import { apiDocument } from "./openapi/document";
 import { envelopeSchema, jsonObjectSchema } from "@pickler/api-schema";
@@ -28,6 +31,7 @@ import { adviceRoutes, type AdviceRouteServices } from "./routes/advice";
 
 export interface Services extends AgentRouteServices, ProfileRouteServices {
   authenticate: Authenticate;
+  perplDashboard?: PerplDashboardServices;
   advice?: AdviceRouteServices;
   studio?: StudioServices;
   growth?: ReturnType<typeof createGrowthServices>;
@@ -38,6 +42,8 @@ export interface Services extends AgentRouteServices, ProfileRouteServices {
 
   /** Absent until a database binding exists; the routes are not mounted without one. */
   launches?: PostgresLaunchReadModel;
+  publicTokenTrading?: ReturnType<typeof createPublicTokenTrading>;
+  tokenAssets?: { read(file: string): Promise<{ body: string; contentType: string } | null> };
 }
 
 /** Builds the HTTP app from services, so tests can inject fakes without bindings. */
@@ -57,15 +63,55 @@ export function createApp(services: Services) {
     }),
     (c) => c.json(successEnvelope({ status: "ok" }, c.req.path)),
   );
+  app.get(
+    "/v1/token-assets/:file",
+    operation("tokenImmutableAsset", {
+      response: z.string(),
+      responseContent: {
+        "application/json": z.object({
+          version: z.literal(1),
+          name: z.string(),
+          symbol: z.string(),
+          description: z.string(),
+          image: z.string().url(),
+          attributes: z.object({ accent: z.string(), pattern: z.number().int() }),
+        }),
+        "image/svg+xml": z.string(),
+      },
+      security: "public",
+      errorStatuses: [404, 500, 503],
+      description:
+        "Read-only content-addressed public token JSON/static SVG. Integrity is checked against the path hash. No public write operation exists.",
+    }),
+    async (c) => {
+      if (!services.tokenAssets) {
+        throw new HttpError(503, "Token assets unavailable");
+      }
+      const result = await services.tokenAssets.read(c.req.param("file"));
+      if (!result) {
+        throw new HttpError(404, "Token asset not found");
+      }
+      return c.body(result.body, 200, {
+        "Content-Type": result.contentType,
+        "Cache-Control": "public, max-age=31536000, immutable",
+        "X-Content-Type-Options": "nosniff",
+        "Content-Security-Policy": "default-src 'none'; sandbox",
+      });
+    },
+  );
   app.route("/v1/auth", authRoutes(services.authenticate));
   app.route("/v1/agents", agentRoutes(services));
   app.route("/v1/handles", handleRoutes(services));
   app.route("/v1/profile", profileRoutes(services));
 
+  if (services.perplDashboard) {
+    app.route("/v1/perpl", perplDashboardRoutes(services.perplDashboard));
+  }
   if (services.advice) {
     app.route("/v1/agent-advice", adviceRoutes(services.advice));
   }
   if (services.studio) {
+    app.route("/v1/studio/x", studioXCallbackRoutes(services.studio));
     app.route("/v1/studio", studioRoutes(services.studio));
     app.route("/v1/console", studioRoutes(services.studio));
   }
@@ -81,8 +127,8 @@ export function createApp(services: Services) {
   if (services.growth) {
     app.route("/v1", growthRoutes(services.growth));
     // Under its own prefix: /v1/agents is the authenticated workspace list ported from Relayer.
-    app.route("/v1/marketplace", marketplaceRoutes(services.growth));
-    app.route("/v1/demo", marketplaceRoutes(services.growth));
+    app.route("/v1/marketplace", marketplaceRoutes(services.growth, services.publicTokenTrading));
+    app.route("/v1/demo", marketplaceRoutes(services.growth, services.publicTokenTrading));
   }
   app.get(
     "/v1/openapi.json",

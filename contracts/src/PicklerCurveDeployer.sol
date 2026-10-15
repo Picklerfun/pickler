@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
 import {ICurveDeployer} from "./interfaces/ICurveDeployer.sol";
@@ -29,7 +29,11 @@ contract PicklerCurveDeployer is ICurveDeployer {
     }
 
     /// @inheritdoc ICurveDeployer
-    function deployCurve(address token, PicklerPreset.LaunchPreset calldata preset) external returns (address curve) {
+    function deployCurve(address token, PicklerPreset.LaunchPreset calldata preset)
+        external
+        virtual
+        returns (address curve)
+    {
         PicklerBondingCurve deployed = new PicklerBondingCurve(preset, graduationAdapter, feeEscrow);
         deployed.initialize(token);
 

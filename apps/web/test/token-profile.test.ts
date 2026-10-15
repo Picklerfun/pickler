@@ -6,6 +6,8 @@ import { hasToken } from "../src/features/agents/lib/token-profile";
 // A token page is the token's. The guard is the one question the token routes ask before drawing.
 
 const profile = (ticker: string | null, slug: string | null): AgentProfileDto => ({
+  id: "00000000-0000-0000-0000-000000000001",
+  advicePrice: null,
   slug,
   name: "Halftime",
   handle: "halftime",

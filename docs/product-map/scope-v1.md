@@ -1,5 +1,10 @@
 # Pickler scope v1: the master map
 
+> Historical X verification and posting design: the post-code routes, bearer-token setup,
+> optional posting and Skip X described below are superseded by [Studio X OAuth](../studio-x-oauth.md).
+> Use that canonical guide for the current read-only routes, callback, dedicated runtime secrets
+> and disabled-by-default resource policy. These older sections are retained as historical evidence.
+
 Status: internal draft, 2026-09-30; refreshed after the round-2 and round-3 spec edits (conventions
 decisions 18–24 and their amendments; verified against the spec text at `bf940cf`). Written for the owner and
 for the engineers and agents who build Pickler next. It summarises; the specs decide. Where this file and a spec disagree, the spec wins and

@@ -1,0 +1,254 @@
+<!doctype html>
+<!--
+  Plantilla one-pager para fixes / features / refactors de un solo PR.
+
+  F2 update: usa _styles.css externo + campos contenteditable + botón
+  "Export final HTML" que descarga el archivo con los valores resueltos
+  a texto fijo.
+
+  Flujo:
+  1. Abre este archivo en el browser (file:// directo).
+  2. Click sobre cualquier campo punteado para editar inline.
+  3. Cuando quede listo, presiona "Descargar HTML final".
+  4. Renombra el archivo descargado a YYYY-MM-DD-<slug>.html y mueve a
+     docs/mobile/overview/dev/.
+  5. Agrega entry al manifest con types: ['fix'] | ['feature'] | ['refactor'].
+-->
+<html lang="es-MX">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TestFlight build 12 · primer build desde el monorepo · Pickler</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../_styles.css">
+<style>
+  /* Overrides locales del dev one-pager */
+  .wrap { max-width: 820px; }
+  header.hero {
+    padding: 16px 0 32px;
+    background: linear-gradient(160deg, var(--brand-soft) 0%, transparent 60%);
+  }
+  h1 {
+    font-size: clamp(26px, 4vw, 38px);
+    line-height: 1.1; margin: 14px 0 10px;
+    letter-spacing: -0.02em; font-weight: 800;
+  }
+  .lede {
+    font-size: clamp(15px, 1.4vw, 17px);
+    color: var(--ink-2); max-width: 680px; margin: 0;
+  }
+  main { padding: 32px 0 56px; }
+  section { margin-bottom: 32px; }
+  section h2 {
+    font-size: 18px; font-weight: 800;
+    margin: 0 0 12px;
+    letter-spacing: -0.01em;
+  }
+  section ul, section ol { margin: 0 0 12px; padding-left: 22px; }
+  section li { margin-bottom: 4px; font-size: 14px; color: var(--ink-2); }
+  section p { margin: 0 0 10px; font-size: 14.5px; color: var(--ink-2); }
+
+  /* Editor toolbar (solo visible en modo plantilla; se quita en el export) */
+  .editor-toolbar {
+    position: fixed; bottom: 24px; right: 24px;
+    z-index: 100;
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-lg);
+    padding: 14px 16px;
+    display: flex; gap: 8px; align-items: center;
+    max-width: 340px;
+  }
+  .editor-toolbar .editor-hint {
+    font-size: 11px; color: var(--ink-3); line-height: 1.4;
+    margin-right: 6px;
+  }
+  .editor-toolbar .editor-hint b { color: var(--ink); font-weight: 700; }
+  .editor-toolbar button {
+    padding: 8px 14px; border-radius: var(--radius-s);
+    background: var(--brand); color: var(--on-brand); border: none;
+    font-family: inherit; font-size: 13px; font-weight: 600;
+    cursor: pointer; transition: filter .15s;
+    white-space: nowrap;
+  }
+  .editor-toolbar button:hover { filter: brightness(1.08); }
+</style>
+</head>
+<body data-slug="2026-10-03-testflight-build12">
+
+<div class="wrap">
+  <nav class="crumb">
+    <a href="../index.html">← Catálogo</a>
+    <span class="sep">/</span>
+    <span class="mono">dev/<span>2026-10-03-testflight-build12</span></span>
+  </nav>
+</div>
+
+<header class="hero">
+  <div class="wrap">
+    <span class="dev-eyebrow feature" id="dev-kind" data-export-no-edit-attrs>
+      <span contenteditable="true" data-placeholder="Feature" data-export-as-text>Feature</span>
+    </span>
+    <h1>
+      <span>TestFlight build 12</span>
+      <span class="accent">primer build desde el monorepo</span>
+    </h1>
+    <p class="lede">
+      Build 0.1.0 (12), el mismo código del build 11 ya dentro de <code>Picklerfun/pickler</code> (PRs #71, #73, #74, #78): derivación de la wallet y parser de Perpl en paquetes compartidos, y la cuenta de la web apagada (sin <code>PICKLER_API_URL</code>). Sirve para verificar que el release desde el monorepo funciona.
+    </p>
+
+    <div class="dev-status-board">
+      <div>
+        <div class="k" style="font-size:10.5px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.08em;font-weight:600;margin-bottom:3px">Estado</div>
+        <div><span class="dev-sb-pill shipped"><span contenteditable="true" data-export-as-text>Shipped</span></span></div>
+      </div>
+      <div>
+        <div class="k" style="font-size:10.5px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.08em;font-weight:600;margin-bottom:3px">PR</div>
+        <div><a href="#" contenteditable="true" data-export-as-text style="color:var(--brand);">#PR</a></div>
+      </div>
+      <div>
+        <div class="k" style="font-size:10.5px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.08em;font-weight:600;margin-bottom:3px">Commit</div>
+        <div style="font-family:var(--mono);font-size:12.5px">8e5ee419</div>
+      </div>
+      <div>
+        <div class="k" style="font-size:10.5px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.08em;font-weight:600;margin-bottom:3px">Fecha</div>
+        <div style="font-family:var(--mono);font-size:13px">2026-10-03</div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+
+    <section>
+      <h2>Qué cambió</h2>
+      <ul>
+        <li>La app se compila por primera vez desde <code>Picklerfun/pickler/apps/mobile</code> (workspace <code>@pickler/mobile</code>, instalación con <code>npm ci</code> desde la raíz, React fijado en 19.2.3 por el <code>overrides</code> raíz). Fuente: PR #71.</li>
+        <li><code>src/hd/hd.ts</code> se va a <code>@pickler/mera-account</code>; <code>wallet.ts</code> lo importa de ahí. Vectores congelados: tu <code>hd.ts</code> original, el del PR y el actual dan los mismos 15 resultados (verificado en sesión con el <code>node_modules</code> de la app). Fuente: PRs #71 y #74.</li>
+        <li>El parser de <code>GET /v1/pub/context</code> se va a <code>@pickler/perpl-context</code>; <code>src/perpl/context.ts</code> queda como la llamada de red más un re-export. Salida idéntica en los 13 campos de la app sobre el fixture de 7 mercados. Fuente: PR #73.</li>
+        <li>Nuevo: inicio de sesión con la cuenta de la web y pantalla de username obligatorio (<code>src/identity/</code>, <code>useIdentity</code>, <code>screens/username.tsx</code>). <strong>Apagado en este build</strong>: no se definió <code>PICKLER_API_URL</code>, así que no hay ninguna petición ni pantalla nueva. Fuente: PR #78.</li>
+        <li><code>app.config.ts</code>: buildNumber 11 → 12 (8e5ee419).</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Por qué</h2>
+      <p>
+        El 2026-10-02 el equipo mergeó la app al monorepo y congeló <code>pickler-expo</code> como referencia del bounty hasta el 2026-10-13. Ninguno de los PRs verificó un archive de TestFlight ni abrió una cuenta existente: necesitan el certificado de distribución y <code>apps/mobile/.env.asc</code>, que sólo están en la Mac de Jesús. Este build cierra esa verificación sin cambiar el producto.
+      </p>
+    </section>
+
+    <section>
+      <h2>Archivos tocados</h2>
+      <div class="files-box">
+        <ul>
+          <li>apps/mobile/ · 35 archivos desde el build 11 (138f4ad..8e5ee419): App.tsx, app.config.ts, jest.config.js, package.json, src/ctx.ts, src/hooks/useAccount.ts, src/screens/signin.tsx, src/screens/wallet.tsx, src/wallet/wallet.ts, src/perpl/context.ts; nuevos src/config/api.ts, src/hooks/useIdentity.ts, src/identity/{api,handle,session,state}.ts, src/screens/username.tsx, src/storage/identity.ts, dependency-tree.txt; eliminados src/hd/hd.ts y package-lock.json</li>
+          <li>packages/mera-account/ y packages/perpl-context/ · 13 archivos nuevos</li>
+          <li>apps/mobile/app.config.ts · buildNumber 11 → 12</li>
+        </ul>
+      </div>
+    </section>
+
+    <section>
+      <h2>Validación</h2>
+      <p>Desde un clone limpio de <code>main</code> (07fbcdc) con <code>npm ci</code>: <code>npm run typecheck --workspace=@pickler/mobile</code> limpio; Jest 51/51 suites y 350/350 tests; vectores y parser compartidos 14/14. Release para simulador: en un simulador limpio (iOS 26.5 y 27.0) abre en la pantalla de entrada con el texto de siempre (identidad apagada); en el simulador con cuenta (<code>pickler-mobile-light</code>) muestra la cuenta guardada por el build 11 (<code>0xd6da…Ed23</code>, 400.00 AUSD). .ipa fun.pickler.app 0.1.0 (12), 19,053,327 bytes, SHA-256 7067f412…3382a468; ARCHIVE SUCCEEDED, EXPORT SUCCEEDED y UPLOAD SUCCEEDED (Delivery UUID 508dbfc4-f5ad-407f-8eb1-3c35289d269c, 2026-10-03 15:03 CST; sesión de Claude con Jesús). App Store Connect: VALID, no expirado, en el grupo interno «Equipo» (distribución automática) con estado interno IN_BETA_TESTING y externo READY_FOR_BETA_SUBMISSION (API de ASC, 2026-10-03 15:20 CST). Prueba en iPhone físico (Jesús, 2026-10-04): instaló el build 12 desde TestFlight, desbloqueó con Face ID e hizo una transacción con la cuenta existente sin problema — la derivación del paquete compartido abre la misma cuenta que el build 11 (reporte de Jesús en sesión; sin captura).</p>
+    </section>
+
+    <section>
+      <details class="followups">
+        <summary>Follow-ups conocidos</summary>
+        <ul>
+                    <li>Hallazgos de la revisión de #78 que entraron sin corregir (inactivos sin <code>PICKLER_API_URL</code>): el timeout de <code>src/identity/api.ts</code> no cubre el body; la pantalla de username puede tapar el onboarding de Perpl (<code>App.tsx</code>, <code>quiet</code> no considera <code>perpl.state.status === "onboarding"</code>); <code>signInWithWallet</code> firma sin validar el mensaje del servidor.</li>
+          <li>Beta externa: el build 11 ya está BETA_APPROVED en el grupo «Público» (API de ASC, 2026-10-03), pero el Public Link del grupo sigue desactivado; activarlo y publicar la URL, o enviar el build 12 a esa revisión.</li>
+          <li>Faucet de AUSD vacío y key APNs pendiente (arrastrados del build 11).</li>
+        </ul>
+      </details>
+    </section>
+
+  </div>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <p>One-pager dev · <a href="#" contenteditable="true" data-export-as-text>PR #N</a> · commit <code>8e5ee419</code> · release 0.1.0 (12)</p>
+    <p>Reglas de doc en <code>docs/mobile/AGENTS.md</code>.</p>
+  </div>
+</footer>
+
+<!-- Editor toolbar (no se exporta) ======================================== -->
+<div class="editor-toolbar" id="editor-toolbar">
+  <div class="editor-hint">
+    Click sobre los campos punteados para editar. Cuando termines, <b>Exporta</b> el HTML final.
+  </div>
+  <button type="button" id="btn-export">⬇ Descargar HTML</button>
+</div>
+
+<script>
+  // ===========================================================================
+  // Dev template editor (F2)
+  // - Marca todos los campos editables con [contenteditable="true"].
+  // - El botón "Descargar HTML" clona el documento, congela los contenteditable
+  //   a texto fijo, quita la toolbar y los placeholders/markers, y descarga el
+  //   archivo final (sin estado de editor).
+  // ===========================================================================
+
+  const $btnExport = document.getElementById('btn-export');
+
+  function exportFinalHtml() {
+    const clone = document.documentElement.cloneNode(true);
+
+    // 1. Quitar la toolbar del editor.
+    const toolbar = clone.querySelector('#editor-toolbar');
+    if (toolbar) toolbar.remove();
+
+    // 2. Limpiar los nodos contenteditable: quitar atributo + placeholder + marker.
+    clone.querySelectorAll('[contenteditable]').forEach(node => {
+      node.removeAttribute('contenteditable');
+      node.removeAttribute('data-placeholder');
+      node.removeAttribute('data-export-as-text');
+    });
+    clone.querySelectorAll('[data-export-no-edit-attrs]').forEach(node => {
+      node.removeAttribute('data-export-no-edit-attrs');
+    });
+
+    // 3. Quitar el script del editor (esta misma lógica) — el HTML final no la necesita.
+    clone.querySelectorAll('script').forEach(s => {
+      if (s.textContent.includes('Dev template editor')) s.remove();
+    });
+
+    // 4. Slug propuesto: leer el span del breadcrumb mono.
+    const slugNode = clone.querySelector('nav.crumb .mono span') || clone.querySelector('nav.crumb .mono');
+    const slug = (slugNode?.textContent.trim() || 'dev-new').toLowerCase().replace(/[^a-z0-9-]/g, '-');
+    const filename = `${slug}.html`;
+
+    // 5. Construir el HTML final.
+    const finalHtml = '<!doctype html>\n' + clone.outerHTML;
+
+    // 6. Descargar como Blob.
+    const blob = new Blob([finalHtml], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.append(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  $btnExport.addEventListener('click', exportFinalHtml);
+
+  // Atajo: Ctrl/Cmd + S para exportar
+  document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+      e.preventDefault();
+      exportFinalHtml();
+    }
+  });
+</script>
+
+</body>
+</html>

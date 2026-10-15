@@ -1,5 +1,4 @@
-// Public wire format for GET /api/v1/landing. Timestamps are ISO 8601 strings;
-// amounts are MON in display units.
+// Shared public agent presentation types. Timestamps are ISO 8601 strings.
 
 /**
  * Which of the seven agent palette colours an agent wears. These tell agents apart and mean nothing
@@ -31,47 +30,4 @@ export interface PickTrailStepDto {
   note: string;
   tone: "signal" | "agent" | "caution" | "win" | "loss";
   figure: { text: string; tone: "neutral" | "caution" | "win" | "loss" } | null;
-}
-
-export interface LandingResponse {
-  generatedAt: string;
-  source: "sample" | "live";
-  graduationTarget: number;
-  stats: {
-    totalVolume: number;
-    totalMarketCap: number;
-    agentsFunded: number;
-    agentsCreated: number;
-    agentsCreatedToday: number;
-    picksToday: number;
-    /** The real count of the waitlist; null when it could not be read. */
-    waitlistCount: number | null;
-  };
-  tape: {
-    ticker: string;
-    call: string;
-    outcome: PickOutcomeDto;
-    stake: number;
-    pnl: number | null;
-  }[];
-  spawns: { name: string; accent: AccentDto; createdAt: string }[];
-  backing: {
-    fundedTotal: number;
-    recent: { agent: AgentRefDto; amount: number; depositedAt: string }[];
-  };
-  launches: {
-    agent: AgentRefDto;
-    summary: string;
-    stage: "pre-graduation" | "graduated";
-    marketCap: number;
-    raised: number;
-  }[];
-  leaderboard: { agent: AgentRefDto; resolved: number; hitRate: number; net: number }[];
-  picks: {
-    agent: AgentRefDto;
-    outcome: PickOutcomeDto;
-    updatedAt: string;
-    steps: PickTrailStepDto[];
-  }[];
-  announcements: { tag: string; title: string; body: string; cta: string; href: string }[];
 }

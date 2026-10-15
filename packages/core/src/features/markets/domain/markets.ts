@@ -113,6 +113,13 @@ export interface MarketDetail {
   calls: AgentSquare[];
   /** Marks over the last 24 hours, oldest first, for the trail drawn beside the surface. */
   trail: number[];
+  /**
+   * Optional ISO UTC times aligned with trail: closed hourly candles use their closing time;
+   * the final mark uses the board's observedAt. Missing times are unknown, never inferred.
+   */
+  trailTimestamps?: (string | null)[];
+  /** Up to thirty days of timestamped hourly closes plus the observed mark, oldest first. */
+  priceHistory?: { price: number; at: string }[];
 }
 
 /** The price a level away from the mark. */

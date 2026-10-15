@@ -8,6 +8,8 @@ import { noAgents, nothingRanked } from "../src/features/agents/lib/empty";
    One behaviour per test: an assert after a failing assert never runs. */
 
 const summary = (handle: string, token: AgentSummaryDto["token"]): AgentSummaryDto => ({
+  id: "00000000-0000-0000-0000-000000000001",
+  advicePrice: null,
   slug: token ? handle : null,
   name: handle,
   handle,

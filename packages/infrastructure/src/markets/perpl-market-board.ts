@@ -57,7 +57,7 @@ interface HeldBoard {
 interface HeldHistory {
   at: number;
   /** Closes of the closed hourly candles, oldest first, scaled like the mark. */
-  closes: number[];
+  points: { price: number; at: string }[];
   hourlyReach: number | null;
 }
 
@@ -360,7 +360,10 @@ export function createPerplMarketBoard(options: PerplMarketBoardOptions): Market
     const scale = 10 ** market.priceDecimals;
     return {
       at,
-      closes: closed.map((candle) => candle.c / scale),
+      points: closed.map((candle) => ({
+        price: candle.c / scale,
+        at: new Date(candle.t + HOUR_MS).toISOString(),
+      })),
       // A market that has not moved has no measured reach; zero would refuse every square.
       hourlyReach: rounded > 0 ? rounded : null,
     };
@@ -438,13 +441,19 @@ export function createPerplMarketBoard(options: PerplMarketBoardOptions): Market
       const market = toPerpMarket(found.market, found.base, held, network, stale);
       const past = await history(found.market);
       if (!past) {
-        return { market, calls: [], trail: [] };
+        return { market, calls: [], trail: [], trailTimestamps: [], priceHistory: [] };
       }
 
+      const points = past.points.slice(-TRAIL_HOURS);
       return {
         market: { ...market, hourlyReach: past.hourlyReach },
         calls: [],
-        trail: [...past.closes.slice(-TRAIL_HOURS), market.mark],
+        trail: [...points.map((point) => point.price), market.mark],
+        trailTimestamps: [...points.map((point) => point.at), new Date(held.at).toISOString()],
+        priceHistory: [
+          ...past.points.slice(-REACH_HOURS).map((point) => ({ ...point })),
+          { price: market.mark, at: new Date(held.at).toISOString() },
+        ],
       };
     },
   };

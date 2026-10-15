@@ -493,6 +493,10 @@ test("WHAT IT WATCHES: one card per configured market, matched on the base, with
     up: true,
     funding: "+0.0087%",
     trail: [1, 2, 3],
+    trailTimestamps: null,
+    priceHistory: null,
+    observedAt: "2026-10-02T14:29:40.000Z",
+    stale: false,
     listed: true,
   });
   assert.equal(view.cards[1]?.up, false);
@@ -580,22 +584,14 @@ test("IT MAY: opening follows Pause entries; closing always, posting Soon, movin
   assert.equal(abilities(true)[0]?.on, false);
 });
 
-test("Posts says where calls will go, and that there are none yet", () => {
-  assert.deepEqual(postsHeader("HalftimeBot"), {
+test("public posts never present read-only X OAuth as publishing permission", () => {
+  assert.deepEqual(postsHeader(), {
     title: "Every call, in public",
-    tag: "PICKLER + X · @HALFTIMEBOT",
-    empty: "No posts yet. Entries and exits will post on Pickler and X when it trades.",
-    connect: null,
+    tag: "PICKLER ONLY",
+    empty: "No public posts yet.",
+    connect:
+      "Manage X in Identity & voice to read your recent posts. Connecting does not authorize publishing to X.",
   });
-  assert.equal(
-    postsHeader(null).empty,
-    "No posts yet. Entries and exits will post on Pickler when it trades.",
-  );
-  assert.equal(postsHeader(null).tag, "PICKLER ONLY");
-  assert.equal(
-    postsHeader(null).connect,
-    "Posts will go out on Pickler only. Connect an X account and every call will mirror there.",
-  );
 });
 
 // ─── Marketplace ───────────────────────────────────────────────────────────────────────────────
@@ -607,6 +603,8 @@ const entry = (
   overrides: Partial<DirectoryAgentDto> = {},
 ): DirectoryAgentDto => ({
   agent: {
+    id: "00000000-0000-0000-0000-000000000001",
+    advicePrice: null,
     name,
     handle: name.toLowerCase(),
     ticker: `$${name.slice(0, 4).toUpperCase()}`,
@@ -670,7 +668,15 @@ test("without a score for every agent, the directory keeps its order and the tag
     [
       entry("Drift", "trend", 71),
       entry("Half", "news", null, {
-        agent: { name: "Half", handle: "half", ticker: null, slug: null, accent: "lime" },
+        agent: {
+          id: "00000000-0000-0000-0000-000000000002",
+          advicePrice: null,
+          name: "Half",
+          handle: "half",
+          ticker: null,
+          slug: null,
+          accent: "lime",
+        },
         resolved: 0,
         hitRate: null,
       }),
@@ -782,7 +788,7 @@ test("the wallet cards: master named for the account, the agent's with no withdr
     "nightowl",
   );
 
-  assert.equal(cards.master.title, "YOURS · MASTER · @NIGHTOWL");
+  assert.equal(cards.master.title, "MASTER WALLET · @NIGHTOWL");
   assert.equal(cards.master.fund, "Fund Halftime");
   assert.equal(cards.agent?.title, "HALFTIME'S · AGENT WALLET");
   assert.equal(cards.agent?.short, "0x91bE…4a07");
@@ -798,7 +804,7 @@ test("the wallet cards: master named for the account, the agent's with no withdr
 test("unread wallets are dashes, and an agent without a wallet has no card", () => {
   const cards = walletCards(null, { name: "Halftime", wallet: null }, null);
 
-  assert.equal(cards.master.title, "YOURS · MASTER");
+  assert.equal(cards.master.title, "MASTER WALLET");
   assert.equal(cards.agent, null);
 });
 
@@ -818,7 +824,7 @@ test("the account's rows say what is true today", () => {
 // ─── Stages ────────────────────────────────────────────────────────────────────────────────────
 
 test("each live stage is staged outside production only", () => {
-  assert.equal(LIVE_STAGES.length, 26);
+  assert.equal(LIVE_STAGES.length, 31);
   for (const stage of LIVE_STAGES) {
     assert.equal(stageFromSearch("development", stage), stage);
     assert.equal(stageFromSearch("production", stage), undefined);
@@ -871,4 +877,36 @@ test("the staged board is Perpl's, but Markets reads the labelled sample board",
     true,
   );
   assert.equal(boardRows(markets.markets, "All").tag, "SAMPLE DATA");
+});
+
+test("price history times and board observation keep their own provenance", () => {
+  const times = ["2026-10-02T12:00:00.000Z", "2026-10-02T13:00:00.000Z"];
+  const history = [
+    { price: 1, at: times[0]! },
+    { price: 2, at: times[1]! },
+  ];
+  const detail = {
+    trail: [1, 2],
+    trailTimestamps: times,
+    priceHistory: history,
+  } as MarketDetailDto;
+  const current = market();
+  const view = marketsView([current], { "BTC-PERP": detail }, ["BTC"]);
+
+  assert.deepEqual(view.cards[0]?.trailTimestamps, times);
+  assert.deepEqual(view.cards[0]?.priceHistory, history);
+  assert.equal(view.cards[0]?.observedAt, "2026-10-02T14:29:40.000Z");
+  assert.equal(view.cards[0]?.stale, false);
+
+  const stale = market({
+    source: {
+      venue: "perpl",
+      network: "testnet",
+      observedAt: "2026-10-02T14:29:40.000Z",
+      stale: true,
+    },
+  });
+  assert.equal(marketsView([stale], {}, ["BTC"]).cards[0]?.stale, true);
+  const sample = market({ source: { venue: "sample" } });
+  assert.equal(marketsView([sample], {}, ["BTC"]).cards[0]?.observedAt, null);
 });

@@ -27,7 +27,7 @@ src/
   middleware/agent-auth.ts  # agentOnly() (HMAC) and agentScoped() (HMAC or JWT/API key, optional self-access)
   routes/auth.ts            # GET /v1/auth/me
   routes/agents.ts          # Agent read endpoints
-  routes/marketplace.ts     # Public marketplace reads: agents from the database, markets from the sample board
+  routes/marketplace.ts     # Public marketplace reads: agents and their actions from the database, markets from Perpl
   routes/signing.ts         # Passkey custody: challenge, register, add device, wallet read
   growth/market-responses.ts# Perpetual market read models mapped to their DTOs
   budget/agent-ledger.ts    # AgentLedger Durable Object: budget authority per agent
@@ -163,6 +163,12 @@ for the cleanup that has not been written.
 
 ### The agent wallet ceremony
 
+`GET /v1/studio/wallets` (and its Console alias) includes `chainId`, supplied by composition from
+the same validated CHAIN_ID used for custody balances and transfers. It is null when no supported
+chain is composed; request query parameters never change it. The wallet DTO/OpenAPI describes
+10143 (Monad Testnet) and 143 (Monad mainnet). This does not expose a per-user network selector or
+change transfer signing, admissions or configured provider endpoints.
+
 Under the same mount, `/v1/signing/agents` runs docs/specs/studio-create-and-fund-v1.md §4.1 as
 prepare → passkey stamp in the browser → confirm, three times: Pickler's delegated user (first
 agent only), the agent's wallet (no body, `{}` at most: a `handle` is refused; the wallet is named
@@ -216,7 +222,12 @@ behind that route's credentials. The invented agents that used to answer here no
 `/v1/marketplace/markets` and `/v1/marketplace/markets/:symbol` answer from the board
 `marketBoardFor(PERPL_BOARD_NETWORK)` composes in `growth/services.ts`: Perpl on `testnet` or
 `mainnet` (`createPerplMarketBoard`, one request to the venue's public context, cached ten
-seconds), or the sample board for any other value and for none. What the board remembers lives in
+seconds), or, for any other value and for none, a board that answers every read with
+MarketDataUnavailableError (503): no sample board ships in the product since
+docs/specs/marketplace-real-only-v1.md N3, and `/v1/landing` is gone with its sample read model (N4).
+`GET /v1/marketplace/activity` (`?limit=`, 1 to 50, default 12) is the agents' latest actions:
+`PostgresAgentActionFeed` reads finished `pickler.perps_checks` of public, living agents and
+answers the call and the outcome only, never the rationale, the steps or the cost (N8). What the board remembers lives in
 a module-level `PerplBoardMemory` per network, because services are composed per request. A venue
 that cannot be read and has nothing recent held raises `MarketDataUnavailableError`, which the
 error handler answers as 503 with `error: "MARKET_DATA_UNAVAILABLE"`; an empty list is never the
@@ -353,18 +364,16 @@ except the ledger. The studio agent DTO carries `visibility`, `publishedAt` (ISO
   another owner's agent is 404 `NOT_FOUND`. A version saved before migration 0026 has no row.
 - `PUT /agents/:id/identity { name?, avatar?: { accent, pattern 0–5 } }`: the studio agent; 400
   `INVALID_INPUT`. `GET /agents/:id/activity` answers `{ events }` (ISO `at`).
-- Connect X, composed as `services.studio.x` (`PostgresXStore`, `createXClient` on
-  `X_BEARER_TOKEN`). The store checks no ownership, so every X route calls `agentScope` first.
-  `GET /agents/:id/x` answers `{ account, challenge, available }` (a lapsed challenge is null).
-  `POST /x/challenge { handle }`: 400 `INVALID_X_HANDLE`, 409 `X_ALREADY_CONNECTED`,
-  `X_HANDLE_TAKEN`, 503 `X_UNAVAILABLE` (no token; checked before anything is saved).
-  `POST /x/verify`: 404 `CHALLENGE_NOT_FOUND`, 409 `CHALLENGE_EXPIRED`, 503 `X_UNAVAILABLE`, then
-  `XStore.claimCheck` (one atomic UPDATE; 429 `TOO_MANY_CHECKS` within 10 s) before X is read; a
-  match connects (409 `X_HANDLE_TAKEN` if another agent won it). `DELETE /x`: 409
-  `X_ON_PUBLIC_AGENT`. X's failures are 503 `X_UNAVAILABLE` without X's body.
+- Connect X is `createXOAuthService` with `PostgresXOAuthStore` and `createXOAuthProvider`.
+  Owner JWT routes expose state, authorize, disconnect and manual private posts. The state/cookie
+  callback is separately mounted before Studio JWT middleware, never a blanket authentication
+  exception. No API key or HMAC is accepted for connection/reading. API runtime holds the dedicated
+  encryption key and confidential OAuth app credentials; both OAuth and reads default disabled.
+  Historical proof tables remain but challenge/verify routes and search algorithms are removed.
+  See [Studio X OAuth](../../docs/studio-x-oauth.md) for quotas, cookies, renewal and revocation.
 - `POST /agents/:id/publish {}`: `directory.publish` with a check that reads the linked wallet's
   AUSD through `balances.read` outside any transaction; 409 `PUBLISH_BLOCKED` with
-  `detail.blockers` (`KILLED`, `WALLET`, `FUNDS`), 409 `PUBLISH_CONFLICT` (the agent changed twice
+  `detail.blockers` (`KILLED`, `WALLET`, `FUNDS`, `X_CONNECTION_REQUIRED`), 409 `PUBLISH_CONFLICT` (the agent changed twice
   during the check), 503 `BALANCES_UNAVAILABLE`. Idempotent on a public agent.
 - `GET /wallets/ledger` (`studio-wallets.ts`, `services.studio.transfers` over `listTransfers`):
   the caller's own transfers, newest first, at most 100; 503 `WALLETS_UNAVAILABLE` where not
@@ -378,6 +387,14 @@ never writes `spend`: the store keeps the stored limits and ignores any `spend` 
 `PUT /limits` is their only writer. The agent DTO answers `spend` and
 `spendEnforced: false`. The limits are not enforced yet; the trading work enforces them through a
 per-call and daily ledger period or a Turnkey value cap. The monthly budget ledger is not used.
+
+`PUT /agents/:id/advice-price { priceAusd: string | null }` (owner only) sets or clears the AUSD
+price of one fresh advice analysis (0.10 to 100, at most 6 decimals, parsed by core's
+`parseAusdToMicro`) through `directory.setAdvicePrice`. `:id` is the product agent id. It answers
+`{ advicePrice }`; a price needs the agent's wallet (409 `AGENT_WALLET_REQUIRED`), clearing does not.
+The Studio agent DTO (`GET /agents`, `GET /agents/:id`) carries `advicePrice`, serialised by core's
+`advicePrice()` from the directory's `advicePriceMicro`, which never reaches the wire; this supersedes
+phase 1's Ruling 4 (the DTO did not carry it).
 
 `PUT /agents/:id/interval { hours }` accepts only 3, 6, 12 or 24 (the home's "every 3h / 6h / 12h /
 daily") and writes only `config.intervalHours` through `repository.updateInterval`, with manage
@@ -479,6 +496,39 @@ ADVICE_ENABLED, valid reviewed USD policy and research Queue; reads remain mount
 Never accept internal tenant/runtime IDs or models from consumers. Completed history is shared;
 other statuses are requester-only. See [Agent advice](../../docs/agent-advice.md).
 
+The POST request is sold with x402 through the advice splitter
+(docs/specs/agent-advice-fee-split-v1.md). `paidAdviceFrom` (`src/container.ts`) composes
+`AdviceRouteServices.paid` only when `ADVICE_X402_ENABLED === "true"`. It then requires the
+`X402_RELAYER_PRIVATE_KEY` secret (32-byte hex), `MONAD_RPC_URL`, `ADVICE_SPLITTER_ADDRESS` and
+`ADVICE_SPLITTER_TREASURY` (each a nonzero 20-byte hex address). A missing or malformed one, or a
+key viem refuses, logs one line naming the variable and no value and fails closed: `paid` is a
+request that throws `PilotError("ADVICE_UNAVAILABLE")`, so every POST answers 503 and nothing is
+enqueued. A composed `paid` shares the invocation's advice store and service with the free path,
+builds `PostgresAdvicePayments` on the invocation's pool and `createAusdAuthorizationGateway` with
+the splitter and `ADVICE_SPLITTER_TREASURY` as `treasury` (the gateway matches each settlement's
+third transfer against it and reads nothing after a broadcast), passes the splitter to core as `splitter` (the 402's `payTo`), and logs every
+settlement whose AUSD may have moved without a `settled` row (`reportUnrecordedSettlement`: reason,
+ids, key, payer, nonce and hash, never the signature).
+
+Before each request is handed to core, the composed `paid` compares the gateway's
+`splitterTreasury()` with `ADVICE_SPLITTER_TREASURY`, then its `splitterAsset()` with core's
+`AUSD_TESTNET`, both ignoring case. A mismatch or a failed read throws `ADVICE_UNAVAILABLE` (503)
+for that request and logs a line naming `ADVICE_SPLITTER_ADDRESS` (and `ADVICE_SPLITTER_TREASURY`
+for the treasury), never an address or the RPC URL; none is cached. A match of both is cached per isolate in a module-level set keyed by RPC URL, splitter and
+treasury, so later invocations skip the read. The check also gates replays: with a wrong treasury
+the paid path is down as a whole. `deps.gatewayFor` and `deps.confirmedTreasuries` exist for tests
+only.
+
+Only the flag off leaves `paid` absent; absent, the route is free and unchanged. With `paid`, the
+handler answers core's `payment_required` as 402 with x402 v1's own body (`paymentRequiredSchema`,
+not the envelope) and sets `X-PAYMENT-RESPONSE` on a 202 that settled. `PilotError("NOT_FOUND",
+"ADVICE_NOT_FOR_SALE")` maps to 404 `{ error: "ADVICE_NOT_FOR_SALE" }` before the generic mapper;
+an in-flight attempt on the same key (`CONFLICT`) is 409. The `X-PAYMENT` header is documented as a
+base64 string whose `contentSchema` is api-schema's `paymentPayloadSchema` (with `salt`). Both
+wrangler files carry `ADVICE_X402_ENABLED: "false"` and empty `ADVICE_SPLITTER_ADDRESS` and
+`ADVICE_SPLITTER_TREASURY` until the splitter deployment is recorded. See
+[Payment (x402)](../../docs/agent-advice.md#payment-x402).
+
 Advice admissions consume the same reviewed ADVICE_POLICY_JSON as Research. Policy v2 pins its forecast provider URL/model and limits; forecast credentials remain exclusively in Research. No new public DTO or database schema is introduced by the provider correction.
 
 ## Perpl paper runtime
@@ -548,3 +598,221 @@ USD micros, separately from virtual financial metrics; unknown daily costs stay 
 retains workspace authorization and generated OpenAPI. The web displays the strategy in both
 agent studios and explicitly confirms clearing unsupported authored conditions for rules.
 See [Studio perpetual execution](../../docs/studio-perps-execution.md).
+
+Studio access routes inherit JWT-only authentication and are read only. GET `access-request` is a
+person's own status (`not_requested`, `pending`, `enabled`) with `canReviewRequests`; GET
+`access-requests` lists the requests recorded before 2026-10-08 and requires the verified
+super-admin allowlist. `POST access-request` was retired with the public application
+(docs/specs/landing-trade-v1.md §7): nothing writes `pickler.studio_access_requests` any more. Both
+use private/no-store and generated OpenAPI schemas; no automatic grant is composed.
+
+Creator applications are reviewed through `routes/studio-applications.ts`, mounted beside them:
+GET `applications` (newest first, at most 500, `?status=submitted|invited|rejected`) and PUT
+`applications/:id` (`{ status: "invited" | "rejected", note? }`, note at most 500 characters).
+Both require the verified super-admin allowlist through core's `createApplicationReview`; a 403
+never reveals another person's answers. The one write is `growth.review_application` (migrations
+0039 and 0040), which records the status, the reviewer's email and the note, and on `invited`
+enables `pickler.research_access` for any `auth.users` account carrying that email. An account
+created afterwards claims its invite as it onboards: `POST studio/onboard` passes the principal's
+email to `directory.onboard`, which calls `growth.claim_invite`. `GET access-request` carries
+`application` (the status under the account's email, from `growth.application_status_for`, or
+null), so the studio can say where a person stands. No email is sent from any of this. Without
+`applicationReview` in `StudioServices` the review routes answer 503.
+
+## Dynamic Studio markets
+
+Studio mounts the JWT-protected GET /perpl/markets catalogue, with a required network query and
+generated OpenAPI. Creation and changed selections validate a fresh authorized catalogue; setup
+preserves expectedVersion and the existing history/readiness/schedule transaction. Never accept
+execution addresses/ids or client-selected creation networks.
+
+See [agent-selected Perpl markets](../../docs/studio-perpl-markets.md).
+
+## X preview cost controls
+
+The private X posts operation is now a paid five-post preview, capped at one attempt per agent per UTC day. Cursor requests return INVALID_INPUT without transport; generated OpenAPI documents this restriction. Disabled reads return X_UNAVAILABLE before token renewal. OAuth identity verification remains independently available.
+
+## X profile presentation
+
+X state metadata describes the persisted optional profile name/photo. GET /agents/:id/x remains owner-only and no-store; it never fetches X to decorate the UI.
+
+## Price history timestamps
+
+The existing public marketplace market detail response forwards optional aligned trailTimestamps. Generated OpenAPI uses the portable date-time schema; legacy and sample producers may omit this metadata. No new endpoint or market read is introduced.
+
+Public market detail also forwards optional bounded `priceHistory`, cloning its paired values.
+The existing route/schema owns the additive OpenAPI contract; no range endpoint/query or new
+provider call is introduced. The original 24h trail remains compatible with public consumers.
+
+## Owner token contracts
+
+`routes/studio-token.ts`, mounted under JWT-only Studio middleware, documents state, versioned
+name/ticker draft saves and idempotent launch authorization. Every response is private/no-store;
+API keys and HMAC are refused. Scope comes from membership and persisted ownership; client-supplied
+chain, wallet, agent key, preset and receipt are rejected. Ordinary `container.ts` composition uses the configured custody chain without an issuer; the
+separately gated operational composition below can provide it. Controlled API acceptance injects a public test signer through
+`@pickler/infrastructure/testing/token`; the original foundation did not implement operational signing/broadcast; current gated
+composition is documented below. Public
+persona DTOs include explicit confirmed token identity and confirmation state. See
+[the token guide](../../docs/agent-token-preview.md) and `test/studio-token-route.test.ts`.
+
+Owner token state now optionally includes version-2 reference economics. Container resolves reviewed
+AUSD metadata from `@pickler/chain` for the configured custody chain and invokes core's pure builder.
+This performs no RPC, does not publish a preset and does not compose an issuer. The existing GET
+operation documents the additive optional schema; save/authorize requests remain unchanged.
+
+## Operational token composition
+
+`src/token-launch.ts` composes grants, R2 and the existing Turnkey master passkey only under the
+explicit testnet gate and complete reviewed passive policy. Default composition has no signer.
+`studio-token.ts` owns private versioned preparation, confirmation, reconciliation and cancellation;
+`/v1/token-assets/:file` is public immutable read-only access. The callback exception for X does
+not apply to these routes. See [Token operations](../../docs/market/token-launch-operations.md).
+
+Preparation can return a validated `failed` operation with a reviewed reason and null activity
+in its existing 200 response. This is a recorded unsent outcome, distinct from an HTTP access or
+version rejection. Responses remain private/no-store; no raw provider trace enters the DTO.
+
+## Versioned token launch composition
+
+Operational testnet composition accepts strict reviewed Uniswap V4 policies 2/3 separately from
+historical Kuru policy 1. Version 3 admits all agents that pass the existing creator/owner/publication/master checks;
+versions 1/2 keep their UUID allowlists. The approved staging configuration preserves the enabled
+testnet launch gate; other compositions stay disabled without explicit configuration. State
+exposes planned/confirmed venue and
+LP fee through portable DTOs; the backend resolves contracts, preset and account. Dedicated grant
+keys, metadata writes and provider checks remain infrastructure-only. Actual contract acceptance
+does not establish hosted JWT/passkey/R2/indexer readiness. See
+[the V4 evidence and activation checklist](../../docs/market/uniswap-v4-testnet-integration.md).
+
+## Testnet metadata bucket
+
+`wrangler.staging.jsonc` binds the private Standard bucket `pickler-token-metadata-testnet` as
+`TOKEN_METADATA`. Public hash-verified reads remain available through the existing asset route
+without enabling launch. The hosted settings-only attachment preserved all existing bindings;
+no bucket public-write endpoint or general launch gate is enabled. Do not treat the operator
+write/read smoke test as hosted owner metadata-freeze/passkey acceptance. See
+[the readiness record](../../docs/market/token-launch-readiness-20261010.md).
+
+## Allowlisted launcher readiness configuration
+
+`wrangler.staging.jsonc` pins Monad testnet and the free reviewed RPC and explicitly keeps
+`TOKEN_LAUNCH_ENABLED=true` to preserve the explicitly approved eligible-creator operating state
+across deployments. The dedicated grant key and reviewed policy remain backend-only runtime
+bindings. Missing/invalid configuration still closes launch availability; every launch still
+requires current creator/owner/publication/master checks and the owner passkey. Emergency closure
+requires an explicit false override and a matching source update before the next deployment.
+The original one-agent acceptance
+and independent indexer evidence are recorded in
+[the hosted readiness guide](../../docs/market/token-indexer-hosted-20261011.md).
+
+## Owner token trading transport
+
+The existing JWT-only `/v1/studio/agents/:id/token/operations` route accepts strict enumerated curve
+buy/sell and exact approvals. It forwards validated atomic amount/tolerance to core; it never
+accepts a wallet, recipient, contract or calldata. No quote polling endpoint is introduced.
+The default closed testnet gate and independently reviewed allowlist remain required.
+
+## Public curve trading transport
+
+`public-token-trading.ts` composes the non-custodial preparation service behind independent
+`TOKEN_PUBLIC_TRADING_ENABLED` and explicit `TOKEN_PUBLIC_RPC_DAILY_LIMIT` bindings. It resolves
+only published confirmed persona tokens and uses the reviewed launch policy/RPC; no signer or
+creator allowlist is used for buyers. `POST /v1/marketplace/personas/:handle/token/prepare` is public,
+strict and private/no-store. It returns unsigned data and documents errors/OpenAPI; the existing
+`/v1/demo` alias has the same public behavior. It does not relax any JWT-only Studio endpoint.
+Default composition remains disabled without RPC calls. The reviewed testnet staging configuration
+explicitly enables public preparation with a 10,000-call daily reserve ceiling (250 preparations
+at 40 calls each). It never enables mainnet or a server signer for visitors. See
+[Public token trading](../../docs/market/public-token-trading.md).
+
+The eligible-creator policy expansion is documented in
+[the dated activation record](../../docs/market/token-launch-eligible-creators-20261011.md).
+It changes no JWT, creator access, Turnkey, gas/RPC ceilings, contracts or indexer settings.
+The initial activation was an explicit backend runtime change. Following owner approval, the
+staging config also preserves the enabled testnet gate; mainnet and public buyer activation
+remain separate and unchanged.
+
+The existing JWT-only token operation status route also performs explicit bounded recovery of an
+expired unidentified launch. It requires stable canonical factory evidence before returning
+`EXPIRED_LAUNCH_NOT_CREATED`; a found event restores the hash for ordinary receipt reconciliation.
+No endpoint, caller-supplied recovery proof, automatic signature or broadcast is added.
+
+## Immediate app launch attribution
+
+`token-launch.ts` composes the confirmed-launch publisher with the operational driver and existing
+RPC reservation. A successful launch status returns finalized only after its canonical factory
+receipt has been attributed, independently of historical indexer progress. GET token state also
+reconciles a stored finalized launch whose identity remains pending, then re-reads stored state;
+ordinary state and public marketplace reads remain database-only. Recovery never signs, submits,
+issues another grant or advances cursors. JWT/owner authorization and private/no-store remain
+mandatory. Route OpenAPI describes this bounded recovery exception; DTOs and endpoints are unchanged.
+
+## Public token market composition
+
+The existing `GET /v1/launches/:id` additionally accepts a chain/address catalogue key and returns
+an optional version-1 market read. `composeTokenLauncher` exposes the configured committed
+reference terms to the database read model; it performs no new provider calls or signature.
+Preset/hash/factory matching remains in the read model. Public reads never enable launching
+or prepare visitor transactions. OpenAPI uses the extended portable launch-detail schema.
+
+`POST /v1/marketplace/personas/:handle/token/confirm` shares the public trading gate and resolves
+the published token again. Its strict wallet/hash body is public/no-store; OpenAPI documents
+validation, quota and unavailable errors. It verifies canonical receipt evidence and appends
+activity for immediate market reads. It never signs, sends, advances an index cursor or accepts
+client financial values. Studio authentication remains unchanged.
+
+`POST /v1/marketplace/personas/:handle/token/quote` is a strict public, private/no-store read under
+the existing public trading gate and global RPC ceiling. It accepts the same exact trade input,
+returns portable quantities without transaction data, and never signs, prepares or broadcasts.
+Its generated OpenAPI describes validation, curve, unavailable and quota errors.
+
+## Studio Perpl execution facade
+
+Owner state carries optional public account/deposit minimums and the reviewed per-deposit
+maximum from Trading. These do not change owner limits or grant execution permission.
+
+`routes/studio-perpl-live.ts` adds owner-only state, setup preparation/confirmation, start and
+control under Studio and its Console alias. `PERPL_STUDIO_ENABLED` defaults false. Composition
+uses the private `TRADING_EXECUTOR` binding and forwards the original user Authorization header;
+Trading independently verifies it. Never add an API signer, key vault or provider executor here.
+Increasing actions require write-enabled access. Reducing controls remain owner-authorized when
+admissions close. Strict api-schema inputs, explicit response projections, no-store and generated
+OpenAPI apply to every operation. See [Perpl trading](../../docs/perpl-trading.md).
+
+## Read-only Perpl dashboard
+
+`routes/perpl-dashboard.ts` is mounted at `/v1/perpl` when composed with `PerplDashboardGateway`.
+`GET /markets` is public; `POST /read-key/payload`, `/read-key/enroll` and `/portfolio` require a
+verified user JWT. All are described by OpenAPI, private/no-store and bounded to 24 KiB request
+bodies. Scope, chain, origin, TTL and signing types are fixed; callers supply no target URL,
+method, builder/delegation policy or order. Portfolio proofs authorize only two fixed GETs, with
+matching key, fresh timestamps and distinct nonces. Perpl verifies the signatures; the adapter
+then verifies the returned wallet and account ownership before projecting data. Errors expose
+reviewed reasons, never provider bodies or credential payloads. No database migration, new secret,
+research admission or live agent activation is needed. See [dashboard](../../docs/perpl-dashboard.md).
+
+Dashboard failure diagnostics log only reviewed code, fixed route step, upstream HTTP status and
+request ID. Never log credentials, wallet/signed payloads or provider prose. Enrollment rejection,
+expired signing terms and account-signature refusal are distinct response codes; error status
+sets and access requirements remain unchanged.
+
+`GET /v1/perpl/portfolio/:wallet` is a public, private/no-store projection of already-public
+contract state. Validate the address, then call the business-owned `publicPortfolio` port; never
+accept RPC URLs, calldata, methods or signing keys. It is independent of the JWT-only legacy
+POST routes. Diagnostics use the route template, never the actual wallet-containing URL. The
+default dashboard no longer enrolls Perpl keys. See the dashboard guide for canonical-block reads,
+unknown historical stats and real-contract versus controlled acceptance.
+
+The JWT-only Studio/Console `POST /agents/:id/perpl/credentials/connect` forwards strict write-only
+Perpl token/Ed25519 input to Trading. It rechecks creator and agent ownership, returns only the
+public state DTO and remains private/no-store. No API signer, key vault or provider validation
+is introduced. Setup availability is separate from session admissions.
+
+The explicitly approved staging `PERPL_STUDIO_ENABLED=true` exposes owner state and key
+connection. Trading independently retains closed automatic account setup/funding.
+
+Existing-key connection accepts optional `useKeyWallet` only, not a caller-provided address.
+The private executor verifies and exclusively binds the key's wallet to the owned agent. Public
+state adds optional connection kind and managed-position labels. Original JWT/creator/owner checks,
+private/no-store, strict parsing and generated OpenAPI remain mandatory.

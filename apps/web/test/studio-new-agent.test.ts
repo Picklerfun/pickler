@@ -47,6 +47,7 @@ import { DRAFT_LIMIT_NOTE } from "../src/features/studio/lib/messages";
 
 const filled = (patch: Partial<NewAgentForm> = {}): NewAgentForm => ({
   ...emptyForm(),
+  markets: ["BTC", "ETH"],
   name: "Halftime",
   voice: "analyst",
   ...patch,
@@ -174,7 +175,7 @@ test("a transfer label names the token and refuses more than the source holds", 
       held: 10n ** 18n,
       agentName: "Halftime",
     }),
-    "More MON than the master wallet holds",
+    "More MON than master wallet holds",
   );
   assert.equal(
     transferLabel({

@@ -1,0 +1,357 @@
+[
+  {
+    "url": "https://www.kuru.io/_next/static/chunks/04aec68b-64599eefa4b16a1b.js",
+    "file": "0.js",
+    "bytes": 1197033,
+    "sha256": "951a820de2dbae03100e54640018d3010e058fc3491ae8b1c995664cc0a3f861",
+    "hits": []
+  },
+  {
+    "url": "https://www.kuru.io/_next/static/chunks/1334-6608476006e3378e.js",
+    "file": "1.js",
+    "bytes": 334596,
+    "sha256": "eab135e3331374cb4d49a99f73c66e89ab988f9685c84abc373898b1f49c48b3",
+    "hits": []
+  },
+  {
+    "url": "https://www.kuru.io/_next/static/chunks/1389-dd9109ed1227a97e.js",
+    "file": "2.js",
+    "bytes": 217431,
+    "sha256": "3c84b154b3cd7cdb8fb20780b72f4ed0f79babcc6d036817b89378e6a95bdb3a",
+    "hits": []
+  },
+  {
+    "url": "https://www.kuru.io/_next/static/chunks/13b76428-0e73fd2b0f5d5d70.js",
+    "file": "3.js",
+    "bytes": 59814,
+    "sha256": "4313e1b30951779c8ded778490be4b40747debef619ae4e5f22281ce2c54d8a6",
+    "hits": []
+  },
+  {
+    "url": "https://www.kuru.io/_next/static/chunks/1614-57efaa571e0307c4.js",
+    "file": "4.js",
+    "bytes": 117812,
+    "sha256": "794ae87b2e079eb1103fb15905324d7c41b4762ffc2c749471024ed87b16f75d",
+    "hits": []
+  },
+  {
+    "url": "https://www.kuru.io/_next/static/chunks/1791-2c3b9184434a05fd.js",
+    "file": "5.js",
+    "bytes": 563261,
+    "sha256": "5ef515b85859bc06caa81ae5343503f51bfb82304c733803210461d084bd08d9",
+    "hits": []
+  },
+  {
+    "url": "https://www.kuru.io/_next/static/chunks/1809-386da0cdbd5bdf05.js",
+    "file": "6.js",
+    "bytes": 22761,
+    "sha256": "3b69aa9b7445c213a02cf3f22c57a085c8c403db3da1d4f4a8776f9c06199800",
+    "hits": []
+  },
+  {
+    "url": "https://www.kuru.io/_next/static/chunks/3093-6ba0460cd8a81a72.js",
+    "file": "7.js",
+    "bytes": 10050,
+    "sha256": "b1e725342ccb37e51d1314060d4bbe1674a9fafdba48e3d4a94254e95b6dd82b",
+    "hits": []
+  },
+  {
+    "url": "https://www.kuru.io/_next/static/chunks/3153-49bfd4f1b1a07ffc.js",
+    "file": "8.js",
+    "bytes": 28225,
+    "sha256": "50d1ab9e445165766a7baea4b3c5378a9aa9f6ad28eb91aa91552a40fce7966a",
+    "hits": []
+  },
+  {
+    "url": "https://www.kuru.io/_next/static/chunks/3248-2f43cc049fef7c85.js",
+    "file": "9.js",
+    "bytes": 118833,
+    "sha256": "e993712fd08b58cefe6407eec614c79074f3104c225cd4caee2e85872d7f6d7c",
+    "hits": []
+  },
+  {
+    "url": "https://www.kuru.io/_next/static/chunks/339cd768-5b23073a05ccca34.js",
+    "file": "10.js",
+    "bytes": 8209,
+    "sha256": "7080c005483f67f0a67947d64d77e58ae861e0e965c1b79c2257686adbab598f",
+    "hits": []
+  },
+  {
+    "url": "https://www.kuru.io/_next/static/chunks/3771-f6d1819d1f59e2b1.js",
+    "file": "11.js",
+    "bytes": 90959,
+    "sha256": "a20c7f87a3396a38a7ea131cf93cfe4b30075269730efb2d1f891b996b657add",
+    "hits": [
+      {
+        "term": "10143",
+        "context": "/svg/logo.svg\",g=\"https://drive.google.com/drive/folders/1O7Mua-MW8oEr9VQDAClRoc-Q4zeliaEz?usp=drive_link\",b=\"https://api.kuru.io\",k=\"wss://ws.kuru.io\",w=null!=(n=Number(\"143\"))?n:10143,v=\"\".concat(\"https://api.kuru.io\",\"/api/v2\"),y=\"\".concat(\"https://api.kuru.io\",\"/api/v3\"),S=\"0x754704bc059f8c67012fed69bc8a327a5aafb603\",x=\"0x00000000efe302beaa2b3e6e1b18d08d69a9012a\";d.env.NEXT_PUBLIC_KURU_USDC_ADDRESS;let C=\"0x2a68ba1833cdf93fa9da1eebd7f46242ad8e90c5\",M=\"0xd651346d7c789536ebf06dc"
+      }
+    ]
+  },
+  {
+    "url": "https://www.kuru.io/_next/static/chunks/3a91511d-bcb12049b5ead4e2.js",
+    "file": "12.js",
+    "bytes": 110467,
+    "sha256": "bdff567f05481fad75fb0e0b6089fb2d5f8f5a85147f2886e437195b1058a094",
+    "hits": []
+  },
+  {
+    "url": "https://www.kuru.io/_next/static/chunks/4587-1ecdce08d62c2ee4.js",
+    "file": "13.js",
+    "bytes": 50062,
+    "sha256": "2071a0c6246e646b009b1d41e61ede22e3659786124d899ae3e972738138f20e",
+    "hits": []
+  },
+  {
+    "url": "https://www.kuru.io/_next/static/chunks/4bd1b696-eb88c0494c0a6629.js",
+    "file": "14.js",
+    "bytes": 173367,
+    "sha256": "81f4bd4b1fac6f18a5e2ac44f11bdb07ec3fa322d62eeaccde6917fe1cca517f",
+    "hits": []
+  },
+  {
+    "url": "https://www.kuru.io/_next/static/chunks/5155-6ba4d063bd034416.js",
+    "file": "15.js",
+    "bytes": 64168,
+    "sha256": "1860dc39df7a1ab1b7837be6d645d2efd3395e68a19696af28a938b1f89cb01e",
+    "hits": []
+  },
+  {
+    "url": "https://www.kuru.io/_next/static/chunks/52774a7f-4f0b02e56cebd3ab.js",
+    "file": "16.js",
+    "bytes": 119560,
+    "sha256": "b802b2b5ae8444a7f7888f3f749bcda8163e4f9a741056e3cb41c936f0dc69b4",
+    "hits": []
+  },
+  {
+    "url": "https://www.kuru.io/_next/static/chunks/5651de16-4d636227474d03c9.js",
+    "file": "17.js",
+    "bytes": 161625,
+    "sha256": "177315ad95ce65b94137a411d3d7a4b49b51a461212459c2e169e23b21b69466",
+    "hits": []
+  },
+  {
+    "url": "https://www.kuru.io/_next/static/chunks/5743-601923a684f91ca5.js",
+    "file": "18.js",
+    "bytes": 41735,
+    "sha256": "445af5ade9701b9e1309f0cb8f62c2d58437c0453b8922d10501df588c6052b9",
+    "hits": []
+  },
+  {
+    "url": "https://www.kuru.io/_next/static/chunks/5962-bdaa0095d42c23d4.js",
+    "file": "19.js",
+    "bytes": 12944,
+    "sha256": "db489a58b850785a0e234a3a9f7712e76496f4d62e9869862232c2e2c9818306",
+    "hits": []
+  },
+  {
+    "url": "https://www.kuru.io/_next/static/chunks/5987-81a93b6377381be7.js",
+    "file": "20.js",
+    "bytes": 22297,
+    "sha256": "5f1c1ad5680de0993941d1b32c2bf247c56b603e0c069ee4b0d37cdd2243a82d",
+    "hits": []
+  },
+  {
+    "url": "https://www.kuru.io/_next/static/chunks/69-4991622294ee9f38.js",
+    "file": "21.js",
+    "bytes": 41450,
+    "sha256": "cac5fd07fde59bed5bb75a3c9ef506c8bdc0bf050da89cb1f252d935441d6d95",
+    "hits": []
+  },
+  {
+    "url": "https://www.kuru.io/_next/static/chunks/7082-3a19c967ebe23692.js",
+    "file": "22.js",
+    "bytes": 379202,
+    "sha256": "94a30e7c54a84a8f61486304a302bf7c3c62cf9367c7fc284de66ecb82f205dd",
+    "hits": []
+  },
+  {
+    "url": "https://www.kuru.io/_next/static/chunks/768-d3d1a4f2e687cf7f.js",
+    "file": "23.js",
+    "bytes": 23452,
+    "sha256": "de91a7feacd1f98162e0cd81b6e66a8b2e64b4171cbb4b5f3cb3cfe83740f5b8",
+    "hits": []
+  },
+  {
+    "url": "https://www.kuru.io/_next/static/chunks/781-2c49b0e9ef53819a.js",
+    "file": "24.js",
+    "bytes": 35867,
+    "sha256": "a9ad010c529494923107ea2e24f5885cc550dd4f76c0fc393974bf3ded39b805",
+    "hits": []
+  },
+  {
+    "url": "https://www.kuru.io/_next/static/chunks/8320-b7e83eb62183274a.js",
+    "file": "25.js",
+    "bytes": 74362,
+    "sha256": "80a510c52226268d6c41c5f9aef7ee0b50d3687fe6243f884843ed5f63c203f6",
+    "hits": []
+  },
+  {
+    "url": "https://www.kuru.io/_next/static/chunks/8500-5a1d465f19a39192.js",
+    "file": "26.js",
+    "bytes": 4286,
+    "sha256": "3cce5c9f165494fe5dc899e72741fcee0c9e261dd21336811a18bcb02c915e56",
+    "hits": []
+  },
+  {
+    "url": "https://www.kuru.io/_next/static/chunks/8843-028738dfc32bd26f.js",
+    "file": "27.js",
+    "bytes": 21017,
+    "sha256": "47488f6d0af37c66eb2de6a00bfbd32f614ff530c0122c38e19267c6588505c6",
+    "hits": []
+  },
+  {
+    "url": "https://www.kuru.io/_next/static/chunks/9263-4b40b236afa67eff.js",
+    "file": "28.js",
+    "bytes": 1511132,
+    "sha256": "b635dd46f7b6be08bc142e8466c56f42272acaeb5cd2405b714ff4c5bd14442a",
+    "hits": []
+  },
+  {
+    "url": "https://www.kuru.io/_next/static/chunks/9330-0881e4bc52fff003.js",
+    "file": "29.js",
+    "bytes": 11512,
+    "sha256": "594ffc4ffec53e4448909a28c0d33c49f025629df965eba35febd7b7c9e37b03",
+    "hits": []
+  },
+  {
+    "url": "https://www.kuru.io/_next/static/chunks/9442-d41361402e62ea58.js",
+    "file": "30.js",
+    "bytes": 10782,
+    "sha256": "d0619965091148c943152f5b09a35550a64f4ebdfb2b7755c324fdffdfdebf0f",
+    "hits": []
+  },
+  {
+    "url": "https://www.kuru.io/_next/static/chunks/9602-53137ff1e9913503.js",
+    "file": "31.js",
+    "bytes": 7303,
+    "sha256": "09af41f48c9970099ed87a1a9da6723b7e06695578001e9a83889a277f4a430b",
+    "hits": []
+  },
+  {
+    "url": "https://www.kuru.io/_next/static/chunks/9815-ed6dd52c2a17fbb7.js",
+    "file": "32.js",
+    "bytes": 1946314,
+    "sha256": "c890b7a70f17d4b746aa6615f28c58ba45774f3f9d66e79e8f18d948cf2b8acd",
+    "hits": []
+  },
+  {
+    "url": "https://www.kuru.io/_next/static/chunks/9872-9de4b2649592deca.js",
+    "file": "33.js",
+    "bytes": 42648,
+    "sha256": "c9d366615638c4ec24ff3938348d7de6d8221d04bda644d342c924825f9da9e8",
+    "hits": []
+  },
+  {
+    "url": "https://www.kuru.io/_next/static/chunks/9942-dde12f0bb60e9df8.js",
+    "file": "34.js",
+    "bytes": 58173,
+    "sha256": "283ab86fb960ef09629c1204668e6d0d01c8fc5645ba89b9d5414709dfc5b7d2",
+    "hits": []
+  },
+  {
+    "url": "https://www.kuru.io/_next/static/chunks/9946-a04ed90bc19bd564.js",
+    "file": "35.js",
+    "bytes": 65112,
+    "sha256": "61bc48807ea0908e9cd4fc2ab1cd03a065679070b46296546adc8ac21957d261",
+    "hits": []
+  },
+  {
+    "url": "https://www.kuru.io/_next/static/chunks/9c560169-41b202ee281f5844.js",
+    "file": "36.js",
+    "bytes": 227834,
+    "sha256": "195fac923478e5fd92ecee028d3e903c185c888b0159cc5d6601c14aa1af4d40",
+    "hits": []
+  },
+  {
+    "url": "https://www.kuru.io/_next/static/chunks/ad929eb4-a27fac2653dbef17.js",
+    "file": "37.js",
+    "bytes": 72969,
+    "sha256": "bf20309ba8d57a0ddfbe5fcd00b5488afd87f3d92f773976a6c30f9faf6c2aec",
+    "hits": []
+  },
+  {
+    "url": "https://www.kuru.io/_next/static/chunks/app/(dex)/layout-b5ebed9327e5b290.js",
+    "file": "38.js",
+    "bytes": 75128,
+    "sha256": "386683e93258bce05258af6bcaa503df7ada4357cb98826473875b6747a65141",
+    "hits": []
+  },
+  {
+    "url": "https://www.kuru.io/_next/static/chunks/app/(dex)/page-237b9d6fb69635da.js",
+    "file": "39.js",
+    "bytes": 9714,
+    "sha256": "393b81d89433a990ea1f51d772cff81e6d4b0330fe28fc0d25cc12296340716f",
+    "hits": []
+  },
+  {
+    "url": "https://www.kuru.io/_next/static/chunks/app/global-error-c0ab5a5bcae7c152.js",
+    "file": "40.js",
+    "bytes": 4677,
+    "sha256": "cc7479701a7b1d359150fb473191473cf6fc0475280d23be62a6c1421f9a72b6",
+    "hits": []
+  },
+  {
+    "url": "https://www.kuru.io/_next/static/chunks/app/layout-02c6c013d4629266.js",
+    "file": "41.js",
+    "bytes": 624,
+    "sha256": "543c634d3d9d0baaac54a95ed736e40a3bb09b77b7922d2896bf4a7f5aed87fb",
+    "hits": []
+  },
+  {
+    "url": "https://www.kuru.io/_next/static/chunks/c16f53c3-889f7899e243d3bd.js",
+    "file": "42.js",
+    "bytes": 6363,
+    "sha256": "7c74a2dbe7ecf00cdb2edfd318cc6d9299914671428c72c0fc3af0e587dd84a0",
+    "hits": []
+  },
+  {
+    "url": "https://www.kuru.io/_next/static/chunks/c857e369-a8fed59504827d53.js",
+    "file": "43.js",
+    "bytes": 389576,
+    "sha256": "c8cc66da2fbad06126ee383477987cb8093312c9b95ea0cb3be35659e44c7290",
+    "hits": []
+  },
+  {
+    "url": "https://www.kuru.io/_next/static/chunks/d564ad02-202795bdbb4963b6.js",
+    "file": "44.js",
+    "bytes": 424685,
+    "sha256": "dca2e778249db35a2e2b674df1e85ac94875a7a22e974e30588cf3f80feb49f9",
+    "hits": []
+  },
+  {
+    "url": "https://www.kuru.io/_next/static/chunks/d80a46d4-c0a286fe25ace645.js",
+    "file": "45.js",
+    "bytes": 236769,
+    "sha256": "f26938e8c6ac27724c1cf6a940e9139cd7c1fe19068567e80735a96c82de6c05",
+    "hits": []
+  },
+  {
+    "url": "https://www.kuru.io/_next/static/chunks/d94474cc-e490e94feef4e935.js",
+    "file": "46.js",
+    "bytes": 160901,
+    "sha256": "4787568fd928b8ee933d57d00ba5a16a3182feca68d0689486bf4deedd736b67",
+    "hits": []
+  },
+  {
+    "url": "https://www.kuru.io/_next/static/chunks/main-app-6e17f86e304db76f.js",
+    "file": "47.js",
+    "bytes": 6876,
+    "sha256": "fa55be98320add5505376d70ee171b022e7844cc7697e92ca81c406071137e0e",
+    "hits": []
+  },
+  {
+    "url": "https://www.kuru.io/_next/static/chunks/polyfills-42372ed130431b0a.js",
+    "file": "48.js",
+    "bytes": 112594,
+    "sha256": "0973c1d64c88adc8e3c950410cb58b288f72118d5965b78049438deb8f2f9683",
+    "hits": []
+  },
+  {
+    "url": "https://www.kuru.io/_next/static/chunks/webpack-d68a1eefccfa8b7d.js",
+    "file": "49.js",
+    "bytes": 10663,
+    "sha256": "526faf1dc5c20f5a7a7cfecd59f599b9db67c1d255397049b1f439ded864f618",
+    "hits": []
+  }
+]

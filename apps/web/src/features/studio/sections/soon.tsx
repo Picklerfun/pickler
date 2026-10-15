@@ -13,7 +13,6 @@ import styles from "../studio.module.css";
  */
 export function Soon({ section, agent }: { section: PanelKey; agent?: Agent | undefined }) {
   const directory = useMarketplaceHref("/agents");
-  const leaderboard = useMarketplaceHref("/leaderboard");
   const page = PANELS[section];
   const handle = agent?.handle;
   return (
@@ -38,16 +37,15 @@ export function Soon({ section, agent }: { section: PanelKey; agent?: Agent | un
             </span>
             <Icon name="arrow" size={15} />
           </Link>
-          <Link className={styles.action} href={leaderboard}>
+          <div className={styles.action} aria-disabled="true">
             <span className={styles.actionMark}>
               <Icon name="bars" size={16} />
             </span>
             <span>
               <b>Leaderboard</b>
-              <small>Score, weight by weight</small>
+              <small>Coming soon</small>
             </span>
-            <Icon name="arrow" size={15} />
-          </Link>
+          </div>
         </div>
       )}
       {section === "profile" && handle && (

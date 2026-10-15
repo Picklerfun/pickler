@@ -10,6 +10,8 @@ import type {
   paperOrderSchema,
   studioAgentSchema,
   ActivityDto,
+  AdvicePriceResponseDto,
+  AdvicePriceUpdateDto,
   DirectoryAgentDto,
   DraftCreateDto,
   IdentityUpdateDto,
@@ -23,10 +25,8 @@ import type {
   TransferRequestDto,
   VersionsDto,
   WalletsDto,
-  XChallengeDto,
-  XChallengeRequestDto,
   XStateDto,
-  XVerifyDto,
+  XPostsDto,
 } from "@pickler/api-schema";
 import { knownMessage, messageFor } from "./lib/messages";
 export type Config = ReturnType<typeof agentConfigSchema.parse>;
@@ -49,8 +49,6 @@ export type ActivityEvent = ActivityDto["events"][number];
 export type SetupVersion = VersionsDto["versions"][number];
 export type LedgerEntry = LedgerDto["entries"][number];
 export type XState = XStateDto;
-export type XChallenge = XChallengeDto;
-export type XVerify = XVerifyDto;
 
 /**
  * The studio transport answers a failure with `{ error: CODE }`. The code is what the Studio
@@ -72,6 +70,74 @@ export class StudioError extends Error {
 }
 export const errorCode = (caught: unknown): string =>
   caught instanceof StudioError ? caught.code : "";
+
+export const perplTradingState = async (agentId: string, signal?: AbortSignal) => {
+  const { perplLiveStateSchema } = await import("@pickler/api-schema");
+  return perplLiveStateSchema.parse(
+    await studioApi(`/agents/${encodeURIComponent(agentId)}/perpl`, signal ? { signal } : {}),
+  );
+};
+export const connectExistingPerplKey = async (
+  agentId: string,
+  input: import("@pickler/api-schema").PerplLiveExistingKeyDto,
+) => {
+  const { perplLiveStateSchema } = await import("@pickler/api-schema");
+  return perplLiveStateSchema.parse(
+    await studioApi(`/agents/${encodeURIComponent(agentId)}/perpl/credentials/connect`, {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  );
+};
+export const preparePerplTrading = async (agentId: string, collateralAusd: string, key: string) => {
+  const { perplLiveSetupSchema } = await import("@pickler/api-schema");
+  return perplLiveSetupSchema.parse(
+    await studioApi(`/agents/${encodeURIComponent(agentId)}/perpl/setup/prepare`, {
+      method: "POST",
+      headers: { "Idempotency-Key": key },
+      body: JSON.stringify({ collateralAusd }),
+    }),
+  );
+};
+export const confirmPerplTrading = async (
+  agentId: string,
+  setupId: string,
+  signed: SignedActivityDto,
+) => {
+  const { perplLiveSetupSchema } = await import("@pickler/api-schema");
+  return perplLiveSetupSchema.parse(
+    await studioApi(`/agents/${encodeURIComponent(agentId)}/perpl/setup/confirm`, {
+      method: "POST",
+      body: JSON.stringify({ setupId, signed }),
+    }),
+  );
+};
+export const startPerplTrading = async (
+  agentId: string,
+  input: import("@pickler/api-schema").PerplLiveStartDto,
+  key: string,
+) => {
+  const { perplLiveStateSchema } = await import("@pickler/api-schema");
+  return perplLiveStateSchema.parse(
+    await studioApi(`/agents/${encodeURIComponent(agentId)}/perpl/start`, {
+      method: "POST",
+      headers: { "Idempotency-Key": key },
+      body: JSON.stringify(input),
+    }),
+  );
+};
+export const controlPerplTrading = async (
+  agentId: string,
+  action: "pause" | "resume" | "stop" | "close",
+) => {
+  const { perplLiveStateSchema } = await import("@pickler/api-schema");
+  return perplLiveStateSchema.parse(
+    await studioApi(`/agents/${encodeURIComponent(agentId)}/perpl/control`, {
+      method: "POST",
+      body: JSON.stringify({ action }),
+    }),
+  );
+};
 
 export async function studioApi<T>(path: string, init: RequestInit = {}): Promise<T> {
   const supabase = getSupabase();
@@ -169,6 +235,13 @@ export const saveDraftSetup = (agentId: string, body: SetupUpdateDto) =>
 export const saveIdentity = (agentId: string, body: IdentityUpdateDto) =>
   studioApi<Agent>(`/agents/${agentId}/identity`, { method: "PUT", body: JSON.stringify(body) });
 
+/** `PUT /agents/:id/advice-price`: one analysis's AUSD price, or null. 400, 403, 404, 409. */
+export const saveAdvicePrice = (agentId: string, body: AdvicePriceUpdateDto) =>
+  studioApi<AdvicePriceResponseDto>(`/agents/${agentId}/advice-price`, {
+    method: "PUT",
+    body: JSON.stringify(body),
+  });
+
 /** `GET /agents/:id/activity`: created, its wallet, each transfer; newest first, at most 50. */
 export const agentActivity = (agentId: string, signal?: AbortSignal) =>
   studioApi<ActivityDto>(`/agents/${agentId}/activity`, signal ? { signal } : {});
@@ -194,26 +267,20 @@ export const setPaused = (agentId: string, paused: boolean) =>
 export const xState = (agentId: string, signal?: AbortSignal) =>
   studioApi<XState>(`/agents/${agentId}/x`, signal ? { signal } : {});
 
-/**
- * `POST /agents/:id/x/challenge`: the line to post from `handle` ("@" optional). 400
- * INVALID_X_HANDLE; 409 X_HANDLE_TAKEN, X_ALREADY_CONNECTED; 503 X_UNAVAILABLE.
- */
-export const xChallenge = (agentId: string, handle: string) =>
-  studioApi<XChallenge>(`/agents/${agentId}/x/challenge`, {
+export const xAuthorize = (agentId: string, returnTo: string) =>
+  studioApi<{ authorizationUrl: string }>(`/agents/${agentId}/x/authorize`, {
     method: "POST",
-    body: JSON.stringify({ handle } satisfies XChallengeRequestDto),
+    body: JSON.stringify({ returnTo }),
   });
-
-/**
- * `POST /agents/:id/x/verify` ("Check again"). 404 CHALLENGE_NOT_FOUND; 409 CHALLENGE_EXPIRED,
- * X_HANDLE_TAKEN; 429 TOO_MANY_CHECKS (one per 10 s); 503 X_UNAVAILABLE.
- */
-export const xVerify = (agentId: string) =>
-  studioApi<XVerify>(`/agents/${agentId}/x/verify`, { method: "POST", body: "{}" });
-
-/** `DELETE /agents/:id/x`: while private only; 409 X_ON_PUBLIC_AGENT. */
+export const xPosts = (agentId: string, cursor?: string) =>
+  studioApi<XPostsDto>(
+    `/agents/${agentId}/x/posts${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ""}`,
+  );
 export const xDisconnect = (agentId: string) =>
-  studioApi<{ disconnected: true }>(`/agents/${agentId}/x`, { method: "DELETE" });
+  studioApi<{ disconnected: true; status: "disconnected" | "revocation_pending" }>(
+    `/agents/${agentId}/x`,
+    { method: "DELETE" },
+  );
 
 /**
  * `POST /agents/:id/publish`: Go Public; idempotent. 409 PUBLISH_BLOCKED with
@@ -528,3 +595,10 @@ export const stopPerps = (agentId: string, key: string) =>
  */
 export const perpsAction = (actionId: string, signal?: AbortSignal) =>
   studioApi<PerpsActionDto>(`/perps/actions/${actionId}`, signal ? { signal } : {});
+
+/** Server catalogue; never execution identifiers or provider configuration. */
+export const studioPerplMarkets = (network: "testnet" | "mainnet", signal?: AbortSignal) =>
+  studioApi<import("@pickler/api-schema").PerplMarketCatalogDto>(
+    `/perpl/markets?network=${network}`,
+    signal ? { signal } : {},
+  );

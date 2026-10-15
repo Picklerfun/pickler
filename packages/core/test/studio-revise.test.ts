@@ -26,6 +26,7 @@ const input: CreateDraftInput = {
   sources: { web: null },
   brief: DEFAULT_BRIEF,
   caps: STARTER_CAPS,
+  markets: ["BTC", "ETH"],
   walletId: "w",
 };
 
@@ -190,4 +191,22 @@ test("effective risk and entry are the stored value, or the defaults", () => {
   // What it returns is its own copy: the defaults are never handed out to be changed.
   assert.notEqual(effectiveRisk(config), RISK_DEFAULTS);
   assert.notEqual(effectiveEntry(config), ENTRY_DEFAULTS);
+});
+
+test("explicit dynamic selection upgrades only the edited agent and preserves the original", () => {
+  const created = prepareDraft({ ...input, markets: ["SOL", "MON"] }, "mainnet").config;
+  assert.deepEqual(created.perpl, { version: 2, network: "mainnet", markets: ["SOL", "MON"] });
+  assert.deepEqual(created.perpsStrategy, { id: "combined", version: "2.1.0" });
+  const legacy = {
+    ...created,
+    perpl: { version: 1 as const, network: "testnet" as const, markets: ["BTC" as const] },
+    perpsStrategy: { id: "deepseek" as const, version: "2.0.0" as const },
+  };
+  assert.deepEqual(reviseSetup(legacy, { voice: "hype" }).perpl, legacy.perpl);
+  const next = reviseSetup(legacy, { markets: ["SOL"] });
+  assert.deepEqual(next.perpl, { version: 2, network: "testnet", markets: ["SOL"] });
+  assert.deepEqual(next.perpsStrategy, { id: "deepseek", version: "2.1.0" });
+  assert.deepEqual(legacy.perpl.markets, ["BTC"]);
+  assert.throws(() => prepareDraft({ ...input, markets: [] }), invalid);
+  assert.throws(() => reviseSetup(legacy, { markets: ["SOL", "SOL"] }), invalid);
 });

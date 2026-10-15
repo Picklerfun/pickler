@@ -1,5 +1,6 @@
 "use client";
 
+import { returnTo } from "../../../server/guard";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { ApiError, createProfile, getProfile, type ProfileDto } from "./pickler-api";
 
@@ -39,10 +40,16 @@ export async function signInWithProvider(
   supabase: { auth: AuthCalls },
   provider: OAuthProvider,
   origin: string = window.location.origin,
+  destination?: string,
 ): Promise<void> {
+  const redirect = new URL(AUTH_CALLBACK_PATH, origin);
+  const safe = returnTo(destination);
+  if (safe) {
+    redirect.searchParams.set("next", safe);
+  }
   const { error } = await supabase.auth.signInWithOAuth({
     provider,
-    options: { redirectTo: `${origin}${AUTH_CALLBACK_PATH}` },
+    options: { redirectTo: redirect.href },
   });
   if (error) {
     throw new Error(error.message);
@@ -137,5 +144,20 @@ export async function ensureProfile(
       return { kind: "needs_profile" };
     }
     throw error;
+  }
+}
+
+/** A failed sign-out must not navigate away while the session is still active. */
+export async function signOutAccount(
+  client: {
+    auth: { signOut(): Promise<{ error: { message: string } | null }> };
+  } | null,
+): Promise<void> {
+  if (!client) {
+    throw new Error("Authentication is not configured");
+  }
+  const { error } = await client.auth.signOut();
+  if (error) {
+    throw new Error(error.message);
   }
 }

@@ -51,12 +51,17 @@ export async function checkAvailability(
   handle: string,
   fetchImpl: typeof fetch = fetch,
 ): Promise<Availability> {
-  const response = await fetchImpl(`/api/v1/handles/${encodeURIComponent(handle)}/availability`);
+  const response = await fetchImpl(`/api/v1/handles/${encodeURIComponent(handle)}/availability`, {
+    signal: AbortSignal.timeout(10_000),
+    cache: "no-store",
+  });
   if (!response.ok) {
     return { known: false as const };
   }
-  const { data } = await response.json();
-  return { known: true as const, available: data.available as boolean };
+  const body = await response.json().catch(() => null);
+  return typeof body?.data?.available === "boolean"
+    ? { known: true as const, available: body.data.available }
+    : { known: false as const };
 }
 
 export async function claimHandle(
@@ -68,6 +73,7 @@ export async function claimHandle(
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
     body: JSON.stringify({ handle: input.handle, display_name: input.displayName }),
+    signal: AbortSignal.timeout(10_000),
   });
   if (!response.ok) {
     const body = await response.json().catch(() => null);

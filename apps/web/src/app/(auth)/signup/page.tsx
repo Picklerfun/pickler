@@ -1,9 +1,7 @@
 import type { Metadata } from "next";
 import { PasskeyFlow } from "@/features/auth/components/passkey-flow";
-import { services } from "@/server/container";
 import { signupPreviewFromSearch } from "@/features/auth/lib/signup-entry";
 import { returnTo } from "@/server/guard";
-import { toAuthBoardData } from "@/server/http/auth-board";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Create your account — Pickler" };
@@ -22,7 +20,6 @@ export default async function SignUpPage({
   // `lib/signup-entry.ts`, which also gates the `?state=passkey` design preview).
   return (
     <PasskeyFlow
-      board={toAuthBoardData(await services.getLanding())}
       mode="up"
       destination={destination}
       preview={signupPreviewFromSearch(process.env.NODE_ENV, search.state)}

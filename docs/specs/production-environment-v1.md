@@ -1,5 +1,10 @@
 # Production environment v1
 
+> Historical X verification and posting design: the post-code routes, bearer-token setup,
+> optional posting and Skip X described below are superseded by [Studio X OAuth](../studio-x-oauth.md).
+> Use that canonical guide for the current read-only routes, callback, dedicated runtime secrets
+> and disabled-by-default resource policy. These older sections are retained as historical evidence.
+
 Status: Draft — decided autonomously 2026-09-30. Every decision below is reversible unless the
 Decisions table says otherwise. Follows `docs/product-map/conventions.md` (autonomous decision 9:
 "Production is its own environment").

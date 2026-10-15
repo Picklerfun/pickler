@@ -135,10 +135,27 @@ pedidas). El splash nativo muestra
 `assets/splash-mark.png` (`python3 scripts/splash-mark.py assets/icon.png
 assets/splash-mark.png`, requiere PIL); `prebuild --clean` regenera el storyboard.
 
+## Studio agents (análisis pagados con x402)
+
+La sección «Studio agents» de la pestaña Agents lista los agentes con precio, deja elegir BTC o ETH y
+paga un análisis de 24 h en AUSD (x402, 65% al agente y 35% a Pickler por el splitter). **Está apagada
+salvo que existan las dos variables al hacer el prebuild**:
+
+```bash
+PICKLER_API_URL=https://pickler.fun/api/v1 \
+ADVICE_SPLITTER_ADDRESS=0x… \          # el PicklerAdviceSplitter desplegado
+npx expo prebuild --platform ios --clean
+npx expo run:ios
+```
+
+`ADVICE_SPLITTER_ADDRESS` debe ser la misma dirección que la API nombra como `payTo`; la app firma
+sólo hacia ella. Sin la API con `ADVICE_X402_ENABLED=true` y un agente con precio no hay nada que
+comprar. Detalle: `docs/mobile/superpowers/audits/2026-10-12-studio-agents-f1-rulings.md`.
+
 ## Tests
 
 ```bash
-npm test          # jest, 303/303 esperado (44 suites)
+npm test          # jest, 539/539 esperado (60 suites)
 npx tsc --noEmit   # debe salir limpio
 ```
 

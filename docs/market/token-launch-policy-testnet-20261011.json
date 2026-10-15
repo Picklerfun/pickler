@@ -1,0 +1,129 @@
+{
+  "version": 2,
+  "chainId": 10143,
+  "allowedAgents": ["80c2e814-db8a-474b-85d2-6a86a4959c34"],
+  "venue": "uniswap_v4",
+  "approvedVenueConfigHash": "0x14f08f2a9b845b3d60e729d1afd53a272a1e8d06178f77fbf0d1f694106c83cb",
+  "evidence": {
+    "reproducibleSources": true,
+    "implementationVerified": true,
+    "testnetDeployment": true,
+    "tokenAdmission": true,
+    "atomicUnits": true,
+    "feeOnlyClaim": true,
+    "administrationReviewed": true,
+    "economicsApproved": true
+  },
+  "factory": {
+    "address": "0xd9ffd2aa682283e3521c7629dbea24273676559d",
+    "codeHash": "0xa79c8bf65f7ee5ea402ade5bb8690dd8007af257f8da46443eb5a1db7006ecc9",
+    "deploymentBlock": 69860888,
+    "source": "https://repo.sourcify.dev/10143/0xd9ffd2aa682283e3521c7629dbea24273676559d",
+    "implementation": null,
+    "upgradeReview": "No proxy; immutable code"
+  },
+  "deployer": {
+    "address": "0xe58ffb0df26f8490e302798b0edcfb51fc1ee5c0",
+    "codeHash": "0x6aa9f2a82e1b7b875e3f18eb76c0ce135e0304c0b847ed596d8f596928cae3ff",
+    "deploymentBlock": 69860884,
+    "source": "https://repo.sourcify.dev/10143/0xe58ffb0df26f8490e302798b0edcfb51fc1ee5c0",
+    "implementation": null,
+    "upgradeReview": "No proxy; immutable code"
+  },
+  "adapter": {
+    "address": "0xb2407b6f624eadf1b58d0d246727afce22147bbe",
+    "codeHash": "0xd4428f9d69f949542758a55c652a10a4d0b9a8926b19e40da4dc599d0a2a686b",
+    "deploymentBlock": 69860880,
+    "source": "https://repo.sourcify.dev/10143/0xb2407b6f624eadf1b58d0d246727afce22147bbe",
+    "implementation": null,
+    "upgradeReview": "No proxy; immutable code"
+  },
+  "escrow": {
+    "address": "0x6a7111ed6f39f0ceba4ea49a475cb34fedfdb23f",
+    "codeHash": "0x697e79f8662a04d9417583f351773b258385ee99a6dfe5fd43ddb4ee57c4978d",
+    "deploymentBlock": 69860876,
+    "source": "https://repo.sourcify.dev/10143/0x6a7111ed6f39f0ceba4ea49a475cb34fedfdb23f",
+    "implementation": null,
+    "upgradeReview": "No proxy; immutable code"
+  },
+  "locker": {
+    "address": "0x94184be43584d6106e4eeed20f1bd53784d365ff",
+    "codeHash": "0x7e72251eb03383bcacb3b96c3fcee57c88302ac711019b9248221ed1ea5e0e12",
+    "deploymentBlock": 69860880,
+    "source": "https://repo.sourcify.dev/10143/0x94184be43584d6106e4eeed20f1bd53784d365ff",
+    "implementation": null,
+    "upgradeReview": "No proxy; immutable code"
+  },
+  "poolManager": {
+    "address": "0x451d64ab3b650040d2ae1886602b97ed6edc643d",
+    "codeHash": "0x61199025286997b715457c68f86dbc42c847753f01e0773668394a405d53d579",
+    "deploymentBlock": 61283810,
+    "source": "https://testnet.monadscan.com/address/0x451d64ab3b650040d2ae1886602b97ed6edc643d",
+    "implementation": null,
+    "upgradeReview": "No proxy; immutable code"
+  },
+  "positionManager": {
+    "address": "0x3bb14e3d0cd50abe3edaca06d06c29c78676c31a",
+    "codeHash": "0x3452caf821d383d2b18ae48cc0d1467b179b07a1198b8d72153181fcbc556ed5",
+    "deploymentBlock": 62278691,
+    "source": "https://testnet.monadscan.com/address/0x3bb14e3d0cd50abe3edaca06d06c29c78676c31a",
+    "implementation": null,
+    "upgradeReview": "No proxy; immutable code"
+  },
+  "stateView": {
+    "address": "0xb639209539c61baf67ac04876315786f8d0b153c",
+    "codeHash": "0xeedadde80f69c3b89437996025759b839a65e12db6c8379a7327a34aa269fa5e",
+    "deploymentBlock": 62278697,
+    "source": "https://testnet.monadscan.com/address/0xb639209539c61baf67ac04876315786f8d0b153c",
+    "implementation": null,
+    "upgradeReview": "No proxy; immutable code"
+  },
+  "permit2": {
+    "address": "0x000000000022d473030f116ddee9f6b43ac78ba3",
+    "codeHash": "0xe8ca368abb6fa7f5d31b388b14e16d3654281140695486df9a22d7d9b75df310",
+    "deploymentBlock": 8665,
+    "source": "https://testnet.monadscan.com/address/0x000000000022d473030f116ddee9f6b43ac78ba3",
+    "implementation": null,
+    "upgradeReview": "No proxy; immutable code"
+  },
+  "quote": {
+    "address": "0xa9012a055bd4e0edff8ce09f960291c09d5322dc",
+    "codeHash": "0xa3bda7298d1c5f8585852ee04439f9cc493e5c291c9cac74fa54a0bc67024a7b",
+    "deploymentBlock": 5726771,
+    "source": "https://testnet.monadscan.com/address/0xa9012a055bd4e0edff8ce09f960291c09d5322dc",
+    "implementation": {
+      "address": "0xc1e3c7d486d6a92fbe920232e439eec2ceb112da",
+      "codeHash": "0x2e612fde7bb56c8b5c52e68eb50ded8302e686c5dd42b84f71a9f9d52bc99a90",
+      "slot": "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc"
+    },
+    "upgradeReview": "Issuer may upgrade or freeze"
+  },
+  "authority": "0x875132a3fc20719dfc8bf4c98f49f8f568533dcc",
+  "treasury": "0xd573049358c8fcf6d6a6928b72fbdd6f74d80d19",
+  "preset": {
+    "id": 1,
+    "version": 4,
+    "configHash": "0x7962e027b0cf813b80d1e75677f83b16c7a2ada07f23614a01dec9a0035b2222",
+    "quoteAddress": "0xa9012a055bd4e0edff8ce09f960291c09d5322dc",
+    "totalSupply": "21000000000000000000000000",
+    "saleAllocation": "16800000000000000000000000",
+    "lpAllocation": "4200000000000000000000000",
+    "buyFeeBps": 100,
+    "sellFeeBps": 100,
+    "launchFee": "0",
+    "protocolShareBps": 5000,
+    "lpCreatorShareBps": 5000
+  },
+  "liquidity": {
+    "feeTier": 10000,
+    "tickSpacing": 200,
+    "sqrtPriceToleranceBps": 5,
+    "range": "full_range"
+  },
+  "metadataOrigin": "https://app.pickler.fun",
+  "maxGas": "4000000",
+  "maxFeePerGas": "120000000000",
+  "maxGasCost": "480000000000000000",
+  "rpcRequestsPerOperation": 400,
+  "confirmations": 5
+}

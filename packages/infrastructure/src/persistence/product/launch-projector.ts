@@ -37,15 +37,46 @@ export interface ProjectionResult {
 
 export class PostgresLaunchProjector {
   readonly pool: Pool;
+  admissionFence?: { chain: string; owner: string };
   private readonly database: NodePgDatabase;
 
-  constructor(connectionString: string, options?: DatabaseConnectionOptions) {
-    this.pool = new Pool(databasePoolConfig(connectionString, options));
+  constructor(connectionString: string | Pool, options?: DatabaseConnectionOptions) {
+    this.pool =
+      typeof connectionString === "string"
+        ? new Pool(databasePoolConfig(connectionString, options))
+        : connectionString;
     this.database = drizzle(this.pool);
   }
 
   async close(): Promise<void> {
     await this.pool.end();
+  }
+
+  private async mutation<T>(
+    chain: string,
+    blockHash: string | null,
+    work: (tx: Parameters<Parameters<NodePgDatabase["transaction"]>[0]>[0]) => Promise<T>,
+  ) {
+    return this.database.transaction(async (tx) => {
+      if (this.admissionFence) {
+        const f = this.admissionFence;
+        const r = await tx.execute(
+          sql`SELECT 1 FROM launch.indexer_admission WHERE chain=${f.chain} AND owner=${f.owner}::uuid AND expires_at>clock_timestamp() FOR UPDATE`,
+        );
+        if (!r.rowCount) {
+          throw new Error("INDEX_LEASE_LOST");
+        }
+      }
+      if (blockHash) {
+        const canonical = await tx.execute(
+          sql`SELECT 1 FROM market.chain_blocks WHERE chain=${chain} AND hash=${blockHash} AND NOT orphaned FOR SHARE`,
+        );
+        if (!canonical.rowCount) {
+          return undefined;
+        }
+      }
+      return work(tx);
+    });
   }
 
   /**
@@ -56,6 +87,14 @@ export class PostgresLaunchProjector {
    * produces the same catalogue as running it once.
    */
   async project(chain: string, readMetadata: MetadataReader): Promise<ProjectionResult> {
+    await this.mutation(chain, null, async (tx) => {
+      await tx.execute(
+        sql`DELETE FROM market.trades tr USING market.pools p,market.tokens t,market.chain_blocks b WHERE tr.pool_id=p.id AND p.token_id=t.id AND b.chain=t.chain AND b.hash=tr.block_hash AND t.chain=${chain} AND b.orphaned`,
+      );
+      await tx.execute(
+        sql`UPDATE market.tokens t SET status='failed',graduated_at=NULL WHERE t.chain=${chain} AND t.launch_tx_hash IS NOT NULL AND EXISTS(SELECT 1 FROM market.chain_events e WHERE e.chain=t.chain AND e.tx_hash=t.launch_tx_hash AND e.event_name='LaunchCreated') AND NOT EXISTS(SELECT 1 FROM market.chain_events e JOIN market.chain_blocks b ON b.chain=e.chain AND b.hash=e.block_hash WHERE e.chain=t.chain AND e.tx_hash=t.launch_tx_hash AND e.event_name='LaunchCreated' AND NOT e.orphaned AND NOT b.orphaned)`,
+      );
+    });
     const rows = await this.database
       .select({
         blockNumber: chainEvents.blockNumber,
@@ -118,54 +157,130 @@ export class PostgresLaunchProjector {
     return result;
   }
 
+  /** Project one verified receipt without replaying unrelated history or moving any cursor. */
+  async projectReceipt(chain: string, txHash: string, readMetadata: MetadataReader): Promise<void> {
+    const result = await this.pool.query<{
+      txHash: string;
+      blockNumber: number;
+      blockTime: Date;
+      blockHash: string;
+      emitter: string;
+      decoded: Record<string, string>;
+    }>(
+      `SELECT e.tx_hash AS "txHash",e.block_number AS "blockNumber",b.block_time AS "blockTime",
+         e.block_hash AS "blockHash",e.emitter,e.decoded
+       FROM market.chain_events e JOIN market.chain_blocks b ON b.chain=e.chain AND b.hash=e.block_hash
+       WHERE e.chain=$1 AND e.tx_hash=$2 AND e.event_name='LaunchCreated'
+         AND NOT e.orphaned AND NOT b.orphaned AND b.finality IN ('confirmed','finalized')`,
+      [chain, txHash],
+    );
+    if (result.rows.length !== 1) {
+      throw new Error("AMBIGUOUS_CONFIRMED_LAUNCH");
+    }
+    const row = result.rows[0]!;
+    await this.projectLaunch(chain, row.decoded, row, readMetadata);
+  }
+
   private async projectLaunch(
     chain: string,
     args: Record<string, string>,
-    row: { txHash: string; blockNumber: number; blockTime: Date },
+    row: {
+      txHash: string;
+      blockNumber: number;
+      blockTime: Date;
+      blockHash: string;
+      emitter: string;
+    },
     readMetadata: MetadataReader,
   ): Promise<void> {
     const address = args.token!.toLowerCase();
     const curve = args.curve!.toLowerCase();
     const metadata = await readMetadata(address, BigInt(row.blockNumber));
 
-    const [token] = await this.database
-      .insert(tokens)
-      .values({
-        // Left null on purpose: the chain knows an agentKey, which nothing reverses into our
-        // agent's identifier. The product links it afterwards.
-        agentId: null,
-        ticker: `$${metadata.symbol.toUpperCase()}`.slice(0, 7),
-        name: metadata.name,
+    // Attribution requires a persisted grant for this factory and canonical confirmation.
+    const mapping = await this.pool.query<{ agentId: string; imageUri: string | null }>(
+      `
+      SELECT k.agent_id AS "agentId",g.payload->>'imageUri' AS "imageUri"
+      FROM launch.agent_keys k JOIN launch.grants g ON g.agent_id=k.agent_id AND g.chain=k.chain
+      JOIN market.chain_blocks b ON b.chain=k.chain AND b.hash=$3
+      WHERE k.chain=$1 AND k.agent_key=$2 AND NOT b.orphaned
+        AND b.finality IN ('confirmed','finalized') AND g.factory=$4
+        AND lower(g.payload->'params'->>'creator')=$5
+        AND lower(g.payload->'params'->>'metadataHash')=$6
+        AND lower(g.payload->'params'->>'expectedConfigHash')=$7
+        AND date_trunc('second',g.created_at) <= b.block_time AND g.expires_at >= b.block_time
+        AND g.payload->'params'->>'name'=$8 AND g.payload->'params'->>'symbol'=$9
+        AND lower(g.payload->'params'->>'creatorFeeRecipient')=$10
+      LIMIT 2`,
+      [
         chain,
-        address,
-        decimals: metadata.decimals,
-        totalSupply: metadata.totalSupply.toString(),
-        quoteAddress: args.quoteToken!.toLowerCase(),
-        quoteDecimals: 6,
-        status: "pre_graduation",
-        launchTxHash: row.txHash,
-        launchedAt: row.blockTime,
-      })
-      .onConflictDoUpdate({
-        target: [tokens.chain, tokens.address],
-        // tokens_address_key is a partial index, so Postgres only matches it as a conflict
-        // target when the predicate is repeated here.
-        targetWhere: sql`"address" is not null`,
-        set: { status: "pre_graduation", updatedAt: sql`now()` },
-      })
-      .returning({ id: tokens.id });
+        args.agentKey?.toLowerCase(),
+        row.blockHash,
+        row.emitter.toLowerCase(),
+        args.creator?.toLowerCase(),
+        args.metadataHash?.toLowerCase(),
+        args.presetHash?.toLowerCase(),
+        metadata.name,
+        metadata.symbol,
+        args.creator?.toLowerCase(),
+      ],
+    );
+    if (mapping.rows.length > 1 && new Set(mapping.rows.map((r) => r.agentId)).size > 1) {
+      throw new Error("AMBIGUOUS_LAUNCH_GRANT");
+    }
+    const agentId = mapping.rows[0]?.agentId ?? null;
 
-    await this.database
-      .insert(pools)
-      .values({
-        tokenId: token!.id,
-        phase: "pre_graduation",
-        venue: "pickler_curve",
-        address: curve,
-        openedTxHash: row.txHash,
-        openedAt: row.blockTime,
-      })
-      .onConflictDoNothing({ target: [pools.tokenId, pools.phase] });
+    await this.mutation(chain, row.blockHash, async (tx) => {
+      const [token] = await tx
+        .insert(tokens)
+        .values({
+          agentId,
+          imageUri: mapping.rows[0]?.imageUri ?? null,
+          ticker: `$${metadata.symbol.toUpperCase()}`.slice(0, 7),
+          name: metadata.name,
+          chain,
+          address,
+          decimals: metadata.decimals,
+          totalSupply: metadata.totalSupply.toString(),
+          quoteAddress: args.quoteToken!.toLowerCase(),
+          quoteDecimals: 6,
+          status: "pre_graduation",
+          launchTxHash: row.txHash,
+          launchedAt: row.blockTime,
+        })
+        .onConflictDoUpdate({
+          target: [tokens.chain, tokens.address],
+          // tokens_address_key is a partial index, so Postgres only matches it as a conflict
+          // target when the predicate is repeated here.
+          targetWhere: sql`"address" is not null`,
+          set: {
+            agentId,
+            imageUri: mapping.rows[0]?.imageUri ?? null,
+            ticker: `$${metadata.symbol.toUpperCase()}`.slice(0, 7),
+            name: metadata.name,
+            totalSupply: metadata.totalSupply.toString(),
+            quoteAddress: args.quoteToken!.toLowerCase(),
+            launchTxHash: row.txHash,
+            launchedAt: row.blockTime,
+            status: "pre_graduation",
+            graduatedAt: null,
+            updatedAt: sql`now()`,
+          },
+        })
+        .returning({ id: tokens.id });
+
+      await tx
+        .insert(pools)
+        .values({
+          tokenId: token!.id,
+          phase: "pre_graduation",
+          venue: "pickler_curve",
+          address: curve,
+          openedTxHash: row.txHash,
+          openedAt: row.blockTime,
+        })
+        .onConflictDoNothing({ target: [pools.tokenId, pools.phase] });
+    });
   }
 
   private async projectTrade(
@@ -191,23 +306,25 @@ export class PostgresLaunchProjector {
 
     const buying = eventName === "CurveBought";
 
-    await this.database
-      .insert(trades)
-      .values({
-        poolId: curve,
-        side: buying ? "buy" : "sell",
-        trader: (buying ? args.recipient! : args.seller!).toLowerCase(),
-        tokenAmount: buying ? args.tokensOut! : args.tokensIn!,
-        quoteAmount: buying ? args.grossQuoteIn! : args.netQuoteOut!,
-        feeAmount: args.totalFee ?? "0",
-        blockNumber: row.blockNumber,
-        blockHash: row.blockHash,
-        txHash: row.txHash,
-        logIndex: row.logIndex,
-        blockTime: row.blockTime,
-      })
-      // The log's own position is what makes a replay cost nothing.
-      .onConflictDoNothing({ target: [trades.poolId, trades.txHash, trades.logIndex] });
+    await this.mutation(chain, row.blockHash, async (tx) => {
+      await tx
+        .insert(trades)
+        .values({
+          poolId: curve,
+          side: buying ? "buy" : "sell",
+          trader: (buying ? args.recipient! : args.seller!).toLowerCase(),
+          tokenAmount: buying ? args.tokensOut! : args.tokensIn!,
+          quoteAmount: buying ? args.grossQuoteIn! : args.netQuoteOut!,
+          feeAmount: args.totalFee ?? "0",
+          blockNumber: row.blockNumber,
+          blockHash: row.blockHash,
+          txHash: row.txHash,
+          logIndex: row.logIndex,
+          blockTime: row.blockTime,
+        })
+        // The log's own position is what makes a replay cost nothing.
+        .onConflictDoNothing({ target: [trades.poolId, trades.txHash, trades.logIndex] });
+    });
 
     return true;
   }
@@ -215,7 +332,7 @@ export class PostgresLaunchProjector {
   private async projectGraduation(
     chain: string,
     args: Record<string, string>,
-    row: { txHash: string; blockTime: Date },
+    row: { txHash: string; blockTime: Date; blockHash: string },
   ): Promise<boolean> {
     const address = args.token?.toLowerCase();
     if (!address) {
@@ -232,28 +349,30 @@ export class PostgresLaunchProjector {
       return false;
     }
 
-    await this.database
-      .update(tokens)
-      .set({ status: "graduated", graduatedAt: row.blockTime, updatedAt: sql`now()` })
-      .where(eq(tokens.id, token.id));
+    await this.mutation(chain, row.blockHash, async (tx) => {
+      await tx
+        .update(tokens)
+        .set({ status: "graduated", graduatedAt: row.blockTime, updatedAt: sql`now()` })
+        .where(eq(tokens.id, token.id));
 
-    await this.database
-      .update(pools)
-      .set({ closedTxHash: row.txHash, closedAt: row.blockTime })
-      .where(and(eq(pools.tokenId, token.id), eq(pools.phase, "pre_graduation")));
+      await tx
+        .update(pools)
+        .set({ closedTxHash: row.txHash, closedAt: row.blockTime })
+        .where(and(eq(pools.tokenId, token.id), eq(pools.phase, "pre_graduation")));
 
-    await this.database
-      .insert(pools)
-      .values({
-        tokenId: token.id,
-        phase: "post_graduation",
-        venue: "uniswap_v4",
-        // A V4 pool lives inside the PoolManager and has no address of its own.
-        poolKey: args.poolId!,
-        openedTxHash: row.txHash,
-        openedAt: row.blockTime,
-      })
-      .onConflictDoNothing({ target: [pools.tokenId, pools.phase] });
+      await tx
+        .insert(pools)
+        .values({
+          tokenId: token.id,
+          phase: "post_graduation",
+          venue: "uniswap_v4",
+          // A V4 pool lives inside the PoolManager and has no address of its own.
+          poolKey: args.poolId!,
+          openedTxHash: row.txHash,
+          openedAt: row.blockTime,
+        })
+        .onConflictDoNothing({ target: [pools.tokenId, pools.phase] });
+    });
 
     return true;
   }

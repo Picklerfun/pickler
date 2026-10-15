@@ -1,5 +1,6 @@
 "use client";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback } from "react";
+import { useStudioForm, useStudioMemory } from "../routing/memory";
 import type { SetupUpdateDto } from "@pickler/api-schema";
 import { Icon } from "@pickler/ui";
 import { errorCode } from "../api";
@@ -12,25 +13,18 @@ export type SaveState =
   | { kind: "idle" }
   | { kind: "saving" }
   | { kind: "saved" }
-  | { kind: "conflict" }
+  | { kind: "conflict"; discard?: () => void }
   | { kind: "preview" }
   | { kind: "error"; text: string };
 
 const IDLE: SaveState = { kind: "idle" };
 
 /**
- * The form a Build section edits, starting from what the agent holds and starting over whenever
- * the agent's version moves: after its own save (the form then equals what was saved), and after
- * a stale save reloaded it ("Reloaded." means the screen shows the other change).
+ * A section draft survives route unmounts in workspace memory. Clean drafts follow server
+ * versions; dirty drafts keep their original version until saved or explicitly discarded.
  */
-export function useSavedForm<T>(version: number, saved: T): [T, (next: T) => void] {
-  const [form, setForm] = useState(saved);
-  const [base, setBase] = useState(version);
-  if (version !== base) {
-    setBase(version);
-    setForm(saved);
-  }
-  return [form, setForm];
+export function useSavedForm<T>(version: number, saved: T, key: string): [T, (next: T) => void] {
+  return useStudioForm(key, version, saved);
 }
 
 /**
@@ -38,46 +32,78 @@ export function useSavedForm<T>(version: number, saved: T): [T, (next: T) => voi
  * staged or preview studio it says nothing was saved. `touch` drops the last outcome once the
  * form is edited again.
  */
-export function useSetupSave(studio: Pick<UseAgentStudio, "saveSetup" | "refreshAgent">) {
-  const [state, setState] = useState<SaveState>(IDLE);
-  const alive = useRef(true);
-  useEffect(() => {
-    alive.current = true;
-    return () => {
-      alive.current = false;
-    };
-  }, []);
+export function useSetupSave(
+  studio: Pick<UseAgentStudio, "saveSetup" | "refreshAgent">,
+  scope: string,
+  version: number,
+) {
+  const memory = useStudioMemory();
+  const state = memory.outcome<SaveState>(scope, IDLE);
   const { saveSetup, refreshAgent } = studio;
-
+  const setState = useCallback(
+    (next: SaveState) => memory.setOutcome(scope, next),
+    [memory, scope],
+  );
+  const conflict = useCallback(
+    () =>
+      setState({
+        kind: "conflict",
+        discard: () => {
+          memory.discard(scope);
+          setState(IDLE);
+        },
+      }),
+    [memory, scope, setState],
+  );
   const save = useCallback(
     async (patch: Omit<SetupUpdateDto, "expectedVersion">) => {
+      if (memory.busy(scope)) {
+        return;
+      }
+      if (memory.stale(scope, version)) {
+        conflict();
+        return;
+      }
+      const generation = memory.generation();
+      memory.begin(scope);
       setState({ kind: "saving" });
       try {
         await saveSetup(patch);
-        if (alive.current) {
-          setState({ kind: "saved" });
+        if (memory.generation() !== generation) {
+          return;
         }
+        memory.committed(scope);
+        setState({ kind: "saved" });
       } catch (caught) {
+        if (memory.generation() !== generation) {
+          return;
+        }
         const problem = setupProblem(
           errorCode(caught),
           caught instanceof Error ? caught.message : "Could not save.",
         );
         if (problem.kind === "conflict") {
           await refreshAgent().catch(() => undefined);
-        }
-        if (alive.current) {
+          if (memory.generation() === generation) {
+            conflict();
+          }
+        } else {
           setState(problem);
+        }
+      } finally {
+        if (memory.generation() === generation) {
+          memory.end(scope);
         }
       }
     },
-    [saveSetup, refreshAgent],
+    [memory, scope, version, saveSetup, refreshAgent, conflict, setState],
   );
-
   const touch = useCallback(() => {
-    setState((current) => (current.kind === "saving" ? current : IDLE));
-  }, []);
-
-  return { state, save, touch, saving: state.kind === "saving" };
+    if (!memory.busy(scope)) {
+      setState(IDLE);
+    }
+  }, [memory, scope, setState]);
+  return { state, save, touch, saving: memory.busy(scope) };
 }
 
 /** The save button's words: "Saving…", "Saved" until the next edit, else its own. */
@@ -97,6 +123,11 @@ export function SaveOutcome({ state }: { state: SaveState }) {
     return (
       <p className={styles.notice} role="status">
         {CONFLICT_LINE}
+        {state.discard && (
+          <button type="button" className={styles.saveButton} onClick={state.discard}>
+            Discard edits and reload
+          </button>
+        )}
       </p>
     );
   }

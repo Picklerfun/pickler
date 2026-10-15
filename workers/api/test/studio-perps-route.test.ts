@@ -58,6 +58,7 @@ const NOW = Date.UTC(2026, 9, 3, 12, 30);
 const HOUR = 3_600_000;
 
 const { config: perplConfig } = prepareDraft({
+  markets: ["BTC", "ETH"],
   name: "Trader",
   handle: "trader",
   voice: "analyst",

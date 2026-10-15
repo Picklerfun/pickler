@@ -33,6 +33,10 @@ NFL coverage `sourceIds` may identify retrieved sources or section-scoped execut
 
 ## Public agents
 
+`DirectoryAgentDto.launchedToken` is an optional nullable confirmed token summary, using
+`agentTokenSchema`, for the configured network. Older consumers and controlled fixtures may omit
+it; absence never grants public trading.
+
 `src/agents.ts` carries the public agent board, persona, directory, reads, analytics and
 leaderboard. On every one of these DTOs `null` means absent: a figure that has no source yet — no
 token launched, so no `ticker`, `slug`, `marketCap` or `stage`; nothing settled, so no
@@ -43,7 +47,17 @@ configuration.
 
 ## Studio contracts
 
-`src/studio.ts` validates agent identity and idempotency keys. Studio research responses reuse runtime schemas and preserve 202 plus runId. Product, growth and research response families remain distinct; see ../../docs/cloudflare-unification.md.
+Perpl live state optionally carries nullable `requirements`: minimum account/deposit AUSD and
+the reviewed maximum per deposit. These are public exact decimal strings; omission remains
+compatible with older fixtures/consumers and does not authorize funding.
+
+`walletsResponseSchema` carries optional nullable `chainId` for the deployment-selected custody
+balance/transfer network (10143: Monad Testnet; 143: Monad mainnet). Current producers always
+return it, null if unavailable; omission remains accepted for legacy responses. Consumers must
+not label missing metadata as testnet or confuse it with a Perpl market network. No network
+selection parameter is added to wallet or transfer requests.
+
+`src/studio.ts` validates agent identity and idempotency keys. It also exports `AdvicePriceUpdateDto` and `AdvicePriceResponseDto`, the body and answer of `PUT /v1/studio/agents/:id/advice-price`. Studio research responses reuse runtime schemas and preserve 202 plus runId. Product, growth and research response families remain distinct; see ../../docs/cloudflare-unification.md.
 
 An agent is created one way: `draftCreateSchema`, the strict body of `POST /v1/studio/drafts` (name,
 handle, voice, avatar, sources, brief, caps and the `walletId` of the agent wallet already made,
@@ -65,6 +79,11 @@ The DTO also carries `spend` (the config's limits or null) and `spendEnforced` (
 that a day's limit is not below one call's. `limitsUpdateSchema` is the strict body of
 `PUT /v1/studio/agents/:id/limits`: `perCallAusd` and `perDayAusd`, with no version, because saving
 limits keeps the configuration version.
+`advicePriceUpdateSchema` (`{ priceAusd: string | null }`) and `advicePriceResponseSchema` are the
+body and answer of `PUT /v1/studio/agents/:id/advice-price`.
+`studioAgentSchema` also carries `advicePrice` (the same nullable `{ amount, asset, decimals }`), so the
+live Studio can show the agent's current price; this supersedes phase 1's Ruling 4, which kept it
+out of the Studio agent DTO.
 
 Setup and versions (docs/specs/studio-live-v1.md L10–L13): `src/research.ts` has `RISK_BOUNDS`, a
 mirror of core's pinned by `workers/api/test/accent-venue-mirror.test.ts`, and `riskLimitsSchema`
@@ -137,6 +156,16 @@ representative contract tests in the same change.
 24-hour directional results and cursor history. No requester identity, internal scope, private
 configuration, prices/rates, prompts or provider traces may cross these DTOs. Wallet sign-in
 `kind` is `eoa | mera`. See [Agent advice](../../docs/agent-advice.md).
+`paymentRequirementsSchema`, `paymentErrorSchema` and `paymentRequiredSchema` are the x402 v1 402
+body of the paid advice request: x402's own shape, not the response envelope, with one `accepts`
+entry pinned to `exact`, `monad-testnet`, 300 s and the AUSD EIP-712 domain. `payTo` is the advice
+splitter and `extra` also pins `primaryType: "ReceiveWithAuthorization"`, `creatorBps: 6500`,
+`protocolBps: 3500` and `nonceDerivation`, with the agent wallet as `payee`
+(docs/specs/agent-advice-fee-split-v1.md §4). `paymentPayloadSchema` and
+`paymentAuthorizationSchema` describe the decoded `X-PAYMENT` header: the six signed
+`ReceiveWithAuthorization` fields plus `salt` (32 bytes, `nonce = keccak256(abi.encode(payee,
+salt))`). The API Worker publishes it as the header's OpenAPI `contentSchema`; core decodes the
+header itself and stays authoritative.
 
 ## Perpl paper runtime
 
@@ -154,11 +183,11 @@ amounts are decimal strings; the record's computed figures are AUSD numbers; tim
 and `PERPS_OWNER_ACTION_STATUSES` mirror trading's lists
 (pinned by `workers/api/test/studio-perps-route.test.ts`); `PERPS_MANUAL_CHECKS_PER_DAY` is 6.
 
-Studio setup and stored configuration accept `perpsStrategy` with an explicit identifier and version 2.0.0. Setup permits an empty entry section for rules; core still rejects missing AI entry conditions and unverified free-text rules conditions. No model or financial policy belongs in these portable DTOs.
+Studio setup and stored configuration accept `perpsStrategy` with an explicit identifier and version 2.0.0 or 2.1.0. Setup permits an empty entry section for rules; core still rejects missing AI entry conditions and unverified free-text rules conditions. No model or financial policy belongs in these portable DTOs.
 
 ## Studio strategy version 2
 
-Studio setup selects a versioned common strategy; absent selection resolves combined@2.0.0.
+Studio setup selects a versioned common strategy; legacy absent selection resolves combined@2.0.0; new agents use combined@2.1.0.
 New check results expose `strategyResult` with per-market proposals, three-state brief findings,
 execution outcomes, funding status and incompleteness. Historical fields retain their recorded
 values and are null/empty for new results rather than fabricated percentages. Model costs remain
@@ -166,3 +195,152 @@ USD micros, separately from virtual financial metrics; unknown daily costs stay 
 retains workspace authorization and generated OpenAPI. The web displays the strategy in both
 agent studios and explicitly confirms clearing unsupported authored conditions for rules.
 See [Studio perpetual execution](../../docs/studio-perps-execution.md).
+
+## AI credit DTOs
+
+`src/ai-credits.ts` exports strict portable balance, purchase, ledger history and agent/model allocation schemas. Exact amounts are decimal strings in micro-credit units; one credit is 1,000,000 units. Never expose internal provider costs, proof data or payer identity. No HTTP route is introduced by these DTOs. See [AI credits](../../docs/ai-credits.md).
+
+Creator-access status and inbox schemas are exported from `studio.ts`. User status exposes only
+its own request time/status and whether the authenticated operator may review the inbox. Inbox
+profile identifiers are operator-only. Requests do not include caller-supplied user/workspace IDs.
+User status also includes the application under the account's verified email, or null.
+`studioApplicationsSchema` and `studioApplicationReviewRequestSchema` describe the operator-only
+application inbox and invited/rejected decisions with optional notes. Application IDs are positive
+integer numbers, and audit timestamps are ISO UTC. Inviting enables access by email; no email is sent.
+
+`AgentActionDto` in `agents.ts` describes the public marketplace activity feed.
+The retired landing response is no longer exported; `landing.ts` retains only shared public agent
+presentation types. The API generates OpenAPI from route metadata and these wire schemas.
+
+## Dynamic Studio markets
+
+`perplMarketCatalogSchema`/DTO and `perplSelectionSchema` are portable public contracts. Perpl
+configuration is a discriminated v1 BTC/ETH and v2 dynamic union. Draft creation requires markets;
+setup markets are optional with expectedVersion. Studio strategy versions accept 2.0.0 and 2.1.0.
+Generate OpenAPI from routes; never maintain JSON manually.
+
+See [agent-selected Perpl markets](../../docs/studio-perpl-markets.md).
+
+## X connection DTOs
+
+Studio exports portable OAuth connection state, authorization request/URL, disconnect status and
+bounded private timeline DTOs. `X_CONNECTION_REQUIRED` is a publication blocker. No DTO exposes
+tokens, PKCE verifier, provider payloads, spending costs or historical proof details. Retired
+challenge/verify DTOs are removed. See [Studio X OAuth](../../docs/studio-x-oauth.md).
+
+## X preview cost controls
+
+X timeline preview DTOs return at most five posts and a null nextCursor. Cursor input is refused by core; no pagination is advertised. Existing field names remain stable and metadata is generated by the API.
+
+## X profile presentation
+
+X connection account DTOs include optional nullable displayName/profileImageUrl for additive compatibility. Earlier connections can omit both; current producers return null when unavailable. No provider or credential fields are added.
+
+## Price history timestamps
+
+MarketDetailDto and marketDetailDtoSchema accept optional trailTimestamps: nullable ISO UTC values aligned with trail. Existing consumers/producers remain compatible. These describe hourly closes and the appended current mark, not OHLC or interpolated dates.
+
+`priceHistory` is an optional array of `{ price, at }`, bounded to 721 ISO-timestamped samples
+(720 hourly closes and one observed mark). It adds range views without changing `trail`'s 24h
+meaning or requiring legacy/sample producers to fabricate history.
+
+## Agent token DTOs
+
+`src/token-launch.ts` exports strict name/ticker/version inputs, token state, preset and authorization
+schemas and portable DTOs through the package root. Base units and nonces are decimal strings;
+networks are explicit Monad chain IDs. `AGENT_TOKEN_TOTAL_SUPPLY` mirrors the business-owned fixed
+21-million supply for new launches. Owner-only token state adds optional nullable `masterAddress`;
+older producers may omit it. Optional nullable `economics` uses the version-2
+`tokenReferenceEconomicsSchema`: explicit quote identity/decimals, atomic reserves, WAD prices/FDVs,
+distribution, curve fees and pending DEX state. Reference terms are not a published preset or an
+execution quote; unknown versions fail. Historical preset/token reads are not constrained to
+new-launch policy.
+Public persona DTOs add optional nullable `launchedToken`
+and `tokenConfirmation` for historical consumers. Absence, confirmation pending and failed reads
+are different outcomes. No signer, credentials, provider trace or metadata persistence belongs here.
+OpenAPI is generated from API route metadata; see [the token guide](../../docs/agent-token-preview.md).
+
+## Token operations
+
+`token-launch.ts` adds strict enumerated operation inputs, optional exact passkey confirmation,
+private operation state and indexed Kuru/fee summaries. An unsigned activity is returned only
+while awaiting signature. No raw signed transaction, signing key, arbitrary calldata or provider
+configuration is a browser contract. Metadata asset reads are documented separately by API media type.
+
+## Versioned token venue summaries
+
+Token state includes optional server-resolved launch venue/native LP fee. Confirmed liquidity
+supports `uniswap_v4` with optional pool ID and LP fee alongside historical `kuru_passive` data.
+Fields are additive for historical producers. Network, contracts, account and NFT are never
+browser-selected inputs. Regenerate OpenAPI through the API host; do not publish private
+configuration hashes, signer material or raw transactions in DTOs.
+
+## Owner curve trade DTOs
+
+Token operation inputs add `buy`, `sell`, `approve_buy` and `approve_sell` with required strict
+`trade` (positive uint256 atomic amount and explicit 1–100 bps slippage). Other actions reject
+trade fields. Clients cannot select contracts, wallets, recipients or calldata. Additive operation
+`quote` exposes only prepared amounts, balance, allowance, fee and approval purpose; historical
+operations without it remain readable. Ordinary state reads remain database-only. The API can repair a finalized app launch with missing canonical attribution through its existing operation service; the wire schema is unchanged.
+
+## Public curve trading contracts
+
+`public-token-trading.ts` exports strict visitor wallet/side/atomic amount/tolerance input and
+version-1 unsigned preparation DTOs through the package root. Targets, curve, asset, gas, nonce
+and minimum output are server-resolved outputs, never client input. Chain is explicitly testnet 10143. Owner Studio DTOs and authentication remain separate. See
+[Public token trading](../../docs/market/public-token-trading.md).
+
+## Public token market observations
+
+`LaunchDetailDto.market` is optional/nullable for historical producers. Version 1 carries prepared
+WAD prices/FDV, quote-atomic 24-hour curve volume, server window end, observed block/time,
+canonical net sold/reserve, optional committed allocations and bounded history/recent trades.
+`tokenMarketSchema` validates this extension in the existing launch read contract. A missing
+market or terms is unknown, never a zero price or implicit reference preset.
+
+Public trade confirmation uses strict `publicTokenTradeConfirmationInputSchema` (visitor wallet
+and transaction hash only) and `publicTokenTradeConfirmationSchema` (`pending`, `confirmed` or
+`reverted`). Clients cannot supply token/curve addresses, calldata, prices or reserve values.
+
+`TokenMarketDto.priceMovement` is an optional nullable prepared latest-observation change:
+`direction`, signed decimal-string `changeBps`, and the compared `fromAt`/`toAt` timestamps.
+Older producers without the field remain valid. Direction survives rounded zero basis points;
+inconsistent signs are invalid. It must not be labelled as a 24-hour return.
+
+`publicTokenTradeQuotedSchema`/DTO omits the transaction from the prepared response. The public
+quote route shares the strict trade input and exposes only canonical identities, expiration and
+exact server-calculated quantities; it does not supply an executable transaction.
+
+## Perpl real execution DTOs
+
+`src/perpl-live.ts` exports strict portable owner setup, bounded session, control, position,
+order and state schemas. Amounts are decimal strings; missing economics/precision are nullable.
+No credential, private preparation, lease, organization/tenant selector or internal signal source
+belongs in these DTOs. Caller input cannot choose calldata, signing wallet or exchange address.
+See [Perpl trading](../../docs/perpl-trading.md).
+
+## Perpl dashboard wire contract
+
+`perpl-dashboard.ts` exports concrete read-only market/portfolio DTOs and the narrow scope-1
+enrollment and signed-read envelopes. `PERPL_READ_KEY_TYPES`, fixed testnet domain/origin, no
+builder/delegation terms, matching wallet/public key/expiry and `checkPerplReadPayload` protect
+every signing boundary. Enrollment intentionally returns the opaque read-access token privately
+to its signing browser; no private key is accepted or returned. Monetary projections are decimal
+strings. Collateral-exhaustion/price-buffer values are estimates, not venue liquidation prices.
+See [Perpl dashboard](../../docs/perpl-dashboard.md).
+
+The dashboard's public `GET /v1/perpl/portfolio/:wallet` validates the path with
+`perplPublicWalletSchema`. Portfolio responses may carry `source: "onchain"`; older signed REST
+responses omit it. Original position leverage is nullable because the public account getter does
+not supply that setting. Historical statistics remain nullable, never zero-filled. Other monetary
+and risk fields preserve their existing units and meaning. Legacy key enrollment and signed-read
+DTOs retain their strict scope-1 contract.
+
+`perplLiveExistingKeySchema` is the strict write-only owner import input (Perpl API token plus
+32-byte Ed25519 seed). These credentials are never response fields. Owner state adds optional
+`setupEnabled`, independently of session admissions. See [Perpl trading](../../docs/perpl-trading.md).
+
+Existing-key input adds optional `useKeyWallet` for explicitly connecting the wallet verified
+by its key. It accepts no address. State adds optional `connection` (`agent_wallet`/`key_wallet`)
+and positions add optional `managedBySession`; these are public status only. Older DTOs stay valid
+and the two credential fields remain write-only.

@@ -1,0 +1,2 @@
+ALTER TABLE "launch"."operations" DROP CONSTRAINT "operations_action";--> statement-breakpoint
+ALTER TABLE "launch"."operations" ADD CONSTRAINT "operations_action" CHECK ("launch"."operations"."action" IN ('launch','graduate','collect_curve_fees','collect_lp_fees','claim_fees','approve_buy','approve_sell','buy','sell'));

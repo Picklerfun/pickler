@@ -151,3 +151,26 @@ test("workflow isolates migration secrets from build/test steps and excludes PR 
     assert.ok((await readFile(config, "utf8")).includes(ACCOUNT));
   }
 });
+
+test("standalone Supabase migrations preserve independent builds without Cloudflare credentials", async () => {
+  const workflow = await readFile(
+    new URL("../../.github/workflows/staging-migrations.yml", import.meta.url),
+    "utf8",
+  );
+  assert.match(workflow, /branches: \[main\]/);
+  assert.match(workflow, /github.ref == 'refs\/heads\/main'/);
+  assert.match(workflow, /STAGING_DEPLOYMENT_ENABLED != 'true'/);
+  assert.match(workflow, /group: pickler-coordinated-staging/);
+  assert.match(workflow, /cancel-in-progress: false/);
+  assert.match(workflow, /environment: staging/);
+  assert.ok(!workflow.includes("pull_request:"));
+  assert.ok(!workflow.includes("CLOUDFLARE_API_TOKEN"));
+  assert.ok(!workflow.includes("wrangler"));
+  const hosted = workflow.indexOf("- name: Apply and verify hosted Supabase migrations");
+  assert.ok(hosted > workflow.indexOf("migration-cli.test.ts"));
+  assert.ok(!workflow.slice(0, hosted).includes("secrets."));
+  assert.match(workflow.slice(hosted), /run: npm run db:migrate/);
+  assert.equal((workflow.match(/secrets\./g) ?? []).length, 2);
+  assert.match(workflow.slice(hosted), /secrets.DATABASE_MIGRATION_URL/);
+  assert.match(workflow.slice(hosted), /secrets.DATABASE_MIGRATION_CA_CERT/);
+});

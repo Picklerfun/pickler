@@ -12,12 +12,18 @@ import {
 
 export function assertPerplConfig(config: PerplConfig): void {
   if (
-    config.version !== 1 ||
+    ![1, 2].includes(config.version) ||
     !["mainnet", "testnet"].includes(config.network) ||
     !Array.isArray(config.markets) ||
     config.markets.length === 0 ||
-    config.markets.length > 2 ||
-    config.markets.some((symbol) => symbol !== "BTC" && symbol !== "ETH") ||
+    config.markets.length > 1000 ||
+    config.markets.some(
+      (symbol) =>
+        typeof symbol !== "string" || !/^[A-Z0-9][A-Z0-9._-]{0,31}(?![\s\S])/.test(symbol),
+    ) ||
+    (config.version === 1 &&
+      (config.markets.length > 2 ||
+        config.markets.some((symbol) => symbol !== "BTC" && symbol !== "ETH"))) ||
     new Set(config.markets).size !== config.markets.length
   ) {
     throw new PilotError("INVALID_INPUT", "Invalid Perpl configuration");
@@ -62,7 +68,7 @@ export function createPerpReadService(deps: {
           );
         }
         requireTool(current.config, tool);
-        if (symbol !== undefined && !frozen.markets.includes(symbol)) {
+        if (symbol !== undefined && !frozen.markets.some((market) => market === symbol)) {
           throw new PilotError("MARKET_NOT_ALLOWED", "Perpetual is not enabled for this agent");
         }
       };
@@ -113,4 +119,30 @@ export function createPerpReadService(deps: {
       },
     };
   };
+}
+
+export function assertPerplSelection(
+  catalog: import("./types.js").PerplMarketCatalog,
+  network: import("./types.js").PerpNetwork,
+  symbols: readonly PerpSymbol[],
+  now: number,
+): void {
+  assertPerplConfig({ version: 2, network, markets: [...symbols] });
+  if (
+    catalog.network !== network ||
+    !Number.isSafeInteger(catalog.observedAt) ||
+    catalog.observedAt > now + 5000 ||
+    now - catalog.observedAt > 30000
+  ) {
+    throw new PilotError(
+      "PERPL_CATALOG_UNAVAILABLE",
+      "The Perpl catalogue is stale or belongs to another network. Retry.",
+    );
+  }
+  for (const symbol of symbols) {
+    const matches = catalog.markets.filter((market) => market.symbol === symbol);
+    if (matches.length !== 1 || !matches[0]!.available) {
+      throw new PilotError("MARKET_NOT_ALLOWED", `${symbol} is unavailable for new selections`);
+    }
+  }
 }

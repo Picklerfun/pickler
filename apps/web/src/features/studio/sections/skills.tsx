@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useStudioForm } from "../routing/memory";
 import { Button, Icon } from "@pickler/ui";
 import type { Agent, Config, Options } from "../api";
 import styles from "../studio.module.css";
@@ -30,7 +30,11 @@ export function Skills({
   onSave(config: Config): void;
 }) {
   /* The parent remounts this on a new config version, so the draft starts from what was saved. */
-  const [draft, setDraft] = useState<Config>(agent.config);
+  const [draft, setDraft] = useStudioForm<Config>(
+    `${agent.productId ?? agent.id}:legacy-skills:form`,
+    agent.version,
+    agent.config,
+  );
 
   const plugins = options?.plugins ?? [];
   const enabled = draft.plugins?.enabled ?? [];

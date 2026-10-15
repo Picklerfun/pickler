@@ -1,5 +1,8 @@
 # Go Public v1: from a private agent to a public, funded one
 
+The X proof-by-post, optional Skip X and posting OAuth proposals in this specification are historical.
+Current publication and read-only authorization are defined in [Studio X OAuth](../studio-x-oauth.md).
+
 Status: Draft — decided autonomously 2026-09-30. Follows `docs/product-map/conventions.md`. Builds
 on `studio-brief-v1.md` (the private draft), `studio-create-and-fund-v1.md` (the wallet ceremony,
 the deposit, the locks) and `turnkey-passkey-custody-v1.md` (the sub-organization and its root).

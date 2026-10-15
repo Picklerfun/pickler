@@ -1,5 +1,6 @@
 import { base64urlnopad, utf8 } from "@scure/base";
 import { recoverMessageAddress } from "viem";
+import { createSiweMessage } from "viem/siwe";
 import { privateKeyToAccount } from "viem/accounts";
 import type { DoFetch } from "../src/identity/api";
 import { EXPIRY_MARGIN_MS, sessionFor, signInWithWallet, tokenExpiry } from "../src/identity/session";
@@ -20,7 +21,8 @@ function api() {
     const body = JSON.parse(String(init.body)) as Record<string, string>;
     calls.push(url.replace(BASE, ""));
     if (url.endsWith("/nonce")) {
-      issued = `pickler.fun wants you to sign in with your Ethereum account:\n${body.address}\n\nSign in to Pickler\n\nNonce: n1\n`;
+      // El mensaje tal como lo arma la API: viem `createSiweMessage` sobre los campos que decide core.
+      issued = createSiweMessage({ version: "1", domain: "pickler.fun", uri: "https://pickler.fun", address: body.address as `0x${string}`, chainId: body.chain_id as unknown as number, nonce: "a1b2c3d4e5f6a1b2c3d4e5f6", issuedAt: new Date(NOW), statement: "Sign in to Pickler" });
       return { ok: true, status: 200, json: async () => ({ data: { nonce: "n1", message: issued } }) } as Response;
     }
     const signer = await recoverMessageAddress({ message: body.raw!, signature: body.signature as `0x${string}` });
@@ -34,7 +36,7 @@ function api() {
 
 test("signing in signs the server's message unchanged with the wallet, and gets that account's session", async () => {
   const { calls, doFetch } = api();
-  const session = await signInWithWallet({ base: BASE, address: account.address, chainId: 10143, sign: (message) => account.signMessage({ message }) }, doFetch);
+  const session = await signInWithWallet({ base: BASE, address: account.address, chainId: 10143, domain: "pickler.fun", sign: (message) => account.signMessage({ message }) }, doFetch);
   expect(calls).toEqual(["/auth/wallet/nonce", "/auth/wallet/verify"]);
   expect(session.userId).toBe("user-1");
   expect(session.address).toBe(account.address.toLowerCase());
@@ -44,7 +46,7 @@ test("signing in signs the server's message unchanged with the wallet, and gets 
 test("a signature that is not the wallet's is refused, not a session", async () => {
   const other = privateKeyToAccount("0x0000000000000000000000000000000000000000000000000000000000000002");
   await expect(
-    signInWithWallet({ base: BASE, address: account.address, chainId: 10143, sign: (message) => other.signMessage({ message }) }, api().doFetch),
+    signInWithWallet({ base: BASE, address: account.address, chainId: 10143, domain: "pickler.fun", sign: (message) => other.signMessage({ message }) }, api().doFetch),
   ).rejects.toMatchObject({ status: 401 });
 });
 

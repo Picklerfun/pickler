@@ -7,19 +7,18 @@ import { POSTS_NOTE } from "./run-model";
 import styles from "./run.module.css";
 
 /**
- * Posts (canvas 351–366, spec L7): "Every call, in public" with where it posts (Pickler, and X when
- * an account is connected), and, without X, the banner whose "Connect X" opens Identity & voice.
- * Then the empty line: nothing has been posted before it trades.
+ * Public product posts remain distinct from the owner's private X timeline.
+ * This surface never claims that read-only OAuth grants publishing permission.
  */
-export const Posts: (props: LiveSectionProps) => ReactElement = ({ agent, onSection }) => {
-  const header = postsHeader(agent.xHandle);
+export const Posts: (props: LiveSectionProps) => ReactElement = ({ onSection }) => {
+  const header = postsHeader();
 
   return (
     <LiveSection section="posts">
       <div className={styles.run}>
         <div className={styles.listHead}>
           <h3 className={styles.listTitle}>{header.title}</h3>
-          <span className={styles.xTag} data-x={header.connect === null}>
+          <span className={styles.xTag} data-x={false}>
             {header.tag}
           </span>
         </div>
@@ -30,7 +29,7 @@ export const Posts: (props: LiveSectionProps) => ReactElement = ({ agent, onSect
             <BrandMark name="x" size={14} />
             <span className={styles.xText}>{header.connect}</span>
             <button type="button" className={styles.connect} onClick={() => onSection("identity")}>
-              Connect X
+              X connection
             </button>
           </div>
         )}

@@ -16,6 +16,7 @@ import { PostgresBudgetLedger } from "../src/studio/budget.js";
 import { createTestStore } from "./database.js";
 
 const { config, profile } = prepareDraft({
+  markets: ["BTC", "ETH"],
   name: "Agent",
   handle: "agent_one",
   voice: "analyst",

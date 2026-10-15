@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -100,6 +100,7 @@ contract PicklerBondingCurve is ReentrancyGuard {
 
     constructor(PicklerPreset.LaunchPreset memory preset_, address graduationAdapter_, address feeEscrow_) {
         PicklerPreset.validate(preset_);
+        PicklerPreset.validateQuoteDecimals(preset_);
 
         _preset = preset_;
         quoteToken = IERC20(preset_.quoteToken);
@@ -132,6 +133,14 @@ contract PicklerBondingCurve is ReentrancyGuard {
 
     function remainingTokens() public view returns (uint256) {
         return _config().remainingTokens(netSold);
+    }
+
+    /// @notice Whole AUSD per whole token, scaled by 1e18, for precision policy 2.
+    function marginalPriceWad() external view returns (uint256) {
+        if (_preset.roundingPolicyVersion != 2) {
+            revert PicklerPreset.UnsupportedPrecisionPolicy();
+        }
+        return _config().marginalPriceWad(netSold, 6);
     }
 
     /// @notice Tokens a buyer would receive for a gross quote amount, fees included.
@@ -318,6 +327,9 @@ contract PicklerBondingCurve is ReentrancyGuard {
 
     /// @notice Sends accrued fees to the escrow. Permissionless: the destination is fixed at
     ///         construction, so there is nothing for a caller to redirect.
+    /// @notice Monotonic remittance evidence for exact-accounting escrows.
+    uint256 public totalFeesRemitted;
+
     function remitFees() external nonReentrant {
         uint256 amount = accruedFees;
         if (amount == 0) {
@@ -325,6 +337,7 @@ contract PicklerBondingCurve is ReentrancyGuard {
         }
 
         accruedFees = 0;
+        totalFeesRemitted += amount;
         quoteToken.safeTransfer(feeEscrow, amount);
 
         // Attributing in the same call is what keeps the escrow's accounting unambiguous:

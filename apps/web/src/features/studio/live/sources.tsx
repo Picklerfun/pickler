@@ -1,4 +1,5 @@
 "use client";
+import { TradingMarkets, useTradingMarkets } from "../shell/trading-markets";
 import { Icon } from "@pickler/ui";
 import { sourcesView, webForm, type WebForm } from "../shell/build-model";
 import { SaveOutcome, saveLabel, useSavedForm, useSetupSave } from "../shell/setup-save";
@@ -18,18 +19,47 @@ import styles from "./build.module.css";
  */
 export function Sources({ agent, live, canManage }: LiveSectionProps) {
   const saved = webForm(agent.config.sources?.web);
-  const [form, setForm] = useSavedForm<WebForm>(agent.version, saved);
-  const { state, save, touch, saving } = useSetupSave(live);
+  const [form, setForm] = useSavedForm<WebForm>(
+    agent.version,
+    saved,
+    `${agent.productId ?? agent.id}:sources:form`,
+  );
+  const { state, save, touch, saving } = useSetupSave(
+    live,
+    `${agent.productId ?? agent.id}:sources`,
+    agent.version,
+  );
+  const [markets, setMarkets] = useSavedForm<string[]>(
+    agent.version,
+    agent.config.perpl?.markets ?? [],
+    `${agent.productId ?? agent.id}:sources:markets`,
+  );
+  const network = agent.config.perpl?.network ?? null;
+  const catalogue = useTradingMarkets(network, live.preview);
+  const marketsDirty =
+    JSON.stringify(markets) !== JSON.stringify(agent.config.perpl?.markets ?? []);
+  const dirty = JSON.stringify(form) !== JSON.stringify(saved) || marketsDirty;
 
   function edit(next: Partial<WebForm>) {
     setForm({ ...form, ...next });
     touch();
   }
 
-  const box = useSiteBox(form.sites, (sites) => edit({ sites }));
+  const box = useSiteBox(
+    form.sites,
+    (sites) => edit({ sites }),
+    `${agent.productId ?? agent.id}:sources`,
+    agent.version,
+  );
   const view = sourcesView(form, saved, box.error);
   /* A rejected site still in the box (`box.refused`): applying now would quietly leave it out. */
-  const canApply = canManage && view.dirty && !view.needsSite && !box.refused && !saving;
+  const canApply =
+    canManage &&
+    dirty &&
+    !view.needsSite &&
+    !box.refused &&
+    !saving &&
+    (!marketsDirty || catalogue.allows(markets));
   const shut = !canManage || saving;
 
   return (
@@ -38,9 +68,9 @@ export function Sources({ agent, live, canManage }: LiveSectionProps) {
         <div className={styles.bar} id="live-sources-bar">
           <span className={styles.barDot} aria-hidden="true" />
           <span className={styles.barText}>{SOURCES_BAR}</span>
-          {(view.dirty || state.kind !== "idle") && (
+          {(dirty || state.kind !== "idle") && (
             <>
-              {view.dirty && (
+              {dirty && (
                 <button
                   type="button"
                   className={styles.barDiscard}
@@ -48,6 +78,7 @@ export function Sources({ agent, live, canManage }: LiveSectionProps) {
                   onClick={() => {
                     if (!shut) {
                       setForm(saved);
+                      setMarkets(agent.config.perpl?.markets ?? []);
                       box.clear();
                       touch();
                     }
@@ -64,17 +95,27 @@ export function Sources({ agent, live, canManage }: LiveSectionProps) {
                 title={canManage ? undefined : VIEW_ONLY_REASON}
                 onClick={() => {
                   if (canApply) {
-                    void save({ sources: view.sources });
+                    void save({ sources: view.sources, ...(marketsDirty ? { markets } : {}) });
                   }
                 }}
               >
-                {saveLabel(state, view.dirty, `Apply as v${agent.version + 1}`)}
+                {saveLabel(state, dirty, `Apply as v${agent.version + 1}`)}
               </button>
               <Reason id="live-sources-reason" text={canManage ? null : VIEW_ONLY_REASON} />
             </>
           )}
         </div>
         <SaveOutcome state={state} />
+        <TradingMarkets
+          read={catalogue}
+          network={network}
+          value={markets}
+          disabled={shut}
+          onChange={(next) => {
+            setMarkets(next);
+            touch();
+          }}
+        />
         <div className={styles.field} data-roomy="true" id="live-sources-reads">
           <div className={styles.fieldHead}>
             <span className={styles.fieldLabel}>IT READS</span>

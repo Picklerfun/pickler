@@ -2,11 +2,16 @@
 // Amounts are MON in display units; token prices are MON per token.
 
 import type { Accent, PickOutcome, PickTrailStep } from "../../landing/domain/landing.js";
+import type { AdvicePrice } from "../../advice/price.js";
 import type { Venue } from "./public-views.js";
 
 export type TokenStage = "pre-graduation" | "graduated";
 
 export interface AgentSummary {
+  /** The agent uuid, which the advice API addresses. */
+  id: string;
+  /** What a paid analysis costs; null when the agent sells none. */
+  advicePrice: AdvicePrice | null;
   name: string;
   /** Pickler handle, shared with people: one @handle never names both. */
   handle: string;

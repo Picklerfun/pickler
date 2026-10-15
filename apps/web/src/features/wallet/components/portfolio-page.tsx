@@ -13,20 +13,9 @@ import { formatAmount } from "@/features/markets/lib/format";
 import { formatProbability } from "@/features/agents/lib/format";
 
 /**
- * What this wallet holds, and what it has asked for.
- *
- * The canvas (`Portfolio Light.dc.html`) shows three tabs of rows — perp positions, backed agent
- * tokens and paid reads — over a total in AUSD. Only one of those three has a source today:
- *
- *   positions — no endpoint, no DTO, no fixture. Opening one needs testnet contracts this site
- *               cannot sign against, so there is nothing to list and nothing to total.
- *   backed    — the launcher contracts are not deployed, so no wallet holds an agent token. The
- *               board knows each agent's curve; it does not know anyone's holding.
- *   reads     — real, from /marketplace/reads: the question, the probability, the price and both clocks.
- *
- * So the composition is the canvas's and the figures are only the ones that exist. The empty tabs
- * say what is missing rather than showing a plausible row, and the headline is the balance the
- * chain actually reports rather than a total assembled out of two absences.
+ * Legacy wallet entry: native balance and public reads. Perpl positions live in the dedicated
+ * read-only dashboard. Positions and token holdings are unmeasured here, so their counts stay
+ * unknown and their panels point to the relevant public routes instead of inventing zeroes.
  */
 
 type TabKey = "positions" | "backed" | "reads";
@@ -84,18 +73,17 @@ export function PortfolioPage({
   const awaiting = reads.filter(
     (read) => read.delivery === "delivered" && read.evaluation === "pending",
   ).length;
-  const graduated = agents.filter((agent) => agent.token?.stage === "graduated").length;
 
   const tabs = [
-    { key: "positions" as const, label: "Positions", count: 0 },
-    { key: "backed" as const, label: "Backed", count: 0 },
+    { key: "positions" as const, label: "Positions", count: null },
+    { key: "backed" as const, label: "Backed", count: null },
     { key: "reads" as const, label: "Reads", count: reads.length },
   ];
   // Opening on a tab that is empty by construction shows a wall of nothing, so the first tab with
   // rows wins — which is Positions again the day positions exist. `?tab=` overrides it, both so a
   // person can link to one and so the design checks can reach the tabs the data does not open on.
   const [tab, setTab] = useState<TabKey>(
-    () => openTab ?? tabs.find((one) => one.count > 0)?.key ?? "positions",
+    () => openTab ?? tabs.find((one) => one.count !== null && one.count > 0)?.key ?? "positions",
   );
 
   const body = (
@@ -123,20 +111,20 @@ export function PortfolioPage({
 
           <div className={styles.tiles}>
             <div className={styles.tile}>
-              <p className={styles.tileValue}>0</p>
+              <p className={styles.tileValue}>—</p>
               <p className={styles.tileLabel}>
                 <span className={styles.markLime} aria-hidden="true" />
                 POSITIONS
               </p>
-              <p className={styles.tileSub}>NOT WIRED YET</p>
+              <p className={styles.tileSub}>SEE PERPL DASHBOARD</p>
             </div>
             <div className={styles.tile}>
-              <p className={styles.tileValue}>0</p>
+              <p className={styles.tileValue}>—</p>
               <p className={styles.tileLabel}>
                 <span className={styles.markViolet} aria-hidden="true" />
                 BACKED
               </p>
-              <p className={styles.tileSub}>NO TOKEN DEPLOYED</p>
+              <p className={styles.tileSub}>HOLDINGS NOT CONNECTED</p>
             </div>
             <div className={styles.tile}>
               <p className={styles.tileValue}>{reads.length}</p>
@@ -201,14 +189,12 @@ export function PortfolioPage({
           id="portfolio-panel-positions"
           aria-labelledby="portfolio-tab-positions"
         >
-          <h2 className={styles.blankTitle}>No positions, and no way to open one yet</h2>
+          <h2 className={styles.blankTitle}>Your Perpl positions</h2>
           <p className={styles.blankLead}>
-            The perp surface is drawn but nothing behind it settles: opening a position needs the
-            testnet contracts and a wallet this site can sign with, and it has neither. This is not
-            an empty account — it is a market that has not opened.
+            View your real Perpl testnet account, positions and exposure in the read-only dashboard.
           </p>
-          <ButtonLink as={Link} href="/markets" variant="secondary" size="sm">
-            See the markets <Icon name="arrow" size={14} />
+          <ButtonLink as={Link} href="/perpl" variant="secondary" size="sm">
+            View Perpl portfolio <Icon name="arrow" size={14} />
           </ButtonLink>
         </section>
       )}
@@ -220,15 +206,13 @@ export function PortfolioPage({
           id="portfolio-panel-backed"
           aria-labelledby="portfolio-tab-backed"
         >
-          <h2 className={styles.blankTitle}>No agent tokens on-chain to hold</h2>
+          <h2 className={styles.blankTitle}>Token holdings are not connected here</h2>
           <p className={styles.blankLead}>
-            The launcher contracts are not deployed, so no wallet holds an agent token — including
-            this one. The board knows where each curve stands; {graduated} of {agents.length} agents
-            have graduated theirs. It does not know anyone&rsquo;s holding, so nothing is listed
-            here rather than a row that looks like a balance.
+            Public agent tokens are available to trade. This page does not read your token balances
+            yet. Explore the {agents.length} agents and their confirmed tokens.
           </p>
-          <ButtonLink as={Link} href="/tokens" variant="secondary" size="sm">
-            See the board <Icon name="arrow" size={14} />
+          <ButtonLink as={Link} href="/agents" variant="secondary" size="sm">
+            Explore agents <Icon name="arrow" size={14} />
           </ButtonLink>
         </section>
       )}

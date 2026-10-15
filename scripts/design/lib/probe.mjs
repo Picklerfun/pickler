@@ -105,6 +105,17 @@ export function paintedColours(pattern) {
       continue;
     }
     const style = getComputedStyle(el);
+    // checkVisibility ignores legacy CSS clips. Radix's native form shim exists during SSR,
+    // but an active zero-area rectangle paints no background, text, border or shadow.
+    const positioned = style.position === "absolute" || style.position === "fixed";
+    const clip = positioned
+      ? /^rect\(\s*(-?[\d.]+)px,\s*(-?[\d.]+)px,\s*(-?[\d.]+)px,\s*(-?[\d.]+)px\s*\)$/.exec(
+          style.clip,
+        )
+      : null;
+    if (clip && (Number(clip[2]) <= Number(clip[4]) || Number(clip[3]) <= Number(clip[1]))) {
+      continue;
+    }
     const selector = name(el);
     const scope = scopeOf(el);
     const say = (value, role) => painted.push({ value, selector, role, scope });

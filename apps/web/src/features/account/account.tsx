@@ -2,7 +2,8 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter } from "nextjs-toploader/app";
+import { studioReturnHref } from "../studio/shell/account-return";
 import { useStudioHref } from "@/features/site/studio-href";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { MONAD_TESTNET } from "@pickler/chain";
@@ -17,6 +18,8 @@ import { accountPreview } from "./lib/preview";
 import { SECTIONS, type SectionKey } from "./lib/sections";
 import { ProfileSection } from "./sections/profile";
 import { SecuritySection, type PasskeyState } from "./sections/security";
+import { StudioSkeleton } from "../studio/skeleton";
+import { StudioAccessRequest } from "../studio/access-request";
 import { WalletSection, type WalletState } from "./sections/wallet";
 import styles from "./account.module.css";
 
@@ -45,9 +48,15 @@ function Mark({ className }: { className: string | undefined }) {
   );
 }
 
-export function Account({ opening }: { opening: SectionKey }) {
-  const studio = useStudioHref();
-  const router = useRouter();
+export function Account({
+  opening,
+  returnTo,
+}: {
+  opening: SectionKey;
+  returnTo?: string | undefined;
+}) {
+  const studio = studioReturnHref(returnTo, useStudioHref());
+  const { replace } = useRouter();
   const [section, setSection] = useState<SectionKey>(opening);
   /**
    * The fixture, decided once at the first render rather than from an effect.
@@ -125,7 +134,7 @@ export function Account({ opening }: { opening: SectionKey }) {
          at the handle step. Every section redirects, not only the wallet. */
       const away = redirectFor({ wallet: dto.kind === "none" ? null : dto, profile: found });
       if (away) {
-        router.replace(away);
+        replace(away);
         return;
       }
       setProfile(found ?? null);
@@ -135,7 +144,7 @@ export function Account({ opening }: { opening: SectionKey }) {
     return () => {
       live = false;
     };
-  }, [preview, router]);
+  }, [preview, replace]);
 
   const handle = profile?.handle ?? null;
   const covered = coverage(passkeys.kind === "ready" ? passkeys.passkeys.length : null);
@@ -196,7 +205,9 @@ export function Account({ opening }: { opening: SectionKey }) {
               marked NOT BUILT look the same on a real account.
             </p>
           )}
-          {signedIn === false && !preview ? (
+          {signedIn === null && !preview ? (
+            <StudioSkeleton />
+          ) : signedIn === false && !preview ? (
             <p className={styles.signedOut}>
               Sign in to see this account.{" "}
               <Link href="/signin" className={styles.signInLink}>
@@ -206,6 +217,12 @@ export function Account({ opening }: { opening: SectionKey }) {
           ) : (
             <>
               {section === "wallet" && <WalletSection state={wallet} />}
+              {section === "access" && (
+                <StudioAccessRequest
+                  preview={Boolean(preview)}
+                  previewReviewer={Boolean(preview)}
+                />
+              )}
               {section === "security" && (
                 <SecuritySection
                   state={passkeys}

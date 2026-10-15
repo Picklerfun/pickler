@@ -35,12 +35,20 @@ const SECTIONS: readonly { key: BriefKey; label: string; sub: string; rows: numb
  * with their tags against the version it runs on, and VERSIONS, read again after every save
  * (`useLive`). A brief with no entry rule is refused by core, so Apply waits for one. The bar's
  * buttons stay while a save has an outcome to say ("Saved", the reload), so focus stays on Apply.
- * The edits live here: leaving Brief drops them, as it drops every section's form.
+ * Edits remain in workspace memory while navigating; only an explicit save persists them.
  */
 export function Brief({ agent, live, canManage, now, stagedDraft }: BriefProps) {
   const savedText = briefText(agent.config.brief);
-  const [form, setForm] = useSavedForm<BriefText>(agent.version, stagedDraft ?? savedText);
-  const { state, save, touch, saving } = useSetupSave(live);
+  const [form, setForm] = useSavedForm<BriefText>(
+    agent.version,
+    stagedDraft ?? savedText,
+    `${agent.productId ?? agent.id}:brief:form`,
+  );
+  const { state, save, touch, saving } = useSetupSave(
+    live,
+    `${agent.productId ?? agent.id}:brief`,
+    agent.version,
+  );
 
   const view = briefView(form, savedText);
   const tags = liveBriefTags(view.tags, agent.version);

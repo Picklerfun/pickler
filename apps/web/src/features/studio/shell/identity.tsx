@@ -4,12 +4,12 @@ import { Icon } from "@pickler/ui";
 import { accentVars } from "@/lib/accent";
 import { errorCode, type Agent } from "../api";
 import { AvatarPicker, type AvatarChoice } from "../new-agent/avatar-picker";
-import { AvatarGrid } from "../new-agent/identity";
 import { VOICES, radioStep, type VoiceKey } from "../new-agent/model";
 import { AgentAvatar } from "./agent-avatar";
-import { disconnectProblem, nameChange, voiceOf, xAccountTag, NAME_MAX } from "./identity-model";
+import { nameChange, voiceOf, NAME_MAX } from "./identity-model";
 import { SaveOutcome, useSetupSave } from "./setup-save";
 import { PREVIEW_NOTE, type UseAgentStudio } from "./use-agent-studio";
+import { useStudioForm, useStudioMemory } from "../routing/memory";
 import { XConnect } from "./x-connect";
 import type { StudioIdPrefix } from "./model";
 import build from "./build.module.css";
@@ -37,7 +37,7 @@ export interface IdentityProps {
   /** The studio's data and writes: identity, setup (the voice) and X. */
   studio: Pick<
     UseAgentStudio,
-    "x" | "saveIdentity" | "saveSetup" | "refreshAgent" | "challengeX" | "verifyX" | "disconnectX"
+    "x" | "saveIdentity" | "saveSetup" | "refreshAgent" | "connectX" | "readPosts" | "disconnectX"
   >;
   /** The person may change this workspace; a view-only member sees every control shut. */
   canManage: boolean;
@@ -47,12 +47,6 @@ export interface IdentityProps {
   handleNote: string;
   /** VOICE's line: "how every post reads", and from when for a public agent. */
   voiceSub: string;
-  /** X ACCOUNT's line: what the agent does with the account. */
-  xSub: string;
-  /** A connected account shows DISCONNECT (a draft); a public agent keeps its account. */
-  canDisconnectX: boolean;
-  /** Said under a connected account that cannot be disconnected. */
-  xKeptNote?: string;
 }
 
 /**
@@ -60,9 +54,8 @@ export interface IdentityProps {
  * the published agent, whose differences are props (studio-live-v1 L17). The avatar opens the
  * create screen's picker and saves accent and pattern once it closes; NAME saves on blur or Enter
  * (1–40 once trimmed, an unchanged name sends nothing); the handle is fixed. VOICE is a radio group
- * that saves the pick at once through `PUT /setup`, with its sample under it. X ACCOUNT connects by
- * a post (`x-connect.tsx`) or shows the verified handle, with DISCONNECT while the agent is
- * private. A view-only member sees every control shut; a staged or preview studio says nothing is
+ * that saves the pick at once through `PUT /setup`, with its sample under it. X ACCOUNT connects
+ * through read-only OAuth, with explicit disconnect available for private and public agents. A view-only member sees every control shut; a staged or preview studio says nothing is
  * saved. The section's frame is the studio's own.
  */
 export function Identity({
@@ -73,9 +66,6 @@ export function Identity({
   avatarEditable,
   handleNote,
   voiceSub,
-  xSub,
-  canDisconnectX,
-  xKeptNote,
 }: IdentityProps) {
   const nameId = useId();
   const voiceLabel = useId();
@@ -89,15 +79,15 @@ export function Identity({
 
   /* The NAME box, starting over whenever the saved name moves (its own save, or a reload). */
   const savedName = agent.name ?? "";
-  const [name, setName] = useState(savedName);
-  const [seenName, setSeenName] = useState(savedName);
-  if (savedName !== seenName) {
-    setSeenName(savedName);
-    setName(savedName);
-  }
+  const memory = useStudioMemory();
+  const nameScope = `${agent.productId ?? agent.id}:name`;
+  const [name, setName] = useStudioForm(`${nameScope}:form`, agent.version, savedName);
   const [nameState, setNameState] = useState<WriteState>(IDLE);
 
   async function commitName() {
+    if (memory.busy(nameScope)) {
+      return;
+    }
     const change = nameChange(agent.name, name);
     if (change.kind === "same") {
       setName(savedName);
@@ -107,9 +97,15 @@ export function Identity({
       setNameState({ kind: "error", text: change.text });
       return;
     }
+    const generation = memory.generation();
+    memory.begin(nameScope);
     setNameState({ kind: "saving" });
     try {
       await studio.saveIdentity({ name: change.name });
+      if (memory.generation() !== generation) {
+        return;
+      }
+      memory.committed(nameScope);
       if (alive.current) {
         setNameState({ kind: "saved" });
       }
@@ -117,17 +113,29 @@ export function Identity({
       if (alive.current) {
         setNameState(failed(caught, "Could not save the name."));
       }
+    } finally {
+      if (memory.generation() === generation) {
+        memory.end(nameScope);
+      }
     }
   }
 
   /* The avatar: the picker edits a copy, saved once when it closes if it changed. */
   const savedAvatar: AvatarChoice = { accent: agent.accent, pattern: agent.avatarPattern };
-  const [picking, setPicking] = useState<AvatarChoice | null>(null);
+  const avatarScope = `${agent.productId ?? agent.id}:avatar`;
+  const [picking, setPicking] = useStudioForm<AvatarChoice | null>(
+    `${avatarScope}:choice`,
+    agent.version,
+    null,
+  );
   const [savingAvatar, setSavingAvatar] = useState<AvatarChoice | null>(null);
   const [avatarState, setAvatarState] = useState<WriteState>(IDLE);
   const avatar = picking ?? savingAvatar ?? savedAvatar;
 
   async function closeAvatar() {
+    if (memory.busy(avatarScope)) {
+      return;
+    }
     const choice = picking;
     setPicking(null);
     if (
@@ -136,6 +144,8 @@ export function Identity({
     ) {
       return;
     }
+    const generation = memory.generation();
+    memory.begin(avatarScope);
     setSavingAvatar(choice);
     setAvatarState({ kind: "saving" });
     try {
@@ -151,11 +161,14 @@ export function Identity({
       if (alive.current) {
         setSavingAvatar(null);
       }
+      if (memory.generation() === generation) {
+        memory.end(avatarScope);
+      }
     }
   }
 
   /* VOICE: the pick is drawn at once and saved; a stale save reloads and says so. */
-  const voiceSave = useSetupSave(studio);
+  const voiceSave = useSetupSave(studio, `${agent.productId ?? agent.id}:voice`, agent.version);
   const [pendingVoice, setPendingVoice] = useState<VoiceKey | null>(null);
   const savedVoice = voiceOf(agent.config.voice);
   const voice = voiceSave.saving && pendingVoice ? pendingVoice : savedVoice;
@@ -188,112 +201,80 @@ export function Identity({
     }
   }
 
-  /* X ACCOUNT: the verified handle as the X read has it, else as the agent carries it. */
-  const xHandle = studio.x ? (studio.x.account?.handle ?? null) : (agent.xHandle ?? null);
-  const [xState, setXState] = useState<WriteState>(IDLE);
-
-  /* A verified post unmounts Connect X and its Verify button, which held the focus: the
-     connected handle takes it, so the focus never drops to the page. */
-  const xHandleRef = useRef<HTMLSpanElement>(null);
-  const wasConnected = useRef(xHandle !== null);
-  useEffect(() => {
-    if (xHandle !== null && !wasConnected.current) {
-      const active = document.activeElement;
-      if (!active || active === document.body) {
-        xHandleRef.current?.focus();
-      }
-    }
-    wasConnected.current = xHandle !== null;
-  }, [xHandle]);
-
-  async function disconnect() {
-    if (!canManage || xState.kind === "saving") {
-      return;
-    }
-    setXState({ kind: "saving" });
-    try {
-      await studio.disconnectX();
-      if (alive.current) {
-        setXState(IDLE);
-      }
-    } catch (caught) {
-      if (!alive.current) {
-        return;
-      }
-      if (errorCode(caught) === "PREVIEW") {
-        setXState({ kind: "preview" });
-        return;
-      }
-      setXState({
-        kind: "error",
-        text: disconnectProblem(
-          errorCode(caught),
-          caught instanceof Error ? caught.message : "Could not disconnect X.",
-        ),
-      });
-    }
-  }
-
   return (
     <>
       <div className={build.column}>
-        <div className={styles.identity} id={`${idPrefix}-identity-card`}>
-          {avatarEditable ? (
-            <button
-              type="button"
-              className={styles.avatarButton}
-              style={accentVars(avatar.accent)}
-              aria-label="Pick its avatar"
-              title="Pick its avatar"
-              aria-haspopup="dialog"
-              disabled={!canManage || avatarState.kind === "saving"}
-              onClick={() => {
-                setAvatarState(IDLE);
-                setPicking(avatar);
-              }}
-            >
-              <AvatarGrid pattern={avatar.pattern} />
-            </button>
-          ) : (
-            <AgentAvatar accent={avatar.accent} pattern={avatar.pattern} size="large" />
-          )}
-          <div className={styles.identityText}>
-            <label className={styles.nameLabel} htmlFor={nameId}>
-              NAME
-            </label>
-            <input
-              id={nameId}
-              className={styles.nameInput}
-              type="text"
-              value={name}
-              maxLength={NAME_MAX}
-              autoComplete="off"
-              spellCheck={false}
-              disabled={!canManage}
-              aria-invalid={nameState.kind === "error" || undefined}
-              aria-describedby={`${nameId}-state`}
-              onChange={(event) => {
-                setName(event.target.value);
-                if (nameState.kind !== "saving") {
-                  setNameState(IDLE);
-                }
-              }}
-              onBlur={() => void commitName()}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") {
-                  event.preventDefault();
-                  void commitName();
-                }
-              }}
+        <div className={styles.identityRow}>
+          <div className={styles.identity} id={`${idPrefix}-identity-card`}>
+            {avatarEditable ? (
+              <button
+                type="button"
+                className={styles.avatarButton}
+                style={accentVars(avatar.accent)}
+                aria-label="Pick its avatar"
+                title="Pick its avatar"
+                aria-haspopup="dialog"
+                disabled={!canManage || avatarState.kind === "saving"}
+                onClick={() => {
+                  setAvatarState(IDLE);
+                  setPicking(avatar);
+                }}
+              >
+                <AgentAvatar accent={avatar.accent} pattern={avatar.pattern} size="head" />
+              </button>
+            ) : (
+              <AgentAvatar accent={avatar.accent} pattern={avatar.pattern} size="head" />
+            )}
+            <div className={styles.identityText}>
+              <label className={styles.nameLabel} htmlFor={nameId}>
+                NAME
+              </label>
+              <input
+                id={nameId}
+                className={styles.nameInput}
+                type="text"
+                value={name}
+                maxLength={NAME_MAX}
+                autoComplete="off"
+                spellCheck={false}
+                disabled={!canManage}
+                readOnly={memory.busy(nameScope)}
+                aria-invalid={nameState.kind === "error" || undefined}
+                aria-describedby={`${nameId}-state`}
+                onChange={(event) => {
+                  setName(event.target.value);
+                  if (nameState.kind !== "saving") {
+                    setNameState(IDLE);
+                  }
+                }}
+                onBlur={() => void commitName()}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    void commitName();
+                  }
+                }}
+              />
+              <span className={styles.handleRow}>
+                {agent.handle ? `@${agent.handle}` : "NO HANDLE"}
+                <span className={styles.fixed}>{handleNote}</span>
+              </span>
+              <span id={`${nameId}-state`}>
+                <WriteLine state={nameState} />
+                <WriteLine state={avatarState} />
+              </span>
+            </div>
+          </div>
+          <div className={`${styles.card} ${styles.xCard}`} id={`${idPrefix}-identity-x`}>
+            <XConnect
+              x={studio.x}
+              canManage={canManage}
+              onConnect={() => studio.connectX("identity")}
+              onDisconnect={studio.disconnectX}
+              onPosts={studio.readPosts}
+              idPrefix={`${idPrefix}-identity`}
+              well
             />
-            <span className={styles.handleRow}>
-              {agent.handle ? `@${agent.handle}` : "NO HANDLE"}
-              <span className={styles.fixed}>{handleNote}</span>
-            </span>
-            <span id={`${nameId}-state`}>
-              <WriteLine state={nameState} />
-              <WriteLine state={avatarState} />
-            </span>
           </div>
         </div>
 
@@ -333,47 +314,6 @@ export function Identity({
           </p>
           {voiceSave.saving && <p className={styles.notice}>Saving…</p>}
           <SaveOutcome state={voiceSave.state} />
-        </div>
-
-        <div className={styles.card} id={`${idPrefix}-identity-x`}>
-          <div className={styles.cardHead}>
-            <span className={styles.label}>X ACCOUNT</span>
-            <span className={styles.sub}>{xSub}</span>
-            <span className={styles.xTag} data-on={xHandle !== null}>
-              {xAccountTag(xHandle)}
-            </span>
-          </div>
-          {xHandle ? (
-            <div className={styles.xAccount}>
-              <span className={styles.xDot} aria-hidden="true" />
-              <span className={styles.xHandle} ref={xHandleRef} tabIndex={-1}>
-                @{xHandle}
-              </span>
-              {canDisconnectX && (
-                <button
-                  type="button"
-                  className={styles.disconnect}
-                  disabled={!canManage || xState.kind === "saving"}
-                  aria-label={`Disconnect @${xHandle}`}
-                  onClick={() => void disconnect()}
-                >
-                  {xState.kind === "saving" ? "DISCONNECTING…" : "DISCONNECT"}
-                </button>
-              )}
-            </div>
-          ) : (
-            <XConnect
-              x={studio.x}
-              canManage={canManage}
-              onChallenge={studio.challengeX}
-              onVerify={studio.verifyX}
-              idPrefix={`${idPrefix}-identity`}
-              well
-            />
-          )}
-          {xHandle && !canDisconnectX && xKeptNote && <p className={styles.notice}>{xKeptNote}</p>}
-          {/* The button says DISCONNECTING… while it is out. */}
-          <WriteLine state={xState.kind === "saving" ? IDLE : xState} />
         </div>
       </div>
 

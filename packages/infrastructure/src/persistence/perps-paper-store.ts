@@ -267,7 +267,14 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
       } else {
         assertPerpsPaperAgent(locked.agent, scope, locked.view.account.agentVersion);
         for (const frame of observation.frames) {
-          if (!locked.agent.config.perpl!.markets.includes(frame.snapshot.market.symbol)) {
+          if (
+            !locked.agent.config.perpl!.markets.some(
+              (market) => market === frame.snapshot.market.symbol,
+            ) &&
+            !locked.view.account.positions.some(
+              (position) => position.symbol === frame.snapshot.market.symbol,
+            )
+          ) {
             throw new PilotError("MARKET_NOT_ALLOWED", "Observation market is not permitted");
           }
         }
@@ -411,7 +418,10 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
       }
     }
     assertPerpsPaperAgent(locked.agent, scope, locked.view.account.agentVersion);
-    if (!locked.agent.config.perpl!.markets.includes(intent.symbol)) {
+    if (
+      intent.kind === "open" &&
+      !locked.agent.config.perpl!.markets.some((market) => market === intent.symbol)
+    ) {
       throw new PilotError("MARKET_NOT_ALLOWED", "Paper market is not permitted");
     }
     if (locked.agent.paused && intent.kind === "open") {
@@ -690,7 +700,7 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
     for (const mark of marks) {
       if (
         !["mainnet", "testnet"].includes(mark.network) ||
-        !["BTC", "ETH"].includes(mark.symbol) ||
+        !/^[A-Z0-9][A-Z0-9._-]{0,31}(?![\s\S])/.test(mark.symbol) ||
         !DECIMAL.test(mark.mark)
       ) {
         throw new PilotError("INVALID_INPUT", "Invalid mark");

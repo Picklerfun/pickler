@@ -9,10 +9,10 @@ const status = JSON.parse(await readFile(join(directory, "status.json"), "utf8")
 const url = new URL(status.DB_URL);
 if (
   url.hostname !== "127.0.0.1" ||
-  url.port !== "55522" ||
+  !["55522", "55532"].includes(url.port) ||
   url.pathname !== "/postgres" ||
   url.search ||
-  status.API_URL !== "http://127.0.0.1:55521"
+  status.API_URL !== `http://127.0.0.1:${Number(url.port) - 1}`
 ) {
   throw new Error("Refusing an uncontrolled stack");
 }
@@ -70,6 +70,20 @@ const api = {
   TURNKEY_RPID: "localhost",
   TURNKEY_APP_NAME: "Controlled Studio",
   PERPL_BOARD_NETWORK: "testnet",
+  X_CLIENT_ID: "controlled-x-client",
+  X_CLIENT_SECRET: "controlled-x-secret",
+  X_REDIRECT_URI: "http://localhost:8790/api/v1/studio/x/callback",
+  X_TOKEN_ENCRYPTION_KEY: "01".repeat(32),
+  X_TOKEN_ENCRYPTION_KEY_VERSION: "1",
+  X_OAUTH_ENABLED: "true",
+  X_READS_ENABLED: "true",
+  X_API_POLICY_JSON: JSON.stringify({
+    version: 1,
+    reviewedAt: new Date().toISOString(),
+    identityRequestsPerDay: 20,
+    postRequestsPerDay: 3,
+    postResourcesPerDay: 60,
+  }),
 };
 const research = {
   ...common,

@@ -104,7 +104,7 @@ export function NetworkSelector() {
       >
         <Icon name="network" size={16} className={styles.networkIcon} />
         <Image src="/brand/monad.png" width={16} height={16} alt="" />
-        <span>Testnet</span>
+        <span className={styles.triggerLabel}>Testnet</span>
         <span className={styles.chevron} aria-hidden="true">
           <Icon name="chevronDown" size={13} />
         </span>

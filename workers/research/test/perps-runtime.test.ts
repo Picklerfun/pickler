@@ -139,6 +139,7 @@ async function setup(t: TestContext) {
   await studio.onboard(owner);
   const access = (await studio.access(owner, null))!;
   const base = prepareDraft({
+    markets: ["BTC", "ETH"],
     name: "Trader",
     handle: "trader",
     voice: "analyst",
@@ -161,6 +162,7 @@ async function setup(t: TestContext) {
     throw new Error("No web in these agents");
   };
   const webConfig = prepareDraft({
+    markets: ["BTC", "ETH"],
     name: "Trader",
     handle: "trader",
     voice: "analyst",
@@ -187,6 +189,7 @@ async function setup(t: TestContext) {
     const config: AgentConfig = {
       ...base,
       perpsStrategy: { id: "deepseek", version: "2.0.0" },
+      perpl: { version: 1, network: "testnet", markets: ["BTC", "ETH"] },
       brief: {
         ...base.brief!,
         entersWhen: ["Trend up"],

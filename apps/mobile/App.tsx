@@ -16,6 +16,7 @@ import { useNotifications } from "./src/hooks/useNotifications";
 import { usePerpl } from "./src/hooks/usePerpl";
 import { useReads } from "./src/hooks/useReads";
 import { useRefreshSeal } from "./src/hooks/useRefreshSeal";
+import { useStudio } from "./src/hooks/useStudio";
 import { useTreasury } from "./src/hooks/useTreasury";
 import { AppCtxProvider } from "./src/navigation/context";
 import { Navigator } from "./src/navigation/Navigator";
@@ -23,7 +24,8 @@ import type { PushTarget } from "./src/reads/push";
 import { pushTarget } from "./src/reads/push";
 import { UsernameGate } from "./src/screens/username";
 import { accountAddress } from "./src/account";
-import { gateOpen } from "./src/identity/state";
+import { keepsGateOff } from "./src/advice/copy";
+import { appQuiet, gateShows, perplOnboardingActive } from "./src/identity/state";
 import { perplActiveFor, readsActiveFor, screenHasData, useAppStore } from "./src/store";
 
 const NONE = { status: "none" } as const;
@@ -69,6 +71,8 @@ export default function App() {
   const reads = useReads(account ?? NONE, onWallet, notifications, store.S.perpsMarketId);
   // La cuenta en la API del producto: la misma que en la web. Sin PICKLER_API_URL no hace nada.
   const identity = useIdentity(account ?? NONE, onWallet);
+  // Studio agents: the paid Ask lives here, above the per-tab stacks, so leaving the advice screen keeps it.
+  const studio = useStudio(account ?? NONE, onWallet, identity.authedFetch, scr === "agents" || scr === "advice");
   const ready = fontsLoaded && account !== null;
   useEffect(() => {
     if (ready) { void SplashScreen.hideAsync(); return; }
@@ -100,11 +104,11 @@ export default function App() {
 
   if (!ready || initial.current === null) return null; // el splash nativo sigue en pantalla (P9)
 
-  const ctx: AppCtx = { ...store, account, treasury, perpl, marketData, reads, identity, notifications, onWallet, lock, signOut, seal, setControls };
-  // La pantalla del username no cae encima de una operación en curso: quien desbloqueó para retirar o pedir una read ve
-  // primero cómo termina. Una vez abierta se queda, pase lo que pase debajo.
-  const quiet = !treasury.busy && reads.request.step !== "pending";
-  gateShown.current = gateOpen(identity.identity) && (gateShown.current || quiet);
+  const ctx: AppCtx = { ...store, account, treasury, perpl, marketData, reads, identity, studio, notifications, onWallet, lock, signOut, seal, setControls };
+  // La pantalla del username no cae encima de una operación en curso: quien desbloqueó para retirar, pedir una read o
+  // habilitar trading en Perpl ve primero cómo termina (src/identity/state.ts). Una vez abierta se queda.
+  const quiet = appQuiet({ treasuryBusy: treasury.busy, readPending: reads.request.step === "pending", perplOnboarding: perplOnboardingActive(perpl.state), advicePending: keepsGateOff(studio.advice.state) });
+  gateShown.current = gateShows(identity.identity, gateShown.current, quiet);
   const gateAddress = gateShown.current ? accountAddress(account) : null;
 
   return (

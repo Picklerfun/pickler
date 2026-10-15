@@ -5,8 +5,7 @@
  * one they answer 500 and a surface check reads a stack trace instead of a page. This serves the
  * same endpoints the real worker serves. The invented agents are the harness's own, in ./fixtures:
  * the product reads its agents from the database, and a marketplace with nothing in it is what a
- * person sees at launch, not what a design check should be measuring. The market board, the landing
- * model, the use cases and the DTO mappers are still the product's own, imported from where the
+ * person sees at launch, not what a design check should be measuring. The market board, the use cases and the DTO mappers are still the product's own, imported from where the
  * worker imports them, so if a response shape changes this changes with it or fails to start.
  *
  * It is a verification fixture, not product code. Nothing ships against it, and the only thing that
@@ -28,26 +27,31 @@ import { createServer } from "node:http";
 import {
   createGetAgentPersona,
   createGetAgentProfile,
-  createGetLanding,
   createGetLeaderboard,
   createGetMarket,
   createGetPickDetail,
   createGetPlatformAnalytics,
   createGetRead,
+  createListAgentActions,
   createListAgents,
   createListDirectory,
   createListMarkets,
   createListReads,
+  createCheckTicker,
+  createGetApplicant,
+  createGetHealth,
+  createJoinWaitlist,
+  createSubmitApplication,
 } from "@pickler/core";
-import {
-  createSampleLandingReadModel,
-  createSampleMarketBoard,
-  systemClock,
-} from "@pickler/infrastructure";
+import { createInMemoryApplicantStore, systemClock } from "@pickler/infrastructure";
+import { growthRoutes } from "../../workers/api/src/routes/growth.ts";
+import { createSampleMarketBoard } from "./fixtures/sample-market-board.mts";
 import { createSampleAgentDirectory } from "./fixtures/sample-agent-directory.mts";
+import { createSampleActionFeed } from "./fixtures/sample-actions.mts";
+import { sampleTokenMarket } from "./fixtures/sample-token-market.mts";
 import { sampleLaunches } from "./fixtures/sample-launches.mts";
-import { toLandingResponse } from "../../workers/api/src/growth/landing-response.ts";
 import {
+  toAgentActionDto,
   toAgentPersonaDto,
   toAgentProfileDto,
   toAgentReadDto,
@@ -64,11 +68,10 @@ import {
 
 const agents = createSampleAgentDirectory(systemClock);
 const markets = createSampleMarketBoard();
-const landing = createSampleLandingReadModel(systemClock);
 
 const services = {
-  getLanding: createGetLanding(landing),
   listAgents: createListAgents(agents),
+  listAgentActions: createListAgentActions(createSampleActionFeed(systemClock)),
   listDirectory: createListDirectory(agents),
   listReads: createListReads(agents),
   getRead: createGetRead(agents),
@@ -82,13 +85,30 @@ const services = {
 };
 
 const one = (value, map) => (value ? map(value) : null);
+const applicants = createInMemoryApplicantStore();
+const growth = growthRoutes({
+  ...services,
+  clock: systemClock,
+  getHealth: createGetHealth(systemClock),
+  joinWaitlist: createJoinWaitlist(applicants.waitlist, applicants.applicants),
+  getApplicant: createGetApplicant(applicants.applicants),
+  submitApplication: createSubmitApplication(applicants.applicants),
+  checkTicker: createCheckTicker(applicants.applicants),
+});
 
 /** Path patterns in the order the worker mounts them, each answering the DTO the worker answers. */
 const routes = [
-  [/^\/v1\/landing$/, async () => toLandingResponse(await services.getLanding())],
   // The worker reads launches from its index; the harness has none, so the board gets two rows.
   [/^\/v1\/launches$/, async () => sampleLaunches()],
+  [
+    /^\/v1\/launches\/eip155:10143:0x1111111111111111111111111111111111111111$/,
+    async () => sampleTokenMarket(),
+  ],
   [/^\/v1\/marketplace\/agents$/, async () => (await services.listAgents()).map(toAgentSummaryDto)],
+  [
+    /^\/v1\/marketplace\/activity$/,
+    async () => (await services.listAgentActions()).map(toAgentActionDto),
+  ],
   [
     /^\/v1\/marketplace\/directory$/,
     async () => (await services.listDirectory()).map(toDirectoryAgentDto),
@@ -108,7 +128,24 @@ const routes = [
   ],
   [
     /^\/v1\/marketplace\/personas\/([^/]+)$/,
-    async (handle) => one(await services.getAgentPersona(handle), toAgentPersonaDto),
+    async (handle) => {
+      if (handle === "public_trade") {
+        const persona = toAgentPersonaDto(await services.getAgentPersona("halftime"));
+        return {
+          ...persona,
+          handle,
+          launchedToken: {
+            name: "Halftime",
+            ticker: "HALF",
+            address: "0x1111111111111111111111111111111111111111",
+            chainId: 10143,
+            imageUri: null,
+            avatar: { accent: "lime", pattern: 0 },
+          },
+        };
+      }
+      return one(await services.getAgentPersona(handle), toAgentPersonaDto);
+    },
   ],
   [/^\/v1\/marketplace\/markets$/, async () => (await services.listMarkets()).map(toPerpMarketDto)],
   [
@@ -123,6 +160,29 @@ const routes = [
 
 const server = createServer(async (request, response) => {
   const url = new URL(request.url, "http://127.0.0.1");
+  if (["/v1/waitlist", "/v1/applications", "/v1/tickers/availability"].includes(url.pathname)) {
+    let body = "";
+    for await (const chunk of request) {
+      body += chunk;
+    }
+    const endpoint = new URL(url);
+    endpoint.pathname = endpoint.pathname.replace(/^\/v1/, "");
+    const result = await growth.request(
+      endpoint.toString(),
+      {
+        method: request.method,
+        headers: request.headers,
+        ...(body ? { body } : {}),
+      },
+      {
+        APP_ENV: "local",
+        ALLOWED_ORIGINS: "http://localhost:3001,http://localhost:3012",
+      },
+    );
+    response.writeHead(result.status, Object.fromEntries(result.headers));
+    response.end(await result.text());
+    return;
+  }
   const send = (status, body) => {
     response.writeHead(status, {
       "content-type": "application/json",
@@ -136,7 +196,7 @@ const server = createServer(async (request, response) => {
     return send(200, toPlatformAnalyticsDto(value));
   }
   for (const [pattern, handler] of routes) {
-    const match = pattern.exec(url.pathname);
+    const match = pattern.exec(decodeURIComponent(url.pathname));
     if (match) {
       try {
         return send(200, await handler(...match.slice(1).map(decodeURIComponent)));

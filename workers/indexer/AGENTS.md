@@ -4,11 +4,20 @@ Read [the root instructions](../../AGENTS.md) and [infrastructure instructions](
 
 ## Responsibility and current state
 
-`@pickler/indexer-worker` runs the launch indexer on a cron trigger. It holds no logic of its own: a pass is `runIndexerPass` from `@pickler/infrastructure`, which is tested against a real PostgreSQL with a scripted chain. What lives here is the schedule, the bindings and the configuration check.
+`@pickler/indexer-worker` runs the launch indexer on a cron trigger. Canonical pass logic is owned by infrastructure: the historical/default path uses `runIndexerPass`; the gated token path uses `runTokenIndexer` with bounded host scheduling. Both are tested against real PostgreSQL with a scripted chain. The Worker owns scheduling, bindings and configuration checks.
 
-`src/config.ts` defaults nothing. Without a factory address, a deployment block, a chain id and at least one RPC endpoint, the pass does not run and the worker says so. An address or a start block guessed wrong produces an index that looks populated and is not, which is harder to notice than an indexer that plainly never started. No Pickler contract is deployed, so today it refuses on every trigger — that is the intended behaviour, not a gap.
+`src/config.ts` defaults nothing. Without a factory address, a deployment block, a chain id and at least one RPC endpoint, the pass does not run and the worker says so. An address or a start block guessed wrong produces an index that looks populated and is not, which is harder to notice than an indexer that plainly never started. The isolated acceptance factory is recorded separately; without reviewed hosted deployment
+configuration this path deliberately refuses rather than guessing an address.
 
-`wrangler.jsonc` carries no Hyperdrive id for the same reason. Add the binding and the two `LAUNCH_FACTORY_*` vars together, when the contracts land.
+`wrangler.jsonc` now binds the existing trusted staging Hyperdrive and the single free testnet RPC.
+The staging source retains the already-enabled testnet `TOKEN_INDEXER_ENABLED=true` gate; the reviewed public launch/indexer policies
+are provisioned separately as runtime bindings. `keep_vars=true` preserves those reviewed public
+policy bindings on normal Wrangler/Cloudflare Builds publication; declared source variables still
+take precedence. Never put the grant signer or database credentials in this Worker. The main-only
+automatic publisher is documented in [the build guide](../../scripts/cloudflare/README.md); its
+repository connection and active version require separate hosted evidence. Explicit operator activation and its capacity record
+are documented in [the hosted readiness guide](../../docs/market/token-indexer-hosted-20261011.md).
+Never infer launch activation from the indexer or isolated deployment receipts.
 
 ## Rules
 
@@ -26,3 +35,32 @@ npm test                 # includes workers/indexer/test
 npm run typecheck
 npm run build:workers    # dry-run build, no deploy
 ```
+
+## Passive Kuru indexing
+
+The separate `TOKEN_INDEXER_ENABLED` path composes `runTokenIndexer` with the complete reviewed
+launch policy, one RPC transport and explicit per-pass/daily budgets. It indexes factory, adapter,
+locker, escrow and registered curves in ranges of 100 blocks under one renewable private lease,
+then projects canonical launch identity and Kuru position snapshots. No legacy fallback is
+allowed on this path. The Kuru deployment manifest remains blocked; this does not activate Kuru.
+See [Token operations](../../docs/market/token-launch-operations.md).
+
+## Separate V4 indexing
+
+Reviewed V4 policy 2 routes canonical V4 V2 graduation logs through the infrastructure-owned
+Uniswap projector. It reads exact event-block locker/NFT/pool/liquidity state outside SQL, rechecks
+canonicality and fences the private lease before commit. Historical Kuru and old V4 streams retain
+their existing identity. A controlled PostgreSQL catch-up pass is not proof of hosted throughput.
+The dated public V4 policy pins the actual isolated factory deployment block and one product agent.
+Its runtime binding does not enable the API launcher or the on-chain factory.
+
+## Versioned bounded schedule
+
+`src/token-schedule.ts` is host scheduling only. It parses the infrastructure-owned strict policy
+before work: version 1 runs one pass, version 2 permits 1–6 passes through `maxPassesPerTick`.
+Stop at the confirmed snapshot, explicit tick limit, busy lease, gap, reorg or thrown error. Never
+immediately retry a gap/reorg or swallow an RPC/quota error. Each pass independently reserves
+its infrastructure lease and per-pass/daily RPC budget; no SQL lock spans provider work.
+`test/token-schedule.test.ts` covers bounded/historical behavior and failure stops. Ranges stay
+at 100 blocks. The [readiness record](../../docs/market/token-launch-readiness-20261010.md) distinguishes
+controlled PostgreSQL catch-up from the still-pending sustained hosted capacity acceptance.

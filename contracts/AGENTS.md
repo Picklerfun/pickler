@@ -10,21 +10,23 @@ Implemented, in the order the launchpad specification builds them:
 
 - `src/libraries/PicklerCurveMath.sol` — all curve arithmetic: exact-input buy, exact-input sell, exact-output buy, remaining inventory, marginal price, and the derivation of virtual reserves from a sale allocation, an LP allocation and a target reserve. Rounding is directional: the quote reserve is floored and anything subtracted from a reserve is ceilinged, so rounding always favours the curve. Tests cover hand-computed values, the derivation's price-continuity property under fuzzing, and invariants over random buy/sell sequences.
 - `src/libraries/PicklerPreset.sol` — the economic configuration a launch is fixed to, plus the validation that refuses an incoherent one, including a price below the precision floor the curve fuzzing found.
-- `src/PicklerAgentToken.sol` — a fixed-supply ERC-20 with no mint, owner, pause or transfer tax.
+- `src/PicklerAgentToken.sol` — an exactly 21-million-supply ERC-20 with no mint, owner, pause or transfer tax.
 - `src/PicklerLaunchFactory.sol` — creator authorization (EIP-712, replay-protected, ERC-1271 aware), one canonical token per agent key, and immutable published presets. It obtains a curve through `ICurveDeployer` and knows nothing else about it.
 - `src/PicklerBondingCurve.sol` — buying, selling and the end of the curve. Keeps the reserve, the accrued fees and the LP allocation strictly apart, tracked in storage rather than read from balances, so a donation moves no price and credits no one. Exhausting the sale allocation sets `READY_TO_GRADUATE`; graduation is a separate call that only the adapter may make.
 - `src/PicklerCurveDeployer.sol` — deploys a curve and binds it to its token in one call, which is the only window in which binding is possible.
 - `src/PicklerGraduationAdapterV4.sol` and `src/PicklerLiquidityLocker.sol` — permissionless, atomic graduation into a Uniswap V4 pool, and a locker that holds the position forever while letting only its fees out. The adapter deploys its own locker, so neither needs the other's address first.
 - `src/PicklerFeeEscrow.sol` — splits each launch's fees between its creator and the protocol and pays them out. Attribution is atomic with the transfer that funds it, and a claim debits only the caller.
+- `src/PicklerAdviceSplitter.sol` — receives one EIP-3009 `ReceiveWithAuthorization` payment in AUSD for a paid advice analysis and splits it in the same call: `floor(value × 6500 / 10000)` to the agent wallet (`payee`) and the rest to the immutable treasury. The buyer signs `nonce = keccak256(abi.encode(payee, salt))`, so a caller who changes `payee` breaks the signature and `settle` can stay permissionless. No owner, admin, upgrade or retained balance; a zero, self or treasury `payee` reverts. `test/mocks/MockEip3009Token.sol` checks the real EIP-712 digest (domain "Agora Dollar", version "1"), `test/PicklerAdviceSplitterInvariant.t.sol` settles random payments (and refused payees) through a handler and asserts the splitter's AUSD balance stays 0 and everything paid reached the agents and the treasury, and `test/fork/AdviceSplitterFork.t.sol` settles a real AUSD authorization on a Monad testnet fork (funded by a pranked holder transfer, since `deal` cannot write AUSD's balance slot). Deployed only by the explicit script below; the Monad testnet deployment is recorded under "Advice splitter deployment". See [the fee split specification](../docs/specs/agent-advice-fee-split-v1.md).
 - `test/fork/` — the Uniswap V4 spike (LP-02) and graduation end to end (A5, A6). These fork Monad testnet at a pinned block and run only when `MONAD_TESTNET_RPC_URL` is set, so `npm run contracts:test` stays offline; run them with `npm run contracts:test:fork`. Read [the spike findings](../docs/market/uniswap-v4-spike.md) before touching graduation: there is no official Uniswap V4 on Monad testnet, and the Monad-maintained one is a different build from mainnet's.
 
-Not implemented: networks and deployment scripts.
+General/mainnet network activation is not implemented. The explicit isolated testnet acceptance
+tool is described below.
 
 Deployment order is fixed by what each contract needs: fee escrow, graduation adapter (which creates the locker), curve deployer, launch factory, then `escrow.initialize(factory, locker)`. Every binding after construction is one-time and restricted to the deployer. See [the launchpad development specification](../docs/specs/launchpad-monad-v1.md) for what each one owes and in what order.
 
 Dependencies are git submodules pinned by commit in `foundry.lock`: forge-std `v1.11.0`, and v4-periphery `3231810e` with v4-core, permit2 and solmate nested under it, at the commits the Monad testnet deployment was built from. Remappings live in `remappings.txt`. A fresh clone needs `git submodule update --init --recursive` before `forge build`.
 
-Contracts currently carry `SPDX-License-Identifier: UNLICENSED` as an explicit placeholder. Choose a real license before anything is deployed.
+Pickler-authored Solidity sources in `src/` and `test/` are licensed under MIT; see [LICENSE](LICENSE). The license permits reuse, modification and commercial distribution while retaining its notices. This license is scoped to those Pickler-authored files, not the rest of the monorepo. Third-party dependencies in `lib/` retain their original licenses and notices; do not relicense or edit them. Combined distributions must also respect the licenses of the dependencies they include.
 
 ## Organization and rules
 
@@ -52,3 +54,116 @@ npm run contracts:abi       # Regenerate public ABIs into packages/chain
 If a test suite disappears from a run rather than failing, suspect a stale build cache and re-run with `forge build --root contracts --force`. A vanished suite reports as a pass, so check the suite count, not just the colour.
 
 For formatting, use `forge fmt --root contracts --check`, and for static analysis `forge lint --root contracts`. Both run in `.github/workflows/contracts.yml` alongside the test suite and the two generated-artifact drift checks. Empty directories do not provide contract validation coverage. When introducing tests, ensure they run rather than treating an empty test result as success. Update this file alongside any change to the contract layout, dependencies, commands, or deployment process.
+
+## Advice splitter deployment
+
+`script/DeployAdviceSplitter.s.sol` deploys `PicklerAdviceSplitter` and nothing else. It requires `block.chainid == 10143` (it reverts `WrongChain` elsewhere), reads `ADVICE_SPLITTER_TREASURY` (required) and `AUSD_ADDRESS` (default: testnet AUSD), and logs the address, block, asset and treasury. No key or treasury address lives in code; the key comes only from forge's `--private-key` or `--account`. Without `--broadcast` it only simulates.
+
+Operator commands, run from `contracts/` with `ADVICE_SPLITTER_TREASURY` exported. First a dry run, which only simulates and logs `chainId`, `asset` and `treasury` before anything is sent:
+
+```sh
+forge script script/DeployAdviceSplitter.s.sol --root . \
+  --rpc-url https://testnet-rpc.monad.xyz --account <name> --sender <deployer-address>
+```
+
+Compare the logged chain, asset and treasury with the intended values before broadcasting. Then broadcast with the same command plus `--broadcast`.
+
+Primary path, a Foundry keystore: import the key once with `cast wallet import <name> --interactive` (it prompts for the key and a password; nothing is echoed or written to a file in the repo). The broadcast prompts for the password, so the owner runs it with `!` in the agent session:
+
+```sh
+forge script script/DeployAdviceSplitter.s.sol --root . \
+  --rpc-url https://testnet-rpc.monad.xyz --account <name> --sender <deployer-address> --broadcast
+```
+
+Fallback, the key from the owner's env file, loaded only inside a subshell so it does not leak into the session:
+
+```sh
+( set -a; . "$OWNER_ENV_FILE"; set +a
+  forge script script/DeployAdviceSplitter.s.sol --root . \
+    --rpc-url https://testnet-rpc.monad.xyz --private-key "$DEPLOYER_PRIVATE_KEY" --broadcast )
+```
+
+The key is visible in `ps` while that command runs, which is why the keystore is preferred.
+
+After broadcasting, record the chain ID, address, deployment block, treasury and commit in the deployment record, and set the API's splitter address and treasury config. `broadcast/` is untracked; never commit keys. Keep `ADVICE_X402_ENABLED` false until the deployment is recorded and verified.
+
+Deployment record (2026-10-12): `PicklerAdviceSplitter` on Monad testnet (chain 10143) at `0x570A291Ac86d2F002Bc62E7d12ba43B7F4554d2a`, block 70562565, tx `0x716a5e1a4b8fc23fc750ea205987716d19cfe9604b464ae4f17ccc00e32b0b2a`, deployer and treasury `0xE84B9045c4735241A71e5c6976695e59A5A7758c` (the owner's testnet EOA), asset AUSD `0xa9012a055bd4e0eDfF8Ce09f960291C09D5322dC`, `CREATOR_BPS` 6500, 1576 bytes of code with keccak256 `0x188e0eff98004d1ef3e1200ca4bd1d6de3a378be884db138c5a3cb32be3aa3fe`, built from commit `47594f27`. Recorded in `packages/chain/src/deployments.ts` as `PICKLER_MONAD_TESTNET`; staging sets `ADVICE_SPLITTER_ADDRESS` and `ADVICE_SPLITTER_TREASURY` to these values. Moving the treasury to a multisig means deploying a new splitter.
+
+## Mandatory launch grants
+
+`PicklerLaunchFactory` now requires a constructor-supplied nonzero launch authority and a signed
+Pickler EIP-712 `LaunchGrant` on every `createLaunch` call, including direct creator calls. The
+`Pickler` domain is version `2`. The grant binds the full launch parameters, creator/master wallet,
+agent key, chain, factory, unique grant nonce and at most five minutes of validity. Creator
+permission and its replay protection remain required. Only the operator can rotate the authority;
+rotation invalidates old grants. There is no grant-free overload. `test/LaunchGrantTest.sol` supplies
+only a public controlled test key; unit/fuzz tests cover parameter tampering, network/factory/wallet,
+expiry, reuse and rotation. For the original grant foundation no deployment was claimed. Current explicit contract
+acceptance is documented below. See
+[the token guide](../docs/agent-token-preview.md).
+
+## Fixed issuance policy
+
+`PicklerPreset.TOTAL_SUPPLY` is exactly `21_000_000e18`. Both preset admission and token
+construction reject every other supply. All tokens are minted once to the curve; no external mint,
+burn or owner authority exists. Precision policy 1 preserves legacy rounding and its price floor;
+policy 2 admits the fixed AUSD reference curve (80/20, 32,000 AUSD target, 1% buy/sell, 50/50 fees,
+zero launch fee). It requires six-decimal quote metadata at factory admission and curve construction.
+Unknown policies fail. The normalized `marginalPriceWad` uses full-precision mulDiv; old quotes are
+unchanged. `test/CurveVectors.t.sol` emits legacy and reference core vectors. Offline unit/fuzz and
+both invariant profiles cover real reserve/fees/inventory/donations; `PicklerReferenceProfile.t.sol`
+tests controlled handover only. The original reference math is independent of DEX availability; the separate V4 V2 generation
+below commits the current testnet venue without changing old V4/Kuru records. See [the token guide](../docs/agent-token-preview.md).
+
+## Legacy Kuru testnet compatibility evidence
+
+[The Kuru testnet probe](../docs/market/kuru-testnet-probe.md) records actual standalone token,
+market, liquidity, buy, sell and redemption transactions on Monad testnet 10143. It is not a
+Pickler factory or graduation deployment. The deployed token uses MIT sources; upstream contracts
+retain their licenses. No operational Kuru adapter, liquidity custodian, fee-only claim path or
+new-generation integration is introduced. Keep this evidence separate from controlled tests and
+from the historical V4 fork results.
+
+## Controlled Kuru passive integration
+
+`PicklerGraduationAdapterKuru`, `PicklerCurveDeployerKuru`, `PicklerKuruLiquidityLocker`,
+`PicklerKuruPositionVault`, `PicklerFeeEscrowV2` and `libraries/PicklerKuruPolicy.sol` add a
+separate testnet-only passive venue. Factory venue hashes bind new preset versions without
+changing historical preset hashes. Each launch has isolated permanent principal custody; only
+verified fee receipts leave, in their received asset. The V2 escrow initializes only with matching
+factory/deployer/adapter/locker bindings and ignores donations. Old V4 escrows retain their behavior.
+Compiler-generated minimal `IKuruPassive.sol` interfaces do not include SDK implementation code.
+
+The [integration guide](../docs/market/kuru-passive-integration.md) and
+[readiness record](../docs/market/kuru-passive-readiness.json) distinguish controlled atomic-unit
+models from unavailable remote passive-generation verification. No commercial Kuru profile or
+Pickler deployment is approved. Do not enable launches, substitute legacy, or treat unchanged
+proxy runtime hashes as unchanged implementations. Offline tests use controlled account/market
+contracts only; the external generation, units, band semantics, admission and administration
+remain explicit activation gates.
+
+## Separate V4 V2 testnet generation
+
+`PicklerGraduationAdapterV4V2`, `PicklerLiquidityLockerV2`, `PicklerCurveDeployerV4V2` and minimal
+`IUniswapV4Read`/`IUniswapV4Router` interfaces add the precision-2 AUSD profile, preset version 4,
+hookless full-range native 1% LP fees and permanent NFT/dust custody. Historical contracts are
+unchanged. New unit/fuzz tests use controlled adversarial dependencies. New V4Reference fork
+checks pin block 69,853,802 and use the deployed Universal Router, never an UNLICENSED helper.
+
+Explicit guarded operator acceptance lives in `scripts/contracts` and has offline refusal tests.
+The [34 real testnet receipts](../docs/market/uniswap-v4-testnet-integration.md) establish contract
+acceptance only; no hosted passkey/R2/indexer activation is implied. The test factory is disabled
+again. Third-party source pins/licenses remain unchanged. No general or mainnet deployment script
+is provided.
+
+## Perpl integration interface
+
+`src/interfaces/IPerplExchange.sol` describes only the owner account/forwarding/collateral calls
+consumed by off-chain onboarding. It is a minimal external interface, not a deployed Pickler
+contract or a new custody rule. Its ABI is compiler-generated into chain. No deployment or real
+transaction is part of build/test. See [Perpl trading](../docs/perpl-trading.md).
+
+`src/interfaces/IPerplRead.sol` is the independent minimal public read interface for the dashboard:
+account/position tuples and the typed missing-account error. Its compiler-generated chain ABI
+follows the pinned Perpl SDK ABI recorded in [dashboard](../docs/perpl-dashboard.md). It adds no
+contract implementation, state mutation, signer or deployment.

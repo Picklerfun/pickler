@@ -41,13 +41,125 @@ import { only } from "./lib/only.mjs";
 
 const ALL = [
   {
+    path: "/perpl?preview=wallet",
+    name: "perpl-dashboard-preview",
+    product: "marketplace",
+    surface: "light",
+    task: "Perpl read-only dashboard",
+    proves: "#perpl-portfolio [role=progressbar]",
+  },
+  {
+    path: "/?tokens=preview#tokens",
+    name: "landing-token-market-board-preview",
+    product: "marketplace",
+    surface: "light",
+    task: "Token market board",
+    proves: "[data-market-row] canvas",
+  },
+  {
+    path: "/agents/public_trade",
+    name: "public-agent-token-market-live",
+    product: "marketplace",
+    surface: "light",
+    task: "Production public token market",
+    proves: "[data-token-market=live] canvas",
+  },
+  {
+    path: "/studio?stage=perpl-token-empty",
+    name: "studio-token-empty",
+    product: "studio",
+    surface: "dark",
+    task: "Agent token preview",
+    proves: "#live-section-token input",
+  },
+  {
+    path: "/studio?stage=perpl-token-launched",
+    name: "studio-token-launched",
+    product: "studio",
+    surface: "dark",
+    task: "Agent token preview",
+    proves: "#live-section-token [data-token-state=launched]",
+  },
+  {
+    path: "/studio/agents/preview-live/token?stage=perpl-token-empty",
+    name: "studio-token-saved-draft",
+    product: "studio",
+    surface: "dark",
+    task: "Agent token preview",
+    proves: "#live-section-token",
+    act: {
+      click: "button:text-is('Save draft')",
+      proves: "p[role=status]:text-is('Draft saved')",
+    },
+  },
+  {
+    path: "/studio/agents/preview-draft/token?stage=draft",
+    name: "studio-token-private",
+    product: "studio",
+    surface: "dark",
+    task: "Agent token preview",
+    proves: "#draft-section-token",
+  },
+  ...["empty", "launched"].map((state) => ({
+    path: `/agents/halftime?stage=token-${state}`,
+    name: `public-agent-token-${state}`,
+    product: "marketplace",
+    surface: "light",
+    task: "Agent token preview",
+    proves: `[data-token-state=${state}]`,
+  })),
+
+  {
+    path: "/agents/halftime?stage=token-launched",
+    name: "public-agent-token-market-flow-preview",
+    product: "marketplace",
+    surface: "light",
+    task: "Public token market controlled flow",
+    proves: "[data-token-market=live] canvas",
+  },
+
+  {
+    path: "/agents/halftime?stage=token-launched&market=preview",
+    name: "public-agent-token-market-preview",
+    product: "marketplace",
+    surface: "light",
+    task: "Public token market mockup",
+    proves: 'main[data-token-market=true] [aria-label="Token market preview"]',
+  },
+
+  ...["brief", "skills", "console", "identity"].map((section) => ({
+    path: `/studio/agents/preview-draft/${section}?stage=draft`,
+    name: `studio-route-draft-${section}`,
+    product: "studio",
+    surface: "dark",
+    task: "Studio routes",
+    proves: `#draft-section-${section}`,
+  })),
+  ...["brief", "skills", "console", "decisions", "controls"].map((section) => ({
+    path: `/studio/agents/preview-live/${section}?stage=perpl-live`,
+    name: `studio-route-live-${section}`,
+    product: "studio",
+    surface: "dark",
+    task: "Studio routes",
+    proves: `#live-section-${section}`,
+  })),
+  {
+    path: "/studio/new?stage=create-empty",
+    name: "studio-route-new",
+    product: "studio",
+    surface: "dark",
+    task: "Studio routes",
+    proves: "#new-agent",
+  },
+  {
     path: "/",
     name: "landing",
     product: "marketplace",
     surface: "light",
     task: "Task 9",
-    // The section the canvas is built around. Present only when the landing itself rendered.
-    proves: "#four-moves-title",
+    // The title of INVEST IN WHAT COMES NEXT, the section the canvas is built around. Present only
+    // when the landing itself rendered.
+    proves: "#how-title",
   },
   {
     path: "/portfolio",
@@ -88,18 +200,6 @@ const ALL = [
   // measured, which is why two labels wearing <h2> sat there in the wrong face for the whole of
   // this change. A route nobody checks is where a defect lives longest, and this one has no task
   // coming to find it.
-  {
-    path: "/leaderboard",
-    name: "leaderboard",
-    product: "marketplace",
-    surface: "light",
-    task: "Inherited",
-    // Two screens, one of which must be present. #leaderboard-empty is the launch-day screen:
-    // nothing has settled, so the page draws that instead of an empty table. #score is the weights
-    // panel of the populated board, authored on this page and on no stub. A page that has neither
-    // is the stub this pairing refuses.
-    proves: "#leaderboard-empty, #score",
-  },
 
   /* The marketplace, which is the larger half of what had never been rendered in a check.
    *
@@ -122,11 +222,12 @@ const ALL = [
     surface: "light",
     task: "Marketplace",
     // Two screens, one of which must be present. #agents-empty is the launch-day screen: no agent
-    // exists yet, so the directory draws that instead of a beat filter with nothing under it. The
-    // other selector is the populated directory — the beat filter is authored there and nowhere
-    // else, and the row proves it has agents in it. A filter with no rows under it, or a page with
-    // neither, is the stub this pairing exists to refuse.
-    proves: '#agents-empty, main:has([role="group"][aria-label="Beat"]) a[href="/agents/halftime"]',
+    // exists yet, so the directory draws that instead of filters with nothing under them. The
+    // other selector is the populated directory — its filter group is authored there and nowhere
+    // else, and the profile link proves it has agents. An empty list, or a page with neither
+    // screen, is the stub this pairing exists to refuse.
+    proves:
+      '#agents-empty, main:has([role="group"][aria-label="Filter agents"]) a[href="/agents/halftime"]',
   },
   {
     path: "/agents/halftime",
@@ -138,7 +239,7 @@ const ALL = [
     // would report green for any profile; the token link says it is Halftime's, which is the
     // /signin-and-/signup lesson one prop smaller — the persona page is one component for nine
     // agents, so a selector that proves only the composition proves nothing about the data.
-    proves: 'main:has(a[href="/tokens/half"]) #panel-activity',
+    proves: 'main:has([aria-label="Agent token"]) #panel-activity',
   },
   {
     path: "/agents/halftime/ask",
@@ -152,37 +253,6 @@ const ALL = [
     // such in the report rather than quietly counted here.
     proves:
       'main:has([role="group"][aria-label="Market"]) p:text-is("clock starts at delivery · equal counts as no")',
-  },
-  {
-    path: "/tokens",
-    name: "tokens",
-    product: "marketplace",
-    surface: "light",
-    task: "Marketplace",
-    // The launch catalogue with rows in it: the harness's fixture API serves two launches, and
-    // the link proves the first of them is on the board. #launch-board-empty is the screen the
-    // product shows today, and a page showing it here means the fixture was not what answered.
-    proves: '#launch-board a[href="/tokens/HALF"]',
-  },
-  {
-    path: "/tokens/half",
-    name: "token",
-    product: "marketplace",
-    surface: "light",
-    task: "Marketplace",
-    // The calls panel, on the page that links back to the agent it belongs to. Same pairing and
-    // same reason as the profile: one component serves nine tokens.
-    proves: 'main:has(a[href="/agents/halftime"]) #calls-title',
-  },
-  {
-    path: "/tokens/half/picks/half-1",
-    name: "token-pick",
-    product: "marketplace",
-    surface: "light",
-    task: "Marketplace",
-    // The trail and the post, which are the two blocks this screen exists for and which no list
-    // page draws.
-    proves: "main:has(#post-title) #trail-title",
   },
   {
     path: "/markets",
@@ -347,20 +417,17 @@ const ALL = [
     task: "Wallet",
     proves: "dialog[open] #connect-step-joined",
   },
-  // /apply has a gate of its own and it is not the wallet's: the six-question form renders only
-  // for a request carrying the apply cookie, and without one the route answers with NoSeat — a
-  // whole authored screen, so this measures a screen rather than a stub. The form behind it is
-  // unmeasured, and the cookie is a door this file does not have either.
-  //
-  // The only dark ground in the marketplace list: ApplyShell pins data-surface="dark", where
-  // PublicShell leaves every other route here on the light default.
+  // /create is public since docs/specs/landing-trade-v1.md A1: the six-question form renders for
+  // anyone, with the email as its first field, and the seat is taken when the form is sent. The
+  // form is what this proves; a browser that already holds a seat with an application sees the
+  // SUBMITTED screen instead, which the harness has no cookie to reach.
   {
-    path: "/apply",
-    name: "apply-no-seat",
+    path: "/create",
+    name: "create",
     product: "marketplace",
-    surface: "dark",
+    surface: "light",
     task: "Apply",
-    proves: 'main h1:text-is("GET IN LINE FIRST.")',
+    proves: "#apply-form",
   },
 
   {
@@ -424,6 +491,30 @@ const ALL = [
     surface: "dark",
     task: "Create v5",
     proves: '#new-agent-wallet[data-state="none"] #new-agent-wallet-step0',
+  },
+  {
+    path: "/studio?stage=create-access-loading",
+    name: "studio-create-access-loading",
+    product: "studio",
+    surface: "dark",
+    task: "Create v5",
+    proves: '#new-agent-wallet-step0 #creator-access-panel [data-skeleton="true"]',
+  },
+  {
+    path: "/studio?stage=create-access",
+    name: "studio-create-access",
+    product: "studio",
+    surface: "dark",
+    task: "Create v5",
+    proves: "#new-agent-wallet-step0 #creator-access-panel",
+  },
+  {
+    path: "/studio?stage=create-access-pending",
+    name: "studio-create-access-pending",
+    product: "studio",
+    surface: "dark",
+    task: "Create v5",
+    proves: '#new-agent-wallet[data-state="access"] #creator-access-panel',
   },
   {
     path: "/studio?stage=create-wallet",
@@ -531,8 +622,8 @@ const ALL = [
   },
   /* The draft studio (studio-draft-dashboard-v1 §7), one route per `?stage=draft*` in DRAFT_STAGES
    * (apps/web/src/features/studio/home/stage.ts). `draft` is the Overview right after create; the
-   * four X stages are Go Public's card on the Overview with the X row open, the post not found
-   * after "Check again", the account verified and X skipped, so each proves that card's state
+   * four historical X stage names now show OAuth consent, reconnection required,
+   * a connected account and disabled OAuth, so each proves the current card state
    * rather than the Overview, which all four share. The rest prove their section, and
    * `draft-locked` proves the panel Activity shows while the agent is private. */
   {
@@ -542,6 +633,34 @@ const ALL = [
     surface: "dark",
     task: "Draft dashboard",
     proves: "#draft-section-overview",
+    act: {
+      click: "[data-account-menu] > button",
+      proves: '[data-slot="dropdown-menu-content"] a[href^="/account?section=profile&returnTo="]',
+    },
+  },
+  {
+    path: "/studio?stage=draft&resume=overview",
+    name: "studio-draft-collapsed",
+    product: "studio",
+    surface: "dark",
+    task: "Draft dashboard",
+    proves: "#draft-section-overview",
+    act: {
+      click: '[data-sidebar-toggle][aria-expanded="true"]',
+      proves: '#draft-sidebar[data-slot="sidebar-container"]:is([data-collapsible="icon"] *)',
+    },
+  },
+  {
+    path: "/studio?stage=perpl-live&resume=overview",
+    name: "studio-live-collapsed",
+    product: "studio",
+    surface: "dark",
+    task: "Live dashboard",
+    proves: "#live-section-overview",
+    act: {
+      click: '[data-sidebar-toggle][aria-expanded="true"]',
+      proves: '#live-sidebar[data-slot="sidebar-container"]:is([data-collapsible="icon"] *)',
+    },
   },
   {
     path: "/studio?stage=draft-x-open",
@@ -549,7 +668,7 @@ const ALL = [
     product: "studio",
     surface: "dark",
     task: "Draft dashboard",
-    proves: "#draft-go-public-x:not(:has(#draft-go-public-x-miss)) #draft-go-public-x-handle",
+    proves: '#draft-go-public-x-connect[data-x-status="disconnected"]',
   },
   {
     path: "/studio?stage=draft-x-miss",
@@ -557,7 +676,7 @@ const ALL = [
     product: "studio",
     surface: "dark",
     task: "Draft dashboard",
-    proves: "#draft-go-public-x-miss",
+    proves: '#draft-go-public-x-connect[data-x-status="reconnect_required"]',
   },
   {
     path: "/studio?stage=draft-x-ok",
@@ -573,8 +692,7 @@ const ALL = [
     product: "studio",
     surface: "dark",
     task: "Draft dashboard",
-    proves:
-      '#draft-go-public:has(button[aria-pressed="true"]) #draft-go-public-button[data-state="ready"]',
+    proves: '#draft-go-public-x-connect[data-x-available="false"]',
   },
   {
     path: "/studio?stage=draft-console",
@@ -767,7 +885,40 @@ const ALL = [
     product: "studio",
     surface: "dark",
     task: "Live studio",
-    proves: "#live-section-limits",
+    /* One route per stage (studio-landing.test.ts): the section and its ANALYSES IN THE APP card. */
+    proves: "#live-section-limits #live-limits-advice",
+  },
+  {
+    path: "/studio?stage=perpl-trading-ready",
+    name: "studio-perpl-trading-ready",
+    product: "studio",
+    surface: "dark",
+    task: "Perpl trading",
+    proves: "#perpl-start-trading",
+  },
+  {
+    path: "/studio?stage=perpl-trading-setup",
+    name: "studio-perpl-trading-setup",
+    product: "studio",
+    surface: "dark",
+    task: "Perpl trading",
+    proves: "#perpl-trading-controls",
+  },
+  {
+    path: "/studio?stage=perpl-trading-active",
+    name: "studio-perpl-trading-active",
+    product: "studio",
+    surface: "dark",
+    task: "Perpl trading",
+    proves: "#perpl-trading-positions",
+  },
+  {
+    path: "/studio?stage=perpl-trading-closed",
+    name: "studio-perpl-trading-closed",
+    product: "studio",
+    surface: "dark",
+    task: "Perpl trading",
+    proves: "#perpl-trading-record",
   },
   {
     path: "/studio?stage=perpl-controls",
@@ -1020,8 +1171,8 @@ const ALL = [
     task: "Task 13",
     proves: "#account-panel-wallet",
   },
-  // The account's three sections sit behind a rail and only the wallet renders on load, so the
-  // other two are never on screen for a check to read. `?section=` puts one there, outside
+  // The account sections sit behind a rail and only the wallet renders on load, so the
+  // other sections are never on screen for a check to read. `?section=` puts one there, outside
   // production only. MUST_NEST in surfaces.mjs keys on name, so only `account` carries the nesting
   // assertion — right, because the white wallet card exists only in the wallet section.
   {
@@ -1039,6 +1190,15 @@ const ALL = [
     surface: "dark",
     task: "Task 13",
     proves: "#account-panel-profile",
+  },
+  {
+    path: "/account?section=access",
+    name: "account-access",
+    product: "studio",
+    surface: "dark",
+    task: "Creator access",
+    // The notice, and under it the operators' inbox the preview draws from fixture rows.
+    proves: "#creator-access-panel:has(#applications-inbox)",
   },
   // The signup's mandatory passkey step, straight after the code and before the handle: its one
   // prompt creates the sub-organization and the master wallet, and every signed-in screen sends a
@@ -1086,7 +1246,7 @@ const ALL = [
     product: "studio",
     surface: "dark",
     task: "Auth",
-    proves: 'main:has(aside[aria-label="Sample agent activity"]) h1:text-is("GET IN")',
+    proves: 'main h1:text-is("GET IN")',
   },
   {
     path: "/signup",
@@ -1094,7 +1254,7 @@ const ALL = [
     product: "studio",
     surface: "dark",
     task: "Auth",
-    proves: 'main:has(aside[aria-label="Sample agent activity"]) h1:text-is("JOIN THE BOARD")',
+    proves: 'main h1:text-is("JOIN THE BOARD")',
   },
 ];
 
@@ -1134,7 +1294,7 @@ export const HOLDS = {
   Gated: ["apps/web/src/features/wallet", "apps/web/src/features/agents"],
   // The chooser is drawn over the market board, so an edit in flight in either can explain it.
   Wallet: ["apps/web/src/features/wallet", "apps/web/src/features/markets"],
-  Apply: ["apps/web/src/features/apply"],
+  Apply: ["apps/web/src/features/create"],
   // Neither does any task build the auth screens — they predate this design work, which is how
   // they went fifteen routes without being measured. Their own key rather than `Inherited`
   // because attribution is the whole purpose of this map: sharing a key with the leaderboard

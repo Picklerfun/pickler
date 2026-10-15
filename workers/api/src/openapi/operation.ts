@@ -6,10 +6,13 @@ import { envelopeErrorSchema } from "@pickler/api-schema";
 export type Security = "public" | "user" | "workspace" | "agent" | "apply";
 export interface OperationOptions {
   response: z.ZodType;
+  responseContent?: Record<string, z.ZodType>;
   body?: z.ZodType;
   optionalBody?: boolean;
   status?: number;
   also?: number[];
+  redirect?: boolean;
+  responseHeaders?: Record<string, { description: string; schema: { type: "string" } }>;
   security?: Security;
   description?: string;
   query?: Record<
@@ -20,6 +23,13 @@ export interface OperationOptions {
   idempotent?: boolean | "optional";
   errors?: z.ZodType;
   errorStatuses?: number[];
+  /** Request headers beyond the security and idempotency ones. */
+  headers?: Record<
+    string,
+    { required?: boolean; description: string; schema?: Record<string, unknown> }
+  >;
+  /** Statuses with their own JSON body, documented after (and over) the error statuses. */
+  responses?: Record<number, { description: string; schema: z.ZodType }>;
 }
 
 /** Documentation only: existing handler validation and authorization remain authoritative. */
@@ -39,7 +49,30 @@ export function operation(id: string, options: OperationOptions) {
   };
   const response = {
     description: "Successful response",
-    content: { "application/json": { schema: resolver(options.response) } },
+    ...(options.redirect
+      ? {}
+      : {
+          content: Object.fromEntries(
+            Object.entries(options.responseContent ?? { "application/json": options.response }).map(
+              ([type, schema]) => [type, { schema: resolver(schema) }],
+            ),
+          ),
+        }),
+    ...(options.redirect || options.responseHeaders
+      ? {
+          headers: {
+            ...(options.redirect
+              ? {
+                  Location: {
+                    description: "Same-origin Studio return",
+                    schema: { type: "string" as const },
+                  },
+                }
+              : {}),
+            ...options.responseHeaders,
+          },
+        }
+      : {}),
   };
   const responses: NonNullable<DescribeRouteOptions["responses"]> = {};
   for (const status of [options.status ?? 200, ...(options.also ?? [])]) {
@@ -51,6 +84,12 @@ export function operation(id: string, options: OperationOptions) {
     responses[status] = {
       description: "Request refused or service unavailable; see the response code/message",
       content: { "application/json": { schema: resolver(options.errors ?? envelopeErrorSchema) } },
+    };
+  }
+  for (const [status, special] of Object.entries(options.responses ?? {})) {
+    responses[status] = {
+      description: special.description,
+      content: { "application/json": { schema: resolver(special.schema) } },
     };
   }
   const parameters: NonNullable<DescribeRouteOptions["parameters"]> = Object.entries(
@@ -70,6 +109,15 @@ export function operation(id: string, options: OperationOptions) {
       description:
         "Select an authorized workspace. Requires the agent module and read Agent permission.",
       schema: { type: "string" },
+    });
+  }
+  for (const [name, header] of Object.entries(options.headers ?? {})) {
+    parameters.push({
+      name,
+      in: "header",
+      required: header.required ?? false,
+      description: header.description,
+      schema: header.schema ?? { type: "string" },
     });
   }
   if (options.idempotent) {

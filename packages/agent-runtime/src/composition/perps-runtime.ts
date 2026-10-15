@@ -55,7 +55,8 @@ export function boardMarks(): PerpsMarks {
       const fresh = market.source.venue === "perpl" && !market.source.stale;
       if (
         fresh &&
-        (market.base === "BTC" || market.base === "ETH") &&
+        /^[A-Z0-9][A-Z0-9._-]{0,31}(?![\s\S])/.test(market.base) &&
+        markets.filter((row) => row.base === market.base).length === 1 &&
         Number.isFinite(market.mark) &&
         market.mark > 0
       ) {
@@ -108,17 +109,31 @@ export function createPerpsRuntime(
     },
     agents: research,
     marks,
-    async exitFrame(network, symbol, signal) {
+    async exitFrame(network, symbol, signal, market) {
+      const data = market
+        ? new PerplMarketData({
+            schedule,
+            sessionLimit: PERPL_CHECK_SESSION_LIMIT,
+            positionMarkets: [market],
+          })
+        : exitData;
       const ctx = {
         signal: AbortSignal.any([signal, AbortSignal.timeout(20_000)]),
         guard: async () => {},
       };
-      const book = await exitData.book(network, symbol, 20, ctx);
-      const snapshot = await exitData.snapshot(network, symbol, ctx);
+      const book = await data.book(network, symbol, 20, ctx);
+      const snapshot = await data.snapshot(network, symbol, ctx);
       return perpsFrame(snapshot, book);
     },
-    async funding(network, symbol, from, to, signal) {
-      return exitData.funding(
+    async funding(network, symbol, from, to, signal, market) {
+      const data = market
+        ? new PerplMarketData({
+            schedule,
+            sessionLimit: PERPL_CHECK_SESSION_LIMIT,
+            positionMarkets: [market],
+          })
+        : exitData;
+      return data.funding(
         network,
         { symbol, from, to },
         {

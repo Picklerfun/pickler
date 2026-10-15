@@ -1,0 +1,10 @@
+{
+  "observedAt": "2026-10-10T14:12:26.815331+00:00",
+  "endpoint": "search/code?q=AccountCore+org%3AKuru-Labs+extension%3Asol",
+  "success": true,
+  "result": {
+    "total_count": 0,
+    "incomplete_results": false,
+    "items": []
+  }
+}

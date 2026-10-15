@@ -8,7 +8,7 @@ import { z } from "zod";
  */
 const decimal = z.string().regex(/^-?(0|[1-9]\d{0,35})(\.\d{1,18})?$/);
 const iso = z.string().datetime();
-const instrument = z.enum(["BTC", "ETH"]);
+const instrument = z.string().regex(/^[A-Z0-9][A-Z0-9._-]{0,31}(?![\s\S])/);
 const side = z.enum(["long", "short"]);
 
 /** Mirrors trading's `CHECK_OUTCOMES`. */
@@ -124,7 +124,10 @@ export const studioCheckDecisionSchema = z
   .object({
     protocol: z.literal("studio-perps-check-v2"),
     strategy: z
-      .object({ id: z.enum(["rules", "deepseek", "jev", "combined"]), version: z.literal("2.0.0") })
+      .object({
+        id: z.enum(["rules", "deepseek", "jev", "combined"]),
+        version: z.enum(["2.0.0", "2.1.0"]),
+      })
       .strict(),
     generatedAt: z.number().int().nonnegative(),
     actions: z.array(

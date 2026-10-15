@@ -63,6 +63,12 @@
   --pk-glow-lime: rgba(200, 240, 58, 0.32);
   --pk-glow-lime-strong: rgba(200, 240, 58, 0.5);
 
+  /* Violet as light: the radial halo behind the phones on the landing and behind the mascot on the
+   * application page. The palette's light violet (`--pk-agent-violet-fill`) at a fraction, on both
+   * surfaces, because it is the agents' colour cast on a dark panel and not a colour the surface
+   * owns. The canvases paint it at 0.35 and 0.42; one weight. */
+  --pk-glow-violet: rgba(155, 123, 255, 0.4);
+
   /* What a dialog dims the page with. The dark ground at a fraction, on both surfaces: a scrim
    * darkens whatever is behind it, and a light one would wash a light page out instead. */
   --pk-scrim: rgba(11, 13, 26, 0.72);
@@ -95,6 +101,8 @@
   --pk-display-wdth: "wdth" 112;
 
   --pk-duration: 140ms;
+  --pk-sidebar-duration: 320ms;
+  --pk-sidebar-ease: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* One dark in the product and one light, and either can appear inside the other. A surface is not
@@ -363,6 +371,10 @@ h2 {
     border-color var(--pk-duration),
     color var(--pk-duration),
     transform var(--pk-duration);
+}
+
+.pk-button[data-shape="box"] {
+  border-radius: var(--pk-radius-sm);
 }
 
 .pk-button:active {
@@ -890,4 +902,340 @@ h2 {
   --pk-tint-fg: var(--pk-ink-muted);
   --pk-tint-bg: var(--pk-panel);
   --pk-tint-bd: var(--pk-rule-strong);
+}
+
+/* Placeholders keep layout while data is being read; no text or motion is required. */
+.pk-skeleton {
+  display: block;
+  flex-shrink: 0;
+  width: 100%;
+  height: 14px;
+  border-radius: var(--pk-radius-sm);
+  background: var(--pk-rule-strong);
+}
+.pk-skeleton[data-shape="title"] {
+  width: 70%;
+  height: 28px;
+}
+.pk-skeleton[data-shape="avatar"] {
+  width: 80px;
+  height: 80px;
+  border-radius: var(--pk-radius-xl);
+}
+.pk-skeleton[data-shape="button"] {
+  width: 160px;
+  max-width: 100%;
+  height: 44px;
+  border-radius: var(--pk-radius-pill);
+}
+.pk-skeleton[data-shape="panel"] {
+  height: 120px;
+  border-radius: var(--pk-radius-xl);
+}
+
+/* shadcn semantic roles share the existing Pickler token source. No second palette. */
+@theme inline {
+  --color-scrim: var(--pk-scrim);
+  --color-background: var(--pk-bg);
+  --color-foreground: var(--pk-ink);
+  --color-popover: var(--pk-popover);
+  --color-popover-foreground: var(--pk-ink);
+  --color-primary: var(--pk-lime);
+  --color-primary-foreground: var(--pk-on-lime);
+  --color-secondary: var(--pk-panel);
+  --color-secondary-foreground: var(--pk-ink);
+  --color-muted: var(--pk-panel);
+  --color-muted-foreground: var(--pk-ink-muted);
+  --color-accent: var(--pk-panel-2);
+  --color-accent-foreground: var(--pk-ink);
+  --color-destructive: var(--pk-loss);
+  --color-destructive-surface: var(--pk-state-loss-bg);
+  --color-destructive-foreground: var(--pk-state-loss-ink);
+  --color-border: var(--pk-rule);
+  --color-input: var(--pk-rule-strong);
+  --color-ring: var(--pk-focus);
+  --color-sidebar: var(--pk-bg);
+  --color-sidebar-foreground: var(--pk-ink-muted);
+  --color-sidebar-accent: var(--pk-panel);
+  --color-sidebar-accent-foreground: var(--pk-ink);
+  --color-sidebar-border: var(--pk-rule);
+  --color-sidebar-ring: var(--pk-focus);
+  --radius-xs: var(--pk-radius-mark);
+  --radius-sm: var(--pk-radius-sm);
+  --radius-md: var(--pk-radius-md);
+  --radius-lg: var(--pk-radius-lg);
+  --radius-xl: var(--pk-radius-xl);
+  --shadow-xs: var(--pk-popover-shadow);
+  --shadow-sm: var(--pk-popover-shadow);
+  --shadow-md: var(--pk-popover-shadow);
+  --shadow-lg: var(--pk-popover-shadow);
+}
+
+/* Tailwind preflight is intentionally absent. Normalize only installed component slots. */
+[data-slot="sidebar-menu"],
+[data-slot="sidebar-menu-sub"] {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+[data-sidebar="menu-button"],
+[data-slot="sidebar-trigger"] {
+  border: 0;
+  background: transparent;
+  color: var(--pk-ink-muted);
+  cursor: pointer;
+  font-family: var(--pk-font);
+  text-decoration: none;
+}
+/* A crisp outline shares the product focus treatment; no halo around small navigation icons. */
+[data-sidebar="menu-button"]:focus-visible,
+[data-slot="sidebar-trigger"]:focus-visible {
+  box-shadow: none;
+  outline: 2px solid var(--pk-focus);
+  outline-offset: 2px;
+}
+[data-sidebar="menu-button"]:hover,
+[data-sidebar="menu-button"][data-active="true"] {
+  background: var(--pk-panel);
+  color: var(--pk-ink);
+}
+[data-slot="dropdown-menu-content"],
+[data-slot="sheet-content"] {
+  border-color: var(--pk-rule);
+  font-family: var(--pk-font);
+}
+/* shadcn Select keeps Radix interactions and uses the shared field/portal treatment. */
+[data-slot="select-trigger"] {
+  border-style: solid;
+  box-shadow: none;
+  color: var(--pk-ink);
+  font-family: var(--pk-font);
+  cursor: pointer;
+}
+[data-slot="select-trigger"][data-shape="pill"] {
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-bg);
+}
+[data-slot="select-trigger"]:focus-visible {
+  outline: 2px solid var(--pk-focus);
+  outline-offset: 2px;
+}
+[data-slot="select-trigger"][data-placeholder] {
+  color: var(--pk-ink-muted);
+}
+[data-slot="select-trigger"]:disabled {
+  color: var(--pk-ink-muted);
+  opacity: 1;
+  cursor: not-allowed;
+}
+[data-slot="select-content"] {
+  border: 1px solid var(--pk-rule);
+  font-family: var(--pk-font);
+}
+[data-slot="select-item"] {
+  min-height: 36px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+[data-slot="select-item"][data-disabled] {
+  color: var(--pk-ink-muted);
+  opacity: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-slot^="sidebar"],
+  [data-slot^="sheet"],
+  [data-slot^="dropdown-menu"],
+  [data-slot^="tooltip"],
+  [data-slot^="select"] {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* Every enabled menu option advertises its action, including nested and selection menus. */
+:is(
+  [data-slot="dropdown-menu-item"],
+  [data-slot="dropdown-menu-checkbox-item"],
+  [data-slot="dropdown-menu-radio-item"],
+  [data-slot="dropdown-menu-sub-trigger"]
+) {
+  cursor: pointer;
+}
+:is(
+  [data-slot="dropdown-menu-item"],
+  [data-slot="dropdown-menu-checkbox-item"],
+  [data-slot="dropdown-menu-radio-item"],
+  [data-slot="dropdown-menu-sub-trigger"]
+)[data-disabled] {
+  cursor: not-allowed;
+  pointer-events: auto;
+}
+
+/* Disabled menu copy remains legible; Radix still prevents selection. */
+[data-slot="dropdown-menu-item"][data-disabled] {
+  opacity: 1;
+}
+
+/* Keep shadcn's state/structure; synchronize geometry and reveal without remounting rows. */
+[data-slot="sidebar-gap"],
+[data-slot="sidebar-container"],
+[data-sidebar="menu-button"],
+[data-slot="sidebar-group-label"],
+[data-slot="sidebar-menu-badge"],
+[data-sidebar-label] {
+  transition-duration: var(--pk-sidebar-duration);
+  transition-timing-function: var(--pk-sidebar-ease);
+}
+/* Icon-only navigation has a symmetric hit/selection box, not an empty trailing label area. */
+[data-slot="sidebar-group"] [data-sidebar="menu-button"] {
+  margin-inline-start: 0;
+  transition-property: width, height, padding, margin-inline-start;
+}
+[data-slot="sidebar"][data-collapsible="icon"]
+  [data-slot="sidebar-group"]
+  [data-sidebar="menu-button"] {
+  width: 32px;
+  margin-inline-start: calc((var(--sidebar-width-icon) - 48px) / 2);
+}
+[data-sidebar-label] {
+  flex-shrink: 0;
+  transition-property: opacity, transform;
+}
+[data-slot="sidebar"][data-collapsible="icon"] [data-sidebar-label],
+[data-slot="sidebar"][data-collapsible="icon"]
+  [data-sidebar="menu-button"]
+  > svg:not(:first-child) {
+  opacity: 0;
+  transform: translateX(-4px);
+  pointer-events: none;
+}
+[data-sidebar="menu-button"] > svg:not(:first-child) {
+  transition:
+    opacity var(--pk-sidebar-duration) var(--pk-sidebar-ease),
+    transform var(--pk-sidebar-duration) var(--pk-sidebar-ease);
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-sidebar-label],
+  [data-sidebar="menu-button"] > svg:not(:first-child) {
+    transition: none;
+  }
+}
+
+/* Labelled switch: Radix owns checked state and native keyboard activation. */
+.pk-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--pk-ink);
+  font: 500 14px/1.3 var(--pk-font);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.pk-switch:focus-visible {
+  outline: 2px solid var(--pk-focus);
+  outline-offset: 3px;
+  border-radius: var(--pk-radius-sm);
+}
+
+.pk-switch:disabled {
+  color: var(--pk-ink-muted);
+  cursor: not-allowed;
+}
+
+.pk-switch-track {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  width: 46px;
+  height: 26px;
+  padding: 3px;
+  border: 1px solid var(--pk-border-strong);
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-panel-3);
+  transition: background var(--pk-duration);
+}
+
+.pk-switch[data-state="checked"] .pk-switch-track {
+  background: var(--pk-lime-ink);
+  border-color: var(--pk-lime-ink);
+}
+
+.pk-switch-thumb {
+  display: block;
+  width: 18px;
+  height: 18px;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-bg);
+  transition: transform var(--pk-duration);
+}
+
+.pk-switch-thumb[data-state="checked"] {
+  transform: translateX(20px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pk-switch-track,
+  .pk-switch-thumb {
+    transition: none;
+  }
+}
+
+/* Observed-price charts: motion never changes the underlying series values. */
+.pk-price-chart {
+  position: relative;
+  min-width: 0;
+  width: 100%;
+}
+.pk-price-plot {
+  width: 100%;
+}
+.pk-price-plot:focus-visible {
+  outline: 2px solid var(--pk-focus);
+  outline-offset: 3px;
+  border-radius: var(--pk-radius-sm);
+}
+.pk-price-tooltip {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 2;
+  pointer-events: none;
+  display: grid;
+  gap: 4px;
+  width: 180px;
+  max-width: calc(100% - 8px);
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border: 1px solid var(--pk-rule-strong);
+  border-radius: var(--pk-radius-sm);
+  background: var(--pk-bg);
+  color: var(--pk-ink);
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 160ms ease,
+    transform 80ms ease;
+  font: 12px/1.4 var(--pk-font);
+  font-variant-numeric: tabular-nums;
+}
+.pk-price-tooltip[data-visible="true"] {
+  opacity: 1;
+  visibility: visible;
+}
+.pk-price-tooltip strong {
+  font-size: 13px;
+  font-weight: 700;
+}
+.pk-price-tooltip span {
+  color: var(--pk-ink-muted);
+}
+@media (prefers-reduced-motion: reduce) {
+  .pk-price-tooltip {
+    transition: none;
+  }
 }

@@ -1,4 +1,6 @@
 "use client";
+import type { PerplReadKeyInputDto, PerplReadKeyPayloadDto } from "@pickler/api-schema";
+import type { PublicTokenTradePreparedDto } from "@pickler/api-schema";
 
 import {
   createContext,
@@ -21,6 +23,14 @@ import { injectedSigner } from "./injected-signer";
 import { PrfUnavailableError } from "./mera-ceremony";
 import { meraSigner } from "./mera-signer";
 import { getProvider, TARGET_CHAIN } from "./provider";
+import {
+  injectedWalletSnapshot,
+  injectedWalletServerSnapshot,
+  subscribeInjectedWallets,
+  selectInjectedWallet,
+  rememberedInjectedWallet,
+} from "./injected-providers";
+import { walletFailure, WalletRequestError, type WalletFailure } from "./wallet-request-error";
 import { JoinUnsettledError, signIn, type ConnectResult, type Signer } from "./connect";
 import { joinWords, signInWords } from "./sign-in-words";
 import { fromInjectedProvider } from "./signer-adapters";
@@ -152,6 +162,8 @@ function previewStep(): ConnectStep | null {
 export interface WalletChoice {
   /** Unique among the choices: the passkey wallet appears twice, once per way in. */
   key: string;
+  providerId?: string | undefined;
+  name?: string | undefined;
   kind: SignerKind;
   /** How this choice connects, where a wallet has more than one way. */
   mode: ConnectMode | null;
@@ -165,6 +177,12 @@ export interface WalletChoice {
 
 interface WalletState {
   status: WalletStatus;
+  /** Silent restoration of the remembered connection, without account or signing prompts. */
+  restoring: boolean;
+  providerId: string | null;
+  providerName: string | null;
+  switching: boolean;
+  switchFailure: WalletFailure | null;
   /** What is connected, or null when nothing is. */
   kind: SignerKind | null;
   address: string | null;
@@ -193,7 +211,7 @@ interface WalletState {
    * an answer rather than a failure. A caller shows the error from this result: `sessionError` is
    * for whoever renders later, and is not yet set in the render the caller awaited from.
    */
-  signInWithWallet: () => Promise<SignInResult>;
+  signInWithWallet: (wanted?: () => boolean) => Promise<SignInResult>;
   /**
    * Opens the chooser. `holding` is what the person was about to do, shown while they pick so the
    * action they came for is not lost behind the wallet.
@@ -201,6 +219,11 @@ interface WalletState {
   connect: (holding?: string) => void;
   disconnect: () => Promise<void>;
   switchChain: () => Promise<void>;
+  signPerplReadKey: (
+    payload: PerplReadKeyPayloadDto,
+    input: PerplReadKeyInputDto,
+  ) => Promise<string>;
+  sendTokenTransaction: (prepared: PublicTokenTradePreparedDto, token: string) => Promise<string>;
 }
 
 const WalletContext = createContext<WalletState | null>(null);
@@ -209,6 +232,16 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const [kind, setKind] = useState<SignerKind | null>(null);
   const [account, setAccount] = useState<SignerAccount | null>(null);
   const [connecting, setConnecting] = useState(false);
+  const [resumePending, setRestoring] = useState(true);
+  const [switching, setSwitching] = useState(false);
+  const [switchFailure, setSwitchFailure] = useState<WalletFailure | null>(null);
+  const switchRun = useRef<symbol | null>(null);
+  const wallets = useSyncExternalStore(
+    subscribeInjectedWallets,
+    injectedWalletSnapshot,
+    injectedWalletServerSnapshot,
+  );
+  const [pickingKey, setPickingKey] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [holding, setHolding] = useState<string | null>(null);
   const [flow, dispatch] = useReducer(connectFlow, CLOSED);
@@ -251,45 +284,45 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   // Which signers exist is a question only the browser can answer. Read through an external store
   // rather than an effect: the server renders "not yet" and the browser answers on the first paint.
   const mounted = useSyncExternalStore(subscribeToBrowser, inBrowser, onServer);
+  const restoring = mounted && resumePending && remembered() !== null;
 
   const adapter = useMemo(() => SIGNERS.find((signer) => signer.kind === kind) ?? null, [kind]);
 
-  // Pick up a connection that is already there, without prompting anyone.
+  // The extension's permission survives independently of Pickler authentication.
   useEffect(() => {
-    let live = true;
+    const controller = new AbortController();
+    const mine = generation.current;
     const wanted = remembered();
     const signer = SIGNERS.find((candidate) => candidate.kind === wanted);
     if (!signer) {
-      // Nothing remembered — or something this build no longer knows how to connect, which would
-      // otherwise sit in storage for ever claiming to be the last one used. Either way nothing is
-      // picked up: a browser wallet goes on listing its accounts to a site it could not be made to
-      // forget, and resuming from that alone would undo a disconnect.
       remember(null);
       return;
     }
     void (async () => {
-      const supabase = getSupabase();
-      if (supabase) {
-        // A connected wallet has an account (M6). If this browser holds no session at all, the
-        // wallet is not picked up either: the person connects again, and connecting signs in. A
-        // session that could not be read is not "none".
-        const session = await supabase.auth.getSession().then(
-          ({ data }) => data.session,
-          () => undefined,
-        );
-        if (session === null) {
-          return;
+      try {
+        if (signer.kind === "mera") {
+          const supabase = getSupabase();
+          if (supabase) {
+            const { data } = await supabase.auth.getSession();
+            if (!data.session) {
+              return;
+            }
+          }
+        }
+        const resumed = await signer.resume(controller.signal);
+        if (!controller.signal.aborted && generation.current === mine && resumed) {
+          setKind(signer.kind);
+          setAccount(resumed);
+        }
+      } catch {
+        // Locked/unavailable wallets stay disconnected; restoration never opens a prompt.
+      } finally {
+        if (!controller.signal.aborted && generation.current === mine) {
+          setRestoring(false);
         }
       }
-      const resumed = await signer.resume();
-      if (live && resumed) {
-        setKind(signer.kind);
-        setAccount(resumed);
-      }
     })();
-    return () => {
-      live = false;
-    };
+    return () => controller.abort();
   }, []);
 
   const hold = useCallback((next: HeldSession | null) => {
@@ -311,6 +344,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   // account's, hold it again, so that switching or disconnecting still signs the browser out.
   useEffect(() => {
     let live = true;
+    const mine = generation.current;
     const supabase = getSupabase();
     if (!supabase) {
       return;
@@ -318,7 +352,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     void supabase.auth.getSession().then(
       ({ data }) => {
         // A sign-in that finished first is the better answer: it knows its address.
-        if (!live || heldRef.current) {
+        if (!live || generation.current !== mine || heldRef.current) {
           return;
         }
         const adopted = adoptSession(data.session);
@@ -381,7 +415,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         setKind(null);
       }
     });
-  }, [adapter, release]);
+  }, [adapter, account?.providerId, release]);
 
   /**
    * Takes the session a sign-in issued: the browser's Supabase client holds it, and the page
@@ -414,6 +448,9 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         },
         now: new Date(),
       });
+      if (!wanted()) {
+        return { result: { error: null }, profile: null, handle: null };
+      }
       setSessionError("error" in result ? result.error : null);
       if (!session) {
         // Refused, or the token already held was handed back: nothing new is known.
@@ -433,7 +470,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   );
 
   const connectWith = useCallback(
-    async (picked: SignerKind, mode?: ConnectMode) => {
+    async (picked: SignerKind, mode?: ConnectMode, providerId?: string) => {
       const signer = SIGNERS.find((candidate) => candidate.kind === picked);
       // A passkey ceremony always ends — its prompt is modal and its requests time out — so a
       // second pick waits for it rather than starting another beside it.
@@ -449,13 +486,19 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       // A browser wallet may never answer: its window was closed, or ignored. So a later pick
       // takes over rather than waiting, and whatever the earlier one says afterwards is dropped.
       const mine = ++generation.current;
+      setRestoring(false);
       const current = () => mine === generation.current;
       passkeyRunning(mine, picked === "mera");
       setPicking(picked);
+      setPickingKey(providerId ? `injected:${providerId}` : null);
+      setSwitchFailure(null);
       setConnecting(true);
       setError(null);
       dispatch({ type: "working" });
       try {
+        if (picked === "injected" && providerId) {
+          selectInjectedWallet(providerId);
+        }
         const connected = await signer.connect(mode);
         if (!current()) {
           return;
@@ -582,8 +625,17 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   );
 
   const signInWithWallet = useCallback(
-    async (): Promise<SignInResult> => (await signInKeeping()).result,
-    [signInKeeping],
+    async (stillWanted: () => boolean = () => true): Promise<SignInResult> => {
+      const mine = generation.current;
+      const address = account?.address.toLowerCase();
+      const wanted = () =>
+        stillWanted() &&
+        mine === generation.current &&
+        accountRef.current?.address.toLowerCase() === address;
+      const answer = await signInKeeping(wanted);
+      return wanted() ? answer.result : { error: null };
+    },
+    [account, signInKeeping],
   );
 
   /** The chooser's sign-in step: one signature, then on to the username or out. */
@@ -794,6 +846,12 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const disconnect = useCallback(async () => {
+    generation.current += 1;
+    setRestoring(false);
+    setConnecting(false);
+    setSwitching(false);
+    setSwitchFailure(null);
+    switchRun.current = null;
     // First, and whatever the wallet then answers: a disconnect that failed half-way must not
     // leave the last address's session behind, nor the page still showing the wallet.
     void release(null);
@@ -816,14 +874,102 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   }, [disconnect]);
 
   const switchChain = useCallback(async () => {
-    const switched = await adapter?.switchChain?.();
-    if (switched) {
-      setAccount(switched);
+    if (switchRun.current || !adapter?.switchChain || !account) {
+      return;
     }
-  }, [adapter]);
+    const flight = Symbol();
+    switchRun.current = flight;
+    const mine = generation.current;
+    const address = account.address;
+    setSwitching(true);
+    setSwitchFailure(null);
+    try {
+      const switched = await adapter.switchChain();
+      if (generation.current !== mine || accountRef.current?.address !== address) {
+        return;
+      }
+      if (!switched || switched.chainId !== TARGET_CHAIN.chainId) {
+        throw new WalletRequestError(
+          new Error("Network did not change"),
+          "wallet_switchEthereumChain",
+        );
+      }
+      void release(switched);
+      setAccount(switched);
+    } catch (error) {
+      if (generation.current === mine && accountRef.current?.address === address) {
+        setSwitchFailure(walletFailure(error, "wallet_switchEthereumChain"));
+      }
+    } finally {
+      if (switchRun.current === flight) {
+        switchRun.current = null;
+        setSwitching(false);
+      }
+    }
+  }, [adapter, account, release]);
+
+  const signPerplReadKey = useCallback(
+    async (payload: PerplReadKeyPayloadDto, input: PerplReadKeyInputDto) => {
+      if (
+        !account ||
+        !adapter?.signPerplReadKey ||
+        input.wallet.toLowerCase() !== account.address.toLowerCase()
+      ) {
+        throw new Error("Connect this wallet first.");
+      }
+      const passkey = adapter.kind === "mera";
+      if (passkey && meraFlight.current) {
+        throw new Error("Finish the open passkey prompt first.");
+      }
+      const mine = generation.current;
+      if (passkey) {
+        passkeyRunning(mine, true);
+      }
+      try {
+        const signature = await adapter.signPerplReadKey(payload, input);
+        if (
+          generation.current !== mine ||
+          accountRef.current?.address.toLowerCase() !== input.wallet.toLowerCase()
+        ) {
+          throw new Error("Wallet changed. No read access was enrolled.");
+        }
+        return signature;
+      } finally {
+        if (passkey) {
+          passkeyRunning(mine, false);
+        }
+      }
+    },
+    [account, adapter, passkeyRunning],
+  );
+
+  const sendTokenTransaction = useCallback(
+    async (prepared: PublicTokenTradePreparedDto, token: string) => {
+      if (!account || !adapter?.sendTokenTransaction) {
+        throw new Error("Connect a wallet first.");
+      }
+      const passkey = adapter.kind === "mera";
+      if (passkey && meraFlight.current) {
+        throw new Error("Finish the open passkey prompt first.");
+      }
+      const mine = generation.current;
+      if (passkey) {
+        passkeyRunning(mine, true);
+      }
+      try {
+        return await adapter.sendTokenTransaction(prepared, account.address, token);
+      } finally {
+        if (passkey) {
+          passkeyRunning(mine, false);
+        }
+      }
+    },
+    [account, adapter, passkeyRunning],
+  );
 
   const choices = useMemo<WalletChoice[]>(() => {
-    const last = mounted ? remembered() : null;
+    const last = kind ?? (mounted ? remembered() : null);
+    const lastProvider = account?.providerId ?? (mounted ? rememberedInjectedWallet() : null);
     return SIGNERS.flatMap((signer): WalletChoice[] => {
       const shared = {
         kind: signer.kind,
@@ -831,6 +977,17 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         note: mounted ? (signer.note?.() ?? null) : null,
       };
       if (signer.kind !== "mera") {
+        if (wallets.length) {
+          return wallets.map((wallet) => ({
+            ...shared,
+            unavailable: null,
+            key: `injected:${wallet.id}`,
+            providerId: wallet.id,
+            name: wallet.name,
+            mode: null,
+            last: last === "injected" && wallet.id === lastProvider,
+          }));
+        }
         return [{ ...shared, key: signer.kind, mode: null, last: signer.kind === last }];
       }
       // Creating a passkey and opening one are different ceremonies, so they are two choices.
@@ -840,7 +997,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         { ...shared, note: null, key: "mera-existing", mode: "existing", last: last === "mera" },
       ];
     });
-  }, [mounted]);
+  }, [mounted, wallets, kind, account?.providerId]);
 
   /**
    * The wallets an account already had can be signed with from the join step. A second account of
@@ -889,7 +1046,11 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       : flow;
 
   const value = useMemo<WalletState>(() => {
-    const status: WalletStatus = account ? "connected" : connecting ? "connecting" : "disconnected";
+    const status: WalletStatus = account
+      ? "connected"
+      : connecting || restoring
+        ? "connecting"
+        : "disconnected";
     // Derived from whose session is held, so it cannot say "active" for a wallet it was not
     // issued to.
     const session: SessionStatus = signing
@@ -900,6 +1061,11 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 
     return {
       status,
+      restoring,
+      providerId: account?.providerId ?? null,
+      providerName: wallets.find((wallet) => wallet.id === account?.providerId)?.name ?? null,
+      switching,
+      switchFailure,
       kind,
       address: account?.address ?? null,
       chainId: account?.chainId ?? null,
@@ -916,9 +1082,15 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       connect,
       disconnect,
       switchChain,
+      signPerplReadKey,
+      sendTokenTransaction,
     };
   }, [
     account,
+    restoring,
+    switching,
+    switchFailure,
+    wallets,
     adapter,
     connect,
     connecting,
@@ -932,6 +1104,8 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     signInWithWallet,
     signing,
     switchChain,
+    signPerplReadKey,
+    sendTokenTransaction,
   ]);
 
   return (
@@ -946,7 +1120,10 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         address={account?.address ?? (preview ? PREVIEW_ADDRESS : null)}
         kind={kind}
         picking={picking}
-        onPick={(picked, mode) => void connectWith(picked, mode ?? undefined)}
+        pickingKey={pickingKey}
+        onPick={(picked, mode, providerId) =>
+          void connectWith(picked, mode ?? undefined, providerId)
+        }
         onSignIn={() => void signInFromChooser()}
         // The username step drawn for an account found without one is not a step the reducer is
         // on, so "I already have an account" opens the chooser there instead.

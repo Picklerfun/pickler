@@ -1,4 +1,5 @@
 "use client";
+import { StudioSkeleton } from "../../studio/skeleton";
 
 import { Button } from "@pickler/ui";
 import type { PasskeyDto } from "../../auth/lib/custody-api";
@@ -32,7 +33,7 @@ export function PasskeyList({
   return (
     <>
       <SecondPasskey passkeys={read} id={secondPasskeyId} />
-      {read.kind === "loading" && <p className={styles.rowMeta}>READING YOUR PASSKEYS…</p>}
+      {read.kind === "loading" && <StudioSkeleton variant="rows" />}
       {read.kind === "failed" && (
         <p className={styles.rowMeta}>
           THIS LIST COULD NOT BE READ · YOUR PASSKEYS HAVE NOT CHANGED

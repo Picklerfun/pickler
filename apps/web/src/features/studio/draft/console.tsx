@@ -1,4 +1,5 @@
 "use client";
+import { Button, Skeleton } from "@pickler/ui";
 import { useState } from "react";
 import { StudioError } from "../api";
 import { TalkSoon } from "../shell/talk-soon";
@@ -44,7 +45,7 @@ export function Console({ agent, draft, canManage, now, onSection }: DraftSectio
   const [saving, setSaving] = useState<IntervalHours | null>(null);
   const [error, setError] = useState("");
   const [runError, setRunError] = useState("");
-  const open = draft.record !== null && runtimeOpen(draft.record);
+  const open = draft.runtimeState === "ready" && draft.record !== null && runtimeOpen(draft.record);
   const current = saving ?? agent.config.intervalHours;
   const inputs = runInputs(agent.config.sources?.web);
   const runs = nextRuns(current, new Date(now));
@@ -131,7 +132,23 @@ export function Console({ agent, draft, canManage, now, onSection }: DraftSectio
                 </button>
               ))}
             </div>
-            {open && button ? (
+            <p className={styles.cardNote}>
+              Trading markets: {agent.config.perpl?.markets.join(", ") ?? "Not configured"}
+            </p>
+            {draft.runtimeState === "loading" ? (
+              <div role="status" aria-label="Reading runtime availability" aria-busy="true">
+                <Skeleton shape="button" />
+              </div>
+            ) : draft.runtimeState === "error" ? (
+              <div role="alert">
+                <p className={styles.error}>
+                  Runtime availability could not be read. This does not mean execution is disabled.
+                </p>
+                <Button variant="secondary" onClick={() => void draft.readRuntime()}>
+                  Retry runtime
+                </Button>
+              </div>
+            ) : open && button ? (
               <>
                 <button
                   type="button"
@@ -156,8 +173,7 @@ export function Console({ agent, draft, canManage, now, onSection }: DraftSectio
               </>
             ) : (
               <button type="button" className={styles.runButton} disabled>
-                Paper runs open with the Perpl runtime
-                <span className={styles.soon}>SOON</span>
+                Runtime disabled · paper checks are unavailable
               </button>
             )}
           </div>
@@ -298,7 +314,7 @@ export function Console({ agent, draft, canManage, now, onSection }: DraftSectio
         <TalkSoon
           idPrefix="draft"
           section="console"
-          note="It explains its calls, and it changes its own setup when you ask: sources, sites, caps, schedule."
+          note="Chat is not available. Use the paper check and setup controls; chat cannot run decisions or change configuration."
           starters={STARTERS}
           placeholder="Read coindesk.com too · run every 12h · why not ETH?"
         />

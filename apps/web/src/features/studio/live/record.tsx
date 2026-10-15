@@ -4,6 +4,7 @@ import { LiveSection, type LiveSectionProps } from "./live-section";
 import { RECORD_EMPTY, RECORD_META } from "./run-model";
 import { closedRow, paperShown, recordView } from "./runtime-model";
 import { Sparkline } from "./sparkline";
+import { PerplTradingRecord } from "../perpl-execution/execution";
 import styles from "./run.module.css";
 import runtime from "./runtime.module.css";
 
@@ -21,9 +22,12 @@ export const RecordSection: (props: LiveSectionProps) => ReactElement = ({ live,
   return (
     <LiveSection section="record">
       <div className={styles.run}>
+        <PerplTradingRecord execution={live.execution} />
         <div className={styles.list} id="live-record-list">
           <div className={styles.listHead}>
-            <h3 className={styles.listTitle}>Record</h3>
+            <h3 className={styles.listTitle}>
+              {live.execution.state?.setupRequired === false ? "Paper record" : "Record"}
+            </h3>
             <span className={styles.listMeta}>{view ? view.meta : RECORD_META}</span>
           </div>
           {view && (

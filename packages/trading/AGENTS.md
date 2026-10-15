@@ -154,7 +154,7 @@ See [Studio perpetual execution](../../docs/studio-perps-execution.md).
 
 The `strategies` export owns `PERPS_STRATEGIES`, `resolvePerpsStrategy` and
 `executePerpsStrategy`, including their input, model and call-gate ports. IDs are `rules`,
-`deepseek`, `jev` and `combined`, laboratory policy version 1.0.0 and distinct Studio version 2.0.0. Provider/prompt versions remain
+`deepseek`, `jev` and `combined`, laboratory policy version 1.0.0 and distinct Studio versions 2.0.0 and 2.1.0. Provider/prompt versions remain
 separate. Unknown selections and missing capabilities fail closed before model calls.
 Execution clones and recursively freezes evidence/account inputs; never mutate another strategy's
 portfolio. Every model operation passes through an injected durable call gate using the existing
@@ -164,8 +164,68 @@ Risk, sizing, fills and accounting remain outside strategy decisions.
 The evaluator uses the registry for v2 and the explicit `perps-study/legacy-strategy.ts` adapter
 for historical v1 readiness -> blind forecast. Preserve serialized lanes, answers and proposals.
 The evaluation export retains historical policy/type names backed by the same implementations.
-No new persisted harness plugin IDs are introduced. Studio uses the separate 2.0.0 contract.
+No new persisted harness plugin IDs are introduced. Studio uses separate 2.0.0 historical and 2.1.0 dynamic contracts.
 
 ## Studio strategy version 2
 
-The common registry identifies strategies by both id and version. Version 1.0.0 keeps laboratory behavior; `executeStudioPerpsStrategy` requires the separate `studio-perps-strategy-v2` context and version 2.0.0. Studio proposals carry complete three-state brief evaluations and evidence references, never probabilities, sizes or leverage. Unknown conditions cannot establish an entry or authored exit. Opposite openings become close-only proposals. Combined invokes its own direct proposal and material-veto review; it cannot reuse another account response. Every model invocation goes through the injected reservation/call gate. These contracts alone do not enable product execution.
+The common registry identifies strategies by both id and version. Version 1.0.0 keeps laboratory behavior; `executeStudioPerpsStrategy` requires the separate `studio-perps-strategy-v2` context and matching version 2.0.0 or 2.1.0. Studio proposals carry complete three-state brief evaluations and evidence references, never probabilities, sizes or leverage. Unknown conditions cannot establish an entry or authored exit. Opposite openings become close-only proposals. Combined invokes its own direct proposal and material-veto review; it cannot reuse another account response. Every model invocation goes through the injected reservation/call gate. These contracts alone do not enable product execution.
+
+## Dynamic Studio markets
+
+The registry adds four dynamic Studio 2.1.0 descriptors while preserving 1.0.0 and 2.0.0. Complete
+selected evidence and remaining public/model-input bounds precede paid transports. Product fills
+persist market identity; selected markets authorize exposure, recorded positions remain supervised
+and closeable. No financial formula, threshold or lab protocol changes.
+
+See [agent-selected Perpl markets](../../docs/studio-perpl-markets.md).
+
+## Perpl real testnet sessions
+
+The read-only state optionally obtains public account/deposit requirements from its injected
+driver. Provider failure retains account/session history with unknown requirements. It never
+changes owner limits or funds an account as a consequence of reading state.
+
+The public `perpl-live` subpath owns the separate bounded real-execution contracts and service.
+It admits testnet 1x, one position and controlled open/hold/close cycles; it has no model tool.
+Keep durable intent IDs, unknown submissions, partial reductions and lease fences. Increasing
+admissions require current owner settings/access; required exits survive configuration changes.
+Infrastructure owns credentials, provider I/O and transactional persistence. See
+[Perpl trading](../../docs/perpl-trading.md); controlled tests do not establish remote acceptance.
+
+## Read-only Perpl portfolio projections
+
+`features/perpl-dashboard/model.ts`, exported from `@pickler/trading/perps`, owns the provider-independent `PerplDashboardData` read port and exact integer
+scaling for observed open interest, price-only P&L, available/locked collateral, gross/net exposure
+and current-collateral exhaustion estimates. These are real-wallet projections, independent of
+paper accounts, order admission and strategy execution. Missing marks/statistics keep aggregates
+unknown. Realized P&L comes from the venue's reported all-time statistics. Never call the
+collateral-exhaustion threshold a venue liquidation price or subtract estimated fees twice.
+
+The dashboard read port also exposes public contract snapshots. Position inputs accept the
+contract's optional Q16 entry residue and nullable original leverage. Exact entry/risk arithmetic
+preserves long-ceil/short-floor semantics. Missing context/marks retain the position with unknown
+price-dependent aggregates. Original leverage and historical statistics must not be invented
+from current collateral. The infrastructure-provided optional `source: "onchain"` is provenance,
+not permission to trade.
+
+Existing Perpl key connection uses a two-phase read validation and fenced encrypted-credential
+commit. It rechecks current owner/configuration and refuses pending setup, sessions, orders or
+leases; no provider I/O runs under locks. It preserves history/budgets and imposes a 24-hour
+Pickler deadline. `setupAdmissions` independently closes account funding/enrollment without
+closing existing-key sessions or required exits. See [Perpl trading](../../docs/perpl-trading.md).
+
+A live position must match the current session's verified net filled quantity and original
+leverage before any closing order. Foreign additions, reductions or leverage changes freeze the
+session rather than closing exposure that the session cannot attribute.
+
+New bounded sessions record pre-existing positions in other markets before their first opening.
+Those position identities remain unmanaged and visible; they can never become exit targets.
+An occupied selected market is refused before any order. New unexplained positions still freeze
+execution. Historical sessions with orders do not adopt a baseline retrospectively. The limit is
+one new session-owned position, with the same quantity/leverage provenance and daily budgets.
+
+An explicit key-wallet import can bind the authenticated venue wallet to its owned agent while
+retaining the custody identity fence. External connections disable every custody setup/funding
+operation. `isPerplSessionPosition` is the shared net-fill ownership predicate used by execution
+and the private host's `managedBySession` presentation projection. Existing histories cannot move
+to another wallet/account, and key reconnection never clears budgets or orders.

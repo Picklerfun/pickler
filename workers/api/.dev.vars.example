@@ -31,6 +31,16 @@ TURNKEY_DELEGATED_API_PRIVATE_KEY=
 # Absent MONAD_RPC_URL means that network's first public endpoint (rate-limited).
 CHAIN_ID=10143
 MONAD_RPC_URL=
+# Paid advice (x402, docs/agent-advice.md "Payment (x402)"). On when the flag is "true"; it then
+# needs the relayer key, MONAD_RPC_URL above, the PicklerAdviceSplitter address and the treasury it
+# was deployed with, and without them every advice request answers 503. A splitter whose on-chain
+# treasury() differs from ADVICE_SPLITTER_TREASURY answers 503 too. Any other flag value keeps a
+# fresh analysis free. The relayer key is a secret: a testnet EOA that pays gas in MON and holds no
+# AUSD.
+ADVICE_X402_ENABLED=
+X402_RELAYER_PRIVATE_KEY=
+ADVICE_SPLITTER_ADDRESS=
+ADVICE_SPLITTER_TREASURY=
 # The Perpl network the public market board reads: testnet or mainnet. Absent serves the sample
 # board, labelled SAMPLE DATA on the page. With it set, /v1/marketplace/markets calls Perpl's
 # public API from this machine.
@@ -39,6 +49,7 @@ PERPL_BOARD_NETWORK=testnet
 # and proposal approvals, which the research worker runs; keep it equal to the research worker's.
 # Anything else answers 409 RUNTIME_DISABLED; reads, closes and stops stay on.
 PERPL_RUNTIME_ENABLED=false
+PERPL_STUDIO_ENABLED=false
 
 # Wallet sign-in. Both are required together: `walletAuthServices` returns undefined when either
 # is missing, so /v1/auth/wallet is simply not mounted rather than mounted and broken.
@@ -51,10 +62,18 @@ SIWE_DOMAIN=
 # internal key and never a contact, so this domain must never be made to accept mail.
 WALLET_EMAIL_DOMAIN=
 
-# Connect X (verification by post): Pickler's X app bearer token, read-only and a secret. Empty
-# means Connect X says it isn't open yet, its challenge and verify answer 503 X_UNAVAILABLE, and
-# Go Public still works without X.
-X_BEARER_TOKEN=
+# Read-only Connect X OAuth. API runtime only, disabled by default.
+# Hosted callback must be registered exactly as shown; register a separate local callback for tests.
+X_CLIENT_ID=
+X_CLIENT_SECRET=
+X_REDIRECT_URI=https://app.pickler.fun/api/v1/studio/x/callback
+X_TOKEN_ENCRYPTION_KEY=
+X_TOKEN_ENCRYPTION_KEY_VERSION=1
+X_OAUTH_ENABLED=false
+X_READS_ENABLED=false
+# Reviewed version, reviewedAt, identityRequestsPerDay, postRequestsPerDay, postResourcesPerDay.
+# No commercial quotas or tariffs are supplied; see docs/studio-x-oauth.md.
+X_API_POLICY_JSON=
 
 # Comma-separated. Empty means nobody; this is not a fallback that opens up when unset.
 SUPER_ADMIN_EMAILS=

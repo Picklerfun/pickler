@@ -332,3 +332,25 @@ test("a private draft is not on the board, in the directory, at its handle or it
   assert.equal(await directory.getProfile("$DRAFT"), null);
   assert.ok(await directory.getProfile("$PUB"));
 });
+
+test("the board exposes the agent uuid and its advice price in summary, persona and directory", async (t) => {
+  const { pool, directory } = await setup(t);
+  const agentId = await seedAgent(pool, { handle: "halftime" });
+
+  const [unpriced] = await directory.listAgents();
+  assert.equal(unpriced?.id, agentId);
+  assert.equal(unpriced?.advicePrice, null);
+
+  await pool.query("UPDATE agents.agents SET advice_price_micro_ausd = 1500000 WHERE id = $1", [
+    agentId,
+  ]);
+  const [summary] = await directory.listAgents();
+  assert.equal(summary?.id, agentId);
+  assert.deepEqual(summary?.advicePrice, { amount: "1.5", asset: "AUSD", decimals: 6 });
+  const persona = await directory.getPersona("halftime");
+  assert.equal(persona?.id, agentId);
+  assert.deepEqual(persona?.advicePrice, summary?.advicePrice);
+  const [entry] = await directory.listDirectory();
+  assert.equal(entry?.agent.id, agentId);
+  assert.deepEqual(entry?.agent.advicePrice, summary?.advicePrice);
+});

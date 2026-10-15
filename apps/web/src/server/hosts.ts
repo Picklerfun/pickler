@@ -66,18 +66,10 @@ export function studioOrigin(product: Product, requestHost: string, hosts: Produ
  * First path segments the studio owns. Everything else that is not shared is the marketplace.
  *
  * Three of these are also behind a session: `PROTECTED_SEGMENTS` in ./guard.ts is a subset of this
- * set, and the four that are not — signin, signup, apply, auth — are the ones that have to stay
+ * set, and the three that are not — signin, signup, auth — are the ones that have to stay
  * open for anyone to reach the other three.
  */
-const STUDIO_SEGMENTS = new Set([
-  "studio",
-  "account",
-  "signin",
-  "signup",
-  "apply",
-  "auth",
-  "passkey",
-]);
+const STUDIO_SEGMENTS = new Set(["studio", "account", "signin", "signup", "auth", "passkey"]);
 
 /**
  * Shared by both hosts: the API proxy, Next's assets, and the static files under `public/`.
@@ -142,9 +134,9 @@ export function studioHref(product: Product, hosts: ProductHosts): string {
  * Any other studio path, addressed from a page being rendered for `product`.
  *
  * Only the marketplace needs an origin on it — from the studio host and from a shared host the path
- * is already where it says it is. `/apply` is the live case: the waitlist form sits on the
- * marketplace landing and sends whoever joins to a studio route, and `decide` now 404s studio paths
- * on the marketplace rather than forwarding them.
+ * is already where it says it is. The creator application used to be the live case, until it
+ * moved to the marketplace as `/create`; `decide` 404s studio paths on the marketplace rather than
+ * forwarding them, so a cross-product link has to carry its origin.
  *
  * The studio's home is not one of these, because its address is `/` on one host and `/studio` on
  * another; `studioHref` above is the function for it.

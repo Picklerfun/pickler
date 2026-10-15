@@ -53,6 +53,7 @@ export interface IndexerPassOptions {
   maxBlocks?: bigint;
   /** Blocks to stay behind the tip, under the finality policy measured for this chain. */
   confirmations?: bigint;
+  confirmed?: boolean;
 }
 
 export type PassOutcome =
@@ -127,8 +128,11 @@ export async function runIndexerPass(options: IndexerPassOptions): Promise<PassO
   for (const log of logs) {
     // A log the node already marked removed belongs to a branch that lost; storing it as
     // canonical would count a trade that did not happen.
-    if (log.removed || !applying.has(log.blockHash)) {
+    if (log.removed) {
       continue;
+    }
+    if (!applying.has(log.blockHash)) {
+      throw new Error("INDEX_LOG_BRANCH_MISMATCH");
     }
 
     const decoded = options.decode(log);
@@ -154,6 +158,7 @@ export async function runIndexerPass(options: IndexerPassOptions): Promise<PassO
   }
 
   await store.applyBatch({
+    ...(options.confirmed === undefined ? {} : { confirmed: options.confirmed }),
     chain: source.chain,
     contract: source.contract,
     stream: source.stream,

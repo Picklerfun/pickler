@@ -1,8 +1,14 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useRouter } from "nextjs-toploader/app";
+import { useSearchParams } from "next/navigation";
+import { StudioContentContext } from "../routing/content";
+import { agentSectionHref } from "../routing/routes";
+import { useEffect, useRef, type ReactNode } from "react";
 import { useNow } from "@/lib/now";
 import type { Agent } from "../api";
 import { HeaderDot } from "../shell/header";
+import { TokenPanel } from "../../tokens/token-panel";
+import { tokenPreview } from "../../tokens/fixture";
 import { Identity } from "../shell/identity";
 import { Master } from "../shell/master";
 import { railItemId } from "../shell/rail";
@@ -27,6 +33,12 @@ import { allocationRows } from "./run-model";
 import { Sources } from "./sources";
 import { Trades } from "./trades";
 import { useDraft } from "./use-draft";
+import { usePerplExecution } from "../perpl-execution/use-execution";
+import {
+  PerplTradingControls,
+  PerplTradingPositions,
+  PerplTradingRecord,
+} from "../perpl-execution/execution";
 
 /**
  * The header line's first part (canvas `headerSub`): the agent's handle, or on the YOU sections the
@@ -60,12 +72,14 @@ export function DraftStudio({
   staged,
   preview,
   initialSection,
+  children,
   accountHandle,
   onRefreshAgent,
   onPublished,
   onSwitch,
   onNew,
 }: {
+  children?: ReactNode;
   agent: Agent;
   agents: Agent[];
   canManage: boolean;
@@ -85,12 +99,16 @@ export function DraftStudio({
   /** "+ New agent": open the create screen. */
   onNew(): void;
 }) {
-  const [section, setSection] = useState<DraftSectionKey>(
-    staged?.section ?? initialSection ?? "overview",
-  );
+  const section: DraftSectionKey = initialSection ?? staged?.section ?? "overview";
+  const { push } = useRouter();
+  const search = useSearchParams();
+  const setSection = (next: DraftSectionKey, check?: string | null) => {
+    push(agentSectionHref(agent.productId ?? agent.id, next, search.toString(), check));
+  };
   const wallClock = useNow();
   const now = staged ? staged.now : wallClock;
   const draft = useDraft({ agent, staged, preview, onRefreshAgent, onPublished });
+  const execution = usePerplExecution(agent.productId ?? agent.id, preview || !!staged);
   const modals = useShellModals(draft.readWallets);
   /* "Back to Overview" unmounts the button it was on, so focus moves to the rail's Overview. */
   const focusRail = useRef(false);
@@ -130,17 +148,40 @@ export function DraftStudio({
     }
     switch (section) {
       case "overview":
-        return <Overview {...props} goPublic={staged?.goPublic ?? null} />;
+        return (
+          <>
+            <PerplTradingControls execution={execution} agent={agent} canManage={canManage} />
+            <PerplTradingPositions execution={execution} canManage={canManage} />
+            <Overview {...props} goPublic={staged?.goPublic ?? null} />
+          </>
+        );
       case "console":
         return <Console {...props} />;
       case "picks":
-        return <Trades {...props} />;
+        return (
+          <>
+            <PerplTradingRecord execution={execution} />
+            <Trades {...props} />
+          </>
+        );
       case "brief":
         return <Brief {...props} />;
       case "skills":
         return <Sources {...props} />;
       case "limits":
         return <Limits {...props} />;
+      case "token":
+        return (
+          <DraftSection section="token">
+            <TokenPanel
+              agent={agent}
+              preview={preview || !!staged}
+              initialState={preview || staged ? tokenPreview(false, true) : null}
+              canManage={canManage}
+              onGoPublic={() => setSection("overview")}
+            />
+          </DraftSection>
+        );
       case "identity":
         return (
           <DraftSection section="identity">
@@ -152,8 +193,6 @@ export function DraftStudio({
               avatarEditable
               handleNote="HANDLE IS FIXED"
               voiceSub="how every post reads"
-              xSub="where it posts · optional"
-              canDisconnectX
             />
           </DraftSection>
         );
@@ -189,32 +228,34 @@ export function DraftStudio({
   }
 
   return (
-    <StudioShell<DraftSectionKey>
-      idPrefix="draft"
-      agent={agent}
-      agents={agents}
-      canManage={canManage}
-      newAgentLock={newAgentLock}
-      studio={draft}
-      modals={modals}
-      status={<StatusChip id="draft-status">DRAFT · PRIVATE</StatusChip>}
-      rail={draftRail(section)}
-      onSection={setSection}
-      headerSub={
-        <>
-          <span>{headerWho(you, agent.handle, accountHandle)}</span>
-          <HeaderDot />
-          <span>{sectionLabel(section)}</span>
-        </>
-      }
-      headerSide={<StatusChip>DRAFT · PRIVATE</StatusChip>}
-      tiles={headerTiles(draft.wallets, draft.positions)}
-      tilesLabel="Your money"
-      onRefreshAgent={onRefreshAgent}
-      onSwitch={onSwitch}
-      onNew={onNew}
-    >
-      {body()}
-    </StudioShell>
+    <StudioContentContext.Provider value={{ section, content: body() }}>
+      <StudioShell<DraftSectionKey>
+        accountHandle={accountHandle}
+        idPrefix="draft"
+        agent={agent}
+        agents={agents}
+        canManage={canManage}
+        newAgentLock={newAgentLock}
+        studio={draft}
+        modals={modals}
+        status={<StatusChip id="draft-status">DRAFT · PRIVATE</StatusChip>}
+        rail={draftRail(section)}
+        onSection={setSection}
+        headerSub={
+          <>
+            <span>{headerWho(you, agent.handle, accountHandle)}</span>
+            <HeaderDot />
+            <span>{sectionLabel(section)}</span>
+          </>
+        }
+        tiles={headerTiles(draft.wallets, draft.positions)}
+        tilesLabel="Your money"
+        onRefreshAgent={onRefreshAgent}
+        onSwitch={onSwitch}
+        onNew={onNew}
+      >
+        {children}
+      </StudioShell>
+    </StudioContentContext.Provider>
   );
 }

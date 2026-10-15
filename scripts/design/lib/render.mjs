@@ -4,7 +4,8 @@ import { fileURLToPath } from "node:url";
 import { HOLDS } from "../routes.mjs";
 import { openBrowser } from "./browser.mjs";
 import { afterNotFound, appPages, pageFor } from "./not-found.mjs";
-import { settle } from "./settle.mjs";
+import { settle, settleMotion } from "./settle.mjs";
+import { observeClient, ready, saveBlocked } from "./ready.mjs";
 import { SIGNATURE, resolve, surface } from "./tokens-file.mjs";
 
 /* No default, deliberately. This machine runs more than one checkout of this repository at once,
@@ -39,7 +40,7 @@ const baseFor = (route) => BASE_FOR[route.product] ?? BASE;
 
 /* The studio's session guard, and why a design check passes it with a cookie that is not a session.
  *
- * With Supabase configured, apps/web/src/middleware.ts answers every /studio, /account and /passkey
+ * With Supabase configured, apps/web/src/proxy.ts answers every /studio, /account and /passkey
  * request that carries no `sb-<project-ref>-auth-token` cookie with a 307 to /signin. It checks the
  * cookie's *name* only (apps/web/src/server/guard.ts): authentication itself happens in the browser
  * and in the API, on a JWT the API verifies. So a cookie with that name and a dummy value passes the
@@ -203,8 +204,8 @@ const KINDS = {
       "  mid-request is a different picture on every run.",
   },
   "error-boundary": {
-    line: (route) =>
-      `${route.path} — 200, but rendered the error/not-found fallback instead of the page`,
+    line: (route, detail) =>
+      `${route.path} — ${detail ?? "200, but rendered the error/not-found fallback instead of the page"}`,
     remedy:
       "That is what a client-side throw looks like. Read the browser console, not the tokens.",
   },
@@ -321,6 +322,7 @@ export async function eachRoute(routes, visit, { width = 1400, height = 1000 } =
         continue;
       }
       const page = await browser.newPage({ viewport: { width, height } });
+      const client = observeClient(page);
       try {
         await passGuard(page, route);
         let response;
@@ -388,9 +390,14 @@ export async function eachRoute(routes, visit, { width = 1400, height = 1000 } =
         // screen contains and a stub cannot. A count only where no authored hook exists yet.
         let proof;
         if (route.proves) {
-          const found = await page.locator(route.proves).count();
-          if (!found) {
-            blocked.push({ route, kind: "stub", detail: `nothing matches ${route.proves}` });
+          const failure = await ready(page, route.proves, client);
+          if (failure) {
+            const artifact = await saveBlocked(page, route, client, failure);
+            blocked.push({
+              route,
+              kind: client.errors.length ? "error-boundary" : "stub",
+              detail: `${failure}${artifact ? `; diagnostics: ${artifact}` : ""}`,
+            });
             continue;
           }
           proof = route.proves;
@@ -433,29 +440,6 @@ export async function eachRoute(routes, visit, { width = 1400, height = 1000 } =
          * route that was never measured. */
         if (route.act) {
           await page.click(route.act.click);
-          /* Let the click's transitions finish before anything reads a colour.
-           *
-           * This is not caution, it is a defect that was caught. `.cell` carries
-           * `transition: background 140ms`, so the first run measured eleven lit squares mid-fade
-           * and reported #EDF7CE — a solid token with no alpha — as "at 0.106 alpha, in no token".
-           * A plausible, specific, entirely false finding, and one that would have sent somebody
-           * looking for a literal nobody typed.
-           *
-           * Waiting on the animations rather than on a duration, because a duration is a guess that
-           * ages: --pk-duration is a token and can change. Transitions only, and bounded, since a
-           * looping decoration never finishes and waiting on one would hang the run rather than
-           * measure it. */
-          await page
-            .waitForFunction(
-              () =>
-                document
-                  .getAnimations()
-                  .filter((a) => a.constructor.name === "CSSTransition")
-                  .every((a) => a.playState === "finished"),
-              null,
-              { timeout: 2000 },
-            )
-            .catch(() => {});
           const landed = await page.locator(route.act.proves).count();
           if (!landed) {
             blocked.push({
@@ -467,8 +451,19 @@ export async function eachRoute(routes, visit, { width = 1400, height = 1000 } =
           }
           proof = `${proof} → ${route.act.proves}`;
         }
+        const moving = await settleMotion(page);
+        if (moving) {
+          const artifact = await saveBlocked(page, route, client, moving);
+          blocked.push({
+            route,
+            kind: "unsettled",
+            detail: artifact ? `${moving}; diagnostics: ${artifact}` : moving,
+          });
+          continue;
+        }
         results.push({ route, proof, value: await visit(page, route) });
       } finally {
+        client.dispose();
         await page.close();
       }
     }

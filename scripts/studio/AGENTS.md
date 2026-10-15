@@ -3,7 +3,7 @@
 Read the root, API, Research, web and infrastructure instructions before changes here.
 These scripts compose the existing compiled product with external HTTP fixtures only.
 Never target an ordinary or deployed database, use real credentials, or stub product endpoints.
-The dedicated Supabase stack must have its UUID marker on port 55522 before any mutation.
+The dedicated Supabase stack must have its UUID marker on its dedicated fixed port 55522 or 55532 before any mutation.
 Provider traffic stays on loopback; fixture entry points are never deployment configurations.
 Keep credentials, screenshots, captures and generated configurations outside Git.
 Acceptance establishes functionality with controlled providers, not provider readiness or profit.
@@ -14,3 +14,37 @@ only dedicated local public Auth settings for compilation. `providers.mjs` serve
 synthetic transports; `acceptance.mjs` drives genuine passkey and Studio requests with Chromium.
 The root `test:studio-local` command takes the generated stack directory. Never add remote URLs,
 provider retries, endpoint response stubs or `?stage=` shortcuts to make acceptance pass.
+
+## Dynamic Studio markets
+
+See the canonical selection/version, preservation and controlled acceptance boundaries below. No
+runtime activation is implied.
+
+See [agent-selected Perpl markets](../../docs/studio-perpl-markets.md).
+
+## Controlled X authorization
+
+The loopback provider simulates only X's external consent/token/identity/revoke/timeline endpoints.
+Authorization codes are single-use and the provider validates S256 verifiers. The browser replaces
+only X's external consent page with a controlled redirect; the actual Studio API, cookie callback,
+core, private PostgreSQL, publication and posts are exercised unchanged. Generated X credentials
+and quotas are test-only. Production transports never import this fixture. See
+[Studio X OAuth](../../docs/studio-x-oauth.md).
+
+## X preview cost controls
+
+Controlled X acceptance uses the explicit Load 5 posts (paid) preview action. Provider credentials and spending remain synthetic; the browser never refreshes or auto-pages X posts.
+
+## Studio route acceptance
+
+Acceptance follows real `/studio/agents/<product-id>/<section>` links, verifies canonical URLs
+and checks that section navigation retains the mounted shell. Keep the legacy entry link checks:
+they must select that authenticated agent before replacing the URL. No route preview fixtures or
+product endpoint substitutions are allowed. See [Studio routing](../../docs/studio-routing.md).
+
+`routing.mjs` takes the private stack directory and a completed full acceptance run directory.
+It verifies the same loopback/UUID database fence, authenticates that run's synthetic actor and
+uses the compiled product to test memory draft retention, a real setup version conflict and
+invalid/foreign route isolation. It advances only that disposable agent's setup version. It must
+not invoke execution, X timeline reads, transfers or real providers; generated artifacts stay
+under the private stack directory.

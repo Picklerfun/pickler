@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { Button, Icon, Meter, Segmented } from "@pickler/ui";
 import { setSchedule } from "../api";
+import { PerplTradingControls } from "../perpl-execution/execution";
 import { SaveOutcome, saveLabel, useSavedForm, useSetupSave } from "../shell/setup-save";
 import { VIEW_ONLY_REASON, entryDirty, entryPatch, stopRows } from "./build-model";
 import { LiveSection, type LiveSectionProps } from "./live-section";
@@ -56,7 +57,7 @@ const MEANWHILE: { value: LiveEntry["meanwhile"]; label: string }[] = [
  * today. With it off and a paper account (R3), the stops, meters and HEALTH are the same, saying
  * checks are paused; HOW IT RUNS keeps describing the setting.
  */
-export function Controls({ agent, live, canManage, pause }: LiveSectionProps) {
+export function Controls({ agent, live, canManage, pause, onSection }: LiveSectionProps) {
   const record = paperShown(live.record) ? live.record : null;
   const running = record?.runtimeEnabled ?? false;
   const { caps } = liveCaps(agent);
@@ -78,52 +79,69 @@ export function Controls({ agent, live, canManage, pause }: LiveSectionProps) {
      be unapplied while Controls shows (`healthRows`). */
   const issues = healthIssues(warnings.length, health);
 
-  return (
-    <LiveSection section="controls">
-      <div className={styles.grid}>
-        <Stops
-          agent={agent}
-          live={live}
-          canManage={canManage}
-          pause={pause}
-          runtime={!!record}
-          running={running}
-        />
-        <div className={styles.card} id="live-controls-runs">
-          <HowItRuns agent={agent} live={live} canManage={canManage} paper={!!record} />
-          <HourlySchedule agent={agent} live={live} canManage={canManage} />
-          <div className={styles.meters}>
-            {(record ? runtimeMeters(caps, record.today) : meters(caps)).map((meter) => (
-              <div key={meter.key} className={styles.meter}>
-                <div className={styles.meterHead}>
-                  <span className={styles.meterTitle}>{meter.title}</span>
-                  <span className={styles.meterValue}>{meter.value}</span>
-                </div>
-                <Meter className={styles.meterTrack} value={meter.fill * 100} tone="lime" />
+  const paperControls = (
+    <div className={styles.grid}>
+      <Stops
+        agent={agent}
+        live={live}
+        canManage={canManage}
+        pause={pause}
+        runtime={!!record}
+        running={running}
+      />
+      <div className={styles.card} id="live-controls-runs">
+        <HowItRuns agent={agent} live={live} canManage={canManage} paper={!!record} />
+        <HourlySchedule agent={agent} live={live} canManage={canManage} />
+        <div className={styles.meters}>
+          {(record ? runtimeMeters(caps, record.today) : meters(caps)).map((meter) => (
+            <div key={meter.key} className={styles.meter}>
+              <div className={styles.meterHead}>
+                <span className={styles.meterTitle}>{meter.title}</span>
+                <span className={styles.meterValue}>{meter.value}</span>
               </div>
-            ))}
-          </div>
-        </div>
-        <div className={styles.card} id="live-controls-health">
-          <div className={styles.cardHead}>
-            <h3 className={styles.cardLabel}>HEALTH</h3>
-            <span className={styles.healthTag} data-bad={issues > 0}>
-              {healthLabel(issues)}
-            </span>
-          </div>
-          <ul className={styles.healthList}>
-            {health.map((row) => (
-              <li key={row.key} className={styles.healthRow}>
-                <span className={styles.healthDot} data-tone={row.tone} aria-hidden="true" />
-                <span className={styles.healthLabel}>{row.label}</span>
-                <span className={styles.healthValue} data-tone={row.tone}>
-                  {row.value}
-                </span>
-              </li>
-            ))}
-          </ul>
+              <Meter className={styles.meterTrack} value={meter.fill * 100} tone="lime" />
+            </div>
+          ))}
         </div>
       </div>
+      <div className={styles.card} id="live-controls-health">
+        <div className={styles.cardHead}>
+          <h3 className={styles.cardLabel}>HEALTH</h3>
+          <span className={styles.healthTag} data-bad={issues > 0}>
+            {healthLabel(issues)}
+          </span>
+        </div>
+        <ul className={styles.healthList}>
+          {health.map((row) => (
+            <li key={row.key} className={styles.healthRow}>
+              <span className={styles.healthDot} data-tone={row.tone} aria-hidden="true" />
+              <span className={styles.healthLabel}>{row.label}</span>
+              <span className={styles.healthValue} data-tone={row.tone}>
+                {row.value}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+  const realReady = !!live.execution.state?.available && !live.execution.state.setupRequired;
+  return (
+    <LiveSection section="controls">
+      <PerplTradingControls
+        execution={live.execution}
+        agent={agent}
+        canManage={canManage}
+        onLimits={() => onSection("limits")}
+      />
+      {realReady ? (
+        <details className={styles.paperControls}>
+          <summary>Paper trading controls</summary>
+          {paperControls}
+        </details>
+      ) : (
+        paperControls
+      )}
     </LiveSection>
   );
 }
@@ -273,8 +291,16 @@ function HowItRuns({
   const runtime = runtimeOn(live.record);
   const { caps } = liveCaps(agent);
   const saved = liveEntry({ entry: agent.config.entry, spend: { perCallAusd: caps.perTradeAusd } });
-  const [form, setForm] = useSavedForm<LiveEntry>(agent.version, saved);
-  const { state, save, touch, saving } = useSetupSave(live);
+  const [form, setForm] = useSavedForm<LiveEntry>(
+    agent.version,
+    saved,
+    `${agent.productId ?? agent.id}:controls:form`,
+  );
+  const { state, save, touch, saving } = useSetupSave(
+    live,
+    `${agent.productId ?? agent.id}:controls`,
+    agent.version,
+  );
   const status = paper ? runtimeStatus(agent.paused, runtime) : liveStatus(agent);
   const plain = entryView(form, caps.perTradeAusd);
   const view = runtime ? runtimeEntryView(plain, agent.scheduleEnabled && !agent.paused) : plain;

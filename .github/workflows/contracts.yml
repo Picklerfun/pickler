@@ -43,5 +43,6 @@ jobs:
       # The preview in packages/core is only trustworthy while it agrees with the chain.
       - name: Verify the curve parity fixture is current
         run: |
-          forge test --root contracts --match-contract CurveVectorsTest
-          git diff --exit-code packages/core/test/fixtures/curve-vectors.json
+          forge test --root contracts --match-contract '^(CurveVectorsTest|ReferenceCurveVectorsTest)$'
+          git diff --exit-code packages/core/test/fixtures/curve-vectors.json packages/core/test/fixtures/curve-reference-vectors.json
+          npm run tokens:fixtures -- --check

@@ -6,6 +6,10 @@ import { Pool } from "pg";
 
 const [mode, directory] = process.argv.slice(2);
 if (mode === "prepare") {
+  if (directory !== undefined && directory !== "alternate") {
+    throw new Error("Expected the fixed alternate port slot or no slot");
+  }
+  const portSlot = directory === "alternate" ? 3 : 2;
   const root = await mkdtemp(join(tmpdir(), "pickler-workers-controlled-"));
   const identity = randomUUID();
   const project = `pickler-workers-${identity.slice(0, 8)}`;
@@ -13,21 +17,29 @@ if (mode === "prepare") {
   const config = source
     .replace(/^project_id = .+$/m, `project_id = "${project}"`)
     .replace(/^schemas = \[.+\]$/m, 'schemas = ["public", "graphql_public"]')
-    .replace(/\b5452([0-9])\b/g, "5552$1")
-    .replace(/^inspector_port = 8083$/m, "inspector_port = 8183");
+    .replace(/\b5452([0-9])\b/g, `555${portSlot}$1`)
+    .replace(/^inspector_port = 8083$/m, `inspector_port = ${portSlot === 3 ? 8283 : 8183}`);
   await mkdir(join(root, "supabase"));
   await writeFile(join(root, "supabase/config.toml"), config);
-  await writeFile(join(root, "controlled-stack.json"), JSON.stringify({ identity, project }), {
-    mode: 0o600,
-  });
+  await writeFile(
+    join(root, "controlled-stack.json"),
+    JSON.stringify({ identity, project, portSlot }),
+    {
+      mode: 0o600,
+    },
+  );
   console.log(root);
 } else if (["initialize", "expose-api"].includes(mode) && directory) {
-  const { identity, project } = JSON.parse(
-    await readFile(join(directory, "controlled-stack.json"), "utf8"),
-  );
+  const {
+    identity,
+    project,
+    portSlot = 2,
+  } = JSON.parse(await readFile(join(directory, "controlled-stack.json"), "utf8"));
   const configPath = join(directory, "supabase/config.toml");
   const config = await readFile(configPath, "utf8");
   if (
+    ![2, 3].includes(portSlot) ||
+    !config.includes(`port = 555${portSlot}2`) ||
     !/^pickler-workers-[0-9a-f]{8}$/.test(project) ||
     !config.includes(`project_id = "${project}"`) ||
     !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(identity)
@@ -39,11 +51,11 @@ if (mode === "prepare") {
   const api = new URL(status.API_URL);
   if (
     url.hostname !== "127.0.0.1" ||
-    url.port !== "55522" ||
+    url.port !== `555${portSlot}2` ||
     url.pathname !== "/postgres" ||
     url.search !== "" ||
     api.hostname !== "127.0.0.1" ||
-    api.port !== "55521"
+    api.port !== `555${portSlot}1`
   ) {
     throw new Error("Refusing to mark any database except the dedicated controlled Supabase stack");
   }
