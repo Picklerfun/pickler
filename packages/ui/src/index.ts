@@ -5,6 +5,7 @@ export { Chip, ChipLink, ChipText, Tag } from "./chip";
 export { Field, Input, Textarea, type FieldTone } from "./field";
 export { Icon, ICON_NAMES, type IconName } from "./icon";
 export { Meter, type MeterTone } from "./meter";
+export { Select, type SelectProps } from "./select";
 export { Segmented, type SegmentedOption } from "./segmented";
 export { Skeleton } from "./skeleton";
 export { Switch } from "./switch";

@@ -91,6 +91,25 @@ Controls come from `@pickler/ui`: `Button`/`ButtonLink` for actions (`glow` is t
 
 Market data is drawn with `CandleChart` and `BarChart` from `@pickler/ui` — the price panel on a token page and every series under the leaderboard. Features hand them timestamped buckets and nothing else; colours and type come from the surface. The library's own logo is off, so `PublicShell` carries the TradingView credit its licence asks for; any new surface that shows a chart needs that credit too.
 
+## Product network selector
+
+`features/site/network-selector.tsx` renders a custom network menu using `Button` and `Icon` from `@pickler/ui` in
+the shared public `SiteNav` and all three Studio top bars (home, creation and draft/live shell). Its presentation
+catalogue in `features/site/networks.ts` uses `@pickler/chain` metadata: Testnet is active;
+Mainnet is visible as "Coming soon" and disabled. The accessible description explains why.
+The wallet-style compact trigger carries the `network` icon, Monad's mark and plain Testnet text.
+Below 640px the trigger keeps the two marks with an accessible network name; in the agent Studio
+header it contracts to the Monad mark while another global disclosure expands.
+The menu contains only the two network rows, with no decorative heading, descriptions or footer.
+Opening focuses the active radio menu
+item; arrow keys/Home/End navigate enabled items, Escape restores trigger focus, and outside clicks
+or focus leaving close the menu. Positioning keeps the panel within the mobile viewport. Motion
+respects reduced-motion preferences. `Select` remains a generic native UI export for other forms.
+There is no persistence, wallet ceremony or API request on selection: both products remain on
+Testnet. This is not backend authorization or a mainnet launch switch. See
+[Network selector and mainnet readiness](../../docs/network-selector.md) before enabling a second
+network. Keep the selected product network distinct from the browser wallet's connected chain.
+
 ## The wallet
 
 Browser extensions are discovered through EIP-6963 in `injected-providers.ts`, with a legacy

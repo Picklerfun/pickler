@@ -13,6 +13,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@pickler/ui/dropdown-menu";
+import { NetworkSelector } from "./network-selector";
 import { AccountMenu } from "@/features/wallet/components/account-menu";
 import { useEffect, useState } from "react";
 import styles from "./site-nav.module.css";
@@ -191,6 +192,7 @@ export function SiteNav({
         </div>
 
         <div className={styles.actions}>
+          <NetworkSelector />
           {connect && <AccountMenu surface={surface} />}
           <ButtonLink
             as={Link}

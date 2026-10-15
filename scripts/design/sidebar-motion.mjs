@@ -438,7 +438,7 @@ try {
         assert.equal(before.width, 38, "Compact control starts as an icon");
         const preceding =
           selector === "[data-wallet-balance]"
-            ? page.getByLabel("Monad testnet", { exact: true })
+            ? page.getByRole("button", { name: "Network: Monad Testnet", exact: true })
             : page.locator(account ? "[data-credits-control]" : "[data-wallet-balance]");
         const precedingBefore = await preceding.boundingBox();
         const anchor = { x: before.x + before.width - 19, y: before.y + 19 };
