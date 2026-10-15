@@ -6,7 +6,7 @@ export const MONADSCAN_CHAIN_ID = 10143;
 const EXPLORER_TIMEOUT_MS = 15_000;
 
 export type Transfer = { hash: Hex; block: bigint; timestamp: number; from: Address; to: Address; value: bigint };
-export type MovementKind = "Faucet" | "Deposit" | "Withdrawal";
+export type MovementKind = "Faucet" | "Deposit" | "Withdrawal" | "Agent analysis";
 export type MovementStatus = "Complete" | "Confirming" | "Reverted";
 export type Movement = { kind: MovementKind; amount: bigint; sign: "+" | "-"; when: number; hash: Hex; status: MovementStatus };
 
@@ -55,19 +55,20 @@ export async function fetchAusdTransfers(address: Address, key: string): Promise
 
 const same = (a: string, b: string): boolean => a.toLowerCase() === b.toLowerCase();
 
-function classify(t: Transfer, self: Address): { kind: MovementKind; sign: "+" | "-" } {
+function classify(t: Transfer, self: Address, splitter: Address | null): { kind: MovementKind; sign: "+" | "-" } {
   if (same(t.from, AUSD_FAUCET_ADDRESS)) return { kind: "Faucet", sign: "+" };
+  if (same(t.from, self) && splitter !== null && same(t.to, splitter)) return { kind: "Agent analysis", sign: "-" };
   if (same(t.from, self)) return { kind: "Withdrawal", sign: "-" };
   return { kind: "Deposit", sign: "+" };
 }
 
-/** Más reciente primero. */
-export function toMovements(transfers: Transfer[], self: Address): Movement[] {
+/** Más reciente primero. `splitter` is the advice splitter: a payment from `self` to it is an "Agent analysis". */
+export function toMovements(transfers: Transfer[], self: Address, splitter: Address | null = null): Movement[] {
   return [...transfers]
     .sort((a, b) => (a.block < b.block ? 1 : a.block > b.block ? -1 : 0))
-    .map((t) => ({ ...classify(t, self), amount: t.value, when: t.timestamp, hash: t.hash, status: "Complete" as const }));
+    .map((t) => ({ ...classify(t, self, splitter), amount: t.value, when: t.timestamp, hash: t.hash, status: "Complete" as const }));
 }
 
 export function pendingMovement(kind: MovementKind, amount: bigint, hash: Hex): Movement {
-  return { kind, amount, sign: kind === "Withdrawal" ? "-" : "+", when: Math.floor(Date.now() / 1000), hash, status: "Confirming" };
+  return { kind, amount, sign: kind === "Withdrawal" || kind === "Agent analysis" ? "-" : "+", when: Math.floor(Date.now() / 1000), hash, status: "Confirming" };
 }

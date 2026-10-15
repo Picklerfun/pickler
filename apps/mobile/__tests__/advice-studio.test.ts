@@ -18,6 +18,7 @@ jest.mock("../src/wallet/wallet", () => ({
   unlockStoredWallet: jest.fn(),
   describeError: (e: unknown) => (e instanceof Error ? e.message : String(e)),
 }));
+const { unlockStoredWallet } = jest.requireMock("../src/wallet/wallet") as { unlockStoredWallet: jest.Mock };
 // Icons only: lucide ships ESM that Jest does not transform here.
 jest.mock("lucide-react-native", () => new Proxy({}, { get: (_t, key) => (key === "__esModule" ? false : () => null) }));
 // The page chrome reads the whole app context (seal, Perpl, safe area); the screen's body is what is under test.
@@ -115,6 +116,8 @@ beforeEach(() => {
   sent = [];
   posts = [];
   jobs = [];
+  // Pay reads the passkey again (Face ID, Ruling A8): the same account, in a signing session of its own.
+  unlockStoredWallet.mockImplementation(async () => ({ address: account.address, credentialId: "cred", session: { end() {} }, account }));
   (globalThis as { fetch: unknown }).fetch = jest.fn(async () => respond({ status: 200, body: [ROW] }));
 });
 
@@ -242,5 +245,16 @@ test("a payment being checked covers one that landed but is not queued yet, and 
   expect(text()).toContain("PAYMENT BEING CHECKED");
   expect(text()).toContain("not queued yet");
   expect(text()).not.toMatch(/[Nn]othing (was|is) (charged|paid)\b(?! again)/);
+  act(() => { tree.unmount(); });
+});
+
+test("the confirmation always says Face ID confirms the payment, with the wallet already open (Ruling A8)", async () => {
+  act(() => { tree = create(createElement(Host, { show: true })); });
+  await settle();
+  posts.push(r402());
+  await press("advice-ask");
+
+  expect(text()).toContain("Face ID confirms this payment.");
+  expect(button("advice-pay").props.icon).toBe("faceId");
   act(() => { tree.unmount(); });
 });
