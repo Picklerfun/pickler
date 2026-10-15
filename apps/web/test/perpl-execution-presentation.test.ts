@@ -1,9 +1,12 @@
 import test from "node:test";
+import type { PerplMarketCatalogDto } from "@pickler/api-schema";
+import testnetCatalogue from "../src/features/studio/shell/perpl-testnet-catalogue.fixture.json";
 import assert from "node:assert/strict";
 import { perplExecutionFixture } from "../src/features/studio/perpl-execution/fixture";
 import {
   accountObserved,
   groupCycles,
+  executionMarketOptions,
   perplStatus,
   sessionFeedback,
 } from "../src/features/studio/perpl-execution/presentation";
@@ -69,5 +72,51 @@ test("admissions and frozen session status take precedence over readiness", () =
   assert.equal(
     perplStatus({ ...state, session: { ...state.session, status: "frozen" } }).label,
     "Review required",
+  );
+});
+
+test("the execution selector shows the official catalogue without expanding agent permissions", () => {
+  const catalogue = testnetCatalogue as PerplMarketCatalogDto;
+  const options = executionMarketOptions(catalogue, ["NEAR", "BTC"]);
+
+  assert.deepEqual(
+    options.map((row) => row.symbol),
+    catalogue.markets.map((row) => row.symbol),
+  );
+  assert.deepEqual(
+    options.filter((row) => row.enabled).map((row) => row.value),
+    ["BTC", "NEAR"],
+  );
+  assert.equal(options.find((row) => row.symbol === "SOL")?.reason, "Enable in Sources & rules");
+  assert.deepEqual(executionMarketOptions(null, ["NEAR"]), []);
+});
+
+test("closed and ambiguous catalogue identities cannot become executable selections", () => {
+  const catalogue = structuredClone(testnetCatalogue) as PerplMarketCatalogDto;
+  catalogue.markets[0] = {
+    ...catalogue.markets[0]!,
+    available: false,
+    status: "closed",
+    reasons: ["Market closed"],
+  };
+  catalogue.markets.push({ ...catalogue.markets[7]!, marketId: 999 });
+
+  const options = executionMarketOptions(catalogue, ["BTC", "NEAR", "FAKE"]);
+
+  assert.equal(
+    options.some((row) => row.enabled),
+    false,
+  );
+  assert.equal(options.find((row) => row.symbol === "BTC")?.reason, "Market closed");
+  assert.equal(
+    options
+      .filter((row) => row.symbol === "NEAR")
+      .every((row) => row.reason === "Market identity unavailable"),
+    true,
+  );
+  assert.equal(new Set(options.map((row) => row.value)).size, options.length);
+  assert.equal(
+    options.some((row) => row.symbol === "FAKE"),
+    false,
   );
 });

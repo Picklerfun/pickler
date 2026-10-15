@@ -1,4 +1,4 @@
-import type { PerplLiveStateDto } from "@pickler/api-schema";
+import type { PerplLiveStateDto, PerplMarketCatalogDto } from "@pickler/api-schema";
 import type { ActionButtonState, IconName } from "@pickler/ui";
 
 export type PerplOrder = PerplLiveStateDto["orders"][number];
@@ -175,4 +175,33 @@ export function groupCycles(orders: PerplOrder[]): PerplCycle[] {
     group.orders.push(order);
   }
   return groups.reverse();
+}
+
+/** Catalogue rows describe venue availability; the saved agent allowlist still gates selection. */
+export function executionMarketOptions(
+  catalog: PerplMarketCatalogDto | null,
+  configured: readonly string[],
+) {
+  const rows = catalog?.markets ?? [];
+  return rows.map((row, index) => {
+    const symbol = row.symbol;
+    const unique = symbol !== null && rows.filter((item) => item.symbol === symbol).length === 1;
+    const configuredMarket = symbol !== null && configured.includes(symbol);
+    const enabled = unique && row.available && configuredMarket;
+    let reason = "";
+    if (!unique) {
+      reason = "Market identity unavailable";
+    } else if (!row.available) {
+      reason = row.reasons.join("; ") || row.status;
+    } else if (!configuredMarket) {
+      reason = "Enable in Sources & rules";
+    }
+    return {
+      value: enabled && symbol !== null ? symbol : `unavailable-${row.marketId ?? index}-${index}`,
+      symbol,
+      name: row.name,
+      enabled,
+      reason,
+    };
+  });
 }

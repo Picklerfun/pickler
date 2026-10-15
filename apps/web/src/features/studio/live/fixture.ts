@@ -34,6 +34,7 @@ import type {
   XState,
 } from "../api";
 import type { LiveStage } from "../home/stage";
+import testnetCatalogue from "../shell/perpl-testnet-catalogue.fixture.json";
 import { perplExecutionFixture } from "../perpl-execution/fixture";
 import { previewConfig } from "../preview";
 import type { BriefText } from "../shell/build-model";
@@ -992,7 +993,16 @@ export function liveStudioFixture(stage: LiveStage): LiveStaged {
   if (stage.startsWith("perpl-trading-")) {
     stagedAgent.config = {
       ...stagedAgent.config,
-      perpl: { version: 2, network: "testnet", markets: ["NEAR", "BTC", "ETH"] },
+      perpl: {
+        version: 2,
+        network: "testnet",
+        markets: [
+          "NEAR",
+          ...testnetCatalogue.markets
+            .map((row) => row.symbol)
+            .filter((symbol) => symbol !== "NEAR"),
+        ],
+      },
     };
     stagedAgent.spend = { perCallAusd: 0.06, perDayAusd: 10 };
   }

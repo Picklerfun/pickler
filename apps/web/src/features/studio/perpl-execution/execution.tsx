@@ -1,6 +1,15 @@
 "use client";
 import { useEffect, useId, useState, type ReactNode } from "react";
-import { ActionButton, Button, ButtonLink, Field, Icon, Input, type IconName } from "@pickler/ui";
+import {
+  ActionButton,
+  Button,
+  ButtonLink,
+  Field,
+  Icon,
+  Input,
+  Tag,
+  type IconName,
+} from "@pickler/ui";
 import {
   Select,
   SelectContent,
@@ -9,7 +18,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@pickler/ui/select";
+import { Slider } from "@pickler/ui/slider";
 import type { Agent } from "../api";
+import { useTradingMarkets } from "../shell/trading-markets";
 import type { PerplExecution } from "./use-execution";
 import { perplExecutionMessage } from "./use-execution";
 import { useMarketplaceHref } from "@/features/site/studio-href";
@@ -20,6 +31,7 @@ import { PerplCycleHistory } from "./receipts";
 import {
   accountObserved,
   amount,
+  executionMarketOptions,
   sessionFeedback,
   sessionRunning,
   timestamp,
@@ -48,13 +60,13 @@ export function PerplAccountSummary({ execution }: { execution: PerplExecution }
           </span>
         </div>
       </div>
-      <div className={styles.accountFact}>
+      <div className={`${styles.accountFact} ${styles.accountConnection}`}>
         <Label icon="key">API key</Label>
         <strong className={connected ? styles.good : styles.note}>
           {!state ? "Reading…" : connected ? "Connected" : "Connection required"}
         </strong>
       </div>
-      <div className={styles.accountFact}>
+      <div className={`${styles.accountFact} ${styles.accountWallet}`}>
         <Label icon="wallet">Exchange wallet</Label>
         {state?.address ? (
           <ChainReference
@@ -67,16 +79,12 @@ export function PerplAccountSummary({ execution }: { execution: PerplExecution }
           <span className={styles.note}>Not connected</span>
         )}
       </div>
-      <div className={styles.accountFact}>
+      <div className={`${styles.accountFact} ${styles.accountBalance}`}>
         <Label icon="coin">Available on Perpl</Label>
         <strong className={styles.balance}>
           {accountObserved(state) ? amount(state?.balanceAusd) : "—"} <small>AUSD</small>
         </strong>
       </div>
-      <span className={styles.network}>
-        <Icon name="network" size={16} />
-        Monad Testnet
-      </span>
     </section>
   );
 }
@@ -139,12 +147,14 @@ export function PerplTradingControls({
   canManage,
   onLimits,
   onPositions,
+  onMarkets,
 }: {
   execution: PerplExecution;
   agent: Agent;
   canManage: boolean;
   onLimits?: () => void;
   onPositions?: () => void;
+  onMarkets?: () => void;
 }) {
   const fields = useId();
   // Fixture feedback changes only the button; it never submits or changes account data.
@@ -162,6 +172,9 @@ export function PerplTradingControls({
   const [selectedSymbol, setSymbol] = useState(agent.config.perpl?.markets[0] ?? "");
   const markets = agent.config.perpl?.markets ?? [];
   const symbol = markets.includes(selectedSymbol) ? selectedSymbol : (markets[0] ?? "");
+  const marketRead = useTradingMarkets(agent.config.perpl?.network ?? null, execution.preview);
+  const marketOptions = executionMarketOptions(marketRead.catalog, markets);
+  const marketAllowed = marketRead.allows([symbol]) && markets.includes(symbol);
   const [margin, setMargin] = useState(String(Math.min(agent.spend?.perCallAusd ?? 1, 1)));
   const [holding, setHolding] = useState("30");
   const [funding, setFunding] = useState(false);
@@ -237,21 +250,39 @@ export function PerplTradingControls({
             <>
               <div className={styles.form}>
                 <Field htmlFor={`${fields}-market`} label={<Label icon="bars">Market</Label>}>
-                  <Select value={symbol} onValueChange={setSymbol} disabled={disabled || active}>
+                  <Select
+                    value={symbol}
+                    onValueChange={(value) => {
+                      if (markets.includes(value) && marketRead.allows([value])) {
+                        setSymbol(value);
+                      }
+                    }}
+                    disabled={disabled || active || !marketRead.ready}
+                  >
                     <SelectTrigger
                       id={`${fields}-market`}
                       aria-labelledby={`${fields}-market-label`}
                     >
                       <span className={styles.marketValue}>
                         {symbol && <MarketAsset symbol={symbol} />}
-                        <SelectValue placeholder="Select a market" />
+                        <SelectValue placeholder="Select a market">
+                          {symbol || undefined}
+                        </SelectValue>
                       </span>
                     </SelectTrigger>
                     <SelectContent data-surface="dark">
                       <SelectGroup>
-                        {markets.map((market) => (
-                          <SelectItem key={market} value={market}>
-                            {market}
+                        {marketOptions.map((market) => (
+                          <SelectItem
+                            key={market.value}
+                            value={market.value}
+                            disabled={!market.enabled}
+                            textValue={market.symbol ?? market.name}
+                          >
+                            <span className={styles.marketOption}>
+                              <span>{market.symbol ?? market.name}</span>
+                              {market.reason && <small>{market.reason}</small>}
+                            </span>
                           </SelectItem>
                         ))}
                       </SelectGroup>
@@ -274,11 +305,48 @@ export function PerplTradingControls({
                     disabled={disabled || active}
                   />
                 </Field>
-                <div className={styles.fixedField}>
-                  <Label icon="shield">Leverage</Label>
-                  <strong>1×</strong>
-                  <span className={styles.note}>Fixed for this cycle</span>
+                <div className={styles.leverageField}>
+                  <div className={styles.head}>
+                    <span id={`${fields}-leverage-label`}>
+                      <Label icon="shield">Leverage</Label>
+                    </span>
+                    <strong>1×</strong>
+                  </div>
+                  <Slider
+                    value={[1]}
+                    min={1}
+                    max={1}
+                    step={1}
+                    disabled
+                    aria-labelledby={`${fields}-leverage-label`}
+                    aria-describedby={`${fields}-leverage-hint`}
+                    getValueLabel={(value) => `${value}×`}
+                  />
+                  <span className={styles.note} id={`${fields}-leverage-hint`}>
+                    Current limit · 1×
+                  </span>
                 </div>
+              </div>
+              <div className={styles.catalogueNote}>
+                <span className={styles.note} role="status">
+                  {marketRead.phase === "loading"
+                    ? "Loading official Perpl markets…"
+                    : !marketRead.ready
+                      ? "Market catalogue unavailable. Refresh before starting."
+                      : !marketAllowed
+                        ? "Enable an available market in Sources & rules before starting."
+                        : "Official Perpl markets · enabled for this agent"}
+                </span>
+                {!marketRead.ready && marketRead.phase !== "loading" && (
+                  <Button variant="secondary" size="sm" onClick={marketRead.retry}>
+                    <Icon name="refresh" size={14} /> Retry markets
+                  </Button>
+                )}
+                {onMarkets && (
+                  <Button variant="ghost" size="sm" onClick={onMarkets}>
+                    Manage markets <Icon name="arrow" size={14} />
+                  </Button>
+                )}
               </div>
               <div className={styles.cycleNote}>
                 <Icon name="refresh" size={20} />
@@ -312,7 +380,7 @@ export function PerplTradingControls({
                   !!execution.readError ||
                   !state.admissionsEnabled ||
                   marketOccupied ||
-                  !symbol ||
+                  !marketAllowed ||
                   !validInput
                 }
                 onClick={() => {
@@ -529,8 +597,11 @@ export function PerplTradingPositions({
                             <MarketAsset symbol={position.symbol} />
                             <div className={styles.copy}>
                               <strong>{position.symbol}</strong>
-                              <span className={styles.note}>
-                                {position.side === "long" ? "Long" : "Short"} · {position.leverage}×
+                              <span className={styles.positionSide}>
+                                <Tag data-side={position.side}>
+                                  {position.side === "long" ? "Long" : "Short"}
+                                </Tag>
+                                <span className={styles.note}>{position.leverage}×</span>
                               </span>
                             </div>
                           </div>

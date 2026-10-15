@@ -1569,3 +1569,15 @@ on Start trading. The existing-key form uses its connection request's busy state
 locking, server controls and idempotency are unchanged. In labelled development trading
 fixtures only, Start trading plays a local button-feedback sequence with no account changes,
 provider calls or fabricated receipts; its timer never reaches an execution API.
+
+Trading Controls reads the same official, network-scoped Perpl catalogue as Sources & rules.
+All catalogue rows are shown; unavailable, ambiguous and unconfigured markets cannot be selected.
+A stale/failed catalogue blocks new entries, preserves the chosen symbol and offers retry.
+Manage markets navigates to Sources & rules; the selector never expands the agent allowlist.
+Development trading fixtures use the captured catalogue only, never a live fallback.
+
+The account strip and controls use workspace container queries so an expanded sidebar cannot
+leave a narrow content area in desktop layout. Network context remains in the global header.
+Long/Short tags use shared semantic direction colors in receipts and open positions. The shared
+leverage slider is explicitly disabled at the existing 1× pilot limit; it does not advertise
+unsupported leverage or change execution settings.

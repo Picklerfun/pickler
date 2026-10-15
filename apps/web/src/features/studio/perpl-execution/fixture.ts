@@ -82,7 +82,7 @@ export function perplExecutionFixture(
             id: `existing-${i}`,
             managedBySession: false,
             symbol,
-            side: "long" as const,
+            side: i % 2 === 0 ? ("long" as const) : ("short" as const),
             closed: false,
             size: "0.01",
             entryPrice: null,

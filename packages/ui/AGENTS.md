@@ -174,3 +174,13 @@ logic. Busy and disabled remain separate so consumers can prevent duplicate subm
 waiting for authoritative receipts. The stable status/alert regions announce transitions; reduced
 motion disables sweeps, rotation and check drawing. Token purchases and Studio Perpl share this
 presentation; neither integration imports the other's wallet or execution logic.
+
+## Slider and position directions
+
+`@pickler/ui/slider` exports the official shadcn new-york/Radix Slider, installed with CLI 4.21.5.
+Local adaptations put presentation in `styles.css`, preserve a 44px hit area and visible focus,
+forward accessible labels/descriptions to each thumb, and accept `getValueLabel` for value text.
+Consumers own values, limits and disabled state. It performs no requests or policy decisions.
+
+`Tag` accepts `data-side="long" | "short"` for semantic green/red position-direction tokens on
+both surfaces. These labels express direction, independently of fill status or profit/loss.

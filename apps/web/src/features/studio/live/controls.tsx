@@ -136,6 +136,7 @@ export function Controls({ agent, live, canManage, pause, onSection }: LiveSecti
           canManage={canManage}
           onLimits={() => onSection("limits")}
           onPositions={() => onSection("positions")}
+          onMarkets={() => onSection("skills")}
         />
       )}
       {showExecution ? (

@@ -1,10 +1,12 @@
 # Perpl trading workspace — design QA
 
-**Final result: passed**
+**Final result: visual follow-up passed; variable leverage remains pending**
 
 ## Findings
 
-No actionable P0/P1/P2 findings remain in the reviewed local states. This is a visual and
+No actionable P0/P1/P2 visual findings remain in the reviewed local states after the browser
+comments below. The requested leverage range is still a product decision: the current backend
+accepts only 1×, so the new slider is explicitly disabled at that limit. This is a visual and
 controlled interaction check, not financial execution acceptance.
 
 ## Target and evidence
@@ -116,4 +118,49 @@ and static source check. No database migration, deployment or real trade was per
 - [x] Fix P0/P1/P2 findings and re-capture the revised implementation.
 - [x] Check desktop, tablet, mobile, setup, active and closed fixtures.
 
-Follow-up polish: none required for the reviewed design; remaining coverage is listed above.
+The original visual review above is historical. The following user comments supersede the
+mock in the affected areas; remaining coverage is listed above.
+
+## Browser-comment follow-up — October 15, 2026
+
+The user identified the narrow account layout at 955 × 890, a configured-only market list,
+the static leverage box, repeated network labels and neutral Long/Short text. Those comments
+are the visual truth for this iteration, overriding the original mock's account strip and
+fixed-value leverage box.
+
+- The execution selector now reads the existing official network-scoped catalogue. All eight
+  captured testnet markets appear in the labelled preview: BTC, ETH, SOL, MON, ZEC, LIT, PUMP,
+  NEAR. Hosted use reads the API, with no captured-data fallback. Configured permissions still
+  gate selection; unavailable or ambiguous identities remain disabled. Failed/stale reads block
+  new starts and expose retry without changing the saved choice.
+- Account and control layout now uses content-width container queries. At 955px with the sidebar
+  expanded, the identity has its own aligned row and three facts share the next row. The ticket
+  and session stack. At 390px, connection and balance share a row and the wallet occupies a
+  full-width row with its copy action beside the address. The page has no horizontal overflow
+  at either measured width (scrollWidth equals innerWidth).
+- Monad Testnet was removed from the account strip and recent-cycle heading. Global network
+  context remains visible. Long and Short use shared green/red Tag tokens, independent of
+  profit/loss and execution status. Development position fixtures include both directions;
+  they remain read only.
+- The official shared Radix Slider replaces the static box. Its thumb has the accessible name
+  Leverage, description Current limit · 1×, min/max/value 1 and disabled semantics. The backend's
+  existing 1× limit remains unchanged. No larger executable range or drag acceptance is claimed.
+
+Evidence under `/private/tmp/perpl-ui-qa-20261015/`: `review-955.png` (955px full page),
+`review-markets.png` (open catalogue), `review-mobile.png` (390px full page),
+`review-mobile-positions.png`, `review-directions.png` (both direction colors), and
+`review-final.png` (1280px final full page after hydration). Captures use their actual pixel
+widths without raster edits. `review-desktop.png` was an intermediate pre-hydration capture;
+use `review-final.png` for the visible slider thumb. The final implementation and the selected
+source were opened together; the intentional layout changes above follow the user's comments.
+
+Keyboard opened the catalogue; selecting occupied BTC disabled Start trading and exposed its
+warning, then selecting NEAR restored readiness. Manage markets navigated to Sources & rules
+and its catalogue controls. A fresh final browser tab reported no application console errors.
+An invalid icon name found during the first iteration was fixed before this final check.
+
+Validation passed: 169 focused Studio/Perpl/token tests, UI and web types, root lint, architecture,
+static design tokens (492 source files), scoped formatting and the production Cloudflare web
+build. The full automated rendered-design suite has not run locally. GitHub Actions could not
+start because GitHub reports an account billing lock; CI acceptance remains pending. No provider
+orders, credentials, migrations or deployment were involved in this follow-up.

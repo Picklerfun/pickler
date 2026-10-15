@@ -1,5 +1,5 @@
 "use client";
-import { Button, Icon } from "@pickler/ui";
+import { Button, Icon, Tag } from "@pickler/ui";
 import { ChainReference } from "@/features/tokens/chain-reference";
 import type { PerplExecution } from "./use-execution";
 import { amount, groupCycles, orderIcon, orderLabels, timestamp } from "./presentation";
@@ -48,7 +48,7 @@ export function PerplCycleHistory({
           <Icon name="activity" size={21} />
           {compact ? "Recent cycle" : "Trading record"}
         </h3>
-        <span className={styles.note}>Perpl · Monad Testnet</span>
+        <span className={styles.note}>Perpl</span>
       </div>
       {visible.length === 0 ? (
         <div className={styles.empty}>
@@ -90,7 +90,9 @@ export function PerplCycleHistory({
                           size={21}
                         />
                         {order.action.startsWith("open") ? "Open" : "Close"} {order.symbol}
-                        <small>{order.action.endsWith("short") ? "Short" : "Long"}</small>
+                        <Tag data-side={order.action.endsWith("short") ? "short" : "long"}>
+                          {order.action.endsWith("short") ? "Short" : "Long"}
+                        </Tag>
                       </strong>
                       <span className={styles.orderStatus} data-state={order.status}>
                         <Icon name={orderIcon(order)} size={17} />

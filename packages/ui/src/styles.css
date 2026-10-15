@@ -164,6 +164,11 @@
    * rounding error, not two. Do not restore them from the canvas. */
   --pk-win: #2b732e;
   --pk-loss: #bb2a5d;
+  /* Position direction is distinct from gain/loss. */
+  --pk-side-long-ink: #17663c;
+  --pk-side-long-bg: #e4f5ec;
+  --pk-side-short-ink: #b42332;
+  --pk-side-short-bg: #fde8e9;
   /* Violet is dark enough here to carry white. */
   --pk-on-violet: #ffffff;
 
@@ -279,6 +284,10 @@
   --pk-amber-ink: #ffc93f;
   --pk-win: #c8f03a;
   --pk-loss: #ff9ec6;
+  --pk-side-long-ink: #62d99b;
+  --pk-side-long-bg: #123525;
+  --pk-side-short-ink: #ff8b8b;
+  --pk-side-short-bg: #3d1c24;
   --pk-on-violet: #0b0618;
 
   --pk-state-good-bg: #2a3a0f;
@@ -1408,4 +1417,68 @@ h2 {
   .pk-action-sweep {
     display: none;
   }
+}
+
+/* Official shadcn/Radix slider: behavior stays with Radix, presentation uses product tokens. */
+.pk-slider {
+  position: relative;
+  display: flex;
+  width: 100%;
+  min-height: 44px;
+  align-items: center;
+  touch-action: none;
+  user-select: none;
+  cursor: pointer;
+}
+.pk-slider[data-disabled] {
+  cursor: not-allowed;
+}
+.pk-slider [data-slot="slider-track"] {
+  position: relative;
+  flex: 1;
+  overflow: hidden;
+  height: 6px;
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-rule-strong);
+}
+.pk-slider [data-slot="slider-range"] {
+  position: absolute;
+  height: 100%;
+  background: var(--pk-lime-ink);
+}
+.pk-slider [data-slot="slider-thumb"] {
+  display: block;
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--pk-lime-ink);
+  border-radius: var(--pk-radius-pill);
+  background: var(--pk-ink);
+}
+.pk-slider[data-disabled] [data-slot="slider-thumb"] {
+  border-color: var(--pk-ink-muted);
+  background: var(--pk-panel-2);
+}
+.pk-slider [data-slot="slider-thumb"]:focus-visible {
+  outline: 2px solid var(--pk-focus);
+  outline-offset: 4px;
+}
+.pk-slider[data-orientation="vertical"] {
+  width: 44px;
+  min-height: 176px;
+  flex-direction: column;
+}
+.pk-slider[data-orientation="vertical"] [data-slot="slider-track"] {
+  width: 6px;
+}
+.pk-slider[data-orientation="vertical"] [data-slot="slider-range"] {
+  width: 100%;
+  height: auto;
+}
+.pk-tag[data-side="long"] {
+  background: var(--pk-side-long-bg);
+  color: var(--pk-side-long-ink);
+}
+.pk-tag[data-side="short"] {
+  background: var(--pk-side-short-bg);
+  color: var(--pk-side-short-ink);
 }
