@@ -356,3 +356,9 @@ proof dates, change policies or resume a partial historical round. See
 Independent responsive prerelease 0.2.0-fast.2 changes only primary/channel roles to 1h/15m, sharing the native 15m series with impulse/ATR and keeping 5m correction/entry. The v9 config and immutable account mapping pin its own identity; old versions retain hashes/actions. Reuse the same financial functions and setup fences. Controlled profitable fixtures and candle signal replay do not establish market returns. See [responsive intraday](../../apps/agent-service/PTS-INTRADAY-RESPONSIVE.md).
 
 The testing/pts-intraday-responsive public subpath supplies controlled synthetic native fixtures only. It is absent from production barrels and must never be selected as captured data or a provider fallback.
+
+The `pts` subpath also exports pure causal research inspections and chronological sessions.
+Research policies and signals have separate identities/types from executable PTS versions and
+intents. Preserve historical baseline actions and hashes; dependency failures are not downstream
+passes. Candidate signals and candle projections never establish financial returns. See
+[PTS causal research](../../apps/agent-service/PTS-CAUSAL-RESEARCH.md).
