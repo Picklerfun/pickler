@@ -40,6 +40,11 @@ export async function runPtsCommand(input: PtsCommandInput) {
       );
     }
     const packet = (await readJson(input.state)) as Record<string, unknown>;
+    if (typeof packet.format === "string" && packet.format.startsWith("pts-research-input-")) {
+      const { runPtsResearch } = await import("./research.js");
+      await runPtsResearch(input);
+      return;
+    }
     const output = await newDirectory(input.output);
     if (input.command === "replay") {
       const history = (packet.history ?? packet) as PtsReplayInput;
