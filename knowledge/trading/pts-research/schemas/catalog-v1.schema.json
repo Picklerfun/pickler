@@ -1,0 +1,232 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Independent disabled PTS causal research catalog v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "format",
+    "formatVersion",
+    "status",
+    "executionScope",
+    "enabled",
+    "financialExecutable",
+    "studioSelectable",
+    "publicTrialStarted",
+    "comparison",
+    "reference",
+    "baseline",
+    "candidates",
+    "decisions",
+    "literature"
+  ],
+  "properties": {
+    "$schema": {
+      "const": "schemas/catalog-v1.schema.json"
+    },
+    "format": {
+      "const": "pts-research-candidates-v1"
+    },
+    "formatVersion": {
+      "const": 1
+    },
+    "status": {
+      "const": "disabled-offline-research"
+    },
+    "executionScope": {
+      "const": "offline-only"
+    },
+    "enabled": {
+      "const": false
+    },
+    "financialExecutable": {
+      "const": false
+    },
+    "studioSelectable": {
+      "const": false
+    },
+    "publicTrialStarted": {
+      "const": false
+    },
+    "comparison": {
+      "const": "INDEPENDENT_SINGLE_CHANGE_ARMS"
+    },
+    "reference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["bundleId", "knowledgeVersion", "path", "sha256"],
+      "properties": {
+        "bundleId": {
+          "const": "pts-course"
+        },
+        "knowledgeVersion": {
+          "const": "1.0.0"
+        },
+        "path": {
+          "const": "../pts/bundle.json"
+        },
+        "sha256": {
+          "const": "e860f1912b2b09fcb97202fd3354fc594b42e573dd82a91f7271532d84c1ca30"
+        }
+      }
+    },
+    "baseline": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["identity", "path", "sha256"],
+      "properties": {
+        "identity": {
+          "const": "pts-intraday@0.2.0-fast.2"
+        },
+        "path": {
+          "const": "../pts-versions/pts-intraday/0.2.0-fast.2/policy.json"
+        },
+        "sha256": {
+          "const": "0631f6aba79b239b7c0957d0fbbad871d5bf99bff359263f38020f4d3a24d875"
+        }
+      }
+    },
+    "candidates": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": false,
+      "prefixItems": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "version", "descriptor"],
+          "properties": {
+            "id": {
+              "const": "primary-er20"
+            },
+            "version": {
+              "const": "0.1.0"
+            },
+            "descriptor": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["path", "sha256"],
+              "properties": {
+                "path": {
+                  "const": "primary-er20/0.1.0.json"
+                },
+                "sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                }
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "version", "descriptor"],
+          "properties": {
+            "id": {
+              "const": "persistent-setups"
+            },
+            "version": {
+              "const": "0.1.0"
+            },
+            "descriptor": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["path", "sha256"],
+              "properties": {
+                "path": {
+                  "const": "persistent-setups/0.1.0.json"
+                },
+                "sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                }
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "version", "descriptor"],
+          "properties": {
+            "id": {
+              "const": "ready-band-entry"
+            },
+            "version": {
+              "const": "0.1.0"
+            },
+            "descriptor": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["path", "sha256"],
+              "properties": {
+                "path": {
+                  "const": "ready-band-entry/0.1.0.json"
+                },
+                "sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                }
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "version", "descriptor"],
+          "properties": {
+            "id": {
+              "const": "retracement-control"
+            },
+            "version": {
+              "const": "0.1.0"
+            },
+            "descriptor": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["path", "sha256"],
+              "properties": {
+                "path": {
+                  "const": "retracement-control/0.1.0.json"
+                },
+                "sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "decisions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "version"],
+      "properties": {
+        "path": {
+          "const": "DECISIONS-1.0.0.md"
+        },
+        "version": {
+          "const": "1.0.0"
+        }
+      }
+    },
+    "literature": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "version"],
+      "properties": {
+        "path": {
+          "const": "LITERATURE-1.0.0.md"
+        },
+        "version": {
+          "const": "1.0.0"
+        }
+      }
+    }
+  }
+}
