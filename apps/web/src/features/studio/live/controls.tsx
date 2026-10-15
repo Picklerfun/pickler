@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { Button, Icon, Meter, Segmented } from "@pickler/ui";
 import { setSchedule } from "../api";
+import executionStyles from "../perpl-execution/execution.module.css";
 import { PerplTradingControls } from "../perpl-execution/execution";
 import { SaveOutcome, saveLabel, useSavedForm, useSetupSave } from "../shell/setup-save";
 import { VIEW_ONLY_REASON, entryDirty, entryPatch, stopRows } from "./build-model";
@@ -125,18 +126,27 @@ export function Controls({ agent, live, canManage, pause, onSection }: LiveSecti
       </div>
     </div>
   );
-  const realReady = !!live.execution.state?.available && !live.execution.state.setupRequired;
+  const showExecution = !live.preview || !!live.execution.state?.available;
   return (
     <LiveSection section="controls">
-      <PerplTradingControls
-        execution={live.execution}
-        agent={agent}
-        canManage={canManage}
-        onLimits={() => onSection("limits")}
-      />
-      {realReady ? (
-        <details className={styles.paperControls}>
-          <summary>Paper trading controls</summary>
+      {showExecution && (
+        <PerplTradingControls
+          execution={live.execution}
+          agent={agent}
+          canManage={canManage}
+          onLimits={() => onSection("limits")}
+          onPositions={() => onSection("positions")}
+        />
+      )}
+      {showExecution ? (
+        <details className={executionStyles.advanced}>
+          <summary>
+            <Icon name="sliders" size={20} />
+            <span>
+              Advanced settings<small>Paper trading controls and research checks</small>
+            </span>
+            <Icon name="chevronDown" size={18} />
+          </summary>
           {paperControls}
         </details>
       ) : (

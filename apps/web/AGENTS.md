@@ -1545,3 +1545,27 @@ assistive technology. Motion pauses on hover, focus, explicit pause and stale da
 focus and touch use the original, manually scrollable list. Reduced motion disables the loop
 and price flashes. Prices flash only for changed observations, using surrounding surface
 tokens, without interpolating money. `display.ts` contains presentation formatting only.
+
+## Perpl trading workspace presentation
+
+The execution feature now composes the account strip, trading ticket and session summary in
+Controls, with a recent cycle beneath. Controls, Positions and Record use the same account
+status precedence: failed/unread observations and missing authorization cannot imply readiness
+or a flat account. Account state replaces paper chrome on hosted views; legacy paper-only
+fixtures retain their original proofs. Paper controls remain in the closed Advanced settings
+disclosure. The three trading sections omit the duplicate money tiles and activity strip.
+
+`presentation.ts` formats server values and groups chronological orders by session and market;
+it does not compute fills, risk, P&L or authority. A submitted/unknown order cannot render the
+confirmed check. `receipts.tsx` pairs openings and closings, retains incomplete orders and puts
+request/order IDs, size, price and fee in execution details. Actual hashes use ChainReference;
+missing hashes remain explicitly unrecorded. History is still rendered from received orders
+when trading permission is unavailable. Existing wallet positions are read only, separate
+from positions explicitly marked `managedBySession`.
+
+The shared `ActionButton` in @pickler/ui provides the same visual ring, sweep and check as token
+purchases. Perpl only uses server order/session state for those phases and has no wallet prompt
+on Start trading. The existing-key form uses its connection request's busy state. Mutation
+locking, server controls and idempotency are unchanged. In labelled development trading
+fixtures only, Start trading plays a local button-feedback sequence with no account changes,
+provider calls or fabricated receipts; its timer never reaches an execution API.

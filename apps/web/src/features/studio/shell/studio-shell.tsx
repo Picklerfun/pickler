@@ -189,7 +189,7 @@ export function StudioShell<K extends string>({
                   </div>
                 }
               />
-              <StudioTiles tiles={tiles} label={tilesLabel} />
+              {tiles.length > 0 && <StudioTiles tiles={tiles} label={tilesLabel} />}
               {studio.error && <ErrorBanner>{studio.error}</ErrorBanner>}
               {banner}
               {children}

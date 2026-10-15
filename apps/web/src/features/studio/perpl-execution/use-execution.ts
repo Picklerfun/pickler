@@ -75,6 +75,7 @@ export function usePerplExecution(
   const [error, setError] = useState("");
   const [readError, setReadError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [pendingAction, setPendingAction] = useState<string | null>(null);
   const lock = useRef(false);
   const startKey = useRef<string | null>(null);
   const setupKey = useRef<string | null>(null);
@@ -145,7 +146,7 @@ export function usePerplExecution(
       document.removeEventListener("visibilitychange", visible);
     };
   }, [refresh, fixture, preview, invalidate]);
-  async function run(work: (current: () => boolean) => Promise<void>) {
+  async function run(action: string, work: (current: () => boolean) => Promise<void>) {
     if (preview || lock.current) {
       return;
     }
@@ -153,6 +154,7 @@ export function usePerplExecution(
     const own = generation.current;
     const current = () => own === generation.current;
     setBusy(true);
+    setPendingAction(action);
     setError("");
     try {
       await work(current);
@@ -163,23 +165,27 @@ export function usePerplExecution(
     } finally {
       lock.current = false;
       setBusy(false);
+      setPendingAction(null);
     }
   }
   return {
     state,
     error: error || readError,
+    actionError: error,
+    readError,
+    pendingAction,
     busy,
     preview,
     refresh,
     connectKey: (input: import("@pickler/api-schema").PerplLiveExistingKeyDto) =>
-      run(async (current) => {
+      run("connect", async (current) => {
         const connected = await connectExistingPerplKey(agentId, input);
         if (current()) {
           setState(connected);
         }
       }),
     prepare: (collateralAusd: string) =>
-      run(async (current) => {
+      run("prepare", async (current) => {
         setupKey.current ??= crypto.randomUUID();
         const setup = await preparePerplTrading(agentId, collateralAusd, setupKey.current);
         if (!current()) {
@@ -192,7 +198,7 @@ export function usePerplExecution(
         await refresh();
       }),
     authorize: () =>
-      run(async (current) => {
+      run("authorize", async (current) => {
         const setup = state?.setup.at(-1);
         if (!setup?.activity || setup.status !== "awaiting_signature") {
           return;
@@ -215,7 +221,7 @@ export function usePerplExecution(
         await refresh();
       }),
     start: (input: PerplLiveStartDto) =>
-      run(async (current) => {
+      run("start", async (current) => {
         startKey.current ??= crypto.randomUUID();
         try {
           const next = await startPerplTrading(agentId, input, startKey.current);
@@ -236,7 +242,7 @@ export function usePerplExecution(
         }
       }),
     control: (action: "pause" | "resume" | "stop" | "close") =>
-      run(async (current) => {
+      run(action, async (current) => {
         const next = await controlPerplTrading(agentId, action);
         if (current()) {
           setState(next);

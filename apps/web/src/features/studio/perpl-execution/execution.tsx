@@ -1,6 +1,6 @@
 "use client";
-import { useState } from "react";
-import { Button, Field, Input, ButtonLink } from "@pickler/ui";
+import { useEffect, useId, useState, type ReactNode } from "react";
+import { ActionButton, Button, ButtonLink, Field, Icon, Input, type IconName } from "@pickler/ui";
 import {
   Select,
   SelectContent,
@@ -12,219 +12,244 @@ import {
 import type { Agent } from "../api";
 import type { PerplExecution } from "./use-execution";
 import { perplExecutionMessage } from "./use-execution";
-import styles from "./execution.module.css";
-import { ExistingPerplKey } from "./existing-key";
 import { useMarketplaceHref } from "@/features/site/studio-href";
 import { ChainReference } from "@/features/tokens/chain-reference";
+import { MarketAsset } from "@/features/perpl/market-asset";
+import { PerplAccountSetup } from "./account-setup";
+import { PerplCycleHistory } from "./receipts";
+import {
+  accountObserved,
+  amount,
+  sessionFeedback,
+  sessionRunning,
+  timestamp,
+} from "./presentation";
+import styles from "./execution.module.css";
 
-const setupLabels = {
-  approve: "Approve collateral for Perpl",
-  create_account: "Create and fund the Perpl account",
-  deposit: "Deposit collateral in Perpl",
-  forwarding: "Enable trading for this account",
-  enroll: "Authorize this agent's trading key",
-};
-const orderLabels = {
-  prepared: "Queued",
-  dispatching: "Sending",
-  unknown: "Checking submission",
-  accepted: "Submitted",
-  filled: "Filled",
-  partial: "Partially filled",
-  rejected: "Refused",
-  cancelled: "Cancelled",
-  expired: "Expired",
-};
-function TransactionLinks({ hashes, preview }: { hashes: string[]; preview: boolean }) {
-  if (hashes.length === 0) {
-    return <span className={styles.note}>No transaction hash recorded.</span>;
+function Label({ icon, children }: { icon: IconName; children: ReactNode }) {
+  return (
+    <span className={styles.label}>
+      <Icon name={icon} size={16} />
+      {children}
+    </span>
+  );
+}
+export function PerplAccountSummary({ execution }: { execution: PerplExecution }) {
+  const state = execution.state;
+  const connected = !!state?.available && !state.setupRequired;
+  return (
+    <section className={styles.account} id="perpl-account-summary" aria-label="Perpl account">
+      <div className={styles.accountIdentity}>
+        <Icon name="user" size={24} />
+        <div className={styles.copy}>
+          <strong>Perpl account</strong>
+          <span className={styles.note}>
+            {state?.accountId ? `Account #${state.accountId}` : "Used by this agent for trading"}
+          </span>
+        </div>
+      </div>
+      <div className={styles.accountFact}>
+        <Label icon="key">API key</Label>
+        <strong className={connected ? styles.good : styles.note}>
+          {!state ? "Reading…" : connected ? "Connected" : "Connection required"}
+        </strong>
+      </div>
+      <div className={styles.accountFact}>
+        <Label icon="wallet">Exchange wallet</Label>
+        {state?.address ? (
+          <ChainReference
+            value={state.address}
+            chainId={10143}
+            label="Perpl wallet"
+            preview={execution.preview}
+          />
+        ) : (
+          <span className={styles.note}>Not connected</span>
+        )}
+      </div>
+      <div className={styles.accountFact}>
+        <Label icon="coin">Available on Perpl</Label>
+        <strong className={styles.balance}>
+          {accountObserved(state) ? amount(state?.balanceAusd) : "—"} <small>AUSD</small>
+        </strong>
+      </div>
+      <span className={styles.network}>
+        <Icon name="network" size={16} />
+        Monad Testnet
+      </span>
+    </section>
+  );
+}
+function ReadNotice({ execution }: { execution: PerplExecution }) {
+  if (!execution.error) {
+    return null;
   }
   return (
-    <div className={styles.links} aria-label="Transaction hashes">
-      {hashes.map((hash, index) => (
-        <div className={styles.transaction} key={hash}>
-          <span className={styles.note}>Tx hash{hashes.length > 1 ? ` ${index + 1}` : ""}</span>
-          <ChainReference
-            value={hash}
-            chainId={10143}
-            kind="tx"
-            label={`Perpl transaction${hashes.length > 1 ? ` ${index + 1}` : ""}`}
-            preview={preview}
-          />
-        </div>
-      ))}
+    <div className={styles.error} role="alert">
+      <Icon name="alert" size={18} />
+      <span>{execution.error}</span>
+      <Button
+        variant="secondary"
+        size="sm"
+        disabled={execution.busy || execution.preview}
+        onClick={() => void execution.refresh()}
+      >
+        <Icon name="refresh" size={15} />
+        Check status
+      </Button>
     </div>
   );
 }
+function AccountNotice({
+  execution,
+  onControls,
+}: {
+  execution: PerplExecution;
+  onControls?: (() => void) | undefined;
+}) {
+  const state = execution.state;
+  const title = !state
+    ? "Reading the trading account…"
+    : !state.available
+      ? "Trading is unavailable"
+      : state.setupRequired
+        ? "Connect a Perpl account"
+        : "Waiting for an account observation";
+  return (
+    <div className={styles.empty}>
+      <Icon name={state?.setupRequired ? "key" : "clock"} size={26} />
+      <strong>{title}</strong>
+      <p className={styles.note}>
+        A successful account read is needed to show balances and positions. Recorded history stays
+        below when available.
+      </p>
+      {onControls && (
+        <Button variant="secondary" onClick={onControls}>
+          <Icon name="sliders" size={17} />
+          Open Controls
+        </Button>
+      )}
+    </div>
+  );
+}
+
 export function PerplTradingControls({
   execution,
   agent,
   canManage,
   onLimits,
+  onPositions,
 }: {
   execution: PerplExecution;
   agent: Agent;
   canManage: boolean;
   onLimits?: () => void;
+  onPositions?: () => void;
 }) {
+  const fields = useId();
+  // Fixture feedback changes only the button; it never submits or changes account data.
+  const [previewPhase, setPreviewPhase] = useState<number | null>(null);
+  useEffect(() => {
+    if (!execution.preview || previewPhase === null) {
+      return;
+    }
+    const timer = setTimeout(
+      () => setPreviewPhase(previewPhase < 2 ? previewPhase + 1 : null),
+      previewPhase === 2 ? 2200 : 1000,
+    );
+    return () => clearTimeout(timer);
+  }, [execution.preview, previewPhase]);
   const [selectedSymbol, setSymbol] = useState(agent.config.perpl?.markets[0] ?? "");
   const markets = agent.config.perpl?.markets ?? [];
   const symbol = markets.includes(selectedSymbol) ? selectedSymbol : (markets[0] ?? "");
-  const walletHref = useMarketplaceHref(`/perpl?wallet=${execution.state?.address ?? ""}`);
   const [margin, setMargin] = useState(String(Math.min(agent.spend?.perCallAusd ?? 1, 1)));
-  const [collateral, setCollateral] = useState<string | null>(null);
   const [holding, setHolding] = useState("30");
   const [funding, setFunding] = useState(false);
   const state = execution.state;
-  const minimumRequirement = state?.setupRequired
-    ? state.requirements?.minimumAccountAusd
-    : state?.requirements?.minimumDepositAusd;
-  const minimumCollateral = minimumRequirement?.replace(/(\.\d*?)0+$/, "$1").replace(/\.$/, "");
-  const selectedCollateral = collateral ?? minimumCollateral ?? "100";
-  const collateralExceedsDailyLimit = Number(selectedCollateral) > (agent.spend?.perDayAusd ?? 0);
-  const setup = state?.setup.at(-1);
-  const active =
-    !!state?.session && ["active", "paused", "stopping", "frozen"].includes(state.session.status);
-  const disabled = execution.busy || execution.preview || !canManage;
+  const active = sessionRunning(state);
+  const observed = accountObserved(state);
+  const disabled = execution.busy || !canManage;
+  const pendingSetup = state?.setup.some((step) => !["confirmed", "failed"].includes(step.status));
+  const setup = !!state?.available && (state.setupRequired || funding || pendingSetup);
   const marketOccupied = !!state?.positions.some(
-    (p) => !p.closed && p.symbol === symbol && !p.managedBySession,
+    (position) => !position.closed && position.symbol === symbol && !position.managedBySession,
   );
-  const preparePending = !!setup && !["confirmed", "failed"].includes(setup.status);
+  const validInput =
+    /^\d{1,4}(?:\.\d{1,6})?$/.test(margin) &&
+    Number(margin) > 0 &&
+    /^\d+$/.test(holding) &&
+    Number(holding) >= 30 &&
+    Number(holding) <= 3600;
+  const actualFeedback = sessionFeedback(state, execution.pendingAction === "start");
+  const feedback =
+    execution.preview && previewPhase !== null
+      ? {
+          state:
+            previewPhase === 0
+              ? ("working" as const)
+              : previewPhase === 1
+                ? ("waiting" as const)
+                : ("success" as const),
+          label:
+            previewPhase === 0
+              ? "Preview · sending"
+              : previewPhase === 1
+                ? "Preview · awaiting fill"
+                : "Preview · confirmed",
+          hint: "Visual feedback only · no orders sent",
+          busy: previewPhase < 2,
+        }
+      : actualFeedback;
+  const walletHref = useMarketplaceHref(`/perpl?wallet=${state?.address ?? ""}`);
+  const managed =
+    state?.positions.filter((position) => !position.closed && position.managedBySession) ?? [];
+  const other =
+    state?.positions.filter((position) => !position.closed && !position.managedBySession) ?? [];
   return (
-    <section
-      className={styles.panel}
-      id="perpl-trading-controls"
-      aria-label="Perpl trading controls"
-    >
-      <div className={styles.head}>
-        <h3 className={styles.title}>Perpl trading</h3>
-        <span className={styles.status}>MONAD TESTNET</span>
-      </div>
-      {!state ? (
-        <p className={styles.note}>Reading its trading account…</p>
-      ) : !state.available ? (
-        <p className={styles.note}>Trading is not available for this agent yet.</p>
-      ) : (
-        <>
-          <p className={styles.note}>
-            Orders run from this agent&apos;s Perpl account. One new position at a time, at 1×
-            leverage. Existing positions in other markets stay outside this session.
-          </p>
-          {state.setupRequired && !preparePending && (
-            <ExistingPerplKey
-              key={`${agent.productId ?? agent.id}:${state.address ?? ""}`}
-              address={state.address}
-              disabled={disabled || active}
-              connect={execution.connectKey}
-            />
-          )}
-          {state.setupEnabled === false && state.setupRequired && !preparePending ? (
+    <div className={styles.workspace}>
+      <PerplAccountSummary execution={execution} />
+      <div className={styles.controlGrid}>
+        <section
+          className={styles.panel}
+          id="perpl-trading-controls"
+          aria-label="Perpl trading controls"
+        >
+          <div className={styles.copy}>
+            <h3 className={styles.title}>{setup ? "Connect your account" : "Trading controls"}</h3>
             <p className={styles.note}>
-              Automatic account setup is unavailable. Connect an existing Perpl key for this wallet
-              to continue.
+              {setup
+                ? "Use a Perpl testnet API key to connect the account used by this agent."
+                : "Start one testnet trading cycle on Perpl. One opening and one closing."}
             </p>
-          ) : state.setupRequired || funding || preparePending ? (
-            <>
-              <Field label="Collateral · AUSD">
-                <Input
-                  inputMode="decimal"
-                  value={selectedCollateral}
-                  onChange={(e) => setCollateral(e.target.value)}
-                  disabled={disabled || preparePending}
-                />
-              </Field>
-              <p className={styles.note}>
-                Daily collateral limit: {agent.spend?.perDayAusd ?? 0} AUSD. A new account also
-                requires Perpl&apos;s minimum deposit.
-              </p>
-              {minimumCollateral && (
-                <p className={styles.note}>
-                  Perpl minimum: {minimumCollateral} AUSD. Maximum per deposit:{" "}
-                  {state.requirements?.maximumCollateralAusd
-                    .replace(/(\.\d*?)0+$/, "$1")
-                    .replace(/\.$/, "")}{" "}
-                  AUSD.
-                </p>
-              )}
-              {collateralExceedsDailyLimit && (
-                <p className={styles.error} role="alert">
-                  Set this agent&apos;s daily limit to at least {selectedCollateral} AUSD before
-                  preparing this deposit.
-                </p>
-              )}
-              {onLimits && (
-                <Button disabled={disabled || preparePending} onClick={onLimits}>
-                  Edit agent limits
-                </Button>
-              )}
-              {setup && setup.status !== "confirmed" && setup.status !== "failed" ? (
-                <div className={styles.copy}>
-                  <strong>{setupLabels[setup.kind]}</strong>
-                  {setup.kind === "enroll" && state.keyExpiresAt && (
-                    <p className={styles.note}>
-                      Trading permission expires{" "}
-                      {new Date(state.keyExpiresAt).toISOString().slice(0, 10)}.
-                    </p>
-                  )}
-                  <p className={styles.note}>
-                    {setup.kind === "enroll"
-                      ? "Allow reading and trading only. This key cannot withdraw your funds."
-                      : setup.kind === "forwarding"
-                        ? "Allow Perpl to forward orders for this account."
-                        : `${setup.collateralAusd} AUSD · authorized with your passkey.`}
-                  </p>
-                  {setup.status === "awaiting_signature" ? (
-                    <Button
-                      variant="primary"
-                      disabled={disabled}
-                      onClick={() => void execution.authorize()}
-                    >
-                      {execution.busy ? "Waiting for authorization…" : "Authorize with passkey"}
-                    </Button>
-                  ) : (
-                    <p className={styles.note} role="status">
-                      Checking this account step. Its authorization will not be repeated.
-                    </p>
-                  )}
-                  {setup.txHash && (
-                    <TransactionLinks hashes={[setup.txHash]} preview={execution.preview} />
-                  )}
-                </div>
-              ) : (
-                <Button
-                  variant="primary"
-                  disabled={
-                    disabled ||
-                    !state.admissionsEnabled ||
-                    state.setupEnabled === false ||
-                    collateralExceedsDailyLimit
-                  }
-                  onClick={() => void execution.prepare(selectedCollateral)}
-                >
-                  {execution.busy
-                    ? "Preparing…"
-                    : state.setupRequired
-                      ? "Set up Perpl"
-                      : "Prepare deposit"}
-                </Button>
-              )}
-              {!state.setupRequired && !preparePending && (
-                <Button disabled={execution.busy} onClick={() => setFunding(false)}>
-                  Back to trading
-                </Button>
-              )}
-            </>
+          </div>
+          {setup ? (
+            <PerplAccountSetup
+              execution={execution}
+              agent={agent}
+              canManage={canManage}
+              funding={funding}
+              onBack={() => setFunding(false)}
+              onLimits={onLimits}
+            />
+          ) : !state?.available ? (
+            <AccountNotice execution={execution} />
           ) : (
             <>
               <div className={styles.form}>
-                <Field label="Market">
+                <Field htmlFor={`${fields}-market`} label={<Label icon="bars">Market</Label>}>
                   <Select value={symbol} onValueChange={setSymbol} disabled={disabled || active}>
-                    <SelectTrigger aria-label="Trading market">
-                      <SelectValue placeholder="Select a market" />
+                    <SelectTrigger
+                      id={`${fields}-market`}
+                      aria-labelledby={`${fields}-market-label`}
+                    >
+                      <span className={styles.marketValue}>
+                        {symbol && <MarketAsset symbol={symbol} />}
+                        <SelectValue placeholder="Select a market" />
+                      </span>
                     </SelectTrigger>
                     <SelectContent data-surface="dark">
                       <SelectGroup>
-                        {(agent.config.perpl?.markets ?? []).map((market) => (
+                        {markets.map((market) => (
                           <SelectItem key={market} value={market}>
                             {market}
                           </SelectItem>
@@ -233,7 +258,7 @@ export function PerplTradingControls({
                     </SelectContent>
                   </Select>
                 </Field>
-                <Field label="Margin · AUSD">
+                <Field label={<Label icon="coin">Margin · AUSD</Label>}>
                   <Input
                     inputMode="decimal"
                     value={margin}
@@ -241,7 +266,7 @@ export function PerplTradingControls({
                     disabled={disabled || active}
                   />
                 </Field>
-                <Field label="Target holding time · seconds">
+                <Field label={<Label icon="clock">Target hold · seconds</Label>}>
                   <Input
                     inputMode="numeric"
                     value={holding}
@@ -249,81 +274,156 @@ export function PerplTradingControls({
                     disabled={disabled || active}
                   />
                 </Field>
+                <div className={styles.fixedField}>
+                  <Label icon="shield">Leverage</Label>
+                  <strong>1×</strong>
+                  <span className={styles.note}>Fixed for this cycle</span>
+                </div>
               </div>
-              <p className={styles.note}>
-                One opening and one closing. Confirmed executions and their transactions appear in
-                Positions and Record.
-              </p>
-              {marketOccupied && !active ? (
+              <div className={styles.cycleNote}>
+                <Icon name="refresh" size={20} />
+                <span>
+                  Stops after one cycle. The holding time is a target; confirmation can take longer.
+                </span>
+              </div>
+              {marketOccupied && !active && (
                 <p className={styles.note}>
-                  This market has an existing position. Choose another market for a separate trading
-                  cycle.
+                  <Icon name="alert" size={16} /> This market has an existing position. Choose
+                  another market for this cycle.
                 </p>
-              ) : null}
-              {state.connection === "key_wallet" && state.address ? (
-                <ButtonLink href={walletHref}>View connected wallet</ButtonLink>
-              ) : null}
-              <div className={styles.actions}>
-                {!active ? (
-                  <Button
-                    variant="primary"
-                    id="perpl-start-trading"
-                    disabled={disabled || !state.admissionsEnabled || marketOccupied || !symbol}
-                    onClick={() =>
-                      void execution.start({
-                        symbol,
-                        marginAusd: margin,
-                        leverage: 1,
-                        cycles: 1,
-                        holdSeconds: Number(holding),
-                      })
-                    }
-                  >
-                    {execution.busy ? "Starting…" : "Start trading"}
-                  </Button>
-                ) : (
-                  <PerplHeaderControls execution={execution} canManage={canManage} />
-                )}
-                {!active && (
-                  <Button
-                    disabled={disabled || !state.admissionsEnabled || state.setupEnabled === false}
-                    onClick={() => setFunding(true)}
-                  >
-                    Add collateral
-                  </Button>
-                )}
-              </div>
+              )}
+              {!validInput && !active && (
+                <p className={styles.note}>
+                  Enter a positive margin and a target hold from 30 to 3,600 seconds.
+                </p>
+              )}
+              <ActionButton
+                id="perpl-start-trading"
+                icon="play"
+                state={feedback.state}
+                label={feedback.label}
+                hint={feedback.hint}
+                busy={feedback.busy}
+                disabled={
+                  disabled ||
+                  previewPhase !== null ||
+                  active ||
+                  !observed ||
+                  !!execution.readError ||
+                  !state.admissionsEnabled ||
+                  marketOccupied ||
+                  !symbol ||
+                  !validInput
+                }
+                onClick={() => {
+                  if (execution.preview) {
+                    setPreviewPhase(0);
+                    return;
+                  }
+                  void execution.start({
+                    symbol,
+                    marginAusd: margin,
+                    leverage: 1,
+                    cycles: 1,
+                    holdSeconds: Number(holding),
+                  });
+                }}
+              />
+              {execution.preview && (
+                <p className={styles.note}>Button preview only · no orders are sent.</p>
+              )}
+              {active && <PerplHeaderControls execution={execution} canManage={canManage} />}
+              {!state.admissionsEnabled && (
+                <p className={styles.note}>
+                  New entries are paused. Existing exits remain tracked.
+                </p>
+              )}
             </>
           )}
-          {state.session && (
-            <p className={styles.note} role="status">
-              {state.session.status.toUpperCase()} · {state.session.completedCycles}/
-              {state.session.settings.cycles} cycles closed
-              {state.session.error ? ` · ${perplExecutionMessage(state.session.error)}` : ""}
+          <ReadNotice execution={execution} />
+        </section>
+        <aside className={styles.panel} aria-label="This session">
+          <h3 className={styles.title}>This session</h3>
+          <dl className={styles.sessionFacts}>
+            <div>
+              <dt>
+                <Icon name="bars" size={17} />
+                Market
+              </dt>
+              <dd>{active ? state?.session?.settings.symbol : symbol || "—"}</dd>
+            </div>
+            <div>
+              <dt>
+                <Icon name="shield" size={17} />
+                Leverage
+              </dt>
+              <dd>1×</dd>
+            </div>
+            <div>
+              <dt>
+                <Icon name="wallet" size={17} />
+                Session positions
+              </dt>
+              <dd>{observed ? managed.length : "—"}</dd>
+            </div>
+            <div>
+              <dt>
+                <Icon name="users" size={17} />
+                Other wallet positions
+              </dt>
+              <dd>{observed ? other.length : "—"}</dd>
+            </div>
+          </dl>
+          <p className={styles.note}>Other wallet positions stay outside this session.</p>
+          {onPositions ? (
+            <Button variant="secondary" block onClick={onPositions}>
+              <Icon name="target" size={17} />
+              View positions
+            </Button>
+          ) : state?.address ? (
+            <ButtonLink href={walletHref} block>
+              <Icon name="external" size={17} />
+              View wallet positions
+            </ButtonLink>
+          ) : null}
+          {state?.keyExpiresAt && (
+            <p className={styles.expiry}>
+              <Icon name="key" size={15} />
+              Permission until {timestamp(state.keyExpiresAt)}
             </p>
           )}
-          {!state.admissionsEnabled && (
-            <p className={styles.note}>
-              New entries are paused. Existing positions remain tracked.
-            </p>
+          {state?.session?.error && (
+            <p className={styles.error}>{perplExecutionMessage(state.session.error)}</p>
           )}
-        </>
-      )}
-      {execution.error && (
-        <p className={styles.error} role="alert">
-          {execution.error}{" "}
-          <Button
-            size="sm"
-            disabled={execution.busy || execution.preview}
-            onClick={() => void execution.refresh()}
-          >
-            Check status
-          </Button>
-        </p>
-      )}
-    </section>
+        </aside>
+      </div>
+      <PerplCycleHistory execution={execution} compact />
+      {state?.available &&
+        !state.setupRequired &&
+        !active &&
+        state.setupEnabled !== false &&
+        !funding && (
+          <details className={styles.advanced}>
+            <summary>
+              <Icon name="coin" size={18} />
+              <span>
+                Account funding<small>Prepare an additional collateral deposit</small>
+              </span>
+              <Icon name="chevronDown" size={18} />
+            </summary>
+            <Button
+              variant="secondary"
+              disabled={disabled || execution.preview || !state.admissionsEnabled}
+              onClick={() => setFunding(true)}
+            >
+              Add collateral
+            </Button>
+          </details>
+        )}
+    </div>
   );
 }
+
 export function PerplHeaderControls({
   execution,
   canManage,
@@ -333,167 +433,196 @@ export function PerplHeaderControls({
 }) {
   const session = execution.state?.session;
   const disabled = execution.busy || execution.preview || !canManage;
-  if (!session || !["active", "paused", "stopping", "frozen"].includes(session.status)) {
+  if (!session || !sessionRunning(execution.state)) {
     return null;
   }
   return (
     <div className={styles.actions}>
       <Button
+        variant="secondary"
         disabled={disabled || !["active", "paused"].includes(session.status)}
+        aria-busy={execution.pendingAction === "pause" || execution.pendingAction === "resume"}
         onClick={() => void execution.control(session.status === "paused" ? "resume" : "pause")}
       >
-        {session.status === "paused" ? "Resume trading" : "Pause entries"}
+        <Icon name={session.status === "paused" ? "play" : "pause"} size={17} />
+        {execution.pendingAction === "pause"
+          ? "Pausing…"
+          : execution.pendingAction === "resume"
+            ? "Resuming…"
+            : session.status === "paused"
+              ? "Resume trading"
+              : "Pause entries"}
       </Button>
       <Button
+        variant="secondary"
         disabled={disabled || session.status === "stopping"}
+        aria-busy={execution.pendingAction === "stop"}
         onClick={() => void execution.control("stop")}
       >
-        {session.status === "stopping" ? "Closing positions…" : "Stop & close"}
+        <Icon name={session.status === "stopping" ? "clock" : "x"} size={17} />
+        {session.status === "stopping"
+          ? "Closing positions…"
+          : execution.pendingAction === "stop"
+            ? "Stopping…"
+            : "Stop & close"}
       </Button>
     </div>
   );
 }
+
 export function PerplTradingPositions({
   execution,
   canManage,
+  onControls,
 }: {
   execution: PerplExecution;
   canManage: boolean;
+  onControls?: () => void;
 }) {
   const state = execution.state;
-  if (!state?.available || state.setupRequired) {
-    return null;
-  }
-  const positions = state.positions.filter((p) => !p.closed);
+  const observed = accountObserved(state);
+  const positions = state?.positions.filter((p) => !p.closed) ?? [];
   return (
-    <section className={styles.panel} id="perpl-trading-positions" aria-label="Perpl positions">
-      <div className={styles.head}>
-        <h3 className={styles.title}>Open positions · Perpl</h3>
-        <span className={styles.status}>{positions.length} OPEN · TESTNET</span>
-      </div>
-      {positions.length === 0 ? (
-        <p className={styles.note}>No open positions confirmed by Perpl.</p>
-      ) : (
-        <ul className={styles.list}>
-          {positions.map((p) => (
-            <li className={styles.row} key={p.id}>
-              <div className={styles.copy}>
-                <strong>
-                  {p.side.toUpperCase()} {p.symbol} · {p.leverage}×
-                </strong>
-                <span className={styles.note}>
-                  Margin {p.collateralAusd} AUSD · Size {p.size ?? "—"}
-                </span>
-                <span className={styles.note}>
-                  Entry {p.entryPrice ?? "—"} · Mark {p.markPrice ?? "—"}
-                </span>
-              </div>
-              <div className={styles.copy}>
-                <strong>{p.unrealizedPnlAusd ?? "—"} AUSD</strong>
-                <span className={styles.note}>Unrealized P&L</span>
-                {p.managedBySession ? (
-                  <Button
-                    size="sm"
-                    disabled={
-                      !canManage ||
-                      execution.preview ||
-                      execution.busy ||
-                      state.session?.status === "stopping"
-                    }
-                    onClick={() => void execution.control("close")}
-                  >
-                    {state.session?.status === "stopping" ? "Closing…" : "Close position"}
-                  </Button>
-                ) : (
-                  <span className={styles.note}>
-                    Existing position · not managed by this session
-                  </span>
-                )}
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
-      <div className={styles.facts}>
-        <span className={styles.note}>Exchange balance: {state.balanceAusd ?? "—"} AUSD</span>
-        {state.observedAt && (
+    <div className={styles.workspace}>
+      <PerplAccountSummary execution={execution} />
+      <section className={styles.panel} id="perpl-trading-positions" aria-label="Perpl positions">
+        <div className={styles.head}>
+          <h3 className={styles.title}>
+            <Icon name="target" size={21} />
+            Open positions
+          </h3>
           <span className={styles.note}>
-            Updated {new Date(state.observedAt).toISOString().slice(11, 19)} UTC
+            {observed ? `${positions.length} on Perpl` : "Account not observed"}
           </span>
+        </div>
+        {!observed ? (
+          <AccountNotice execution={execution} onControls={onControls} />
+        ) : positions.length === 0 ? (
+          <div className={styles.empty}>
+            <Icon name="target" size={25} />
+            <strong>No open positions confirmed</strong>
+            <p className={styles.note}>
+              Start one cycle from Controls to follow its opening and closing here.
+            </p>
+            {onControls && (
+              <Button variant="secondary" onClick={onControls}>
+                <Icon name="sliders" size={17} />
+                Open Controls
+              </Button>
+            )}
+          </div>
+        ) : (
+          <div className={styles.positionGroups}>
+            {[true, false].map((managed) => {
+              const rows = positions.filter((p) => !!p.managedBySession === managed);
+              return (
+                rows.length > 0 && (
+                  <section key={String(managed)}>
+                    <h4 className={styles.groupTitle}>
+                      <Icon name={managed ? "activity" : "users"} size={17} />
+                      {managed ? "Managed by this session" : "Other wallet positions"}
+                    </h4>
+                    <ul className={styles.positionList}>
+                      {rows.map((position) => (
+                        <li key={position.id} className={styles.position}>
+                          <div className={styles.positionName}>
+                            <MarketAsset symbol={position.symbol} />
+                            <div className={styles.copy}>
+                              <strong>{position.symbol}</strong>
+                              <span className={styles.note}>
+                                {position.side === "long" ? "Long" : "Short"} · {position.leverage}×
+                              </span>
+                            </div>
+                          </div>
+                          <dl className={styles.positionMetrics}>
+                            <div>
+                              <dt>Margin · AUSD</dt>
+                              <dd>{amount(position.collateralAusd)}</dd>
+                            </div>
+                            <div>
+                              <dt>Entry / mark</dt>
+                              <dd>
+                                {amount(position.entryPrice)} / {amount(position.markPrice)}
+                              </dd>
+                            </div>
+                            <div>
+                              <dt>Size</dt>
+                              <dd>{amount(position.size)}</dd>
+                            </div>
+                            <div>
+                              <dt>Unrealized P&L · AUSD</dt>
+                              <dd>{amount(position.unrealizedPnlAusd)}</dd>
+                            </div>
+                          </dl>
+                          {managed ? (
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              disabled={
+                                !canManage ||
+                                execution.preview ||
+                                execution.busy ||
+                                state?.session?.status === "stopping"
+                              }
+                              onClick={() => void execution.control("close")}
+                            >
+                              <Icon
+                                name={state?.session?.status === "stopping" ? "clock" : "x"}
+                                size={15}
+                              />
+                              {state?.session?.status === "stopping"
+                                ? "Closing…"
+                                : "Close position"}
+                            </Button>
+                          ) : (
+                            <span className={styles.note}>
+                              <Icon name="lock" size={14} /> Read only
+                            </span>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
+                )
+              );
+            })}
+          </div>
         )}
-      </div>
-      <PerplTradingRecord execution={execution} compact />
-      {execution.error && (
-        <p className={styles.error} role="alert">
-          {execution.error}
-        </p>
-      )}
-    </section>
+        {state?.observedAt && (
+          <p className={styles.note}>
+            Last account observation{" "}
+            <time dateTime={state.observedAt}>{timestamp(state.observedAt)}</time>
+          </p>
+        )}
+        <ReadNotice execution={execution} />
+      </section>
+      <PerplCycleHistory execution={execution} compact />
+    </div>
   );
 }
 export function PerplTradingRecord({
   execution,
   compact = false,
+  onControls,
 }: {
   execution: PerplExecution;
   compact?: boolean;
+  onControls?: () => void;
 }) {
-  const state = execution.state;
-  if (!state?.available || state.setupRequired) {
-    return null;
-  }
-  const orders = compact ? state.orders.slice(0, 4) : state.orders;
   return (
-    <section
-      className={compact ? styles.copy : styles.panel}
-      id={compact ? "perpl-recent-orders" : "perpl-trading-record"}
-      aria-label="Perpl order history"
-    >
-      <div className={styles.head}>
-        <h3 className={styles.title}>{compact ? "Recent orders" : "Transactions · Perpl"}</h3>
-        <span className={styles.note}>REAL EXECUTIONS · TESTNET</span>
-      </div>
-      {orders.length === 0 ? (
-        <p className={styles.note}>Its submitted orders will appear here.</p>
-      ) : (
-        <ul className={styles.list}>
-          {orders.map((o) => (
-            <li className={styles.row} key={o.id}>
-              <div className={styles.copy}>
-                <strong>
-                  {o.action.replaceAll("_", " ").toUpperCase()} {o.symbol}
-                </strong>
-                <span className={styles.note}>
-                  Request #{o.requestId}
-                  {o.orderId !== null ? ` · Order #${o.orderId}` : ""} ·{" "}
-                  {new Date(o.createdAt).toISOString().slice(11, 19)} UTC
-                </span>
-                <span className={styles.note}>
-                  Filled {o.filledSize ?? "—"} · Price {o.fillPrice ?? "—"} · Fee {o.feeAusd ?? "—"}{" "}
-                  AUSD
-                </span>
-                <TransactionLinks hashes={o.txHashes} preview={execution.preview} />
-              </div>
-              <span className={styles.status}>{orderLabels[o.status]}</span>
-            </li>
-          ))}
-        </ul>
+    <div className={styles.workspace}>
+      {!compact && <PerplAccountSummary execution={execution} />}
+      {!compact && !accountObserved(execution.state) && (
+        <section className={styles.panel}>
+          <AccountNotice execution={execution} onControls={onControls} />
+        </section>
       )}
-      {!compact && state.positions.some((p) => p.closed) && (
-        <ul className={styles.list} aria-label="Closed Perpl positions">
-          {state.positions
-            .filter((p) => p.closed)
-            .map((p) => (
-              <li className={styles.row} key={p.id}>
-                <strong>{p.symbol} · Closed</strong>
-                <span className={styles.note}>
-                  Latest close · Price P&L {p.realizedPnlAusd ?? "—"} AUSD · Fee {p.feeAusd} AUSD ·
-                  Funding {p.fundingAusd ?? "—"} AUSD
-                </span>
-              </li>
-            ))}
-        </ul>
-      )}
-    </section>
+      <PerplCycleHistory
+        execution={execution}
+        compact={compact}
+        onControls={accountObserved(execution.state) ? onControls : undefined}
+      />
+      <ReadNotice execution={execution} />
+    </div>
   );
 }

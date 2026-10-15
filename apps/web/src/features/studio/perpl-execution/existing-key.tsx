@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { Button, Field, Input, Switch } from "@pickler/ui";
+import { ActionButton, Field, Icon, Input, Switch } from "@pickler/ui";
 import type { PerplLiveExistingKeyDto } from "@pickler/api-schema";
 import styles from "./execution.module.css";
 
@@ -8,9 +8,11 @@ export function ExistingPerplKey({
   address,
   disabled,
   connect,
+  busy,
 }: {
   address: string | null;
   disabled: boolean;
+  busy: boolean;
   connect: (input: PerplLiveExistingKeyDto) => Promise<void>;
 }) {
   const [useKeyWallet, setUseKeyWallet] = useState(true);
@@ -23,8 +25,10 @@ export function ExistingPerplKey({
     await connect(input);
   }
   return (
-    <details className={styles.copy}>
-      <summary>Use an existing Perpl key</summary>
+    <details className={styles.copy} open>
+      <summary>
+        <Icon name="key" size={17} /> Use an existing Perpl key
+      </summary>
       <p className={styles.note}>
         Connect your existing Perpl testnet account to this agent. Pickler verifies the wallet from
         your key. This does not deposit funds or start trading.
@@ -57,12 +61,14 @@ export function ExistingPerplKey({
         Pickler verifies the wallet and keeps this connection for up to 24 hours. Perpl can expire
         or revoke the key sooner.
       </p>
-      <Button
+      <ActionButton
+        icon="link"
+        state={busy ? "working" : "ready"}
+        label={busy ? "Connecting account…" : "Connect existing key"}
+        busy={busy}
         disabled={disabled || !apiKey.trim() || !/^(?:0x)?[a-f\d]{64}$/i.test(privateKeyHex.trim())}
         onClick={() => void submit()}
-      >
-        Connect existing key
-      </Button>
+      />
     </details>
   );
 }

@@ -400,3 +400,10 @@
     animation: none;
   }
 }
+
+.status[data-size="lg"] {
+  padding: 10px 16px;
+  font-size: 14px;
+  letter-spacing: 0;
+  text-transform: none;
+}

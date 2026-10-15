@@ -2,7 +2,7 @@
 
 Read [the root instructions](../../AGENTS.md) first. Read the web app's local instructions when changing consumption there. Update this file when components, styling exports, or client boundaries change.
 
-`@pickler/ui` contains product-independent React components and the control system both surfaces share. Current files are `src/brand.tsx`, `src/button.tsx`, `src/chart.tsx`, `src/chip.tsx`, `src/field.tsx`, `src/icon.tsx`, `src/meter.tsx`, `src/segmented.tsx`, `src/select.tsx`, `src/skeleton.tsx`, `src/switch.tsx`, `src/tokens.ts`, `src/index.ts`, and `src/styles.css`. The package exports `BrandMark`, `Button`, `ButtonLink`, `AreaChart`, `CandleChart`, `BarChart`, `Chip`, `ChipLink`, `ChipText`, `Tag`, `Field`, `Input`, `Textarea`, `Icon`, `Meter`, `Select`, `SelectProps`, `Segmented`, `Skeleton`, `Switch`, `TOKEN_MIRROR` (also as `@pickler/ui/tokens`) and the stylesheet `@pickler/ui/styles.css`. The web root layout imports `@pickler/ui/shadcn.css`, which includes that stylesheet. Other consumers may import the original stylesheet directly.
+`@pickler/ui` contains product-independent React components and the control system both surfaces share. Current files are `src/action-button.tsx`, `src/brand.tsx`, `src/button.tsx`, `src/chart.tsx`, `src/chip.tsx`, `src/field.tsx`, `src/icon.tsx`, `src/meter.tsx`, `src/segmented.tsx`, `src/select.tsx`, `src/skeleton.tsx`, `src/switch.tsx`, `src/tokens.ts`, `src/index.ts`, and `src/styles.css`. The package exports `ActionButton`, `ActionButtonState`, `BrandMark`, `Button`, `ButtonLink`, `AreaChart`, `CandleChart`, `BarChart`, `Chip`, `ChipLink`, `ChipText`, `Tag`, `Field`, `Input`, `Textarea`, `Icon`, `Meter`, `Select`, `SelectProps`, `Segmented`, `Skeleton`, `Switch`, `TOKEN_MIRROR` (also as `@pickler/ui/tokens`) and the stylesheet `@pickler/ui/styles.css`. The web root layout imports `@pickler/ui/shadcn.css`, which includes that stylesheet. Other consumers may import the original stylesheet directly.
 
 ## The control system
 
@@ -164,3 +164,13 @@ consumers retain actual timestamps, precision, captions and TradingView attribut
 AreaChart's optional `trend="up" | "down" | "flat"` selects surface win/loss/neutral line and
 fill tokens. Default remains up. Trend updates recolor the persistent series even when the
 observations have not changed; the component does not calculate price movement.
+
+## Action feedback
+
+`ActionButton` composes the product Button with the token purchase feedback: fixed 48px height,
+working ring and sweep, waiting clock, wallet pulse and confirmed check. The consumer supplies
+state, label, hint, icon, busy and native button props. It performs no requests, timers or financial
+logic. Busy and disabled remain separate so consumers can prevent duplicate submissions while
+waiting for authoritative receipts. The stable status/alert regions announce transitions; reduced
+motion disables sweeps, rotation and check drawing. Token purchases and Studio Perpl share this
+presentation; neither integration imports the other's wallet or execution logic.

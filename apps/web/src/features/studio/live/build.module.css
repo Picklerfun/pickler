@@ -714,15 +714,3 @@ li.plugin {
     grid-template-columns: minmax(0, 1fr);
   }
 }
-.paperControls {
-  margin-top: 24px;
-}
-.paperControls > summary {
-  cursor: pointer;
-  color: var(--pk-ink-muted);
-  margin-bottom: 16px;
-}
-.paperControls > summary:focus-visible {
-  outline: 2px solid var(--pk-focus);
-  outline-offset: 4px;
-}

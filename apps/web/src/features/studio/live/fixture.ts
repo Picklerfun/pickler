@@ -989,6 +989,13 @@ export function liveStudioFixture(stage: LiveStage): LiveStaged {
   const warned = stage === "perpl-warnings";
   const markets = board(stage === "perpl-markets" ? sampleSource : perplSource);
   const stagedAgent = agent(stage === "perpl-paused", warned ? 18 : 75.8);
+  if (stage.startsWith("perpl-trading-")) {
+    stagedAgent.config = {
+      ...stagedAgent.config,
+      perpl: { version: 2, network: "testnet", markets: ["NEAR", "BTC", "ETH"] },
+    };
+    stagedAgent.spend = { perCallAusd: 0.06, perDayAusd: 10 };
+  }
   if (stage === "perpl-trading-setup") {
     stagedAgent.config.spend = { perCallAusd: 5, perDayAusd: 20 };
     stagedAgent.spend = { perCallAusd: 5, perDayAusd: 20 };

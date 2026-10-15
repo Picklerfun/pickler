@@ -194,10 +194,17 @@ export const Positions: (props: LiveSectionProps) => ReactElement = ({
   now,
   canManage,
   onWhy,
+  onSection,
 }) => (
   <LiveSection section="positions">
     <div className={styles.run}>
-      <PerplTradingPositions execution={live.execution} canManage={canManage} />
+      {(!live.preview || !!live.execution.state?.available) && (
+        <PerplTradingPositions
+          execution={live.execution}
+          canManage={canManage}
+          onControls={() => onSection("controls")}
+        />
+      )}
       {paperShown(live.record) ? (
         <>
           <PositionCards
@@ -213,14 +220,14 @@ export const Positions: (props: LiveSectionProps) => ReactElement = ({
           />
           <WhatItWatches agent={agent} live={live} />
         </>
-      ) : (
+      ) : live.preview && !live.execution.state?.available ? (
         <FlatPositions
           id="live-positions-open"
           title={live.execution.state?.setupRequired === false ? "Paper positions" : "Open"}
         >
           <WhatItWatches agent={agent} live={live} />
         </FlatPositions>
-      )}
+      ) : null}
     </div>
   </LiveSection>
 );

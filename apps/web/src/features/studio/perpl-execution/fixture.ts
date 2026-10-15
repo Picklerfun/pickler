@@ -4,7 +4,7 @@ import type { PerplLiveStateDto } from "@pickler/api-schema";
 export function perplExecutionFixture(
   mode: "setup" | "ready" | "active" | "closed",
 ): PerplLiveStateDto {
-  const idle = mode === "setup" || mode === "ready";
+  const idle = mode === "setup";
   const time = "2026-10-02T14:30:00.000Z";
   const sessionId = "00000000-0000-4000-8000-000000000101";
   const opening = {
@@ -12,13 +12,13 @@ export function perplExecutionFixture(
     sessionId,
     requestId: 1,
     orderId: 101,
-    symbol: "BTC",
+    symbol: "NEAR",
     action: "open_long" as const,
     status: "filled" as const,
     createdAt: time,
-    filledSize: "0.00005000",
-    fillPrice: "96900.0",
-    feeAusd: "0.001672",
+    filledSize: "0.01000000",
+    fillPrice: "3.60",
+    feeAusd: "0.000018",
     txHashes: [],
     error: null,
   };
@@ -37,24 +37,26 @@ export function perplExecutionFixture(
     },
     keyExpiresAt: mode === "setup" ? null : "2027-01-01T00:00:00.000Z",
     setup: [],
-    session: idle
-      ? null
-      : {
-          id: sessionId,
-          status: mode === "active" ? "active" : "completed",
-          settings: {
-            symbol: "BTC",
-            marginAusd: "5.000000",
-            leverage: 1,
-            cycles: 1,
-            holdSeconds: 60,
+    connection: "key_wallet",
+    session:
+      idle || mode === "ready"
+        ? null
+        : {
+            id: sessionId,
+            status: mode === "active" ? "active" : "completed",
+            settings: {
+              symbol: "NEAR",
+              marginAusd: "0.060000",
+              leverage: 1,
+              cycles: 1,
+              holdSeconds: 30,
+            },
+            completedCycles: mode === "closed" ? 1 : 0,
+            openedAt: time,
+            createdAt: time,
+            error: null,
           },
-          completedCycles: mode === "closed" ? 1 : 0,
-          openedAt: time,
-          createdAt: time,
-          error: null,
-        },
-    balanceAusd: "100.000000",
+    balanceAusd: "10.000000",
     observedAt: time,
     positions: idle
       ? []
@@ -62,20 +64,37 @@ export function perplExecutionFixture(
           {
             id: "8",
             managedBySession: mode === "active",
-            symbol: "BTC",
+            symbol: "NEAR",
             side: "long",
-            closed: mode === "closed",
-            size: "0.00005000",
-            entryPrice: "96900.0",
-            markPrice: "97420.0",
-            exitPrice: mode === "closed" ? "97420.0" : null,
-            collateralAusd: "4.845000",
+            closed: mode !== "active",
+            size: "0.01000000",
+            entryPrice: "3.60",
+            markPrice: "3.61",
+            exitPrice: mode === "closed" ? "3.61" : null,
+            collateralAusd: "0.036000",
             leverage: 1,
-            unrealizedPnlAusd: mode === "active" ? "0.026000" : null,
-            realizedPnlAusd: mode === "closed" ? "0.026000" : null,
+            unrealizedPnlAusd: mode === "active" ? "0.000100" : null,
+            realizedPnlAusd: mode === "closed" ? "0.000100" : null,
             fundingAusd: null,
-            feeAusd: "0.001672",
+            feeAusd: "0.000018",
           },
+          ...["BTC", "ETH", "SOL", "MON", "LIT", "PUMP"].map((symbol, i) => ({
+            id: `existing-${i}`,
+            managedBySession: false,
+            symbol,
+            side: "long" as const,
+            closed: false,
+            size: "0.01",
+            entryPrice: null,
+            markPrice: null,
+            exitPrice: null,
+            collateralAusd: "0.10",
+            leverage: 1,
+            unrealizedPnlAusd: null,
+            realizedPnlAusd: null,
+            fundingAusd: null,
+            feeAusd: "0.000001",
+          })),
         ],
     orders: idle
       ? []
@@ -88,7 +107,8 @@ export function perplExecutionFixture(
               requestId: 2,
               orderId: 102,
               action: "close_long",
-              fillPrice: "97420.0",
+              createdAt: "2026-10-02T14:30:30.000Z",
+              fillPrice: "3.61",
             },
             opening,
           ],
