@@ -15,6 +15,8 @@ const completed = (caughtUp = false) => ({
   kind: "completed",
   calls: 150,
   caughtUp,
+  projection: { launches: 0, trades: 0, graduations: 0, skipped: 0, hasMore: false },
+  positionsProjected: 0,
   outcomes: [{ kind: "applied" as const, fromBlock: 1n, toBlock: 100n, blocks: 100, events: 0 }],
 });
 
@@ -137,3 +139,20 @@ for (const patch of [
     assert.equal(calls, 0);
   });
 }
+
+test("elapsed work budget stops between passes and preserves completed progress", async () => {
+  let elapsed = 0;
+  let calls = 0;
+  const result = await runScheduledTokenIndexing({
+    policy: JSON.stringify(base),
+    now: () => elapsed,
+    runPass: async () => {
+      calls++;
+      elapsed += 45_000;
+      return completed();
+    },
+  });
+  assert.equal(calls, 1);
+  assert.equal(result.passes.length, 1);
+  assert.equal(result.stopReason, "time_limit");
+});

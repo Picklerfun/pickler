@@ -441,3 +441,44 @@ for (const refusal of ["daily quota", "lost lease"] as const) {
     }
   });
 }
+
+test("a killed owner's lease returns busy until expiry then recovers without resetting quota", async (t) => {
+  const f = await tokenFixture(t);
+  const store = new PostgresLaunchIndexStore(f.store.pool);
+  const owner = "11111111-1111-4111-8111-111111111111";
+  await store.pool.query(
+    `INSERT INTO launch.indexer_admission(chain,owner,expires_at,day,requests)
+    VALUES('eip155:10143',$1,clock_timestamp()+interval '180 seconds',to_char(clock_timestamp() AT TIME ZONE 'UTC','YYYY-MM-DD'),12)`,
+    [owner],
+  );
+  let calls = 0;
+  const input = {
+    store,
+    rpc: {
+      async call() {
+        calls++;
+        throw new Error("controlled transport failure");
+      },
+    },
+    launchPolicy: JSON.stringify(uniswapLaunchPolicy()),
+    indexerPolicy: JSON.stringify({
+      version: 1,
+      maxBlocks: 100,
+      rpcRequestsPerPass: 400,
+      rpcRequestsPerDay: 1000,
+      leaseSeconds: 180,
+      maxCurvesPerPass: 1,
+    }),
+  };
+  assert.deepEqual(await runTokenIndexer(input), { kind: "busy" });
+  assert.equal(calls, 0);
+  await store.pool.query(
+    "UPDATE launch.indexer_admission SET expires_at=clock_timestamp()-interval '1 second'",
+  );
+  await assert.rejects(runTokenIndexer(input), /controlled transport failure/);
+  assert.equal(calls, 1);
+  const lease = (await store.pool.query("SELECT owner,requests FROM launch.indexer_admission"))
+    .rows[0];
+  assert.equal(lease.owner, null);
+  assert.equal(lease.requests, 13);
+});

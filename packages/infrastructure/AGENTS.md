@@ -916,3 +916,19 @@ original agent custody address as an identity fence and still resolves owner/wor
 from persisted rows. An account-scoped advisory lock and global duplicate check allow a connected
 Perpl account on only one agent, preventing request-ID collisions across aggregates. No wallet
 address comes from the caller; changing account identity cannot move existing history.
+
+## Scheduled projection memory bounds
+
+`runTokenIndexer` uses `PostgresLaunchProjector.project(..., { pendingOnly: true })`: a bounded
+101-row lookahead, at most 100 effects, and target-row existence as durable progress. It retries
+unfinished effects after crashes without a global height watermark (streams can backfill out of
+order). Missing dependencies defer trades; a post-write lookahead detects newly ready work.
+Explicit `project` rebuild calls retain historical replay semantics. Incremental cleanup restores
+legacy graduation interpretation across reorgs; canonical V4/Kuru snapshots retain their existing
+reconciliation rules. No migration or fabricated cursor is used.
+V4/Kuru pending snapshot reads filter for an attributed active token before LIMIT 100, so foreign
+or deferred history cannot occupy the bounded page ahead of ready work. They retain per-snapshot commits. The internal
+`launch/projection-locks.ts` locks only canonical blocks referenced by stored graduations through
+a server-side aggregate, returning one scalar, never all historical hashes. Existing ownership
+fences and event/block finality checks remain required. See
+[the CPU/memory diagnosis](../../docs/market/indexer-cpu-memory-20261015.md).
