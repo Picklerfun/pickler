@@ -37,6 +37,7 @@ const {
 void _leaseOwner;
 void _leaseExpiresAt;
 const DAY = 86_400_000;
+const MAINTENANCE_BATCH = 50;
 type Database = NodePgDatabase<typeof schema>;
 type Transaction = Parameters<Parameters<Database["transaction"]>[0]>[0];
 const agentScope = (scope: Scope) =>
@@ -643,36 +644,38 @@ export class PostgresResearchStore implements ResearchRepository {
   }
 
   async recover(_now: number): Promise<void> {
-    await this.db.execute(
-      sql`UPDATE pickler.paper_orders SET status = 'interrupted', reason = 'INTERRUPTED', finished_at = ${this.leaseNow()}, lease_owner = NULL, lease_expires_at = NULL WHERE status = 'pending' AND lease_expires_at <= ${this.leaseNow()}`,
-    );
+    // Each category commits independently. Durable terminal states are the continuation cursor;
+    // another reconciliation handles the remainder without replaying interrupted provider work.
+    await this.db.execute(sql`
+      WITH expired AS (
+        SELECT id FROM pickler.paper_orders
+        WHERE status = 'pending' AND lease_expires_at <= ${this.leaseNow()}
+        ORDER BY lease_expires_at, id
+        LIMIT ${MAINTENANCE_BATCH} FOR UPDATE SKIP LOCKED
+      )
+      UPDATE pickler.paper_orders p
+      SET status = 'interrupted', reason = 'INTERRUPTED', finished_at = ${this.leaseNow()},
+          lease_owner = NULL, lease_expires_at = NULL
+      FROM expired
+      WHERE p.id = expired.id AND p.status = 'pending'
+        AND p.lease_expires_at <= ${this.leaseNow()}
+    `);
 
     void _now; // The database clock, not the caller clock, owns lease expiration.
-    await this.db.transaction(async (tx) => {
-      const expired = await tx
-        .select({ id: runs.id })
-        .from(runs)
-        .where(and(eq(runs.status, "running"), lte(runs.leaseExpiresAt, this.leaseNow())))
-        .for("update", { skipLocked: true });
-      for (const run of expired) {
-        await tx
-          .update(runs)
-          .set({
-            status: "failed",
-            error: "INTERRUPTED",
-            finishedAt: this.leaseNow(),
-            leaseOwner: null,
-            leaseExpiresAt: null,
-          })
-          .where(
-            and(
-              eq(runs.id, run.id),
-              eq(runs.status, "running"),
-              lte(runs.leaseExpiresAt, this.leaseNow()),
-            ),
-          );
-      }
-    });
+    await this.db.execute(sql`
+      WITH expired AS (
+        SELECT id FROM pickler.runs
+        WHERE status = 'running' AND lease_expires_at <= ${this.leaseNow()}
+        ORDER BY lease_expires_at, id
+        LIMIT ${MAINTENANCE_BATCH} FOR UPDATE SKIP LOCKED
+      )
+      UPDATE pickler.runs r
+      SET status = 'failed', error = 'INTERRUPTED', finished_at = ${this.leaseNow()},
+          lease_owner = NULL, lease_expires_at = NULL
+      FROM expired
+      WHERE r.id = expired.id AND r.status = 'running'
+        AND r.lease_expires_at <= ${this.leaseNow()}
+    `);
   }
 
   async tick(now: number): Promise<void> {
@@ -687,7 +690,8 @@ export class PostgresResearchStore implements ResearchRepository {
             lte(agents.nextDueAt, now),
           ),
         )
-        .orderBy(agents.tenantId, agents.id)
+        .orderBy(asc(agents.nextDueAt), asc(agents.tenantId), asc(agents.id))
+        .limit(MAINTENANCE_BATCH)
         .for("update", { skipLocked: true });
       for (const agent of due) {
         const scope = { tenantId: agent.tenantId, agentId: agent.id };

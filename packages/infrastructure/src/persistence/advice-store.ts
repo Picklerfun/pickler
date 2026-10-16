@@ -292,7 +292,10 @@ export class PostgresAdviceStore implements AdviceExecutionRepository {
       ).rows[0];
       const jobs = (
         await db.query(
-          `SELECT ${COLUMNS} FROM pickler.advice_jobs WHERE status='queued' ORDER BY created_at LIMIT 50 FOR UPDATE SKIP LOCKED`,
+          `SELECT ${COLUMNS} FROM pickler.advice_jobs
+          WHERE status='queued' AND created_at+600000 > $1
+          ORDER BY created_at,id LIMIT 50 FOR UPDATE SKIP LOCKED`,
+          [at],
         )
       ).rows as AdviceJob[];
       for (const job of jobs) {
@@ -472,20 +475,29 @@ export class PostgresAdviceStore implements AdviceExecutionRepository {
     });
   }
   private async recoverIn(db: PoolClient, at: number) {
-    const expired = (
-      await db.query(
-        "SELECT id,status FROM pickler.advice_jobs WHERE (status='queued' AND created_at+600000 <= $1) OR (status='running' AND (lease_expires_at <= $1 OR started_at+180000 <= $1)) FOR UPDATE",
-        [at],
+    // Fail at most 50 jobs and release only their unstarted calls in the same statement.
+    await db.query(
+      `WITH expired AS (
+        SELECT id, status FROM pickler.advice_jobs
+        WHERE (status='queued' AND created_at+600000 <= $1)
+          OR (status='running' AND (lease_expires_at <= $1 OR started_at+180000 <= $1))
+        ORDER BY created_at, id
+        LIMIT 50 FOR UPDATE SKIP LOCKED
+      ), failed AS (
+        UPDATE pickler.advice_jobs j
+        SET status='failed',
+          error=CASE WHEN expired.status='queued' THEN 'ANALYSIS_EXPIRED' ELSE 'ANALYSIS_INTERRUPTED' END,
+          finished_at=$1, lease_owner=NULL, lease_expires_at=NULL
+        FROM expired
+        WHERE j.id=expired.id AND j.status=expired.status
+          AND ((j.status='queued' AND j.created_at+600000 <= $1)
+            OR (j.status='running' AND (j.lease_expires_at <= $1 OR j.started_at+180000 <= $1)))
+        RETURNING j.id
       )
-    ).rows;
-    for (const row of expired) {
-      await this.fail(
-        db,
-        row.id,
-        row.status === "queued" ? "ANALYSIS_EXPIRED" : "ANALYSIS_INTERRUPTED",
-        at,
-      );
-    }
+      UPDATE pickler.advice_calls c SET status='released'
+      FROM failed WHERE c.job_id=failed.id AND c.status='reserved'`,
+      [at],
+    );
     return Boolean(
       (await db.query("SELECT 1 FROM pickler.advice_jobs WHERE status='queued' LIMIT 1")).rowCount,
     );

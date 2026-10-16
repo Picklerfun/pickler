@@ -94,6 +94,22 @@ skipping older missing migrations. Use it from both the operator command and iso
 do not substitute the timestamp-only migrator. Unknown histories fail closed. See
 [the integration guide](../../docs/frontend-integration.md) before upgrading an existing database.
 
+## Bounded research maintenance
+
+Research scheduling handles at most 50 due agents per `tick`, ordered by next due time then
+scope and locked with `SKIP LOCKED`. Existing schedule request identities and next-occurrence
+updates commit with that batch. Each research recovery call interrupts at most 50 expired runs
+and 50 expired paper reservations through separate atomic set-based statements. It uses the
+database lease clock, rechecks state/expiration and preserves partial evidence.
+Preview recovery fails at most 50 expired leases and deletes at most 50 retention-eligible
+parents per call, preserving adoption rechecks and the existing 30-day adopted retention.
+Advice recovery atomically fails at most 50 expired jobs and releases only their reserved calls;
+started/settled costs remain unchanged. Advice claims exclude expired queued jobs before their
+existing 50-candidate limit, so unfinished expiry cleanup cannot start expired provider work.
+`advice.recover()` still reports queued work, not a maintenance continuation flag. These methods
+never drain backlogs in loops or create additional wakeup chains; durable row states/next-due
+markers carry progress to the next existing reconciliation. Public ports and schemas are unchanged.
+
 ## Unified studio persistence
 
 `src/studio` implements workspace/runtime identity links and the PostgreSQL monetary budget ledger. `src/persistence/console-schema.ts` defines private Drizzle tables (the file keeps its old name; the tables it declares are not renamed). Do not initialize lab data from deployed composition. Legacy budget authority requires verified reconciliation, never automatic hydration from a potentially stale projection. The explicit `research-access` command enables or revokes operator access; it does not call providers. See ../../docs/cloudflare-unification.md.
