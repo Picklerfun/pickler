@@ -83,6 +83,29 @@ export const perplTradingState = async (agentId: string, signal?: AbortSignal) =
     await studioApi(`/agents/${encodeURIComponent(agentId)}/perpl`, signal ? { signal } : {}),
   );
 };
+export async function perplTradingHistory(
+  agentId: string,
+  kind: "orders" | "setup" | "sessions",
+  before?: string,
+  signal?: AbortSignal,
+) {
+  const { perplLiveHistorySchema } = await import("@pickler/api-schema");
+  const query = new URLSearchParams({ kind });
+  if (before !== undefined) {
+    query.set("before", before);
+  }
+  const result = perplLiveHistorySchema.parse(
+    await studioApi(
+      `/agents/${encodeURIComponent(agentId)}/perpl/history?${query}`,
+      signal ? { signal } : {},
+    ),
+  );
+  if (result.kind !== kind) {
+    throw new StudioError("INVALID_RESPONSE", "Unexpected history category");
+  }
+  return result;
+}
+
 export const connectExistingPerplKey = async (
   agentId: string,
   input: import("@pickler/api-schema").PerplLiveExistingKeyDto,
