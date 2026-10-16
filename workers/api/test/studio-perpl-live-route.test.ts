@@ -111,4 +111,17 @@ test("owner-only Perpl routes preserve JWT, strict inputs and no-store", async (
     body: JSON.stringify(input),
   });
   assert.equal(calls, 2);
+  const history = await app.request(`/agents/${agent}/perpl/history?kind=orders`, { headers });
+  assert.equal(history.status, 409);
+  assert.equal(calls, 3);
+  assert.match(history.headers.get("Cache-Control")!, /private.*no-store/);
+  const badCursor = await app.request(`/agents/${agent}/perpl/history?kind=orders&before=-1`, {
+    headers,
+  });
+  assert.equal(badCursor.status, 400);
+  assert.equal(calls, 3);
+  await app.request(`/agents/${agent}/perpl/history?kind=setup`, {
+    headers: { ...headers, Authorization: "Bearer other" },
+  });
+  assert.equal(calls, 3);
 });

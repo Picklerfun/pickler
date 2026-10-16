@@ -8,6 +8,8 @@ import type {
   PerplLiveAuthority,
   PerplLiveDocument,
   PerplLiveSetup,
+  PerplLiveSession,
+  PerplLiveOrder,
 } from "@pickler/trading/perpl-live";
 
 export function perplDecimal(value: string | number | bigint, decimals = 6) {
@@ -28,6 +30,47 @@ export function perplSetupDto(setup: PerplLiveSetup): PerplLiveSetupDto {
     txHash: setup.txHash,
     error: setup.error,
   });
+}
+export function perplSessionDto(session: PerplLiveSession) {
+  return {
+    id: session.id,
+    status: session.status,
+    settings: {
+      symbol: session.settings.symbol,
+      marginAusd: perplDecimal(session.settings.marginMicros),
+      leverage: session.settings.leverage,
+      cycles: session.settings.cycles,
+      holdSeconds: session.settings.holdSeconds,
+    },
+    completedCycles: session.completedCycles,
+    openedAt: session.openedAt ? new Date(session.openedAt).toISOString() : null,
+    createdAt: new Date(session.createdAt).toISOString(),
+    error: session.error,
+  };
+}
+export function perplOrderDto(o: PerplLiveOrder) {
+  const market = o.market;
+  const action = (["open_long", "open_short", "close_long", "close_short"] as const)[
+    o.request.t - 1
+  ]!;
+  return {
+    id: o.id,
+    sessionId: o.sessionId,
+    requestId: o.request.rq,
+    orderId: o.evidence?.orderId ?? null,
+    symbol: market?.symbol ?? String(o.request.mkt),
+    action,
+    status: o.status,
+    createdAt: new Date(o.createdAt).toISOString(),
+    filledSize: o.evidence ? perplDecimal(o.evidence.filledSize, market?.sizeDecimals ?? 0) : null,
+    fillPrice:
+      o.evidence && o.evidence.filledSize > 0
+        ? perplDecimal(o.evidence.fillPrice, market?.priceDecimals ?? 0)
+        : null,
+    feeAusd: o.evidence ? perplDecimal(o.evidence.feeMicros) : null,
+    txHashes: o.verifiedTxHashes,
+    error: o.error,
+  };
 }
 export function perplStateDto(state: {
   authority: PerplLiveAuthority;
@@ -113,35 +156,6 @@ export function perplStateDto(state: {
           feeAusd: perplDecimal(p.feeMicros),
         };
       }) ?? [],
-    orders:
-      d?.orders
-        .slice(-100)
-        .reverse()
-        .map((o) => {
-          const market = o.market;
-          const action = (["open_long", "open_short", "close_long", "close_short"] as const)[
-            o.request.t - 1
-          ]!;
-          return {
-            id: o.id,
-            sessionId: o.sessionId,
-            requestId: o.request.rq,
-            orderId: o.evidence?.orderId ?? null,
-            symbol: market?.symbol ?? String(o.request.mkt),
-            action,
-            status: o.status,
-            createdAt: new Date(o.createdAt).toISOString(),
-            filledSize: o.evidence
-              ? perplDecimal(o.evidence.filledSize, market?.sizeDecimals ?? 0)
-              : null,
-            fillPrice:
-              o.evidence && o.evidence.filledSize > 0
-                ? perplDecimal(o.evidence.fillPrice, market?.priceDecimals ?? 0)
-                : null,
-            feeAusd: o.evidence ? perplDecimal(o.evidence.feeMicros) : null,
-            txHashes: o.verifiedTxHashes,
-            error: o.error,
-          };
-        }) ?? [],
+    orders: d?.orders.slice(-100).reverse().map(perplOrderDto) ?? [],
   });
 }

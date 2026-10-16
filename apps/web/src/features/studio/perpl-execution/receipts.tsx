@@ -1,4 +1,5 @@
 "use client";
+import { PerplHistoryArchive } from "./history";
 import { Button, Icon, Tag } from "@pickler/ui";
 import { ChainReference } from "@/features/tokens/chain-reference";
 import type { PerplExecution } from "./use-execution";
@@ -150,6 +151,9 @@ export function PerplCycleHistory({
             );
           })}
         </div>
+      )}
+      {!compact && execution.historyScope && (
+        <PerplHistoryArchive key={execution.historyScope} agentId={execution.historyScope} />
       )}
       {!compact && state?.positions.some((position) => position.closed) && (
         <details className={styles.orderDetails}>

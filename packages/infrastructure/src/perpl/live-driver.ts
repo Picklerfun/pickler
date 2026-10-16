@@ -156,6 +156,10 @@ export function createPerplLiveDriver(config: {
   forwarder?: SignedActivityForwarder;
   reader?: TurnkeyReader;
   transport?: typeof fetch;
+  requestMembership?: (
+    scope: PerplLiveAuthority["scope"],
+    requests: number[],
+  ) => Promise<{ requestId: number; orderType: number; sessionId: string }[]>;
 }): PerplLiveDriver {
   const policy = perplLivePolicySchema.parse(config.policy);
   const vault = createPerplKeyVault(config.encryptionKey);
@@ -1035,10 +1039,22 @@ export function createPerplLiveDriver(config: {
       const orders = z
         .object({ d: z.array(venueOrder).max(1000) })
         .parse(await http.request("/v1/trading/order-history?count=100", { document }));
-      const owned = document.orders.map((o) => o.request.rq);
+
       const outstanding = z
         .object({ d: z.array(venueOrder).max(1000) })
         .parse(await http.request("/v1/trading/orders", { document }));
+      const membership = config.requestMembership
+        ? await config.requestMembership(authority.scope, [
+            ...new Set(
+              [...orders.d, ...outstanding.d].map((o) => o.rq).concat(history.d.map((p) => p.rq)),
+            ),
+          ])
+        : document.orders.map((o) => ({
+            requestId: o.request.rq,
+            orderType: o.request.t,
+            sessionId: o.sessionId,
+          }));
+      const owned = membership.map((o) => o.requestId);
       const unmanagedOrders = outstanding.d.some(
         (o) =>
           o.acc === account.id && ctx.markets.some((m) => m.id === o.mkt) && !owned.includes(o.rq),
@@ -1050,7 +1066,7 @@ export function createPerplLiveDriver(config: {
         }
       }
       const openingRequests = new Set(
-        document.orders.filter((item) => item.request.t <= 2).map((item) => item.request.rq),
+        membership.filter((item) => item.orderType <= 2).map((item) => item.requestId),
       );
       const positions = new Map<number, PerplLivePosition>();
       for (const p of live.d.filter((p) => p.acc === account.id)) {

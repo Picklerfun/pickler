@@ -13,8 +13,8 @@ import { createPerplLiveService } from "@pickler/trading/perpl-live";
 import { PilotError, InvalidAccessTokenError } from "@pickler/core";
 import * as dto from "@pickler/api-schema";
 import { z } from "zod";
-import type { Env } from "./index";
-import { perplSetupDto, perplStateDto } from "./perpl-dto";
+import type { Env, TradingWakeup } from "./index";
+import { perplSetupDto, perplStateDto, perplOrderDto, perplSessionDto } from "./perpl-dto";
 
 const scopeSchema = z
   .object({ userId: z.string().uuid(), productAgentId: z.string().uuid() })
@@ -55,6 +55,7 @@ export function composePerplTrading(env: Env) {
       driver = createPerplLiveDriver({
         policy,
         encryptionKey: env.PERPL_KEY_ENCRYPTION_KEY,
+        requestMembership: (scope, requests) => repository.requestMembership(scope, requests),
         ...(forwarder && reader ? { forwarder, reader } : {}),
       });
     }
@@ -112,6 +113,21 @@ export async function perplTradingRequest(
     }
     instance = runtime(env);
     const path = new URL(request.url).pathname;
+    if (path === "/perpl/history") {
+      const input = dto.perplLiveHistoryQuerySchema.parse(body.input);
+      const page = await instance.repository.history(body.scope, input.kind, input.before);
+      const items =
+        input.kind === "orders"
+          ? page.items.map((item) => perplOrderDto(item as Parameters<typeof perplOrderDto>[0]))
+          : input.kind === "setup"
+            ? page.items.map((item) => perplSetupDto(item as Parameters<typeof perplSetupDto>[0]))
+            : page.items.map((item) =>
+                perplSessionDto(item as Parameters<typeof perplSessionDto>[0]),
+              );
+      return Response.json(
+        dto.perplLiveHistorySchema.parse({ kind: input.kind, items, nextCursor: page.nextCursor }),
+      );
+    }
     if (path === "/perpl/state") {
       const state = instance.service
         ? await instance.service.state(body.scope)
@@ -146,7 +162,7 @@ export async function perplTradingRequest(
       const input = dto.perplLiveConfirmSchema.parse(body.input);
       const setup = await instance.service.confirmSetup(body.scope, input.setupId, input.signed);
       try {
-        await env.TRADING_QUEUE.send({ kind: "trading-wakeup" });
+        await flushPerplWakeups(env, instance.repository);
       } catch {
         console.error("Perpl setup awaits Cron reconciliation");
       }
@@ -174,7 +190,7 @@ export async function perplTradingRequest(
       return Response.json({ error: "NOT_FOUND" }, { status: 404 });
     }
     try {
-      await env.TRADING_QUEUE.send({ kind: "trading-wakeup" });
+      await flushPerplWakeups(env, instance.repository);
     } catch {
       console.error("Perpl notification awaits Cron reconciliation");
     }
@@ -206,10 +222,42 @@ export async function perplTradingRequest(
     await instance?.close();
   }
 }
-export async function tickPerplTrading(env: Env, runtime = composePerplTrading) {
+/** Reserve before enqueue. Expired reservations are redriven by the existing Cron sweep. */
+export async function flushPerplWakeups(
+  env: Env,
+  repository: ReturnType<typeof composePerplTrading>["repository"],
+) {
+  const owner = crypto.randomUUID();
+  for (const reservation of await repository.reserveWakeups(owner)) {
+    await env.TRADING_QUEUE.send(
+      { kind: "perpl-wakeup", scope: reservation.scope, generation: reservation.generation, owner },
+      {
+        delaySeconds: Math.max(
+          0,
+          Math.min(43200, Math.ceil((reservation.dueAt - Date.now()) / 1000)),
+        ),
+      },
+    );
+    await repository.acknowledgeWakeup(reservation.scope, owner, reservation.generation);
+  }
+}
+export async function tickPerplTrading(
+  env: Env,
+  runtime = composePerplTrading,
+  message?: Extract<TradingWakeup, { kind: "perpl-wakeup" }>,
+) {
   const instance = runtime(env);
   try {
-    return (await instance.service?.tickDue()) ?? false;
+    if (message?.scope && message.owner && Number.isSafeInteger(message.generation)) {
+      if (
+        await instance.repository.claimWakeup(message.scope, message.owner, message.generation!)
+      ) {
+        await instance.service?.tick(message.scope);
+      }
+    } else {
+      await instance.service?.tickDue();
+    }
+    await flushPerplWakeups(env, instance.repository);
   } finally {
     await instance.close();
   }

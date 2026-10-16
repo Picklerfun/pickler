@@ -169,6 +169,7 @@ export function usePerplExecution(
     }
   }
   return {
+    historyScope: preview ? undefined : agentId,
     state,
     error: error || readError,
     actionError: error,
@@ -250,4 +251,6 @@ export function usePerplExecution(
       }),
   };
 }
-export type PerplExecution = ReturnType<typeof usePerplExecution>;
+export type PerplExecution = Omit<ReturnType<typeof usePerplExecution>, "historyScope"> & {
+  historyScope?: string | undefined;
+};

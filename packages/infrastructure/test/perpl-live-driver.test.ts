@@ -16,6 +16,7 @@ const owner = privateKeyToAccount(`0x${"0".repeat(62)}01`);
 async function fixture(
   maxFeePerGasWei = "100",
   proxy: "none" | "reviewed" | "unreviewed" = "none",
+  requestMembership?: Parameters<typeof createPerplLiveDriver>[0]["requestMembership"],
 ) {
   const context = JSON.parse(
     await readFile(
@@ -114,6 +115,7 @@ async function fixture(
     },
     encryptionKey: "11".repeat(32),
     transport,
+    ...(requestMembership ? { requestMembership } : {}),
     forwarder: {
       async forward() {
         forwards++;
@@ -485,8 +487,12 @@ test("existing key import rejects expired keys and unreviewed proxies before per
   assert.equal(calls, 0);
 });
 
-test("venue history normalizes bare transaction hashes before receipt verification", async () => {
-  const f = await fixture();
+test("venue history uses indexed archived ownership and normalizes bare hashes before verification", async () => {
+  const lookups: number[][] = [];
+  const f = await fixture("100", "none", async (_scope, requests) => {
+    lookups.push(requests);
+    return [{ requestId: 9, orderType: 1, sessionId: "archived-session" }];
+  });
   const rawHash = "AB".repeat(32);
   const order = {
     lv: 100,
@@ -503,28 +509,7 @@ test("venue history normalizes bare transaction hashes before receipt verificati
     at: { b: 100, txid: rawHash },
     c: {},
   };
-  f.document.orders.push({
-    id: "controlled-order",
-    sessionId: "controlled-session",
-    market: {
-      id: 16,
-      symbol: "BTC",
-      mark: 1000000,
-      priceDecimals: 1,
-      sizeDecimals: 5,
-      maxLeverage: 15,
-      maxSlippageBps: 10,
-      ttlBlocks: 20,
-      takerFeeMicros: 345,
-    },
-    request: { rq: 9, acc: 7, mkt: 16, t: 1, p: 0, s: 1, fl: 4, ms: 10, lv: 100, lb: 120 },
-    status: "accepted",
-    createdAt: 1,
-    submittedAt: 1,
-    evidence: null,
-    verifiedTxHashes: [],
-    error: null,
-  });
+  assert.equal(f.document.orders.length, 0);
   const current = {
     pid: 42,
     rq: 0,
@@ -553,6 +538,7 @@ test("venue history normalizes bare transaction hashes before receipt verificati
     { apiKey: importedToken, privateKeyHex: importedSeed },
     Date.now() + 86400000,
   );
+  assert.deepEqual(lookups, [[9]]);
   assert.deepEqual(connected.snapshot.orders[0]!.txHashes, ["0x" + rawHash.toLowerCase()]);
   assert.equal(connected.snapshot.positions[0]!.requestId, 9);
   assert.equal(connected.snapshot.positions[0]!.size, 3);

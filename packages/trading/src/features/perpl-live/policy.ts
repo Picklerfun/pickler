@@ -93,6 +93,17 @@ export function isPerplSessionPosition(
   session: PerplLiveSession,
   position: PerplLivePosition,
 ) {
+  const facts = document.facts?.session;
+  if (facts?.id === session.id) {
+    return (
+      !position.closed &&
+      Number.isSafeInteger(facts.remaining) &&
+      facts.remaining > 0 &&
+      position.size === facts.remaining &&
+      position.leverage === facts.openingLeverage &&
+      facts.filledRequestIds.includes(position.requestId)
+    );
+  }
   const ownOrders = document.orders.filter((order) => order.sessionId === session.id);
   const opening = [...ownOrders]
     .reverse()

@@ -246,3 +246,17 @@ complete flag allows existing test adapters; real legacy storage returns false u
 
 Product mutation views expose optional changes (changed positions/attempts/new movements),
 separately from open-only/pending-only execution arrays. Duplicate operations have no new deltas.
+
+Perpl live persistence exposes explicit business operations in `features/perpl-live/operations.ts`
+(start/control, setup, credential connection, lease, immutable request reservation and fenced
+submission/result). `PerplLiveFacts` carries invocation-only SQL aggregates and indexed ownership
+facts; it never enters compact persistence or public DTOs. Keep its budget predicates identical to
+the legacy full-history rules. Unknown orders cannot be resent, and net-filled provenance must
+match quantity, leverage and request membership before closing a position. History is a separate
+100-entry cursor port; operating work must not materialize complete account histories.
+
+On takeover of an expired/unowned Perpl lease, `prepared` intents are definitely unsent because
+`beginDispatch` changes status before provider I/O and accepts only `prepared`. Recovery cancels
+unsent openings and freezes entries. Unsent reductions retain a durable required-exit marker;
+only a fresh snapshot/lease can reserve a new monotonic request for the owned remaining position.
+Dispatching/unknown records remain ambiguous and cannot begin dispatch again.

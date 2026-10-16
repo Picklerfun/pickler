@@ -352,3 +352,8 @@ Catalogue endpoints return items/nextCursor pages. Execution read schemas separa
 ## Bounded Paper record
 
 Paper positions include the next closed-history cursor. `perpsClosedPositionsPageSchema` carries at most 100 closed positions and a stable opaque next cursor. Record projection metadata exposes revision, observation time and completeness; consumers must not present rebuilding figures as final. The chart is bounded to thirty days of hourly samples plus the observed point.
+
+Perpl live history uses `perplLiveHistoryQuerySchema` (`kind`, optional `before`) and the strict
+`perplLiveHistorySchema` discriminated response. Each page contains at most 100 public orders,
+sessions or setup entries and a nullable next cursor. Existing state retains its last-100 shape;
+private credentials, lease tokens, preparation and attribution are never history DTO fields.
