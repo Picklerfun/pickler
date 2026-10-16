@@ -265,3 +265,10 @@ export * from "./launch/public-trading.js";
 export { PerplDashboardGateway, PerplDashboardError } from "./perpl/dashboard.js";
 
 export { PostgresExecutionReads } from "./persistence/execution-reads.js";
+
+export { PaperFundingEpochs } from "./persistence/paper-funding-epochs.js";
+
+export {
+  createPaperFundingAnchor,
+  type PaperFundingAnchor,
+} from "./persistence/paper-funding-anchor.js";

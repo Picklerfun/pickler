@@ -10,13 +10,15 @@ import {
   PostgresCustodyStore,
   PostgresPerpsOwnerStore,
   PostgresPerpsPaperStore,
+  PaperFundingEpochs,
   PostgresPerpsRuntimeStore,
   PostgresResearchStore,
   createAusdBalanceReader,
+  createPaperFundingAnchor,
   createPerplMarketBoard,
   type DatabaseConnectionOptions,
 } from "@pickler/infrastructure";
-import type { PerpsPaperMark } from "@pickler/trading/perps";
+import type { PerpsPaperMark, PerpsPaperScope } from "@pickler/trading/perps";
 import type { PerpsBackground } from "../workers/perps.js";
 import type { PerpsActionsBackground } from "../workers/perps-actions.js";
 import { perpsFrame, type PerpsMarks } from "./perps-check.js";
@@ -95,7 +97,7 @@ export function createPerpsRuntime(
   };
   const marks = boardMarks();
   const exitData = new PerplMarketData({ schedule, sessionLimit: PERPL_CHECK_SESSION_LIMIT });
-  return {
+  const runtime: PerpsBackground & PerpsActionsBackground = {
     store,
     paper,
     bindPaper(scope, version, holder, signal) {
@@ -144,6 +146,73 @@ export function createPerpsRuntime(
         },
       );
     },
+    async auditFunding(signal) {
+      const next = await research.pool
+        .query(`SELECT a.id,a.tenant_id AS "tenantId",a.agent_id AS "agentId",a.session_id AS "sessionId",a.network
+        FROM pickler.perps_paper_accounts a JOIN pickler.paper_storage s ON s.account_id=a.id
+        WHERE a.session_id='product' AND s.mode='operational'
+          AND a.document->>'fundingDisputed' IS DISTINCT FROM 'true'
+          AND NOT EXISTS(SELECT 1 FROM pickler.paper_funding_epochs e WHERE e.account_id=a.id AND e.owner IS NOT NULL AND e.expires_at>floor(extract(epoch FROM clock_timestamp())*1000))
+          AND (s.coverage_required>s.coverage_complete
+            OR EXISTS(SELECT 1 FROM pickler.paper_funding_epochs e WHERE e.account_id=a.id AND e.status IN ('pending','running'))
+            OR NOT EXISTS(SELECT 1 FROM pickler.paper_funding_epochs e WHERE e.account_id=a.id AND e.status='committed' AND e.committed_at>floor(extract(epoch FROM clock_timestamp())*1000)-86400000))
+          AND EXISTS(SELECT 1 FROM pickler.perps_paper_positions p WHERE p.account_id=a.id AND p.closed_at IS NOT NULL)
+        ORDER BY s.audit_at,a.id LIMIT 1`);
+      const scope = next.rows[0] as PerpsPaperScope | undefined;
+      if (!scope || !runtime.funding) {
+        return;
+      }
+      await research.pool.query(
+        "UPDATE pickler.paper_storage SET audit_at=floor(extract(epoch FROM clock_timestamp())*1000) WHERE account_id=$1",
+        [next.rows[0].id],
+      );
+      let requests = 0;
+      const reserve = (count: number) => {
+        if (requests + count > PERPL_CHECK_SESSION_LIMIT) {
+          throw new PilotError(
+            "PERPL_SESSION_LIMIT",
+            "Historical audit reached its public request budget",
+          );
+        }
+        requests += count;
+      };
+      const deadline = AbortSignal.any([signal, AbortSignal.timeout(20000)]);
+      const verify = createPaperFundingAnchor({
+        chainId: scope.network === "testnet" ? 10143 : 143,
+        ...(env.MONAD_RPC_URL ? { rpcUrl: env.MONAD_RPC_URL } : {}),
+        signal: deadline,
+        beforeRpc: reserve,
+      });
+      await new PaperFundingEpochs(research.pool).pass(
+        scope,
+        async (position, from, to) => {
+          const data = new PerplMarketData({
+            schedule,
+            sessionLimit: PERPL_CHECK_SESSION_LIMIT,
+            ...(position.market ? { positionMarkets: [position.market] } : {}),
+            transport: async (input, init) => {
+              reserve(1);
+              return fetch(input, init);
+            },
+          });
+          return data.funding(
+            scope.network,
+            {
+              symbol: position.symbol,
+              from: Math.max(0, from - (position.market?.fundingIntervalSeconds ?? 0) * 1000),
+              to,
+            },
+            {
+              signal: deadline,
+              guard: async () => {
+                deadline.throwIfAborted();
+              },
+            },
+          );
+        },
+        verify,
+      );
+    },
     async check(check, holder, signal) {
       if (check.trigger !== "hourly" && check.trigger !== "manual") {
         throw new PilotError("INVALID_INPUT", "Only hourly and manual checks run");
@@ -163,4 +232,5 @@ export function createPerpsRuntime(
     owner: new PostgresPerpsOwnerStore(research.pool),
     close: () => research.close(),
   };
+  return runtime;
 }

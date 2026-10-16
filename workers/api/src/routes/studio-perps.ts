@@ -25,7 +25,6 @@ import {
   CHECK_OUTCOMES,
   PRODUCT_PAPER_SESSION,
   liquidationPrice,
-  marginOpenedSince,
   notionalFor,
   paperDecimal,
   paperUnits,
@@ -33,14 +32,11 @@ import {
   parseCheckDecision,
   proposalExpired,
   recordStats,
-  realizedSince,
-  utcDayStart,
   type PerpsCheck,
   type PerpsCheckOutcome,
   type PerpsPaperMark,
   type PerpsPaperPosition,
   type PerpsPaperScope,
-  type PerpsPaperView,
   type PerpsOwnerAction,
   type PerpsOwnerActionRepository,
   type PerpsProductPaperRepository,
@@ -87,7 +83,10 @@ export interface StudioPerpsServices {
     ): Promise<{ productAgentId: string; scope: PerpsPaperScope } | null>;
     counts(productAgentId: string): Promise<{ checks: number; entries: number }>;
   };
-  paper: Pick<PerpsProductPaperRepository, "snapshot">;
+  paper: Pick<
+    PerpsProductPaperRepository,
+    "executionSnapshot" | "recordSnapshot" | "closedPositions"
+  >;
   /** Fresh BTC/ETH marks from the market board; empty when it cannot answer freshly. */
   marks(network: PerpNetwork): Promise<PerpsPaperMark[]>;
   send(message: PerpsQueueMessage): Promise<void>;
@@ -172,31 +171,21 @@ function liquidationEstimate(p: PerpsPaperPosition) {
   return paperUnits(price) > 0n ? price : null;
 }
 
-/**
- * A closed position's realized P&L net of every fee it paid: its close (`close:<id>:*`), its open's
- * fee (`<id>:fee`: a position's id is its open attempt's key) and the fee of each size-up, a filled
- * `size_up` attempt on its market while it was open (one position per market at a time).
- */
-function closedPnl(view: PerpsPaperView, position: PerpsPaperPosition) {
-  const fees = new Set([`${position.id}:fee`]);
-  for (const attempt of view.attempts) {
-    if (
-      attempt.reason === "size_up" &&
-      attempt.status === "filled" &&
-      attempt.intent.symbol === position.symbol &&
-      attempt.createdAt >= position.openedAt &&
-      (position.closedAt === null || attempt.createdAt <= position.closedAt)
-    ) {
-      fees.add(`${attempt.key}:fee`);
-    }
-  }
-  let total = 0n;
-  for (const movement of view.movements) {
-    if (movement.key.startsWith(`close:${position.id}:`) || fees.has(movement.key)) {
-      total += paperUnits(movement.delta);
-    }
-  }
-  return total;
+/** A closed row already has its exact fee-adjusted P&L from the ledger projection. */
+function closedPositionDto(position: PerpsPaperPosition, pnl: string) {
+  return {
+    id: position.id,
+    instrument: position.symbol,
+    side: position.side,
+    entryPrice: position.entryPrice,
+    exitPrice: position.exitPrice,
+    margin: marginOf(position),
+    leverage: position.leverage ?? 1,
+    openedAt: iso(position.openedAt),
+    closedAt: iso(position.closedAt!),
+    closeReason: position.closeReason ?? null,
+    realizedPnl: pnl,
+  };
 }
 
 function proposalDto(p: PerpsProposal) {
@@ -218,6 +207,10 @@ function proposalDto(p: PerpsProposal) {
 /** `/v1/studio` routes of the Perpl paper runtime (docs/specs/perpl-paper-runtime-v1.md §4). */
 export function studioPerpsRoutes(context: Context) {
   const api = new Hono<AppEnv>();
+  api.use("*", async (c, next) => {
+    c.header("Cache-Control", "private, no-store");
+    await next();
+  });
   const { access, directory, repository } = context;
 
   const authorize = (c: { get(key: "principal"): Principal }, manage = false) =>
@@ -242,7 +235,7 @@ export function studioPerpsRoutes(context: Context) {
   /** The agent's paper account (read-only), or null before its first check opened one. */
   async function paperView(services: StudioPerpsServices, scope: PerpsPaperScope) {
     try {
-      return await services.paper.snapshot(scope);
+      return await services.paper.executionSnapshot(scope);
     } catch (error) {
       if (error instanceof PilotError && error.code === "NOT_FOUND") {
         return null;
@@ -392,6 +385,9 @@ export function studioPerpsRoutes(context: Context) {
       const scope = await directory.agentScope(current, c.req.param("id"));
       const agent = await perplAgent(scope);
       const view = await paperView(services, paperScope(scope, agent.network));
+      const closed = view
+        ? await services.paper.closedPositions(paperScope(scope, agent.network))
+        : { items: [], nextCursor: null, complete: true };
       const positions = view?.account.positions ?? [];
       const open = positions.filter((p) => p.closedAt === null);
       const marks = open.length
@@ -423,23 +419,54 @@ export function studioPerpsRoutes(context: Context) {
               configVersion: p.configVersion ?? null,
             };
           }),
-          closed: positions
-            .filter((p) => p.closedAt !== null)
-            .sort((a, b) => b.closedAt! - a.closedAt! || b.id.localeCompare(a.id))
-            .slice(0, 50)
-            .map((p) => ({
-              id: p.id,
-              instrument: p.symbol,
-              side: p.side,
-              entryPrice: p.entryPrice,
-              exitPrice: p.exitPrice,
-              margin: marginOf(p),
-              leverage: p.leverage ?? 1,
-              openedAt: iso(p.openedAt),
-              closedAt: iso(p.closedAt!),
-              closeReason: p.closeReason ?? null,
-              realizedPnl: paperDecimal(closedPnl(view!, p)),
-            })),
+          closed: closed.items.map(({ position, pnl }) => closedPositionDto(position, pnl)),
+          closedNextCursor: closed.nextCursor,
+          closedHistoryReady: closed.complete !== false,
+        }),
+      );
+    },
+  );
+
+  api.get(
+    "/agents/:id/perps/closed-positions",
+    describeOperation("studioPerpsClosedPositions", {
+      ...errors,
+      description: `${routeDescription} Complete closed-position history in bounded stable pages; P&L preserves the ledger's opening, size-up and closing fee attribution.`,
+      response: dto.perpsClosedPositionsPageSchema,
+      query: {
+        cursor: z.string().max(2048).optional(),
+        limit: z.coerce.number().int().min(1).max(100).optional(),
+      },
+    }),
+    async (c) => {
+      c.header("Cache-Control", "private, no-store");
+      const query = z
+        .object({
+          cursor: z.string().max(2048).optional(),
+          limit: z.coerce.number().int().min(1).max(100).optional(),
+        })
+        .strict()
+        .safeParse(c.req.query());
+      if (!query.success) {
+        throw new PilotError("INVALID_INPUT", "Invalid history page");
+      }
+      const services = context.perps();
+      const current = await authorize(c);
+      const scope = await directory.agentScope(current, c.req.param("id"));
+      const agent = await perplAgent(scope);
+      const paper = paperScope(scope, agent.network);
+      const view = await paperView(services, paper);
+      const page = view
+        ? await services.paper.closedPositions(paper, {
+            ...(query.data.cursor !== undefined ? { cursor: query.data.cursor } : {}),
+            ...(query.data.limit !== undefined ? { limit: query.data.limit } : {}),
+          })
+        : { items: [], nextCursor: null, complete: true };
+      return c.json(
+        dto.perpsClosedPositionsPageSchema.parse({
+          items: page.items.map(({ position, pnl }) => closedPositionDto(position, pnl)),
+          nextCursor: page.nextCursor,
+          complete: page.complete !== false,
         }),
       );
     },
@@ -467,7 +494,7 @@ export function studioPerpsRoutes(context: Context) {
       if (scope.tenantId !== found.scope.tenantId || scope.agentId !== found.scope.agentId) {
         throw new PilotError("NOT_FOUND", "Position not found");
       }
-      const view = await services.paper.snapshot(found.scope);
+      const view = await services.paper.executionSnapshot(found.scope);
       const position = view.account.positions.find((p) => p.id === positionId);
       if (!position || position.closedAt !== null) {
         throw new PilotError("POSITION_CLOSED", "The position is already closed");
@@ -608,7 +635,6 @@ export function studioPerpsRoutes(context: Context) {
       const scope = await directory.agentScope(current, productId);
       const agent = await perplAgent(scope);
       const now = (services.clock ?? Date.now)();
-      const dayStart = utcDayStart(now);
       const view = await paperView(services, paperScope(scope, agent.network));
       const positions = view?.account.positions ?? [];
       const open = positions.filter((p) => p.closedAt === null);
@@ -627,22 +653,23 @@ export function studioPerpsRoutes(context: Context) {
         services.store.manualChecksToday(productId),
         services.store.costToday(productId),
       ]);
-      const newMargin = marginOpenedSince(positions, dayStart);
-      const stats = recordStats({
-        movements: view?.movements ?? [],
-        closed: view
-          ? positions
-              .filter((p) => p.closedAt !== null)
-              .map((p) => ({
-                closedAt: p.closedAt!,
-                pnl: Number(paperDecimal(closedPnl(view, p))),
-              }))
-          : [],
-        openPnl: openPnl === null ? null : Number(paperDecimal(openPnl)),
-        checks: counts.checks,
-        entries: counts.entries,
-        now,
-      });
+      const stats = view
+        ? await services.paper.recordSnapshot(paperScope(scope, agent.network), {
+            now,
+            openPnl: openPnl === null ? null : paperDecimal(openPnl),
+          })
+        : {
+            ...recordStats({
+              movements: [],
+              closed: [],
+              openPnl: 0,
+              checks: counts.checks,
+              entries: counts.entries,
+              now,
+            }),
+            newMarginToday: "0",
+          };
+
       return c.json(
         perpsRecordSchema.parse({
           runtimeEnabled: services.enabled,
@@ -658,12 +685,16 @@ export function studioPerpsRoutes(context: Context) {
           hitRate: stats.hitRate,
           maxDrawdownAusd: stats.maxDrawdownAusd,
           maxDrawdownPct: stats.maxDrawdownPct,
-          checks: stats.checks,
-          entries: stats.entries,
+          checks: counts.checks,
+          entries: counts.entries,
+          projection:
+            "projection" in stats
+              ? { ...stats.projection, asOf: iso(stats.projection.asOf) }
+              : { revision: "0", asOf: iso(now), complete: true },
           series: stats.series.map((point) => ({ at: iso(point.at), equity: point.equity })),
           today: {
-            newMarginAusd: Number(newMargin),
-            realizedAusd: realizedSince(view?.movements ?? [], dayStart),
+            newMarginAusd: Number(stats.newMarginToday),
+            realizedAusd: stats.realizedTodayAusd,
             openCount: open.length,
             leverageInUse: open.reduce((max, p) => Math.max(max, p.leverage ?? 1), 0),
             checks: checksToday,

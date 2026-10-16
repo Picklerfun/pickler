@@ -553,6 +553,13 @@ export const perpsPositions = (agentId: string, signal?: AbortSignal) =>
     signal ? { signal } : {},
   );
 
+/** One explicit older page of closed positions; never drains the history automatically. */
+export const perpsClosedPositions = (agentId: string, cursor: string, signal?: AbortSignal) =>
+  studioApi<import("@pickler/api-schema").PerpsClosedPositionsPageDto>(
+    `/agents/${agentId}/perps/closed-positions?cursor=${encodeURIComponent(cursor)}`,
+    signal ? { signal } : {},
+  );
+
 /** `GET /agents/:id/perps/record`: the record, `runtimeEnabled` and today's figures. */
 export const perpsRecord = (agentId: string, signal?: AbortSignal) =>
   studioApi<PerpsRecordDto>(`/agents/${agentId}/perps/record`, signal ? { signal } : {});

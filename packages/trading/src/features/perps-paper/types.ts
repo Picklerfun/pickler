@@ -44,6 +44,8 @@ export interface PerpsPaperPosition {
   takeProfitPrice?: string | null;
   exitDueAt?: number | null;
   closeReason?: PerpsPaperCloseReason | null;
+  /** Confirmed provider coverage checkpoint; immutable entry identity stays unchanged. */
+  fundingCoveredThrough?: number;
   /** Margin added to the position after it opened (size-ups, R8), each with its time. */
   sizeUps?: { at: number; margin: string }[];
 }
@@ -102,6 +104,24 @@ export interface PerpsPaperView {
   account: PerpsPaperAccount;
   attempts: PerpsPaperAttempt[];
   movements: PerpsPaperMovement[];
+  /** This mutation's bounded deltas; never merge them into execution history arrays. */
+  changes?: {
+    positions: PerpsPaperPosition[];
+    attempts: PerpsPaperAttempt[];
+    movements: PerpsPaperMovement[];
+  };
+  /** Present on bounded execution reads; history arrays must not be used as accounting totals. */
+  accounting?: {
+    realizedToday: string;
+    newMarginToday: string;
+    closePnl?: string;
+  };
+}
+/** Operational projection. Positions are open only; attempts are pending only; movements are
+ * never a historical ledger. Read accounting scalars or explicit point/history ports instead. */
+export interface PaperExecutionState extends PerpsPaperView {
+  operational: true;
+  accounting: { realizedToday: string; newMarginToday: string; closePnl?: string };
 }
 export interface PerpsPaperRisk {
   allowed: boolean;
@@ -127,6 +147,9 @@ export interface PerpsPaperFill {
   evidence: unknown;
 }
 export interface PerpsPaperRepository {
+  executionSnapshot?(scope: PerpsPaperScope): Promise<PaperExecutionState>;
+  attemptResult?(scope: PerpsPaperScope, key: string): Promise<PerpsPaperAttempt | null>;
+
   closeAdmissions(scope: PerpsPaperScope): Promise<void>;
   observed(scope: PerpsPaperScope, key: string): Promise<boolean>;
   observe(
@@ -174,8 +197,50 @@ export interface PerpsPaperMark {
   symbol: PerpSymbol;
   mark: string;
 }
+/** Private archival entities; pagination never redefines the operational execution snapshot. */
+export interface PaperHistoryEntities {
+  positions: PerpsPaperPosition;
+  attempts: PerpsPaperAttempt;
+  movements: PerpsPaperMovement;
+  sizeUps: { key: string; positionId: string; at: number; margin: string };
+}
+export interface PaperHistoryPageOptions {
+  cursor?: string;
+  limit?: number;
+}
+export interface PaperHistoryPage<T> {
+  items: T[];
+  nextCursor: string | null;
+  watermark: string;
+}
 /** Product paper accounts: closes outside an attempt lease, and the exits job's read. */
 export interface PerpsProductPaperRepository extends PerpsPaperRepository {
+  historyPage<K extends keyof PaperHistoryEntities>(
+    scope: PerpsPaperScope,
+    kind: K,
+    options?: PaperHistoryPageOptions,
+  ): Promise<PaperHistoryPage<PaperHistoryEntities[K]>>;
+  position(scope: PerpsPaperScope, id: string): Promise<PerpsPaperPosition | null>;
+  /** Bounded current state: open positions and pending reservations only. */
+  executionSnapshot(scope: PerpsPaperScope): Promise<PaperExecutionState>;
+  recordSnapshot(
+    scope: PerpsPaperScope,
+    input: { now: number; openPnl: string | null },
+  ): Promise<
+    import("../perps-runtime/record.js").PerpsRecordStats & {
+      newMarginToday: string;
+      projection: { revision: string; asOf: number; complete: boolean };
+    }
+  >;
+  closedPositions(
+    scope: PerpsPaperScope,
+    options?: { cursor?: string; limit?: number },
+  ): Promise<{
+    items: { position: PerpsPaperPosition; pnl: string }[];
+    nextCursor: string | null;
+    complete?: boolean;
+  }>;
+
   /** Closes one position at `frame`; a position already closed answers `closed: false`. */
   closePosition(
     scope: PerpsPaperScope,
@@ -205,7 +270,9 @@ export interface PerpsProductPaperRepository extends PerpsPaperRepository {
     frame: import("./simulation.js").PerpsPaperFrame,
   ): Promise<{ added: boolean; position: PerpsPaperPosition; view: PerpsPaperView }>;
   /** Account identities with open product positions, for unpaid reconciliation. */
-  openProductAccounts?(): Promise<{ productAgentId: string; scope: PerpsPaperScope }[]>;
+  openProductAccounts?(
+    productAgentId?: string,
+  ): Promise<{ productAgentId: string; scope: PerpsPaperScope }[]>;
   /** Networks with an open product position, for the exits job's marks. */
   openNetworks(): Promise<PerpNetwork[]>;
 }

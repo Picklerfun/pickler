@@ -41,6 +41,15 @@ export function createPerpsPaperService(
   data: PerpsPaperData,
   clock: () => number = Date.now,
 ) {
+  async function readCurrent(scope: PerpsPaperScope) {
+    if (isProductPaperSession(scope)) {
+      if (!repository.executionSnapshot) {
+        throw new PilotError("INVALID_INPUT", "Product execution requires the bounded state port");
+      }
+      return repository.executionSnapshot(scope);
+    }
+    return repository.view(scope);
+  }
   async function trade(
     scope: PerpsPaperScope,
     key: string,
@@ -52,7 +61,7 @@ export function createPerpsPaperService(
     options: PerpsPaperTradeOptions = {},
   ) {
     signal.throwIfAborted();
-    let view = await repository.view(scope);
+    let view = await readCurrent(scope);
     const notional = kind === "open" ? (options.notional ?? "100") : "0";
     // Operator opens keep the fixed 1 AUSD; a product open reserves notional × taker fee × 1.5.
     const feeReserve =
@@ -69,7 +78,7 @@ export function createPerpsPaperService(
     // Durable admission precedes fetching execution evidence; repeat keys make no provider call.
     const admitted = await repository.begin(scope, view.account.agentVersion, key, intent);
     if (!admitted.lease) {
-      return repository.view(scope);
+      return readCurrent(scope);
     }
     const lease = admitted.lease;
     const deadline = AbortSignal.any([signal, AbortSignal.timeout(55000)]);
@@ -80,7 +89,7 @@ export function createPerpsPaperService(
       evidence = current;
       deadline.throwIfAborted();
       await repository.assertLease(scope, lease);
-      view = await repository.view(scope);
+      view = await readCurrent(scope);
       const fill = simulatePerpsFill(view.account, intent, current, clock());
       deadline.throwIfAborted();
       const exits = kind === "open" ? options.exits?.(fill) : undefined;
@@ -109,9 +118,9 @@ export function createPerpsPaperService(
       observation?: PerpsPaperObservation,
     ) {
       if (await repository.observed(scope, key)) {
-        return repository.view(scope);
+        return readCurrent(scope);
       }
-      const previous = await repository.view(scope);
+      const previous = await readCurrent(scope);
       const from = previous.account.createdAt;
       const snapshot = observation ?? (await data.observation(scope, from, signal));
       signal.throwIfAborted();
@@ -135,7 +144,7 @@ export function createPerpsPaperService(
             if (!(error instanceof PilotError)) {
               throw error;
             }
-            view = await repository.view(scope);
+            view = await readCurrent(scope);
           }
         }
       }

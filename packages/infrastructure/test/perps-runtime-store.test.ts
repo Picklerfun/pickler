@@ -23,6 +23,8 @@ import {
   type PerpsPaperFrame,
   type PerpsPaperScope,
 } from "@pickler/trading/perps";
+import { migratePaperAccount } from "../src/persistence/paper-storage-migration.js";
+import { PaperFundingEpochs } from "../src/persistence/paper-funding-epochs.js";
 import { PostgresPerpsRuntimeStore } from "../src/persistence/perps-runtime-store.js";
 import { PostgresPerpsPaperStore } from "../src/persistence/perps-paper-store.js";
 import { PostgresStudioDirectory } from "../src/studio/directory.js";
@@ -33,6 +35,8 @@ import {
 } from "../src/persistence/product/perps-checks.js";
 import { createTestStore } from "./database.js";
 
+const anchor = async (expected?: { number: number; hash: string; timestamp: number }) =>
+  expected ?? { number: 1_000_000_000, hash: "0x" + "a".repeat(64), timestamp: Date.now() };
 const HOUR = 3_600_000;
 /** 2026-10-03T12:00:00Z, the top of an hour. */
 const NOON = Date.UTC(2026, 9, 3, 12);
@@ -295,7 +299,11 @@ test("hourly financial admission blocks exposure after disable but permits close
     "owner",
     frame("BTC", f.now(), "1000"),
   );
-  assert.ok(closed.view.account.positions.find((p) => p.id === position.id)!.closedAt);
+  assert.ok(closed.position.closedAt);
+  assert.equal(
+    closed.view.account.positions.some((p) => p.id === position.id),
+    false,
+  );
 });
 
 async function setup(t: TestContext) {
@@ -844,16 +852,20 @@ test("a product account follows the agent across config versions; each position 
   });
   const initial = await f.paper.initialize(scope, 1, "250");
   assert.equal(initial.account.cash, "250");
-  assert.equal(initial.movements[0]!.delta, "250");
+  assert.equal(initial.changes?.movements[0]?.kind, "initial");
+  assert.deepEqual(initial.movements, []);
+  assert.equal((await f.paper.snapshot(scope)).movements[0]!.delta, "250");
 
   await open(f, scope, "c1-open-btc", "BTC", { checkId });
   await f.db.pool.query(
     "UPDATE pickler.agents SET version=2, config=$3 WHERE tenant_id=$1 AND id=$2",
     [scope.tenantId, scope.agentId, JSON.stringify({ ...f.config, intervalHours: 3 })],
   );
-  const again = await f.paper.initialize(scope, 2, "999");
+  await f.paper.initialize(scope, 2, "999");
   assert.deepEqual(
-    again.movements.filter((m) => m.kind === "initial").map((m) => m.delta),
+    (await f.paper.snapshot(scope)).movements
+      .filter((m) => m.kind === "initial")
+      .map((m) => m.delta),
     ["250"],
     "the stake is set once",
   );
@@ -990,6 +1002,18 @@ test("newMarginSince sums margin of positions opened since, and their size-ups",
   f.set(NOON - 13 * HOUR);
   await open(f, scope, "yesterday", "BTC", { notional: "100", leverage: 2 });
   await f.paper.closePosition(scope, "yesterday", "owner", frame("BTC", f.now(), "60000"));
+  await new PaperFundingEpochs(f.db.pool).pass(
+    scope,
+    async (position, from, to) => ({
+      market: frame(position.symbol, from, "60000").snapshot.market,
+      from,
+      to,
+      complete: true,
+      pages: [],
+      events: [],
+    }),
+    anchor,
+  );
   f.set(NOON);
   const view = await open(f, scope, "today", "BTC", { notional: "500", leverage: 5 });
   const today = view.account.positions.find((p) => p.id === "today")!;
@@ -1020,8 +1044,13 @@ test("a size-up adds margin at the position's leverage once, and counts as new m
   );
 
   assert.equal(added.added, true);
+  assert.equal(added.view.changes?.attempts[0]?.status, "filled");
+  assert.equal(added.view.changes?.movements[0]?.kind, "fee");
+  assert.deepEqual(added.view.attempts, []);
+  assert.deepEqual(added.view.movements, []);
   assert.equal(repeat.added, false);
-  const after = added.position;
+  assert.equal(added.position.sizeUps, undefined);
+  const after = (await f.paper.snapshot(scope)).account.positions.find((p) => p.id === "small")!;
   assert.equal(after.leverage, 5);
   assert.ok(Number(after.quantity) > Number(before.quantity));
   assert.equal(
@@ -1169,7 +1198,7 @@ test("a large product open reserves a fee that scales with its notional", async 
   await f.paper.initialize(scope, 1, "5000");
 
   const view = await open(f, scope, "big", "BTC", { notional: "40000", leverage: 10 });
-  const attempt = view.attempts.find((a) => a.key === "big")!;
+  const attempt = (await f.paper.attemptResult(scope, "big"))!;
 
   assert.equal(attempt.status, "filled");
   assert.equal(attempt.intent.feeReserve, "12");
@@ -1182,7 +1211,7 @@ test("a large product open reserves a fee that scales with its notional", async 
     frame("BTC", f.now(), "60000"),
   );
   assert.equal(sized.added, true);
-  const record = sized.view.attempts.find((a) => a.key === "sizeup:big")!;
+  const record = (await f.paper.attemptResult(scope, "sizeup:big"))!;
   assert.equal(record.intent.feeReserve, "1.5");
 });
 
@@ -1341,7 +1370,9 @@ test("a close past the liquidation estimate loses the margin, never more: cash s
     },
   );
   const position = opened.account.positions[0]!;
-  const openFee = -Number(opened.movements.find((m) => m.key === "open-btc:fee")!.delta);
+  const openFee = -Number(
+    (await f.paper.snapshot(scope)).movements.find((m) => m.key === "open-btc:fee")!.delta,
+  );
 
   // A gap: the board was stale and the next frame is 30% below entry (liquidation is 10%).
   const closed = await f.paper.closePosition(
@@ -1351,8 +1382,9 @@ test("a close past the liquidation estimate loses the margin, never more: cash s
     frame("BTC", f.now(), "42000"),
   );
 
-  const pnl = closed.view.movements.find((m) => m.key === `close:${position.id}:pnl`)!;
-  const fee = closed.view.movements.find((m) => m.key === `close:${position.id}:fee`)!;
+  const archived = await f.paper.snapshot(scope);
+  const pnl = archived.movements.find((m) => m.key === `close:${position.id}:pnl`)!;
+  const fee = archived.movements.find((m) => m.key === `close:${position.id}:fee`)!;
   assert.equal(
     paperDecimal(paperUnits(pnl.delta) + paperUnits(fee.delta)),
     paperDecimal(-paperUnits(position.margin!)),
@@ -1372,7 +1404,10 @@ test("snapshot reads without locks or writes, projecting lapsed attempts", async
     "SELECT id FROM pickler.perps_paper_accounts WHERE agent_id = $1",
     [scope.agentId],
   );
-  await f.db.pool.query(
+  const fixtureWriter = await f.db.pool.connect();
+  await fixtureWriter.query("BEGIN");
+  await fixtureWriter.query("SELECT set_config('pickler.paper_writer','2',true)");
+  await fixtureWriter.query(
     `INSERT INTO pickler.perps_paper_attempts(account_id,key,document,owner,expires_at)
      VALUES($1,'stale',$2,$3,$4)`,
     [
@@ -1391,6 +1426,8 @@ test("snapshot reads without locks or writes, projecting lapsed attempts", async
       f.now() - 60_000,
     ],
   );
+  await fixtureWriter.query("COMMIT");
+  fixtureWriter.release();
 
   // A writer holds the agent row: a read through view would wait, the snapshot does not.
   const writer = await f.db.pool.connect();
@@ -1671,3 +1708,87 @@ test("Studio v2 composes the shared strategy, call ledger and simulator without 
   assert.equal(position.exitDueAt, f.now() + 24 * HOUR);
   assert.equal(position.checkId, queued.id);
 });
+
+for (const normalizedHistory of [true, false]) {
+  test(`legacy exposure remains closeable with ${normalizedHistory ? "complete" : "partial"} normalized evidence and preserves conversion`, async (t) => {
+    const f = await setup(t);
+    const { scope } = await f.agent();
+    await f.paper.initialize(scope, 1, "1000");
+    await open(f, scope, "legacy-active", "BTC", { notional: "100", leverage: 2 });
+    await f.paper.sizeUp(
+      scope,
+      "legacy-active",
+      { key: "legacy-sizeup", margin: "10" },
+      frame("BTC", f.now(), "60000"),
+    );
+    const original = await f.paper.snapshot(scope);
+    const account = (
+      await f.db.pool.query("SELECT id FROM pickler.perps_paper_accounts WHERE agent_id=$1", [
+        scope.agentId,
+      ])
+    ).rows[0].id;
+    for (const table of [
+      "paper_storage",
+      "paper_position_sizeups",
+      "paper_record_closes",
+      "paper_record_facts",
+      "paper_record_state",
+      "paper_daily_totals",
+      "paper_position_totals",
+    ]) {
+      await f.db.pool.query(`DELETE FROM pickler.${table} WHERE account_id=$1`, [account]);
+    }
+    await f.db.pool.query("UPDATE pickler.perps_paper_accounts SET document=$2 WHERE id=$1", [
+      account,
+      original.account,
+    ]);
+    await f.db.pool.query(
+      "UPDATE pickler.perps_paper_positions SET document=$3::jsonb WHERE account_id=$1 AND id=$2",
+      [
+        account,
+        "legacy-active",
+        normalizedHistory
+          ? original.account.positions[0]
+          : { ...original.account.positions[0], sizeUps: undefined },
+      ],
+    );
+    assert.equal((await migratePaperAccount(f.db.pool, account)).eligible, false);
+    await assert.rejects(open(f, scope, "legacy-new", "ETH"), { code: "PAPER_MIGRATION_REQUIRED" });
+
+    const result = await f.paper.closePosition(
+      scope,
+      "legacy-active",
+      "owner",
+      frame("BTC", f.now(), "61000"),
+    );
+    assert.equal(result.closed, true);
+    assert.equal(result.view.changes?.positions[0]?.closedAt, f.now());
+    assert.equal(result.view.changes?.attempts[0]?.status, "filled");
+    assert.ok(result.view.changes?.movements.some((m) => m.kind === "realized-pnl"));
+    assert.deepEqual(result.view.movements, []);
+    assert.equal(result.view.account.positions.length, 0);
+    const preserved = (
+      await f.db.pool.query("SELECT document FROM pickler.perps_paper_accounts WHERE id=$1", [
+        account,
+      ])
+    ).rows[0].document;
+    assert.equal(preserved.positions.length, 1);
+    assert.ok(preserved.positions[0].closedAt);
+    assert.deepEqual(preserved.positions[0].sizeUps, original.account.positions[0]!.sizeUps);
+    const before = await f.paper.snapshot(scope);
+    assert.deepEqual(before.account.positions[0]!.sizeUps, original.account.positions[0]!.sizeUps);
+    let complete = false;
+    for (let attempt = 0; attempt < 20 && !complete; attempt++) {
+      complete = (await migratePaperAccount(f.db.pool, account, true)).complete;
+    }
+    assert.equal(complete, true);
+    const after = await f.paper.snapshot(scope);
+    assert.equal(after.account.cash, before.account.cash);
+    assert.deepEqual(after.movements, before.movements);
+    assert.deepEqual(after.account.positions[0]!.sizeUps, before.account.positions[0]!.sizeUps);
+    assert.equal(
+      (await f.paper.recordSnapshot(scope, { now: f.now(), openPnl: "0" })).projection.complete,
+      true,
+    );
+  });
+}

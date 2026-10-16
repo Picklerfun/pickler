@@ -23,11 +23,15 @@ import {
   perpsCheckDetailSchema,
   perpsChecksResponseSchema,
   perpsPositionsResponseSchema,
+  perpsClosedPositionsPageSchema,
   perpsProposalsResponseSchema,
   perpsRecordSchema,
 } from "@pickler/api-schema";
 import {
   CHECK_OUTCOMES,
+  recordStats,
+  marginOpenedSince,
+  utcDayStart,
   CLOSE_REASONS,
   PERPS_CHECK_TRIGGERS as TRADING_TRIGGERS,
   PERPS_OWNER_ACTION_KINDS as TRADING_ACTION_KINDS,
@@ -230,6 +234,7 @@ function app({
   manualToday = 0,
   startError = null as PilotError | null,
   account = true,
+  historyReady = true,
   proposals = [proposal()],
   actionError = null as PilotError | null,
   ethClosePnl = "-1.5",
@@ -240,6 +245,7 @@ function app({
   manualToday?: number;
   startError?: PilotError | null;
   account?: boolean;
+  historyReady?: boolean;
   proposals?: PerpsProposal[];
   actionError?: PilotError | null;
   /** The realized P&L movement of eth-1's close, before any fee. */
@@ -395,11 +401,46 @@ function app({
             : null,
     },
     paper: {
-      snapshot: async () => {
+      executionSnapshot: async () => {
         if (!account) {
           throw new PilotError("NOT_FOUND", "Paper account not found");
         }
-        return view(positions, ethClosePnl);
+        const history = view(positions, ethClosePnl);
+        return {
+          ...history,
+          operational: true,
+          account: { ...history.account, positions: positions.filter((p) => p.closedAt === null) },
+          attempts: [],
+          movements: [],
+          accounting: { realizedToday: "0", newMarginToday: "0" },
+        };
+      },
+      closedPositions: async (_scope, options) => ({
+        complete: historyReady,
+        items:
+          options?.cursor || !historyReady
+            ? []
+            : positions
+                .filter((p) => p.closedAt !== null)
+                .map((position) => ({ position, pnl: String(Number(ethClosePnl) - 0.85) })),
+        nextCursor: null,
+      }),
+      recordSnapshot: async (_scope, input) => {
+        const history = view(positions, ethClosePnl);
+        return {
+          ...recordStats({
+            movements: history.movements,
+            closed: positions
+              .filter((p) => p.closedAt !== null)
+              .map((p) => ({ closedAt: p.closedAt!, pnl: Number(ethClosePnl) - 0.85 })),
+            openPnl: input.openPnl === null ? null : Number(input.openPnl),
+            checks: 9,
+            entries: 2,
+            now: input.now,
+          }),
+          newMarginToday: marginOpenedSince(positions, utcDayStart(input.now)),
+          projection: { revision: "1", asOf: input.now, complete: historyReady },
+        };
       },
     },
     marks: async () => [{ network: "testnet", symbol: "BTC", mark: "61000" }],
@@ -606,7 +647,14 @@ test("positions before the first check say there is no account yet", async () =>
     await (await f.root.request(`/agents/${PERPL}/perps/positions`, get())).json(),
   );
 
-  assert.deepEqual(body, { network: "testnet", account: false, open: [], closed: [] });
+  assert.deepEqual(body, {
+    network: "testnet",
+    account: false,
+    open: [],
+    closed: [],
+    closedNextCursor: null,
+    closedHistoryReady: true,
+  });
 });
 
 test("close now writes the owner close and wakes the worker; a closed or unknown position is refused", async () => {
@@ -816,4 +864,53 @@ test("the DTO vocabularies mirror trading's", () => {
   assert.deepEqual([...PERPS_CLOSE_REASONS], [...CLOSE_REASONS]);
   assert.deepEqual([...PERPS_OWNER_ACTION_KINDS], [...TRADING_ACTION_KINDS]);
   assert.deepEqual([...PERPS_OWNER_ACTION_STATUSES], [...TRADING_ACTION_STATUSES]);
+});
+
+test("closed history uses a private bounded page and preserves exact P&L", async () => {
+  const f = app();
+  const response = await f.root.request(`/agents/${PERPL}/perps/closed-positions?limit=1`, get());
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get("Cache-Control"), "private, no-store");
+  const page = perpsClosedPositionsPageSchema.parse(await response.json());
+  assert.equal(page.items.length, 1);
+  assert.equal(page.items[0]!.id, "eth-1");
+  assert.equal(page.items[0]!.realizedPnl, "-2.35");
+  assert.equal(page.nextCursor, null);
+  const resumed = await f.root.request(
+    `/agents/${PERPL}/perps/closed-positions?cursor=done`,
+    get(),
+  );
+  assert.deepEqual(await resumed.json(), { items: [], nextCursor: null, complete: true });
+});
+
+test("closed history refuses unbounded input and another workspace", async () => {
+  const f = app();
+  for (const query of ["limit=0", "limit=101", "limit=1.5", "offset=1"]) {
+    const response = await f.root.request(
+      `/agents/${PERPL}/perps/closed-positions?${query}`,
+      get(),
+    );
+    assert.equal(response.status, 400, query);
+  }
+  const foreign = await f.root.request(`/agents/${FOREIGN}/perps/closed-positions`, get());
+  assert.equal(foreign.status, 404);
+});
+
+test("unconverted closed history is explicit while open positions and owner closes remain available", async () => {
+  const f = app({ historyReady: false });
+  const response = await f.root.request(`/agents/${PERPL}/perps/positions`, get());
+  assert.equal(response.status, 200);
+  const positions = perpsPositionsResponseSchema.parse(await response.json());
+  assert.equal(positions.open.length, 1);
+  assert.deepEqual(positions.closed, []);
+  assert.equal(positions.closedHistoryReady, false);
+  const record = perpsRecordSchema.parse(
+    await (await f.root.request(`/agents/${PERPL}/perps/record`, get())).json(),
+  );
+  assert.equal(record.projection?.complete, false);
+  const close = await f.root.request(
+    `/perps/positions/check:${CHECK}:open/close`,
+    post({ "Idempotency-Key": "legacy-close" }),
+  );
+  assert.equal(close.status, 202);
 });

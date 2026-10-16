@@ -509,7 +509,11 @@ test("small + size-up: approve and small enters small and proposes the rest", as
     frame("BTC", f.now(), "60000"),
   );
   assert.equal(sized.position.margin, "9");
-  assert.equal(sized.position.sizeUps!.length, 1);
+  assert.equal(sized.position.sizeUps, undefined);
+  const stored = (await f.paper.snapshot(scope)).account.positions.find(
+    (item) => item.id === position!.id,
+  )!;
+  assert.equal(stored.sizeUps!.length, 1);
 });
 
 test("failed: a malformed answer is MODEL_OUTPUT_INVALID, keeps its cost and never trades", async (t) => {
@@ -728,9 +732,20 @@ test("an unauthorized strategy market fails without trading", async (t) => {
 test("brief exit lines close every held position the model reported a met line for", async (t) => {
   const f = await setup(t);
   const { id, scope } = await f.agent();
-  await f.check(id);
+  const first = await f.check(id);
+  assert.equal(
+    first.error,
+    null,
+    JSON.stringify({ outcome: first.outcome, error: first.error, text: first.outcomeText }),
+  );
   f.answer(answer({ instrument: "ETH" }));
-  await f.check(id);
+  const second = await f.check(id);
+  assert.equal(
+    second.error,
+    null,
+    JSON.stringify({ outcome: second.outcome, error: second.error, text: second.outcomeText }),
+  );
+  assert.equal(second.outcome, "entered");
   assert.equal(open(await f.paper.view(scope)).length, 2);
   f.answer(
     JSON.stringify({
