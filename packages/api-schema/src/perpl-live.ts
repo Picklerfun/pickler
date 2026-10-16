@@ -146,3 +146,37 @@ export const perplLiveStateSchema = z
 export type PerplLiveStateDto = z.infer<typeof perplLiveStateSchema>;
 export type PerplLiveStartDto = z.infer<typeof perplLiveStartSchema>;
 export type PerplLiveSetupDto = z.infer<typeof perplLiveSetupSchema>;
+
+export const perplLiveHistoryQuerySchema = z
+  .object({
+    kind: z.enum(["orders", "setup", "sessions"]),
+    before: z
+      .string()
+      .regex(/^[1-9]\d{0,18}$/)
+      .optional(),
+  })
+  .strict();
+export const perplLiveHistorySchema = z.discriminatedUnion("kind", [
+  z
+    .object({
+      kind: z.literal("orders"),
+      items: z.array(perplLiveOrderSchema).max(100),
+      nextCursor: z.string().nullable(),
+    })
+    .strict(),
+  z
+    .object({
+      kind: z.literal("setup"),
+      items: z.array(perplLiveSetupSchema).max(100),
+      nextCursor: z.string().nullable(),
+    })
+    .strict(),
+  z
+    .object({
+      kind: z.literal("sessions"),
+      items: z.array(perplLiveSessionSchema).max(100),
+      nextCursor: z.string().nullable(),
+    })
+    .strict(),
+]);
+export type PerplLiveHistoryDto = z.infer<typeof perplLiveHistorySchema>;
