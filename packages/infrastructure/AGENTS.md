@@ -966,3 +966,39 @@ fences and event/block finality checks remain required. See
 ## Bounded product reads
 
 PostgresAgentDirectory pages public catalogue rows before batching canonical token proof. PostgresExecutionReads reads narrow run summaries/status, keyset event pages (50 default, 100 maximum, 256 KiB wire budget) and explicit oversized event details. Studio snapshots and wallet links are batched by authorized identities. Only the public JWKS resolver registry may survive invocations: an eight-entry LRU keyed by trusted issuer, URL and audience, retaining jose rotation; JWT identities and balances remain request scoped.
+
+## Bounded product Paper state and historical funding
+
+Migration0050 adds private operational metadata, position/day aggregates, size-up history, funding
+epochs/staged postings and record projection checkpoints. Product financial writers use the
+transaction-local writer fence. Legacy accounts retain close-only compatibility; openings require
+explicit operator conversion. Frozen conversion refuses accounts with active positions or owned
+unexpired attempts and advances at most100 entities/facts in one transaction. Original parent
+JSON stays preserved in paper_storage.original; never silently reset or replay the initial cash.
+
+`paper-storage-operator.ts <account-id>` preflights using DATABASE_MIGRATION_URL; --apply advances
+one transaction. Reinvoke until complete. Reads/startup never invoke conversion. An operational
+account cannot return to an older financial writer: the fence intentionally rejects that writer.
+Use a compatible forward fix and retain close-only operation while investigating rollback.
+
+`executionSnapshot` returns open positions/pending attempts and scalar accounting; `snapshot`
+and `view` retain explicit full archival behavior. Size-up arrays are reconstructed only for that
+archive. HTTP record reads use persisted record checkpoints (at most721 chart samples), never a
+ledger fold. Backdated facts start a resumable100-fact rebuild with a fixed watermark; incomplete
+projections must remain labelled incomplete. All hooks run inside the financial account transaction.
+
+Historical funding owns a fixed cutoff and closed-sequence cohort,50 positions/pass and bounded
+one-hour provider windows. Ownership expires after60 seconds; successful pages retain progress.
+Staged postings remain invisible until the epoch and its cash/day/record delta commit together.
+Disputes commit no staged cash and block additional exposure; legitimate closes remain available.
+The current provider complete-window assertion is required before a coverage checkpoint advances.
+Existing closed-position P&L/hit-rate excludes funding (opening/size-up fees plus close movements);
+funding remains in aggregate cash, realized P&L and fees/funding projections. Do not change this
+financial presentation formula implicitly.
+
+`historyPage` is the private bounded archive port for positions,attempts,movements and size-ups;
+its account/kind-bound cursor freezes the initial sequence watermark. Funding postings use the
+epoch commit-fact sequence,never their earlier staging time. `position` and `attemptResult` read
+one scoped entity. Unconverted archives refuse pagination; closedPositions instead labels its
+empty result complete=false, and exact missing converted position totals are errors. See
+[Paper operational history](../../docs/paper-operational-history.md) for rollout and validation.
