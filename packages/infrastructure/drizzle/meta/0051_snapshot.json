@@ -847,6 +847,12 @@
           "primaryKey": false,
           "notNull": true
         },
+        "sequence": {
+          "name": "sequence",
+          "type": "bigserial",
+          "primaryKey": false,
+          "notNull": true
+        },
         "document": {
           "name": "document",
           "type": "jsonb",
@@ -867,6 +873,27 @@
         }
       },
       "indexes": {
+        "paper_attempt_history_sequence": {
+          "name": "paper_attempt_history_sequence",
+          "columns": [
+            {
+              "expression": "account_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "sequence",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
         "paper_sizeup_attempt_history": {
           "name": "paper_sizeup_attempt_history",
           "columns": [
@@ -13826,6 +13853,33 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
+        },
+        "paper_funding_postings_history": {
+          "name": "paper_funding_postings_history",
+          "columns": [
+            {
+              "expression": "account_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "epoch_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "key",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
@@ -13894,6 +13948,12 @@
           "primaryKey": false,
           "notNull": true
         },
+        "sequence": {
+          "name": "sequence",
+          "type": "bigserial",
+          "primaryKey": false,
+          "notNull": true
+        },
         "at": {
           "name": "at",
           "type": "bigint",
@@ -13907,7 +13967,29 @@
           "notNull": true
         }
       },
-      "indexes": {},
+      "indexes": {
+        "paper_sizeup_history_sequence": {
+          "name": "paper_sizeup_history_sequence",
+          "columns": [
+            {
+              "expression": "account_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "sequence",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
       "foreignKeys": {
         "paper_position_sizeups_account_id_perps_paper_accounts_id_fk": {
           "name": "paper_position_sizeups_account_id_perps_paper_accounts_id_fk",
@@ -13954,6 +14036,13 @@
           "type": "text",
           "primaryKey": false,
           "notNull": true
+        },
+        "sizeup_margin": {
+          "name": "sizeup_margin",
+          "type": "numeric(38, 18)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'0'"
         },
         "pnl": {
           "name": "pnl",
