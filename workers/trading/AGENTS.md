@@ -2,7 +2,7 @@
 
 Read the root and infrastructure instructions before changes. This private Worker owns the
 pilot signer and CLOB credentials. No HTTP route is public; the API uses a Service Binding.
-Queue messages are generic wakeups, never signed orders. PostgreSQL owns admission, budgets,
+Queue messages are wakeups, never signed orders. PostgreSQL owns admission, budgets,
 idempotency and leases. Cron reconciles ambiguous submissions even when admissions are closed.
 Never create wallets, grant approvals or fund accounts during startup. Provider injection is
 only for tests. Secrets must not appear in logs, responses, prompts or configuration snapshots.
@@ -28,7 +28,7 @@ Turnkey credentials only read owner-stamped activities; signing remains the owne
 Never enable/deploy as a side effect of tests. Service Binding privacy does not replace auth.
 
 Queue/Cron reconcile setup and orders even when new admissions close. Active/stopping sessions
-request a generic 15-second wakeup; Cron is the recovery sweep. No wallet/account funding at
+reserve a durable Perpl wakeup after 15 seconds; Cron is the recovery sweep. No wallet/account funding at
 startup, no model tool and no withdrawal route. Public DTO projection explicitly excludes keys,
 private preparation, leases and signal attribution. See [Perpl trading](../../docs/perpl-trading.md).
 
@@ -53,3 +53,11 @@ the signed key and persistence binds its account exclusively to that agent. Orig
 ownership remains mandatory and external account setup/funding is disabled. Public state shows
 `connection` and positions' `managedBySession`; no credential or private baseline is returned.
 Operator environment keys remain acceptance-only and are never an automatic product fallback.
+
+Perpl uses the separate `perpl-wakeup` message kind. A database reservation is committed before
+enqueue, acknowledged after enqueue, and consumed once using its private generation and owner
+token. Duplicate messages cannot start new wakeup chains. Lease expiry and the unchanged Cron
+sweep redrive crashes before/after enqueue. Required Perpl exits continue independently of
+Polymarket admissions and messages. `GET /v1/studio/agents/:id/perpl/history` forwards private
+100-entry cursor pages through `/perpl/history`, preserving owner JWT and excluding credentials,
+leases, private preparation and internal attribution.
