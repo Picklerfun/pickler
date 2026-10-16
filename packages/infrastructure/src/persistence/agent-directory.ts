@@ -1,7 +1,10 @@
 import { readAgentToken, readConfirmedAgentTokens } from "../studio/token-read.js";
 import type { Pool } from "pg";
-import { advicePrice } from "@pickler/core";
+import { PilotError, advicePrice } from "@pickler/core";
 import type {
+  AgentCatalog,
+  AgentCatalogQuery,
+  CatalogPage,
   Accent,
   AgentDirectory,
   AgentPersona,
@@ -28,6 +31,7 @@ import type {
  */
 interface AgentRow {
   id: string;
+  cursorAt?: string;
   /** bigint comes back from pg as text. */
   advicePriceMicroAusd: string | null;
   name: string;
@@ -153,7 +157,7 @@ function summary(row: AgentRow): AgentSummary {
   };
 }
 
-export class PostgresAgentDirectory implements AgentDirectory {
+export class PostgresAgentDirectory implements AgentDirectory, AgentCatalog {
   constructor(
     private readonly pool: Pool,
     private readonly tokenChainId: number | null = null,
@@ -170,9 +174,146 @@ export class PostgresAgentDirectory implements AgentDirectory {
     const { rows } = await this.pool.query<AgentRow>(
       `${AGENT_SELECT}
        WHERE a.killed_at IS NULL AND a.visibility = 'public'
-       ORDER BY a.created_at DESC`,
+       ORDER BY a.created_at DESC,a.id DESC LIMIT 50`,
     );
     return rows;
+  }
+
+  private async pageRows(
+    query: AgentCatalogQuery,
+    kind: string,
+  ): Promise<{ rows: AgentRow[]; nextCursor: string | null }> {
+    const limit = query.limit ?? 20;
+    if (
+      !Number.isInteger(limit) ||
+      limit < 1 ||
+      limit > 50 ||
+      (query.q?.length ?? 0) > 80 ||
+      (query.theme?.length ?? 0) > 40
+    ) {
+      throw new PilotError("INVALID_INPUT", "Invalid catalogue page");
+    }
+    const binding = JSON.stringify([
+      kind,
+      this.tokenChainId,
+      query.q?.trim().toLowerCase() ?? "",
+      query.theme ?? "",
+      query.available ?? false,
+      query.adviceForSale ?? false,
+      query.tokensOnly ?? false,
+    ]);
+    let before: { at: string; id: string } | null = null;
+    if (query.cursor) {
+      try {
+        if (query.cursor.length > 2048) {
+          throw new Error("cursor");
+        }
+        const value = JSON.parse(Buffer.from(query.cursor, "base64url").toString("utf8"));
+        if (
+          value.v !== 1 ||
+          value.binding !== binding ||
+          typeof value.at !== "string" ||
+          !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z$/.test(value.at) ||
+          !Number.isFinite(Date.parse(value.at)) ||
+          new Date(value.at).toISOString().slice(0, 10) !== value.at.slice(0, 10) ||
+          !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(value.id)
+        ) {
+          throw new Error("cursor");
+        }
+        before = value;
+      } catch {
+        throw new PilotError("INVALID_INPUT", "Invalid catalogue cursor");
+      }
+    }
+    // No settlement/read service exists yet: record ordering is tied, availability is false.
+    // Stable creation/id ties preserve the current domain order without invented performance.
+    const { rows } = await this.pool.query<AgentRow>(
+      `SELECT a.id,a.advice_price_micro_ausd::text AS "advicePriceMicroAusd",a.name,a.handle,
+         a.created_at AS "createdAt",to_char(a.created_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS "cursorAt",p.beat,p.accent,p.venue,p.decides,
+         t.ticker,t.status AS "tokenStatus",t.address AS "tokenAddress",t.chain AS "tokenChain",
+         t.graduation_target::text AS "graduationTarget",t.quote_decimals AS "quoteDecimals"
+       FROM agents.agents a LEFT JOIN agents.agent_profiles p ON p.agent_id=a.id
+       LEFT JOIN market.tokens t ON t.agent_id=a.id AND t.status IN ('pre_graduation','graduated')
+       WHERE a.killed_at IS NULL AND a.visibility = 'public'
+         AND ($1::timestamptz IS NULL OR (a.created_at,a.id) < ($1,$2::uuid))
+         AND NOT EXISTS (SELECT 1 FROM unnest($3::text[]) word WHERE position(word in lower(concat_ws(' ',a.handle,a.name,p.beat,p.venue,p.decides)))=0)
+         AND ($4::text IS NULL OR p.beat=$4)
+         AND NOT $5::boolean
+         AND (NOT $6::boolean OR (a.advice_price_micro_ausd IS NOT NULL AND p.venue IN ('perps','both')))
+         AND (NOT $7::boolean OR EXISTS (SELECT 1 FROM market.tokens mt WHERE mt.agent_id=a.id AND mt.chain=$8 AND mt.status IN ('pre_graduation','graduated') AND mt.address IS NOT NULL AND EXISTS (
+           SELECT 1 FROM market.chain_events e JOIN market.chain_blocks b ON b.chain=e.chain AND b.hash=e.block_hash
+           JOIN launch.agent_keys k ON k.agent_id=a.id AND k.chain=e.chain AND k.agent_key=lower(e.decoded->>'agentKey')
+           JOIN launch.grants g ON g.agent_id=k.agent_id AND g.chain=k.chain AND g.factory=lower(e.emitter)
+           WHERE e.chain=mt.chain AND e.tx_hash=mt.launch_tx_hash AND e.event_name='LaunchCreated'
+             AND NOT e.orphaned AND NOT b.orphaned AND b.finality IN ('confirmed','finalized')
+             AND lower(e.decoded->>'token')=lower(mt.address)
+             AND lower(g.payload->'params'->>'creator')=lower(e.decoded->>'creator')
+             AND lower(g.payload->'params'->>'metadataHash')=lower(e.decoded->>'metadataHash')
+             AND lower(g.payload->'params'->>'expectedConfigHash')=lower(e.decoded->>'presetHash')
+             AND date_trunc('second',g.created_at)<=b.block_time AND g.expires_at>=b.block_time)))
+       ORDER BY a.created_at DESC,a.id DESC LIMIT $9`,
+      [
+        before?.at ?? null,
+        before?.id ?? null,
+        query.q?.trim().toLowerCase().split(/\s+/).filter(Boolean) ?? [],
+        query.theme || null,
+        query.available ?? false,
+        query.adviceForSale ?? false,
+        query.tokensOnly ?? false,
+        `eip155:${this.tokenChainId}`,
+        limit + 1,
+      ],
+    );
+    const items = rows.slice(0, limit);
+    const last = items.at(-1);
+    return {
+      rows: items,
+      nextCursor:
+        rows.length > limit && last
+          ? Buffer.from(JSON.stringify({ v: 1, binding, at: last.cursorAt, id: last.id })).toString(
+              "base64url",
+            )
+          : null,
+    };
+  }
+
+  async pageAgents(query: AgentCatalogQuery): Promise<CatalogPage<AgentSummary>> {
+    const page = await this.pageRows(query, "agents");
+    return { items: page.rows.map(summary), nextCursor: page.nextCursor };
+  }
+
+  async pageDirectory(query: AgentCatalogQuery): Promise<CatalogPage<DirectoryAgent>> {
+    const page = await this.pageRows(query, "directory");
+    const tokens = await readConfirmedAgentTokens(
+      this.pool,
+      page.rows.map((row) => row.id),
+      this.tokenChainId,
+    );
+    return {
+      items: page.rows.map((row) => {
+        const s = summary(row);
+        return {
+          agent: {
+            id: s.id,
+            advicePrice: s.advicePrice,
+            name: s.name,
+            handle: s.handle,
+            ticker: s.ticker,
+            accent: s.accent,
+          },
+          launchedToken: tokens.get(row.id) ?? null,
+          beat: s.beat,
+          venue: s.venue,
+          decides: row.decides ?? "",
+          score: null,
+          hitRate: null,
+          resolved: 0,
+          net: 0,
+          service: null,
+        };
+      }),
+      nextCursor: page.nextCursor,
+    };
   }
 
   async listAgents(): Promise<AgentSummary[]> {
