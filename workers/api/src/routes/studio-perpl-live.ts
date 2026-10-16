@@ -77,6 +77,42 @@ export function studioPerplLiveRoutes(deps: {
       return c.json(dto.perplLiveStateSchema.parse(body));
     },
   );
+  api.get(
+    "/agents/:id/perpl/history",
+    operation("studioPerplLiveHistory", {
+      security: "user",
+      response: dto.perplLiveHistorySchema,
+      errors: dto.studioErrorSchema,
+      description:
+        "Owner-only Perpl orders, sessions or setup history. Returns at most 100 newest entries before an opaque cursor; excludes credentials, leases and private preparation.",
+      query: {
+        kind: { required: true, schema: { type: "string", enum: ["orders", "sessions", "setup"] } },
+        before: { schema: { type: "string" } },
+      },
+    }),
+    async (c) => {
+      const input = dto.perplLiveHistoryQuerySchema.parse(c.req.query());
+      const owner = await scope(c.get("principal"), c.req.param("id"), false);
+      if (!deps.service) {
+        return c.json({ error: "PERPL_UNAVAILABLE" }, 503);
+      }
+      const response = await deps.service.invoke(
+        "/perpl/history",
+        { scope: owner, input },
+        c.req.header("Authorization") ?? "",
+      );
+      const raw = await response.json();
+      return new Response(
+        JSON.stringify(
+          response.ok ? dto.perplLiveHistorySchema.parse(raw) : dto.studioErrorSchema.parse(raw),
+        ),
+        {
+          status: response.status,
+          headers: { "Content-Type": "application/json", "Cache-Control": "private, no-store" },
+        },
+      );
+    },
+  );
   const definitions = [
     {
       path: "credentials/connect",
