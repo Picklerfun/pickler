@@ -2,6 +2,16 @@ import { BENCHMARK_VARIANTS } from "../paper-study/benchmark.js";
 import { PERPS_FOUR_WAY_STRATEGIES, PERPS_STUDY_STRATEGIES } from "../perps-study/types.js";
 import { PilotError } from "@pickler/core";
 export const EVALUATION_PROTOCOLS = {
+  "perps-hourly-breakout-fixed-screen-v1": {
+    version: 10,
+    instrument: "perpetual",
+    strategySetVersion: 1,
+    strategies: ["hourly-breakout", "sma-reference", "hourly-long"],
+    commands: ["prepare", "preflight", "run", "stop", "status", "report", "audit", "audit-export"],
+    paidCommands: [],
+    riskPolicy: "buffered-selective-1x-v1",
+    accounting: "zero-model-calls-v1",
+  },
   "perps-pts-intraday-sma-v1": {
     version: 9,
     instrument: "perpetual",
