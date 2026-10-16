@@ -50,6 +50,12 @@ Decision v2 and uncertainty-policy settings use the existing JSONB columns; no d
 Provider HTTP calls use `redirect: "manual"` and reject all non-success responses, including redirects. This preserves credential isolation and works in both Node.js and Cloudflare Workers, which does not support the `error` redirect mode.
 
 Execution uses `runs.lease_owner`, `runs.lease_expires_at` and the singleton `execution_policy` (defaults: global 5, tenant 2). Claims lock that policy row only for the admission transaction and choose the oldest eligible job. The per-agent running index remains authoritative. A store instance privately retains the random token for each claim; only that instance may renew or write for its claimed run. Public run projections exclude lease columns. Reservations last 60 seconds and hosts renew every 15 seconds.
+Research claims aggregate active research/preview/advice counts in PostgreSQL and filter paused,
+unauthorized, saturated and already-running agents before selecting one `(created_at,id)` candidate.
+Only its narrow identity/version leaves the selection query; configuration is read by the claimed
+row's `UPDATE ... RETURNING`. Claims lock the policy then agent, and recheck current research access
+when starting. Each claim cancels at most 50 authorized, unpaused stale queued snapshots with
+`CONFIG_CHANGED`; remaining stale snapshots cannot hide a runnable job.
 
 Use PostgreSQL `clock_timestamp()` for expiration, never HTTP timestamps. The optional constructor lease clock is only injected by the test helper; runtime never accepts clock configuration. Event, renewal and finish operations lock/recheck the run atomically. Renewal errors revoke local ownership. Recovery affects only expired running jobs and preserves partial evidence. Migration 0001 interrupts legacy unleased running jobs while preserving queued/history records. Migration 0002 rejects upgrades while an old session owner exists and guards valid leases against legacy global recovery. Valid finalization sets a transaction-local owner token for that trigger. Stop every old executor before applying migrations; do not roll back to old binaries on the upgraded database.
 
@@ -87,6 +93,22 @@ one advisory-locked transaction. This reconciles the published product/research 
 skipping older missing migrations. Use it from both the operator command and isolated test helpers;
 do not substitute the timestamp-only migrator. Unknown histories fail closed. See
 [the integration guide](../../docs/frontend-integration.md) before upgrading an existing database.
+
+## Bounded research maintenance
+
+Research scheduling handles at most 50 due agents per `tick`, ordered by next due time then
+scope and locked with `SKIP LOCKED`. Existing schedule request identities and next-occurrence
+updates commit with that batch. Each research recovery call interrupts at most 50 expired runs
+and 50 expired paper reservations through separate atomic set-based statements. It uses the
+database lease clock, rechecks state/expiration and preserves partial evidence.
+Preview recovery fails at most 50 expired leases and deletes at most 50 retention-eligible
+parents per call, preserving adoption rechecks and the existing 30-day adopted retention.
+Advice recovery atomically fails at most 50 expired jobs and releases only their reserved calls;
+started/settled costs remain unchanged. Advice claims exclude expired queued jobs before their
+existing 50-candidate limit, so unfinished expiry cleanup cannot start expired provider work.
+`advice.recover()` still reports queued work, not a maintenance continuation flag. These methods
+never drain backlogs in loops or create additional wakeup chains; durable row states/next-due
+markers carry progress to the next existing reconciliation. Public ports and schemas are unchanged.
 
 ## Unified studio persistence
 
@@ -731,7 +753,9 @@ launch and sustained indexer throughput are still pending.
 
 `PostgresLaunchIndexStore.applyBatch` inserts the bounded range's block headers with one
 PostgreSQL statement inside the existing fenced transaction. It preserves first-occurrence
-evidence, replay/upsert, finality and reorg restoration semantics. Events, outbox and cursor
+evidence, replay/upsert, finality and reorg restoration semantics. Header conflicts only update
+when orphan status or the requested finality changes; replaying an identical header does not
+create another tuple version. Unconfirmed input preserves stored finality. Events, outbox and cursor
 still commit atomically; no RPC work runs inside that transaction. Never replace complete
 ancestry validation with sparse sampling or advance a cursor to avoid backfill. The hosted
 capacity measurement and explicit closed launcher gate are recorded in

@@ -274,6 +274,7 @@ test("same runtime ID in two tenants has isolated reservations, ownership and hi
   await assert.rejects(f.peer.enqueue(user, publicId, "BTC", "same-key", policy), {
     code: "ADVICE_BUSY",
   });
+  f.advance(1);
   const second = await f.peer.enqueue(randomUUID(), publicId, "ETH", "same-key", policy);
   assert.notEqual(first.tenantId, second.tenantId);
   assert.equal(first.agentId, second.agentId);

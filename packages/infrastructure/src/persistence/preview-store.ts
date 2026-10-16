@@ -396,19 +396,34 @@ export class PostgresPreviewStore implements PreviewRepository, PreviewExecution
   /**
    * Interrupted leases fail; expired previews nobody adopted are deleted with their events, and
    * adopted ones once `ADOPTED_PREVIEW_RETENTION_MS` has passed since their adoption.
+   * Each call handles at most 50 leases and 50 parents, skipping current writers.
    */
   async recover(now: number): Promise<void> {
     const leaseNow = await this.clock(this.pool);
     await this.pool.query(
-      `UPDATE pickler.preview_runs
+      `WITH expired AS (
+        SELECT id FROM pickler.preview_runs
+        WHERE status = 'running' AND lease_expires_at <= $1
+        ORDER BY lease_expires_at, id
+        LIMIT 50 FOR UPDATE SKIP LOCKED
+      )
+      UPDATE pickler.preview_runs p
       SET status = 'failed', error = 'INTERRUPTED', finished_at = $1, lease_owner = NULL, lease_expires_at = NULL
-      WHERE status = 'running' AND lease_expires_at <= $1`,
+      FROM expired
+      WHERE p.id = expired.id AND p.status = 'running' AND p.lease_expires_at <= $1`,
       [leaseNow],
     );
     await this.pool.query(
-      `DELETE FROM pickler.preview_runs
-      WHERE status <> 'running'
-        AND ((adopted_at IS NULL AND expires_at <= $1) OR adopted_at <= $2)`,
+      `WITH expired AS (
+        SELECT id FROM pickler.preview_runs
+        WHERE status <> 'running'
+          AND ((adopted_at IS NULL AND expires_at <= $1) OR adopted_at <= $2)
+        ORDER BY coalesce(adopted_at, expires_at), id
+        LIMIT 50 FOR UPDATE SKIP LOCKED
+      )
+      DELETE FROM pickler.preview_runs p USING expired
+      WHERE p.id = expired.id AND p.status <> 'running'
+        AND ((p.adopted_at IS NULL AND p.expires_at <= $1) OR p.adopted_at <= $2)`,
       [now, now - ADOPTED_PREVIEW_RETENTION_MS],
     );
   }
