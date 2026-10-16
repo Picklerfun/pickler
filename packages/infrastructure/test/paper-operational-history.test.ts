@@ -5,6 +5,7 @@ import {
   initialPaperAccount,
   applyPaperObservation,
   paperFundingRange,
+  paperRisk,
   type PerpsPaperPosition,
   type PerpsPaperScope,
 } from "@pickler/trading/perps";
@@ -393,3 +394,61 @@ test("a close beyond a fixed anchor stays uncovered and a fresh epoch promptly c
     2,
   );
 });
+
+for (const receiptKind of ["full", "compact", "missing", "wrong-cohort"] as const) {
+  test(`conversion preserves only positive full legacy funding coverage: ${receiptKind}`, async (t) => {
+    const f = await fixture(t, 105);
+    await f.db.pool.query(
+      `UPDATE pickler.perps_paper_accounts SET document=document||jsonb_build_object(
+        'fundingPending',false,'lastFundingAt',$1::bigint,'positions',
+        (SELECT jsonb_agg(document ORDER BY sequence) FROM pickler.perps_paper_positions WHERE account_id='account'))
+      WHERE id='account'`,
+      [f.now],
+    );
+    if (receiptKind !== "missing") {
+      await f.db.pool.query(
+        `INSERT INTO pickler.perps_paper_observations(account_id,key,document,result)
+        SELECT id,'legacy-confirmed','{"frames":[],"funding":[]}'::jsonb,
+          jsonb_build_object('account',CASE WHEN $1='compact' THEN
+            jsonb_set(document,'{positions}','[]'::jsonb) WHEN $1='wrong-cohort' THEN
+            jsonb_set(document,'{positions,104,id}','"different-position"'::jsonb)
+            ELSE document END,'attempts','[]'::jsonb,'movements','[]'::jsonb)
+        FROM pickler.perps_paper_accounts WHERE id='account'`,
+        [receiptKind],
+      );
+    }
+    let result = await migratePaperAccount(f.db.pool, "account", true);
+    for (let pass = 0; pass < 40 && !result.complete; pass++) {
+      result = await migratePaperAccount(f.db.pool, "account", true);
+    }
+    assert.equal(result.complete, true);
+    const expectedCovered = receiptKind === "full";
+    const opening = {
+      kind: "open" as const,
+      symbol: "BTC" as const,
+      side: "long" as const,
+      notional: "10",
+      feeReserve: "1",
+    };
+    const before = await f.repo.executionSnapshot(f.scope);
+    assert.equal(before.account.fundingPending, !expectedCovered);
+    assert.equal(paperRisk(before.account, [], f.now, opening).allowed, expectedCovered);
+    const storage = (
+      await f.db.pool.query(
+        "SELECT coverage_complete=coverage_required AS covered,cursor FROM pickler.paper_storage WHERE account_id='account'",
+      )
+    ).rows[0];
+    assert.equal(storage.covered, expectedCovered);
+    if (expectedCovered) {
+      assert.equal(JSON.parse(storage.cursor).certificate.receiptKey, "legacy-confirmed");
+    }
+    // Re-auditing a certified history must not revoke opening eligibility while staged.
+    assert.equal(
+      (await new PaperFundingEpochs(f.db.pool).pass(f.scope, funding, anchor)).kind,
+      "continued",
+    );
+    const during = await f.repo.executionSnapshot(f.scope);
+    assert.equal(during.account.fundingPending, !expectedCovered);
+    assert.equal(paperRisk(during.account, [], f.now, opening).allowed, expectedCovered);
+  });
+}
