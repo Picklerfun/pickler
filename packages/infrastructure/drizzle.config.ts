@@ -20,6 +20,8 @@ export default defineConfig({
     "./src/persistence/product/perps-checks.ts",
     "./src/persistence/product/perps-check-costs.ts",
     "./src/persistence/product/perpl-live.ts",
+    "./src/persistence/product/paper-operational.ts",
+    "./src/persistence/product/paper-record.ts",
   ],
   out: "./drizzle",
   // `auth` belongs to Supabase and `mastra` to Mastra: referenced, never migrated from here.
