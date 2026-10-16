@@ -528,28 +528,90 @@ export function createFinancialReceiptRecorder(clock: ReturnType<typeof createBo
   };
 }
 
+export interface DatabaseClockProof {
+  format: "hourly-breakout-database-clock-proof-v1";
+  databaseAt: number | null;
+  wallBefore: number | null;
+  wallAfter: number | null;
+  monotonicBefore: number | null;
+  monotonicAfter: number | null;
+  roundTripMs: number | null;
+  databaseOffsetInterval: { lowerMs: number; upperMs: number } | null;
+  quantizationMarginMs: 1;
+  compatibility: "LOCAL_OS_INTERVAL_COMPATIBLE" | "CLOCK_INCOMPATIBLE" | "CLOCK_PROOF_FAILURE";
+}
+
+/** Keep the rejected numbers inspectable even if writing their journal also fails. */
+export class DatabaseClockSampleError extends PilotError {
+  constructor(
+    readonly proof: DatabaseClockProof,
+    readonly proofPersistenceCode?: string,
+  ) {
+    super(
+      proofPersistenceCode === "LEASE_LOST" ? "LEASE_LOST" : proof.compatibility,
+      proof.compatibility === "CLOCK_INCOMPATIBLE"
+        ? "Database time lies outside the complete local RTT interval"
+        : "Database clock RTT proof is invalid",
+    );
+  }
+}
+
 /** Preserve the complete host send/receive RTT, including query/queue delays. */
 export async function sampleDatabaseClock(
   sample: () => Promise<{ databaseAt: number }>,
   clock: OrderedClock = systemClock,
+  onRejected?: (proof: DatabaseClockProof) => void | Promise<void>,
 ) {
   const monotonicBefore = clock.monotonic();
   const wallBefore = clock.wall();
   const { databaseAt } = await sample();
   const wallAfter = clock.wall();
   const monotonicAfter = clock.monotonic();
-  if (!Number.isFinite(databaseAt) || wallAfter < wallBefore || monotonicAfter < monotonicBefore) {
-    throw new PilotError("CLOCK_PROOF_FAILURE", "Database clock RTT proof is invalid");
-  }
   const databaseOffsetInterval = {
     lowerMs: databaseAt - wallAfter - 1,
     upperMs: databaseAt - wallBefore + 1,
   };
-  if (databaseOffsetInterval.lowerMs > 0 || databaseOffsetInterval.upperMs < 0) {
-    throw new PilotError(
-      "CLOCK_INCOMPATIBLE",
-      "Database time lies outside the complete local RTT interval",
-    );
+  const roundTripMs = monotonicAfter - monotonicBefore;
+  const validNumbers = [
+    databaseAt,
+    wallBefore,
+    wallAfter,
+    monotonicBefore,
+    monotonicAfter,
+    roundTripMs,
+    databaseOffsetInterval.lowerMs,
+    databaseOffsetInterval.upperMs,
+  ].every(Number.isFinite);
+  const invalidProof = !validNumbers || wallAfter < wallBefore || monotonicAfter < monotonicBefore;
+  const incompatible = databaseOffsetInterval.lowerMs > 0 || databaseOffsetInterval.upperMs < 0;
+  if (invalidProof || incompatible) {
+    const finite = (value: number) => (Number.isFinite(value) ? value : null);
+    const proof: DatabaseClockProof = {
+      format: "hourly-breakout-database-clock-proof-v1",
+      databaseAt: finite(databaseAt),
+      wallBefore: finite(wallBefore),
+      wallAfter: finite(wallAfter),
+      monotonicBefore: finite(monotonicBefore),
+      monotonicAfter: finite(monotonicAfter),
+      roundTripMs: finite(roundTripMs),
+      databaseOffsetInterval:
+        Number.isFinite(databaseOffsetInterval.lowerMs) &&
+        Number.isFinite(databaseOffsetInterval.upperMs)
+          ? { ...databaseOffsetInterval }
+          : null,
+      quantizationMarginMs: 1,
+      compatibility: invalidProof ? "CLOCK_PROOF_FAILURE" : "CLOCK_INCOMPATIBLE",
+    };
+    let proofPersistenceCode: string | undefined;
+    try {
+      await onRejected?.(structuredClone(proof));
+    } catch (error) {
+      proofPersistenceCode =
+        error instanceof PilotError && /^[A-Z0-9_]{1,80}$/.test(error.code)
+          ? error.code
+          : "BREAKOUT_CLOCK_PROOF_WRITE_FAILED";
+    }
+    throw new DatabaseClockSampleError(proof, proofPersistenceCode);
   }
   return {
     databaseAt,
@@ -557,7 +619,7 @@ export async function sampleDatabaseClock(
     wallAfter,
     monotonicBefore,
     monotonicAfter,
-    roundTripMs: monotonicAfter - monotonicBefore,
+    roundTripMs,
     databaseOffsetInterval,
     compatibility: "LOCAL_OS_INTERVAL_COMPATIBLE" as const,
   };
