@@ -1,4 +1,20 @@
+import {
+  historyPage as readHistoryPage,
+  position as readHistoryPosition,
+} from "./paper-history-read.js";
+import type { PaperHistoryEntities, PaperHistoryPageOptions } from "@pickler/trading/perps";
 import { randomUUID } from "node:crypto";
+import {
+  recordMovement,
+  recordClosedPosition,
+  advanceRecordProjection,
+} from "./paper-record-projection.js";
+import {
+  executionSnapshot as readExecutionSnapshot,
+  recordSnapshot as readRecordSnapshot,
+  paperLedger,
+  scopeValues,
+} from "./paper-operational-read.js";
 import type { Pool, PoolClient } from "pg";
 import { PilotError, type AgentRecord } from "@pickler/core";
 import { assertPerpsHourlyReady } from "./perps-hourly-readiness.js";
@@ -38,6 +54,7 @@ import {
   type PerpsPaperLease,
   type PerpsPaperMovement,
   type PerpsProductPaperFence,
+  type PaperExecutionState,
 } from "@pickler/trading/perps";
 /** The least a product account starts with (perpl-paper-runtime-v1 R9). */
 export const PRODUCT_PAPER_MINIMUM = "10";
@@ -70,6 +87,7 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
     const client = await this.pool.connect();
     try {
       await client.query("BEGIN");
+      await client.query("SELECT set_config('pickler.paper_writer','2',true)");
       await this.guardStudy(client);
       await this.guardProduct(client);
       const result = await action(client);
@@ -180,11 +198,18 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
     );
     return result.rows[0]!.now;
   }
-  private async lock(client: PoolClient, scope: PerpsPaperScope): Promise<Locked> {
+  private async lock(
+    client: PoolClient,
+    scope: PerpsPaperScope,
+    attemptKey?: string,
+    positionId?: string,
+    archive = false,
+    reducingLegacy = false,
+  ): Promise<Locked> {
     const agent = await this.agent(client, scope);
     const result = await client.query<{ id: string; document: PerpsPaperAccount }>(
-      "SELECT id,document FROM pickler.perps_paper_accounts WHERE tenant_id=$1 AND agent_id=$2 AND session_id=$3 AND network=$4 FOR UPDATE",
-      [scope.tenantId, scope.agentId, scope.sessionId, scope.network],
+      "SELECT id,CASE WHEN $5 THEN document-'positions' ELSE document END AS document FROM pickler.perps_paper_accounts WHERE tenant_id=$1 AND agent_id=$2 AND session_id=$3 AND network=$4 FOR UPDATE",
+      [scope.tenantId, scope.agentId, scope.sessionId, scope.network, isProductPaperSession(scope)],
     );
     const row = result.rows[0];
     if (!row) {
@@ -192,28 +217,89 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
     }
     const now = await this.now(client);
     await client.query(
-      `UPDATE pickler.perps_paper_attempts SET document = document || jsonb_build_object('status','interrupted','reserved','0','reason','LEASE_EXPIRED','finishedAt',$2::bigint), owner=null, expires_at=null WHERE account_id=$1 AND owner IS NOT NULL AND expires_at <= $2`,
+      `UPDATE pickler.perps_paper_attempts SET document = document || jsonb_build_object('status','interrupted','reserved','0','reason','LEASE_EXPIRED','finishedAt',$2::bigint), owner=null, expires_at=null WHERE account_id=$1 AND key IN (SELECT key FROM pickler.perps_paper_attempts WHERE account_id=$1 AND owner IS NOT NULL AND expires_at<=$2 ORDER BY expires_at,key LIMIT 100)`,
       [row.id, now],
     );
-    const attempts = await client.query<{ document: PerpsPaperAttempt }>(
-      "SELECT document FROM pickler.perps_paper_attempts WHERE account_id=$1 ORDER BY key",
+    if (isProductPaperSession(scope) && !archive) {
+      const storage = await client.query(
+        "SELECT mode,coverage_required,coverage_complete FROM pickler.paper_storage WHERE account_id=$1",
+        [row.id],
+      );
+      if (
+        storage.rows[0]?.mode !== "operational" &&
+        !(reducingLegacy && storage.rows[0]?.mode !== "frozen")
+      ) {
+        throw new PilotError(
+          "PAPER_MIGRATION_REQUIRED",
+          "Convert this legacy paper account before financial execution",
+        );
+      }
+      const view = await readExecutionSnapshot(client, scope, now);
+      if (
+        storage.rows[0] &&
+        BigInt(storage.rows[0].coverage_complete) < BigInt(storage.rows[0].coverage_required)
+      ) {
+        view.account.fundingPending = true;
+      }
+      if (attemptKey) {
+        const target = await client.query<{ document: PerpsPaperAttempt }>(
+          "SELECT document FROM pickler.perps_paper_attempts WHERE account_id=$1 AND key=$2",
+          [row.id, attemptKey],
+        );
+        if (target.rows[0] && !view.attempts.some((item) => item.key === attemptKey)) {
+          view.attempts.push(target.rows[0].document);
+        }
+      }
+      if (positionId && !view.account.positions.some((item) => item.id === positionId)) {
+        const target = await client.query<{ document: PerpsPaperPosition }>(
+          "SELECT document FROM pickler.perps_paper_positions WHERE account_id=$1 AND id=$2",
+          [row.id, positionId],
+        );
+        if (target.rows[0]) {
+          view.account.positions.push(target.rows[0].document);
+        }
+      }
+      return { id: row.id, agent, now, view };
+    }
+    return { id: row.id, agent, now, view: await this.archiveSnapshot(client, scope) };
+  }
+
+  private async archiveSnapshot(
+    client: Pool | PoolClient,
+    scope: PerpsPaperScope,
+  ): Promise<PerpsPaperView> {
+    const found = await client.query(
+      "SELECT id,document FROM pickler.perps_paper_accounts WHERE tenant_id=$1 AND agent_id=$2 AND session_id=$3 AND network=$4",
+      scopeValues(scope),
+    );
+    const row = found.rows[0];
+    if (!row) {
+      throw new PilotError("NOT_FOUND", "Paper account not found");
+    }
+    const positions = await client.query(
+      `SELECT p.document || CASE WHEN EXISTS(SELECT 1 FROM pickler.paper_position_sizeups x WHERE x.account_id=p.account_id AND x.position_id=p.id)
+      THEN jsonb_build_object('sizeUps',(SELECT jsonb_agg(jsonb_build_object('at',x.at,'margin',trim_scale(x.margin)::text) ORDER BY x.sequence)
+        FROM pickler.paper_position_sizeups x WHERE x.account_id=p.account_id AND x.position_id=p.id)) ELSE '{}'::jsonb END AS document
+      FROM pickler.perps_paper_positions p WHERE account_id=$1 ORDER BY sequence`,
       [row.id],
     );
-    const movements = await client.query<{ document: PerpsPaperMovement }>(
-      "SELECT document FROM pickler.perps_paper_movements WHERE account_id=$1 ORDER BY key",
+    const attempts = await client.query(
+      `SELECT CASE WHEN owner IS NOT NULL AND expires_at<=$2
+      THEN document||jsonb_build_object('status','interrupted','reserved','0','reason','LEASE_EXPIRED','finishedAt',$2::bigint)
+      ELSE document END AS document FROM pickler.perps_paper_attempts WHERE account_id=$1 ORDER BY key`,
+      [row.id, await this.now(client)],
+    );
+    const movements = await client.query(
+      `WITH ledger AS (${paperLedger}) SELECT document FROM ledger WHERE account_id=$1 ORDER BY key`,
       [row.id],
     );
     return {
-      id: row.id,
-      agent,
-      now,
-      view: {
-        account: row.document,
-        attempts: attempts.rows.map((r) => r.document),
-        movements: movements.rows.map((r) => r.document),
-      },
+      account: { ...row.document, positions: positions.rows.map((item) => item.document) },
+      attempts: attempts.rows.map((item) => item.document),
+      movements: movements.rows.map((item) => item.document),
     };
   }
+
   async closeAdmissions(scope: PerpsPaperScope) {
     await this.transaction(async (client) => {
       const locked = await this.lock(client, scope);
@@ -279,10 +365,25 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
           }
         }
       }
+      if (isProductPaperSession(scope)) {
+        const keys = locked.view.account.positions.flatMap((position) =>
+          observation.funding
+            .filter((history) => history.market.symbol === position.symbol)
+            .flatMap((history) =>
+              history.events.map((event) => `funding:${position.id}:${event.eventBlock}`),
+            ),
+        );
+        const existing = await client.query<{ document: PerpsPaperMovement }>(
+          `WITH ledger AS (${paperLedger})
+          SELECT document FROM ledger WHERE account_id=$1 AND key=ANY($2::text[])`,
+          [locked.id, keys],
+        );
+        locked.view.movements = existing.rows.map((row) => row.document);
+      }
       const result = applyPaperObservation(
         locked.view.account,
         locked.view.movements,
-        observation,
+        isProductPaperSession(scope) ? { ...observation, incrementalFunding: true } : observation,
         key,
         locked.now,
       );
@@ -292,6 +393,14 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
         "INSERT INTO pickler.perps_paper_observations(account_id,key,document,result) VALUES($1,$2,$3,$4)",
         [locked.id, key, observation, { account: view.account, attempts: [], movements: [] }],
       );
+      if (isProductPaperSession(scope)) {
+        const before = new Map(locked.view.account.positions.map((p) => [p.id, JSON.stringify(p)]));
+        view.changes = {
+          positions: result.account.positions.filter((p) => before.get(p.id) !== JSON.stringify(p)),
+          attempts: [],
+          movements: result.movements,
+        };
+      }
       return view;
     });
   }
@@ -319,6 +428,12 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
         [id, scope.tenantId, scope.agentId, scope.sessionId, scope.network, account],
       );
       if (inserted.rowCount) {
+        if (product) {
+          await client.query(
+            "INSERT INTO pickler.paper_storage(account_id,mode) VALUES($1,'operational')",
+            [id],
+          );
+        }
         await client.query(
           "INSERT INTO pickler.perps_paper_movements(account_id,key,document) VALUES($1,'initial',$2)",
           [
@@ -333,15 +448,43 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
           ],
         );
       }
+      if (inserted.rowCount && product) {
+        await recordMovement(client, id, {
+          key: "initial",
+          kind: "initial",
+          delta: account.cash,
+          at: now,
+        });
+        await advanceRecordProjection(client, id);
+      }
       const locked = await this.lock(client, scope);
       if (!product && locked.view.account.agentVersion !== expectedVersion) {
         throw new PilotError("CONFIG_CHANGED", "Existing paper session has another config version");
+      }
+      if (product) {
+        locked.view.changes = {
+          positions: [],
+          attempts: [],
+          movements: inserted.rowCount
+            ? [
+                {
+                  key: "initial",
+                  kind: "initial",
+                  delta: account.cash,
+                  at: now,
+                  evidence: { policy: account.policy },
+                },
+              ]
+            : [],
+        };
       }
       return locked.view;
     });
   }
   async view(scope: PerpsPaperScope) {
-    return this.transaction(async (client) => (await this.lock(client, scope)).view);
+    return this.transaction(
+      async (client) => (await this.lock(client, scope, undefined, undefined, true)).view,
+    );
   }
   /**
    * Admission against the agent's current config. A close checks only the scope (R10, "exits
@@ -403,12 +546,16 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
         config: { ...config, spend: config.spend },
         open: locked.view.account.positions.filter((p) => p.closedAt === null),
         position,
-        newMarginToday: marginOpenedSince(locked.view.account.positions, utcDayStart(locked.now)),
-        realizedToday: paperDecimal(
-          locked.view.movements
-            .filter((m) => m.kind !== "initial" && m.at >= utcDayStart(locked.now))
-            .reduce((sum, m) => sum + paperUnits(m.delta), 0n),
-        ),
+        newMarginToday:
+          locked.view.accounting?.newMarginToday ??
+          marginOpenedSince(locked.view.account.positions, utcDayStart(locked.now)),
+        realizedToday:
+          locked.view.accounting?.realizedToday ??
+          paperDecimal(
+            locked.view.movements
+              .filter((m) => m.kind !== "initial" && m.at >= utcDayStart(locked.now))
+              .reduce((sum, m) => sum + paperUnits(m.delta), 0n),
+          ),
         freeEquity: null,
         checkAvailable: false,
         takerFee: 0,
@@ -439,7 +586,7 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
     }
     assertPaperIntent(intent);
     return this.transaction(async (client) => {
-      const locked = await this.lock(client, scope);
+      const locked = await this.lock(client, scope, key);
       const previous = locked.view.attempts.find((a) => a.key === key);
       if (previous) {
         if (
@@ -479,8 +626,26 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
       return { attempt, lease: risk.allowed ? { key, owner, expiresAt } : null };
     });
   }
-  private async owned(client: PoolClient, scope: PerpsPaperScope, lease: PerpsPaperLease) {
-    const locked = await this.lock(client, scope);
+  private async owned(
+    client: PoolClient,
+    scope: PerpsPaperScope,
+    lease: PerpsPaperLease,
+    releaseOnly = false,
+  ) {
+    const point = await client.query(
+      `SELECT t.document->'intent'->>'kind' AS kind FROM pickler.perps_paper_attempts t
+      JOIN pickler.perps_paper_accounts a ON a.id=t.account_id WHERE a.tenant_id=$1 AND a.agent_id=$2
+      AND a.session_id=$3 AND a.network=$4 AND t.key=$5`,
+      [...scopeValues(scope), lease.key],
+    );
+    const locked = await this.lock(
+      client,
+      scope,
+      lease.key,
+      undefined,
+      false,
+      releaseOnly || point.rows[0]?.kind === "close",
+    );
     const result = await client.query(
       "SELECT owner,expires_at FROM pickler.perps_paper_attempts WHERE account_id=$1 AND key=$2",
       [locked.id, lease.key],
@@ -508,16 +673,43 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
     id: string,
     account: PerpsPaperAccount,
     movements: PerpsPaperMovement[],
+    positionId?: string,
   ) {
-    await client.query("UPDATE pickler.perps_paper_accounts SET document=$2 WHERE id=$1", [
+    const product = isProductPaperSession(account.scope);
+    const metadata = product
+      ? (await client.query("SELECT mode FROM pickler.paper_storage WHERE account_id=$1", [id]))
+          .rows[0]
+      : null;
+    const operational = product && metadata?.mode === "operational";
+    if (product && !operational) {
+      // Close-only compatibility: preserve legacy parent history on the server until explicit
+      // frozen conversion. No historical account document is transferred to this writer.
+      const replacements = Object.fromEntries(
+        account.positions.map((position) => [position.id, position]),
+      );
+      await client.query(
+        `UPDATE pickler.perps_paper_accounts SET document=jsonb_set($2::jsonb,'{positions}',
+        coalesce((SELECT jsonb_agg(coalesce(p||($3::jsonb->(p->>'id')),p)) FROM jsonb_array_elements(document->'positions') p),'[]'::jsonb)) WHERE id=$1`,
+        [id, { ...account, positions: [] }, replacements],
+      );
+    } else {
+      await client.query("UPDATE pickler.perps_paper_accounts SET document=$2 WHERE id=$1", [
+        id,
+        operational ? { ...account, positions: [] } : account,
+      ]);
+    }
+    await client.query("UPDATE pickler.paper_storage SET revision=revision+1 WHERE account_id=$1", [
       id,
-      account,
     ]);
     for (const p of account.positions) {
       await client.query(
         `INSERT INTO pickler.perps_paper_positions(account_id,id,symbol,closed_at,document,check_id,config_version,leverage,margin,stop_price,take_profit_price,exit_due_at,close_reason)
       VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
-      ON CONFLICT(account_id,id) DO UPDATE SET closed_at=excluded.closed_at,document=excluded.document,
+      ON CONFLICT(account_id,id) DO UPDATE SET closed_at=excluded.closed_at,
+        document=CASE WHEN $14 THEN excluded.document ELSE perps_paper_positions.document||
+          coalesce((SELECT jsonb_build_object('sizeUps',legacy->'sizeUps') FROM pickler.perps_paper_accounts a,
+            jsonb_array_elements(a.document->'positions') legacy
+            WHERE a.id=$1 AND legacy->>'id'=$2 AND legacy ? 'sizeUps' LIMIT 1),'{}'::jsonb)||excluded.document END,
         check_id=excluded.check_id,config_version=excluded.config_version,leverage=excluded.leverage,margin=excluded.margin,
         stop_price=excluded.stop_price,take_profit_price=excluded.take_profit_price,exit_due_at=excluded.exit_due_at,close_reason=excluded.close_reason`,
         [
@@ -525,7 +717,9 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
           p.id,
           p.symbol,
           p.closedAt,
-          p,
+          operational
+            ? Object.fromEntries(Object.entries(p).filter(([key]) => key !== "sizeUps"))
+            : p,
           p.checkId ?? null,
           p.configVersion ?? null,
           p.leverage ?? null,
@@ -534,14 +728,47 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
           p.takeProfitPrice ?? null,
           p.exitDueAt ?? null,
           p.closeReason ?? null,
+          !product || operational,
         ],
       );
+    }
+    if (operational && positionId) {
+      const delta = movements.reduce((sum, item) => sum + paperUnits(item.delta), 0n);
+      await client.query(
+        `INSERT INTO pickler.paper_position_totals(account_id,position_id,pnl) VALUES($1,$2,$3)
+        ON CONFLICT(account_id,position_id) DO UPDATE SET pnl=paper_position_totals.pnl+excluded.pnl`,
+        [id, positionId, paperDecimal(delta)],
+      );
+    }
+    if (
+      operational &&
+      positionId &&
+      account.positions.some((position) => position.id === positionId && position.closedAt !== null)
+    ) {
+      const total = await client.query(
+        "SELECT pnl::text FROM pickler.paper_position_totals WHERE account_id=$1 AND position_id=$2",
+        [id, positionId],
+      );
+      await recordClosedPosition(client, id, positionId, total.rows[0]?.pnl ?? "0");
     }
     for (const m of movements) {
       await client.query(
         "INSERT INTO pickler.perps_paper_movements(account_id,key,document) VALUES($1,$2,$3)",
         [id, m.key, m],
       );
+      if (operational) {
+        await recordMovement(client, id, m);
+      }
+      if (operational && m.kind !== "initial") {
+        await client.query(
+          `INSERT INTO pickler.paper_daily_totals(account_id,day,realized) VALUES($1,$2,$3)
+          ON CONFLICT(account_id,day) DO UPDATE SET realized=paper_daily_totals.realized+excluded.realized`,
+          [id, utcDayStart(m.at), m.delta],
+        );
+      }
+    }
+    if (operational) {
+      await advanceRecordProjection(client, id);
     }
   }
   async complete(
@@ -574,8 +801,21 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
         opened.takeProfitPrice = exits?.takeProfitPrice ?? null;
         opened.exitDueAt = exits?.exitDueAt ?? null;
       }
-      await this.persist(client, locked.id, result.account, result.movements);
-      const attempt = {
+      const changed =
+        opened ??
+        result.account.positions.find(
+          (position) =>
+            position.closedAt === locked.now && position.symbol === locked.attempt.intent.symbol,
+        );
+      await this.persist(client, locked.id, result.account, result.movements, changed?.id);
+      if (opened && locked.attempt.intent.kind === "open") {
+        await client.query(
+          `INSERT INTO pickler.paper_daily_totals(account_id,day,margin) VALUES($1,$2,$3)
+          ON CONFLICT(account_id,day) DO UPDATE SET margin=paper_daily_totals.margin+excluded.margin`,
+          [locked.id, utcDayStart(locked.now), opened.margin ?? opened.entryNotional],
+        );
+      }
+      const attempt: PerpsPaperAttempt = {
         ...locked.attempt,
         status: "filled",
         reserved: "0",
@@ -586,7 +826,17 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
         "UPDATE pickler.perps_paper_attempts SET document=$3,owner=null,expires_at=null WHERE account_id=$1 AND key=$2",
         [locked.id, lease.key, attempt],
       );
-      return (await this.lock(client, scope)).view;
+      const view = isProductPaperSession(scope)
+        ? await readExecutionSnapshot(client, scope, locked.now)
+        : (await this.lock(client, scope)).view;
+      if (isProductPaperSession(scope)) {
+        view.changes = {
+          positions: changed ? [changed] : [],
+          attempts: [attempt],
+          movements: result.movements,
+        };
+      }
+      return view;
     });
   }
   async fail(
@@ -599,7 +849,7 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
       throw new PilotError("INVALID_INPUT", "Use a safe failure code");
     }
     await this.transaction(async (client) => {
-      const locked = await this.owned(client, scope, lease);
+      const locked = await this.owned(client, scope, lease, true);
       await client.query(
         "UPDATE pickler.perps_paper_attempts SET document=$3,owner=null,expires_at=null WHERE account_id=$1 AND key=$2",
         [
@@ -638,7 +888,7 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
       throw new PilotError("INVALID_INPUT", "Only product positions close outside an attempt");
     }
     return this.transaction(async (client) => {
-      const locked = await this.lock(client, scope);
+      const locked = await this.lock(client, scope, undefined, positionId, false, true);
       const position = locked.view.account.positions.find((p) => p.id === positionId);
       if (!position) {
         throw new PilotError("NOT_FOUND", "Paper position not found");
@@ -668,25 +918,39 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
       const result = applyPaperFill(locked.view.account, attempt, fill, locked.now);
       const closed = result.account.positions.find((p) => p.id === positionId)!;
       closed.closeReason = reason;
-      await this.persist(client, locked.id, result.account, result.movements);
+      await this.persist(client, locked.id, result.account, result.movements, positionId);
+      const filled: PerpsPaperAttempt = {
+        ...attempt,
+        status: "filled",
+        finishedAt: locked.now,
+        reason,
+        evidence: fill.evidence,
+      };
       await client.query(
         "INSERT INTO pickler.perps_paper_attempts(account_id,key,document,owner,expires_at) VALUES($1,$2,$3,null,null)",
-        [
-          locked.id,
-          key,
-          {
-            ...attempt,
-            status: "filled",
-            finishedAt: locked.now,
-            reason,
-            evidence: fill.evidence,
-          },
-        ],
+        [locked.id, key, filled],
       );
-      const view = (await this.lock(client, scope)).view;
+      if (
+        locked.view.account.fundingPending ||
+        locked.view.account.lastFundingAt === undefined ||
+        locked.now - locked.view.account.lastFundingAt > 30000
+      ) {
+        await client.query(
+          `UPDATE pickler.paper_storage SET coverage_required=greatest(coverage_required,
+          coalesce((SELECT closed_sequence FROM pickler.perps_paper_positions WHERE account_id=$1 AND id=$2),0)) WHERE account_id=$1`,
+          [locked.id, positionId],
+        );
+      }
+      const view = await readExecutionSnapshot(client, scope, locked.now);
+      view.changes = { positions: [closed], attempts: [filled], movements: result.movements };
+      if (view.accounting) {
+        view.accounting.closePnl = paperDecimal(
+          result.movements.reduce((sum, item) => sum + paperUnits(item.delta), 0n),
+        );
+      }
       return {
         closed: true,
-        position: view.account.positions.find((p) => p.id === positionId)!,
+        position: closed,
         view,
       };
     });
@@ -740,7 +1004,7 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
         WHERE p.closed_at IS NULL AND a.session_id = $3
       ) due
       WHERE reason IS NOT NULL
-      ORDER BY (position->>'openedAt')::bigint, position->>'id'`,
+      ORDER BY (position->>'openedAt')::bigint, position->>'id' LIMIT 100`,
       [JSON.stringify(marks), now, PRODUCT_PAPER_SESSION],
     );
     return result.rows.map((row) => ({
@@ -775,7 +1039,7 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
       throw new PilotError("INVALID_INPUT", "Invalid size-up");
     }
     return this.transaction(async (client) => {
-      const locked = await this.lock(client, scope);
+      const locked = await this.lock(client, scope, input.key, positionId);
       const position = locked.view.account.positions.find((p) => p.id === positionId);
       if (!position) {
         throw new PilotError("NOT_FOUND", "Paper position not found");
@@ -807,25 +1071,43 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
       }
       const fill = simulatePerpsFill(locked.view.account, intent, frame, locked.now);
       const result = applyPaperSizeUp(locked.view.account, positionId, input.key, fill, locked.now);
-      await this.persist(client, locked.id, result.account, result.movements);
+      const addedMargin = result.account.positions
+        .find((item) => item.id === positionId)!
+        .sizeUps!.at(-1)!.margin;
+      await client.query(
+        "INSERT INTO pickler.paper_position_sizeups(account_id,position_id,key,at,margin) VALUES($1,$2,$3,$4,$5)",
+        [locked.id, positionId, input.key, locked.now, addedMargin],
+      );
+      await this.persist(client, locked.id, result.account, result.movements, positionId);
+      await client.query(
+        "UPDATE pickler.paper_position_totals SET sizeup_margin=sizeup_margin+$3::numeric WHERE account_id=$1 AND position_id=$2",
+        [locked.id, positionId, addedMargin],
+      );
+      await client.query(
+        `INSERT INTO pickler.paper_daily_totals(account_id,day,margin) VALUES($1,$2,$3)
+        ON CONFLICT(account_id,day) DO UPDATE SET margin=paper_daily_totals.margin+excluded.margin`,
+        [locked.id, utcDayStart(locked.now), addedMargin],
+      );
+      const attempt: PerpsPaperAttempt = {
+        key: input.key,
+        intent,
+        status: "filled",
+        reserved: "0",
+        createdAt: locked.now,
+        finishedAt: locked.now,
+        reason: "size_up",
+        evidence: fill.evidence,
+      };
       await client.query(
         "INSERT INTO pickler.perps_paper_attempts(account_id,key,document,owner,expires_at) VALUES($1,$2,$3,null,null)",
-        [
-          locked.id,
-          input.key,
-          {
-            key: input.key,
-            intent,
-            status: "filled",
-            reserved: "0",
-            createdAt: locked.now,
-            finishedAt: locked.now,
-            reason: "size_up",
-            evidence: fill.evidence,
-          },
-        ],
+        [locked.id, input.key, attempt],
       );
       const view = (await this.lock(client, scope)).view;
+      view.changes = {
+        positions: result.account.positions.filter((p) => p.id === positionId),
+        attempts: [attempt],
+        movements: result.movements,
+      };
       return {
         added: true,
         position: view.account.positions.find((p) => p.id === positionId)!,
@@ -833,13 +1115,31 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
       };
     });
   }
-  async openProductAccounts() {
-    const result = await this.pool.query(
-      `SELECT DISTINCT pa.product_agent_id::text AS "productAgentId", a.tenant_id AS "tenantId", a.agent_id AS "agentId", a.network
-      FROM pickler.perps_paper_accounts a JOIN pickler.perps_paper_positions p ON p.account_id=a.id
+  async openProductAccounts(productAgentId?: string) {
+    await this.pool.query(
+      `INSERT INTO pickler.paper_storage(account_id,mode)
+      SELECT a.id,'legacy' FROM pickler.perps_paper_accounts a
       JOIN pickler.product_agents pa ON pa.tenant_id=a.tenant_id AND pa.runtime_agent_id=a.agent_id
-      WHERE a.session_id=$1 AND p.closed_at IS NULL`,
-      [PRODUCT_PAPER_SESSION],
+      WHERE ($2::uuid IS NULL OR pa.product_agent_id=$2) AND a.session_id=$1 AND EXISTS(SELECT 1 FROM pickler.perps_paper_positions p WHERE p.account_id=a.id AND p.closed_at IS NULL)
+      AND NOT EXISTS(SELECT 1 FROM pickler.paper_storage s WHERE s.account_id=a.id)
+      ORDER BY a.id LIMIT 50 FOR UPDATE OF a SKIP LOCKED ON CONFLICT DO NOTHING`,
+      [PRODUCT_PAPER_SESSION, productAgentId ?? null],
+    );
+    const result = await this.pool.query(
+      `WITH candidates AS MATERIALIZED (
+        SELECT a.id FROM pickler.perps_paper_accounts a
+        JOIN pickler.paper_storage s ON s.account_id=a.id
+        JOIN pickler.product_agents pa ON pa.tenant_id=a.tenant_id AND pa.runtime_agent_id=a.agent_id
+        WHERE a.session_id=$1 AND s.mode<>'frozen' AND ($2::uuid IS NULL OR pa.product_agent_id=$2)
+          AND EXISTS(SELECT 1 FROM pickler.perps_paper_positions p WHERE p.account_id=a.id AND p.closed_at IS NULL)
+        ORDER BY s.exit_at,a.id LIMIT 50 FOR UPDATE OF s SKIP LOCKED
+      ), rotated AS (
+        UPDATE pickler.paper_storage SET exit_at=floor(extract(epoch FROM clock_timestamp())*1000)
+        WHERE account_id IN (SELECT id FROM candidates) RETURNING account_id
+      ) SELECT pa.product_agent_id::text AS "productAgentId",a.tenant_id AS "tenantId",a.agent_id AS "agentId",a.network
+        FROM rotated r JOIN pickler.perps_paper_accounts a ON a.id=r.account_id
+        JOIN pickler.product_agents pa ON pa.tenant_id=a.tenant_id AND pa.runtime_agent_id=a.agent_id`,
+      [PRODUCT_PAPER_SESSION, productAgentId ?? null],
     );
     return result.rows.map((row) => ({
       productAgentId: row.productAgentId,
@@ -865,10 +1165,28 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
   }
   /** Margin opened since `since`: positions opened then, plus the size-ups added then. */
   async newMarginSince(scope: PerpsPaperScope, since: number) {
+    if (!isProductPaperSession(scope)) {
+      return marginOpenedSince((await this.snapshot(scope)).account.positions, since);
+    }
     if (!Number.isSafeInteger(since)) {
       throw new PilotError("INVALID_INPUT", "Invalid time");
     }
-    return marginOpenedSince((await this.snapshot(scope)).account.positions, since);
+    if (since === utcDayStart(await this.now(this.pool))) {
+      return (await this.executionSnapshot(scope)).accounting.newMarginToday;
+    }
+    const result = await this.pool.query(
+      `SELECT coalesce(sum(value),0)::text AS margin FROM (
+      SELECT coalesce(p.document->>'margin',p.document->>'entryNotional')::numeric-
+        coalesce((SELECT t.sizeup_margin FROM pickler.paper_position_totals t WHERE t.account_id=a.id AND t.position_id=p.id),0) AS value
+      FROM pickler.perps_paper_accounts a JOIN pickler.perps_paper_positions p ON p.account_id=a.id
+      WHERE a.tenant_id=$1 AND a.agent_id=$2 AND a.session_id=$3 AND a.network=$4
+        AND (p.document->>'openedAt')::bigint>=$5
+      UNION ALL SELECT x.margin FROM pickler.perps_paper_accounts a JOIN pickler.paper_position_sizeups x ON x.account_id=a.id
+      WHERE a.tenant_id=$1 AND a.agent_id=$2 AND a.session_id=$3 AND a.network=$4 AND x.at>=$5
+    ) margins`,
+      [...scopeValues(scope), since],
+    );
+    return paperDecimal(paperUnits(result.rows[0].margin));
   }
   /**
    * The account as `view` answers it, in one read-only repeatable-read transaction with no row
@@ -876,57 +1194,156 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
    * rewrite them) but stay as stored. For reads; every action goes through `view`'s locks.
    */
   async snapshot(scope: PerpsPaperScope): Promise<PerpsPaperView> {
-    if (
-      !/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,79}$/.test(scope.sessionId) ||
-      !["mainnet", "testnet"].includes(scope.network)
-    ) {
-      throw new PilotError("INVALID_INPUT", "Invalid paper scope");
-    }
-    const client = await this.pool.connect();
+    const db = await this.pool.connect();
     try {
-      await client.query("BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY");
-      const result = await client.query<{ id: string; document: PerpsPaperAccount }>(
-        "SELECT id,document FROM pickler.perps_paper_accounts WHERE tenant_id=$1 AND agent_id=$2 AND session_id=$3 AND network=$4",
-        [scope.tenantId, scope.agentId, scope.sessionId, scope.network],
-      );
-      const row = result.rows[0];
-      if (!row) {
-        throw new PilotError("NOT_FOUND", "Paper account not found");
-      }
-      const now = await this.now(client);
-      const attempts = await client.query<{
-        document: PerpsPaperAttempt;
-        lapsed: boolean;
-      }>(
-        "SELECT document, (owner IS NOT NULL AND expires_at <= $2) AS lapsed FROM pickler.perps_paper_attempts WHERE account_id=$1 ORDER BY key",
-        [row.id, now],
-      );
-      const movements = await client.query<{ document: PerpsPaperMovement }>(
-        "SELECT document FROM pickler.perps_paper_movements WHERE account_id=$1 ORDER BY key",
-        [row.id],
-      );
-      await client.query("COMMIT");
-      return {
-        account: row.document,
-        attempts: attempts.rows.map((r) =>
-          r.lapsed
-            ? {
-                ...r.document,
-                status: "interrupted",
-                reserved: "0",
-                reason: "LEASE_EXPIRED",
-                finishedAt: now,
-              }
-            : r.document,
-        ),
-        movements: movements.rows.map((r) => r.document),
-      };
+      await db.query("BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY");
+      const result = await this.archiveSnapshot(db, scope);
+      await db.query("COMMIT");
+      return result;
     } catch (error) {
-      await client.query("ROLLBACK").catch(() => {});
+      await db.query("ROLLBACK");
       throw error;
     } finally {
-      client.release();
+      db.release();
     }
+  }
+  async attemptResult(scope: PerpsPaperScope, key: string): Promise<PerpsPaperAttempt | null> {
+    const result = await this.pool.query(
+      `SELECT t.document FROM pickler.perps_paper_attempts t
+      JOIN pickler.perps_paper_accounts a ON a.id=t.account_id
+      WHERE a.tenant_id=$1 AND a.agent_id=$2 AND a.session_id=$3 AND a.network=$4 AND t.key=$5`,
+      [...scopeValues(scope), key],
+    );
+    return result.rows[0]?.document ?? null;
+  }
+  async executionSnapshot(scope: PerpsPaperScope): Promise<PaperExecutionState> {
+    const db = await this.pool.connect();
+    try {
+      await db.query("BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY");
+      const result = await readExecutionSnapshot(db, scope, await this.now(db));
+      await db.query("COMMIT");
+      return result;
+    } catch (error) {
+      await db.query("ROLLBACK");
+      throw error;
+    } finally {
+      db.release();
+    }
+  }
+  async recordSnapshot(scope: PerpsPaperScope, input: { now: number; openPnl: string | null }) {
+    const db = await this.pool.connect();
+    try {
+      await db.query("BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY");
+      const result = await readRecordSnapshot(db, scope, input);
+      await db.query("COMMIT");
+      return result;
+    } catch (error) {
+      await db.query("ROLLBACK");
+      throw error;
+    } finally {
+      db.release();
+    }
+  }
+  historyPage<K extends keyof PaperHistoryEntities>(
+    scope: PerpsPaperScope,
+    kind: K,
+    options: PaperHistoryPageOptions = {},
+  ) {
+    return readHistoryPage(this.pool, scope, kind, options);
+  }
+  position(scope: PerpsPaperScope, id: string) {
+    return readHistoryPosition(this.pool, scope, id);
+  }
+  async closedPositions(scope: PerpsPaperScope, options: { cursor?: string; limit?: number } = {}) {
+    const limit = options.limit ?? 50;
+    if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100) {
+      throw new PilotError("INVALID_INPUT", "Invalid closed-position page size");
+    }
+    const found = await this.pool.query(
+      `SELECT a.id,s.mode FROM pickler.perps_paper_accounts a
+      LEFT JOIN pickler.paper_storage s ON s.account_id=a.id
+      WHERE a.tenant_id=$1 AND a.agent_id=$2 AND a.session_id=$3 AND a.network=$4`,
+      scopeValues(scope),
+    );
+    const account = found.rows[0];
+    if (!account) {
+      throw new PilotError("NOT_FOUND", "Paper account not found");
+    }
+    if (account.mode !== "operational") {
+      return { items: [], nextCursor: null, complete: false };
+    }
+    const valid = (value: unknown): value is string =>
+      typeof value === "string" &&
+      /^\d{1,19}$/.test(value) &&
+      BigInt(value) <= 9223372036854775807n;
+    let cursor: {
+      account: string;
+      kind: string;
+      watermark: string;
+      sequence: string;
+      v: number;
+    } | null = null;
+    if (options.cursor !== undefined) {
+      try {
+        if (!options.cursor || options.cursor.length > 4096) {
+          throw new Error("Invalid cursor");
+        }
+        const value = JSON.parse(Buffer.from(options.cursor, "base64url").toString("utf8"));
+        if (
+          value.v !== 1 ||
+          value.account !== account.id ||
+          value.kind !== "closed" ||
+          !valid(value.watermark) ||
+          !valid(value.sequence) ||
+          BigInt(value.sequence) > BigInt(value.watermark)
+        ) {
+          throw new Error("Invalid cursor");
+        }
+        cursor = value;
+      } catch {
+        throw new PilotError("INVALID_INPUT", "Invalid closed-position cursor");
+      }
+    }
+    const watermark =
+      cursor?.watermark ??
+      (
+        await this.pool.query(
+          `SELECT coalesce(max(closed_sequence),0)::text AS watermark
+      FROM pickler.perps_paper_positions WHERE account_id=$1 AND closed_at IS NOT NULL`,
+          [account.id],
+        )
+      ).rows[0].watermark;
+    const result = await this.pool.query(
+      `SELECT p.closed_sequence::text AS sequence,p.document,t.pnl::text AS pnl
+      FROM pickler.perps_paper_positions p LEFT JOIN pickler.paper_position_totals t ON t.account_id=p.account_id AND t.position_id=p.id
+      WHERE p.account_id=$1 AND p.closed_at IS NOT NULL AND p.closed_sequence<=$2::bigint
+        AND ($3::bigint IS NULL OR p.closed_sequence<$3::bigint) ORDER BY p.closed_sequence DESC LIMIT $4`,
+      [account.id, watermark, cursor?.sequence ?? null, limit + 1],
+    );
+    if (result.rows.some((row) => row.pnl === null)) {
+      throw new PilotError("DATA_UNAVAILABLE", "Closed-position totals are incomplete");
+    }
+    const items = result.rows.slice(0, limit);
+    const nextCursor =
+      result.rows.length > limit
+        ? Buffer.from(
+            JSON.stringify({
+              v: 1,
+              account: account.id,
+              kind: "closed",
+              watermark,
+              sequence: items.at(-1)!.sequence,
+            }),
+          ).toString("base64url")
+        : null;
+    return {
+      items: items.map((row) => ({
+        position: row.document as PerpsPaperPosition,
+        pnl: paperDecimal(paperUnits(row.pnl)),
+      })),
+      nextCursor,
+      complete: true,
+    };
   }
 }
 function assertExits(exits: PerpsPaperExits, product: boolean) {
