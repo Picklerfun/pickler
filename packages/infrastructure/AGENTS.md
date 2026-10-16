@@ -50,6 +50,12 @@ Decision v2 and uncertainty-policy settings use the existing JSONB columns; no d
 Provider HTTP calls use `redirect: "manual"` and reject all non-success responses, including redirects. This preserves credential isolation and works in both Node.js and Cloudflare Workers, which does not support the `error` redirect mode.
 
 Execution uses `runs.lease_owner`, `runs.lease_expires_at` and the singleton `execution_policy` (defaults: global 5, tenant 2). Claims lock that policy row only for the admission transaction and choose the oldest eligible job. The per-agent running index remains authoritative. A store instance privately retains the random token for each claim; only that instance may renew or write for its claimed run. Public run projections exclude lease columns. Reservations last 60 seconds and hosts renew every 15 seconds.
+Research claims aggregate active research/preview/advice counts in PostgreSQL and filter paused,
+unauthorized, saturated and already-running agents before selecting one `(created_at,id)` candidate.
+Only its narrow identity/version leaves the selection query; configuration is read by the claimed
+row's `UPDATE ... RETURNING`. Claims lock the policy then agent, and recheck current research access
+when starting. Each claim cancels at most 50 authorized, unpaused stale queued snapshots with
+`CONFIG_CHANGED`; remaining stale snapshots cannot hide a runnable job.
 
 Use PostgreSQL `clock_timestamp()` for expiration, never HTTP timestamps. The optional constructor lease clock is only injected by the test helper; runtime never accepts clock configuration. Event, renewal and finish operations lock/recheck the run atomically. Renewal errors revoke local ownership. Recovery affects only expired running jobs and preserves partial evidence. Migration 0001 interrupts legacy unleased running jobs while preserving queued/history records. Migration 0002 rejects upgrades while an old session owner exists and guards valid leases against legacy global recovery. Valid finalization sets a transaction-local owner token for that trigger. Stop every old executor before applying migrations; do not roll back to old binaries on the upgraded database.
 

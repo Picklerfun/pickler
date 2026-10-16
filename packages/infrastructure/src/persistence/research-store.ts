@@ -517,69 +517,86 @@ export class PostgresResearchStore implements ResearchRepository {
       if (!policy) {
         throw new Error("Apply execution policy migration first");
       }
-      // Preview runs of briefs (pickler.preview_runs) share these limits; their claim locks this
-      // same policy row, so the two tables together never exceed them.
-      const running = await tx.execute<{ tenantId: string }>(sql`
-        select tenant_id as "tenantId" from pickler.runs where status = 'running'
-        union all
-        select tenant_id from pickler.preview_runs where status = 'running'
-        union all select tenant_id from pickler.advice_jobs where status = 'running'
+      // Keep all three execution lanes under the shared policy lock. Only scalar counts leave
+      // PostgreSQL; queued configuration snapshots are read only for the selected run.
+      await tx.execute(sql`
+        WITH stale AS (
+          SELECT r.id
+          FROM pickler.runs r
+          JOIN pickler.agents a ON a.tenant_id = r.tenant_id AND a.id = r.agent_id
+          WHERE r.status = 'queued' AND r.config_version <> a.version AND NOT a.paused
+            AND NOT EXISTS (
+              SELECT 1 FROM pickler.product_agents p
+              JOIN identity.workspaces w ON w.id = p.workspace_id
+              LEFT JOIN pickler.research_access access ON access.user_id = w.owner_user_id
+              WHERE p.tenant_id = r.tenant_id AND p.runtime_agent_id = r.agent_id
+                AND (NOT w.is_active OR NOT coalesce(access.enabled, false))
+            )
+          ORDER BY r.created_at, r.id
+          LIMIT 50 FOR UPDATE OF a SKIP LOCKED
+        )
+        UPDATE pickler.runs r
+        SET status = 'cancelled', error = 'CONFIG_CHANGED', finished_at = ${now}
+        FROM stale WHERE r.id = stale.id AND r.status = 'queued'
       `);
-      const active = running.rows;
-      if (active.length >= policy.globalLimit) {
+      const selected = await tx.execute<{
+        id: string;
+        tenantId: string;
+        agentId: string;
+        configVersion: number;
+      }>(sql`
+        WITH active AS MATERIALIZED (
+          SELECT tenant_id FROM pickler.runs WHERE status = 'running'
+          UNION ALL SELECT tenant_id FROM pickler.preview_runs WHERE status = 'running'
+          UNION ALL SELECT tenant_id FROM pickler.advice_jobs WHERE status = 'running'
+        ), tenant_counts AS (
+          SELECT tenant_id, count(*) AS running FROM active GROUP BY tenant_id
+        )
+        SELECT r.id, r.tenant_id AS "tenantId", r.agent_id AS "agentId",
+          r.config_version AS "configVersion"
+        FROM pickler.runs r
+        JOIN pickler.agents a ON a.tenant_id = r.tenant_id AND a.id = r.agent_id
+        LEFT JOIN tenant_counts capacity ON capacity.tenant_id = r.tenant_id
+        WHERE r.status = 'queued' AND NOT a.paused AND r.config_version = a.version
+          AND (SELECT count(*) FROM active) < ${policy.globalLimit}
+          AND coalesce(capacity.running, 0) < ${policy.tenantLimit}
+          AND NOT EXISTS (
+            SELECT 1 FROM pickler.runs running
+            WHERE running.tenant_id = r.tenant_id AND running.agent_id = r.agent_id
+              AND running.status = 'running'
+          )
+          AND NOT EXISTS (
+            SELECT 1 FROM pickler.product_agents p
+            JOIN identity.workspaces w ON w.id = p.workspace_id
+            LEFT JOIN pickler.research_access access ON access.user_id = w.owner_user_id
+            WHERE p.tenant_id = r.tenant_id AND p.runtime_agent_id = r.agent_id
+              AND (NOT w.is_active OR NOT coalesce(access.enabled, false))
+          )
+        ORDER BY r.created_at, r.id
+        LIMIT 1 FOR UPDATE OF a SKIP LOCKED
+      `);
+      const next = selected.rows[0];
+      if (!next) {
         return null;
       }
-      const candidates = await tx
-        .select(publicRunColumns)
-        .from(runs)
-        .where(eq(runs.status, "queued"))
-        .orderBy(asc(runs.createdAt), asc(runs.id));
-      for (const next of candidates) {
-        if (active.filter((run) => run.tenantId === next.tenantId).length >= policy.tenantLimit) {
-          continue;
-        }
-        const [agent] = await tx
-          .select()
-          .from(agents)
-          .where(agentScope(next))
-          .for("update", { skipLocked: true });
-        const enabled = await tx.execute(sql`select ${this.researchEnabled(next)} as allowed`);
-        if (!enabled.rows[0]?.allowed) {
-          continue;
-        }
-        if (!agent || agent.paused) {
-          continue;
-        }
-        if (agent.version !== next.configVersion) {
-          await tx
-            .update(runs)
-            .set({ status: "cancelled", error: "CONFIG_CHANGED", finishedAt: now })
-            .where(and(eq(runs.id, next.id), eq(runs.status, "queued")));
-          continue;
-        }
-        const [running] = await tx
-          .select({ id: runs.id })
-          .from(runs)
-          .where(and(runScope(next), eq(runs.status, "running")))
-          .limit(1);
-        if (running) {
-          continue;
-        }
-        const [result] = await tx
-          .update(runs)
-          .set({
-            status: "running",
-            startedAt: now,
-            leaseOwner: owner,
-            leaseExpiresAt: sql`${this.leaseNow()} + 60000`,
-          })
-          .where(and(eq(runs.id, next.id), eq(runs.status, "queued")))
-          .returning(publicRunColumns);
-        if (result) {
-          return result;
-        }
-      }
-      return null;
+      const [result] = await tx
+        .update(runs)
+        .set({
+          status: "running",
+          startedAt: now,
+          leaseOwner: owner,
+          leaseExpiresAt: sql`${this.leaseNow()} + 60000`,
+        })
+        .where(
+          and(
+            eq(runs.id, next.id),
+            eq(runs.status, "queued"),
+            eq(runs.configVersion, next.configVersion),
+            this.researchEnabled(next),
+          ),
+        )
+        .returning(publicRunColumns);
+      return result ?? null;
     });
     if (claimed) {
       this.owners.set(claimed.id, owner);
