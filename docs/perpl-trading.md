@@ -254,3 +254,11 @@ and durable wakeup recovery. The final local PostgreSQL run used a temporary tes
 connection/statement deadline because the overloaded local VM also timed out on single-row reads.
 Production deadlines remain unchanged. These checks establish behavior and bounded transferred
 work, not hosted acceptance or a database latency guarantee.
+
+A crash after reservation but before dispatch cannot leave a prepared intent blocking forever.
+Lease takeover cancels definitely-unsent entry intents and freezes entries; it never restarts an
+entry automatically. A definitely-unsent reducing intent records a durable required-exit marker,
+so fresh account evidence and a new lease can reserve another monotonic request ID for the exact
+owned remaining size/leverage. Dispatching or unknown orders stay ambiguous and are never resent;
+`beginDispatch` accepts a prepared intent only once. Cancelled entries still consume the start
+budget, and remain excluded from the tick budget as before.
