@@ -208,3 +208,11 @@ rates/reservations and pre-transport recording. One Perpl session budget covers 
 persisted position reads. No new plugin identity or alternative decision executor.
 
 See [agent-selected Perpl markets](../../docs/studio-perpl-markets.md).
+
+## Bounded product Paper supervision
+
+Product checks, owner actions and exit supervision use compact execution snapshots and point
+attempt results. Public funding advances confirmed one-hour windows; the background historical
+audit runs after reducing exits and owns at most50 closed positions/pass. Open-account discovery
+rotates at most50 accounts through persisted exit timestamps; owner closes filter their product
+agent in PostgreSQL. No worker automatically converts a legacy Paper account or loads its archive.
