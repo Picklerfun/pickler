@@ -11,7 +11,7 @@ import type {
 import { localStudyDatabase } from "../perps-study/database-env.js";
 import { createReportQueue } from "../perps-study/report-queue.js";
 import { startAwakeGuard } from "./awake.js";
-import { createBoundaryClock, sampleDatabaseClock } from "./clock.js";
+import { createBoundaryClock, DatabaseClockSampleError, sampleDatabaseClock } from "./clock.js";
 import {
   ArtifactBudget,
   BREAKOUT_BYTES,
@@ -24,6 +24,7 @@ import {
   newDirectory,
   requireCleanCheckout,
   requireFreeSpace,
+  type ArtifactWriter,
 } from "./files.js";
 import {
   CAPTURE_GRID,
@@ -39,6 +40,58 @@ function safeCode(error: unknown): string {
   return error instanceof PilotError && /^[A-Z0-9_]{1,80}$/.test(error.code)
     ? error.code
     : "BREAKOUT_CAPTURE_FAILED";
+}
+
+/** Technical diagnostic cleanup stays ownership-fenced even when clock qualification fails. */
+export async function cleanupDiagnosticOwnership(input: {
+  ownershipLost: boolean;
+  failure?: unknown;
+  guard(): Promise<void>;
+  sampleClock(): Promise<void>;
+  verifyNoAccounts(): Promise<void>;
+  release(failureCode?: string): Promise<void>;
+  event(value: { kind: "diagnostic-release-acknowledged"; at: number }): void | Promise<void>;
+}) {
+  let ownershipLost = input.ownershipLost;
+  let failure = input.failure;
+  let leaseReleased = false;
+  const failureCodes: string[] = [];
+  const retain = (error: unknown) => {
+    failure ??= error;
+    const code = safeCode(error);
+    failureCodes.push(code);
+    ownershipLost ||= code === "LEASE_LOST";
+  };
+  const result = () => ({ leaseReleased, ownershipLost, failure, failureCodes });
+  if (ownershipLost) {
+    return result();
+  }
+  try {
+    await input.guard();
+  } catch (error) {
+    retain(error);
+    return result();
+  }
+  for (const check of [input.sampleClock, input.verifyNoAccounts]) {
+    try {
+      await check();
+    } catch (error) {
+      retain(error);
+    }
+    if (ownershipLost) {
+      return result();
+    }
+  }
+  // This releases only the diagnostic lease. The adapter checks current ownership under lock;
+  // it neither accepts financial work nor repairs any interrupted historical record.
+  try {
+    await input.release(failure ? safeCode(failure) : undefined);
+    leaseReleased = true;
+    await input.event({ kind: "diagnostic-release-acknowledged", at: Date.now() });
+  } catch (error) {
+    retain(error);
+  }
+  return result();
 }
 
 async function verifyAgent(agent: AgentRecord, config: PerpsHourlyBreakoutConfig) {
@@ -67,6 +120,7 @@ export async function localPreflight(input: {
   envFile: string;
   output: string;
   signal: AbortSignal;
+  writer?: ArtifactWriter;
 }) {
   const { PostgresResearchStore } = await import("@pickler/infrastructure/perps-lab");
   const research = new PostgresResearchStore(await localStudyDatabase(resolve(input.envFile)));
@@ -94,7 +148,27 @@ export async function localPreflight(input: {
     }
     const { PostgresPerpsDiagnosticStore } = await import("@pickler/infrastructure/perps-lab");
     const store = new PostgresPerpsDiagnosticStore(research.pool);
-    const databaseClock = await sampleDatabaseClock(() => store.sampleDatabaseClock());
+    const databaseClock = await sampleDatabaseClock(
+      () => store.sampleDatabaseClock(),
+      undefined,
+      async (proof) => {
+        const writer = input.writer ?? budgetWriter(new ArtifactBudget());
+        await writer.write(
+          join(input.output, "preflight-clock-rejected.json"),
+          Buffer.from(
+            JSON.stringify({
+              format: "hourly-breakout-preflight-clock-rejection-v1",
+              phase: "LOCAL_PREFLIGHT_NO_PUBLIC_REQUESTS",
+              proof,
+              publicRequests: 0,
+              modelCalls: 0,
+              financialAcceptance: false,
+              externalUTC: "UNVERIFIED",
+            }) + "\n",
+          ),
+        );
+      },
+    );
     return {
       format: "hourly-breakout-local-preflight-v1",
       status: "LOCAL_ONLY_PREPARED_NOT_STARTED",
@@ -135,7 +209,7 @@ export async function runSourceCapture(input: {
   // race the shared ceiling by adding unreserved control bytes.
   budget.reserve(Buffer.byteLength("OPERATOR_STOP\n"))();
   const writer = budgetWriter(budget);
-  const preflight = await localPreflight({ ...input, output: directory });
+  const preflight = await localPreflight({ ...input, output: directory, writer });
   // Every clock, denominator and immutable identity is fixed before any public import/call.
   const frozen = freezeSourceWindow(preflight.completedAt);
   await writer.write(
@@ -164,6 +238,7 @@ export async function runSourceCapture(input: {
   const controller = new AbortController();
   const signal = AbortSignal.any([input.signal, controller.signal]);
   let failure: unknown;
+  let rejectedDatabaseClock: DatabaseClockSampleError | undefined;
   let ownershipLost = false;
   const fail = (error: unknown) => {
     if (error instanceof PilotError && error.code === "LEASE_LOST") {
@@ -225,6 +300,14 @@ export async function runSourceCapture(input: {
     frozen,
     processState: state,
     failureCode: failure ? safeCode(failure) : null,
+    ...(rejectedDatabaseClock
+      ? {
+          clockFailure: {
+            proof: rejectedDatabaseClock.proof,
+            proofPersistenceCode: rejectedDatabaseClock.proofPersistenceCode ?? null,
+          },
+        }
+      : {}),
     journals: Object.fromEntries(
       Object.entries(journals).map(([key, journal]) => [key, journal.snapshot()]),
     ) as SourceManifest["journals"],
@@ -333,6 +416,22 @@ export async function runSourceCapture(input: {
     await store.guard(diagnosticScope, lease);
   };
   const event = (value: unknown) => journals.control.append(value);
+  const sourceDatabaseClock = async (kind: string, context: Record<string, unknown> = {}) => {
+    try {
+      return await sampleDatabaseClock(
+        () => store.sampleDatabaseClock(),
+        undefined,
+        (proof) => {
+          event({ kind, ...context, rejected: true, sample: proof });
+        },
+      );
+    } catch (error) {
+      if (error instanceof DatabaseClockSampleError) {
+        rejectedDatabaseClock ??= error;
+      }
+      throw error;
+    }
+  };
   try {
     await store.initialize({
       ...diagnosticScope,
@@ -351,7 +450,7 @@ export async function runSourceCapture(input: {
     });
     event({
       kind: "database-clock-start",
-      sample: await sampleDatabaseClock(() => store.sampleDatabaseClock()),
+      sample: await sourceDatabaseClock("database-clock-start"),
     });
     awake = await startAwakeGuard(fail);
     renewal = (async () => {
@@ -372,7 +471,10 @@ export async function runSourceCapture(input: {
           kind: "database-clock-renewal",
           before: before.record.boundary,
           after: after.record.boundary,
-          sample: await sampleDatabaseClock(() => store.sampleDatabaseClock()),
+          sample: await sourceDatabaseClock("database-clock-renewal", {
+            before: before.record.boundary,
+            after: after.record.boundary,
+          }),
         });
       }
     })().catch((error) => {
@@ -604,13 +706,17 @@ export async function runSourceCapture(input: {
     );
     awake?.stop();
     if (lease) {
-      try {
-        if (!ownershipLost) {
-          await store.guard(diagnosticScope, lease);
+      const result = await cleanupDiagnosticOwnership({
+        ownershipLost,
+        failure,
+        guard: () => store.guard(diagnosticScope, lease!),
+        async sampleClock() {
           event({
             kind: "database-clock-end",
-            sample: await sampleDatabaseClock(() => store.sampleDatabaseClock()),
+            sample: await sourceDatabaseClock("database-clock-end"),
           });
+        },
+        async verifyNoAccounts() {
           const view = await store.view(diagnosticScope);
           if (view.accountCount !== 0) {
             throw new PilotError(
@@ -618,12 +724,21 @@ export async function runSourceCapture(input: {
               "Diagnostic unexpectedly contains accounts",
             );
           }
-          await store.release(diagnosticScope, lease, failure ? safeCode(failure) : undefined);
-          cleanup.leaseReleased = true;
-          event({ kind: "diagnostic-release-acknowledged", at: Date.now(), diagnosticScope });
+        },
+        release: (code) => store.release(diagnosticScope, lease!, code),
+        event(value) {
+          event({ ...value, diagnosticScope });
+        },
+      });
+      cleanup.leaseReleased = result.leaseReleased;
+      ownershipLost ||= result.ownershipLost;
+      failure ??= result.failure;
+      if (result.failureCodes.length) {
+        try {
+          event({ kind: "diagnostic-cleanup-errors", codes: result.failureCodes });
+        } catch (error) {
+          failure ??= error;
         }
-      } catch (error) {
-        failure ??= error;
       }
     }
     if (failure || !ready) {
