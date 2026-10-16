@@ -5,6 +5,8 @@ import { PilotError } from "@pickler/core";
 import {
   createPerplLiveService,
   emptyPerplLiveDocument,
+  perplLiveOperations,
+  type PerplLiveOperationRepository,
   type PerplLiveAuthority,
   type PerplLiveDocument,
   type PerplLiveDriver,
@@ -45,17 +47,60 @@ function fixture() {
       throw new PilotError("NOT_FOUND", "Not found");
     }
   };
-  const repository: PerplLiveRepository = {
+  const mutate = async (
+    s: PerplLiveScope,
+    change: (d: PerplLiveDocument, a: PerplLiveAuthority, now: number) => unknown,
+  ) => {
+    check(s);
+    const copy = structuredClone(document);
+    const result = change(copy, structuredClone(authority), now);
+    document = copy;
+    return structuredClone(result);
+  };
+  const operations = Object.fromEntries(
+    Object.entries(perplLiveOperations).map(([name, operation]) => [
+      name,
+      (s: PerplLiveScope, input: never) =>
+        mutate(s, (d, a, at) =>
+          (
+            operation as (
+              document: PerplLiveDocument,
+              authority: PerplLiveAuthority,
+              now: number,
+              input: never,
+            ) => unknown
+          )(d, a, at, input),
+        ),
+    ]),
+  ) as PerplLiveOperationRepository;
+  const repository: PerplLiveRepository & { transact: typeof mutate } = {
+    ...operations,
+    transact: mutate,
+    async verifiedTransactions(s, ids) {
+      check(s);
+      return document.orders
+        .filter((o) => ids.includes(o.request.rq))
+        .flatMap((o) => o.verifiedTxHashes);
+    },
+    async requestMembership(s, ids) {
+      check(s);
+      return document.orders
+        .filter((o) => ids.includes(o.request.rq))
+        .map((o) => ({ requestId: o.request.rq, orderType: o.request.t, sessionId: o.sessionId }));
+    },
+    async history() {
+      return { items: [], nextCursor: null };
+    },
+    async reserveWakeups() {
+      return [];
+    },
+    async acknowledgeWakeup() {},
+    async claimWakeup() {
+      return false;
+    },
     async read(s) {
       check(s);
       return { authority: structuredClone(authority), document: structuredClone(document) };
-    },
-    async transact(s, change) {
-      check(s);
-      const copy = structuredClone(document);
-      const result = change(copy, structuredClone(authority), now);
-      document = copy;
-      return structuredClone(result);
     },
     async due() {
       return [scope];
@@ -655,4 +700,31 @@ test("existing sessions and historical orders cannot move to another key wallet"
     { code: "PERPL_ACCOUNT_CHANGED" },
   );
   assert.equal(f.document().address, f.authority.address);
+});
+
+test("historical verified hashes are not checked again and exhausted request IDs fail closed", async () => {
+  const f = fixture();
+  const service = f.service();
+  let verified = 0;
+  f.driver.verifyTransaction = async () => {
+    verified++;
+    return true;
+  };
+  await service.start(f.scope, f.terms, randomUUID());
+  await service.tick(f.scope);
+  f.fill();
+  f.snapshot.orders[0]!.txHashes = ["controlled-confirmed-hash"];
+  await service.tick(f.scope);
+  await service.tick(f.scope);
+  assert.equal(verified, 1);
+  const g = fixture();
+  await g.repository.transact(g.scope, (document) => {
+    document.nextRequestId = Number.MAX_SAFE_INTEGER;
+  });
+  const exhausted = g.service();
+  await exhausted.start(g.scope, g.terms, randomUUID());
+  await exhausted.tick(g.scope);
+  assert.equal(g.submissions.length, 0);
+  assert.equal(g.document().orders.length, 0);
+  assert.equal(g.document().sessions[0]!.error, "PERPL_REQUEST_ID_EXHAUSTED");
 });
