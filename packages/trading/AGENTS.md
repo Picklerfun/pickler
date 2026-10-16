@@ -229,3 +229,20 @@ retaining the custody identity fence. External connections disable every custody
 operation. `isPerplSessionPosition` is the shared net-fill ownership predicate used by execution
 and the private host's `managedBySession` presentation projection. Existing histories cannot move
 to another wallet/account, and key reconnection never clears budgets or orders.
+
+## Operational Paper reads
+
+Product consumers use `executionSnapshot` (open positions and pending attempts only), point
+attempt results and accounting scalars. Full `snapshot`/`view` remain explicit archival ports.
+`paperFundingRange` and incremental observations use per-position confirmed covered-through
+checkpoints and bounded one-hour windows with30-second overlap. Entry timestamps stay immutable;
+incomplete or disputed coverage cannot advance a checkpoint or admit additional exposure.
+Historical closed-position funding validation runs through infrastructure's bounded epochs.
+
+`PaperHistoryEntities` and `historyPage` define50/default100/max archival pages for positions,
+attempts,movements and size-ups. Cursors freeze a sequence watermark and cannot cross account or
+entity kind. A point position/attempt read never hydrates the archive. Closed history's optional
+complete flag allows existing test adapters; real legacy storage returns false until conversion.
+
+Product mutation views expose optional changes (changed positions/attempts/new movements),
+separately from open-only/pending-only execution arrays. Duplicate operations have no new deltas.
