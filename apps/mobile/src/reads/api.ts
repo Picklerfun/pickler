@@ -41,30 +41,35 @@ export const isSessionError = (e: unknown): boolean => e instanceof ReadsError &
 
 async function call(url: string, init: RequestInit, timeoutMs: number, doFetch: DoFetch): Promise<unknown> {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-  let res: Response;
+  const abort = () => controller.abort();
+  init.signal?.addEventListener("abort", abort, { once: true });
+  if (init.signal?.aborted) controller.abort();
+  const timer = setTimeout(abort, timeoutMs);
   try {
-    res = await doFetch(url, { ...init, signal: controller.signal });
+    const res = await doFetch(url, { ...init, signal: controller.signal });
+    const body: unknown = await res.json().catch((error) => { if (controller.signal.aborted) throw error; return undefined; });
+    if (!res.ok) {
+      const code = body !== null && typeof body === "object" && typeof (body as { error?: unknown }).error === "string" ? (body as { error: string }).error : "bad_response";
+      throw new ReadsError(res.status, code);
+    }
+    return body;
   } catch (e) {
+    if (e instanceof ReadsError) throw e;
     throw new ReadsError(0, controller.signal.aborted || (e instanceof Error && e.name === "AbortError") ? "timeout" : "network");
   } finally {
     clearTimeout(timer);
+    init.signal?.removeEventListener("abort", abort);
   }
-  const body: unknown = await res.json().catch(() => undefined);
-  if (!res.ok) {
-    const code = body !== null && typeof body === "object" && typeof (body as { error?: unknown }).error === "string" ? (body as { error: string }).error : "bad_response";
-    throw new ReadsError(res.status, code);
-  }
-  return body;
+
 }
 
 export function fetchAgents(base: string, doFetch: DoFetch = fetch): Promise<Agent[]> {
   return call(`${base}/agents-list`, { method: "GET", headers: {} }, READS_TIMEOUT_MS, doFetch).then(parseAgentsList);
 }
 
-export function fetchReads(base: string, session: ReadsSession, marketId?: number, doFetch: DoFetch = fetch): Promise<{ reads: Read[]; credits: number }> {
+export function fetchReads(base: string, session: ReadsSession, marketId?: number, doFetch: DoFetch = fetch, signal?: AbortSignal): Promise<{ reads: Read[]; credits: number }> {
   const q = marketId === undefined ? "" : `?marketId=${marketId}`;
-  return call(`${base}/reads-list${q}`, { method: "GET", headers: signedHeaders(session) }, READS_TIMEOUT_MS, doFetch).then(parseReadsList);
+  return call(`${base}/reads-list${q}`, { method: "GET", headers: signedHeaders(session), signal }, READS_TIMEOUT_MS, doFetch).then(parseReadsList);
 }
 
 export function fetchRead(base: string, session: ReadsSession, id: string, doFetch: DoFetch = fetch): Promise<Read> {
