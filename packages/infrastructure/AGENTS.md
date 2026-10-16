@@ -104,8 +104,14 @@ database lease clock, rechecks state/expiration and preserves partial evidence.
 Preview recovery fails at most 50 expired leases and deletes at most 50 retention-eligible
 parents per call, preserving adoption rechecks and the existing 30-day adopted retention.
 Advice recovery atomically fails at most 50 expired jobs and releases only their reserved calls;
-started/settled costs remain unchanged. Advice claims exclude expired queued jobs before their
-existing 50-candidate limit, so unfinished expiry cleanup cannot start expired provider work.
+started/settled costs remain unchanged. Advice claims exclude expired queued jobs before selecting one eligible candidate, so unfinished
+expiry cleanup cannot start expired provider work. The claim also fails at most 50 fresh invalid
+jobs, releasing only reserved calls, independently of runnable selection. SQL filters current
+advice permissions, snapshot equality and aggregated research/preview/advice capacity before
+`LIMIT 1`; configs are returned only for the claimed job. The policy lock precedes lateral
+runtime-agent locks and outer job locks, both with `SKIP LOCKED`, so a locked job cannot hide
+another eligible candidate. Fresh authorization and expiry are checked again at the transition.
+The SQL permission predicate mirrors `assertAdviceAgent`; workspace activity is not a new rule.
 `advice.recover()` still reports queued work, not a maintenance continuation flag. These methods
 never drain backlogs in loops or create additional wakeup chains; durable row states/next-due
 markers carry progress to the next existing reconciliation. Public ports and schemas are unchanged.
