@@ -37,8 +37,14 @@ export type Config = ReturnType<typeof agentConfigSchema.parse>;
 export type Agent = ReturnType<typeof studioAgentSchema.parse>;
 /** The bare runtime record the writes answer (`PUT /config|limits|interval`). */
 type AgentRecord = ReturnType<typeof agentResponseSchema.parse>;
-export type Run = ReturnType<typeof runResponseSchema.parse>;
-export type RunEvent = ReturnType<typeof eventResponseSchema.parse>;
+export type Run = Omit<ReturnType<typeof runResponseSchema.parse>, "config"> & {
+  config?: Config;
+  resultAvailable?: boolean;
+  lastEventId?: string | null;
+};
+export type RunEvent = Omit<ReturnType<typeof eventResponseSchema.parse>, "id"> & {
+  id: string | number;
+};
 export type Catalog = ReturnType<typeof marketCatalogSchema.parse>;
 export type Options = ReturnType<typeof studioOptionsSchema.parse>;
 export type PaperOrder = ReturnType<typeof paperOrderSchema.parse>;
@@ -188,10 +194,25 @@ export const studioAgent = (agentId: string) => studioApi<Agent>(`/agents/${agen
 
 /** `GET /agents/:id/runs`: newest first. */
 export const agentRuns = (agentId: string, signal?: AbortSignal) =>
-  studioApi<{ runs: Run[] }>(`/agents/${agentId}/runs`, signal ? { signal } : {});
+  studioApi<{ items: import("@pickler/api-schema").RunSummaryDto[]; nextCursor: string | null }>(
+    `/agents/${agentId}/runs`,
+    signal ? { signal } : {},
+  ).then((page) => ({
+    runs: page.items.map((item) => ({ ...item, agentId: item.agentId!, decision: null })),
+  }));
 
 export const runEvents = (runId: string, signal?: AbortSignal) =>
-  studioApi<{ events: RunEvent[] }>(`/runs/${runId}/events`, signal ? { signal } : {});
+  studioApi<import("@pickler/api-schema").EventPageDto>(
+    `/runs/${runId}/events`,
+    signal ? { signal } : {},
+  ).then((page) => ({
+    events: page.items.map((event) => ({
+      id: event.id,
+      type: event.type,
+      createdAt: event.createdAt,
+      data: "data" in event ? event.data : { oversized: true, detailUrl: event.detailUrl },
+    })),
+  }));
 
 export const run = (runId: string) => studioApi<Run>(`/runs/${runId}`);
 
@@ -484,8 +505,11 @@ export const marketplaceMarket = (symbol: string, signal?: AbortSignal) =>
   marketplaceApi<MarketDetailDto | null>(`/markets/${encodeURIComponent(symbol)}`, signal);
 
 /** `GET /marketplace/directory`: every public agent, in the directory's order. */
-export const marketplaceDirectory = (signal?: AbortSignal) =>
-  marketplaceApi<DirectoryAgentDto[]>("/directory", signal);
+export const marketplaceDirectory = (signal?: AbortSignal, cursor?: string) =>
+  marketplaceApi<{ items: DirectoryAgentDto[]; nextCursor: string | null }>(
+    `/directory${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ""}`,
+    signal,
+  );
 
 /** `GET /marketplace/leaderboard`: ranked by score, with the weights that make it. */
 export const marketplaceLeaderboard = (signal?: AbortSignal) =>
