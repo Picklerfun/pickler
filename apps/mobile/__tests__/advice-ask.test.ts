@@ -56,6 +56,7 @@ type Reply = Answer | { after: number; reply: Answer };
 let sent: Sent[] = [];
 let posts: Reply[] = [];
 let gets: Reply[] = [];
+let lastGet: Reply | undefined;
 let lockedUntilOpened = false;
 /** Wallets whose Mera signing session has ended (Lock in Wallet): signing in with one throws SESSION_ENDED. */
 let ended = new Set<unknown>();
@@ -85,7 +86,9 @@ const authedFetch = jest.fn(async (path: string, init: RequestInit = {}, opened?
   if (ended.has(opened)) throw await sessionEndedError();
   const h = new Headers(init.headers);
   sent.push({ method: init.method ?? "GET", path, key: h.get("Idempotency-Key"), payment: h.get("X-PAYMENT"), opened });
-  return reply(((init.method ?? "GET") === "POST" ? posts.shift() : gets.shift()) ?? { status: 200, body: { data: job("running") } });
+  if ((init.method ?? "GET") === "POST") return reply(posts.shift() ?? {status:500});
+  if(path.endsWith("/status")) lastGet=gets.shift() ?? { status: 200, body: { data: job("running") } };
+  return reply(lastGet ?? { status:200,body:{data:job("running")} });
 });
 const postsSent = () => sent.filter((s) => s.method === "POST");
 const paid = () => sent.filter((s) => s.payment !== null);
@@ -152,6 +155,7 @@ beforeEach(() => {
   sent = [];
   posts = [];
   gets = [];
+  lastGet=undefined;
   lockedUntilOpened = false;
   ended = new Set();
   g.__studio = true;
@@ -199,7 +203,7 @@ describe("the happy path", () => {
     expect(latest.state.kind).toBe("waiting");
     await tick(3_000);
     expect(latest.state).toMatchObject({ kind: "done", recommendation: { id: "job-1", status: "completed" }, settlement: { transaction: TX } });
-    expect(sent.filter((s) => s.method === "GET").every((s) => s.path === "/agent-advice/recommendations/job-1")).toBe(true);
+    expect(sent.filter((s) => s.method === "GET").every((s) => ["/agent-advice/recommendations/job-1","/agent-advice/recommendations/job-1/status"].includes(s.path))).toBe(true);
   });
 
   test("the X-PAYMENT carries a 65-byte signature by the wallet over the app's own typed data", async () => {
@@ -458,7 +462,7 @@ describe("waiting for the job", () => {
     await run(() => latest.refresh());
     expect(latest.state).toMatchObject({ kind: "done", recommendation: { id: "job-1" } });
     const after = sent.slice(before);
-    expect(after).toEqual([expect.objectContaining({ method: "GET", path: "/agent-advice/recommendations/job-1" })]);
+    expect(after).toEqual([expect.objectContaining({method:"GET",path:"/agent-advice/recommendations/job-1/status"}),expect.objectContaining({ method: "GET", path: "/agent-advice/recommendations/job-1" })]);
     expect(postsSent()).toHaveLength(2);
     expect(wallet.account.signTypedData).toHaveBeenCalledTimes(1);
   });
@@ -956,4 +960,31 @@ describe("Face ID at Pay: the account as it is when the prompt returns (Ruling A
     expect(paid()).toHaveLength(1);
     expect(latest.state).toMatchObject({ kind: "waiting", jobId: "job-1" });
   });
+});
+
+test("background aborts an active status read and foreground resumes the same job without payment retries",async()=>{
+  let listener:((state:string)=>void)|undefined;
+  const subscription=jest.spyOn(AppState,"addEventListener").mockImplementation(((_type:string,fn:(state:string)=>void)=>{listener=fn;return {remove(){}};}) as never);
+  await toConfirming();
+  posts.push(r202());
+  await run(()=>latest.confirm());
+  let signal:AbortSignal|undefined;
+  authedFetch.mockImplementationOnce(async (_path,init={})=>new Promise<Response>((_,reject)=>{
+    signal=init.signal??undefined;
+    signal?.addEventListener("abort",()=>reject(Object.assign(new Error("aborted"),{name:"AbortError"})),{once:true});
+  }));
+  await tick(3000);
+  expect(signal?.aborted).toBe(false);
+  act(()=>listener?.("background"));
+  await settle();
+  expect(signal?.aborted).toBe(true);
+  const calls=authedFetch.mock.calls.length;
+  await tick(9000);
+  expect(authedFetch.mock.calls).toHaveLength(calls);
+  gets.push(rGet("completed"));
+  act(()=>listener?.("active"));
+  await tick(0);
+  expect(latest.state.kind).toBe("done");
+  expect(paid()).toHaveLength(1);
+  subscription.mockRestore();
 });
