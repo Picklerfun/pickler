@@ -405,6 +405,35 @@ export const perplLiveOperations = {
     if (d.lease && d.lease.expiresAt > now) {
       return null;
     }
+    // Dispatch changes status atomically before provider I/O. A prepared intent is definitely
+    // unsent; only an expired/unowned lease permits taking over its recovery.
+    for (const order of d.orders.filter((intent) => intent.status === "prepared")) {
+      const session = d.sessions.find((candidate) => candidate.id === order.sessionId);
+      if (!session) {
+        throw new PilotError("PERPL_EVIDENCE_MISMATCH", "Prepared intent lost its session");
+      }
+      order.status = "cancelled";
+      order.error = "PERPL_NOT_DISPATCHED";
+      session.error = "PERPL_NOT_DISPATCHED";
+      if (order.request.t <= 2) {
+        session.status = "frozen";
+        if (
+          d.facts &&
+          new Date(order.createdAt).toISOString().slice(0, 10) ===
+            new Date(now).toISOString().slice(0, 10)
+        ) {
+          d.facts.noncancelledEntryDayMicros = (
+            BigInt(d.facts.noncancelledEntryDayMicros) - BigInt(d.facts.orderMargins[order.id]!)
+          ).toString();
+        }
+      } else {
+        session.status = "stopping";
+        session.retryExitOrderId = order.id;
+      }
+    }
+    if (d.facts) {
+      d.facts.unresolvedOrders = d.orders.some((order) => unresolved.has(order.status));
+    }
     d.lease = { owner, expiresAt: now + 60_000 };
     return { document: structuredClone(d), authority };
   },
@@ -757,6 +786,13 @@ export const perplLiveOperations = {
       throw new PilotError("PERPL_LEASE_LOST", "Order dispatch claim lost");
     }
     const order = d.orders.find((o) => o.id === orderId)!;
+    if (!order || order.status !== "prepared") {
+      throw new PilotError(
+        "PERPL_ORDER_NOT_PREPARED",
+        "Only an unsent reserved order can begin dispatch",
+      );
+    }
+
     if (!Number.isSafeInteger(head) || head < snapshotHead) {
       throw new PilotError("PERPL_STATE_UNAVAILABLE", "Execution head is unavailable");
     }
