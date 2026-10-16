@@ -1,4 +1,7 @@
+import { z } from "zod";
+import { HttpError } from "../http/http-error";
 import {
+  PilotError,
   PublicTokenTradeError,
   TokenTradeError,
   type createPublicTokenTrading,
@@ -35,6 +38,15 @@ export function marketplaceRoutes(
   trading?: ReturnType<typeof createPublicTokenTrading>,
 ) {
   const api = new Hono<AppEnv>();
+  api.onError((error) => {
+    if (
+      error instanceof z.ZodError ||
+      (error instanceof PilotError && error.code === "INVALID_INPUT")
+    ) {
+      throw new HttpError(400, "Invalid catalogue page", { error: "INVALID_INPUT" });
+    }
+    throw error;
+  });
   api.post(
     "/personas/:handle/token/confirm",
     operation("marketplaceTokenConfirm", {
@@ -203,13 +215,60 @@ export function marketplaceRoutes(
   );
   api.get(
     "/agents",
-    operation("marketplaceAgents", { response: dto.agentSummarySchema.array() }),
-    async (c) => c.json((await services.listAgents()).map(toAgentSummaryDto)),
+    operation("marketplaceAgents", {
+      response: dto.agentCatalogPageSchema,
+      query: {
+        limit: { schema: { type: "integer", minimum: 1, maximum: 50, default: 20 } },
+        cursor: {
+          description: "Opaque versioned cursor bound to the same filters and order.",
+          schema: { type: "string", maxLength: 2048 },
+        },
+        q: { schema: { type: "string", maxLength: 80 } },
+        theme: { schema: { type: "string", maxLength: 40 } },
+        available: { schema: { type: "boolean", default: false } },
+        adviceForSale: { schema: { type: "boolean", default: false } },
+      },
+    }),
+    async (c) => {
+      c.header("Cache-Control", "no-store");
+      const page = await services.pageAgents(dto.catalogQuerySchema.parse(c.req.query()));
+      return c.json({ items: page.items.map(toAgentSummaryDto), nextCursor: page.nextCursor });
+    },
   );
   api.get(
     "/directory",
-    operation("marketplaceDirectory", { response: dto.directoryAgentSchema.array() }),
-    async (c) => c.json((await services.listDirectory()).map(toDirectoryAgentDto)),
+    operation("marketplaceDirectory", {
+      response: dto.directoryCatalogPageSchema,
+      query: {
+        limit: { schema: { type: "integer", minimum: 1, maximum: 50, default: 20 } },
+        cursor: {
+          description: "Opaque versioned cursor bound to the same filters and order.",
+          schema: { type: "string", maxLength: 2048 },
+        },
+        q: { schema: { type: "string", maxLength: 80 } },
+        theme: { schema: { type: "string", maxLength: 40 } },
+        available: { schema: { type: "boolean", default: false } },
+        adviceForSale: { schema: { type: "boolean", default: false } },
+      },
+    }),
+    async (c) => {
+      c.header("Cache-Control", "no-store");
+      const page = await services.pageDirectory(dto.catalogQuerySchema.parse(c.req.query()));
+      return c.json({ items: page.items.map(toDirectoryAgentDto), nextCursor: page.nextCursor });
+    },
+  );
+  api.get(
+    "/tokens",
+    operation("marketplaceTokenCatalog", {
+      response: dto.directoryCatalogPageSchema,
+      description:
+        "At most eight public agents with canonical confirmed tokens on the configured network. No shared cache.",
+    }),
+    async (c) => {
+      c.header("Cache-Control", "no-store");
+      const page = await services.pageDirectory({ limit: 8, tokensOnly: true });
+      return c.json({ items: page.items.map(toDirectoryAgentDto), nextCursor: null });
+    },
   );
   api.get(
     "/reads",
