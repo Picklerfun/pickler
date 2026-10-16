@@ -46,7 +46,20 @@ export interface AdvicePage {
   items: AdviceJob[];
   nextCursor: string | null;
 }
+export type AdviceReadStatus = Pick<
+  AdviceJob,
+  | "id"
+  | "publicAgentId"
+  | "userId"
+  | "symbol"
+  | "status"
+  | "createdAt"
+  | "startedAt"
+  | "finishedAt"
+  | "error"
+> & { published: boolean; resultAvailable: boolean; lastEventId: string | null };
 export interface AdviceRepository {
+  getStatus?(id: string): Promise<AdviceReadStatus>;
   resolve(publicId: string): Promise<AdviceAgent>;
   enqueue(
     userId: string,
@@ -150,6 +163,17 @@ export function createAdviceService(
         throw new PilotError("ADVICE_UNAVAILABLE", "New analyses are disabled");
       }
       return repository.enqueue(userId, id, symbol, key, options.policy);
+    },
+    async status(principal: Principal, id: string) {
+      const userId = user(principal);
+      if (!repository.getStatus) {
+        throw new PilotError("ADVICE_UNAVAILABLE", "Status unavailable");
+      }
+      const job = await repository.getStatus(id);
+      if (!job.published || (job.status !== "completed" && job.userId !== userId)) {
+        throw new PilotError("NOT_FOUND", "Analysis not found");
+      }
+      return job;
     },
     async get(principal: Principal, id: string) {
       const userId = user(principal);
