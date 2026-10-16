@@ -539,26 +539,61 @@ test("split-state partial fills retain net ownership, unknown requests never res
   assert.equal(projection.rows[0].net_filled, String(size));
   assert.equal(projection.rows[0].order_count, "2");
   assert.equal(projection.rows[0].opening_leverage, 100);
+
+  await writer(
+    f.store.pool,
+    "UPDATE pickler.perpl_live_accounts SET operational=jsonb_set(operational,'{lease,expiresAt}','0') WHERE product_agent_id=$1",
+    [scope.productAgentId],
+  );
+  const takeover = await repo.claimLease(scope, { owner: "recovered-exit" });
+  assert.equal(
+    takeover!.document.orders.find((order) => order.id === closing!.order.id)!.status,
+    "cancelled",
+  );
+  assert.equal(takeover!.document.sessions.at(-1)!.retryExitOrderId, closing!.order.id);
+  assert.equal(takeover!.document.facts!.entryDayMicros, "5000000");
+  assert.equal(takeover!.document.facts!.noncancelledEntryDayMicros, "5000000");
+  await assert.rejects(
+    repo.beginDispatch(scope, {
+      owner: "second",
+      increasing: false,
+      head: 102,
+      snapshotHead: 100,
+      orderId: closing!.order.id,
+    }),
+    { code: "PERPL_LEASE_LOST" },
+  );
+  snapshot.at = Date.now();
+  const retry = await repo.reserveOrder(scope, {
+    owner: "recovered-exit",
+    snapshot,
+    verified: [],
+    admissions: false,
+    id: randomUUID(),
+  });
+  assert.equal(retry!.order.request.rq, 203);
+  assert.equal(retry!.order.request.s, size);
+  assert.equal(retry!.order.request.lv, 100);
   await repo.beginDispatch(scope, {
-    owner: "second",
+    owner: "recovered-exit",
     increasing: false,
     head: 102,
     snapshotHead: 100,
-    orderId: closing!.order.id,
+    orderId: retry!.order.id,
   });
   await repo.completeDispatch(scope, {
-    owner: "second",
-    orderId: closing!.order.id,
+    owner: "recovered-exit",
+    orderId: retry!.order.id,
     status: "accepted",
   });
-  await repo.releaseLease(scope, { owner: "second" });
+  await repo.releaseLease(scope, { owner: "recovered-exit" });
   await repo.claimLease(scope, { owner: "third" });
   // A foreign addition cannot become this session's exit target.
   snapshot.positions[0]!.size++;
   snapshot.orders.push({
     originalSize: size,
     leverage: 100,
-    requestId: 202,
+    requestId: 203,
     accountId: 7,
     marketId: 16,
     orderId: 902,
@@ -580,5 +615,121 @@ test("split-state partial fills retain net ownership, unknown requests never res
     null,
   );
   assert.equal((await repo.read(scope)).document!.sessions.at(-1)!.status, "frozen");
-  assert.equal((await repo.history(scope, "orders")).items.length, 2);
+  assert.equal((await repo.history(scope, "orders")).items.length, 3);
+});
+
+test("normalized crash recovery freezes unsent entries, preserves both budgets and never resends dispatch ambiguity", async (t) => {
+  const f = await tokenFixture(t);
+  const scope = { userId: f.scope.userId, productAgentId: f.scope.agentId };
+  const repo = new PostgresPerplLiveStore(f.store.pool);
+  const original = await repo.inspectKeyChange(scope, {});
+  const snapshot = {
+    instanceId: 1,
+    lockedMicros: "0",
+    unmanagedOrders: false,
+    accountId: 7,
+    forwarding: true,
+    frozen: false,
+    balanceMicros: "100000000",
+    lastRequestId: 0,
+    head: 100,
+    at: Date.now(),
+    markets: [order(session(Date.now()), 1).market],
+    positions: [],
+    orders: [],
+  };
+  await repo.connectKey(scope, {
+    original,
+    useKeyWallet: false,
+    connected: {
+      accountId: 7,
+      publicKey: "controlled",
+      encryptedKey: "controlled",
+      encryptedToken: "controlled",
+      snapshot,
+    },
+  });
+  await repo.startSession(scope, { settings: terms, key: randomUUID(), id: randomUUID() });
+  await repo.claimLease(scope, { owner: "crashed-before-dispatch" });
+  const entry = await repo.reserveOrder(scope, {
+    owner: "crashed-before-dispatch",
+    snapshot,
+    verified: [],
+    admissions: true,
+    id: randomUUID(),
+  });
+  assert.equal(entry!.order.request.rq, 1);
+  assert.equal(await repo.claimLease(scope, { owner: "not-yet-expired" }), null);
+  const expire = () =>
+    writer(
+      f.store.pool,
+      "UPDATE pickler.perpl_live_accounts SET operational=jsonb_set(operational,'{lease,expiresAt}','0') WHERE product_agent_id=$1",
+      [scope.productAgentId],
+    );
+  await expire();
+  const recovered = await repo.claimLease(scope, { owner: "recovered" });
+  assert.equal(recovered!.document.orders[0]!.status, "cancelled");
+  assert.equal(recovered!.document.sessions[0]!.status, "frozen");
+  assert.equal(recovered!.document.facts!.entryDayMicros, "5000000");
+  assert.equal(recovered!.document.facts!.noncancelledEntryDayMicros, "0");
+  await repo.controlSession(scope, { action: "stop", admissions: false });
+  assert.equal(
+    await repo.reserveOrder(scope, {
+      owner: "recovered",
+      snapshot,
+      verified: [],
+      admissions: false,
+      id: randomUUID(),
+    }),
+    null,
+  );
+  await repo.releaseLease(scope, { owner: "recovered" });
+  await repo.startSession(scope, { settings: terms, key: randomUUID(), id: randomUUID() });
+  await repo.claimLease(scope, { owner: "crashed-at-dispatch" });
+  snapshot.at = Date.now();
+  const ambiguous = await repo.reserveOrder(scope, {
+    owner: "crashed-at-dispatch",
+    snapshot,
+    verified: [],
+    admissions: true,
+    id: randomUUID(),
+  });
+  assert.equal(ambiguous!.order.request.rq, 2);
+  await repo.beginDispatch(scope, {
+    owner: "crashed-at-dispatch",
+    increasing: true,
+    head: 101,
+    snapshotHead: 100,
+    orderId: ambiguous!.order.id,
+  });
+  await expire();
+  const takeover = await repo.claimLease(scope, { owner: "reconcile-only" });
+  assert.equal(
+    takeover!.document.orders.find((order) => order.id === ambiguous!.order.id)!.status,
+    "dispatching",
+  );
+  assert.equal(
+    await repo.reserveOrder(scope, {
+      owner: "reconcile-only",
+      snapshot,
+      verified: [],
+      admissions: true,
+      id: randomUUID(),
+    }),
+    null,
+  );
+  await assert.rejects(
+    repo.beginDispatch(scope, {
+      owner: "reconcile-only",
+      increasing: true,
+      head: 102,
+      snapshotHead: 100,
+      orderId: ambiguous!.order.id,
+    }),
+    { code: "PERPL_ORDER_NOT_PREPARED" },
+  );
+  const state = (await repo.read(scope)).document!;
+  assert.equal(state.orders.length, 2);
+  assert.equal(state.orders.at(-1)!.status, "unknown");
+  assert.equal(state.nextRequestId, 2);
 });
