@@ -73,7 +73,6 @@ import {
   configUpdateSchema,
   runRequestSchema,
   runResponseSchema,
-  eventResponseSchema,
   pauseSchema,
   paperOrderSchema,
   paperSummarySchema,
@@ -104,6 +103,7 @@ import { studioWalletRoutes, WalletRefusal, walletWork } from "./studio-wallets"
 import { studioPerpsRoutes, type StudioPerpsServices } from "./studio-perps";
 
 export interface StudioServices {
+  executionReads?: import("@pickler/core").ExecutionReads;
   perplLive?: StudioPerplLiveServices;
   tokens?: TokenLaunchService;
   tokenOperations?: TokenOperationService;
@@ -543,8 +543,18 @@ export function studioRoutes(services: StudioServices) {
     async (c) => {
       const principal = c.get("principal");
       await access.authorize(principal);
-      const read = await previewRepository().read(principal.id, c.req.param("id"), Date.now());
-      return c.json(previewRunResponseSchema.parse(read));
+      if (!services.executionReads) {
+        throw new PilotError("RUNTIME_UNAVAILABLE", "Preview unavailable");
+      }
+      return c.json(
+        previewRunResponseSchema.parse({
+          run: await services.executionReads.previewResult(
+            principal.id,
+            c.req.param("id"),
+            Date.now(),
+          ),
+        }),
+      );
     },
   );
   /**
@@ -573,7 +583,27 @@ export function studioRoutes(services: StudioServices) {
    */
   async function fleet(current: StudioAccess, creating = false) {
     const listed = await services.directory.list(current);
-    const wallets = await Promise.all(listed.map((agent) => fundedWallet(agent.id, creating)));
+    const links = services.executionReads
+      ? await services.executionReads.studioWallets(listed.map((agent) => agent.id))
+      : null;
+    const linksByAgent = new Map(links?.map((link) => [link.agentId, link]));
+    const wallets = await Promise.all(
+      listed.map(async (agent) => {
+        if (!links) {
+          return fundedWallet(agent.id, creating);
+        }
+        const wallet = linksByAgent.get(agent.id);
+        if (!wallet) {
+          return null;
+        }
+        return {
+          ...wallet,
+          balanceAusd: await services.balances.read(wallet.address).catch((error: unknown) => {
+            throw creating ? new BalancesUnreadableError({ cause: error }) : error;
+          }),
+        };
+      }),
+    );
     const balances = wallets.flatMap((wallet) => (wallet ? [wallet.balanceAusd] : []));
     const drafts = listed.filter((agent) => agent.draft).length;
     return { listed, wallets, another: canCreateAnother(balances, drafts) };
@@ -596,37 +626,11 @@ export function studioRoutes(services: StudioServices) {
     };
   }
 
-  /**
-   * The same lock for one agent's page. Its own balance is already read; the other agents' are
-   * read here, and one that cannot be read is left out: an unknown balance is not an unfunded
-   * agent, and another agent's failed read does not fail this page. A create decides again with
-   * `fundingLock`, where every read must succeed.
-   */
-  async function lockSeenFrom(
-    listed: Awaited<ReturnType<StudioDirectory["list"]>>,
-    productId: string,
-    own: FundedWallet | null,
-  ) {
-    const others = listed.filter((agent) => agent.id !== productId);
-    const linked = await Promise.all(
-      others.map((agent) => services.wallets.findAgentWallet(agent.id)),
-    );
-    const read = await Promise.allSettled(
-      linked.flatMap((wallet) => (wallet ? [services.balances.read(wallet.address)] : [])),
-    );
-    const known = read.flatMap((balance) =>
-      balance.status === "fulfilled" ? [balance.value] : [],
-    );
-    const balances = own ? [own.balanceAusd, ...known] : known;
-    const drafts = listed.filter((agent) => agent.draft).length;
-    return canCreateAnother(balances, drafts);
-  }
-
   /** The single place the agent DTO, its wallet and both locks are composed. */
   async function studioAgent(
     scope: Scope,
     wallet: FundedWallet | null,
-    another: Lock,
+    another: Lock | null,
     identity: {
       productId?: string;
       name?: string;
@@ -639,9 +643,13 @@ export function studioRoutes(services: StudioServices) {
       xHandle: string | null;
       advicePriceMicro: bigint | null;
     },
+    snapshot?: {
+      agent: import("@pickler/core").AgentRecord;
+      readiness: import("@pickler/core").ScheduleReadiness;
+    },
   ): Promise<StudioAgentDto> {
-    const record = await repo.agent(scope);
-    const ready = isReadyToSchedule(record, await repo.readiness(scope));
+    const record = snapshot?.agent ?? (await repo.agent(scope));
+    const ready = isReadyToSchedule(record, snapshot?.readiness ?? (await repo.readiness(scope)));
     const { advicePriceMicro, ...shown } = identity;
     return studioAgentSchema.parse({
       ...agentResponseSchema.parse(record),
@@ -661,6 +669,14 @@ export function studioRoutes(services: StudioServices) {
   }
 
   api.get(
+    "/creation-eligibility",
+    describeOperation("studioCreationEligibility", { security: "user", response: dto.lockSchema }),
+    async (c) => {
+      const current = await access.authorize(c.get("principal"));
+      return c.json((await fleet(current)).another);
+    },
+  );
+  api.get(
     "/agents",
     describeOperation("studioAgents", {
       security: "user",
@@ -673,21 +689,34 @@ export function studioRoutes(services: StudioServices) {
     async (c) => {
       const current = await access.authorize(c.get("principal"));
       const { listed, wallets, another } = await fleet(current);
+      const snapshots = services.executionReads
+        ? await services.executionReads.studioRecords(
+            current.tenantId,
+            listed.map((agent) => agent.scope.agentId),
+          )
+        : [];
+      const byId = new Map(snapshots.map((snapshot) => [snapshot.agent.id, snapshot]));
       return c.json({
         agents: await Promise.all(
           listed.map((agent, index) =>
-            studioAgent(agent.scope, wallets[index] ?? null, another, {
-              productId: agent.id,
-              name: agent.name,
-              handle: agent.handle,
-              accent: agent.accent,
-              avatarPattern: agent.avatarPattern,
-              draft: agent.draft,
-              visibility: agent.visibility,
-              publishedAt: agent.publishedAt,
-              xHandle: agent.xHandle,
-              advicePriceMicro: agent.advicePriceMicro,
-            }),
+            studioAgent(
+              agent.scope,
+              wallets[index] ?? null,
+              another,
+              {
+                productId: agent.id,
+                name: agent.name,
+                handle: agent.handle,
+                accent: agent.accent,
+                avatarPattern: agent.avatarPattern,
+                draft: agent.draft,
+                visibility: agent.visibility,
+                publishedAt: agent.publishedAt,
+                xHandle: agent.xHandle,
+                advicePriceMicro: agent.advicePriceMicro,
+              },
+              byId.get(agent.scope.agentId),
+            ),
           ),
         ),
       });
@@ -833,10 +862,15 @@ export function studioRoutes(services: StudioServices) {
    */
   async function oneAgent(current: StudioAccess, productId: string): Promise<StudioAgentDto> {
     const scope = await services.directory.agentScope(current, productId);
-    const listed = await services.directory.list(current);
-    const listedAgent = listed.find((agent) => agent.id === productId);
+    const listedAgent = services.executionReads
+      ? await services.executionReads.studioIdentity(
+          current.workspaceId,
+          current.tenantId,
+          productId,
+        )
+      : (await services.directory.list(current)).find((agent) => agent.id === productId);
     const wallet = await fundedWallet(productId);
-    const another = await lockSeenFrom(listed, productId, wallet);
+    const another = null;
     const identity = listedAgent
       ? {
           productId,
@@ -1283,21 +1317,29 @@ export function studioRoutes(services: StudioServices) {
       errorStatuses: [400, 401, 403, 404, 409, 429, 500, 502, 503],
       description:
         "User JWT required. Workspace-scoped reads and owner-only mutations enforce their existing checks; research and trading admissions and plugin settings remain authoritative.",
-      response: z.object({ runs: dto.runResponseSchema.array() }),
-      query: { before: { schema: { type: "integer", minimum: 0 } } },
+      response: dto.runSummaryPageSchema,
+      query: {
+        limit: { schema: { type: "integer", minimum: 1, maximum: 50, default: 20 } },
+        cursor: { schema: { type: "string", maxLength: 512 } },
+      },
     }),
     async (c) => {
       const current = await access.authorize(c.get("principal"));
       const scope = await services.directory.agentScope(current, c.req.param("id"));
-      const raw = c.req.query("before");
-      const before =
-        raw === undefined ? null : z.coerce.number().int().nonnegative().safe().parse(raw);
-      const ids = await services.directory.runs(scope, before);
-      return c.json({
-        runs: await Promise.all(
-          ids.map(async (id) => runResponseSchema.parse(await repo.run(scope.tenantId, id))),
+      if (!services.executionReads) {
+        throw new PilotError("RUNTIME_UNAVAILABLE", "Run reads unavailable");
+      }
+      const query = z
+        .object({
+          limit: z.coerce.number().int().min(1).max(50).optional(),
+          cursor: z.string().max(512).optional(),
+        })
+        .parse(c.req.query());
+      return c.json(
+        dto.runSummaryPageSchema.parse(
+          await services.executionReads.summaries(scope.tenantId, scope.agentId, query),
         ),
-      });
+      );
     },
   );
   api.post(
@@ -1359,15 +1401,130 @@ export function studioRoutes(services: StudioServices) {
       errorStatuses: [400, 401, 403, 404, 409, 429, 500, 502, 503],
       description:
         "User JWT required. Workspace-scoped reads and owner-only mutations enforce their existing checks; research and trading admissions and plugin settings remain authoritative.",
-      response: z.object({ events: dto.eventResponseSchema.array() }),
+      response: dto.eventPageSchema,
+      query: {
+        limit: { schema: { type: "integer", minimum: 1, maximum: 100, default: 50 } },
+        after: {
+          description:
+            "Exclusive decimal event ID. Pages are also limited to 256 KiB; oversized events carry an explicit detail reference.",
+          schema: { type: "string", pattern: "^[0-9]{1,19}$" },
+        },
+      },
     }),
     async (c) => {
       const current = await access.authorize(c.get("principal"));
-      return c.json({
-        events: eventResponseSchema
-          .array()
-          .parse(await repo.events(current.tenantId, c.req.param("id"))),
-      });
+      if (!services.executionReads) {
+        throw new PilotError("RUNTIME_UNAVAILABLE", "Event reads unavailable");
+      }
+      const query = z
+        .object({
+          limit: z.coerce.number().int().min(1).max(100).optional(),
+          after: z
+            .string()
+            .regex(/^\d{1,19}$/)
+            .optional(),
+        })
+        .parse(c.req.query());
+      return c.json(
+        dto.eventPageSchema.parse(
+          await services.executionReads.events(
+            "research",
+            current.tenantId,
+            c.req.param("id"),
+            query,
+            Date.now(),
+          ),
+        ),
+      );
+    },
+  );
+  for (const [path, kind] of [
+    ["runs", "research"],
+    ["preview-runs", "preview"],
+  ] as const) {
+    api.get(
+      `/${path}/:id/status`,
+      describeOperation(kind === "research" ? "studioRunStatus" : "studioPreviewStatus", {
+        security: "user",
+        response: dto.executionStatusSchema,
+      }),
+      async (c) => {
+        const current = await access.authorize(c.get("principal"));
+        if (!services.executionReads) {
+          throw new PilotError("RUNTIME_UNAVAILABLE", "Status unavailable");
+        }
+        return c.json(
+          dto.executionStatusSchema.parse(
+            await services.executionReads.status(
+              kind,
+              kind === "research" ? current.tenantId : c.get("principal").id,
+              c.req.param("id"),
+              Date.now(),
+            ),
+          ),
+        );
+      },
+    );
+    api.get(
+      `/${path}/:id/events/:eventId`,
+      describeOperation(kind === "research" ? "studioRunEvent" : "studioPreviewEvent", {
+        security: "user",
+        response: dto.executionEventSchema,
+      }),
+      async (c) => {
+        const current = await access.authorize(c.get("principal"));
+        if (!services.executionReads) {
+          throw new PilotError("RUNTIME_UNAVAILABLE", "Event unavailable");
+        }
+        return c.json(
+          dto.executionEventSchema.parse(
+            await services.executionReads.event(
+              kind,
+              kind === "research" ? current.tenantId : c.get("principal").id,
+              c.req.param("id"),
+              c.req.param("eventId"),
+              Date.now(),
+            ),
+          ),
+        );
+      },
+    );
+  }
+  api.get(
+    "/preview-runs/:id/events",
+    describeOperation("studioPreviewEvents", {
+      security: "user",
+      response: dto.eventPageSchema,
+      query: {
+        limit: { schema: { type: "integer", minimum: 1, maximum: 100, default: 50 } },
+        after: { schema: { type: "string", pattern: "^[0-9]{1,19}$" } },
+      },
+    }),
+    async (c) => {
+      await access.authorize(c.get("principal"));
+      if (!services.executionReads) {
+        throw new PilotError("RUNTIME_UNAVAILABLE", "Events unavailable");
+      }
+      const query = z
+        .object({
+          limit: z.coerce.number().int().min(1).max(100).optional(),
+          after: z
+            .string()
+            .regex(/^\d{1,19}$/)
+            .optional(),
+        })
+        .parse(c.req.query());
+      return c.json(
+        dto.eventPageSchema.parse(
+          await services.executionReads.events(
+            "preview",
+            c.get("principal").id,
+            c.req.param("id"),
+            query,
+            Date.now(),
+          ),
+        ),
+      );
     },
   );
   api.post(
