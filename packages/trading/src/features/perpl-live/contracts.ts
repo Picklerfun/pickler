@@ -1,3 +1,8 @@
+import type {
+  PerplLiveOperationName,
+  PerplLiveOperationInput,
+  PerplLiveOperationResult,
+} from "./operations.js";
 import type { SignedActivityRequest, UnsignedActivity } from "@pickler/core";
 
 export interface PerplLiveScope {
@@ -151,7 +156,26 @@ export interface PerplLiveSetup {
   txHash: string | null;
   error: string | null;
 }
+export interface PerplLiveFacts {
+  hasHistory: boolean;
+  orderMargins: Record<string, string>;
+  fundingDayMicros: string;
+  entryDayMicros: string;
+  noncancelledEntryDayMicros: string;
+  unresolvedOrders: boolean;
+  pendingSetup: boolean;
+  session: {
+    id: string;
+    orderCount: number;
+    remaining: number;
+    openingLeverage: number | null;
+    openingRequestId: number;
+    filledRequestIds: number[];
+  } | null;
+}
 export interface PerplLiveDocument {
+  /** Invocation-only server aggregates; never persisted in the compact account. */
+  facts?: PerplLiveFacts;
   connection?: { kind: "key_wallet"; custodyAddress: string };
   productAgentId: string;
   version: 1;
@@ -168,17 +192,36 @@ export interface PerplLiveDocument {
   snapshot: PerplLiveSnapshot | null;
   lease: { owner: string; expiresAt: number } | null;
 }
-export interface PerplLiveRepository {
+export type PerplLiveOperationRepository = {
+  [K in PerplLiveOperationName]: (
+    scope: PerplLiveScope,
+    input: PerplLiveOperationInput<K>,
+  ) => Promise<PerplLiveOperationResult<K>>;
+};
+export type PerplLiveRepository = PerplLiveOperationRepository & {
   read(
     scope: PerplLiveScope,
   ): Promise<{ authority: PerplLiveAuthority; document: PerplLiveDocument | null }>;
-  /** Short locked transaction; callback must never make a provider request. */
-  transact<T>(
-    scope: PerplLiveScope,
-    change: (document: PerplLiveDocument, authority: PerplLiveAuthority, now: number) => T,
-  ): Promise<T>;
   due(limit: number): Promise<PerplLiveScope[]>;
-}
+  verifiedTransactions(scope: PerplLiveScope, requestIds: number[]): Promise<string[]>;
+  requestMembership(
+    scope: PerplLiveScope,
+    requestIds: number[],
+  ): Promise<{ requestId: number; orderType: number; sessionId: string }[]>;
+  history(
+    scope: PerplLiveScope,
+    kind: "orders" | "setup" | "sessions",
+    before?: string,
+  ): Promise<{
+    items: (PerplLiveOrder | PerplLiveSetup | PerplLiveSession)[];
+    nextCursor: string | null;
+  }>;
+  reserveWakeups(
+    owner: string,
+  ): Promise<{ scope: PerplLiveScope; generation: number; dueAt: number }[]>;
+  claimWakeup(scope: PerplLiveScope, owner: string, generation: number): Promise<boolean>;
+  acknowledgeWakeup(scope: PerplLiveScope, owner: string, generation: number): Promise<void>;
+};
 export interface PerplLiveExistingKey {
   useKeyWallet?: boolean;
   apiKey: string;
