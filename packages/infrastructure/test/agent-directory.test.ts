@@ -354,3 +354,58 @@ test("the board exposes the agent uuid and its advice price in summary, persona 
   assert.equal(entry?.agent.id, agentId);
   assert.deepEqual(entry?.agent.advicePrice, summary?.advicePrice);
 });
+
+test("catalogue pages filter before their cap and preserve timestamp ties and filter/network cursor isolation", async (t) => {
+  const store = await createTestStore(t);
+  const ids: string[] = [];
+  for (let i = 0; i < 65; i++) {
+    ids.push(
+      await seedAgent(store.pool, {
+        handle: `page_${i}`,
+        createdAt: new Date("2026-10-15T10:00:00Z"),
+      }),
+    );
+  }
+  const sell = ids.at(-1)!;
+  await store.pool.query("UPDATE agents.agents SET advice_price_micro_ausd=500000 WHERE id=$1", [
+    sell,
+  ]);
+  await store.pool.query(
+    "UPDATE agents.agent_profiles SET venue='perps',beat='crypto',decides='Funding edge' WHERE agent_id=$1",
+    [sell],
+  );
+  const catalog = new PostgresAgentDirectory(store.pool, 10143);
+  const ordered: string[] = [];
+  let cursor: string | undefined;
+  do {
+    const page = await catalog.pageAgents({ cursor });
+    assert.ok(page.items.length <= 20);
+    ordered.push(...page.items.map((item) => item.id));
+    cursor = page.nextCursor ?? undefined;
+  } while (cursor);
+  assert.equal(ordered.length, 65);
+  assert.equal(new Set(ordered).size, 65);
+  assert.deepEqual(ordered, [...ids].sort().reverse());
+  assert.deepEqual(
+    (await catalog.pageAgents({ adviceForSale: true })).items.map((item) => item.id),
+    [sell],
+  );
+  assert.deepEqual(
+    (await catalog.pageDirectory({ q: "funding edge", theme: "crypto" })).items.map(
+      (item) => item.agent.id,
+    ),
+    [sell],
+  );
+  assert.equal((await catalog.pageDirectory({ available: true })).items.length, 0);
+  const first = await catalog.pageAgents({});
+  assert.ok(first.nextCursor);
+  await assert.rejects(catalog.pageAgents({ cursor: first.nextCursor, q: "different" }), {
+    code: "INVALID_INPUT",
+  });
+  await assert.rejects(
+    new PostgresAgentDirectory(store.pool, 143).pageAgents({ cursor: first.nextCursor }),
+    { code: "INVALID_INPUT" },
+  );
+  await assert.rejects(catalog.pageAgents({ limit: 51 }), { code: "INVALID_INPUT" });
+  assert.equal((await catalog.pageDirectory({ tokensOnly: true, limit: 8 })).items.length, 0);
+});
