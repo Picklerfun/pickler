@@ -95,6 +95,20 @@ export class PostgresAdviceStore implements AdviceExecutionRepository {
       ).rows[0] ?? null
     );
   }
+  async getStatus(id: string): Promise<import("@pickler/core").AdviceReadStatus> {
+    const result = await this.pool.query(
+      `SELECT j.id,j.public_agent_id AS "publicAgentId",j.user_id AS "userId",j.symbol,j.status,
+      j.created_at::double precision AS "createdAt",j.started_at::double precision AS "startedAt",j.finished_at::double precision AS "finishedAt",j.error,
+      j.result IS NOT NULL AS "resultAvailable",a.visibility='public' AS published,
+      (SELECT max(sequence)::text FROM pickler.advice_events WHERE job_id=j.id) AS "lastEventId"
+      FROM pickler.advice_jobs j JOIN agents.agents a ON a.id=j.public_agent_id WHERE j.id=$1`,
+      [id],
+    );
+    if (!result.rows[0]) {
+      throw new PilotError("NOT_FOUND", "Analysis not found");
+    }
+    return result.rows[0];
+  }
   get(id: string) {
     return this.read(this.pool, id);
   }
