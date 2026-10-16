@@ -9,12 +9,21 @@ import { liveBuySchema, liveOrderSchema, idempotencyKeySchema } from "@pickler/a
 import { z } from "zod";
 import { perplTradingRequest, tickPerplTrading } from "./perpl";
 
+export type TradingWakeup =
+  | { kind: "trading-wakeup" }
+  | {
+      kind: "perpl-wakeup";
+      scope?: { userId: string; productAgentId: string };
+      generation?: number;
+      owner?: string;
+    };
+
 export interface Env {
   APP_ENV: string;
   DATABASE?: Hyperdrive;
   DATABASE_URL?: string;
   TRADING_ADMISSIONS_ENABLED: string;
-  TRADING_QUEUE: Queue<{ kind: "trading-wakeup" }>;
+  TRADING_QUEUE: Queue<TradingWakeup>;
   POLYMARKET_SIGNER_PRIVATE_KEY?: string;
   POLYMARKET_SIGNER_ADDRESS?: string;
   POLYMARKET_WALLET_ADDRESS?: string;
@@ -82,7 +91,7 @@ const inputSchema = z
   .strict();
 export function createTradingWorker(
   runtime: typeof compose = compose,
-): ExportedHandler<Env, { kind: "trading-wakeup" }> {
+): ExportedHandler<Env, TradingWakeup> {
   return {
     async fetch(request, env) {
       if (new URL(request.url).pathname.startsWith("/perpl/")) {
@@ -145,16 +154,18 @@ export function createTradingWorker(
     },
     async queue(batch, env) {
       for (const message of batch.messages) {
-        if (message.body?.kind !== "trading-wakeup") {
+        if (message.body?.kind !== "trading-wakeup" && message.body?.kind !== "perpl-wakeup") {
           message.ack();
           continue;
         }
         let instance: ReturnType<typeof compose> | undefined;
         try {
-          if (env.PERPL_LIVE_POLICY_JSON && env.PERPL_KEY_ENCRYPTION_KEY) {
-            if (await tickPerplTrading(env)) {
-              await env.TRADING_QUEUE.send({ kind: "trading-wakeup" }, { delaySeconds: 15 });
+          if (message.body.kind === "perpl-wakeup") {
+            if (env.PERPL_LIVE_POLICY_JSON && env.PERPL_KEY_ENCRYPTION_KEY) {
+              await tickPerplTrading(env, undefined, message.body);
             }
+            message.ack();
+            continue;
           }
           if (runtime === compose && !env.POLYMARKET_SIGNER_PRIVATE_KEY) {
             message.ack();
@@ -172,6 +183,7 @@ export function createTradingWorker(
     },
     async scheduled(_event, env) {
       await env.TRADING_QUEUE.send({ kind: "trading-wakeup" });
+      await env.TRADING_QUEUE.send({ kind: "perpl-wakeup" });
     },
   };
 }
