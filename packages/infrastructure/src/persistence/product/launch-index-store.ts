@@ -183,6 +183,11 @@ export class PostgresLaunchIndexStore {
             orphaned: false,
             ...(input.confirmed ? { finality: "confirmed" as const } : {}),
           },
+          // Overlapping streams share headers. Avoid a new row version when neither mutable
+          // field changes; the original number, parent and timestamp remain immutable.
+          setWhere: input.confirmed
+            ? sql`${chainBlocks.orphaned} OR ${chainBlocks.finality} IS DISTINCT FROM 'confirmed'`
+            : sql`${chainBlocks.orphaned}`,
         });
 
       for (const event of input.events) {

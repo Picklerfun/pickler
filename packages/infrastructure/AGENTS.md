@@ -731,7 +731,9 @@ launch and sustained indexer throughput are still pending.
 
 `PostgresLaunchIndexStore.applyBatch` inserts the bounded range's block headers with one
 PostgreSQL statement inside the existing fenced transaction. It preserves first-occurrence
-evidence, replay/upsert, finality and reorg restoration semantics. Events, outbox and cursor
+evidence, replay/upsert, finality and reorg restoration semantics. Header conflicts only update
+when orphan status or the requested finality changes; replaying an identical header does not
+create another tuple version. Unconfirmed input preserves stored finality. Events, outbox and cursor
 still commit atomically; no RPC work runs inside that transaction. Never replace complete
 ancestry validation with sparse sampling or advance a cursor to avoid backfill. The hosted
 capacity measurement and explicit closed launcher gate are recorded in

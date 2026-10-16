@@ -135,6 +135,106 @@ test("replaying the same batch changes nothing", async (t) => {
   assert.equal((await store.readCursor(CHAIN, FACTORY, STREAM))?.lastBlock, 11n);
 });
 
+test("overlapping streams do not rewrite unchanged header rows or their original evidence", async (t) => {
+  const store = await createStore(t);
+  const original = block(10n, "shared-header", "parent");
+  const batch = {
+    chain: CHAIN,
+    contract: FACTORY,
+    stream: STREAM,
+    blocks: [original],
+    events: [],
+  };
+  const readHeader = async () =>
+    (
+      await store.pool.query(
+        `SELECT xmin::text,ctid::text,number::text,parent_hash,block_time,orphaned,finality
+         FROM market.chain_blocks WHERE chain=$1 AND hash=$2`,
+        [CHAIN, original.hash],
+      )
+    ).rows[0];
+
+  await store.applyBatch(batch);
+  const observed = await readHeader();
+
+  await store.applyBatch({
+    ...batch,
+    contract: "0x" + "7".repeat(40),
+    blocks: [{ ...original, number: 99n, parentHash: hash("changed"), blockTime: new Date(0) }],
+  });
+
+  assert.deepEqual(await readHeader(), observed);
+  assert.equal(observed.finality, "observed");
+
+  await store.applyBatch({ ...batch, confirmed: true });
+  const confirmed = await readHeader();
+
+  assert.notEqual(confirmed.xmin, observed.xmin);
+  assert.equal(confirmed.finality, "confirmed");
+  assert.equal(confirmed.number, observed.number);
+  assert.equal(confirmed.parent_hash, observed.parent_hash);
+  assert.deepEqual(confirmed.block_time, observed.block_time);
+
+  await store.applyBatch({ ...batch, confirmed: true });
+  await store.applyBatch(batch);
+
+  assert.deepEqual(await readHeader(), confirmed);
+});
+
+test("header conflicts revive orphaned branches and preserve existing finality for unconfirmed input", async (t) => {
+  const store = await createStore(t);
+  const header = block(10n, "returning-header", "parent");
+  const batch = {
+    chain: CHAIN,
+    contract: FACTORY,
+    stream: STREAM,
+    blocks: [header],
+    events: [],
+  };
+  const readHeader = async () =>
+    (
+      await store.pool.query(
+        `SELECT xmin::text,ctid::text,orphaned,finality FROM market.chain_blocks
+         WHERE chain=$1 AND hash=$2`,
+        [CHAIN, header.hash],
+      )
+    ).rows[0];
+
+  await store.applyBatch({ ...batch, confirmed: true });
+  await store.pool.query(
+    "UPDATE market.chain_blocks SET orphaned=true,finality='finalized' WHERE chain=$1 AND hash=$2",
+    [CHAIN, header.hash],
+  );
+  const orphaned = await readHeader();
+
+  await store.applyBatch(batch);
+  const revived = await readHeader();
+
+  assert.notEqual(revived.xmin, orphaned.xmin);
+  assert.equal(revived.orphaned, false);
+  assert.equal(revived.finality, "finalized");
+
+  await store.applyBatch(batch);
+
+  assert.deepEqual(await readHeader(), revived);
+
+  // Confirmed input retains the existing writer's semantics, including finalized headers.
+  await store.applyBatch({ ...batch, confirmed: true });
+  const confirmed = await readHeader();
+
+  assert.equal(confirmed.finality, "confirmed");
+  assert.notEqual(confirmed.xmin, revived.xmin);
+
+  await store.pool.query(
+    "UPDATE market.chain_blocks SET orphaned=true WHERE chain=$1 AND hash=$2",
+    [CHAIN, header.hash],
+  );
+  await store.applyBatch({ ...batch, confirmed: true });
+
+  assert.equal((await readHeader()).orphaned, false);
+  assert.equal((await readHeader()).finality, "confirmed");
+});
+
 test("events come back in chain order regardless of how they were written", async (t) => {
   const store = await createStore(t);
 
