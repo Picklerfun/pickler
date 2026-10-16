@@ -13,6 +13,11 @@ import {
 import type { BreakoutClockRecord, DatabaseClockProof } from "./clock.js";
 import { qualifySourceFrames, type SourceQualificationFailure } from "./source-qualification.js";
 import {
+  SOURCE_DATABASE_CLOCK_POLICY,
+  validateSourceDatabaseClockSample,
+  type SourceDatabaseClockSample,
+} from "./source-database-clock.js";
+import {
   BREAKOUT_BYTES,
   boundedJson,
   bytesHash,
@@ -52,6 +57,8 @@ export interface SourceManifest {
   };
   processState: "running" | "completed" | "interrupted";
   failureCode: string | null;
+  databaseClockPolicy?: typeof SOURCE_DATABASE_CLOCK_POLICY;
+  databaseClockPolicyHash?: string;
   clockFailure?: { proof: DatabaseClockProof; proofPersistenceCode: string | null };
   journals: {
     snapshots: JournalPart[];
@@ -148,6 +155,15 @@ export function validateSourceManifest(value: unknown): asserts value is SourceM
     ) {
       throw new PilotError("BREAKOUT_SOURCE_INVALID", "Rejected database clock proof is invalid");
     }
+  }
+  if (
+    (manifest.databaseClockPolicy !== undefined ||
+      manifest.databaseClockPolicyHash !== undefined) &&
+    (!manifest.databaseClockPolicy ||
+      manifest.databaseClockPolicyHash !== digest(SOURCE_DATABASE_CLOCK_POLICY) ||
+      digest(manifest.databaseClockPolicy) !== manifest.databaseClockPolicyHash)
+  ) {
+    throw new PilotError("BREAKOUT_SOURCE_INVALID", "Source database clock policy is invalid");
   }
   let total = 0;
   const seen = new Set<string>();
@@ -503,15 +519,84 @@ export async function analyzeSource(root: string, manifest: SourceManifest) {
       throw new PilotError("BREAKOUT_HASH_MISMATCH", "Original public HTTP body bytes differ");
     }
   }
-  for (const parts of [
-    manifest.journals.versions,
-    manifest.journals.wire,
-    manifest.journals.control,
-  ]) {
+  for (const parts of [manifest.journals.versions, manifest.journals.wire]) {
     for await (const _record of readJournal(root, parts)) {
       void _record;
       // Hash and record cardinality are checked by the iterator on exhaustion.
     }
+  }
+  const databaseClock = {
+    policyId: SOURCE_DATABASE_CLOCK_POLICY.id,
+    sourceAuthority: "LOCAL_OS",
+    leaseAuthority: "POSTGRESQL",
+    externalUTC: "UNVERIFIED",
+    financialAcceptance: false,
+    samples: 0,
+    observedNonzeroOffsetSamples: 0,
+    rejectedSamples: 0,
+    offsetLowerMinimumMs: null as number | null,
+    offsetUpperMaximumMs: null as number | null,
+    preflightRecorded: false,
+    startRecorded: false,
+    endRecorded: false,
+  };
+  let previousDatabaseClock: SourceDatabaseClockSample | undefined;
+  for await (const record of readJournal(root, manifest.journals.control)) {
+    if (!manifest.databaseClockPolicy || !String(record.kind).startsWith("database-clock-")) {
+      continue;
+    }
+    if (
+      ![
+        "database-clock-preflight",
+        "database-clock-start",
+        "database-clock-renewal",
+        "database-clock-end",
+      ].includes(String(record.kind)) ||
+      databaseClock.endRecorded
+    ) {
+      throw new PilotError("CLOCK_PROOF_FAILURE", "Source database clock phase is invalid");
+    }
+    if (record.rejected === true) {
+      databaseClock.rejectedSamples++;
+      continue;
+    }
+    validateSourceDatabaseClockSample(record.sample, previousDatabaseClock);
+    previousDatabaseClock = record.sample;
+    if (record.kind === "database-clock-preflight") {
+      if (databaseClock.samples !== 0) {
+        throw new PilotError("CLOCK_PROOF_FAILURE", "Source preflight clock proof was repeated");
+      }
+      databaseClock.preflightRecorded = true;
+    } else if (record.kind === "database-clock-start") {
+      if (!databaseClock.preflightRecorded || databaseClock.startRecorded) {
+        throw new PilotError("CLOCK_PROOF_FAILURE", "Source start clock proof is invalid");
+      }
+      databaseClock.startRecorded = true;
+    } else if (
+      !databaseClock.startRecorded &&
+      !(
+        record.kind === "database-clock-end" &&
+        databaseClock.preflightRecorded &&
+        manifest.processState === "interrupted"
+      )
+    ) {
+      throw new PilotError("CLOCK_PROOF_FAILURE", "Source clock proof precedes start");
+    }
+    if (record.kind === "database-clock-end") {
+      databaseClock.endRecorded = true;
+    }
+    databaseClock.samples++;
+    if (record.sample.absoluteAlignment === "OBSERVED_NONZERO_OFFSET") {
+      databaseClock.observedNonzeroOffsetSamples++;
+    }
+    databaseClock.offsetLowerMinimumMs = Math.min(
+      databaseClock.offsetLowerMinimumMs ?? Number.POSITIVE_INFINITY,
+      record.sample.databaseOffsetInterval.lowerMs,
+    );
+    databaseClock.offsetUpperMaximumMs = Math.max(
+      databaseClock.offsetUpperMaximumMs ?? Number.NEGATIVE_INFINITY,
+      record.sample.databaseOffsetInterval.upperMs,
+    );
   }
   const perMarket = marketIds.map((marketId) => ({ marketId, qualified: 0, planned: 1440 }));
   let jointMinutes = 0;
@@ -588,7 +673,12 @@ export async function analyzeSource(root: string, manifest: SourceManifest) {
     manifest.cleanup?.socketClosed === true &&
     manifest.cleanup.leaseReleased === true &&
     manifest.cleanup.poolClosed === true &&
-    manifest.failureCode === null;
+    manifest.failureCode === null &&
+    (!manifest.databaseClockPolicy ||
+      (databaseClock.preflightRecorded &&
+        databaseClock.startRecorded &&
+        databaseClock.endRecorded &&
+        databaseClock.rejectedSamples === 0));
   const coveragePass =
     jointMinutes >= CAPTURE_GRID.jointMinuteFloor &&
     qualifiedCells >= CAPTURE_GRID.marketMinuteFloor &&
@@ -620,6 +710,7 @@ export async function analyzeSource(root: string, manifest: SourceManifest) {
     captureCommit: manifest.captureCommit,
     processState: manifest.processState,
     processLiveness: "UNVERIFIED_READ_ONLY_REPORT",
+    ...(manifest.databaseClockPolicy ? { databaseClock } : {}),
     clockFailure: manifest.clockFailure ?? null,
     complete,
     coverage: {
@@ -824,6 +915,7 @@ export async function publishReportGeneration(input: {
 <table><thead><tr><th>Market</th><th>Qualified minutes</th><th>Planned / required</th></tr></thead><tbody>${report.coverage.perMarket.map((market) => `<tr><td>${html(input.manifest.config.markets.find((m) => m.marketId === market.marketId)?.symbol)} (${market.marketId})</td><td>${market.qualified}</td><td>1440 / 1368</td></tr>`).join("")}</tbody></table>
 <h2>Clock and continuity evidence</h2>
 <p>Authority: local OS clock. External UTC accuracy: <strong>UNVERIFIED</strong>. J acceptance: ${pending ? "pending" : html(report.continuity.pass)}. Endpoint coverage: ${html(report.continuity.endpointsCovered)}.</p>
+${report.databaseClock ? `<p>Database clock policy: <code>${html(report.databaseClock.policyId)}</code>. The local OS clock owns source receipts and the calendar; PostgreSQL owns lease expiration. ${report.databaseClock.samples} full-RTT samples; ${report.databaseClock.observedNonzeroOffsetSamples} observed nonzero offsets; ${report.databaseClock.rejectedSamples} rejected proofs. Recorded PostgreSQL-minus-host offset envelope: [${html(report.databaseClock.offsetLowerMinimumMs ?? "NOT_VERIFIABLE")}, ${html(report.databaseClock.offsetUpperMaximumMs ?? "NOT_VERIFIABLE")}] ms. No timestamp was adjusted and no external UTC alignment or financial V acceptance is asserted.</p>` : ""}
 <p>Maximum conservative J interval: UTC ${html(report.continuity.maximumUpperFinancialMs ?? "NOT_VERIFIABLE")} ms; monotonic ${html(report.continuity.maximumUpperMonotonicMs ?? "NOT_VERIFIABLE")} ms; limit 90000 ms. Demonstrated breaches: ${report.continuity.provedBreaches}; unproved intervals: ${report.continuity.unprovedGaps}; clock failures: ${report.continuity.clockFailures}.</p>
 <p>Cleanup acknowledgements: socket ${html(report.cleanup?.socketClosed ?? "NOT_VERIFIABLE")}, lease ${html(report.cleanup?.leaseReleased ?? "NOT_VERIFIABLE")}, database pool ${html(report.cleanup?.poolClosed ?? "NOT_VERIFIABLE")}. Cleanup is pending during capture.</p>
 <h2>Unavailable and omitted opportunities</h2>
