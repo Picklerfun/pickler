@@ -188,8 +188,73 @@ export async function migratePaperAccount(pool: Pool, accountId: string, apply =
       const result = await backfillRecordClosesPage(db, accountId, cursor);
       cursor = result.afterKey;
       if (result.done) {
-        phase = "projection";
+        phase = "coverage-search";
         cursor = null;
+      }
+    } else if (phase === "coverage-search") {
+      // Search at most 100 receipt headers. Compact receipts cannot certify an old closed cohort.
+      const candidates = await db.query(
+        `WITH page AS MATERIALIZED (
+        SELECT key,document,result FROM pickler.perps_paper_observations
+        WHERE account_id=$1 AND ($2::text IS NULL OR key>$2) ORDER BY key LIMIT 100
+      ) SELECT p.key,
+        s.original->'fundingPending'='false'::jsonb
+        AND coalesce(s.original->'fundingDisputed','false'::jsonb)='false'::jsonb
+        AND jsonb_typeof(s.original->'lastFundingAt')='number'
+        AND p.result->'account'->'fundingPending'='false'::jsonb
+        AND coalesce(p.result->'account'->'fundingDisputed','false'::jsonb)='false'::jsonb
+        AND p.result->'account'->'lastFundingAt'=s.original->'lastFundingAt'
+        AND coalesce(p.document->'marksOnly','false'::jsonb)='false'::jsonb
+        AND jsonb_typeof(p.result->'account'->'positions')='array'
+        AND jsonb_array_length(p.result->'account'->'positions')=
+          jsonb_array_length(coalesce(s.original->'positions','[]'::jsonb)) AS eligible
+      FROM page p CROSS JOIN pickler.paper_storage s WHERE s.account_id=$1 ORDER BY p.key`,
+        [accountId, cursor],
+      );
+      const candidate = candidates.rows.find((item) => item.eligible === true);
+      if (candidate) {
+        phase = "coverage-proof";
+        cursor = JSON.stringify({ receiptKey: candidate.key, ordinal: 0 });
+      } else {
+        cursor = candidates.rows.at(-1)?.key ?? cursor;
+        if (candidates.rows.length < 100) {
+          phase = "projection";
+          cursor = null;
+        }
+      }
+    } else if (phase === "coverage-proof") {
+      const proof = JSON.parse(cursor!) as { receiptKey: string; ordinal: number };
+      const page = await db.query(
+        `SELECT x.ordinality::int AS ordinal,
+        s.original->'positions'->((x.ordinality-1)::int)=
+          o.result->'account'->'positions'->((x.ordinality-1)::int)
+        AND jsonb_typeof(s.original->'positions'->((x.ordinality-1)::int)->'closedAt')='number'
+        AND (s.original->'positions'->((x.ordinality-1)::int)->>'closedAt')::bigint<=
+          (s.original->>'lastFundingAt')::bigint AS matches
+        FROM pickler.paper_storage s JOIN pickler.perps_paper_observations o
+          ON o.account_id=s.account_id AND o.key=$2
+        CROSS JOIN LATERAL generate_series($3::int+1,
+          least($3::int+100,jsonb_array_length(s.original->'positions'))) x(ordinality)
+        WHERE s.account_id=$1 ORDER BY x.ordinality`,
+        [accountId, proof.receiptKey, proof.ordinal],
+      );
+      if (page.rows.some((item) => item.matches !== true)) {
+        phase = "coverage-search";
+        cursor = proof.receiptKey;
+      } else {
+        proof.ordinal = page.rows.at(-1)?.ordinal ?? proof.ordinal;
+        cursor = JSON.stringify(proof);
+        if (proof.ordinal >= row.positions) {
+          await db.query(
+            `UPDATE pickler.paper_storage SET coverage_complete=coalesce(
+              (SELECT max(closed_sequence) FROM pickler.perps_paper_positions WHERE account_id=$1),0)
+            WHERE account_id=$1`,
+            [accountId],
+          );
+          // Retain the positive receipt certificate durably after the migration finishes.
+          cursor = JSON.stringify({ certificate: proof });
+          phase = "projection";
+        }
       }
     } else if (phase === "projection") {
       complete = Boolean(await advanceRecordProjection(db, accountId));
