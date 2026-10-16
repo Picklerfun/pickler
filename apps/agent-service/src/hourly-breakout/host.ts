@@ -11,7 +11,11 @@ import type {
 import { localStudyDatabase } from "../perps-study/database-env.js";
 import { createReportQueue } from "../perps-study/report-queue.js";
 import { startAwakeGuard } from "./awake.js";
-import { createBoundaryClock, DatabaseClockSampleError, sampleDatabaseClock } from "./clock.js";
+import { createBoundaryClock, DatabaseClockSampleError } from "./clock.js";
+import {
+  createSourceDatabaseClock,
+  SOURCE_DATABASE_CLOCK_POLICY,
+} from "./source-database-clock.js";
 import {
   ArtifactBudget,
   BREAKOUT_BYTES,
@@ -148,9 +152,8 @@ export async function localPreflight(input: {
     }
     const { PostgresPerpsDiagnosticStore } = await import("@pickler/infrastructure/perps-lab");
     const store = new PostgresPerpsDiagnosticStore(research.pool);
-    const databaseClock = await sampleDatabaseClock(
+    const databaseClock = await createSourceDatabaseClock().sample(
       () => store.sampleDatabaseClock(),
-      undefined,
       async (proof) => {
         const writer = input.writer ?? budgetWriter(new ArtifactBudget());
         await writer.write(
@@ -170,7 +173,7 @@ export async function localPreflight(input: {
       },
     );
     return {
-      format: "hourly-breakout-local-preflight-v1",
+      format: "hourly-breakout-local-preflight-v2",
       status: "LOCAL_ONLY_PREPARED_NOT_STARTED",
       completedAt: Date.now(),
       commit: checkoutCommit(),
@@ -178,6 +181,8 @@ export async function localPreflight(input: {
       permission,
       freeSpace,
       databaseClock,
+      databaseClockPolicy: SOURCE_DATABASE_CLOCK_POLICY,
+      databaseClockPolicyHash: digest(SOURCE_DATABASE_CLOCK_POLICY),
       publicRequests: 0,
       modelCalls: 0,
       financialAcceptance: false,
@@ -210,6 +215,7 @@ export async function runSourceCapture(input: {
   budget.reserve(Buffer.byteLength("OPERATOR_STOP\n"))();
   const writer = budgetWriter(budget);
   const preflight = await localPreflight({ ...input, output: directory, writer });
+  const databaseClockObserver = createSourceDatabaseClock({ previous: preflight.databaseClock });
   // Every clock, denominator and immutable identity is fixed before any public import/call.
   const frozen = freezeSourceWindow(preflight.completedAt);
   await writer.write(
@@ -300,6 +306,8 @@ export async function runSourceCapture(input: {
     frozen,
     processState: state,
     failureCode: failure ? safeCode(failure) : null,
+    databaseClockPolicy: SOURCE_DATABASE_CLOCK_POLICY,
+    databaseClockPolicyHash: digest(SOURCE_DATABASE_CLOCK_POLICY),
     ...(rejectedDatabaseClock
       ? {
           clockFailure: {
@@ -418,9 +426,8 @@ export async function runSourceCapture(input: {
   const event = (value: unknown) => journals.control.append(value);
   const sourceDatabaseClock = async (kind: string, context: Record<string, unknown> = {}) => {
     try {
-      return await sampleDatabaseClock(
+      return await databaseClockObserver.sample(
         () => store.sampleDatabaseClock(),
-        undefined,
         (proof) => {
           event({ kind, ...context, rejected: true, sample: proof });
         },
@@ -438,7 +445,14 @@ export async function runSourceCapture(input: {
       agentId: input.config.agentId,
       protocolId: "hourly-breakout-source-journal@1",
       protocolSha256: input.config.researchProtocolSha256,
-      metadata: { configHash: digest(input.config), commit: preflight.commit, frozen, directory },
+      metadata: {
+        configHash: digest(input.config),
+        commit: preflight.commit,
+        frozen,
+        directory,
+        databaseClockPolicy: SOURCE_DATABASE_CLOCK_POLICY,
+        databaseClockPolicyHash: digest(SOURCE_DATABASE_CLOCK_POLICY),
+      },
     });
     lease = await store.claim(diagnosticScope);
     event({
@@ -447,6 +461,10 @@ export async function runSourceCapture(input: {
       at: Date.now(),
       leaseMs: 90000,
       renewalMs: 20000,
+    });
+    event({
+      kind: "database-clock-preflight",
+      sample: preflight.databaseClock,
     });
     event({
       kind: "database-clock-start",
