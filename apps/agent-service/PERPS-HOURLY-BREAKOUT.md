@@ -109,9 +109,9 @@ interval. An excessive gap, unproved compliance and incompatible clocks retain d
 
 Rejected database samples now save their raw numeric brackets and conservative offset interval
 before rejection. Nonfinite values cannot be accepted; rejected evidence represents them as null.
-The acceptance calculation is unchanged: `[databaseAt - wallAfter - 1, databaseAt - wallBefore + 1]`
-must contain zero. A later measurement with a wider RTT can pass while a tighter interval fails;
-passing preflight is not a guarantee that every subsequent sample will pass.
+The legacy calculation requires `[databaseAt - wallAfter - 1, databaseAt - wallBefore + 1]` to contain
+zero. A wider RTT can pass while a tighter interval fails. That rule is retained for historical
+interpretation and the disabled future financial adapter; it is not the new source-only policy below.
 
 The first rejected proof stays separate from the primary interruption, including any independent
 proof-journal failure. Preflight writes rejection evidence before public composition. A clock error
@@ -142,6 +142,32 @@ proof, checks every numeric clock input, performs fenced technical cleanup indep
 labels absent interval evidence correctly. Controlled regressions cover those changes. They do
 not amend the original capture, authorize repetition, or satisfy source/financial acceptance.
 The financial configuration remains disabled with no T0, operator or acceptance bundle.
+
+## Authorized independent-clock source correction
+
+On 2026-10-16 the operator authorized correcting the clock problem and one new 24-hour attempt
+without positions. The demonstrated source-host defect was treating absolute equality between two
+independent clocks as necessary: no source receipt, source deadline or source-calendar decision uses
+a PostgreSQL timestamp. Diagnostic lease admission/expiry already uses PostgreSQL consistently.
+The nonzero SQL offset was measured; its physical cause and external UTC accuracy remain unverified.
+
+New source preflight/capture selects `source-independent-database-clock-v1`. It records the same
+full-RTT interval `[databaseAt - wallAfter - 1, databaseAt - wallBefore + 1]` without requiring zero
+inside it. A sample distinguishes observed nonzero offset from an interval containing zero; neither
+label establishes clock synchronization. No timestamp is shifted, widened to force zero, or replaced.
+Source J, freshness, deadlines, canonical populations and 90-second continuity limits stay unchanged.
+PostgreSQL remains the sole lease authority, with the existing 90-second lease and 20-second renewal.
+
+The source sampler retains one preceding sample and rejects invalid numbers, regression of either
+host clock or PostgreSQL, foreign process epochs, and concurrent sampling. Preflight/start/renewal/end evidence and policy
+hashes are durable; the offline analyzer reproduces these checks. Missing diagnostic endpoints
+cannot pass acceptance. The policy changes only this nonfinancial source-clock integration. It does
+not alter financial V certificates, the future financial clock gate, trading policies or historical
+capture outcomes. New manifests explicitly identify the policy; old manifests retain their meaning.
+
+The new attempt uses a fresh identity and directory after a clean freeze. It is one authorized
+attempt, not a restart of the failed diagnostic. No public data is fetched before its fixed start,
+no missed opportunity is recovered, and no failure authorizes another automatic attempt.
 
 ## Evidence, bounded operation and future acceptance
 
