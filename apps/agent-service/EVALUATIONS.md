@@ -109,3 +109,18 @@ v7 instead freezes `rest-universe-20s-v1` and qualifies all eleven markets in on
 capture. Read [PERPS-SMA-REENTRY.md](PERPS-SMA-REENTRY.md) for its passing-proof gate, offline timing
 command, atomic hourly keys and coverage requirements. No monitor, restart or automatic repeat is
 created. A failed capture defers the six-hour comparison.
+
+## Disabled hourly breakout fixed screen
+
+Configuration v10 (`perps-hourly-breakout-fixed-screen-v1`) has a separate public-only host and
+[operating guide](PERPS-HOURLY-BREAKOUT.md). Its `prepare` is offline and disabled; `preflight`
+uses only explicit existing permissions and a loopback DATABASE_URL-only file. `stability` is the
+separately authorized one-shot 24-hour source capture, with 4,320 fixed twenty-second windows and
+1,440 canonical minutes. The older thirty-minute selectors and transport-choice files do not
+apply. Cold startup counts, offset copies cannot rescue minutes, and background preparation has
+288 original five-minute opportunities with sixty-second deadlines.
+
+Saved source or financial audit manifests dispatch `audit`/`replay` before environment or provider
+loading. The future 28-day financial `run` requires its own operator/clock/technical/financial
+acceptance bundle. No source capture, disabled template or historical study authorizes that run.
+There are no model calls, signers, migrations, deployed changes, automatic repeats or monitors.
