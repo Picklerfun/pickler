@@ -10,13 +10,14 @@ import previewMarket from "./market-preview.json";
 import styles from "./public-token-market.module.css";
 
 import {
+  initialTokenPriceRange,
   marketAmount as amount,
   readTokenMarket,
+  tokenHistoryForRange,
   tokenMarketRead as marketRead,
   tokenPricePoints,
+  type TokenPriceRange,
 } from "./market-data";
-const ranges = { "1H": 3_600_000, "24H": 86_400_000, "7D": 604_800_000 };
-type Range = keyof typeof ranges;
 type State = {
   status: "loading" | "ready" | "error";
   read: ReturnType<typeof marketRead.parse> | null;
@@ -42,7 +43,7 @@ export function PublicTokenMarket({
   const [previewOutcome, setPreviewOutcome] = useState<
     "success" | "cancel" | "failure" | "pending"
   >("success");
-  const [range, setRange] = useState<Range>("24H");
+  const [selectedRange, setSelectedRange] = useState<TokenPriceRange | null>(null);
   const [explained, setExplained] = useState(false);
   const [request, setRequest] = useState(0);
 
@@ -85,11 +86,21 @@ export function PublicTokenMarket({
   const symbol = quote?.symbol ?? "Quote asset";
   const quoteDecimals = quote?.decimals ?? 6;
   const tokenDecimals = market?.tokenDecimals ?? 18;
-  const end = market ? Date.parse(market.windowEnd) : 0;
-  const history =
-    market?.history.filter((point) => Date.parse(point.at) >= end - ranges[range]) ?? [];
-  const points = tokenPricePoints(history);
+  const range = selectedRange ?? initialTokenPriceRange(market);
+  const points = tokenPricePoints(tokenHistoryForRange(market, range));
+  const earlierHistory =
+    tokenPricePoints(tokenHistoryForRange(market, "ALL")).length > points.length;
   const loading = state.status === "loading" && !state.read;
+  let emptyTitle = "Price history is not available";
+  if (market) {
+    emptyTitle = "No curve trades recorded yet";
+    if (market.recentTrades.length) {
+      emptyTitle =
+        points.length === 1
+          ? "One price observation in this period"
+          : "No recorded prices in this period";
+    }
+  }
   function refresh() {
     if (preview) {
       return;
@@ -179,12 +190,13 @@ export function PublicTokenMarket({
               <Segmented
                 label="Token price timeframe"
                 value={range}
-                onChange={setRange}
+                onChange={setSelectedRange}
                 tone="lime"
                 options={[
                   { value: "1H", label: "1H" },
                   { value: "24H", label: "24H" },
                   { value: "7D", label: "7D" },
+                  { value: "ALL", label: "ALL" },
                 ]}
               />
             </div>
@@ -203,15 +215,13 @@ export function PublicTokenMarket({
               ) : (
                 <div className={styles.empty} role="status">
                   <Icon name="chart" size={24} />
-                  <strong>
-                    {market?.recentTrades.length
-                      ? "More trades will build the chart"
-                      : "No curve trades recorded yet"}
-                  </strong>
+                  <strong>{emptyTitle}</strong>
                   <span>
-                    {market?.priceWad
-                      ? "The recorded price is shown above."
-                      : "Price history appears as confirmed trades are indexed."}
+                    {earlierHistory
+                      ? "Select a wider period to see earlier activity."
+                      : market?.priceWad
+                        ? "The latest recorded price is shown above."
+                        : "Price history appears as confirmed trades are indexed."}
                   </span>
                 </div>
               )}

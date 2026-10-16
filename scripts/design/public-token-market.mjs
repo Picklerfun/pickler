@@ -151,7 +151,7 @@ try {
   }
   await page.emulateMedia({ reducedMotion: "reduce" });
   await price.getByRole("button", { name: "1H", exact: true }).click();
-  await price.getByText("More trades will build the chart").waitFor();
+  await price.getByText("One price observation in this period").waitFor();
   await price.getByRole("button", { name: "7D", exact: true }).focus();
   await page.keyboard.press("Enter");
   await price.locator("canvas").first().waitFor();
