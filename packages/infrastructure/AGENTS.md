@@ -1007,3 +1007,21 @@ epoch commit-fact sequence,never their earlier staging time. `position` and `att
 one scoped entity. Unconverted archives refuse pagination; closedPositions instead labels its
 empty result complete=false, and exact missing converted position totals are errors. See
 [Paper operational history](../../docs/paper-operational-history.md) for rollout and validation.
+
+## Perpl operational history
+
+Migration 0051 adds private normalized Perpl sessions, orders and setup evidence. New accounts
+use split storage when the schema is present. The compact account holds encrypted credentials,
+wallet identity, current snapshot, request counter and lease; append history is read with indexed
+point lookups and bounded pages. Business mutations use the explicit operations exported by trading;
+no caller receives a generic document transaction. Daily opening aggregates preserve the distinct
+start (including cancelled) and tick (excluding cancelled) predicates and original session margin.
+Net filled quantity and opening leverage are transactional per-session projections.
+
+`perpl:storage` is an operator command: inspect is the default, every mutation requires `--execute`.
+Each `page` normalizes at most 100 entities inside PostgreSQL and persists its cursor with that
+page. Conversion defers active/uncertain accounts, fences old writers, preserves the original
+hash/revision, and verifies full evidence parity before atomic cutover. A controlled rollback
+reconstructs current normalized evidence; it never restores the retained stale original document.
+The new runtime must remain installed after rollback because the writer fence stays at version 2.
+See [Perpl trading](../../docs/perpl-trading.md).
