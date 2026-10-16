@@ -40,6 +40,7 @@ let sent: Sent[] = [];
 /** An Error is a request that never got an answer (no network). */
 let posts: (Reply | Error)[] = [];
 let jobs: Reply[] = [];
+let lastJob:Reply|undefined;
 
 const respond = (r: Reply): Response =>
   ({ status: r.status, ok: r.status >= 200 && r.status < 300, headers: new Headers(r.headers ?? {}), json: async () => r.body }) as unknown as Response;
@@ -53,7 +54,8 @@ const authedFetch = jest.fn(async (path: string, init: RequestInit = {}) => {
     return respond(next);
   }
   if (path.includes("?symbol=")) return respond({ status: 200, body: { data: { items: [], nextCursor: null } } });
-  return respond(jobs.shift() ?? { status: 200, body: { data: job("running") } });
+  if(path.endsWith("/status"))lastJob=jobs.shift() ?? { status: 200, body: { data: job("running") } };
+  return respond(lastJob ?? {status:200,body:{data:job("running")}});
 });
 
 const r402 = (): Reply => ({
@@ -116,9 +118,10 @@ beforeEach(() => {
   sent = [];
   posts = [];
   jobs = [];
+  lastJob=undefined;
   // Pay reads the passkey again (Face ID, Ruling A8): the same account, in a signing session of its own.
   unlockStoredWallet.mockImplementation(async () => ({ address: account.address, credentialId: "cred", session: { end() {} }, account }));
-  (globalThis as { fetch: unknown }).fetch = jest.fn(async () => respond({ status: 200, body: [ROW] }));
+  (globalThis as { fetch: unknown }).fetch = jest.fn(async () => respond({ status: 200, body: {items:[ROW],nextCursor:null} }));
 });
 
 test("leaving the advice screen mid-analysis and coming back finds the same paid Ask, never a new one", async () => {
@@ -187,7 +190,7 @@ describe("the Studio agents section of the Agents tab", () => {
 
 test("an agent that leaves the list keeps its paid Ask on view, with the wait and the payment", async () => {
   await paidAndWaiting();
-  (globalThis as { fetch: unknown }).fetch = jest.fn(async () => respond({ status: 200, body: [] }));
+  (globalThis as { fetch: unknown }).fetch = jest.fn(async () => respond({ status: 200, body: {items:[],nextCursor:null} }));
   await act(async () => { await studio.refresh(); });
   await settle();
   expect(studio.agents).toEqual([]);
@@ -197,7 +200,7 @@ test("an agent that leaves the list keeps its paid Ask on view, with the wait an
 });
 
 test("another agent's screen asks to finish or leave the paid Ask, and offers no Ask of its own", async () => {
-  (globalThis as { fetch: unknown }).fetch = jest.fn(async () => respond({ status: 200, body: [ROW, OTHER] }));
+  (globalThis as { fetch: unknown }).fetch = jest.fn(async () => respond({ status: 200, body: {items:[ROW,OTHER],nextCursor:null} }));
   await paidAndWaiting();
   await show(true, "nope");
   expect(text()).toContain("Finish or leave the analysis in progress");
