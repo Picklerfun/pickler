@@ -1596,3 +1596,7 @@ unsupported leverage or change execution settings.
 ## Bounded product reads
 
 Catalogue consumers use explicit Load more pages and server filters; counts describe loaded rows. The landing page reads at most eight confirmed tokens through /api/v1/marketplace/tokens. Research views discover summaries every 20 seconds and poll active status every three seconds without overlapping or hidden-page requests. Full results load once per selected completed run; incremental event pages drain serially at terminal status. Oversized evidence is fetched only on its explicit button. Studio single-agent refreshes preserve the separately known creation eligibility.
+
+## Paper record history
+
+The Studio record chart consumes bounded hourly Paper projections. Incomplete projections display an updating state instead of definitive figures. Closed positions load an initial bounded page and explicit additional pages; never drain history automatically. Account changes remount the history owner and cancel in-flight requests.
