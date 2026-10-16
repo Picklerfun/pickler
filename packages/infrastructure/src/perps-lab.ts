@@ -2,6 +2,24 @@
 export { PostgresResearchStore } from "./persistence/research-store.js";
 export { PostgresPerpsPaperStore } from "./persistence/perps-paper-store.js";
 export { PostgresPerpsStudyStore } from "./persistence/perps-study-store.js";
+export { PostgresPerpsDiagnosticStore } from "./persistence/perps-diagnostic-store.js";
+export type {
+  PerpsDiagnosticScope,
+  PerpsDiagnosticInitialization,
+  PerpsDiagnosticRecord,
+} from "./persistence/perps-diagnostic-store.js";
+export { PostgresPerpsHourlyBreakoutStore } from "./persistence/perps-breakout-store.js";
+export type {
+  PerpsBreakoutStoreOptions,
+  PerpsBreakoutStudyRecord,
+  PerpsBreakoutFundingRequirement,
+  PerpsBreakoutFundingState,
+} from "./persistence/perps-breakout-store.js";
+export { exportPerpsBreakoutAuditParts } from "./persistence/perps-breakout-audit.js";
+export type {
+  PerpsBreakoutAuditPart,
+  PerpsBreakoutAuditManifest,
+} from "./persistence/perps-breakout-audit.js";
 export { exportPerpsAudit, exportPerpsAuditParts } from "./persistence/perps-audit-export.js";
 export type {
   PerpsAuditPart,
