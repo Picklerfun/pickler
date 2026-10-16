@@ -1403,7 +1403,13 @@ form available during read failures. No RPC, signing or automatic quote is perfo
 The market renders prepared WAD prices/FDV, quote-unit volume, canonical curve state, committed
 allocations and recent transaction references. Unavailable figures stay unknown. The chart uses
 actual timestamped observations, filtered relative to the server's read window; same-second
-observations collapse for the chart library. Recent trades retain individual transaction/log identity and display the canonical `trader` wallet next to Buy/Sell, with an address-as-explorer link and icon-only copy. Keep wallet and transaction references separate; local preview wallets remain inert.
+observations collapse for the chart library. The pure `market-history.ts` projection selects an
+initial period preferring 24H, then 7D, then ALL
+until the returned history has two drawable timestamps. ALL uses the bounded observations
+already returned by the API. An explicit period selection persists through refreshes; empty
+periods explain the lack of observations and point to wider history. Never invent trades,
+extend old prices into idle time or change the independent 24h volume metric to fill a chart.
+Recent trades retain individual transaction/log identity and display the canonical `trader` wallet next to Buy/Sell, with an address-as-explorer link and icon-only copy. Keep wallet and transaction references separate; local preview wallets remain inert.
 Post-graduation figures remain labelled curve history, never a DEX price. Preview addresses and
 transaction links remain inert. Illustrative fixtures render only in the server-gated development preview; ordinary public tokens use API observations.
 
