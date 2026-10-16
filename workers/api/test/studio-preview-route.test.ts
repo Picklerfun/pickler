@@ -82,6 +82,44 @@ function app({
       notified++;
     },
     previews: repository,
+    executionReads: {
+      previewResult: async (actorId: string, id: string) =>
+        (await repository.read(actorId, id, Date.now())).run,
+      status: async (kind: string, actorId: string, id: string) => {
+        reads.push(`status:${kind}:${actorId}:${id}`);
+        return {
+          id,
+          tenantId: "trusted",
+          agentId: null,
+          trigger: "manual",
+          marketId: null,
+          status: "running",
+          createdAt: 1,
+          startedAt: 2,
+          finishedAt: null,
+          configVersion: 1,
+          error: null,
+          resultAvailable: false,
+          lastEventId: "9007199254740993",
+        };
+      },
+      events: async (kind: string, actorId: string, id: string, query: unknown) => {
+        reads.push(`events:${kind}:${actorId}:${id}:${JSON.stringify(query)}`);
+        return {
+          items: [
+            {
+              id: "9007199254740993",
+              type: "oversized_event",
+              createdAt: 3,
+              oversized: true,
+              detailUrl: `/v1/studio/preview-runs/${id}/events/9007199254740993`,
+            },
+          ],
+          nextCursor: "9007199254740993",
+          hasMore: false,
+        };
+      },
+    } as import("@pickler/core").ExecutionReads,
     wallets: { findAgentWallet: async () => null },
     balances: { read: async () => 0 },
     authenticate: async () => ({
@@ -207,7 +245,7 @@ test("paused admissions refuse new paper runs like new research", async () => {
   });
 });
 
-test("the owner reads the run and its trace in a run's event shape", async () => {
+test("the owner explicitly reads the result without downloading the trace", async () => {
   const f = app();
   const response = await f.root.request(`/preview-runs/${RUN}`, {
     headers: { Authorization: "Bearer token" },
@@ -215,7 +253,7 @@ test("the owner reads the run and its trace in a run's event shape", async () =>
   assert.equal(response.status, 200);
   const read = await response.json();
   assert.equal(read.run.status, "running");
-  assert.deepEqual(read.events, [{ id: 1, type: "runtime", data: {}, createdAt: 3 }]);
+  assert.equal(read.events, undefined);
   assert.deepEqual(f.reads, [`user:${RUN}`]);
 });
 
@@ -231,4 +269,28 @@ test("a run that is not the caller's, or has expired, is 404", async () => {
     headers: { Authorization: "Bearer token" },
   });
   assert.equal(response.status, 404);
+});
+
+test("preview status and event pages use the JWT owner, preserve decimal IDs and references and never download results", async () => {
+  const f = app();
+  const headers = { Authorization: "Bearer token" };
+  const status = await f.root.request(`/preview-runs/${RUN}/status`, { headers });
+  assert.equal(status.status, 200);
+  assert.equal(status.headers.get("cache-control"), "private, no-store");
+  const state = await status.json();
+  assert.equal(state.lastEventId, "9007199254740993");
+  assert.equal(state.config, undefined);
+  assert.equal(state.decision, undefined);
+  const response = await f.root.request(`/preview-runs/${RUN}/events?after=12&limit=2`, {
+    headers,
+  });
+  assert.equal(response.status, 200);
+  const page = await response.json();
+  assert.equal(page.items[0].oversized, true);
+  assert.equal(page.items[0].id, "9007199254740993");
+  assert.match(page.items[0].detailUrl, /9007199254740993$/);
+  assert.deepEqual(f.reads, [
+    `status:preview:user:${RUN}`,
+    `events:preview:user:${RUN}:{"limit":2,"after":"12"}`,
+  ]);
 });
