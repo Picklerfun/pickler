@@ -40,3 +40,22 @@ not original TCP, compressed-frame or TLS bytes. Original public HTTP text-body 
 The unified npm evaluate script ends Node options explicitly before the script path. Keep the
 `--` in `node --import tsx -- src/evaluate.ts`: CLI `--env-file` is a host argument and must not
 be consumed by Node before protocol, offline, or authorization checks.
+
+Rejected PostgreSQL clock samples retain safe numeric RTT proof before throwing. Nonfinite clock
+values are explicit nulls in rejected evidence, never accepted samples. The zero-containing full
+RTT criterion and its one-millisecond quantization margin are unchanged. Source and future financial
+manifests retain the first rejected clock proof independently of the primary failure, including a
+safe secondary journal-write code. A missing historical rejected sample remains unverifiable.
+Preflight saves rejection evidence before any public composition using the same artifact budget.
+
+Clock qualification failure does not bypass owned technical cleanup. A fresh guard and the adapter's
+transactional fence still protect diagnostic lease release; a confirmed release stays confirmed if
+its local ACK journal fails. Known or newly detected ownership loss prohibits subsequent database
+calls. Cleanup never creates financial work or restarts a source capture. With no J comparisons,
+derived reports return null maximum intervals rather than an invented observed zero.
+
+The single source attempt at frozen commit `12758b5bd045f9ce7726a4606db522a29362a407` interrupted
+with `CLOCK_INCOMPATIBLE` before any public request or scheduled source window. Preserve its original
+empty journals, failed report and unconfirmed cleanup. Later read-only clock measurements are a
+separate diagnostic, not reconstruction of the lost startup sample. The corrected code has controlled
+validation only; no source retry or financial acceptance is implied.
