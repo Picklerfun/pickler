@@ -348,3 +348,7 @@ and the two credential fields remain write-only.
 ## Bounded product reads
 
 Catalogue endpoints return items/nextCursor pages. Execution read schemas separate lightweight status and run summaries from full results. Event identifiers and cursors are decimal strings; event pages carry hasMore and nextCursor, with explicit oversized body detail references. Studio canCreateAnother is nullable on single-agent reads and has a separate creation-eligibility operation.
+
+## Bounded Paper record
+
+Paper positions include the next closed-history cursor. `perpsClosedPositionsPageSchema` carries at most 100 closed positions and a stable opaque next cursor. Record projection metadata exposes revision, observation time and completeness; consumers must not present rebuilding figures as final. The chart is bounded to thirty days of hourly samples plus the observed point.
