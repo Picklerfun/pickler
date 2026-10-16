@@ -10,7 +10,7 @@ import type { RunEvent } from "../api";
 type TraceTint = "lime" | "violet" | "amber" | "blue" | "magenta";
 
 interface TraceLine {
-  id: number;
+  id: string | number;
   text: string;
   meta: string;
   tint: TraceTint;
