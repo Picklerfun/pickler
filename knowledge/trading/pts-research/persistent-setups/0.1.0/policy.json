@@ -1,0 +1,27 @@
+{
+  "format": "pts-offline-causal-policy-v1",
+  "version": "0.1.0",
+  "reference": "pts-intraday@0.2.0-fast.2",
+  "offlineOnly": true,
+  "enabled": false,
+  "nativeSeconds": [3600, 900, 300],
+  "minimumClosedBars": {
+    "1h": 24,
+    "15m": 240,
+    "5m": 180
+  },
+  "formationMs": 259200000,
+  "correctionMs": 86400000,
+  "triggerMs": 300000,
+  "executionAdmission": "NONE",
+  "financialResults": "NONE",
+  "id": "persistent-setups",
+  "changedFactor": "setup-selection-and-lifecycle",
+  "maximumPerMarketDirection": 32,
+  "eviction": "OLDEST_C_CONFIRMATION_THEN_ASCENDING_ABC_ID",
+  "selection": "EARLIEST_FULLY_READY_ADMISSIBLE_THEN_ASCENDING_ABC_ID",
+  "frozen": ["A", "B", "C", "channel", "ATR14", "structural-stop"],
+  "retirement": ["C_EXPIRY", "VERIFIED_NEUTRAL_OR_OPPOSITE_PRIMARY", "CLOSED_5M_STOP_TOUCH"],
+  "missingLifecycleHistory": "NOT_VERIFIABLE",
+  "consumption": "EXPLICIT_CONFIRMED_FIXTURE_SIGNAL_ID_ONLY"
+}

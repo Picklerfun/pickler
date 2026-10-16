@@ -121,12 +121,13 @@ export function createUniversePerplReader(
       markets: readonly { symbol: PerpSymbol; marketId: number }[],
       parent: AbortSignal,
       guard?: () => Promise<void>,
+      absoluteDeadlineAt?: number,
     ) {
       if (stream) {
-        return stream.read(scope, markets, parent, guard);
+        return stream.read(scope, markets, parent, guard, absoluteDeadlineAt);
       }
-      const deadlineAt = now() + 20000;
-      const timeout = AbortSignal.timeout(20000);
+      const deadlineAt = Math.min(now() + 20000, absoluteDeadlineAt ?? Infinity);
+      const timeout = AbortSignal.timeout(Math.max(0, Math.floor(deadlineAt - now())));
       const signal = AbortSignal.any([parent, lifetime.signal, timeout]);
       const active = await check(scope, signal, guard);
       const { service, data } = await sessionData(scope, signal, guard);

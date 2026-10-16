@@ -1,0 +1,23 @@
+{
+  "format": "pts-offline-causal-policy-v1",
+  "version": "0.1.0",
+  "reference": "pts-intraday@0.2.0-fast.2",
+  "offlineOnly": true,
+  "enabled": false,
+  "nativeSeconds": [3600, 900, 300],
+  "minimumClosedBars": {
+    "1h": 24,
+    "15m": 240,
+    "5m": 180
+  },
+  "formationMs": 259200000,
+  "correctionMs": 86400000,
+  "triggerMs": 300000,
+  "executionAdmission": "NONE",
+  "financialResults": "NONE",
+  "id": "retracement-control",
+  "changedFactor": "retracement-band",
+  "referenceInclusive": ["0.61", "0.78"],
+  "candidateInclusive": ["0.40", "0.57"],
+  "width": "0.17"
+}

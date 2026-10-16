@@ -28,7 +28,7 @@
     "evaluate:decisions:v4": "node --import tsx src/evaluate-decisions-v4.ts",
     "perpl:data": "node --import tsx src/perpl-data.ts",
     "perps:paper": "node --import tsx src/perps-paper.ts",
-    "evaluate": "node --import tsx src/evaluate.ts"
+    "evaluate": "node --import tsx -- src/evaluate.ts"
   },
   "dependencies": {
     "@ai-sdk/openai-compatible": "3.0.48",

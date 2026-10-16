@@ -114,3 +114,9 @@ final newline. Optional undefined fields must not create an unreproducible repor
 legacy canonicalAudit/source/policy hashes and v2 artifacts; re-render saved evidence into a new
 directory only. Never clone a whole report through stringify/parse or evaluate toJSON twice for
 hashing. This presentation repair does not change financial policy or resume interrupted studies.
+
+The causal research audit accepts an explicit `pts-research-input-v1` manifest, verifies saved
+parts and policy hashes, and writes only a new directory. Research files own input validation and
+publication; `@pickler/trading/pts` owns every signal and diagnostic. Keep the five-arm forensic
+table separate from historical replay and preserve the non-executable future protocol. See
+[the research guide](../../PTS-CAUSAL-RESEARCH.md).

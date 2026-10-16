@@ -854,3 +854,66 @@ safe client/workload identity, socket/auth/protocol phases, monotonic duration, 
 and allowlisted codes only. Exclude addresses, authentication payloads, backend secrets, SQL and
 driver messages. Observer or metadata-access failure cannot affect the driver or failure latch;
 missing historical phases remain unverifiable. Tests use isolated databases and synthetic sockets.
+
+## Fixed hourly-breakout persistence
+
+The restricted `@pickler/infrastructure/perps-lab` subpath exports
+`PostgresPerpsHourlyBreakoutStore`, `PostgresPerpsDiagnosticStore` and
+`exportPerpsBreakoutAuditParts`. They reuse existing private study, event, paper account,
+position, attempt and movement tables; no schema migration or HTTP endpoint is added.
+
+Financial v10 initialization requires a separately accepted future UTC-midnight T0 and an
+operator, with `protocolDigest` equal to the prepared configuration's frozen research SHA.
+It atomically creates three new independent 1,000-AUSD operator accounts, immutable C/S/L
+identities and initial movements. The prepared disabled configuration alone grants no financial
+authority. Account position policy remains absent. The standalone diagnostic store instead
+references one existing agent and creates no agent, account, attempt or monetary reservation.
+Diagnostic leases are single-use, last 90 seconds and have no expired-run recovery. Database
+clock sampling always queries PostgreSQL, independently of the financial clock supplied by the
+trusted composition root.
+
+The v10 execution document contains at most five open positions per account, one authoritative
+unresolved native head and bounded current discovery/close/funding projections. Canonical closed
+positions, attempts, movements and immutable journals remain in their existing primary-keyed
+rows. All queued discoveries and tombstones commit independently with zero reservations; only
+the current head reserves the native 101 AUSD. Final fill, movements, release and close fences
+commit together. Exact owned, proved-unexecuted heads can be terminally rejected once before a
+due reduction; expired attempts are never recovered or silently released. Pending inventory
+queries expose up to two unresolved rows and reject mismatches or foreign ownership.
+
+Original financial inputs and acknowledgements are immutable. Pre-effect A runs synchronously
+before the opening clock; fresh owner, frame, hour/day, risk and due-close checks precede COMMIT.
+The first synchronous receipt hook immediately follows definitive COMMIT. Known effects with
+failed receipt proof stay known effects with unproved supervision. Uncertain COMMIT stops all
+new admissions and all financial writes to affected accounts. Original receipt replay uses a
+bounded cache or the immutable journal; a missing original receipt remains unavailable. Close
+replay requires the same original input hash. Closing effects cannot cross fixed TV, and funding
+effects cannot cross fixed TF, including transactions that cross an endpoint before COMMIT.
+Selective reconciliation only retires obsolete selective-only operational latches, preserves
+mandatory/multi-reason intents and journals the original intent and current native risk.
+
+Funding uses the native per-position kernel and a single account finalizer. Each canonical
+position records funding status and references content-addressed original/revised source events.
+Compact archive counters are transactionally maintained and checked against one authoritative
+aggregate under the account lock before funding. A mismatch fails; there is no repair/bootstrap
+API. Observations process live positions and primary-key pages of archives overlapping newly
+supplied ranges. Unchanged archives retain their known pending/disputed status without loading
+all historical sources each minute. `fundingRequirements` pages every canonical held interval,
+including closed positions; callers reset the cursor to revisit late or revised evidence.
+Partial new evidence never asserts complete coverage. A dispute, including on the last affected
+page, rolls back every provisional funding posting before one native cash/day/peak finalizer.
+
+The v3 breakout audit exporter takes a fresh repeatable-read, read-only snapshot and streams
+canonical positions, attempts, movements, rounds and journals in deterministic primary-key order.
+Its hash excludes page boundaries. V1/v2 exporters retain historical semantics; legacy study
+initialize/read/ownership/stop/continuation and paper lock/snapshot/init paths explicitly reject
+v10 before expiration recovery or monetary writes. Keep the existing four execution plus one
+report connection bounds and ten-second connection/query deadlines.
+
+Controlled PostgreSQL tests are `test/perps-breakout-store.test.ts`,
+`test/perps-diagnostic-store.test.ts` and `test/perps-breakout-volume.test.ts`. The volume fixture
+is adverse filled-history load, not financial or provider acceptance: 47,040 archived positions,
+94,080 native attempts, 188,163 movements and 100,000 small canonical events. It exercises actual
+funding observation against the archive and compares segmented export hashes at different page
+sizes. Fixtures must seed matching canonical funding statuses/counters explicitly. Never run
+these suites against an existing study database, provider or financial session.

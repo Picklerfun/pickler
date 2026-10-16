@@ -31,3 +31,11 @@ export * from "./features/perps-study/component-qualification.js";
 
 export { PTS_VARIANTS } from "./features/pts/types.js";
 export type { PerpsPtsConfig } from "./features/pts/policy.js";
+
+export * from "./features/hourly-breakout/types.js";
+export * from "./features/hourly-breakout/namespace.js";
+export * from "./features/hourly-breakout/policy.js";
+export * from "./features/hourly-breakout/clock.js";
+export * from "./features/hourly-breakout/coordinator.js";
+export * from "./features/hourly-breakout/metrics.js";
+export * from "./features/hourly-breakout/calendar.js";

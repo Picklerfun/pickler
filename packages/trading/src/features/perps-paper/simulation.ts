@@ -6,6 +6,7 @@ import type {
   PerpsPaperIntent,
   PerpsPaperFill,
   PerpsPaperMovement,
+  PerpsPaperPosition,
 } from "./types.js";
 import {
   PAPER_SCALE as S,
@@ -413,15 +414,41 @@ export function applyPaperObservation(
   now: number,
   receiptNow = now,
 ) {
-  const a = structuredClone(account);
+  const a = applyPaperMarks(account, observation.frames, now, receiptNow);
   const movements: PerpsPaperMovement[] = [];
+  let pending = observation.marksOnly ? a.fundingPending : (a.fundingDisputed ?? false);
+  for (const p of observation.marksOnly ? [] : a.positions) {
+    const result = applyPaperPositionFunding(
+      a,
+      p,
+      previous,
+      observation.funding.find((h) => h.market.symbol === p.symbol),
+      now,
+    );
+    pending ||= result.pending;
+    if (result.disputed) {
+      a.fundingDisputed = true;
+    }
+    movements.push(...result.movements);
+  }
+  return finalizePaperObservation(a, movements, pending, observation.marksOnly === true, key, now);
+}
+
+/** Validate and mark only; cash/day/peak finalization is intentionally separate. */
+export function applyPaperMarks(
+  account: PerpsPaperAccount,
+  frames: readonly PerpsPaperFrame[],
+  now: number,
+  receiptNow = now,
+) {
+  const a = structuredClone(account);
   if (a.scope.sessionId === "product" && a.marketDataPolicy !== undefined) {
     failure("INVALID_INPUT");
   }
   if (a.marketDataPolicy) {
-    validatePaperFrameSet(observation.frames, a.scope.network, now, a.marketDataPolicy, receiptNow);
+    validatePaperFrameSet([...frames], a.scope.network, now, a.marketDataPolicy, receiptNow);
   }
-  for (const frame of observation.frames) {
+  for (const frame of frames) {
     validatePaperFrame(
       frame,
       a.scope.network,
@@ -452,81 +479,125 @@ export function applyPaperObservation(
       }
     }
   }
-  let pending = observation.marksOnly ? a.fundingPending : (a.fundingDisputed ?? false);
-  for (const p of observation.marksOnly ? [] : a.positions) {
-    const history = observation.funding.find((h) => h.market.symbol === p.symbol);
+  return a;
+}
+
+/** Native held-interval kernel, including closed positions and late/revised histories. */
+export function applyPaperPositionFunding(
+  account: PerpsPaperAccount,
+  position: PerpsPaperPosition,
+  previous: readonly PerpsPaperMovement[],
+  history: PerpFundingHistory | undefined,
+  now: number,
+): { movements: PerpsPaperMovement[]; pending: boolean; disputed: boolean } {
+  const a = account;
+  const p = position;
+  const movements: PerpsPaperMovement[] = [];
+  let pending = false;
+  let disputed = false;
+  if (
+    !history ||
+    (p.market !== undefined &&
+      (p.market.marketId !== history.market.marketId ||
+        p.market.perpetualId !== history.market.perpetualId ||
+        p.market.collateral.address !== history.market.collateral.address)) ||
+    history.market.provenance.network !== a.scope.network ||
+    !history.complete ||
+    history.from > p.openedAt ||
+    history.to < (p.closedAt ?? now) - 30000
+  ) {
+    pending = true;
+    return { movements, pending, disputed };
+  }
+  for (const event of history.events) {
     if (
-      !history ||
-      (p.market !== undefined &&
-        (p.market.marketId !== history.market.marketId ||
-          p.market.perpetualId !== history.market.perpetualId ||
-          p.market.collateral.address !== history.market.collateral.address)) ||
-      history.market.provenance.network !== a.scope.network ||
-      !history.complete ||
-      history.from > p.openedAt ||
-      history.to < (p.closedAt ?? now) - 30000
+      event.eventBlock <= p.entryBlock ||
+      (p.exitBlock !== null && event.eventBlock > p.exitBlock)
     ) {
+      continue;
+    }
+    if (event.estimated || event.appliesAt === null || event.appliesAt > now) {
       pending = true;
       continue;
     }
-    for (const event of history.events) {
+    const movementKey = `funding:${p.id}:${event.eventBlock}`;
+    const evidence = {
+      model: isPtsAccount(a) ? "quantity-timeline-index-rate-v2" : "quantity-index-rate-v1",
+      ...(isPtsAccount(a) ? { quantity: ptsQuantityAtBlock(p, event.eventBlock) } : {}),
+      symbol: p.symbol,
+      positionId: p.id,
+      eventBlock: event.eventBlock,
+      appliesAt: event.appliesAt,
+      rate: event.rate,
+      index: event.index,
+    };
+    const existing = previous.find((m) => m.key === movementKey);
+    if (existing) {
+      const old = existing.evidence as typeof evidence;
       if (
-        event.eventBlock <= p.entryBlock ||
-        (p.exitBlock !== null && event.eventBlock > p.exitBlock)
+        old.rate !== evidence.rate ||
+        old.index !== evidence.index ||
+        old.appliesAt !== evidence.appliesAt ||
+        (isPtsAccount(a) && old.quantity !== evidence.quantity)
       ) {
-        continue;
-      }
-      if (event.estimated || event.appliesAt === null || event.appliesAt > now) {
+        disputed = true;
         pending = true;
-        continue;
       }
-      const movementKey = `funding:${p.id}:${event.eventBlock}`;
-      const evidence = {
-        model: isPtsAccount(a) ? "quantity-timeline-index-rate-v2" : "quantity-index-rate-v1",
-        ...(isPtsAccount(a) ? { quantity: ptsQuantityAtBlock(p, event.eventBlock) } : {}),
-        symbol: p.symbol,
-        positionId: p.id,
-        eventBlock: event.eventBlock,
-        appliesAt: event.appliesAt,
-        rate: event.rate,
-        index: event.index,
-      };
-      const existing = previous.find((m) => m.key === movementKey);
-      if (existing) {
-        const old = existing.evidence as typeof evidence;
-        if (
-          old.rate !== evidence.rate ||
-          old.index !== evidence.index ||
-          old.appliesAt !== evidence.appliesAt ||
-          (isPtsAccount(a) && old.quantity !== evidence.quantity)
-        ) {
-          a.fundingDisputed = true;
-          pending = true;
-        }
-        continue;
-      }
-      const delta = paperCash(
-        d(
-          ((u(
-            paperProduct(
-              isPtsAccount(a) ? ptsQuantityAtBlock(p, event.eventBlock) : p.quantity,
-              event.index,
-            ),
-          ) *
-            u(event.rate)) /
-            S) *
-            (p.side === "long" ? -1n : 1n),
-        ),
-      );
-      movements.push({ key: movementKey, kind: "funding", delta, at: now, evidence });
+      continue;
     }
+    const delta = paperCash(
+      d(
+        ((u(
+          paperProduct(
+            isPtsAccount(a) ? ptsQuantityAtBlock(p, event.eventBlock) : p.quantity,
+            event.index,
+          ),
+        ) *
+          u(event.rate)) /
+          S) *
+          (p.side === "long" ? -1n : 1n),
+      ),
+    );
+    movements.push({ key: movementKey, kind: "funding", delta, at: now, evidence });
   }
+  return { movements, pending, disputed };
+}
+
+/** Finalize once after all native position kernels; never reset a day/peak per position. */
+export function finalizePaperObservation(
+  account: PerpsPaperAccount,
+  originalMovements: readonly PerpsPaperMovement[],
+  pending: boolean,
+  marksOnly: boolean,
+  key: string,
+  now: number,
+) {
+  const a = structuredClone(account);
+  const movements = [...originalMovements];
   if (a.fundingDisputed) {
     movements.length = 0;
   }
-  a.cash = d(u(a.cash) + movements.reduce((sum, m) => sum + u(m.delta), 0n));
+  const delta = d(movements.reduce((sum, m) => sum + u(m.delta), 0n));
+  const result = finalizePaperObservationDelta(a, delta, pending, marksOnly, key, now);
+  return { account: result.account, movements, key: result.key };
+}
+
+/** Bounded-history adapters sum exact native postings, then finalize the account once. */
+export function finalizePaperObservationDelta(
+  account: PerpsPaperAccount,
+  nativeCashDelta: string,
+  pending: boolean,
+  marksOnly: boolean,
+  key: string,
+  now: number,
+) {
+  const a = structuredClone(account);
+  if (a.fundingDisputed && u(nativeCashDelta) !== 0n) {
+    failure("FUNDING_DISPUTED");
+  }
+  a.cash = d(u(a.cash) + u(nativeCashDelta));
   a.fundingPending = pending;
-  if (a.scope.sessionId === "product" && !observation.marksOnly) {
+  if (a.scope.sessionId === "product" && !marksOnly) {
     a.lastFundingAt = now;
   }
   const risk = paperRisk(a, [], now);
@@ -556,5 +627,5 @@ export function applyPaperObservation(
     }
     a.lastValuationAt = now;
   }
-  return { account: a, movements, key };
+  return { account: a, key };
 }

@@ -92,13 +92,20 @@ export function createUniverseStreamReader(options: {
     });
   }
   return {
-    async read(scope: Scope, markets: Catalog, parent: AbortSignal, owned?: () => Promise<void>) {
+    async read(
+      scope: Scope,
+      markets: Catalog,
+      parent: AbortSignal,
+      owned?: () => Promise<void>,
+      absoluteDeadlineAt?: number,
+    ) {
       if (busy) {
         throw new PilotError("CONFLICT", "Universe acquisitions cannot overlap");
       }
       busy = true;
-      const deadlineAt = options.now() + 20000;
-      const timeout = AbortSignal.timeout(20000);
+      const deadlineAt = Math.min(options.now() + 20000, absoluteDeadlineAt ?? Infinity);
+      const remaining = Math.max(0, Math.floor(deadlineAt - options.now()));
+      const timeout = AbortSignal.timeout(remaining);
       const signal = AbortSignal.any([parent, options.signal, lifetime.signal, timeout]);
       active = { scope, parent, ...(owned ? { guard: owned } : {}) };
       const key = JSON.stringify([...markets].sort((a, b) => a.marketId - b.marketId));

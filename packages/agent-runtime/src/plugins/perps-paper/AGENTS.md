@@ -82,3 +82,19 @@ changes still exclude the asset for every portfolio; never fabricate missing his
 initially blocked proposal during the final refresh.
 
 The independent v9 responsive candidate 0.2.0-fast.2 uses native 1h/15m/5m through the existing candidate-derived preparation/cache/boundary selection. Preserve shared sixty-bar eligibility; do not acquire 4h/daily solely for this candidate or alter the fast.1 reader meaning. Its one native 15m series supplies channel and impulse/ATR. Public preparation and verified cohort selection never authorize a session restart or model/signing call.
+
+## Hourly breakout v10
+
+`hourly-breakout.ts` exports the separate public-only reader through `public-study`. One guarded
+component stream serves observation and original/final evidence. Pass the capture lifetime and
+an absolute acquisition deadline; a per-operation timeout must not close the continuous socket.
+Freeze the original eleven market identities through trading's assertion before subscription.
+Native metadata, fees and precision remain captured current evidence rather than invented constants.
+
+Candle preparation is independent of the price lane. Preserve the shared sixty-bar 1h/15m/5m
+eligibility and the larger responsive PTS context separately. Missing PTS history cannot exclude
+valid financial data. Every first/revised complete candle version has its actual HTTP-body hash and
+original receipt; identical overlap never resets first receipt. Working caches remain bounded.
+Funding reconciliation uses original open/close ranges and bounded native pages, including closed
+positions. No source receipt is a durable financial acknowledgement. Never load credentials,
+construct model/signing clients or downgrade fatal ownership/identity errors at a deadline.

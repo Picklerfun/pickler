@@ -475,3 +475,40 @@ in these artifacts. See the local readiness guide for the versioned fields and c
 Read [responsive intraday PTS](PTS-INTRADAY-RESPONSIVE.md) for the independent v9 0.2.0-fast.2 candidate. Preparation/commands reuse the public-only PTS host, with explicit policy/history hashes and no Studio selection. Keep original failed studies, native data, unknown reservations and signal-only financial limitations. No automatic restart or parameter adjustment to obtain positive results is implied.
 
 PTS report rows explicitly distinguish stored DATA_UNAVAILABLE omissions from NOT_RECORDED evidence and valid holds. The versioned presentation retains original row status/reason and stored omission phase/cause in JSON/CSV/HTML; it changes no trading policy or ledger. Offline rendering into a new directory cannot establish process liveness or replace a frozen active runner.
+
+Read [PTS causal research](PTS-CAUSAL-RESEARCH.md) for the offline `pts-research-input-v1`
+audit extension. Its manifest pins saved sources and disabled research policies; dispatch precedes
+environment and provider composition. Reports separate original decisions, retrospective signal
+experiments and unavailable financial paths. Never start a public trial from its future protocol.
+
+## Hourly breakout fixed screen
+
+`src/hourly-breakout` owns the restricted local configuration-v10 host; read its AGENTS.md.
+Preparation is offline and disabled. Preflight reads only explicit existing public permissions and
+the dedicated loopback DATABASE_URL-only file. Financial run requires a separate future acceptance
+record before database/provider composition; preparation and source acceptance cannot supply it.
+The separately authorized `stability` command freezes one 24-hour source window before any public
+call. The first canonical pump includes the metadata/WebSocket cold start; no public bootstrap runs
+before the frozen start. All 4,320 original windows and 1,440 canonical minutes remain counted.
+Offset 20/40-second copies never rescue canonical coverage; preparation coverage stays separate.
+Source J and future financial V clocks, ownership, acceptance and results remain distinct.
+New source-only captures explicitly pin `source-independent-database-clock-v1`: host time owns
+J/calendar and PostgreSQL owns diagnostic leases. Persist full-RTT offsets without requiring absolute
+clock equality or modifying timestamps. Revalidate numeric proof, regressions and diagnostic endpoints
+offline. Historical manifests and the separately gated future financial clock retain their meaning.
+
+Original snapshots, candle revisions and public HTTP bodies remain in immutable hashed parts;
+only the declared first32MiB validated wire prefix may truncate. Every artifact and concurrent
+report temporary shares the16GiB reserved ceiling. One read-only report worker publishes verified
+derived generations and the pointer last, retaining current/previous derived output only. Offline
+source status/report/audit-export/audit/replay use an explicit source-manifest.json before any
+environment/provider composition and preserve historical output. Local STOP control bytes are
+pre-reserved before capture; a stop request does not establish process liveness or financial flatness.
+
+Each derived generation retains its exact source manifest. Compact `acceptance.json` excludes
+large row populations; complete JSON/CSV retains 15,840 canonical market-minutes and 47,520
+market-pumps. Source certificates declare local OS authority and observed uncertainty, never
+external UTC accuracy. A future financial clock certificate is immutable, separately authorized
+and checked against every actual sample. New financial run authority must bind the reviewed
+protocol digest and exact implementation/configuration. No acceptance bundle is allocated by
+preparation. Funding work cannot delay the serialized priority minute valuations or required exits.

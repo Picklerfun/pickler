@@ -11,3 +11,6 @@ export * from "./features/pts/proposals.js";
 
 export * from "./features/pts/replay.js";
 export * from "./features/pts/inspection.js";
+export * from "./features/pts/research-types.js";
+export * from "./features/pts/research-policy.js";
+export * from "./features/pts/research.js";

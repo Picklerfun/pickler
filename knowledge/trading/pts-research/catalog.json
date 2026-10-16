@@ -1,0 +1,65 @@
+{
+  "$schema": "schemas/catalog-v1.schema.json",
+  "format": "pts-research-candidates-v1",
+  "formatVersion": 1,
+  "status": "disabled-offline-research",
+  "executionScope": "offline-only",
+  "enabled": false,
+  "financialExecutable": false,
+  "studioSelectable": false,
+  "publicTrialStarted": false,
+  "comparison": "INDEPENDENT_SINGLE_CHANGE_ARMS",
+  "reference": {
+    "bundleId": "pts-course",
+    "knowledgeVersion": "1.0.0",
+    "path": "../pts/bundle.json",
+    "sha256": "e860f1912b2b09fcb97202fd3354fc594b42e573dd82a91f7271532d84c1ca30"
+  },
+  "baseline": {
+    "identity": "pts-intraday@0.2.0-fast.2",
+    "path": "../pts-versions/pts-intraday/0.2.0-fast.2/policy.json",
+    "sha256": "0631f6aba79b239b7c0957d0fbbad871d5bf99bff359263f38020f4d3a24d875"
+  },
+  "candidates": [
+    {
+      "id": "primary-er20",
+      "version": "0.1.0",
+      "descriptor": {
+        "path": "primary-er20/0.1.0.json",
+        "sha256": "d63e637da207fc3c53ece2228e829f2ea371dddb40d40573f0471e5c44df9f5a"
+      }
+    },
+    {
+      "id": "persistent-setups",
+      "version": "0.1.0",
+      "descriptor": {
+        "path": "persistent-setups/0.1.0.json",
+        "sha256": "eee7084c6352b8c3afc75a551d689bd54e39794dbc09551b07fafe682674b558"
+      }
+    },
+    {
+      "id": "ready-band-entry",
+      "version": "0.1.0",
+      "descriptor": {
+        "path": "ready-band-entry/0.1.0.json",
+        "sha256": "99d6f76c5d6a013daee8c885c9867ce373d9894c4b737cf3e257465b74d91b6c"
+      }
+    },
+    {
+      "id": "retracement-control",
+      "version": "0.1.0",
+      "descriptor": {
+        "path": "retracement-control/0.1.0.json",
+        "sha256": "014f610c28aa1d7b70594841e601e3be4ed2347c27638d348cdec1f1cb9114da"
+      }
+    }
+  ],
+  "decisions": {
+    "path": "DECISIONS-1.0.0.md",
+    "version": "1.0.0"
+  },
+  "literature": {
+    "path": "LITERATURE-1.0.0.md",
+    "version": "1.0.0"
+  }
+}

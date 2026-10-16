@@ -1,0 +1,30 @@
+{
+  "version": 10,
+  "protocol": "perps-hourly-breakout-fixed-screen-v1",
+  "tenantId": "perps-lab",
+  "agentId": "existing-public-agent",
+  "sessionId": "hourly-breakout-prepared",
+  "network": "mainnet",
+  "hours": 672,
+  "budgetUsd": "5",
+  "enabled": false,
+  "financiallyExecutable": false,
+  "T0": null,
+  "operator": null,
+  "parameterContractSha256": "8d7aff6751aee7e2dc55bc4c3ded9e66766015c8ed9408fb60784d19be8fbb68",
+  "researchProtocolSha256": "36a06bef5267e7dc4407e78e508000e557da8df53e7df3f3f282cbe37e739816",
+  "acquisitionPolicy": "stream-universe-component-paper-20s-v1",
+  "markets": [
+    { "symbol": "BTC", "marketId": 1 },
+    { "symbol": "MON", "marketId": 10 },
+    { "symbol": "ETH", "marketId": 20 },
+    { "symbol": "SOL", "marketId": 31 },
+    { "symbol": "HYPE", "marketId": 40 },
+    { "symbol": "ZEC", "marketId": 50 },
+    { "symbol": "LIT", "marketId": 60 },
+    { "symbol": "VVV", "marketId": 70 },
+    { "symbol": "PUMP", "marketId": 90 },
+    { "symbol": "NEAR", "marketId": 100 },
+    { "symbol": "UNI", "marketId": 110 }
+  ]
+}

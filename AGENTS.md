@@ -254,3 +254,8 @@ fourteen-day comparison. Missing Perpl history remains ineligible; do not invent
 24-hour paper pilot. Read [the intraday guide](apps/agent-service/PTS-INTRADAY-PAPER.md). It never
 relabels basic history, modifies the immutable course/basic versions or registers a Studio strategy.
 Controlled profitable fixtures are not evidence of market profitability.
+
+The offline causal research extension is documented in
+[PTS causal research](apps/agent-service/PTS-CAUSAL-RESEARCH.md). Its separately versioned
+signal candidates cannot initialize accounts or enter an executable strategy registry. Saved
+signals, development controls and verified financial returns remain distinct.

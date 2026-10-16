@@ -20,6 +20,7 @@ import { randomUUID, createHash } from "node:crypto";
 import type { Pool, PoolClient } from "pg";
 import { PilotError, type AgentRecord } from "@pickler/core";
 import { assertPerpsHourlyReady } from "./perps-hourly-readiness.js";
+import { rejectLegacyBreakout } from "./perps-legacy-guard.js";
 import {
   applyPaperObservation,
   type PerpsPaperObservation,
@@ -252,9 +253,10 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
     this.studyOwner.signal?.throwIfAborted();
     const scope = this.studyOwner;
     const statement = exclusive
-      ? "SELECT owner,expires_at FROM pickler.perps_studies WHERE tenant_id=$1 AND session_id=$2 AND network=$3 FOR UPDATE"
-      : "SELECT owner,expires_at FROM pickler.perps_studies WHERE tenant_id=$1 AND session_id=$2 AND network=$3";
+      ? "SELECT owner,expires_at,document#>>'{config,version}' AS version FROM pickler.perps_studies WHERE tenant_id=$1 AND session_id=$2 AND network=$3 FOR UPDATE"
+      : "SELECT owner,expires_at,document#>>'{config,version}' AS version FROM pickler.perps_studies WHERE tenant_id=$1 AND session_id=$2 AND network=$3";
     const result = await client.query(statement, [scope.tenantId, scope.sessionId, scope.network]);
+    rejectLegacyBreakout(result.rows[0]);
     if (
       result.rows[0]?.owner !== scope.owner ||
       Number(result.rows[0]?.expires_at) <= (await this.now(client))
@@ -394,6 +396,7 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
     capturedStudyRecord?: PerpsStudyRecord,
   ) {
     const record = capturedStudyRecord ?? (await this.studyRecord(client, scope));
+    rejectLegacyBreakout(record);
     const expected =
       (record?.config.version === 7 ||
         record?.config.version === 8 ||
@@ -988,6 +991,7 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
         [scope.tenantId, scope.sessionId, scope.network],
       );
       const record = study.rows[0]?.document;
+      rejectLegacyBreakout(record);
       if (
         record?.config.version === 6 ||
         record?.config.version === 7 ||
@@ -2038,6 +2042,11 @@ export class PostgresPerpsPaperStore implements PerpsProductPaperRepository {
       if (!row) {
         throw new PilotError("NOT_FOUND", "Paper account not found");
       }
+      const study = await client.query(
+        "SELECT document#>>'{config,version}' AS version FROM pickler.perps_studies WHERE tenant_id=$1 AND session_id=$2 AND network=$3",
+        [scope.tenantId, scope.sessionId, scope.network],
+      );
+      rejectLegacyBreakout(study.rows[0]);
       const now = await this.now(client);
       const attempts = await client.query<{
         document: PerpsPaperAttempt;

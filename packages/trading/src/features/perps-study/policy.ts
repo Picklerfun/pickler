@@ -1,10 +1,14 @@
 import { assertPtsConfig } from "../pts/policy.js";
+import { assertHourlyBreakoutConfig } from "../hourly-breakout/policy.js";
 import { PilotError, PERPL_LAB_SYMBOLS } from "@pickler/core";
 import { paperUnits as u, paperDecimal as d } from "../perps-paper/decimal.js";
 import type { PerpsStudyConfig, PerpsRound, PerpsCallLane, PerpsStudyRecord } from "./types.js";
 export const PERPS_INPUT_LIMIT = 65536;
 export const PERPS_OUTPUT_LIMIT = 4096;
 export function assertPerpsStudyConfig(c: PerpsStudyConfig) {
+  if (c.version === 10) {
+    return assertHourlyBreakoutConfig(c);
+  }
   if (c.version === 8 || c.version === 9) {
     return assertPtsConfig(c);
   }
@@ -231,7 +235,8 @@ export function perpsCallCost(
     config.version === 6 ||
     config.version === 7 ||
     config.version === 8 ||
-    config.version === 9
+    config.version === 9 ||
+    config.version === 10
   ) {
     throw new PilotError("MODELS_DISABLED", "Original SMA cannot reserve model calls");
   }

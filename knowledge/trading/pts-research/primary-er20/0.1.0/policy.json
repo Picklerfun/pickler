@@ -1,0 +1,30 @@
+{
+  "format": "pts-offline-causal-policy-v1",
+  "version": "0.1.0",
+  "reference": "pts-intraday@0.2.0-fast.2",
+  "offlineOnly": true,
+  "enabled": false,
+  "nativeSeconds": [3600, 900, 300],
+  "minimumClosedBars": {
+    "1h": 24,
+    "15m": 240,
+    "5m": 180
+  },
+  "formationMs": 259200000,
+  "correctionMs": 86400000,
+  "triggerMs": 300000,
+  "executionAdmission": "NONE",
+  "financialResults": "NONE",
+  "id": "primary-er20",
+  "changedFactor": "primary-trend",
+  "primary": {
+    "nativeSeconds": 3600,
+    "closedBars": 21,
+    "changes": 20,
+    "efficiencyMinimumInclusive": "0.30",
+    "formula": "abs(close[20]-close[0])/sum(abs(close[i]-close[i-1]),i=1..20)",
+    "direction": "SIGN_OF_NET_CHANGE",
+    "zeroDenominator": "neutral",
+    "insufficientHistory": "unknown"
+  }
+}

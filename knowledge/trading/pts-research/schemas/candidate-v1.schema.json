@@ -1,0 +1,142 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Disabled offline PTS research candidate descriptor v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "format",
+    "formatVersion",
+    "catalog",
+    "id",
+    "candidateVersion",
+    "status",
+    "executionScope",
+    "enabled",
+    "financialExecutable",
+    "studioSelectable",
+    "publicTrialStarted",
+    "singleChange",
+    "reference",
+    "baseline",
+    "policy",
+    "decisions",
+    "literature"
+  ],
+  "properties": {
+    "$schema": {
+      "const": "../schemas/candidate-v1.schema.json"
+    },
+    "format": {
+      "const": "pts-research-candidate-v1"
+    },
+    "formatVersion": {
+      "const": 1
+    },
+    "catalog": {
+      "const": "pts-research-candidates-v1"
+    },
+    "id": {
+      "enum": ["primary-er20", "persistent-setups", "ready-band-entry", "retracement-control"]
+    },
+    "candidateVersion": {
+      "const": "0.1.0"
+    },
+    "status": {
+      "const": "disabled-offline-research"
+    },
+    "executionScope": {
+      "const": "offline-only"
+    },
+    "enabled": {
+      "const": false
+    },
+    "financialExecutable": {
+      "const": false
+    },
+    "studioSelectable": {
+      "const": false
+    },
+    "publicTrialStarted": {
+      "const": false
+    },
+    "singleChange": {
+      "const": true
+    },
+    "reference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["bundleId", "knowledgeVersion", "path", "sha256"],
+      "properties": {
+        "bundleId": {
+          "const": "pts-course"
+        },
+        "knowledgeVersion": {
+          "const": "1.0.0"
+        },
+        "path": {
+          "const": "../../pts/bundle.json"
+        },
+        "sha256": {
+          "const": "e860f1912b2b09fcb97202fd3354fc594b42e573dd82a91f7271532d84c1ca30"
+        }
+      }
+    },
+    "baseline": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["identity", "path", "sha256"],
+      "properties": {
+        "identity": {
+          "const": "pts-intraday@0.2.0-fast.2"
+        },
+        "path": {
+          "const": "../../pts-versions/pts-intraday/0.2.0-fast.2/policy.json"
+        },
+        "sha256": {
+          "const": "0631f6aba79b239b7c0957d0fbbad871d5bf99bff359263f38020f4d3a24d875"
+        }
+      }
+    },
+    "policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256"],
+      "properties": {
+        "path": {
+          "const": "0.1.0/policy.json"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      }
+    },
+    "decisions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "version"],
+      "properties": {
+        "path": {
+          "const": "../DECISIONS-1.0.0.md"
+        },
+        "version": {
+          "const": "1.0.0"
+        }
+      }
+    },
+    "literature": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "version"],
+      "properties": {
+        "path": {
+          "const": "../LITERATURE-1.0.0.md"
+        },
+        "version": {
+          "const": "1.0.0"
+        }
+      }
+    }
+  }
+}

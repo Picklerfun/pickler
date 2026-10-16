@@ -1,0 +1,54 @@
+{
+  "format": "pts-research-input-v1",
+  "version": 1,
+  "reference": {
+    "id": "pts-intraday",
+    "version": "0.2.0-fast.2",
+    "file": "../../pts-versions/pts-intraday/0.2.0-fast.2/policy.json",
+    "sha256": "0631f6aba79b239b7c0957d0fbbad871d5bf99bff359263f38020f4d3a24d875"
+  },
+  "candidates": [
+    {
+      "id": "primary-er20",
+      "version": "0.1.0",
+      "file": "../primary-er20/0.1.0/policy.json",
+      "sha256": "a88d0f2bcb818c6dd558b8622a2b7369701268438eebf7fb4c38d148de974949"
+    },
+    {
+      "id": "persistent-setups",
+      "version": "0.1.0",
+      "file": "../persistent-setups/0.1.0/policy.json",
+      "sha256": "4347a759646a6861a00c87ce57779edca7fd994773b2e84f330089f8e4b77a98"
+    },
+    {
+      "id": "ready-band-entry",
+      "version": "0.1.0",
+      "file": "../ready-band-entry/0.1.0/policy.json",
+      "sha256": "b6a4deb17177377454a8f213ac2c89395c2d5678db4ae1f7fc3ac215a31449fb"
+    },
+    {
+      "id": "retracement-control",
+      "version": "0.1.0",
+      "file": "../retracement-control/0.1.0/policy.json",
+      "sha256": "58cabab18c2553e31e0b49c940b4ab9dbb4df94a54381e5904f02f65cb1d1df4"
+    }
+  ],
+  "sources": {
+    "audit": {
+      "file": "private-audit-not-supplied.json",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "payloadHash": "ff08d73bb6db2554805175aa9fd51afd81427447a616b54be4d6054949e91020"
+    },
+    "history": {
+      "file": "private-history-not-supplied.json",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "historyHash": "8aceb4c1977fa974fc3c1bd758938ba54db506425a2c063c35cbf600a41f7dce"
+    }
+  },
+  "dataUse": "examined-development",
+  "historyWindow": {
+    "from": 1791936000000,
+    "to": 1792540800000,
+    "stepSeconds": 300
+  }
+}
