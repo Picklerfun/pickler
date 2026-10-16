@@ -20,6 +20,8 @@ export type Studio = {
   agents: StudioAgent[] | null;
   agentsError: string | null;
   refresh: () => Promise<void>;
+  nextCursor: string | null;
+  loadMore: () => Promise<void>;
   /** The paid Ask: one at a time for the whole app. */
   advice: AdviceAsk;
   /** The agent's free completed history. `open` unlocks the wallet first (Face ID); without it a locked wallet throws. */
@@ -34,12 +36,15 @@ export function useStudio(account: AccountState, onUnlock: (w: Wallet) => void, 
   const [agents, setAgents] = useState<StudioAgent[] | null>(null);
   const [agentsError, setAgentsError] = useState<string | null>(null);
   const loading = useRef(false);
+  const [nextCursor,setNextCursor] = useState<string|null>(null);
 
   const refresh = useCallback(async () => {
     if (!enabled || API_URL === null || loading.current) return;
     loading.current = true;
     try {
-      setAgents(await fetchStudioAgents(API_URL));
+      const page = await fetchStudioAgents(API_URL);
+      setAgents(page.items);
+      setNextCursor(page.nextCursor);
       setAgentsError(null);
     } catch {
       setAgentsError("Couldn't reach Pickler. Check your connection and try again.");
@@ -52,10 +57,22 @@ export function useStudio(account: AccountState, onUnlock: (w: Wallet) => void, 
     if (active) void refresh();
   }, [active, refresh]);
 
+  const loadMore = useCallback(async () => {
+    if (!enabled || !API_URL || !nextCursor || loading.current) return;
+    loading.current = true;
+    try {
+      const page = await fetchStudioAgents(API_URL,fetch,nextCursor);
+      setAgents((items) => [...new Map([...(items ?? []),...page.items].map((item) => [item.id,item])).values()]);
+      setNextCursor(page.nextCursor);
+      setAgentsError(null);
+    } catch { setAgentsError("Couldn't load more agents. Try again."); }
+    finally { loading.current = false; }
+  },[enabled,nextCursor]);
+
   const readHistory = useCallback(async (agentId: string, symbol: AdviceSymbol, open: boolean) => {
     const wallet = open ? await unlock() : undefined;
     return history((path, init) => authedFetch(path, init, wallet), agentId, symbol);
   }, [authedFetch, unlock]);
 
-  return { enabled, agents, agentsError, refresh, advice, history: readHistory };
+  return { enabled, agents, agentsError, refresh, nextCursor, loadMore, advice, history: readHistory };
 }

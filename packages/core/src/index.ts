@@ -354,3 +354,11 @@ export * from "./features/launch/token-operations.js";
 export * from "./features/launch/public-token-trading.js";
 
 export * from "./features/launch/domain/token-market.js";
+
+export type {
+  AgentCatalog,
+  AgentCatalogQuery,
+  CatalogPage,
+} from "./features/agents/ports/agent-catalog.js";
+
+export type * from "./features/research/read-model.js";

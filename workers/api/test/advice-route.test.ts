@@ -120,6 +120,20 @@ function fixture(enabled = true, paid?: PaidState, compose?: PaidFactory) {
       created++;
       return job;
     },
+    getStatus: async () => ({
+      id: job.id,
+      publicAgentId: job.publicAgentId,
+      userId: job.userId,
+      symbol: job.symbol,
+      status: job.status,
+      createdAt: job.createdAt,
+      startedAt: job.startedAt,
+      finishedAt: job.finishedAt,
+      error: job.error,
+      published: agent.published,
+      resultAvailable: job.result !== null,
+      lastEventId: "12",
+    }),
     get: async () => job,
     history: async () => ({ items: job.status === "completed" ? [job] : [], nextCursor: null }),
   };
@@ -685,3 +699,31 @@ function resolveRefs(schema: unknown, document: unknown): any {
     Object.entries(schema).map(([name, value]) => [name, resolveRefs(value, document)]),
   );
 }
+
+test("advice status is private, enforces visibility and excludes configuration and result payload", async () => {
+  const f = fixture();
+  const response = await f.app.request(
+    `/v1/agent-advice/recommendations/${jobId}/status`,
+    { headers: { Authorization: "Bearer token" } },
+    { APP_ENV: "test" },
+  );
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get("cache-control"), "private, no-store");
+  const body = await response.json();
+  assert.equal(body.data.lastEventId, "12");
+  assert.equal(body.data.result, undefined);
+  assert.equal(body.data.config, undefined);
+  const other = await f.app.request(
+    `/v1/agent-advice/recommendations/${jobId}/status`,
+    { headers: { Authorization: "Bearer other" } },
+    { APP_ENV: "test" },
+  );
+  assert.equal(other.status, 404);
+  f.agent.published = false;
+  const privateAgent = await f.app.request(
+    `/v1/agent-advice/recommendations/${jobId}/status`,
+    { headers: { Authorization: "Bearer token" } },
+    { APP_ENV: "test" },
+  );
+  assert.equal(privateAgent.status, 404);
+});

@@ -55,11 +55,13 @@ function studioAgent(v: unknown): StudioAgent | null {
 }
 
 /**
- * `GET /v1/marketplace/agents` (a bare array, no envelope) → the agents that sell analyses: a
+ * `GET /v1/marketplace/agents` (a bounded `{ items, nextCursor }` page) → the agents that sell analyses: a
  * non-null `advicePrice` and venue perps or both. A malformed row is dropped, never thrown.
  */
 export function parseStudioAgents(json: unknown): StudioAgent[] {
-  if (!Array.isArray(json)) fail("marketplace agents is not an array");
+  const body = rec(json,"marketplace page");
+  if (!Array.isArray(body.items)) fail("marketplace agents page has no items");
+  json = body.items;
   const agents: StudioAgent[] = [];
   for (const row of json as unknown[]) {
     const agent = studioAgent(row);

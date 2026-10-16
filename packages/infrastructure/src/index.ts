@@ -263,3 +263,5 @@ export { runTokenIndexer, tokenChainReader, tokenIndexerPolicySchema } from "./l
 export * from "./launch/public-trading.js";
 
 export { PerplDashboardGateway, PerplDashboardError } from "./perpl/dashboard.js";
+
+export { PostgresExecutionReads } from "./persistence/execution-reads.js";

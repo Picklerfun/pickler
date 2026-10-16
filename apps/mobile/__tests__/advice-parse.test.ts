@@ -5,7 +5,7 @@ import {
 } from "../src/advice/parse";
 
 test("parseStudioAgents keeps only the priced perps and both-venue rows, in the server order", () => {
-  const agents = parseStudioAgents(agentsJson);
+  const agents = parseStudioAgents({items:agentsJson,nextCursor:null});
 
   expect(agents).toEqual([
     { id: "6f1c2a8e-3b4d-4e5f-8a9b-0c1d2e3f4a5b", name: "Momentum Mira", handle: "mira", accent: "lime", venue: "perps", price: { micro: 1_500_000n, text: "1.5" } },
@@ -23,10 +23,10 @@ test.each([
   ["amount not a string", { ...agentsJson[0], advicePrice: { amount: 1.5, asset: "AUSD", decimals: 6 } }],
   ["a zero price", { ...agentsJson[0], advicePrice: { amount: "0", asset: "AUSD", decimals: 6 } }],
 ])("parseStudioAgents drops a row with %s without throwing", (_, row) => {
-  expect(parseStudioAgents([row, agentsJson[1]]).map((a) => a.handle)).toEqual(["bruno"]);
+  expect(parseStudioAgents({items:[row, agentsJson[1]],nextCursor:null}).map((a) => a.handle)).toEqual(["bruno"]);
 });
 
-test("parseStudioAgents throws when the body is not the bare array", () => {
+test("parseStudioAgents throws when the body is not a page", () => {
   expect(() => parseStudioAgents({ data: agentsJson })).toThrow(/Advice API/);
 });
 

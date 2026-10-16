@@ -32,14 +32,14 @@ export const Agents: (props: LiveSectionProps) => ReactElement = ({ agent, live,
 
         {state === "ready" && view && (
           <>
-            <div className={styles.filters} role="group" aria-label="Beats">
+            <div className={styles.filters} role="group" aria-label="Beats among loaded agents">
               {view.filters.map((filter) => (
                 <Chip key={filter.key} selected={filter.on} onClick={() => setBeat(filter.key)}>
                   {filter.label}
                   <span className={styles.count}>{filter.count}</span>
                 </Chip>
               ))}
-              <span className={styles.filterTag}>{view.tag}</span>
+              <span className={styles.filterTag}>{view.tag} · SHOWN</span>
             </div>
 
             <ul className={styles.cards}>
@@ -85,6 +85,11 @@ export const Agents: (props: LiveSectionProps) => ReactElement = ({ agent, live,
                 </li>
               ))}
             </ul>
+            {live.directoryCursor && (
+              <Button variant="secondary" onClick={() => void live.loadMoreDirectory()}>
+                Load more agents
+              </Button>
+            )}
           </>
         )}
       </div>

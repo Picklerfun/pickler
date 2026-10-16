@@ -50,11 +50,16 @@ const api = createServer((req, res) => {
     res.writeHead(405).end("{}");
   } else if (req.url === "/v1/marketplace/activity") {
     res.end("[]");
-  } else if (req.url === "/v1/marketplace/directory") {
+  } else if (req.url === "/v1/marketplace/tokens") {
     if (state === "error") {
       res.writeHead(503).end('{"error":"controlled_unavailable"}');
     } else {
-      res.end(JSON.stringify([{ ...entry, launchedToken: state === "confirmed" ? token : null }]));
+      res.end(
+        JSON.stringify({
+          items: state === "confirmed" ? [{ ...entry, launchedToken: token }] : [],
+          nextCursor: null,
+        }),
+      );
     }
   } else if (req.url === `/v1/marketplace/personas/${entry.agent.handle}`) {
     res.end(

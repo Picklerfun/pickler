@@ -486,3 +486,26 @@ export const agentActionSchema = z.object({
   probability: nullableNumber,
   horizonHours: nullableNumber,
 }) satisfies z.ZodType<AgentActionDto>;
+
+export const catalogQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(50).default(20),
+  cursor: z.string().max(2048).optional(),
+  q: z.string().max(80).optional(),
+  theme: z.string().max(40).optional(),
+  available: z
+    .enum(["true", "false"])
+    .transform((value) => value === "true")
+    .optional(),
+  adviceForSale: z
+    .enum(["true", "false"])
+    .transform((value) => value === "true")
+    .optional(),
+});
+export const agentCatalogPageSchema = z.object({
+  items: z.array(agentSummarySchema),
+  nextCursor: z.string().nullable(),
+});
+export const directoryCatalogPageSchema = z.object({
+  items: z.array(directoryAgentSchema),
+  nextCursor: z.string().nullable(),
+});

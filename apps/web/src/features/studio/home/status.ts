@@ -353,7 +353,7 @@ export function homeStatus({ run, events, agent, now, runCount }: StatusInput): 
 export function stripLog(
   events: readonly RunEvent[],
   run: Run | null,
-): { id: number; at: string; text: string }[] {
+): { id: string | number; at: string; text: string }[] {
   const base = run?.startedAt ?? run?.createdAt ?? 0;
   return traceLines(events, base)
     .map((line) => {

@@ -143,3 +143,7 @@ export const paymentRequiredSchema = z
 export type PaymentRequirementsDto = z.infer<typeof paymentRequirementsSchema>;
 export type PaymentRequiredDto = z.infer<typeof paymentRequiredSchema>;
 export type PaymentPayloadDto = z.infer<typeof paymentPayloadSchema>;
+
+export const adviceStatusSchema = adviceRecommendationSchema
+  .omit({ result: true })
+  .extend({ resultAvailable: z.boolean(), lastEventId: z.string().nullable() });

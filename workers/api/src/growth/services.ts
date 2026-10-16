@@ -76,6 +76,10 @@ export function createGrowthServices(
     applicants: new PostgresApplicants(pool),
   };
   return {
+    pageAgents: (query: import("@pickler/core").AgentCatalogQuery) =>
+      adapters.agents.pageAgents(query),
+    pageDirectory: (query: import("@pickler/core").AgentCatalogQuery) =>
+      adapters.agents.pageDirectory(query),
     clock: systemClock,
     getHealth: createGetHealth(systemClock),
     joinWaitlist: createJoinWaitlist(adapters.waitlist, adapters.applicants),

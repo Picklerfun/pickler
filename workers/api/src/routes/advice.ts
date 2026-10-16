@@ -191,6 +191,37 @@ export function adviceRoutes(services: AdviceRouteServices) {
     },
   );
   api.get(
+    "/recommendations/:id/status",
+    describe("adviceStatus", dto.adviceStatusSchema),
+    async (c) => {
+      const id = z.string().uuid().parse(c.req.param("id"));
+      const job = await services.service.status(c.get("principal"), id);
+      const error =
+        job.status === "failed"
+          ? ["ANALYSIS_EXPIRED", "ANALYSIS_INTERRUPTED"].includes(job.error ?? "")
+            ? job.error
+            : "ANALYSIS_FAILED"
+          : null;
+      return c.json(
+        successEnvelope(
+          dto.adviceStatusSchema.parse({
+            id: job.id,
+            agentId: job.publicAgentId,
+            symbol: job.symbol,
+            status: job.status,
+            createdAt: new Date(job.createdAt).toISOString(),
+            startedAt: job.startedAt === null ? null : new Date(job.startedAt).toISOString(),
+            finishedAt: job.finishedAt === null ? null : new Date(job.finishedAt).toISOString(),
+            error,
+            resultAvailable: job.resultAvailable,
+            lastEventId: job.lastEventId,
+          }),
+          c.req.path,
+        ),
+      );
+    },
+  );
+  api.get(
     "/recommendations/:id",
     describe("adviceGet", dto.adviceRecommendationSchema, {
       description:

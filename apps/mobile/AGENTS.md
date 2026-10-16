@@ -123,3 +123,7 @@ early `return` passes the typecheck and Jest and crashes the app on its second r
 once, in `App.tsx`. `__tests__/app-hooks.test.ts` reads every component and fails on it; keep hooks
 above any early return, and launch the app in a simulator before saying a change to `App.tsx` works.
 `CLAUDE.md` beside this file is the one-line adapter `@AGENTS.md`.
+
+## Bounded product reads
+
+Studio public agents consume items/nextCursor pages with the adviceForSale server filter and explicit Load more. Advice polling reads lightweight status and obtains a completed recommendation once on terminal completion. Reads list refreshes have one active request, abort on background/account changes, and retain their timeout through response body consumption. No POST or payment retries were introduced.

@@ -571,3 +571,7 @@ Missing or nonpositive observations return null; this metric is not a 24-hour re
 Public trading also exposes a read-only `quote` operation through its injected driver. It applies
 the same published-testnet/input admission as preparation and returns quantities and canonical
 identity without a transaction. An estimate does not admit or execute a later swap.
+
+## Bounded product reads
+
+Public catalogue reads use AgentCatalog with opaque keyset pages. ExecutionReads owns narrow run summaries, execution status and bounded event pages; full results and oversized event bodies are explicit detail reads. Preview status may have no agent identity. Advice status is separate from its complete recommendation.

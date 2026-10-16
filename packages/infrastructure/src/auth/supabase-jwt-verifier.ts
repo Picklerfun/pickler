@@ -23,12 +23,30 @@ export interface SupabaseJwtVerifierConfig {
   keys?: JWTVerifyGetKey;
 }
 
+// Only trusted public-key resolvers survive an invocation; tokens and principals never do.
+const resolverRegistry = new Map<string, JWTVerifyGetKey>();
+function sharedKeys(config: SupabaseJwtVerifierConfig): JWTVerifyGetKey {
+  const key = JSON.stringify([config.issuer, config.jwksUrl, config.audience ?? "authenticated"]);
+  const existing = resolverRegistry.get(key);
+  if (existing) {
+    resolverRegistry.delete(key);
+    resolverRegistry.set(key, existing);
+    return existing;
+  }
+  const resolver = createRemoteJWKSet(new URL(config.jwksUrl));
+  if (resolverRegistry.size >= 8) {
+    resolverRegistry.delete(resolverRegistry.keys().next().value!);
+  }
+  resolverRegistry.set(key, resolver);
+  return resolver;
+}
+
 export function createSupabaseJwtVerifier(config: SupabaseJwtVerifierConfig): AccessTokenVerifier {
   if (!config.issuer) {
     throw new Error("SupabaseJwtVerifier requires an issuer");
   }
   // jose caches the JWKS and refreshes it on key rotation.
-  const keys = config.keys ?? createRemoteJWKSet(new URL(config.jwksUrl));
+  const keys = config.keys ?? sharedKeys(config);
   const audience = config.audience ?? "authenticated";
 
   return {

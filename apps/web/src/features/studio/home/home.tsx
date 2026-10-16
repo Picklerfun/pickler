@@ -10,10 +10,8 @@ import type { PasskeysKnown } from "@/features/auth/lib/second-passkey";
 import { accentVars } from "@/lib/accent";
 import { useNow } from "@/lib/now";
 import {
-  agentRuns,
   errorCode,
   readPaperOrder,
-  runEvents,
   studioWallets,
   type Agent,
   type StudioWallets,
@@ -22,6 +20,8 @@ import {
   type RunEvent,
 } from "../api";
 import { agentInitials } from "../lib/initials";
+import { researchReads } from "../lib/research-reads";
+import { studioApi } from "../api";
 import { startPolling } from "../lib/polling";
 import type { SectionKey } from "../sections/keys";
 import { CreditsModal } from "../new-agent/credits-modal";
@@ -126,16 +126,19 @@ export function Home({
     if (preview) {
       return;
     }
+    const reader = researchReads((path, signal) => studioApi(path, { signal }));
     return startPolling(
       async (signal) => {
-        const list = await agentRuns(agentId, signal);
+        const list = await reader.list(agentId, signal);
         if (signal.aborted) {
           return null;
         }
         const newest = list.runs[0] ?? null;
         let body: { events: RunEvent[] } | null = null;
         if (newest) {
-          body = await runEvents(newest.id, signal);
+          const detail = await reader.selected(newest.id, signal);
+          list.runs = list.runs.map((item) => (item.id === newest.id ? detail : item));
+          body = await reader.events(newest.id, signal);
           if (signal.aborted) {
             return null;
           }
@@ -244,7 +247,7 @@ export function Home({
 
   const status = homeStatus({ run: latest, events, agent, now, runCount: runs.length });
   const card = latest ? pickCard({ run: latest, events, order: orderState, now }) : null;
-  const calls = runs.filter((run) => run.decision).length;
+  const calls = runs.filter((run) => run.decision || run.resultAvailable).length;
   const next = nextUp({
     callIn: status.picks === "done" || agent.scheduleEnabled,
     balanceAusd: agent.wallet?.balanceAusd ?? 0,

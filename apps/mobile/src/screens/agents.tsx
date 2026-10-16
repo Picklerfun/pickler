@@ -44,6 +44,7 @@ function StudioSection({ studio, requireAccount }: Pick<AppCtx, "studio" | "requ
           ))}
         </Reveal>
       ) : null}
+      {studio.nextCursor ? <Chip label="Load more agents" onPress={() => { void studio.loadMore(); }} accessibilityLabel="load-more-studio-agents" /> : null}
       <View style={{ height: 6 }} />
     </View>
   );

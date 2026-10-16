@@ -13,7 +13,7 @@ export default async function Home({
   const tokenPreview = process.env.NODE_ENV !== "production" && params.tokens === "preview";
   const [actions, directory] = await Promise.all([
     tokenPreview ? Promise.resolve({ data: [] }) : services.listAgentActions(),
-    tokenPreview ? Promise.resolve({ data: [], degraded: false }) : services.listDirectory(),
+    tokenPreview ? Promise.resolve({ data: [], degraded: false }) : services.listTokenDirectory(),
   ]);
   return (
     <LandingPage

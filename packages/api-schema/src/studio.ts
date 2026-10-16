@@ -5,7 +5,6 @@ import {
   agentConfigSchema,
   agentResponseSchema,
   decisionSchema,
-  eventResponseSchema,
   spendLimitsSchema,
   studioPerpsStrategySchema,
   VOICE_KEYS,
@@ -66,7 +65,7 @@ export const studioAgentSchema = agentResponseSchema.extend({
    * workspace holds fewer than three private drafts (`draft_limit`). A draft is not counted as
    * unfunded.
    */
-  canCreateAnother: lockSchema,
+  canCreateAnother: lockSchema.nullable(),
   /** The config's spend limits, or null when the person has not set them. */
   spend: spendLimitsSchema.nullable(),
   /** Whether `spend` is enforced: true, on paper orders. */
@@ -145,7 +144,6 @@ export const previewRunResponseSchema = z.object({
     decision: decisionSchema.nullable(),
     error: z.string().nullable(),
   }),
-  events: z.array(eventResponseSchema),
 });
 export type PreviewRunDto = z.infer<typeof previewRunResponseSchema>;
 

@@ -61,10 +61,10 @@ test("a failing fetch is a network error", async () => {
 });
 
 test("the public list needs no token and keeps good rows", async () => {
-  const doFetch = jest.fn(async (_url: string, _init: RequestInit) => json(200, [row, { id: 1 }]));
+  const doFetch = jest.fn(async (_url: string, _init: RequestInit) => json(200, {items:[row, { id: 1 }],nextCursor:null}));
   const agents = await fetchStudioAgents("https://x.test/api/v1", doFetch);
-  expect(agents.map((a) => a.id)).toEqual(["a1"]);
-  expect(doFetch.mock.calls[0]![0]).toBe("https://x.test/api/v1/marketplace/agents");
+  expect(agents.items.map((a) => a.id)).toEqual(["a1"]);
+  expect(doFetch.mock.calls[0]![0]).toBe("https://x.test/api/v1/marketplace/agents?adviceForSale=true");
   await expect(fetchStudioAgents("b", async () => json(500, { error: "boom" }))).rejects.toMatchObject({ status: 500, code: "boom" });
   await expect(fetchStudioAgents("b", async () => json(200, { not: "an array" }))).rejects.toMatchObject({ code: "bad_response" });
 });
@@ -77,7 +77,7 @@ test("getRecommendation and history read the envelope", async () => {
   };
   expect((await getRecommendation(authed, "r1")).id).toBe("r1");
   expect((await history(authed, "a1", "BTC")).items).toHaveLength(1);
-  expect(calls).toEqual(["/agent-advice/recommendations/r1", "/agent-advice/agents/a1/recommendations?symbol=BTC"]);
+  expect(calls).toEqual(["/agent-advice/recommendations/r1/status", "/agent-advice/agents/a1/recommendations?symbol=BTC"]);
 });
 
 test("an error status throws with the server's code; a body without the envelope is bad_response", async () => {
