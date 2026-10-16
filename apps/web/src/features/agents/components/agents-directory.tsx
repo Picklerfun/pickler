@@ -2,7 +2,7 @@
 
 import type { DirectoryAgentDto, ReadServiceDto } from "@pickler/api-schema";
 import Link from "next/link";
-import { ButtonLink, Icon, Input, Switch, Tag } from "@pickler/ui";
+import { Button, ButtonLink, Icon, Input, Switch, Tag } from "@pickler/ui";
 import {
   Select,
   SelectContent,
@@ -11,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@pickler/ui/select";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import styles from "../agents.module.css";
 import directory from "../agents-directory.module.css";
 import { noAgents } from "../lib/empty";
@@ -35,15 +35,24 @@ const takingQuestions = (
  * an agent that is not taking questions.
  */
 export function AgentsDirectory({
-  agents,
+  agents: initialAgents,
+  nextCursor: initialCursor = null,
+  remote = false,
   degraded = false,
   query: asked = "",
 }: {
   agents: DirectoryAgentDto[];
+  nextCursor?: string | null;
+  remote?: boolean;
   degraded?: boolean;
   /** `?q=`, so a search can be linked to and a plain form can land on one. */
   query?: string;
 }) {
+  const [agents, setAgents] = useState(initialAgents);
+  const [nextCursor, setNextCursor] = useState(initialCursor);
+  const [pending, setPending] = useState(false);
+  const [readError, setReadError] = useState(false);
+  const moreRequest = useRef<AbortController | null>(null);
   const [beat, setBeat] = useState("all");
   const [openOnly, setOpenOnly] = useState(false);
   const [query, setQuery] = useState(asked);
@@ -60,6 +69,101 @@ export function AgentsDirectory({
     window.history.replaceState(null, "", url);
   }
 
+  useEffect(() => {
+    if (!remote) {
+      return;
+    }
+    moreRequest.current?.abort();
+    const controller = new AbortController();
+    const timer = setTimeout(() => {
+      const params = new URLSearchParams({
+        q: query,
+        theme: beat === "all" ? "" : beat,
+        available: String(openOnly),
+      });
+      setPending(true);
+      void fetch(`/api/v1/marketplace/directory?${params}`, {
+        signal: controller.signal,
+        cache: "no-store",
+      })
+        .then(async (response) => {
+          if (!response.ok) {
+            throw new Error("unavailable");
+          }
+          const page = (await response.json()) as {
+            items: DirectoryAgentDto[];
+            nextCursor: string | null;
+          };
+          if (!controller.signal.aborted) {
+            setAgents(page.items);
+            setNextCursor(page.nextCursor);
+            setReadError(false);
+          }
+        })
+        .catch(() => {
+          if (!controller.signal.aborted) {
+            setReadError(true);
+          }
+        })
+        .finally(() => {
+          if (!controller.signal.aborted) {
+            setPending(false);
+          }
+        });
+    }, 250);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+      moreRequest.current?.abort();
+    };
+  }, [remote, query, beat, openOnly]);
+  async function more() {
+    if (!nextCursor || pending) {
+      return;
+    }
+    const controller = new AbortController();
+    moreRequest.current = controller;
+    setPending(true);
+    try {
+      const params = new URLSearchParams({
+        q: query,
+        theme: beat === "all" ? "" : beat,
+        available: String(openOnly),
+        cursor: nextCursor,
+      });
+      const response = await fetch(`/api/v1/marketplace/directory?${params}`, {
+        cache: "no-store",
+        signal: controller.signal,
+      });
+      if (!response.ok) {
+        throw new Error("unavailable");
+      }
+      const page = (await response.json()) as {
+        items: DirectoryAgentDto[];
+        nextCursor: string | null;
+      };
+      if (controller.signal.aborted) {
+        return;
+      }
+      setAgents((items) => [
+        ...new Map([...items, ...page.items].map((item) => [item.agent.id, item])).values(),
+      ]);
+      setNextCursor(page.nextCursor);
+      setReadError(false);
+    } catch {
+      if (!controller.signal.aborted) {
+        setReadError(true);
+      }
+    } finally {
+      if (!controller.signal.aborted) {
+        setPending(false);
+      }
+      if (moreRequest.current === controller) {
+        moreRequest.current = null;
+      }
+    }
+  }
+
   // The beats are whatever the agents actually work, so a new one never needs a code change here.
   const beats = useMemo(
     () => [
@@ -73,19 +177,21 @@ export function AgentsDirectory({
 
   const shown = useMemo(
     () =>
-      agents
-        .filter((entry) => beat === "all" || entry.beat.trim() === beat)
-        .filter((entry) => !openOnly || takingQuestions(entry))
-        .filter((entry) =>
-          matches(query, [
-            entry.agent.handle,
-            entry.agent.name,
-            entry.beat,
-            entry.venue,
-            entry.decides,
-          ]),
-        ),
-    [agents, beat, openOnly, query],
+      remote
+        ? agents
+        : agents
+            .filter((entry) => beat === "all" || entry.beat.trim() === beat)
+            .filter((entry) => !openOnly || takingQuestions(entry))
+            .filter((entry) =>
+              matches(query, [
+                entry.agent.handle,
+                entry.agent.name,
+                entry.beat,
+                entry.venue,
+                entry.decides,
+              ]),
+            ),
+    [agents, beat, openOnly, query, remote],
   );
 
   /* What a search that found nothing offers instead: the beats that do have agents, busiest first. */
@@ -104,7 +210,14 @@ export function AgentsDirectory({
   }, [agents]);
 
   // Nobody yet is a screen of its own, not a beat filter with nothing under it.
-  if (noAgents(agents)) {
+  if (
+    !remote &&
+    noAgents(agents) &&
+    query.trim() === "" &&
+    beat === "all" &&
+    !openOnly &&
+    !pending
+  ) {
     return (
       <main className={styles.main}>
         <h1 className={styles.boardTitle}>AGENTS</h1>
@@ -143,7 +256,11 @@ export function AgentsDirectory({
         />
         <div className={directory.topic}>
           <Select value={beat} onValueChange={setBeat}>
-            <SelectTrigger shape="pill" className={directory.topicTrigger} aria-label="Topic">
+            <SelectTrigger
+              shape="pill"
+              className={directory.topicTrigger}
+              aria-label="Topic among loaded agents"
+            >
               <SelectValue />
             </SelectTrigger>
             <SelectContent data-surface="light" position="popper" align="start">
@@ -165,10 +282,19 @@ export function AgentsDirectory({
       </div>
 
       <p className={directory.count} role="status" aria-live="polite" aria-atomic="true">
-        {shown.length} {shown.length === 1 ? "agent" : "agents"}
+        {shown.length} {shown.length === 1 ? "agent shown" : "agents shown"}
       </p>
 
-      {query.trim() !== "" && shown.length === 0 ? (
+      {readError && <p role="status">Agents could not be refreshed. Try again.</p>}
+      {nextCursor && (
+        <Button disabled={pending} onClick={() => void more()}>
+          {pending ? "Loading…" : "Load more"}
+        </Button>
+      )}
+      {remote && !pending && shown.length === 0 && (
+        <p role="status">No agents match these filters.</p>
+      )}
+      {!remote && query.trim() !== "" && shown.length === 0 ? (
         <NoMatch
           query={query}
           total={agents.length}
