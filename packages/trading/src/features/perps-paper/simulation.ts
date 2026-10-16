@@ -21,6 +21,8 @@ export interface PerpsPaperFrame {
 }
 export interface PerpsPaperObservation {
   marksOnly?: boolean;
+  /** Infrastructure product path only: advance confirmed funding coverage in bounded windows. */
+  incrementalFunding?: boolean;
   frames: PerpsPaperFrame[];
   funding: PerpFundingHistory[];
 }
@@ -211,6 +213,11 @@ export function applyPaperObservation(
   let pending = observation.marksOnly ? a.fundingPending : (a.fundingDisputed ?? false);
   for (const p of observation.marksOnly ? [] : a.positions) {
     const history = observation.funding.find((h) => h.market.symbol === p.symbol);
+    const incremental = observation.incrementalFunding && a.scope.sessionId === "product";
+    const coverageFrom = incremental
+      ? Math.max(p.openedAt, (p.fundingCoveredThrough ?? p.openedAt) - 30000)
+      : p.openedAt;
+    let positionPending = false;
     if (
       !history ||
       (p.market !== undefined &&
@@ -219,8 +226,8 @@ export function applyPaperObservation(
           p.market.collateral.address !== history.market.collateral.address)) ||
       history.market.provenance.network !== a.scope.network ||
       !history.complete ||
-      history.from > p.openedAt ||
-      history.to < (p.closedAt ?? now) - 30000
+      history.from > coverageFrom ||
+      (incremental ? history.to < coverageFrom : history.to < (p.closedAt ?? now) - 30000)
     ) {
       pending = true;
       continue;
@@ -234,6 +241,7 @@ export function applyPaperObservation(
       }
       if (event.estimated || event.appliesAt === null || event.appliesAt > now) {
         pending = true;
+        positionPending = true;
         continue;
       }
       const movementKey = `funding:${p.id}:${event.eventBlock}`;
@@ -267,13 +275,31 @@ export function applyPaperObservation(
       );
       movements.push({ key: movementKey, kind: "funding", delta, at: now, evidence });
     }
+    if (incremental && !positionPending && !a.fundingDisputed) {
+      p.fundingCoveredThrough = Math.max(
+        p.fundingCoveredThrough ?? p.openedAt,
+        Math.min(history.to, p.closedAt ?? now, now),
+      );
+      if (p.fundingCoveredThrough < (p.closedAt ?? now) - 30000) {
+        pending = true;
+      }
+    }
   }
   if (a.fundingDisputed) {
     movements.length = 0;
+    // Disputed observations have no partial accounting or checkpoint progress.
+    for (const p of a.positions) {
+      const original = account.positions.find((item) => item.id === p.id)?.fundingCoveredThrough;
+      if (original === undefined) {
+        delete p.fundingCoveredThrough;
+      } else {
+        p.fundingCoveredThrough = original;
+      }
+    }
   }
   a.cash = d(u(a.cash) + movements.reduce((sum, m) => sum + u(m.delta), 0n));
   a.fundingPending = pending;
-  if (a.scope.sessionId === "product" && !observation.marksOnly) {
+  if (a.scope.sessionId === "product" && !observation.marksOnly && !pending) {
     a.lastFundingAt = now;
   }
   const risk = paperRisk(a, [], now);
@@ -304,4 +330,25 @@ export function applyPaperObservation(
     a.lastValuationAt = now;
   }
   return { account: a, movements, key };
+}
+
+/** The provider's complete=true is the canonical contiguous-window coverage assertion. A missing
+ * interval cannot jump this cursor; overlap revalidates event identities before new postings. */
+export function paperFundingRange(
+  positions: import("./types.js").PerpsPaperPosition[],
+  symbol: PerpSymbol,
+  now: number,
+) {
+  const from = Math.min(
+    ...positions
+      .filter((p) => p.symbol === symbol)
+      .map((p) => Math.max(p.openedAt, (p.fundingCoveredThrough ?? p.openedAt) - 30000)),
+  );
+  const padding = Math.max(
+    0,
+    ...positions
+      .filter((p) => p.symbol === symbol)
+      .map((p) => (p.market?.fundingIntervalSeconds ?? 0) * 1000),
+  );
+  return { from: Math.max(0, from - padding), to: Math.min(now, from + 3600000) };
 }
