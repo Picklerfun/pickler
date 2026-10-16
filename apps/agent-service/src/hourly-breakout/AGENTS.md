@@ -42,11 +42,20 @@ The unified npm evaluate script ends Node options explicitly before the script p
 be consumed by Node before protocol, offline, or authorization checks.
 
 Rejected PostgreSQL clock samples retain safe numeric RTT proof before throwing. Nonfinite clock
-values are explicit nulls in rejected evidence, never accepted samples. The zero-containing full
-RTT criterion and its one-millisecond quantization margin are unchanged. Source and future financial
-manifests retain the first rejected clock proof independently of the primary failure, including a
-safe secondary journal-write code. A missing historical rejected sample remains unverifiable.
-Preflight saves rejection evidence before any public composition using the same artifact budget.
+values are explicit nulls in rejected evidence, never accepted samples. The legacy financial
+zero-containing RTT check remains unchanged in `clock.ts`. New source-only captures instead select
+`source-independent-database-clock-v1` in `source-database-clock.ts`: the host clock owns J/calendar
+and PostgreSQL alone owns lease expiration. Record the complete measured database-minus-host offset
+interval, including nonzero offsets, with the same one-millisecond quantization margin. Never adjust
+timestamps or claim that independent clocks were synchronized or externally UTC-verified.
+
+The source sampler rejects nonfinite values, local/monotonic/database regression, foreign process
+epochs and overlapping probes. It retains one preceding sample, bridging preflight/start/renewal/end. The manifest and
+diagnostic metadata pin the policy/hash; offline analysis revalidates that exact journal and requires
+its endpoints before acceptance. Historical manifests without that policy keep their old meaning.
+Source and future financial manifests retain the first rejected clock proof independently of the
+primary failure, including a safe secondary journal-write code. A missing historical rejected sample
+remains unverifiable. Preflight saves rejection evidence before public composition with the same budget.
 
 Clock qualification failure does not bypass owned technical cleanup. A fresh guard and the adapter's
 transactional fence still protect diagnostic lease release; a confirmed release stays confirmed if
@@ -59,3 +68,8 @@ with `CLOCK_INCOMPATIBLE` before any public request or scheduled source window. 
 empty journals, failed report and unconfirmed cleanup. Later read-only clock measurements are a
 separate diagnostic, not reconstruction of the lost startup sample. The corrected code has controlled
 validation only; no source retry or financial acceptance is implied.
+
+On 2026-10-16 the operator explicitly authorized the independent source-clock correction and one new
+24-hour nonfinancial attempt. Use a fresh diagnostic identity/directory after controlled validation
+and freeze; retain the first failed capture. This grants no financial run, model, signer, automatic
+repeat, automation, merge or deployment. The new source policy does not supply financial V acceptance.

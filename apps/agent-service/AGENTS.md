@@ -492,6 +492,10 @@ call. The first canonical pump includes the metadata/WebSocket cold start; no pu
 before the frozen start. All 4,320 original windows and 1,440 canonical minutes remain counted.
 Offset 20/40-second copies never rescue canonical coverage; preparation coverage stays separate.
 Source J and future financial V clocks, ownership, acceptance and results remain distinct.
+New source-only captures explicitly pin `source-independent-database-clock-v1`: host time owns
+J/calendar and PostgreSQL owns diagnostic leases. Persist full-RTT offsets without requiring absolute
+clock equality or modifying timestamps. Revalidate numeric proof, regressions and diagnostic endpoints
+offline. Historical manifests and the separately gated future financial clock retain their meaning.
 
 Original snapshots, candle revisions and public HTTP bodies remain in immutable hashed parts;
 only the declared first32MiB validated wire prefix may truncate. Every artifact and concurrent

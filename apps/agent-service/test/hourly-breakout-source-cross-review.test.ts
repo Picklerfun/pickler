@@ -31,6 +31,10 @@ import {
   sourceWindowAt,
 } from "../src/hourly-breakout/schedule.js";
 import { qualifySourceFrames } from "../src/hourly-breakout/source-qualification.js";
+import {
+  createSourceDatabaseClock,
+  SOURCE_DATABASE_CLOCK_POLICY,
+} from "../src/hourly-breakout/source-database-clock.js";
 
 const config: PerpsHourlyBreakoutConfig = {
   version: 10,
@@ -176,7 +180,7 @@ test("one market expiring at the outward receipt bound preserves ten peer cells 
   );
 });
 
-async function passingPacket(root: string, budget: ArtifactBudget) {
+async function passingPacket(root: string, budget: ArtifactBudget, independentClocks = false) {
   const snapshots = new SegmentedJournal(root, "snapshots", budget);
   const clocks = new SegmentedJournal(root, "clocks", budget);
   const fixture = fixtureClock((record) => clocks.append(record, false));
@@ -296,8 +300,85 @@ async function passingPacket(root: string, budget: ArtifactBudget) {
     modelCalls: 0,
     newReservations: 0,
   };
+  if (independentClocks) {
+    const control = new SegmentedJournal(root, "control", budget);
+    let at = frozen.preflightCompletedAt;
+    let wallReads = 0;
+    let monoReads = 0;
+    const databaseClock = createSourceDatabaseClock({
+      clock: {
+        wall: () => at + wallReads++,
+        monotonic: () => at - frozen.preflightCompletedAt + monoReads++ * 0.5,
+      },
+    });
+    const append = async (kind: string, when: number) => {
+      at = when;
+      wallReads = 0;
+      monoReads = 0;
+      control.append(
+        { kind, sample: await databaseClock.sample(async () => ({ databaseAt: at - 3 })) },
+        false,
+      );
+    };
+    await append("database-clock-preflight", frozen.preflightCompletedAt);
+    await append("database-clock-start", frozen.preflightCompletedAt + 2);
+    for (let dueAt = frozen.startsAt; dueAt < frozen.endsAt; dueAt += 20000) {
+      await append("database-clock-renewal", dueAt);
+    }
+    await append("database-clock-end", frozen.endsAt + 2);
+    control.seal();
+    manifest.databaseClockPolicy = SOURCE_DATABASE_CLOCK_POLICY;
+    manifest.databaseClockPolicyHash = digest(SOURCE_DATABASE_CLOCK_POLICY);
+    manifest.journals.control = control.snapshot();
+    manifest.artifactBudget = budget.snapshot();
+  }
   return manifest;
 }
+
+test("controlled 24-hour source acceptance uses independent database clocks without changing J limits or financial acceptance", async () => {
+  const root = await mkdtemp(join(tmpdir(), "breakout-independent-clocks-"));
+  try {
+    const budget = new ArtifactBudget();
+    const manifest = await passingPacket(root, budget, true);
+    const report = await analyzeSource(root, manifest);
+    assert.equal(report.result, "PASS_NONFINANCIAL_SOURCE_ACCEPTANCE");
+    assert.equal(report.coverage.canonicalMinutes.qualified, 1440);
+    assert.equal(report.coverage.canonicalMarketMinutes.qualified, 15840);
+    assert.equal(report.continuity.maximumAllowedMs, 90000);
+    assert.equal(report.financialAcceptance, false);
+    assert.equal(report.databaseClock?.samples, 4323);
+    assert.equal(report.databaseClock?.observedNonzeroOffsetSamples, 4323);
+    assert.equal(report.databaseClock?.offsetLowerMinimumMs, -5);
+    assert.equal(report.databaseClock?.offsetUpperMaximumMs, -2);
+    const part = manifest.journals.control.at(-1)!;
+    const bytes = await readFile(join(root, part.file));
+    const lastLine = bytes.subarray(bytes.lastIndexOf(10, bytes.length - 2) + 1);
+    const prefix = bytes.subarray(0, bytes.length - lastLine.length);
+    const missingEnd = await analyzeSource(root, {
+      ...manifest,
+      journals: {
+        ...manifest.journals,
+        control: [
+          { ...part, bytes: prefix.length, records: part.records - 1, sha256: bytesHash(prefix) },
+        ],
+      },
+    });
+    assert.equal(missingEnd.result, "FAIL_NONFINANCIAL_SOURCE_ACCEPTANCE");
+    assert.equal(missingEnd.databaseClock?.endRecorded, false);
+    await assert.rejects(
+      analyzeSource(root, { ...manifest, databaseClockPolicyHash: "0".repeat(64) }),
+      (error: unknown) => error instanceof PilotError && error.code === "BREAKOUT_SOURCE_INVALID",
+    );
+    const { databaseClockPolicy: _policy, ...missingPolicy } = manifest;
+    void _policy;
+    await assert.rejects(
+      analyzeSource(root, missingPolicy),
+      (error: unknown) => error instanceof PilotError && error.code === "BREAKOUT_SOURCE_INVALID",
+    );
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
 
 test("controlled successful 24-hour qualification preserves fixed denominators and rejects missing endpoint or cleanup", async () => {
   const root = await mkdtemp(join(tmpdir(), "breakout-positive-cross-review-"));
