@@ -221,6 +221,12 @@ export function createPerpsStudyRunner(deps: {
     simulator = createPerpsPaperService(paper, unavailable, now);
     await ownedGuard();
     let { record } = await study.view(scope);
+    if (record.config.version === 10) {
+      throw new PilotError(
+        "EVALUATION_ADAPTER_MISSING",
+        "V10 requires its independently accepted coordinator",
+      );
+    }
     const strategies = perpsStrategies(record.config);
     const stopped = record.config.version !== 1 && !!record.decisionStopReason;
     if (now() >= record.endsAt! || record.stopRequested || stopped) {
