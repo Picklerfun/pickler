@@ -820,3 +820,7 @@ private/no-store, strict parsing and generated OpenAPI remain mandatory.
 ## Bounded product reads
 
 Marketplace agents/directory use server filters and keyset pages (20 default, 50 maximum); tokens is an eight-entry confirmed-token landing read. No public cache is added. Private research/preview/advice status excludes configuration and result JSON. Research/preview event pages default to 50, cap at 100 and 256 KiB, and expose oversized evidence only by explicit detail request. Studio fleet reads batch runtime snapshots and wallet links; individual agent reads do not read the fleet. Creation eligibility is separate and is checked again during creation. Balance transport deduplicates addresses and limits concurrent reads to four per invocation; private responses remain private, no-store.
+
+## Paper operational reads
+
+Studio Perps reads use `executionSnapshot` and persisted record projections; ordinary polling must never request the complete Paper archive. Closed positions are read through the authorized, cursor-paginated `/agents/:id/perps/closed-positions` route (default 50, maximum 100). P&L comes from exact persisted position totals. All these owner responses are private and no-store. Complete exports remain explicit operator work.
