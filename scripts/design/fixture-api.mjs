@@ -104,14 +104,30 @@ const routes = [
     /^\/v1\/launches\/eip155:10143:0x1111111111111111111111111111111111111111$/,
     async () => sampleTokenMarket(),
   ],
-  [/^\/v1\/marketplace\/agents$/, async () => (await services.listAgents()).map(toAgentSummaryDto)],
+  [
+    /^\/v1\/marketplace\/tokens$/,
+    async () => ({
+      items: (await services.listDirectory())
+        .filter((item) => item.launchedToken)
+        .slice(0, 8)
+        .map(toDirectoryAgentDto),
+      nextCursor: null,
+    }),
+  ],
+  [
+    /^\/v1\/marketplace\/agents$/,
+    async () => ({ items: (await services.listAgents()).map(toAgentSummaryDto), nextCursor: null }),
+  ],
   [
     /^\/v1\/marketplace\/activity$/,
     async () => (await services.listAgentActions()).map(toAgentActionDto),
   ],
   [
     /^\/v1\/marketplace\/directory$/,
-    async () => (await services.listDirectory()).map(toDirectoryAgentDto),
+    async () => ({
+      items: (await services.listDirectory()).map(toDirectoryAgentDto),
+      nextCursor: null,
+    }),
   ],
   [/^\/v1\/marketplace\/reads$/, async () => (await services.listReads()).map(toAgentReadDto)],
   [
