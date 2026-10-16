@@ -82,6 +82,16 @@ operator investigation; it is never silently overwritten or automatically charge
    indexed per-position/day totals, copy100 ledger facts, normalize100 size-up facts, compact100
    position documents, copy100 closed totals and advance100 projection facts. Only a complete
    projection permits atomic cutover. Original parent evidence stays in paper_storage.original.
+   Legacy funding coverage is preserved only after a bounded positive receipt proof: the frozen
+   account and full observation receipt both explicitly report no pending funding or dispute,
+   their lastFundingAt values agree and cover every close, and every position document matches
+   the frozen cohort exactly. Receipt searches and cohort comparisons each process at most100
+   entries per transaction. Compact, missing or mismatched receipts retain required coverage.
+   The durable receipt certificate remains in the completed migration cursor. PostgreSQL may
+   decompress an entire stored JSON value to inspect its header or indexed array element; these
+   operator-only proof pages bound comparisons and returned rows, not legacy JSON decoding CPU
+   or bytes read internally. No complete receipt is transferred to the Worker or JavaScript. A re-audit of
+   certified history does not itself block openings; missing coverage and disputes still do.
 5. Check operational mode, record completeness, cash/ledger parity and outstanding funding
    coverage before considering new exposure. No startup or HTTP handler runs conversion.
 
