@@ -26,7 +26,11 @@ import {
   type PerpsPaperScope,
   type PerpsPaperView,
 } from "../perps-paper/types.js";
-import { validatePaperFrame, type PerpsPaperFrame } from "../perps-paper/simulation.js";
+import {
+  paperFundingRange,
+  validatePaperFrame,
+  type PerpsPaperFrame,
+} from "../perps-paper/simulation.js";
 import { createPerpsPaperService } from "../perps-paper/service.js";
 import { marginOpenedSince, productFreeEquity } from "../perps-paper/policy.js";
 import { paperDecimal as d, paperUnits as u } from "../perps-paper/decimal.js";
@@ -216,9 +220,13 @@ export async function runStudioPerpsCheck(
   const actions: StudioCheckMarketResult[] = [];
   const mandatoryExits: StudioCheckDecision["mandatoryExits"] = [];
   const netToday = (current: PerpsPaperView) =>
-    current.movements
-      .filter((movement) => movement.at >= utcDayStart(deps.now()) && movement.kind !== "initial")
-      .reduce((sum, movement) => sum + u(movement.delta), 0n);
+    current.accounting
+      ? u(current.accounting.realizedToday)
+      : current.movements
+          .filter(
+            (movement) => movement.at >= utcDayStart(deps.now()) && movement.kind !== "initial",
+          )
+          .reduce((sum, movement) => sum + u(movement.delta), 0n);
   let view: PerpsPaperView | null = null;
   let decision: StudioCheckDecision | null = null;
   let error: string | null = null;
@@ -257,7 +265,7 @@ export async function runStudioPerpsCheck(
   try {
     await step(`Strategy ${strategy.id}@${strategy.version}`);
     try {
-      view = await paper.view(scope);
+      view = await paper.executionSnapshot(scope);
     } catch (failure) {
       if (!(failure instanceof PilotError) || failure.code !== "NOT_FOUND") {
         throw failure;
@@ -310,14 +318,12 @@ export async function runStudioPerpsCheck(
       heldFrames.push(frame);
     }
     const fundingRange = (current: PerpsPaperView, symbol: PerpSymbol, deadline = false) => {
-      const positions = current.account.positions.filter((position) => position.symbol === symbol);
-      const from = Math.min(...positions.map((position) => position.openedAt));
-      // Historical Studio keeps its original ranges. Dynamic positions cease accruing at exit.
-      const end =
-        strategy.version === "2.1.0" && positions.every((position) => position.closedAt !== null)
-          ? Math.max(...positions.map((position) => position.closedAt!))
-          : deps.now() + (deadline ? 180000 : 0);
-      return { from, end };
+      const range = paperFundingRange(
+        current.account.positions,
+        symbol,
+        deps.now() + (deadline ? 180000 : 0),
+      );
+      return { from: range.from, end: range.to };
     };
     const reconcileFunding = async (current: PerpsPaperView) => {
       const funding: PerpFundingHistory[] = [];
@@ -486,7 +492,7 @@ export async function runStudioPerpsCheck(
     }
     await record("execution-input", executionFrames);
     await guard();
-    const finalFunding = await reconcileFunding(await paper.view(scope));
+    const finalFunding = await reconcileFunding(await paper.executionSnapshot(scope));
     await guard();
     for (const frame of executionFrames) {
       validatePaperFrame(
@@ -507,16 +513,18 @@ export async function runStudioPerpsCheck(
     }
     for (const proposal of proposals) {
       const current = await guard();
-      view = await paper.view(scope);
+      view = await paper.executionSnapshot(scope);
       const frame = executionFrames.find(
         (value) => value.snapshot.market.symbol === proposal.symbol,
       )!;
       validatePaperFrame(frame, scope.network, proposal.symbol, deps.now());
       const open = view.account.positions.filter((p) => p.closedAt === null);
       const position = open.find((p) => p.symbol === proposal.symbol) ?? null;
-      const realized = view.movements
-        .filter((m) => m.at >= utcDayStart(deps.now()) && m.kind !== "initial")
-        .reduce((sum, m) => sum + u(m.delta), 0n);
+      const realized = view.accounting
+        ? u(view.accounting.realizedToday)
+        : view.movements
+            .filter((m) => m.at >= utcDayStart(deps.now()) && m.kind !== "initial")
+            .reduce((sum, m) => sum + u(m.delta), 0n);
       const planned = planStudioExecution(proposal, {
         paused: current.paused,
         fundingPending: view.account.fundingPending,
@@ -527,7 +535,9 @@ export async function runStudioPerpsCheck(
             executionFrames.map((f) => [f.snapshot.market.symbol, f.snapshot.ticker.mark]),
           ),
         ),
-        openedMarginToday: marginOpenedSince(view.account.positions, utcDayStart(deps.now())),
+        openedMarginToday:
+          view.accounting?.newMarginToday ??
+          marginOpenedSince(view.account.positions, utcDayStart(deps.now())),
         realizedToday: d(realized),
         openCount: open.length,
         position,
