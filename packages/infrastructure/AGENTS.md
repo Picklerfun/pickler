@@ -956,3 +956,7 @@ or deferred history cannot occupy the bounded page ahead of ready work. They ret
 a server-side aggregate, returning one scalar, never all historical hashes. Existing ownership
 fences and event/block finality checks remain required. See
 [the CPU/memory diagnosis](../../docs/market/indexer-cpu-memory-20261015.md).
+
+## Bounded product reads
+
+PostgresAgentDirectory pages public catalogue rows before batching canonical token proof. PostgresExecutionReads reads narrow run summaries/status, keyset event pages (50 default, 100 maximum, 256 KiB wire budget) and explicit oversized event details. Studio snapshots and wallet links are batched by authorized identities. Only the public JWKS resolver registry may survive invocations: an eight-entry LRU keyed by trusted issuer, URL and audience, retaining jose rotation; JWT identities and balances remain request scoped.
