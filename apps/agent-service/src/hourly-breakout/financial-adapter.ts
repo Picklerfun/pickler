@@ -33,7 +33,12 @@ import type { HourlyBreakoutCommandInput } from "./index.js";
 import { createReportQueue } from "../perps-study/report-queue.js";
 import { localStudyDatabase } from "../perps-study/database-env.js";
 import { startAwakeGuard } from "./awake.js";
-import { createBoundaryClock, createFinancialReceiptHooks, sampleDatabaseClock } from "./clock.js";
+import {
+  createBoundaryClock,
+  createFinancialReceiptHooks,
+  DatabaseClockSampleError,
+  sampleDatabaseClock,
+} from "./clock.js";
 import {
   ArtifactBudget,
   SegmentedJournal,
@@ -1052,6 +1057,7 @@ export async function runAcceptedHourlyBreakout(input: FinancialCommand) {
   const controller = new AbortController();
   const signal = AbortSignal.any([input.signal, controller.signal]);
   let failure: unknown;
+  let rejectedDatabaseClock: DatabaseClockSampleError | undefined;
   let ownerLost = false;
   let lease: PerpsStudyLease | undefined;
   const stop = (error: unknown) => {
@@ -1128,6 +1134,22 @@ export async function runAcceptedHourlyBreakout(input: FinancialCommand) {
     receiptClock: Date.now,
     financialReceipts: receiptHooks,
   });
+  const financialDatabaseClock = async (kind: string) => {
+    try {
+      return await sampleDatabaseClock(
+        () => store.sampleDatabaseClock(),
+        undefined,
+        (proof) => {
+          journals.evidence.append({ kind, rejected: true, value: proof });
+        },
+      );
+    } catch (error) {
+      if (error instanceof DatabaseClockSampleError) {
+        rejectedDatabaseClock ??= error;
+      }
+      throw error;
+    }
+  };
   let reader: BreakoutPublicReader | undefined;
   let renewal: Promise<void> | undefined;
   let monitor: Promise<void> | undefined;
@@ -1143,6 +1165,14 @@ export async function runAcceptedHourlyBreakout(input: FinancialCommand) {
         configHash: digest(input.config),
         parts: journals.clock.snapshot(),
         evidenceParts: journals.evidence.snapshot(),
+        ...(rejectedDatabaseClock
+          ? {
+              clockFailure: {
+                proof: rejectedDatabaseClock.proof,
+                proofPersistenceCode: rejectedDatabaseClock.proofPersistenceCode ?? null,
+              },
+            }
+          : {}),
       },
       writer,
     );
@@ -1201,7 +1231,7 @@ export async function runAcceptedHourlyBreakout(input: FinancialCommand) {
     lease = await store.claim(input.config);
     journals.evidence.append({
       kind: "database-clock-compatibility-start",
-      value: await sampleDatabaseClock(() => store.sampleDatabaseClock()),
+      value: await financialDatabaseClock("database-clock-compatibility-start"),
     });
     await writer.write(
       join(directory, "financial-authority.json"),
@@ -1227,7 +1257,7 @@ export async function runAcceptedHourlyBreakout(input: FinancialCommand) {
         journals.evidence.append(
           {
             kind: "database-clock-compatibility-renewal",
-            value: await sampleDatabaseClock(() => store.sampleDatabaseClock()),
+            value: await financialDatabaseClock("database-clock-compatibility-renewal"),
           },
           false,
         );
