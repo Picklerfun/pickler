@@ -1,4 +1,5 @@
 import type { PerpsPtsConfig } from "../pts/policy.js";
+import type { PerpsHourlyBreakoutConfig } from "../hourly-breakout/types.js";
 import type { PerpNetwork } from "@pickler/core";
 import type { PerpsPaperAccount } from "../perps-paper/types.js";
 export const PERPS_STUDY_STRATEGIES = ["rules", "deepseek", "jev"] as const;
@@ -20,24 +21,32 @@ export type PerpsStudyStrategy =
   | SmaProfileVariant
   | SmaReentryVariant
   | "pts-basic"
-  | "pts-intraday";
+  | "pts-intraday"
+  | "hourly-breakout"
+  | "hourly-long";
+// V10 uses independent financial C/S/L accounts; N and P_context never become strategies.
 export const SMA_REVIEW_VARIANTS = ["rules", "sma-jev", "sma-exa-jev"] as const;
 export type PerpsStudyMap<T> = Partial<Record<PerpsStudyStrategy, T>>;
 export type SmaProfileMap<T> = Record<SmaProfileVariant, T>;
 /** Protocol-discriminated maps never require fictitious model/rules arms in v6. */
-export type PerpsVariantMap<C extends { version: number }, T> = C extends { version: 9 }
-  ? Record<"sma-reference" | "pts-intraday", T>
-  : C extends { version: 8 }
-    ? Record<"sma-reference" | "pts-basic", T>
-    : C extends { version: 6 }
-      ? SmaProfileMap<T>
-      : C extends { version: 7 }
-        ? Record<SmaReentryVariant, T>
-        : PerpsStudyMap<T>;
+export type PerpsVariantMap<C extends { version: number }, T> = C extends { version: 10 }
+  ? Record<"hourly-breakout" | "sma-reference" | "hourly-long", T>
+  : C extends { version: 9 }
+    ? Record<"sma-reference" | "pts-intraday", T>
+    : C extends { version: 8 }
+      ? Record<"sma-reference" | "pts-basic", T>
+      : C extends { version: 6 }
+        ? SmaProfileMap<T>
+        : C extends { version: 7 }
+          ? Record<SmaReentryVariant, T>
+          : PerpsStudyMap<T>;
 export const PERPS_FOUR_WAY_STRATEGIES = ["rules", "jev", "deepseek", "combined"] as const;
 export function perpsStrategies(
   config: Pick<PerpsStudyConfig, "version">,
 ): readonly PerpsStudyStrategy[] {
+  if (config.version === 10) {
+    return ["hourly-breakout", "sma-reference", "hourly-long"];
+  }
   if (config.version === 9) {
     return ["sma-reference", "pts-intraday"];
   }
@@ -150,7 +159,8 @@ export type PerpsStudyConfig =
   | PerpsSmaUniverseConfig
   | PerpsSmaProfileConfig
   | PerpsSmaReentryConfig
-  | PerpsPtsConfig;
+  | PerpsPtsConfig
+  | PerpsHourlyBreakoutConfig;
 export interface PerpsCall {
   requestHash?: string;
   inputBytes?: number;
