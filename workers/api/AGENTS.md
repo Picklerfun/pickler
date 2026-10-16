@@ -824,3 +824,7 @@ Marketplace agents/directory use server filters and keyset pages (20 default, 50
 ## Paper operational reads
 
 Studio Perps reads use `executionSnapshot` and persisted record projections; ordinary polling must never request the complete Paper archive. Closed positions are read through the authorized, cursor-paginated `/agents/:id/perps/closed-positions` route (default 50, maximum 100). P&L comes from exact persisted position totals. All these owner responses are private and no-store. Complete exports remain explicit operator work.
+
+Perpl live history is owner-only `GET /v1/studio/agents/:id/perpl/history?kind=orders|sessions|setup&before=...`.
+The route validates cursor/kind, rechecks Studio ownership, forwards the original JWT to Trading,
+and validates its bounded public DTO. It is read-only and always private/no-store.
