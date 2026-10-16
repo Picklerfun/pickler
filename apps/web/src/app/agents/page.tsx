@@ -15,10 +15,20 @@ type Search = Record<string, string | string[] | undefined>;
 export default async function Agents({ searchParams }: { searchParams: Promise<Search> }) {
   const search = await searchParams;
   const query = typeof search.q === "string" ? search.q : "";
-  const { data: agents, degraded } = await services.listDirectory();
+  const {
+    data: agents,
+    degraded,
+    nextCursor,
+  } = await services.listDirectory(new URLSearchParams({ q: query }).toString());
   return (
     <PublicShell>
-      <AgentsDirectory agents={agents} degraded={degraded} query={query} />
+      <AgentsDirectory
+        agents={agents}
+        degraded={degraded}
+        query={query}
+        nextCursor={nextCursor}
+        remote
+      />
     </PublicShell>
   );
 }
