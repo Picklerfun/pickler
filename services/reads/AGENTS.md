@@ -26,3 +26,7 @@ npm workspace: it has its own lockfile and installs with `npm ci --prefix servic
 
 Checks: `npm test --prefix services/reads` runs the Node tests of `scripts/` and, with Deno 2
 installed, the Deno tests of `supabase/functions/_shared/`.
+
+## Bounded product reads
+
+The reads-list function retains its 50-row bound and selects explicit DTO columns rather than complete database records. Its mobile consumer allows one active list request and aborts it on background/account changes; the request timeout includes response body parsing.
