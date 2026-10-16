@@ -1600,3 +1600,7 @@ Catalogue consumers use explicit Load more pages and server filters; counts desc
 ## Paper record history
 
 The Studio record chart consumes bounded hourly Paper projections. Incomplete projections display an updating state instead of definitive figures. Closed positions load an initial bounded page and explicit additional pages; never drain history automatically. Account changes remount the history owner and cancel in-flight requests.
+
+## Perpl execution archive
+
+The execution record exposes explicit pages of orders, sessions and account setup history through the authenticated Studio history endpoint. Archive requests are read-only, serialized and cancelled on account remount. Operational polling retains only recent context; never drain archive pages automatically or retry a financial command to load history.
