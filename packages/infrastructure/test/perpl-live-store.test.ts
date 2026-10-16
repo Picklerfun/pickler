@@ -37,14 +37,38 @@ test("real PostgreSQL ownership and concurrent starts admit one bounded session"
   const peer = new PostgresPerplLiveStore(f.store.connectPeer().pool);
   assert.equal((await repository.read(scope)).document, null);
   await assert.rejects(repository.read({ ...scope, userId: randomUUID() }), { code: "NOT_FOUND" });
-  await repository.transact(scope, (d, a, now) => {
-    assert.equal(a.network, "testnet");
-    d.accountId = 7;
-    d.publicKey = "controlled-public";
-    d.encryptedKey = "controlled-encrypted";
-    d.encryptedToken = "controlled-encrypted";
-    d.keyExpiresAt = now + 60_000;
-  });
+  await connect(repository, scope);
+  const monitored = await f.store.pool.connect();
+  const statements: string[] = [];
+  const originalQuery = monitored.query;
+  const spy = t.mock.method(
+    monitored,
+    "query",
+    function (this: typeof monitored, ...args: unknown[]) {
+      if (typeof args[0] === "string") {
+        statements.push(args[0]);
+      }
+      return Reflect.apply(originalQuery, this, args);
+    },
+  );
+  monitored.release();
+  try {
+    await repository.claimLease(scope, { owner: "controlled-narrow-lease" });
+    await repository.releaseLease(scope, { owner: "controlled-narrow-lease" });
+    assert.equal(
+      statements.some((sql) => sql.includes("FOR UPDATE")),
+      true,
+    );
+    assert.equal(
+      statements.some(
+        (sql) => sql.includes("product_agent_id<>$1") || sql.includes("pg_advisory_xact_lock"),
+      ),
+      false,
+    );
+  } finally {
+    spy.mock.restore();
+  }
+
   const terms = { symbol: "BTC", marginMicros: "5000000", leverage: 1, cycles: 1, holdSeconds: 60 };
   const services = [repository, peer].map((repo) =>
     createPerplLiveService({
@@ -84,11 +108,9 @@ test("private state uses RLS and new migrations preserve existing token grants",
   );
   assert.equal(table.rows[0]!.relrowsecurity, true);
   const before = await f.store.pool.query("SELECT count(*)::int AS n FROM launch.drafts");
-  await new PostgresPerplLiveStore(f.store.pool).transact(
+  await new PostgresPerplLiveStore(f.store.pool).inspectKeyChange(
     { userId: f.scope.userId, productAgentId: f.scope.agentId },
-    (d) => {
-      d.nextRequestId = 3;
-    },
+    {},
   );
   assert.equal(
     (await f.store.pool.query("SELECT count(*)::int AS n FROM launch.drafts")).rows[0]!.n,
@@ -130,7 +152,7 @@ test("upgrade from main's 0047 preserves token draft, grant and migration identi
     "SELECT hash,created_at FROM pickler_migrations.__drizzle_migrations ORDER BY id",
   );
   assert.deepEqual(after.rows.slice(0, before.rowCount!), before.rows);
-  assert.equal(after.rowCount, before.rowCount! + 2);
+  assert.equal(after.rowCount, before.rowCount! + 3);
   assert.equal(
     (
       await f.store.pool.query(
@@ -177,17 +199,7 @@ test("key wallets retain custody ownership and a shared account can connect to o
   }));
   const address = "0x" + "22".repeat(20);
   const attempts = await Promise.allSettled(
-    scopes.map((scope) =>
-      repository.transact(scope, (d, a, now) => {
-        d.address = address;
-        d.connection = { kind: "key_wallet", custodyAddress: a.address };
-        d.accountId = 1280;
-        d.publicKey = "controlled-public";
-        d.encryptedKey = "controlled-encrypted";
-        d.encryptedToken = "controlled-encrypted";
-        d.keyExpiresAt = now + 60000;
-      }),
-    ),
+    scopes.map((scope) => connect(repository, scope, address)),
   );
 
   assert.equal(attempts.filter((r) => r.status === "fulfilled").length, 1);
@@ -204,3 +216,37 @@ test("key wallets retain custody ownership and a shared account can connect to o
   );
   await assert.rejects(repository.read(winner), { code: "PERPL_ACCOUNT_CHANGED" });
 });
+
+async function connect(
+  repository: PostgresPerplLiveStore,
+  scope: { userId: string; productAgentId: string },
+  address?: string,
+) {
+  const original = await repository.inspectKeyChange(scope, {});
+  await repository.connectKey(scope, {
+    original,
+    useKeyWallet: Boolean(address),
+    connected: {
+      address: address ?? original.authority.address,
+      accountId: 7,
+      publicKey: "controlled-public",
+      encryptedKey: "controlled-encrypted",
+      encryptedToken: "controlled-encrypted",
+      snapshot: {
+        instanceId: 1,
+        lockedMicros: "0",
+        unmanagedOrders: false,
+        accountId: 7,
+        forwarding: true,
+        frozen: false,
+        balanceMicros: "100000000",
+        lastRequestId: 0,
+        head: 100,
+        at: Date.now(),
+        markets: [],
+        positions: [],
+        orders: [],
+      },
+    },
+  });
+}
