@@ -344,3 +344,7 @@ Existing-key input adds optional `useKeyWallet` for explicitly connecting the wa
 by its key. It accepts no address. State adds optional `connection` (`agent_wallet`/`key_wallet`)
 and positions add optional `managedBySession`; these are public status only. Older DTOs stay valid
 and the two credential fields remain write-only.
+
+## Bounded product reads
+
+Catalogue endpoints return items/nextCursor pages. Execution read schemas separate lightweight status and run summaries from full results. Event identifiers and cursors are decimal strings; event pages carry hasMore and nextCursor, with explicit oversized body detail references. Studio canCreateAnother is nullable on single-agent reads and has a separate creation-eligibility operation.
