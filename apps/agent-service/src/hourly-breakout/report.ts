@@ -10,7 +10,7 @@ import {
   assertHourlyBreakoutConfig,
   type PerpsHourlyBreakoutConfig,
 } from "@pickler/trading/evaluation";
-import type { BreakoutClockRecord } from "./clock.js";
+import type { BreakoutClockRecord, DatabaseClockProof } from "./clock.js";
 import { qualifySourceFrames, type SourceQualificationFailure } from "./source-qualification.js";
 import {
   BREAKOUT_BYTES,
@@ -52,6 +52,7 @@ export interface SourceManifest {
   };
   processState: "running" | "completed" | "interrupted";
   failureCode: string | null;
+  clockFailure?: { proof: DatabaseClockProof; proofPersistenceCode: string | null };
   journals: {
     snapshots: JournalPart[];
     clocks: JournalPart[];
@@ -125,6 +126,28 @@ export function validateSourceManifest(value: unknown): asserts value is SourceM
       "BREAKOUT_SOURCE_INVALID",
       "Nonfinancial source manifest identity is invalid",
     );
+  }
+  if (manifest.clockFailure) {
+    const { proof, proofPersistenceCode } = manifest.clockFailure;
+    if (
+      proof?.format !== "hourly-breakout-database-clock-proof-v1" ||
+      !["CLOCK_INCOMPATIBLE", "CLOCK_PROOF_FAILURE"].includes(proof.compatibility) ||
+      proof.quantizationMarginMs !== 1 ||
+      [
+        proof.databaseAt,
+        proof.wallBefore,
+        proof.wallAfter,
+        proof.monotonicBefore,
+        proof.monotonicAfter,
+        proof.roundTripMs,
+      ].some((value) => value !== null && !Number.isFinite(value)) ||
+      (proof.databaseOffsetInterval !== null &&
+        (!Number.isFinite(proof.databaseOffsetInterval?.lowerMs) ||
+          !Number.isFinite(proof.databaseOffsetInterval?.upperMs))) ||
+      (proofPersistenceCode !== null && !/^[A-Z0-9_]{1,80}$/.test(proofPersistenceCode))
+    ) {
+      throw new PilotError("BREAKOUT_SOURCE_INVALID", "Rejected database clock proof is invalid");
+    }
   }
   let total = 0;
   const seen = new Set<string>();
@@ -336,8 +359,8 @@ export async function analyzeSource(root: string, manifest: SourceManifest) {
   let start: BreakoutClockRecord | undefined;
   let end: BreakoutClockRecord | undefined;
   let financialV = 0;
-  let maximumUpperFinancialMs = 0;
-  let maximumUpperMonotonicMs = 0;
+  let maximumUpperFinancialMs: number | null = null;
+  let maximumUpperMonotonicMs: number | null = null;
   let qualifiedSourceReceipts = 0;
   const receipts = new Set<string>();
   const qualifiedOperations = new Set<string>();
@@ -356,10 +379,16 @@ export async function analyzeSource(root: string, manifest: SourceManifest) {
       unprovedGaps++;
     }
     if (result.financial !== null) {
-      maximumUpperFinancialMs = Math.max(maximumUpperFinancialMs, result.financial.upperMs);
+      maximumUpperFinancialMs = Math.max(
+        maximumUpperFinancialMs ?? Number.NEGATIVE_INFINITY,
+        result.financial.upperMs,
+      );
     }
     if (result.monotonic !== null) {
-      maximumUpperMonotonicMs = Math.max(maximumUpperMonotonicMs, result.monotonic.upperMs);
+      maximumUpperMonotonicMs = Math.max(
+        maximumUpperMonotonicMs ?? Number.NEGATIVE_INFINITY,
+        result.monotonic.upperMs,
+      );
     }
   };
   for await (const value of readJournal(root, manifest.journals.clocks)) {
@@ -591,6 +620,7 @@ export async function analyzeSource(root: string, manifest: SourceManifest) {
     captureCommit: manifest.captureCommit,
     processState: manifest.processState,
     processLiveness: "UNVERIFIED_READ_ONLY_REPORT",
+    clockFailure: manifest.clockFailure ?? null,
     complete,
     coverage: {
       canonicalMinutes: { qualified: jointMinutes, planned: 1440, required: 1368 },
