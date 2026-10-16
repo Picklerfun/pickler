@@ -104,3 +104,20 @@ test("reminder-set errors have copy", async () => {
   expect(describeReadsError(new ReadsError(422, "expired"))).toBe("That level already expired.");
   expect(describeReadsError(new ReadsError(404, "read_not_found"))).toBe("That read isn't yours anymore.");
 });
+
+test("the read timeout covers a stalled response body and caller cancellation", async () => {
+  jest.useFakeTimers();
+  const slow = jest.fn(async (_url: string, init: RequestInit) => ({ ok: true, status: 200,
+    json: () => new Promise((_, reject) => init.signal?.addEventListener("abort", () => reject(Object.assign(new Error("aborted body"), { name: "AbortError" })), { once: true })),
+  })) as unknown as DoFetch;
+  const pending = fetchReads(BASE, SESSION, undefined, slow).catch((e: ReadsError) => e.code);
+  await Promise.resolve();
+  jest.advanceTimersByTime(READS_TIMEOUT_MS);
+  await expect(pending).resolves.toBe("timeout");
+  const controller = new AbortController();
+  const cancelled = fetchReads(BASE, SESSION, undefined, slow, controller.signal).catch((e: ReadsError) => e.code);
+  await Promise.resolve();
+  controller.abort();
+  await expect(cancelled).resolves.toBe("timeout");
+  jest.useRealTimers();
+});
