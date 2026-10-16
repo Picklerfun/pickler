@@ -975,6 +975,11 @@ transaction-local writer fence. Legacy accounts retain close-only compatibility;
 explicit operator conversion. Frozen conversion refuses accounts with active positions or owned
 unexpired attempts and advances at most100 entities/facts in one transaction. Original parent
 JSON stays preserved in paper_storage.original; never silently reset or replay the initial cash.
+Conversion preserves verified legacy funding coverage only through a positive full observation
+receipt matching the frozen position documents and a lastFundingAt covering every close. Receipt
+search and cohort proof pages each contain at most100 entries; the completed migration cursor
+retains the receipt certificate. Compact receipts/account flags alone do not certify history.
+Re-auditing certified history does not block openings; genuinely missing coverage still does.
 
 `paper-storage-operator.ts <account-id>` preflights using DATABASE_MIGRATION_URL; --apply advances
 one transaction. Reinvoke until complete. Reads/startup never invoke conversion. An operational
