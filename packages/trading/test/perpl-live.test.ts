@@ -728,3 +728,113 @@ test("historical verified hashes are not checked again and exhausted request IDs
   assert.equal(g.document().orders.length, 0);
   assert.equal(g.document().sessions[0]!.error, "PERPL_REQUEST_ID_EXHAUSTED");
 });
+
+test("a reservation crash cancels the unsent entry, freezes entries and retains its start budget", async () => {
+  const f = fixture();
+  f.authority.perDayMicros = "5000000";
+  const service = f.service();
+  await service.start(f.scope, f.terms, randomUUID());
+  await f.repository.claimLease(f.scope, { owner: "crashed" });
+  const reserved = await f.repository.reserveOrder(f.scope, {
+    owner: "crashed",
+    snapshot: f.snapshot,
+    verified: [],
+    admissions: true,
+    id: randomUUID(),
+  });
+  assert.ok(reserved);
+  assert.equal(await f.repository.claimLease(f.scope, { owner: "early" }), null);
+  assert.equal(f.document().orders[0]!.status, "prepared");
+  f.advance(61000);
+  await f.repository.claimLease(f.scope, { owner: "recovered" });
+  assert.equal(f.document().orders[0]!.status, "cancelled");
+  assert.equal(f.document().sessions[0]!.status, "frozen");
+  await f.repository.releaseLease(f.scope, { owner: "recovered" });
+  await service.tick(f.scope);
+  assert.equal(f.submissions.length, 0);
+  await service.control(f.scope, "stop");
+  await service.tick(f.scope);
+  assert.equal(f.document().sessions[0]!.status, "stopped");
+  await assert.rejects(service.start(f.scope, f.terms, randomUUID()), { code: "PERPL_DAY_LIMIT" });
+  assert.equal(f.document().nextRequestId, 1);
+});
+
+test("a reducing reservation crash retains its exit and uses a fresh monotonic request without new admissions", async () => {
+  const f = fixture();
+  const service = f.service();
+  await service.start(f.scope, f.terms, randomUUID());
+  await service.tick(f.scope);
+  f.fill();
+  await service.tick(f.scope);
+  await service.control(f.scope, "close");
+  await f.repository.claimLease(f.scope, { owner: "crashed" });
+  const reserved = await f.repository.reserveOrder(f.scope, {
+    owner: "crashed",
+    snapshot: f.snapshot,
+    verified: [],
+    admissions: false,
+    id: randomUUID(),
+  });
+  assert.equal(reserved!.order.request.t, 3);
+  assert.equal(reserved!.order.request.rq, 2);
+  f.advance(61000);
+  await f.repository.claimLease(f.scope, { owner: "recovered" });
+  assert.equal(f.document().orders[1]!.status, "cancelled");
+  assert.equal(f.document().sessions[0]!.retryExitOrderId, reserved!.order.id);
+  await f.repository.releaseLease(f.scope, { owner: "recovered" });
+  f.authority.enabled = false;
+  await f.service(false).tick(f.scope);
+  assert.deepEqual(
+    f.submissions.map((order) => order.rq),
+    [1, 3],
+  );
+  assert.equal(f.submissions[1]!.t, 3);
+  assert.equal(f.submissions[1]!.s, f.snapshot.positions[0]!.size);
+  assert.equal(f.submissions[1]!.lv, f.snapshot.positions[0]!.leverage);
+});
+
+test("a takeover preserves dispatch ambiguity and cannot restart an already dispatched request", async () => {
+  const f = fixture();
+  await f.service().start(f.scope, f.terms, randomUUID());
+  await f.repository.claimLease(f.scope, { owner: "crashed" });
+  const reserved = await f.repository.reserveOrder(f.scope, {
+    owner: "crashed",
+    snapshot: f.snapshot,
+    verified: [],
+    admissions: true,
+    id: randomUUID(),
+  });
+  await f.repository.beginDispatch(f.scope, {
+    owner: "crashed",
+    increasing: true,
+    head: f.snapshot.head,
+    snapshotHead: f.snapshot.head,
+    orderId: reserved!.order.id,
+  });
+  f.advance(61000);
+  await f.repository.claimLease(f.scope, { owner: "recovered" });
+  assert.equal(f.document().orders[0]!.status, "dispatching");
+  assert.equal(
+    await f.repository.reserveOrder(f.scope, {
+      owner: "recovered",
+      snapshot: f.snapshot,
+      verified: [],
+      admissions: true,
+      id: randomUUID(),
+    }),
+    null,
+  );
+  assert.equal(f.document().orders[0]!.status, "unknown");
+  await assert.rejects(
+    f.repository.beginDispatch(f.scope, {
+      owner: "recovered",
+      increasing: true,
+      head: f.snapshot.head,
+      snapshotHead: f.snapshot.head,
+      orderId: reserved!.order.id,
+    }),
+    { code: "PERPL_ORDER_NOT_PREPARED" },
+  );
+  assert.equal(f.document().nextRequestId, 1);
+  assert.equal(f.submissions.length, 0);
+});
