@@ -3,6 +3,7 @@ import { PilotError } from "@pickler/core";
 import type { PerpsStudyScope, PerpsStudyView, PerpsStudyMap } from "@pickler/trading/evaluation";
 import { perpsStrategies } from "@pickler/trading/evaluation";
 import type { PerpsPaperView } from "@pickler/trading/perps";
+import { rejectLegacyBreakout } from "./perps-legacy-guard.js";
 
 /** Native JSONB fingerprint, distinct from the historical canonical audit payload digest. */
 export interface PerpsAuditSourceRevision {
@@ -67,6 +68,7 @@ export async function exportPerpsAuditParts(
       throw new PilotError("NOT_FOUND", "Scoped study not found");
     }
     const { id, document: record } = study.rows[0];
+    rejectLegacyBreakout(record);
     await emit({ kind: "record", value: record });
 
     let roundKey: string | null = null;

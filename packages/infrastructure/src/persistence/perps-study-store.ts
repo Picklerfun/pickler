@@ -25,6 +25,7 @@ import {
 } from "@pickler/trading/evaluation";
 import { assertPerpsPaperAgent, paperUnits, type PerpsPaperAccount } from "@pickler/trading/perps";
 import { PostgresPerpsPaperStore } from "./perps-paper-store.js";
+import { rejectLegacyBreakout } from "./perps-legacy-guard.js";
 function acquisitionPolicy(
   metadata: unknown,
   config: PerpsStudyConfig,
@@ -165,6 +166,7 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
     if (!r.rows[0]) {
       throw new PilotError("NOT_FOUND", "Study not found");
     }
+    rejectLegacyBreakout(r.rows[0].document);
     return {
       id: r.rows[0].id,
       record: r.rows[0].document,
@@ -186,6 +188,7 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
     if (!r.rows[0]) {
       throw new PilotError("NOT_FOUND", "Study not found");
     }
+    rejectLegacyBreakout(r.rows[0].document);
     return {
       id: r.rows[0].id,
       record: r.rows[0].document,
@@ -196,7 +199,7 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
   }
   private async lockOwnership(c: PoolClient, scope: PerpsStudyScope): Promise<StudyOwnership> {
     const r = await c.query(
-      `SELECT id,owner,expires_at
+      `SELECT id,owner,expires_at,document#>>'{config,version}' AS version
        FROM pickler.perps_studies
        WHERE tenant_id=$1 AND session_id=$2 AND network=$3 FOR UPDATE`,
       [scope.tenantId, scope.sessionId, scope.network],
@@ -204,6 +207,7 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
     if (!r.rows[0]) {
       throw new PilotError("NOT_FOUND", "Study not found");
     }
+    rejectLegacyBreakout(r.rows[0]);
     return { ...r.rows[0], now: await this.now(c) };
   }
   private owned(c: PoolClient, x: StudyOwnership, lease: PerpsStudyLease) {
@@ -266,6 +270,7 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
     );
   }
   async initialize(config: PerpsStudyConfig, metadata: unknown) {
+    rejectLegacyBreakout(config);
     assertPerpsStudyConfig(config);
     if (config.version === 7 && config.acquisitionPolicy === "stream-universe-component-20s-v2") {
       throw new PilotError(
@@ -282,6 +287,7 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
         [config.tenantId, config.sessionId, config.network],
       );
       if (existing.rows[0]) {
+        rejectLegacyBreakout(existing.rows[0].document);
         if (
           canonical(existing.rows[0].document.config) !== canonical(config) ||
           canonical(existing.rows[0].document.metadata) !== canonical(metadata)
@@ -911,6 +917,9 @@ export class PostgresPerpsStudyStore implements PerpsStudyRepository {
         );
       } else if (x.record.config.version !== 3) {
         const paidConfig = x.record.config;
+        if (paidConfig.version === 10) {
+          throw new PilotError("VERSIONED_STORE_REQUIRED", "V10 has no historical paid lanes");
+        }
         calls = Object.fromEntries(
           (paidConfig.version === 2
             ? (["direct", "jev", "fallback", "review"] as const)

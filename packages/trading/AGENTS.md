@@ -357,6 +357,60 @@ Independent responsive prerelease 0.2.0-fast.2 changes only primary/channel role
 
 The testing/pts-intraday-responsive public subpath supplies controlled synthetic native fixtures only. It is absent from production barrels and must never be selected as captured data or a provider fallback.
 
+## Fixed hourly-breakout screen
+
+`features/hourly-breakout` owns evaluation v10 `perps-hourly-breakout-fixed-screen-v1`. Its
+prepared configuration is disabled, has a null T0 and operator, and names an existing agent.
+The separate explicit run acceptance must bind the future UTC midnight, operator, source and
+financial technical evidence. The financial roles are independent `hourly-breakout` (C),
+`sma-reference` (S), and `hourly-long` (L). N is cash and responsive PTS fast.2 is nonfinancial
+signal context; neither becomes an account or a financial strategy.
+
+The reviewed T1 parameter namespace and SHA-256 remain immutable. Structural C discovery uses
+exactly 22 closed original hourly bars and the known predecessor, independently of books and
+portfolio state. Native 60-bar 1h/15m/5m financial readiness remains a separate gate. Keep the
+original public mainnet catalogue identity separate from dynamic native fees/config/precision.
+Never rescue a blocked event, promote an initial hold, replace a failed rank, change direction,
+refresh an aged original final copy, pyramid, or enable a PTS position policy on these accounts.
+
+The injected coordinator owns discovery before reservation, one serial 101-AUSD head per
+account, all pending-attempt visibility, due closes before openings, and the immutable common
+final source. Potential position-bound reducing intents are recorded before final acquisition;
+they enter Q only when a due reduction is actually selected. All coincident close reasons stay
+on that intent. Unknown financial outcomes stop every new admission; affected accounts receive
+no further financial writes while unaffected accounts retain authorized reductions. A definite
+commit with unavailable V proof remains a known effect with unproved supervision, never an
+invented rollback. Infrastructure alone implements the separate durable boundaries.
+
+Coordinator identity memory has a fixed 8 MiB conservative tombstone index and at most 128
+recent exact identities. Eviction cannot authorize another execution; uncertain membership
+fails closed. Technical financial rollbacks stop every new admission immediately; only the
+explicit native risk/data rejection allowlist remains account-local. Mandatory reductions precede
+selective-only intentions. Re-read and replan after every confirmed close; retire an obsolete
+selective-only intention durably without inventing a fill or erasing its original Q evidence.
+
+The calendar records missed original slots and never catches them up. Fixed endpoints are
+28 days of admissions, four hours of closing and 72 additional hours for funding evidence.
+Twenty seconds bounds original source acquisition; it is not a new financial commit deadline.
+Native component freshness, receipt heartbeat, ownership and five-minute entry fences still
+apply at the actual financial boundary. The pure clock helpers keep source-local J and
+financial V certificates/populations distinct, retain first acknowledgements, and distinguish
+proved gaps, unproved compliance and clock failure.
+
+The pure report keeps fixed 672/7392, 8064/88704 and 40320/443520 availability denominators,
+pooled account/action-obligation Q floors, exact native position-linked contribution residuals,
+paired C/S group subtraction and candidate-only emergency rejection. Reference emergencies and
+missing PTS context never erase actual effects. No positive descriptive screen establishes
+timing alpha, PTS financial superiority or automatic follow-up authority.
+
+`applyPaperMarks`, `applyPaperPositionFunding` and `finalizePaperObservationDelta` expose native
+marking, held-position funding and one account finalizer for bounded-history adapters. Apply
+the finalizer once after all pages, including late funding for closed positions. A funding
+revision discards all newly proposed funding postings; signed rounding, day and peak behavior
+of `applyPaperObservation` remain unchanged. Controlled tests under `test/hourly-breakout-*`
+exercise injected clocks, the complete fixed calendar, financial invariants and historical
+parity without database, provider, model or real-order access.
+
 The `pts` subpath also exports pure causal research inspections and chronological sessions.
 Research policies and signals have separate identities/types from executable PTS versions and
 intents. Preserve historical baseline actions and hashes; dependency failures are not downstream

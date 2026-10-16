@@ -33,6 +33,7 @@ const { positionals, values } = parseArgs({
     state: { type: "string", multiple: true },
     inventory: { type: "string" },
     "restore-target": { type: "string" },
+    acceptance: { type: "string" },
   },
 });
 if (values.help) {
@@ -71,6 +72,7 @@ if (values.help) {
         values["acquisition-choice"] ||
         values.inventory ||
         values["restore-target"] ||
+        values.acceptance ||
         values.state?.length !== 1 ||
         !values.output
       ) {
@@ -90,6 +92,16 @@ if (values.help) {
       const selected = values.config
         ? JSON.parse(await readFile(values.config, "utf8"))
         : undefined;
+      const hourlyBreakout =
+        selected?.protocol === "perps-hourly-breakout-fixed-screen-v1" ||
+        offline?.format === "hourly-breakout-source-capture-v1" ||
+        offline?.format === "hourly-breakout-financial-audit-v1";
+      if (values.acceptance && !hourlyBreakout) {
+        throw new PilotError(
+          "INVALID_INPUT",
+          "Acceptance records belong only to hourly breakout v10",
+        );
+      }
       const pts =
         selected?.protocol === "perps-pts-sma-v1" ||
         selected?.protocol === "perps-pts-intraday-sma-v1" ||
@@ -99,7 +111,31 @@ if (values.help) {
           [8, 9].includes(offline?.studyVersion)) ||
         offline?.payload?.study?.record?.config?.version === 8 ||
         offline?.payload?.study?.record?.config?.version === 9;
-      if (pts) {
+      if (hourlyBreakout) {
+        if (
+          values.diagnostics ||
+          values["acquisition-choice"] ||
+          values.inventory ||
+          values["restore-target"] ||
+          (values.state && values.state.length !== 1)
+        ) {
+          throw new PilotError(
+            "INVALID_INPUT",
+            "Hourly breakout rejects unrelated provider/legacy options",
+          );
+        }
+        const { runHourlyBreakoutCommand } = await import("./hourly-breakout/index.js");
+        await runHourlyBreakoutCommand({
+          command: positionals[0]!,
+          configPath: values.config,
+          state: values.state?.[0],
+          envFile: values["env-file"],
+          output: values.output,
+          allowPaid: values["allow-paid"],
+          acceptancePath: values.acceptance,
+          signal: controller.signal,
+        });
+      } else if (pts) {
         const { runPtsCommand } = await import("./pts-study/index.js");
         await runPtsCommand({
           command: positionals[0]!,
