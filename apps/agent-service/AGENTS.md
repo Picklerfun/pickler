@@ -480,3 +480,31 @@ Read [PTS causal research](PTS-CAUSAL-RESEARCH.md) for the offline `pts-research
 audit extension. Its manifest pins saved sources and disabled research policies; dispatch precedes
 environment and provider composition. Reports separate original decisions, retrospective signal
 experiments and unavailable financial paths. Never start a public trial from its future protocol.
+
+## Hourly breakout fixed screen
+
+`src/hourly-breakout` owns the restricted local configuration-v10 host; read its AGENTS.md.
+Preparation is offline and disabled. Preflight reads only explicit existing public permissions and
+the dedicated loopback DATABASE_URL-only file. Financial run requires a separate future acceptance
+record before database/provider composition; preparation and source acceptance cannot supply it.
+The separately authorized `stability` command freezes one 24-hour source window before any public
+call. The first canonical pump includes the metadata/WebSocket cold start; no public bootstrap runs
+before the frozen start. All 4,320 original windows and 1,440 canonical minutes remain counted.
+Offset 20/40-second copies never rescue canonical coverage; preparation coverage stays separate.
+Source J and future financial V clocks, ownership, acceptance and results remain distinct.
+
+Original snapshots, candle revisions and public HTTP bodies remain in immutable hashed parts;
+only the declared first32MiB validated wire prefix may truncate. Every artifact and concurrent
+report temporary shares the16GiB reserved ceiling. One read-only report worker publishes verified
+derived generations and the pointer last, retaining current/previous derived output only. Offline
+source status/report/audit-export/audit/replay use an explicit source-manifest.json before any
+environment/provider composition and preserve historical output. Local STOP control bytes are
+pre-reserved before capture; a stop request does not establish process liveness or financial flatness.
+
+Each derived generation retains its exact source manifest. Compact `acceptance.json` excludes
+large row populations; complete JSON/CSV retains 15,840 canonical market-minutes and 47,520
+market-pumps. Source certificates declare local OS authority and observed uncertainty, never
+external UTC accuracy. A future financial clock certificate is immutable, separately authorized
+and checked against every actual sample. New financial run authority must bind the reviewed
+protocol digest and exact implementation/configuration. No acceptance bundle is allocated by
+preparation. Funding work cannot delay the serialized priority minute valuations or required exits.
