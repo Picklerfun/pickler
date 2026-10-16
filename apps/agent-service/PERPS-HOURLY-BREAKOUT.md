@@ -107,6 +107,42 @@ have nonzero uncertainty and process-epoch identity. The authority is explicitly
 clock; external UTC accuracy is unverified. PostgreSQL compatibility uses the complete local RTT
 interval. An excessive gap, unproved compliance and incompatible clocks retain distinct labels.
 
+Rejected database samples now save their raw numeric brackets and conservative offset interval
+before rejection. Nonfinite values cannot be accepted; rejected evidence represents them as null.
+The acceptance calculation is unchanged: `[databaseAt - wallAfter - 1, databaseAt - wallBefore + 1]`
+must contain zero. A later measurement with a wider RTT can pass while a tighter interval fails;
+passing preflight is not a guarantee that every subsequent sample will pass.
+
+The first rejected proof stays separate from the primary interruption, including any independent
+proof-journal failure. Preflight writes rejection evidence before public composition. A clock error
+does not prevent technical diagnostic release after ownership has been checked; release still uses
+the adapter's transactional fence. Detected ownership loss prevents any further database call.
+No receipt comparisons means maximum J intervals are null, not a measured zero.
+
+## First source attempt: interrupted before Perpl
+
+The single authorized attempt used frozen commit `12758b5bd045f9ce7726a4606db522a29362a407`.
+Its frozen window was 2026-10-16 01:39:00 UTC to 2026-10-17 01:39:00 UTC, but it stopped before
+that start with `CLOCK_INCOMPATIBLE`. The public reader had not been constructed: all source,
+HTTP and wire journals are empty, and no account, position, financial attempt, monetary reserve,
+model call or public-provider request occurred. Coverage is zero against the unchanged planned
+populations; it is not a completed 24-hour measurement or evidence of Perpl unavailability.
+
+The original accepted preflight interval was [-7, +1] ms with a 5.334458 ms monotonic RTT. The
+rejected startup sample was not retained by that frozen code, so its exact numbers and causal
+phase remain unverifiable. A separate subsequent read-only diagnostic rejected all 100 samples;
+their conservative offset bounds lay between -5 and -2 ms. These later measurements demonstrate
+incompatibility under the unchanged local rule. They neither reconstruct the rejected startup
+sample nor establish an NTP, virtual-machine, hardware or external-UTC cause.
+
+That attempt also exposed two host defects: rejected proof was discarded before persistence, and
+end-clock rejection skipped the diagnostic release. The original capture retains its unconfirmed
+lease/socket cleanup and confirmed pool closure. The subsequent code repair preserves rejected
+proof, checks every numeric clock input, performs fenced technical cleanup independently, and
+labels absent interval evidence correctly. Controlled regressions cover those changes. They do
+not amend the original capture, authorize repetition, or satisfy source/financial acceptance.
+The financial configuration remains disabled with no T0, operator or acceptance bundle.
+
 ## Evidence, bounded operation and future acceptance
 
 Original snapshots, complete native HTTP bodies and first/revised candle versions remain in
