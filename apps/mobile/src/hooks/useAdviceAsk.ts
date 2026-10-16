@@ -158,6 +158,8 @@ export function useAdviceAsk(account: AccountState, onUnlock: (w: Wallet) => voi
   const flowRef = useRef<Flow | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mounted = useRef(true);
+  const pollRequest=useRef<AbortController|null>(null);
+  const pollVisible=useRef(AppState.currentState!=="background" && AppState.currentState!=="inactive");
 
   const live = useCallback((f: Flow) => mounted.current && flowRef.current === f, []);
 
@@ -171,6 +173,8 @@ export function useAdviceAsk(account: AccountState, onUnlock: (w: Wallet) => voi
   const stopPolling = useCallback(() => {
     if (timer.current !== null) clearTimeout(timer.current);
     timer.current = null;
+    pollRequest.current?.abort();
+    pollRequest.current=null;
   }, []);
 
   /** The wallet, opened with Face ID if it is locked. Cancelled is not an error to show (describeError says ""). */
@@ -274,8 +278,11 @@ export function useAdviceAsk(account: AccountState, onUnlock: (w: Wallet) => voi
 
   const poll = useCallback((f: Flow, ps: PollState, delay: number) => {
     stopPolling();
+    if(!pollVisible.current)return;
     timer.current = setTimeout(() => {
       timer.current = null;
+      const controller=new AbortController();
+      pollRequest.current=controller;
       void (async () => {
         let response: { ok: true; recommendation: Recommendation } | { ok: false };
         try {
@@ -283,12 +290,13 @@ export function useAdviceAsk(account: AccountState, onUnlock: (w: Wallet) => voi
           // the wallet does not stop it while the token lasts. A poll that fails only counts toward the deadline; one
           // that needed the locked wallet drops it, so the next polls use the account's (unlocked elsewhere, or
           // locked until a tap on "Check again" opens it).
-          response = { ok: true, recommendation: await getRecommendation((path, init) => fetchRef.current(path, init, f.wallet), f.jobId!) };
+          response = { ok: true, recommendation: await getRecommendation((path, init) => fetchRef.current(path, init, f.wallet), f.jobId!,controller.signal) };
         } catch (e) {
           if (e instanceof WalletLockedError) f.wallet = undefined;
           response = { ok: false };
         }
-        if (!live(f)) return;
+        if(pollRequest.current===controller)pollRequest.current=null;
+        if (controller.signal.aborted || !live(f)) return;
         const next = nextPoll(ps, response, Date.now());
         if (next.kind === "waiting") poll(f, next, POLL_INTERVAL_MS);
         else if (next.kind === "done") put(f, { kind: "done", recommendation: next.recommendation, settlement: f.settlement });
@@ -556,7 +564,11 @@ export function useAdviceAsk(account: AccountState, onUnlock: (w: Wallet) => voi
       let response: { ok: true; recommendation: Recommendation } | { ok: false };
       try {
         // A tap: this read may open the wallet. It is a GET of the same job, never a payment.
-        response = { ok: true, recommendation: await authed(f, (fetch) => getRecommendation(fetch, f.jobId!)) };
+        const controller=new AbortController();
+        pollRequest.current=controller;
+        try {response = { ok: true, recommendation: await authed(f, (fetch) => getRecommendation(fetch, f.jobId!,controller.signal)) };}
+        finally {if(pollRequest.current===controller)pollRequest.current=null;}
+
       } catch (e) {
         if (e instanceof Cancelled) {
           put(f, s);
@@ -575,10 +587,16 @@ export function useAdviceAsk(account: AccountState, onUnlock: (w: Wallet) => voi
   // Backgrounded on the confirmation: coming back shows the screen idle, and the next Ask asks again.
   useEffect(() => {
     const sub = AppState.addEventListener("change", (next) => {
+      pollVisible.current=next==="active";
+      if(next!=="active")stopPolling();
+      else {
+        const f=flowRef.current;
+        if(f?.jobId && stateRef.current.kind==="waiting")poll(f,startPoll(f.since??Date.now()),0);
+      }
       if (next === "background" && stateRef.current.kind === "confirming") reset();
     });
     return () => sub.remove();
-  }, [reset]);
+  }, [reset,poll,stopPolling]);
 
   // Another account (or none): this Ask is dropped from view, paid or not. Its continuations are discarded (`live`),
   // polling stops, and nothing is ever signed for it by the new account; a paid analysis stays in the old account's
@@ -595,6 +613,7 @@ export function useAdviceAsk(account: AccountState, onUnlock: (w: Wallet) => voi
     return () => {
       mounted.current = false;
       if (timer.current !== null) clearTimeout(timer.current);
+      pollRequest.current?.abort();
     };
   }, []);
 
