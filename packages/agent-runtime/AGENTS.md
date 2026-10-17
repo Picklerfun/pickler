@@ -247,3 +247,11 @@ refresh uses the declared 24-bar native minimum; shared 1h/15m/5m eligibility st
 bars and full saved native warmup is retained. Legacy v7/v8 and intraday 0.1.0 behavior is unchanged.
 Controlled tests cover all eleven common frames, the exact 24/23-bar boundary, absence of daily
 requests, immutable input and rejection when an actually required 5m window changes.
+
+## Bounded product Paper supervision
+
+Product checks, owner actions and exit supervision use compact execution snapshots and point
+attempt results. Public funding advances confirmed one-hour windows; the background historical
+audit runs after reducing exits and owns at most50 closed positions/pass. Open-account discovery
+rotates at most50 accounts through persisted exit timestamps; owner closes filter their product
+agent in PostgreSQL. No worker automatically converts a legacy Paper account or loads its archive.
