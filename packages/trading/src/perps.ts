@@ -17,3 +17,5 @@ export * from "./features/perps-paper/universe-acquisition.js";
 export * from "./features/perps-paper/stream-universe.js";
 
 export * from "./features/perps-paper/selective.js";
+
+export * from "./features/perpl-dashboard/model.js";
